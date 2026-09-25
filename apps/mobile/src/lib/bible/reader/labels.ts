@@ -1,6 +1,7 @@
 // The reader's labels (feat-551 R9, R21, R25, R41, R42, KTD19). Each number is
 // the SHOWN translation's own verse number, and the counter keys by verse
 // number, not list index: T4T John 4 has 50 stops but 54 verses.
+import { clamp } from "../../scrubber"
 import type { CatalogTranslation } from "../data/catalog"
 import type { ShownTranslation } from "../language/defaultTranslation"
 import type { TranslationDownloadState } from "../repository/translationDownloads"
@@ -51,13 +52,13 @@ export function chapterProgress(
   lastVerse: number,
 ): number {
   if (lastVerse <= 0) return 0
-  return Math.min(Math.max(stopRange(stop).last / lastVerse, 0), 1)
+  return clamp(stopRange(stop).last / lastVerse, 0, 1)
 }
 
 /** R18: the verse number at a point on the bar; `chapterProgress` reversed. */
 export function verseAtProgress(fraction: number, lastVerse: number): number {
   if (lastVerse < 1 || !Number.isFinite(fraction)) return 1
-  return Math.min(Math.max(Math.round(fraction * lastVerse), 1), lastVerse)
+  return clamp(Math.round(fraction * lastVerse), 1, lastVerse)
 }
 
 export function chapterLabel(bookName: string, chapter: number): string {

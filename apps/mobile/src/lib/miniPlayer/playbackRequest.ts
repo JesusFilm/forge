@@ -38,6 +38,13 @@ export type PlaybackRect = {
   height: number
 }
 
+/** True when two rects have the same position and size. */
+export function sameRect(a: PlaybackRect, b: PlaybackRect): boolean {
+  return (
+    a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+  )
+}
+
 /**
  * What a surface publishes about the session its video may become. `null` on a
  * request means the surface NEVER originates a session — the series trailer,
@@ -569,14 +576,7 @@ export function createPlaybackRequestStore(deps: {
 
     /** The host's resting window frame, for the reader's verse box (R10). */
     setWindowFrame(frame: PlaybackRect | null): void {
-      if (
-        frame != null &&
-        windowFrame != null &&
-        frame.x === windowFrame.x &&
-        frame.y === windowFrame.y &&
-        frame.width === windowFrame.width &&
-        frame.height === windowFrame.height
-      )
+      if (frame != null && windowFrame != null && sameRect(frame, windowFrame))
         return
       if (frame == null && windowFrame == null) return
       // The box only: a caller's frame may carry more (its corner name).

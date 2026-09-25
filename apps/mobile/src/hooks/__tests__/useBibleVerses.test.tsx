@@ -301,7 +301,6 @@ describe("useBibleVerses", () => {
     expect(verseCards(state)[0]).toMatchObject({
       reference: "Genesis 1:26-27",
       text: "",
-      passageUrl: null,
       loading: false,
     })
     expect(mockWarn).toHaveBeenCalledWith(
@@ -358,7 +357,6 @@ describe("useBibleVerses", () => {
       text: "",
       translation: null,
       copyright: null,
-      passageUrl: null,
     })
     expect(mockInfo).toHaveBeenCalledWith(
       "bible_passages.degraded",
@@ -1158,7 +1156,6 @@ describe("useBibleVerses reader start", () => {
 
     const card = verseCards(hook.latest())[0]
     expect(card?.text).toBe("")
-    expect(card?.passageUrl).toBeNull()
     expect(card?.citationStart).toEqual({ book: "JHN", chapter: 3, verse: 16 })
   })
 

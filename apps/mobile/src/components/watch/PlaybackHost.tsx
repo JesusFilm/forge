@@ -79,6 +79,7 @@ import {
 } from "../../lib/miniPlayer/playerSettings"
 import {
   getPlaybackRequestStore,
+  sameRect,
   sameStreamSource,
   sourceForRequest,
   type LoadedSource,
@@ -218,13 +219,6 @@ export function holdProgressIdentity(
   )
     return known
   return published
-}
-
-/** One box, so one motion's path is exactly the reverse of the other's. */
-function sameRect(a: PlaybackRect, b: PlaybackRect): boolean {
-  return (
-    a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
-  )
 }
 
 /** One frame transition. A shrink into a corner other than the base frame's

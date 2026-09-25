@@ -56,7 +56,6 @@ const PASSAGE_QUOTE: Quote = {
   ctaLink: null,
   translation: "World English Bible British Edition",
   copyright: "Public Domain",
-  passageUrl: "https://www.bible.com/bible/206/GEN.1.26-GEN.1.27.WEBBE",
   citationStart: { book: "GEN", chapter: 1, verse: 26 },
   loading: false,
 }

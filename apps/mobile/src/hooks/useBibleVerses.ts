@@ -88,7 +88,6 @@ export type BibleQuoteBlock = {
   /** Passage-only. Absent on the Experience and SDUI paths, which are unchanged. */
   translation: string | null
   copyright: string | null
-  passageUrl: string | null
   /** Where "Read full passage" opens the reader, in BSB numbering (KTD17).
    *  Named like `artCandidates`. Null shows no button, whatever the passage. */
   citationStart: VerseRef | null
@@ -433,7 +432,6 @@ export function useBibleVerses(
         ctaLink: null,
         translation: passage?.versionTitle ?? null,
         copyright: passage?.copyright ?? null,
-        passageUrl: passage?.passageUrl ?? null,
         citationStart: citationReaderStart(citation),
         loading,
       }
@@ -454,7 +452,6 @@ export function useBibleVerses(
       ctaLink: JOIN_BIBLE_STUDY_URL,
       translation: null,
       copyright: null,
-      passageUrl: null,
       citationStart: null,
       loading: false,
     })

@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react"
 import {
   Platform,
   Pressable,
@@ -172,11 +178,13 @@ function FittedVerse({
   selected = false,
 }: VerseViewProps & { verse: Verse }) {
   const { chosenSize, osFontScale } = appearance
-  const plainText = verse.lines.map((line) => line.text).join(" ")
-  const fontFamily = readingFontFamily(
-    appearance.typeface,
-    plainText,
-    Platform.OS,
+  const plainText = useMemo(
+    () => verse.lines.map((line) => line.text).join(" "),
+    [verse],
+  )
+  const fontFamily = useMemo(
+    () => readingFontFamily(appearance.typeface, plainText, Platform.OS),
+    [appearance.typeface, plainText],
   )
   // Everything that changes the text height at a given size.
   const measureKey = [

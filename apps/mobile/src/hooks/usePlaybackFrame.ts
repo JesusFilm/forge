@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react"
+import { useMemo, useSyncExternalStore } from "react"
 
 import {
   getPlaybackRequestStore,
@@ -46,4 +46,11 @@ export function useFloatingWindowFrame(): PlaybackRect | null {
     store.subscribe,
     () => store.getSnapshot().windowFrame ?? null,
   )
+}
+
+/** The floating window as the reader's list of obstacles, or undefined when
+ *  no window floats (feat-551 R10). */
+export function useFloatingObstacles(): readonly PlaybackRect[] | undefined {
+  const windowFrame = useFloatingWindowFrame()
+  return useMemo(() => (windowFrame ? [windowFrame] : undefined), [windowFrame])
 }

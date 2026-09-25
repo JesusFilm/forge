@@ -5,6 +5,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { READER_CHROME_MAX_FONT_SCALE } from "../../../lib/bible/reader/chrome"
 import type { TranslationDownloadState } from "../../../lib/bible/repository/translationDownloads"
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
+import { clamp } from "../../../lib/scrubber"
 
 type IconName = ComponentProps<typeof Ionicons>["name"]
 
@@ -27,7 +28,7 @@ export function downloadProgressText(
   state: TranslationDownloadState | null,
 ): string | null {
   if (state?.kind !== "downloading") return null
-  const percent = Math.min(Math.max(Math.round(state.percent), 0), 100)
+  const percent = clamp(Math.round(state.percent), 0, 100)
   return `${percent}%`
 }
 

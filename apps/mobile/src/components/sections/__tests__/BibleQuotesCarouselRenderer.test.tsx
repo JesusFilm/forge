@@ -72,7 +72,6 @@ const PASSAGE_QUOTE: Quote = {
   ctaLink: null,
   translation: "World English Bible British Edition",
   copyright: "Public Domain",
-  passageUrl: "https://www.bible.com/bible/206/GEN.1.26-GEN.1.27.WEBBE",
   citationStart: { book: "GEN", chapter: 1, verse: 26 },
   loading: false,
 }
@@ -84,7 +83,6 @@ const JOHN_QUOTE: Quote = {
   text: "For God so loved the world that He gave His one and only Son…",
   translation: "Berean Standard Bible",
   copyright: "Public Domain",
-  passageUrl: "https://www.bible.com/bible/3034/JHN.3.16-17.BSB",
   citationStart: { book: "JHN", chapter: 3, verse: 16 },
 }
 
@@ -386,7 +384,6 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
           text: "",
           translation: null,
           copyright: null,
-          passageUrl: null,
         },
       ],
       undefined,
@@ -433,7 +430,6 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
         text: "",
         translation: null,
         copyright: null,
-        passageUrl: null,
         loading: true,
       },
     ])
@@ -465,25 +461,14 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
     }
   })
 
-  // KTD17: the button gates on the citation, never on `passageUrl`.
-  it("shows the button whatever the passage URL says", () => {
-    const renderer = render(
-      [{ ...PASSAGE_QUOTE, passageUrl: "javascript:alert(1)" }],
-      undefined,
-      jest.fn(),
-    )
-
-    expect(passageLinks(renderer)).toHaveLength(1)
-  })
-
-  it("shows no button for a passage URL with no citation start", () => {
+  // KTD17: the button gates on the citation alone.
+  it("shows no button with no citation start", () => {
     const renderer = render(
       [{ ...PASSAGE_QUOTE, citationStart: undefined }],
       undefined,
       jest.fn(),
     )
 
-    expect(PASSAGE_QUOTE.passageUrl).toMatch(/^https:\/\/www\.bible\.com\//)
     expect(passageLinks(renderer)).toHaveLength(0)
   })
 })
