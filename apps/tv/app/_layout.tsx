@@ -70,6 +70,28 @@ function VideoPlayerOverlay() {
     nativePlayerVariant,
     hydrated: watchPreferencesHydrated,
   } = useWatchPreferences()
+  useEffect(() => {
+    if (Platform.OS !== "android") return
+    const native = requireNativeModule<{
+      addListener: (
+        event: string,
+        listener: () => void,
+      ) => { remove: () => void }
+    }>("NativeAndroidPlayer")
+    const subscription = native.addListener(
+      "onPlaybackLoadingCancelled",
+      dismissVideo,
+    )
+    return () => subscription.remove()
+  }, [dismissVideo])
+  useEffect(() => {
+    if (Platform.OS !== "android") return
+    if (state.isVisible && androidPlayerVariant === "native") return
+    const native = requireNativeModule<{
+      hidePlaybackLoading: () => Promise<void>
+    }>("NativeAndroidPlayer")
+    void native.hidePlaybackLoading().catch(() => {})
+  }, [state.isVisible, androidPlayerVariant])
   // Live dub attribution: the in-player language menu swaps dubs via
   // replaceAsync WITHOUT a new playVideo, so currentIdentity's videoDubId is
   // frozen at Play-press. When the watch session still owns this playback

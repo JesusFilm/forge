@@ -34,6 +34,11 @@ class NativeAndroidPlayerModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("NativeAndroidPlayer")
+    Events("onPlaybackLoadingCancelled")
+
+    AsyncFunction("hidePlaybackLoading") {
+      PlaybackLoadingCover.hide()
+    }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("hideStartupLoading") {
       appContext.currentActivity?.let { StartupLoadingOverlay.hide(it) }
@@ -71,7 +76,12 @@ class NativeAndroidPlayerModule : Module() {
         labels = listOf(resumeLabel, "Start over", "Cancel"),
         selected = 0,
         showClose = false,
-        onChoice = { index -> choice = when (index) { 0 -> "resume"; 1 -> "start-over"; else -> "cancel" } },
+        onChoice = { index ->
+          choice = when (index) { 0 -> "resume"; 1 -> "start-over"; else -> "cancel" }
+          if (choice != "cancel") {
+            PlaybackLoadingCover.show(activity) { sendEvent("onPlaybackLoadingCancelled") }
+          }
+        },
         onDismiss = {
           if (resumeRequestId == requestId) {
             resumeDialog = null
@@ -87,6 +97,7 @@ class NativeAndroidPlayerModule : Module() {
     }.runOnQueue(Queues.MAIN)
 
     OnDestroy {
+      Handler(Looper.getMainLooper()).post { PlaybackLoadingCover.hide() }
       Handler(Looper.getMainLooper()).post { resumeDialog?.dismiss(); resumeDialog = null; resumeRequestId = null }
       Handler(Looper.getMainLooper()).post { loadingDialog?.dismiss(); loadingDialog = null; loadingRequestId = null }
     }

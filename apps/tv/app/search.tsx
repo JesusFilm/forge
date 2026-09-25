@@ -60,9 +60,14 @@ export default function SearchScreen() {
 
   // Sanitize at the write site so downstream consumers never see raw input.
   // No-op for the on-screen keyboard today; defense-in-depth for future sources.
-  const setSanitizedQuery = useCallback((next: string) => {
-    setQuery(sanitizeQuery(next))
-  }, [])
+  const setSanitizedQuery = useCallback(
+    (next: string | ((current: string) => string)) => {
+      setQuery((current) =>
+        sanitizeQuery(typeof next === "function" ? next(current) : next),
+      )
+    },
+    [],
+  )
 
   // Record a successful non-empty search in recents once, on first 'ready' with
   // results. Keying on lastSubmittedQuery (not live `query`) matches what the user
@@ -243,7 +248,7 @@ function SearchBodyNativeTvos({
 }: {
   state: SearchState
   results: SearchResult[]
-  onChangeQuery: (next: string) => void
+  onChangeQuery: (next: string | ((current: string) => string)) => void
 }) {
   const router = useRouter()
 
@@ -292,7 +297,7 @@ type SearchBodyProps = {
   searchRequestId: string
   meta: string
   hasQuery: boolean
-  onChangeQuery: (next: string) => void
+  onChangeQuery: (next: string | ((current: string) => string)) => void
   onSubmit: () => void
   onRunQuery: (next: string) => void
   onClearHistory: () => void
@@ -374,7 +379,6 @@ function SearchBodyTwoPane(props: SearchBodyProps) {
           tvOS focus engine then hops through a fallback. Keep it mounted. */}
       <View style={styles.keyboardPane}>
         <SearchKeyboard
-          value={props.query}
           onChange={props.onChangeQuery}
           onSubmit={props.onSubmit}
           onKeyFocus={props.onKeyFocus}

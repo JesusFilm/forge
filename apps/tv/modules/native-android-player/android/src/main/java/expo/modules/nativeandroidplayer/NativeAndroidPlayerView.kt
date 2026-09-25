@@ -20,7 +20,6 @@ import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.ProgressBar
 import android.widget.ImageView
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -121,7 +120,7 @@ class NativeAndroidPlayerView(
   private val backButton = createBackButton()
   private val titleView = TextView(context)
   private val eyebrowView = TextView(context)
-  private val loadingView = LinearLayout(context)
+  private val loadingView = BrandedLoadingView(context, "Preparing playback")
   private val captionView = TextView(context)
   private val previewPanel = LinearLayout(context)
   private val previewImage = ImageView(context)
@@ -224,18 +223,6 @@ class NativeAndroidPlayerView(
     )
     contentRoot.addView(playerView)
 
-    loadingView.orientation = LinearLayout.VERTICAL
-    loadingView.gravity = Gravity.CENTER
-    loadingView.setBackgroundColor(Color.argb(150, 0, 0, 0))
-    loadingView.addView(ProgressBar(context).apply {
-      indeterminateTintList = ColorStateList.valueOf(NATIVE_PLAYER_ACCENT)
-    }, LinearLayout.LayoutParams(dp(42), dp(42)))
-    loadingView.addView(TextView(context).apply {
-      text = "Starting playback…"
-      nativeTextSize(11f)
-      setTextColor(Color.LTGRAY)
-      setPadding(0, dp(14), 0, 0)
-    })
     contentRoot.addView(loadingView, FrameLayout.LayoutParams(-1, -1))
     playerView.subtitleView?.visibility = View.GONE
     captionView.apply {
@@ -624,6 +611,10 @@ class NativeAndroidPlayerView(
   }
 
   override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    if (!hasRenderedFrame && !hasPlaybackError) {
+      if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) onDismiss(Unit)
+      return true
+    }
     val isSelect = event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
       event.keyCode == KeyEvent.KEYCODE_ENTER ||
       event.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
@@ -645,11 +636,6 @@ class NativeAndroidPlayerView(
         KeyEvent.KEYCODE_DPAD_RIGHT,
         KeyEvent.KEYCODE_DPAD_UP,
         KeyEvent.KEYCODE_DPAD_DOWN,
-        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
-        KeyEvent.KEYCODE_MEDIA_PLAY,
-        KeyEvent.KEYCODE_MEDIA_PAUSE,
-        KeyEvent.KEYCODE_MEDIA_REWIND,
-        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
         KeyEvent.KEYCODE_BACK -> {
           if (event.action == KeyEvent.ACTION_DOWN) {
             revealKeyCode = event.keyCode
@@ -812,6 +798,7 @@ class NativeAndroidPlayerView(
   }
 
   override fun onPlayerError(error: PlaybackException) {
+    PlaybackLoadingCover.hide()
     cancelPreview(resume = false)
     sourceStartPositionMs = null
     loadingView.visibility = View.GONE
@@ -823,9 +810,11 @@ class NativeAndroidPlayerView(
   }
 
   override fun onRenderedFirstFrame() {
+    PlaybackLoadingCover.hide()
     loadingView.visibility = View.GONE
     if (!hasRenderedFrame) {
       hasRenderedFrame = true
+      showControls(playPauseButton)
       onFirstFrame(Unit)
     }
     updateStoryboard()
@@ -855,6 +844,7 @@ class NativeAndroidPlayerView(
   }
 
   fun release() {
+    PlaybackLoadingCover.hide()
     if (released) return
     cancelPreview(resume = false)
     released = true
@@ -930,11 +920,17 @@ class NativeAndroidPlayerView(
   }
 
   private fun closeMenu() {
+    val returnFocus = when (menuSection) {
+      "language" -> audioButton
+      "subtitles" -> subtitleButton
+      "moments" -> exploreButton
+      else -> playPauseButton
+    }
     currentDialog = null
     menuSection = null
     if (released) return
     onMenuChange(NativeMenuEvent(null))
-    showControls(progressBar)
+    showControls(returnFocus)
   }
 
 
@@ -1179,6 +1175,13 @@ class NativeAndroidPlayerView(
 
   private fun showControls(preferredFocus: View? = null) {
     if (released) return
+    if (!hasRenderedFrame && !hasPlaybackError) {
+      controllerVisible = false
+      controllerOverlay.visibility = View.GONE
+      loadingView.bringToFront()
+      loadingView.requestFocus()
+      return
+    }
     val wasHidden = !controllerVisible
     controllerVisible = true
     descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS

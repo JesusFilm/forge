@@ -93,3 +93,20 @@ internal fun showBrandedLoadingDialog(context: Context, label: String, onDismiss
   content.requestFocus()
   return dialog
 }
+
+internal object PlaybackLoadingCover {
+  private var dialog: Dialog? = null
+
+  fun show(context: Context, onCancel: () -> Unit) {
+    hide()
+    val next = showBrandedLoadingDialog(context, "Preparing playback", {})
+    dialog = next
+    next.setOnCancelListener { onCancel() }
+    next.setOnDismissListener { if (dialog === next) dialog = null }
+  }
+
+  fun hide() {
+    dialog?.dismiss()
+    dialog = null
+  }
+}
