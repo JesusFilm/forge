@@ -10,6 +10,7 @@ import {
   fitStartSize,
   fitVerse,
   planFit,
+  planPlacedFit,
 } from "../fitVerse"
 import { READER_TEXT_SIZE_STEPS } from "../../settings/snapshot"
 import type { BookText } from "../../text/types"
@@ -262,6 +263,106 @@ describe("planFit", () => {
     expect(planFit({ ...base, areaHeight: 355, heights })).toEqual({
       status: "done",
       fit: { size: 22, scroll: false },
+    })
+  })
+})
+
+describe("planPlacedFit (KD27): center first, move before scroll", () => {
+  const sizes = { chosenSize: 30, osFontScale: 1 }
+  // A long verse: 330 tall even at the floor (21).
+  const long = new Map([
+    [30, 500],
+    [28, 460],
+    [26, 420],
+    [24, 390],
+    [22, 350],
+    [21, 330],
+  ])
+
+  it("passes a measure request through", () => {
+    expect(
+      planPlacedFit({
+        ...sizes,
+        centeredHeight: 200,
+        freeHeight: 400,
+        heights: new Map(),
+      }),
+    ).toEqual({ status: "measure", sizes: [30] })
+  })
+
+  it("keeps a verse centered when it fits there at the chosen size", () => {
+    expect(
+      planPlacedFit({
+        ...sizes,
+        centeredHeight: 200,
+        freeHeight: 400,
+        heights: new Map([[30, 150]]),
+      }),
+    ).toEqual({
+      status: "done",
+      fit: { size: 30, scroll: false },
+      area: "centered",
+    })
+  })
+
+  it("keeps a verse centered when it fits there at a smaller size", () => {
+    // It would fit the free box at 30, but a centered fit wins (KD9).
+    expect(
+      planPlacedFit({
+        ...sizes,
+        centeredHeight: 360,
+        freeHeight: 600,
+        heights: long,
+      }),
+    ).toEqual({
+      status: "done",
+      fit: { size: 22, scroll: false },
+      area: "centered",
+    })
+  })
+
+  it("moves a verse that would scroll to the free box, and fits it there", () => {
+    expect(
+      planPlacedFit({
+        ...sizes,
+        centeredHeight: 210,
+        freeHeight: 400,
+        heights: long,
+      }),
+    ).toEqual({
+      status: "done",
+      fit: { size: 24, scroll: false },
+      area: "free",
+    })
+  })
+
+  it("scrolls in the free box only when the verse does not fit it either", () => {
+    expect(
+      planPlacedFit({
+        ...sizes,
+        centeredHeight: 210,
+        freeHeight: 300,
+        heights: long,
+      }),
+    ).toEqual({
+      status: "done",
+      fit: { size: 21, scroll: true },
+      area: "free",
+    })
+  })
+
+  it("stays centered when the free box is no taller", () => {
+    expect(
+      planPlacedFit({
+        ...sizes,
+        centeredHeight: 300,
+        freeHeight: 300,
+        heights: long,
+      }),
+    ).toEqual({
+      status: "done",
+      fit: { size: 21, scroll: true },
+      area: "centered",
     })
   })
 })

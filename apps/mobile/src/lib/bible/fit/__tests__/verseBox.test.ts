@@ -1,18 +1,21 @@
-// The verse area (feat-551 KTD16, R7, R10): a box symmetric about the
-// screen's vertical center, so a centered verse never runs under an obstacle.
+// The verse area (feat-551 KTD16, R7, R10, KD27): a centered box symmetric
+// about the screen's center, and a free box with all the room between.
 import {
-  MIN_CENTERED_VERSE_HEIGHT,
+  MIN_CENTERED_AREA_HEIGHT,
   VERSE_BOX_GAP,
-  verseBox,
+  unmeasuredBox,
+  verseBoxes,
   type VerseBoxInput,
 } from "../verseBox"
+
+const verseBox = (input: VerseBoxInput) => verseBoxes(input).centered
 
 function edges(input: VerseBoxInput) {
   const box = verseBox(input)
   return { ...box, bottom: box.top + box.height }
 }
 
-describe("verseBox", () => {
+describe("verseBoxes: the centered box", () => {
   it("centers the box on the whole screen", () => {
     const box = verseBox({
       containerHeight: 900,
@@ -106,62 +109,6 @@ describe("verseBox", () => {
     expect(bottom.height).not.toBe(top.height)
   })
 
-  // KD27. Close to the iPhone SE (667pt) Bible tab: the top bar ends near
-  // 70, the footer starts near 478, and a bottom-corner window spans 336-425.
-  const shortScreen = {
-    containerHeight: 667,
-    topChromeBottom: 70,
-    bottomChromeTop: 478,
-  }
-
-  it("moves the box into the free space when the centered box collapses", () => {
-    const box = edges({
-      ...shortScreen,
-      floating: [{ y: 336, height: 89 }],
-    })
-    expect(box.top).toBe(70 + VERSE_BOX_GAP)
-    expect(box.bottom).toBe(336 - VERSE_BOX_GAP)
-  })
-
-  it("keeps the centered box at the smallest centered height", () => {
-    // Half height 80 above and below the center: exactly the minimum.
-    const center = 667 / 2
-    const box = edges({
-      ...shortScreen,
-      floating: [{ y: center + 80 + VERSE_BOX_GAP, height: 89 }],
-    })
-    expect(box.height).toBe(MIN_CENTERED_VERSE_HEIGHT)
-    expect(box.top + box.height / 2).toBe(center)
-  })
-
-  it("moves the box when the centered one is half a point short", () => {
-    const center = 667 / 2
-    const windowTop = center + 80 + VERSE_BOX_GAP - 0.5
-    const box = edges({
-      ...shortScreen,
-      floating: [{ y: windowTop, height: 89 }],
-    })
-    expect(box.top).toBe(70 + VERSE_BOX_GAP)
-    expect(box.bottom).toBe(windowTop - VERSE_BOX_GAP)
-  })
-
-  it("keeps the phone and iPad start corners centered", () => {
-    const phone = verseBox({
-      containerHeight: 956,
-      topChromeBottom: 118,
-      bottomChromeTop: 808,
-      floating: [{ y: 118, height: 140 }],
-    })
-    const ipad = verseBox({
-      containerHeight: 1000,
-      topChromeBottom: 100,
-      bottomChromeTop: 900,
-      floating: [{ y: 700, height: 200 }],
-    })
-    expect(phone.top + phone.height / 2).toBe(478)
-    expect(ipad.top + ipad.height / 2).toBe(500)
-  })
-
   it("never returns a negative box when obstacles meet at the center", () => {
     const box = verseBox({
       containerHeight: 400,
@@ -170,5 +117,89 @@ describe("verseBox", () => {
     })
     expect(box.height).toBe(0)
     expect(box.top).toBe(200)
+  })
+})
+
+// KD27. Close to the iPhone SE (667pt) Bible tab: the top bar ends near 70,
+// the footer starts near 478, and a bottom-corner window spans 336-425.
+const shortScreen = {
+  containerHeight: 667,
+  topChromeBottom: 70,
+  bottomChromeTop: 478,
+}
+
+describe("verseBoxes: the free box (KD27)", () => {
+  it("spans all the room between the obstacles, with the gap", () => {
+    const { free } = verseBoxes({
+      ...shortScreen,
+      floating: [{ y: 336, height: 89 }],
+    })
+    expect(free).toEqual({
+      top: 70 + VERSE_BOX_GAP,
+      height: 336 - VERSE_BOX_GAP - (70 + VERSE_BOX_GAP),
+    })
+  })
+
+  it("holds the centered box", () => {
+    const { centered, free } = verseBoxes({
+      containerHeight: 956,
+      topChromeBottom: 118,
+      bottomChromeTop: 808,
+      floating: [{ y: 118, height: 140 }],
+    })
+    expect(centered.top).toBeGreaterThanOrEqual(free.top)
+    expect(centered.top + centered.height).toBeLessThanOrEqual(
+      free.top + free.height,
+    )
+  })
+
+  it("never returns a negative free box when obstacles meet", () => {
+    const { free } = verseBoxes({
+      containerHeight: 400,
+      topChromeBottom: 300,
+      bottomChromeTop: 100,
+    })
+    expect(free.height).toBe(0)
+  })
+})
+
+describe("unmeasuredBox (KD27): loading, messages, and the gap note", () => {
+  it("uses the free box when the centered box collapses", () => {
+    const boxes = verseBoxes({
+      ...shortScreen,
+      floating: [{ y: 336, height: 89 }],
+    })
+    expect(boxes.centered.height).toBe(0)
+    expect(unmeasuredBox(boxes)).toEqual(boxes.free)
+  })
+
+  it("keeps the centered box at the smallest centered height", () => {
+    // Half height 80 above and below the center: exactly the minimum.
+    const center = 667 / 2
+    const boxes = verseBoxes({
+      ...shortScreen,
+      floating: [{ y: center + 80 + VERSE_BOX_GAP, height: 89 }],
+    })
+    expect(boxes.centered.height).toBe(MIN_CENTERED_AREA_HEIGHT)
+    expect(unmeasuredBox(boxes)).toEqual(boxes.centered)
+  })
+
+  it("uses the free box when the centered one is half a point short", () => {
+    const center = 667 / 2
+    const boxes = verseBoxes({
+      ...shortScreen,
+      floating: [{ y: center + 80 + VERSE_BOX_GAP - 0.5, height: 89 }],
+    })
+    expect(unmeasuredBox(boxes)).toEqual(boxes.free)
+  })
+
+  it("keeps the centered box on a tall screen", () => {
+    const boxes = verseBoxes({
+      containerHeight: 956,
+      topChromeBottom: 118,
+      bottomChromeTop: 808,
+      floating: [{ y: 118, height: 140 }],
+    })
+    expect(unmeasuredBox(boxes)).toEqual(boxes.centered)
   })
 })

@@ -1686,14 +1686,20 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   reader reads the window frame through `useFloatingObstacles`, so the
   verse box stays clear of the window (R10). The pushed reader narrows the
   iOS 26 back swipe to the left edge strip, as the watch screen does.
-- **A short screen moves the verse up (KD27).** The verse box in
-  `src/lib/bible/fit/verseBox.ts` is centered on the screen. On the iPhone SE
-  Bible tab, a bottom-corner window sits at the screen center, and the
-  centered box shrank to nothing. Below `MIN_CENTERED_VERSE_HEIGHT` (160), the
-  box uses the free space between the top bar and the window instead. The
-  Bible tab reserves the whole 83pt iOS bar for the window
-  (`readerTabBarReservation` in `PlaybackHost.tsx`), so a check on a 34pt-inset
-  phone cannot show either case. Check on an iPhone SE.
+- **The verse stays centered while it fits; it moves before it scrolls
+  (KD27).** `verseBoxes` in `src/lib/bible/fit/verseBox.ts` gives a centered
+  box and a free box (all the room between the obstacles). `planPlacedFit` in
+  `fitVerse.ts` fits the verse in the centered box, down to the floor. Only a
+  verse that would scroll there moves to the free box, fits again, and
+  scrolls only if it still does not fit. The measured heights serve both
+  boxes, so the move adds no layout pass. Loading, a message, and the gap
+  note are not measured: `unmeasuredBox` keeps them centered unless that box
+  is under `MIN_CENTERED_AREA_HEIGHT` (160). The case that needs this is a
+  short screen: on the iPhone SE Bible tab, a bottom-corner window sits at
+  the screen center, and the swipe hint raises the footer. The Bible tab
+  reserves the whole 83pt iOS bar for the window (`readerTabBarReservation`
+  in `PlaybackHost.tsx`), so a 34pt-inset phone cannot show either case.
+  Check on an iPhone SE.
 - **The iPad reader rotates to landscape, and it keeps the portrait rules
   (KD25).** The app locks to portrait, but iPadOS can ignore that lock for an
   app that supports multitasking. The owner decided on 2026-09-25 that the

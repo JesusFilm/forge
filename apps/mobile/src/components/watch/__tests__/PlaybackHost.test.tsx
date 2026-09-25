@@ -237,7 +237,7 @@ import {
   readerChromeBand,
   resetReaderMovementBandForTests,
 } from "../../../lib/bible/reader/chrome"
-import { verseBox } from "../../../lib/bible/fit/verseBox"
+import { verseBoxes } from "../../../lib/bible/fit/verseBox"
 import { BACK_BUTTON_PROPS } from "../../../lib/playerLayout"
 import {
   TestRenderer,
@@ -4924,17 +4924,20 @@ describe("the reader cover and the reader corners (feat-551 U13)", () => {
       for (let i = 0; i < 4; i++) {
         const frame = lastRead().band
         expect(frame).toEqual(frameVisual(renderer))
-        const verse = verseBox({
+        const boxes = verseBoxes({
           containerHeight: height,
           topChromeBottom: band.top,
           bottomChromeTop: band.bottom,
           floating: frame ? [frame] : [],
         })
         const window = frame as Box
-        const clear =
-          verse.top + verse.height <= window.y ||
-          verse.top >= window.y + window.height
-        expect(clear).toBe(true)
+        // The verse may use either box (KD27), so both keep clear.
+        for (const verse of [boxes.centered, boxes.free]) {
+          const clear =
+            verse.top + verse.height <= window.y ||
+            verse.top >= window.y + window.height
+          expect(clear).toBe(true)
+        }
         await windowAction(renderer, "moveToCorner")
         await advance(400)
       }

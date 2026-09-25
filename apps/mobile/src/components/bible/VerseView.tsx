@@ -23,9 +23,15 @@ import {
 
 import {
   fitCandidates,
-  planFit,
+  planPlacedFit,
+  type VerseArea,
   type VerseFit,
 } from "../../lib/bible/fit/fitVerse"
+import {
+  unmeasuredBox,
+  type VerseBox,
+  type VerseBoxes,
+} from "../../lib/bible/fit/verseBox"
 import type { ScrollEdges } from "../../lib/bible/movement/gesture"
 import { READER_COPY } from "../../lib/bible/reader/copy"
 import { stopRange, verseRangeLabel } from "../../lib/bible/reader/labels"
@@ -73,8 +79,9 @@ export type VerseViewProps = {
   textDirection: TextDirection
   appearance: VerseAppearance
   tokens: ReaderTokens
-  /** The verse box's height (KTD16); the verse never grows past it. */
-  areaHeight: number
+  /** The verse boxes in the reader's coordinates (KTD16, KD27); the verse
+   *  never grows past the box it uses. */
+  boxes: VerseBoxes
   columnWidth: number
   /** KTD14: the verse is an adjustable control that moves the reader. */
   accessibilityMove?: VerseAccessibilityMove
@@ -115,6 +122,24 @@ function adjustableProps(move: VerseAccessibilityMove | undefined) {
 /** Points of slack at each scroll edge, for a fractional offset. */
 const EDGE_SLOP = 1
 
+/** The box that holds the verse or the reader's message, centered in it. */
+export function VerseAreaBox({
+  box,
+  children,
+}: {
+  box: VerseBox
+  children?: ReactNode
+}) {
+  return (
+    <View
+      testID="bible-verse-area"
+      style={[styles.area, { top: box.top, height: box.height }]}
+    >
+      {children}
+    </View>
+  )
+}
+
 // The centered verse (R7, R20, R21, R32). It draws and fits the verse; U8's
 // ReaderGestures wraps the verse area and moves the reader.
 export function VerseView(props: VerseViewProps) {
@@ -125,14 +150,16 @@ export function VerseView(props: VerseViewProps) {
   }, [isGap, onScrollEdges])
   if (stop.kind === "gap") {
     return (
-      <Text
-        testID="bible-missing-verse"
-        accessible
-        style={[styles.note, { color: tokens.secondaryText }]}
-        {...adjustableProps(props.accessibilityMove)}
-      >
-        {READER_COPY.missingVerse(stop.number)}
-      </Text>
+      <VerseAreaBox box={unmeasuredBox(props.boxes)}>
+        <Text
+          testID="bible-missing-verse"
+          accessible
+          style={[styles.note, { color: tokens.secondaryText }]}
+          {...adjustableProps(props.accessibilityMove)}
+        >
+          {READER_COPY.missingVerse(stop.number)}
+        </Text>
+      </VerseAreaBox>
     )
   }
   return <FittedVerse {...props} verse={stop.verse} />
@@ -170,7 +197,7 @@ function FittedVerse({
   textDirection,
   appearance,
   tokens,
-  areaHeight,
+  boxes,
   columnWidth,
   accessibilityMove,
   onScrollEdges,
@@ -201,25 +228,36 @@ function FittedVerse({
 
   const [measured, setMeasured] = useState<Measured>(NO_MEASURES)
   const heights = measured.get(measureKey) ?? NO_HEIGHTS
-  const plan = planFit({ chosenSize, osFontScale, areaHeight, heights })
+  const plan = planPlacedFit({
+    chosenSize,
+    osFontScale,
+    centeredHeight: boxes.centered.height,
+    freeHeight: boxes.free.height,
+    heights,
+  })
 
   // A smaller box that needs a new measure keeps the last fit of this verse
   // on screen, so a window that moves never blanks the verse.
-  const [settled, setSettled] = useState<{ key: string; fit: VerseFit } | null>(
-    null,
-  )
-  const doneFit = plan.status === "done" ? plan.fit : null
+  const [settled, setSettled] = useState<{
+    key: string
+    fit: VerseFit
+    area: VerseArea
+  } | null>(null)
+  const done = plan.status === "done" ? plan : null
   useEffect(() => {
-    if (!doneFit) return
+    if (!done) return
     setSettled((previous) =>
       previous?.key === measureKey &&
-      previous.fit.size === doneFit.size &&
-      previous.fit.scroll === doneFit.scroll
+      previous.fit.size === done.fit.size &&
+      previous.fit.scroll === done.fit.scroll &&
+      previous.area === done.area
         ? previous
-        : { key: measureKey, fit: doneFit },
+        : { key: measureKey, fit: done.fit, area: done.area },
     )
-  }, [measureKey, doneFit?.size, doneFit?.scroll])
-  const fit = doneFit ?? (settled?.key === measureKey ? settled.fit : null)
+  }, [measureKey, done?.fit.size, done?.fit.scroll, done?.area])
+  const kept = settled?.key === measureKey ? settled : null
+  const fit = done?.fit ?? kept?.fit ?? null
+  const box = boxes[done?.area ?? kept?.area ?? "centered"]
 
   // A new scroll view starts at its top; a verse that fits reports null.
   const scrolls = fit?.scroll === true
@@ -262,7 +300,7 @@ function FittedVerse({
   const accessibilityLabel = READER_COPY.verse(first, last, plainText)
 
   return (
-    <>
+    <VerseAreaBox box={box}>
       {plan.status === "measure" && (
         // A native view reports onLayout only for a new frame, so a new key
         // with the old frame never gets a height. New views always report.
@@ -292,7 +330,7 @@ function FittedVerse({
           // A new verse starts at its top, not at the last verse's offset.
           key={measureKey}
           testID="bible-verse-scroll"
-          style={{ width: columnWidth, height: areaHeight }}
+          style={{ width: columnWidth, height: box.height }}
           showsVerticalScrollIndicator
           onScroll={onScroll}
           scrollEventThrottle={16}
@@ -318,7 +356,7 @@ function FittedVerse({
           {body(shownSize)}
         </VerseColumn>
       )}
-    </>
+    </VerseAreaBox>
   )
 }
 
@@ -430,6 +468,13 @@ function VerseBody({
 }
 
 const styles = StyleSheet.create({
+  area: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   note: {
     fontSize: 18,
     lineHeight: 26,

@@ -27,7 +27,12 @@ import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useScreenReaderEnabled } from "../../hooks/useScreenReaderEnabled"
 import { BACK_SWIPE_EDGE_WIDTH } from "../../lib/backSwipe"
 import type { CatalogTranslation } from "../../lib/bible/data/catalog"
-import { verseBox, type ObstacleRect } from "../../lib/bible/fit/verseBox"
+import {
+  unmeasuredBox,
+  verseBoxes,
+  type ObstacleRect,
+  type VerseBoxes,
+} from "../../lib/bible/fit/verseBox"
 import { isNoNetworkFailure } from "../../lib/bible/language/defaultTranslation"
 import {
   readerTouchZones,
@@ -111,6 +116,7 @@ import { SwipeDemo } from "./SwipeDemo"
 import { SwipeHint } from "./SwipeHint"
 import { VerseScrubber } from "./VerseScrubber"
 import {
+  VerseAreaBox,
   VerseView,
   type VerseAccessibilityMove,
   type VerseAppearance,
@@ -298,7 +304,7 @@ export function BibleReader(props: BibleReaderProps) {
     bottomInset,
     containerHeight: height,
   })
-  const box = verseBox({
+  const boxes = verseBoxes({
     containerHeight: height,
     topChromeBottom: band.top,
     bottomChromeTop: band.bottom - movementBand,
@@ -573,35 +579,30 @@ export function BibleReader(props: BibleReaderProps) {
         onChapterSwipe={movement.moveChapter}
         chapterPreview={movement.chapterPreview}
       >
-        <View
-          testID="bible-verse-area"
-          style={[styles.verseArea, { top: box.top, height: box.height }]}
-        >
-          <VerseArea
-            state={chapter.state}
-            model={model}
-            tokens={tokens}
-            showLoading={showLoading}
-            appearance={{
-              chosenSize: readerTextSize(settings.textSizeStep),
-              osFontScale: window.fontScale,
-              typeface: settings.typeface,
-              lineSpacing: settings.lineSpacing,
-              verseNumbers: settings.verseNumbers,
-            }}
-            areaHeight={box.height}
-            columnWidth={columnWidth}
-            onRetry={chapter.retry}
-            onSwitch={chapter.switchToOnDevice}
-            accessibilityMove={accessibilityMove}
-            onScrollEdges={onScrollEdges}
-            onPressVerse={onPressVerse}
-            selected={
-              model.stopIndex !== null &&
-              isStopSelected(activeSelection, model.stops, model.stopIndex)
-            }
-          />
-        </View>
+        <VerseArea
+          state={chapter.state}
+          model={model}
+          tokens={tokens}
+          showLoading={showLoading}
+          appearance={{
+            chosenSize: readerTextSize(settings.textSizeStep),
+            osFontScale: window.fontScale,
+            typeface: settings.typeface,
+            lineSpacing: settings.lineSpacing,
+            verseNumbers: settings.verseNumbers,
+          }}
+          boxes={boxes}
+          columnWidth={columnWidth}
+          onRetry={chapter.retry}
+          onSwitch={chapter.switchToOnDevice}
+          accessibilityMove={accessibilityMove}
+          onScrollEdges={onScrollEdges}
+          onPressVerse={onPressVerse}
+          selected={
+            model.stopIndex !== null &&
+            isStopSelected(activeSelection, model.stops, model.stopIndex)
+          }
+        />
       </ReaderGestures>
       {movementBand > 0 && (
         <View
@@ -804,7 +805,7 @@ type VerseAreaProps = {
   tokens: ReaderTokens
   showLoading: boolean
   appearance: VerseAppearance
-  areaHeight: number
+  boxes: VerseBoxes
   columnWidth: number
   onRetry: () => void
   onSwitch: () => void
@@ -814,20 +815,38 @@ type VerseAreaProps = {
   selected: boolean
 }
 
-function VerseArea({
+function VerseArea(props: VerseAreaProps) {
+  const { state, model, boxes } = props
+  if (state.status === "ready" && model.stop) {
+    return (
+      <VerseView
+        stop={model.stop}
+        textDirection={state.text.textDirection}
+        appearance={props.appearance}
+        tokens={props.tokens}
+        boxes={boxes}
+        columnWidth={props.columnWidth}
+        accessibilityMove={props.accessibilityMove}
+        onScrollEdges={props.onScrollEdges}
+        onPress={model.stop.kind === "verse" ? props.onPressVerse : undefined}
+        selected={props.selected}
+      />
+    )
+  }
+  return (
+    <VerseAreaBox box={unmeasuredBox(boxes)}>
+      <ReaderNotice {...props} />
+    </VerseAreaBox>
+  )
+}
+
+/** Loading, or a message in place of the verse (R31). */
+function ReaderNotice({
   state,
-  model,
   tokens,
   showLoading,
-  appearance,
-  areaHeight,
-  columnWidth,
   onRetry,
   onSwitch,
-  accessibilityMove,
-  onScrollEdges,
-  onPressVerse,
-  selected,
 }: VerseAreaProps) {
   const retry: ReaderMessageAction = {
     label: READER_COPY.failure.retry,
@@ -875,33 +894,13 @@ function VerseArea({
       )
     }
     case "ready":
-      return model.stop ? (
-        <VerseView
-          stop={model.stop}
-          textDirection={state.text.textDirection}
-          appearance={appearance}
-          tokens={tokens}
-          areaHeight={areaHeight}
-          columnWidth={columnWidth}
-          accessibilityMove={accessibilityMove}
-          onScrollEdges={onScrollEdges}
-          onPress={model.stop.kind === "verse" ? onPressVerse : undefined}
-          selected={selected}
-        />
-      ) : null
+      return null
   }
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  verseArea: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    justifyContent: "center",
   },
   movementBand: {
     position: "absolute",

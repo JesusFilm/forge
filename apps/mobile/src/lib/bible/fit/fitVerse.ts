@@ -87,3 +87,29 @@ export function planFit(
     fit: fitVerse({ ...input, measure: (size) => heights.get(size) ?? 0 }),
   }
 }
+
+/** Which verse box the verse uses (verseBoxes). */
+export type VerseArea = "centered" | "free"
+
+export type PlacedFitPlan =
+  | { status: "done"; fit: VerseFit; area: VerseArea }
+  | { status: "measure"; sizes: number[] }
+
+// KD27: the verse stays centered while it fits there at any size. Only a verse
+// that would scroll in the centered box moves to the free box and fits again.
+// A scroll in the centered box means every size is measured, so no new pass.
+export function planPlacedFit(
+  input: Omit<FitInput, "areaHeight"> & {
+    centeredHeight: number
+    freeHeight: number
+    heights: ReadonlyMap<number, number>
+  },
+): PlacedFitPlan {
+  const centered = planFit({ ...input, areaHeight: input.centeredHeight })
+  if (centered.status === "measure") return centered
+  if (!centered.fit.scroll || input.freeHeight <= input.centeredHeight) {
+    return { ...centered, area: "centered" }
+  }
+  const free = planFit({ ...input, areaHeight: input.freeHeight })
+  return free.status === "measure" ? free : { ...free, area: "free" }
+}

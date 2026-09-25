@@ -105,6 +105,7 @@ import {
 import type { BookText } from "../../../lib/bible/text/types"
 import type { VerseRef } from "../../../lib/bible/versification/convert"
 import { fitFloor } from "../../../lib/bible/fit/fitVerse"
+import { VERSE_BOX_GAP } from "../../../lib/bible/fit/verseBox"
 import { contrastRatio } from "../../../lib/bible/theme/contrast"
 import { READER_SCHEMES, readerTokens } from "../../../lib/bible/theme/palettes"
 import { READER_COPY } from "../../../lib/bible/reader/copy"
@@ -560,6 +561,48 @@ describe("BibleReader — the verse", () => {
 })
 
 describe("BibleReader — the verse box", () => {
+  // KD27. A tall window in a top corner leaves a small centered box.
+  const tallWindow = {
+    y: mockInsets.top + READER_TOP_BAR_HEIGHT,
+    height: 330,
+  }
+  const areaOf = (renderer: TestInstance) => {
+    const style = flat(byTestId(renderer, "bible-verse-area")[0]!)
+    return { top: Number(style.top), height: Number(style.height) }
+  }
+
+  it("moves a verse that would scroll into the free space (KD27)", async () => {
+    const { services } = makeServices()
+    await openAt(services, { book: "EST", chapter: 8, verse: 9 })
+    const renderer = await render(services, {
+      floatingObstacles: [tallWindow],
+    })
+    const esther = bundledBook("EST")
+    const text =
+      esther.status === "ok"
+        ? (esther.value.chapters[7]?.verses[8]?.lines ?? [])
+            .map((line) => line.text)
+            .join(" ")
+        : ""
+    await settleFit(renderer, modelHeight(`9 ${text}`, COLUMN_WIDTH))
+
+    const area = areaOf(renderer)
+    expect(area.top).toBe(tallWindow.y + tallWindow.height + VERSE_BOX_GAP)
+    expect(area.top + area.height / 2).toBeGreaterThan(WINDOW.height / 2)
+  })
+
+  it("keeps a verse that fits the centered box on the center (KD27)", async () => {
+    const { services } = makeServices()
+    await openAt(services, { book: "JHN", chapter: 11, verse: 35 })
+    const renderer = await render(services, {
+      floatingObstacles: [tallWindow],
+    })
+    await settleFit(renderer, modelHeight("35 Jesus wept.", COLUMN_WIDTH))
+
+    const area = areaOf(renderer)
+    expect(area.top + area.height / 2).toBe(WINDOW.height / 2)
+  })
+
   it("shrinks symmetrically under a top band taller than the bottom one", async () => {
     const { services } = makeServices()
     await openAt(services, { book: "JHN", chapter: 3, verse: 16 })
