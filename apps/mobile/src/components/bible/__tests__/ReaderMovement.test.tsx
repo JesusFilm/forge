@@ -109,8 +109,10 @@ import type { ReaderServices } from "../../../lib/bible/reader/services"
 import { BACK_SWIPE_EDGE_WIDTH } from "../../../lib/backSwipe"
 import { BibleReader, type BibleReaderProps } from "../BibleReader"
 import { CHAPTER_FLASH_MS, CHAPTER_PULSE_MS } from "../ChapterPill"
-import { SWIPE_DEMO_DELAY_MS, SWIPE_DEMO_MS } from "../SwipeDemo"
+import { SWIPE_DEMO_DELAY_MS } from "../SwipeDemo"
+import { SWIPE_DEMO_MS } from "../../../lib/bible/onboarding/swipeDemoTimeline"
 import { SWIPE_HINT_MS } from "../SwipeHint"
+import { VERSE_SLIDE_MS, VERSE_SLIDE_START_LIMIT_MS } from "../VerseSlider"
 
 declare const __dirname: string
 const fs = jest.requireActual<{
@@ -528,6 +530,133 @@ afterEach(async () => {
 })
 
 // ── Swipes ──────────────────────────────────────────────────────────────────
+
+// The owner asked (2026-09-25) for a 0.3 s slide on each verse move.
+describe("the verse slide", () => {
+  const outgoing = (renderer: TestInstance) =>
+    byTestId(renderer, "bible-verse-outgoing")
+  const slides = () => timingsWith({ duration: VERSE_SLIDE_MS })
+
+  /** The translateY of the nearest moving layer above a node. */
+  function slideY(node: RenderedNode): number {
+    let current: RenderedNode | null = node
+    while (current) {
+      if (typeof current.type === "string") {
+        const transform = flat(current).transform as
+          | { translateY?: number }[]
+          | undefined
+        const y = transform?.find((step) => "translateY" in step)?.translateY
+        if (typeof y === "number") return y
+      }
+      current = current.parent ?? null
+    }
+    throw new Error("no sliding layer above the node")
+  }
+  const liveY = (renderer: TestInstance) =>
+    slideY(byTestId(renderer, "bible-verse")[0]!)
+  const outgoingY = (renderer: TestInstance) => slideY(outgoing(renderer)[0]!)
+  const outgoingText = (renderer: TestInstance) =>
+    byTestId(renderer, "bible-verse-outgoing-line").map(textOf).join(" ")
+  const liveText = (renderer: TestInstance) =>
+    byTestId(renderer, "bible-verse-line").map(textOf).join(" ")
+
+  it("slides the verse up and the next verse in from below on a swipe up", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    await swipeUp(renderer)
+    await settleFit(renderer)
+
+    expect(pillPassage(renderer)).toBe("John 3:17")
+    expect(outgoing(renderer)).toHaveLength(1)
+    expect(outgoingText(renderer)).toContain("so loved the world")
+    expect(liveText(renderer)).toContain("did not send His Son")
+    expect(slides()).toHaveLength(1)
+    expect(slides()[0]!.config).toMatchObject({
+      toValue: 1,
+      useNativeDriver: true,
+    })
+    // The slide starts from the old verse in place and the new one below.
+    expect(outgoingY(renderer)).toBe(0)
+    expect(liveY(renderer)).toBeGreaterThan(0)
+
+    await finishTimings({ duration: VERSE_SLIDE_MS })
+    await flush()
+    expect(outgoing(renderer)).toHaveLength(0)
+    expect(liveY(renderer)).toBe(0)
+  })
+
+  it("brings the verse before in from above on a swipe down", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 17 })
+    await swipeDown(renderer)
+    await settleFit(renderer)
+
+    expect(pillPassage(renderer)).toBe("John 3:16")
+    expect(outgoingText(renderer)).toContain("did not send His Son")
+    expect(liveY(renderer)).toBeLessThan(0)
+  })
+
+  it("slides across a chapter end too", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 36 })
+    await swipeUp(renderer)
+    await settleFit(renderer)
+    expect(pillPassage(renderer)).toBe("John 4:1")
+    expect(outgoing(renderer)).toHaveLength(1)
+  })
+
+  it("starts after a short wait when the new verse never reports its fit", async () => {
+    jest.useFakeTimers()
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    // The screen reader's action moves without the harness measuring the fit.
+    const [verse] = byTestId(renderer, "bible-verse")
+    await act(async () =>
+      (verse!.props.onAccessibilityAction as (event: unknown) => void)({
+        nativeEvent: { actionName: "increment" },
+      }),
+    )
+    await flush()
+    expect(pillPassage(renderer)).toBe("John 3:17")
+    expect(outgoing(renderer)).toHaveLength(1)
+    expect(slides()).toHaveLength(0)
+    await act(async () => {
+      jest.advanceTimersByTime(VERSE_SLIDE_START_LIMIT_MS)
+    })
+    expect(slides()).toHaveLength(1)
+  })
+
+  it("changes the verse in place with Reduce Motion on", async () => {
+    reduceMotion = true
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    await swipeUp(renderer)
+    await settleFit(renderer)
+    expect(pillPassage(renderer)).toBe("John 3:17")
+    expect(outgoing(renderer)).toHaveLength(0)
+    expect(slides()).toHaveLength(0)
+  })
+
+  it("does not slide at the end of the Bible, on a chapter swipe, or on a jump", async () => {
+    const end = await openAt({ book: "REV", chapter: 22, verse: 21 })
+    await swipeUp(end.renderer)
+    expect(outgoing(end.renderer)).toHaveLength(0)
+
+    const { services, renderer } = await openAt({
+      book: "JHN",
+      chapter: 3,
+      verse: 16,
+    })
+    await swipeLeft(renderer)
+    await settleFit(renderer)
+    expect(pillPassage(renderer)).toBe("John 4:1")
+    expect(outgoing(renderer)).toHaveLength(0)
+
+    await act(async () =>
+      services.positionStore.moveTo({ book: "JHN", chapter: 4, verse: 7 }),
+    )
+    await flush()
+    await settleFit(renderer)
+    expect(pillPassage(renderer)).toBe("John 4:7")
+    expect(outgoing(renderer)).toHaveLength(0)
+    expect(slides()).toHaveLength(0)
+  })
+})
 
 describe("swipes (R12, R14, KTD13)", () => {
   it("covers AE8: a swipe up at John 3:36 opens John 4:1, saves it once, and animates the pill", async () => {

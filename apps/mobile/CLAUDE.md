@@ -1700,6 +1700,16 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   reserves the whole 83pt iOS bar for the window (`readerTabBarReservation`
   in `PlaybackHost.tsx`), so a 34pt-inset phone cannot show either case.
   Check on an iPhone SE.
+- **A verse move slides (owner, 2026-09-25).** `VerseSlider` slides the old
+  verse out and the new verse in over 0.3 s: up for the next verse, down for
+  the one before. Swipes, the arrow pair, and the screen reader's verse
+  actions share the `slide` signal from `useReaderMovement`. A chapter swipe,
+  a picker jump, and a scrub do not slide, and Reduce Motion turns the slide
+  off. The old verse is a still copy (`VerseSnapshot`, test ids
+  `bible-verse-outgoing*`), so only one live verse and one `bible-verse`
+  exist. Across a chapter load, the copy waits in place for at most
+  `VERSE_SLIDE_HOLD_MS`. The first-run demo plays three cycles with a pause
+  after each, then fades (`swipeDemoTimeline.ts`, one animated clock).
 - **The iPad reader rotates to landscape, and it keeps the portrait rules
   (KD25).** The app locks to portrait, but iPadOS can ignore that lock for an
   app that supports multitasking. The owner decided on 2026-09-25 that the

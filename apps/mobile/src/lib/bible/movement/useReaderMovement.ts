@@ -36,6 +36,9 @@ export type MovePlace = {
 
 export type ReaderNotice = { id: number; text: string }
 
+/** One verse move; the verse slides on each new id (owner, 2026-09-25). */
+export type VerseSlide = { id: number; direction: MoveDirection }
+
 export type ReaderMovement = {
   moveVerse(direction: MoveDirection): void
   moveChapter(direction: MoveDirection): void
@@ -43,6 +46,8 @@ export type ReaderMovement = {
   chapterPreview(direction: MoveDirection): string | null
   /** Counts chapter changes; the pill animates on each new value (R39). */
   pulse: number
+  /** The last verse move that moved; a move at a Bible end does not. */
+  slide: VerseSlide | null
   notice: ReaderNotice | null
 }
 
@@ -71,6 +76,7 @@ function endText(axis: "verse" | "chapter", edge: "start" | "end"): string {
 export function useReaderMovement(input: ReaderMovementInput): ReaderMovement {
   const { place, goTo, onVerseMove } = input
   const [pulse, setPulse] = useState(0)
+  const [slide, setSlide] = useState<VerseSlide | null>(null)
   const [notice, setNotice] = useState<ReaderNotice | null>(null)
 
   useEffect(() => {
@@ -122,6 +128,9 @@ export function useReaderMovement(input: ReaderMovementInput): ReaderMovement {
         direction,
         numbering: translationNumbering(place.translationId),
       })
+      if (result.kind !== "stop") {
+        setSlide((previous) => ({ id: (previous?.id ?? 0) + 1, direction }))
+      }
       apply(result, place, "verse")
     },
     moveChapter(direction) {
@@ -147,6 +156,7 @@ export function useReaderMovement(input: ReaderMovementInput): ReaderMovement {
       return nameOf(place, next.book, next.chapter)
     },
     pulse,
+    slide,
     notice,
   }
 }

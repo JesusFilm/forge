@@ -13,18 +13,19 @@ import {
   READER_CHROME_MAX_FONT_SCALE,
   READER_TOUCH_TARGET,
 } from "../../lib/bible/reader/chrome"
+import {
+  SWIPE_DEMO_MS,
+  demoOpacityKeyframes,
+  partOpacityKeyframes,
+  partTravelKeyframes,
+  type SwipeDemoPart,
+} from "../../lib/bible/onboarding/swipeDemoTimeline"
 import { READER_COPY } from "../../lib/bible/reader/copy"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 
 /** The reader's accessibility reads land first, so a screen reader skips it. */
 export const SWIPE_DEMO_DELAY_MS = 600
 
-/** R16: a verse swipe, then a chapter swipe. */
-export const SWIPE_DEMO_MS = 4200
-
-/** Fade in, start moving, stop moving, fade out: parts of the one timeline. */
-const VERSE_PART = [0.04, 0.12, 0.36, 0.44]
-const CHAPTER_PART = [0.52, 0.6, 0.84, 0.92]
 const TRAVEL = 80
 
 type Part = {
@@ -32,17 +33,14 @@ type Part = {
   travel: Animated.AnimatedInterpolation<number>
 }
 
-function part(progress: Animated.Value, points: number[]): Part {
-  const [fadeIn = 0, moveFrom = 0, moveTo = 1, fadeOut = 1] = points
+function part(progress: Animated.Value, name: SwipeDemoPart): Part {
   return {
     opacity: progress.interpolate({
-      inputRange: [fadeIn, moveFrom, moveTo, fadeOut],
-      outputRange: [0, 1, 1, 0],
+      ...partOpacityKeyframes(name),
       extrapolate: "clamp",
     }),
     travel: progress.interpolate({
-      inputRange: [moveFrom, moveTo],
-      outputRange: [TRAVEL / 2, -TRAVEL / 2],
+      ...partTravelKeyframes(name, TRAVEL),
       extrapolate: "clamp",
     }),
   }
@@ -60,8 +58,12 @@ export function SwipeDemo({ tokens, onDone }: SwipeDemoProps) {
   const [armed, setArmed] = useState(false)
   const [progress] = useState(() => new Animated.Value(0))
   const [parts] = useState(() => ({
-    verse: part(progress, VERSE_PART),
-    chapter: part(progress, CHAPTER_PART),
+    verse: part(progress, "verse"),
+    chapter: part(progress, "chapter"),
+    whole: progress.interpolate({
+      ...demoOpacityKeyframes(),
+      extrapolate: "clamp",
+    }),
   }))
   const done = useRef(onDone)
   useEffect(() => {
@@ -76,8 +78,9 @@ export function SwipeDemo({ tokens, onDone }: SwipeDemoProps) {
   useEffect(() => {
     if (!armed) return
     progress.setValue(0)
+    // The clock counts milliseconds, so the keyframes read as times.
     const animation = Animated.timing(progress, {
-      toValue: 1,
+      toValue: SWIPE_DEMO_MS,
       duration: SWIPE_DEMO_MS,
       easing: Easing.linear,
       useNativeDriver: true,
@@ -89,72 +92,82 @@ export function SwipeDemo({ tokens, onDone }: SwipeDemoProps) {
   }, [armed, progress])
 
   if (!armed) return null
-  const { verse, chapter } = parts
+  const { verse, chapter, whole } = parts
 
   return (
-    <Pressable
-      testID="bible-swipe-demo"
-      onPress={() => done.current()}
-      accessibilityRole="button"
-      accessibilityLabel={READER_COPY.movement.demoSkipLabel}
-      style={[
-        StyleSheet.absoluteFill,
-        styles.scrim,
-        { backgroundColor: hexToRgba(tokens.background, 0.92) },
-      ]}
+    <Animated.View
+      testID="bible-swipe-demo-fade"
+      style={[StyleSheet.absoluteFill, styles.layer, { opacity: whole }]}
     >
-      <View style={styles.stage} pointerEvents="none">
-        <Animated.View
-          style={[
-            styles.finger,
-            {
-              backgroundColor: tokens.text,
-              opacity: verse.opacity,
-              transform: [{ translateY: verse.travel }],
-            },
-          ]}
-        />
-        <Animated.View
-          style={[
-            styles.finger,
-            {
-              backgroundColor: tokens.text,
-              opacity: chapter.opacity,
-              transform: [{ translateX: chapter.travel }],
-            },
-          ]}
-        />
-      </View>
-      <View style={styles.captions} pointerEvents="none">
-        {[
-          { text: READER_COPY.movement.demoVerse, opacity: verse.opacity },
-          { text: READER_COPY.movement.demoChapter, opacity: chapter.opacity },
-        ].map((caption) => (
-          <Animated.Text
-            key={caption.text}
-            style={[
-              styles.caption,
-              { color: tokens.text, opacity: caption.opacity },
-            ]}
-            maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
-          >
-            {caption.text}
-          </Animated.Text>
-        ))}
-      </View>
-      <Text
-        style={[styles.skip, { color: tokens.secondaryText }]}
-        maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
+      <Pressable
+        testID="bible-swipe-demo"
+        onPress={() => done.current()}
+        accessibilityRole="button"
+        accessibilityLabel={READER_COPY.movement.demoSkipLabel}
+        style={[
+          StyleSheet.absoluteFill,
+          styles.scrim,
+          { backgroundColor: hexToRgba(tokens.background, 0.92) },
+        ]}
       >
-        {READER_COPY.movement.demoSkip}
-      </Text>
-    </Pressable>
+        <View style={styles.stage} pointerEvents="none">
+          <Animated.View
+            style={[
+              styles.finger,
+              {
+                backgroundColor: tokens.text,
+                opacity: verse.opacity,
+                transform: [{ translateY: verse.travel }],
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.finger,
+              {
+                backgroundColor: tokens.text,
+                opacity: chapter.opacity,
+                transform: [{ translateX: chapter.travel }],
+              },
+            ]}
+          />
+        </View>
+        <View style={styles.captions} pointerEvents="none">
+          {[
+            { text: READER_COPY.movement.demoVerse, opacity: verse.opacity },
+            {
+              text: READER_COPY.movement.demoChapter,
+              opacity: chapter.opacity,
+            },
+          ].map((caption) => (
+            <Animated.Text
+              key={caption.text}
+              style={[
+                styles.caption,
+                { color: tokens.text, opacity: caption.opacity },
+              ]}
+              maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
+            >
+              {caption.text}
+            </Animated.Text>
+          ))}
+        </View>
+        <Text
+          style={[styles.skip, { color: tokens.secondaryText }]}
+          maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
+        >
+          {READER_COPY.movement.demoSkip}
+        </Text>
+      </Pressable>
+    </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
-  scrim: {
+  layer: {
     zIndex: 3,
+  },
+  scrim: {
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,

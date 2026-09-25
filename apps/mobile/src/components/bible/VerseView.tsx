@@ -91,7 +91,12 @@ export type VerseViewProps = {
   onPress?: () => void
   /** R19: the verse is in the selection. */
   selected?: boolean
+  /** The verse is visible in this box at this size; a slide copies it. */
+  onShown?: (shown: ShownVerse) => void
 }
+
+/** What the viewer sees of a verse, so a still copy can match it. */
+export type ShownVerse = { box: VerseBox; size: number; scroll: boolean }
 
 const VERSE_ACTIONS: { name: VerseAction; label: string }[] = [
   { name: "increment", label: READER_COPY.movement.nextVerse },
@@ -125,14 +130,16 @@ const EDGE_SLOP = 1
 /** The box that holds the verse or the reader's message, centered in it. */
 export function VerseAreaBox({
   box,
+  testID = "bible-verse-area",
   children,
 }: {
   box: VerseBox
+  testID?: string
   children?: ReactNode
 }) {
   return (
     <View
-      testID="bible-verse-area"
+      testID={testID}
       style={[styles.area, { top: box.top, height: box.height }]}
     >
       {children}
@@ -143,14 +150,24 @@ export function VerseAreaBox({
 // The centered verse (R7, R20, R21, R32). It draws and fits the verse; U8's
 // ReaderGestures wraps the verse area and moves the reader.
 export function VerseView(props: VerseViewProps) {
-  const { stop, tokens, onScrollEdges } = props
+  const { stop, tokens, onScrollEdges, onShown } = props
   const isGap = stop.kind === "gap"
+  const noteBox = unmeasuredBox(props.boxes)
+  const { top: noteTop, height: noteHeight } = noteBox
   useEffect(() => {
     if (isGap) onScrollEdges?.(null)
   }, [isGap, onScrollEdges])
+  useEffect(() => {
+    if (!isGap) return
+    onShown?.({
+      box: { top: noteTop, height: noteHeight },
+      size: 0,
+      scroll: false,
+    })
+  }, [isGap, onShown, noteTop, noteHeight])
   if (stop.kind === "gap") {
     return (
-      <VerseAreaBox box={unmeasuredBox(props.boxes)}>
+      <VerseAreaBox box={noteBox}>
         <Text
           testID="bible-missing-verse"
           accessible
@@ -203,6 +220,7 @@ function FittedVerse({
   onScrollEdges,
   onPress,
   selected = false,
+  onShown,
 }: VerseViewProps & { verse: Verse }) {
   const { chosenSize, osFontScale } = appearance
   const plainText = useMemo(
@@ -258,6 +276,18 @@ function FittedVerse({
   const kept = settled?.key === measureKey ? settled : null
   const fit = done?.fit ?? kept?.fit ?? null
   const box = boxes[done?.area ?? kept?.area ?? "centered"]
+  const { top: boxTop, height: boxHeight } = box
+  const fitSize = fit?.size ?? null
+  const fitScroll = fit?.scroll ?? false
+  // A new verse can settle at the same size, so the key re-reports it too.
+  useEffect(() => {
+    if (fitSize === null) return
+    onShown?.({
+      box: { top: boxTop, height: boxHeight },
+      size: fitSize,
+      scroll: fitScroll,
+    })
+  }, [fitSize, fitScroll, boxTop, boxHeight, measureKey, onShown])
 
   // A new scroll view starts at its top; a verse that fits reports null.
   const scrolls = fit?.scroll === true
@@ -414,6 +444,7 @@ type VerseBodyProps = {
   textDirection: TextDirection
   tokens: ReaderTokens
   selected: boolean
+  lineTestID?: string
 }
 
 /** One Text per line, so each poetry line breaks where the source breaks. */
@@ -427,6 +458,7 @@ function VerseBody({
   textDirection,
   tokens,
   selected,
+  lineTestID = "bible-verse-line",
 }: VerseBodyProps) {
   const lineStyle: TextStyle = {
     fontSize: size,
@@ -444,7 +476,7 @@ function VerseBody({
       {verse.lines.map((line, index) => (
         <Text
           key={`${verse.number}-${index}`}
-          testID="bible-verse-line"
+          testID={lineTestID}
           allowFontScaling={false}
           style={lineStyle}
         >
@@ -467,7 +499,70 @@ function VerseBody({
   )
 }
 
+export type VerseSnapshotProps = Pick<
+  VerseViewProps,
+  "stop" | "textDirection" | "appearance" | "tokens" | "columnWidth"
+> & {
+  shown: ShownVerse
+  selected: boolean
+}
+
+/** A still copy of a shown verse, for the slide out. It has no fit, no touch,
+ *  and nothing a screen reader reads. A scrolled verse shows from its top. */
+export function VerseSnapshot({
+  stop,
+  textDirection,
+  appearance,
+  tokens,
+  columnWidth,
+  shown,
+  selected,
+}: VerseSnapshotProps) {
+  const plainText =
+    stop.kind === "verse"
+      ? stop.verse.lines.map((line) => line.text).join(" ")
+      : ""
+  const fontFamily = readingFontFamily(
+    appearance.typeface,
+    plainText,
+    Platform.OS,
+  )
+  return (
+    <VerseAreaBox box={shown.box} testID="bible-verse-outgoing">
+      {stop.kind === "gap" ? (
+        <Text style={[styles.note, { color: tokens.secondaryText }]}>
+          {READER_COPY.missingVerse(stop.number)}
+        </Text>
+      ) : (
+        <View
+          style={[
+            { width: columnWidth },
+            shown.scroll && styles.snapshotScroll,
+            shown.scroll && { height: shown.box.height },
+          ]}
+        >
+          <VerseBody
+            verse={stop.verse}
+            stop={stop}
+            size={shown.size}
+            fontFamily={fontFamily}
+            lineSpacing={appearance.lineSpacing}
+            verseNumbers={appearance.verseNumbers}
+            textDirection={textDirection}
+            tokens={tokens}
+            selected={selected}
+            lineTestID="bible-verse-outgoing-line"
+          />
+        </View>
+      )}
+    </VerseAreaBox>
+  )
+}
+
 const styles = StyleSheet.create({
+  snapshotScroll: {
+    overflow: "hidden",
+  },
   area: {
     position: "absolute",
     left: 0,

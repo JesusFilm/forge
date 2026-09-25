@@ -41,6 +41,7 @@ import {
 import {
   useReaderMovement,
   type MovePlace,
+  type VerseSlide,
 } from "../../lib/bible/movement/useReaderMovement"
 import {
   getReaderOnboardingStore,
@@ -113,11 +114,11 @@ import { ReaderMessage, type ReaderMessageAction } from "./ReaderMessage"
 import { ReaderTopBar } from "./ReaderTopBar"
 import { SelectionBar } from "./SelectionBar"
 import { SwipeDemo } from "./SwipeDemo"
+import { VerseSlider, type LiveVerse, type VerseSlideClip } from "./VerseSlider"
 import { SwipeHint } from "./SwipeHint"
 import { VerseScrubber } from "./VerseScrubber"
 import {
   VerseAreaBox,
-  VerseView,
   type VerseAccessibilityMove,
   type VerseAppearance,
 } from "./VerseView"
@@ -602,6 +603,13 @@ export function BibleReader(props: BibleReaderProps) {
             model.stopIndex !== null &&
             isStopSelected(activeSelection, model.stops, model.stopIndex)
           }
+          slide={movement.slide}
+          reduceMotion={reduceMotion}
+          clip={{
+            top: band.top,
+            height: Math.max(0, band.bottom - movementBand - band.top),
+            containerHeight: height,
+          }}
         />
       </ReaderGestures>
       {movementBand > 0 && (
@@ -813,30 +821,53 @@ type VerseAreaProps = {
   onScrollEdges: (edges: ScrollEdges | null) => void
   onPressVerse: () => void
   selected: boolean
+  slide: VerseSlide | null
+  reduceMotion: boolean
+  clip: VerseSlideClip
 }
 
 function VerseArea(props: VerseAreaProps) {
   const { state, model, boxes } = props
-  if (state.status === "ready" && model.stop) {
-    return (
-      <VerseView
-        stop={model.stop}
-        textDirection={state.text.textDirection}
+  const { translationRef } = model
+  const live: LiveVerse | null =
+    state.status === "ready" && model.stop && translationRef
+      ? {
+          verseKey: `${state.shown.translation.id}:${translationRef.book}.${translationRef.chapter}:${model.stopIndex}`,
+          view: {
+            stop: model.stop,
+            textDirection: state.text.textDirection,
+            appearance: props.appearance,
+            tokens: props.tokens,
+            boxes,
+            columnWidth: props.columnWidth,
+            accessibilityMove: props.accessibilityMove,
+            onScrollEdges: props.onScrollEdges,
+            onPress:
+              model.stop.kind === "verse" ? props.onPressVerse : undefined,
+            selected: props.selected,
+          },
+        }
+      : null
+  // The slider stays mounted across a chapter load, so a verse move into the
+  // next chapter still slides (owner, 2026-09-25).
+  return (
+    <>
+      <VerseSlider
+        live={live}
+        loading={state.status === "loading"}
+        slide={props.slide}
+        reduceMotion={props.reduceMotion}
+        clip={props.clip}
         appearance={props.appearance}
         tokens={props.tokens}
-        boxes={boxes}
         columnWidth={props.columnWidth}
-        accessibilityMove={props.accessibilityMove}
-        onScrollEdges={props.onScrollEdges}
-        onPress={model.stop.kind === "verse" ? props.onPressVerse : undefined}
-        selected={props.selected}
       />
-    )
-  }
-  return (
-    <VerseAreaBox box={unmeasuredBox(boxes)}>
-      <ReaderNotice {...props} />
-    </VerseAreaBox>
+      {!live && (
+        <VerseAreaBox box={unmeasuredBox(boxes)}>
+          <ReaderNotice {...props} />
+        </VerseAreaBox>
+      )}
+    </>
   )
 }
 
