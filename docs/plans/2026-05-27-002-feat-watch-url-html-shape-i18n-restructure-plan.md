@@ -74,17 +74,17 @@ Every URL apps/web emits and accepts is the bare two-segment shape `/watch/{slug
 
 Plus the normalization rules:
 
-| Input                                     | Status | Output                                                         |
-| ----------------------------------------- | ------ | -------------------------------------------------------------- |
-| `/watch/`                                 | 308    | `/watch`                                                       |
-| `/watch/jesus.html/`                      | 308    | `/watch/jesus.html`                                            |
-| `/watch/jesus.html/english.html/`         | 308    | `/watch/jesus.html/english.html`                               |
-| `/watch/jesus.HTML/english.html`          | 307    | `/watch/jesus.html/english.html`                               |
-| `/watch/jesus.html/english`               | 307    | `/watch/jesus.html/english.html`                               |
-| `/watch/foo`                              | 307    | `/watch/foo.html/foo.html` (single→duplicate)                  |
-| `/watch/foo/bar`                          | 307    | `/watch/foo.html/bar.html` (per-segment `.html` append)        |
-| `/watch/jesus.html/chinese-mandarin.html` | 307    | `/watch/jesus.html/mandarin-china.html` (alias)                |
-| `/watch/{series}/{ep}.html/{lang}.html`   | 307    | `/watch/{series}.html/{ep}/{lang}.html` (legacy episode shape) |
+| Input                                     | Status | Output                                                                                                                                 |
+| ----------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `/watch/`                                 | 308    | `/watch`                                                                                                                               |
+| `/watch/jesus.html/`                      | 308    | `/watch/jesus.html`                                                                                                                    |
+| `/watch/jesus.html/english.html/`         | 308    | `/watch/jesus.html/english.html`                                                                                                       |
+| `/watch/jesus.HTML/english.html`          | 307    | `/watch/jesus.html/english.html`                                                                                                       |
+| `/watch/jesus.html/english`               | 307    | `/watch/jesus.html/english.html`                                                                                                       |
+| `/watch/foo`                              | 307    | `/watch/foo.html` (single-segment `.html` append; shipped as `/watch/foo.html/foo.html`, narrowed 2026-09-19 — Linear FGE-203 / W-070) |
+| `/watch/foo/bar`                          | 307    | `/watch/foo.html/bar.html` (per-segment `.html` append)                                                                                |
+| `/watch/jesus.html/chinese-mandarin.html` | 307    | `/watch/jesus.html/mandarin-china.html` (alias)                                                                                        |
+| `/watch/{series}/{ep}.html/{lang}.html`   | 307    | `/watch/{series}.html/{ep}/{lang}.html` (legacy episode shape)                                                                         |
 
 ### Why the gap matters
 
@@ -129,7 +129,8 @@ apps/web/src/proxy.ts (middleware)
    │     2. lowercase .HTML → 307
    │     3. legacy 4-segment episode → 307
    │     4. per-segment missing .html append → 307
-   │     5. single-segment → duplicate-+-.html → 307
+   │     5. single-segment → +.html → 307   (shipped as duplicate-+-.html;
+   │        narrowed to a single append 2026-09-19, Linear FGE-203 / W-070)
    │     6. language-slug alias resolution → 307
    │     7. cookie-driven language preference redirect → 307
    │
@@ -1169,7 +1170,7 @@ All incorporated into the `url-canonicalize.ts` and `language-aliases.ts` skelet
 - Origin-invariance guard (reject `//`, `\`, CRLF, `..` traversal).
 - `Object.hasOwn` for alias lookup (prototype-pollution defense for future dynamic data source).
 - Validate cookie regex BEFORE alias lookup.
-- Reject segments containing `%`, `..`, `\`, control chars before duplicate-segment rule.
+- Reject segments containing `%`, `..`, `\`, control chars before the single-segment `.html` rule (then the duplicate-segment rule; narrowed to a single append 2026-09-19 — Linear FGE-203 / W-070).
 - Static-shape invariant on `LANGUAGE_SLUG_ALIASES` values (SAFE_SLUG regex).
 - `Vary: Cookie, Accept-Language` on every cookie-driven 307.
 - Probe harness unauthenticated; CI grep forbids `*_API_KEY*` references.
