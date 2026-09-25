@@ -70,10 +70,10 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - **Flat container model**: Admin's `ContainerBlock` uses flat `content[]` with `ContainerSlotBlock` markers instead of nested `slots[].slotContent`. `groupBySlotMarker()` reconstructs slot groups.
 - **ExperienceProvider at root layout**: Wraps the root Stack so both tabs and video detail route have access.
 - **Three-layer hero**: the hero (zIndex 0) is absolutely-positioned behind FlashList, with an interactive overlay (zIndex 2, `pointerEvents="box-none"`) above the scroll view for anything tappable. SDUI/CuratedHomeLayout path: visual elements render in the hero layer and invisible overlay Pressables are positioned over them via `measureLayout`. HomeScreen path: visible chrome Pressables (Watch Now / insert CTA / mute) render directly in the overlay and fade with scroll, while hero swipes are claimed by a capture-phase PanResponder on the screen root and forwarded to the pager.
-- **One-decoder discipline**: only the active hero/player mounts a video decoder — episode cards and background surfaces render posters, never VideoViews. (There is no global "VideoDecoderBudget" context; that was never built.)
+- **One-decoder discipline**: only the active hero/player mounts a video decoder — episode cards and background surfaces render posters, never VideoViews. The one named exception is the Explore feed: its two feed-owned players (`src/hooks/useFeedPlayers.ts`) keep a muted, paused standby that preloads the next clip (feat-552 KTD2). (There is no global "VideoDecoderBudget" context; that was never built.)
 - **Hero transition hold**: leaving a PLAYING hero slide sets `transitionFromId` (pagerReducer) — the departing page keeps hosting the live video through the scroll animation; pause + replaceAsync swap defer until the settle (SLIDE_SHOWN), with SUSPEND/SLIDES_SET/MAX_DWELL as release valves. `heroPageVideoState()` is the tested render-time host selector; during a hold, outgoing-stream `playToEnd`/`PLAY_STARTED`/errors are guarded so they can't advance past or reveal the incoming slide.
 - **Hero stream failure cooldown**: failed `GET_VIDEO_BY_SLUG` resolutions open a per-slug module-scope backoff window (`heroStreamCooldown.ts`, 60s doubling to 10min) that suppresses hook + prefetch retries; any query success for the slug — or a successful pull-to-refresh (`clearAllHeroStreamCooldowns`) — releases it.
-- **One expo-video lifecycle adapter**: player creation goes through `useManagedVideoPlayer` (frozen source, replaceAsync swap, AppState pause/resume) — a jest guard forbids BOTH `useVideoPlayer(` and `createVideoPlayer(` outside it, plus a three-entry allowlist (`HomeHeroPager`'s bespoke swap engine, `VideoHeroRenderer`, and the shared test double `src/test-utils/expoVideoMock.ts`). `createVideoPlayer` is named separately because its player does NOT release with the component — the "outlives the route" hole.
+- **One expo-video lifecycle adapter**: player creation goes through `useManagedVideoPlayer` (frozen source, replaceAsync swap, AppState pause/resume) — a jest guard forbids BOTH `useVideoPlayer(` and `createVideoPlayer(` outside it, plus a four-entry allowlist (`HomeHeroPager`'s bespoke swap engine, `VideoHeroRenderer`, Explore's two feed players in `src/hooks/useFeedPlayers.ts`, and the shared test double `src/test-utils/expoVideoMock.ts`). The same guard pins that the feed creates exactly two players, both with `useVideoPlayer`. `createVideoPlayer` is named separately because its player does NOT release with the component — the "outlives the route" hole.
 - **expo-image everywhere**: Never use RN `<Image>`. Always `expo-image` with `recyclingKey`.
 
 ## Conventions
@@ -541,6 +541,9 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   (new content took the player over). Those two split what `unmount` used to
   conflate, because progress attribution needs them apart. A playback
   request can carry a `progressHold` (`{ id, durationMs }`, feat-552 KTD12).
+  Only the watch page sets it, and only when it takes a "Keep watching"
+  intent (`src/lib/explore/watchIntent.ts`); a page with no intent publishes
+  none.
   While it holds, `recorder.ts` writes nothing — no sample and no forced
   flush, the dismiss and unmount flushes included. Its clock starts at the
   first frame and runs for `durationMs`; after that, writes resume even while
@@ -876,6 +879,15 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   the frame's geometry and in which chrome renders beside it. Moving the view
   between parents remounts the surface, which is a black flash.
   `rootPlayerOwnership.guard.test.js` pins the shape.
+- **Explore's feed is the named exception, and it yields by takeover.** Its
+  two feed-owned players (`src/hooks/useFeedPlayers.ts`) draw through one
+  view component, `src/components/explore/FeedVideoView.tsx`, and never
+  belong to the host or its session. A feed view does not read
+  `useMiniPlayerHoldsVideo` as the heroes do: the feed hook gates play on its
+  `yieldsToRoot` input (`clipYieldsToRoot` in `src/lib/explore/takeover.ts`),
+  and no feed view spells a picture-in-picture prop (R3).
+  `rootPlayerOwnership.guard.test.js` checks the feed views as their own
+  class, with a positive control.
 - **The session lives in module scope, not React context.** `src/lib/miniPlayer/`
   holds it: `store.ts` (the session), `playbackRequest.ts` (the slot-to-host
   channel), plus the pure `presentation.ts`, `suppression.ts`, `layout.ts`,
@@ -938,9 +950,11 @@ view into that rect. The chrome rides in the host layer too, not in the route.
 `surfaceType={Platform.OS === "android" ? "textureView" : undefined}` on each
 one. A SurfaceView composites outside the RN view hierarchy and punches through
 anything drawn above it, so controls and captions stop rendering over the
-video. `homeHeroAndroidCompositing.guard.test.ts` pins this on all five video
-surfaces (the host, `HomeHeroPager`, `VideoHeroRenderer`, and the two SDUI
-routes `app/video/[sectionKey].tsx` + `app/collection/[sectionKey].tsx`).
+video. `homeHeroAndroidCompositing.guard.test.ts` pins this on all six video
+surfaces (the host, `HomeHeroPager`, `VideoHeroRenderer`, the two SDUI routes
+`app/video/[sectionKey].tsx` + `app/collection/[sectionKey].tsx`, and
+Explore's `src/components/explore/FeedVideoView.tsx`, which draws both feed
+players).
 No-op on iOS. The guard is an ENUMERATION, not a sweep: the two SDUI routes
 predated it by four months and shipped without the prop because nobody added
 them to the list. Add a case whenever you add a `<VideoView>`.
@@ -984,7 +998,14 @@ waiting for a second tap. `/watch/[slug]` gets this from `VideoPlayer.tsx`'s
 entanglement `VideoPlayer` has to carry. Neither SDUI route autostarted for
 months because the paths were written separately and nobody compared them —
 `video/[sectionKey]` sat on a tap-to-play poster, `collection/[sectionKey]` had
-no poster at all. If you add a fourth player surface, use the hook.
+no poster at all. If you add another player surface, use the hook. Explore
+is the named exception: `useAutostartPlayback` covers one load and plays with
+no seek, so the feed uses `src/hooks/useClipAutostart.ts`, a per-clip gate
+with the same three release paths and the same `AUTOSTART_VEIL_TIMEOUT_MS`.
+Its timer runs only while a load can run: it waits for the pager's rest, and
+it does not run while the clip yields to the root player (feat-552 KTD10).
+The veil, the spinner, the poster and the still all read its one
+`veilVisible` predicate.
 
 The gate's release paths are the whole point, and there are three: playback
 started, the source errored, or `AUTOSTART_VEIL_TIMEOUT_MS` elapsed. The third
@@ -1436,8 +1457,8 @@ the app's own `#1c1917` instead of the platform contrast scrim.
 ## Tab bar — UIKit's own bar on iOS, a flush JS bar on Android
 
 `src/lib/tabBar.ts` owns every number. Both navigators, the Library screen, the
-mini player and six scroll surfaces read it from there, so no two files can
-disagree about the bar's size.
+mini player and the eight surfaces in `tabBarClearance.guard.test.js` read it
+from there, so no two files can disagree about the bar's size.
 
 > **The native tabs migration shipped on 2026-09-14** (feat-500). iOS now runs
 > UIKit's own tab bar. Read the Results section of
@@ -1571,9 +1592,10 @@ disagree about the bar's size.
   WCAG ratio from the tint's full `rgba()` -- colour AND alpha, since
   compositing a hard-coded black scored a WHITE tint 4.79:1 while it measures
   1.52:1 -- so changing `TAB_BAR_MATERIAL_TINT` either way now fails a test.
-  `tabBarClearance.guard.test.js` is an ENUMERATION of six surfaces, not a
-  sweep — a seventh scroller escapes it silently. Add a row whenever you add
-  one. It checks the clearance is APPLIED, not merely imported, and it strips
+  `tabBarClearance.guard.test.js` is an ENUMERATION of eight surfaces, not a
+  sweep — a new surface that must clear the bar escapes it silently. Add a
+  row and raise the count whenever you add one. The eighth row is the Explore
+  clip overlay, which pads its bottom region, not a scroll view. It checks the clearance is APPLIED, not merely imported, and it strips
   `scrollIndicatorInsets` first -- that prop contains `bottom: tabBarClearance`
   and satisfied the naive pattern on its own.
 - **`tabBarSingleSource.guard.test.js` holds the one-source claim.** It strips
