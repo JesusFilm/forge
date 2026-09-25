@@ -426,6 +426,12 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `src/lib/__tests__/datadogReservedAttributes.guard.test.js` now blocks a
   ninth. Background: see
   `docs/solutions/conventions/datadog-reserved-log-attribute-name-shadowing.md`.
+- **Explore's telemetry** (`src/lib/explore/telemetry.ts`, feat-552 KTD17)
+  sends product signals as RUM actions with `explore_` keys, and
+  playback-health events through the injected `telemetry` sink.
+  `useFeedPlayers` reports the stages only it sees (source set, source loaded,
+  rebuffer, clip failure) through optional callbacks; a `loading` status within
+  `SEEK_LOADING_GRACE_MS` of any seek is not a rebuffer.
 
 ## Common Pitfalls
 
@@ -658,7 +664,8 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
   limited evidence send retries once after the window, never 100 ms later; a
   limited facts batch pauses the drain for the window without spending a
   delivery attempt, at most three times per watch-page episode (once per
-  Explore clip episode), then drops the batch and keeps the episode open; a limited bootstrap is a cooldown
+  Explore clip episode), then drops the batch and keeps the episode open; a
+  limited bootstrap is a cooldown
   (`bootstrap_rate_limited`), not a failed bearer.
   The bucket is 30 mutations per minute per `x-viewer-id`, shared by every
   recommendation mutation the launch sends.
@@ -722,7 +729,11 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
   one started. It counts toward a cap of 12 per session, stored under
   `explore-clip-evidence` as a SHA-256 digest of the session token, never
   the token. It claims as `direct` with an `automatic` attempt, takes no Home
-  nonce or discovery mark, and never writes watch progress.
+  nonce or discovery mark, and never writes watch progress. `ExploreFeed` feeds
+  it the active player's events only: the play edge, ticks once the clip has
+  loaded, and `useFeedPlayers`' `onLoop`. It disposes the evidence at unmount,
+  and `ExploreFeed.test.tsx` pins the wiring with real clip-mode recorders over
+  a fake network.
 - **Playback attribution runs for every playback the root host owns.**
   `useManagedVideoPlayer` creates one `playbackRecorder.ts` per Admin video id
   when `ownsSession` is set (the SDUI routes never get one) and keeps it across
@@ -907,8 +918,11 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   view component, `src/components/explore/FeedVideoView.tsx`, and never
   belong to the host or its session. A feed view does not read
   `useMiniPlayerHoldsVideo` as the heroes do: the feed hook gates play on its
-  `yieldsToRoot` input (`clipYieldsToRoot` in `src/lib/explore/takeover.ts`),
-  and no feed view spells a picture-in-picture prop (R3).
+  `yieldsToRoot` input, which `ExploreFeed` takes from `useExploreTakeover`
+  (`clipYieldsToRoot` in `src/lib/explore/takeover.ts`), and no feed view spells
+  a picture-in-picture prop (R3). While Explore has focus, the takeover
+  dismisses a floating window through the store (never a `replaced` end); under
+  a picture-in-picture hold, it pauses the root player instead.
   `rootPlayerOwnership.guard.test.js` checks the feed views as their own
   class, with a positive control.
 - **The session lives in module scope, not React context.** `src/lib/miniPlayer/`
@@ -1103,8 +1117,8 @@ the KTD, R and AE numbers the source comments cite.
   stay an inline object literal.** `datadogReservedAttributes.guard.test.js`
   sweeps for Datadog's reserved attribute names. It reads only the log sinks
   spelled `datadogLog`, `DdLogs` or `telemetry`, and the RUM action contexts
-  sent through `reportDatadogAction` (feat-552 KTD17). It follows an INLINE literal
-  only; a context hoisted into a variable is a documented blind spot. So a
+  sent through `reportDatadogAction` (feat-552 KTD17). It follows an INLINE
+  literal only; a context hoisted into a variable is a documented blind spot. So a
   rename to `log`, or a hoisted context, takes every emit site out of the sweep
   with the whole suite still green. Datadog then drops a reserved name on
   ingest with no error, and only the facet goes missing.
@@ -1628,7 +1642,8 @@ from there, so no two files can disagree about the bar's size.
   `tabBarClearance.guard.test.js` is an ENUMERATION of eight surfaces, not a
   sweep — a new surface that must clear the bar escapes it silently. Add a
   row and raise the count whenever you add one. The eighth row is the Explore
-  clip overlay, which pads its bottom region, not a scroll view. It checks the clearance is APPLIED, not merely imported, and it strips
+  clip overlay, which pads its bottom region, not a scroll view. It checks the
+  clearance is APPLIED, not merely imported, and it strips
   `scrollIndicatorInsets` first -- that prop contains `bottom: tabBarClearance`
   and satisfied the naive pattern on its own.
 - **`tabBarSingleSource.guard.test.js` holds the one-source claim.** It strips
