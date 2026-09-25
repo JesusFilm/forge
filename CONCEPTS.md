@@ -1686,6 +1686,22 @@ One local, slug-keyed record of the last video whose playback started on the wat
 
 The record also holds the video's title, because a Lapse Reminder names the video it will reopen. Only a title from the resolved Video is kept: the watch screen may paint a title from a Watch Seed, but a seed title is chosen by whoever supplied the opening link, and this record is read back onto a locked device. A record therefore starts untitled whenever playback begins before the Video resolves, which is the ordinary case for a downloaded video, and it takes one later correction when the real title arrives. After that the video is settled for as long as the app keeps running, so a sign-out cannot be undone by playback that is still going.
 
+## Push campaigns
+
+### Announcement Campaign
+
+A server-sent message the ministry writes once, per campaign, in one or more languages with English required, and sends to the mobile app's registered devices. It names one catalog destination (a video, a series, or an experience), an audience of chosen countries or everywhere with an optional language filter, and either a date with a local hour or an immediate send. Each device receives the copy for its resolved language: the app language, then the phone language, then English. A campaign is fixed once sending starts; it can be cancelled but not edited. The app never models a campaign: it receives a destination and an opaque campaign identifier.
+
+_Avoid:_ lapse reminder (a local notification the app schedules for itself), notification (too broad; say which kind).
+
+### Push Registration
+
+The record a device creates with admin when notification permission is granted: its push token, the app install it belongs to, the viewer's app language, the phone language, the device's time zone, the country it registered from, the platform, the app build, and the per-install viewer identity. It is refreshed whenever any of those values changes and retired when delivery reports the token invalid. One registration is one device, which is one app install: a new token on the same install supersedes the older row, while the same viewer's other devices stay active. The set of active registrations is the audience every Announcement Campaign counts against, so a viewer who reads on a phone and on a tablet is reached on both and counts twice.
+
+### Local-Morning Wave
+
+The delivery of one Announcement Campaign across time zones: each device receives it at the campaign's local hour in its own zone, so a single send spreads over about a day and the report is complete only after the last zone. The wave enforces one announcement per device per local day; when two campaigns collide, the earlier scheduled one wins. "Send now everywhere" is the explicit exception that ignores the local hour.
+
 ## Flagged ambiguities
 
 - "Contextual Watch Route" and "canonical Watch URL" are not synonyms: the contextual route preserves collection navigation, while the Standalone Watch Route owns discovery, social, and sharing identity.

@@ -442,6 +442,10 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - **Never set a react-native-screens `orientation` screen option.** `expo-screen-orientation`'s `ScreenOrientationViewController` answers UIKit from its OWN registry mask — what `lockAsync` writes — only while no screen carries an orientation. The moment one does, it defers to the react-native-screens view-controller chain instead, and a **dev client** has `expo-dev-launcher`'s `DevLauncherViewController` sitting in that chain: the resolved mask loses landscape, UIKit refuses the geometry request (`UIWindowScene.interfaceOrientationsNotSupported`, readable via `xcrun simctl spawn <udid> log stream`), fullscreen stays portrait, and leaving fullscreen strands the details page in landscape until the route pops. The option was always redundant — `src/lib/orientation.ts`'s lock already names the orientation on both platforms — so `useFullscreenPresentation` sets only the lock, and the dev client now rotates exactly like a Release build. Verified 2026-08-26 on the iPhone 17 Pro Max simulator in BOTH build types. `app/__tests__/screenOrientationOption.guard.test.js` blocks the one-line revert across every `.ts`/`.tsx` file under `app/` and `src/`, with a >100-file floor so the scan cannot silently go empty. It has TWO rules, and both are live: Rule 1 matches the key next to a quoted orientation value anywhere in the file (this catches the ternary across line breaks); Rule 2 matches a bare `orientation` KEY of any value shape — named constant, shorthand property — but only inside a brace-matched `screenOptions`/`options` object, so `src/lib/watchHome/`'s unrelated `orientation` key does not trip it. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 - **`PlayerSlot` must never depend on getting exactly one good `onLayout`.** `measureInWindow` SILENTLY drops its callback when the native node is not attached yet, and the host (`PlaybackHost`) returns null while the slot's rect is null — so one unlucky cold open leaves an opaque black box with no poster, no chrome, and no recovery except leaving the screen. Measured on the iPhone 17 Pro Max simulator over 10 cold deep-link opens: 2/10 on unmodified main, 0/10 after the bounded `requestAnimationFrame` re-measure. Three parts, and all three matter: retry until a rect lands, refuse a zero-size measure, and gate `isDrawn` on the RECT rather than on the attachment so the slot keeps its own poster while the host has nothing to draw. `src/components/watch/__tests__/PlayerSlot.test.tsx` drives a real `measureInWindow` callback and pins all three parts: a zero-size measure publishes nothing, a valid one publishes exactly the measured rect, and the pump stops asking once a rect lands. Exhaustion logs `player_slot.measure_exhausted` once, so an unmeasurable slot is visible in production instead of silent. The instrumentation that separates the cases is a `console.log` in `measureIntoStore` plus one inside the `measureInWindow` callback — `onLayout` fires in BOTH the good and the black run; only the callback differs. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
+  - **Superseded 2026-09-21:** the bearer also rides the eight recommendation
+    operations and the two push writes (`RegisterPushDevice`,
+    `ReportPushOpen`). `carriesFleetBearer` in `src/lib/authHeaders.ts` is the
+    allowlist, and `src/lib/__tests__/authHeaders.test.ts` pins it.
 
 ## Auth + watch progress (feat: mobile login & continue watching)
 
@@ -1138,6 +1142,150 @@ id>"}` autostarts, so the writer would otherwise persist attacker text and
   installed app carries; `eas update` still exits 0 and reaches nobody. The
   production channel is already dark for the splash change, so this feature
   rides the same build.
+
+## Push registration (localized push campaigns, U7)
+
+**`src/lib/push/` registers this phone with admin so a campaign can reach it.**
+The app models no campaign: it sends a token plus the install id, the app
+language, the phone locale, the time zone, the platform, the build and the
+recommendation viewer handle, and admin owns audience, timing and copy. The
+design record is
+`docs/plans/2026-09-18-1540-feat-localized-push-campaigns-plan.md`.
+
+- **One permission grant covers both features, and the reminder pass is what
+  starts a registration.** `lifecycle.ts` fires `onPermissionRead` with the
+  permission it just read, and the push controller hangs off that hook, so
+  nothing reads the permission twice and the app shows no second prompt. A
+  read that FAILED reaches nobody: a transient fault is not a denial.
+- **`PUSH_REGISTRATION_ENABLED` is the app-side kill switch, and OFF is not
+  fully inert.** It sits in `src/lib/push/constants.ts`, on one line, as a bare
+  literal, in a file that imports nothing, so it flips by OTA alone. With it off
+  no first registration and no refresh runs, and a REVOCATION is still reported
+  (R29) — a phone whose viewer turned notifications off must leave the audience
+  whatever the gate says. `pushKillSwitch.guard.test.js` pins the shape.
+- **The controller is a module singleton (`registrationHost.ts`), and that is
+  what makes "once per launch" true.** The provider's effect runs setup →
+  cleanup → setup under StrictMode, so a controller built inside it would arrive
+  with its launch latch open. Only the token-rotation subscription belongs to
+  the provider's lifetime. The latch has one exception: a grant that FOLLOWS a
+  denial in the same launch registers again, because the revoke report already
+  took this phone out of every audience. Beyond the latch, an unchanged payload
+  hash skips the call unless the last success is over 7 days old, a launch
+  spends at most 3 FAILED attempts, and a rate limit is never retried in that
+  launch. A throw from BEFORE the request counts toward that cap too: a
+  rejecting install-id read reads as transient, so an uncounted attempt would
+  re-arm the 2-second retry for the whole launch.
+- **A viewer handle that admin refuses does not lock the phone out.** Admin
+  answers `viewer_handle_rejected` for a handle it no longer accepts, for
+  example one from another admin database. On that code only, the controller
+  asks the viewer store to re-check the handle (`recheckPushViewerHandle` in
+  `viewerHandle.ts`) and retries inside the same attempt cap. The retry never
+  sends the refused token again in that launch, so the phone registers with a
+  replacement handle or with none. When the store replaces the handle later,
+  the `viewer_identity` trigger registers again. The tap report re-checks and
+  reports once more without the handle, because a refused handle records no
+  open.
+- **The app stores the test ID and never the push token.**
+  `src/lib/push/store.ts` holds the test ID, the install id, the payload hash,
+  the last success and the remembered revocation. The token is re-read from the
+  adapter whenever it is needed, which is also why a revocation report can fail
+  on a phone whose platform refuses a token read without the grant: that report
+  is simply retried on a later launch. A reported revocation also CLEARS the
+  payload hash, because admin drops a denied row from every audience and the
+  next grant must register rather than read its own payload as unchanged.
+- **The install id is minted once and kept for the life of the install.**
+  `ensureInstallId()` mints a UUID on the first read and persists it, and
+  nothing regenerates it: a revocation report and a later success both carry it
+  through. Admin retires this install's PREVIOUS token when a new one arrives
+  with the same install id and platform, so the viewer's other phones keep
+  their registrations. It is not the push token and not a platform device
+  identifier, and it leaves the store only inside the registration payload,
+  never a log. The payload hash covers it, so a record that survives while its
+  install id changes registers rather than reading its own payload as
+  unchanged. A re-install registers because it has no stored record at all. A
+  stored id outside admin's bound (8 to 64 characters of `[A-Za-z0-9._-]`) is
+  re-minted, because admin answers BAD_USER_INPUT for it and nothing else would
+  ever replace it — that re-mint is the one way the id changes under a live
+  record, and the hash is what makes it register. A MINTED id is held to the
+  same bound: `ensureInstallId()` re-checks it and falls back to the compat
+  generator, so a minter tier that answers an unusable shape costs nothing. The
+  minter prefers the runtime's `crypto.randomUUID`, then a lazily required
+  `expo-crypto`, the ordering `src/lib/recommendations/random.ts` uses.
+- **The push port lives on the SAME notifications adapter** (token read,
+  rotation subscription, announcements channel), so that file stays the app's
+  one importer of `expo-notifications`. It imports `expo-constants` too, for the
+  EAS project id the Expo token read needs, and
+  `notificationsEntryPoint.guard.test.js` pins that import set.
+- **The provider must stay INSIDE `WatchPreferencesProvider`.** It reads the dub
+  language for the payload, and `useWatchPreferences` throws outside its
+  provider, so that ordering is a crash rather than a lost registration.
+  `lapseReminderWiring.guard.test.js` pins it. The slug is PUBLISHED to
+  `appLanguage.ts` as soon as the preferences hydrate, because the preferences
+  provider persists without awaiting and a payload read from storage alone can
+  carry the previous pick.
+- **`google-services.json` is NOT committed and Android cannot register without
+  it.** `app.json` references it, and `expo prebuild --platform android` refuses
+  while it is absent — which is the gate that makes the missing Firebase
+  download visible. A placeholder file would build and then fail FCM
+  registration silently on device. iOS is unaffected. The refusal is
+  `setGoogleServicesFile` in `@expo/config-plugins`, which throws "Cannot copy
+  google-services.json from …" when the copy fails (read from the installed
+  package on 2026-09-21; no prebuild was run).
+- **Telemetry is `push.`-prefixed through the sink named `telemetry`**
+  (`push.registration`, `push.registration_failed`, `push.revocation`). No
+  token, viewer handle or test ID ever reaches a log.
+- **The app config changed, so a native build must ship before the next
+  `eas update`.** `app.json` is a fingerprint input.
+
+### Announcement taps, the foreground banner, and the open report (U8)
+
+- **The payload contract the app accepts** is
+  `{ version: 1, family: "announcement", kind: "video" | "series" | "experience", slug, nonce }`,
+  serialized at 1024 bytes or less (`src/lib/push/announcementPayload.ts`).
+  `family` is the discriminator: anything without it parses as a lapse
+  reminder, so a reminder pending from an older build still routes. A slug is
+  1 to 200 RFC 3986 unreserved characters, never `.` or `..`; the nonce is
+  base64url, carried opaque and never logged. Any other shape opens Home and
+  shows `PUSH_UNRESOLVABLE_DESTINATION_MESSAGE` (`src/lib/push/copy.ts`)
+  through `PushNoticeHost`, which the root layout mounts beside
+  `ExportReportHost` so the message has a host that belongs to no route.
+- **Routes:** video → `/watch/<slug>`, series → `/series/<slug>`, experience →
+  select that experience (this changes the saved home experience, by decision)
+  then `/experience/<slug>`. No catalog check runs before a tap: an unpublished
+  destination shows that route's own not-found screen (R30). An announcement
+  ignores `LAPSE_REMINDERS_ENABLED`, which gates only the local reminders.
+- **Foreground:** the adapter's handler delegates to the pure
+  `presentationForTrigger` in `src/lib/push/foreground.ts`. A remote trigger
+  (`type === "push"`) shows a banner and a tray entry with no sound; anything
+  else, including every local reminder, shows nothing.
+- **Reminder cleanup dismisses by identifier** (`dismissNotificationAsync` for
+  `lapse-reminder-day1` and `lapse-reminder-day7`), never the whole tray, so an
+  announcement the viewer has not opened survives a reminder pass (AE21).
+  `notificationsEntryPoint.guard.test.js` requires the identifier call and bans
+  `dismissAllNotificationsAsync`.
+- **The open report** (`src/lib/push/openReportHost.ts` →
+  `openReportClient.ts`, operation `ReportPushOpen`) starts before the
+  navigation and returns at once. A failure or a rate limit is dropped, never
+  retried: a second report of the same open would answer `DUPLICATE` anyway.
+  The one exception is `viewer_handle_rejected`: that refusal records no open,
+  so the host re-checks the handle and reports once more without it. A
+  tap on a destination kind this build cannot read still reports its open, so
+  admin's count stays right when it names a newer kind. The viewer handle comes
+  from one reader, `src/lib/push/viewerHandle.ts`, shared with registration.
+- **Attribution mark:** a campaign arrival on a video marks the `acquisition`
+  discovery source with provenance `{ handoff: "campaign_link", campaign: <nonce> }`
+  (`src/lib/deepLinkOrigin.ts` origin `campaign`, `playbackDiscovery.ts`), which
+  admin's `PlaybackContextIssueSchema` accepts. `discoveryFor` drops any key or
+  value outside admin's bounds, and the source's own literals always win.
+- **Telemetry:** `push.open_report { outcome, has_viewer }`,
+  `push.open_report_failed { code, push_code, deferred }`; `lapse_reminder.tap`
+  gained `family` and `destination_kind`, and its outcome set grew by `series`,
+  `experience` and `unresolvable`. All through the sink named `telemetry`.
+- **Only a real phone can prove** the foreground banner (jest cannot supply a
+  real trigger), the identifier dismiss on Android, cold and warm taps to each
+  kind with one unpublished slug each, the message clearing the tab bar on a
+  0-inset device, and one `ReportPushOpen` per tap in the fake-admin proxy log
+  (two when admin refuses the viewer handle).
 
 ## Cast SDK sheet theming
 

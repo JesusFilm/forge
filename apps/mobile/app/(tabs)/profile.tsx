@@ -2,6 +2,7 @@ import { ScrollView, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { AccountSection } from "../../src/components/profile/AccountSection"
+import { NotificationTestIdSection } from "../../src/components/profile/NotificationTestIdSection"
 import { ProfileLinksSection } from "../../src/components/profile/ProfileLinksSection"
 import { useTabBarClearance } from "../../src/lib/tabBar"
 import { layout } from "../../src/styles/shared"
@@ -20,6 +21,7 @@ export default function ProfileScreen() {
         scrollIndicatorInsets={{ bottom: tabBarClearance }}
       >
         <AccountSection />
+        <NotificationTestIdSection />
         <ProfileLinksSection />
       </ScrollView>
     </View>

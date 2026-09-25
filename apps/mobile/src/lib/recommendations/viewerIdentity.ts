@@ -378,8 +378,12 @@ export function createViewerIdentityStore(deps: ViewerIdentityDeps) {
    * handle also arms the cooldown first, so a server-side fault cannot churn
    * identities.
    */
-  async function invalidate(): Promise<void> {
+  async function invalidate(refusedViewerToken?: string): Promise<void> {
     if (!record) return
+    // A refusal that lands after the handle was already replaced must not mark
+    // the replacement suspect, which would also arm the fresh-handle cooldown.
+    if (refusedViewerToken != null && record.viewerToken !== refusedViewerToken)
+      return
     const at = now()
     const fresh =
       at - Date.parse(record.bootstrappedAt) < FRESH_HANDLE_WINDOW_MS

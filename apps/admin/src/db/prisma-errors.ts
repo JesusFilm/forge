@@ -56,3 +56,15 @@ export function sanitizePrismaErrorMessage(
       : "unknown"
   return `${name}(${code}) during ${context}`
 }
+
+/**
+ * True for Prisma's unique-constraint violation (P2002). Shape-based, like
+ * the helpers above, so a service boundary needs no `instanceof`.
+ */
+export function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "P2002"
+  )
+}

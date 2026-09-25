@@ -87,6 +87,13 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "whatsNewFeatureVoteTallies",
   "castWhatsNewFeatureVote",
   "retractWhatsNewFeatureVote",
+  // Localized push campaigns U2 (KTD7). Public-shaped fleet write paths: the
+  // phone registers its push token and reports an announcement open. Both
+  // resolver bodies require the consumer bearer through the push admission
+  // predicate and verify an optional viewer handle, so the scope is the shape
+  // only. See docs/plans/2026-09-18-1540-feat-localized-push-campaigns-plan.md.
+  "registerPushDevice",
+  "reportPushOpen",
 ] as const
 
 function readAllTypeSources(): string {

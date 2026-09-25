@@ -1990,7 +1990,9 @@ type Mutation {
   Register an uploaded file in the media library after its bytes are stored.
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
+  registerPushDevice(input: RegisterPushDeviceInput!): PushDeviceRegistrationReceipt!
   rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
+  reportPushOpen(input: ReportPushOpenInput!): PushOpenReceipt!
   requestShortsAttempt(input: ShortsRequestInput!): ShortsCommandResult
   requestShortsExperiment(input: JSON!): JSON
   """
@@ -2161,6 +2163,43 @@ type PromoBannerBlock {
   sectionKey: String
   t: String
   widthPercent: Int
+}
+
+enum PushDevicePlatform {
+  ANDROID
+  IOS
+}
+
+"""
+What one registration answers. The test ID is the identifier the app shows on Profile; it is never the push token.
+"""
+type PushDeviceRegistrationReceipt {
+  status: PushRegistrationState!
+  testDeviceId: String!
+}
+
+enum PushOpenOutcome {
+  DUPLICATE
+  STORED
+  UNKNOWN
+}
+
+"""
+What one open report answers. A duplicate and an unknown nonce are both normal outcomes, never errors.
+"""
+type PushOpenReceipt {
+  outcome: PushOpenOutcome!
+}
+
+enum PushPermissionState {
+  denied
+  granted
+}
+
+enum PushRegistrationState {
+  ACTIVE
+  INACTIVE
+  SUPERSEDED
 }
 
 type Query {
@@ -2413,6 +2452,19 @@ type RecommendationViewerStatus {
   state: String!
 }
 
+input RegisterPushDeviceInput {
+  appBuild: String!
+  appLanguageSlug: String!
+  expoPushToken: String!
+  installId: String!
+  permission: PushPermissionState!
+  phoneLocale: String!
+  platform: PushDevicePlatform!
+  sessionToken: String
+  timeZone: String!
+  viewerToken: String
+}
+
 """Single entry in RelatedQuestionsBlock.questions."""
 type RelatedQuestionItem {
   answer: String
@@ -2431,6 +2483,12 @@ type RelatedQuestionsBlock {
   questions: [RelatedQuestionItem!]!
   sectionKey: String
   t: String
+}
+
+input ReportPushOpenInput {
+  nonce: String!
+  sessionToken: String
+  viewerToken: String
 }
 
 """

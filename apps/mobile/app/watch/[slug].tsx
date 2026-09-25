@@ -552,6 +552,13 @@ export default function WatchVideoPage() {
       // this effect too and falls through to `direct` (the union has no
       // `reminder` source). Reminder returns stay attributable via `origin`.
       if (arrival.origin === "url") markPlaybackDiscovery(decodedSlug, "share")
+      // KTD8's direct handoff: a campaign tap on a VIDEO carries the delivery
+      // nonce, so admin can join this playback back to the campaign.
+      if (arrival.origin === "campaign" && arrival.campaign != null) {
+        markPlaybackDiscovery(decodedSlug, "acquisition", {
+          campaign: arrival.campaign,
+        })
+      }
       // Built inline: the reserved-attribute sweep only reads an object
       // literal written AT the call site.
       datadogLog.info("content.deep_link_open", {

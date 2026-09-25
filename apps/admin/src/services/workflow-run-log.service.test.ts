@@ -56,6 +56,34 @@ describe("workflow run log service", () => {
     })
   })
 
+  it("maps an editor-triggered push campaign run to the manual trigger", async () => {
+    const client = createMockClient()
+
+    await createWorkflowRunLog(
+      {
+        workflowKey: "push-campaign",
+        workflowName: "Push Campaign",
+        trigger: "manual",
+        actorId: "admin-user-1",
+        subjectType: "push-campaign",
+        subjectId: "campaign-1",
+        details: { kind: "LIVE", mode: "WAVE" },
+      },
+      client as never,
+    )
+
+    expect(client.workflowRun.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        workflowKey: "push-campaign",
+        trigger: WorkflowRunTrigger.MANUAL,
+        actorId: "admin-user-1",
+        subjectType: "push-campaign",
+        subjectId: "campaign-1",
+        status: WorkflowRunStatus.QUEUED,
+      }),
+    })
+  })
+
   it("attaches the runtime run id after workflow dispatch", async () => {
     const client = createMockClient()
 

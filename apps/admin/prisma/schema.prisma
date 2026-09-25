@@ -5865,3 +5865,287 @@ model ShortScheduleDispatch {
 
   @@map("short_schedule_dispatch")
 }
+
+// Localized push campaigns (feat-524). Push owns its own tables; the
+// recommendation tables are untouched. Partial unique indexes and CHECK
+// constraints live in migration 0100 because Prisma cannot model them.
+
+enum PushPlatform {
+  IOS     @map("ios")
+  ANDROID @map("android")
+}
+
+enum PushRegistrationStatus {
+  ACTIVE     @map("active")
+  INACTIVE   @map("inactive")
+  INVALID    @map("invalid")
+  SUPERSEDED @map("superseded")
+}
+
+enum PushCountrySource {
+  EDGE         @map("edge")
+  PHONE_REGION @map("phone_region")
+  UNKNOWN      @map("unknown")
+}
+
+enum PushCampaignStatus {
+  DRAFT     @map("draft")
+  TESTED    @map("tested")
+  SCHEDULED @map("scheduled")
+  SENDING   @map("sending")
+  SENT      @map("sent")
+  PAUSED    @map("paused")
+  CANCELLED @map("cancelled")
+}
+
+enum PushCampaignMode {
+  WAVE      @map("wave")
+  IMMEDIATE @map("immediate")
+}
+
+enum PushAudienceScope {
+  EVERYWHERE @map("everywhere")
+  COUNTRIES  @map("countries")
+}
+
+enum PushDestinationKind {
+  VIDEO      @map("video")
+  SERIES     @map("series")
+  EXPERIENCE @map("experience")
+}
+
+enum PushZoneStatus {
+  PENDING     @map("pending")
+  DISPATCHING @map("dispatching")
+  DISPATCHED  @map("dispatched")
+  MISSED      @map("missed")
+  CANCELLED   @map("cancelled")
+}
+
+enum PushDeliveryKind {
+  LIVE @map("live")
+  TEST @map("test")
+}
+
+/// Claim statuses, under which the phone may have been reached: reserved,
+/// sending, accepted, handed_off, unknown. Report-only outcomes, under which
+/// it never was: failed, invalid, suppressed, unreachable, missed. Only the
+/// claim statuses sit under the daily-claim index.
+enum PushDeliveryStatus {
+  RESERVED    @map("reserved")
+  SENDING     @map("sending")
+  ACCEPTED    @map("accepted")
+  HANDED_OFF  @map("handed_off")
+  UNKNOWN     @map("unknown")
+  FAILED      @map("failed")
+  INVALID     @map("invalid")
+  SUPPRESSED  @map("suppressed")
+  UNREACHABLE @map("unreachable")
+  MISSED      @map("missed")
+}
+
+/// One phone's push address. `viewerDigest` is the recommendation viewer token
+/// digest; an identity erasure or expiry nulls it and the registration stays.
+/// Migration 0100 adds the active and retired partial indexes the audience and
+/// the purge read.
+model PushRegistration {
+  id                String                 @id @default(cuid())
+  expoPushToken     String                 @unique @map("expo_push_token") @db.VarChar(191)
+  /// Shown on the app's Profile screen so an admin user can list a test phone.
+  /// It is a separate identifier and never the push token.
+  testDeviceId      String                 @unique @map("test_device_id") @db.VarChar(64)
+  viewerDigest      String?                @map("viewer_digest") @db.Char(64)
+  /// An identifier the app mints once per install and keeps in its own store.
+  /// A token rotation on the same install carries the same id; a reinstall
+  /// does not. Migration 0100 adds the partial index the supersede pass reads.
+  installId         String?                @map("install_id") @db.VarChar(64)
+  platform          PushPlatform
+  appBuild          String                 @map("app_build") @db.VarChar(64)
+  appLanguageSlug   String                 @map("app_language_slug") @db.VarChar(191)
+  phoneLocale       String                 @map("phone_locale") @db.VarChar(35)
+  phoneLanguageSlug String?                @map("phone_language_slug") @db.VarChar(191)
+  timeZone          String                 @map("time_zone") @db.VarChar(64)
+  country           String?                @db.VarChar(8)
+  countrySource     PushCountrySource      @map("country_source")
+  status            PushRegistrationStatus @default(ACTIVE)
+  statusChangedAt   DateTime               @default(now()) @map("status_changed_at") @db.Timestamptz()
+  refreshedAt       DateTime               @default(now()) @map("refreshed_at") @db.Timestamptz()
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt         DateTime               @updatedAt @map("updated_at") @db.Timestamptz()
+
+  testDevice   PushTestDevice?
+  deliveries   PushDelivery[]
+  opens        PushOpen[]
+  attributions PushAttribution[]
+
+  @@index([viewerDigest])
+  @@index([createdAt])
+  @@map("push_registration")
+}
+
+/// A phone an admin user listed as a test device. A test send never claims the
+/// phone's day, so the same phone still receives the live campaign.
+model PushTestDevice {
+  id             String           @id @default(cuid())
+  label          String           @db.VarChar(120)
+  registrationId String           @unique @map("registration_id")
+  registration   PushRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  createdById    String?          @map("created_by_id")
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("push_test_device")
+}
+
+/// One announcement. Copy, destination, and audience freeze when sending
+/// starts; only cancel is allowed after that.
+model PushCampaign {
+  id               String               @id @default(cuid())
+  status           PushCampaignStatus   @default(DRAFT)
+  destinationKind  PushDestinationKind? @map("destination_kind")
+  destinationSlug  String?              @map("destination_slug") @db.VarChar(191)
+  audienceScope    PushAudienceScope    @default(EVERYWHERE) @map("audience_scope")
+  countries        String[]
+  languageFilter   String[]             @map("language_filter")
+  sendDate         DateTime?            @map("send_date") @db.Date
+  localHour        Int?                 @map("local_hour")
+  mode             PushCampaignMode     @default(WAVE)
+  testSentAt       DateTime?            @map("test_sent_at") @db.Timestamptz()
+  sendingStartedAt DateTime?            @map("sending_started_at") @db.Timestamptz()
+  completedAt      DateTime?            @map("completed_at") @db.Timestamptz()
+  workflowRunLogId String?              @map("workflow_run_log_id")
+  lastActorId      String?              @map("last_actor_id")
+  lastError        String?              @map("last_error") @db.VarChar(256)
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz()
+
+  copies       PushCampaignCopy[]
+  zones        PushCampaignZone[]
+  deliveries   PushDelivery[]
+  opens        PushOpen[]
+  attributions PushAttribution[]
+
+  @@index([status, createdAt])
+  @@map("push_campaign")
+}
+
+/// One language's title and body. English is required; the send path falls
+/// back to it when neither phone language has a row.
+model PushCampaignCopy {
+  id           String       @id @default(cuid())
+  campaignId   String       @map("campaign_id")
+  campaign     PushCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  languageSlug String       @map("language_slug") @db.VarChar(191)
+  title        String       @db.VarChar(50)
+  body         String       @db.VarChar(120)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@unique([campaignId, languageSlug])
+  @@map("push_campaign_copy")
+}
+
+/// One time zone's group in the wave. `scheduledAt` is the absolute instant on
+/// which the campaign's local hour falls for this zone.
+model PushCampaignZone {
+  id            String         @id @default(cuid())
+  campaignId    String         @map("campaign_id")
+  campaign      PushCampaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  timeZone      String         @map("time_zone") @db.VarChar(64)
+  scheduledAt   DateTime       @map("scheduled_at") @db.Timestamptz()
+  status        PushZoneStatus @default(PENDING)
+  audienceCount Int            @default(0) @map("audience_count")
+  dispatchedAt  DateTime?      @map("dispatched_at") @db.Timestamptz()
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@unique([campaignId, timeZone])
+  @@index([campaignId, scheduledAt])
+  @@map("push_campaign_zone")
+}
+
+/// One campaign's row for one phone. `error` holds the provider's error code
+/// and an admin classification only, because the provider's message embeds the
+/// push token. Migration 0100 adds the daily-claim and live-uniqueness partial
+/// indexes.
+model PushDelivery {
+  id             String             @id @default(cuid())
+  nonce          String             @unique @db.VarChar(64)
+  kind           PushDeliveryKind   @default(LIVE)
+  campaignId     String             @map("campaign_id")
+  campaign       PushCampaign       @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  registrationId String?            @map("registration_id")
+  registration   PushRegistration?  @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  localDay       DateTime           @map("local_day") @db.Date
+  languageSlug   String             @map("language_slug") @db.VarChar(191)
+  country        String?            @db.VarChar(8)
+  timeZone       String             @map("time_zone") @db.VarChar(64)
+  status         PushDeliveryStatus @default(RESERVED)
+  ticketId       String?            @map("ticket_id") @db.VarChar(191)
+  sendingAt      DateTime?          @map("sending_at") @db.Timestamptz()
+  error          String?            @db.VarChar(64)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz()
+
+  open PushOpen?
+
+  @@index([campaignId, status, id])
+  @@index([createdAt, id])
+  @@index([registrationId])
+  @@map("push_delivery")
+}
+
+/// One tap, resolved from the delivery nonce. Unique on the delivery, so a
+/// replayed open report cannot double-count.
+model PushOpen {
+  id             String            @id @default(cuid())
+  deliveryId     String            @unique @map("delivery_id")
+  delivery       PushDelivery      @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  campaignId     String            @map("campaign_id")
+  campaign       PushCampaign      @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  registrationId String?           @map("registration_id")
+  registration   PushRegistration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  viewerDigest   String?           @map("viewer_digest") @db.Char(64)
+  sessionDigest  String?           @map("session_digest") @db.Char(64)
+  languageSlug   String?           @map("language_slug") @db.VarChar(191)
+  country        String?           @db.VarChar(8)
+  viewerMismatch Boolean           @default(false) @map("viewer_mismatch")
+  receivedAt     DateTime          @map("received_at") @db.Timestamptz()
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz()
+
+  attributions PushAttribution[]
+
+  @@index([viewerDigest, receivedAt])
+  @@index([sessionDigest, receivedAt])
+  @@index([createdAt, id])
+  @@index([campaignId])
+  @@index([registrationId])
+  @@map("push_open")
+}
+
+/// One attributed watch start. `episodeId` carries no foreign key on purpose,
+/// so the recommendation purge of a playback episode leaves the report intact.
+/// The report counts the row through its open, so `openId` is required and a
+/// deleted open takes its attributions with it.
+model PushAttribution {
+  id             String            @id @default(cuid())
+  episodeId      String            @unique @map("episode_id") @db.VarChar(191)
+  openId         String            @map("open_id")
+  open           PushOpen          @relation(fields: [openId], references: [id], onDelete: Cascade)
+  campaignId     String            @map("campaign_id")
+  campaign       PushCampaign      @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  registrationId String?           @map("registration_id")
+  registration   PushRegistration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  viewerDigest   String?           @map("viewer_digest") @db.Char(64)
+  languageSlug   String?           @map("language_slug") @db.VarChar(191)
+  country        String?           @db.VarChar(8)
+  mediaId        String            @map("media_id") @db.VarChar(191)
+  attributedAt   DateTime          @map("attributed_at") @db.Timestamptz()
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@index([campaignId])
+  @@index([createdAt, id])
+  @@index([openId])
+  @@index([registrationId])
+  @@index([viewerDigest])
+  @@map("push_attribution")
+}

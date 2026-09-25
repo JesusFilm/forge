@@ -31,6 +31,7 @@ let DevEndpointNotice:
   | undefined
 let PlaybackHost: typeof import("../src/components/watch/PlaybackHost").PlaybackHost
 let ExportReportHost: typeof import("../src/components/ExportReportHost").ExportReportHost
+let PushNoticeHost: typeof import("../src/components/PushNoticeHost").PushNoticeHost
 let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
 // `| undefined`: this one is read at module scope after the try/catch, where a
@@ -94,6 +95,7 @@ try {
   PlaybackHost = require("../src/components/watch/PlaybackHost").PlaybackHost
   ExportReportHost =
     require("../src/components/ExportReportHost").ExportReportHost
+  PushNoticeHost = require("../src/components/PushNoticeHost").PushNoticeHost
   if (__DEV__) {
     DevEndpointNotice =
       require("../src/components/DevEndpointNotice").DevEndpointNotice
@@ -468,6 +470,10 @@ export default function RootLayout() {
                           {/* R29: a raw export outlives the sheet that started it,
                               so its report is hosted here rather than in a route. */}
                           <ExportReportHost />
+                          {/* R21: a notification tap is routed from a timer or a
+                              native listener, so its message needs a host that
+                              belongs to no route. */}
+                          <PushNoticeHost />
                         </SplashCoveredTree>
                         {/* Last child, and a sibling for the same KTD1 reason: the
                             cover must paint above the player and must not restart

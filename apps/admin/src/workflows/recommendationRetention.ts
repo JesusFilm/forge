@@ -3,11 +3,15 @@ import type { RecommendationPurgeResult } from "@/services/recommendations/reten
 
 export const RECOMMENDATION_RETENTION_CATCH_UP_BATCH_LIMIT = 8
 export const RECOMMENDATION_RETENTION_CATCH_UP_WINDOW_MS = 30_000
+export const PUSH_RETENTION_CATCH_UP_BATCH_LIMIT = 8
+export const PUSH_RETENTION_CATCH_UP_WINDOW_MS = 30_000
 
 type RecommendationRetentionCatchUpResult = Readonly<{
   batchesProcessed: number
   overdueAfterRun: boolean
 }>
+
+type PushRetentionCatchUpResult = RecommendationRetentionCatchUpResult
 
 export async function runRecommendationRetention(
   input: {
@@ -43,6 +47,14 @@ export async function runRecommendationRetentionScheduler(
       // has its own purge ledger. Keep the durable daily scheduler alive so a
       // transient outage does not permanently stop privacy retention.
     }
+    // Above the catch-up branch, so a long privacy backlog on the 60s cadence
+    // cannot starve the push 90-day purge.
+    try {
+      await stepRunPushRetention()
+    } catch {
+      // The push purge owns its own ledger row and advisory lock. Its failure
+      // must never retry the privacy purge or stop the daily scheduler.
+    }
     if (catchUp?.overdueAfterRun) {
       const next = await stepNextRecommendationRetentionCatchUpRun(input)
       await sleep(next)
@@ -52,6 +64,32 @@ export async function runRecommendationRetentionScheduler(
     await sleep(next)
   }
 }
+
+export async function stepRunPushRetention(): Promise<PushRetentionCatchUpResult> {
+  "use step"
+  const { runPushRetentionFromScheduler } =
+    await import("@/services/push/retention.job")
+  const startedAt = Date.now()
+  let batchesProcessed = 0
+  let overdueAfterRun = false
+  do {
+    const attempt = await runPushRetentionFromScheduler()
+    if (!attempt.ok || !attempt.result) {
+      throw new RetryableError("Push retention purge failed", {
+        retryAfter: "5m",
+      })
+    }
+    batchesProcessed += 1
+    overdueAfterRun = attempt.result.overdueAfterRun
+  } while (
+    overdueAfterRun &&
+    batchesProcessed < PUSH_RETENTION_CATCH_UP_BATCH_LIMIT &&
+    Date.now() - startedAt < PUSH_RETENTION_CATCH_UP_WINDOW_MS
+  )
+  return { batchesProcessed, overdueAfterRun }
+}
+
+stepRunPushRetention.maxRetries = 5
 
 export async function stepMarkRecommendationRetentionSchedulerStarted(input: {
   ledgerRunId?: string
