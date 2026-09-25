@@ -37,6 +37,7 @@ describe("parseStoredPreferences", () => {
       subtitlesEnabled: true,
       wifiOnly: true,
       longPressHintSeen: false,
+      exploreMuted: false,
     })
   })
 
@@ -50,6 +51,7 @@ describe("parseStoredPreferences", () => {
       subtitlesEnabled: false,
       wifiOnly: false,
       longPressHintSeen: false,
+      exploreMuted: false,
     })
   })
 
@@ -68,6 +70,7 @@ describe("parseStoredPreferences", () => {
       subtitlesEnabled: true,
       wifiOnly: false,
       longPressHintSeen: false,
+      exploreMuted: false,
     })
   })
 
@@ -104,6 +107,7 @@ describe("parseStoredPreferences", () => {
       subtitlesEnabled: true,
       wifiOnly: true,
       longPressHintSeen: true,
+      exploreMuted: true,
     }
     expect(parseStoredPreferences(serializeWatchPreferences(prefs))).toEqual(
       prefs,
@@ -167,5 +171,61 @@ describe("parseStoredPreferences — longPressHintSeen", () => {
     )
     expect(out.audioLanguageSlug).toBe("korean")
     expect(out.longPressHintSeen).toBe(false)
+  })
+})
+
+describe("parseStoredPreferences — exploreMuted", () => {
+  it("defaults to unmuted, so Explore clips start with sound (R11)", () => {
+    expect(DEFAULT_WATCH_PREFERENCES.exploreMuted).toBe(false)
+    expect(parseStoredPreferences(null).exploreMuted).toBe(false)
+  })
+
+  it("reads a stored blob written before the field existed as unmuted", () => {
+    const beforeTheField = JSON.stringify({
+      audioLanguageSlug: "swahili",
+      subtitlesEnabled: true,
+      wifiOnly: true,
+      longPressHintSeen: true,
+    })
+    const out = parseStoredPreferences(beforeTheField)
+    expect(out.exploreMuted).toBe(false)
+    expect(out.audioLanguageSlug).toBe("swahili")
+  })
+
+  it("reads exploreMuted true only for a strict boolean true", () => {
+    expect(
+      parseStoredPreferences(JSON.stringify({ exploreMuted: true }))
+        .exploreMuted,
+    ).toBe(true)
+    expect(
+      parseStoredPreferences(JSON.stringify({ exploreMuted: "true" }))
+        .exploreMuted,
+    ).toBe(false)
+    expect(
+      parseStoredPreferences(JSON.stringify({ exploreMuted: 1 })).exploreMuted,
+    ).toBe(false)
+  })
+
+  it("round-trips a muted choice through serialize → parse", () => {
+    const muted: WatchPreferences = {
+      ...DEFAULT_WATCH_PREFERENCES,
+      exploreMuted: true,
+    }
+    const raw = serializeWatchPreferences(muted)
+    expect(JSON.parse(raw)).toMatchObject({ exploreMuted: true })
+    expect(parseStoredPreferences(raw)).toEqual(muted)
+  })
+
+  it("still drops unknown fields beside the mute field", () => {
+    const raw = JSON.stringify({
+      exploreMuted: true,
+      exploreVolume: 0.4,
+      muted: true,
+    })
+    const out = parseStoredPreferences(raw)
+    expect(out).toEqual({ ...DEFAULT_WATCH_PREFERENCES, exploreMuted: true })
+    expect(Object.keys(out).sort()).toEqual(
+      Object.keys(DEFAULT_WATCH_PREFERENCES).sort(),
+    )
   })
 })
