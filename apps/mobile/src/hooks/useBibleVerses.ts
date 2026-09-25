@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { getApolloClient } from "../lib/apolloClient"
+import { isBsbVerseRef } from "../lib/bible/position/snapshot"
+import type { VerseRef } from "../lib/bible/versification/convert"
 import { deriveBibleCardArt, type BibleCardArt } from "../lib/bibleCardArt"
 import {
   clearPassageReadCooldown,
@@ -87,8 +89,28 @@ export type BibleQuoteBlock = {
   translation: string | null
   copyright: string | null
   passageUrl: string | null
+  /** Where "Read full passage" opens the reader, in BSB numbering (KTD17).
+   *  Named like `artCandidates`. Null shows no button, whatever the passage. */
+  citationStart: VerseRef | null
   /** The read has not settled: reserve the card's height, show no verse yet. */
   loading: boolean
+}
+
+// R1: a citation with no verse opens verse 1. A verse that BSB does not have
+// opens verse 1 too, because the reader would open the saved place instead.
+// A chapter that BSB does not have gives no start.
+export function citationReaderStart(
+  citation: Pick<
+    WatchBibleCitation,
+    "bookUsfm" | "chapterStart" | "verseStart"
+  >,
+): VerseRef | null {
+  const { bookUsfm: book, chapterStart: chapter } = citation
+  if (book == null || chapter == null) return null
+  const cited = { book, chapter, verse: citation.verseStart ?? 1 }
+  if (isBsbVerseRef(cited)) return cited
+  const chapterOpening = { book, chapter, verse: 1 }
+  return isBsbVerseRef(chapterOpening) ? chapterOpening : null
 }
 
 export type BibleQuotesState = {
@@ -412,6 +434,7 @@ export function useBibleVerses(
         translation: passage?.versionTitle ?? null,
         copyright: passage?.copyright ?? null,
         passageUrl: passage?.passageUrl ?? null,
+        citationStart: citationReaderStart(citation),
         loading,
       }
     })
@@ -432,6 +455,7 @@ export function useBibleVerses(
       translation: null,
       copyright: null,
       passageUrl: null,
+      citationStart: null,
       loading: false,
     })
 

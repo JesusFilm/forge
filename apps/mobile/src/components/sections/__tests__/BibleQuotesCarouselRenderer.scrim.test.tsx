@@ -9,10 +9,6 @@ jest.mock("../../../lib/bibleCardTreatment", () => ({
   CARD_TREATMENT: "scrim",
 }))
 
-jest.mock("../../../lib/openPassageSheet", () => ({
-  openPassageSheet: jest.fn(),
-}))
-
 const mockImage = jest.fn((_props: Record<string, unknown>) => null)
 jest.mock("expo-image", () => {
   const Image = (props: Record<string, unknown>) => mockImage(props)
@@ -61,6 +57,7 @@ const PASSAGE_QUOTE: Quote = {
   translation: "World English Bible British Edition",
   copyright: "Public Domain",
   passageUrl: "https://www.bible.com/bible/206/GEN.1.26-GEN.1.27.WEBBE",
+  citationStart: { book: "GEN", chapter: 1, verse: 26 },
   loading: false,
 }
 

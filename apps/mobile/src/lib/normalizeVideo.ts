@@ -1,4 +1,5 @@
 import type { WatchVideoData, WatchDubData, SeriesVideoData } from "./queries"
+import { bookByOsis, isUsfmBookId, type UsfmBookId } from "./bible/text/books"
 import { isEpisodicSeriesLabel } from "./isSeriesRecord"
 import { pickCardImage } from "./cardImage"
 import { pickLocalizedName } from "./pickLocalizedName"
@@ -85,6 +86,8 @@ export type WatchBibleCitation = {
   documentId: string
   osisId: string | null
   bookName: string | null
+  /** The book's USFM code, such as `JHN`. Null for a book BSB does not have. */
+  bookUsfm: UsfmBookId | null
   chapterStart: number | null
   chapterEnd: number | null
   verseStart: number | null
@@ -186,9 +189,38 @@ type NormalizableVariant = Omit<
       | null
   }
 
-type NormalizableVideo = Omit<RawVideo, "parents" | "variants"> & {
+type RawCitation = NonNullable<RawVideo["bibleCitations"]>[number]
+type RawCitationBook = NonNullable<RawCitation["bibleBook"]>
+type BookCodeField = "osisId" | "paratextAbbreviation"
+
+// The lean series fragment selects no book codes.
+type NormalizableCitation = Omit<RawCitation, "bibleBook"> & {
+  bibleBook:
+    | (Omit<RawCitationBook, BookCodeField> &
+        Partial<Pick<RawCitationBook, BookCodeField>>)
+    | null
+}
+
+type NormalizableVideo = Omit<
+  RawVideo,
+  "parents" | "variants" | "bibleCitations"
+> & {
   parents?: RawVideo["parents"]
   variants?: readonly NormalizableVariant[] | null
+  bibleCitations?: readonly NormalizableCitation[] | null
+}
+
+// Admin's OSIS id first (`John`, `1Cor`, `Ps`), then its Paratext code, which
+// is the USFM code (`JHN`). A book outside BSB's 66 gives null, and the quote
+// card then shows no reader button.
+function citationBookUsfm(
+  book: NormalizableCitation["bibleBook"],
+): UsfmBookId | null {
+  const osis = book?.osisId?.trim()
+  const byOsis = osis ? bookByOsis(osis) : undefined
+  if (byOsis) return byOsis.usfm
+  const paratext = book?.paratextAbbreviation?.trim()
+  return paratext && isUsfmBookId(paratext) ? paratext : null
 }
 
 // Prod data can carry stray whitespace on hls (a dub shipped "…m3u8\n"); the
@@ -368,6 +400,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
       bookName: c.bibleBook?.name
         ? (pickLocalizedName(c.bibleBook.name) ?? null)
         : null,
+      bookUsfm: citationBookUsfm(c.bibleBook),
       chapterStart: c.chapterStart ?? null,
       chapterEnd: c.chapterEnd ?? null,
       verseStart: c.verseStart ?? null,

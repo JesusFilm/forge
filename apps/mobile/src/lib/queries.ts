@@ -267,6 +267,8 @@ export const watchVideoFragment = adminGraphql(`
       bibleBook {
         documentId: id
         name
+        osisId
+        paratextAbbreviation
       }
     }
   }

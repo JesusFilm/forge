@@ -34,6 +34,7 @@ function citation(
     documentId: "cit-1",
     osisId: null,
     bookName: "Hebrews",
+    bookUsfm: "HEB",
     chapterStart: 1,
     chapterEnd: null,
     verseStart: 1,
