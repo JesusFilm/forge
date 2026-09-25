@@ -102,6 +102,12 @@ jest.mock("../../../src/lib/datadog", () => ({
   datadogLog: { debug: jest.fn(), info: jest.fn(), warn: jest.fn() },
   reportDatadogAction: jest.fn(),
 }))
+// The page's Explore telemetry imports the clip record, which imports this.
+jest.mock("@react-native-async-storage/async-storage", () =>
+  jest.requireActual(
+    "@react-native-async-storage/async-storage/jest/async-storage-mock",
+  ),
+)
 jest.mock("../../../src/lib/deepLinkOrigin", () => ({
   consumeDeepLinkArrival: () => null,
   whenDeepLinkOriginsReady: () => Promise.resolve(),
