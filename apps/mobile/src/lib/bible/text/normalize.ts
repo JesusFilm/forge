@@ -32,6 +32,15 @@ function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value > 0
 }
 
+// The gap loops run once per missing number, so a huge verse number from the
+// API or a stored file freezes the reader. PSA 119 has 176 verses, and the
+// route parsers accept at most 3 digits.
+const MAX_VERSE_NUMBER = 999
+
+function isVerseNumber(value: unknown): value is number {
+  return isPositiveInteger(value) && value <= MAX_VERSE_NUMBER
+}
+
 function isFilledString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0
 }
@@ -174,7 +183,7 @@ export function normalizeChapter(
     // Before verse 1, a verse 0 is a title. After a verse, it is a piece that
     // the source split off that verse (por_tft MAT 14:21), so it fails.
     if (verseNumber === 0 && markers.size === 0) continue
-    if (!isPositiveInteger(verseNumber) || !Array.isArray(item.content)) {
+    if (!isVerseNumber(verseNumber) || !Array.isArray(item.content)) {
       return reject("invalid-verse", bookId, chapterNumber)
     }
     const lines = verseLines(item.content)
@@ -404,7 +413,7 @@ function parseChapter(raw: unknown): Chapter | null {
   const { number, lastVerse, verses } = raw
   if (
     !isPositiveInteger(number) ||
-    !isPositiveInteger(lastVerse) ||
+    !isVerseNumber(lastVerse) ||
     !Array.isArray(verses)
   ) {
     return null

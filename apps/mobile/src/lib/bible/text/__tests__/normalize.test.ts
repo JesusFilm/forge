@@ -376,7 +376,7 @@ describe("normalizeChapterFile: fail-closed", () => {
     })
   })
 
-  it.each([-1, 1.5, "1", null])(
+  it.each([-1, 1.5, "1", null, 1000])(
     "rejects a verse whose number is %p (Synthetic: BSB Psalm 23)",
     (badNumber) => {
       const raw = clone(bsbPsalm23)
@@ -391,6 +391,42 @@ describe("normalizeChapterFile: fail-closed", () => {
       })
     },
   )
+
+  it("rejects verse 2000000000 before it fills the gap (Synthetic: BSB Psalm 23)", () => {
+    const raw = clone(bsbPsalm23) as { chapter: { content: unknown[] } }
+    const verse1 = contentItems(raw).find((item) => item.number === 1)
+    raw.chapter.content = [
+      verse1,
+      { type: "verse", number: 2_000_000_000, content: ["A far verse."] },
+    ]
+
+    const started = Date.now()
+    const result = normalizeChapterFile(raw)
+    const elapsed = Date.now() - started
+
+    expect(result).toEqual({
+      status: "rejected",
+      reason: "invalid-verse",
+      bookId: "PSA",
+      chapterNumber: 23,
+    })
+    expect(elapsed).toBeLessThan(1000)
+  })
+
+  it("keeps a verse numbered 999, the highest it accepts (Synthetic: BSB Psalm 23)", () => {
+    const raw = clone(bsbPsalm23) as { chapter: { content: unknown[] } }
+    const verse1 = contentItems(raw).find((item) => item.number === 1)
+    raw.chapter.content = [
+      verse1,
+      { type: "verse", number: 999, content: ["The last verse."] },
+    ]
+
+    const text = expectOk(normalizeChapterFile(raw))
+    expect(text.chapter.lastVerse).toBe(999)
+    expect(lineTexts(verseOf(text.chapter, 999))).toEqual(["The last verse."])
+    const stored: unknown = JSON.parse(JSON.stringify(text))
+    expect(expectOk(parseChapterText(stored))).toEqual(text)
+  })
 
   it.each([undefined, "", "auto", "RTL"])(
     "rejects text direction %p (Synthetic: BSB Psalm 23)",
@@ -725,6 +761,29 @@ describe("parseBookText and parseChapterText", () => {
     if (verse !== undefined) damage(verse)
 
     expect(parseChapterText(text)).toMatchObject({
+      status: "rejected",
+      reason: "malformed-text",
+    })
+  })
+
+  it("refuses a stored last verse above 999 in a chapter file and a book file", () => {
+    const chapterText = JSON.parse(
+      JSON.stringify(expectOk(normalizeChapterFile(bsbPsalm23))),
+    ) as { chapter: { lastVerse: number } }
+    chapterText.chapter.lastVerse = 1000
+    const book = JSON.parse(
+      JSON.stringify(
+        expectOk(normalizeTranslation(bsbComplete2John3John)).books[0],
+      ),
+    ) as { chapters: { lastVerse: number }[] }
+    const [chapter] = book.chapters
+    if (chapter !== undefined) chapter.lastVerse = 1000
+
+    expect(parseChapterText(chapterText)).toMatchObject({
+      status: "rejected",
+      reason: "malformed-text",
+    })
+    expect(parseBookText(book)).toMatchObject({
       status: "rejected",
       reason: "malformed-text",
     })
