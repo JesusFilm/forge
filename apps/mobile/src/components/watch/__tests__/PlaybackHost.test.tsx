@@ -198,11 +198,17 @@ import {
   SHRINK_DURATION_MS,
   TAB_BAR_CONTENT_HEIGHT,
   holdProgressIdentity,
+  readerTabBarReservation,
   shouldDrawSurface,
 } from "../PlaybackHost"
+import {
+  TAB_BAR_SCREEN_EXTENT_IOS,
+  tabBarOccupiedHeightFor,
+} from "../../../lib/tabBar"
 import { getPlayerSettingsStore } from "../../../lib/miniPlayer/playerSettings"
 import { resetPlayerSettings } from "../../../test-utils/resetPlayerSettings"
 import {
+  WINDOW_EDGE_MARGIN,
   frameGeometry,
   miniPlayerCornerFrame,
   readerCornerPolicy,
@@ -227,6 +233,7 @@ import {
 } from "../../../hooks/usePlaybackFrame"
 import {
   publishReaderMovementBand,
+  readerBottomInset,
   readerChromeBand,
   resetReaderMovementBandForTests,
 } from "../../../lib/bible/reader/chrome"
@@ -3584,6 +3591,9 @@ const PHONE_WINDOW = { width: 440, height: 956, scale: 3, fontScale: 1 }
 const IPAD_WINDOW = { width: 820, height: 1180, scale: 2, fontScale: 1 }
 const IPAD_LANDSCAPE = { width: 1180, height: 820, scale: 2, fontScale: 1 }
 const READER_INSETS = { top: 62, bottom: 34, left: 0, right: 0 }
+// An iPhone SE (3rd generation): no home indicator, so the root inset is 0.
+const SE_WINDOW = { width: 375, height: 667, scale: 2, fontScale: 1 }
+const SE_INSETS = { top: 20, bottom: 0, left: 0, right: 0 }
 const WATCH_ROUTE = ["watch", "[slug]"] as const
 const READER_ROUTE = ["reader"] as const
 const BIBLE_TAB = ["(tabs)", "bible"] as const
@@ -3680,7 +3690,11 @@ function readerLayout(host: "tab" | "pushed", band = 0) {
       layout: "phone",
       host,
       movementBand: band,
-      tabBar: TAB_BAR_CONTENT_HEIGHT,
+      tabBar: readerTabBarReservation({
+        platform: "ios",
+        layout: "phone",
+        rootBottomInset: mockInsets.bottom,
+      }),
     }).chrome,
   }
 }
@@ -3918,6 +3932,51 @@ describe("off the reader routes, the window behaves as before U13", () => {
 
     expect(hasVeil(renderer)).toBe(true)
   })
+})
+
+// The iOS bar ends 83pt above the SCREEN bottom at any inset (apps/mobile
+// CLAUDE.md, "Tab bar"). Inset 34 is the one device where 49 was also right.
+describe("readerTabBarReservation", () => {
+  it("adds the root inset up to the 83pt bar on an iPhone", () => {
+    const phone = { platform: "ios", layout: "phone" as const }
+    expect(readerTabBarReservation({ ...phone, rootBottomInset: 0 })).toBe(83)
+    expect(readerTabBarReservation({ ...phone, rootBottomInset: 34 })).toBe(49)
+    // Inset 34 keeps the value it had before this rule.
+    expect(readerTabBarReservation({ ...phone, rootBottomInset: 34 })).toBe(
+      tabBarOccupiedHeightFor("ios"),
+    )
+  })
+
+  it.each([0, 20])(
+    "keeps the occupied height on an iPad layout (root inset %i)",
+    (rootBottomInset) => {
+      expect(
+        readerTabBarReservation({
+          platform: "ios",
+          layout: "tablet",
+          rootBottomInset,
+        }),
+      ).toBe(tabBarOccupiedHeightFor("ios"))
+    },
+  )
+
+  it.each([
+    ["phone", 0],
+    ["phone", 24],
+    ["tablet", 0],
+    ["tablet", 24],
+  ] as const)(
+    "keeps the occupied height on Android (%s, root inset %i)",
+    (layout, rootBottomInset) => {
+      expect(
+        readerTabBarReservation({
+          platform: "android",
+          layout,
+          rootBottomInset,
+        }),
+      ).toBe(tabBarOccupiedHeightFor("android"))
+    },
+  )
 })
 
 describe("the reader cover and the reader corners (feat-551 U13)", () => {
@@ -4756,6 +4815,35 @@ describe("the reader cover and the reader corners (feat-551 U13)", () => {
       expect(frameVisual(renderer)).toEqual(
         cornerBox(readerLayout("tab"), "bottomLeft"),
       )
+    })
+
+    it("rests a Bible tab bottom corner above the footer on a phone with no home indicator", async () => {
+      setWindow(SE_WINDOW)
+      mockInsets = SE_INSETS
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      const id = attachSlot()
+      const renderer = await renderHost()
+      await startPlayback()
+      await setRoute(renderer, HOME_TAB)
+      await detach(id)
+      await advance(SHRINK_DURATION_MS + 300)
+      await setRoute(renderer, BIBLE_TAB)
+      await advance(REPOSITION_DURATION_MS + 300)
+
+      for (let i = 0; i < 3; i++) await windowAction(renderer, "moveToCorner")
+      await advance(400)
+
+      const rested = frameVisual(renderer)
+      // The tab screen's inset holds the whole 83pt bar, even at root inset 0.
+      const band = readerChromeBand({
+        layout: "phone",
+        safeAreaTop: SE_INSETS.top,
+        bottomInset: readerBottomInset("tab", "ios", TAB_BAR_SCREEN_EXTENT_IOS),
+        containerHeight: SE_WINDOW.height,
+      })
+      expect(band.bottom - (rested.y + rested.height)).toBe(WINDOW_EDGE_MARGIN)
+      expect(rested.y - band.top).toBeGreaterThanOrEqual(WINDOW_EDGE_MARGIN)
     })
 
     it("rests a bottom corner above the band the reader shows over its footer", async () => {

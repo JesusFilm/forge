@@ -53,12 +53,17 @@ import {
   offlineSwapClaim,
 } from "../../lib/playerSource"
 import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
-import { TAB_BAR_OCCUPIED_HEIGHT } from "../../lib/tabBar"
+import {
+  TAB_BAR_OCCUPIED_HEIGHT,
+  TAB_BAR_SCREEN_EXTENT_IOS,
+  tabBarOccupiedHeightFor,
+} from "../../lib/tabBar"
 import { isTabletLayout } from "../../hooks/useIsTabletLayout"
 import {
   getReaderMovementBand,
   readerMovementBandHeight,
   subscribeReaderMovementBand,
+  type ReaderLayout,
 } from "../../lib/bible/reader/chrome"
 import {
   DEFAULT_CORNER,
@@ -171,6 +176,20 @@ export const QUALITY_SWAP_TIMEOUT_MS = 8000
  *  inset, which the corner geometry already subtracts. The bottom reservation
  *  applies on every route so the window keeps one height across pushes. */
 export const TAB_BAR_CONTENT_HEIGHT = TAB_BAR_OCCUPIED_HEIGHT
+
+/** The bar the Bible tab reserves above the ROOT inset. The iPhone bar ends
+ *  83pt above the SCREEN bottom at any inset, so the inset and this add to 83.
+ *  An iPad layout and Android keep the occupied height. */
+export function readerTabBarReservation(input: {
+  platform: string
+  layout: ReaderLayout
+  rootBottomInset: number
+}): number {
+  if (input.platform === "ios" && input.layout === "phone")
+    return Math.max(0, TAB_BAR_SCREEN_EXTENT_IOS - input.rootBottomInset)
+  return tabBarOccupiedHeightFor(input.platform)
+}
+
 const NATIVE_HEADER_HEIGHT = Platform.select({
   ios: 44,
   android: 56,
@@ -1070,6 +1089,7 @@ function ActivePlaybackHost({
         ? lastReaderRef.current
         : routeReader
   const tablet = isTabletLayout(screenWidth, screenHeight)
+  const readerLayout: ReaderLayout = tablet ? "tablet" : "phone"
   const publishedBand = useSyncExternalStore(
     subscribeReaderMovementBand,
     getReaderMovementBand,
@@ -1085,10 +1105,14 @@ function ActivePlaybackHost({
     readerHost == null
       ? null
       : readerCornerPolicy({
-          layout: tablet ? "tablet" : "phone",
+          layout: readerLayout,
           host: readerHost,
           movementBand,
-          tabBar: TAB_BAR_CONTENT_HEIGHT,
+          tabBar: readerTabBarReservation({
+            platform: Platform.OS,
+            layout: readerLayout,
+            rootBottomInset: insets.bottom,
+          }),
         })
   const chromeTop =
     readerPolicy?.chrome.top ?? (underHeader ? NATIVE_HEADER_HEIGHT : 0)
