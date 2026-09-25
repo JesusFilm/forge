@@ -10,6 +10,8 @@ module.exports = function withTVHardwareFeatures(config) {
     for (const name of [
       "android.hardware.screen.portrait",
       "android.hardware.microphone",
+      "android.hardware.touchscreen",
+      "android.hardware.faketouch",
     ]) {
       const feature = manifest["uses-feature"].find(
         (entry) => entry.$["android:name"] === name,

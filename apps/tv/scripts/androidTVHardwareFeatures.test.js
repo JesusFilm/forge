@@ -30,6 +30,18 @@ describe("Android TV Play hardware filters", () => {
       },
       {
         $: {
+          "android:name": "android.hardware.touchscreen",
+          "android:required": "false",
+        },
+      },
+      {
+        $: {
+          "android:name": "android.hardware.faketouch",
+          "android:required": "false",
+        },
+      },
+      {
+        $: {
           "android:name": "android.software.leanback",
           "android:required": "true",
         },
@@ -56,6 +68,18 @@ describe("Android TV Play hardware filters", () => {
             "android:required": "false",
           },
         },
+        {
+          $: {
+            "android:name": "android.hardware.touchscreen",
+            "android:required": "true",
+          },
+        },
+        {
+          $: {
+            "android:name": "android.hardware.faketouch",
+            "android:required": "true",
+          },
+        },
       ],
     }
     const mod = { modResults: { manifest } }
@@ -66,7 +90,7 @@ describe("Android TV Play hardware filters", () => {
     expect(JSON.stringify(manifest)).toBe(once)
     expect(
       manifest["uses-feature"].map((entry) => entry.$["android:required"]),
-    ).toEqual(["false", "false", "true"])
+    ).toEqual(["false", "false", "true", "false", "false"])
   })
 
   it("registers the manifest fix in the TV prebuild configuration", () => {

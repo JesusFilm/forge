@@ -13,7 +13,7 @@ tags: ["tv", "android", "release"]
 
 ## Problem
 
-The internal-testing preview for AAB version code 6 includes 12,335 phones and 6,751 tablets. The previous release supports TVs only. The managed prebuild currently emits `android.software.leanback` with `android:required="false"`, allowing Play to distribute the TV interface to non-TV devices.
+The internal-testing preview for AAB version code 6 includes 12,335 phones and 6,751 tablets. The previous release supports TVs only. Making `android.software.leanback` required in version 8 removed phones but also reduced TV coverage from 3,049 to 7. The fresh EAS prebuild omitted `android.hardware.touchscreen` and `android.hardware.faketouch` declarations that appeared in a reused local native directory; Play reported required faketouch as the reason 3,042 TVs were excluded.
 
 ## Entry Points — Read These First
 
@@ -29,7 +29,7 @@ The internal-testing preview for AAB version code 6 includes 12,335 phones and 6
 
 ## What To Build
 
-Set `android.software.leanback` to `android:required="true"` in the TV app's generated manifest. Keep touchscreen, portrait, and microphone optional. Rebuild the AAB with the Google Play upload key and replace the unreleased version 6 bundle.
+Set `android.software.leanback` to `android:required="true"` in the TV app's generated manifest. Explicitly set touchscreen, faketouch, portrait, and microphone to `android:required="false"` in the same plugin so a clean EAS prebuild preserves TV compatibility. Rebuild the AAB with the Google Play upload key and replace the unreleased version 8 bundle.
 
 ## Constraints
 
