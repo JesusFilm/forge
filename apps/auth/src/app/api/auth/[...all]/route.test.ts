@@ -395,6 +395,118 @@ describe("Auth route wrapper", () => {
     expect(authPost).not.toHaveBeenCalled()
   })
 
+  it.each(["login", "consent login"])(
+    "lets a denied Changelog account reach %s before checking the selected account",
+    async (prompt) => {
+      // Use the installed provider and a real in-memory Auth session: merely
+      // mocking a /login redirect missed the production session-dependent loop.
+      const { betterAuth } = await import("better-auth")
+      const { oauthProvider } = await import("@better-auth/oauth-provider")
+      const { jwt } = await import("better-auth/plugins")
+      const callback = "https://changelog.jesusfilm.org/api/auth/callback"
+      const instance = betterAuth({
+        baseURL: "http://localhost:3004",
+        secret: "test-only-secret-for-denied-account-login",
+        emailAndPassword: { enabled: true },
+        plugins: [
+          jwt(),
+          oauthProvider({
+            loginPage: "/login",
+            consentPage: "/consent",
+            scopes: ["openid", "changelog:read"],
+          }),
+        ],
+        logger: { disabled: true },
+      })
+      const providerContext = await instance.$context
+      await providerContext.adapter.create({
+        model: "oauthClient",
+        data: {
+          clientId: "jfp_changelog_production",
+          redirectUris: [callback],
+          scopes: ["openid", "changelog:read"],
+          requirePKCE: true,
+          skipConsent: true,
+          tokenEndpointAuthMethod: "none",
+        },
+      })
+      const signup = await instance.api.signUpEmail({
+        asResponse: true,
+        body: {
+          email: "denied@example.test",
+          name: "Denied",
+          password: "test-password-only-12345",
+        },
+      })
+      const cookie = signup.headers
+        .getSetCookie()
+        .map((value) => value.split(";")[0])
+        .join("; ")
+      const session = await instance.api.getSession({
+        headers: new Headers({ cookie }),
+      })
+      expect(session).not.toBeNull()
+      getSession.mockResolvedValue({
+        ...session,
+        user: { ...session!.user, membershipStatus: "INVITED" },
+      })
+      decideChangelogGrant.mockResolvedValue({
+        allowed: false,
+        reason: "changelog_access_denied",
+      })
+      findOAuthClient.mockResolvedValue({
+        disabled: false,
+        redirectUris: [callback],
+      })
+      authGet.mockImplementation((request) =>
+        instance.handler(request as Request),
+      )
+      const url = new URL("http://localhost:3004/api/auth/oauth2/authorize")
+      url.search = new URLSearchParams({
+        client_id: "jfp_changelog_production",
+        redirect_uri: callback,
+        scope: "openid changelog:read",
+        state: "switch-state",
+        response_type: "code",
+        code_challenge: "a".repeat(43),
+        code_challenge_method: "S256",
+        prompt,
+      }).toString()
+      const { GET } = await import("./route")
+      const context = {
+        params: Promise.resolve({ all: ["oauth2", "authorize"] }),
+      }
+      const login = await GET(
+        new Request(url, { headers: { cookie } }),
+        context,
+      )
+
+      expect(login.status).toBe(302)
+      const destination = new URL(login.headers.get("location")!, url)
+      expect(destination.pathname).toBe("/login")
+      expect(destination.searchParams.has("sig")).toBe(true)
+      expect(decideChangelogGrant).not.toHaveBeenCalled()
+      const forwarded = authGet.mock.calls[0]?.[0] as Request
+      expect(new URL(forwarded.url).searchParams.get("prompt")).toBe(prompt)
+
+      // The sign-in continuation consumes prompt=login. Choosing the denied
+      // account again must still fail before the provider can issue a code.
+      authGet.mockClear()
+      url.searchParams.delete("prompt")
+      const denied = await GET(
+        new Request(url, { headers: { cookie } }),
+        context,
+      )
+      expect(
+        new URL(denied.headers.get("location")!).searchParams.get("error"),
+      ).toBe("access_denied")
+      expect(authGet).not.toHaveBeenCalled()
+      expect(decideChangelogGrant).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: session!.user.id }),
+      )
+    },
+  )
+
   it("downscopes an authenticated Changelog authorize request before the provider sees it", async () => {
     getSession.mockResolvedValueOnce({
       session: { id: "session_123" },
@@ -574,31 +686,39 @@ describe("Auth route wrapper", () => {
     )
   })
 
-  it("returns a no-store OAuth denial without invoking the provider", async () => {
-    getSession.mockResolvedValueOnce({
-      session: { id: "session_123" },
-      user: { id: "user_123", membershipStatus: "ACTIVE" },
-    })
-    decideChangelogGrant.mockResolvedValueOnce({
-      allowed: false,
-      reason: "changelog_access_denied",
-    })
-    const { GET } = await import("./route")
-    const response = await GET(
-      new Request(
-        "http://localhost:3004/api/auth/oauth2/authorize?client_id=codex_dynamic&scope=changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp",
-      ),
-      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
-    )
+  it.each([
+    "",
+    "&prompt=consent",
+    "&prompt=login&prompt=consent",
+    "&prompt=login%09consent",
+  ])(
+    "returns a no-store OAuth denial without invoking the provider (%s)",
+    async (prompt) => {
+      getSession.mockResolvedValueOnce({
+        session: { id: "session_123" },
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+      })
+      decideChangelogGrant.mockResolvedValueOnce({
+        allowed: false,
+        reason: "changelog_access_denied",
+      })
+      const { GET } = await import("./route")
+      const response = await GET(
+        new Request(
+          `http://localhost:3004/api/auth/oauth2/authorize?client_id=codex_dynamic&scope=changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp${prompt}`,
+        ),
+        { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+      )
 
-    expect(response.status).toBe(403)
-    await expect(response.json()).resolves.toEqual({
-      error: "access_denied",
-      error_description: "Changelog access is not available.",
-    })
-    expect(response.headers.get("cache-control")).toBe("no-store")
-    expect(authGet).not.toHaveBeenCalled()
-  })
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toEqual({
+        error: "access_denied",
+        error_description: "Changelog access is not available.",
+      })
+      expect(response.headers.get("cache-control")).toBe("no-store")
+      expect(authGet).not.toHaveBeenCalled()
+    },
+  )
 
   it("returns invalid_target for an invalid Changelog resource", async () => {
     getSession.mockResolvedValueOnce({
@@ -691,32 +811,34 @@ describe("Auth route wrapper", () => {
     expect(authGet).not.toHaveBeenCalled()
   })
 
-  it("revalidates the signed consent continuation before native code creation", async () => {
-    getSession.mockResolvedValueOnce({
-      session: { id: "session_123" },
-      user: { id: "user_123", membershipStatus: "ACTIVE" },
-    })
-    decideChangelogGrant.mockResolvedValueOnce({
-      allowed: false,
-      reason: "changelog_grant_changed",
-    })
-    const { POST } = await import("./route")
-    const response = await POST(
-      new Request("http://localhost:3004/api/auth/oauth2/consent", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          accept: true,
-          oauth_query:
-            "client_id=codex_dynamic&scope=openid+changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp&sig=signed",
+  it.each(["", "&prompt=login"])(
+    "revalidates the signed consent continuation before native code creation (%s)",
+    async (prompt) => {
+      getSession.mockResolvedValueOnce({
+        session: { id: "session_123" },
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+      })
+      decideChangelogGrant.mockResolvedValueOnce({
+        allowed: false,
+        reason: "changelog_grant_changed",
+      })
+      const { POST } = await import("./route")
+      const response = await POST(
+        new Request("http://localhost:3004/api/auth/oauth2/consent", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            accept: true,
+            oauth_query: `client_id=codex_dynamic&scope=openid+changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp&sig=signed${prompt}`,
+          }),
         }),
-      }),
-      { params: Promise.resolve({ all: ["oauth2", "consent"] }) },
-    )
+        { params: Promise.resolve({ all: ["oauth2", "consent"] }) },
+      )
 
-    expect(response.status).toBe(403)
-    expect(authPost).not.toHaveBeenCalled()
-  })
+      expect(response.status).toBe(403)
+      expect(authPost).not.toHaveBeenCalled()
+    },
+  )
 
   it.each([
     {
