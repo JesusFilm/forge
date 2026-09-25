@@ -11,6 +11,7 @@ import { READER_COPY } from "../../lib/bible/reader/copy"
 import type { TranslationDownloadState } from "../../lib/bible/repository/translationDownloads"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
+import { ChapterPill } from "./ChapterPill"
 import { ReaderGlassButton } from "./ReaderGlassButton"
 
 type IconName = ComponentProps<typeof Ionicons>["name"]
@@ -23,6 +24,9 @@ export type ReaderTopBarProps = {
   /** The pill's reference in the shown numbering, or null while waiting. */
   passage: string | null
   onPressPassage: () => void
+  /** R39: a new value animates the pill; U8 counts chapter changes. */
+  pulse: number
+  reduceMotion: boolean
   download: {
     state: TranslationDownloadState | null
     accessibilityLabel: string
@@ -52,6 +56,8 @@ export function ReaderTopBar({
   onBack,
   passage,
   onPressPassage,
+  pulse,
+  reduceMotion,
   download,
   onPressDownload,
   onPressSettings,
@@ -77,9 +83,8 @@ export function ReaderTopBar({
             <Ionicons name="chevron-back" size={24} color={tokens.icon} />
           </ReaderGlassButton>
         )}
-        <ReaderGlassButton
+        <ChapterPill
           tokens={tokens}
-          shape="pill"
           accessibilityLabel={
             passage
               ? READER_COPY.choosePassage(passage)
@@ -87,7 +92,8 @@ export function ReaderTopBar({
           }
           onPress={onPressPassage}
           disabled={passage === null}
-          style={styles.pill}
+          pulse={pulse}
+          reduceMotion={reduceMotion}
         >
           <Text
             style={[styles.passage, { color: tokens.text }]}
@@ -96,7 +102,7 @@ export function ReaderTopBar({
           >
             {passage ?? " "}
           </Text>
-        </ReaderGlassButton>
+        </ChapterPill>
       </View>
       <View style={styles.trailing} pointerEvents="box-none">
         <ReaderGlassButton
@@ -146,9 +152,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     marginLeft: 8,
-  },
-  pill: {
-    flexShrink: 1,
   },
   passage: {
     fontSize: 17,

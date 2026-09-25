@@ -19,6 +19,7 @@ import {
 import { readerStartRef, type ReadingPositionSnapshot } from "../position/store"
 import { chapterFailure, type ChapterFailureReason } from "../repository/errors"
 import {
+  toBsbRef,
   toTranslationRef,
   type ChapterRequest,
   type ChapterResolution,
@@ -65,6 +66,9 @@ export type ReaderChapter = {
   retry(): void
   /** R31: show a translation on the device, for this session only. */
   switchToOnDevice(): void
+  /** U8's moves: shows `target`, in the numbers of `translationId`, and saves
+   *  it in BSB numbers (R38). A stop that BSB lacks still shows (R42). */
+  goTo(target: VerseRef, translationId: string): void
 }
 
 export type ReaderChapterInput = {
@@ -91,6 +95,19 @@ type ShownState = {
 }
 
 type ChapterState = { key: string; result: ChapterResolution }
+
+/** A stop the store cannot hold, such as a Synodal Psalm title (R38, R42). */
+type LocalStop = {
+  translationId: string
+  /** The stop, in that translation's numbers. */
+  ref: VerseRef
+  /** The store's BSB reference for it; any other value drops this stop. */
+  anchor: VerseRef
+}
+
+function sameRef(a: VerseRef, b: VerseRef): boolean {
+  return a.book === b.book && a.chapter === b.chapter && a.verse === b.verse
+}
 
 function requestKey(request: ChapterRequest, attempt: number): string {
   const { translationId, bookId, chapter, sha256 } = request
@@ -122,6 +139,7 @@ export function useReaderChapter(input: ReaderChapterInput): ReaderChapter {
   })
   const [shownState, setShownState] = useState<ShownState | null>(null)
   const [chapterState, setChapterState] = useState<ChapterState | null>(null)
+  const [localStop, setLocalStop] = useState<LocalStop | null>(null)
 
   useEffect(() => {
     if (!focused) return
@@ -216,8 +234,18 @@ export function useReaderChapter(input: ReaderChapterInput): ReaderChapter {
       (shownState.choiceKey === choiceKey && shownState.book === ref.book))
   const shown = shownUsable ? shownState.shown : null
 
+  const localUsable =
+    localStop !== null &&
+    shown !== null &&
+    ref !== null &&
+    localStop.translationId === shown.translation.id &&
+    sameRef(localStop.anchor, ref)
   const translationRef =
-    shown && ref ? toTranslationRef(ref, shown.translation.id) : null
+    shown && ref
+      ? localUsable
+        ? localStop.ref
+        : toTranslationRef(ref, shown.translation.id)
+      : null
   const request: ChapterRequest | null =
     shown && ref && translationRef
       ? {
@@ -314,5 +342,21 @@ export function useReaderChapter(input: ReaderChapterInput): ReaderChapter {
     }
   }, [services, switchTarget])
 
-  return { state, catalog, offline, retry, switchToOnDevice }
+  const { positionStore } = services
+  const goTo = useCallback(
+    (target: VerseRef, translationId: string) => {
+      const bsb = toBsbRef(target, translationId)
+      const saved = positionStore.moveTo(bsb)
+      // A verse BSB rejects keeps the last saved one as its anchor.
+      const anchor = saved ? bsb : readerStartRef(positionStore.getSnapshot())
+      const exact =
+        saved && sameRef(toTranslationRef(bsb, translationId), target)
+      setLocalStop(
+        exact || !anchor ? null : { translationId, ref: target, anchor },
+      )
+    },
+    [positionStore],
+  )
+
+  return { state, catalog, offline, retry, switchToOnDevice, goTo }
 }

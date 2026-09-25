@@ -5,7 +5,10 @@ import {
   StyleSheet,
   Text,
   View,
+  type AccessibilityActionEvent,
   type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
@@ -16,6 +19,7 @@ import {
   planFit,
   type VerseFit,
 } from "../../lib/bible/fit/fitVerse"
+import type { ScrollEdges } from "../../lib/bible/movement/gesture"
 import { READER_COPY } from "../../lib/bible/reader/copy"
 import { stopRange, verseRangeLabel } from "../../lib/bible/reader/labels"
 import type {
@@ -43,6 +47,19 @@ export type VerseAppearance = {
   verseNumbers: boolean
 }
 
+/** The screen reader's verse moves (KTD14). */
+export type VerseAction =
+  | "increment"
+  | "decrement"
+  | "nextChapter"
+  | "previousChapter"
+
+export type VerseAccessibilityMove = {
+  /** Reads the verse, the total, and the chapter. */
+  value: string
+  onAction: (action: VerseAction) => void
+}
+
 export type VerseViewProps = {
   /** One reader stop: a verse, or a gap that shows the note (R21). */
   stop: ChapterPosition
@@ -52,17 +69,56 @@ export type VerseViewProps = {
   /** The verse box's height (KTD16); the verse never grows past it. */
   areaHeight: number
   columnWidth: number
+  /** KTD14: the verse is an adjustable control that moves the reader. */
+  accessibilityMove?: VerseAccessibilityMove
+  /** KTD13: a long verse reports its scroll edges; null when it fits. */
+  onScrollEdges?: (edges: ScrollEdges | null) => void
 }
 
-// The centered verse (R7, R20, R21, R32). It only draws and fits; U8 wraps
-// the verse area around it for its gestures.
+const VERSE_ACTIONS: { name: VerseAction; label: string }[] = [
+  { name: "increment", label: READER_COPY.movement.nextVerse },
+  { name: "decrement", label: READER_COPY.movement.previousVerse },
+  { name: "nextChapter", label: READER_COPY.movement.nextChapter },
+  { name: "previousChapter", label: READER_COPY.movement.previousChapter },
+]
+
+function isVerseAction(name: string): name is VerseAction {
+  return VERSE_ACTIONS.some((action) => action.name === name)
+}
+
+/** The adjustable role and actions, for the verse and for the gap note. */
+function adjustableProps(move: VerseAccessibilityMove | undefined) {
+  if (!move) return {}
+  return {
+    accessibilityRole: "adjustable" as const,
+    accessibilityValue: { text: move.value },
+    // TalkBack registers only declared actions; iOS also infers the first two.
+    accessibilityActions: VERSE_ACTIONS,
+    onAccessibilityAction: (event: AccessibilityActionEvent) => {
+      const { actionName } = event.nativeEvent
+      if (isVerseAction(actionName)) move.onAction(actionName)
+    },
+  }
+}
+
+/** Points of slack at each scroll edge, for a fractional offset. */
+const EDGE_SLOP = 1
+
+// The centered verse (R7, R20, R21, R32). It draws and fits the verse; U8's
+// ReaderGestures wraps the verse area and moves the reader.
 export function VerseView(props: VerseViewProps) {
-  const { stop, tokens } = props
+  const { stop, tokens, onScrollEdges } = props
+  const isGap = stop.kind === "gap"
+  useEffect(() => {
+    if (isGap) onScrollEdges?.(null)
+  }, [isGap, onScrollEdges])
   if (stop.kind === "gap") {
     return (
       <Text
         testID="bible-missing-verse"
+        accessible
         style={[styles.note, { color: tokens.secondaryText }]}
+        {...adjustableProps(props.accessibilityMove)}
       >
         {READER_COPY.missingVerse(stop.number)}
       </Text>
@@ -105,6 +161,8 @@ function FittedVerse({
   tokens,
   areaHeight,
   columnWidth,
+  accessibilityMove,
+  onScrollEdges,
 }: VerseViewProps & { verse: Verse }) {
   const { chosenSize, osFontScale } = appearance
   const plainText = verse.lines.map((line) => line.text).join(" ")
@@ -147,6 +205,21 @@ function FittedVerse({
     )
   }, [measureKey, doneFit?.size, doneFit?.scroll])
   const fit = doneFit ?? (settled?.key === measureKey ? settled.fit : null)
+
+  // A new scroll view starts at its top; a verse that fits reports null.
+  const scrolls = fit?.scroll === true
+  useEffect(() => {
+    onScrollEdges?.(scrolls ? { atTop: true, atBottom: false } : null)
+  }, [scrolls, measureKey, onScrollEdges])
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
+    onScrollEdges?.({
+      atTop: contentOffset.y <= EDGE_SLOP,
+      atBottom:
+        contentOffset.y + layoutMeasurement.height >=
+        contentSize.height - EDGE_SLOP,
+    })
+  }
 
   const record = useCallback(
     (size: number, height: number) =>
@@ -196,12 +269,17 @@ function FittedVerse({
       )}
       {fit?.scroll ? (
         <ScrollView
+          // A new verse starts at its top, not at the last verse's offset.
+          key={measureKey}
           testID="bible-verse-scroll"
           style={{ width: columnWidth, height: areaHeight }}
           showsVerticalScrollIndicator
+          onScroll={onScroll}
+          scrollEventThrottle={16}
         >
           <VerseColumn
             accessibilityLabel={accessibilityLabel}
+            accessibilityMove={accessibilityMove}
             visible
             width={columnWidth}
           >
@@ -211,6 +289,7 @@ function FittedVerse({
       ) : (
         <VerseColumn
           accessibilityLabel={accessibilityLabel}
+          accessibilityMove={accessibilityMove}
           visible={fit !== null}
           width={columnWidth}
         >
@@ -223,6 +302,7 @@ function FittedVerse({
 
 type VerseColumnProps = {
   accessibilityLabel: string
+  accessibilityMove: VerseAccessibilityMove | undefined
   /** Hidden until the fit settles, so the verse never flickers through sizes. */
   visible: boolean
   width: number
@@ -231,6 +311,7 @@ type VerseColumnProps = {
 
 function VerseColumn({
   accessibilityLabel,
+  accessibilityMove,
   visible,
   width,
   children,
@@ -244,6 +325,7 @@ function VerseColumn({
       accessibilityLabel={accessibilityLabel}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? "auto" : "no-hide-descendants"}
+      {...adjustableProps(accessibilityMove)}
     >
       {children}
     </View>

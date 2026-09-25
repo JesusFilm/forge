@@ -46,6 +46,24 @@ export function readerFooterHeight(layout: ReaderLayout): number {
   return layout === "phone" ? shared + rows.credit : shared
 }
 
+/** R11: the arrow pair's row above the footer, one control and a gap. */
+export const READER_ARROW_ROW_HEIGHT = READER_TOUCH_TARGET + 8
+
+/** R15: the hint's row, one line of text and room for its bounce. */
+export const READER_HINT_ROW_HEIGHT = 32
+
+// The band above the footer that the hint and the arrow pair use (U8). The
+// verse box ends above it (KTD16), and U13's bottom corners must clear it.
+export function readerMovementBandHeight(input: {
+  arrows: boolean
+  hint: boolean
+}): number {
+  return (
+    (input.arrows ? READER_ARROW_ROW_HEIGHT : 0) +
+    (input.hint ? READER_HINT_ROW_HEIGHT : 0)
+  )
+}
+
 export const READER_CHROME_HEIGHTS = Object.freeze({
   topBar: READER_TOP_BAR_HEIGHT,
   footer: Object.freeze({

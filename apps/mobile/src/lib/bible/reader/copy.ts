@@ -31,6 +31,37 @@ export const READER_COPY = {
     first === last
       ? `Verse ${first}. ${text}`
       : `Verses ${first} to ${last}. ${text}`,
+  /** U8: moves by swipe, button, and screen reader (R11 to R16, R39). */
+  movement: {
+    /** R15: the hint above the footer. */
+    hint: "Swipe up for verses, sideways for chapters",
+    previousVerse: "Previous verse",
+    nextVerse: "Next verse",
+    previousChapter: "Previous chapter",
+    nextChapter: "Next chapter",
+    /** R14 and R13: only the two ends of the Bible stop a move. */
+    noVerseBefore: "No verse comes before this one",
+    noVerseAfter: "No verse follows this one",
+    noChapterBefore: "No chapter comes before this one",
+    noChapterAfter: "No chapter follows this one",
+    /** Said to a screen reader after each chapter change. */
+    chapterOpened: (chapter: string) => `Opened ${chapter}`,
+    /** KTD14: the verse control's value reads the verse, total, and chapter. */
+    verseValue: (
+      first: number,
+      last: number,
+      total: number,
+      chapter: string,
+    ) =>
+      first === last
+        ? `Verse ${first} of ${total}, ${chapter}`
+        : `Verses ${first} to ${last} of ${total}, ${chapter}`,
+    /** R16: the first-run swipe demonstration. */
+    demoVerse: "Swipe up for the next verse",
+    demoChapter: "Swipe left for the next chapter",
+    demoSkip: "Tap to skip",
+    demoSkipLabel: "Skip the swipe demonstration",
+  },
   download: {
     start: (name: string) => `Download ${name}`,
     onDevice: (name: string) => `${name} is on this device`,

@@ -8,6 +8,7 @@ import {
   readerBottomInset,
   readerChromeBand,
   readerFooterHeight,
+  readerMovementBandHeight,
 } from "../chrome"
 
 describe("reader chrome heights", () => {
@@ -66,5 +67,18 @@ describe("readerChromeBand", () => {
       top: 62 + READER_TOP_BAR_HEIGHT,
       bottom: 956 - 34 - readerFooterHeight("phone"),
     })
+  })
+})
+
+describe("readerMovementBandHeight (U8, KTD16)", () => {
+  it("reserves a full touch-target row for the arrows and a row for the hint", () => {
+    const arrows = readerMovementBandHeight({ arrows: true, hint: false })
+    const hint = readerMovementBandHeight({ arrows: false, hint: true })
+    expect(readerMovementBandHeight({ arrows: false, hint: false })).toBe(0)
+    expect(arrows).toBeGreaterThanOrEqual(READER_TOUCH_TARGET)
+    expect(hint).toBeGreaterThan(0)
+    expect(readerMovementBandHeight({ arrows: true, hint: true })).toBe(
+      arrows + hint,
+    )
   })
 })

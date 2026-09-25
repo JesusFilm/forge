@@ -71,6 +71,12 @@ import {
 } from "../../../test-utils/rnTestRenderer"
 import type { BundledResult } from "../../../lib/bible/data/bundled"
 import { parseCatalog, type Catalog } from "../../../lib/bible/data/catalog"
+import {
+  READER_ONBOARDING_STORAGE_KEY,
+  createReaderOnboardingStore,
+  serializeReaderOnboarding,
+  type ReaderOnboardingStore,
+} from "../../../lib/bible/onboarding/store"
 import { createReadingPositionStore } from "../../../lib/bible/position/store"
 import type { ChapterCache } from "../../../lib/bible/repository/chapterCache"
 import type {
@@ -147,8 +153,8 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-function memoryStorage() {
-  const items = new Map<string, string>()
+function memoryStorage(seed: Record<string, string> = {}) {
+  const items = new Map(Object.entries(seed))
   return {
     getItem: async (key: string) => items.get(key) ?? null,
     setItem: async (key: string, value: string) => {
@@ -336,6 +342,7 @@ async function render(
     host: "tab",
     ...callbacks(),
     services,
+    onboardingStore: onboarding,
     ...extra,
   } as BibleReaderProps
   let renderer!: TestInstance
@@ -355,7 +362,19 @@ async function openAt(services: ReaderServices, ref: VerseRef) {
   services.positionStore.moveTo(ref)
 }
 
+// U8's hint and demo have their own suite (ReaderMovement.test.tsx); here
+// both are done, so the U7 geometry and control counts stay as U7 set them.
+let onboarding: ReaderOnboardingStore
+
 beforeEach(() => {
+  onboarding = createReaderOnboardingStore(
+    memoryStorage({
+      [READER_ONBOARDING_STORAGE_KEY]: serializeReaderOnboarding({
+        hintRetired: true,
+        demoPlayed: true,
+      }),
+    }),
+  )
   mockStatusBars.length = 0
   mockFocus.focused = true
   mockWatchPrefs.audioLanguageIso3 = null
@@ -547,7 +566,12 @@ describe("BibleReader — the verse box", () => {
   it("grows back when the window leaves", async () => {
     const { services } = makeServices()
     await openAt(services, { book: "JHN", chapter: 3, verse: 16 })
-    const props = { host: "tab", ...callbacks(), services } as BibleReaderProps
+    const props = {
+      host: "tab",
+      ...callbacks(),
+      services,
+      onboardingStore: onboarding,
+    } as BibleReaderProps
     const window = { y: mockInsets.top + READER_TOP_BAR_HEIGHT, height: 260 }
     const renderer = await render(services, { floatingObstacles: [window] })
     const covered = Number(
@@ -760,7 +784,12 @@ describe("BibleReader — the chrome", () => {
     await act(async () => {
       renderer.update(
         <StrictMode>
-          <BibleReader host="tab" {...callbacks()} services={services} />
+          <BibleReader
+            host="tab"
+            {...callbacks()}
+            services={services}
+            onboardingStore={onboarding}
+          />
         </StrictMode>,
       )
     })

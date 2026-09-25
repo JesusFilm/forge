@@ -11,6 +11,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 
 import { StrictMode, act } from "react"
 
+import synodalPsalm50 from "../../text/__tests__/fixtures/rus_syn-psa-50.json"
 import {
   TestRenderer,
   type TestInstance,
@@ -31,7 +32,7 @@ import { createChapterRepository } from "../../repository/resolveChapter"
 import type { TranslationDownloadState } from "../../repository/translationDownloads"
 import { createReaderSettingsStore } from "../../settings/store"
 import type { UsfmBookId } from "../../text/books"
-import { parseBookText } from "../../text/normalize"
+import { normalizeChapterFile, parseBookText } from "../../text/normalize"
 import type { BookText, ChapterText } from "../../text/types"
 import type { ReaderServices } from "../services"
 import {
@@ -87,6 +88,12 @@ function bundledBook(bookId: UsfmBookId): BundledResult<BookText> {
   return book.status === "ok"
     ? { status: "ok", value: book.value }
     : { status: "failed", reason: "invalid-data" }
+}
+
+function fixtureText(raw: unknown): ChapterText {
+  const result = normalizeChapterFile(raw)
+  if (result.status !== "ok") throw new TypeError(result.reason)
+  return result.value
 }
 
 function deferred<T>() {
@@ -467,6 +474,90 @@ describe("useReaderChapter under StrictMode", () => {
     await act(async () => latest().retry())
     await flush()
     expect(latest().state.status).toBe("ready")
+  })
+})
+
+describe("useReaderChapter goTo (U8, R38, R42)", () => {
+  // Synodal Psalm 50 is BSB Psalm 51, and its verses 1 and 2 are the title,
+  // which has no BSB counterpart: both save as BSB 51:1 (U2's anchor rule).
+  function synodal() {
+    const parts = makeServices({
+      fetchChapter: async () => ({
+        status: "ok",
+        text: fixtureText(synodalPsalm50),
+      }),
+    })
+    parts.services.positionStore.pickTranslation("rus_syn")
+    parts.services.positionStore.moveTo({ book: "PSA", chapter: 51, verse: 1 })
+    return parts
+  }
+
+  const shownRef = () => {
+    const state = latest().state
+    return state.status === "ready" ? state.translationRef : null
+  }
+  const storedRef = (services: ReaderServices) =>
+    services.positionStore.getSnapshot().ref
+
+  it("shows a title stop that BSB lacks, while the store keeps its anchor", async () => {
+    const { services } = synodal()
+    await render({ services })
+    expect(shownRef()).toEqual({ book: "PSA", chapter: 50, verse: 3 })
+
+    await act(async () =>
+      latest().goTo({ book: "PSA", chapter: 50, verse: 2 }, "rus_syn"),
+    )
+    await flush()
+    expect(shownRef()).toEqual({ book: "PSA", chapter: 50, verse: 2 })
+    expect(storedRef(services)).toEqual({ book: "PSA", chapter: 51, verse: 1 })
+
+    await act(async () =>
+      latest().goTo({ book: "PSA", chapter: 50, verse: 1 }, "rus_syn"),
+    )
+    await flush()
+    expect(shownRef()).toEqual({ book: "PSA", chapter: 50, verse: 1 })
+
+    // Back to a verse BSB has: the same stored anchor now shows 50:3.
+    await act(async () =>
+      latest().goTo({ book: "PSA", chapter: 50, verse: 3 }, "rus_syn"),
+    )
+    await flush()
+    expect(shownRef()).toEqual({ book: "PSA", chapter: 50, verse: 3 })
+
+    await act(async () =>
+      latest().goTo({ book: "PSA", chapter: 50, verse: 4 }, "rus_syn"),
+    )
+    await flush()
+    expect(shownRef()).toEqual({ book: "PSA", chapter: 50, verse: 4 })
+    expect(storedRef(services)).toEqual({ book: "PSA", chapter: 51, verse: 2 })
+  })
+
+  it("drops the title stop when someone else moves the reader", async () => {
+    const { services } = synodal()
+    await render({ services })
+    await act(async () =>
+      latest().goTo({ book: "PSA", chapter: 50, verse: 1 }, "rus_syn"),
+    )
+    await flush()
+    expect(shownRef()).toEqual({ book: "PSA", chapter: 50, verse: 1 })
+
+    // A picker jump or a quote writes the store directly.
+    await act(async () => {
+      services.positionStore.moveTo({ book: "PSA", chapter: 51, verse: 5 })
+    })
+    await flush()
+    expect(shownRef()).toEqual({ book: "PSA", chapter: 50, verse: 7 })
+  })
+
+  it("saves a move in another book's BSB numbers", async () => {
+    const { services } = makeServices()
+    await render({ services })
+    await act(async () =>
+      latest().goTo({ book: "MAT", chapter: 1, verse: 1 }, "BSB"),
+    )
+    await flush()
+    expect(storedRef(services)).toEqual({ book: "MAT", chapter: 1, verse: 1 })
+    expect(shownRef()).toEqual({ book: "MAT", chapter: 1, verse: 1 })
   })
 })
 
