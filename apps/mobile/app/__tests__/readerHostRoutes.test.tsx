@@ -58,11 +58,18 @@ const mockRoute: MockRoute = {
   services: null,
   onboarding: null,
 }
-jest.mock("expo-router", () => ({
-  useIsFocused: () => mockRoute.focused,
-  useLocalSearchParams: () => mockRoute.params,
-  useRouter: () => ({ push: mockRoute.push, back: mockRoute.back }),
-}))
+jest.mock("expo-router", () => {
+  const { createContext, useContext } =
+    require("react") as typeof import("react")
+  // Two mounted hosts can differ in focus; with no provider, the flag decides.
+  const focus = createContext<boolean | null>(null)
+  return {
+    MockFocus: focus.Provider,
+    useIsFocused: () => useContext(focus) ?? mockRoute.focused,
+    useLocalSearchParams: () => mockRoute.params,
+    useRouter: () => ({ push: mockRoute.push, back: mockRoute.back }),
+  }
+})
 jest.mock("../../src/lib/bible/reader/services", () => ({
   getReaderServices: () => mockRoute.services,
 }))
@@ -77,8 +84,8 @@ jest.mock("../../src/lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
 
-import { StrictMode, act, type ComponentType } from "react"
-import { Animated, StyleSheet } from "react-native"
+import { StrictMode, act, type ComponentType, type ReactNode } from "react"
+import { Animated, Dimensions, StyleSheet } from "react-native"
 
 import BibleTabRoute from "../(tabs)/bible"
 import ReaderRoute from "../reader"
@@ -114,9 +121,15 @@ import { parseBookText } from "../../src/lib/bible/text/normalize"
 import type { BookText } from "../../src/lib/bible/text/types"
 import type { VerseRef } from "../../src/lib/bible/versification/convert"
 import {
+  createNativeLayout,
+  type NativeFrame,
+  type NativeLayout,
+} from "../../src/test-utils/fabricLayout"
+import {
   TestRenderer,
   type NodePath,
   type NodeRequireLike,
+  type RenderedNode,
   type TestInstance,
 } from "../../src/test-utils/rnTestRenderer"
 
@@ -168,8 +181,13 @@ const memoryCache: ChapterCache = {
 const JOHN_3_16: VerseRef = { book: "JHN", chapter: 3, verse: 16 }
 const GENESIS_1_1: VerseRef = { book: "GEN", chapter: 1, verse: 1 }
 
+type LoadBook = (bookId: UsfmBookId) => Promise<BundledResult<BookText>>
+
 /** The app's services with a position store that may hold a saved verse. */
-function install(savedRef: VerseRef | null = null): ReadingPositionStore {
+function install(
+  savedRef: VerseRef | null = null,
+  loadBook: LoadBook = async (bookId) => bundledBook(bookId),
+): ReadingPositionStore {
   const bundled: TranslationDownloadState = { kind: "bundled" }
   const notDownloaded: TranslationDownloadState = { kind: "not-downloaded" }
   const downloads = {
@@ -193,7 +211,7 @@ function install(savedRef: VerseRef | null = null): ReadingPositionStore {
   )
   const services: ReaderServices = {
     repository: createChapterRepository({
-      loadBundledBook: async (bookId) => bundledBook(bookId),
+      loadBundledBook: loadBook,
       downloads,
       cache: memoryCache,
       fetchChapter: async () => ({ status: "failed", reason: "offline" }),
@@ -524,5 +542,172 @@ describe.each([
       jest.mocked(presentReaderDownloadPrompt).mock.calls[0]?.[0],
     ).toMatchObject({ translation: { id: "BSB" }, ref: JOHN_3_16 })
     expect(mockRoute.push).not.toHaveBeenCalled()
+  })
+})
+
+// KTD16 on Android: the verse hides until its measuring copy reports a height.
+// A chapter from memory can show before the reader's first layout; then both
+// layouts land in one event flush. Seen on a Pixel 9a, 2026-09-25.
+describe("the verse fit when the chapter shows before the reader's first layout", () => {
+  // SYNTHETIC Pixel 9a window. Dimensions.js divides pixels by the scale in 64
+  // bits, and Yoga lays the reader out in 32 bits, so the two widths differ.
+  const PIXEL_9A = {
+    width: 1080 / 2.625,
+    height: 2424 / 2.625,
+    scale: 2.625,
+    fontScale: 1,
+  }
+  const ROMANS_8_28: VerseRef = { book: "ROM", chapter: 8, verse: 28 }
+  const ROMANS_8_1: VerseRef = { book: "ROM", chapter: 8, verse: 1 }
+  const GENESIS_1_26: VerseRef = { book: "GEN", chapter: 1, verse: 26 }
+  /** SYNTHETIC: the verse is 120 points tall at every size, so it fits. */
+  const VERSE_HEIGHT = 120
+  const originalWindow = Dimensions.get("window")
+
+  beforeEach(() => {
+    act(() => {
+      Dimensions.set({ window: PIXEL_9A, screen: PIXEL_9A })
+    })
+  })
+  afterEach(() => {
+    act(() => {
+      Dimensions.set({ window: originalWindow, screen: originalWindow })
+    })
+  })
+
+  function frameOf(node: RenderedNode): NativeFrame | null {
+    const testID = String(node.props.testID ?? "")
+    if (testID === "bible-reader") {
+      const { width, height } = Dimensions.get("window")
+      return { x: 0, y: 0, width, height }
+    }
+    if (!testID.startsWith("bible-verse-measure-")) return null
+    const { width } = StyleSheet.flatten(node.props.style) as { width: number }
+    return { x: 0, y: 0, width, height: VERSE_HEIGHT }
+  }
+
+  /** Book reads wait for `release`, as a read from disk takes a while. */
+  function slowBooks() {
+    const waiting: (() => void)[] = []
+    const load: LoadBook = (bookId) =>
+      new Promise((resolve) => {
+        waiting.push(() => resolve(bundledBook(bookId)))
+      })
+    return {
+      load,
+      pending: () => waiting.length,
+      release: async () => {
+        for (const read of waiting.splice(0)) read()
+        await flush()
+      },
+    }
+  }
+
+  type FocusProvider = ComponentType<{ value: boolean; children: ReactNode }>
+
+  async function mountHost(Route: ComponentType, focused: boolean) {
+    const { MockFocus } = jest.requireMock<{ MockFocus: FocusProvider }>(
+      "expo-router",
+    )
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <StrictMode>
+          <MockFocus value={focused}>
+            <Route />
+          </MockFocus>
+        </StrictMode>,
+      )
+    })
+    mounted.push(renderer)
+    await flush()
+    return renderer
+  }
+
+  async function unmountHost(renderer: TestInstance) {
+    await act(async () => renderer.unmount())
+    mounted.splice(mounted.indexOf(renderer), 1)
+  }
+
+  /** The fit's own signal: 0 while the verse hides, 1 once it settles. */
+  function verseOpacity(renderer: TestInstance): unknown {
+    const verses = renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" && node.props.testID === "bible-verse",
+    )
+    expect(verses).toHaveLength(1)
+    return (StyleSheet.flatten(verses[0]!.props.style) as { opacity?: number })
+      .opacity
+  }
+
+  /** A host whose first read comes from disk: its root layout lands first. */
+  async function openFromDisk(
+    Route: ComponentType,
+    focused: boolean,
+    books: ReturnType<typeof slowBooks>,
+    layout: NativeLayout,
+  ) {
+    const renderer = await mountHost(Route, focused)
+    expect(books.pending()).toBe(1)
+    await layout.beat(renderer)
+    await books.release()
+    await layout.settle(renderer)
+    expect(verseOpacity(renderer)).toBe(1)
+    return renderer
+  }
+
+  it.each([
+    ["the saved verse", ROMANS_8_28],
+    ["another verse of the saved chapter", ROMANS_8_1],
+  ])(
+    "shows the verse when a link pushes %s over the blurred tab",
+    async (_case, pushedRef) => {
+      const books = slowBooks()
+      const position = install(ROMANS_8_28, books.load)
+      await position.hydrate()
+      const layout = createNativeLayout(frameOf)
+      // The viewer is on Home; the Bible tab showed Romans 8:28 before.
+      await openFromDisk(BibleTabRoute, false, books, layout)
+
+      mockRoute.params = readerHref(pushedRef, "link").params
+      const pushed = await mountHost(ReaderRoute, true)
+      // Romans comes from memory, so the verse is there before any layout.
+      expect(books.pending()).toBe(0)
+      expect(position.getSnapshot().ref).toEqual(pushedRef)
+      expect(verseOpacity(pushed)).toBe(0)
+
+      await layout.settle(pushed)
+      expect(verseOpacity(pushed)).toBe(1)
+    },
+  )
+
+  it("shows the verse on the Bible tab's first open after a push read its book", async () => {
+    const books = slowBooks()
+    install(null, books.load)
+    const layout = createNativeLayout(frameOf)
+    mockRoute.params = readerHref(ROMANS_8_28, "quote").params
+    const pushed = await openFromDisk(ReaderRoute, true, books, layout)
+    await unmountHost(pushed)
+
+    // The tab mounts on its first focus, and Romans comes from memory.
+    const tab = await mountHost(BibleTabRoute, true)
+    expect(books.pending()).toBe(0)
+    expect(verseOpacity(tab)).toBe(0)
+
+    await layout.settle(tab)
+    expect(verseOpacity(tab)).toBe(1)
+  })
+
+  // The device control: a push to another book reads that book from disk, so
+  // the reader's first layout lands before the verse shows.
+  it("shows the verse when a link pushes another book over the blurred tab", async () => {
+    const books = slowBooks()
+    const position = install(GENESIS_1_26, books.load)
+    await position.hydrate()
+    const layout = createNativeLayout(frameOf)
+    await openFromDisk(BibleTabRoute, false, books, layout)
+
+    mockRoute.params = readerHref(ROMANS_8_28, "link").params
+    await openFromDisk(ReaderRoute, true, books, layout)
   })
 })

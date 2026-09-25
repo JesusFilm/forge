@@ -256,7 +256,10 @@ function FittedVerse({
   return (
     <>
       {plan.status === "measure" && (
+        // A native view reports onLayout only for a new frame, so a new key
+        // with the old frame never gets a height. New views always report.
         <View
+          key={measureKey}
           style={styles.measuring}
           pointerEvents="none"
           accessibilityElementsHidden

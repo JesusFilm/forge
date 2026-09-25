@@ -61,6 +61,7 @@ import * as Clipboard from "expo-clipboard"
 
 import t4tJohn4 from "../../../lib/bible/text/__tests__/fixtures/eng_t4t-jhn-4.json"
 import synodalPsalm50 from "../../../lib/bible/text/__tests__/fixtures/rus_syn-psa-50.json"
+import { createNativeLayout } from "../../../test-utils/fabricLayout"
 import {
   TestRenderer,
   type NodePath,
@@ -1249,6 +1250,54 @@ describe("the verse scrubber (R18, KD7)", () => {
         touch(inStrip, inStrip, true),
       ),
     ).toBe(true)
+  })
+
+  // KTD16: one event flush can report a preview's measure and move the thumb
+  // on. The verse after it must still show when its copy keeps the old frame.
+  it("shows the verse the thumb moves to in the flush that measures the last one", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 1 })
+    // SYNTHETIC: each verse is 200 points tall, as two short verses can be.
+    const layout = createNativeLayout((node) =>
+      String(node.props.testID ?? "").startsWith("bible-verse-measure-")
+        ? { x: 0, y: 0, width: Number(flat(node).width), height: 200 }
+        : null,
+    )
+    const verseOpacity = () => {
+      const verses = byTestId(renderer, "bible-verse")
+      expect(verses).toHaveLength(1)
+      return flat(verses[0]!).opacity
+    }
+    await layoutScrubber(renderer)
+    const start = thumbCenter(renderer)
+    const at = (fraction: number) => ({
+      x: COLUMN.left + fraction * COLUMN.width,
+      y: start.y,
+    })
+    const move = (to: Point, from: Point) =>
+      thumbHandlers(renderer).onResponderMove(touch(to, from))
+    expect(
+      thumbHandlers(renderer).onStartShouldSetResponder(
+        touch(start, start, true),
+      ),
+    ).toBe(true)
+    await act(async () =>
+      thumbHandlers(renderer).onResponderGrant(touch(start, start, true)),
+    )
+    await act(async () => move(at(0.25), start))
+    expect(pillPassage(renderer)).toBe("John 3:9")
+
+    await layout.beat(renderer, () => move(at(0.5), at(0.25)))
+    await layout.settle(renderer)
+    expect(pillPassage(renderer)).toBe("John 3:18")
+    expect(verseOpacity()).toBe(1)
+
+    await act(async () =>
+      thumbHandlers(renderer).onResponderRelease(touch(at(0.5), at(0.5))),
+    )
+    await flush()
+    await layout.settle(renderer)
+    expect(pillPassage(renderer)).toBe("John 3:18")
+    expect(verseOpacity()).toBe(1)
   })
 })
 
