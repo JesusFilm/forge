@@ -7,9 +7,17 @@
 export type DeviceTier = { totalMemoryBytes: number | null }
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-/** Required lazily, so module init and jest never touch the native module. */
+/**
+ * Required lazily, so module init and jest never touch the native module. The
+ * probe comes first: a dev client built before expo-device logs a red box when
+ * the package loads, even when the throw is caught.
+ */
 function readTotalMemory(): unknown {
   try {
+    const { requireOptionalNativeModule } = require("expo") as {
+      requireOptionalNativeModule: (name: string) => unknown
+    }
+    if (requireOptionalNativeModule("ExpoDevice") == null) return null
     return (require("expo-device") as { totalMemory?: unknown }).totalMemory
   } catch {
     return null

@@ -1,6 +1,11 @@
-// The mock stands in for the native module; each test sets what it reports.
+// The mocks stand in for the native module; each test sets what they report.
 const mockDevice: { totalMemory: unknown } = { totalMemory: null }
-jest.mock("expo-device", () => mockDevice)
+const mockDeviceFactory = jest.fn(() => mockDevice)
+jest.mock("expo-device", () => mockDeviceFactory())
+const mockNativeModule: { current: object | null } = { current: {} }
+jest.mock("expo", () => ({
+  requireOptionalNativeModule: () => mockNativeModule.current,
+}))
 
 import { readDeviceTier } from "../deviceTier"
 import { resolvePlayerMode, type PlayerModeInput } from "../playerMode"
@@ -23,9 +28,21 @@ function modeFor(
 
 beforeEach(() => {
   mockDevice.totalMemory = null
+  mockNativeModule.current = {}
 })
 
 describe("readDeviceTier", () => {
+  it("never requires expo-device when the binary lacks its native module", () => {
+    // A dev client built before expo-device logs a red box on the require.
+    jest.resetModules()
+    mockNativeModule.current = null
+    mockDeviceFactory.mockClear()
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fresh = require("../deviceTier") as typeof import("../deviceTier")
+    expect(fresh.readDeviceTier()).toEqual({ totalMemoryBytes: null })
+    expect(mockDeviceFactory).not.toHaveBeenCalled()
+  })
+
   it("passes a reported memory value through in bytes", () => {
     mockDevice.totalMemory = 2.8 * GIB
     expect(readDeviceTier()).toEqual({ totalMemoryBytes: 2.8 * GIB })
