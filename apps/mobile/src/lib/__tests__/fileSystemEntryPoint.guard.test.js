@@ -42,9 +42,23 @@ const DIRECTORY_STATICS = ["pickDirectoryAsync"]
 const DIRECTORY_MEMBERS = ["list", "delete"]
 /** Called on the staged `File` to name it, duplicate it and clear a retry. */
 const FILE_MEMBERS = ["copy", "rename", "delete"]
-/** Called on a bundled Bible `File` to read it (feat-551 U3). */
-const BIBLE_FILE_MEMBERS = ["text"]
+/** Called on a Bible `File`: U3 reads a bundled book; U4 keeps and removes. */
+const BIBLE_FILE_MEMBERS = ["text", "write", "delete"]
+/** Getters that U4 reads to check and measure a Bible file. */
+const BIBLE_FILE_PROPERTIES = ["exists", "size", "modificationTime"]
+/** Called on a Bible `Directory` by U4, and on the entries `list()` gives. */
+const BIBLE_DIRECTORY_MEMBERS = ["create", "list", "delete"]
+const BIBLE_DIRECTORY_PROPERTIES = ["exists", "name"]
+/** U4 downloads a whole translation through this static call. */
+const FILE_STATICS = ["downloadFileAsync"]
+/** `Paths` getters that U4 reads: the two storage roots and the free space. */
+const PATHS_DIRECTORIES = ["document", "cache"]
+const PATHS_NUMBERS = ["availableDiskSpace"]
 const BIBLE_LOADER = "src/lib/bible/data/bundled.ts"
+const BIBLE_REPOSITORY = "src/lib/bible/repository"
+const BIBLE_REPOSITORY_RUNTIME = "downloadRuntime.ts"
+/** The only bindings that a repository file may take from the root. */
+const BIBLE_REPOSITORY_BINDINGS = new Set(["Directory", "File", "Paths"])
 
 /** The two classes the root supplies and the runtime imports from it. */
 const ROOT_CLASSES = ["Directory", "File"]
@@ -81,7 +95,7 @@ function stripComments(source) {
  */
 function capabilityGaps(module) {
   const gaps = []
-  const { Directory, File } = module
+  const { Directory, File, Paths } = module
 
   for (const name of ROOT_CLASSES) {
     if (typeof module[name] !== "function") gaps.push(name)
@@ -89,18 +103,38 @@ function capabilityGaps(module) {
   for (const name of DIRECTORY_STATICS) {
     if (typeof Directory?.[name] !== "function") gaps.push(`Directory.${name}`)
   }
+  for (const name of FILE_STATICS) {
+    if (typeof File?.[name] !== "function") gaps.push(`File.${name}`)
+  }
   if (gaps.length > 0) return gaps
 
   const folder = new Directory("file:///guard/folder/")
-  for (const name of DIRECTORY_MEMBERS) {
+  for (const name of new Set([
+    ...DIRECTORY_MEMBERS,
+    ...BIBLE_DIRECTORY_MEMBERS,
+  ])) {
     if (typeof folder[name] !== "function") gaps.push(`Directory#${name}`)
+  }
+  // A getter reads as a value, so `in` checks that the member exists.
+  for (const name of BIBLE_DIRECTORY_PROPERTIES) {
+    if (!(name in folder)) gaps.push(`Directory#${name}`)
   }
 
   const staged = new File("file:///guard/folder/clip.mp4")
-  for (const name of [...FILE_MEMBERS, ...BIBLE_FILE_MEMBERS]) {
+  for (const name of new Set([...FILE_MEMBERS, ...BIBLE_FILE_MEMBERS])) {
     if (typeof staged[name] !== "function") gaps.push(`File#${name}`)
   }
+  for (const name of BIBLE_FILE_PROPERTIES) {
+    if (!(name in staged)) gaps.push(`File#${name}`)
+  }
   if (typeof staged.name !== "string") gaps.push("File#name")
+
+  for (const name of PATHS_DIRECTORIES) {
+    if (!(Paths?.[name] instanceof Directory)) gaps.push(`Paths.${name}`)
+  }
+  for (const name of PATHS_NUMBERS) {
+    if (typeof Paths?.[name] !== "number") gaps.push(`Paths.${name}`)
+  }
   return gaps
 }
 
@@ -216,6 +250,37 @@ function importedNames(source, specifier) {
   return names
 }
 
+/** Every source file in the Bible repository folder, tests left out. */
+function repositorySources() {
+  const directory = path.join(APP_ROOT, BIBLE_REPOSITORY)
+  return fs
+    .readdirSync(directory)
+    .filter((name) => name.endsWith(".ts"))
+    .map((name) => ({
+      name,
+      source: fs.readFileSync(path.join(directory, name), "utf8"),
+    }))
+}
+
+/** What is wrong with one repository file's imports. Pure, for a control. */
+function repositoryImportProblems(name, source) {
+  const problems = []
+  if (importedNames(source, LEGACY_SPECIFIER).size > 0) {
+    problems.push(`${name} imports ${LEGACY_SPECIFIER}`)
+  }
+  for (const binding of importedNames(source, ROOT_SPECIFIER)) {
+    if (!BIBLE_REPOSITORY_BINDINGS.has(binding)) {
+      problems.push(`${name} imports ${binding}`)
+    }
+  }
+  // One runtime file binds the port, as rawExportRuntime.ts binds its own.
+  const downloads = /\bdownloadFileAsync\b/.test(stripComments(source))
+  if (downloads && name !== BIBLE_REPOSITORY_RUNTIME) {
+    problems.push(`${name} calls downloadFileAsync`)
+  }
+  return problems
+}
+
 describe("raw export imports each file-system binding from the entry point that works", () => {
   it("the root this app imports really supplies every call it makes", () => {
     // The strongest layer: resolve the module and look at what is there, rather
@@ -229,6 +294,11 @@ describe("raw export imports each file-system binding from the entry point that 
 
   it("positive control: the capability reader names the member that is missing", () => {
     class Folder {
+      constructor() {
+        this.exists = false
+        this.name = "folder"
+      }
+      create() {}
       list() {}
       delete() {}
     }
@@ -236,18 +306,36 @@ describe("raw export imports each file-system binding from the entry point that 
     class Staged {
       constructor() {
         this.name = "clip.mp4"
+        this.exists = false
+        this.size = 0
+        this.modificationTime = null
       }
       copy() {}
       delete() {}
       text() {}
+      write() {}
+    }
+    Staged.downloadFileAsync = async () => {}
+    const paths = {
+      document: new Folder(),
+      cache: new Folder(),
+      availableDiskSpace: 1,
     }
 
-    expect(capabilityGaps({ Directory: Folder, File: Staged })).toEqual([
-      "File#rename",
-    ])
+    expect(
+      capabilityGaps({ Directory: Folder, File: Staged, Paths: paths }),
+    ).toEqual(["File#rename"])
+    expect(
+      capabilityGaps({
+        Directory: Folder,
+        File: Staged,
+        Paths: { document: new Folder() },
+      }),
+    ).toEqual(["File#rename", "Paths.cache", "Paths.availableDiskSpace"])
     expect(capabilityGaps({})).toEqual([
       ...ROOT_CLASSES,
       "Directory.pickDirectoryAsync",
+      "File.downloadFileAsync",
     ])
   })
 
@@ -322,6 +410,56 @@ describe("raw export imports each file-system binding from the entry point that 
 
     expect(importedNames(source, ROOT_SPECIFIER).has("File")).toBe(true)
     expect(importedNames(source, LEGACY_SPECIFIER).size).toBe(0)
+  })
+
+  it("the Bible repository takes only root classes, and one file downloads", () => {
+    const sources = repositorySources()
+    // A floor, so an empty or moved folder cannot pass by finding nothing.
+    expect(sources.map((file) => file.name)).toEqual(
+      expect.arrayContaining([
+        "chapterCache.ts",
+        BIBLE_REPOSITORY_RUNTIME,
+        "fetchChapter.ts",
+        "resolveChapter.ts",
+        "storage.ts",
+        "translationDownloads.ts",
+      ]),
+    )
+    expect(
+      sources.flatMap(({ name, source }) =>
+        repositoryImportProblems(name, source),
+      ),
+    ).toEqual([])
+  })
+
+  it("the repository's composition root binds File.downloadFileAsync", () => {
+    const source = fs.readFileSync(
+      path.join(APP_ROOT, BIBLE_REPOSITORY, BIBLE_REPOSITORY_RUNTIME),
+      "utf8",
+    )
+
+    expect(importedNames(source, ROOT_SPECIFIER).has("File")).toBe(true)
+    expect(/\bFile\.downloadFileAsync\(/.test(stripComments(source))).toBe(true)
+  })
+
+  it("positive control: the repository reader names each wrong import", () => {
+    expect(
+      repositoryImportProblems(
+        "cache.ts",
+        'import { File } from "expo-file-system/legacy"\n',
+      ),
+    ).toEqual(["cache.ts imports expo-file-system/legacy"])
+    expect(
+      repositoryImportProblems(
+        "cache.ts",
+        'import { File, getInfoAsync } from "expo-file-system"\n',
+      ),
+    ).toEqual(["cache.ts imports getInfoAsync"])
+    const call = "await File.downloadFileAsync(url, file)\n"
+    expect(repositoryImportProblems("cache.ts", call)).toEqual([
+      "cache.ts calls downloadFileAsync",
+    ])
+    expect(repositoryImportProblems(BIBLE_REPOSITORY_RUNTIME, call)).toEqual([])
   })
 
   it("positive control: the wiring reader catches each swap", () => {
