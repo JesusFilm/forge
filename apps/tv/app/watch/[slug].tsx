@@ -38,6 +38,7 @@ import {
 } from "../../src/components/watch/actionRowScrollGlide"
 import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
 import { ScreenStateView } from "../../src/components/ScreenStateView"
+import { BrandedLoading } from "../../src/components/BrandedLoading"
 import { AndroidLoadingDialog } from "../../src/components/AndroidLoadingDialog"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
@@ -398,7 +399,11 @@ export default function WatchVideoScreen() {
   if (detailsDataState === "loading" && !playerState.isVisible) {
     return (
       <View style={styles.screen}>
-        <ScreenStateView kind="loading" message="Loading movie details…" />
+        {Platform.OS === "android" ? (
+          <BrandedLoading label="Loading movie details" />
+        ) : (
+          <ScreenStateView kind="loading" message="Loading movie details…" />
+        )}
         <AndroidLoadingDialog
           message="Loading movie details…"
           onBack={leaveLoading}
@@ -419,7 +424,7 @@ export default function WatchVideoScreen() {
     ) {
       return (
         <View style={styles.screen}>
-          <ScreenStateView kind="loading" message="Preparing playback…" />
+          <BrandedLoading label="Preparing playback" />
           <AndroidLoadingDialog
             message="Preparing playback…"
             onBack={leaveLoading}

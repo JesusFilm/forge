@@ -43,14 +43,9 @@ class NativeAndroidPlayerModule : Module() {
       loadingDialog?.dismiss()
       val activity = requireNotNull(appContext.currentActivity) { "Activity unavailable" }
       loadingRequestId = requestId
-      loadingDialog = showNativeChoiceDialog(
+      loadingDialog = showBrandedLoadingDialog(
         context = activity,
-        title = message,
-        labels = listOf("Back"),
-        selected = -1,
-        showClose = false,
-        loading = true,
-        onChoice = {},
+        label = message,
         onDismiss = {
           if (loadingRequestId == requestId) {
             loadingDialog = null
