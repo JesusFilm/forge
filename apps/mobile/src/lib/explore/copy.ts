@@ -6,6 +6,7 @@ export const EXPLORE_COPY = {
   keepWatching: "Keep watching",
   keepWatchingHint: "Opens the full video at this point",
   clipSurfaceHint: "Plays or pauses the clip",
+  pagerActions: { next: "Next clip", previous: "Previous clip" },
   descriptionMore: "more",
   descriptionMoreLabel: "Show the full description",
   descriptionLess: "less",

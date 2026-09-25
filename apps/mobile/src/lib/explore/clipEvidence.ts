@@ -10,6 +10,7 @@ import {
   isPlaybackRecorderAvailable,
 } from "../recommendations/playbackRecorderClient"
 import { getRecommendationViewerStore } from "../recommendations/viewerIdentityClient"
+import { parseObject } from "./storage"
 
 /** R32: a clip episode starts once the clip has played this long, unbroken. */
 export const CLIP_EPISODE_START_MS = 3_000
@@ -43,18 +44,10 @@ type StoredClipEvidence = { v: number; s: string; n: number }
 export function parseStoredClipEvidence(
   raw: string | null,
 ): ClipEvidenceCount | null {
-  if (raw == null) return null
-  let data: unknown
-  try {
-    data = JSON.parse(raw)
-  } catch {
-    return null
-  }
-  if (data == null || typeof data !== "object" || Array.isArray(data)) {
-    return null
-  }
-  const stored = data as Partial<Record<keyof StoredClipEvidence, unknown>>
-  if (stored.v !== CLIP_EVIDENCE_VERSION) return null
+  const stored = parseObject(raw) as Partial<
+    Record<keyof StoredClipEvidence, unknown>
+  > | null
+  if (stored == null || stored.v !== CLIP_EVIDENCE_VERSION) return null
   if (
     typeof stored.s !== "string" ||
     stored.s.length === 0 ||

@@ -832,7 +832,7 @@ describe("the first focus (R46, KTD13)", () => {
     })
     await flush()
     expect(video.useVideoPlayer).toHaveBeenCalled()
-    expect(latestInput()).toMatchObject({ hasFocused: true, focused: true })
+    expect(latestInput()).toMatchObject({ focused: true })
     expect(latestInput().wantsClip).toBe(true)
 
     await hand(1)
@@ -1077,7 +1077,6 @@ describe("the overlay (R10, R44)", () => {
       hosts((node) => node.type === "ClipOverlay", currentSlot()),
     ).toHaveLength(1)
     expect(overlay().props).toMatchObject({
-      isCurrent: true,
       player: A,
       muted: false,
     })

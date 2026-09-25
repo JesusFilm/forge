@@ -1,5 +1,5 @@
 /**
- * The Explore feed's vertical pager (U15, KTD1). Three permanent slots hold
+ * The Explore feed's vertical pager (KTD1). Three permanent slots hold
  * what the feed supplies per key, and a swipe rotates roles. Video views go in
  * the underlay: a view inside a slot would change slots and remount.
  */
@@ -18,15 +18,16 @@ import {
 } from "react-native"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
+import { EXPLORE_COPY } from "../../lib/explore/copy"
 
 /** KTD25: the pager rests this long with no new pan before loads may start. */
 export const EXPLORE_PAGER_REST_DWELL_MS = 200
 
 /** A release past this share of the page height commits the move. */
-export const EXPLORE_PAGER_COMMIT_DISTANCE = 0.2
+const EXPLORE_PAGER_COMMIT_DISTANCE = 0.2
 
 /** A release faster than this, in PanResponder's px/ms, commits the move. */
-export const EXPLORE_PAGER_COMMIT_VELOCITY = 0.5
+const EXPLORE_PAGER_COMMIT_VELOCITY = 0.5
 
 /** Vertical travel before the pager takes a pan from its children. */
 const PAN_SLOP_PX = 10
@@ -44,15 +45,10 @@ const SETTLE_SPRING = {
   restSpeedThreshold: 10,
 } as const
 
-export const EXPLORE_PAGER_SLOT_KEYS = [0, 1, 2] as const
+const EXPLORE_PAGER_SLOT_KEYS = [0, 1, 2] as const
 export type ExplorePagerSlotKey = (typeof EXPLORE_PAGER_SLOT_KEYS)[number]
 export type ExplorePagerRole = "previous" | "current" | "next"
 export type ExplorePagerMove = "next" | "previous"
-
-export const EXPLORE_PAGER_ACTION_LABELS: Record<ExplorePagerMove, string> = {
-  next: "Next clip",
-  previous: "Previous clip",
-}
 
 /** R35: spread these on the current clip's focusable element. */
 export type ExplorePagerAccessibility = {
@@ -374,15 +370,7 @@ export function ExplorePager({
   const [height, setHeight] = useState(() => Dimensions.get("window").height)
 
   // The responder is built once, so everything it reads lives in a ref.
-  const live = useRef<LiveProps>({
-    canSwipeNext,
-    canSwipePrevious,
-    onMove,
-    onRest,
-    onGestureLatchChange,
-    reduceMotion,
-  })
-  live.current = {
+  const liveProps: LiveProps = {
     canSwipeNext,
     canSwipePrevious,
     onMove,
@@ -390,6 +378,8 @@ export function ExplorePager({
     onGestureLatchChange,
     reduceMotion,
   }
+  const live = useRef(liveProps)
+  live.current = liveProps
 
   const drag = useRef(new Animated.Value(0)).current
   const settle = useRef(new Animated.Value(0)).current
@@ -413,12 +403,12 @@ export function ExplorePager({
   const accessibility = useMemo<ExplorePagerAccessibility>(() => {
     const actions: ExplorePagerAccessibility["accessibilityActions"] = []
     if (canSwipeNext) {
-      actions.push({ name: "next", label: EXPLORE_PAGER_ACTION_LABELS.next })
+      actions.push({ name: "next", label: EXPLORE_COPY.pagerActions.next })
     }
     if (canSwipePrevious) {
       actions.push({
         name: "previous",
-        label: EXPLORE_PAGER_ACTION_LABELS.previous,
+        label: EXPLORE_COPY.pagerActions.previous,
       })
     }
     return {
@@ -485,13 +475,7 @@ export function ExplorePager({
                 importantForAccessibility={
                   isCurrent ? "auto" : "no-hide-descendants"
                 }
-                style={[
-                  styles.slot,
-                  {
-                    height,
-                    transform: [{ translateY: roleOffset(role) * height }],
-                  },
-                ]}
+                style={underlay.pageStyle(role)}
               >
                 {renderSlot({
                   key,

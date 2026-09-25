@@ -7,6 +7,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
 import { withTimeout } from "../withTimeout"
+import { parseObject, persistQuietly } from "./storage"
+import type { ClipWindow } from "./types"
 
 export const CLIP_RECORD_STORAGE_KEY = "explore-clip-record"
 
@@ -24,7 +26,7 @@ export const CLIP_RECORD_WRITE_INTERVAL_MS = 5000
 export const CLIP_RECORD_HYDRATE_TIMEOUT_MS = 400
 
 /** Ids and slugs come from admin. Bound them so one bad row cannot grow the blob. */
-export const CLIP_RECORD_MAX_ID_LENGTH = 200
+const CLIP_RECORD_MAX_ID_LENGTH = 200
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -39,8 +41,6 @@ export type ClipRecordEntry = {
 }
 
 export type ClipRecordInput = Omit<ClipRecordEntry, "shownAt">
-
-export type RecordedWindow = { startSeconds: number; endSeconds: number }
 
 export type ClipRecordSnapshot = {
   /** Oldest first. */
@@ -177,18 +177,10 @@ export function parseStoredClipRecord(
   now: Date,
 ): ClipRecordSnapshot {
   const empty: ClipRecordSnapshot = { entries: [], lastVisitDate: null }
-  if (raw == null) return empty
-  let data: unknown
-  try {
-    data = JSON.parse(raw)
-  } catch {
-    return empty
-  }
-  if (data == null || typeof data !== "object" || Array.isArray(data)) {
-    return empty
-  }
-  const stored = data as Partial<Record<keyof StoredClipRecord, unknown>>
-  if (stored.v !== CLIP_RECORD_VERSION) return empty
+  const stored = parseObject(raw) as Partial<
+    Record<keyof StoredClipRecord, unknown>
+  > | null
+  if (stored == null || stored.v !== CLIP_RECORD_VERSION) return empty
   if (
     !Array.isArray(stored.ids) ||
     !Array.isArray(stored.langs) ||
@@ -259,19 +251,6 @@ export type ClipRecordStoreDeps = {
 }
 
 export type ClipRecordStore = ReturnType<typeof createClipRecordStore>
-
-/** Settles with the operation and never rejects, even on a synchronous throw.
- *  Resolves true when the operation succeeded. */
-function persistQuietly(operation: () => Promise<unknown>): Promise<boolean> {
-  try {
-    return operation().then(
-      () => true,
-      () => false,
-    )
-  } catch {
-    return Promise.resolve(false)
-  }
-}
 
 export function createClipRecordStore(deps: ClipRecordStoreDeps) {
   let entries: ClipRecordEntry[] = []
@@ -427,9 +406,9 @@ export function createClipRecordStore(deps: ClipRecordStoreDeps) {
     },
 
     /** The recorded windows of one video, ordered by start (R29). */
-    getWindows(videoId: string): RecordedWindow[] {
+    getWindows(videoId: string): ClipWindow[] {
       pruneExpired()
-      const windows: RecordedWindow[] = []
+      const windows: ClipWindow[] = []
       for (const entry of entries) {
         if (entry.videoId !== videoId) continue
         windows.push({
@@ -530,7 +509,6 @@ export function createClipRecordStore(deps: ClipRecordStoreDeps) {
 
 let store: ClipRecordStore | null = null
 
-/** The app-wide clip record store. */
 export function getClipRecordStore(): ClipRecordStore {
   if (store == null) {
     store = createClipRecordStore({

@@ -38,6 +38,12 @@ export type VttLoadFailure = {
 
 export type VttLoadResult = VttLoadSuccess | VttLoadFailure
 
+/** Cues in start order, which the readers need (the overlay binary-searches
+ *  them). `parseVtt` keeps the file's order. */
+export function parseSortedVtt(text: string): VttCue[] {
+  return parseVtt(text).sort((a, b) => a.start - b.start)
+}
+
 /** A typed slot for data derived from one track. Each name must map to one type. */
 export type VttDerivedKey<T> = { readonly name: string; readonly __value?: T }
 
@@ -139,7 +145,7 @@ async function fetchTrack(
     }
     const body = await readCapped(response, VTT_MAX_BYTES)
     if (body.overCap) return failure("over_cap", true, body.bytes)
-    const cues = parseVtt(body.text).sort((a, b) => a.start - b.start)
+    const cues = parseSortedVtt(body.text)
     if (cues.length === 0) return failure("parse_empty", true, body.bytes)
     return { ok: true, cues, bytes: body.bytes }
   } catch {

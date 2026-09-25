@@ -86,7 +86,7 @@ export type ExpoVideoMock = {
   VideoView: jest.Mock
   useVideoPlayer: jest.Mock
   isPictureInPictureSupported: jest.Mock
-  /** The single player every useVideoPlayer call returns (R10: one decoder). */
+  /** The first player (`__players[0]`); the only one unless `players: 2`. */
   __player: FakePlayer
   /** Every player, in call-site order. `__players[0]` is `__player`. */
   __players: FakePlayer[]

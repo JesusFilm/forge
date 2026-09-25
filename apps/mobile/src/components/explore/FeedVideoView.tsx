@@ -1,9 +1,4 @@
-import {
-  Platform,
-  StyleSheet,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native"
+import { Platform, StyleSheet } from "react-native"
 import { VideoView, type VideoContentFit, type VideoPlayer } from "expo-video"
 
 export type FeedVideoViewProps = {
@@ -11,7 +6,6 @@ export type FeedVideoViewProps = {
   player: VideoPlayer
   /** The caller owns the framing. */
   contentFit: VideoContentFit
-  style?: StyleProp<ViewStyle>
 }
 
 /**
@@ -19,15 +13,11 @@ export type FeedVideoViewProps = {
  * have one file to name. It spreads no picture-in-picture prop: a clip never
  * enters the OS window (R3).
  */
-export function FeedVideoView({
-  player,
-  contentFit,
-  style,
-}: FeedVideoViewProps) {
+export function FeedVideoView({ player, contentFit }: FeedVideoViewProps) {
   return (
     <VideoView
       player={player}
-      style={style ?? StyleSheet.absoluteFill}
+      style={StyleSheet.absoluteFill}
       nativeControls={false}
       // iOS 16+ defaults this on, which floats a Live Text button over a
       // paused frame that shows text.

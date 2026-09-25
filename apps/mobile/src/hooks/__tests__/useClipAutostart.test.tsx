@@ -264,10 +264,8 @@ describe("useClipAutostart", () => {
     const gate = renderGate(veiled("two"))
     expect(gate.latest()).toEqual({
       veilVisible: true,
-      spinnerVisible: true,
       image: { kind: "poster", uri: "https://images.example/1.jpg" },
       failed: false,
-      stillWanted: false,
     })
   })
 
@@ -277,10 +275,8 @@ describe("useClipAutostart", () => {
     expect(gate.state().phase).toBe("playing")
     expect(gate.latest()).toEqual({
       veilVisible: false,
-      spinnerVisible: false,
       image: null,
       failed: false,
-      stillWanted: false,
     })
     gate.advance(AUTOSTART_VEIL_TIMEOUT_MS * 2)
     expect(gate.timeouts()).toEqual([])
@@ -319,10 +315,8 @@ describe("useClipAutostart", () => {
     expect(gate.state().phase).toBe("clipFailed")
     expect(gate.latest()).toEqual({
       veilVisible: false,
-      spinnerVisible: false,
       image: null,
       failed: true,
-      stillWanted: true,
     })
     gate.advance(AUTOSTART_VEIL_TIMEOUT_MS * 2)
     expect(gate.timeouts()).toEqual([])
@@ -343,10 +337,8 @@ describe("useClipAutostart", () => {
     expect(gate.state().phase).toBe("clipFailed")
     expect(gate.latest()).toEqual({
       veilVisible: false,
-      spinnerVisible: false,
       image: null,
       failed: true,
-      stillWanted: false,
     })
   })
 
@@ -369,10 +361,8 @@ describe("useClipAutostart", () => {
     expect(gate.state().phase).toBe("paused")
     expect(gate.latest()).toEqual({
       veilVisible: false,
-      spinnerVisible: false,
       image: null,
       failed: false,
-      stillWanted: false,
     })
     gate.advance(AUTOSTART_VEIL_TIMEOUT_MS * 2)
     expect(gate.timeouts()).toEqual([])
@@ -380,7 +370,6 @@ describe("useClipAutostart", () => {
 
   it("shows the still under the veil in one-player mode once it has loaded", () => {
     const gate = renderGate(veiled("one"), { stillUri: stillOf(1) })
-    expect(gate.latest().stillWanted).toBe(true)
     // The still is a cold Mux render, so the poster covers until it loads.
     expect(gate.latest().image).toEqual({
       kind: "poster",
@@ -395,12 +384,11 @@ describe("useClipAutostart", () => {
     expect(gate.latest().image).toBeNull()
   })
 
-  it("wants no still in two-player mode, and never shows one", () => {
+  it("never shows a still in two-player mode", () => {
     const gate = renderGate(veiled("two"), {
       stillUri: stillOf(1),
       stillLoaded: true,
     })
-    expect(gate.latest().stillWanted).toBe(false)
     expect(gate.latest().image).toEqual({
       kind: "poster",
       uri: "https://images.example/1.jpg",
@@ -425,7 +413,6 @@ describe("useClipAutostart", () => {
     const bare = { ...clip(1, null), muxPlaybackId: null }
     const gate = renderGate(veiled("two", bare))
     expect(gate.latest().veilVisible).toBe(true)
-    expect(gate.latest().spinnerVisible).toBe(true)
     expect(gate.latest().image).toBeNull()
 
     gate.advance(AUTOSTART_VEIL_TIMEOUT_MS)

@@ -10,11 +10,9 @@ import { getMiniPlayerStore } from "../lib/miniPlayer/store"
 import { beginPlaybackInterruption } from "../lib/playbackInterruption"
 
 /**
- * Explore's session takeover (KTD10) around U7's pure rules in
- * `src/lib/explore/takeover.ts`. While Explore has focus it yields
- * continuously, as the heroes do (`heroYield.ts`): the watch page's session
- * can start in the same commit as the tab's focus, so one check on the focus
- * event would miss it.
+ * KTD10: yields continuously while focused, as `heroYield.ts` does. The watch
+ * page's session can start in the same commit as the focus, so one check on
+ * the focus event would miss it.
  */
 
 export type ExploreTakeoverInput = {
@@ -48,11 +46,6 @@ function readYieldsToRoot(): boolean {
   })
 }
 
-/** Takeover never resumes the root player, so the resume handle is dropped. */
-function pauseRootPlayer(): void {
-  beginPlaybackInterruption()
-}
-
 export function useExploreTakeover(
   input: ExploreTakeoverInput,
 ): ExploreTakeover {
@@ -76,7 +69,8 @@ export function useExploreTakeover(
         pending,
       })
       pending = step.pending
-      if (step.pauseRoot) pauseRootPlayer()
+      // Takeover never resumes the root player, so it drops the resume handle.
+      if (step.pauseRoot) beginPlaybackInterruption()
       if (step.dismiss) sessions.requestDismiss()
     }
     evaluate()

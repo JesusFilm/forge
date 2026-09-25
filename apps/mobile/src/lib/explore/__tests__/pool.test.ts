@@ -507,9 +507,6 @@ function memoryDeps(seed: Record<string, string> = {}) {
     setItem: jest.fn(async (key: string, value: string) => {
       data.set(key, value)
     }),
-    removeItem: jest.fn(async (key: string) => {
-      data.delete(key)
-    }),
   }
   return { data, deps }
 }
@@ -537,25 +534,21 @@ describe("createExplorePoolStore", () => {
       setItem: () => {
         throw new Error("write")
       },
-      removeItem: () => Promise.reject(new Error("remove")),
     })
     await expect(store.readPool("english")).resolves.toBeNull()
     await expect(store.writePool(pool())).resolves.toBe(false)
     await expect(store.readReadyClip()).resolves.toBeNull()
     await expect(store.writeReadyClip(readyClip(), T0)).resolves.toBe(false)
-    await expect(store.clearReadyClip()).resolves.toBeUndefined()
   })
 
-  it("stores and clears the next ready clip beside the pool", async () => {
+  it("stores the next ready clip beside the pool", async () => {
     const { data, deps } = memoryDeps()
     const store = createExplorePoolStore(deps)
     await store.writeReadyClip(readyClip(), T0)
+    expect(data.has(EXPLORE_READY_CLIP_STORAGE_KEY)).toBe(true)
     await expect(store.readReadyClip()).resolves.toEqual({
       storedAt: T0,
       clip: readyClip(),
     })
-    await store.clearReadyClip()
-    expect(data.has(EXPLORE_READY_CLIP_STORAGE_KEY)).toBe(false)
-    await expect(store.readReadyClip()).resolves.toBeNull()
   })
 })

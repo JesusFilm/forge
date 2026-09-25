@@ -17,6 +17,7 @@ import {
 } from "../lib/normalizeVideo"
 import { datadogLog } from "../lib/datadog"
 import { ensureDubMedia } from "../lib/dubMediaFetch"
+import type { WatchSessionIntent } from "../lib/explore/watchIntent"
 import { getMiniPlayerStore } from "../lib/miniPlayer/store"
 import { GET_VIDEO_DUB } from "../lib/queries"
 import {
@@ -28,17 +29,6 @@ import {
 import { subtitleNameToCache } from "../lib/subtitleSelection"
 import { useDownloads } from "./DownloadsProvider"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
-
-/**
- * KTD11: a "Keep watching" page's languages, ahead of the default chain. The
- * page sets it on mount and clears it on unmount. Nothing here is ever saved.
- */
-export type WatchSessionIntent = {
-  audioLanguageSlug: string | null
-  subtitleLanguageSlug: string | null
-  /** R43: subtitles on for this session after a subtitle-only clip. */
-  subtitlesOn: boolean
-}
 
 /**
  * Shared selection state across the watch screen and its formSheet routes

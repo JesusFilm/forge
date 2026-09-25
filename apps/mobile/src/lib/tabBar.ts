@@ -38,13 +38,9 @@ export const TAB_BAR_SCREEN_EXTENT_IOS = 83
  */
 export const TAB_BAR_MATERIAL_TINT = "rgba(0, 0, 0, 0.3)"
 
-/**
- * The tab screens, in the order the navigator declares them.
- * `app/(tabs)/_layout.ios.tsx` builds its triggers from this and
- * `tabBarLensOrder.guard.test.js` pins it against the route FILES — expo-router
- * appends an undeclared `app/(tabs)/*` file as an extra tab, which a scan of
- * the layout alone cannot see.
- */
+/** The tab screens in navigator order; `_layout.ios.tsx` builds its triggers
+ *  from it. `tabBarLensOrder.guard.test.js` pins it against the route FILES,
+ *  because expo-router adds an undeclared file as an extra tab. */
 export const TAB_ROUTE_NAMES = [
   "index",
   "explore",

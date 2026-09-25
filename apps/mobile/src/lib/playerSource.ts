@@ -41,12 +41,9 @@ export function resolvePlayerSource(input: PlayerSourceInput): string | null {
   return input.seedStreamingUrl
 }
 
-/**
- * A download is ONE dub. It plays unless the viewer settled on a different
- * dub that has a stream: an unknown identity on either side, or a pick with
- * nothing to stream, keeps the copy on disk rather than playing nothing. A
- * named dub still settling is not unknown: the file may be another language.
- */
+/** A download is ONE dub: it plays unless a settled dub with a stream differs.
+ *  An unknown dub keeps the file; a named dub still settling does not, because
+ *  the file may be another language. */
 function offlinePlays(
   input: Pick<
     PlayerSourceInput,

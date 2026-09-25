@@ -479,7 +479,6 @@ function world(options: WorldOptions = {}) {
 // ── The harness ─────────────────────────────────────────────────────
 
 type HarnessProps = {
-  hasFocused: boolean
   focused: boolean
   gestureActive: boolean
   playerMode: PlayerMode
@@ -499,7 +498,6 @@ type Callbacks = {
 }
 
 const FOCUSED: HarnessProps = {
-  hasFocused: true,
   focused: true,
   gestureActive: false,
   playerMode: "two",
@@ -524,7 +522,6 @@ function render(
     }, [props.focused, props.playerMode])
     const queue = useExploreClipQueue(
       {
-        hasFocused: props.hasFocused,
         focused: props.focused,
         gestureActive: props.gestureActive,
         holdLookahead: props.holdLookahead,
@@ -553,7 +550,6 @@ function render(
     return options.strict ? createElement(StrictMode, null, element) : element
   }
   let props: HarnessProps = {
-    hasFocused: false,
     focused: false,
     gestureActive: false,
     playerMode: "two",
@@ -624,25 +620,14 @@ afterEach(() => {
   jest.clearAllMocks()
 })
 
-// ── R46: nothing before the first focus ─────────────────────────────
+// ── The start ───────────────────────────────────────────────────────
+// R46 is the route's: `exploreRoute.test.tsx` pins that nothing mounts before
+// the first focus.
 
-describe("the first focus (R46, KTD6)", () => {
-  it("makes no request, read, or prefetch before the first focus", async () => {
+describe("the start (KTD6)", () => {
+  it("starts the record, the slate, and the pool together", async () => {
     const w = world({ inventories: { [SW]: ["a", "b", "c"] } })
-    const view = render(w.deps)
-    await flush(10 * MINUTE)
-    // A profile transition before the first focus asks for nothing either.
-    act(() => w.recs.notifyProfile())
-    await flush(10 * MINUTE)
-    expect(w.admin.client.query).not.toHaveBeenCalled()
-    expect(w.store.readPool).not.toHaveBeenCalled()
-    expect(w.store.readReadyClip).not.toHaveBeenCalled()
-    expect(w.recordGetItem).not.toHaveBeenCalled()
-    expect(w.timing.hydrate).not.toHaveBeenCalled()
-    expect(w.recs.client.fetch).not.toHaveBeenCalled()
-    expect(w.prefetch).not.toHaveBeenCalled()
-
-    view.rerender({ hasFocused: true, focused: true })
+    const view = render(w.deps, FOCUSED)
     await flush()
     // The record, the slate, and the pool start together.
     expect(w.recordGetItem).toHaveBeenCalledTimes(1)
@@ -659,7 +644,7 @@ describe("the first focus (R46, KTD6)", () => {
     expect(ids(view.history())).toEqual(["video-a"])
   })
 
-  it("starts each piece once when a first focus lands under StrictMode", async () => {
+  it("starts each piece once under StrictMode", async () => {
     const w = world({ inventories: { [SW]: ["a", "b", "c"] } })
     const view = render(w.deps, FOCUSED, { strict: true })
     await flush()

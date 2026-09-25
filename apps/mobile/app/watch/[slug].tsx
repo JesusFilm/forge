@@ -49,12 +49,7 @@ import {
   resolveCastMedia,
   type CastMedia,
 } from "../../src/lib/cast/castMediaResolver"
-import {
-  getPlaybackRequestStore,
-  type ProgressFeed,
-} from "../../src/lib/miniPlayer/playbackRequest"
-import { getMiniPlayerStore } from "../../src/lib/miniPlayer/store"
-import type { VideoQoeReason } from "../../src/lib/videoQoe"
+import type { ProgressFeed } from "../../src/lib/miniPlayer/playbackRequest"
 import {
   effectivePlayerSettings,
   getPlayerSettingsStore,
@@ -125,56 +120,11 @@ import {
   keepWatchingProgressHold,
   keepWatchingStateFor,
   rankStartSeconds,
-  type WatchIntent,
 } from "../../src/lib/explore/watchIntent"
-import { getExploreTelemetry } from "../../src/lib/explore/telemetry"
+import { trackExploreFullPlay } from "../../src/lib/explore/fullPlayTracking"
 
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
 const EMPTY_VARIANTS: WatchVariant[] = []
-
-// KTD17: a full play from Explore lasts as long as its playback session, and
-// the window keeps that session after this page closes. So the stores, not
-// this page's life, report its play time and its end.
-let exploreFullPlayKey: string | null = null
-let stopExploreFullPlay: (() => void) | null = null
-
-function trackExploreFullPlay(intent: WatchIntent): void {
-  // The telemetry's own key, so a StrictMode effect or a re-render adds nothing.
-  const key = `${intent.createdAt}:${intent.videoSlug}`
-  if (key === exploreFullPlayKey) return
-  exploreFullPlayKey = key
-  stopExploreFullPlay?.()
-  const telemetry = getExploreTelemetry()
-  const requests = getPlaybackRequestStore()
-  const sessions = getMiniPlayerStore()
-  const isThisVideo = (videoSlug: string | undefined) =>
-    videoSlug === intent.videoSlug
-  // Once the video floats, only the end event names the reason: the session
-  // store's `end()` drops the request before it reports why.
-  let floated = isThisVideo(sessions.getSnapshot().session?.videoSlug)
-  telemetry.fullPlayStart(intent)
-
-  const offEnd = sessions.onEnd((event) => {
-    if (isThisVideo(event.session.videoSlug)) finish(event.reason)
-  })
-  const offRequests = requests.subscribe(() => {
-    const snapshot = requests.getSnapshot()
-    telemetry.fullPlayPlaying(snapshot.playing)
-    if (isThisVideo(sessions.getSnapshot().session?.videoSlug)) floated = true
-    if (floated || isThisVideo(snapshot.request?.session?.videoSlug)) return
-    finish(snapshot.request == null ? "abandoned" : "replaced")
-  })
-  const stop = () => {
-    offEnd()
-    offRequests()
-    if (stopExploreFullPlay === stop) stopExploreFullPlay = null
-  }
-  const finish = (reason: VideoQoeReason) => {
-    stop()
-    telemetry.fullPlayEnd(reason)
-  }
-  stopExploreFullPlay = stop
-}
 
 export default function WatchVideoPage() {
   const { slug, seed: seedParam } = useLocalSearchParams<{

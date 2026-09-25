@@ -25,6 +25,12 @@ export type TimingSubtitle = {
   language?: { slug?: string | null } | null
 }
 
+/** The playing dub, as the track choice reads it: only its edition's tracks. */
+export type TimingDub<T extends TimingSubtitle> =
+  | { videoEdition?: { subtitles?: readonly T[] | null } | null }
+  | null
+  | undefined
+
 export type TimingTrackTier = "feedLanguage" | "primary" | "humanMade" | "any"
 
 export type TimingTrackCandidate<T extends TimingSubtitle> = {
@@ -50,10 +56,7 @@ export type TimingTrackVerdict =
  * within a tier. It reads only the playing dub's edition, never another one.
  */
 export function timingTrackOrder<T extends TimingSubtitle>(
-  playingDub:
-    | { videoEdition?: { subtitles?: readonly T[] | null } | null }
-    | null
-    | undefined,
+  playingDub: TimingDub<T>,
   feedLanguageSlug: string,
 ): TimingTrackCandidate<T>[] {
   const usable = (playingDub?.videoEdition?.subtitles ?? []).filter(

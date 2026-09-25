@@ -13,8 +13,8 @@ export const MAX_CLIP_SECONDS = 60
 /** R23: a fallback clip is 30 s long, and a shorter video gives no clip. */
 export const FALLBACK_CLIP_SECONDS = 30
 export const MIN_CLIP_VIDEO_SECONDS = 10
-export const FALLBACK_START_MIN_FRACTION = 0.05
-export const FALLBACK_START_MAX_FRACTION = 0.8
+const FALLBACK_START_MIN_FRACTION = 0.05
+const FALLBACK_START_MAX_FRACTION = 0.8
 
 /** Returns a number from 0 (inclusive) to 1 (exclusive). Tests seed it. */
 export type RandomSource = () => number
@@ -132,9 +132,15 @@ export function eligibleStartsOnce(
   return starts
 }
 
-function unitRandom(random: RandomSource): number {
+/** The source's value, or 0 when it answers outside [0, 1). */
+export function unitRandom(random: RandomSource): number {
   const value = random()
   return value >= 0 && value < 1 ? value : 0
+}
+
+/** True when two windows share time. Windows that only touch do not. */
+export function overlaps(a: ClipWindow, b: ClipWindow): boolean {
+  return a.startSeconds < b.endSeconds && b.startSeconds < a.endSeconds
 }
 
 /**

@@ -17,6 +17,7 @@ import { ClipProgressBar } from "./ClipProgressBar"
 import { SubtitleOverlay } from "../watch/SubtitleOverlay"
 import { ACCENT, BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { EXPLORE_COPY } from "../../lib/explore/copy"
+import { readSeconds } from "../../lib/explore/playerRead"
 import {
   BAND_BLUR_RADIUS,
   EXPLORE_FRAMING,
@@ -31,10 +32,8 @@ import { feedback } from "../../styles/shared"
 
 export type ClipOverlayProps = {
   clip: FeedClip
-  /** The active feed player. The overlay reads it only while `isCurrent`. */
+  /** The active feed player. */
   player: VideoPlayer
-  /** Captions and the live progress bar mount only in the current slot (KTD20). */
-  isCurrent: boolean
   /** The saved Explore mute choice (R11). */
   muted: boolean
   /** Shows the play glyph (R10). The tap target itself is the feed's. */
@@ -63,28 +62,18 @@ const CAPTION_GAP = 8
  * R13: a subtitle-only clip always shows its captions. A dubbed clip shows
  * them only while muted. With no track in the feed language, none show.
  */
-export function clipCaptionSource(
-  clip: FeedClip,
-  muted: boolean,
-): string | null {
+function clipCaptionSource(clip: FeedClip, muted: boolean): string | null {
   if (clip.subtitleVttSrc == null) return null
   return clip.subtitleOnly || muted ? clip.subtitleVttSrc : null
 }
 
-function readTime(player: VideoPlayer): number {
-  try {
-    return player.currentTime
-  } catch {
-    // A released player throws on property access.
-    return Number.NaN
-  }
-}
-
-/** The clip screen's overlay: information, side rail, captions, and progress. */
+/**
+ * Mount only in the current slot (KTD20): the captions and the progress bar
+ * read the active player.
+ */
 export function ClipOverlay({
   clip,
   player,
-  isCurrent,
   muted,
   paused,
   onToggleMute,
@@ -96,7 +85,7 @@ export function ClipOverlay({
   const tabBarClearance = useTabBarClearance()
   const [bottomHeight, setBottomHeight] = useState(0)
 
-  const captionSrc = isCurrent ? clipCaptionSource(clip, muted) : null
+  const captionSrc = clipCaptionSource(clip, muted)
 
   const handleShare = useCallback(() => {
     onOverlayOpen()
@@ -118,13 +107,11 @@ export function ClipOverlay({
 
   const handleKeepWatching = useCallback(() => {
     const { startSeconds, endSeconds } = clip.window
-    const time = isCurrent ? readTime(player) : startSeconds
+    const time = readSeconds(() => player.currentTime)
     onKeepWatching(
-      Number.isFinite(time)
-        ? clamp(time, startSeconds, endSeconds)
-        : startSeconds,
+      time == null ? startSeconds : clamp(time, startSeconds, endSeconds),
     )
-  }, [clip.window, isCurrent, player, onKeepWatching])
+  }, [clip.window, player, onKeepWatching])
 
   const handleBottomLayout = useCallback((e: LayoutChangeEvent) => {
     setBottomHeight(Math.round(e.nativeEvent.layout.height))
@@ -133,10 +120,7 @@ export function ClipOverlay({
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {EXPLORE_FRAMING === "band" && (
-        <ClipBandBackdrop
-          player={isCurrent ? player : null}
-          imageUrl={clip.imageUrl}
-        />
+        <ClipBandBackdrop player={player} imageUrl={clip.imageUrl} />
       )}
 
       {paused && (
@@ -224,10 +208,7 @@ export function ClipOverlay({
           </View>
         </View>
 
-        <ClipProgressBar
-          player={isCurrent ? player : null}
-          clipWindow={clip.window}
-        />
+        <ClipProgressBar player={player} clipWindow={clip.window} />
       </View>
     </View>
   )
@@ -274,13 +255,9 @@ function RailButton({
 }
 
 /** The size of the track the player shows, or null until one loads. */
-function usePlayingSize(player: VideoPlayer | null) {
-  const [size, setSize] = useState(() => player?.videoTrack?.size ?? null)
+function usePlayingSize(player: VideoPlayer) {
+  const [size, setSize] = useState(() => player.videoTrack?.size ?? null)
   useEffect(() => {
-    if (player == null) {
-      setSize(null)
-      return
-    }
     setSize(player.videoTrack?.size ?? null)
     const sub = player.addListener("videoTrackChange", ({ videoTrack }) => {
       setSize(videoTrack?.size ?? null)
@@ -298,7 +275,7 @@ function ClipBandBackdrop({
   player,
   imageUrl,
 }: {
-  player: VideoPlayer | null
+  player: VideoPlayer
   imageUrl: string | null
 }) {
   const aspect = bandAspect(usePlayingSize(player))

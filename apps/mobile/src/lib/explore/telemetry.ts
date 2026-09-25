@@ -11,7 +11,7 @@ import { daysBetweenDateKeys, getClipRecordStore } from "./clipRecord"
 import type { TravelDirection } from "./feedState"
 import type { PlayerMode } from "./playerMode"
 import type { ClipTier } from "./types"
-import type { WatchIntent } from "./watchIntent"
+import { watchIntentKey, type WatchIntent } from "./watchIntent"
 
 /** KTD17: a visit ends after this long away from Explore, or on relaunch. */
 export const EXPLORE_VISIT_TIMEOUT_MS = 30 * 60 * 1000
@@ -30,13 +30,16 @@ export type ExploreFirstMotionStage =
 
 export type ExploreClipFailure = "sourceError" | "missedSeek" | "timeout"
 
-/** The watch intent fields a full play needs. The watch page passes its own. */
+/** The watch intent fields a full play needs. The `origin` type makes a caller
+ *  filter out other origins if `WatchIntentOrigin` ever widens. */
 export type ExploreFullPlayIntent = Pick<
   WatchIntent,
-  "origin" | "videoSlug" | "createdAt"
->
+  "videoSlug" | "createdAt"
+> & {
+  origin: "explore"
+}
 
-/** The clip record calls the return check makes (U6). */
+/** The clip record calls the return check makes. */
 export type ExploreClipRecordPort = {
   hydrate: () => Promise<void>
   recordVisit: () => string | null
@@ -96,8 +99,8 @@ export type ExploreTelemetry = {
     feedLanguageSlug: string
     releasedEntries: number
   }) => void
-  /** The watch page's first frame. A null intent (not from Explore) is ignored. */
-  fullPlayStart: (intent: ExploreFullPlayIntent | null) => void
+  /** The watch page's first frame. True only when a new full play starts. */
+  fullPlayStart: (intent: ExploreFullPlayIntent) => boolean
   fullPlayPlaying: (isPlaying: boolean) => void
   /** The watch session ended. Only the first end of a full play counts. */
   fullPlayEnd: (reason: VideoQoeReason) => void
@@ -174,7 +177,7 @@ export function createExploreTelemetry(
     })
   }
 
-  /** U6: the stored date must land first, or today's date replaces it. */
+  /** The stored date must land first, or today's date replaces it. */
   async function reportReturn(id: string): Promise<void> {
     await deps.clipRecord.hydrate()
     const previous = deps.clipRecord.recordVisit()
@@ -380,11 +383,10 @@ export function createExploreTelemetry(
     },
 
     fullPlayStart(intent) {
-      if (intent == null || intent.origin !== "explore") return
-      // The intent's creation time keys it, so a second render of one page
-      // starts nothing, and a new hand-off ends the open full play.
-      const key = `${intent.createdAt}:${intent.videoSlug}`
-      if (key === lastFullPlayKey) return
+      // The only dedupe: a second render of one page starts nothing, and a
+      // new hand-off ends the open full play.
+      const key = watchIntentKey(intent)
+      if (key === lastFullPlayKey) return false
       endFullPlay("replaced")
       lastFullPlayKey = key
       fullPlay = {
@@ -397,6 +399,7 @@ export function createExploreTelemetry(
         explore_visit_id: fullPlay.visitId,
         explore_video_slug: intent.videoSlug,
       })
+      return true
     },
 
     fullPlayPlaying(isPlaying) {

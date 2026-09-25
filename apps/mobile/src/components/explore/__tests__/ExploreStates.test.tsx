@@ -4,20 +4,23 @@
  * `offline` event, so it must render the offline view and never the empty one.
  */
 
-import { act } from "react"
+import { act, type ReactElement } from "react"
 
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
 }))
 
-import { ExploreStates } from "../ExploreStates"
+import {
+  ClipFailed,
+  ExploreStates,
+  type ExploreStatesProps,
+} from "../ExploreStates"
 import { EXPLORE_COPY } from "../../../lib/explore/copy"
 import {
   INITIAL_FEED_STATE,
   canSwipeNext,
   feedReducer,
-  type FeedPhase,
   type FeedState,
 } from "../../../lib/explore/feedState"
 import type { FeedClip } from "../../../lib/explore/types"
@@ -37,15 +40,22 @@ afterEach(() => {
   jest.useRealTimers()
 })
 
-function render(phase: FeedPhase, onRetry = jest.fn()): TestInstance {
+function mount(element: ReactElement): TestInstance {
   let renderer!: TestInstance
   act(() => {
-    renderer = TestRenderer.create(
-      <ExploreStates phase={phase} languageName="Swahili" onRetry={onRetry} />,
-    )
+    renderer = TestRenderer.create(element)
   })
   mounted.push(renderer)
   return renderer
+}
+
+function render(
+  phase: ExploreStatesProps["phase"],
+  onRetry = jest.fn(),
+): TestInstance {
+  return mount(
+    <ExploreStates phase={phase} languageName="Swahili" onRetry={onRetry} />,
+  )
 }
 
 const CLIP: FeedClip = {
@@ -97,15 +107,18 @@ describe("ExploreStates", () => {
       feedReducer(INITIAL_FEED_STATE, { type: "focus", playerMode: "two" }),
       { type: "offline" },
     )
-    expect(state.phase).toBe("offline")
-    const renderer = render(state.phase)
+    const { phase } = state
+    if (phase !== "offline" && phase !== "empty") {
+      throw new Error(`expected a full-screen phase, got ${phase}`)
+    }
+    const renderer = render(phase)
     expect(hasText(renderer, EXPLORE_COPY.offlineTitle)).toBe(true)
     expect(hasText(renderer, EXPLORE_COPY.emptyTitle("Swahili"))).toBe(false)
   })
 
   it("shows a failed clip's message without taking the swipe or advancing", () => {
     jest.useFakeTimers()
-    const renderer = render("clipFailed")
+    const renderer = mount(<ClipFailed />)
     expect(hasText(renderer, EXPLORE_COPY.clipFailed)).toBe(true)
 
     // Swipeable: nothing in the view claims a touch or offers an action.
@@ -136,11 +149,5 @@ describe("ExploreStates", () => {
       jest.advanceTimersByTime(60_000)
     })
     expect(hasText(renderer, EXPLORE_COPY.clipFailed)).toBe(true)
-  })
-
-  it("renders nothing for a clip phase", () => {
-    for (const phase of ["playing", "paused", "veiled"] as const) {
-      expect(render(phase).toJSON()).toBeNull()
-    }
   })
 })

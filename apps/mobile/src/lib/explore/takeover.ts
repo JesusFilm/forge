@@ -1,7 +1,7 @@
 /**
  * KTD10: while Explore has focus, it yields continuously, not once on focus.
  * The watch page's session can start in the same commit as the tab's focus,
- * as in `heroYield.ts`. U10 wires the subscription to these pure rules.
+ * as in `heroYield.ts`. `useExploreTakeover` wires the subscription to these rules.
  */
 
 import {

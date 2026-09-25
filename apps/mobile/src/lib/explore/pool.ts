@@ -6,7 +6,8 @@
 
 import type { ExploreInventoryData } from "../queries"
 import { AUDIO_LANGUAGE_SLUG_PATTERN } from "../recommendations/context"
-import { MIN_CLIP_VIDEO_SECONDS } from "./clipWindow"
+import { MIN_CLIP_VIDEO_SECONDS, overlaps } from "./clipWindow"
+import { parseObject, settle } from "./storage"
 import type {
   CandidateAvailability,
   ClipCandidate,
@@ -26,11 +27,11 @@ export const EXPLORE_POOL_MAX_AGE_MS = 24 * 60 * 60 * 1000
 /** A stored pool older than this is used at once and refreshed behind it. */
 export const EXPLORE_POOL_REFRESH_AFTER_MS = 60 * 60 * 1000
 
-/** Admin's per-bucket cap. U1: the server takes about 2 s at every limit. */
+/** Admin's per-bucket cap. The data probe measured about 2 s at every limit. */
 export const EXPLORE_INVENTORY_LIMIT = 1000
 
 /** Inventory labels are camelCase. A collection row plays only as a film. */
-export const PLAYABLE_COLLECTION_LABELS: ReadonlySet<string> = new Set([
+const PLAYABLE_COLLECTION_LABELS: ReadonlySet<string> = new Set([
   "featureFilm",
   "shortFilm",
 ])
@@ -51,7 +52,7 @@ export type ExplorePool = {
 export type ExploreInventory = ExploreInventoryData["watchLanguageInventory"]
 type InventoryRow = ExploreInventory["audioVideos"][number]
 
-function nonBlank(value: unknown): value is string {
+export function nonBlank(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0
 }
 
@@ -240,20 +241,6 @@ export function serializePool(pool: ExplorePool): string {
   return JSON.stringify(stored)
 }
 
-function parseObject(raw: string | null): Record<string, unknown> | null {
-  if (raw == null) return null
-  let data: unknown
-  try {
-    data = JSON.parse(raw)
-  } catch {
-    return null
-  }
-  if (data == null || typeof data !== "object" || Array.isArray(data)) {
-    return null
-  }
-  return data as Record<string, unknown>
-}
-
 /**
  * Tolerant: bad JSON, a version change, another language, or a bad shape
  * reads as no pool, and a single bad row is dropped. Freshness is
@@ -366,33 +353,15 @@ export function usableStoredClip(
   const { clip } = stored
   if (clip.feedLanguageSlug !== context.feedLanguageSlug) return null
   if (stored.storedAt < context.poolFetchedAt) return null
-  const overlaps = context
+  const held = context
     .recordedWindows(clip.videoId)
-    .some(
-      (w) =>
-        w.startSeconds < clip.window.endSeconds &&
-        clip.window.startSeconds < w.endSeconds,
-    )
-  return overlaps ? null : clip
+    .some((w) => overlaps(w, clip.window))
+  return held ? null : clip
 }
 
 export type ExplorePoolStoreDeps = {
   getItem: (key: string) => Promise<string | null>
   setItem: (key: string, value: string) => Promise<void>
-  removeItem: (key: string) => Promise<void>
-}
-
-/** Settles with the operation's value, or the fallback. Never rejects, even
- *  on a synchronous throw. */
-function settle<T>(operation: () => Promise<T>, fallback: T): Promise<T> {
-  try {
-    return operation().then(
-      (value) => value,
-      () => fallback,
-    )
-  } catch {
-    return Promise.resolve(fallback)
-  }
 }
 
 export type ExplorePoolStore = ReturnType<typeof createExplorePoolStore>
@@ -438,13 +407,6 @@ export function createExplorePoolStore(deps: ExplorePoolStoreDeps) {
         false,
       )
     },
-
-    async clearReadyClip(): Promise<void> {
-      await settle(
-        () => deps.removeItem(EXPLORE_READY_CLIP_STORAGE_KEY),
-        undefined,
-      )
-    },
   }
 }
 
@@ -463,7 +425,6 @@ export function getExplorePoolStore(): ExplorePoolStore {
     store = createExplorePoolStore({
       getItem: (key) => AsyncStorage.getItem(key),
       setItem: (key, value) => AsyncStorage.setItem(key, value),
-      removeItem: (key) => AsyncStorage.removeItem(key),
     })
   }
   return store

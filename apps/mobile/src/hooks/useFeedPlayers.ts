@@ -19,6 +19,8 @@ import {
   type PlayerId,
   type PlayerSlot,
 } from "../lib/explore/feedState"
+import { readOr, safely } from "../lib/explore/playerRead"
+import type { ExploreClipFailure } from "../lib/explore/telemetry"
 import type { ClipWindow, FeedClip } from "../lib/explore/types"
 import { applyQualityConstraint, type QualityTier } from "../lib/streamQuality"
 import { cleanStreamUrl, validateStreamingUrl } from "../lib/validateUrl"
@@ -36,13 +38,14 @@ export const STANDBY_FORWARD_BUFFER_SECONDS = 3
 export const ACTIVE_TIME_UPDATE_INTERVAL_SECONDS = 0.25
 
 /**
- * KTD4: U1 could not measure whether the Android cache saves bytes on a loop,
- * so it stays off until that measurement. iOS cannot cache HLS at all.
+ * KTD4: the device probe could not measure whether the Android cache saves
+ * bytes on a loop, so it stays off until that measurement. iOS cannot cache
+ * HLS at all.
  */
-export const EXPLORE_ANDROID_USE_CACHING = false
+const EXPLORE_ANDROID_USE_CACHING = false
 
 /** KTD4: a first playing tick further than this from the start re-seeks. */
-export const START_POSITION_TOLERANCE_SECONDS = 1.5
+const START_POSITION_TOLERANCE_SECONDS = 1.5
 
 /** KTD4: the one re-seek gets this long to land; a miss after it fails. */
 export const START_RESEEK_GRACE_MS = 1_000
@@ -65,7 +68,7 @@ export type FeedPlayerFailure = {
   token: number
   clip: FeedClip
   /** A source error, or a second missed start seek (KTD4). */
-  kind: "sourceError" | "missedSeek"
+  kind: Exclude<ExploreClipFailure, "timeout">
   /** The failed player held the active clip, not the standby. */
   active: boolean
   errorMessage: string | null
@@ -99,14 +102,14 @@ export type FeedPlayers = {
 }
 
 /** The feed source for a clip, or null for a URL the app does not play. */
-export function feedSourceUrl(clip: FeedClip): string | null {
+function feedSourceUrl(clip: FeedClip): string | null {
   const url = cleanStreamUrl(clip.streamUrl)
   if (url == null || !validateStreamingUrl(url)) return null
   return applyQualityConstraint(url, EXPLORE_QUALITY_TIER)
 }
 
 /** KTD23: the active buffer reaches the clip end, and no further. */
-export function activeForwardBufferSeconds(
+function activeForwardBufferSeconds(
   currentTime: number,
   window: ClipWindow,
 ): number {
@@ -163,23 +166,6 @@ function newTrack(): Track {
     playRequested: false,
     interval: 0,
     forwardBufferSeconds: null,
-  }
-}
-
-/** Every native call can meet a player that the unmount already released. */
-function safely(action: () => void): void {
-  try {
-    action()
-  } catch {
-    // Native player already released.
-  }
-}
-
-function read<T>(get: () => T, fallback: T): T {
-  try {
-    return get()
-  } catch {
-    return fallback
   }
 }
 
@@ -258,7 +244,7 @@ function createFeedPlayerEngine() {
     if (player == null) return
     // A play can still be pending while `playing` reads false, so a requested
     // play is paused even when the player does not report playing yet.
-    if (track.playRequested || read(() => player.playing, false)) {
+    if (track.playRequested || readOr(() => player.playing, false)) {
       safely(() => player.pause())
     }
     track.playRequested = false
@@ -268,7 +254,7 @@ function createFeedPlayerEngine() {
     const player = players?.[id]
     if (player == null) return
     tracks[id].playRequested = true
-    if (!read(() => player.playing, true)) safely(() => player.play())
+    if (!readOr(() => player.playing, true)) safely(() => player.play())
   }
 
   function seek(id: PlayerId, seconds: number) {
@@ -306,7 +292,7 @@ function createFeedPlayerEngine() {
     if (!active) {
       setForwardBuffer(id, STANDBY_FORWARD_BUFFER_SECONDS)
     } else if (track.window != null) {
-      const from = read(() => player.currentTime, track.startAtSeconds)
+      const from = readOr(() => player.currentTime, track.startAtSeconds)
       setForwardBuffer(id, activeForwardBufferSeconds(from, track.window))
     }
   }
@@ -317,6 +303,18 @@ function createFeedPlayerEngine() {
     safely(() => {
       if (player.subtitleTrack != null) player.subtitleTrack = null
     })
+  }
+
+  /** Forgets the player's source, so the next bind of any clip reloads. */
+  function dropSource(id: PlayerId) {
+    const track = tracks[id]
+    track.seq += 1
+    track.url = null
+    track.settled = false
+    track.sourceLoaded = false
+    track.ready = false
+    track.startCheck = "done"
+    pause(id)
   }
 
   /** Reports the bound clip as failed and forgets its source, so a retry reloads. */
@@ -341,13 +339,7 @@ function createFeedPlayerEngine() {
         errorMessage,
       })
     }
-    track.seq += 1
-    track.url = null
-    track.settled = false
-    track.sourceLoaded = false
-    track.ready = false
-    track.startCheck = "done"
-    pause(id)
+    dropSource(id)
     setMuted(id, true)
     send({ type: "error", token, msSinceSourceSet: ms })
   }
@@ -355,15 +347,9 @@ function createFeedPlayerEngine() {
   function clearSource(id: PlayerId) {
     const player = players?.[id]
     const track = tracks[id]
-    track.seq += 1
-    track.url = null
     track.token = null
     track.window = null
-    track.settled = false
-    track.sourceLoaded = false
-    track.ready = false
-    track.startCheck = "done"
-    pause(id)
+    dropSource(id)
     if (player == null) return
     safely(() => {
       player.replaceAsync(null).catch(() => {
@@ -559,7 +545,7 @@ function createFeedPlayerEngine() {
     const player = players[id]
     checkStart(
       id,
-      read(() => player.currentTime, track.startAtSeconds),
+      readOr(() => player.currentTime, track.startAtSeconds),
     )
     if (track.ready) send({ type: "playing", token: track.token })
   }
@@ -573,7 +559,7 @@ function createFeedPlayerEngine() {
     if (token == null) return
     const player = players[id]
     const { currentTime, bufferedPosition } = payload
-    const playing = read(() => player.playing, false)
+    const playing = readOr(() => player.playing, false)
     if (playing) checkStart(id, currentTime)
     if (!track.ready || track.startCheck === "reseeked") return
 

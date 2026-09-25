@@ -13,15 +13,9 @@ import { resolveImageUrl } from "../lib/resolveImageUrl"
 import { AUTOSTART_VEIL_TIMEOUT_MS } from "./useAutostartPlayback"
 
 /**
- * Explore's per-clip autostart gate (KTD14). `useAutostartPlayback` covers one
- * load and plays with no seek, and the feed loads a new clip on every swipe. So
- * this gate re-arms for each clip, with the same three release paths: playback
- * starts, the source errors, or `AUTOSTART_VEIL_TIMEOUT_MS` elapses.
- *
- * The reducer owns the phases and this hook owns only the timer. The veil, the
- * spinner, the poster, the still, and the failed state all come from ONE
- * predicate, so no layer can stay over the clip after the veil lifts
- * (docs/solutions/logic-errors/occluding-layers-must-share-one-gate-predicate.md).
+ * KTD14: `useAutostartPlayback` covers one load, so this gate re-arms per clip
+ * with the same three releases: play, a source error, or the timeout. Every
+ * covering layer reads ONE predicate (docs/solutions/logic-errors/occluding-layers-must-share-one-gate-predicate.md).
  */
 
 export type ClipVeilImage = {
@@ -42,15 +36,12 @@ export type ClipAutostartInput = {
 }
 
 export type ClipAutostart = {
+  /** The veil and its spinner. */
   veilVisible: boolean
-  /** The spinner is part of the veil and never shows without it. */
-  spinnerVisible: boolean
   /** The image under the veil. Null whenever the veil is down. */
   image: ClipVeilImage | null
   /** R40: the clip cannot play. The veil and the image are down. */
   failed: boolean
-  /** One-player mode only. When false, the caller prefetches no still. */
-  stillWanted: boolean
 }
 
 /**
@@ -101,9 +92,7 @@ export function useClipAutostart(input: ClipAutostartInput): ClipAutostart {
 
   return {
     veilVisible: veiled,
-    spinnerVisible: veiled,
     image,
     failed: isClipFailed(state),
-    stillWanted,
   }
 }

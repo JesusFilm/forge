@@ -1,16 +1,6 @@
-/**
- * Progress recorder (KTD5): receives (identity, position, duration) ticks
- * from the player adapter's 1-second poll, samples at web's 2-second
- * granularity into buffered intents, and requests a drain after every
- * sample — the sync cadence (one send per 30s, forced on every FlushTrigger)
- * is what turns those requests into actual mutations.
- *
- * No-ops without an identity (the hero surfaces never pass one) and drops
- * signed-out ticks at this boundary (R10), as it drops every write while a
- * progress hold is set (KTD12). Every write takes the same path;
- * the account-bound queue is reached only when a send FAILS (R7), so a
- * downloaded video watched online syncs like any other.
- */
+/** Progress recorder (KTD5): samples the adapter's 1 s poll at web's 2 s grain,
+ *  and the sync cadence (30 s, forced per FlushTrigger) sends. No write with no
+ *  identity, signed out (R10), or under a hold (KTD12); a FAILED send queues (R7). */
 
 import type { ProgressWriteIntent, WatchProgressEntry } from "./store"
 import { isCompleted, progressRatio } from "./thresholds"

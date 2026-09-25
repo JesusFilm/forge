@@ -8,6 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 
 import { withTimeout } from "../withTimeout"
 import type { StoredDemotion } from "./playerMode"
+import { parseObject, settle } from "./storage"
 
 export const DEMOTION_STORAGE_KEY = "explore-player-demotion"
 
@@ -29,17 +30,9 @@ export function serializeDemotion(value: StoredDemotion): string {
 
 /** Tolerant: bad JSON, another version, or a bad shape reads as none. */
 export function parseStoredDemotion(raw: string | null): StoredDemotion | null {
-  if (raw == null) return null
-  let data: unknown
-  try {
-    data = JSON.parse(raw)
-  } catch {
-    return null
-  }
-  if (data == null || typeof data !== "object" || Array.isArray(data)) {
-    return null
-  }
-  const { v, at, app } = data as Record<string, unknown>
+  const data = parseObject(raw)
+  if (data == null) return null
+  const { v, at, app } = data
   if (v !== DEMOTION_VERSION) return null
   if (!Number.isSafeInteger(at) || (at as number) < 0) return null
   if (typeof app !== "string" || app.trim().length === 0) return null
@@ -49,19 +42,6 @@ export function parseStoredDemotion(raw: string | null): StoredDemotion | null {
 export type DemotionStoreDeps = {
   getItem: (key: string) => Promise<string | null>
   setItem: (key: string, value: string) => Promise<void>
-}
-
-/** Settles with the operation's value, or the fallback. Never rejects, even
- *  on a synchronous throw. */
-function settle<T>(operation: () => Promise<T>, fallback: T): Promise<T> {
-  try {
-    return operation().then(
-      (value) => value,
-      () => fallback,
-    )
-  } catch {
-    return Promise.resolve(fallback)
-  }
 }
 
 export type DemotionStore = ReturnType<typeof createDemotionStore>
@@ -91,7 +71,6 @@ export function createDemotionStore(deps: DemotionStoreDeps) {
 
 let store: DemotionStore | null = null
 
-/** The app-wide store. */
 export function getDemotionStore(): DemotionStore {
   store ??= createDemotionStore({
     getItem: (key) => AsyncStorage.getItem(key),

@@ -72,7 +72,7 @@ function mergeDialogueSpans(sortedCues: readonly VttCue[]): DialogueSpan[] {
   const spans: DialogueSpan[] = []
   for (const cue of sortedCues) {
     const last = spans[spans.length - 1]
-    // Overlapping cues fuse, so density never counts an overlap twice.
+    // Touching or overlapping cues fuse, so density never counts an overlap twice.
     if (last && cue.start <= last.end) {
       if (cue.end > last.end) last.end = cue.end
     } else {

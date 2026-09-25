@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
   PanResponder,
@@ -13,17 +13,26 @@ import type { VideoPlayer } from "expo-video"
 
 import { TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { EXPLORE_COPY } from "../../lib/explore/copy"
+import { readOr } from "../../lib/explore/playerRead"
 import type { ClipWindow } from "../../lib/explore/types"
-import { clamp } from "../../lib/scrubber"
+import {
+  clamp,
+  fractionToTime,
+  progressFraction,
+  thumbOutputRange,
+} from "../../lib/scrubber"
 
 type ClipProgressBarProps = {
-  /** The active feed player. Null outside the current slot: the bar rests at 0. */
-  player: VideoPlayer | null
+  /** The active feed player. */
+  player: VideoPlayer
   clipWindow: ClipWindow
 }
 
-/** One screen-reader step. Clips run 10 to 30 s, so the watch page's 10 s is too coarse. */
-export const CLIP_STEP_SECONDS = 5
+/**
+ * One screen-reader step. A clip can be 10 s long, so the watch page's 10 s
+ * step is too coarse.
+ */
+const CLIP_STEP_SECONDS = 5
 
 const HIT_HEIGHT = 44
 const TRACK_HEIGHT = 3
@@ -36,23 +45,21 @@ function lengthOf({ startSeconds, endSeconds }: ClipWindow): number {
 }
 
 /** Seconds into the clip for a time in the full asset, inside the window. */
-export function clipElapsed(time: number, clipWindow: ClipWindow): number {
+function clipElapsed(time: number, clipWindow: ClipWindow): number {
   if (!Number.isFinite(time)) return 0
   return clamp(time - clipWindow.startSeconds, 0, lengthOf(clipWindow))
 }
 
 /** The time in the full asset at a 0..1 point of the clip. */
-export function clipTimeAt(fraction: number, clipWindow: ClipWindow): number {
-  return clipWindow.startSeconds + clamp(fraction, 0, 1) * lengthOf(clipWindow)
+function clipTimeAt(fraction: number, clipWindow: ClipWindow): number {
+  return (
+    clipWindow.startSeconds +
+    (fractionToTime(fraction, lengthOf(clipWindow)) ?? 0)
+  )
 }
 
-function readTime(player: VideoPlayer | null): number {
-  try {
-    return player?.currentTime ?? Number.NaN
-  } catch {
-    // A released player throws on property access.
-    return Number.NaN
-  }
+function readTime(player: VideoPlayer): number {
+  return readOr(() => player.currentTime ?? Number.NaN, Number.NaN)
 }
 
 /**
@@ -83,44 +90,40 @@ export function ClipProgressBar({ player, clipWindow }: ClipProgressBarProps) {
   const draggingRef = useRef(false)
   const lockedRef = useRef(false)
 
-  const show = (time: number) => {
-    const bounds = windowRef.current
-    const span = lengthOf(bounds)
-    const seconds = clipElapsed(time, bounds)
-    progress.setValue(span > 0 ? seconds / span : 0)
-    setElapsed(Math.floor(seconds))
-  }
-  const showRef = useRef(show)
-  showRef.current = show
+  // Both read only refs and stable values, so the PanResponder built on the
+  // first render calls the same functions every later render would.
+  const show = useCallback(
+    (time: number) => {
+      const bounds = windowRef.current
+      const seconds = clipElapsed(time, bounds)
+      progress.setValue(progressFraction(seconds, lengthOf(bounds)))
+      setElapsed(Math.floor(seconds))
+    },
+    [progress],
+  )
 
-  const seekTo = (time: number) => {
-    const target = playerRef.current
-    if (target == null) return
-    target.currentTime = time
-    showRef.current(time)
-  }
-  const seekRef = useRef(seekTo)
-  seekRef.current = seekTo
+  const seekTo = useCallback(
+    (time: number) => {
+      playerRef.current.currentTime = time
+      show(time)
+    },
+    [show],
+  )
 
   useEffect(() => {
-    if (player == null) {
-      progress.setValue(0)
-      setElapsed(0)
-      return
-    }
-    showRef.current(readTime(player))
+    show(readTime(player))
     const sub = player.addListener("timeUpdate", ({ currentTime }) => {
-      if (!draggingRef.current) showRef.current(currentTime)
+      if (!draggingRef.current) show(currentTime)
     })
     return () => sub.remove()
-  }, [player, startSeconds, endSeconds, progress])
+  }, [player, startSeconds, endSeconds, show])
 
   const fractionAt = (x: number) =>
     widthRef.current > 0 ? clamp(x / widthRef.current, 0, 1) : 0
 
   const pan = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => playerRef.current != null,
+      onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: (e: GestureResponderEvent) => {
         draggingRef.current = true
         lockedRef.current = false
@@ -142,11 +145,11 @@ export function ClipProgressBar({ player, clipWindow }: ClipProgressBarProps) {
       onPanResponderTerminationRequest: () => !lockedRef.current,
       onPanResponderRelease: () => {
         draggingRef.current = false
-        seekRef.current(clipTimeAt(fractionRef.current, windowRef.current))
+        seekTo(clipTimeAt(fractionRef.current, windowRef.current))
       },
       onPanResponderTerminate: () => {
         draggingRef.current = false
-        showRef.current(readTime(playerRef.current))
+        show(readTime(playerRef.current))
       },
     }),
   ).current
@@ -169,7 +172,7 @@ export function ClipProgressBar({ player, clipWindow }: ClipProgressBarProps) {
   const total = Math.round(length)
   const thumbX = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, Math.max(trackWidth, 0)],
+    outputRange: thumbOutputRange(trackWidth, THUMB, false),
   })
 
   return (

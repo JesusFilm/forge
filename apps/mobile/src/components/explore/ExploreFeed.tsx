@@ -1,8 +1,7 @@
 /**
- * The Explore feed (U18): the reducer, the two feed players, the pager, the
- * per-clip gate, and the clip queue in one screen, with the session takeover
- * (U10), the clip evidence (U12), and the telemetry (U13) wired in. The route
- * mounts it at the tab's first focus, so nothing runs before that (R46, KTD13).
+ * The Explore screen: it joins the reducer, the two feed players, the pager,
+ * the clip gate, and the clip queue. The route mounts it at the tab's first
+ * focus, so nothing runs before that (R46, KTD13).
  */
 
 import {
@@ -82,6 +81,7 @@ import {
   resolvePlayerMode,
   type PlayerMode,
 } from "../../lib/explore/playerMode"
+import { readSeconds, safely } from "../../lib/explore/playerRead"
 import { getExploreTelemetry } from "../../lib/explore/telemetry"
 import type { ReadyClip, FeedClip } from "../../lib/explore/types"
 import { openKeepWatching } from "../../lib/explore/watchIntent"
@@ -125,9 +125,9 @@ function useLaunchPlayerMode(): PlayerMode | null {
 }
 
 /**
- * The feed views to mount. One-player mode keeps only the active one (KTD3).
- * "Keep watching" unmounts both until the next focus: U1 could not show that
- * a cleared source frees its decoder on a low-end Android phone (KTD13).
+ * The feed views to mount: the active one only in one-player mode (KTD3). After
+ * "Keep watching", none until the next focus: the device probe could not show
+ * that a cleared source frees its decoder on a low-end Android phone (KTD13).
  */
 function mountedViews(state: FeedState): readonly PlayerId[] {
   if (state.phase === "unvisited") return []
@@ -160,16 +160,6 @@ function pageShowsStandby(state: FeedState, role: ExplorePagerRole): boolean {
 function clipFor(state: FeedState, role: ExplorePagerRole): FeedClip | null {
   if (role === "current") return currentClip(state)
   return role === "next" ? nextClip(state) : previousClip(state)
-}
-
-function readSeconds(read: () => number): number | null {
-  try {
-    const seconds = read()
-    return Number.isFinite(seconds) ? seconds : null
-  } catch {
-    // A released player throws on property access.
-    return null
-  }
 }
 
 /** The active clip's asset time, or null while no frame of it has shown. */
@@ -214,7 +204,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     onSystemPause: () => dispatch({ type: "systemPause" }),
   })
 
-  // ── Clip evidence (U12, KTD9): the active clip only ─────────────────
+  // ── Clip evidence (KTD9): the active clip only ──────────────────────
   const evidence = useRef<ClipEvidence | null>(null)
   const active = activeSlot(state)
   const evidenceToken = active?.token ?? null
@@ -270,6 +260,9 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
   useEffect(() => {
     const subscriptions = BOTH_PLAYERS.flatMap((id) => {
       const player = players[id]
+      // A loaded clip's duration does not change, so read it once per clip.
+      let durationToken: number | null = null
+      let duration = 0
       return [
         player.addListener("playingChange", ({ isPlaying }) => {
           const { state: last } = live.current
@@ -283,7 +276,10 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
           const { state: last } = live.current
           const slot = activeSlot(last)
           if (id !== last.active || slot?.status !== "ready") return
-          const duration = readSeconds(() => player.duration) ?? 0
+          if (durationToken !== slot.token || !(duration > 0)) {
+            durationToken = slot.token
+            duration = readSeconds(() => player.duration) ?? 0
+          }
           evidence.current?.onTime(slot.token, currentTime, duration)
           telemetry.clipProgress(
             String(last.cursor),
@@ -293,23 +289,25 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       ]
     })
     return () => {
+      // The players' own cleanup can release a player first.
       for (const subscription of subscriptions) {
-        try {
-          subscription.remove()
-        } catch {
-          // The players' own cleanup can release a player first.
-        }
+        safely(() => subscription.remove())
       }
-      evidence.current?.dispose()
-      evidence.current = null
     }
   }, [players, telemetry])
 
-  const settledNow = firstClipSettled(state)
+  useEffect(
+    () => () => {
+      evidence.current?.dispose()
+      evidence.current = null
+    },
+    [],
+  )
+
+  // Latched in render, so the commit that settles the first clip already
+  // frees the lookahead.
   const [firstClipDone, setFirstClipDone] = useState(false)
-  useEffect(() => {
-    if (settledNow) setFirstClipDone(true)
-  }, [settledNow])
+  if (firstClipSettled(state) && !firstClipDone) setFirstClipDone(true)
 
   const handleClip = useCallback(
     (clip: ReadyClip) => {
@@ -319,10 +317,9 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     [telemetry],
   )
   const queue = useExploreClipQueue({
-    hasFocused: true,
     focused,
     gestureActive,
-    holdLookahead: !(firstClipDone || settledNow),
+    holdLookahead: !firstClipDone,
     playerMode: state.playerMode,
     wantsClip: needsClip(state),
     feedHoldsQueued: state.queued != null,
@@ -442,7 +439,6 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     })
   }, [state.demotedThisLaunch, telemetry])
 
-  // ── Handlers ────────────────────────────────────────────────────────
   const handleMove = useCallback(
     (move: ExplorePagerMove) => {
       const last = live.current.state
@@ -495,7 +491,6 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     [router, telemetry],
   )
 
-  // ── Render ──────────────────────────────────────────────────────────
   const views = mountedViews(state)
   const renderUnderlay = ({ pageStyle }: ExplorePagerUnderlay) =>
     views.map((player) => (
@@ -513,27 +508,18 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     current == null ? null : (
       <>
         {veil.veilVisible && (
-          <View
-            testID="explore-clip-veil"
-            style={styles.cover}
-            pointerEvents="none"
-          >
-            {veil.image != null && (
-              <Image
-                source={veil.image.uri}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                recyclingKey={veil.image.uri}
-              />
-            )}
-          </View>
+          <>
+            <PosterCover
+              testID="explore-clip-veil"
+              uri={veil.image?.uri ?? null}
+            />
+            <PlayerLoadingVeil />
+          </>
         )}
-        {veil.spinnerVisible && <PlayerLoadingVeil />}
         {veil.failed && <ClipFailed />}
         <ClipOverlay
           clip={current}
           player={activePlayer}
-          isCurrent
           muted={exploreMuted}
           paused={state.phase === "paused" && state.overlay == null}
           onToggleMute={handleToggleMute}
@@ -619,35 +605,11 @@ function ClipPage({
     wasCurrent.current = isCurrent
   }, [role])
 
-  // Opaque, so a player that still holds an old frame never shows through.
-  if (clip == null) {
-    return (
-      <View
-        testID="explore-page-cover"
-        style={styles.cover}
-        pointerEvents="none"
-      />
-    )
-  }
+  if (clip == null)
+    return <PosterCover testID="explore-page-cover" uri={null} />
   if (role !== "current") {
     if (!covered) return null
-    const poster = clipPosterUri(clip)
-    return (
-      <View
-        testID="explore-page-cover"
-        style={styles.cover}
-        pointerEvents="none"
-      >
-        {poster != null && (
-          <Image
-            source={poster}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            recyclingKey={poster}
-          />
-        )}
-      </View>
-    )
+    return <PosterCover testID="explore-page-cover" uri={clipPosterUri(clip)} />
   }
   return (
     <>
@@ -663,6 +625,22 @@ function ClipPage({
       />
       {children}
     </>
+  )
+}
+
+/** Opaque, so a player that still holds an old frame never shows through. */
+function PosterCover({ testID, uri }: { testID: string; uri: string | null }) {
+  return (
+    <View testID={testID} style={styles.cover} pointerEvents="none">
+      {uri != null && (
+        <Image
+          source={uri}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          recyclingKey={uri}
+        />
+      )}
+    </View>
   )
 }
 

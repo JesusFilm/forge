@@ -323,31 +323,10 @@ describe("full play", () => {
     ])
   })
 
-  it("a watch page opened from Home emits nothing", () => {
-    const h = makeHarness()
-    h.instance.fullPlayStart(null)
-    jest.advanceTimersByTime(60_000)
-    h.instance.fullPlayPlaying(false)
-    h.instance.fullPlayEnd("ended")
-    expect(h.actions).toEqual([])
-  })
-
-  it("an intent from another origin emits nothing", () => {
-    // Synthetic: `WatchIntentOrigin` in watchIntent.ts is only "explore"
-    // today. This pins the origin check for the day that union widens.
-    const h = makeHarness()
-    h.instance.fullPlayStart({
-      ...exploreIntent,
-      origin: "home" as unknown as "explore",
-    })
-    h.instance.fullPlayEnd("ended")
-    expect(h.actions).toEqual([])
-  })
-
   it("a render that runs twice starts one full play, and a session ends once", () => {
     const h = makeHarness()
-    h.instance.fullPlayStart(exploreIntent)
-    h.instance.fullPlayStart(exploreIntent)
+    expect(h.instance.fullPlayStart(exploreIntent)).toBe(true)
+    expect(h.instance.fullPlayStart(exploreIntent)).toBe(false)
     jest.advanceTimersByTime(5_000)
     h.instance.fullPlayEnd("ended")
     h.instance.fullPlayEnd("abandoned")

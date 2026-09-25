@@ -112,7 +112,7 @@ const PENDING_OBSERVATION_CEILING = 8
 export const CLIP_FACT_RATE_LIMIT_DEFERRALS = 1
 
 /** Ticks this soon after a loop can still show the old playhead; the feed
- *  players wait 500 ms for the same reason. */
+ *  players wait `LOOP_SEEK_SETTLE_MS` (useFeedPlayers.ts) for the same reason. */
 export const LOOP_REBASE_SETTLE_MS = 1_000
 
 function parseReceipts(value: unknown): PlaybackFactReceipt[] | null {

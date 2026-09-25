@@ -23,15 +23,9 @@ export function useErrorRecovery(
   streamingUrl: string | null,
   /** True while a cast session owns playback; never start local audio then. */
   castRemoteActive = false,
-  /**
-   * The last position seen while the player was healthy, from the adapter's
-   * own 1s poll.
-   *
-   * Deliberately NOT expo-video's `timeUpdate`: that event only fires when
-   * `timeUpdateEventInterval` is set, which the adapter never does because it
-   * polls instead. Listening for it left the resume position stuck at
-   * zero while every test passed, because the tests emitted the event by hand.
-   */
+  /** The last healthy position, from the adapter's 1s poll. Not `timeUpdate`:
+   *  the adapter never sets `timeUpdateEventInterval`, so it never fires, and
+   *  hand-emitted test events once hid a resume stuck at zero. */
   getHealthyPosition: () => number = () => 0,
 ): () => void {
   const getHealthyPositionRef = useRef(getHealthyPosition)

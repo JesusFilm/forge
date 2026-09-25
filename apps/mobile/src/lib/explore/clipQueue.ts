@@ -1,5 +1,5 @@
 /**
- * The clip queue (U5, KTD6): pure decisions that choose the next clips from
+ * The clip queue (KTD6): pure decisions that choose the next clips from
  * the pool, the slate, the hydrations, the timing results, and the record.
  * Order (F3): the slate first (R25), then R21's tiers, with R30 and R31.
  */
@@ -13,12 +13,19 @@ import {
   eligibleStartsOnce,
   fallbackWindow,
   MIN_CLIP_VIDEO_SECONDS,
+  overlaps,
   pickSentenceWindow,
+  unitRandom,
   type EligibleStartsMemo,
   type MemoSlot,
   type RandomSource,
 } from "./clipWindow"
-import { isPoolEmpty, type ExplorePool, type PoolCandidate } from "./pool"
+import {
+  isPoolEmpty,
+  nonBlank,
+  type ExplorePool,
+  type PoolCandidate,
+} from "./pool"
 import type { ClipTiming } from "./sentenceTiming"
 import { timingTrackOrder } from "./timingTrack"
 import type { ClipCut, ClipWindow, ReadyClip } from "./types"
@@ -29,17 +36,17 @@ export const CLIP_QUEUE_AHEAD = 2
 /** KTD6: queued candidates per hydration request. */
 export const HYDRATION_BATCH_SIZE = 3
 
-/** KTD6: a cold first clip prefers a video no longer than this. U1: a label
- *  does not predict length, so this reads the duration. */
+/** KTD6: a cold first clip prefers a video no longer than this. The data
+ *  probe found that a label does not predict length, so this reads the duration. */
 export const FIRST_CLIP_MAX_SECONDS = 600
 
 /** Hydrations held for a later clip. The oldest leaves first and rehydrates. */
-export const MAX_HELD_MEDIA = 60
+const MAX_HELD_MEDIA = 60
 
 export type CandidateVideo =
   ExploreClipCandidatesData["watchHomeVideos"][number]
 
-/** A subtitle track as U21's walk reads it. */
+/** A subtitle track as the ClipTimingSource walk reads it. */
 export type TimingTrack = {
   vttSrc: string
   primary: boolean | null
@@ -47,7 +54,7 @@ export type TimingTrack = {
   language: { slug: string | null }
 }
 
-/** One hydrated candidate, compact: what a clip and U21's walk need. */
+/** One hydrated candidate, compact: what a clip and the ClipTimingSource walk need. */
 export type CandidateMedia = {
   editionId: string | null
   streamUrl: string
@@ -62,7 +69,10 @@ export type CandidateMedia = {
 }
 
 /** Absent: not hydrated. `unknown`: hydrated, timing not yet known. */
-type Knowledge = "ineligible" | "unknown" | "sentence" | "fallback"
+type Knowledge = ClipCut | "ineligible" | "unknown"
+
+/** Why a pool fetch or a hydration failed. */
+export type QueueFailure = "unreachable" | "transient"
 
 type InFlight = {
   token: number
@@ -74,7 +84,7 @@ export type ClipQueueState = {
   feedLanguageSlug: string
   pool: ExplorePool | null
   /** Why the pool could not load. Null once a pool arrives. */
-  poolFailure: "unreachable" | "transient" | null
+  poolFailure: QueueFailure | null
   candidates: ReadonlyMap<string, PoolCandidate>
   /** Shuffled video ids; a video moves to the back when it gives a clip. */
   dubbedOrder: readonly string[]
@@ -91,7 +101,7 @@ export type ClipQueueState = {
   deferred: ReadonlySet<string>
   /** Sentence timing that arrived and waits for its cut. */
   pendingTiming: { videoId: string; vttSrc: string; timing: ClipTiming } | null
-  /** KTD24: U21 answered `budget_exhausted` this visit. */
+  /** KTD24: the ClipTimingSource answered `budget_exhausted` this visit. */
   probesExhausted: boolean
   ahead: readonly ReadyClip[]
   /** The clip the feed took last. Its window stays reserved. */
@@ -104,7 +114,7 @@ export type ClipQueueState = {
   inFlight: InFlight | null
   nextToken: number
   /** A hydration failed. Nothing is asked for until `retry`. */
-  blocked: "unreachable" | "transient" | null
+  blocked: QueueFailure | null
 }
 
 // The hook runs one effect, feeds its result to the matching `apply*` updater,
@@ -141,7 +151,7 @@ export type ClipQueueStep = {
   signal: ClipQueueSignal | null
 }
 
-/** The record as the queue reads it (U6's store satisfies it). */
+/** The record as the queue reads it (the ClipRecordStore satisfies it). */
 export type ClipQueueRecord = {
   getWindows(videoId: string): readonly ClipWindow[]
   getVersion(): number
@@ -152,7 +162,7 @@ export type ClipQueueRecord = {
 export type ClipQueueContext = {
   random: RandomSource
   record: ClipQueueRecord
-  /** U21's `eligibleStartsSlot`. */
+  /** The ClipTimingSource module's `eligibleStartsSlot`. */
   eligibleStartsSlot: (
     vttSrc: string,
     videoId: string,
@@ -198,9 +208,7 @@ export function createClipQueue(feedLanguageSlug: string): ClipQueueState {
 function shuffle<T>(list: readonly T[], random: RandomSource): T[] {
   const out = [...list]
   for (let i = 0; i < out.length - 1; i++) {
-    const value = random()
-    const unit = value >= 0 && value < 1 ? value : 0
-    const j = i + Math.floor(unit * (out.length - i))
+    const j = i + Math.floor(unitRandom(random) * (out.length - i))
     ;[out[i], out[j]] = [out[j], out[i]]
   }
   return out
@@ -250,7 +258,7 @@ export function setPool(
 /** The pool fetch failed. With a pool already in hand, nothing changes. */
 export function poolFailed(
   state: ClipQueueState,
-  reason: "unreachable" | "transient",
+  reason: QueueFailure,
 ): ClipQueueState {
   return state.pool != null ? state : { ...state, poolFailure: reason }
 }
@@ -307,7 +315,7 @@ export function retry(state: ClipQueueState): ClipQueueState {
   return { ...state, blocked: null, poolFailure: null, deferred: new Set() }
 }
 
-/** KTD24's budget is per visit. Call it with U21's `resetVisit`. */
+/** KTD24's budget is per visit. Call it with the ClipTimingSource's `resetVisit`. */
 export function newVisit(state: ClipQueueState): ClipQueueState {
   return state.probesExhausted ? { ...state, probesExhausted: false } : state
 }
@@ -338,10 +346,6 @@ export function changeLanguage(
 }
 
 // ── Results ─────────────────────────────────────────────────────────
-
-function nonBlank(value: string | null | undefined): value is string {
-  return typeof value === "string" && value.trim().length > 0
-}
 
 function dubSeconds(
   lengthInMilliseconds: string | null | undefined,
@@ -378,12 +382,13 @@ function authoredImage(video: CandidateVideo): string | null {
  * be in exactly the asked-for language. A subtitle-only candidate also needs a
  * feed-language track on that dub's edition (CONCEPTS.md).
  */
-export function readCandidateMedia(
+function readCandidateMedia(
   video: CandidateVideo | undefined,
-  audioLanguageSlug: string,
+  candidate: PoolCandidate,
   feedLanguageSlug: string,
-  subtitleOnly: boolean,
 ): CandidateMedia | null {
+  const audioLanguageSlug = audioSlugOf(candidate, feedLanguageSlug)
+  const subtitleOnly = candidate.availability === "SUBTITLE_ONLY"
   const dub = video?.preferredPlayableDub
   if (video == null || dub == null) return null
   if (dub.language?.slug !== audioLanguageSlug) return null
@@ -447,12 +452,10 @@ export function applyHydration(
   for (const id of flight.videoIds) {
     const candidate = state.candidates.get(id)
     if (candidate == null) continue
-    const subtitleOnly = candidate.availability === "SUBTITLE_ONLY"
     const read = readCandidateMedia(
       byCoreId.get(candidate.coreId),
-      audioSlugOf(state, candidate),
+      candidate,
       state.feedLanguageSlug,
-      subtitleOnly,
     )
     if (read == null) {
       knowledge.set(id, "ineligible")
@@ -479,13 +482,13 @@ export function applyHydration(
 export function hydrationFailed(
   state: ClipQueueState,
   token: number,
-  reason: "unreachable" | "transient",
+  reason: QueueFailure,
 ): ClipQueueState {
   if (heldFor(state, "hydrate", token) == null) return state
   return { ...state, inFlight: null, blocked: reason }
 }
 
-/** U21's `acquire` answer for an acquire effect. */
+/** The ClipTimingSource's `acquire` answer for an acquire effect. */
 export function applyTiming(
   state: ClipQueueState,
   token: number,
@@ -542,10 +545,13 @@ type Move =
   | { kind: "empty" }
   | { kind: "wait" }
 
-function audioSlugOf(state: ClipQueueState, candidate: PoolCandidate): string {
+function audioSlugOf(
+  candidate: PoolCandidate,
+  feedLanguageSlug: string,
+): string {
   return candidate.availability === "SUBTITLE_ONLY"
     ? candidate.watchLanguageSlug
-    : state.feedLanguageSlug
+    : feedLanguageSlug
 }
 
 function timingOf(state: ClipQueueState, id: string) {
@@ -554,7 +560,7 @@ function timingOf(state: ClipQueueState, id: string) {
 }
 
 /** The dubbed order, with short videos first for a cold first clip. */
-function dubbedOrder(state: ClipQueueState): readonly string[] {
+function orderDubbed(state: ClipQueueState): readonly string[] {
   if (state.produced > 0) return state.dubbedOrder
   const isShort = (id: string) => {
     const seconds = state.candidates.get(id)?.durationSeconds
@@ -588,7 +594,10 @@ function nextMove(state: ClipQueueState, ctx: ClipQueueContext): Move {
       lookahead: readonly string[],
     ): Move => {
       if (!state.media.has(id)) {
-        const audio = audioSlugOf(state, state.candidates.get(id)!)
+        const audio = audioSlugOf(
+          state.candidates.get(id)!,
+          state.feedLanguageSlug,
+        )
         const batch = [id]
         for (const other of lookahead) {
           if (batch.length >= HYDRATION_BATCH_SIZE) break
@@ -596,7 +605,9 @@ function nextMove(state: ClipQueueState, ctx: ClipQueueContext): Move {
           if (c == null || batch.includes(other) || state.media.has(other)) {
             continue
           }
-          if (skip(other) || audioSlugOf(state, c) !== audio) continue
+          if (skip(other) || audioSlugOf(c, state.feedLanguageSlug) !== audio) {
+            continue
+          }
           batch.push(other)
         }
         return { kind: "hydrate", audioLanguageSlug: audio, videoIds: batch }
@@ -608,27 +619,25 @@ function nextMove(state: ClipQueueState, ctx: ClipQueueContext): Move {
     }
 
     const exhausted = state.probesExhausted
-    const dubbed = dubbedOrder(state)
+    // KTD24: no new probe past the budget, so an unprobed video cuts by R23.
+    const cutFor = (id: string): ClipCut => {
+      const timing = timingOf(state, id)
+      return timing === "fallback" || (timing === "unknown" && exhausted)
+        ? "fallback"
+        : "sentence"
+    }
+    const dubbed = orderDubbed(state)
     const slate = slateIds(state)
     const dubbedLookahead = [...slate, ...dubbed]
 
     // R25: recommended videos first, whatever their tier.
     for (const id of slate) {
       if (skip(id)) continue
-      const timing = timingOf(state, id)
-      const cut =
-        timing === "fallback" || (timing === "unknown" && exhausted)
-          ? "fallback"
-          : "sentence"
-      return work(id, cut, dubbedLookahead)
+      return work(id, cutFor(id), dubbedLookahead)
     }
-    // R21 tier 1: sentence-cut dubbed. KTD24: no new probe past the budget.
+    // R21 tier 1: sentence-cut dubbed.
     for (const id of dubbed) {
-      if (skip(id)) continue
-      const timing = timingOf(state, id)
-      if (timing === "fallback" || (timing === "unknown" && exhausted)) {
-        continue
-      }
+      if (skip(id) || cutFor(id) === "fallback") continue
       return work(id, "sentence", dubbedLookahead)
     }
     // Tier 2: fallback dubbed, from videos already known to have no timing.
@@ -648,13 +657,7 @@ function nextMove(state: ClipQueueState, ctx: ClipQueueContext): Move {
     // Tier 3: subtitle-only, with the feed-language track shown (AE5).
     for (const id of state.subtitleOrder) {
       if (skip(id)) continue
-      const timing = timingOf(state, id)
-      const cut =
-        timing === "fallback" || (timing === "unknown" && exhausted)
-          ? "fallback"
-          : "sentence"
-      const lookahead = state.subtitleOrder
-      return work(id, cut, lookahead)
+      return work(id, cutFor(id), state.subtitleOrder)
     }
     return null
   }
@@ -697,10 +700,6 @@ function releaseCount(
     .filter((entry) => entry.languageSlug === state.feedLanguageSlug)
   const index = entries.findIndex((entry) => others.has(entry.videoId))
   return index >= 0 ? index + 1 : entries.length
-}
-
-function overlaps(a: ClipWindow, b: ClipWindow): boolean {
-  return a.startSeconds < b.endSeconds && b.startSeconds < a.endSeconds
 }
 
 /** Computed clips are not in the record until they play, so hold their windows. */

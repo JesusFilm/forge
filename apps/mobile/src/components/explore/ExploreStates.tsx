@@ -17,8 +17,8 @@ import { useTypography } from "../../hooks/useTypography"
 import { feedback } from "../../styles/shared"
 
 export type ExploreStatesProps = {
-  /** The reducer's phase. Only `offline`, `empty`, and `clipFailed` render. */
-  phase: FeedPhase
+  /** The two phases that replace the whole feed. */
+  phase: Extract<FeedPhase, "offline" | "empty">
   /** The feed language's display name, for the empty state (R37). */
   languageName: string
   onRetry: () => void
@@ -33,20 +33,12 @@ export function ExploreStates({
   languageName,
   onRetry,
 }: ExploreStatesProps) {
-  switch (phase) {
-    case "offline":
-      return <ExploreOffline onRetry={onRetry} />
-    case "empty":
-      return <ExploreEmpty languageName={languageName} />
-    case "clipFailed":
-      return <ClipFailed />
-    default:
-      return null
-  }
+  if (phase === "offline") return <ExploreOffline onRetry={onRetry} />
+  return <ExploreEmpty languageName={languageName} />
 }
 
 /** No network, or no admin: a message and a retry (R36, R47). */
-export function ExploreOffline({ onRetry }: { onRetry: () => void }) {
+function ExploreOffline({ onRetry }: { onRetry: () => void }) {
   const typography = useTypography()
   return (
     <View style={styles.screen} accessibilityLiveRegion="polite">
@@ -75,7 +67,7 @@ export function ExploreOffline({ onRetry }: { onRetry: () => void }) {
 }
 
 /** No eligible video in the feed language (R37). */
-export function ExploreEmpty({ languageName }: { languageName: string }) {
+function ExploreEmpty({ languageName }: { languageName: string }) {
   const typography = useTypography()
   return (
     <View style={styles.screen}>

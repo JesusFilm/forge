@@ -186,8 +186,8 @@ jest.mock("../../../src/components/ui/FloatingBackButton", () => ({
 const requests = getPlaybackRequestStore()
 const sessions = getMiniPlayerStore()
 
-// The page keys a full play on its intent, and that key outlives a test, so
-// each case opens a video of its own.
+// The tracker's module state outlives a test, so each case opens a video of
+// its own.
 let caseNumber = 0
 let slug = ""
 let clock = 0

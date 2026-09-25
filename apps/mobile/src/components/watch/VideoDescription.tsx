@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react"
+import { useCallback } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { animateLayout } from "../ui/AnimatedChevron"
@@ -24,28 +24,15 @@ function overflowsCollapsed(e: TextLayoutEvent): boolean {
 export function VideoDescription({ description }: VideoDescriptionProps) {
   const typography = useTypography()
 
-  // `overflows` is tri-state: null until measured (see useTextOverflow). The
-  // explicit `=== true` at the render site is for readability against that
-  // tri-state; null and false are both falsy.
-  const {
-    overflows,
-    setOverflows,
-    expanded,
-    setExpanded,
-    handleMeasureLayout,
-  } = useTextOverflow(overflowsCollapsed)
+  // A mounted instance can go partial -> full under cache-first, so the hook
+  // re-measures when the text changes.
+  const { overflows, expanded, setExpanded, handleMeasureLayout } =
+    useTextOverflow(description, overflowsCollapsed)
 
   const handleToggle = useCallback(() => {
     animateLayout()
     setExpanded((prev) => !prev)
   }, [setExpanded])
-
-  // Re-measure when the text changes — a mounted instance can go partial ->
-  // full under cache-first, and a stale `true` would keep a dead toggle up.
-  useEffect(() => {
-    setOverflows(null)
-    setExpanded(false)
-  }, [description])
 
   // Guard AFTER all hooks — a description that goes null -> non-null on a mounted
   // instance (the series screen republishes partial -> full under cache-first)

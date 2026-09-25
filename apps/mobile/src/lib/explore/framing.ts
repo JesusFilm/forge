@@ -18,7 +18,7 @@ export function clipContentFit(framing: ExploreFraming): "cover" | "contain" {
 }
 
 /** Most catalog video is 16:9. The band uses it until the track size loads. */
-export const BAND_FALLBACK_ASPECT = 16 / 9
+const BAND_FALLBACK_ASPECT = 16 / 9
 
 /** Width over height of the playing track, or the fallback when it is unknown. */
 export function bandAspect(

@@ -12,8 +12,8 @@ import { useEvent } from "expo"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
 import { LINE_HEIGHT_REDUCTION } from "../../lib/lineHeight"
-import { parseVtt, type VttCue } from "../../lib/parseVtt"
-import { loadVttCues, pinVtt } from "../../lib/vttCache"
+import type { VttCue } from "../../lib/parseVtt"
+import { loadVttCues, parseSortedVtt, pinVtt } from "../../lib/vttCache"
 import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
 import { OFFLINE_ROOT } from "../../lib/offlineFileSystem"
 import { readAsStringAsync } from "expo-file-system/legacy"
@@ -132,7 +132,7 @@ export function SubtitleOverlay({
       readAsStringAsync(vttSrc)
         .then((text) => {
           if (cancelled) return
-          const parsed = [...parseVtt(text)].sort((a, b) => a.start - b.start)
+          const parsed = parseSortedVtt(text)
           setCues(parsed)
           if (parsed.length === 0) {
             datadogLog.warn("subtitle.vtt_failed", { reason: "parse_empty" })

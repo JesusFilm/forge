@@ -32,6 +32,24 @@ export type WatchIntent = {
   createdAt: number
 }
 
+/** One key per hand-off: the progress hold and the full play both use it. */
+export function watchIntentKey(
+  intent: Pick<WatchIntent, "videoSlug" | "createdAt">,
+): string {
+  return `${intent.videoSlug}:${intent.createdAt}`
+}
+
+/**
+ * KTD11: a "Keep watching" page's languages, ahead of the default chain. The
+ * page sets it on mount and clears it on unmount. Nothing here is ever saved.
+ */
+export type WatchSessionIntent = {
+  audioLanguageSlug: string | null
+  subtitleLanguageSlug: string | null
+  /** R43: subtitles on for this session after a subtitle-only clip. */
+  subtitlesOn: boolean
+}
+
 export type WatchIntentStore = ReturnType<typeof createWatchIntentStore>
 
 /** Holds at most one intent: a newer tap outranks an older one. */
@@ -206,7 +224,7 @@ export function keepWatchingProgressHold(
 ): ProgressHold | null {
   if (state == null || !state.holdActive) return null
   return {
-    id: `keep-watching:${state.intent.videoSlug}:${state.intent.createdAt}`,
+    id: `keep-watching:${watchIntentKey(state.intent)}`,
     durationMs: KEEP_WATCHING_OFFER_DURATION_MS,
   }
 }
@@ -216,11 +234,7 @@ export function keepWatchingProgressHold(
  * carries its subtitles over; a dubbed clip's captions were a mute aid, so
  * the saved subtitle setting applies.
  */
-export function keepWatchingLanguages(intent: WatchIntent): {
-  audioLanguageSlug: string
-  subtitleLanguageSlug: string | null
-  subtitlesOn: boolean
-} {
+export function keepWatchingLanguages(intent: WatchIntent): WatchSessionIntent {
   const carry = intent.subtitleOnly && intent.subtitleLanguageSlug != null
   return {
     audioLanguageSlug: intent.audioLanguageSlug,

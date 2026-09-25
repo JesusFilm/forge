@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react"
+import { useCallback } from "react"
 import {
   Pressable,
   ScrollView,
@@ -42,20 +42,10 @@ export function ClipDescription({
 }: ClipDescriptionProps) {
   const typography = useTypography()
   const { height } = useWindowDimensions()
-  const {
-    overflows,
-    setOverflows,
-    expanded,
-    setExpanded,
-    handleMeasureLayout,
-  } = useTextOverflow(overflowsOneLine)
-
-  // New text re-measures. The reset raises no collapse: a swipe has already
-  // cleared the feed's pause, and a late event would act on the next clip.
-  useEffect(() => {
-    setOverflows(null)
-    setExpanded(false)
-  }, [description, setOverflows, setExpanded])
+  // The hook's reset on new text does not call `onCollapse`: a swipe has
+  // already cleared the feed's pause, and a late call would act on the next clip.
+  const { overflows, expanded, setExpanded, handleMeasureLayout } =
+    useTextOverflow(description, overflowsOneLine)
 
   const handleExpand = useCallback(() => {
     setExpanded(true)

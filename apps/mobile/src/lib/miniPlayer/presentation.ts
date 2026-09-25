@@ -83,15 +83,9 @@ export function canOriginateRoutePattern(pattern: string): boolean {
   return !EXCLUDED_ORIGIN_ROUTES.has(pattern)
 }
 
-/**
- * Presentation from the session and the current route.
- *
- * `floating` is the default for every route the tables do not name, because R3
- * promises the window persists across tab changes and further pushes, except
- * into Explore, whose `useExploreTakeover` ends it (feat-552 KTD10). `exiting`
- * outranks the route tables: a dismissed window animates away wherever the
- * viewer is, and only `exiting` may clear the store.
- */
+/** `floating` is the default for any route the tables do not name (R3), except
+ *  Explore, whose takeover ends the window (KTD10). `exiting` outranks the
+ *  tables: a dismissed window animates away anywhere, and only it clears the store. */
 export function miniPlayerPresentation(
   snapshot: MiniPlayerStoreSnapshot,
   segments: readonly string[],

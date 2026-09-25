@@ -109,7 +109,6 @@ function props(overrides: Partial<ClipOverlayProps> = {}): ClipOverlayProps {
   return {
     clip: CLIP,
     player: player as unknown as VideoPlayer,
-    isCurrent: true,
     muted: false,
     paused: false,
     onToggleMute: jest.fn(),
@@ -392,11 +391,6 @@ describe("ClipOverlay — captions (R13, AE4, KTD20)", () => {
     const clip = { ...CLIP, subtitleVttSrc: null, subtitleLanguageSlug: null }
     expect(captionSource(props({ clip, muted: true }))).toBeNull()
   })
-
-  it("mounts captions only in the current slot", () => {
-    const clip = { ...CLIP, subtitleOnly: true }
-    expect(captionSource(props({ clip, isCurrent: false }))).toBeNull()
-  })
 })
 
 describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
@@ -441,11 +435,6 @@ describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
     expect(step(730, "increment")).toBeGreaterThan(730)
     expect(step(750, "increment")).toBe(CLIP.window.endSeconds)
     expect(step(726, "decrement")).toBe(CLIP.window.startSeconds)
-  })
-
-  it("rests at the clip start outside the current slot", () => {
-    player.currentTime = 740
-    expect(barValue(render(props({ isCurrent: false }))).now).toBe(0)
   })
 
   it("re-renders only the bar on a player time update", () => {

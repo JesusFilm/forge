@@ -1,8 +1,7 @@
 /**
- * Clip timing acquisition (KTD20, KTD24): for one queued candidate, usable
- * sentence timing or a fallback verdict, inside a per-visit probe budget. A
- * transient failure stores nothing, so it never makes a video ineligible (R47).
- * Verdicts persist for 7 days and clear on an app version change.
+ * Sentence timing or a fallback verdict per candidate, inside KTD24's per-visit
+ * probe budget. A transient failure stores nothing, so the video stays eligible
+ * (R47). Verdicts last 7 days and clear on an app version change (KTD20).
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -19,9 +18,11 @@ import {
 import { withTimeout } from "../withTimeout"
 import type { EligibleStartsMemo, MemoSlot } from "./clipWindow"
 import type { ClipTiming } from "./sentenceTiming"
+import { parseObject, persistQuietly } from "./storage"
 import {
   checkTimingTrack,
   timingTrackOrder,
+  type TimingDub,
   type TimingSubtitle,
   type TimingTrackFailure,
   type TimingTrackTier,
@@ -38,14 +39,14 @@ export const CLIP_TIMING_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
 export const CLIP_TIMING_MAX_VERDICTS = 2000
 
-export const CLIP_TIMING_WRITE_INTERVAL_MS = 5000
+const CLIP_TIMING_WRITE_INTERVAL_MS = 5000
 
 /** The first clip waits for hydration, so a hung read must not hold it. */
 export const CLIP_TIMING_HYDRATE_TIMEOUT_MS = 400
 
 /** Ids and slugs come from admin. Bound them so one bad row cannot grow the blob. */
-export const CLIP_TIMING_MAX_ID_LENGTH = 200
-export const CLIP_TIMING_MAX_SRC_LENGTH = 2048
+const CLIP_TIMING_MAX_ID_LENGTH = 200
+const CLIP_TIMING_MAX_SRC_LENGTH = 2048
 
 /** KTD24: this many definitive track-read failures in a row end a visit's probes. */
 export const PROBE_MAX_CONSECUTIVE_FAILURES = 4
@@ -122,10 +123,7 @@ export type ClipTimingRequest<T extends TimingSubtitle> = {
   videoId: string
   /** The playing dub's Video Edition. Null: no verdict is read or stored. */
   editionId: string | null
-  playingDub:
-    | { videoEdition?: { subtitles?: readonly T[] | null } | null }
-    | null
-    | undefined
+  playingDub: TimingDub<T>
   feedLanguageSlug: string
   dubDurationSeconds: number
   signal?: AbortSignal
@@ -148,7 +146,7 @@ type StoredVerdict = [string, string, string, number, string | null]
 
 type StoredVerdicts = { v: number; app: string; e: StoredVerdict[] }
 
-export function clipTimingVerdictKey(
+function clipTimingVerdictKey(
   videoId: string,
   editionId: string,
   feedLanguageSlug: string,
@@ -228,17 +226,10 @@ export function parseStoredClipTimingVerdicts(
   now: Date,
   appVersion: string,
 ): ClipTimingVerdictEntry[] {
-  if (raw == null) return []
-  let data: unknown
-  try {
-    data = JSON.parse(raw)
-  } catch {
-    return []
-  }
-  if (data == null || typeof data !== "object" || Array.isArray(data)) {
-    return []
-  }
-  const stored = data as Partial<Record<keyof StoredVerdicts, unknown>>
+  const stored = parseObject(raw) as Partial<
+    Record<keyof StoredVerdicts, unknown>
+  > | null
+  if (stored == null) return []
   if (stored.v !== CLIP_TIMING_VERSION || stored.app !== appVersion) return []
   if (!Array.isArray(stored.e)) return []
   const nowMs = now.getTime()
@@ -323,19 +314,6 @@ function transientReason(reason: VttFailureReason): ClipTimingTransientReason {
   const status = reason.startsWith("http_") ? Number(reason.slice(5)) : NaN
   if (status >= 500 && status < 600) return "http_5xx"
   return Number.isFinite(status) ? "http_other" : "network_error"
-}
-
-/** Settles with the operation and never rejects, even on a synchronous throw.
- *  Resolves true when the operation succeeded. */
-function persistQuietly(operation: () => Promise<unknown>): Promise<boolean> {
-  try {
-    return operation().then(
-      () => true,
-      () => false,
-    )
-  } catch {
-    return Promise.resolve(false)
-  }
 }
 
 const ABORTED: ClipTimingResult = { status: "transient", reason: "aborted" }

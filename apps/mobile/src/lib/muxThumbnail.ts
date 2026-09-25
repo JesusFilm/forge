@@ -54,7 +54,6 @@ export function muxThumbnailAtSecond(
   playbackId: string | null | undefined,
   second: number,
 ): string | null {
-  if (!Number.isFinite(second) || second < 0) return null
   return muxStillUrl(playbackId, STILL_SIZE, STILL_SIZE, second)
 }
 
@@ -68,7 +67,6 @@ export function muxClipStillUrl(
   playbackId: string | null | undefined,
   startSeconds: number,
 ): string | null {
-  if (!Number.isFinite(startSeconds) || startSeconds < 0) return null
   return muxStillUrl(
     playbackId,
     CLIP_STILL_WIDTH,
@@ -99,6 +97,7 @@ function muxStillUrl(
   second?: number,
 ): string | null {
   if (!playbackId || !MUX_PLAYBACK_ID_RE.test(playbackId)) return null
+  if (second != null && !(Number.isFinite(second) && second >= 0)) return null
   const time = second == null ? "" : `&time=${second.toFixed(2)}`
   return `https://image.mux.com/${playbackId}/thumbnail.webp?width=${width}&height=${height}&fit_mode=smartcrop${time}`
 }

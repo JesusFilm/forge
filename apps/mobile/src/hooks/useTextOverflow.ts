@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { NativeSyntheticEvent, TextLayoutEventData } from "react-native"
 
 export type TextLayoutEvent = NativeSyntheticEvent<TextLayoutEventData>
@@ -8,13 +8,19 @@ export type TextLayoutEvent = NativeSyntheticEvent<TextLayoutEventData>
  * descriptions. Pass a module-level `overflowsWhen`, so the handler is stable.
  */
 export function useTextOverflow(
+  text: string | null,
   overflowsWhen: (e: TextLayoutEvent) => boolean,
 ) {
   // Null until measured, so short text never flashes a toggle. Render the
-  // toggle on `=== true`, and reset to null when the text changes, or a stale
-  // `true` keeps a dead toggle up.
+  // toggle on `=== true`.
   const [overflows, setOverflows] = useState<boolean | null>(null)
   const [expanded, setExpanded] = useState(false)
+
+  // New text re-measures and collapses, or a stale `true` keeps a dead toggle up.
+  useEffect(() => {
+    setOverflows(null)
+    setExpanded(false)
+  }, [text])
 
   // Give this to a hidden copy WITHOUT numberOfLines: a capped copy reports
   // its cap whether the text was cut or not.
@@ -27,7 +33,6 @@ export function useTextOverflow(
 
   return {
     overflows,
-    setOverflows,
     expanded,
     setExpanded,
     handleMeasureLayout,

@@ -86,9 +86,10 @@ function holdBlocksWrites(clock: HoldClock | null, now: number): boolean {
   return clock.startedAt == null || now < clock.startedAt + clock.durationMs
 }
 
-function startHoldClock(clock: HoldClock | null, now: number): void {
+function startHoldClock(ref: { current: HoldClock | null }): void {
+  const clock = ref.current
   if (clock != null && clock.active && clock.startedAt == null)
-    clock.startedAt = now
+    clock.startedAt = Date.now()
 }
 
 /** The host's answer for a swap it classified: seek first, and whether the
@@ -110,8 +111,7 @@ export function useManagedVideoPlayer(
   setup?: (player: VideoPlayer) => void,
   options?: {
     progress?: ProgressIdentity | null
-    /** KTD12's bounded hold on every progress write. Null or absent writes
-     *  exactly as before. */
+    /** KTD12's bounded hold on every progress write. Null or absent: no hold. */
     progressHold?: ProgressHold | null
     /**
      * Only the root playback host owns the mini-player session. The session's
@@ -400,7 +400,7 @@ export function useManagedVideoPlayer(
   const progressFeed = useRef<ProgressFeed>({
     onTick: (positionSeconds, durationSeconds) => {
       // A receiver's first report is the first frame of a cast session.
-      startHoldClock(holdClockRef.current, Date.now())
+      startHoldClock(holdClockRef)
       recorderRef.current?.onTick(positionSeconds, durationSeconds)
     },
     flush: (trigger) => recorderRef.current?.flush(trigger),
@@ -507,8 +507,7 @@ export function useManagedVideoPlayer(
       qoeRef.current?.onFirstPlaying()
       // Mid-swap, `playing` still describes the outgoing video; the poll
       // below starts the clock once the swap settles.
-      if (!isSwappingRef.current)
-        startHoldClock(holdClockRef.current, Date.now())
+      if (!isSwappingRef.current) startHoldClock(holdClockRef)
     } else if (wasPlaying) {
       // A real pause (not initial mount) forces a progress write (KTD5).
       recorderRef.current?.flush("pause")
@@ -786,8 +785,7 @@ export function useManagedVideoPlayer(
       if (!castActiveRef.current) {
         // A hold set while playback already runs has no playing edge to start
         // its clock, so the first tick after it does.
-        if (!isSwappingRef.current)
-          startHoldClock(holdClockRef.current, Date.now())
+        if (!isSwappingRef.current) startHoldClock(holdClockRef)
         recorderRef.current?.onTick(position, duration)
         recommendationRef.current?.onTick(position, duration)
       }

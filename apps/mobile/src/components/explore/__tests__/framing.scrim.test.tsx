@@ -103,7 +103,6 @@ function render(
       <ClipOverlay
         clip={CLIP}
         player={player as unknown as VideoPlayer}
-        isCurrent
         muted={false}
         paused={false}
         onToggleMute={() => {}}

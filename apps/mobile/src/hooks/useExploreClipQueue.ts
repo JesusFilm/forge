@@ -1,9 +1,7 @@
 /**
- * The Explore clip queue host (U22, KTD6, KTD8). It runs U5's pure queue
- * against the stored pool, the hydration query, U21's timing source, U6's clip
- * record, and Explore's own recommendations instance, and it starts nothing
- * before the tab's first focus (R46). The feed owns the reducer; this hook
- * hands it one computed clip at a time through `onClip`.
+ * KTD6/KTD8: runs the pure queue in `clipQueue.ts` and Explore's own slate.
+ * The route mounts the feed only after the tab's first focus (R46). The feed
+ * owns the reducer; this hook hands it one clip at a time through `onClip`.
  */
 import type { ApolloClient } from "@apollo/client"
 import { Image } from "expo-image"
@@ -39,6 +37,7 @@ import {
   type ClipQueueRecord,
   type ClipQueueSignal,
   type ClipQueueState,
+  type QueueFailure,
 } from "../lib/explore/clipQueue"
 import { readAppVersion } from "../lib/explore/appVersion"
 import {
@@ -82,7 +81,7 @@ import {
 } from "./useUserRecommendations"
 
 /** KTD8: Explore's slate size on the `watch-for-you-v1` surface. */
-export const EXPLORE_RECOMMENDATION_COUNT = 6
+const EXPLORE_RECOMMENDATION_COUNT = 6
 
 /** KTD8: at most one new slate request in this window. */
 export const EXPLORE_DELIVERY_SPACING_MS = 10 * 60 * 1000
@@ -99,6 +98,11 @@ export const QUEUE_RETRY_DELAYS_MS: readonly number[] = [
 
 /** Still URIs remembered for the loaded check. The oldest leave first. */
 const MAX_TRACKED_STILLS = 16
+
+/** The list with `item` last, at most `max` long; the oldest items leave first. */
+function appendBounded<T>(list: readonly T[], item: T, max: number): T[] {
+  return [...list.slice(Math.max(0, list.length + 1 - max)), item]
+}
 
 /** What the wrapper answers for an attempt past the budget. No request goes out. */
 const OVER_BUDGET: DeliveryResult = {
@@ -210,7 +214,7 @@ export type ExploreQueryClient = Pick<ApolloClient, "query">
 export type ExploreClipQueueDeps = {
   /** Called for each request, never at module scope. */
   getClient: () => ExploreQueryClient
-  classifyFailure: (error: unknown) => "unreachable" | "transient"
+  classifyFailure: (error: unknown) => QueueFailure
   poolStore: Pick<
     ExplorePoolStore,
     "readPool" | "writePool" | "readReadyClip" | "writeReadyClip"
@@ -237,7 +241,7 @@ export type ExploreClipQueueDeps = {
 let defaultDeps: ExploreClipQueueDeps | null = null
 
 /** The app's stores and clients. Building them makes no request. */
-export function getExploreClipQueueDeps(): ExploreClipQueueDeps {
+function getExploreClipQueueDeps(): ExploreClipQueueDeps {
   defaultDeps ??= {
     getClient: getApolloClient,
     classifyFailure: (error) =>
@@ -267,8 +271,6 @@ export type PoolFallbackReport = {
 }
 
 export type UseExploreClipQueueInput = {
-  /** R46: the tab's first-focus latch. Nothing starts before it. */
-  hasFocused: boolean
   /** The tab is on screen now. A return after 30 min starts a new visit. */
   focused: boolean
   /** KTD22: the pager's latch. No queue step runs while it is set. */
@@ -374,7 +376,7 @@ function createQueueEngine(deps: ExploreClipQueueDeps, host: EngineHost) {
   let appliedRequestId: string | null = null
   /** The feed slots at the last hand-off: a feed that ignores a clip gets no second one. */
   let handOffMark: { current: FeedClip | null; queued: boolean } | null = null
-  const stillsAsked: string[] = []
+  let stillsAsked: readonly string[] = []
 
   const current = (slug: string): boolean =>
     alive && queue != null && queue.feedLanguageSlug === slug
@@ -405,7 +407,7 @@ function createQueueEngine(deps: ExploreClipQueueDeps, host: EngineHost) {
     if (poolFlights.has(slug)) return
     const flight = (async () => {
       let pool: ExplorePool | null = null
-      let failure: "unreachable" | "transient" = "transient"
+      let failure: QueueFailure = "transient"
       try {
         const result = await deps.getClient().query({
           query: EXPLORE_INVENTORY,
@@ -598,8 +600,7 @@ function createQueueEngine(deps: ExploreClipQueueDeps, host: EngineHost) {
   function prefetchStill(clip: FeedClip): void {
     const uri = stillUriOf(clip)
     if (uri == null || stillsAsked.includes(uri)) return
-    stillsAsked.push(uri)
-    if (stillsAsked.length > MAX_TRACKED_STILLS) stillsAsked.shift()
+    stillsAsked = appendBounded(stillsAsked, uri, MAX_TRACKED_STILLS)
     let request: Promise<boolean>
     try {
       request = deps.prefetchImage(uri)
@@ -777,12 +778,13 @@ type QueueEngine = ReturnType<typeof createQueueEngine>
 function createSlateScheduler(
   deps: ExploreClipQueueDeps,
   host: {
-    requestedSlug: () => string | null
     requestSlug: (slug: string) => void
     refresh: () => void
   },
 ) {
   let wanted: string | null = null
+  /** The slug the inner hook asks for. Only this scheduler sets it. */
+  let requested: string | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
   let alive = true
 
@@ -811,8 +813,12 @@ function createSlateScheduler(
       return
     }
     wanted = null
-    if (host.requestedSlug() === slug) host.refresh()
-    else host.requestSlug(slug)
+    if (requested === slug) {
+      host.refresh()
+      return
+    }
+    requested = slug
+    host.requestSlug(slug)
   }
 
   return {
@@ -839,7 +845,6 @@ export function useExploreClipQueue(
   deps: ExploreClipQueueDeps = getExploreClipQueueDeps(),
 ): ExploreClipQueue {
   const {
-    hasFocused,
     focused,
     gestureActive,
     holdLookahead,
@@ -882,7 +887,7 @@ export function useExploreClipQueue(
         setLoadedStills((held) =>
           held.includes(uri)
             ? held
-            : [...held.slice(1 - MAX_TRACKED_STILLS), uri],
+            : appendBounded(held, uri, MAX_TRACKED_STILLS),
         ),
       refreshSlate: (slug) => refreshSlateRef.current(slug),
     }),
@@ -890,7 +895,6 @@ export function useExploreClipQueue(
 
   // ── KTD8: Explore's own slate ────────────────────────────────────
   const [requestedSlug, setRequestedSlug] = useState<string | null>(null)
-  const requestedSlugRef = useRef<string | null>(null)
   const [client] = useState(() =>
     d.budget.wrap(d.recommendations, {
       now: d.now,
@@ -909,11 +913,7 @@ export function useExploreClipQueue(
   )
   const [scheduler] = useState(() =>
     createSlateScheduler(d, {
-      requestedSlug: () => requestedSlugRef.current,
-      requestSlug: (slug) => {
-        requestedSlugRef.current = slug
-        setRequestedSlug(slug)
-      },
+      requestSlug: setRequestedSlug,
       refresh: () => innerRefreshRef.current(),
     }),
   )
@@ -927,7 +927,7 @@ export function useExploreClipQueue(
     innerRefreshRef.current = recommendations.refresh
     refreshSlateRef.current = (slug) => scheduler.want(slug)
     profileChangeRef.current = () => {
-      // R46: the viewer store can report a change before the first focus.
+      // The viewer store can report a change before the queue starts.
       if (!engine.started()) return
       engine.clearSlate()
       scheduler.want(feedSlugRef.current)
@@ -945,9 +945,8 @@ export function useExploreClipQueue(
     }
   }, [engine, scheduler])
 
-  // R46: the first focus starts the queue; a later slug is a language change.
+  // The first run starts the queue; a later slug is a language change.
   useEffect(() => {
-    if (!hasFocused) return
     feedSlugRef.current = feedLanguageSlug
     if (engine.started()) {
       engine.changeLanguage(feedLanguageSlug)
@@ -955,7 +954,7 @@ export function useExploreClipQueue(
     }
     engine.start(feedLanguageSlug)
     scheduler.want(feedLanguageSlug)
-  }, [engine, scheduler, hasFocused, feedLanguageSlug])
+  }, [engine, scheduler, feedLanguageSlug])
 
   const served =
     recommendations.status === "served" ? recommendations.slate : null
@@ -970,29 +969,26 @@ export function useExploreClipQueue(
 
   // KTD22: the latch reaches both stores; an unmount never leaves them latched.
   useEffect(() => {
-    if (!hasFocused) return
     d.timing.setGestureActive(gestureActive)
     d.record.setGestureActive(gestureActive)
     return () => {
       d.timing.setGestureActive(false)
       d.record.setGestureActive(false)
     }
-  }, [d, hasFocused, gestureActive])
+  }, [d, gestureActive])
 
   useEffect(() => {
-    if (!hasFocused) return
     const subscription = AppState.addEventListener("change", (next) => {
       if (next !== "background") return
       void d.record.flushNow()
       void d.timing.flushNow()
     })
     return () => subscription.remove()
-  }, [d, hasFocused])
+  }, [d])
 
   // KTD17's visit: a return after 30 min away starts a new one.
   const blurredAtRef = useRef<number | null>(null)
   useEffect(() => {
-    if (!hasFocused) return
     if (!focused) {
       blurredAtRef.current ??= d.now()
       return
@@ -1003,17 +999,16 @@ export function useExploreClipQueue(
     if (d.now() - blurredAt < EXPLORE_VISIT_TIMEOUT_MS) return
     engine.newVisit()
     scheduler.want(feedSlugRef.current)
-  }, [d, engine, scheduler, hasFocused, focused])
+  }, [d, engine, scheduler, focused])
 
   // KTD21: only one-player mode shows a still, so only it pays for one.
   useEffect(() => {
-    if (hasFocused && playerMode === "one" && nextClip != null) {
+    if (playerMode === "one" && nextClip != null) {
       engine.prefetchStill(nextClip)
     }
-  }, [engine, hasFocused, playerMode, nextClip])
+  }, [engine, playerMode, nextClip])
 
   useEffect(() => {
-    if (!hasFocused) return
     engine.pump({
       wantsClip,
       feedHoldsQueued,
@@ -1025,7 +1020,6 @@ export function useExploreClipQueue(
   }, [
     engine,
     tick,
-    hasFocused,
     wantsClip,
     feedHoldsQueued,
     gestureActive,

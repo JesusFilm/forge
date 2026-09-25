@@ -1,11 +1,7 @@
 /**
- * The R17 offer (KTD12). A watch page opened by "Keep watching" plays from
- * the tap point and, for a few seconds, offers to start from the beginning,
- * or to resume at a later saved place.
- *
- * The page owns the choice (the seek and the end of the progress hold). This
- * component owns what the offer names and when it asks to hide. The copy is
- * a working choice: the final copy is an open product decision.
+ * The R17 offer (KTD12): start from the beginning, or resume at a later saved
+ * place. The page owns the seek and the hold; this owns the labels and the
+ * hide request. The copy is a working choice until product decides.
  */
 
 import { useEffect, useState } from "react"
@@ -61,7 +57,6 @@ export type KeepWatchingOfferProps = {
   onChoose: (seconds: number) => void
   /** The time ran out, and no screen reader holds the offer open. */
   onExpire: () => void
-  durationMs?: number
 }
 
 export function KeepWatchingOffer({
@@ -69,7 +64,6 @@ export function KeepWatchingOffer({
   clockStarted,
   onChoose,
   onExpire,
-  durationMs = KEEP_WATCHING_OFFER_DURATION_MS,
 }: KeepWatchingOfferProps) {
   const insets = useSafeAreaInsets()
   const screenReaderOn = useScreenReaderEnabled()
@@ -81,9 +75,12 @@ export function KeepWatchingOffer({
 
   useEffect(() => {
     if (!clockArmed) return
-    const timer = setTimeout(() => setTimedOut(true), durationMs)
+    const timer = setTimeout(
+      () => setTimedOut(true),
+      KEEP_WATCHING_OFFER_DURATION_MS,
+    )
     return () => clearTimeout(timer)
-  }, [clockArmed, durationMs])
+  }, [clockArmed])
 
   // PRODUCT.md: auto-hide waits while a screen reader is on. Only the offer
   // waits; the progress hold ends at its own deadline in the adapter.
