@@ -439,6 +439,15 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - **The ambient wash hands over to BLACK while the video plays (`WatchAmbient`), for EVERY video, by decision — not by detection.** It is POSTER-derived, so once playback moves past that frame it no longer describes what is on screen, and on a video with baked-in letterbox bars it frames them. It cross-fades to pure black rather than simply away, because black is what those bars ARE — handing over to `BG_COLOR` would still leave them ~28 levels off their surround. Both layers ride ONE value (the black is `playFade` inverted), so they can never both be up or both be gone. The black holds solid to the player's bottom edge then dissolves into `BG_COLOR` across the bleed, with that midpoint DERIVED from `topInset + playerHeight` — ending an opaque band on the clipped edge is the seam this layer was already fixed for once. `PLAYING_OPACITY_MULTIPLIER` is the knob (0 = full handover, 1 = old behaviour); `PLAY_FADE_MS` is deliberately slow (3s) so it reads as the room settling rather than a glitch. The animated opacity MUST NOT land in the same style array as `styles.root` — it would win over `AMBIENT_MAX_OPACITY` and silently discard the contrast ceiling while that ceiling's own guard stays green. Play state arrives via the module-scope request store (`setPlaying` / `usePlaybackPlaying`), mirroring `loadFailed`, because the host is a `<Stack>` SIBLING and no context or prop path reaches the route's layers.
 - **Detecting baked-in letterbox bars on-device was investigated and REJECTED (2026-08-27) — do not re-litigate without new evidence.** Bars are in the PIXELS, not the container: `pilgrims-progress` is stored 1920x1080 on every rendition with 137 black rows top and bottom, so `VideoTrack.size` / `VideoThumbnail.width` / aspect metadata are all blind to it. Sampling frames DOES work (Mux `image.mux.com/<id>/thumbnail.png?time=&width=64`, requiring symmetry + steadiness across >=3 mid-timeline frames — a single middle frame false-positives on dark scenes, measured on `the-birth-of-jesus`), but the framing VARIES within one video (no bars t=3-20s on the same asset), only 1 in 11 videos is affected, and each cold bespoke Mux render costs ~0.93s TTFB. The unconditional fade above solves the same symptom with none of that. **Landmine if you retry:** feeding expo-video's `VideoThumbnail` into expo-image's `generateThumbhashAsync`/`generateBlurhashAsync` HANGS FOREVER on iOS — both internal `Either.get()` casts return nil, the generator never runs, and the promise never settles, so a prototype just looks like a slow network call. The only real JS-only pixel route is an offscreen `react-native-webview` canvas (already a shipped dependency; `image.mux.com` sends `access-control-allow-origin: *`).
 - **A group `opacity` over stacked children needs `needsOffscreenAlphaCompositing` on Android.** Android applies a ViewGroup's opacity to EACH CHILD unless the subtree is composited offscreen first, so an OPAQUE overlay stops covering what is beneath it — it blends over an already-dimmed sibling instead. `WatchAmbient` is the worked case: poster + gradient under `opacity: 0.45`, where the gradient's opaque tail could never reach `BG_COLOR`, so the wash ended in a hard seam at its clipped bottom edge instead of dissolving into the page. iOS composites correctly on its own and measured byte-identical either way, which is exactly why it shipped. Diagnose it by giving the overlay an unmistakable opaque colour and sampling pixels: leaking reads as the overlay PLUS a tint (`#8a177f`), correct reads as the overlay alone (`#810e7f` = 45% magenta over `BG_COLOR`). Suspect this whenever a fade looks right on iOS and terminates in a line on Android — `zIndex` does NOT fix it, because the defect is compositing, not draw order.
+- **iOS removes a view from the accessibility tree when its frame misses its
+  parent's bounds, even when an ancestor's transform puts it back on screen.**
+  Measured 2026-09-25 on the iPhone 17 simulator (iOS 26.5): a slot at
+  `translateY: +h` inside a wrapper at `translateY: -h` drew correctly but left
+  the tree (3 elements, not 10); the same pair inside a wrapper 2h tall stayed.
+  So a pager that keeps growing offsets loses VoiceOver after one swipe.
+  `ExplorePager` rebases at every settle: layout `top` offsets cancel what its
+  two Animated nodes hold, one render moves them with the slots, and neither
+  node is written.
 - ScrollView gesture preemption: interactive hero elements need `pointerEvents="box-none"` pass-through.
 - Lazy Apollo Client init: never module-scope. Use `getApolloClient()` getter.
 - `contentParagraphs` is `string[]` (JSON field) — validate with `Array.isArray()`.
@@ -1074,6 +1083,87 @@ need the shared predicate and `/watch/[slug]` does not. Before copying a gate
 between player surfaces, check which side of that line you are on. The general
 rule: every layer that can hide the recovery affordance must clear on every path
 that releases the gate.
+
+## Explore clips feed (feat-552)
+
+Explore is the second tab: an endless vertical feed of 10–60 s clips of
+catalog videos in the viewer's feed language, with "Keep watching" into the
+full video. The plan is
+`docs/plans/2026-09-24-1450-feat-mobile-explore-clips-feed-plan.md`; the
+device probe is `docs/validation/explore-clips-probe.md`. The code lives in
+`src/lib/explore/` (pure rules and stores), `src/components/explore/`, and the
+`useExploreFocus`, `useFeedPlayers`, `useClipAutostart`, `useExploreClipQueue`
+and `useExploreTakeover` hooks.
+
+- **The gate is fixed per bundle, never toggled at runtime.**
+  `isExploreAvailable()` (`availability.ts`) binds the pure rule in
+  `availabilityState.ts`: the over-the-air constant `EXPLORE_ENABLED`
+  (`constants.ts`) AND (`__DEV__` OR `EXPO_PUBLIC_EXPLORE_ENABLED` is `1` or
+  `true`). A release Android bundle also needs
+  `EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED` (`1` or `true`), because one EAS
+  variable serves both platforms and Android testers wait for the low-end
+  Android pass. iOS marks the trigger `hidden`, Android sets `href: null`, and
+  the route renders nothing while closed (an Android route stays reachable by
+  URL). `exploreGateWiring.guard.test.js` pins all of it.
+- **Operator steps.** Set `EXPO_PUBLIC_EXPLORE_ENABLED=1` (plain-text
+  visibility) in the EAS environment of the build profile the testers install —
+  `preview` for internal builds, `production` for TestFlight. Never in an
+  `eas.json` `env` block (an `eas.json` edit moves the runtime version). The
+  kill switch is `EXPLORE_ENABLED = false` in an update; it reaches only builds
+  with the same runtime version.
+- **`expo-device` is a native module, so it moved the fingerprint runtime
+  version.** A native build must ship before any `eas update` reaches a tester.
+  `deviceTier.ts` probes `requireOptionalNativeModule("ExpoDevice")` before it
+  loads the package: a dev client built before the module otherwise shows a red
+  box, even though the require is caught.
+- **No work before first focus (R46).** iOS NativeTabs render every tab at
+  launch. `useExploreFocus` latches the first focus, and `ExploreFeed` mounts
+  only after it.
+- **Two feed-owned players, one reducer.** `useFeedPlayers` creates exactly two
+  `useVideoPlayer` players with a null source (the player guard's allowlist
+  names the file), and `feedState.ts` owns the states, the slot roles, the
+  swipe history, and the pause flags, so both players derive from one state per
+  commit. At most one player in the app has sound: a swipe mutes and pauses the
+  outgoing player, reveals the incoming one muted on confirmed motion, then
+  unmutes it (expo/expo#30271). A loop is a seek at the window end; native
+  `loop` stays off. Loads start only while the pager rests, and every load
+  carries a token so a late `sourceLoad` never seeks the wrong clip.
+- **The pager rebases at every settle, or iOS hides the clip from VoiceOver.**
+  See the Common Pitfalls entry on frames that miss their parent's bounds.
+  `ExplorePager.test.tsx` "accessibility tree geometry (R35)" pins it.
+- **Both video views stay mounted in the pager's underlay, keyed by player**
+  (`FeedVideoView.tsx`, Android `textureView`, no picture-in-picture props), so
+  a swipe moves a view and never remounts or rebinds it. "Keep watching"
+  unmounts both until the next focus, because the device probe could not show
+  that a cleared source frees its decoder on a low-end Android phone.
+- **One player on low-memory Android.** `resolvePlayerMode` (`playerMode.ts`)
+  gives one player below 3.5 GiB of reported memory (a phone sold as 4 GB
+  reports about 3.7 GiB), and demotes a launch after two fast standby errors;
+  `demotionStore.ts` keeps a demotion for 7 days per app version.
+- **Per-clip autostart gate.** See the autostart paragraphs in the mini player
+  section: `useClipAutostart` keeps the three release paths and
+  `AUTOSTART_VEIL_TIMEOUT_MS`, per clip.
+- **The takeover is a continuous yield.** While Explore has focus,
+  `useExploreTakeover` dismisses every floating session through the store
+  (never a `replaced` end); under a picture-in-picture hold it pauses the root
+  player instead, and a root `playing` edge pauses the clip as a system pause.
+  A floating window therefore ends when the viewer opens Explore, and only
+  there.
+- **Clips never write watch progress.** They send capped recommendation
+  evidence through the clip-mode recorder (see the recommendations section).
+  "Keep watching" opens the watch page through a one-shot intent
+  (`watchIntent.ts`) with a 6 s progress hold and the R17 offer.
+- **Clip moments come from subtitle timing on the phone.** `sentenceTiming.ts`
+  is a ported copy of TV's module with more sentence terminators (SYNC note in
+  its header; TV has not taken the additions — a follow-up in feat-552).
+  `clipTiming.ts` walks the playing dub's tracks through the shared cue cache
+  (`src/lib/vttCache.ts`, 1 MB cap per track) and stores a verdict per video,
+  edition and feed language for 7 days. Its app version is
+  `Constants.expoConfig.version`, so an over-the-air update does not clear the
+  stored verdicts.
+- **Admin load.** Hydration batches candidates through `watchHomeVideos`, one
+  public root access per request, because admin allows 60 accesses per minute
+  per public root field per caller. The inventory pool is stored for 24 h.
 
 ## Lapse reminders (local notifications)
 

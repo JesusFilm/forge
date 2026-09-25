@@ -3,7 +3,7 @@ id: "feat-552"
 title: "Mobile Explore clips feed"
 owner: "urim"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-25"
 duration: 21
 depends_on: []
@@ -78,6 +78,13 @@ sample the catalog quickly in their own language.
   release.
 - Admin-computed moments with a staff "hide this moment" control, before the
   public release.
+- Open question for the owner: Mandarin subtitle tracks use the slugs
+  `chinese-simplified` and `chinese-traditional`, never `mandarin-china`, so a
+  Mandarin feed gets no captions in its language and no subtitle-only clips
+  (`docs/validation/explore-clips-probe.md`). Related-language matching is
+  deferred to v2; decide whether this pair is an identity mapping instead.
+- A rapid double swipe can show one or two black frames while the veil mounts
+  before its poster paints (seen on the iPhone 17 simulator, 2026-09-25).
 
 ## Verification
 
