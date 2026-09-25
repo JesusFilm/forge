@@ -333,8 +333,8 @@ function settleValue(): number {
   return animations.at(-1)?.config.toValue ?? 0
 }
 
-function offsetOf(node: RenderedNode): number {
-  const style = ([] as unknown[])
+function flatStyle(node: RenderedNode): Record<string, unknown> {
+  return ([] as unknown[])
     .concat(node.props.style)
     .flat(Infinity)
     .filter(Boolean)
@@ -342,8 +342,42 @@ function offsetOf(node: RenderedNode): number {
       (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
       {},
     )
-  const transform = (style.transform ?? []) as Array<{ translateY?: number }>
+}
+
+function offsetOf(node: RenderedNode): number {
+  const transform = (flatStyle(node).transform ?? []) as Array<{
+    translateY?: number
+  }>
   return transform.reduce((sum, part) => sum + (part.translateY ?? 0), 0)
+}
+
+/** The settle layer, then the drag layer: the two Animated views, outer first. */
+function layers(renderer: TestInstance): RenderedNode[] {
+  const found = hostNodes(renderer, (node) => node.props.collapsable === false)
+  expect(found).toHaveLength(2)
+  return found
+}
+
+function topOf(node: RenderedNode): number {
+  const top = flatStyle(node).top
+  return typeof top === "number" ? top : 0
+}
+
+/** Where the layers put page 0 on screen, in layout plus transform. */
+function layerY(renderer: TestInstance): number {
+  const [settleLayer, dragLayer] = layers(renderer)
+  return topOf(settleLayer) + settleValue() + topOf(dragLayer) + dragValue()
+}
+
+/** Each frame against its parent: settle layer, drag layer, current slot. */
+function frameOffsets(harness: Harness): number[] {
+  const [settleLayer, dragLayer] = layers(harness.renderer)
+  const current = slotOffsets(harness.renderer)[keyWithRole(harness, "current")]
+  return [
+    topOf(settleLayer) + settleValue(),
+    topOf(dragLayer) + dragValue(),
+    current,
+  ]
 }
 
 /** The three slots, in key order. The underlay layer is not a slot. */
@@ -358,7 +392,7 @@ function slotOffsets(renderer: TestInstance): number[] {
 
 /** Each slot key's on-screen y at rest: 0 is the screen, ±PAGE off it. */
 function screenY(harness: Harness): number[] {
-  const base = settleValue() + dragValue()
+  const base = layerY(harness.renderer)
   return slotOffsets(harness.renderer).map((offset) => base + offset)
 }
 
@@ -680,7 +714,7 @@ function underlayNode(harness: Harness, id: string): RenderedNode {
 }
 
 function underlayScreenY(harness: Harness, id: string): number {
-  return settleValue() + dragValue() + offsetOf(underlayNode(harness, id))
+  return layerY(harness.renderer) + offsetOf(underlayNode(harness, id))
 }
 
 describe("the underlay (KTD1)", () => {
@@ -692,13 +726,14 @@ describe("the underlay (KTD1)", () => {
     for (let swipeIndex = 0; swipeIndex < 10; swipeIndex += 1) {
       const aCurrent = harness.moves.length % 2 === 0
       const incoming = aCurrent ? "b" : "a"
-      const incomingOffset = offsetOf(underlayNode(harness, incoming))
 
       await swipe(harness, -LONG)
+      // Where the settle will land the incoming child, before roles rotate.
+      const landing = underlayScreenY(harness, incoming)
       await landSettle()
 
-      // The incoming child keeps its page as it becomes current: no jump.
-      expect(offsetOf(underlayNode(harness, incoming))).toBe(incomingOffset)
+      // The rotation and its rebase keep the child where it landed: no jump.
+      expect(landing).toBeCloseTo(0)
       expect(underlayScreenY(harness, incoming)).toBeCloseTo(0)
       const outgoing = incoming === "a" ? "b" : "a"
       expect(underlayScreenY(harness, outgoing)).toBeCloseTo(PAGE)
@@ -889,6 +924,85 @@ describe("accessibility (R35)", () => {
     expect(harness.rests).toBe(2)
     expect(harness.latch).toEqual([true, false, true, false])
     expectRolesOnScreen(harness)
+  })
+})
+
+describe("accessibility tree geometry (R35)", () => {
+  function expectFramesInsideParents(harness: Harness) {
+    for (const offset of frameOffsets(harness)) {
+      expect(Math.abs(offset)).toBeLessThan(1)
+    }
+  }
+
+  it("keeps each layer and the current slot inside its parent after 1, 2, and 10 moves each way", async () => {
+    const harness = await renderPager()
+    expectFramesInsideParents(harness)
+
+    for (const dy of [-LONG, LONG]) {
+      for (let move = 1; move <= 10; move += 1) {
+        await swipe(harness, dy)
+        await landSettle()
+        await advance(EXPLORE_PAGER_REST_DWELL_MS)
+        if (move === 1 || move === 2 || move === 10) {
+          expectFramesInsideParents(harness)
+          expectRolesOnScreen(harness)
+        }
+      }
+    }
+    expect(harness.moves).toEqual([
+      ...Array(10).fill("next"),
+      ...Array(10).fill("previous"),
+    ])
+  })
+
+  it("keeps them inside after snap-backs, whose drags would otherwise add up", async () => {
+    const harness = await renderPager()
+
+    for (let snap = 0; snap < 10; snap += 1) {
+      await swipe(harness, -SHORT)
+      await landSettle()
+    }
+
+    expect(harness.moves).toEqual([])
+    expectFramesInsideParents(harness)
+    expectRolesOnScreen(harness)
+  })
+
+  it("keeps them inside after the grant jumps a running settle", async () => {
+    const harness = await renderPager()
+
+    await swipe(harness, -LONG)
+    await swipe(harness, -LONG)
+    await landSettle()
+
+    expect(harness.moves).toEqual(["next", "next"])
+    expectFramesInsideParents(harness)
+    expectRolesOnScreen(harness)
+  })
+
+  it("moves no content when the page height changes during a drag", async () => {
+    const harness = await renderPager()
+    await swipe(harness, -LONG)
+    await landSettle()
+
+    await act(async () => {
+      grantAndMove(handlers(harness.renderer), -SHORT, SLOW_MS)
+    })
+    const dragged = screenY(harness)[keyWithRole(harness, "current")]
+    await layoutPager(harness.renderer, 700)
+
+    expect(screenY(harness)[keyWithRole(harness, "current")]).toBeCloseTo(
+      dragged,
+    )
+    await act(async () => {
+      handlers(harness.renderer).onResponderRelease(touch(0, 0, 0, 0, 16))
+    })
+    await landSettle()
+    expectFramesInsideParents(harness)
+    const y = screenY(harness)
+    expect(y[keyWithRole(harness, "current")]).toBeCloseTo(0)
+    expect(y[keyWithRole(harness, "next")]).toBeCloseTo(700)
+    expect(y[keyWithRole(harness, "previous")]).toBeCloseTo(-700)
   })
 })
 

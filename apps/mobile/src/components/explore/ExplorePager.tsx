@@ -94,9 +94,17 @@ type Placement = {
   /** Pages count committed moves and never reset (see `createPagerEngine`). */
   current: number
   pages: readonly [number, number, number]
+  /** Layout offsets that cancel `settle` and `drag` at rest (see `rebase`). */
+  settleTop: number
+  dragTop: number
 }
 
-const INITIAL_PLACEMENT: Placement = { current: 0, pages: [0, 1, -1] }
+const INITIAL_PLACEMENT: Placement = {
+  current: 0,
+  pages: [0, 1, -1],
+  settleTop: 0,
+  dragTop: 0,
+}
 
 /** The slot left two pages behind the new current wraps to the far side. */
 function rotate(placement: Placement, step: 1 | -1): Placement {
@@ -104,7 +112,13 @@ function rotate(placement: Placement, step: 1 | -1): Placement {
   const wrap = (page: number) =>
     page === current - 2 * step ? current + step : page
   const [a, b, c] = placement.pages
-  return { current, pages: [wrap(a), wrap(b), wrap(c)] }
+  return { ...placement, current, pages: [wrap(a), wrap(b), wrap(c)] }
+}
+
+/** A role's page, counted from the current page. */
+function roleOffset(role: ExplorePagerRole): number {
+  if (role === "current") return 0
+  return role === "next" ? 1 : -1
 }
 
 function roleOf(
@@ -114,11 +128,6 @@ function roleOf(
   const offset = placement.pages[key] - placement.current
   if (offset === 0) return "current"
   return offset < 0 ? "previous" : "next"
-}
-
-function pageOf(placement: Placement, role: ExplorePagerRole): number {
-  if (role === "current") return placement.current
-  return placement.current + (role === "next" ? 1 : -1)
 }
 
 function releaseStep(
@@ -148,7 +157,7 @@ type PagerEngine = {
 
 // The finger writes `drag` with setValue; only native animations move
 // `settle`, since a setValue after a native stop can lose to its late report.
-// Neither is reset: a commit moves an off-screen slot, so no two writes race.
+// Neither is reset: each settle rebases layout offsets instead (see `rebase`).
 function createPagerEngine({
   drag,
   settle,
@@ -203,12 +212,32 @@ function createPagerEngine({
     drag.setValue(value)
   }
 
+  // iOS drops a view from the accessibility tree when its frame misses its
+  // parent, even if an ancestor's transform puts it back on screen. One render
+  // moves these offsets and the slots together, so the screen does not move.
+  const rebase = () => {
+    const settleTop = Math.round(-settleAt)
+    placement = {
+      ...placement,
+      settleTop,
+      dragTop: placement.current * height - settleTop,
+    }
+  }
+
   const commit = (page: number) => {
     const step = page - placement.current
-    if (step !== 1 && step !== -1) return
-    placement = rotate(placement, step)
-    showPlacement(placement)
-    live.current.onMove(step === 1 ? "next" : "previous")
+    if (step !== 0 && step !== 1 && step !== -1) return
+    const before = placement
+    if (step !== 0) placement = rotate(placement, step)
+    rebase()
+    if (
+      step !== 0 ||
+      placement.settleTop !== before.settleTop ||
+      placement.dragTop !== before.dragTop
+    ) {
+      showPlacement(placement)
+    }
+    if (step !== 0) live.current.onMove(step === 1 ? "next" : "previous")
   }
 
   /** KTD25: jump a running settle to its end and commit its move. */
@@ -317,6 +346,8 @@ function createPagerEngine({
         grab += shift
         writeDrag(dragAt + shift)
       }
+      rebase()
+      showPlacement(placement)
       showHeight(next)
     },
     dispose: () => {
@@ -405,11 +436,11 @@ export function ExplorePager({
         styles.slot,
         {
           height,
-          transform: [{ translateY: pageOf(placement, role) * height }],
+          transform: [{ translateY: roleOffset(role) * height }],
         },
       ],
     }),
-    [placement, height],
+    [height],
   )
 
   return (
@@ -421,12 +452,14 @@ export function ExplorePager({
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
+          { top: placement.settleTop, bottom: -placement.settleTop },
           { transform: [{ translateY: settle }] },
         ]}
       >
         <Animated.View
           style={[
             StyleSheet.absoluteFill,
+            { top: placement.dragTop, bottom: -placement.dragTop },
             { transform: [{ translateY: drag }] },
           ]}
         >
@@ -456,7 +489,7 @@ export function ExplorePager({
                   styles.slot,
                   {
                     height,
-                    transform: [{ translateY: placement.pages[key] * height }],
+                    transform: [{ translateY: roleOffset(role) * height }],
                   },
                 ]}
               >
