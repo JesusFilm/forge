@@ -188,6 +188,10 @@ import {
   getMiniPlayerStore,
   type MiniPlayerEndEvent,
 } from "../../../lib/miniPlayer/store"
+import {
+  resetPlaybackTransportForTests,
+  seekPlayback,
+} from "../../../lib/playbackInterruption"
 import type { ExpoVideoMock } from "../../../test-utils/expoVideoMock"
 import { FloatingBackButton } from "../../ui/FloatingBackButton"
 import {
@@ -2100,6 +2104,94 @@ describe("the progress hold (KTD12)", () => {
       sessionStore.requestDismiss()
     })
     expect(writtenVideoIds()).toContain("video-a")
+  })
+})
+
+/**
+ * The R17 offer seeks the one player from the route tree (KTD12). The host
+ * serves the seek, so a swap still loading must land where the viewer chose.
+ */
+describe("the transport seek (KTD12)", () => {
+  it("seeks the one player", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    video.__player.duration = 7200
+    video.__player.currentTime = 740
+    await startPlayback()
+
+    let took = false
+    await act(async () => {
+      took = seekPlayback(4200)
+    })
+
+    expect(took).toBe(true)
+    expect(video.__player.currentTime).toBe(4200)
+  })
+
+  it("is refused with no host, and after the host leaves", async () => {
+    resetPlaybackTransportForTests()
+    expect(seekPlayback(4200)).toBe(false)
+
+    attachSlot({ autostart: false })
+    const renderer = await renderHost()
+    await act(async () => {
+      renderer.unmount()
+    })
+    mounted = null
+    expect(seekPlayback(4200)).toBe(false)
+  })
+
+  it("a seek while a dub swap loads lands where the viewer chose, not at the swap's capture", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    video.__player.duration = 7200
+    video.__player.currentTime = 740
+    await startPlayback()
+
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    await act(async () => {
+      seekPlayback(4200)
+    })
+    await act(async () => {
+      video.__settleReplace(undefined, { withholdLoad: true })
+    })
+    // SYNTHETIC: the fresh item's zeroed clock (the withheld load skips it).
+    video.__player.currentTime = 0
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.currentTime).toBe(4200)
+  })
+
+  it("a seek mid-swap keeps the swap's timeout release", async () => {
+    jest.useFakeTimers()
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      getPlayerSettingsStore().setQualityTier("high")
+    })
+    await act(async () => {
+      seekPlayback(120)
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(QUALITY_SWAP_TIMEOUT_MS)
+    })
+
+    // The timer checks the latch by identity: a replaced latch never releases.
+    expect(getPlayerSettingsStore().getSnapshot().qualityTier).toBe("auto")
+    expect(
+      datadog.datadogLog.warn.mock.calls.filter(
+        ([event]) => event === "player_settings.quality_swap_released",
+      ),
+    ).toHaveLength(1)
   })
 })
 

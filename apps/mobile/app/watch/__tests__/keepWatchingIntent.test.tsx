@@ -24,8 +24,15 @@ import type {
   WatchVideoRecord,
 } from "../../../src/lib/normalizeVideo"
 import { encodeWatchSeed } from "../../../src/lib/watchSeed"
+import { getPlaybackRequestStore } from "../../../src/lib/miniPlayer/playbackRequest"
+import {
+  resetPlaybackTransportForTests,
+  setPlaybackTransport,
+} from "../../../src/lib/playbackInterruption"
+import { KEEP_WATCHING_OFFER_COPY } from "../../../src/components/watch/KeepWatchingOffer"
 import {
   TestRenderer,
+  press,
   type TestInstance,
 } from "../../../src/test-utils/rnTestRenderer"
 
@@ -137,8 +144,12 @@ jest.mock("../../../src/hooks/useFullscreenPresentation", () => ({
     toggleFullscreen: () => {},
   }),
 }))
+// The real play flag, driven through the request store: it is the offer's
+// first-frame signal.
 jest.mock("../../../src/hooks/usePlaybackFrame", () => ({
   usePlaybackFrameVisible: () => false,
+  usePlaybackPlaying: jest.requireActual("../../../src/hooks/usePlaybackFrame")
+    .usePlaybackPlaying,
 }))
 jest.mock("../../../src/hooks/useWatchProgressEntry", () => ({
   useWatchProgressEntry: (videoId: string | null | undefined) =>
@@ -242,6 +253,7 @@ function variant(languageSlug: string, id: string): WatchVariant {
 
 const ENGLISH_URL = "https://stream.mux.com/dubEnglish.m3u8"
 const SPANISH_URL = "https://stream.mux.com/dubSpanish.m3u8"
+const OFFLINE_PATH = `file:///docs/offline-downloads/${SLUG}/a.mp4`
 
 /** Spanish first, so a default that fell to `dubs[0]` would show. */
 const JESUS: WatchVideoRecord = {
@@ -359,10 +371,63 @@ function lastSlot(): SlotProps {
   return last
 }
 
+const START = KEEP_WATCHING_OFFER_COPY.startFromBeginning
+const RESUME_AT_1_10_00 = KEEP_WATCHING_OFFER_COPY.resumeAt("1:10:00")
+
+/** The R17 offer's choices on screen, by label. */
+function offerChoices(renderer: TestInstance): string[] {
+  return renderer.root
+    .findAll(
+      (node) =>
+        typeof node.props.onPress === "function" &&
+        (node.props.accessibilityLabel === START ||
+          (node.props.accessibilityLabel?.startsWith("Resume at") ?? false)),
+    )
+    .map((node) => node.props.accessibilityLabel as string)
+}
+
+async function choose(renderer: TestInstance, label: string) {
+  const [node] = renderer.root.findAll(
+    (n) =>
+      typeof n.props.onPress === "function" &&
+      n.props.accessibilityLabel === label,
+  )
+  if (node == null) throw new Error(`no offer choice "${label}"`)
+  await press(node)
+}
+
+/** The host's play flag: the first frame, as far as the page can tell. */
+async function firstFrame() {
+  await act(async () => {
+    getPlaybackRequestStore().setPlaying(true)
+  })
+}
+
+async function advance(ms: number) {
+  await act(async () => {
+    jest.advanceTimersByTime(ms)
+  })
+}
+
+const mockSeek = jest.fn()
+let screenReaderOn = false
+
 beforeEach(() => {
   jest
     .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
     .mockResolvedValue(false)
+  jest
+    .spyOn(AccessibilityInfo, "isScreenReaderEnabled")
+    .mockImplementation(() => Promise.resolve(screenReaderOn))
+  jest.spyOn(AccessibilityInfo, "addEventListener").mockImplementation((() => ({
+    remove: () => {},
+  })) as unknown as typeof AccessibilityInfo.addEventListener)
+  setPlaybackTransport({
+    isPlaying: () => false,
+    pause: () => {},
+    play: () => {},
+    seek: mockSeek,
+  })
 })
 
 afterEach(async () => {
@@ -372,7 +437,12 @@ afterEach(async () => {
     })
     mounted = null
   }
+  jest.useRealTimers()
   jest.restoreAllMocks()
+  resetPlaybackTransportForTests()
+  getPlaybackRequestStore().reset()
+  mockSeek.mockReset()
+  screenReaderOn = false
   getWatchIntentStore().clear()
   mockSlotRenders.length = 0
   mockParams.current = { slug: SLUG }
@@ -473,6 +543,25 @@ describe("a page opened by Keep watching", () => {
     expect(mockPrefs.setPreferredAudioLanguage).not.toHaveBeenCalled()
   })
 
+  it("never plays a download in another language while the clip's dub settles", async () => {
+    // Before the record lands the dub is unsettled, and a download used to
+    // win then in any language, before the clip's dub took over (R16).
+    mockDownloads.copy = { path: OFFLINE_PATH, dubDocumentId: "dubSpanish" }
+    seeded()
+    recordLoading()
+    putIntent({ audioLanguageSlug: "english" })
+
+    await render(tree())
+    expect(lastSlot().streamingUrl).toBe(SEED_URL)
+
+    recordLanded()
+    await rerender()
+    expect(lastSlot().streamingUrl).toBe(ENGLISH_URL)
+    expect(mockSlotRenders.map((props) => props.streamingUrl)).not.toContain(
+      OFFLINE_PATH,
+    )
+  })
+
   it("shows the clip's subtitles after a subtitle-only clip, and saves nothing (R43)", async () => {
     mockPrefs.subtitle = "english"
     mockClient.query.mockResolvedValue({ data: { videoDub: MEDIA } })
@@ -519,6 +608,132 @@ describe("a page opened by Keep watching", () => {
   })
 })
 
+describe("the R17 offer (KTD12)", () => {
+  it("covers AE6: saved 1:10:00 and a tap at 0:12:20 offer both choices", async () => {
+    mockProgress.current = SAVED_AT_1_10_00
+    recordLanded()
+    putIntent({ startSeconds: 740 })
+
+    const renderer = await render(tree())
+
+    expect(offerChoices(renderer)).toEqual([START, RESUME_AT_1_10_00])
+  })
+
+  it("Resume at seeks to 1:10:00, hides the offer, and ends the hold", async () => {
+    mockProgress.current = SAVED_AT_1_10_00
+    recordLanded()
+    putIntent()
+    const renderer = await render(tree())
+    expect(lastSlot().progressHold).not.toBeNull()
+
+    await choose(renderer, RESUME_AT_1_10_00)
+
+    expect(mockSeek).toHaveBeenCalledTimes(1)
+    expect(mockSeek).toHaveBeenCalledWith(4200)
+    expect(offerChoices(renderer)).toEqual([])
+    expect(lastSlot().progressHold ?? null).toBeNull()
+    // KTD11: a later canonical load lands on the choice, not the tap point.
+    expect(lastSlot().resumeAtSeconds).toBe(4200)
+  })
+
+  it("Start from the beginning seeks to 0, hides the offer, and ends the hold", async () => {
+    mockProgress.current = SAVED_AT_1_10_00
+    recordLanded()
+    putIntent()
+    const renderer = await render(tree())
+
+    await choose(renderer, START)
+
+    expect(mockSeek).toHaveBeenCalledTimes(1)
+    expect(mockSeek).toHaveBeenCalledWith(0)
+    expect(offerChoices(renderer)).toEqual([])
+    expect(lastSlot().progressHold ?? null).toBeNull()
+    expect(lastSlot().resumeAtSeconds).toBe(0)
+  })
+
+  it("starts its clock at the first frame: a 4 s load keeps the full time", async () => {
+    jest.useFakeTimers()
+    mockProgress.current = SAVED_AT_1_10_00
+    recordLanded()
+    const intent = putIntent()
+    const renderer = await render(tree())
+
+    await advance(4_000)
+    expect(offerChoices(renderer)).toHaveLength(2)
+
+    await firstFrame()
+    await advance(KEEP_WATCHING_OFFER_DURATION_MS - 1)
+    expect(offerChoices(renderer)).toHaveLength(2)
+
+    await advance(1)
+    expect(offerChoices(renderer)).toEqual([])
+    expect(mockSeek).not.toHaveBeenCalled()
+    // The hold is the adapter's: it ends at its own deadline, not here.
+    expect(lastSlot().progressHold?.id).toBe(
+      `keep-watching:${SLUG}:${intent.createdAt}`,
+    )
+  })
+
+  it("offers no Resume at for a saved place before the tap point", async () => {
+    mockProgress.current = { positionSeconds: 600, durationSeconds: 7200 }
+    recordLanded()
+    putIntent({ startSeconds: 740 })
+
+    const renderer = await render(tree())
+
+    expect(offerChoices(renderer)).toEqual([START])
+  })
+
+  it("offers no Resume at for a complete video", async () => {
+    // 97%: past the 90% rule, so the video counts as complete.
+    mockProgress.current = { positionSeconds: 7000, durationSeconds: 7200 }
+    recordLanded()
+    putIntent({ startSeconds: 740 })
+
+    const renderer = await render(tree())
+
+    expect(offerChoices(renderer)).toEqual([START])
+  })
+
+  it("names the saved place once the record lands, and keeps it past later writes", async () => {
+    seeded()
+    recordLoading()
+    mockProgress.current = SAVED_AT_1_10_00
+    putIntent({ startSeconds: 740 })
+    const renderer = await render(tree())
+    // No record, so no saved progress is known yet.
+    expect(offerChoices(renderer)).toEqual([START])
+
+    recordLanded()
+    await rerender()
+    expect(offerChoices(renderer)).toEqual([START, RESUME_AT_1_10_00])
+
+    // After the hold, this page's own writes move the entry past the tap
+    // point: that is not a place to resume.
+    mockProgress.current = { positionSeconds: 750, durationSeconds: 7200 }
+    await rerender()
+    expect(offerChoices(renderer)).toEqual([START, RESUME_AT_1_10_00])
+  })
+
+  it("stays up for a screen reader, while the hold keeps its own deadline", async () => {
+    jest.useFakeTimers()
+    screenReaderOn = true
+    mockProgress.current = SAVED_AT_1_10_00
+    recordLanded()
+    putIntent()
+    const renderer = await render(tree())
+    const hold = lastSlot().progressHold
+
+    await firstFrame()
+    await advance(KEEP_WATCHING_OFFER_DURATION_MS * 50)
+
+    expect(offerChoices(renderer)).toEqual([START, RESUME_AT_1_10_00])
+    // Same id and duration: the page never extends or restarts the hold.
+    expect(lastSlot().progressHold).toEqual(hold)
+    expect(hold?.durationMs).toBe(KEEP_WATCHING_OFFER_DURATION_MS)
+  })
+})
+
 describe("a page opened with no intent (Home, Search, deep link, expand)", () => {
   it("resumes saved progress and publishes no hold, as before", async () => {
     mockProgress.current = SAVED_AT_1_10_00
@@ -530,6 +745,28 @@ describe("a page opened with no intent (Home, Search, deep link, expand)", () =>
     expect(lastSlot().progressHold ?? null).toBeNull()
     expect(session.activeVariant?.languageSlug).toBe("english")
     expect(session.subtitleEnabled).toBe(false)
+  })
+
+  it("shows no offer, before or after the first frame", async () => {
+    mockProgress.current = SAVED_AT_1_10_00
+    recordLanded()
+
+    const renderer = await render(tree())
+    expect(offerChoices(renderer)).toEqual([])
+
+    await firstFrame()
+    expect(offerChoices(renderer)).toEqual([])
+    expect(mockSeek).not.toHaveBeenCalled()
+  })
+
+  it("plays a completed download before the dub settles, as before", async () => {
+    mockDownloads.copy = { path: OFFLINE_PATH, dubDocumentId: "dubSpanish" }
+    seeded()
+    recordLoading()
+
+    await render(tree())
+
+    expect(lastSlot().streamingUrl).toBe(OFFLINE_PATH)
   })
 
   it("drops the intent when a warm deep link reuses the page for another video", async () => {

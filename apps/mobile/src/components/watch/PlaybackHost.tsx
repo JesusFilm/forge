@@ -870,6 +870,13 @@ function ActivePlaybackHost({
       isPlaying: () => player.playing,
       pause: () => player.pause(),
       play: () => player.play(),
+      seek: (seconds: number) => {
+        // A swap still loading resumes from its capture on sourceLoad. Move
+        // it in place: the swap's timeout checks the latch by identity.
+        const pending = pendingQualityResumeRef.current
+        if (pending != null) pending.positionSeconds = seconds
+        player.currentTime = seconds
+      },
     }
     setPlaybackTransport(transport)
     // Identity-checked: an unconditional null would let a torn-down host clear

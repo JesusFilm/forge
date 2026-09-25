@@ -61,7 +61,11 @@ import {
   type CastRecovery,
 } from "../../src/lib/playbackTarget"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
-import { usePlaybackFrameVisible } from "../../src/hooks/usePlaybackFrame"
+import {
+  usePlaybackFrameVisible,
+  usePlaybackPlaying,
+} from "../../src/hooks/usePlaybackFrame"
+import { seekPlayback } from "../../src/lib/playbackInterruption"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { resolvePlayerSource } from "../../src/lib/playerSource"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
@@ -72,6 +76,10 @@ import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
 import { presentActionMenu } from "../../src/lib/actionMenu"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
+import {
+  KeepWatchingOffer,
+  offerResumeSeconds,
+} from "../../src/components/watch/KeepWatchingOffer"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
 import {
   exportControls,
@@ -107,6 +115,7 @@ import {
 import {
   advanceKeepWatching,
   getWatchIntentStore,
+  keepWatchingAfterChoice,
   keepWatchingLanguages,
   keepWatchingProgressHold,
   keepWatchingStateFor,
@@ -191,6 +200,20 @@ export default function WatchVideoPage() {
     setSessionIntent(keepWatchingLanguages(keepWatchingIntent))
     return () => setSessionIntent(null)
   }, [keepWatchingIntent, setSessionIntent])
+
+  // R17's offer (KTD12). The host is a Stack sibling, so its play flag is the
+  // first-frame signal this page can read.
+  const playbackPlaying = usePlaybackPlaying()
+  const [offerExpired, setOfferExpired] = useState(false)
+  const expireOffer = useCallback(() => setOfferExpired(true), [])
+  // A choice ends the hold and replaces a live start, so a canonical load
+  // still to come lands on the choice (KTD11).
+  const chooseOfferPosition = useCallback((seconds: number) => {
+    seekPlayback(seconds)
+    setKeepWatchingState(
+      (state) => state && keepWatchingAfterChoice(state, seconds),
+    )
+  }, [])
 
   const apolloClient = useApolloClient()
   const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
@@ -321,6 +344,8 @@ export default function WatchVideoPage() {
     activeVariantHls: activeVariant?.hls ?? null,
     activeVariantDocumentId: activeVariant?.documentId ?? null,
     variantSettled: activeVariant != null,
+    // R16 plays the clip's dub: the intent names it, so the file waits.
+    awaitsNamedDub: keepWatchingIntent != null,
     recordStreamingUrl: video?.streamingUrl ?? null,
     seedStreamingUrl,
   })
@@ -367,6 +392,13 @@ export default function WatchVideoPage() {
     keepWatching?.start ?? null,
     savedResumeSeconds,
   )
+  // R17 names the saved place as it was when the record landed. After the
+  // hold ends, this page's own writes move the entry to the tap point.
+  const [offerSaved, setOfferSaved] = useState<{
+    seconds: number | null
+  } | null>(null)
+  if (keepWatching != null && offerSaved == null && video?.slug === decodedSlug)
+    setOfferSaved({ seconds: savedResumeSeconds })
   const subtitleActionLabel = resolveSubtitleActionLabel(
     subtitleEnabled,
     activeSubtitleSlug,
@@ -1014,6 +1046,22 @@ export default function WatchVideoPage() {
           </Pressable>
         </Animated.View>
       )}
+
+      {/* Hidden while casting: a seek moves the local player, not the TV. */}
+      {keepWatching?.holdActive === true &&
+        !offerExpired &&
+        !isFullscreen &&
+        !castRemoteActive && (
+          <KeepWatchingOffer
+            resumeAtSeconds={offerResumeSeconds(
+              offerSaved?.seconds ?? null,
+              keepWatching.intent.startSeconds,
+            )}
+            clockStarted={playbackPlaying}
+            onChoose={chooseOfferPosition}
+            onExpire={expireOffer}
+          />
+        )}
 
       <Snackbar
         message={snackbarMessage ?? ""}

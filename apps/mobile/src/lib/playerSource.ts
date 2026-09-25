@@ -7,6 +7,9 @@ type PlayerSourceInput = {
   /** The settled dub's identity; null before it settles or when unknown. */
   activeVariantDocumentId: string | null
   variantSettled: boolean
+  /** True when the page names its dub before the selection settles (a "Keep
+   *  watching" intent). An unsettled selection is then pending, not unknown. */
+  awaitsNamedDub: boolean
   recordStreamingUrl: string | null
   seedStreamingUrl: string | null
 }
@@ -41,7 +44,8 @@ export function resolvePlayerSource(input: PlayerSourceInput): string | null {
 /**
  * A download is ONE dub. It plays unless the viewer settled on a different
  * dub that has a stream: an unknown identity on either side, or a pick with
- * nothing to stream, keeps the copy on disk rather than playing nothing.
+ * nothing to stream, keeps the copy on disk rather than playing nothing. A
+ * named dub still settling is not unknown: the file may be another language.
  */
 function offlinePlays(
   input: Pick<
@@ -50,9 +54,10 @@ function offlinePlays(
     | "activeVariantHls"
     | "activeVariantDocumentId"
     | "variantSettled"
+    | "awaitsNamedDub"
   >,
 ): boolean {
-  if (!input.variantSettled) return true
+  if (!input.variantSettled) return !input.awaitsNamedDub
   if (input.offlineDubDocumentId == null) return true
   if (input.activeVariantDocumentId == null) return true
   if (input.activeVariantDocumentId === input.offlineDubDocumentId) return true
