@@ -539,9 +539,14 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   pause/background/unmount/end AND on the two explicit session endings the
   mini player added — `dismiss` (the viewer closed the window) and `replace`
   (new content took the player over). Those two split what `unmount` used to
-  conflate, because progress attribution needs them apart. Progress is
-  signed-in ONLY (R10): sign-out empties store, snapshot, and queue via
-  `attachProgressLifecycle`.
+  conflate, because progress attribution needs them apart. A playback
+  request can carry a `progressHold` (`{ id, durationMs }`, feat-552 KTD12).
+  While it holds, `recorder.ts` writes nothing — no sample and no forced
+  flush, the dismiss and unmount flushes included. Its clock starts at the
+  first frame and runs for `durationMs`; after that, writes resume even while
+  the request still carries the hold, and a request without it ends the hold
+  at once. Progress is signed-in ONLY (R10): sign-out empties store,
+  snapshot, and queue via `attachProgressLifecycle`.
 - **Bars**: one `WatchProgressBar` (store-subscribed by videoId, <1% hidden,
   ≥90% snaps full) on every card surface EXCEPT the Library downloads row
   (deferred — the row stores only a slug). Fold progress into
@@ -823,8 +828,10 @@ it defines the KD, KTD, R and AE numbers the source comments cite.
   `isReturnToHomeFromWatch` in `src/lib/recommendations/homeReturnSignal.ts`
   is true only when the previous segments start with a root `watch` or
   `series` segment outside `(tabs)`. The next segments must also start with
-  `(tabs)`. The predicate keys on the group marker, never a tab name: the
-  Discover tab is itself named `watch`. The SDUI `video`, `collection` and
+  `(tabs)`, and must not be the Explore tab (`["(tabs)", "explore"]`),
+  because Explore hosts its own recommendations (feat-552 KTD8). Apart from
+  that one Explore check, the predicate keys on the group marker, never a tab
+  name: the Discover tab is itself named `watch`. The SDUI `video`, `collection` and
   `experience` routes do not count.
   `app/__tests__/screenFreeze.guard.test.js` fails if any file under `app/` or
   `src/` sets `freezeOnBlur` or `enableFreeze`. A frozen Home stops receiving
@@ -884,7 +891,9 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   `PlaybackHost.tsx`), so the id-less render neither re-keys the progress
   recorder nor disposes the recommendation recorder. Before 2026-09-22 every
   expand ended the session as `replaced`, reloaded the video from 0:00, and
-  claimed a second recommendation episode.
+  claimed a second recommendation episode. The progress hold travels beside
+  the identity, never as a null identity, because `holdProgressIdentity`
+  would put the known identity back.
 - **A dub change keeps the viewer's place (since 2026-09-22).** The host
   classifies every source change before the swap applies: a completed
   download (`isOfflineContainerSwap`) and a dub pick (`isDubSwap`, both in
@@ -1476,7 +1485,9 @@ disagree about the bar's size.
 - **iOS renders `app/(tabs)/_layout.ios.tsx`.** It uses `NativeTabs` from
   `expo-router/unstable-native-tabs`, which is a real `UITabBarController`. It
   builds one trigger per name in `TAB_ROUTE_NAMES`, and it sets
-  `disableAutomaticContentInsets` on each one. UIKit's automatic inset only
+  `disableAutomaticContentInsets` on each one. The Explore trigger is
+  `hidden` while `isExploreAvailable()` is false; Android sets `href: null` on
+  its Explore screen instead. UIKit's automatic inset only
   reaches a scroll view that is first in the subview chain, and no tab screen
   has one there — on Home that position holds the horizontal hero pager — so
   the screens pad themselves through `useTabBarClearance()` instead.
@@ -1549,10 +1560,10 @@ disagree about the bar's size.
   and every Android assertion then tests the wrong navigator.
 - **`tabBarLensOrder.guard.test.js` keeps its old name and still does a job.**
   It pins `TAB_ROUTE_NAMES` against the group's route FILES, because expo-router
-  appends an undeclared `app/(tabs)/*` file as a fifth tab, which a scan of
+  appends an undeclared `app/(tabs)/*` file as an extra tab, which a scan of
   either layout cannot see. It reads the `<Tabs.Screen>` order from
   `_layout.tsx`; the iOS trigger order comes from `TAB_ROUTE_NAMES` itself and
-  `tabBarLayout.test.tsx` pins that.
+  `tabBarLayout.test.tsx` pins that. It also pins `explore` as the second tab.
 - **No test can see the RENDERED material.** Every render suite mocks
   `GlassView` and `PlatformBlur` to `() => null`, so only a simulator proves the
   frosting. The branch selection and props ARE covered — see
@@ -1570,7 +1581,8 @@ disagree about the bar's size.
   `// from "../../lib/tabBar"` beside a hand-copied number is a live revert --
   and it compares the assigned token rather than using a lookahead, whose
   `\s*` can match zero characters and slip past the value it was told to
-  reject.
+  reject. It also fails when either layout spells a tab label: both layouts
+  read `TAB_LABELS` in `src/lib/tabBar.ts`, so a rename is a one-line change.
 - **A fade is not available on the material.** `GlassView` renders nothing
   inside a layer whose opacity an ancestor animates, so any fade of
   `TabBarBackground` forces `PlatformBlur` on every iOS version and changes the
