@@ -53,6 +53,13 @@ describe("the lens order matches the rendered tab order", () => {
     expect(sharedTabOrder()).toEqual(declared)
   })
 
+  // R1: the owner chose the second slot over the centre and the fourth.
+  it("puts Explore second, right after Home", () => {
+    expect(sharedTabOrder().slice(0, 2)).toEqual(["index", "explore"])
+    expect(declaredTabOrder().slice(0, 2)).toEqual(["index", "explore"])
+    expect(routeFilesInGroup()).toContain("explore")
+  })
+
   it("the guard is falsifiable — it reads real names, not a constant", () => {
     expect(declaredTabOrder()).toContain("index")
     expect(declaredTabOrder()).toContain("profile")

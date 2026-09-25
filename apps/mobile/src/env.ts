@@ -23,6 +23,8 @@ const _inlined = {
   authBaseUrl: process.env.EXPO_PUBLIC_AUTH_BASE_URL,
   recommendationsEnabled: process.env.EXPO_PUBLIC_RECOMMENDATIONS_ENABLED,
   signInEnabled: process.env.EXPO_PUBLIC_SIGN_IN_ENABLED,
+  exploreEnabled: process.env.EXPO_PUBLIC_EXPLORE_ENABLED,
+  exploreAndroidEnabled: process.env.EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED,
 }
 void _inlined
 
@@ -63,6 +65,10 @@ const createAppEnv = () =>
       // Opt-in sign-in gate (feat-543). Keep it a loose string: the on-values
       // live in signInGateState, and a strict schema stops startup on a typo.
       EXPO_PUBLIC_SIGN_IN_ENABLED: z.string().optional(),
+      // Opt-in Explore tab gate (KTD16). Loose strings for the same reason as
+      // the sign-in gate: the on-values live in explore/availabilityState.
+      EXPO_PUBLIC_EXPLORE_ENABLED: z.string().optional(),
+      EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED: z.string().optional(),
     },
     runtimeEnvStrict: {
       EXPO_PUBLIC_ADMIN_GRAPHQL_URL: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
@@ -87,6 +93,9 @@ const createAppEnv = () =>
       EXPO_PUBLIC_RECOMMENDATIONS_ENABLED:
         process.env.EXPO_PUBLIC_RECOMMENDATIONS_ENABLED,
       EXPO_PUBLIC_SIGN_IN_ENABLED: process.env.EXPO_PUBLIC_SIGN_IN_ENABLED,
+      EXPO_PUBLIC_EXPLORE_ENABLED: process.env.EXPO_PUBLIC_EXPLORE_ENABLED,
+      EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED:
+        process.env.EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED,
     },
     isServer: false,
     emptyStringAsUndefined: true,

@@ -42,12 +42,30 @@ export const TAB_BAR_MATERIAL_TINT = "rgba(0, 0, 0, 0.3)"
  * The tab screens, in the order the navigator declares them.
  * `app/(tabs)/_layout.ios.tsx` builds its triggers from this and
  * `tabBarLensOrder.guard.test.js` pins it against the route FILES — expo-router
- * appends an undeclared `app/(tabs)/*` file as a fifth tab, which a scan of the
- * layout alone cannot see.
+ * appends an undeclared `app/(tabs)/*` file as an extra tab, which a scan of
+ * the layout alone cannot see.
  */
-export const TAB_ROUTE_NAMES = ["index", "watch", "library", "profile"] as const
+export const TAB_ROUTE_NAMES = [
+  "index",
+  "explore",
+  "watch",
+  "library",
+  "profile",
+] as const
 
 export type TabRouteName = (typeof TAB_ROUTE_NAMES)[number]
+
+/**
+ * Every tab's label, for both navigators. A rename is a one-line change here;
+ * `tabBarSingleSource.guard.test.js` fails if a layout spells a label itself.
+ */
+export const TAB_LABELS = {
+  index: "Home",
+  explore: "Explore",
+  watch: "Search",
+  library: "Library",
+  profile: "Profile",
+} as const satisfies Record<TabRouteName, string>
 
 /** The expo-router group the tab screens live in. */
 export const TAB_GROUP_SEGMENT = "(tabs)"

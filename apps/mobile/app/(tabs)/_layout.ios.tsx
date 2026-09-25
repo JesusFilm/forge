@@ -1,21 +1,25 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs"
 
 import { ACCENT, BG_COLOR, TEXT_SECONDARY as MUTED } from "../../src/lib/color"
-import { TAB_ROUTE_NAMES, type TabRouteName } from "../../src/lib/tabBar"
+import { isExploreAvailable } from "../../src/lib/explore/availability"
+import {
+  TAB_LABELS,
+  TAB_ROUTE_NAMES,
+  type TabRouteName,
+} from "../../src/lib/tabBar"
 import { useTabBarHidden } from "../../src/lib/tabBarVisibility"
 
 /**
- * One entry per tab, keyed by route name so the Record is exhaustive: adding a
- * file to `app/(tabs)/` without a tab here stops compiling.
- * `tabBarLensOrder.guard.test.js` pins TAB_ROUTE_NAMES against the route FILES,
- * and the trigger order below follows it.
+ * One SF Symbol per tab. The Record is exhaustive, so a new tab without an icon
+ * stops compiling. The labels live in TAB_LABELS, shared with the Android bar.
  */
-const TABS = {
-  index: { label: "Home", sf: "house.fill" },
-  watch: { label: "Search", sf: "magnifyingglass" },
-  library: { label: "Library", sf: "square.stack.fill" },
-  profile: { label: "Profile", sf: "person.fill" },
-} as const satisfies Record<TabRouteName, { label: string; sf: string }>
+const TAB_ICONS = {
+  index: "house.fill",
+  explore: "play.circle.fill",
+  watch: "magnifyingglass",
+  library: "square.stack.fill",
+  profile: "person.fill",
+} as const satisfies Record<TabRouteName, string>
 
 /**
  * iOS runs the real UITabBarController (feat-500). Android keeps the JS bar in
@@ -47,15 +51,18 @@ export default function TabLayout() {
         <NativeTabs.Trigger
           key={name}
           name={name}
+          // KTD16: hide the trigger, never drop it. The gate is fixed per
+          // bundle, because a change to `hidden` remounts the whole navigator.
+          hidden={name === "explore" && !isExploreAvailable()}
           // UIKit's automatic inset only reaches a scroll view that is first in
           // the subview chain. No tab screen has one there — on Home it would
           // land on the horizontal hero pager — so the screens keep padding
           // themselves through `useTabBarClearance()`.
           disableAutomaticContentInsets
         >
-          <NativeTabs.Trigger.Icon sf={TABS[name].sf} />
+          <NativeTabs.Trigger.Icon sf={TAB_ICONS[name]} />
           <NativeTabs.Trigger.Label>
-            {TABS[name].label}
+            {TAB_LABELS[name]}
           </NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       ))}
