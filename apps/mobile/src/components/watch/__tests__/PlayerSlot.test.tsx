@@ -50,7 +50,10 @@ import { View } from "react-native"
 
 import { PlayerPoster } from "../PlayerPoster"
 import { MEASURE_RETRY_FRAMES, PlayerSlot } from "../PlayerSlot"
-import { getPlaybackRequestStore } from "../../../lib/miniPlayer/playbackRequest"
+import {
+  getPlaybackRequestStore,
+  type ProgressHold,
+} from "../../../lib/miniPlayer/playbackRequest"
 import { getMiniPlayerStore } from "../../../lib/miniPlayer/store"
 import {
   TestRenderer,
@@ -79,7 +82,12 @@ const SESSION_A = {
 
 const POSTER = "https://images.example/a.jpg"
 
-function slot(props: { session?: typeof SESSION_A | null } = {}): ReactElement {
+function slot(
+  props: {
+    session?: typeof SESSION_A | null
+    progressHold?: ProgressHold | null
+  } = {},
+): ReactElement {
   return (
     <PlayerSlot
       streamingUrl={URL_A}
@@ -87,8 +95,14 @@ function slot(props: { session?: typeof SESSION_A | null } = {}): ReactElement {
       autostart
       progressIdentity={{ videoId: "video-a", languageSlug: "english" }}
       session={props.session === undefined ? SESSION_A : props.session}
+      progressHold={props.progressHold}
     />
   )
+}
+
+const HOLD: ProgressHold = {
+  id: "keep-watching:video-a-slug:1",
+  durationMs: 6000,
 }
 
 let mounted: TestInstance | null = null
@@ -412,5 +426,29 @@ describe("PlayerSlot", () => {
     )
     // The pump gave up rather than running forever.
     expect(scheduled).toHaveLength(MEASURE_RETRY_FRAMES)
+  })
+
+  it("publishes no progress hold unless the screen passes one", async () => {
+    await render(slot())
+
+    expect(requestStore.getSnapshot().request?.progressHold ?? null).toBeNull()
+  })
+
+  it("puts the screen's progress hold on the request it publishes (KTD12)", async () => {
+    await render(slot({ progressHold: HOLD }))
+
+    expect(requestStore.getSnapshot().request?.progressHold).toEqual(HOLD)
+  })
+
+  it("republishes without the hold when the screen drops it", async () => {
+    // An offer choice ends the hold by publishing a request without it.
+    const renderer = await render(slot({ progressHold: HOLD }))
+    expect(requestStore.getSnapshot().request?.progressHold).toEqual(HOLD)
+
+    await act(async () => {
+      renderer.update(slot({ progressHold: null }))
+    })
+
+    expect(requestStore.getSnapshot().request?.progressHold ?? null).toBeNull()
   })
 })

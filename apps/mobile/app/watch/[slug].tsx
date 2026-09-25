@@ -104,6 +104,14 @@ import {
   resolveActiveSubtitle,
   resolveSubtitleActionLabel,
 } from "../../src/lib/subtitleSelection"
+import {
+  advanceKeepWatching,
+  getWatchIntentStore,
+  keepWatchingLanguages,
+  keepWatchingProgressHold,
+  keepWatchingStateFor,
+  rankStartSeconds,
+} from "../../src/lib/explore/watchIntent"
 
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
 const EMPTY_VARIANTS: WatchVariant[] = []
@@ -164,7 +172,25 @@ export default function WatchVideoPage() {
     preferredSubtitleName,
     snackbarMessage,
     setSnackbarMessage,
+    setSessionIntent,
   } = useWatchSession()
+
+  // KTD11: only this route reads a "Keep watching" intent. A StrictMode render
+  // runs twice, so the render only peeks; the effect below consumes it.
+  const [keepWatchingState, setKeepWatchingState] = useState(() =>
+    keepWatchingStateFor(getWatchIntentStore().peek(decodedSlug)),
+  )
+  const keepWatching =
+    keepWatchingState?.intent.videoSlug === decodedSlug
+      ? keepWatchingState
+      : null
+  const keepWatchingIntent = keepWatching?.intent ?? null
+  useEffect(() => {
+    if (keepWatchingIntent == null) return
+    getWatchIntentStore().consume(keepWatchingIntent)
+    setSessionIntent(keepWatchingLanguages(keepWatchingIntent))
+    return () => setSessionIntent(null)
+  }, [keepWatchingIntent, setSessionIntent])
 
   const apolloClient = useApolloClient()
   const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
@@ -330,13 +356,17 @@ export default function WatchVideoPage() {
   const progressState = progressBarState(progressEntry)
   // R16: a raw export outranks the offline state on this video's control.
   const exportEntry = useExportEntry(video?.slug)
-  const resumeAtSeconds =
+  const savedResumeSeconds =
     progressEntry && progressState.resumeEligible
       ? resumePositionSeconds(
           progressEntry.positionSeconds,
           progressEntry.durationSeconds,
         )
       : null
+  const resumeAtSeconds = rankStartSeconds(
+    keepWatching?.start ?? null,
+    savedResumeSeconds,
+  )
   const subtitleActionLabel = resolveSubtitleActionLabel(
     subtitleEnabled,
     activeSubtitleSlug,
@@ -376,6 +406,16 @@ export default function WatchVideoPage() {
   const effectivePlayerSource = castRemoteActive
     ? pinnedCastSourceRef.current
     : playerSource
+
+  // Set during render, so no request ever pairs a later dub's URL with the
+  // intent start. Returns the same state when nothing moved.
+  if (keepWatching != null) {
+    const advanced = advanceKeepWatching(keepWatching, {
+      url: effectivePlayerSource,
+      settled: activeVariant != null,
+    })
+    if (advanced !== keepWatching) setKeepWatchingState(advanced)
+  }
 
   // KTD5: the resolver input is this screen's source chain MINUS the
   // offlineSource prefix — a receiver can only fetch remote https.
@@ -749,6 +789,8 @@ export default function WatchVideoPage() {
                 : null
           }
           resumeAtSeconds={resumeAtSeconds}
+          // KTD12: null unless this page took a "Keep watching" intent.
+          progressHold={keepWatchingProgressHold(keepWatching)}
           autostart
         />
       </View>
