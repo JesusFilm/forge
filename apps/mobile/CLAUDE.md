@@ -33,7 +33,10 @@ error / zero renderable shelves) — do NOT mirror web there. `useWatchHome`
 fetches the Experience and the lean `watchHomeVideos` payload in parallel
 (**never select `dubs` in the bulk fragment; jest guards enforce it on the
 videos fetch, the `watchSetting` path, and Explore's `ExploreClipCandidates`
-hydration, which uses the same `watchHomeVideos` root field**), then top-up-fetches the divergent
+hydration, which uses the same `watchHomeVideos` root field; the queue hook
+releases each hydration result when its clip leaves the queue and the current
+slot, and `useExploreClipQueue.test.tsx` checks against a real `InMemoryCache`
+that no inventory or hydration entry stays in the shared cache**), then top-up-fetches the divergent
 Experience coreIds the config pool doesn't cover (`topUpFetch.ts`, chunked, 3s
 deadline, last-good reuse on failure) and assembles the model via
 `assembleWatchHomeModel` — the config model (client-owned hero) is built from the
@@ -706,6 +709,13 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
   reported and the recorder's claim attempt decides. `useUserRecommendations`
   serves no items, evidence or selection while `enabled` is false, and a
   selection stays single-flight across a profile refresh.
+- **Explore requests its own slate inside feat-552 KTD8's budget.**
+  `useExploreClipQueue` wraps the client with one budget for each launch: one
+  new request per 10 min, and four attempts per rolling hour with retries
+  included. A repeat of a request in flight shares its answer. The wrapper
+  sends no evidence and no selection. A request inside the spacing waits for
+  the 10-min mark; a request past the hourly cap is dropped, and the feed
+  stays on random fill.
 - **Explore clips use a separate clip-mode recorder** from
   `src/lib/explore/clipEvidence.ts` (feat-552 KTD9). A clip episode starts
   after 3 s of unbroken play and never sooner than 10 s after the previous
