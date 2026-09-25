@@ -3,7 +3,7 @@ id: "feat-552"
 title: "Keep Watch TV limited to Android TV in Google Play"
 owner: "ekkasit"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-25"
 duration: 1
 depends_on: []
@@ -42,3 +42,5 @@ Set `android.software.leanback` to `android:required="true"` in the TV app's gen
 - Run the TV hardware-feature guard test and app-focused validation.
 - Inspect the new AAB's signer and manifest; the signer must match Play's registered upload certificate.
 - In the internal-release preview, TV devices must remain supported and phone/tablet support must return to zero before publishing.
+
+Completed 2026-09-25: the guard tests and a clean Expo Android prebuild passed. EAS version code 9's AAB declares `android.software.leanback` required and touchscreen, faketouch, portrait, and microphone optional. Its SHA-256 signer matches the registered Play upload key. Google Play preview showed 3,049 supported TVs with zero devices lost, and zero phones/tablets. Version 1.0.0 (9) is available on the internal testing track.

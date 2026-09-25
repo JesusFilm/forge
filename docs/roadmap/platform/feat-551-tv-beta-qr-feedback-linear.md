@@ -26,6 +26,8 @@ describe a problem on another device.
 Planning is updated in
 `docs/plans/2026-09-24-tv-feedback-railway-redis-linear.md`. Implementation is in progress. The replacement service is deployed to Railway staging with Redis, TV-scoped Linear credentials, Play Integrity configuration, DeviceCheck configuration, and the owner's existing Turnstile widget. On 2026-09-25, staging health and public-form checks passed, and anonymous claim/session/upload requests were rejected. The physical Office Apple TV issued reference `WT-95EFEF6CBF`; the user scanned it on an iPhone and sent a report. Linear [TV-2](https://linear.app/jesus-film-project/issue/TV-2/tv-betaapple-tvgeneral-url-is-not-necessary) has the matching reference, project/label, and marked-image attachment. Earlier, the server Linear client created TV-1 and uploaded/attached a synthetic PNG and MP4; reference reconciliation found the same issue. Token replay, video from a phone, and Play-installed Android TV acceptance remain open.
 
+Internal beta distribution on 2026-09-25: tvOS 1.0.0 (12) is processed in TestFlight for QA and Team (Expo); Android TV 1.0.0 (9) is available in Google Play internal testing. Railway staging accepts Apple build 12 and Android version code 9. Neither store build has yet completed a real device feedback report; Play-installed Android TV integrity remains an acceptance gate.
+
 ## Entry Points — Read These First
 
 Selected TV entry design: `docs/plans/2026-09-25-tv-feedback-navigation-and-contextual-actions.md`.

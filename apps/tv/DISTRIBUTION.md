@@ -58,9 +58,12 @@ Give stakeholders the link. They install it by either:
 First they must enable _Settings → Developer options → Install unknown apps_ for
 whichever app opens the APK.
 
-For managed invites/feedback instead of a raw link: upload the same APK to
-**Firebase App Distribution** (invite testers by email) or a **Play Console
-Internal testing** track (up to 100 testers, no public listing).
+For managed invites/feedback instead of a raw link: upload the APK to
+**Firebase App Distribution** (invite testers by email). For **Play Console
+Internal testing**, build a production AAB with a new version code and the
+registered Play upload key; the internal track has up to 100 testers and no
+public listing. Before publishing, check Play's preview keeps TV device coverage
+without adding phone or tablet availability.
 
 ## Apple TV (tvOS) — TestFlight (no full App Store review)
 
