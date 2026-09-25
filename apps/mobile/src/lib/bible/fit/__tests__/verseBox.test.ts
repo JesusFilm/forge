@@ -1,6 +1,11 @@
 // The verse area (feat-551 KTD16, R7, R10): a box symmetric about the
 // screen's vertical center, so a centered verse never runs under an obstacle.
-import { VERSE_BOX_GAP, verseBox, type VerseBoxInput } from "../verseBox"
+import {
+  MIN_CENTERED_VERSE_HEIGHT,
+  VERSE_BOX_GAP,
+  verseBox,
+  type VerseBoxInput,
+} from "../verseBox"
 
 function edges(input: VerseBoxInput) {
   const box = verseBox(input)
@@ -99,6 +104,62 @@ describe("verseBox", () => {
     expect(top.top).toBe(258 + VERSE_BOX_GAP)
     expect(bottom.top + bottom.height).toBe(668 - VERSE_BOX_GAP)
     expect(bottom.height).not.toBe(top.height)
+  })
+
+  // KD27. Close to the iPhone SE (667pt) Bible tab: the top bar ends near
+  // 70, the footer starts near 478, and a bottom-corner window spans 336-425.
+  const shortScreen = {
+    containerHeight: 667,
+    topChromeBottom: 70,
+    bottomChromeTop: 478,
+  }
+
+  it("moves the box into the free space when the centered box collapses", () => {
+    const box = edges({
+      ...shortScreen,
+      floating: [{ y: 336, height: 89 }],
+    })
+    expect(box.top).toBe(70 + VERSE_BOX_GAP)
+    expect(box.bottom).toBe(336 - VERSE_BOX_GAP)
+  })
+
+  it("keeps the centered box at the smallest centered height", () => {
+    // Half height 80 above and below the center: exactly the minimum.
+    const center = 667 / 2
+    const box = edges({
+      ...shortScreen,
+      floating: [{ y: center + 80 + VERSE_BOX_GAP, height: 89 }],
+    })
+    expect(box.height).toBe(MIN_CENTERED_VERSE_HEIGHT)
+    expect(box.top + box.height / 2).toBe(center)
+  })
+
+  it("moves the box when the centered one is half a point short", () => {
+    const center = 667 / 2
+    const windowTop = center + 80 + VERSE_BOX_GAP - 0.5
+    const box = edges({
+      ...shortScreen,
+      floating: [{ y: windowTop, height: 89 }],
+    })
+    expect(box.top).toBe(70 + VERSE_BOX_GAP)
+    expect(box.bottom).toBe(windowTop - VERSE_BOX_GAP)
+  })
+
+  it("keeps the phone and iPad start corners centered", () => {
+    const phone = verseBox({
+      containerHeight: 956,
+      topChromeBottom: 118,
+      bottomChromeTop: 808,
+      floating: [{ y: 118, height: 140 }],
+    })
+    const ipad = verseBox({
+      containerHeight: 1000,
+      topChromeBottom: 100,
+      bottomChromeTop: 900,
+      floating: [{ y: 700, height: 200 }],
+    })
+    expect(phone.top + phone.height / 2).toBe(478)
+    expect(ipad.top + ipad.height / 2).toBe(500)
   })
 
   it("never returns a negative box when obstacles meet at the center", () => {
