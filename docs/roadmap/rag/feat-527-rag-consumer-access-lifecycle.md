@@ -63,13 +63,29 @@ rotation/revocation, secret-response loss and audit leakage. Run RAG tests,
 typecheck, lint, depcruise and isolated DB role/integration checks; contract drift
 if changed. Complete only this deliverable, not future dogfood/cutoff or UI.
 
-## Registry foundation progress
+## Delivered slices and next implementation
 
-Draft [#2397](https://github.com/JesusFilm/forge/pull/2397) implements the
-isolated consumer registry schema and repository foundation. The remaining
-access lifecycle scope above is still pending. The
+Merged [#2397](https://github.com/JesusFilm/forge/pull/2397) implements the
+isolated consumer registry schema and repository foundation. Merged
+[#2416](https://github.com/JesusFilm/forge/pull/2416) implements portal
+admission, and [#2423](https://github.com/JesusFilm/forge/pull/2423) adds the
+first approved portal user. Production operator setup and the browser checks
+recorded in the [portal admission evidence](evidence/feat-527/portal-admission-slice.md)
+establish admission, not consumer creation. The
 [Foundation report](evidence/feat-527/consumer-registry-foundation.md) records the
 schema/API decisions and disposable database verification.
+
+**Next work remains feat-527:** implement the backend that lets an admitted
+GitHub user create a consumer directly. The server derives its initial owner
+from the authenticated GitHub account, applies an explicit source grant, mints
+a random API credential, stores only its verifier and returns the secret once.
+Then implement current-credential authentication for `/v1`, owner-controlled
+membership and rotation, suspension/revocation, restricted audit and the
+privilege boundaries in plan sections A/B. Use reviewable PR slices if needed;
+do not mark feat-527 complete until the lifecycle and plan E verification are
+delivered. Usage aggregates belong to feat-528, operational dogfood to feat-529,
+and the full management UI to feat-530. The existing `/portal` identity page
+does not create a consumer or issue a key.
 
 ## V1 simplification resolution
 
@@ -86,7 +102,8 @@ This simplification is complete; the broader lifecycle ticket remains in progres
 
 `apps/rag/portal/README.md` documents the repository allowlist, path-specific
 eligibility CI, merged-revision OAuth admission and protected identity proof.
-The broader consumer lifecycle remains in progress: creation, membership,
-credentials and reports are outside this slice. Nonproduction OAuth client,
-permission-bearing GitHub token, isolated session role, Railway target and
-browser checks remain operator tasks before activation.
+The broader consumer lifecycle remains in progress: creation, membership and
+credentials are outside this slice; reports belong to feat-528. The production
+OAuth, token, isolated session role and Railway setup are now in place. The
+allowlisted login, sign-out and unlisted denial browser checks passed; the
+remaining operational checks are listed in the admission evidence.
