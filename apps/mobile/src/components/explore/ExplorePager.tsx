@@ -334,6 +334,9 @@ function createPagerEngine({
     },
     layout: (next) => {
       if (!(next > 0) || next === height) return
+      // A settle cut short here never reaches its own rest, so arm one below,
+      // or the latch holds the next load until another swipe.
+      const wasSettling = settling != null
       finishSettle()
       // The drag node takes the shift: the settle node is never written.
       const shift = -placement.current * (next - height)
@@ -345,6 +348,7 @@ function createPagerEngine({
       rebase()
       showPlacement(placement)
       showHeight(next)
+      if (wasSettling) armRest()
     },
     dispose: () => {
       cancelRest()

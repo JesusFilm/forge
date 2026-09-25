@@ -635,6 +635,22 @@ describe("gesture latch and rest (KTD22, KTD25)", () => {
     expect(y[keyWithRole(harness, "next")]).toBeCloseTo(700)
   })
 
+  it("still rests when the page height changes during a settle", async () => {
+    const harness = await renderPager()
+    await swipe(harness, -LONG)
+
+    await layoutPager(harness.renderer, 700)
+    // The layout jumped the spring to its end and committed its move.
+    expect(harness.moves).toEqual(["next"])
+    // The stopped spring still reports; it must neither commit nor rest.
+    await landSettle()
+    await advance(EXPLORE_PAGER_REST_DWELL_MS)
+
+    expect(harness.moves).toEqual(["next"])
+    expect(harness.latch).toEqual([true, false])
+    expect(harness.rests).toBe(1)
+  })
+
   it("works under StrictMode's mount, unmount, and remount", async () => {
     const harness = await renderPager({ strict: true })
 
