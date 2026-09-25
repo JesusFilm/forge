@@ -1,12 +1,14 @@
 /**
  * The Explore feed (U18): the reducer, the two feed players, the pager, the
- * per-clip gate, and the clip queue in one screen. The route mounts it at the
- * tab's first focus, so nothing here runs before that (R46, KTD13).
+ * per-clip gate, and the clip queue in one screen, with the session takeover
+ * (U10), the clip evidence (U12), and the telemetry (U13) wired in. The route
+ * mounts it at the tab's first focus, so nothing runs before that (R46, KTD13).
  */
 
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useReducer,
   useRef,
   useState,
@@ -39,13 +41,22 @@ import { PlayerLoadingVeil } from "../watch/PlayerLoadingVeil"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { clipPosterUri, useClipAutostart } from "../../hooks/useClipAutostart"
 import { useExploreClipQueue } from "../../hooks/useExploreClipQueue"
-import { useFeedPlayers } from "../../hooks/useFeedPlayers"
+import { useExploreTakeover } from "../../hooks/useExploreTakeover"
+import {
+  useFeedPlayers,
+  type FeedPlayerFailure,
+} from "../../hooks/useFeedPlayers"
 import { BLACK } from "../../lib/color"
 import { readAppVersion } from "../../lib/explore/appVersion"
+import {
+  createClipEvidenceForFeed,
+  type ClipEvidence,
+} from "../../lib/explore/clipEvidence"
 import {
   getClipRecordStore,
   type ClipRecordInput,
 } from "../../lib/explore/clipRecord"
+import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { getDemotionStore } from "../../lib/explore/demotionStore"
 import { readDeviceTier } from "../../lib/explore/deviceTier"
 import {
@@ -62,6 +73,7 @@ import {
   releaseRequest,
   standbySlot,
   veilVisible,
+  type FeedEvent,
   type FeedState,
   type PlayerId,
 } from "../../lib/explore/feedState"
@@ -70,6 +82,7 @@ import {
   resolvePlayerMode,
   type PlayerMode,
 } from "../../lib/explore/playerMode"
+import { getExploreTelemetry } from "../../lib/explore/telemetry"
 import type { ReadyClip, FeedClip } from "../../lib/explore/types"
 import { openKeepWatching } from "../../lib/explore/watchIntent"
 import { deriveLanguageDisplay } from "../../lib/language-display"
@@ -149,16 +162,20 @@ function clipFor(state: FeedState, role: ExplorePagerRole): FeedClip | null {
   return role === "next" ? nextClip(state) : previousClip(state)
 }
 
-/** The active clip's asset time, or null while no frame of it has shown. */
-function clipPosition(state: FeedState, player: VideoPlayer): number | null {
-  if (state.phase !== "playing" && state.phase !== "paused") return null
+function readSeconds(read: () => number): number | null {
   try {
-    const time = player.currentTime
-    return Number.isFinite(time) ? time : null
+    const seconds = read()
+    return Number.isFinite(seconds) ? seconds : null
   } catch {
     // A released player throws on property access.
     return null
   }
+}
+
+/** The active clip's asset time, or null while no frame of it has shown. */
+function clipPosition(state: FeedState, player: VideoPlayer): number | null {
+  if (state.phase !== "playing" && state.phase !== "paused") return null
+  return readSeconds(() => player.currentTime)
 }
 
 /** KTD6: the first clip moved, failed, or loaded under a held pause. */
@@ -187,20 +204,106 @@ export type ExploreFeedProps = {
 
 export function ExploreFeed({ focused }: ExploreFeedProps) {
   const router = useRouter()
+  const telemetry = getExploreTelemetry()
   const { exploreMuted, setExploreMuted } = useWatchPreferences()
   const [state, dispatch] = useReducer(feedReducer, INITIAL_FEED_STATE)
   const [gestureActive, setGestureActive] = useState(false)
   const launchMode = useLaunchPlayerMode()
-  // KTD10: the takeover supplies this, and the root `playing` edge sends
-  // `systemPause`. Until it lands, no clip waits for the root player.
-  const yieldsToRoot = false
+  const { yieldsToRoot } = useExploreTakeover({
+    focused,
+    onSystemPause: () => dispatch({ type: "systemPause" }),
+  })
+
+  // ── Clip evidence (U12, KTD9): the active clip only ─────────────────
+  const evidence = useRef<ClipEvidence | null>(null)
+  const active = activeSlot(state)
+  const evidenceToken = active?.token ?? null
+  const evidenceMediaId = active?.clip.videoId ?? null
+  const evidenceStart = active?.clip.window.startSeconds ?? null
+  // A layout effect runs before the players' effect in any hook order, and a
+  // preloaded swipe plays in that effect. StrictMode's remount disposes the
+  // evidence, so this makes another.
+  useLayoutEffect(() => {
+    evidence.current ??= createClipEvidenceForFeed()
+    evidence.current.setClip(
+      evidenceToken == null || evidenceMediaId == null || evidenceStart == null
+        ? null
+        : {
+            token: evidenceToken,
+            mediaId: evidenceMediaId,
+            windowStartSeconds: evidenceStart,
+          },
+    )
+  }, [evidenceToken, evidenceMediaId, evidenceStart])
+
+  const handleClipFailed = useCallback(
+    (failure: FeedPlayerFailure) =>
+      telemetry.clipFailed({
+        failure: failure.kind,
+        slot: failure.active ? "active" : "standby",
+        videoId: failure.clip.videoId,
+        feedLanguageSlug: failure.clip.feedLanguageSlug,
+        errorMessage: failure.errorMessage,
+      }),
+    [telemetry],
+  )
 
   const { players, activePlayer } = useFeedPlayers({
     state,
     dispatch,
     muted: exploreMuted,
     yieldsToRoot,
+    onLoop: (token) => evidence.current?.onLoop(token),
+    // Only the first clip's stages count, and the standby loads after it moves.
+    onSourceSet: () => telemetry.firstMotionStage("sourceSet"),
+    onSourceLoaded: () => telemetry.firstMotionStage("sourceLoaded"),
+    onRebuffer: () => telemetry.rebuffer(),
+    onClipFailed: handleClipFailed,
   })
+
+  // Native and navigation callbacks read the last commit.
+  const live = useRef({ state, activePlayer, focused, launchMode })
+  live.current = { state, activePlayer, focused, launchMode }
+
+  // Only the active player's events count. A tick counts only once this clip
+  // has loaded: until then the player can still show the source it replaces.
+  useEffect(() => {
+    const subscriptions = BOTH_PLAYERS.flatMap((id) => {
+      const player = players[id]
+      return [
+        player.addListener("playingChange", ({ isPlaying }) => {
+          const { state: last } = live.current
+          const slot = activeSlot(last)
+          if (id !== last.active || slot == null) return
+          const position =
+            readSeconds(() => player.currentTime) ?? slot.startAtSeconds
+          evidence.current?.onPlayingChange(slot.token, isPlaying, position)
+        }),
+        player.addListener("timeUpdate", ({ currentTime }) => {
+          const { state: last } = live.current
+          const slot = activeSlot(last)
+          if (id !== last.active || slot?.status !== "ready") return
+          const duration = readSeconds(() => player.duration) ?? 0
+          evidence.current?.onTime(slot.token, currentTime, duration)
+          telemetry.clipProgress(
+            String(last.cursor),
+            currentTime - slot.clip.window.startSeconds,
+          )
+        }),
+      ]
+    })
+    return () => {
+      for (const subscription of subscriptions) {
+        try {
+          subscription.remove()
+        } catch {
+          // The players' own cleanup can release a player first.
+        }
+      }
+      evidence.current?.dispose()
+      evidence.current = null
+    }
+  }, [players, telemetry])
 
   const settledNow = firstClipSettled(state)
   const [firstClipDone, setFirstClipDone] = useState(false)
@@ -209,8 +312,11 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
   }, [settledNow])
 
   const handleClip = useCallback(
-    (clip: ReadyClip) => dispatch({ type: "clipQueued", clip }),
-    [],
+    (clip: ReadyClip) => {
+      telemetry.firstMotionStage("clipQueued")
+      dispatch({ type: "clipQueued", clip })
+    },
+    [telemetry],
   )
   const queue = useExploreClipQueue({
     hasFocused: true,
@@ -223,30 +329,47 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     currentClip: currentClip(state),
     nextClip: nextClip(state),
     onClip: handleClip,
+    onPoolReady: telemetry.poolReady,
+    onPoolFallback: telemetry.poolFallback,
   })
 
+  // The gate's timeout is the one clip failure the players do not see.
+  const dispatchFromGate = useCallback(
+    (event: FeedEvent) => {
+      const slot = activeSlot(live.current.state)
+      if (event.type === "timeout" && slot?.token === event.token) {
+        telemetry.clipFailed({
+          failure: "timeout",
+          slot: "active",
+          videoId: slot.clip.videoId,
+          feedLanguageSlug: slot.clip.feedLanguageSlug,
+          errorMessage: null,
+        })
+      }
+      dispatch(event)
+    },
+    [telemetry],
+  )
   const veil = useClipAutostart({
     state,
-    dispatch,
+    dispatch: dispatchFromGate,
     yieldsToRoot,
     stillUri: queue.stillUri,
     stillLoaded: queue.stillLoaded,
   })
 
-  // Native and navigation callbacks read the last commit.
-  const live = useRef({ state, activePlayer, focused, launchMode })
-  live.current = { state, activePlayer, focused, launchMode }
-
   // ── Focus, blur, and the background (KTD13, R45) ────────────────────
   useEffect(() => {
     if (launchMode == null) return
     if (focused) {
+      telemetry.focus(launchMode)
       dispatch({ type: "focus", playerMode: launchMode })
       return
     }
+    telemetry.blur()
     const { state: last, activePlayer: player } = live.current
     dispatch({ type: "blur", positionSeconds: clipPosition(last, player) })
-  }, [focused, launchMode])
+  }, [focused, launchMode, telemetry])
 
   // As on Home's hero: any state but "active" pauses. The Android share
   // chooser sends "background", so the clip stays paused under it.
@@ -255,17 +378,19 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       const current = live.current
       if (next === "active") {
         if (current.focused && current.launchMode != null) {
+          telemetry.focus(current.launchMode)
           dispatch({ type: "focus", playerMode: current.launchMode })
         }
         return
       }
+      telemetry.blur()
       dispatch({
         type: "background",
         positionSeconds: clipPosition(current.state, current.activePlayer),
       })
     })
     return () => subscription.remove()
-  }, [])
+  }, [telemetry])
 
   const graceArmed = releaseRequest(state).active === "afterGrace"
   useEffect(() => {
@@ -285,7 +410,6 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     dispatch({ type: signal })
   }, [signal, gestureActive])
 
-  const active = activeSlot(state)
   const motionSlot =
     active != null && active.token === state.confirmedToken ? active : null
   const motionToken = motionSlot?.token ?? null
@@ -300,26 +424,38 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       motionToken !== lastMotionToken.current
     ) {
       lastMotionToken.current = motionToken
+      telemetry.motionConfirmed()
       pendingRecords.current.push(recordEntry(motionClip))
     }
     // KTD22: record writes wait for the gesture. KTD15: at play, not preload.
     if (gestureActive) return
     const store = getClipRecordStore()
     for (const entry of pendingRecords.current.splice(0)) store.add(entry)
-  }, [motionToken, motionClip, gestureActive])
+  }, [motionToken, motionClip, gestureActive, telemetry])
 
   useEffect(() => {
     if (!state.demotedThisLaunch) return
+    telemetry.demoted(live.current.state.standbyErrors)
     void getDemotionStore().write({
       demotedAtMs: Date.now(),
       appVersion: readAppVersion(),
     })
-  }, [state.demotedThisLaunch])
+  }, [state.demotedThisLaunch, telemetry])
 
   // ── Handlers ────────────────────────────────────────────────────────
-  const handleMove = useCallback((move: ExplorePagerMove) => {
-    dispatch({ type: move === "next" ? "swipeNext" : "swipePrevious" })
-  }, [])
+  const handleMove = useCallback(
+    (move: ExplorePagerMove) => {
+      const last = live.current.state
+      const target = move === "next" ? nextClip(last) : previousClip(last)
+      const standby = standbySlot(last)
+      telemetry.swipe({
+        preloadHit: standby?.clip === target && standby.status === "ready",
+        direction: move === "next" ? "forward" : "backward",
+      })
+      dispatch({ type: move === "next" ? "swipeNext" : "swipePrevious" })
+    },
+    [telemetry],
+  )
   const handleRest = useCallback(() => dispatch({ type: "rest" }), [])
   const handleTap = useCallback(() => dispatch({ type: "tap" }), [])
   const handleOverlayOpen = useCallback(
@@ -347,6 +483,8 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       if (clip == null) return
       // Under the veil the clip shows no frame, so the tap point is its start.
       const position = veilVisible(last) ? null : positionSeconds
+      telemetry.keepWatchingTap(clip.slug)
+      telemetry.blur()
       dispatch({ type: "keepWatching", positionSeconds: position })
       openKeepWatching({
         clip,
@@ -354,7 +492,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
         navigate: (href) => router.navigate(href),
       })
     },
-    [router],
+    [router, telemetry],
   )
 
   // ── Render ──────────────────────────────────────────────────────────
@@ -520,6 +658,7 @@ function ClipPage({
         onPress={onTap}
         accessibilityRole="button"
         accessibilityLabel={clip.title}
+        accessibilityHint={EXPLORE_COPY.clipSurfaceHint}
         {...accessibility}
       />
       {children}

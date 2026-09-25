@@ -87,7 +87,8 @@ export function canOriginateRoutePattern(pattern: string): boolean {
  * Presentation from the session and the current route.
  *
  * `floating` is the default for every route the tables do not name, because R3
- * promises the window persists across tab changes and further pushes. `exiting`
+ * promises the window persists across tab changes and further pushes, except
+ * into Explore, whose `useExploreTakeover` ends it (feat-552 KTD10). `exiting`
  * outranks the route tables: a dismissed window animates away wherever the
  * viewer is, and only `exiting` may clear the store.
  */

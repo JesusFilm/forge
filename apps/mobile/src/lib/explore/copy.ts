@@ -5,6 +5,7 @@ export const EXPLORE_COPY = {
   share: "Share",
   keepWatching: "Keep watching",
   keepWatchingHint: "Opens the full video at this point",
+  clipSurfaceHint: "Plays or pauses the clip",
   descriptionMore: "more",
   descriptionMoreLabel: "Show the full description",
   descriptionLess: "less",

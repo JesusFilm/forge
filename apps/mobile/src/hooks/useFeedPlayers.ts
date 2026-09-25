@@ -53,10 +53,23 @@ const ACTIVE_MIN_FORWARD_BUFFER_SECONDS = 2
 /** Ticks this soon after a loop seek can still show the old position. */
 const LOOP_SEEK_SETTLE_MS = 500
 
+/** A loading edge this soon after a seek is the seek's own, not a rebuffer. */
+export const SEEK_LOADING_GRACE_MS = 1_000
+
 /** An unplayable URL never reached a decoder, so it must never demote (KTD3). */
 const NO_SOURCE_SET_MS = Number.POSITIVE_INFINITY
 
 const PLAYER_IDS: readonly PlayerId[] = ["a", "b"]
+
+export type FeedPlayerFailure = {
+  token: number
+  clip: FeedClip
+  /** A source error, or a second missed start seek (KTD4). */
+  kind: "sourceError" | "missedSeek"
+  /** The failed player held the active clip, not the standby. */
+  active: boolean
+  errorMessage: string | null
+}
 
 export type FeedPlayersInput = {
   state: FeedState
@@ -68,6 +81,12 @@ export type FeedPlayersInput = {
   yieldsToRoot: boolean
   /** A loop restarts the clip. The evidence recorder rebases on it (KTD9). */
   onLoop?: (token: number) => void
+  /** KTD17's stages that only this hook sees. None of them steers playback. */
+  onSourceSet?: (token: number) => void
+  onSourceLoaded?: (token: number) => void
+  /** The playing active clip drops into loading after its start, not at a seek. */
+  onRebuffer?: (token: number) => void
+  onClipFailed?: (failure: FeedPlayerFailure) => void
 }
 
 export type FeedPlayers = {
@@ -119,6 +138,8 @@ type Track = {
   startCheck: StartCheck
   reseekAtMs: number
   loopSeekAtMs: number
+  /** Any seek on this player: the start, a re-seek, a loop, or a scrub. */
+  seekAtMs: number
   playRequested: boolean
   interval: number
   forwardBufferSeconds: number | null
@@ -138,6 +159,7 @@ function newTrack(): Track {
     startCheck: "done",
     reseekAtMs: 0,
     loopSeekAtMs: Number.NEGATIVE_INFINITY,
+    seekAtMs: Number.NEGATIVE_INFINITY,
     playRequested: false,
     interval: 0,
     forwardBufferSeconds: null,
@@ -159,6 +181,11 @@ function read<T>(get: () => T, fallback: T): T {
   } catch {
     return fallback
   }
+}
+
+function errorMessageOf(reason: unknown): string | null {
+  if (reason instanceof Error) return reason.message
+  return typeof reason === "string" ? reason : null
 }
 
 function feedVideoSource(url: string): VideoSource {
@@ -247,6 +274,7 @@ function createFeedPlayerEngine() {
   function seek(id: PlayerId, seconds: number) {
     const player = players?.[id]
     if (player == null) return
+    tracks[id].seekAtMs = Date.now()
     safely(() => {
       player.currentTime = seconds
     })
@@ -292,11 +320,27 @@ function createFeedPlayerEngine() {
   }
 
   /** Reports the bound clip as failed and forgets its source, so a retry reloads. */
-  function fail(id: PlayerId, msSinceSourceSet?: number) {
+  function fail(
+    id: PlayerId,
+    kind: FeedPlayerFailure["kind"],
+    errorMessage: string | null,
+    msSinceSourceSet?: number,
+  ) {
     const track = tracks[id]
     const token = track.token
     if (token == null) return
     const ms = msSinceSourceSet ?? Date.now() - track.setAtMs
+    // Only a failure the reducer applies: the slot still holds this token.
+    const slot = inputs == null ? null : slotFor(inputs.state, id)
+    if (inputs != null && slot?.token === token) {
+      inputs.onClipFailed?.({
+        token,
+        clip: slot.clip,
+        kind,
+        active: id === inputs.state.active,
+        errorMessage,
+      })
+    }
     track.seq += 1
     track.url = null
     track.settled = false
@@ -348,17 +392,18 @@ function createFeedPlayerEngine() {
     let swap: Promise<void>
     try {
       swap = player.replaceAsync(feedVideoSource(url))
-    } catch {
-      fail(id)
+    } catch (error) {
+      fail(id, "sourceError", errorMessageOf(error))
       return
     }
+    if (track.token != null) inputs?.onSourceSet?.(track.token)
     swap.then(
       () => {
         if (tracks[id].seq === seq) tracks[id].settled = true
       },
-      () => {
+      (reason: unknown) => {
         if (tracks[id].seq !== seq) return
-        fail(id)
+        fail(id, "sourceError", errorMessageOf(reason))
         reconcile()
       },
     )
@@ -403,7 +448,7 @@ function createFeedPlayerEngine() {
     bind(track, slot)
     const url = feedSourceUrl(slot.clip)
     if (url == null) {
-      fail(id, NO_SOURCE_SET_MS)
+      fail(id, "sourceError", null, NO_SOURCE_SET_MS)
       return
     }
     if (url === track.url) {
@@ -490,7 +535,7 @@ function createFeedPlayerEngine() {
       return
     }
     if (Date.now() - track.reseekAtMs < START_RESEEK_GRACE_MS) return
-    fail(id)
+    fail(id, "missedSeek", null)
   }
 
   function onSourceLoad(id: PlayerId, payload?: SourceLoadEventPayload) {
@@ -502,6 +547,7 @@ function createFeedPlayerEngine() {
     if (uri !== undefined && uri !== track.url) return
     track.sourceLoaded = true
     disableSubtitles(id)
+    if (track.token != null) inputs?.onSourceLoaded?.(track.token)
     if (track.token != null && !track.ready) applyStart(id)
     reconcile()
   }
@@ -552,12 +598,27 @@ function createFeedPlayerEngine() {
     reconcile()
   }
 
+  /** Only a clip asked to play can rebuffer, so the standby never does. */
+  function noteLoading(id: PlayerId) {
+    const track = tracks[id]
+    const token = track.token
+    if (token == null || !track.playRequested) return
+    // A first frame that is still loading is a slow start, not a rebuffer.
+    if (track.startCheck !== "done") return
+    if (Date.now() - track.seekAtMs < SEEK_LOADING_GRACE_MS) return
+    inputs?.onRebuffer?.(token)
+  }
+
   function onStatusChange(id: PlayerId, payload?: StatusChangeEventPayload) {
+    if (payload?.status === "loading") {
+      noteLoading(id)
+      return
+    }
     if (payload?.status !== "error") return
     const track = tracks[id]
     // Until the new source is set, an error belongs to the outgoing item.
     if (track.url == null || !track.settled || track.token == null) return
-    fail(id)
+    fail(id, "sourceError", payload.error?.message ?? null)
     reconcile()
   }
 

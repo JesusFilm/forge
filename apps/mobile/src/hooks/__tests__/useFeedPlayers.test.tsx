@@ -30,11 +30,13 @@ import {
 import {
   ACTIVE_TIME_UPDATE_INTERVAL_SECONDS,
   EXPLORE_QUALITY_TIER,
+  SEEK_LOADING_GRACE_MS,
   START_RESEEK_GRACE_MS,
   STANDBY_FORWARD_BUFFER_SECONDS,
   STANDBY_LOAD_AFTER_BUFFERED_SECONDS,
   useFeedPlayers,
   type FeedPlayers,
+  type FeedPlayersInput,
 } from "../useFeedPlayers"
 
 const video = jest.requireMock("expo-video") as ExpoVideoMock
@@ -115,10 +117,12 @@ type Box = {
   sent: FeedEvent[]
 }
 
-type ProbeProps = {
+type ProbeProps = Pick<
+  FeedPlayersInput,
+  "onLoop" | "onSourceSet" | "onSourceLoaded" | "onRebuffer" | "onClipFailed"
+> & {
   muted?: boolean
   yieldsToRoot?: boolean
-  onLoop?: (token: number) => void
 }
 
 function Probe({
@@ -126,7 +130,7 @@ function Probe({
   initial,
   muted = false,
   yieldsToRoot = false,
-  onLoop,
+  ...callbacks
 }: ProbeProps & { box: Box; initial: FeedState }) {
   const [state, dispatch] = useReducer(feedReducer, initial)
   box.state = state
@@ -139,7 +143,7 @@ function Probe({
     },
     muted,
     yieldsToRoot,
-    onLoop,
+    ...callbacks,
   })
   return null
 }
@@ -781,6 +785,169 @@ describe("useFeedPlayers — StrictMode (setup, cleanup, setup)", () => {
     })
     renderer = null
     expect(B.playing).toBe(false)
+  })
+})
+
+describe("useFeedPlayers — telemetry stages (KTD17)", () => {
+  function stageSpies() {
+    return {
+      onSourceSet: jest.fn(),
+      onSourceLoaded: jest.fn(),
+      onRebuffer: jest.fn(),
+      onClipFailed: jest.fn(),
+    }
+  }
+
+  async function loading(player: FakePlayer) {
+    await act(async () => {
+      player.__emit("statusChange", { status: "loading" })
+    })
+  }
+
+  it("reports each source set and each load, for the active clip and the standby", async () => {
+    const spies = stageSpies()
+    const h = await mount(spies)
+    await h.send(focus(), queued(1))
+    const first = h.token("a")
+    expect(spies.onSourceSet.mock.calls).toEqual([[first]])
+    expect(spies.onSourceLoaded).not.toHaveBeenCalled()
+
+    await settle(A)
+    expect(spies.onSourceLoaded.mock.calls).toEqual([[first]])
+
+    await preloadSecondClip(h)
+    const second = h.token("b")
+    expect(spies.onSourceSet.mock.calls).toEqual([[first], [second]])
+    expect(spies.onSourceLoaded.mock.calls).toEqual([[first], [second]])
+    expect(spies.onClipFailed).not.toHaveBeenCalled()
+  })
+
+  it("reports a rebuffer only when the playing active clip drops into loading mid-clip", async () => {
+    const spies = stageSpies()
+    const h = await mount(spies)
+    await h.send(focus(), queued(1))
+    // The first load's own loading, and the loading right after its start seek.
+    await loading(A)
+    await settle(A)
+    await loading(A)
+    expect(spies.onRebuffer).not.toHaveBeenCalled()
+
+    now += SEEK_LOADING_GRACE_MS
+    await tick(A, { currentTime: START + 2 })
+    await loading(A)
+    expect(spies.onRebuffer.mock.calls).toEqual([[h.token("a")]])
+
+    // A loop is a seek, and so is the viewer's scrub.
+    now += SEEK_LOADING_GRACE_MS
+    await tick(A, { currentTime: END + 0.1 })
+    await loading(A)
+    now += SEEK_LOADING_GRACE_MS
+    h.box.result.seekActive(75)
+    await loading(A)
+    expect(spies.onRebuffer).toHaveBeenCalledTimes(1)
+
+    // The standby, and a clip the viewer paused, never rebuffer.
+    now += SEEK_LOADING_GRACE_MS
+    await preloadSecondClip(h)
+    now += SEEK_LOADING_GRACE_MS
+    await loading(B)
+    await h.send({ type: "tap" })
+    await loading(A)
+    expect(spies.onRebuffer).toHaveBeenCalledTimes(1)
+
+    await h.send({ type: "tap" })
+    await loading(A)
+    expect(spies.onRebuffer).toHaveBeenCalledTimes(2)
+  })
+
+  it("reports no rebuffer while the first frame is still loading", async () => {
+    const spies = stageSpies()
+    // The play is asked for, but no frame moves yet.
+    A.play.mockImplementation(() => {})
+    const h = await mount(spies)
+    await h.send(focus(), queued(1))
+    await settle(A)
+    expect(A.play).toHaveBeenCalled()
+
+    now += SEEK_LOADING_GRACE_MS
+    await loading(A)
+    expect(spies.onRebuffer).not.toHaveBeenCalled()
+  })
+
+  it("reports a source error with its slot and the native message", async () => {
+    const spies = stageSpies()
+    const h = await startedHarness(spies)
+    const first = h.token("a")
+    await h.send(queued(2))
+    await tick(A, { currentTime: START + 0.5, bufferedPosition: END })
+    const second = h.token("b")
+    await act(async () => {
+      B.__settleReplace(new Error("decoder"))
+    })
+    expect(spies.onClipFailed.mock.calls).toEqual([
+      [
+        {
+          token: second,
+          clip: expect.objectContaining({ videoId: "video-2" }),
+          kind: "sourceError",
+          active: false,
+          errorMessage: "decoder",
+        },
+      ],
+    ])
+
+    await act(async () => {
+      A.__emit("statusChange", {
+        status: "error",
+        error: { message: "HTTP 403" },
+      })
+    })
+    expect(spies.onClipFailed.mock.calls[1]).toEqual([
+      {
+        token: first,
+        clip: expect.objectContaining({ videoId: "video-1" }),
+        kind: "sourceError",
+        active: true,
+        errorMessage: "HTTP 403",
+      },
+    ])
+    expect(h.sentOf("error")).toHaveLength(2)
+  })
+
+  it("reports no failure for a source its slot no longer holds", async () => {
+    const spies = stageSpies()
+    const h = await mount(spies)
+    await h.send(focus("one"), queued(1))
+    await settle(A)
+    // A serves clip 2 now, but still holds clip 1 until the pager rests.
+    await h.send(queued(2), SWIPE)
+    await act(async () => {
+      A.__emit("statusChange", { status: "error", error: { message: "x" } })
+    })
+    expect(spies.onClipFailed).not.toHaveBeenCalled()
+    expect(h.box.state.phase).toBe("veiled")
+  })
+
+  it("reports a second missed start seek as a missed seek", async () => {
+    dropSeeks(A)
+    const spies = stageSpies()
+    const h = await mount(spies)
+    await h.send(focus(), queued(1))
+    await settle(A)
+    now += START_RESEEK_GRACE_MS
+    await tick(A, { currentTime: 0.5 })
+
+    expect(spies.onClipFailed.mock.calls).toEqual([
+      [
+        {
+          token: h.token("a"),
+          clip: expect.objectContaining({ videoId: "video-1" }),
+          kind: "missedSeek",
+          active: true,
+          errorMessage: null,
+        },
+      ],
+    ])
   })
 })
 

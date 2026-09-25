@@ -2,6 +2,11 @@
  * The Explore feed (U18): the REAL reducer, players, pager, and gate over the
  * two-player expo-video double. The test drives a stub queue (its own suite
  * covers the queue) and calls a stub overlay's callbacks.
+ *
+ * The wiring suites live here too, so they share this harness: the takeover
+ * (U10) against the REAL mini-player stores, the clip evidence (U12) through
+ * real clip-mode recorders over a fake network, and the telemetry (U13) over
+ * an injected instance with fake sinks.
  */
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -38,6 +43,33 @@ jest.mock("../../../hooks/useReduceMotion", () => ({
 // Its native-driver loop logs a findNodeHandle error under StrictMode. The
 // cases find the veil by its own test ID.
 jest.mock("../../ui/CircularSpinner", () => ({ CircularSpinner: () => null }))
+// R33: no module in the feed's import graph may load a progress writer. One
+// that did would fail this whole file at import.
+jest.mock("../../../lib/watchProgress/store", () => {
+  throw new Error("the Explore feed loaded the watch progress store")
+})
+jest.mock("../../../lib/watchProgress/recorder", () => {
+  throw new Error("the Explore feed loaded the watch progress recorder")
+})
+// U12's seam, as in the adapter's wiring suite. Off unless a case turns it on.
+jest.mock("../../../lib/recommendations/playbackRecorderClient", () => ({
+  isPlaybackRecorderAvailable: () => mockEvidence.available,
+  createPlaybackRecorderForMedia: jest.fn((input: MockRecorderInput) =>
+    mockBuildRecorder(input),
+  ),
+}))
+jest.mock("../../../lib/recommendations/viewerIdentityClient", () => ({
+  getRecommendationViewerStore: () => ({ get: async () => mockViewer }),
+}))
+jest.mock("expo-crypto", () => ({
+  CryptoDigestAlgorithm: { SHA256: "SHA-256" },
+  digestStringAsync: async () => "d".repeat(64),
+}))
+// The app-wide instance, swapped for one over fake sinks in each case.
+jest.mock("../../../lib/explore/telemetry", () => ({
+  ...jest.requireActual("../../../lib/explore/telemetry"),
+  getExploreTelemetry: () => mockTelemetry.instance,
+}))
 
 type Listener = () => void
 
@@ -88,6 +120,24 @@ jest.mock("../../../hooks/useExploreClipQueue", () => ({
     return mockQueue.result
   },
 }))
+type MockRecorderInput = { mode?: string; mediaId: string }
+type NetworkEntry = {
+  event: "context" | "claim" | "facts"
+  mediaId: string
+  kinds: string[]
+}
+const mockEvidence = {
+  available: false,
+  /** Every request a clip recorder sent, in order. */
+  network: [] as NetworkEntry[],
+  recorders: [] as { input: MockRecorderInput; dispose: jest.SpyInstance }[],
+}
+const mockViewer = {
+  kind: "ready" as const,
+  identity: { viewerToken: "v".repeat(43), sessionToken: "s".repeat(43) },
+  personalization: true,
+}
+const mockTelemetry = { instance: null as unknown as ExploreTelemetry }
 
 import {
   StrictMode,
@@ -107,14 +157,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import ExploreTab from "../../../../app/(tabs)/explore"
 import { ExploreFeed } from "../ExploreFeed"
 import { EXPLORE_PAGER_REST_DWELL_MS } from "../ExplorePager"
+import { AUTOSTART_VEIL_TIMEOUT_MS } from "../../../hooks/useAutostartPlayback"
 import type {
   ExploreClipQueue,
   UseExploreClipQueueInput,
 } from "../../../hooks/useExploreClipQueue"
 import {
   EXPLORE_QUALITY_TIER,
+  SEEK_LOADING_GRACE_MS,
   STANDBY_LOAD_AFTER_BUFFERED_SECONDS,
 } from "../../../hooks/useFeedPlayers"
+import {
+  CLIP_EPISODE_START_MS,
+  resetClipEvidenceBudgetForTests,
+} from "../../../lib/explore/clipEvidence"
 import { EXPLORE_COPY } from "../../../lib/explore/copy"
 import {
   DEMOTION_STORAGE_KEY,
@@ -122,9 +178,30 @@ import {
   serializeDemotion,
 } from "../../../lib/explore/demotionStore"
 import { BLUR_RELEASE_GRACE_MS } from "../../../lib/explore/feedState"
+import {
+  EXPLORE_VISIT_TIMEOUT_MS,
+  createExploreTelemetry,
+  type ExploreTelemetry,
+} from "../../../lib/explore/telemetry"
 import type { ReadyClip } from "../../../lib/explore/types"
 import { getWatchIntentStore } from "../../../lib/explore/watchIntent"
+import {
+  getPlaybackRequestStore,
+  type PlaybackRequest,
+  type PlaybackSessionDescriptor,
+} from "../../../lib/miniPlayer/playbackRequest"
+import {
+  getMiniPlayerStore,
+  type MiniPlayerEndEvent,
+} from "../../../lib/miniPlayer/store"
 import { muxClipStillUrl } from "../../../lib/muxThumbnail"
+import {
+  resetPlaybackTransportForTests,
+  setPlaybackTransport,
+} from "../../../lib/playbackInterruption"
+import { DIRECT_DISCOVERY } from "../../../lib/recommendations/playbackDiscovery"
+import { createRecommendationPlaybackRecorder } from "../../../lib/recommendations/playbackRecorder"
+import { createPlaybackRecorderForMedia } from "../../../lib/recommendations/playbackRecorderClient"
 import { applyQualityConstraint } from "../../../lib/streamQuality"
 import type {
   ExpoVideoMock,
@@ -192,6 +269,207 @@ function queueResult(): ExploreClipQueue {
     stillUri: null,
     stillLoaded: false,
   }
+}
+
+// ── Clip evidence: real clip-mode recorders over a fake network ─────
+
+const EPISODE = {
+  episodeId: "ep-1",
+  capability: "cap-1",
+  activeUntil: new Date(T0 + 60 * 60_000).toISOString(),
+  hardUntil: new Date(T0 + 120 * 60_000).toISOString(),
+}
+
+/** The clip evidence suite's recorder, built behind the mocked client. */
+function mockBuildRecorder(input: MockRecorderInput) {
+  const send = (
+    event: NetworkEntry["event"],
+    mediaId: string,
+    kinds: string[] = [],
+  ) => mockEvidence.network.push({ event, mediaId, kinds })
+  const recorder = createRecommendationPlaybackRecorder({
+    mode: "clip",
+    mediaId: input.mediaId,
+    discoveryKeys: [],
+    takePendingNonce: () => null,
+    restorePendingNonce: () => undefined,
+    takeDiscovery: () => DIRECT_DISCOVERY,
+    getIdentity: async () => mockViewer,
+    issueContext: async (_identity, mediaId) => {
+      send("context", mediaId)
+      return { claimNonce: "c".repeat(32) }
+    },
+    claimEpisode: async (_identity, _nonce, mediaId) => {
+      send("claim", mediaId)
+      return EPISODE
+    },
+    sendFacts: async (variables) => {
+      const kinds = variables.events.map((event) => event.kind)
+      send("facts", variables.mediaId, kinds)
+      return variables.events.map((event, index) => ({
+        eventId: event.eventId,
+        status: "accepted",
+        sequence: index + 1,
+      }))
+    },
+    invalidateIdentity: async () => undefined,
+    touch: () => undefined,
+    holdPlayback: () => () => undefined,
+    isForeground: () => true,
+    wait: async () => undefined,
+    report: () => undefined,
+  })
+  mockEvidence.recorders.push({
+    input,
+    dispose: jest.spyOn(recorder, "dispose"),
+  })
+  return recorder
+}
+
+const recorderFactory = createPlaybackRecorderForMedia as jest.Mock
+
+const claims = () =>
+  mockEvidence.network
+    .filter((entry) => entry.event === "claim")
+    .map((entry) => entry.mediaId)
+
+const factKinds = () =>
+  mockEvidence.network.flatMap((entry) =>
+    entry.event === "facts" ? entry.kinds : [],
+  )
+
+// ── Telemetry: an injected instance over fake sinks ─────────────────
+
+type Emitted = { name: string; context: Record<string, unknown> }
+type Logged = Emitted & { level: "info" | "warn" }
+
+const actions: Emitted[] = []
+const logs: Logged[] = []
+const action = (name: string) => actions.filter((entry) => entry.name === name)
+const logged = (name: string) => logs.filter((entry) => entry.name === name)
+
+function freshTelemetry(): ExploreTelemetry {
+  let visits = 0
+  const log =
+    (level: Logged["level"]) =>
+    (name: string, context: Record<string, unknown>) =>
+      logs.push({ level, name, context })
+  return createExploreTelemetry({
+    reportDatadogAction: (name, context) => actions.push({ name, context }),
+    telemetry: { info: log("info"), warn: log("warn") },
+    clipRecord: {
+      hydrate: async () => undefined,
+      recordVisit: () => null,
+      getLastVisitDate: () => null,
+    },
+    createId: () => {
+      visits += 1
+      return `visit-${visits}`
+    },
+  })
+}
+
+// ── The root session: the REAL stores, with the host modelled ───────
+
+const sessionStore = getMiniPlayerStore()
+const requestStore = getPlaybackRequestStore()
+const TWENTY_MINUTES = 1_200
+
+const MAGDALENA: PlaybackSessionDescriptor = {
+  videoId: "video-magdalena",
+  videoSlug: "magdalena",
+  title: "Magdalena",
+  titleFromRecord: true,
+  posterUrl: null,
+  languageSlug: "english",
+  originPattern: "watch/[slug]",
+}
+
+function watchRequest(session: PlaybackSessionDescriptor): PlaybackRequest {
+  return {
+    streamingUrl: `https://stream.mux.com/${session.videoSlug}.m3u8`,
+    posterUrl: null,
+    subtitleVttSrc: null,
+    fullscreen: false,
+    autostart: true,
+    resumeAtSeconds: null,
+    progressVideoId: session.videoId,
+    progressVideoSlug: session.videoSlug,
+    progressLanguageSlug: session.languageSlug,
+    onToggleFullscreen: null,
+    castActive: false,
+    cast: null,
+    progressFeedRef: null,
+    session,
+  }
+}
+
+let rootPlaying = false
+
+/** PlaybackHost's transport. A pause lands in the store only via `rootPlays`. */
+const transport = {
+  isPlaying: jest.fn(() => rootPlaying),
+  pause: jest.fn(() => {
+    rootPlaying = false
+  }),
+  play: jest.fn(() => {
+    rootPlaying = true
+  }),
+}
+
+let ends: MiniPlayerEndEvent[] = []
+let stopEnds: (() => void) | null = null
+
+function endsSeen(): Array<[string, string, number]> {
+  return ends.map((event) => [
+    event.reason,
+    event.session.videoSlug,
+    event.session.positionSeconds,
+  ])
+}
+
+function resetRootSession() {
+  requestStore.reset()
+  sessionStore.setPipHold(false)
+  sessionStore.end("abandoned")
+}
+
+/** The host publishes the root player's own playing state. */
+async function rootPlays(next: boolean) {
+  rootPlaying = next
+  await act(async () => {
+    requestStore.setPlaying(next)
+  })
+}
+
+/** A watch page played `session` to 20:00, and its slot detached (U6). */
+async function floating(session: PlaybackSessionDescriptor = MAGDALENA) {
+  let slot = 0
+  await act(async () => {
+    requestStore.setPlaybackFactsSource({
+      hasPlaybackStarted: () => true,
+      hasReachedEnd: () => false,
+      readPosition: () => TWENTY_MINUTES,
+      readDuration: () => 7_200,
+    })
+    slot = requestStore.attachSlot(watchRequest(session))
+  })
+  await act(async () => {
+    requestStore.detachSlot(slot)
+  })
+}
+
+async function setPipHold(held: boolean) {
+  await act(async () => {
+    sessionStore.setPipHold(held)
+  })
+}
+
+/** The window's exit animation ends (PlaybackHost's exit effect). */
+async function exitCompletes() {
+  await act(async () => {
+    sessionStore.reportExitComplete()
+  })
 }
 
 // ── The feed views: each mount and unmount is counted ───────────────
@@ -418,8 +696,8 @@ async function tap() {
   })
 }
 
-/** R35's action on the tap surface: the same move as a swipe up. */
-async function swipeNext() {
+/** R35's action on the tap surface: the same move as a swipe. */
+async function accessibilityMove(actionName: "next" | "previous") {
   const [element] = hosts(
     (node) => typeof node.props.onAccessibilityAction === "function",
   )
@@ -428,9 +706,12 @@ async function swipeNext() {
       element.props.onAccessibilityAction as (
         event: AccessibilityActionEvent,
       ) => void
-    )({ nativeEvent: { actionName: "next" } } as AccessibilityActionEvent)
+    )({ nativeEvent: { actionName } } as AccessibilityActionEvent)
   })
 }
+
+const swipeNext = () => accessibilityMove("next")
+const swipePrevious = () => accessibilityMove("previous")
 
 async function callOverlay(name: string, ...args: unknown[]) {
   await act(async () => {
@@ -474,6 +755,22 @@ beforeEach(() => {
   // The storage double's own jest.fn keeps its calls across cases.
   ;(AsyncStorage.setItem as jest.Mock).mockClear()
   mockQueue.result = queueResult()
+  mockEvidence.available = false
+  mockEvidence.network.length = 0
+  mockEvidence.recorders.length = 0
+  recorderFactory.mockClear()
+  resetClipEvidenceBudgetForTests()
+  actions.length = 0
+  logs.length = 0
+  mockTelemetry.instance = freshTelemetry()
+  resetRootSession()
+  resetPlaybackTransportForTests()
+  setPlaybackTransport(transport)
+  rootPlaying = false
+  transport.pause.mockClear()
+  transport.play.mockClear()
+  ends = []
+  stopEnds = sessionStore.onEnd((event) => ends.push(event))
   appStateHandlers.length = 0
   appStateSpy.mockImplementation(((
     _type: string,
@@ -497,6 +794,10 @@ afterEach(async () => {
     })
     renderer = null
   }
+  stopEnds?.()
+  stopEnds = null
+  resetRootSession()
+  resetPlaybackTransportForTests()
   video.__reset()
   viewLife.mounts = 0
   viewLife.unmounts = 0
@@ -757,6 +1058,7 @@ describe("the screen reader (R35)", () => {
       { name: "next", label: "Next clip" },
     ])
     expect(surface().props.accessibilityLabel).toBe("Clip 1")
+    expect(surface().props.accessibilityHint).toBe(EXPLORE_COPY.clipSurfaceHint)
     sendEvent.mockClear()
 
     await swipeNext()
@@ -891,7 +1193,8 @@ describe("the look-ahead hold (KTD6)", () => {
 
 describe("a demotion (KTD3)", () => {
   it("writes the stored demotion once, and the next launch reads it as one player", async () => {
-    const setItem = jest.spyOn(AsyncStorage, "setItem")
+    // The double's own jest.fn: a spy's mockRestore would strip its storage.
+    const setItem = AsyncStorage.setItem as jest.Mock
     const feed = await startFirstClip()
     await hand(2)
     await tick(A, START + 0.5)
@@ -925,7 +1228,6 @@ describe("a demotion (KTD3)", () => {
     viewLife.rebinds = 0
     await startFirstClip()
     expect(liveViews()).toBe(1)
-    setItem.mockRestore()
   })
 })
 
@@ -974,5 +1276,428 @@ describe("under StrictMode's mount, unmount, and remount", () => {
     expect(B.playing).toBe(false)
     await feed.setFocused(true)
     expect(B.playing).toBe(true)
+  })
+})
+
+// ── U10: the session takeover ───────────────────────────────────────
+
+describe("the session takeover (U10, KTD10)", () => {
+  it("AE7: a focus dismisses a floating session (never a replaced end), and the first clip starts only once no request remains", async () => {
+    await floating(MAGDALENA)
+    await rootPlays(true)
+    await mountFeed()
+    expect(endsSeen()).toEqual([["dismissed", "magdalena", TWENTY_MINUTES]])
+    // Without a hold the store's own dismiss stops the root player.
+    expect(transport.pause).not.toHaveBeenCalled()
+
+    await hand(1)
+    await settleAll(A)
+    expect(A.play).not.toHaveBeenCalled()
+    expect(veilShown()).toBe(true)
+
+    // The host's dismiss pause lands; the window's request stays while it
+    // animates away, so the clip still waits.
+    await rootPlays(false)
+    expect(requestStore.getSnapshot().request).not.toBeNull()
+    expect(A.play).not.toHaveBeenCalled()
+
+    await exitCompletes()
+    expect(requestStore.getSnapshot().request).toBeNull()
+    expect(A.playing).toBe(true)
+    expect(veilShown()).toBe(false)
+  })
+
+  it.each([false, true])(
+    "R42: under a picture-in-picture hold, pauses the root player, starts the clip muted, then follows the saved choice (muted: %s)",
+    async (savedMuted) => {
+      mockPreferences.exploreMuted = savedMuted
+      await floating(MAGDALENA)
+      await setPipHold(true)
+      await rootPlays(true)
+      const mutedAtPlay: boolean[] = []
+      const play = A.play.getMockImplementation()
+      A.play.mockImplementation(() => {
+        mutedAtPlay.push(A.muted)
+        play?.()
+      })
+
+      await mountFeed()
+      expect(transport.pause).toHaveBeenCalledTimes(1)
+      expect(sessionStore.getSnapshot().dismissal).toBe("none")
+      expect(endsSeen()).toEqual([])
+
+      await hand(1)
+      await settleAll(A)
+      expect(mutedAtPlay).toEqual([])
+
+      // The root pause lands; the watch page's request stays under the hold.
+      await rootPlays(false)
+      expect(requestStore.getSnapshot().request).not.toBeNull()
+      expect(mutedAtPlay).toEqual([true])
+      expect(A.playing).toBe(true)
+      expect(A.muted).toBe(savedMuted)
+    },
+  )
+
+  it("R45: a root playing edge pauses the clip as a system pause, and a return from the background plays it again", async () => {
+    await startWithStandby()
+    await rootPlays(true)
+    expect(A.playing).toBe(false)
+    expect(overlay().props.paused).toBe(true)
+
+    // The root player stops, and the system pause still holds the clip.
+    await rootPlays(false)
+    expect(A.playing).toBe(false)
+
+    await sendAppState("background")
+    await sendAppState("active")
+    expect(A.playing).toBe(true)
+  })
+})
+
+// ── U12: clip evidence ──────────────────────────────────────────────
+
+describe("clip evidence (U12, KTD9, R32, R33)", () => {
+  beforeEach(() => {
+    mockEvidence.available = true
+    A.duration = 3_600
+    B.duration = 3_600
+  })
+
+  /** One tick a second, so the playhead keeps pace with the clock. */
+  async function playFor(player: FakePlayer, from: number, seconds: number) {
+    for (let s = 1; s <= seconds; s += 1) {
+      await advance(1_000)
+      await tick(player, from + s)
+    }
+  }
+
+  it("claims one episode for the active clip once it has played 3 s, and never from the standby's events", async () => {
+    await startWithStandby()
+    await tap()
+    // A play edge from the standby is not the active clip's play.
+    await act(async () => {
+      B.__emit("playingChange", { isPlaying: true })
+    })
+    await advance(2 * CLIP_EPISODE_START_MS)
+    expect(recorderFactory).not.toHaveBeenCalled()
+
+    await tap()
+    await advance(CLIP_EPISODE_START_MS - 100)
+    expect(recorderFactory).not.toHaveBeenCalled()
+    await advance(100)
+    await flush()
+    expect(recorderFactory.mock.calls).toEqual([
+      [{ mode: "clip", mediaId: "video-1" }],
+    ])
+    expect(claims()).toEqual(["video-1"])
+  })
+
+  it("AE12: claims nothing when the viewer swipes to a new clip every 2 s", async () => {
+    await startFirstClip()
+    for (let n = 2; n <= 8; n += 1) {
+      await advance(2_000 - REST)
+      if (latestInput().wantsClip) await hand(n)
+      await swipeNext()
+      await advance(REST)
+      const player = overlay().props.player as FakePlayer
+      await settleAll(player)
+      expect(player.playing).toBe(true)
+    }
+    expect(recorderFactory).not.toHaveBeenCalled()
+
+    // Anti-vacuous: the last clip, left to play, claims its own.
+    await advance(CLIP_EPISODE_START_MS)
+    await flush()
+    expect(claims()).toEqual(["video-8"])
+  })
+
+  it("records a loop back to the clip start with no seek, sends nothing to the progress store, and disposes at unmount", async () => {
+    const feed = await startFirstClip()
+    await playFor(A, START, END - START - 1)
+    expect(claims()).toEqual(["video-1"])
+
+    await tick(A, END + 0.1)
+    expect(A.currentTime).toBe(START)
+    await playFor(A, START, 5)
+
+    await feed.unmount()
+    await flush()
+    expect(mockEvidence.recorders).toHaveLength(1)
+    expect(mockEvidence.recorders[0].dispose).toHaveBeenCalledTimes(1)
+    expect(factKinds()).toContain("playback_start")
+    // The ticks reached the recorder, so the missing seek is a real result.
+    expect(factKinds()).toContain("playback_progress")
+    expect(factKinds()).not.toContain("playback_seek")
+  })
+
+  it("claims for a preloaded clip, which plays in the swipe's own commit", async () => {
+    await startWithStandby()
+    await swipeNext()
+    expect(B.playing).toBe(true)
+    expect(veilShown()).toBe(false)
+
+    await advance(CLIP_EPISODE_START_MS)
+    await flush()
+    expect(claims()).toEqual(["video-2"])
+  })
+
+  it("arms the progress-writer guard this file relies on", () => {
+    expect(() => require("../../../lib/watchProgress/store")).toThrow(
+      "the Explore feed loaded the watch progress store",
+    )
+  })
+
+  it("still claims after StrictMode's mount, unmount, and remount", async () => {
+    await startFirstClip({ strict: true })
+    await advance(CLIP_EPISODE_START_MS)
+    await flush()
+    expect(claims()).toEqual(["video-1"])
+  })
+})
+
+// ── U13: telemetry ──────────────────────────────────────────────────
+
+describe("telemetry (U13, KTD17, R34)", () => {
+  it("starts one visit on a focus, and a 5 s tab switch keeps it", async () => {
+    const feed = await mountFeed()
+    expect(action("explore.visit_start")).toHaveLength(1)
+
+    await feed.setFocused(false)
+    await advance(5_000)
+    await feed.setFocused(true)
+    expect(action("explore.visit_start")).toHaveLength(1)
+    expect(action("explore.visit_end")).toEqual([])
+  })
+
+  it.each(["tab switch", "background", "Keep watching"] as const)(
+    "a %s starts the 30 min away clock, and the next focus starts a new visit",
+    async (away) => {
+      const feed = await startWithStandby()
+      if (away === "tab switch") await feed.setFocused(false)
+      if (away === "background") await sendAppState("background")
+      if (away === "Keep watching") await callOverlay("onKeepWatching", 75)
+
+      await advance(EXPLORE_VISIT_TIMEOUT_MS)
+      expect(action("explore.visit_end")).toHaveLength(1)
+
+      if (away === "background") {
+        await sendAppState("active")
+      } else {
+        await feed.setFocused(false)
+        await feed.setFocused(true)
+      }
+      expect(action("explore.visit_start")).toHaveLength(2)
+    },
+  )
+
+  it("counts a clip as watched at 3 s of play, once", async () => {
+    await startFirstClip()
+    await tick(A, START + 2.9)
+    expect(action("explore.clip_watched")).toEqual([])
+    await tick(A, START + 3)
+    await tick(A, START + 10)
+    expect(action("explore.clip_watched")).toHaveLength(1)
+  })
+
+  it("never counts a tick from the source a one-player swipe replaces", async () => {
+    await AsyncStorage.setItem(
+      DEMOTION_STORAGE_KEY,
+      serializeDemotion({ demotedAtMs: T0 - 60_000, appVersion: "1.4.0" }),
+    )
+    await startFirstClip()
+    expect(liveViews()).toBe(1)
+    await hand(2)
+    await swipeNext()
+    // A still holds clip 1 until the pager rests.
+    expect(await act(async () => A.__tick({ currentTime: START + 15 }))).toBe(
+      true,
+    )
+    expect(action("explore.clip_watched")).toEqual([])
+
+    await advance(REST)
+    await settleAll(A)
+    await tick(A, START + 3)
+    expect(action("explore.clip_watched")).toHaveLength(1)
+  })
+
+  it("never counts a tick from the standby", async () => {
+    await startWithStandby()
+    // Synthetic: useFeedPlayers stops the standby's ticks, but on a device the
+    // old player can tick once between a swipe's commit and that reconcile.
+    B.timeUpdateEventInterval = 0.25
+    await tick(B, START + 5)
+    expect(action("explore.clip_watched")).toEqual([])
+  })
+
+  it('emits one action for a "Keep watching" tap', async () => {
+    await startWithStandby()
+    await callOverlay("onKeepWatching", 75)
+    expect(action("explore.keep_watching")).toEqual([
+      {
+        name: "explore.keep_watching",
+        context: expect.objectContaining({
+          explore_video_slug: "slug-1",
+          explore_keep_watching_taps: 1,
+        }),
+      },
+    ])
+  })
+
+  it("emits the first motion once, with each stage's time and the pool state", async () => {
+    await mountFeed()
+    await advance(100)
+    await act(async () => {
+      latestInput().onPoolReady?.("warm")
+    })
+    await advance(100)
+    await hand(1)
+    await advance(300)
+    await settleAll(A)
+
+    await hand(2)
+    await tick(A, START + 0.5)
+    await settleAll(B)
+    await swipeNext()
+
+    expect(logged("explore.first_motion")).toEqual([
+      {
+        level: "info",
+        name: "explore.first_motion",
+        context: expect.objectContaining({
+          explore_first_motion_outcome: "motion",
+          explore_first_motion_ms: 500,
+          explore_pool_ready_ms: 100,
+          explore_pool_state: "warm",
+          explore_clip_queued_ms: 200,
+          explore_source_set_ms: 200,
+          explore_source_loaded_ms: 500,
+          explore_player_mode: "two",
+        }),
+      },
+    ])
+  })
+
+  it("reports each swipe as a preload hit or a miss, with its direction", async () => {
+    // A hit: B holds clip 2, loaded.
+    await startWithStandby()
+    await swipeNext()
+    await advance(REST)
+    // A miss: A holds clip 3, but its load has not started.
+    await hand(3)
+    await swipeNext()
+    await advance(REST)
+    await settleAll(A)
+    // A miss: B holds a loaded clip, but clip 4, not clip 2.
+    await hand(4)
+    await tick(A, START + 0.5)
+    await settleAll(B)
+    await swipePrevious()
+    await advance(REST)
+    await settleAll(B)
+
+    expect(
+      logged("explore.swipe").map(({ context }) => [
+        context.explore_preload_hit,
+        context.explore_swipe_direction,
+        context.explore_swipe_outcome,
+      ]),
+    ).toEqual([
+      [true, "forward", "motion"],
+      [false, "forward", "motion"],
+      [false, "backward", "motion"],
+    ])
+  })
+
+  it("emits a demotion once", async () => {
+    await startFirstClip()
+    await hand(2)
+    await tick(A, START + 0.5)
+    await settleAll(B, new Error("decoder"))
+    await swipeNext()
+    await advance(REST)
+    await settleAll(B)
+    await hand(3)
+    await tick(B, START + 0.5)
+    await settleAll(A, new Error("decoder"))
+    await flush()
+
+    expect(logged("explore.demoted")).toEqual([
+      {
+        level: "warn",
+        name: "explore.demoted",
+        context: expect.objectContaining({ explore_standby_errors: 2 }),
+      },
+    ])
+  })
+
+  it("reports a rebuffer and a pool fallback", async () => {
+    await startFirstClip()
+    await advance(SEEK_LOADING_GRACE_MS)
+    await act(async () => {
+      A.__emit("statusChange", { status: "loading" })
+    })
+    expect(logged("explore.rebuffer")).toHaveLength(1)
+
+    await act(async () => {
+      latestInput().onPoolFallback?.({
+        tier: "fallbackDubbed",
+        feedLanguageSlug: "english",
+        releasedEntries: 3,
+      })
+    })
+    expect(logged("explore.pool_fallback")).toEqual([
+      {
+        level: "info",
+        name: "explore.pool_fallback",
+        context: expect.objectContaining({
+          explore_clip_tier: "fallbackDubbed",
+          explore_released_entries: 3,
+        }),
+      },
+    ])
+  })
+
+  it("reports a failed clip with its cause, its slot, and its video", async () => {
+    await startFirstClip()
+    await hand(2)
+    await tick(A, START + 0.5)
+    await settleAll(B, new Error("decoder"))
+    await act(async () => {
+      A.__emit("statusChange", {
+        status: "error",
+        error: { message: "HTTP 403" },
+      })
+    })
+
+    const failures = () =>
+      logged("explore.clip_failed").map(({ context }) => [
+        context.explore_failure,
+        context.explore_slot,
+        context.explore_video_id,
+        context.explore_feed_language,
+        context.explore_error_message,
+      ])
+    expect(failures()).toEqual([
+      ["sourceError", "standby", "video-2", "english", "decoder"],
+      ["sourceError", "active", "video-1", "english", "HTTP 403"],
+    ])
+  })
+
+  it("reports a clip whose load never lands as a timeout", async () => {
+    await mountFeed()
+    await hand(1)
+    await act(async () => {
+      A.__settleReplace(undefined, { withholdLoad: true })
+    })
+    await advance(AUTOSTART_VEIL_TIMEOUT_MS)
+
+    expect(
+      logged("explore.clip_failed").map(({ context }) => [
+        context.explore_failure,
+        context.explore_slot,
+        context.explore_video_id,
+      ]),
+    ).toEqual([["timeout", "active", "video-1"]])
   })
 })
