@@ -100,6 +100,13 @@ afterAll(() => {
   globalThis.fetch = originalFetch
 })
 
+describe("the byte cap", () => {
+  it("is 1 MB, from U1's largest feature-film track at 3 bytes per character", () => {
+    // docs/validation/explore-clips-probe.md: 176,418 characters, so 0.53 MB.
+    expect(VTT_MAX_BYTES).toBe(1_000_000)
+  })
+})
+
 describe("loadVttCues — loading and sharing", () => {
   it("loads a network track as cues sorted by start, with its byte size", async () => {
     const body = `WEBVTT

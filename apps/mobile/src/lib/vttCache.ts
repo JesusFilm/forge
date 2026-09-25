@@ -4,9 +4,9 @@
 import { parseVtt, type VttCue } from "./parseVtt"
 import { validateActionUrl } from "./validateUrl"
 
-// UTF-8 bytes per track. Size it as the largest production feature-film track
-// in characters x 3 bytes per character. 1.5 MB is KTD20's start value.
-export const VTT_MAX_BYTES = 1_500_000
+// UTF-8 bytes per track: the largest production feature-film track (176,418
+// characters, U1) x 3 bytes per character is 0.53 MB, and 1 MB leaves room.
+export const VTT_MAX_BYTES = 1_000_000
 /** One budget for the request and the whole body read. */
 export const VTT_FETCH_TIMEOUT_MS = 8_000
 /** Pinned and loading tracks are never evicted, so they can exceed this. */
