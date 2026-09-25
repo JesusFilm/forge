@@ -137,7 +137,7 @@ Datadog has recorded taps on the button since 2026-08-28, because production RUM
 **Settings and appearance**
 
 - R33. The settings sheet holds seven settings, and the device keeps each one:
-  - Mode: System, Light, or Dark.
+  - Mode: System, Light, or Dark. Dark is the default (owner, 2026-09-25).
   - Text size.
   - Palette: Classic or True Dark.
   - Typeface: serif or sans.
@@ -690,7 +690,7 @@ flowchart TB
 - An explicit pick stays after the audio language changes.
 - An unknown audio language code falls back to the phone language, then BSB.
 - Each phone-language table entry whose language has a Bible in the catalog resolves to a code present in the generated language table (for example `zh` reaches `cmn`).
-- Settings default to Mode System, Classic, serif, the middle text size, normal spacing, verse numbers on, and arrows off.
+- Settings default to Mode Dark (owner, 2026-09-25; the plan first said System), Classic, serif, the middle text size, normal spacing, verse numbers on, and arrows off.
 
 **Verification:** Store and resolver suites pass, including the StrictMode suite.
 

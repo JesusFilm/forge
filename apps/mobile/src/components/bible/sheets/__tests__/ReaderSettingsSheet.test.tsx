@@ -130,7 +130,7 @@ function selected(renderer: TestInstance, label: string): boolean {
 describe("ReaderSettingsSheet", () => {
   it.each<[string, string, Partial<ReaderSettings>]>([
     ["Mode", COPY.modes.light, { mode: "light" }],
-    ["Mode", COPY.modes.dark, { mode: "dark" }],
+    ["Mode", COPY.modes.system, { mode: "system" }],
     ["Palette", COPY.palettes.trueDark, { palette: "trueDark" }],
     ["Typeface", COPY.typefaces.sans, { typeface: "sans" }],
     ["Line spacing", COPY.lineSpacings.relaxed, { lineSpacing: "relaxed" }],

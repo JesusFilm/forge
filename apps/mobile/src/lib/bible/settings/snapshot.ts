@@ -41,7 +41,8 @@ export type ReaderSettings = {
 }
 
 export const DEFAULT_READER_SETTINGS: Readonly<ReaderSettings> = Object.freeze({
-  mode: "system",
+  // The owner chose Dark over System as the first mode (2026-09-25).
+  mode: "dark",
   textSizeStep: DEFAULT_TEXT_SIZE_STEP,
   palette: "classic",
   typeface: "serif",

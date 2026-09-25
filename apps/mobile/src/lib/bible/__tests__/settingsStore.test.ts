@@ -40,7 +40,7 @@ import {
 const KEY = READER_SETTINGS_STORAGE_KEY
 
 const CHANGED: ReaderSettings = {
-  mode: "dark",
+  mode: "light",
   textSizeStep: READER_TEXT_SIZE_STEPS.length - 1,
   palette: "trueDark",
   typeface: "sans",
@@ -82,9 +82,9 @@ function withVersion(fields: Record<string, unknown>): string {
 }
 
 describe("R33 defaults", () => {
-  it("defaults to System, Classic, serif, the middle size, normal spacing, verse numbers on, arrows off", () => {
+  it("defaults to Dark, Classic, serif, the middle size, normal spacing, verse numbers on, arrows off", () => {
     expect(DEFAULT_READER_SETTINGS).toEqual({
-      mode: "system",
+      mode: "dark",
       palette: "classic",
       typeface: "serif",
       textSizeStep: DEFAULT_TEXT_SIZE_STEP,
@@ -186,7 +186,7 @@ describe("store", () => {
     await settle()
 
     expect(store.getSnapshot()).toMatchObject({
-      mode: "system",
+      mode: "dark",
       textSizeStep: DEFAULT_TEXT_SIZE_STEP,
       typeface: "sans",
     })
