@@ -483,6 +483,7 @@ type HarnessProps = {
   focused: boolean
   gestureActive: boolean
   playerMode: PlayerMode
+  holdLookahead?: boolean
 }
 
 type Snapshot = {
@@ -526,6 +527,7 @@ function render(
         hasFocused: props.hasFocused,
         focused: props.focused,
         gestureActive: props.gestureActive,
+        holdLookahead: props.holdLookahead,
         playerMode: feed.playerMode,
         wantsClip: needsClip(feed),
         feedHoldsQueued: feed.queued != null,
@@ -744,6 +746,26 @@ describe("a warm open (KTD6)", () => {
     },
   )
 
+  it("holds the look-ahead until the first clip moves, so no hydration or subtitle fetch runs before it", async () => {
+    const stored = readyClip("c")
+    const w = world({
+      storedPool: storedPool(["a", "b", "c"], T0 - MINUTE),
+      storedClip: { clip: stored, storedAt: T0 - 30_000 },
+      tracks: true,
+    })
+    const view = render(w.deps, { ...FOCUSED, holdLookahead: true })
+    await flush(MINUTE)
+    expect(view.history()[0]).toEqual(toFeedClip(stored))
+    expect(w.admin.hydrationCalls).toHaveLength(0)
+    expect(w.timing.acquire).not.toHaveBeenCalled()
+    expect(view.latest().feed.queued).toBeNull()
+
+    view.rerender({ holdLookahead: false })
+    await flush()
+    expect(w.admin.hydrationCalls.length).toBeGreaterThan(0)
+    expect(view.latest().feed.queued).not.toBeNull()
+  })
+
   it("stores the next ready clip beside the pool", async () => {
     const w = world({ storedPool: storedPool(["a", "b", "c"], T0 - MINUTE) })
     const view = render(w.deps, FOCUSED)
@@ -758,6 +780,25 @@ describe("a warm open (KTD6)", () => {
 })
 
 describe("a cold open (KTD6)", () => {
+  it("computes the first clip under the look-ahead hold, and nothing more until it lifts", async () => {
+    const w = world({ inventories: { [SW]: ["a", "b", "c"] }, tracks: true })
+    const view = render(w.deps, { ...FOCUSED, holdLookahead: true })
+    await flush(MINUTE)
+    expect(ids(view.history())).toEqual(["video-a"])
+    const hydrations = w.admin.hydrationCalls.length
+    const acquisitions = w.timing.acquire.mock.calls.length
+    expect(hydrations).toBeGreaterThan(0)
+    expect(view.latest().feed.queued).toBeNull()
+
+    await flush(MINUTE)
+    expect(w.admin.hydrationCalls).toHaveLength(hydrations)
+    expect(w.timing.acquire).toHaveBeenCalledTimes(acquisitions)
+
+    view.rerender({ holdLookahead: false })
+    await flush()
+    expect(view.latest().feed.queued?.videoId).toBe("video-b")
+  })
+
   it("fetches the inventory once without the cache, stores the pool, and reports a cold pool", async () => {
     const onPoolReady = jest.fn()
     const w = world({ inventories: { [SW]: ["a", "b", "c"] } })

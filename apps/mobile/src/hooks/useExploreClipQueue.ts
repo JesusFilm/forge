@@ -16,6 +16,7 @@ import {
   isUnreachableEndpointError,
 } from "../lib/apolloClient"
 import {
+  CLIP_QUEUE_AHEAD,
   advance,
   applyHydration,
   applyRelease,
@@ -39,6 +40,7 @@ import {
   type ClipQueueSignal,
   type ClipQueueState,
 } from "../lib/explore/clipQueue"
+import { readAppVersion } from "../lib/explore/appVersion"
 import {
   getClipRecordStore,
   type ClipRecordStore,
@@ -232,23 +234,6 @@ export type ExploreClipQueueDeps = {
   deviceLocale: () => string | null
 }
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-/** expo-constants ships with Expo, so this read adds no native module. */
-function readAppVersion(): string {
-  try {
-    const constants = require("expo-constants") as {
-      default?: { expoConfig?: { version?: unknown } | null }
-    }
-    const version = constants.default?.expoConfig?.version
-    return typeof version === "string" && version.length > 0
-      ? version
-      : "unknown"
-  } catch {
-    return "unknown"
-  }
-}
-/* eslint-enable @typescript-eslint/no-require-imports */
-
 let defaultDeps: ExploreClipQueueDeps | null = null
 
 /** The app's stores and clients. Building them makes no request. */
@@ -288,6 +273,11 @@ export type UseExploreClipQueueInput = {
   focused: boolean
   /** KTD22: the pager's latch. No queue step runs while it is set. */
   gestureActive: boolean
+  /**
+   * KTD6: true until the first clip moves. The queue then computes only a
+   * first clip, so no look-ahead request competes with the first load.
+   */
+  holdLookahead?: boolean
   /** `feedState.playerMode`. One-player mode prefetches stills (KTD21). */
   playerMode: PlayerMode
   /** `needsClip(feedState)`. The hook then hands over one clip. */
@@ -327,6 +317,7 @@ type PumpInput = Pick<
   | "wantsClip"
   | "feedHoldsQueued"
   | "gestureActive"
+  | "holdLookahead"
   | "currentClip"
   | "playerMode"
 >
@@ -648,6 +639,16 @@ function createQueueEngine(deps: ExploreClipQueueDeps, host: EngineHost) {
     return true
   }
 
+  /**
+   * Under the look-ahead hold, the first clip fills the queue: `advance` can
+   * start the next request in the same call that cuts a clip, so a skipped
+   * pump alone would not stop it.
+   */
+  function clipsAheadInFeed(input: PumpInput): number {
+    if (input.holdLookahead !== true) return input.feedHoldsQueued ? 1 : 0
+    return CLIP_QUEUE_AHEAD - 1 + (queue?.handedOff != null ? 1 : 0)
+  }
+
   function step(input: PumpInput): void {
     if (queue == null) return
     const before = queue
@@ -655,7 +656,7 @@ function createQueueEngine(deps: ExploreClipQueueDeps, host: EngineHost) {
       random: deps.random,
       record: deps.record,
       eligibleStartsSlot: deps.eligibleStartsSlot,
-      clipsAheadInFeed: input.feedHoldsQueued ? 1 : 0,
+      clipsAheadInFeed: clipsAheadInFeed(input),
     })
     queue = result.state
     reportNewClips(before, queue)
@@ -841,6 +842,7 @@ export function useExploreClipQueue(
     hasFocused,
     focused,
     gestureActive,
+    holdLookahead,
     playerMode,
     wantsClip,
     feedHoldsQueued,
@@ -1016,6 +1018,7 @@ export function useExploreClipQueue(
       wantsClip,
       feedHoldsQueued,
       gestureActive,
+      holdLookahead,
       currentClip,
       playerMode,
     })
@@ -1026,6 +1029,7 @@ export function useExploreClipQueue(
     wantsClip,
     feedHoldsQueued,
     gestureActive,
+    holdLookahead,
     currentClip,
     playerMode,
   ])

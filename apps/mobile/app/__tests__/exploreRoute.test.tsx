@@ -1,6 +1,7 @@
 /**
  * R46: iOS NativeTabs render every tab at launch (KTD13), so the route waits for
  * its first focus. While the gate is closed it renders nothing at all (KTD16).
+ * The feed is a stub; `ExploreFeed.test.tsx` renders this route with the real one.
  */
 import { StrictMode, act, useEffect } from "react"
 
@@ -39,6 +40,14 @@ jest.mock("expo-router", () => ({
 jest.mock("../../src/lib/explore/availability", () => ({
   isExploreAvailable: () => mockExploreAvailable.current,
 }))
+jest.mock("../../src/components/explore/ExploreFeed", () => {
+  const { createElement } = jest.requireActual(
+    "react",
+  ) as typeof import("react")
+  return {
+    ExploreFeed: (props: object) => createElement("ExploreFeed", props),
+  }
+})
 
 function listenerCount(): number {
   let count = 0
@@ -61,11 +70,12 @@ async function render(element: React.ReactElement): Promise<TestInstance> {
   return renderer
 }
 
+function feeds(renderer: TestInstance) {
+  return renderer.root.findAll((node) => node.type === "ExploreFeed")
+}
+
 function hasFeedSlot(renderer: TestInstance): boolean {
-  return (
-    renderer.root.findAll((node) => node.props.testID === "explore-feed-slot")
-      .length > 0
-  )
+  return feeds(renderer).length > 0
 }
 
 const fetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, "fetch")
@@ -140,12 +150,16 @@ describe("the Explore route before its first focus (R46)", () => {
 })
 
 describe("the Explore route at its first focus", () => {
-  it("mounts the feed slot on focus and keeps it after a blur", async () => {
+  it("mounts the feed on focus and keeps it, told of each blur, after a blur", async () => {
     const renderer = await render(<ExploreTab />)
     await emit("focus")
-    expect(hasFeedSlot(renderer)).toBe(true)
+    expect(feeds(renderer)).toHaveLength(1)
+    expect(feeds(renderer)[0].props.focused).toBe(true)
     await emit("blur")
-    expect(hasFeedSlot(renderer)).toBe(true)
+    expect(feeds(renderer)).toHaveLength(1)
+    expect(feeds(renderer)[0].props.focused).toBe(false)
+    await emit("focus")
+    expect(feeds(renderer)[0].props.focused).toBe(true)
   })
 
   it("mounts the feed slot at once when the route opens focused", async () => {

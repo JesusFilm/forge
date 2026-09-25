@@ -1,6 +1,7 @@
 /**
- * The Explore feed's vertical pager (U15, KTD1). It renders no video: three
- * permanent slots hold what the feed supplies per key, and a swipe rotates roles.
+ * The Explore feed's vertical pager (U15, KTD1). Three permanent slots hold
+ * what the feed supplies per key, and a swipe rotates roles. Video views go in
+ * the underlay: a view inside a slot would change slots and remount.
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
@@ -12,6 +13,8 @@ import {
   View,
   type AccessibilityActionEvent,
   type GestureResponderHandlers,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
@@ -65,8 +68,18 @@ export type ExplorePagerSlot = {
   accessibility: ExplorePagerAccessibility | null
 }
 
+/** A child placed with `pageStyle(role)` moves with that role's page. */
+export type ExplorePagerUnderlay = {
+  pageStyle: (role: ExplorePagerRole) => StyleProp<ViewStyle>
+}
+
 export type ExplorePagerProps = {
   renderSlot: (slot: ExplorePagerSlot) => ReactNode
+  /**
+   * A layer under the slots that stays mounted, so a child keeps one position
+   * in the tree. A child that follows a clip changes `pageStyle`, not parent.
+   */
+  renderUnderlay?: (underlay: ExplorePagerUnderlay) => ReactNode
   canSwipeNext: boolean
   canSwipePrevious: boolean
   /** A move commits as its settle lands, in the render that rotates roles. */
@@ -103,6 +116,11 @@ function roleOf(
   return offset < 0 ? "previous" : "next"
 }
 
+function pageOf(placement: Placement, role: ExplorePagerRole): number {
+  if (role === "current") return placement.current
+  return placement.current + (role === "next" ? 1 : -1)
+}
+
 function releaseStep(
   dy: number,
   vy: number,
@@ -117,7 +135,7 @@ function releaseStep(
   return 0
 }
 
-type LiveProps = Omit<ExplorePagerProps, "renderSlot"> & {
+type LiveProps = Omit<ExplorePagerProps, "renderSlot" | "renderUnderlay"> & {
   reduceMotion: boolean
 }
 
@@ -313,6 +331,7 @@ function createPagerEngine({
 
 export function ExplorePager({
   renderSlot,
+  renderUnderlay,
   canSwipeNext,
   canSwipePrevious,
   onMove,
@@ -380,6 +399,19 @@ export function ExplorePager({
     }
   }, [canSwipeNext, canSwipePrevious, engine])
 
+  const underlay = useMemo<ExplorePagerUnderlay>(
+    () => ({
+      pageStyle: (role) => [
+        styles.slot,
+        {
+          height,
+          transform: [{ translateY: pageOf(placement, role) * height }],
+        },
+      ],
+    }),
+    [placement, height],
+  )
+
   return (
     <View
       style={styles.root}
@@ -398,6 +430,17 @@ export function ExplorePager({
             { transform: [{ translateY: drag }] },
           ]}
         >
+          {renderUnderlay != null && (
+            <View
+              testID="explore-pager-underlay"
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              {renderUnderlay(underlay)}
+            </View>
+          )}
           {EXPLORE_PAGER_SLOT_KEYS.map((key) => {
             const role = roleOf(placement, key)
             const isCurrent = role === "current"

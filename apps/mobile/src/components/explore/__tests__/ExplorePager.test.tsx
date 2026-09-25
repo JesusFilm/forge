@@ -7,7 +7,13 @@ jest.mock("../../../hooks/useReduceMotion", () => ({
   useReduceMotion: jest.fn(() => false),
 }))
 
-import { StrictMode, act, useEffect, type ReactElement } from "react"
+import {
+  StrictMode,
+  act,
+  useEffect,
+  type ReactElement,
+  type ReactNode,
+} from "react"
 import {
   Animated,
   Text,
@@ -15,6 +21,8 @@ import {
   type AccessibilityActionEvent,
   type GestureResponderEvent,
   type LayoutChangeEvent,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native"
 
 import {
@@ -28,6 +36,7 @@ import {
   ExplorePager,
   type ExplorePagerMove,
   type ExplorePagerSlot,
+  type ExplorePagerUnderlay,
 } from "../ExplorePager"
 
 const { useReduceMotion } = jest.requireMock(
@@ -131,6 +140,7 @@ async function renderPager(
     canSwipeNext?: boolean
     canSwipePrevious?: boolean
     strict?: boolean
+    underlay?: (underlay: ExplorePagerUnderlay, harness: Harness) => ReactNode
   } = {},
 ): Promise<Harness> {
   const harness = {
@@ -154,6 +164,11 @@ async function renderPager(
           harness.rests += 1
         }}
         onGestureLatchChange={(latched) => harness.latch.push(latched)}
+        renderUnderlay={
+          options.underlay == null
+            ? undefined
+            : (underlay) => options.underlay!(underlay, harness)
+        }
         renderSlot={(slot) => {
           harness.roles.set(slot.key, slot.role)
           harness.slots.set(slot.key, slot)
@@ -318,21 +333,27 @@ function settleValue(): number {
   return animations.at(-1)?.config.toValue ?? 0
 }
 
+function offsetOf(node: RenderedNode): number {
+  const style = ([] as unknown[])
+    .concat(node.props.style)
+    .flat(Infinity)
+    .filter(Boolean)
+    .reduce<Record<string, unknown>>(
+      (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
+      {},
+    )
+  const transform = (style.transform ?? []) as Array<{ translateY?: number }>
+  return transform.reduce((sum, part) => sum + (part.translateY ?? 0), 0)
+}
+
+/** The three slots, in key order. The underlay layer is not a slot. */
 function slotOffsets(renderer: TestInstance): number[] {
   return hostNodes(
     renderer,
-    (node) => node.props.importantForAccessibility != null,
-  ).map((node) => {
-    const style = ([] as unknown[])
-      .concat(node.props.style)
-      .filter(Boolean)
-      .reduce<Record<string, unknown>>(
-        (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
-        {},
-      )
-    const transform = (style.transform ?? []) as Array<{ translateY?: number }>
-    return transform.reduce((sum, part) => sum + (part.translateY ?? 0), 0)
-  })
+    (node) =>
+      node.props.importantForAccessibility != null &&
+      node.props.testID !== "explore-pager-underlay",
+  ).map(offsetOf)
 }
 
 /** Each slot key's on-screen y at rest: 0 is the screen, ±PAGE off it. */
@@ -605,6 +626,146 @@ describe("gesture latch and rest (KTD22, KTD25)", () => {
     expect(harness.moves).toEqual([])
     expect(harness.rests).toBe(0)
     expect(harness.latch).toEqual([true, false])
+  })
+})
+
+// ── The persistent underlay (KTD1) ─────────────────────────────────────
+
+function UnderlayProbe({
+  id,
+  style,
+  onMount,
+}: {
+  id: string
+  style: StyleProp<ViewStyle>
+  onMount: () => void
+}) {
+  useEffect(onMount, [onMount])
+  return <View testID={`underlay-${id}`} style={style} />
+}
+
+/** Two children that swap current and next on every move, as two players do. */
+function swappingUnderlay(counter: { mounts: number }) {
+  const onMount = () => {
+    counter.mounts += 1
+  }
+  return ({ pageStyle }: ExplorePagerUnderlay, harness: Harness) => {
+    const aCurrent = harness.moves.length % 2 === 0
+    return (
+      <>
+        <UnderlayProbe
+          key="a"
+          id="a"
+          style={pageStyle(aCurrent ? "current" : "next")}
+          onMount={onMount}
+        />
+        <UnderlayProbe
+          key="b"
+          id="b"
+          style={pageStyle(aCurrent ? "next" : "current")}
+          onMount={onMount}
+        />
+      </>
+    )
+  }
+}
+
+function underlayNode(harness: Harness, id: string): RenderedNode {
+  const [node] = hostNodes(
+    harness.renderer,
+    (candidate) => candidate.props.testID === `underlay-${id}`,
+  )
+  expect(node).toBeDefined()
+  return node
+}
+
+function underlayScreenY(harness: Harness, id: string): number {
+  return settleValue() + dragValue() + offsetOf(underlayNode(harness, id))
+}
+
+describe("the underlay (KTD1)", () => {
+  it("keeps its children mounted across ten swipes, each on its role's page", async () => {
+    const counter = { mounts: 0 }
+    const harness = await renderPager({ underlay: swappingUnderlay(counter) })
+    expect(counter.mounts).toBe(2)
+
+    for (let swipeIndex = 0; swipeIndex < 10; swipeIndex += 1) {
+      const aCurrent = harness.moves.length % 2 === 0
+      const incoming = aCurrent ? "b" : "a"
+      const incomingOffset = offsetOf(underlayNode(harness, incoming))
+
+      await swipe(harness, -LONG)
+      await landSettle()
+
+      // The incoming child keeps its page as it becomes current: no jump.
+      expect(offsetOf(underlayNode(harness, incoming))).toBe(incomingOffset)
+      expect(underlayScreenY(harness, incoming)).toBeCloseTo(0)
+      const outgoing = incoming === "a" ? "b" : "a"
+      expect(underlayScreenY(harness, outgoing)).toBeCloseTo(PAGE)
+      expectRolesOnScreen(harness)
+    }
+
+    expect(harness.moves).toHaveLength(10)
+    expect(counter.mounts).toBe(2)
+  })
+
+  it("follows a swipe back to the previous page", async () => {
+    const harness = await renderPager({
+      underlay: ({ pageStyle }) => (
+        <>
+          <UnderlayProbe
+            id="current"
+            style={pageStyle("current")}
+            onMount={() => {}}
+          />
+          <UnderlayProbe
+            id="previous"
+            style={pageStyle("previous")}
+            onMount={() => {}}
+          />
+        </>
+      ),
+    })
+    await swipe(harness, -LONG)
+    await landSettle()
+    await swipe(harness, LONG)
+    await landSettle()
+
+    expect(harness.moves).toEqual(["next", "previous"])
+    expect(underlayScreenY(harness, "current")).toBeCloseTo(0)
+    expect(underlayScreenY(harness, "previous")).toBeCloseTo(-PAGE)
+  })
+
+  it("draws beneath the slots, takes no touch, and is hidden from a screen reader", async () => {
+    const harness = await renderPager({
+      underlay: swappingUnderlay({ mounts: 0 }),
+    })
+    const [layer] = hostNodes(
+      harness.renderer,
+      (node) => node.props.testID === "explore-pager-underlay",
+    )
+    expect(layer.props.pointerEvents).toBe("none")
+    expect(layer.props.accessibilityElementsHidden).toBe(true)
+    expect(layer.props.importantForAccessibility).toBe("no-hide-descendants")
+
+    // Tree order is paint order: the probes come before every slot.
+    const order = hostNodes(
+      harness.renderer,
+      (node) =>
+        node.props.testID === "underlay-a" ||
+        /^clip-\d$/.test(String(node.props.testID)),
+    ).map((node) => node.props.testID)
+    expect(order[0]).toBe("underlay-a")
+  })
+
+  it("renders no underlay layer when the feed passes none", async () => {
+    const harness = await renderPager()
+    expect(
+      hostNodes(
+        harness.renderer,
+        (node) => node.props.testID === "explore-pager-underlay",
+      ),
+    ).toHaveLength(0)
   })
 })
 
