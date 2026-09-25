@@ -5,6 +5,8 @@ import { admitted } from "./portal-policy.js"
 import type { SessionStore } from "../../contracts/portal-sessions.js"
 import { randomToken } from "./portal-token.js"
 import type { AdmissionProvider, GitHubIdentity } from "./portal-github.js"
+import type { ConsumerAccess } from "../../contracts/consumer-access.js"
+import { createConsumerRoutes } from "./portal-consumers.js"
 
 const STATE_COOKIE = "__Host-rag_oauth"
 const SESSION_COOKIE = "__Host-rag_portal"
@@ -21,6 +23,8 @@ export type PortalDeps = {
   clientId: string
   callbackUrl: string
   origin: string
+  consumers?: ConsumerAccess
+  allowedSourceKeys?: string[]
 }
 
 export function createPortal(deps: PortalDeps): Hono {
@@ -132,6 +136,19 @@ export function createPortal(deps: PortalDeps): Hono {
     deleteCookie(c, SESSION_COOKIE, cookie)
     return c.json({ signedOut: true }, 200, { "Cache-Control": "no-store" })
   })
+
+  if (deps.consumers) {
+    app.route(
+      "/consumers",
+      createConsumerRoutes({
+        consumers: deps.consumers,
+        admission: deps.admission,
+        authorize,
+        origin: deps.origin,
+        allowedSourceKeys: deps.allowedSourceKeys ?? [],
+      }),
+    )
+  }
 
   return app
 }

@@ -35,9 +35,13 @@ Forge `write`, `maintain` or `admin` permission. There is no cached permission
 or stale publication grace period: unavailable/incomplete GitHub reads deny the
 action. A PR head cannot grant admission before merge. The `/v1` bearer route
 is independent of the portal session and keeps its existing credential path.
-The portal currently exposes only login, a protected identity proof at
-`GET /portal`, and sign-out; it cannot create consumers, issue keys, manage
-members or read usage.
+The portal exposes login, protected identity proof, and sign-out. When the
+separate consumer writer and auth reader URLs are configured, it also mounts
+authenticated `/portal/consumers` management routes. These are the backend
+for the isolated pre-portal dogfood harness and the later UI; they do not
+expose usage reports. See the [consumer access migration runbook](../docs/ops/consumer-access-migration.md)
+for the route contract, least-privilege roles, one-time secret handling and
+rollout boundary.
 
 ## Operator setup and verification
 

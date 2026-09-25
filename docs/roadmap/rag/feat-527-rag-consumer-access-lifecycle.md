@@ -103,7 +103,19 @@ This simplification is complete; the broader lifecycle ticket remains in progres
 `apps/rag/portal/README.md` documents the repository allowlist, path-specific
 eligibility CI, merged-revision OAuth admission and protected identity proof.
 The broader consumer lifecycle remains in progress: creation, membership and
-credentials are outside this slice; reports belong to feat-528. The production
-OAuth, token, isolated session role and Railway setup are now in place. The
-allowlisted login, sign-out and unlisted denial browser checks passed; the
-remaining operational checks are listed in the admission evidence.
+credentials are outside this admission slice; reports belong to feat-528. The
+production OAuth, token, isolated session role and Railway setup are now in
+place. The allowlisted login, sign-out and unlisted denial browser checks passed;
+the remaining operational checks are listed in the admission evidence.
+
+## Consumer lifecycle backend
+
+The authenticated `/portal/consumers` backend now supports direct creation,
+owner membership, one-time credential issuance and rotation, suspension and
+terminal revocation. Registered `/v1/search` credentials use the restricted
+auth reader and current database state on every request. The
+[migration runbook](../../../apps/rag/docs/ops/consumer-access-migration.md)
+defines additive rollout, separate roles, source policy, legacy grace and
+rollback. The full UI remains feat-530. The lifecycle PR, restricted consumer
+role setup and authenticated API verification remain release gates; the
+production admission setup above is already delivered.

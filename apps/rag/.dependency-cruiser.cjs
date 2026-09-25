@@ -87,7 +87,7 @@ module.exports = {
       from: {
         path: "(?:^tests/|\\.(?:test|spec)\\.[cm]?[jt]sx?$)",
         pathNot:
-          "^(?:src/adapters/|tests/(?:adapters|raw-document-promotion|consumer-registry)\\.integration\\.test\\.ts$)",
+          "^(?:src/adapters/|tests/(?:adapters|raw-document-promotion|consumer-registry|consumer-access|consumer-access-roles)\\.integration\\.test\\.ts$)",
       },
       to: { path: "^src/adapters/" },
     },
