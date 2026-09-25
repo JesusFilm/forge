@@ -1,0 +1,705 @@
+#!/usr/bin/env node
+// Builds the bundled Bible data (feat-551 KTD1, KTD6, KTD7). In apps/mobile:
+//   pnpm bible:data [--check | --refresh]
+// No flag writes every output from the lock. --check needs no network.
+import { Buffer } from "node:buffer"
+import { createHash } from "node:crypto"
+import fs from "node:fs"
+import { createRequire } from "node:module"
+import os from "node:os"
+import path from "node:path"
+import { performance } from "node:perf_hooks"
+import { setTimeout as sleep } from "node:timers/promises"
+import { fileURLToPath } from "node:url"
+import zlib from "node:zlib"
+import prettier from "prettier"
+
+const HERE = path.dirname(fileURLToPath(import.meta.url))
+const MOBILE = path.resolve(HERE, "..")
+const requireFromHere = createRequire(import.meta.url)
+
+const API = "https://bible.helloao.org"
+const CATALOG_URL = `${API}/api/available_translations.json`
+const LICENSES_URL = "https://ebible.org/Scriptures/translations.csv"
+const USER_AGENT =
+  "forge-mobile-bible-data (+https://github.com/JesusFilm/forge)"
+const LOCK_FORMAT_VERSION = 1
+
+const LOCK = "src/lib/bible/data/sources.lock.json"
+const BSB_DIR = "assets/bible/bsb"
+const CATALOG_ASSET = "assets/bible/catalog.bible"
+const LANGUAGE_TABLE = "src/lib/bible/data/languageDefaults.generated.ts"
+const SYSTEM_TABLE =
+  "src/lib/bible/versification/translationSystems.generated.ts"
+
+// Polite defaults: a few requests at a time, and a cache outside the repo so
+// an interrupted --refresh resumes without fetching a file again.
+const CONCURRENCY = 4
+const MAX_ATTEMPTS = 5
+const REQUEST_TIMEOUT_MS = 120_000
+const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504])
+const CACHE_DIR =
+  process.env.BIBLE_DATA_CACHE_DIR ??
+  path.join(os.tmpdir(), "forge-bible-data-cache")
+
+// The API lists MAT 12:47 as skipped, but BSB prints it (omissions.ts).
+const BSB_KEPT_OMISSION = "MAT 12:47"
+const DOWNLOAD_CAP_BYTES = 32 * 1024 * 1024
+
+class BibleDataError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = "BibleDataError"
+  }
+}
+
+function loadTs(relative) {
+  try {
+    return requireFromHere(path.join(MOBILE, relative))
+  } catch (error) {
+    throw new BibleDataError(
+      `Could not load ${relative}. Run this script through \`pnpm bible:data\`, ` +
+        `which loads tsx. Cause: ${error.message}`,
+    )
+  }
+}
+
+const { BIBLE_BOOKS } = loadTs("src/lib/bible/text/books.ts")
+const { normalizeTranslation, parseBookText } = loadTs(
+  "src/lib/bible/text/normalize.ts",
+)
+const { isTextualOmission } = loadTs("src/lib/bible/text/omissions.ts")
+const { bookChapters, discriminatingChapters } = loadTs(
+  "src/lib/bible/versification/classify.ts",
+)
+const { VERSIFICATION_SYSTEMS } = loadTs(
+  "src/lib/bible/versification/systems.generated.ts",
+)
+const { TRANSLATION_SYSTEM_OVERRIDES } = loadTs(
+  "src/lib/bible/versification/translationSystemOverrides.ts",
+)
+const { CATALOG_FORMAT_VERSION, encodeBookSet, parseCatalog } = loadTs(
+  "src/lib/bible/data/catalog.ts",
+)
+const {
+  catalogEntries,
+  decideLicense,
+  ebibleIdFromLicenseUrl,
+  encodeChapterFacts,
+  missingRequiredTranslations,
+  pickLanguageDefaults,
+  readEbibleLicenses,
+  selectCatalog,
+  translationSystemTable,
+} = loadTs("src/lib/bible/data/buildRules.ts")
+
+const BOOK_IDS = BIBLE_BOOKS.map((book) => book.usfm)
+const DISCRIMINATING = discriminatingChapters(VERSIFICATION_SYSTEMS)
+
+/* ------------------------------------------------------------ files */
+
+function absolute(relative) {
+  return path.join(MOBILE, relative)
+}
+
+function sha256(bytes) {
+  return createHash("sha256").update(bytes).digest("hex")
+}
+
+function readText(relative) {
+  const file = absolute(relative)
+  return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null
+}
+
+function writeText(relative, text) {
+  const file = absolute(relative)
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, text)
+}
+
+async function formatted(relative, source) {
+  const filepath = absolute(relative)
+  const options = (await prettier.resolveConfig(filepath)) ?? {}
+  return prettier.format(source, { ...options, filepath })
+}
+
+function bsbBookPath(bookId) {
+  return `${BSB_DIR}/${bookId}.bible`
+}
+
+/* ------------------------------------------------------------- lock */
+
+function readLock() {
+  const text = readText(LOCK)
+  if (text === null) {
+    throw new BibleDataError(`${LOCK} is missing. Run with --refresh.`)
+  }
+  const lock = JSON.parse(text)
+  if (
+    lock?.formatVersion !== LOCK_FORMAT_VERSION ||
+    !Array.isArray(lock.translations) ||
+    typeof lock.bsbBooks !== "object"
+  ) {
+    throw new BibleDataError(
+      `${LOCK} has an unknown shape. Run with --refresh.`,
+    )
+  }
+  return { lock, text }
+}
+
+async function lockText(lock) {
+  return formatted(LOCK, JSON.stringify(lock))
+}
+
+/* --------------------------------------------------------- generate */
+
+const GENERATED_BY =
+  "// Generated by scripts/build-bible-data.mjs from src/lib/bible/data/sources.lock.json."
+
+function languageTableSource(table) {
+  return `${GENERATED_BY}
+// Do not edit; run \`pnpm bible:data\`. ISO 639-3 code to default translation
+// (KTD7): eng is BSB; else a complete Bible, the most verses, the lower id.
+export const LANGUAGE_DEFAULT_TRANSLATIONS: Readonly<Record<string, string>> = ${JSON.stringify(table)}
+`
+}
+
+function systemTableSource(table) {
+  return `${GENERATED_BY}
+// Do not edit; run \`pnpm bible:data\`. translationSystemOverrides.ts wins over
+// the classifier. Data: Copenhagen Alliance mappings, CC BY-SA 4.0 (KTD6).
+import type { UsfmBookId } from "../text/books"
+import type { VersificationSystemId } from "./compact"
+
+/** \`main\` (left out when eng), then each book that uses another system. */
+export type TranslationSystemEntry = Readonly<
+  Partial<Record<"main" | UsfmBookId, VersificationSystemId>>
+>
+
+/** Only translations with a book outside eng. The rest number every book as eng. */
+export const TRANSLATION_SYSTEMS: Readonly<Record<string, TranslationSystemEntry>> = ${JSON.stringify(table)}
+
+/** The system that numbers one book of one translation. */
+export function translationBookSystem(translationId: string, bookId: UsfmBookId): VersificationSystemId {
+  const entry = TRANSLATION_SYSTEMS[translationId]
+  return entry?.[bookId] ?? entry?.main ?? "eng"
+}
+`
+}
+
+/** Every generated output, built from the lock alone. */
+async function generate(lock) {
+  const { kept, dropped } = selectCatalog(lock.translations)
+  const missing = missingRequiredTranslations(kept.map((entry) => entry.id))
+  if (missing.length > 0) {
+    throw new BibleDataError(
+      `STOP (Goal Capsule, KTD7): the catalog lacks ${missing.join(" and ")}. ` +
+        "Do not work around it; report it to the product owner.",
+    )
+  }
+
+  const entries = catalogEntries(kept)
+  const stored = {
+    formatVersion: CATALOG_FORMAT_VERSION,
+    translations: entries,
+  }
+  const catalogText = `${JSON.stringify(stored)}\n`
+  const parsed = parseCatalog(JSON.parse(catalogText))
+  if (parsed === null || parsed.translations.length !== entries.length) {
+    throw new BibleDataError("The app's parseCatalog refuses the snapshot.")
+  }
+
+  const languages = pickLanguageDefaults(
+    kept.map((entry) => ({
+      id: entry.id,
+      language: entry.language,
+      complete: entry.complete,
+      verses: entry.text.verses,
+    })),
+  )
+  const systems = translationSystemTable(kept, TRANSLATION_SYSTEM_OVERRIDES)
+  if (systems.errors.length > 0) {
+    throw new BibleDataError(`Bad overrides:\n  ${systems.errors.join("\n  ")}`)
+  }
+
+  const files = new Map([
+    [CATALOG_ASSET, catalogText],
+    [
+      LANGUAGE_TABLE,
+      await formatted(LANGUAGE_TABLE, languageTableSource(languages)),
+    ],
+    [
+      SYSTEM_TABLE,
+      await formatted(SYSTEM_TABLE, systemTableSource(systems.table)),
+    ],
+  ])
+  return { files, kept, dropped, languages, systems }
+}
+
+/* ------------------------------------------------------------ check */
+
+function coveredNumbers(chapter) {
+  const covered = new Set()
+  for (const verse of chapter.verses) {
+    for (
+      let number = verse.number;
+      number <= (verse.through ?? verse.number);
+      number += 1
+    ) {
+      covered.add(number)
+    }
+  }
+  return covered
+}
+
+/** BSB's gaps must be exactly omissions.ts, less the verse BSB prints. */
+function bsbTextProblems(books) {
+  const problems = []
+  const gaps = new Set()
+  const expected = new Set()
+  for (const book of books) {
+    for (const chapter of book.chapters) {
+      if (chapter.verses.some((verse) => verse.through !== undefined)) {
+        problems.push(`BSB ${book.bookId} ${chapter.number} merges verses`)
+      }
+      const covered = coveredNumbers(chapter)
+      for (let number = 1; number <= chapter.lastVerse; number += 1) {
+        const key = `${book.bookId} ${chapter.number}:${number}`
+        if (!covered.has(number)) gaps.add(key)
+        if (
+          key !== BSB_KEPT_OMISSION &&
+          isTextualOmission(book.bookId, chapter.number, number)
+        ) {
+          expected.add(key)
+        }
+      }
+    }
+  }
+  for (const key of gaps) {
+    if (!expected.has(key))
+      problems.push(`BSB gap ${key} is not in omissions.ts`)
+  }
+  for (const key of expected) {
+    if (!gaps.has(key))
+      problems.push(`BSB prints ${key}, which omissions.ts lists`)
+  }
+  if (gaps.has(BSB_KEPT_OMISSION)) {
+    problems.push(
+      `BSB now omits ${BSB_KEPT_OMISSION}; update this script's note`,
+    )
+  }
+  return { problems, gapCount: gaps.size }
+}
+
+function bsbAssetProblems(lock) {
+  const problems = []
+  const directory = absolute(BSB_DIR)
+  const names = fs.existsSync(directory) ? fs.readdirSync(directory) : []
+  const expectedNames = new Set(BOOK_IDS.map((id) => `${id}.bible`))
+  for (const name of names) {
+    if (!expectedNames.has(name))
+      problems.push(`${BSB_DIR}/${name} is not a book file`)
+  }
+  const books = []
+  let bytes = 0
+  for (const bookId of BOOK_IDS) {
+    const file = absolute(bsbBookPath(bookId))
+    if (!fs.existsSync(file)) {
+      problems.push(`${bsbBookPath(bookId)} is missing`)
+      continue
+    }
+    const content = fs.readFileSync(file)
+    bytes += content.length
+    if (sha256(content) !== lock.bsbBooks[bookId]) {
+      problems.push(
+        `${bsbBookPath(bookId)} does not match its sha256 in the lock`,
+      )
+    }
+    let raw
+    try {
+      raw = JSON.parse(content.toString("utf8"))
+    } catch {
+      problems.push(`${bsbBookPath(bookId)} is not JSON`)
+      continue
+    }
+    const parsed = parseBookText(raw)
+    if (parsed.status !== "ok") {
+      problems.push(
+        `${bsbBookPath(bookId)} fails parseBookText: ${parsed.reason}`,
+      )
+    } else if (
+      parsed.value.bookId !== bookId ||
+      parsed.value.translationId !== "BSB"
+    ) {
+      problems.push(
+        `${bsbBookPath(bookId)} holds ${parsed.value.translationId} ${parsed.value.bookId}`,
+      )
+    } else {
+      books.push(parsed.value)
+    }
+  }
+  const text = bsbTextProblems(books)
+  return {
+    problems: [...problems, ...text.problems],
+    bytes,
+    gapCount: text.gapCount,
+  }
+}
+
+function summarize(result, bsb) {
+  const reasons = {}
+  for (const { reason } of result.dropped)
+    reasons[reason] = (reasons[reason] ?? 0) + 1
+  const complete = result.kept.filter((entry) => entry.complete).length
+  const overCap = result.kept.filter(
+    (entry) => entry.text.bytes > DOWNLOAD_CAP_BYTES,
+  )
+  const lines = [
+    `Catalog: ${result.kept.length} kept (${complete} complete), ` +
+      `${result.dropped.length} dropped ${JSON.stringify(reasons)}.`,
+    `Languages: ${Object.keys(result.languages).length} in the default table.`,
+    `Versification: ${Object.keys(result.systems.table).length} translations listed; ` +
+      `books per system ${JSON.stringify(result.systems.bookCounts)}; ` +
+      `${result.systems.unknown.length} unknown books.`,
+    `Overrides: ${result.systems.overridden.join("; ") || "none"}.`,
+    `Unknown books (resolved to main): ${result.systems.unknown.join(", ") || "none"}.`,
+    `Downloads over ${DOWNLOAD_CAP_BYTES} bytes: ${overCap.map((entry) => entry.id).join(", ") || "none"}.`,
+    `BSB: 66 books, ${bsb.bytes} bytes, ${bsb.gapCount} gaps.`,
+  ]
+  for (const [relative, text] of result.files) {
+    lines.push(`${relative}: ${Buffer.byteLength(text)} bytes.`)
+  }
+  return lines.join("\n")
+}
+
+async function check() {
+  const { lock, text } = readLock()
+  const problems = []
+  if ((await lockText(lock)) !== text)
+    problems.push(`${LOCK} is not in canonical form`)
+  const result = await generate(lock)
+  for (const [relative, expected] of result.files) {
+    if (readText(relative) !== expected)
+      problems.push(`${relative} is out of date`)
+  }
+  const bsb = bsbAssetProblems(lock)
+  problems.push(...bsb.problems)
+  console.log(summarize(result, bsb))
+  if (problems.length > 0) {
+    console.error(`\nbible:data --check failed:\n  ${problems.join("\n  ")}`)
+    console.error("Run `pnpm bible:data` (or --refresh) and commit the result.")
+    process.exit(1)
+  }
+  console.log("\nbible:data --check passed.")
+}
+
+async function writeOutputs(lock) {
+  const result = await generate(lock)
+  for (const [relative, text] of result.files) writeText(relative, text)
+  return result
+}
+
+/* ------------------------------------------------------------ fetch */
+
+function backoffMs(attempt) {
+  return (
+    Math.min(30_000, 1000 * 2 ** (attempt - 1)) +
+    Math.floor(Math.random() * 250)
+  )
+}
+
+function retryAfterMs(response) {
+  const seconds = Number(response.headers.get("retry-after"))
+  return Number.isFinite(seconds) && seconds > 0
+    ? Math.min(seconds, 60) * 1000
+    : null
+}
+
+/** One request with retries. `read` runs inside the retry, so a cut body retries. */
+async function request(url, init, read) {
+  for (let attempt = 1; ; attempt += 1) {
+    let waitMs
+    try {
+      const response = await globalThis.fetch(url, {
+        ...init,
+        headers: { "user-agent": USER_AGENT, ...init.headers },
+        signal: globalThis.AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      })
+      if (response.ok || response.status === 404) return await read(response)
+      await response.body?.cancel()
+      if (!RETRYABLE_STATUSES.has(response.status) || attempt >= MAX_ATTEMPTS) {
+        throw new BibleDataError(
+          `${init.method ?? "GET"} ${url} returned ${response.status}`,
+        )
+      }
+      waitMs = retryAfterMs(response) ?? backoffMs(attempt)
+    } catch (error) {
+      if (error instanceof BibleDataError || attempt >= MAX_ATTEMPTS)
+        throw error
+      waitMs = backoffMs(attempt)
+    }
+    await sleep(waitMs)
+  }
+}
+
+async function fetchBytes(url) {
+  return request(url, { method: "GET" }, async (response) => {
+    if (response.status === 404)
+      throw new BibleDataError(`GET ${url} returned 404`)
+    return Buffer.from(await response.arrayBuffer())
+  })
+}
+
+function cachePaths(record) {
+  const key = `${record.id}-${record.sha256.slice(0, 16)}`
+  return {
+    body: path.join(CACHE_DIR, `${key}.json.gz`),
+    meta: path.join(CACHE_DIR, `${key}.meta.json`),
+  }
+}
+
+function readCache(record) {
+  const paths = cachePaths(record)
+  if (!fs.existsSync(paths.meta) || !fs.existsSync(paths.body)) return null
+  try {
+    const meta = JSON.parse(fs.readFileSync(paths.meta, "utf8"))
+    if (meta.missing) return { missing: meta.missing }
+    const body = zlib.gunzipSync(fs.readFileSync(paths.body))
+    if (body.length === meta.bytes && sha256(body) === meta.sha256) {
+      return { body, bytes: meta.bytes, sha256: meta.sha256 }
+    }
+  } catch {
+    // A damaged cache entry is refetched below.
+  }
+  fs.rmSync(paths.meta, { force: true })
+  fs.rmSync(paths.body, { force: true })
+  return null
+}
+
+function writeCache(record, meta, body) {
+  const paths = cachePaths(record)
+  fs.mkdirSync(CACHE_DIR, { recursive: true })
+  // Write to a temporary name first, so a stopped run leaves no partial file.
+  fs.writeFileSync(
+    `${paths.body}.tmp`,
+    zlib.gzipSync(body ?? Buffer.alloc(0), { level: 1 }),
+  )
+  fs.renameSync(`${paths.body}.tmp`, paths.body)
+  fs.writeFileSync(`${paths.meta}.tmp`, JSON.stringify(meta))
+  fs.renameSync(`${paths.meta}.tmp`, paths.meta)
+}
+
+/** The complete.json of one translation, from the cache or the network. */
+async function completeFile(record, stats) {
+  const cached = readCache(record)
+  if (cached) {
+    stats.cached += 1
+    return cached
+  }
+  const url = `${API}/api/${record.id}/complete.json`
+  // identity: the Content-Length of the uncompressed file, which a device writes.
+  const bytes = await request(
+    url,
+    { method: "HEAD", headers: { "accept-encoding": "identity" } },
+    async (response) =>
+      response.status === 404
+        ? null
+        : Number(response.headers.get("content-length")),
+  )
+  const body =
+    bytes === null
+      ? null
+      : await request(url, { method: "GET" }, async (response) =>
+          response.status === 404
+            ? null
+            : Buffer.from(await response.arrayBuffer()),
+        )
+  if (bytes === null || body === null) {
+    writeCache(record, { url, missing: 404 }, null)
+    stats.fetched += 1
+    return { missing: 404 }
+  }
+  if (!Number.isInteger(bytes) || bytes !== body.length) {
+    throw new BibleDataError(
+      `${url}: HEAD says ${bytes} bytes but GET gave ${body.length}`,
+    )
+  }
+  const file = { body, bytes, sha256: sha256(body) }
+  writeCache(record, { url, bytes, sha256: file.sha256 }, body)
+  stats.fetched += 1
+  return file
+}
+
+function verseCount(books) {
+  let verses = 0
+  for (const book of books) {
+    for (const chapter of book.chapters) verses += coveredNumbers(chapter).size
+  }
+  return verses
+}
+
+/** The lock's facts for one translation; BSB also keeps its normalized books. */
+async function textFacts(record, stats) {
+  const file = await completeFile(record, stats)
+  if ("missing" in file) return { facts: { missing: file.missing } }
+  const result = normalizeTranslation(JSON.parse(file.body.toString("utf8")))
+  if (result.status !== "ok") {
+    const where = [result.bookId, result.chapterNumber].filter(
+      (part) => part !== undefined,
+    )
+    return { facts: { rejected: [result.reason, ...where].join(" ") } }
+  }
+  const { books } = result.value
+  const chapters = {}
+  for (const book of books) {
+    const keep = DISCRIMINATING[book.bookId] ?? []
+    if (keep.length > 0) {
+      chapters[book.bookId] = encodeChapterFacts(
+        bookChapters(book.chapters, keep),
+      )
+    }
+  }
+  return {
+    facts: {
+      sha256: file.sha256,
+      bytes: file.bytes,
+      books: encodeBookSet(books.map((book) => book.bookId)),
+      verses: verseCount(books),
+      chapters,
+    },
+    books: record.id === "BSB" ? books : null,
+  }
+}
+
+/** Runs `work` over `items`, `limit` at a time; the first failure stops it. */
+async function eachLimited(items, limit, work) {
+  let next = 0
+  let failure = null
+  const runners = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (failure === null && next < items.length) {
+        const item = items[next]
+        next += 1
+        try {
+          await work(item)
+        } catch (error) {
+          failure ??= error
+        }
+      }
+    },
+  )
+  await Promise.all(runners)
+  if (failure !== null) throw failure
+}
+
+function sourceRecord(entry, licenses) {
+  if (entry.completeTranslationApiLink !== `/api/${entry.id}/complete.json`) {
+    // The app derives the download URL from the id (U4), so pin that here.
+    throw new BibleDataError(`${entry.id} has an unexpected complete.json link`)
+  }
+  const ebibleId = ebibleIdFromLicenseUrl(entry.licenseUrl)
+  return {
+    id: entry.id,
+    name: entry.name,
+    englishName: entry.englishName,
+    shortName: entry.shortName,
+    language: entry.language,
+    languageName: entry.languageName,
+    languageEnglishName: entry.languageEnglishName,
+    textDirection: entry.textDirection,
+    sha256: entry.sha256,
+    licenseUrl: entry.licenseUrl,
+    license: (ebibleId && licenses.get(ebibleId)) ?? null,
+    text: null,
+  }
+}
+
+async function refresh() {
+  const started = performance.now()
+  const catalogBytes = await fetchBytes(CATALOG_URL)
+  const licenseBytes = await fetchBytes(LICENSES_URL)
+  const licenses = readEbibleLicenses(licenseBytes.toString("utf8"))
+  const catalog = JSON.parse(catalogBytes.toString("utf8"))
+  const records = catalog.translations.map((entry) =>
+    sourceRecord(entry, licenses),
+  )
+  const licensed = records.filter(
+    (record) => decideLicense(record).kind === "keep",
+  )
+  console.log(
+    `Catalog: ${records.length} translations; ${licensed.length} pass the license check. ` +
+      `Cache: ${CACHE_DIR}`,
+  )
+
+  const stats = { fetched: 0, cached: 0, done: 0 }
+  let bsbBooks = null
+  await eachLimited(licensed, CONCURRENCY, async (record) => {
+    const { facts, books } = await textFacts(record, stats)
+    record.text = facts
+    if (books) bsbBooks = books
+    stats.done += 1
+    if (stats.done % 100 === 0 || stats.done === licensed.length) {
+      console.log(
+        `  ${stats.done}/${licensed.length} (${stats.cached} from the cache)`,
+      )
+    }
+  })
+  if (bsbBooks === null || bsbBooks.length !== BOOK_IDS.length) {
+    throw new BibleDataError("BSB complete.json did not give 66 books.")
+  }
+
+  fs.rmSync(absolute(BSB_DIR), { recursive: true, force: true })
+  const bookHashes = {}
+  for (const book of bsbBooks) {
+    const text = `${JSON.stringify(book)}\n`
+    writeText(bsbBookPath(book.bookId), text)
+    bookHashes[book.bookId] = sha256(Buffer.from(text))
+  }
+
+  const lock = {
+    formatVersion: LOCK_FORMAT_VERSION,
+    refreshedOn: new Date().toISOString().slice(0, 10),
+    sources: {
+      catalog: {
+        url: CATALOG_URL,
+        sha256: sha256(catalogBytes),
+        bytes: catalogBytes.length,
+      },
+      licenses: {
+        url: LICENSES_URL,
+        sha256: sha256(licenseBytes),
+        bytes: licenseBytes.length,
+      },
+    },
+    bsbBooks: bookHashes,
+    translations: records,
+  }
+  writeText(LOCK, await lockText(lock))
+  await writeOutputs(lock)
+  const seconds = ((performance.now() - started) / 1000).toFixed(0)
+  console.log(
+    `Refresh took ${seconds} s: ${stats.fetched} files fetched, ${stats.cached} from the cache.`,
+  )
+}
+
+/* ------------------------------------------------------------- main */
+
+async function main() {
+  const flags = new Set(process.argv.slice(2))
+  if (flags.has("--refresh")) {
+    await refresh()
+    await check()
+  } else if (flags.has("--check")) {
+    await check()
+  } else {
+    const { lock } = readLock()
+    await writeOutputs(lock)
+    await check()
+  }
+}
+
+main().catch((error) => {
+  console.error(error instanceof BibleDataError ? error.message : error)
+  process.exit(1)
+})

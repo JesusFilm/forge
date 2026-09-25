@@ -21,6 +21,10 @@ config.resolver.nodeModulesPaths = [
 // Apollo Client v4 can ship .cjs; ensure Metro resolves them
 config.resolver.sourceExts.push("cjs")
 
+// Bundled Bible books ship as files, not as JS modules (feat-551 KTD1).
+// A .json require would put all 8 MB of BSB into the bundle and every update.
+config.resolver.assetExts.push("bible")
+
 // pnpm symlinks let Metro resolve duplicate react copies via .pnpm; force these
 // to the single copy mobile owns. Paths feed extraNodeModules; keys also drive
 // the custom resolveRequest below.

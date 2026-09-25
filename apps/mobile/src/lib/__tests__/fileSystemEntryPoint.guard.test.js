@@ -42,6 +42,9 @@ const DIRECTORY_STATICS = ["pickDirectoryAsync"]
 const DIRECTORY_MEMBERS = ["list", "delete"]
 /** Called on the staged `File` to name it, duplicate it and clear a retry. */
 const FILE_MEMBERS = ["copy", "rename", "delete"]
+/** Called on a bundled Bible `File` to read it (feat-551 U3). */
+const BIBLE_FILE_MEMBERS = ["text"]
+const BIBLE_LOADER = "src/lib/bible/data/bundled.ts"
 
 /** The two classes the root supplies and the runtime imports from it. */
 const ROOT_CLASSES = ["Directory", "File"]
@@ -94,7 +97,7 @@ function capabilityGaps(module) {
   }
 
   const staged = new File("file:///guard/folder/clip.mp4")
-  for (const name of FILE_MEMBERS) {
+  for (const name of [...FILE_MEMBERS, ...BIBLE_FILE_MEMBERS]) {
     if (typeof staged[name] !== "function") gaps.push(`File#${name}`)
   }
   if (typeof staged.name !== "string") gaps.push("File#name")
@@ -236,6 +239,7 @@ describe("raw export imports each file-system binding from the entry point that 
       }
       copy() {}
       delete() {}
+      text() {}
     }
 
     expect(capabilityGaps({ Directory: Folder, File: Staged })).toEqual([
@@ -311,6 +315,13 @@ describe("raw export imports each file-system binding from the entry point that 
 
     expect(fromLegacy.has(LEGACY_ONLY_BINDING)).toBe(true)
     for (const name of ROOT_CLASSES) expect(fromLegacy.has(name)).toBe(false)
+  })
+
+  it("the Bible loader takes `File` from the package root, never legacy", () => {
+    const source = fs.readFileSync(path.join(APP_ROOT, BIBLE_LOADER), "utf8")
+
+    expect(importedNames(source, ROOT_SPECIFIER).has("File")).toBe(true)
+    expect(importedNames(source, LEGACY_SPECIFIER).size).toBe(0)
   })
 
   it("positive control: the wiring reader catches each swap", () => {
