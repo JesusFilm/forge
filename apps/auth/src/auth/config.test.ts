@@ -627,7 +627,6 @@ describe("mobile login configuration", () => {
     expect(jfp).toMatchObject({
       providerId: "jfp",
       clientId: "jfp_mobile_local",
-      discoveryUrl: "http://localhost:3004/.well-known/openid-configuration",
       requireIdTokenVerification: true,
       redirectURI: "http://localhost:3004/api/auth/callback/jfp",
       pkce: true,
@@ -636,6 +635,9 @@ describe("mobile login configuration", () => {
       // session; a revert must fail this exact-value pin.
       prompt: "login",
     })
+    expect(jfp?.discoveryUrl).toBe(
+      `http://127.0.0.1:${process.env.PORT ?? "3004"}/.well-known/openid-configuration`,
+    )
     expect(jfp).not.toHaveProperty("clientSecret")
   })
 
