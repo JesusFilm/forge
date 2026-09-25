@@ -28,6 +28,12 @@ describe("Android TV Play hardware filters", () => {
           "android:required": "false",
         },
       },
+      {
+        $: {
+          "android:name": "android.software.leanback",
+          "android:required": "true",
+        },
+      },
     ])
     expect(manifest["uses-permission"]).toEqual([
       { $: { "android:name": "android.permission.RECORD_AUDIO" } },
@@ -47,7 +53,7 @@ describe("Android TV Play hardware filters", () => {
         {
           $: {
             "android:name": "android.software.leanback",
-            "android:required": "true",
+            "android:required": "false",
           },
         },
       ],

@@ -22,6 +22,19 @@ module.exports = function withTVHardwareFeatures(config) {
         })
       }
     }
+    const leanback = manifest["uses-feature"].find(
+      (entry) => entry.$["android:name"] === "android.software.leanback",
+    )
+    if (leanback) {
+      leanback.$["android:required"] = "true"
+    } else {
+      manifest["uses-feature"].push({
+        $: {
+          "android:name": "android.software.leanback",
+          "android:required": "true",
+        },
+      })
+    }
     return mod
   })
 }
