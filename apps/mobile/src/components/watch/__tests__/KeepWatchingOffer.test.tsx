@@ -40,6 +40,7 @@ function props(over: Partial<KeepWatchingOfferProps> = {}) {
   return {
     resumeAtSeconds: SAVED,
     clockStarted: false,
+    hidden: false,
     onChoose: jest.fn(),
     onExpire: jest.fn(),
     ...over,
@@ -180,6 +181,21 @@ describe("the auto-hide clock (KTD12)", () => {
     await act(async () => {
       renderer.update(<KeepWatchingOffer {...offer} clockStarted={false} />)
     })
+    await advance(KEEP_WATCHING_OFFER_DURATION_MS - 2_000)
+
+    expect(offer.onExpire).toHaveBeenCalledTimes(1)
+  })
+
+  it("draws nothing while hidden, and its clock keeps running", async () => {
+    jest.useFakeTimers()
+    const offer = props({ clockStarted: true })
+    const renderer = await render(<KeepWatchingOffer {...offer} />)
+
+    await advance(2_000)
+    await act(async () => {
+      renderer.update(<KeepWatchingOffer {...offer} hidden />)
+    })
+    expect(labels(renderer)).toEqual([])
     await advance(KEEP_WATCHING_OFFER_DURATION_MS - 2_000)
 
     expect(offer.onExpire).toHaveBeenCalledTimes(1)

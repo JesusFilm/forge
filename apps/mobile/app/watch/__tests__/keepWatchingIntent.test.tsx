@@ -144,9 +144,10 @@ jest.mock("../../../src/hooks/useCastPlayback", () => {
 jest.mock("../../../src/hooks/useCastProgressRecording", () => ({
   useCastProgressRecording: () => {},
 }))
+const mockFullscreen = { current: false }
 jest.mock("../../../src/hooks/useFullscreenPresentation", () => ({
   useFullscreenPresentation: () => ({
-    isFullscreen: false,
+    isFullscreen: mockFullscreen.current,
     toggleFullscreen: () => {},
   }),
 }))
@@ -449,6 +450,7 @@ afterEach(async () => {
   getPlaybackRequestStore().reset()
   mockSeek.mockReset()
   screenReaderOn = false
+  mockFullscreen.current = false
   getWatchIntentStore().clear()
   mockSlotRenders.length = 0
   mockParams.current = { slug: SLUG }
@@ -678,6 +680,35 @@ describe("the R17 offer (KTD12)", () => {
     expect(lastSlot().progressHold?.id).toBe(
       `keep-watching:${SLUG}:${intent.createdAt}`,
     )
+  })
+
+  it("keeps one clock through fullscreen: back inside its time, never after it", async () => {
+    jest.useFakeTimers()
+    mockProgress.current = SAVED_AT_1_10_00
+    recordLanded()
+    putIntent()
+    const renderer = await render(tree())
+    await firstFrame()
+
+    const setFullscreen = async (on: boolean) => {
+      mockFullscreen.current = on
+      await rerender()
+    }
+    await advance(1_000)
+    await setFullscreen(true)
+    expect(offerChoices(renderer)).toEqual([])
+    await advance(1_000)
+    await setFullscreen(false)
+    expect(offerChoices(renderer)).toEqual([START, RESUME_AT_1_10_00])
+
+    // The time left runs from the first frame, not from the return.
+    await advance(KEEP_WATCHING_OFFER_DURATION_MS - 2_001)
+    expect(offerChoices(renderer)).toHaveLength(2)
+    await setFullscreen(true)
+    await advance(1)
+    await setFullscreen(false)
+    expect(offerChoices(renderer)).toEqual([])
+    expect(mockSeek).not.toHaveBeenCalled()
   })
 
   it("offers no Resume at for a saved place before the tap point", async () => {

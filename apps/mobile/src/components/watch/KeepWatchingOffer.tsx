@@ -53,6 +53,8 @@ export type KeepWatchingOfferProps = {
   resumeAtSeconds: number | null
   /** True from the first frame. The clock starts the first time it is true. */
   clockStarted: boolean
+  /** Draws nothing, but the clock keeps running (fullscreen or casting). */
+  hidden: boolean
   /** A choice, as the position to seek to. */
   onChoose: (seconds: number) => void
   /** The time ran out, and no screen reader holds the offer open. */
@@ -62,6 +64,7 @@ export type KeepWatchingOfferProps = {
 export function KeepWatchingOffer({
   resumeAtSeconds,
   clockStarted,
+  hidden,
   onChoose,
   onExpire,
 }: KeepWatchingOfferProps) {
@@ -87,6 +90,8 @@ export function KeepWatchingOffer({
   useEffect(() => {
     if (timedOut && !screenReaderOn) onExpire()
   }, [timedOut, screenReaderOn, onExpire])
+
+  if (hidden) return null
 
   const resumeLabel =
     resumeAtSeconds == null

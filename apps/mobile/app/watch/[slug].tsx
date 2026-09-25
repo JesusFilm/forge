@@ -1054,21 +1054,20 @@ export default function WatchVideoPage() {
         </Animated.View>
       )}
 
-      {/* Hidden while casting: a seek moves the local player, not the TV. */}
-      {keepWatching?.holdActive === true &&
-        !offerExpired &&
-        !isFullscreen &&
-        !castRemoteActive && (
-          <KeepWatchingOffer
-            resumeAtSeconds={offerResumeSeconds(
-              offerSaved?.seconds ?? null,
-              keepWatching.intent.startSeconds,
-            )}
-            clockStarted={playbackPlaying}
-            onChoose={chooseOfferPosition}
-            onExpire={expireOffer}
-          />
-        )}
+      {/* Hidden while casting (a seek moves the local player, not the TV), but
+          never unmounted: a remount would restart its clock after the hold ended. */}
+      {keepWatching?.holdActive === true && !offerExpired && (
+        <KeepWatchingOffer
+          resumeAtSeconds={offerResumeSeconds(
+            offerSaved?.seconds ?? null,
+            keepWatching.intent.startSeconds,
+          )}
+          clockStarted={playbackPlaying}
+          hidden={isFullscreen || castRemoteActive}
+          onChoose={chooseOfferPosition}
+          onExpire={expireOffer}
+        />
+      )}
 
       <Snackbar
         message={snackbarMessage ?? ""}
