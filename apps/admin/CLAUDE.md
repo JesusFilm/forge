@@ -425,8 +425,16 @@ only sitemap rendering data for public Watch video and episode URLs.
 
 Snapshot fields the web branch can rely on:
 
-- `videoRouteGroups` — public two-segment Watch content slugs and valid
-  Google-supported hreflang alternates with their public audio language slugs.
+- `videoRouteGroups` — public two-segment Watch content slugs, valid
+  Google-supported hreflang alternates with their public audio language slugs,
+  and `languageSlugs`: **every** playable audio-language slug for that content,
+  hreflang-eligible or not. Sitemap `<loc>` entries come from `languageSlugs`
+  and `<xhtml:link>` annotations come from `alternates`, so a language with no
+  ISO-639-1 code (Cebuano, Ilocano, Hiligaynon) still gets a discoverable URL
+  (feat-533 / FGE-183). `languageSlugs` is optional at the schema boundary
+  because `WatchSeoManifestStore.getLatest()` parses the persisted snapshot on
+  every read — a required field would make this route 500 on the snapshot the
+  previous build wrote, until the next Core sync. The generator always emits it.
 - `episodeRouteGroups` — parent/child Watch episode slug pairs and valid
   Google-supported hreflang alternates with their public audio language slugs.
 - `skippedHreflangValues` — aggregate counts for duplicate, missing, or

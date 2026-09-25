@@ -10,6 +10,12 @@ const LanguageAlternateSchema = z.object({
 const VideoRouteGroupSchema = z.object({
   contentSlug: z.string().min(1),
   alternates: z.array(LanguageAlternateSchema),
+  // Every playable audio-language slug for this content, not just the ones with
+  // a Google-valid hreflang. `alternates` stays the hreflang cluster; this list
+  // is what the sitemap emits a `<loc>` for. Optional at the schema boundary so
+  // a snapshot persisted by an older admin build still parses on read — the
+  // generator always emits it.
+  languageSlugs: z.array(z.string().min(1)).optional(),
 })
 
 const EpisodeRouteGroupSchema = z.object({
@@ -44,6 +50,7 @@ export type WatchSeoManifestCounts = {
   videoRouteGroups: number
   episodeRouteGroups: number
   alternateLinks: number
+  canonicalVideoUrls: number
   skippedHreflangValues: number
 }
 
@@ -301,6 +308,12 @@ function toAlternates(
   )
 }
 
+function toLanguageSlugs(rows: Array<{ languageSlug: string }>): string[] {
+  return [...new Set(rows.map((row) => row.languageSlug))].sort((a, b) =>
+    a.localeCompare(b),
+  )
+}
+
 function toVideoRouteGroups(
   rows: ContentLanguageRow[],
   skippedHreflangValues: Record<string, number>,
@@ -312,13 +325,18 @@ function toVideoRouteGroups(
     byContent.set(row.contentSlug, contentRows)
   }
 
-  return [...byContent.entries()]
-    .map(([contentSlug, contentRows]) => ({
-      contentSlug,
-      alternates: toAlternates(contentRows, skippedHreflangValues),
-    }))
-    .filter((group) => group.alternates.length > 0)
-    .sort((a, b) => a.contentSlug.localeCompare(b.contentSlug))
+  return (
+    [...byContent.entries()]
+      .map(([contentSlug, contentRows]) => ({
+        contentSlug,
+        alternates: toAlternates(contentRows, skippedHreflangValues),
+        languageSlugs: toLanguageSlugs(contentRows),
+      }))
+      // Sitemap inclusion follows playability, not hreflang eligibility: a group
+      // survives when it has any playable language, even with no valid hreflang.
+      .filter((group) => group.languageSlugs.length > 0)
+      .sort((a, b) => a.contentSlug.localeCompare(b.contentSlug))
+  )
 }
 
 function toEpisodeRouteGroups(
@@ -368,6 +386,10 @@ export function summarizeWatchSeoManifest(
         (sum, group) => sum + group.alternates.length,
         0,
       ),
+    canonicalVideoUrls: manifest.videoRouteGroups.reduce(
+      (sum, group) => sum + (group.languageSlugs ?? group.alternates).length,
+      0,
+    ),
     skippedHreflangValues: Object.values(manifest.skippedHreflangValues).reduce(
       (sum, count) => sum + count,
       0,

@@ -48,6 +48,32 @@ const manifest: WatchSeoManifest = {
   skippedHreflangValues: {},
 }
 
+// Mirrors the production shape this bug is about: `jesus` is playable in
+// languages whose BCP-47 tag has no Google-valid hreflang (`cebuano` -> `ceb`,
+// `ilocano` -> null), and `pilipino-tagalog` has no hreflang-eligible sibling
+// at all.
+const longTailManifest: WatchSeoManifest = {
+  version: "version-2",
+  generatedAt: "2026-09-22T12:00:00.000Z",
+  videoRouteGroups: [
+    {
+      contentSlug: "jesus",
+      alternates: [
+        { hreflang: "en", languageSlug: "english" },
+        { hreflang: "es", languageSlug: "spanish-castilian" },
+      ],
+      languageSlugs: ["cebuano", "english", "ilocano", "spanish-castilian"],
+    },
+    {
+      contentSlug: "magdalena",
+      alternates: [],
+      languageSlugs: ["pilipino-tagalog"],
+    },
+  ],
+  episodeRouteGroups: [],
+  skippedHreflangValues: {},
+}
+
 const expectedHomepageAlternates = [
   {
     hreflang: "en",
@@ -92,6 +118,110 @@ describe("watch sitemap rendering", () => {
     expect(entries.map(({ loc }) => loc)).not.toContain(
       "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
     )
+  })
+
+  it("emits a canonical URL for every playable language, hreflang-eligible or not", () => {
+    const entries = createWatchSitemapEntries(longTailManifest)
+
+    expect(entries.slice(0, 5).map(({ loc }) => loc)).toEqual([
+      // The hreflang cluster keeps its existing order and URLs.
+      "https://www.jesusfilm.org/watch/jesus.html",
+      "https://www.jesusfilm.org/watch/jesus.html/spanish-castilian.html",
+      // The long tail the old alternates-only derivation deleted.
+      "https://www.jesusfilm.org/watch/jesus.html/cebuano.html",
+      "https://www.jesusfilm.org/watch/jesus.html/ilocano.html",
+      "https://www.jesusfilm.org/watch/magdalena.html/pilipino-tagalog.html",
+    ])
+  })
+
+  it("annotates only the hreflang cluster and leaves the long tail unannotated", () => {
+    const entries = createWatchSitemapEntries(longTailManifest)
+    const byLoc = new Map(entries.map((entry) => [entry.loc, entry.alternates]))
+
+    // A URL with no Google-valid hreflang gets no `<xhtml:link>` at all.
+    // Attaching the cluster's set to it would break reciprocity — the URL is
+    // not in that set — and Google then ignores the whole cluster.
+    expect(
+      byLoc.get("https://www.jesusfilm.org/watch/jesus.html/cebuano.html"),
+    ).toEqual([])
+    expect(
+      byLoc.get("https://www.jesusfilm.org/watch/jesus.html/ilocano.html"),
+    ).toEqual([])
+    expect(
+      byLoc.get(
+        "https://www.jesusfilm.org/watch/magdalena.html/pilipino-tagalog.html",
+      ),
+    ).toEqual([])
+    expect(
+      byLoc
+        .get("https://www.jesusfilm.org/watch/jesus.html")
+        ?.map(({ hreflang }) => hreflang),
+    ).toEqual(["en", "es"])
+  })
+
+  it("renders long-tail canonical entries without xhtml alternate links", () => {
+    const xml = renderWatchSitemapChunk(longTailManifest, 0) ?? ""
+
+    expect(xml).toContain(
+      "<url><loc>https://www.jesusfilm.org/watch/jesus.html/cebuano.html</loc></url>",
+    )
+    expect(xml).toContain(
+      "<url><loc>https://www.jesusfilm.org/watch/magdalena.html/pilipino-tagalog.html</loc></url>",
+    )
+    expect(xml).toContain(
+      'hreflang="es" href="https://www.jesusfilm.org/watch/jesus.html/spanish-castilian.html"',
+    )
+  })
+
+  it("falls back to the alternate list when a snapshot omits languageSlugs", () => {
+    // Pre-change admin snapshots carry no `languageSlugs`; web must keep
+    // publishing exactly what it published before rather than emptying out.
+    const entries = createWatchSitemapEntries(manifest)
+
+    expect(entries.map(({ loc }) => loc)).toEqual([
+      "https://www.jesusfilm.org/watch/jesus.html",
+      "https://www.jesusfilm.org/watch/jesus.html/spanish-castilian.html",
+      "https://www.jesusfilm.org/watch/wedding-in-cana.html",
+      "https://www.jesusfilm.org/watch",
+      "https://www.jesusfilm.org/watch/english-british.html",
+    ])
+  })
+
+  it("drops a repeated canonical URL inside a route group instead of throwing", () => {
+    // `languageSlugs` and `alternates` both feed the URL list, so a manifest
+    // that names the same language in both must not reach the cross-group
+    // `duplicate_loc` guard -- that guard 503s the entire sitemap.
+    const chunks = getWatchSitemapChunks({
+      ...longTailManifest,
+      videoRouteGroups: [
+        {
+          contentSlug: "jesus",
+          alternates: [{ hreflang: "en", languageSlug: "english" }],
+          languageSlugs: ["english", "english", "cebuano"],
+        },
+      ],
+    })
+    const locs = chunks.flatMap((chunk) =>
+      chunk.entries.map((entry) => entry.loc),
+    )
+
+    expect(
+      locs.filter((loc) => loc.endsWith("/watch/jesus.html")),
+    ).toHaveLength(1)
+    expect(new Set(locs).size).toBe(locs.length)
+  })
+
+  it("chunks long-tail entries under the same byte and URL limits", () => {
+    const chunks = getWatchSitemapChunks(longTailManifest, { maxUrls: 2 })
+    const locs = chunks.flatMap((chunk) =>
+      chunk.entries.map((entry) => entry.loc),
+    )
+
+    expect(chunks.every((chunk) => chunk.entries.length <= 2)).toBe(true)
+    expect(locs).toContain(
+      "https://www.jesusfilm.org/watch/jesus.html/cebuano.html",
+    )
+    expect(new Set(locs).size).toBe(locs.length)
   })
 
   it("adds reciprocal default and British-English homepage alternates", () => {
@@ -267,7 +397,7 @@ describe("watch sitemap rendering", () => {
   })
 
   it("keeps complete reciprocal alternate sets across chunk boundaries", () => {
-    const chunks = getWatchSitemapChunks(manifest, { maxUrls: 1 })
+    const chunks = getWatchSitemapChunks(longTailManifest, { maxUrls: 1 })
     const entries = chunks.flatMap((chunk) => chunk.entries)
     const alternatesByLoc = new Map(
       entries.map((entry) => [
@@ -277,13 +407,25 @@ describe("watch sitemap rendering", () => {
         ),
       ]),
     )
+    const annotatedLocs = [...alternatesByLoc].filter(
+      ([, alternates]) => alternates.length > 0,
+    )
 
-    for (const [loc, alternates] of alternatesByLoc) {
+    // Every annotated URL is still in its own set and publishes the same set as
+    // every URL it points at — the invariant the long tail must not weaken.
+    expect(annotatedLocs.length).toBeGreaterThan(0)
+    for (const [loc, alternates] of annotatedLocs) {
       expect(alternates).toContain(loc)
       for (const alternate of alternates) {
         expect(alternatesByLoc.get(alternate)).toEqual(alternates)
       }
     }
+    // The long tail carries no annotations, so it cannot break reciprocity.
+    expect(
+      alternatesByLoc.get(
+        "https://www.jesusfilm.org/watch/jesus.html/cebuano.html",
+      ),
+    ).toEqual([])
   })
 
   it("shares repeated alternate XML within a route group while chunking", () => {

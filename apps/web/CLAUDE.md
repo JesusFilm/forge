@@ -177,6 +177,17 @@ same process-local pattern. Sitemap routes read the cached snapshot and return
 a controlled 503 when no valid snapshot is available; Watch page metadata does
 not depend on this manifest and continues to render without page-head hreflang.
 
+Sitemap inclusion and hreflang eligibility are separate concerns
+(feat-533 / FGE-183). `src/lib/watch-sitemap.ts` emits one `<loc>` per playable
+`(contentSlug, languageSlug)` pair from the route group's `languageSlugs`, and
+attaches the `<xhtml:link>` cluster only to the URLs that are members of it. A
+long-tail language with no Google-valid hreflang ships as a bare
+`<url><loc>…</loc></url>`: attaching the cluster's set to a non-member would
+break Google's reciprocity requirement and make Google discard the cluster's
+annotations for every language, so never annotate a URL that is not in the set
+it publishes. `languageSlugs` is optional on the wire and falls back to the
+alternate list, so admin and web can deploy in either order.
+
 Production proof on 2026-06-10 showed `@forge/web` online in Railway US West behind Cloudflare, live watch HTML served with `cf-cache-status: DYNAMIC`, and authorized `experience`, broad `video`, and `watch-route-manifest` webhooks returning healthy first post-webhook renders. The Railway CLI path available here did not expose exact web replica count.
 
 See `docs/plans/2026-06-10-001-fix-watch-cache-invalidation-plan.md`.

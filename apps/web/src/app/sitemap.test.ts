@@ -81,6 +81,38 @@ describe("watch sitemap routes", () => {
     expect(xml).not.toContain("lumo-the-gospel-of-john")
   })
 
+  it("serves long-tail canonical URLs through the child route", async () => {
+    // The lib layer owns the derivation; this pins that the deployed route
+    // actually publishes an unannotated long-tail URL rather than only the
+    // hreflang cluster. Every other fixture in this file predates
+    // `languageSlugs`, so without this case the route layer only ever sees the
+    // backward-compatible shape.
+    getWatchSeoManifestMock.mockResolvedValue({
+      ...manifest,
+      version: "version-long-tail",
+      videoRouteGroups: [
+        {
+          contentSlug: "jesus",
+          alternates: [{ hreflang: "en", languageSlug: "english" }],
+          languageSlugs: ["cebuano", "english"],
+        },
+      ],
+      episodeRouteGroups: [],
+    })
+    const { GET } = await import("./sitemap/[id]/route")
+
+    const response = await GET(new Request("http://web.test/sitemap/0.xml"), {
+      params: Promise.resolve({ id: "0.xml" }),
+    })
+
+    expect(response.status).toBe(200)
+    const xml = await response.text()
+    expect(xml).toContain(
+      "<url><loc>https://www.jesusfilm.org/watch/jesus.html/cebuano.html</loc></url>",
+    )
+    expect(xml).toContain('hreflang="en"')
+  })
+
   it("uses one manifest validator and cache policy for index and child", async () => {
     const indexRoute = await import("./sitemap.xml/route")
     const childRoute = await import("./sitemap/[id]/route")

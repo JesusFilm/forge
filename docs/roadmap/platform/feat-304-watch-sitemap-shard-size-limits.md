@@ -63,7 +63,13 @@ canonical and reciprocal `hreflang` coverage grows (FGE-17).
 - Keep `/watch/sitemap.xml` and `/watch/sitemap/{id}.xml` stable while the child
   count changes.
 - Preserve sitemap XML as the only Watch `hreflang` source of truth.
-- Keep complete alternate sets on every canonical entry.
+- Keep complete alternate sets on every canonical entry that carries any
+  `<xhtml:link>` at all. **Superseded in part 2026-09-22 (feat-533 / FGE-183):**
+  a canonical entry for a language with no Google-valid hreflang now ships with
+  no alternates at all, because attaching the cluster's set to a URL outside it
+  breaks reciprocity and makes Google discard the cluster. Self-inclusion and
+  reciprocity still bind every annotated entry, and the offline auditor enforces
+  both plus a new aggregate that fails a sitemap publishing zero hreflang.
 - Do not log sitemap payloads, canonical URLs, or alternate values.
 - Do not add deployment-time network work to normal Watch page rendering.
 
