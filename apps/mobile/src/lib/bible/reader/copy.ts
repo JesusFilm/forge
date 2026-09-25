@@ -3,6 +3,8 @@
 // documentation and a later translation of the app find them in one place.
 
 export const READER_COPY = {
+  /** R2: the Bible tab's title, on both platforms. */
+  tabTitle: "Bible",
   /** KD10, KD16: this line replaces Still's tagline in the footer. */
   stillCredit: "Powered by StillBibleApp.com",
   /** R21, AE9: shown in place of a verse that the translation lacks. */

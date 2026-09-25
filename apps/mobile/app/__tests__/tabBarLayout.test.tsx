@@ -15,6 +15,7 @@ import {
   TestRenderer,
   type TestInstance,
 } from "../../src/test-utils/rnTestRenderer"
+import { READER_COPY } from "../../src/lib/bible/reader/copy"
 import { TAB_ROUTE_NAMES } from "../../src/lib/tabBar"
 import {
   resetTabBarHidden,
@@ -40,14 +41,25 @@ const mockNativeProps: { current: Record<string, unknown> | undefined } = {
   current: undefined,
 }
 const mockTriggers: Array<Record<string, unknown>> = []
+const mockAndroidScreens: Array<Record<string, unknown>> = []
 
 jest.mock("expo-router", () => ({
   Tabs: Object.assign(
-    (props: { screenOptions?: Record<string, unknown> }) => {
+    (
+      props: { screenOptions?: Record<string, unknown> } & {
+        children?: unknown
+      },
+    ) => {
       mockScreenOptions.current = props.screenOptions
-      return null
+      // Rendered so each <Tabs.Screen> reports its props, as the triggers do.
+      return props.children as never
     },
-    { Screen: () => null },
+    {
+      Screen: (props: Record<string, unknown>) => {
+        mockAndroidScreens.push(props)
+        return null
+      },
+    },
   ),
 }))
 jest.mock("expo-router/unstable-native-tabs", () => {
@@ -87,8 +99,20 @@ afterEach(() => {
   mockScreenOptions.current = undefined
   mockNativeProps.current = undefined
   mockTriggers.length = 0
+  mockAndroidScreens.length = 0
   resetTabBarHidden()
 })
+
+type ElementLike = { props: Record<string, unknown> }
+
+/** A trigger's Icon and Label, read from the elements it was given. */
+function triggerParts(trigger: Record<string, unknown>) {
+  const children = (
+    Array.isArray(trigger.children) ? trigger.children : [trigger.children]
+  ) as ElementLike[]
+  const [icon, label] = children
+  return { sf: icon?.props.sf, label: label?.props.children }
+}
 
 async function renderAndroid(): Promise<Record<string, unknown>> {
   let renderer!: TestInstance
@@ -113,6 +137,21 @@ describe("iOS — the native bar", () => {
     setPlatform("ios")
     await renderIos()
     expect(mockTriggers.map((t) => t.name)).toEqual([...TAB_ROUTE_NAMES])
+  })
+
+  it("puts the Bible trigger third, with its own label and symbol (feat-551 R2)", async () => {
+    setPlatform("ios")
+    await renderIos()
+    expect(mockTriggers).toHaveLength(5)
+    const bible = mockTriggers[2]!
+    expect(bible.name).toBe("bible")
+    expect(triggerParts(bible)).toEqual({
+      sf: "book.closed.fill",
+      label: READER_COPY.tabTitle,
+    })
+    // Anti-vacuous: the neighbours keep theirs.
+    expect(triggerParts(mockTriggers[1]!).label).toBe("Search")
+    expect(triggerParts(mockTriggers[3]!).label).toBe("Library")
   })
 
   it("opts every tab out of UIKit's automatic content inset", async () => {
@@ -168,6 +207,21 @@ describe("Android — unchanged", () => {
   it("leaves tabBarHideOnKeyboard unset, exactly as today", async () => {
     setPlatform("android")
     expect((await renderAndroid()).tabBarHideOnKeyboard).toBeUndefined()
+  })
+
+  it("declares the Bible tab third, with its title and icon (feat-551 R2)", async () => {
+    setPlatform("android")
+    await renderAndroid()
+    expect(mockAndroidScreens.map((s) => s.name)).toEqual([...TAB_ROUTE_NAMES])
+    const bible = mockAndroidScreens[2]!
+    const options = bible.options as {
+      title: string
+      tabBarIcon: (p: { color: string; size: number }) => ElementLike
+    }
+    expect(options.title).toBe(READER_COPY.tabTitle)
+    expect(options.tabBarIcon({ color: "#fff", size: 24 }).props.name).toBe(
+      "book",
+    )
   })
 
   it("keeps its own tint colours", async () => {

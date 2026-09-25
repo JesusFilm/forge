@@ -12,6 +12,7 @@ import {
   TAB_BAR_OCCUPIED_HEIGHT,
   tabBarOccupiedHeightFor,
   TAB_BAR_FLAT_STYLE,
+  TAB_ROUTE_NAMES,
   useTabBarClearance,
   useTabBarStyle,
 } from "../tabBar"
@@ -170,5 +171,22 @@ describe("isTabGroupRoute", () => {
     expect(isTabGroupRoute(["(tabs)"])).toBe(true)
     expect(isTabGroupRoute(["(tabs)", "watch"])).toBe(true)
     expect(isTabGroupRoute(["(tabs)", "index"])).toBe(true)
+  })
+
+  it("calls the Bible tab a tab route and the pushed reader not (feat-551 KTD9)", () => {
+    expect(isTabGroupRoute(["(tabs)", "bible"])).toBe(true)
+    // The pushed reader and its sheets are root-stack siblings of the group.
+    expect(isTabGroupRoute(["reader"])).toBe(false)
+    expect(isTabGroupRoute(["reader-passage"])).toBe(false)
+  })
+
+  it("lists the five tabs in the product order (feat-551 R2, KD18)", () => {
+    expect([...TAB_ROUTE_NAMES]).toEqual([
+      "index",
+      "watch",
+      "bible",
+      "library",
+      "profile",
+    ])
   })
 })

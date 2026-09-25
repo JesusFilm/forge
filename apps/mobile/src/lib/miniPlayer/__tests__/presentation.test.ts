@@ -1,4 +1,6 @@
+import { TAB_ROUTE_NAMES } from "../../tabBar"
 import {
+  TAB_ROOT_ROUTE_PATTERNS,
   canOriginateRoutePattern,
   isFullScreenRoute,
   isTabRootRoute,
@@ -23,12 +25,15 @@ function storeWithSession() {
  * Every route the app declares, read from app/_layout.tsx, app/(tabs)/_layout.tsx,
  * app/watch/_layout.tsx and app/series/_layout.tsx. Segments are route patterns
  * and the router pops a trailing "index", so the Home tab is ["(tabs)"].
+ * feat-551 U11 adds the Bible tab, the pushed reader, and its three sheets;
+ * U13 owns how the window behaves over the reader.
  */
 const ROUTE_TABLE: ReadonlyArray<
   [pattern: string, segments: string[], expected: MiniPlayerPresentation]
 > = [
   ["(tabs) — Home", ["(tabs)"], "floating"],
   ["(tabs)/watch — Discover", ["(tabs)", "watch"], "floating"],
+  ["(tabs)/bible — Bible", ["(tabs)", "bible"], "floating"],
   ["(tabs)/library", ["(tabs)", "library"], "floating"],
   ["(tabs)/profile", ["(tabs)", "profile"], "floating"],
   ["watch/[slug]", ["watch", "[slug]"], "full"],
@@ -43,6 +48,10 @@ const ROUTE_TABLE: ReadonlyArray<
   ["video/[sectionKey]", ["video", "[sectionKey]"], "floating"],
   ["collection/[sectionKey]", ["collection", "[sectionKey]"], "floating"],
   ["mission", ["mission"], "floating"],
+  ["reader", ["reader"], "floating"],
+  ["reader-passage", ["reader-passage"], "hidden"],
+  ["reader-translation", ["reader-translation"], "hidden"],
+  ["reader-settings", ["reader-settings"], "hidden"],
 ]
 
 describe("miniPlayerPresentation over the real route table", () => {
@@ -213,14 +222,27 @@ describe("suppression and phases", () => {
 })
 
 describe("route predicates", () => {
-  it("recognises the four tab roots and nothing else", () => {
+  it("recognises the five tab roots and nothing else", () => {
     expect(isTabRootRoute(["(tabs)"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "index"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "watch"])).toBe(true)
+    expect(isTabRootRoute(["(tabs)", "bible"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "library"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "profile"])).toBe(true)
     expect(isTabRootRoute(["watch", "[slug]"])).toBe(false)
     expect(isTabRootRoute(["mission"])).toBe(false)
+    // The pushed reader is a root route, not the Bible tab (KTD9).
+    expect(isTabRootRoute(["reader"])).toBe(false)
+    expect(isTabRootRoute(["reader-passage"])).toBe(false)
+  })
+
+  it("lists one tab root per tab route, plus the popped Home index", () => {
+    // Anti-drift: a sixth tab must reach the mini player's tab-root policy too.
+    expect(
+      TAB_ROOT_ROUTE_PATTERNS.filter((pattern) => pattern.includes("/")).map(
+        (pattern) => pattern.replace("(tabs)/", ""),
+      ),
+    ).toEqual([...TAB_ROUTE_NAMES])
   })
 
   it("recognises the watch group as full-screen and the series group as not", () => {

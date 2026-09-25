@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -41,7 +42,10 @@ import {
   useReaderOnboarding,
   type ReaderOnboardingStore,
 } from "../../lib/bible/onboarding/store"
-import { useReadingPosition } from "../../lib/bible/position/store"
+import {
+  useReadingPosition,
+  type ReadingPositionStore,
+} from "../../lib/bible/position/store"
 import {
   READER_CHROME_MAX_FONT_SCALE,
   readerBottomInset,
@@ -148,8 +152,13 @@ type BibleReaderSharedProps = {
 
 export type BibleReaderProps = BibleReaderSharedProps &
   (
-    | { host: Extract<ReaderHost, "tab">; onBack?: never }
-    | { host: Extract<ReaderHost, "pushed">; onBack: () => void }
+    | { host: Extract<ReaderHost, "tab">; onBack?: never; startRef?: never }
+    | {
+        host: Extract<ReaderHost, "pushed">
+        onBack: () => void
+        /** U11: the route's verse in BSB numbering; null opens the saved one. */
+        startRef?: VerseRef | null
+      }
   )
 
 /** Each focus of the reader's screen is one reader open (AE16, R15). */
@@ -161,6 +170,54 @@ function useReaderOpens(focused: boolean): number {
   return opens
 }
 
+// U11, AE15: the pushed reader saves its start as a live move before the first
+// paint, so a late read of the saved position cannot move it. Never in render:
+// the Bible tab reads the same store and would update mid-render.
+function useSavedStart(
+  store: ReadingPositionStore,
+  startRef: VerseRef | null | undefined,
+): void {
+  const key = startRef
+    ? `${startRef.book}.${startRef.chapter}.${startRef.verse}`
+    : null
+  useLayoutEffect(() => {
+    if (startRef) store.moveTo(startRef)
+    // Keyed on the verse: the route parses a new object on each render.
+  }, [store, key])
+}
+
+/** R39: counts the jumps this reader's passage picker makes to a new chapter. */
+function usePickerPulse(focused: boolean, shownChapter: string | null) {
+  // The pill tap arms it. It resolves only after the sheet takes the focus and
+  // gives it back, so a covered tab that did not open the picker plays nothing.
+  const watch = useRef<{ from: string; left: boolean } | null>(null)
+  const [pulse, setPulse] = useState(0)
+  useEffect(() => {
+    const armed = watch.current
+    if (!armed) return
+    if (!focused) {
+      armed.left = true
+      return
+    }
+    if (!armed.left) {
+      // A swipe before the sheet opened pulses on its own; drop the watch.
+      if (shownChapter !== armed.from) watch.current = null
+      return
+    }
+    // A new book shows no chapter until it resolves; wait for it.
+    if (shownChapter === null) return
+    watch.current = null
+    if (shownChapter !== armed.from) setPulse((count) => count + 1)
+  }, [focused, shownChapter])
+  const arm = useCallback(() => {
+    watch.current = shownChapter ? { from: shownChapter, left: false } : null
+  }, [shownChapter])
+  const disarm = useCallback(() => {
+    watch.current = null
+  }, [])
+  return { pulse, arm, disarm }
+}
+
 // The shared Bible reader (feat-551 U7, U8): one verse centered on the screen,
 // a top bar, and a footer. Swipes, the arrow pair, and the screen reader move
 // the verse. The Bible tab and the pushed reader render it.
@@ -170,6 +227,7 @@ export function BibleReader(props: BibleReaderProps) {
   const onboardingStore = props.onboardingStore ?? getReaderOnboardingStore()
   const onboarding = useReaderOnboarding(onboardingStore)
   const position = useReadingPosition(services.positionStore)
+  useSavedStart(services.positionStore, props.startRef)
   const systemScheme = useColorScheme()
   const tokens = readerTokens(
     settings.palette,
@@ -295,6 +353,11 @@ export function BibleReader(props: BibleReaderProps) {
     goTo: chapter.goTo,
     onVerseMove: onboardingStore.retireHint,
   })
+  const shownChapter =
+    "shown" in chapter.state
+      ? `${chapter.state.translationRef.book}.${chapter.state.translationRef.chapter}`
+      : null
+  const picker = usePickerPulse(focused, shownChapter)
   const shown = "shown" in chapter.state ? chapter.state.shown : null
   const shownTranslation = shown?.translation ?? null
   const context: ReaderRouteContext = {
@@ -449,8 +512,11 @@ export function BibleReader(props: BibleReaderProps) {
         safeAreaTop={insets.top}
         onBack={props.host === "pushed" ? props.onBack : undefined}
         passage={model.passage}
-        onPressPassage={() => props.onOpenPassagePicker(context)}
-        pulse={movement.pulse}
+        onPressPassage={() => {
+          picker.arm()
+          props.onOpenPassagePicker(context)
+        }}
+        pulse={movement.pulse + picker.pulse}
         reduceMotion={reduceMotion}
         download={{
           state: downloadState,
@@ -461,8 +527,14 @@ export function BibleReader(props: BibleReaderProps) {
               )
             : READER_COPY.download.waiting,
         }}
-        onPressDownload={() => props.onOpenDownload(context)}
-        onPressSettings={() => props.onOpenSettings(context)}
+        onPressDownload={() => {
+          picker.disarm()
+          props.onOpenDownload(context)
+        }}
+        onPressSettings={() => {
+          picker.disarm()
+          props.onOpenSettings(context)
+        }}
       />
       <ReaderGestures
         tokens={tokens}
@@ -578,7 +650,10 @@ export function BibleReader(props: BibleReaderProps) {
           translation={
             shown ? translationLabel(shown, viewerTranslation) : null
           }
-          onPressTranslation={() => props.onOpenTranslationPicker(context)}
+          onPressTranslation={() => {
+            picker.disarm()
+            props.onOpenTranslationPicker(context)
+          }}
         />
       )}
       {showDemo && (

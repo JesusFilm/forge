@@ -78,6 +78,10 @@ import {
   type ReaderOnboardingStore,
 } from "../../../lib/bible/onboarding/store"
 import { createReadingPositionStore } from "../../../lib/bible/position/store"
+import {
+  READING_POSITION_STORAGE_KEY,
+  serializeReadingPosition,
+} from "../../../lib/bible/position/snapshot"
 import type { ChapterCache } from "../../../lib/bible/repository/chapterCache"
 import type {
   ChapterAddress,
@@ -794,6 +798,138 @@ describe("BibleReader — the chrome", () => {
       )
     })
     expect(mockStatusBars).toHaveLength(0)
+  })
+})
+
+describe("BibleReader — the pushed reader's start (U11, AE15)", () => {
+  const JOHN_3_16: VerseRef = { book: "JHN", chapter: 3, verse: 16 }
+  const GENESIS_1_1: VerseRef = { book: "GEN", chapter: 1, verse: 1 }
+  const ROMANS_8_28: VerseRef = { book: "ROM", chapter: 8, verse: 28 }
+
+  const pills = (renderer: TestInstance, passage: string) =>
+    controlHostsLabelled(
+      renderer,
+      (label) => label === READER_COPY.choosePassage(passage),
+    )
+
+  const saved = (ref: VerseRef) =>
+    serializeReadingPosition({ ref, translationId: null })
+
+  function pushed(
+    services: ReaderServices,
+    startRef: VerseRef | null,
+  ): BibleReaderProps {
+    return {
+      host: "pushed",
+      onBack: jest.fn(),
+      startRef,
+      ...callbacks(),
+      services,
+      onboardingStore: onboarding,
+    }
+  }
+
+  it("opens at its start reference and moves the shared position", async () => {
+    const { services } = makeServices()
+    services.positionStore = createReadingPositionStore(
+      memoryStorage({ [READING_POSITION_STORAGE_KEY]: saved(GENESIS_1_1) }),
+    )
+    await services.positionStore.hydrate()
+    expect(services.positionStore.getSnapshot().ref).toEqual(GENESIS_1_1)
+
+    const renderer = await render(services, pushed(services, JOHN_3_16))
+    expect(pills(renderer, "John 3:16")).toHaveLength(1)
+    expect(services.positionStore.getSnapshot().ref).toEqual(JOHN_3_16)
+  })
+
+  it("covers AE15: a saved position that loads late does not move it", async () => {
+    const { services } = makeServices()
+    const read = deferred<string | null>()
+    services.positionStore = createReadingPositionStore({
+      getItem: () => read.promise,
+      setItem: async () => {},
+    })
+    const renderer = await render(services, pushed(services, JOHN_3_16))
+    expect(pills(renderer, "John 3:16")).toHaveLength(1)
+
+    await act(async () => read.resolve(saved(GENESIS_1_1)))
+    await flush()
+    expect(pills(renderer, "John 3:16")).toHaveLength(1)
+    expect(services.positionStore.getSnapshot()).toMatchObject({
+      status: "ready",
+      ref: JOHN_3_16,
+    })
+  })
+
+  it("never writes the store during a render while the Bible tab reads it", async () => {
+    // U5: the tab subscribes first, as it does under a pushed reader. A
+    // write in the pushed reader's render would update the tab mid-render.
+    const errors = jest.spyOn(console, "error")
+    const { services } = makeServices()
+    const tab = (
+      <BibleReader
+        host="tab"
+        {...callbacks()}
+        services={services}
+        onboardingStore={onboarding}
+      />
+    )
+    const renderer = await render(services)
+    await act(async () => {
+      renderer.update(<StrictMode>{tab}</StrictMode>)
+    })
+    await flush()
+    await act(async () => {
+      renderer.update(
+        <StrictMode>
+          {tab}
+          <BibleReader {...pushed(services, ROMANS_8_28)} />
+        </StrictMode>,
+      )
+    })
+    await flush()
+
+    // KD2: both hosts show the one position.
+    expect(pills(renderer, "Romans 8:28")).toHaveLength(2)
+    const renderWrites = errors.mock.calls.filter((args) =>
+      String(args[0]).includes("Cannot update a component"),
+    )
+    expect(renderWrites).toHaveLength(0)
+  })
+
+  it("follows the shared position once the start is saved", async () => {
+    const { services } = makeServices()
+    const renderer = await render(services, pushed(services, JOHN_3_16))
+    await act(async () => {
+      services.positionStore.moveTo(ROMANS_8_28)
+    })
+    await flush()
+    expect(pills(renderer, "Romans 8:28")).toHaveLength(1)
+  })
+
+  it("moves to a new start when the route's params change", async () => {
+    const { services } = makeServices()
+    const renderer = await render(services, pushed(services, JOHN_3_16))
+    await act(async () => {
+      renderer.update(
+        <StrictMode>
+          <BibleReader {...pushed(services, ROMANS_8_28)} />
+        </StrictMode>,
+      )
+    })
+    await flush()
+    expect(pills(renderer, "Romans 8:28")).toHaveLength(1)
+    expect(services.positionStore.getSnapshot().ref).toEqual(ROMANS_8_28)
+  })
+
+  it("keeps the saved position when there is no start reference", async () => {
+    const { services } = makeServices()
+    services.positionStore = createReadingPositionStore(
+      memoryStorage({ [READING_POSITION_STORAGE_KEY]: saved(GENESIS_1_1) }),
+    )
+    const renderer = await render(services, pushed(services, null))
+    expect(pills(renderer, "Genesis 1:1")).toHaveLength(1)
+    expect(services.positionStore.getSnapshot().ref).toEqual(GENESIS_1_1)
   })
 })
 

@@ -31,7 +31,8 @@ jest.mock("expo-glass-effect", () => ({
 }))
 jest.mock("../../ui/PlatformBlur", () => ({ PlatformBlur: () => null }))
 jest.mock("expo-status-bar", () => ({ StatusBar: () => null }))
-jest.mock("expo-router", () => ({ useIsFocused: () => true }))
+const mockFocus = { focused: true }
+jest.mock("expo-router", () => ({ useIsFocused: () => mockFocus.focused }))
 const mockInsets = { top: 62, bottom: 34, left: 0, right: 0 }
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => mockInsets,
@@ -468,6 +469,7 @@ const swipeRight = (r: TestInstance) => swipe(r, RIGHT.from, RIGHT.to)
 
 beforeEach(() => {
   timings = []
+  mockFocus.focused = true
   screenReader = false
   reduceMotion = false
   announcements = []
@@ -1535,5 +1537,150 @@ describe("verse selection (R19)", () => {
       READER_COPY.selection.removeHint,
     )
     expect(after!.props.accessibilityRole).toBe("adjustable")
+  })
+})
+
+// ── The passage picker's jump (R39) ─────────────────────────────────────────
+
+describe("a passage-picker jump pulses the pill (R39)", () => {
+  type Opened = {
+    services: ReaderServices
+    renderer: TestInstance
+    onOpenPassagePicker: jest.Mock
+    /** The picker is a root sheet: it takes the reader's focus while up. */
+    setFocus: (focused: boolean) => Promise<void>
+  }
+
+  async function openWithFocus(ref: VerseRef): Promise<Opened> {
+    const services = makeServices()
+    services.positionStore.moveTo(ref)
+    const onOpenPassagePicker = jest.fn()
+    const props = {
+      host: "tab",
+      onOpenPassagePicker,
+      onOpenTranslationPicker: jest.fn(),
+      onOpenSettings: jest.fn(),
+      onOpenDownload: jest.fn(),
+      services,
+      onboardingStore: onboardingStore(SETTLED),
+    } as BibleReaderProps
+    const element = () => (
+      <StrictMode>
+        <BibleReader {...props} />
+      </StrictMode>
+    )
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(element())
+    })
+    mounted.push(renderer)
+    await flush()
+    await settleFit(renderer)
+    const setFocus = async (focused: boolean) => {
+      mockFocus.focused = focused
+      await act(async () => renderer.update(element()))
+      await flush()
+      await settleFit(renderer)
+    }
+    return { services, renderer, onOpenPassagePicker, setFocus }
+  }
+
+  const pulses = () => timingsWith({ duration: CHAPTER_PULSE_MS }).length
+
+  async function openPicker(opened: Opened, passage: string) {
+    await pressLabel(opened.renderer, READER_COPY.choosePassage(passage))
+    expect(opened.onOpenPassagePicker).toHaveBeenCalledTimes(1)
+    await opened.setFocus(false)
+  }
+
+  /** What `app/reader-passage.tsx` does: save the pick, then close. */
+  async function pickAndClose(opened: Opened, ref: VerseRef) {
+    await act(async () => {
+      opened.services.positionStore.moveTo(ref)
+    })
+    await flush()
+    await settleFit(opened.renderer)
+    await opened.setFocus(true)
+  }
+
+  it("pulses once when the pick opens another chapter, after the sheet closes", async () => {
+    const opened = await openWithFocus({ book: "JHN", chapter: 3, verse: 16 })
+    expect(pulses()).toBe(0)
+    await openPicker(opened, "John 3:16")
+
+    await act(async () => {
+      opened.services.positionStore.moveTo({
+        book: "JHN",
+        chapter: 5,
+        verse: 1,
+      })
+    })
+    await flush()
+    // The sheet still covers the reader.
+    expect(pulses()).toBe(0)
+
+    await opened.setFocus(true)
+    expect(pillPassage(opened.renderer)).toBe("John 5:1")
+    expect(pulses()).toBe(1)
+    // Once: a later render with nothing new plays nothing more, and the next
+    // swipe pulses for itself alone.
+    await opened.setFocus(true)
+    expect(pulses()).toBe(1)
+    await swipeLeft(opened.renderer)
+    expect(pillPassage(opened.renderer)).toBe("John 6:1")
+    expect(pulses()).toBe(2)
+  })
+
+  it("keeps Reduce Motion's color-only change for a picker jump (AE10)", async () => {
+    reduceMotion = true
+    const opened = await openWithFocus({ book: "JHN", chapter: 3, verse: 16 })
+    await openPicker(opened, "John 3:16")
+    await pickAndClose(opened, { book: "JHN", chapter: 5, verse: 1 })
+    expect(pulses()).toBe(0)
+    expect(timingsWith({ delay: CHAPTER_FLASH_MS })).toHaveLength(1)
+  })
+
+  it("plays nothing for a pick in the same chapter", async () => {
+    const opened = await openWithFocus({ book: "JHN", chapter: 3, verse: 16 })
+    await openPicker(opened, "John 3:16")
+    await pickAndClose(opened, { book: "JHN", chapter: 3, verse: 20 })
+    expect(pillPassage(opened.renderer)).toBe("John 3:20")
+    expect(pulses()).toBe(0)
+  })
+
+  it("pulses once for a pick in another book, when that book shows", async () => {
+    const opened = await openWithFocus({ book: "JHN", chapter: 3, verse: 16 })
+    await openPicker(opened, "John 3:16")
+    await pickAndClose(opened, { book: "ROM", chapter: 8, verse: 28 })
+    expect(pillPassage(opened.renderer)).toBe("Romans 8:28")
+    expect(pulses()).toBe(1)
+  })
+
+  it("plays nothing when the picker closes with no pick, and a later swipe pulses once", async () => {
+    const opened = await openWithFocus({ book: "JHN", chapter: 3, verse: 16 })
+    await openPicker(opened, "John 3:16")
+    await opened.setFocus(true)
+    expect(pulses()).toBe(0)
+
+    await swipeLeft(opened.renderer)
+    expect(pillPassage(opened.renderer)).toBe("John 4:1")
+    expect(pulses()).toBe(1)
+  })
+
+  it("plays nothing when a covered reader regains focus at a new chapter", async () => {
+    // The Bible tab under a pushed reader: another host moved the position.
+    const opened = await openWithFocus({ book: "JHN", chapter: 3, verse: 16 })
+    await opened.setFocus(false)
+    await act(async () => {
+      opened.services.positionStore.moveTo({
+        book: "JHN",
+        chapter: 5,
+        verse: 1,
+      })
+    })
+    await flush()
+    await opened.setFocus(true)
+    expect(pillPassage(opened.renderer)).toBe("John 5:1")
+    expect(pulses()).toBe(0)
   })
 })

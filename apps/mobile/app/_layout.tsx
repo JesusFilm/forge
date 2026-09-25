@@ -462,6 +462,16 @@ export default function RootLayout() {
                                     BACK_SWIPE_RESPONSE_DISTANCE,
                                 }}
                               />
+                              {/* feat-551 R6: the pushed Bible reader has a verse
+                                scrubber and chapter swipes, so it gets the same strip. */}
+                              <Stack.Screen
+                                name="reader"
+                                options={{
+                                  headerShown: false,
+                                  gestureResponseDistance:
+                                    BACK_SWIPE_RESPONSE_DISTANCE,
+                                }}
+                              />
                               {/* feat-551 KTD9: root sheets, so they present
                                 over the Bible tab and the pushed reader. */}
                               <Stack.Screen

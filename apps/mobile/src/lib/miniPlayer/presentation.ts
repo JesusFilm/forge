@@ -37,12 +37,14 @@ export const FULL_SCREEN_ROUTE_PATTERNS = [
   "watch/download",
 ] as const
 
-/** The four tab roots from `app/(tabs)/_layout.tsx`. "(tabs)/index" is listed
- *  too: only the router's index-pop keeps it out of the segment list. */
+/** The five tab roots from `app/(tabs)/_layout.tsx`. "(tabs)/index" is listed
+ *  too: only the router's index-pop keeps it out of the segment list. The
+ *  pushed Bible reader is the root route "reader", not "(tabs)/bible". */
 export const TAB_ROOT_ROUTE_PATTERNS = [
   "(tabs)",
   "(tabs)/index",
   "(tabs)/watch",
+  "(tabs)/bible",
   "(tabs)/library",
   "(tabs)/profile",
 ] as const
