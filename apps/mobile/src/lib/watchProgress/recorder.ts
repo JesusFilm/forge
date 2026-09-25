@@ -6,7 +6,8 @@
  * is what turns those requests into actual mutations.
  *
  * No-ops without an identity (the hero surfaces never pass one) and drops
- * signed-out ticks at this boundary (R10). Every write takes the same path;
+ * signed-out ticks at this boundary (R10), as it drops every write while a
+ * progress hold is set (KTD12). Every write takes the same path;
  * the account-bound queue is reached only when a send FAILS (R7), so a
  * downloaded video watched online syncs like any other.
  */
@@ -49,6 +50,9 @@ export type RecorderDeps = {
   /** Signed-out mid-video stop — arms the contextual sign-in prompt
    *  (KTD13). Never receives an account or writes any position (R10). */
   onSignedOutStop?: (positionSeconds: number) => void
+  /** KTD12: true while a progress hold blocks every write. Ticks still note
+   *  the position, so the first write after the hold is current. */
+  isHeld?: () => boolean
   now?: () => number
 }
 
@@ -64,6 +68,7 @@ export function createProgressRecorder(
 
   function record(position: number, duration: number): boolean {
     if (!identity) return false
+    if (deps.isHeld?.() === true) return false
     const accountId = deps.getAccountId()
     if (accountId == null) return false
     if (!Number.isFinite(position) || !Number.isFinite(duration)) return false

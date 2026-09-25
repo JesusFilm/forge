@@ -1971,6 +1971,138 @@ describe("holdProgressIdentity (the remount's id-less render)", () => {
   })
 })
 
+// KTD12 / AE6, end to end through the real host, adapter and recorder. Admin
+// keeps the newest write, so one write at the tap point would replace a saved
+// 1:10:00 — including the dismiss flush when the viewer goes back to Explore.
+describe("the progress hold (KTD12)", () => {
+  const HOLD = { id: "keep-watching-1", durationMs: 8_000 }
+  const progressStore = jest.requireMock(
+    "../../../lib/watchProgress/store",
+  ) as {
+    bufferProgressIntent: jest.Mock
+    applyLocalProgress: jest.Mock
+  }
+
+  function clearWrites() {
+    progressStore.bufferProgressIntent.mockClear()
+    progressStore.applyLocalProgress.mockClear()
+  }
+
+  function writtenVideoIds(): unknown[] {
+    return progressStore.bufferProgressIntent.mock.calls.map(
+      ([intent]) => (intent as { videoId?: string }).videoId,
+    )
+  }
+
+  function localEchoes(): number {
+    return progressStore.applyLocalProgress.mock.calls.length
+  }
+
+  async function advance(ms: number) {
+    await act(async () => {
+      jest.advanceTimersByTime(ms)
+    })
+  }
+
+  /** The tap point of AE6, on a long video. */
+  async function playFromTapPoint() {
+    video.__player.duration = 7200
+    video.__player.currentTime = 740
+    await startPlayback()
+  }
+
+  beforeEach(() => {
+    clearWrites()
+  })
+
+  // The host substitutes the identity it last knew for this slug, so a hold
+  // expressed as a null identity would be undone here. It must be its own
+  // channel.
+  it("holds every write while the host already knows the slug's identity", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot()
+    await renderHost()
+    await playFromTapPoint()
+    await advance(2_100)
+    expect(writtenVideoIds()).toContain("video-a")
+
+    // The id-less render of the same slug, now carrying the hold.
+    const idLess = {
+      progressVideoId: null,
+      progressLanguageSlug: null,
+      session: { ...SESSION_A, videoId: null, languageSlug: null },
+    }
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ ...idLess, progressHold: HOLD }),
+      )
+    })
+    clearWrites()
+    await advance(5_100)
+    expect(writtenVideoIds()).toEqual([])
+    expect(localEchoes()).toBe(0)
+
+    // Released, it writes under the KNOWN id: the identity never went null.
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ ...idLess, progressHold: null }),
+      )
+    })
+    await advance(2_100)
+    expect(writtenVideoIds()).toContain("video-a")
+  })
+
+  it("covers AE6: back to Explore while the offer shows writes nothing at all", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot({ progressHold: HOLD })
+    const renderer = await renderHost()
+    await playFromTapPoint()
+    await advance(3_100)
+
+    // Back: the page unmounts and the video floats, then Explore dismisses it
+    // and the host releases the player once the exit completes.
+    await detach(id)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    await advance(1_100)
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+    await advance(EXIT_DURATION_MS + 1000)
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(videoViews(renderer)).toHaveLength(0)
+    expect(writtenVideoIds()).toEqual([])
+    expect(localEchoes()).toBe(0)
+  })
+
+  it("leaves no hold on the retained request after the deadline", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot({ progressHold: HOLD })
+    await renderHost()
+    await playFromTapPoint()
+    await advance(3_100)
+
+    // The page goes mid-hold; its request lives on as the retained one and
+    // nothing will ever republish it without the hold.
+    await detach(id)
+    expect(requestStore.getSnapshot().request?.progressHold).toEqual(HOLD)
+    await advance(4_000)
+    expect(writtenVideoIds()).toEqual([])
+
+    await advance(2_100)
+    expect(writtenVideoIds()).toContain("video-a")
+
+    // The dismiss flush, plus the pause flush from the host's own pause.
+    clearWrites()
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+    expect(writtenVideoIds()).toContain("video-a")
+  })
+})
+
 describe("shouldDrawSurface (R21, R27)", () => {
   it("redraws in the same render a replay clears the ended cause", () => {
     // The window hides its thumbnail imperatively in a child effect; waiting

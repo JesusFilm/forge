@@ -490,6 +490,9 @@ function ActivePlaybackHost({
       },
       {
         progress: progressIdentity,
+        // Its own channel, never a null identity: the identity hold above
+        // would put the known identity back and undo it.
+        progressHold: request.progressHold ?? null,
         ownsSession: true,
         // The recommendation recorder's discovery key (feat-516): a search
         // result marks its slug before navigating; the id alone never matches.

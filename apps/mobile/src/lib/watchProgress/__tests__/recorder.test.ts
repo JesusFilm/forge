@@ -209,6 +209,50 @@ describe("createProgressRecorder", () => {
       }),
     )
   })
+
+  // KTD12: admin keeps the newest write, so one held write would replace the
+  // viewer's real position. The hold must cover the sample AND every trigger.
+  it("writes nothing while held, then writes the latest position once released", () => {
+    let held = true
+    const applyLocal = jest.fn()
+    const onSignedOutStop = jest.fn()
+    let time = START
+    const { deps, buffered, drains } = buildDeps({
+      applyLocal,
+      onSignedOutStop,
+      now: () => time,
+      isHeld: () => held,
+    })
+    const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
+
+    recorder.onTick(740, 4000)
+    for (const trigger of [
+      "pause",
+      "background",
+      "unmount",
+      "end",
+      "dismiss",
+      "replace",
+      "foreground",
+    ] as const) {
+      recorder.flush(trigger)
+    }
+
+    expect(buffered).toEqual([])
+    expect(drains).toEqual([])
+    expect(applyLocal).not.toHaveBeenCalled()
+    // A signed-in viewer's held stop is not a signed-out stop.
+    expect(onSignedOutStop).not.toHaveBeenCalled()
+
+    held = false
+    time = START + 1_000
+    recorder.onTick(741, 4000)
+    recorder.flush("dismiss")
+
+    // The held tick still OBSERVED the position, so the released flush has one.
+    expect(buffered.at(-1)).toMatchObject({ positionSeconds: 741 })
+    expect(drains.at(-1)).toEqual({ forced: true })
+  })
 })
 
 describe("recorder + store + sync integration (the rate-limit property)", () => {
