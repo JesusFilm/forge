@@ -1,7 +1,7 @@
-// Language codes to the catalog's languages (feat-551 KTD8). The catalog keys
-// its languages by ISO 639-3 individual codes, and it has no macrolanguage
-// codes such as zho or ara. The phone gives an ISO 639-1 code, and admin can
-// send a macrolanguage code, so both go through the tables below.
+// The catalog keys its languages by ISO 639-3 individual codes, with no
+// macrolanguage codes such as zho (feat-551 KTD8). The phone's ISO 639-1 code
+// and admin's macrolanguage codes both go through the tables below.
+import { getDeviceLanguageCode } from "../../resolveDefaultLanguage"
 import { LANGUAGE_DEFAULT_TRANSLATIONS } from "../data/languageDefaults.generated"
 
 /** Every ISO 639-1 code to its ISO 639-3 code; a macrolanguage stays macro. */
@@ -277,13 +277,8 @@ export function catalogLanguageCode(
   return null
 }
 
-/** The phone's language subtag ("zh" for "zh-Hant-TW"), as resolveDefaultLanguage reads it. */
+/** The phone's language subtag ("zh" for "zh-Hant-TW"), or null. */
 export function readPhoneLanguageCode(): string | null {
-  try {
-    const locale = Intl.DateTimeFormat().resolvedOptions().locale
-    const language = locale.split(/[-_]/)[0]?.toLowerCase() ?? ""
-    return /^[a-z]{2,3}$/.test(language) ? language : null
-  } catch {
-    return null
-  }
+  const language = getDeviceLanguageCode()
+  return language !== null && /^[a-z]{2,3}$/.test(language) ? language : null
 }

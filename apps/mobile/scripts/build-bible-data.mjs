@@ -637,8 +637,10 @@ function sourceRecord(entry, licenses) {
 
 async function refresh() {
   const started = performance.now()
-  const catalogBytes = await fetchBytes(CATALOG_URL)
-  const licenseBytes = await fetchBytes(LICENSES_URL)
+  const [catalogBytes, licenseBytes] = await Promise.all([
+    fetchBytes(CATALOG_URL),
+    fetchBytes(LICENSES_URL),
+  ])
   const licenses = readEbibleLicenses(licenseBytes.toString("utf8"))
   const catalog = JSON.parse(catalogBytes.toString("utf8"))
   const records = catalog.translations.map((entry) =>

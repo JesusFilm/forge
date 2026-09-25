@@ -158,7 +158,11 @@ async function readCapped(
   }
 }
 
-function isAddressOf(text: ChapterText, address: ChapterAddress): boolean {
+/** True when the text is the chapter that the address names. */
+export function isAddressOf(
+  text: ChapterText,
+  address: ChapterAddress,
+): boolean {
   return (
     text.translationId === address.translationId &&
     text.bookId === address.bookId &&

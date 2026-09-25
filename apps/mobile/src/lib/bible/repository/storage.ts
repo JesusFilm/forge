@@ -39,7 +39,7 @@ export function ensureDirectory(directory: Directory): boolean {
 
 export function deleteQuietly(entry: File | Directory): void {
   try {
-    if (entry.exists) entry.delete()
+    entry.delete()
   } catch {
     // Already gone, or the system holds it; the next check sees what is left.
   }

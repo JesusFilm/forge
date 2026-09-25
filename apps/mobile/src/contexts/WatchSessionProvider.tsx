@@ -325,7 +325,8 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     const iso3 = languageIso3ForSlug(video?.variants ?? [], preferredAudioSlug)
     if (iso3 != null) backfillAudioLanguageIso3(preferredAudioSlug, iso3)
   }, [
-    video,
+    video?.documentId,
+    video?.variants.length,
     preferencesReady,
     preferredAudioSlug,
     preferredAudioIso3,

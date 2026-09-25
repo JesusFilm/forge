@@ -6,7 +6,7 @@ import { Directory, File } from "expo-file-system"
 import { isUsfmBookId, type UsfmBookId } from "../text/books"
 import { parseChapterText } from "../text/normalize"
 import type { ChapterText } from "../text/types"
-import type { ChapterAddress } from "./fetchChapter"
+import { isAddressOf, type ChapterAddress } from "./fetchChapter"
 import {
   chapterCacheDirectory,
   deleteQuietly,
@@ -69,14 +69,6 @@ function parseName(name: string): KeptName | null {
   const bookId = match?.[1] ?? ""
   if (!match || !isUsfmBookId(bookId)) return null
   return { bookId, chapter: Number(match[2]), sha256: match[3] ?? "" }
-}
-
-function isChapterOf(text: ChapterText, address: ChapterAddress): boolean {
-  return (
-    text.translationId === address.translationId &&
-    text.bookId === address.bookId &&
-    text.chapter.number === address.chapter
-  )
 }
 
 export function createChapterCache(
@@ -177,7 +169,7 @@ export function createChapterCache(
   ): Promise<ChapterText | null> {
     try {
       const parsed = parseChapterText(JSON.parse(await fileOf(entry).text()))
-      if (parsed.status === "ok" && isChapterOf(parsed.value, address)) {
+      if (parsed.status === "ok" && isAddressOf(parsed.value, address)) {
         return parsed.value
       }
     } catch {
@@ -213,7 +205,7 @@ export function createChapterCache(
       if (
         !isSafeTranslationId(key.translationId) ||
         !isSha256(key.sha256) ||
-        !isChapterOf(text, key)
+        !isAddressOf(text, key)
       ) {
         return false
       }

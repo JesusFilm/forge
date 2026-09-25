@@ -255,7 +255,6 @@ export function createTranslationDownloads(
 
   async function readManifest(folder: Directory, id: string) {
     const file = new File(folder, MANIFEST_NAME)
-    if (!file.exists) return null
     try {
       return parseManifest(JSON.parse(await file.text()), id)
     } catch {

@@ -2,10 +2,9 @@
 // The position store and the settings store share it, after the lastWatched
 // store: memory is the authority, and the read is memoized with a time limit.
 //
-// Two rules keep a live write safe from the read (AE15):
-// - The read applies only the fields that no live write has set.
-// - A write saves only after a good read, so it never saves over a record
-//   it has not seen. A write before any read starts the read first.
+// A live write stays safe from the read (AE15): the read applies only fields
+// that no live write set, and a write saves only after a good read, so it
+// never saves over an unseen record. A write before any read starts the read.
 import { withTimeout } from "../../withTimeout"
 
 export type RecordStorage = {
