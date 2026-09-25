@@ -1,6 +1,6 @@
 # TV beta feedback: Railway + Redis + Linear
 
-Status: plan approved in principle; implementation and deployment pending. Supersedes the PostgreSQL/private-bucket/worker architecture in the 2026-09-23 TV feedback plans. Do not treat the current local `apps/tv-feedback` code as deployment-ready: it still requires PostgreSQL, S3, and a worker.
+Status: implementation deployed to Railway staging on 2026-09-25; physical TV, phone, and real token acceptance remain pending. Production deployment remains pending review. This supersedes the PostgreSQL/private-bucket/worker architecture in the 2026-09-23 TV feedback plans.
 
 ## Decisions
 
