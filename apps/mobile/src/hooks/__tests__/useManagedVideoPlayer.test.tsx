@@ -1120,7 +1120,7 @@ describe("useManagedVideoPlayer — quality-constraint swap admission (U2)", () 
 
 // The resume position for error recovery comes from THIS poll, not from
 // expo-video's `timeUpdate` — that event only fires when
-// `timeUpdateEventInterval` is set, which this app never does. An earlier
+// `timeUpdateEventInterval` is set, which the adapter never does. An earlier
 // version listened for it and the position silently stayed at zero while the
 // tests passed, because they emitted the event by hand.
 describe("useManagedVideoPlayer — healthy position for error recovery", () => {

@@ -35,7 +35,11 @@ export type FakePlayer = {
   duration: number
   status: VideoPlayerStatus
   bufferOptions: BufferOptions
+  bufferedPosition: number
   subtitleTrack: SubtitleTrack | null
+  allowsExternalPlayback: boolean
+  /** expo-video's default is 0, which sends no timeUpdate event at all. */
+  timeUpdateEventInterval: number
   play: jest.Mock
   pause: jest.Mock
   replay: jest.Mock
@@ -57,7 +61,25 @@ export type FakePlayer = {
     options?: { withholdLoad?: boolean },
   ) => void
   __pendingReplaceCount: () => number
+  /**
+   * Moves the playhead and emits `timeUpdate` only while
+   * `timeUpdateEventInterval` is above 0, as a device does. Returns whether it
+   * emitted, so no case can pass on an event that production never sends.
+   */
+  __tick: (position: {
+    currentTime: number
+    bufferedPosition?: number
+  }) => boolean
   __reset: () => void
+}
+
+export type ExpoVideoMockOptions = {
+  /**
+   * Distinct players, handed out in call order. The default of one keeps the
+   * app's one-decoder contract; the Explore feed's suites opt into two and
+   * read `__players`.
+   */
+  players?: 1 | 2
 }
 
 export type ExpoVideoMock = {
@@ -66,6 +88,8 @@ export type ExpoVideoMock = {
   isPictureInPictureSupported: jest.Mock
   /** The single player every useVideoPlayer call returns (R10: one decoder). */
   __player: FakePlayer
+  /** Every player, in call-site order. `__players[0]` is `__player`. */
+  __players: FakePlayer[]
   __settleReplace: (
     reason?: unknown,
     options?: { withholdLoad?: boolean },
@@ -105,7 +129,11 @@ export function makeFakePlayer(): FakePlayer {
     duration: 0,
     status: "idle",
     bufferOptions: {},
+    bufferedPosition: 0,
     subtitleTrack: null,
+    // expo-video's documented default.
+    allowsExternalPlayback: true,
+    timeUpdateEventInterval: 0,
     play: jest.fn(() => {
       player.playing = true
       player.__emit("playingChange", { isPlaying: true })
@@ -175,6 +203,19 @@ export function makeFakePlayer(): FakePlayer {
       settle(reason, options?.withholdLoad === true)
     },
     __pendingReplaceCount: () => pendingReplaces.length,
+    __tick: ({ currentTime, bufferedPosition }) => {
+      player.currentTime = currentTime
+      if (bufferedPosition !== undefined)
+        player.bufferedPosition = bufferedPosition
+      if (!(player.timeUpdateEventInterval > 0)) return false
+      player.__emit("timeUpdate", {
+        currentTime,
+        bufferedPosition: player.bufferedPosition,
+        currentLiveTimestamp: null,
+        currentOffsetFromLive: null,
+      })
+      return true
+    },
     __reset: () => {
       listeners.clear()
       pendingReplaces.length = 0
@@ -188,7 +229,10 @@ export function makeFakePlayer(): FakePlayer {
       player.duration = 0
       player.status = "idle"
       player.bufferOptions = {}
+      player.bufferedPosition = 0
       player.subtitleTrack = null
+      player.allowsExternalPlayback = true
+      player.timeUpdateEventInterval = 0
       for (const fn of [
         player.play,
         player.pause,
@@ -218,30 +262,40 @@ export function makeFakePlayer(): FakePlayer {
 }
 
 /** The module body for `jest.mock("expo-video", …)`. */
-export function createExpoVideoMock(): ExpoVideoMock {
-  const player = makeFakePlayer()
+export function createExpoVideoMock(
+  options?: ExpoVideoMockOptions,
+): ExpoVideoMock {
+  const players = Array.from({ length: options?.players ?? 1 }, makeFakePlayer)
+  const player = players[0]
   // Setup runs once per player, as the real hook does — a per-render re-run
   // would let a suite's setup-call count pass for the wrong reason.
-  let setupRan = false
+  const setupRan = new Set<FakePlayer>()
+  // Each render calls the hook once per call site, in a fixed order, so the
+  // call count modulo the player count gives each call site its own player.
+  let calls = 0
 
   const mock: ExpoVideoMock = {
     VideoView: jest.fn(() => null),
     useVideoPlayer: jest.fn(
       (_source: VideoSource, setup?: (p: FakePlayer) => void) => {
-        if (!setupRan) {
-          setupRan = true
-          setup?.(player)
+        const target = players[calls % players.length]
+        calls += 1
+        if (!setupRan.has(target)) {
+          setupRan.add(target)
+          setup?.(target)
         }
-        return player
+        return target
       },
     ),
     isPictureInPictureSupported: jest.fn(() => true),
     __player: player,
+    __players: players,
     __settleReplace: (reason, options) =>
       player.__settleReplace(reason, options),
     __reset: () => {
-      player.__reset()
-      setupRan = false
+      for (const each of players) each.__reset()
+      setupRan.clear()
+      calls = 0
       mock.VideoView.mockClear()
       mock.useVideoPlayer.mockClear()
       mock.isPictureInPictureSupported.mockClear()

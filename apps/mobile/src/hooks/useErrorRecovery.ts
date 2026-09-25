@@ -28,8 +28,8 @@ export function useErrorRecovery(
    * own 1s poll.
    *
    * Deliberately NOT expo-video's `timeUpdate`: that event only fires when
-   * `timeUpdateEventInterval` is set, which this app never does because the
-   * adapter polls instead. Listening for it left the resume position stuck at
+   * `timeUpdateEventInterval` is set, which the adapter never does because it
+   * polls instead. Listening for it left the resume position stuck at
    * zero while every test passed, because the tests emitted the event by hand.
    */
   getHealthyPosition: () => number = () => 0,
