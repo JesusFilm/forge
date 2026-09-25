@@ -1,4 +1,3 @@
-import type { ComponentProps } from "react"
 import { StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
@@ -13,8 +12,7 @@ import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 import { ChapterPill } from "./ChapterPill"
 import { ReaderGlassButton } from "./ReaderGlassButton"
-
-type IconName = ComponentProps<typeof Ionicons>["name"]
+import { ReaderDownloadGlyph } from "./sheets/ReaderDownloadGlyph"
 
 export type ReaderTopBarProps = {
   tokens: ReaderTokens
@@ -33,20 +31,6 @@ export type ReaderTopBarProps = {
   }
   onPressDownload: () => void
   onPressSettings: () => void
-}
-
-function downloadIcon(state: TranslationDownloadState | null): IconName {
-  switch (state?.kind) {
-    case "bundled":
-    case "downloaded":
-      return "cloud-done-outline"
-    case "downloading":
-      return "cloud-download"
-    case "failed":
-      return "alert-circle-outline"
-    default:
-      return "cloud-download-outline"
-  }
 }
 
 /** R8: back and the pill at the left; download and settings at the right. */
@@ -111,11 +95,7 @@ export function ReaderTopBar({
           onPress={onPressDownload}
           disabled={download.state === null}
         >
-          <Ionicons
-            name={downloadIcon(download.state)}
-            size={22}
-            color={tokens.icon}
-          />
+          <ReaderDownloadGlyph state={download.state} tokens={tokens} />
         </ReaderGlassButton>
         <ReaderGlassButton
           tokens={tokens}
