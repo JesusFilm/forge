@@ -111,8 +111,19 @@ state.
 On `@forge/manager`: `MANAGER_BASE_URL` (canonical origin; the Studio-style
 same-origin guard falls back to the request Host when this is unset),
 `MANAGER_API_KEY` (also the recovery endpoint bearer — see step 6),
-`WORKFLOW_API_KEY`, `MASTRA_BASE_URL`, `MASTRA_SERVICE_API_KEY`, and Mux
-credentials.
+`MASTRA_BASE_URL`, `MASTRA_SERVICE_API_KEY`, and Mux credentials.
+
+> **There is no `WORKFLOW_API_KEY`.** An earlier version of this runbook listed
+> one as required for durable Lab execution. The Workflow SDK
+> (<https://workflow-sdk.dev>) has no hosted tier and no API key — persistence
+> is a pluggable "World" (`WORKFLOW_TARGET_WORLD`), and Manager uses the local
+> default, as Smart Crop already does in production. The variable was declared
+> in Manager's env schema but read by nothing; it has been removed. Do not
+> re-add it.
+>
+> The consequence worth knowing: on the local World a workflow lives in the
+> process, so a Manager restart loses an in-flight run. That is precisely what
+> step 6 recovers.
 
 Production cloud launches additionally require Railway's
 `RAILWAY_GIT_COMMIT_SHA`, or an explicit `GIT_COMMIT_SHA`. A missing or
