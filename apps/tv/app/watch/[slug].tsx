@@ -504,6 +504,15 @@ export default function WatchVideoScreen() {
               }
               onOpenLanguage={() => setActivePanel("language")}
               onOpenSubtitles={() => setActivePanel("subtitle")}
+              onOpenFeedback={() =>
+                router.push({
+                  pathname: "/feedback",
+                  params: {
+                    screen: "details",
+                    filmTitle: displayTitle ?? "",
+                  },
+                })
+              }
               onRowFocus={GLIDE_ENABLED ? handleActionRowFocus : undefined}
               onRowBlur={GLIDE_ENABLED ? handleActionRowBlur : undefined}
             />

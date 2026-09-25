@@ -65,6 +65,9 @@ class NativeAndroidPlayerView(
   internal val onMenuChange by EventDispatcher<NativeMenuEvent>()
   internal val onFirstFrame by EventDispatcher<Unit>()
   internal val onRebuffer by EventDispatcher<Unit>()
+  internal val onFeedbackOpen by EventDispatcher<Unit>()
+  internal val onFeedbackClose by EventDispatcher<Unit>()
+  internal val onFeedbackRetry by EventDispatcher<Unit>()
 
   var sourceUrl: String? = null
   var storyboardUrl: String? = null
@@ -87,6 +90,12 @@ class NativeAndroidPlayerView(
   var questions: List<String> = emptyList()
   var upNextSlug: String? = null
   var upNextTitle: String? = null
+  var feedbackAvailable = false
+  var feedbackVisible = false
+  var feedbackRows: List<String> = emptyList()
+  var feedbackReference: String? = null
+  var feedbackLoading = false
+  var feedbackError = false
 
   private val handler = Handler(Looper.getMainLooper())
   private val assets = NativePlayerAssets()
@@ -121,6 +130,7 @@ class NativeAndroidPlayerView(
   private val exploreButton = NativeMenuButton(context, NativeMenuIcon.EXPLORE, "Explore")
   private val audioButton = NativeMenuButton(context, NativeMenuIcon.LANGUAGE, "Language")
   private val subtitleButton = NativeMenuButton(context, NativeMenuIcon.SUBTITLES, "Subtitles")
+  private val feedbackButton = NativeMenuButton(context, NativeMenuIcon.FEEDBACK, "Feedback")
   private val rewindButton = NativeTransportButton(context, NativeTransportKind.REWIND)
   private val playPauseButton = NativeTransportButton(context, NativeTransportKind.PLAY_PAUSE)
   private val forwardButton = NativeTransportButton(context, NativeTransportKind.FORWARD)
@@ -315,7 +325,7 @@ class NativeAndroidPlayerView(
 
     actionBar.orientation = LinearLayout.HORIZONTAL
     actionBar.gravity = Gravity.CENTER_VERTICAL or Gravity.END
-    listOf(startOverButton, exploreButton, audioButton, subtitleButton).forEach { button ->
+    listOf(startOverButton, exploreButton, audioButton, subtitleButton, feedbackButton).forEach { button ->
       actionBar.addView(
         button,
         LinearLayout.LayoutParams(
@@ -447,6 +457,16 @@ class NativeAndroidPlayerView(
     exploreButton.setOnClickListener { showExploreDialog() }
     audioButton.setOnClickListener { showAudioDialog() }
     subtitleButton.setOnClickListener { showSubtitleDialog() }
+    feedbackButton.setOnClickListener {
+      if (feedbackAvailable && currentDialog == null) {
+        cancelPreview(resume = false)
+        player.pause()
+        showControls(feedbackButton)
+        feedbackVisible = true
+        syncFeedbackDialog()
+        onFeedbackOpen(Unit)
+      }
+    }
     rewindButton.setOnClickListener { seekBy(-10_000) }
     playPauseButton.setOnClickListener { togglePlayback() }
     forwardButton.setOnClickListener { seekBy(10_000) }
@@ -459,6 +479,7 @@ class NativeAndroidPlayerView(
       exploreButton,
       audioButton,
       subtitleButton,
+      feedbackButton,
       rewindButton,
       playPauseButton,
       forwardButton,
@@ -688,6 +709,7 @@ class NativeAndroidPlayerView(
     exploreButton.visibility = if (menuActive) View.VISIBLE else View.GONE
     audioButton.visibility = if (menuActive) View.VISIBLE else View.GONE
     subtitleButton.visibility = if (menuActive) View.VISIBLE else View.GONE
+    feedbackButton.visibility = if (feedbackAvailable) View.VISIBLE else View.GONE
     exploreButton.setSubLabel("Scripture & scenes")
     audioButton.setSubLabel(
       audioOptions.firstOrNull { it.id == selectedAudioId }?.label ?: "—"
@@ -698,6 +720,7 @@ class NativeAndroidPlayerView(
     actionBar.visibility = View.VISIBLE
     applyPlaybackErrorState()
     updateFocusGraph()
+    syncFeedbackDialog()
     post { restoreNativeFocusIfNeeded() }
     (currentDialog as? NativeExploreDialog)?.updateContent(currentMomentText, moments, summaries, questions, exploreStatus)
     if (menuSection == "subtitles") updateSubtitleDialog()
@@ -746,6 +769,34 @@ class NativeAndroidPlayerView(
       player.duration.takeIf { it != C.TIME_UNSET && it > 0L } ?: 0L
     )
     showControls(if (controllerVisible) null else progressBar)
+  }
+
+  private fun syncFeedbackDialog() {
+    val existing = currentDialog as? NativeFeedbackQrDialog
+    if (!feedbackVisible) {
+      existing?.dismiss()
+      return
+    }
+    if (existing != null) {
+      existing.update(feedbackRows, feedbackReference, feedbackLoading, feedbackError)
+      return
+    }
+    if (currentDialog != null || released) return
+    val dialog = NativeFeedbackQrDialog(
+      context,
+      onRetry = { onFeedbackRetry(Unit) },
+      onClose = {
+        currentDialog = null
+        feedbackVisible = false
+        if (!released) {
+          onFeedbackClose(Unit)
+          showControls(playPauseButton)
+        }
+      },
+    )
+    currentDialog = dialog
+    dialog.show()
+    dialog.update(feedbackRows, feedbackReference, feedbackLoading, feedbackError)
   }
 
   override fun onPlaybackStateChanged(playbackState: Int) {
@@ -1065,6 +1116,7 @@ class NativeAndroidPlayerView(
       exploreButton,
       audioButton,
       subtitleButton,
+      feedbackButton,
       progressBar
     )
     controls.forEach { control ->
@@ -1089,7 +1141,7 @@ class NativeAndroidPlayerView(
       backButton.nextFocusDownId = backButton.id
       return
     }
-    val menuButtons = listOf(startOverButton, exploreButton, audioButton, subtitleButton)
+    val menuButtons = listOf(startOverButton, exploreButton, audioButton, subtitleButton, feedbackButton)
       .filter { it.visibility == View.VISIBLE }
 
     backButton.nextFocusLeftId = backButton.id

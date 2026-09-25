@@ -107,6 +107,19 @@ export function SettingsScreen() {
         />
       </View>
 
+      {process.env.EXPO_PUBLIC_TV_FEEDBACK_URL ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Help</Text>
+          <SettingsRow
+            testID="settings-send-feedback-row"
+            icon="chatbox-ellipses-outline"
+            label="Send feedback"
+            onPress={() => router.push("/feedback")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      ) : null}
+
       {Platform.OS === "android" ? (
         <View style={styles.section}>
           <Text style={styles.sectionHeading}>Video player</Text>

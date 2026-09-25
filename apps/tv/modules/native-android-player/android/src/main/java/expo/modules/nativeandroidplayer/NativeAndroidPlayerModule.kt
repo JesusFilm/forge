@@ -105,6 +105,9 @@ class NativeAndroidPlayerModule : Module() {
         "onError",
         "onAudioChange",
         "onSubtitleChange",
+        "onFeedbackOpen",
+        "onFeedbackClose",
+        "onFeedbackRetry",
         "onMenuChange",
         "onFirstFrame",
         "onRebuffer"
@@ -150,6 +153,12 @@ class NativeAndroidPlayerModule : Module() {
       Prop("questions") { view: NativeAndroidPlayerView, value: List<String> ->
         view.questions = value
       }
+      Prop("feedbackAvailable") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackAvailable = value ?: false }
+      Prop("feedbackVisible") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackVisible = value ?: false }
+      Prop("feedbackRows") { view: NativeAndroidPlayerView, value: List<String>? -> view.feedbackRows = value ?: emptyList() }
+      Prop("feedbackReference") { view: NativeAndroidPlayerView, value: String? -> view.feedbackReference = value }
+      Prop("feedbackLoading") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackLoading = value ?: false }
+      Prop("feedbackError") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackError = value ?: false }
       Prop("upNextSlug") { view: NativeAndroidPlayerView, value: String? ->
         view.upNextSlug = value
       }
