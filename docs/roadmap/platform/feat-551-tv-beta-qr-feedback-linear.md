@@ -24,7 +24,7 @@ to Linear, but its DOM element picker and phone-browser diagnostics do not
 describe a problem on another device.
 
 Planning is updated in
-`docs/plans/2026-09-24-tv-feedback-railway-redis-linear.md`. Implementation is in progress. The replacement service is deployed to Railway staging with Redis, TV-scoped Linear credentials, Play Integrity configuration, DeviceCheck configuration, and the owner's existing Turnstile widget. On 2026-09-25, staging health and public-form checks passed, and anonymous claim/session/upload requests were rejected. Earlier, the server Linear client created TV-1 and uploaded/attached a synthetic PNG and MP4; reference reconciliation found the same issue. Valid TV issuer proof, real Turnstile redemption/replay, phone media delivery, and physical-device acceptance remain open.
+`docs/plans/2026-09-24-tv-feedback-railway-redis-linear.md`. Implementation is in progress. The replacement service is deployed to Railway staging with Redis, TV-scoped Linear credentials, Play Integrity configuration, DeviceCheck configuration, and the owner's existing Turnstile widget. On 2026-09-25, staging health and public-form checks passed, and anonymous claim/session/upload requests were rejected. The physical Office Apple TV obtained a QR, and scanning it on an iPhone reached the photo form with a successful Turnstile claim. Earlier, the server Linear client created TV-1 and uploaded/attached a synthetic PNG and MP4; reference reconciliation found the same issue. Token replay, phone media delivery, and Play-installed Android TV acceptance remain open.
 
 ## Entry Points — Read These First
 

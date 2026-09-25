@@ -14,7 +14,7 @@ The replacement service is deployed to Railway staging at `https://web-staging-9
 
 The dedicated Linear key is configured in Railway staging and stored in the local macOS Keychain. The actual server client created [TV-1](https://linear.app/jesus-film-project/issue/TV-1), uploaded and attached a synthetic PNG and a two-second MP4, and found the same issue by its report reference. This verifies Linear permissions and delivery calls; phone-form and device-grant acceptance tests remain outstanding.
 
-The DeviceCheck-only Apple key, allowed Apple build 1, Play Integrity verifier, allowed Android version 2, and Turnstile widget keys are configured in staging. `FEEDBACK_GRANT_MODE=enforce` and `FEEDBACK_APPLE_DEVICECHECK_ENABLED=true` are set there for testing. Actual Apple TV and Play-installed Android TV verdicts remain unverified.
+The DeviceCheck-only Apple key, allowed Apple build 1, Play Integrity verifier, allowed Android version 2, and Turnstile widget keys are configured in staging. `FEEDBACK_GRANT_MODE=enforce`, `FEEDBACK_APPLE_DEVICECHECK_ENABLED=true`, and `FEEDBACK_APPLE_DEVICECHECK_ENV=production` are set there. Physical Apple TV build 1 obtained a QR; a Play-installed Android TV verdict remains unverified.
 
 ## Existing Turnstile widget — 2026-09-25
 
@@ -22,6 +22,6 @@ The owner chose to keep Turnstile and supplied public site key `0x4AAAAAAFCyqm5b
 
 ## Staging verification — 2026-09-25
 
-Railway deployment `d118b25f-9aa5-49ad-b6f6-68ccd3066c75` is `SUCCESS`; `/api/health` returns 200 and `/tv` returns 200. Anonymous claim and session requests return 403, and an anonymous upload reservation returns 401 before file data. The Turnstile widget rendered on the live form and enabled Start feedback after producing a browser token. The private secret passed Cloudflare's dummy-token validation, but a valid TV grant, real token redemption/replay, and media delivery from a phone have not yet been exercised end to end.
+Railway deployment `d118b25f-9aa5-49ad-b6f6-68ccd3066c75` is `SUCCESS`; `/api/health` returns 200 and `/tv` returns 200. Anonymous claim and session requests return 403, and an anonymous upload reservation returns 401 before file data. The Turnstile widget rendered on the live form and enabled Start feedback after producing a browser token. The private secret passed Cloudflare's dummy-token validation. A physical Office Apple TV running tvOS 26.6 displayed a QR with reference and expiry; its QR opened the form on an iPhone, and the user reached the photo step. Railway logged `POST /api/feedback/claim` with HTTP 200 at 2026-09-25T01:19:34Z. This verifies one real Apple TV issuer and Turnstile claim. Token replay, media delivery from the phone, and Android TV remain untested.
 
 This Railway service did not honor the nested `apps/tv-feedback/railway.toml` during CLI deployment. Staging uses `RAILPACK_BUILD_CMD=pnpm --filter @forge/tv-feedback build`, `RAILPACK_START_CMD=cd apps/tv-feedback && node_modules/.bin/next start -p ${PORT:-3210}`, `RAILPACK_DEPLOY_APT_PACKAGES=ffmpeg`, and `/api/live` as an alias for the existing service health check. Set an explicit service config path or retain these values before future deploys; do not assume the nested TOML was applied. Old worker, PostgreSQL, and bucket resources have not been removed.
