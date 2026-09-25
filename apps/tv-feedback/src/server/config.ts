@@ -19,6 +19,7 @@ const schema = z.object({
     .optional(),
   FEEDBACK_APPLE_DEVICECHECK_ENABLED: z.enum(["true", "false"]).optional(),
   TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
+  TURNSTILE_HOSTNAMES: z.string().min(1).optional(),
   FEEDBACK_LINEAR_API_KEY: z.string().min(1).optional(),
   FEEDBACK_LINEAR_TEAM_ID: z.string().min(1).optional(),
   FEEDBACK_LINEAR_PROJECT_ID: z.string().min(1).optional(),

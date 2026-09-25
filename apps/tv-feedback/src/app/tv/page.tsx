@@ -10,12 +10,14 @@ export default async function FeedbackPage({
 }) {
   const params = await searchParams
   const query = new URLSearchParams()
+  const grantRequired = grantMode() === "enforce"
   for (const [key, value] of Object.entries(params)) {
     if (typeof value === "string") query.set(key, value)
   }
   return (
-    <FeedbackGrantGate required={grantMode() === "enforce"}>
+    <FeedbackGrantGate required={grantRequired}>
       <PhotoFeedbackFlow
+        grantRequired={grantRequired}
         tvContext={readQrContext(query)}
         advancedHref={`/tv/advanced?${query.toString()}`}
       />

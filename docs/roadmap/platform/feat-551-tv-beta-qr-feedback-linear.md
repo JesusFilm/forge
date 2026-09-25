@@ -24,7 +24,7 @@ to Linear, but its DOM element picker and phone-browser diagnostics do not
 describe a problem on another device.
 
 Planning is updated in
-`docs/plans/2026-09-24-tv-feedback-railway-redis-linear.md`. Implementation is in progress. Redis is provisioned in Railway staging. The dedicated TV-scoped Linear key and DeviceCheck-only Apple key are configured there. On 2026-09-25, the server Linear client created TV-1 and uploaded/attached a synthetic PNG and MP4; reference reconciliation found the same issue. Turnstile, remaining enforcement configuration, deployment of the replacement service, Apple TV issuer verification, and phone/physical-device acceptance remain open.
+`docs/plans/2026-09-24-tv-feedback-railway-redis-linear.md`. Implementation is in progress. Redis is provisioned in Railway staging. The dedicated TV-scoped Linear key and DeviceCheck-only Apple key are configured there. On 2026-09-25, the server Linear client created TV-1 and uploaded/attached a synthetic PNG and MP4; reference reconciliation found the same issue. The owner chose to keep Turnstile and supplied the existing widget's site key; retrieving its private secret and completing hostname-bound staging validation remain open. Other enforcement configuration, deployment of the replacement service, Apple TV issuer verification, and phone/physical-device acceptance remain open.
 
 ## Entry Points — Read These First
 

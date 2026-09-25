@@ -9,6 +9,7 @@ declare global {
         element: HTMLElement,
         options: {
           sitekey: string
+          action: string
           callback: (token: string) => void
           "expired-callback": () => void
         },
@@ -34,6 +35,7 @@ export function TurnstileGate({
       if (window.turnstile && !widget)
         widget = window.turnstile.render(element, {
           sitekey,
+          action: "tv_feedback",
           callback: onToken,
           "expired-callback": () => onToken(""),
         })

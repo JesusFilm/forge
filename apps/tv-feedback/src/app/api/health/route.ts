@@ -17,7 +17,8 @@ export async function GET() {
       !env.FEEDBACK_LINEAR_TEAM_ID ||
       !env.FEEDBACK_LINEAR_PROJECT_ID ||
       !env.FEEDBACK_LINEAR_LABEL_ID ||
-      (process.env.NODE_ENV === "production" && !env.TURNSTILE_SECRET_KEY) ||
+      (process.env.NODE_ENV === "production" &&
+        (!env.TURNSTILE_SECRET_KEY || !env.TURNSTILE_HOSTNAMES)) ||
       (grantMode() === "enforce" &&
         (!env.FEEDBACK_PLAY_PACKAGE ||
           !env.FEEDBACK_PLAY_CERT_SHA256 ||

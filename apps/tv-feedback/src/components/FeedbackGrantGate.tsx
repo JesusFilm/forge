@@ -16,6 +16,7 @@ export function FeedbackGrantGate({
   const [secret, setSecret] = useState("")
   const [authorization, setAuthorization] = useState<Authorization | null>(null)
   const [token, setToken] = useState("")
+  const [challengeAttempt, setChallengeAttempt] = useState(0)
   const [checking, setChecking] = useState(required)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -80,6 +81,8 @@ export function FeedbackGrantGate({
       setAuthorization(result)
       setClock(Date.now())
     } catch {
+      setToken("")
+      setChallengeAttempt((value) => value + 1)
       setError(
         "This QR has expired or was already used. Return to the TV for a new code.",
       )
@@ -99,7 +102,7 @@ export function FeedbackGrantGate({
         </p>
         {secret ? (
           <>
-            <TurnstileGate onToken={onToken} />
+            <TurnstileGate key={challengeAttempt} onToken={onToken} />
             <button
               type="button"
               onClick={() => void start()}

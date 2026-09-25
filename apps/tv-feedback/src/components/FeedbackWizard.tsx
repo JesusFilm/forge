@@ -87,8 +87,10 @@ function collectPhoneContext() {
 
 export function FeedbackWizard({
   initialTvContext,
+  grantRequired = false,
 }: {
   initialTvContext: TvContext
+  grantRequired?: boolean
 }) {
   const [language, setLanguage] = useState<UiLanguage>("en")
   const [step, setStep] = useState(0)
@@ -114,7 +116,8 @@ export function FeedbackWizard({
   const videoInput = useRef<HTMLInputElement>(null)
   const cameraInput = useRef<HTMLInputElement>(null)
   const t = copy[language]
-  const useChallenge = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
+  const useChallenge =
+    !grantRequired && Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
   const onToken = useCallback((token: string) => setTurnstileToken(token), [])
 
   useEffect(() => {
@@ -626,7 +629,7 @@ export function FeedbackWizard({
               <p className="hint">{t.noFile}</p>
             )}
             <p className="notice">{t.uploadNotice}</p>
-            {media.length && !hasSession ? (
+            {media.length && !hasSession && !grantRequired ? (
               <TurnstileGate onToken={onToken} />
             ) : null}
           </>
@@ -839,7 +842,7 @@ export function FeedbackWizard({
               />
               {t.phoneConsent}
             </label>
-            <TurnstileGate onToken={onToken} />
+            {!grantRequired ? <TurnstileGate onToken={onToken} /> : null}
           </>
         ) : null}
         {error ? (

@@ -129,10 +129,12 @@ export function PhotoFeedbackFlow({
   tvContext,
   advancedHref,
   previewStage,
+  grantRequired = false,
 }: {
   tvContext: TvContext
   advancedHref: string
   previewStage?: PreviewStage
+  grantRequired?: boolean
 }) {
   const [language, setLanguage] = useState<Language>("en")
   const [step, setStep] = useState(0)
@@ -153,7 +155,8 @@ export function PhotoFeedbackFlow({
   const submissionKey = useRef(createClientId())
   const t = words[language]
   const version = versions[versionIndex]
-  const challenge = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
+  const challenge =
+    !grantRequired && Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
   const preview = previewStage !== undefined
   const onToken = useCallback((value: string) => setToken(value), [])
 
@@ -599,7 +602,7 @@ export function PhotoFeedbackFlow({
                 placeholder={t.placeholder}
               />
               <p className="photo-privacy">{t.privacy}</p>
-              <TurnstileGate onToken={onToken} />
+              {!grantRequired ? <TurnstileGate onToken={onToken} /> : null}
               <button
                 type="button"
                 className="photo-primary"

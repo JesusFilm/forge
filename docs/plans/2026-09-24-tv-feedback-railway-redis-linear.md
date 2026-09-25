@@ -4,6 +4,8 @@ Status: plan approved in principle; implementation and deployment pending. Super
 
 ## Decisions
 
+- **2026-09-25 owner decision: keep Cloudflare Turnstile.** Use the already-created widget with site key `0x4AAAAAAFCyqm5bfnxjLhKf`. Verify the token on the server at phone claim with action `tv_feedback` and an exact deployment hostname. Store the private secret in Railway; a claimed session does not require a second challenge during submission.
+
 - Source: `apps/tv-feedback` (`@forge/tv-feedback`) in JesusFilm/forge. `apps/tv/app/feedback.tsx` remains the TV QR screen. No cross-imports between apps.
 - Host one web service named `watch-tv-feedback` and one Redis service in a Railway staging environment. Use the Railway HTTPS domain for the QR and API. No custom domain, PostgreSQL, private bucket, or separate delivery worker.
 - Deliver reports and final annotated photos/videos to Linear only: Jesus Film Project workspace, TV (`TV`) subteam of Forge, [TV Beta Feedback](https://linear.app/jesus-film-project/project/tv-beta-feedback-0b56740fdc10/overview) project, and the team issue label `TV Beta Feedback`. Use a dedicated key restricted to the TV team with Read, Create issues, and Write permissions. Live verification on 2026-09-25 confirmed `fileUpload` requires Write, which also permits editing TV-team data. The existing `JFP Linear` key is read-only and cannot serve this app.
@@ -32,7 +34,7 @@ Status: plan approved in principle; implementation and deployment pending. Super
 ## Code and deployment work
 
 1. Replace `apps/tv-feedback/src/server/{db,storage,repository,uploads,session,tvGrant}.ts`, route SQL transactions, migrations, and worker calls with Redis-backed state and direct Linear delivery. Remove PostgreSQL/S3/worker dependencies, environment variables, Railway worker config, and health gates after the replacement passes behavior tests. Keep existing form/annotation UI.
-2. Update `apps/tv-feedback/railway.toml` for monorepo-root build, `@forge/tv-feedback`, Railway `PORT`, and `/api/health`. Configure Redis URL, Linear destination/key, session secret, Turnstile, Play Integrity verification, allowed Android versions, and Apple issuer settings as server-only Railway variables. Avoid secrets in `.env.example`, QR URLs, logs, and TV bundles.
+2. Update `apps/tv-feedback/railway.toml` for monorepo-root build, `@forge/tv-feedback`, Railway `PORT`, and `/api/health`. Configure Redis URL, Linear destination/key, session secret, Turnstile secret and deployment hostname, Play Integrity verification, allowed Android versions, and Apple issuer settings as server-only Railway variables. Avoid secrets in `.env.example`, QR URLs, logs, and TV bundles.
 3. Keep `apps/tv/.env.example` limited to public project number and HTTPS feedback URL. Add native tvOS issuer only after device feasibility is known. Maintain TV remote focus and player behavior.
 4. Use the repo roadmap/process: `docs/roadmap/platform/feat-551-tv-beta-qr-feedback-linear.md` replaces the colliding local feat-533 ID (main already uses 533). Keep this work scoped to one feedback PR, run format/typecheck/lint/build plus relevant browser/device checks, and deploy through the normal PR-to-main flow. Staging can be configured before production release.
 5. Create the dedicated Linear API key and verify it can create one TV-team issue and upload/attach both a marked photo and a bounded video. Record exact team/project/label IDs as protected Railway variables; do not use the existing read-only `JFP Linear` key.
