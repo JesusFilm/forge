@@ -543,7 +543,12 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   request can carry a `progressHold` (`{ id, durationMs }`, feat-552 KTD12).
   Only the watch page sets it, and only when it takes a "Keep watching"
   intent (`src/lib/explore/watchIntent.ts`); a page with no intent publishes
-  none.
+  none. While the hold is set, the page shows the R17 offer
+  (`src/components/watch/KeepWatchingOffer.tsx`). A choice seeks through
+  `seekPlayback` in `src/lib/playbackInterruption.ts` and ends the hold at
+  once. The offer's auto-hide clock starts at the host's play flag
+  (`usePlaybackPlaying`) and waits while a screen reader is on; the hold keeps
+  its own deadline.
   While it holds, `recorder.ts` writes nothing — no sample and no forced
   flush, the dismiss and unmount flushes included. Its clock starts at the
   first frame and runs for `durationMs`; after that, writes resume even while
@@ -648,8 +653,8 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
   context issuance, waits the window once instead of spending an attempt; a
   limited evidence send retries once after the window, never 100 ms later; a
   limited facts batch pauses the drain for the window without spending a
-  delivery attempt, at most three times per episode, then drops the batch and
-  keeps the episode open; a limited bootstrap is a cooldown
+  delivery attempt, at most three times per watch-page episode (once per
+  Explore clip episode), then drops the batch and keeps the episode open; a limited bootstrap is a cooldown
   (`bootstrap_rate_limited`), not a failed bearer.
   The bucket is 30 mutations per minute per `x-viewer-id`, shared by every
   recommendation mutation the launch sends.
@@ -700,6 +705,13 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
   reported and the recorder's claim attempt decides. `useUserRecommendations`
   serves no items, evidence or selection while `enabled` is false, and a
   selection stays single-flight across a profile refresh.
+- **Explore clips use a separate clip-mode recorder** from
+  `src/lib/explore/clipEvidence.ts` (feat-552 KTD9). A clip episode starts
+  after 3 s of unbroken play and never sooner than 10 s after the previous
+  one started. It counts toward a cap of 12 per session, stored under
+  `explore-clip-evidence` as a SHA-256 digest of the session token, never
+  the token. It claims as `direct` with an `automatic` attempt, takes no Home
+  nonce or discovery mark, and never writes watch progress.
 - **Playback attribution runs for every playback the root host owns.**
   `useManagedVideoPlayer` creates one `playbackRecorder.ts` per Admin video id
   when `ownsSession` is set (the SDUI routes never get one) and keeps it across
@@ -911,7 +923,10 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   download (`isOfflineContainerSwap`) and a dub pick (`isDubSwap`, both in
   `src/lib/playerSource.ts`) each capture the live clock and arm the
   `sourceLoad` resume latch that quality swaps use, so the seek lands before
-  any play. The two differ in what they tell the adapter: a download is
+  any play. A `seekPlayback` call during a swap that is still loading moves
+  the latch's saved position in place, so the swap lands on the seek;
+  replacing the latch object would stop the swap's timeout from releasing
+  it. The two differ in what they tell the adapter: a download is
   `"same-content"` and keeps its QoE session, a dub is `"new-content"` and
   re-keys it, because the audio asset changed. A different VIDEO takes
   neither claim and starts from its own beginning. Before this, a dub change
@@ -919,7 +934,10 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   **A download is one dub.** `resolvePlayerSource` plays the file on disk only
   while the settled dub is the downloaded one (or unknown, or has no stream);
   a pick of another language streams that dub, and subtitles follow the
-  source that plays (`playingOffline` in `app/watch/[slug].tsx`). A container
+  source that plays (`playingOffline` in `app/watch/[slug].tsx`). A page
+  with a "Keep watching" intent names its dub before the dub settles, so it
+  passes `awaitsNamedDub` and the file waits until the dub settles; the
+  clip's seed stream plays until then. A container
   swap that also changes language is `"new-content"` to the adapter. Read the
   file and its dub through ONE accessor, `committedCopyFor` in
   `DownloadsProvider`: mid-swap the file on disk is the OLD copy while the
@@ -1069,8 +1087,9 @@ the KTD, R and AE numbers the source comments cite.
   listener.
 - **The injected log sink must stay named `telemetry`, and every context must
   stay an inline object literal.** `datadogReservedAttributes.guard.test.js`
-  sweeps for Datadog's reserved attribute names, and it reads only sinks
-  spelled `datadogLog`, `DdLogs` or `telemetry`. It follows an INLINE literal
+  sweeps for Datadog's reserved attribute names. It reads only the log sinks
+  spelled `datadogLog`, `DdLogs` or `telemetry`, and the RUM action contexts
+  sent through `reportDatadogAction` (feat-552 KTD17). It follows an INLINE literal
   only; a context hoisted into a variable is a documented blind spot. So a
   rename to `log`, or a hoisted context, takes every emit site out of the sweep
   with the whole suite still green. Datadog then drops a reserved name on
