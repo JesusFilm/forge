@@ -57,16 +57,37 @@ secrets, memberships or reports. `/v1` keeps its bearer path.
 - No admin GraphQL schema or `rag-contracts` HTTP contract changed; GraphQL
   generation and contract drift checks were not applicable.
 
-## Operator verification still required
+## Production operator update — 25 September 2026
 
-A real nonproduction OAuth client, exact HTTPS callback host, permission-bearing
-GitHub tokens, restricted session role, nonproduction Railway target and browser
-are not available in this PR environment. Follow
-`apps/rag/portal/README.md`: real login and denial, restart persistence,
-merged-revision addition/removal propagation, GitHub outage, cookie behavior and
-redacted browser/Railway log review remain unverified. Do not activate the
-feature until those checks pass. No production OAuth app, Railway setting,
-repository setting, credential or production data was changed.
+This section records subsequent operator setup; the implementation PR itself
+did not change production settings. The portal was enabled on the Forge RAG
+Railway production service after [#2416](https://github.com/JesusFilm/forge/pull/2416)
+merged. The OAuth app uses the service's HTTPS origin and exact `/portal/callback`
+URL. The six portal service settings were configured; the GitHub client secret,
+runtime token and restricted portal-session database URL came from Doppler.
+The separate allowlist CI token was installed as a GitHub Actions secret. The
+two fine-grained GitHub tokens were approved and checked against their required
+endpoints before [#2423](https://github.com/JesusFilm/forge/pull/2423) added
+the first allowlist entry through a passing PR. The portal database role's
+session permissions and denial of corpus/consumer-registry reads were checked.
+
+The configuration deploy succeeded. Public checks showed `/v1/health` healthy,
+`/portal` denying an unauthenticated request, and `/portal/login` redirecting
+to GitHub with the configured callback. In a real browser, the allowlisted
+account signed in and received its expected login and GitHub ID at `/portal`.
+Sign-out returned `signedOut: true`, and the following `/portal` request was
+unauthorized. A different, unlisted account completed the OAuth flow and
+received `admission_denied`. Redacted deploy logs showed no error indicator
+at the time of setup. No credential values or session contents are recorded here.
+
+**Still unverified operationally:** session persistence across a Railway
+restart; allowlist removal and next-action denial after merge; forced GitHub
+API outage/stale-publication behavior; state replay and cookie inspection in a
+live browser; and a complete redacted browser/network/log leakage review.
+Automated tests cover several of these conditions but do not substitute for
+those production observations. The earlier browser DNS resolution failure
+cleared before the unlisted-account OAuth check and did not return a portal
+HTTP response.
 
 ## Limits
 
@@ -74,7 +95,6 @@ The GitHub API can prove the response SHA and HTTP freshness at the time of a
 request; it cannot provide an independent guarantee against an internally stale
 GitHub replica. The service fails closed on missing, old or unavailable
 responses. The path-specific CI check depends on a review token with private
-Forge collaborator-permission visibility before a nonempty allowlist PR can
-pass. The new session schema needs an operator-provisioned least-privilege role
-before the portal is enabled. This is an admission proof only; the broader
-consumer lifecycle remains in progress.
+Forge collaborator-permission visibility; that token and the least-privilege
+session role were provisioned for the first nonempty allowlist PR. This is an
+admission proof only; the broader consumer lifecycle remains in progress.

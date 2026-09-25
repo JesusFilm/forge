@@ -13,8 +13,8 @@ account ID). Example:
 Logins are normalized to lowercase; case-insensitive duplicate logins and
 repeated IDs are invalid. A rename requires a reviewed edit retaining the same
 numeric ID. A reassigned handle never inherits access because the ID must also
-match. The initial list is empty until an engineer's identity and Forge write
-permission can be verified through a PR.
+match. The first approved entry was merged in
+[#2423](https://github.com/JesusFilm/forge/pull/2423) after eligibility CI passed.
 
 The path-specific `rag-portal-allowlist` CI workflow emits a receipt with the
 candidate commit SHA, normalized entries, predicate names and each check's
@@ -39,34 +39,30 @@ The portal currently exposes only login, a protected identity proof at
 `GET /portal`, and sign-out; it cannot create consumers, issue keys, manage
 members or read usage.
 
-## Nonproduction operator setup and verification
+## Operator setup and verification
 
-These checks **have not passed in CI** and require Jaco/operator setup:
+The six `RAG_PORTAL_*` service variables were configured on the Forge RAG
+Railway production service after [#2416](https://github.com/JesusFilm/forge/pull/2416)
+merged. The OAuth app uses that service's HTTPS origin and exact
+`<origin>/portal/callback`. The server-only GitHub token, OAuth client secret
+and restricted portal-session database URL were sourced from Doppler; the
+separate CI review token is a GitHub Actions secret. Keep these values out of
+the browser, logs and repository. The session role has only `USAGE` on
+`portal_private` and `SELECT`, `INSERT`, `DELETE` on `oauth_states` and
+`sessions`; its corpus and `consumer_private` reads were denied in the
+operator permission check.
 
-1. Register a nonproduction GitHub OAuth client with the exact HTTPS callback
-   `<origin>/portal/callback`. Set `RAG_PORTAL_CLIENT_ID`,
-   `RAG_PORTAL_CLIENT_SECRET`, `RAG_PORTAL_CALLBACK_URL`, and
-   `RAG_PORTAL_ORIGIN` on the nonproduction Railway target. No production OAuth
-   client or Railway setting is part of this change.
-2. Provision a separate `portal_private` Postgres role with only `USAGE` on
-   that schema and `SELECT`, `INSERT`, `DELETE` on `oauth_states` and
-   `sessions`. Set its URL as `RAG_PORTAL_DATABASE_URL`. Apply the migration
-   first. Verify sessions survive a service restart and that the role cannot
-   read corpus or `consumer_private` data. Do not reuse the corpus writer or
-   registry owner credential.
-3. Set `RAG_PORTAL_GITHUB_TOKEN` to a server-only token able to read private
-   Forge contents and collaborator permissions. Set the CI review token
-   separately. Do not expose either to the browser.
-4. In a browser, verify real allowlisted login and unlisted denial, exact
-   callback host, secure HttpOnly SameSite cookies, state replay and sign-out.
-   Merge an allowlist addition and removal in a nonproduction test flow;
-   verify publication at the merged SHA, premerge denial and next-action
-   removal. Check behavior through a restart and GitHub API outage.
-5. Inspect redacted Railway logs and browser storage/network traffic for
-   OAuth codes, provider tokens and session values. Confirm none appear in
-   responses, logs, telemetry, repository files or browser persistence beyond
-   protected HttpOnly cookies.
+The allowlisted login, protected identity response, sign-out, next-request
+unauthorized response and unlisted-account denial were observed in a real
+browser on 25 September 2026. The
+[feat-527 admission evidence](../../../docs/roadmap/rag/evidence/feat-527/portal-admission-slice.md)
+records completed checks and remaining operational checks without secret values.
+Still check session persistence across restart, merged allowlist removal and
+next-action denial, forced GitHub outage/stale-publication behavior, live
+state-replay and cookie properties, and redacted browser/network/log leakage.
+Use a reviewed PR for allowlist changes.
 
 The portal feature is disabled when all six `RAG_PORTAL_*` service variables
-are absent. Partial configuration fails service startup. These setup steps
-must be finished and reviewed before enabling it on any Railway service.
+are absent. Partial configuration fails service startup. Production now has
+all six variables, so the admission portal is enabled. It still cannot create
+consumers or issue credentials; that backend work remains in feat-527.
