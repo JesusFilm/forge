@@ -31,8 +31,9 @@ sources, playlist sequence, mux inserts) until feat-160 moves curation into
 admin; `fallbackConfig.ts` is a FROZEN emergency body fallback (null / fetch
 error / zero renderable shelves) — do NOT mirror web there. `useWatchHome`
 fetches the Experience and the lean `watchHomeVideos` payload in parallel
-(**never select `dubs` in the bulk fragment; jest guards enforce it on both the
-videos fetch and the `watchSetting` path**), then top-up-fetches the divergent
+(**never select `dubs` in the bulk fragment; jest guards enforce it on the
+videos fetch, the `watchSetting` path, and Explore's `ExploreClipCandidates`
+hydration, which uses the same `watchHomeVideos` root field**), then top-up-fetches the divergent
 Experience coreIds the config pool doesn't cover (`topUpFetch.ts`, chunked, 3s
 deadline, last-good reuse on failure) and assembles the model via
 `assembleWatchHomeModel` — the config model (client-owned hero) is built from the
@@ -1023,7 +1024,10 @@ with the same three release paths and the same `AUTOSTART_VEIL_TIMEOUT_MS`.
 Its timer runs only while a load can run: it waits for the pager's rest, and
 it does not run while the clip yields to the root player (feat-552 KTD10).
 The veil, the spinner, the poster and the still all read its one
-`veilVisible` predicate.
+`veilVisible` predicate. The poster is the clip's authored image, else admin's
+pre-generated hero poster (`muxHeroPosterFromPlaybackId`, byte for byte with
+`WATCH_HERO_POSTER_RECIPE`). The one-player still is `muxClipStillUrl`: 540x960
+smartcrop at the clip start.
 
 The gate's release paths are the whole point, and there are three: playback
 started, the source errored, or `AUTOSTART_VEIL_TIMEOUT_MS` elapsed. The third
