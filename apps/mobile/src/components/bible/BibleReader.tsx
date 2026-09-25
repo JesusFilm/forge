@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
 } from "react"
 import {
+  BackHandler,
   Platform,
   StyleSheet,
   Text,
@@ -72,6 +73,15 @@ import {
   useReaderChapter,
   type ReaderChapterState,
 } from "../../lib/bible/reader/useReaderChapter"
+import {
+  isStopSelected,
+  selectedVerseStops,
+  selectionChapterKey,
+  selectionReference,
+  tapStop,
+  type VerseSelection,
+} from "../../lib/bible/selection/selection"
+import { shareText } from "../../lib/bible/selection/shareText"
 import { readerTextSize } from "../../lib/bible/settings/snapshot"
 import { useReaderSettings } from "../../lib/bible/settings/store"
 import { bookByUsfm } from "../../lib/bible/text/books"
@@ -89,8 +99,10 @@ import { ReaderGestures } from "./ReaderGestures"
 import { ReaderLoading } from "./ReaderLoading"
 import { ReaderMessage, type ReaderMessageAction } from "./ReaderMessage"
 import { ReaderTopBar } from "./ReaderTopBar"
+import { SelectionBar } from "./SelectionBar"
 import { SwipeDemo } from "./SwipeDemo"
 import { SwipeHint } from "./SwipeHint"
+import { VerseScrubber } from "./VerseScrubber"
 import {
   VerseView,
   type VerseAccessibilityMove,
@@ -222,19 +234,62 @@ export function BibleReader(props: BibleReaderProps) {
     Math.min(width - 2 * VERSE_SIDE_MARGIN, VERSE_MAX_WIDTH),
   )
   // R6: on iOS the pushed reader leaves the left strip to the back swipe.
+  const edgeGuardWidth =
+    props.host === "pushed" && Platform.OS === "ios" ? BACK_SWIPE_EDGE_WIDTH : 0
   const zones = readerTouchZones({
     layout,
     safeAreaTop: insets.top,
     bottomInset,
     containerHeight: height,
-    edgeGuardWidth:
-      props.host === "pushed" && Platform.OS === "ios"
-        ? BACK_SWIPE_EDGE_WIDTH
-        : 0,
+    edgeGuardWidth,
   })
 
-  const model = useReaderModel(chapter.state)
+  // The shown chapter. A scrub and a selection each belong to one chapter of
+  // one translation (R19, R42), so a new key ends both.
+  const chapterKey =
+    "shown" in chapter.state
+      ? selectionChapterKey({
+          translationId: chapter.state.shown.translation.id,
+          book: chapter.state.translationRef.book,
+          chapter: chapter.state.translationRef.chapter,
+        })
+      : null
+  const [scrub, setScrub] = useState<{
+    chapterKey: string
+    verse: number
+  } | null>(null)
+  const model = useReaderModel(
+    chapter.state,
+    scrub && scrub.chapterKey === chapterKey ? scrub.verse : null,
+  )
   const place = movePlace(chapter.state, model)
+
+  const [selection, setSelection] = useState<VerseSelection | null>(null)
+  useEffect(() => {
+    // R14, R19: a move into another chapter or a new translation clears it.
+    if (selection && chapterKey && selection.chapterKey !== chapterKey) {
+      setSelection(null)
+    }
+  }, [selection, chapterKey])
+  const activeSelection =
+    selection?.chapterKey === chapterKey &&
+    selectedVerseStops(selection, model.stops).length > 0
+      ? selection
+      : null
+  const selecting = activeSelection !== null && focused
+  useEffect(() => {
+    if (!selecting) return
+    // R19: Android back clears the selection; the next back pops the screen.
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        setSelection(null)
+        return true
+      },
+    )
+    return () => subscription.remove()
+  }, [selecting])
+
   const movement = useReaderMovement({
     place,
     goTo: chapter.goTo,
@@ -329,6 +384,58 @@ export function BibleReader(props: BibleReaderProps) {
       : undefined
   const aboveFooter = bottomInset + readerFooterHeight(layout)
 
+  const onPressVerse = () => {
+    const index = model.stopIndex
+    if (!chapterKey || index === null) return
+    setSelection((previous) =>
+      tapStop(previous, model.stops, index, chapterKey),
+    )
+  }
+  const stopLabelAt = (verse: number) => {
+    const stop = model.stops[stopIndexForVerse(model.stops, verse)]
+    return stop ? verseRangeLabel(stop) : `${verse}`
+  }
+  const onScrubPreview = (verse: number) => {
+    if (chapterKey) setScrub({ chapterKey, verse })
+  }
+  // R18: the verse follows the thumb, but only the release saves a move.
+  const onScrubEnd = (verse: number | null) => {
+    setScrub(null)
+    const from = model.translationRef
+    if (verse === null || !place || !from) return
+    const stops = model.stops
+    const target = stops[stopIndexForVerse(stops, verse)]
+    if (!target || target === stops[stopIndexForVerse(stops, from.verse)]) {
+      return
+    }
+    chapter.goTo(
+      {
+        book: place.book,
+        chapter: place.chapter,
+        verse: stopRange(target).first,
+      },
+      place.translationId,
+    )
+  }
+  const readyText = chapter.state.status === "ready" ? chapter.state.text : null
+  const selectionShare =
+    activeSelection && readyText && shownTranslation
+      ? {
+          reference: selectionReference(
+            readyText.bookName,
+            readyText.chapter.number,
+            activeSelection,
+          ),
+          text: shareText({
+            bookName: readyText.bookName,
+            chapter: readyText.chapter.number,
+            shortName: shownTranslation.shortName,
+            stops: model.stops,
+            selection: activeSelection,
+          }),
+        }
+      : null
+
   return (
     <View
       testID="bible-reader"
@@ -387,6 +494,11 @@ export function BibleReader(props: BibleReaderProps) {
             onSwitch={chapter.switchToOnDevice}
             accessibilityMove={accessibilityMove}
             onScrollEdges={onScrollEdges}
+            onPressVerse={onPressVerse}
+            selected={
+              model.stopIndex !== null &&
+              isStopSelected(activeSelection, model.stops, model.stopIndex)
+            }
           />
         </View>
       </ReaderGestures>
@@ -435,16 +547,40 @@ export function BibleReader(props: BibleReaderProps) {
           </Text>
         </View>
       )}
-      <ReaderFooter
-        tokens={tokens}
-        layout={layout}
-        bottomInset={bottomInset}
-        heading={model.heading}
-        counter={model.counter}
-        progress={model.progress}
-        translation={shown ? translationLabel(shown, viewerTranslation) : null}
-        onPressTranslation={() => props.onOpenTranslationPicker(context)}
-      />
+      {/* R19: the bar takes the footer's place at the footer's height. */}
+      {selectionShare ? (
+        <SelectionBar
+          tokens={tokens}
+          layout={layout}
+          bottomInset={bottomInset}
+          reference={selectionShare.reference}
+          text={selectionShare.text}
+          onClear={() => setSelection(null)}
+        />
+      ) : (
+        <ReaderFooter
+          tokens={tokens}
+          layout={layout}
+          bottomInset={bottomInset}
+          heading={model.heading}
+          counter={model.counter}
+          scrubber={
+            <VerseScrubber
+              tokens={tokens}
+              lastVerse={model.total}
+              progress={model.progress}
+              labelFor={stopLabelAt}
+              onPreview={onScrubPreview}
+              onEnd={onScrubEnd}
+              edgeGuardWidth={edgeGuardWidth}
+            />
+          }
+          translation={
+            shown ? translationLabel(shown, viewerTranslation) : null
+          }
+          onPressTranslation={() => props.onOpenTranslationPicker(context)}
+        />
+      )}
       {showDemo && (
         <SwipeDemo tokens={tokens} onDone={onboardingStore.markDemoPlayed} />
       )}
@@ -470,8 +606,12 @@ export type ReaderModel = {
 
 const NO_STOPS: readonly ChapterPosition[] = []
 
-/** The labels for the current stop, in the shown translation's numbers. */
-function useReaderModel(state: ReaderChapterState): ReaderModel {
+/** The labels for the current stop, in the shown translation's numbers. A
+ *  scrub's verse (U9) shows in place of the saved one until the release. */
+function useReaderModel(
+  state: ReaderChapterState,
+  scrubVerse: number | null,
+): ReaderModel {
   const text = state.status === "ready" ? state.text : null
   const positions = useMemo(
     () => (text ? chapterPositions(text.chapter) : NO_STOPS),
@@ -508,7 +648,10 @@ function useReaderModel(state: ReaderChapterState): ReaderModel {
     }
   }
   const { bookName, chapter } = text
-  const stopIndex = stopIndexForVerse(positions, translationRef.verse)
+  const stopIndex = stopIndexForVerse(
+    positions,
+    scrubVerse ?? translationRef.verse,
+  )
   const stop = positions[stopIndex] ?? null
   return {
     ref,
@@ -562,6 +705,8 @@ type VerseAreaProps = {
   onSwitch: () => void
   accessibilityMove: VerseAccessibilityMove | undefined
   onScrollEdges: (edges: ScrollEdges | null) => void
+  onPressVerse: () => void
+  selected: boolean
 }
 
 function VerseArea({
@@ -576,6 +721,8 @@ function VerseArea({
   onSwitch,
   accessibilityMove,
   onScrollEdges,
+  onPressVerse,
+  selected,
 }: VerseAreaProps) {
   const retry: ReaderMessageAction = {
     label: READER_COPY.failure.retry,
@@ -633,6 +780,8 @@ function VerseArea({
           columnWidth={columnWidth}
           accessibilityMove={accessibilityMove}
           onScrollEdges={onScrollEdges}
+          onPress={model.stop.kind === "verse" ? onPressVerse : undefined}
+          selected={selected}
         />
       ) : null
   }

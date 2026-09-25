@@ -3,6 +3,8 @@
 import {
   READER_CHROME_HEIGHTS,
   READER_FOOTER_ROWS,
+  READER_SCRUBBER_BAND,
+  READER_SCRUBBER_TRACK_CENTER,
   READER_TOP_BAR_HEIGHT,
   READER_TOUCH_TARGET,
   readerBottomInset,
@@ -36,6 +38,20 @@ describe("reader chrome heights", () => {
 
   it("keeps the translation label row a full touch target (R36)", () => {
     expect(READER_FOOTER_ROWS.translation).toBe(READER_TOUCH_TARGET)
+  })
+
+  it("gives the scrubber a full touch target above the translation row (U9, R36)", () => {
+    // The band runs from the footer's top edge to the progress row's bottom,
+    // so the thumb's target never covers the translation label.
+    expect(READER_SCRUBBER_BAND).toBe(
+      READER_FOOTER_ROWS.paddingTop +
+        READER_FOOTER_ROWS.heading +
+        READER_FOOTER_ROWS.progress,
+    )
+    expect(READER_SCRUBBER_BAND).toBeGreaterThanOrEqual(READER_TOUCH_TARGET)
+    expect(READER_SCRUBBER_TRACK_CENTER).toBe(
+      READER_SCRUBBER_BAND - READER_FOOTER_ROWS.progress / 2,
+    )
   })
 })
 

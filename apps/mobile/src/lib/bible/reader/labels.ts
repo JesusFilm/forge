@@ -54,6 +54,12 @@ export function chapterProgress(
   return Math.min(Math.max(stopRange(stop).last / lastVerse, 0), 1)
 }
 
+/** R18: the verse number at a point on the bar; `chapterProgress` reversed. */
+export function verseAtProgress(fraction: number, lastVerse: number): number {
+  if (lastVerse < 1 || !Number.isFinite(fraction)) return 1
+  return Math.min(Math.max(Math.round(fraction * lastVerse), 1), lastVerse)
+}
+
 export function chapterLabel(bookName: string, chapter: number): string {
   return `${bookName} ${chapter}`
 }

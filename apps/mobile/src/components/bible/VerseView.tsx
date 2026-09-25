@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react"
 import {
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -73,6 +74,10 @@ export type VerseViewProps = {
   accessibilityMove?: VerseAccessibilityMove
   /** KTD13: a long verse reports its scroll edges; null when it fits. */
   onScrollEdges?: (edges: ScrollEdges | null) => void
+  /** R19: a tap on a verse selects it. The gap note takes no tap. */
+  onPress?: () => void
+  /** R19: the verse is in the selection. */
+  selected?: boolean
 }
 
 const VERSE_ACTIONS: { name: VerseAction; label: string }[] = [
@@ -163,6 +168,8 @@ function FittedVerse({
   columnWidth,
   accessibilityMove,
   onScrollEdges,
+  onPress,
+  selected = false,
 }: VerseViewProps & { verse: Verse }) {
   const { chosenSize, osFontScale } = appearance
   const plainText = verse.lines.map((line) => line.text).join(" ")
@@ -237,8 +244,10 @@ function FittedVerse({
       verseNumbers={appearance.verseNumbers}
       textDirection={textDirection}
       tokens={tokens}
+      selected={selected}
     />
   )
+  const selection = { onPress, selected }
   const shownSize =
     fit?.size ?? fitCandidates(chosenSize, osFontScale)[0] ?? chosenSize
   const { first, last } = stopRange(stop)
@@ -282,6 +291,7 @@ function FittedVerse({
             accessibilityMove={accessibilityMove}
             visible
             width={columnWidth}
+            {...selection}
           >
             {body(fit.size)}
           </VerseColumn>
@@ -292,6 +302,7 @@ function FittedVerse({
           accessibilityMove={accessibilityMove}
           visible={fit !== null}
           width={columnWidth}
+          {...selection}
         >
           {body(shownSize)}
         </VerseColumn>
@@ -306,29 +317,41 @@ type VerseColumnProps = {
   /** Hidden until the fit settles, so the verse never flickers through sizes. */
   visible: boolean
   width: number
+  onPress?: () => void
+  selected: boolean
   children: ReactNode
 }
 
+// A tap reaches the verse: the swipe layer claims a touch only after it moves
+// (KTD13). A screen reader's double-tap presses the verse too.
 function VerseColumn({
   accessibilityLabel,
   accessibilityMove,
   visible,
   width,
+  onPress,
+  selected,
   children,
 }: VerseColumnProps) {
   const style: StyleProp<ViewStyle> = { width, opacity: visible ? 1 : 0 }
+  const hint = selected
+    ? READER_COPY.selection.removeHint
+    : READER_COPY.selection.selectHint
   return (
-    <View
+    <Pressable
       testID="bible-verse"
       style={style}
+      onPress={visible ? onPress : undefined}
       accessible={visible}
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={onPress ? hint : undefined}
+      accessibilityState={onPress ? { selected } : undefined}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? "auto" : "no-hide-descendants"}
       {...adjustableProps(accessibilityMove)}
     >
       {children}
-    </View>
+    </Pressable>
   )
 }
 
@@ -341,6 +364,7 @@ type VerseBodyProps = {
   verseNumbers: boolean
   textDirection: TextDirection
   tokens: ReaderTokens
+  selected: boolean
 }
 
 /** One Text per line, so each poetry line breaks where the source breaks. */
@@ -353,6 +377,7 @@ function VerseBody({
   verseNumbers,
   textDirection,
   tokens,
+  selected,
 }: VerseBodyProps) {
   const lineStyle: TextStyle = {
     fontSize: size,
@@ -362,6 +387,8 @@ function VerseBody({
     // R32: right-to-left text aligns right; left-to-right text is centered.
     textAlign: textDirection === "rtl" ? "right" : "center",
     writingDirection: textDirection,
+    // R19, after Still: an underline marks a selected verse.
+    ...(selected ? { textDecorationLine: "underline" as const } : null),
   }
   return (
     <>
@@ -378,6 +405,7 @@ function VerseBody({
               style={{
                 fontSize: Math.round(size * 0.5),
                 color: tokens.secondaryText,
+                textDecorationLine: "none",
               }}
             >
               {`${verseRangeLabel(stop)} `}

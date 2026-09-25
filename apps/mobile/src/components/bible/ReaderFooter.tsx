@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
@@ -19,8 +20,8 @@ export type ReaderFooterProps = {
   /** "John 3" in the shown translation, or null while waiting. */
   heading: string | null
   counter: { text: string; accessibilityLabel: string } | null
-  /** From 0 to 1, by verse number (KTD19). */
-  progress: number
+  /** U9's VerseScrubber: it draws the progress bar and owns its touches. */
+  scrubber: ReactNode
   translation: TranslationLabel | null
   onPressTranslation: () => void
 }
@@ -33,7 +34,7 @@ export function ReaderFooter({
   bottomInset,
   heading,
   counter,
-  progress,
+  scrubber,
   translation,
   onPressTranslation,
 }: ReaderFooterProps) {
@@ -106,27 +107,8 @@ export function ReaderFooter({
             </Text>
           )}
         </View>
-        {/* The counter reads the same value aloud; the bar stays silent. */}
-        <View
-          style={styles.progressRow}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <View
-            style={[styles.track, { backgroundColor: tokens.progressTrack }]}
-          >
-            <View
-              testID="bible-reader-progress-fill"
-              style={[
-                styles.fill,
-                {
-                  width: `${Math.round(progress * 1000) / 10}%`,
-                  backgroundColor: tokens.progressFill,
-                },
-              ]}
-            />
-          </View>
-        </View>
+        {/* The scrubber layer below draws the bar over this row. */}
+        <View style={styles.progressRow} />
         {layout === "tablet" ? (
           <View style={styles.bottomRow}>
             {translationButton ?? <View />}
@@ -138,6 +120,12 @@ export function ReaderFooter({
             <View style={styles.creditRow}>{credit}</View>
           </>
         )}
+      </View>
+      {/* Last, so it sits on top. Only the thumb's target takes touches. */}
+      <View pointerEvents="box-none" style={styles.scrubberLayer}>
+        <View pointerEvents="box-none" style={styles.column}>
+          {scrubber}
+        </View>
       </View>
     </View>
   )
@@ -176,16 +164,15 @@ const styles = StyleSheet.create({
   },
   progressRow: {
     height: READER_FOOTER_ROWS.progress,
-    justifyContent: "center",
   },
-  track: {
-    height: 3,
-    borderRadius: 1.5,
-    overflow: "hidden",
-  },
-  fill: {
-    height: 3,
-    borderRadius: 1.5,
+  // U9: the footer's top band, from its top edge to the progress row's bottom.
+  scrubberLayer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    alignItems: "center",
   },
   translationRow: {
     height: READER_FOOTER_ROWS.translation,

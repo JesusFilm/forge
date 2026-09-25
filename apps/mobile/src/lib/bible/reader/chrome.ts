@@ -34,6 +34,18 @@ export const READER_FOOTER_ROWS = Object.freeze({
   paddingBottom: 4,
 })
 
+// U9: the scrubber's touch band, from the footer's top edge to the bottom of
+// the progress row. The thumb's target fills it, so it is a full 44 points and
+// never covers the translation label below.
+export const READER_SCRUBBER_BAND =
+  READER_FOOTER_ROWS.paddingTop +
+  READER_FOOTER_ROWS.heading +
+  READER_FOOTER_ROWS.progress
+
+/** The progress track's center, measured down from the band's top. */
+export const READER_SCRUBBER_TRACK_CENTER =
+  READER_SCRUBBER_BAND - READER_FOOTER_ROWS.progress / 2
+
 /** The footer, measured up from the bottom inset. */
 export function readerFooterHeight(layout: ReaderLayout): number {
   const rows = READER_FOOTER_ROWS

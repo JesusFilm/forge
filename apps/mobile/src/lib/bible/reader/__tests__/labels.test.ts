@@ -16,6 +16,7 @@ import {
   passageLabel,
   stopIndexForVerse,
   translationLabel,
+  verseAtProgress,
   verseRangeLabel,
 } from "../labels"
 
@@ -118,6 +119,31 @@ describe("stops and counters", () => {
     expect(chapterProgress(stopAt(matthew18, 11), 35)).toBeCloseTo(11 / 35)
     expect(chapterProgress(stopAt(t4tJohn4Chapter, 6), 54)).toBeCloseTo(8 / 54)
     expect(chapterProgress(stopAt(matthew18, 35), 35)).toBe(1)
+  })
+})
+
+describe("verseAtProgress (U9, R18)", () => {
+  it("lands a drag to 50% of a 36-verse chapter on verse 18", () => {
+    expect(verseAtProgress(0.5, 36)).toBe(18)
+  })
+
+  it("inverts chapterProgress for every verse, so a still thumb stays put", () => {
+    for (let verse = 1; verse <= 36; verse += 1) {
+      expect(verseAtProgress(verse / 36, 36)).toBe(verse)
+    }
+  })
+
+  it("keys by verse number: T4T John 4 has 50 stops but 54 verses (KTD19)", () => {
+    expect(verseAtProgress(1, t4tJohn4Chapter.lastVerse)).toBe(54)
+    expect(verseAtProgress(7 / 54, t4tJohn4Chapter.lastVerse)).toBe(7)
+  })
+
+  it("stops at the chapter's first and last verse", () => {
+    expect(verseAtProgress(0, 36)).toBe(1)
+    expect(verseAtProgress(-0.4, 36)).toBe(1)
+    expect(verseAtProgress(1.7, 36)).toBe(36)
+    expect(verseAtProgress(Number.NaN, 36)).toBe(1)
+    expect(verseAtProgress(0.5, 0)).toBe(1)
   })
 })
 

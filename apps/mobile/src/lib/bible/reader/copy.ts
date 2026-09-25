@@ -62,6 +62,21 @@ export const READER_COPY = {
     demoSkip: "Tap to skip",
     demoSkipLabel: "Skip the swipe demonstration",
   },
+  /** U9: the verse selection, with Copy and Share (R19). */
+  selection: {
+    /** The verse's screen-reader hints. */
+    selectHint: "Double-tap to select this verse",
+    removeHint: "Double-tap to remove this verse from the selection",
+    /** The bar's reference, read aloud. */
+    selected: (reference: string) => `Selected: ${reference}`,
+    copy: "Copy",
+    copyLabel: (reference: string) => `Copy ${reference}`,
+    copied: "Copied",
+    share: "Share",
+    shareLabel: (reference: string) => `Share ${reference}`,
+    clear: "Clear",
+    clearLabel: "Clear the selection",
+  },
   download: {
     start: (name: string) => `Download ${name}`,
     onDevice: (name: string) => `${name} is on this device`,

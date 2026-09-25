@@ -1,6 +1,6 @@
-// U8 (feat-551 KTD13, KTD14, KTD19) over the real stores and U4 repository.
-// Each render is in <StrictMode>, swipes drive the REAL PanResponder handlers
-// (see MiniPlayerWindow.test.tsx), and a case finishes each held animation.
+// U8 (feat-551 KTD13, KTD14, KTD19) and U9 (R18, R19) over the real stores
+// and U4 repository. Each render is in <StrictMode>, swipes and scrubs drive
+// the REAL PanResponder handlers, and a case finishes each held animation.
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 
@@ -39,17 +39,24 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("../../../contexts/WatchPreferencesProvider", () => ({
   useWatchPreferences: () => ({ audioLanguageIso3: null, isReady: true }),
 }))
+jest.mock("expo-clipboard", () => ({
+  setStringAsync: jest.fn(async () => true),
+}))
 
 import { StrictMode, act } from "react"
 import {
   AccessibilityInfo,
   Animated,
+  BackHandler,
   Dimensions,
+  Share,
   StyleSheet,
   type GestureResponderEvent,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from "react-native"
+import * as Clipboard from "expo-clipboard"
 
 import t4tJohn4 from "../../../lib/bible/text/__tests__/fixtures/eng_t4t-jhn-4.json"
 import synodalPsalm50 from "../../../lib/bible/text/__tests__/fixtures/rus_syn-psa-50.json"
@@ -1085,5 +1092,448 @@ describe("the first-run swipe demo (R16)", () => {
     )
     await arm()
     expect(demo(renderer)).toHaveLength(0)
+  })
+})
+
+// ── The verse scrubber (U9) ─────────────────────────────────────────────────
+
+/** The footer column on the phone: 24-point sides, 392 points wide. */
+const COLUMN = { left: 24, width: PHONE.width - 48 }
+
+/** The renderer has no layout: report the scrubber band's width by hand. */
+async function layoutScrubber(renderer: TestInstance) {
+  const [band] = byTestId(renderer, "bible-verse-scrubber")
+  expect(band).toBeDefined()
+  await act(async () => {
+    ;(band!.props.onLayout as (event: unknown) => void)({
+      nativeEvent: { layout: { x: 0, y: 0, width: COLUMN.width, height: 44 } },
+    })
+  })
+}
+
+type ScrubHandlers = {
+  onStartShouldSetResponder: (e: GestureResponderEvent) => boolean
+  onResponderGrant: (e: GestureResponderEvent) => void
+  onResponderMove: (e: GestureResponderEvent) => void
+  onResponderRelease: (e: GestureResponderEvent) => void
+}
+
+function thumbHandlers(renderer: TestInstance): ScrubHandlers {
+  const [thumb] = byTestId(renderer, "bible-scrubber-thumb")
+  expect(thumb).toBeDefined()
+  return thumb!.props as unknown as ScrubHandlers
+}
+
+/** The thumb's center, in window coordinates. */
+function thumbCenter(renderer: TestInstance): Point {
+  const [thumb] = byTestId(renderer, "bible-scrubber-thumb")
+  const style = flat(thumb!)
+  return {
+    x: COLUMN.left + Number(style.left) + Number(style.width) / 2,
+    y: PHONE.height - mockInsets.bottom - 90,
+  }
+}
+
+/** Presses the thumb and drags it through each fraction of the bar. */
+async function scrub(renderer: TestInstance, fractions: number[]) {
+  await layoutScrubber(renderer)
+  const start = thumbCenter(renderer)
+  expect(
+    thumbHandlers(renderer).onStartShouldSetResponder(
+      touch(start, start, true),
+    ),
+  ).toBe(true)
+  await act(async () =>
+    thumbHandlers(renderer).onResponderGrant(touch(start, start, true)),
+  )
+  let at = start
+  for (const fraction of fractions) {
+    const next = { x: COLUMN.left + fraction * COLUMN.width, y: start.y }
+    const from = at
+    at = next
+    await act(async () =>
+      thumbHandlers(renderer).onResponderMove(touch(next, from)),
+    )
+    await flush()
+    await settleFit(renderer)
+  }
+  return {
+    release: async () => {
+      await act(async () =>
+        thumbHandlers(renderer).onResponderRelease(touch(at, at)),
+      )
+      await flush()
+      await settleFit(renderer)
+    },
+  }
+}
+
+describe("the verse scrubber (R18, KD7)", () => {
+  it("shows each verse during a drag and saves the position once, at release", async () => {
+    const { services, renderer } = await openAt({
+      book: "JHN",
+      chapter: 3,
+      verse: 1,
+    })
+    const moveTo = jest.spyOn(services.positionStore, "moveTo")
+    const drag = await scrub(renderer, [0.25, 0.4, 0.5])
+    // Still's design: the verse, the pill, and the counter follow the thumb.
+    expect(pillPassage(renderer)).toBe("John 3:18")
+    expect(textNodes(renderer, "18 / 36")).toHaveLength(1)
+    expect(textNodes(renderer, "Whoever believes in Him")).not.toHaveLength(0)
+    expect(moveTo).not.toHaveBeenCalled()
+
+    await drag.release()
+    expect(pillPassage(renderer)).toBe("John 3:18")
+    expect(moveTo).toHaveBeenCalledTimes(1)
+    expect(moveTo).toHaveBeenCalledWith({ book: "JHN", chapter: 3, verse: 18 })
+    // A scrub is not a chapter change: no pill animation.
+    expect(timingsWith({ duration: CHAPTER_PULSE_MS })).toHaveLength(0)
+  })
+
+  it("saves nothing for a drag that ends on the verse it started from", async () => {
+    const { services, renderer } = await openAt({
+      book: "JHN",
+      chapter: 3,
+      verse: 18,
+    })
+    const moveTo = jest.spyOn(services.positionStore, "moveTo")
+    const drag = await scrub(renderer, [0.8, 0.5])
+    await drag.release()
+    expect(pillPassage(renderer)).toBe("John 3:18")
+    expect(moveTo).not.toHaveBeenCalled()
+  })
+
+  it("keys by verse number and lands on a merged stop's first verse (KTD19)", async () => {
+    const services = makeServices(async () => ({
+      status: "ok",
+      text: fixtureText(t4tJohn4),
+    }))
+    services.positionStore.pickTranslation("eng_t4t")
+    const { renderer } = await openAt(
+      { book: "JHN", chapter: 4, verse: 1 },
+      { services },
+    )
+    const moveTo = jest.spyOn(services.positionStore, "moveTo")
+    // 7 / 54 of the bar is inside T4T's merged John 4:6-8.
+    const drag = await scrub(renderer, [7 / 54])
+    expect(pillPassage(renderer)).toBe("John 4:6-8")
+    expect(textNodes(renderer, "6-8 / 54")).toHaveLength(1)
+    await drag.release()
+    expect(moveTo).toHaveBeenCalledTimes(1)
+    expect(moveTo).toHaveBeenLastCalledWith({
+      book: "JHN",
+      chapter: 4,
+      verse: 6,
+    })
+  })
+
+  it("leaves the left strip to the back swipe on the pushed reader only (R6)", async () => {
+    const inStrip = { x: BACK_SWIPE_EDGE_WIDTH - 4, y: MIDDLE.y }
+    const pushed = await openAt(
+      { book: "JHN", chapter: 3, verse: 1 },
+      { extra: { host: "pushed", onBack: jest.fn() } },
+    )
+    await layoutScrubber(pushed.renderer)
+    expect(
+      thumbHandlers(pushed.renderer).onStartShouldSetResponder(
+        touch(inStrip, inStrip, true),
+      ),
+    ).toBe(false)
+    const tab = await openAt({ book: "JHN", chapter: 3, verse: 1 })
+    await layoutScrubber(tab.renderer)
+    expect(
+      thumbHandlers(tab.renderer).onStartShouldSetResponder(
+        touch(inStrip, inStrip, true),
+      ),
+    ).toBe(true)
+  })
+})
+
+// ── Verse selection, Copy, and Share (U9) ──────────────────────────────────
+
+const setClipboard = Clipboard.setStringAsync as jest.Mock
+
+/** The verse's Pressable holds `onPress`; its host View does not. */
+async function tapVerse(renderer: TestInstance) {
+  const [verse] = renderer.root.findAll(
+    (node) =>
+      node.props.testID === "bible-verse" &&
+      typeof node.props.onPress === "function",
+  )
+  expect(verse).toBeDefined()
+  await act(async () => verse!.props.onPress?.())
+  await flush()
+  await settleFit(renderer)
+}
+
+/** The selection bar's reference, or null when the footer shows. */
+function selected(renderer: TestInstance): string | null {
+  const prefix = READER_COPY.selection.selected("")
+  const [reference] = hosts(
+    renderer,
+    (node) =>
+      node.type === "Text" &&
+      String(node.props.accessibilityLabel ?? "").startsWith(prefix),
+  )
+  return reference ? textOf(reference) : null
+}
+
+function verseState(renderer: TestInstance) {
+  const [verse] = byTestId(renderer, "bible-verse")
+  expect(verse).toBeDefined()
+  return verse!.props.accessibilityState as { selected?: boolean } | undefined
+}
+
+async function pressLabel(renderer: TestInstance, label: string) {
+  const [control] = renderer.root.findAll(
+    (node) =>
+      typeof node.props.onPress === "function" &&
+      node.props.accessibilityLabel === label,
+  )
+  expect(control).toBeDefined()
+  await act(async () => control!.props.onPress?.())
+  await flush()
+}
+
+describe("verse selection (R19)", () => {
+  beforeEach(() => {
+    setClipboard.mockClear()
+  })
+
+  it("selects the verse on a tap, and the bar takes the footer's place", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    expect(selected(renderer)).toBeNull()
+    expect(byTestId(renderer, "bible-reader-footer")).toHaveLength(1)
+    expect(verseState(renderer)).toEqual({ selected: false })
+
+    await tapVerse(renderer)
+    expect(selected(renderer)).toBe("John 3:16")
+    expect(byTestId(renderer, "bible-reader-footer")).toHaveLength(0)
+    expect(byTestId(renderer, "bible-verse-scrubber")).toHaveLength(0)
+    expect(verseState(renderer)).toEqual({ selected: true })
+    // Still's design: a selected verse is underlined.
+    const [line] = byTestId(renderer, "bible-verse-line")
+    const style = StyleSheet.flatten(line!.props.style as StyleProp<TextStyle>)
+    expect(style.textDecorationLine).toBe("underline")
+  })
+
+  it("keeps the selection through swipes in the chapter; the next verse adds on", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    await tapVerse(renderer)
+    await swipeUp(renderer)
+    expect(pillPassage(renderer)).toBe("John 3:17")
+    expect(selected(renderer)).toBe("John 3:16")
+    expect(verseState(renderer)).toEqual({ selected: false })
+
+    await tapVerse(renderer)
+    expect(selected(renderer)).toBe("John 3:16-17")
+    await swipeDown(renderer)
+    await swipeDown(renderer)
+    await tapVerse(renderer)
+    expect(selected(renderer)).toBe("John 3:15-17")
+  })
+
+  it("starts a new selection at 3:18 after 3:16", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    await tapVerse(renderer)
+    await swipeUp(renderer)
+    await swipeUp(renderer)
+    await tapVerse(renderer)
+    expect(selected(renderer)).toBe("John 3:18")
+  })
+
+  it("cuts 3:16-18 to 3:16 when 3:17 is tapped again", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    await tapVerse(renderer)
+    await swipeUp(renderer)
+    await tapVerse(renderer)
+    await swipeUp(renderer)
+    await tapVerse(renderer)
+    expect(selected(renderer)).toBe("John 3:16-18")
+    await swipeDown(renderer)
+    await tapVerse(renderer)
+    expect(selected(renderer)).toBe("John 3:16")
+  })
+
+  it("covers R14: a swipe up from a selected John 3:36 opens John 4:1 and clears it", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 36 })
+    await tapVerse(renderer)
+    expect(selected(renderer)).toBe("John 3:36")
+    await swipeUp(renderer)
+    expect(pillPassage(renderer)).toBe("John 4:1")
+    expect(selected(renderer)).toBeNull()
+    expect(byTestId(renderer, "bible-reader-footer")).toHaveLength(1)
+    // Cleared, not hidden: the way back finds no selection.
+    await swipeDown(renderer)
+    expect(pillPassage(renderer)).toBe("John 3:36")
+    expect(selected(renderer)).toBeNull()
+  })
+
+  it("clears on a chapter swipe", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    await tapVerse(renderer)
+    await swipeLeft(renderer)
+    expect(pillPassage(renderer)).toBe("John 4:1")
+    expect(selected(renderer)).toBeNull()
+  })
+
+  it("clears on a translation change", async () => {
+    const services = makeServices(async () => ({
+      status: "ok",
+      text: fixtureText(t4tJohn4),
+    }))
+    const { renderer } = await openAt(
+      { book: "JHN", chapter: 4, verse: 9 },
+      { services },
+    )
+    await tapVerse(renderer)
+    expect(selected(renderer)).toBe("John 4:9")
+    await act(async () => {
+      services.positionStore.pickTranslation("eng_t4t")
+    })
+    await flush()
+    await settleFit(renderer)
+    expect(selected(renderer)).toBeNull()
+    // Cleared, not hidden: back in BSB, the selection stays gone.
+    await act(async () => {
+      services.positionStore.pickTranslation(null)
+    })
+    await flush()
+    await settleFit(renderer)
+    expect(selected(renderer)).toBeNull()
+  })
+
+  it("selects T4T John 4:6-8 as one stop", async () => {
+    const services = makeServices(async () => ({
+      status: "ok",
+      text: fixtureText(t4tJohn4),
+    }))
+    services.positionStore.pickTranslation("eng_t4t")
+    const { renderer } = await openAt(
+      { book: "JHN", chapter: 4, verse: 6 },
+      { services },
+    )
+    await tapVerse(renderer)
+    expect(selected(renderer)).toBe("John 4:6-8")
+  })
+
+  it("never selects the Matthew 18:11 note, and a run passes over it", async () => {
+    const { renderer } = await openAt({ book: "MAT", chapter: 18, verse: 10 })
+    await tapVerse(renderer)
+    await swipeUp(renderer)
+    const notes = renderer.root.findAll(
+      (node) => node.props.testID === "bible-missing-verse",
+    )
+    expect(notes.length).toBeGreaterThan(0)
+    for (const note of notes) expect(note.props.onPress).toBeUndefined()
+    expect(selected(renderer)).toBe("Matthew 18:10")
+    await swipeUp(renderer)
+    await tapVerse(renderer)
+    expect(selected(renderer)).toBe("Matthew 18:10-12")
+  })
+
+  it("clears with Android back, which then does not pop", async () => {
+    const backHandlers: (() => boolean)[] = []
+    jest
+      .spyOn(BackHandler, "addEventListener")
+      .mockImplementation((_, handler) => {
+        const fn = handler as unknown as () => boolean
+        backHandlers.push(fn)
+        return {
+          remove: () => {
+            const at = backHandlers.indexOf(fn)
+            if (at !== -1) backHandlers.splice(at, 1)
+          },
+        }
+      })
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    // No selection: back belongs to the navigator.
+    expect(backHandlers).toHaveLength(0)
+    await tapVerse(renderer)
+    expect(backHandlers).toHaveLength(1)
+    let consumed = false
+    await act(async () => {
+      consumed = backHandlers[0]!()
+    })
+    expect(consumed).toBe(true)
+    expect(selected(renderer)).toBeNull()
+    expect(backHandlers).toHaveLength(0)
+  })
+
+  it("clears with the Clear button, and the footer and scrubber come back", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    await tapVerse(renderer)
+    await pressLabel(renderer, READER_COPY.selection.clearLabel)
+    expect(selected(renderer)).toBeNull()
+    expect(byTestId(renderer, "bible-reader-footer")).toHaveLength(1)
+    // A scrub works again, and the next tap starts a new selection there.
+    const drag = await scrub(renderer, [0.5])
+    await drag.release()
+    await tapVerse(renderer)
+    expect(selected(renderer)).toBe("John 3:18")
+  })
+
+  it("copies and shares the verses, then John 3:16-17 · BSB", async () => {
+    const share = jest
+      .spyOn(Share, "share")
+      .mockResolvedValue({ action: Share.sharedAction })
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    await tapVerse(renderer)
+    await swipeUp(renderer)
+    await tapVerse(renderer)
+    await pressLabel(renderer, READER_COPY.selection.copyLabel("John 3:16-17"))
+    await pressLabel(renderer, READER_COPY.selection.shareLabel("John 3:16-17"))
+    const text =
+      "16 For God so loved the world that He gave His one and only Son, that everyone who believes in Him shall not perish but have eternal life. " +
+      "17 For God did not send His Son into the world to condemn the world, but to save the world through Him." +
+      "\n\nJohn 3:16-17 · BSB"
+    expect(setClipboard).toHaveBeenCalledTimes(1)
+    expect(setClipboard).toHaveBeenCalledWith(text)
+    expect(share).toHaveBeenCalledTimes(1)
+    expect(share.mock.calls[0]?.[0]).toMatchObject({ message: text })
+  })
+
+  it("covers AE17: a Synodal selection shares Synodal numbers (R42)", async () => {
+    const psalm = fixtureText(synodalPsalm50)
+    const services = makeServices(async () => ({ status: "ok", text: psalm }))
+    services.positionStore.pickTranslation("rus_syn")
+    const share = jest
+      .spyOn(Share, "share")
+      .mockResolvedValue({ action: Share.sharedAction })
+    const { renderer } = await openAt(
+      { book: "PSA", chapter: 51, verse: 1 },
+      { services },
+    )
+    // BSB Psalm 51:1 opens Synodal Psalm 50:3; step back to the title.
+    await swipeDown(renderer)
+    await swipeDown(renderer)
+    expect(pillPassage(renderer)).toBe(`${psalm.bookName} 50:1`)
+    await tapVerse(renderer)
+    await swipeUp(renderer)
+    await tapVerse(renderer)
+    const reference = `${psalm.bookName} 50:1-2`
+    expect(selected(renderer)).toBe(reference)
+    await pressLabel(renderer, READER_COPY.selection.shareLabel(reference))
+    const message = String(
+      (share.mock.calls[0]?.[0] as { message?: string }).message,
+    )
+    expect(message.endsWith(`\n\n${reference} · SYN`)).toBe(true)
+    expect(message.startsWith("1 Начальнику хора.")).toBe(true)
+    expect(message).not.toContain("51")
+  })
+
+  it("tells a screen reader how to select, and that the verse is selected", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    const [verse] = byTestId(renderer, "bible-verse")
+    expect(verse!.props.accessibilityHint).toBe(
+      READER_COPY.selection.selectHint,
+    )
+    await tapVerse(renderer)
+    const [after] = byTestId(renderer, "bible-verse")
+    expect(after!.props.accessibilityHint).toBe(
+      READER_COPY.selection.removeHint,
+    )
+    expect(after!.props.accessibilityRole).toBe("adjustable")
   })
 })
