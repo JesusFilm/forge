@@ -202,7 +202,7 @@ function barValue(renderer: TestInstance) {
 
 let touchClock = 1000
 /** One finger, with the history PanResponder derives its gesture state from. */
-function touchAt(x: number, previousX = 0): GestureResponderEvent {
+function touchAt(x: number, previousX = 0, y = 0): GestureResponderEvent {
   touchClock += 16
   return {
     nativeEvent: { touches: [], changedTouches: [], locationX: x, pageX: x },
@@ -217,7 +217,7 @@ function touchAt(x: number, previousX = 0): GestureResponderEvent {
           startPageY: 0,
           startTimeStamp: touchClock - 32,
           currentPageX: x,
-          currentPageY: 0,
+          currentPageY: y,
           currentTimeStamp: touchClock,
           previousPageX: previousX,
           previousPageY: 0,
@@ -233,6 +233,8 @@ type Handlers = {
   onResponderGrant: (e: GestureResponderEvent) => void
   onResponderMove: (e: GestureResponderEvent) => void
   onResponderRelease: (e: GestureResponderEvent) => void
+  onResponderTerminationRequest: (e: GestureResponderEvent) => boolean
+  onResponderTerminate: (e: GestureResponderEvent) => void
   onAccessibilityAction: (e: unknown) => void
 }
 
@@ -421,6 +423,59 @@ describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
     // The feed players own the seek, so the bar never writes the player.
     expect(player.currentTime).toBe(730)
     expect(barValue(renderer).now).toBe(13)
+  })
+
+  it("keeps a sideways drag past the lock, and yields a vertical one to the pager", () => {
+    const renderer = render()
+    const handlers = progressBar(renderer).props as unknown as Handlers
+    act(() => {
+      handlers.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 44 } },
+      })
+    })
+
+    act(() => {
+      handlers.onResponderGrant(touchAt(0))
+      handlers.onResponderMove(touchAt(4))
+    })
+    expect(handlers.onResponderTerminationRequest(touchAt(4))).toBe(true)
+    act(() => {
+      handlers.onResponderMove(touchAt(20))
+    })
+    expect(handlers.onResponderTerminationRequest(touchAt(20))).toBe(false)
+
+    act(() => {
+      handlers.onResponderRelease(touchAt(20))
+      handlers.onResponderGrant(touchAt(0))
+      handlers.onResponderMove(touchAt(12, 0, 60))
+    })
+    expect(handlers.onResponderTerminationRequest(touchAt(12, 0, 60))).toBe(
+      true,
+    )
+  })
+
+  it("shows the player's time again, and seeks nothing, when the pager takes the drag", () => {
+    player.currentTime = 730
+    const onSeek = jest.fn()
+    const renderer = render(props({ onSeek }))
+    const handlers = progressBar(renderer).props as unknown as Handlers
+    act(() => {
+      handlers.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 44 } },
+      })
+    })
+
+    act(() => {
+      handlers.onResponderGrant(touchAt(0))
+      handlers.onResponderMove(touchAt(150))
+    })
+    player.currentTime = 733
+    act(() => {
+      handlers.onResponderTerminate(touchAt(150))
+    })
+
+    expect(barValue(renderer).now).toBe(9)
+    expect(onSeek).not.toHaveBeenCalled()
   })
 
   it("keeps the step actions inside the window", () => {
