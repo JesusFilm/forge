@@ -231,13 +231,13 @@ identity mismatch; `auth.api` lost every plugin endpoint). Declaring the
 peer at the importer pins the walk, and the mobile lockstep guard holds the
 two pins equal. Re-pin it whenever a bump moves core's peer range.
 
-Deploy order: this app first, then the mobile build. Local dev caveat:
-BOTH `next dev` and the bare standalone build deadlock on the provider's
-init-time discovery fetch (the `/.well-known/openid-configuration` handler
-awaits the same auth instance that is fetching it). For a local end-to-end
-sign-in, run the standalone build behind a static-discovery proxy — the
-full recipe is
-`docs/solutions/auth/self-rp-oauth-discovery-deadlock-standalone-proxy-recipe.md`.
+Deploy order: this app first, then the mobile build. Discovery is served from
+configuration without importing Auth. The self-RP fetch uses this container's
+loopback address (`PORT`, default 3004), while metadata retains the public issuer
+and endpoints. Set `PORT` when running Next on a non-default local port. No
+static-discovery proxy is needed. The real-HTTP cold-start integration test checks
+initialization and exact metadata parity; Railway's `/api/health` waits for Auth
+initialization and returns 503 on failure or a five-second timeout.
 
 ## Sign in with Apple — App Store constraint (guideline 4.8)
 

@@ -1,6 +1,7 @@
 ---
 title: "Self-RP OAuth discovery deadlock: verify auth locally with a standalone build behind a static-discovery proxy"
 date: 2026-09-07
+last_updated: 2026-09-25
 category: auth
 module: apps/auth
 problem_type: developer_experience
@@ -29,6 +30,22 @@ tags:
 ---
 
 # Self-RP OAuth discovery deadlock: verify auth locally with a standalone build behind a static-discovery proxy
+
+## Fix prepared in feat-551 (2026-09-25; pending merge)
+
+The proposed fix serves discovery directly from configuration and fetches it over
+container loopback during self-RP initialization. Public issuer, JWKS and OAuth
+URLs remain unchanged. A real-HTTP cold-start test reproduces the original
+failure and checks metadata parity with Better Auth. `/api/health` now waits for
+Auth readiness. The proxy recipe below is historical and is only needed when
+verifying older revisions. For a custom local Next port, set `PORT` explicitly.
+
+Production diagnosis: Auth revision `7b56c7d16` returned 500 for both normal and
+account-switch authorization; provider initialization had rejected because self
+discovery returned no valid data. The original health route never initialized
+Auth. Existing integration tests substituted static discovery and missed this
+startup dependency. A fix must also avoid fetching the previous deployment's
+public discovery document before Railway switches traffic.
 
 ## Context
 
