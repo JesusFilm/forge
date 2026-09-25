@@ -172,6 +172,13 @@ function searchInput(renderer: TestInstance): RenderedNode {
   return node
 }
 
+async function search(renderer: TestInstance, text: string): Promise<void> {
+  const input = searchInput(renderer)
+  await act(async () => {
+    ;(input.props.onChangeText as (value: string) => void)(text)
+  })
+}
+
 function iconColor(renderer: TestInstance, name: string): unknown {
   const [icon] = renderer.root.findAll((node) => node.props.name === name)
   return icon?.props.color
@@ -275,6 +282,26 @@ describe("SearchableListSheet row order", () => {
   it("keeps the caller's order when asked, still without the active row", async () => {
     const renderer = await render({ keepRowOrder: true })
     expect(primaryLabels(renderer)).toEqual(["Charlie", "Alpha"])
+  })
+
+  it("reads no hidden row's name on a search keystroke when it keeps the order", async () => {
+    const rows: Row[] = [
+      { id: "e", name: "Echo" },
+      { id: "c", name: "Charlie" },
+      { id: "a", name: "Alpha" },
+      { id: "b", name: "Bravo" },
+    ]
+    const getPrimaryLabel = jest.fn((row: Row) => row.name)
+    const renderer = await render({ rows, keepRowOrder: true, getPrimaryLabel })
+    getPrimaryLabel.mockClear()
+
+    await search(renderer, "c")
+
+    expect(primaryLabels(renderer)).toEqual(["Echo", "Charlie"])
+    expect(getPrimaryLabel).toHaveBeenCalled()
+    // A sort compares every row by name, so it reads Alpha too.
+    const read = getPrimaryLabel.mock.calls.map(([row]) => row.id)
+    expect(read).not.toContain("a")
   })
 })
 

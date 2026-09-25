@@ -84,3 +84,81 @@ describe("assembleSheetList", () => {
     expect(filtered.map((r) => r.slug)).toEqual(["ko-kmr"])
   })
 })
+
+describe("assembleSheetList with keepRowOrder", () => {
+  // Out of label order on purpose: a sort moves every row.
+  const rows: Row[] = [
+    { slug: "fr", name: "French", native: "Français" },
+    { slug: "es", name: "Spanish", native: "Español" },
+    { slug: "en", name: "English", native: "English" },
+    { slug: "de", name: "German", native: "Deutsch" },
+  ]
+  const labelOf = (r: Row) => r.name ?? r.slug
+
+  it("still sorts by label and reads the labels without the flag", () => {
+    const getPrimaryLabel = jest.fn(labelOf)
+    const { filtered } = assembleSheetList({
+      ...params(rows, null, ""),
+      getPrimaryLabel,
+    })
+    expect(filtered.map((r) => r.slug)).toEqual(["en", "fr", "de", "es"])
+    expect(getPrimaryLabel).toHaveBeenCalled()
+  })
+
+  it("returns the caller's order and never reads a label to sort", () => {
+    const getPrimaryLabel = jest.fn(labelOf)
+    const { active, filtered } = assembleSheetList({
+      ...params(rows, "es", ""),
+      getPrimaryLabel,
+      keepRowOrder: true,
+    })
+    expect(active?.slug).toBe("es")
+    expect(filtered.map((r) => r.slug)).toEqual(["fr", "en", "de"])
+    expect(getPrimaryLabel).not.toHaveBeenCalled()
+  })
+
+  it("filters by query in the caller's order, without the active row", () => {
+    const getPrimaryLabel = jest.fn(labelOf)
+    const { active, filtered } = assembleSheetList({
+      ...params(rows, "en", "e"),
+      getPrimaryLabel,
+      keepRowOrder: true,
+    })
+    expect(active?.slug).toBe("en")
+    expect(filtered.map((r) => r.slug)).toEqual(["fr", "es", "de"])
+    expect(getPrimaryLabel).not.toHaveBeenCalled()
+  })
+
+  it("gives the sorted result's members and active row, in the caller's order", () => {
+    for (const activeId of [null, "", "es", "xx"]) {
+      for (const query of ["", "  ", "e", "EN", "deutsch", "zzz"]) {
+        const sorted = assembleSheetList(params(rows, activeId, query))
+        const kept = assembleSheetList({
+          ...params(rows, activeId, query),
+          keepRowOrder: true,
+        })
+        const members = new Set(sorted.filtered)
+        const expected = rows.filter((row) => members.has(row))
+        expect(kept.filtered).toHaveLength(expected.length)
+        kept.filtered.forEach((row, i) => expect(row).toBe(expected[i]))
+        expect(kept.active).toBe(sorted.active)
+      }
+    }
+  })
+
+  it("picks the first active match by label when two rows share the id", () => {
+    const twins: Row[] = [
+      { slug: "x", name: "Zulu" },
+      { slug: "x", name: "alpha" },
+      { slug: "y", name: "Mike" },
+    ]
+    const sorted = assembleSheetList(params(twins, "x", ""))
+    const kept = assembleSheetList({
+      ...params(twins, "x", ""),
+      keepRowOrder: true,
+    })
+    expect(sorted.active?.name).toBe("alpha")
+    expect(kept.active?.name).toBe("alpha")
+    expect(kept.filtered.map((r) => r.name)).toEqual(["Mike"])
+  })
+})

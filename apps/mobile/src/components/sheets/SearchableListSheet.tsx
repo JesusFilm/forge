@@ -106,31 +106,27 @@ export function SearchableListSheet<T>({
   // twice and pop the underlying screen.
   const lastSelectRef = useRef(0)
 
-  const { active, filtered } = useMemo(() => {
-    const assembled = assembleSheetList({
+  const { active, filtered } = useMemo(
+    () =>
+      assembleSheetList({
+        rows,
+        activeId,
+        query,
+        getSelectionId,
+        getPrimaryLabel,
+        getSearchValues,
+        keepRowOrder,
+      }),
+    [
       rows,
       activeId,
       query,
       getSelectionId,
       getPrimaryLabel,
       getSearchValues,
-    })
-    if (!keepRowOrder) return assembled
-    // The assembly sorts by name; put the kept rows back in the given order.
-    const kept = new Set(assembled.filtered)
-    return {
-      active: assembled.active,
-      filtered: rows.filter((row) => kept.has(row)),
-    }
-  }, [
-    rows,
-    activeId,
-    query,
-    getSelectionId,
-    getPrimaryLabel,
-    getSearchValues,
-    keepRowOrder,
-  ])
+      keepRowOrder,
+    ],
+  )
 
   const { primaryText, secondaryText } = useMemo(
     () => ({
