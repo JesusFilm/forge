@@ -144,10 +144,11 @@ export function SettingsScreen() {
       ) : null}
       {Platform.OS === "ios" ? (
         <View style={styles.section}>
-          <Text style={styles.sectionHeading}>Player Experiment</Text>
+          <Text style={styles.sectionHeading}>Video player</Text>
           <Text style={styles.sectionNote}>
-            Native A keeps Apple’s AVKit controls. Native B uses our UIKit
-            controls and Mux thumbnails while keeping AVPlayer underneath.
+            Native A is the default and keeps Apple’s AVKit controls. Native B
+            uses our UIKit controls and Mux thumbnails while keeping AVPlayer
+            underneath.
           </Text>
           <SettingsRow
             testID="settings-existing-player-row"
