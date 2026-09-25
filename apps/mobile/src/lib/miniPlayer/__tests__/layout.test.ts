@@ -10,11 +10,22 @@ import {
   miniPlayerCornerFrames,
   miniPlayerMinWidth,
   miniPlayerWindowSize,
+  readerCornerPolicy,
   snapToCorner,
   type MiniPlayerCorner,
   type MiniPlayerLayoutConfig,
 } from "../layout"
-import { TAB_BAR_OCCUPIED_HEIGHT, TAB_BAR_HEIGHT_IOS } from "../../tabBar"
+import {
+  TAB_BAR_OCCUPIED_HEIGHT,
+  TAB_BAR_HEIGHT_IOS,
+  tabBarOccupiedHeightFor,
+} from "../../tabBar"
+import {
+  readerBottomInset,
+  readerChromeBand,
+  readerMovementBandHeight,
+  type ReaderLayout,
+} from "../../bible/reader/chrome"
 
 /** An iPhone-shaped screen with a notch, home indicator, and the tab bar.
  *  The chrome height is READ from production — a literal here would drift. */
@@ -279,5 +290,161 @@ describe("the resting window clears the native tab bar", () => {
     const barTop =
       PHONE.screen.height - PHONE.insets.bottom - TAB_BAR_HEIGHT_IOS
     expect(barTop - windowBottom).toBe(WINDOW_EDGE_MARGIN)
+  })
+})
+
+// feat-551 KTD11, KD9, KD26, R10, AE18.
+describe("the reader corner policy", () => {
+  const CORNERS: MiniPlayerCorner[] = [
+    "topLeft",
+    "topRight",
+    "bottomLeft",
+    "bottomRight",
+  ]
+
+  type Case = {
+    label: string
+    layout: ReaderLayout
+    host: "tab" | "pushed"
+    platform: "ios" | "android"
+    screen: { width: number; height: number }
+    /** The ROOT safe area, which is what the playback host reads. */
+    insets: { top: number; right: number; bottom: number; left: number }
+    band: number
+  }
+
+  const CASES: Case[] = [
+    {
+      label: "iPhone, pushed reader",
+      layout: "phone",
+      host: "pushed",
+      platform: "ios",
+      screen: { width: 440, height: 956 },
+      insets: { top: 62, right: 0, bottom: 34, left: 0 },
+      band: 0,
+    },
+    {
+      label: "iPhone, Bible tab, hint showing",
+      layout: "phone",
+      host: "tab",
+      platform: "ios",
+      screen: { width: 440, height: 956 },
+      insets: { top: 62, right: 0, bottom: 34, left: 0 },
+      band: readerMovementBandHeight({ arrows: false, hint: true }),
+    },
+    {
+      label: "iPad, pushed reader, arrows",
+      layout: "tablet",
+      host: "pushed",
+      platform: "ios",
+      screen: { width: 820, height: 1180 },
+      insets: { top: 24, right: 0, bottom: 20, left: 0 },
+      band: readerMovementBandHeight({ arrows: true, hint: false }),
+    },
+    {
+      label: "iPad, Bible tab, arrows and hint",
+      layout: "tablet",
+      host: "tab",
+      platform: "ios",
+      screen: { width: 820, height: 1180 },
+      insets: { top: 24, right: 0, bottom: 20, left: 0 },
+      band: readerMovementBandHeight({ arrows: true, hint: true }),
+    },
+    {
+      label: "Android phone, Bible tab",
+      layout: "phone",
+      host: "tab",
+      platform: "android",
+      screen: { width: 412, height: 915 },
+      insets: { top: 24, right: 0, bottom: 24, left: 0 },
+      band: 0,
+    },
+  ]
+
+  function hostConfig(c: Case): MiniPlayerLayoutConfig {
+    const policy = readerCornerPolicy({
+      layout: c.layout,
+      host: c.host,
+      movementBand: c.band,
+      tabBar: tabBarOccupiedHeightFor(c.platform),
+    })
+    return { screen: c.screen, insets: c.insets, chrome: policy.chrome }
+  }
+
+  /** The reader's OWN band, from the functions its verse box uses, so it can
+   *  disagree with the policy. An iOS tab screen's inset holds the bar; the
+   *  Android tab screen ends above its bar. */
+  function readerBand(c: Case): { top: number; bottom: number } {
+    const onAndroidTab = c.host === "tab" && c.platform === "android"
+    const screenInset =
+      c.host === "tab" && c.platform === "ios"
+        ? c.insets.bottom + TAB_BAR_HEIGHT_IOS
+        : c.insets.bottom
+    const containerHeight = onAndroidTab
+      ? c.screen.height - c.insets.bottom - tabBarOccupiedHeightFor("android")
+      : c.screen.height
+    const band = readerChromeBand({
+      layout: c.layout,
+      safeAreaTop: c.insets.top,
+      bottomInset: readerBottomInset(c.host, c.platform, screenInset),
+      containerHeight,
+    })
+    return { top: band.top, bottom: band.bottom - c.band }
+  }
+
+  it("starts at the top right on a phone and the bottom right on a tablet (KD9)", () => {
+    const base = { host: "pushed" as const, movementBand: 0, tabBar: 49 }
+    expect(readerCornerPolicy({ ...base, layout: "phone" }).startCorner).toBe(
+      "topRight",
+    )
+    expect(readerCornerPolicy({ ...base, layout: "tablet" }).startCorner).toBe(
+      "bottomRight",
+    )
+  })
+
+  it.each(CASES.map((c) => [c.label, c] as const))(
+    "excludes no corner: %s",
+    (_label, c) => {
+      expect([...allowedCorners(hostConfig(c))].sort()).toEqual(
+        [...CORNERS].sort(),
+      )
+    },
+  )
+
+  it.each(CASES.map((c) => [c.label, c] as const))(
+    "keeps every corner between the top bar and the footer: %s",
+    (_label, c) => {
+      const config = hostConfig(c)
+      const band = readerBand(c)
+      for (const corner of CORNERS) {
+        const frame = miniPlayerCornerFrame(config, corner)
+        expect(frame.y).toBeGreaterThanOrEqual(band.top)
+        expect(frame.y + frame.height).toBeLessThanOrEqual(band.bottom)
+      }
+      // R10's "just under" and "just above": one edge margin, no more.
+      const top = miniPlayerCornerFrame(config, "topLeft")
+      const bottom = miniPlayerCornerFrame(config, "bottomLeft")
+      expect(top.y - band.top).toBe(WINDOW_EDGE_MARGIN)
+      expect(band.bottom - (bottom.y + bottom.height)).toBe(WINDOW_EDGE_MARGIN)
+    },
+  )
+
+  it("reserves the tab bar in the Bible tab only", () => {
+    const input = { layout: "phone" as const, movementBand: 0, tabBar: 49 }
+    const tab = readerCornerPolicy({ ...input, host: "tab" })
+    const pushed = readerCornerPolicy({ ...input, host: "pushed" })
+    expect(tab.chrome.bottom - pushed.chrome.bottom).toBe(49)
+    expect(tab.chrome.top).toBe(pushed.chrome.top)
+  })
+
+  it("lifts the bottom corners by the reader's band above the footer", () => {
+    const input = { layout: "phone" as const, host: "pushed" as const }
+    const clear = readerCornerPolicy({ ...input, movementBand: 0, tabBar: 49 })
+    const banded = readerCornerPolicy({
+      ...input,
+      movementBand: 84,
+      tabBar: 49,
+    })
+    expect(banded.chrome.bottom - clear.chrome.bottom).toBe(84)
   })
 })

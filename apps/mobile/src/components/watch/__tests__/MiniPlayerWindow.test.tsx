@@ -144,9 +144,12 @@ import {
 import {
   EXIT_DURATION_MS,
   PlaybackHostView,
+  REPOSITION_DURATION_MS,
   SHRINK_DURATION_MS,
   TAB_BAR_CONTENT_HEIGHT,
 } from "../PlaybackHost"
+import { isTabletLayout } from "../../../hooks/useIsTabletLayout"
+import { readerMovementBandHeight } from "../../../lib/bible/reader/chrome"
 import {
   ENDED_FADE_DURATION_MS,
   MINI_PLAYER_DISMISS_LABEL,
@@ -156,6 +159,7 @@ import {
   ACCESSIBILITY_MIN_TARGET,
   defaultCornerFrame,
   miniPlayerCornerFrame,
+  readerCornerPolicy,
   type MiniPlayerLayoutConfig,
 } from "../../../lib/miniPlayer/layout"
 import {
@@ -368,16 +372,22 @@ function attachSlot(
   return id
 }
 
-async function renderHost(): Promise<TestInstance> {
+function hostAt(segments: readonly string[]) {
+  return (
+    <PlaybackHostView
+      segments={segments}
+      canGoBack={() => canGoBackAnswer}
+      onExpand={onExpand}
+    />
+  )
+}
+
+async function renderHost(
+  segments: readonly string[] = [],
+): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
-    renderer = TestRenderer.create(
-      <PlaybackHostView
-        segments={[]}
-        canGoBack={() => canGoBackAnswer}
-        onExpand={onExpand}
-      />,
-    )
+    renderer = TestRenderer.create(hostAt(segments))
   })
   mounted = renderer
   return renderer
@@ -397,9 +407,10 @@ async function settle() {
 /** Play, then back out: the state every window scenario starts from. */
 async function floatWindow(
   overrides: Partial<PlaybackRequest> = {},
+  segments: readonly string[] = [],
 ): Promise<TestInstance> {
   const id = attachSlot(overrides)
-  const renderer = await renderHost()
+  const renderer = await renderHost(segments)
   await act(async () => {
     video.__player.play()
   })
@@ -708,6 +719,60 @@ describe("drag (R2, KTD5)", () => {
     expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual({
       translateX: target.x - base.x,
       translateY: target.y - base.y,
+    })
+  })
+
+  // feat-551 AE18, KTD11: on a reader route the drag snaps in the reader's
+  // layout, and it writes the reader's corner, never the app's.
+  it("settles a drag on the Bible tab into the reader's own corner frame", async () => {
+    const BIBLE_TAB = ["(tabs)", "bible"]
+    const renderer = await floatWindow({}, BIBLE_TAB)
+    await settle()
+    const { width, height } = Dimensions.get("window")
+    const tablet = isTabletLayout(width, height)
+    const reader: MiniPlayerLayoutConfig = {
+      ...layoutConfig(),
+      chrome: readerCornerPolicy({
+        layout: tablet ? "tablet" : "phone",
+        host: "tab",
+        movementBand: readerMovementBandHeight({ arrows: tablet, hint: false }),
+        tabBar: TAB_BAR_CONTENT_HEIGHT,
+      }).chrome,
+    }
+    const base = defaultCornerFrame(reader)
+    const start = miniPlayerCornerFrame(
+      reader,
+      tablet ? "bottomRight" : "topRight",
+    )
+    const target = miniPlayerCornerFrame(reader, "bottomLeft")
+    // Anti-vacuous: the window opened at the reader's start corner.
+    expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual({
+      translateX: start.x - base.x,
+      translateY: start.y - base.y,
+    })
+
+    const handlers = panHandlers(renderer)
+    const move = { x: target.x - start.x, y: target.y - start.y }
+    await act(async () => {
+      handlers.onResponderGrant(touchAt(0, 0))
+      handlers.onResponderMove(touchAt(move.x, move.y))
+      handlers.onResponderRelease(touchAt(move.x, move.y))
+    })
+    await advance(400)
+
+    expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual({
+      translateX: target.x - base.x,
+      translateY: target.y - base.y,
+    })
+
+    // Off the reader, the window rests in the app's own corner again.
+    await act(async () => {
+      mounted?.update(hostAt([]))
+    })
+    await finishNative(REPOSITION_DURATION_MS)
+    expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual({
+      translateX: 0,
+      translateY: 0,
     })
   })
 

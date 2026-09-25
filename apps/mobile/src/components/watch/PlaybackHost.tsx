@@ -54,12 +54,19 @@ import {
 } from "../../lib/playerSource"
 import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
 import { TAB_BAR_OCCUPIED_HEIGHT } from "../../lib/tabBar"
+import { isTabletLayout } from "../../hooks/useIsTabletLayout"
+import {
+  getReaderMovementBand,
+  readerMovementBandHeight,
+  subscribeReaderMovementBand,
+} from "../../lib/bible/reader/chrome"
 import {
   DEFAULT_CORNER,
   defaultCornerFrame,
   frameGeometry,
   dismissMode,
   miniPlayerCornerFrame,
+  readerCornerPolicy,
   type MiniPlayerCorner,
   type MiniPlayerFrame,
   type MiniPlayerLayoutConfig,
@@ -80,7 +87,13 @@ import {
   type PlaybackRequestSnapshot,
 } from "../../lib/miniPlayer/playbackRequest"
 import { pictureInPictureViewProps } from "../../lib/miniPlayer/pictureInPicture"
-import { miniPlayerPresentation } from "../../lib/miniPlayer/presentation"
+import {
+  expandAction,
+  isReaderCovering,
+  miniPlayerPresentation,
+  readerRouteKind,
+  type ExpandAction,
+} from "../../lib/miniPlayer/presentation"
 import {
   getMiniPlayerStore,
   sameSessionContent,
@@ -100,10 +113,6 @@ import {
 } from "../../lib/streamQuality"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { resumePositionSeconds } from "../../lib/watchProgress/thresholds"
-import {
-  clearPlaybackTransport,
-  setPlaybackTransport,
-} from "../../lib/playbackInterruption"
 import { FloatingBackButton } from "../ui/FloatingBackButton"
 import { MiniPlayerWindow } from "./MiniPlayerWindow"
 import { VideoPlayer } from "./VideoPlayer"
@@ -218,6 +227,19 @@ function sameRect(a: PlaybackRect, b: PlaybackRect): boolean {
   )
 }
 
+/** One frame transition. A shrink into a corner other than the base frame's
+ *  starts from its rect minus the drag; `departed` keeps the rect itself. */
+type FrameMotion = {
+  from: PlaybackRect
+  to: PlaybackRect
+  anchor: "from" | "to"
+  departed?: PlaybackRect
+}
+
+function offsetRect(r: PlaybackRect, by: { x: number; y: number }) {
+  return { x: r.x + by.x, y: r.y + by.y, width: r.width, height: r.height }
+}
+
 /** R4's tap pins the pre-push frames until the grow consumes them: the pushed
  *  route re-derives the corner chrome before the rect arrives. */
 type ExpandHold = {
@@ -254,7 +276,13 @@ export function PlaybackHost() {
   }, [router])
 
   const onExpand = useCallback(
-    (session: MiniPlayerSession) => {
+    (session: MiniPlayerSession, action: ExpandAction) => {
+      // feat-551 AE14: the watch screen is already under the reader, so going
+      // back to it keeps one watch screen in the stack.
+      if (action === "pop") {
+        router.back()
+        return
+      }
       router.push(`/watch/${encodeURIComponent(session.videoSlug)}` as never)
     },
     [router],
@@ -272,7 +300,7 @@ export function PlaybackHost() {
 export type PlaybackHostViewProps = {
   segments: readonly string[]
   canGoBack: () => boolean
-  onExpand: (session: MiniPlayerSession) => void
+  onExpand: (session: MiniPlayerSession, action: ExpandAction) => void
 }
 
 export function PlaybackHostView({
@@ -286,6 +314,12 @@ export function PlaybackHostView({
   const pipHeld = useSyncExternalStore(
     sessionStore.subscribe,
     () => sessionStore.getSnapshot().pipHold,
+  )
+  // feat-551 KTD11: the reader's own corner, kept here because the active host
+  // unmounts between videos and AE18 wants the next reader visit to start at
+  // it. Null means the device's start corner; the app corner stays separate.
+  const [readerCorner, setReaderCorner] = useState<MiniPlayerCorner | null>(
+    null,
   )
 
   // R25/KTD15, wired here rather than inside the player: this component is
@@ -314,6 +348,8 @@ export function PlaybackHostView({
       segments={segments}
       canGoBack={canGoBack}
       onExpand={onExpand}
+      readerCorner={readerCorner}
+      onReaderCornerChange={setReaderCorner}
     />
   )
 }
@@ -324,12 +360,16 @@ function ActivePlaybackHost({
   segments,
   canGoBack,
   onExpand,
+  readerCorner,
+  onReaderCornerChange,
 }: {
   snapshot: PlaybackRequestSnapshot
   request: PlaybackRequest
   segments: readonly string[]
   canGoBack: () => boolean
-  onExpand: (session: MiniPlayerSession) => void
+  onExpand: (session: MiniPlayerSession, action: ExpandAction) => void
+  readerCorner: MiniPlayerCorner | null
+  onReaderCornerChange: (corner: MiniPlayerCorner) => void
 }) {
   const store = getPlaybackRequestStore()
   const sessionStore = getMiniPlayerStore()
@@ -790,7 +830,35 @@ function ActivePlaybackHost({
   const session = sessionSnapshot.session
   const hasSession = session != null
   const pipHeld = sessionSnapshot.pipHold
-  const rect = snapshot.rect
+
+  // ── The reader cover (feat-551 KTD10) ─────────────────────────────────────
+
+  // The store's answer for the CURRENT slot is the one predicate every layer
+  // reads: this frame, the slot's poster, and the screen's back button. An
+  // admitted cover floats the video; the kept rect waits for the return.
+  const cover = snapshot.cover ?? null
+  const coverFloats = cover === "admitted" && hasSession
+  // Refused, or admitted and then closed: the frame hides but stays at the
+  // kept rect, so the chrome (a Replay poster, a cast state) stays mounted.
+  const coverHides = cover != null && !coverFloats
+  const rect = coverFloats ? null : snapshot.rect
+  const coverFloatsRef = useRef(coverFloats)
+  coverFloatsRef.current = coverFloats
+
+  // A refused cover turns autostart off for this video, so no veil arms and
+  // no audio starts under the reader (AE13). Per video: another one starts
+  // fresh.
+  const [autostartOffKey, setAutostartOffKey] = useState<string | null>(null)
+  const autostartOff = autostartOffKey != null && autostartOffKey === videoKey
+  const videoKeyRef = useRef(videoKey)
+  videoKeyRef.current = videoKey
+  // The video the reader floated. Its chrome remounts on the return, and only
+  // that mount takes the "started" start value below.
+  const coverStartKeyRef = useRef<string | null>(null)
+  if (coverFloats) coverStartKeyRef.current = videoKey
+  useEffect(() => {
+    if (cover == null && snapshot.rect != null) coverStartKeyRef.current = null
+  }, [cover, snapshot.rect])
 
   // The latch is fed by this view's own callbacks, so a teardown that takes the
   // view with it would strand the latch set — and a stuck hold exempts EVERY
@@ -858,21 +926,27 @@ function ActivePlaybackHost({
     return () => store.setPlaybackFactsSource(null)
   }, [store, player])
 
-  // Lends the one player to a surface presented OVER the app (the Bible passage
-  // sheet). Registered beside the facts source because both are the same shape:
-  // the host owns the player, and a route-tree component cannot reach a sibling
-  // of the stack.
-  useEffect(() => {
-    const transport = {
-      isPlaying: () => player.playing,
-      pause: () => player.pause(),
-      play: () => player.play(),
+  // KTD10: one layout effect per covered slot. It runs admission through the
+  // store (the same step a detach takes), and its cleanup is the return. A new
+  // slot under the reader (a deep link) is a new cover and a new decision.
+  const coverSlotId = isReaderCovering(segments) ? snapshot.slotId : null
+  useLayoutEffect(() => {
+    if (coverSlotId == null) return
+    const admitted = store.coverSlot(coverSlotId)
+    if (admitted === false) {
+      // Refused: the video waits on the watch screen. A cast keeps playing on
+      // the receiver, so only local playback pauses.
+      if (!castActiveRef.current) {
+        try {
+          player.pause()
+        } catch {
+          // Native player already released
+        }
+      }
+      setAutostartOffKey(videoKeyRef.current)
     }
-    setPlaybackTransport(transport)
-    // Identity-checked: an unconditional null would let a torn-down host clear
-    // a live registration if the two ever overlap.
-    return () => clearPlaybackTransport(transport)
-  }, [player])
+    return () => store.uncoverSlot(coverSlotId)
+  }, [store, player, coverSlotId])
 
   // R25 stops playback on a subject change, R6 on a dismissal — neither is
   // covered by the teardown (an expanded screen keeps this host mounted). Every
@@ -966,38 +1040,6 @@ function ActivePlaybackHost({
   const insets = useSafeAreaInsets()
   const pattern = routePattern(segments)
   const underHeader = HEADER_ROUTE_PATTERNS.has(pattern)
-  const layoutConfig = useMemo<MiniPlayerLayoutConfig>(
-    () => ({
-      screen: { width: screenWidth, height: screenHeight },
-      insets: {
-        top: insets.top,
-        right: insets.right,
-        bottom: insets.bottom,
-        left: insets.left,
-      },
-      chrome: {
-        top: underHeader ? NATIVE_HEADER_HEIGHT : 0,
-        // ALWAYS reserved, tab bar or not (owner decision 2026-08-19): one
-        // constant height on every screen, so a push never moves the window.
-        bottom: TAB_BAR_CONTENT_HEIGHT,
-      },
-    }),
-    [
-      screenWidth,
-      screenHeight,
-      insets.top,
-      insets.right,
-      insets.bottom,
-      insets.left,
-      underHeader,
-    ],
-  )
-  const windowFrame = useMemo(
-    () => defaultCornerFrame(layoutConfig),
-    [layoutConfig],
-  )
-  const layoutConfigRef = useRef(layoutConfig)
-  layoutConfigRef.current = layoutConfig
 
   // KTD5: the drag writes the frame node and never takes the native driver;
   // the shrink (motion node inside it) and the exit (wrapper above it) do.
@@ -1008,20 +1050,93 @@ function ActivePlaybackHost({
   // and both are native-driven, so they share one driver (KTD5).
   const exitOpacity = useRef(new Animated.Value(1)).current
 
+  // The app's corner. Reader routes keep their own (KTD11, below).
   const [corner, setCorner] = useState<MiniPlayerCorner>(DEFAULT_CORNER)
-  const cornerRef = useRef(corner)
-  cornerRef.current = corner
   // The one in-flight frame transition (KTD17). The frame ANCHORS at one end
   // while the transform carries the visual between `from` and `to`: the native
   // driver attaches transforms after a commit paints, so the untransformed
   // first frame renders AT the anchor — anchoring at the end the viewer is
   // already looking at is what makes the start of a transition flash-proof.
   // The shrink and the reposition glide anchor at `from`; the expand at `to`.
-  const [motion, setMotion] = useState<{
-    from: PlaybackRect
-    to: PlaybackRect
-    anchor: "from" | "to"
-  } | null>(null)
+  const [motion, setMotion] = useState<FrameMotion | null>(null)
+
+  // ── The reader corners (feat-551 KTD11) ───────────────────────────────────
+
+  // A covered slot means the pushed reader, whatever the route says during the
+  // one commit before the cover starts or ends. A sheet sits over whichever
+  // reader opened it, so it keeps the last reader's layout.
+  const routeReader = readerRouteKind(segments)
+  const lastReaderRef = useRef<"tab" | "pushed">("pushed")
+  if (routeReader === "tab" || routeReader === "pushed")
+    lastReaderRef.current = routeReader
+  const readerHost: "tab" | "pushed" | null =
+    cover != null
+      ? "pushed"
+      : routeReader === "sheet"
+        ? lastReaderRef.current
+        : routeReader
+  const tablet = isTabletLayout(screenWidth, screenHeight)
+  const publishedBand = useSyncExternalStore(
+    subscribeReaderMovementBand,
+    getReaderMovementBand,
+  )
+  // Held while a transition runs: a band that changes mid-shrink would cut the
+  // shrink short. The next render after the settle applies it.
+  const movementBandRef = useRef<number | null>(publishedBand)
+  if (motion == null) movementBandRef.current = publishedBand
+  const movementBand =
+    movementBandRef.current ??
+    readerMovementBandHeight({ arrows: tablet, hint: false })
+  const readerPolicy =
+    readerHost == null
+      ? null
+      : readerCornerPolicy({
+          layout: tablet ? "tablet" : "phone",
+          host: readerHost,
+          movementBand,
+          tabBar: TAB_BAR_CONTENT_HEIGHT,
+        })
+  const chromeTop =
+    readerPolicy?.chrome.top ?? (underHeader ? NATIVE_HEADER_HEIGHT : 0)
+  // ALWAYS reserved off the reader, tab bar or not (owner decision 2026-08-19):
+  // one constant height, so a push never moves the window.
+  const chromeBottom = readerPolicy?.chrome.bottom ?? TAB_BAR_CONTENT_HEIGHT
+  const effectiveCorner =
+    readerPolicy != null ? (readerCorner ?? readerPolicy.startCorner) : corner
+  const effectiveCornerRef = useRef(effectiveCorner)
+  effectiveCornerRef.current = effectiveCorner
+  const onReaderRouteRef = useRef(readerPolicy != null)
+  onReaderRouteRef.current = readerPolicy != null
+
+  const layoutConfig = useMemo<MiniPlayerLayoutConfig>(
+    () => ({
+      screen: { width: screenWidth, height: screenHeight },
+      insets: {
+        top: insets.top,
+        right: insets.right,
+        bottom: insets.bottom,
+        left: insets.left,
+      },
+      chrome: { top: chromeTop, bottom: chromeBottom },
+    }),
+    [
+      screenWidth,
+      screenHeight,
+      insets.top,
+      insets.right,
+      insets.bottom,
+      insets.left,
+      chromeTop,
+      chromeBottom,
+    ],
+  )
+  const windowFrame = useMemo(
+    () => defaultCornerFrame(layoutConfig),
+    [layoutConfig],
+  )
+  const layoutConfigRef = useRef(layoutConfig)
+  layoutConfigRef.current = layoutConfig
+
   const [chromeReady, setChromeReady] = useState(true)
   const [surfaceReleased, setSurfaceReleased] = useState(false)
   const lastRectRef = useRef<PlaybackRect | null>(null)
@@ -1034,21 +1149,22 @@ function ActivePlaybackHost({
   // The in-flight motion, readable by the run that supersedes it. The `motion`
   // STATE cannot serve: it is not in this effect's deps, and adding it would
   // re-run the effect on every transition the effect itself starts.
-  const motionRef = useRef<{
-    from: PlaybackRect
-    to: PlaybackRect
-    anchor: "from" | "to"
-  } | null>(null)
+  const motionRef = useRef<FrameMotion | null>(null)
   // R4's tap precedes the rect by a route push: the tab bar leaves the segments
   // at once and the corner re-derives lower. The pin must ride the COMMITTED
   // geometry — an Animated catch-up lands after the commit paints (Fabric).
   const expandHoldRef = useRef<ExpandHold | null>(null)
-  // The corner the window last settled into, that corner's OWN absolute frame,
-  // and the drag offset the rest assumes. A header route lifts a top corner
-  // while the default one stays, so only the occupied corner can glide.
-  const restingCornerRef = useRef<MiniPlayerCorner | null>(null)
+  // The frame the window last settled into, and the drag offset that rest
+  // assumes. A header route lifts a top corner while the default one stays,
+  // so the glide follows the occupied corner's own frame.
   const restingTargetRef = useRef<MiniPlayerFrame | null>(null)
   const restingDragRef = useRef<{ x: number; y: number } | null>(null)
+  // Whether the last run of the effect below saw the window float over the
+  // reader. Only that window grows back without a session (KTD10).
+  const floatedOverReaderRef = useRef(false)
+  // Whether that run saw the window rest on a reader route. Only then does a
+  // grow start at the last rest; other routes grow from the live corner.
+  const restedOnReaderRef = useRef(false)
 
   useEffect(() => {
     return () => {
@@ -1071,6 +1187,10 @@ function ActivePlaybackHost({
     const inFlight = motionRef.current
     shrinkAnimRef.current?.stop()
     shrinkAnimRef.current = null
+    const floatedOverReader = floatedOverReaderRef.current
+    floatedOverReaderRef.current = coverFloats
+    const restedOnReader = restedOnReaderRef.current
+    restedOnReaderRef.current = rect == null && onReaderRouteRef.current
     const clearMotion = () => {
       if (chromeTimerRef.current != null) {
         clearTimeout(chromeTimerRef.current)
@@ -1135,8 +1255,9 @@ function ActivePlaybackHost({
       to: PlaybackRect,
       anchor: "from" | "to",
       durationMs: number,
+      departed?: PlaybackRect,
     ) => {
-      const next = { from, to, anchor }
+      const next: FrameMotion = { from, to, anchor, departed }
       motionRef.current = next
       setMotion(next)
       shrink.setValue(0)
@@ -1146,7 +1267,13 @@ function ActivePlaybackHost({
       // A rect arriving over a live session is the expand (R4): the surface
       // grows from the corner it occupied back into the player rect — the
       // shrink in reverse, never a blink into place.
-      const grow = lastRectRef.current == null && hasSession
+      const restingFrame = restingTargetRef.current
+      // The reader's return clears its session in this same commit, so a
+      // window that floated over the reader counts too (KTD10).
+      const grow =
+        lastRectRef.current == null &&
+        !coverHides &&
+        (hasSession || floatedOverReader)
       lastRectRef.current = rect
       drag.setValue({ x: 0, y: 0 })
       if (grow) {
@@ -1161,12 +1288,16 @@ function ActivePlaybackHost({
         // A shrink still on the ramp is this grow's own path, backwards: turn
         // the live node around rather than restart from an anchor JS cannot
         // verify it reached. Same anchor, same geometry, same settle.
-        if (inFlight?.anchor === "from" && sameRect(inFlight.from, rect)) {
+        if (
+          inFlight?.anchor === "from" &&
+          sameRect(inFlight.departed ?? inFlight.from, rect)
+        ) {
           runRamp(0, "from", EXPAND_DURATION_MS)
         } else {
           runMotion(
             hold?.cornerFrame ??
-              miniPlayerCornerFrame(layoutConfig, cornerRef.current),
+              (restedOnReader ? restingFrame : null) ??
+              miniPlayerCornerFrame(layoutConfig, effectiveCornerRef.current),
             rect,
             "to",
             EXPAND_DURATION_MS,
@@ -1176,7 +1307,6 @@ function ActivePlaybackHost({
         expandHoldRef.current = null
         clearMotion()
       }
-      restingCornerRef.current = null
       restingTargetRef.current = null
       restingDragRef.current = null
       return
@@ -1191,13 +1321,11 @@ function ActivePlaybackHost({
       expandHoldRef.current = hold
       const target =
         hold?.cornerFrame ??
-        miniPlayerCornerFrame(layoutConfig, cornerRef.current)
+        miniPlayerCornerFrame(layoutConfig, effectiveCornerRef.current)
       const base = hold?.windowFrame ?? windowFrame
       const dragTarget = { x: target.x - base.x, y: target.y - base.y }
-      const previousCorner = restingCornerRef.current
       const previousTarget = restingTargetRef.current
       const previousDrag = restingDragRef.current
-      restingCornerRef.current = hasSession ? cornerRef.current : null
       restingTargetRef.current = hasSession ? target : null
       restingDragRef.current = hasSession ? dragTarget : null
       // Animated's public types omit __getValue; the drag node is JS-driven, so
@@ -1206,15 +1334,14 @@ function ActivePlaybackHost({
         drag as unknown as { __getValue(): { x: number; y: number } }
       ).__getValue()
       drag.setValue(dragTarget)
-      // The glide is the OCCUPIED corner's own move. The drag rides the frame
-      // ABOVE the ramp, so the ramp starts at the old position MINUS it — and
-      // only if the node is really AT the rest a still-running snap would move.
+      // The glide moves the window from its last rest to its new one. That rest
+      // may be another corner: KTD11 switches the corner in and out of the
+      // reader. Only a node really AT that rest may glide from it.
       const glideFrom =
         hold == null &&
         hasSession &&
         previousTarget != null &&
         previousDrag != null &&
-        previousCorner === cornerRef.current &&
         liveDrag.x === previousDrag.x &&
         liveDrag.y === previousDrag.y &&
         (previousTarget.x !== target.x || previousTarget.y !== target.y)
@@ -1235,29 +1362,53 @@ function ActivePlaybackHost({
       }
       return
     }
-    // A new window opens in the default corner, which is also what makes the
-    // shrink arithmetic exact: there is no drag offset to subtract. The frame
-    // stays anchored at the player rect for the whole shrink (a flash-proof
-    // start: the untransformed first frame IS the previous frame).
-    setCorner(DEFAULT_CORNER)
-    drag.setValue({ x: 0, y: 0 })
+    // A new window opens in the app's default corner, or on a reader route in
+    // the reader's corner (KTD11). The frame stays anchored at the player rect
+    // for the whole shrink: the untransformed first frame IS the previous one.
+    const onReader = onReaderRouteRef.current
+    const startCorner = onReader ? effectiveCornerRef.current : DEFAULT_CORNER
+    if (!onReader) setCorner(DEFAULT_CORNER)
+    const target = miniPlayerCornerFrame(layoutConfig, startCorner)
+    // A corner other than the base frame's rides the drag offset, so the
+    // motion starts at the rect MINUS that offset: the same visual start.
+    const dragTarget = {
+      x: target.x - windowFrame.x,
+      y: target.y - windowFrame.y,
+    }
+    drag.setValue(dragTarget)
     setChromeReady(false)
     // The same turn-around the other way: a grow still on the ramp departs
     // from the very corner this shrink is heading for.
     if (
       inFlight?.anchor === "to" &&
       sameRect(inFlight.to, from) &&
-      sameRect(inFlight.from, windowFrame)
+      sameRect(inFlight.from, windowFrame) &&
+      dragTarget.x === 0 &&
+      dragTarget.y === 0
     ) {
       runRamp(0, "to", SHRINK_DURATION_MS)
     } else {
-      runMotion(from, windowFrame, "from", SHRINK_DURATION_MS)
+      runMotion(
+        offsetRect(from, { x: -dragTarget.x, y: -dragTarget.y }),
+        windowFrame,
+        "from",
+        SHRINK_DURATION_MS,
+        from,
+      )
     }
     // The rest this settle leaves behind: later chrome changes glide from it.
-    restingCornerRef.current = DEFAULT_CORNER
-    restingTargetRef.current = windowFrame
-    restingDragRef.current = { x: 0, y: 0 }
-  }, [rect, hasSession, layoutConfig, windowFrame, drag, shrink])
+    restingTargetRef.current = target
+    restingDragRef.current = dragTarget
+  }, [
+    rect,
+    hasSession,
+    coverFloats,
+    coverHides,
+    layoutConfig,
+    windowFrame,
+    drag,
+    shrink,
+  ])
 
   // Runs on the commit that DROPS the motion, so identity means "fill the
   // corner" — the settled state. Parking earlier flashed the video full size;
@@ -1285,11 +1436,14 @@ function ActivePlaybackHost({
     // From the corner the window OCCUPIES: the exit translates the dragged
     // frame, so a top-corner dismissal measured from the default bottom corner
     // stops mid-screen and blinks out.
-    const occupied = miniPlayerCornerFrame(layoutConfig, cornerRef.current)
+    const occupied = miniPlayerCornerFrame(
+      layoutConfig,
+      effectiveCornerRef.current,
+    )
     const distance = screenHeight - occupied.y + EXIT_CLEARANCE
     // Reset the node this dismissal will NOT drive, so a fade cannot inherit a
     // slide's offset (or the reverse) from the dismissal before it.
-    const fading = dismissMode(cornerRef.current) === "fade"
+    const fading = dismissMode(effectiveCornerRef.current) === "fade"
     if (fading) exitY.setValue(0)
     else exitOpacity.setValue(1)
     const animation = fading
@@ -1410,46 +1564,84 @@ function ActivePlaybackHost({
   }, [player])
 
   const handleDismiss = useCallback(() => {
+    // KTD10: a window closed over the reader stops the video and ends its
+    // session with no report, so the quality session, the recommendation
+    // episode and the settings survive for the return (AE14).
+    if (coverFloatsRef.current) {
+      try {
+        player.pause()
+      } catch {
+        // Native player already released
+      }
+      getMiniPlayerStore().dismissWithoutReport()
+      return
+    }
     getMiniPlayerStore().requestDismiss()
-  }, [])
+  }, [player])
 
+  const segmentsRef = useRef(segments)
+  segmentsRef.current = segments
   const handleExpand = useCallback(() => {
     const current = getMiniPlayerStore().getSnapshot().session
     if (current == null) return
-    // The bottom reservation is constant on every route (owner decision
-    // 2026-08-19), so a push never re-derives the corner frame. Pin the
-    // on-screen frames anyway, so the grow starts from what the viewer sees.
+    const now = Date.now()
+    // On a reader route, one tap per expand: a second one would pop or push a
+    // second route (KTD10). Other routes keep their behavior from before.
+    if (
+      onReaderRouteRef.current &&
+      liveExpandHold(expandHoldRef.current, true, now) != null
+    )
+      return
+    // Pin the on-screen frames, so the grow starts from what the viewer sees
+    // even when the navigation re-derives the corner layout first.
     expandHoldRef.current = {
       windowFrame: defaultCornerFrame(layoutConfigRef.current),
       cornerFrame: miniPlayerCornerFrame(
         layoutConfigRef.current,
-        cornerRef.current,
+        effectiveCornerRef.current,
       ),
-      at: Date.now(),
+      at: now,
     }
-    onExpand(current)
+    onExpand(
+      current,
+      expandAction({
+        covered: coverFloatsRef.current,
+        descriptor: requestRef.current.session,
+        session: current,
+        segments: segmentsRef.current,
+      }),
+    )
   }, [onExpand])
 
-  const handleCornerChange = useCallback((next: MiniPlayerCorner) => {
-    // A drag supersedes the tap: a held frame would aim the grow at the corner
-    // the window just left. The snap carries the drag to `next`, and THAT is
-    // the rest a later chrome change glides from.
-    expandHoldRef.current = null
-    const config = layoutConfigRef.current
-    const nextTarget = miniPlayerCornerFrame(config, next)
-    const nextBase = defaultCornerFrame(config)
-    restingCornerRef.current = next
-    restingTargetRef.current = nextTarget
-    restingDragRef.current = {
-      x: nextTarget.x - nextBase.x,
-      y: nextTarget.y - nextBase.y,
-    }
-    setCorner(next)
-  }, [])
+  const handleCornerChange = useCallback(
+    (next: MiniPlayerCorner) => {
+      // A drag supersedes the tap: a held frame would aim the grow at the
+      // corner the window just left. The snap carries the drag to `next`, and
+      // THAT is the rest a later chrome change glides from.
+      expandHoldRef.current = null
+      const config = layoutConfigRef.current
+      const nextTarget = miniPlayerCornerFrame(config, next)
+      const nextBase = defaultCornerFrame(config)
+      restingTargetRef.current = nextTarget
+      restingDragRef.current = {
+        x: nextTarget.x - nextBase.x,
+        y: nextTarget.y - nextBase.y,
+      }
+      // KTD11: a move inside the reader writes the reader's corner only.
+      if (onReaderRouteRef.current) onReaderCornerChange(next)
+      else setCorner(next)
+    },
+    [onReaderCornerChange],
+  )
 
   const showWindow =
-    hasSession && (presentation === "floating" || presentation === "exiting")
+    hasSession &&
+    (presentation === "floating" || presentation === "exiting") &&
+    !coverHides
   const suppressed = hasSession && presentation === "hidden"
+  // A hidden cover hides the frame the way sheet suppression does: by
+  // opacity, with no touches, and with every view still mounted (KTD10).
+  const frameHidden = suppressed || coverHides
   const floating = rect == null && hasSession
   // The frame sits at the motion's anchor while one runs (see the motion
   // state), and at the corner the moment a from-anchored one settles. An
@@ -1551,6 +1743,31 @@ function ActivePlaybackHost({
     }
   }, [store])
 
+  // feat-551 R10: the reader keeps its verse clear of the resting window. It
+  // stays published while a sheet hides the window, so the verse holds still.
+  const onReaderRoute = readerPolicy != null
+  const restingWindow = useMemo(
+    () =>
+      onReaderRoute &&
+      rect == null &&
+      hasSession &&
+      (presentation === "floating" || presentation === "hidden")
+        ? miniPlayerCornerFrame(layoutConfig, effectiveCorner)
+        : null,
+    [
+      onReaderRoute,
+      rect,
+      hasSession,
+      presentation,
+      layoutConfig,
+      effectiveCorner,
+    ],
+  )
+  useLayoutEffect(() => {
+    store.setWindowFrame(restingWindow)
+  }, [store, restingWindow])
+  useLayoutEffect(() => () => store.setWindowFrame(null), [store])
+
   // Armed only while this video actually runs, so pressing Home over a paused
   // video opens no window — and kept armed through the hold, because expo-video
   // re-elects on every params change and only the elected view is re-parented.
@@ -1597,11 +1814,11 @@ function ActivePlaybackHost({
               // window at the corner would front-run the arriving video.
               motion != null && styles.inMotion,
               floating && chromeReady && !settlingFromRect && styles.rounded,
-              suppressed && styles.suppressed,
+              frameHidden && styles.suppressed,
               { transform: [{ translateX: drag.x }, { translateY: drag.y }] },
             ]}
-            // Invisible over a sheet, so it must not take that sheet's touches.
-            pointerEvents={suppressed ? "none" : "box-none"}
+            // Invisible over a sheet or the reader: it takes none of their touches.
+            pointerEvents={frameHidden ? "none" : "box-none"}
           >
             <Animated.View
               testID="playback-motion"
@@ -1652,8 +1869,13 @@ function ActivePlaybackHost({
                 fullscreen={request.fullscreen}
                 onToggleFullscreen={request.onToggleFullscreen ?? undefined}
                 resumeAtSeconds={request.resumeAtSeconds}
-                autostart={request.autostart}
+                autostart={request.autostart && !autostartOff}
                 adopted={adoptable}
+                // The chrome remounts on the reader's return; a video that
+                // already played arms no veil then (KTD10).
+                started={
+                  coverStartKeyRef.current === videoKey && startedRef.current
+                }
                 cast={slotOwned ? (request.cast ?? null) : null}
               />
             )}
@@ -1663,7 +1885,7 @@ function ActivePlaybackHost({
                 frame={windowFrame}
                 layout={layoutConfig}
                 drag={drag}
-                corner={corner}
+                corner={effectiveCorner}
                 onCornerChange={handleCornerChange}
                 title={session.title}
                 posterUrl={session.posterUrl}
@@ -1690,12 +1912,15 @@ function ActivePlaybackHost({
           own by (usePlaybackFrameVisible), or the measurement gap draws two.
           A session-bearing surface minimizes on back, so it shows the down
           chevron the screen's own button matches. */}
-      {snapshot.slotId != null && rect != null && !request.fullscreen && (
-        <FloatingBackButton
-          {...BACK_BUTTON_PROPS}
-          icon={request.session != null ? "chevron-down" : "chevron-back"}
-        />
-      )}
+      {snapshot.slotId != null &&
+        rect != null &&
+        cover == null &&
+        !request.fullscreen && (
+          <FloatingBackButton
+            {...BACK_BUTTON_PROPS}
+            icon={request.session != null ? "chevron-down" : "chevron-back"}
+          />
+        )}
     </View>
   )
 }

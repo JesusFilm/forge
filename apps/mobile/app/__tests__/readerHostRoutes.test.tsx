@@ -75,7 +75,7 @@ jest.mock("../../src/lib/bible/sheets/downloadPrompt", () => ({
 }))
 
 import { StrictMode, act, type ComponentType } from "react"
-import { Animated } from "react-native"
+import { Animated, StyleSheet } from "react-native"
 
 import BibleTabRoute from "../(tabs)/bible"
 import ReaderRoute from "../reader"
@@ -104,6 +104,7 @@ import { readerHref } from "../../src/lib/bible/routes/readerRoute"
 import { createReaderSettingsStore } from "../../src/lib/bible/settings/store"
 import { presentReaderDownloadPrompt } from "../../src/lib/bible/sheets/downloadPrompt"
 import { readerSheetHref } from "../../src/lib/bible/sheets/routes"
+import { getPlaybackRequestStore } from "../../src/lib/miniPlayer/playbackRequest"
 import type { UsfmBookId } from "../../src/lib/bible/text/books"
 import { parseBookText } from "../../src/lib/bible/text/normalize"
 import type { BookText } from "../../src/lib/bible/text/types"
@@ -379,6 +380,52 @@ describe("the Bible tab route (app/(tabs)/bible.tsx)", () => {
     await rerender(tab, BibleTabRoute)
     expect(pills(tab, "John 3:16")).toHaveLength(1)
     expect(pulses()).toBe(0)
+  })
+})
+
+// U13, R10: the host publishes the resting mini player; each route hands that
+// frame to its reader, and the verse box keeps clear of it.
+describe.each([
+  ["the Bible tab", BibleTabRoute],
+  ["the pushed reader", ReaderRoute],
+] as const)("%s keeps its verse clear of the mini player", (_host, Route) => {
+  const store = getPlaybackRequestStore()
+  afterEach(() => store.setWindowFrame(null))
+
+  function verseArea(renderer: TestInstance) {
+    const [area] = renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "bible-verse-area",
+    )
+    expect(area).toBeDefined()
+    const style = StyleSheet.flatten(area!.props.style) as {
+      top: number
+      height: number
+    }
+    return { top: Number(style.top), height: Number(style.height) }
+  }
+
+  it("shrinks the verse box under the window, and grows it back when it goes", async () => {
+    install()
+    mockRoute.params = readerHref(JOHN_3_16, "quote").params
+    const renderer = await renderRoute(Route)
+    const clear = verseArea(renderer)
+    // A window resting in a top corner, deeper than the box's top edge.
+    const frame = { x: 300, y: clear.top - 20, width: 185, height: 180 }
+
+    await act(async () => {
+      store.setWindowFrame(frame)
+    })
+
+    const covered = verseArea(renderer)
+    expect(covered.top).toBeGreaterThanOrEqual(frame.y + frame.height)
+    expect(covered.height).toBeLessThan(clear.height)
+
+    await act(async () => {
+      store.setWindowFrame(null)
+    })
+    expect(verseArea(renderer)).toEqual(clear)
   })
 })
 

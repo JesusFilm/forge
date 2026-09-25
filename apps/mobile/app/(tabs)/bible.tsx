@@ -2,6 +2,7 @@ import { useMemo } from "react"
 import { useRouter } from "expo-router"
 
 import { BibleReader } from "../../src/components/bible/BibleReader"
+import { useFloatingWindowFrame } from "../../src/hooks/usePlaybackFrame"
 import { readerSheetCallbacks } from "../../src/lib/bible/routes/sheetCallbacks"
 
 // feat-551 R2, R3, KTD9: the Bible tab. It opens at the saved reading position,
@@ -9,6 +10,18 @@ import { readerSheetCallbacks } from "../../src/lib/bible/routes/sheetCallbacks"
 export default function BibleTabScreen() {
   const router = useRouter()
   const callbacks = useMemo(() => readerSheetCallbacks(router), [router])
+  // R10: the verse stays clear of the mini player that floats over it.
+  const windowFrame = useFloatingWindowFrame()
+  const floatingObstacles = useMemo(
+    () => (windowFrame ? [windowFrame] : undefined),
+    [windowFrame],
+  )
 
-  return <BibleReader host="tab" {...callbacks} />
+  return (
+    <BibleReader
+      host="tab"
+      floatingObstacles={floatingObstacles}
+      {...callbacks}
+    />
+  )
 }

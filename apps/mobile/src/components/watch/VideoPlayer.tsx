@@ -97,6 +97,10 @@ type VideoPlayerProps = {
   /** The player already holds this request's content (R4's expand). Only the
    *  host can know it — the adoption is its `sourceForRequest` decision. */
   adopted?: boolean
+  /** The host's latch that this video already played. Read at mount only: the
+   *  chrome remounts when the reader cover returns (feat-551 KTD10), and a
+   *  paused video must then show its controls, not the autostart veil. */
+  started?: boolean
   /** Cast wiring, owned by the surface that published the playback request and
    *  forwarded by the host. Null once that surface is gone: its unmount already
    *  ended the session (KTD7), so the floating window is local playback only. */
@@ -136,6 +140,7 @@ export function VideoPlayer({
   resumeAtSeconds = null,
   autostart = false,
   adopted = false,
+  started = false,
   cast = null,
 }: VideoPlayerProps) {
   const castPlayback = cast?.playback ?? null
@@ -147,7 +152,7 @@ export function VideoPlayer({
   // source emits no sourceLoad, so a paused one would arm the autostart veil
   // with nothing left to clear it (the live read alone covers only a playing one).
   const [hasStarted, setHasStarted] = useState(() => {
-    if (adopted) return true
+    if (adopted || started) return true
     try {
       return player.playing
     } catch {

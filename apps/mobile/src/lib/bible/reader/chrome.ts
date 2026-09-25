@@ -76,6 +76,35 @@ export function readerMovementBandHeight(input: {
   )
 }
 
+// U13: the band the reader shows now. Both readers compute it from the same
+// settings, so one value serves both. The mini player reads it to rest a
+// bottom corner above the band; null until a reader has shown.
+let liveMovementBand: number | null = null
+const movementBandListeners = new Set<() => void>()
+
+export function publishReaderMovementBand(height: number): void {
+  if (liveMovementBand === height) return
+  liveMovementBand = height
+  for (const listener of movementBandListeners) listener()
+}
+
+export function getReaderMovementBand(): number | null {
+  return liveMovementBand
+}
+
+export function subscribeReaderMovementBand(listener: () => void): () => void {
+  movementBandListeners.add(listener)
+  return () => {
+    movementBandListeners.delete(listener)
+  }
+}
+
+/** Module state outlives a test file; this clears it between cases. */
+export function resetReaderMovementBandForTests(): void {
+  liveMovementBand = null
+  for (const listener of movementBandListeners) listener()
+}
+
 export const READER_CHROME_HEIGHTS = Object.freeze({
   topBar: READER_TOP_BAR_HEIGHT,
   footer: Object.freeze({

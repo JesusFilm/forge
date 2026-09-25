@@ -48,6 +48,7 @@ import {
 } from "../../lib/bible/position/store"
 import {
   READER_CHROME_MAX_FONT_SCALE,
+  publishReaderMovementBand,
   readerBottomInset,
   readerChromeBand,
   readerFooterHeight,
@@ -275,6 +276,13 @@ export function BibleReader(props: BibleReaderProps) {
     arrows: arrowsShown,
     hint: hintLive,
   })
+  // U13: the mini player rests a bottom corner above this band. Only once the
+  // saved settings are read: before that, the band is a guess.
+  const bandKnown =
+    settings.status !== "loading" && onboarding.status !== "loading"
+  useLayoutEffect(() => {
+    if (bandKnown) publishReaderMovementBand(movementBand)
+  }, [bandKnown, movementBand])
   const band = readerChromeBand({
     layout,
     safeAreaTop: insets.top,

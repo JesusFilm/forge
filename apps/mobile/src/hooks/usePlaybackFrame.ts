@@ -1,6 +1,9 @@
 import { useSyncExternalStore } from "react"
 
-import { getPlaybackRequestStore } from "../lib/miniPlayer/playbackRequest"
+import {
+  getPlaybackRequestStore,
+  type PlaybackRect,
+} from "../lib/miniPlayer/playbackRequest"
 
 /**
  * Whether the root playback host is currently drawing its video view into a
@@ -13,7 +16,11 @@ import { getPlaybackRequestStore } from "../lib/miniPlayer/playbackRequest"
 export function usePlaybackFrameVisible(): boolean {
   const store = getPlaybackRequestStore()
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
-  return snapshot.rect != null && snapshot.slotId != null
+  // A reader cover (feat-551 KTD10) draws nothing into the slot, so the
+  // screen shows its own back button again.
+  return (
+    snapshot.rect != null && snapshot.slotId != null && snapshot.cover == null
+  )
 }
 
 /**
@@ -28,5 +35,15 @@ export function usePlaybackPlaying(): boolean {
   return useSyncExternalStore(
     store.subscribe,
     () => store.getSnapshot().playing,
+  )
+}
+
+/** The resting mini player frame in window coordinates, or null (feat-551
+ *  R10). It keeps one object until it moves, so a reader re-renders only then. */
+export function useFloatingWindowFrame(): PlaybackRect | null {
+  const store = getPlaybackRequestStore()
+  return useSyncExternalStore(
+    store.subscribe,
+    () => store.getSnapshot().windowFrame ?? null,
   )
 }

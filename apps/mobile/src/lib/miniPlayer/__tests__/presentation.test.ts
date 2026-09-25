@@ -1,10 +1,15 @@
 import { TAB_ROUTE_NAMES } from "../../tabBar"
 import {
+  READER_COVER_ROUTE_PATTERNS,
+  READER_ROUTE_PATTERNS,
   TAB_ROOT_ROUTE_PATTERNS,
   canOriginateRoutePattern,
+  expandAction,
   isFullScreenRoute,
+  isReaderCovering,
   isTabRootRoute,
   miniPlayerPresentation,
+  readerRouteKind,
   type MiniPlayerPresentation,
 } from "../presentation"
 import { routePattern } from "../suppression"
@@ -251,5 +256,124 @@ describe("route predicates", () => {
     expect(isFullScreenRoute(["series", "[slug]"])).toBe(false)
     expect(isFullScreenRoute(["series", "download"])).toBe(false)
     expect(isFullScreenRoute(["(tabs)", "watch"])).toBe(false)
+  })
+})
+
+// feat-551 KTD10, KTD11: the reader routes and the watch slot they cover.
+describe("the reader cover (KTD10)", () => {
+  // Every route in the table above, so an added route has to take a side.
+  const COVERING = [
+    "reader",
+    "reader-passage",
+    "reader-translation",
+    "reader-settings",
+  ]
+
+  it.each(ROUTE_TABLE)(
+    "%s covers the watch slot only if it is a reader route",
+    (pattern, segments) => {
+      const expected = COVERING.includes(routePattern(segments))
+      expect(isReaderCovering(segments)).toBe(expected)
+      // Anti-vacuous: the label and the segments name the same route.
+      expect(pattern.startsWith(routePattern(segments))).toBe(true)
+    },
+  )
+
+  it("lists the pushed reader and its three sheets, never the Bible tab", () => {
+    expect([...READER_COVER_ROUTE_PATTERNS]).toEqual(COVERING)
+    // No watch slot is mounted under the tab, so there is nothing to cover.
+    expect(isReaderCovering(["(tabs)", "bible"])).toBe(false)
+  })
+
+  it("names the reader host of every reader route", () => {
+    expect(readerRouteKind(["(tabs)", "bible"])).toBe("tab")
+    expect(readerRouteKind(["reader"])).toBe("pushed")
+    expect(readerRouteKind(["reader-passage"])).toBe("sheet")
+    expect(readerRouteKind(["reader-translation"])).toBe("sheet")
+    expect(readerRouteKind(["reader-settings"])).toBe("sheet")
+    expect(readerRouteKind(["(tabs)"])).toBeNull()
+    expect(readerRouteKind(["watch", "[slug]"])).toBeNull()
+    expect(readerRouteKind(["(tabs)", "watch"])).toBeNull()
+    expect([...READER_ROUTE_PATTERNS].sort()).toEqual(
+      [...COVERING, "(tabs)/bible"].sort(),
+    )
+  })
+})
+
+describe("expandAction (KTD10, AE14)", () => {
+  const SESSION = { videoId: "video-1", videoSlug: "birth-of-jesus" }
+
+  it("pops to the covered watch screen from the reader", () => {
+    expect(
+      expandAction({
+        covered: true,
+        descriptor: SESSION,
+        session: SESSION,
+        segments: ["reader"],
+      }),
+    ).toBe("pop")
+  })
+
+  it("pops when the descriptor names the video by slug alone", () => {
+    expect(
+      expandAction({
+        covered: true,
+        descriptor: { videoId: null, videoSlug: "birth-of-jesus" },
+        session: SESSION,
+        segments: ["reader"],
+      }),
+    ).toBe("pop")
+  })
+
+  it("pushes when no watch slot is covered, as from the Bible tab", () => {
+    expect(
+      expandAction({
+        covered: false,
+        descriptor: null,
+        session: SESSION,
+        segments: ["(tabs)", "bible"],
+      }),
+    ).toBe("push")
+  })
+
+  it("pushes when the covered slot plays another video", () => {
+    expect(
+      expandAction({
+        covered: true,
+        descriptor: { videoId: "video-2", videoSlug: "other" },
+        session: SESSION,
+        segments: ["reader"],
+      }),
+    ).toBe("push")
+  })
+
+  it("pushes when the top route is a reader sheet, not the reader", () => {
+    expect(
+      expandAction({
+        covered: true,
+        descriptor: SESSION,
+        session: SESSION,
+        segments: ["reader-settings"],
+      }),
+    ).toBe("push")
+  })
+
+  it("pushes with no descriptor or no session", () => {
+    expect(
+      expandAction({
+        covered: true,
+        descriptor: null,
+        session: SESSION,
+        segments: ["reader"],
+      }),
+    ).toBe("push")
+    expect(
+      expandAction({
+        covered: true,
+        descriptor: SESSION,
+        session: null,
+        segments: ["reader"],
+      }),
+    ).toBe("push")
   })
 })

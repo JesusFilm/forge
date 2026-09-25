@@ -65,6 +65,8 @@ function makeRequest(
   }
 }
 
+const RECT = { x: 0, y: 62, width: 440, height: 248 }
+
 function makeStores(
   facts: {
     started: boolean
@@ -887,6 +889,261 @@ describe("admission on detach", () => {
 
     expect(sessionStore.getSnapshot().session).toBeNull()
     expect(store.getSnapshot().slotId).toBe(lower)
+  })
+
+  // feat-551 U13 characterization: the detach path the reader cover shares.
+  it("starts a session with no end report, and retains the request", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 600,
+    })
+    const endings: MiniPlayerEndEvent[] = []
+    sessionStore.onEnd((event) => endings.push(event))
+    const request = makeRequest()
+    const id = store.attachSlot(request)
+    const notified = jest.fn()
+    store.subscribe(notified)
+
+    store.detachSlot(id)
+
+    expect(endings).toHaveLength(0)
+    expect(sessionStore.getSnapshot().session?.positionSeconds).toBe(42)
+    expect(store.getSnapshot().request).toBe(request)
+    expect(store.getSnapshot().slotId).toBeNull()
+    expect(notified).toHaveBeenCalledTimes(1)
+  })
+})
+
+// feat-551 KTD10: a reader pushed over the watch screen covers its slot. The
+// slot stays attached and keeps its rect; admission is the detach admission.
+describe("the reader cover", () => {
+  it("admits a started video: a session at its position, the slot kept, no report", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 600,
+    })
+    const endings: MiniPlayerEndEvent[] = []
+    sessionStore.onEnd((event) => endings.push(event))
+    const request = makeRequest()
+    const id = store.attachSlot(request)
+    store.setSlotRect(id, RECT)
+
+    expect(store.coverSlot(id)).toBe(true)
+
+    expect(sessionStore.getSnapshot().session).toMatchObject({
+      videoId: "video-a",
+      positionSeconds: 42,
+      durationSeconds: 600,
+      phase: "playing",
+    })
+    expect(store.getSnapshot()).toMatchObject({
+      slotId: id,
+      request,
+      rect: RECT,
+      cover: "admitted",
+    })
+    expect(endings).toHaveLength(0)
+  })
+
+  // One admission for both paths: each row refuses a cover AND a detach.
+  const REFUSALS: ReadonlyArray<
+    [
+      label: string,
+      facts: { started: boolean; reachedEnd?: boolean },
+      overrides: Partial<PlaybackRequest>,
+    ]
+  > = [
+    ["a video that never started", { started: false }, {}],
+    ["a video that ran to its end", { started: true, reachedEnd: true }, {}],
+    ["a casting surface", { started: true }, { castActive: true }],
+    ["a surface with no stream", { started: true }, { streamingUrl: null }],
+    ["a surface with no descriptor", { started: true }, { session: null }],
+    [
+      "an R19-excluded origin",
+      { started: true },
+      { session: { ...SESSION_A, originPattern: "video/[sectionKey]" } },
+    ],
+  ]
+
+  it.each(REFUSALS)(
+    "refuses %s, as a detach does",
+    (_label, facts, overrides) => {
+      const covered = makeStores({ ...facts, position: 10, duration: 600 })
+      const coveredId = covered.store.attachSlot(makeRequest(overrides))
+      expect(covered.store.coverSlot(coveredId)).toBe(false)
+      expect(covered.sessionStore.getSnapshot().session).toBeNull()
+      expect(covered.store.getSnapshot().cover).toBe("refused")
+      expect(covered.store.getSnapshot().slotId).toBe(coveredId)
+
+      const detached = makeStores({ ...facts, position: 10, duration: 600 })
+      detached.store.detachSlot(
+        detached.store.attachSlot(makeRequest(overrides)),
+      )
+      expect(detached.sessionStore.getSnapshot().session).toBeNull()
+    },
+  )
+
+  it("admits what a detach admits (anti-vacuous twin of the table)", () => {
+    const covered = makeStores({ started: true, position: 10, duration: 600 })
+    expect(
+      covered.store.coverSlot(covered.store.attachSlot(makeRequest())),
+    ).toBe(true)
+    const detached = makeStores({ started: true, position: 10, duration: 600 })
+    detached.store.detachSlot(detached.store.attachSlot(makeRequest()))
+    expect(detached.sessionStore.getSnapshot().session).not.toBeNull()
+  })
+
+  it("ignores a slot that is not the current one", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 10,
+      duration: 600,
+    })
+    const lower = store.attachSlot(makeRequest())
+    store.attachSlot(makeRequest({ session: SESSION_B }))
+
+    expect(store.coverSlot(lower)).toBeNull()
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(store.getSnapshot().cover).toBeNull()
+  })
+
+  it("decides once per cover: a repeat call keeps the first answer", () => {
+    const { store, sessionStore, facts } = makeStores({
+      started: false,
+      position: 10,
+      duration: 600,
+    })
+    const id = store.attachSlot(makeRequest())
+    expect(store.coverSlot(id)).toBe(false)
+
+    facts.started = true
+    expect(store.coverSlot(id)).toBe(false)
+    expect(sessionStore.getSnapshot().session).toBeNull()
+  })
+
+  it("clears the session the cover started on the return, with no report", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 600,
+    })
+    const endings: MiniPlayerEndEvent[] = []
+    sessionStore.onEnd((event) => endings.push(event))
+    const id = store.attachSlot(makeRequest())
+    store.setSlotRect(id, RECT)
+    store.coverSlot(id)
+
+    store.uncoverSlot(id)
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(store.getSnapshot()).toMatchObject({
+      slotId: id,
+      rect: RECT,
+      cover: null,
+    })
+    expect(endings).toHaveLength(0)
+  })
+
+  it("keeps a session that was live before the cover (the expanded screen)", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 600,
+    })
+    sessionStore.start({
+      videoId: "video-a",
+      videoSlug: "video-a-slug",
+      title: "Video A",
+    })
+    const id = store.attachSlot(makeRequest())
+    store.coverSlot(id)
+
+    store.uncoverSlot(id)
+
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+  })
+
+  it("notifies once for the cover and once for the return", () => {
+    const { store } = makeStores({ started: true, position: 1, duration: 600 })
+    const id = store.attachSlot(makeRequest())
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.coverSlot(id)
+    expect(listener).toHaveBeenCalledTimes(1)
+    store.uncoverSlot(id)
+    expect(listener).toHaveBeenCalledTimes(2)
+    // A return for a slot with no cover is a no-op.
+    store.uncoverSlot(id)
+    expect(listener).toHaveBeenCalledTimes(2)
+  })
+
+  it("drops the cover when the covered slot detaches, and admits it as a detach", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 600,
+    })
+    const request = makeRequest()
+    const id = store.attachSlot(request)
+    store.coverSlot(id)
+
+    store.detachSlot(id)
+
+    expect(store.getSnapshot()).toMatchObject({
+      slotId: null,
+      request,
+      cover: null,
+    })
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+  })
+
+  it("hands a newer slot the player uncovered (a deep link over the reader)", () => {
+    const { store } = makeStores({ started: true, position: 1, duration: 600 })
+    const lower = store.attachSlot(makeRequest())
+    store.coverSlot(lower)
+
+    const upper = store.attachSlot(
+      makeRequest({ session: SESSION_B, progressVideoId: "video-b" }),
+    )
+
+    expect(store.getSnapshot().slotId).toBe(upper)
+    expect(store.getSnapshot().cover).toBeNull()
+  })
+
+  it("clears on reset", () => {
+    const { store } = makeStores({ started: true, position: 1, duration: 600 })
+    store.coverSlot(store.attachSlot(makeRequest()))
+    store.setWindowFrame(RECT)
+
+    store.reset()
+
+    expect(store.getSnapshot().cover).toBeNull()
+    expect(store.getSnapshot().windowFrame).toBeNull()
+  })
+})
+
+// feat-551 R10: the host publishes the resting window so the reader's verse
+// box can stay clear of it.
+describe("the window frame channel", () => {
+  it("publishes the frame and skips an equal one", () => {
+    const { store } = makeStores()
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.setWindowFrame(RECT)
+    const first = store.getSnapshot().windowFrame
+    store.setWindowFrame({ ...RECT })
+
+    expect(first).toEqual(RECT)
+    expect(store.getSnapshot().windowFrame).toBe(first)
+    expect(listener).toHaveBeenCalledTimes(1)
+
+    store.setWindowFrame(null)
+    expect(store.getSnapshot().windowFrame).toBeNull()
+    expect(listener).toHaveBeenCalledTimes(2)
   })
 })
 

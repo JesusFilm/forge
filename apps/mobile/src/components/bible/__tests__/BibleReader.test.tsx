@@ -108,6 +108,9 @@ import { READER_COPY } from "../../../lib/bible/reader/copy"
 import {
   READER_TOP_BAR_HEIGHT,
   READER_TOUCH_TARGET,
+  getReaderMovementBand,
+  readerMovementBandHeight,
+  resetReaderMovementBandForTests,
 } from "../../../lib/bible/reader/chrome"
 import type { ReaderServices } from "../../../lib/bible/reader/services"
 import {
@@ -592,6 +595,41 @@ describe("BibleReader — the verse box", () => {
       flat(byTestId(renderer, "bible-verse-area")[0]!).height,
     )
     expect(clear).toBeGreaterThan(covered)
+  })
+})
+
+// U13: the mini player reads this band to rest a bottom corner above it.
+describe("BibleReader — the band it publishes for the mini player", () => {
+  beforeEach(() => resetReaderMovementBandForTests())
+  afterEach(() => resetReaderMovementBandForTests())
+
+  it("publishes no band and then the hint's row while the hint lives", async () => {
+    const { services } = makeServices()
+    await openAt(services, { book: "JHN", chapter: 3, verse: 16 })
+    onboarding = createReaderOnboardingStore(memoryStorage({}))
+    expect(getReaderMovementBand()).toBeNull()
+
+    await render(services)
+
+    expect(getReaderMovementBand()).toBe(
+      readerMovementBandHeight({ arrows: false, hint: true }),
+    )
+  })
+
+  it("publishes the arrow row once the viewer turns the arrows on", async () => {
+    const { services } = makeServices()
+    await openAt(services, { book: "JHN", chapter: 3, verse: 16 })
+    await render(services)
+    // Anti-vacuous: the hint is retired here, so the band starts empty.
+    expect(getReaderMovementBand()).toBe(0)
+
+    await act(async () => {
+      services.settingsStore.update({ showArrows: true })
+    })
+
+    expect(getReaderMovementBand()).toBe(
+      readerMovementBandHeight({ arrows: true, hint: false }),
+    )
   })
 })
 
