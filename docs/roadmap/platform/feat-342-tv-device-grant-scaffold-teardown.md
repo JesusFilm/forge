@@ -17,6 +17,8 @@ tags:
 
 ## Problem
 
+> 2026-09-25 product decision: `feat-554` temporarily disables the TV Profile surface on both platforms, even when the legacy opt-in flag is set. The unconditional-Profile verification below is deferred until the product decision changes; this ticket remains about eventual scaffold teardown, not the current visibility policy.
+
 The TV sign-in work (`docs/roadmap/platform/feat-322-tv-auth-sign-in-profile.md` — reference by
 path, `feat-322` is a colliding id) shipped two kinds of scaffolding. The first kind died with the
 real grant and is already gone from source in the device-grant client PR (plan U4.5):

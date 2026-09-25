@@ -116,6 +116,12 @@ restart to take effect.
 
 ## Test builds & distribution
 
+Profile is temporarily hidden on both Apple TV and Android TV by
+`src/lib/auth/profileFlagState.ts` (feat-554), including development builds and
+builds with the old `EXPO_PUBLIC_TV_PROFILE_ENABLED` flag. The sign-in code is
+retained but direct `/profile` visits return Home. Do not re-enable Profile by
+changing EAS variables alone.
+
 - EAS profiles live in `apps/tv/eas.json`; every profile sets `EXPO_TV: "1"` so the
   managed prebuild produces a TV target (native dirs are gitignored).
 - Getting stakeholder test builds onto real Apple TV / Android TV: see `DISTRIBUTION.md`
