@@ -14,7 +14,7 @@ export function FeedbackQrScreen() {
     filmTitle?: string
     timestamp?: string
   }>()
-  const { verified, loading, error, url, qr, retry } = useFeedbackQr(true, {
+  const { verified, loading, error, qr, retry } = useFeedbackQr(true, {
     screen: params.screen ?? "settings",
     player: params.player,
     filmTitle: params.filmTitle,
@@ -60,7 +60,6 @@ export function FeedbackQrScreen() {
                 </View>
               ))}
             </View>
-            <Text style={styles.url}>{url?.split("#")[0]}</Text>
             {verified ? (
               <Text style={styles.reference}>
                 Reference {verified.referenceCode} · Expires{" "}
@@ -69,7 +68,7 @@ export function FeedbackQrScreen() {
             ) : null}
           </>
         ) : (
-          <Text style={styles.url}>
+          <Text style={styles.status}>
             {loading
               ? "Verifying this TV…"
               : error
@@ -139,7 +138,7 @@ const styles = StyleSheet.create({
   },
   qr: { backgroundColor: "#fff", borderRadius: scale(15) },
   row: { flexDirection: "row" },
-  url: {
+  status: {
     color: "#fff",
     fontSize: Math.round(scale(23)),
     fontWeight: "700",
@@ -150,7 +149,7 @@ const styles = StyleSheet.create({
   reference: {
     color: "#c5c0bf",
     fontSize: Math.round(scale(20)),
-    marginTop: scale(12),
+    marginTop: scale(23),
   },
   retry: {
     marginTop: scale(25),

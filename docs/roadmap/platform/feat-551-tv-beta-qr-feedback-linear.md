@@ -28,6 +28,8 @@ Planning is updated in
 
 Internal beta distribution on 2026-09-25: tvOS 1.0.0 (12) is processed in TestFlight for QA and Team (Expo); Android TV 1.0.0 (9) is available in Google Play internal testing. Railway staging accepts Apple build 12 and Android version code 9. Neither store build has yet completed a real device feedback report; Play-installed Android TV integrity remains an acceptance gate.
 
+The TV-2 annotation asks to remove the long URL printed below the QR on the TV. The local feedback branch now hides only that visible URL; the QR still encodes the full destination, and the reference/expiry remains below it. Physical tvOS verification and a new TestFlight build are pending.
+
 ## Entry Points — Read These First
 
 Selected TV entry design: `docs/plans/2026-09-25-tv-feedback-navigation-and-contextual-actions.md`.
