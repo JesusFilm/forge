@@ -78,6 +78,7 @@ import {
   useReaderChapter,
   type ReaderChapterState,
 } from "../../lib/bible/reader/useReaderChapter"
+import type { ReaderPushSource } from "../../lib/bible/routes/readerRoute"
 import {
   isStopSelected,
   selectedVerseStops,
@@ -89,6 +90,7 @@ import {
 import { shareText } from "../../lib/bible/selection/shareText"
 import { readerTextSize } from "../../lib/bible/settings/snapshot"
 import { useReaderSettings } from "../../lib/bible/settings/store"
+import { useReaderVisitTelemetry } from "../../lib/bible/telemetry"
 import { bookByUsfm } from "../../lib/bible/text/books"
 import { chapterPositions } from "../../lib/bible/text/positions"
 import type { ChapterPosition } from "../../lib/bible/text/types"
@@ -153,12 +155,19 @@ type BibleReaderSharedProps = {
 
 export type BibleReaderProps = BibleReaderSharedProps &
   (
-    | { host: Extract<ReaderHost, "tab">; onBack?: never; startRef?: never }
+    | {
+        host: Extract<ReaderHost, "tab">
+        onBack?: never
+        startRef?: never
+        source?: never
+      }
     | {
         host: Extract<ReaderHost, "pushed">
         onBack: () => void
         /** U11: the route's verse in BSB numbering; null opens the saved one. */
         startRef?: VerseRef | null
+        /** U14: how the route opened, for `bible_reader.opened` (KTD18). */
+        source: ReaderPushSource
       }
   )
 
@@ -329,6 +338,16 @@ export function BibleReader(props: BibleReaderProps) {
     scrub && scrub.chapterKey === chapterKey ? scrub.verse : null,
   )
   const place = movePlace(chapter.state, model)
+  // U14, R37: the verses a visit shows, by BSB position. A scrub preview does
+  // not count; only its release moves `model.ref`.
+  const visit = useReaderVisitTelemetry({
+    focused,
+    source: props.host === "tab" ? "tab" : props.source,
+    verseKey:
+      chapter.state.status === "ready" && model.stop && model.ref
+        ? `${model.ref.book}.${model.ref.chapter}.${model.ref.verse}`
+        : null,
+  })
 
   const [selection, setSelection] = useState<VerseSelection | null>(null)
   useEffect(() => {
@@ -522,6 +541,7 @@ export function BibleReader(props: BibleReaderProps) {
         passage={model.passage}
         onPressPassage={() => {
           picker.arm()
+          visit.markSheetOpen()
           props.onOpenPassagePicker(context)
         }}
         pulse={movement.pulse + picker.pulse}
@@ -541,6 +561,7 @@ export function BibleReader(props: BibleReaderProps) {
         }}
         onPressSettings={() => {
           picker.disarm()
+          visit.markSheetOpen()
           props.onOpenSettings(context)
         }}
       />
@@ -660,6 +681,7 @@ export function BibleReader(props: BibleReaderProps) {
           }
           onPressTranslation={() => {
             picker.disarm()
+            visit.markSheetOpen()
             props.onOpenTranslationPicker(context)
           }}
         />

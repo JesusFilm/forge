@@ -49,11 +49,6 @@ import { computeTypographyScale } from "../../../hooks/useTypography"
 import { readerHref } from "../../../lib/bible/routes/readerRoute"
 import type { VerseRef } from "../../../lib/bible/versification/convert"
 import {
-  clearPlaybackTransport,
-  setPlaybackTransport,
-  type PlaybackTransport,
-} from "../../../lib/playbackInterruption"
-import {
   BibleQuotesCarouselRenderer,
   READER_OPEN_DEBOUNCE_MS,
 } from "../BibleQuotesCarouselRenderer"
@@ -496,34 +491,15 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
 // ── The reader entry (feat-551 U12, KTD17) ─────────────────────────────────
 
 describe("BibleQuotesCarouselRenderer — Read full passage opens the reader", () => {
-  /** A PLAYING player, registered the way `PlaybackHost` registers it. */
-  function playingTransport() {
-    const transport: PlaybackTransport = {
-      isPlaying: jest.fn(() => true),
-      pause: jest.fn(),
-      play: jest.fn(),
-    }
-    setPlaybackTransport(transport)
-    registered.push(transport)
-    return transport
-  }
-  const registered: PlaybackTransport[] = []
-
-  afterEach(() => {
-    registered
-      .splice(0)
-      .forEach((transport) => clearPlaybackTransport(transport))
-  })
-
   // The same composition as the watch route's handler, which the route
   // guard pins, so this case proves the whole tap-to-push path.
   function routeHandler(push: jest.Mock) {
     return (start: VerseRef) => push(readerHref(start, "quote"))
   }
 
-  // Covers AE1 (handler half) and KD3.
-  it("pushes the reader at John 3:16 and leaves the video playing", async () => {
-    const transport = playingTransport()
+  // Covers AE1 (handler half). KD3, no pause on the tap path, is pinned by
+  // app/watch/__tests__/bibleQuotesReader.guard.test.js.
+  it("pushes the reader at John 3:16", async () => {
     const push = jest.fn()
     const renderer = render([JOHN_QUOTE], undefined, routeHandler(push))
 
@@ -534,8 +510,6 @@ describe("BibleQuotesCarouselRenderer — Read full passage opens the reader", (
       pathname: "/reader",
       params: { book: "JHN", chapter: "3", verse: "16", source: "quote" },
     })
-    expect(transport.pause).not.toHaveBeenCalled()
-    expect(transport.isPlaying).not.toHaveBeenCalled()
   })
 
   it("hands the handler the card's own start, once per tap", async () => {

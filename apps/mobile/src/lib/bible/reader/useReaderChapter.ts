@@ -25,6 +25,7 @@ import {
   type ChapterResolution,
   type ChapterSource,
 } from "../repository/resolveChapter"
+import { checkChapterNumbering, reportTranslationChanged } from "../telemetry"
 import type { ChapterText } from "../text/types"
 import { mappedLastVerse, type VerseRef } from "../versification/convert"
 import { translationBookSystem } from "../versification/translationSystems.generated"
@@ -266,6 +267,17 @@ export function useReaderChapter(input: ReaderChapterInput): ReaderChapter {
       if (result.status === "failed" && isNoNetworkFailure(result.reason)) {
         setOffline(true)
       }
+      if (result.status === "ok") {
+        // KTD6: once per chapter per process, so two hosts log it once.
+        checkChapterNumbering(
+          {
+            translationId: request.translationId,
+            bookId: request.bookId,
+            chapter: request.chapter,
+          },
+          result.text.chapter.lastVerse,
+        )
+      }
       if (result.status === "ok" && result.source !== "bundled") {
         const next = nextChapterRequest(request)
         if (next) repository.prefetch(next)
@@ -336,11 +348,15 @@ export function useReaderChapter(input: ReaderChapterInput): ReaderChapter {
     setAttempt((count) => count + 1)
   }, [catalogFailed])
 
+  const failedId = failedTranslation?.id ?? null
   const switchToOnDevice = useCallback(() => {
-    if (switchTarget) {
+    if (
+      switchTarget &&
       services.positionStore.switchTranslationForSession(switchTarget.id)
+    ) {
+      reportTranslationChanged("switched", failedId, switchTarget.id)
     }
-  }, [services, switchTarget])
+  }, [services, switchTarget, failedId])
 
   const { positionStore } = services
   const goTo = useCallback(

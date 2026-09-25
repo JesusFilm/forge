@@ -8,6 +8,9 @@
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 )
+jest.mock("../../../datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
 
 import { StrictMode, act } from "react"
 
@@ -34,6 +37,8 @@ import { createReaderSettingsStore } from "../../settings/store"
 import type { UsfmBookId } from "../../text/books"
 import { normalizeChapterFile, parseBookText } from "../../text/normalize"
 import type { BookText, ChapterText } from "../../text/types"
+import { datadogLog } from "../../../datadog"
+import { resetReaderTelemetryForTests } from "../../telemetry"
 import type { ReaderServices } from "../services"
 import {
   nextChapterRequest,
@@ -236,7 +241,16 @@ async function rerender(renderer: TestInstance, props: ProbeProps) {
 
 beforeEach(() => {
   seen.length = 0
+  ;(datadogLog.info as unknown as jest.Mock).mockClear()
+  ;(datadogLog.warn as unknown as jest.Mock).mockClear()
+  resetReaderTelemetryForTests()
 })
+
+function sent(level: "info" | "warn", name: string) {
+  return (datadogLog[level] as unknown as jest.Mock).mock.calls
+    .filter(([event]) => event === name)
+    .map(([, context]) => context as Record<string, unknown>)
+}
 
 afterEach(async () => {
   for (const renderer of mounted.splice(0)) {
@@ -375,6 +389,51 @@ describe("useReaderChapter under StrictMode", () => {
     const snapshot = parts.services.positionStore.getSnapshot()
     expect(snapshot.translationId).toBe(SPANISH)
     expect(snapshot.sessionTranslationId).toBe("BSB")
+    // U14, R37: one change per tap, from the translation that failed.
+    expect(sent("info", "bible_reader.translation_changed")).toEqual([
+      {
+        reader_change: "switched",
+        reader_from_translation_id: SPANISH,
+        reader_to_translation_id: "BSB",
+      },
+    ])
+  })
+
+  it("logs a shown chapter whose last verse differs from its system, once", async () => {
+    // SYNTHETIC: John 3 ends at 36 in every system; 35 stands in for a
+    // misclassified book (KTD6).
+    const short = spanishJohn(3)
+    const mismatched: ChapterText = {
+      ...short,
+      chapter: { ...short.chapter, lastVerse: 35 },
+    }
+    const parts = makeServices({
+      fetchChapter: async () => ({ status: "ok", text: mismatched }),
+    })
+    parts.services.positionStore.pickTranslation(SPANISH)
+    const renderer = await render({ services: parts.services })
+    expect(latest().state.status).toBe("ready")
+
+    // A second visit to the same chapter logs nothing new.
+    await rerender(renderer, { services: parts.services, focused: false })
+    await rerender(renderer, { services: parts.services, focused: true })
+    expect(sent("warn", "bible_reader.versification_mismatch")).toEqual([
+      {
+        reader_translation_id: SPANISH,
+        reader_book: "JHN",
+        reader_chapter: 3,
+        reader_system: "eng",
+        reader_mapped_last_verse: 36,
+        reader_actual_last_verse: 35,
+      },
+    ])
+  })
+
+  it("logs no mismatch for a chapter that ends where its system says", async () => {
+    const parts = makeServices()
+    await render({ services: parts.services })
+    expect(latest().state.status).toBe("ready")
+    expect(sent("warn", "bible_reader.versification_mismatch")).toHaveLength(0)
   })
 
   it("retries a failed chapter", async () => {

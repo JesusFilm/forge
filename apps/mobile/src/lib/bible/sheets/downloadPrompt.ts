@@ -11,6 +11,7 @@ import {
   type TranslationDownloadState,
   type TranslationDownloads,
 } from "../repository/translationDownloads"
+import { reportTranslationDownload } from "../telemetry"
 import { BSB_TRANSLATION_ID } from "../versification/classify"
 import { READER_SHEET_COPY } from "./copy"
 import { isUpdateAvailable } from "./translationList"
@@ -176,8 +177,12 @@ export function runDownloadAction(
 ): void {
   switch (action) {
     case "start":
-      // The state store reports the result; the top bar shows it.
-      void downloads.start(translation).catch(() => undefined)
+      // The state store reports the result; the top bar shows it. R37 logs
+      // the outcome once, when the download ends.
+      void downloads
+        .start(translation)
+        .then((outcome) => reportTranslationDownload(translation, outcome))
+        .catch(() => undefined)
       return
     case "cancel-download":
       downloads.cancel(translation.id)

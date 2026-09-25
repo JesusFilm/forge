@@ -50,6 +50,9 @@ const mockWatchPrefs = {
 jest.mock("../../../contexts/WatchPreferencesProvider", () => ({
   useWatchPreferences: () => mockWatchPrefs,
 }))
+jest.mock("../../../lib/datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
 
 import { StrictMode, act } from "react"
 import {
@@ -113,6 +116,7 @@ import {
   resetReaderMovementBandForTests,
 } from "../../../lib/bible/reader/chrome"
 import type { ReaderServices } from "../../../lib/bible/reader/services"
+import { datadogLog } from "../../../lib/datadog"
 import {
   BibleReader,
   READER_LOADING_DELAY_MS,
@@ -859,6 +863,7 @@ describe("BibleReader — the pushed reader's start (U11, AE15)", () => {
   ): BibleReaderProps {
     return {
       host: "pushed",
+      source: "quote",
       onBack: jest.fn(),
       startRef,
       ...callbacks(),
@@ -968,6 +973,147 @@ describe("BibleReader — the pushed reader's start (U11, AE15)", () => {
     const renderer = await render(services, pushed(services, null))
     expect(pills(renderer, "Genesis 1:1")).toHaveLength(1)
     expect(services.positionStore.getSnapshot().ref).toEqual(GENESIS_1_1)
+  })
+})
+
+// U14, R37: one open and one end per visit, under StrictMode. A visit runs
+// from focus to blur; a round trip to the reader's own sheet stays one visit.
+describe("BibleReader — reader visits (U14, KTD18)", () => {
+  const JOHN_3_16: VerseRef = { book: "JHN", chapter: 3, verse: 16 }
+  const JOHN_3_17: VerseRef = { book: "JHN", chapter: 3, verse: 17 }
+  const info = datadogLog.info as unknown as jest.Mock
+
+  function sent(name: string) {
+    return info.mock.calls
+      .filter(([event]) => event === name)
+      .map(([, context]) => context as Record<string, unknown>)
+  }
+
+  beforeEach(() => info.mockClear())
+
+  async function focus(
+    renderer: TestInstance,
+    props: BibleReaderProps,
+    focused: boolean,
+  ) {
+    mockFocus.focused = focused
+    await act(async () => {
+      renderer.update(
+        <StrictMode>
+          <BibleReader {...props} />
+        </StrictMode>,
+      )
+    })
+    await flush()
+  }
+
+  function tabProps(services: ReaderServices): BibleReaderProps {
+    return {
+      host: "tab",
+      ...callbacks(),
+      services,
+      onboardingStore: onboarding,
+    }
+  }
+
+  function pushedProps(
+    services: ReaderServices,
+    source: "quote" | "link",
+  ): BibleReaderProps {
+    return {
+      host: "pushed",
+      source,
+      onBack: jest.fn(),
+      startRef: JOHN_3_16,
+      ...callbacks(),
+      services,
+      onboardingStore: onboarding,
+    }
+  }
+
+  it("logs one tab open, and the blur ends the visit with its verse count", async () => {
+    const { services } = makeServices()
+    await openAt(services, JOHN_3_16)
+    const props = tabProps(services)
+    const renderer = await render(services, props)
+    expect(sent("bible_reader.opened")).toEqual([{ reader_source: "tab" }])
+
+    await act(async () => {
+      services.positionStore.moveTo(JOHN_3_17)
+    })
+    await flush()
+    await focus(renderer, props, false)
+
+    expect(sent("bible_reader.visit_ended")).toEqual([
+      { reader_source: "tab", reader_verse_count: 2 },
+    ])
+  })
+
+  it("logs a quote open, and keeps one visit across a round trip to a sheet", async () => {
+    const { services } = makeServices()
+    const props = pushedProps(services, "quote")
+    const renderer = await render(services, props)
+    expect(sent("bible_reader.opened")).toEqual([{ reader_source: "quote" }])
+
+    await pressControl(
+      renderer,
+      (label) => label === READER_COPY.choosePassage("John 3:16"),
+    )
+    await focus(renderer, props, false)
+    await focus(renderer, props, true)
+    expect(sent("bible_reader.opened")).toHaveLength(1)
+    expect(sent("bible_reader.visit_ended")).toHaveLength(0)
+
+    await focus(renderer, props, false)
+    expect(sent("bible_reader.visit_ended")).toEqual([
+      { reader_source: "quote", reader_verse_count: 1 },
+    ])
+  })
+
+  it("ends the visit at a blur after the download prompt, which is no sheet", async () => {
+    const { services } = makeServices()
+    await openAt(services, JOHN_3_16)
+    const props = tabProps(services)
+    const renderer = await render(services, props)
+    await pressControl(
+      renderer,
+      (label) =>
+        label === READER_COPY.download.onDevice("Berean Standard Bible"),
+    )
+    await focus(renderer, props, false)
+    expect(sent("bible_reader.visit_ended")).toHaveLength(1)
+  })
+
+  it("ends the visit once when a pushed link reader unmounts", async () => {
+    const { services } = makeServices()
+    const renderer = await render(services, pushedProps(services, "link"))
+    expect(sent("bible_reader.opened")).toEqual([{ reader_source: "link" }])
+
+    await act(async () => renderer.unmount())
+    mounted.splice(mounted.indexOf(renderer), 1)
+    await flush()
+    expect(sent("bible_reader.visit_ended")).toEqual([
+      { reader_source: "link", reader_verse_count: 1 },
+    ])
+  })
+
+  it("sends no verse text in any context", async () => {
+    const { services } = makeServices()
+    await openAt(services, JOHN_3_16)
+    const props = tabProps(services)
+    const renderer = await render(services, props)
+    await settleFit(renderer, () => 200)
+    expect(textNodes(renderer, "For God so loved")).toHaveLength(1)
+    await focus(renderer, props, false)
+
+    expect(info.mock.calls.length).toBeGreaterThanOrEqual(2)
+    for (const [, context] of info.mock.calls) {
+      const values = Object.values(context as Record<string, unknown>)
+      for (const value of values) {
+        expect(["string", "number"]).toContain(typeof value)
+      }
+      expect(JSON.stringify(context)).not.toMatch(/loved|world/i)
+    }
   })
 })
 

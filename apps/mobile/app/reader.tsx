@@ -11,7 +11,7 @@ import { readerSheetCallbacks } from "../src/lib/bible/routes/sheetCallbacks"
 // The root layout narrows the iOS back swipe to the left edge for this route.
 export default function ReaderRoute() {
   const router = useRouter()
-  const { startRef } = parseReaderRouteParams(useLocalSearchParams())
+  const { startRef, source } = parseReaderRouteParams(useLocalSearchParams())
   const callbacks = useMemo(() => readerSheetCallbacks(router), [router])
   // R10: the verse stays clear of the mini player that floats over it.
   const windowFrame = useFloatingWindowFrame()
@@ -23,6 +23,7 @@ export default function ReaderRoute() {
   return (
     <BibleReader
       host="pushed"
+      source={source}
       startRef={startRef}
       onBack={() => router.back()}
       floatingObstacles={floatingObstacles}

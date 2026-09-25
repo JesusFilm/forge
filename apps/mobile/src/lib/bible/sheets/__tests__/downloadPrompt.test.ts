@@ -3,6 +3,11 @@
  * that shows the catalog size before anything starts, then cancel, retry,
  * update, and remove. BSB never offers a download.
  */
+jest.mock("../../../datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+
+import { datadogLog } from "../../../datadog"
 import { parseCatalog, type Catalog } from "../../data/catalog"
 import type {
   DownloadOutcome,
@@ -251,5 +256,80 @@ describe("presentReaderDownloadPrompt", () => {
       { downloads, alert },
     )
     expect(calls).toHaveLength(1)
+  })
+})
+
+// U14, R37: a started download logs its outcome once, when it ends.
+describe("the bible_reader.download event", () => {
+  const info = datadogLog.info as unknown as jest.Mock
+
+  beforeEach(() => info.mockClear())
+
+  async function startWith(outcome: DownloadOutcome) {
+    const { calls, alert, downloads } = harness({ kind: "not-downloaded" })
+    // The harness types `start` from its own "downloaded" outcome.
+    ;(
+      downloads.start as jest.Mock<Promise<DownloadOutcome>>
+    ).mockImplementation(() => Promise.resolve(outcome))
+    await presentReaderDownloadPrompt(
+      { translation: SYNODAL },
+      { downloads, alert },
+    )
+    press(calls[0], COPY.start)
+    // Nothing logs before the download ends.
+    expect(info).not.toHaveBeenCalled()
+    await Promise.resolve()
+    await Promise.resolve()
+    return info.mock.calls
+  }
+
+  it.each([
+    [{ status: "downloaded" } as const, "none"],
+    [{ status: "cancelled" } as const, "none"],
+    [{ status: "failed", reason: "no-space" } as const, "no-space"],
+  ])(
+    "logs %o with its reason and the catalog bytes",
+    async (outcome, reason) => {
+      expect(await startWith(outcome)).toEqual([
+        [
+          "bible_reader.download",
+          {
+            reader_translation_id: "rus_syn",
+            reader_outcome: outcome.status,
+            reader_reason: reason,
+            reader_download_bytes: SYNODAL.downloadBytes,
+          },
+        ],
+      ])
+    },
+  )
+
+  it("logs nothing for a cancel or a remove, which start no download", async () => {
+    const { calls, alert, downloads } = harness({
+      kind: "downloaded",
+      sha256: SYNODAL.sha256,
+      books: SYNODAL.books,
+      bytes: SYNODAL.downloadBytes,
+    })
+    await presentReaderDownloadPrompt(
+      { translation: SYNODAL },
+      { downloads, alert },
+    )
+    press(calls[0], COPY.remove)
+    await Promise.resolve()
+    expect(info).not.toHaveBeenCalled()
+  })
+
+  it("logs nothing when the start itself rejects", async () => {
+    const { calls, alert, downloads } = harness({ kind: "not-downloaded" })
+    downloads.start.mockImplementation(() => Promise.reject(new Error("x")))
+    await presentReaderDownloadPrompt(
+      { translation: SYNODAL },
+      { downloads, alert },
+    )
+    press(calls[0], COPY.start)
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(info).not.toHaveBeenCalled()
   })
 })

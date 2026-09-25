@@ -26,6 +26,8 @@ tags:
 5. `apps/mobile/src/lib/miniPlayer/layout.ts` — the mini player corners. Every screen starts the window at the bottom right today (R10).
 6. `apps/mobile/src/components/ui/HomeHeader.tsx` and `FloatingBackButton.tsx` — the glass button style (R8).
 
+> **Superseded 2026-09-25 (U12, U13).** Items 2 and 5 describe the code before this work. U12 deleted `openPassageSheet.ts`: the button in `BibleQuotesCarouselRenderer.tsx` now pushes `readerHref(ref, "quote")`. U13 gave reader routes their own start corner through `readerCornerPolicy` in `layout.ts`; other screens still start at `DEFAULT_CORNER`. The current rules are in the "Bible reader (feat-551)" and "Mini player" sections of `apps/mobile/CLAUDE.md`.
+
 ## Grep These
 
 - `openPassageSheet` — the one caller to replace
@@ -34,6 +36,8 @@ tags:
 - `DEFAULT_CORNER` — the mini player's start corner
 - `BACK_SWIPE_RESPONSE_DISTANCE` — the left-edge back swipe that chapter swipes must not trigger (R6)
 - `never from a public Bible mirror` — the `apps/mobile/CLAUDE.md` rule that KD5 narrows to the quote card
+
+> **Superseded 2026-09-25 (U12).** `openPassageSheet` no longer exists, so a search for it finds only history. Search `readerHref` for the button's new target, and `bible_reader\.` for the reader's Datadog events.
 
 ## What To Build
 

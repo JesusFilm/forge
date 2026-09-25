@@ -3,6 +3,7 @@
 // translationDownloads.test.ts proves the split, the progress, and the cleanup.
 import { Directory, File, Paths } from "expo-file-system"
 
+import { datadogLog } from "../../../datadog"
 import type { CatalogTranslation } from "../../data/catalog"
 import {
   getChapterRepository,
@@ -22,6 +23,9 @@ const mockFromModule = jest.fn<MockAsset, [number]>()
 
 jest.mock("expo-asset", () => ({
   Asset: { fromModule: (id: number) => mockFromModule(id) },
+}))
+jest.mock("../../../datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
 
 const GUE: CatalogTranslation = {
@@ -148,5 +152,52 @@ describe("Bible repository runtime", () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
     await expect(getChapterRepository().isOnDevice(request)).resolves.toBe(true)
+  })
+
+  // U14, R37: the one fetch binding reports each failed fetch. Two readers
+  // that ask for one chapter at once share the fetch, so it logs once.
+  it("logs one failed fetch with its typed reason, for two readers at once", async () => {
+    const warn = datadogLog.warn as unknown as jest.Mock
+    warn.mockClear()
+    const fetchSpy = jest.fn(
+      async (_url: string, _init: { signal: AbortSignal }) =>
+        new Response("<html>Not found: John 3:16 For God so loved</html>", {
+          status: 404,
+        }),
+    )
+    globalThis.fetch = fetchSpy as unknown as typeof fetch
+    const request = {
+      translationId: "gue_wbt",
+      bookId: "JHN",
+      chapter: 3,
+      sha256: GUE.sha256,
+    } as const
+    const repository = getChapterRepository()
+
+    const [tab, pushed] = await Promise.all([
+      repository.createView().show(request),
+      repository.createView().show(request),
+    ])
+
+    expect(tab).toEqual({
+      status: "failed",
+      reason: "not-found",
+      httpStatus: 404,
+    })
+    expect(pushed).toEqual(tab)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls).toEqual([
+      [
+        "bible_reader.chapter_fetch_failed",
+        {
+          reader_translation_id: "gue_wbt",
+          reader_book: "JHN",
+          reader_chapter: 3,
+          reader_reason: "not-found",
+          reader_http_status: 404,
+        },
+      ],
+    ])
+    expect(JSON.stringify(warn.mock.calls)).not.toMatch(/html|loved/i)
   })
 })

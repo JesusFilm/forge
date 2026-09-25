@@ -73,6 +73,9 @@ jest.mock("../../src/lib/bible/onboarding/store", () => ({
 jest.mock("../../src/lib/bible/sheets/downloadPrompt", () => ({
   presentReaderDownloadPrompt: jest.fn(async () => {}),
 }))
+jest.mock("../../src/lib/datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
 
 import { StrictMode, act, type ComponentType } from "react"
 import { Animated, StyleSheet } from "react-native"
@@ -101,6 +104,7 @@ import type { ChapterCache } from "../../src/lib/bible/repository/chapterCache"
 import { createChapterRepository } from "../../src/lib/bible/repository/resolveChapter"
 import type { TranslationDownloadState } from "../../src/lib/bible/repository/translationDownloads"
 import { readerHref } from "../../src/lib/bible/routes/readerRoute"
+import { datadogLog } from "../../src/lib/datadog"
 import { createReaderSettingsStore } from "../../src/lib/bible/settings/store"
 import { presentReaderDownloadPrompt } from "../../src/lib/bible/sheets/downloadPrompt"
 import { readerSheetHref } from "../../src/lib/bible/sheets/routes"
@@ -380,6 +384,37 @@ describe("the Bible tab route (app/(tabs)/bible.tsx)", () => {
     await rerender(tab, BibleTabRoute)
     expect(pills(tab, "John 3:16")).toHaveLength(1)
     expect(pulses()).toBe(0)
+  })
+})
+
+// U14, R37: each route names how the reader opened. The pushed route passes
+// the source it parsed; a param that is not exactly "quote" is a link.
+describe("the reader open source (U14, KTD18)", () => {
+  const opens = () =>
+    (datadogLog.info as unknown as jest.Mock).mock.calls
+      .filter(([event]) => event === "bible_reader.opened")
+      .map(([, context]) => context as Record<string, unknown>)
+
+  beforeEach(() => (datadogLog.info as unknown as jest.Mock).mockClear())
+
+  it("logs quote for a reader that a quote card pushed", async () => {
+    install()
+    mockRoute.params = readerHref(JOHN_3_16, "quote").params
+    await renderRoute(ReaderRoute)
+    expect(opens()).toEqual([{ reader_source: "quote" }])
+  })
+
+  it("logs link for a pushed reader with no quote source", async () => {
+    install()
+    mockRoute.params = { book: "JHN", chapter: "3", verse: "16" }
+    await renderRoute(ReaderRoute)
+    expect(opens()).toEqual([{ reader_source: "link" }])
+  })
+
+  it("logs tab for the Bible tab", async () => {
+    install()
+    await renderRoute(BibleTabRoute)
+    expect(opens()).toEqual([{ reader_source: "tab" }])
   })
 })
 

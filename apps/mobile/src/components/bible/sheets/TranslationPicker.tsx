@@ -11,6 +11,7 @@ import {
   readerSheetColors,
   readerSheetControlColors,
 } from "../../../lib/bible/sheets/theme"
+import { reportTranslationChanged } from "../../../lib/bible/telemetry"
 import {
   buildTranslationList,
   translationLanguageLabel,
@@ -76,6 +77,17 @@ export function TranslationPicker({
     [downloads, version],
   )
 
+  // U14, R37: a pick is a change from the translation on screen.
+  const pick = useCallback(
+    (translation: CatalogTranslation) => {
+      if (translation.id !== activeId) {
+        reportTranslationChanged("picked", activeId, translation.id)
+      }
+      onPick(translation)
+    },
+    [activeId, onPick],
+  )
+
   const colors = readerSheetColors(tokens)
   const controls = readerSheetControlColors(tokens)
 
@@ -117,7 +129,7 @@ export function TranslationPicker({
         getStatusLabel={getStatus}
         getDetailLabel={getCredit}
         getSearchValues={translationSearchValues}
-        onSelect={onPick}
+        onSelect={pick}
         searchPlaceholder={COPY.searchPlaceholder}
         searchAccessibilityLabel={COPY.searchLabel}
         emptySearchMessage={COPY.noMatch}

@@ -27,6 +27,9 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("expo-router", () => ({
   useNavigation: () => ({ addListener: () => () => {} }),
 }))
+jest.mock("../../../../lib/datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
 // FlashList virtualizes against a layout jest never measures, so render the
 // header and every row inline instead.
 jest.mock("@shopify/flash-list", () => {
@@ -78,6 +81,7 @@ import type { TranslationDownloadState } from "../../../../lib/bible/repository/
 import { READER_SHEET_COPY } from "../../../../lib/bible/sheets/copy"
 import { translationStatusLabel } from "../../../../lib/bible/sheets/translationList"
 import { readerTokens } from "../../../../lib/bible/theme/palettes"
+import { datadogLog } from "../../../../lib/datadog"
 import {
   TestRenderer,
   unmount,
@@ -338,6 +342,46 @@ describe("TranslationPicker", () => {
     })
     expect(onPick).toHaveBeenCalledTimes(1)
     expect(onPick).toHaveBeenCalledWith(SYNODAL)
+  })
+
+  // U14, R37: a pick is a translation change from the one on screen.
+  it("logs a pick of another translation, from the shown one", async () => {
+    const info = datadogLog.info as unknown as jest.Mock
+    info.mockClear()
+    const { renderer, onPick } = await render({ activeId: "BSB" })
+    await search(renderer, "Synodal")
+    await act(async () => {
+      rowFor(renderer, rowLabel(SYNODAL, NOT_DOWNLOADED)).props.onPress?.()
+    })
+    expect(onPick).toHaveBeenCalledWith(SYNODAL)
+    expect(info.mock.calls).toEqual([
+      [
+        "bible_reader.translation_changed",
+        {
+          reader_change: "picked",
+          reader_from_translation_id: "BSB",
+          reader_to_translation_id: "rus_syn",
+        },
+      ],
+    ])
+  })
+
+  it("logs no change for a pick of the translation already shown", async () => {
+    // SYNTHETIC: SearchableListSheet shows the active translation as a plain
+    // "Current" row, so no tap reaches this. It pins the guard in case the
+    // row ever becomes a tap target.
+    const info = datadogLog.info as unknown as jest.Mock
+    info.mockClear()
+    const { renderer, onPick } = await render({ activeId: SYNODAL.id })
+    const [list] = renderer.root.findAll(
+      (node) => typeof node.props.onSelect === "function",
+    )
+    expect(list).toBeDefined()
+    await act(async () => {
+      ;(list!.props.onSelect as (item: CatalogTranslation) => void)(SYNODAL)
+    })
+    expect(onPick).toHaveBeenCalledWith(SYNODAL)
+    expect(info).not.toHaveBeenCalled()
   })
 
   it("shows the credit under each row", async () => {

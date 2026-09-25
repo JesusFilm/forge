@@ -4,6 +4,7 @@
 import { File } from "expo-file-system"
 
 import { loadBundledBook } from "../data/bundled"
+import { withFetchFailureReport } from "../telemetry"
 import { createChapterCache } from "./chapterCache"
 import { fetchChapter } from "./fetchChapter"
 import {
@@ -44,7 +45,8 @@ export function getChapterRepository(): ChapterRepository {
     loadBundledBook,
     downloads: getTranslationDownloads(),
     cache: createChapterCache(),
-    fetchChapter: (address) => fetchChapter(address),
+    // R37: each failed network fetch logs once; both hosts share one fetch.
+    fetchChapter: withFetchFailureReport((address) => fetchChapter(address)),
   })
   return repository
 }
