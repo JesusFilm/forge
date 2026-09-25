@@ -7,13 +7,33 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 
 import { Video } from "@/components/sections/Video"
 import {
   WatchModalActivityProvider,
   useWatchModalActivity,
 } from "@/components/watch/WatchModalActivityProvider"
+// This section defers `@forge/video-player/mux-video` through `next/dynamic`
+// so hls.js and mux-embed stay out of the Watch routes' first-load script set
+// (feat-535 / FGE-138). Resolve it synchronously here so the cases below keep
+// driving a real <video>. See the mock module for what that erases.
+vi.mock("next/dynamic", async () => import("@/__mocks__/next-dynamic-sync"))
+// `React.lazy` settles its payload across microtask turns, and the real
+// `@mux/mux-video-react` module graph needs more than one. Warming the module
+// registry first means the loader's promise is already resolved, so the very
+// first `await act(...)` render commits the player instead of suspending.
+beforeAll(async () => {
+  await import("@forge/video-player/mux-video")
+})
 
 const baseFragment = {
   id: "v-1",

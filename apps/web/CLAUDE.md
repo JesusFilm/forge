@@ -99,6 +99,32 @@ only the port; production still requires the exact canonical origin. Follow
 path, status, timing, and request ID evidence, and delete raw Playwright traces
 before a PR.
 
+## Deferred video engine (single owner)
+
+`@forge/video-player/mux-video` pulls `@mux/mux-video-react`, which carries
+hls.js and mux-embed — one ~646 KB decoded / ~160 KB brotli chunk. Reach it
+through `src/components/video/deferred-mux-video.tsx`, never by importing the
+specifier again, and never through a VALUE import of the `@forge/video-player`
+barrel (which re-exports the same module; every barrel import here is
+`import type` and nothing in tsconfig or eslint enforces that).
+
+Deferring one call site does nothing. Measured on `next build` (Turbopack,
+next@16.2.4): with the home carousel's import removed entirely and three
+sibling section renderers still static, the chunk stayed in
+`firstLoadChunkPaths` for BOTH Watch routes at full size. Turbopack only splits
+it into an async-only chunk once every importer is deferred, so this is a
+whole-tree property, held by `src/components/__tests__/mux-video-deferral.test.ts`.
+`components/watch/HeroPlayer.tsx` is a second, grandfathered owner with its own
+inline `next/dynamic`; the invariant test pins exactly those two.
+
+The owner module wraps the lazy component in an error boundary because a
+rejected chunk load otherwise throws to the route's `error.tsx` and replaces
+the whole Watch page. Do not add a userland retry around the `import()` — it is
+inert on Turbopack (`docs/solutions/best-practices/per-message-boundary-limits-for-media-surfaces.md`).
+Above-the-fold players additionally gate on document load; when you do that,
+park any timer that only a mounted media element could clear (see
+`useWatchHomeTvCarousel`'s `mediaGateOpen` option). See feat-535 / Linear FGE-138.
+
 ## Common Pitfalls
 
 - Don't import server-only code in client components.
