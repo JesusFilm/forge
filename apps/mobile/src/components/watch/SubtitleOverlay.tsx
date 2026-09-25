@@ -13,7 +13,7 @@ import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
 import { LINE_HEIGHT_REDUCTION } from "../../lib/lineHeight"
 import { parseVtt, type VttCue } from "../../lib/parseVtt"
-import { validateActionUrl } from "../../lib/validateUrl"
+import { loadVttCues, pinVtt } from "../../lib/vttCache"
 import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
 import { OFFLINE_ROOT } from "../../lib/offlineFileSystem"
 import { readAsStringAsync } from "expo-file-system/legacy"
@@ -35,7 +35,7 @@ type SubtitleOverlayProps = {
 // Cues are sorted by start time. Binary-search the last cue whose start is <= t,
 // then check t is still before its (exclusive) end — keeping the 100ms poll
 // cheap even for a feature-length VTT with hundreds of cues.
-function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
+function findActiveCue(cues: readonly VttCue[], t: number): VttCue | undefined {
   let lo = 0
   let hi = cues.length - 1
   let ans = -1
@@ -61,17 +61,6 @@ function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
   return undefined
 }
 
-// Classify a remote VTT fetch rejection into a stable, low-cardinality reason.
-// AbortError is the 8s deadline; `vtt_http_<status>` is the non-2xx guard throw.
-export function classifyVttFetchError(error: unknown): string {
-  if (error instanceof Error) {
-    if (error.name === "AbortError") return "timeout"
-    const status = error.message.match(/^vtt_http_(\d+)$/)?.[1]
-    if (status) return `http_${status}`
-  }
-  return "network_error"
-}
-
 export function SubtitleOverlay({
   player,
   vttSrc,
@@ -80,7 +69,7 @@ export function SubtitleOverlay({
   fontSize = 16,
   animate = false,
 }: SubtitleOverlayProps) {
-  const [cues, setCues] = useState<VttCue[]>([])
+  const [cues, setCues] = useState<readonly VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
 
   // Vertical offset via translateY (native-driver friendly on Fabric), anchored
@@ -162,46 +151,24 @@ export function SubtitleOverlay({
       }
     }
 
-    // Remote: validate the CMS-sourced URL before fetching (apps/mobile/CLAUDE.md).
-    if (!validateActionUrl(vttSrc)) {
-      setCues([])
-      setActiveText("")
-      datadogLog.warn("subtitle.vtt_failed", { reason: "unsafe_url" })
-      return
-    }
-    // AbortController so switching language (or unmounting) actually cancels
-    // the in-flight request instead of leaking it; the timer is the hard cap
-    // so a stalled CDN can't hold the request open indefinitely.
+    // Remote: the shared cue cache validates the URL, caps the bytes, and times
+    // out at 8 s. The pin keeps Explore's look-ahead from evicting this track.
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
-    fetch(vttSrc, { signal: controller.signal })
-      .then((r) => {
-        // A CDN 4xx/5xx returns an error-page body; without this guard
-        // parseVtt would silently yield zero cues and subtitles never appear.
-        if (!r.ok) throw new Error(`vtt_http_${r.status}`)
-        return r.text()
-      })
-      .then((text) => {
-        if (cancelled) return
-        const parsed = [...parseVtt(text)].sort((a, b) => a.start - b.start)
-        setCues(parsed)
-        if (parsed.length === 0) {
-          datadogLog.warn("subtitle.vtt_failed", { reason: "parse_empty" })
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setCues([])
-          datadogLog.warn("subtitle.vtt_failed", {
-            reason: classifyVttFetchError(err),
-          })
-        }
-      })
-      .finally(() => clearTimeout(timeout))
+    const unpin = pinVtt(vttSrc)
+    void loadVttCues(vttSrc, { signal: controller.signal }).then((result) => {
+      if (cancelled) return
+      if (result.ok) {
+        setCues(result.cues)
+        return
+      }
+      setCues([])
+      datadogLog.warn("subtitle.vtt_failed", { reason: result.reason })
+    })
     return () => {
       cancelled = true
+      // Detaches this overlay only: a fetch that another reader shares goes on.
       controller.abort()
-      clearTimeout(timeout)
+      unpin()
       // Drop the old cues so the previous language's subtitles don't flash
       // against the new playhead while the next VTT is still fetching.
       setCues([])
