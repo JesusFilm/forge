@@ -8,7 +8,7 @@ import {
   type FeedState,
 } from "../lib/explore/feedState"
 import type { FeedClip } from "../lib/explore/types"
-import { muxThumbnailFromPlaybackId } from "../lib/muxThumbnail"
+import { muxHeroPosterFromPlaybackId } from "../lib/muxThumbnail"
 import { resolveImageUrl } from "../lib/resolveImageUrl"
 import { AUTOSTART_VEIL_TIMEOUT_MS } from "./useAutostartPlayback"
 
@@ -60,7 +60,7 @@ export type ClipAutostart = {
 export function clipPosterUri(clip: FeedClip): string | null {
   return (
     resolveImageUrl(clip.imageUrl) ??
-    muxThumbnailFromPlaybackId(clip.muxPlaybackId)
+    muxHeroPosterFromPlaybackId(clip.muxPlaybackId)
   )
 }
 

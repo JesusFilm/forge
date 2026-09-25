@@ -85,9 +85,12 @@ function clip(
   }
 }
 
-/** `muxThumbnailFromPlaybackId`'s poster derivative, pinned byte for byte. */
+/**
+ * Admin's pre-generated `WATCH_HERO_POSTER_RECIPE` derivative, pinned byte for
+ * byte (apps/admin/src/services/mux-image-derivative.service.ts).
+ */
 function derivative(n: number): string {
-  return `https://image.mux.com/mux${n}/thumbnail.webp?width=1280&height=720&fit_mode=smartcrop`
+  return `https://image.mux.com/mux${n}/thumbnail.webp?width=1280&time=2`
 }
 
 function stillOf(n: number): string {

@@ -58,7 +58,38 @@ export function muxThumbnailAtSecond(
   return muxStillUrl(playbackId, STILL_SIZE, STILL_SIZE, second)
 }
 
-// The one owner of the still URL shape, so the two public builders above cannot
+// Explore's R7 still (KTD21). One fixed portrait size, never device-derived,
+// for the same reason as STILL_SIZE: Mux caches per exact URL.
+export const CLIP_STILL_WIDTH = 540
+export const CLIP_STILL_HEIGHT = 960
+
+/** A portrait still at an Explore clip's start. */
+export function muxClipStillUrl(
+  playbackId: string | null | undefined,
+  startSeconds: number,
+): string | null {
+  if (!Number.isFinite(startSeconds) || startSeconds < 0) return null
+  return muxStillUrl(
+    playbackId,
+    CLIP_STILL_WIDTH,
+    CLIP_STILL_HEIGHT,
+    startSeconds,
+  )
+}
+
+/**
+ * Admin's pre-generated hero poster derivative (`WATCH_HERO_POSTER_RECIPE` in
+ * apps/admin/src/services/mux-image-derivative.service.ts), byte for byte. Any
+ * other shape is a cold Mux render.
+ */
+export function muxHeroPosterFromPlaybackId(
+  playbackId: string | null | undefined,
+): string | null {
+  if (!isMuxPlaybackId(playbackId)) return null
+  return `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280&time=2`
+}
+
+// The one owner of the still URL shape, so the public builders above cannot
 // drift. `height` is not optional: with a bare `width`, smartcrop keeps the
 // SOURCE height and returns a side-cropped frame rather than the ratio asked for.
 function muxStillUrl(
