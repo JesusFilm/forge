@@ -30,6 +30,8 @@ Internal beta distribution on 2026-09-25: tvOS 1.0.0 (12) is processed in TestFl
 
 The TV-2 annotation asks to remove the long URL printed below the QR on the TV. The local feedback branch now hides only that visible URL; the QR still encodes the full destination, and the reference/expiry remains below it. Physical tvOS verification and a new TestFlight build are pending.
 
+2026-09-25 distribution update: tvOS build 13, containing that URL cleanup, is valid and assigned to internal TestFlight groups Team (Expo) and QA. Android TV version code 10 is available on Google Play internal testing with 3,049 supported TVs and no phone/tablet availability. Railway staging accepts Apple 13 and Android 10. The feedback grant flow still needs a real report from these new store builds; a successful store upload is not that proof. Per the user's later instruction, Apple TV UI verification should use a simulator, not the physical Apple TV.
+
 ## Entry Points — Read These First
 
 Selected TV entry design: `docs/plans/2026-09-25-tv-feedback-navigation-and-contextual-actions.md`.

@@ -3,7 +3,7 @@ id: "feat-556"
 title: "Default Apple TV to Native A and distribute TV beta builds"
 owner: "ekkasit"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-25"
 duration: 1
 depends_on: []
@@ -46,3 +46,11 @@ Default Native A on Apple TV and migrate legacy default selections once. Retain 
 - tvOS IPA validates as `appletvos`, uploads, and appears in TestFlight.
 - Android AAB uploads to Google Play internal testing with TV-only device coverage.
 - Record processing/review/tester access separately from upload success.
+
+## Resolution — 2026-09-25
+
+- Commit `5993b31b5` makes Native A the Apple TV default and migrates the old saved default; Native B and a newly selected Existing player remain selectable. Android's player default is unchanged. The full TV suite passed: 139 suites, 1,944 tests; TypeScript, lint, and formatting passed.
+- EAS built tvOS 1.0.0 (13) and Android TV 1.0.0 (10) from that commit. The tvOS IPA declared `DTPlatformName=appletvos` and passed `altool --validate-app`; upload succeeded. App Store Connect reports the build `VALID` on `TV_OS`, and both internal groups contain it (Team (Expo): 18 testers; QA: 2 testers). External Public Beta was not assigned.
+- Google Play internal testing shows 1.0.0 (10) **Available to internal testers**. Release preview retained 3,049 supported TVs with zero lost TVs and zero phones/tablets. The only warning was no deobfuscation file; it did not block internal publication. No production track was changed.
+- Railway staging allowlists include Apple build 13 and Android version code 10 alongside older beta builds. The latest staging web deployment succeeded and `/api/health` returned 200.
+- Per the user's instruction, no physical Apple TV was used. The simulator UI check was unavailable because XcodeBuildMCP was not connected; store compile/validation and TestFlight group access are verified, but on-screen Native A behavior on the new build is not yet visually tested.
