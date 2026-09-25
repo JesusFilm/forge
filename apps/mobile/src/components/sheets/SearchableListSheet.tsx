@@ -17,6 +17,25 @@ import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { acceptSheetTap, assembleSheetList } from "../../lib/sheetListLogic"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 
+/** The sheet's colors. The Bible reader passes its own theme (KTD12). */
+export type SearchableListSheetColors = {
+  text: string
+  secondaryText: string
+  /** The checkmark on the current row. */
+  accent: string
+  /** The search field and the current row. */
+  surface: string
+}
+
+/** The app's dark look, which every caller without a color set keeps. */
+export const DEFAULT_LIST_SHEET_COLORS: Readonly<SearchableListSheetColors> =
+  Object.freeze({
+    text: TEXT_PRIMARY,
+    secondaryText: TEXT_SECONDARY,
+    accent: ACCENT,
+    surface: "rgba(255, 255, 255, 0.06)",
+  })
+
 export type SearchableListSheetProps<T> = {
   rows: T[]
   // Selection identity of the active row (slug/documentId, never bcp47). Its row is
@@ -29,6 +48,8 @@ export type SearchableListSheetProps<T> = {
   // A short state line under the labels (e.g. "Downloaded"); read out with the
   // row's name so a screen reader learns it too.
   getStatusLabel?: (item: T) => string | null | undefined
+  // A longer line (e.g. a copyright credit), up to two lines. Not read out.
+  getDetailLabel?: (item: T) => string | null | undefined
   getSearchValues: (item: T) => (string | null | undefined)[]
   // Availability guard (e.g. a dub without `hls`): a false row silently ignores
   // taps. Defaults to always-selectable.
@@ -39,6 +60,9 @@ export type SearchableListSheetProps<T> = {
   emptySearchMessage: string
   // Extra header content above the search field (e.g. the subtitle on/off switch).
   headerTop?: ReactNode
+  // Keep `rows` in the caller's order instead of sorting them by name.
+  keepRowOrder?: boolean
+  colors?: SearchableListSheetColors
 }
 
 function accessibleName(
@@ -59,6 +83,7 @@ export function SearchableListSheet<T>({
   getPrimaryLabel,
   getSecondaryLabel,
   getStatusLabel,
+  getDetailLabel,
   getSearchValues,
   isSelectable,
   onSelect,
@@ -66,6 +91,8 @@ export function SearchableListSheet<T>({
   searchAccessibilityLabel,
   emptySearchMessage,
   headerTop,
+  keepRowOrder = false,
+  colors = DEFAULT_LIST_SHEET_COLORS,
 }: SearchableListSheetProps<T>) {
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
@@ -79,17 +106,38 @@ export function SearchableListSheet<T>({
   // twice and pop the underlying screen.
   const lastSelectRef = useRef(0)
 
-  const { active, filtered } = useMemo(
-    () =>
-      assembleSheetList({
-        rows,
-        activeId,
-        query,
-        getSelectionId,
-        getPrimaryLabel,
-        getSearchValues,
-      }),
-    [rows, activeId, query, getSelectionId, getPrimaryLabel, getSearchValues],
+  const { active, filtered } = useMemo(() => {
+    const assembled = assembleSheetList({
+      rows,
+      activeId,
+      query,
+      getSelectionId,
+      getPrimaryLabel,
+      getSearchValues,
+    })
+    if (!keepRowOrder) return assembled
+    // The assembly sorts by name; put the kept rows back in the given order.
+    const kept = new Set(assembled.filtered)
+    return {
+      active: assembled.active,
+      filtered: rows.filter((row) => kept.has(row)),
+    }
+  }, [
+    rows,
+    activeId,
+    query,
+    getSelectionId,
+    getPrimaryLabel,
+    getSearchValues,
+    keepRowOrder,
+  ])
+
+  const { primaryText, secondaryText } = useMemo(
+    () => ({
+      primaryText: { color: colors.text },
+      secondaryText: { color: colors.secondaryText },
+    }),
+    [colors.text, colors.secondaryText],
   )
 
   const handleSelect = useCallback(
@@ -107,6 +155,7 @@ export function SearchableListSheet<T>({
     ({ item }: { item: T }) => {
       const secondary = getSecondaryLabel?.(item)
       const status = getStatusLabel?.(item)
+      const detail = getDetailLabel?.(item)
       return (
         <Pressable
           style={({ pressed }) => [styles.listRow, pressed && feedback.pressed]}
@@ -117,14 +166,14 @@ export function SearchableListSheet<T>({
         >
           <View style={styles.nameColumn}>
             <Text
-              style={[styles.listRowText, typography.body]}
+              style={[styles.listRowText, typography.body, primaryText]}
               numberOfLines={1}
             >
               {getPrimaryLabel(item)}
             </Text>
             {secondary ? (
               <Text
-                style={[styles.nativeText, typography.bodySmall]}
+                style={[styles.nativeText, typography.bodySmall, secondaryText]}
                 numberOfLines={1}
               >
                 {secondary}
@@ -132,10 +181,18 @@ export function SearchableListSheet<T>({
             ) : null}
             {status ? (
               <Text
-                style={[styles.nativeText, typography.bodySmall]}
+                style={[styles.nativeText, typography.bodySmall, secondaryText]}
                 numberOfLines={1}
               >
                 {status}
+              </Text>
+            ) : null}
+            {detail ? (
+              <Text
+                style={[styles.nativeText, typography.bodySmall, secondaryText]}
+                numberOfLines={2}
+              >
+                {detail}
               </Text>
             ) : null}
           </View>
@@ -146,8 +203,11 @@ export function SearchableListSheet<T>({
       getPrimaryLabel,
       getSecondaryLabel,
       getStatusLabel,
+      getDetailLabel,
       handleSelect,
       typography,
+      primaryText,
+      secondaryText,
     ],
   )
 
@@ -155,6 +215,7 @@ export function SearchableListSheet<T>({
 
   const activeSecondary = active ? getSecondaryLabel?.(active) : null
   const activeStatus = active ? getStatusLabel?.(active) : null
+  const activeDetail = active ? getDetailLabel?.(active) : null
 
   // Search + current selection live in the list header so they scroll with the
   // list in one container.
@@ -162,12 +223,18 @@ export function SearchableListSheet<T>({
     <View style={styles.header}>
       {headerTop}
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={18} color={TEXT_SECONDARY} />
+      <View
+        style={[styles.searchContainer, { backgroundColor: colors.surface }]}
+      >
+        <Ionicons
+          name="search-outline"
+          size={18}
+          color={colors.secondaryText}
+        />
         <TextInput
-          style={[styles.searchInput, typography.body]}
+          style={[styles.searchInput, typography.body, primaryText]}
           placeholder={searchPlaceholder}
-          placeholderTextColor={TEXT_SECONDARY}
+          placeholderTextColor={colors.secondaryText}
           value={query}
           onChangeText={setQuery}
           autoCapitalize="none"
@@ -181,18 +248,24 @@ export function SearchableListSheet<T>({
             accessibilityRole="button"
             accessibilityLabel="Clear search"
           >
-            <Ionicons name="close-circle" size={18} color={TEXT_SECONDARY} />
+            <Ionicons
+              name="close-circle"
+              size={18}
+              color={colors.secondaryText}
+            />
           </Pressable>
         )}
       </View>
 
       {active && (
         <View style={styles.currentSection}>
-          <Text style={[styles.currentLabel, typography.bodySmall]}>
+          <Text
+            style={[styles.currentLabel, typography.bodySmall, secondaryText]}
+          >
             Current
           </Text>
           <View
-            style={[styles.listRow, styles.listRowActive]}
+            style={[styles.listRow, { backgroundColor: colors.surface }]}
             // A plain View is not an accessibility element; without this the
             // label never reaches the native tree and VoiceOver reads the
             // child texts one by one.
@@ -202,13 +275,14 @@ export function SearchableListSheet<T>({
               activeStatus,
             )}
           >
-            <Ionicons name="checkmark" size={18} color={ACCENT} />
+            <Ionicons name="checkmark" size={18} color={colors.accent} />
             <View style={styles.nameColumn}>
               <Text
                 style={[
                   styles.listRowText,
                   typography.body,
                   styles.listRowTextActive,
+                  primaryText,
                 ]}
                 numberOfLines={1}
               >
@@ -216,7 +290,11 @@ export function SearchableListSheet<T>({
               </Text>
               {activeSecondary ? (
                 <Text
-                  style={[styles.nativeText, typography.bodySmall]}
+                  style={[
+                    styles.nativeText,
+                    typography.bodySmall,
+                    secondaryText,
+                  ]}
                   numberOfLines={1}
                 >
                   {activeSecondary}
@@ -224,10 +302,26 @@ export function SearchableListSheet<T>({
               ) : null}
               {activeStatus ? (
                 <Text
-                  style={[styles.nativeText, typography.bodySmall]}
+                  style={[
+                    styles.nativeText,
+                    typography.bodySmall,
+                    secondaryText,
+                  ]}
                   numberOfLines={1}
                 >
                   {activeStatus}
+                </Text>
+              ) : null}
+              {activeDetail ? (
+                <Text
+                  style={[
+                    styles.nativeText,
+                    typography.bodySmall,
+                    secondaryText,
+                  ]}
+                  numberOfLines={2}
+                >
+                  {activeDetail}
                 </Text>
               ) : null}
             </View>
@@ -257,7 +351,9 @@ export function SearchableListSheet<T>({
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptySearch}>
-              <Text style={[styles.emptySearchText, typography.body]}>
+              <Text
+                style={[styles.emptySearchText, typography.body, secondaryText]}
+              >
                 {emptySearchMessage}
               </Text>
             </View>
@@ -268,6 +364,7 @@ export function SearchableListSheet<T>({
   )
 }
 
+// Colors are not here: they come from the `colors` prop at render time.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -283,11 +380,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
   },
   searchInput: {
     flex: 1,
-    color: TEXT_PRIMARY,
     fontFamily: "System",
     padding: 0,
   },
@@ -295,7 +390,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   currentLabel: {
-    color: TEXT_SECONDARY,
     fontFamily: "System",
     marginBottom: 6,
   },
@@ -308,22 +402,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     minHeight: 48,
   },
-  listRowActive: {
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-  },
   nameColumn: {
     flex: 1,
     minWidth: 0,
   },
   listRowText: {
-    color: TEXT_PRIMARY,
     fontFamily: "System",
   },
   listRowTextActive: {
     fontWeight: "600",
   },
   nativeText: {
-    color: TEXT_SECONDARY,
     fontFamily: "System",
     marginTop: 2,
   },
@@ -332,7 +421,6 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
   emptySearchText: {
-    color: TEXT_SECONDARY,
     fontFamily: "System",
   },
 })

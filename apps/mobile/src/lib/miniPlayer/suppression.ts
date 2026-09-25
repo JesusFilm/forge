@@ -1,8 +1,9 @@
 /**
  * R11 suppression: the floating window hides while an in-app sheet is
  * presented, and returns to its corner when that sheet closes. Two mechanisms
- * live here because the app presents sheets two ways — six real sheet ROUTES
- * in the watch and series groups, and the sheets that are component state.
+ * live here because the app presents sheets two ways — nine real sheet ROUTES
+ * (six in the watch and series groups, three reader sheets on the root
+ * stack), and the sheets that are component state.
  *
  * React-native-free by construction: routes arrive as expo-router segments and
  * the non-route sheets arrive as a count.
@@ -18,9 +19,9 @@ export function routePattern(segments: readonly string[]): string {
 }
 
 /**
- * The six group sheet routes, read from `app/watch/_layout.tsx` and
- * `app/series/_layout.tsx` — every screen either layout declares with
- * `presentation: "formSheet"`.
+ * Every screen declared with `presentation: "formSheet"`: six in
+ * `app/watch/_layout.tsx` and `app/series/_layout.tsx`, and the Bible
+ * reader's three in `app/_layout.tsx` (feat-551 KTD9).
  */
 export const IN_APP_SHEET_ROUTE_PATTERNS = [
   "watch/language",
@@ -29,6 +30,9 @@ export const IN_APP_SHEET_ROUTE_PATTERNS = [
   "series/language",
   "series/subtitle",
   "series/download",
+  "reader-passage",
+  "reader-translation",
+  "reader-settings",
 ] as const
 
 const SHEET_ROUTE_SET: ReadonlySet<string> = new Set(
