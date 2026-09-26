@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState, type ComponentProps } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react"
 import {
   Pressable,
   Share,
@@ -54,8 +60,8 @@ export type ClipOverlayProps = {
  * frame; 0.6 keeps a margin. Black reaches the floor sooner than the app ground.
  */
 const SCRIM_COLOR = hexToRgba(BLACK, 0.6)
-/** The fade above the text, so the scrim has no hard top edge. */
-const SCRIM_RAMP_HEIGHT = 96
+/** The fade above the title, so the scrim has no hard top edge. */
+const SCRIM_RAMP_HEIGHT = 40
 const RAIL_BUTTON_SIZE = 48
 const RAIL_LABEL_WIDTH = 76
 const CAPTION_GAP = 8
@@ -120,6 +126,20 @@ export function ClipOverlay({
     setBottomHeight(Math.round(e.nativeEvent.layout.height))
   }, [])
 
+  // The scrim starts at the title, not at the taller rail, so the dark band
+  // is only as high as the text it keeps readable. It follows an expansion.
+  const [scrimTop, setScrimTop] = useState(0)
+  const rowTop = useRef(0)
+  const infoTop = useRef(0)
+  const handleRowLayout = useCallback((e: LayoutChangeEvent) => {
+    rowTop.current = e.nativeEvent.layout.y
+    setScrimTop(Math.round(rowTop.current + infoTop.current))
+  }, [])
+  const handleInfoLayout = useCallback((e: LayoutChangeEvent) => {
+    infoTop.current = e.nativeEvent.layout.y
+    setScrimTop(Math.round(rowTop.current + infoTop.current))
+  }, [])
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {EXPLORE_FRAMING === "band" && (
@@ -156,7 +176,7 @@ export function ClipOverlay({
       >
         <View
           testID="clip-overlay-scrim"
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, { top: scrimTop }]}
           pointerEvents="none"
         >
           <LinearGradient
@@ -173,8 +193,13 @@ export function ClipOverlay({
           testID="clip-overlay-row"
           style={styles.row}
           pointerEvents="box-none"
+          onLayout={handleRowLayout}
         >
-          <View testID="clip-overlay-info" style={styles.info}>
+          <View
+            testID="clip-overlay-info"
+            style={styles.info}
+            onLayout={handleInfoLayout}
+          >
             <Text
               style={[styles.title, typography.titleSmall]}
               numberOfLines={2}

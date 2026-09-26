@@ -243,7 +243,7 @@ describe("Explore framing (KTD18)", () => {
       expect(colors[colors.length - 1]).toBe(solidColor)
     })
 
-    it("holds every line of text at AA over a white frame", () => {
+    it("holds the title and description at AA over a white frame", () => {
       const root = render(treatment)
       const bottom = byId(root, "clip-overlay-bottom")
       const solid = byId(bottom, "clip-overlay-scrim-solid")
@@ -251,9 +251,11 @@ describe("Explore framing (KTD18)", () => {
         parseColor(flatStyle(solid.props.style).backgroundColor as string),
         WHITE_FRAME,
       )
-      const texts = nodes(bottom, (n) => n.type === "Text")
-      // Title, description, and the three rail labels at least.
-      expect(texts.length).toBeGreaterThanOrEqual(5)
+      // The scrim starts at the title (owner, 2026-09-26), so only the text
+      // from the title down sits on it; the rail labels above sit on the video.
+      const info = byId(bottom, "clip-overlay-info")
+      const texts = nodes(info, (n) => n.type === "Text")
+      expect(texts.length).toBeGreaterThanOrEqual(2)
       for (const text of texts) {
         const color = flatStyle(text.props.style).color as string
         expect(

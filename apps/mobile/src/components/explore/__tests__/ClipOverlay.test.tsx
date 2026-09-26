@@ -396,6 +396,30 @@ describe("ClipOverlay — captions (R13, AE4, KTD20)", () => {
   })
 })
 
+describe("ClipOverlay — scrim (R39)", () => {
+  it("starts at the title, not at the taller rail, and follows an expansion", () => {
+    const renderer = render()
+    const layout = (id: string, y: number) => {
+      const [node] = byTestId(renderer, id)
+      act(() => {
+        ;(node.props.onLayout as (e: unknown) => void)({
+          nativeEvent: { layout: { x: 0, y, width: 300, height: 100 } },
+        })
+      })
+    }
+    const scrimTop = () =>
+      flatStyle(byTestId(renderer, "clip-overlay-scrim")[0].props.style).top
+
+    layout("clip-overlay-row", 0)
+    layout("clip-overlay-info", 150)
+    expect(scrimTop()).toBe(150)
+
+    // A longer description moves the title up, and the scrim with it.
+    layout("clip-overlay-info", 90)
+    expect(scrimTop()).toBe(90)
+  })
+})
+
 describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
   it("maps the player's time onto the clip: 12:10 in 12:04-12:31 is 6 s of 27 s", () => {
     player.currentTime = 730
