@@ -87,7 +87,7 @@ describe("GET_VIDEO_BY_SLUG (watch screen) keeps the full fragment", () => {
     )
   })
 
-  // feat-551 U12: "Read full passage" opens the native reader at the cited
+  // feat-553 U12: "Read full passage" opens the native reader at the cited
   // book, which it keys by USFM code. Admin sends the book as an OSIS id.
   it("SELECTS osisId and paratextAbbreviation on each citation's book", () => {
     expect(bulkSdl).toMatch(

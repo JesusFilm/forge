@@ -722,7 +722,7 @@ describe("drag (R2, KTD5)", () => {
     })
   })
 
-  // feat-551 AE18, KTD11: on a reader route the drag snaps in the reader's
+  // feat-553 AE18, KTD11: on a reader route the drag snaps in the reader's
   // layout, and it writes the reader's corner, never the app's.
   it("settles a drag on the Bible tab into the reader's own corner frame", async () => {
     const BIBLE_TAB = ["(tabs)", "bible"]

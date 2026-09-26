@@ -5,7 +5,7 @@
 const fs = require("fs")
 const path = require("path")
 
-// feat-551 U12 (KTD17, KD3). "Read full passage" on a quote card pushes the
+// feat-553 U12 (KTD17, KD3). "Read full passage" on a quote card pushes the
 // native reader, and the video keeps playing. The route has no render suite,
 // so this pins its half of the tap: a one-line revert here compiles and
 // leaves the carousel suite green. The carousel suite pins the other half.

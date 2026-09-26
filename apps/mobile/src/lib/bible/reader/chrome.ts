@@ -1,4 +1,4 @@
-// The reader's chrome heights (feat-551 KTD11, KTD16, R10). This file is the
+// The reader's chrome heights (feat-553 KTD11, KTD16, R10). This file is the
 // one source for the top bar and the footer: the verse box reads it, and the
 // mini player (U13) reads it to rest every corner between the two.
 

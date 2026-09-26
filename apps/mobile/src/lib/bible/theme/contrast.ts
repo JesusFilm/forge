@@ -1,4 +1,4 @@
-// WCAG 2.x contrast for the reader's palettes (feat-551 R36). A translucent
+// WCAG 2.x contrast for the reader's palettes (feat-553 R36). A translucent
 // colour is judged over the ground it sits on, never on its own, per
 // docs/solutions/best-practices/wcag-contrast-guard-bound-to-variant-artifact-not-property.md.
 

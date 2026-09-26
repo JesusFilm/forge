@@ -1,4 +1,4 @@
-// The text that Copy and Share send (feat-551 U9, R19, R42): the selected
+// The text that Copy and Share send (feat-553 U9, R19, R42): the selected
 // verses, then the reference and the translation. Every number is the shown
 // translation's own number, and a missing-verse note is never sent (R21).
 import { verseRangeLabel } from "../reader/labels"

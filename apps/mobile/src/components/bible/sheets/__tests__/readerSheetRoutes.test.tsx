@@ -1,5 +1,5 @@
 /**
- * The three reader sheet routes (feat-551 U10, KTD9) as thin adapters: they
+ * The three reader sheet routes (feat-553 U10, KTD9) as thin adapters: they
  * parse the params fail-closed, write the viewer's pick to the shared
  * stores, and close. Real stores; a fake router and fake services. Every
  * case renders under StrictMode, because the routes hold effects.

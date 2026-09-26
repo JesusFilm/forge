@@ -122,11 +122,11 @@ export type PlaybackRequestSnapshot = {
    *  same reason `loadFailed` is: the host is a `<Stack>` SIBLING, so a route's
    *  layer cannot reach the host's React state by context or by prop. */
   playing: boolean
-  /** feat-551 KTD10: a reader covers the current slot, which keeps its rect.
+  /** feat-553 KTD10: a reader covers the current slot, which keeps its rect.
    *  `admitted` floats the video; `refused` hides the frame. The store always
    *  sets this and the next field; a hand-built snapshot may omit them. */
   cover?: ReaderCover | null
-  /** feat-551 R10: the resting window frame, for a surface that must keep its
+  /** feat-553 R10: the resting window frame, for a surface that must keep its
    *  own content clear of it. The host publishes it; null when no window rests. */
   windowFrame?: PlaybackRect | null
 }
@@ -538,7 +538,7 @@ export function createPlaybackRequestStore(deps: {
       commit()
     },
 
-    /** feat-551 KTD10: a reader sits over the current slot, which stays
+    /** feat-553 KTD10: a reader sits over the current slot, which stays
      *  attached. Admission decides once per cover whether the video floats.
      *  Null when `id` is not the current slot. */
     coverSlot(id: number): boolean | null {

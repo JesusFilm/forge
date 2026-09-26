@@ -1,4 +1,4 @@
-// The typed failures of the Bible text repository (feat-551 U4). Every public
+// The typed failures of the Bible text repository (feat-553 U4). Every public
 // call returns one of these instead of throwing, so the reader never sees an
 // unhandled rejection.
 

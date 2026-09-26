@@ -5,7 +5,7 @@ import { BibleReader } from "../../src/components/bible/BibleReader"
 import { useFloatingObstacles } from "../../src/hooks/usePlaybackFrame"
 import { readerSheetCallbacks } from "../../src/lib/bible/routes/sheetCallbacks"
 
-// feat-551 R2, R3, KTD9: the Bible tab. It opens at the saved reading position,
+// feat-553 R2, R3, KTD9: the Bible tab. It opens at the saved reading position,
 // or at John 3:16, and shares that position with the pushed reader (KD2).
 export default function BibleTabScreen() {
   const router = useRouter()

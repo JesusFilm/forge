@@ -1,5 +1,5 @@
 /**
- * The reader's two hosts (feat-551 U11, KTD9): the Bible tab and the pushed
+ * The reader's two hosts (feat-553 U11, KTD9): the Bible tab and the pushed
  * root route. Real stores and the U4 repository over the bundled BSB; a fake
  * router, fake focus, and fake services. Every case renders under StrictMode.
  */

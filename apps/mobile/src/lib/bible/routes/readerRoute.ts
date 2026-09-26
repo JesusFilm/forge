@@ -1,4 +1,4 @@
-// The pushed reader's route contract (feat-551 U11, KTD9). A quote card (U12)
+// The pushed reader's route contract (feat-553 U11, KTD9). A quote card (U12)
 // pushes `readerHref(ref, "quote")`; `app/reader.tsx` reads the params back
 // with `parseReaderRouteParams`. A bad param gives no start reference.
 import { isBsbVerseRef } from "../position/snapshot"

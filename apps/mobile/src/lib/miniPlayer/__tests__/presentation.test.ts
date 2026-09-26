@@ -30,7 +30,7 @@ function storeWithSession() {
  * Every route the app declares, read from app/_layout.tsx, app/(tabs)/_layout.tsx,
  * app/watch/_layout.tsx and app/series/_layout.tsx. Segments are route patterns
  * and the router pops a trailing "index", so the Home tab is ["(tabs)"].
- * feat-551 U11 adds the Bible tab, the pushed reader, and its three sheets;
+ * feat-553 U11 adds the Bible tab, the pushed reader, and its three sheets;
  * U13 owns how the window behaves over the reader.
  */
 const ROUTE_TABLE: ReadonlyArray<
@@ -259,7 +259,7 @@ describe("route predicates", () => {
   })
 })
 
-// feat-551 KTD10, KTD11: the reader routes and the watch slot they cover.
+// feat-553 KTD10, KTD11: the reader routes and the watch slot they cover.
 describe("the reader cover (KTD10)", () => {
   // Every route in the table above, so an added route has to take a side.
   const COVERING = [

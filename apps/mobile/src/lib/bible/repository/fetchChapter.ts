@@ -1,5 +1,5 @@
 // One chapter from bible.helloao.org, with a time limit and a byte limit
-// (feat-551 KTD3). The result is typed and never throws, and no body text
+// (feat-553 KTD3). The result is typed and never throws, and no body text
 // ever reaches a log: a JSON SyntaxError can hold pieces of the body.
 import type { UsfmBookId } from "../text/books"
 import { normalizeChapterFile } from "../text/normalize"

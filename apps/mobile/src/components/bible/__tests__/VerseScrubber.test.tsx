@@ -1,4 +1,4 @@
-// The verse scrubber (feat-551 U9, R18, KD7), after Still's design: a drag
+// The verse scrubber (feat-553 U9, R18, KD7), after Still's design: a drag
 // that starts on the thumb moves by whole verses, a still press changes
 // nothing, and the drag ends on the last verse it showed. Each render is in
 // <StrictMode>, and touches drive the REAL PanResponder handlers.

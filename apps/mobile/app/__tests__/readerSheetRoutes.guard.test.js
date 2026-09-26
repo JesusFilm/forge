@@ -14,7 +14,7 @@ const {
 } = require("../../src/lib/bible/sheets/screenOptions")
 const { LIST_SHEET_DETENTS } = require("../../src/styles/shared")
 
-// Guard (feat-551 U10, KTD9): the reader's sheets are ROOT routes. The mini
+// Guard (feat-553 U10, KTD9): the reader's sheets are ROOT routes. The mini
 // player hides over a sheet only if its pattern is in the suppression list,
 // and a route is a sheet only if the root layout declares it as one.
 

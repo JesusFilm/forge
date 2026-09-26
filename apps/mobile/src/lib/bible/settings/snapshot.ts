@@ -1,4 +1,4 @@
-// The reader's seven settings (feat-551 R33, KTD5), as the device keeps them.
+// The reader's seven settings (feat-553 R33, KTD5), as the device keeps them.
 // Pure parse and serialize; the store owns the storage calls. Keys stay
 // semantic so a design change never rewrites what the device holds.
 

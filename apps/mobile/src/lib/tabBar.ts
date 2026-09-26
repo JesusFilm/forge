@@ -43,7 +43,7 @@ export const TAB_BAR_MATERIAL_TINT = "rgba(0, 0, 0, 0.3)"
  * `app/(tabs)/_layout.ios.tsx` builds its triggers from this and
  * `tabBarLensOrder.guard.test.js` pins it against the route FILES — expo-router
  * appends an undeclared `app/(tabs)/*` file as an extra tab, which a scan of the
- * layout alone cannot see. The order is the product's (feat-551 R2, KD18).
+ * layout alone cannot see. The order is the product's (feat-553 R2, KD18).
  */
 export const TAB_ROUTE_NAMES = [
   "index",

@@ -1,4 +1,4 @@
-// The verse selection (feat-551 U9, R19, R42): one run of stops in one chapter
+// The verse selection (feat-553 U9, R19, R42): one run of stops in one chapter
 // of one translation, kept in that translation's own verse numbers. A gap stop
 // is never selected, but a run can pass over one, as a verse move does (R21).
 import { chapterLabel, stopRange } from "../reader/labels"

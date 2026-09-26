@@ -374,7 +374,7 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
     expect(flatStyle(cta).textShadowColor).toBeDefined()
   })
 
-  // Covers AE3, as R1 (feat-551) changed it: no verse and no credit, but the
+  // Covers AE3, as R1 (feat-553) changed it: no verse and no credit, but the
   // button still opens the reader, which needs no admin text.
   it("renders the reference and the button when the card has no passage", () => {
     const renderer = render(
@@ -473,7 +473,7 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
   })
 })
 
-// ── The reader entry (feat-551 U12, KTD17) ─────────────────────────────────
+// ── The reader entry (feat-553 U12, KTD17) ─────────────────────────────────
 
 describe("BibleQuotesCarouselRenderer — Read full passage opens the reader", () => {
   // The same composition as the watch route's handler, which the route
@@ -673,7 +673,7 @@ describe("fitPassageCardRegions", () => {
   })
 
   // The reader's text size is the only thing that can overflow the square.
-  // feat-551 R1: the verse shortens to make room; the button stays.
+  // feat-553 R1: the verse shortens to make room; the button stays.
   it("shortens the verse and keeps the button, before losing the credit", () => {
     const scaled = fitPassageCardRegions({
       ...full,

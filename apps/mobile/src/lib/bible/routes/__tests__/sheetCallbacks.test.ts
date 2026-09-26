@@ -1,5 +1,5 @@
 /**
- * The reader controls that open a sheet (feat-551 U10, U11). Both hosts pass
+ * The reader controls that open a sheet (feat-553 U10, U11). Both hosts pass
  * `readerSheetCallbacks(router)` to BibleReader, so each control pushes the
  * U10 href for its sheet, and the download button opens U10's prompt.
  */

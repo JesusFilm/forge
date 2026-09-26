@@ -621,7 +621,7 @@ describe("normalizeVideo", () => {
     expect(result.bibleCitations[0].verseStart).toBe(30)
   })
 
-  // feat-551 U12. The reader keys a book by its USFM code. These are admin's
+  // feat-553 U12. The reader keys a book by its USFM code. These are admin's
   // real `BibleBook` spellings: Core sync writes `osisId: "John"` with
   // `paratextAbbreviation: "JHN"`, and admin's own OSIS table spells the
   // numbered books `1Cor` and the Psalms `Ps` (`youversion-reference.ts`).

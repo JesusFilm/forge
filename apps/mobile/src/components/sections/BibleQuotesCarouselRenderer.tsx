@@ -85,7 +85,7 @@ type QuoteItem = {
 
 export interface BibleQuotesCarouselRendererProps {
   section: AdminBlock
-  /** Pushes the reader at a card's first cited verse (feat-551 KTD17). */
+  /** Pushes the reader at a card's first cited verse (feat-553 KTD17). */
   onOpenReader?: (start: VerseRef) => void
   /**
    * A card's artwork failed to load; the owning layer advances its rung. An

@@ -1,4 +1,4 @@
-// U8 (feat-551 KTD13, KTD14, KTD19) and U9 (R18, R19) over the real stores
+// U8 (feat-553 KTD13, KTD14, KTD19) and U9 (R18, R19) over the real stores
 // and U4 repository. Each render is in <StrictMode>, swipes and scrubs drive
 // the REAL PanResponder handlers, and a case finishes each held animation.
 

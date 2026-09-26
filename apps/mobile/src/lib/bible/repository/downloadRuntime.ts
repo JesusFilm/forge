@@ -1,4 +1,4 @@
-// The composition root of the Bible text repository (feat-551 U4), as
+// The composition root of the Bible text repository (feat-553 U4), as
 // rawExportRuntime.ts is for raw export. The getters build both singletons on
 // first use, so an import does no file or network work.
 import { File } from "expo-file-system"

@@ -1,4 +1,4 @@
-// The reading position store (feat-551 KTD5, R4, R41): one position for the
+// The reading position store (feat-553 KTD5, R4, R41): one position for the
 // Bible tab and the pushed reader. Memory is the authority; see
 // persistedRecordStore.ts for the read, merge, and save rules.
 import AsyncStorage from "@react-native-async-storage/async-storage"

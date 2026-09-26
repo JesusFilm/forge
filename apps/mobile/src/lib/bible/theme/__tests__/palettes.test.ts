@@ -1,4 +1,4 @@
-// The reader's four token sets (feat-551 KTD12, R34, R36). Every check reads
+// The reader's four token sets (feat-553 KTD12, R34, R36). Every check reads
 // the COMPOSITED colour, so a translucent token is judged over its ground.
 import { BG_COLOR, TEXT_PRIMARY } from "../../../color"
 import { READER_MODES, READER_PALETTES } from "../../settings/snapshot"

@@ -1,5 +1,5 @@
 /**
- * The translation picker (feat-551 U10, R23, R30, R41) over the real bundled
+ * The translation picker (feat-553 U10, R23, R30, R41) over the real bundled
  * catalog: the viewer's language first, search, the offline filter, and the
  * download state of each row, which follows the store live.
  */

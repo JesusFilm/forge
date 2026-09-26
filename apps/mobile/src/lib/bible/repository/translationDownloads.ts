@@ -1,4 +1,4 @@
-// Whole-translation downloads (feat-551 KTD4, R29, R30) through an injected
+// Whole-translation downloads (feat-553 KTD4, R29, R30) through an injected
 // port. The file splits once into book files, and the manifest goes last.
 // The button's state comes from the manifest and the files, never a flag.
 import { Directory, File, Paths } from "expo-file-system"

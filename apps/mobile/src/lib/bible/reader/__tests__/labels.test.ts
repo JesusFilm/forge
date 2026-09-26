@@ -1,4 +1,4 @@
-// The reader's labels (feat-551 R9, R21, R25, R41, R42, KTD19). The chapters
+// The reader's labels (feat-553 R9, R21, R25, R41, R42, KTD19). The chapters
 // are U1's real bible.helloao.org fixtures, normalized as the app reads them.
 import bsbMatthew18 from "../../text/__tests__/fixtures/bsb-mat-18.json"
 import t4tJohn4 from "../../text/__tests__/fixtures/eng_t4t-jhn-4.json"

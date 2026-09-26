@@ -1,4 +1,4 @@
-// The reader's moves (feat-551 KTD19, R12, R13, R14). One pure function per
+// The reader's moves (feat-553 KTD19, R12, R13, R14). One pure function per
 // move, over the shown chapter's stops. A gap is a stop (R21), a merged range
 // is one stop, and only the two ends of the Bible stop a move.
 import { stopRange } from "../reader/labels"

@@ -16,7 +16,7 @@ import {
 export function usePlaybackFrameVisible(): boolean {
   const store = getPlaybackRequestStore()
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
-  // A reader cover (feat-551 KTD10) draws nothing into the slot, so the
+  // A reader cover (feat-553 KTD10) draws nothing into the slot, so the
   // screen shows its own back button again.
   return (
     snapshot.rect != null && snapshot.slotId != null && snapshot.cover == null
@@ -38,7 +38,7 @@ export function usePlaybackPlaying(): boolean {
   )
 }
 
-/** The resting mini player frame in window coordinates, or null (feat-551
+/** The resting mini player frame in window coordinates, or null (feat-553
  *  R10). It keeps one object until it moves, so a reader re-renders only then. */
 export function useFloatingWindowFrame(): PlaybackRect | null {
   const store = getPlaybackRequestStore()
@@ -49,7 +49,7 @@ export function useFloatingWindowFrame(): PlaybackRect | null {
 }
 
 /** The floating window as the reader's list of obstacles, or undefined when
- *  no window floats (feat-551 R10). */
+ *  no window floats (feat-553 R10). */
 export function useFloatingObstacles(): readonly PlaybackRect[] | undefined {
   const windowFrame = useFloatingWindowFrame()
   return useMemo(() => (windowFrame ? [windowFrame] : undefined), [windowFrame])

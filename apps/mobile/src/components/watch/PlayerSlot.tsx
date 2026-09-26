@@ -137,7 +137,7 @@ export function PlayerSlot({
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
   // The RECT, not just the attachment: the host draws nothing until it has one,
   // so treating "attached" as drawn would drop this poster over a black box.
-  // A reader cover (feat-551 KTD10) keeps the rect but draws nothing here.
+  // A reader cover (feat-553 KTD10) keeps the rect but draws nothing here.
   const isDrawn =
     snapshot.slotId != null &&
     snapshot.slotId === slotIdRef.current &&
@@ -189,7 +189,7 @@ export function PlayerSlot({
     }
   }, [measureIntoStore])
 
-  // feat-551 KTD10: the reader pops on the ROOT stack, so only the parent
+  // feat-553 KTD10: the reader pops on the ROOT stack, so only the parent
   // navigator sees the transition end. Measure once then: a rect taken while
   // covered can be stale (a rotation), or its callback can have dropped.
   const coveredRef = useRef(false)

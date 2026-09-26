@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds the bundled Bible data (feat-551 KTD1, KTD6, KTD7). In apps/mobile:
+// Builds the bundled Bible data (feat-553 KTD1, KTD6, KTD7). In apps/mobile:
 //   pnpm bible:data [--check | --refresh]
 // No flag writes every output from the lock. --check needs no network.
 import { Buffer } from "node:buffer"

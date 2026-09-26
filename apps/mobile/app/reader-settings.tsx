@@ -10,7 +10,7 @@ import { getReaderServices } from "../src/lib/bible/reader/services"
 import { parseReaderSheetParams } from "../src/lib/bible/sheets/routes"
 import { BSB_TRANSLATION_ID } from "../src/lib/bible/versification/classify"
 
-// feat-551 R33: the reader settings, a root form sheet (KTD9). Each change
+// feat-553 R33: the reader settings, a root form sheet (KTD9). Each change
 // goes to the settings store that both reader hosts read.
 export default function ReaderSettingsRoute() {
   const router = useRouter()

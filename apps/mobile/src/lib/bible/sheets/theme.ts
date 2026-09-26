@@ -1,4 +1,4 @@
-// The reader sheets use the reader's own theme (feat-551 KTD12), so a light
+// The reader sheets use the reader's own theme (feat-553 KTD12), so a light
 // reader opens light sheets. theme.test.ts scores every pair below.
 import type { ReaderTokens } from "../theme/palettes"
 

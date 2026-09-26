@@ -28,7 +28,7 @@ describe("isInAppSheetRoute", () => {
     expect(IN_APP_SHEET_ROUTE_PATTERNS).toHaveLength(9)
   })
 
-  // feat-551 U10: root-stack routes, so each pattern is one bare segment.
+  // feat-553 U10: root-stack routes, so each pattern is one bare segment.
   it.each(["reader-passage", "reader-translation", "reader-settings"])(
     "treats the reader's %s sheet as a sheet",
     (name) => {

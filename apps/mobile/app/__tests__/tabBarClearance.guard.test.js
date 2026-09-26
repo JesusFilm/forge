@@ -78,7 +78,7 @@ const TAB_ROUTES = {
   watch: { surface: "app/(tabs)/watch.tsx" },
   library: { surface: "app/(tabs)/library.tsx" },
   profile: { surface: "app/(tabs)/profile.tsx" },
-  // feat-551: no scroll surface. The reader puts its footer above the bar
+  // feat-553: no scroll surface. The reader puts its footer above the bar
   // with readerBottomInset, from the tab screen's own inset (chrome.ts).
   bible: { reader: "app/(tabs)/bible.tsx" },
 }

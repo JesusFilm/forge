@@ -1,4 +1,4 @@
-// The tablet layout switch (feat-551 KD9), read from the window's SHORTEST
+// The tablet layout switch (feat-553 KD9), read from the window's SHORTEST
 // side. The element renders under StrictMode, so the window subscription
 // must survive the double mount.
 import { StrictMode, act } from "react"

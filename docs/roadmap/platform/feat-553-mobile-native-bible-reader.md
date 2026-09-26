@@ -1,5 +1,5 @@
 ---
-id: "feat-551"
+id: "feat-553"
 title: "Mobile native Bible reader, one verse at a time"
 owner: "urim"
 priority: "P2"
@@ -26,7 +26,7 @@ tags:
 5. `apps/mobile/src/lib/miniPlayer/layout.ts` — the mini player corners. Every screen starts the window at the bottom right today (R10).
 6. `apps/mobile/src/components/ui/HomeHeader.tsx` and `FloatingBackButton.tsx` — the glass button style (R8).
 
-> **Superseded 2026-09-25 (U12, U13).** Items 2 and 5 describe the code before this work. U12 deleted `openPassageSheet.ts`: the button in `BibleQuotesCarouselRenderer.tsx` now pushes `readerHref(ref, "quote")`. U13 gave reader routes their own start corner through `readerCornerPolicy` in `layout.ts`; other screens still start at `DEFAULT_CORNER`. The current rules are in the "Bible reader (feat-551)" and "Mini player" sections of `apps/mobile/CLAUDE.md`.
+> **Superseded 2026-09-25 (U12, U13).** Items 2 and 5 describe the code before this work. U12 deleted `openPassageSheet.ts`: the button in `BibleQuotesCarouselRenderer.tsx` now pushes `readerHref(ref, "quote")`. U13 gave reader routes their own start corner through `readerCornerPolicy` in `layout.ts`; other screens still start at `DEFAULT_CORNER`. The current rules are in the "Bible reader (feat-553)" and "Mini player" sections of `apps/mobile/CLAUDE.md`.
 
 ## Grep These
 

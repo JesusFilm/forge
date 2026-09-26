@@ -1,4 +1,4 @@
-// What the three reader sheet routes read (feat-551 U10): the reader's theme
+// What the three reader sheet routes read (feat-553 U10): the reader's theme
 // and the bundled catalog.
 import { useCallback, useEffect, useState } from "react"
 import { useColorScheme } from "react-native"

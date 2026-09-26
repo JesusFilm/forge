@@ -1,4 +1,4 @@
-// The reading typeface (feat-551 KTD16, R32). No font asset ships: iOS draws
+// The reading typeface (feat-553 KTD16, R32). No font asset ships: iOS draws
 // Georgia and Android its system serif. The serif covers Latin, Greek, and
 // Cyrillic; any other script falls back to the platform font.
 import type { ReaderLineSpacing, ReaderTypeface } from "../settings/snapshot"

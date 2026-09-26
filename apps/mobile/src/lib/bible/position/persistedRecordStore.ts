@@ -1,4 +1,4 @@
-// A small record kept in memory and in one AsyncStorage key (feat-551 KTD5).
+// A small record kept in memory and in one AsyncStorage key (feat-553 KTD5).
 // The position store and the settings store share it, after the lastWatched
 // store: memory is the authority, and the read is memoized with a time limit.
 //

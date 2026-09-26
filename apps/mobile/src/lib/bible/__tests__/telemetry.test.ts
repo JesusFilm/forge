@@ -1,4 +1,4 @@
-// The Bible reader's Datadog events (feat-551 KTD18, R37). A fake sink takes
+// The Bible reader's Datadog events (feat-553 KTD18, R37). A fake sink takes
 // every log, so each case reads the exact context an event sends.
 
 jest.mock("../../datadog", () => ({

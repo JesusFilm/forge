@@ -98,7 +98,7 @@ type VideoPlayerProps = {
    *  host can know it — the adoption is its `sourceForRequest` decision. */
   adopted?: boolean
   /** The host's latch that this video already played. Read at mount only: the
-   *  chrome remounts when the reader cover returns (feat-551 KTD10), and a
+   *  chrome remounts when the reader cover returns (feat-553 KTD10), and a
    *  paused video must then show its controls, not the autostart veil. */
   started?: boolean
   /** Cast wiring, owned by the surface that published the playback request and

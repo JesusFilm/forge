@@ -1,4 +1,4 @@
-// The verse fit (feat-551 R20, KTD16). The AE12 cases read real BSB text but
+// The verse fit (feat-553 R20, KTD16). The AE12 cases read real BSB text but
 // measure it with a SYNTHETIC width model (below); only a device run proves
 // the real glyph widths.
 import {

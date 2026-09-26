@@ -86,7 +86,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
-- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-551) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-551)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
+- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
 
 ## Admin endpoint resolution (feat-339)
 
@@ -424,7 +424,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `docs/solutions/conventions/datadog-reserved-log-attribute-name-shadowing.md`.
 - **The Bible reader's events use `bible_reader.*` names and `reader_*`
   attributes**, so the open source is `reader_source`, not `source`. See
-  "Bible reader (feat-551)" for the six events.
+  "Bible reader (feat-553)" for the six events.
 
 ## Common Pitfalls
 
@@ -930,7 +930,7 @@ not fork per platform. Suppression hides by opacity and drops pointer events —
 it never unmounts the view.
 
 **The Bible reader routes change how the window starts and where it rests,
-and only on those routes (feat-551 KTD10, KTD11).** Outside the reader
+and only on those routes (feat-553 KTD10, KTD11).** Outside the reader
 routes, every rule in this section is unchanged.
 
 - **A reader route covers the watch slot and keeps it attached.**
@@ -1468,7 +1468,7 @@ disagree about the bar's size.
   investigated on device; do not copy the pattern. The Bible tab reader
   corners no longer use it: `readerTabBarReservation` gives an iPhone layout
   83 minus the root inset. An iPhone SE simulator check on 2026-09-25
-  confirmed it (feat-551).
+  confirmed it (feat-553).
 
 - **A tab screen's `insets.bottom` ALREADY contains the iOS bar.** Know this
   before you touch a scroll surface. `useTabBarClearance()` returns
@@ -1491,7 +1491,7 @@ disagree about the bar's size.
   reaches a scroll view that is first in the subview chain, and no tab screen
   has one there — on Home that position holds the horizontal hero pager — so
   the screens pad themselves through `useTabBarClearance()` instead.
-- **The Bible tab is the fifth tab (feat-551).** The order in
+- **The Bible tab is the fifth tab (feat-553).** The order in
   `TAB_ROUTE_NAMES` is Home, Discover, Bible, Library, Profile. The tab
   renders the shared reader with `host="tab"` and has no scroll surface. The
   reader puts its footer above the bar through `readerBottomInset` in
@@ -1598,7 +1598,7 @@ disagree about the bar's size.
   client, and prove the reload landed with an unmistakable colour before
   trusting any measurement.
 
-## Bible reader (feat-551)
+## Bible reader (feat-553)
 
 The app shows Scripture one verse at a time in a native reader. One shared
 component, `src/components/bible/BibleReader.tsx`, has two hosts: the Bible

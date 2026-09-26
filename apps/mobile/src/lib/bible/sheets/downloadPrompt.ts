@@ -1,4 +1,4 @@
-// The top bar's download button (feat-551 U10, R29, R30). A native alert
+// The top bar's download button (feat-553 U10, R29, R30). A native alert
 // shows the catalog size before a download starts; the same alert cancels,
 // retries, updates, and removes. The top bar shows the progress.
 import { Alert } from "react-native"

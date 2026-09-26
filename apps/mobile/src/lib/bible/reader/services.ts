@@ -1,4 +1,4 @@
-// What the reader reads and writes (feat-551). Production uses the app's
+// What the reader reads and writes (feat-553). Production uses the app's
 // singletons; a test passes fakes, so no suite needs a native module.
 import { loadBundledCatalog, type BundledResult } from "../data/bundled"
 import type { Catalog } from "../data/catalog"

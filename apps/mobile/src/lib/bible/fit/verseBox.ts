@@ -1,4 +1,4 @@
-// The verse area (feat-551 KTD16, R7, R10, KD27). The centered box is
+// The verse area (feat-553 KTD16, R7, R10, KD27). The centered box is
 // symmetric about the screen's vertical center, so a centered verse never runs
 // under an obstacle. The free box is all the room between the obstacles.
 

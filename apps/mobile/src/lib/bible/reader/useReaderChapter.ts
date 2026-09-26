@@ -1,4 +1,4 @@
-// The reader's chapter (feat-551 U7): the translation to show (U5), the verse
+// The reader's chapter (feat-553 U7): the translation to show (U5), the verse
 // in its own numbers (R38, R42), and the chapter from a per-screen view (U4).
 // No effect keeps a ref that its cleanup changes, so StrictMode is safe.
 import {

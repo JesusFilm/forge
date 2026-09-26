@@ -1,5 +1,5 @@
 /**
- * The passage picker (feat-551 U10, R17, KD15, R42): a book, a chapter, and
+ * The passage picker (feat-553 U10, R17, KD15, R42): a book, a chapter, and
  * a verse, in the shown translation's own numbers. The pick reaches the
  * caller in BSB numbering, which the saved position uses (R38).
  */

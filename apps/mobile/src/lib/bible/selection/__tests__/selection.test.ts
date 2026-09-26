@@ -1,4 +1,4 @@
-// The verse selection rules (feat-551 U9, R19, R42) over real stops: the
+// The verse selection rules (feat-553 U9, R19, R42) over real stops: the
 // bundled BSB books and the U1 fixtures, so a gap (BSB MAT 18:11) and a merged
 // range (T4T JHN 4:6-8) keep their production shapes.
 import t4tJohn4 from "../../text/__tests__/fixtures/eng_t4t-jhn-4.json"

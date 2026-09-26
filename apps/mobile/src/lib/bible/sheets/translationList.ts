@@ -1,4 +1,4 @@
-// The translation picker's list (feat-551 U10, R23, R30, R41): the viewer's
+// The translation picker's list (feat-553 U10, R23, R30, R41): the viewer's
 // languages first, then every other catalog language by its English name.
 // Pure; the picker passes the download states in.
 import type { Catalog, CatalogTranslation } from "../data/catalog"

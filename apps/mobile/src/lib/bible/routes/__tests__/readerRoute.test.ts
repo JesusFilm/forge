@@ -1,5 +1,5 @@
 /**
- * The pushed reader's route contract (feat-551 U11, KTD9). U12's quote card
+ * The pushed reader's route contract (feat-553 U11, KTD9). U12's quote card
  * pushes `readerHref`; `app/reader.tsx` reads the params back with
  * `parseReaderRouteParams`, which fails closed to "no start reference".
  */

@@ -3472,7 +3472,7 @@ describe("playback speed (U3)", () => {
   })
 })
 
-// ── feat-551 U13: characterization of today's paths, before the reader cover ──
+// ── feat-553 U13: characterization of today's paths, before the reader cover ──
 
 /** Counts every `onEnd` subscription as it is made and released, and records
  *  each end event. The host and the adapter are the only two subscribers; the
@@ -3503,7 +3503,7 @@ afterEach(() => {
   trackedEndCleanups.splice(0).forEach((off) => off())
 })
 
-describe("today's detach, expand and dismiss paths (feat-551 U13 characterization)", () => {
+describe("today's detach, expand and dismiss paths (feat-553 U13 characterization)", () => {
   it("holds two end listeners: the host's and the adapter's", async () => {
     const ends = trackEnds()
     attachSlot()
@@ -3585,7 +3585,7 @@ describe("today's detach, expand and dismiss paths (feat-551 U13 characterizatio
   })
 })
 
-// ── feat-551 U13: the reader cover (KTD10) and the reader corners (KTD11) ──
+// ── feat-553 U13: the reader cover (KTD10) and the reader corners (KTD11) ──
 
 const PHONE_WINDOW = { width: 440, height: 956, scale: 3, fontScale: 1 }
 const IPAD_WINDOW = { width: 820, height: 1180, scale: 2, fontScale: 1 }
@@ -3979,7 +3979,7 @@ describe("readerTabBarReservation", () => {
   )
 })
 
-describe("the reader cover and the reader corners (feat-551 U13)", () => {
+describe("the reader cover and the reader corners (feat-553 U13)", () => {
   const originalWindow = Dimensions.get("window")
   const realAppState = AppState.currentState
   const recorderClient = jest.requireMock(

@@ -1,5 +1,5 @@
 /**
- * The passage picker's three steps (feat-551 U10, R17, R42): books, then
+ * The passage picker's three steps (feat-553 U10, R17, R42): books, then
  * chapters and verses in the shown translation's own numbers, then the pick
  * back in BSB numbering for the saved position (R38).
  */

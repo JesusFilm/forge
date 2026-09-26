@@ -1,5 +1,5 @@
 /**
- * The default translation (feat-551 U5, R22, R25, R41, KTD7, KTD8). The rules
+ * The default translation (feat-553 U5, R22, R25, R41, KTD7, KTD8). The rules
  * read the bundled catalog and the generated language table. The AE16 cases
  * check the device through a real U4 repository on jest-expo's file system.
  */

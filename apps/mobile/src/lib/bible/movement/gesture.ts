@@ -1,4 +1,4 @@
-// The reader's swipe rules (feat-551 KTD13, R6, R12), after HomeScreen's hero
+// The reader's swipe rules (feat-553 KTD13, R6, R12), after HomeScreen's hero
 // swipe: dominance and activation to claim, and a commit on release. Pure, so
 // ReaderGestures.tsx only reads touches and calls these.
 import { mayStartScrub } from "../../scrubber"

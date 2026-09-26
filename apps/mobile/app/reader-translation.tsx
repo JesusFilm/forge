@@ -16,7 +16,7 @@ import { READER_SHEET_COPY } from "../src/lib/bible/sheets/copy"
 import { parseReaderSheetParams } from "../src/lib/bible/sheets/routes"
 import { viewerLanguageCodes } from "../src/lib/bible/sheets/translationList"
 
-// feat-551 R23: the footer label's translation picker, a root form sheet
+// feat-553 R23: the footer label's translation picker, a root form sheet
 // (KTD9). A pick is the viewer's explicit choice (R41). The passage stays,
 // because the saved position is in BSB numbering (R24, R38).
 export default function ReaderTranslationRoute() {

@@ -1,4 +1,4 @@
-// The verse fit (feat-551 R20, KTD16, KD20). A verse keeps the chosen size
+// The verse fit (feat-553 R20, KTD16, KD20). A verse keeps the chosen size
 // when it fits the verse area. Otherwise its size steps down by 2 points to
 // the floor, and only a verse still too tall at the floor scrolls.
 

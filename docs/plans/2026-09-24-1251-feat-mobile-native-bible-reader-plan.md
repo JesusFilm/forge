@@ -454,9 +454,9 @@ flowchart TB
 
 ### Documentation / Operational Notes
 
-- `apps/mobile/CLAUDE.md`: narrow the "Bible verse text comes from admin" rule to the quote card, and add a "Bible reader (feat-551)" section covering KTD1, KTD2, KTD6, KTD10, KTD11, and the build script.
+- `apps/mobile/CLAUDE.md`: narrow the "Bible verse text comes from admin" rule to the quote card, and add a "Bible reader (feat-553)" section covering KTD1, KTD2, KTD6, KTD10, KTD11, and the build script.
 - `CONCEPTS.md`: add a "Bible Reader" entry that separates the reader's catalog text from the admin-resolved Bible Passage, when U14 lands.
-- `docs/roadmap/platform/feat-551-mobile-native-bible-reader.md`: set `status` when work starts and ends.
+- `docs/roadmap/platform/feat-553-mobile-native-bible-reader.md`: set `status` when work starts and ends.
 - The native build (TestFlight and Play internal) must ship before any update from this branch reaches testers.
 
 ---
@@ -1015,7 +1015,7 @@ flowchart TB
 - `apps/mobile/src/lib/__tests__/datadogReservedAttributes.guard.test.js` (modify only if its file floor needs it)
 - `apps/mobile/CLAUDE.md` (modify): narrow the Bible verse text rule; add the reader section
 - `CONCEPTS.md` (modify): "Bible Reader" entry
-- `docs/roadmap/platform/feat-551-mobile-native-bible-reader.md` (modify): status
+- `docs/roadmap/platform/feat-553-mobile-native-bible-reader.md` (modify): status
 
 **Approach:** Emit the six KTD18 events with inline contexts and `reader_*` attributes; a visit is focus to blur per host.
 
@@ -1054,4 +1054,4 @@ flowchart TB
 - Every AE passes by hand on the iPhone 17 Pro Max simulator, the Pixel 9a emulator, and an iPad simulator, and the pull request carries the screenshots and the two timing numbers.
 - The generated versification table and the catalog snapshot are reviewed in the pull request.
 - `openPassageSheet.ts` is gone if no caller remains, and no abandoned experiment code stays in the diff.
-- `apps/mobile/CLAUDE.md`, `CONCEPTS.md`, and the feat-551 ticket are updated.
+- `apps/mobile/CLAUDE.md`, `CONCEPTS.md`, and the feat-553 ticket are updated.

@@ -1,5 +1,5 @@
 /**
- * The quote card's drop order for the "Read full passage" button (feat-551
+ * The quote card's drop order for the "Read full passage" button (feat-553
  * R1, KTD17): to make room, the card shortens the verse, never the button.
  * The renderer suite pins the rendered result at one device; this suite pins
  * the rule across the geometry the app supports.

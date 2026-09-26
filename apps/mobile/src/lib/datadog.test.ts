@@ -539,7 +539,7 @@ describe("isSheetViewRoute", () => {
     expect(isSheetViewRoute([a, b])).toBe(true)
   })
 
-  // feat-551 U10: a reader sheet stays inside the reader view that opened it.
+  // feat-553 U10: a reader sheet stays inside the reader view that opened it.
   it.each(["reader-passage", "reader-translation", "reader-settings"])(
     "treats the root %s route as a sheet",
     (name) => {

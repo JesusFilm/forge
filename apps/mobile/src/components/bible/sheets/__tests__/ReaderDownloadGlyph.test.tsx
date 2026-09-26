@@ -1,5 +1,5 @@
 /**
- * The download button's glyph (feat-551 U10, R29, R30): the progress in
+ * The download button's glyph (feat-553 U10, R29, R30): the progress in
  * numbers while a download runs, else an icon for the state. The button
  * around it carries the accessible name, so the glyph adds none.
  */

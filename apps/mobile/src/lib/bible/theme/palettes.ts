@@ -1,4 +1,4 @@
-// The reader's own theme (feat-551 KTD12, R34, R35, R36). Four token sets:
+// The reader's own theme (feat-553 KTD12, R34, R35, R36). Four token sets:
 // two palettes, each in a light and a dark scheme. The app's Appearance never
 // changes; only the reader reads these.
 import {

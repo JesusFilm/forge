@@ -1,5 +1,5 @@
 // The reader's top bar shows a running download's progress in the download
-// button (feat-551 R29), and the icon for every other state.
+// button (feat-553 R29), and the icon for every other state.
 
 import { act } from "react"
 

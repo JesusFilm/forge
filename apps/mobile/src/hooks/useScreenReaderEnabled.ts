@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { AccessibilityInfo } from "react-native"
 
-/** True while VoiceOver or TalkBack is on (feat-551 KTD14), like
+/** True while VoiceOver or TalkBack is on (feat-553 KTD14), like
  *  `useReduceMotion`: false until the first read answers, and false if it
  *  rejects, so a failed query never takes the reader down. */
 export function useScreenReaderEnabled(): boolean {

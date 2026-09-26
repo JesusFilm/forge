@@ -1,4 +1,4 @@
-// The first-run swipe demo's timeline (feat-551 R16), in milliseconds on one
+// The first-run swipe demo's timeline (feat-553 R16), in milliseconds on one
 // clock. Each cycle shows a verse swipe, then a chapter swipe. A pause follows
 // each cycle, and after the last pause the whole demo fades out.
 

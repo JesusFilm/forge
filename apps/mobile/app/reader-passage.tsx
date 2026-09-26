@@ -9,7 +9,7 @@ import {
 import { getReaderServices } from "../src/lib/bible/reader/services"
 import { parseReaderSheetParams } from "../src/lib/bible/sheets/routes"
 
-// feat-551 R17: the pill's passage picker, a root form sheet (KTD9) over the
+// feat-553 R17: the pill's passage picker, a root form sheet (KTD9) over the
 // Bible tab or the pushed reader. The pick moves the shared position.
 export default function ReaderPassageRoute() {
   const router = useRouter()

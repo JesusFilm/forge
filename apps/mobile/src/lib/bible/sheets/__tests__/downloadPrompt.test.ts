@@ -1,5 +1,5 @@
 /**
- * The top bar's download button (feat-551 U10, R29, R30): a confirmation
+ * The top bar's download button (feat-553 U10, R29, R30): a confirmation
  * that shows the catalog size before anything starts, then cancel, retry,
  * update, and remove. BSB never offers a download.
  */

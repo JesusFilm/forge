@@ -1,4 +1,4 @@
-// The text that Copy and Share send (feat-551 U9, R19, R42), over the bundled
+// The text that Copy and Share send (feat-553 U9, R19, R42), over the bundled
 // BSB books and the U1 fixtures: a gap (BSB MAT 18:11), poetry (BSB PSA 23),
 // a merged range (T4T JHN 4:6-8), and Synodal numbers (SYN PSA 50).
 import synodalPsalm50 from "../../text/__tests__/fixtures/rus_syn-psa-50.json"

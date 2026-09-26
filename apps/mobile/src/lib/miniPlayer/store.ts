@@ -290,7 +290,7 @@ export function createMiniPlayerStore() {
       dismiss(true)
     },
 
-    /** feat-551 KTD10: a window closed over the reader exits as usual but ends
+    /** feat-553 KTD10: a window closed over the reader exits as usual but ends
      *  with no report, so the quality session, the recommendation episode and
      *  the settings survive for the return. */
     dismissWithoutReport(): void {
@@ -317,7 +317,7 @@ export function createMiniPlayerStore() {
       reportEnd(session, reason)
     },
 
-    /** feat-551 KTD10: the reader cover's return. The viewer never ended this
+    /** feat-553 KTD10: the reader cover's return. The viewer never ended this
      *  session, so the screen goes back to its state before the cover. */
     clearWithoutReport(): void {
       if (!snapshot.session) return

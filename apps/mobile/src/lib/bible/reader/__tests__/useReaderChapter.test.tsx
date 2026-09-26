@@ -1,4 +1,4 @@
-// The reader's chapter loading (feat-551 U7, R25, R31, R41, AE16), under
+// The reader's chapter loading (feat-553 U7, R25, R31, R41, AE16), under
 // StrictMode: every effect sees setup, cleanup, setup. U4's real repository
 // runs over fake sources and the real bundled BSB text.
 

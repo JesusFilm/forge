@@ -192,7 +192,7 @@ export type ReaderCornerPolicy = {
   chrome: MiniPlayerChrome
 }
 
-/** feat-551 KTD11, KD9, KD26: a new window starts at the top right on a phone
+/** feat-553 KTD11, KD9, KD26: a new window starts at the top right on a phone
  *  and the bottom right on a tablet. It may rest in any corner between the
  *  reader's top bar and its footer, so no corner is excluded. */
 export function readerCornerPolicy(input: {

@@ -1,4 +1,4 @@
-// The chapter resolver (feat-551 U4), in the "Text sources" order: BSB in the
+// The chapter resolver (feat-553 U4), in the "Text sources" order: BSB in the
 // app, a download, a kept chapter, then bible.helloao.org. A request uses the
 // translation's own numbering; convert a BSB reference with toTranslationRef.
 import type { BundledResult } from "../data/bundled"

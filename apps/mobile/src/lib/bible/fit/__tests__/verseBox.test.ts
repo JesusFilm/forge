@@ -1,4 +1,4 @@
-// The verse area (feat-551 KTD16, R7, R10, KD27): a centered box symmetric
+// The verse area (feat-553 KTD16, R7, R10, KD27): a centered box symmetric
 // about the screen's center, and a free box with all the room between.
 import {
   MIN_CENTERED_AREA_HEIGHT,

@@ -14,7 +14,7 @@ const path = require("path")
 
 // gestureResponseDistance confines the pop to the left edge; the tempting
 // fullScreenGestureEnabled:false instead KILLS all back-swipe on iOS 26.
-// feat-551 R6: the pushed Bible reader has a verse scrubber and chapter swipes,
+// feat-553 R6: the pushed Bible reader has a verse scrubber and chapter swipes,
 // so the same full-width pop would take them.
 const REQUIRED = [
   { file: "../_layout.tsx", screens: ["watch", "series", "reader"] },

@@ -293,7 +293,7 @@ describe("the resting window clears the native tab bar", () => {
   })
 })
 
-// feat-551 KTD11, KD9, KD26, R10, AE18.
+// feat-553 KTD11, KD9, KD26, R10, AE18.
 describe("the reader corner policy", () => {
   const CORNERS: MiniPlayerCorner[] = [
     "topLeft",

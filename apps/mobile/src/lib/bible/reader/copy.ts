@@ -1,4 +1,4 @@
-// The reader's own words (feat-551). Scripture text and translation credits
+// The reader's own words (feat-553). Scripture text and translation credits
 // come from the data; every other string the reader shows lives here, so the
 // documentation and a later translation of the app find them in one place.
 

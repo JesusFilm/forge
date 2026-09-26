@@ -1,4 +1,4 @@
-// Which translation the reader shows (feat-551 R22, R25, R41, KD13, KD22).
+// Which translation the reader shows (feat-553 R22, R25, R41, KD13, KD22).
 // Pure apart from the injected device check, so it runs without React.
 //
 // The order is: the R31 session switch, the saved pick, the audio language's

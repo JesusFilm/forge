@@ -1,4 +1,4 @@
-// The reading typeface (feat-551 KTD16, R32): the platform serif for Latin,
+// The reading typeface (feat-553 KTD16, R32): the platform serif for Latin,
 // Greek, and Cyrillic text; the platform font for every other script.
 import {
   READER_LINE_HEIGHT_FACTORS,

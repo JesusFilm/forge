@@ -1060,7 +1060,7 @@ describe("useBibleVerses card artwork", () => {
   })
 })
 
-// ── Reader start (feat-551 U12, KTD17) ───────────────────────────────────────
+// ── Reader start (feat-553 U12, KTD17) ───────────────────────────────────────
 
 describe("useBibleVerses reader start", () => {
   beforeEach(quietPassageRead)

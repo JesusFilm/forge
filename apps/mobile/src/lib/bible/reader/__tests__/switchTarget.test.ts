@@ -1,4 +1,4 @@
-// R31's switch target (feat-551). The catalog is the bundled snapshot; the
+// R31's switch target (feat-553). The catalog is the bundled snapshot; the
 // download states are stubs, because a real download needs the network.
 import { parseCatalog, type Catalog } from "../../data/catalog"
 import type { TranslationDownloadState } from "../../repository/translationDownloads"

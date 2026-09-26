@@ -1,5 +1,5 @@
 /**
- * The reader sheets draw in the reader's theme (feat-551 KTD12, R34, R36).
+ * The reader sheets draw in the reader's theme (feat-553 KTD12, R34, R36).
  * Each pair is scored over the ground it really sits on, in all four token
  * sets, per the composited-contrast rule in KTD12.
  */

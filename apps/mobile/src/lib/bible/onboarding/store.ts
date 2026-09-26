@@ -1,4 +1,4 @@
-// The reader's two teaching flags (feat-551 R15, R16, KD18): the swipe hint
+// The reader's two teaching flags (feat-553 R15, R16, KD18): the swipe hint
 // retires after the first verse move, and the swipe demo plays once per
 // install. It shares the position store's read, merge, and save rules.
 import AsyncStorage from "@react-native-async-storage/async-storage"

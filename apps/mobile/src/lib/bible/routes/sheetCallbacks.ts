@@ -1,4 +1,4 @@
-// The reader controls that open a sheet or the download prompt (feat-551 U10,
+// The reader controls that open a sheet or the download prompt (feat-553 U10,
 // U11). Both reader hosts pass these to BibleReader, so the Bible tab and the
 // pushed reader open the same sheets with the same params.
 import type { Href } from "expo-router"

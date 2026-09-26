@@ -1,4 +1,4 @@
-// The reader sheets' route contract (feat-551 U10, KTD9). A reader control
+// The reader sheets' route contract (feat-553 U10, KTD9). A reader control
 // pushes `readerSheetHref(kind, context)`; the sheet route reads the params
 // back with `parseReaderSheetParams`. A bad field reads as unknown.
 import { isBsbVerseRef, isStorableTranslationId } from "../position/snapshot"

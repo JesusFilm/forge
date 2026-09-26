@@ -1,4 +1,4 @@
-// The reader's labels (feat-551 R9, R21, R25, R41, R42, KTD19). Each number is
+// The reader's labels (feat-553 R9, R21, R25, R41, R42, KTD19). Each number is
 // the SHOWN translation's own verse number, and the counter keys by verse
 // number, not list index: T4T John 4 has 50 stops but 54 verses.
 import { clamp } from "../../scrubber"

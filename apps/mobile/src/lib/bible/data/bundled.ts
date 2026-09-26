@@ -1,5 +1,5 @@
 // Loads the BSB books and the catalog snapshot that ship inside the app
-// (feat-551 KTD1, R27). Metro finds an asset only through a literal require,
+// (feat-553 KTD1, R27). Metro finds an asset only through a literal require,
 // so each book has its own line; bibleAssets.guard.test.js pins all 66.
 import { Asset } from "expo-asset"
 import { File } from "expo-file-system"

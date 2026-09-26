@@ -6,7 +6,7 @@ import { useFloatingObstacles } from "../src/hooks/usePlaybackFrame"
 import { parseReaderRouteParams } from "../src/lib/bible/routes/readerRoute"
 import { readerSheetCallbacks } from "../src/lib/bible/routes/sheetCallbacks"
 
-// feat-551 R1, R6, KTD9: the reader pushed over the watch screen. It opens at
+// feat-553 R1, R6, KTD9: the reader pushed over the watch screen. It opens at
 // the verse in its params (`readerHref`), and back returns to the screen below.
 // The root layout narrows the iOS back swipe to the left edge for this route.
 export default function ReaderRoute() {

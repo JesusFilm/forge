@@ -530,7 +530,7 @@ describe("module singleton", () => {
   })
 })
 
-// feat-551 KTD10: the reader cover ends a session the viewer never ended. A
+// feat-553 KTD10: the reader cover ends a session the viewer never ended. A
 // report here would close the quality session, the recommendation episode and
 // the player settings while the player keeps playing.
 describe("an ending with no report (the reader cover)", () => {

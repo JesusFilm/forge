@@ -1,5 +1,5 @@
 /**
- * The reader settings store (feat-551 U5, R33, KTD5). Each case builds its own
+ * The reader settings store (feat-553 U5, R33, KTD5). Each case builds its own
  * store over its own fake storage. The hook cases wrap the element in
  * StrictMode (RTL is not installed here).
  */

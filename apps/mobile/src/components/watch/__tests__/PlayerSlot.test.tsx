@@ -431,7 +431,7 @@ describe("PlayerSlot", () => {
   })
 })
 
-// feat-551 KTD10: a reader route covers the slot without detaching it.
+// feat-553 KTD10: a reader route covers the slot without detaching it.
 describe("PlayerSlot under the reader cover", () => {
   function transitionEndListeners() {
     return [...(mockParentListeners.get("transitionEnd") ?? [])]

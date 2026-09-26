@@ -139,7 +139,7 @@ describe("iOS — the native bar", () => {
     expect(mockTriggers.map((t) => t.name)).toEqual([...TAB_ROUTE_NAMES])
   })
 
-  it("puts the Bible trigger third, with its own label and symbol (feat-551 R2)", async () => {
+  it("puts the Bible trigger third, with its own label and symbol (feat-553 R2)", async () => {
     setPlatform("ios")
     await renderIos()
     expect(mockTriggers).toHaveLength(5)
@@ -209,7 +209,7 @@ describe("Android — unchanged", () => {
     expect((await renderAndroid()).tabBarHideOnKeyboard).toBeUndefined()
   })
 
-  it("declares the Bible tab third, with its title and icon (feat-551 R2)", async () => {
+  it("declares the Bible tab third, with its title and icon (feat-553 R2)", async () => {
     setPlatform("android")
     await renderAndroid()
     expect(mockAndroidScreens.map((s) => s.name)).toEqual([...TAB_ROUTE_NAMES])

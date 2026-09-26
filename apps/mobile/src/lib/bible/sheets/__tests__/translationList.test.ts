@@ -1,5 +1,5 @@
 /**
- * The translation picker's list (feat-551 U10, R23, R30, R41) over the real
+ * The translation picker's list (feat-553 U10, R23, R30, R41) over the real
  * bundled catalog: the viewer's language first, the offline filter, search
  * values, and the status line each row shows.
  */

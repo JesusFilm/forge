@@ -1,4 +1,4 @@
-// The first-run swipe demo timeline (feat-551 R16): three cycles of a verse
+// The first-run swipe demo timeline (feat-553 R16): three cycles of a verse
 // swipe then a chapter swipe, a pause after each cycle, then a fade-out.
 import {
   SWIPE_DEMO_CYCLES,

@@ -891,7 +891,7 @@ describe("admission on detach", () => {
     expect(store.getSnapshot().slotId).toBe(lower)
   })
 
-  // feat-551 U13 characterization: the detach path the reader cover shares.
+  // feat-553 U13 characterization: the detach path the reader cover shares.
   it("starts a session with no end report, and retains the request", () => {
     const { store, sessionStore } = makeStores({
       started: true,
@@ -915,7 +915,7 @@ describe("admission on detach", () => {
   })
 })
 
-// feat-551 KTD10: a reader pushed over the watch screen covers its slot. The
+// feat-553 KTD10: a reader pushed over the watch screen covers its slot. The
 // slot stays attached and keeps its rect; admission is the detach admission.
 describe("the reader cover", () => {
   it("admits a started video: a session at its position, the slot kept, no report", () => {
@@ -1125,7 +1125,7 @@ describe("the reader cover", () => {
   })
 })
 
-// feat-551 R10: the host publishes the resting window so the reader's verse
+// feat-553 R10: the host publishes the resting window so the reader's verse
 // box can stay clear of it.
 describe("the window frame channel", () => {
   it("publishes the frame and skips an equal one", () => {

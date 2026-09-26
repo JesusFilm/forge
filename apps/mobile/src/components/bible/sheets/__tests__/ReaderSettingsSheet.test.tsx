@@ -1,5 +1,5 @@
 /**
- * The reader settings sheet (feat-551 U10, R33, R34, KTD6): seven settings,
+ * The reader settings sheet (feat-553 U10, R33, R34, KTD6): seven settings,
  * "Show arrow buttons" on phones only, and the "About the text" credits.
  */
 

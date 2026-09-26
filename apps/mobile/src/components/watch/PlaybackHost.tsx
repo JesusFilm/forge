@@ -290,7 +290,7 @@ export function PlaybackHost() {
 
   const onExpand = useCallback(
     (session: MiniPlayerSession, action: ExpandAction) => {
-      // feat-551 AE14: the watch screen is already under the reader, so going
+      // feat-553 AE14: the watch screen is already under the reader, so going
       // back to it keeps one watch screen in the stack.
       if (action === "pop") {
         router.back()
@@ -328,7 +328,7 @@ export function PlaybackHostView({
     sessionStore.subscribe,
     () => sessionStore.getSnapshot().pipHold,
   )
-  // feat-551 KTD11: the reader's own corner, kept here because the active host
+  // feat-553 KTD11: the reader's own corner, kept here because the active host
   // unmounts between videos and AE18 wants the next reader visit to start at
   // it. Null means the device's start corner; the app corner stays separate.
   const [readerCorner, setReaderCorner] = useState<MiniPlayerCorner | null>(
@@ -844,7 +844,7 @@ function ActivePlaybackHost({
   const hasSession = session != null
   const pipHeld = sessionSnapshot.pipHold
 
-  // ── The reader cover (feat-551 KTD10) ─────────────────────────────────────
+  // ── The reader cover (feat-553 KTD10) ─────────────────────────────────────
 
   // The store's answer for the CURRENT slot is the one predicate every layer
   // reads: this frame, the slot's poster, and the screen's back button. An
@@ -1073,7 +1073,7 @@ function ActivePlaybackHost({
   // The shrink and the reposition glide anchor at `from`; the expand at `to`.
   const [motion, setMotion] = useState<FrameMotion | null>(null)
 
-  // ── The reader corners (feat-551 KTD11) ───────────────────────────────────
+  // ── The reader corners (feat-553 KTD11) ───────────────────────────────────
 
   // A covered slot means the pushed reader, whatever the route says during the
   // one commit before the cover starts or ends. A sheet sits over whichever
@@ -1761,7 +1761,7 @@ function ActivePlaybackHost({
     }
   }, [store])
 
-  // feat-551 R10: the reader keeps its verse clear of the resting window. It
+  // feat-553 R10: the reader keeps its verse clear of the resting window. It
   // stays published while a sheet hides the window, so the verse holds still.
   const onReaderRoute = readerPolicy != null
   const restingWindow = useMemo(

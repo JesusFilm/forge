@@ -235,7 +235,7 @@ function usePickerPulse(focused: boolean, shownChapter: string | null) {
   return { pulse, arm, disarm }
 }
 
-// The shared Bible reader (feat-551 U7, U8): one verse centered on the screen,
+// The shared Bible reader (feat-553 U7, U8): one verse centered on the screen,
 // a top bar, and a footer. Swipes, the arrow pair, and the screen reader move
 // the verse. The Bible tab and the pushed reader render it.
 export function BibleReader(props: BibleReaderProps) {

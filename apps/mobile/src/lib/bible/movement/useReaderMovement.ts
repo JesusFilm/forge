@@ -1,4 +1,4 @@
-// The reader's moves as one hook (feat-551 U8, KTD19). Swipes, the arrow pair,
+// The reader's moves as one hook (feat-553 U8, KTD19). Swipes, the arrow pair,
 // and the screen reader's actions all call it, so every input moves the same
 // way. The pill animation and the chapter announcement fire from the result.
 import { useEffect, useState } from "react"

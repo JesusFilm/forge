@@ -1,4 +1,4 @@
-// The reader settings store (feat-551 KTD5, R33): one record for both reader
+// The reader settings store (feat-553 KTD5, R33): one record for both reader
 // hosts and the settings sheet. It shares the position store's read, merge,
 // and save rules (persistedRecordStore.ts).
 import AsyncStorage from "@react-native-async-storage/async-storage"

@@ -1,4 +1,4 @@
-// The saved reading position (feat-551 KTD5, R4), in the lastWatched snapshot
+// The saved reading position (feat-553 KTD5, R4), in the lastWatched snapshot
 // pattern: a version gate, a shape check, and bad data read as absent. Pure
 // parse and serialize; the store owns the storage calls.
 import { isUsfmBookId } from "../text/books"

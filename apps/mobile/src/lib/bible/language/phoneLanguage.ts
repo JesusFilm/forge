@@ -1,5 +1,5 @@
 // The catalog keys its languages by ISO 639-3 individual codes, with no
-// macrolanguage codes such as zho (feat-551 KTD8). The phone's ISO 639-1 code
+// macrolanguage codes such as zho (feat-553 KTD8). The phone's ISO 639-1 code
 // and admin's macrolanguage codes both go through the tables below.
 import { getDeviceLanguageCode } from "../../resolveDefaultLanguage"
 import { LANGUAGE_DEFAULT_TRANSLATIONS } from "../data/languageDefaults.generated"

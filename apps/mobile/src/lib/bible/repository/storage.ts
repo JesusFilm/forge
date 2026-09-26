@@ -1,4 +1,4 @@
-// Where the repository keeps its files (feat-551 KTD2). Downloads live under
+// Where the repository keeps its files (feat-553 KTD2). Downloads live under
 // `Paths.document`, which iOS never purges. Kept chapters and raw downloads
 // live under `Paths.cache`, which the system may clear at any time.
 import { Directory, File, Paths } from "expo-file-system"

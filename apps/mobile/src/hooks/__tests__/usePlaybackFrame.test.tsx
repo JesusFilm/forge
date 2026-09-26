@@ -1,4 +1,4 @@
-// The route-side reads of the root playback host (U6, feat-551 U13). The probe
+// The route-side reads of the root playback host (U6, feat-553 U13). The probe
 // renders under StrictMode: both hooks subscribe to one module store, and the
 // double effect cycle must leave one live subscription.
 import { StrictMode, act } from "react"
@@ -93,7 +93,7 @@ describe("usePlaybackFrameVisible", () => {
     })
     expect(visible[visible.length - 1]).toBe(true)
 
-    // feat-551 KTD10: a reader covers the slot. Admission refuses here (no
+    // feat-553 KTD10: a reader covers the slot. Admission refuses here (no
     // playback facts), and the screen draws its own back button either way.
     await act(async () => {
       store.coverSlot(id)

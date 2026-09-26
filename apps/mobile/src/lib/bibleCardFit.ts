@@ -13,7 +13,7 @@
  * translation and copyright is an attribution failure, and it is exactly the
  * defect this whole change was made to remove. A card with no room for a
  * credited verse degrades to the reference-only presentation an unresolved
- * passage already produces. The reader button stays (feat-551 R1).
+ * passage already produces. The reader button stays (feat-553 R1).
  *
  * Every text region is budgeted at a fixed line count, and the renderer clamps
  * each one to the SAME count with `numberOfLines`. The two must move together:
@@ -179,7 +179,7 @@ export function fitPassageCardRegions(
 
   if (fits()) return regions
 
-  // feat-551 R1: the verse shortens to make room for the reader button.
+  // feat-553 R1: the verse shortens to make room for the reader button.
   while (regions.verseLines > VERSE_MIN_LINES) {
     regions.verseLines -= 1
     if (fits()) return regions

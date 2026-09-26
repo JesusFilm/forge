@@ -8,7 +8,7 @@ const path = require("path")
 
 const { BIBLE_BOOKS } = require("../bible/text/books")
 
-// Guard (feat-551 KTD1): BSB ships as 66 Metro assets that bundled.ts reaches
+// Guard (feat-553 KTD1): BSB ships as 66 Metro assets that bundled.ts reaches
 // through literal requires. A .json require would put all 8 MB into the JS
 // bundle and every update; a missing require ships a book that cannot open.
 

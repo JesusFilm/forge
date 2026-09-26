@@ -1,4 +1,4 @@
-// The Bible reader's Datadog events (feat-551 KTD18, R37). Every attribute is
+// The Bible reader's Datadog events (feat-553 KTD18, R37). Every attribute is
 // `reader_`-prefixed, because Datadog drops a custom `source`. No context holds
 // verse text, a response body, or personal data.
 import { useEffect, useState } from "react"

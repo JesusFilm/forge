@@ -1,4 +1,4 @@
-// The passage picker's steps (feat-551 U10, R17, KD15, R42). The chapter and
+// The passage picker's steps (feat-553 U10, R17, KD15, R42). The chapter and
 // verse steps show the shown translation's own numbers; the pick goes back to
 // BSB numbering, because the saved position uses it (R38).
 import { toBsbRef } from "../repository/resolveChapter"

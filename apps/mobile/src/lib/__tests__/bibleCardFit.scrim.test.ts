@@ -96,7 +96,7 @@ describe("passageCardStackHeight", () => {
     const huge = fitPassageCardRegions(fitInput({ fontScale: 3 }))
 
     expect(normal.link).toBe(true)
-    // The drop order (feat-551 R1): the verse shortens, the button stays.
+    // The drop order (feat-553 R1): the verse shortens, the button stays.
     expect(huge.link).toBe(true)
     expect(huge.verseLines).toBeLessThan(normal.verseLines)
   })

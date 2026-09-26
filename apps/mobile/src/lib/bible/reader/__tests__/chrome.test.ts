@@ -1,4 +1,4 @@
-// The reader's chrome heights (feat-551 KTD11). The mini player (U13) reads
+// The reader's chrome heights (feat-553 KTD11). The mini player (U13) reads
 // the same numbers, so these cases pin the values and the band arithmetic.
 import {
   READER_CHROME_HEIGHTS,

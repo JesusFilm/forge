@@ -1,5 +1,5 @@
 /**
- * The reading position store (feat-551 U5, KTD5). Each case builds its own
+ * The reading position store (feat-553 U5, KTD5). Each case builds its own
  * store over its own fake storage, so no module singleton crosses a case.
  * The hook cases wrap the element in StrictMode (RTL is not installed here).
  */

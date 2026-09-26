@@ -88,7 +88,7 @@ export function canOriginateRoutePattern(pattern: string): boolean {
   return !EXCLUDED_ORIGIN_ROUTES.has(pattern)
 }
 
-/** feat-551 KTD10: the pushed reader and its three root sheets (`app/_layout.tsx`)
+/** feat-553 KTD10: the pushed reader and its three root sheets (`app/_layout.tsx`)
  *  sit over the watch screen's player slot. The Bible tab does not: no watch
  *  slot is mounted under it. */
 export const READER_COVER_ROUTE_PATTERNS = [
@@ -98,7 +98,7 @@ export const READER_COVER_ROUTE_PATTERNS = [
   "reader-settings",
 ] as const
 
-/** feat-551 KTD11: every route that shows the reader. */
+/** feat-553 KTD11: every route that shows the reader. */
 export const READER_ROUTE_PATTERNS = [
   ...READER_COVER_ROUTE_PATTERNS,
   "(tabs)/bible",

@@ -21,7 +21,7 @@ export function routePattern(segments: readonly string[]): string {
 /**
  * Every screen declared with `presentation: "formSheet"`: six in
  * `app/watch/_layout.tsx` and `app/series/_layout.tsx`, and the Bible
- * reader's three in `app/_layout.tsx` (feat-551 KTD9).
+ * reader's three in `app/_layout.tsx` (feat-553 KTD9).
  */
 export const IN_APP_SHEET_ROUTE_PATTERNS = [
   "watch/language",

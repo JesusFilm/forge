@@ -1,4 +1,4 @@
-// The selection bar (feat-551 U9, R19, KTD15): it takes the footer's place
+// The selection bar (feat-553 U9, R19, KTD15): it takes the footer's place
 // with the selected reference and Copy, Share, and Clear. Copy and Share send
 // one text. Each render is in <StrictMode>, because the bar holds a timer.
 
