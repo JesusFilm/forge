@@ -79,6 +79,22 @@ describe("GET_VIDEO_BY_SLUG (watch screen) keeps the full fragment", () => {
 
   // ...and does NOT carry the series-only selections (mirrors the TV
   // "shared fragment stays lean" guard): the watch query must stay focused.
+  // U6: the Bible reader picks its default translation from the audio
+  // language's ISO 639-3 code, and the catalog keys languages by that code.
+  it("SELECTS iso3 on each dub's language", () => {
+    expect(bulkSdl).toMatch(
+      /variants: dubs\s*\{[^}]*language\s*\{[^}]*\biso3\b/,
+    )
+  })
+
+  // feat-553 U12: "Read full passage" opens the native reader at the cited
+  // book, which it keys by USFM code. Admin sends the book as an OSIS id.
+  it("SELECTS osisId and paratextAbbreviation on each citation's book", () => {
+    expect(bulkSdl).toMatch(
+      /bibleCitations\s*\{[^}]*bibleBook\s*\{[^}]*\bosisId\b[^}]*\bparatextAbbreviation\b/,
+    )
+  })
+
   it("EXCLUDES series-only selections (childDubLanguages + top-level children)", () => {
     expect(bulkSdl).not.toContain("childDubLanguages")
     // `children` appears only inside the WatchVideo fragment's parents.parent

@@ -1,8 +1,10 @@
 import type { WatchVideoData, WatchDubData, SeriesVideoData } from "./queries"
+import { bookByOsis, isUsfmBookId, type UsfmBookId } from "./bible/text/books"
 import { isEpisodicSeriesLabel } from "./isSeriesRecord"
 import { pickCardImage } from "./cardImage"
 import { pickLocalizedName } from "./pickLocalizedName"
 import { cleanStreamUrl } from "./validateUrl"
+import { normalizeLanguageIso3 } from "./watchPreferences"
 
 // ── Consumer types ─────────────────────────────────────────────────
 
@@ -34,6 +36,8 @@ export type WatchVariant = {
   languageSlug: string | null
   languageName: string | null
   languageNameNative: string | null
+  /** ISO 639-3 code as admin sends it; null when absent or blank. */
+  languageIso3: string | null
   muxPlaybackId: string | null
 }
 
@@ -82,6 +86,8 @@ export type WatchBibleCitation = {
   documentId: string
   osisId: string | null
   bookName: string | null
+  /** The book's USFM code, such as `JHN`. Null for a book BSB does not have. */
+  bookUsfm: UsfmBookId | null
   chapterStart: number | null
   chapterEnd: number | null
   verseStart: number | null
@@ -167,16 +173,54 @@ function pickFirstLocale(
 }
 
 type RawVariant = NonNullable<RawVideo["variants"]>[number]
+type RawVariantLanguage = NonNullable<RawVariant["language"]>
 
 // Permissive aliases let the shared builder accept BOTH the full watch fragment
-// and the lean series shape (no `parents` chain; dubs omit `duration`/`muxVideo`)
-// without loosening either operation's own generated type.
-type NormalizableVariant = Omit<RawVariant, "duration" | "muxVideo"> &
-  Partial<Pick<RawVariant, "duration" | "muxVideo">>
+// and the lean series shape (no `parents` chain; dubs omit `duration`/`muxVideo`
+// and the language's `iso3`) without loosening either operation's own type.
+type NormalizableVariant = Omit<
+  RawVariant,
+  "duration" | "muxVideo" | "language"
+> &
+  Partial<Pick<RawVariant, "duration" | "muxVideo">> & {
+    language:
+      | (Omit<RawVariantLanguage, "iso3"> &
+          Partial<Pick<RawVariantLanguage, "iso3">>)
+      | null
+  }
 
-type NormalizableVideo = Omit<RawVideo, "parents" | "variants"> & {
+type RawCitation = NonNullable<RawVideo["bibleCitations"]>[number]
+type RawCitationBook = NonNullable<RawCitation["bibleBook"]>
+type BookCodeField = "osisId" | "paratextAbbreviation"
+
+// The lean series fragment selects no book codes.
+type NormalizableCitation = Omit<RawCitation, "bibleBook"> & {
+  bibleBook:
+    | (Omit<RawCitationBook, BookCodeField> &
+        Partial<Pick<RawCitationBook, BookCodeField>>)
+    | null
+}
+
+type NormalizableVideo = Omit<
+  RawVideo,
+  "parents" | "variants" | "bibleCitations"
+> & {
   parents?: RawVideo["parents"]
   variants?: readonly NormalizableVariant[] | null
+  bibleCitations?: readonly NormalizableCitation[] | null
+}
+
+// Admin's OSIS id first (`John`, `1Cor`, `Ps`), then its Paratext code, which
+// is the USFM code (`JHN`). A book outside BSB's 66 gives null, and the quote
+// card then shows no reader button.
+function citationBookUsfm(
+  book: NormalizableCitation["bibleBook"],
+): UsfmBookId | null {
+  const osis = book?.osisId?.trim()
+  const byOsis = osis ? bookByOsis(osis) : undefined
+  if (byOsis) return byOsis.usfm
+  const paratext = book?.paratextAbbreviation?.trim()
+  return paratext && isUsfmBookId(paratext) ? paratext : null
 }
 
 // Prod data can carry stray whitespace on hls (a dub shipped "…m3u8\n"); the
@@ -295,6 +339,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
         const english = pickLocalizedName(v.language.name, "en")
         return native && native !== english ? native : null
       })(),
+      languageIso3: normalizeLanguageIso3(v.language?.iso3),
       muxPlaybackId: v.muxVideo?.playbackId ?? null,
     }))
 
@@ -355,6 +400,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
       bookName: c.bibleBook?.name
         ? (pickLocalizedName(c.bibleBook.name) ?? null)
         : null,
+      bookUsfm: citationBookUsfm(c.bibleBook),
       chapterStart: c.chapterStart ?? null,
       chapterEnd: c.chapterEnd ?? null,
       verseStart: c.verseStart ?? null,

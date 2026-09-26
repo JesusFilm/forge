@@ -1,0 +1,412 @@
+{
+  "translation": {
+    "id": "BSB",
+    "name": "Berean Standard Bible",
+    "website": "https://berean.bible/",
+    "licenseUrl": "https://berean.bible/",
+    "shortName": "BSB",
+    "englishName": "Berean Standard Bible",
+    "language": "eng",
+    "textDirection": "ltr",
+    "sha256": "6cc5238e442b4204b0f617cc5c932bc04f3bae4a0658e6393b0e319653ebe37f",
+    "availableFormats": ["json"],
+    "listOfBooksApiLink": "/api/BSB/books.json",
+    "completeTranslationApiLink": "/api/BSB/complete.json",
+    "simpleCompleteTranslationApiLink": "/api/BSB/complete.simple.json",
+    "numberOfBooks": 66,
+    "totalNumberOfChapters": 1189,
+    "totalNumberOfVerses": 31086,
+    "languageName": "English",
+    "languageEnglishName": "English"
+  },
+  "book": {
+    "id": "MAT",
+    "translationId": "BSB",
+    "name": "Matthew",
+    "commonName": "Matthew",
+    "title": "Matthew",
+    "order": 40,
+    "numberOfChapters": 28,
+    "sha256": "aabf54ba707406834e2ef5de624561558924e0866ddb9661b1036136cf5219bb",
+    "firstChapterNumber": 1,
+    "firstChapterApiLink": "/api/BSB/MAT/1.json",
+    "firstChapterReference": {
+      "translationId": "BSB",
+      "book": "MAT",
+      "chapter": 1
+    },
+    "lastChapterNumber": 28,
+    "lastChapterApiLink": "/api/BSB/MAT/28.json",
+    "lastChapterReference": {
+      "translationId": "BSB",
+      "book": "MAT",
+      "chapter": 28
+    },
+    "totalNumberOfVerses": 1068
+  },
+  "chapter": {
+    "number": 18,
+    "content": [
+      { "type": "heading", "content": ["The Greatest in the Kingdom"] },
+      {
+        "type": "verse",
+        "number": 1,
+        "content": [
+          "At that time the disciples came to Jesus and asked, “Who then is the greatest in the kingdom of heaven?”"
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 2,
+        "content": ["Jesus invited a little child to stand among them."]
+      },
+      {
+        "type": "verse",
+        "number": 3,
+        "content": [
+          "“Truly I tell you,” He said, “unless you change and become like little children, you will never enter the kingdom of heaven."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 4,
+        "content": [
+          "Therefore, whoever humbles himself like this little child is the greatest in the kingdom of heaven."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 5,
+        "content": [
+          "And whoever welcomes a little child like this in My name welcomes Me."
+        ]
+      },
+      { "type": "heading", "content": ["Temptations and Trespasses"] },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 6,
+        "content": [
+          "But if anyone causes one of these little ones who believe in Me to stumble, it would be better for him to have a large millstone hung around his neck and to be drowned in the depths of the sea."
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 7,
+        "content": [
+          "Woe to the world for the causes of sin. These stumbling blocks must come, but woe to the man through whom they come!"
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 8,
+        "content": [
+          "If your hand or your foot causes you to sin, cut it off and throw it away. It is better for you to enter life crippled or lame than to have two hands and two feet and be thrown into the eternal fire."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 9,
+        "content": [
+          "And if your eye causes you to sin, gouge it out and throw it away. It is better for you to enter life with one eye than to have two eyes and be thrown into the fire of hell.",
+          { "noteId": 105 }
+        ]
+      },
+      { "type": "heading", "content": ["The Parable of the Lost Sheep"] },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 10,
+        "content": [
+          "See that you do not look down on any of these little ones. For I tell you that their angels in heaven always see the face of My Father in heaven.",
+          { "noteId": 106 }
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 12,
+        "content": [
+          "What do you think? If a man has a hundred sheep and one of them goes astray, will he not leave the ninety-nine on the hills and go out to search for the one that is lost?"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 13,
+        "content": [
+          "And if he finds it, truly I tell you, he rejoices more over that one sheep than over the ninety-nine that did not go astray."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 14,
+        "content": [
+          "In the same way, your Father in heaven is not willing that any of these little ones should perish."
+        ]
+      },
+      { "type": "heading", "content": ["A Brother Who Sins"] },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 15,
+        "content": [
+          "If your brother sins against you,",
+          { "noteId": 107 },
+          "go and confront him privately. If he listens to you, you have won your brother over."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 16,
+        "content": [
+          "But if he will not listen, take one or two others along, so that ‘every matter may be established by the testimony of two or three witnesses.’",
+          { "noteId": 108 }
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 17,
+        "content": [
+          "If he refuses to listen to them, tell it to the church. And if he refuses to listen even to the church, regard him as you would a pagan or a tax collector."
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 18,
+        "content": [
+          "Truly I tell you, whatever you bind on earth will be bound in heaven, and whatever you loose on earth will be loosed in heaven."
+        ]
+      },
+      { "type": "heading", "content": ["Ask in My Name"] },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 19,
+        "content": [
+          "Again, I tell you truly that if two of you on the earth agree about anything you ask for, it will be done for you by My Father in heaven."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 20,
+        "content": [
+          "For where two or three gather together in My name, there am I with them.”"
+        ]
+      },
+      { "type": "heading", "content": ["The Unforgiving Servant"] },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 21,
+        "content": [
+          "Then Peter came to Jesus and asked, “Lord, how many times shall I forgive my brother who sins against me? Up to seven times?”"
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 22,
+        "content": [
+          "Jesus answered, “I tell you, not just seven times, but seventy-seven times!",
+          { "noteId": 109 }
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 23,
+        "content": [
+          "Because of this, the kingdom of heaven is like a king who wanted to settle accounts with his servants."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 24,
+        "content": [
+          "As he began the settlements, a debtor owing ten thousand talents was brought to him.",
+          { "noteId": 110 }
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 25,
+        "content": [
+          "Since the man was unable to pay, the master ordered that he be sold to pay his debt, along with his wife and children and everything he owned."
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 26,
+        "content": [
+          "Then the servant fell on his knees before him. ‘Have patience with me,’ he begged, ‘and I will pay back everything.’"
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 27,
+        "content": [
+          "His master had compassion on him, forgave his debt, and released him."
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 28,
+        "content": [
+          "But when that servant went out, he found one of his fellow servants who owed him a hundred denarii.",
+          { "noteId": 111 },
+          "He grabbed him and began to choke him, saying, ‘Pay back what you owe me!’"
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 29,
+        "content": [
+          "So his fellow servant fell down and begged him, ‘Have patience with me, and I will pay you back.’"
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 30,
+        "content": [
+          "But he refused. Instead, he went and had the man thrown into prison until he could pay his debt."
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 31,
+        "content": [
+          "When his fellow servants saw what had happened, they were greatly distressed, and they went and recounted all of this to their master."
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 32,
+        "content": [
+          "Then the master summoned him and said, ‘You wicked servant! I forgave all your debt because you begged me."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 33,
+        "content": [
+          "Shouldn’t you have had mercy on your fellow servant, just as I had on you?’"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 34,
+        "content": [
+          "In anger his master turned him over to the jailers to be tortured, until he should repay all that he owed."
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 35,
+        "content": [
+          "That is how My heavenly Father will treat each of you unless you forgive your brother from your heart.”"
+        ]
+      }
+    ],
+    "footnotes": [
+      {
+        "noteId": 105,
+        "caller": "+",
+        "text": "Or the hell of fire; Greek the Gehenna of fire",
+        "reference": { "chapter": 18, "verse": 9 }
+      },
+      {
+        "noteId": 106,
+        "caller": "+",
+        "text": "BYZ and TR include 11 For the Son of Man came to save the lost; see Luke 19:10.",
+        "reference": { "chapter": 18, "verse": 10 }
+      },
+      {
+        "noteId": 107,
+        "caller": "+",
+        "text": "NE and WH do not include against you.",
+        "reference": { "chapter": 18, "verse": 15 }
+      },
+      {
+        "noteId": 108,
+        "caller": "+",
+        "text": "Deuteronomy 19:15",
+        "reference": { "chapter": 18, "verse": 16 }
+      },
+      {
+        "noteId": 109,
+        "caller": "+",
+        "text": "Or seventy times seven; see Genesis 4:24 LXX",
+        "reference": { "chapter": 18, "verse": 22 }
+      },
+      {
+        "noteId": 110,
+        "caller": "+",
+        "text": "A talent was worth about twenty years’ wages for a laborer.",
+        "reference": { "chapter": 18, "verse": 24 }
+      },
+      {
+        "noteId": 111,
+        "caller": "+",
+        "text": "A denarius was customarily a day’s wage for a laborer; see Matthew 20:2.",
+        "reference": { "chapter": 18, "verse": 28 }
+      }
+    ]
+  },
+  "thisChapterLink": "/api/BSB/MAT/18.json",
+  "thisChapterReference": {
+    "translationId": "BSB",
+    "book": "MAT",
+    "chapter": 18
+  },
+  "thisChapterAudioLinks": {
+    "david": "https://audio.bible.helloao.org/api/BSB/MAT/18/audio/david.mp3",
+    "gilbert": "https://openbible.com/audio/gilbert/BSB_40_Mat_018_G.mp3",
+    "hays": "https://audio.bible.helloao.org/api/BSB/MAT/18/audio/hays.mp3",
+    "souer": "https://audio.bible.helloao.org/api/BSB/MAT/18/audio/souer.mp3"
+  },
+  "nextChapterApiLink": "/api/BSB/MAT/19.json",
+  "nextChapterReference": {
+    "translationId": "BSB",
+    "book": "MAT",
+    "chapter": 19
+  },
+  "nextChapterAudioLinks": {
+    "david": "https://audio.bible.helloao.org/api/BSB/MAT/19/audio/david.mp3",
+    "gilbert": "https://openbible.com/audio/gilbert/BSB_40_Mat_019_G.mp3",
+    "hays": "https://audio.bible.helloao.org/api/BSB/MAT/19/audio/hays.mp3",
+    "souer": "https://audio.bible.helloao.org/api/BSB/MAT/19/audio/souer.mp3"
+  },
+  "previousChapterApiLink": "/api/BSB/MAT/17.json",
+  "previousChapterReference": {
+    "translationId": "BSB",
+    "book": "MAT",
+    "chapter": 17
+  },
+  "previousChapterAudioLinks": {
+    "david": "https://audio.bible.helloao.org/api/BSB/MAT/17/audio/david.mp3",
+    "gilbert": "https://openbible.com/audio/gilbert/BSB_40_Mat_017_G.mp3",
+    "hays": "https://audio.bible.helloao.org/api/BSB/MAT/17/audio/hays.mp3",
+    "souer": "https://audio.bible.helloao.org/api/BSB/MAT/17/audio/souer.mp3"
+  },
+  "thisChapterAudioTimings": {},
+  "nextChapterAudioTimings": {
+    "david": "/api/BSB/MAT/19.david.audioTimings.json",
+    "hays": "/api/BSB/MAT/19.hays.audioTimings.json",
+    "souer": "/api/BSB/MAT/19.souer.audioTimings.json"
+  },
+  "previousChapterAudioTimings": {},
+  "numberOfVerses": 34,
+  "simpleChapterApiLink": "/api/BSB/MAT/18.simple.json"
+}

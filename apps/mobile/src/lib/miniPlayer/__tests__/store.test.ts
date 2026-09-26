@@ -529,3 +529,77 @@ describe("module singleton", () => {
     expect(getMiniPlayerStore()).toBe(getMiniPlayerStore())
   })
 })
+
+// feat-553 KTD10: the reader cover ends a session the viewer never ended. A
+// report here would close the quality session, the recommendation episode and
+// the player settings while the player keeps playing.
+describe("an ending with no report (the reader cover)", () => {
+  it("clears the session at once and reports nothing", () => {
+    const { store, ends } = startedStore()
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.clearWithoutReport()
+
+    expect(store.getSnapshot().session).toBeNull()
+    expect(store.getSnapshot().dismissal).toBe("none")
+    expect(ends).toHaveLength(0)
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the picture-in-picture hold", () => {
+    const { store } = startedStore()
+    store.setPipHold(true)
+
+    store.clearWithoutReport()
+
+    expect(store.getSnapshot().pipHold).toBe(true)
+  })
+
+  it("is inert with no session", () => {
+    const store = createMiniPlayerStore()
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.clearWithoutReport()
+
+    expect(listener).not.toHaveBeenCalled()
+  })
+
+  it("runs the exit for a closed window and reports nothing", () => {
+    const { store, ends } = startedStore()
+
+    store.dismissWithoutReport()
+
+    expect(store.getSnapshot().dismissal).toBe("exiting")
+    expect(ends).toHaveLength(0)
+    store.reportExitComplete()
+    expect(store.getSnapshot().session).toBeNull()
+    expect(ends).toHaveLength(0)
+  })
+
+  it("stays silent when the hold defers the exit (R24)", () => {
+    const { store, ends } = startedStore()
+    store.setPipHold(true)
+
+    store.dismissWithoutReport()
+    expect(store.getSnapshot().dismissal).toBe("deferred")
+    store.setPipHold(false)
+
+    expect(store.getSnapshot().dismissal).toBe("exiting")
+    expect(ends).toHaveLength(0)
+  })
+
+  it("leaves a later reported dismissal reported", () => {
+    const { store, ends } = startedStore()
+    store.setPipHold(true)
+    store.dismissWithoutReport()
+    store.setPipHold(false)
+    store.reportExitComplete()
+    store.start({ videoId: "video-2", videoSlug: "b", title: "B" })
+
+    store.requestDismiss()
+
+    expect(ends.map((event) => event.reason)).toEqual(["dismissed"])
+  })
+})

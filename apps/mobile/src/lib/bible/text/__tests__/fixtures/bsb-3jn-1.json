@@ -1,0 +1,238 @@
+{
+  "translation": {
+    "id": "BSB",
+    "name": "Berean Standard Bible",
+    "website": "https://berean.bible/",
+    "licenseUrl": "https://berean.bible/",
+    "shortName": "BSB",
+    "englishName": "Berean Standard Bible",
+    "language": "eng",
+    "textDirection": "ltr",
+    "sha256": "6cc5238e442b4204b0f617cc5c932bc04f3bae4a0658e6393b0e319653ebe37f",
+    "availableFormats": ["json"],
+    "listOfBooksApiLink": "/api/BSB/books.json",
+    "completeTranslationApiLink": "/api/BSB/complete.json",
+    "simpleCompleteTranslationApiLink": "/api/BSB/complete.simple.json",
+    "numberOfBooks": 66,
+    "totalNumberOfChapters": 1189,
+    "totalNumberOfVerses": 31086,
+    "languageName": "English",
+    "languageEnglishName": "English"
+  },
+  "book": {
+    "id": "3JN",
+    "translationId": "BSB",
+    "name": "3 John",
+    "commonName": "3 John",
+    "title": "3 John",
+    "order": 64,
+    "numberOfChapters": 1,
+    "sha256": "cf767596569775b371f96a7863b6cc7f29103684a66ea2620610ea90cac6f72d",
+    "firstChapterNumber": 1,
+    "firstChapterApiLink": "/api/BSB/3JN/1.json",
+    "firstChapterReference": {
+      "translationId": "BSB",
+      "book": "3JN",
+      "chapter": 1
+    },
+    "lastChapterNumber": 1,
+    "lastChapterApiLink": "/api/BSB/3JN/1.json",
+    "lastChapterReference": {
+      "translationId": "BSB",
+      "book": "3JN",
+      "chapter": 1
+    },
+    "totalNumberOfVerses": 14
+  },
+  "chapter": {
+    "number": 1,
+    "content": [
+      { "type": "heading", "content": ["A Greeting from the Elder"] },
+      {
+        "type": "verse",
+        "number": 1,
+        "content": [
+          "The elder,",
+          { "lineBreak": true },
+          "To the beloved Gaius, whom I love in the truth:"
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 2,
+        "content": [
+          "Beloved, I pray that in every way you may prosper and enjoy good health, as your soul also prospers."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 3,
+        "content": [
+          "For I was overjoyed when the brothers came and testified about your devotion to the truth, in which you continue to walk."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 4,
+        "content": [
+          "I have no greater joy than to hear that my children are walking in the truth."
+        ]
+      },
+      { "type": "heading", "content": ["Gaius Commended for Hospitality"] },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 5,
+        "content": [
+          "Beloved, you are faithful in what you are doing for the brothers, and especially since they are strangers to you."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 6,
+        "content": [
+          "They have testified to the church about your love. You will do well to send them on their way in a manner worthy of God."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 7,
+        "content": [
+          "For they went out on behalf of the Name, accepting nothing from the Gentiles."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 8,
+        "content": [
+          "Therefore we ought to support such men, so that we may be fellow workers for the truth."
+        ]
+      },
+      { "type": "heading", "content": ["Diotrephes and Demetrius"] },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 9,
+        "content": [
+          "I have written to the church about this,",
+          { "noteId": 0 },
+          "but Diotrephes, who loves to be first, will not accept our instruction."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 10,
+        "content": [
+          "So if I come, I will call attention to his malicious slander against us. And unsatisfied with that, he refuses to welcome the brothers and forbids those who want to do so, even putting them out of the church."
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 11,
+        "content": [
+          "Beloved, do not imitate what is evil, but what is good. The one who does good is of God; the one who does evil has not seen God."
+        ]
+      },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 12,
+        "content": [
+          "Demetrius has received a good testimony from everyone, and from the truth itself. We also testify for him, and you know that our testimony is true."
+        ]
+      },
+      { "type": "heading", "content": ["Conclusion"] },
+      { "type": "line_break" },
+      {
+        "type": "verse",
+        "number": 13,
+        "content": [
+          "I have many things to write to you, but I would prefer not to do so with pen and ink."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 14,
+        "content": [
+          "Instead, I hope to see you soon and speak with you face to face.",
+          { "noteId": 1 },
+          { "lineBreak": true },
+          "Peace to you.",
+          { "lineBreak": true },
+          "The friends here send you greetings.",
+          { "lineBreak": true },
+          "Greet each of our friends there by name."
+        ]
+      }
+    ],
+    "footnotes": [
+      {
+        "noteId": 0,
+        "caller": "+",
+        "text": "Literally I have written something to the church",
+        "reference": { "chapter": 1, "verse": 9 }
+      },
+      {
+        "noteId": 1,
+        "caller": "+",
+        "text": "Literally and we will speak mouth to mouth; some translators begin a new verse (15) after face to face.",
+        "reference": { "chapter": 1, "verse": 14 }
+      }
+    ]
+  },
+  "thisChapterLink": "/api/BSB/3JN/1.json",
+  "thisChapterReference": {
+    "translationId": "BSB",
+    "book": "3JN",
+    "chapter": 1
+  },
+  "thisChapterAudioLinks": {
+    "david": "https://audio.bible.helloao.org/api/BSB/3JN/1/audio/david.mp3",
+    "gilbert": "https://openbible.com/audio/gilbert/BSB_64_3Jn_001_G.mp3",
+    "hays": "https://audio.bible.helloao.org/api/BSB/3JN/1/audio/hays.mp3",
+    "souer": "https://audio.bible.helloao.org/api/BSB/3JN/1/audio/souer.mp3"
+  },
+  "nextChapterApiLink": "/api/BSB/JUD/1.json",
+  "nextChapterReference": {
+    "translationId": "BSB",
+    "book": "JUD",
+    "chapter": 1
+  },
+  "nextChapterAudioLinks": {
+    "david": "https://audio.bible.helloao.org/api/BSB/JUD/1/audio/david.mp3",
+    "gilbert": "https://openbible.com/audio/gilbert/BSB_65_Jud_001_G.mp3",
+    "hays": "https://audio.bible.helloao.org/api/BSB/JUD/1/audio/hays.mp3",
+    "souer": "https://audio.bible.helloao.org/api/BSB/JUD/1/audio/souer.mp3"
+  },
+  "previousChapterApiLink": "/api/BSB/2JN/1.json",
+  "previousChapterReference": {
+    "translationId": "BSB",
+    "book": "2JN",
+    "chapter": 1
+  },
+  "previousChapterAudioLinks": {
+    "david": "https://audio.bible.helloao.org/api/BSB/2JN/1/audio/david.mp3",
+    "gilbert": "https://openbible.com/audio/gilbert/BSB_63_2Jn_001_G.mp3",
+    "hays": "https://audio.bible.helloao.org/api/BSB/2JN/1/audio/hays.mp3",
+    "souer": "https://audio.bible.helloao.org/api/BSB/2JN/1/audio/souer.mp3"
+  },
+  "thisChapterAudioTimings": {
+    "david": "/api/BSB/3JN/1.david.audioTimings.json",
+    "hays": "/api/BSB/3JN/1.hays.audioTimings.json",
+    "souer": "/api/BSB/3JN/1.souer.audioTimings.json"
+  },
+  "nextChapterAudioTimings": {
+    "david": "/api/BSB/JUD/1.david.audioTimings.json",
+    "hays": "/api/BSB/JUD/1.hays.audioTimings.json",
+    "souer": "/api/BSB/JUD/1.souer.audioTimings.json"
+  },
+  "previousChapterAudioTimings": {
+    "david": "/api/BSB/2JN/1.david.audioTimings.json",
+    "hays": "/api/BSB/2JN/1.hays.audioTimings.json",
+    "souer": "/api/BSB/2JN/1.souer.audioTimings.json"
+  },
+  "numberOfVerses": 14,
+  "simpleChapterApiLink": "/api/BSB/3JN/1.simple.json"
+}

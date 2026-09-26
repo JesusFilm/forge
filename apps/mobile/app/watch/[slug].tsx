@@ -88,6 +88,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
+import { readerHref } from "../../src/lib/bible/routes/readerRoute"
+import type { VerseRef } from "../../src/lib/bible/versification/convert"
 import { Snackbar } from "../../src/components/ui/Snackbar"
 import { FloatingBackButton } from "../../src/components/ui/FloatingBackButton"
 import {
@@ -255,6 +257,12 @@ export default function WatchVideoPage() {
       video?.slug === decodedSlug ? video.primaryLanguageCoreId : null,
     payloadSettled: !loading,
   })
+
+  // KD3: no pause. The video keeps playing while the reader covers this screen.
+  const openBibleReader = useCallback(
+    (start: VerseRef) => router.push(readerHref(start, "quote")),
+    [router],
+  )
 
   // Captions on (possibly carried over a language switch) → make sure the
   // active dub's subtitles are fetched so the player has a track to show.
@@ -918,6 +926,7 @@ export default function WatchVideoPage() {
                 <BibleQuotesCarouselRenderer
                   key={decodedSlug}
                   section={bibleCitationsBlock}
+                  onOpenReader={openBibleReader}
                   onArtworkFailed={bibleQuotes.reportArtworkFailure}
                   videoSlug={decodedSlug}
                   showShareButton={false}

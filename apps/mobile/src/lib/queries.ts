@@ -244,6 +244,7 @@ export const watchVideoFragment = adminGraphql(`
         bcp47
         slug
         name
+        iso3
       }
       muxVideo {
         playbackId
@@ -266,6 +267,8 @@ export const watchVideoFragment = adminGraphql(`
       bibleBook {
         documentId: id
         name
+        osisId
+        paratextAbbreviation
       }
     }
   }

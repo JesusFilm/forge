@@ -1,0 +1,366 @@
+{
+  "translation": {
+    "id": "BSB",
+    "name": "Berean Standard Bible",
+    "website": "https://berean.bible/",
+    "licenseUrl": "https://berean.bible/",
+    "shortName": "BSB",
+    "englishName": "Berean Standard Bible",
+    "language": "eng",
+    "textDirection": "ltr",
+    "sha256": "6cc5238e442b4204b0f617cc5c932bc04f3bae4a0658e6393b0e319653ebe37f",
+    "availableFormats": ["json"],
+    "listOfBooksApiLink": "/api/BSB/books.json",
+    "completeTranslationApiLink": "/api/BSB/complete.json",
+    "simpleCompleteTranslationApiLink": "/api/BSB/complete.simple.json",
+    "numberOfBooks": 66,
+    "totalNumberOfChapters": 1189,
+    "totalNumberOfVerses": 31086,
+    "languageName": "English",
+    "languageEnglishName": "English"
+  },
+  "books": [
+    {
+      "id": "2JN",
+      "name": "2 John",
+      "commonName": "2 John",
+      "title": "2 John",
+      "order": 63,
+      "numberOfChapters": 1,
+      "totalNumberOfVerses": 13,
+      "chapters": [
+        {
+          "numberOfVerses": 13,
+          "thisChapterAudioLinks": {
+            "david": "https://audio.bible.helloao.org/api/BSB/2JN/1/audio/david.mp3",
+            "gilbert": "https://openbible.com/audio/gilbert/BSB_63_2Jn_001_G.mp3",
+            "hays": "https://audio.bible.helloao.org/api/BSB/2JN/1/audio/hays.mp3",
+            "souer": "https://audio.bible.helloao.org/api/BSB/2JN/1/audio/souer.mp3"
+          },
+          "thisChapterAudioTimings": {
+            "david": [
+              6.706, 15.588, 19.929, 31.191, 37.774, 46.361, 57.55, 69.619,
+              76.285, 86.212, 93.396, 98.279, 110.884
+            ],
+            "hays": [
+              4.174, 15.436, 21.078, 32.436, 40.543, 51.352, 63.608, 77.141,
+              85.049, 98.379, 107.006, 112.839, 128.118
+            ],
+            "souer": [
+              3.984, 11.531, 15.374, 23.401, 29.303, 36.926, 45.649, 55.357,
+              61.862, 71.089, 77.593, 81.737, 92.366
+            ]
+          },
+          "chapter": {
+            "number": 1,
+            "content": [
+              { "type": "heading", "content": ["A Greeting from the Elder"] },
+              {
+                "type": "verse",
+                "number": 1,
+                "content": [
+                  "The elder,",
+                  { "lineBreak": true },
+                  "To the chosen lady and her children, whom I love in the truth—and not I alone, but also all who know the truth—"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 2,
+                "content": [
+                  "because of the truth that abides in us and will be with us forever:"
+                ]
+              },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 3,
+                "content": [
+                  "Grace, mercy, and peace from God the Father and from Jesus Christ, the Son of the Father, will be with us in truth and love."
+                ]
+              },
+              { "type": "heading", "content": ["Walking in the Truth"] },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 4,
+                "content": [
+                  "I was overjoyed to find some of your children walking in the truth, just as the Father has commanded us."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 5,
+                "content": [
+                  "And now I urge you, dear lady—not as a new commandment to you, but one we have had from the beginning—that we love one another."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 6,
+                "content": [
+                  "And this is love, that we walk according to His commandments. This is the very commandment you have heard from the beginning, that you must walk in love."
+                ]
+              },
+              { "type": "heading", "content": ["Beware of Deceivers"] },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 7,
+                "content": [
+                  "For many deceivers have gone out into the world, refusing to confess the coming of Jesus Christ in the flesh. Any such person is the deceiver and the antichrist."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 8,
+                "content": [
+                  "Watch yourselves, so that you do not lose what we have worked for,",
+                  { "noteId": 0 },
+                  "but that you may be fully rewarded."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 9,
+                "content": [
+                  "Anyone who runs ahead without remaining in the teaching of Christ does not have God. Whoever remains in His teaching has both the Father and the Son."
+                ]
+              },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 10,
+                "content": [
+                  "If anyone comes to you but does not bring this teaching, do not receive him into your home or even greet him."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 11,
+                "content": [
+                  "Whoever greets such a person shares in his evil deeds."
+                ]
+              },
+              { "type": "heading", "content": ["Conclusion"] },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 12,
+                "content": [
+                  "I have many things to write to you, but I would prefer not to do so with paper and ink. Instead, I hope to come and speak with you face to face,",
+                  { "noteId": 1 },
+                  "so that our joy may be complete."
+                ]
+              },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 13,
+                "content": [
+                  "The children of your elect sister send you greetings.",
+                  { "noteId": 2 }
+                ]
+              }
+            ],
+            "footnotes": [
+              {
+                "noteId": 0,
+                "caller": "+",
+                "text": "NE and WH what you have worked for",
+                "reference": { "chapter": 1, "verse": 8 }
+              },
+              {
+                "noteId": 1,
+                "caller": "+",
+                "text": "Literally mouth to mouth",
+                "reference": { "chapter": 1, "verse": 12 }
+              },
+              {
+                "noteId": 2,
+                "caller": "+",
+                "text": "BYZ and TR include Amen.",
+                "reference": { "chapter": 1, "verse": 13 }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "3JN",
+      "name": "3 John",
+      "commonName": "3 John",
+      "title": "3 John",
+      "order": 64,
+      "numberOfChapters": 1,
+      "totalNumberOfVerses": 14,
+      "chapters": [
+        {
+          "numberOfVerses": 14,
+          "thisChapterAudioLinks": {
+            "david": "https://audio.bible.helloao.org/api/BSB/3JN/1/audio/david.mp3",
+            "gilbert": "https://openbible.com/audio/gilbert/BSB_64_3Jn_001_G.mp3",
+            "hays": "https://audio.bible.helloao.org/api/BSB/3JN/1/audio/hays.mp3",
+            "souer": "https://audio.bible.helloao.org/api/BSB/3JN/1/audio/souer.mp3"
+          },
+          "thisChapterAudioTimings": {
+            "david": [
+              7.075, 11.356, 19.078, 27.128, 32.173, 39.579, 46.786, 52.097,
+              58.862, 66.568, 81.405, 92.608, 104.517, 110.375
+            ],
+            "hays": [
+              3.951, 9.492, 18.454, 27.947, 34.629, 42.851, 52.529, 58.931,
+              66.453, 75.435, 93.301, 106.279, 120.402, 127.929
+            ],
+            "souer": [
+              3.544, 7.988, 14.735, 21.642, 26.306, 32.271, 38.997, 44.021,
+              49.626, 56.55, 69.918, 79.465, 89.992, 94.776
+            ]
+          },
+          "chapter": {
+            "number": 1,
+            "content": [
+              { "type": "heading", "content": ["A Greeting from the Elder"] },
+              {
+                "type": "verse",
+                "number": 1,
+                "content": [
+                  "The elder,",
+                  { "lineBreak": true },
+                  "To the beloved Gaius, whom I love in the truth:"
+                ]
+              },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 2,
+                "content": [
+                  "Beloved, I pray that in every way you may prosper and enjoy good health, as your soul also prospers."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 3,
+                "content": [
+                  "For I was overjoyed when the brothers came and testified about your devotion to the truth, in which you continue to walk."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 4,
+                "content": [
+                  "I have no greater joy than to hear that my children are walking in the truth."
+                ]
+              },
+              {
+                "type": "heading",
+                "content": ["Gaius Commended for Hospitality"]
+              },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 5,
+                "content": [
+                  "Beloved, you are faithful in what you are doing for the brothers, and especially since they are strangers to you."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 6,
+                "content": [
+                  "They have testified to the church about your love. You will do well to send them on their way in a manner worthy of God."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 7,
+                "content": [
+                  "For they went out on behalf of the Name, accepting nothing from the Gentiles."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 8,
+                "content": [
+                  "Therefore we ought to support such men, so that we may be fellow workers for the truth."
+                ]
+              },
+              { "type": "heading", "content": ["Diotrephes and Demetrius"] },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 9,
+                "content": [
+                  "I have written to the church about this,",
+                  { "noteId": 0 },
+                  "but Diotrephes, who loves to be first, will not accept our instruction."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 10,
+                "content": [
+                  "So if I come, I will call attention to his malicious slander against us. And unsatisfied with that, he refuses to welcome the brothers and forbids those who want to do so, even putting them out of the church."
+                ]
+              },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 11,
+                "content": [
+                  "Beloved, do not imitate what is evil, but what is good. The one who does good is of God; the one who does evil has not seen God."
+                ]
+              },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 12,
+                "content": [
+                  "Demetrius has received a good testimony from everyone, and from the truth itself. We also testify for him, and you know that our testimony is true."
+                ]
+              },
+              { "type": "heading", "content": ["Conclusion"] },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 13,
+                "content": [
+                  "I have many things to write to you, but I would prefer not to do so with pen and ink."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 14,
+                "content": [
+                  "Instead, I hope to see you soon and speak with you face to face.",
+                  { "noteId": 1 },
+                  { "lineBreak": true },
+                  "Peace to you.",
+                  { "lineBreak": true },
+                  "The friends here send you greetings.",
+                  { "lineBreak": true },
+                  "Greet each of our friends there by name."
+                ]
+              }
+            ],
+            "footnotes": [
+              {
+                "noteId": 0,
+                "caller": "+",
+                "text": "Literally I have written something to the church",
+                "reference": { "chapter": 1, "verse": 9 }
+              },
+              {
+                "noteId": 1,
+                "caller": "+",
+                "text": "Literally and we will speak mouth to mouth; some translators begin a new verse (15) after face to face.",
+                "reference": { "chapter": 1, "verse": 14 }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

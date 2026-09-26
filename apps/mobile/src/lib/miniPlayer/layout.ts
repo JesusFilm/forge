@@ -10,6 +10,10 @@
  * reachable and none covers a chrome tap target.
  */
 
+import {
+  READER_CHROME_HEIGHTS,
+  type ReaderLayout,
+} from "../bible/reader/chrome"
 import { PLAYER_HEIGHT_RATIO } from "../playerLayout"
 
 export type MiniPlayerCorner =
@@ -179,6 +183,36 @@ export function defaultCornerFrame(
   config: MiniPlayerLayoutConfig,
 ): MiniPlayerFrame {
   return miniPlayerCornerFrame(config, allowedCorners(config)[0])
+}
+
+/** The reader's corner rules: where a new window starts, and the chrome that
+ *  every corner frame must clear. */
+export type ReaderCornerPolicy = {
+  startCorner: MiniPlayerCorner
+  chrome: MiniPlayerChrome
+}
+
+/** feat-553 KTD11, KD9, KD26: a new window starts at the top right on a phone
+ *  and the bottom right on a tablet. It may rest in any corner between the
+ *  reader's top bar and its footer, so no corner is excluded. */
+export function readerCornerPolicy(input: {
+  layout: ReaderLayout
+  host: "tab" | "pushed"
+  /** The reader's live band above the footer: the arrow pair and the hint. */
+  movementBand: number
+  /** The tab bar a root-mounted surface reserves. Only the Bible tab has one. */
+  tabBar: number
+}): ReaderCornerPolicy {
+  return {
+    startCorner: input.layout === "tablet" ? "bottomRight" : "topRight",
+    chrome: {
+      top: READER_CHROME_HEIGHTS.topBar,
+      bottom:
+        READER_CHROME_HEIGHTS.footer[input.layout] +
+        input.movementBand +
+        (input.host === "tab" ? input.tabBar : 0),
+    },
+  }
 }
 
 /**

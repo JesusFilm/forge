@@ -8,12 +8,12 @@
  * post-layout measure would land after paint and produce exactly the fill-in
  * the reserved height exists to prevent.
  *
- * Order of sacrifice: the link goes first, then the verse is shortened, and if
- * even a one-line verse will not fit the VERSE goes — never its credit. A verse
- * rendered without its translation and copyright is an attribution failure, and
- * it is exactly the defect this whole change was made to remove. A card with no
- * room for a credited verse degrades to the reference-only presentation an
- * unresolved passage already produces.
+ * Order of sacrifice: the verse is shortened, and if even a one-line verse will
+ * not fit the VERSE goes — never its credit. A verse rendered without its
+ * translation and copyright is an attribution failure, and it is exactly the
+ * defect this whole change was made to remove. A card with no room for a
+ * credited verse degrades to the reference-only presentation an unresolved
+ * passage already produces. The reader button stays (feat-553 R1).
  *
  * Every text region is budgeted at a fixed line count, and the renderer clamps
  * each one to the SAME count with `numberOfLines`. The two must move together:
@@ -179,11 +179,7 @@ export function fitPassageCardRegions(
 
   if (fits()) return regions
 
-  if (regions.link) {
-    regions.link = false
-    if (fits()) return regions
-  }
-
+  // feat-553 R1: the verse shortens to make room for the reader button.
   while (regions.verseLines > VERSE_MIN_LINES) {
     regions.verseLines -= 1
     if (fits()) return regions
@@ -203,6 +199,11 @@ export function fitPassageCardRegions(
     if (fits()) return regions
   }
   regions.translation = false
+  if (fits()) return regions
+
+  // Only the reference and the button are left, and they overflow. No supported
+  // width and text size gets here; the reference stays, so the clip spares it.
+  regions.link = false
   return regions
 }
 

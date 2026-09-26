@@ -86,7 +86,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
-- **Bible verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
+- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
 
 ## Admin endpoint resolution (feat-339)
 
@@ -422,6 +422,9 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `src/lib/__tests__/datadogReservedAttributes.guard.test.js` now blocks a
   ninth. Background: see
   `docs/solutions/conventions/datadog-reserved-log-attribute-name-shadowing.md`.
+- **The Bible reader's events use `bible_reader.*` names and `reader_*`
+  attributes**, so the open source is `reader_source`, not `source`. See
+  "Bible reader (feat-553)" for the six events.
 
 ## Common Pitfalls
 
@@ -939,14 +942,42 @@ them to the list. Add a case whenever you add a `<VideoView>`.
 **Sheet suppression is cross-platform; the hazard it prevents is Android-only.**
 The window hides while an in-app sheet is presented and returns to its corner
 when the sheet closes. Two mechanisms, because the app presents sheets two
-ways — six real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
-`src/lib/miniPlayer/suppression.ts`, read from `app/watch/_layout.tsx` and
-`app/series/_layout.tsx`) and three sheets that are component state, counted by
+ways — nine real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
+`src/lib/miniPlayer/suppression.ts`: six read from `app/watch/_layout.tsx` and
+`app/series/_layout.tsx`, and the three Bible reader sheets read from the root
+`app/_layout.tsx`) and three sheets that are component state, counted by
 `getNonRouteSheetCounter()` and keyed by id so an unbalanced call is
 attributable. Keep both in step with those layouts. The rule runs on both
 platforms even though only Android paints through a sheet, so behaviour does
 not fork per platform. Suppression hides by opacity and drops pointer events —
 it never unmounts the view.
+
+**The Bible reader routes change how the window starts and where it rests,
+and only on those routes (feat-553 KTD10, KTD11).** Outside the reader
+routes, every rule in this section is unchanged.
+
+- **A reader route covers the watch slot and keeps it attached.**
+  `isReaderCovering(segments)` in `presentation.ts` names `reader` and the
+  three reader sheets, not the Bible tab: no watch slot is mounted under the
+  tab. A detach would release the player and restart the video at 0:00, so
+  the slot keeps its rect instead. `coverSlot` in `playbackRequest.ts` runs
+  the same admission step as a detach (`originateSession`). A started video
+  floats in the window. A video that has not started, has ended, or is
+  casting stays hidden and paused, and its autostart turns off.
+- **The cover and the return send no end report.** `uncoverSlot` clears a
+  session that the cover started through `clearWithoutReport` in `store.ts`.
+  The QoE session, the recommendation episode, and the player settings key
+  therefore survive a visit to the reader. A tap on the window over the
+  pushed reader pops back to the watch screen (`expandAction` returns
+  `pop`), so the stack never holds a second watch screen.
+- **Reader routes place the window by device.** This overrides the feat-367
+  rule that a push never moves the window, for reader routes only.
+  `readerCornerPolicy` in `layout.ts` starts the window at the top right on a
+  phone and at the bottom right on an iPad-sized screen. All four corners
+  stay allowed, between the reader's top bar and its footer. The reader keeps
+  its own remembered corner apart from the app's corner, so a drag in one
+  never moves the other. `PlaybackHost` reads the effective corner: the
+  reader corner on reader routes, and the app corner elsewhere.
 
 **Picture-in-picture: one props object, one latch, chrome-only suppression.**
 Every video view that can enter the OS window spreads
@@ -1457,7 +1488,10 @@ disagree about the bar's size.
 - **`PlaybackHost`'s `TAB_BAR_CONTENT_HEIGHT` has the same unfixed shape.** It
   is `TAB_BAR_OCCUPIED_HEIGHT` (49), reserved by the root-mounted mini player,
   so on a 0-inset device the window reserves 49 against an 83pt bar. Not
-  investigated on device; do not copy the pattern.
+  investigated on device; do not copy the pattern. The Bible tab reader
+  corners no longer use it: `readerTabBarReservation` gives an iPhone layout
+  83 minus the root inset. An iPhone SE simulator check on 2026-09-25
+  confirmed it (feat-553).
 
 - **A tab screen's `insets.bottom` ALREADY contains the iOS bar.** Know this
   before you touch a scroll surface. `useTabBarClearance()` returns
@@ -1480,6 +1514,12 @@ disagree about the bar's size.
   reaches a scroll view that is first in the subview chain, and no tab screen
   has one there — on Home that position holds the horizontal hero pager — so
   the screens pad themselves through `useTabBarClearance()` instead.
+- **The Bible tab is the fifth tab (feat-553).** The order in
+  `TAB_ROUTE_NAMES` is Home, Discover, Bible, Library, Profile. The tab
+  renders the shared reader with `host="tab"` and has no scroll surface. The
+  reader puts its footer above the bar through `readerBottomInset` in
+  `src/lib/bible/reader/chrome.ts`, so `tabBarClearance.guard.test.js` pins
+  that function for the Bible row instead of a clearance.
 - **`app/(tabs)/_layout.tsx` MUST stay on disk.** It now serves Android only.
   Do not delete it: expo-router resolves the platform sibling by specificity,
   and it throws without an extension-less fallback file.
@@ -1549,7 +1589,7 @@ disagree about the bar's size.
   and every Android assertion then tests the wrong navigator.
 - **`tabBarLensOrder.guard.test.js` keeps its old name and still does a job.**
   It pins `TAB_ROUTE_NAMES` against the group's route FILES, because expo-router
-  appends an undeclared `app/(tabs)/*` file as a fifth tab, which a scan of
+  appends an undeclared `app/(tabs)/*` file as an extra tab, which a scan of
   either layout cannot see. It reads the `<Tabs.Screen>` order from
   `_layout.tsx`; the iOS trigger order comes from `TAB_ROUTE_NAMES` itself and
   `tabBarLayout.test.tsx` pins that.
@@ -1580,6 +1620,160 @@ disagree about the bar's size.
   probe proved the old code was still live. Terminate and relaunch the dev
   client, and prove the reload landed with an unmistakable colour before
   trusting any measurement.
+
+## Bible reader (feat-553)
+
+The app shows Scripture one verse at a time in a native reader. One shared
+component, `src/components/bible/BibleReader.tsx`, has two hosts: the Bible
+tab (`app/(tabs)/bible.tsx`, `host="tab"`) and the pushed root route
+`app/reader.tsx` (`host="pushed"`). The three sheets are root `formSheet`
+routes in `app/_layout.tsx`: `reader-passage`, `reader-translation`, and
+`reader-settings`. The code lives under `src/lib/bible/` and
+`src/components/bible/`. The design record is
+`docs/plans/2026-09-24-1251-feat-mobile-native-bible-reader-plan.md`; it
+defines the KD, KTD, R, and AE numbers that the source comments cite.
+
+- **The reader's text is not admin's Bible Passage.** The reader shows text
+  from the Free Use Bible API at `bible.helloao.org`, and BSB ships inside the
+  app. The quote card still shows admin's resolved passage (see
+  "Conventions"). A "Read full passage" tap pushes `readerHref(ref, "quote")`
+  at the first cited verse, in BSB numbering. The tap no longer opens
+  `bible.com`, and it does not pause the video. The accessibility label stays
+  "Read full passage", so the Datadog RUM tap series continues (KD17).
+- **One build script makes every bundled Bible file (KTD1).**
+  `scripts/build-bible-data.mjs` writes 66 BSB book files as `.bible` Metro
+  assets under `assets/bible/bsb/`, the catalog snapshot
+  `assets/bible/catalog.bible`, the language table, and the versification
+  table. `metro.config.js` registers the `.bible` extension, and the jest
+  config maps it to the asset transformer. `src/lib/bible/data/bundled.ts`
+  loads a book through `expo-asset` and reads it with the `expo-file-system`
+  `File` API. The loader keeps 66 literal `require()` calls, because Metro
+  finds an asset only through a static require. Do not merge the books into
+  one JSON `require()`: Metro inlines JSON as a module, so every update would
+  then carry all of BSB.
+- **Run the script as `pnpm bible:data` in `apps/mobile`.**
+  - `--check` rebuilds every output from `src/lib/bible/data/sources.lock.json`
+    and compares it with the committed files. It needs no network.
+  - No flag writes every output from the lock.
+  - `--refresh` downloads the catalog, the eBible license table, and about
+    1,250 `complete.json` files. That is about 1 GB and takes about 20
+    minutes. The cache is `$TMPDIR/forge-bible-data-cache`, so an interrupted
+    refresh continues without a second download. Set `BIBLE_DATA_CACHE_DIR`
+    to move the cache.
+  - The script runs under `node --import tsx` and loads the app's TypeScript
+    modules through `createRequire`. A plain `node` run fails with a message
+    that names `pnpm bible:data`.
+- **A defective upstream book is omitted, never the whole translation.** The
+  normalizer lists the book in `omittedBooks`, and the R25 fallback shows that
+  book from the phone language's default translation or from BSB. A verse 0
+  before verse 1 is a hidden title. A verse 0 after a verse is a parser split
+  that loses text (for example, `por_tft` MAT 14:21), so the normalizer omits
+  that book. On 2026-09-25 the catalog kept 1,252 translations and omitted 146
+  books.
+- **Text storage splits by lifetime (KTD2).** A downloaded translation lives
+  under `Paths.document` as per-book files plus a manifest, so iOS never
+  purges it. The store writes the manifest last, and a folder without a
+  complete manifest is not a download. A chapter read on demand lives under
+  `Paths.cache`, keyed by translation, book, chapter, and the catalog
+  `sha256`. That cache holds at most 30 MB and removes the oldest chapter
+  first (KD24). AsyncStorage holds only the small position and settings
+  records. The download button reads its state from the manifest and the
+  files, never from a flag. The reader uses only the `expo-file-system`
+  package root, never `/legacy`.
+- **Every chapter read from `bible.helloao.org` has a time limit and a byte
+  limit (KTD3).** The limits are 8 seconds and 512 KB, and each failure is a
+  typed reason in `src/lib/bible/repository/errors.ts`. A whole-translation
+  download stops past 32 MB, and only one download runs at a time (KTD4).
+- **Verse numbers convert through the Copenhagen Alliance mappings (KTD6).**
+  The reading position is stored in BSB numbering, and each translation shows
+  its own numbers (R38, R42). A conversion goes from BSB to `org`, then to the
+  translation's system, and back the same way. `src/lib/bible/versification/`
+  vendors the `org`, `eng`, `lxx`, `vul`, `rsc`, and `rso` files (CC BY-SA
+  4.0).
+  - The generated `bsb` system is `eng` plus BSB's two chapter-end joins: BSB
+    3 John 1:14 holds `eng` 1:14-15, and BSB Revelation 12:17 holds `eng`
+    12:17-18.
+  - An erratum in `compact.ts` adds `ISA 64:1 = org 63:19`, which the vendored
+    `eng.json` does not have. The vendored file stays the same as upstream.
+  - The build script classifies each BOOK, not each translation, because some
+    Bibles mix systems. It reads the last verse of each chapter from
+    `complete.json`, for the discriminating chapters only, and stores those
+    numbers in `sources.lock.json`. The plan's first input, the book totals in
+    `books.json`, put about 1 book in 8 in the wrong system.
+  - `translationSystemOverrides.ts` wins over the classifier. A translation
+    that numbers every book as `eng` has no row in
+    `translationSystems.generated.ts`.
+  - At run time, a shown chapter whose last verse differs from
+    `mappedLastVerse` logs `bible_reader.versification_mismatch`.
+- **The mini player floats over the reader (KTD10, KTD11).** "Mini player and
+  the root-owned playback session" holds the cover and the corner rules. The
+  reader reads the window frame through `useFloatingObstacles`, so the
+  verse box stays clear of the window (R10). The pushed reader narrows the
+  iOS 26 back swipe to the left edge strip, as the watch screen does.
+- **The verse stays centered while it fits; it moves before it scrolls
+  (KD27).** `verseBoxes` in `src/lib/bible/fit/verseBox.ts` gives a centered
+  box and a free box (all the room between the obstacles). `planPlacedFit` in
+  `fitVerse.ts` fits the verse in the centered box, down to the floor. Only a
+  verse that would scroll there moves to the free box, fits again, and
+  scrolls only if it still does not fit. The measured heights serve both
+  boxes, so the move adds no layout pass. Loading, a message, and the gap
+  note are not measured: `unmeasuredBox` keeps them centered unless that box
+  is under `MIN_CENTERED_AREA_HEIGHT` (160). The case that needs this is a
+  short screen: on the iPhone SE Bible tab, a bottom-corner window sits at
+  the screen center, and the swipe hint raises the footer. The Bible tab
+  reserves the whole 83pt iOS bar for the window (`readerTabBarReservation`
+  in `PlaybackHost.tsx`), so a 34pt-inset phone cannot show either case.
+  Check on an iPhone SE.
+- **A verse move slides (owner, 2026-09-25).** `VerseSlider` slides the old
+  verse out and the new verse in over 0.3 s: up for the next verse, down for
+  the one before. Swipes, the arrow pair, and the screen reader's verse
+  actions share the `slide` signal from `useReaderMovement`. A chapter swipe,
+  a picker jump, and a scrub do not slide, and Reduce Motion turns the slide
+  off. The old verse is a still copy (`VerseSnapshot`, test ids
+  `bible-verse-outgoing*`), so only one live verse and one `bible-verse`
+  exist. Across a chapter load (and the translation wait before a new
+  book), the copy waits in place for at most `VERSE_SLIDE_HOLD_MS`. A load
+  that fails ends the move, so a later load does not slide. The first-run demo plays three cycles with a pause
+  after each, then fades (`swipeDemoTimeline.ts`, one animated clock).
+- **The iPad reader rotates to landscape, and it keeps the portrait rules
+  (KD25).** The app locks to portrait, but iPadOS can ignore that lock for an
+  app that supports multitasking. The owner decided on 2026-09-25 that the
+  landscape reader keeps the portrait layout and corner rules. Do not add a
+  landscape layout without a new owner decision.
+- **Reader telemetry: six `bible_reader.*` events with `reader_*` attributes
+  (KTD18, R37).** `src/lib/bible/telemetry.ts` holds every emit site, and
+  each context is an inline object literal, so
+  `datadogReservedAttributes.guard.test.js` can read it. No event carries
+  verse text, a response body, or personal data. An absent id or reason is
+  `"none"`, and an absent number is `0`.
+  - `bible_reader.opened` (`reader_source`: `quote`, `link`, or `tab`) and
+    `bible_reader.visit_ended` (`reader_source`, `reader_verse_count`) come
+    from `useReaderVisitTelemetry` in `BibleReader`. A visit runs from focus
+    to blur, per host. A blur to one of the reader's own three sheets does not
+    end the visit, so a sheet round trip is one visit and one open. The
+    verse count is the number of different BSB verse positions that the
+    visit showed.
+  - `bible_reader.translation_changed` (`reader_change`,
+    `reader_from_translation_id`, `reader_to_translation_id`) comes from the
+    translation picker (`picked`) and from R31's switch (`switched`).
+  - `bible_reader.download` (`reader_translation_id`, `reader_outcome`,
+    `reader_reason`, `reader_download_bytes`) comes from `runDownloadAction`
+    when the download ends. The bytes are the catalog size.
+  - `bible_reader.chapter_fetch_failed` (`reader_translation_id`,
+    `reader_book`, `reader_chapter`, `reader_reason`, `reader_http_status`)
+    comes from the fetch binding in `downloadRuntime.ts`, once per network
+    fetch. The repository shares one fetch between the two hosts.
+  - `bible_reader.versification_mismatch` (`reader_translation_id`,
+    `reader_book`, `reader_chapter`, `reader_system`,
+    `reader_mapped_last_verse`, `reader_actual_last_verse`) fires once per
+    translation, book, and chapter in each app process.
+- **`expo-clipboard` moved the fingerprint runtime version (KTD15).** A
+  native build (TestFlight and Play internal) must ship before any update
+  from this work reaches testers. Until then, `eas update` exits 0 and
+  reaches nobody.
+- **In a worktree under `.claude/worktrees/`, run jest with
+  `--no-watchman`.** Watchman roots its watch at the main checkout there, and
+  its crawl covers every worktree.
 
 ## Component render tests
 

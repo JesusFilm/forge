@@ -62,6 +62,7 @@ function citation(
     documentId,
     osisId: "Gen.1.26",
     bookName: "Genesis",
+    bookUsfm: "GEN",
     chapterStart: 1,
     chapterEnd: null,
     verseStart: 26,
@@ -300,7 +301,6 @@ describe("useBibleVerses", () => {
     expect(verseCards(state)[0]).toMatchObject({
       reference: "Genesis 1:26-27",
       text: "",
-      passageUrl: null,
       loading: false,
     })
     expect(mockWarn).toHaveBeenCalledWith(
@@ -357,7 +357,6 @@ describe("useBibleVerses", () => {
       text: "",
       translation: null,
       copyright: null,
-      passageUrl: null,
     })
     expect(mockInfo).toHaveBeenCalledWith(
       "bible_passages.degraded",
@@ -641,6 +640,7 @@ function variant(overrides: Partial<WatchVariant> = {}): WatchVariant {
     languageSlug: null,
     languageName: null,
     languageNameNative: null,
+    languageIso3: null,
     muxPlaybackId: "playbackA",
     ...overrides,
   }
@@ -1057,5 +1057,138 @@ describe("useBibleVerses card artwork", () => {
       tier: "stock",
       has_playback_id: true,
     })
+  })
+})
+
+// ── Reader start (feat-553 U12, KTD17) ───────────────────────────────────────
+
+describe("useBibleVerses reader start", () => {
+  beforeEach(quietPassageRead)
+
+  /** Every field written out, so no sibling field can steer the branch. */
+  function johnCitation(
+    overrides: Partial<WatchBibleCitation> = {},
+  ): WatchBibleCitation {
+    return {
+      documentId: "c1",
+      osisId: "John.3.16-John.3.17",
+      bookName: "John",
+      bookUsfm: "JHN",
+      chapterStart: 3,
+      chapterEnd: null,
+      verseStart: 16,
+      verseEnd: 17,
+      order: 0,
+      ...overrides,
+    }
+  }
+
+  async function startFor(citationRow: WatchBibleCitation) {
+    const hook = renderHook({ slug: "jesus", citations: [citationRow] })
+    await flush()
+    return verseCards(hook.latest())[0]?.citationStart
+  }
+
+  // Covers AE1 (the card half): the reader opens at the FIRST cited verse.
+  it("opens John 3:16-17 at John 3:16", async () => {
+    expect(await startFor(johnCitation())).toEqual({
+      book: "JHN",
+      chapter: 3,
+      verse: 16,
+    })
+  })
+
+  // Covers AE11 (the card half). The card passes BSB numbering; the reader
+  // converts it to the translation's own numbering (Synodal Psalm 22:1).
+  it("passes Psalm 23:1 in BSB numbering", async () => {
+    expect(
+      await startFor(
+        johnCitation({
+          osisId: "Ps.23.1",
+          bookName: "Psalms",
+          bookUsfm: "PSA",
+          chapterStart: 23,
+          verseStart: 1,
+          verseEnd: null,
+        }),
+      ),
+    ).toEqual({ book: "PSA", chapter: 23, verse: 1 })
+  })
+
+  // R1: a citation with no verse opens verse 1.
+  it("opens verse 1 for a whole-chapter citation", async () => {
+    expect(
+      await startFor(johnCitation({ verseStart: null, verseEnd: null })),
+    ).toEqual({ book: "JHN", chapter: 3, verse: 1 })
+  })
+
+  // A verse BSB does not have would make the reader open the saved position.
+  it("opens verse 1 of the chapter for a verse BSB does not have", async () => {
+    expect(await startFor(johnCitation({ verseStart: 99 }))).toEqual({
+      book: "JHN",
+      chapter: 3,
+      verse: 1,
+    })
+  })
+
+  it("gives no start for a citation with no book", async () => {
+    expect(await startFor(johnCitation({ bookUsfm: null }))).toBeNull()
+  })
+
+  it("gives no start for a citation with no chapter", async () => {
+    expect(await startFor(johnCitation({ chapterStart: null }))).toBeNull()
+  })
+
+  // John has 21 chapters.
+  it("gives no start for a chapter BSB does not have", async () => {
+    expect(await startFor(johnCitation({ chapterStart: 22 }))).toBeNull()
+  })
+
+  // R1: the button does not depend on admin's text.
+  it("keeps the start when admin resolved no passage", async () => {
+    mockGetClient.mockReturnValue({
+      query: jest
+        .fn()
+        .mockResolvedValue(response([{ documentId: "c1", passage: null }])),
+    })
+    const hook = renderHook({ slug: "jesus", citations: [johnCitation()] })
+    await flush()
+
+    const card = verseCards(hook.latest())[0]
+    expect(card?.text).toBe("")
+    expect(card?.citationStart).toEqual({ book: "JHN", chapter: 3, verse: 16 })
+  })
+
+  // The scope boundary: the card keeps admin's own resolved text.
+  it("leaves the card's admin-resolved text unchanged", async () => {
+    mockGetClient.mockReturnValue({
+      query: jest.fn().mockResolvedValue(
+        response([
+          {
+            documentId: "c1",
+            passage: rawPassage({
+              content: "For God so loved the world…",
+              humanReference: "John 3:16-17",
+              versionTitle: "Berean Standard Bible",
+            }),
+          },
+        ]),
+      ),
+    })
+    const hook = renderHook({ slug: "jesus", citations: [johnCitation()] })
+    await flush()
+
+    expect(verseCards(hook.latest())[0]).toMatchObject({
+      reference: "John 3:16-17",
+      text: "For God so loved the world…",
+      translation: "Berean Standard Bible",
+      citationStart: { book: "JHN", chapter: 3, verse: 16 },
+    })
+  })
+
+  it("gives the promotional card no start", async () => {
+    const hook = renderHook({ slug: "jesus", citations: [johnCitation()] })
+    await flush()
+    expect(hook.latest().cards.at(-1)?.citationStart).toBeNull()
   })
 })

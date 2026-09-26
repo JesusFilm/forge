@@ -19,6 +19,8 @@ export type SheetListParams<T> = {
   getSelectionId: (item: T) => string
   getPrimaryLabel: (item: T) => string
   getSearchValues: (item: T) => (string | null | undefined)[]
+  // Keep `rows` in the caller's order instead of sorting them by primary label.
+  keepRowOrder?: boolean
 }
 
 export type SheetListResult<T> = {
@@ -26,8 +28,9 @@ export type SheetListResult<T> = {
   filtered: T[]
 }
 
-// Sort by primary label, resolve the active row, then filter by query and drop the
-// active row from the list (it renders in the "Current" section instead).
+// Sort by primary label (unless the caller keeps its order), resolve the active
+// row, then filter by query and drop the active row from the list (it renders in
+// the "Current" section instead).
 export function assembleSheetList<T>({
   rows,
   activeId,
@@ -35,24 +38,27 @@ export function assembleSheetList<T>({
   getSelectionId,
   getPrimaryLabel,
   getSearchValues,
+  keepRowOrder = false,
 }: SheetListParams<T>): SheetListResult<T> {
-  const sorted = [...rows].sort((a, b) =>
+  const byLabel = (a: T, b: T) =>
     getPrimaryLabel(a)
       .toLowerCase()
-      .localeCompare(getPrimaryLabel(b).toLowerCase()),
-  )
-  const active =
-    sorted.find((item) => getSelectionId(item) === activeId) ?? null
+      .localeCompare(getPrimaryLabel(b).toLowerCase())
+  const isActive = (item: T) => getSelectionId(item) === activeId
 
-  let list = sorted
+  // Sort only the matches, so that when two rows share the id, the first by
+  // label wins in both orders.
+  const active = rows.filter(isActive).sort(byLabel)[0] ?? null
+
+  let list = keepRowOrder ? rows : [...rows].sort(byLabel)
   if (query.trim()) {
     const lower = query.toLowerCase()
-    list = sorted.filter((item) =>
+    list = list.filter((item) =>
       getSearchValues(item).some(
         (value) => value != null && value.toLowerCase().includes(lower),
       ),
     )
   }
-  const filtered = list.filter((item) => getSelectionId(item) !== activeId)
+  const filtered = list.filter((item) => !isActive(item))
   return { active, filtered }
 }

@@ -1,0 +1,93 @@
+{
+  "translation": {
+    "id": "gue_wbt",
+    "name": "Ruth + selections",
+    "website": "https://ebible.org/Scriptures/details.php?id=gue",
+    "licenseUrl": "https://ebible.org/Scriptures/details.php?id=gue",
+    "shortName": "WBT",
+    "englishName": "Gurindji Scripture Portions",
+    "language": "gue",
+    "textDirection": "ltr",
+    "sha256": "34648b0ce0a6556760ba9daa66eac03c198e897cb0822f7663d6e43391f5ce09",
+    "availableFormats": ["json"],
+    "listOfBooksApiLink": "/api/gue_wbt/books.json",
+    "completeTranslationApiLink": "/api/gue_wbt/complete.json",
+    "simpleCompleteTranslationApiLink": "/api/gue_wbt/complete.simple.json",
+    "numberOfBooks": 5,
+    "totalNumberOfChapters": 8,
+    "totalNumberOfVerses": 49,
+    "languageName": "Gurindji",
+    "languageEnglishName": "Gurindji"
+  },
+  "book": {
+    "id": "JHN",
+    "translationId": "gue_wbt",
+    "name": "John",
+    "commonName": "John",
+    "title": "John",
+    "order": 43,
+    "numberOfChapters": 1,
+    "sha256": "b7cc1c220e995c395e4b7d4ec527688a0bd479d3cc0638adda3b17bac6c32447",
+    "firstChapterNumber": 3,
+    "firstChapterApiLink": "/api/gue_wbt/JHN/3.json",
+    "firstChapterReference": {
+      "translationId": "gue_wbt",
+      "book": "JHN",
+      "chapter": 3
+    },
+    "lastChapterNumber": 3,
+    "lastChapterApiLink": "/api/gue_wbt/JHN/3.json",
+    "lastChapterReference": {
+      "translationId": "gue_wbt",
+      "book": "JHN",
+      "chapter": 3
+    },
+    "totalNumberOfVerses": 2
+  },
+  "chapter": {
+    "number": 3,
+    "content": [
+      {
+        "type": "verse",
+        "number": 16,
+        "content": [
+          "Ngajinku ngungali ngawututu manana walikkujarra jarrwalut. Kuyangka, ngaji-nku jalak yuwani nyanuny ngalawuny. Nyamulu ngungu manku nyanuny karu, kulan tampang karru Ngulu karru wanyji ngajik-parni."
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 17,
+        "content": [
+          "Ngajinku ngu jalak mani nyanuny ngalawuny nyawangkirri janjankirri. Kula jalak mani nyilarra wankawankatju ngulikarru wanyji yanuntja."
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "thisChapterLink": "/api/gue_wbt/JHN/3.json",
+  "thisChapterReference": {
+    "translationId": "gue_wbt",
+    "book": "JHN",
+    "chapter": 3
+  },
+  "thisChapterAudioLinks": {},
+  "nextChapterApiLink": "/api/gue_wbt/ACT/1.json",
+  "nextChapterReference": {
+    "translationId": "gue_wbt",
+    "book": "ACT",
+    "chapter": 1
+  },
+  "nextChapterAudioLinks": {},
+  "previousChapterApiLink": "/api/gue_wbt/LUK/2.json",
+  "previousChapterReference": {
+    "translationId": "gue_wbt",
+    "book": "LUK",
+    "chapter": 2
+  },
+  "previousChapterAudioLinks": {},
+  "thisChapterAudioTimings": {},
+  "nextChapterAudioTimings": {},
+  "previousChapterAudioTimings": {},
+  "numberOfVerses": 2,
+  "simpleChapterApiLink": "/api/gue_wbt/JHN/3.simple.json"
+}

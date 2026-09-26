@@ -70,3 +70,54 @@ describe("every scroll surface clears the floating tab bar", () => {
     expect(SURFACES).toHaveLength(7)
   })
 })
+
+// Each tab route file names the surface that clears the bar for it. A new tab
+// must add a row here, so it cannot escape the list above without notice.
+const TAB_ROUTES = {
+  index: { surface: "src/components/home/HomeScreen.tsx" },
+  watch: { surface: "app/(tabs)/watch.tsx" },
+  library: { surface: "app/(tabs)/library.tsx" },
+  profile: { surface: "app/(tabs)/profile.tsx" },
+  // feat-553: no scroll surface. The reader puts its footer above the bar
+  // with readerBottomInset, from the tab screen's own inset (chrome.ts).
+  bible: { reader: "app/(tabs)/bible.tsx" },
+}
+
+function tabRouteNames() {
+  return fs
+    .readdirSync(path.join(ROOT, "app/(tabs)"), { withFileTypes: true })
+    .filter((e) => !e.name.startsWith("_"))
+    .filter((e) => e.isDirectory() || /\.[jt]sx?$/.test(e.name))
+    .map((e) => e.name.replace(/\.[jt]sx?$/, ""))
+    .sort()
+}
+
+describe("every tab route is accounted for", () => {
+  it("has one row per route file in app/(tabs)", () => {
+    expect(tabRouteNames()).toEqual(Object.keys(TAB_ROUTES).sort())
+  })
+
+  it.each(Object.entries(TAB_ROUTES).filter(([, row]) => row.surface))(
+    "%s clears the bar through an enumerated surface",
+    (_name, row) => {
+      expect(SURFACES).toContain(row.surface)
+    },
+  )
+
+  it("puts the Bible tab's reader on the tab host, which clears the bar", () => {
+    const source = stripComments(
+      fs.readFileSync(path.join(ROOT, TAB_ROUTES.bible.reader), "utf8"),
+    )
+    expect(source).toMatch(/<BibleReader\b[^>]*\bhost="tab"/)
+    const chrome = stripComments(
+      fs.readFileSync(
+        path.join(ROOT, "src/lib/bible/reader/chrome.ts"),
+        "utf8",
+      ),
+    )
+    // Only Android's tab takes no inset; its bar sits below the screen.
+    expect(chrome).toMatch(
+      /if \(host === "tab" && platform !== "ios"\) return 0\s+return safeAreaBottom/,
+    )
+  })
+})

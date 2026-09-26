@@ -21,6 +21,7 @@ function variant(fields: Partial<WatchVariant> = {}): WatchVariant {
     languageSlug: null,
     languageName: null,
     languageNameNative: null,
+    languageIso3: null,
     muxPlaybackId: "playbackA",
     ...fields,
   }
@@ -33,6 +34,7 @@ function citation(
     documentId: "cit-1",
     osisId: null,
     bookName: "Hebrews",
+    bookUsfm: "HEB",
     chapterStart: 1,
     chapterEnd: null,
     verseStart: 1,

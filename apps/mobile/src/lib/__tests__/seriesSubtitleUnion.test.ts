@@ -36,6 +36,7 @@ function variant(
     languageSlug,
     languageName: languageSlug,
     languageNameNative: null,
+    languageIso3: null,
     muxPlaybackId: null,
   }
 }

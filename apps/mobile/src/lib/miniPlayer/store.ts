@@ -114,6 +114,9 @@ export function createMiniPlayerStore() {
   const listeners = new Set<() => void>()
   const endListeners = new Set<(event: MiniPlayerEndEvent) => void>()
   let auth: MiniPlayerAuthSource | null = null
+  // Set by the dismissal that armed the current exit, so a deferred exit keeps
+  // the choice made when the viewer closed the window.
+  let exitReports = true
 
   function currentAccountId(): string | null {
     const authSnapshot = auth?.getSnapshot()
@@ -157,7 +160,17 @@ export function createMiniPlayerStore() {
     const session = snapshot.session
     if (!session) return
     commit({ ...snapshot, dismissal: "exiting" })
-    reportEnd(session, "dismissed")
+    if (exitReports) reportEnd(session, "dismissed")
+  }
+
+  function dismiss(reports: boolean) {
+    if (!snapshot.session || snapshot.dismissal !== "none") return
+    exitReports = reports
+    if (snapshot.pipHold) {
+      commit({ ...snapshot, dismissal: "deferred" })
+      return
+    }
+    beginExit()
   }
 
   return {
@@ -274,12 +287,14 @@ export function createMiniPlayerStore() {
      * picture-in-picture hold is set (R6, R24).
      */
     requestDismiss(): void {
-      if (!snapshot.session || snapshot.dismissal !== "none") return
-      if (snapshot.pipHold) {
-        commit({ ...snapshot, dismissal: "deferred" })
-        return
-      }
-      beginExit()
+      dismiss(true)
+    },
+
+    /** feat-553 KTD10: a window closed over the reader exits as usual but ends
+     *  with no report, so the quality session, the recommendation episode and
+     *  the settings survive for the return. */
+    dismissWithoutReport(): void {
+      dismiss(false)
     },
 
     /**
@@ -300,6 +315,13 @@ export function createMiniPlayerStore() {
       if (!session) return
       commit({ session: null, dismissal: "none", pipHold: snapshot.pipHold })
       reportEnd(session, reason)
+    },
+
+    /** feat-553 KTD10: the reader cover's return. The viewer never ended this
+     *  session, so the screen goes back to its state before the cover. */
+    clearWithoutReport(): void {
+      if (!snapshot.session) return
+      commit({ session: null, dismissal: "none", pipHold: snapshot.pipHold })
     },
 
     /** The picture-in-picture latch (KTD12), fed from the video view's own

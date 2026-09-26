@@ -7,11 +7,6 @@
  * regions left the other two byte-identical.
  */
 
-const mockOpenPassageSheet = jest.fn()
-jest.mock("../../../lib/openPassageSheet", () => ({
-  openPassageSheet: (...args: unknown[]) => mockOpenPassageSheet(...args),
-}))
-
 /**
  * A jest.fn component is the assertion surface: zero calls means no image
  * element, which is what stops the prop cases below passing against an absent
@@ -51,7 +46,12 @@ import {
   verseTypography,
 } from "../../../lib/bibleCardFit"
 import { computeTypographyScale } from "../../../hooks/useTypography"
-import { BibleQuotesCarouselRenderer } from "../BibleQuotesCarouselRenderer"
+import { readerHref } from "../../../lib/bible/routes/readerRoute"
+import type { VerseRef } from "../../../lib/bible/versification/convert"
+import {
+  BibleQuotesCarouselRenderer,
+  READER_OPEN_DEBOUNCE_MS,
+} from "../BibleQuotesCarouselRenderer"
 import {
   TestRenderer,
   press,
@@ -72,8 +72,18 @@ const PASSAGE_QUOTE: Quote = {
   ctaLink: null,
   translation: "World English Bible British Edition",
   copyright: "Public Domain",
-  passageUrl: "https://www.bible.com/bible/206/GEN.1.26-GEN.1.27.WEBBE",
+  citationStart: { book: "GEN", chapter: 1, verse: 26 },
   loading: false,
+}
+
+/** The AE1 card, as `useBibleVerses` composes it for John 3:16-17. */
+const JOHN_QUOTE: Quote = {
+  ...PASSAGE_QUOTE,
+  reference: "John 3:16-17",
+  text: "For God so loved the world that He gave His one and only Son…",
+  translation: "Berean Standard Bible",
+  copyright: "Public Domain",
+  citationStart: { book: "JHN", chapter: 3, verse: 16 },
 }
 
 // Exactly the shape admin's Experience quote type produces: authored text, and
@@ -96,6 +106,7 @@ const EXPERIENCE_QUOTE: Quote = {
 function renderAtSize(
   quotes: Quote[],
   size: { width: number; fontScale: number },
+  onOpenReader?: (start: VerseRef) => void,
 ): TestInstance {
   const real = Dimensions.get
   const spy = jest
@@ -111,7 +122,7 @@ function renderAtSize(
         : real(dim),
     )
   try {
-    return render(quotes)
+    return render(quotes, undefined, onOpenReader)
   } finally {
     spy.mockRestore()
   }
@@ -135,6 +146,7 @@ const mounted: TestInstance[] = []
 function render(
   quotes: Quote[],
   onArtworkFailed?: (cardIndex: number, failedUrl: string) => void,
+  onOpenReader?: (start: VerseRef) => void,
 ): TestInstance {
   let renderer!: TestInstance
   act(() => {
@@ -143,6 +155,7 @@ function render(
         <BibleQuotesCarouselRenderer
           section={sectionOf(quotes)}
           onArtworkFailed={onArtworkFailed}
+          onOpenReader={onOpenReader}
         />
       ) as React.ReactElement,
     )
@@ -361,24 +374,40 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
     expect(flatStyle(cta).textShadowColor).toBeDefined()
   })
 
-  // Covers AE3.
-  it("renders a reference alone when the card has no passage", () => {
-    const renderer = render([
-      {
-        ...PASSAGE_QUOTE,
-        text: "",
-        translation: null,
-        copyright: null,
-        passageUrl: null,
-      },
-    ])
+  // Covers AE3, as R1 (feat-553) changed it: no verse and no credit, but the
+  // button still opens the reader, which needs no admin text.
+  it("renders the reference and the button when the card has no passage", () => {
+    const renderer = render(
+      [
+        {
+          ...PASSAGE_QUOTE,
+          text: "",
+          translation: null,
+          copyright: null,
+        },
+      ],
+      undefined,
+      jest.fn(),
+    )
 
     expect(findText(renderer, "GENESIS 1:26-27")).toBeDefined()
     expect(
       findText(renderer, "World English Bible British Edition"),
     ).toBeUndefined()
     expect(findText(renderer, "Public Domain")).toBeUndefined()
+    expect(passageLinks(renderer)).toHaveLength(1)
+  })
+
+  it("renders no button for a card whose citation has no book", () => {
+    const renderer = render(
+      [{ ...PASSAGE_QUOTE, citationStart: null }],
+      undefined,
+      jest.fn(),
+    )
+
+    expect(findText(renderer, "GENESIS 1:26-27")).toBeDefined()
     expect(findText(renderer, "Read full passage")).toBeUndefined()
+    expect(passageLinks(renderer)).toHaveLength(0)
   })
 
   // Covers AE8.
@@ -401,7 +430,6 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
         text: "",
         translation: null,
         copyright: null,
-        passageUrl: null,
         loading: true,
       },
     ])
@@ -413,8 +441,8 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
 
   // The affordance disables itself when no handler is wired, so a link with no
   // behaviour can never reach a viewer through a landing-order mistake.
-  it("renders a tappable link now that a handler is wired", () => {
-    const renderer = render([PASSAGE_QUOTE])
+  it("renders a tappable link when a handler is wired", () => {
+    const renderer = render([PASSAGE_QUOTE], undefined, jest.fn())
 
     const links = passageLinks(renderer)
     expect(links.length).toBeGreaterThan(0)
@@ -423,20 +451,128 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
     }
   })
 
-  it("opens the passage when the link is pressed", async () => {
+  it("disables the link when no handler is wired", () => {
     const renderer = render([PASSAGE_QUOTE])
+
+    const links = passageLinks(renderer)
+    expect(links.length).toBeGreaterThan(0)
+    for (const link of links) {
+      expect(link.props.disabled).toBe(true)
+    }
+  })
+
+  // KTD17: the button gates on the citation alone.
+  it("shows no button with no citation start", () => {
+    const renderer = render(
+      [{ ...PASSAGE_QUOTE, citationStart: undefined }],
+      undefined,
+      jest.fn(),
+    )
+
+    expect(passageLinks(renderer)).toHaveLength(0)
+  })
+})
+
+// ── The reader entry (feat-553 U12, KTD17) ─────────────────────────────────
+
+describe("BibleQuotesCarouselRenderer — Read full passage opens the reader", () => {
+  // The same composition as the watch route's handler, which the route
+  // guard pins, so this case proves the whole tap-to-push path.
+  function routeHandler(push: jest.Mock) {
+    return (start: VerseRef) => push(readerHref(start, "quote"))
+  }
+
+  // Covers AE1 (handler half). KD3, no pause on the tap path, is pinned by
+  // app/watch/__tests__/bibleQuotesReader.guard.test.js.
+  it("pushes the reader at John 3:16", async () => {
+    const push = jest.fn()
+    const renderer = render([JOHN_QUOTE], undefined, routeHandler(push))
 
     await press(passageLinks(renderer)[0]!)
 
-    expect(mockOpenPassageSheet).toHaveBeenCalledWith(PASSAGE_QUOTE.passageUrl)
+    expect(push).toHaveBeenCalledTimes(1)
+    expect(push).toHaveBeenCalledWith({
+      pathname: "/reader",
+      params: { book: "JHN", chapter: "3", verse: "16", source: "quote" },
+    })
   })
 
-  it("renders no link for a passage URL that fails validation", () => {
-    const renderer = render([
-      { ...PASSAGE_QUOTE, passageUrl: "javascript:alert(1)" },
-    ])
+  it("hands the handler the card's own start, once per tap", async () => {
+    const onOpenReader = jest.fn()
+    const renderer = render([JOHN_QUOTE], undefined, onOpenReader)
 
-    expect(findText(renderer, "Read full passage")).toBeUndefined()
+    await press(passageLinks(renderer)[0]!)
+
+    expect(onOpenReader.mock.calls).toEqual([
+      [{ book: "JHN", chapter: 3, verse: 16 }],
+    ])
+  })
+
+  // Two readers must never stack.
+  it("pushes one reader for a double tap", async () => {
+    const now = jest.spyOn(Date, "now").mockReturnValue(1_000_000)
+    const onOpenReader = jest.fn()
+    const renderer = render([JOHN_QUOTE], undefined, onOpenReader)
+    const link = passageLinks(renderer)[0]!
+
+    await press(link)
+    now.mockReturnValue(1_000_000 + 250)
+    await press(link)
+
+    expect(onOpenReader).toHaveBeenCalledTimes(1)
+  })
+
+  // Anti-vacuous: a permanent latch would pass the double-tap case too, and
+  // would strand the button after the viewer comes back from the reader.
+  it("opens the reader again once the debounce has passed", async () => {
+    const now = jest.spyOn(Date, "now").mockReturnValue(1_000_000)
+    const onOpenReader = jest.fn()
+    const renderer = render([JOHN_QUOTE], undefined, onOpenReader)
+    const link = passageLinks(renderer)[0]!
+
+    await press(link)
+    now.mockReturnValue(1_000_000 + READER_OPEN_DEBOUNCE_MS)
+    await press(link)
+
+    expect(onOpenReader).toHaveBeenCalledTimes(2)
+  })
+
+  // R37, KD17: Datadog RUM names the tap from this label. A new label would
+  // start a new tap series and break the before-and-after comparison.
+  it("keeps the accessibility label Read full passage", () => {
+    const renderer = render([JOHN_QUOTE], undefined, jest.fn())
+    const controls = renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.accessibilityRole === "link",
+    )
+
+    expect(controls).toHaveLength(1)
+    expect(controls[0]?.props.accessibilityLabel).toBe("Read full passage")
+    expect(findText(renderer, "Read full passage")).toBeDefined()
+  })
+
+  // R1 at the design-centre Android device. Measured geometry: 1080 px at
+  // density 2.625 is 411.43 dp, with the system text size at 1.3.
+  it("keeps the button and shortens the verse at the Pixel 9a's 1.3 text scale", () => {
+    const renderer = renderAtSize(
+      [JOHN_QUOTE],
+      { width: 411.43, fontScale: 1.3 },
+      jest.fn(),
+    )
+
+    expect(passageLinks(renderer)).toHaveLength(1)
+    const verse = findText(renderer, "For God so loved the world")
+    expect(verse?.props.numberOfLines).toBeGreaterThan(0)
+    expect(verse?.props.numberOfLines).toBeLessThan(VERSE_MAX_LINES)
+    // The credit stays with the verse (R5 of the passages plan).
+    expect(findText(renderer, "Berean Standard Bible")).toBeDefined()
+    expect(findText(renderer, "Public Domain")).toBeDefined()
+  })
+
+  it("shows no button on an Experience card, even with a handler", () => {
+    const renderer = render([EXPERIENCE_QUOTE], undefined, jest.fn())
+    expect(passageLinks(renderer)).toHaveLength(0)
   })
 })
 
@@ -537,14 +673,15 @@ describe("fitPassageCardRegions", () => {
   })
 
   // The reader's text size is the only thing that can overflow the square.
-  it("drops the link first, then shortens the verse, before losing the credit", () => {
+  // feat-553 R1: the verse shortens to make room; the button stays.
+  it("shortens the verse and keeps the button, before losing the credit", () => {
     const scaled = fitPassageCardRegions({
       ...full,
       contentHeight: 303,
-      fontScale: 2,
+      fontScale: 1.5,
     })
 
-    expect(scaled.link).toBe(false)
+    expect(scaled.link).toBe(true)
     expect(scaled.verseLines).toBeLessThan(VERSE_MAX_LINES)
     expect(scaled.verseLines).toBeGreaterThan(0)
     // R5: a rendered verse carries its translation and copyright. Shortening
@@ -559,27 +696,27 @@ describe("fitPassageCardRegions", () => {
   it("drops the verse rather than its credit when nothing else fits", () => {
     const cramped = fitPassageCardRegions({
       ...full,
-      contentHeight: 230,
+      contentHeight: 260,
       fontScale: 2,
     })
 
-    expect(cramped.link).toBe(false)
+    expect(cramped.link).toBe(true)
     expect(cramped.verseLines).toBe(0)
     expect(cramped.translation).toBe(true)
     expect(cramped.copyright).toBe(true)
   })
 
   // Past that point R5 no longer binds — it governs a RENDERED verse, and there
-  // is none. The reference is what the remaining space must protect.
+  // is none. The reference and the button are what the space must protect.
   it("sheds the credit too once there is no verse left to credit", () => {
     const tiny = fitPassageCardRegions({
       ...full,
-      contentHeight: 90,
+      contentHeight: 150,
       fontScale: 2,
     })
 
     expect(tiny.verseLines).toBe(0)
-    expect(tiny.link).toBe(false)
+    expect(tiny.link).toBe(true)
     expect(tiny.copyright).toBe(false)
     expect(tiny.translation).toBe(false)
   })
