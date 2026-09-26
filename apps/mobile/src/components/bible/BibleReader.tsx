@@ -849,12 +849,13 @@ function VerseArea(props: VerseAreaProps) {
         }
       : null
   // The slider stays mounted across a chapter load, so a verse move into the
-  // next chapter still slides (owner, 2026-09-25).
+  // next chapter still slides (owner, 2026-09-25). A move into another book
+  // waits for its translation first, so "waiting" is a load too.
   return (
     <>
       <VerseSlider
         live={live}
-        loading={state.status === "loading"}
+        loading={state.status === "waiting" || state.status === "loading"}
         slide={props.slide}
         reduceMotion={props.reduceMotion}
         clip={props.clip}

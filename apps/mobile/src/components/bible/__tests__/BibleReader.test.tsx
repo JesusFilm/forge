@@ -123,6 +123,7 @@ import {
   READER_LOADING_DELAY_MS,
   type BibleReaderProps,
 } from "../BibleReader"
+import { VERSE_SLIDE_HOLD_MS } from "../VerseSlider"
 
 declare const __dirname: string
 const fs = jest.requireActual<{
@@ -681,6 +682,11 @@ describe("BibleReader — the band it publishes for the mini player", () => {
 })
 
 describe("BibleReader — loading and failure", () => {
+  it("lets a held sliding verse go when the loading indicator shows", () => {
+    // Both start at the same load; equal values keep the two apart.
+    expect(VERSE_SLIDE_HOLD_MS).toBe(READER_LOADING_DELAY_MS)
+  })
+
   it("shows the loading indicator for a pending fetch, then the verse", async () => {
     jest.useFakeTimers()
     const pending = deferred<ChapterFetchResult>()

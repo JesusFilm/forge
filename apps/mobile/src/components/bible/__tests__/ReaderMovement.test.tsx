@@ -602,6 +602,26 @@ describe("the verse slide", () => {
     expect(outgoing(renderer)).toHaveLength(1)
   })
 
+  it("holds the old verse while the next book's translation resolves", async () => {
+    const { renderer } = await openAt({ book: "GEN", chapter: 50, verse: 26 })
+    const [verse] = byTestId(renderer, "bible-verse")
+    // A synchronous act stops before the translation resolves ("waiting").
+    act(() =>
+      (verse!.props.onAccessibilityAction as (event: unknown) => void)({
+        nativeEvent: { actionName: "increment" },
+      }),
+    )
+    expect(byTestId(renderer, "bible-verse")).toHaveLength(0)
+    expect(outgoing(renderer)).toHaveLength(1)
+    expect(outgoingText(renderer)).toContain("So Joseph died")
+
+    await flush()
+    await settleFit(renderer)
+    expect(pillPassage(renderer)).toBe("Exodus 1:1")
+    expect(outgoingText(renderer)).toContain("So Joseph died")
+    expect(liveText(renderer)).toContain("the names of the sons of Israel")
+  })
+
   it("starts after a short wait when the new verse never reports its fit", async () => {
     jest.useFakeTimers()
     const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })

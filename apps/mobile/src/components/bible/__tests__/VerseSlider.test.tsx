@@ -169,4 +169,21 @@ describe("VerseSlider across a chapter load", () => {
     await render(props({ live: null, loading: false, slide: FORWARD }))
     expect(copies()).toHaveLength(0)
   })
+
+  it("ends the move when the load fails, so a later load does not slide", async () => {
+    await render(props({ live: live("JHN.3:35", LAST) }))
+    await settle()
+    await render(props({ live: null, loading: true, slide: FORWARD }))
+    expect(copies()).toHaveLength(1)
+    // The chapter fails before the hold ends.
+    await render(props({ live: null, loading: false, slide: FORWARD }))
+    expect(copies()).toHaveLength(0)
+
+    // Retry, a chapter swipe, or a jump loads again with the same slide id.
+    await render(props({ live: null, loading: true, slide: FORWARD }))
+    expect(copies()).toHaveLength(0)
+    await render(props({ live: live("JHN.4:0", FIRST), slide: FORWARD }))
+    await settle()
+    expect(copies()).toHaveLength(0)
+  })
 })

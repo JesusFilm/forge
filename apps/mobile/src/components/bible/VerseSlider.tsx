@@ -52,7 +52,8 @@ type Outgoing = {
 
 export type VerseSliderProps = {
   live: LiveVerse | null
-  /** The next verse's chapter is loading; only then does the old verse wait. */
+  /** The next verse's translation or chapter is loading; only then does the
+   *  old verse wait. */
   loading: boolean
   slide: VerseSlide | null
   reduceMotion: boolean
@@ -122,13 +123,20 @@ export function VerseSlider({
   } else if (live && source && !sameSource(tracked.source, source)) {
     setTracked({ ...tracked, source })
   }
-  const holding = !live && loading && pending !== null
+  const awaitingLive = !live && pending !== null
+  const holding = awaitingLive && loading
 
+  // A load that ends with no verse (a failure) ends the move, so a later
+  // jump, chapter swipe, or Retry cannot bring the old verse back to slide.
   useEffect(() => {
-    if (!holding) return
+    if (!awaitingLive) return
+    if (!loading) {
+      setExpired(slideId)
+      return
+    }
     const timer = setTimeout(() => setExpired(slideId), VERSE_SLIDE_HOLD_MS)
     return () => clearTimeout(timer)
-  }, [holding, slideId])
+  }, [awaitingLive, loading, slideId])
 
   const onShown = useCallback(
     (next: ShownVerse) => {

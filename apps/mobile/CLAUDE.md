@@ -1467,7 +1467,8 @@ disagree about the bar's size.
   so on a 0-inset device the window reserves 49 against an 83pt bar. Not
   investigated on device; do not copy the pattern. The Bible tab reader
   corners no longer use it: `readerTabBarReservation` gives an iPhone layout
-  83 minus the root inset, and an iPhone SE check confirmed it (feat-551).
+  83 minus the root inset. An iPhone SE simulator check on 2026-09-25
+  confirmed it (feat-551).
 
 - **A tab screen's `insets.bottom` ALREADY contains the iOS bar.** Know this
   before you touch a scroll surface. `useTabBarClearance()` returns
@@ -1707,8 +1708,9 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   a picker jump, and a scrub do not slide, and Reduce Motion turns the slide
   off. The old verse is a still copy (`VerseSnapshot`, test ids
   `bible-verse-outgoing*`), so only one live verse and one `bible-verse`
-  exist. Across a chapter load, the copy waits in place for at most
-  `VERSE_SLIDE_HOLD_MS`. The first-run demo plays three cycles with a pause
+  exist. Across a chapter load (and the translation wait before a new
+  book), the copy waits in place for at most `VERSE_SLIDE_HOLD_MS`. A load
+  that fails ends the move, so a later load does not slide. The first-run demo plays three cycles with a pause
   after each, then fades (`swipeDemoTimeline.ts`, one animated clock).
 - **The iPad reader rotates to landscape, and it keeps the portrait rules
   (KD25).** The app locks to portrait, but iPadOS can ignore that lock for an
