@@ -778,12 +778,17 @@ describe("BibleReader — the chrome", () => {
     const handlers = callbacks()
     const renderer = await render(services, handlers)
 
-    expect(textNodes(renderer, READER_COPY.shownIn("BSB"))).toHaveLength(1)
     const namesShown = (label: string) =>
       label.includes("Berean Standard Bible") &&
       label.includes("Change translation")
     const [label] = controlHostsLabelled(renderer, namesShown)
     expect(controlHostsLabelled(renderer, namesShown)).toHaveLength(1)
+    // The pill is in the top bar now, not the footer (owner, 2026-09-27).
+    const [footer] = byTestId(renderer, "bible-reader-footer")
+    expect(footer).toBeDefined()
+    let ancestor: RenderedNode | null = label!
+    while (ancestor && ancestor !== footer) ancestor = ancestor.parent ?? null
+    expect(ancestor).toBeNull()
     // It also says whose book is missing.
     expect(String(label!.props.accessibilityLabel)).toContain(
       "TUR GEWASIN O BAIBASIT BOUBUN",

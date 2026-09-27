@@ -21,7 +21,6 @@ import {
 import {
   READER_TOUCH_TARGET,
   readerFooterHeight,
-  type ReaderLayout,
 } from "../../../lib/bible/reader/chrome"
 import { READER_COPY } from "../../../lib/bible/reader/copy"
 import { readerTokens } from "../../../lib/bible/theme/palettes"
@@ -81,7 +80,6 @@ async function render(overrides: Partial<SelectionBarProps> = {}) {
   const onClear = jest.fn()
   const props: SelectionBarProps = {
     tokens: TOKENS,
-    layout: "phone",
     bottomInset: 34,
     reference: REFERENCE,
     text: TEXT,
@@ -224,16 +222,13 @@ describe("SelectionBar (R19, KTD15)", () => {
     }
   })
 
-  it.each<ReaderLayout>(["phone", "tablet"])(
-    "takes the %s footer's exact height, so the verse box does not move",
-    async (layout) => {
-      const { renderer } = await render({ layout, bottomInset: 34 })
-      const [bar] = renderer.root.findAll(
-        (node) =>
-          typeof node.type === "string" &&
-          node.props.testID === "bible-selection-bar",
-      )
-      expect(flat(bar!).height).toBe(readerFooterHeight(layout) + 34)
-    },
-  )
+  it("takes the footer's exact height, so the verse box does not move", async () => {
+    const { renderer } = await render({ bottomInset: 34 })
+    const [bar] = renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "bible-selection-bar",
+    )
+    expect(flat(bar!).height).toBe(readerFooterHeight() + 34)
+  })
 })

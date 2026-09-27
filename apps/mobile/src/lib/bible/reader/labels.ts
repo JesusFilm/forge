@@ -75,14 +75,16 @@ export function passageLabel(
 }
 
 export type TranslationLabel = {
+  /** The shown translation's short name (R25: it names what shows). */
   text: string
   accessibilityLabel: string
-  /** R25, R41: the label also says why this translation shows. */
+  /** R25, R41: a stand-in shows; the pill marks it and the label says why. */
   isFallback: boolean
 }
 
-// The footer's translation label. `viewerTranslation` is the rules' choice
-// before the book check, when the catalog lists it.
+// The top bar's translation pill. It has room for the short name only, so the
+// reason for a stand-in is in the accessibility label. `viewerTranslation` is
+// the rules' choice before the book check, when the catalog lists it.
 export function translationLabel(
   shown: ShownTranslation,
   viewerTranslation: CatalogTranslation | null,
@@ -97,7 +99,7 @@ export function translationLabel(
       }
     case "book-fallback":
       return {
-        text: READER_COPY.shownIn(shortName),
+        text: shortName,
         accessibilityLabel: READER_COPY.bookFallback(
           viewerTranslation?.name ?? null,
           name,
@@ -106,7 +108,7 @@ export function translationLabel(
       }
     case "offline-stand-in":
       return {
-        text: `${READER_COPY.offlineStandIn} · ${shortName}`,
+        text: shortName,
         accessibilityLabel: READER_COPY.offlineStandInLabel(name),
         isFallback: true,
       }

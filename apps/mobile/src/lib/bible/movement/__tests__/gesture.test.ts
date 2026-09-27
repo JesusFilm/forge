@@ -13,7 +13,6 @@ const SCREEN = { width: 440, height: 956, top: 62, bottom: 34 }
 
 function zones(edgeGuardWidth = BACK_SWIPE_EDGE_WIDTH) {
   return readerTouchZones({
-    layout: "phone",
     safeAreaTop: SCREEN.top,
     bottomInset: SCREEN.bottom,
     containerHeight: SCREEN.height,
@@ -57,8 +56,7 @@ describe("readerTouchZones + mayStartReaderSwipe (KTD13)", () => {
   })
 
   it("declines a touch that starts in the footer", () => {
-    const footerTop =
-      SCREEN.height - readerFooterHeight("phone") - SCREEN.bottom
+    const footerTop = SCREEN.height - readerFooterHeight() - SCREEN.bottom
     expect(mayStartReaderSwipe({ x: MIDDLE.x, y: footerTop }, zones())).toBe(
       false,
     )
@@ -70,7 +68,6 @@ describe("readerTouchZones + mayStartReaderSwipe (KTD13)", () => {
   it("declines a touch that starts on another control (U9's scrubber or selection bar)", () => {
     const bar = { x: 20, y: 700, width: 400, height: 60 }
     const withBar = readerTouchZones({
-      layout: "phone",
       safeAreaTop: SCREEN.top,
       bottomInset: SCREEN.bottom,
       containerHeight: SCREEN.height,

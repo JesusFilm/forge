@@ -15,14 +15,13 @@ export const READER_COPY = {
   choosePassage: (passage: string) => `${passage}. Choose a passage`,
   choosePassageWaiting: "Choose a passage",
   translation: (name: string) => `Translation: ${name}. Change translation`,
+  chooseTranslationWaiting: "Change translation",
   /** R25: the book is not in the viewer's translation. */
-  shownIn: (shortName: string) => `Shown in ${shortName}`,
   bookFallback: (viewerName: string | null, shownName: string) =>
     viewerName
       ? `${viewerName} does not have this book. Shown in ${shownName}. Change translation`
       : `This book is shown in ${shownName}. Change translation`,
   /** R41: BSB stands in for a default translation that is not on the device. */
-  offlineStandIn: "Offline",
   offlineStandInLabel: (shownName: string) =>
     `You are offline. Shown in ${shownName}. Change translation`,
   counter: (first: number, last: number, total: number) =>

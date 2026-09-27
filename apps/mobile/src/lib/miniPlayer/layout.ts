@@ -208,7 +208,7 @@ export function readerCornerPolicy(input: {
     chrome: {
       top: READER_CHROME_HEIGHTS.topBar,
       bottom:
-        READER_CHROME_HEIGHTS.footer[input.layout] +
+        READER_CHROME_HEIGHTS.footer +
         input.movementBand +
         (input.host === "tab" ? input.tabBar : 0),
     },

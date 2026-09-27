@@ -5,6 +5,7 @@ import {
   READER_FOOTER_ROWS,
   READER_SCRUBBER_BAND,
   READER_SCRUBBER_TRACK_CENTER,
+  READER_SELECTION_GAP,
   READER_TOP_BAR_HEIGHT,
   READER_TOUCH_TARGET,
   readerBottomInset,
@@ -19,30 +20,40 @@ describe("reader chrome heights", () => {
     expect(READER_TOP_BAR_HEIGHT).toBeGreaterThanOrEqual(READER_TOUCH_TARGET)
   })
 
-  it("gives the phone footer a credit row that the tablet footer does not have", () => {
-    expect(readerFooterHeight("phone") - readerFooterHeight("tablet")).toBe(
-      READER_FOOTER_ROWS.credit,
+  it("keeps room in the footer for the selection bar's buttons (R19, R36)", () => {
+    // The bar takes the footer's place: reference, gap, and a 44-point row.
+    const selection =
+      READER_FOOTER_ROWS.paddingTop +
+      READER_FOOTER_ROWS.heading +
+      READER_SELECTION_GAP +
+      READER_TOUCH_TARGET +
+      READER_FOOTER_ROWS.paddingBottom
+    expect(readerFooterHeight()).toBe(selection)
+    expect(readerFooterHeight()).toBeGreaterThanOrEqual(
+      READER_FOOTER_ROWS.paddingTop +
+        READER_FOOTER_ROWS.heading +
+        READER_FOOTER_ROWS.progress +
+        READER_FOOTER_ROWS.credit +
+        READER_FOOTER_ROWS.paddingBottom,
     )
   })
 
-  it("exposes one shared constant for the top bar and both footers", () => {
+  it("has no translation row: the translation pill is in the top bar (owner, 2026-09-27)", () => {
+    expect(Object.keys(READER_FOOTER_ROWS)).not.toContain("translation")
+    expect(readerFooterHeight()).toBe(86)
+  })
+
+  it("exposes one shared constant for the top bar and the footer", () => {
     expect(READER_CHROME_HEIGHTS).toEqual({
       topBar: READER_TOP_BAR_HEIGHT,
-      footer: {
-        phone: readerFooterHeight("phone"),
-        tablet: readerFooterHeight("tablet"),
-      },
+      footer: readerFooterHeight(),
     })
     expect(Object.isFrozen(READER_CHROME_HEIGHTS)).toBe(true)
   })
 
-  it("keeps the translation label row a full touch target (R36)", () => {
-    expect(READER_FOOTER_ROWS.translation).toBe(READER_TOUCH_TARGET)
-  })
-
-  it("gives the scrubber a full touch target above the translation row (U9, R36)", () => {
+  it("gives the scrubber a full touch target above the credit (U9, R36)", () => {
     // The band runs from the footer's top edge to the progress row's bottom,
-    // so the thumb's target never covers the translation label.
+    // so the thumb's target never covers the row below.
     expect(READER_SCRUBBER_BAND).toBe(
       READER_FOOTER_ROWS.paddingTop +
         READER_FOOTER_ROWS.heading +
@@ -74,14 +85,13 @@ describe("readerChromeBand", () => {
   it("runs from under the top bar to over the footer", () => {
     expect(
       readerChromeBand({
-        layout: "phone",
         safeAreaTop: 62,
         bottomInset: 34,
         containerHeight: 956,
       }),
     ).toEqual({
       top: 62 + READER_TOP_BAR_HEIGHT,
-      bottom: 956 - 34 - readerFooterHeight("phone"),
+      bottom: 956 - 34 - readerFooterHeight(),
     })
   })
 })

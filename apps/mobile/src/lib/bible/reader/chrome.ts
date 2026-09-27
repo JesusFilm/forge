@@ -23,20 +23,22 @@ export const READER_TOP_BAR_OFFSET = 4
 export const READER_TOP_BAR_HEIGHT =
   READER_TOP_BAR_OFFSET + READER_TOUCH_TARGET + 8
 
-/** Footer rows in points, top to bottom. */
+/** Footer rows in points, top to bottom. The translation pill is in the top
+ *  bar (owner, 2026-09-27). */
 export const READER_FOOTER_ROWS = Object.freeze({
   paddingTop: 6,
   heading: 24,
   progress: 14,
-  translation: READER_TOUCH_TARGET,
-  /** Phones only: the tablet puts the credit beside the translation label. */
   credit: 22,
   paddingBottom: 4,
 })
 
+/** R19's selection bar: the gap between its reference and its buttons. */
+export const READER_SELECTION_GAP = 8
+
 // U9: the scrubber's touch band, from the footer's top edge to the bottom of
 // the progress row. The thumb's target fills it, so it is a full 44 points and
-// never covers the translation label below.
+// never covers the credit below.
 export const READER_SCRUBBER_BAND =
   READER_FOOTER_ROWS.paddingTop +
   READER_FOOTER_ROWS.heading +
@@ -46,16 +48,14 @@ export const READER_SCRUBBER_BAND =
 export const READER_SCRUBBER_TRACK_CENTER =
   READER_SCRUBBER_BAND - READER_FOOTER_ROWS.progress / 2
 
-/** The footer, measured up from the bottom inset. */
-export function readerFooterHeight(layout: ReaderLayout): number {
+// The footer, measured up from the bottom inset. The selection bar takes the
+// footer's place (R19), so the footer keeps room for its buttons, and a
+// selection never moves the verse box or the mini player.
+export function readerFooterHeight(): number {
   const rows = READER_FOOTER_ROWS
-  const shared =
-    rows.paddingTop +
-    rows.heading +
-    rows.progress +
-    rows.translation +
-    rows.paddingBottom
-  return layout === "phone" ? shared + rows.credit : shared
+  const footer = rows.heading + rows.progress + rows.credit
+  const selection = rows.heading + READER_SELECTION_GAP + READER_TOUCH_TARGET
+  return rows.paddingTop + Math.max(footer, selection) + rows.paddingBottom
 }
 
 /** R11: the arrow pair's row above the footer, one control and a gap. */
@@ -107,10 +107,7 @@ export function resetReaderMovementBandForTests(): void {
 
 export const READER_CHROME_HEIGHTS = Object.freeze({
   topBar: READER_TOP_BAR_HEIGHT,
-  footer: Object.freeze({
-    phone: readerFooterHeight("phone"),
-    tablet: readerFooterHeight("tablet"),
-  }),
+  footer: readerFooterHeight(),
 })
 
 // The space under the footer. An iOS tab screen's inset already holds the
@@ -127,16 +124,12 @@ export function readerBottomInset(
 
 /** The band between the top bar and the footer, in reader coordinates. */
 export function readerChromeBand(input: {
-  layout: ReaderLayout
   safeAreaTop: number
   bottomInset: number
   containerHeight: number
 }): { top: number; bottom: number } {
   return {
     top: input.safeAreaTop + READER_TOP_BAR_HEIGHT,
-    bottom:
-      input.containerHeight -
-      input.bottomInset -
-      readerFooterHeight(input.layout),
+    bottom: input.containerHeight - input.bottomInset - readerFooterHeight(),
   }
 }

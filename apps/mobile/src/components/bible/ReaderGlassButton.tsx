@@ -18,7 +18,11 @@ import {
   READER_TOUCH_TARGET,
 } from "../../lib/bible/reader/chrome"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
+import { hexToRgba } from "../../lib/color"
 import { PlatformBlur } from "../ui/PlatformBlur"
+
+/** The outline is the text color at this opacity, so it stays faint. */
+export const READER_OUTLINE_ALPHA = 0.2
 
 type ReaderGlassButtonProps = {
   tokens: ReaderTokens
@@ -26,6 +30,8 @@ type ReaderGlassButtonProps = {
   onPress: () => void
   /** A circle holds one glyph; a pill grows with its label. */
   shape?: "circle" | "pill"
+  /** A faint outline marks a pill as a button (owner, 2026-09-27). */
+  outlined?: boolean
   disabled?: boolean
   style?: StyleProp<ViewStyle>
   children: ReactNode
@@ -38,6 +44,7 @@ export function ReaderGlassButton({
   accessibilityLabel,
   onPress,
   shape = "circle",
+  outlined = false,
   disabled = false,
   style,
   children,
@@ -63,6 +70,19 @@ export function ReaderGlassButton({
           <View style={[styles.content, disabled && styles.disabled]}>
             {children}
           </View>
+          {/* A layer, not a border on the surface, so every surface draws it. */}
+          {outlined && (
+            <View
+              testID="bible-glass-outline"
+              pointerEvents="none"
+              style={[
+                styles.outline,
+                {
+                  borderColor: hexToRgba(tokens.text, READER_OUTLINE_ALPHA),
+                },
+              ]}
+            />
+          )}
         </ReaderGlassSurface>
       )}
     </Pressable>
@@ -141,6 +161,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+  },
+  outline: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: READER_GLASS_SIZE / 2,
+    borderWidth: 1,
   },
   pressed: {
     transform: [{ scale: 0.94 }],

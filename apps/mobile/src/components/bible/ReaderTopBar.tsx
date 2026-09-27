@@ -7,6 +7,7 @@ import {
   READER_TOP_BAR_OFFSET,
 } from "../../lib/bible/reader/chrome"
 import { READER_COPY } from "../../lib/bible/reader/copy"
+import type { TranslationLabel } from "../../lib/bible/reader/labels"
 import type { TranslationDownloadState } from "../../lib/bible/repository/translationDownloads"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
@@ -25,6 +26,9 @@ export type ReaderTopBarProps = {
   /** R39: a new value animates the pill; U8 counts chapter changes. */
   pulse: number
   reduceMotion: boolean
+  /** R23: the shown translation, or null while waiting. */
+  translation: TranslationLabel | null
+  onPressTranslation: () => void
   download: {
     state: TranslationDownloadState | null
     accessibilityLabel: string
@@ -33,7 +37,8 @@ export type ReaderTopBarProps = {
   onPressSettings: () => void
 }
 
-/** R8: back and the pill at the left; download and settings at the right. */
+/** R8: back, the pill, and the translation pill at the left (owner,
+ *  2026-09-27); download and settings at the right. */
 export function ReaderTopBar({
   tokens,
   safeAreaTop,
@@ -42,6 +47,8 @@ export function ReaderTopBar({
   onPressPassage,
   pulse,
   reduceMotion,
+  translation,
+  onPressTranslation,
   download,
   onPressDownload,
   onPressSettings,
@@ -79,14 +86,44 @@ export function ReaderTopBar({
           pulse={pulse}
           reduceMotion={reduceMotion}
         >
+          {/* A narrow phone shortens the book name, never the verse. */}
           <Text
             style={[styles.passage, { color: tokens.text }]}
             numberOfLines={1}
+            ellipsizeMode="middle"
             maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
           >
             {passage ?? " "}
           </Text>
         </ChapterPill>
+        <ReaderGlassButton
+          tokens={tokens}
+          shape="pill"
+          outlined
+          accessibilityLabel={
+            translation?.accessibilityLabel ??
+            READER_COPY.chooseTranslationWaiting
+          }
+          onPress={onPressTranslation}
+          disabled={translation === null}
+          style={styles.translation}
+        >
+          {translation?.isFallback && (
+            <Ionicons
+              name="information-circle-outline"
+              size={16}
+              color={tokens.icon}
+              style={styles.fallbackIcon}
+            />
+          )}
+          <Text
+            style={[styles.translationText, { color: tokens.text }]}
+            numberOfLines={1}
+            maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
+          >
+            {translation?.text ?? " "}
+          </Text>
+        </ReaderGlassButton>
       </View>
       <View style={styles.trailing} pointerEvents="box-none">
         <ReaderGlassButton
@@ -138,5 +175,18 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: "600",
     fontFamily: "System",
+  },
+  // The passage pill shrinks first; a short name is at most five letters.
+  translation: {
+    flexShrink: 0,
+  },
+  translationText: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "600",
+    fontFamily: "System",
+  },
+  fallbackIcon: {
+    marginRight: 4,
   },
 })

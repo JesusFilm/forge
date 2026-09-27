@@ -300,7 +300,6 @@ export function BibleReader(props: BibleReaderProps) {
     if (bandKnown) publishReaderMovementBand(movementBand)
   }, [bandKnown, movementBand])
   const band = readerChromeBand({
-    layout,
     safeAreaTop: insets.top,
     bottomInset,
     containerHeight: height,
@@ -319,7 +318,6 @@ export function BibleReader(props: BibleReaderProps) {
   const edgeGuardWidth =
     props.host === "pushed" && Platform.OS === "ios" ? BACK_SWIPE_EDGE_WIDTH : 0
   const zones = readerTouchZones({
-    layout,
     safeAreaTop: insets.top,
     bottomInset,
     containerHeight: height,
@@ -479,7 +477,7 @@ export function BibleReader(props: BibleReaderProps) {
           },
         }
       : undefined
-  const aboveFooter = bottomInset + readerFooterHeight(layout)
+  const aboveFooter = bottomInset + readerFooterHeight()
 
   const onPressVerse = () => {
     const index = model.stopIndex
@@ -553,6 +551,12 @@ export function BibleReader(props: BibleReaderProps) {
         }}
         pulse={movement.pulse + picker.pulse}
         reduceMotion={reduceMotion}
+        translation={shown ? translationLabel(shown, viewerTranslation) : null}
+        onPressTranslation={() => {
+          picker.disarm()
+          visit.markSheetOpen()
+          props.onOpenTranslationPicker(context)
+        }}
         download={{
           state: downloadState,
           accessibilityLabel: shownTranslation
@@ -661,7 +665,6 @@ export function BibleReader(props: BibleReaderProps) {
       {selectionShare ? (
         <SelectionBar
           tokens={tokens}
-          layout={layout}
           bottomInset={bottomInset}
           reference={selectionShare.reference}
           text={selectionShare.text}
@@ -670,7 +673,6 @@ export function BibleReader(props: BibleReaderProps) {
       ) : (
         <ReaderFooter
           tokens={tokens}
-          layout={layout}
           bottomInset={bottomInset}
           heading={model.heading}
           counter={model.counter}
@@ -685,14 +687,6 @@ export function BibleReader(props: BibleReaderProps) {
               edgeGuardWidth={edgeGuardWidth}
             />
           }
-          translation={
-            shown ? translationLabel(shown, viewerTranslation) : null
-          }
-          onPressTranslation={() => {
-            picker.disarm()
-            visit.markSheetOpen()
-            props.onOpenTranslationPicker(context)
-          }}
         />
       )}
       {showDemo && (

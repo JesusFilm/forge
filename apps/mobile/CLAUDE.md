@@ -1737,6 +1737,15 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   book), the copy waits in place for at most `VERSE_SLIDE_HOLD_MS`. A load
   that fails ends the move, so a later load does not slide. The first-run demo plays three cycles with a pause
   after each, then fades (`swipeDemoTimeline.ts`, one animated clock).
+- **The translation pill is in the top bar (KD28, owner, 2026-09-27).** It
+  sits right of the passage pill and shows the short name only. A stand-in
+  (R25, R41) adds an info icon, and the reason is in the accessibility label.
+  Both pills pass `outlined` to `ReaderGlassButton`, which draws a faint
+  outline as a layer (the text color at `READER_OUTLINE_ALPHA`), so every
+  glass surface shows it. The footer has no translation row, and
+  `readerFooterHeight()` keeps room for the selection bar, which takes the
+  footer's place. On an iPhone SE the passage pill shortens the book name in
+  the middle ("Son…8:14"), so the verse number stays visible.
 - **The iPad reader rotates to landscape, and it keeps the portrait rules
   (KD25).** The app locks to portrait, but iPadOS can ignore that lock for an
   app that supports multitasking. The owner decided on 2026-09-25 that the

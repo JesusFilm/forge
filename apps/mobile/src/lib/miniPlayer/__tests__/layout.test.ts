@@ -384,7 +384,6 @@ describe("the reader corner policy", () => {
       ? c.screen.height - c.insets.bottom - tabBarOccupiedHeightFor("android")
       : c.screen.height
     const band = readerChromeBand({
-      layout: c.layout,
       safeAreaTop: c.insets.top,
       bottomInset: readerBottomInset(c.host, c.platform, screenInset),
       containerHeight,

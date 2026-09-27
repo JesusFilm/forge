@@ -95,6 +95,7 @@ export function ChapterPill({
       <ReaderGlassButton
         tokens={tokens}
         shape="pill"
+        outlined
         accessibilityLabel={accessibilityLabel}
         onPress={onPress}
         disabled={disabled}

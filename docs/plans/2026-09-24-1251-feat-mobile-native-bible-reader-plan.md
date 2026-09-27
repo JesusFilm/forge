@@ -81,6 +81,7 @@ Datadog has recorded taps on the button since 2026-08-28, because production RUM
 - KD25. **The iPad landscape layout waits for a U7 check.** The app locks to portrait at launch, but iPadOS can ignore that lock for an app that supports multitasking, so the case may never happen. If the U7 check shows the reader turns to landscape, the owner chooses between a smaller window on reader screens and a verse column beside the window. (session-settled: user-approved — chosen over choosing a landscape layout now: nobody knows yet whether the iPad reader rotates.) Governs R7, R10.
 - KD26. **In the reader, the mini player can rest in any of the four corners on both devices, always between the top bar and the footer.** The start corner stays top right on a phone and bottom right on an iPad (KD9). (session-settled: user-directed — chosen over top corners only on phones and bottom corners only on iPad: the viewer decides where the video sits.) Governs R10.
 - KD27. **The verse stays centered while it fits there; a verse that would scroll moves into the free space first.** The centered verse area (KD9) is the same height above and below the screen center. On a short screen, such as the iPhone SE Bible tab, the obstacles leave little room there: a bottom-corner window sits at the center, and the swipe hint raises the footer. The verse fits in the centered area when it can, at any size down to the floor (R20). Only a verse that would scroll there moves into all the free space between the obstacles, fits again, and scrolls only if it still does not fit. Loading, a message, and the missing-verse note use the centered area unless it is under 160 points. (session-settled: user-directed on 2026-09-25, in two steps — chosen over top corners only on short screens, over shipping with the verse hidden, over the largest text first, and over a position fixed before the fit: the window stays in any corner, nothing covers the verse, and a short verse stays centered.) Governs R7, R10, R20.
+- KD28. **The translation pill sits in the top bar, right of the passage pill, and both pills carry a faint outline.** The footer no longer holds the translation label. The pill shows the shown translation's short name; a stand-in (R25, R41) adds an info icon, and the pill's accessibility label says why. The outline is the text color at 20% opacity. The footer keeps room for R19's selection bar, so it is one height on both layouts. (session-settled: user-directed on 2026-09-27 — chosen over the footer label and over a chevron on the pill: the owner wanted the pill to read as a button, not a label.) Governs R8, R9, R23, R25, R41.
 
 ### Requirements
 
@@ -101,8 +102,8 @@ Datadog has recorded taps on the button since 2026-08-28, because production RUM
 **Reading surface**
 
 - R7. The reader shows exactly one verse, centered horizontally and vertically on the screen, in a large reading typeface.
-- R8. The top bar holds the pill at the left, and the download button and the settings button at the right. The back button, the pill, and both buttons use the app's glass button style.
-- R9. The footer shows the book and chapter, a "verse / total" counter whose total is the chapter's last verse number, a progress bar for the position in the chapter, the translation label, and "Powered by StillBibleApp.com".
+- R8. The top bar holds the pill and the translation pill at the left, and the download button and the settings button at the right. The back button, both pills, and both buttons use the app's glass button style, and both pills carry a faint outline (KD28).
+- R9. The footer shows the book and chapter, a "verse / total" counter whose total is the chapter's last verse number, a progress bar for the position in the chapter, and "Powered by StillBibleApp.com". The translation pill moved to the top bar (KD28).
 - R10. In the reader, the mini player starts in the top-right corner under the top-bar buttons on phone-sized screens, and in the bottom-right corner just above the footer on iPad-sized screens. The viewer can drag it to any of the four corners on both devices. A top corner sits just under the top bar, and a bottom corner sits just above the footer. In no corner does it cover the verse, the pill, the top-bar buttons, or the footer.
 - R11. iPad-sized screens show a centered pair of up/down buttons above the progress bar, with the down button filled. Phones show the pair only while a screen reader is on, or while the "Show arrow buttons" setting is on.
 - R12. A swipe up moves to the next verse, and a swipe down moves to the previous verse. A swipe left moves to the next chapter, and a swipe right moves to the previous chapter.
@@ -121,7 +122,7 @@ Datadog has recorded taps on the button since 2026-08-28, because production RUM
 
 - R22. The default translation matches the viewer's audio language (KD13). With no match, the reader uses the phone's language, and then BSB.
 - R41. The default translation follows the audio language until the viewer picks a translation, and after that the pick stays. When the default translation's chapter is not on the device and the device is offline, BSB shows with a label, and the reader does not save BSB as the choice. The R31 switch lasts for the current session only.
-- R23. The translation label opens a translation picker. The picker lists the viewer's language first and lets the viewer choose any catalog language. Each entry shows the name, whether the Bible is complete or partial, and the credit. A search field filters the list by language or translation name, as the app's language sheets do.
+- R23. The translation pill opens a translation picker. The picker lists the viewer's language first and lets the viewer choose any catalog language. Each entry shows the name, whether the Bible is complete or partial, and the credit. A search field filters the list by language or translation name, as the app's language sheets do.
 - R24. A translation change keeps the same passage (R38), and the reader keeps the choice.
 - R38. Quotes and the saved position use BSB verse numbering. Before it shows a verse, the reader converts the reference to the current translation's numbering, so the same passage opens in every translation. A verse with no BSB counterpart saves as the next verse that has one. Example: the Russian Synodal Bible numbers BSB Psalm 23 as Psalm 22.
 - R42. The viewer always sees the shown translation's own verse numbers: in the counter, the pill, the picker, the scrubber, and shared text. A translation shows Psalm titles where it numbers them as verses (Russian Synodal), and BSB keeps them hidden.
@@ -160,21 +161,21 @@ The two layouts below come from the sketches the product owner chose (KD9). The 
 flowchart TB
   subgraph Phone["Phone-sized screen (layout B)"]
     direction TB
-    P1["Top bar: back button (pushed reader only), pill | download, settings"]
+    P1["Top bar: back button (pushed reader only), pill, translation pill | download, settings"]
     P2["Mini player: starts top right under the buttons · any corner between the top bar and the footer"]
     P3["Verse: centered on the whole screen"]
     P4["Hint text (fades out) · up/down pair only with a screen reader or the setting"]
-    P5["Footer: book and chapter, verse / total, progress bar, translation label, Powered by StillBibleApp.com"]
+    P5["Footer: book and chapter, verse / total, progress bar, Powered by StillBibleApp.com"]
     P6["Tab bar (Bible tab only)"]
     P1 --> P2 --> P3 --> P4 --> P5 --> P6
   end
   subgraph Tablet["iPad-sized screen (layout A)"]
     direction TB
-    T1["Top bar: back button (pushed reader only), pill | download, settings"]
+    T1["Top bar: back button (pushed reader only), pill, translation pill | download, settings"]
     T2["Verse: centered on the whole screen"]
     T3["Mini player: starts bottom right just above the footer · any corner between the top bar and the footer"]
     T4["Hint text (fades out), then the centered up/down pair"]
-    T5["Footer: book and chapter, verse / total, progress bar · translation label and credit on the bottom row"]
+    T5["Footer: book and chapter, verse / total, progress bar, Powered by StillBibleApp.com"]
     T1 --> T2 --> T3 --> T4 --> T5
   end
 ```
@@ -207,7 +208,7 @@ flowchart TB
   - **Outcome:** Each move updates the saved position.
   - **Covered by:** R2, R3, R4, R12, R14, R17, R18
 - F3. Change the translation and take it offline
-  - **Trigger:** The viewer taps the translation label.
+  - **Trigger:** The viewer taps the translation pill.
   - **Steps:** The viewer picks a translation, and the reader stays on the same verse. The viewer taps the download button, sees the size, and confirms. Progress shows until the whole translation is on the device.
   - **Outcome:** The translation opens with no network.
   - **Covered by:** R23, R24, R29, R30, R41
@@ -743,7 +744,7 @@ flowchart TB
 
 - The verse area is the centered box from KTD16, recomputed when the mini player appears, leaves, or moves to another corner.
 - The fit runs per verse and per size change, follows the KTD16 sketch, and falls back to a scroll view at the floor.
-- The footer counter reads the last verse number (KTD19). The fallback label (R25, R41) sits in the footer's translation label.
+- The footer counter reads the last verse number (KTD19). The fallback mark (R25, R41) sits in the top bar's translation pill: an info icon beside the short name, with the reason in the pill's accessibility label (KD28).
 - The status bar override renders only while the screen has focus.
 - A chapter that is not on the device shows a quiet loading indicator in the verse area until the chapter renders or R31's message replaces it, so the screen is never blank. With Reduce Motion on, the indicator does not animate.
 

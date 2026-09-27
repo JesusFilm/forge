@@ -6,8 +6,8 @@ import * as Clipboard from "expo-clipboard"
 import {
   READER_CHROME_MAX_FONT_SCALE,
   READER_FOOTER_ROWS,
+  READER_SELECTION_GAP,
   readerFooterHeight,
-  type ReaderLayout,
 } from "../../lib/bible/reader/chrome"
 import { READER_COPY } from "../../lib/bible/reader/copy"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
@@ -18,7 +18,6 @@ export const SELECTION_COPIED_MS = 2000
 
 export type SelectionBarProps = {
   tokens: ReaderTokens
-  layout: ReaderLayout
   bottomInset: number
   /** "John 3:16-17", in the shown translation's numbers (R42). */
   reference: string
@@ -31,7 +30,6 @@ export type SelectionBarProps = {
 // box and the mini player do not move (after SelectionActionBar.tsx).
 export function SelectionBar({
   tokens,
-  layout,
   bottomInset,
   reference,
   text,
@@ -68,7 +66,7 @@ export function SelectionBar({
       style={[
         styles.bar,
         {
-          height: readerFooterHeight(layout) + bottomInset,
+          height: readerFooterHeight() + bottomInset,
           paddingBottom: bottomInset + READER_FOOTER_ROWS.paddingBottom,
         },
       ]}
@@ -159,7 +157,7 @@ const styles = StyleSheet.create({
   column: {
     width: "100%",
     maxWidth: 560,
-    gap: 8,
+    gap: READER_SELECTION_GAP,
   },
   reference: {
     height: READER_FOOTER_ROWS.heading,

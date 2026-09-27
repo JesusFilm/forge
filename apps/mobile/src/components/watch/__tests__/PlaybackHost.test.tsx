@@ -4040,7 +4040,6 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
       expect(window).toEqual(cornerBox(readerLayout("pushed"), "topRight"))
       // Under the top bar, by the reader's OWN band, not by the policy.
       const band = readerChromeBand({
-        layout: "phone",
         safeAreaTop: READER_INSETS.top,
         bottomInset: READER_INSETS.bottom,
         containerHeight: windowSize().height,
@@ -4742,7 +4741,6 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
       expect(rested).toEqual(cornerBox(layout, "bottomLeft"))
       // The reader's OWN footer edge, from the band its verse box uses.
       const band = readerChromeBand({
-        layout: "phone",
         safeAreaTop: READER_INSETS.top,
         bottomInset: READER_INSETS.bottom,
         containerHeight: windowSize().height,
@@ -4837,7 +4835,6 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
       const rested = frameVisual(renderer)
       // The tab screen's inset holds the whole 83pt bar, even at root inset 0.
       const band = readerChromeBand({
-        layout: "phone",
         safeAreaTop: SE_INSETS.top,
         bottomInset: readerBottomInset("tab", "ios", TAB_BAR_SCREEN_EXTENT_IOS),
         containerHeight: SE_WINDOW.height,
@@ -4916,7 +4913,6 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
 
       const height = windowSize().height
       const band = readerChromeBand({
-        layout: "phone",
         safeAreaTop: READER_INSETS.top,
         bottomInset: READER_INSETS.bottom,
         containerHeight: height,

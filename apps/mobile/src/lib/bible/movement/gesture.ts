@@ -2,11 +2,7 @@
 // swipe: dominance and activation to claim, and a commit on release. Pure, so
 // ReaderGestures.tsx only reads touches and calls these.
 import { mayStartScrub } from "../../scrubber"
-import {
-  READER_TOP_BAR_HEIGHT,
-  readerFooterHeight,
-  type ReaderLayout,
-} from "../reader/chrome"
+import { READER_TOP_BAR_HEIGHT, readerFooterHeight } from "../reader/chrome"
 import type { MoveDirection } from "./move"
 
 export const READER_SWIPE = Object.freeze({
@@ -39,7 +35,6 @@ export type ReaderTouchZones = {
 }
 
 export function readerTouchZones(input: {
-  layout: ReaderLayout
   safeAreaTop: number
   bottomInset: number
   containerHeight: number
@@ -48,10 +43,7 @@ export function readerTouchZones(input: {
 }): ReaderTouchZones {
   return {
     topBarBottom: input.safeAreaTop + READER_TOP_BAR_HEIGHT,
-    footerTop:
-      input.containerHeight -
-      readerFooterHeight(input.layout) -
-      input.bottomInset,
+    footerTop: input.containerHeight - readerFooterHeight() - input.bottomInset,
     edgeGuardWidth: input.edgeGuardWidth,
     excluded: input.excluded ?? [],
   }

@@ -182,7 +182,8 @@ describe("translationLabel", () => {
     }
     const label = translationLabel(shown, SYNODAL)
     expect(label.isFallback).toBe(true)
-    expect(label.text).toContain("BSB")
+    // The top bar pill has room for the short name; the label says why.
+    expect(label.text).toBe("BSB")
     expect(label.accessibilityLabel).toContain("Berean Standard Bible")
     expect(label.accessibilityLabel).toContain(SYNODAL.name)
   })
@@ -195,8 +196,10 @@ describe("translationLabel", () => {
     }
     const label = translationLabel(shown, null)
     expect(label.isFallback).toBe(true)
-    expect(label.text).toContain("BSB")
-    expect(label.text).toContain(READER_COPY.offlineStandIn)
+    expect(label.text).toBe("BSB")
+    expect(label.accessibilityLabel).toBe(
+      READER_COPY.offlineStandInLabel("Berean Standard Bible"),
+    )
   })
 })
 

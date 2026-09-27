@@ -2,14 +2,20 @@
 // button (feat-553 R29), and the icon for every other state.
 
 import { act } from "react"
+import { StyleSheet, type ViewStyle } from "react-native"
 
 import {
   TestRenderer,
   unmount,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { READER_COPY } from "../../../lib/bible/reader/copy"
+import type { TranslationLabel } from "../../../lib/bible/reader/labels"
 import type { TranslationDownloadState } from "../../../lib/bible/repository/translationDownloads"
 import { readerTokens } from "../../../lib/bible/theme/palettes"
+import { hexToRgba } from "../../../lib/color"
+import { READER_OUTLINE_ALPHA } from "../ReaderGlassButton"
 import { ReaderTopBar } from "../ReaderTopBar"
 
 jest.mock("expo-glass-effect", () => ({
@@ -37,7 +43,17 @@ afterEach(async () => {
   }
 })
 
-async function render(state: TranslationDownloadState | null) {
+const BSB_LABEL: TranslationLabel = {
+  text: "BSB",
+  accessibilityLabel: READER_COPY.translation("Berean Standard Bible"),
+  isFallback: false,
+}
+
+async function render(
+  state: TranslationDownloadState | null,
+  translation: TranslationLabel | null = BSB_LABEL,
+  onPressTranslation: () => void = () => {},
+) {
   await act(async () => {
     mounted = TestRenderer.create(
       <ReaderTopBar
@@ -47,6 +63,8 @@ async function render(state: TranslationDownloadState | null) {
         onPressPassage={() => {}}
         pulse={0}
         reduceMotion
+        translation={translation}
+        onPressTranslation={onPressTranslation}
         download={{ state, accessibilityLabel: "Download" }}
         onPressDownload={() => {}}
         onPressSettings={() => {}}
@@ -54,6 +72,38 @@ async function render(state: TranslationDownloadState | null) {
     )
   })
   return mounted!
+}
+
+function buttons(renderer: TestInstance): RenderedNode[] {
+  return renderer.root.findAll(
+    (node) =>
+      typeof node.type === "string" &&
+      node.props.accessibilityRole === "button",
+  )
+}
+
+function outlines(renderer: TestInstance): RenderedNode[] {
+  return renderer.root.findAll(
+    (node) =>
+      typeof node.type === "string" &&
+      node.props.testID === "bible-glass-outline",
+  )
+}
+
+// The Ionicons mock renders its name as a raw string, so match the element.
+function iconCount(renderer: TestInstance, name: string): number {
+  return renderer.root.findAll(
+    (node) => typeof node.type !== "string" && node.props.name === name,
+  ).length
+}
+
+function insideOf(node: RenderedNode, ancestor: RenderedNode): boolean {
+  let current: RenderedNode | null = node
+  while (current) {
+    if (current === ancestor) return true
+    current = current.parent ?? null
+  }
+  return false
 }
 
 function textCount(renderer: TestInstance, text: string): number {
@@ -77,5 +127,84 @@ describe("ReaderTopBar download button", () => {
   it("shows no percent when the translation is on the device", async () => {
     const renderer = await render({ kind: "bundled" })
     expect(textCount(renderer, "45%")).toBe(0)
+  })
+})
+
+// The owner moved the translation pill from the footer to the top bar and
+// asked for a faint outline on both pills (2026-09-27).
+describe("ReaderTopBar translation pill", () => {
+  it("sits right after the passage pill, before download and settings", async () => {
+    const renderer = await render({ kind: "bundled" })
+    expect(
+      buttons(renderer).map((node) => node.props.accessibilityLabel),
+    ).toEqual([
+      READER_COPY.choosePassage("John 3:16"),
+      BSB_LABEL.accessibilityLabel,
+      "Download",
+      READER_COPY.settings,
+    ])
+    expect(textCount(renderer, "BSB")).toBe(1)
+  })
+
+  it("outlines the passage pill and the translation pill, and nothing else", async () => {
+    const renderer = await render({ kind: "bundled" })
+    const [passage, translation] = buttons(renderer)
+    const drawn = outlines(renderer)
+    expect(drawn).toHaveLength(2)
+    expect(insideOf(drawn[0]!, passage!)).toBe(true)
+    expect(insideOf(drawn[1]!, translation!)).toBe(true)
+    for (const outline of drawn) {
+      const style = StyleSheet.flatten(outline.props.style) as ViewStyle
+      expect(style.borderWidth).toBe(1)
+      expect(style.borderColor).toBe(
+        hexToRgba(TOKENS.text, READER_OUTLINE_ALPHA),
+      )
+      expect(outline.props.pointerEvents).toBe("none")
+    }
+  })
+
+  it("opens the translation picker on a tap (R23)", async () => {
+    const onPress = jest.fn()
+    const renderer = await render({ kind: "bundled" }, BSB_LABEL, onPress)
+    // The Pressable itself holds `onPress`; its host View does not.
+    const [pressable] = renderer.root.findAll(
+      (node) =>
+        typeof node.props.onPress === "function" &&
+        node.props.accessibilityLabel === BSB_LABEL.accessibilityLabel,
+    )
+    await act(async () => (pressable!.props.onPress as () => void)())
+    expect(onPress).toHaveBeenCalledTimes(1)
+  })
+
+  it("marks a stand-in with the info icon and says why in its label (R25, R41)", async () => {
+    const plain = await render({ kind: "bundled" })
+    expect(iconCount(plain, "information-circle-outline")).toBe(0)
+    await act(async () => mounted!.unmount())
+    mounted = null
+
+    const fallback: TranslationLabel = {
+      text: "BSB",
+      accessibilityLabel: READER_COPY.offlineStandInLabel(
+        "Berean Standard Bible",
+      ),
+      isFallback: true,
+    }
+    const renderer = await render({ kind: "bundled" }, fallback)
+    expect(iconCount(renderer, "information-circle-outline")).toBe(1)
+    expect(textCount(renderer, "BSB")).toBe(1)
+    expect(buttons(renderer)[1]!.props.accessibilityLabel).toBe(
+      fallback.accessibilityLabel,
+    )
+  })
+
+  it("is disabled while the translation is not known yet", async () => {
+    const renderer = await render(null, null)
+    const [, translation] = buttons(renderer)
+    expect(translation!.props.accessibilityLabel).toBe(
+      READER_COPY.chooseTranslationWaiting,
+    )
+    expect(translation!.props.accessibilityState).toMatchObject({
+      disabled: true,
+    })
   })
 })
