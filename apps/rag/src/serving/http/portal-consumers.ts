@@ -136,6 +136,10 @@ export function createConsumerRoutes(deps: Deps) {
       actorGithubUserId: String(identity(c).id),
       allowedSourceKeys: deps.allowedSourceKeys,
       admissionSha: c.get("publication").sha,
+      verifyCurrentAdmission: verifyCurrentAdmission(
+        identity(c),
+        c.get("publication").sha,
+      ),
     })
     return c.json(
       {

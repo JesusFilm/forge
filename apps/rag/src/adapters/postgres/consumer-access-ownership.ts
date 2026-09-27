@@ -41,7 +41,10 @@ export async function withConsumerOwner<T>(
       { maxWait: 10_000, timeout: 20_000 },
     )
   } catch (error) {
-    if (error instanceof ConsumerAccessError && error.code === "forbidden") {
+    if (
+      error instanceof ConsumerAccessError &&
+      (error.code === "forbidden" || error.code === "conflict")
+    ) {
       await db.$executeRaw(Prisma.sql`
         INSERT INTO consumer_private.lifecycle_audit
           (consumer_id, actor_github_user_id, action, admission_sha,

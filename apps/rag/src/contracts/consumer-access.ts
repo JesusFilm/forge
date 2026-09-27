@@ -46,6 +46,7 @@ export type ConsumerAccess = {
     actorGithubUserId: string
     allowedSourceKeys: string[]
     admissionSha?: string
+    verifyCurrentAdmission?(): Promise<boolean>
   }): Promise<IssuedConsumer>
   members(
     consumerId: string,

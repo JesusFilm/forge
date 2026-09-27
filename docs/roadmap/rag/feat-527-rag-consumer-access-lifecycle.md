@@ -75,17 +75,13 @@ establish admission, not consumer creation. The
 [Foundation report](evidence/feat-527/consumer-registry-foundation.md) records the
 schema/API decisions and disposable database verification.
 
-**Next work remains feat-527:** implement the backend that lets an admitted
-GitHub user create a consumer directly. The server derives its initial owner
-from the authenticated GitHub account, applies an explicit source grant, mints
-a random API credential, stores only its verifier and returns the secret once.
-Then implement current-credential authentication for `/v1`, owner-controlled
-membership and rotation, suspension/revocation, restricted audit and the
-privilege boundaries in plan sections A/B. Use reviewable PR slices if needed;
-do not mark feat-527 complete until the lifecycle and plan E verification are
-delivered. Usage aggregates belong to feat-528, operational dogfood to feat-529,
-and the full management UI to feat-530. The existing `/portal` identity page
-does not create a consumer or issue a key.
+**Next work remains feat-527:** review and deploy the consumer lifecycle backend,
+provision its isolated writer/auth roles, and finish the authenticated API and
+operational checks in the migration runbook and plan E. Keep the ticket in
+progress until those release gates have recorded evidence. Usage aggregates
+belong to feat-528, operational dogfood to feat-529, and the full management UI
+to feat-530. The existing `/portal` identity page does not create a consumer or
+issue a key; the `/portal/consumers` API supplies that backend before the UI.
 
 ## V1 simplification resolution
 

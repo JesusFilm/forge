@@ -57,6 +57,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
     actorGithubUserId: string
     allowedSourceKeys: string[]
     admissionSha?: string
+    verifyCurrentAdmission?(): Promise<boolean>
   }): Promise<IssuedConsumer> {
     if (
       !/^[a-z0-9-]{1,80}$/.test(input.name) ||
@@ -67,30 +68,38 @@ export class PostgresConsumerAccess implements ConsumerAccess {
     const issued = secret()
     const digest = credentialVerifier(issued)
     try {
-      const consumer = await this.writer.$transaction(async (tx) => {
-        const [row] = await tx.$queryRaw<ConsumerRow[]>(Prisma.sql`
+      const consumer = await this.writer.$transaction(
+        async (tx) => {
+          const [row] = await tx.$queryRaw<ConsumerRow[]>(Prisma.sql`
           INSERT INTO consumer_private.consumers
             (name, state, allowed_source_keys, credential_version)
           VALUES (${input.name}, 'active', ${input.allowedSourceKeys}::text[], 1)
           RETURNING id, name, state, allowed_source_keys, created_at, credential_version
         `)
-        await tx.$executeRaw(Prisma.sql`
+          await tx.$executeRaw(Prisma.sql`
           INSERT INTO consumer_private.members (consumer_id, github_user_id, role)
           VALUES (${row.id}::uuid, ${actor}::bigint, 'owner')
         `)
-        await tx.$executeRaw(Prisma.sql`
+          await tx.$executeRaw(Prisma.sql`
           INSERT INTO consumer_private.credentials (consumer_id, verifier, version)
           VALUES (${row.id}::uuid, ${digest}, 1)
         `)
-        await tx.$executeRaw(Prisma.sql`
+          await tx.$executeRaw(Prisma.sql`
           INSERT INTO consumer_private.lifecycle_audit
             (consumer_id, actor_github_user_id, action, admission_sha,
              membership_version, credential_version)
           VALUES (${row.id}::uuid, ${actor}::bigint, 'created', ${input.admissionSha ?? null}, 1, 1),
                  (${row.id}::uuid, ${actor}::bigint, 'credential_issued', ${input.admissionSha ?? null}, 1, 1)
         `)
-        return consumerRecord(row)
-      })
+          if (
+            input.verifyCurrentAdmission &&
+            !(await input.verifyCurrentAdmission())
+          )
+            throw new ConsumerAccessError("forbidden")
+          return consumerRecord(row)
+        },
+        { maxWait: 10_000, timeout: 20_000 },
+      )
       return { consumer, secret: issued }
     } catch (error) {
       if (uniqueConflict(error)) throw new ConsumerAccessError("conflict")

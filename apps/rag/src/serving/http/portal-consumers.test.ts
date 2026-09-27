@@ -8,16 +8,23 @@ import { createConsumerRoutes } from "./portal-consumers.js"
 
 function fixture() {
   const create = vi.fn(
-    async (input: Parameters<ConsumerAccess["create"]>[0]) => ({
-      consumer: {
-        consumerId: "00000000-0000-4000-8000-000000000001",
-        name: input.name,
-        state: "active" as const,
-        allowedSourceKeys: input.allowedSourceKeys,
-        createdAt: new Date("2026-09-26T00:00:00Z"),
-      },
-      secret: "synthetic-one-time-secret",
-    }),
+    async (input: Parameters<ConsumerAccess["create"]>[0]) => {
+      if (
+        input.verifyCurrentAdmission &&
+        !(await input.verifyCurrentAdmission())
+      )
+        throw new ConsumerAccessError("forbidden")
+      return {
+        consumer: {
+          consumerId: "00000000-0000-4000-8000-000000000001",
+          name: input.name,
+          state: "active" as const,
+          allowedSourceKeys: input.allowedSourceKeys,
+          createdAt: new Date("2026-09-26T00:00:00Z"),
+        },
+        secret: "synthetic-one-time-secret",
+      }
+    },
   )
   const addMember = vi.fn(
     async (input: Parameters<ConsumerAccess["addMember"]>[0]) => {
@@ -38,18 +45,19 @@ function fixture() {
     }),
     transition: async () => {},
   } satisfies ConsumerAccess
+  const current = vi.fn(async () => ({
+    sha: "merged",
+    allowlist: {
+      users: [
+        { id: 42, login: "owner" },
+        { id: 43, login: "member" },
+      ],
+    },
+  }))
   const app = createConsumerRoutes({
     consumers,
     admission: {
-      current: async () => ({
-        sha: "merged",
-        allowlist: {
-          users: [
-            { id: 42, login: "owner" },
-            { id: 43, login: "member" },
-          ],
-        },
-      }),
+      current,
       eligible: async (identity) => identity.id === 42 || identity.id === 43,
       exchange: async () => ({ id: 42, login: "owner" }),
     },
@@ -63,7 +71,7 @@ function fixture() {
     Origin: "https://rag.example",
     "Content-Type": "application/json",
   }
-  return { app, create, addMember, headers }
+  return { app, create, addMember, headers, current }
 }
 
 describe("authenticated consumer routes", () => {
@@ -80,6 +88,7 @@ describe("authenticated consumer routes", () => {
       actorGithubUserId: "42",
       allowedSourceKeys: ["approved-source"],
       admissionSha: "merged",
+      verifyCurrentAdmission: expect.any(Function),
     })
     expect(await response.json()).toMatchObject({
       initialOwner: { id: 42, login: "owner" },
@@ -95,6 +104,22 @@ describe("authenticated consumer routes", () => {
         })
       ).status,
     ).toBe(400)
+  })
+
+  it("denies issuance if admission is removed after middleware authorization", async () => {
+    const f = fixture()
+    f.current.mockResolvedValueOnce({
+      sha: "merged",
+      allowlist: { users: [{ id: 42, login: "owner" }] },
+    })
+    f.current.mockResolvedValue({ sha: "removed", allowlist: { users: [] } })
+    const response = await f.app.request("/", {
+      method: "POST",
+      headers: f.headers,
+      body: JSON.stringify({ name: "race" }),
+    })
+    expect(response.status).toBe(403)
+    expect(f.current).toHaveBeenCalledTimes(2)
   })
 
   it("requires the current allowlist and same origin for membership changes", async () => {

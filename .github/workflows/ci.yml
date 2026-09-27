@@ -325,9 +325,20 @@ jobs:
           pnpm --filter @forge/rag db:migrate:deploy
           pnpm --filter @forge/rag db:migrate:status
           pnpm --filter @forge/rag db:drift:check
+      - name: Provision synthetic consumer roles
+        env:
+          PGPASSWORD: forge
+        run: psql -h localhost -p 5432 -U forge -d forge_rag -v ON_ERROR_STOP=1 -f apps/rag/tests/fixtures/consumer-roles.sql
+      - name: Verify consumer privilege boundaries
+        env:
+          RAG_CONSUMER_WRITER_DATABASE_URL: postgresql://feat527_writer_test:synthetic-only-test-password@localhost:5432/forge_rag
+          RAG_CONSUMER_AUTH_DATABASE_URL: postgresql://feat527_reader_test:synthetic-only-test-password@localhost:5432/forge_rag
+        run: pnpm --filter @forge/rag db:verify-consumer-roles
       - name: Exercise RAG schema against PostgreSQL
         env:
           DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_rag
+          RAG_CONSUMER_WRITER_DATABASE_URL: postgresql://feat527_writer_test:synthetic-only-test-password@localhost:5432/forge_rag
+          RAG_CONSUMER_AUTH_DATABASE_URL: postgresql://feat527_reader_test:synthetic-only-test-password@localhost:5432/forge_rag
         run: pnpm --filter @forge/rag db:verify
 
   format:
