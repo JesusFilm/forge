@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Builds the bundled Bible data (feat-553 KTD1, KTD6, KTD7). In apps/mobile:
 //   pnpm bible:data [--check | --refresh]
-// No flag writes every output from the lock. --check needs no network.
+// No flag rewrites the lock in its canonical form and writes every output
+// from it. --check needs no network.
 import { Buffer } from "node:buffer"
 import { createHash } from "node:crypto"
 import fs from "node:fs"
@@ -149,8 +150,15 @@ function readLock() {
   return { lock, text }
 }
 
-async function lockText(lock) {
-  return formatted(LOCK, JSON.stringify(lock))
+// One translation per line keeps the lock short to review (Prettier printed
+// ~47,000 lines). The root .prettierignore skips it, so this is its format.
+function lockText(lock) {
+  const { translations, ...head } = lock
+  const fields = Object.entries(head).map(
+    ([key, value]) => `  ${JSON.stringify(key)}: ${JSON.stringify(value)},`,
+  )
+  const rows = translations.map((record) => `    ${JSON.stringify(record)}`)
+  return `{\n${fields.join("\n")}\n  "translations": [\n${rows.join(",\n")}\n  ]\n}\n`
 }
 
 /* --------------------------------------------------------- generate */
@@ -390,8 +398,7 @@ function summarize(result, bsb) {
 async function check() {
   const { lock, text } = readLock()
   const problems = []
-  if ((await lockText(lock)) !== text)
-    problems.push(`${LOCK} is not in canonical form`)
+  if (lockText(lock) !== text) problems.push(`${LOCK} is not in canonical form`)
   const result = await generate(lock)
   for (const [relative, expected] of result.files) {
     if (readText(relative) !== expected)
@@ -706,7 +713,7 @@ async function refresh() {
     bsbBooks: bookHashes,
     translations: records,
   }
-  writeText(LOCK, await lockText(lock))
+  writeText(LOCK, lockText(lock))
   await writeOutputs(lock)
   const seconds = ((performance.now() - started) / 1000).toFixed(0)
   console.log(
@@ -725,6 +732,7 @@ async function main() {
     await check()
   } else {
     const { lock } = readLock()
+    writeText(LOCK, lockText(lock))
     await writeOutputs(lock)
     await check()
   }

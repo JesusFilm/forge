@@ -1631,7 +1631,9 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
 - **Run the script as `pnpm bible:data` in `apps/mobile`.**
   - `--check` rebuilds every output from `src/lib/bible/data/sources.lock.json`
     and compares it with the committed files. It needs no network.
-  - No flag writes every output from the lock.
+  - No flag rewrites the lock in its canonical form and writes every output
+    from it. The lock has one translation per line, and the root
+    `.prettierignore` skips it, so change it only through the script.
   - `--refresh` downloads the catalog, the eBible license table, and about
     1,250 `complete.json` files. That is about 1 GB and takes about 20
     minutes. The cache is `$TMPDIR/forge-bible-data-cache`, so an interrupted
