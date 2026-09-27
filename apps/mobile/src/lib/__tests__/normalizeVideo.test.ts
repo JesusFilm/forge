@@ -169,6 +169,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
           bcp47: "en",
           slug: "english",
           name: { en: "English" },
+          iso3: "eng",
         },
         muxVideo: { playbackId: "abc123" },
       },
@@ -183,6 +184,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
           bcp47: "es",
           slug: "spanish",
           name: { en: "Spanish", es: "Español" },
+          iso3: "spa",
         },
         muxVideo: { playbackId: "def456" },
       },
@@ -220,7 +222,12 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
         verseEnd: 30,
         order: 1,
         osisId: "John.19.30",
-        bibleBook: { documentId: "bb-1", name: { en: "John" } },
+        bibleBook: {
+          documentId: "bb-1",
+          name: { en: "John" },
+          osisId: "John",
+          paratextAbbreviation: "JHN",
+        },
       },
     ],
     ...overrides,
@@ -446,6 +453,27 @@ describe("normalizeVideo", () => {
     expect(result.variants.every((v) => v.published)).toBe(true)
   })
 
+  it("projects each dub language's ISO 639-3 code as admin sends it (U6)", () => {
+    const result = normalizeVideo(makeRawVideo())!
+    expect(result.variants.map((v) => v.languageIso3)).toEqual(["eng", "spa"])
+  })
+
+  it("reads a blank or absent dub language code as null", () => {
+    const raw = makeRawVideo()
+    const variants = (
+      raw as unknown as {
+        variants: { language: Record<string, unknown> | null }[]
+      }
+    ).variants.map((v, index) =>
+      index === 0
+        ? { ...v, language: { ...v.language, iso3: "  " } }
+        : { ...v, language: { ...v.language, iso3: null } },
+    )
+    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+    expect(result.variants).toHaveLength(2)
+    expect(result.variants.map((v) => v.languageIso3)).toEqual([null, null])
+  })
+
   it("does not project per-dub downloads/subtitles onto bulk variants", () => {
     // The bulk WatchVideo query is lean by design — downloads/subtitles are
     // fetched lazily per dub (normalizeDubMedia), never inlined here.
@@ -591,6 +619,132 @@ describe("normalizeVideo", () => {
     expect(result.bibleCitations[0].osisId).toBe("John.19.30")
     expect(result.bibleCitations[0].chapterStart).toBe(19)
     expect(result.bibleCitations[0].verseStart).toBe(30)
+  })
+
+  // feat-553 U12. The reader keys a book by its USFM code. These are admin's
+  // real `BibleBook` spellings: Core sync writes `osisId: "John"` with
+  // `paratextAbbreviation: "JHN"`, and admin's own OSIS table spells the
+  // numbered books `1Cor` and the Psalms `Ps` (`youversion-reference.ts`).
+  describe("citation book code", () => {
+    function bookCodeFor(bibleBook: Record<string, unknown> | null) {
+      const result = normalizeVideo(
+        makeRawVideo({
+          bibleCitations: [
+            {
+              documentId: "bc-1",
+              chapterStart: 3,
+              chapterEnd: null,
+              verseStart: 16,
+              verseEnd: 17,
+              order: 1,
+              osisId: "John.3.16",
+              bibleBook,
+            },
+          ],
+        }),
+      )!
+      return result.bibleCitations[0]?.bookUsfm
+    }
+
+    it.each([
+      ["John", "JHN", "JHN"],
+      ["1Cor", "1CO", "1CO"],
+      ["Ps", "PSA", "PSA"],
+      ["Song", "SNG", "SNG"],
+      ["Gen", "GEN", "GEN"],
+      ["Rev", "REV", "REV"],
+    ])("maps admin's osisId %s to %s", (osisId, paratext, usfm) => {
+      // The real row carries both fields.
+      expect(
+        bookCodeFor({
+          documentId: "bb-1",
+          name: { en: "Book" },
+          osisId,
+          paratextAbbreviation: paratext,
+        }),
+      ).toBe(usfm)
+      // With no Paratext code, only the osisId mapping can give the answer.
+      expect(
+        bookCodeFor({
+          documentId: "bb-1",
+          name: { en: "Book" },
+          osisId,
+          paratextAbbreviation: null,
+        }),
+      ).toBe(usfm)
+    })
+
+    it("prefers the osisId over a Paratext code that disagrees", () => {
+      expect(
+        bookCodeFor({
+          documentId: "bb-1",
+          name: { en: "1 Corinthians" },
+          osisId: "1Cor",
+          paratextAbbreviation: "JHN",
+        }),
+      ).toBe("1CO")
+    })
+
+    it("falls back to the Paratext code when the osisId is absent", () => {
+      expect(
+        bookCodeFor({
+          documentId: "bb-1",
+          name: { en: "John" },
+          osisId: null,
+          paratextAbbreviation: "JHN",
+        }),
+      ).toBe("JHN")
+    })
+
+    // A deuterocanonical book is a real Core shape and BSB has no text for it.
+    it("gives no code for a book outside BSB's 66", () => {
+      expect(
+        bookCodeFor({
+          documentId: "bb-1",
+          name: { en: "Tobit" },
+          osisId: "Tob",
+          paratextAbbreviation: "TOB",
+        }),
+      ).toBeNull()
+    })
+
+    // The USFM spelling in the OSIS field is not an OSIS id.
+    it("does not read a USFM code out of the osisId field", () => {
+      expect(
+        bookCodeFor({
+          documentId: "bb-1",
+          name: { en: "John" },
+          osisId: "JHN",
+          paratextAbbreviation: null,
+        }),
+      ).toBeNull()
+    })
+
+    it("gives no code for a citation with no book", () => {
+      expect(bookCodeFor(null)).toBeNull()
+    })
+
+    // The lean series fragment selects no book codes. It must still normalize.
+    it("gives no code for the series fragment's book shape", () => {
+      const result = normalizeSeries(
+        makeRawSeries({
+          bibleCitations: [
+            {
+              documentId: "bc-1",
+              chapterStart: 3,
+              chapterEnd: null,
+              verseStart: 16,
+              verseEnd: null,
+              order: 1,
+              osisId: "John.3.16",
+              bibleBook: { documentId: "bb-1", name: { en: "John" } },
+            },
+          ],
+        }),
+      )!
+      expect(result.bibleCitations).toHaveLength(1)
+      expect(result.bibleCitations[0]?.bookUsfm).toBeNull()
+    })
   })
 
   it("sorts a frozen bibleCitations array without mutating it", () => {
@@ -966,6 +1120,8 @@ describe("normalizeSeries", () => {
     expect(result.muxPlaybackId).toBeNull()
     expect(result.variants[0].duration).toBeNull()
     expect(result.variants[0].muxPlaybackId).toBeNull()
+    // The lean series fragment selects no `iso3` on the dub language.
+    expect(result.variants[0].languageIso3).toBeNull()
   })
 
   it("has no trailer streamingUrl when no dub is playable", () => {

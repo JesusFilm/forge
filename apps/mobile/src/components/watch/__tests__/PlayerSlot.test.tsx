@@ -34,6 +34,21 @@ jest.mock("react/jsx-runtime", () => {
 })
 
 jest.mock("expo-image", () => ({ Image: () => null }))
+// The root stack's navigation object, which the slot reaches through
+// `getParent()`. A case fires its transitionEnd through these listeners.
+const mockParentListeners = new Map<string, Set<(event: unknown) => void>>()
+jest.mock("expo-router", () => ({
+  useNavigation: () => ({
+    getParent: () => ({
+      addListener: (name: string, listener: (event: unknown) => void) => {
+        const set = mockParentListeners.get(name) ?? new Set()
+        set.add(listener)
+        mockParentListeners.set(name, set)
+        return () => set.delete(listener)
+      },
+    }),
+  }),
+}))
 jest.mock("../../../lib/datadog", () => ({
   datadogLog: {
     debug: jest.fn(),
@@ -179,6 +194,7 @@ async function measureRect(): Promise<void> {
 beforeEach(() => {
   requestStore.reset()
   sessionStore.end("abandoned")
+  mockParentListeners.clear()
   datadog.datadogLog.warn.mockClear()
   // Back to dropping the callback, which is both the mock's own default and
   // the cold open this component defends against.
@@ -412,5 +428,117 @@ describe("PlayerSlot", () => {
     )
     // The pump gave up rather than running forever.
     expect(scheduled).toHaveLength(MEASURE_RETRY_FRAMES)
+  })
+})
+
+// feat-553 KTD10: a reader route covers the slot without detaching it.
+describe("PlayerSlot under the reader cover", () => {
+  function transitionEndListeners() {
+    return [...(mockParentListeners.get("transitionEnd") ?? [])]
+  }
+
+  async function fireTransitionEnd(closing: boolean) {
+    await act(async () => {
+      for (const listener of transitionEndListeners())
+        listener({ data: { closing } })
+    })
+  }
+
+  it("paints its poster while a reader covers it, and drops it on the return", async () => {
+    // The owner must have played, or the cover refuses; both keep the poster.
+    requestStore.setPlaybackFactsSource({
+      hasPlaybackStarted: () => true,
+      hasReachedEnd: () => false,
+      readPosition: () => 10,
+      readDuration: () => 600,
+    })
+    const renderer = await render(slot())
+    await measureRect()
+    const id = requestStore.getSnapshot().slotId as number
+    expect(posters(renderer)).toHaveLength(0)
+
+    await act(async () => {
+      requestStore.coverSlot(id)
+    })
+
+    // The iOS back swipe shows this screen under the reader: the video is in
+    // the window, so the slot's own poster is what the viewer sees here.
+    expect(requestStore.getSnapshot().cover).toBe("admitted")
+    expect(requestStore.getSnapshot().rect).toEqual(GOOD_RECT)
+    expect(posters(renderer)).toHaveLength(1)
+
+    await act(async () => {
+      requestStore.uncoverSlot(id)
+    })
+    expect(posters(renderer)).toHaveLength(0)
+  })
+
+  it("paints its poster under a refused cover too", async () => {
+    const renderer = await render(slot())
+    await measureRect()
+    const id = requestStore.getSnapshot().slotId as number
+
+    await act(async () => {
+      requestStore.coverSlot(id)
+    })
+
+    expect(requestStore.getSnapshot().cover).toBe("refused")
+    expect(posters(renderer)).toHaveLength(1)
+  })
+
+  it("measures once more when the root stack's pop transition ends", async () => {
+    const renderer = await render(slot())
+    await measureRect()
+    const id = requestStore.getSnapshot().slotId as number
+    expect(measure).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      requestStore.coverSlot(id)
+    })
+    // A rotation while covered: the kept rect is stale, and the native node
+    // may drop a measure while it sits under the reader.
+    const ROTATED = { x: 0, y: 24, width: 820, height: 461 }
+    armMeasure(ROTATED)
+
+    // The reader's push ending hides this screen: no measure then.
+    await fireTransitionEnd(true)
+    expect(measure).toHaveBeenCalledTimes(1)
+
+    // The pop: the cover ends at its dispatch, the transition ends later.
+    await act(async () => {
+      requestStore.uncoverSlot(id)
+    })
+    await fireTransitionEnd(false)
+
+    expect(measure).toHaveBeenCalledTimes(2)
+    expect(requestStore.getSnapshot().rect).toEqual(ROTATED)
+    expect(posters(renderer)).toHaveLength(0)
+
+    // Once only: a later transition with no cover measures nothing more.
+    await fireTransitionEnd(false)
+    expect(measure).toHaveBeenCalledTimes(2)
+  })
+
+  // Off the reader routes nothing changes: the pre-U13 slot has no listener.
+  it("measures nothing more at a transition end that no cover came before", async () => {
+    await render(slot())
+    await measureRect()
+    expect(measure).toHaveBeenCalledTimes(1)
+    armMeasure({ x: 0, y: 24, width: 820, height: 461 })
+
+    await fireTransitionEnd(false)
+
+    expect(measure).toHaveBeenCalledTimes(1)
+    expect(requestStore.getSnapshot().rect).toEqual(GOOD_RECT)
+  })
+
+  it("holds one transition listener through StrictMode's effect cycle", async () => {
+    await render(<StrictMode>{slot()}</StrictMode>)
+
+    expect(transitionEndListeners()).toHaveLength(1)
+    await act(async () => {
+      mounted?.unmount()
+    })
+    mounted = null
+    expect(transitionEndListeners()).toHaveLength(0)
   })
 })

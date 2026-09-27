@@ -6,6 +6,12 @@
 export type WatchPreferences = {
   /** Preferred dub language slug, or null to use the resolution fallback. */
   audioLanguageSlug: string | null
+  /**
+   * ISO 639-3 code of `audioLanguageSlug`, exactly as admin sends it ("spa",
+   * or a macrolanguage like "zho"). Null = unknown, and always null when the
+   * slug is null. The Bible reader picks its default translation from it.
+   */
+  audioLanguageIso3: string | null
   /** Preferred subtitle language slug, or null to use the fallback. */
   subtitleLanguageSlug: string | null
   /**
@@ -30,11 +36,20 @@ export const WATCH_PREFERENCES_STORAGE_KEY = "watchPreferences"
 
 export const DEFAULT_WATCH_PREFERENCES: WatchPreferences = {
   audioLanguageSlug: null,
+  audioLanguageIso3: null,
   subtitleLanguageSlug: null,
   subtitleLanguageName: null,
   subtitlesEnabled: false,
   wifiOnly: false,
   longPressHintSeen: false,
+}
+
+/**
+ * A blank or non-string code is unknown. A real code stays exactly as sent:
+ * the Bible reader, not this module, maps macrolanguages to its catalog.
+ */
+export function normalizeLanguageIso3(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null
 }
 
 function normalizeNonEmptyString(value: unknown): string | null {
@@ -61,8 +76,14 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
     return { ...DEFAULT_WATCH_PREFERENCES }
   }
   const obj = parsed as Record<string, unknown>
+  const audioLanguageSlug = normalizeNonEmptyString(obj.audioLanguageSlug)
   return {
-    audioLanguageSlug: normalizeNonEmptyString(obj.audioLanguageSlug),
+    audioLanguageSlug,
+    // A record from before the code existed reads as unknown.
+    audioLanguageIso3:
+      audioLanguageSlug == null
+        ? null
+        : normalizeLanguageIso3(obj.audioLanguageIso3),
     subtitleLanguageSlug: normalizeNonEmptyString(obj.subtitleLanguageSlug),
     subtitleLanguageName: normalizeNonEmptyString(obj.subtitleLanguageName),
     subtitlesEnabled: obj.subtitlesEnabled === true,
@@ -73,4 +94,58 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
 
 export function serializeWatchPreferences(prefs: WatchPreferences): string {
   return JSON.stringify(prefs)
+}
+
+type AudioLanguage = Pick<
+  WatchPreferences,
+  "audioLanguageSlug" | "audioLanguageIso3"
+>
+
+/**
+ * The write for an audio language pick. The code must describe the slug, so a
+ * pick without a code keeps the stored code only for the same slug.
+ */
+export function audioLanguagePatch(
+  current: AudioLanguage,
+  slug: string | null,
+  iso3: string | null,
+): AudioLanguage {
+  if (slug == null) return { audioLanguageSlug: null, audioLanguageIso3: null }
+  const kept =
+    slug === current.audioLanguageSlug ? current.audioLanguageIso3 : null
+  return {
+    audioLanguageSlug: slug,
+    audioLanguageIso3: normalizeLanguageIso3(iso3) ?? kept,
+  }
+}
+
+/**
+ * Fills a missing code for a slug stored before the code existed. Returns null
+ * when the stored slug has changed or a code is already stored.
+ */
+export function audioIso3BackfillPatch(
+  current: AudioLanguage,
+  slug: string,
+  iso3: string | null,
+): Pick<WatchPreferences, "audioLanguageIso3"> | null {
+  if (current.audioLanguageSlug !== slug) return null
+  if (current.audioLanguageIso3 != null) return null
+  const code = normalizeLanguageIso3(iso3)
+  return code == null ? null : { audioLanguageIso3: code }
+}
+
+/** The code of the first dub in the `slug` language that carries one. */
+export function languageIso3ForSlug(
+  dubs: readonly {
+    languageSlug: string | null
+    languageIso3: string | null
+  }[],
+  slug: string,
+): string | null {
+  for (const dub of dubs) {
+    if (dub.languageSlug !== slug) continue
+    const code = normalizeLanguageIso3(dub.languageIso3)
+    if (code != null) return code
+  }
+  return null
 }

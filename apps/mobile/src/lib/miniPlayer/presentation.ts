@@ -12,7 +12,11 @@
  * "(tabs)" and not "(tabs)/index".
  */
 
-import type { MiniPlayerStoreSnapshot } from "./store"
+import {
+  sameSessionContent,
+  type MiniPlayerSession,
+  type MiniPlayerStoreSnapshot,
+} from "./store"
 import { isSuppressedBySheet, routePattern } from "./suppression"
 
 export type MiniPlayerPresentation =
@@ -37,12 +41,14 @@ export const FULL_SCREEN_ROUTE_PATTERNS = [
   "watch/download",
 ] as const
 
-/** The four tab roots from `app/(tabs)/_layout.tsx`. "(tabs)/index" is listed
- *  too: only the router's index-pop keeps it out of the segment list. */
+/** The five tab roots from `app/(tabs)/_layout.tsx`. "(tabs)/index" is listed
+ *  too: only the router's index-pop keeps it out of the segment list. The
+ *  pushed Bible reader is the root route "reader", not "(tabs)/bible". */
 export const TAB_ROOT_ROUTE_PATTERNS = [
   "(tabs)",
   "(tabs)/index",
   "(tabs)/watch",
+  "(tabs)/bible",
   "(tabs)/library",
   "(tabs)/profile",
 ] as const
@@ -80,6 +86,64 @@ export function isTabRootRoute(segments: readonly string[]): boolean {
  *  session carries `originPattern`, not the segments it was built from. */
 export function canOriginateRoutePattern(pattern: string): boolean {
   return !EXCLUDED_ORIGIN_ROUTES.has(pattern)
+}
+
+/** feat-553 KTD10: the pushed reader and its three root sheets (`app/_layout.tsx`)
+ *  sit over the watch screen's player slot. The Bible tab does not: no watch
+ *  slot is mounted under it. */
+export const READER_COVER_ROUTE_PATTERNS = [
+  "reader",
+  "reader-passage",
+  "reader-translation",
+  "reader-settings",
+] as const
+
+/** feat-553 KTD11: every route that shows the reader. */
+export const READER_ROUTE_PATTERNS = [
+  ...READER_COVER_ROUTE_PATTERNS,
+  "(tabs)/bible",
+] as const
+
+const READER_COVER_ROUTES: ReadonlySet<string> = new Set(
+  READER_COVER_ROUTE_PATTERNS,
+)
+
+/** The one cover predicate. The host, the slot poster and the screen's back
+ *  button all follow the cover it starts (KTD10). */
+export function isReaderCovering(segments: readonly string[]): boolean {
+  return READER_COVER_ROUTES.has(routePattern(segments))
+}
+
+/** Where the reader runs: the Bible tab, the pushed route, or one of the
+ *  three sheets, which can sit over either host. */
+export type ReaderRouteKind = "tab" | "pushed" | "sheet"
+
+export function readerRouteKind(
+  segments: readonly string[],
+): ReaderRouteKind | null {
+  const pattern = routePattern(segments)
+  if (pattern === "(tabs)/bible") return "tab"
+  if (pattern === "reader") return "pushed"
+  return READER_COVER_ROUTES.has(pattern) ? "sheet" : null
+}
+
+/** What a tap on the window does: go back to the covered screen, or open one. */
+export type ExpandAction = "pop" | "push"
+
+/** KTD10, AE14: a tap on the window over the reader goes back to the watch
+ *  screen under it, so the stack never holds a second one. Anything else
+ *  pushes, as the Bible tab does: no watch slot is mounted under it. */
+export function expandAction(input: {
+  /** The current slot is covered and its window floats. */
+  covered: boolean
+  descriptor: Pick<MiniPlayerSession, "videoId" | "videoSlug"> | null
+  session: Pick<MiniPlayerSession, "videoId" | "videoSlug"> | null
+  segments: readonly string[]
+}): ExpandAction {
+  if (!input.covered || input.descriptor == null || input.session == null)
+    return "push"
+  if (!sameSessionContent(input.descriptor, input.session)) return "push"
+  return routePattern(input.segments) === "reader" ? "pop" : "push"
 }
 
 /**

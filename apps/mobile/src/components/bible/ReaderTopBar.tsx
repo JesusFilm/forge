@@ -1,0 +1,191 @@
+import { StyleSheet, Text, View } from "react-native"
+import Ionicons from "@expo/vector-icons/Ionicons"
+
+import {
+  READER_CHROME_MAX_FONT_SCALE,
+  READER_TOP_BAR_HEIGHT,
+  READER_TOP_BAR_OFFSET,
+} from "../../lib/bible/reader/chrome"
+import { READER_COPY } from "../../lib/bible/reader/copy"
+import type { TranslationLabel } from "../../lib/bible/reader/labels"
+import type { TranslationDownloadState } from "../../lib/bible/repository/translationDownloads"
+import type { ReaderTokens } from "../../lib/bible/theme/palettes"
+import { HORIZONTAL_PADDING } from "../../styles/shared"
+import { ChapterPill } from "./ChapterPill"
+import { ReaderGlassButton } from "./ReaderGlassButton"
+import { ReaderDownloadGlyph } from "./sheets/ReaderDownloadGlyph"
+
+export type ReaderTopBarProps = {
+  tokens: ReaderTokens
+  safeAreaTop: number
+  /** The pushed reader's back button (R6); the Bible tab has none. */
+  onBack?: () => void
+  /** The pill's reference in the shown numbering, or null while waiting. */
+  passage: string | null
+  onPressPassage: () => void
+  /** R39: a new value animates the pill; U8 counts chapter changes. */
+  pulse: number
+  reduceMotion: boolean
+  /** R23: the shown translation, or null while waiting. */
+  translation: TranslationLabel | null
+  onPressTranslation: () => void
+  download: {
+    state: TranslationDownloadState | null
+    accessibilityLabel: string
+  }
+  onPressDownload: () => void
+  onPressSettings: () => void
+}
+
+/** R8: back, the pill, and the translation pill at the left (owner,
+ *  2026-09-27); download and settings at the right. */
+export function ReaderTopBar({
+  tokens,
+  safeAreaTop,
+  onBack,
+  passage,
+  onPressPassage,
+  pulse,
+  reduceMotion,
+  translation,
+  onPressTranslation,
+  download,
+  onPressDownload,
+  onPressSettings,
+}: ReaderTopBarProps) {
+  return (
+    <View
+      style={[
+        styles.bar,
+        {
+          height: safeAreaTop + READER_TOP_BAR_HEIGHT,
+          paddingTop: safeAreaTop + READER_TOP_BAR_OFFSET,
+        },
+      ]}
+      pointerEvents="box-none"
+    >
+      <View style={styles.leading} pointerEvents="box-none">
+        {onBack && (
+          <ReaderGlassButton
+            tokens={tokens}
+            accessibilityLabel={READER_COPY.back}
+            onPress={onBack}
+          >
+            <Ionicons name="chevron-back" size={24} color={tokens.icon} />
+          </ReaderGlassButton>
+        )}
+        <ChapterPill
+          tokens={tokens}
+          accessibilityLabel={
+            passage
+              ? READER_COPY.choosePassage(passage)
+              : READER_COPY.choosePassageWaiting
+          }
+          onPress={onPressPassage}
+          disabled={passage === null}
+          pulse={pulse}
+          reduceMotion={reduceMotion}
+        >
+          {/* A narrow phone shortens the book name, never the verse. */}
+          <Text
+            style={[styles.passage, { color: tokens.text }]}
+            numberOfLines={1}
+            ellipsizeMode="middle"
+            maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
+          >
+            {passage ?? " "}
+          </Text>
+        </ChapterPill>
+        <ReaderGlassButton
+          tokens={tokens}
+          shape="pill"
+          accessibilityLabel={
+            translation?.accessibilityLabel ??
+            READER_COPY.chooseTranslationWaiting
+          }
+          onPress={onPressTranslation}
+          disabled={translation === null}
+          style={styles.translation}
+        >
+          {translation?.isFallback && (
+            <Ionicons
+              name="information-circle-outline"
+              size={16}
+              color={tokens.icon}
+              style={styles.fallbackIcon}
+            />
+          )}
+          <Text
+            style={[styles.translationText, { color: tokens.text }]}
+            numberOfLines={1}
+            maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
+          >
+            {translation?.text ?? " "}
+          </Text>
+        </ReaderGlassButton>
+      </View>
+      <View style={styles.trailing} pointerEvents="box-none">
+        <ReaderGlassButton
+          tokens={tokens}
+          accessibilityLabel={download.accessibilityLabel}
+          onPress={onPressDownload}
+          disabled={download.state === null}
+        >
+          <ReaderDownloadGlyph state={download.state} tokens={tokens} />
+        </ReaderGlassButton>
+        <ReaderGlassButton
+          tokens={tokens}
+          accessibilityLabel={READER_COPY.settings}
+          onPress={onPressSettings}
+        >
+          <Ionicons name="settings-outline" size={22} color={tokens.icon} />
+        </ReaderGlassButton>
+      </View>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  bar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    paddingHorizontal: HORIZONTAL_PADDING - 2,
+    zIndex: 2,
+  },
+  leading: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 1,
+    gap: 4,
+  },
+  trailing: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginLeft: 8,
+  },
+  passage: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "600",
+    fontFamily: "System",
+  },
+  // The passage pill shrinks first; a short name is at most five letters.
+  translation: {
+    flexShrink: 0,
+  },
+  translationText: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "600",
+    fontFamily: "System",
+  },
+  fallbackIcon: {
+    marginRight: 4,
+  },
+})
