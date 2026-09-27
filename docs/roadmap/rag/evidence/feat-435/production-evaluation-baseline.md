@@ -1,8 +1,9 @@
 # feat-435 post-migration production evaluation baseline preflight
 
 > Historical receipt for the September 6 attempt. Its stop decision applied to
-> the unsafe credential used then. The dedicated read-only reader was later
-> verified, and the [September 7 evaluation](production-eval-baseline.json)
+> the unsafe credential used then. [PR #2180](https://github.com/JesusFilm/forge/pull/2180)
+> added the dedicated read-only reader, [PR #2185](https://github.com/JesusFilm/forge/pull/2185)
+> bounded its provisioning, and the [September 7 evaluation](production-eval-baseline.json)
 > completed. The [September 8 operator decision](../../feat-435-rag-proof-soak-archive.md#operator-decision--september-8-2026)
 > superseded the later quality-based no-go. Neither decision changes what this
 > preflight observed.
