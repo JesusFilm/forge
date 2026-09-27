@@ -54,6 +54,7 @@ import {
 import { WATCH_HERO_BODY_OVERLAP_CSS } from "@/lib/watch-hero-preview-overlap"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { getWebVttCueText } from "@/lib/webvtt"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 
 type WatchHomeTvCarouselProps = {
   slides: WatchHomeHeroSlide[]
@@ -1150,20 +1151,29 @@ export function WatchHomeTvCarousel({
           videoRef={videoRef}
           wrapperRef={wrapperRef}
         />
-        <WatchHomeTvOverlay
-          activeIndex={activeIndex}
-          activeSlide={activeSlide}
-          advanceDurationSeconds={advanceDurationSeconds}
-          isBuffering={isBuffering}
-          isTurnHeld={isTurnHeld}
-          isMuted={isMuted}
-          leavingSlide={leavingSlide}
-          onSelectSlide={selectSlide}
-          onToggleMuted={toggleMuted}
-          playbackTimeSeconds={playbackTimeSeconds}
-          ringAnimationKey={ringAnimationKey}
-          slides={timelineSlides}
-        />
+        <WatchExposureBoundary
+          config={{
+            surface: "watch-home",
+            block: "hero",
+            presentation: "hero-card",
+            placement: pinned ? "home-hero" : "authored-hero",
+          }}
+        >
+          <WatchHomeTvOverlay
+            activeIndex={activeIndex}
+            activeSlide={activeSlide}
+            advanceDurationSeconds={advanceDurationSeconds}
+            isBuffering={isBuffering}
+            isTurnHeld={isTurnHeld}
+            isMuted={isMuted}
+            leavingSlide={leavingSlide}
+            onSelectSlide={selectSlide}
+            onToggleMuted={toggleMuted}
+            playbackTimeSeconds={playbackTimeSeconds}
+            ringAnimationKey={ringAnimationKey}
+            slides={timelineSlides}
+          />
+        </WatchExposureBoundary>
         {subtitleCueText ? (
           <WatchHomeSubtitleOverlay cueText={subtitleCueText} />
         ) : null}

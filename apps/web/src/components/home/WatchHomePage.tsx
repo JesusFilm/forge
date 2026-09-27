@@ -5,6 +5,7 @@ import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomePromo } from "@/components/home/WatchHomePromo"
 import { WatchHomeSection } from "@/components/home/WatchHomeSection"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import type { WatchHomeModel } from "@/lib/watch-home"
 
 type WatchHomePageProps = {
@@ -75,7 +76,17 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
           />
           <WatchHomeBodyZone>
             {model.sections.map((section) => (
-              <WatchHomeSection key={section.id} section={section} />
+              <WatchExposureBoundary
+                key={section.id}
+                config={{
+                  surface: "watch-home",
+                  block: "collections",
+                  presentation: section.layout === "grid" ? "grid" : "carousel",
+                  placement: section.id,
+                }}
+              >
+                <WatchHomeSection section={section} />
+              </WatchExposureBoundary>
             ))}
             <WatchHomePromo />
             <WatchHomeFooter />
