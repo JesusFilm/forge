@@ -189,9 +189,9 @@ export function ClipOverlay({
     [updateRegion],
   )
 
-  // In the band, captions sit on the frame's bottom edge, not above the whole
-  // bottom block; they never go below the title, and they keep clear of the
-  // rail, which reaches up into the frame on a phone.
+  // Captions sit just above the title, the scrim's top (owner, 2026-09-28), or
+  // on the band frame's bottom edge when that is higher. Mute and Share reach
+  // up beside them, so they narrow when they would cover either button.
   const [lowerBar, setLowerBar] = useState<number | null>(null)
   const [railLeft, setRailLeft] = useState<number | null>(null)
   const [railY, setRailY] = useState(0)
@@ -210,12 +210,12 @@ export function ClipOverlay({
   const playingSize = usePlayingSize(player)
   const band = clipFraming(playingSize) === "band"
   const bandInset = lowerBar == null ? null : lowerBar + regionBottom
+  const aboveTitle = bottomHeight - scrimTop
   const captionBottom =
-    band && bandInset != null
-      ? Math.max(bandInset, bottomHeight - scrimTop) + CAPTION_GAP
-      : bottomHeight + CAPTION_GAP
+    (band && bandInset != null ? Math.max(bandInset, aboveTitle) : aboveTitle) +
+    CAPTION_GAP
   const captionRightInset =
-    band && railLeft != null && rowWidth > 0
+    railLeft != null && rowWidth > 0
       ? rowWidth - railLeft + CAPTION_GAP
       : undefined
   // The inset applies only when the caption would cover Mute or Share (owner,

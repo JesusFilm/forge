@@ -520,6 +520,27 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
     expect(caption().bottomOffset).toBe(200 + 8)
   })
 
+  it("sits just above the title on a portrait clip, which fills the page", () => {
+    const renderer = render(props({ muted: true }))
+    act(() => {
+      player.__emit("videoTrackChange", {
+        videoTrack: { size: { width: 1080, height: 1920 } },
+      })
+    })
+    const caption = () =>
+      mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
+        bottomOffset: number
+        rightInset?: number
+      }
+    layOutBottom(renderer)
+
+    // Not above the whole block (380), which the rail makes taller than the text.
+    expect(byTestId(renderer, "clip-band-backdrop")).toHaveLength(0)
+    expect(caption().bottomOffset).toBe(200 + 8)
+    // Beside Mute and Share now, so it narrows when it would cover them.
+    expect(caption().rightInset).toBe(402 - 318 + 8)
+  })
+
   it("takes the inset only over Mute or Share, measured in the caption's frame", () => {
     const renderer = render(props({ muted: true }))
     const caption = () =>
