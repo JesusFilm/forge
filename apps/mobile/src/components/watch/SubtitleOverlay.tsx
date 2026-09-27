@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   AccessibilityInfo,
   Animated,
   Easing,
   StyleSheet,
   Text,
+  type LayoutChangeEvent,
 } from "react-native"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 
+import { captionMeetsBox, type CaptionBox } from "../../lib/captionBox"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
 import { LINE_HEIGHT_REDUCTION } from "../../lib/lineHeight"
@@ -27,6 +29,9 @@ type SubtitleOverlayProps = {
   horizontalInset?: number
   /** Right padding only, when a column of controls sits beside the caption. */
   rightInset?: number
+  /** With `rightInset`: take it only when the full-width caption covers one
+   *  of these boxes, in this overlay's parent frame. Without them it always applies. */
+  rightInsetBoxes?: readonly CaptionBox[]
   /** Caption text size — larger in fullscreen where the video fills the screen. */
   fontSize?: number
   /** Animate vertical-offset changes (used only in fullscreen, where the caption
@@ -69,11 +74,48 @@ export function SubtitleOverlay({
   bottomOffset = 16,
   horizontalInset = 16,
   rightInset,
+  rightInsetBoxes,
   fontSize = 16,
   animate = false,
 }: SubtitleOverlayProps) {
   const [cues, setCues] = useState<readonly VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
+
+  // Each new cue lays out unseen at full width, and that box decides the
+  // inset. The inset box cannot decide: it wraps taller and moves, so the
+  // decision would flip back and forth.
+  const fitKey =
+    rightInset == null || rightInsetBoxes == null
+      ? null
+      : JSON.stringify([
+          activeText,
+          bottomOffset,
+          fontSize,
+          horizontalInset,
+          rightInset,
+          rightInsetBoxes,
+        ])
+  const [fit, setFit] = useState<{ key: string; inset: boolean } | null>(null)
+  const measuring = fitKey != null && fit?.key !== fitKey
+  const insetApplies = fitKey == null || (!measuring && fit?.inset === true)
+  const handleTextLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      if (fitKey == null || rightInsetBoxes == null) return
+      const { x, width, height } = e.nativeEvent.layout
+      const inset = captionMeetsBox(
+        {
+          left: x,
+          right: x + width,
+          bottom: bottomOffset,
+          top: bottomOffset + height,
+        },
+        rightInsetBoxes,
+      )
+      // The first layout of this cue only: later ones are the inset layout.
+      setFit((prev) => (prev?.key === fitKey ? prev : { key: fitKey, inset }))
+    },
+    [fitKey, rightInsetBoxes, bottomOffset],
+  )
 
   // Vertical offset via translateY (native-driver friendly on Fabric), anchored
   // at bottom:0 and lifted by -bottomOffset. Animated only when `animate`
@@ -212,12 +254,19 @@ export function SubtitleOverlay({
         styles.container,
         {
           paddingHorizontal: horizontalInset,
-          paddingRight: rightInset ?? horizontalInset,
+          paddingRight: insetApplies
+            ? (rightInset ?? horizontalInset)
+            : horizontalInset,
           transform: [{ translateY }],
         },
+        measuring && styles.measuring,
       ]}
     >
       <Text
+        // A new key per cue remounts the text, so its first layout always
+        // fires, even when the new cue's box is the same size as the last.
+        key={fitKey ?? "caption"}
+        onLayout={fitKey == null ? undefined : handleTextLayout}
         style={[
           styles.text,
           {
@@ -242,6 +291,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     paddingHorizontal: 16,
+  },
+  measuring: {
+    opacity: 0,
   },
   text: {
     color: TEXT_ON_OVERLAY,

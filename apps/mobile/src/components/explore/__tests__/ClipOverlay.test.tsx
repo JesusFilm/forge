@@ -518,6 +518,35 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
     fireLayout(renderer, "clip-band-bar", { height: 0 }, 1)
     expect(caption().bottomOffset).toBe(200 + 8)
   })
+
+  it("takes the inset only over Mute or Share, measured in the caption's frame", () => {
+    const renderer = render(props({ muted: true }))
+    const caption = () =>
+      mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
+        rightInset?: number
+        rightInsetBoxes?: unknown
+      }
+    layOutBottom(renderer)
+    fireLayout(renderer, "clip-band-bar", { height: 124 }, 1)
+    // Until both buttons are measured, the inset always applies.
+    expect(caption().rightInsetBoxes).toBeUndefined()
+
+    fireLayout(renderer, "clip-overlay-rail", { x: 318, y: 20 })
+    fireLayout(renderer, "clip-rail-mute", { x: 10, width: 60, height: 74 })
+    fireLayout(renderer, "clip-rail-share", {
+      x: 14,
+      y: 86,
+      width: 52,
+      height: 74,
+    })
+
+    expect(caption().rightInset).toBe(402 - 318 + 8)
+    // Up from the page's bottom edge: the block is 380 tall, the rail 20 in.
+    expect(caption().rightInsetBoxes).toEqual([
+      { left: 328, right: 388, bottom: 380 - 20 - 74, top: 380 - 20 },
+      { left: 332, right: 384, bottom: 380 - 106 - 74, top: 380 - 106 },
+    ])
+  })
 })
 
 describe("ClipOverlay — scrim (R39)", () => {

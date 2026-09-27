@@ -36,10 +36,12 @@ jest.mock("../../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
 
-import { act } from "react"
+import { act, type ComponentProps } from "react"
+import { StyleSheet } from "react-native"
 import { readAsStringAsync } from "expo-file-system/legacy"
 
 import { SubtitleOverlay } from "../SubtitleOverlay"
+import type { CaptionBox } from "../../../lib/captionBox"
 import { datadogLog } from "../../../lib/datadog"
 import * as vttCache from "../../../lib/vttCache"
 import {
@@ -421,6 +423,152 @@ describe("SubtitleOverlay — on the shared cue cache", () => {
 
     expect(warnedReasons()).toEqual(["over_cap"])
     expect(renderer.toJSON()).toBeNull()
+    await unmount(renderer)
+  })
+})
+
+describe("SubtitleOverlay — the right inset only over a box (Explore, 2026-09-28)", () => {
+  /** Mute and Share at the right edge, measured up from the bottom edge. */
+  const BOXES: readonly CaptionBox[] = [
+    { left: 328, right: 388, bottom: 286, top: 360 },
+    { left: 332, right: 384, bottom: 200, top: 274 },
+  ]
+  const RIGHT_INSET = 92
+
+  type Props = ComponentProps<typeof SubtitleOverlay>
+
+  async function renderWith(
+    player: ReturnType<typeof makePlayer>,
+    props: Partial<Props>,
+  ): Promise<TestInstance> {
+    fetchMock.mockResolvedValueOnce(new Response(VTT))
+    const vttSrc = nextUrl()
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <SubtitleOverlay player={player as never} vttSrc={vttSrc} {...props} />,
+      )
+    })
+    await flush()
+    return renderer
+  }
+
+  function container(renderer: TestInstance) {
+    const [node] = renderer.root.findAll(
+      (n) => n.props.pointerEvents === "none",
+    )
+    return StyleSheet.flatten(node.props.style) as {
+      paddingRight?: number
+      opacity?: number
+    }
+  }
+
+  /** The caption text's layout, as the native side reports it. */
+  function layOutText(
+    renderer: TestInstance,
+    box: { x: number; width: number; height: number },
+  ) {
+    const [text] = renderer.root.findAll(
+      (n) => typeof n.props.onLayout === "function",
+    )
+    act(() => {
+      ;(text.props.onLayout as (e: unknown) => void)({
+        nativeEvent: { layout: { y: 0, ...box } },
+      })
+    })
+  }
+
+  it("measures a new cue unseen, at full width, before it decides", async () => {
+    const renderer = await renderWith(makePlayer(), {
+      bottomOffset: 300,
+      rightInset: RIGHT_INSET,
+      rightInsetBoxes: BOXES,
+    })
+
+    expect(hasText(renderer, "Hello world")).toBe(true)
+    expect(container(renderer).opacity).toBe(0)
+    expect(container(renderer).paddingRight).toBe(16)
+    await unmount(renderer)
+  })
+
+  it("keeps the full width for a caption clear of the buttons", async () => {
+    // At Mute's height, but it stops at x 260, left of the rail at 328.
+    const renderer = await renderWith(makePlayer(), {
+      bottomOffset: 300,
+      rightInset: RIGHT_INSET,
+      rightInsetBoxes: BOXES,
+    })
+    layOutText(renderer, { x: 60, width: 200, height: 40 })
+
+    expect(container(renderer).opacity).not.toBe(0)
+    expect(container(renderer).paddingRight).toBe(16)
+    await unmount(renderer)
+  })
+
+  it("keeps the full width for a caption above the buttons", async () => {
+    // As wide as the page, but its bottom edge is above Mute's top at 360.
+    const renderer = await renderWith(makePlayer(), {
+      bottomOffset: 368,
+      rightInset: RIGHT_INSET,
+      rightInsetBoxes: BOXES,
+    })
+    layOutText(renderer, { x: 16, width: 370, height: 60 })
+
+    expect(container(renderer).paddingRight).toBe(16)
+    await unmount(renderer)
+  })
+
+  it("takes the inset for a caption that covers Mute, and holds it", async () => {
+    const renderer = await renderWith(makePlayer(), {
+      bottomOffset: 300,
+      rightInset: RIGHT_INSET,
+      rightInsetBoxes: BOXES,
+    })
+    layOutText(renderer, { x: 20, width: 362, height: 60 })
+
+    expect(container(renderer).opacity).not.toBe(0)
+    expect(container(renderer).paddingRight).toBe(RIGHT_INSET)
+
+    // The inset layout no longer reaches the rail. Deciding from it would
+    // widen the caption again, and the wide one covers Mute: a loop.
+    layOutText(renderer, { x: 20, width: 280, height: 80 })
+    expect(container(renderer).paddingRight).toBe(RIGHT_INSET)
+    await unmount(renderer)
+  })
+
+  it("decides again for the next cue", async () => {
+    jest.useFakeTimers()
+    const player = makePlayer()
+    const renderer = await renderWith(player, {
+      bottomOffset: 300,
+      rightInset: RIGHT_INSET,
+      rightInsetBoxes: BOXES,
+    })
+    layOutText(renderer, { x: 20, width: 362, height: 60 })
+    expect(container(renderer).paddingRight).toBe(RIGHT_INSET)
+
+    player.currentTime = 6
+    await act(async () => {
+      jest.advanceTimersByTime(400)
+    })
+    expect(hasText(renderer, "Second line")).toBe(true)
+    expect(container(renderer).opacity).toBe(0)
+    expect(container(renderer).paddingRight).toBe(16)
+
+    layOutText(renderer, { x: 150, width: 100, height: 32 })
+    expect(container(renderer).opacity).not.toBe(0)
+    expect(container(renderer).paddingRight).toBe(16)
+    await unmount(renderer)
+  })
+
+  it("always takes the inset without boxes, as the watch page does", async () => {
+    const renderer = await renderWith(makePlayer(), {
+      bottomOffset: 300,
+      rightInset: RIGHT_INSET,
+    })
+
+    expect(container(renderer).opacity).not.toBe(0)
+    expect(container(renderer).paddingRight).toBe(RIGHT_INSET)
     await unmount(renderer)
   })
 })

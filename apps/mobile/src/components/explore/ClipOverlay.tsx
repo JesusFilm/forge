@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ComponentProps,
@@ -23,6 +24,7 @@ import { ClipDescription } from "./ClipDescription"
 import { ClipProgressBar } from "./ClipProgressBar"
 import { SubtitleOverlay } from "../watch/SubtitleOverlay"
 import { clipPosterUri } from "../../hooks/useClipAutostart"
+import type { CaptionBox } from "../../lib/captionBox"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { readSeconds } from "../../lib/explore/playerRead"
@@ -164,9 +166,11 @@ export function ClipOverlay({
   // is only as high as the text it keeps readable. It follows an expansion.
   const [scrimTop, setScrimTop] = useState(0)
   const [rowWidth, setRowWidth] = useState(0)
+  const [rowY, setRowY] = useState(0)
   const handleRowLayout = useCallback(
     (e: LayoutChangeEvent) => {
       rowTop.current = e.nativeEvent.layout.y
+      setRowY(Math.round(rowTop.current))
       setRowWidth(Math.round(e.nativeEvent.layout.width))
       setScrimTop(Math.round(rowTop.current + infoTop.current))
       updateRegion()
@@ -187,8 +191,18 @@ export function ClipOverlay({
   // rail, which reaches up into the frame on a phone.
   const [lowerBar, setLowerBar] = useState<number | null>(null)
   const [railLeft, setRailLeft] = useState<number | null>(null)
+  const [railY, setRailY] = useState(0)
   const handleRailLayout = useCallback((e: LayoutChangeEvent) => {
     setRailLeft(Math.round(e.nativeEvent.layout.x))
+    setRailY(Math.round(e.nativeEvent.layout.y))
+  }, [])
+  const [muteFrame, setMuteFrame] = useState<RailFrame | null>(null)
+  const [shareFrame, setShareFrame] = useState<RailFrame | null>(null)
+  const handleMuteLayout = useCallback((e: LayoutChangeEvent) => {
+    setMuteFrame(railFrame(e))
+  }, [])
+  const handleShareLayout = useCallback((e: LayoutChangeEvent) => {
+    setShareFrame(railFrame(e))
   }, [])
   const playingSize = usePlayingSize(player)
   const band = clipFraming(playingSize) === "band"
@@ -201,6 +215,23 @@ export function ClipOverlay({
     band && railLeft != null && rowWidth > 0
       ? rowWidth - railLeft + CAPTION_GAP
       : undefined
+  // The inset applies only when the caption would cover Mute or Share (owner,
+  // 2026-09-28). Until both are measured, it always applies.
+  const captionInsetBoxes = useMemo(() => {
+    if (railLeft == null || muteFrame == null || shareFrame == null) {
+      return undefined
+    }
+    const toCaptionBox = (frame: RailFrame): CaptionBox => {
+      const top = bottomHeight - (rowY + railY + frame.y)
+      return {
+        left: railLeft + frame.x,
+        right: railLeft + frame.x + frame.width,
+        bottom: top - frame.height,
+        top,
+      }
+    }
+    return [toCaptionBox(muteFrame), toCaptionBox(shareFrame)]
+  }, [bottomHeight, rowY, railY, railLeft, muteFrame, shareFrame])
 
   // Reported for every clip: each feed view picks its own framing, and the
   // next clip may be landscape even when this one fills the screen.
@@ -241,6 +272,7 @@ export function ClipOverlay({
           vttSrc={captionSrc}
           bottomOffset={captionBottom}
           rightInset={captionRightInset}
+          rightInsetBoxes={captionInsetBoxes}
         />
       )}
 
@@ -296,14 +328,18 @@ export function ClipOverlay({
             onLayout={handleRailLayout}
           >
             <RailButton
+              testID="clip-rail-mute"
               icon={muted ? "volume-mute" : "volume-high"}
               label={muted ? EXPLORE_COPY.unmute : EXPLORE_COPY.mute}
               onPress={onToggleMute}
+              onLayout={handleMuteLayout}
             />
             <RailButton
+              testID="clip-rail-share"
               icon="share-outline"
               label={EXPLORE_COPY.share}
               onPress={handleShare}
+              onLayout={handleShareLayout}
             />
             <KeepWatchingButton
               posterUri={clipPosterUri(clip)}
@@ -322,18 +358,41 @@ export function ClipOverlay({
   )
 }
 
+/** A rail button's frame, in the rail. */
+type RailFrame = { x: number; y: number; width: number; height: number }
+
+function railFrame(e: LayoutChangeEvent): RailFrame {
+  const { x, y, width, height } = e.nativeEvent.layout
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    width: Math.round(width),
+    height: Math.round(height),
+  }
+}
+
 type RailButtonProps = {
+  testID: string
   icon: ComponentProps<typeof Ionicons>["name"]
   label: string
   onPress: () => void
+  onLayout: (e: LayoutChangeEvent) => void
 }
 
 /** A round button with its label under it. The whole stack is the target. */
-function RailButton({ icon, label, onPress }: RailButtonProps) {
+function RailButton({
+  testID,
+  icon,
+  label,
+  onPress,
+  onLayout,
+}: RailButtonProps) {
   const typography = useTypography()
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
+      onLayout={onLayout}
       style={({ pressed }) => [styles.railButton, pressed && feedback.pressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
