@@ -316,6 +316,8 @@ const VIDEO_RESULT = {
           __typename: "BibleBook",
           documentId: "book-genesis",
           name: [{ value: "Genesis", primary: true }],
+          osisId: "Gen",
+          paratextAbbreviation: "GEN",
         },
       },
     ],

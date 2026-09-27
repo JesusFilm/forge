@@ -14,6 +14,7 @@ let getApolloClient: typeof import("../src/lib/apolloClient").getApolloClient
 let ACCENT: string
 let BG_COLOR: string
 let BACK_SWIPE_RESPONSE_DISTANCE: typeof import("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
+let READER_SHEET_SCREEN_OPTIONS: typeof import("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
 let ExperienceShell: typeof import("../src/contexts/ExperienceShell").ExperienceShell
 let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
 let WatchPreferencesProvider: typeof import("../src/contexts/WatchPreferencesProvider").WatchPreferencesProvider
@@ -72,6 +73,8 @@ try {
   BG_COLOR = color.BG_COLOR
   BACK_SWIPE_RESPONSE_DISTANCE =
     require("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
+  READER_SHEET_SCREEN_OPTIONS =
+    require("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
   ExperienceShell = require("../src/contexts/ExperienceShell").ExperienceShell
   ExperienceSelectionProvider =
     require("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
@@ -458,6 +461,30 @@ export default function RootLayout() {
                                   gestureResponseDistance:
                                     BACK_SWIPE_RESPONSE_DISTANCE,
                                 }}
+                              />
+                              {/* feat-553 R6: the pushed Bible reader has a verse
+                                scrubber and chapter swipes, so it gets the same strip. */}
+                              <Stack.Screen
+                                name="reader"
+                                options={{
+                                  headerShown: false,
+                                  gestureResponseDistance:
+                                    BACK_SWIPE_RESPONSE_DISTANCE,
+                                }}
+                              />
+                              {/* feat-553 KTD9: root sheets, so they present
+                                over the Bible tab and the pushed reader. */}
+                              <Stack.Screen
+                                name="reader-passage"
+                                options={READER_SHEET_SCREEN_OPTIONS}
+                              />
+                              <Stack.Screen
+                                name="reader-translation"
+                                options={READER_SHEET_SCREEN_OPTIONS}
+                              />
+                              <Stack.Screen
+                                name="reader-settings"
+                                options={READER_SHEET_SCREEN_OPTIONS}
                               />
                             </Stack>
                           </ExperienceShell>

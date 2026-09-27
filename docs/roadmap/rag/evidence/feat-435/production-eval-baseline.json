@@ -1,0 +1,2652 @@
+{
+  "schemaVersion": 1,
+  "status": "valid-baseline",
+  "scope": "fresh post-migration production retrieval baseline",
+  "completedAt": "2026-09-07T06:27:04.372Z",
+  "target": {
+    "railwayProject": "forge",
+    "railwayEnvironment": "production",
+    "railwayService": "@forge/rag",
+    "databaseService": "@forge/rag-postgres",
+    "databaseName": "railway",
+    "databaseRole": "forge_rag_evaluator",
+    "connectionHostHash": "c47528fd4d51e55c",
+    "connectionHostHashMethod": "sha256(lowercase hostname), first 16 hex characters",
+    "deploymentId": "551c1671-a128-4edd-a11e-d369aa5f4b86",
+    "deploymentCommit": "9c45d1a6a66d7aeb71b156d8eb24e2e4303ec350",
+    "requiredMigrationRecoveryCommit": "3e8f1dcf40fe052afdba6b09907b9b71d7e81d6f",
+    "requiredCommitIsDeployedAncestor": true,
+    "health": {
+      "route": "/v1/health",
+      "status": 200,
+      "passed": true
+    }
+  },
+  "databasePreflight": {
+    "expectedMigrations": 3,
+    "appliedMigrations": 3,
+    "pendingMigrations": 0,
+    "rolledBackMigrations": 0,
+    "readOnlyVerification": {
+      "selectAllowed": true,
+      "transactionReadOnly": true,
+      "elevatedRoleAttributes": false,
+      "databaseCreate": false,
+      "databaseTemporary": false,
+      "writableSchemas": 0,
+      "ownedSchemas": 0,
+      "writableRelations": 0,
+      "ownedRelations": 0,
+      "writableSequences": 0,
+      "ownedLargeObjects": 0,
+      "executableLargeObjectMutators": 0,
+      "executableSecurityDefinerFunctions": 0,
+      "unexpectedMemberships": 0,
+      "activeDdlDmlAndLargeObjectProbesDenied": true
+    },
+    "aggregateCorpusCounts": {
+      "sources": 57,
+      "documents": 24556,
+      "chunks": 77160,
+      "chunkEmbeddings": 77160,
+      "httpCache": 0,
+      "robotsCache": 0,
+      "rawDocuments": 24556
+    },
+    "aggregateCountsMatchFeat430Receipt": true
+  },
+  "evaluation": {
+    "runId": "9c1f2e8c-4e9e-44e6-b034-802a6e27eb61",
+    "environment": "production-read",
+    "identity": {
+      "goldenRevision": "sha256:06f8d21fbb84eaba0a5c2ba2c1fb4baaeb3ea689ecaff69d5541f902b4503ae5",
+      "caseSetRevision": "sha256:e0f899723864c3ea340f5ea8f55e74ad87598fec8199a1ce9fb0b6af6825eea5",
+      "caseCount": 416,
+      "registryRevision": "sha256:1e2c1d5ae1da4b168b46571f4548156b45bc3494e575af09753f63f34ad6ef42",
+      "corpusRevision": "sha256:c265e76bd36c7d094a6c34953e908bb8cba181eb3244392aec4339130ea67cd4",
+      "corpusRevisionBasis": "sha256 of committed feat-430 production-copy reconciliation receipt",
+      "embeddingModel": "qwen/qwen3-embedding-8b",
+      "topK": 10,
+      "minimumScore": 0.37,
+      "metricImplementation": "jesusfilm-rag/eval-metrics@2026-08-06+forge-identity-v1"
+    },
+    "metrics": {
+      "cases": 416,
+      "recall_at_3": 0.9158653846153846,
+      "recall_at_10": 0.9495192307692307,
+      "coverage": 0.8031928864545262,
+      "mrr": 0.8026137057387056,
+      "precision_at_1": 0.6971153846153846
+    },
+    "rankCounts": {
+      "1": 290,
+      "2": 64,
+      "3": 27,
+      "4": 6,
+      "5": 4,
+      "6": 2,
+      "7": 1,
+      "9": 1,
+      "none": 21
+    },
+    "misses": [
+      "esru-newcomer-krest",
+      "essq-skeptic-shpikje",
+      "essq-newcomer-kryqi",
+      "esfa-skeptic-tahrif",
+      "esfa-believer-sokoot",
+      "esms-skeptic-anganangan",
+      "esms-newcomer-kabur",
+      "esms-skeptic-disalin",
+      "esms-seeker-kosong",
+      "esms-believer-sepi",
+      "eshr-skeptic-nesreca",
+      "eshr-believer-tisina",
+      "essl-skeptic-prepisovali",
+      "esne-skeptic-adhar",
+      "esne-skeptic-sarieko",
+      "esne-newcomer-krus",
+      "esne-seeker-batnu",
+      "esti-skeptic-merto",
+      "esti-skeptic-haymanot",
+      "esti-newcomer-zeyrae",
+      "esti-seeker-tirgum"
+    ],
+    "cases": [
+      {
+        "id": "swg-seeker-anxiety",
+        "firstRelevantRank": 2,
+        "relevantReturned": 9,
+        "relevantTotal": 19
+      },
+      {
+        "id": "swg-seeker-failure",
+        "firstRelevantRank": 2,
+        "relevantReturned": 5,
+        "relevantTotal": 22
+      },
+      {
+        "id": "swg-seeker-porn",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 3
+      },
+      {
+        "id": "swg-skeptic-faith-proof",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 7
+      },
+      {
+        "id": "swg-skeptic-jesus-deity",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 14
+      },
+      {
+        "id": "swg-skeptic-gods-love",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 9
+      },
+      {
+        "id": "swg-believer-assurance",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 13
+      },
+      {
+        "id": "swg-believer-holy-spirit",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 12
+      },
+      {
+        "id": "swg-newcomer-gospel",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 9
+      },
+      {
+        "id": "swg-newcomer-baptism",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "cru-newcomer-new-testament",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "cru-believer-old-testament",
+        "firstRelevantRank": 9,
+        "relevantReturned": 1,
+        "relevantTotal": 5
+      },
+      {
+        "id": "cru-stewardship",
+        "firstRelevantRank": 3,
+        "relevantReturned": 2,
+        "relevantTotal": 4
+      },
+      {
+        "id": "cru-believer-witnessing",
+        "firstRelevantRank": 1,
+        "relevantReturned": 6,
+        "relevantTotal": 11
+      },
+      {
+        "id": "cru-believer-guidance",
+        "firstRelevantRank": 1,
+        "relevantReturned": 6,
+        "relevantTotal": 22
+      },
+      {
+        "id": "cru-believer-bible-study",
+        "firstRelevantRank": 3,
+        "relevantReturned": 4,
+        "relevantTotal": 8
+      },
+      {
+        "id": "cru-newcomer-prayer",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 14
+      },
+      {
+        "id": "cru-newcomer-holy-spirit",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 7
+      },
+      {
+        "id": "cru-seeker-abundant-life",
+        "firstRelevantRank": 2,
+        "relevantReturned": 4,
+        "relevantTotal": 14
+      },
+      {
+        "id": "cru-skeptic-jesus-uniqueness",
+        "firstRelevantRank": 2,
+        "relevantReturned": 5,
+        "relevantTotal": 12
+      },
+      {
+        "id": "jf-newcomer-who-is-jesus",
+        "firstRelevantRank": 7,
+        "relevantReturned": 3,
+        "relevantTotal": 9
+      },
+      {
+        "id": "jf-newcomer-why-jesus-died",
+        "firstRelevantRank": 5,
+        "relevantReturned": 2,
+        "relevantTotal": 11
+      },
+      {
+        "id": "jf-newcomer-great-commission",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 10
+      },
+      {
+        "id": "jf-skeptic-resurrection",
+        "firstRelevantRank": 3,
+        "relevantReturned": 4,
+        "relevantTotal": 10
+      },
+      {
+        "id": "jf-skeptic-bible-contradictions",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 5
+      },
+      {
+        "id": "jf-skeptic-intolerant",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 8
+      },
+      {
+        "id": "jf-believer-parable-sower",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "jf-believer-good-samaritan",
+        "firstRelevantRank": 3,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "jf-believer-missional-everyday",
+        "firstRelevantRank": 2,
+        "relevantReturned": 6,
+        "relevantTotal": 12
+      },
+      {
+        "id": "jf-believer-disciple-making",
+        "firstRelevantRank": 3,
+        "relevantReturned": 2,
+        "relevantTotal": 6
+      },
+      {
+        "id": "jf-seeker-grief",
+        "firstRelevantRank": 2,
+        "relevantReturned": 4,
+        "relevantTotal": 10
+      },
+      {
+        "id": "jf-seeker-distant-god",
+        "firstRelevantRank": 1,
+        "relevantReturned": 7,
+        "relevantTotal": 12
+      },
+      {
+        "id": "sl-skeptic-god-exists",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 8
+      },
+      {
+        "id": "sl-skeptic-suffering",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 14
+      },
+      {
+        "id": "sl-skeptic-science",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "sl-skeptic-morality",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "sl-skeptic-gospels-reliable",
+        "firstRelevantRank": 1,
+        "relevantReturned": 8,
+        "relevantTotal": 13
+      },
+      {
+        "id": "sl-skeptic-hidden-god",
+        "firstRelevantRank": 3,
+        "relevantReturned": 2,
+        "relevantTotal": 12
+      },
+      {
+        "id": "sl-skeptic-copycat",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "sl-seeker-meaning",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 6
+      },
+      {
+        "id": "sl-believer-doubt",
+        "firstRelevantRank": 3,
+        "relevantReturned": 1,
+        "relevantTotal": 3
+      },
+      {
+        "id": "sl-believer-apologetics",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "tl-seeker-grief-child",
+        "firstRelevantRank": 2,
+        "relevantReturned": 4,
+        "relevantTotal": 10
+      },
+      {
+        "id": "tl-seeker-abortion",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 6
+      },
+      {
+        "id": "tl-seeker-depression",
+        "firstRelevantRank": 3,
+        "relevantReturned": 5,
+        "relevantTotal": 8
+      },
+      {
+        "id": "tl-skeptic-cosmology",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 7
+      },
+      {
+        "id": "tl-skeptic-hell",
+        "firstRelevantRank": 2,
+        "relevantReturned": 1,
+        "relevantTotal": 3
+      },
+      {
+        "id": "tl-believer-marriage-drift",
+        "firstRelevantRank": 1,
+        "relevantReturned": 9,
+        "relevantTotal": 20
+      },
+      {
+        "id": "tl-believer-obedience",
+        "firstRelevantRank": 1,
+        "relevantReturned": 8,
+        "relevantTotal": 14
+      },
+      {
+        "id": "tl-believer-disciple-new-christian",
+        "firstRelevantRank": 1,
+        "relevantReturned": 8,
+        "relevantTotal": 12
+      },
+      {
+        "id": "tl-newcomer-decision",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 5
+      },
+      {
+        "id": "tl-newcomer-find-church",
+        "firstRelevantRank": 3,
+        "relevantReturned": 4,
+        "relevantTotal": 6
+      },
+      {
+        "id": "fl-seeker-affair-trust",
+        "firstRelevantRank": 3,
+        "relevantReturned": 3,
+        "relevantTotal": 7
+      },
+      {
+        "id": "fl-believer-spiritual-leader",
+        "firstRelevantRank": 1,
+        "relevantReturned": 8,
+        "relevantTotal": 9
+      },
+      {
+        "id": "fl-seeker-teen-prodigal",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 11
+      },
+      {
+        "id": "fl-believer-teen-own-faith",
+        "firstRelevantRank": 1,
+        "relevantReturned": 6,
+        "relevantTotal": 9
+      },
+      {
+        "id": "fl-seeker-single-parent",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 8
+      },
+      {
+        "id": "fl-newcomer-premarital",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 7
+      },
+      {
+        "id": "fl-skeptic-sex-marriage",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 8
+      },
+      {
+        "id": "fl-seeker-blended-family",
+        "firstRelevantRank": 1,
+        "relevantReturned": 8,
+        "relevantTotal": 9
+      },
+      {
+        "id": "fl-believer-prodigal-adult",
+        "firstRelevantRank": 1,
+        "relevantReturned": 7,
+        "relevantTotal": 10
+      },
+      {
+        "id": "fl-newcomer-discipline-child",
+        "firstRelevantRank": 2,
+        "relevantReturned": 1,
+        "relevantTotal": 6
+      },
+      {
+        "id": "tlfr-seeker-deuil-fils",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 9
+      },
+      {
+        "id": "tlfr-skeptic-dieu-existe",
+        "firstRelevantRank": 1,
+        "relevantReturned": 9,
+        "relevantTotal": 20
+      },
+      {
+        "id": "tlfr-skeptic-resurrection",
+        "firstRelevantRank": 1,
+        "relevantReturned": 6,
+        "relevantTotal": 8
+      },
+      {
+        "id": "tlfr-seeker-avortement",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 6
+      },
+      {
+        "id": "tlfr-seeker-porno",
+        "firstRelevantRank": 1,
+        "relevantReturned": 6,
+        "relevantTotal": 6
+      },
+      {
+        "id": "tlfr-believer-pardonner",
+        "firstRelevantRank": 2,
+        "relevantReturned": 6,
+        "relevantTotal": 10
+      },
+      {
+        "id": "tlfr-believer-saint-esprit",
+        "firstRelevantRank": 1,
+        "relevantReturned": 6,
+        "relevantTotal": 9
+      },
+      {
+        "id": "tlfr-believer-mari-incroyant",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 4
+      },
+      {
+        "id": "tlfr-newcomer-jesus",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 8
+      },
+      {
+        "id": "tlfr-seeker-anxiete",
+        "firstRelevantRank": 1,
+        "relevantReturned": 8,
+        "relevantTotal": 8
+      },
+      {
+        "id": "tlzh-newcomer-xinzhu",
+        "firstRelevantRank": 3,
+        "relevantReturned": 1,
+        "relevantTotal": 3
+      },
+      {
+        "id": "tlzh-seeker-yiyi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 7
+      },
+      {
+        "id": "tlzh-seeker-youyu",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "tlzh-believer-raoshu",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "tlzh-seeker-waiyu",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "tlzh-believer-qingshaonian",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "tlzh-newcomer-chengzhang",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 4
+      },
+      {
+        "id": "tlzh-seeker-yali",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 6
+      },
+      {
+        "id": "tlzh-skeptic-tianzai",
+        "firstRelevantRank": 1,
+        "relevantReturned": 9,
+        "relevantTotal": 11
+      },
+      {
+        "id": "tlzh-believer-qiancai",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "cru-believer-depressed-friend",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "cru-believer-disciple-someone",
+        "firstRelevantRank": 4,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "cru-believer-start-ministry",
+        "firstRelevantRank": 2,
+        "relevantReturned": 1,
+        "relevantTotal": 4
+      },
+      {
+        "id": "cru-es-believer-dios-callado",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "cru-es-believer-evangelismo-trabajo",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 6
+      },
+      {
+        "id": "cru-es-believer-pecado-recurrente",
+        "firstRelevantRank": 5,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "cru-es-newcomer-tiempo-diario",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "cru-es-seeker-desanimo",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "cru-es-seeker-vacio",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "cru-es-skeptic-infierno",
+        "firstRelevantRank": 4,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "cru-es-skeptic-jesus-hombre",
+        "firstRelevantRank": 1,
+        "relevantReturned": 6,
+        "relevantTotal": 8
+      },
+      {
+        "id": "cru-newcomer-ordinary-testimony",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 2
+      },
+      {
+        "id": "cru-seeker-ethnic-identity",
+        "firstRelevantRank": 3,
+        "relevantReturned": 1,
+        "relevantTotal": 4
+      },
+      {
+        "id": "cru-skeptic-hell",
+        "firstRelevantRank": 5,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "es-seeker-loneliness",
+        "firstRelevantRank": 1,
+        "relevantReturned": 7,
+        "relevantTotal": 11
+      },
+      {
+        "id": "es-seeker-self-hatred",
+        "firstRelevantRank": 2,
+        "relevantReturned": 4,
+        "relevantTotal": 13
+      },
+      {
+        "id": "es-seeker-fear-of-death",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "es-newcomer-same-god",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 8
+      },
+      {
+        "id": "es-newcomer-astrology",
+        "firstRelevantRank": 3,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "es-skeptic-scientists",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "es-seeker-muslim-background",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 10
+      },
+      {
+        "id": "es-newcomer-reincarnation",
+        "firstRelevantRank": 3,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "es-newcomer-denominations",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "es-skeptic-show-miracle",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esar-skeptic-tahrif",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esar-seeker-trinity",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esar-skeptic-child-suffering",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esar-seeker-anxiety",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esar-newcomer-who-is-jesus",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esar-skeptic-evidence",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esar-seeker-porn",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esar-seeker-women-worth",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esar-newcomer-after-death",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esar-seeker-emptiness",
+        "firstRelevantRank": 4,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esar-skeptic-which-god",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esar-believer-forgiveness",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esfr-newcomer-religions",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 5
+      },
+      {
+        "id": "esfr-seeker-sens-vie",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esfr-seeker-peur-mort",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esfr-skeptic-enfer",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esfr-newcomer-trinite",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esfr-seeker-apparence",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "esfr-seeker-lgbt",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esfr-believer-priere-sans-reponse",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esfr-skeptic-islam-jesus",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "esfr-newcomer-catholique",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esfr-skeptic-racisme",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esfr-seeker-mariage",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "zhcn-skeptic-shenzai",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 6
+      },
+      {
+        "id": "zhcn-newcomer-shenshi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "zhcn-skeptic-kunan",
+        "firstRelevantRank": 3,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "zhcn-seeker-mubiao",
+        "firstRelevantRank": 6,
+        "relevantReturned": 1,
+        "relevantTotal": 3
+      },
+      {
+        "id": "zhcn-seeker-jiaolv",
+        "firstRelevantRank": 2,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "zhcn-newcomer-yesusi",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "zhcn-skeptic-shengjing",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "zhcn-believer-daogao",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "zhcn-skeptic-zongjiao",
+        "firstRelevantRank": 2,
+        "relevantReturned": 4,
+        "relevantTotal": 5
+      },
+      {
+        "id": "zhcn-newcomer-sanwei",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esru-skeptic-dokazatelstva",
+        "firstRelevantRank": 3,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esru-newcomer-kakoyon",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esru-skeptic-avariya",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "esru-seeker-vpustuyu",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esru-seeker-trevoga",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esru-newcomer-krest",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esru-skeptic-perepisivali",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esru-believer-tishina",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esru-skeptic-odnoitozhe",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esru-newcomer-troye",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esbg-skeptic-izmislitsa",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esbg-newcomer-lichnost",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esbg-skeptic-katastrofa",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esbg-seeker-nishto-ne-ostava",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "esbg-seeker-trevoga",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esbg-newcomer-krast",
+        "firstRelevantRank": 3,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esbg-skeptic-prepisvana",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esbg-believer-bez-otgovor",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esbg-skeptic-edno-i-sashto",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esbg-newcomer-trima",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "essk-skeptic-podklad",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "essk-newcomer-neosobna-sila",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "essk-skeptic-nehoda",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "essk-seeker-nic-z-toho",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "essk-seeker-napatie",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "essk-newcomer-kriz",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "essk-skeptic-prepisovanie",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "essk-believer-ticho",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "essk-skeptic-rovnake",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "essk-newcomer-traja",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eshu-skeptic-vagyalom",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 5
+      },
+      {
+        "id": "eshu-newcomer-milyen",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eshu-skeptic-baleset",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "eshu-seeker-uresen",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "eshu-seeker-szorongas",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eshu-newcomer-kereszt",
+        "firstRelevantRank": 5,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eshu-skeptic-masolat",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eshu-believer-csend",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eshu-skeptic-ugyanaz",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eshu-newcomer-harman",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esmn-skeptic-notolgoo",
+        "firstRelevantRank": 3,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esmn-newcomer-yamarhuu",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esmn-skeptic-osol",
+        "firstRelevantRank": 4,
+        "relevantReturned": 4,
+        "relevantTotal": 6
+      },
+      {
+        "id": "esmn-seeker-zorilgo",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esmn-seeker-tvgshvvr",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esmn-newcomer-zagalmai",
+        "firstRelevantRank": 3,
+        "relevantReturned": 1,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esmn-skeptic-bibli",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esmn-believer-chimeegvi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esmn-skeptic-ijil",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esmn-newcomer-gurav",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esja-skeptic-negaibou",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esja-newcomer-jinkaku",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esja-skeptic-jiko",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 5
+      },
+      {
+        "id": "esja-seeker-karappo",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esja-seeker-fuan",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esja-newcomer-juujika",
+        "firstRelevantRank": 3,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esja-skeptic-kakikae",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esja-believer-henji",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esja-skeptic-onaji",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esja-newcomer-sannin",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "espl-skeptic-mysleniezyczeniowe",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "espl-newcomer-jakion",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "espl-skeptic-wypadek",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "espl-seeker-nicniezostaje",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "espl-seeker-lek",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "espl-newcomer-krzyz",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "espl-skeptic-przepisywana",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "espl-believer-cisza",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "espl-skeptic-kazdyswoje",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "espl-newcomer-trzech",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "essq-skeptic-shpikje",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 3
+      },
+      {
+        "id": "essq-newcomer-si-eshte",
+        "firstRelevantRank": 6,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "essq-skeptic-aksident",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "essq-seeker-pa-mbetur",
+        "firstRelevantRank": 2,
+        "relevantReturned": 1,
+        "relevantTotal": 3
+      },
+      {
+        "id": "essq-seeker-ankth",
+        "firstRelevantRank": 2,
+        "relevantReturned": 1,
+        "relevantTotal": 2
+      },
+      {
+        "id": "essq-newcomer-kryqi",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 2
+      },
+      {
+        "id": "essq-skeptic-kopjuesit",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 2
+      },
+      {
+        "id": "essq-believer-heshtje",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "essq-skeptic-njesoj",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 4
+      },
+      {
+        "id": "essq-newcomer-tre-veta",
+        "firstRelevantRank": 2,
+        "relevantReturned": 1,
+        "relevantTotal": 2
+      },
+      {
+        "id": "estr-skeptic-kanit",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "estr-newcomer-nasilbiri",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "estr-skeptic-kaza",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "estr-seeker-bosluk",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 5
+      },
+      {
+        "id": "estr-seeker-kaygi",
+        "firstRelevantRank": 3,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "estr-newcomer-carmih",
+        "firstRelevantRank": 2,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "estr-skeptic-degistirildi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "estr-believer-sessizlik",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "estr-skeptic-aynisey",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "estr-newcomer-uckisi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "espt-skeptic-consolo",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 6
+      },
+      {
+        "id": "espt-newcomer-energia",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "espt-skeptic-acidente",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "espt-seeker-vazio",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "espt-seeker-ansiedade",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "espt-newcomer-cruz",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "espt-skeptic-copiado",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "espt-believer-silencio",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "espt-skeptic-conviccao",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "espt-newcomer-tres",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eses-skeptic-ilusion",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 6
+      },
+      {
+        "id": "eses-newcomer-comodios",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 5
+      },
+      {
+        "id": "eses-skeptic-accidente",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "eses-seeker-rutina",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eses-seeker-ansiedad",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eses-newcomer-cruz",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eses-skeptic-copias",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eses-believer-merezco",
+        "firstRelevantRank": 3,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eses-skeptic-mismolugar",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eses-newcomer-tresdioses",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esfa-skeptic-khiyalbafi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 5
+      },
+      {
+        "id": "esfa-newcomer-niroo",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esfa-skeptic-tasadof",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esfa-seeker-pooch",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esfa-seeker-delshoore",
+        "firstRelevantRank": 2,
+        "relevantReturned": 1,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esfa-newcomer-salib",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esfa-skeptic-tahrif",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esfa-believer-sokoot",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esfa-skeptic-hamkaran",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esfa-newcomer-seta",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "escs-skeptic-zbozne-prani",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 5
+      },
+      {
+        "id": "escs-newcomer-mlhava-sila",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "escs-skeptic-nehoda",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "escs-seeker-nic-nezbylo",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "escs-seeker-uzkost",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "escs-newcomer-kriz",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "escs-skeptic-prepisovali",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "escs-believer-ticho",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "escs-skeptic-stejne-presvedceni",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "escs-newcomer-tri-bohove",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esvi-skeptic-motuong",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esvi-newcomer-nangluong",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esvi-skeptic-tainan",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esvi-seeker-trongrong",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esvi-seeker-lolang",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esvi-believer-caunguyen",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esvi-skeptic-dichua",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esvi-newcomer-mayvi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esro-skeptic-iluzie",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 5
+      },
+      {
+        "id": "esro-newcomer-energie",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esro-skeptic-accident",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esro-seeker-zilele",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esro-seeker-incordat",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esro-skeptic-copisti",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esro-believer-acelasi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esro-newcomer-trei",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esid-skeptic-anganangan",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esid-newcomer-energikabur",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esid-skeptic-naskahkuno",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esid-seeker-cemas",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esid-believer-berbulanbulan",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esid-skeptic-samayakin",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esid-newcomer-tigaatausatu",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esms-skeptic-anganangan",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 6
+      },
+      {
+        "id": "esms-newcomer-kabur",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esms-newcomer-salib",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esms-skeptic-disalin",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esms-seeker-kosong",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esms-believer-sepi",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esmk-skeptic-zelba",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 5
+      },
+      {
+        "id": "esmk-skeptic-nesreka",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esmk-newcomer-energija",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esmk-newcomer-raspnuvanje",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esmk-seeker-voznemirenost",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esmk-believer-molitva",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eslt-skeptic-apgaudinejimas",
+        "firstRelevantRank": 2,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "eslt-skeptic-rankrastis",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eslt-newcomer-migla",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eslt-newcomer-trys",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eslt-seeker-nerimas",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eslt-believer-tyla",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esbn-skeptic-bhitti",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esbn-skeptic-punthi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esbn-newcomer-jhapsa",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esbn-newcomer-krush",
+        "firstRelevantRank": 3,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esbn-seeker-jomlo",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esbn-believer-nirobota",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esuk-skeptic-nauka",
+        "firstRelevantRank": 1,
+        "relevantReturned": 5,
+        "relevantTotal": 5
+      },
+      {
+        "id": "esuk-skeptic-avariya",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esuk-newcomer-tumanna-enerhiya",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esuk-seeker-nichoho-ne-zalyshylosya",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esuk-believer-tysha",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eset-skeptic-valjamoeldud",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eset-skeptic-nurgaalt",
+        "firstRelevantRank": 2,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "eset-newcomer-kirikus",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eset-seeker-uhtemoodi",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eset-believer-urik",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eszhtw-skeptic-jituo",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eszhtw-skeptic-chehuo",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eszhtw-newcomer-nengliang",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eszhtw-seeker-jinbeng",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eszhtw-believer-anjing",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esde-skeptic-wunschdenken",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esde-skeptic-kollege",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esde-newcomer-hinrichtung",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esde-seeker-unruhig",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esde-believer-still",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esth-skeptic-lakthan",
+        "firstRelevantRank": 3,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esth-skeptic-thambun",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esth-newcomer-nukphap",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esth-seeker-mailue",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esth-believer-ngiap",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esam-skeptic-minot",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esam-skeptic-adega",
+        "firstRelevantRank": 3,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esam-seeker-dekme",
+        "firstRelevantRank": 4,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esam-newcomer-sost",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esam-believer-tsetsta",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eshr-skeptic-pobozna-zelja",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 5
+      },
+      {
+        "id": "eshr-skeptic-nesreca",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 4
+      },
+      {
+        "id": "eshr-newcomer-maglovita-sila",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eshr-seeker-tjeskoba",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eshr-believer-tisina",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esit-skeptic-illusione",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esit-skeptic-ricopiata",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esit-newcomer-energia",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esit-seeker-tensione",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esko-skeptic-geunggeo",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esko-skeptic-sago",
+        "firstRelevantRank": 2,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esko-newcomer-giun",
+        "firstRelevantRank": 1,
+        "relevantReturned": 4,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esko-seeker-namneunge",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eshi-skeptic-thos-aadhaar",
+        "firstRelevantRank": 4,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "eshi-skeptic-alag-raasta",
+        "firstRelevantRank": 2,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eshi-newcomer-dhundhli-shakti",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eshi-seeker-bechaini",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eshy-skeptic-gitutyun",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eshy-skeptic-dzeragir",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eshy-newcomer-khach",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eshy-seeker-inchihamar",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esur-skeptic-ittefaq",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esur-skeptic-naql",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esur-newcomer-mizaj",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esur-seeker-bechaini",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esel-skeptic-euseveia",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esel-skeptic-sinadelfoi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esel-newcomer-treis",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esel-seeker-anchos",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esmy-skeptic-batha",
+        "firstRelevantRank": 3,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esmy-skeptic-htoutkhan",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esmy-newcomer-weewar",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esmy-seeker-sohyeen",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esta-skeptic-aadhaaram",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esta-skeptic-koyil",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esta-newcomer-sakthi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esta-seeker-migiyathu",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "este-skeptic-ooha",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "este-skeptic-margam",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "este-newcomer-siluva",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "este-seeker-dinacharya",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "essl-skeptic-preveril",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "essl-skeptic-prepisovali",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 1
+      },
+      {
+        "id": "essl-newcomer-tribogovi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "essl-seeker-tesnoba",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esne-skeptic-adhar",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esne-skeptic-sarieko",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esne-newcomer-krus",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esne-seeker-batnu",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esom-skeptic-ragaa",
+        "firstRelevantRank": 1,
+        "relevantReturned": 3,
+        "relevantTotal": 3
+      },
+      {
+        "id": "esom-skeptic-balaa",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esom-newcomer-fannoo",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esom-seeker-yaaddoo",
+        "firstRelevantRank": 3,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eskk-skeptic-alday",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eskk-skeptic-koshirilgen",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eskk-newcomer-usheui",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eskk-seeker-uaiym",
+        "firstRelevantRank": 2,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eska-skeptic-khelnatserebi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eska-skeptic-kursze",
+        "firstRelevantRank": 2,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "eska-newcomer-energia",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "eska-seeker-saghamos",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esti-skeptic-merto",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 4
+      },
+      {
+        "id": "esti-skeptic-haymanot",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 2
+      },
+      {
+        "id": "esti-newcomer-zeyrae",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 1
+      },
+      {
+        "id": "esti-seeker-tirgum",
+        "firstRelevantRank": null,
+        "relevantReturned": 0,
+        "relevantTotal": 1
+      },
+      {
+        "id": "essw-skeptic-hadithi",
+        "firstRelevantRank": 1,
+        "relevantReturned": 2,
+        "relevantTotal": 2
+      },
+      {
+        "id": "essw-skeptic-uhakika",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "essw-newcomer-msalaba",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      },
+      {
+        "id": "essw-seeker-haikuacha",
+        "firstRelevantRank": 1,
+        "relevantReturned": 1,
+        "relevantTotal": 1
+      }
+    ]
+  },
+  "assessment": {
+    "baselineValid": true,
+    "historicalComparison": {
+      "status": "not-performed",
+      "regressionConclusion": "unknown",
+      "reason": "No durable identity-matched historical evaluation receipt exists; the documented historical aggregate was not reconstructed or treated as compatible evidence."
+    },
+    "documentedProvisionalFloors": {
+      "recallAt10": 0.98,
+      "coverage": 0.86926
+    },
+    "observedFloorChecks": {
+      "recallAt10Passed": false,
+      "coveragePassed": false
+    },
+    "laterNewSourceWork": "no-go",
+    "noGoReason": "The fresh baseline is valid, but both primary metrics are below the documented provisional floors and 21 cases have no relevant result. Investigate or explicitly accept this baseline before changing the corpus."
+  },
+  "commands": [
+    "railway deployment list --project <forge-project-id> --environment production --service @forge/rag --json",
+    "railway status --project <forge-project-id> --environment production --json | node <health-only probe>",
+    "doppler run --project forge-rag --config prd --no-cache --no-fallback -- pnpm --filter @forge/rag env:check production-read",
+    "doppler run --project forge-rag --config prd --no-cache --no-fallback -- pnpm --filter @forge/rag db:verify-readonly --production",
+    "doppler run --project forge-rag --config prd --no-cache --no-fallback -- psql <read-only aggregate migration and corpus queries>",
+    "doppler run --project forge-rag --config prd --no-cache --no-fallback -- env JFRAG_EVAL_CORPUS_REVISION=sha256:c265e76bd36c7d094a6c34953e908bb8cba181eb3244392aec4339130ea67cd4 pnpm --filter @forge/rag eval:production --case-set control-2026-08-06"
+  ],
+  "redaction": {
+    "excludes": [
+      "secrets",
+      "connection details",
+      "questions",
+      "retrieved text",
+      "URLs",
+      "embeddings",
+      "prompts",
+      "corpus content"
+    ]
+  }
+}
