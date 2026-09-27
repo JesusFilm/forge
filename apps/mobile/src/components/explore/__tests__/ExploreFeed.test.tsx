@@ -591,8 +591,9 @@ function loads(player: FakePlayer): string[] {
   return sources(player).filter((source): source is string => source != null)
 }
 
-function translateY(node: Node): number {
-  const style = ([] as unknown[])
+/** A node's style arrays merged into one object, later entries winning. */
+function flatStyle(node: Node): Record<string, unknown> {
+  return ([] as unknown[])
     .concat(node.props.style)
     .flat(Infinity)
     .filter(Boolean)
@@ -600,6 +601,10 @@ function translateY(node: Node): number {
       (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
       {},
     )
+}
+
+function translateY(node: Node): number {
+  const style = flatStyle(node)
   const transform = (style.transform ?? []) as Array<{ translateY?: number }>
   return transform.reduce((sum, part) => sum + (part.translateY ?? 0), 0)
 }
@@ -886,19 +891,10 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
 
   it("draws both views in the band's region once the overlay reports it", async () => {
     await startWithStandby()
-    const region = (id: "a" | "b") => {
-      const [node] = hosts(
-        (n) => n.props.testID === `explore-video-region-${id}`,
+    const region = (id: "a" | "b") =>
+      flatStyle(
+        hosts((n) => n.props.testID === `explore-video-region-${id}`)[0],
       )
-      return ([] as unknown[])
-        .concat(node.props.style)
-        .flat(Infinity)
-        .filter(Boolean)
-        .reduce<Record<string, unknown>>(
-          (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
-          {},
-        )
-    }
     // Before a report, each view fills its page.
     expect(region("a")).toMatchObject({ top: 0, bottom: 0 })
 
@@ -916,17 +912,10 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
         videoTrack: { size: { width: 1080, height: 1920 } },
       })
     })
-    const flat = (node: Node) =>
-      ([] as unknown[])
-        .concat(node.props.style)
-        .flat(Infinity)
-        .filter(Boolean)
-        .reduce<Record<string, unknown>>(
-          (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
-          {},
-        )
     const layer = (id: "a" | "b") =>
-      flat(hosts((n) => n.props.testID === `explore-video-region-${id}`)[0])
+      flatStyle(
+        hosts((n) => n.props.testID === `explore-video-region-${id}`)[0],
+      )
     const fit = (player: unknown) =>
       hosts((n) => n.type === "VideoView" && n.props.player === player)[0].props
         .contentFit
@@ -948,18 +937,9 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
       const [veil] = hosts((n) => n.props.testID === "explore-clip-veil")
       return hosts((n) => n.type === "ExpoImage", veil)[0]
     }
-    const flat = (node: Node) =>
-      ([] as unknown[])
-        .concat(node.props.style)
-        .flat(Infinity)
-        .filter(Boolean)
-        .reduce<Record<string, unknown>>(
-          (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
-          {},
-        )
 
     // Where the landscape video will play, whole: no full-bleed crop.
-    expect(flat(poster())).toMatchObject({ top: 59, bottom: 200 })
+    expect(flatStyle(poster())).toMatchObject({ top: 59, bottom: 200 })
     expect(poster().props.contentFit).toBe("contain")
 
     // A portrait poster fills the page, as its clip will.
@@ -968,8 +948,50 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
         source: { width: 540, height: 960 },
       })
     })
-    expect(flat(poster())).toMatchObject({ top: 0, bottom: 0 })
+    expect(flatStyle(poster())).toMatchObject({ top: 0, bottom: 0 })
     expect(poster().props.contentFit).toBe("cover")
+  })
+
+  it("tells the overlay while the poster veil shows, so its band cuts no poster", async () => {
+    await mountFeed()
+    await hand(1)
+    expect(veilShown()).toBe(true)
+    expect(overlay().props.veiled).toBe(true)
+
+    await settleAll(A)
+    expect(veilShown()).toBe(false)
+    expect(overlay().props.veiled).toBe(false)
+  })
+
+  it("frames a veil's portrait poster at once when an earlier cover read its shape", async () => {
+    await startFirstClip()
+    await callOverlay("onVideoRegion", { top: 59, bottom: 200 })
+    await hand(2)
+    // The standby has not loaded clip 2, so the next page shows its poster.
+    expect(covered(nextSlot())).toBe(true)
+    const [cover] = hosts(
+      (n) => n.props.testID === "explore-page-cover",
+      nextSlot(),
+    )
+    await act(async () => {
+      ;(
+        hosts((n) => n.type === "ExpoImage", cover)[0].props.onLoad as (
+          e: unknown,
+        ) => void
+      )({ source: { width: 540, height: 960 } })
+    })
+
+    await swipeNext()
+    expect(veilShown()).toBe(true)
+    const [veil] = hosts(
+      (n) => n.props.testID === "explore-clip-veil",
+      currentSlot(),
+    )
+    // The veil is a new cover and its poster has not loaded here yet.
+    const poster = hosts((n) => n.type === "ExpoImage", veil)[0]
+    expect(poster.props.source).toBe(veilImage())
+    expect(poster.props.contentFit).toBe("cover")
+    expect(flatStyle(poster)).toMatchObject({ top: 0, bottom: 0 })
   })
 
   it("centres the loading spinner on the band's region", async () => {
@@ -980,15 +1002,7 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
     const [wrapper] = hosts(
       (n) => n.props.testID === "explore-clip-spinner-region",
     )
-    const style = ([] as unknown[])
-      .concat(wrapper.props.style)
-      .flat(Infinity)
-      .filter(Boolean)
-      .reduce<Record<string, unknown>>(
-        (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
-        {},
-      )
-    expect(style).toMatchObject({ top: 59, bottom: 200 })
+    expect(flatStyle(wrapper)).toMatchObject({ top: 59, bottom: 200 })
     expect(
       hosts((n) => n.props.accessibilityRole === "progressbar", wrapper),
     ).toHaveLength(1)

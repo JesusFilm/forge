@@ -117,6 +117,7 @@ function props(overrides: Partial<ClipOverlayProps> = {}): ClipOverlayProps {
     onOverlayOpen: jest.fn(),
     onOverlayClose: jest.fn(),
     onVideoRegion: jest.fn(),
+    veiled: false,
     ...overrides,
   }
 }
@@ -546,6 +547,41 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
       { left: 328, right: 388, bottom: 380 - 20 - 74, top: 380 - 20 },
       { left: 332, right: 384, bottom: 380 - 106 - 74, top: 380 - 106 },
     ])
+  })
+})
+
+describe("ClipOverlay — the band's black bars", () => {
+  const backdrop = (renderer: TestInstance) =>
+    byTestId(renderer, "clip-band-backdrop")
+
+  it("draws no band until the region is measured", () => {
+    const renderer = render()
+    // Unmeasured, the region would run to the screen's bottom edge, so the
+    // band would sit lower than the video the feed draws in the last region.
+    expect(backdrop(renderer)).toHaveLength(0)
+
+    layOutBottom(renderer)
+    expect(backdrop(renderer)).toHaveLength(1)
+  })
+
+  it("keeps the band laid out but draws nothing while the poster veil shows", () => {
+    const renderer = render(props({ muted: true, veiled: true }))
+    const caption = () =>
+      mockSubtitleOverlay.mock.calls.at(-1)?.[0] as { bottomOffset: number }
+    layOutBottom(renderer)
+    fireLayout(renderer, "clip-band-bar", { height: 124 }, 1)
+
+    // A portrait poster fills the page under the veil; bars would cut it.
+    expect(flatStyle(backdrop(renderer)[0].props.style).opacity).toBe(0)
+    // The captions still sit on the frame's bottom edge.
+    expect(caption().bottomOffset).toBe(124 + 200 + 8)
+
+    act(() => {
+      renderer.update(
+        <ClipOverlay {...props({ muted: true, veiled: false })} />,
+      )
+    })
+    expect(flatStyle(backdrop(renderer)[0].props.style).opacity).not.toBe(0)
   })
 })
 

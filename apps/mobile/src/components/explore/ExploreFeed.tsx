@@ -504,6 +504,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     videoRegion != null
       ? [StyleSheet.absoluteFill, videoRegion]
       : StyleSheet.absoluteFill
+  const [posterShapes] = useState<PosterShapes>(() => new Map())
 
   const views = mountedViews(state)
   const renderUnderlay = ({ pageStyle }: ExplorePagerUnderlay) =>
@@ -531,6 +532,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
               testID="explore-clip-veil"
               uri={veil.image?.uri ?? null}
               region={videoRegion}
+              shapes={posterShapes}
             />
             {/* In the band, the spinner centres on the frame, not the screen. */}
             <View
@@ -554,6 +556,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
           onOverlayOpen={handleOverlayOpen}
           onOverlayClose={handleOverlayClose}
           onVideoRegion={handleVideoRegion}
+          veiled={veil.veilVisible}
         />
       </>
     )
@@ -566,6 +569,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       covered={!pageShowsStandby(state, slot.role)}
       onTap={handleTap}
       region={videoRegion}
+      posterShapes={posterShapes}
     >
       {slot.role === "current" ? currentLayers : null}
     </ClipPage>
@@ -609,6 +613,7 @@ type ClipPageProps = {
   onTap: () => void
   /** Where a landscape clip's video, and so its poster, sits. */
   region: ExploreVideoRegion | null
+  posterShapes: PosterShapes
   /** The current page's veil, states, and overlay. */
   children: ReactNode
 }
@@ -624,6 +629,7 @@ function ClipPage({
   covered,
   onTap,
   region,
+  posterShapes,
   children,
 }: ClipPageProps) {
   const surface = useRef<View>(null)
@@ -639,7 +645,12 @@ function ClipPage({
 
   if (clip == null)
     return (
-      <PosterCover testID="explore-page-cover" uri={null} region={region} />
+      <PosterCover
+        testID="explore-page-cover"
+        uri={null}
+        region={region}
+        shapes={posterShapes}
+      />
     )
   if (role !== "current") {
     if (!covered) return null
@@ -648,6 +659,7 @@ function ClipPage({
         testID="explore-page-cover"
         uri={clipPosterUri(clip)}
         region={region}
+        shapes={posterShapes}
       />
     )
   }
@@ -702,14 +714,19 @@ function PosterCover({
   testID,
   uri,
   region,
+  shapes,
 }: {
   testID: string
   uri: string | null
   region: ExploreVideoRegion | null
+  shapes: PosterShapes
 }) {
-  // The poster's own shape, read when it loads, and only for this poster.
+  // The poster's own shape, read when it loads, and only for this poster. The
+  // veil is a new cover, so it starts from the shape an earlier cover read.
   const [loaded, setLoaded] = useState<{ uri: string; portrait: boolean }>()
-  const portrait = loaded?.uri === uri && loaded.portrait
+  const portrait =
+    uri != null &&
+    (loaded?.uri === uri ? loaded.portrait : shapes.get(uri) === true)
   const imageStyle =
     portrait || region == null
       ? StyleSheet.absoluteFill
@@ -722,13 +739,34 @@ function PosterCover({
           style={imageStyle}
           contentFit={portrait ? "cover" : "contain"}
           recyclingKey={uri}
-          onLoad={(e) =>
-            setLoaded({ uri, portrait: e.source.height > e.source.width })
-          }
+          onLoad={(e) => {
+            const shape = { uri, portrait: e.source.height > e.source.width }
+            rememberPosterShape(shapes, shape.uri, shape.portrait)
+            setLoaded(shape)
+          }}
         />
       )}
     </View>
   )
+}
+
+/** Portrait or not, by poster uri, for the covers of one feed. */
+type PosterShapes = Map<string, boolean>
+
+/** The feed is endless; only the posters of nearby clips matter. */
+const POSTER_SHAPE_LIMIT = 32
+
+function rememberPosterShape(
+  shapes: PosterShapes,
+  uri: string,
+  portrait: boolean,
+) {
+  shapes.delete(uri)
+  shapes.set(uri, portrait)
+  const oldest = shapes.keys().next().value
+  if (shapes.size > POSTER_SHAPE_LIMIT && oldest !== undefined) {
+    shapes.delete(oldest)
+  }
 }
 
 const styles = StyleSheet.create({

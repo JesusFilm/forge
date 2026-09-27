@@ -56,6 +56,8 @@ export type ClipOverlayProps = {
   onOverlayClose: () => void
   /** The band's region (KTD18), so the feed draws its video views in it. */
   onVideoRegion: (region: ExploreVideoRegion) => void
+  /** The clip's poster veil shows, and it frames the poster by its own shape. */
+  veiled: boolean
 }
 
 /** Insets from the page's top and bottom edges: safe area to clip title. */
@@ -96,6 +98,7 @@ export function ClipOverlay({
   onOverlayOpen,
   onOverlayClose,
   onVideoRegion,
+  veiled,
 }: ClipOverlayProps) {
   const typography = useTypography()
   const tabBarClearance = useTabBarClearance()
@@ -243,11 +246,14 @@ export function ClipOverlay({
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {band && (
+      {/* Unmeasured, the band would centre on the wrong region. Veiled, it
+          still lays out for the captions, but its bars would cut the poster. */}
+      {regionStyle != null && (
         <ClipBandBackdrop
           aspect={bandAspect(playingSize)}
           regionTop={safeTop}
           regionBottom={regionBottom}
+          hidden={veiled}
           onLowerBarHeight={setLowerBar}
         />
       )}
@@ -455,6 +461,7 @@ function ClipBandBackdrop({
   aspect,
   regionTop,
   regionBottom,
+  hidden,
   onLowerBarHeight,
 }: {
   /** The playing track's width over height. */
@@ -462,13 +469,15 @@ function ClipBandBackdrop({
   /** The region's insets from the page's top and bottom edges. */
   regionTop: number
   regionBottom: number
+  /** Draws nothing, but keeps its layout and still reports the lower bar. */
+  hidden: boolean
   /** From the frame's bottom edge to the region's. */
   onLowerBarHeight: (height: number) => void
 }) {
   return (
     <View
       testID="clip-band-backdrop"
-      style={StyleSheet.absoluteFill}
+      style={[StyleSheet.absoluteFill, hidden && styles.bandHidden]}
       pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
@@ -583,6 +592,9 @@ const styles = StyleSheet.create({
   },
   bandEdge: {
     backgroundColor: BLACK,
+  },
+  bandHidden: {
+    opacity: 0,
   },
   bandRegion: {
     flex: 1,

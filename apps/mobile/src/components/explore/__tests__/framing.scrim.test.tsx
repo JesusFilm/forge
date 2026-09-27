@@ -105,10 +105,24 @@ function render(
         onOverlayOpen={() => {}}
         onOverlayClose={() => {}}
         onVideoRegion={() => {}}
+        veiled={false}
       />,
     )
   })
   mounted.push(renderer)
+  // The band draws only in a measured region, so measure it as a device does.
+  const layout = (id: string, box: { y?: number; height?: number }) => {
+    const [node] = renderer.root.findAll(
+      (n) => n.props.testID === id && typeof n.props.onLayout === "function",
+    )
+    act(() => {
+      ;(node.props.onLayout as (e: unknown) => void)({
+        nativeEvent: { layout: { x: 0, y: 0, width: 402, height: 0, ...box } },
+      })
+    })
+  }
+  layout("clip-overlay-bottom", { height: 380 })
+  layout("clip-overlay-info", { y: 180 })
   return renderer.toJSON() as JsonNode
 }
 
