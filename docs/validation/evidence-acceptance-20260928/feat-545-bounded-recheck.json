@@ -1,0 +1,88 @@
+{
+  "purpose": "Read-only feat-545 follow-up to the September 23 acceptance capture",
+  "collectionDateUtc": "2026-09-27",
+  "collectionTimePrecision": "Queries completed before 2026-09-27T21:25:12Z; exact completion timestamps were not captured",
+  "historicalRelease": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+  "historicalEnvironment": "production",
+  "historicalWindow": {
+    "fromInclusive": "2026-09-23T04:30:00Z",
+    "toRequested": "2026-09-23T06:30:00Z"
+  },
+  "datadogIndexedLogs": {
+    "tool": "analyze_datadog_logs",
+    "sql": "SELECT COUNT(*) AS events FROM logs",
+    "scope": "service and concrete message filters; this recheck did not add an explicit environment, version or primary-host filter",
+    "primaryHostGuardReference": "docs/validation/evidence-acceptance-20260923/datadog-final.json",
+    "results": [
+      {
+        "filter": "service:forge-web \"event=recommendation.evidence source=web action=facts outcome=accepted\"",
+        "indexedEvents": 3513,
+        "railwayStructuredBatches": 3521
+      },
+      {
+        "filter": "service:forge-admin \"event=recommendation.evidence source=admin action=facts outcome=accepted\"",
+        "indexedEvents": 3516,
+        "railwayStructuredBatches": 3521
+      },
+      {
+        "filter": "service:forge-web \"event=recommendation.evidence source=web action=playback outcome=rejected reason=crawler_rejected\"",
+        "indexedEvents": 350,
+        "railwayStructuredRejections": 351
+      }
+    ]
+  },
+  "historicalRum": {
+    "tool": "aggregate_rum_events",
+    "compute": "COUNT(*)",
+    "scope": "service:forge-web, playback API resource URL, fixed historical window; no explicit environment/version filter",
+    "results": [
+      {
+        "query": "service:forge-web @type:resource @resource.url:*watch/api/recommendations/playback* @resource.status_code:503",
+        "resources": 1
+      },
+      {
+        "query": "service:forge-web @type:resource @resource.url:*watch/api/recommendations/playback* @resource.status_code:204",
+        "resources": 2
+      },
+      {
+        "query": "service:forge-web @type:resource @resource.url:*watch/api/recommendations/playback* @resource.status_code:0",
+        "resources": 28
+      }
+    ]
+  },
+  "laterTerminalRum": {
+    "tool": "aggregate_rum_events and search_datadog_rum_events",
+    "query": "service:forge-web @type:resource @resource.url:*watch/api/recommendations/playback* @resource.status_code:409",
+    "fromInclusive": "2026-09-24T00:00:00Z",
+    "toRequested": "2026-09-28T00:00:00Z",
+    "requestedEndWasFutureAtQueryTime": true,
+    "effectiveEnd": "Query execution time, before 2026-09-27T21:25:12Z; exact time not captured",
+    "returnedResources": 10,
+    "returnedHost": "www.jesusfilm.org",
+    "returnedMethod": "POST",
+    "withinViewFollowup": {
+      "queryTemplate": "service:forge-web @type:resource @view.id:<private selected view ID> @resource.url:*watch/api/recommendations/playback*",
+      "privateIdsPublished": false,
+      "selectedViewsWithLaterHttp200ResourcesWithinAboutTwoMinutes": [
+        {
+          "terminalMinuteUtc": "2026-09-25T19:50Z",
+          "later200Resources": 16,
+          "secondRetained409InView": false
+        },
+        {
+          "terminalMinuteUtc": "2026-09-26T16:42Z",
+          "later200Resources": 19,
+          "secondRetained409InView": false
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "The stronger September 23 primary-host capture and Railway slices are separate prior artifacts; this recheck did not identify individual missing indexed logs.",
+    "Batches, durable events, browser resources and primary HTTP requests have different units.",
+    "The historical browser 503 and two 204 resources lack trusted primary-request joins; status zero is a transport observation rather than HTTP zero.",
+    "The initial-evidence one-envelope discrepancy was retained from the prior complete capture, not resolved by these aggregate queries.",
+    "Later sampled RUM resources lack exact episode and primary-request joins. Continued playback activity cannot prove no retry amplification for a rejected episode.",
+    "No owner-accepted bounded limitation was recorded."
+  ]
+}

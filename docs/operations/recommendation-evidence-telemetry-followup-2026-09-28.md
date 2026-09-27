@@ -2,6 +2,8 @@
 
 This bounded, read-only continuation of [feat-545](../roadmap/content-discovery/feat-545-recommendation-monitoring-and-telemetry-closeout.md) rechecks specific gaps in the [September 23 acceptance record](recommendation-evidence-acceptance-2026-09-23.md). Queries ran on September 27 at approximately 21:16 UTC (September 28 in New Zealand). No production setting, request, database row, monitor or dashboard was changed. The September 23 release was `37e10b622bd66e55647cf561c3896b2d4fbb4dce` in production; later RUM observations below are a separate population and were not used to repair its accounting.
 
+The [sanitized query aggregate](../validation/evidence-acceptance-20260928/feat-545-bounded-recheck.json) records the exact requested windows, filters, units, counts and query limitations without private event, view or session identifiers.
+
 ## September 23 fixed window
 
 Window: `2026-09-23T04:30:00Z` inclusive to `06:30:00Z` exclusive. The source identities, exact primary host guards and complete Railway slices are retained in the [sanitized collection](../validation/evidence-acceptance-20260923/README.md). I repeated three Datadog indexed-log `COUNT(*)` queries with the concrete event text, production services and this fixed interval:
