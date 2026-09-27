@@ -14,7 +14,6 @@ import {
   type LayoutChangeEvent,
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import type { VideoPlayer } from "expo-video"
 
@@ -24,11 +23,7 @@ import { SubtitleOverlay } from "../watch/SubtitleOverlay"
 import { ACCENT, BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { readSeconds } from "../../lib/explore/playerRead"
-import {
-  BAND_BLUR_RADIUS,
-  EXPLORE_FRAMING,
-  bandAspect,
-} from "../../lib/explore/framing"
+import { EXPLORE_FRAMING, bandAspect } from "../../lib/explore/framing"
 import type { FeedClip } from "../../lib/explore/types"
 import { clamp } from "../../lib/scrubber"
 import { useTabBarClearance } from "../../lib/tabBar"
@@ -129,10 +124,12 @@ export function ClipOverlay({
   // The scrim starts at the title, not at the taller rail, so the dark band
   // is only as high as the text it keeps readable. It follows an expansion.
   const [scrimTop, setScrimTop] = useState(0)
+  const [rowWidth, setRowWidth] = useState(0)
   const rowTop = useRef(0)
   const infoTop = useRef(0)
   const handleRowLayout = useCallback((e: LayoutChangeEvent) => {
     rowTop.current = e.nativeEvent.layout.y
+    setRowWidth(Math.round(e.nativeEvent.layout.width))
     setScrimTop(Math.round(rowTop.current + infoTop.current))
   }, [])
   const handleInfoLayout = useCallback((e: LayoutChangeEvent) => {
@@ -140,10 +137,28 @@ export function ClipOverlay({
     setScrimTop(Math.round(rowTop.current + infoTop.current))
   }, [])
 
+  // In the band, captions sit on the frame's bottom edge, not above the whole
+  // bottom block; they never go below the title, and they keep clear of the
+  // rail, which reaches up into the frame on a phone.
+  const [bandInset, setBandInset] = useState<number | null>(null)
+  const [railLeft, setRailLeft] = useState<number | null>(null)
+  const handleRailLayout = useCallback((e: LayoutChangeEvent) => {
+    setRailLeft(Math.round(e.nativeEvent.layout.x))
+  }, [])
+  const band = EXPLORE_FRAMING === "band"
+  const captionBottom =
+    band && bandInset != null
+      ? Math.max(bandInset, bottomHeight - scrimTop) + CAPTION_GAP
+      : bottomHeight + CAPTION_GAP
+  const captionRightInset =
+    band && railLeft != null && rowWidth > 0
+      ? rowWidth - railLeft + CAPTION_GAP
+      : undefined
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {EXPLORE_FRAMING === "band" && (
-        <ClipBandBackdrop player={player} imageUrl={clip.imageUrl} />
+      {band && (
+        <ClipBandBackdrop player={player} onFrameBottomInset={setBandInset} />
       )}
 
       {paused && (
@@ -164,7 +179,8 @@ export function ClipOverlay({
         <SubtitleOverlay
           player={player}
           vttSrc={captionSrc}
-          bottomOffset={bottomHeight + CAPTION_GAP}
+          bottomOffset={captionBottom}
+          rightInset={captionRightInset}
         />
       )}
 
@@ -214,7 +230,11 @@ export function ClipOverlay({
             />
           </View>
 
-          <View testID="clip-overlay-rail" style={styles.rail}>
+          <View
+            testID="clip-overlay-rail"
+            style={styles.rail}
+            onLayout={handleRailLayout}
+          >
             <RailButton
               icon={muted ? "volume-mute" : "volume-high"}
               label={muted ? EXPLORE_COPY.unmute : EXPLORE_COPY.mute}
@@ -300,27 +320,18 @@ function usePlayingSize(player: VideoPlayer) {
 }
 
 /**
- * KTD18's band: the video shows whole (`contain`) in a centred band, and a
- * blurred copy of the clip's image fills the rows above and below it.
+ * KTD18's band: the video shows whole (`contain`) in a centred band, with
+ * solid black above and below it (owner, 2026-09-27).
  */
 function ClipBandBackdrop({
   player,
-  imageUrl,
+  onFrameBottomInset,
 }: {
   player: VideoPlayer
-  imageUrl: string | null
+  /** The lower bar's height: from the frame's bottom edge to the screen's. */
+  onFrameBottomInset: (inset: number) => void
 }) {
   const aspect = bandAspect(usePlayingSize(player))
-  const fill =
-    imageUrl == null ? null : (
-      <Image
-        source={imageUrl}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        blurRadius={BAND_BLUR_RADIUS}
-        recyclingKey={imageUrl}
-      />
-    )
   return (
     <View
       testID="clip-band-backdrop"
@@ -329,12 +340,18 @@ function ClipBandBackdrop({
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <View style={styles.bandBar}>{fill}</View>
+      <View testID="clip-band-bar" style={styles.bandBar} />
       <View
         testID="clip-band-frame"
         style={[styles.bandFrame, { aspectRatio: aspect }]}
       />
-      <View style={styles.bandBar}>{fill}</View>
+      <View
+        testID="clip-band-bar"
+        style={styles.bandBar}
+        onLayout={(e) =>
+          onFrameBottomInset(Math.round(e.nativeEvent.layout.height))
+        }
+      />
     </View>
   )
 }
@@ -413,7 +430,7 @@ const styles = StyleSheet.create({
   },
   bandBar: {
     flex: 1,
-    overflow: "hidden",
+    backgroundColor: BLACK,
   },
   bandFrame: {
     width: "100%",

@@ -396,6 +396,46 @@ describe("ClipOverlay — captions (R13, AE4, KTD20)", () => {
   })
 })
 
+describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
+  it("sits on the frame's bottom edge, clear of the rail, never below the title", () => {
+    const renderer = render(props({ muted: true }))
+    const layout = (
+      id: string,
+      box: { x?: number; y?: number; width?: number; height?: number },
+      index = 0,
+    ) => {
+      const node = byTestId(renderer, id)[index]
+      act(() => {
+        ;(node.props.onLayout as (e: unknown) => void)({
+          nativeEvent: {
+            layout: { x: 0, y: 0, width: 0, height: 0, ...box },
+          },
+        })
+      })
+    }
+    const caption = () =>
+      mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
+        bottomOffset: number
+        rightInset?: number
+      }
+
+    // The bottom block is 380 tall, and its title starts 180 into it.
+    layout("clip-overlay-bottom", { height: 380 })
+    layout("clip-overlay-row", { width: 402, height: 300 })
+    layout("clip-overlay-info", { y: 180 })
+    layout("clip-overlay-rail", { x: 318 })
+    // The lower bar: the frame's bottom edge is 324 above the screen's.
+    layout("clip-band-bar", { height: 324 }, 1)
+
+    expect(caption().bottomOffset).toBe(324 + 8)
+    expect(caption().rightInset).toBe(402 - 318 + 8)
+
+    // A tall frame ends below the title, so the caption stays above the title.
+    layout("clip-band-bar", { height: 80 }, 1)
+    expect(caption().bottomOffset).toBe(380 - 180 + 8)
+  })
+})
+
 describe("ClipOverlay — scrim (R39)", () => {
   it("starts at the title, not at the taller rail, and follows an expansion", () => {
     const renderer = render()

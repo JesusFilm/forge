@@ -5,12 +5,12 @@
 
 /**
  * `crop` fills the screen from the centre of the frame (R9). `band` shows the
- * whole frame in the middle, with a blurred copy of the clip's image above and
- * below it.
+ * whole frame in the middle, with solid black above and below it.
  */
 export type ExploreFraming = "crop" | "band"
 
-export const EXPLORE_FRAMING: ExploreFraming = "crop"
+/** The owner chose the band after a device review (2026-09-27). */
+export const EXPLORE_FRAMING: ExploreFraming = "band"
 
 /** The feed's `VideoView` fit for a treatment. The overlay draws the rest. */
 export function clipContentFit(framing: ExploreFraming): "cover" | "contain" {
@@ -29,6 +29,3 @@ export function bandAspect(
   }
   return size.width / size.height
 }
-
-/** iOS and Android both take this radius on expo-image. Purely aesthetic. */
-export const BAND_BLUR_RADIUS = 24

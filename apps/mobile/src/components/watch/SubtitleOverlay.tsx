@@ -25,6 +25,8 @@ type SubtitleOverlayProps = {
   /** Horizontal padding so captions clear the notch / home-indicator in
    *  landscape fullscreen. Defaults to the inline value. */
   horizontalInset?: number
+  /** Right padding only, when a column of controls sits beside the caption. */
+  rightInset?: number
   /** Caption text size — larger in fullscreen where the video fills the screen. */
   fontSize?: number
   /** Animate vertical-offset changes (used only in fullscreen, where the caption
@@ -66,6 +68,7 @@ export function SubtitleOverlay({
   vttSrc,
   bottomOffset = 16,
   horizontalInset = 16,
+  rightInset,
   fontSize = 16,
   animate = false,
 }: SubtitleOverlayProps) {
@@ -207,7 +210,11 @@ export function SubtitleOverlay({
       pointerEvents="none"
       style={[
         styles.container,
-        { paddingHorizontal: horizontalInset, transform: [{ translateY }] },
+        {
+          paddingHorizontal: horizontalInset,
+          paddingRight: rightInset ?? horizontalInset,
+          transform: [{ translateY }],
+        },
       ]}
     >
       <Text

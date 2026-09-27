@@ -38,6 +38,7 @@ jest.mock("../../watch/SubtitleOverlay", () => ({
   SubtitleOverlay: () => null,
 }))
 
+import { BLACK } from "../../../lib/color"
 import type * as framing from "../../../lib/explore/framing"
 import { ClipOverlay } from "../ClipOverlay"
 import type { FeedClip } from "../../../lib/explore/types"
@@ -189,8 +190,8 @@ function contrast(a: Rgba, b: Rgba): number {
 const WHITE_FRAME: Rgba = { r: 255, g: 255, b: 255, a: 1 }
 
 describe("Explore framing (KTD18)", () => {
-  it("ships the centre crop by default", () => {
-    expect(ACTUAL.EXPLORE_FRAMING).toBe("crop")
+  it("ships the whole-frame band by default", () => {
+    expect(ACTUAL.EXPLORE_FRAMING).toBe("band")
     expect(ACTUAL.clipContentFit("crop")).toBe("cover")
     expect(ACTUAL.clipContentFit("band")).toBe("contain")
   })
@@ -208,11 +209,12 @@ describe("Explore framing (KTD18)", () => {
         return
       }
       expect(backdrop).toHaveLength(1)
-      const images = nodes(backdrop[0], (n) => n.type === "ExpoImage")
-      expect(images).toHaveLength(2)
-      for (const image of images) {
-        expect(image.props.source).toBe(CLIP.imageUrl)
-        expect(image.props.blurRadius).toBe(ACTUAL.BAND_BLUR_RADIUS)
+      // Solid black above and below the band, and no image behind it.
+      expect(nodes(backdrop[0], (n) => n.type === "ExpoImage")).toHaveLength(0)
+      const bars = nodes(backdrop[0], (n) => n.props.testID === "clip-band-bar")
+      expect(bars).toHaveLength(2)
+      for (const bar of bars) {
+        expect(flatStyle(bar.props.style).backgroundColor).toBe(BLACK)
       }
     })
 
