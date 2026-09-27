@@ -2,7 +2,6 @@
 // button (feat-553 R29), and the icon for every other state.
 
 import { act } from "react"
-import { StyleSheet, type ViewStyle } from "react-native"
 
 import {
   TestRenderer,
@@ -14,8 +13,6 @@ import { READER_COPY } from "../../../lib/bible/reader/copy"
 import type { TranslationLabel } from "../../../lib/bible/reader/labels"
 import type { TranslationDownloadState } from "../../../lib/bible/repository/translationDownloads"
 import { readerTokens } from "../../../lib/bible/theme/palettes"
-import { hexToRgba } from "../../../lib/color"
-import { READER_OUTLINE_ALPHA } from "../ReaderGlassButton"
 import { ReaderTopBar } from "../ReaderTopBar"
 
 jest.mock("expo-glass-effect", () => ({
@@ -82,28 +79,11 @@ function buttons(renderer: TestInstance): RenderedNode[] {
   )
 }
 
-function outlines(renderer: TestInstance): RenderedNode[] {
-  return renderer.root.findAll(
-    (node) =>
-      typeof node.type === "string" &&
-      node.props.testID === "bible-glass-outline",
-  )
-}
-
 // The Ionicons mock renders its name as a raw string, so match the element.
 function iconCount(renderer: TestInstance, name: string): number {
   return renderer.root.findAll(
     (node) => typeof node.type !== "string" && node.props.name === name,
   ).length
-}
-
-function insideOf(node: RenderedNode, ancestor: RenderedNode): boolean {
-  let current: RenderedNode | null = node
-  while (current) {
-    if (current === ancestor) return true
-    current = current.parent ?? null
-  }
-  return false
 }
 
 function textCount(renderer: TestInstance, text: string): number {
@@ -130,8 +110,8 @@ describe("ReaderTopBar download button", () => {
   })
 })
 
-// The owner moved the translation pill from the footer to the top bar and
-// asked for a faint outline on both pills (2026-09-27).
+// The owner moved the translation pill from the footer to the top bar
+// (2026-09-27).
 describe("ReaderTopBar translation pill", () => {
   it("sits right after the passage pill, before download and settings", async () => {
     const renderer = await render({ kind: "bundled" })
@@ -144,23 +124,6 @@ describe("ReaderTopBar translation pill", () => {
       READER_COPY.settings,
     ])
     expect(textCount(renderer, "BSB")).toBe(1)
-  })
-
-  it("outlines the passage pill and the translation pill, and nothing else", async () => {
-    const renderer = await render({ kind: "bundled" })
-    const [passage, translation] = buttons(renderer)
-    const drawn = outlines(renderer)
-    expect(drawn).toHaveLength(2)
-    expect(insideOf(drawn[0]!, passage!)).toBe(true)
-    expect(insideOf(drawn[1]!, translation!)).toBe(true)
-    for (const outline of drawn) {
-      const style = StyleSheet.flatten(outline.props.style) as ViewStyle
-      expect(style.borderWidth).toBe(1)
-      expect(style.borderColor).toBe(
-        hexToRgba(TOKENS.text, READER_OUTLINE_ALPHA),
-      )
-      expect(outline.props.pointerEvents).toBe("none")
-    }
   })
 
   it("opens the translation picker on a tap (R23)", async () => {

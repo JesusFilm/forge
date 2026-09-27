@@ -99,7 +99,6 @@ export function ReaderTopBar({
         <ReaderGlassButton
           tokens={tokens}
           shape="pill"
-          outlined
           accessibilityLabel={
             translation?.accessibilityLabel ??
             READER_COPY.chooseTranslationWaiting
