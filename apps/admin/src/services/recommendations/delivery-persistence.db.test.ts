@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { createPrismaClient } from "@/db/client"
+import { loadRecommendationRequestDetail } from "./admin-ops/detail.service"
 import * as evidencePersistence from "./candidate-evidence-persistence"
+import { runSemanticCandidatePlatform } from "./orchestration"
 import {
   makeHarness,
   input,
@@ -28,6 +30,130 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
       })
       await prisma.$disconnect()
       await controller.end()
+    })
+
+    it("returns identical complete Admin stage detail from actual legacy and compact writes", async () => {
+      const candidates = semanticCandidates(12)
+      candidates[1] = {
+        ...candidates[1],
+        videoCoreId: candidates[0].videoCoreId,
+      }
+      candidates[11] = {
+        ...candidates[11],
+        sourceRejectionReason: "fixture_rejected",
+      }
+      const details = []
+      for (const format of ["legacy", "compact"] as const) {
+        const harness = makeHarness({
+          database: prisma,
+          candidateTraceFormat: format,
+        })
+        harness.retrieve.mockResolvedValue(candidates)
+        const seed = `detail-parity-${format}-${randomUUID()}`
+        seeds.push(seed)
+        const response = await harness.service.deliver(input(seed))
+        expect(response.result).toBe("served")
+        const run = await prisma.recommendationCandidateRun.findUniqueOrThrow({
+          where: { requestId: response.requestId! },
+        })
+        const legacyRows =
+          await prisma.recommendationCandidateStageEvidence.count({
+            where: { runId: run.id },
+          })
+        if (format === "compact") {
+          expect(run.traceFormatVersion).toBe(1)
+          expect(legacyRows).toBe(0)
+        } else {
+          expect(run.tracePayload).toBeNull()
+          expect(legacyRows).toBeGreaterThan(0)
+        }
+        const detail = await loadRecommendationRequestDetail(prisma, {
+          requestId: response.requestId!,
+          actorDigest: "a".repeat(64),
+        })
+        expect(detail?.candidateExecution).not.toBeNull()
+        details.push(detail!.candidateExecution)
+      }
+      const stages = details[0]!.stages
+      expect(new Set(stages.map((stage) => stage.stage))).toEqual(
+        new Set([
+          "nominated",
+          "canonicalized",
+          "deduplicated",
+          "rejected",
+          "scored",
+          "ordered",
+          "composed",
+        ]),
+      )
+      expect(stages.some((stage) => stage.reasonCodes.length > 0)).toBe(true)
+      expect(
+        stages.some(
+          (stage) => stage.sourceCount > 1 && stage.contributors.length > 1,
+        ),
+      ).toBe(true)
+      expect(stages.some((stage) => stage.deterministicScore != null)).toBe(
+        true,
+      )
+      expect(details[1]).toEqual(details[0])
+    })
+
+    it("commits a complete compact trace and atomically rejects invalid evidence", async () => {
+      const harness = makeHarness({
+        database: prisma,
+        candidateTraceFormat: "compact",
+      })
+      harness.retrieve.mockResolvedValue(semanticCandidates(32))
+      const seed = `compact-observation-${randomUUID()}`
+      seeds.push(seed)
+      const response = await harness.service.deliver(input(seed))
+      expect(response.result).toBe("served")
+      const run = await prisma.recommendationCandidateRun.findUniqueOrThrow({
+        where: { requestId: response.requestId! },
+      })
+      expect(run.traceFormatVersion).toBe(1)
+      const payload = run.tracePayload as {
+        stages: Array<Record<string, unknown>>
+      }
+      expect(payload.stages.length).toBeGreaterThan(32)
+      expect(payload.stages[0]).toMatchObject({
+        id: expect.any(String),
+        stage: "nominated",
+        ordinal: 0,
+        createdAt: expect.any(String),
+        sourceEvidence: expect.any(Array),
+      })
+      expect(payload.stages[0]).not.toHaveProperty("runId")
+      expect(payload.stages[0]).not.toHaveProperty("expiresAt")
+      expect(
+        await prisma.recommendationCandidateStageEvidence.count({
+          where: { runId: run.id },
+        }),
+      ).toBe(0)
+
+      const failing = makeHarness({
+        database: prisma,
+        candidateTraceFormat: "compact",
+      })
+      failing.retrieve.mockResolvedValue(semanticCandidates(32))
+      failing.orchestrate.mockImplementation((...args) => {
+        const result = runSemanticCandidatePlatform(...args)
+        return {
+          ...result,
+          evidence: result.evidence.map((entry, index) =>
+            index === 0 ? { ...entry, sourceScore: 2 } : entry,
+          ),
+        }
+      })
+      const invalidSeed = `compact-invalid-${randomUUID()}`
+      seeds.push(invalidSeed)
+      const rejected = await failing.service.deliver(input(invalidSeed))
+      expect(rejected.result).toBe("unavailable")
+      expect(
+        await prisma.recommendationRequest.count({
+          where: { seedMediaId: invalidSeed },
+        }),
+      ).toBe(0)
     })
 
     it("preserves every evidence field against createMany and observes the commit", async () => {

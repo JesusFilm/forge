@@ -65,6 +65,7 @@ export type RecommendationPersonalizationDelivery = Readonly<{
 
 export type DeliveryDependencies = {
   prisma: PrismaClient
+  candidateTraceFormat?: "legacy" | "compact"
   admission: RecommendationDeliveryAdmission
   getServingState(input: {
     deadlineAt: number

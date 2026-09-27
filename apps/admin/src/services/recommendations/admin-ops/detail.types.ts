@@ -443,6 +443,8 @@ export type DetailControlReadinessRow = Readonly<{
 
 export type DetailCandidateRunRow = Readonly<{
   id: string
+  traceFormatVersion: number | null
+  hasTracePayload: boolean
   purpose: string
   contextVersion: string
   generatorVersion: string
