@@ -106,7 +106,8 @@ the remaining operational checks are listed in the admission evidence.
 
 ## Consumer lifecycle backend
 
-The authenticated `/portal/consumers` backend now supports direct creation,
+[#2435](https://github.com/JesusFilm/forge/pull/2435) proposes the authenticated
+`/portal/consumers` backend with direct creation,
 owner membership, one-time credential issuance and rotation, suspension and
 terminal revocation. Registered `/v1/search` credentials use the restricted
 auth reader and current database state on every request. The
