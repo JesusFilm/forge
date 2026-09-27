@@ -34,6 +34,7 @@ const migrationSql = [
   "0075_recommendation_selection_attribution_eligibility",
   "0076_recommendation_profile_eligibility_reconciliation",
   "0082_user_recommendation_identity",
+  "0104_recommendation_cowatch_shadow",
 ].map((migration) =>
   readFileSync(
     new URL(
