@@ -6,7 +6,8 @@ This record covers the independent implementation and evidence work for
 [feat-545](../roadmap/content-discovery/feat-545-recommendation-monitoring-and-telemetry-closeout.md).
 The integration started from `7bfed3f9fc228bfd5e3353697f91d7e6a05c9464`
 and was refreshed against main at
-`f1cf0d159419e65e4eefbdd6cf6a2582693cb2aa`.
+`2cc8105ffb00a9f595cefe10594bd8537561099f` after the independent storage
+change landed.
 
 ## Authority and release boundary
 
@@ -75,6 +76,13 @@ Migration numbers were coordinated with the independent storage change in
 feat-373 owns 0103, and feat-387 owns 0104. This numbering reservation does not
 introduce a feature dependency or include the storage PR in this batch's review.
 
+After that storage PR landed, its retention continuation protocol exposed one
+additional integration issue: a full exposure-only expiry batch must set
+`batchLimitReached`, even before the remaining backlog is overdue. Feat-373's
+follow-up includes `expiredWatchExposures` in that condition and extends the
+full-selection regression cases. It preserves the storage change's bounded
+scheduler behavior and keeps newly expired exposure backlog moving.
+
 The [generation-lineage learning](../solutions/logic-errors/cowatch-generation-denominator-lineage-20260928.md)
 records the denominator-only source regression and its prevention test. Existing
 repository guidance already makes the knowledge store discoverable; no global
@@ -93,17 +101,20 @@ preserve the exact limitations. The ticket remains `in-progress` and the PR is
 unmerged; this is completed investigation work, not completed acceptance.
 
 The parent integrated both schema changes in an isolated branch. Merge conflicts
-were limited to two curated test migration lists; both resolutions retain
-`0103` and `0104`. All 102 migrations deployed successfully to a fresh disposable PostgreSQL
+were limited to two curated test migration lists; resolutions retain all
+applicable migrations, including `0100` through `0104`. All 105 migrations deployed successfully to a fresh disposable PostgreSQL
 database. Regenerating the combined GraphQL schema and typed client produced no
 additional drift. Admin, Web and typed-client typechecking passed. The combined-schema Admin typecheck
 exposed excessive inference in the existing Prisma embedding guard; its narrowly
 typed callback repair passed the combined Admin typecheck without changing
 runtime behavior and is included in the co-watch PR.
 
-The final combined run passed 40 tests across seven suites: co-watch projection,
-exposure reporting and ingestion, migration lifecycle, playback episodes,
-profiles and retention. Five Prisma helper/cache tests passed separately. The
+The storage-baseline integration run passed 93 tests across eleven suites,
+including co-watch projection, exposure reporting and ingestion, migration
+lifecycle, playback episodes, profiles, retention service/scheduler/workflow,
+shadow evaluation and compact/legacy delivery persistence. The focused exposure
+retention repair passed its 47 service, scheduler and workflow tests in the
+implementation task. Five Prisma helper/cache tests passed separately. The
 parent's final four focused Web suites passed all 82 tests. The earlier combined
 run passed all 14 tests. New standalone co-watch and exposure
 database suites were run locally: the available GitHub token cannot publish
@@ -133,13 +144,13 @@ matching database-created timestamps. A separate owner handles the unrelated
 Expo patch drift in [PR #2432](https://github.com/JesusFilm/forge/pull/2432).
 Neither baseline repair changes recommendation ranking behavior.
 
-Reviewed feature commits are `c255b6e439b1cd80ae2e22a3b7994bcb5adb30f4`
+Initial reviewed feature commits are `c255b6e439b1cd80ae2e22a3b7994bcb5adb30f4`
 for feat-387, `b6e8769d876ca25ea7784df6efcec6047c21ceae` for feat-373,
-and `919cd0d68d09b47e2acf84c845e0bbdbb3d6492c` for feat-545. Subsequent
-base-refresh merge commits do not replace these feature review identities. The
+and `919cd0d68d09b47e2acf84c845e0bbdbb3d6492c` for feat-545. The subsequent
+storage-base refresh retains both schemas and the exposure retention fix above. The
 linked PR check panels are the authority for their current CI and merge state.
 The parent roadmap index was regenerated with UTC date normalization from the
-integrated ticket states; it also picks up already-landed Auth and Mobile tickets
+integrated ticket states; it also picks up already-landed Auth, Mobile and storage tickets
 missing from the previous generated index. Dependency links remain unchanged and
 bidirectional.
 

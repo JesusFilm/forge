@@ -6,9 +6,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 27, 2026)
 
-- **Total tickets:** 730
-- **Complete:** 548
-- **In progress:** 58
+- **Total tickets:** 734
+- **Complete:** 551
+- **In progress:** 59
 - **Not started:** 45
 - **Blocked:** 79
 - **Overdue and not complete:** 142
@@ -357,6 +357,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-524](platform/feat-524-mobile-expo-sdk57-0-24-alignment.md)                      | Align Mobile Expo SDK 57.0.24 patches                                              | jaco       | P0       | 2026-09-21 | 1    | 2026-09-21 | complete    |
 | [feat-550](platform/feat-550-nextjs-security-update.md)                                | Apply Next.js September security update                                            | tataihono  | P0       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-551](platform/feat-551-auth-discovery-startup.md)                                | Make Auth discovery independent of initialization                                  | edmondshen | P0       | 2026-09-25 | 1    | 2026-09-25 | complete    |
+| [feat-554](platform/feat-554-recommendation-storage-rollout-verification.md)           | Roll out compact recommendation traces and verify production headroom              | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | in-progress |
+| [feat-557](platform/feat-557-production-database-storage-investigation.md)             | Investigate production database storage pressure                                   | nisal      | P0       | 2026-09-28 | 1    | 2026-09-28 | complete    |
+| [feat-558](platform/feat-558-production-recommendation-storage-remediation.md)         | Reduce recommendation trace storage and improve retention catch-up                 | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                        | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit Watch page-not-found telemetry                                                | codex      | P1       | —          | 2    | —          | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                                 | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
@@ -610,6 +613,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-532](platform/feat-532-changelog-preapproval-redemption.md)                      | Redeem Changelog Contributor preapprovals for active accounts                      | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-534](platform/feat-534-changelog-membership-activation.md)                       | Activate preapproved Changelog memberships                                         | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-543](platform/feat-543-mobile-sign-in-gate.md)                                   | Mobile sign-in gate hides sign-in until an environment turns it on                 | urim       | P1       | 2026-09-23 | 2    | 2026-09-24 | in-progress |
+| [feat-556](platform/feat-556-mobile-expo-sdk57-patch-alignment.md)                     | Restore CI after Expo patch drift and stale benchmark clock                        | nisal      | P1       | 2026-09-28 | 1    | 2026-09-28 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
