@@ -94,9 +94,9 @@ independent projection recomputation, and readiness policy boundaries. The
 real PostgreSQL episode fixture applies migration 0099, reconciles the
 full-window aggregate, and checks idempotent per-family persisted decisions.
 Run affected Web/Admin tests, lint, type checks and roadmap lint before PR.
-Production validation requires the normal PR-to-main deployment and an
-authorized Admin overview/episode inspection; this document makes no
-production observation claim.
+Production validation uses the normal PR-to-main deployment and an
+authorized Admin overview/episode inspection. The dated observations and
+their limits are recorded in `production-verification.md`.
 
 ## Local browser load check
 

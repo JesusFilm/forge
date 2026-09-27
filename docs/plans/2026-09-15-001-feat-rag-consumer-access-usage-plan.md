@@ -454,3 +454,16 @@ pinned evidence and limitations belong to discovery draft #2325. Allowlist
 integration, durable sessions, live OAuth registration and Railway deployment are
 not proven. All production changes still require separate authorization and the
 normal PR-to-main flow. No deployment is authorized by this plan.
+
+### Portal-admission implementation slice
+
+The first admission slice is in `apps/rag/portal/users.json`,
+`apps/rag/scripts/validate-portal-users.ts`, and
+`apps/rag/src/serving/http/portal*.ts`. Its Hono proof route is separate from
+`/v1/search`; it has no registry adapter or consumer management methods.
+Merged-`main` GitHub contents, live identity and live Forge write permission
+are checked on every protected request. Postgres stores hashed OAuth state,
+browser binding and session tokens; the numeric GitHub ID is the session
+identity. This slice intentionally leaves consumer creation, secret issuance,
+membership, reporting and legacy migration for later work. Operator setup and
+unperformed browser checks are documented in `apps/rag/portal/README.md`.

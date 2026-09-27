@@ -23,7 +23,7 @@ describe("playback observations", () => {
     root = harness.root
     fetchMock = harness.fetchMock
   })
-  async function mount() {
+  async function mount(initiation: "manual" | "automatic" | null = "manual") {
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -47,13 +47,25 @@ describe("playback observations", () => {
       root.render(
         <RecommendationPlaybackRecorder
           player={player}
-          initiation="manual"
+          initiation={initiation}
           mediaId="media-1"
           durationSeconds={120}
         />,
       )
     })
     return player
+  }
+  async function startManualIntent(player: ReturnType<typeof makePlayer>) {
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={player}
+          initiation="manual"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+    })
   }
   function events() {
     const sent = fetchMock.mock.calls.flatMap(
@@ -278,6 +290,70 @@ describe("playback observations", () => {
     expect(
       events().find((fact) => fact.kind === "playback_observation")?.payload,
     ).toMatchObject({ qoeCount: 1, startObserved: false })
+  })
+
+  it("starts a fresh timeout after a long preview with no playback intent", async () => {
+    const player = await mount(null)
+    player.paused = false
+    await act(async () => player.dispatch("play"))
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(events()).toEqual([])
+
+    player.paused = true
+    await act(async () => player.dispatch("pause"))
+    await startManualIntent(player)
+    await vi.advanceTimersByTimeAsync(14_999)
+    expect(events().filter((fact) => fact.kind === "playback_qoe")).toEqual([])
+    await vi.advanceTimersByTimeAsync(1)
+    expect(
+      events().filter((fact) => fact.kind === "playback_qoe")?.[0]?.payload,
+    ).toMatchObject({ action: "startup_timeout" })
+  })
+
+  it("does not charge a short preview to the later playback intent", async () => {
+    const player = await mount(null)
+    player.paused = false
+    await act(async () => player.dispatch("play"))
+    await vi.advanceTimersByTimeAsync(5_000)
+    player.paused = true
+    await act(async () => player.dispatch("pause"))
+
+    await startManualIntent(player)
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(events().filter((fact) => fact.kind === "playback_qoe")).toEqual([])
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(
+      events().filter((fact) => fact.kind === "playback_qoe")?.[0]?.payload,
+    ).toMatchObject({ action: "startup_timeout" })
+  })
+
+  it("does not arm startup timing on a pre-intent visibility return", async () => {
+    const player = await mount(null)
+    const visibility = vi.spyOn(document, "visibilityState", "get")
+    try {
+      visibility.mockReturnValue("hidden")
+      await act(async () =>
+        document.dispatchEvent(new Event("visibilitychange")),
+      )
+      visibility.mockReturnValue("visible")
+      await act(async () =>
+        document.dispatchEvent(new Event("visibilitychange")),
+      )
+      await vi.advanceTimersByTimeAsync(15_000)
+      expect(events()).toEqual([])
+
+      await startManualIntent(player)
+      await vi.advanceTimersByTimeAsync(14_999)
+      expect(events().filter((fact) => fact.kind === "playback_qoe")).toEqual(
+        [],
+      )
+      await vi.advanceTimersByTimeAsync(1)
+      expect(
+        events().filter((fact) => fact.kind === "playback_qoe")?.[0]?.payload,
+      ).toMatchObject({ action: "startup_timeout" })
+    } finally {
+      visibility.mockRestore()
+    }
   })
 
   it("does not charge bfcache suspension to the startup timeout", async () => {

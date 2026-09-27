@@ -1,8 +1,9 @@
 /**
  * feat-517: the Recommended for You row. Six landscape cards in served order,
- * one render fact per item once Home is focused, a placeholder that holds the
- * row's height until a terminal outcome leaves the viewport, and a tap that
- * opens the video in the same tick as the selection call (KTD6, KTD8).
+ * one render fact per item once Home is focused, a title-and-skeleton
+ * placeholder that pulses while the slate loads, no row at all after a failed
+ * load, and a tap that opens the video in the same tick as the selection call
+ * (KTD6, KTD8).
  *
  * The last block renders the row through the real `HomeScreen` feed, with the
  * controller mocked at its module boundary only.
@@ -172,18 +173,18 @@ jest.mock("../../../lib/splash/splashSession", () => ({
 }))
 
 import { StrictMode, act, createElement } from "react"
-import { Dimensions } from "react-native"
+import { Animated, Dimensions, StyleSheet } from "react-native"
 
 import { HomeScreen } from "../HomeScreen"
 import {
   RecommendationsShelf,
   RECOMMENDATION_CARD_ACTION_NAME,
+  RECOMMENDATIONS_SHELF_LOADING_LABEL,
   RECOMMENDATIONS_SHELF_TITLE,
-  recommendationsShelfBodyHeight,
+  RECOMMENDATIONS_SKELETON_CARD_TEST_ID,
   type RecommendationsShelfProps,
 } from "../RecommendationsShelf"
 import { homeCardWidth } from "../HomeCard"
-import { computeTypographyScale } from "../../../hooks/useTypography"
 import { useHomeRecommendations } from "../../../hooks/useHomeRecommendations"
 import { useWatchHome } from "../../../hooks/useWatchHome"
 import { datadogLog } from "../../../lib/datadog"
@@ -196,7 +197,6 @@ import type {
   UserRecommendationSlate,
 } from "../../../lib/recommendations/delivery"
 import { decodeWatchSeed } from "../../../lib/watchSeed"
-import { SECTION_HEADING_MARGIN_BOTTOM } from "../../../styles/shared"
 import type { HomeFeedItem } from "../../../lib/watchHome/homeFeed"
 import type {
   WatchHomeModel,
@@ -272,7 +272,6 @@ function baseProps(): RecommendationsShelfProps {
     status: "served",
     slate: slate(),
     focused: true,
-    inView: true,
     onShelfMount: jest.fn(),
     onCardsVisible: jest.fn(),
     onDetached: jest.fn(),
@@ -540,51 +539,165 @@ describe("a non-served outcome", () => {
     expect(cardTitles(renderer)).toEqual([])
   })
 
-  it("holds the row's height while it loads, then collapses out of view (R8, AE4)", () => {
-    const { renderer, update } = renderShelf({
-      status: "loading",
-      slate: null,
-    })
-    const lineHeight =
-      computeTypographyScale(SCREEN_WIDTH).titleSmall.lineHeight
-    const expected = recommendationsShelfBodyHeight(SCREEN_WIDTH, lineHeight)
-    // The spacer check below reads the function against itself, so pin the
-    // value too: the heading, its margin, and the card's own 16:9 height.
-    expect(expected).toBe(
-      lineHeight +
-        SECTION_HEADING_MARGIN_BOTTOM +
-        homeCardWidth("landscape", SCREEN_WIDTH) / (16 / 9),
-    )
-    const spacer = renderer.root.findAll(
-      (node: RenderedNode) =>
-        typeof node.type === "string" &&
-        (node.props.style as { height?: number } | undefined)?.height ===
-          expected,
-    )
-    expect(spacer.length).toBeGreaterThan(0)
-
-    // A terminal outcome keeps the placeholder while the row is on screen:
-    // collapsing under the viewer's eyes is the layout jump R8 forbids.
-    update({ status: "unavailable" })
-    expect(renderer.toJSON()).not.toBeNull()
-
-    update({ inView: false })
-    expect(renderer.toJSON()).toBeNull()
-  })
-
-  it("keeps the placeholder while a slate is still loading out of view", () => {
-    const { renderer } = renderShelf({
-      status: "loading",
-      slate: null,
-      inView: false,
-    })
-    expect(renderer.toJSON()).not.toBeNull()
-  })
-
   it("keeps the current cards on screen during a refetch (R18)", () => {
     const { renderer, update } = renderShelf()
     update({ status: "loading" })
     expect(cardTitles(renderer)).toHaveLength(6)
+  })
+})
+
+// ── The loading placeholder ────────────────────────────────────────────────
+
+/** The row's heading, as the host node the viewer sees. */
+function headings(renderer: TestInstance): RenderedNode[] {
+  return renderer.root.findAll(
+    (node: RenderedNode) =>
+      typeof node.type === "string" &&
+      node.props.accessibilityRole === "header",
+  )
+}
+
+function skeletonCards(renderer: TestInstance): RenderedNode[] {
+  return renderer.root.findAll(
+    (node: RenderedNode) =>
+      typeof node.type === "string" &&
+      typeof node.props.testID === "string" &&
+      node.props.testID === RECOMMENDATIONS_SKELETON_CARD_TEST_ID,
+  )
+}
+
+function loadingIndicators(renderer: TestInstance): RenderedNode[] {
+  return renderer.root.findAll(
+    (node: RenderedNode) =>
+      typeof node.type === "string" &&
+      node.props.accessibilityRole === "progressbar",
+  )
+}
+
+/** Records the pulse loop's lifecycle without running any frame of it. */
+function spyOnPulse() {
+  const start = jest.fn()
+  const stop = jest.fn()
+  const loop = jest
+    .spyOn(Animated, "loop")
+    .mockImplementation(
+      () => ({ start, stop, reset: jest.fn() }) as Animated.CompositeAnimation,
+    )
+  return { loop, start, stop }
+}
+
+describe("the loading placeholder", () => {
+  let pulse: ReturnType<typeof spyOnPulse>
+  beforeEach(() => {
+    pulse = spyOnPulse()
+  })
+  afterEach(() => {
+    // Unmount first: a mounted skeleton would stop the real loop on cleanup.
+    act(() => {
+      mounted.splice(0).forEach((renderer) => renderer.unmount())
+    })
+    pulse.loop.mockRestore()
+  })
+
+  it.each([["idle" as const], ["loading" as const]])(
+    "draws the title over pulsing skeleton cards while %s (R8)",
+    (status) => {
+      const { renderer } = renderShelf({ status, slate: null })
+
+      expect(headings(renderer).map((node) => node.props.children)).toEqual([
+        RECOMMENDATIONS_SHELF_TITLE,
+      ])
+      expect(skeletonCards(renderer).length).toBeGreaterThan(0)
+      expect(pulse.start).toHaveBeenCalledTimes(1)
+      const indicators = loadingIndicators(renderer)
+      expect(indicators.length).toBe(1)
+      expect(indicators[0]!.props.accessibilityLabel).toBe(
+        RECOMMENDATIONS_SHELF_LOADING_LABEL,
+      )
+    },
+  )
+
+  it("sizes its skeleton like the served row, so the swap moves nothing (R8)", () => {
+    const { renderer } = renderShelf({ status: "loading", slate: null })
+    const cardWidth = homeCardWidth("landscape", SCREEN_WIDTH)
+    const cards = skeletonCards(renderer)
+    expect(cards.length).toBeGreaterThan(0)
+    for (const card of cards) {
+      const style = StyleSheet.flatten(card.props.style as never) as {
+        width: number
+        height: number
+      }
+      expect(style.width).toBe(cardWidth)
+      // A served card is this width at 16:9 (see "sizes its cards").
+      expect(style.height).toBe(cardWidth / (16 / 9))
+    }
+
+    const served = renderShelf()
+    const [loadingHeading] = headings(renderer)
+    const [servedHeading] = headings(served.renderer)
+    expect(StyleSheet.flatten(loadingHeading!.props.style as never)).toEqual(
+      StyleSheet.flatten(servedHeading!.props.style as never),
+    )
+  })
+
+  it("replaces the skeleton with the served cards", () => {
+    const { renderer, update } = renderShelf({ status: "loading", slate: null })
+    update({ status: "served", slate: slate() })
+
+    // Counts, not nodes: a failing node diff prints the whole render tree.
+    expect(skeletonCards(renderer).length).toBe(0)
+    expect(loadingIndicators(renderer).length).toBe(0)
+    expect(cardTitles(renderer)).toHaveLength(6)
+    expect(pulse.stop).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ["unavailable" as const],
+    ["disabled" as const],
+    ["unprovisioned" as const],
+  ])("hides the whole row at once on %s, even on screen (AE4)", (status) => {
+    // Decided 2026-09-24: a failed shelf leaves no gap. This replaced R8's
+    // hold-until-off-screen rule; the jump when it hides is the accepted cost.
+    const { renderer, update } = renderShelf({ status: "loading", slate: null })
+    update({ status })
+
+    expect(renderer.toJSON()).toBeNull()
+    expect(pulse.stop).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the placeholder for the commit where served lands before its slate", () => {
+    // The controller returns `served` one passive effect before its display
+    // slate syncs, so hiding on `served` would flash every good load.
+    const { renderer, update } = renderShelf({ status: "loading", slate: null })
+    update({ status: "served" })
+
+    expect(renderer.toJSON()).not.toBeNull()
+    expect(headings(renderer).length).toBe(1)
+    expect(skeletonCards(renderer).length).toBeGreaterThan(0)
+  })
+
+  it("pulses only while Home is focused (deep-link cold start)", () => {
+    // A share link or reminder mounts Home unfocused under /watch, and the
+    // fetch latch waits for focus, so the status can stay idle for the session.
+    const { renderer, update } = renderShelf({
+      status: "idle",
+      slate: null,
+      focused: false,
+    })
+    expect(skeletonCards(renderer).length).toBeGreaterThan(0)
+    expect(pulse.start).not.toHaveBeenCalled()
+
+    update({ focused: true })
+    expect(pulse.start).toHaveBeenCalledTimes(1)
+
+    update({ focused: false })
+    expect(pulse.stop).toHaveBeenCalledTimes(1)
+  })
+
+  it("draws nothing when its first render is already terminal", () => {
+    const { renderer } = renderShelf({ status: "disabled", slate: null })
+    expect(renderer.toJSON()).toBeNull()
+    expect(pulse.start).not.toHaveBeenCalled()
   })
 })
 
@@ -803,7 +916,6 @@ describe("rendered from Home's feed", () => {
     return {
       status: "served",
       slate: slate(),
-      shelfInView: true,
       reportShelfMounted: jest.fn(),
       reportShelfVisible: jest.fn(),
       reportVisibleCards: jest.fn(),
