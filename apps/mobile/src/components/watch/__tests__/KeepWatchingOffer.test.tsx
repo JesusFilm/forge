@@ -27,7 +27,6 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
 }))
 
-const START = KEEP_WATCHING_OFFER_COPY.startFromBeginning
 /** AE6: saved progress at 1:10:00. */
 const SAVED = 4200
 const RESUME = KEEP_WATCHING_OFFER_COPY.resumeAt("1:10:00")
@@ -98,26 +97,28 @@ afterEach(async () => {
 })
 
 describe("what the offer names (AE6)", () => {
-  it("offers the beginning and the saved place, by name", async () => {
+  it("offers the saved place by name, and no start from the beginning", async () => {
     const renderer = await render(<KeepWatchingOffer {...props()} />)
 
-    expect(labels(renderer)).toEqual([START, RESUME])
-    expect(hasText(renderer, "Start from the beginning")).toBe(true)
+    expect(labels(renderer)).toEqual([RESUME])
     expect(hasText(renderer, "Resume at 1:10:00")).toBe(true)
+    // The owner dropped this choice (2026-09-28).
+    expect(hasText(renderer, "Start from the beginning")).toBe(false)
   })
 
-  it("offers the beginning alone when no later place was saved", async () => {
+  it("shows nothing when no later place was saved", async () => {
     const renderer = await render(
       <KeepWatchingOffer {...props({ resumeAtSeconds: null })} />,
     )
 
-    expect(labels(renderer)).toEqual([START])
+    expect(labels(renderer)).toEqual([])
+    expect(renderer.toJSON()).toBeNull()
   })
 
-  it("keeps each button a 44pt target", async () => {
+  it("keeps the button a 44pt target", async () => {
     const renderer = await render(<KeepWatchingOffer {...props()} />)
 
-    for (const label of [START, RESUME]) {
+    for (const label of [RESUME]) {
       const button = pressableByLabel(renderer, label)
       const style = StyleSheet.flatten(
         typeof button.props.style === "function"
@@ -131,17 +132,7 @@ describe("what the offer names (AE6)", () => {
   })
 })
 
-describe("each choice reports its position", () => {
-  it("Start from the beginning reports 0", async () => {
-    const offer = props()
-    const renderer = await render(<KeepWatchingOffer {...offer} />)
-
-    await press(pressableByLabel(renderer, START))
-
-    expect(offer.onChoose).toHaveBeenCalledTimes(1)
-    expect(offer.onChoose).toHaveBeenCalledWith(0)
-  })
-
+describe("the choice reports its position", () => {
   it("Resume at reports the saved place", async () => {
     const offer = props()
     const renderer = await render(<KeepWatchingOffer {...offer} />)

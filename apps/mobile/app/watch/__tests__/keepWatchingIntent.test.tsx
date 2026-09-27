@@ -378,7 +378,9 @@ function lastSlot(): SlotProps {
   return last
 }
 
-const START = KEEP_WATCHING_OFFER_COPY.startFromBeginning
+// The dropped choice (owner, 2026-09-28). The finder below still looks for
+// it, so a regression that brings it back turns these tests red.
+const START = "Start from the beginning"
 const RESUME_AT_1_10_00 = KEEP_WATCHING_OFFER_COPY.resumeAt("1:10:00")
 
 /** The R17 offer's choices on screen, by label. */
@@ -617,14 +619,14 @@ describe("a page opened by Keep watching", () => {
 })
 
 describe("the R17 offer (KTD12)", () => {
-  it("covers AE6: saved 1:10:00 and a tap at 0:12:20 offer both choices", async () => {
+  it("covers AE6: saved 1:10:00 and a tap at 0:12:20 offer Resume at, and no start from the beginning", async () => {
     mockProgress.current = SAVED_AT_1_10_00
     recordLanded()
     putIntent({ startSeconds: 740 })
 
     const renderer = await render(tree())
 
-    expect(offerChoices(renderer)).toEqual([START, RESUME_AT_1_10_00])
+    expect(offerChoices(renderer)).toEqual([RESUME_AT_1_10_00])
   })
 
   it("Resume at seeks to 1:10:00, hides the offer, and ends the hold", async () => {
@@ -644,21 +646,6 @@ describe("the R17 offer (KTD12)", () => {
     expect(lastSlot().resumeAtSeconds).toBe(4200)
   })
 
-  it("Start from the beginning seeks to 0, hides the offer, and ends the hold", async () => {
-    mockProgress.current = SAVED_AT_1_10_00
-    recordLanded()
-    putIntent()
-    const renderer = await render(tree())
-
-    await choose(renderer, START)
-
-    expect(mockSeek).toHaveBeenCalledTimes(1)
-    expect(mockSeek).toHaveBeenCalledWith(0)
-    expect(offerChoices(renderer)).toEqual([])
-    expect(lastSlot().progressHold ?? null).toBeNull()
-    expect(lastSlot().resumeAtSeconds).toBe(0)
-  })
-
   it("starts its clock at the first frame: a 4 s load keeps the full time", async () => {
     jest.useFakeTimers()
     mockProgress.current = SAVED_AT_1_10_00
@@ -667,11 +654,11 @@ describe("the R17 offer (KTD12)", () => {
     const renderer = await render(tree())
 
     await advance(4_000)
-    expect(offerChoices(renderer)).toHaveLength(2)
+    expect(offerChoices(renderer)).toHaveLength(1)
 
     await firstFrame()
     await advance(KEEP_WATCHING_OFFER_DURATION_MS - 1)
-    expect(offerChoices(renderer)).toHaveLength(2)
+    expect(offerChoices(renderer)).toHaveLength(1)
 
     await advance(1)
     expect(offerChoices(renderer)).toEqual([])
@@ -699,11 +686,11 @@ describe("the R17 offer (KTD12)", () => {
     expect(offerChoices(renderer)).toEqual([])
     await advance(1_000)
     await setFullscreen(false)
-    expect(offerChoices(renderer)).toEqual([START, RESUME_AT_1_10_00])
+    expect(offerChoices(renderer)).toEqual([RESUME_AT_1_10_00])
 
     // The time left runs from the first frame, not from the return.
     await advance(KEEP_WATCHING_OFFER_DURATION_MS - 2_001)
-    expect(offerChoices(renderer)).toHaveLength(2)
+    expect(offerChoices(renderer)).toHaveLength(1)
     await setFullscreen(true)
     await advance(1)
     await setFullscreen(false)
@@ -711,17 +698,17 @@ describe("the R17 offer (KTD12)", () => {
     expect(mockSeek).not.toHaveBeenCalled()
   })
 
-  it("offers no Resume at for a saved place before the tap point", async () => {
+  it("shows no offer for a saved place before the tap point", async () => {
     mockProgress.current = { positionSeconds: 600, durationSeconds: 7200 }
     recordLanded()
     putIntent({ startSeconds: 740 })
 
     const renderer = await render(tree())
 
-    expect(offerChoices(renderer)).toEqual([START])
+    expect(offerChoices(renderer)).toEqual([])
   })
 
-  it("offers no Resume at for a complete video", async () => {
+  it("shows no offer for a complete video", async () => {
     // 97%: past the 90% rule, so the video counts as complete.
     mockProgress.current = { positionSeconds: 7000, durationSeconds: 7200 }
     recordLanded()
@@ -729,7 +716,7 @@ describe("the R17 offer (KTD12)", () => {
 
     const renderer = await render(tree())
 
-    expect(offerChoices(renderer)).toEqual([START])
+    expect(offerChoices(renderer)).toEqual([])
   })
 
   it("names the saved place once the record lands, and keeps it past later writes", async () => {
@@ -738,18 +725,18 @@ describe("the R17 offer (KTD12)", () => {
     mockProgress.current = SAVED_AT_1_10_00
     putIntent({ startSeconds: 740 })
     const renderer = await render(tree())
-    // No record, so no saved progress is known yet.
-    expect(offerChoices(renderer)).toEqual([START])
+    // No record, so no saved progress is known yet: no offer.
+    expect(offerChoices(renderer)).toEqual([])
 
     recordLanded()
     await rerender()
-    expect(offerChoices(renderer)).toEqual([START, RESUME_AT_1_10_00])
+    expect(offerChoices(renderer)).toEqual([RESUME_AT_1_10_00])
 
     // After the hold, this page's own writes move the entry past the tap
     // point: that is not a place to resume.
     mockProgress.current = { positionSeconds: 750, durationSeconds: 7200 }
     await rerender()
-    expect(offerChoices(renderer)).toEqual([START, RESUME_AT_1_10_00])
+    expect(offerChoices(renderer)).toEqual([RESUME_AT_1_10_00])
   })
 
   it("stays up for a screen reader, while the hold keeps its own deadline", async () => {
@@ -764,7 +751,7 @@ describe("the R17 offer (KTD12)", () => {
     await firstFrame()
     await advance(KEEP_WATCHING_OFFER_DURATION_MS * 50)
 
-    expect(offerChoices(renderer)).toEqual([START, RESUME_AT_1_10_00])
+    expect(offerChoices(renderer)).toEqual([RESUME_AT_1_10_00])
     // Same id and duration: the page never extends or restarts the hold.
     expect(lastSlot().progressHold).toEqual(hold)
     expect(hold?.durationMs).toBe(KEEP_WATCHING_OFFER_DURATION_MS)

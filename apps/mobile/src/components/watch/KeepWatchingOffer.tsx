@@ -1,7 +1,7 @@
 /**
- * The R17 offer (KTD12): start from the beginning, or resume at a later saved
- * place. The page owns the seek and the hold; this owns the labels and the
- * hide request. The copy is a working choice until product decides.
+ * The R17 offer (KTD12): resume at a later saved place. The page owns the seek
+ * and the hold; this owns the label and the hide request. The copy is a
+ * working choice until product decides.
  */
 
 import { useEffect, useState } from "react"
@@ -19,7 +19,6 @@ import { KEEP_WATCHING_OFFER_DURATION_MS } from "../../lib/explore/watchIntent"
 import { feedback } from "../../styles/shared"
 
 export const KEEP_WATCHING_OFFER_COPY = {
-  startFromBeginning: "Start from the beginning",
   resumeAt: (time: string) => `Resume at ${time}`,
 } as const
 
@@ -93,10 +92,12 @@ export function KeepWatchingOffer({
 
   if (hidden) return null
 
-  const resumeLabel =
-    resumeAtSeconds == null
-      ? null
-      : KEEP_WATCHING_OFFER_COPY.resumeAt(formatOfferPosition(resumeAtSeconds))
+  // The owner dropped "Start from the beginning" (2026-09-28), so the card
+  // shows only when a later saved place gives a "Resume at" choice.
+  if (resumeAtSeconds == null) return null
+  const resumeLabel = KEEP_WATCHING_OFFER_COPY.resumeAt(
+    formatOfferPosition(resumeAtSeconds),
+  )
 
   return (
     <View
@@ -104,27 +105,14 @@ export function KeepWatchingOffer({
       accessibilityLiveRegion="polite"
     >
       <Pressable
-        onPress={() => onChoose(0)}
+        onPress={() => onChoose(resumeAtSeconds)}
         style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={KEEP_WATCHING_OFFER_COPY.startFromBeginning}
-        {...{ "dd-action-name": "keep-watching-offer-start" }}
+        accessibilityLabel={resumeLabel}
+        {...{ "dd-action-name": "keep-watching-offer-resume" }}
       >
-        <Text style={styles.label}>
-          {KEEP_WATCHING_OFFER_COPY.startFromBeginning}
-        </Text>
+        <Text style={styles.label}>{resumeLabel}</Text>
       </Pressable>
-      {resumeAtSeconds != null && resumeLabel != null && (
-        <Pressable
-          onPress={() => onChoose(resumeAtSeconds)}
-          style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel={resumeLabel}
-          {...{ "dd-action-name": "keep-watching-offer-resume" }}
-        >
-          <Text style={styles.label}>{resumeLabel}</Text>
-        </Pressable>
-      )}
     </View>
   )
 }
