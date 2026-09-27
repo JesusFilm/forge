@@ -138,6 +138,21 @@ export default async function RecommendationsPage({
         action={<WindowPicker selected={overview.window.preset} />}
       />
 
+      <PageSection
+        title="Directional co-watch"
+        meta="SHADOW ONLY / NO PROMOTION"
+      >
+        <div className="p-4 text-[13px] text-[var(--color-text-secondary)]">
+          Inspect directional population edges, profile-selected anchors, source
+          health, and the terminal no-promotion decision.{" "}
+          <Link
+            href="/dashboard/recommendations/cowatch"
+            className="underline underline-offset-4"
+          >
+            Open co-watch evidence
+          </Link>
+        </div>
+      </PageSection>
       <HealthSummary overview={overview} />
       <PromotionDecision overview={overview} canOperate={canOperatePromotion} />
       <ControlReadiness overview={overview} canReadTraces={canReadTraces} />

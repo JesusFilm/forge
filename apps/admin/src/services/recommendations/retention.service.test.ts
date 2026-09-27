@@ -13,12 +13,19 @@ function buildPrisma() {
   const requestIds = [{ id: "request-1" }, { id: "request-2" }]
   const count = () => vi.fn(async () => 0)
   const transaction = {
+    $executeRaw: vi.fn(async () => 1),
     $queryRaw: vi
       .fn()
       .mockResolvedValueOnce([{ locked: true }])
       .mockResolvedValueOnce([
         { id: "expired-profile-1", privacyGeneration: 3 },
       ]),
+    recommendationCowatchGeneration: {
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
+    recommendationCowatchSuppression: {
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
     recommendationViewer: {
       findMany: vi.fn(async () => []),
       deleteMany: vi.fn(async () => ({ count: 0 })),
