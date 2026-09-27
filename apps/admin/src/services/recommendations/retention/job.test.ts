@@ -60,6 +60,7 @@ const purgeResult = {
   rowCounts: { requests: 2 },
   oldestExpiredAtAfter: null,
   overdueAfterRun: false,
+  batchLimitReached: false,
 }
 
 beforeEach(() => {
@@ -90,6 +91,35 @@ describe("recommendation retention job", () => {
       data: expect.objectContaining({
         status: "SUCCEEDED",
         summary: "Purged 2 recommendation request root(s).",
+      }),
+    })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        details: expect.objectContaining({
+          batchLimitReached: false,
+          purgeStatus: "succeeded",
+        }),
+      }),
+    })
+  })
+
+  it("records a skipped purge accurately for the scheduler to retry", async () => {
+    purgeExpiredRecommendationRequests.mockResolvedValueOnce({
+      ...purgeResult,
+      status: "skipped",
+      rootsDeleted: 0,
+    })
+
+    await expect(
+      runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
+    ).resolves.toMatchObject({ status: "skipped" })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        summary:
+          "Recommendation retention purge skipped because its lock was held.",
+        details: expect.objectContaining({ purgeStatus: "skipped" }),
       }),
     })
   })

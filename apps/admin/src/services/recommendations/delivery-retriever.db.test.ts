@@ -67,6 +67,9 @@ const recommendationMigrationSql = [
   "0075_recommendation_selection_attribution_eligibility",
   "0076_recommendation_profile_eligibility_reconciliation",
   "0082_user_recommendation_identity",
+  "0100_recommendation_candidate_compact_trace",
+  "0101_recommendation_candidate_compact_trace_validate",
+  "0102_recommendation_candidate_stage_duplicate_index_drop",
 ].map((migration) =>
   readFileSync(
     new URL(

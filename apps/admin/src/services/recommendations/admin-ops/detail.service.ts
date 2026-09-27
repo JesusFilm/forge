@@ -32,6 +32,14 @@ export type {
   RecommendationRequestDetailData,
 } from "./detail.types"
 
+export function usesCompactCandidateTrace(
+  run: Pick<DetailCandidateRunRow, "traceFormatVersion" | "hasTracePayload">,
+): boolean {
+  if (run.traceFormatVersion == null && !run.hasTracePayload) return false
+  if (run.traceFormatVersion === 1 && run.hasTracePayload) return true
+  throw new Error("Unsupported recommendation candidate trace format")
+}
+
 /**
  * Active-root detail plus its access audit share one transaction. Every JSON
  * source is projected to named, bounded scalars by Postgres; arbitrary JSON is
@@ -121,6 +129,8 @@ export async function loadRecommendationRequestDetail(
         Prisma.sql`
       SELECT
         run.id,
+        run.trace_format_version AS "traceFormatVersion",
+        (run.trace_payload IS NOT NULL) AS "hasTracePayload",
         run.purpose,
         run.context_version AS "contextVersion",
         run.generator_version AS "generatorVersion",
@@ -148,6 +158,9 @@ export async function loadRecommendationRequestDetail(
     `,
       )
       const candidateRun = candidateRuns[0] ?? null
+      const compactTrace = candidateRun
+        ? usesCompactCandidateTrace(candidateRun)
+        : false
       const personalizationRows = await tx.$queryRaw<
         DetailPersonalizationRow[]
       >(Prisma.sql`
@@ -179,6 +192,44 @@ export async function loadRecommendationRequestDetail(
             AND decision.expires_at > ${now}
           LIMIT 1
         `)
+      const stageSource = compactTrace
+        ? Prisma.sql`
+            FROM (
+              SELECT
+                trace_run.id AS run_id,
+                trace_run.expires_at,
+                encoded.id,
+                encoded.stage,
+                encoded.ordinal,
+                encoded."candidateKey" AS candidate_key,
+                encoded."targetMediaId" AS target_media_id,
+                encoded."sourceGenerator" AS source_generator,
+                encoded."sourceRank" AS source_rank,
+                encoded."sourceScore" AS source_score,
+                encoded."normalizedScore" AS normalized_score,
+                encoded."rrfScore" AS rrf_score,
+                encoded."deterministicScore" AS deterministic_score,
+                encoded."finalPosition" AS final_position,
+                ARRAY(SELECT jsonb_array_elements_text(encoded."reasonCodes")) AS reason_codes,
+                encoded."sourceEvidence" AS source_evidence
+              FROM recommendation_candidate_run trace_run,
+                LATERAL jsonb_to_recordset(trace_run.trace_payload -> 'stages')
+                AS encoded(
+                  id text, stage text, ordinal integer,
+                  "candidateKey" text, "targetMediaId" text,
+                  "sourceGenerator" text, "sourceRank" integer,
+                  "sourceScore" double precision,
+                  "normalizedScore" double precision,
+                  "rrfScore" double precision,
+                  "deterministicScore" double precision,
+                  "finalPosition" integer,
+                  "reasonCodes" jsonb, "sourceEvidence" jsonb
+                )
+              WHERE trace_run.id = ${candidateRun.id}
+                AND trace_run.trace_format_version = 1
+                AND trace_run.expires_at > ${now}
+            ) stage`
+        : Prisma.sql`FROM recommendation_candidate_stage_evidence stage`
       const candidateStages = candidateRun
         ? await tx.$queryRaw<DetailCandidateStageRow[]>(Prisma.sql`
           SELECT
@@ -237,7 +288,7 @@ export async function loadRecommendationRequestDetail(
               FROM unnest(stage.reason_codes) reason
               LIMIT 16
             ) AS "reasonCodes"
-          FROM recommendation_candidate_stage_evidence stage
+          ${stageSource}
           WHERE stage.run_id = ${candidateRun.id}
             AND stage.expires_at > ${now}
           ORDER BY
