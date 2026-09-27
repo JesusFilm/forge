@@ -744,6 +744,7 @@ export async function purgeExpiredRecommendationRequests(
       // needed to keep younger expired backlog moving before it is overdue.
       const batchLimitReached =
         requestIds.length === batchSize ||
+        expiredWatchExposures.length === batchSize ||
         directActionIds.length === batchSize ||
         standaloneEpisodeIds.length === batchSize ||
         expiredViewers.length === batchSize ||
