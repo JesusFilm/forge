@@ -884,6 +884,30 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
     expect(hosts((node) => node.type === "VideoView")[0].props.player).toBe(A)
   })
 
+  it("draws both views in the band's region once the overlay reports it", async () => {
+    await startWithStandby()
+    const region = (id: "a" | "b") => {
+      const [node] = hosts(
+        (n) => n.props.testID === `explore-video-region-${id}`,
+      )
+      return ([] as unknown[])
+        .concat(node.props.style)
+        .flat(Infinity)
+        .filter(Boolean)
+        .reduce<Record<string, unknown>>(
+          (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
+          {},
+        )
+    }
+    // Before a report, each view fills its page.
+    expect(region("a")).toMatchObject({ top: 0, bottom: 0 })
+
+    await callOverlay("onVideoRegion", { top: 59, bottom: 200 })
+    for (const id of ["a", "b"] as const) {
+      expect(region(id)).toMatchObject({ top: 59, bottom: 200 })
+    }
+  })
+
   it("spells no picture-in-picture prop on any feed view", async () => {
     await startWithStandby()
     const views = hosts((node) => node.type === "VideoView")

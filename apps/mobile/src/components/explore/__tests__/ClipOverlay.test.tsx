@@ -116,6 +116,7 @@ function props(overrides: Partial<ClipOverlayProps> = {}): ClipOverlayProps {
     onKeepWatching: jest.fn(),
     onOverlayOpen: jest.fn(),
     onOverlayClose: jest.fn(),
+    onVideoRegion: jest.fn(),
     ...overrides,
   }
 }
@@ -430,43 +431,92 @@ describe("ClipOverlay — captions (R13, AE4, KTD20)", () => {
   })
 })
 
+function fireLayout(
+  renderer: TestInstance,
+  id: string,
+  box: { x?: number; y?: number; width?: number; height?: number },
+  index = 0,
+) {
+  const node = byTestId(renderer, id)[index]
+  act(() => {
+    ;(node.props.onLayout as (e: unknown) => void)({
+      nativeEvent: { layout: { x: 0, y: 0, width: 0, height: 0, ...box } },
+    })
+  })
+}
+
+/** The bottom block is 380 tall, and its title starts 180 into it. */
+function layOutBottom(renderer: TestInstance, titleTop = 180) {
+  fireLayout(renderer, "clip-overlay-bottom", { height: 380 })
+  fireLayout(renderer, "clip-overlay-row", { width: 402, height: 300 })
+  fireLayout(renderer, "clip-overlay-info", { y: titleTop })
+  fireLayout(renderer, "clip-overlay-rail", { x: 318 })
+}
+
+describe("ClipOverlay — the band's region (KTD18)", () => {
+  it("runs from the safe area to the title, and holds while the description is open", () => {
+    const onVideoRegion = jest.fn()
+    const renderer = render(props({ onVideoRegion }))
+    layOutBottom(renderer)
+    const expected = { top: mockInsets.top, bottom: 380 - 180 }
+    expect(onVideoRegion).toHaveBeenLastCalledWith(expected)
+    const [region] = byTestId(renderer, "clip-band-region")
+    expect(region).toBeDefined()
+
+    // "More" moves the title up; the video must not move with it.
+    const [description] = renderer.root.findAll(
+      (n) => typeof n.props.onExpand === "function",
+    )
+    act(() => {
+      ;(description.props.onExpand as () => void)()
+    })
+    fireLayout(renderer, "clip-overlay-info", { y: 90 })
+    expect(onVideoRegion).toHaveBeenLastCalledWith(expected)
+    act(() => {
+      ;(description.props.onCollapse as () => void)()
+    })
+    fireLayout(renderer, "clip-overlay-info", { y: 180 })
+    expect(onVideoRegion).toHaveBeenLastCalledWith(expected)
+
+    // Closed, a taller title does move it.
+    fireLayout(renderer, "clip-overlay-info", { y: 160 })
+    expect(onVideoRegion).toHaveBeenLastCalledWith({
+      top: mockInsets.top,
+      bottom: 380 - 160,
+    })
+  })
+
+  it("centres the paused glyph on the region, not on the screen", () => {
+    const renderer = render(props({ paused: true }))
+    layOutBottom(renderer)
+    const [glyph] = byTestId(renderer, "clip-paused-glyph")
+    expect(flatStyle(glyph.props.style)).toMatchObject({
+      top: mockInsets.top,
+      bottom: 380 - 180,
+    })
+  })
+})
+
 describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
   it("sits on the frame's bottom edge, clear of the rail, never below the title", () => {
     const renderer = render(props({ muted: true }))
-    const layout = (
-      id: string,
-      box: { x?: number; y?: number; width?: number; height?: number },
-      index = 0,
-    ) => {
-      const node = byTestId(renderer, id)[index]
-      act(() => {
-        ;(node.props.onLayout as (e: unknown) => void)({
-          nativeEvent: {
-            layout: { x: 0, y: 0, width: 0, height: 0, ...box },
-          },
-        })
-      })
-    }
     const caption = () =>
       mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
         bottomOffset: number
         rightInset?: number
       }
+    layOutBottom(renderer)
+    // The lower bar runs from the frame's bottom edge to the region's, which
+    // is the title's top, 200 above the screen's bottom.
+    fireLayout(renderer, "clip-band-bar", { height: 124 }, 1)
 
-    // The bottom block is 380 tall, and its title starts 180 into it.
-    layout("clip-overlay-bottom", { height: 380 })
-    layout("clip-overlay-row", { width: 402, height: 300 })
-    layout("clip-overlay-info", { y: 180 })
-    layout("clip-overlay-rail", { x: 318 })
-    // The lower bar: the frame's bottom edge is 324 above the screen's.
-    layout("clip-band-bar", { height: 324 }, 1)
-
-    expect(caption().bottomOffset).toBe(324 + 8)
+    expect(caption().bottomOffset).toBe(124 + 200 + 8)
     expect(caption().rightInset).toBe(402 - 318 + 8)
 
-    // A tall frame ends below the title, so the caption stays above the title.
-    layout("clip-band-bar", { height: 80 }, 1)
-    expect(caption().bottomOffset).toBe(380 - 180 + 8)
+    // A frame that fills the region leaves no lower bar: the caption sits on
+    // the title's top edge.
+    fireLayout(renderer, "clip-band-bar", { height: 0 }, 1)
+    expect(caption().bottomOffset).toBe(200 + 8)
   })
 })
 

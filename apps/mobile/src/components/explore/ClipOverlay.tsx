@@ -14,6 +14,7 @@ import {
   type LayoutChangeEvent,
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import type { VideoPlayer } from "expo-video"
@@ -50,7 +51,12 @@ export type ClipOverlayProps = {
   onOverlayOpen: () => void
   /** Share or "more" closed. The feed resumes only a clip that was playing. */
   onOverlayClose: () => void
+  /** The band's region (KTD18), so the feed draws its video views in it. */
+  onVideoRegion: (region: ExploreVideoRegion) => void
 }
+
+/** Insets from the page's top and bottom edges: safe area to clip title. */
+export type ExploreVideoRegion = { top: number; bottom: number }
 
 /**
  * 0.54 is the least black that holds white text at 4.5:1 over a pure-white
@@ -86,9 +92,11 @@ export function ClipOverlay({
   onKeepWatching,
   onOverlayOpen,
   onOverlayClose,
+  onVideoRegion,
 }: ClipOverlayProps) {
   const typography = useTypography()
   const tabBarClearance = useTabBarClearance()
+  const safeTop = useSafeAreaInsets().top
   const [bottomHeight, setBottomHeight] = useState(0)
 
   const captionSrc = clipCaptionSource(clip, muted)
@@ -119,35 +127,70 @@ export function ClipOverlay({
     )
   }, [clip.window, player, onKeepWatching])
 
-  const handleBottomLayout = useCallback((e: LayoutChangeEvent) => {
-    setBottomHeight(Math.round(e.nativeEvent.layout.height))
+  // The band sits centred from the safe area to the title, so it reads as
+  // centred over the content below it (owner, 2026-09-27). "More" does not
+  // move it: the region holds while the description is open.
+  const [regionBottom, setRegionBottom] = useState(0)
+  const bottomBox = useRef(0)
+  const rowTop = useRef(0)
+  const infoTop = useRef(0)
+  const descriptionOpen = useRef(false)
+  const updateRegion = useCallback(() => {
+    if (descriptionOpen.current || bottomBox.current <= 0) return
+    setRegionBottom(
+      Math.round(bottomBox.current - rowTop.current - infoTop.current),
+    )
   }, [])
+  const handleExpand = useCallback(() => {
+    descriptionOpen.current = true
+    onOverlayOpen()
+  }, [onOverlayOpen])
+  const handleCollapse = useCallback(() => {
+    descriptionOpen.current = false
+    onOverlayClose()
+  }, [onOverlayClose])
+
+  const handleBottomLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      bottomBox.current = Math.round(e.nativeEvent.layout.height)
+      setBottomHeight(bottomBox.current)
+      updateRegion()
+    },
+    [updateRegion],
+  )
 
   // The scrim starts at the title, not at the taller rail, so the dark band
   // is only as high as the text it keeps readable. It follows an expansion.
   const [scrimTop, setScrimTop] = useState(0)
   const [rowWidth, setRowWidth] = useState(0)
-  const rowTop = useRef(0)
-  const infoTop = useRef(0)
-  const handleRowLayout = useCallback((e: LayoutChangeEvent) => {
-    rowTop.current = e.nativeEvent.layout.y
-    setRowWidth(Math.round(e.nativeEvent.layout.width))
-    setScrimTop(Math.round(rowTop.current + infoTop.current))
-  }, [])
-  const handleInfoLayout = useCallback((e: LayoutChangeEvent) => {
-    infoTop.current = e.nativeEvent.layout.y
-    setScrimTop(Math.round(rowTop.current + infoTop.current))
-  }, [])
+  const handleRowLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      rowTop.current = e.nativeEvent.layout.y
+      setRowWidth(Math.round(e.nativeEvent.layout.width))
+      setScrimTop(Math.round(rowTop.current + infoTop.current))
+      updateRegion()
+    },
+    [updateRegion],
+  )
+  const handleInfoLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      infoTop.current = e.nativeEvent.layout.y
+      setScrimTop(Math.round(rowTop.current + infoTop.current))
+      updateRegion()
+    },
+    [updateRegion],
+  )
 
   // In the band, captions sit on the frame's bottom edge, not above the whole
   // bottom block; they never go below the title, and they keep clear of the
   // rail, which reaches up into the frame on a phone.
-  const [bandInset, setBandInset] = useState<number | null>(null)
+  const [lowerBar, setLowerBar] = useState<number | null>(null)
   const [railLeft, setRailLeft] = useState<number | null>(null)
   const handleRailLayout = useCallback((e: LayoutChangeEvent) => {
     setRailLeft(Math.round(e.nativeEvent.layout.x))
   }, [])
   const band = EXPLORE_FRAMING === "band"
+  const bandInset = lowerBar == null ? null : lowerBar + regionBottom
   const captionBottom =
     band && bandInset != null
       ? Math.max(bandInset, bottomHeight - scrimTop) + CAPTION_GAP
@@ -157,16 +200,29 @@ export function ClipOverlay({
       ? rowWidth - railLeft + CAPTION_GAP
       : undefined
 
+  useEffect(() => {
+    if (band && regionBottom > 0) {
+      onVideoRegion({ top: safeTop, bottom: regionBottom })
+    }
+  }, [band, safeTop, regionBottom, onVideoRegion])
+  const regionStyle =
+    band && regionBottom > 0 ? { top: safeTop, bottom: regionBottom } : null
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {band && (
-        <ClipBandBackdrop player={player} onFrameBottomInset={setBandInset} />
+        <ClipBandBackdrop
+          player={player}
+          regionTop={safeTop}
+          regionBottom={regionBottom}
+          onLowerBarHeight={setLowerBar}
+        />
       )}
 
       {paused && (
         <View
           testID="clip-paused-glyph"
-          style={styles.glyphLayer}
+          style={[styles.glyphLayer, regionStyle]}
           pointerEvents="none"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
@@ -227,8 +283,8 @@ export function ClipOverlay({
             </Text>
             <ClipDescription
               description={clip.description}
-              onExpand={onOverlayOpen}
-              onCollapse={onOverlayClose}
+              onExpand={handleExpand}
+              onCollapse={handleCollapse}
             />
           </View>
 
@@ -349,11 +405,16 @@ function usePlayingSize(player: VideoPlayer) {
  */
 function ClipBandBackdrop({
   player,
-  onFrameBottomInset,
+  regionTop,
+  regionBottom,
+  onLowerBarHeight,
 }: {
   player: VideoPlayer
-  /** The lower bar's height: from the frame's bottom edge to the screen's. */
-  onFrameBottomInset: (inset: number) => void
+  /** The region's insets from the page's top and bottom edges. */
+  regionTop: number
+  regionBottom: number
+  /** From the frame's bottom edge to the region's. */
+  onLowerBarHeight: (height: number) => void
 }) {
   const aspect = bandAspect(usePlayingSize(player))
   return (
@@ -364,18 +425,22 @@ function ClipBandBackdrop({
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <View testID="clip-band-bar" style={styles.bandBar} />
-      <View
-        testID="clip-band-frame"
-        style={[styles.bandFrame, { aspectRatio: aspect }]}
-      />
-      <View
-        testID="clip-band-bar"
-        style={styles.bandBar}
-        onLayout={(e) =>
-          onFrameBottomInset(Math.round(e.nativeEvent.layout.height))
-        }
-      />
+      <View style={[styles.bandEdge, { height: regionTop }]} />
+      <View testID="clip-band-region" style={styles.bandRegion}>
+        <View testID="clip-band-bar" style={styles.bandBar} />
+        <View
+          testID="clip-band-frame"
+          style={[styles.bandFrame, { aspectRatio: aspect }]}
+        />
+        <View
+          testID="clip-band-bar"
+          style={styles.bandBar}
+          onLayout={(e) =>
+            onLowerBarHeight(Math.round(e.nativeEvent.layout.height))
+          }
+        />
+      </View>
+      <View style={[styles.bandEdge, { height: regionBottom }]} />
     </View>
   )
 }
@@ -468,11 +533,19 @@ const styles = StyleSheet.create({
     marginTop: 4,
     maxWidth: RAIL_LABEL_WIDTH,
   },
+  bandEdge: {
+    backgroundColor: BLACK,
+  },
+  bandRegion: {
+    flex: 1,
+  },
   bandBar: {
     flex: 1,
     backgroundColor: BLACK,
   },
+  // A frame taller than the region (a portrait clip) fits its height instead.
   bandFrame: {
     width: "100%",
+    maxHeight: "100%",
   },
 })

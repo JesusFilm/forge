@@ -25,7 +25,7 @@ import { Image } from "expo-image"
 import { useRouter } from "expo-router"
 import type { VideoPlayer } from "expo-video"
 
-import { ClipOverlay } from "./ClipOverlay"
+import { ClipOverlay, type ExploreVideoRegion } from "./ClipOverlay"
 import {
   ExplorePager,
   type ExplorePagerAccessibility,
@@ -491,6 +491,21 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     [router, telemetry],
   )
 
+  // KTD18's band: the current overlay measures where its title starts, and
+  // both views draw the video in the same region, so a swipe keeps it there.
+  const [videoRegion, setVideoRegion] = useState<ExploreVideoRegion | null>(
+    null,
+  )
+  const handleVideoRegion = useCallback((next: ExploreVideoRegion) => {
+    setVideoRegion((last) =>
+      last?.top === next.top && last.bottom === next.bottom ? last : next,
+    )
+  }, [])
+  const regionStyle =
+    EXPLORE_FRAMING === "band" && videoRegion != null
+      ? [StyleSheet.absoluteFill, videoRegion]
+      : StyleSheet.absoluteFill
+
   const views = mountedViews(state)
   const renderUnderlay = ({ pageStyle }: ExplorePagerUnderlay) =>
     views.map((player) => (
@@ -499,7 +514,9 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
         testID={`explore-feed-view-${player}`}
         style={pageStyle(viewRole(state, player))}
       >
-        <FeedVideoView player={players[player]} contentFit={CONTENT_FIT} />
+        <View testID={`explore-video-region-${player}`} style={regionStyle}>
+          <FeedVideoView player={players[player]} contentFit={CONTENT_FIT} />
+        </View>
       </View>
     ))
 
@@ -527,6 +544,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
           onKeepWatching={handleKeepWatching}
           onOverlayOpen={handleOverlayOpen}
           onOverlayClose={handleOverlayClose}
+          onVideoRegion={handleVideoRegion}
         />
       </>
     )

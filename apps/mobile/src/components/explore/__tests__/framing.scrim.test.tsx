@@ -111,6 +111,7 @@ function render(
         onKeepWatching={() => {}}
         onOverlayOpen={() => {}}
         onOverlayClose={() => {}}
+        onVideoRegion={() => {}}
       />,
     )
   })
