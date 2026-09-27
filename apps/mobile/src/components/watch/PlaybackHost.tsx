@@ -46,6 +46,7 @@ import {
 import { getAuthSession } from "../../lib/authSession"
 import { BLACK } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
+import { isExploreAvailable } from "../../lib/explore/availability"
 import { OFFLINE_ROOT } from "../../lib/offlineFileSystem"
 import {
   isDubSwap,
@@ -979,7 +980,10 @@ function ActivePlaybackHost({
   const insets = useSafeAreaInsets()
   const pattern = routePattern(segments)
   const underHeader = HEADER_ROUTE_PATTERNS.has(pattern)
-  const onExplore = pattern === EXPLORE_TAB_ROUTE_PATTERN
+  // A closed gate leaves the route reachable by URL but empty, with no takeover
+  // to end the session: a hidden window there would play sound with no control.
+  const onExplore =
+    pattern === EXPLORE_TAB_ROUTE_PATTERN && isExploreAvailable()
   // Read by the transition effect, which must not re-run on a route change.
   const onExploreRef = useRef(onExplore)
   onExploreRef.current = onExplore

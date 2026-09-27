@@ -103,6 +103,11 @@ let mockInsets = { top: 0, bottom: 0, left: 0, right: 0 }
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => mockInsets,
 }))
+// The Explore gate, open as in a development bundle unless a case closes it.
+const mockExploreGate = { open: true }
+jest.mock("../../../lib/explore/availability", () => ({
+  isExploreAvailable: () => mockExploreGate.open,
+}))
 jest.mock("../../../lib/datadog", () => ({
   datadogLog: {
     debug: jest.fn(),
@@ -489,6 +494,7 @@ beforeEach(() => {
   resetPlayerSettings()
   mockRouterPush.mockClear()
   mockSegments = []
+  mockExploreGate.open = true
   mockInsets = { top: 0, bottom: 0, left: 0, right: 0 }
 })
 
@@ -2317,6 +2323,17 @@ describe("a player page popped onto Explore (owner, 2026-09-28)", () => {
 
   it("still shrinks a pop onto any other tab", async () => {
     const { renderer, timingSpy } = await popOnto(["(tabs)"])
+
+    expect(shrinkCall(timingSpy)).toBeDefined()
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+    expect(framePointerEvents(renderer)).toBe("box-none")
+  })
+
+  it("still shrinks a pop onto a closed Explore, where no takeover ends the session", async () => {
+    // The route stays reachable by URL but renders nothing (KTD16). A hidden
+    // window there would keep the sound on with no control to stop it.
+    mockExploreGate.open = false
+    const { renderer, timingSpy } = await popOnto(["(tabs)", "explore"])
 
     expect(shrinkCall(timingSpy)).toBeDefined()
     expect(frameStyle(renderer).opacity).not.toBe(0)
