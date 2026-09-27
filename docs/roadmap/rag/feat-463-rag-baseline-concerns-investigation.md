@@ -112,12 +112,13 @@ assessment; do not lower thresholds, claim a passing comparison, or describe the
 concerns as confirmed defects merely to justify proceeding. Existing production
 target and operation safeguards still apply.
 
-This PR captures deferred work and the decision to proceed. The investigation
-itself remains not started; feat-435 and issue #168 remain incomplete.
+The decision captured deferred work and permission to proceed. At the time,
+the investigation had not started, and feat-435 and issue #168 remained
+incomplete. Feat-435's later closure is recorded in its own ticket.
 
 ## Entry Points — Read These First
 
-1. [Forge PR #2186](https://github.com/JesusFilm/forge/pull/2186) — baseline evidence PR; receipt path `docs/roadmap/rag/evidence/feat-435/production-eval-baseline.json` (in that PR until merged), run `9c1f2e8c-4e9e-44e6-b034-802a6e27eb61`, completed `2026-09-07T06:27:04.372Z`.
+1. [Production evaluation baseline](evidence/feat-435/production-eval-baseline.json) — historical receipt from [Forge PR #2186](https://github.com/JesusFilm/forge/pull/2186), run `9c1f2e8c-4e9e-44e6-b034-802a6e27eb61`, completed `2026-09-07T06:27:04.372Z`.
 2. `apps/rag/docs/ops/evaluation.md`, `apps/rag/scripts/eval.ts`, and `apps/rag/scripts/lib/evaluation/identity.ts` — case selection, run identity, and comparison prerequisites. The recorded run uses `control-2026-08-06`, excluding the nine newer cases.
 3. `apps/rag/scripts/lib/evaluation/metrics.ts` — `CaseResult`, `computeMetrics`, `coverageBySource`, and `caseLanguage`; distinguish any-relevant-document recall from mean coverage and source-specific metrics.
 4. `apps/rag/src/retrieval/retrieve.ts` and `apps/rag/src/adapters/postgres/` — language/model eligibility, candidate selection, and deduplication.
