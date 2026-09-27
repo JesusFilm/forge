@@ -20,6 +20,8 @@ const ACTIVITY_SQL = `
     CASE
       WHEN query IS NULL OR query = '<insufficient privilege>' THEN 'unavailable'
       WHEN query ILIKE '%INSERT INTO%recommendation_candidate_stage_evidence%' THEN 'candidate_evidence.insert'
+      WHEN query ILIKE '%INSERT INTO%recommendation_candidate_run%'
+        AND query ILIKE '%trace_payload%' THEN 'candidate_evidence.insert'
       WHEN query = 'COMMIT' THEN 'commit'
       WHEN query = 'ROLLBACK' THEN 'rollback'
       ELSE 'other'

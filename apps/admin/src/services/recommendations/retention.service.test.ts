@@ -27,13 +27,13 @@ function buildPrisma() {
       deleteMany: vi.fn(async () => ({ count: 0 })),
     },
     recommendationViewer: {
-      findMany: vi.fn(async () => []),
+      findMany: vi.fn(async (): Promise<Array<{ tokenDigest: string }>> => []),
       deleteMany: vi.fn(async () => ({ count: 0 })),
     },
     recommendationRequest: {
       findMany: vi.fn(async () => requestIds),
       deleteMany: vi.fn(async () => ({ count: requestIds.length })),
-      findFirst: vi.fn(async () => null),
+      findFirst: vi.fn(async (): Promise<{ expiresAt: Date } | null> => null),
     },
     watchSurfaceExposure: {
       findMany: vi.fn(async () => []),
@@ -232,6 +232,7 @@ describe("recommendation retention service", () => {
         expiredPromotionApprovals: 1,
       },
       overdueAfterRun: false,
+      batchLimitReached: true,
     })
     expect(transaction.recommendationRequest.findMany).toHaveBeenCalledWith({
       where: { expiresAt: { lte: now } },
@@ -441,6 +442,123 @@ describe("recommendation retention service", () => {
       rowCounts: { expiredStandaloneEpisodes: 1 },
       oldestExpiredAtAfter: "2026-09-15T00:00:00.000Z",
       overdueAfterRun: true,
+      batchLimitReached: true,
+    })
+  })
+
+  it.each([
+    "requests",
+    "direct actions",
+    "standalone episodes",
+    "viewers",
+    "expired profiles",
+    "pending profile erasures",
+    "retired profiles",
+  ])("continues when the %s selection fills its batch", async (selection) => {
+    const { prisma, transaction } = buildPrisma()
+    const now = new Date("2026-09-17T00:00:00.000Z")
+    transaction.recommendationRequest.findMany.mockResolvedValue([])
+    transaction.recommendationContentAction.findMany.mockResolvedValue([])
+    transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([])
+    transaction.recommendationViewer.findMany.mockResolvedValue([])
+    transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
+    transaction.$queryRaw.mockReset().mockResolvedValue([{ locked: true }])
+    if (selection === "requests") {
+      transaction.recommendationRequest.findMany.mockResolvedValue([
+        { id: "request-1" },
+      ])
+    } else if (selection === "direct actions") {
+      transaction.recommendationContentAction.findMany.mockResolvedValue([
+        { id: "action-1" },
+      ])
+    } else if (selection === "standalone episodes") {
+      transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([
+        { id: "episode-1" },
+      ])
+    } else if (selection === "viewers") {
+      transaction.recommendationViewer.findMany.mockResolvedValue([
+        { tokenDigest: "digest-1" },
+      ])
+    } else if (selection === "expired profiles") {
+      transaction.$queryRaw
+        .mockResolvedValueOnce([{ locked: true }])
+        .mockResolvedValueOnce([{ id: "profile-1", privacyGeneration: 1 }])
+      transaction.recommendationProfile.findMany
+        .mockResolvedValueOnce([{ id: "profile-1", privacyGeneration: 1 }])
+        .mockResolvedValue([])
+    } else if (selection === "pending profile erasures") {
+      transaction.recommendationProfile.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: "profile-1", privacyGeneration: 1 }])
+        .mockResolvedValue([])
+    } else {
+      transaction.recommendationProfile.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: "profile-1" }])
+    }
+
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never, now, 1),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      overdueAfterRun: false,
+      batchLimitReached: true,
+    })
+  })
+
+  it("stops after an empty bounded selection", async () => {
+    const { prisma, transaction } = buildPrisma()
+    transaction.recommendationRequest.findMany.mockResolvedValue([])
+    transaction.recommendationContentAction.findMany.mockResolvedValue([])
+    transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([])
+    transaction.recommendationViewer.findMany.mockResolvedValue([])
+    transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
+    transaction.$queryRaw.mockReset().mockResolvedValue([{ locked: true }])
+
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never, new Date(), 1),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      batchLimitReached: false,
+    })
+  })
+
+  it("does not report a skipped lock as a drained batch", async () => {
+    const { prisma, transaction } = buildPrisma()
+    transaction.$queryRaw.mockReset().mockResolvedValueOnce([{ locked: false }])
+
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never),
+    ).resolves.toMatchObject({
+      status: "skipped",
+      batchLimitReached: false,
+      overdueAfterRun: false,
+    })
+    expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
+  })
+
+  it("continues an expired request batch before the 24-hour propagation threshold", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const now = new Date("2026-08-20T10:30:00.000Z")
+    const oldestExpiry = new Date("2026-08-19T10:31:00.000Z")
+    transaction.recommendationRequest.findMany.mockResolvedValueOnce([
+      { id: "request-1" },
+    ])
+    transaction.recommendationContentAction.findMany.mockResolvedValue([])
+    transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
+    transaction.$queryRaw.mockReset().mockResolvedValue([{ locked: true }])
+    transaction.recommendationRequest.findFirst.mockResolvedValueOnce({
+      expiresAt: oldestExpiry,
+    })
+
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never, now, 1),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      oldestExpiredAtAfter: oldestExpiry.toISOString(),
+      overdueAfterRun: false,
+      batchLimitReached: true,
     })
   })
 
