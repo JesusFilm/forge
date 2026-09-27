@@ -8,7 +8,8 @@ start_date: "2026-09-28"
 duration: 2
 depends_on:
   - "feat-558"
-blocks: []
+blocks:
+  - "feat-555"
 tags:
   - "admin"
   - "recommendations"
