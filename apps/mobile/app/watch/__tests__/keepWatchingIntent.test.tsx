@@ -131,16 +131,17 @@ jest.mock("../../../src/lib/miniPlayer/playerSettings", () => ({
   effectivePlayerSettings: () => ({ speed: 1, qualityTier: "auto" }),
   getPlayerSettingsStore: () => ({ getSnapshot: () => ({}) }),
 }))
-jest.mock("../../../src/hooks/useCastPlayback", () => {
-  const cast = {
-    state: { phase: "idle" },
-    position: null,
-    duration: null,
-    remotePlayerState: null,
-    reset: () => {},
-  }
-  return { useCastPlayback: () => cast }
-})
+// One object, so the page sees a new cast state only when a case sets one.
+const mockCast = {
+  state: { phase: "idle" },
+  position: null,
+  duration: null,
+  remotePlayerState: null,
+  reset: () => {},
+}
+jest.mock("../../../src/hooks/useCastPlayback", () => ({
+  useCastPlayback: () => mockCast,
+}))
 jest.mock("../../../src/hooks/useCastProgressRecording", () => ({
   useCastProgressRecording: () => {},
 }))
@@ -453,6 +454,7 @@ afterEach(async () => {
   mockSeek.mockReset()
   screenReaderOn = false
   mockFullscreen.current = false
+  mockCast.state = { phase: "idle" }
   getWatchIntentStore().clear()
   mockSlotRenders.length = 0
   mockParams.current = { slug: SLUG }
@@ -696,6 +698,32 @@ describe("the R17 offer (KTD12)", () => {
     await setFullscreen(false)
     expect(offerChoices(renderer)).toEqual([])
     expect(mockSeek).not.toHaveBeenCalled()
+  })
+
+  it("keeps one clock through casting: hidden while the receiver plays", async () => {
+    jest.useFakeTimers()
+    mockProgress.current = SAVED_AT_1_10_00
+    recordLanded()
+    putIntent()
+    const renderer = await render(tree())
+    await firstFrame()
+
+    const setCastPhase = async (phase: string) => {
+      mockCast.state = { phase }
+      await rerender()
+    }
+    await advance(1_000)
+    await setCastPhase("active")
+    expect(offerChoices(renderer)).toEqual([])
+    await advance(1_000)
+    await setCastPhase("idle")
+    expect(offerChoices(renderer)).toEqual([RESUME_AT_1_10_00])
+
+    // The time left runs from the first frame, not from the cast's end.
+    await advance(KEEP_WATCHING_OFFER_DURATION_MS - 2_001)
+    expect(offerChoices(renderer)).toHaveLength(1)
+    await advance(1)
+    expect(offerChoices(renderer)).toEqual([])
   })
 
   it("shows no offer for a saved place before the tap point", async () => {
