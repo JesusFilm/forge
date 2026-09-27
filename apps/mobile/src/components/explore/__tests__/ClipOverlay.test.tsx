@@ -61,7 +61,7 @@ jest.mock("../ClipDescription", () => {
 })
 
 import { ClipOverlay, type ClipOverlayProps } from "../ClipOverlay"
-import { ACCENT } from "../../../lib/color"
+import { clipPosterUri } from "../../../hooks/useClipAutostart"
 import { EXPLORE_COPY } from "../../../lib/explore/copy"
 import {
   INITIAL_FEED_STATE,
@@ -153,6 +153,27 @@ function labelsIn(node: RenderedNode | JsonNode): string[] {
     for (const c of n.children ?? []) walk(c)
   }
   walk(node as JsonNode)
+  return out
+}
+
+/** The images drawn directly inside a node. */
+function imagesIn(node: JsonNode): JsonNode[] {
+  return (node.children ?? []).filter(
+    (c): c is JsonNode => typeof c !== "string" && c.type === "ExpoImage",
+  )
+}
+
+/** Every visible string under a node, in tree order. */
+function textsIn(node: JsonNode): string[] {
+  const out: string[] = []
+  const walk = (n: JsonNode | string) => {
+    if (typeof n === "string") {
+      out.push(n)
+      return
+    }
+    for (const c of n.children ?? []) walk(c)
+  }
+  walk(node)
   return out
 }
 
@@ -305,7 +326,7 @@ describe("ClipOverlay — side rail (R11, R16, R18)", () => {
     ])
   })
 
-  it("makes Keep watching a round brand-red button with a 44 pt hit area and a label under it", () => {
+  it("makes Keep watching the clip's thumbnail in a circle, with a shadowed play glyph and no visible label", () => {
     const renderer = render()
     // The host view: the composite Pressable holds a style FUNCTION.
     const [button] = renderer.root.findAll(
@@ -317,18 +338,31 @@ describe("ClipOverlay — side rail (R11, R16, R18)", () => {
     expect(style.minWidth).toBeGreaterThanOrEqual(44)
     expect(style.minHeight).toBeGreaterThanOrEqual(44)
     expect(button.props.accessibilityRole).toBe("button")
+    expect(button.props.accessibilityHint).toBe(EXPLORE_COPY.keepWatchingHint)
 
-    const json = jsonById(renderer, "clip-rail-keep-watching")
-    const kids = (json.children ?? []).filter(
-      (c): c is JsonNode => typeof c !== "string",
-    )
-    const circle = flatStyle(kids[0]?.props.style)
-    expect(circle.backgroundColor).toBe(ACCENT)
+    const circleJson = jsonById(renderer, "clip-keep-watching-circle")
+    const circle = flatStyle(circleJson.props.style)
     expect(circle.borderRadius).toBe(Number(circle.width) / 2)
     expect(Number(circle.width)).toBeGreaterThanOrEqual(44)
-    // The label sits UNDER the circle.
-    expect(kids[1]?.type).toBe("Text")
-    expect(kids[1]?.children).toEqual([EXPLORE_COPY.keepWatching])
+    expect(circle.overflow).toBe("hidden")
+    const [thumbnail] = imagesIn(circleJson)
+    expect(thumbnail?.props.source).toBe(clipPosterUri(CLIP))
+    expect(thumbnail?.props.contentFit).toBe("cover")
+    // Not paused, so the only play glyph on screen is this button's.
+    const glyphs = renderer.root.findAll((n) => n.props.name === "play")
+    expect(glyphs).toHaveLength(1)
+    expect(flatStyle(glyphs[0].props.style).textShadowColor).toBeDefined()
+
+    const json = jsonById(renderer, "clip-rail-keep-watching")
+    expect(textsIn(json)).toEqual([])
+  })
+
+  it("keeps a dark circle behind the glyph for a clip with no thumbnail", () => {
+    const clip = { ...CLIP, imageUrl: null, muxPlaybackId: null }
+    const renderer = render(props({ clip }))
+    const circleJson = jsonById(renderer, "clip-keep-watching-circle")
+    expect(imagesIn(circleJson)).toHaveLength(0)
+    expect(flatStyle(circleJson.props.style).backgroundColor).toBeDefined()
   })
 
   it("names the mute action from the current state and raises the toggle", () => {

@@ -14,13 +14,15 @@ import {
   type LayoutChangeEvent,
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import type { VideoPlayer } from "expo-video"
 
 import { ClipDescription } from "./ClipDescription"
 import { ClipProgressBar } from "./ClipProgressBar"
 import { SubtitleOverlay } from "../watch/SubtitleOverlay"
-import { ACCENT, BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import { clipPosterUri } from "../../hooks/useClipAutostart"
+import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { readSeconds } from "../../lib/explore/playerRead"
 import { EXPLORE_FRAMING, bandAspect } from "../../lib/explore/framing"
@@ -245,12 +247,8 @@ export function ClipOverlay({
               label={EXPLORE_COPY.share}
               onPress={handleShare}
             />
-            <RailButton
-              testID="clip-rail-keep-watching"
-              icon="play"
-              label={EXPLORE_COPY.keepWatching}
-              hint={EXPLORE_COPY.keepWatchingHint}
-              fill={ACCENT}
+            <KeepWatchingButton
+              posterUri={clipPosterUri(clip)}
               onPress={handleKeepWatching}
             />
           </View>
@@ -270,38 +268,64 @@ type RailButtonProps = {
   icon: ComponentProps<typeof Ionicons>["name"]
   label: string
   onPress: () => void
-  hint?: string
-  fill?: string
-  testID?: string
 }
 
 /** A round button with its label under it. The whole stack is the target. */
-function RailButton({
-  icon,
-  label,
-  onPress,
-  hint,
-  fill,
-  testID,
-}: RailButtonProps) {
+function RailButton({ icon, label, onPress }: RailButtonProps) {
   const typography = useTypography()
   return (
     <Pressable
-      testID={testID}
       onPress={onPress}
       style={({ pressed }) => [styles.railButton, pressed && feedback.pressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityHint={hint}
     >
-      <View
-        style={[styles.railCircle, fill != null && { backgroundColor: fill }]}
-      >
+      <View style={styles.railCircle}>
         <Ionicons name={icon} size={24} color={TEXT_ON_OVERLAY} />
       </View>
       <Text style={[styles.railLabel, typography.caption]} numberOfLines={2}>
         {label}
       </Text>
+    </Pressable>
+  )
+}
+
+/**
+ * R16, lowest in the rail: the clip's own thumbnail in a circle, with a play
+ * glyph. No visible label (owner, 2026-09-27); a screen reader still reads one.
+ */
+function KeepWatchingButton({
+  posterUri,
+  onPress,
+}: {
+  posterUri: string | null
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      testID="clip-rail-keep-watching"
+      onPress={onPress}
+      style={({ pressed }) => [styles.railButton, pressed && feedback.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={EXPLORE_COPY.keepWatching}
+      accessibilityHint={EXPLORE_COPY.keepWatchingHint}
+    >
+      <View testID="clip-keep-watching-circle" style={styles.thumbCircle}>
+        {posterUri != null && (
+          <Image
+            source={posterUri}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            recyclingKey={posterUri}
+          />
+        )}
+        <Ionicons
+          name="play"
+          size={24}
+          color={TEXT_ON_OVERLAY}
+          style={styles.playShadow}
+        />
+      </View>
     </Pressable>
   )
 }
@@ -419,6 +443,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: hexToRgba(BLACK, 0.35),
+  },
+  thumbCircle: {
+    width: RAIL_BUTTON_SIZE,
+    height: RAIL_BUTTON_SIZE,
+    borderRadius: RAIL_BUTTON_SIZE / 2,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    // Shows only while the thumbnail loads, or when a clip has none.
+    backgroundColor: hexToRgba(BLACK, 0.35),
+  },
+  // Keeps the white glyph visible over a very light thumbnail.
+  playShadow: {
+    textShadowColor: hexToRgba(BLACK, 0.6),
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   railLabel: {
     color: TEXT_ON_OVERLAY,
