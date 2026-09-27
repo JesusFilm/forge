@@ -1086,7 +1086,7 @@ that releases the gate.
 
 ## Explore clips feed (feat-552)
 
-Explore is the second tab: an endless vertical feed of 30–60 s clips of
+Explore is the second tab: an endless vertical feed of 25–60 s clips of
 catalog videos in the viewer's feed language, with "Keep watching" into the
 full video. The plan is
 `docs/plans/2026-09-24-1450-feat-mobile-explore-clips-feed-plan.md`; the

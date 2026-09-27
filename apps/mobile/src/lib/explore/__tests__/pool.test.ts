@@ -251,7 +251,7 @@ describe("projectInventory", () => {
     expect(sermon).not.toHaveProperty("imageUrl")
   })
 
-  it("drops a video under the 30 s minimum, which can never give a clip (R23)", () => {
+  it("drops a video under the 25 s minimum, which can never give a clip (R23)", () => {
     const projected = projectInventory(
       inventory({
         audioVideos: [

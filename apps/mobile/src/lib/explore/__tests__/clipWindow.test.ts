@@ -71,7 +71,7 @@ function seeded(seed: number): () => number {
 const MIN = 60
 
 describe("buildEligibleStarts — R27 ends", () => {
-  it("covers AE1 at the 30 s minimum: a 12:04 start ends at the long pause after 12:51", () => {
+  it("covers AE1 at the 25 s minimum: a 12:04 start ends at the long pause after 12:51", () => {
     const timing = timingOf([
       cue(11 * MIN + 30, 11 * MIN + 40, "Before."),
       cue(12 * MIN + 4, 12 * MIN + 20, "Ends at 12:20, under 30 s."),
@@ -138,7 +138,7 @@ describe("buildEligibleStarts — the record (R29)", () => {
     cue(40 * MIN + 15, 40 * MIN + 19, "Lead in."),
     cue(40 * MIN + 20, 40 * MIN + 36, "A start inside the recorded clip."),
     cue(41 * MIN + 2, 41 * MIN + 15, "A start after the recorded clip."),
-    cue(41 * MIN + 16, 41 * MIN + 40, "It reaches the 30 s minimum."),
+    cue(41 * MIN + 16, 41 * MIN + 40, "It reaches the minimum."),
   ]
 
   it("covers AE3: with 40:10–40:38 recorded, 40:20 is not eligible and 41:02 is", () => {
@@ -355,11 +355,11 @@ describe("fallbackWindow (R23)", () => {
     }
   })
 
-  it("covers AE11 at the 30 s minimum: a 28 s video gives no window, and a 30.5 s video plays whole", () => {
-    expect(fallbackWindow(28, [], () => 0.5)).toBeNull()
-    expect(fallbackWindow(30.5, [], () => 0.5)).toEqual({
+  it("covers AE11 at the 25 s minimum: a 23 s video gives no window, and a 28 s video plays whole", () => {
+    expect(fallbackWindow(23, [], () => 0.5)).toBeNull()
+    expect(fallbackWindow(28, [], () => 0.5)).toEqual({
       startSeconds: 0,
-      endSeconds: 30.5,
+      endSeconds: 28,
     })
   })
 
@@ -375,15 +375,15 @@ describe("fallbackWindow (R23)", () => {
     })
   })
 
-  it("plays a 30 s video whole and gives a 29.9 s video nothing", () => {
-    // The owner's minimum (2026-09-27), as a number, not only the constant.
-    expect(MIN_CLIP_SECONDS).toBe(30)
-    expect(MIN_CLIP_VIDEO_SECONDS).toBe(30)
-    expect(fallbackWindow(30, [], () => 0.5)).toEqual({
+  it("plays a 25 s video whole and gives a 24.9 s video nothing", () => {
+    // The owner's minimum (2026-09-28), as a number, not only the constant.
+    expect(MIN_CLIP_SECONDS).toBe(25)
+    expect(MIN_CLIP_VIDEO_SECONDS).toBe(25)
+    expect(fallbackWindow(25, [], () => 0.5)).toEqual({
       startSeconds: 0,
-      endSeconds: 30,
+      endSeconds: 25,
     })
-    expect(fallbackWindow(29.9, [], () => 0.5)).toBeNull()
+    expect(fallbackWindow(24.9, [], () => 0.5)).toBeNull()
   })
 
   it("ends every fallback window at or before the video's end", () => {

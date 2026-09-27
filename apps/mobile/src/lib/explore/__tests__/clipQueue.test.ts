@@ -111,7 +111,7 @@ function poolOf(
 /**
  * A track with `portions` sentence-cut windows: each starts at k * 40 s and
  * ends at the long pause after k * 40 + 34 s (window [k*40, k*40+35]), past
- * the 30 s minimum.
+ * the 25 s minimum.
  */
 function timingWith(portions: number): ClipTiming {
   const cues = []
@@ -715,7 +715,7 @@ describe("variety", () => {
       a: { seconds: 31 },
       b: { seconds: 31 },
     })
-    // Each 31 s video plays whole (just over the 30 s minimum), so one recorded clip fills it.
+    // Each 31 s video plays whole (under the ~31.6 s whole-video limit), so one recorded clip fills it.
     w.record.add("video-a", SW, { startSeconds: 0, endSeconds: 31 })
     w.record.add("video-b", SW, { startSeconds: 0, endSeconds: 31 })
     w.record.add("video-x", "french", { startSeconds: 0, endSeconds: 9 })
