@@ -2265,6 +2265,92 @@ describe("the expand wiring (R4)", () => {
   })
 })
 
+describe("a player page popped onto Explore (owner, 2026-09-28)", () => {
+  function shrinkCall(spy: jest.SpyInstance) {
+    return spy.mock.calls.find(
+      ([, config]) =>
+        (config as { duration?: number }).duration === SHRINK_DURATION_MS,
+    )
+  }
+
+  function framePointerEvents(renderer: TestInstance) {
+    return renderer.root.findAll(
+      (node) => node.props.testID === "playback-frame",
+    )[0].props.pointerEvents
+  }
+
+  /** The pop and the slot's unmount land in one commit, as a committed back
+   *  press does: the route changes, then the slot detaches. */
+  async function popOnto(segments: readonly string[]) {
+    jest.useFakeTimers()
+    const timingSpy = jest.spyOn(Animated, "timing")
+    mockSegments = ["watch", "[slug]"]
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await act(async () => {
+      mockSegments = segments
+      renderer.update(<PlaybackHost />)
+      requestStore.detachSlot(id)
+    })
+    return { renderer, timingSpy }
+  }
+
+  it("skips the shrink and draws no window, through the takeover's exit", async () => {
+    const { renderer, timingSpy } = await popOnto(["(tabs)", "explore"])
+
+    expect(shrinkCall(timingSpy)).toBeUndefined()
+    expect(sessionStore.getSnapshot().session).not.toBeNull()
+    expect(frameStyle(renderer).opacity).toBe(0)
+    expect(framePointerEvents(renderer)).toBe("none")
+
+    // Explore's takeover ends the session. The exit must not bring it back.
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+    expect(frameStyle(renderer).opacity).toBe(0)
+    await act(async () => {
+      jest.advanceTimersByTime(EXIT_DURATION_MS + 1000)
+    })
+    expect(sessionStore.getSnapshot().session).toBeNull()
+  })
+
+  it("still shrinks a pop onto any other tab", async () => {
+    const { renderer, timingSpy } = await popOnto(["(tabs)"])
+
+    expect(shrinkCall(timingSpy)).toBeDefined()
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+    expect(framePointerEvents(renderer)).toBe("box-none")
+  })
+
+  it("keeps showing a window that was already floating when Explore opens", async () => {
+    const { renderer } = await popOnto(["(tabs)"])
+    await act(async () => {
+      jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
+    })
+
+    // A tab switch is not a pop: the takeover's own exit is what ends it.
+    mockSegments = ["(tabs)", "explore"]
+    await act(async () => {
+      renderer.update(<PlaybackHost />)
+    })
+
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+  })
+
+  it("shows the window again if the viewer leaves Explore before the takeover", async () => {
+    const { renderer } = await popOnto(["(tabs)", "explore"])
+
+    mockSegments = ["(tabs)"]
+    await act(async () => {
+      renderer.update(<PlaybackHost />)
+    })
+
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+    expect(framePointerEvents(renderer)).toBe("box-none")
+  })
+})
+
 describe("the resting corner across route and layout changes (R4/R7)", () => {
   async function setSegments(
     renderer: TestInstance,

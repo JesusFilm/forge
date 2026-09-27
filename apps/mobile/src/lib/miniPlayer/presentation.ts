@@ -37,12 +37,15 @@ export const FULL_SCREEN_ROUTE_PATTERNS = [
   "watch/download",
 ] as const
 
+/** The Explore tab, whose takeover ends any floating window (KTD10). */
+export const EXPLORE_TAB_ROUTE_PATTERN = "(tabs)/explore"
+
 /** The five tab roots from `app/(tabs)/_layout.tsx`. "(tabs)/index" is listed
  *  too: only the router's index-pop keeps it out of the segment list. */
 export const TAB_ROOT_ROUTE_PATTERNS = [
   "(tabs)",
   "(tabs)/index",
-  "(tabs)/explore",
+  EXPLORE_TAB_ROUTE_PATTERN,
   "(tabs)/watch",
   "(tabs)/library",
   "(tabs)/profile",

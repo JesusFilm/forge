@@ -80,7 +80,10 @@ import {
   type PlaybackRequestSnapshot,
 } from "../../lib/miniPlayer/playbackRequest"
 import { pictureInPictureViewProps } from "../../lib/miniPlayer/pictureInPicture"
-import { miniPlayerPresentation } from "../../lib/miniPlayer/presentation"
+import {
+  EXPLORE_TAB_ROUTE_PATTERN,
+  miniPlayerPresentation,
+} from "../../lib/miniPlayer/presentation"
 import {
   getMiniPlayerStore,
   sameSessionContent,
@@ -976,6 +979,10 @@ function ActivePlaybackHost({
   const insets = useSafeAreaInsets()
   const pattern = routePattern(segments)
   const underHeader = HEADER_ROUTE_PATTERNS.has(pattern)
+  const onExplore = pattern === EXPLORE_TAB_ROUTE_PATTERN
+  // Read by the transition effect, which must not re-run on a route change.
+  const onExploreRef = useRef(onExplore)
+  onExploreRef.current = onExplore
   const layoutConfig = useMemo<MiniPlayerLayoutConfig>(
     () => ({
       screen: { width: screenWidth, height: screenHeight },
@@ -1034,6 +1041,9 @@ function ActivePlaybackHost({
   } | null>(null)
   const [chromeReady, setChromeReady] = useState(true)
   const [surfaceReleased, setSurfaceReleased] = useState(false)
+  // A player page popped onto Explore: no shrink, and no window to see
+  // (owner, 2026-09-28). Explore's takeover then ends the session.
+  const [vanishedOntoExplore, setVanishedOntoExplore] = useState(false)
   const lastRectRef = useRef<PlaybackRect | null>(null)
   const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shrinkAnimRef = useRef<Animated.CompositeAnimation | null>(null)
@@ -1158,6 +1168,7 @@ function ActivePlaybackHost({
       // shrink in reverse, never a blink into place.
       const grow = lastRectRef.current == null && hasSession
       lastRectRef.current = rect
+      setVanishedOntoExplore(false)
       drag.setValue({ x: 0, y: 0 })
       if (grow) {
         // The grow starts where the window is RENDERED, which the tap's hold
@@ -1193,6 +1204,7 @@ function ActivePlaybackHost({
     }
     const from = lastRectRef.current
     lastRectRef.current = null
+    if (!hasSession) setVanishedOntoExplore(false)
     if (from == null || !hasSession) {
       // Mid-expand the destination's chrome is already live, so the corner
       // frame sits below the window the viewer is watching. The drag stays
@@ -1251,6 +1263,15 @@ function ActivePlaybackHost({
     // start: the untransformed first frame IS the previous frame).
     setCorner(DEFAULT_CORNER)
     drag.setValue({ x: 0, y: 0 })
+    // The rest this settle leaves behind: later chrome changes glide from it.
+    restingCornerRef.current = DEFAULT_CORNER
+    restingTargetRef.current = windowFrame
+    restingDragRef.current = { x: 0, y: 0 }
+    if (onExploreRef.current) {
+      clearMotion()
+      setVanishedOntoExplore(true)
+      return
+    }
     setChromeReady(false)
     // The same turn-around the other way: a grow still on the ramp departs
     // from the very corner this shrink is heading for.
@@ -1263,10 +1284,6 @@ function ActivePlaybackHost({
     } else {
       runMotion(from, windowFrame, "from", SHRINK_DURATION_MS)
     }
-    // The rest this settle leaves behind: later chrome changes glide from it.
-    restingCornerRef.current = DEFAULT_CORNER
-    restingTargetRef.current = windowFrame
-    restingDragRef.current = { x: 0, y: 0 }
   }, [rect, hasSession, layoutConfig, windowFrame, drag, shrink])
 
   // Runs on the commit that DROPS the motion, so identity means "fill the
@@ -1459,7 +1476,6 @@ function ActivePlaybackHost({
 
   const showWindow =
     hasSession && (presentation === "floating" || presentation === "exiting")
-  const suppressed = hasSession && presentation === "hidden"
   const floating = rect == null && hasSession
   // The frame sits at the motion's anchor while one runs (see the motion
   // state), and at the corner the moment a from-anchored one settles. An
@@ -1478,6 +1494,12 @@ function ActivePlaybackHost({
   // setChromeReady(false) lands a commit later. The frame is the departing rect
   // here, so neither the corner radius nor the mini transport belongs yet.
   const settlingFromRect = departingRect != null
+  // Hidden from the gap render on, before the effect latches the vanish. Only
+  // on Explore: a viewer who leaves before the takeover ends it sees the window.
+  const hiddenOnExplore =
+    onExplore && hasSession && (vanishedOntoExplore || settlingFromRect)
+  const suppressed =
+    hasSession && (presentation === "hidden" || hiddenOnExplore)
   const geometry = frameGeometry({
     rect,
     motion,
