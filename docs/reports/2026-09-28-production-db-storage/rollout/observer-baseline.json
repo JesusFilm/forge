@@ -1,0 +1,96 @@
+{
+  "phase": "predeploy",
+  "window_utc": {
+    "from": "2026-09-27T21:33:00Z",
+    "to": "2026-09-27T22:03:00Z"
+  },
+  "environment": "production",
+  "admin_version": "e7630a12629c3f4fa1507658bd5d290837fd7061",
+  "sources": {
+    "runtime": "Datadog indexed logs, service:forge-admin, @event:recommendation.runtime, @phase:complete; ddtags version verified",
+    "delivery": "Datadog indexed logs, service:forge-web, event=recommendation.delivery",
+    "retention": "docs/reports/2026-09-28-production-db-storage/rollout/predeploy-database.json measured 2026-09-27T21:55:26.738080+00:00"
+  },
+  "web_delivery_observations": {
+    "total": 471,
+    "http_200": 280,
+    "http_403": 191,
+    "http_5xx_observed": 0,
+    "served": 243,
+    "fallback_non_timeout": 37,
+    "delivery_timeout_observed": 0,
+    "note": "Best-effort logs; not complete HTTP denominator. 403 are expected request rejections; no for_you events observed."
+  },
+  "admin_runtime": {
+    "complete_events": 285,
+    "seeded": {
+      "total": 280,
+      "served": 243,
+      "empty": 24,
+      "fallback": 12,
+      "unavailable": 1,
+      "rejected": 0,
+      "timeout_fallback_observed": 0
+    },
+    "selection": {
+      "resolved": 5
+    },
+    "error_code_observed": 0
+  },
+  "candidate_evidence_insert": {
+    "observed": 257,
+    "complete": 257,
+    "unfinished": 0,
+    "timing_errors": 0,
+    "avg_ms": 122.9606055190591,
+    "p95_ms": 267.7721258158437,
+    "max_ms": 356.7133110165596,
+    "max_input_rows": 339,
+    "timing": "application/driver wall time; not isolated PostgreSQL execution",
+    "waits": "No independent database wait sampler observations in this window; lock/I/O waits unknown."
+  },
+  "retention": {
+    "current_probe_utc": "2026-09-27T21:55:26.738080+00:00",
+    "latest_status": "succeeded",
+    "latest_completed_at": "2026-09-27T10:30:01.771+00:00",
+    "latest_roots_deleted": 0,
+    "latest_oldest_expired_at_after": null,
+    "historical_status": {
+      "succeeded": {
+        "runs": 29,
+        "latest_completed": "2026-09-27T10:30:01.771+00:00"
+      },
+      "skipped": {
+        "runs": 10,
+        "latest_completed": "2026-09-16T10:30:00.349+00:00"
+      }
+    },
+    "current_expiry_horizon": [
+      {
+        "first_expiry": "2026-09-30T00:20:47.858+00:00",
+        "expired_roots": 0,
+        "overdue_roots": 0,
+        "latest_created_at": "2026-09-27T21:55:24.839+00:00",
+        "oldest_created_at": "2026-09-01T00:20:48.742+00:00",
+        "requests_last_24h": 10569
+      }
+    ]
+  },
+  "limitations": [
+    "Datadog/Railway operational logs are best effort; a missing event is unknown, not a healthy zero.",
+    "No daily retention job ran within the 30-minute log window; use durable ledger and expiry probe.",
+    "Timing distribution includes only requests with a completed candidate insert timing; it cannot describe writes that never started.",
+    "Database waits were not sampled in this window."
+  ],
+  "release_note": "Premerge runtime at 2026-09-27T22:18:00Z changed both Admin roles to 4f257fe3f19c56f34f56fdeddeffdc1ce61c46f3 from unrelated main PR2427 (mobile and lockfile only; Admin code unchanged per release orchestrator). Compare deployed code and versions explicitly in post window.",
+  "activation": {
+    "fleet_verified_utc": "2026-09-27T23:25:17Z",
+    "admin_version": "ea13e146faf4c188f9fb8d40c2b9dc1e33440751",
+    "post_window_utc": {
+      "from": "2026-09-27T23:26:00Z",
+      "to": "2026-09-27T23:36:00Z"
+    },
+    "source": "rollout_safety fleet process and reader parity verification"
+  },
+  "web_version": "a7be679b4c5bc48fbb837af87f8cf895c4283fce"
+}

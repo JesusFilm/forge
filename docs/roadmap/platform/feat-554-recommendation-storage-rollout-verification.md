@@ -20,11 +20,15 @@ tags:
 
 ## Problem
 
-The local remediation preserves full 29-day trace history and reduces new trace
-storage, but production remains at the investigation's reported capacity risk
-until the change is reviewed, deployed, and compact writes are enabled. A local
-synthetic benchmark is not proof of live cascade deletion throughput or volume
-headroom.
+The remediation preserves full 29-day trace history and reduces new trace
+storage. PR #2429 is deployed on both production Admin roles, migrations
+0100–0102 passed, and removing the redundant index returned approximately
+2.37 GB of allocation (2.34 GB net additional filesystem space over the measured
+interval). PR #2433 activated compact writes through the normal release path; both
+actual processes were verified on the new revision with compact flags and
+healthy roles at 23:25:17 UTC.
+A local synthetic benchmark and immediate disk relief do not prove live
+cascade deletion throughput or full-transition headroom.
 
 ## Entry Points — Read These First
 
@@ -77,3 +81,30 @@ headroom.
 No production deployment, index change, deletion, or capacity change is authorized
 by a local test result. Follow the normal release process and existing access
 policy. Wider recommendation capacity graduation remains feat-396.
+
+## Rollout Record and Open Gates
+
+`docs/reports/2026-09-28-production-db-storage/production-rollout.md` is the
+timestamped release and evidence record. The reader-compatible rollback floor
+is `2cc8105ffb00a9f595cefe10594bd8537561099f` on both roles; production activation
+release is `ea13e146faf4c188f9fb8d40c2b9dc1e33440751`. Compact fleet convergence
+and bounded parity passed for the latest 100 compact and 100 legacy runs,
+with no new legacy writes after fleet convergence. Initial operational logs
+showed no observed recommendation errors/timeouts in the ten-minute window;
+see the report for sample sizes, latency, and coverage limits. The last observed legacy
+write expires October 26 at 23:24:43.126 UTC, subject to a later legacy rollback
+and actual retention purge; feat-555 must re-establish the live horizon.
+
+Keep this ticket in progress until the remaining gates are demonstrated:
+
+- Authenticated Admin detail smoke when an authorized session is available;
+  do not report database checks as UI proof.
+- Full 29-day capacity margin; the proposed nominal 75 GB buffer is not applied.
+- September 30's first nonempty purge and the following daily cycle, including
+  actual deletion throughput, continuation, errors, oldest-expired age, and WAL.
+
+The existing `recommendation-storage-follow-up` local Codex heartbeat checks
+every six hours and reports meaningful changes or failures. It requires the
+computer to be on and Codex running. Physical empty-table reclamation remains
+feat-555 after the final legacy expiry and proven purge, not part of this
+release's immediate savings.

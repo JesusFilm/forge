@@ -123,3 +123,14 @@ LIMIT 1)`, raise an error if any row remains, then `TRUNCATE` **only this
   and PR-focused CI checks. After the normal deployment, verify catalog state,
   active revisions on both Admin roles, health, compact reader parity, and
   filesystem bytes reclaimed. Record timing and operator in the storage report.
+
+## Observed Activation Horizon
+
+At the September 27, 23:25:17 UTC fleet check, both production Admin roles ran
+`ea13e146faf4c188f9fb8d40c2b9dc1e33440751` with effective compact flags and prior
+processes drained. The last observed legacy write was September 27 at
+23:24:43.215 UTC, expiring October 26 at 23:24:43.126 UTC (October 27 at
+12:24:43 NZDT). This is an earliest expiry horizon, not an assertion that
+retention will have cleared every row at that instant. Recheck the live writer
+fleet, last legacy timestamp, and exact emptiness before any reclamation.
+Evidence: `docs/reports/2026-09-28-production-db-storage/production-rollout.md`.
