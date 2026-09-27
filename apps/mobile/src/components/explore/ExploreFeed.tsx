@@ -530,7 +530,14 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
               testID="explore-clip-veil"
               uri={veil.image?.uri ?? null}
             />
-            <PlayerLoadingVeil />
+            {/* In the band, the spinner centres on the frame, not the screen. */}
+            <View
+              testID="explore-clip-spinner-region"
+              style={regionStyle}
+              pointerEvents="none"
+            >
+              <PlayerLoadingVeil />
+            </View>
           </>
         )}
         {veil.failed && <ClipFailed />}

@@ -908,6 +908,28 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
     }
   })
 
+  it("centres the loading spinner on the band's region", async () => {
+    await mountFeed()
+    await hand(1)
+    expect(veilShown()).toBe(true)
+    await callOverlay("onVideoRegion", { top: 59, bottom: 200 })
+    const [wrapper] = hosts(
+      (n) => n.props.testID === "explore-clip-spinner-region",
+    )
+    const style = ([] as unknown[])
+      .concat(wrapper.props.style)
+      .flat(Infinity)
+      .filter(Boolean)
+      .reduce<Record<string, unknown>>(
+        (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
+        {},
+      )
+    expect(style).toMatchObject({ top: 59, bottom: 200 })
+    expect(
+      hosts((n) => n.props.accessibilityRole === "progressbar", wrapper),
+    ).toHaveLength(1)
+  })
+
   it("spells no picture-in-picture prop on any feed view", async () => {
     await startWithStandby()
     const views = hosts((node) => node.type === "VideoView")
