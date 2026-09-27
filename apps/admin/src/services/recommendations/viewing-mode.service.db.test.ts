@@ -61,7 +61,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
               Number(name.slice(0, 4)) <= 82 &&
               name.includes("recommendation")) ||
             name === "0082_user_recommendation_identity" ||
-            name === "0098_recommendation_viewing_mode",
+            name === "0098_recommendation_viewing_mode" ||
+            name === "0104_recommendation_cowatch_shadow",
         )
         .sort()) {
         await admin.query(
