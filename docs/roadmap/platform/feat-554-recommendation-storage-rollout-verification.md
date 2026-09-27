@@ -7,7 +7,7 @@ status: "in-progress"
 start_date: "2026-09-28"
 duration: 2
 depends_on:
-  - "feat-553"
+  - "feat-558"
 blocks: []
 tags:
   - "admin"

@@ -1,5 +1,5 @@
 ---
-id: "feat-552"
+id: "feat-557"
 title: "Investigate production database storage pressure"
 owner: "nisal"
 priority: "P0"
@@ -8,7 +8,7 @@ start_date: "2026-09-28"
 duration: 1
 depends_on: []
 blocks:
-  - "feat-553"
+  - "feat-558"
 tags:
   - "admin"
   - "recommendations"
@@ -68,4 +68,4 @@ Completed read-only production inspection on September 28 NZDT. The report and
 repeatable SQL are in `docs/reports/2026-09-28-production-db-storage/`. Confirmed
 recommendation evidence dominates storage, attributed the introducing changes,
 verified duplicate indexes, and measured 1.55 GB/day disk growth. Production
-remediation remains open in feat-553; no production state was changed.
+remediation remains open in feat-558; no production state was changed.

@@ -195,7 +195,7 @@ Mixed legacy/compact request deletion and erasure leave no trace residue.
 **Files:** Reproducible synthetic benchmark under
 `apps/admin/src/services/recommendations/` or
 `docs/reports/2026-09-28-production-db-storage/`; benchmark results and rollout
-runbook in that report directory; roadmap feat-553 and durable solution note.
+runbook in that report directory; roadmap feat-558 and durable solution note.
 
 **Approach:** Use a disposable local PostgreSQL 18 instance and synthetic cohorts
 of 82, 113, 195, and 323 observations. Compare compact storage against legacy with
@@ -240,7 +240,7 @@ post-deploy measurements, not promises from the local benchmark.
 ## Sources
 
 - `docs/reports/2026-09-28-production-db-storage/README.md`
-- `docs/roadmap/platform/feat-553-production-recommendation-storage-remediation.md`
+- `docs/roadmap/platform/feat-558-production-recommendation-storage-remediation.md`
 - `docs/solutions/best-practices/recommendation-trace-capacity-and-retention-proof-20260928.md`
 - `docs/operations/semantic-recommendation-tracer.md`
 - [PostgreSQL DROP INDEX](https://www.postgresql.org/docs/18/sql-dropindex.html)

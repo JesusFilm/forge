@@ -2,7 +2,7 @@
 
 Investigated on September 28, 2026 NZDT, with production measurements taken
 September 27 at 20:37–20:40 UTC. Branch: `codex/investigate-prod-db-storage`.
-Source baseline: `7bfed3f9f`. Investigation ticket: feat-552. Remediation: feat-553.
+Source baseline: `7bfed3f9f`. Investigation ticket: feat-557. Remediation: feat-558.
 
 ## Finding
 
@@ -190,7 +190,7 @@ default response on an almost-full live volume. See
    bounded transactions, vacuum reuse, and continued scheduling with younger
    expired backlog. Add evidence of actual deleted roots to health reporting.
 
-Tracked in [feat-553](../../roadmap/platform/feat-553-production-recommendation-storage-remediation.md).
+Tracked in [feat-558](../../roadmap/platform/feat-558-production-recommendation-storage-remediation.md).
 
 ## Verification and limits
 

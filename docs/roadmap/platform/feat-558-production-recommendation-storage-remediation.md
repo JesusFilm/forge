@@ -1,5 +1,5 @@
 ---
-id: "feat-553"
+id: "feat-558"
 title: "Reduce recommendation trace storage and improve retention catch-up"
 owner: "nisal"
 priority: "P0"
@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-28"
 duration: 2
 depends_on:
-  - "feat-552"
+  - "feat-557"
 blocks:
   - "feat-554"
 tags:
