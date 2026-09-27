@@ -75,7 +75,9 @@ export function SeriesSessionProvider({ children }: { children: ReactNode }) {
       reconcilerRef.current = markUserChoice(reconcilerRef.current)
       setSelectedLanguageSlugState(slug)
       // Carry-through: persist by unique slug so the tapped episode opens in it.
-      if (slug) setPreferredAudioLanguage(slug)
+      // Admin's ChildDubLanguage has no iso3, so a new language's code stays
+      // unknown until the watch screen fills it from the episode's dub.
+      if (slug) setPreferredAudioLanguage(slug, null)
     },
     [setPreferredAudioLanguage],
   )

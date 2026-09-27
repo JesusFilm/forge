@@ -9,7 +9,7 @@ type LanguageOption = {
   languageSlug: string | null
 }
 
-function getDeviceLanguageCode(): string | null {
+export function getDeviceLanguageCode(): string | null {
   try {
     const locale = Intl.DateTimeFormat().resolvedOptions().locale
     return locale.split("-")[0].toLowerCase()

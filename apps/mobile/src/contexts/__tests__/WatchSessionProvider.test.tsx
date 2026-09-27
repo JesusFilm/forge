@@ -35,15 +35,23 @@ jest.mock("../../lib/datadog", () => ({
 // Driveable preferences: `state` is mutated by tests; the provider reads it on
 // each render, so a flip lands with the next act that re-renders it.
 jest.mock("../WatchPreferencesProvider", () => {
-  const state = { ready: true, audio: "english" as string | null }
+  const state = {
+    ready: true,
+    audio: "english" as string | null,
+    audioIso3: null as string | null,
+    setAudio: jest.fn(),
+    backfillAudioIso3: jest.fn(),
+  }
   return {
     useWatchPreferences: () => ({
       audioLanguageSlug: state.audio,
+      audioLanguageIso3: state.audioIso3,
       subtitleLanguageSlug: null,
       subtitleLanguageName: null,
       subtitlesEnabled: false,
       isReady: state.ready,
-      setPreferredAudioLanguage: jest.fn(),
+      setPreferredAudioLanguage: state.setAudio,
+      backfillAudioLanguageIso3: state.backfillAudioIso3,
       setPreferredSubtitleLanguage: jest.fn(),
       setPreferredSubtitleName: jest.fn(),
       setSubtitlesEnabled: jest.fn(),
@@ -94,7 +102,13 @@ import {
 } from "../../test-utils/rnTestRenderer"
 
 const prefs = jest.requireMock("../WatchPreferencesProvider") as {
-  __prefState: { ready: boolean; audio: string | null }
+  __prefState: {
+    ready: boolean
+    audio: string | null
+    audioIso3: string | null
+    setAudio: jest.Mock
+    backfillAudioIso3: jest.Mock
+  }
 }
 const downloads = jest.requireMock("../DownloadsProvider") as {
   __downloadsState: {
@@ -108,7 +122,11 @@ const miniPlayer = jest.requireMock("../../lib/miniPlayer/store") as {
   }
 }
 
-function variant(languageSlug: string, id: string): WatchVariant {
+function variant(
+  languageSlug: string,
+  id: string,
+  languageIso3: string | null = null,
+): WatchVariant {
   return {
     documentId: id,
     slug: `considering-christmas/${languageSlug}`,
@@ -120,6 +138,7 @@ function variant(languageSlug: string, id: string): WatchVariant {
     languageSlug,
     languageName: languageSlug,
     languageNameNative: null,
+    languageIso3,
     muxPlaybackId: id,
   }
 }
@@ -191,6 +210,9 @@ afterEach(async () => {
   variantHistory = []
   prefs.__prefState.ready = true
   prefs.__prefState.audio = "english"
+  prefs.__prefState.audioIso3 = null
+  prefs.__prefState.setAudio.mockClear()
+  prefs.__prefState.backfillAudioIso3.mockClear()
   downloads.__downloadsState.ready = true
   downloads.__downloadsState.copy = null
   miniPlayer.__sessionState.session = null
@@ -387,5 +409,92 @@ describe("the variant gate (no dub before resolution)", () => {
 
     expect(session.activeVariant?.languageSlug).toBe("thai")
     expect(session.activeVariantIndex).toBe(0)
+  })
+})
+
+describe("the audio language code (U6)", () => {
+  const CODED_DUBS = [
+    variant("thai", "dubThai", "tha"),
+    variant("spanish", "dubSpanish", "spa"),
+    variant("english", "dubEnglish", "eng"),
+  ]
+
+  it("stores the picked dub's code with its slug", async () => {
+    await renderProvider()
+    await act(async () => {
+      session.setVideo(record("video-cc", CODED_DUBS))
+    })
+
+    await act(async () => {
+      session.setActiveVariantIndex(1)
+    })
+
+    expect(prefs.__prefState.setAudio).toHaveBeenCalledTimes(1)
+    expect(prefs.__prefState.setAudio).toHaveBeenCalledWith("spanish", "spa")
+  })
+
+  it("sends no code for a dub whose language carries none", async () => {
+    await renderProvider()
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    await act(async () => {
+      session.setActiveVariantIndex(0)
+    })
+
+    expect(prefs.__prefState.setAudio).toHaveBeenCalledWith("thai", null)
+  })
+
+  it("fills a missing code from the loaded video's dub in the stored language", async () => {
+    // A viewer who picked Spanish before the code existed: slug, no code.
+    prefs.__prefState.audio = "spanish"
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", CODED_DUBS))
+    })
+
+    expect(prefs.__prefState.backfillAudioIso3).toHaveBeenCalledWith(
+      "spanish",
+      "spa",
+    )
+    // The fill never counts as a pick.
+    expect(prefs.__prefState.setAudio).toHaveBeenCalledTimes(0)
+  })
+
+  it("leaves a stored code alone", async () => {
+    prefs.__prefState.audio = "spanish"
+    prefs.__prefState.audioIso3 = "spa"
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", CODED_DUBS))
+    })
+
+    expect(prefs.__prefState.backfillAudioIso3).toHaveBeenCalledTimes(0)
+  })
+
+  it("fills nothing when the stored language's dub carries no code", async () => {
+    prefs.__prefState.audio = "thai"
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    expect(prefs.__prefState.backfillAudioIso3).toHaveBeenCalledTimes(0)
+  })
+
+  it("fills nothing from a dub in another language", async () => {
+    // The video resolves to its English dub, but the stored language is Korean.
+    prefs.__prefState.audio = "korean"
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", CODED_DUBS))
+    })
+
+    expect(prefs.__prefState.backfillAudioIso3).toHaveBeenCalledTimes(0)
   })
 })

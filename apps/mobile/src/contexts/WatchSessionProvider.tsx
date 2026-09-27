@@ -26,6 +26,7 @@ import {
   resetReconciler,
 } from "../lib/preferenceReconciler"
 import { subtitleNameToCache } from "../lib/subtitleSelection"
+import { languageIso3ForSlug } from "../lib/watchPreferences"
 import { useDownloads } from "./DownloadsProvider"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
@@ -84,11 +85,13 @@ const WatchSessionContext = createContext<WatchSessionContextValue | null>(null)
 export function WatchSessionProvider({ children }: { children: ReactNode }) {
   const {
     audioLanguageSlug: preferredAudioSlug,
+    audioLanguageIso3: preferredAudioIso3,
     subtitleLanguageSlug: preferredSubtitleSlug,
     subtitleLanguageName: preferredSubtitleName,
     subtitlesEnabled,
     isReady: preferencesReady,
     setPreferredAudioLanguage,
+    backfillAudioLanguageIso3,
     setPreferredSubtitleLanguage,
     setPreferredSubtitleName,
     setSubtitlesEnabled,
@@ -132,8 +135,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     (index: number) => {
       audioReconcilerRef.current = markUserChoice(audioReconcilerRef.current)
       setActiveVariantIndexState(index)
-      const slug = videoRef.current?.variants[index]?.languageSlug ?? null
-      if (slug) setPreferredAudioLanguage(slug)
+      const picked = videoRef.current?.variants[index]
+      const slug = picked?.languageSlug ?? null
+      if (slug) setPreferredAudioLanguage(slug, picked?.languageIso3 ?? null)
       // User-intent seam only — the reconciler uses the raw setter (R32).
       datadogLog.info("content.language_change", { language_slug: slug })
     },
@@ -311,6 +315,22 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     downloadsReady,
     downloadedAudioSlug,
     preferredAudioSlug,
+  ])
+
+  // A language picked before the ISO 639-3 code was stored has a slug only.
+  // Fill the code from this video's dub in that language, so the Bible reader
+  // gets its default translation (R22) without a new pick.
+  useEffect(() => {
+    if (!preferencesReady || !preferredAudioSlug || preferredAudioIso3) return
+    const iso3 = languageIso3ForSlug(video?.variants ?? [], preferredAudioSlug)
+    if (iso3 != null) backfillAudioLanguageIso3(preferredAudioSlug, iso3)
+  }, [
+    video?.documentId,
+    video?.variants.length,
+    preferencesReady,
+    preferredAudioSlug,
+    preferredAudioIso3,
+    backfillAudioLanguageIso3,
   ])
 
   // Pre-select the subtitle language once per variant unless the user chose,
