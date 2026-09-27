@@ -15,7 +15,7 @@ tags:
   - status-drift
   - audit
 date: "2026-05-07"
-last_updated: "2026-05-07"
+last_updated: "2026-09-28"
 applies_when:
   - "Markdown roadmap with frontmatter status fields is the source of truth for planning"
   - "Feature work ships through PRs but no automation flips ticket status on merge"
@@ -67,6 +67,18 @@ git log origin/main --oneline -i --grep='feat-076'
 # feat-076 = "TV App — Video Playback + Polish"
 git log origin/main --oneline -i --grep='tv.*playback\|tv.*video.*play'
 ```
+
+**Caveat — one id can name more than one ticket.** On `origin/main`
+(2026-09-28), 188 of 532 ids have more than one ticket file. The example id
+`feat-106` in this doc names three: `feat-106-tv-app-search-ui.md`,
+`feat-106-manager-live-jobs-sse-fallback.md`, and
+`feat-106-manager-single-process-mock-cms-mode.md`. A `--grep='feat-106'` hit
+can therefore belong to any of them. List the files for the id first
+(`git ls-tree -r --name-only origin/main -- docs/roadmap | grep 'feat-106-'`),
+then confirm each hit against the ticket's own title and file path before you
+change its status. See
+`docs/solutions/workflow-issues/roadmap-feat-id-collision-across-unmerged-branches.md`
+for why the duplicates exist and how to allocate new ids.
 
 ### 4. Cross-check verification criteria
 
@@ -191,3 +203,4 @@ The feat-106 row also exposed the secondary drift: the file `docs/roadmap/topic-
 - `docs/solutions/developer-experience/env-matrix-drift-from-runtime-requirements-20260421.md` — closest sibling pattern: drift between intent-authored docs and reality.
 - `docs/solutions/workflow-issues/check-migration-playbook-before-extending-source-side-20260429.md` — same family: an existing CLAUDE.md rule isn't reliably executed at the right moment.
 - `docs/solutions/best-practices/challenge-predecessor-plan-framing-and-read-named-memory-pointers-20260429.md` — forced-read of authoritative pointers before acting; the roadmap is one such pointer.
+- `docs/solutions/workflow-issues/roadmap-feat-id-collision-across-unmerged-branches.md` — why one id can name several tickets, which step 3's per-id search must account for.

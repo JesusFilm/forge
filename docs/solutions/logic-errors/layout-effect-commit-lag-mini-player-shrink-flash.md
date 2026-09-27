@@ -1,6 +1,7 @@
 ---
 title: "A layout effect's setState lands in the NEXT commit — the render in between needs its own answer"
 date: "2026-08-21"
+last_updated: "2026-09-28"
 category: "logic-errors"
 module: "apps/mobile"
 problem_type: "logic_error"
@@ -44,9 +45,9 @@ and the full-size player shrinks into a floating corner window. Both ends of tha
 transition drew a wrong single frame.
 
 The fix is on branch `fix/mobile-watch-player-clip-routing-language-shrink` and
-is open as PR #1980. It is NOT merged as of this writing. Lint, test and build
-are green; the `expo-doctor` job fails on pre-existing upstream Expo patch drift
-that is unrelated to the diff.
+merged as PR #1980 on 2026-08-21. At review time, lint, test and build were
+green; the `expo-doctor` job failed on pre-existing upstream Expo patch drift
+that was unrelated to the diff.
 
 ## Symptoms
 
@@ -364,5 +365,10 @@ and to name `departingRect` as the reason the gap needs its own answer.
   — the META home for this doc's testing corollary. New worked instance: a
   synchronous test harness (`act()`) collapses a cross-commit ordering
   difference, so no value assertion can discriminate the fix.
+- [A measure cache keyed wider than its measuring view's React key never gets a height on Android Fabric](measure-cache-keyed-wider-than-view-key-misses-onlayout-on-fabric.md)
+  — another apps/mobile timing defect that a green jest suite could not see.
+  There, a key change with an unchanged native frame sends no `onLayout`; the
+  test move is a synthetic Fabric layout driver that fires one event flush at a
+  time.
 - PR #1962 shipped the mini player (feat-367) and introduced both artifacts.
-- PR #1980 carries this fix and is open, not merged.
+- PR #1980 carries this fix (merged 2026-08-21).

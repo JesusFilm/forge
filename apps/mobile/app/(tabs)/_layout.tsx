@@ -2,6 +2,7 @@ import { Tabs } from "expo-router"
 import { Platform } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { READER_COPY } from "../../src/lib/bible/reader/copy"
 import { useTabBarStyle } from "../../src/lib/tabBar"
 
 const ACCENT = "#CB333B"
@@ -45,6 +46,15 @@ export default function TabLayout() {
           title: "Search",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search" size={size} color={color as string} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="bible"
+        options={{
+          title: READER_COPY.tabTitle,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="book" size={size} color={color as string} />
           ),
         }}
       />
