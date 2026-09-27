@@ -1,11 +1,20 @@
 /**
- * The clip's one-line description (R15, R44). "more" shows only once the hidden
- * copy MEASURES an overflow. The toggles raise the pause and the resume.
+ * The clip's one-line description (R15). "more" shows only once the hidden copy
+ * MEASURES an overflow. The toggles animate and report, and never pause.
  */
 
 import { act } from "react"
+import { LayoutAnimation } from "react-native"
 
-import { ClipDescription } from "../ClipDescription"
+const mockReduceMotion = jest.fn(() => false)
+jest.mock("../../../hooks/useReduceMotion", () => ({
+  useReduceMotion: () => mockReduceMotion(),
+}))
+
+import {
+  ClipDescription,
+  DESCRIPTION_TOGGLE_ANIMATION,
+} from "../ClipDescription"
 import { EXPLORE_COPY } from "../../../lib/explore/copy"
 import {
   TestRenderer,
@@ -137,7 +146,34 @@ describe("ClipDescription", () => {
     )
   })
 
-  it("expands on 'more' and raises the pause, then collapses on 'less' and raises the resume", () => {
+  it("animates the open and the close, and skips the animation under reduced motion", () => {
+    const configureNext = jest
+      .spyOn(LayoutAnimation, "configureNext")
+      .mockImplementation(() => {})
+    try {
+      const { renderer } = render(LONG)
+      measure(renderer, 3)
+      press(renderer, EXPLORE_COPY.descriptionMoreLabel)
+      expect(configureNext).toHaveBeenCalledTimes(1)
+      expect(configureNext).toHaveBeenLastCalledWith(
+        DESCRIPTION_TOGGLE_ANIMATION,
+      )
+      press(renderer, EXPLORE_COPY.descriptionLessLabel)
+      expect(configureNext).toHaveBeenCalledTimes(2)
+
+      mockReduceMotion.mockReturnValue(true)
+      const still = render(LONG)
+      measure(still.renderer, 3)
+      press(still.renderer, EXPLORE_COPY.descriptionMoreLabel)
+      press(still.renderer, EXPLORE_COPY.descriptionLessLabel)
+      expect(configureNext).toHaveBeenCalledTimes(2)
+    } finally {
+      mockReduceMotion.mockReturnValue(false)
+      configureNext.mockRestore()
+    }
+  })
+
+  it("expands on 'more' and collapses on 'less', and reports each", () => {
     const { renderer, onExpand, onCollapse } = render(LONG)
     measure(renderer, 3)
 

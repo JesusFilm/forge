@@ -1,5 +1,6 @@
 import { useCallback } from "react"
 import {
+  LayoutAnimation,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +11,7 @@ import {
 
 import { TEXT_ON_OVERLAY } from "../../lib/color"
 import { EXPLORE_COPY } from "../../lib/explore/copy"
+import { useReduceMotion } from "../../hooks/useReduceMotion"
 import {
   useTextOverflow,
   type TextLayoutEvent,
@@ -18,11 +20,18 @@ import { useTypography } from "../../hooks/useTypography"
 
 export type ClipDescriptionProps = {
   description: string | null
-  /** "more" was tapped. The feed pauses the clip (R44). */
+  /** "more" was tapped. The clip keeps playing; the overlay holds the video. */
   onExpand: () => void
-  /** "less" was tapped. The feed resumes the clip only if it was playing. */
+  /** "less" was tapped. */
   onCollapse: () => void
 }
+
+/** The open and close animation: the text grows or shrinks, and fades. */
+export const DESCRIPTION_TOGGLE_ANIMATION = LayoutAnimation.create(
+  250,
+  LayoutAnimation.Types.easeInEaseOut,
+  LayoutAnimation.Properties.opacity,
+)
 
 const COLLAPSED_LINES = 1
 /** An open description scrolls past this share of the screen height. */
@@ -46,16 +55,25 @@ export function ClipDescription({
   // already cleared the feed's pause, and a late call would act on the next clip.
   const { overflows, expanded, setExpanded, handleMeasureLayout } =
     useTextOverflow(description, overflowsOneLine)
+  const reduceMotion = useReduceMotion()
+
+  // The next commit animates, so set up the animation before the state flips.
+  const animateToggle = useCallback(() => {
+    if (!reduceMotion)
+      LayoutAnimation.configureNext(DESCRIPTION_TOGGLE_ANIMATION)
+  }, [reduceMotion])
 
   const handleExpand = useCallback(() => {
+    animateToggle()
     setExpanded(true)
     onExpand()
-  }, [onExpand, setExpanded])
+  }, [animateToggle, onExpand, setExpanded])
 
   const handleCollapse = useCallback(() => {
+    animateToggle()
     setExpanded(false)
     onCollapse()
-  }, [onCollapse, setExpanded])
+  }, [animateToggle, onCollapse, setExpanded])
 
   if (description == null || description.length === 0) return null
 

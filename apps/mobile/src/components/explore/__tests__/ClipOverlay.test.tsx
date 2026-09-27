@@ -698,7 +698,7 @@ describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
   })
 })
 
-describe("ClipOverlay — description pause (R15, R44)", () => {
+describe("ClipOverlay — description (R15)", () => {
   function measureDescription(renderer: TestInstance, lineCount: number) {
     const [copy] = renderer.root.findAll(
       (n) => typeof n.props.onTextLayout === "function",
@@ -713,41 +713,36 @@ describe("ClipOverlay — description pause (R15, R44)", () => {
     })
   }
 
-  it("pauses on 'more', and 'less' resumes only a clip that was playing", () => {
-    // Wired to the real reducer, as the feed wires it.
-    for (const [start, expected] of [
-      [{ phase: "playing" }, "playing"],
-      [{ phase: "paused", viewerPaused: true }, "paused"],
-    ] as const) {
-      let state: FeedState = { ...INITIAL_FEED_STATE, ...start }
-      const renderer = render(
-        props({
-          onOverlayOpen: () => {
-            state = feedReducer(state, { type: "overlayOpen" })
-          },
-          onOverlayClose: () => {
-            state = feedReducer(state, { type: "overlayClose" })
-          },
-        }),
-      )
-      measureDescription(renderer, 3)
-      act(() => {
-        pressableByLabel(
-          renderer,
-          EXPLORE_COPY.descriptionMoreLabel,
-        ).props.onPress?.()
-      })
-      expect(state.phase).toBe("paused")
-      expect(state.overlay).not.toBeNull()
-      act(() => {
-        pressableByLabel(
-          renderer,
-          EXPLORE_COPY.descriptionLessLabel,
-        ).props.onPress?.()
-      })
-      expect(state.phase).toBe(expected)
-      expect(state.overlay).toBeNull()
-    }
+  it("keeps the clip playing, with its sound, through 'more' and 'less'", () => {
+    // Wired to the real reducer, as the feed wires it (owner, 2026-09-27).
+    let state: FeedState = { ...INITIAL_FEED_STATE, phase: "playing" }
+    const renderer = render(
+      props({
+        onOverlayOpen: () => {
+          state = feedReducer(state, { type: "overlayOpen" })
+        },
+        onOverlayClose: () => {
+          state = feedReducer(state, { type: "overlayClose" })
+        },
+      }),
+    )
+    measureDescription(renderer, 3)
+    act(() => {
+      pressableByLabel(
+        renderer,
+        EXPLORE_COPY.descriptionMoreLabel,
+      ).props.onPress?.()
+    })
+    expect(state.phase).toBe("playing")
+    expect(state.overlay).toBeNull()
+    act(() => {
+      pressableByLabel(
+        renderer,
+        EXPLORE_COPY.descriptionLessLabel,
+      ).props.onPress?.()
+    })
+    expect(state.phase).toBe("playing")
+    expect(state.overlay).toBeNull()
   })
 })
 

@@ -75,7 +75,7 @@ export type FeedState = {
   confirmedToken: number | null
   viewerPaused: boolean
   systemPaused: boolean
-  /** Share or "more" is open (R44). */
+  /** The share sheet is open (R44). "More" no longer pauses (2026-09-27). */
   overlay: { wasPlaying: boolean } | null
   /** False from a swipe until the pager's rest event; loads wait for it. */
   pagerAtRest: boolean

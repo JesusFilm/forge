@@ -47,9 +47,9 @@ export type ClipOverlayProps = {
   onSeek: (seconds: number) => void
   /** The asset time the viewer reached, inside the clip window (R16). */
   onKeepWatching: (positionSeconds: number) => void
-  /** Share or "more" opened. The feed pauses the clip (R44). */
+  /** The share sheet opened. The feed pauses the clip (R44). */
   onOverlayOpen: () => void
-  /** Share or "more" closed. The feed resumes only a clip that was playing. */
+  /** The share sheet closed. The feed resumes only a clip that was playing. */
   onOverlayClose: () => void
   /** The band's region (KTD18), so the feed draws its video views in it. */
   onVideoRegion: (region: ExploreVideoRegion) => void
@@ -141,14 +141,14 @@ export function ClipOverlay({
       Math.round(bottomBox.current - rowTop.current - infoTop.current),
     )
   }, [])
+  // "More" no longer pauses the clip (owner, 2026-09-27, changing R44): the
+  // clip plays on, with its sound, while the description is open.
   const handleExpand = useCallback(() => {
     descriptionOpen.current = true
-    onOverlayOpen()
-  }, [onOverlayOpen])
+  }, [])
   const handleCollapse = useCallback(() => {
     descriptionOpen.current = false
-    onOverlayClose()
-  }, [onOverlayClose])
+  }, [])
 
   const handleBottomLayout = useCallback(
     (e: LayoutChangeEvent) => {
