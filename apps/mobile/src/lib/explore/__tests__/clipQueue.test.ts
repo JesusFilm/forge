@@ -110,13 +110,14 @@ function poolOf(
 
 /**
  * A track with `portions` sentence-cut windows: each starts at k * 40 s and
- * ends at the long pause after k * 40 + 24 s (window [k*40, k*40+25]).
+ * ends at the long pause after k * 40 + 34 s (window [k*40, k*40+35]), past
+ * the 30 s minimum.
  */
 function timingWith(portions: number): ClipTiming {
   const cues = []
   for (let k = 0; k < portions; k++) {
-    cues.push({ start: k * 40, end: k * 40 + 12, text: "Habari za" })
-    cues.push({ start: k * 40 + 13, end: k * 40 + 24, text: "asubuhi." })
+    cues.push({ start: k * 40, end: k * 40 + 15, text: "Habari za" })
+    cues.push({ start: k * 40 + 16, end: k * 40 + 34, text: "asubuhi." })
   }
   const timing = deriveClipTiming(cues)
   if (timing == null) throw new Error("fixture is over the cue cap")
@@ -711,12 +712,12 @@ describe("variety", () => {
 
   it("covers AE9: with every portion recorded, releases the oldest entries for the language once, and a clip comes out", () => {
     const w = world(poolOf([candidate("a"), candidate("b")]), {
-      a: { seconds: 25 },
-      b: { seconds: 25 },
+      a: { seconds: 31 },
+      b: { seconds: 31 },
     })
-    // Each 25 s video plays whole, so one recorded clip fills it.
-    w.record.add("video-a", SW, { startSeconds: 0, endSeconds: 25 })
-    w.record.add("video-b", SW, { startSeconds: 0, endSeconds: 25 })
+    // Each 31 s video plays whole (just over the 30 s minimum), so one recorded clip fills it.
+    w.record.add("video-a", SW, { startSeconds: 0, endSeconds: 31 })
+    w.record.add("video-b", SW, { startSeconds: 0, endSeconds: 31 })
     w.record.add("video-x", "french", { startSeconds: 0, endSeconds: 9 })
 
     const run = drive(w, started(w), 1)
@@ -733,11 +734,11 @@ describe("variety", () => {
 
   it("releases at most once per request", () => {
     const w = world(poolOf([candidate("a"), candidate("b")]), {
-      a: { seconds: 25 },
-      b: { seconds: 25 },
+      a: { seconds: 31 },
+      b: { seconds: 31 },
     })
-    w.record.add("video-a", SW, { startSeconds: 0, endSeconds: 25 })
-    w.record.add("video-b", SW, { startSeconds: 0, endSeconds: 25 })
+    w.record.add("video-a", SW, { startSeconds: 0, endSeconds: 31 })
+    w.record.add("video-b", SW, { startSeconds: 0, endSeconds: 31 })
     // A release that frees nothing leaves every portion recorded.
     w.record.releaseOldestForLanguage = (languageSlug, count) => {
       w.record.releases.push({ languageSlug, count })

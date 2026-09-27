@@ -31,7 +31,7 @@ type ClipProgressBarProps = {
 }
 
 /**
- * One screen-reader step. A clip can be 10 s long, so the watch page's 10 s
+ * One screen-reader step. A clip can be 30 s long, so the watch page's 10 s
  * step is too coarse.
  */
 const CLIP_STEP_SECONDS = 5

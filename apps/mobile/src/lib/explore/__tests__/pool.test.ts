@@ -5,6 +5,7 @@
  */
 
 import type { ExploreInventoryData } from "../../queries"
+import { MIN_CLIP_VIDEO_SECONDS } from "../clipWindow"
 import {
   EXPLORE_INVENTORY_LIMIT,
   EXPLORE_POOL_MAX_AGE_MS,
@@ -250,12 +251,12 @@ describe("projectInventory", () => {
     expect(sermon).not.toHaveProperty("imageUrl")
   })
 
-  it("drops a video under 10 s, which can never give a clip (R23)", () => {
+  it("drops a video under the 30 s minimum, which can never give a clip (R23)", () => {
     const projected = projectInventory(
       inventory({
         audioVideos: [
-          { ...SERMON, durationSeconds: 9 },
-          { ...CLOSING_INVITATION, durationSeconds: 10 },
+          { ...SERMON, durationSeconds: MIN_CLIP_VIDEO_SECONDS - 0.1 },
+          { ...CLOSING_INVITATION, durationSeconds: MIN_CLIP_VIDEO_SECONDS },
         ],
       }),
       "english",

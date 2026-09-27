@@ -11,6 +11,7 @@ import {
   FALLBACK_CLIP_SECONDS,
   MAX_CLIP_SECONDS,
   MIN_CLIP_SECONDS,
+  MIN_CLIP_VIDEO_SECONDS,
   pickSentenceWindow,
   type EligibleStart,
   type EligibleStartsMemo,
@@ -70,18 +71,22 @@ function seeded(seed: number): () => number {
 const MIN = 60
 
 describe("buildEligibleStarts — R27 ends", () => {
-  it("covers AE1: a 12:04 start ends at the long pause after 12:31", () => {
+  it("covers AE1 at the 30 s minimum: a 12:04 start ends at the long pause after 12:51", () => {
     const timing = timingOf([
       cue(11 * MIN + 30, 11 * MIN + 40, "Before."),
-      cue(12 * MIN + 4, 12 * MIN + 9, "Ends at 12:09, under 10 s."),
-      cue(12 * MIN + 9.3, 12 * MIN + 16, "Ends at 12:16, then 1 s of silence."),
-      cue(12 * MIN + 17, 12 * MIN + 31, "Ends at 12:31, then 3 s of silence."),
-      cue(12 * MIN + 34, 12 * MIN + 40, "Ends at 12:40."),
-      cue(12 * MIN + 40.5, 12 * MIN + 50, "More."),
+      cue(12 * MIN + 4, 12 * MIN + 20, "Ends at 12:20, under 30 s."),
+      cue(
+        12 * MIN + 20.3,
+        12 * MIN + 36,
+        "Ends at 12:36, then 1 s of silence.",
+      ),
+      cue(12 * MIN + 37, 12 * MIN + 51, "Ends at 12:51, then 3 s of silence."),
+      cue(12 * MIN + 54, 12 * MIN + 58, "Ends at 12:58."),
+      cue(12 * MIN + 58.5, 13 * MIN + 8, "More."),
     ])
     expect(windowFrom(buildEligibleStarts(timing, []), 12 * MIN + 4)).toEqual({
       startSeconds: 12 * MIN + 4,
-      endSeconds: 12 * MIN + 31 + SENTENCE_PAD_SECONDS,
+      endSeconds: 12 * MIN + 51 + SENTENCE_PAD_SECONDS,
       preferred: true,
     })
   })
@@ -104,18 +109,18 @@ describe("buildEligibleStarts — R27 ends", () => {
     })
   })
 
-  it("leaves out a start with no sentence end from 10 s to 60 s after it", () => {
+  it("leaves out a start with no sentence end from 30 s to 60 s after it", () => {
     const timing = timingOf([
       cue(0, 5, "Too short to end a clip."),
       cue(75, 80, "A far start."),
-      cue(80.5, 90, "It ends in range."),
+      cue(80.5, 75 + MIN_CLIP_SECONDS + 5, "It ends in range."),
     ])
     const starts = buildEligibleStarts(timing, []).map((w) => w.startSeconds)
     expect(starts).not.toContain(0)
     expect(starts).toContain(75)
   })
 
-  it("keeps every window from 10 s to 60 s of speech, plus the pad", () => {
+  it("keeps every window from 30 s to 60 s of speech, plus the pad", () => {
     const timing = timingOf(fixtureCues("jesus-english.vtt"))
     for (const w of buildEligibleStarts(timing, [])) {
       const length = w.endSeconds - w.startSeconds
@@ -133,6 +138,7 @@ describe("buildEligibleStarts — the record (R29)", () => {
     cue(40 * MIN + 15, 40 * MIN + 19, "Lead in."),
     cue(40 * MIN + 20, 40 * MIN + 36, "A start inside the recorded clip."),
     cue(41 * MIN + 2, 41 * MIN + 15, "A start after the recorded clip."),
+    cue(41 * MIN + 16, 41 * MIN + 40, "It reaches the 30 s minimum."),
   ]
 
   it("covers AE3: with 40:10–40:38 recorded, 40:20 is not eligible and 41:02 is", () => {
@@ -152,17 +158,17 @@ describe("buildEligibleStarts — the record (R29)", () => {
 
   it("ends before a recorded window rather than overlapping it", () => {
     const cues = [
-      cue(100, 112, "An early end."),
-      cue(112.3, 125, "The natural end before a long pause."),
-      cue(130, 135, "Later."),
+      cue(100, 132, "An early end."),
+      cue(132.3, 145, "The natural end before a long pause."),
+      cue(150, 155, "Later."),
     ]
-    const recorded = [{ startSeconds: 120, endSeconds: 150 }]
+    const recorded = [{ startSeconds: 140, endSeconds: 170 }]
     const w = windowFrom(buildEligibleStarts(timingOf(cues), recorded), 100)
-    expect(w).toEqual({ startSeconds: 100, endSeconds: 112.3, preferred: true })
+    expect(w).toEqual({ startSeconds: 100, endSeconds: 132.3, preferred: true })
   })
 
   it("drops a start whose every valid end would overlap a recorded window", () => {
-    const cues = [cue(100, 125, "One long sentence."), cue(130, 135, "Later.")]
+    const cues = [cue(100, 132, "One long sentence."), cue(135, 140, "Later.")]
     const recorded = [{ startSeconds: 105, endSeconds: 150 }]
     const starts = buildEligibleStarts(timingOf(cues), recorded).map(
       (w) => w.startSeconds,
@@ -172,12 +178,12 @@ describe("buildEligibleStarts — the record (R29)", () => {
 
   it("allows a window that only touches a recorded window", () => {
     const cues = [
-      cue(100, 115, "Ends before a long pause."),
-      cue(120, 135, "Recorded next."),
+      cue(100, 135, "Ends before a long pause."),
+      cue(140, 155, "Recorded next."),
     ]
-    const recorded = [{ startSeconds: 116, endSeconds: 136 }]
+    const recorded = [{ startSeconds: 136, endSeconds: 156 }]
     const w = windowFrom(buildEligibleStarts(timingOf(cues), recorded), 100)
-    expect(w?.endSeconds).toBe(116)
+    expect(w?.endSeconds).toBe(136)
   })
 
   it("gives an empty list when every start is recorded, and the picker returns no window without looping", () => {
@@ -197,7 +203,7 @@ describe("pickSentenceWindow", () => {
     cue(0, 1, "and so,"),
     cue(100, 104, "This cue is no start."),
     cue(104.2, 110, "A start after a 0.2 s gap."),
-    cue(111, 125, "A start after a 1 s gap."),
+    cue(111, 145, "A start after a 1 s gap."),
   ]
 
   it("picks the start after the pause over the start after a 0.2 s gap, for every seed", () => {
@@ -349,11 +355,11 @@ describe("fallbackWindow (R23)", () => {
     }
   })
 
-  it("covers AE11: an 8 s video gives no window, and a 25 s video plays whole", () => {
-    expect(fallbackWindow(8, [], () => 0.5)).toBeNull()
-    expect(fallbackWindow(25, [], () => 0.5)).toEqual({
+  it("covers AE11 at the 30 s minimum: a 28 s video gives no window, and a 30.5 s video plays whole", () => {
+    expect(fallbackWindow(28, [], () => 0.5)).toBeNull()
+    expect(fallbackWindow(30.5, [], () => 0.5)).toEqual({
       startSeconds: 0,
-      endSeconds: 25,
+      endSeconds: 30.5,
     })
   })
 
@@ -369,16 +375,19 @@ describe("fallbackWindow (R23)", () => {
     })
   })
 
-  it("plays a 10 s video whole and gives a 9.9 s video nothing", () => {
-    expect(fallbackWindow(10, [], () => 0.5)).toEqual({
+  it("plays a 30 s video whole and gives a 29.9 s video nothing", () => {
+    // The owner's minimum (2026-09-27), as a number, not only the constant.
+    expect(MIN_CLIP_SECONDS).toBe(30)
+    expect(MIN_CLIP_VIDEO_SECONDS).toBe(30)
+    expect(fallbackWindow(30, [], () => 0.5)).toEqual({
       startSeconds: 0,
-      endSeconds: 10,
+      endSeconds: 30,
     })
-    expect(fallbackWindow(9.9, [], () => 0.5)).toBeNull()
+    expect(fallbackWindow(29.9, [], () => 0.5)).toBeNull()
   })
 
   it("ends every fallback window at or before the video's end", () => {
-    const durations = [10, 20, 30, 31, 31.58, 31.6, 45, 60, 100, 1200, 7673.727]
+    const durations = [30, 30.5, 31, 31.58, 31.6, 45, 60, 100, 1200, 7673.727]
     for (const d of durations) {
       for (const r of RANDOMS) {
         const w = fallbackWindow(d, [], () => r)
@@ -428,7 +437,7 @@ describe("fallbackWindow (R23)", () => {
       fallbackWindow(100, [{ startSeconds: 0, endSeconds: 100 }], random),
     ).toBeNull()
     expect(
-      fallbackWindow(25, [{ startSeconds: 0, endSeconds: 25 }], random),
+      fallbackWindow(31, [{ startSeconds: 0, endSeconds: 31 }], random),
     ).toBeNull()
     expect(random).not.toHaveBeenCalled()
   })

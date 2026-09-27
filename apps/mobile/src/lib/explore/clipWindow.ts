@@ -6,13 +6,16 @@
 import type { ClipTiming, SentenceEnd } from "./sentenceTiming"
 import type { ClipWindow } from "./types"
 
-/** R27: a clip's sentence end is from 10 s to 60 s after its start. */
-export const MIN_CLIP_SECONDS = 10
+/**
+ * R27: a clip's sentence end is from 30 s to 60 s after its start. The owner
+ * raised the minimum from 10 s on 2026-09-27.
+ */
+export const MIN_CLIP_SECONDS = 30
 export const MAX_CLIP_SECONDS = 60
 
 /** R23: a fallback clip is 30 s long, and a shorter video gives no clip. */
 export const FALLBACK_CLIP_SECONDS = 30
-export const MIN_CLIP_VIDEO_SECONDS = 10
+export const MIN_CLIP_VIDEO_SECONDS = MIN_CLIP_SECONDS
 const FALLBACK_START_MIN_FRACTION = 0.05
 const FALLBACK_START_MAX_FRACTION = 0.8
 
@@ -165,7 +168,7 @@ export function pickSentenceWindow(
 /**
  * R23 for a video with no usable sentence timing, outside the record (R29).
  * The start range stops 30 s before the end. When it is empty (under ~31.6 s),
- * a video of 10 s or more plays whole.
+ * a video of 30 s or more plays whole.
  */
 export function fallbackWindow(
   durationSeconds: number,
