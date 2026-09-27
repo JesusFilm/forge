@@ -1013,6 +1013,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         SELECT id FROM video WHERE slug = 'jesus' AND deleted_at IS NULL LIMIT 1
       `
       expect(seed[0]).toBeDefined()
+      // Persistence uses the database clock for created_at, so keep the service clock aligned.
       const benchmarkNow = new Date()
       const signingKey = {
         kid: "delivery-benchmark-kid",
