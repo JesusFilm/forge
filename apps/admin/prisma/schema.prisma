@@ -4390,6 +4390,7 @@ model RecommendationImpression {
   eventId          String                   @map("event_id") @db.VarChar(191)
   payloadDigest    String                   @map("payload_digest") @db.Char(64)
   visibilityPolicy String                   @map("visibility_policy") @db.VarChar(64)
+  visibilityCapability String               @default("unknown") @map("visibility_capability") @db.VarChar(32)
   occurredAt       DateTime                 @map("occurred_at")
   receivedAt       DateTime                 @default(now()) @map("received_at")
   expiresAt        DateTime                 @map("expires_at")
@@ -4399,6 +4400,33 @@ model RecommendationImpression {
   @@index([requestId], map: "recommendation_impression_request_idx")
   @@index([expiresAt])
   @@map("recommendation_impression")
+}
+
+/// Anonymous Watch card evidence. windowId is random per block mount and has no
+/// viewer, session, cookie, IP, or capability binding. Public target paths only.
+model WatchSurfaceExposure {
+  id                   String   @id @default(cuid())
+  eventId              String   @unique @map("event_id") @db.Uuid
+  windowId             String   @map("window_id") @db.Uuid
+  surface              String   @db.VarChar(40)
+  block                String   @db.VarChar(40)
+  presentation         String   @db.VarChar(40)
+  placement            String   @db.VarChar(64)
+  policyVersion        String   @map("policy_version") @db.VarChar(40)
+  position             Int
+  itemPath             String   @map("item_path") @db.VarChar(512)
+  kind                 String   @db.VarChar(16)
+  visibilityCapability String?  @map("visibility_capability") @db.VarChar(32)
+  duplicateCount       Int      @default(0) @map("duplicate_count")
+  occurredAt           DateTime @map("occurred_at")
+  receivedAt           DateTime @default(now()) @map("received_at")
+  expiresAt            DateTime @map("expires_at")
+
+  @@index([windowId, surface, block, presentation, placement, position, itemPath, kind], map: "watch_surface_exposure_window_item_idx")
+  @@index([surface, block, presentation, position, occurredAt], map: "watch_surface_exposure_aggregate_idx")
+  @@index([occurredAt, windowId], map: "watch_surface_exposure_window_cohort_idx")
+  @@index([expiresAt], map: "watch_surface_exposure_expiry_idx")
+  @@map("watch_surface_exposure")
 }
 
 /// Selection and one-use handoff authority commit together. The browser keeps

@@ -1265,6 +1265,31 @@ describe("WatchHomePage", () => {
     expect(container.textContent).not.toContain("Feature film")
   })
 
+  it("labels home rail and grid exposure presentations separately", async () => {
+    const rail = makeModel().sections[0]!
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            sections: [
+              rail,
+              {
+                ...rail,
+                id: "home-collection-showcase-grid",
+                layout: "grid",
+              },
+            ],
+          })}
+        />,
+      )
+    })
+    expect(
+      Array.from(
+        container.querySelectorAll('[data-watch-exposure-block="collections"]'),
+      ).map((node) => node.getAttribute("data-watch-exposure-presentation")),
+    ).toEqual(["carousel", "grid"])
+  })
+
   it("renders the hero, configured sections, promo content, and card links", async () => {
     await act(async () => {
       root.render(<WatchHomePage model={makeModel()} />)

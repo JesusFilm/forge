@@ -28,6 +28,11 @@ function buildPrisma() {
       deleteMany: vi.fn(async () => ({ count: requestIds.length })),
       findFirst: vi.fn(async () => null),
     },
+    watchSurfaceExposure: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async () => null),
+    },
     recommendationServedItem: { count: count() },
     recommendationRenderedFact: { count: count() },
     recommendationImpression: { count: count() },

@@ -6,6 +6,7 @@ import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { WatchHomeBodyZone } from "@/components/home/WatchHomeBodyZone"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { createInitialDynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-cache-signature"
 import {
@@ -214,13 +215,30 @@ export function WatchHomeExperiencePage({
 
     const renderedBlock = (
       <ExperienceSectionRenderer
-        key={blockKey}
         section={block}
         locale={locale}
         languageSlug={languageSlug}
         dynamicCollections={dynamicCollections}
       />
     )
+    const typename = (block as { readonly __typename?: string | null })
+      .__typename
+    const instrumentedBlock =
+      typename === "LanguageGlobeBlock" ? (
+        <Fragment key={blockKey}>{renderedBlock}</Fragment>
+      ) : (
+        <WatchExposureBoundary
+          key={blockKey}
+          config={{
+            surface: "watch-home",
+            block: "authored",
+            presentation: "authored-block",
+            placement: `authored-${index}`,
+          }}
+        >
+          {renderedBlock}
+        </WatchExposureBoundary>
+      )
 
     return isStandaloneMediaBlock(block) ? (
       <div
@@ -228,10 +246,10 @@ export function WatchHomeExperiencePage({
         className={`${WATCH_PAGE_CONTENT_CLASSES} pt-16`}
         data-watch-home-content-rail
       >
-        {renderedBlock}
+        {instrumentedBlock}
       </div>
     ) : (
-      renderedBlock
+      instrumentedBlock
     )
   }
 

@@ -18,6 +18,10 @@ import {
   type RecommendationContentActionReceipt,
 } from "@/services/recommendations/content-action.service"
 import { PlaybackContextDiscoverySourceSchema } from "@/services/recommendations/contracts"
+import {
+  recordWatchSurfaceExposureBatch,
+  type WatchSurfaceExposureReceipt,
+} from "@/services/recommendations/watch-surface-exposure.service"
 
 type SelectionReceipt = {
   status: "accepted" | "replay" | "conflict"
@@ -131,6 +135,15 @@ PlaybackContextReceiptRef.implement({
   }),
 })
 
+const WatchSurfaceExposureReceiptRef =
+  builder.objectRef<WatchSurfaceExposureReceipt>("WatchSurfaceExposureReceipt")
+WatchSurfaceExposureReceiptRef.implement({
+  fields: (t) => ({
+    eventId: t.exposeString("eventId", { nullable: false }),
+    status: t.exposeString("status", { nullable: false }),
+  }),
+})
+
 function evidenceKind(kind: string): "render" | "impression" {
   if (kind !== "render" && kind !== "impression") {
     throw new RecommendationInputError(
@@ -154,6 +167,16 @@ function evidencePayload(payload: unknown): Record<string, unknown> {
 }
 
 builder.mutationFields((t) => ({
+  recordWatchSurfaceExposure: t.field({
+    type: [WatchSurfaceExposureReceiptRef],
+    nullable: false,
+    authScopes: { public: true },
+    args: { events: t.arg({ type: "JSON", required: true }) },
+    resolve: (_root, args, ctx) =>
+      resolveRecommendationOperation(() =>
+        recordWatchSurfaceExposureBatch(prisma, ctx.user, args.events),
+      ),
+  }),
   issueWatchPlaybackContext: t.field({
     type: PlaybackContextReceiptRef,
     nullable: false,

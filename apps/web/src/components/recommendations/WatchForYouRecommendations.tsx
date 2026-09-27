@@ -30,6 +30,7 @@ import {
   parseRecommendationEvidenceReceipts,
 } from "@/lib/recommendation-contracts"
 import { useEligibleRecommendationImpression } from "./useEligibleRecommendationImpression"
+import type { ExposureVisibilityCapability } from "./useEligibleRecommendationImpression"
 
 const DELIVERY_COOLDOWN_MS = 5_000
 const DELIVERY_ATTEMPTS = 3
@@ -268,7 +269,11 @@ export function WatchForYouRecommendations({
   }, [near, key, locale, audioLanguageSlug])
 
   const evidence = useCallback(
-    (item: Card, kind: "render" | "impression") => {
+    (
+      item: Card,
+      kind: "render" | "impression",
+      visibilityCapability: ExposureVisibilityCapability = "unknown",
+    ) => {
       if (!delivery?.requestId) return
       const ledgerKey = `${delivery.requestId}:${item.id}:${kind}`
       if (ledger.current.has(ledgerKey)) return
@@ -294,7 +299,7 @@ export function WatchForYouRecommendations({
                 occurredAt: new Date().toISOString(),
                 payload:
                   kind === "impression"
-                    ? { visibilityPolicy: SURFACE }
+                    ? { visibilityPolicy: SURFACE, visibilityCapability }
                     : { surfacePolicy: SURFACE },
               },
             ],
@@ -314,9 +319,9 @@ export function WatchForYouRecommendations({
     delivery?.items.forEach((item) => evidence(item, "render"))
   }, [delivery, evidence])
   const eligible = useCallback(
-    (id: string) => {
+    (id: string, capability: ExposureVisibilityCapability) => {
       const item = delivery?.items.find((item) => item.id === id)
-      if (item) evidence(item, "impression")
+      if (item) evidence(item, "impression", capability)
     },
     [delivery, evidence],
   )
