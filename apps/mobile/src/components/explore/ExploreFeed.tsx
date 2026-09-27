@@ -39,6 +39,7 @@ import { FeedVideoView } from "./FeedVideoView"
 import { PlayerLoadingVeil } from "../watch/PlayerLoadingVeil"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { clipPosterUri, useClipAutostart } from "../../hooks/useClipAutostart"
+import { usePlayingSize } from "../../hooks/usePlayingSize"
 import { useExploreClipQueue } from "../../hooks/useExploreClipQueue"
 import { useExploreTakeover } from "../../hooks/useExploreTakeover"
 import {
@@ -76,7 +77,7 @@ import {
   type FeedState,
   type PlayerId,
 } from "../../lib/explore/feedState"
-import { EXPLORE_FRAMING, clipContentFit } from "../../lib/explore/framing"
+import { clipContentFit, clipFraming } from "../../lib/explore/framing"
 import {
   resolvePlayerMode,
   type PlayerMode,
@@ -86,8 +87,6 @@ import { getExploreTelemetry } from "../../lib/explore/telemetry"
 import type { ReadyClip, FeedClip } from "../../lib/explore/types"
 import { openKeepWatching } from "../../lib/explore/watchIntent"
 import { deriveLanguageDisplay } from "../../lib/language-display"
-
-const CONTENT_FIT = clipContentFit(EXPLORE_FRAMING)
 
 const BOTH_PLAYERS: readonly PlayerId[] = ["a", "b"]
 
@@ -492,7 +491,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
   )
 
   // KTD18's band: the current overlay measures where its title starts, and
-  // both views draw the video in the same region, so a swipe keeps it there.
+  // each view draws a landscape clip in that region, so a swipe keeps it there.
   const [videoRegion, setVideoRegion] = useState<ExploreVideoRegion | null>(
     null,
   )
@@ -502,7 +501,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     )
   }, [])
   const regionStyle =
-    EXPLORE_FRAMING === "band" && videoRegion != null
+    videoRegion != null
       ? [StyleSheet.absoluteFill, videoRegion]
       : StyleSheet.absoluteFill
 
@@ -514,9 +513,11 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
         testID={`explore-feed-view-${player}`}
         style={pageStyle(viewRole(state, player))}
       >
-        <View testID={`explore-video-region-${player}`} style={regionStyle}>
-          <FeedVideoView player={players[player]} contentFit={CONTENT_FIT} />
-        </View>
+        <FeedVideoLayer
+          testID={`explore-video-region-${player}`}
+          player={players[player]}
+          region={videoRegion}
+        />
       </View>
     ))
 
@@ -651,6 +652,31 @@ function ClipPage({
       />
       {children}
     </>
+  )
+}
+
+/**
+ * One feed view, framed by its own clip (owner, 2026-09-27): a portrait clip
+ * fills the page, and a landscape one fits the region above the title.
+ */
+function FeedVideoLayer({
+  testID,
+  player,
+  region,
+}: {
+  testID: string
+  player: VideoPlayer
+  region: ExploreVideoRegion | null
+}) {
+  const framing = clipFraming(usePlayingSize(player))
+  const style =
+    framing === "band" && region != null
+      ? [StyleSheet.absoluteFill, region]
+      : StyleSheet.absoluteFill
+  return (
+    <View testID={testID} style={style}>
+      <FeedVideoView player={player} contentFit={clipContentFit(framing)} />
+    </View>
   )
 }
 

@@ -1,5 +1,5 @@
 /**
- * The clip screen's framing switch (KTD18), in one module so a reframe is a
+ * The clip screen's framing (KTD18), in one module so a reframe is a
  * one-file change and both treatments stay testable.
  */
 
@@ -9,8 +9,16 @@
  */
 export type ExploreFraming = "crop" | "band"
 
-/** The owner chose the band after a device review (2026-09-27). */
-export const EXPLORE_FRAMING: ExploreFraming = "band"
+type TrackSize = { width: number; height: number } | null | undefined
+
+/**
+ * Per clip, from the playing track (owner, 2026-09-27): a portrait clip fills
+ * the screen, and a landscape, square, or not-yet-loaded clip sits in the band.
+ */
+export function clipFraming(size: TrackSize): ExploreFraming {
+  if (size == null || !(size.width > 0) || !(size.height > 0)) return "band"
+  return size.height > size.width ? "crop" : "band"
+}
 
 /** The feed's `VideoView` fit for a treatment. The overlay draws the rest. */
 export function clipContentFit(framing: ExploreFraming): "cover" | "contain" {
@@ -21,9 +29,7 @@ export function clipContentFit(framing: ExploreFraming): "cover" | "contain" {
 const BAND_FALLBACK_ASPECT = 16 / 9
 
 /** Width over height of the playing track, or the fallback when it is unknown. */
-export function bandAspect(
-  size: { width: number; height: number } | null | undefined,
-): number {
+export function bandAspect(size: TrackSize): number {
   if (size == null || !(size.width > 0) || !(size.height > 0)) {
     return BAND_FALLBACK_ASPECT
   }

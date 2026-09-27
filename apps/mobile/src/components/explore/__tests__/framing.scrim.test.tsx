@@ -1,14 +1,12 @@
 /**
  * Both framing treatments (KTD18), each with its text over the scrim (R39). The
- * suite flips the constant on the mocked module, so neither guard can go dark.
+ * playing track picks the treatment, so the suite renders a portrait clip and a
+ * landscape one, and neither guard can go dark.
  */
 
 import { act } from "react"
 import type { VideoPlayer } from "expo-video"
 
-jest.mock("../../../lib/explore/framing", () => ({
-  ...jest.requireActual("../../../lib/explore/framing"),
-}))
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 59, right: 0, bottom: 83, left: 0 }),
 }))
@@ -48,14 +46,11 @@ import {
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 
-// The module object the component reads. `import * as` would hand back an
-// interop COPY, and a flip on the copy never reaches the component.
-const mockFraming = jest.requireMock("../../../lib/explore/framing") as {
-  EXPLORE_FRAMING: framing.ExploreFraming
-}
 const ACTUAL = jest.requireActual(
   "../../../lib/explore/framing",
 ) as typeof framing
+
+const PORTRAIT = { size: { width: 1080, height: 1920 } }
 
 const CLIP: FeedClip = {
   videoId: "video-1",
@@ -87,17 +82,15 @@ afterEach(() => {
   act(() => {
     mounted.splice(0).forEach((renderer) => renderer.unmount())
   })
-  mockFraming.EXPLORE_FRAMING = ACTUAL.EXPLORE_FRAMING
 })
 
+/** A portrait track gives the crop; a landscape or unknown one, the band. */
 function render(
   treatment: framing.ExploreFraming,
   videoTrack?: { size: { width: number; height: number } },
 ): JsonNode {
-  mockFraming.EXPLORE_FRAMING = treatment
-  const player = Object.assign(makeFakePlayer(), {
-    videoTrack: videoTrack ?? null,
-  })
+  const track = videoTrack ?? (treatment === "crop" ? PORTRAIT : null)
+  const player = Object.assign(makeFakePlayer(), { videoTrack: track })
   let renderer!: TestInstance
   act(() => {
     renderer = TestRenderer.create(
@@ -191,8 +184,13 @@ function contrast(a: Rgba, b: Rgba): number {
 const WHITE_FRAME: Rgba = { r: 255, g: 255, b: 255, a: 1 }
 
 describe("Explore framing (KTD18)", () => {
-  it("ships the whole-frame band by default", () => {
-    expect(ACTUAL.EXPLORE_FRAMING).toBe("band")
+  it("fills the screen for a portrait clip, and bands the rest", () => {
+    expect(ACTUAL.clipFraming(PORTRAIT.size)).toBe("crop")
+    expect(ACTUAL.clipFraming({ width: 1920, height: 1080 })).toBe("band")
+    expect(ACTUAL.clipFraming({ width: 1080, height: 1080 })).toBe("band")
+    // Not loaded yet, or a size the player cannot report.
+    expect(ACTUAL.clipFraming(null)).toBe("band")
+    expect(ACTUAL.clipFraming({ width: 0, height: 0 })).toBe("band")
     expect(ACTUAL.clipContentFit("crop")).toBe("cover")
     expect(ACTUAL.clipContentFit("band")).toBe("contain")
   })
@@ -273,7 +271,7 @@ describe("Explore framing (KTD18)", () => {
       flatStyle(byId(root, "clip-band-frame").props.style).aspectRatio
     expect(spacer(render("band"))).toBeCloseTo(16 / 9, 5)
     expect(
-      spacer(render("band", { size: { width: 1080, height: 1920 } })),
-    ).toBeCloseTo(9 / 16, 5)
+      spacer(render("band", { size: { width: 1920, height: 800 } })),
+    ).toBeCloseTo(2.4, 5)
   })
 })

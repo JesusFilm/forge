@@ -908,6 +908,37 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
     }
   })
 
+  it("frames each view by its own clip: portrait full bleed, landscape in the band", async () => {
+    await startWithStandby()
+    await callOverlay("onVideoRegion", { top: 59, bottom: 200 })
+    await act(async () => {
+      A.__emit("videoTrackChange", {
+        videoTrack: { size: { width: 1080, height: 1920 } },
+      })
+    })
+    const flat = (node: Node) =>
+      ([] as unknown[])
+        .concat(node.props.style)
+        .flat(Infinity)
+        .filter(Boolean)
+        .reduce<Record<string, unknown>>(
+          (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
+          {},
+        )
+    const layer = (id: "a" | "b") =>
+      flat(hosts((n) => n.props.testID === `explore-video-region-${id}`)[0])
+    const fit = (player: unknown) =>
+      hosts((n) => n.type === "VideoView" && n.props.player === player)[0].props
+        .contentFit
+
+    // A plays a portrait clip: the whole page, cropped to fill it.
+    expect(layer("a")).toMatchObject({ top: 0, bottom: 0 })
+    expect(fit(A)).toBe("cover")
+    // B's clip has not reported a portrait size: the band's region, whole.
+    expect(layer("b")).toMatchObject({ top: 59, bottom: 200 })
+    expect(fit(B)).toBe("contain")
+  })
+
   it("centres the loading spinner on the band's region", async () => {
     await mountFeed()
     await hand(1)

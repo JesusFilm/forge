@@ -26,7 +26,8 @@ import { clipPosterUri } from "../../hooks/useClipAutostart"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { readSeconds } from "../../lib/explore/playerRead"
-import { EXPLORE_FRAMING, bandAspect } from "../../lib/explore/framing"
+import { bandAspect, clipFraming } from "../../lib/explore/framing"
+import { usePlayingSize } from "../../hooks/usePlayingSize"
 import type { FeedClip } from "../../lib/explore/types"
 import { clamp } from "../../lib/scrubber"
 import { useTabBarClearance } from "../../lib/tabBar"
@@ -189,7 +190,8 @@ export function ClipOverlay({
   const handleRailLayout = useCallback((e: LayoutChangeEvent) => {
     setRailLeft(Math.round(e.nativeEvent.layout.x))
   }, [])
-  const band = EXPLORE_FRAMING === "band"
+  const playingSize = usePlayingSize(player)
+  const band = clipFraming(playingSize) === "band"
   const bandInset = lowerBar == null ? null : lowerBar + regionBottom
   const captionBottom =
     band && bandInset != null
@@ -200,11 +202,11 @@ export function ClipOverlay({
       ? rowWidth - railLeft + CAPTION_GAP
       : undefined
 
+  // Reported for every clip: each feed view picks its own framing, and the
+  // next clip may be landscape even when this one fills the screen.
   useEffect(() => {
-    if (band && regionBottom > 0) {
-      onVideoRegion({ top: safeTop, bottom: regionBottom })
-    }
-  }, [band, safeTop, regionBottom, onVideoRegion])
+    if (regionBottom > 0) onVideoRegion({ top: safeTop, bottom: regionBottom })
+  }, [safeTop, regionBottom, onVideoRegion])
   const regionStyle =
     band && regionBottom > 0 ? { top: safeTop, bottom: regionBottom } : null
 
@@ -212,7 +214,7 @@ export function ClipOverlay({
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {band && (
         <ClipBandBackdrop
-          player={player}
+          aspect={bandAspect(playingSize)}
           regionTop={safeTop}
           regionBottom={regionBottom}
           onLowerBarHeight={setLowerBar}
@@ -386,37 +388,24 @@ function KeepWatchingButton({
   )
 }
 
-/** The size of the track the player shows, or null until one loads. */
-function usePlayingSize(player: VideoPlayer) {
-  const [size, setSize] = useState(() => player.videoTrack?.size ?? null)
-  useEffect(() => {
-    setSize(player.videoTrack?.size ?? null)
-    const sub = player.addListener("videoTrackChange", ({ videoTrack }) => {
-      setSize(videoTrack?.size ?? null)
-    })
-    return () => sub.remove()
-  }, [player])
-  return size
-}
-
 /**
  * KTD18's band: the video shows whole (`contain`) in a centred band, with
  * solid black above and below it (owner, 2026-09-27).
  */
 function ClipBandBackdrop({
-  player,
+  aspect,
   regionTop,
   regionBottom,
   onLowerBarHeight,
 }: {
-  player: VideoPlayer
+  /** The playing track's width over height. */
+  aspect: number
   /** The region's insets from the page's top and bottom edges. */
   regionTop: number
   regionBottom: number
   /** From the frame's bottom edge to the region's. */
   onLowerBarHeight: (height: number) => void
 }) {
-  const aspect = bandAspect(usePlayingSize(player))
   return (
     <View
       testID="clip-band-backdrop"
