@@ -220,6 +220,41 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
       ).toBe(0)
     }, 15000)
 
+    it("attributes a blocked compact run payload insert to candidate evidence", async () => {
+      const sample = await observer()
+      const seed = `wait-compact-${randomUUID()}`
+      seeds.push(seed)
+      await controller.query("BEGIN")
+      await controller.query(
+        "LOCK TABLE recommendation_candidate_run IN ACCESS EXCLUSIVE MODE",
+      )
+      try {
+        const harness = makeHarness({
+          database: prisma,
+          candidateTraceFormat: "compact",
+        })
+        harness.retrieve.mockResolvedValue(semanticCandidates(32))
+        const response = await harness.service.deliver(input(seed))
+        expect(response.result).toBe("unavailable")
+        const records = sample.records.filter(
+          (row) => row.statementCategory === "candidate_evidence.insert",
+        )
+        expect(
+          records.some(
+            (row) => row.waitType === "Lock" && Number(row.blockerCount) > 0,
+          ),
+        ).toBe(true)
+      } finally {
+        await controller.query("ROLLBACK")
+        await sample.stop()
+      }
+      expect(
+        await prisma.recommendationRequest.count({
+          where: { seedMediaId: seed },
+        }),
+      ).toBe(0)
+    }, 15000)
+
     it("identifies server execution delay during the actual 220-row insert", async () => {
       await controller.query(
         "CREATE FUNCTION watch_m4q_delay() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.4); RETURN NULL; END $$",

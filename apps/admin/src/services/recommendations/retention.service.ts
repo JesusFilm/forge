@@ -28,6 +28,7 @@ export type RecommendationPurgeResult = Readonly<{
   rowCounts: Record<string, number>
   oldestExpiredAtAfter: string | null
   overdueAfterRun: boolean
+  batchLimitReached: boolean
 }>
 
 function hoursBefore(now: Date, hours: number): Date {
@@ -215,6 +216,7 @@ export async function purgeExpiredRecommendationRequests(
           rowCounts: {},
           oldestExpiredAtAfter: null,
           overdueAfterRun: false,
+          batchLimitReached: false,
         }
       }
 
@@ -704,6 +706,18 @@ export async function purgeExpiredRecommendationRequests(
         oldestExpiredAt != null &&
         oldestExpiredAt <=
           hoursBefore(now, RECOMMENDATION_RETENTION_PROPAGATION_HOURS)
+      // A full selection may leave more expired roots. An exact-size batch
+      // causes one harmless empty follow-up; no additional database scan is
+      // needed to keep younger expired backlog moving before it is overdue.
+      const batchLimitReached =
+        requestIds.length === batchSize ||
+        directActionIds.length === batchSize ||
+        standaloneEpisodeIds.length === batchSize ||
+        expiredViewers.length === batchSize ||
+        expiredProfiles.length === batchSize ||
+        (remainingErasureCapacity > 0 &&
+          olderPendingProfileErasures.length === remainingErasureCapacity) ||
+        retiredProfiles.length === batchSize
       await tx.recommendationRetentionRun.update({
         where: { id: run.id },
         data: {
@@ -722,6 +736,7 @@ export async function purgeExpiredRecommendationRequests(
         rowCounts,
         oldestExpiredAtAfter: oldestExpiredAt?.toISOString() ?? null,
         overdueAfterRun,
+        batchLimitReached,
       }
     })
   } catch (error) {
