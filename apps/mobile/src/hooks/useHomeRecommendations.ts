@@ -38,8 +38,6 @@ export type HomeRecommendationsController = {
   status: UserRecommendationsStatus
   /** The last served slate, kept across a refetch so the row holds (R18). */
   slate: UserRecommendationSlate | null
-  /** True while Home's list holds the row in the viewport (R8). */
-  shelfInView: boolean
   /** The shelf calls this on its first mount; that latch starts the fetch. */
   reportShelfMounted: () => void
   /** Home's list reports the row at least half visible (KTD4). */
@@ -235,15 +233,9 @@ export function useHomeRecommendations(
     return trackerRef.current
   }, [])
 
-  // True before the list has ever reported: the row mounts first, and
-  // collapsing a terminal outcome on that silence is the jump R8 forbids. The
-  // tracker's own row signal starts false, because evidence fails closed.
-  const [shelfInView, setShelfInView] = useState(true)
+  // The tracker's row signal starts false, because evidence fails closed.
   const reportShelfVisible = useCallback(
-    (visible: boolean) => {
-      setShelfInView(visible)
-      tracker().setRowVisible(visible)
-    },
+    (visible: boolean) => tracker().setRowVisible(visible),
     [tracker],
   )
   const reportVisibleCards = useCallback(
@@ -283,7 +275,6 @@ export function useHomeRecommendations(
     () => ({
       status,
       slate: displaySlate,
-      shelfInView,
       reportShelfMounted,
       reportShelfVisible,
       reportVisibleCards,
@@ -295,7 +286,6 @@ export function useHomeRecommendations(
     [
       status,
       displaySlate,
-      shelfInView,
       reportShelfMounted,
       reportShelfVisible,
       reportVisibleCards,
