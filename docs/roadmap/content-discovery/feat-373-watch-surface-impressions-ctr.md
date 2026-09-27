@@ -53,6 +53,16 @@ Clicks cannot be interpreted without eligible impressions across every Watch blo
 
 The ticket is not complete until this result is visible and reconcilable in the authorized Admin Recommendations area.
 
+## Remaining evidence gate
+
+The signed below-player and For You surfaces have request-owned served facts.
+Anonymous authored Watch blocks currently emit render, eligible, and selection
+facts without a server-issued served denominator. The Admin registry exposes
+that gap; completing this ticket requires reconciling served counts for those
+registered entries and checking the resulting coverage, CTR, replay, and
+ingestion health in a deployed authorized Admin window. Local browser and
+PostgreSQL fixtures cannot establish deployed ingestion completeness.
+
 ## Constraints
 
 - Use portable intersection ratio, page visibility, and dwell. Treat occlusion as unknown when visibility tracking is unsupported.

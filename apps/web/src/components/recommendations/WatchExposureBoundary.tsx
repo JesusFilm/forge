@@ -5,8 +5,8 @@ import {
   useEffect,
   useRef,
   useState,
-  type MouseEvent,
   type ReactNode,
+  type RefObject,
 } from "react"
 import { useEligibleRecommendationImpression } from "./useEligibleRecommendationImpression"
 import type { ExposureVisibilityCapability } from "./useEligibleRecommendationImpression"
@@ -47,11 +47,14 @@ const encoder = new TextEncoder()
 export function WatchExposureBoundary({
   config,
   children,
+  rootRef,
 }: {
   config: Surface
   children: ReactNode
+  rootRef?: RefObject<HTMLDivElement | null>
 }) {
-  const root = useRef<HTMLDivElement>(null)
+  const internalRoot = useRef<HTMLDivElement>(null)
+  const root = rootRef ?? internalRoot
   const cards = useRef(
     new Map<HTMLAnchorElement, { key: string; card: Card }>(),
   )
@@ -210,7 +213,7 @@ export function WatchExposureBoundary({
       for (const value of attachedCards.values()) attach(value.key, null)
       attachedCards.clear()
     }
-  }, [attach, send, windowId])
+  }, [attach, root, send, windowId])
 
   useEffect(() => {
     const restore = (event: PageTransitionEvent) => {
@@ -228,7 +231,7 @@ export function WatchExposureBoundary({
   }, [flush])
 
   const selected = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
+    (event: MouseEvent) => {
       const target = event.target
       if (!(target instanceof Element)) return
       const anchor = target.closest<HTMLAnchorElement>("a[href]")
@@ -241,13 +244,19 @@ export function WatchExposureBoundary({
     },
     [send, flush],
   )
+  useEffect(() => {
+    const element = root.current
+    if (!element) return
+    element.addEventListener("click", selected)
+    return () => element.removeEventListener("click", selected)
+  }, [root, selected])
+  if (rootRef) return <>{children}</>
   return (
     <div
-      ref={root}
+      ref={internalRoot}
       className="contents"
       data-watch-exposure-block={block}
       data-watch-exposure-presentation={presentation}
-      onClickCapture={selected}
     >
       {children}
     </div>

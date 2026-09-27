@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import React, { act } from "react"
+import React, { act, createRef } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -124,6 +124,30 @@ describe("WatchExposureBoundary", () => {
     expect(bodies().filter((event) => event.kind === "eligible")).toHaveLength(
       1,
     )
+  })
+
+  it("instruments an existing actions element without adding a layout wrapper", () => {
+    const actionsRef = createRef<HTMLDivElement>()
+    act(() => {
+      root.render(
+        <WatchExposureBoundary rootRef={actionsRef} config={config}>
+          <div ref={actionsRef} data-testid="actions">
+            <a
+              href="/watch/hero.html"
+              onClick={(event) => event.preventDefault()}
+            >
+              watch
+            </a>
+            <button type="button">mute</button>
+          </div>
+        </WatchExposureBoundary>,
+      )
+    })
+    const actions = container.querySelector('[data-testid="actions"]')!
+    expect(container.firstElementChild).toBe(actions)
+    expect(actions.children).toHaveLength(2)
+    act(() => actions.querySelector("a")!.click())
+    expect(bodies().map((event) => event.kind)).toContain("selected")
   })
 
   it("splits long valid paths below the server's 48 KiB body limit", () => {

@@ -27,3 +27,5 @@ A temporary 70-card fixture exercised the real Watch exposure boundary in the lo
 - Three warm 70-card dev-page samples without the boundary had DCL 198/181/132 ms and FCP 220/204/168 ms; with the boundary, DCL 153/156/136 ms and FCP 172/180/148 ms. These small, noisy local samples showed no observed regression. They are not a production performance claim.
 
 The real PostgreSQL regression inserts exposure facts on both sides of a reporting cutoff and runs the aggregate SQL. It verifies that an impression from the prior window is not counted in the current eligible denominator, early selection stays anomalous, repeat facts are separate from replay attempts, and CTR is based on the current window.
+
+Five fresh 64-card ingestion batches against disposable local PostgreSQL took 41, 24, 22, 24, and 22 ms in the service test, with two exposure-table queries per batch. This measures local database work before Web/Admin network hops and is not a production latency claim. A concurrent same-event replay yielded one acceptance and one replay with `duplicate_count = 1`; the same test checks conflicting payloads, natural repeats, and repeated IDs within a batch.
