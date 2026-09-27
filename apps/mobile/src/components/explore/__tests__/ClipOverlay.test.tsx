@@ -534,9 +534,10 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
       }
     layOutBottom(renderer)
 
-    // Not above the whole block (380), which the rail makes taller than the text.
+    // Not above the whole block (380), which the rail makes taller than the
+    // text: over the title, lifted 15 more (owner, 2026-09-28).
     expect(byTestId(renderer, "clip-band-backdrop")).toHaveLength(0)
-    expect(caption().bottomOffset).toBe(200 + 8)
+    expect(caption().bottomOffset).toBe(200 + 15 + 8)
     // Beside Mute and Share now, so it narrows when it would cover them.
     expect(caption().rightInset).toBe(402 - 318 + 8)
   })

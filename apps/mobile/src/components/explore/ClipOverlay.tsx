@@ -73,6 +73,8 @@ const SCRIM_RAMP_HEIGHT = 40
 const RAIL_BUTTON_SIZE = 48
 const RAIL_LABEL_WIDTH = 76
 const CAPTION_GAP = 8
+/** A portrait clip's captions sit this much higher over it (owner, 2026-09-28). */
+const PORTRAIT_CAPTION_LIFT = 15
 
 /**
  * R13: a subtitle-only clip always shows its captions. A dubbed clip shows
@@ -211,9 +213,10 @@ export function ClipOverlay({
   const band = clipFraming(playingSize) === "band"
   const bandInset = lowerBar == null ? null : lowerBar + regionBottom
   const aboveTitle = bottomHeight - scrimTop
-  const captionBottom =
-    (band && bandInset != null ? Math.max(bandInset, aboveTitle) : aboveTitle) +
-    CAPTION_GAP
+  const captionFloor = band
+    ? Math.max(bandInset ?? 0, aboveTitle)
+    : aboveTitle + PORTRAIT_CAPTION_LIFT
+  const captionBottom = captionFloor + CAPTION_GAP
   const captionRightInset =
     railLeft != null && rowWidth > 0
       ? rowWidth - railLeft + CAPTION_GAP
