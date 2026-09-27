@@ -11,6 +11,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { datadogLog } from "../lib/datadog"
 
 import {
+  audioIso3BackfillPatch,
+  audioLanguagePatch,
   DEFAULT_WATCH_PREFERENCES,
   parseStoredPreferences,
   serializeWatchPreferences,
@@ -24,7 +26,10 @@ import {
  * + app restart. Mirrors {@link ExperienceSelectionProvider}: best-effort async.
  */
 type WatchPreferencesContextValue = WatchPreferences & {
-  setPreferredAudioLanguage: (slug: string | null) => void
+  /** Writes the slug and its ISO 639-3 code together (see audioLanguagePatch). */
+  setPreferredAudioLanguage: (slug: string | null, iso3: string | null) => void
+  /** Fills a missing code; ignored unless `slug` is still the stored slug. */
+  backfillAudioLanguageIso3: (slug: string, iso3: string) => void
   setPreferredSubtitleLanguage: (slug: string | null) => void
   setPreferredSubtitleName: (name: string | null) => void
   setSubtitlesEnabled: (enabled: boolean) => void
@@ -91,8 +96,18 @@ export function WatchPreferencesProvider({
     })
   }, [])
 
+  // Both read prefsRef, not render state, so a pick and a fill in one tick
+  // see each other and a fill for a replaced slug is dropped.
   const setPreferredAudioLanguage = useCallback(
-    (slug: string | null) => persist({ audioLanguageSlug: slug }),
+    (slug: string | null, iso3: string | null) =>
+      persist(audioLanguagePatch(prefsRef.current, slug, iso3)),
+    [persist],
+  )
+  const backfillAudioLanguageIso3 = useCallback(
+    (slug: string, iso3: string) => {
+      const patch = audioIso3BackfillPatch(prefsRef.current, slug, iso3)
+      if (patch) persist(patch)
+    },
     [persist],
   )
   const setPreferredSubtitleLanguage = useCallback(
@@ -117,6 +132,7 @@ export function WatchPreferencesProvider({
       value={{
         ...prefs,
         setPreferredAudioLanguage,
+        backfillAudioLanguageIso3,
         setPreferredSubtitleLanguage,
         setPreferredSubtitleName,
         setSubtitlesEnabled,
