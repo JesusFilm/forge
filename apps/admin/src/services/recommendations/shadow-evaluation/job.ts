@@ -16,6 +16,10 @@ import {
 } from "../candidate"
 import { createDatabaseProfileSourceNominationGenerator } from "../candidates/profile-candidate.service"
 import {
+  COWATCH_SHADOW_GENERATOR_KEY,
+  createDatabaseCowatchShadowGenerator,
+} from "../cowatch/candidate.service"
+import {
   claimNextShadowRun,
   completeShadowEvaluation,
   executeClaimedShadowRun,
@@ -98,7 +102,8 @@ export async function runRecommendationShadowEvaluationJob(
   let failedRuns = 0
   try {
     const sampled = await (
-      input.generatorKey === HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY
+      input.generatorKey === HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY ||
+        input.generatorKey === COWATCH_SHADOW_GENERATOR_KEY
         ? sampleProfileShadowEvaluationContexts
         : sampleShadowEvaluationContexts
     )(prisma, {
@@ -223,6 +228,9 @@ async function finishFenced(
 export function resolveShadowGenerator(generatorKey: string): ShadowGenerator {
   if (generatorKey === SEMANTIC_AA_SHADOW_GENERATOR_KEY) {
     return semanticAaShadowGenerator
+  }
+  if (generatorKey === COWATCH_SHADOW_GENERATOR_KEY) {
+    return createDatabaseCowatchShadowGenerator(prisma)
   }
   if (generatorKey === HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY) {
     return createHybridPersonalizedShadowGenerator(

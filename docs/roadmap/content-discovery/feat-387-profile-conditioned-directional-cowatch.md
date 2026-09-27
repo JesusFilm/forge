@@ -3,7 +3,7 @@ id: "feat-387"
 title: "Profile-conditioned directional co-watch"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: ""
 duration: 8
 depends_on:
@@ -71,3 +71,21 @@ The ticket is not complete until this result is visible and reconcilable in the 
 - Reconcile edges, anchors, candidates, and terminal decision in Admin.
 - Run affected application checks: `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.
 - Run `pnpm --filter roadmap lint` after updating roadmap metadata.
+
+## Implementation evidence and remaining gate (2026-09-28)
+
+- The directional graph, exact source and pair lineage, immutable feature generation, privacy suppression, Admin inspection, and shadow-only candidate/evaluation operator are implemented. The shadow operator keeps a qualifying co-watch result inconclusive until feat-505's controlled evaluation. Live delivery is unchanged.
+- A migrated local PostgreSQL fixture verifies revision replacement, still-current but invalidated evidence, same-state eligibility revision replacement, privacy suppression, stale read fencing, exact rebuild of every edge metric, and watchability filtering. The Admin page has render and permission tests. A synthetic 50,000-source, 25,000-pair graph took 409 ms and 73 MiB heap on the development host; this is an algorithm benchmark, not production latency or coverage evidence.
+- The current 50,000-row source bound and 250,000 attempted-pair bound fail closed. No production corpus or authorized Admin session was available for an actual shadow sample, candidate overlap, terminal evaluation, or visual reconciliation. This ticket remains **in progress** until those Admin evidence gates are observed. A local fixture cannot establish useful production coverage. Feat-505 separately gates promotion and usefulness claims.
+- When shadow co-watch evidence is sparse, the comparison retains the observed live slate and labels that baseline truthfully, even if its original generator was hybrid. Existing live semantic fallback remains unchanged.
+- The isolated local database has no authenticated Admin user or registered OAuth redirect for this worktree, so an authenticated browser walkthrough could not be completed. The server-rendered Admin page and permission/decision states were verified in component tests; an authorized Admin session against a representative corpus remains the visual evidence gate.
+
+New records declare the following handling in the schema and migration:
+
+| Record              | Purpose and identity                                     | Access and ingestion                                | Retention and deletion                           | Fallback      |
+| ------------------- | -------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------ | ------------- |
+| Generation          | Population graph; aggregate identity free                | Admin aggregate inspection; manual bounded snapshot | 29 days; expire and cascade                      | Live baseline |
+| Source contribution | Exact outcome and decision lineage; private pseudonymous | Projection service; current eligible outcome        | At most 29 days; cascade from outcome or profile | Live baseline |
+| Pair contribution   | Exact directional pair lineage; private pseudonymous     | Projection service; bounded pair build              | 29 days; cascade from outcome or profile         | Live baseline |
+| Edge                | Versioned directional feature; aggregate identity free   | Admin aggregate inspection; immutable publish       | 29 days; cascade from generation                 | Live baseline |
+| Suppression         | Privacy erasure fence; episode scoped private ID         | Privacy service; erasure transaction                | At most 29 days; cascade from episode            | Live baseline |

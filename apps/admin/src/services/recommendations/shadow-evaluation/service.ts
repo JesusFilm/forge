@@ -14,6 +14,7 @@ import {
   type RecommendationCandidateContext,
 } from "../candidate"
 import { HYBRID_PERSONALIZED_MANIFEST_ID } from "../promotion/manifest"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 import { reconstructShadowHistory } from "./history"
 import {
   aggregateShadowMetrics,
@@ -621,7 +622,9 @@ export async function executeClaimedShadowRun(
     cohortQuality: generated.cohortQuality,
     rankingMode:
       run.evaluation.manifestId === HYBRID_PERSONALIZED_MANIFEST_ID &&
-      run.evaluation.generatorVersion === HYBRID_CANDIDATE_GENERATOR_SET_VERSION
+      (run.evaluation.generatorVersion ===
+        HYBRID_CANDIDATE_GENERATOR_SET_VERSION ||
+        run.evaluation.generatorVersion === COWATCH_SHADOW_GENERATOR_KEY)
         ? "hybrid"
         : "semantic",
     currentVideoId: run.request.seedMediaId,
@@ -790,11 +793,20 @@ export async function completeShadowEvaluation(
       (run) => run.state === RecommendationShadowRunState.PUBLISHED,
     )
     const metrics = aggregateShadowMetrics(published)
-    const decision = decideShadowEvaluation({
+    const policyDecision = decideShadowEvaluation({
       metrics,
       processedRuns: published.length,
       minimumRuns: input.minimumRuns,
     })
+    const decision =
+      evaluation.generatorVersion === COWATCH_SHADOW_GENERATOR_KEY &&
+      policyDecision.decision === "promote_to_experiment"
+        ? {
+            decision: "inconclusive" as const,
+            reasonCode: "cowatch_controlled_evaluation_required",
+            reevaluationCondition: "complete_feat_505_controlled_evaluation",
+          }
+        : policyDecision
     const inputDigest = digestShadowValue(
       published.map((run) => ({
         live: run.liveSlateDigest,
