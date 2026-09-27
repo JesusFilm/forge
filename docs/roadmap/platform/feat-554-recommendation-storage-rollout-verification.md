@@ -3,7 +3,7 @@ id: "feat-554"
 title: "Roll out compact recommendation traces and verify production headroom"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-28"
 duration: 2
 depends_on:
