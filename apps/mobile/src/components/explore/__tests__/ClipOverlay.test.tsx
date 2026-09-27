@@ -523,6 +523,35 @@ describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
     expect(barValue(renderer).now).toBe(13)
   })
 
+  it("shows the thumb only while a drag runs", () => {
+    const renderer = render()
+    const handlers = progressBar(renderer).props as unknown as Handlers
+    act(() => {
+      handlers.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 44 } },
+      })
+    })
+    const thumbs = () => byTestId(renderer, "clip-progress-thumb").length
+    expect(thumbs()).toBe(0)
+
+    act(() => {
+      handlers.onResponderGrant(touchAt(0))
+      handlers.onResponderMove(touchAt(150))
+    })
+    expect(thumbs()).toBe(1)
+    act(() => {
+      handlers.onResponderRelease(touchAt(150))
+    })
+    expect(thumbs()).toBe(0)
+
+    // The pager taking the drag hides it too.
+    act(() => {
+      handlers.onResponderGrant(touchAt(0))
+      handlers.onResponderTerminate(touchAt(0))
+    })
+    expect(thumbs()).toBe(0)
+  })
+
   it("keeps a sideways drag past the lock, and yields a vertical one to the pager", () => {
     const renderer = render()
     const handlers = progressBar(renderer).props as unknown as Handlers

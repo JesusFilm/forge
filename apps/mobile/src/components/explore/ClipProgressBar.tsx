@@ -96,6 +96,9 @@ export function ClipProgressBar({
   const grantXRef = useRef(0)
   const fractionRef = useRef(0)
   const draggingRef = useRef(false)
+  // The thumb shows only during a drag (owner, 2026-09-27): the whole strip
+  // takes the touch, so at rest the fill alone marks the place.
+  const [dragging, setDragging] = useState(false)
   const lockedRef = useRef(false)
 
   // Both read only refs and stable values, so the PanResponder built on the
@@ -134,6 +137,7 @@ export function ClipProgressBar({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: (e: GestureResponderEvent) => {
         draggingRef.current = true
+        setDragging(true)
         lockedRef.current = false
         grantXRef.current = e.nativeEvent.locationX
         fractionRef.current = fractionAt(grantXRef.current)
@@ -153,10 +157,12 @@ export function ClipProgressBar({
       onPanResponderTerminationRequest: () => !lockedRef.current,
       onPanResponderRelease: () => {
         draggingRef.current = false
+        setDragging(false)
         seekTo(clipTimeAt(fractionRef.current, windowRef.current))
       },
       onPanResponderTerminate: () => {
         draggingRef.current = false
+        setDragging(false)
         show(readTime(playerRef.current))
       },
     }),
@@ -207,8 +213,9 @@ export function ClipProgressBar({
           style={[styles.fill, { transform: [{ scaleX: progress }] }]}
         />
       </View>
-      {trackWidth > 0 && (
+      {dragging && trackWidth > 0 && (
         <Animated.View
+          testID="clip-progress-thumb"
           pointerEvents="none"
           style={[styles.thumb, { transform: [{ translateX: thumbX }] }]}
         />
