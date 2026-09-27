@@ -939,6 +939,39 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
     expect(fit(B)).toBe("contain")
   })
 
+  it("shows the loading poster whole in the band's region, and a portrait one full bleed", async () => {
+    await mountFeed()
+    await hand(1)
+    expect(veilShown()).toBe(true)
+    await callOverlay("onVideoRegion", { top: 59, bottom: 200 })
+    const poster = () => {
+      const [veil] = hosts((n) => n.props.testID === "explore-clip-veil")
+      return hosts((n) => n.type === "ExpoImage", veil)[0]
+    }
+    const flat = (node: Node) =>
+      ([] as unknown[])
+        .concat(node.props.style)
+        .flat(Infinity)
+        .filter(Boolean)
+        .reduce<Record<string, unknown>>(
+          (acc, part) => ({ ...acc, ...(part as Record<string, unknown>) }),
+          {},
+        )
+
+    // Where the landscape video will play, whole: no full-bleed crop.
+    expect(flat(poster())).toMatchObject({ top: 59, bottom: 200 })
+    expect(poster().props.contentFit).toBe("contain")
+
+    // A portrait poster fills the page, as its clip will.
+    await act(async () => {
+      ;(poster().props.onLoad as (e: unknown) => void)({
+        source: { width: 540, height: 960 },
+      })
+    })
+    expect(flat(poster())).toMatchObject({ top: 0, bottom: 0 })
+    expect(poster().props.contentFit).toBe("cover")
+  })
+
   it("centres the loading spinner on the band's region", async () => {
     await mountFeed()
     await hand(1)

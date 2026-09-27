@@ -530,6 +530,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
             <PosterCover
               testID="explore-clip-veil"
               uri={veil.image?.uri ?? null}
+              region={videoRegion}
             />
             {/* In the band, the spinner centres on the frame, not the screen. */}
             <View
@@ -564,6 +565,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       clip={clipFor(state, slot.role)}
       covered={!pageShowsStandby(state, slot.role)}
       onTap={handleTap}
+      region={videoRegion}
     >
       {slot.role === "current" ? currentLayers : null}
     </ClipPage>
@@ -605,6 +607,8 @@ type ClipPageProps = {
   /** False while a loaded standby shows this page's first frame (AE8). */
   covered: boolean
   onTap: () => void
+  /** Where a landscape clip's video, and so its poster, sits. */
+  region: ExploreVideoRegion | null
   /** The current page's veil, states, and overlay. */
   children: ReactNode
 }
@@ -619,6 +623,7 @@ function ClipPage({
   clip,
   covered,
   onTap,
+  region,
   children,
 }: ClipPageProps) {
   const surface = useRef<View>(null)
@@ -633,10 +638,18 @@ function ClipPage({
   }, [role])
 
   if (clip == null)
-    return <PosterCover testID="explore-page-cover" uri={null} />
+    return (
+      <PosterCover testID="explore-page-cover" uri={null} region={region} />
+    )
   if (role !== "current") {
     if (!covered) return null
-    return <PosterCover testID="explore-page-cover" uri={clipPosterUri(clip)} />
+    return (
+      <PosterCover
+        testID="explore-page-cover"
+        uri={clipPosterUri(clip)}
+        region={region}
+      />
+    )
   }
   return (
     <>
@@ -680,16 +693,38 @@ function FeedVideoLayer({
   )
 }
 
-/** Opaque, so a player that still holds an old frame never shows through. */
-function PosterCover({ testID, uri }: { testID: string; uri: string | null }) {
+/**
+ * Opaque, so a player that still holds an old frame never shows through. The
+ * poster sits where the video will (owner, 2026-09-28): a landscape poster fits
+ * whole in the band's region, and a portrait one fills the page, as its clip does.
+ */
+function PosterCover({
+  testID,
+  uri,
+  region,
+}: {
+  testID: string
+  uri: string | null
+  region: ExploreVideoRegion | null
+}) {
+  // The poster's own shape, read when it loads, and only for this poster.
+  const [loaded, setLoaded] = useState<{ uri: string; portrait: boolean }>()
+  const portrait = loaded?.uri === uri && loaded.portrait
+  const imageStyle =
+    portrait || region == null
+      ? StyleSheet.absoluteFill
+      : [StyleSheet.absoluteFill, region]
   return (
     <View testID={testID} style={styles.cover} pointerEvents="none">
       {uri != null && (
         <Image
           source={uri}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
+          style={imageStyle}
+          contentFit={portrait ? "cover" : "contain"}
           recyclingKey={uri}
+          onLoad={(e) =>
+            setLoaded({ uri, portrait: e.source.height > e.source.width })
+          }
         />
       )}
     </View>
