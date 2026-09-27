@@ -3,6 +3,7 @@ import {
   Animated,
   PanResponder,
   StyleSheet,
+  Text,
   View,
   type AccessibilityActionEvent,
   type GestureResponderEvent,
@@ -11,7 +12,8 @@ import {
 } from "react-native"
 import type { VideoPlayer } from "expo-video"
 
-import { TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import { useTypography } from "../../hooks/useTypography"
+import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { readOr } from "../../lib/explore/playerRead"
 import type { ClipWindow } from "../../lib/explore/types"
@@ -74,6 +76,7 @@ export function ClipProgressBar({
   clipWindow,
   onSeek,
 }: ClipProgressBarProps) {
+  const typography = useTypography()
   const { startSeconds, endSeconds } = clipWindow
   const length = lengthOf(clipWindow)
 
@@ -100,6 +103,10 @@ export function ClipProgressBar({
   // takes the touch, so at rest the fill alone marks the place.
   const [dragging, setDragging] = useState(false)
   const lockedRef = useRef(false)
+  // The pill above a drag names the place it reaches (owner, 2026-09-27).
+  // Whole seconds, so a drag renders the bar once a second, not every frame.
+  const [scrubSeconds, setScrubSeconds] = useState(0)
+  const [pillWidth, setPillWidth] = useState(0)
 
   // Both read only refs and stable values, so the PanResponder built on the
   // first render calls the same functions every later render would.
@@ -132,6 +139,12 @@ export function ClipProgressBar({
   const fractionAt = (x: number) =>
     widthRef.current > 0 ? clamp(x / widthRef.current, 0, 1) : 0
 
+  const scrubTo = (fraction: number) => {
+    fractionRef.current = fraction
+    progress.setValue(fraction)
+    setScrubSeconds(Math.floor(fraction * lengthOf(windowRef.current)))
+  }
+
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -140,8 +153,7 @@ export function ClipProgressBar({
         setDragging(true)
         lockedRef.current = false
         grantXRef.current = e.nativeEvent.locationX
-        fractionRef.current = fractionAt(grantXRef.current)
-        progress.setValue(fractionRef.current)
+        scrubTo(fractionAt(grantXRef.current))
       },
       onPanResponderMove: (
         _e: GestureResponderEvent,
@@ -150,8 +162,7 @@ export function ClipProgressBar({
         if (Math.abs(g.dx) > SCRUB_LOCK_DX && Math.abs(g.dx) > Math.abs(g.dy)) {
           lockedRef.current = true
         }
-        fractionRef.current = fractionAt(grantXRef.current + g.dx)
-        progress.setValue(fractionRef.current)
+        scrubTo(fractionAt(grantXRef.current + g.dx))
       },
       // A vertical swipe that starts on the bar still belongs to the pager.
       onPanResponderTerminationRequest: () => !lockedRef.current,
@@ -188,6 +199,16 @@ export function ClipProgressBar({
     inputRange: [0, 1],
     outputRange: thumbOutputRange(trackWidth, THUMB, false),
   })
+  // The pill centres on the drag, and stops at the bar's two ends.
+  const half = trackWidth > 0 ? pillWidth / 2 / trackWidth : 0
+  const pillX =
+    pillWidth > 0 && half < 0.5
+      ? progress.interpolate({
+          inputRange: [0, half, 1 - half, 1],
+          outputRange: [0, 0, trackWidth - pillWidth, trackWidth - pillWidth],
+          extrapolate: "clamp",
+        })
+      : 0
 
   return (
     <View
@@ -219,6 +240,27 @@ export function ClipProgressBar({
           pointerEvents="none"
           style={[styles.thumb, { transform: [{ translateX: thumbX }] }]}
         />
+      )}
+      {dragging && trackWidth > 0 && (
+        <Animated.View
+          testID="clip-scrub-pill"
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onLayout={(e) => setPillWidth(Math.round(e.nativeEvent.layout.width))}
+          style={[
+            styles.pill,
+            // Hidden for the one frame before its width is known.
+            {
+              opacity: pillWidth > 0 ? 1 : 0,
+              transform: [{ translateX: pillX }],
+            },
+          ]}
+        >
+          <Text style={[styles.pillText, typography.caption]}>
+            {EXPLORE_COPY.scrubTime(scrubSeconds, total)}
+          </Text>
+        </Animated.View>
       )}
     </View>
   )
@@ -253,5 +295,21 @@ const styles = StyleSheet.create({
     marginLeft: -THUMB / 2,
     borderRadius: THUMB / 2,
     backgroundColor: TEXT_ON_OVERLAY,
+  },
+  pill: {
+    position: "absolute",
+    left: 0,
+    bottom: HIT_HEIGHT / 2 + THUMB / 2 + 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: hexToRgba(BLACK, 0.75),
+  },
+  // Fixed-width digits, so the pill does not change width as the time runs.
+  pillText: {
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+    fontWeight: "600",
+    fontVariant: ["tabular-nums"],
   },
 })

@@ -573,6 +573,42 @@ describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
     expect(barValue(renderer).now).toBe(13)
   })
 
+  it("shows the clip time in a pill above a drag, and hides it on release", () => {
+    expect(EXPLORE_COPY.scrubTime(12, 48)).toBe("0:12 / 0:48")
+    const renderer = render()
+    const handlers = progressBar(renderer).props as unknown as Handlers
+    act(() => {
+      handlers.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 44 } },
+      })
+    })
+    const pill = () => {
+      const found = byTestId(renderer, "clip-scrub-pill")
+      return found.length === 0
+        ? null
+        : textsIn(jsonById(renderer, "clip-scrub-pill")).join("")
+    }
+    expect(pill()).toBeNull()
+
+    // 12:04 to 12:31 is a 27 s clip.
+    act(() => {
+      handlers.onResponderGrant(touchAt(0))
+    })
+    expect(pill()).toBe("0:00 / 0:27")
+    act(() => {
+      handlers.onResponderMove(touchAt(150))
+    })
+    expect(pill()).toBe("0:13 / 0:27")
+    act(() => {
+      handlers.onResponderMove(touchAt(300, 150))
+    })
+    expect(pill()).toBe("0:27 / 0:27")
+    act(() => {
+      handlers.onResponderRelease(touchAt(300))
+    })
+    expect(pill()).toBeNull()
+  })
+
   it("shows the thumb only while a drag runs", () => {
     const renderer = render()
     const handlers = progressBar(renderer).props as unknown as Handlers
