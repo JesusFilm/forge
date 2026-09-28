@@ -82,12 +82,13 @@ publication remains pending the normal reviewed merge and Pages flow.
 - Production deploys use Forge PR-to-main autodeploy only.
 - Operator evidence must never contain secrets or corpus text.
 
-Consumer programme order: feat-526 planning/design → feat-518 discovery
-→ feat-527 access lifecycle → feat-528 usage visibility → feat-529
-dogfood/migration → feat-530 full portal UI. Feat-527's registry foundation
-and portal admission are merged and deployed; consumer creation, credentials,
-ownership and lifecycle management are its next implementation work. Portal
-design is already captured by feat-526; the full UI waits for dogfood.
+Consumer programme order (updated 2026-09-28): feat-526 planning/design →
+feat-518 discovery → feat-527 access backend → feat-530 local management UI.
+Feat-528 usage visibility can follow the backend, with reporting views added when
+available. Feat-529 dogfood/migration follows usage and the usable management UI.
+The backend PR can merge with incomplete live verification recorded; exercise
+creation, ownership and credentials through the local UI next. No temporary
+production consumers or pre-UI API verification harness is required.
 
 [Discovery evidence](evidence/feat-518/consumer-access-discovery.md) is delivered
 in separate draft #2325; feat-518 is complete as documentation. The

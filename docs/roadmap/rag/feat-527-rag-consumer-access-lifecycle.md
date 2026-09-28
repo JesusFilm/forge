@@ -7,7 +7,7 @@ status: "in-progress"
 start_date: "2026-09-15"
 duration: 5
 depends_on: ["feat-526", "feat-518"]
-blocks: ["feat-528"]
+blocks: ["feat-528", "feat-530"]
 tags: ["rag", "auth", "observability"]
 ---
 
@@ -43,8 +43,8 @@ Retain at least one owner, transaction/version checks and restricted audit.
 
 Provide stable identity, explicit server-authorized source scope,
 immediate atomic rotation, suspension/revocation and isolated metadata privileges.
-Supply the same backend to the pre-portal dogfood harness; the full UI remains
-feat-530 after dogfood. Deliver the migration runbook; cutoff waits for feat-529
+Supply the backend for feat-530 management UI development and local user-flow
+verification next. Deliver the migration runbook; cutoff waits for feat-529
 and separate production authorization.
 
 ## Constraints
@@ -75,13 +75,14 @@ establish admission, not consumer creation. The
 [Foundation report](evidence/feat-527/consumer-registry-foundation.md) records the
 schema/API decisions and disposable database verification.
 
-**Next work remains feat-527:** review and deploy the consumer lifecycle backend,
-provision its isolated writer/auth roles, and finish the authenticated API and
-operational checks in the migration runbook and plan E. Keep the ticket in
-progress until those release gates have recorded evidence. Usage aggregates
-belong to feat-528, operational dogfood to feat-529, and the full management UI
-to feat-530. The existing `/portal` identity page does not create a consumer or
-issue a key; the `/portal/consumers` API supplies that backend before the UI.
+**Next delivery:** merge the reviewed backend slice with live verification gaps
+recorded, then build feat-530's management UI locally against a local database.
+Use that UI to exercise creation, membership, credentials and lifecycle behavior
+and fix integration issues. No production test consumers or pre-UI API harness
+are required. The backend and UI verification are distinct milestones; keep this
+ticket in progress until its deferred end-to-end checks have evidence.
+Feat-528 adds usage visibility; feat-529 handles actual dogfood and cutoff after
+the management flow is usable.
 
 ## V1 simplification resolution
 
@@ -113,6 +114,7 @@ terminal revocation. Registered `/v1/search` credentials use the restricted
 auth reader and current database state on every request. The
 [migration runbook](../../../apps/rag/docs/ops/consumer-access-migration.md)
 defines additive rollout, separate roles, source policy, legacy grace and
-rollback. The full UI remains feat-530. The lifecycle PR, restricted consumer
-role setup and authenticated API verification remain release gates; the
-production admission setup above is already delivered.
+rollback. Management UI work is next under feat-530, with end-to-end checks deferred to
+local UI development. Restricted consumer roles and source configuration are
+required before activation; incomplete live verification does not block merging
+this backend slice. Production admission above is already delivered.

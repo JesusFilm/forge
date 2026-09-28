@@ -28,11 +28,10 @@ as the transaction commits, so coordinate installation with every caller.
    creates consumers with empty scope; `/v1/search` then returns an empty 200.
    A creator cannot supply or widen grants. Verify every key exists in the
    active source registry before activation.
-4. Exercise the authenticated backend with a nonproduction portal session,
-   following the verification sequence below. Create disposable consumers for
-   this check. Real receiver registration follows the rollout decision; RAGBot
-   dogfood belongs to feat-529. Record only consumer IDs and approved receiver
-   labels. Never capture issuance response bodies in logs or test evidence.
+4. Develop and exercise the management UI locally under feat-530, using the
+   real backend and a local database. End-to-end user-flow verification is
+   deferred to that work. Merging the backend does not claim those checks passed
+   or require temporary production consumers or an API-only operator harness.
 5. Use the existing shared token path only during the separately authorized
    seven-day registration/support grace. It is `legacy-unattributed`; do not
    infer consumer identity from IP, user agent or caller headers. A credential
@@ -70,66 +69,38 @@ state conflicts against an existing consumer as `denied`. Invalid request bodies
 unknown consumer IDs and admission/origin rejection before the consumer operation
 do not create lifecycle rows; no untrusted identity or request body is persisted.
 
-## Verification before the management UI
+## Verification sequence (updated 2026-09-28)
 
-A consumer is an API client, not a portal login. The portal login establishes
-which GitHub person is allowed to create and manage that client. Signing in alone
-does not register a consumer.
+Merge the backend as an incremental delivery with incomplete live verification
+recorded. The consumer lifecycle requires both dedicated database URLs to activate;
+merging application code alone does not provision those roles or register consumers.
 
-### Automated verification — agent or CI
+Next, build feat-530's management UI on a local branch using a local database and
+local-only test identities/data. Exercise creation, ownership, member management,
+key rotation, suspension and revocation through the actual UI. Fix schema and
+backend/UI wiring there. Test data stays in local databases; it is not a deployed
+feature or a temporary CI provisioning workflow.
 
-Use a disposable local PostgreSQL database, apply migrations, and provision the
-two restricted roles above. Run `pnpm db:verify` with `DATABASE_URL` pointing to
-the disposable owner connection and both consumer URLs pointing to its restricted
-roles. The tests create synthetic consumers and credentials themselves. No real
-GitHub account or production credential is needed. They exercise the portal HTTP
-routes and `/v1` authentication with synthetic admission and database persistence.
-Delete the disposable database and its test roles after recording sanitized test
-counts. Never run the fixture suite against production.
+Existing automated tests remain regression coverage. `pnpm db:verify` uses its
+existing database test job; restricted-role checks are optional local checks when
+both dedicated test-role URLs are supplied. This change adds no CI role provisioning
+or checked-in SQL fixture credentials. Never point integration tests at production.
 
-### Authenticated API verification — operator with an admitted account
+A consumer is an API client; the portal login identifies its human owner. When the
+UI is ready, an admitted user creates the real consumer through that UI. The server
+derives the initial owner and displays the credential once. The receiving operator
+saves it into the receiver's secret manager. No consumer creation is needed from
+Jaco during backend review.
 
-After the backend is merged, deployed and configured, use a nonproduction portal
-and sign in with an allowlisted GitHub account. The existing identity page is
-sufficient; the feat-530 management UI is not needed. Same-origin browser requests
-to `/portal/consumers` carry the HttpOnly session cookie automatically. Do not
-copy that cookie into a terminal, transcript or API client.
+Still unverified: the complete browser management flow, live session persistence,
+allowlist-removal behavior, outage/stale publication, cookie/replay and leakage
+inspection, and operational latency/concurrency. Track these honestly as follow-up
+work rather than prerequisites for merging this backend slice. Standard production
+role separation and source configuration remain necessary to enable access.
 
-An operator can perform the browser actions, or an agent can drive that signed-in
-browser when authorized. The server derives the initial owner from the signed-in
-account. The operator retains the one-time credential securely; evidence contains
-only status codes, consumer IDs, versions and approved labels.
-
-| Check                   | Request or action                                                                 | Expected result                                               |
-| ----------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Admission and directory | Sign in; `GET /portal/consumers`                                                  | Safe metadata; no credential/verifier                         |
-| Create                  | Same-origin `POST /portal/consumers` with a unique synthetic name                 | Active consumer; signed-in user owns it; secret returned once |
-| Authenticate and scope  | Use the issued secret in memory for `/v1/search`                                  | Authorized source intersection; no widening from caller input |
-| Rotate                  | Owner posts current `expectedVersion` to `/:id/rotate`                            | New secret works; old secret returns 401                      |
-| Lost response           | Rotate again with `reason: "lost"`                                                | Recovery issues a replacement; no stored plaintext to reveal  |
-| Other admitted person   | Second admitted account lists and attempts mutation                               | Directory visible; mutation denied unless an owner            |
-| Membership              | Add eligible owner; attempt to remove the final owner                             | Eligible addition succeeds; final-owner removal fails         |
-| Suspend/resume          | Owner posts state changes to `/:id/state`                                         | Suspended key returns 401; resumed key works                  |
-| Revoke                  | Owner posts `revoked`                                                             | Key returns 401; reactivation fails                           |
-| Removed admission       | Merge removal of a test account, then attempt mutation using its existing session | Next action denied                                            |
-
-Use a controlled receiver for bearer requests so credentials are never printed,
-saved in browser console history or included in exported network captures.
-Also complete the existing admission evidence gates: session persistence across
-restart, forced GitHub outage/stale publication, cookie/state replay inspection,
-and a redacted browser/network/log leakage review. Record an agreed synthetic
-latency/concurrency baseline and acceptance budget before release. These live
-checks remain open until an operator records their results; local tests do not
-stand in for them.
-
-### Real consumer registration
-
-Create the real consumer only after the release gates and source grant are agreed.
-An admitted owner creates it through the same API. The receiving operator saves
-the one-time secret directly into the receiver's secret manager and installs it.
-Feat-528 adds usage visibility; feat-529 verifies RAGBot's actual HTTP traffic and
-owns the separately authorized grace/cutoff. No real consumer is required to
-verify this PR locally.
+Feat-528 adds usage visibility and the reporting UI can follow it. Feat-529 owns
+actual RAGBot HTTP dogfood and separately authorized grace/cutoff. The portal
+management UI now precedes dogfood; shared-token retirement remains later work.
 
 ## Recovery and rollback
 
