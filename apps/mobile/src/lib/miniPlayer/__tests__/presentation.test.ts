@@ -1,4 +1,3 @@
-import { TAB_ROUTE_NAMES } from "../../tabBar"
 import {
   READER_COVER_ROUTE_PATTERNS,
   READER_ROUTE_PATTERNS,
@@ -14,6 +13,7 @@ import {
 } from "../presentation"
 import { routePattern } from "../suppression"
 import { createMiniPlayerStore } from "../store"
+import { TAB_GROUP_SEGMENT, TAB_ROUTE_NAMES } from "../../tabBar"
 
 function storeWithSession() {
   const store = createMiniPlayerStore()
@@ -37,6 +37,7 @@ const ROUTE_TABLE: ReadonlyArray<
   [pattern: string, segments: string[], expected: MiniPlayerPresentation]
 > = [
   ["(tabs) — Home", ["(tabs)"], "floating"],
+  ["(tabs)/explore", ["(tabs)", "explore"], "floating"],
   ["(tabs)/watch — Discover", ["(tabs)", "watch"], "floating"],
   ["(tabs)/bible — Bible", ["(tabs)", "bible"], "floating"],
   ["(tabs)/profile", ["(tabs)", "profile"], "floating"],
@@ -226,9 +227,10 @@ describe("suppression and phases", () => {
 })
 
 describe("route predicates", () => {
-  it("recognises the four tab roots and nothing else", () => {
+  it("recognises the five tab roots and nothing else", () => {
     expect(isTabRootRoute(["(tabs)"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "index"])).toBe(true)
+    expect(isTabRootRoute(["(tabs)", "explore"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "watch"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "bible"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "profile"])).toBe(true)
@@ -248,6 +250,15 @@ describe("route predicates", () => {
         (pattern) => pattern.replace("(tabs)/", ""),
       ),
     ).toEqual([...TAB_ROUTE_NAMES])
+  })
+
+  // A new tab that misses the table would leave R23's back handler unarmed
+  // there, and nothing else would notice.
+  it("covers every tab the navigator declares", () => {
+    expect(TAB_ROUTE_NAMES.length).toBeGreaterThan(0)
+    TAB_ROUTE_NAMES.forEach((name) =>
+      expect(isTabRootRoute([TAB_GROUP_SEGMENT, name])).toBe(true),
+    )
   })
 
   it("recognises the watch group as full-screen and the series group as not", () => {

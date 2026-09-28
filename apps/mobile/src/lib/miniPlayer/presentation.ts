@@ -41,12 +41,16 @@ export const FULL_SCREEN_ROUTE_PATTERNS = [
   "watch/download",
 ] as const
 
-/** The four tab roots from `app/(tabs)/_layout.tsx`. "(tabs)/index" is listed
+/** The Explore tab, whose takeover ends any floating window (KTD10). */
+export const EXPLORE_TAB_ROUTE_PATTERN = "(tabs)/explore"
+
+/** The five tab roots from `app/(tabs)/_layout.tsx`. "(tabs)/index" is listed
  *  too: only the router's index-pop keeps it out of the segment list. The
  *  pushed Bible reader is the root route "reader", not "(tabs)/bible". */
 export const TAB_ROOT_ROUTE_PATTERNS = [
   "(tabs)",
   "(tabs)/index",
+  EXPLORE_TAB_ROUTE_PATTERN,
   "(tabs)/watch",
   "(tabs)/bible",
   "(tabs)/profile",
@@ -149,7 +153,8 @@ export function expandAction(input: {
  * Presentation from the session and the current route.
  *
  * `floating` is the default for every route the tables do not name, because R3
- * promises the window persists across tab changes and further pushes. `exiting`
+ * promises the window persists across tab changes and further pushes. The one
+ * exception is Explore, whose takeover ends the window (feat-552 KTD10). `exiting`
  * outranks the route tables: a dismissed window animates away wherever the
  * viewer is, and only `exiting` may clear the store.
  */

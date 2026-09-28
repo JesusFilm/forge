@@ -29,6 +29,7 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
         activeVariantDocumentId: null,
         activeVariantHls: null,
         variantSettled: false,
+        awaitsNamedDub: false,
         recordStreamingUrl: RECORD,
         seedStreamingUrl: SEED,
       }),
@@ -43,6 +44,7 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
         activeVariantDocumentId: null,
         activeVariantHls: null,
         variantSettled: false,
+        awaitsNamedDub: false,
         recordStreamingUrl: RECORD,
         seedStreamingUrl: null,
       }),
@@ -57,6 +59,7 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
         activeVariantDocumentId: null,
         activeVariantHls: VARIANT,
         variantSettled: true,
+        awaitsNamedDub: false,
         recordStreamingUrl: RECORD,
         seedStreamingUrl: SEED,
       }),
@@ -71,6 +74,7 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
         activeVariantDocumentId: null,
         activeVariantHls: null,
         variantSettled: true,
+        awaitsNamedDub: false,
         recordStreamingUrl: RECORD,
         seedStreamingUrl: SEED,
       }),
@@ -85,6 +89,7 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
         activeVariantDocumentId: null,
         activeVariantHls: null,
         variantSettled: true,
+        awaitsNamedDub: false,
         recordStreamingUrl: null,
         seedStreamingUrl: SEED,
       }),
@@ -99,6 +104,7 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
         activeVariantDocumentId: null,
         activeVariantHls: VARIANT,
         variantSettled: true,
+        awaitsNamedDub: false,
         recordStreamingUrl: RECORD,
         seedStreamingUrl: SEED,
       }),
@@ -116,6 +122,7 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
         activeVariantHls: VARIANT,
         activeVariantDocumentId: "dub-french",
         variantSettled: true,
+        awaitsNamedDub: false,
         recordStreamingUrl: RECORD,
         seedStreamingUrl: SEED,
       }),
@@ -130,6 +137,7 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
         activeVariantHls: VARIANT,
         activeVariantDocumentId: "dub-english",
         variantSettled: true,
+        awaitsNamedDub: false,
         recordStreamingUrl: RECORD,
         seedStreamingUrl: SEED,
       }),
@@ -144,6 +152,7 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
         activeVariantHls: null,
         activeVariantDocumentId: "dub-french",
         variantSettled: true,
+        awaitsNamedDub: false,
         recordStreamingUrl: RECORD,
         seedStreamingUrl: SEED,
       }),
@@ -158,6 +167,40 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
         activeVariantHls: null,
         activeVariantDocumentId: null,
         variantSettled: false,
+        awaitsNamedDub: false,
+        recordStreamingUrl: RECORD,
+        seedStreamingUrl: SEED,
+      }),
+    ).toBe(OFFLINE)
+  })
+
+  // A "Keep watching" intent names the dub before the selection settles, so
+  // an unsettled selection is pending, not unknown: the file may be another
+  // language (R16 plays the clip's dub). The seed carries playback meanwhile.
+  it("does not play the download while a named dub settles", () => {
+    expect(
+      resolvePlayerSource({
+        offlineSource: OFFLINE,
+        offlineDubDocumentId: "dub-spanish",
+        activeVariantHls: null,
+        activeVariantDocumentId: null,
+        variantSettled: false,
+        awaitsNamedDub: true,
+        recordStreamingUrl: RECORD,
+        seedStreamingUrl: SEED,
+      }),
+    ).toBe(SEED)
+  })
+
+  it("plays the download once a named dub settles on the dub on disk", () => {
+    expect(
+      resolvePlayerSource({
+        offlineSource: OFFLINE,
+        offlineDubDocumentId: "dub-english",
+        activeVariantHls: VARIANT,
+        activeVariantDocumentId: "dub-english",
+        variantSettled: true,
+        awaitsNamedDub: true,
         recordStreamingUrl: RECORD,
         seedStreamingUrl: SEED,
       }),
@@ -174,6 +217,7 @@ describe("resolvePlayerSource (the watch screen's source precedence)", () => {
       activeVariantHls: VARIANT,
       activeVariantDocumentId: "dub-french",
       variantSettled: true,
+      awaitsNamedDub: false,
       recordStreamingUrl: RECORD,
       seedStreamingUrl: SEED,
     }

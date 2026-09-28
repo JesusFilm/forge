@@ -366,6 +366,48 @@ describe("slot ownership", () => {
       ),
     ).toBe(false)
   })
+
+  // KTD12: an offer choice ends the hold with a request that no longer carries
+  // it, so the hold must take part in the compare. By value, because the
+  // screen rebuilds the hold on every render.
+  it("republishes when only the progress hold changes, compared by value", () => {
+    const { store } = makeStores()
+    const id = store.attachSlot(makeRequest())
+    let notifications = 0
+    store.subscribe(() => {
+      notifications += 1
+    })
+    const hold = { id: "keep-watching-1", durationMs: 8_000 }
+
+    store.updateSlot(id, makeRequest({ progressHold: hold }))
+    expect(notifications).toBe(1)
+    expect(store.getSnapshot().request?.progressHold).toBe(hold)
+
+    store.updateSlot(id, makeRequest({ progressHold: { ...hold } }))
+    expect(notifications).toBe(1)
+
+    store.updateSlot(
+      id,
+      makeRequest({ progressHold: { ...hold, id: "keep-watching-2" } }),
+    )
+    expect(notifications).toBe(2)
+
+    store.updateSlot(
+      id,
+      makeRequest({
+        progressHold: { id: "keep-watching-2", durationMs: 5_000 },
+      }),
+    )
+    expect(notifications).toBe(3)
+
+    store.updateSlot(id, makeRequest({ progressHold: null }))
+    expect(notifications).toBe(4)
+
+    // Absent and null both mean "no hold", so every other surface, which
+    // never names the field, compares equal to itself as before.
+    store.updateSlot(id, makeRequest())
+    expect(notifications).toBe(4)
+  })
 })
 
 describe("a surface that never originates a session (the series trailer)", () => {

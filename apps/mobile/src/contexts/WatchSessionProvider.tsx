@@ -17,6 +17,7 @@ import {
 } from "../lib/normalizeVideo"
 import { datadogLog } from "../lib/datadog"
 import { ensureDubMedia } from "../lib/dubMediaFetch"
+import type { WatchSessionIntent } from "../lib/explore/watchIntent"
 import { getMiniPlayerStore } from "../lib/miniPlayer/store"
 import { GET_VIDEO_DUB } from "../lib/queries"
 import {
@@ -78,6 +79,7 @@ type WatchSessionContextValue = {
    */
   snackbarMessage: string | null
   setSnackbarMessage: (message: string | null) => void
+  setSessionIntent: (intent: WatchSessionIntent | null) => void
 }
 
 const WatchSessionContext = createContext<WatchSessionContextValue | null>(null)
@@ -111,10 +113,17 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     string | null
   >(null)
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null)
+  const [sessionIntent, setSessionIntent] = useState<WatchSessionIntent | null>(
+    null,
+  )
+  const intentAudioSlug = sessionIntent?.audioLanguageSlug ?? null
+  const intentSubtitleSlug = sessionIntent?.subtitleLanguageSlug ?? null
 
   // Subtitles on/off is an app-wide preference, not per-session state — read it
   // straight from the persisted store so it carries across videos and restarts.
-  const subtitleEnabled = subtitlesEnabled
+  // A "Keep watching" intent can turn it on for this session only (R43).
+  const subtitleEnabled =
+    subtitlesEnabled || sessionIntent?.subtitlesOn === true
 
   // Latest-render video snapshot so the audio setter reads the chosen variant's
   // language slug without taking `video` as a dep (which would re-create the
@@ -147,6 +156,10 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     (enabled: boolean) => {
       subtitleReconcilerRef.current = markUserChoice(
         subtitleReconcilerRef.current,
+      )
+      // The viewer's own toggle ends the session-only override.
+      setSessionIntent((prev) =>
+        prev?.subtitlesOn ? { ...prev, subtitlesOn: false } : prev,
       )
       setSubtitlesEnabled(enabled)
     },
@@ -297,8 +310,12 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       identity: video?.documentId ?? null,
       options,
       primaryBcp47: video?.primaryLanguageBcp47 ?? null,
+      // The intent names the dub the viewer just heard in the clip.
       preferredSlug:
-        floatingAudioSlug ?? downloadedAudioSlug ?? preferredAudioSlug,
+        intentAudioSlug ??
+        floatingAudioSlug ??
+        downloadedAudioSlug ??
+        preferredAudioSlug,
     })
     audioReconcilerRef.current = nextState
     if (apply && video) {
@@ -315,6 +332,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     downloadsReady,
     downloadedAudioSlug,
     preferredAudioSlug,
+    intentAudioSlug,
   ])
 
   // A language picked before the ISO 639-3 code was stored has a slug only.
@@ -351,16 +369,18 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
         identity: activeVariant?.documentId ?? null,
         options,
         primaryBcp47: video?.primaryLanguageBcp47 ?? null,
-        preferredSlug: preferredSubtitleSlug,
+        preferredSlug: intentSubtitleSlug ?? preferredSubtitleSlug,
       },
     )
     subtitleReconcilerRef.current = nextState
+    // The raw setter: an intent's subtitle never becomes the saved choice.
     if (apply?.slug) setActiveSubtitleSlugState(apply.slug)
   }, [
     activeVariant?.documentId,
     activeVariantMedia,
     preferencesReady,
     preferredSubtitleSlug,
+    intentSubtitleSlug,
   ])
 
   // Cache the preferred subtitle's display NAME once a dub's media lands, so the
@@ -401,6 +421,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       ensureActiveVariantMedia,
       snackbarMessage,
       setSnackbarMessage,
+      setSessionIntent,
     }),
     [
       video,

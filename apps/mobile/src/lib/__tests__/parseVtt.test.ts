@@ -104,4 +104,53 @@ First
 Second`
     expect(parseVtt(vtt).map((c) => c.text)).toEqual(["First", "Second"])
   })
+
+  describe("SMPTE-offset normalization (ported from apps/tv)", () => {
+    it("moves a broadcast track that starts at 01:00:05 back to 00:00:05", () => {
+      // A 30-minute video: unshifted, every cue would land after the end.
+      const vtt = `WEBVTT
+
+01:00:05.000 --> 01:00:08.000
+First
+
+01:29:50.000 --> 01:29:55.000
+Last`
+      expect(parseVtt(vtt)).toEqual([
+        { start: 5, end: 8, text: "First" },
+        { start: 1790, end: 1795, text: "Last" },
+      ])
+    })
+
+    it("subtracts whole hours only", () => {
+      const vtt = `WEBVTT
+
+02:00:01.500 --> 02:00:03.000
+Two-hour offset`
+      expect(parseVtt(vtt)).toEqual([
+        { start: 1.5, end: 3, text: "Two-hour offset" },
+      ])
+    })
+
+    it("takes the offset from the earliest cue, not the first in the file", () => {
+      const vtt = `WEBVTT
+
+01:00:20.000 --> 01:00:22.000
+Later
+
+01:00:02.000 --> 01:00:04.000
+Earlier`
+      expect(parseVtt(vtt).map((c) => c.start)).toEqual([20, 2])
+    })
+
+    it("leaves a long film alone when its first cue is before one hour", () => {
+      const vtt = `WEBVTT
+
+00:00:10.000 --> 00:00:12.000
+Opening
+
+01:30:00.000 --> 01:30:04.000
+Ninety minutes in`
+      expect(parseVtt(vtt).map((c) => c.start)).toEqual([10, 5400])
+    })
+  })
 })

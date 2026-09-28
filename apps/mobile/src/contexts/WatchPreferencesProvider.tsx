@@ -34,6 +34,8 @@ type WatchPreferencesContextValue = WatchPreferences & {
   setPreferredSubtitleName: (name: string | null) => void
   setSubtitlesEnabled: (enabled: boolean) => void
   setLongPressHintSeen: (seen: boolean) => void
+  /** Explore's saved mute choice (R11). The watch page never reads it. */
+  setExploreMuted: (muted: boolean) => void
   /** False until the persisted blob has been read from AsyncStorage. */
   isReady: boolean
 }
@@ -126,6 +128,10 @@ export function WatchPreferencesProvider({
     (seen: boolean) => persist({ longPressHintSeen: seen }),
     [persist],
   )
+  const setExploreMuted = useCallback(
+    (muted: boolean) => persist({ exploreMuted: muted }),
+    [persist],
+  )
 
   return (
     <WatchPreferencesContext.Provider
@@ -137,6 +143,7 @@ export function WatchPreferencesProvider({
         setPreferredSubtitleName,
         setSubtitlesEnabled,
         setLongPressHintSeen,
+        setExploreMuted,
         isReady,
       }}
     >

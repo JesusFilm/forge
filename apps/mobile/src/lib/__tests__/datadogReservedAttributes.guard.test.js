@@ -20,6 +20,10 @@ const RESERVED = ["source", "host", "service", "status", "message", "trace_id"]
 const CALL =
   /\b(?:datadogLog|DdLogs|telemetry)\??\.(?:info|warn|error|debug)\s*\(/g
 
+// RUM custom actions (KTD17: Explore's product signals). An injected port
+// keeps the helper's name, so `deps.reportDatadogAction(` matches here too.
+const ACTION_CALL = /\breportDatadogAction(?:\?\.)?\s*\(/g
+
 // SECOND shape, and the one the export path uses: a module wraps the injected
 // sink once — `const info = (message, context) => deps.telemetry?.info(message,
 // context)` — and every emit site then calls the LOCAL name. The alias above
@@ -221,7 +225,9 @@ function findReservedAttributes(entries) {
   for (const entry of entries) {
     const wrappers = localTelemetryWrappers(entry.content)
     const patterns =
-      wrappers.size > 0 ? [CALL, localWrapperCallPattern(wrappers)] : [CALL]
+      wrappers.size > 0
+        ? [CALL, ACTION_CALL, localWrapperCallPattern(wrappers)]
+        : [CALL, ACTION_CALL]
     for (const pattern of patterns) {
       pattern.lastIndex = 0
       while (pattern.exec(entry.content) != null) {
@@ -362,6 +368,49 @@ describe("no Datadog log attribute shadows a reserved field", () => {
         },
       ]),
     ).toEqual(["local.ts: message", "member.ts: status"])
+  })
+
+  it("positive control: a RUM action context is flagged", () => {
+    // KTD17 sends Explore's product signals as RUM actions. The imported
+    // helper and an injected port share one spelling, so both forms count.
+    expect(
+      findReservedAttributes([
+        {
+          relative: "direct.ts",
+          content: `reportDatadogAction("autostart_applied", { status: s })`,
+        },
+        {
+          relative: "shorthand.ts",
+          content: `reportDatadogAction("e", { explore_visit_id: id, message })`,
+        },
+        {
+          relative: "port.ts",
+          content: `deps.reportDatadogAction("explore.visit_start", {\n  source: "tab",\n})`,
+        },
+        {
+          relative: "optional.ts",
+          content: `deps.reportDatadogAction?.("e", { host: h })`,
+        },
+      ]),
+    ).toEqual([
+      "direct.ts: status",
+      "optional.ts: host",
+      "port.ts: source",
+      "shorthand.ts: message",
+    ])
+  })
+
+  it("a reserved key at a real Explore action site is flagged", () => {
+    // Falsification, kept: the Explore product signals reach Datadog only
+    // through reportDatadogAction, so a scan of log sinks alone misses them.
+    const root = path.resolve(__dirname, "../../..")
+    const relative = "src/lib/explore/telemetry.ts"
+    const content = fs.readFileSync(path.join(root, relative), "utf8")
+    const mutated = content.replace(`explore_end_reason:`, `status:`)
+    expect(mutated).not.toBe(content)
+    expect(findReservedAttributes([{ relative, content: mutated }])).toEqual([
+      `${relative}: status`,
+    ])
   })
 
   it("positive control: a brace inside the first argument does not hide the object", () => {

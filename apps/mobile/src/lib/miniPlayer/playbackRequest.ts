@@ -24,11 +24,14 @@ import {
 import { canOriginateRoutePattern } from "./presentation"
 import { extractMuxPlaybackId } from "../muxThumbnail"
 import type { VideoPlayerCast } from "../../components/watch/VideoPlayer"
-import type { ProgressFeed } from "../../hooks/useManagedVideoPlayer"
+import type {
+  ProgressFeed,
+  ProgressHold,
+} from "../../hooks/useManagedVideoPlayer"
 
-/** Re-exported so the watch screen can type its cast progress ref without
- *  naming the adapter — the ownership guard reads that name as a player mount. */
-export type { ProgressFeed }
+/** Re-exported so the watch screen can type its cast progress ref and its hold
+ *  without naming the adapter — the ownership guard reads that name as a mount. */
+export type { ProgressFeed, ProgressHold }
 
 /** Window coordinates of the surface the video view is drawn into (KTD17). */
 export type PlaybackRect = {
@@ -77,6 +80,9 @@ export type PlaybackRequest = {
   progressVideoId: string | null
   progressVideoSlug: string | null
   progressLanguageSlug: string | null
+  /** KTD12. Absent and null both mean no hold. Compared by value, so a request
+   *  that drops it (an offer choice) republishes and ends it at once. */
+  progressHold?: ProgressHold | null
   onToggleFullscreen: (() => void) | null
   /** True while a cast session drives this surface (KTD4). The one cast fact
    *  the root adapter and session admission read; compared by value, so a
@@ -265,12 +271,21 @@ export function samePlaybackRequest(
     a.progressVideoId === b.progressVideoId &&
     a.progressVideoSlug === b.progressVideoSlug &&
     a.progressLanguageSlug === b.progressLanguageSlug &&
+    sameProgressHold(a.progressHold ?? null, b.progressHold ?? null) &&
     a.onToggleFullscreen === b.onToggleFullscreen &&
     a.castActive === b.castActive &&
     sameCast(a.cast, b.cast) &&
     a.progressFeedRef === b.progressFeedRef &&
     sameSession(a.session, b.session)
   )
+}
+
+function sameProgressHold(
+  a: ProgressHold | null,
+  b: ProgressHold | null,
+): boolean {
+  if (a == null || b == null) return a === b
+  return a.id === b.id && a.durationMs === b.durationMs
 }
 
 function sameSession(

@@ -1,6 +1,7 @@
 /**
  * The audio language write path (U6): the ISO 639-3 code travels with the slug,
  * and a fill for an older record lands only while that slug is still stored.
+ * The saved Explore mute choice (feat-552 R11) is written the same way.
  * Rendered under StrictMode so the hydration effect runs its remount cycle.
  */
 
@@ -25,7 +26,10 @@ import {
   WatchPreferencesProvider,
   useWatchPreferences,
 } from "../WatchPreferencesProvider"
-import { WATCH_PREFERENCES_STORAGE_KEY } from "../../lib/watchPreferences"
+import {
+  WATCH_PREFERENCES_STORAGE_KEY,
+  parseStoredPreferences,
+} from "../../lib/watchPreferences"
 import {
   TestRenderer,
   type TestInstance,
@@ -145,5 +149,32 @@ describe("backfillAudioLanguageIso3", () => {
     })
 
     expect(prefs.audioLanguageIso3).toBe("cmn")
+  })
+})
+
+describe("setExploreMuted (feat-552 R11)", () => {
+  it("starts with sound, and saves the mute choice to the device", async () => {
+    await renderWithStored(null)
+    expect(prefs.exploreMuted).toBe(false)
+
+    await act(async () => {
+      prefs.setExploreMuted(true)
+    })
+
+    expect(prefs.exploreMuted).toBe(true)
+    const stored = await AsyncStorage.getItem(WATCH_PREFERENCES_STORAGE_KEY)
+    expect(parseStoredPreferences(stored).exploreMuted).toBe(true)
+  })
+
+  it("reads a saved mute choice back after a restart", async () => {
+    await renderWithStored({ exploreMuted: true })
+    expect(prefs.exploreMuted).toBe(true)
+
+    await act(async () => {
+      prefs.setExploreMuted(false)
+    })
+
+    const stored = await AsyncStorage.getItem(WATCH_PREFERENCES_STORAGE_KEY)
+    expect(parseStoredPreferences(stored).exploreMuted).toBe(false)
   })
 })

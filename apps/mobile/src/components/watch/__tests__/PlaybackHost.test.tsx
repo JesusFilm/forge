@@ -130,6 +130,11 @@ let mockInsets = { top: 0, bottom: 0, left: 0, right: 0 }
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => mockInsets,
 }))
+// The Explore gate, open as in a development bundle unless a case closes it.
+const mockExploreGate = { open: true }
+jest.mock("../../../lib/explore/availability", () => ({
+  isExploreAvailable: () => mockExploreGate.open,
+}))
 jest.mock("../../../lib/datadog", () => ({
   datadogLog: {
     debug: jest.fn(),
@@ -223,6 +228,10 @@ import {
   getMiniPlayerStore,
   type MiniPlayerEndEvent,
 } from "../../../lib/miniPlayer/store"
+import {
+  resetPlaybackTransportForTests,
+  seekPlayback,
+} from "../../../lib/playbackInterruption"
 import type { ExpoVideoMock } from "../../../test-utils/expoVideoMock"
 import { FloatingBackButton } from "../../ui/FloatingBackButton"
 import { PlayerSlot } from "../PlayerSlot"
@@ -536,6 +545,7 @@ beforeEach(() => {
   mockRouterBack.mockClear()
   mockParentListeners.clear()
   mockSegments = []
+  mockExploreGate.open = true
   mockInsets = { top: 0, bottom: 0, left: 0, right: 0 }
 })
 
@@ -2022,6 +2032,226 @@ describe("holdProgressIdentity (the remount's id-less render)", () => {
   })
 })
 
+// KTD12 / AE6, end to end through the real host, adapter and recorder. Admin
+// keeps the newest write, so one write at the tap point would replace a saved
+// 1:10:00 — including the dismiss flush when the viewer goes back to Explore.
+describe("the progress hold (KTD12)", () => {
+  const HOLD = { id: "keep-watching-1", durationMs: 8_000 }
+  const progressStore = jest.requireMock(
+    "../../../lib/watchProgress/store",
+  ) as {
+    bufferProgressIntent: jest.Mock
+    applyLocalProgress: jest.Mock
+  }
+
+  function clearWrites() {
+    progressStore.bufferProgressIntent.mockClear()
+    progressStore.applyLocalProgress.mockClear()
+  }
+
+  function writtenVideoIds(): unknown[] {
+    return progressStore.bufferProgressIntent.mock.calls.map(
+      ([intent]) => (intent as { videoId?: string }).videoId,
+    )
+  }
+
+  function localEchoes(): number {
+    return progressStore.applyLocalProgress.mock.calls.length
+  }
+
+  async function advance(ms: number) {
+    await act(async () => {
+      jest.advanceTimersByTime(ms)
+    })
+  }
+
+  /** The tap point of AE6, on a long video. */
+  async function playFromTapPoint() {
+    video.__player.duration = 7200
+    video.__player.currentTime = 740
+    await startPlayback()
+  }
+
+  beforeEach(() => {
+    clearWrites()
+  })
+
+  // The host substitutes the identity it last knew for this slug, so a hold
+  // expressed as a null identity would be undone here. It must be its own
+  // channel.
+  it("holds every write while the host already knows the slug's identity", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot()
+    await renderHost()
+    await playFromTapPoint()
+    await advance(2_100)
+    expect(writtenVideoIds()).toContain("video-a")
+
+    // The id-less render of the same slug, now carrying the hold.
+    const idLess = {
+      progressVideoId: null,
+      progressLanguageSlug: null,
+      session: { ...SESSION_A, videoId: null, languageSlug: null },
+    }
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ ...idLess, progressHold: HOLD }),
+      )
+    })
+    clearWrites()
+    await advance(5_100)
+    expect(writtenVideoIds()).toEqual([])
+    expect(localEchoes()).toBe(0)
+
+    // Released, it writes under the KNOWN id: the identity never went null.
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ ...idLess, progressHold: null }),
+      )
+    })
+    await advance(2_100)
+    expect(writtenVideoIds()).toContain("video-a")
+  })
+
+  it("covers AE6: back to Explore while the offer shows writes nothing at all", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot({ progressHold: HOLD })
+    const renderer = await renderHost()
+    await playFromTapPoint()
+    await advance(3_100)
+
+    // Back: the page unmounts and the video floats, then Explore dismisses it
+    // and the host releases the player once the exit completes.
+    await detach(id)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    await advance(1_100)
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+    await advance(EXIT_DURATION_MS + 1000)
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(videoViews(renderer)).toHaveLength(0)
+    expect(writtenVideoIds()).toEqual([])
+    expect(localEchoes()).toBe(0)
+  })
+
+  it("leaves no hold on the retained request after the deadline", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot({ progressHold: HOLD })
+    await renderHost()
+    await playFromTapPoint()
+    await advance(3_100)
+
+    // The page goes mid-hold; its request lives on as the retained one and
+    // nothing will ever republish it without the hold.
+    await detach(id)
+    expect(requestStore.getSnapshot().request?.progressHold).toEqual(HOLD)
+    await advance(4_000)
+    expect(writtenVideoIds()).toEqual([])
+
+    await advance(2_100)
+    expect(writtenVideoIds()).toContain("video-a")
+
+    // The dismiss flush, plus the pause flush from the host's own pause.
+    clearWrites()
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+    expect(writtenVideoIds()).toContain("video-a")
+  })
+})
+
+/**
+ * The R17 offer seeks the one player from the route tree (KTD12). The host
+ * serves the seek, so a swap still loading must land where the viewer chose.
+ */
+describe("the transport seek (KTD12)", () => {
+  it("seeks the one player", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    video.__player.duration = 7200
+    video.__player.currentTime = 740
+    await startPlayback()
+
+    let took = false
+    await act(async () => {
+      took = seekPlayback(4200)
+    })
+
+    expect(took).toBe(true)
+    expect(video.__player.currentTime).toBe(4200)
+  })
+
+  it("is refused with no host, and after the host leaves", async () => {
+    resetPlaybackTransportForTests()
+    expect(seekPlayback(4200)).toBe(false)
+
+    attachSlot({ autostart: false })
+    const renderer = await renderHost()
+    await act(async () => {
+      renderer.unmount()
+    })
+    mounted = null
+    expect(seekPlayback(4200)).toBe(false)
+  })
+
+  it("a seek while a dub swap loads lands where the viewer chose, not at the swap's capture", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    video.__player.duration = 7200
+    video.__player.currentTime = 740
+    await startPlayback()
+
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    await act(async () => {
+      seekPlayback(4200)
+    })
+    await act(async () => {
+      video.__settleReplace(undefined, { withholdLoad: true })
+    })
+    // SYNTHETIC: the fresh item's zeroed clock (the withheld load skips it).
+    video.__player.currentTime = 0
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.currentTime).toBe(4200)
+  })
+
+  it("a seek mid-swap keeps the swap's timeout release", async () => {
+    jest.useFakeTimers()
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      getPlayerSettingsStore().setQualityTier("high")
+    })
+    await act(async () => {
+      seekPlayback(120)
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(QUALITY_SWAP_TIMEOUT_MS)
+    })
+
+    // The timer checks the latch by identity: a replaced latch never releases.
+    expect(getPlayerSettingsStore().getSnapshot().qualityTier).toBe("auto")
+    expect(
+      datadog.datadogLog.warn.mock.calls.filter(
+        ([event]) => event === "player_settings.quality_swap_released",
+      ),
+    ).toHaveLength(1)
+  })
+})
+
 describe("shouldDrawSurface (R21, R27)", () => {
   it("redraws in the same render a replay clears the ended cause", () => {
     // The window hides its thumbnail imperatively in a child effect; waiting
@@ -2089,6 +2319,103 @@ describe("the expand wiring (R4)", () => {
     expect(mockRouterPush).toHaveBeenCalledWith(
       `/watch/${encodeURIComponent("día-1")}`,
     )
+  })
+})
+
+describe("a player page popped onto Explore (owner, 2026-09-28)", () => {
+  function shrinkCall(spy: jest.SpyInstance) {
+    return spy.mock.calls.find(
+      ([, config]) =>
+        (config as { duration?: number }).duration === SHRINK_DURATION_MS,
+    )
+  }
+
+  function framePointerEvents(renderer: TestInstance) {
+    return renderer.root.findAll(
+      (node) => node.props.testID === "playback-frame",
+    )[0].props.pointerEvents
+  }
+
+  /** The pop and the slot's unmount land in one commit, as a committed back
+   *  press does: the route changes, then the slot detaches. */
+  async function popOnto(segments: readonly string[]) {
+    jest.useFakeTimers()
+    const timingSpy = jest.spyOn(Animated, "timing")
+    mockSegments = ["watch", "[slug]"]
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await act(async () => {
+      mockSegments = segments
+      renderer.update(<PlaybackHost />)
+      requestStore.detachSlot(id)
+    })
+    return { renderer, timingSpy }
+  }
+
+  it("skips the shrink and draws no window, through the takeover's exit", async () => {
+    const { renderer, timingSpy } = await popOnto(["(tabs)", "explore"])
+
+    expect(shrinkCall(timingSpy)).toBeUndefined()
+    expect(sessionStore.getSnapshot().session).not.toBeNull()
+    expect(frameStyle(renderer).opacity).toBe(0)
+    expect(framePointerEvents(renderer)).toBe("none")
+
+    // Explore's takeover ends the session. The exit must not bring it back.
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+    expect(frameStyle(renderer).opacity).toBe(0)
+    await act(async () => {
+      jest.advanceTimersByTime(EXIT_DURATION_MS + 1000)
+    })
+    expect(sessionStore.getSnapshot().session).toBeNull()
+  })
+
+  it("still shrinks a pop onto any other tab", async () => {
+    const { renderer, timingSpy } = await popOnto(["(tabs)"])
+
+    expect(shrinkCall(timingSpy)).toBeDefined()
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+    expect(framePointerEvents(renderer)).toBe("box-none")
+  })
+
+  it("still shrinks a pop onto a closed Explore, where no takeover ends the session", async () => {
+    // The route stays reachable by URL but renders nothing (KTD16). A hidden
+    // window there would keep the sound on with no control to stop it.
+    mockExploreGate.open = false
+    const { renderer, timingSpy } = await popOnto(["(tabs)", "explore"])
+
+    expect(shrinkCall(timingSpy)).toBeDefined()
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+    expect(framePointerEvents(renderer)).toBe("box-none")
+  })
+
+  it("keeps showing a window that was already floating when Explore opens", async () => {
+    const { renderer } = await popOnto(["(tabs)"])
+    await act(async () => {
+      jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
+    })
+
+    // A tab switch is not a pop: the takeover's own exit is what ends it.
+    mockSegments = ["(tabs)", "explore"]
+    await act(async () => {
+      renderer.update(<PlaybackHost />)
+    })
+
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+  })
+
+  it("shows the window again if the viewer leaves Explore before the takeover", async () => {
+    const { renderer } = await popOnto(["(tabs)", "explore"])
+
+    mockSegments = ["(tabs)"]
+    await act(async () => {
+      renderer.update(<PlaybackHost />)
+    })
+
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+    expect(framePointerEvents(renderer)).toBe("box-none")
   })
 })
 

@@ -30,6 +30,11 @@ export type WatchPreferences = {
   wifiOnly: boolean
   /** Whether the Library "touch and hold to select" hint has been shown/used. */
   longPressHintSeen: boolean
+  /**
+   * Whether Explore clips play muted (R11). Defaults off, so clips start with
+   * sound. Only Explore reads it: the watch page always starts with sound (R43).
+   */
+  exploreMuted: boolean
 }
 
 export const WATCH_PREFERENCES_STORAGE_KEY = "watchPreferences"
@@ -42,6 +47,7 @@ export const DEFAULT_WATCH_PREFERENCES: WatchPreferences = {
   subtitlesEnabled: false,
   wifiOnly: false,
   longPressHintSeen: false,
+  exploreMuted: false,
 }
 
 /**
@@ -89,6 +95,7 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
     subtitlesEnabled: obj.subtitlesEnabled === true,
     wifiOnly: obj.wifiOnly === true,
     longPressHintSeen: obj.longPressHintSeen === true,
+    exploreMuted: obj.exploreMuted === true,
   }
 }
 
