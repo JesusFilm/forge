@@ -20,7 +20,11 @@ vi.mock("./job", async (importOriginal) => {
   return { ...original, dispatchRecommendationShadowEvaluation }
 })
 
-import { startExactHybridShadowEvaluation } from "./operator"
+import {
+  startExactCowatchShadowEvaluation,
+  startExactHybridShadowEvaluation,
+} from "./operator"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 
 const NOW = new Date("2026-08-30T12:00:00.000Z")
 const WINDOW_START = new Date("2026-08-29T00:00:00.000Z")
@@ -156,6 +160,39 @@ describe("exact hybrid shadow evaluation operator", () => {
     expect(createShadowEvaluation).not.toHaveBeenCalled()
     expect(dispatchRecommendationShadowEvaluation).toHaveBeenCalledOnce()
   })
+
+  it.each([WorkflowRunStatus.SUCCEEDED, WorkflowRunStatus.SKIPPED])(
+    "keeps the co-watch threshold immutable after a %s receipt",
+    async (status) => {
+      const client = prisma(
+        exactEvaluation({
+          state: RecommendationShadowEvaluationState.TERMINAL,
+          generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+        }),
+        {
+          id: "ledger-terminal",
+          runtimeRunId: "runtime-terminal",
+          status,
+          details: { minimumRuns: 200 },
+        },
+      )
+      await expect(
+        startExactCowatchShadowEvaluation(client as never, input()),
+      ).resolves.toMatchObject({
+        status: "already_dispatched",
+        created: false,
+        dispatch: { ledgerRunId: "ledger-terminal", runId: "runtime-terminal" },
+      })
+      await expect(
+        startExactCowatchShadowEvaluation(client as never, {
+          ...input(),
+          minimumRuns: 199,
+        }),
+      ).rejects.toThrow("does not match its original minimumRuns")
+      expect(createShadowEvaluation).not.toHaveBeenCalled()
+      expect(dispatchRecommendationShadowEvaluation).not.toHaveBeenCalled()
+    },
+  )
 
   it("rejects retries whose immutable evaluation parameters do not match", async () => {
     const client = prisma(exactEvaluation({ requestedSampleSize: 499 }))
