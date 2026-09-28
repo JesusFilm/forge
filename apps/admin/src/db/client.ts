@@ -70,7 +70,14 @@ const embeddingGuardExtension = Prisma.defineExtension((client) =>
   client.$extends({
     query: {
       $allModels: {
-        async $allOperations({ args, query }) {
+        // Avoid expanding the union of every generated model operation here.
+        async $allOperations({
+          args,
+          query,
+        }: {
+          args: unknown
+          query: (args: never) => Promise<unknown>
+        }) {
           const { cleanedArgs, includeEmbedding } = takeEmbeddingOptIn(args)
           const result = await query(cleanedArgs as never)
           return includeEmbedding ? result : stripEmbeddingFromResult(result)
