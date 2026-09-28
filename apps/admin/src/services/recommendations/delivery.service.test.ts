@@ -1076,7 +1076,7 @@ describe("RecommendationDeliveryService", () => {
     )
   })
 
-  it("excludes a request classified as machine traffic from assignment", async () => {
+  it("excludes legacy machine traffic before admission and assignment", async () => {
     const harness = makeHarness()
 
     await harness.service.deliver({
@@ -1084,8 +1084,9 @@ describe("RecommendationDeliveryService", () => {
       eligibleHuman: false,
     })
 
-    expect(harness.assignExperiment).toHaveBeenCalledWith(
-      expect.objectContaining({ eligibleHuman: false }),
-    )
+    expect(harness.assignExperiment).not.toHaveBeenCalled()
+    expect(harness.acquire).not.toHaveBeenCalled()
+    expect(harness.authorizeProfile).not.toHaveBeenCalled()
+    expect(harness.requests.size).toBe(0)
   })
 })

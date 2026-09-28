@@ -2234,7 +2234,7 @@ type Query {
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
-  semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
+  semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String): SemanticRecommendationDelivery!
   shortsApprovals(cursor: ID, limit: Int, projectId: ID!): [ShortsApproval!]
   shortsAsset(reference: JSON!): ShortsAssetVersion
   shortsAssets(input: JSON): [ShortsAssetVersion!]
@@ -2255,7 +2255,7 @@ type Query {
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
   systemStatus: JSON
-  userRecommendations(audioLanguageSlug: String!, consentReceiptDigest: String, count: Int, locale: String!, profileTokenDigest: String, sessionDigest: String, sessionToken: String, viewerToken: String): UserRecommendationDelivery!
+  userRecommendations(audioLanguageSlug: String!, consentReceiptDigest: String, count: Int, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, sessionDigest: String, sessionToken: String, trafficCategory: String, viewerToken: String): UserRecommendationDelivery!
   """Fetch a single Video by id."""
   video(id: ID!): Video
   """Fetch a single Video by slug."""
