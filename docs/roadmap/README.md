@@ -6,9 +6,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 28, 2026)
 
-- **Total tickets:** 736
+- **Total tickets:** 738
 - **Complete:** 551
-- **In progress:** 59
+- **In progress:** 61
 - **Not started:** 46
 - **Blocked:** 80
 - **Overdue and not complete:** 142
@@ -68,6 +68,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-334](content-discovery/feat-334-watch-search-typesense-parallel-backend.md)                              | Watch Search Typesense parallel backend                                                         | codex      | P0       | 2026-08-03 | 2    | 2026-08-04 | complete    |
 | [feat-338](content-discovery/feat-338-watch-search-chinese-lexical-identity.md)                                | Watch Search Chinese lexical identity                                                           | codex      | P0       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-470](content-discovery/feat-470-recommendation-delivery-and-funnel-investigation.md)                     | Investigate and repair recommendation retrieval timeouts                                        | nisal      | P0       | 2026-09-09 | 3    | 2026-09-11 | complete    |
+| [feat-559](content-discovery/feat-559-recommendation-crawler-traffic-isolation.md)                             | Isolate crawler and speculative recommendation traffic before persistence                       | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | in-progress |
 | [feat-265](content-discovery/feat-265-hassaniyya-latin-watch-ui-localization.md)                               | Hassaniyya-Latin Watch UI localization                                                          | urim       | P1       | —          | 1    | —          | not-started |
 | [feat-371](content-discovery/feat-371-recommendation-subtitle-audio-signals.md)                                | Recommendation subtitle and audio signals                                                       | nisal      | P1       | —          | 3    | —          | not-started |
 | [feat-374](content-discovery/feat-374-recommendation-acquisition-share-attribution.md)                         | Recommendation acquisition and share attribution                                                | nisal      | P1       | —          | 4    | —          | blocked     |
@@ -360,6 +361,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-554](platform/feat-554-recommendation-storage-rollout-verification.md)           | Roll out compact recommendation traces and verify production headroom              | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | in-progress |
 | [feat-557](platform/feat-557-production-database-storage-investigation.md)             | Investigate production database storage pressure                                   | nisal      | P0       | 2026-09-28 | 1    | 2026-09-28 | complete    |
 | [feat-558](platform/feat-558-production-recommendation-storage-remediation.md)         | Reduce recommendation trace storage and improve retention catch-up                 | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | complete    |
+| [feat-560](platform/feat-560-selective-legacy-trace-conversion.md)                     | Convert selected legacy traces and remove redundant stage rows                     | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | in-progress |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                        | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit Watch page-not-found telemetry                                                | codex      | P1       | —          | 2    | —          | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                                 | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |

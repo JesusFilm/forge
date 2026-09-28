@@ -159,4 +159,5 @@ export type DeliveryInput = {
   consentReceiptDigest?: string | null
   profileTokenDigest?: string | null
   eligibleHuman?: boolean
+  trafficCategory?: string | null
 }
