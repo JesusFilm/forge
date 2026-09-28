@@ -189,6 +189,12 @@ These three dormant entries remain coverage gaps, not measured zeros. No public
 content or route was manufactured to obtain a complete registry. Generic authored
 source ambiguity remains separately tracked by feat-564.
 
+The owner explicitly chose to keep the fallback home carousel, fallback home grid
+and video editorial entries as unresolved coverage gaps for this batch. This
+decision preserves the registry and product scope; it does not satisfy their
+coverage gates, complete feat-373 or accept any of the separate D1–D9 telemetry
+limitations.
+
 The deployed Admin [signed and dormant entry inspection](../validation/recommendation-acceptance-20260929/admin-signed-dormant.json)
 retains each position in the below-player cohort, including eligible selections,
 early selections, CTR and native/unknown visibility. These are rolling 24-hour

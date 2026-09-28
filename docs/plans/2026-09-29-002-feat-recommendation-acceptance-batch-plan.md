@@ -27,6 +27,10 @@ owner instruction. This continues
 - Anonymous registered Watch surfaces need truthful server-issued served facts.
   Served, rendered, eligible, selected, repeat, replay and visibility capability
   remain separate; early selection never manufactures an impression.
+- The owner chose to retain fallback home carousel, fallback home grid and video
+  editorial as explicit unresolved coverage gaps for this batch. Do not restore
+  public producers or retire registry entries under this scope decision; feat-373
+  remains open while those coverage gates are unmet.
 - Co-watch remains shadow-only. A production run requires deployed revision and
   migration verification, eligible source and pair bounds, current integrity
   decisions, retention and a capacity preflight coordinated with the storage
