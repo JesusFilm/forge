@@ -12,6 +12,7 @@ jest.mock("../../../datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
 
+import { stubBookNamesStore } from "../../../../test-utils/bookNamesStub"
 import { StrictMode, act } from "react"
 
 import synodalPsalm50 from "../../text/__tests__/fixtures/rus_syn-psa-50.json"
@@ -166,6 +167,7 @@ function makeServices(setup: Setup = {}) {
       memoryStorage(setup.positionRead),
     ),
     settingsStore: createReaderSettingsStore(memoryStorage()),
+    bookNames: stubBookNamesStore(),
     readPhoneLanguage: () =>
       setup.phoneLanguage === undefined ? "en" : setup.phoneLanguage,
   }

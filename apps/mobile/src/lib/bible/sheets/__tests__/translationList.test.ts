@@ -6,8 +6,10 @@
 import { parseCatalog, type Catalog } from "../../data/catalog"
 import { LANGUAGE_DEFAULT_TRANSLATIONS } from "../../data/languageDefaults.generated"
 import type { TranslationDownloadState } from "../../repository/translationDownloads"
+import { BIBLE_BOOKS, type UsfmBookId } from "../../text/books"
 import {
   buildTranslationList,
+  coverageLabel,
   isUpdateAvailable,
   isOnDevice,
   translationLanguageLabel,
@@ -233,9 +235,10 @@ describe("row labels", () => {
     expect(
       translationStatusLabel(synodal, { kind: "failed", reason: "network" }),
     ).toBe("Complete Bible, Download stopped")
-    const partial = CATALOG.translations.find((t) => !t.complete)!
-    expect(translationStatusLabel(partial, NOT_DOWNLOADED)).toBe(
-      "Partial Bible",
+    // A partial Bible says which books it has (owner, 2026-09-28).
+    const newTestament = CATALOG.byId.get("cpc_wbt")!
+    expect(translationStatusLabel(newTestament, NOT_DOWNLOADED)).toBe(
+      "New Testament only",
     )
   })
 
@@ -247,5 +250,48 @@ describe("row labels", () => {
     expect(translationStatusLabel(synodal, old)).toBe(
       "Complete Bible, On this device, Update available",
     )
+  })
+})
+
+describe("coverageLabel", () => {
+  const books = (...ids: UsfmBookId[]) => new Set<UsfmBookId>(ids)
+  const testament = (key: "old" | "new") =>
+    BIBLE_BOOKS.filter((book) => book.testament === key).map((b) => b.usfm)
+
+  it("names a whole testament as a unit", () => {
+    expect(coverageLabel(books(...testament("new")))).toBe("New Testament only")
+    expect(coverageLabel(books(...testament("old")))).toBe("Old Testament only")
+  })
+
+  it("names up to two books added to a testament, and counts more", () => {
+    const nt = testament("new")
+    expect(coverageLabel(books(...nt, "GEN"))).toBe("New Testament and Genesis")
+    expect(coverageLabel(books(...nt, "PSA", "GEN"))).toBe(
+      "New Testament, Genesis, and Psalms",
+    )
+    expect(coverageLabel(books(...nt, "GEN", "RUT", "PSA"))).toBe(
+      "New Testament and 3 other books",
+    )
+    expect(coverageLabel(books(...testament("old"), "MAT"))).toBe(
+      "Old Testament and Matthew",
+    )
+  })
+
+  it("names up to three books in canon order, and counts more", () => {
+    expect(coverageLabel(books("MRK"))).toBe("Only Mark")
+    expect(coverageLabel(books("LUK", "PSA"))).toBe("Only Psalms and Luke")
+    expect(coverageLabel(books("JHN", "RUT", "LUK"))).toBe(
+      "Only Ruth, Luke, and John",
+    )
+    expect(coverageLabel(books("RUT", "PRO", "LUK", "JHN", "ACT"))).toBe(
+      "5 of 66 books",
+    )
+  })
+
+  it("labels every partial Bible in the catalog", () => {
+    for (const translation of CATALOG.translations) {
+      if (translation.complete) continue
+      expect(coverageLabel(translation.books)).not.toBe("")
+    }
   })
 })

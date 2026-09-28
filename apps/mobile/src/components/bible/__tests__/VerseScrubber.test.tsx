@@ -24,7 +24,7 @@ import {
 import { readerTokens } from "../../../lib/bible/theme/palettes"
 import { VerseScrubber, type VerseScrubberProps } from "../VerseScrubber"
 
-const TOKENS = readerTokens("classic", "light")
+const TOKENS = readerTokens("light")
 const TRACK_WIDTH = 360
 /** Where the column starts in the window; a touch reports window x. */
 const COLUMN_LEFT = 24

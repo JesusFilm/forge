@@ -7,7 +7,9 @@ import {
   getReadingPositionStore,
   type ReadingPositionStore,
 } from "../position/store"
+import type { BookNamesStore } from "../repository/bookNames"
 import {
+  getBookNamesStore,
   getChapterRepository,
   getTranslationDownloads,
 } from "../repository/downloadRuntime"
@@ -24,6 +26,8 @@ export type ReaderServices = {
     "createView" | "prefetch" | "isOnDevice" | "translationHasBook"
   >
   downloads: Pick<TranslationDownloads, "getState" | "subscribe" | "check">
+  /** The shown translation's own book names (owner, 2026-09-28). */
+  bookNames: Pick<BookNamesStore, "peek" | "load" | "subscribe">
   /** Never rejects. */
   loadCatalog: () => Promise<BundledResult<Catalog>>
   positionStore: ReadingPositionStore
@@ -55,6 +59,7 @@ export function getReaderServices(): ReaderServices {
   services ??= {
     repository: getChapterRepository(),
     downloads: getTranslationDownloads(),
+    bookNames: getBookNamesStore(),
     loadCatalog: () => loadReaderCatalog(),
     positionStore: getReadingPositionStore(),
     settingsStore: getReaderSettingsStore(),

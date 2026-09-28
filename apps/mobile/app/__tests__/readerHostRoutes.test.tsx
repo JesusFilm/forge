@@ -84,6 +84,7 @@ jest.mock("../../src/lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
 
+import { stubBookNamesStore } from "../../src/test-utils/bookNamesStub"
 import { StrictMode, act, type ComponentType, type ReactNode } from "react"
 import { Animated, Dimensions, StyleSheet } from "react-native"
 
@@ -220,6 +221,7 @@ function install(
     loadCatalog: async () => ({ status: "ok", value: CATALOG }),
     positionStore: position,
     settingsStore: createReaderSettingsStore(memoryStorage()),
+    bookNames: stubBookNamesStore(),
     readPhoneLanguage: () => "en",
   }
   mockRoute.services = services

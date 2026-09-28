@@ -1,7 +1,8 @@
-// The reader's top bar shows a running download's progress in the download
-// button (feat-553 R29), and the icon for every other state.
+// The reader's top bar shows a running download's progress as a ring in the
+// download button (feat-553 R29), and the icon for every other state.
 
 import { act } from "react"
+import { AccessibilityInfo } from "react-native"
 
 import {
   TestRenderer,
@@ -13,7 +14,7 @@ import { READER_COPY } from "../../../lib/bible/reader/copy"
 import type { TranslationLabel } from "../../../lib/bible/reader/labels"
 import type { TranslationDownloadState } from "../../../lib/bible/repository/translationDownloads"
 import { readerTokens } from "../../../lib/bible/theme/palettes"
-import { ReaderTopBar } from "../ReaderTopBar"
+import { ReaderTopBar, STAND_IN_TIP_MS } from "../ReaderTopBar"
 
 jest.mock("expo-glass-effect", () => ({
   GlassView: () => null,
@@ -29,7 +30,7 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   default: (props: { name: string }) => props.name,
 }))
 
-const TOKENS = readerTokens("classic", "dark")
+const TOKENS = readerTokens("dark")
 
 let mounted: TestInstance | null = null
 
@@ -43,7 +44,8 @@ afterEach(async () => {
 const BSB_LABEL: TranslationLabel = {
   text: "BSB",
   accessibilityLabel: READER_COPY.translation("Berean Standard Bible"),
-  isFallback: false,
+  note: null,
+  noteKey: null,
 }
 
 async function render(
@@ -52,7 +54,7 @@ async function render(
   onPressTranslation: () => void = () => {},
 ) {
   await act(async () => {
-    mounted = TestRenderer.create(
+    const bar = (
       <ReaderTopBar
         tokens={TOKENS}
         safeAreaTop={0}
@@ -65,8 +67,11 @@ async function render(
         download={{ state, accessibilityLabel: "Download" }}
         onPressDownload={() => {}}
         onPressSettings={() => {}}
-      />,
+      />
     )
+    // A second render updates the same bar, as a parent's new props do.
+    if (mounted) mounted.update(bar)
+    else mounted = TestRenderer.create(bar)
   })
   return mounted!
 }
@@ -93,7 +98,15 @@ function textCount(renderer: TestInstance, text: string): number {
 }
 
 describe("ReaderTopBar download button", () => {
-  it("shows the percent while a download runs", async () => {
+  const rings = (renderer: TestInstance) =>
+    renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "reader-download-ring",
+    )
+
+  // A ring, as on the watch page, and no percent text (owner, 2026-09-28).
+  it("shows a ring, not a percent, while a download runs", async () => {
     const renderer = await render({
       kind: "downloading",
       phase: "transfer",
@@ -101,12 +114,14 @@ describe("ReaderTopBar download button", () => {
       bytesWritten: 450,
       totalBytes: 1000,
     })
-    expect(textCount(renderer, "45%")).toBe(1)
+    expect(rings(renderer)).toHaveLength(1)
+    expect(textCount(renderer, "45%")).toBe(0)
   })
 
-  it("shows no percent when the translation is on the device", async () => {
+  it("shows no ring when the translation is on the device", async () => {
     const renderer = await render({ kind: "bundled" })
-    expect(textCount(renderer, "45%")).toBe(0)
+    expect(rings(renderer)).toHaveLength(0)
+    expect(iconCount(renderer, "cloud-done-outline")).toBe(1)
   })
 })
 
@@ -139,25 +154,9 @@ describe("ReaderTopBar translation pill", () => {
     expect(onPress).toHaveBeenCalledTimes(1)
   })
 
-  it("marks a stand-in with the info icon and says why in its label (R25, R41)", async () => {
-    const plain = await render({ kind: "bundled" })
-    expect(iconCount(plain, "information-circle-outline")).toBe(0)
-    await act(async () => mounted!.unmount())
-    mounted = null
-
-    const fallback: TranslationLabel = {
-      text: "BSB",
-      accessibilityLabel: READER_COPY.offlineStandInLabel(
-        "Berean Standard Bible",
-      ),
-      isFallback: true,
-    }
-    const renderer = await render({ kind: "bundled" }, fallback)
-    expect(iconCount(renderer, "information-circle-outline")).toBe(1)
-    expect(textCount(renderer, "BSB")).toBe(1)
-    expect(buttons(renderer)[1]!.props.accessibilityLabel).toBe(
-      fallback.accessibilityLabel,
-    )
+  it("has no info button for the viewer's own translation", async () => {
+    const renderer = await render({ kind: "bundled" })
+    expect(iconCount(renderer, "information-circle-outline")).toBe(0)
   })
 
   it("is disabled while the translation is not known yet", async () => {
@@ -169,5 +168,148 @@ describe("ReaderTopBar translation pill", () => {
     expect(translation!.props.accessibilityState).toMatchObject({
       disabled: true,
     })
+  })
+})
+
+// The owner (2026-09-28): the stand-in's info icon sits right of the pill, not
+// inside it, and a tap shows why in a small note (R25, R41).
+describe("ReaderTopBar stand-in note", () => {
+  const NOTE =
+    "KAMIITHARI ÑAANTSI does not include Deuteronomy. The reader shows it in Berean Standard Bible."
+  const STAND_IN: TranslationLabel = {
+    ...BSB_LABEL,
+    note: NOTE,
+    noteKey: "book-fallback:BSB",
+  }
+
+  const tips = (renderer: TestInstance) =>
+    renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "bible-stand-in-tip",
+    )
+
+  /** The renderer has no layout: report the bar's rows by hand. */
+  async function layout(renderer: TestInstance) {
+    const measured = renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        typeof node.props.onLayout === "function",
+    )
+    await act(async () => {
+      for (const node of measured) {
+        ;(node.props.onLayout as (event: unknown) => void)({
+          nativeEvent: { layout: { x: 20, y: 4, width: 44, height: 44 } },
+        })
+      }
+    })
+  }
+
+  async function pressInfo(renderer: TestInstance) {
+    const [info] = renderer.root.findAll(
+      (node) =>
+        node.props.testID === "bible-stand-in-info" &&
+        typeof node.props.onPress === "function",
+    )
+    await act(async () => (info!.props.onPress as () => void)())
+  }
+
+  it("puts the info button right of the pill, with the note as its label", async () => {
+    const renderer = await render({ kind: "bundled" }, STAND_IN)
+    expect(
+      buttons(renderer).map((node) => node.props.accessibilityLabel),
+    ).toEqual([
+      READER_COPY.choosePassage("John 3:16"),
+      READER_COPY.translation("Berean Standard Bible"),
+      NOTE,
+      "Download",
+      READER_COPY.settings,
+    ])
+    // The icon is inside its own button, not inside the translation pill.
+    expect(iconCount(renderer, "information-circle-outline")).toBe(1)
+    const [icon] = renderer.root.findAll(
+      (node) =>
+        typeof node.type !== "string" &&
+        node.props.name === "information-circle-outline",
+    )
+    // The renderer wraps each node anew, so compare the owners' labels.
+    const owners: unknown[] = []
+    for (let node = icon?.parent ?? null; node; node = node.parent ?? null) {
+      owners.push(node.props.accessibilityLabel)
+    }
+    expect(owners).toContain(NOTE)
+    expect(owners).not.toContain(
+      READER_COPY.translation("Berean Standard Bible"),
+    )
+  })
+
+  it("shows the note on a tap, says it aloud, and hides it on the next tap", async () => {
+    const announce = jest
+      .spyOn(AccessibilityInfo, "announceForAccessibility")
+      .mockImplementation(() => {})
+    const renderer = await render({ kind: "bundled" }, STAND_IN)
+    await layout(renderer)
+    expect(tips(renderer)).toHaveLength(0)
+
+    await pressInfo(renderer)
+    expect(tips(renderer)).toHaveLength(1)
+    expect(textCount(renderer, NOTE)).toBe(1)
+    expect(announce).toHaveBeenCalledWith(NOTE)
+
+    await pressInfo(renderer)
+    expect(tips(renderer)).toHaveLength(0)
+    announce.mockRestore()
+  })
+
+  it("hides the note after a few seconds, and when the stand-in ends", async () => {
+    jest.useFakeTimers()
+    const renderer = await render({ kind: "bundled" }, STAND_IN)
+    await layout(renderer)
+    await pressInfo(renderer)
+    await act(async () => {
+      jest.advanceTimersByTime(STAND_IN_TIP_MS)
+    })
+    expect(tips(renderer)).toHaveLength(0)
+
+    await pressInfo(renderer)
+    expect(tips(renderer)).toHaveLength(1)
+    // The reader moves to a book the pick has: no note, no button.
+    await render({ kind: "bundled" }, BSB_LABEL)
+    expect(tips(renderer)).toHaveLength(0)
+    expect(iconCount(renderer, "information-circle-outline")).toBe(0)
+    jest.useRealTimers()
+  })
+
+  // The note names the book as the shown text does, and that name can load
+  // after the tap. The tip follows the stand-in, not its text (code review).
+  it("keeps the tip open when the same stand-in's note text changes", async () => {
+    const renderer = await render({ kind: "bundled" }, STAND_IN)
+    await layout(renderer)
+    await pressInfo(renderer)
+    const loaded = NOTE.replace("Deuteronomy", "Второзаконие")
+    await render({ kind: "bundled" }, { ...STAND_IN, note: loaded })
+    expect(tips(renderer)).toHaveLength(1)
+    expect(textCount(renderer, loaded)).toBe(1)
+  })
+
+  it("does not open the tip by itself when the same stand-in returns", async () => {
+    const renderer = await render({ kind: "bundled" }, STAND_IN)
+    await layout(renderer)
+    await pressInfo(renderer)
+    await render({ kind: "bundled" }, BSB_LABEL)
+    await render({ kind: "bundled" }, STAND_IN)
+    await layout(renderer)
+    expect(tips(renderer)).toHaveLength(0)
+  })
+
+  it("closes the tip when another stand-in takes over", async () => {
+    const renderer = await render({ kind: "bundled" }, STAND_IN)
+    await layout(renderer)
+    await pressInfo(renderer)
+    await render(
+      { kind: "bundled" },
+      { ...STAND_IN, noteKey: "offline-stand-in:BSB" },
+    )
+    expect(tips(renderer)).toHaveLength(0)
   })
 })

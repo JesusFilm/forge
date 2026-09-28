@@ -17,6 +17,9 @@ export type ReaderSheetKind = keyof typeof READER_SHEET_PATHNAMES
 /** What a reader control knows when it opens a sheet (U7's route context). */
 export type ReaderSheetContext = {
   translation: { id: string } | null
+  /** The viewer's own pick. It differs from `translation` while another
+   *  translation stands in for a book the pick lacks (R25). */
+  viewerTranslation?: { id: string } | null
   /** The verse in the shown translation's numbering (R42). */
   translationRef: VerseRef | null
   /** The reading position in BSB numbering (R38). */
@@ -27,6 +30,8 @@ export type ReaderSheetContext = {
 /** Every value is a string, because a route param is text. */
 export type ReaderSheetParams = {
   translation?: string
+  /** The viewer's pick, only when a stand-in shows instead (R25). */
+  viewer?: string
   /** BSB numbering, as `BOOK.chapter.verse`. */
   ref?: string
   /** The shown translation's numbering, as `BOOK.chapter.verse`. */
@@ -42,6 +47,8 @@ export type ReaderSheetHref = {
 /** What a sheet route knows after the parse. */
 export type ReaderSheetRequest = {
   translationId: string | null
+  /** Null when the viewer's pick is the translation that shows. */
+  viewerTranslationId: string | null
   ref: VerseRef | null
   translationRef: VerseRef | null
   offline: boolean
@@ -57,6 +64,8 @@ export function readerSheetHref(
 ): ReaderSheetHref {
   const params: ReaderSheetParams = { offline: context.offline ? "1" : "0" }
   if (context.translation) params.translation = context.translation.id
+  const viewer = context.viewerTranslation
+  if (viewer && viewer.id !== context.translation?.id) params.viewer = viewer.id
   if (context.ref) params.ref = refParam(context.ref)
   if (context.translationRef) {
     params.shownRef = refParam(context.translationRef)
@@ -85,10 +94,11 @@ function parseRef(value: unknown): VerseRef | null {
 export function parseReaderSheetParams(
   params: Readonly<Record<string, unknown>>,
 ): ReaderSheetRequest {
-  const { translation, ref, shownRef, offline } = params
+  const { translation, viewer, ref, shownRef, offline } = params
   const bsbRef = parseRef(ref)
   return {
     translationId: isStorableTranslationId(translation) ? translation : null,
+    viewerTranslationId: isStorableTranslationId(viewer) ? viewer : null,
     ref: bsbRef && isBsbVerseRef(bsbRef) ? bsbRef : null,
     translationRef: parseRef(shownRef),
     offline: offline === "1",

@@ -35,10 +35,7 @@ import {
 import type { ScrollEdges } from "../../lib/bible/movement/gesture"
 import { READER_COPY } from "../../lib/bible/reader/copy"
 import { stopRange, verseRangeLabel } from "../../lib/bible/reader/labels"
-import type {
-  ReaderLineSpacing,
-  ReaderTypeface,
-} from "../../lib/bible/settings/snapshot"
+import type { ReaderTypeface } from "../../lib/bible/settings/snapshot"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 import {
   readingFontFamily,
@@ -56,7 +53,8 @@ export type VerseAppearance = {
   /** The OS text scale; the fit applies it, so the Text ignores it. */
   osFontScale: number
   typeface: ReaderTypeface
-  lineSpacing: ReaderLineSpacing
+  /** The line height as a share of the text size. */
+  lineSpacing: number
   verseNumbers: boolean
 }
 
@@ -93,6 +91,9 @@ export type VerseViewProps = {
   selected?: boolean
   /** The verse is visible in this box at this size; a slide copies it. */
   onShown?: (shown: ShownVerse) => void
+  /** A long verse's scroll offset, overscroll included, so the still copy
+   *  leaves from where the viewer is (owner, 2026-09-28). */
+  onScrollOffset?: (y: number) => void
 }
 
 /** What the viewer sees of a verse, so a still copy can match it. */
@@ -218,6 +219,7 @@ function FittedVerse({
   columnWidth,
   accessibilityMove,
   onScrollEdges,
+  onScrollOffset,
   onPress,
   selected = false,
   onShown,
@@ -293,9 +295,11 @@ function FittedVerse({
   const scrolls = fit?.scroll === true
   useEffect(() => {
     onScrollEdges?.(scrolls ? { atTop: true, atBottom: false } : null)
-  }, [scrolls, measureKey, onScrollEdges])
+    onScrollOffset?.(0)
+  }, [scrolls, measureKey, onScrollEdges, onScrollOffset])
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
+    onScrollOffset?.(contentOffset.y)
     onScrollEdges?.({
       atTop: contentOffset.y <= EDGE_SLOP,
       atBottom:
@@ -439,7 +443,7 @@ type VerseBodyProps = {
   stop: ChapterPosition
   size: number
   fontFamily: string
-  lineSpacing: ReaderLineSpacing
+  lineSpacing: number
   verseNumbers: boolean
   textDirection: TextDirection
   tokens: ReaderTokens
@@ -505,10 +509,12 @@ export type VerseSnapshotProps = Pick<
 > & {
   shown: ShownVerse
   selected: boolean
+  /** Where a scrolled verse stood, overscroll included; 0 is its top. */
+  scrollY?: number
 }
 
 /** A still copy of a shown verse, for the slide out. It has no fit, no touch,
- *  and nothing a screen reader reads. A scrolled verse shows from its top. */
+ *  and nothing a screen reader reads. A scrolled verse shows where it stood. */
 export function VerseSnapshot({
   stop,
   textDirection,
@@ -517,6 +523,7 @@ export function VerseSnapshot({
   columnWidth,
   shown,
   selected,
+  scrollY = 0,
 }: VerseSnapshotProps) {
   const plainText =
     stop.kind === "verse"
@@ -541,18 +548,29 @@ export function VerseSnapshot({
             shown.scroll && { height: shown.box.height },
           ]}
         >
-          <VerseBody
-            verse={stop.verse}
-            stop={stop}
-            size={shown.size}
-            fontFamily={fontFamily}
-            lineSpacing={appearance.lineSpacing}
-            verseNumbers={appearance.verseNumbers}
-            textDirection={textDirection}
-            tokens={tokens}
-            selected={selected}
-            lineTestID="bible-verse-outgoing-line"
-          />
+          {/* A margin, not a transform: the renderer skips a line whose layout
+              is outside the clip, and a transform does not move the layout. */}
+          <View
+            testID="bible-verse-outgoing-content"
+            style={
+              shown.scroll && scrollY !== 0
+                ? { marginTop: -scrollY }
+                : undefined
+            }
+          >
+            <VerseBody
+              verse={stop.verse}
+              stop={stop}
+              size={shown.size}
+              fontFamily={fontFamily}
+              lineSpacing={appearance.lineSpacing}
+              verseNumbers={appearance.verseNumbers}
+              textDirection={textDirection}
+              tokens={tokens}
+              selected={selected}
+              lineTestID="bible-verse-outgoing-line"
+            />
+          </View>
         </View>
       )}
     </VerseAreaBox>

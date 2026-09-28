@@ -1,11 +1,7 @@
 // The reading typeface (feat-553 KTD16, R32). No font asset ships: iOS draws
 // Georgia and Android its system serif. The serif covers Latin, Greek, and
 // Cyrillic; any other script falls back to the platform font.
-import type { ReaderLineSpacing, ReaderTypeface } from "../settings/snapshot"
-
-export const READER_LINE_HEIGHT_FACTORS: Readonly<
-  Record<ReaderLineSpacing, number>
-> = Object.freeze({ compact: 1.2, normal: 1.35, relaxed: 1.6 })
+import type { ReaderTypeface } from "../settings/snapshot"
 
 /** Code point ranges that the platform serif draws, besides ASCII. */
 const SERIF_RANGES: readonly (readonly [number, number])[] = [
@@ -47,9 +43,7 @@ export function readingFontFamily(
   return platform === "ios" ? "Georgia" : "serif"
 }
 
-export function verseLineHeight(
-  size: number,
-  spacing: ReaderLineSpacing,
-): number {
-  return Math.round(size * READER_LINE_HEIGHT_FACTORS[spacing])
+/** `spacing` is a share of the text size (READER_LINE_SPACING_STEPS). */
+export function verseLineHeight(size: number, spacing: number): number {
+  return Math.round(size * spacing)
 }

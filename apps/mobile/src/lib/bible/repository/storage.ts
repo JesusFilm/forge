@@ -23,6 +23,11 @@ export function translationsDirectory(): Directory {
   return new Directory(Paths.document, "bible", "translations")
 }
 
+/** Small, and read offline, so it lives with the downloads. */
+export function bookNamesDirectory(): Directory {
+  return new Directory(Paths.document, "bible", "book-names")
+}
+
 export function stagingDirectory(): Directory {
   return new Directory(Paths.cache, "bible", "downloads")
 }
