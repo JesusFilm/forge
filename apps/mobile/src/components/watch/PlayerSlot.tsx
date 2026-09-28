@@ -20,6 +20,7 @@ import {
   type PlaybackRequest,
   type PlaybackSessionDescriptor,
   type ProgressFeed,
+  type ProgressHold,
 } from "../../lib/miniPlayer/playbackRequest"
 import type { VideoPlayerCast } from "./VideoPlayer"
 import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
@@ -56,6 +57,8 @@ type PlayerSlotProps = {
   horizontalInset?: number
   /** Progress-recording identity (KTD5). Absent = no recording. */
   progressIdentity?: ProgressIdentity | null
+  /** KTD12: no progress write while set. Dropping it ends the hold at once. */
+  progressHold?: ProgressHold | null
   resumeAtSeconds?: number | null
   autostart?: boolean
   /** What this video's mini-player session would be. Omitted on a surface that
@@ -83,6 +86,7 @@ export function PlayerSlot({
   onToggleFullscreen,
   horizontalInset = 0,
   progressIdentity = null,
+  progressHold = null,
   resumeAtSeconds = null,
   autostart = false,
   session = null,
@@ -107,6 +111,7 @@ export function PlayerSlot({
     progressVideoId: progressIdentity?.videoId ?? null,
     progressVideoSlug: progressIdentity?.videoSlug ?? null,
     progressLanguageSlug: progressIdentity?.languageSlug ?? null,
+    progressHold,
     onToggleFullscreen: onToggleFullscreen ?? null,
     castActive,
     cast,

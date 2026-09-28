@@ -180,7 +180,13 @@ describe("isTabGroupRoute", () => {
     expect(isTabGroupRoute(["reader-passage"])).toBe(false)
   })
 
-  it("lists the four tabs in the product order (feat-553 R2, KD18)", () => {
-    expect([...TAB_ROUTE_NAMES]).toEqual(["index", "watch", "bible", "profile"])
+  it("lists the five tabs in the product order (feat-553 R2, KD18; feat-552 R1)", () => {
+    expect([...TAB_ROUTE_NAMES]).toEqual([
+      "index",
+      "explore",
+      "watch",
+      "bible",
+      "profile",
+    ])
   })
 })

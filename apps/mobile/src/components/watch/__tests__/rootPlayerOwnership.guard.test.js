@@ -37,6 +37,24 @@ const SCREENS_WITHOUT_A_PLAYER = [
   "app/series/[slug].tsx",
 ]
 
+// KTD2/KTD10: Explore's feed views draw its two feed-owned players. They yield
+// by takeover, not by `useMiniPlayerHoldsVideo`: while Explore has focus it
+// dismisses a floating session, and the feed hook gates play on that yield.
+const FEED_VIDEO_SURFACES = ["src/components/explore/FeedVideoView.tsx"]
+const FEED_PLAYERS = "src/hooks/useFeedPlayers.ts"
+// A read of the input (`.yieldsToRoot`), not the type's field of that name.
+const TAKEOVER_YIELD = /\.yieldsToRoot\b/
+// R3: a clip never enters picture-in-picture.
+const PICTURE_IN_PICTURE =
+  /\bpictureInPictureViewProps\b|\ballowsPictureInPicture\b|\bstartsPictureInPictureAutomatically\b|\bonPictureInPicture(?:Start|Stop)\b/
+
+function codeOf(content) {
+  return content
+    .split("\n")
+    .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
+    .join("\n")
+}
+
 function mountsAPlayer(entries) {
   return entries
     .filter((entry) =>
@@ -47,6 +65,22 @@ function mountsAPlayer(entries) {
         ),
     )
     .map((entry) => entry.relative)
+}
+
+/** Every way a feed-class file can leave its class, as "file: reason". */
+function feedClassFindings(entries) {
+  const findings = []
+  for (const entry of entries) {
+    const code = codeOf(entry.content)
+    if (FEED_VIDEO_SURFACES.includes(entry.relative)) {
+      if (PICTURE_IN_PICTURE.test(code))
+        findings.push(`${entry.relative}: picture-in-picture`)
+      if (YIELDS.test(code)) findings.push(`${entry.relative}: hero yield`)
+    }
+    if (entry.relative === FEED_PLAYERS && !TAKEOVER_YIELD.test(code))
+      findings.push(`${entry.relative}: no takeover yield`)
+  }
+  return findings
 }
 
 function collectSourceFiles(dir, acc = []) {
@@ -138,7 +172,7 @@ describe("the screens borrow the root player", () => {
 describe("the heroes yield the decoder to a live window", () => {
   // Read off the tree rather than asserted from a list, so a NEW video surface
   // fails here and has to be classified instead of quietly holding a decoder.
-  it("the app's video views are the host, the two heroes, and the two SDUI players", () => {
+  it("the app's video views are the host, the two heroes, the two SDUI players, and the feed", () => {
     const surfaces = readTree()
       .filter((entry) => VIDEO_VIEW.test(entry.content))
       .map((entry) => entry.relative)
@@ -148,6 +182,7 @@ describe("the heroes yield the decoder to a live window", () => {
         PLAYBACK_HOST,
         ...HERO_VIDEO_SURFACES,
         ...VIEWER_INITIATED_PLAYERS,
+        ...FEED_VIDEO_SURFACES,
       ].sort(),
     )
   })
@@ -178,5 +213,47 @@ describe("the heroes yield the decoder to a live window", () => {
       "constwindowHoldsVideo=useMiniPlayerHoldsVideo()",
     )
     expect(squished).toContain("paused={heroPlaybackPaused(")
+  })
+})
+
+describe("the feed's views yield by takeover (Explore)", () => {
+  it("no feed view enters picture-in-picture, and the feed hook reads the takeover yield", () => {
+    const feed = readTree().filter(
+      (entry) =>
+        FEED_VIDEO_SURFACES.includes(entry.relative) ||
+        entry.relative === FEED_PLAYERS,
+    )
+
+    // Anti-vacuous: a broken scan would leave nothing to check.
+    expect(feed.map((entry) => entry.relative).sort()).toEqual(
+      [...FEED_VIDEO_SURFACES, FEED_PLAYERS].sort(),
+    )
+    expect(feedClassFindings(feed)).toEqual([])
+  })
+
+  it("positive control: the feed-class detector flags each way out of the class", () => {
+    const [view] = FEED_VIDEO_SURFACES
+    expect(
+      feedClassFindings([
+        {
+          relative: view,
+          content:
+            "const holds = useMiniPlayerHoldsVideo()\n<VideoView {...pictureInPictureViewProps()} />",
+        },
+        {
+          relative: FEED_PLAYERS,
+          content:
+            "type Input = { yieldsToRoot: boolean }\n// input.yieldsToRoot in a comment\nplayer.play()",
+        },
+        {
+          relative: "src/components/explore/Other.tsx",
+          content: "<VideoView startsPictureInPictureAutomatically />",
+        },
+      ]),
+    ).toEqual([
+      `${view}: picture-in-picture`,
+      `${view}: hero yield`,
+      `${FEED_PLAYERS}: no takeover yield`,
+    ])
   })
 })

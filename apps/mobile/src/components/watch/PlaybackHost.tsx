@@ -46,6 +46,7 @@ import {
 import { getAuthSession } from "../../lib/authSession"
 import { BLACK } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
+import { isExploreAvailable } from "../../lib/explore/availability"
 import { OFFLINE_ROOT } from "../../lib/offlineFileSystem"
 import {
   isDubSwap,
@@ -94,6 +95,7 @@ import {
 } from "../../lib/miniPlayer/playbackRequest"
 import { pictureInPictureViewProps } from "../../lib/miniPlayer/pictureInPicture"
 import {
+  EXPLORE_TAB_ROUTE_PATTERN,
   expandAction,
   isReaderCovering,
   miniPlayerPresentation,
@@ -119,6 +121,10 @@ import {
 } from "../../lib/streamQuality"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { resumePositionSeconds } from "../../lib/watchProgress/thresholds"
+import {
+  clearPlaybackTransport,
+  setPlaybackTransport,
+} from "../../lib/playbackInterruption"
 import { FloatingBackButton } from "../ui/FloatingBackButton"
 import { MiniPlayerWindow } from "./MiniPlayerWindow"
 import { VideoPlayer } from "./VideoPlayer"
@@ -543,6 +549,9 @@ function ActivePlaybackHost({
       },
       {
         progress: progressIdentity,
+        // Its own channel, never a null identity: the identity hold above
+        // would put the known identity back and undo it.
+        progressHold: request.progressHold ?? null,
         ownsSession: true,
         // The recommendation recorder's discovery key (feat-516): a search
         // result marks its slug before navigating; the id alone never matches.
@@ -939,6 +948,28 @@ function ActivePlaybackHost({
     return () => store.setPlaybackFactsSource(null)
   }, [store, player])
 
+  // Lends the one player to code outside the host's tree: Explore's takeover
+  // pauses it (feat-552 KTD10) and the watch page's R17 offer seeks it. A
+  // route-tree component cannot reach a sibling of the stack.
+  useEffect(() => {
+    const transport = {
+      isPlaying: () => player.playing,
+      pause: () => player.pause(),
+      play: () => player.play(),
+      seek: (seconds: number) => {
+        // A swap still loading resumes from its capture on sourceLoad. Move
+        // it in place: the swap's timeout checks the latch by identity.
+        const pending = pendingQualityResumeRef.current
+        if (pending != null) pending.positionSeconds = seconds
+        player.currentTime = seconds
+      },
+    }
+    setPlaybackTransport(transport)
+    // Identity-checked: an unconditional null would let a torn-down host clear
+    // a live registration if the two ever overlap.
+    return () => clearPlaybackTransport(transport)
+  }, [player])
+
   // KTD10: one layout effect per covered slot. It runs admission through the
   // store (the same step a detach takes), and its cleanup is the return. A new
   // slot under the reader (a deep link) is a new cover and a new decision.
@@ -1053,6 +1084,13 @@ function ActivePlaybackHost({
   const insets = useSafeAreaInsets()
   const pattern = routePattern(segments)
   const underHeader = HEADER_ROUTE_PATTERNS.has(pattern)
+  // A closed gate leaves the route reachable by URL but empty, with no takeover
+  // to end the session: a hidden window there would play sound with no control.
+  const onExplore =
+    pattern === EXPLORE_TAB_ROUTE_PATTERN && isExploreAvailable()
+  // Read by the transition effect, which must not re-run on a route change.
+  const onExploreRef = useRef(onExplore)
+  onExploreRef.current = onExplore
 
   // KTD5: the drag writes the frame node and never takes the native driver;
   // the shrink (motion node inside it) and the exit (wrapper above it) do.
@@ -1157,6 +1195,9 @@ function ActivePlaybackHost({
 
   const [chromeReady, setChromeReady] = useState(true)
   const [surfaceReleased, setSurfaceReleased] = useState(false)
+  // A player page popped onto Explore: no shrink, and no window to see
+  // (owner, 2026-09-28). Explore's takeover then ends the session.
+  const [vanishedOntoExplore, setVanishedOntoExplore] = useState(false)
   const lastRectRef = useRef<PlaybackRect | null>(null)
   const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shrinkAnimRef = useRef<Animated.CompositeAnimation | null>(null)
@@ -1293,6 +1334,7 @@ function ActivePlaybackHost({
         !coverHides &&
         (hasSession || floatedOverReader)
       lastRectRef.current = rect
+      setVanishedOntoExplore(false)
       drag.setValue({ x: 0, y: 0 })
       if (grow) {
         // The grow starts where the window is RENDERED, which the tap's hold
@@ -1331,6 +1373,7 @@ function ActivePlaybackHost({
     }
     const from = lastRectRef.current
     lastRectRef.current = null
+    if (!hasSession) setVanishedOntoExplore(false)
     if (from == null || !hasSession) {
       // Mid-expand the destination's chrome is already live, so the corner
       // frame sits below the window the viewer is watching. The drag stays
@@ -1394,6 +1437,13 @@ function ActivePlaybackHost({
       y: target.y - windowFrame.y,
     }
     drag.setValue(dragTarget)
+    if (onExploreRef.current) {
+      restingTargetRef.current = target
+      restingDragRef.current = dragTarget
+      clearMotion()
+      setVanishedOntoExplore(true)
+      return
+    }
     setChromeReady(false)
     // The same turn-around the other way: a grow still on the ramp departs
     // from the very corner this shrink is heading for.
@@ -1656,10 +1706,6 @@ function ActivePlaybackHost({
     hasSession &&
     (presentation === "floating" || presentation === "exiting") &&
     !coverHides
-  const suppressed = hasSession && presentation === "hidden"
-  // A hidden cover hides the frame the way sheet suppression does: by
-  // opacity, with no touches, and with every view still mounted (KTD10).
-  const frameHidden = suppressed || coverHides
   const floating = rect == null && hasSession
   // The frame sits at the motion's anchor while one runs (see the motion
   // state), and at the corner the moment a from-anchored one settles. An
@@ -1678,6 +1724,15 @@ function ActivePlaybackHost({
   // setChromeReady(false) lands a commit later. The frame is the departing rect
   // here, so neither the corner radius nor the mini transport belongs yet.
   const settlingFromRect = departingRect != null
+  // Hidden from the gap render on, before the effect latches the vanish. Only
+  // on Explore: a viewer who leaves before the takeover ends it sees the window.
+  const hiddenOnExplore =
+    onExplore && hasSession && (vanishedOntoExplore || settlingFromRect)
+  const suppressed =
+    hasSession && (presentation === "hidden" || hiddenOnExplore)
+  // A hidden cover hides the frame the way sheet suppression does: by
+  // opacity, with no touches, and with every view still mounted (KTD10).
+  const frameHidden = suppressed || coverHides
   const geometry = frameGeometry({
     rect,
     motion,

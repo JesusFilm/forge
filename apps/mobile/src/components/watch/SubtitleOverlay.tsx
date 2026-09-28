@@ -1,19 +1,21 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   AccessibilityInfo,
   Animated,
   Easing,
   StyleSheet,
   Text,
+  type LayoutChangeEvent,
 } from "react-native"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 
+import { captionMeetsBox, type CaptionBox } from "../../lib/captionBox"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
 import { LINE_HEIGHT_REDUCTION } from "../../lib/lineHeight"
-import { parseVtt, type VttCue } from "../../lib/parseVtt"
-import { validateActionUrl } from "../../lib/validateUrl"
+import type { VttCue } from "../../lib/parseVtt"
+import { loadVttCues, parseSortedVtt, pinVtt } from "../../lib/vttCache"
 import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
 import { OFFLINE_ROOT } from "../../lib/offlineFileSystem"
 import { readAsStringAsync } from "expo-file-system/legacy"
@@ -25,6 +27,11 @@ type SubtitleOverlayProps = {
   /** Horizontal padding so captions clear the notch / home-indicator in
    *  landscape fullscreen. Defaults to the inline value. */
   horizontalInset?: number
+  /** Right padding only, when a column of controls sits beside the caption. */
+  rightInset?: number
+  /** With `rightInset`: take it only when the full-width caption covers one
+   *  of these boxes, in this overlay's parent frame. Without them it always applies. */
+  rightInsetBoxes?: readonly CaptionBox[]
   /** Caption text size — larger in fullscreen where the video fills the screen. */
   fontSize?: number
   /** Animate vertical-offset changes (used only in fullscreen, where the caption
@@ -35,7 +42,7 @@ type SubtitleOverlayProps = {
 // Cues are sorted by start time. Binary-search the last cue whose start is <= t,
 // then check t is still before its (exclusive) end — keeping the 100ms poll
 // cheap even for a feature-length VTT with hundreds of cues.
-function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
+function findActiveCue(cues: readonly VttCue[], t: number): VttCue | undefined {
   let lo = 0
   let hi = cues.length - 1
   let ans = -1
@@ -61,27 +68,54 @@ function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
   return undefined
 }
 
-// Classify a remote VTT fetch rejection into a stable, low-cardinality reason.
-// AbortError is the 8s deadline; `vtt_http_<status>` is the non-2xx guard throw.
-export function classifyVttFetchError(error: unknown): string {
-  if (error instanceof Error) {
-    if (error.name === "AbortError") return "timeout"
-    const status = error.message.match(/^vtt_http_(\d+)$/)?.[1]
-    if (status) return `http_${status}`
-  }
-  return "network_error"
-}
-
 export function SubtitleOverlay({
   player,
   vttSrc,
   bottomOffset = 16,
   horizontalInset = 16,
+  rightInset,
+  rightInsetBoxes,
   fontSize = 16,
   animate = false,
 }: SubtitleOverlayProps) {
-  const [cues, setCues] = useState<VttCue[]>([])
+  const [cues, setCues] = useState<readonly VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
+
+  // Each new cue lays out unseen at full width, and that box decides the
+  // inset. The inset box cannot decide: it wraps taller and moves, so the
+  // decision would flip back and forth.
+  const fitKey =
+    rightInset == null || rightInsetBoxes == null
+      ? null
+      : JSON.stringify([
+          activeText,
+          bottomOffset,
+          fontSize,
+          horizontalInset,
+          rightInset,
+          rightInsetBoxes,
+        ])
+  const [fit, setFit] = useState<{ key: string; inset: boolean } | null>(null)
+  const measuring = fitKey != null && fit?.key !== fitKey
+  const insetApplies = fitKey == null || (!measuring && fit?.inset === true)
+  const handleTextLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      if (fitKey == null || rightInsetBoxes == null) return
+      const { x, width, height } = e.nativeEvent.layout
+      const inset = captionMeetsBox(
+        {
+          left: x,
+          right: x + width,
+          bottom: bottomOffset,
+          top: bottomOffset + height,
+        },
+        rightInsetBoxes,
+      )
+      // The first layout of this cue only: later ones are the inset layout.
+      setFit((prev) => (prev?.key === fitKey ? prev : { key: fitKey, inset }))
+    },
+    [fitKey, rightInsetBoxes, bottomOffset],
+  )
 
   // Vertical offset via translateY (native-driver friendly on Fabric), anchored
   // at bottom:0 and lifted by -bottomOffset. Animated only when `animate`
@@ -143,7 +177,7 @@ export function SubtitleOverlay({
       readAsStringAsync(vttSrc)
         .then((text) => {
           if (cancelled) return
-          const parsed = [...parseVtt(text)].sort((a, b) => a.start - b.start)
+          const parsed = parseSortedVtt(text)
           setCues(parsed)
           if (parsed.length === 0) {
             datadogLog.warn("subtitle.vtt_failed", { reason: "parse_empty" })
@@ -162,46 +196,24 @@ export function SubtitleOverlay({
       }
     }
 
-    // Remote: validate the CMS-sourced URL before fetching (apps/mobile/CLAUDE.md).
-    if (!validateActionUrl(vttSrc)) {
-      setCues([])
-      setActiveText("")
-      datadogLog.warn("subtitle.vtt_failed", { reason: "unsafe_url" })
-      return
-    }
-    // AbortController so switching language (or unmounting) actually cancels
-    // the in-flight request instead of leaking it; the timer is the hard cap
-    // so a stalled CDN can't hold the request open indefinitely.
+    // Remote: the shared cue cache validates the URL, caps the bytes, and times
+    // out at 8 s. The pin keeps Explore's look-ahead from evicting this track.
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
-    fetch(vttSrc, { signal: controller.signal })
-      .then((r) => {
-        // A CDN 4xx/5xx returns an error-page body; without this guard
-        // parseVtt would silently yield zero cues and subtitles never appear.
-        if (!r.ok) throw new Error(`vtt_http_${r.status}`)
-        return r.text()
-      })
-      .then((text) => {
-        if (cancelled) return
-        const parsed = [...parseVtt(text)].sort((a, b) => a.start - b.start)
-        setCues(parsed)
-        if (parsed.length === 0) {
-          datadogLog.warn("subtitle.vtt_failed", { reason: "parse_empty" })
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setCues([])
-          datadogLog.warn("subtitle.vtt_failed", {
-            reason: classifyVttFetchError(err),
-          })
-        }
-      })
-      .finally(() => clearTimeout(timeout))
+    const unpin = pinVtt(vttSrc)
+    void loadVttCues(vttSrc, { signal: controller.signal }).then((result) => {
+      if (cancelled) return
+      if (result.ok) {
+        setCues(result.cues)
+        return
+      }
+      setCues([])
+      datadogLog.warn("subtitle.vtt_failed", { reason: result.reason })
+    })
     return () => {
       cancelled = true
+      // Detaches this overlay only: a fetch that another reader shares goes on.
       controller.abort()
-      clearTimeout(timeout)
+      unpin()
       // Drop the old cues so the previous language's subtitles don't flash
       // against the new playhead while the next VTT is still fetching.
       setCues([])
@@ -240,10 +252,21 @@ export function SubtitleOverlay({
       pointerEvents="none"
       style={[
         styles.container,
-        { paddingHorizontal: horizontalInset, transform: [{ translateY }] },
+        {
+          paddingHorizontal: horizontalInset,
+          paddingRight: insetApplies
+            ? (rightInset ?? horizontalInset)
+            : horizontalInset,
+          transform: [{ translateY }],
+        },
+        measuring && styles.measuring,
       ]}
     >
       <Text
+        // A new key per cue remounts the text, so its first layout always
+        // fires, even when the new cue's box is the same size as the last.
+        key={fitKey ?? "caption"}
+        onLayout={fitKey == null ? undefined : handleTextLayout}
         style={[
           styles.text,
           {
@@ -268,6 +291,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     paddingHorizontal: 16,
+  },
+  measuring: {
+    opacity: 0,
   },
   text: {
     color: TEXT_ON_OVERLAY,

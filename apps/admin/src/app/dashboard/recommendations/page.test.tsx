@@ -369,6 +369,7 @@ describe("Admin Recommendations pages", () => {
           window: "7d",
           exposure: "watch-home:hero:hero-card",
           exposurePlacement: "primary",
+          exposurePolicy: "watch-exposure-v2",
         }),
       }),
     )
@@ -377,16 +378,88 @@ describe("Admin Recommendations pages", () => {
       block: "hero",
       presentation: "hero-card",
       placement: "primary",
+      policyVersion: "watch-exposure-v2",
     }
     expect(loadSignedExposureMock).toHaveBeenCalledWith({}, "7d", filter)
     expect(loadAnonymousExposureMock).toHaveBeenCalledWith({}, "7d", filter)
     expect(loadOverviewMock).toHaveBeenCalledWith({}, { window: "7d" })
     expect(html).toContain('name="exposure"')
     expect(html).toContain('name="exposurePlacement"')
+    expect(html).toContain('name="exposurePolicy"')
+    expect(html).toContain('value="watch-exposure-v2" selected=""')
+    expect(html).toContain("and policy watch-exposure-v2")
     expect(html).toContain("Exposure rows are scoped")
   })
 
   it.each([
+    {
+      exposure: "watch-home:hero:hero-card",
+      exposurePolicy: "watch-exposure-v1",
+      surface: "watch-home",
+      block: "hero",
+      presentation: "hero-card",
+    },
+    {
+      exposure: "watch-home:for-you:recommendation-list",
+      exposurePolicy: "watch-for-you-v1",
+      surface: "watch-home",
+      block: "for-you",
+      presentation: "recommendation-list",
+    },
+    {
+      exposure: "watch-video:below-player:recommendation-list",
+      exposurePolicy: "watch-below-player-v1",
+      surface: "watch-video",
+      block: "below-player",
+      presentation: "recommendation-list",
+    },
+  ])(
+    "forwards compatible policy selection %j",
+    async ({ exposure, exposurePolicy, surface, block, presentation }) => {
+      requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+      const html = renderToStaticMarkup(
+        await RecommendationsPage({
+          searchParams: Promise.resolve({
+            window: "29d",
+            exposure,
+            exposurePolicy,
+          }),
+        }),
+      )
+      const filter = {
+        surface,
+        block,
+        presentation,
+        policyVersion: exposurePolicy,
+      }
+      expect(loadSignedExposureMock).toHaveBeenCalledWith({}, "29d", filter)
+      expect(loadAnonymousExposureMock).toHaveBeenCalledWith({}, "29d", filter)
+      expect(loadOverviewMock).toHaveBeenCalledWith({}, { window: "29d" })
+      expect(html).toContain(
+        "Overview and replay counts retain the selected time window",
+      )
+    },
+  )
+
+  it.each([
+    { exposurePolicy: "watch-exposure-v2" },
+    {
+      exposure: "watch-home:hero:hero-card",
+      exposurePolicy: ["watch-exposure-v1", "watch-exposure-v2"],
+    },
+    { exposure: "watch-home:hero:hero-card", exposurePolicy: "unknown-policy" },
+    {
+      exposure: "watch-home:hero:hero-card",
+      exposurePolicy: "watch-for-you-v1",
+    },
+    {
+      exposure: "watch-home:for-you:recommendation-list",
+      exposurePolicy: "watch-exposure-v2",
+    },
+    {
+      exposure: "watch-home:for-you:recommendation-list",
+      exposurePolicy: "watch-below-player-v1",
+    },
     { exposure: "watch-home:unknown:hero-card" },
     {
       exposure: [

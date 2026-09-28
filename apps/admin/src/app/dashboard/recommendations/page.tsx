@@ -115,6 +115,7 @@ export default async function RecommendationsPage({
   const exposureSelection = resolveWatchExposureInspectionFilter(
     params.exposure,
     params.exposurePlacement,
+    params.exposurePolicy,
   )
   const canReadTraces = hasPermission(principal, "read:recommendation-traces")
   const canOperatePromotion = hasPermission(

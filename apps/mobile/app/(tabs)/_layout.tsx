@@ -2,8 +2,8 @@ import { Tabs } from "expo-router"
 import { Platform } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { READER_COPY } from "../../src/lib/bible/reader/copy"
-import { useTabBarStyle } from "../../src/lib/tabBar"
+import { isExploreAvailable } from "../../src/lib/explore/availability"
+import { TAB_LABELS, useTabBarStyle } from "../../src/lib/tabBar"
 
 const ACCENT = "#CB333B"
 const MUTED = "#a8a29e"
@@ -34,16 +34,28 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: TAB_LABELS.index,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color as string} />
           ),
         }}
       />
       <Tabs.Screen
+        name="explore"
+        options={{
+          title: TAB_LABELS.explore,
+          // KTD16: `null` hides the button. The route stays reachable by URL,
+          // so explore.tsx checks the gate as well.
+          href: isExploreAvailable() ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="play-circle" size={size} color={color as string} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="watch"
         options={{
-          title: "Search",
+          title: TAB_LABELS.watch,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search" size={size} color={color as string} />
           ),
@@ -52,7 +64,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="bible"
         options={{
-          title: READER_COPY.tabTitle,
+          title: TAB_LABELS.bible,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="book" size={size} color={color as string} />
           ),
@@ -61,7 +73,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: TAB_LABELS.profile,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color as string} />
           ),

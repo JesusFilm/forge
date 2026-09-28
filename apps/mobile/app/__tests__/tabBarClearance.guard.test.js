@@ -5,8 +5,8 @@ const fs = require("fs")
 const path = require("path")
 
 // On iOS the bar floats, so the screen container runs full height and nothing
-// compensates. This is an ENUMERATION, not a sweep: a seventh scroll surface
-// escapes it silently. Add a row whenever you add one.
+// compensates. This is an ENUMERATION, not a sweep: a new surface that must
+// clear the bar escapes it silently. Add a row whenever you add one.
 const ROOT = path.resolve(__dirname, "../..")
 const CLEARANCE = /useTabBarClearance/
 // Presence of the identifier is not application: three of these surfaces use
@@ -37,6 +37,7 @@ const SURFACES = [
   "src/components/library/LibraryDownloads.tsx",
   "src/components/ui/Snackbar.tsx",
   "src/components/ExportReportHost.tsx",
+  "src/components/explore/ClipOverlay.tsx",
 ]
 
 describe("every scroll surface clears the floating tab bar", () => {
@@ -66,7 +67,7 @@ describe("every scroll surface clears the floating tab bar", () => {
 
   it("names every surface the enumeration is meant to cover", () => {
     // A shrinking list is the failure mode this guard cannot otherwise see.
-    expect(SURFACES).toHaveLength(6)
+    expect(SURFACES).toHaveLength(7)
   })
 })
 
@@ -74,6 +75,11 @@ describe("every scroll surface clears the floating tab bar", () => {
 // must add a row here, so it cannot escape the list above without notice.
 const TAB_ROUTES = {
   index: { surface: "src/components/home/HomeScreen.tsx" },
+  // feat-552: the route renders ExploreFeed, which draws the clip overlay.
+  explore: {
+    surface: "src/components/explore/ClipOverlay.tsx",
+    via: "src/components/explore/ExploreFeed.tsx",
+  },
   watch: { surface: "app/(tabs)/watch.tsx" },
   profile: { surface: "src/components/library/LibraryDownloads.tsx" },
   // feat-553: no scroll surface. The reader puts its footer above the bar
@@ -112,8 +118,12 @@ describe("every tab route is accounted for", () => {
     const route = stripComments(
       fs.readFileSync(path.join(ROOT, `app/(tabs)/${name}.tsx`), "utf8"),
     )
-    const modulePath = row.surface.replace(/^src\//, "").replace(/\.tsx$/, "")
+    const entry = row.via ?? row.surface
+    const modulePath = entry.replace(/^src\//, "").replace(/\.tsx$/, "")
     expect(route).toContain(`/src/${modulePath}"`)
+    if (row.via == null) return
+    const via = stripComments(fs.readFileSync(path.join(ROOT, row.via), "utf8"))
+    expect(via).toContain(`./${path.basename(row.surface, ".tsx")}"`)
   })
 
   it("puts the Bible tab's reader on the tab host, which clears the bar", () => {

@@ -19,6 +19,9 @@ const MUST_IMPORT_THE_SHARED_HEIGHT = [
   // tab list itself — the guard beside this one pins that order to the FILES.
   ["app/(tabs)/_layout.ios.tsx", /TAB_ROUTE_NAMES/],
   ["src/components/library/SelectionActionBar.tsx", /TAB_BAR_HEIGHT_IOS/],
+  // R1: a rename is a one-line change in the shared record.
+  ["app/(tabs)/_layout.tsx", /TAB_LABELS/],
+  ["app/(tabs)/_layout.ios.tsx", /TAB_LABELS/],
 ]
 
 /** Comments do not run: a commented-out import must not satisfy a positive
@@ -47,6 +50,28 @@ describe("the tab bar has one source of truth", () => {
       expect(source).toMatch(symbol)
     },
   )
+})
+
+// Any spelled tab label: a quoted string or bare JSX text. The shared record
+// holds the only copy, so a layout that spells one has a second source.
+const SPELLED_LABEL =
+  /["'`](Home|Explore|Search|Library|Profile)["'`]|>\s*(Home|Explore|Search|Library|Profile)\s*</
+
+describe("the tab labels have one source (R1)", () => {
+  it.each(["app/(tabs)/_layout.tsx", "app/(tabs)/_layout.ios.tsx"])(
+    "%s spells no tab label",
+    (relative) => {
+      expect(read(relative)).not.toMatch(SPELLED_LABEL)
+    },
+  )
+
+  it("would reject a label spelled in either form (positive control)", () => {
+    expect('title: "Home",').toMatch(SPELLED_LABEL)
+    expect("<Label>Explore</Label>").toMatch(SPELLED_LABEL)
+    expect("{ label: 'Search', sf: 'magnifyingglass' }").toMatch(SPELLED_LABEL)
+    expect("title: TAB_LABELS.index,").not.toMatch(SPELLED_LABEL)
+    expect('<Icon sf="house.fill" />').not.toMatch(SPELLED_LABEL)
+  })
 })
 
 /** Whatever TAB_BAR_CONTENT_HEIGHT is assigned, as a bare token. A lookahead

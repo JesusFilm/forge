@@ -1,6 +1,7 @@
 import { Platform, type ViewStyle } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { READER_COPY } from "./bible/reader/copy"
 import { BG_COLOR } from "./color"
 
 /**
@@ -43,12 +44,31 @@ export const TAB_BAR_MATERIAL_TINT = "rgba(0, 0, 0, 0.3)"
  * `app/(tabs)/_layout.ios.tsx` builds its triggers from this and
  * `tabBarLensOrder.guard.test.js` pins it against the route FILES — expo-router
  * appends an undeclared `app/(tabs)/*` file as an extra tab, which a scan of the
- * layout alone cannot see. The order is the product's (feat-553 R2, KD18).
- * There is no Library tab: the downloads list lives on Profile.
+ * layout alone cannot see. The order is the product's (feat-553 R2, KD18), with
+ * Explore second (feat-552). There is no Library tab: the downloads list lives
+ * on Profile.
  */
-export const TAB_ROUTE_NAMES = ["index", "watch", "bible", "profile"] as const
+export const TAB_ROUTE_NAMES = [
+  "index",
+  "explore",
+  "watch",
+  "bible",
+  "profile",
+] as const
 
 export type TabRouteName = (typeof TAB_ROUTE_NAMES)[number]
+
+/**
+ * Every tab's label, for both navigators. A rename is a one-line change here;
+ * `tabBarSingleSource.guard.test.js` fails if a layout spells a label itself.
+ */
+export const TAB_LABELS = {
+  index: "Home",
+  explore: "Explore",
+  watch: "Search",
+  bible: READER_COPY.tabTitle,
+  profile: "Profile",
+} as const satisfies Record<TabRouteName, string>
 
 /** The expo-router group the tab screens live in. */
 export const TAB_GROUP_SEGMENT = "(tabs)"

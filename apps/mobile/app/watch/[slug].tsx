@@ -61,7 +61,11 @@ import {
   type CastRecovery,
 } from "../../src/lib/playbackTarget"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
-import { usePlaybackFrameVisible } from "../../src/hooks/usePlaybackFrame"
+import {
+  usePlaybackFrameVisible,
+  usePlaybackPlaying,
+} from "../../src/hooks/usePlaybackFrame"
+import { seekPlayback } from "../../src/lib/playbackInterruption"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { resolvePlayerSource } from "../../src/lib/playerSource"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
@@ -72,6 +76,10 @@ import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
 import { presentActionMenu } from "../../src/lib/actionMenu"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
+import {
+  KeepWatchingOffer,
+  offerResumeSeconds,
+} from "../../src/components/watch/KeepWatchingOffer"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
 import {
   exportControls,
@@ -106,6 +114,16 @@ import {
   resolveActiveSubtitle,
   resolveSubtitleActionLabel,
 } from "../../src/lib/subtitleSelection"
+import {
+  advanceKeepWatching,
+  getWatchIntentStore,
+  keepWatchingAfterChoice,
+  keepWatchingLanguages,
+  keepWatchingProgressHold,
+  keepWatchingStateFor,
+  rankStartSeconds,
+} from "../../src/lib/explore/watchIntent"
+import { trackExploreFullPlay } from "../../src/lib/explore/fullPlayTracking"
 
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
 const EMPTY_VARIANTS: WatchVariant[] = []
@@ -166,7 +184,45 @@ export default function WatchVideoPage() {
     preferredSubtitleName,
     snackbarMessage,
     setSnackbarMessage,
+    setSessionIntent,
   } = useWatchSession()
+
+  // KTD11: only this route reads a "Keep watching" intent. A StrictMode render
+  // runs twice, so the render only peeks; the effect below consumes it.
+  const [keepWatchingState, setKeepWatchingState] = useState(() =>
+    keepWatchingStateFor(getWatchIntentStore().peek(decodedSlug)),
+  )
+  const keepWatching =
+    keepWatchingState?.intent.videoSlug === decodedSlug
+      ? keepWatchingState
+      : null
+  const keepWatchingIntent = keepWatching?.intent ?? null
+  useEffect(() => {
+    if (keepWatchingIntent == null) return
+    getWatchIntentStore().consume(keepWatchingIntent)
+    setSessionIntent(keepWatchingLanguages(keepWatchingIntent))
+    return () => setSessionIntent(null)
+  }, [keepWatchingIntent, setSessionIntent])
+
+  // R17's offer (KTD12). The host is a Stack sibling, so its play flag is the
+  // first-frame signal this page can read.
+  const playbackPlaying = usePlaybackPlaying()
+  const exploreIntent =
+    keepWatchingIntent?.origin === "explore" ? keepWatchingIntent : null
+  useEffect(() => {
+    if (exploreIntent != null && playbackPlaying)
+      trackExploreFullPlay(exploreIntent)
+  }, [exploreIntent, playbackPlaying])
+  const [offerExpired, setOfferExpired] = useState(false)
+  const expireOffer = useCallback(() => setOfferExpired(true), [])
+  // A choice ends the hold and replaces a live start, so a canonical load
+  // still to come lands on the choice (KTD11).
+  const chooseOfferPosition = useCallback((seconds: number) => {
+    seekPlayback(seconds)
+    setKeepWatchingState(
+      (state) => state && keepWatchingAfterChoice(state, seconds),
+    )
+  }, [])
 
   const apolloClient = useApolloClient()
   const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
@@ -303,6 +359,8 @@ export default function WatchVideoPage() {
     activeVariantHls: activeVariant?.hls ?? null,
     activeVariantDocumentId: activeVariant?.documentId ?? null,
     variantSettled: activeVariant != null,
+    // R16 plays the clip's dub: the intent names it, so the file waits.
+    awaitsNamedDub: keepWatchingIntent != null,
     recordStreamingUrl: video?.streamingUrl ?? null,
     seedStreamingUrl,
   })
@@ -338,13 +396,24 @@ export default function WatchVideoPage() {
   const progressState = progressBarState(progressEntry)
   // R16: a raw export outranks the offline state on this video's control.
   const exportEntry = useExportEntry(video?.slug)
-  const resumeAtSeconds =
+  const savedResumeSeconds =
     progressEntry && progressState.resumeEligible
       ? resumePositionSeconds(
           progressEntry.positionSeconds,
           progressEntry.durationSeconds,
         )
       : null
+  const resumeAtSeconds = rankStartSeconds(
+    keepWatching?.start ?? null,
+    savedResumeSeconds,
+  )
+  // R17 names the saved place as it was when the record landed. After the
+  // hold ends, this page's own writes move the entry to the tap point.
+  const [offerSaved, setOfferSaved] = useState<{
+    seconds: number | null
+  } | null>(null)
+  if (keepWatching != null && offerSaved == null && video?.slug === decodedSlug)
+    setOfferSaved({ seconds: savedResumeSeconds })
   const subtitleActionLabel = resolveSubtitleActionLabel(
     subtitleEnabled,
     activeSubtitleSlug,
@@ -384,6 +453,16 @@ export default function WatchVideoPage() {
   const effectivePlayerSource = castRemoteActive
     ? pinnedCastSourceRef.current
     : playerSource
+
+  // Set during render, so no request ever pairs a later dub's URL with the
+  // intent start. Returns the same state when nothing moved.
+  if (keepWatching != null) {
+    const advanced = advanceKeepWatching(keepWatching, {
+      url: effectivePlayerSource,
+      settled: activeVariant != null,
+    })
+    if (advanced !== keepWatching) setKeepWatchingState(advanced)
+  }
 
   // KTD5: the resolver input is this screen's source chain MINUS the
   // offlineSource prefix — a receiver can only fetch remote https.
@@ -757,6 +836,8 @@ export default function WatchVideoPage() {
                 : null
           }
           resumeAtSeconds={resumeAtSeconds}
+          // KTD12: null unless this page took a "Keep watching" intent.
+          progressHold={keepWatchingProgressHold(keepWatching)}
           autostart
         />
       </View>
@@ -980,6 +1061,21 @@ export default function WatchVideoPage() {
             <Ionicons name="chevron-up" size={22} color={TEXT_PRIMARY} />
           </Pressable>
         </Animated.View>
+      )}
+
+      {/* Hidden while casting (a seek moves the local player, not the TV), but
+          never unmounted: a remount would restart its clock after the hold ended. */}
+      {keepWatching?.holdActive === true && !offerExpired && (
+        <KeepWatchingOffer
+          resumeAtSeconds={offerResumeSeconds(
+            offerSaved?.seconds ?? null,
+            keepWatching.intent.startSeconds,
+          )}
+          clockStarted={playbackPlaying}
+          hidden={isFullscreen || castRemoteActive}
+          onChoose={chooseOfferPosition}
+          onExpire={expireOffer}
+        />
       )}
 
       <Snackbar

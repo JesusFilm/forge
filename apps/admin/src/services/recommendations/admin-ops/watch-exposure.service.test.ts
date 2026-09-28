@@ -12,6 +12,7 @@ describe("Watch exposure inspection", () => {
       block: "hero",
       presentation: "hero-card",
       placement: "hero-primary",
+      policyVersion: "watch-exposure-v2",
     }
     const query = vi.fn().mockResolvedValue([])
     const execute = vi.fn()
@@ -41,6 +42,7 @@ describe("Watch exposure inspection", () => {
       block: "for-you",
       presentation: "recommendation-list",
       placement: "primary",
+      policyVersion: "watch-for-you-v1",
     }
     await loadWatchExposureBreakdown(prisma, "24h", filter)
     const [strings, ...values] = query.mock.calls[0]
@@ -51,6 +53,14 @@ describe("Watch exposure inspection", () => {
     })
     const [unmatchedStrings, ...unmatchedValues] = query.mock.calls[1]
     expect(Prisma.sql(unmatchedStrings, ...unmatchedValues).text).toContain(
+      "AND FALSE",
+    )
+    await loadWatchExposureBreakdown(prisma, "24h", {
+      ...filter,
+      policyVersion: "watch-below-player-v1",
+    })
+    const [wrongPolicyStrings, ...wrongPolicyValues] = query.mock.calls[2]
+    expect(Prisma.sql(wrongPolicyStrings, ...wrongPolicyValues).text).toContain(
       "AND FALSE",
     )
   })

@@ -562,3 +562,99 @@ export const GET_WATCH_HOME_VIDEOS = adminGraphql(
 )
 
 export type WatchHomeVideosData = AdminResultOf<typeof GET_WATCH_HOME_VIDEOS>
+
+// ── Explore clips feed (feat-552 KTD6) ─────────────────────────────
+// Both operations run with fetchPolicy "no-cache", so a long session builds
+// nothing up in the shared Apollo cache.
+
+// The lean pool. U1: English at limit 1,000 is 665 KB decoded with these
+// fields; `imageUrl` would add 20%, so the veil's authored image comes from
+// the hydration below instead.
+export const exploreInventoryItemFragment = adminGraphql(`
+  fragment ExploreInventoryItem on WatchLanguageInventoryItem @_unmask {
+    id
+    coreId
+    slug
+    label
+    availability
+    durationSeconds
+    muxPlaybackId
+    watchLanguageSlug
+    title
+    description
+  }
+`)
+
+export const EXPLORE_INVENTORY = adminGraphql(
+  `
+    query ExploreInventory($languageSlug: String!, $limit: Int) {
+      watchLanguageInventory(languageSlug: $languageSlug, limit: $limit) {
+        language {
+          slug
+        }
+        audioCollections {
+          ...ExploreInventoryItem
+        }
+        audioVideos {
+          ...ExploreInventoryItem
+        }
+        subtitleOnlyVideos {
+          ...ExploreInventoryItem
+        }
+      }
+    }
+  `,
+  [exploreInventoryItemFragment],
+)
+
+export type ExploreInventoryData = AdminResultOf<typeof EXPLORE_INVENTORY>
+
+// Up to three queued candidates of one audio language in ONE root-field access
+// (admin allows 60 per minute, one per alias). The dub can be in another
+// language, so the caller checks its slug. NEVER add `dubs`; no bare `url`.
+export const EXPLORE_CLIP_CANDIDATES = adminGraphql(`
+  query ExploreClipCandidates(
+    $coreIds: [String!]!
+    $audioLanguageSlug: String!
+  ) {
+    watchHomeVideos(coreIds: $coreIds) {
+      documentId: id
+      coreId
+      images {
+        documentId: id
+        thumbnail
+        mobileCinematicHigh
+        mobileCinematicLow
+        videoStill
+      }
+      preferredPlayableDub(languageSlug: $audioLanguageSlug) {
+        documentId: id
+        hls
+        duration
+        lengthInMilliseconds
+        language {
+          slug
+        }
+        muxVideo {
+          playbackId
+        }
+        videoEdition {
+          documentId: id
+          subtitles {
+            documentId: id
+            vttSrc
+            primary
+            aiGenerated
+            language {
+              slug
+            }
+          }
+        }
+      }
+    }
+  }
+`)
+
+export type ExploreClipCandidatesData = AdminResultOf<
+  typeof EXPLORE_CLIP_CANDIDATES
+>
