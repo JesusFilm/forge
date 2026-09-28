@@ -1,5 +1,5 @@
-// The reader's top bar shows a running download's progress in the download
-// button (feat-553 R29), and the icon for every other state.
+// The reader's top bar shows a running download's progress as a ring in the
+// download button (feat-553 R29), and the icon for every other state.
 
 import { act } from "react"
 import { AccessibilityInfo } from "react-native"
@@ -97,7 +97,15 @@ function textCount(renderer: TestInstance, text: string): number {
 }
 
 describe("ReaderTopBar download button", () => {
-  it("shows the percent while a download runs", async () => {
+  const rings = (renderer: TestInstance) =>
+    renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "reader-download-ring",
+    )
+
+  // A ring, as on the watch page, and no percent text (owner, 2026-09-28).
+  it("shows a ring, not a percent, while a download runs", async () => {
     const renderer = await render({
       kind: "downloading",
       phase: "transfer",
@@ -105,12 +113,14 @@ describe("ReaderTopBar download button", () => {
       bytesWritten: 450,
       totalBytes: 1000,
     })
-    expect(textCount(renderer, "45%")).toBe(1)
+    expect(rings(renderer)).toHaveLength(1)
+    expect(textCount(renderer, "45%")).toBe(0)
   })
 
-  it("shows no percent when the translation is on the device", async () => {
+  it("shows no ring when the translation is on the device", async () => {
     const renderer = await render({ kind: "bundled" })
-    expect(textCount(renderer, "45%")).toBe(0)
+    expect(rings(renderer)).toHaveLength(0)
+    expect(iconCount(renderer, "cloud-done-outline")).toBe(1)
   })
 })
 
