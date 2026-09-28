@@ -10,6 +10,11 @@
     "skipLibCheck": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "playwright.portal.config.ts"
+  ],
   "exclude": ["node_modules"]
 }

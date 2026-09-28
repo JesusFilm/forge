@@ -6,6 +6,7 @@ import {
 } from "@prisma/client"
 import { describe, expect, it, vi } from "vitest"
 import type { CandidateNomination } from "../candidate"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 import {
   claimNextShadowRun,
   completeShadowEvaluation,
@@ -534,5 +535,59 @@ describe("shadow evaluation service", () => {
     expect(tx.recommendationServingControl.update).not.toHaveBeenCalled()
     expect(tx.recommendationRequest.update).not.toHaveBeenCalled()
     expect(tx.recommendationServedItem.update).not.toHaveBeenCalled()
+  })
+
+  it("keeps an otherwise promotable co-watch shadow decision inconclusive", async () => {
+    const run = {
+      state: RecommendationShadowRunState.PUBLISHED,
+      coverage: 0.8,
+      overlap: 0.5,
+      novelty: 0.5,
+      diversity: 0.7,
+      rejection: 0.1,
+      latencyMs: 100,
+      cohortQuality: 0.8,
+      inputFreshnessMs: 1_000,
+      liveSlateDigest: "a".repeat(64),
+      shadowSlateDigest: "b".repeat(64),
+      finishedAt: NOW,
+    }
+    const tx = {
+      recommendationShadowEvaluation: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "cowatch-evaluation",
+          state: RecommendationShadowEvaluationState.ACTIVE,
+          generation: 1,
+          generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+          expiresAt: EXPIRES,
+          decision: null,
+          runs: Array.from({ length: 10 }, () => run),
+        }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      recommendationShadowDecision: {
+        create: vi.fn().mockResolvedValue({ id: "cowatch-decision" }),
+      },
+    }
+    const prisma = {
+      $transaction: vi.fn(async (operation) => operation(tx)),
+    } as unknown as PrismaClient
+
+    const result = await completeShadowEvaluation(prisma, {
+      evaluationId: "cowatch-evaluation",
+      expectedGeneration: 1,
+      minimumRuns: 10,
+      now: NOW,
+    })
+    expect(result).toMatchObject({
+      status: "decided",
+      decision: "inconclusive",
+    })
+    expect(tx.recommendationShadowDecision.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        reasonCode: "cowatch_controlled_evaluation_required",
+        reevaluationCondition: "complete_feat_505_controlled_evaluation",
+      }),
+    })
   })
 })

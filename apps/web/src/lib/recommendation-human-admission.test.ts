@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  classifyRecommendationTraffic,
   assertRecommendationHumanAdmission,
   isEligibleHumanRequest,
 } from "./recommendation-human-admission"
@@ -32,6 +33,27 @@ describe("recognized machine admission", () => {
       const request = { headers: new Headers(headers) }
       expect(isEligibleHumanRequest(request)).toBe(true)
       expect(() => assertRecommendationHumanAdmission(request)).not.toThrow()
+    },
+  )
+})
+
+describe("bounded origin traffic classification", () => {
+  it.each([
+    [{ "user-agent": "Applebot", purpose: "prefetch" }, "declared_crawler"],
+    [
+      { "user-agent": "Mozilla/5.0", purpose: "prefetch" },
+      "speculative_prefetch",
+    ],
+    [{ "sec-purpose": "prefetch;prerender" }, "speculative_prerender"],
+    [{ "user-agent": "Mozilla/5.0" }, "ordinary_browser"],
+    [{}, "unknown"],
+    [{ "cf-verified-bot": "true" }, "unknown"],
+  ] as const)(
+    "classifies %j as %s without trusting caller edge metadata",
+    (headers, category) => {
+      expect(
+        classifyRecommendationTraffic({ headers: new Headers(headers) }),
+      ).toBe(category)
     },
   )
 })

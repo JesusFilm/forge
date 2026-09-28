@@ -22,6 +22,8 @@ import {
 } from "@/services/scene-recommendations.service"
 import {
   DELIVERY_RETRIEVAL_BUDGET_MS,
+  MAX_DELIVERY_ITEMS,
+  MAX_DELIVERY_RESPONSE_BYTES,
   RECOMMENDATION_CONTRACTS,
   RECOMMENDATION_RAW_RETENTION_DAYS,
 } from "./contracts"
@@ -90,13 +92,109 @@ export {
   invalidateRecommendationCandidatePools,
   runRecommendationRetrievalQuery,
 } from "./delivery-runtime"
+import {
+  recommendationTraffic,
+  observeRecommendationTraffic,
+  CONTEXTUAL_RECOMMENDATION_CAPABILITY,
+} from "./traffic"
+
 export class RecommendationDeliveryService {
   constructor(private readonly deps: DeliveryDependencies) {}
 
-  deliver(input: DeliveryInput): Promise<SemanticRecommendationDelivery> {
-    return observeRecommendationRuntime("seeded", () =>
-      this.deliverObserved(input),
+  async deliver(input: DeliveryInput): Promise<SemanticRecommendationDelivery> {
+    const traffic = recommendationTraffic(input)
+    observeRecommendationTraffic("seeded", traffic, "attempted")
+    return observeRecommendationRuntime("seeded", async () => {
+      const response = await this.deliverObserved(input)
+      if (response.requestId)
+        observeRecommendationTraffic("seeded", traffic, "committed")
+      return response
+    })
+  }
+
+  private async deliverContextual(
+    input: DeliveryInput,
+    traffic: ReturnType<typeof recommendationTraffic>,
+    deadlineAt: number,
+    nowMilliseconds: () => number,
+  ): Promise<SemanticRecommendationDelivery> {
+    const response = unavailable(
+      traffic.disposition === "deferred"
+        ? "traffic_deferred"
+        : "traffic_contextual",
     )
+    const seedMediaId = input.seedMediaId.trim(),
+      locale = input.locale.trim(),
+      audioLanguageSlug = input.audioLanguageSlug.trim()
+    if (
+      !seedMediaId ||
+      seedMediaId.length > 191 ||
+      !locale ||
+      locale.length > 32 ||
+      !/^[a-z0-9-]{1,64}$/.test(audioLanguageSlug)
+    )
+      return unavailable("invalid_input")
+    if (traffic.disposition === "deferred") {
+      observeRecommendationTraffic("seeded", traffic, "deferred")
+      return { ...response, result: "empty" }
+    }
+    try {
+      const candidates = await withinDeadline(
+        () =>
+          this.deps.retrieveCuratedFallback?.({
+            seedMediaId,
+            locale,
+            audioLanguageSlug,
+            excludedMediaIds: [],
+            deadlineAt,
+          }) ?? Promise.resolve([]),
+        deadlineAt,
+        nowMilliseconds,
+      )
+      const items = candidates
+        .filter(
+          (candidate) =>
+            nominationEligibilityReasons(candidate, {
+              surface: RECOMMENDATION_CONTRACTS.surface,
+              purpose: "watch",
+              locale,
+              audioLanguageSlug,
+            }).length === 0,
+        )
+        .slice(0, MAX_DELIVERY_ITEMS)
+        .map((candidate, index) => ({
+          ...candidate.presentation,
+          videoId: candidate.targetMediaId,
+          id: `contextual:${index + 1}`,
+          position: index,
+          targetMediaId: candidate.targetMediaId,
+          canonicalHref: `/watch${buildCanonicalWatchVideoPath(candidate.presentation.videoSlug, audioLanguageSlug)}`,
+          candidateGenerator: "curated" as const,
+          contributors: [],
+          capability: CONTEXTUAL_RECOMMENDATION_CAPABILITY,
+          sceneIndex: candidate.presentation.sceneIndex,
+          durationSeconds: candidate.presentation.durationSeconds ?? null,
+          similarity: 0,
+        }))
+      const result: SemanticRecommendationDelivery = {
+        ...response,
+        result: items.length ? "fallback" : "empty",
+        requestedCount: MAX_DELIVERY_ITEMS,
+        composedCount: items.length,
+        shortfallReason:
+          items.length < MAX_DELIVERY_ITEMS ? "insufficient_candidates" : null,
+        personalization: null,
+        items,
+      }
+      if (
+        Buffer.byteLength(JSON.stringify(result)) > MAX_DELIVERY_RESPONSE_BYTES
+      )
+        return unavailable("response_too_large")
+      observeRecommendationTraffic("seeded", traffic, "contextual_fallback")
+      return result
+    } catch {
+      return unavailable("contextual_unavailable")
+    }
   }
 
   private async deliverObserved(
@@ -109,6 +207,16 @@ export class RecommendationDeliveryService {
     const issuanceDeadlineAt = serviceDeadlineAt - DELIVERY_RESPONSE_RESERVE_MS
     assertWebRecommendationCaller(input.caller)
     const webConsumerBucketKey = input.caller.rateLimitBucketKey
+    const traffic = recommendationTraffic(input)
+    if (traffic.disposition !== "measured") {
+      observeRecommendationTraffic("seeded", traffic, "persistence_avoided")
+      return this.deliverContextual(
+        input,
+        traffic,
+        serviceDeadlineAt,
+        nowMilliseconds,
+      )
+    }
     if (!/^[a-f0-9]{64}$/.test(input.sessionDigest)) {
       return unavailable("invalid_session")
     }

@@ -61,7 +61,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
               Number(name.slice(0, 4)) <= 82 &&
               name.includes("recommendation")) ||
             name === "0082_user_recommendation_identity" ||
-            name === "0098_recommendation_viewing_mode",
+            name === "0098_recommendation_viewing_mode" ||
+            name === "0100_recommendation_candidate_compact_trace" ||
+            name === "0101_recommendation_candidate_compact_trace_validate" ||
+            name ===
+              "0102_recommendation_candidate_stage_duplicate_index_drop" ||
+            name === "0103_recommendation_impression_visibility_capability" ||
+            name === "0104_recommendation_cowatch_shadow",
         )
         .sort()) {
         await admin.query(

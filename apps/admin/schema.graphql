@@ -1984,6 +1984,7 @@ type Mutation {
   recordSemanticRecommendationPlayback(capability: String!, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): [RecommendationPlaybackReceipt!]!
   recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
+  recordWatchSurfaceExposure(events: JSON!): [WatchSurfaceExposureReceipt!]!
   recoverManagerSubtitleEvalMachineRun(input: ManagerSubtitleEvalMachineRecoverRunInput!): ManagerSubtitleEvalOperationResult
   recoverManagerSubtitleEvalRun(input: ManagerSubtitleEvalRecoverRunInput!): ManagerSubtitleEvalOperationResult
   """
@@ -2233,7 +2234,7 @@ type Query {
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
-  semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
+  semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String): SemanticRecommendationDelivery!
   shortsApprovals(cursor: ID, limit: Int, projectId: ID!): [ShortsApproval!]
   shortsAsset(reference: JSON!): ShortsAssetVersion
   shortsAssets(input: JSON): [ShortsAssetVersion!]
@@ -2254,7 +2255,7 @@ type Query {
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
   systemStatus: JSON
-  userRecommendations(audioLanguageSlug: String!, consentReceiptDigest: String, count: Int, locale: String!, profileTokenDigest: String, sessionDigest: String, sessionToken: String, viewerToken: String): UserRecommendationDelivery!
+  userRecommendations(audioLanguageSlug: String!, consentReceiptDigest: String, count: Int, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, sessionDigest: String, sessionToken: String, trafficCategory: String, viewerToken: String): UserRecommendationDelivery!
   """Fetch a single Video by id."""
   video(id: ID!): Video
   """Fetch a single Video by slug."""
@@ -3868,6 +3869,11 @@ type WatchSetting {
   Published ExperienceLocale flagged isHomepage for the requested locale.
   """
   homepageExperience: ExperienceLocale
+}
+
+type WatchSurfaceExposureReceipt {
+  eventId: String!
+  status: String!
 }
 
 enum WhatsNewFeatureVoteRefusal {

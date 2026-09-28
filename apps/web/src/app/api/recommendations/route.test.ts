@@ -85,7 +85,14 @@ const muxThumbnail =
 const deliveryLogs = () =>
   vi
     .mocked(console.info)
-    .mock.calls.map(([message]) => message)
+    .mock.calls.map(([message]) =>
+      typeof message === "string"
+        ? message.replace(
+            /trafficCategory=\S+ trafficClassifierVersion=\S+ trustedEdgeSource=\S+ persistenceDisposition=\S+ attempted=\S+ avoidedPersistence=\S+ committed=\S+ /,
+            "",
+          )
+        : message,
+    )
     .filter(
       (message) =>
         typeof message === "string" &&
@@ -215,6 +222,7 @@ describe("POST /watch/api/recommendations", () => {
     expect(setCookie).toContain("Path=/")
     expect(setCookie).not.toContain("Domain=")
     await expect(response.json()).resolves.toEqual({
+      deliveryDisposition: "measured",
       delivery: {
         ...delivery,
         items: [{ ...delivery.items[0], imageUrl: muxThumbnail }],
@@ -271,22 +279,45 @@ describe("POST /watch/api/recommendations", () => {
     ["crawler user agent", { "user-agent": "Googlebot/2.1" }],
     ["browser prefetch", { purpose: "prefetch" }],
     ["browser prerender", { "sec-purpose": "prefetch;prerender" }],
-  ])("excludes %s from human experiment assignment", async (_name, headers) => {
-    await POST(
-      request(
-        JSON.stringify({
-          seedMediaId: "seed-1",
-          locale: "en",
-          audioLanguageSlug: "english",
-        }),
-        headers,
-      ),
-    )
-
-    expect(query.mock.calls[0]?.[0]?.variables).toMatchObject({
-      eligibleHuman: false,
-    })
-  })
+  ])(
+    "isolates %s without issuing cookies or using profile credentials",
+    async (_name, headers) => {
+      const response = await POST(
+        request(
+          JSON.stringify({
+            seedMediaId: "seed-1",
+            locale: "en",
+            audioLanguageSlug: "english",
+          }),
+          {
+            ...headers,
+            cookie: `forge_recommendation_session=${"a".repeat(43)}; forge_recommendation_profile=${"b".repeat(43)}`,
+          },
+        ),
+      )
+      expect(response.headers.get("set-cookie")).toBeNull()
+      expect(response.headers.get("cache-control")).toContain("no-store")
+      const responseBody = await response.json()
+      expect(responseBody.delivery.requestId).toBeNull()
+      expect(responseBody.delivery.expiresAt).toBeNull()
+      expect(responseBody.delivery.personalization).toBeNull()
+      if (responseBody.deliveryDisposition === "deferred")
+        expect(responseBody.delivery.items).toEqual([])
+      else
+        expect(responseBody.delivery.items[0].capability).toBe(
+          "contextual-fallback-unattributed-v1",
+        )
+      expect(query.mock.calls[0]?.[0]?.variables).toMatchObject({
+        eligibleHuman: false,
+        sessionDigest: "0".repeat(64),
+        profileTokenDigest: null,
+        consentReceiptDigest: null,
+      })
+      expect(query.mock.calls[0]?.[0]?.variables.trafficCategory).toMatch(
+        /^(declared_crawler|speculative_prefetch|speculative_prerender)$/,
+      )
+    },
+  )
 
   it("forwards only the digest of an existing session cookie", async () => {
     const session = "a".repeat(43)
