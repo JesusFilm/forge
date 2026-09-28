@@ -56,7 +56,11 @@ import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-producti
 import { getWebVttCueText } from "@/lib/webvtt"
 import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 
+import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+
 type WatchHomeTvCarouselProps = {
+  manifest?: SignedWatchSurfaceManifest
+  exposurePlacement?: string
   slides: WatchHomeHeroSlide[]
   sequence?: WatchHomeCarouselSequenceData | null
   /**
@@ -541,6 +545,7 @@ function WatchHomeTvOverlay({
   slides,
   ringAnimationKey,
   exposurePlacement,
+  manifest,
 }: {
   activeIndex: number
   activeSlide: WatchHomeTvCarouselSlide
@@ -555,6 +560,7 @@ function WatchHomeTvOverlay({
   ringAnimationKey: string
   slides: readonly WatchHomeTvCarouselSlide[]
   exposurePlacement: string
+  manifest?: SignedWatchSurfaceManifest
 }) {
   const t = useTranslations("WatchHome")
   const actionsRef = useRef<HTMLDivElement>(null)
@@ -585,6 +591,7 @@ function WatchHomeTvOverlay({
         </div>
         <WatchExposureBoundary
           rootRef={actionsRef}
+          manifest={manifest}
           config={{
             surface: "watch-home",
             block: "hero",
@@ -1048,6 +1055,8 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
 })
 
 export function WatchHomeTvCarousel({
+  manifest,
+  exposurePlacement,
   pinned = true,
   sequence = null,
   slides,
@@ -1178,7 +1187,10 @@ export function WatchHomeTvCarousel({
           playbackTimeSeconds={playbackTimeSeconds}
           ringAnimationKey={ringAnimationKey}
           slides={timelineSlides}
-          exposurePlacement={pinned ? "home-hero" : "authored-hero"}
+          manifest={manifest}
+          exposurePlacement={
+            exposurePlacement ?? (pinned ? "home-hero" : "authored-hero")
+          }
         />
         {subtitleCueText ? (
           <WatchHomeSubtitleOverlay cueText={subtitleCueText} />

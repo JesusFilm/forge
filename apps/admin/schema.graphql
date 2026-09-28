@@ -1972,6 +1972,7 @@ type Mutation {
   issueShortsAssetRead(reference: JSON!): ShortsAssetTransfer
   issueShortsAssetUpload(input: JSON!): ShortsAssetTransfer
   issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String, sessionToken: String, viewerToken: String): WatchPlaybackContextReceipt!
+  issueWatchSurfaceDelivery(attemptId: String!, manifest: JSON!, trafficCategory: String!): JSON!
   materializeShortsSource(input: JSON!): ShortsSourceSnapshot
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
@@ -3798,6 +3799,7 @@ type WatchSearchResponse {
   requestId: String
   results: [WatchSearchResult!]
   searchMode: String
+  surfaceManifest: JSON
 }
 
 type WatchSearchResult {

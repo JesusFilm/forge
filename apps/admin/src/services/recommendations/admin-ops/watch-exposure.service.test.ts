@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import { describe, expect, it, vi } from "vitest"
 import {
   loadAnonymousWatchExposureBreakdown,
@@ -6,6 +6,91 @@ import {
 } from "./watch-exposure.service"
 
 describe("Watch exposure inspection", () => {
+  it("binds registry scope values in both anonymous cohort and ranked queries", async () => {
+    const filter = {
+      surface: "watch-home' OR TRUE --",
+      block: "hero",
+      presentation: "hero-card",
+      placement: "hero-primary",
+    }
+    const query = vi.fn().mockResolvedValue([])
+    const execute = vi.fn()
+    const prisma = {
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({ $executeRawUnsafe: execute, $queryRaw: query }),
+    } as unknown as PrismaClient
+    await loadAnonymousWatchExposureBreakdown(prisma, "24h", filter)
+    const [strings, ...values] = query.mock.calls[0]
+    const sql = Prisma.sql(strings, ...values)
+    expect(sql.text).not.toContain(filter.surface)
+    for (const value of Object.values(filter)) {
+      expect(
+        sql.values.filter((parameter) => parameter === value),
+      ).toHaveLength(2)
+    }
+    expect(execute).toHaveBeenCalledWith(
+      "SET LOCAL statement_timeout = '3000ms'",
+    )
+  })
+
+  it("binds signed registry mapping and rejects unmatched identities", async () => {
+    const query = vi.fn().mockResolvedValue([])
+    const prisma = { $queryRaw: query } as unknown as PrismaClient
+    const filter = {
+      surface: "watch-home",
+      block: "for-you",
+      presentation: "recommendation-list",
+      placement: "primary",
+    }
+    await loadWatchExposureBreakdown(prisma, "24h", filter)
+    const [strings, ...values] = query.mock.calls[0]
+    expect(Prisma.sql(strings, ...values).values).toContain("watch-for-you-v1")
+    await loadWatchExposureBreakdown(prisma, "24h", {
+      ...filter,
+      placement: "",
+    })
+    const [unmatchedStrings, ...unmatchedValues] = query.mock.calls[1]
+    expect(Prisma.sql(unmatchedStrings, ...unmatchedValues).text).toContain(
+      "AND FALSE",
+    )
+  })
+
+  it("reports served-only V2 manifests without inventing rendered or eligible facts", async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        surface: "watch-home",
+        block: "hero",
+        presentation: "hero-card",
+        placement: "primary",
+        policyVersion: "watch-exposure-v2",
+        position: 0,
+        served: 3n,
+        rendered: 0n,
+        eligible: 0n,
+        selected: 0n,
+        eligibleSelected: 0n,
+        repeats: 0n,
+        duplicates: 0n,
+        acceptedAttempts: 0n,
+        occlusionAware: 0n,
+        visibilityUnknown: 0n,
+      },
+    ])
+    const prisma = {
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({ $executeRawUnsafe: vi.fn(), $queryRaw: query }),
+    } as unknown as PrismaClient
+    const result = await loadAnonymousWatchExposureBreakdown(prisma)
+    expect(result.rows[0]).toMatchObject({
+      served: 3,
+      rendered: 0,
+      eligible: 0,
+      selected: 0,
+      ctr: null,
+      duplicateRate: null,
+    })
+  })
+
   it("keeps For You separate and excludes early selections from eligible CTR", async () => {
     const query = vi.fn().mockResolvedValue([
       {

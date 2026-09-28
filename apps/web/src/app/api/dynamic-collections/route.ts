@@ -1,5 +1,8 @@
 import type { ServerRuntime } from "next"
 import { NextResponse } from "next/server"
+import { createHash } from "node:crypto"
+import { authoredWatchSurfaceSource } from "@/lib/watch-surface-manifest.sources"
+import { signWatchSurfaceManifest } from "@/lib/watch-surface-manifest.server"
 
 import {
   WATCH_COLLECTION_FEED_MAX_URL_LENGTH,
@@ -160,7 +163,37 @@ export async function GET(request: Request): Promise<NextResponse> {
             after: page.endCursor,
           })
         : null
-    return NextResponse.json(page, {
+    const measuredPage = {
+      ...page,
+      sections: page.sections.map((section) => {
+        const placement =
+          `dynamic-${section.id}`.length <= 64
+            ? `dynamic-${section.id}`
+            : `dynamic-${createHash("sha256").update(section.id).digest("hex").slice(0, 56)}`
+        const surfaceManifest = signWatchSurfaceManifest(
+          authoredWatchSurfaceSource(
+            {
+              surface: "watch-home",
+              block: "authored",
+              presentation: "authored-block",
+              placement,
+            },
+            {
+              __typename: "MediaCollectionBlock",
+              itemsSource: "manual",
+              mediaDefaultCollectionSlug: section.slug,
+              items: section.items.map((item) => ({
+                videoSlug: item.videoSlug,
+                languageSlug: item.languageSlug,
+              })),
+            },
+            input.languageSlug,
+          ),
+        )
+        return surfaceManifest ? { ...section, surfaceManifest } : section
+      }),
+    }
+    return NextResponse.json(measuredPage, {
       headers: {
         ...NO_STORE_HEADERS,
         ...dynamicCollectionEdgeCacheHeaders(

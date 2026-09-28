@@ -63,6 +63,22 @@ registered entries and checking the resulting coverage, CTR, replay, and
 ingestion health in a deployed authorized Admin window. Local browser and
 PostgreSQL fixtures cannot establish deployed ingestion completeness.
 
+The origin-issued v2 implementation is described in
+`docs/plans/2026-09-29-feat-373-origin-served-manifests-plan.md`. Local browser
+reconciliation is recorded in
+`docs/validation/2026-09-29-feat-373-browser-local.md`. Served means persisted
+origin issuance of a verified measurement manifest, with no claim that the
+browser received it or that its cards were eligible. Unsupported source
+projections and legacy v1 facts retain an unknown denominator. Registry
+completion remains false pending deployed coverage and authorized Admin review.
+Root/language home projections use proven public pathnames; generic authored
+relative-navigation authority remains unknown and is tracked by feat-564.
+The Admin exposure table now has a registry-entry and optional placement filter
+to inspect cohorts that exceed its unchanged 128-row bound. Its anonymous report
+uses an exact-partition window calculation after a production timeout was
+reproduced locally, preserving cutoffs, policy isolation and the three-second
+statement budget.
+
 ## Constraints
 
 - Use portable intersection ratio, page visibility, and dwell. Treat occlusion as unknown when visibility tracking is unsupported.

@@ -33,7 +33,10 @@ import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 // content (WatchBody, StudyQuestions, BibleQuotes, Share) following it.
 const TOP_ZONE_KINDS: Set<WatchBlock["kind"]> = new Set(["HeroPlayer"])
 
+import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+
 export function WatchSectionRenderer({
+  surfaceManifests,
   blocks,
   downloadButtonLabel,
   downloadError,
@@ -56,6 +59,7 @@ export function WatchSectionRenderer({
   onChapterNavigateIntent,
 }: {
   blocks: MergedWatchBlock[]
+  surfaceManifests?: readonly (SignedWatchSurfaceManifest | null)[]
   downloadButtonLabel?: string
   downloadError?: string | null
   downloadHref?: string
@@ -100,6 +104,7 @@ export function WatchSectionRenderer({
         <WatchBlockEntry
           key={blockKey(block, index)}
           block={block}
+          manifest={surfaceManifests?.[index] ?? undefined}
           index={index}
           downloadButtonLabel={downloadButtonLabel}
           downloadError={downloadError}
@@ -145,6 +150,9 @@ export function WatchSectionRenderer({
                 <WatchBlockEntry
                   key={blockKey(block, index + topBlocks.length)}
                   block={block}
+                  manifest={
+                    surfaceManifests?.[index + topBlocks.length] ?? undefined
+                  }
                   index={index + topBlocks.length}
                   downloadButtonLabel={downloadButtonLabel}
                   downloadError={downloadError}
@@ -176,6 +184,7 @@ export function WatchSectionRenderer({
 }
 
 function WatchBlockEntry({
+  manifest,
   block,
   index,
   downloadButtonLabel,
@@ -200,6 +209,7 @@ function WatchBlockEntry({
   onChapterNavigateIntent,
 }: {
   block: MergedWatchBlock
+  manifest?: SignedWatchSurfaceManifest
   index: number
   downloadButtonLabel?: string
   downloadError?: string | null
@@ -226,6 +236,7 @@ function WatchBlockEntry({
     if (block.kind === "SiblingCarousel") {
       return (
         <WatchExposureBoundary
+          manifest={manifest}
           config={{
             surface: "watch-video",
             block: "chapters",
@@ -274,6 +285,7 @@ function WatchBlockEntry({
   }
   return (
     <WatchExposureBoundary
+      manifest={manifest}
       config={{
         surface: "watch-video",
         block: "editorial",
