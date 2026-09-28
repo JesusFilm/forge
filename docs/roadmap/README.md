@@ -6,10 +6,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 28, 2026)
 
-- **Total tickets:** 739
+- **Total tickets:** 741
 - **Complete:** 553
 - **In progress:** 59
-- **Not started:** 47
+- **Not started:** 49
 - **Blocked:** 80
 - **Overdue and not complete:** 142
 
@@ -181,6 +181,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | blocked     |
 | [feat-448](content-discovery/feat-448-learned-sequential-profile-item-representations.md)                      | Learned sequential profile and item representations                                             | nisal      | P2       | —          | 12   | —          | blocked     |
+| [feat-563](content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md)                                  | Atomic and recoverable shadow evaluation dispatch                                               | nisal      | P2       | —          | 3    | —          | not-started |
+| [feat-564](content-discovery/feat-564-cached-watch-public-navigation-authority.md)                             | Public navigation authority for cached Watch relative links                                     | nisal      | P2       | —          | 3    | —          | not-started |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-143](content-discovery/feat-143-drop-legacy-search-trace-aggregate-unique-key.md)                        | Drop legacy search trace aggregate unique key                                                   | nisal      | P2       | 2026-05-26 | 1    | 2026-05-26 | not-started |

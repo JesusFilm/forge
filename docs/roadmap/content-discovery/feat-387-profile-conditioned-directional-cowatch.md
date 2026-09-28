@@ -86,6 +86,10 @@ The ticket is not complete until this result is visible and reconcilable in the 
 - The evaluation CLI now requires an explicit UUID/window/sample/minimum-run tuple, and successful/fenced workflow receipts retain the minimum-run threshold for exact retry conflict checks. Local CLI/workflow/operator tests and real PostgreSQL revision/privacy/rebuild fixtures passed. No source bound, integrity threshold or live candidate behavior changed.
 - Production graph metrics, anchors, overlap, latency, fallback observations, terminal evaluation and authorized Admin reconciliation remain unobserved. Keep this ticket **in progress**. A later runnable attempt needs a separately reviewed finite workload and fresh storage clearance; do not narrow the corpus or raise bounds merely to obtain a successful result. Feat-505 remains the later usefulness/promotion decision path.
 
+### Subsequent authorized inspection
+
+The parent subsequently reconciled the absent generation/evaluation in production Admin: `generation_unavailable`, evaluation not run, zero displayed generation counters, no anchors/candidates, shadow-only/no promotion and live baseline fallback. The [UI receipt](../../validation/cowatch-preflight-20260929/admin-inspection.json) does not turn absent graph counters into eligible-source counts or satisfy the unobserved graph/terminal evidence gate. PR #2448 passed CI and merged through the normal flow; this ticket remains **in progress**. The separate dispatch atomicity/crash-recovery limits are tracked by feat-563 without granting production execution authority.
+
 New records declare the following handling in the schema and migration:
 
 | Record              | Purpose and identity                                     | Access and ingestion                                | Retention and deletion                           | Fallback      |

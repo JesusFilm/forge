@@ -1,0 +1,24 @@
+{
+  "environment": "production",
+  "observationIntervalUtc": ["2026-09-28T20:57:00Z", "2026-09-28T20:59:00Z"],
+  "path": "/dashboard/recommendations?window=24h",
+  "authorization": "Existing authorized Admin session",
+  "panel": "Watch surface exposure",
+  "registryComplete": 2,
+  "registryTotal": 10,
+  "signedReplayCount": 94,
+  "aggregationStatus": "unavailable_counts_withheld",
+  "anonymousServedStatus": "unknown_v1",
+  "diagnosis": {
+    "schemaAndIndexesPresent": true,
+    "migration0103Applied": true,
+    "anonymousQuery": "statement_timeout_57014",
+    "signedQuery": "success_six_aggregate_groups",
+    "statementTimeoutMs": 3000,
+    "lockTimeoutMs": 1000,
+    "candidateQuery": "success_with_129_group_truncation_sentinel",
+    "candidateExecutedAt": "2026-09-28T21:08:22.008748Z",
+    "candidateCompletedAt": "2026-09-28T21:08:27.749325Z"
+  },
+  "interpretation": "This baseline motivates the scope-specific anonymous aggregation repair and bounded surface filter. Candidate SQL success is not a deployed Admin UI observation. The candidate interval includes SSH transport and is not statement latency. No identities or raw errors retained."
+}
