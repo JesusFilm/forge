@@ -43,7 +43,9 @@ owner instruction. This continues
 - Feat-505 remains the later controlled usefulness decision. Exposure is not a
   new prerequisite for it. Staging Auth recovery remains feat-561's scope.
 - The storage task owns capacity and the first nonempty retention purge; avoid
-  competing writes during its September 30 and October 1 verification windows.
+  competing writes during its currently confirmed verification windows. The
+  September 30 and October 1 dates were the initial planning context; use the
+  owner's latest confirmation for execution timing.
 
 ---
 
@@ -124,12 +126,13 @@ Admin inspection entry points, and
 **Dependencies:** Storage-owner timing clearance and passing bounded preflight
 before production writes; no dependency on U1.
 
-**Approach:** Verify revision, migrations, latest finalized source rows before
-eligibility filtering, integrity, eligible sources, expected source/pair work,
+**Approach:** Verify revision, migrations, latest classifier-specific outcome per
+episode before graph eligibility filtering, integrity, eligible sources, expected source/pair work,
 retained target size and headroom. Keep the 50,000-source, 256-row per-session and
 250,000-attempted-pair bounds; retained pair contributions are a separate count.
 Preserve evaluation ID, closed window, sample size, minimum runs and dispatched
-workflow receipt before retry: the CLI wrapper otherwise creates a new evaluation.
+workflow receipt before retry. The repaired CLI requires and emits the explicit
+retry tuple; dispatch atomicity and crash recovery remain tracked by feat-563.
 Capture generation coverage, directional metrics, contamination, anchors,
 overlap, latency, sparse/stale fallback and actual terminal decision.
 

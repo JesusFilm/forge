@@ -1,0 +1,38 @@
+{
+  "publicRoute": "/watch/nua-fresh-perspective.html",
+  "verifiedRuntimeRevision": "837028bf2b225094fd7c39ec1c4d117ee5065b61",
+  "observationIntervalUtc": ["2026-09-28T21:43:21Z", "2026-09-28T21:55:45Z"],
+  "nativeCardObservation": {
+    "isIntersecting": true,
+    "intersectionRatio": 1,
+    "isVisible": false,
+    "target": "Existing first episode anchor"
+  },
+  "separateDocumentObservation": {
+    "visibilityState": "visible",
+    "hasFocus": true,
+    "trackVisibilitySupported": true
+  },
+  "laterObserverProbe": {
+    "measuredAt": "2026-09-28T21:48:33.302039+00:00",
+    "timedOutAfterMs": 2000
+  },
+  "interpretation": "Native geometry did not establish occlusion-aware eligibility. This is a pre-release observation, not a regression finding or proof of the cause. A later observer timeout is unknown, not an isVisible result. No app telemetry, visibility property, content, user agent, or header was overridden.",
+  "ancestorStyleObservation": {
+    "measuredAt": "2026-09-28T21:55:45Z",
+    "selector": "[data-testid=\"series-episodes-grid-wrapper\"]",
+    "backdropFilter": "blur(40px) saturate(1.5)",
+    "filter": "none",
+    "opacity": "1",
+    "documentVisibilityState": "visible",
+    "documentHasFocus": true
+  },
+  "sourceReview": {
+    "changedByExposurePr": false,
+    "inference": "Existing ancestor backdrop effects are a plausible cause of conservative native isVisible false; no paint styles or visibility policy were modified to obtain impressions.",
+    "references": [
+      "https://raw.githubusercontent.com/chromium/chromium/main/third_party/blink/renderer/core/layout/layout_object.cc",
+      "https://raw.githubusercontent.com/chromium/chromium/main/third_party/blink/renderer/platform/graphics/paint/effect_paint_property_node.h"
+    ]
+  }
+}
