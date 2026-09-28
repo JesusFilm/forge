@@ -44,7 +44,8 @@ const recommendationMigrations = readdirSync(migrationRoot)
     return (
       (ordinal >= 52 && ordinal <= 82 && name.includes("recommendation")) ||
       name === "0082_user_recommendation_identity" ||
-      name === "0099_recommendation_playback_signal_readiness"
+      name === "0099_recommendation_playback_signal_readiness" ||
+      name === "0103_recommendation_impression_visibility_capability"
     )
   })
   .sort()

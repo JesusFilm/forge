@@ -80,6 +80,7 @@ export type RecommendationAdmissionNamespace =
   | "profile-mutation"
   | "privacy-control"
   | "content-action"
+  | "surface-exposure"
   | "playback-context"
 
 export type RecommendationMutationAdmissionResult =

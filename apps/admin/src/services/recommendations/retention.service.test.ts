@@ -28,6 +28,11 @@ function buildPrisma() {
       deleteMany: vi.fn(async () => ({ count: requestIds.length })),
       findFirst: vi.fn(async (): Promise<{ expiresAt: Date } | null> => null),
     },
+    watchSurfaceExposure: {
+      findMany: vi.fn(async (): Promise<Array<{ id: string }>> => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async () => null),
+    },
     recommendationServedItem: { count: count() },
     recommendationRenderedFact: { count: count() },
     recommendationImpression: { count: count() },
@@ -436,6 +441,7 @@ describe("recommendation retention service", () => {
 
   it.each([
     "requests",
+    "watch exposures",
     "direct actions",
     "standalone episodes",
     "viewers",
@@ -446,6 +452,7 @@ describe("recommendation retention service", () => {
     const { prisma, transaction } = buildPrisma()
     const now = new Date("2026-09-17T00:00:00.000Z")
     transaction.recommendationRequest.findMany.mockResolvedValue([])
+    transaction.watchSurfaceExposure.findMany.mockResolvedValue([])
     transaction.recommendationContentAction.findMany.mockResolvedValue([])
     transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([])
     transaction.recommendationViewer.findMany.mockResolvedValue([])
@@ -454,6 +461,10 @@ describe("recommendation retention service", () => {
     if (selection === "requests") {
       transaction.recommendationRequest.findMany.mockResolvedValue([
         { id: "request-1" },
+      ])
+    } else if (selection === "watch exposures") {
+      transaction.watchSurfaceExposure.findMany.mockResolvedValue([
+        { id: "exposure-1" },
       ])
     } else if (selection === "direct actions") {
       transaction.recommendationContentAction.findMany.mockResolvedValue([
