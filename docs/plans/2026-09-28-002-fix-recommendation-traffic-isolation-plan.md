@@ -1,7 +1,7 @@
 ---
 title: "fix: Isolate crawler delivery and preserve legacy evidence efficiently"
 type: fix
-status: active
+status: completed
 date: 2026-09-28
 ---
 
@@ -187,3 +187,15 @@ large legacy conversion; treat serving rollout and cleanup execution separately.
   before conversion, never rediscover the same sample from a changed population.
 - Existing expiry still applies to preserved evidence. An indefinite archive or
   changed retention is outside this scope.
+
+## Completion receipt
+
+Admin #2439, Web #2440 and conversion #2441 are merged. Actual production roles
+converged in the required order; public excluded-request checks passed. The
+reviewed ten-run legacy pilot removed 689 redundant rows after exact parity,
+preserving every observation and parent/item/expiry value. The original quality
+holds stayed excluded and no further batch followed. See
+`docs/validation/recommendation-traffic-isolation-20260928/README.md` for release
+versions, tests, private-manifest digest, sampled counters and measured limits.
+Public For You remains behind its existing disabled flag. Loaded retention,
+transition capacity and eventual physical reclamation remain feat-554/555.

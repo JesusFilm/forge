@@ -3,7 +3,7 @@ id: "feat-560"
 title: "Convert selected legacy traces and remove redundant stage rows"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-28"
 duration: 2
 depends_on: []
@@ -53,3 +53,16 @@ idempotency, manifest/hold validation and retention concurrency. Before any
 production pilot refresh exact target identity, compact fleet, headroom and
 retention health. Record actual rows/bytes converted and current filesystem
 headroom; never substitute logical estimates for recovered disk.
+
+## Completion
+
+PR #2441 merged and reached both Admin roles on September 28. The reviewed
+ten-run production pilot converted 689 redundant stages with zero skips;
+SQL fingerprints and parent/item/expiry hashes matched exactly afterward.
+All 689 observations remain in compact payloads. The original 64 quality holds
+and linked investigation exclusions remained protected from this operation.
+No larger batch followed. Filesystem headroom remained approximately 11.21 GB;
+legacy relation allocation was unchanged. See
+`docs/validation/recommendation-traffic-isolation-20260928/README.md` for precise
+times, shared WAL/allocation measurements, serving samples and their limits.
+Existing 29-day retention remains; physical reclamation is still feat-555.
