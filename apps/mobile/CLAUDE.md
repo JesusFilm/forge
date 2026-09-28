@@ -1833,7 +1833,9 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   2026-09-28). A tap shows a note under it ("Η Καινή Διαθήκη does not
   include Genesis. The reader shows it in Berean Standard Bible."), and says
   it aloud. The note closes on a tap, on the next tap of the button, after
-  `STAND_IN_TIP_MS`, or when the stand-in ends. The note is the button's
+  `STAND_IN_TIP_MS`, or when the stand-in ends. The tip follows the stand-in
+  (`TranslationLabel.noteKey`), not the note text: the text names the book,
+  and that name can load after the tap. The note is the button's
   accessibility label (`TranslationLabel.note`). The note's row spans the
   bar: an absolute view with only a left edge measured the text on one line
   and clipped it on the device. It is the same glass pill as the passage; the owner tried a chevron and a

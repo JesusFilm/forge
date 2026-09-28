@@ -1,8 +1,6 @@
-/**
- * The download button's glyph (feat-553 U10, R29, R30): a progress ring
- * while a download runs, else an icon for the state. The button
- * around it carries the accessible name, so the glyph adds none.
- */
+/** The download button's glyph (feat-553 U10, R29, R30): a progress ring while
+ *  a download runs, else an icon for the state. The button around it carries
+ *  the accessible name, so the glyph adds none. */
 
 // tsconfig maps `react` to its .d.ts; re-point it (see AccountSection.test.tsx).
 jest.mock("react", () => {

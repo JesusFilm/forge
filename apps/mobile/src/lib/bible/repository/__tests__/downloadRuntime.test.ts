@@ -11,9 +11,11 @@ import {
   getTranslationDownloads,
   resetBibleRepositoryForTests,
 } from "../downloadRuntime"
+import { storedBookNamesText } from "../bookNames"
 import { CHAPTER_FETCH_TIMEOUT_MS } from "../fetchChapter"
 import {
   bookNamesDirectory,
+  ensureDirectory,
   stagingDirectory,
   translationsDirectory,
 } from "../storage"
@@ -267,6 +269,25 @@ describe("book names runtime", () => {
     } finally {
       jest.useRealTimers()
     }
+  })
+
+  // The id names a file, so an id with path characters must touch no file:
+  // `book-names/../x.json` would point at `bible/x.json`.
+  it("writes and reads no file for an id with path characters", async () => {
+    globalThis.fetch = jest.fn(
+      async () => new Response("", { status: 503 }),
+    ) as unknown as typeof fetch
+    const key = { id: "../x", sha256: GUE.sha256 }
+    const outside = new File(Paths.document, "bible", "x.json")
+
+    getBookNamesStore().keep(key, new Map([["RUT", "Ruth-ku"]]))
+    expect(outside.exists).toBe(false)
+
+    // A new session: a file planted where the id points is never read.
+    resetBibleRepositoryForTests()
+    expect(ensureDirectory(new Directory(Paths.document, "bible"))).toBe(true)
+    outside.write(storedBookNamesText(key, new Map([["RUT", "Planted"]])))
+    await expect(getBookNamesStore().load(key)).resolves.toBeNull()
   })
 
   it("keeps a download's names, so the picker needs no network for them", async () => {

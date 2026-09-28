@@ -12,10 +12,8 @@ export const READER_SETTINGS_VERSION = 2
 export const READER_MODES = ["system", "light", "dark", "trueDark"] as const
 export const READER_TYPEFACES = ["serif", "sans"] as const
 
-/**
- * Text sizes in points, smallest first: eleven steps of 2 pt from 22 to 42,
- * for the settings slider (owner, 2026-09-28). The device keeps a step index.
- */
+/** Text sizes in points, smallest first: eleven steps of 2 pt from 22 to 42,
+ *  for the settings slider (owner, 2026-09-28). The device keeps a step index. */
 export const READER_TEXT_SIZE_STEPS = [
   22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42,
 ] as const
@@ -23,10 +21,8 @@ export const READER_TEXT_SIZE_STEPS = [
 /** 30 pt, the default before the slider. */
 export const DEFAULT_TEXT_SIZE_STEP = 4
 
-/**
- * Line heights as a share of the text size: five even steps from compact
- * (1.2) to relaxed (1.6), for the settings slider (owner, 2026-09-28).
- */
+/** Line heights as a share of the text size: five even steps from compact
+ *  (1.2) to relaxed (1.6), for the settings slider (owner, 2026-09-28). */
 export const READER_LINE_SPACING_STEPS = [1.2, 1.3, 1.4, 1.5, 1.6] as const
 
 export const DEFAULT_LINE_SPACING_STEP = 2
@@ -140,10 +136,8 @@ function fromVersion1(
   }
 }
 
-/**
- * Null for no record: unwritten, bad JSON, or an unknown version. A field
- * that does not read keeps its default, so one bad field never resets the rest.
- */
+/** Null for no record: unwritten, bad JSON, or an unknown version. A field that
+ *  does not read keeps its default, so one bad field never resets the rest. */
 export function parseStoredReaderSettings(
   raw: string | null,
 ): ReaderSettings | null {

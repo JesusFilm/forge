@@ -45,6 +45,7 @@ const BSB_LABEL: TranslationLabel = {
   text: "BSB",
   accessibilityLabel: READER_COPY.translation("Berean Standard Bible"),
   note: null,
+  noteKey: null,
 }
 
 async function render(
@@ -175,7 +176,11 @@ describe("ReaderTopBar translation pill", () => {
 describe("ReaderTopBar stand-in note", () => {
   const NOTE =
     "KAMIITHARI ÑAANTSI does not include Deuteronomy. The reader shows it in Berean Standard Bible."
-  const STAND_IN: TranslationLabel = { ...BSB_LABEL, note: NOTE }
+  const STAND_IN: TranslationLabel = {
+    ...BSB_LABEL,
+    note: NOTE,
+    noteKey: "book-fallback:BSB",
+  }
 
   const tips = (renderer: TestInstance) =>
     renderer.root.findAll(
@@ -273,5 +278,38 @@ describe("ReaderTopBar stand-in note", () => {
     expect(tips(renderer)).toHaveLength(0)
     expect(iconCount(renderer, "information-circle-outline")).toBe(0)
     jest.useRealTimers()
+  })
+
+  // The note names the book as the shown text does, and that name can load
+  // after the tap. The tip follows the stand-in, not its text (code review).
+  it("keeps the tip open when the same stand-in's note text changes", async () => {
+    const renderer = await render({ kind: "bundled" }, STAND_IN)
+    await layout(renderer)
+    await pressInfo(renderer)
+    const loaded = NOTE.replace("Deuteronomy", "Второзаконие")
+    await render({ kind: "bundled" }, { ...STAND_IN, note: loaded })
+    expect(tips(renderer)).toHaveLength(1)
+    expect(textCount(renderer, loaded)).toBe(1)
+  })
+
+  it("does not open the tip by itself when the same stand-in returns", async () => {
+    const renderer = await render({ kind: "bundled" }, STAND_IN)
+    await layout(renderer)
+    await pressInfo(renderer)
+    await render({ kind: "bundled" }, BSB_LABEL)
+    await render({ kind: "bundled" }, STAND_IN)
+    await layout(renderer)
+    expect(tips(renderer)).toHaveLength(0)
+  })
+
+  it("closes the tip when another stand-in takes over", async () => {
+    const renderer = await render({ kind: "bundled" }, STAND_IN)
+    await layout(renderer)
+    await pressInfo(renderer)
+    await render(
+      { kind: "bundled" },
+      { ...STAND_IN, noteKey: "offline-stand-in:BSB" },
+    )
+    expect(tips(renderer)).toHaveLength(0)
   })
 })

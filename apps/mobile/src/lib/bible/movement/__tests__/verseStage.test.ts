@@ -364,6 +364,23 @@ describe("across a chapter load", () => {
     expect(stage.change).toBeNull()
   })
 
+  // Reduce Motion that turns on during the load drops the held verse, so no
+  // still copy shows when the chapter arrives.
+  it("drops the held verse when Reduce Motion turns on during the load", () => {
+    let stage = advance(
+      showing(verse(36)),
+      input({ live: null, loading: true, slide: FORWARD }),
+    )
+    expect(stageStill(stage, { live: null, loading: true })).not.toBeNull()
+    stage = advance(
+      stage,
+      input({ live: null, loading: true, slide: FORWARD, reduceMotion: true }),
+    )
+    expect(stage.change).toBeNull()
+    expect(stage.waiting).toBeNull()
+    expect(stageStill(stage, { live: null, loading: true })).toBeNull()
+  })
+
   it("keeps the move's own direction across a book", () => {
     const stage = advance(
       advance(

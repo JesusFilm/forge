@@ -63,20 +63,23 @@ export function ReaderTopBar({
   onPressSettings,
 }: ReaderTopBarProps) {
   const note = translation?.note ?? null
-  // The note the tip shows; a new note (or none) closes it.
+  const noteKey = translation?.noteKey ?? null
+  // The stand-in the open tip is for. Its text can change while a book name
+  // loads; another stand-in (or none) closes the tip, and it stays closed.
   const [tip, setTip] = useState<string | null>(null)
-  const tipOpen = tip !== null && tip === note
+  if (tip !== null && tip !== noteKey) setTip(null)
+  const tipOpen = tip !== null && tip === noteKey
   useEffect(() => {
     if (!tipOpen) return
     const timer = setTimeout(() => setTip(null), STAND_IN_TIP_MS)
     return () => clearTimeout(timer)
   }, [tipOpen, tip])
   const toggleTip = () => {
-    if (tipOpen || note === null) {
+    if (tipOpen || note === null || noteKey === null) {
       setTip(null)
       return
     }
-    setTip(note)
+    setTip(noteKey)
     AccessibilityInfo.announceForAccessibility(note)
   }
   const [leading, setLeading] = useState<LayoutRectangle | null>(null)

@@ -1,7 +1,6 @@
-// A translation's own book names (owner, 2026-09-28): the passage picker and
-// the reader's labels name each book as the shown translation does, so a
-// Korean reader sees 창세기, not Genesis. The bundled catalog has no names,
-// so they come from `/api/<id>/books.json` and stay on the device after that.
+// A translation's own book names (owner, 2026-09-28), so a Korean reader sees
+// 창세기, not Genesis. The bundled catalog has no names, so they come from
+// `/api/<id>/books.json` and stay on the device after that.
 import { isUsfmBookId, type UsfmBookId } from "../text/books"
 import { BSB_TRANSLATION_ID } from "../versification/classify"
 import {

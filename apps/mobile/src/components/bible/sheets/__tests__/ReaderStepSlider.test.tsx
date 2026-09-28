@@ -1,7 +1,6 @@
-// The settings sheet's step slider (owner, 2026-09-28). It is the native
-// slider: a JS slider in the sheet lost its touch when the finger drifted
-// about 10 pt up or down. Each render is in <StrictMode>, and value reports
-// go through the library's own handler, as the native view sends them.
+// The settings sheet's native step slider (owner, 2026-09-28); a JS slider
+// lost its touch after about 10 pt of drift. Each render is in <StrictMode>,
+// and value reports go through the library's handler, as the native view's do.
 
 import { StrictMode, act } from "react"
 

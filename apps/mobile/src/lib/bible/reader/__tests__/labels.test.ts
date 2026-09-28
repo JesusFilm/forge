@@ -171,6 +171,7 @@ describe("translationLabel", () => {
     const label = translationLabel(shown, null, "John")
     expect(label.text).toBe("BSB")
     expect(label.note).toBeNull()
+    expect(label.noteKey).toBeNull()
     expect(label.accessibilityLabel).toContain("Berean Standard Bible")
   })
 
@@ -189,6 +190,12 @@ describe("translationLabel", () => {
     )
     expect(label.note).toBe(
       `${SYNODAL.name} does not include Obadiah. The reader shows it in Berean Standard Bible.`,
+    )
+    // The key names the stand-in, not the book, so a name that loads later
+    // keeps the same key.
+    expect(label.noteKey).toBe(`book-fallback:${shown.translation.id}`)
+    expect(translationLabel(shown, SYNODAL, "Авдий").noteKey).toBe(
+      label.noteKey,
     )
   })
 
@@ -214,6 +221,7 @@ describe("translationLabel", () => {
     expect(label.note).toBe(
       READER_COPY.offlineStandInNote("Berean Standard Bible"),
     )
+    expect(label.noteKey).toBe(`offline-stand-in:${shown.translation.id}`)
   })
 })
 

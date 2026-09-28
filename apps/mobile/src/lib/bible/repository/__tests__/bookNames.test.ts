@@ -203,6 +203,28 @@ describe("createBookNamesStore", () => {
     await expect(store.load(KOR)).resolves.toBeNull()
   })
 
+  // A full disk must not take the names away: they still show, and the next
+  // open reads them again.
+  it("still gives the names when the device write throws", async () => {
+    const writeStored = jest.fn(() => {
+      throw new Error("disk full")
+    })
+    const { store } = setup({ writeStored })
+    await expect(store.load(KOR)).resolves.toBe(KOREAN)
+    expect(store.peek("kor_old")).toBe(KOREAN)
+    expect(writeStored).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps a download's names in memory when the device write throws", () => {
+    const { store } = setup({
+      writeStored: jest.fn(() => {
+        throw new Error("disk full")
+      }),
+    })
+    expect(() => store.keep(KOR, KOREAN)).not.toThrow()
+    expect(store.peek("kor_old")).toBe(KOREAN)
+  })
+
   it("reads nothing for BSB, whose names are the app's own", async () => {
     const { store, fetchNames, readStored } = setup()
     await expect(

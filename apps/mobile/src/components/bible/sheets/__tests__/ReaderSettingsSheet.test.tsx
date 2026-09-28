@@ -1,9 +1,6 @@
-/**
- * The reader settings sheet (feat-553 U10, R33, R34, KTD6): six settings,
- * "Show arrow buttons" on phones only, and the "About the text" credits.
- * Text size and line spacing are step sliders (owner, 2026-09-28);
- * ReaderStepSlider.test.tsx drives their touches.
- */
+/** The reader settings sheet (feat-553 U10, R33, R34, KTD6): six settings, "Show
+ *  arrow buttons" on phones only, and the credits. The two sliders are native
+ *  (owner, 2026-09-28); ReaderStepSlider.test.tsx drives their touches. */
 
 // tsconfig maps `react` to its .d.ts; re-point it (see AccountSection.test.tsx).
 jest.mock("react", () => {

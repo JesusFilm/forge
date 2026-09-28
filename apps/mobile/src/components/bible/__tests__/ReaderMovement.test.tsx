@@ -894,6 +894,34 @@ describe("swipes (R12, R14, KTD13)", () => {
     expect(byTestId(renderer, "bible-chapter-preview")).toHaveLength(0)
   })
 
+  // The preview and the announcement name the next book as the shown
+  // translation does (owner, 2026-09-28), not in BSB's English.
+  it("names the next book in the shown translation's words", async () => {
+    const services = {
+      ...makeServices(async () => ({
+        status: "ok" as const,
+        text: fixtureText(t4tJohn4),
+      })),
+      bookNames: stubBookNamesStore({
+        eng_t4t: new Map([["ACT", "Hechos"]]),
+      }),
+    }
+    services.positionStore.pickTranslation("eng_t4t")
+    const { renderer } = await openAt(
+      { book: "JHN", chapter: 21, verse: 1 },
+      { services },
+    )
+    const drag = await beginSwipe(renderer, LEFT.from, LEFT.to)
+    expect(drag).not.toBeNull()
+    expect(textNodes(renderer, "Hechos 1")).not.toHaveLength(0)
+    expect(textNodes(renderer, "Acts 1")).toHaveLength(0)
+
+    await drag!.release()
+    expect(announcements).toContain(
+      READER_COPY.movement.chapterOpened("Hechos 1"),
+    )
+  })
+
   it("says no chapter comes before during a swipe right at Genesis 1 (R13)", async () => {
     const { renderer } = await openAt({ book: "GEN", chapter: 1, verse: 5 })
     const drag = await beginSwipe(renderer, RIGHT.from, RIGHT.to)

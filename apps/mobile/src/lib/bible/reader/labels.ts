@@ -81,6 +81,9 @@ export type TranslationLabel = {
   /** R25, R41: why a stand-in shows, or null for the viewer's own pick. The
    *  info button beside the pill shows it (owner, 2026-09-28). */
   note: string | null
+  /** Which stand-in the note is for. The text can change while a book name
+   *  loads; the key does not, so an open tip stays open. */
+  noteKey: string | null
 }
 
 // The top bar's translation pill. It has room for the short name only, so the
@@ -96,9 +99,10 @@ export function translationLabel(
     text: shortName,
     accessibilityLabel: READER_COPY.translation(name),
   }
+  const noteKey = `${shown.reason}:${shown.translation.id}`
   switch (shown.reason) {
     case "viewer":
-      return { ...label, note: null }
+      return { ...label, note: null, noteKey: null }
     case "book-fallback":
       return {
         ...label,
@@ -107,9 +111,10 @@ export function translationLabel(
           bookName,
           name,
         ),
+        noteKey,
       }
     case "offline-stand-in":
-      return { ...label, note: READER_COPY.offlineStandInNote(name) }
+      return { ...label, note: READER_COPY.offlineStandInNote(name), noteKey }
   }
 }
 
