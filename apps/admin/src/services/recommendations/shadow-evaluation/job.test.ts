@@ -171,6 +171,7 @@ describe("recommendation shadow evaluation job", () => {
         where: { id: "ledger-1" },
         data: expect.objectContaining({
           summary: expect.stringContaining("promote_to_experiment"),
+          details: expect.objectContaining({ minimumRuns: input.minimumRuns }),
         }),
       }),
     )
@@ -184,6 +185,42 @@ describe("recommendation shadow evaluation job", () => {
     expect(service.executeClaimedShadowRun).not.toHaveBeenCalled()
     expect(service.completeShadowEvaluation).toHaveBeenCalled()
   })
+
+  it.each(["sampling", "completion"])(
+    "retains the retry threshold when %s fences the evaluation",
+    async (stage) => {
+      service.claimNextShadowRun
+        .mockReset()
+        .mockResolvedValue({ status: "empty" })
+      const result = {
+        status: "fenced",
+        reason: "evaluation_generation_changed",
+      }
+      if (stage === "sampling") {
+        service.sampleShadowEvaluationContexts.mockResolvedValueOnce(result)
+      } else {
+        service.completeShadowEvaluation.mockResolvedValueOnce(result)
+      }
+
+      await expect(
+        runRecommendationShadowEvaluationJob({
+          ...input,
+          ledgerRunId: "ledger-1",
+        }),
+      ).resolves.toMatchObject({ status: "fenced", reason: result.reason })
+      expect(workflowRun.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "ledger-1" },
+          data: expect.objectContaining({
+            details: expect.objectContaining({
+              minimumRuns: input.minimumRuns,
+              reason: result.reason,
+            }),
+          }),
+        }),
+      )
+    },
+  )
 
   it("records a bounded failure and continues to the terminal decision", async () => {
     service.executeClaimedShadowRun.mockRejectedValueOnce(
