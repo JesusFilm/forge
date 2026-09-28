@@ -38,7 +38,9 @@ export class PostgresConsumerAccess implements ConsumerAccess {
     const actor = githubId(actorGithubUserId)
     const rows = await this.writer.$queryRaw<ConsumerRow[]>(Prisma.sql`
       SELECT c.id, c.name, c.state, c.allowed_source_keys, c.created_at,
-             c.credential_version, c.membership_version, EXISTS (
+             c.credential_version, c.membership_version,
+             (SELECT COUNT(*) FROM consumer_private.members m
+              WHERE m.consumer_id = c.id) AS member_count, EXISTS (
                SELECT 1 FROM consumer_private.members m
                WHERE m.consumer_id = c.id AND m.github_user_id = ${actor}::bigint
                  AND m.role = 'owner'
@@ -47,6 +49,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
     `)
     return rows.map((row) => ({
       ...consumerRecord(row),
+      memberCount: Number(row.member_count ?? 0),
       owned: row.owned === true,
       credentialVersion: Number(row.credential_version),
       membershipVersion: Number(row.membership_version),

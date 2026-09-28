@@ -9,6 +9,7 @@ export class ConsumerAccessError extends Error {
 
 export type IssuedConsumer = { consumer: ConsumerRecord; secret: string }
 export type ConsumerDirectoryEntry = ConsumerRecord & {
+  memberCount: number
   owned: boolean
   credentialVersion: number
   membershipVersion: number

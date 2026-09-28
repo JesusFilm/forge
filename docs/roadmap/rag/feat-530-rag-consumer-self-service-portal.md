@@ -3,7 +3,7 @@ id: "feat-530"
 title: "Deliver internal RAG consumer self-service portal"
 owner: "jaco"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-16"
 duration: 5
 depends_on: ["feat-526", "feat-527"]
@@ -19,8 +19,9 @@ internal management path; planning completion does not deliver either.
 ## Entry Points — Read These First
 
 1. [Plan](../../plans/2026-09-15-001-feat-rag-consumer-access-usage-plan.md).
-2. `apps/rag/src/serving/http/auth.ts` and `app.ts` — HTTP boundary.
-3. `apps/auth/src/auth/config.ts` — reference only, not proof of deployed GitHub login.
+2. `apps/rag/src/serving/http/portal.ts`, `portal-consumers.ts` and `portal-ui.ts` — portal shell and authenticated management boundary.
+3. [UI implementation plan](../../plans/2026-09-28-001-feat-rag-consumer-portal-plan.md).
+4. `apps/auth/src/auth/config.ts` — reference only, not proof of deployed GitHub login.
 
 ## Grep These
 
@@ -37,8 +38,7 @@ only their runtime owners may manage them. CI validates allowlist handles agains
 Forge contributor/read-write access as safely verifiable, not consumer memberships.
 
 Create consumer directly: globally unique lowercase letters/numbers/dashes name
-(`^[a-z0-9-]+$`), own signed-in GitHub handle read-only as initial owner, preview,
-then submit. The backend creates the record/owner and random secret, displaying
+(`^[a-z0-9-]+$`), own signed-in GitHub handle read-only as initial owner, then Create directly. The backend creates the record/owner and random secret, displaying
 plaintext once with copy/password-manager warning. Never persist or re-reveal it.
 Generate new key atomically replaces the verifier and invalidates the old secret.
 
@@ -65,6 +65,55 @@ Use the local UI to complete deferred feat-527 end-to-end verification.
 Run relevant plan E and package checks plus page-load performance. Test allowlist
 before/after merge, stale publication and removed-user sessions; all-consumer
 visibility with cross-consumer mutation denial; invalid/duplicate/concurrent names;
-initial-owner tampering; preview/submit; owner-only Add member with allowlist
+initial-owner tampering; direct creation; owner-only Add member with allowlist
 selection; last-owner protection; concurrent removal/rotation and secret-response
 loss. Record synthetic outcomes only. Read package guidance before coding.
+
+## Delivery update — 2026-09-28
+
+Management UI work is in progress in [PR #2442](https://github.com/JesusFilm/forge/pull/2442),
+rebased onto main after the feat-527 backend merged. Create consumers through Create in the actual UI
+for onboarding evidence. Synthetic HTTP tests remain useful for authorization
+and concurrency, but do not replace the user journey. Usage/reporting follows
+in feat-528, then feat-529 uses the UI-created RAGBot for actual ops HTTP dogfood.
+
+The first local management slice is implemented: `/portal` provides direct
+creation, one-time key display/copy, member selection/removal, replacement keys
+and lifecycle controls. [Local UI evidence](evidence/feat-530/local-ui.md) records
+browser journeys against real restricted Postgres adapters, an unmodified key
+smoke, page-load measurements, checks and remaining live gates. Use
+`pnpm --filter @forge/rag portal:dev` per `apps/rag/portal/README.md`.
+
+## UI refinement — 2026-09-28
+
+Use styling cues from `docs/pages/site/index.html` and
+`apps/rag/dashboard/template.html`: warm neutrals, JFP red accents, navy controls,
+thin dividers and compact table rows. Render one consumer per row with status and
+all available actions inline. Preserve that row structure in a horizontally
+scrollable table on narrow screens.
+
+Keep the page to its title, controls and consumer rows. Do not add introductory
+copy, subtitles, section labels, onboarding guidance or a footer. Add field labels
+only when they identify a control, and show validation feedback when needed.
+Create uses a single form with name, read-only initial owner, Cancel and Create.
+Create immediately issues the key and opens Save your API key. This user decision
+supersedes the earlier preview requirement in this ticket and programme plan.
+
+### Typography refinement
+
+The follow-up visual direction retains the minimal copy and table but uses
+Forge's Apercu regular/bold fonts, a stronger heading, softer surfaces and status
+pills, restrained red brand accents, and lightweight row actions. Remove the red
+heading rule; use subtle hover feedback with reduced-motion support. Font files
+are served locally from the RAG app. See `evidence/feat-530/typography.md`.
+
+## Registry mockup revision — 2026-09-28
+
+The supplied mockup supersedes the earlier red/neutral treatment and inline
+action buttons. Use blue accents, a white table panel, search, All/Active/Revoked
+filters, sortable names, real member counts and paginated rows with an action
+popover. Navigation contains RAG, Consumers and Knowledge; no Settings item.
+RAG and Knowledge are image-only under-construction placeholders using the
+user-supplied capybara illustration. The mockup explicitly introduces the
+consumer-page subtitle. Retain direct creation and one-time key handling.
+See [registry evidence](evidence/feat-530/registry-mockup.md).

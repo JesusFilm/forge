@@ -28,7 +28,11 @@ internal management path; planning completion does not deliver either.
 
 ## What To Build
 
-Execute plan sections D/E after access and reporting exist. Register RAGBot first via the authenticated creation backend with an allowlisted initial owner
+Execute plan sections D/E after access and reporting exist. Register RAGBot first through the feat-530 portal UI: sign in as an allowlisted
+owner, create the consumer, then save its one-time key directly in
+the approved receiver secret manager. Record the UI journey without capturing
+the secret. Do not create or seed the dogfood consumer through SQL, CLI or an
+API-only setup
 and use the actual forge-rag-retrieve ops task over HTTP.
 Record task path/revision and approved source scope and receiver before execution.
 Prove +3 then +2 request/success counts, last activity/window, second-consumer

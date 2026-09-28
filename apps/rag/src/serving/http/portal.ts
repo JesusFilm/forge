@@ -7,6 +7,15 @@ import { randomToken } from "./portal-token.js"
 import type { AdmissionProvider, GitHubIdentity } from "./portal-github.js"
 import type { ConsumerAccess } from "../../contracts/consumer-access.js"
 import { createConsumerRoutes } from "./portal-consumers.js"
+import {
+  portalFonts,
+  portalLogo,
+  portalConstructionImage,
+  portalHtml,
+  portalCss,
+  portalScript,
+  portalCsp,
+} from "./portal-ui.js"
 
 const STATE_COOKIE = "__Host-rag_oauth"
 const SESSION_COOKIE = "__Host-rag_portal"
@@ -112,15 +121,61 @@ export function createPortal(deps: PortalDeps): Hono {
     return c.redirect("/portal", 303)
   })
 
-  app.get("/", async (c) => {
+  app.get("/", (c) => {
+    c.header("Content-Security-Policy", portalCsp)
+    return c.html(portalHtml)
+  })
+  app.get("/assets/portal.css", (c) => {
+    c.header("Content-Type", "text/css; charset=utf-8")
+    return c.body(portalCss)
+  })
+  app.get("/assets/portal.js", (c) => {
+    c.header("Content-Type", "text/javascript; charset=utf-8")
+    return c.body(portalScript)
+  })
+
+  app.get("/assets/forge.svg", (c) => {
+    c.header("Content-Type", "image/svg+xml")
+    return c.body(portalLogo)
+  })
+  app.get("/assets/under-construction.png", (c) => {
+    c.header("Content-Type", "image/png")
+    return c.body(new Uint8Array(portalConstructionImage))
+  })
+  for (const [name, font] of Object.entries(portalFonts)) {
+    app.get("/assets/" + name, (c) => {
+      c.header("Content-Type", "font/woff2")
+      return c.body(new Uint8Array(font))
+    })
+  }
+
+  app.get("/identity", async (c) => {
     const identity = await authorize(getCookie(c, SESSION_COOKIE))
     if (!identity)
       return c.json({ error: "unauthorized" }, 401, {
         "Cache-Control": "no-store",
       })
-    return c.json({ login: identity.login, githubId: identity.id }, 200, {
-      "Cache-Control": "no-store",
-    })
+    return c.json(
+      {
+        login: identity.login,
+        githubId: identity.id,
+        managementAvailable: !!deps.consumers,
+      },
+      200,
+      {
+        "Cache-Control": "no-store",
+      },
+    )
+  })
+
+  app.get("/members", async (c) => {
+    const identity = await authorize(getCookie(c, SESSION_COOKIE))
+    if (!identity) return c.json({ error: "unauthorized" }, 401)
+    const publication = await deps.admission.current()
+    if (!admitted(publication.allowlist, identity.login, identity.id))
+      return c.json({ error: "unauthorized" }, 401)
+    // This is a selection directory; mutations independently recheck eligibility.
+    return c.json({ users: publication.allowlist.users })
   })
 
   app.post("/sign-out", async (c) => {

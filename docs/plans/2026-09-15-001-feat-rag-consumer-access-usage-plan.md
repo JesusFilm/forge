@@ -30,12 +30,15 @@ follow; incomplete live verification does not block the backend merge. J022 reco
 Implementation is explicitly split:
 
 1. [feat-527: access lifecycle](../roadmap/rag/feat-527-rag-consumer-access-lifecycle.md).
-2. [feat-528: usage collection and read-only reporting](../roadmap/rag/feat-528-rag-consumer-usage-visibility.md),
-   dependent on access identity. Access alone cannot close the programme or permit
-   shared-token cutoff; both deliverables and their release gates must pass.
-3. [feat-529](../roadmap/rag/feat-529-rag-consumer-dogfood-migration.md): actual ops HTTP dogfood and seven-day migration, after usage.
-4. [feat-530](../roadmap/rag/feat-530-rag-consumer-self-service-portal.md): internal self-service portal; management UI follows the backend and precedes dogfood. Reporting views follow feat-528. Its design
-   is captured here now because Bible lookup expansion will increase demand.
+2. [feat-530: internal self-service portal](../roadmap/rag/feat-530-rag-consumer-self-service-portal.md):
+   management UI follows the backend. Verify consumer onboarding through the
+   actual UI, including creation and one-time key handling.
+3. [feat-528: usage collection and read-only reporting](../roadmap/rag/feat-528-rag-consumer-usage-visibility.md):
+   independent backend deliverable; reporting views follow its implementation.
+4. [feat-529: ops HTTP dogfood and seven-day migration](../roadmap/rag/feat-529-rag-consumer-dogfood-migration.md):
+   follows usage and usable management. Create RAGBot through the portal, then
+   use that consumer through the actual ops task. API/SQL setup cannot substitute
+   for onboarding proof. Access alone cannot permit shared-token cutoff.
 
 No product implementation, billing, external consumers, source import, corpus
 change or production operation is included in this PR. External access requires
@@ -135,7 +138,7 @@ grace start and cutoff require separate authorization.
    lowercase letters, numbers and dashes only. Enforce the same rule server-side
    and with database uniqueness, including concurrent submissions.
 4. Show the signed-in engineer's own GitHub handle read-only as initial owner.
-   Preview the consumer name and initial owner before submitting Add.
+   Submit Create directly, then show the one-time API key dialog. No preview step.
 5. Add directly creates the backend record and owner relationship and generates
    a cryptographically random secret in one transaction. It does not stage a PR.
 6. Display plaintext exactly once after successful creation, with a copy action
@@ -199,7 +202,7 @@ the allowlist PR path. The allowlist never stores consumer owner lists or secret
 
 Authenticated users can list all consumers' safe names/status and create directly
 through the backend. Validate the globally unique lowercase/numeric/dash name,
-previewed values and authenticated initial owner; never accept a client-supplied
+submitted values and authenticated initial owner; never accept a client-supplied
 owner identity. Source grants are explicit bounded server-side policy on the
 consumer, not arbitrary grants supplied by the creator; rotation cannot widen them.
 Keep sensitive free text and private contacts out of the directory and git.
@@ -426,7 +429,7 @@ outcomes. An unmerged allowlist addition denies login; trusted merged publicatio
 admits it; removal denies existing sessions. All admitted users see all consumers,
 but only owners manage a target consumer. Test direct creation, invalid names,
 global duplicate/concurrent-name conflicts, read-only initial owner tampering,
-preview/submit consistency and one-time display. Only owners can Add member;
+direct-create submission and one-time display. Only owners can Add member;
 reject non-allowlisted targets and cross-consumer or concurrent removal/rotation
 races. Prove last-owner protection, stable identity/rename safety, stale allowlist
 denial, restricted audits, atomic rotation, old-key rejection and response-loss
@@ -444,7 +447,7 @@ After successful feat-529 dogfood, deliver the confirmed UX above using the
 feat-527 authenticated backend. GitHub OAuth plus the current merged portal-user
 allowlist controls admission. Show all consumers; runtime membership controls
 management. No environment picker or environment-scoped route is needed. Create directly with a globally unique `^[a-z0-9-]+$` name, read-only
-signed-in initial owner, preview and submit. Return the random secret once with
+signed-in initial owner and a single Create action. Return the random secret once with
 copy/password-manager warning. Only existing owners can Add member from the
 predetermined allowlist; members can manage and regenerate. No consumer PR or
 Git-backed owner projection exists in this model.
