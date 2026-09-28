@@ -638,6 +638,25 @@ describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
     expect(barValue(renderer)).toMatchObject({ min: 0, max: 27, now: 6 })
   })
 
+  it("holds at the clip's start under the veil, whatever time the player holds", () => {
+    // A swipe back loads the clip onto the player that held the preloaded next
+    // clip: until the load lands it reports that clip's time, here 25:00.
+    player.currentTime = 1500
+    const renderer = render(props({ veiled: true }))
+    expect(barValue(renderer).now).toBe(0)
+    act(() => {
+      player.__emit("timeUpdate", { currentTime: 1501 })
+    })
+    expect(barValue(renderer).now).toBe(0)
+
+    // The veil lifts once this clip plays from its own time.
+    player.currentTime = 730
+    act(() => {
+      renderer.update(<ClipOverlay {...props({ veiled: false })} />)
+    })
+    expect(barValue(renderer).now).toBe(6)
+  })
+
   it("seeks to 12:17.5 on a drag to 50%, through onSeek", () => {
     player.currentTime = 730
     const onSeek = jest.fn()

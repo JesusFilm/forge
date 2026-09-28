@@ -361,6 +361,7 @@ export function ClipOverlay({
           player={player}
           clipWindow={clip.window}
           onSeek={onSeek}
+          veiled={veiled}
         />
       </View>
     </View>

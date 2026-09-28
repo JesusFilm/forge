@@ -30,6 +30,8 @@ type ClipProgressBarProps = {
   clipWindow: ClipWindow
   /** Seeks the active clip. The bar never writes the player's time itself. */
   onSeek: (seconds: number) => void
+  /** The clip loads under its veil, so the player's time is not yet its own. */
+  veiled: boolean
 }
 
 /**
@@ -75,6 +77,7 @@ export function ClipProgressBar({
   player,
   clipWindow,
   onSeek,
+  veiled,
 }: ClipProgressBarProps) {
   const typography = useTypography()
   const { startSeconds, endSeconds } = clipWindow
@@ -129,12 +132,18 @@ export function ClipProgressBar({
   )
 
   useEffect(() => {
+    // Under the veil the player can still hold the last clip's time, which
+    // clamps to a full or empty bar. The clip has not started, so show its start.
+    if (veiled) {
+      show(startSeconds)
+      return
+    }
     show(readTime(player))
     const sub = player.addListener("timeUpdate", ({ currentTime }) => {
       if (!draggingRef.current) show(currentTime)
     })
     return () => sub.remove()
-  }, [player, startSeconds, endSeconds, show])
+  }, [player, startSeconds, endSeconds, show, veiled])
 
   const fractionAt = (x: number) =>
     widthRef.current > 0 ? clamp(x / widthRef.current, 0, 1) : 0
