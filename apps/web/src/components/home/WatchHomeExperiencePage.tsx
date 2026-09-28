@@ -1,4 +1,7 @@
-import { signWatchSurfaceManifest } from "@/lib/watch-surface-manifest.server"
+import {
+  signWatchHomeHeroManifestCatalog,
+  signWatchSurfaceManifest,
+} from "@/lib/watch-surface-manifest.server"
 import {
   authoredWatchSurfaceSource,
   watchHomeHeroSource,
@@ -213,8 +216,8 @@ export function WatchHomeExperiencePage({
           <WatchHomeTvCarousel
             pinned={false}
             exposurePlacement={`authored-hero-${index}`}
-            manifest={
-              signWatchSurfaceManifest(
+            heroManifestCatalog={
+              signWatchHomeHeroManifestCatalog(
                 watchHomeHeroSource(heroModel, `authored-hero-${index}`),
               ) ?? undefined
             }
@@ -326,9 +329,10 @@ export function WatchHomeExperiencePage({
           )}
           {heroAboveBodyZone ? (
             <WatchHomeTvCarousel
-              manifest={
-                signWatchSurfaceManifest(watchHomeHeroSource(heroModel)) ??
-                undefined
+              heroManifestCatalog={
+                signWatchHomeHeroManifestCatalog(
+                  watchHomeHeroSource(heroModel),
+                ) ?? undefined
               }
               slides={heroModel.heroSlides}
               sequence={heroModel.carousel}

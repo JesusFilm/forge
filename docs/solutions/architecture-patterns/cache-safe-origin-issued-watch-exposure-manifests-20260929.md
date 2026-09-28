@@ -87,6 +87,28 @@ sentinel, and offer a registry-entry filter before cohort selection and ranking
 so later groups remain inspectable without pretending a truncated table is full
 coverage. Apply the same identity filter to the signed reader.
 
+Rotating heroes need active-card authority rather than one aggregate slate. A
+small visible queue may draw from an uncapped catalog. Sign every trusted path
+as a singleton, sharing the catalog digest/configuration/expiry in a compact
+transport. The digest identifies the ordered deduplicated catalog, while each
+HMAC and the issuer's replay binding independently include the selected slot
+and path. Neither verifier nor issuer recomputes a singleton source digest.
+Changed active paths or catalogs conflict under an old nonce and need a fresh
+measurement attempt. Do not truncate the catalog or enlarge the issuer limit.
+
+When an exposure root belongs to external controls, keep those controls as
+stable siblings of the keyed measurement controller. Rekeying the whole subtree
+destroys focused timeline buttons and preview state. Reconcile the current href
+before click capture, since a deferred mutation scan may still hold the old card.
+
+Keep canonical path helpers and public URL constants separate from initialized
+schema/route modules. A type-light helper can still pull substantial runtime
+code through a value import. Compare the actual browser graph: the initial hero
+change added 600 KB unminified; separating schemas and then URL constants reduced
+the component increment to 2,494 bytes. For capped reports, an optional validated
+policy filter must narrow both cohort and ranking before the sentinel; mixed
+legacy/v2 groups can exceed the cap even within one placement.
+
 ## Why This Matters
 
 Cache reuse and measurement windows have different lifetimes. Reusing public

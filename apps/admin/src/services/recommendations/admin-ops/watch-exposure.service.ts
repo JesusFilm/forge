@@ -44,6 +44,7 @@ export type WatchExposureRegistryFilter = {
   block: string
   presentation: string
   placement?: string
+  policyVersion?: string
 }
 
 export async function loadWatchExposureBreakdown(
@@ -65,6 +66,8 @@ export async function loadWatchExposureBreakdown(
         !filter ||
         (identity.surface === filter.surface &&
           identity.block === filter.block &&
+          (filter.policyVersion === undefined ||
+            filter.policyVersion === identity.version) &&
           filter.presentation === "recommendation-list" &&
           (filter.placement === undefined || filter.placement === "primary")),
     )
@@ -168,6 +171,7 @@ export async function loadAnonymousWatchExposureBreakdown(
     AND surface = ${filter.surface} AND block = ${filter.block}
     AND presentation = ${filter.presentation}
     ${filter.placement === undefined ? Prisma.empty : Prisma.sql`AND placement = ${filter.placement}`}
+    ${filter.policyVersion === undefined ? Prisma.empty : Prisma.sql`AND policy_version = ${filter.policyVersion}`}
   `
     : Prisma.empty
   const rankedScope = filter
@@ -175,6 +179,7 @@ export async function loadAnonymousWatchExposureBreakdown(
     AND fact.surface = ${filter.surface} AND fact.block = ${filter.block}
     AND fact.presentation = ${filter.presentation}
     ${filter.placement === undefined ? Prisma.empty : Prisma.sql`AND fact.placement = ${filter.placement}`}
+    ${filter.policyVersion === undefined ? Prisma.empty : Prisma.sql`AND fact.policy_version = ${filter.policyVersion}`}
   `
     : Prisma.empty
   const rows = await prisma.$transaction(

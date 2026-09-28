@@ -9,29 +9,47 @@ function registryEntryKey(entry: WatchExposureRegistryFilter): string {
   return `${entry.surface}:${entry.block}:${entry.presentation}`
 }
 
+const EXPOSURE_POLICIES = [
+  "watch-exposure-v1",
+  "watch-exposure-v2",
+  "watch-for-you-v1",
+  "watch-below-player-v1",
+] as const
+
 export function resolveWatchExposureInspectionFilter(
   rawEntry?: string | string[],
   rawPlacement?: string | string[],
+  rawPolicy?: string | string[],
 ) {
   const entryKey = typeof rawEntry === "string" ? rawEntry : ""
   const placement = typeof rawPlacement === "string" ? rawPlacement : ""
+  const policyVersion = typeof rawPolicy === "string" ? rawPolicy : ""
   const entry = WATCH_EXPOSURE_REGISTRY.find(
     (candidate) => registryEntryKey(candidate) === entryKey,
   )
   const invalid =
     Array.isArray(rawEntry) ||
     Array.isArray(rawPlacement) ||
+    Array.isArray(rawPolicy) ||
     (entryKey !== "" && !entry) ||
-    (placement !== "" && (!entry || !/^[a-zA-Z0-9_-]{1,64}$/.test(placement)))
+    (placement !== "" &&
+      (!entry || !/^[a-zA-Z0-9_-]{1,64}$/.test(placement))) ||
+    (policyVersion !== "" &&
+      (!entry ||
+        (entry.source === "anonymous-window"
+          ? policyVersion !== "watch-exposure-v1" &&
+            policyVersion !== "watch-exposure-v2"
+          : policyVersion !== entry.policyVersion)))
   const filter: WatchExposureRegistryFilter | undefined = entry
     ? {
         surface: entry.surface,
         block: entry.block,
         presentation: entry.presentation,
         ...(placement ? { placement } : {}),
+        ...(policyVersion ? { policyVersion } : {}),
       }
     : undefined
-  return { entryKey, placement, filter, invalid }
+  return { entryKey, placement, policyVersion, filter, invalid }
 }
 
 export function WatchExposureInspection({
@@ -53,7 +71,7 @@ export function WatchExposureInspection({
   return (
     <PageSection title="Watch surface exposure" meta="MEASUREMENT / PARTIAL">
       <div className="space-y-3 px-4 py-4 text-[13px]">
-        <form method="get" className="grid gap-3 md:grid-cols-3">
+        <form method="get" className="grid gap-3 md:grid-cols-4">
           <input type="hidden" name="window" value={window} />
           <label className="grid gap-1 text-[11px] text-[var(--color-text-muted)]">
             Registry entry
@@ -83,6 +101,21 @@ export function WatchExposureInspection({
               className="h-9 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-text-primary)]"
             />
           </label>
+          <label className="grid gap-1 text-[11px] text-[var(--color-text-muted)]">
+            Policy (optional for one entry)
+            <select
+              name="exposurePolicy"
+              defaultValue={selection.policyVersion}
+              className="h-9 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-text-primary)]"
+            >
+              <option value="">All policies</option>
+              {EXPOSURE_POLICIES.map((policy) => (
+                <option key={policy} value={policy}>
+                  {policy}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="submit"
             className="mt-auto h-9 rounded-sm bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
@@ -92,14 +125,17 @@ export function WatchExposureInspection({
         </form>
         {selection.invalid && (
           <p role="status">
-            Choose a registered entry and a valid optional placement. Counts are
-            withheld.
+            Choose a registered entry, a compatible policy and a valid optional
+            placement. Counts are withheld.
           </p>
         )}
         {selection.filter && !selection.invalid && (
           <p>
             Exposure rows are scoped to the selected registry entry
             {selection.placement ? ` and placement ${selection.placement}` : ""}
+            {selection.policyVersion
+              ? ` and policy ${selection.policyVersion}`
+              : ""}
             . Overview and replay counts retain the selected time window.
           </p>
         )}
@@ -124,8 +160,8 @@ export function WatchExposureInspection({
           <p role="status">
             Anonymous breakdown exceeds 128 groups in this window. Rows shown
             are truncated; totals and coverage cannot be inferred from this
-            table. Select a registry entry and, if needed, placement to inspect
-            a narrower cohort.
+            table. Select a registry entry and, if needed, placement and policy
+            to inspect a narrower cohort.
           </p>
         )}
         {rows === null ? (

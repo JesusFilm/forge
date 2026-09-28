@@ -125,6 +125,256 @@ describe("WatchExposureBoundary", () => {
     })
   }
 
+  const externalRoot = () => createRef<HTMLDivElement>()
+  const renderExternal = (
+    actionsRef: ReturnType<typeof externalRoot>,
+    measurementKey: string,
+    descriptor: SignedWatchSurfaceManifest | null = manifest,
+    path = "/watch/first.html",
+  ) =>
+    root.render(
+      <WatchExposureBoundary
+        config={config}
+        rootRef={actionsRef}
+        manifest={descriptor}
+        measurementKey={measurementKey}
+      >
+        <div ref={actionsRef}>
+          <a href={path} onClick={(event) => event.preventDefault()}>
+            watch
+          </a>
+          <button type="button">queue control</button>
+        </div>
+      </WatchExposureBoundary>,
+    )
+  const intersect = (target: Element) =>
+    observerCallback(
+      [
+        {
+          target,
+          isIntersecting: true,
+          intersectionRatio: 0.5,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+
+  it("keeps external DOM, focus and component state across descriptor changes", async () => {
+    const actionsRef = externalRoot()
+    function Controls({ path }: { path: string }) {
+      const [count, setCount] = React.useState(0)
+      return (
+        <div ref={actionsRef}>
+          <a href={path}>watch</a>
+          <button type="button" onClick={() => setCount((value) => value + 1)}>
+            {count}
+          </button>
+        </div>
+      )
+    }
+    const render = (descriptor: SignedWatchSurfaceManifest, path: string) =>
+      root.render(
+        <WatchExposureBoundary
+          config={config}
+          manifest={descriptor}
+          rootRef={actionsRef}
+        >
+          <Controls path={path} />
+        </WatchExposureBoundary>,
+      )
+    act(() => render(manifest, "/watch/first.html"))
+    await drain()
+    const originalRoot = actionsRef.current
+    const anchor = container.querySelector("a")!
+    const button = container.querySelector("button")!
+    act(() => button.click())
+    button.focus()
+    const replacement = {
+      ...manifest,
+      manifest: {
+        ...manifest.manifest,
+        items: [{ position: 0, itemPath: "/watch/second.html" }],
+      },
+    }
+    act(() => render(replacement, "/watch/second.html"))
+    await drain()
+    expect(actionsRef.current).toBe(originalRoot)
+    expect(container.querySelector("a")).toBe(anchor)
+    expect(container.querySelector("button")).toBe(button)
+    expect(document.activeElement).toBe(button)
+    expect(button.textContent).toBe("1")
+    expect(deliveryCalls()).toHaveLength(2)
+  })
+
+  it("starts fresh rendered and dwell measurement for different active IDs sharing one href", async () => {
+    fetchWithRetry.mockImplementation(
+      async (url) =>
+        new Response(
+          JSON.stringify(url.endsWith("surface-delivery") ? receipt : {}),
+        ),
+    )
+    const actionsRef = externalRoot()
+    act(() => renderExternal(actionsRef, "slide-a"))
+    await drain()
+    const anchor = container.querySelector("a")!
+    act(() => intersect(anchor))
+    act(() => vi.advanceTimersByTime(500))
+    act(() => renderExternal(actionsRef, "slide-b"))
+    await drain()
+    expect(container.querySelector("a")).toBe(anchor)
+    act(() => intersect(anchor))
+    act(() => vi.advanceTimersByTime(620))
+    expect(bodies().filter((event) => event.kind === "eligible")).toHaveLength(
+      0,
+    )
+    act(() => vi.advanceTimersByTime(500))
+    expect(bodies().filter((event) => event.kind === "rendered")).toHaveLength(
+      2,
+    )
+    expect(bodies().filter((event) => event.kind === "eligible")).toHaveLength(
+      1,
+    )
+    const attempts = deliveryCalls().map(
+      (call) => JSON.parse(String(call[1].body)).attemptId,
+    )
+    expect(attempts).toHaveLength(2)
+    expect(attempts[0]).not.toBe(attempts[1])
+  })
+
+  it("keeps the same measurement window and dwell across playback query changes", async () => {
+    fetchWithRetry.mockImplementation(
+      async (url) =>
+        new Response(
+          JSON.stringify(url.endsWith("surface-delivery") ? receipt : {}),
+        ),
+    )
+    const actionsRef = externalRoot()
+    act(() =>
+      renderExternal(
+        actionsRef,
+        "slide-a",
+        manifest,
+        "/watch/first.html?autoplay=1&t=12",
+      ),
+    )
+    await drain()
+    const anchor = container.querySelector("a")!
+    act(() => intersect(anchor))
+    act(() => vi.advanceTimersByTime(500))
+    act(() =>
+      renderExternal(
+        actionsRef,
+        "slide-a",
+        manifest,
+        "/watch/first.html?autoplay=1&t=13",
+      ),
+    )
+    await drain()
+    act(() => vi.advanceTimersByTime(620))
+    expect(deliveryCalls()).toHaveLength(1)
+    expect(bodies().filter((event) => event.kind === "rendered")).toHaveLength(
+      1,
+    )
+    expect(bodies().filter((event) => event.kind === "eligible")).toHaveLength(
+      1,
+    )
+  })
+
+  it("ignores stale receipts after a measurement-key-only switch", async () => {
+    const deliveries: Array<(response: Response) => void> = []
+    fetchWithRetry.mockImplementation((url) =>
+      url.endsWith("surface-delivery")
+        ? new Promise<Response>((resolve) => deliveries.push(resolve))
+        : Promise.resolve(new Response("{}")),
+    )
+    const actionsRef = externalRoot()
+    act(() => renderExternal(actionsRef, "slide-a"))
+    await drain()
+    act(() => renderExternal(actionsRef, "slide-b"))
+    await drain()
+    await act(async () => {
+      deliveries[0](new Response(JSON.stringify(receipt)))
+      await Promise.resolve()
+    })
+    act(() => container.querySelector("a")!.click())
+    act(() => vi.advanceTimersByTime(2120))
+    expect(bodies().filter((event) => event.kind === "selected")).toEqual([
+      expect.objectContaining({
+        itemPath: "/watch/first.html",
+        policyVersion: "watch-exposure-v1",
+      }),
+    ])
+  })
+
+  it("reconciles a rapid href switch before selection without waiting for a frame", async () => {
+    fetchWithRetry.mockImplementation(
+      async (url) =>
+        new Response(
+          JSON.stringify(url.endsWith("surface-delivery") ? receipt : {}),
+        ),
+    )
+    const actionsRef = externalRoot()
+    act(() => renderExternal(actionsRef, "slide-a"))
+    await drain()
+    const anchor = container.querySelector("a")!
+    act(() => {
+      anchor.href = "/watch/second.html?autoplay=1"
+      anchor.click()
+    })
+    expect(bodies().filter((event) => event.kind === "selected")).toEqual([
+      expect.objectContaining({
+        itemPath: "/watch/second.html",
+        policyVersion: "watch-exposure-v1",
+      }),
+    ])
+    expect(
+      bodies().some(
+        (event) =>
+          event.kind === "rendered" && event.itemPath === "/watch/second.html",
+      ),
+    ).toBe(true)
+    expect(bodies().filter((event) => event.kind === "eligible")).toHaveLength(
+      0,
+    )
+  })
+
+  it("does not issue an empty or unknown descriptor, then measures a valid active target", async () => {
+    const actionsRef = externalRoot()
+    const empty = { ...manifest, manifest: { ...manifest.manifest, items: [] } }
+    act(() => renderExternal(actionsRef, "intro", empty, "#intro"))
+    await drain()
+    expect(deliveryCalls()).toHaveLength(0)
+    expect(bodies()).toHaveLength(0)
+    act(() =>
+      renderExternal(actionsRef, "unknown", null, "/watch/unknown.html"),
+    )
+    await drain()
+    act(() => vi.advanceTimersByTime(120))
+    expect(deliveryCalls()).toHaveLength(0)
+    expect(bodies()[0]).toMatchObject({
+      kind: "rendered",
+      itemPath: "/watch/unknown.html",
+      policyVersion: "watch-exposure-v1",
+    })
+    fetchWithRetry.mockImplementation(
+      async (url) =>
+        new Response(
+          JSON.stringify(url.endsWith("surface-delivery") ? receipt : {}),
+        ),
+    )
+    act(() => renderExternal(actionsRef, "valid"))
+    await drain()
+    act(() => vi.advanceTimersByTime(120))
+    expect(deliveryCalls()).toHaveLength(1)
+    expect(
+      bodies().some(
+        (event) =>
+          event.kind === "rendered" &&
+          event.policyVersion === "watch-exposure-v2",
+      ),
+    ).toBe(true)
+  })
+
   it("waits for activation and load before issuing, retaining early selection", async () => {
     Object.defineProperty(document, "prerendering", {
       configurable: true,

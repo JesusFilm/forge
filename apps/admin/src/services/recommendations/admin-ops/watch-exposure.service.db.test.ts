@@ -603,6 +603,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         surface: "watch-home",
         block: "for-you",
         presentation: "recommendation-list",
+        policyVersion: "watch-for-you-v1",
       }
       expect(
         await loadWatchExposureBreakdown(prisma, "24h", signedFilter),
@@ -626,6 +627,127 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         }),
       ).toEqual([])
       expect(await loadWatchExposureBreakdown(prisma, "24h")).toHaveLength(2)
+      expect(
+        await loadWatchExposureBreakdown(prisma, "24h", {
+          ...signedFilter,
+          policyVersion: "watch-below-player-v1",
+        }),
+      ).toEqual([])
+    })
+
+    it("filters policy before the row cap and preserves every matching position", async () => {
+      await prisma.watchSurfaceExposure.deleteMany()
+      const now = new Date()
+      const base = {
+        windowId: randomUUID(),
+        surface: "watch-video",
+        block: "chapters",
+        presentation: "carousel",
+        placement: "chapters-1",
+        itemPath: "/watch/scoped-policy.html",
+        visibilityCapability: null,
+        receivedAt: new Date(now.getTime() - 30000),
+        expiresAt: new Date(now.getTime() + 86400000),
+      }
+      const at = (offset: number) => new Date(now.getTime() - 60000 + offset)
+      await prisma.watchSurfaceExposure.createMany({
+        data: Array.from({ length: 70 }, (_, position) =>
+          [
+            {
+              policyVersion: "watch-exposure-v1",
+              kind: "eligible",
+              occurredAt: at(0),
+            },
+            {
+              policyVersion: "watch-exposure-v2",
+              kind: "served",
+              occurredAt: at(0),
+            },
+            {
+              policyVersion: "watch-exposure-v2",
+              kind: "selected",
+              occurredAt: at(2000),
+            },
+            ...(position === 0
+              ? [
+                  {
+                    policyVersion: "watch-exposure-v2",
+                    kind: "eligible",
+                    occurredAt: at(1000),
+                  },
+                ]
+              : []),
+          ].map((fact) => ({
+            ...base,
+            position,
+            id: randomUUID(),
+            eventId: randomUUID(),
+            ...fact,
+          })),
+        ).flat(),
+      })
+      const filter = {
+        surface: base.surface,
+        block: base.block,
+        presentation: base.presentation,
+        placement: base.placement,
+      }
+      const mixed = await loadAnonymousWatchExposureBreakdown(
+        prisma,
+        "24h",
+        filter,
+      )
+      expect(mixed.truncated).toBe(true)
+      expect(mixed.rows).toHaveLength(128)
+      const v2 = await loadAnonymousWatchExposureBreakdown(prisma, "24h", {
+        ...filter,
+        policyVersion: "watch-exposure-v2",
+      })
+      expect(v2.truncated).toBe(false)
+      expect(v2.rows.map((row) => row.position)).toEqual(
+        Array.from({ length: 70 }, (_, position) => position),
+      )
+      expect(
+        v2.rows.every(
+          (row) =>
+            row.policyVersion === "watch-exposure-v2" &&
+            row.served === 1 &&
+            row.selected === 1,
+        ),
+      ).toBe(true)
+      expect(v2.rows[0]).toMatchObject({
+        eligible: 1,
+        eligibleSelected: 1,
+        selectionWithoutImpression: 0,
+      })
+      expect(
+        v2.rows
+          .slice(1)
+          .every(
+            (row) =>
+              row.eligible === 0 &&
+              row.eligibleSelected === 0 &&
+              row.selectionWithoutImpression === 1,
+          ),
+      ).toBe(true)
+      const v1 = await loadAnonymousWatchExposureBreakdown(prisma, "24h", {
+        ...filter,
+        policyVersion: "watch-exposure-v1",
+      })
+      expect(v1.truncated).toBe(false)
+      expect(v1.rows).toHaveLength(70)
+      expect(
+        v1.rows.every(
+          (row) =>
+            row.served === null && row.eligible === 1 && row.selected === 0,
+        ),
+      ).toBe(true)
+      expect(
+        await loadAnonymousWatchExposureBreakdown(prisma, "24h", {
+          ...filter,
+          policyVersion: "watch-for-you-v1",
+        }),
+      ).toEqual({ rows: [], truncated: false })
     })
 
     it("reconciles 60000 facts within the unchanged report query budget", async () => {

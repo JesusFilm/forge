@@ -55,15 +55,27 @@ type BoundaryProps = {
   children: ReactNode
   rootRef?: RefObject<HTMLDivElement | null>
   manifest?: SignedWatchSurfaceManifest | null
+  measurementKey?: string
 }
 
 export function WatchExposureBoundary(props: BoundaryProps) {
-  // A new block projection/placement gets its own attempt, dwell and event window.
-  return (
+  // External controls belong to the caller. A new measurement window must not
+  // replace their DOM nodes, focus or component state.
+  const controller = (
     <ExposureWindow
-      key={JSON.stringify([props.config, props.manifest])}
+      key={JSON.stringify([props.config, props.manifest, props.measurementKey])}
       {...props}
-    />
+    >
+      {props.rootRef ? null : props.children}
+    </ExposureWindow>
+  )
+  return props.rootRef ? (
+    <>
+      {props.children}
+      {controller}
+    </>
+  ) : (
+    controller
   )
 }
 
@@ -76,6 +88,7 @@ function ExposureWindow({
   const internalRoot = useRef<HTMLDivElement>(null)
   const root = rootRef ?? internalRoot
   const coverageRoot = useRef<Element | null>(null)
+  const reconcileCards = useRef<(() => void) | null>(null)
   const cards = useRef(
     new Map<HTMLAnchorElement, { key: string; card: Card }>(),
   )
@@ -90,7 +103,8 @@ function ExposureWindow({
     manifest.manifest.block === block &&
     manifest.manifest.presentation === presentation &&
     manifest.manifest.placement === placement &&
-    manifest.manifest.policyVersion === "watch-exposure-v2"
+    manifest.manifest.policyVersion === "watch-exposure-v2" &&
+    manifest.manifest.items.length > 0
       ? manifest
       : null
   const lifecycle = useRef({
@@ -367,6 +381,7 @@ function ExposureWindow({
     const attachedCards = cards.current
     let scheduled = 0
     const scan = () => {
+      if (scheduled) window.cancelAnimationFrame(scheduled)
       scheduled = 0
       const current = new Set<HTMLAnchorElement>()
       const occurrences = new Map<string, number>()
@@ -427,6 +442,7 @@ function ExposureWindow({
       if (scheduled) return
       scheduled = window.requestAnimationFrame(scan)
     }
+    reconcileCards.current = scan
     scan()
     const observer = new MutationObserver(scheduleScan)
     observer.observe(element, {
@@ -438,6 +454,7 @@ function ExposureWindow({
     window.addEventListener("resize", scheduleScan)
     return () => {
       observer.disconnect()
+      if (reconcileCards.current === scan) reconcileCards.current = null
       window.removeEventListener("resize", scheduleScan)
       if (scheduled) window.cancelAnimationFrame(scheduled)
       for (const value of attachedCards.values()) attach(value.key, null)
@@ -475,6 +492,9 @@ function ExposureWindow({
       if (!(target instanceof Element)) return
       const anchor = target.closest<HTMLAnchorElement>("a[href]")
       if (!anchor) return
+      // A click can precede MutationObserver's deferred frame. Capture the
+      // current href and nested ownership rather than the previous card.
+      reconcileCards.current?.()
       const item = cards.current.get(anchor)
       if (item) {
         send(item.card, "selected")

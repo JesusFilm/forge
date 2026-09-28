@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   authoredWatchSurfaceSource,
+  watchHomeHeroSource,
   watchChaptersSource,
   MAX_WATCH_SURFACE_MARKDOWN_BYTES,
 } from "./watch-surface-manifest.sources"
@@ -8,6 +9,9 @@ import {
   watchSurfaceItemPath,
   watchSurfaceSource,
 } from "./watch-surface-manifest"
+
+import type { WatchHomeModel, WatchHomeHeroSlide } from "./watch-home"
+import { buildWatchHomeVideoQueue } from "./watch-home-carousel-sequence"
 
 const config = {
   surface: "watch-home",
@@ -313,4 +317,126 @@ it("resolves same-scheme relative HTTPS only against an exact trusted document p
   expect(
     watchSurfaceItemPath("https://www.jesusfilm.org/watch/birth.html", false),
   ).toBe("/watch/birth.html")
+})
+
+function intro(
+  coreId: string,
+  href: string,
+  videoLabel: string | null = null,
+): WatchHomeHeroSlide {
+  return {
+    id: coreId,
+    coreId,
+    sourceId: coreId,
+    title: coreId,
+    label: "Featured",
+    videoLabel,
+    metaLabel: null,
+    href,
+    imageUrl: null,
+    blurDataUrl: null,
+    dominantColor: null,
+    imageAlt: "",
+    hls: null,
+    playbackId: null,
+    durationSeconds: null,
+    childCount: 0,
+    parentCoreId: null,
+    parentSlug: null,
+    missingData: [],
+    eyebrow: "Featured",
+  }
+}
+function heroModel(count: number): WatchHomeModel {
+  return {
+    heroSlides: [],
+    sections: [],
+    missingData: [],
+    carousel: {
+      pools: [
+        {
+          id: "pool",
+          collectionIds: ["source"],
+          videos: Array.from({ length: count }, (_, index) => ({
+            kind: "video" as const,
+            id: `synthetic-${index}`,
+            title: "Synthetic",
+            label: "Segment",
+            href: `/synthetic-${index}.html`,
+            posterUrl: null,
+            thumbnailUrl: null,
+            imageAlt: "",
+            src: "https://stream.example/synthetic.m3u8",
+            playbackId: null,
+            durationSeconds: null,
+          })),
+        },
+      ],
+    },
+  }
+}
+
+describe("unbounded internal hero source with bounded active authority", () => {
+  it.each([101, 1000])(
+    "retains all %i trusted candidates in slot zero",
+    (count) => {
+      const model = heroModel(count)
+      const source = watchHomeHeroSource(model)!
+      expect(source.items).toHaveLength(count)
+      expect(source.items.every(({ position }) => position === 0)).toBe(true)
+      const renderedQueue = buildWatchHomeVideoQueue({
+        pools: model.carousel.pools,
+        targetVideoCount: count,
+        useStoredProgress: false,
+      })
+      expect(new Set(source.items.map(({ itemPath }) => itemPath))).toEqual(
+        new Set(
+          renderedQueue.videos.map(({ href }) => watchSurfaceItemPath(href)),
+        ),
+      )
+      expect(source.items.at(-1)?.itemPath).toBe(
+        `/watch/synthetic-${count - 1}.html`,
+      )
+    },
+  )
+  it("includes eligible intro fallbacks and playable pool candidates, deduplicating exact paths across pools and query variants", () => {
+    const model = heroModel(2)
+    model.heroSlides = [
+      intro("excluded", "/feature.html", "FEATURE_FILM"),
+      intro("unknown", "/intro.html?autoplay=1"),
+      intro("duplicate", "/synthetic-0.html?t=12", "SEGMENT"),
+    ]
+    const pool = model.carousel.pools[0]
+    model.carousel = {
+      pools: [
+        pool,
+        {
+          ...pool,
+          id: "duplicate-pool",
+          videos: [
+            { ...pool.videos[0], href: "/synthetic-0.html?autoplay=1" },
+            {
+              ...pool.videos[1],
+              id: "no-stream",
+              href: "/no-stream.html",
+              src: null,
+            },
+            {
+              ...pool.videos[1],
+              id: "foreign",
+              href: "https://other.example/watch/foreign.html",
+            },
+          ],
+        },
+      ],
+    }
+    const source = watchHomeHeroSource(model, "authored-hero-3")!
+    expect(source.placement).toBe("authored-hero-3")
+    expect(source.items).toEqual([
+      { position: 0, itemPath: "/watch/intro.html" },
+      { position: 0, itemPath: "/watch/synthetic-0.html" },
+      { position: 0, itemPath: "/watch/synthetic-1.html" },
+    ])
+    expect(watchHomeHeroSource(heroModel(0))?.items).toEqual([])
+  })
 })
