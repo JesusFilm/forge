@@ -1,3 +1,8 @@
+import { signWatchSurfaceManifest } from "@/lib/watch-surface-manifest.server"
+import {
+  watchVideoSurfaceSources,
+  watchSeriesEpisodesSource,
+} from "@/lib/watch-surface-manifest.sources"
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
@@ -774,6 +779,11 @@ async function renderOneSegment(shape: {
           heroModel={heroResult.data}
           blocks={visibleContent.blocks}
           languageSlug={slug}
+          publicDocumentPathname={
+            localeSlug
+              ? `${WATCH_BASE_PATH}${localizedHomePath(localeSlug)}`
+              : undefined
+          }
           locale={locale}
           legacyCategoryRailCompatibility={
             pageResult.data?.kind === "experience" &&
@@ -945,6 +955,10 @@ async function renderEpisode(
         downloadButtonLabel={downloadButtonLabel}
         downloadSequence={downloadSequence}
         mergedBlocks={clientMergedBlocks}
+        surfaceManifests={watchVideoSurfaceSources(
+          clientMergedBlocks,
+          languageSlug,
+        ).map((source) => signWatchSurfaceManifest(source))}
         variant={clientVariant}
         video={clientVideo}
         languageSlug={languageSlug}
@@ -1117,6 +1131,10 @@ async function renderVideo(
           downloadButtonLabel={downloadButtonLabel}
           downloadSequence={downloadSequence}
           mergedBlocks={clientMergedBlocks}
+          surfaceManifests={watchVideoSurfaceSources(
+            clientMergedBlocks,
+            languageSlug,
+          ).map((source) => signWatchSurfaceManifest(source))}
           variant={clientVariant}
           video={clientVideo}
           languageSlug={languageSlug}
@@ -1213,6 +1231,11 @@ async function renderVideo(
         <WatchStructuredData json={structuredData} />
         <SeriesPageClient
           series={visibleSeries}
+          surfaceManifest={
+            signWatchSurfaceManifest(
+              watchSeriesEpisodesSource(visibleSeries, seriesLanguage.slug),
+            ) ?? undefined
+          }
           selectedVariant={
             series.selectedVariant?.language?.slug === seriesLanguage.slug
               ? series.selectedVariant

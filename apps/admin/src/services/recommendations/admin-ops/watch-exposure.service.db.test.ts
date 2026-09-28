@@ -3,8 +3,14 @@ import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
-import { recordWatchSurfaceExposureBatch } from "../watch-surface-exposure.service"
-import { loadAnonymousWatchExposureBreakdown } from "./watch-exposure.service"
+import {
+  issueWatchSurfaceDelivery,
+  recordWatchSurfaceExposureBatch,
+} from "../watch-surface-exposure.service"
+import {
+  loadAnonymousWatchExposureBreakdown,
+  loadWatchExposureBreakdown,
+} from "./watch-exposure.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
 function observedPrisma(url: string) {
@@ -46,11 +52,29 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expires_at timestamp(3) NOT NULL
       )
     `)
+      await admin.query(`CREATE UNIQUE INDEX watch_surface_exposure_served_item_key
+        ON watch_surface_exposure (window_id, position, item_path) WHERE kind = 'served'`)
+      await admin.query(`ALTER TABLE watch_surface_exposure ADD CONSTRAINT watch_surface_exposure_kind_check
+        CHECK (kind IN ('rendered', 'eligible', 'selected') OR
+          (kind = 'served' AND policy_version = 'watch-exposure-v2' AND visibility_capability IS NULL))`)
       await admin.query(`
       CREATE INDEX watch_surface_exposure_window_item_idx
       ON watch_surface_exposure
       (window_id, surface, block, presentation, placement, position, item_path, kind)
     `)
+      await admin.query(`CREATE INDEX watch_surface_exposure_aggregate_idx
+        ON watch_surface_exposure (surface, block, presentation, position, occurred_at)`)
+      await admin.query(`CREATE INDEX watch_surface_exposure_window_cohort_idx
+        ON watch_surface_exposure (occurred_at, window_id)`)
+      await admin.query(`CREATE INDEX watch_surface_exposure_expiry_idx
+        ON watch_surface_exposure (expires_at)`)
+      await admin.query(`
+        CREATE TABLE recommendation_request (id text PRIMARY KEY, surface_version text NOT NULL, created_at timestamp(3) NOT NULL);
+        CREATE TABLE recommendation_served_item (id text PRIMARY KEY, request_id text NOT NULL, position integer NOT NULL);
+        CREATE TABLE recommendation_rendered_fact (id text PRIMARY KEY, item_id text NOT NULL, received_at timestamp(3) NOT NULL);
+        CREATE TABLE recommendation_impression (id text PRIMARY KEY, item_id text NOT NULL, received_at timestamp(3) NOT NULL, occurred_at timestamp(3) NOT NULL, visibility_capability text);
+        CREATE TABLE recommendation_selection (id text PRIMARY KEY, item_id text NOT NULL, received_at timestamp(3) NOT NULL, occurred_at timestamp(3) NOT NULL);
+      `)
       const fixtureUrl = new URL(env.DATABASE_URL)
       fixtureUrl.searchParams.delete("options")
       fixtureUrl.searchParams.set("schema", schema)
@@ -111,6 +135,153 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         ctr: 1,
         duplicateRate: 1 / 7,
       })
+    })
+
+    it("reconciles issued-only cards, concurrent issuance, exact bindings and early selections", async () => {
+      const caller = {
+        id: "forge-web",
+        role: "CONSUMER_BEARER" as const,
+        rateLimitBucketKey: "forge-web",
+      }
+      const now = new Date()
+      const manifest = {
+        surface: "watch-home",
+        block: "hero",
+        presentation: "hero-card",
+        placement: "hero-primary",
+        policyVersion: "watch-exposure-v2",
+        sourceVersion: "c".repeat(64),
+        expiresAt: new Date(now.getTime() + 86_400_000).toISOString(),
+        items: [
+          { position: 0, itemPath: "/watch/served-only.html" },
+          { position: 0, itemPath: "/watch/early-select.html" },
+        ],
+      }
+      const input = {
+        manifest,
+        attemptId: randomUUID(),
+        trafficCategory: "ordinary_browser",
+      }
+      const receipts = await Promise.all([
+        issueWatchSurfaceDelivery(prisma, caller, input, now),
+        issueWatchSurfaceDelivery(prisma, caller, input, now),
+      ])
+      expect(receipts.map(({ status }) => status).sort()).toEqual([
+        "accepted",
+        "replay",
+      ])
+      expect(receipts[0].windowId).toEqual(receipts[1].windowId)
+      expect(
+        await issueWatchSurfaceDelivery(
+          prisma,
+          caller,
+          {
+            ...input,
+            manifest: { ...manifest, sourceVersion: "d".repeat(64) },
+          },
+          now,
+        ),
+      ).toMatchObject({ status: "conflict" })
+      const beforeCount = await prisma.watchSurfaceExposure.count()
+      expect(
+        await issueWatchSurfaceDelivery(
+          prisma,
+          caller,
+          {
+            ...input,
+            attemptId: randomUUID(),
+            trafficCategory: "declared_crawler",
+          },
+          now,
+        ),
+      ).toMatchObject({ disposition: "contextual", windowId: null })
+      expect(await prisma.watchSurfaceExposure.count()).toBe(beforeCount)
+      const fact = {
+        eventId: randomUUID(),
+        windowId: receipts[0].windowId!,
+        surface: manifest.surface,
+        block: manifest.block,
+        presentation: manifest.presentation,
+        placement: manifest.placement,
+        policyVersion: manifest.policyVersion,
+        ...manifest.items[1],
+        kind: "selected",
+        visibilityCapability: null,
+        occurredAt: new Date(now.getTime() - 500).toISOString(),
+      }
+      expect(
+        await recordWatchSurfaceExposureBatch(prisma, caller, [fact], now),
+      ).toMatchObject([{ status: "accepted" }])
+      await expect(
+        recordWatchSurfaceExposureBatch(
+          prisma,
+          caller,
+          [
+            {
+              ...fact,
+              eventId: randomUUID(),
+              itemPath: "/watch/not-issued.html",
+            },
+          ],
+          now,
+        ),
+      ).rejects.toThrow("issued served binding")
+      const report = await loadAnonymousWatchExposureBreakdown(prisma, "24h")
+      expect(
+        report.rows.find((row) => row.policyVersion === "watch-exposure-v2"),
+      ).toMatchObject({
+        served: 2,
+        rendered: 0,
+        eligible: 0,
+        selected: 1,
+        selectionWithoutImpression: 1,
+        ctr: null,
+        duplicateRate: 0,
+      })
+      expect(
+        await prisma.watchSurfaceExposure.count({
+          where: { windowId: fact.windowId, kind: "served" },
+        }),
+      ).toBe(2)
+      const inheritedExpiry = new Date(now.getTime() + 60_000)
+      await prisma.watchSurfaceExposure.updateMany({
+        where: { windowId: fact.windowId, kind: "served" },
+        data: { expiresAt: inheritedExpiry },
+      })
+      const lateEvent = { ...fact, eventId: randomUUID() }
+      await recordWatchSurfaceExposureBatch(prisma, caller, [lateEvent], now)
+      expect(
+        (
+          await prisma.watchSurfaceExposure.findUniqueOrThrow({
+            where: { eventId: lateEvent.eventId },
+          })
+        ).expiresAt,
+      ).toEqual(inheritedExpiry)
+      await prisma.watchSurfaceExposure.updateMany({
+        where: { windowId: fact.windowId, kind: "served" },
+        data: { expiresAt: new Date(now.getTime() - 1) },
+      })
+      await expect(
+        recordWatchSurfaceExposureBatch(
+          prisma,
+          caller,
+          [{ ...fact, eventId: randomUUID() }],
+          now,
+        ),
+      ).rejects.toThrow("issued served binding")
+      await expect(
+        prisma.watchSurfaceExposure.create({
+          data: {
+            id: randomUUID(),
+            ...fact,
+            eventId: randomUUID(),
+            kind: "served",
+            policyVersion: "watch-exposure-v1",
+            occurredAt: now,
+            expiresAt: new Date(now.getTime() + 86_400_000),
+          },
+        }),
+      ).rejects.toThrow()
     })
 
     it("persists 64-card batches in bounded queries and preserves concurrent replay", async () => {
@@ -237,6 +408,333 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         { eventId: withinBatch.eventId, status: "replay" },
         { eventId: withinBatch.eventId, status: "conflict" },
       ])
+    })
+    it("does not borrow eligibility across policy, position, path or receipt cutoff", async () => {
+      await prisma.watchSurfaceExposure.deleteMany()
+      const now = new Date()
+      const at = (seconds: number) => new Date(now.getTime() + seconds * 1000)
+      const windowId = randomUUID()
+      const base = {
+        windowId,
+        surface: "watch-search",
+        block: "results",
+        presentation: "result-list",
+        placement: "search-results",
+        policyVersion: "watch-exposure-v1",
+        position: 0,
+        itemPath: "/watch/shared.html",
+        visibilityCapability: null,
+        receivedAt: at(-10),
+        expiresAt: at(29 * 86400),
+      }
+      await prisma.watchSurfaceExposure.createMany({
+        data: [
+          { kind: "eligible", occurredAt: at(-50) },
+          { kind: "selected", occurredAt: at(-40) },
+          {
+            kind: "selected",
+            occurredAt: at(-40),
+            itemPath: "/watch/other.html",
+          },
+          {
+            kind: "served",
+            occurredAt: at(-60),
+            policyVersion: "watch-exposure-v2",
+          },
+          {
+            kind: "selected",
+            occurredAt: at(-40),
+            policyVersion: "watch-exposure-v2",
+          },
+          { kind: "eligible", occurredAt: at(-40), position: 1 },
+          { kind: "selected", occurredAt: at(-50), position: 1 },
+          {
+            kind: "eligible",
+            occurredAt: at(-50),
+            position: 2,
+            receivedAt: at(3600),
+          },
+          { kind: "selected", occurredAt: at(-40), position: 2 },
+        ].map((fact) => ({
+          ...base,
+          id: randomUUID(),
+          eventId: randomUUID(),
+          ...fact,
+        })),
+      })
+      const report = await loadAnonymousWatchExposureBreakdown(prisma, "24h")
+      expect(report.rows).toHaveLength(4)
+      expect(
+        report.rows.map(
+          ({
+            policyVersion,
+            position,
+            served,
+            eligible,
+            selected,
+            eligibleSelected,
+            selectionWithoutImpression,
+          }) => ({
+            policyVersion,
+            position,
+            served,
+            eligible,
+            selected,
+            eligibleSelected,
+            selectionWithoutImpression,
+          }),
+        ),
+      ).toEqual([
+        {
+          policyVersion: "watch-exposure-v1",
+          position: 0,
+          served: null,
+          eligible: 1,
+          selected: 2,
+          eligibleSelected: 1,
+          selectionWithoutImpression: 1,
+        },
+        {
+          policyVersion: "watch-exposure-v2",
+          position: 0,
+          served: 1,
+          eligible: 0,
+          selected: 1,
+          eligibleSelected: 0,
+          selectionWithoutImpression: 1,
+        },
+        {
+          policyVersion: "watch-exposure-v1",
+          position: 1,
+          served: null,
+          eligible: 1,
+          selected: 1,
+          eligibleSelected: 0,
+          selectionWithoutImpression: 1,
+        },
+        {
+          policyVersion: "watch-exposure-v1",
+          position: 2,
+          served: null,
+          eligible: 0,
+          selected: 1,
+          eligibleSelected: 0,
+          selectionWithoutImpression: 1,
+        },
+      ])
+    })
+
+    it("scopes full registry identity before truncation without borrowing outside facts", async () => {
+      await prisma.watchSurfaceExposure.deleteMany()
+      const now = new Date()
+      const windowId = randomUUID()
+      const base = {
+        windowId,
+        surface: "watch-home",
+        block: "hero",
+        presentation: "hero-card",
+        placement: "hero-primary",
+        policyVersion: "watch-exposure-v1",
+        position: 0,
+        itemPath: "/watch/scoped.html",
+        visibilityCapability: null,
+        occurredAt: new Date(now.getTime() - 60000),
+        receivedAt: new Date(now.getTime() - 30000),
+        expiresAt: new Date(now.getTime() + 86400000),
+      }
+      await prisma.watchSurfaceExposure.createMany({
+        data: [
+          { kind: "selected" },
+          { kind: "selected", placement: "hero-secondary" },
+          { kind: "served", policyVersion: "watch-exposure-v2" },
+          { kind: "eligible", surface: "watch-video" },
+          { kind: "eligible", presentation: "hero-carousel" },
+          ...Array.from({ length: 130 }, (_, index) => ({
+            kind: "eligible",
+            block: "aaa-outside",
+            placement: `outside-${String(index).padStart(3, "0")}`,
+          })),
+        ].map((fact) => ({
+          ...base,
+          id: randomUUID(),
+          eventId: randomUUID(),
+          ...fact,
+        })),
+      })
+      expect(
+        (await loadAnonymousWatchExposureBreakdown(prisma, "24h")).truncated,
+      ).toBe(true)
+      const filter = {
+        surface: "watch-home",
+        block: "hero",
+        presentation: "hero-card",
+      }
+      const scoped = await loadAnonymousWatchExposureBreakdown(
+        prisma,
+        "24h",
+        filter,
+      )
+      expect(scoped.truncated).toBe(false)
+      expect(scoped.rows).toHaveLength(3)
+      expect(
+        scoped.rows.every(
+          (row) => row.eligible === 0 && row.eligibleSelected === 0,
+        ),
+      ).toBe(true)
+      const primary = await loadAnonymousWatchExposureBreakdown(prisma, "24h", {
+        ...filter,
+        placement: "hero-primary",
+      })
+      expect(primary.rows).toEqual(
+        scoped.rows.filter((row) => row.placement === "hero-primary"),
+      )
+      expect(
+        await loadAnonymousWatchExposureBreakdown(prisma, "24h", {
+          ...filter,
+          presentation: "missing",
+        }),
+      ).toEqual({ rows: [], truncated: false })
+
+      await admin!.query(`
+        INSERT INTO recommendation_request VALUES ('scope-home', 'watch-for-you-v1', now() - interval '1 minute'), ('scope-video', 'watch-below-player-v1', now() - interval '1 minute');
+        INSERT INTO recommendation_served_item VALUES ('scope-home-item', 'scope-home', 0), ('scope-video-item', 'scope-video', 0);
+      `)
+      const signedFilter = {
+        surface: "watch-home",
+        block: "for-you",
+        presentation: "recommendation-list",
+      }
+      expect(
+        await loadWatchExposureBreakdown(prisma, "24h", signedFilter),
+      ).toMatchObject([{ ...signedFilter, placement: "primary", served: 1 }])
+      expect(
+        await loadWatchExposureBreakdown(prisma, "24h", {
+          ...signedFilter,
+          placement: "secondary",
+        }),
+      ).toEqual([])
+      expect(
+        await loadWatchExposureBreakdown(prisma, "24h", {
+          ...signedFilter,
+          block: "below-player",
+        }),
+      ).toEqual([])
+      expect(
+        await loadWatchExposureBreakdown(prisma, "24h", {
+          ...signedFilter,
+          presentation: "hero-card",
+        }),
+      ).toEqual([])
+      expect(await loadWatchExposureBreakdown(prisma, "24h")).toHaveLength(2)
+    })
+
+    it("reconciles 60000 facts within the unchanged report query budget", async () => {
+      await prisma.watchSurfaceExposure.deleteMany()
+      await admin!.query(`
+        INSERT INTO watch_surface_exposure
+          (id, event_id, window_id, surface, block, presentation, placement,
+           policy_version, position, item_path, kind, visibility_capability,
+           occurred_at, received_at, expires_at)
+        SELECT 'scale-' || window_number || '-' || kind,
+               md5('scale-event-' || window_number || '-' || kind)::uuid,
+               md5('scale-window-' || window_number)::uuid,
+               'watch-search', 'results', 'result-list', 'search-results',
+               'watch-exposure-v1', 0, '/watch/scale.html', kind,
+               CASE WHEN kind = 'eligible' THEN 'unknown' END,
+               now() - interval '1 hour' + ordinal * interval '1 second',
+               now() - interval '30 minutes', now() + interval '29 days'
+        FROM generate_series(1, 20000) AS window_number
+        CROSS JOIN (VALUES ('rendered', 0), ('eligible', 1), ('selected', 2)) AS facts(kind, ordinal)
+      `)
+      await admin!.query("ANALYZE watch_surface_exposure")
+      const reportStartedAt = Date.now()
+      const report = await loadAnonymousWatchExposureBreakdown(prisma, "24h")
+      console.info(
+        `watch exposure 60000-fact report: elapsedMs=${Date.now() - reportStartedAt}`,
+      )
+      expect(report.truncated).toBe(false)
+      expect(report.rows).toHaveLength(1)
+      expect(report.rows[0]).toMatchObject({
+        policyVersion: "watch-exposure-v1",
+        served: null,
+        rendered: 20000,
+        eligible: 20000,
+        selected: 20000,
+        eligibleSelected: 20000,
+        selectionWithoutImpression: 0,
+        repeats: 0,
+        duplicateRate: 0,
+        ctr: 1,
+        occlusionAware: 0,
+        visibilityUnknown: 20000,
+      })
+    }, 10000)
+
+    it("returns the same 128-group mixed-policy prefix across opposite insertion orders", async () => {
+      // This suite owns a disposable schema; reset only its exposure fixtures.
+      const now = new Date()
+      const rows = Array.from({ length: 65 }, (_, placement) =>
+        ["watch-exposure-v1", "watch-exposure-v2"].map((policyVersion) => ({
+          id: randomUUID(),
+          eventId: randomUUID(),
+          windowId: randomUUID(),
+          surface: "watch-search",
+          block: "results",
+          presentation: "result-list",
+          placement: `group-${String(placement).padStart(3, "0")}`,
+          policyVersion,
+          position: 0,
+          itemPath: "/watch/truncation.html",
+          kind: policyVersion === "watch-exposure-v2" ? "served" : "rendered",
+          visibilityCapability: null,
+          occurredAt: new Date(now.getTime() - 60_000),
+          receivedAt: new Date(now.getTime() - 30_000),
+          expiresAt: new Date(now.getTime() + 29 * 86_400_000),
+        })),
+      )
+        .flat()
+        .filter(
+          ({ placement, policyVersion }) =>
+            placement !== "group-000" || policyVersion === "watch-exposure-v1",
+        )
+      // One leading singleton makes the 128th row split the final v1/v2 tie.
+      const expected = rows
+        .slice(0, 128)
+        .map(({ placement, policyVersion }) => ({
+          placement,
+          policyVersion,
+          served: policyVersion === "watch-exposure-v2" ? 1 : null,
+          rendered: policyVersion === "watch-exposure-v1" ? 1 : 0,
+        }))
+      for (const orderedRows of [rows, [...rows].reverse()]) {
+        await prisma.watchSurfaceExposure.deleteMany()
+        await prisma.watchSurfaceExposure.createMany({ data: orderedRows })
+        const first = await loadAnonymousWatchExposureBreakdown(prisma, "24h")
+        const second = await loadAnonymousWatchExposureBreakdown(prisma, "24h")
+        expect(first.truncated).toBe(true)
+        expect(first.rows).toHaveLength(128)
+        expect(
+          first.rows.map(({ placement, policyVersion, served, rendered }) => ({
+            placement,
+            policyVersion,
+            served,
+            rendered,
+          })),
+        ).toEqual(expected)
+        expect(second).toEqual(first)
+        expect(first.rows.at(-1)).toMatchObject({
+          placement: "group-064",
+          policyVersion: "watch-exposure-v1",
+          served: null,
+        })
+        expect(
+          first.rows.some(
+            ({ placement, policyVersion }) =>
+              placement === "group-064" &&
+              policyVersion === "watch-exposure-v2",
+          ),
+        ).toBe(false)
+      }
     })
   },
 )

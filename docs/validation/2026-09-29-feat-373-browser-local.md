@@ -1,0 +1,85 @@
+---
+title: feat-373 local real-browser exposure proof
+date: 2026-09-29
+feature: feat-373
+status: local-proof
+---
+
+# Actual browser and Admin persistence
+
+`apps/web/scripts/verify-watch-exposure-browser.mjs` bundles the actual
+`WatchExposureBoundary` and its visibility/dwell hook into a production React
+fixture. Its bounded loopback HTTP transport verifies a fixture-only server
+signature, then calls the real Admin `issueWatchSurfaceDelivery` and
+`recordWatchSurfaceExposureBatch` services against the parent-owned migrated
+`forge_exposure_acceptance` disposable PostgreSQL database. No production data,
+flags, sessions, deployment or authentication was used. Scratch bundles remain
+under ignored `work/watch-exposure-browser/`.
+
+Chromium **149.0.7827.55** passed **28 checks**. Actual Admin persistence
+accepted **33 batches** with **zero fixture ingestion errors**. The
+sanitized receipt contains **316 served** and **316 v2 rendered**
+facts; identifiers and windows are omitted from the retained aggregate JSON.
+No client request contains `kind: served`.
+
+The browser exercised below-fold rendered cards without eligible impressions,
+scroll followed by one-second continuous dwell, leaving/returning without a
+second eligible fact, selected events before eligible occurrence, ordinary
+anchor navigation with departure telemetry, reordered DOM positions remaining
+v1 where the trusted source no longer matches, separate placements for repeated
+blocks, failed issuance falling back to v1, and real Chromium occlusion tracking
+rejecting overlay-covered dwell. A deliberately lost server response committed
+served facts, then retried the same attempt and returned the same replay window.
+The fixture reused an identical cached source descriptor on a fresh navigation;
+the server issued a different delivery window.
+
+History back navigation created a separate window. Native BFCache persisted
+pageshow observed: **false**. Document visibility and prerender activation
+cases are explicitly **property simulations in real Chromium**; they prove the
+actual boundary/hook lifecycle but cannot establish native background-tab or
+native prerender cache behavior. A separate probe showed this headless Chromium
+keeps both tabs visible after `bringToFront` and CDP freeze/resume, so the report
+does not claim a native hidden-tab observation.
+
+# Comparative loading measurement
+
+Eight 70-card runs alternated baseline/enabled in one browser context, with the
+same production React bundle and a 400 ms resource load gate. All enabled
+issuance requests began after document load. Four samples per mode are retained
+in the JSON. Median results:
+
+| Metric       | Baseline | Enabled | Enabled minus baseline |
+| ------------ | -------: | ------: | ---------------------: |
+| DCL (ms)     |     34.3 |    33.5 |                  -0.80 |
+| Load (ms)    |   415.65 |  420.85 |                  +5.20 |
+| FCP (ms)     |       52 |      50 |                  -2.00 |
+| Resources    |        2 |       5 |                  +3.00 |
+| Script bytes |   608352 |  608352 |                  +0.00 |
+
+Ordinary selected-anchor navigation completed in **195 ms**, without
+waiting for telemetry. The baseline shares the fixture bundle and isolates
+boundary initialization plus its incremental requests; it does **not** measure
+the size of adding this feature to the full Next application. Resource counts
+include post-load delivery/telemetry. These small local samples detect a major
+loading-path regression but cannot support a production performance claim.
+
+# Reproduction and acceptance limits
+
+With the designated disposable database running and migrated through 0105:
+
+```bash
+node apps/web/scripts/verify-watch-exposure-browser.mjs
+```
+
+The script rejects other database hosts/names, writes only its unique bounded
+fixture placements, never removes the parent's database/container, and always
+closes its browser/server/Prisma client. Every rerun replaces sanitized evidence
+for that run. The fixture signature is a deliberately public local test key;
+actual Web signer/key rotation, descriptor origin verification and Web HTTP
+traffic fences have separate focused tests.
+
+This is local component/service integration proof, not full deployed Watch
+behavior, real HTML cache reconciliation or the authorized Admin acceptance
+session. Deployed Admin denominators, CTR, duplicates, ingestion health and
+coverage still need reconciliation after normal Admin-before-Web rollout.
+feat-373 must remain in progress while that acceptance gate is outstanding.

@@ -68,7 +68,10 @@ const SERVER_GUARANTEED_PLAYABLE = "server-guaranteed-playable"
 
 type SeriesModalState = "none" | "download" | "share" | "language"
 
+import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+
 type SeriesPageClientProps = {
+  surfaceManifest?: SignedWatchSurfaceManifest
   series: ResolvedSeriesBySlug["video"]
   selectedVariant: ResolvedSeriesBySlug["selectedVariant"]
   locale: string
@@ -78,6 +81,7 @@ type SeriesPageClientProps = {
 }
 
 export function SeriesPageClient({
+  surfaceManifest,
   series,
   selectedVariant,
   locale,
@@ -568,6 +572,7 @@ export function SeriesPageClient({
           band's stone glass treatment so the lower page remains visually
           continuous. */}
       <WatchExposureBoundary
+        manifest={surfaceManifest}
         config={{
           surface: "watch-series",
           block: "episodes",

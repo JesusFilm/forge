@@ -1,0 +1,295 @@
+{
+  "schema": 1,
+  "environment": "isolated local Chromium + actual React boundary + migrated disposable PostgreSQL + actual Admin issuer/ingestion",
+  "browser": "149.0.7827.55",
+  "checks": [
+    {
+      "name": "performance-run-0-issuance-after-load",
+      "passed": true,
+      "detail": "baseline"
+    },
+    {
+      "name": "performance-run-1-issuance-after-load",
+      "passed": true,
+      "detail": "enabled"
+    },
+    {
+      "name": "performance-run-2-issuance-after-load",
+      "passed": true,
+      "detail": "baseline"
+    },
+    {
+      "name": "performance-run-3-issuance-after-load",
+      "passed": true,
+      "detail": "enabled"
+    },
+    {
+      "name": "performance-run-4-issuance-after-load",
+      "passed": true,
+      "detail": "baseline"
+    },
+    {
+      "name": "performance-run-5-issuance-after-load",
+      "passed": true,
+      "detail": "enabled"
+    },
+    {
+      "name": "performance-run-6-issuance-after-load",
+      "passed": true,
+      "detail": "baseline"
+    },
+    {
+      "name": "performance-run-7-issuance-after-load",
+      "passed": true,
+      "detail": "enabled"
+    },
+    {
+      "name": "belowfold-is-served-and-rendered-without-eligibility",
+      "passed": true,
+      "detail": "Real viewport/intersection, 1.5 second dwell"
+    },
+    {
+      "name": "scroll-plus-dwell-produces-eligibility",
+      "passed": true,
+      "detail": "Continuous real IntersectionObserver dwell"
+    },
+    {
+      "name": "selection-after-dwell-retains-eligibility",
+      "passed": true,
+      "detail": "No synthetic impression on click"
+    },
+    {
+      "name": "repeated-dwell-emits-once-per-card-window",
+      "passed": true,
+      "detail": "Leave and return to same issued card"
+    },
+    {
+      "name": "early-selection-preserves-anomaly",
+      "passed": true,
+      "detail": "Selection buffered during delayed receipt; no eligibility fabricated"
+    },
+    {
+      "name": "navigation-completes-without-awaiting-telemetry",
+      "passed": true,
+      "detail": "Ordinary anchor destination and keepalive departure telemetry"
+    },
+    {
+      "name": "repeated-blocks-have-separate-served-windows",
+      "passed": true,
+      "detail": "Two explicit placements"
+    },
+    {
+      "name": "reorder-cancels-continuous-dwell",
+      "passed": true,
+      "detail": "Reorder before initial one-second dwell"
+    },
+    {
+      "name": "reordered-unknown-projection-remains-v1",
+      "passed": true,
+      "detail": "Origin slate is not rewritten by DOM reorder"
+    },
+    {
+      "name": "issuance-failure-falls-back-without-served",
+      "passed": true,
+      "detail": "Two transport failures"
+    },
+    {
+      "name": "lost-receipt-retries-same-attempt",
+      "passed": true,
+      "detail": "Server commits first issuance, socket loses response"
+    },
+    {
+      "name": "cached-descriptor-reused-verbatim",
+      "passed": true,
+      "detail": "Fixture source-response descriptor cache, not full HTML cache"
+    },
+    {
+      "name": "new-navigation-issues-new-window",
+      "passed": true,
+      "detail": "New React navigation; reusable source descriptor, cache equivalence checked separately"
+    },
+    {
+      "name": "back-navigation-creates-separate-window",
+      "passed": true,
+      "detail": "History navigation reloaded; native BFCache not observed"
+    },
+    {
+      "name": "simulated-hidden-document-cancels-dwell",
+      "passed": true,
+      "detail": "Real browser with Document property simulation; headless tabs remain visible"
+    },
+    {
+      "name": "simulated-visible-document-requires-fresh-dwell",
+      "passed": true,
+      "detail": "Fresh one-second dwell after visibilitychange"
+    },
+    {
+      "name": "occlusion-aware-observer-rejects-covered-dwell",
+      "passed": true,
+      "detail": "Real Chromium visibility tracking"
+    },
+    {
+      "name": "simulated-prerender-no-issuance",
+      "passed": true,
+      "detail": "Document property simulation, explicitly not native prerender"
+    },
+    {
+      "name": "simulated-activation-starts-issuance",
+      "passed": true,
+      "detail": "After prerenderingchange"
+    },
+    {
+      "name": "actual-admin-ingestion-has-no-fixture-errors",
+      "passed": true,
+      "detail": "33 accepted batches"
+    }
+  ],
+  "performance": [
+    {
+      "mode": "baseline",
+      "dclMs": 85.40000003576279,
+      "loadMs": 444.4000000357628,
+      "fcpMs": 108,
+      "resources": 2,
+      "scriptBytes": 608352,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "enabled",
+      "dclMs": 31.80000001192093,
+      "loadMs": 420.69999998807907,
+      "fcpMs": 52,
+      "resources": 5,
+      "scriptBytes": 608352,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "baseline",
+      "dclMs": 33.09999996423721,
+      "loadMs": 414.5999999642372,
+      "fcpMs": 56,
+      "resources": 2,
+      "scriptBytes": 608352,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "enabled",
+      "dclMs": 35.19999998807907,
+      "loadMs": 421,
+      "fcpMs": 48,
+      "resources": 5,
+      "scriptBytes": 608352,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "baseline",
+      "dclMs": 28,
+      "loadMs": 415.9000000357628,
+      "fcpMs": 48,
+      "resources": 2,
+      "scriptBytes": 608352,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "enabled",
+      "dclMs": 28,
+      "loadMs": 415.19999998807907,
+      "fcpMs": 44,
+      "resources": 5,
+      "scriptBytes": 608352,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "baseline",
+      "dclMs": 35.5,
+      "loadMs": 415.39999997615814,
+      "fcpMs": 44,
+      "resources": 2,
+      "scriptBytes": 608352,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "enabled",
+      "dclMs": 36.5,
+      "loadMs": 424.60000002384186,
+      "fcpMs": 56,
+      "resources": 5,
+      "scriptBytes": 608352,
+      "issuanceBeforeLoad": 0
+    }
+  ],
+  "earlySelectionElapsedMs": 930,
+  "navigationElapsedMs": 195,
+  "cachedDescriptorLifetimeSeconds": 598,
+  "bfcache": {
+    "persistedObserved": false,
+    "newWindows": 2
+  },
+  "occlusion": {
+    "eligible": 0,
+    "capabilities": []
+  },
+  "aggregate": [
+    {
+      "kind": "eligible",
+      "policyVersion": "watch-exposure-v1",
+      "capability": "occlusion-aware",
+      "count": 2,
+      "duplicateAttempts": 0
+    },
+    {
+      "kind": "eligible",
+      "policyVersion": "watch-exposure-v2",
+      "capability": "occlusion-aware",
+      "count": 20,
+      "duplicateAttempts": 0
+    },
+    {
+      "kind": "rendered",
+      "policyVersion": "watch-exposure-v1",
+      "capability": null,
+      "count": 4,
+      "duplicateAttempts": 0
+    },
+    {
+      "kind": "rendered",
+      "policyVersion": "watch-exposure-v2",
+      "capability": null,
+      "count": 316,
+      "duplicateAttempts": 0
+    },
+    {
+      "kind": "selected",
+      "policyVersion": "watch-exposure-v1",
+      "capability": null,
+      "count": 1,
+      "duplicateAttempts": 0
+    },
+    {
+      "kind": "selected",
+      "policyVersion": "watch-exposure-v2",
+      "capability": null,
+      "count": 4,
+      "duplicateAttempts": 0
+    },
+    {
+      "kind": "served",
+      "policyVersion": "watch-exposure-v2",
+      "capability": null,
+      "count": 316,
+      "duplicateAttempts": 0
+    }
+  ],
+  "transport": {
+    "issuedResponses": 20,
+    "acceptedBatches": 33,
+    "errors": 0
+  },
+  "limitations": [
+    "Local production React bundle fixture, not the full Next app or deployed reconciliation",
+    "Baseline includes same bundle bytes; isolates boundary initialization and requests",
+    "Native prerender, real cached HTML and hidden-tab scheduling require separate deployed/browser harness proof; BFCache observed field records actual outcome",
+    "Signing fixture uses public local-only key; actual Web signer and HTTP origin fences covered separately",
+    "No production flags, identities, cookies, queries or deployment"
+  ]
+}

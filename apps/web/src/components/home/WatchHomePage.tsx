@@ -1,3 +1,6 @@
+import { signWatchSurfaceManifest } from "@/lib/watch-surface-manifest.server"
+import { watchHomeHeroSource } from "@/lib/watch-surface-manifest.sources"
+import { watchSurfaceSource } from "@/lib/watch-surface-manifest"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { WatchHomeBodyZone } from "@/components/home/WatchHomeBodyZone"
@@ -71,6 +74,9 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
         <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
           <h1 className="sr-only">{t("pageTitle")}</h1>
           <WatchHomeTvCarousel
+            manifest={
+              signWatchSurfaceManifest(watchHomeHeroSource(model)) ?? undefined
+            }
             slides={model.heroSlides}
             sequence={model.carousel}
           />
@@ -78,6 +84,23 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
             {model.sections.map((section) => (
               <WatchExposureBoundary
                 key={section.id}
+                manifest={
+                  signWatchSurfaceManifest(
+                    watchSurfaceSource(
+                      {
+                        surface: "watch-home",
+                        block: "collections",
+                        presentation:
+                          section.layout === "grid" ? "grid" : "carousel",
+                        placement: section.id,
+                      },
+                      [
+                        section.cards.find((card) => card.href)?.href,
+                        ...section.cards.map((card) => card.href),
+                      ],
+                    ),
+                  ) ?? undefined
+                }
                 config={{
                   surface: "watch-home",
                   block: "collections",

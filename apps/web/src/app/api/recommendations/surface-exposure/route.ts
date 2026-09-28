@@ -43,7 +43,7 @@ const Event = z
       "episode-grid",
     ]),
     placement: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
-    policyVersion: z.literal("watch-exposure-v1"),
+    policyVersion: z.enum(["watch-exposure-v1", "watch-exposure-v2"]),
     position: z.number().int().min(0).max(99),
     itemPath: z
       .string()

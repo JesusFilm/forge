@@ -11,6 +11,7 @@ import {
 } from "react"
 
 import { MediaCollection } from "@/components/sections/MediaCollection"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { loadDynamicCollectionFeedPage } from "@/lib/dynamic-collection-client"
 import {
@@ -751,14 +752,26 @@ export function DynamicMediaCollection({
             }
           >
             {isMounted ? (
-              <MediaCollection
-                data={mediaCollectionData(data, section)}
-                languageSlug={languageSlug}
-                initialSelectedSnap={selectedSnapsRef.current.get(section.id)}
-                onSelectedSnapChange={(snap) =>
-                  selectedSnapsRef.current.set(section.id, snap)
-                }
-              />
+              <WatchExposureBoundary
+                manifest={section.surfaceManifest}
+                config={{
+                  surface: "watch-home",
+                  block: "authored",
+                  presentation: "authored-block",
+                  placement:
+                    section.surfaceManifest?.manifest.placement ??
+                    `dynamic-${section.id}`.slice(0, 64),
+                }}
+              >
+                <MediaCollection
+                  data={mediaCollectionData(data, section)}
+                  languageSlug={languageSlug}
+                  initialSelectedSnap={selectedSnapsRef.current.get(section.id)}
+                  onSelectedSnapChange={(snap) =>
+                    selectedSnapsRef.current.set(section.id, snap)
+                  }
+                />
+              </WatchExposureBoundary>
             ) : (
               <span className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full border border-white/20 bg-black/45 px-4 py-2 text-sm sm:text-xs font-semibold text-white/80">
                 {section.title} · {index + 1} of {sections.length}

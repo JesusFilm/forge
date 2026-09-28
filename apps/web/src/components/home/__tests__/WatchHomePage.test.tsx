@@ -8,6 +8,9 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { WatchHomeModel } from "@/lib/watch-home"
+vi.mock("@/lib/watch-surface-manifest.server", () => ({
+  signWatchSurfaceManifest: () => null,
+}))
 import {
   addWatchHomeTvPlayedId,
   buildWatchHomeVideoQueue,

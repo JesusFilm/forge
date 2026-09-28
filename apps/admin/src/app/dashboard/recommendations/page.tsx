@@ -34,7 +34,10 @@ import {
   ProfileEligibilityReconciliation,
   PromotionDecision,
 } from "./recommendation-evaluation-sections"
-import { WatchExposureInspection } from "./watch-exposure-inspection"
+import {
+  WatchExposureInspection,
+  resolveWatchExposureInspectionFilter,
+} from "./watch-exposure-inspection"
 import {
   loadWatchExposureBreakdown,
   loadAnonymousWatchExposureBreakdown,
@@ -109,6 +112,10 @@ export default async function RecommendationsPage({
     redirect("/dashboard")
   }
   const params = (await searchParams) ?? {}
+  const exposureSelection = resolveWatchExposureInspectionFilter(
+    params.exposure,
+    params.exposurePlacement,
+  )
   const canReadTraces = hasPermission(principal, "read:recommendation-traces")
   const canOperatePromotion = hasPermission(
     principal,
@@ -132,15 +139,25 @@ export default async function RecommendationsPage({
           () => null,
         )
       : null,
-    Promise.all([
-      loadWatchExposureBreakdown(prisma, params.window),
-      loadAnonymousWatchExposureBreakdown(prisma, params.window),
-    ])
-      .then(([signed, anonymous]) => ({
-        rows: [...signed, ...anonymous.rows],
-        truncated: anonymous.truncated,
-      }))
-      .catch(() => null),
+    exposureSelection.invalid
+      ? null
+      : Promise.all([
+          loadWatchExposureBreakdown(
+            prisma,
+            params.window,
+            exposureSelection.filter,
+          ),
+          loadAnonymousWatchExposureBreakdown(
+            prisma,
+            params.window,
+            exposureSelection.filter,
+          ),
+        ])
+          .then(([signed, anonymous]) => ({
+            rows: [...signed, ...anonymous.rows],
+            truncated: anonymous.truncated,
+          }))
+          .catch(() => null),
   ])
 
   return (
@@ -179,6 +196,8 @@ export default async function RecommendationsPage({
         rows={watchExposures?.rows ?? null}
         truncated={watchExposures?.truncated ?? false}
         replays={overview.counts?.replays ?? null}
+        window={overview.window.preset}
+        selection={exposureSelection}
       />
       <OperationalTruth overview={overview} />
       <EligibilityTruth overview={overview} />
