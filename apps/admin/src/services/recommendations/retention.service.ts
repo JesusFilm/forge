@@ -10,6 +10,7 @@ import {
   type PrismaClient,
 } from "@prisma/client"
 import { RECOMMENDATION_RETENTION_PROPAGATION_HOURS } from "./contracts"
+import { suppressCowatchForProfiles } from "./cowatch/privacy"
 import { RecommendationInputError } from "./errors"
 
 export const RECOMMENDATION_RETENTION_BATCH_SIZE = 500
@@ -326,6 +327,16 @@ export async function purgeExpiredRecommendationRequests(
           where: { expiresAt: { lte: now } },
         })
       ).count
+      rowCounts.expiredCowatchGenerations = (
+        await tx.recommendationCowatchGeneration.deleteMany({
+          where: { expiresAt: { lte: now } },
+        })
+      ).count
+      rowCounts.expiredCowatchSuppressions = (
+        await tx.recommendationCowatchSuppression.deleteMany({
+          where: { expiresAt: { lte: now } },
+        })
+      ).count
       const expiredViewers = await tx.recommendationViewer.findMany({
         where: { expiresAt: { lte: now } },
         take: batchSize,
@@ -465,6 +476,10 @@ export async function purgeExpiredRecommendationRequests(
         ...olderPendingProfileErasures,
       ]
       await eraseRetiringProfileInfluence(tx, pendingProfileErasures)
+      await suppressCowatchForProfiles(
+        tx,
+        pendingProfileErasures.map(({ id }) => id),
+      )
       if (pendingProfileErasures.length > 0) {
         const pendingProfileIds = pendingProfileErasures.map(({ id }) => id)
         await tx.recommendationProfileSessionLink.deleteMany({
