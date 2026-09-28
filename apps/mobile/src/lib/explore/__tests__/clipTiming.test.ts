@@ -55,9 +55,10 @@ function fixture(name: string): string {
 }
 
 // Real production tracks (each file's NOTE names its source). U1 found that the
-// Arabic track fails the 20% rule and the English primary track then passes.
+// Arabic track fails the 20% rule and the English primary then passes. Synthetic
+// pairing: the English file is Considering Christmas's; any passing track serves.
 const ARABIC_VTT = fixture("jesus-arabic-modern-standard.excerpt.vtt")
-const ENGLISH_VTT = fixture("jesus-english.vtt")
+const ENGLISH_VTT = fixture("considering-christmas-english.vtt")
 const HINDI_VTT = fixture("jesus-hindi.excerpt.vtt")
 const JESUS_SECONDS = 7673.727
 

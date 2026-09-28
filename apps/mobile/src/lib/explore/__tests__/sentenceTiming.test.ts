@@ -372,8 +372,8 @@ describe("deriveClipTiming — real production tracks", () => {
     expect(texts.some((t) => t.endsWith("။"))).toBe(true)
   })
 
-  it("ends CJK sentences at the full stop (Handiwork, chinese-simplified)", () => {
-    const texts = endTexts("handiwork-chinese-simplified.vtt")
+  it("ends CJK sentences at the full stop (Considering Christmas, chinese-simplified)", () => {
+    const texts = endTexts("considering-christmas-chinese-simplified.vtt")
     expect(texts.some((t) => t.endsWith("。"))).toBe(true)
   })
 

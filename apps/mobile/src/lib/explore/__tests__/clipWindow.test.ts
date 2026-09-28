@@ -121,8 +121,10 @@ describe("buildEligibleStarts — R27 ends", () => {
   })
 
   it("keeps every window from 30 s to 60 s of speech, plus the pad", () => {
-    const timing = timingOf(fixtureCues("jesus-english.vtt"))
-    for (const w of buildEligibleStarts(timing, [])) {
+    const timing = timingOf(fixtureCues("considering-christmas-english.vtt"))
+    const windows = buildEligibleStarts(timing, [])
+    expect(windows.length).toBeGreaterThan(0)
+    for (const w of windows) {
       const length = w.endSeconds - w.startSeconds
       expect(length).toBeGreaterThanOrEqual(MIN_CLIP_SECONDS)
       expect(length).toBeLessThanOrEqual(
@@ -187,7 +189,8 @@ describe("buildEligibleStarts — the record (R29)", () => {
   })
 
   it("gives an empty list when every start is recorded, and the picker returns no window without looping", () => {
-    const timing = timingOf(fixtureCues("jesus-english.vtt"))
+    const timing = timingOf(fixtureCues("considering-christmas-english.vtt"))
+    expect(buildEligibleStarts(timing, []).length).toBeGreaterThan(0)
     const recorded = [{ startSeconds: 0, endSeconds: 8000 }]
     const list = buildEligibleStarts(timing, recorded)
     expect(list).toEqual([])
@@ -265,7 +268,7 @@ describe("eligibleStartsOnce — once per track and record version", () => {
   }
 
   it("builds once for a record version, and again when the version changes", () => {
-    const timing = timingOf(fixtureCues("jesus-english.vtt"))
+    const timing = timingOf(fixtureCues("considering-christmas-english.vtt"))
     const slot = memoSlot()
     const v1 = { version: 1, windows: [] as ClipWindow[] }
     const first = eligibleStartsOnce(slot, timing, v1)
@@ -285,8 +288,8 @@ describe("eligibleStartsOnce — once per track and record version", () => {
 
 describe("real production tracks", () => {
   const PASSING = [
-    "jesus-english.vtt",
-    "handiwork-chinese-simplified.vtt",
+    "considering-christmas-english.vtt",
+    "considering-christmas-chinese-simplified.vtt",
     "jesus-hindi.excerpt.vtt",
     "jesus-burmese-common.excerpt.vtt",
     "the-covenant-amharic-smpte.excerpt.vtt",
@@ -323,7 +326,15 @@ describe("real production tracks", () => {
   )
 
   it("builds the eligible-start list for a whole feature film within 50 ms", () => {
-    const cues = fixtureCues("jesus-english.vtt")
+    // Synthetic length: the real 2-minute track tiled 64 times, a 2-hour film.
+    const track = fixtureCues("considering-christmas-english.vtt")
+    const cues = Array.from({ length: 64 }, (_, i) =>
+      track.map((c) => ({
+        ...c,
+        start: c.start + i * 120,
+        end: c.end + i * 120,
+      })),
+    ).flat()
     // A heavy record for one video: a 20 s clip every 2 minutes of the film.
     const recorded: ClipWindow[] = []
     for (let t = 0; t < 7600; t += 120) {
@@ -333,7 +344,7 @@ describe("real production tracks", () => {
     const timing = timingOf(cues)
     const list = buildEligibleStarts(timing, recorded)
     const elapsedMs = performance.now() - started
-    expect(cues.length).toBe(1262)
+    expect(cues.length).toBe(29 * 64)
     expect(list.length).toBeGreaterThan(0)
     expect(elapsedMs).toBeLessThan(50)
   })

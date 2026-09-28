@@ -33,9 +33,10 @@ function cue(start: number, end: number, text: string): VttCue {
   return { start, end, text }
 }
 
-// Dub lengths from production (`lengthInMilliseconds`), read in the U1 probe.
+// Dub lengths from production (`lengthInMilliseconds`), read in the U1 probe;
+// Considering Christmas's English dub read 2026-09-29.
 const JESUS_SECONDS = 7673.727
-const HANDIWORK_SECONDS = 1448.618
+const CONSIDERING_CHRISTMAS_SECONDS = 120
 const THE_COVENANT_SECONDS = 5732.041
 
 function track(
@@ -218,8 +219,11 @@ describe("checkTimingTrack — KTD5 failure checks", () => {
 
 describe("checkTimingTrack — real production tracks", () => {
   it.each([
-    ["jesus-english.vtt", JESUS_SECONDS],
-    ["handiwork-chinese-simplified.vtt", HANDIWORK_SECONDS],
+    ["considering-christmas-english.vtt", CONSIDERING_CHRISTMAS_SECONDS],
+    [
+      "considering-christmas-chinese-simplified.vtt",
+      CONSIDERING_CHRISTMAS_SECONDS,
+    ],
     ["jesus-hindi.excerpt.vtt", JESUS_SECONDS],
     ["jesus-burmese-common.excerpt.vtt", JESUS_SECONDS],
     ["the-covenant-amharic-smpte.excerpt.vtt", THE_COVENANT_SECONDS],
