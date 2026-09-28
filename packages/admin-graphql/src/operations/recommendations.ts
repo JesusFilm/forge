@@ -283,6 +283,16 @@ export const adminRecordWatchSurfaceExposureOperation = adminGraphql(
   adminRecordWatchSurfaceExposureMutation,
 )
 
+export const adminIssueWatchSurfaceDeliveryMutation = `
+  mutation IssueWatchSurfaceDelivery($manifest: JSON!, $attemptId: String!, $trafficCategory: String!) {
+    issueWatchSurfaceDelivery(manifest: $manifest, attemptId: $attemptId, trafficCategory: $trafficCategory)
+  }
+` as const
+
+export const adminIssueWatchSurfaceDeliveryOperation = adminGraphql(
+  adminIssueWatchSurfaceDeliveryMutation,
+)
+
 export const adminRecommendationProfileStatusMutation = `
   mutation RecommendationProfileStatus(
     $contractVersion: String!

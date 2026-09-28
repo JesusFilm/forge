@@ -1,3 +1,8 @@
+import { signWatchSurfaceManifest } from "@/lib/watch-surface-manifest.server"
+import {
+  authoredWatchSurfaceSource,
+  watchHomeHeroSource,
+} from "@/lib/watch-surface-manifest.sources"
 import { Fragment } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
@@ -22,6 +27,7 @@ type WatchHomeExperiencePageProps = {
   blocks: readonly Section[]
   locale?: string
   languageSlug: string
+  publicDocumentPathname?: string
   legacyCategoryRailCompatibility?: boolean
   dynamicCollectionCacheScope?: DynamicCollectionFeedCacheScope
 }
@@ -134,6 +140,7 @@ export function WatchHomeExperiencePage({
   blocks,
   locale = "en",
   languageSlug,
+  publicDocumentPathname,
   legacyCategoryRailCompatibility = false,
   dynamicCollectionCacheScope = "live",
 }: WatchHomeExperiencePageProps) {
@@ -205,6 +212,12 @@ export function WatchHomeExperiencePage({
         <Fragment key={blockKey}>
           <WatchHomeTvCarousel
             pinned={false}
+            exposurePlacement={`authored-hero-${index}`}
+            manifest={
+              signWatchSurfaceManifest(
+                watchHomeHeroSource(heroModel, `authored-hero-${index}`),
+              ) ?? undefined
+            }
             slides={heroModel.heroSlides}
             sequence={heroModel.carousel}
           />
@@ -229,6 +242,21 @@ export function WatchHomeExperiencePage({
       ) : (
         <WatchExposureBoundary
           key={blockKey}
+          manifest={
+            signWatchSurfaceManifest(
+              authoredWatchSurfaceSource(
+                {
+                  surface: "watch-home",
+                  block: "authored",
+                  presentation: "authored-block",
+                  placement: `authored-${index}`,
+                },
+                block,
+                languageSlug,
+                { publicDocumentPathname },
+              ),
+            ) ?? undefined
+          }
           config={{
             surface: "watch-home",
             block: "authored",
@@ -298,6 +326,10 @@ export function WatchHomeExperiencePage({
           )}
           {heroAboveBodyZone ? (
             <WatchHomeTvCarousel
+              manifest={
+                signWatchSurfaceManifest(watchHomeHeroSource(heroModel)) ??
+                undefined
+              }
               slides={heroModel.heroSlides}
               sequence={heroModel.carousel}
             />
