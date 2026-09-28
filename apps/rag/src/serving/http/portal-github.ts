@@ -3,8 +3,8 @@ import { parsePortalAllowlist, type PortalAllowlist } from "./portal-policy.js"
 export type GitHubIdentity = { id: number; login: string }
 export type AdmissionPublication = { sha: string; allowlist: PortalAllowlist }
 export type AdmissionProvider = {
-  current(): Promise<AdmissionPublication>
-  eligible(identity: GitHubIdentity): Promise<boolean>
+  current(signal?: AbortSignal): Promise<AdmissionPublication>
+  eligible(identity: GitHubIdentity, signal?: AbortSignal): Promise<boolean>
   exchange(code: string): Promise<GitHubIdentity>
 }
 
@@ -16,10 +16,16 @@ const headers = (token: string) => ({
   "X-GitHub-Api-Version": "2022-11-28",
 })
 
-async function json(url: string, token: string): Promise<unknown> {
+async function json(
+  url: string,
+  token: string,
+  signal?: AbortSignal,
+): Promise<unknown> {
   const response = await fetch(url, {
     headers: { ...headers(token), "Cache-Control": "no-cache" },
-    signal: AbortSignal.timeout(5000),
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(5000)])
+      : AbortSignal.timeout(5000),
     cache: "no-store",
   })
   if (!response.ok) throw new Error("github_unverified")
@@ -48,11 +54,12 @@ export function createGitHubAdmission(config: {
   callbackUrl: string
 }): AdmissionProvider {
   return {
-    async current() {
+    async current(signal) {
       const branch = object(
         await json(
           `${api}/repos/${repository}/branches/main`,
           config.repositoryToken,
+          signal,
         ),
       )
       const commit = object(branch.commit)
@@ -63,6 +70,7 @@ export function createGitHubAdmission(config: {
         await json(
           `${api}/repos/${repository}/contents/apps/rag/portal/users.json?ref=${sha}`,
           config.repositoryToken,
+          signal,
         ),
       )
       if (data.encoding !== "base64" || typeof data.content !== "string")
@@ -72,11 +80,12 @@ export function createGitHubAdmission(config: {
       )
       return { sha, allowlist }
     },
-    async eligible(identity) {
+    async eligible(identity, signal) {
       const user = object(
         await json(
           `${api}/users/${encodeURIComponent(identity.login)}`,
           config.repositoryToken,
+          signal,
         ),
       )
       if (
@@ -89,6 +98,7 @@ export function createGitHubAdmission(config: {
         await json(
           `${api}/repos/${repository}/collaborators/${encodeURIComponent(identity.login)}/permission`,
           config.repositoryToken,
+          signal,
         ),
       )
       return (

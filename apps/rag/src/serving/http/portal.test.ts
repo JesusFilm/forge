@@ -125,11 +125,13 @@ describe("portal admission", () => {
       .get("set-cookie")!
       .match(/__Host-rag_portal=[^;]+/)![0]
     expect(
-      (await f.app.request("/", { headers: { Cookie: session } })).status,
+      (await f.app.request("/identity", { headers: { Cookie: session } }))
+        .status,
     ).toBe(200)
     f.setAllowed(false)
     expect(
-      (await f.app.request("/", { headers: { Cookie: session } })).status,
+      (await f.app.request("/identity", { headers: { Cookie: session } }))
+        .status,
     ).toBe(401)
   })
 
@@ -174,7 +176,8 @@ describe("portal admission", () => {
     ).toBe(403)
     f.setEligible(false)
     expect(
-      (await f.app.request("/", { headers: { Cookie: session } })).status,
+      (await f.app.request("/identity", { headers: { Cookie: session } }))
+        .status,
     ).toBe(401)
     f.setEligible(true)
     expect(
@@ -186,7 +189,8 @@ describe("portal admission", () => {
       ).status,
     ).toBe(200)
     expect(
-      (await f.app.request("/", { headers: { Cookie: session } })).status,
+      (await f.app.request("/identity", { headers: { Cookie: session } }))
+        .status,
     ).toBe(401)
   })
 
@@ -205,7 +209,8 @@ describe("portal admission", () => {
     expect(response.headers.get("set-cookie")).toContain("Secure")
     f.setAvailable(false)
     expect(
-      (await f.app.request("/", { headers: { Cookie: session } })).status,
+      (await f.app.request("/identity", { headers: { Cookie: session } }))
+        .status,
     ).toBe(503)
     f.setAvailable(true)
     expect(
@@ -224,11 +229,56 @@ describe("portal admission", () => {
       tokens: parseTokenRegistry(JSON.stringify({ token: ["*"] })),
       portal: f.deps,
     })
-    expect((await app.request("/portal")).status).toBe(401)
+    expect((await app.request("/portal/identity")).status).toBe(401)
     expect((await app.request("/portal/login")).status).toBe(302)
     expect((await app.request("/v1/health")).status).toBe(200)
     expect((await app.request("/v1/search", { method: "POST" })).status).toBe(
       401,
     )
   })
+})
+
+it("serves a no-store static portal shell with same-origin assets and protected identity", async () => {
+  const f = fixture()
+  const shell = await f.app.request("/")
+  expect(shell.status).toBe(200)
+  expect(shell.headers.get("content-type")).toContain("text/html")
+  expect(shell.headers.get("cache-control")).toBe("no-store")
+  expect(shell.headers.get("content-security-policy")).toContain(
+    "frame-ancestors 'none'",
+  )
+  expect(shell.headers.get("content-security-policy")).not.toContain(
+    "unsafe-inline",
+  )
+  const html = await shell.text()
+  expect(html.replace(/\s+/g, " ")).toContain("Create consumer")
+  expect(html).toContain('src="/portal/assets/portal.js" defer')
+  expect(html).not.toContain("engineer")
+  expect((await f.app.request("/identity")).status).toBe(401)
+  expect((await f.app.request("/members")).status).toBe(401)
+  const login = await f.start()
+  const callback = await f.callback(login.state, login.browser)
+  const session = callback.headers
+    .get("set-cookie")!
+    .match(/__Host-rag_portal=[^;]+/)![0]
+  const headers = { Cookie: session }
+  expect(await (await f.app.request("/identity", { headers })).json()).toEqual({
+    login: "engineer",
+    githubId: 42,
+    managementAvailable: false,
+  })
+  expect(await (await f.app.request("/members", { headers })).json()).toEqual({
+    users: [{ login: "engineer", id: 42 }],
+  })
+  f.setAllowed(false)
+  expect((await f.app.request("/members", { headers })).status).toBe(401)
+  for (const [file, type] of [
+    ["portal.js", "text/javascript"],
+    ["portal.css", "text/css"],
+  ]) {
+    const asset = await f.app.request("/assets/" + file)
+    expect(asset.status).toBe(200)
+    expect(asset.headers.get("content-type")).toContain(type)
+    expect(asset.headers.get("cache-control")).toBe("no-store")
+  }
 })

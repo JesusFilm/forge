@@ -34,7 +34,7 @@ export interface DeleteConfirmSheetProps {
 
 /**
  * In-screen animated delete confirmation (R13, KTD7) — a scrim + bottom card
- * rendered inline in the Library screen, NOT a formSheet route or Alert.
+ * rendered inline in the downloads list, NOT a formSheet route or Alert.
  * Cancel/scrim-tap/back all resolve to onCancel, returning to selection.
  */
 export function DeleteConfirmSheet({

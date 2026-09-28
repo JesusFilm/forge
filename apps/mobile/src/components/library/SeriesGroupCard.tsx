@@ -142,7 +142,7 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
         </View>
 
         <View style={styles.info}>
-          <Text style={[styles.title, typography.titleSmall]} numberOfLines={1}>
+          <Text style={[styles.title, typography.body]} numberOfLines={1}>
             {group.seriesTitle}
           </Text>
           <Text style={[styles.meta, typography.caption]} numberOfLines={1}>
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   title: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   meta: {
     marginTop: 3,

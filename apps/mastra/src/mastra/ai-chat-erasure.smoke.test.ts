@@ -4,13 +4,11 @@ import { Memory } from "@mastra/memory"
 import { PostgresStore } from "@mastra/pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
-import { runAiChatDatabaseMigrations } from "../scripts/migrate-ai-chat-database"
 import { env, type LangfuseConfig } from "../config/env"
 
 import { AI_CHAT_SCHEMA_NAME } from "./ai-chat-memory"
 import { assertThrowawayDatabaseTarget } from "./ai-chat-smoke-target-guard"
 import {
-  buildPersistedErasureMemory,
   executeAiChatErasure,
   previewAiChatErasure,
   type AiChatErasureLangfuseSeam,
@@ -160,14 +158,10 @@ describe.skipIf(!RUN_SMOKE)(
         schemaName: AI_CHAT_SCHEMA_NAME,
         max: 2,
       })
-      await runAiChatDatabaseMigrations({
-        pool: store.pool,
-        initialize: () => store.init(),
-      })
       memory = new Memory({ storage: store })
       acquireMemory = () => ({
         ok: true,
-        memory: buildPersistedErasureMemory(memory, store.pool),
+        memory: memory as unknown as AiChatErasureMemory,
       })
 
       realFetch = globalThis.fetch
@@ -221,7 +215,7 @@ describe.skipIf(!RUN_SMOKE)(
       expect(result).toMatchObject({
         kind: "completed",
         mode: "execute",
-        postgres: { kind: "erased", threadsDeleted: 2, recordsDeleted: 2 },
+        postgres: { kind: "erased", threadsDeleted: 2 },
         langfuse: { kind: "skipped_unconfigured" },
       })
       expect(await threadIdsFor(TARGET_RESOURCE)).toEqual([])

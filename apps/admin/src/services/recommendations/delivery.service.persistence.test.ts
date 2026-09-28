@@ -8,6 +8,36 @@ afterEach(() => {
 })
 
 describe("RecommendationDeliveryService persistence and deadlines", () => {
+  it("writes one complete run payload and no legacy rows in compact mode", async () => {
+    const harness = makeHarness({ candidateTraceFormat: "compact" })
+    const response = await harness.service.deliver(input("compact-stage-seed"))
+    expect(response.result).toBe("served")
+    expect(harness.evidenceWrites).toHaveLength(0)
+    const create =
+      harness.tx.recommendationCandidateRun.create.mock.calls[0]?.[0]
+    expect(create?.data).toMatchObject({
+      requestId: response.requestId,
+      traceFormatVersion: 1,
+      tracePayload: {
+        stages: expect.arrayContaining([
+          expect.objectContaining({
+            stage: "nominated",
+            ordinal: 0,
+            id: expect.any(String),
+            createdAt: expect.any(String),
+            sourceEvidence: expect.any(Array),
+          }),
+          expect.objectContaining({ stage: "composed", ordinal: 0 }),
+        ]),
+      },
+    })
+    const payload = create?.data.tracePayload as {
+      stages: Array<Record<string, unknown>>
+    }
+    expect(payload.stages[0]).not.toHaveProperty("runId")
+    expect(payload.stages[0]).not.toHaveProperty("expiresAt")
+  })
+
   it("signs fresh capabilities before one atomic complete ISSUED commit", async () => {
     const harness = makeHarness()
     const { service, requests, transactions, acquire } = harness
@@ -73,6 +103,7 @@ describe("RecommendationDeliveryService persistence and deadlines", () => {
 
     expect(delivery.result).toBe("served")
     expect(tx.recommendationCandidateRun.create).toHaveBeenCalledWith({
+      select: { id: true },
       data: expect.objectContaining({
         requestId: delivery.requestId,
         purpose: "watch",

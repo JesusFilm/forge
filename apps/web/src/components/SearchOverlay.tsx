@@ -38,6 +38,7 @@ import {
 } from "./FloatingSearchField"
 import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { reportDatadogRumAction } from "@/components/DatadogRum"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import {
@@ -1522,61 +1523,71 @@ export function SearchOverlay() {
 
           {displayResults.length > 0 && (
             <>
-              <div
+              <WatchExposureBoundary
                 key={resultsKey}
-                className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4${exiting ? " animate-card-exit" : ""}`}
+                config={{
+                  surface: "watch-search",
+                  block: "results",
+                  presentation: "result-list",
+                  placement: "search-results",
+                }}
               >
-                {displayResults.map((result, index) => (
-                  <VideoCard
-                    key={`${result.id}-${index}`}
-                    result={result}
-                    index={exiting ? 0 : index}
-                    requestedLanguageSlug={completedSearchLanguageSlug}
-                    requestedLanguageName={completedSearchLanguageName}
-                    onResultClick={
-                      searchResultAnalytics
-                        ? (clickedResult) => {
-                            closeAfterResultNavigation()
-                            const clickKey = [
-                              searchResultAnalytics.searchRequestId,
-                              clickedResult.id,
-                              index + 1,
-                            ].join(":")
-                            if (
-                              recordedResultClickKeysRef.current.has(clickKey)
-                            ) {
-                              return
+                <div
+                  className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4${exiting ? " animate-card-exit" : ""}`}
+                >
+                  {displayResults.map((result, index) => (
+                    <VideoCard
+                      key={`${result.id}-${index}`}
+                      result={result}
+                      index={exiting ? 0 : index}
+                      requestedLanguageSlug={completedSearchLanguageSlug}
+                      requestedLanguageName={completedSearchLanguageName}
+                      onResultClick={
+                        searchResultAnalytics
+                          ? (clickedResult) => {
+                              closeAfterResultNavigation()
+                              const clickKey = [
+                                searchResultAnalytics.searchRequestId,
+                                clickedResult.id,
+                                index + 1,
+                              ].join(":")
+                              if (
+                                recordedResultClickKeysRef.current.has(clickKey)
+                              ) {
+                                return
+                              }
+                              recordedResultClickKeysRef.current.add(clickKey)
+                              reportDatadogRumAction(
+                                WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
+                                buildWatchSearchResultClickRumContext(
+                                  clickedResult,
+                                  {
+                                    ...searchResultAnalytics,
+                                    position: index + 1,
+                                  },
+                                ),
+                              )
+                              void recordWatchSearchResultClick({
+                                requestId:
+                                  searchResultAnalytics.searchRequestId,
+                                resultId: clickedResult.id,
+                                resultType: clickedResult.type,
+                                position: index + 1,
+                                visibleResultIds,
+                                routeLanguageSlug:
+                                  searchResultAnalytics.routeLanguageSlug,
+                                searchLanguageSlug:
+                                  searchResultAnalytics.searchLanguageSlug,
+                              })
                             }
-                            recordedResultClickKeysRef.current.add(clickKey)
-                            reportDatadogRumAction(
-                              WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
-                              buildWatchSearchResultClickRumContext(
-                                clickedResult,
-                                {
-                                  ...searchResultAnalytics,
-                                  position: index + 1,
-                                },
-                              ),
-                            )
-                            void recordWatchSearchResultClick({
-                              requestId: searchResultAnalytics.searchRequestId,
-                              resultId: clickedResult.id,
-                              resultType: clickedResult.type,
-                              position: index + 1,
-                              visibleResultIds,
-                              routeLanguageSlug:
-                                searchResultAnalytics.routeLanguageSlug,
-                              searchLanguageSlug:
-                                searchResultAnalytics.searchLanguageSlug,
-                            })
-                          }
-                        : () => {
-                            closeAfterResultNavigation()
-                          }
-                    }
-                  />
-                ))}
-              </div>
+                          : () => {
+                              closeAfterResultNavigation()
+                            }
+                      }
+                    />
+                  ))}
+                </div>
+              </WatchExposureBoundary>
 
               {error && (
                 <div className="mt-6 text-center">

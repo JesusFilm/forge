@@ -1,0 +1,774 @@
+{
+  "measured_at": "2026-09-27T23:25:46.601885+00:00",
+  "service": "@forge/admin/pg",
+  "environment": "production",
+  "transport": "Railway SSH / read-only psql",
+  "probes": {
+    "database": {
+      "rows": [
+        {
+          "database": "railway",
+          "read_only": "on",
+          "measured_at": "2026-09-27T23:25:46.181661+00:00",
+          "database_bytes": 37386647231,
+          "server_version": "18.6 (Debian 18.6-1.pgdg13+2)"
+        }
+      ]
+    },
+    "largest_relations": {
+      "rows": [
+        {
+          "relname": "recommendation_candidate_stage_evidence",
+          "schemaname": "public",
+          "index_bytes": 5965004800,
+          "table_bytes": 12428107776,
+          "total_bytes": 18393112576,
+          "last_autovacuum": "2026-09-27T22:03:36.599495+00:00",
+          "last_autoanalyze": "2026-09-26T06:41:15.418045+00:00",
+          "estimated_dead_rows": 375,
+          "estimated_live_rows": 20342076
+        },
+        {
+          "relname": "video_transcript_chunk",
+          "schemaname": "public",
+          "index_bytes": 943554560,
+          "table_bytes": 3120496640,
+          "total_bytes": 4064051200,
+          "last_autovacuum": null,
+          "last_autoanalyze": null,
+          "estimated_dead_rows": 0,
+          "estimated_live_rows": 0
+        },
+        {
+          "relname": "recommendation_served_item",
+          "schemaname": "public",
+          "index_bytes": 517193728,
+          "table_bytes": 1877811200,
+          "total_bytes": 2395004928,
+          "last_autovacuum": "2026-09-26T03:09:09.095306+00:00",
+          "last_autoanalyze": "2026-09-26T13:11:37.23568+00:00",
+          "estimated_dead_rows": 1484,
+          "estimated_live_rows": 1044065
+        },
+        {
+          "relname": "workflow_events",
+          "schemaname": "workflow",
+          "index_bytes": 473989120,
+          "table_bytes": 1789075456,
+          "total_bytes": 2263064576,
+          "last_autovacuum": "2026-09-24T21:38:25.936306+00:00",
+          "last_autoanalyze": "2026-09-25T14:36:11.231721+00:00",
+          "estimated_dead_rows": 0,
+          "estimated_live_rows": 4902391
+        },
+        {
+          "relname": "recommendation_playback_fact",
+          "schemaname": "public",
+          "index_bytes": 617095168,
+          "table_bytes": 765362176,
+          "total_bytes": 1382457344,
+          "last_autovacuum": "2026-09-25T21:52:39.853999+00:00",
+          "last_autoanalyze": "2026-09-27T19:25:14.153458+00:00",
+          "estimated_dead_rows": 502,
+          "estimated_live_rows": 1623206
+        },
+        {
+          "relname": "video_dub_download",
+          "schemaname": "public",
+          "index_bytes": 388579328,
+          "table_bytes": 943783936,
+          "total_bytes": 1332363264,
+          "last_autovacuum": null,
+          "last_autoanalyze": null,
+          "estimated_dead_rows": 14274,
+          "estimated_live_rows": 1374992
+        },
+        {
+          "relname": "workflow_steps",
+          "schemaname": "workflow",
+          "index_bytes": 142548992,
+          "table_bytes": 830308352,
+          "total_bytes": 972857344,
+          "last_autovacuum": "2026-09-25T22:09:55.244937+00:00",
+          "last_autoanalyze": "2026-09-27T17:24:14.659545+00:00",
+          "estimated_dead_rows": 145456,
+          "estimated_live_rows": 1041338
+        },
+        {
+          "relname": "recommendation_profile_interest",
+          "schemaname": "public",
+          "index_bytes": 18292736,
+          "table_bytes": 595255296,
+          "total_bytes": 613548032,
+          "last_autovacuum": "2026-09-26T16:06:39.28032+00:00",
+          "last_autoanalyze": "2026-09-27T19:13:12.581447+00:00",
+          "estimated_dead_rows": 289,
+          "estimated_live_rows": 68326
+        },
+        {
+          "relname": "video_dub",
+          "schemaname": "public",
+          "index_bytes": 437215232,
+          "table_bytes": 165904384,
+          "total_bytes": 603119616,
+          "last_autovacuum": "2026-09-11T06:07:34.03175+00:00",
+          "last_autoanalyze": "2026-09-11T06:06:45.742942+00:00",
+          "estimated_dead_rows": 2,
+          "estimated_live_rows": 212264
+        },
+        {
+          "relname": "recommendation_rendered_fact",
+          "schemaname": "public",
+          "index_bytes": 336240640,
+          "table_bytes": 201744384,
+          "total_bytes": 537985024,
+          "last_autovacuum": "2026-09-25T11:18:59.898048+00:00",
+          "last_autoanalyze": "2026-09-26T04:04:59.922499+00:00",
+          "estimated_dead_rows": 0,
+          "estimated_live_rows": 590291
+        },
+        {
+          "relname": "mux_image_derivative",
+          "schemaname": "public",
+          "index_bytes": 76464128,
+          "table_bytes": 439320576,
+          "total_bytes": 515784704,
+          "last_autovacuum": null,
+          "last_autoanalyze": null,
+          "estimated_dead_rows": 0,
+          "estimated_live_rows": 9196
+        },
+        {
+          "relname": "workflow_runs",
+          "schemaname": "workflow",
+          "index_bytes": 40001536,
+          "table_bytes": 416464896,
+          "total_bytes": 456466432,
+          "last_autovacuum": "2026-09-27T13:37:12.008367+00:00",
+          "last_autoanalyze": "2026-09-27T15:40:05.26783+00:00",
+          "estimated_dead_rows": 16150,
+          "estimated_live_rows": 472279
+        },
+        {
+          "relname": "recommendation_outcome_revision",
+          "schemaname": "public",
+          "index_bytes": 253288448,
+          "table_bytes": 140328960,
+          "total_bytes": 393617408,
+          "last_autovacuum": "2026-09-25T21:56:36.618557+00:00",
+          "last_autoanalyze": "2026-09-27T16:40:05.05866+00:00",
+          "estimated_dead_rows": 14,
+          "estimated_live_rows": 268370
+        },
+        {
+          "relname": "recommendation_profile_projection_generation",
+          "schemaname": "public",
+          "index_bytes": 135413760,
+          "table_bytes": 165806080,
+          "total_bytes": 301219840,
+          "last_autovacuum": "2026-09-25T21:18:40.707253+00:00",
+          "last_autoanalyze": "2026-09-26T14:06:33.250153+00:00",
+          "estimated_dead_rows": 13875,
+          "estimated_live_rows": 238366
+        },
+        {
+          "relname": "recommendation_playback_episode",
+          "schemaname": "public",
+          "index_bytes": 197353472,
+          "table_bytes": 75145216,
+          "total_bytes": 272498688,
+          "last_autovacuum": "2026-09-26T17:35:50.715324+00:00",
+          "last_autoanalyze": "2026-09-27T23:18:26.860126+00:00",
+          "estimated_dead_rows": 23836,
+          "estimated_live_rows": 176928
+        },
+        {
+          "relname": "recommendation_evidence_audit",
+          "schemaname": "public",
+          "index_bytes": 138633216,
+          "table_bytes": 131252224,
+          "total_bytes": 269885440,
+          "last_autovacuum": "2026-09-24T22:59:16.985388+00:00",
+          "last_autoanalyze": "2026-09-26T14:30:34.960802+00:00",
+          "estimated_dead_rows": 26,
+          "estimated_live_rows": 970302
+        },
+        {
+          "relname": "recommendation_request",
+          "schemaname": "public",
+          "index_bytes": 127025152,
+          "table_bytes": 109600768,
+          "total_bytes": 236625920,
+          "last_autovacuum": "2026-09-27T09:25:39.133018+00:00",
+          "last_autoanalyze": "2026-09-27T17:42:08.807266+00:00",
+          "estimated_dead_rows": 361,
+          "estimated_live_rows": 256723
+        },
+        {
+          "relname": "recommendation_candidate_run",
+          "schemaname": "public",
+          "index_bytes": 74424320,
+          "table_bytes": 127778816,
+          "total_bytes": 202203136,
+          "last_autovacuum": "2026-09-25T18:29:24.92119+00:00",
+          "last_autoanalyze": "2026-09-27T07:45:34.801538+00:00",
+          "estimated_dead_rows": 261,
+          "estimated_live_rows": 255839
+        },
+        {
+          "relname": "recommendation_eligibility_decision",
+          "schemaname": "public",
+          "index_bytes": 104292352,
+          "table_bytes": 78290944,
+          "total_bytes": 182583296,
+          "last_autovacuum": "2026-09-26T05:01:04.386701+00:00",
+          "last_autoanalyze": "2026-09-27T15:45:01.316906+00:00",
+          "estimated_dead_rows": 3131,
+          "estimated_live_rows": 182562
+        },
+        {
+          "relname": "workflow_run",
+          "schemaname": "public",
+          "index_bytes": 75259904,
+          "table_bytes": 101318656,
+          "total_bytes": 176578560,
+          "last_autovacuum": "2026-09-27T13:51:58.431895+00:00",
+          "last_autoanalyze": "2026-09-27T20:09:16.759209+00:00",
+          "estimated_dead_rows": 13766,
+          "estimated_live_rows": 191023
+        }
+      ]
+    },
+    "recommendation_total": {
+      "rows": [
+        {
+          "tables": 53,
+          "index_bytes": 9069674496,
+          "table_bytes": 17165574144,
+          "total_bytes": 26235248640
+        }
+      ]
+    },
+    "evidence_indexes": {
+      "rows": [
+        {
+          "bytes": 1627217920,
+          "idx_scan": 0,
+          "definition": "CREATE UNIQUE INDEX recommendation_candidate_stage_evidence_pkey ON public.recommendation_candidate_stage_evidence USING btree (id)",
+          "index_name": "recommendation_candidate_stage_evidence_pkey",
+          "indisvalid": true,
+          "indisunique": true,
+          "indisprimary": true,
+          "constraint_type": "p"
+        },
+        {
+          "bytes": 1961811968,
+          "idx_scan": 6,
+          "definition": "CREATE INDEX recommendation_candidate_stage_expiry_idx ON public.recommendation_candidate_stage_evidence USING btree (expires_at, id)",
+          "index_name": "recommendation_candidate_stage_expiry_idx",
+          "indisvalid": true,
+          "indisunique": false,
+          "indisprimary": false,
+          "constraint_type": null
+        },
+        {
+          "bytes": 2375860224,
+          "idx_scan": 1518,
+          "definition": "CREATE UNIQUE INDEX recommendation_candidate_stage_ordinal_key ON public.recommendation_candidate_stage_evidence USING btree (run_id, stage, ordinal)",
+          "index_name": "recommendation_candidate_stage_ordinal_key",
+          "indisvalid": true,
+          "indisunique": true,
+          "indisprimary": false,
+          "constraint_type": "u"
+        }
+      ]
+    },
+    "request_horizon": {
+      "rows": [
+        {
+          "first_expiry": "2026-09-30T00:20:47.858+00:00",
+          "expired_roots": 0,
+          "overdue_roots": 0,
+          "latest_created_at": "2026-09-27T23:25:45.459+00:00",
+          "oldest_created_at": "2026-09-01T00:20:48.742+00:00",
+          "requests_last_24h": 10525
+        }
+      ]
+    },
+    "recent_daily_requests": {
+      "rows": [
+        {
+          "day_utc": "2026-09-20T00:00:00+00:00",
+          "requests": 225
+        },
+        {
+          "day_utc": "2026-09-21T00:00:00+00:00",
+          "requests": 8495
+        },
+        {
+          "day_utc": "2026-09-22T00:00:00+00:00",
+          "requests": 8714
+        },
+        {
+          "day_utc": "2026-09-23T00:00:00+00:00",
+          "requests": 9242
+        },
+        {
+          "day_utc": "2026-09-24T00:00:00+00:00",
+          "requests": 11207
+        },
+        {
+          "day_utc": "2026-09-25T00:00:00+00:00",
+          "requests": 11734
+        },
+        {
+          "day_utc": "2026-09-26T00:00:00+00:00",
+          "requests": 10762
+        },
+        {
+          "day_utc": "2026-09-27T00:00:00+00:00",
+          "requests": 10146
+        }
+      ]
+    },
+    "latest_candidate_run_sample": {
+      "rows": [
+        {
+          "window_end": "2026-09-27T23:25:45.466+00:00",
+          "mean_scored": 20.19,
+          "mean_ordered": 20.19,
+          "sampled_runs": 1000,
+          "window_start": "2026-09-27T21:31:41.106+00:00",
+          "mean_rejected": 2.39,
+          "mean_nominated": 23.46,
+          "mean_stage_rows": 114.66,
+          "mean_deduplicated": 20.2,
+          "mean_served_items": 4.75,
+          "mean_canonicalized": 23.46
+        }
+      ]
+    },
+    "recent_retention": {
+      "rows": [
+        {
+          "status": "succeeded",
+          "batch_size": 500,
+          "row_counts": {
+            "expiredViewers": 0,
+            "expiredExperiments": 0,
+            "expiredPromotionRuns": 0,
+            "expiredContentActions": 0,
+            "expiredProfilesFenced": 0,
+            "expiredConsentReceipts": 0,
+            "expiredPromotionEvents": 0,
+            "retiredProfilesDeleted": 0,
+            "expiredProfileInterests": 228,
+            "expiredShadowEvaluations": 0,
+            "profileErasuresCompleted": 0,
+            "expiredConsentTransitions": 0,
+            "expiredControlEvaluations": 0,
+            "expiredPromotionApprovals": 0,
+            "expiredStandaloneEpisodes": 0,
+            "expiredStandaloneOutcomes": 0,
+            "expiredProfileSessionLinks": 13789,
+            "expiredEligibilityDecisions": 0,
+            "expiredExperimentAssignments": 0,
+            "expiredExperimentEvaluations": 0,
+            "expiredProfileProjectionRuns": 8707,
+            "profileConsentReceiptsRevoked": 0,
+            "expiredStandalonePlaybackFacts": 0,
+            "expiredExperimentEvaluationRuns": 0,
+            "expiredProfileProjectionGenerations": 0,
+            "expiredProfileProjectionContributions": 366
+          },
+          "started_at": "2026-09-27T10:30:01.773+00:00",
+          "reason_code": null,
+          "completed_at": "2026-09-27T10:30:01.771+00:00",
+          "roots_deleted": 0,
+          "oldest_expired_at_after": null
+        },
+        {
+          "status": "succeeded",
+          "batch_size": 500,
+          "row_counts": {
+            "expiredViewers": 0,
+            "expiredExperiments": 0,
+            "expiredPromotionRuns": 0,
+            "expiredContentActions": 0,
+            "expiredProfilesFenced": 0,
+            "expiredConsentReceipts": 0,
+            "expiredPromotionEvents": 0,
+            "retiredProfilesDeleted": 0,
+            "expiredProfileInterests": 232,
+            "expiredShadowEvaluations": 0,
+            "profileErasuresCompleted": 0,
+            "expiredConsentTransitions": 0,
+            "expiredControlEvaluations": 0,
+            "expiredPromotionApprovals": 0,
+            "expiredStandaloneEpisodes": 0,
+            "expiredStandaloneOutcomes": 0,
+            "expiredProfileSessionLinks": 13976,
+            "expiredEligibilityDecisions": 0,
+            "expiredExperimentAssignments": 0,
+            "expiredExperimentEvaluations": 0,
+            "expiredProfileProjectionRuns": 9054,
+            "profileConsentReceiptsRevoked": 0,
+            "expiredStandalonePlaybackFacts": 0,
+            "expiredExperimentEvaluationRuns": 0,
+            "expiredProfileProjectionGenerations": 0,
+            "expiredProfileProjectionContributions": 382
+          },
+          "started_at": "2026-09-26T10:30:01.099+00:00",
+          "reason_code": null,
+          "completed_at": "2026-09-26T10:30:01.097+00:00",
+          "roots_deleted": 0,
+          "oldest_expired_at_after": null
+        },
+        {
+          "status": "succeeded",
+          "batch_size": 500,
+          "row_counts": {
+            "expiredViewers": 0,
+            "expiredExperiments": 0,
+            "expiredPromotionRuns": 0,
+            "expiredContentActions": 0,
+            "expiredProfilesFenced": 0,
+            "expiredConsentReceipts": 0,
+            "expiredPromotionEvents": 0,
+            "retiredProfilesDeleted": 0,
+            "expiredProfileInterests": 263,
+            "expiredShadowEvaluations": 0,
+            "profileErasuresCompleted": 0,
+            "expiredConsentTransitions": 0,
+            "expiredControlEvaluations": 0,
+            "expiredPromotionApprovals": 0,
+            "expiredStandaloneEpisodes": 0,
+            "expiredStandaloneOutcomes": 0,
+            "expiredProfileSessionLinks": 13467,
+            "expiredEligibilityDecisions": 0,
+            "expiredExperimentAssignments": 0,
+            "expiredExperimentEvaluations": 0,
+            "expiredProfileProjectionRuns": 10986,
+            "profileConsentReceiptsRevoked": 0,
+            "expiredStandalonePlaybackFacts": 0,
+            "expiredExperimentEvaluationRuns": 0,
+            "expiredProfileProjectionGenerations": 0,
+            "expiredProfileProjectionContributions": 461
+          },
+          "started_at": "2026-09-25T10:30:00.873+00:00",
+          "reason_code": null,
+          "completed_at": "2026-09-25T10:30:00.871+00:00",
+          "roots_deleted": 0,
+          "oldest_expired_at_after": null
+        },
+        {
+          "status": "succeeded",
+          "batch_size": 500,
+          "row_counts": {
+            "expiredViewers": 0,
+            "expiredExperiments": 0,
+            "expiredPromotionRuns": 0,
+            "expiredContentActions": 0,
+            "expiredProfilesFenced": 0,
+            "expiredConsentReceipts": 0,
+            "expiredPromotionEvents": 0,
+            "retiredProfilesDeleted": 0,
+            "expiredProfileInterests": 264,
+            "expiredShadowEvaluations": 0,
+            "profileErasuresCompleted": 0,
+            "expiredConsentTransitions": 0,
+            "expiredControlEvaluations": 0,
+            "expiredPromotionApprovals": 0,
+            "expiredStandaloneEpisodes": 0,
+            "expiredStandaloneOutcomes": 0,
+            "expiredProfileSessionLinks": 9696,
+            "expiredEligibilityDecisions": 0,
+            "expiredExperimentAssignments": 0,
+            "expiredExperimentEvaluations": 0,
+            "expiredProfileProjectionRuns": 8526,
+            "profileConsentReceiptsRevoked": 0,
+            "expiredStandalonePlaybackFacts": 0,
+            "expiredExperimentEvaluationRuns": 0,
+            "expiredProfileProjectionGenerations": 0,
+            "expiredProfileProjectionContributions": 398
+          },
+          "started_at": "2026-09-24T10:30:01.318+00:00",
+          "reason_code": null,
+          "completed_at": "2026-09-24T10:30:01.317+00:00",
+          "roots_deleted": 0,
+          "oldest_expired_at_after": null
+        },
+        {
+          "status": "succeeded",
+          "batch_size": 500,
+          "row_counts": {
+            "expiredViewers": 0,
+            "expiredExperiments": 0,
+            "expiredPromotionRuns": 0,
+            "expiredContentActions": 0,
+            "expiredProfilesFenced": 0,
+            "expiredConsentReceipts": 0,
+            "expiredPromotionEvents": 0,
+            "retiredProfilesDeleted": 0,
+            "expiredProfileInterests": 324,
+            "expiredShadowEvaluations": 0,
+            "profileErasuresCompleted": 0,
+            "expiredConsentTransitions": 0,
+            "expiredControlEvaluations": 0,
+            "expiredPromotionApprovals": 0,
+            "expiredStandaloneEpisodes": 0,
+            "expiredStandaloneOutcomes": 0,
+            "expiredProfileSessionLinks": 10000,
+            "expiredEligibilityDecisions": 0,
+            "expiredExperimentAssignments": 0,
+            "expiredExperimentEvaluations": 0,
+            "expiredProfileProjectionRuns": 8748,
+            "profileConsentReceiptsRevoked": 0,
+            "expiredStandalonePlaybackFacts": 0,
+            "expiredExperimentEvaluationRuns": 0,
+            "expiredProfileProjectionGenerations": 0,
+            "expiredProfileProjectionContributions": 549
+          },
+          "started_at": "2026-09-23T10:30:00.986+00:00",
+          "reason_code": null,
+          "completed_at": "2026-09-23T10:30:00.985+00:00",
+          "roots_deleted": 0,
+          "oldest_expired_at_after": null
+        },
+        {
+          "status": "succeeded",
+          "batch_size": 500,
+          "row_counts": {
+            "expiredViewers": 0,
+            "expiredExperiments": 0,
+            "expiredPromotionRuns": 0,
+            "expiredContentActions": 0,
+            "expiredProfilesFenced": 0,
+            "expiredConsentReceipts": 0,
+            "expiredPromotionEvents": 0,
+            "retiredProfilesDeleted": 0,
+            "expiredProfileInterests": 332,
+            "expiredShadowEvaluations": 0,
+            "profileErasuresCompleted": 0,
+            "expiredConsentTransitions": 0,
+            "expiredControlEvaluations": 0,
+            "expiredPromotionApprovals": 0,
+            "expiredStandaloneEpisodes": 0,
+            "expiredStandaloneOutcomes": 0,
+            "expiredProfileSessionLinks": 13512,
+            "expiredEligibilityDecisions": 0,
+            "expiredExperimentAssignments": 0,
+            "expiredExperimentEvaluations": 0,
+            "expiredProfileProjectionRuns": 10956,
+            "profileConsentReceiptsRevoked": 0,
+            "expiredStandalonePlaybackFacts": 0,
+            "expiredExperimentEvaluationRuns": 0,
+            "expiredProfileProjectionGenerations": 0,
+            "expiredProfileProjectionContributions": 764
+          },
+          "started_at": "2026-09-22T10:30:00.425+00:00",
+          "reason_code": null,
+          "completed_at": "2026-09-22T10:30:00.424+00:00",
+          "roots_deleted": 0,
+          "oldest_expired_at_after": null
+        },
+        {
+          "status": "succeeded",
+          "batch_size": 500,
+          "row_counts": {
+            "expiredViewers": 0,
+            "expiredExperiments": 0,
+            "expiredPromotionRuns": 0,
+            "expiredContentActions": 0,
+            "expiredProfilesFenced": 0,
+            "expiredConsentReceipts": 0,
+            "expiredPromotionEvents": 0,
+            "retiredProfilesDeleted": 0,
+            "expiredProfileInterests": 285,
+            "expiredShadowEvaluations": 0,
+            "profileErasuresCompleted": 0,
+            "expiredConsentTransitions": 0,
+            "expiredControlEvaluations": 0,
+            "expiredPromotionApprovals": 0,
+            "expiredStandaloneEpisodes": 0,
+            "expiredStandaloneOutcomes": 0,
+            "expiredProfileSessionLinks": 18372,
+            "expiredEligibilityDecisions": 0,
+            "expiredExperimentAssignments": 0,
+            "expiredExperimentEvaluations": 0,
+            "expiredProfileProjectionRuns": 14382,
+            "profileConsentReceiptsRevoked": 0,
+            "expiredStandalonePlaybackFacts": 0,
+            "expiredExperimentEvaluationRuns": 0,
+            "expiredProfileProjectionGenerations": 0,
+            "expiredProfileProjectionContributions": 428
+          },
+          "started_at": "2026-09-21T10:30:00.532+00:00",
+          "reason_code": null,
+          "completed_at": "2026-09-21T10:30:00.531+00:00",
+          "roots_deleted": 0,
+          "oldest_expired_at_after": null
+        },
+        {
+          "status": "succeeded",
+          "batch_size": 500,
+          "row_counts": {
+            "expiredViewers": 0,
+            "expiredExperiments": 0,
+            "expiredPromotionRuns": 0,
+            "expiredContentActions": 0,
+            "expiredProfilesFenced": 0,
+            "expiredConsentReceipts": 0,
+            "expiredPromotionEvents": 0,
+            "retiredProfilesDeleted": 0,
+            "expiredProfileInterests": 196,
+            "expiredShadowEvaluations": 0,
+            "profileErasuresCompleted": 0,
+            "expiredConsentTransitions": 0,
+            "expiredControlEvaluations": 0,
+            "expiredPromotionApprovals": 0,
+            "expiredStandaloneEpisodes": 0,
+            "expiredStandaloneOutcomes": 0,
+            "expiredProfileSessionLinks": 15489,
+            "expiredEligibilityDecisions": 0,
+            "expiredExperimentAssignments": 0,
+            "expiredExperimentEvaluations": 0,
+            "expiredProfileProjectionRuns": 12554,
+            "profileConsentReceiptsRevoked": 0,
+            "expiredStandalonePlaybackFacts": 0,
+            "expiredExperimentEvaluationRuns": 0,
+            "expiredProfileProjectionGenerations": 0,
+            "expiredProfileProjectionContributions": 323
+          },
+          "started_at": "2026-09-20T10:30:00.344+00:00",
+          "reason_code": null,
+          "completed_at": "2026-09-20T10:30:00.343+00:00",
+          "roots_deleted": 0,
+          "oldest_expired_at_after": null
+        },
+        {
+          "status": "succeeded",
+          "batch_size": 500,
+          "row_counts": {
+            "expiredViewers": 0,
+            "expiredExperiments": 0,
+            "expiredPromotionRuns": 0,
+            "expiredContentActions": 0,
+            "expiredProfilesFenced": 0,
+            "expiredConsentReceipts": 0,
+            "expiredPromotionEvents": 0,
+            "retiredProfilesDeleted": 0,
+            "expiredProfileInterests": 555,
+            "expiredShadowEvaluations": 0,
+            "profileErasuresCompleted": 0,
+            "expiredConsentTransitions": 0,
+            "expiredControlEvaluations": 0,
+            "expiredPromotionApprovals": 0,
+            "expiredStandaloneEpisodes": 0,
+            "expiredStandaloneOutcomes": 0,
+            "expiredProfileSessionLinks": 14227,
+            "expiredEligibilityDecisions": 0,
+            "expiredExperimentAssignments": 0,
+            "expiredExperimentEvaluations": 0,
+            "expiredProfileProjectionRuns": 11205,
+            "profileConsentReceiptsRevoked": 0,
+            "expiredStandalonePlaybackFacts": 0,
+            "expiredExperimentEvaluationRuns": 0,
+            "expiredProfileProjectionGenerations": 0,
+            "expiredProfileProjectionContributions": 1305
+          },
+          "started_at": "2026-09-19T10:30:01.13+00:00",
+          "reason_code": null,
+          "completed_at": "2026-09-19T10:30:01.129+00:00",
+          "roots_deleted": 0,
+          "oldest_expired_at_after": null
+        },
+        {
+          "status": "succeeded",
+          "batch_size": 500,
+          "row_counts": {
+            "expiredViewers": 0,
+            "expiredExperiments": 0,
+            "expiredPromotionRuns": 0,
+            "expiredContentActions": 0,
+            "expiredProfilesFenced": 0,
+            "expiredConsentReceipts": 0,
+            "expiredPromotionEvents": 0,
+            "retiredProfilesDeleted": 0,
+            "expiredProfileInterests": 200,
+            "expiredShadowEvaluations": 0,
+            "profileErasuresCompleted": 0,
+            "expiredConsentTransitions": 0,
+            "expiredControlEvaluations": 0,
+            "expiredPromotionApprovals": 0,
+            "expiredStandaloneEpisodes": 0,
+            "expiredStandaloneOutcomes": 0,
+            "expiredProfileSessionLinks": 12392,
+            "expiredEligibilityDecisions": 0,
+            "expiredExperimentAssignments": 0,
+            "expiredExperimentEvaluations": 0,
+            "expiredProfileProjectionRuns": 9949,
+            "profileConsentReceiptsRevoked": 0,
+            "expiredStandalonePlaybackFacts": 0,
+            "expiredExperimentEvaluationRuns": 0,
+            "expiredProfileProjectionGenerations": 0,
+            "expiredProfileProjectionContributions": 312
+          },
+          "started_at": "2026-09-18T10:30:00.698+00:00",
+          "reason_code": null,
+          "completed_at": "2026-09-18T10:30:00.697+00:00",
+          "roots_deleted": 0,
+          "oldest_expired_at_after": null
+        }
+      ]
+    },
+    "retention_history": {
+      "rows": [
+        {
+          "runs": 29,
+          "status": "succeeded",
+          "first_run": "2026-09-01T00:16:46.932+00:00",
+          "roots_deleted": 0,
+          "latest_completed": "2026-09-27T10:30:01.771+00:00"
+        },
+        {
+          "runs": 10,
+          "status": "skipped",
+          "first_run": "2026-09-01T10:30:00.474+00:00",
+          "roots_deleted": 0,
+          "latest_completed": "2026-09-16T10:30:00.349+00:00"
+        }
+      ]
+    },
+    "tracing_migrations": {
+      "rows": [
+        {
+          "started_at": "2026-08-31T03:30:13.066747+00:00",
+          "finished_at": "2026-08-31T03:30:13.188515+00:00",
+          "migration_name": "0052_production_semantic_recommendation_tracer",
+          "rolled_back_at": null
+        },
+        {
+          "started_at": "2026-08-31T03:30:13.422485+00:00",
+          "finished_at": "2026-08-31T03:30:13.46309+00:00",
+          "migration_name": "0058_recommendation_candidate_platform",
+          "rolled_back_at": null
+        },
+        {
+          "started_at": "2026-08-31T03:30:13.88753+00:00",
+          "finished_at": "2026-08-31T03:30:13.917409+00:00",
+          "migration_name": "0069_recommendation_hybrid_composition",
+          "rolled_back_at": null
+        }
+      ]
+    },
+    "wal_and_slots": {
+      "rows": [
+        {
+          "wal_bytes": 251658240,
+          "replication_slots": 0
+        }
+      ]
+    }
+  }
+}

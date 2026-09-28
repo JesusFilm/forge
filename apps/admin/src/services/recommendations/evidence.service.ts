@@ -245,6 +245,16 @@ export class RecommendationEvidenceService {
           "Recommendation visibility policy is invalid",
         )
       }
+      if (
+        event.kind === "impression" &&
+        event.payload.visibilityCapability != null &&
+        event.payload.visibilityCapability !== "unknown" &&
+        event.payload.visibilityCapability !== "occlusion-aware"
+      ) {
+        throw new RecommendationInputError(
+          "Recommendation visibility capability is invalid",
+        )
+      }
     }
 
     const result = await this.deps.prisma.$transaction(async (tx) => {
@@ -333,6 +343,10 @@ export class RecommendationEvidenceService {
             data: {
               ...common,
               visibilityPolicy: item.request.surfaceVersion,
+              visibilityCapability:
+                typeof event.payload.visibilityCapability === "string"
+                  ? event.payload.visibilityCapability
+                  : "unknown",
             },
           })
           const reconciliation = await tx.recommendationSelection.updateMany({

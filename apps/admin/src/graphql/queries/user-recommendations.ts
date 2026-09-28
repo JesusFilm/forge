@@ -10,6 +10,8 @@ import {
   type UserRecommendationItem,
 } from "@/services/recommendations/user-delivery.service"
 
+import { recommendationTraffic } from "@/services/recommendations/traffic"
+
 const ItemRef = builder.objectRef<UserRecommendationItem>(
   "UserRecommendationItem",
 )
@@ -67,28 +69,50 @@ builder.queryFields((t) => ({
       sessionDigest: t.arg.string(),
       consentReceiptDigest: t.arg.string(),
       profileTokenDigest: t.arg.string(),
+      trafficCategory: t.arg.string(),
+      eligibleHuman: t.arg.boolean(),
     },
     resolve: (_root, args, ctx) =>
       resolveRecommendationOperation(async () => {
-        const identity = await resolveRecommendationIdentity(
-          prisma,
-          ctx.user,
-          args,
-        )
+        const traffic =
+          args.trafficCategory != null || args.eligibleHuman === false
+            ? recommendationTraffic({
+                caller: ctx.user,
+                trafficCategory: args.trafficCategory,
+                eligibleHuman: args.eligibleHuman ?? true,
+              })
+            : null
+        const identity =
+          traffic && traffic.disposition !== "measured"
+            ? {
+                caller: ctx.user,
+                sessionDigest: "0".repeat(64),
+                consentReceiptDigest: null,
+                profileTokenDigest: null,
+              }
+            : await resolveRecommendationIdentity(prisma, ctx.user, args)
         return createUserRecommendationDeliveryService(
           prisma,
           env.RECOMMENDATION_USER_SERVING_ENABLED === "true",
         ).deliver({
           ...identity,
+          trafficCategory: args.trafficCategory,
+          eligibleHuman: args.eligibleHuman ?? true,
           locale: args.locale,
           audioLanguageSlug: args.audioLanguageSlug,
           count: args.count ?? 6,
-          consentReceiptDigest: args.viewerToken
-            ? identity.consentReceiptDigest
-            : args.consentReceiptDigest,
-          profileTokenDigest: args.viewerToken
-            ? identity.profileTokenDigest
-            : args.profileTokenDigest,
+          consentReceiptDigest:
+            traffic && traffic.disposition !== "measured"
+              ? null
+              : args.viewerToken
+                ? identity.consentReceiptDigest
+                : args.consentReceiptDigest,
+          profileTokenDigest:
+            traffic && traffic.disposition !== "measured"
+              ? null
+              : args.viewerToken
+                ? identity.profileTokenDigest
+                : args.profileTokenDigest,
         })
       }),
   }),

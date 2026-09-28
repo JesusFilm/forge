@@ -38,6 +38,13 @@ The retained source discrepancies and browser-response evidence remain open,
 so this ticket is in progress. Deferring monitors does not accept those gaps or
 remove its downstream readiness dependencies.
 
+The [September 28 bounded recheck](../../operations/recommendation-evidence-telemetry-followup-2026-09-28.md)
+reproduced the indexed gaps and historical browser 503/204/status-zero counts.
+Ten later natural browser 409 resources add partial coverage, but sampled
+within-view activity cannot identify the rejected episode or establish zero
+retry amplification. No owner-accepted limitation or request-level explanation
+has closed these gaps; this ticket remains in progress.
+
 ## Entry Points — Read These First
 
 1. `docs/operations/recommendation-evidence-acceptance-2026-09-23.md` and

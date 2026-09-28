@@ -150,7 +150,9 @@ describe("restricted consumer registry", () => {
       WHERE table_schema = 'consumer_private' ORDER BY table_name
     `
     expect(tables.map((table) => table.table_name)).toEqual([
+      "allowlist_revisions",
       "consumers",
+      "credentials",
       "lifecycle_audit",
       "members",
       "usage_daily",

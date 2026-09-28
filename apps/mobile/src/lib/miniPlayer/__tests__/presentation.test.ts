@@ -39,7 +39,6 @@ const ROUTE_TABLE: ReadonlyArray<
   ["(tabs) — Home", ["(tabs)"], "floating"],
   ["(tabs)/watch — Discover", ["(tabs)", "watch"], "floating"],
   ["(tabs)/bible — Bible", ["(tabs)", "bible"], "floating"],
-  ["(tabs)/library", ["(tabs)", "library"], "floating"],
   ["(tabs)/profile", ["(tabs)", "profile"], "floating"],
   ["watch/[slug]", ["watch", "[slug]"], "full"],
   ["watch/language", ["watch", "language"], "full"],
@@ -156,10 +155,10 @@ describe("suppression and phases", () => {
   it("hides for a non-route sheet and restores when the count returns to zero", () => {
     const store = storeWithSession()
     expect(
-      miniPlayerPresentation(store.getSnapshot(), ["(tabs)", "library"], 1),
+      miniPlayerPresentation(store.getSnapshot(), ["(tabs)", "profile"], 1),
     ).toBe("hidden")
     expect(
-      miniPlayerPresentation(store.getSnapshot(), ["(tabs)", "library"], 0),
+      miniPlayerPresentation(store.getSnapshot(), ["(tabs)", "profile"], 0),
     ).toBe("floating")
   })
 
@@ -227,15 +226,16 @@ describe("suppression and phases", () => {
 })
 
 describe("route predicates", () => {
-  it("recognises the five tab roots and nothing else", () => {
+  it("recognises the four tab roots and nothing else", () => {
     expect(isTabRootRoute(["(tabs)"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "index"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "watch"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "bible"])).toBe(true)
-    expect(isTabRootRoute(["(tabs)", "library"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "profile"])).toBe(true)
     expect(isTabRootRoute(["watch", "[slug]"])).toBe(false)
     expect(isTabRootRoute(["mission"])).toBe(false)
+    // The Library tab is gone; its downloads list lives on Profile.
+    expect(isTabRootRoute(["(tabs)", "library"])).toBe(false)
     // The pushed reader is a root route, not the Bible tab (KTD9).
     expect(isTabRootRoute(["reader"])).toBe(false)
     expect(isTabRootRoute(["reader-passage"])).toBe(false)

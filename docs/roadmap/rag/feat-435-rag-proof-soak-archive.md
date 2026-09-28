@@ -24,7 +24,8 @@ already the active owner and all consumers have migrated.
 1. Forge acquisition/indexing commands delivered by `feat-431`, dashboard/eval commands delivered by `feat-432`, and `apps/rag/AGENTS.md` — end-to-end operating path and safety constraints.
 2. [Seeker cutover](evidence/feat-434/seeker-cutover.md) and the [consumer inventory](evidence/feat-435/proof-soak-archive.md#consumer-inventory) — recorded cutover and the limits of consumer coverage.
 3. [Proof, soak, and archive receipt](evidence/feat-435/proof-soak-archive.md) — requirement-by-requirement evidence, dashboard observation, operator acceptance, and limitations. This consolidates the previously planned proof and inventory records.
-4. [Legacy retirement follow-up](feat-532-rag-legacy-service-credential-retirement.md) — deferred service and credential retirement, outside this closure.
+4. [Blocked preflight](evidence/feat-435/production-evaluation-baseline.md) and [completed evaluation baseline](evidence/feat-435/production-eval-baseline.json) — dated, redacted production-read evidence; the later operator decisions below govern their use.
+5. [Legacy retirement follow-up](feat-532-rag-legacy-service-credential-retirement.md) — deferred service and credential retirement, outside this closure.
 
 ## Grep These
 
@@ -50,9 +51,8 @@ compromise: investigation and any potential fixes may proceed separately and
 are not prerequisites for acquisition or ingestion.
 
 This decision supersedes the quality-based `no-go` recommendation in the
-September 7 baseline assessment in
-[PR #2186](https://github.com/JesusFilm/forge/pull/2186), including its
-`production-eval-baseline.json` receipt. The measured results remain unchanged;
+September 7 [baseline assessment](evidence/feat-435/production-eval-baseline.json)
+in [PR #2186](https://github.com/JesusFilm/forge/pull/2186). The measured results remain unchanged;
 acceptance does not turn an observed shortfall into a passing comparison or a
 confirmed defect. No compatible historical evaluation receipt establishes a
 migration regression.

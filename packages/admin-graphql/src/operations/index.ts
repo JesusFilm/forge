@@ -17,6 +17,8 @@ export {
   adminRecordSemanticRecommendationPlaybackOperation,
   adminRecordRecommendationContentActionMutation,
   adminRecordRecommendationContentActionOperation,
+  adminRecordWatchSurfaceExposureMutation,
+  adminRecordWatchSurfaceExposureOperation,
   adminSelectSemanticRecommendationMutation,
   adminSelectSemanticRecommendationOperation,
   adminSemanticRecommendationDeliveryOperation,

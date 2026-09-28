@@ -3,7 +3,7 @@ id: "feat-373"
 title: "Watch surface impressions and CTR"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: ""
 duration: 5
 depends_on:
@@ -52,6 +52,16 @@ Clicks cannot be interpreted without eligible impressions across every Watch blo
 - Show registry completeness, duplicate rate, visibility capability, and instrumentation gaps so partial migration cannot look complete.
 
 The ticket is not complete until this result is visible and reconcilable in the authorized Admin Recommendations area.
+
+## Remaining evidence gate
+
+The signed below-player and For You surfaces have request-owned served facts.
+Anonymous authored Watch blocks currently emit render, eligible, and selection
+facts without a server-issued served denominator. The Admin registry exposes
+that gap; completing this ticket requires reconciling served counts for those
+registered entries and checking the resulting coverage, CTR, replay, and
+ingestion health in a deployed authorized Admin window. Local browser and
+PostgreSQL fixtures cannot establish deployed ingestion completeness.
 
 ## Constraints
 
