@@ -30,12 +30,12 @@ import {
 } from "../VerseSlider"
 import type { VerseAppearance } from "../VerseView"
 
-const TOKENS = readerTokens("classic", "dark")
+const TOKENS = readerTokens("dark")
 const APPEARANCE: VerseAppearance = {
   chosenSize: 30,
   osFontScale: 1,
   typeface: "serif",
-  lineSpacing: "normal",
+  lineSpacing: 1.4,
   verseNumbers: true,
 }
 const COLUMN_WIDTH = 300

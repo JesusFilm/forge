@@ -40,7 +40,7 @@ import {
   downloadProgress,
 } from "../ReaderDownloadGlyph"
 
-const TOKENS = readerTokens("classic", "light")
+const TOKENS = readerTokens("light")
 
 let mounted: TestInstance | null = null
 

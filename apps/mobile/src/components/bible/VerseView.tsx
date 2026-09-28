@@ -35,10 +35,7 @@ import {
 import type { ScrollEdges } from "../../lib/bible/movement/gesture"
 import { READER_COPY } from "../../lib/bible/reader/copy"
 import { stopRange, verseRangeLabel } from "../../lib/bible/reader/labels"
-import type {
-  ReaderLineSpacing,
-  ReaderTypeface,
-} from "../../lib/bible/settings/snapshot"
+import type { ReaderTypeface } from "../../lib/bible/settings/snapshot"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 import {
   readingFontFamily,
@@ -56,7 +53,8 @@ export type VerseAppearance = {
   /** The OS text scale; the fit applies it, so the Text ignores it. */
   osFontScale: number
   typeface: ReaderTypeface
-  lineSpacing: ReaderLineSpacing
+  /** The line height as a share of the text size. */
+  lineSpacing: number
   verseNumbers: boolean
 }
 
@@ -445,7 +443,7 @@ type VerseBodyProps = {
   stop: ChapterPosition
   size: number
   fontFamily: string
-  lineSpacing: ReaderLineSpacing
+  lineSpacing: number
   verseNumbers: boolean
   textDirection: TextDirection
   tokens: ReaderTokens

@@ -96,14 +96,17 @@ import {
   type VerseSelection,
 } from "../../lib/bible/selection/selection"
 import { shareText } from "../../lib/bible/selection/shareText"
-import { readerTextSize } from "../../lib/bible/settings/snapshot"
+import {
+  readerLineSpacing,
+  readerTextSize,
+} from "../../lib/bible/settings/snapshot"
 import { useReaderSettings } from "../../lib/bible/settings/store"
 import { useReaderVisitTelemetry } from "../../lib/bible/telemetry"
 import { chapterPositions } from "../../lib/bible/text/positions"
 import type { ChapterPosition } from "../../lib/bible/text/types"
 import {
   readerTokens,
-  resolveReaderScheme,
+  resolveReaderTheme,
   type ReaderTokens,
 } from "../../lib/bible/theme/palettes"
 import type { VerseRef } from "../../lib/bible/versification/convert"
@@ -249,10 +252,7 @@ export function BibleReader(props: BibleReaderProps) {
   const position = useReadingPosition(services.positionStore)
   useSavedStart(services.positionStore, props.startRef)
   const systemScheme = useColorScheme()
-  const tokens = readerTokens(
-    settings.palette,
-    resolveReaderScheme(settings.mode, systemScheme),
-  )
+  const tokens = readerTokens(resolveReaderTheme(settings.mode, systemScheme))
   const focused = useIsFocused()
   const { audioLanguageIso3, isReady } = useWatchPreferences()
   const chapter = useReaderChapter({
@@ -607,7 +607,7 @@ export function BibleReader(props: BibleReaderProps) {
             chosenSize: readerTextSize(settings.textSizeStep),
             osFontScale: window.fontScale,
             typeface: settings.typeface,
-            lineSpacing: settings.lineSpacing,
+            lineSpacing: readerLineSpacing(settings.lineSpacingStep),
             verseNumbers: settings.verseNumbers,
           }}
           boxes={boxes}

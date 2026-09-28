@@ -1,19 +1,16 @@
 /**
  * The reader sheets draw in the reader's theme (feat-553 KTD12, R34, R36).
- * Each pair is scored over the ground it really sits on, in all four token
+ * Each pair is scored over the ground it really sits on, in all three token
  * sets, per the composited-contrast rule in KTD12.
  */
-import { READER_PALETTES } from "../../settings/snapshot"
 import { contrastRatio } from "../../theme/contrast"
-import { READER_SCHEMES, readerTokens } from "../../theme/palettes"
+import { READER_THEMES, readerTokens } from "../../theme/palettes"
 import { readerSheetColors, readerSheetControlColors } from "../theme"
 
-const SETS = READER_PALETTES.flatMap((palette) =>
-  READER_SCHEMES.map((scheme) => ({
-    name: `${palette} ${scheme}`,
-    tokens: readerTokens(palette, scheme),
-  })),
-)
+const SETS = READER_THEMES.map((theme) => ({
+  name: theme,
+  tokens: readerTokens(theme),
+}))
 
 describe.each(SETS)("the $name sheet colors", ({ tokens }) => {
   const colors = readerSheetColors(tokens)

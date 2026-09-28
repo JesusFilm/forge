@@ -47,7 +47,7 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   default: () => null,
 }))
 
-const TOKENS = readerTokens("classic", "dark")
+const TOKENS = readerTokens("dark")
 const REFERENCE = "John 3:16-17"
 const TEXT =
   "16 For God so loved the world. 17 For God did not send.\n\nJohn 3:16-17 · BSB"

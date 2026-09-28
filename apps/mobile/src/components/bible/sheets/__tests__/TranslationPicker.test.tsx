@@ -114,7 +114,7 @@ function loadCatalog(): Catalog {
 
 const CATALOG = loadCatalog()
 const COPY = READER_SHEET_COPY.translation
-const TOKENS = readerTokens("trueDark", "light")
+const TOKENS = readerTokens("light")
 const SPANISH = CATALOG.translations.filter((t) => t.language === "spa")
 const SYNODAL = CATALOG.byId.get("rus_syn")!
 

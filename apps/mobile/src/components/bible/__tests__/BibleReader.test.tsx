@@ -94,10 +94,7 @@ import type {
 import { createChapterRepository } from "../../../lib/bible/repository/resolveChapter"
 import type { TranslationDownloadState } from "../../../lib/bible/repository/translationDownloads"
 import { createReaderSettingsStore } from "../../../lib/bible/settings/store"
-import {
-  READER_PALETTES,
-  READER_TEXT_SIZE_STEPS,
-} from "../../../lib/bible/settings/snapshot"
+import { READER_TEXT_SIZE_STEPS } from "../../../lib/bible/settings/snapshot"
 import type { UsfmBookId } from "../../../lib/bible/text/books"
 import {
   normalizeChapterFile,
@@ -108,7 +105,7 @@ import type { VerseRef } from "../../../lib/bible/versification/convert"
 import { fitFloor } from "../../../lib/bible/fit/fitVerse"
 import { VERSE_BOX_GAP } from "../../../lib/bible/fit/verseBox"
 import { contrastRatio } from "../../../lib/bible/theme/contrast"
-import { READER_SCHEMES, readerTokens } from "../../../lib/bible/theme/palettes"
+import { readerTokens } from "../../../lib/bible/theme/palettes"
 import { READER_COPY } from "../../../lib/bible/reader/copy"
 import {
   READER_TOP_BAR_HEIGHT,
@@ -1182,15 +1179,11 @@ describe("BibleReader — reader visits (U14, KTD18)", () => {
 })
 
 describe("BibleReader — theme read from the rendered tree", () => {
-  const PAIRS = READER_PALETTES.flatMap((palette) =>
-    READER_SCHEMES.map((scheme) => [palette, scheme] as const),
-  )
-
-  it.each(PAIRS)(
-    "%s %s: the verse and the footer clear 4.5:1 on the page",
-    async (palette, scheme) => {
+  it.each(["light", "dark", "trueDark"] as const)(
+    "%s: the verse and the footer clear 4.5:1 on the page",
+    async (mode) => {
       const { services } = makeServices()
-      services.settingsStore.update({ palette, mode: scheme })
+      services.settingsStore.update({ mode })
       await openAt(services, { book: "JHN", chapter: 3, verse: 16 })
       const renderer = await render(services)
       await settleFit(renderer, () => 200)
@@ -1207,7 +1200,7 @@ describe("BibleReader — theme read from the rendered tree", () => {
           contrastRatio(String(flat(node!).color), page),
         ).toBeGreaterThanOrEqual(4.5)
       }
-      expect(page).toBe(readerTokens(palette, scheme).background)
+      expect(page).toBe(readerTokens(mode).background)
     },
   )
 })

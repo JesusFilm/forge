@@ -44,7 +44,7 @@ afterEach(() => {
 })
 
 // Classic Light: a light scheme, so the app's hard-coded "dark" would fail.
-const LIGHT = readerTokens("classic", "light")
+const LIGHT = readerTokens("light")
 
 async function render(): Promise<TestInstance> {
   let renderer!: TestInstance

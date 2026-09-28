@@ -1,7 +1,7 @@
 // The reading typeface (feat-553 KTD16, R32): the platform serif for Latin,
 // Greek, and Cyrillic text; the platform font for every other script.
+import { READER_LINE_SPACING_STEPS } from "../../settings/snapshot"
 import {
-  READER_LINE_HEIGHT_FACTORS,
   readingFontFamily,
   usesReadingTypeface,
   verseLineHeight,
@@ -46,17 +46,21 @@ describe("readingFontFamily", () => {
 })
 
 describe("verseLineHeight", () => {
-  it("spaces lines by the chosen setting, rounded to whole points", () => {
-    expect(READER_LINE_HEIGHT_FACTORS.compact).toBeLessThan(
-      READER_LINE_HEIGHT_FACTORS.normal,
+  it("spaces lines by each slider step, rounded to whole points", () => {
+    const heights = READER_LINE_SPACING_STEPS.map((spacing) =>
+      verseLineHeight(31, spacing),
     )
-    expect(READER_LINE_HEIGHT_FACTORS.normal).toBeLessThan(
-      READER_LINE_HEIGHT_FACTORS.relaxed,
-    )
-    for (const spacing of ["compact", "normal", "relaxed"] as const) {
-      const height = verseLineHeight(31, spacing)
+    for (const height of heights) {
       expect(Number.isInteger(height)).toBe(true)
       expect(height).toBeGreaterThan(31)
     }
+    // Each step is a visible change: no two steps round to one height.
+    expect(new Set(heights).size).toBe(heights.length)
+    expect(heights).toEqual([...heights].sort((a, b) => a - b))
+  })
+
+  it("keeps the compact and relaxed ends at their old factors", () => {
+    expect(READER_LINE_SPACING_STEPS[0]).toBe(1.2)
+    expect(READER_LINE_SPACING_STEPS.at(-1)).toBe(1.6)
   })
 })

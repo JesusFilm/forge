@@ -19,9 +19,8 @@ import {
 import { READER_SHEET_COPY } from "../../../lib/bible/sheets/copy"
 import { readerSheetControlColors } from "../../../lib/bible/sheets/theme"
 import {
-  READER_LINE_SPACINGS,
+  READER_LINE_SPACING_STEPS,
   READER_MODES,
-  READER_PALETTES,
   READER_TEXT_SIZE_STEPS,
   READER_TYPEFACES,
   type ReaderSettings,
@@ -30,10 +29,21 @@ import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
 import { readingFontFamily } from "../../../lib/bible/theme/typography"
 import { feedback, HORIZONTAL_PADDING } from "../../../styles/shared"
 import { ReaderSheetHeader } from "./ReaderSheetHeader"
+import {
+  ReaderStepSlider,
+  SizeGlyph,
+  SpacingGlyph,
+  type ReaderStepSliderProps,
+} from "./ReaderStepSlider"
 
 const COPY = READER_SHEET_COPY.settings
 
-/** Option labels stop growing here, so a row of five still fits a phone. */
+// The screen reader says each spacing as a percent of the text size.
+const LINE_SPACING_PERCENTS = READER_LINE_SPACING_STEPS.map((factor) =>
+  Math.round(factor * 100),
+)
+
+/** Option labels stop growing here, so a row of four still fits a phone. */
 const OPTION_MAX_FONT_SCALE = 1.3
 
 export type ReaderSettingsSheetProps = {
@@ -47,7 +57,7 @@ export type ReaderSettingsSheetProps = {
   onClose: () => void
 }
 
-// R33's seven settings and the "About the text" credits (KTD6). Each change
+// R33's six settings and the "About the text" credits (KTD6). Each change
 // goes to the settings store, which the reader and this sheet both read.
 export function ReaderSettingsSheet({
   tokens,
@@ -61,6 +71,7 @@ export function ReaderSettingsSheet({
   const { height: windowHeight } = useWindowDimensions()
   const height = useSheetListHeight(windowHeight)
   const secondary = { color: tokens.secondaryText }
+  const glyph = readerSheetControlColors(tokens).text
 
   return (
     <View
@@ -91,30 +102,27 @@ export function ReaderSettingsSheet({
           }))}
           onSelect={(mode) => onChange({ mode })}
         />
-        <OptionGroup
+        <SliderGroup
+          testID="reader-text-size-slider"
           tokens={tokens}
           label={COPY.textSize}
+          spokenValues={READER_TEXT_SIZE_STEPS}
+          unit={COPY.textSizeUnit}
           value={settings.textSizeStep}
-          options={READER_TEXT_SIZE_STEPS.map((_, step) => ({
-            value: step,
-            label: "A",
-            accessibilityLabel: COPY.textSizeStep(
-              step + 1,
-              READER_TEXT_SIZE_STEPS.length,
-            ),
-            textStyle: { fontSize: 13 + step * 3 },
-          }))}
-          onSelect={(textSizeStep) => onChange({ textSizeStep })}
+          onChange={(textSizeStep) => onChange({ textSizeStep })}
+          start={<SizeGlyph size={13} color={glyph} />}
+          end={<SizeGlyph size={24} color={glyph} />}
         />
-        <OptionGroup
+        <SliderGroup
+          testID="reader-line-spacing-slider"
           tokens={tokens}
-          label={COPY.palette}
-          value={settings.palette}
-          options={READER_PALETTES.map((palette) => ({
-            value: palette,
-            label: COPY.palettes[palette],
-          }))}
-          onSelect={(palette) => onChange({ palette })}
+          label={COPY.lineSpacing}
+          spokenValues={LINE_SPACING_PERCENTS}
+          unit={COPY.lineSpacingUnit}
+          value={settings.lineSpacingStep}
+          onChange={(lineSpacingStep) => onChange({ lineSpacingStep })}
+          start={<SpacingGlyph gap={2} color={glyph} />}
+          end={<SpacingGlyph gap={5} color={glyph} />}
         />
         <OptionGroup
           tokens={tokens}
@@ -133,16 +141,6 @@ export function ReaderSettingsSheet({
             },
           }))}
           onSelect={(typeface) => onChange({ typeface })}
-        />
-        <OptionGroup
-          tokens={tokens}
-          label={COPY.lineSpacing}
-          value={settings.lineSpacing}
-          options={READER_LINE_SPACINGS.map((lineSpacing) => ({
-            value: lineSpacing,
-            label: COPY.lineSpacings[lineSpacing],
-          }))}
-          onSelect={(lineSpacing) => onChange({ lineSpacing })}
         />
         <SwitchRow
           tokens={tokens}
@@ -185,7 +183,6 @@ export function ReaderSettingsSheet({
 type Option<T> = {
   value: T
   label: string
-  accessibilityLabel?: string
   textStyle?: TextStyle
 }
 
@@ -197,7 +194,7 @@ type OptionGroupProps<T> = {
   onSelect: (value: T) => void
 }
 
-function OptionGroup<T extends string | number>({
+function OptionGroup<T extends string>({
   tokens,
   label,
   value,
@@ -225,7 +222,7 @@ function OptionGroup<T extends string | number>({
               }}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              accessibilityLabel={option.accessibilityLabel ?? option.label}
+              accessibilityLabel={option.label}
               style={({ pressed }) => [
                 styles.option,
                 {
@@ -253,6 +250,22 @@ function OptionGroup<T extends string | number>({
           )
         })}
       </View>
+    </View>
+  )
+}
+
+function SliderGroup(props: ReaderStepSliderProps) {
+  return (
+    <View style={styles.group}>
+      {/* The slider carries the same name, so a screen reader skips this. */}
+      <Text
+        style={[styles.groupLabel, { color: props.tokens.secondaryText }]}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      >
+        {props.label}
+      </Text>
+      <ReaderStepSlider {...props} />
     </View>
   )
 }

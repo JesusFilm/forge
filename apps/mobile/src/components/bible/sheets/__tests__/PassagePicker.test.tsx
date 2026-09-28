@@ -47,7 +47,7 @@ import {
 import { PassagePicker, type PassagePickerProps } from "../PassagePicker"
 
 const COPY = READER_SHEET_COPY.passage
-const TOKENS = readerTokens("classic", "light")
+const TOKENS = readerTokens("light")
 const ALL: ReadonlySet<UsfmBookId> = new Set(BIBLE_BOOKS.map((b) => b.usfm))
 const NEW_TESTAMENT: ReadonlySet<UsfmBookId> = new Set(
   BIBLE_BOOKS.filter((b) => b.testament === "new").map((b) => b.usfm),

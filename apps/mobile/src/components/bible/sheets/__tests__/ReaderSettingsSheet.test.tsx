@@ -1,6 +1,8 @@
 /**
- * The reader settings sheet (feat-553 U10, R33, R34, KTD6): seven settings,
+ * The reader settings sheet (feat-553 U10, R33, R34, KTD6): six settings,
  * "Show arrow buttons" on phones only, and the "About the text" credits.
+ * Text size and line spacing are step sliders (owner, 2026-09-28);
+ * ReaderStepSlider.test.tsx drives their touches.
  */
 
 // tsconfig maps `react` to its .d.ts; re-point it (see AccountSection.test.tsx).
@@ -28,6 +30,7 @@ jest.mock("expo-router", () => ({
 }))
 
 import { act } from "react"
+import Slider from "@react-native-community/slider"
 import { StyleSheet } from "react-native"
 
 import type { ReaderLayout } from "../../../../lib/bible/reader/chrome"
@@ -35,6 +38,7 @@ import { READER_TOUCH_TARGET } from "../../../../lib/bible/reader/chrome"
 import { READER_SHEET_COPY } from "../../../../lib/bible/sheets/copy"
 import {
   DEFAULT_READER_SETTINGS,
+  READER_LINE_SPACING_STEPS,
   READER_TEXT_SIZE_STEPS,
   type ReaderSettings,
 } from "../../../../lib/bible/settings/snapshot"
@@ -49,10 +53,15 @@ import {
   type TestInstance,
 } from "../../../../test-utils/rnTestRenderer"
 import { ReaderSettingsSheet } from "../ReaderSettingsSheet"
+import {
+  ReaderStepSlider,
+  type ReaderStepSliderProps,
+} from "../ReaderStepSlider"
 
 const COPY = READER_SHEET_COPY.settings
-const TOKENS = readerTokens("classic", "dark")
-const STEPS = READER_TEXT_SIZE_STEPS.length
+const TOKENS = readerTokens("dark")
+const SIZES = READER_TEXT_SIZE_STEPS.length
+const SPACINGS = READER_LINE_SPACING_STEPS.length
 
 let mounted: TestInstance | null = null
 
@@ -120,6 +129,35 @@ async function toggle(
   })
 }
 
+function slider(renderer: TestInstance, label: string): ReaderStepSliderProps {
+  const [found] = renderer.root.findAll(
+    (node) => node.type === ReaderStepSlider && node.props.label === label,
+  )
+  if (!found) throw new Error(`no slider "${label}"`)
+  return found.props as ReaderStepSliderProps
+}
+
+/** The native slider view, which a screen reader lands on. */
+function nativeSlider(renderer: TestInstance, label: string): RenderedNode {
+  const [found] = renderer.root.findAll(
+    (node) =>
+      node.type === "RNCSlider" && node.props.accessibilityLabel === label,
+  )
+  if (!found) throw new Error(`no native slider "${label}"`)
+  return found
+}
+
+/** A drag to a step, as the native view reports it. */
+async function slideTo(renderer: TestInstance, label: string, step: number) {
+  await act(async () => {
+    ;(
+      nativeSlider(renderer, label).props.onRNCSliderValueChange as (
+        event: unknown,
+      ) => void
+    )({ nativeEvent: { value: step, fromUser: true } })
+  })
+}
+
 function selected(renderer: TestInstance, label: string): boolean {
   const state = control(renderer, label)?.props.accessibilityState as
     | { selected?: boolean }
@@ -131,17 +169,85 @@ describe("ReaderSettingsSheet", () => {
   it.each<[string, string, Partial<ReaderSettings>]>([
     ["Mode", COPY.modes.light, { mode: "light" }],
     ["Mode", COPY.modes.system, { mode: "system" }],
-    ["Palette", COPY.palettes.trueDark, { palette: "trueDark" }],
+    ["Mode", COPY.modes.trueDark, { mode: "trueDark" }],
     ["Typeface", COPY.typefaces.sans, { typeface: "sans" }],
-    ["Line spacing", COPY.lineSpacings.relaxed, { lineSpacing: "relaxed" }],
-    ["Line spacing", COPY.lineSpacings.compact, { lineSpacing: "compact" }],
-    ["Text size", COPY.textSizeStep(STEPS, STEPS), { textSizeStep: STEPS - 1 }],
-    ["Text size", COPY.textSizeStep(1, STEPS), { textSizeStep: 0 }],
   ])("%s: %s sends its change", async (_group, label, patch) => {
     const { renderer, onChange } = await render()
     await press(renderer, label)
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledWith(patch)
+  })
+
+  it("offers True Dark next to Dark, and has no palette row", async () => {
+    const { renderer } = await render()
+    const modes = renderer.root
+      .findAll(
+        (node) =>
+          typeof node.type === "string" &&
+          node.props.accessibilityRole === "radio",
+      )
+      .map((node) => node.props.accessibilityLabel as string)
+    expect(modes.slice(0, 4)).toEqual([
+      COPY.modes.system,
+      COPY.modes.light,
+      COPY.modes.dark,
+      COPY.modes.trueDark,
+    ])
+    expect(hasText(renderer, "Palette")).toBe(false)
+    expect(hasText(renderer, "Classic")).toBe(false)
+  })
+
+  it("gives text size eleven steps and line spacing five", async () => {
+    const { renderer } = await render()
+    expect(slider(renderer, COPY.textSize).spokenValues).toHaveLength(11)
+    expect(slider(renderer, COPY.lineSpacing).spokenValues).toHaveLength(5)
+    expect(nativeSlider(renderer, COPY.textSize).props.maximumValue).toBe(10)
+    expect(nativeSlider(renderer, COPY.lineSpacing).props.maximumValue).toBe(4)
+  })
+
+  it.each<[string, number, Partial<ReaderSettings>]>([
+    [COPY.textSize, SIZES - 1, { textSizeStep: SIZES - 1 }],
+    [COPY.textSize, 0, { textSizeStep: 0 }],
+    [COPY.lineSpacing, SPACINGS - 1, { lineSpacingStep: SPACINGS - 1 }],
+    [COPY.lineSpacing, 0, { lineSpacingStep: 0 }],
+  ])("%s: step %i sends its change", async (label, step, patch) => {
+    const { renderer, onChange } = await render()
+    await slideTo(renderer, label, step)
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith(patch)
+  })
+
+  it("puts line spacing right below text size", async () => {
+    const { renderer } = await render()
+    const groups: string[] = [
+      COPY.mode,
+      COPY.textSize,
+      COPY.lineSpacing,
+      COPY.typeface,
+    ]
+    const order = renderer.root
+      .findAll((node) => node.type === "Text")
+      .map((node) => node.props.children)
+      .filter((text) => typeof text === "string" && groups.includes(text))
+    expect(order).toEqual(groups)
+  })
+
+  it("tells a screen reader the size in points and the spacing in percent", async () => {
+    const { renderer } = await render()
+    const size = nativeSlider(renderer, COPY.textSize).props
+    const spacing = nativeSlider(renderer, COPY.lineSpacing).props
+    expect(size.accessibilityUnits).toBe("points")
+    expect(size.accessibilityIncrements).toEqual(
+      READER_TEXT_SIZE_STEPS.map(String),
+    )
+    expect(spacing.accessibilityUnits).toBe("percent")
+    expect(spacing.accessibilityIncrements).toEqual([
+      "120",
+      "130",
+      "140",
+      "150",
+      "160",
+    ])
   })
 
   it("turns the verse numbers off and the arrow buttons on", async () => {
@@ -158,22 +264,20 @@ describe("ReaderSettingsSheet", () => {
     const { renderer } = await render({
       settings: {
         ...DEFAULT_READER_SETTINGS,
-        mode: "dark",
-        palette: "trueDark",
+        mode: "trueDark",
         typeface: "sans",
-        lineSpacing: "compact",
+        lineSpacingStep: 0,
         textSizeStep: 1,
         verseNumbers: false,
         showArrows: true,
       },
     })
-    expect(selected(renderer, COPY.modes.dark)).toBe(true)
+    expect(selected(renderer, COPY.modes.trueDark)).toBe(true)
+    expect(selected(renderer, COPY.modes.dark)).toBe(false)
     expect(selected(renderer, COPY.modes.system)).toBe(false)
-    expect(selected(renderer, COPY.palettes.trueDark)).toBe(true)
     expect(selected(renderer, COPY.typefaces.sans)).toBe(true)
-    expect(selected(renderer, COPY.lineSpacings.compact)).toBe(true)
-    expect(selected(renderer, COPY.textSizeStep(2, STEPS))).toBe(true)
-    expect(selected(renderer, COPY.textSizeStep(3, STEPS))).toBe(false)
+    expect(slider(renderer, COPY.lineSpacing).value).toBe(0)
+    expect(slider(renderer, COPY.textSize).value).toBe(1)
     expect(
       control(renderer, COPY.verseNumbers, "onValueChange")?.props.value,
     ).toBe(false)
@@ -182,15 +286,12 @@ describe("ReaderSettingsSheet", () => {
     ).toBe(true)
   })
 
-  it("shows all seven settings on a phone", async () => {
+  it("shows all six settings on a phone", async () => {
     const { renderer } = await render({ layout: "phone" })
-    for (const group of [
-      COPY.mode,
-      COPY.textSize,
-      COPY.palette,
-      COPY.typeface,
-      COPY.lineSpacing,
-    ]) {
+    for (const label of [COPY.textSize, COPY.lineSpacing]) {
+      expect(nativeSlider(renderer, label)).toBeDefined()
+    }
+    for (const group of [COPY.mode, COPY.typeface]) {
       expect(
         renderer.root.findAll(
           (node) =>
@@ -211,14 +312,22 @@ describe("ReaderSettingsSheet", () => {
     expect(control(renderer, COPY.verseNumbers, "onValueChange")).toBeDefined()
   })
 
-  it("gives every option a 44-point touch target", async () => {
+  it("gives every option and slider a 44-point touch target", async () => {
     const { renderer } = await render()
     const options = renderer.root.findAll(
       (node) =>
         typeof node.type === "string" &&
         node.props.accessibilityRole === "radio",
     )
-    expect(options.length).toBe(3 + STEPS + 2 + 2 + 3)
+    const sliders = renderer.root.findAll((node) => node.type === Slider)
+    expect(options.length).toBe(4 + 2)
+    expect(sliders).toHaveLength(2)
+    for (const slider of sliders) {
+      const style = StyleSheet.flatten(slider.props.style as never) as {
+        height?: number
+      }
+      expect(style.height ?? 0).toBeGreaterThanOrEqual(READER_TOUCH_TARGET)
+    }
     for (const option of options) {
       const style = StyleSheet.flatten(option.props.style as never) as {
         minHeight?: number

@@ -1,7 +1,7 @@
-// The reader's four token sets (feat-553 KTD12, R34, R36). Every check reads
+// The reader's three token sets (feat-553 KTD12, R34, R36). Every check reads
 // the COMPOSITED colour, so a translucent token is judged over its ground.
 import { BG_COLOR, TEXT_PRIMARY } from "../../../color"
-import { READER_MODES, READER_PALETTES } from "../../settings/snapshot"
+import { READER_MODES } from "../../settings/snapshot"
 import {
   composite,
   contrastRatio,
@@ -9,17 +9,13 @@ import {
   ReaderColorError,
 } from "../contrast"
 import {
-  READER_PALETTE_TOKENS,
-  READER_SCHEMES,
+  READER_THEME_TOKENS,
+  READER_THEMES,
   readerContrastChecks,
   readerTokens,
-  resolveReaderScheme,
+  resolveReaderTheme,
   type ReaderTokens,
 } from "../palettes"
-
-const PAIRS = READER_PALETTES.flatMap((palette) =>
-  READER_SCHEMES.map((scheme) => [palette, scheme] as const),
-)
 
 describe("contrast math", () => {
   it("scores black on white at 21:1 and a colour on itself at 1:1", () => {
@@ -51,35 +47,34 @@ describe("contrast math", () => {
   })
 })
 
-describe("reader palettes", () => {
-  it("has exactly the four palette and scheme pairs", () => {
-    expect(PAIRS).toHaveLength(4)
-    for (const [palette, scheme] of PAIRS) {
-      expect(readerTokens(palette, scheme).scheme).toBe(scheme)
-    }
+describe("reader themes", () => {
+  it("has exactly Light, Dark, and True Dark, with the two dark ones on the dark scheme", () => {
+    expect([...READER_THEMES]).toEqual(["light", "dark", "trueDark"])
+    expect(readerTokens("light").scheme).toBe("light")
+    expect(readerTokens("dark").scheme).toBe("dark")
+    expect(readerTokens("trueDark").scheme).toBe("dark")
   })
 
-  it("uses the app's own tokens for Classic Dark (KTD12)", () => {
-    const tokens = readerTokens("classic", "dark")
+  it("uses the app's own tokens for Dark (KTD12)", () => {
+    const tokens = readerTokens("dark")
     expect(tokens.background).toBe(BG_COLOR)
     expect(tokens.text).toBe(TEXT_PRIMARY)
   })
 
-  it("uses stone 50 with stone 900 text for Classic Light (KTD12)", () => {
-    const tokens = readerTokens("classic", "light")
+  it("uses stone 50 with stone 900 text for Light (KTD12)", () => {
+    const tokens = readerTokens("light")
     expect(tokens.background).toBe("#fafaf9")
     expect(tokens.text).toBe("#1c1917")
   })
 
-  it("uses white and black grounds for True Dark (R34)", () => {
-    expect(readerTokens("trueDark", "light").background).toBe("#ffffff")
-    expect(readerTokens("trueDark", "dark").background).toBe("#000000")
+  it("uses a black ground for True Dark (R34)", () => {
+    expect(readerTokens("trueDark").background).toBe("#000000")
   })
 
-  it.each(PAIRS)(
-    "%s %s: every drawn pair clears its WCAG AA floor (R36)",
-    (palette, scheme) => {
-      const checks = readerContrastChecks(readerTokens(palette, scheme))
+  it.each(READER_THEMES)(
+    "%s: every drawn pair clears its WCAG AA floor (R36)",
+    (theme) => {
+      const checks = readerContrastChecks(readerTokens(theme))
       // Anti-vacuous: an empty list would pass every expectation below.
       expect(checks.length).toBeGreaterThanOrEqual(6)
       for (const check of checks) {
@@ -91,11 +86,11 @@ describe("reader palettes", () => {
     },
   )
 
-  it.each(PAIRS)(
-    "%s %s: text and secondary text reach 4.5:1 and the fill 3:1",
-    (palette, scheme) => {
+  it.each(READER_THEMES)(
+    "%s: text and secondary text reach 4.5:1 and the fill 3:1",
+    (theme) => {
       const byName = new Map(
-        readerContrastChecks(readerTokens(palette, scheme)).map((check) => [
+        readerContrastChecks(readerTokens(theme)).map((check) => [
           check.name,
           check,
         ]),
@@ -107,8 +102,8 @@ describe("reader palettes", () => {
     },
   )
 
-  it("fails when one palette's text is swapped for a low-contrast value", () => {
-    const real = readerTokens("classic", "light")
+  it("fails when one theme's text is swapped for a low-contrast value", () => {
+    const real = readerTokens("light")
     const swapped: ReaderTokens = { ...real, text: "#e7e5e4" }
     const failing = readerContrastChecks(swapped).filter(
       (check) => check.ratio < check.floor,
@@ -121,7 +116,7 @@ describe("reader palettes", () => {
   it("fails when a translucent secondary text washes out over its ground", () => {
     // The composite, not the raw colour, is judged: at 20% alpha the same
     // colour that passes opaque must fail.
-    const real = readerTokens("trueDark", "dark")
+    const real = readerTokens("trueDark")
     const faded: ReaderTokens = {
       ...real,
       secondaryText: "rgba(171, 171, 171, 0.2)",
@@ -135,38 +130,40 @@ describe("reader palettes", () => {
   })
 
   it("keeps every token set frozen, so a caller cannot repaint the reader", () => {
-    expect(Object.isFrozen(READER_PALETTE_TOKENS)).toBe(true)
-    expect(Object.isFrozen(READER_PALETTE_TOKENS.classic.dark)).toBe(true)
+    expect(Object.isFrozen(READER_THEME_TOKENS)).toBe(true)
+    for (const theme of READER_THEMES) {
+      expect(Object.isFrozen(READER_THEME_TOKENS[theme])).toBe(true)
+    }
   })
 
   it("gives a light status bar on dark grounds and a dark one on light", () => {
-    expect(readerTokens("classic", "dark").statusBarStyle).toBe("light")
-    expect(readerTokens("classic", "light").statusBarStyle).toBe("dark")
-    expect(readerTokens("trueDark", "light").statusBarStyle).toBe("dark")
-    expect(readerTokens("trueDark", "dark").statusBarStyle).toBe("light")
+    expect(readerTokens("dark").statusBarStyle).toBe("light")
+    expect(readerTokens("light").statusBarStyle).toBe("dark")
+    expect(readerTokens("trueDark").statusBarStyle).toBe("light")
   })
 })
 
-describe("resolveReaderScheme", () => {
-  it("follows the device in System mode", () => {
-    expect(resolveReaderScheme("system", "light")).toBe("light")
-    expect(resolveReaderScheme("system", "dark")).toBe("dark")
+describe("resolveReaderTheme", () => {
+  it("follows the device in System mode, with Dark, not True Dark", () => {
+    expect(resolveReaderTheme("system", "light")).toBe("light")
+    expect(resolveReaderTheme("system", "dark")).toBe("dark")
   })
 
   it("reads an unknown device scheme as dark, the app's own look", () => {
-    expect(resolveReaderScheme("system", null)).toBe("dark")
-    expect(resolveReaderScheme("system", undefined)).toBe("dark")
-    expect(resolveReaderScheme("system", "unspecified")).toBe("dark")
+    expect(resolveReaderTheme("system", null)).toBe("dark")
+    expect(resolveReaderTheme("system", undefined)).toBe("dark")
+    expect(resolveReaderTheme("system", "unspecified")).toBe("dark")
   })
 
   it("ignores the device when the viewer picks a mode", () => {
-    expect(resolveReaderScheme("light", "dark")).toBe("light")
-    expect(resolveReaderScheme("dark", "light")).toBe("dark")
+    expect(resolveReaderTheme("light", "dark")).toBe("light")
+    expect(resolveReaderTheme("dark", "light")).toBe("dark")
+    expect(resolveReaderTheme("trueDark", "light")).toBe("trueDark")
   })
 
   it("covers every stored mode", () => {
     for (const mode of READER_MODES) {
-      expect(READER_SCHEMES).toContain(resolveReaderScheme(mode, "light"))
+      expect(READER_THEMES).toContain(resolveReaderTheme(mode, "light"))
     }
   })
 })

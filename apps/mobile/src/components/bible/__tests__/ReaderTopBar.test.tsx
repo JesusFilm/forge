@@ -30,7 +30,7 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   default: (props: { name: string }) => props.name,
 }))
 
-const TOKENS = readerTokens("classic", "dark")
+const TOKENS = readerTokens("dark")
 
 let mounted: TestInstance | null = null
 

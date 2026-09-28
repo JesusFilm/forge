@@ -127,6 +127,10 @@ import { datadogLog } from "../../../../lib/datadog"
 import type { ReaderServices } from "../../../../lib/bible/reader/services"
 import { catalogHasBook } from "../../../../lib/bible/repository/resolveChapter"
 import type { TranslationDownloadState } from "../../../../lib/bible/repository/translationDownloads"
+import {
+  DEFAULT_LINE_SPACING_STEP,
+  DEFAULT_TEXT_SIZE_STEP,
+} from "../../../../lib/bible/settings/snapshot"
 import { createReaderSettingsStore } from "../../../../lib/bible/settings/store"
 import { READER_SHEET_COPY } from "../../../../lib/bible/sheets/copy"
 import { readerSheetHref } from "../../../../lib/bible/sheets/routes"
@@ -377,9 +381,9 @@ describe("reader-passage route", () => {
 
   it("paints the sheet in the reader's theme", async () => {
     const { settings } = install()
-    settings.update({ mode: "light", palette: "trueDark" })
+    settings.update({ mode: "trueDark" })
     await renderRoute(ReaderPassageRoute)
-    expect(lastBackground()).toBe(readerTokens("trueDark", "light").background)
+    expect(lastBackground()).toBe(readerTokens("trueDark").background)
   })
 })
 
@@ -567,8 +571,8 @@ describe("reader-settings route", () => {
 
     await press(renderer, SETTINGS.modes.light)
     expect(settings.getSnapshot().mode).toBe("light")
-    await press(renderer, SETTINGS.palettes.trueDark)
-    expect(settings.getSnapshot().palette).toBe("trueDark")
+    await press(renderer, SETTINGS.modes.trueDark)
+    expect(settings.getSnapshot().mode).toBe("trueDark")
     // The sheet reads the same store as the reader, so its theme follows.
     const [root] = renderer.root.findAll(
       (node) => node.props.testID === "reader-settings-sheet",
@@ -576,14 +580,24 @@ describe("reader-settings route", () => {
     const style = StyleSheet.flatten(root?.props.style as never) as {
       backgroundColor?: string
     }
-    expect(style.backgroundColor).toBe(
-      readerTokens("trueDark", "light").background,
-    )
-    expect(lastBackground()).toBe(readerTokens("trueDark", "light").background)
+    expect(style.backgroundColor).toBe(readerTokens("trueDark").background)
+    expect(lastBackground()).toBe(readerTokens("trueDark").background)
 
     await press(renderer, SETTINGS.typefaces.sans)
-    await press(renderer, SETTINGS.lineSpacings.relaxed)
-    await press(renderer, SETTINGS.textSizeStep(5, 5))
+    // A drag to a step, as the native slider view reports it.
+    const slideTo = async (label: string, step: number) => {
+      const [slider] = renderer.root.findAll(
+        (node) =>
+          node.type === "RNCSlider" && node.props.accessibilityLabel === label,
+      )
+      await act(async () => {
+        ;(slider?.props.onRNCSliderValueChange as (event: unknown) => void)({
+          nativeEvent: { value: step, fromUser: true },
+        })
+      })
+    }
+    await slideTo(SETTINGS.lineSpacing, DEFAULT_LINE_SPACING_STEP + 2)
+    await slideTo(SETTINGS.textSize, DEFAULT_TEXT_SIZE_STEP - 1)
     const [verseNumbers] = controls(renderer, SETTINGS.verseNumbers)
     const [arrows] = controls(renderer, SETTINGS.showArrows)
     await act(async () => {
@@ -592,8 +606,8 @@ describe("reader-settings route", () => {
     })
     expect(settings.getSnapshot()).toMatchObject({
       typeface: "sans",
-      lineSpacing: "relaxed",
-      textSizeStep: 4,
+      lineSpacingStep: DEFAULT_LINE_SPACING_STEP + 2,
+      textSizeStep: DEFAULT_TEXT_SIZE_STEP - 1,
       verseNumbers: false,
       showArrows: true,
     })
