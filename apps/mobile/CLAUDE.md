@@ -1529,9 +1529,10 @@ disagree about the bar's size.
   "My Downloads" as `title`, and `PrivacyPolicyButton` as `footer`. That
   button is the app's only in-app privacy policy link (App Store 5.1.1(i)), so
   keep it. The header scrolls away while the Select row pins under it
-  (`stickyHeaderIndices`). If a second tab ever hosts this list, both
-  copies mount at cold launch and share the bar flag below. That is safe only
-  while selection needs the focused tab and blur exits it.
+  (`stickyHeaderIndices`).
+- **A second host shares the bar flag.** If a second tab ever hosts this list,
+  both copies mount at cold launch and share the bar flag below. That is safe
+  only while selection needs the focused tab and blur exits it.
 - **The downloads list hides the iOS bar through a module store.** `NativeTabs`
   has no per-screen `tabBarStyle`, and its only hide lever is the
   navigator-level `hidden` prop. A context cannot carry the flag, because the
