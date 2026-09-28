@@ -116,6 +116,23 @@ describe.skipIf(!adminUrl || !writer || !reader)(
         )
       }
     })
+    it.each([
+      "pg_read_server_files",
+      "pg_write_server_files",
+      "pg_execute_server_program",
+    ])("rejects SET-reachable predefined role %s", async (role) => {
+      if (!writer || !admin) throw new ConsumerRoleVerificationError()
+      await admin.$executeRawUnsafe(
+        `GRANT ${role} TO ${fixtureRole} WITH INHERIT FALSE, SET TRUE`,
+      )
+      try {
+        await expect(
+          verifyConsumerRoles(writer, fixture),
+        ).rejects.toBeInstanceOf(ConsumerRoleVerificationError)
+      } finally {
+        await admin.$executeRawUnsafe(`REVOKE ${role} FROM ${fixtureRole}`)
+      }
+    })
     it("rejects column-only writes", async () => {
       if (!writer || !admin) throw new ConsumerRoleVerificationError()
       await admin.$executeRawUnsafe(

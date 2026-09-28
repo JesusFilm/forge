@@ -23,7 +23,8 @@ async function inspect(db: PrismaClient, policy: Policy): Promise<string> {
     SELECT current_user AS role,
       EXISTS (SELECT 1 FROM pg_roles r WHERE
         (r.rolname = current_user OR pg_has_role(current_user, r.oid, 'SET'))
-        AND (r.rolsuper OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication OR r.rolbypassrls))
+        AND (r.rolsuper OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication OR r.rolbypassrls
+          OR r.rolname ~ '^pg_'))
       OR EXISTS (SELECT 1 FROM pg_namespace n
         WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
           AND EXISTS (SELECT 1 FROM pg_roles r WHERE
@@ -86,7 +87,7 @@ async function inspect(db: PrismaClient, policy: Policy): Promise<string> {
     throw new ConsumerRoleVerificationError()
   return role.role
 }
-/** Checks effective grants, including PUBLIC and inherited privileges, on every user table. */
+/** Checks effective and SET-reachable grants; predefined privilege roles are never required. */
 export async function verifyConsumerRoles(
   writer: PrismaClient,
   reader: PrismaClient,
