@@ -48,9 +48,7 @@ describe("the Discover tab, which is also named watch", () => {
   })
 
   it("returns false for any other tab", () => {
-    expect(isReturnToHomeFromWatch(["(tabs)", "library"], HOME_INDEX)).toBe(
-      false,
-    )
+    expect(isReturnToHomeFromWatch(["(tabs)", "bible"], HOME_INDEX)).toBe(false)
     expect(isReturnToHomeFromWatch(["(tabs)", "profile"], HOME_BARE)).toBe(
       false,
     )

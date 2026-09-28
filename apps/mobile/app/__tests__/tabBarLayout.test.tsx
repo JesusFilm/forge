@@ -142,7 +142,7 @@ describe("iOS — the native bar", () => {
   it("puts the Bible trigger third, with its own label and symbol (feat-553 R2)", async () => {
     setPlatform("ios")
     await renderIos()
-    expect(mockTriggers).toHaveLength(5)
+    expect(mockTriggers).toHaveLength(4)
     const bible = mockTriggers[2]!
     expect(bible.name).toBe("bible")
     expect(triggerParts(bible)).toEqual({
@@ -151,7 +151,7 @@ describe("iOS — the native bar", () => {
     })
     // Anti-vacuous: the neighbours keep theirs.
     expect(triggerParts(mockTriggers[1]!).label).toBe("Search")
-    expect(triggerParts(mockTriggers[3]!).label).toBe("Library")
+    expect(triggerParts(mockTriggers[3]!).label).toBe("Profile")
   })
 
   it("opts every tab out of UIKit's automatic content inset", async () => {
@@ -177,7 +177,7 @@ describe("iOS — the native bar", () => {
   })
 
   it("hides the bar only while the store says so", async () => {
-    // The Library screen's selection mode is the one writer. NativeTabs has no
+    // The downloads list's selection mode is the one writer. NativeTabs has no
     // per-screen `tabBarStyle`, so the flag has to reach the LAYOUT.
     setPlatform("ios")
     expect((await renderIos()).hidden).toBe(false)

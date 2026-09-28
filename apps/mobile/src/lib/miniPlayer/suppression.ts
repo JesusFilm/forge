@@ -46,9 +46,10 @@ export function isInAppSheetRoute(segments: readonly string[]): boolean {
 /**
  * The sheets that are component state rather than routes: the Library delete
  * confirmation (`src/components/library/DeleteConfirmSheet.tsx`, hosted by
- * `app/(tabs)/library.tsx`), the SDUI quiz modal, and the player settings
- * sheet (`src/components/watch/PlayerSettingsSheet.tsx`, hosted by
- * `VideoPlayer.tsx` — a routed form sheet cannot cover the fullscreen player).
+ * `LibraryDownloads.tsx` on the Profile tab), the SDUI quiz
+ * modal, and the player settings sheet
+ * (`src/components/watch/PlayerSettingsSheet.tsx`, hosted by `VideoPlayer.tsx`
+ * — a routed form sheet cannot cover the fullscreen player).
  */
 export type NonRouteSheetId =
   | "libraryDeleteConfirm"

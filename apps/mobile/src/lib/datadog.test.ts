@@ -555,7 +555,7 @@ describe("isSheetViewRoute", () => {
 
   it.each([
     [["(tabs)"]],
-    [["(tabs)", "library"]],
+    [["(tabs)", "profile"]],
     [["series", "[slug]"]],
     [["experience", "[slug]"]],
     [["reader"]],

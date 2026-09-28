@@ -34,8 +34,7 @@ const SURFACES = [
   "src/components/home/HomeScreen.tsx",
   "app/(tabs)/watch.tsx",
   "src/components/search/BrowseTopics.tsx",
-  "app/(tabs)/library.tsx",
-  "app/(tabs)/profile.tsx",
+  "src/components/library/LibraryDownloads.tsx",
   "src/components/ui/Snackbar.tsx",
   "src/components/ExportReportHost.tsx",
 ]
@@ -67,7 +66,7 @@ describe("every scroll surface clears the floating tab bar", () => {
 
   it("names every surface the enumeration is meant to cover", () => {
     // A shrinking list is the failure mode this guard cannot otherwise see.
-    expect(SURFACES).toHaveLength(7)
+    expect(SURFACES).toHaveLength(6)
   })
 })
 
@@ -76,8 +75,7 @@ describe("every scroll surface clears the floating tab bar", () => {
 const TAB_ROUTES = {
   index: { surface: "src/components/home/HomeScreen.tsx" },
   watch: { surface: "app/(tabs)/watch.tsx" },
-  library: { surface: "app/(tabs)/library.tsx" },
-  profile: { surface: "app/(tabs)/profile.tsx" },
+  profile: { surface: "src/components/library/LibraryDownloads.tsx" },
   // feat-553: no scroll surface. The reader puts its footer above the bar
   // with readerBottomInset, from the tab screen's own inset (chrome.ts).
   bible: { reader: "app/(tabs)/bible.tsx" },
@@ -103,6 +101,20 @@ describe("every tab route is accounted for", () => {
       expect(SURFACES).toContain(row.surface)
     },
   )
+
+  // A row that names a shared surface proves nothing unless the route renders
+  // it: a tab that drops the import would escape the enumeration unnoticed.
+  it.each(
+    Object.entries(TAB_ROUTES).filter(
+      ([, row]) => row.surface && row.surface.startsWith("src/"),
+    ),
+  )("%s imports the surface it is listed under", (name, row) => {
+    const route = stripComments(
+      fs.readFileSync(path.join(ROOT, `app/(tabs)/${name}.tsx`), "utf8"),
+    )
+    const modulePath = row.surface.replace(/^src\//, "").replace(/\.tsx$/, "")
+    expect(route).toContain(`/src/${modulePath}"`)
+  })
 
   it("puts the Bible tab's reader on the tab host, which clears the bar", () => {
     const source = stripComments(

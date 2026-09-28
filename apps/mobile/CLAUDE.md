@@ -1457,7 +1457,7 @@ the app's own `#1c1917` instead of the platform contrast scrim.
 
 ## Tab bar — UIKit's own bar on iOS, a flush JS bar on Android
 
-`src/lib/tabBar.ts` owns every number. Both navigators, the Library screen, the
+`src/lib/tabBar.ts` owns every number. Both navigators, the downloads list, the
 mini player and six scroll surfaces read it from there, so no two files can
 disagree about the bar's size.
 
@@ -1514,8 +1514,8 @@ disagree about the bar's size.
   reaches a scroll view that is first in the subview chain, and no tab screen
   has one there — on Home that position holds the horizontal hero pager — so
   the screens pad themselves through `useTabBarClearance()` instead.
-- **The Bible tab is the fifth tab (feat-553).** The order in
-  `TAB_ROUTE_NAMES` is Home, Discover, Bible, Library, Profile. The tab
+- **The Bible tab is the third tab (feat-553).** The order in
+  `TAB_ROUTE_NAMES` is Home, Discover, Bible, Profile. The tab
   renders the shared reader with `host="tab"` and has no scroll surface. The
   reader puts its footer above the bar through `readerBottomInset` in
   `src/lib/bible/reader/chrome.ts`, so `tabBarClearance.guard.test.js` pins
@@ -1523,7 +1523,16 @@ disagree about the bar's size.
 - **`app/(tabs)/_layout.tsx` MUST stay on disk.** It now serves Android only.
   Do not delete it: expo-router resolves the platform sibling by specificity,
   and it throws without an extension-less fallback file.
-- **The Library screen hides the iOS bar through a module store.** `NativeTabs`
+- **There is no Library tab. The downloads list lives on Profile.**
+  `src/components/library/LibraryDownloads.tsx` holds the list, selection mode
+  and the delete flow. Profile passes its account card as `header`,
+  "My Downloads" as `title`, and `PrivacyPolicyButton` as `footer`. That
+  button is the app's only in-app privacy policy link (App Store 5.1.1(i)), so
+  keep it. The header scrolls away while the Select row pins under it
+  (`stickyHeaderIndices`). If a second tab ever hosts this list, both
+  copies mount at cold launch and share the bar flag below. That is safe only
+  while selection needs the focused tab and blur exits it.
+- **The downloads list hides the iOS bar through a module store.** `NativeTabs`
   has no per-screen `tabBarStyle`, and its only hide lever is the
   navigator-level `hidden` prop. A context cannot carry the flag, because the
   layout renders the screen and is therefore an ANCESTOR, not a descendant. So
@@ -1536,8 +1545,8 @@ disagree about the bar's size.
   frame. `SelectionActionBar` clamps it — `insets.bottom >= TAB_BAR_HEIGHT_IOS`
   gives `insets.bottom - TAB_BAR_HEIGHT_IOS`, anything smaller passes through —
   so the home indicator reads 34 from both 83 and 34, and 0 from 49 on a
-  home-button device. `library.tsx` pads its list by `TAB_BAR_HEIGHT_IOS + 24`
-  while selection runs.
+  home-button device. `LibraryDownloads.tsx` pads its list by
+  `TAB_BAR_HEIGHT_IOS + 24` while selection runs.
 - **`TabBarBackground` survives, but `SelectionActionBar` is its only
   consumer.** The navigator dropped it: UIKit draws its own material. The action
   bar stands in the same place over the same content, so the measured tint floor
