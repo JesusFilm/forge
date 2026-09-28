@@ -121,6 +121,8 @@ See [registry evidence](evidence/feat-530/registry-mockup.md).
 
 ## Production activation — 2026-09-28
 
+Setup record: [PR #2445](https://github.com/JesusFilm/forge/pull/2445).
+
 Owner: Jaco. After PR #2442 deployed, sign-in worked but the UI reported
 management disabled. Production lacked both consumer database URLs and the
 default source policy. Jaco explicitly authorized provisioning and activation
