@@ -285,7 +285,7 @@ Review found three statements that were wrong, and all three were mine:
   already existed. The fix changed it to fourth. It now says "another player
   surface" and names Explore as the exception (`apps/mobile/CLAUDE.md:1095`).
 - `apps/mobile/CLAUDE.md` gained the rule itself, stated as a rule rather than
-  as a description of the current code (`apps/mobile/CLAUDE.md:1112-1127`).
+  as a description of the current code (`apps/mobile/CLAUDE.md:1120-1135`).
 
 ## Why This Works
 

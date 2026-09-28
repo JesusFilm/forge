@@ -1098,8 +1098,16 @@ no seek, so the feed uses `src/hooks/useClipAutostart.ts`, a per-clip gate
 with the same three release paths and the same `AUTOSTART_VEIL_TIMEOUT_MS`.
 Its timer runs only while a load can run: it waits for the pager's rest, and
 it does not run while the clip yields to the root player (feat-552 KTD10).
-The veil, the spinner, the poster and the still all read its one
-`veilVisible` predicate. The poster is the clip's authored image, else admin's
+The veil, the spinner, the poster and the still all show on its one
+`veilVisible` predicate, but the image and the spinner do not leave on it.
+After the gate lifts on play, `ClipVeil` holds them until the active view draws
+its first frame, for at most `VEIL_FRAME_WAIT_MS`; a fade at the gate lift
+shows a black band. A failure (error or timeout) releases them at once. The
+chrome renders above the hold, so the hold never hides a control. The "frame
+drawn" flag is per player and clears only on a new source, because a replay by
+seek sends no new first frame (see
+`docs/solutions/logic-errors/first-frame-veil-hold-needs-per-source-latch-and-failure-release.md`).
+The poster is the clip's authored image, else admin's
 pre-generated hero poster (`muxHeroPosterFromPlaybackId`, byte for byte with
 `WATCH_HERO_POSTER_RECIPE`). The one-player still is `muxClipStillUrl`: 540x960
 smartcrop at the clip start.
