@@ -6,8 +6,8 @@ priority: "P1"
 status: "not-started"
 start_date: "2026-09-16"
 duration: 5
-depends_on: ["feat-526", "feat-529"]
-blocks: []
+depends_on: ["feat-526", "feat-527"]
+blocks: ["feat-529"]
 tags: ["rag", "auth", "observability"]
 ---
 
@@ -28,7 +28,10 @@ internal management path; planning completion does not deliver either.
 
 ## What To Build
 
-Implement plan section F after successful dogfood. GitHub OAuth admits only
+Implement the management portion of plan section F immediately after the access
+backend. Develop on a local branch against a local database and verify through
+the actual UI. Reporting views can follow feat-528; dogfood follows the usable
+management flow. GitHub OAuth admits only
 signed-in handles in the current merged portal-user allowlist. Show all consumers;
 only their runtime owners may manage them. CI validates allowlist handles against
 Forge contributor/read-write access as safely verifiable, not consumer memberships.
@@ -52,12 +55,14 @@ routes. Generate new key replaces the consumer's single active credential.
 
 No external consumers or implicit quotas. No secrets in logs, tests, command
 output, chat, PRs or telemetry. Preserve hashing/HTTPS and no-store secret displays.
-No production action is authorized. J021 is an isolated prototype: allowlist,
-durable sessions, live OAuth app registration and Railway deployment remain unproven.
+No production action is authorized. Portal admission and production login proof
+are already delivered; use the actual feat-527 backend. Development identities
+and seed data must remain local, with no production auth bypass or CI fixture setup.
 
 ## Verification
 
-Run plan E and package checks plus page-load performance. Test allowlist
+Use the local UI to complete deferred feat-527 end-to-end verification.
+Run relevant plan E and package checks plus page-load performance. Test allowlist
 before/after merge, stale publication and removed-user sessions; all-consumer
 visibility with cross-consumer mutation denial; invalid/duplicate/concurrent names;
 initial-owner tampering; preview/submit; owner-only Add member with allowlist

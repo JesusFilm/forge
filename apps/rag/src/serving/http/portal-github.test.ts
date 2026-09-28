@@ -52,3 +52,32 @@ it("discards the provider token after resolving the stable GitHub identity", asy
   expect(identity).toEqual({ id: 42, login: "engineer" })
   expect(JSON.stringify(identity)).not.toContain("synthetic-access-token")
 })
+
+it("passes the caller's shared cancellation to GitHub admission requests", async () => {
+  const controller = new AbortController()
+  const provider = createGitHubAdmission({
+    repositoryToken: "synthetic",
+    clientId: "client",
+    clientSecret: "synthetic",
+    callbackUrl: "https://rag.example/portal/callback",
+  })
+  let requestSignal: AbortSignal | null | undefined
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url, options: RequestInit) => {
+      requestSignal = options.signal
+      return new Promise<Response>((_resolve, reject) => {
+        requestSignal?.addEventListener(
+          "abort",
+          () => reject(requestSignal?.reason),
+          { once: true },
+        )
+      })
+    }),
+  )
+  const result = provider.current(controller.signal)
+  const assertion = expect(result).rejects.toThrow("cancelled")
+  controller.abort(new Error("cancelled"))
+  await assertion
+  expect(requestSignal?.aborted).toBe(true)
+})

@@ -22,8 +22,10 @@ portal-user validation CI, GitHub identity, token verification/rotation, databas
 isolation and usage reports. Discovery evidence belongs in separate draft
 [PR #2325](https://github.com/JesusFilm/forge/pull/2325); this plan is the canonical
 policy record in [PR #2304](https://github.com/JesusFilm/forge/pull/2304).
-Discovery must complete before feat-527 starts; usage, dogfood and portal follow
-in order. J022 reconciles both drafts without moving discovery into this PR.
+Discovery must complete before feat-527 starts. The 2026-09-28 delivery update
+brings local management UI work immediately after the access backend, deferring
+full user-flow verification to that UI. Usage/reporting and operational dogfood
+follow; incomplete live verification does not block the backend merge. J022 reconciles both drafts without moving discovery into this PR.
 
 Implementation is explicitly split:
 
@@ -32,7 +34,7 @@ Implementation is explicitly split:
    dependent on access identity. Access alone cannot close the programme or permit
    shared-token cutoff; both deliverables and their release gates must pass.
 3. [feat-529](../roadmap/rag/feat-529-rag-consumer-dogfood-migration.md): actual ops HTTP dogfood and seven-day migration, after usage.
-4. [feat-530](../roadmap/rag/feat-530-rag-consumer-self-service-portal.md): internal self-service portal, after successful dogfood. Its design
+4. [feat-530](../roadmap/rag/feat-530-rag-consumer-self-service-portal.md): internal self-service portal; management UI follows the backend and precedes dogfood. Reporting views follow feat-528. Its design
    is captured here now because Bible lookup expansion will increase demand.
 
 No product implementation, billing, external consumers, source import, corpus
@@ -114,9 +116,9 @@ rights. No per-consumer registration or owner-change PR is involved.
 
 One-time display, verifier-only persistence, immediate atomic replacement,
 Jaco/RAGBot-only aggregates, seven-day grace and actual ops HTTP dogfood remain
-accepted. RAGBot is the first ordinary consumer. The full portal follows dogfood;
+accepted. RAGBot is the first ordinary consumer. The management portal now precedes dogfood;
 feat-527 supplies the same authenticated creation/membership backend for an
-isolated pre-portal dogfood harness, without a SQL, authorization or PR bypass.
+actual locally developed portal UI, without a SQL, authorization or PR bypass.
 
 Remaining technical details: exact allowlist path/schema, trusted merged-revision
 publication/freshness, stable GitHub identity binding across renames, safely
@@ -380,15 +382,19 @@ steps for auth DB failure, telemetry loss, failed handoff and partial cutover.
 
 ## E. Acceptance and release verification
 
-Implementation tests use isolated local/CI databases and synthetic fixtures.
+Implementation tests use isolated local/CI databases and ordinary test fixtures.
+Delivery update (2026-09-28): merge the access backend with incomplete live
+verification recorded, then complete management-flow checks through the local
+feat-530 UI. No temporary CI role provisioning or pre-UI production harness is
+required. These later programme acceptance checks do not block that backend merge.
 Real dogfood is a later approved environment operation, not performed by these documentation jobs, including J014.
 
 1. Apply the approved decisions. Locate the actual `forge-rag-retrieve` task path/revision and
    approved receiver; absent client access blocks release proof.
 2. Register RAGBot first through the authenticated creation backend with an
-   allowlisted initial owner and one-time issuance. Before full portal delivery,
-   use an isolated harness exercising the same authorization. Register a second synthetic
-   integration for isolation. No privileged bypass or special auth path.
+   allowlisted initial owner and one-time issuance through the delivered portal UI.
+   Use local data for isolation checks during UI development. No privileged
+   bypass or special auth path.
 3. Establish a retained, fully covered UTC report window and obtain a baseline
    using the report reader. Existing unused integration reports 0/0/null.
 4. Through the **actual `forge-rag-retrieve` ops task and real `POST /v1/search` endpoint**, send

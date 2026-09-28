@@ -68,6 +68,51 @@ describe("GET /v1/health", () => {
 })
 
 describe("POST /v1/search", () => {
+  it("uses registered identity and never falls back to a matching legacy token", async () => {
+    const { retriever, calls } = spyRetriever()
+    const app = createApp({
+      retriever,
+      tokens: parseTokenRegistry(JSON.stringify({ rag_synthetic: ["*"] })),
+      consumerAuth: {
+        authenticate: async (secret) =>
+          secret === "rag_synthetic"
+            ? {
+                consumerId: "synthetic-id",
+                allowedSourceKeys: ["jesusfilm-org"],
+              }
+            : null,
+      },
+    })
+    const accepted = await app.request(
+      searchRequest({ query: "hope" }, "rag_synthetic"),
+    )
+    expect(accepted.status).toBe(200)
+    expect(calls[0]?.policy?.allowedSourceKeys).toEqual(["jesusfilm-org"])
+    const denied = await createApp({
+      retriever,
+      tokens: parseTokenRegistry(JSON.stringify({ rag_synthetic: ["*"] })),
+      consumerAuth: { authenticate: async () => null },
+    }).request(searchRequest({ query: "hope" }, "rag_synthetic"))
+    expect(denied.status).toBe(401)
+    expect(calls).toHaveLength(1)
+  })
+
+  it("fails closed when registered authentication storage is unavailable", async () => {
+    const { retriever, calls } = spyRetriever()
+    const response = await createApp({
+      retriever,
+      tokens,
+      consumerAuth: {
+        authenticate: async () => {
+          throw new Error("synthetic-storage-detail")
+        },
+      },
+    }).request(searchRequest({ query: "hope" }, "rag_synthetic"))
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({ error: "auth_unavailable" })
+    expect(calls).toHaveLength(0)
+  })
+
   it.each([undefined, "unknown-token"])(
     "rejects missing or unknown bearer credentials",
     async (token) => {
