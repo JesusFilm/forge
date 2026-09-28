@@ -91,9 +91,11 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 ## Admin endpoint resolution (feat-339)
 
 **A development bundle defaults to local admin** —
-`http://localhost:3003/api/graphql`, rewritten to `10.0.2.2` on the Android
-emulator. No env file required: a fresh clone or a fresh worktree is already
-pointed at local admin. Release bundles are unchanged and default to production.
+`http://localhost:3003/api/graphql`, rewritten to `10.0.2.2` (the Android
+emulator's alias for the Mac) on every Android device, emulator or phone. The
+simulators and the emulator need no env file: a fresh clone or a fresh worktree
+is already pointed at local admin. A physical phone needs a per-machine override
+(see below). Release bundles are unchanged and default to production.
 All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
 `src/env.ts` and `src/lib/config.ts` both consume.
 
@@ -118,7 +120,8 @@ All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
 - **`EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN=1` opts back in**, deliberately and
   visibly — the startup line then names production on every launch.
 - **Only the known production host refuses.** A LAN address, a tunnel, or an
-  emulator alias boots normally, so physical-device work is unaffected.
+  emulator alias boots normally, so the refusal does not block physical-device
+  work.
 - **Every development launch prints its endpoint**:
   `[admin-endpoint] admin_endpoint.url=… admin_endpoint.kind=…`.
 - **An endpoint that refuses connections raises a dev-only banner** over Home
@@ -129,6 +132,14 @@ All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
 `.env.local`. `fetch-secrets` replaces `.env.local` wholesale, so a hand-added
 line there is lost on the next run; and `.env.development.local` is never loaded
 in production mode, so it cannot be inlined into a published bundle.
+
+**A physical phone needs a LAN override to reach local admin.** The loopback
+rewrite keys on the platform, not on an emulator. So a physical Android phone
+sends admin traffic to `10.0.2.2`, which does not exist on its network, and
+`adb reverse tcp:3003` alone does not help. On a physical iPhone, `localhost` is
+the phone. Set `EXPO_PUBLIC_ADMIN_GRAPHQL_URL=http://<mac-lan-ip>:<port>/api/graphql`
+in `.env.development.local`, then restart Metro with `--clear`. Full recipe:
+`docs/solutions/developer-experience/physical-android-dev-build-local-admin-emulator-alias.md`.
 
 Local admin needs `pnpm --filter @forge/admin dev` on port 3003 against a
 pgvector-capable Postgres. Getting production-shaped content into it is tracked
