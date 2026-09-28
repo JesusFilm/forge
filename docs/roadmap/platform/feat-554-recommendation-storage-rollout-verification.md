@@ -61,7 +61,10 @@ cascade deletion throughput or full-transition headroom.
   cycle. Preserve 29-day retention and all detail.
 - Record the last legacy write and any rollback. Once all legacy traces expire,
   plan a separate migration to retire old storage and reclaim its allocation.
-  Do not rewrite a nearly full live table or backfill retained traces in place.
+  Do not rewrite a nearly full live table or perform unreviewed retained-trace
+  backfills. The separately reviewed feat-560 ten-run lossless conversion pilot
+  preserved all observations and expiry; it does not authorize bulk conversion
+  or establish immediate filesystem savings.
 
 ## Verification
 

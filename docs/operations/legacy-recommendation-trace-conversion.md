@@ -26,6 +26,13 @@ The initial 64 unique IDs were frozen at `2026-09-28T01:42:55.049110Z`.
 Keep that original private holds file and bundle together; this receipt contains
 no run identifiers.
 
+The frozen holds, manifest and verification receipts were also saved in the
+private local investigation bundle
+`recommendation-traffic-isolation/outputs/private-pilot/` under the September 28
+Codex documents. The directory is mode 0700 and files are mode 0600; no database
+credentials or trace payloads were copied. Use its original holds for later
+review, rather than depending on temporary files or resampling changed data.
+
 Create a mode-600 holds JSON file with `qualitySelectorSha256`, exactly 64 unique
 `qualityRunIds`, and `activeInvestigationRunIds`. These exclusions protect against
 this operation only: ordinary expiry/privacy deletion still applies. If evidence
@@ -184,6 +191,24 @@ served items retained their original values and expiry.
 This is one synthetic observation, not a production capacity forecast or a
 continuous peak measurement. Production needs its own bounded receipt and fresh
 free-space/WAL/serving checks; do not multiply these figures into promised GB.
+
+## Completed production pilot
+
+The first frozen ten-run manifest was converted on September 28 at 02:54:53 UTC
+from reviewed PR #2441 after both Admin roles converged on `392c71f8a`. It removed
+689 redundant stages and retained all 519,932 encoded bytes of observations,
+with zero skips. Subsequent SQL checks matched all ten original fingerprints,
+all parent/item/expiry hashes, and all 689 retained observations. The original
+64 quality holdouts remained excluded. No further batch followed.
+
+The operator required 10,000,000,000 free bytes and a 64 MiB global WAL review
+threshold. The measured interval generated 4,983,336 global WAL bytes; available
+filesystem space afterward was 11,207,565,312 bytes. Legacy relation allocation
+was unchanged. These include concurrent production work and do not establish
+isolated cost or peak bounds. This receipt does not authorize automatic replay,
+larger batches or a table rewrite. Review fresh conditions for any later batch.
+See the [validation receipt](../validation/recommendation-traffic-isolation-20260928/README.md)
+for exact measurement times and limits.
 
 ## Rollback order
 

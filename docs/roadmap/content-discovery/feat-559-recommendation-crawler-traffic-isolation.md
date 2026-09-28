@@ -3,7 +3,7 @@ id: "feat-559"
 title: "Isolate crawler and speculative recommendation traffic before persistence"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-28"
 duration: 2
 depends_on: []
@@ -51,3 +51,20 @@ verify ordinary delivery/attribution, parser compatibility, activation/StrictMod
 BFCache behavior, schema generation, page-load request timing, targeted checks
 and production convergence observations. Keep production proof separate from
 unit-test success.
+
+## Completion
+
+Admin PR #2439 and Web PR #2440 merged with passing CI. Both Admin roles accepted
+the additive contract before Web release; Web converged on `36dba0bc5` at
+03:16:29 UTC on September 28. Public crawler, prefetch, prerender and profile
+checks passed without cookies or issued attribution. The existing public For You
+flag remains disabled; its Admin exclusion boundary passed direct deferred
+contract checks and actual PostgreSQL no-write tests. No rollout flag changed.
+
+The validation receipt is
+`docs/validation/recommendation-traffic-isolation-20260928/README.md`, including
+browser activation proof, native-browser limits, live responses and sampled
+aggregate observations. The existing storage follow-up now checks excluded
+commits as well as the separate feat-554 retention/capacity and feat-555 physical
+reclamation gates. Recognition is based on declared origin metadata; it does not
+identify every bot that spoofs an ordinary browser.
