@@ -80,6 +80,12 @@ The ticket is not complete until this result is visible and reconcilable in the 
 - When shadow co-watch evidence is sparse, the comparison retains the observed live slate and labels that baseline truthfully, even if its original generator was hybrid. Existing live semantic fallback remains unchanged.
 - The isolated local database has no authenticated Admin user or registered OAuth redirect for this worktree, so an authenticated browser walkthrough could not be completed. The server-rendered Admin page and permission/decision states were verified in component tests; an authorized Admin session against a representative corpus remains the visual evidence gate.
 
+## Production preflight refusal and retry repair (2026-09-29)
+
+- The [bounded production preflight](../../operations/recommendation-cowatch-preflight-2026-09-29.md) reached 50,001 distinct source episodes against the existing 50,000 cap before graph eligibility. Migration 0104 was applied; no generation or evaluation was dispatched. This is a preflight refusal, not a terminal shadow evaluation decision. The storage owner acknowledged the refusal; no capacity clearance was issued or required for writes that did not occur.
+- The evaluation CLI now requires an explicit UUID/window/sample/minimum-run tuple, and successful/fenced workflow receipts retain the minimum-run threshold for exact retry conflict checks. Local CLI/workflow/operator tests and real PostgreSQL revision/privacy/rebuild fixtures passed. No source bound, integrity threshold or live candidate behavior changed.
+- Production graph metrics, anchors, overlap, latency, fallback observations, terminal evaluation and authorized Admin reconciliation remain unobserved. Keep this ticket **in progress**. A later runnable attempt needs a separately reviewed finite workload and fresh storage clearance; do not narrow the corpus or raise bounds merely to obtain a successful result. Feat-505 remains the later usefulness/promotion decision path.
+
 New records declare the following handling in the schema and migration:
 
 | Record              | Purpose and identity                                     | Access and ingestion                                | Retention and deletion                           | Fallback      |
