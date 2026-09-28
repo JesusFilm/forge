@@ -56,10 +56,14 @@ import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-producti
 import { getWebVttCueText } from "@/lib/webvtt"
 import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 
-import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+import { watchSurfaceItemPath } from "@/lib/watch-surface-path"
+import {
+  selectWatchHomeHeroManifest,
+  type WatchHomeHeroManifestCatalog,
+} from "@/lib/watch-home-hero-manifest"
 
 type WatchHomeTvCarouselProps = {
-  manifest?: SignedWatchSurfaceManifest
+  heroManifestCatalog?: WatchHomeHeroManifestCatalog
   exposurePlacement?: string
   slides: WatchHomeHeroSlide[]
   sequence?: WatchHomeCarouselSequenceData | null
@@ -545,7 +549,7 @@ function WatchHomeTvOverlay({
   slides,
   ringAnimationKey,
   exposurePlacement,
-  manifest,
+  heroManifestCatalog,
 }: {
   activeIndex: number
   activeSlide: WatchHomeTvCarouselSlide
@@ -560,10 +564,15 @@ function WatchHomeTvOverlay({
   ringAnimationKey: string
   slides: readonly WatchHomeTvCarouselSlide[]
   exposurePlacement: string
-  manifest?: SignedWatchSurfaceManifest
+  heroManifestCatalog?: WatchHomeHeroManifestCatalog
 }) {
   const t = useTranslations("WatchHome")
   const actionsRef = useRef<HTMLDivElement>(null)
+  const activePath = watchSurfaceItemPath(activeSlide.href)
+  const manifest = useMemo(
+    () => selectWatchHomeHeroManifest(heroManifestCatalog, activePath),
+    [heroManifestCatalog, activePath],
+  )
 
   return (
     <div
@@ -591,6 +600,7 @@ function WatchHomeTvOverlay({
         </div>
         <WatchExposureBoundary
           rootRef={actionsRef}
+          measurementKey={JSON.stringify([activeSlide.id, activePath])}
           manifest={manifest}
           config={{
             surface: "watch-home",
@@ -1055,7 +1065,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
 })
 
 export function WatchHomeTvCarousel({
-  manifest,
+  heroManifestCatalog,
   exposurePlacement,
   pinned = true,
   sequence = null,
@@ -1187,7 +1197,7 @@ export function WatchHomeTvCarousel({
           playbackTimeSeconds={playbackTimeSeconds}
           ringAnimationKey={ringAnimationKey}
           slides={timelineSlides}
-          manifest={manifest}
+          heroManifestCatalog={heroManifestCatalog}
           exposurePlacement={
             exposurePlacement ?? (pinned ? "home-hero" : "authored-hero")
           }

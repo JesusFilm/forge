@@ -1,4 +1,7 @@
-import { signWatchSurfaceManifest } from "@/lib/watch-surface-manifest.server"
+import {
+  signWatchHomeHeroManifestCatalog,
+  signWatchSurfaceManifest,
+} from "@/lib/watch-surface-manifest.server"
 import { watchHomeHeroSource } from "@/lib/watch-surface-manifest.sources"
 import { watchSurfaceSource } from "@/lib/watch-surface-manifest"
 import Image from "next/image"
@@ -74,8 +77,9 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
         <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
           <h1 className="sr-only">{t("pageTitle")}</h1>
           <WatchHomeTvCarousel
-            manifest={
-              signWatchSurfaceManifest(watchHomeHeroSource(model)) ?? undefined
+            heroManifestCatalog={
+              signWatchHomeHeroManifestCatalog(watchHomeHeroSource(model)) ??
+              undefined
             }
             slides={model.heroSlides}
             sequence={model.carousel}

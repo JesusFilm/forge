@@ -54,8 +54,8 @@ export function watchHomeHeroSource(
       }),
     ),
   ]
-  // A hero is one rotating slot. Never truncate the candidate authority.
-  if (paths.length > 100) return null
+  // Internal catalogue input: each active card receives a singleton authority.
+  // Never truncate the server-owned candidates to the delivery slate limit.
   return {
     surface: "watch-home",
     block: "hero",

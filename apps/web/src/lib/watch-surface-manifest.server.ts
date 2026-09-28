@@ -8,6 +8,8 @@ import {
   type SignedWatchSurfaceManifest,
 } from "./watch-surface-manifest"
 
+import type { WatchHomeHeroManifestCatalog } from "./watch-home-hero-manifest"
+
 const DOMAIN = "watch-public-surface-manifest-v2"
 export const WATCH_SURFACE_MANIFEST_TTL_MS = 48 * 60 * 60 * 1000
 export const WATCH_SURFACE_MANIFEST_CLOCK_SKEW_MS = 5 * 60 * 1000
@@ -77,4 +79,61 @@ export function verifyWatchSurfaceManifest(
     timingSafeEqual(expected, supplied)
     ? parsed.data.manifest
     : null
+}
+
+/** Signs every trusted hero candidate without widening the universal slate limit. */
+export function signWatchHomeHeroManifestCatalog(
+  source: WatchSurfaceManifestSource | null,
+  now = Date.now(),
+): WatchHomeHeroManifestCatalog | null {
+  if (
+    source === null ||
+    source.surface !== "watch-home" ||
+    source.block !== "hero" ||
+    source.presentation !== "hero-card" ||
+    !Array.isArray(source.items) ||
+    source.items.length === 0 ||
+    !Number.isFinite(now)
+  )
+    return null
+  const expiry = new Date(
+    now + WATCH_SURFACE_MANIFEST_TTL_MS - WATCH_SURFACE_MANIFEST_CLOCK_SKEW_MS,
+  )
+  if (!Number.isFinite(expiry.getTime())) return null
+  const { items: sourceItems, ...config } = source
+  const parsed = watchSurfaceManifestSchema.omit({ items: true }).safeParse({
+    ...config,
+    policyVersion: "watch-exposure-v2",
+    sourceVersion: "0".repeat(64),
+    expiresAt: expiry.toISOString(),
+  })
+  if (!parsed.success) return null
+  const items: SignedWatchSurfaceManifest["manifest"]["items"] = []
+  const paths = new Set<string>()
+  for (const item of sourceItems) {
+    const singleton = watchSurfaceManifestSchema.safeParse({
+      ...parsed.data,
+      items: [item],
+    })
+    if (!singleton.success || singleton.data.items[0].position !== 0)
+      return null
+    const validated = singleton.data.items[0]
+    if (!paths.has(validated.itemPath)) {
+      paths.add(validated.itemPath)
+      items.push(validated)
+    }
+  }
+  const manifest = {
+    ...parsed.data,
+    sourceVersion: createHash("sha256")
+      .update(sourcePayload({ ...parsed.data, items }))
+      .digest("hex"),
+  }
+  return {
+    manifest,
+    items: items.map(({ itemPath }) => [
+      itemPath,
+      signature({ ...manifest, items: [{ position: 0, itemPath }] }),
+    ]),
+  }
 }

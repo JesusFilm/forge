@@ -130,17 +130,19 @@ const caller = {
 }
 
 function issuerFixture() {
-  let stored: Record<string, unknown>[] = []
+  const stored: Record<string, unknown>[] = []
   const createMany = vi.fn(
     async ({ data }: { data: Record<string, unknown>[] }) => {
-      stored = data
+      stored.push(...data)
     },
   )
   const tx = {
     $executeRaw: vi.fn(),
     $executeRawUnsafe: vi.fn(),
     watchSurfaceExposure: {
-      findMany: vi.fn(async () => stored),
+      findMany: vi.fn(async ({ where }: { where: { windowId: string } }) =>
+        stored.filter((row) => row.windowId === where.windowId),
+      ),
       createMany,
     },
   }
@@ -155,6 +157,56 @@ function issuerFixture() {
 }
 
 describe("origin-issued Watch manifests", () => {
+  it("binds shared hero catalog versions to the active path and independent attempts", async () => {
+    const { prisma, createMany } = issuerFixture()
+    const hero = {
+      ...manifest,
+      surface: "watch-home",
+      block: "hero",
+      presentation: "hero-card",
+      placement: "home-hero",
+    }
+    const input = {
+      manifest: hero,
+      attemptId: event.windowId,
+      trafficCategory: "ordinary_browser",
+    }
+    const issued = await issueWatchSurfaceDelivery(prisma, caller, input, now)
+    expect(issued.status).toBe("accepted")
+    expect(
+      (await issueWatchSurfaceDelivery(prisma, caller, input, now)).status,
+    ).toBe("replay")
+    const next = {
+      ...input,
+      manifest: {
+        ...hero,
+        items: [{ position: 0, itemPath: "/watch/next.html" }],
+      },
+    }
+    expect(
+      (await issueWatchSurfaceDelivery(prisma, caller, next, now)).status,
+    ).toBe("conflict")
+    expect(
+      (
+        await issueWatchSurfaceDelivery(
+          prisma,
+          caller,
+          { ...input, manifest: { ...hero, sourceVersion: "b".repeat(64) } },
+          now,
+        )
+      ).status,
+    ).toBe("conflict")
+    const fresh = await issueWatchSurfaceDelivery(
+      prisma,
+      caller,
+      { ...next, attemptId: "00000000-0000-4000-8000-000000000003" },
+      now,
+    )
+    expect(fresh.status).toBe("accepted")
+    expect(fresh.windowId).not.toBe(issued.windowId)
+    expect(createMany).toHaveBeenCalledTimes(2)
+  })
+
   it("refuses fleet callers even without an explicit traffic classification", async () => {
     const { prisma, transaction } = issuerFixture()
     await expect(
