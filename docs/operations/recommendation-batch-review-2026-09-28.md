@@ -17,6 +17,10 @@ the personalization pilot, activating experiments, promoting a candidate lane,
 installing the deferred Datadog resources, or deploying local worktree code.
 Production verification must follow the normal PR-to-main release path.
 
+On September 28, the user authorized merging the reviewed batch through that
+normal path. Ordinary automatic deployment is permitted; the restrictions on
+flags, pilot scope, experiments, candidate promotion and manual deployment remain.
+
 Co-watch usefulness remains unproven until the controlled evaluation in feat-505.
 Exposure and CTR are measurements, not a new ranking objective. Historical
 telemetry gaps cannot be closed by a later healthy sample.
@@ -97,8 +101,10 @@ checks. GitHub reported 13 successful checks, including `ci-gate`, with ten
 scope-dependent skips and no failures. The
 [follow-up record](https://github.com/JesusFilm/forge/blob/919cd0d68d09b47e2acf84c845e0bbdbb3d6492c/docs/operations/recommendation-evidence-telemetry-followup-2026-09-28.md) and
 [sanitized query aggregate](https://github.com/JesusFilm/forge/blob/919cd0d68d09b47e2acf84c845e0bbdbb3d6492c/docs/validation/evidence-acceptance-20260928/feat-545-bounded-recheck.json)
-preserve the exact limitations. The ticket remains `in-progress` and the PR is
-unmerged; this is completed investigation work, not completed acceptance.
+preserve the exact limitations. PR #2428 was squash-merged at
+`b145cedc362c371e0b70109a790f1ceb5bd3a2ea` on September 28 at 01:33:19 UTC.
+The ticket remains `in-progress`; this is completed investigation work, not
+completed acceptance.
 
 The parent integrated both schema changes in an isolated branch. Merge conflicts
 were limited to two curated test migration lists; resolutions retain all
@@ -154,9 +160,46 @@ integrated ticket states; it also picks up already-landed Auth, Mobile and stora
 missing from the previous generated index. Dependency links remain unchanged and
 bidirectional.
 
-All three tickets remain `in-progress`. Code is available in focused PRs and has
-been integrated locally. No code deployment, production shadow publication or
-new live viewer exposure is established by this record. No production flags,
-pilot scope, experiments or candidate lanes were changed. After normal PR-to-main
-deployment, authorized Admin reconciliation and representative shadow evidence
-are still required; local synthetic evidence cannot close those gates.
+All three tickets remain `in-progress`. Their implementation and evidence PRs
+were merged through the normal PR-to-main flow below. No production flags,
+pilot scope, experiments or candidate lanes were changed. Authorized Admin
+reconciliation and representative shadow evidence are still required after
+deployment; local synthetic evidence cannot close those gates.
+
+## Merge verification
+
+The parent checked the current PR heads, all check results, repository merge
+rules and review threads. No review threads were unresolved. The repository
+requires squash merges and no additional reviewer approval. Each merge pinned
+the reviewed head with `--match-head-commit`.
+
+| PR                                                    | Scope              | Squash commit                              | Merged at (UTC, September 28) |
+| ----------------------------------------------------- | ------------------ | ------------------------------------------ | ----------------------------- |
+| [#2428](https://github.com/JesusFilm/forge/pull/2428) | Telemetry evidence | `b145cedc362c371e0b70109a790f1ceb5bd3a2ea` | 01:33:19                      |
+| [#2431](https://github.com/JesusFilm/forge/pull/2431) | Watch exposure     | `c7b8958d6f22a650e4ca9f75bc0f96e559a27bff` | 01:33:33                      |
+| [#2430](https://github.com/JesusFilm/forge/pull/2430) | Co-watch shadow    | `8ddd29c5b66ca78e4bc9a24a18dd5b67d5601627` | 01:47:16                      |
+
+Exposure's full post-merge `forge-ci` run passed. Before merging co-watch, its
+owner refreshed the branch against the exposure merge, retained migrations
+0100–0104 in the affected fixtures, and aligned profile-projection and
+viewing-mode fixtures with the same list. Admin typechecking, schema generation
+without drift, all 105 migrations on a fresh database, 26 focused unit tests,
+30 PostgreSQL tests and normal lint/format hooks passed. The refreshed PR head
+`678c6db2eeee5873a7164652f44425f887b05639` then passed all 17 applicable GitHub
+checks. Runtime recommendation code matches the previously validated combined
+integration; the additional changes extend the database fixture lists.
+
+Railway's automatic deployment status exposed a separate staging Auth failure.
+Environment `3c508519-e1d5-430a-be27-64477f9594e9` is `stage`, not production.
+Deployment `b3f9cfc1-9647-4983-b483-6664a7c26431` built successfully, started
+Next.js, then failed repeated `/api/health` checks with HTTP 503. Four earlier
+deployments before this batch also had `FAILED` status. Production
+`https://auth.jesusfilm.org/api/health` returned HTTP 200 with `ok: true` during
+this review. The bounded logs do not establish the underlying staging cause.
+[Feat-561](../roadmap/platform/feat-561-auth-staging-health-recovery.md) tracks
+that separate follow-up; no deployment settings, environment variables or
+manual redeploys were changed during the investigation.
+
+These merge receipts do not establish completed feature acceptance, successful
+deployment of every service, production exposure reconciliation, or a published
+co-watch shadow generation. The remaining evidence gates above still apply.

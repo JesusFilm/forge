@@ -15,6 +15,10 @@ repairs. It does not authorize changing production flags, broadening the pilot,
 activating experiments, promoting candidates, direct production deployment, or
 installing deferred monitoring resources.
 
+On September 28, the user authorized merging the reviewed batch through the
+normal PR-to-main flow. This permits its ordinary automatic deployment; the
+activation restrictions and remaining evidence gates above still apply.
+
 The starting revision is `7bfed3f9fc228bfd5e3353697f91d7e6a05c9464` from
 `origin/main`. Existing open PRs and active tasks were checked before dispatch;
 no duplicate implementation of these three tickets was found. PR #2410 already

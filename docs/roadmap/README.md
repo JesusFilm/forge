@@ -4,13 +4,13 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 27, 2026)
+## Status (September 28, 2026)
 
-- **Total tickets:** 734
+- **Total tickets:** 736
 - **Complete:** 551
 - **In progress:** 59
-- **Not started:** 45
-- **Blocked:** 79
+- **Not started:** 46
+- **Blocked:** 80
 - **Overdue and not complete:** 142
 
 ## Feature Index
@@ -614,6 +614,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-534](platform/feat-534-changelog-membership-activation.md)                       | Activate preapproved Changelog memberships                                         | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-543](platform/feat-543-mobile-sign-in-gate.md)                                   | Mobile sign-in gate hides sign-in until an environment turns it on                 | urim       | P1       | 2026-09-23 | 2    | 2026-09-24 | in-progress |
 | [feat-556](platform/feat-556-mobile-expo-sdk57-patch-alignment.md)                     | Restore CI after Expo patch drift and stale benchmark clock                        | nisal      | P1       | 2026-09-28 | 1    | 2026-09-28 | complete    |
+| [feat-555](platform/feat-555-recommendation-legacy-trace-reclamation.md)               | Reclaim legacy recommendation trace storage after expiry                           | nisal      | P1       | 2026-10-29 | 3    | 2026-10-31 | blocked     |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
@@ -687,6 +688,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-516](platform/feat-516-admin-profiler-collection-latency.md)                     | Characterize Admin profiler collection latency after deployment                    | nisal      | P2       | 2026-09-16 | 1    | 2026-09-16 | complete    |
 | [feat-517](platform/feat-517-watch-intermittent-hydration-error.md)                    | Reproduce the intermittent Watch HTML hydration mismatch                           | nisal      | P2       | 2026-09-16 | 1    | 2026-09-16 | complete    |
 | [feat-553](platform/feat-553-mobile-native-bible-reader.md)                            | Mobile native Bible reader, one verse at a time                                    | urim       | P2       | 2026-09-24 | 14   | 2026-10-07 | in-progress |
+| [feat-561](platform/feat-561-auth-staging-health-recovery.md)                          | Restore Auth staging deployment health                                             | nisal      | P2       | 2026-09-29 | 2    | 2026-09-30 | not-started |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                               | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-509](platform/feat-509-mobile-export-save-sheet-native-module.md)                | Mobile raw export: iOS Save sheet via an export-mode native module                 | urim       | P2       | 2026-10-01 | 3    | 2026-10-03 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                             | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
