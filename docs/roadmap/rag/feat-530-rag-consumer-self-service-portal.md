@@ -71,8 +71,8 @@ loss. Record synthetic outcomes only. Read package guidance before coding.
 
 ## Delivery update — 2026-09-28
 
-Management UI work is in progress on `feat/feat-530-consumer-portal`, based on
-the feat-527 backend. Create consumers through Create in the actual UI
+Management UI work is in progress in [PR #2442](https://github.com/JesusFilm/forge/pull/2442),
+rebased onto main after the feat-527 backend merged. Create consumers through Create in the actual UI
 for onboarding evidence. Synthetic HTTP tests remain useful for authorization
 and concurrency, but do not replace the user journey. Usage/reporting follows
 in feat-528, then feat-529 uses the UI-created RAGBot for actual ops HTTP dogfood.
