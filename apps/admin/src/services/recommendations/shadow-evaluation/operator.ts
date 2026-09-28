@@ -16,6 +16,7 @@ import {
   RecommendationInternalStateError,
 } from "../errors"
 import { HYBRID_PERSONALIZED_MANIFEST_ID } from "../promotion/manifest"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 import {
   dispatchRecommendationShadowEvaluation,
   HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY,
@@ -52,6 +53,27 @@ export async function startExactHybridShadowEvaluation(
   prisma: PrismaClient,
   input: OperatorInput,
 ) {
+  return startExactShadowEvaluation(prisma, input, {
+    generatorVersion: HYBRID_CANDIDATE_GENERATOR_SET_VERSION,
+    generatorKey: HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY,
+  })
+}
+
+export async function startExactCowatchShadowEvaluation(
+  prisma: PrismaClient,
+  input: OperatorInput,
+) {
+  return startExactShadowEvaluation(prisma, input, {
+    generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+    generatorKey: COWATCH_SHADOW_GENERATOR_KEY,
+  })
+}
+
+async function startExactShadowEvaluation(
+  prisma: PrismaClient,
+  input: OperatorInput,
+  lane: Readonly<{ generatorVersion: string; generatorKey: string }>,
+) {
   const now = input.now ?? new Date()
   assertBoundedClosedWindow(input, now)
 
@@ -62,7 +84,7 @@ export async function startExactHybridShadowEvaluation(
       await createShadowEvaluation(prisma, {
         evaluationId: input.evaluationId,
         manifestId: HYBRID_PERSONALIZED_MANIFEST_ID,
-        generatorVersion: HYBRID_CANDIDATE_GENERATOR_SET_VERSION,
+        generatorVersion: lane.generatorVersion,
         contextVersion: CANDIDATE_CONTEXT_VERSION,
         eligibilityVersion: CANDIDATE_ELIGIBILITY_VERSION,
         windowStart: input.windowStart,
@@ -85,7 +107,7 @@ export async function startExactHybridShadowEvaluation(
     )
   }
 
-  assertExactRetry(evaluation, input)
+  assertExactRetry(evaluation, input, lane)
   const priorWorkflow = await prisma.workflowRun.findFirst({
     where: {
       workflowKey: RECOMMENDATION_SHADOW_EVALUATION_WORKFLOW_KEY,
@@ -131,7 +153,7 @@ export async function startExactHybridShadowEvaluation(
     {
       evaluationId: evaluation.id,
       expectedGeneration: evaluation.generation,
-      generatorKey: HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY,
+      generatorKey: lane.generatorKey,
       minimumRuns: input.minimumRuns,
     },
     { actorId: input.actorId },
@@ -210,10 +232,11 @@ function assertBoundedClosedWindow(input: OperatorInput, now: Date) {
 function assertExactRetry(
   evaluation: ExistingEvaluation,
   input: OperatorInput,
+  lane: Readonly<{ generatorVersion: string; generatorKey: string }>,
 ) {
   if (
     evaluation.manifestId !== HYBRID_PERSONALIZED_MANIFEST_ID ||
-    evaluation.generatorVersion !== HYBRID_CANDIDATE_GENERATOR_SET_VERSION ||
+    evaluation.generatorVersion !== lane.generatorVersion ||
     evaluation.contextVersion !== CANDIDATE_CONTEXT_VERSION ||
     evaluation.eligibilityVersion !== CANDIDATE_ELIGIBILITY_VERSION ||
     evaluation.windowStart.getTime() !== input.windowStart.getTime() ||
@@ -222,7 +245,7 @@ function assertExactRetry(
     !evaluation.manifest.enabled
   ) {
     throw new RecommendationConflictError(
-      "The shadow evaluation retry does not match the exact hybrid evaluation",
+      "The shadow evaluation retry does not match the exact lane evaluation",
     )
   }
 }

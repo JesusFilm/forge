@@ -92,6 +92,7 @@ describe("semanticRecommendationDelivery resolver", () => {
       consentReceiptDigest: null,
       profileTokenDigest: null,
       eligibleHuman: true,
+      trafficCategory: undefined,
       caller: {
         role: "CONSUMER_BEARER",
         id: null,

@@ -1,18 +1,25 @@
 /**
- * The saved Explore mute choice (R11): the setter changes the value every
- * consumer reads, and writes it to the device so it survives a restart.
+ * The audio language write path (U6): the ISO 639-3 code travels with the slug,
+ * and a fill for an older record lands only while that slug is still stored.
+ * The saved Explore mute choice (feat-552 R11) is written the same way.
+ * Rendered under StrictMode so the hydration effect runs its remount cycle.
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 jest.mock("@react-native-async-storage/async-storage", () =>
-  jest.requireActual(
-    "@react-native-async-storage/async-storage/jest/async-storage-mock",
-  ),
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 )
 jest.mock("../../lib/datadog", () => ({
-  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+  datadogLog: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
 }))
 
-import { act } from "react"
+import { StrictMode, act } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
 import {
@@ -28,66 +35,146 @@ import {
   type TestInstance,
 } from "../../test-utils/rnTestRenderer"
 
-type Prefs = ReturnType<typeof useWatchPreferences>
+type Preferences = ReturnType<typeof useWatchPreferences>
 
-let latest: Prefs | null = null
+let prefs!: Preferences
 function Probe() {
-  latest = useWatchPreferences()
+  prefs = useWatchPreferences()
   return null
 }
 
-async function mount(): Promise<TestInstance> {
-  let renderer!: TestInstance
+let mounted: TestInstance | null = null
+
+async function renderWithStored(blob: object | null) {
+  if (blob != null) {
+    await AsyncStorage.setItem(
+      WATCH_PREFERENCES_STORAGE_KEY,
+      JSON.stringify(blob),
+    )
+  }
   await act(async () => {
-    renderer = TestRenderer.create(
-      <WatchPreferencesProvider>
-        <Probe />
-      </WatchPreferencesProvider>,
+    mounted = TestRenderer.create(
+      <StrictMode>
+        <WatchPreferencesProvider>
+          <Probe />
+        </WatchPreferencesProvider>
+      </StrictMode>,
     )
   })
-  return renderer
+  expect(prefs.isReady).toBe(true)
+}
+
+async function storedBlob(): Promise<Record<string, unknown>> {
+  const raw = await AsyncStorage.getItem(WATCH_PREFERENCES_STORAGE_KEY)
+  return JSON.parse(raw ?? "{}") as Record<string, unknown>
 }
 
 afterEach(async () => {
-  latest = null
+  if (mounted != null) {
+    await act(async () => {
+      mounted?.unmount()
+    })
+    mounted = null
+  }
   await AsyncStorage.clear()
-  jest.clearAllMocks()
 })
 
-describe("WatchPreferencesProvider — Explore mute", () => {
-  it("starts with sound, and saves the mute choice to the device", async () => {
-    const renderer = await mount()
-    expect(latest?.isReady).toBe(true)
-    expect(latest?.exploreMuted).toBe(false)
+describe("setPreferredAudioLanguage", () => {
+  it("stores the code with the slug", async () => {
+    await renderWithStored(null)
 
     await act(async () => {
-      latest?.setExploreMuted(true)
+      prefs.setPreferredAudioLanguage("spanish", "spa")
     })
-    expect(latest?.exploreMuted).toBe(true)
+
+    expect(prefs.audioLanguageSlug).toBe("spanish")
+    expect(prefs.audioLanguageIso3).toBe("spa")
+    const blob = await storedBlob()
+    expect(blob.audioLanguageSlug).toBe("spanish")
+    expect(blob.audioLanguageIso3).toBe("spa")
+  })
+
+  it("clears the previous language's code when the new one carries none", async () => {
+    await renderWithStored({
+      audioLanguageSlug: "spanish",
+      audioLanguageIso3: "spa",
+    })
+    expect(prefs.audioLanguageIso3).toBe("spa")
+
+    await act(async () => {
+      prefs.setPreferredAudioLanguage("thai", null)
+    })
+
+    expect(prefs.audioLanguageSlug).toBe("thai")
+    expect(prefs.audioLanguageIso3).toBeNull()
+    expect((await storedBlob()).audioLanguageIso3).toBeNull()
+  })
+})
+
+describe("backfillAudioLanguageIso3", () => {
+  it("fills the code of a record stored before the code existed", async () => {
+    await renderWithStored({ audioLanguageSlug: "spanish" })
+    expect(prefs.audioLanguageIso3).toBeNull()
+
+    await act(async () => {
+      prefs.backfillAudioLanguageIso3("spanish", "spa")
+    })
+
+    expect(prefs.audioLanguageSlug).toBe("spanish")
+    expect(prefs.audioLanguageIso3).toBe("spa")
+    expect((await storedBlob()).audioLanguageIso3).toBe("spa")
+  })
+
+  it("drops a fill for a slug that a pick in the same tick replaced", async () => {
+    await renderWithStored({ audioLanguageSlug: "spanish" })
+
+    await act(async () => {
+      prefs.setPreferredAudioLanguage("thai", null)
+      prefs.backfillAudioLanguageIso3("spanish", "spa")
+    })
+
+    expect(prefs.audioLanguageSlug).toBe("thai")
+    expect(prefs.audioLanguageIso3).toBeNull()
+    expect((await storedBlob()).audioLanguageIso3).toBeNull()
+  })
+
+  it("keeps a code that is already stored", async () => {
+    await renderWithStored({
+      audioLanguageSlug: "chinese-mandarin",
+      audioLanguageIso3: "cmn",
+    })
+
+    await act(async () => {
+      prefs.backfillAudioLanguageIso3("chinese-mandarin", "zho")
+    })
+
+    expect(prefs.audioLanguageIso3).toBe("cmn")
+  })
+})
+
+describe("setExploreMuted (feat-552 R11)", () => {
+  it("starts with sound, and saves the mute choice to the device", async () => {
+    await renderWithStored(null)
+    expect(prefs.exploreMuted).toBe(false)
+
+    await act(async () => {
+      prefs.setExploreMuted(true)
+    })
+
+    expect(prefs.exploreMuted).toBe(true)
     const stored = await AsyncStorage.getItem(WATCH_PREFERENCES_STORAGE_KEY)
     expect(parseStoredPreferences(stored).exploreMuted).toBe(true)
-
-    await act(async () => {
-      renderer.unmount()
-    })
   })
 
   it("reads a saved mute choice back after a restart", async () => {
-    await AsyncStorage.setItem(
-      WATCH_PREFERENCES_STORAGE_KEY,
-      JSON.stringify({ exploreMuted: true }),
-    )
-    const renderer = await mount()
-    expect(latest?.exploreMuted).toBe(true)
+    await renderWithStored({ exploreMuted: true })
+    expect(prefs.exploreMuted).toBe(true)
 
     await act(async () => {
-      latest?.setExploreMuted(false)
+      prefs.setExploreMuted(false)
     })
+
     const stored = await AsyncStorage.getItem(WATCH_PREFERENCES_STORAGE_KEY)
     expect(parseStoredPreferences(stored).exploreMuted).toBe(false)
-
-    await act(async () => {
-      renderer.unmount()
-    })
   })
 })

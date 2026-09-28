@@ -45,6 +45,8 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams.current,
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  // PlayerSlot listens on the root stack through getParent(); none here.
+  useNavigation: () => ({}),
 }))
 jest.mock("expo-status-bar", () => ({ StatusBar: () => null }))
 jest.mock("expo-image", () => ({ Image: () => null }))

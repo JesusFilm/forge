@@ -100,6 +100,7 @@ function variant(
     languageSlug,
     languageName,
     languageNameNative: null,
+    languageIso3: null,
     muxPlaybackId: id,
   }
 }

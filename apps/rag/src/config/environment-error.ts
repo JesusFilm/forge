@@ -14,6 +14,9 @@ export const ENVIRONMENT_TARGETS = [
 export type EnvironmentTarget = (typeof ENVIRONMENT_TARGETS)[number]
 
 export type EnvironmentConfigurationErrorCode =
+  | "consumer_access_configuration_incomplete"
+  | "consumer_access_requires_portal"
+  | "consumer_source_scope_invalid"
   | "dashboard_database_required"
   | "dashboard_generic_database_refused"
   | "firecrawl_api_key_required"
@@ -24,6 +27,7 @@ export type EnvironmentConfigurationErrorCode =
   | "production_read_host_required"
   | "production_write_host_required"
   | "production_write_opt_in_required"
+  | "portal_configuration_incomplete"
   | "railway_bearer_tokens_required"
 
 export class EnvironmentConfigurationError extends Error {

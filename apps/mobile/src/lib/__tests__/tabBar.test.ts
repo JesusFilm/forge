@@ -1,5 +1,5 @@
 /**
- * The bar's numbers live in one module so the navigator, the Library screen,
+ * The bar's numbers live in one module so the navigator, the downloads list,
  * the mini player and six scroll surfaces cannot disagree about them.
  */
 import { Platform } from "react-native"
@@ -12,6 +12,7 @@ import {
   TAB_BAR_OCCUPIED_HEIGHT,
   tabBarOccupiedHeightFor,
   TAB_BAR_FLAT_STYLE,
+  TAB_ROUTE_NAMES,
   useTabBarClearance,
   useTabBarStyle,
 } from "../tabBar"
@@ -46,8 +47,8 @@ describe("useTabBarStyle", () => {
 
   it("gives iOS the same object — the UIKit bar takes no style", () => {
     // iOS is shadowed by `_layout.ios.tsx`, whose NativeTabs navigator has no
-    // `tabBarStyle`. The export survives only because `library.tsx` writes it
-    // back through `setOptions` on Android.
+    // `tabBarStyle`. The export survives only because `LibraryDownloads.tsx`
+    // writes it back through `setOptions` on Android.
     setPlatform("ios")
     expect(useTabBarStyle()).toEqual(TAB_BAR_FLAT_STYLE)
   })
@@ -170,5 +171,22 @@ describe("isTabGroupRoute", () => {
     expect(isTabGroupRoute(["(tabs)"])).toBe(true)
     expect(isTabGroupRoute(["(tabs)", "watch"])).toBe(true)
     expect(isTabGroupRoute(["(tabs)", "index"])).toBe(true)
+  })
+
+  it("calls the Bible tab a tab route and the pushed reader not (feat-553 KTD9)", () => {
+    expect(isTabGroupRoute(["(tabs)", "bible"])).toBe(true)
+    // The pushed reader and its sheets are root-stack siblings of the group.
+    expect(isTabGroupRoute(["reader"])).toBe(false)
+    expect(isTabGroupRoute(["reader-passage"])).toBe(false)
+  })
+
+  it("lists the five tabs in the product order (feat-553 R2, KD18; feat-552 R1)", () => {
+    expect([...TAB_ROUTE_NAMES]).toEqual([
+      "index",
+      "explore",
+      "watch",
+      "bible",
+      "profile",
+    ])
   })
 })

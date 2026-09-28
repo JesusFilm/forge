@@ -17,7 +17,7 @@ const TAB_ICONS = {
   index: "house.fill",
   explore: "play.circle.fill",
   watch: "magnifyingglass",
-  library: "square.stack.fill",
+  bible: "book.closed.fill",
   profile: "person.fill",
 } as const satisfies Record<TabRouteName, string>
 

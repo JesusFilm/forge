@@ -32,6 +32,9 @@ const migrationSql = [
   "0071_recommendation_assignment_generation_key",
   "0072_recommendation_source_neutral_playback_episodes",
   "0082_user_recommendation_identity",
+  "0100_recommendation_candidate_compact_trace",
+  "0101_recommendation_candidate_compact_trace_validate",
+  "0102_recommendation_candidate_stage_duplicate_index_drop",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -400,6 +403,57 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           reason_code: RECOMMENDATION_TRACE_ACCESS_REASON,
         },
       ])
+
+      // A reader deployed before compact writing must return the same detail
+      // while old and new evidence coexist, then after legacy rows are gone.
+      const legacyStage = (
+        await client.query(
+          `SELECT * FROM recommendation_candidate_stage_evidence
+           WHERE run_id = 'admin-trace-candidate-run'`,
+        )
+      ).rows[0]
+      const compactStage = {
+        id: legacyStage.id,
+        stage: legacyStage.stage,
+        ordinal: legacyStage.ordinal,
+        candidateKey: legacyStage.candidate_key,
+        targetMediaId: legacyStage.target_media_id,
+        sourceGenerator: legacyStage.source_generator,
+        sourceRank: legacyStage.source_rank,
+        sourceScore: legacyStage.source_score,
+        normalizedScore: legacyStage.normalized_score,
+        rrfScore: legacyStage.rrf_score,
+        deterministicScore: legacyStage.deterministic_score,
+        finalPosition: legacyStage.final_position,
+        reasonCodes: legacyStage.reason_codes,
+        sourceEvidence: legacyStage.source_evidence,
+        createdAt: legacyStage.created_at.toISOString(),
+      }
+      await client.query(
+        `UPDATE recommendation_candidate_run
+         SET trace_format_version = 1, trace_payload = $1::jsonb
+         WHERE id = 'admin-trace-candidate-run'`,
+        [JSON.stringify({ stages: [compactStage] })],
+      )
+      const mixed = await loadRecommendationRequestDetail(prisma, {
+        requestId: "admin-trace-request",
+        actorDigest,
+        now,
+      })
+      expect(mixed?.candidateExecution).toEqual(detail?.candidateExecution)
+
+      await client.query(
+        `DELETE FROM recommendation_candidate_stage_evidence
+         WHERE run_id = 'admin-trace-candidate-run'`,
+      )
+      const compactOnly = await loadRecommendationRequestDetail(prisma, {
+        requestId: "admin-trace-request",
+        actorDigest,
+        now,
+      })
+      expect(compactOnly?.candidateExecution).toEqual(
+        detail?.candidateExecution,
+      )
     })
   },
 )

@@ -108,6 +108,7 @@ export function makeHarness(
     curatedFallback?: boolean
     profileComparison?: boolean
     database?: PrismaClient
+    candidateTraceFormat?: "legacy" | "compact"
     nowMilliseconds?: () => number
   } = {},
 ) {
@@ -215,6 +216,7 @@ export function makeHarness(
   let id = 0
   const service = new RecommendationDeliveryService({
     prisma: options.database ?? (prisma as never),
+    candidateTraceFormat: options.candidateTraceFormat,
     admission: {
       acquire,
       release,

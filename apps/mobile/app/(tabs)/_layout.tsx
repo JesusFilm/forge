@@ -62,15 +62,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="library"
+        name="bible"
         options={{
-          title: TAB_LABELS.library,
+          title: TAB_LABELS.bible,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons
-              name="albums-outline"
-              size={size}
-              color={color as string}
-            />
+            <Ionicons name="book" size={size} color={color as string} />
           ),
         }}
       />

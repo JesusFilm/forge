@@ -255,6 +255,7 @@ function variant(languageSlug: string, id: string): WatchVariant {
     languageSlug,
     languageName: languageSlug,
     languageNameNative: null,
+    languageIso3: null,
     muxPlaybackId: id,
   }
 }

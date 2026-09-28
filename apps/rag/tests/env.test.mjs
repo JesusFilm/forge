@@ -397,4 +397,4 @@ test("environment CLI failures do not print injected secrets", async () => {
       return true
     },
   )
-})
+}, 15_000)

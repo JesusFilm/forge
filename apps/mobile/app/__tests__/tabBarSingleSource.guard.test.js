@@ -13,7 +13,7 @@ const SHARED_MODULE = /lib\/tabBar["']/
 
 const MUST_IMPORT_THE_SHARED_HEIGHT = [
   ["src/components/watch/PlaybackHost.tsx", /TAB_BAR_OCCUPIED_HEIGHT/],
-  ["app/(tabs)/library.tsx", /useTabBarStyle/],
+  ["src/components/library/LibraryDownloads.tsx", /useTabBarStyle/],
   ["app/(tabs)/_layout.tsx", /useTabBarStyle/],
   // The iOS navigator takes no style object, but it still must not spell the
   // tab list itself — the guard beside this one pins that order to the FILES.

@@ -16,6 +16,7 @@ import {
   TestRenderer,
   type TestInstance,
 } from "../../src/test-utils/rnTestRenderer"
+import { READER_COPY } from "../../src/lib/bible/reader/copy"
 import { TAB_LABELS, TAB_ROUTE_NAMES } from "../../src/lib/tabBar"
 import {
   resetTabBarHidden,
@@ -122,6 +123,17 @@ afterEach(() => {
   resetTabBarHidden()
 })
 
+type ElementLike = { props: Record<string, unknown> }
+
+/** A trigger's Icon and Label, read from the elements it was given. */
+function triggerParts(trigger: Record<string, unknown>) {
+  const children = (
+    Array.isArray(trigger.children) ? trigger.children : [trigger.children]
+  ) as ElementLike[]
+  const [icon, label] = children
+  return { sf: icon?.props.sf, label: label?.props.children }
+}
+
 async function renderAndroid(): Promise<Record<string, unknown>> {
   let renderer!: TestInstance
   await act(async () => {
@@ -165,7 +177,7 @@ function screen(name: string): Record<string, unknown> {
 }
 
 describe("the shared tab record (R1)", () => {
-  it("names Explore second and labels it Explore", () => {
+  it("names Explore second and Bible fourth, each with its label", () => {
     const actual = jest.requireActual<typeof import("../../src/lib/tabBar")>(
       "../../src/lib/tabBar",
     )
@@ -173,14 +185,14 @@ describe("the shared tab record (R1)", () => {
       "index",
       "explore",
       "watch",
-      "library",
+      "bible",
       "profile",
     ])
     expect(actual.TAB_LABELS).toEqual({
       index: "Home",
       explore: "Explore",
       watch: "Search",
-      library: "Library",
+      bible: READER_COPY.tabTitle,
       profile: "Profile",
     })
   })
@@ -213,6 +225,21 @@ describe("iOS — the native bar", () => {
       )
     },
   )
+
+  it("puts the Bible trigger after Search, with its own symbol (feat-553 R2)", async () => {
+    setPlatform("ios")
+    await renderIos()
+    expect(mockTriggers).toHaveLength(TAB_ROUTE_NAMES.length)
+    const bible = mockTriggers[3]!
+    expect(bible.name).toBe("bible")
+    expect(triggerParts(bible)).toEqual({
+      sf: "book.closed.fill",
+      label: "label:bible",
+    })
+    // Anti-vacuous: the neighbours keep theirs.
+    expect(triggerParts(mockTriggers[2]!).label).toBe("label:watch")
+    expect(triggerParts(mockTriggers[4]!).label).toBe("label:profile")
+  })
 
   it("takes every label from the shared record", async () => {
     setPlatform("ios")
@@ -248,7 +275,7 @@ describe("iOS — the native bar", () => {
   })
 
   it("hides the bar only while the store says so", async () => {
-    // The Library screen's selection mode is the one writer. NativeTabs has no
+    // The downloads list's selection mode is the one writer. NativeTabs has no
     // per-screen `tabBarStyle`, so the flag has to reach the LAYOUT.
     setPlatform("ios")
     expect((await renderIos()).hidden).toBe(false)
@@ -308,6 +335,20 @@ describe("Android — the JS bar", () => {
   it("leaves tabBarHideOnKeyboard unset, exactly as today", async () => {
     setPlatform("android")
     expect((await renderAndroid()).tabBarHideOnKeyboard).toBeUndefined()
+  })
+
+  it("declares the Bible tab after Search, with its title and icon (feat-553 R2)", async () => {
+    setPlatform("android")
+    await renderAndroid()
+    expect(mockScreens[3]?.name).toBe("bible")
+    const options = screen("bible") as {
+      title: string
+      tabBarIcon: (p: { color: string; size: number }) => ElementLike
+    }
+    expect(options.title).toBe("label:bible")
+    expect(options.tabBarIcon({ color: "#fff", size: 24 }).props.name).toBe(
+      "book",
+    )
   })
 
   it("keeps its own tint colours", async () => {

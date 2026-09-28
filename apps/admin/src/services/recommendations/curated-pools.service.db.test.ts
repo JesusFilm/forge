@@ -9,6 +9,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { CuratedPoolsService } from "./curated-pools.service"
 import { retrieveCuratedFallback } from "./curated-fallback"
+import { createRecommendationDeliveryService } from "./delivery.factory"
+import { createUserRecommendationDeliveryService } from "./user-delivery.service"
+import { CONTEXTUAL_RECOMMENDATION_CAPABILITY } from "./traffic"
 import { digestValue } from "./promotion/manifest"
 import { runRecommendationDeliveryTransaction } from "./delivery-runtime"
 import {
@@ -306,6 +309,87 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           (await read()).items.some((item) => item.videoId === "video-1"),
         ).toBe(false)
         await admin.query(restore!)
+      }
+    }, 30_000)
+
+    it("returns real public inventory without any protected writes for profile-backed crawlers and speculation", async () => {
+      // Trap every recommendation table, including linkage, experiments and
+      // future evidence tables. Retrieval reads the real curated/catalog fixtures.
+      const protectedTables = await admin.query<{ tablename: string }>(
+        "SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'recommendation_%' ORDER BY tablename",
+      )
+      const existing = new Set(
+        (
+          await admin.query<{ tablename: string }>(
+            "SELECT tablename FROM pg_tables WHERE schemaname=$1",
+            [schema],
+          )
+        ).rows.map((row) => row.tablename),
+      )
+      await admin.query(
+        `CREATE FUNCTION "${schema}".reject_recommendation_write() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN RAISE EXCEPTION ''excluded delivery attempted a write''; END'`,
+      )
+      for (const { tablename } of protectedTables.rows) {
+        if (!existing.has(tablename))
+          await admin.query(
+            `CREATE TABLE "${schema}"."${tablename}" (LIKE public."${tablename}" INCLUDING ALL)`,
+          )
+        await admin.query(
+          `CREATE TRIGGER exclude_delivery_writes BEFORE INSERT OR UPDATE OR DELETE ON "${schema}"."${tablename}" FOR EACH ROW EXECUTE FUNCTION "${schema}".reject_recommendation_write()`,
+        )
+      }
+      const counts = async () =>
+        Promise.all(
+          protectedTables.rows.map(
+            async ({ tablename }) =>
+              (
+                await admin.query(
+                  `SELECT count(*)::int AS count FROM "${schema}"."${tablename}"`,
+                )
+              ).rows[0].count,
+          ),
+        )
+      const before = await counts()
+      const seeded = createRecommendationDeliveryService(prisma)
+      const forYou = createUserRecommendationDeliveryService(prisma, true)
+      for (const trafficCategory of [
+        "declared_crawler",
+        "speculative_prefetch",
+        "speculative_prerender",
+        undefined,
+      ]) {
+        for (const delivery of [seeded, forYou]) {
+          statements.length = 0
+          const response = await delivery.deliver({
+            ...personalizedInput("video-1"),
+            ...context,
+            trafficCategory,
+            eligibleHuman: trafficCategory == null ? false : true,
+          })
+          expect(response.requestId).toBeNull()
+          expect(response.expiresAt).toBeNull()
+          if (trafficCategory?.startsWith("speculative")) {
+            expect(response.items).toEqual([])
+            expect(statements).toEqual([])
+          } else {
+            expect(response.items.length).toBeGreaterThan(0)
+            expect(
+              response.items.every(
+                (item) =>
+                  item.capability === CONTEXTUAL_RECOMMENDATION_CAPABILITY,
+              ),
+            ).toBe(true)
+            expect(
+              statements.some((query) => query.includes("video_dub")),
+            ).toBe(true)
+          }
+          expect(
+            statements.filter((query) =>
+              /^(INSERT|UPDATE|DELETE|MERGE)\b/i.test(query.trim()),
+            ),
+          ).toEqual([])
+          expect(await counts()).toEqual(before)
+        }
       }
     }, 30_000)
   },
