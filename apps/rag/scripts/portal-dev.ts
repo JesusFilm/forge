@@ -13,15 +13,28 @@ import { createApp } from "../src/serving/http/app.js"
 import { randomToken } from "../src/serving/http/portal-token.js"
 import { verifyConsumerRoles } from "./consumer-role-policy.js"
 
+class PortalDevError extends Error {
+  constructor(
+    readonly code:
+      | "local_database_required"
+      | "isolated_local_database_required"
+      | "local_tls_files_required"
+      | "local_oauth_unavailable",
+  ) {
+    super(code)
+    this.name = "PortalDevError"
+  }
+}
+
 function localDatabase(value: string | undefined): string {
-  if (!value) throw new Error("local_database_required")
+  if (!value) throw new PortalDevError("local_database_required")
   const url = new URL(value)
   if (
     url.protocol !== "postgresql:" ||
     !["localhost", "127.0.0.1"].includes(url.hostname) ||
     url.pathname !== "/forge_rag_portal_dev"
   )
-    throw new Error("isolated_local_database_required")
+    throw new PortalDevError("isolated_local_database_required")
   return value
 }
 const writer = new PrismaClient({
@@ -36,7 +49,7 @@ const sessions = createPostgresSessionStore(
 await verifyConsumerRoles(writer, reader)
 const keyPath = process.env.RAG_PORTAL_DEV_TLS_KEY
 const certPath = process.env.RAG_PORTAL_DEV_TLS_CERT
-if (!keyPath || !certPath) throw new Error("local_tls_files_required")
+if (!keyPath || !certPath) throw new PortalDevError("local_tls_files_required")
 const origin = "https://localhost:3445"
 const users = [
   { id: 53001, login: "local-owner" },
@@ -92,7 +105,7 @@ app.route(
             (user) => user.id === identity.id && user.login === identity.login,
           ),
         exchange: async () => {
-          throw new Error("local_oauth_unavailable")
+          throw new PortalDevError("local_oauth_unavailable")
         },
       },
     },
