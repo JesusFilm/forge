@@ -4,6 +4,11 @@
   "browser": "149.0.7827.55",
   "checks": [
     {
+      "name": "inline-fixture-json-cannot-close-script",
+      "passed": true,
+      "detail": "Request-derived closing script text remains exact JSON data; normal React cards render"
+    },
+    {
       "name": "performance-run-0-issuance-after-load",
       "passed": true,
       "detail": "baseline"
@@ -147,17 +152,35 @@
   "performance": [
     {
       "mode": "baseline",
-      "dclMs": 85.40000003576279,
-      "loadMs": 444.4000000357628,
-      "fcpMs": 108,
+      "dclMs": 22.30000001192093,
+      "loadMs": 410.39999997615814,
+      "fcpMs": 40,
       "resources": 2,
       "scriptBytes": 608352,
       "issuanceBeforeLoad": 0
     },
     {
       "mode": "enabled",
-      "dclMs": 31.80000001192093,
-      "loadMs": 420.69999998807907,
+      "dclMs": 25.30000001192093,
+      "loadMs": 416.30000001192093,
+      "fcpMs": 40,
+      "resources": 5,
+      "scriptBytes": 608352,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "baseline",
+      "dclMs": 28,
+      "loadMs": 413.0999999642372,
+      "fcpMs": 36,
+      "resources": 2,
+      "scriptBytes": 608352,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "enabled",
+      "dclMs": 31,
+      "loadMs": 415.7000000476837,
       "fcpMs": 52,
       "resources": 5,
       "scriptBytes": 608352,
@@ -165,8 +188,8 @@
     },
     {
       "mode": "baseline",
-      "dclMs": 33.09999996423721,
-      "loadMs": 414.5999999642372,
+      "dclMs": 35.69999998807907,
+      "loadMs": 417.60000002384186,
       "fcpMs": 56,
       "resources": 2,
       "scriptBytes": 608352,
@@ -174,26 +197,8 @@
     },
     {
       "mode": "enabled",
-      "dclMs": 35.19999998807907,
-      "loadMs": 421,
-      "fcpMs": 48,
-      "resources": 5,
-      "scriptBytes": 608352,
-      "issuanceBeforeLoad": 0
-    },
-    {
-      "mode": "baseline",
-      "dclMs": 28,
-      "loadMs": 415.9000000357628,
-      "fcpMs": 48,
-      "resources": 2,
-      "scriptBytes": 608352,
-      "issuanceBeforeLoad": 0
-    },
-    {
-      "mode": "enabled",
-      "dclMs": 28,
-      "loadMs": 415.19999998807907,
+      "dclMs": 24.200000047683716,
+      "loadMs": 413.80000001192093,
       "fcpMs": 44,
       "resources": 5,
       "scriptBytes": 608352,
@@ -201,25 +206,25 @@
     },
     {
       "mode": "baseline",
-      "dclMs": 35.5,
-      "loadMs": 415.39999997615814,
-      "fcpMs": 44,
+      "dclMs": 23.80000001192093,
+      "loadMs": 411.4000000357628,
+      "fcpMs": 36,
       "resources": 2,
       "scriptBytes": 608352,
       "issuanceBeforeLoad": 0
     },
     {
       "mode": "enabled",
-      "dclMs": 36.5,
-      "loadMs": 424.60000002384186,
-      "fcpMs": 56,
+      "dclMs": 22.30000001192093,
+      "loadMs": 413.19999998807907,
+      "fcpMs": 36,
       "resources": 5,
       "scriptBytes": 608352,
       "issuanceBeforeLoad": 0
     }
   ],
-  "earlySelectionElapsedMs": 930,
-  "navigationElapsedMs": 195,
+  "earlySelectionElapsedMs": 858,
+  "navigationElapsedMs": 62,
   "cachedDescriptorLifetimeSeconds": 598,
   "bfcache": {
     "persistedObserved": false,
@@ -238,6 +243,13 @@
       "duplicateAttempts": 0
     },
     {
+      "kind": "selected",
+      "policyVersion": "watch-exposure-v1",
+      "capability": null,
+      "count": 1,
+      "duplicateAttempts": 0
+    },
+    {
       "kind": "eligible",
       "policyVersion": "watch-exposure-v2",
       "capability": "occlusion-aware",
@@ -245,8 +257,8 @@
       "duplicateAttempts": 0
     },
     {
-      "kind": "rendered",
-      "policyVersion": "watch-exposure-v1",
+      "kind": "selected",
+      "policyVersion": "watch-exposure-v2",
       "capability": null,
       "count": 4,
       "duplicateAttempts": 0
@@ -259,15 +271,8 @@
       "duplicateAttempts": 0
     },
     {
-      "kind": "selected",
+      "kind": "rendered",
       "policyVersion": "watch-exposure-v1",
-      "capability": null,
-      "count": 1,
-      "duplicateAttempts": 0
-    },
-    {
-      "kind": "selected",
-      "policyVersion": "watch-exposure-v2",
       "capability": null,
       "count": 4,
       "duplicateAttempts": 0

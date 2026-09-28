@@ -57,6 +57,10 @@ const caller = {
 }
 const prefix = `browser-${Date.now()}`
 const signerKey = "public-local-browser-fixture-only-key"
+// HTML parses script text before JavaScript parses JSON. Escape '<' so fixture
+// strings cannot close the script element, while JSON preserves the exact value.
+const inlineScriptJson = (value) =>
+  JSON.stringify(value).replaceAll("<", "\\u003c")
 const sign = (manifest) =>
   createHmac("sha256", signerKey).update(JSON.stringify(manifest)).digest("hex")
 const config = (name, suffix = "") => ({
@@ -197,7 +201,7 @@ const server = createServer(async (request, response) => {
     }
     response.setHeader("content-type", "text/html")
     response.end(
-      `<!doctype html><html><head><title>Local Watch exposure fixture</title></head><body><img src="/load-gate.svg" alt=""><div id="app"></div><script>window.fixtureConfig=${JSON.stringify(fixture)}</script><script type="module" src="/browser.js"></script></body></html>`,
+      `<!doctype html><html><head><title>Local Watch exposure fixture</title></head><body><img src="/load-gate.svg" alt=""><div id="app"></div><script>window.fixtureConfig=${inlineScriptJson(fixture)}</script><script type="module" src="/browser.js"></script></body></html>`,
     )
   } catch (error) {
     transport.errors.push(error.message)
@@ -241,6 +245,22 @@ const evidence = {
   performance: [],
 }
 try {
+  const attackName = "</script><script>window.fixtureInjected=true</script>"
+  await navigate(encodeURIComponent(attackName), "&mode=baseline")
+  await page.locator("#card-0").waitFor()
+  check(
+    "inline-fixture-json-cannot-close-script",
+    await page.evaluate(
+      (expected) =>
+        window.fixtureInjected !== true &&
+        window.fixtureConfig.descriptors[0].manifest.placement.endsWith(
+          expected,
+        ) &&
+        document.querySelectorAll("#app a").length === 2,
+      attackName,
+    ),
+    "Request-derived closing script text remains exact JSON data; normal React cards render",
+  )
   for (let i = 0; i < 8; i++) {
     const mode = i % 2 === 0 ? "baseline" : "enabled"
     await navigate(`perf-${i}`, `&count=70&mode=${mode}`)

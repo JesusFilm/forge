@@ -1,11 +1,13 @@
 # Feat-373 local verification
 
 This receipt covers the origin-issued v2 manifest implementation and its bounded
-Admin report. The feature remains in progress until normal Admin-before-Web
-rollout and authorized deployed browser/Admin reconciliation establish coverage.
+Admin report. The feature remains in progress until normal automatic rollout,
+healthy migration/service revisions and authorized deployed browser/Admin
+reconciliation establish coverage. Independent Admin/Web builds can finish in
+either order; new-Web/old-Admin compatibility falls back to v1/unknown coverage.
 No ranking, experiment, profile, traffic-admission or rate-limit changes are
-included. Migration 0105 is reserved for this change; storage 0106 belongs to the
-parent integration work.
+included. Migration 0105 is reserved for this change; no additional migration is
+reserved by this batch.
 
 ## Checks
 
@@ -26,18 +28,33 @@ parent integration work.
   after releasing the local fixture lock, exact SQL retry succeeded and enforced
   served-v2/no-capability/unique-card rules. This is not a claim that Prisma
   automatically repairs failed production migration state.
-- Web source/contract focused suite: 117 tests passed, including 77 independent
+- Web source/contract focused suite before the tooling correction: 117 tests passed,
+  including 77 independent
   actual-renderer/native-URL parity cases, 13 source adapters, six signatures,
   two feed-contract cases and 19 feed-route cases. The oracle resolves the real
   rendered href against the actual document URL; it does not reuse projection
   fallback logic. Scoped ESLint and nonincremental Web typecheck passed.
 - Root-home strict prop expectations were updated for the proven public
   pathname; all seven homepage tests passed. Full Web lint and roadmap lint
-  passed. Final full Web rerun passed all 276 files (one skipped): 4,699
+  passed. Full implementation Web rerun before the tooling-only correction passed all 276 files (one skipped): 4,699
   tests passed, 10 skipped, one todo. Configured Admin typecheck passed using
   the repository's existing 8 GiB heap setting.
+- The two actual database fixture files passed all eight tests locally with
+  `--no-file-parallelism`; the dense statement measured 336 ms on that rerun.
+  The existing CI database step uses an explicit file list that omits these
+  fixtures. Adding them was rejected by GitHub because this OAuth credential
+  lacks `workflow` scope; no credential or permission change was attempted.
+  This PR retains the fixtures and reproducible local evidence, with automatic
+  CI fixture wiring left to an already authorized workflow owner. The standard
+  CI migration step still applies migration 0105.
+- CodeQL found reflected fixture HTML input and double attribute unescaping in
+  test tooling. Inline JSON now encodes literal `<` as a JavaScript Unicode
+  escape; a real-browser closing-script attack confirms data round-trip without
+  execution. The parity oracle uses inert DOM parsing to decode attributes once
+  before independent URL resolution; all 78 parity tests passed. Production
+  implementation files are unchanged by these tooling fixes.
 - `git diff --check` passed. Normal lint-staged and repository formatting hooks
-  remain enabled for the commit.
+  passed for the implementation commit and remain enabled for the tooling follow-up.
 
 Broad suites run serially with at most two Vitest workers. No existing timeout
 was raised. Direct nonincremental Admin tsc hit Node's default 4 GiB heap; the
@@ -74,10 +91,10 @@ Parent diagnostic receipts are sanitized aggregates/plans only:
 ## Browser, cache and graph evidence
 
 The [actual local Chromium boundary/Admin fixture](2026-09-29-feat-373-browser-local.md)
-passed 28 checks with 316 served and 316 v2 rendered facts, 33 accepted batches,
+passed 29 checks with 316 served and 316 v2 rendered facts, 33 accepted batches,
 zero ingestion errors and zero duplicate served identities. Four alternating
-baseline/enabled runs found medians of 34.3/33.5 ms DOMContentLoaded,
-415.65/420.85 ms load and 52/50 ms FCP; script bytes were identical and three
+baseline/enabled runs found medians of 25.90/24.75 ms DOMContentLoaded,
+412.25/414.75 ms load and 38/42 ms FCP; script bytes were identical and three
 telemetry resources appeared after load. This fixture does not execute full Next
 routes, deployed search/feed, or the production ingress. Native BFCache was not
 observed; hidden/prerender states were property simulations. History reload

@@ -14,13 +14,16 @@ signature, then calls the real Admin `issueWatchSurfaceDelivery` and
 `recordWatchSurfaceExposureBatch` services against the parent-owned migrated
 `forge_exposure_acceptance` disposable PostgreSQL database. No production data,
 flags, sessions, deployment or authentication was used. Scratch bundles remain
-under ignored `work/watch-exposure-browser/`.
+under `work/watch-exposure-browser/`; archive that owned scratch outside the
+repository before running global formatting/commit hooks.
 
-Chromium **149.0.7827.55** passed **28 checks**. Actual Admin persistence
+Chromium **149.0.7827.55** passed **29 checks**. Actual Admin persistence
 accepted **33 batches** with **zero fixture ingestion errors**. The
 sanitized receipt contains **316 served** and **316 v2 rendered**
 facts; identifiers and windows are omitted from the retained aggregate JSON.
-No client request contains `kind: served`.
+No client request contains `kind: served`. A request-derived closing-script
+attack also remains exact JSON data without executing injected script; the
+fixture escapes literal `<` for the inline JavaScript context.
 
 The browser exercised below-fold rendered cards without eligible impressions,
 scroll followed by one-second continuous dwell, leaving/returning without a
@@ -50,13 +53,13 @@ in the JSON. Median results:
 
 | Metric       | Baseline | Enabled | Enabled minus baseline |
 | ------------ | -------: | ------: | ---------------------: |
-| DCL (ms)     |     34.3 |    33.5 |                  -0.80 |
-| Load (ms)    |   415.65 |  420.85 |                  +5.20 |
-| FCP (ms)     |       52 |      50 |                  -2.00 |
+| DCL (ms)     |    25.90 |   24.75 |                  -1.15 |
+| Load (ms)    |   412.25 |  414.75 |                  +2.50 |
+| FCP (ms)     |       38 |      42 |                  +4.00 |
 | Resources    |        2 |       5 |                  +3.00 |
 | Script bytes |   608352 |  608352 |                  +0.00 |
 
-Ordinary selected-anchor navigation completed in **195 ms**, without
+Ordinary selected-anchor navigation completed in **62 ms**, without
 waiting for telemetry. The baseline shares the fixture bundle and isolates
 boundary initialization plus its incremental requests; it does **not** measure
 the size of adding this feature to the full Next application. Resource counts
@@ -81,5 +84,8 @@ traffic fences have separate focused tests.
 This is local component/service integration proof, not full deployed Watch
 behavior, real HTML cache reconciliation or the authorized Admin acceptance
 session. Deployed Admin denominators, CTR, duplicates, ingestion health and
-coverage still need reconciliation after normal Admin-before-Web rollout.
+coverage still need reconciliation after normal automatic rollout. Independent
+Admin/Web builds may finish in either order; new Web has tested old-Admin
+fallback to v1/unknown coverage. Acceptance requires the Admin migration and
+all actual service revisions to be healthy.
 feat-373 must remain in progress while that acceptance gate is outstanding.

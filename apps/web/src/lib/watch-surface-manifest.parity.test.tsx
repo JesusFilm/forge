@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
 import { MediaCollection } from "@/components/sections/MediaCollection"
@@ -59,12 +60,18 @@ function child(slug: string | null): WatchChild {
     muxThumbnailBlurDataUrl: null,
   }
 }
+function renderedHrefs(markup: string): string[] {
+  const document = new DOMParser().parseFromString(markup, "text/html")
+  return [...document.querySelectorAll("a[href]")].map(
+    (anchor) => anchor.getAttribute("href") ?? "",
+  )
+}
+
 function measuredPaths(
   markup: string,
   publicDocumentPathname = "/watch/spanish.html",
 ) {
-  return [...markup.matchAll(/href="([^"]*)"/g)].flatMap(([, encodedHref]) => {
-    const href = encodedHref.replaceAll("&amp;", "&").replaceAll("&quot;", '"')
+  return renderedHrefs(markup).flatMap((href) => {
     const url = new URL(
       href,
       `https://www.jesusfilm.org${publicDocumentPathname}`,
@@ -79,6 +86,12 @@ function measuredPaths(
 }
 
 describe("source manifests mirror actual renderer output", () => {
+  it("decodes rendered attributes once and preserves literal entity text", () => {
+    const href = "/watch/jesus.html?literal=&quot;&amp;&#x3c;"
+    const markup = renderToStaticMarkup(<a href={href}>Card</a>)
+    expect(renderedHrefs(markup)).toEqual([href])
+    expect(measuredPaths(markup)).toEqual(["/watch/jesus.html"])
+  })
   it("matches promotional CommonMark links, reference definitions, autolinks and inert raw HTML", () => {
     const data = {
       textVariant: "promotional",

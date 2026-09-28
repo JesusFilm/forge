@@ -72,10 +72,14 @@ Report cohorts include served-only deliveries so lost receipts or ingestion
 failure do not disappear. Keep event-time CTR and original v1 coverage explicit.
 No historical rendered rows become served facts.
 
-Admin mutation, schema artifact and generated client deploy before Web starts
-calling the new operation. Rollback removes new Web issuance before retiring the
-receiver contract. No live recommendation ranking, experiments or profile state
-changes are included.
+The intended dependency order is Admin receiver/schema before new Web calls,
+but ordinary automatic service rollouts build independently and may finish in
+either order. New Web with old Admin has tested issuer-unavailable fallback to
+v1/unknown coverage and validation-only fallback for the nullable search field.
+Final acceptance requires the Admin migration and all actual service revisions
+to be healthy after normal rollout. Rollback removes new Web issuance before
+retiring the receiver contract. No deployment changes, live recommendation
+ranking, experiments or profile state changes are included.
 
 ## Source integration and verification
 
