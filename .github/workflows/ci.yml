@@ -184,6 +184,8 @@ jobs:
           src/services/recommendations/curated-pools.service.db.test.ts
           src/services/recommendations/recent-context.db.test.ts
           src/services/recommendations/admin-ops/detail.db.test.ts
+          src/services/recommendations/admin-ops/watch-exposure.service.db.test.ts
+          src/services/recommendations/watch-surface-migration.db.test.ts
           src/services/recommendations/delivery-persistence.db.test.ts
           src/db/recommendation-wait-sampler.db.test.ts
           --no-file-parallelism
