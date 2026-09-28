@@ -3,8 +3,8 @@ id: "feat-555"
 title: "Reclaim legacy recommendation trace storage after expiry"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
-start_date: "2026-10-29"
+status: "in-progress"
+start_date: "2026-09-29"
 duration: 3
 depends_on:
   - "feat-554"
@@ -18,6 +18,11 @@ tags:
 ---
 
 ## Problem
+
+Preparation started September 29: review and test the guarded SQL outside the
+automatic migration path. Production execution remains blocked by feat-554,
+the actual legacy expiry and purge, and fresh fleet/emptiness checks. Preparing
+this operation does not complete this ticket or authorize an early deployment.
 
 Compact writes reduce new candidate-trace storage, but pre-activation legacy
 stage rows remain until their request roots expire after 29 days. Ordinary
@@ -54,6 +59,24 @@ Feat-554 must establish live margin, including on a 75 GB volume if resized.
    and bounded catch-up.
 6. `docs/reports/2026-09-28-production-db-storage/probes.sql` — guarded,
    aggregate-only production measurements.
+7. `docs/operations/legacy-recommendation-stage-reclamation.md` — inactive
+   preparation asset, dedicated fixture and future migration entry gates.
+
+## Preparation Evidence
+
+The inactive SQL and dedicated PostgreSQL proof are documented in
+`docs/validation/recommendation-legacy-reclamation-20260929/README.md`.
+Six real-database cases and a connection-target guard case passed, including
+retained-row refusal, writer races, lock timeout, atomic rollback, restrictive
+foreign-key behavior and preservation of compact detail and expiry. Normal
+retention left 1,425,408 local relation bytes allocated; guarded reclamation
+reduced that fixture to 32,768 bytes. These are local relation bytes, not
+production filesystem savings or production-sized scan/lock timing proof.
+
+No numbered migration or deployment hook is added. The later promotion PR must
+re-establish all production gates and rerun the dedicated proof and current
+migration/build checks. This ticket remains in progress through actual
+production reclamation and measured filesystem recovery.
 
 ## Grep These
 
