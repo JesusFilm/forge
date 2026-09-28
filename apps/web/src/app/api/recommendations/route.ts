@@ -1,5 +1,9 @@
 import { observeRecommendationDelivery } from "@/lib/recommendation-delivery-observability"
-import { isEligibleHumanRequest } from "@/lib/recommendation-human-admission"
+import {
+  classifyRecommendationTraffic,
+  recommendationTrafficExcluded,
+  recommendationDeliveryDisposition,
+} from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 import {
   asLocaleSlug,
@@ -172,6 +176,9 @@ async function recoverContextualDelivery(
 }
 
 export async function POST(request: Request) {
+  const trafficCategory = classifyRecommendationTraffic(request)
+  const excluded = recommendationTrafficExcluded(trafficCategory)
+  const deliveryDisposition = recommendationDeliveryDisposition(trafficCategory)
   try {
     const raw = await readStrictRecommendationJson(request, {
       expectedOrigin: WATCH_CANONICAL_ORIGIN,
@@ -182,51 +189,61 @@ export async function POST(request: Request) {
       throw new RecommendationRouteError(400, "invalid_body")
     }
     await assertRecommendationMutationAdmission(request.headers, "delivery")
-    const session = ensureRecommendationSession(request)
-    const profile = readRecommendationProfileCookie(request)
-    const consent = readRecommendationConsentCookie(request)
+    const session = excluded ? null : ensureRecommendationSession(request)
+    const profile = excluded ? null : readRecommendationProfileCookie(request)
+    const consent = excluded ? null : readRecommendationConsentCookie(request)
     const withdrawalPending = requestHasRecommendationWithdrawalPending(request)
     const consentReceiptDigest =
-      !withdrawalPending && consent.kind === "valid" ? consent.digest : null
+      !withdrawalPending && consent?.kind === "valid" ? consent.digest : null
     const semanticInput = {
       seedMediaId: parsed.data.seedMediaId,
       locale: parsed.data.locale,
       audioLanguageSlug: parsed.data.audioLanguageSlug,
     }
+    let upstreamAcknowledged = true
     const semanticDelivery = await getSemanticRecommendationDelivery({
       ...semanticInput,
-      sessionDigest: session.digest,
+      sessionDigest: session?.digest ?? "0".repeat(64),
       consentReceiptDigest,
       profileTokenDigest:
-        consentReceiptDigest != null && profile.kind === "valid"
+        consentReceiptDigest != null && profile?.kind === "valid"
           ? profile.digest
           : null,
-      eligibleHuman: isEligibleHumanRequest(request),
-    }).catch(() => unavailableSemanticDelivery())
-    const recoveredDelivery = await recoverContextualDelivery(
-      semanticDelivery,
-      parsed.data,
-    )
+      eligibleHuman: !excluded,
+      trafficCategory,
+    }).catch(() => {
+      upstreamAcknowledged = false
+      return unavailableSemanticDelivery()
+    })
+    const recoveredDelivery =
+      deliveryDisposition === "deferred"
+        ? { ...unavailableSemanticDelivery(), reason: "traffic_deferred" }
+        : await recoverContextualDelivery(semanticDelivery, parsed.data)
     const delivery = {
       ...recoveredDelivery,
+      ...(excluded ? { requestId: null, expiresAt: null } : {}),
       // Older open tabs strictly validate execution modes. Preserve their
       // cards and attribution without mislabeling the new mode as topic fit.
-      personalization:
-        recoveredDelivery.personalization?.executionMode ===
-          "viewing_mode_personalized" &&
-        request.headers.get("x-forge-recommendation-client") !==
-          RECOMMENDATION_DELIVERY_CLIENT_VERSION
+      personalization: excluded
+        ? null
+        : recoveredDelivery.personalization?.executionMode ===
+              "viewing_mode_personalized" &&
+            request.headers.get("x-forge-recommendation-client") !==
+              RECOMMENDATION_DELIVERY_CLIENT_VERSION
           ? null
           : recoveredDelivery.personalization,
       items: recoveredDelivery.items.map((item) => ({
         ...item,
+        ...(excluded
+          ? { capability: CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY }
+          : {}),
         imageUrl: resolvePosterUrl(
           { thumbnail: item.imageUrl },
           item.playbackId,
         ),
       })),
     }
-    const serialized = JSON.stringify({ delivery })
+    const serialized = JSON.stringify({ delivery, deliveryDisposition })
     if (
       new TextEncoder().encode(serialized).byteLength >
       RECOMMENDATION_DELIVERY_RESPONSE_BYTES
@@ -234,9 +251,19 @@ export async function POST(request: Request) {
       throw new RecommendationRouteError(502, "invalid_admin_response")
     }
     const response = recommendationSerializedJson(serialized)
-    attachRecommendationSession(response, session)
+    if (session) attachRecommendationSession(response, session)
     observeRecommendationDelivery({
       endpoint: "seeded",
+      trafficCategory,
+      persistenceDisposition: !upstreamAcknowledged
+        ? "not_observed"
+        : excluded
+          ? semanticDelivery.requestId
+            ? "unexpected_commit"
+            : "avoided"
+          : semanticDelivery.requestId
+            ? "committed"
+            : "not_committed",
       httpStatus: response.status,
       delivery,
       upstreamResult: semanticDelivery.result,
@@ -246,6 +273,8 @@ export async function POST(request: Request) {
     const response = recommendationError(error)
     observeRecommendationDelivery({
       endpoint: "seeded",
+      trafficCategory,
+      persistenceDisposition: "not_observed",
       httpStatus: response.status,
       error,
     })
