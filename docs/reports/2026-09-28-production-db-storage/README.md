@@ -4,6 +4,17 @@ Investigated on September 28, 2026 NZDT, with production measurements taken
 September 27 at 20:37–20:40 UTC. Branch: `codex/investigate-prod-db-storage`.
 Source baseline: `7bfed3f9f`. Investigation ticket: feat-557. Remediation: feat-558.
 
+## Rollout status
+
+The implementation and activation releases are merged. Both production Admin
+roles now write full compact traces with the original 29-day retention; no
+sampling or shorter retention was applied. The duplicate index has been
+removed in production: it measured 2.374 GB immediately before removal,
+and filesystem free space rose by 2.344 GB during verification. See
+[the production rollout record](./production-rollout.md) for effective writer
+flags, current measurements, and outstanding capacity, UI, and retention checks.
+The investigation below preserves its original measurement timestamps.
+
 ## Finding
 
 Recommendation observability is the dominant consumer of the Admin production

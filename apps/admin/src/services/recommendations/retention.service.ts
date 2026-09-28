@@ -229,6 +229,17 @@ export async function purgeExpiredRecommendationRequests(
       })
       const requestIds = roots.map((root) => root.id)
       const rowCounts = await countRequestChildren(tx, requestIds)
+      const expiredWatchExposures = await tx.watchSurfaceExposure.findMany({
+        where: { expiresAt: { lte: now } },
+        orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+        take: batchSize,
+        select: { id: true },
+      })
+      rowCounts.expiredWatchSurfaceExposures = (
+        await tx.watchSurfaceExposure.deleteMany({
+          where: { id: { in: expiredWatchExposures.map(({ id }) => id) } },
+        })
+      ).count
       const directActions = await tx.recommendationContentAction.findMany({
         where: { requestId: null, expiresAt: { lte: now } },
         orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
@@ -595,6 +606,7 @@ export async function purgeExpiredRecommendationRequests(
       })
       const [
         oldestExpiredRoot,
+        oldestExpiredWatchExposure,
         oldestExpiredAction,
         oldestExpiredDecision,
         oldestExpiredControlEvaluation,
@@ -613,6 +625,11 @@ export async function purgeExpiredRecommendationRequests(
         oldestExpiredStandaloneEpisode,
       ] = await Promise.all([
         tx.recommendationRequest.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.watchSurfaceExposure.findFirst({
           where: { expiresAt: { lte: now } },
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
           select: { expiresAt: true },
@@ -700,6 +717,7 @@ export async function purgeExpiredRecommendationRequests(
       ])
       const oldestExpiredAt = earliestDate([
         oldestExpiredRoot?.expiresAt,
+        oldestExpiredWatchExposure?.expiresAt,
         oldestExpiredAction?.expiresAt,
         oldestExpiredDecision?.expiresAt,
         oldestExpiredControlEvaluation?.expiresAt,
@@ -726,6 +744,7 @@ export async function purgeExpiredRecommendationRequests(
       // needed to keep younger expired backlog moving before it is overdue.
       const batchLimitReached =
         requestIds.length === batchSize ||
+        expiredWatchExposures.length === batchSize ||
         directActionIds.length === batchSize ||
         standaloneEpisodeIds.length === batchSize ||
         expiredViewers.length === batchSize ||

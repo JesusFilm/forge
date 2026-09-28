@@ -11,6 +11,7 @@ import {
 import { isWatchBlock } from "@/lib/watch-blocks"
 import { ExperienceSectionRenderer } from "@/components/sections"
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
@@ -222,6 +223,29 @@ function WatchBlockEntry({
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   if (isWatchBlock(block)) {
+    if (block.kind === "SiblingCarousel") {
+      return (
+        <WatchExposureBoundary
+          config={{
+            surface: "watch-video",
+            block: "chapters",
+            presentation: "carousel",
+            placement: `chapters-${index}`,
+          }}
+        >
+          <SyntheticBlock
+            block={block}
+            studyQuestionsBlock={studyQuestionsBlock}
+            languageSlug={languageSlug}
+            locale={locale}
+            hasSubtitleOptions={hasSubtitleOptions}
+            hideBibleQuotes={hideBibleQuotes}
+            pendingChapter={pendingChapter}
+            onChapterNavigateIntent={onChapterNavigateIntent}
+          />
+        </WatchExposureBoundary>
+      )
+    }
     return (
       <SyntheticBlock
         block={block}
@@ -249,11 +273,20 @@ function WatchBlockEntry({
     )
   }
   return (
-    <ExperienceSectionRenderer
-      section={block}
-      key={`strapi-${index}`}
-      languageSlug={languageSlug}
-    />
+    <WatchExposureBoundary
+      config={{
+        surface: "watch-video",
+        block: "editorial",
+        presentation: "authored-block",
+        placement: `editorial-${index}`,
+      }}
+    >
+      <ExperienceSectionRenderer
+        section={block}
+        key={`strapi-${index}`}
+        languageSlug={languageSlug}
+      />
+    </WatchExposureBoundary>
   )
 }
 

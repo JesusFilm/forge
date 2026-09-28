@@ -34,6 +34,11 @@ import {
   ProfileEligibilityReconciliation,
   PromotionDecision,
 } from "./recommendation-evaluation-sections"
+import { WatchExposureInspection } from "./watch-exposure-inspection"
+import {
+  loadWatchExposureBreakdown,
+  loadAnonymousWatchExposureBreakdown,
+} from "@/services/recommendations/admin-ops/watch-exposure.service"
 
 type RecommendationsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -109,7 +114,7 @@ export default async function RecommendationsPage({
     principal,
     "operate:recommendation-experiments",
   )
-  const [overview, traces, playback] = await Promise.all([
+  const [overview, traces, playback, watchExposures] = await Promise.all([
     loadRecommendationOverview(prisma, {
       window: params.window,
     }),
@@ -127,6 +132,15 @@ export default async function RecommendationsPage({
           () => null,
         )
       : null,
+    Promise.all([
+      loadWatchExposureBreakdown(prisma, params.window),
+      loadAnonymousWatchExposureBreakdown(prisma, params.window),
+    ])
+      .then(([signed, anonymous]) => ({
+        rows: [...signed, ...anonymous.rows],
+        truncated: anonymous.truncated,
+      }))
+      .catch(() => null),
   ])
 
   return (
@@ -161,6 +175,11 @@ export default async function RecommendationsPage({
       <ProfileEligibilityReconciliation overview={overview} />
       <PlaybackEvidence playback={playback} canReadTraces={canReadTraces} />
       <Funnel overview={overview} />
+      <WatchExposureInspection
+        rows={watchExposures?.rows ?? null}
+        truncated={watchExposures?.truncated ?? false}
+        replays={overview.counts?.replays ?? null}
+      />
       <OperationalTruth overview={overview} />
       <EligibilityTruth overview={overview} />
       <PrivacyTruth overview={overview} />

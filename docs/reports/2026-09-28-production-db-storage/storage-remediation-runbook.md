@@ -17,10 +17,15 @@ NULL)` and keep their existing stage rows. Migration 0101 validates the check
    `recommendation_candidate_stage_ordinal_key` index remain. Its `(run_id,
 stage, ordinal)` access path still serves legacy detail reads and uniqueness.
 3. Deploy the Admin reader with both formats supported, while the compact writer
-   is disabled. Verify recent legacy traces and empty-stage runs through the
-   authorized detail path. Enable compact writes only after every Admin HTTP and
-   workflow replica runs that reader. Old processes must drain; an environment
-   variable change alone is not a fleet barrier.
+   is disabled. Verify bounded live legacy stage parity and the actual full
+   legacy/mixed/compact detail reader, including empty stages, in the real-PostgreSQL
+   integration suite. Also exercise the production detail UI when an authorized
+   session is available; otherwise record that verification limit explicitly.
+   Never fabricate an access-audit identity or bypass authentication. Enable
+   compact writes only after every Admin HTTP and workflow replica runs that
+   reader. Old processes must drain; an environment variable change alone is
+   not a fleet barrier. The operator guide in
+   `apps/admin/docs/recommendation-trace-storage.md` records this release gate.
 4. Once compact writes begin, the immediately prior **dual-reader** release is
    the application rollback floor. Rolling back to today's row-only reader would
    hide new trace detail, although it would not delete it. If compact writing
