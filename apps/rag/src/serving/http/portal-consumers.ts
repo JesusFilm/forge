@@ -116,6 +116,7 @@ export function createConsumerRoutes(deps: Deps) {
         name: row.name,
         state: row.state,
         owned: row.owned,
+        memberCount: row.memberCount,
         credentialVersion: row.owned ? row.credentialVersion : undefined,
         membershipVersion: row.owned ? row.membershipVersion : undefined,
       })),

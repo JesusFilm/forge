@@ -106,3 +106,14 @@ Forge's Apercu regular/bold fonts, a stronger heading, softer surfaces and statu
 pills, restrained red brand accents, and lightweight row actions. Remove the red
 heading rule; use subtle hover feedback with reduced-motion support. Font files
 are served locally from the RAG app. See `evidence/feat-530/typography.md`.
+
+## Registry mockup revision — 2026-09-28
+
+The supplied mockup supersedes the earlier red/neutral treatment and inline
+action buttons. Use blue accents, a white table panel, search, All/Active/Revoked
+filters, sortable names, real member counts and paginated rows with an action
+popover. Navigation contains RAG, Consumers and Knowledge; no Settings item.
+RAG and Knowledge are image-only under-construction placeholders using the
+user-supplied capybara illustration. The mockup explicitly introduces the
+consumer-page subtitle. Retain direct creation and one-time key handling.
+See [registry evidence](evidence/feat-530/registry-mockup.md).

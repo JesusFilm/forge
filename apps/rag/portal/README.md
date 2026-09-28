@@ -134,15 +134,18 @@ consumers remain in the local database. Evidence lives in ignored `apps/rag/outp
 
 ### UI conventions
 
-Follow `docs/pages/site/index.html` and `apps/rag/dashboard/template.html`:
-warm neutral backgrounds, navy controls and restrained JFP red accents. Use
-Forge’s locally served Apercu regular/bold for typography, softer corners and
-thin dividers. Avoid full-width red rules and boxed outlines on every row action. Use one semantic table row per consumer with its
-status and available actions inline. Narrow screens scroll the table horizontally
-while keeping the consumer name visible.
+Follow the user-supplied registry mockup: cool neutral background, blue accents,
+white table panel and locally served Apercu typography. Navigation has RAG,
+Consumers and Knowledge, without Settings. The two unfinished sections show only
+the supplied capybara construction illustration, loaded on demand.
 
-Keep copy minimal. The page needs its title, action buttons and consumer rows;
-omit subtitles, decorative labels, onboarding sections and footers. Field labels
-identify inputs. Show validation messages when input fails. Retain concise
-consequence/recovery text for key issuance and destructive actions. Create submits
-directly and opens Save your API key; there is no preview step.
+Use semantic rows with name, status, actual member count and owner-only action
+popover. Provide name search, All/Active/Revoked filters, name sorting and real
+pagination (20 rows). Narrow screens scroll the table within the panel. Popovers
+support keyboard traversal, Escape and outside dismissal.
+
+Use the mockup's single consumer subtitle; omit additional labels, onboarding
+sections and footers. Field labels identify inputs. Show validation messages when
+input fails. Retain concise consequence/recovery text for key issuance and
+destructive actions. Create submits directly and opens Save your API key; there
+is no preview step.

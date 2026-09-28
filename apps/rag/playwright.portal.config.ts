@@ -3,7 +3,7 @@ import { defineConfig } from "@playwright/test"
 // Requires portal:dev and its dedicated local database. Never target production.
 export default defineConfig({
   testDir: "./tests",
-  testMatch: "portal-ui.e2e.ts",
+  testMatch: "portal-*.e2e.ts",
   fullyParallel: false,
   workers: 1,
   retries: 0,

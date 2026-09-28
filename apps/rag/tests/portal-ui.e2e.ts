@@ -2,18 +2,20 @@ import { mkdir, writeFile } from "node:fs/promises"
 import { test, expect, type Page } from "@playwright/test"
 
 const name = "ui-consumer-" + Date.now().toString(36)
-const login = async (page: Page, user: string) => {
-  await page.goto("/portal")
-  await page.getByRole("link", { name: "Continue with GitHub" }).click()
-  await page.getByRole("button", { name: "Continue as " + user }).click()
-  await expect(
-    page.getByRole("button", { name: "Create consumer", exact: true }),
-  ).toBeVisible()
-}
+import { login } from "./portal-ui.helpers.js"
 const consumerRow = (page: Page) =>
   page
     .getByRole("row")
     .filter({ has: page.getByRole("rowheader", { name, exact: true }) })
+const rowAction = async (page: Page, action: string) => {
+  await consumerRow(page)
+    .getByRole("button", { name: "Actions for " + name, exact: true })
+    .click()
+  await page
+    .locator("#row-menu")
+    .getByRole("button", { name: action, exact: true })
+    .click()
+}
 const dialog = (page: Page) => page.getByRole("dialog")
 const signOut = (page: Page) =>
   page.getByRole("button", { name: "Sign out", exact: true }).click()
@@ -51,6 +53,7 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
   const errors: string[] = []
   page.on("pageerror", (error) => errors.push(error.name))
   await login(page, "local-owner")
+  await page.getByRole("searchbox", { name: "Search consumers" }).fill(name)
   await page
     .getByRole("button", { name: "Create consumer", exact: true })
     .click()
@@ -77,10 +80,16 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
   const first = await key(page)
   expect(first.startsWith("rag_")).toBe(true)
   await save(page)
+  await expect(consumerRow(page)).toContainText("1 member")
+  await page.getByRole("searchbox", { name: "Search consumers" }).fill(name)
   await expect(
-    consumerRow(page).getByRole("button", { name: "Members", exact: true }),
+    consumerRow(page).getByRole("button", {
+      name: "Actions for " + name,
+      exact: true,
+    }),
   ).toBeVisible()
   await page.reload()
+  await page.getByRole("searchbox", { name: "Search consumers" }).fill(name)
   await expect(consumerRow(page)).toBeVisible()
   await expect(page.getByLabel("One-time API key")).toHaveCount(0)
   const searchStatus = async (secret: string) => {
@@ -92,9 +101,7 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
   }
   expect(await searchStatus(first)).toBe(200)
 
-  await consumerRow(page)
-    .getByRole("button", { name: "Members", exact: true })
-    .click()
+  await rowAction(page, "Members")
   await expect(
     dialog(page).getByRole("button", { name: "Remove" }),
   ).toBeDisabled()
@@ -107,16 +114,19 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
   await expect(dialog(page)).not.toBeVisible()
   await signOut(page)
   await login(page, "local-other")
+  await page.getByRole("searchbox", { name: "Search consumers" }).fill(name)
   await expect(consumerRow(page)).toBeVisible()
   await expect(consumerRow(page).getByRole("button")).toHaveCount(0)
   await signOut(page)
   await login(page, "local-member")
+  await page.getByRole("searchbox", { name: "Search consumers" }).fill(name)
   await expect(
-    consumerRow(page).getByRole("button", { name: "Members", exact: true }),
+    consumerRow(page).getByRole("button", {
+      name: "Actions for " + name,
+      exact: true,
+    }),
   ).toBeVisible()
-  await consumerRow(page)
-    .getByRole("button", { name: "Generate new key", exact: true })
-    .click()
+  await rowAction(page, "Generate new key")
   await dialog(page)
     .getByRole("button", { name: "Generate new key", exact: true })
     .click()
@@ -126,9 +136,7 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
   expect(await searchStatus(first)).toBe(401)
   expect(await searchStatus(second)).toBe(200)
 
-  await consumerRow(page)
-    .getByRole("button", { name: "Members", exact: true })
-    .click()
+  await rowAction(page, "Members")
   const ownerRow = dialog(page)
     .locator(".member")
     .filter({ hasText: "@local-owner" })
@@ -137,17 +145,13 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
     .getByRole("button", { name: "Remove member", exact: true })
     .click()
   await expect(dialog(page)).not.toBeVisible()
-  await consumerRow(page)
-    .getByRole("button", { name: "Suspend", exact: true })
-    .click()
+  await rowAction(page, "Suspend")
   await dialog(page)
     .getByRole("button", { name: "Suspend", exact: true })
     .click()
   await expect(consumerRow(page)).toContainText("suspended")
   expect(await searchStatus(second)).toBe(401)
-  await consumerRow(page)
-    .getByRole("button", { name: "Resume", exact: true })
-    .click()
+  await rowAction(page, "Resume")
   await dialog(page)
     .getByRole("button", { name: "Resume", exact: true })
     .click()
@@ -210,12 +214,12 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
 
   await signOut(page)
   await login(page, "local-owner")
+  await page.getByRole("searchbox", { name: "Search consumers" }).fill(name)
   await expect(consumerRow(page).getByRole("button")).toHaveCount(0)
   await signOut(page)
   await login(page, "local-member")
-  await consumerRow(page)
-    .getByRole("button", { name: "Revoke", exact: true })
-    .click()
+  await page.getByRole("searchbox", { name: "Search consumers" }).fill(name)
+  await rowAction(page, "Revoke")
   await dialog(page)
     .getByRole("button", { name: "Revoke consumer", exact: true })
     .click()
@@ -247,6 +251,7 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
     "response cannot be recovered",
   )
   expect(posts).toBe(1)
+  await page.getByRole("searchbox", { name: "Search consumers" }).fill(loss)
   await expect(page.getByRole("row").filter({ hasText: loss })).toBeVisible()
   await page.unroute("**/portal/consumers")
 
@@ -257,6 +262,9 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
   })
   const otherPage = await other.newPage()
   await login(otherPage, "local-other")
+  await otherPage
+    .getByRole("searchbox", { name: "Search consumers" })
+    .fill(loss)
   await expect(
     otherPage.getByRole("row").filter({ hasText: loss }).getByRole("button"),
   ).toHaveCount(0)

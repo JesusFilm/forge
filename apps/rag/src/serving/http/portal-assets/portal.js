@@ -8,6 +8,37 @@ let busy = false
 let secret = null
 let revision = 0
 let lifecycle = 0
+let section = "consumers"
+let statusFilter = "all"
+let searchTerm = ""
+let ascending = true
+let pageIndex = 0
+const pageSize = 20
+const rowMenu = byId("row-menu")
+function dismissRowMenu() {
+  rowMenu.hidePopover()
+  rowMenu.replaceChildren()
+}
+function showSection(next) {
+  if (busy) return
+  close()
+  dismissRowMenu()
+  section = next
+  document.querySelectorAll("[data-section]").forEach((node) => {
+    const selected = node.dataset.section === next
+    node.classList.toggle("selected", selected)
+    if (selected) node.setAttribute("aria-current", "page")
+    else node.removeAttribute("aria-current")
+  })
+  byId("page-title").textContent =
+    next === "rag" ? "RAG" : next === "knowledge" ? "Knowledge" : "Consumers"
+  byId("page-description").hidden = next !== "consumers"
+  byId("directory").hidden =
+    next !== "consumers" || !identity?.managementAvailable
+  byId("signed-out").hidden = next !== "consumers" || Boolean(identity)
+  byId("construction").hidden = next === "consumers"
+  document.title = "Forge · " + byId("page-title").textContent
+}
 
 function element(tag, text, className) {
   const node = document.createElement(tag)
@@ -20,6 +51,30 @@ function button(text, action, className = "quiet") {
   node.type = "button"
   node.addEventListener("click", action)
   return node
+}
+function actionIcon(paths) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+  svg.setAttribute("viewBox", "0 0 24 24")
+  svg.setAttribute("aria-hidden", "true")
+  for (const d of paths) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path")
+    path.setAttribute("d", d)
+    svg.append(path)
+  }
+  return svg
+}
+const menuIcons = {
+  Members: [
+    "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M15 3.13a4 4 0 0 1 0 7.75",
+    "M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
+  ],
+  "Generate new key": [
+    "M21 7a5 5 0 0 1-7.4 4.4L5 20H2v-3l8.6-8.6A5 5 0 1 1 21 7",
+    "M16 7h.01",
+  ],
+  Suspend: ["M8 3v18M16 3v18"],
+  Resume: ["m8 3 12 9-12 9z"],
+  Revoke: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M5.6 5.6l12.8 12.8"],
 }
 const messages = {
   unauthorized: "Your session has ended or access has changed. Sign in again.",
@@ -315,26 +370,55 @@ async function members(row) {
   }
 }
 function render() {
+  dismissRowMenu()
   const container = byId("rows")
   container.replaceChildren()
-  if (!rows.length) {
+  const matching = rows
+    .filter(
+      (row) =>
+        (statusFilter === "all" || row.state === statusFilter) &&
+        row.name.toLowerCase().includes(searchTerm),
+    )
+    .sort((a, b) => (ascending ? 1 : -1) * a.name.localeCompare(b.name))
+  const pages = Math.max(1, Math.ceil(matching.length / pageSize))
+  pageIndex = Math.min(pageIndex, pages - 1)
+  const visible = matching.slice(
+    pageIndex * pageSize,
+    (pageIndex + 1) * pageSize,
+  )
+  byId("result-count").textContent =
+    `Showing ${visible.length} of ${matching.length} consumers`
+  byId("page-number").textContent = String(pageIndex + 1)
+  byId("previous-page").disabled = pageIndex === 0
+  byId("next-page").disabled = pageIndex >= pages - 1
+  if (!matching.length) {
     const row = element("tr")
-    const cell = element("td", "No consumers yet.", "empty")
-    cell.colSpan = 3
+    const cell = element(
+      "td",
+      rows.length ? "No matching consumers." : "No consumers yet.",
+      "empty",
+    )
+    cell.colSpan = 4
     row.append(cell)
     container.append(row)
     return
   }
-  for (const row of rows) {
+  for (const row of visible) {
     const entry = element("tr")
     const name = element("th", row.name, "consumer-name")
     name.scope = "row"
     const state = element("td")
     state.append(element("span", row.state, "badge " + row.state))
     const actionCell = element("td")
-    entry.append(name, state, actionCell)
+    const count = row.memberCount
+    const memberCount = element(
+      "td",
+      `${count} ${count === 1 ? "member" : "members"}`,
+      "member-count",
+    )
+    entry.append(name, state, memberCount, actionCell)
     if (row.owned) {
-      const actions = element("div", undefined, "row-actions")
+      const actions = element("div", undefined, "menu-actions")
       actions.append(
         button("Members", () => {
           void members(row)
@@ -386,7 +470,40 @@ function render() {
           ),
         )
       }
-      actionCell.append(actions)
+      const trigger = button(
+        "⋮",
+        () => {
+          dismissRowMenu()
+          rowMenu.append(actions)
+          rowMenu.showPopover()
+          const rect = trigger.getBoundingClientRect()
+          rowMenu.style.left =
+            Math.max(
+              8,
+              Math.min(
+                window.innerWidth - rowMenu.offsetWidth - 8,
+                rect.right - rowMenu.offsetWidth,
+              ),
+            ) + "px"
+          rowMenu.style.top =
+            Math.max(
+              8,
+              Math.min(
+                window.innerHeight - rowMenu.offsetHeight - 8,
+                rect.bottom + 6,
+              ),
+            ) + "px"
+          actions.querySelector("button")?.focus()
+        },
+        "quiet action-trigger",
+      )
+      trigger.setAttribute("aria-label", "Actions for " + row.name)
+      trigger.setAttribute("aria-haspopup", "true")
+      actions.querySelectorAll("button").forEach((item) => {
+        item.prepend(actionIcon(menuIcons[item.textContent]))
+        item.addEventListener("click", dismissRowMenu)
+      })
+      actionCell.append(trigger)
     }
     container.append(entry)
   }
@@ -405,6 +522,8 @@ function signedOut() {
   byId("directory").hidden = true
   byId("signed-out").hidden = false
   byId("account").replaceChildren()
+  dismissRowMenu()
+  showSection(section)
 }
 async function initialize() {
   document.querySelectorAll("button").forEach((node) => {
@@ -431,7 +550,7 @@ async function initialize() {
     await refresh()
     byId("create").hidden = false
     byId("refresh").hidden = false
-    byId("directory").hidden = false
+    showSection(section)
   } catch (error) {
     signedOut()
     if (error.code !== "unauthorized")
@@ -460,5 +579,60 @@ window.addEventListener("pagehide", () => {
 })
 window.addEventListener("pageshow", (event) => {
   if (event.persisted) void initialize()
+})
+
+document
+  .querySelectorAll("[data-section]")
+  .forEach((node) =>
+    node.addEventListener("click", () => showSection(node.dataset.section)),
+  )
+document.querySelectorAll("[data-filter]").forEach((node) =>
+  node.addEventListener("click", () => {
+    statusFilter = node.dataset.filter
+    pageIndex = 0
+    document.querySelectorAll("[data-filter]").forEach((item) => {
+      const selected = item.dataset.filter === statusFilter
+      item.classList.toggle("selected", selected)
+      item.setAttribute("aria-pressed", String(selected))
+    })
+    render()
+  }),
+)
+byId("search").addEventListener("input", (event) => {
+  searchTerm = event.target.value.trim().toLowerCase()
+  pageIndex = 0
+  render()
+})
+byId("sort-name").addEventListener("click", () => {
+  ascending = !ascending
+  byId("name-column").setAttribute(
+    "aria-sort",
+    ascending ? "ascending" : "descending",
+  )
+  byId("sort-direction").textContent = ascending ? "↑" : "↓"
+  render()
+})
+byId("previous-page").addEventListener("click", () => {
+  pageIndex--
+  render()
+})
+byId("next-page").addEventListener("click", () => {
+  pageIndex++
+  render()
+})
+rowMenu.addEventListener("keydown", (event) => {
+  const items = [...rowMenu.querySelectorAll("button")]
+  const index = items.indexOf(document.activeElement)
+  if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+    event.preventDefault()
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? items.length - 1
+          : (index + (event.key === "ArrowDown" ? 1 : -1) + items.length) %
+            items.length
+    items[next]?.focus()
+  }
 })
 void initialize()

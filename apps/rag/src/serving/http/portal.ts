@@ -9,6 +9,8 @@ import type { ConsumerAccess } from "../../contracts/consumer-access.js"
 import { createConsumerRoutes } from "./portal-consumers.js"
 import {
   portalFonts,
+  portalLogo,
+  portalConstructionImage,
   portalHtml,
   portalCss,
   portalScript,
@@ -132,6 +134,14 @@ export function createPortal(deps: PortalDeps): Hono {
     return c.body(portalScript)
   })
 
+  app.get("/assets/forge.svg", (c) => {
+    c.header("Content-Type", "image/svg+xml")
+    return c.body(portalLogo)
+  })
+  app.get("/assets/under-construction.png", (c) => {
+    c.header("Content-Type", "image/png")
+    return c.body(new Uint8Array(portalConstructionImage))
+  })
   for (const [name, font] of Object.entries(portalFonts)) {
     app.get("/assets/" + name, (c) => {
       c.header("Content-Type", "font/woff2")

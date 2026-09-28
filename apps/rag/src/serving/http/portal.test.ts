@@ -251,7 +251,7 @@ it("serves a no-store static portal shell with same-origin assets and protected 
     "unsafe-inline",
   )
   const html = await shell.text()
-  expect(html).toContain("Create consumer")
+  expect(html.replace(/\s+/g, " ")).toContain("Create consumer")
   expect(html).toContain('src="/portal/assets/portal.js" defer')
   expect(html).not.toContain("engineer")
   expect((await f.app.request("/identity")).status).toBe(401)

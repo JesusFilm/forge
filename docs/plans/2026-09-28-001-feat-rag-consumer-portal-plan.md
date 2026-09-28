@@ -30,6 +30,14 @@ onboarding evidence. Backend HTTP/DB tests still verify authorization and races.
   local database. It composes the real session/access/auth adapters. Production
   composition has no development switch.
 
+## Registry mockup revision
+
+The supplied mockup supersedes the earlier neutral/red style and inline action
+buttons. Use blue registry styling, RAG/Consumers/Knowledge navigation with no
+Settings, searchable/filterable/sortable paginated rows, real member counts and
+row action popovers. RAG/Knowledge show the supplied construction illustration.
+Retain direct creation and disposable key handling.
+
 ## Verification
 
 Run RAG typecheck, lint, dependency rules and HTTP regression tests. Exercise
