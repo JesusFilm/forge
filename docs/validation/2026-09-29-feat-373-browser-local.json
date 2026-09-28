@@ -4,9 +4,9 @@
   "browser": "149.0.7827.55",
   "checks": [
     {
-      "name": "inline-fixture-json-cannot-close-script",
+      "name": "fixture-json-cannot-execute-script",
       "passed": true,
-      "detail": "Request-derived closing script text remains exact JSON data; normal React cards render"
+      "detail": "Static HTML and separate JSON preserve attack text as exact data; normal React cards render"
     },
     {
       "name": "performance-run-0-issuance-after-load",
@@ -152,79 +152,79 @@
   "performance": [
     {
       "mode": "baseline",
-      "dclMs": 22.30000001192093,
-      "loadMs": 410.39999997615814,
-      "fcpMs": 40,
-      "resources": 2,
-      "scriptBytes": 608352,
-      "issuanceBeforeLoad": 0
-    },
-    {
-      "mode": "enabled",
-      "dclMs": 25.30000001192093,
-      "loadMs": 416.30000001192093,
-      "fcpMs": 40,
-      "resources": 5,
-      "scriptBytes": 608352,
-      "issuanceBeforeLoad": 0
-    },
-    {
-      "mode": "baseline",
-      "dclMs": 28,
-      "loadMs": 413.0999999642372,
-      "fcpMs": 36,
-      "resources": 2,
-      "scriptBytes": 608352,
-      "issuanceBeforeLoad": 0
-    },
-    {
-      "mode": "enabled",
-      "dclMs": 31,
-      "loadMs": 415.7000000476837,
-      "fcpMs": 52,
-      "resources": 5,
-      "scriptBytes": 608352,
-      "issuanceBeforeLoad": 0
-    },
-    {
-      "mode": "baseline",
-      "dclMs": 35.69999998807907,
-      "loadMs": 417.60000002384186,
-      "fcpMs": 56,
-      "resources": 2,
-      "scriptBytes": 608352,
-      "issuanceBeforeLoad": 0
-    },
-    {
-      "mode": "enabled",
-      "dclMs": 24.200000047683716,
-      "loadMs": 413.80000001192093,
+      "dclMs": 25.899999976158142,
+      "loadMs": 412.0999999642372,
       "fcpMs": 44,
-      "resources": 5,
-      "scriptBytes": 608352,
-      "issuanceBeforeLoad": 0
-    },
-    {
-      "mode": "baseline",
-      "dclMs": 23.80000001192093,
-      "loadMs": 411.4000000357628,
-      "fcpMs": 36,
-      "resources": 2,
-      "scriptBytes": 608352,
+      "resources": 3,
+      "scriptBytes": 608421,
       "issuanceBeforeLoad": 0
     },
     {
       "mode": "enabled",
-      "dclMs": 22.30000001192093,
-      "loadMs": 413.19999998807907,
+      "dclMs": 24.899999976158142,
+      "loadMs": 416.60000002384186,
       "fcpMs": 36,
-      "resources": 5,
-      "scriptBytes": 608352,
+      "resources": 6,
+      "scriptBytes": 608421,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "baseline",
+      "dclMs": 24.100000023841858,
+      "loadMs": 411.80000001192093,
+      "fcpMs": 36,
+      "resources": 3,
+      "scriptBytes": 608421,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "enabled",
+      "dclMs": 23.400000035762787,
+      "loadMs": 416.80000001192093,
+      "fcpMs": 36,
+      "resources": 6,
+      "scriptBytes": 608421,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "baseline",
+      "dclMs": 24.80000001192093,
+      "loadMs": 412.10000002384186,
+      "fcpMs": 40,
+      "resources": 3,
+      "scriptBytes": 608421,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "enabled",
+      "dclMs": 23.100000023841858,
+      "loadMs": 414,
+      "fcpMs": 36,
+      "resources": 6,
+      "scriptBytes": 608421,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "baseline",
+      "dclMs": 24.299999952316284,
+      "loadMs": 413.2999999523163,
+      "fcpMs": 44,
+      "resources": 3,
+      "scriptBytes": 608421,
+      "issuanceBeforeLoad": 0
+    },
+    {
+      "mode": "enabled",
+      "dclMs": 26.600000023841858,
+      "loadMs": 413.60000002384186,
+      "fcpMs": 44,
+      "resources": 6,
+      "scriptBytes": 608421,
       "issuanceBeforeLoad": 0
     }
   ],
-  "earlySelectionElapsedMs": 858,
-  "navigationElapsedMs": 62,
+  "earlySelectionElapsedMs": 857,
+  "navigationElapsedMs": 63,
   "cachedDescriptorLifetimeSeconds": 598,
   "bfcache": {
     "persistedObserved": false,

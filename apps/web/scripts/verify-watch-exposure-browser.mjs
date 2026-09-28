@@ -57,10 +57,6 @@ const caller = {
 }
 const prefix = `browser-${Date.now()}`
 const signerKey = "public-local-browser-fixture-only-key"
-// HTML parses script text before JavaScript parses JSON. Escape '<' so fixture
-// strings cannot close the script element, while JSON preserves the exact value.
-const inlineScriptJson = (value) =>
-  JSON.stringify(value).replaceAll("<", "\\u003c")
 const sign = (manifest) =>
   createHmac("sha256", signerKey).update(JSON.stringify(manifest)).digest("hex")
 const config = (name, suffix = "") => ({
@@ -91,7 +87,7 @@ const descriptor = (name, count, suffix = "") => {
   return signed
 }
 const entry = `import React,{useState} from 'react';import{createRoot}from'react-dom/client';import{WatchExposureBoundary}from'${resolve(repo, "apps/web/src/components/recommendations/WatchExposureBoundary.tsx")}';
-const f=window.fixtureConfig;window.fixturePageShows=[];window.addEventListener("pageshow",e=>window.fixturePageShows.push(e.persisted));const original=window.fetch;window.fixtureRequests=[];window.fetch=(url,init)=>{window.fixtureRequests.push({kind:String(url).split('/').pop(),ready:document.readyState,time:performance.now()});return original(url,init)};
+window.fixturePageShows=[];window.addEventListener("pageshow",e=>window.fixturePageShows.push(e.persisted));const f=await(await fetch('/fixture-config'+location.search)).json();window.fixtureConfig=f;const original=window.fetch;window.fixtureRequests=[];window.fetch=(url,init)=>{window.fixtureRequests.push({kind:String(url).split('/').pop(),ready:document.readyState,time:performance.now()});return original(url,init)};
 function App(){const[order,setOrder]=useState(Array.from({length:f.count},(_,i)=>i));window.fixtureReorder=()=>setOrder([...order].reverse());const links=order.map(i=>React.createElement('a',{key:i,href:'/watch/item-'+i+'.html',id:'card-'+i,style:{display:'block',height:'90px'},onClick:f.navigate?undefined:e=>e.preventDefault()},'Card '+i));const blocks=f.mode==='baseline'?React.createElement('div',null,links):React.createElement(WatchExposureBoundary,{config:f.descriptors[0].manifest,manifest:f.descriptors[0]},links);return React.createElement(React.Fragment,null,blocks,f.repeat?React.createElement(WatchExposureBoundary,{config:f.descriptors[1].manifest,manifest:f.descriptors[1]},links.map((link,i)=>React.cloneElement(link,{id:'second-'+i}))):null)}createRoot(document.getElementById('app')).render(React.createElement(App));`
 await build({
   stdin: {
@@ -117,6 +113,13 @@ const transport = {
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, "http://127.0.0.1")
+    response.setHeader("x-content-type-options", "nosniff")
+    if (url.pathname === "/") {
+      response.setHeader("content-type", "text/html")
+      return response.end(
+        '<!doctype html><html><head><title>Local Watch exposure fixture</title></head><body><img src="/load-gate.svg" alt=""><div id="app"></div><script type="module" src="/browser.js"></script></body></html>',
+      )
+    }
     if (url.pathname === "/browser.js") {
       response.setHeader("content-type", "text/javascript")
       return response.end(js)
@@ -184,10 +187,15 @@ const server = createServer(async (request, response) => {
       return response.end(
         "<!doctype html><title>Navigation completed</title><p>Destination</p>",
       )
+    if (url.pathname !== "/fixture-config") {
+      response.statusCode = 404
+      return response.end("")
+    }
     const name = url.searchParams.get("name") ?? "ordinary"
     const count = Number(url.searchParams.get("count") ?? 2)
     assert.ok(Number.isInteger(count) && count > 0 && count <= 70)
     const mode = url.searchParams.get("mode") ?? "enabled"
+    assert.ok(mode === "baseline" || mode === "enabled")
     const repeat = url.searchParams.has("repeat")
     const fixture = {
       mode,
@@ -199,10 +207,8 @@ const server = createServer(async (request, response) => {
         ...(repeat ? [descriptor(name, count, "-repeat")] : []),
       ],
     }
-    response.setHeader("content-type", "text/html")
-    response.end(
-      `<!doctype html><html><head><title>Local Watch exposure fixture</title></head><body><img src="/load-gate.svg" alt=""><div id="app"></div><script>window.fixtureConfig=${inlineScriptJson(fixture)}</script><script type="module" src="/browser.js"></script></body></html>`,
-    )
+    response.setHeader("content-type", "application/json")
+    response.end(JSON.stringify(fixture))
   } catch (error) {
     transport.errors.push(error.message)
     response.statusCode = 400
@@ -249,7 +255,7 @@ try {
   await navigate(encodeURIComponent(attackName), "&mode=baseline")
   await page.locator("#card-0").waitFor()
   check(
-    "inline-fixture-json-cannot-close-script",
+    "fixture-json-cannot-execute-script",
     await page.evaluate(
       (expected) =>
         window.fixtureInjected !== true &&
@@ -259,7 +265,7 @@ try {
         document.querySelectorAll("#app a").length === 2,
       attackName,
     ),
-    "Request-derived closing script text remains exact JSON data; normal React cards render",
+    "Static HTML and separate JSON preserve attack text as exact data; normal React cards render",
   )
   for (let i = 0; i < 8; i++) {
     const mode = i % 2 === 0 ? "baseline" : "enabled"

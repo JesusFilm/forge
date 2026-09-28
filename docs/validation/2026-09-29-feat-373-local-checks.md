@@ -41,16 +41,19 @@ reserved by this batch.
   the repository's existing 8 GiB heap setting.
 - The two actual database fixture files passed all eight tests locally with
   `--no-file-parallelism`; the dense statement measured 336 ms on that rerun.
-  The existing CI database step uses an explicit file list that omits these
-  fixtures. Adding them was rejected by GitHub because this OAuth credential
+  At that earlier verification phase, the CI database step's explicit file list
+  omitted these fixtures. Adding them was rejected by GitHub because this OAuth credential
   lacks `workflow` scope; no credential or permission change was attempted.
-  This PR retains the fixtures and reproducible local evidence, with automatic
-  CI fixture wiring left to an already authorized workflow owner. The standard
-  CI migration step still applies migration 0105.
+  The parent subsequently restored the exact prevalidated two-path addition
+  through the already-installed GitHub app at 556b2164df2104f905463a6cccf8f4fdd7afe0c9
+  without access changes. The parent integration record/PR body owns final
+  exact-head CI results; the standard migration step applies migration 0105.
 - CodeQL found reflected fixture HTML input and double attribute unescaping in
-  test tooling. Inline JSON now encodes literal `<` as a JavaScript Unicode
-  escape; a real-browser closing-script attack confirms data round-trip without
-  execution. The parity oracle uses inert DOM parsing to decode attributes once
+  test tooling. An initial contextual inline escape passed the attack regression
+  but remained flagged by static analysis. The final fixture therefore serves
+  static HTML and separate `application/json` configuration with `nosniff`; a
+  real-browser closing-script attack confirms exact data round-trip without
+  execution, with the shared configuration fetch present in both measured modes. The parity oracle uses inert DOM parsing to decode attributes once
   before independent URL resolution; all 78 parity tests passed. Production
   implementation files are unchanged by these tooling fixes.
 - `git diff --check` passed. Normal lint-staged and repository formatting hooks
@@ -93,9 +96,11 @@ Parent diagnostic receipts are sanitized aggregates/plans only:
 The [actual local Chromium boundary/Admin fixture](2026-09-29-feat-373-browser-local.md)
 passed 29 checks with 316 served and 316 v2 rendered facts, 33 accepted batches,
 zero ingestion errors and zero duplicate served identities. Four alternating
-baseline/enabled runs found medians of 25.90/24.75 ms DOMContentLoaded,
-412.25/414.75 ms load and 38/42 ms FCP; script bytes were identical and three
-telemetry resources appeared after load. This fixture does not execute full Next
+baseline/enabled runs found medians of 24.55/24.15 ms DOMContentLoaded,
+412.10/415.30 ms load and 42/36 ms FCP; script bytes were identical and three
+telemetry resources appeared after load. The separate shared configuration
+fetch raises absolute fixture resource totals to three/six (baseline/enabled);
+script bytes are 608,421 in both modes. This fixture does not execute full Next
 routes, deployed search/feed, or the production ingress. Native BFCache was not
 observed; hidden/prerender states were property simulations. History reload
 issuance was separately verified.

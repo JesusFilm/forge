@@ -23,7 +23,13 @@ sanitized receipt contains **316 served** and **316 v2 rendered**
 facts; identifiers and windows are omitted from the retained aggregate JSON.
 No client request contains `kind: served`. A request-derived closing-script
 attack also remains exact JSON data without executing injected script; the
-fixture escapes literal `<` for the inline JavaScript context.
+HTML shell is static; configuration travels as `application/json` with
+`nosniff` and is parsed as data by the fixture bundle.
+
+The pageshow observer is installed before the shared JSON fetch so slow
+configuration responses cannot hide navigation events. The exposure-request
+recorder is installed after config, so it does not claim that config waits for
+load.
 
 The browser exercised below-fold rendered cards without eligible impressions,
 scroll followed by one-second continuous dwell, leaving/returning without a
@@ -47,19 +53,22 @@ does not claim a native hidden-tab observation.
 # Comparative loading measurement
 
 Eight 70-card runs alternated baseline/enabled in one browser context, with the
-same production React bundle and a 400 ms resource load gate. All enabled
+same production React bundle, shared configuration fetch and a 400 ms resource
+load gate. The static-shell fixture adds one configuration fetch in both modes;
+its resource totals are three/six rather than the earlier inline fixture's
+two/five. All enabled
 issuance requests began after document load. Four samples per mode are retained
 in the JSON. Median results:
 
 | Metric       | Baseline | Enabled | Enabled minus baseline |
 | ------------ | -------: | ------: | ---------------------: |
-| DCL (ms)     |    25.90 |   24.75 |                  -1.15 |
-| Load (ms)    |   412.25 |  414.75 |                  +2.50 |
-| FCP (ms)     |       38 |      42 |                  +4.00 |
-| Resources    |        2 |       5 |                  +3.00 |
-| Script bytes |   608352 |  608352 |                  +0.00 |
+| DCL (ms)     |    24.55 |   24.15 |                  -0.40 |
+| Load (ms)    |   412.10 |  415.30 |                  +3.20 |
+| FCP (ms)     |       42 |      36 |                  -6.00 |
+| Resources    |        3 |       6 |                  +3.00 |
+| Script bytes |   608421 |  608421 |                  +0.00 |
 
-Ordinary selected-anchor navigation completed in **62 ms**, without
+Ordinary selected-anchor navigation completed in **63 ms**, without
 waiting for telemetry. The baseline shares the fixture bundle and isolates
 boundary initialization plus its incremental requests; it does **not** measure
 the size of adding this feature to the full Next application. Resource counts
