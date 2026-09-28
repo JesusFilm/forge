@@ -61,7 +61,7 @@ describe("isInAppSheetRoute", () => {
     [["watch", "[slug]"]],
     [["series", "[slug]"]],
     [["(tabs)", "watch"]],
-    [["(tabs)", "library"]],
+    [["(tabs)", "profile"]],
     [["experience", "[slug]"]],
     [["reader"]],
     [["(tabs)", "bible"]],
@@ -82,13 +82,13 @@ describe("non-route sheet counter", () => {
 
     counter.open("libraryDeleteConfirm")
     expect(counter.count()).toBe(1)
-    expect(isSuppressedBySheet(["(tabs)", "library"], counter.count())).toBe(
+    expect(isSuppressedBySheet(["(tabs)", "profile"], counter.count())).toBe(
       true,
     )
 
     counter.close("libraryDeleteConfirm")
     expect(counter.count()).toBe(0)
-    expect(isSuppressedBySheet(["(tabs)", "library"], counter.count())).toBe(
+    expect(isSuppressedBySheet(["(tabs)", "profile"], counter.count())).toBe(
       false,
     )
 

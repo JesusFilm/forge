@@ -15,7 +15,6 @@ const TABS = {
   index: { label: "Home", sf: "house.fill" },
   watch: { label: "Search", sf: "magnifyingglass" },
   bible: { label: READER_COPY.tabTitle, sf: "book.closed.fill" },
-  library: { label: "Library", sf: "square.stack.fill" },
   profile: { label: "Profile", sf: "person.fill" },
 } as const satisfies Record<TabRouteName, { label: string; sf: string }>
 

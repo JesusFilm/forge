@@ -58,10 +58,10 @@ describe("the lens order matches the rendered tab order", () => {
     expect(declaredTabOrder()).toContain("profile")
   })
 
-  it("keeps the product order: Home, Discover, Bible, Library, Profile", () => {
+  it("keeps the product order: Home, Discover, Bible, Profile", () => {
     // feat-553 R2, KD18: every sketch shows this order. The checks above only
     // prove that two lists agree, so a swap in both would pass them.
-    const order = ["index", "watch", "bible", "library", "profile"]
+    const order = ["index", "watch", "bible", "profile"]
     expect(sharedTabOrder()).toEqual(order)
     expect(declaredTabOrder()).toEqual(order)
   })

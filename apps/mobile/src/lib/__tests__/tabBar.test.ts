@@ -1,5 +1,5 @@
 /**
- * The bar's numbers live in one module so the navigator, the Library screen,
+ * The bar's numbers live in one module so the navigator, the downloads list,
  * the mini player and six scroll surfaces cannot disagree about them.
  */
 import { Platform } from "react-native"
@@ -47,8 +47,8 @@ describe("useTabBarStyle", () => {
 
   it("gives iOS the same object — the UIKit bar takes no style", () => {
     // iOS is shadowed by `_layout.ios.tsx`, whose NativeTabs navigator has no
-    // `tabBarStyle`. The export survives only because `library.tsx` writes it
-    // back through `setOptions` on Android.
+    // `tabBarStyle`. The export survives only because `LibraryDownloads.tsx`
+    // writes it back through `setOptions` on Android.
     setPlatform("ios")
     expect(useTabBarStyle()).toEqual(TAB_BAR_FLAT_STYLE)
   })
@@ -180,13 +180,7 @@ describe("isTabGroupRoute", () => {
     expect(isTabGroupRoute(["reader-passage"])).toBe(false)
   })
 
-  it("lists the five tabs in the product order (feat-553 R2, KD18)", () => {
-    expect([...TAB_ROUTE_NAMES]).toEqual([
-      "index",
-      "watch",
-      "bible",
-      "library",
-      "profile",
-    ])
+  it("lists the four tabs in the product order (feat-553 R2, KD18)", () => {
+    expect([...TAB_ROUTE_NAMES]).toEqual(["index", "watch", "bible", "profile"])
   })
 })

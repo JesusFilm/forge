@@ -1,4 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
 import { useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
@@ -13,13 +20,17 @@ import { feedback } from "../../styles/shared"
 
 const ICON_WRAP_SIZE = 84
 
+export type LibraryEmptyStateProps = {
+  style?: StyleProp<ViewStyle>
+}
+
 /** R17: only rendered once the persisted manifest has hydrated and holds zero records. */
-export function LibraryEmptyState() {
+export function LibraryEmptyState({ style }: LibraryEmptyStateProps) {
   const typography = useTypography()
   const router = useRouter()
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, style]}>
       <View style={styles.iconWrap}>
         <Ionicons
           name="arrow-down-circle-outline"

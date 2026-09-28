@@ -44,14 +44,9 @@ export const TAB_BAR_MATERIAL_TINT = "rgba(0, 0, 0, 0.3)"
  * `tabBarLensOrder.guard.test.js` pins it against the route FILES — expo-router
  * appends an undeclared `app/(tabs)/*` file as an extra tab, which a scan of the
  * layout alone cannot see. The order is the product's (feat-553 R2, KD18).
+ * There is no Library tab: the downloads list lives on Profile.
  */
-export const TAB_ROUTE_NAMES = [
-  "index",
-  "watch",
-  "bible",
-  "library",
-  "profile",
-] as const
+export const TAB_ROUTE_NAMES = ["index", "watch", "bible", "profile"] as const
 
 export type TabRouteName = (typeof TAB_ROUTE_NAMES)[number]
 
@@ -88,7 +83,7 @@ export function tabBarOccupiedHeightFor(platform: string): number {
 
 export const TAB_BAR_OCCUPIED_HEIGHT = tabBarOccupiedHeightFor(Platform.OS)
 
-/** Android's bar. The Library screen restores exactly this after selection. */
+/** Android's bar. The downloads list restores exactly this after selection. */
 export const TAB_BAR_FLAT_STYLE: ViewStyle = {
   backgroundColor: BG_COLOR,
   borderTopColor: "transparent",
@@ -103,7 +98,7 @@ export type TabBarInsets = {
 /**
  * The navigator's `tabBarStyle`. Android only — iOS is shadowed by
  * `_layout.ios.tsx`, whose UIKit bar takes no style object. Kept as a named
- * export because `library.tsx` writes it back through `setOptions`.
+ * export because `LibraryDownloads.tsx` writes it back through `setOptions`.
  */
 export function useTabBarStyle(): ViewStyle {
   return TAB_BAR_FLAT_STYLE

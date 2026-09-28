@@ -91,9 +91,11 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 ## Admin endpoint resolution (feat-339)
 
 **A development bundle defaults to local admin** —
-`http://localhost:3003/api/graphql`, rewritten to `10.0.2.2` on the Android
-emulator. No env file required: a fresh clone or a fresh worktree is already
-pointed at local admin. Release bundles are unchanged and default to production.
+`http://localhost:3003/api/graphql`, rewritten to `10.0.2.2` (the Android
+emulator's alias for the Mac) on every Android device, emulator or phone. The
+simulators and the emulator need no env file: a fresh clone or a fresh worktree
+is already pointed at local admin. A physical phone needs a per-machine override
+(see below). Release bundles are unchanged and default to production.
 All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
 `src/env.ts` and `src/lib/config.ts` both consume.
 
@@ -118,7 +120,8 @@ All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
 - **`EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN=1` opts back in**, deliberately and
   visibly — the startup line then names production on every launch.
 - **Only the known production host refuses.** A LAN address, a tunnel, or an
-  emulator alias boots normally, so physical-device work is unaffected.
+  emulator alias boots normally, so the refusal does not block physical-device
+  work.
 - **Every development launch prints its endpoint**:
   `[admin-endpoint] admin_endpoint.url=… admin_endpoint.kind=…`.
 - **An endpoint that refuses connections raises a dev-only banner** over Home
@@ -129,6 +132,14 @@ All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
 `.env.local`. `fetch-secrets` replaces `.env.local` wholesale, so a hand-added
 line there is lost on the next run; and `.env.development.local` is never loaded
 in production mode, so it cannot be inlined into a published bundle.
+
+**A physical phone needs a LAN override to reach local admin.** The loopback
+rewrite keys on the platform, not on an emulator. So a physical Android phone
+sends admin traffic to `10.0.2.2`, which does not exist on its network, and
+`adb reverse tcp:3003` alone does not help. On a physical iPhone, `localhost` is
+the phone. Set `EXPO_PUBLIC_ADMIN_GRAPHQL_URL=http://<mac-lan-ip>:<port>/api/graphql`
+in `.env.development.local`, then restart Metro with `--clear`. Full recipe:
+`docs/solutions/developer-experience/physical-android-dev-build-local-admin-emulator-alias.md`.
 
 Local admin needs `pnpm --filter @forge/admin dev` on port 3003 against a
 pgvector-capable Postgres. Getting production-shaped content into it is tracked
@@ -1457,7 +1468,7 @@ the app's own `#1c1917` instead of the platform contrast scrim.
 
 ## Tab bar — UIKit's own bar on iOS, a flush JS bar on Android
 
-`src/lib/tabBar.ts` owns every number. Both navigators, the Library screen, the
+`src/lib/tabBar.ts` owns every number. Both navigators, the downloads list, the
 mini player and six scroll surfaces read it from there, so no two files can
 disagree about the bar's size.
 
@@ -1514,8 +1525,8 @@ disagree about the bar's size.
   reaches a scroll view that is first in the subview chain, and no tab screen
   has one there — on Home that position holds the horizontal hero pager — so
   the screens pad themselves through `useTabBarClearance()` instead.
-- **The Bible tab is the fifth tab (feat-553).** The order in
-  `TAB_ROUTE_NAMES` is Home, Discover, Bible, Library, Profile. The tab
+- **The Bible tab is the third tab (feat-553).** The order in
+  `TAB_ROUTE_NAMES` is Home, Discover, Bible, Profile. The tab
   renders the shared reader with `host="tab"` and has no scroll surface. The
   reader puts its footer above the bar through `readerBottomInset` in
   `src/lib/bible/reader/chrome.ts`, so `tabBarClearance.guard.test.js` pins
@@ -1523,7 +1534,17 @@ disagree about the bar's size.
 - **`app/(tabs)/_layout.tsx` MUST stay on disk.** It now serves Android only.
   Do not delete it: expo-router resolves the platform sibling by specificity,
   and it throws without an extension-less fallback file.
-- **The Library screen hides the iOS bar through a module store.** `NativeTabs`
+- **There is no Library tab. The downloads list lives on Profile.**
+  `src/components/library/LibraryDownloads.tsx` holds the list, selection mode
+  and the delete flow. Profile passes its account card as `header`,
+  "My Downloads" as `title`, and `PrivacyPolicyButton` as `footer`. That
+  button is the app's only in-app privacy policy link (App Store 5.1.1(i)), so
+  keep it. The header scrolls away while the Select row pins under it
+  (`stickyHeaderIndices`).
+- **A second host shares the bar flag.** If a second tab ever hosts this list,
+  both copies mount at cold launch and share the bar flag below. That is safe
+  only while selection needs the focused tab and blur exits it.
+- **The downloads list hides the iOS bar through a module store.** `NativeTabs`
   has no per-screen `tabBarStyle`, and its only hide lever is the
   navigator-level `hidden` prop. A context cannot carry the flag, because the
   layout renders the screen and is therefore an ANCESTOR, not a descendant. So
@@ -1536,8 +1557,8 @@ disagree about the bar's size.
   frame. `SelectionActionBar` clamps it — `insets.bottom >= TAB_BAR_HEIGHT_IOS`
   gives `insets.bottom - TAB_BAR_HEIGHT_IOS`, anything smaller passes through —
   so the home indicator reads 34 from both 83 and 34, and 0 from 49 on a
-  home-button device. `library.tsx` pads its list by `TAB_BAR_HEIGHT_IOS + 24`
-  while selection runs.
+  home-button device. `LibraryDownloads.tsx` pads its list by
+  `TAB_BAR_HEIGHT_IOS + 24` while selection runs.
 - **`TabBarBackground` survives, but `SelectionActionBar` is its only
   consumer.** The navigator dropped it: UIKit draws its own material. The action
   bar stands in the same place over the same content, so the measured tint floor
