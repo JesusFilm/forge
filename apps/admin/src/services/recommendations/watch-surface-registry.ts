@@ -104,6 +104,7 @@ export function registeredAnonymousWatchSurface(
       entry.surface === surface &&
       entry.block === block &&
       entry.presentation === presentation &&
-      entry.policyVersion === policyVersion,
+      (entry.policyVersion === policyVersion ||
+        policyVersion === "watch-exposure-v2"),
   )
 }

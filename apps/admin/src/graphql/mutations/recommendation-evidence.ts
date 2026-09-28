@@ -19,6 +19,7 @@ import {
 } from "@/services/recommendations/content-action.service"
 import { PlaybackContextDiscoverySourceSchema } from "@/services/recommendations/contracts"
 import {
+  issueWatchSurfaceDelivery,
   recordWatchSurfaceExposureBatch,
   type WatchSurfaceExposureReceipt,
 } from "@/services/recommendations/watch-surface-exposure.service"
@@ -167,6 +168,24 @@ function evidencePayload(payload: unknown): Record<string, unknown> {
 }
 
 builder.mutationFields((t) => ({
+  issueWatchSurfaceDelivery: t.field({
+    type: "JSON",
+    nullable: false,
+    authScopes: { public: true },
+    args: {
+      manifest: t.arg({ type: "JSON", required: true }),
+      attemptId: t.arg.string({ required: true }),
+      trafficCategory: t.arg.string({ required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      resolveRecommendationOperation(() =>
+        issueWatchSurfaceDelivery(prisma, ctx.user, {
+          manifest: args.manifest,
+          attemptId: args.attemptId,
+          trafficCategory: args.trafficCategory,
+        }),
+      ),
+  }),
   recordWatchSurfaceExposure: t.field({
     type: [WatchSurfaceExposureReceiptRef],
     nullable: false,

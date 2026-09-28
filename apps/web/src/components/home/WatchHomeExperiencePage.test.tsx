@@ -10,6 +10,9 @@ import type { Section } from "@/components/sections"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { DynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
+vi.mock("@/lib/watch-surface-manifest.server", () => ({
+  signWatchSurfaceManifest: () => null,
+}))
 
 const createCacheSignatures = vi.hoisted(() => vi.fn())
 

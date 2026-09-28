@@ -40,6 +40,7 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "recordSemanticRecommendationEvidence",
   // feat-373. Public-shaped mutation; service body admits the Web bearer only.
   "recordWatchSurfaceExposure",
+  "issueWatchSurfaceDelivery",
   "selectSemanticRecommendation",
   "claimSemanticRecommendationEpisode",
   "recordSemanticRecommendationPlayback",

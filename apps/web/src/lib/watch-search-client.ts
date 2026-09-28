@@ -1,7 +1,16 @@
 "use client"
 
+import { z } from "zod"
+import {
+  watchSurfaceManifestSchema,
+  watchSurfaceItemPath,
+  type SignedWatchSurfaceManifest,
+} from "./watch-surface-manifest"
+import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
+
 import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
 import {
+  adminWatchSearchLegacyQuery,
   adminWatchSearchOperation,
   adminWatchSearchQuery,
   adminWatchSearchSuggestionsOperation,
@@ -266,6 +275,55 @@ export async function fetchWatchSearchSuggestions({
   }
 }
 
+const signedSearchManifestSchema = z
+  .object({
+    manifest: watchSurfaceManifestSchema,
+    signature: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  })
+  .strict()
+
+/** Client validation checks mapping parity; only the Web issuer verifies authority. */
+export function parseWatchSearchSurfaceManifest(
+  raw: unknown,
+  results: readonly SearchResult[],
+  targetLanguageSlug: string | null,
+): SignedWatchSurfaceManifest | null {
+  const parsed = signedSearchManifestSchema.safeParse(raw)
+  if (!parsed.success) return null
+  const { manifest } = parsed.data
+  if (
+    manifest.surface !== "watch-search" ||
+    manifest.block !== "results" ||
+    manifest.presentation !== "result-list" ||
+    manifest.placement !== "search-results" ||
+    manifest.items.length !== results.length
+  )
+    return null
+  const matches = results.every((result, position) => {
+    if (result.type !== "video" || !/^[a-z0-9_-]+$/.test(result.slug))
+      return false
+    const language =
+      result.availabilityKind === "unavailable"
+        ? targetLanguageSlug
+        : (result.languageSlug ?? "english")
+    if (!language || !/^[a-z0-9-]+$/.test(language)) return false
+    if (
+      result.availabilityKind === "target_subtitle" &&
+      (!result.languageSlug || !result.subtitleLanguageSlug)
+    )
+      return false
+    const path =
+      result.availabilityKind === "unavailable"
+        ? `/${result.slug}.html/${language}.html`
+        : buildCanonicalWatchVideoPath(result.slug, language)
+    return (
+      manifest.items[position]?.position === position &&
+      manifest.items[position]?.itemPath === watchSurfaceItemPath(path)
+    )
+  })
+  return matches ? parsed.data : null
+}
+
 export async function searchWatchDirect({
   query,
   limit = 20,
@@ -294,35 +352,44 @@ export async function searchWatchDirect({
       resultTypes,
     },
   }
-  let response: Response
-  try {
-    response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        query: adminWatchSearchQuery,
-        variables,
-      }),
-      signal: timeoutSignal(WATCH_SEARCH_TIMEOUT_MS),
-    })
-  } catch (error) {
-    throw new WatchSearchRequestError(
-      "Watch search request failed",
-      watchSearchFetchErrorKind(error),
-    )
+  const requestPage = async (
+    document: string,
+  ): Promise<GraphqlResponse<WatchSearchGraphqlResult>> => {
+    let response: Response
+    try {
+      response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: document, variables }),
+        signal: timeoutSignal(WATCH_SEARCH_TIMEOUT_MS),
+      })
+    } catch (error) {
+      throw new WatchSearchRequestError(
+        "Watch search request failed",
+        watchSearchFetchErrorKind(error),
+      )
+    }
+    if (!response.ok)
+      throw new WatchSearchRequestError(
+        `Watch search failed with HTTP ${response.status}`,
+        watchSearchStatusErrorKind(response.status),
+      )
+    return (await response.json()) as GraphqlResponse<WatchSearchGraphqlResult>
   }
-
-  if (!response.ok) {
-    throw new WatchSearchRequestError(
-      `Watch search failed with HTTP ${response.status}`,
-      watchSearchStatusErrorKind(response.status),
+  let payload = await requestPage(adminWatchSearchQuery)
+  // Only a receiver missing this additive field permits a single legacy retry.
+  if (
+    payload.errors?.length &&
+    payload.errors.every(
+      (error) =>
+        error.extensions?.code === "GRAPHQL_VALIDATION_FAILED" &&
+        /Cannot query field ["']surfaceManifest["'] on type ["']WatchSearchResponse["']/.test(
+          error.message ?? "",
+        ),
     )
+  ) {
+    payload = await requestPage(adminWatchSearchLegacyQuery)
   }
-
-  const payload =
-    (await response.json()) as GraphqlResponse<WatchSearchGraphqlResult>
   if (payload.errors?.length) {
     const error = payload.errors[0]!
     throw new WatchSearchRequestError(
@@ -344,6 +411,11 @@ export async function searchWatchDirect({
   })
 
   return {
+    surfaceManifest: parseWatchSearchSurfaceManifest(
+      watchSearch.surfaceManifest,
+      results,
+      watchSearch.languageInterpretation?.targetLanguageSlug ?? null,
+    ),
     results,
     hasMore: watchSearch.hasMore ?? false,
     query: watchSearch.query ?? truncatedQuery,
