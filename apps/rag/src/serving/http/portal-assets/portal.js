@@ -43,6 +43,8 @@ function showSection(next) {
 function element(tag, text, className) {
   const node = document.createElement(tag)
   if (text !== undefined) node.textContent = text
+  if (["input", "form", "select", "textarea"].includes(tag))
+    node.setAttribute("autocomplete", "off")
   if (className) node.className = className
   return node
 }
@@ -364,7 +366,11 @@ async function members(row) {
       })
       actions.append(button("Done", close), add)
       body.append(actions)
-    } else body.append(button("Done", close))
+    } else {
+      const actions = element("div", undefined, "actions")
+      actions.append(button("Done", close))
+      body.append(actions)
+    }
   } catch (error) {
     showError(error, false)
   }

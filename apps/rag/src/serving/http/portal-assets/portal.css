@@ -427,6 +427,9 @@ input[readonly] {
   color: var(--muted);
 }
 .actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-top: 28px;
   justify-content: flex-end;
   flex-wrap: wrap;
