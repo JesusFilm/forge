@@ -242,13 +242,16 @@ Two demonstrated gaps require another focused exposure release:
   A policy-version filter is needed before the unchanged display bound. No
   totals or complete coverage are inferred from these truncated snapshots.
 
-The initial and repeated six-navigation headed loading samples returned HTTP
+The initial and repeated postrelease six-navigation headed loading samples returned HTTP
 200 for every document, but FCP/LCP were absent during collection. Selecting the
 native tab did not restore them; a later screenshot was followed by a delayed
 paint entry. The cause is unconfirmed. The [diagnostic comparison](../validation/recommendation-acceptance-20260929/loading-comparison.json)
 therefore withholds a paint-performance conclusion and notes that resource/script
 counts may omit deferred work. Rapid sequences hit the existing rate limit;
 their request populations are separate from the paced sample above.
+The baseline has usable paint values; an offline review correction preserves
+those medians while leaving postrelease paint values and comparison deltas
+unknown. No measurement was repeated to make that summary correction.
 
 A [fresh headless baseline](../validation/recommendation-acceptance-20260929/watch-browser-headless-before-followup.json)
 at `811f1ec81` has usable paint entries for all six samples and full observed

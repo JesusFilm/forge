@@ -34,16 +34,20 @@
           "deltaPercent": -47.588
         },
         "fcpMs": {
-          "before": null,
+          "before": 796.0,
           "after": null,
           "beforeValidSamples": 2,
-          "afterValidSamples": 0
+          "afterValidSamples": 0,
+          "delta": null,
+          "deltaPercent": null
         },
         "lcpMs": {
-          "before": null,
+          "before": 1182.0,
           "after": null,
           "beforeValidSamples": 2,
-          "afterValidSamples": 0
+          "afterValidSamples": 0,
+          "delta": null,
+          "deltaPercent": null
         },
         "htmlEncodedBytes": {
           "beforeValidSamples": 2,
@@ -108,16 +112,20 @@
           "deltaPercent": -33.317
         },
         "fcpMs": {
-          "before": null,
+          "before": 656.0,
           "after": null,
           "beforeValidSamples": 2,
-          "afterValidSamples": 0
+          "afterValidSamples": 0,
+          "delta": null,
+          "deltaPercent": null
         },
         "lcpMs": {
-          "before": null,
+          "before": 656.0,
           "after": null,
           "beforeValidSamples": 2,
-          "afterValidSamples": 0
+          "afterValidSamples": 0,
+          "delta": null,
+          "deltaPercent": null
         },
         "htmlEncodedBytes": {
           "beforeValidSamples": 2,
@@ -182,16 +190,20 @@
           "deltaPercent": -36.414
         },
         "fcpMs": {
-          "before": null,
+          "before": 684.0,
           "after": null,
           "beforeValidSamples": 2,
-          "afterValidSamples": 0
+          "afterValidSamples": 0,
+          "delta": null,
+          "deltaPercent": null
         },
         "lcpMs": {
-          "before": null,
+          "before": 684.0,
           "after": null,
           "beforeValidSamples": 2,
-          "afterValidSamples": 0
+          "afterValidSamples": 0,
+          "delta": null,
+          "deltaPercent": null
         },
         "htmlEncodedBytes": {
           "beforeValidSamples": 2,
@@ -230,5 +242,7 @@
   ],
   "limitations": "Two navigations per route/phase, same headed Chrome154 session, mixed warm caches, shared host, no CPU/network emulation; Collection follows load plus a1.5s wait and200ms observer interval, plus command overhead; this is not a fixed cutoff. Null metrics are excluded and valid counts reported per metric. Runtime revisions are annotations supported by separate runtime receipts, not verified by this helper. This small diagnostic comparison cannot establish population performance or causality. Resource totals include post-load activity observed before collection. All postrelease FCP/LCP samples were null during collection. Selecting the native tab did not restore paint samples. A later screenshot was followed by native first-paint/FCP at32328ms on the previous document; this does not establish application loading latency or its cause. Script counts and resource totals may omit paint-dependent deferred work and cannot alone establish unchanged hydrated bundle size.",
   "afterSample": "watch-browser-headed-after-active.json",
-  "paintComparisonUnavailable": true
+  "paintComparisonUnavailable": true,
+  "baselinePaintSummaryCorrectedAt": "2026-09-28T23:32:02.227306+00:00",
+  "baselinePaintSummaryCorrection": "Offline summary correction retains known baseline medians when postrelease paint samples are absent; no browser measurement was repeated and no paint delta or performance conclusion is inferred."
 }
