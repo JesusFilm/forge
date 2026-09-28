@@ -268,6 +268,19 @@ export const adminRecordRecommendationContentActionOperation = adminGraphql(
   adminRecordRecommendationContentActionMutation,
 )
 
+export const adminRecordWatchSurfaceExposureMutation = `
+  mutation RecordWatchSurfaceExposure($events: JSON!) {
+    recordWatchSurfaceExposure(events: $events) {
+      eventId
+      status
+    }
+  }
+` as const
+
+export const adminRecordWatchSurfaceExposureOperation = adminGraphql(
+  adminRecordWatchSurfaceExposureMutation,
+)
+
 export const adminRecommendationProfileStatusMutation = `
   mutation RecommendationProfileStatus(
     $contractVersion: String!

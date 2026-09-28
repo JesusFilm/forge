@@ -9,6 +9,7 @@ import {
   adminRecordSemanticRecommendationEvidenceOperation,
   adminRecordSemanticRecommendationPlaybackOperation,
   adminRecordRecommendationContentActionOperation,
+  adminRecordWatchSurfaceExposureOperation,
   adminSelectSemanticRecommendationOperation,
   adminSemanticRecommendationDeliveryOperation,
   adminTransitionRecommendationProfileOperation,
@@ -678,6 +679,21 @@ export async function recordRecommendationContentAction(
     throw new RecommendationRuntimeError("content_action_unavailable")
   }
   return result.data.recordRecommendationContentAction
+}
+
+export async function recordWatchSurfaceExposure(
+  events: Record<string, unknown>[],
+) {
+  const result = await client.mutate({
+    mutation: adminRecordWatchSurfaceExposureOperation,
+    variables: { events },
+    fetchPolicy: "no-cache",
+    context: upstreamContext(CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.recordWatchSurfaceExposure) {
+    throw new RecommendationRuntimeError("evidence_failed")
+  }
+  return result.data.recordWatchSurfaceExposure
 }
 
 export async function getRecommendationProfileStatus(

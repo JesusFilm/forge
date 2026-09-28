@@ -8,6 +8,10 @@ import { wire } from "../src/main.js"
 import { createApp, parseTokenRegistry } from "../src/serving/http/index.js"
 import { createGitHubAdmission } from "../src/serving/http/portal-github.js"
 import { createPostgresSessionStore } from "../src/adapters/postgres/portal-sessions.js"
+import { PostgresConsumerAccess } from "../src/adapters/postgres/consumer-access.js"
+import { PostgresConsumerAuthenticator } from "../src/adapters/postgres/consumer-auth.js"
+import { PrismaClient } from "../src/generated/prisma/index.js"
+import { allSources } from "../src/registry/index.js"
 
 const packageDirectory = fileURLToPath(new URL("..", import.meta.url))
 
@@ -33,10 +37,54 @@ async function main(): Promise<void> {
   ] as const
   const configured = portalKeys.filter((key) => !!input[key])
   if (configured.length !== 0 && configured.length !== portalKeys.length)
-    throw new Error("portal_configuration_incomplete")
+    throw environmentConfigurationError(
+      "portal_configuration_incomplete",
+      "portal configuration is incomplete",
+      "railway",
+    )
   const sessions = configured.length
     ? createPostgresSessionStore(input.RAG_PORTAL_DATABASE_URL!)
     : undefined
+  const consumerWriterUrl = input.RAG_CONSUMER_WRITER_DATABASE_URL
+  const consumerReaderUrl = input.RAG_CONSUMER_AUTH_DATABASE_URL
+  if (!!consumerWriterUrl !== !!consumerReaderUrl)
+    throw environmentConfigurationError(
+      "consumer_access_configuration_incomplete",
+      "consumer access requires both database URLs",
+      "railway",
+    )
+  const consumerWriter = consumerWriterUrl
+    ? new PrismaClient({ datasourceUrl: consumerWriterUrl })
+    : undefined
+  const consumerReader = consumerReaderUrl
+    ? new PrismaClient({ datasourceUrl: consumerReaderUrl })
+    : undefined
+  const consumers = consumerWriter
+    ? new PostgresConsumerAccess(consumerWriter)
+    : undefined
+  const consumerAuth = consumerReader
+    ? new PostgresConsumerAuthenticator(consumerReader)
+    : undefined
+  if (consumers && !sessions)
+    throw environmentConfigurationError(
+      "consumer_access_requires_portal",
+      "consumer access requires portal admission",
+      "railway",
+    )
+  const allowedSourceKeys = (input.RAG_DEFAULT_CONSUMER_SOURCE_KEYS ?? "")
+    .split(",")
+    .map((key) => key.trim())
+    .filter(Boolean)
+  const registeredSources = new Set(allSources().map((source) => source.key))
+  if (
+    new Set(allowedSourceKeys).size !== allowedSourceKeys.length ||
+    allowedSourceKeys.some((key) => !registeredSources.has(key))
+  )
+    throw environmentConfigurationError(
+      "consumer_source_scope_invalid",
+      "consumer source scope is invalid",
+      "railway",
+    )
   const portal = sessions
     ? {
         sessions,
@@ -49,12 +97,15 @@ async function main(): Promise<void> {
         clientId: input.RAG_PORTAL_CLIENT_ID!,
         callbackUrl: input.RAG_PORTAL_CALLBACK_URL!,
         origin: input.RAG_PORTAL_ORIGIN!,
+        consumers,
+        allowedSourceKeys,
       }
     : undefined
   const app = createApp({
     retriever: wiring.retriever,
     tokens: parseTokenRegistry(env.SERVE_BEARER_TOKENS),
     portal,
+    consumerAuth,
   })
   const server = serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
     console.error(`serve: /v1 listening on :${port}`)
@@ -65,9 +116,12 @@ async function main(): Promise<void> {
     if (closing) return
     closing = true
     server.close(() => {
-      void Promise.all([wiring.shutdown(), sessions?.close()]).finally(() =>
-        process.exit(0),
-      )
+      void Promise.all([
+        wiring.shutdown(),
+        sessions?.close(),
+        consumerWriter?.$disconnect(),
+        consumerReader?.$disconnect(),
+      ]).finally(() => process.exit(0))
     })
   }
   process.on("SIGINT", close)

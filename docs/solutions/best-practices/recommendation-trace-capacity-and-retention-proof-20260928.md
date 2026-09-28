@@ -24,13 +24,17 @@ The September 28 production investigation found recommendation tables using
 28.38 GB of a 39.51 GB database. Candidate-stage evidence alone used 20.60 GB,
 including a redundant 2.36 GB index. Production had 29 successful retention
 runs but had never deleted an expired request root: its first 29-day cohort
-had not expired. The follow-up implementation is locally tested; production
-rollout and capacity verification remain separate work.
+had not expired. The follow-up implementation passed production migration and fleet checks;
+removing the duplicate index returned approximately 2.37 GB of allocation.
+Loaded retention and full-transition capacity verification remain separate work.
 
 The detailed measurements and attribution are in
 `docs/reports/2026-09-28-production-db-storage/README.md`; operational follow-up
 is `docs/roadmap/platform/feat-554-recommendation-storage-rollout-verification.md`.
-This document captures investigation and capacity guidance, not a deployed fix.
+Actual release evidence is in
+`docs/reports/2026-09-28-production-db-storage/production-rollout.md`; this
+document distinguishes established storage behavior from still-open capacity
+and loaded-retention proof.
 
 ## Guidance
 
@@ -115,6 +119,22 @@ they do not guarantee the filesystem chart shrinks. Avoid prescribing a table
 rewrite on a nearly full volume without the additional capacity and locking
 plan it needs. See
 [PostgreSQL vacuum guidance](https://www.postgresql.org/docs/18/routine-vacuuming.html#VACUUM-FOR-SPACE-RECOVERY).
+
+### Treat fleet state and config state as separate release evidence
+
+A staged Railway variable is not proof of the existing process's value.
+Verify both the HTTP service and durable worker by active deployment inventory,
+actual process revision, effective flag, health, and workflow-runner role.
+The deployment inventory can contain a building release alongside the old live
+release; wait for convergence and old-process drain before advancing a reader
+compatibility barrier. Record a compatible rollback image for each role.
+
+After every legacy writer drains, its last write establishes an earliest
+reclamation horizon, not permission to delete. Any resumed legacy writing
+moves the horizon. Once retention has made the legacy table exactly empty,
+a guarded empty-table `TRUNCATE` can reclaim its allocation while retaining
+schema and reader compatibility. Keep the emptiness assertion and truncate
+under the same lock/transaction, fail closed, and omit `CASCADE`.
 
 ## When to Apply
 

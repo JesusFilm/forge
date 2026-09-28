@@ -6,6 +6,7 @@ import type { Route } from "next"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
 import { RecommendationPersonalizationControl } from "@/components/recommendations/RecommendationPersonalizationControl"
 import { useEligibleRecommendationImpression } from "@/components/recommendations/useEligibleRecommendationImpression"
+import type { ExposureVisibilityCapability } from "@/components/recommendations/useEligibleRecommendationImpression"
 import {
   randomRecommendationNonce,
   recommendationEventId,
@@ -695,7 +696,11 @@ export function WatchSemanticRecommendations({
   )
 
   const sendEvidence = useCallback(
-    async (item: SemanticRecommendationItem, kind: "render" | "impression") => {
+    async (
+      item: SemanticRecommendationItem,
+      kind: "render" | "impression",
+      visibilityCapability: ExposureVisibilityCapability = "unknown",
+    ) => {
       if (
         !requestId ||
         item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY
@@ -724,7 +729,10 @@ export function WatchSemanticRecommendations({
                 occurredAt: new Date().toISOString(),
                 payload:
                   kind === "impression"
-                    ? { visibilityPolicy: WATCH_RECOMMENDATION_SURFACE }
+                    ? {
+                        visibilityPolicy: WATCH_RECOMMENDATION_SURFACE,
+                        visibilityCapability,
+                      }
                     : { surfacePolicy: WATCH_RECOMMENDATION_SURFACE },
               },
             ],
@@ -797,10 +805,12 @@ export function WatchSemanticRecommendations({
   }, [claimEvidence, items, markInstrumentationDegraded, sendEvidence])
 
   const onEligible = useCallback(
-    (itemId: string) => {
+    (itemId: string, capability: ExposureVisibilityCapability) => {
       const item = itemById.get(itemId)
       if (item && claimEvidence("impression", item.id)) {
-        void sendEvidence(item, "impression").catch(markInstrumentationDegraded)
+        void sendEvidence(item, "impression", capability).catch(
+          markInstrumentationDegraded,
+        )
       }
     },
     [claimEvidence, itemById, markInstrumentationDegraded, sendEvidence],
