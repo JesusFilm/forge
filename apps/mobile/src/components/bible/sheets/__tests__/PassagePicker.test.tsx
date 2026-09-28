@@ -66,6 +66,7 @@ async function render(
       <PassagePicker
         tokens={TOKENS}
         translation={SYNODAL}
+        standIn={null}
         bookNames={null}
         current={null}
         onPick={onPick}

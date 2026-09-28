@@ -38,6 +38,9 @@ export type PassagePickerProps = {
   tokens: ReaderTokens
   /** The shown translation; null shows BSB's numbers. */
   translation: (PassageTranslation & { shortName: string }) | null
+  /** The translation on screen while a stand-in shows (R25). It numbers the
+   *  books that `translation` lacks; null leaves them to BSB. */
+  standIn: PassageTranslation | null
   /** The shown translation's own book names; null shows the English names. */
   bookNames: BookNames | null
   /** The current verse in the shown numbering, to mark it. */
@@ -57,6 +60,7 @@ type Step =
 export function PassagePicker({
   tokens,
   translation,
+  standIn,
   bookNames,
   current,
   onPick,
@@ -89,7 +93,7 @@ export function PassagePicker({
     const now = Date.now()
     if (!acceptSheetTap(now, lastPickRef.current)) return
     lastPickRef.current = now
-    const numbering = numberingFor(translation, book.usfm)
+    const numbering = numberingFor(translation, book.usfm, standIn)
     onPick(pickedBsbRef(numbering, { book: book.usfm, chapter, verse }))
   }
 
@@ -106,7 +110,7 @@ export function PassagePicker({
       />
     )
   } else {
-    const numbering = numberingFor(translation, step.book.usfm)
+    const numbering = numberingFor(translation, step.book.usfm, standIn)
     const inCurrentBook = current?.book === step.book.usfm
     body =
       step.kind === "chapter" ? (

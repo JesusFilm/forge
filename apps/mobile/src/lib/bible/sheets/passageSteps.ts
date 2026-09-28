@@ -1,6 +1,7 @@
 // The passage picker's steps (feat-553 U10, R17, KD15, R42). The chapter and
 // verse steps show the shown translation's own numbers; the pick goes back to
 // BSB numbering, because the saved position uses it (R38).
+import type { BookNames } from "../repository/bookNames"
 import { toBsbRef, toTranslationRef } from "../repository/resolveChapter"
 import { BIBLE_BOOKS, type BibleBook, type UsfmBookId } from "../text/books"
 import { BSB_TRANSLATION_ID } from "../versification/classify"
@@ -30,12 +31,35 @@ export function passageBooks(
   }))
 }
 
-/** The translation whose numbers the picker shows for one book. */
+/** The translation whose numbers and names the picker shows for one book. */
 export function numberingFor(
   translation: PassageTranslation | null,
   bookId: UsfmBookId,
+  standIn: PassageTranslation | null = null,
 ): string {
-  return translation?.books.has(bookId) ? translation.id : BSB_TRANSLATION_ID
+  if (!translation) return BSB_TRANSLATION_ID
+  if (translation.books.has(bookId)) return translation.id
+  // R25 fills every missing book by one rule, so the stand-in on screen also
+  // fills the other missing books that it has.
+  return standIn?.books.has(bookId) ? standIn.id : BSB_TRANSLATION_ID
+}
+
+/** The pick's names, with the stand-in's names for the books it fills. */
+export function pickerBookNames(input: {
+  translation: PassageTranslation | null
+  names: BookNames | null
+  standIn: PassageTranslation | null
+  standInNames: BookNames | null
+}): BookNames | null {
+  const { translation, standIn, standInNames } = input
+  if (!translation || !standIn || !standInNames) return input.names
+  const merged = new Map(input.names)
+  for (const [bookId, name] of standInNames) {
+    if (numberingFor(translation, bookId, standIn) === standIn.id) {
+      merged.set(bookId, name)
+    }
+  }
+  return merged
 }
 
 function lastVerse(
@@ -72,7 +96,8 @@ export function verseNumbers(
 }
 
 /** The current verse in the numbering the picker shows for its book. While a
- *  stand-in shows (R25), the picker follows the viewer's own pick instead. */
+ *  stand-in shows (R25), the picker follows the viewer's own pick instead,
+ *  except in a book the pick lacks: there the stand-in's numbers stay. */
 export function pickerCurrent(input: {
   translation: PassageTranslation | null
   /** The reading position, in BSB numbering. */
@@ -80,12 +105,15 @@ export function pickerCurrent(input: {
   /** The verse on screen, in the shown translation's numbering. */
   shownRef: VerseRef | null
   standIn: boolean
+  /** The translation on screen, or null when it is not known. */
+  shown: PassageTranslation | null
 }): VerseRef | null {
   const { translation, ref } = input
   if (!translation) return ref
   if (!input.standIn) return input.shownRef
   if (!ref) return null
-  const numbering = numberingFor(translation, ref.book)
+  const numbering = numberingFor(translation, ref.book, input.shown)
+  if (numbering === input.shown?.id && input.shownRef) return input.shownRef
   return numbering === BSB_TRANSLATION_ID
     ? ref
     : toTranslationRef(ref, numbering)

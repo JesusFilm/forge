@@ -9,6 +9,7 @@ import {
   numberingFor,
   passageBooks,
   pickedBsbRef,
+  pickerBookNames,
   pickerCurrent,
   verseNumbers,
 } from "../passageSteps"
@@ -21,6 +22,8 @@ const NEW_TESTAMENT: ReadonlySet<UsfmBookId> = new Set(
     (book) => book.usfm,
   ),
 )
+const BSB = { id: "BSB", books: ALL_BOOKS }
+const NT_ONLY = { id: "xyz_nt", books: NEW_TESTAMENT }
 
 describe("passageBooks", () => {
   it("lists all 66 books in canon order", () => {
@@ -109,6 +112,7 @@ describe("pickerCurrent", () => {
         ref: BSB_PSALM_23_1,
         shownRef: SYNODAL_PSALM_22_1,
         standIn: false,
+        shown: SYNODAL,
       }),
     ).toEqual(SYNODAL_PSALM_22_1)
   })
@@ -120,6 +124,7 @@ describe("pickerCurrent", () => {
         ref: BSB_PSALM_23_1,
         shownRef: SYNODAL_PSALM_22_1,
         standIn: false,
+        shown: null,
       }),
     ).toEqual(BSB_PSALM_23_1)
   })
@@ -132,16 +137,97 @@ describe("pickerCurrent", () => {
         ref: BSB_PSALM_23_1,
         shownRef: BSB_PSALM_23_1,
         standIn: true,
+        shown: BSB,
       }),
     ).toEqual(SYNODAL_PSALM_22_1)
-    // The pick lacks the book, so the picker uses BSB's numbers for it.
+    // The pick lacks the book and BSB fills it, so BSB's numbers show.
     expect(
       pickerCurrent({
-        translation: { id: "xyz_nt", books: NEW_TESTAMENT },
+        translation: NT_ONLY,
+        ref: BSB_PSALM_23_1,
+        shownRef: BSB_PSALM_23_1,
+        standIn: true,
+        shown: BSB,
+      }),
+    ).toEqual(BSB_PSALM_23_1)
+  })
+
+  // Review #9: a book the pick lacks has no numbers of its own, so the picker
+  // marks the verse as the stand-in on screen numbers it, like the pill.
+  it("keeps the stand-in's numbers for a book the pick lacks", () => {
+    expect(
+      pickerCurrent({
+        translation: NT_ONLY,
         ref: BSB_PSALM_23_1,
         shownRef: SYNODAL_PSALM_22_1,
         standIn: true,
+        shown: SYNODAL,
       }),
-    ).toEqual(BSB_PSALM_23_1)
+    ).toEqual(SYNODAL_PSALM_22_1)
+    // A stop in Synodal's own numbers (useReaderChapter's local stop): the
+    // Psalm 50 title's second verse, which no BSB verse converts to.
+    const title = { book: "PSA" as const, chapter: 50, verse: 2 }
+    expect(
+      pickerCurrent({
+        translation: NT_ONLY,
+        ref: { book: "PSA", chapter: 51, verse: 1 },
+        shownRef: title,
+        standIn: true,
+        shown: SYNODAL,
+      }),
+    ).toEqual(title)
+  })
+})
+
+describe("the stand-in's numbers and names", () => {
+  const SYNODAL = { id: "rus_syn", books: ALL_BOOKS }
+  const OLD_TESTAMENT_PART = {
+    id: "xyz_ot",
+    books: new Set<UsfmBookId>(["GEN", "PSA"]),
+  }
+
+  it("numbers each book the pick lacks as the stand-in does", () => {
+    expect(numberingFor(NT_ONLY, "PSA", SYNODAL)).toBe("rus_syn")
+    expect(numberingFor(NT_ONLY, "JHN", SYNODAL)).toBe("xyz_nt")
+    // A stand-in that lacks the book too leaves it to BSB, as R25 does.
+    expect(numberingFor(NT_ONLY, "PRO", OLD_TESTAMENT_PART)).toBe("BSB")
+    expect(numberingFor(null, "PSA", SYNODAL)).toBe("BSB")
+  })
+
+  it("names the books the stand-in fills in its words", () => {
+    const names = pickerBookNames({
+      translation: NT_ONLY,
+      names: new Map([["JHN", "Juan"]]),
+      standIn: SYNODAL,
+      standInNames: new Map([
+        ["PSA", "Псалтирь"],
+        ["JHN", "От Иоанна"],
+      ]),
+    })
+    expect(names?.get("PSA")).toBe("Псалтирь")
+    // The pick has John, so the pick's name stays.
+    expect(names?.get("JHN")).toBe("Juan")
+  })
+
+  it("keeps the pick's names with no stand-in names", () => {
+    const names = new Map([["JHN", "Juan"]] as const)
+    for (const standInNames of [null, new Map()]) {
+      expect(
+        pickerBookNames({
+          translation: NT_ONLY,
+          names,
+          standIn: SYNODAL,
+          standInNames,
+        })?.get("JHN"),
+      ).toBe("Juan")
+    }
+    expect(
+      pickerBookNames({
+        translation: NT_ONLY,
+        names: null,
+        standIn: null,
+        standInNames: new Map([["PSA", "Псалтирь"]]),
+      }),
+    ).toBeNull()
   })
 })

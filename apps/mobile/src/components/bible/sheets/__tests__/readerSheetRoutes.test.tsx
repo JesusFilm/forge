@@ -349,6 +349,51 @@ describe("reader-passage route", () => {
     })
   })
 
+  // Review #9: WBT lacks Psalms, so Synodal (the phone language's default)
+  // fills it. The picker must number and name Psalms as the pill does.
+  it("numbers and names a book the pick lacks as the stand-in does", async () => {
+    const WBT = CATALOG.byId.get("cpc_wbt")!
+    const { position } = install(
+      stubBookNamesStore({
+        cpc_wbt: new Map([["MAT", "MATEO"]]),
+        rus_syn: new Map([
+          ["PSA", "Псалтирь"],
+          ["MAT", "От Матфея"],
+        ]),
+      }),
+    )
+    mockRoute.params = readerSheetHref("passage", {
+      translation: SYNODAL,
+      viewerTranslation: WBT,
+      translationRef: { book: "PSA", chapter: 22, verse: 1 },
+      ref: PSALM_23_1,
+      offline: false,
+    }).params
+    const renderer = await renderRoute(ReaderPassageRoute)
+    await act(async () => {
+      for (let i = 0; i < 10; i += 1) await Promise.resolve()
+    })
+
+    expect(controls(renderer, "MATEO")).toHaveLength(1)
+    const psalms = `Псалтирь, ${PASSAGE.notInTranslation("WBT")}`
+    await press(renderer, psalms)
+    const [chapter22] = controls(renderer, PASSAGE.chapter(22))
+    expect(chapter22?.props.accessibilityState).toMatchObject({
+      selected: true,
+    })
+    // Synodal Psalm 50 has 21 verses (BSB's has 23), and its verse 3 is BSB
+    // Psalm 51:1 (AE17).
+    await press(renderer, PASSAGE.chapter(50))
+    expect(controls(renderer, PASSAGE.verse(21))).toHaveLength(1)
+    expect(controls(renderer, PASSAGE.verse(22))).toHaveLength(0)
+    await press(renderer, PASSAGE.verse(3))
+    expect(position.getSnapshot().ref).toEqual({
+      book: "PSA",
+      chapter: 51,
+      verse: 1,
+    })
+  })
+
   it("refuses malformed params and falls back to BSB numbers", async () => {
     const { position } = install()
     mockRoute.params = {

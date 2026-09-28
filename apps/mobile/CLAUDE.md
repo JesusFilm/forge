@@ -1827,6 +1827,11 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
     not the stand-in: its book names, its "Not in WBT" notes, and its
     numbers. The route param is `viewer`, sent only when the pick differs
     from the translation that shows.
+  - A book the pick lacks has no numbers of its own. The picker numbers and
+    names it by the stand-in on screen when the stand-in has it, else by BSB
+    (`numberingFor`, `pickerBookNames`). R25 fills every missing book by one
+    rule, so the mark and the pick agree with the pill (review #9, owner,
+    2026-09-28).
 - **The translation pill is in the top bar (KD28, owner, 2026-09-27).** It
   sits right of the passage pill and shows the short name only. A stand-in
   (R25, R41) adds a red info button right of the pill, not inside it (owner,
