@@ -1,6 +1,7 @@
 ---
 title: "Budget recommendation traces by stage amplification and prove loaded retention"
 date: "2026-09-28"
+last_updated: "2026-09-29"
 module: "apps/admin recommendation tracing"
 category: "best-practices"
 problem_type: "best_practice"
@@ -10,12 +11,16 @@ applies_when:
   - "Adding candidate generators or detailed recommendation evidence"
   - "Setting trace retention or validating a purge scheduler"
   - "Investigating PostgreSQL volume growth"
+  - "Reclaiming empty legacy trace allocation while preserving its schema"
 tags:
   - "recommendations"
   - "postgresql"
   - "capacity"
   - "retention"
   - "indexes"
+  - "reclamation"
+  - "truncate"
+  - "lock-budget"
 ---
 
 ## Context
@@ -135,6 +140,38 @@ moves the horizon. Once retention has made the legacy table exactly empty,
 a guarded empty-table `TRUNCATE` can reclaim its allocation while retaining
 schema and reader compatibility. Keep the emptiness assertion and truncate
 under the same lock/transaction, fail closed, and omit `CASCADE`.
+
+### Prove empty-relation reclamation before scheduling it
+
+The inactive preparation asset at
+`apps/admin/src/services/recommendations/sql/reclaim-empty-legacy-stage-relation.sql`
+is outside automatic migrations and deployment hooks. It obtains `ACCESS
+EXCLUSIVE`, asserts exact emptiness, and truncates in one transaction, with a
+one-second lock timeout and ten-second statement timeout. Default restrictive
+semantics refuse new inbound foreign keys. A late legacy writer waits for the
+lock and can insert after commit; the operation does not retire a writer.
+
+The dedicated `legacy-stage-reclamation.db.test.ts` passed six PostgreSQL 18
+cases covering retained-row refusal, reader contention, writers before and
+after lock acquisition, normal expiry, allocation recovery and transaction
+rollback. The final fixture retained 1,425,408 allocated bytes after deletion;
+truncate reduced that to 32,768 bytes. Compact detail, items, outcomes,
+evaluation and expiry stayed unchanged, and fresh legacy issuance still worked.
+These are local relation bytes, not production filesystem savings or proof of
+scan latency on an 18 GB empty relation.
+
+Because this proof truncates a whole relation, require a separately owned
+loopback `forge_legacy_reclamation_*` database. Reject connection-string query
+parameters and fragments: the PostgreSQL driver can honor a `host` query
+override even when the parsed URL hostname is loopback. A network-free guard
+case verifies this boundary before the database proof can run.
+
+Promote the asset only in a later reviewed migration after loaded retention,
+actual expiry and purge, compact-fleet convergence, rollback-reader and capacity
+gates pass. Keep all observations for their 29-day lifetime and preserve the
+schema and dual reader. See
+`docs/validation/recommendation-legacy-reclamation-20260929/README.md` for the
+bounded proof and outstanding production gates.
 
 ## When to Apply
 
