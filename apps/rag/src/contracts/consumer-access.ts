@@ -18,14 +18,14 @@ export type ConsumerMutation = {
   consumerId: string
   actorGithubUserId: string
   admissionSha?: string
-  verifyCurrentAdmission?(): Promise<boolean>
+  verifyCurrentAdmission?(signal?: AbortSignal): Promise<string | null>
 }
 export type VersionedConsumerMutation = ConsumerMutation & {
   expectedVersion: number
 }
 export type AddConsumerMemberMutation = VersionedConsumerMutation & {
   memberGithubUserId: string
-  verifyCurrentEligibility(): Promise<string | null>
+  verifyCurrentEligibility(signal?: AbortSignal): Promise<string | null>
 }
 export type RemoveConsumerMemberMutation = VersionedConsumerMutation & {
   memberGithubUserId: string
@@ -46,7 +46,7 @@ export type ConsumerAccess = {
     actorGithubUserId: string
     allowedSourceKeys: string[]
     admissionSha?: string
-    verifyCurrentAdmission?(): Promise<boolean>
+    verifyCurrentAdmission?(signal?: AbortSignal): Promise<string | null>
   }): Promise<IssuedConsumer>
   members(
     consumerId: string,

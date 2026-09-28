@@ -99,13 +99,13 @@ export function createConsumerRoutes(deps: Deps) {
     get(key: "identity"): GitHubIdentity
   }): GitHubIdentity => c.get("identity")
   const verifyCurrentAdmission =
-    (actor: GitHubIdentity, sha: string) => async (): Promise<boolean> => {
-      const fresh = await deps.admission.current()
-      return (
-        fresh.sha === sha &&
-        admitted(fresh.allowlist, actor.login, actor.id) &&
-        (await deps.admission.eligible(actor))
-      )
+    (actor: GitHubIdentity) =>
+    async (signal?: AbortSignal): Promise<string | null> => {
+      const fresh = await deps.admission.current(signal)
+      return admitted(fresh.allowlist, actor.login, actor.id) &&
+        (await deps.admission.eligible(actor, signal))
+        ? fresh.sha
+        : null
     }
 
   app.get("/", async (c) => {
@@ -136,10 +136,7 @@ export function createConsumerRoutes(deps: Deps) {
       actorGithubUserId: String(identity(c).id),
       allowedSourceKeys: deps.allowedSourceKeys,
       admissionSha: c.get("publication").sha,
-      verifyCurrentAdmission: verifyCurrentAdmission(
-        identity(c),
-        c.get("publication").sha,
-      ),
+      verifyCurrentAdmission: verifyCurrentAdmission(identity(c)),
     })
     return c.json(
       {
@@ -184,18 +181,18 @@ export function createConsumerRoutes(deps: Deps) {
       memberGithubUserId: String(target),
       expectedVersion: (body as { expectedVersion: number }).expectedVersion,
       admissionSha: publication.sha,
-      verifyCurrentEligibility: async () => {
-        const fresh = await deps.admission.current()
+      verifyCurrentEligibility: async (signal) => {
+        const fresh = await deps.admission.current(signal)
         const actor = identity(c)
         const candidate = fresh.allowlist.users.find(
           (entry) => entry.id === target,
         )
         if (
           !admitted(fresh.allowlist, actor.login, actor.id) ||
-          !(await deps.admission.eligible(actor)) ||
+          !(await deps.admission.eligible(actor, signal)) ||
           !candidate ||
           !admitted(fresh.allowlist, candidate.login, target) ||
-          !(await deps.admission.eligible(candidate))
+          !(await deps.admission.eligible(candidate, signal))
         )
           return null
         return fresh.sha
@@ -215,10 +212,7 @@ export function createConsumerRoutes(deps: Deps) {
       memberGithubUserId: c.req.param("memberId"),
       expectedVersion: body.expectedVersion,
       admissionSha: c.get("publication").sha,
-      verifyCurrentAdmission: verifyCurrentAdmission(
-        identity(c),
-        c.get("publication").sha,
-      ),
+      verifyCurrentAdmission: verifyCurrentAdmission(identity(c)),
     })
     return c.json({ removed: true })
   })
@@ -231,10 +225,7 @@ export function createConsumerRoutes(deps: Deps) {
       expectedVersion: body.expectedVersion,
       admissionSha: c.get("publication").sha,
       reason: body.reason,
-      verifyCurrentAdmission: verifyCurrentAdmission(
-        identity(c),
-        c.get("publication").sha,
-      ),
+      verifyCurrentAdmission: verifyCurrentAdmission(identity(c)),
     })
     return c.json(result, 200, { "Cache-Control": "no-store" })
   })
@@ -255,10 +246,7 @@ export function createConsumerRoutes(deps: Deps) {
       actorGithubUserId: String(identity(c).id),
       state,
       admissionSha: c.get("publication").sha,
-      verifyCurrentAdmission: verifyCurrentAdmission(
-        identity(c),
-        c.get("publication").sha,
-      ),
+      verifyCurrentAdmission: verifyCurrentAdmission(identity(c)),
     })
     return c.json({ state })
   })

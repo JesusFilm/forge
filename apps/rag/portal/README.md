@@ -38,7 +38,7 @@ is independent of the portal session and keeps its existing credential path.
 The portal exposes login, protected identity proof, and sign-out. When the
 separate consumer writer and auth reader URLs are configured, it also mounts
 authenticated `/portal/consumers` management routes. These are the backend
-for the isolated pre-portal dogfood harness and the later UI; they do not
+for local management UI development under feat-530; they do not
 expose usage reports. See the [consumer access migration runbook](../docs/ops/consumer-access-migration.md)
 for the route contract, least-privilege roles, one-time secret handling and
 rollout boundary.

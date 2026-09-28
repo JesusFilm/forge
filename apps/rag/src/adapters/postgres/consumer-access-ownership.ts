@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "../../generated/prisma/index.js"
+import { withDeadline } from "../../contracts/deadline.js"
 import { ConsumerAccessError } from "../../contracts/consumer-access.js"
 import {
   consumerId,
@@ -12,11 +13,16 @@ export async function withConsumerOwner<T>(
   id: string,
   actor: string,
   admissionSha: string | undefined,
-  operation: (tx: Prisma.TransactionClient, row: ConsumerRow) => Promise<T>,
-  verifyCurrentAdmission?: () => Promise<boolean>,
+  operation: (
+    tx: Prisma.TransactionClient,
+    row: ConsumerRow,
+    admissionSha: string | undefined,
+  ) => Promise<T>,
+  verifyCurrentAdmission?: (signal?: AbortSignal) => Promise<string | null>,
 ): Promise<T> {
   const target = consumerId(id)
   const owner = githubId(actor)
+  let currentSha = admissionSha
   try {
     return await db.$transaction(
       async (tx) => {
@@ -34,9 +40,12 @@ export async function withConsumerOwner<T>(
           AND role = 'owner'
       `)
         if (!membership.length) throw new ConsumerAccessError("forbidden")
-        if (verifyCurrentAdmission && !(await verifyCurrentAdmission()))
-          throw new ConsumerAccessError("forbidden")
-        return operation(tx, row)
+        if (verifyCurrentAdmission) {
+          const freshSha = await withDeadline(8_000, verifyCurrentAdmission)
+          if (!freshSha) throw new ConsumerAccessError("forbidden")
+          currentSha = freshSha
+        }
+        return operation(tx, row, currentSha)
       },
       { maxWait: 10_000, timeout: 20_000 },
     )
@@ -45,14 +54,19 @@ export async function withConsumerOwner<T>(
       error instanceof ConsumerAccessError &&
       (error.code === "forbidden" || error.code === "conflict")
     ) {
-      await db.$executeRaw(Prisma.sql`
+      try {
+        await db.$executeRaw(Prisma.sql`
         INSERT INTO consumer_private.lifecycle_audit
           (consumer_id, actor_github_user_id, action, admission_sha,
            membership_version, credential_version)
-        SELECT id, ${owner}::bigint, 'denied', ${admissionSha ?? null},
+        SELECT id, ${owner}::bigint, 'denied', ${currentSha ?? null},
                membership_version, credential_version
         FROM consumer_private.consumers WHERE id = ${target}::uuid
-      `)
+        `)
+      } catch {
+        // Fixed message only: never log SQL parameters, tokens, or caught errors.
+        console.error("consumer_denial_audit_failed")
+      }
     }
     throw error
   }

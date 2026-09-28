@@ -97,7 +97,7 @@ describe("registered consumer lifecycle", () => {
         consumerId: id,
         actorGithubUserId: "4301",
         expectedVersion: 1,
-        verifyCurrentAdmission: async () => false,
+        verifyCurrentAdmission: async () => null,
       }),
     ).rejects.toMatchObject({ code: "forbidden" })
     expect(await auth.authenticate(created.secret)).toMatchObject({
@@ -295,8 +295,7 @@ describe("registered consumer lifecycle", () => {
       SELECT column_name FROM information_schema.columns
       WHERE table_schema = 'consumer_private' AND table_name = 'lifecycle_audit'
     `
-    expect(columns.map((row) => row.column_name)).not.toEqual(
-      expect.arrayContaining(["secret", "query", "ip", "token", "verifier"]),
-    )
+    const forbidden = new Set(["secret", "query", "ip", "token", "verifier"])
+    expect(columns.filter((row) => forbidden.has(row.column_name))).toEqual([])
   })
 })

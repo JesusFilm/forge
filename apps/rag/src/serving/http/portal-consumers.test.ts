@@ -154,3 +154,23 @@ describe("authenticated consumer routes", () => {
     })
   })
 })
+
+it("accepts an unrelated merge and supplies the fresh admission revision", async () => {
+  const f = fixture()
+  f.current.mockResolvedValueOnce({
+    sha: "old-revision",
+    allowlist: { users: [{ id: 42, login: "owner" }] },
+  })
+  f.current.mockResolvedValue({
+    sha: "fresh-revision",
+    allowlist: { users: [{ id: 42, login: "owner" }] },
+  })
+  const response = await f.app.request("/", {
+    method: "POST",
+    headers: f.headers,
+    body: JSON.stringify({ name: "unrelated-merge" }),
+  })
+  expect(response.status).toBe(201)
+  const input = f.create.mock.calls[0][0]
+  expect(await input.verifyCurrentAdmission?.()).toBe("fresh-revision")
+})

@@ -22,7 +22,7 @@ describe("consumer HTTP lifecycle backed by PostgreSQL", () => {
         actorGithubUserId: "4701",
         allowedSourceKeys: [],
         admissionSha: "e".repeat(40),
-        verifyCurrentAdmission: async () => false,
+        verifyCurrentAdmission: async () => null,
       }),
     ).rejects.toMatchObject({ code: "forbidden" })
     const [row] = await db.$queryRaw<Array<{ count: bigint }>>`

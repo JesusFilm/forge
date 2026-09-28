@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto"
+import { withDeadline } from "../../contracts/deadline.js"
 
 import { Prisma, type PrismaClient } from "../../generated/prisma/index.js"
 import type {
@@ -57,7 +58,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
     actorGithubUserId: string
     allowedSourceKeys: string[]
     admissionSha?: string
-    verifyCurrentAdmission?(): Promise<boolean>
+    verifyCurrentAdmission?(signal?: AbortSignal): Promise<string | null>
   }): Promise<IssuedConsumer> {
     if (
       !/^[a-z0-9-]{1,80}$/.test(input.name) ||
@@ -70,6 +71,11 @@ export class PostgresConsumerAccess implements ConsumerAccess {
     try {
       const consumer = await this.writer.$transaction(
         async (tx) => {
+          const admissionSha = input.verifyCurrentAdmission
+            ? await withDeadline(8_000, input.verifyCurrentAdmission)
+            : input.admissionSha
+          if (input.verifyCurrentAdmission && !admissionSha)
+            throw new ConsumerAccessError("forbidden")
           const [row] = await tx.$queryRaw<ConsumerRow[]>(Prisma.sql`
           INSERT INTO consumer_private.consumers
             (name, state, allowed_source_keys, credential_version)
@@ -88,14 +94,9 @@ export class PostgresConsumerAccess implements ConsumerAccess {
           INSERT INTO consumer_private.lifecycle_audit
             (consumer_id, actor_github_user_id, action, admission_sha,
              membership_version, credential_version)
-          VALUES (${row.id}::uuid, ${actor}::bigint, 'created', ${input.admissionSha ?? null}, 1, 1),
-                 (${row.id}::uuid, ${actor}::bigint, 'credential_issued', ${input.admissionSha ?? null}, 1, 1)
+          VALUES (${row.id}::uuid, ${actor}::bigint, 'created', ${admissionSha ?? null}, 1, 1),
+                 (${row.id}::uuid, ${actor}::bigint, 'credential_issued', ${admissionSha ?? null}, 1, 1)
         `)
-          if (
-            input.verifyCurrentAdmission &&
-            !(await input.verifyCurrentAdmission())
-          )
-            throw new ConsumerAccessError("forbidden")
           return consumerRecord(row)
         },
         { maxWait: 10_000, timeout: 20_000 },
@@ -145,7 +146,10 @@ export class PostgresConsumerAccess implements ConsumerAccess {
           throw new ConsumerAccessError("conflict")
         if (row.state === "revoked" || row.state === "pending")
           throw new ConsumerAccessError("forbidden")
-        const admissionSha = await input.verifyCurrentEligibility()
+        const admissionSha = await withDeadline(
+          8_000,
+          input.verifyCurrentEligibility,
+        )
         if (!admissionSha) throw new ConsumerAccessError("forbidden")
         try {
           await tx.$executeRaw(Prisma.sql`
@@ -177,7 +181,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
       input.consumerId,
       input.actorGithubUserId,
       input.admissionSha,
-      async (tx, row) => {
+      async (tx, row, admissionSha) => {
         if (
           !Number.isSafeInteger(input.expectedVersion) ||
           input.expectedVersion < 1
@@ -206,7 +210,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
         INSERT INTO consumer_private.lifecycle_audit
           (consumer_id, actor_github_user_id, target_github_user_id, action, admission_sha, membership_version)
         VALUES (${row.id}::uuid, ${input.actorGithubUserId}::bigint,
-                ${member}::bigint, 'member_removed', ${input.admissionSha ?? null}, ${row.membership_version + 1n})
+                ${member}::bigint, 'member_removed', ${admissionSha ?? null}, ${row.membership_version + 1n})
       `)
       },
       input.verifyCurrentAdmission,
@@ -228,7 +232,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
       input.consumerId,
       input.actorGithubUserId,
       input.admissionSha,
-      async (tx, row) => {
+      async (tx, row, admissionSha) => {
         if (row.state === "revoked" || row.state === "pending")
           throw new ConsumerAccessError("forbidden")
         if (row.credential_version !== BigInt(input.expectedVersion))
@@ -250,7 +254,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
           (consumer_id, actor_github_user_id, action, admission_sha, credential_version)
         VALUES (${row.id}::uuid, ${input.actorGithubUserId}::bigint,
                 ${input.reason === "lost" ? "recovery" : "credential_rotated"},
-                ${input.admissionSha ?? null}, ${version})
+                ${admissionSha ?? null}, ${version})
       `)
         return { secret: issued, credentialVersion: version }
       },
@@ -264,7 +268,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
       input.consumerId,
       input.actorGithubUserId,
       input.admissionSha,
-      async (tx, row) => {
+      async (tx, row, admissionSha) => {
         if (
           row.state === "revoked" ||
           (input.state === "active" && row.state !== "suspended")
@@ -293,7 +297,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
           (consumer_id, actor_github_user_id, action, admission_sha,
            membership_version, credential_version)
         VALUES (${row.id}::uuid, ${input.actorGithubUserId}::bigint,
-                ${action}, ${input.admissionSha ?? null},
+                ${action}, ${admissionSha ?? null},
                 ${row.membership_version}, ${row.credential_version})
       `)
       },

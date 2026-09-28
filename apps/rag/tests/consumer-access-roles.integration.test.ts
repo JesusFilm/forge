@@ -97,6 +97,25 @@ describe.skipIf(!adminUrl || !writer || !reader)(
         }
       },
     )
+    it("rejects non-inherited writer privileges reachable with SET ROLE", async () => {
+      if (!writer || !admin) throw new ConsumerRoleVerificationError()
+      const [role] = await writer.$queryRaw<
+        Array<{ name: string }>
+      >`SELECT current_user AS name`
+      const quotedRole = `"${role.name.replaceAll('"', '""')}"`
+      await admin.$executeRawUnsafe(
+        `GRANT ${quotedRole} TO ${fixtureRole} WITH INHERIT FALSE, SET TRUE`,
+      )
+      try {
+        await expect(
+          verifyConsumerRoles(writer, fixture),
+        ).rejects.toBeInstanceOf(ConsumerRoleVerificationError)
+      } finally {
+        await admin.$executeRawUnsafe(
+          `REVOKE ${quotedRole} FROM ${fixtureRole}`,
+        )
+      }
+    })
     it("rejects column-only writes", async () => {
       if (!writer || !admin) throw new ConsumerRoleVerificationError()
       await admin.$executeRawUnsafe(
