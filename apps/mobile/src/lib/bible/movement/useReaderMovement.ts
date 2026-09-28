@@ -10,6 +10,7 @@ import { bookByUsfm, type UsfmBookId } from "../text/books"
 import type { ChapterPosition } from "../text/types"
 import { BSB_TRANSLATION_ID } from "../versification/classify"
 import type { VerseRef } from "../versification/convert"
+import type { SwipeAxis } from "./gesture"
 import {
   moveChapter,
   moveVerse,
@@ -36,8 +37,13 @@ export type MovePlace = {
 
 export type ReaderNotice = { id: number; text: string }
 
-/** One verse move; the verse slides on each new id (owner, 2026-09-25). */
-export type VerseSlide = { id: number; direction: MoveDirection }
+/** One move; the verse slides on each new id (owner, 2026-09-25). A chapter
+ *  swipe slides sideways (owner, 2026-09-28); no axis means a verse move. */
+export type VerseSlide = {
+  id: number
+  direction: MoveDirection
+  axis?: SwipeAxis
+}
 
 export type ReaderMovement = {
   moveVerse(direction: MoveDirection): void
@@ -129,7 +135,11 @@ export function useReaderMovement(input: ReaderMovementInput): ReaderMovement {
         numbering: translationNumbering(place.translationId),
       })
       if (result.kind !== "stop") {
-        setSlide((previous) => ({ id: (previous?.id ?? 0) + 1, direction }))
+        setSlide((previous) => ({
+          id: (previous?.id ?? 0) + 1,
+          direction,
+          axis: "verse",
+        }))
       }
       apply(result, place, "verse")
     },
@@ -141,6 +151,13 @@ export function useReaderMovement(input: ReaderMovementInput): ReaderMovement {
         direction,
         numbering: translationNumbering(place.translationId),
       })
+      if (result.kind !== "stop") {
+        setSlide((previous) => ({
+          id: (previous?.id ?? 0) + 1,
+          direction,
+          axis: "chapter",
+        }))
+      }
       apply(result, place, "chapter")
     },
     chapterPreview(direction) {

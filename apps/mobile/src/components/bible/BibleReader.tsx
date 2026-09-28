@@ -338,6 +338,7 @@ export function BibleReader(props: BibleReaderProps) {
     chapterKey: string
     verse: number
   } | null>(null)
+  const scrubbing = scrub !== null && scrub.chapterKey === chapterKey
   const model = useReaderModel(
     chapter.state,
     scrub && scrub.chapterKey === chapterKey ? scrub.verse : null,
@@ -608,6 +609,7 @@ export function BibleReader(props: BibleReaderProps) {
             isStopSelected(activeSelection, model.stops, model.stopIndex)
           }
           slide={movement.slide}
+          scrubbing={scrubbing}
           reduceMotion={reduceMotion}
           clip={{
             top: band.top,
@@ -816,32 +818,14 @@ type VerseAreaProps = {
   onPressVerse: () => void
   selected: boolean
   slide: VerseSlide | null
+  scrubbing: boolean
   reduceMotion: boolean
   clip: VerseSlideClip
 }
 
 function VerseArea(props: VerseAreaProps) {
-  const { state, model, boxes } = props
-  const { translationRef } = model
-  const live: LiveVerse | null =
-    state.status === "ready" && model.stop && translationRef
-      ? {
-          verseKey: `${state.shown.translation.id}:${translationRef.book}.${translationRef.chapter}:${model.stopIndex}`,
-          view: {
-            stop: model.stop,
-            textDirection: state.text.textDirection,
-            appearance: props.appearance,
-            tokens: props.tokens,
-            boxes,
-            columnWidth: props.columnWidth,
-            accessibilityMove: props.accessibilityMove,
-            onScrollEdges: props.onScrollEdges,
-            onPress:
-              model.stop.kind === "verse" ? props.onPressVerse : undefined,
-            selected: props.selected,
-          },
-        }
-      : null
+  const { state, boxes } = props
+  const live = liveVerse(props)
   // The slider stays mounted across a chapter load, so a verse move into the
   // next chapter still slides (owner, 2026-09-25). A move into another book
   // waits for its translation first, so "waiting" is a load too.
@@ -851,6 +835,7 @@ function VerseArea(props: VerseAreaProps) {
         live={live}
         loading={state.status === "waiting" || state.status === "loading"}
         slide={props.slide}
+        scrubbing={props.scrubbing}
         reduceMotion={props.reduceMotion}
         clip={props.clip}
         appearance={props.appearance}
@@ -864,6 +849,32 @@ function VerseArea(props: VerseAreaProps) {
       )}
     </>
   )
+}
+
+/** The verse on screen. The chapter key and index order a scrub's steps. */
+function liveVerse(props: VerseAreaProps): LiveVerse | null {
+  const { state, model } = props
+  const ref = model.translationRef
+  if (state.status !== "ready" || !ref) return null
+  if (!model.stop || model.stopIndex === null) return null
+  const chapterKey = `${state.shown.translation.id}:${ref.book}.${ref.chapter}`
+  return {
+    key: `${chapterKey}:${model.stopIndex}`,
+    chapterKey,
+    index: model.stopIndex,
+    view: {
+      stop: model.stop,
+      textDirection: state.text.textDirection,
+      appearance: props.appearance,
+      tokens: props.tokens,
+      boxes: props.boxes,
+      columnWidth: props.columnWidth,
+      accessibilityMove: props.accessibilityMove,
+      onScrollEdges: props.onScrollEdges,
+      onPress: model.stop.kind === "verse" ? props.onPressVerse : undefined,
+      selected: props.selected,
+    },
+  }
 }
 
 /** Loading, or a message in place of the verse (R31). */
