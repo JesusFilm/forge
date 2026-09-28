@@ -3,11 +3,11 @@ id: "feat-528"
 title: "Deliver RAG consumer usage reporting"
 owner: "jaco"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-09-15"
 duration: 4
 depends_on: ["feat-526", "feat-527"]
-blocks: ["feat-529"]
+blocks: ["feat-529", "feat-563"]
 tags: ["rag", "auth", "observability"]
 ---
 
@@ -58,3 +58,17 @@ to this deliverable. Run RAG tests, typecheck, lint, depcruise and isolated DB
 role/integration checks; contract drift checks if changed. Record actual outcomes
 without sensitive content. Complete only the implemented deliverable; shared-token
 cutoff additionally requires feat-529 and separate production cutover approval.
+
+## Resolution
+
+Implemented locally: isolated usage accounting and report views, real HTTP
+completion/disconnect accounting, independently maintained deployment inventory,
+honest coverage gaps and crash reconciliation, and restricted read-only reporting.
+See [local verification](evidence/feat-528/local-verification.md) and
+[operator instructions](../../../apps/rag/docs/ops/consumer-usage.md).
+
+The implemented deliverable is complete. Production provisioning, RAGBot portal
+registration/report grant and actual ops dogfood remain activation/dependent
+work; shared-token cutoff still requires feat-529 and separate approval.
+Capacity review is feat-563. Add the Forge PR link here before merging this local
+implementation; no PR or production deployment is claimed by this resolution.
