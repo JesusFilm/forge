@@ -68,7 +68,12 @@ rewrite existing consumer grants.
 On 2026-09-28, Jaco authorized setup under feat-530. Existing consumer tables
 were confirmed; both accounts were created, credentials stored in the vault,
 and `db:verify-consumer-roles` passed. Both private-endpoint URLs were staged in Railway with deployments suppressed.
-Source approval and deployment activation remain pending in the feat-530 checklist. No shared-token cutoff or migration
+Jaco approved all 59 currently registered sources. The explicit keys are now
+configured in `RAG_DEFAULT_CONSUMER_SOURCE_KEYS`; future registry additions require
+a policy update. Railway deployment
+`39957625-7834-4803-afbc-4ef2493ef68d` succeeded. The authenticated production
+portal loads its empty directory and enables Create consumer. Production creation
+and one-time key handling remain pending in the feat-530 checklist. No shared-token cutoff or migration
 grace starts with this setup.
 
 ## Backend contract

@@ -136,13 +136,16 @@ Activation checklist (before feat-528 reporting and feat-529 dogfood):
 - [x] Store generated credentials in Doppler `forge-rag/prd`; no secret values
       in evidence or repository.
 - [x] Run `db:verify-consumer-roles` against both production accounts: passed.
-- [ ] Obtain Jaco's default source-scope choice.
+- [x] Jaco approved all 59 currently registered sources as the default scope.
 - [x] Stage both Railway consumer database URLs with verified private database
       endpoints and intermediate deployments suppressed.
-- [ ] Set `RAG_DEFAULT_CONSUMER_SOURCE_KEYS` to the approved keys.
-- [ ] Deploy the configuration change and verify healthy startup.
-- [ ] Verify admitted production identity reports `managementAvailable: true`,
-      directory loads, and owner creation/key handling works through the UI.
+- [x] Set `RAG_DEFAULT_CONSUMER_SOURCE_KEYS` to those 59 explicit keys.
+      Future registry additions require an explicit policy update.
+- [x] Railway deployment `39957625-7834-4803-afbc-4ef2493ef68d` succeeded.
+- [x] Reload the production portal as `@jaco-brink`: consumer directory loads,
+      Create consumer is available, disabled notice is absent, and registry is empty.
+- [ ] Verify owner creation and one-time key handling through the production UI.
+      No production consumer or API key was issued during activation verification.
 
 See `apps/rag/docs/ops/consumer-access-migration.md` for exact privileges and
 secret names. Activation does not start feat-529's seven-day grace or change
