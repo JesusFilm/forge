@@ -415,3 +415,31 @@ describe("POST /watch/api/recommendations/profile", () => {
     expect(mutate).not.toHaveBeenCalled()
   })
 })
+
+describe("excluded profile ingress", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resetRecommendationMutationAdmissionForTests()
+  })
+
+  it.each(["status", "grant", "reset"])(
+    "rejects crawler profile %s before upstream or cookie issuance",
+    async (action) => {
+      const crawler = request(action)
+      crawler.headers.set("user-agent", "Applebot")
+      const response = await POST(crawler)
+      expect(response.status).toBe(403)
+      expect(response.headers.get("set-cookie")).toBeNull()
+      expect(mutate).not.toHaveBeenCalled()
+    },
+  )
+  it.each(["withdraw", "delete"])(
+    "preserves crawler privacy control %s",
+    async (action) => {
+      const crawler = request(action)
+      crawler.headers.set("user-agent", "Applebot")
+      await POST(crawler)
+      expect(mutate).toHaveBeenCalled()
+    },
+  )
+})

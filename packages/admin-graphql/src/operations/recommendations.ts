@@ -8,6 +8,7 @@ export const adminSemanticRecommendationDeliveryQuery = `
     $sessionDigest: String!
     $consentReceiptDigest: String
     $profileTokenDigest: String
+    $trafficCategory: String
     $eligibleHuman: Boolean
   ) {
     semanticRecommendationDelivery(
@@ -17,6 +18,7 @@ export const adminSemanticRecommendationDeliveryQuery = `
       sessionDigest: $sessionDigest
       consentReceiptDigest: $consentReceiptDigest
       profileTokenDigest: $profileTokenDigest
+      trafficCategory: $trafficCategory
       eligibleHuman: $eligibleHuman
     ) {
       contractVersion

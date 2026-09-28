@@ -1,3 +1,4 @@
+import { isEligibleHumanRequest } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 import {
   RECOMMENDATION_PROFILE_BODY_BYTES,
@@ -111,6 +112,13 @@ export async function POST(request: Request) {
           ? "privacy-control"
           : "profile-mutation",
     )
+
+    if (
+      !["withdraw", "delete"].includes(parsed.data.action) &&
+      !isEligibleHumanRequest(request)
+    ) {
+      throw new RecommendationRouteError(403, "machine_profile_rejected")
+    }
 
     const session = ensureRecommendationSession(request)
     const current = readRecommendationProfileCookie(request)
