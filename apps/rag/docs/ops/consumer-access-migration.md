@@ -39,6 +39,38 @@ as the transaction commits, so coordinate installation with every caller.
    through to the shared token map. Feat-529 owns the actual ops HTTP dogfood,
    grace start, communications and cutoff. No cutoff is automatic in feat-527.
 
+## Production activation ownership (feat-530)
+
+Activate the already-deployed management backend under feat-530 before usage
+reporting (feat-528) and actual ops dogfood (feat-529). A code merge deploys the
+UI; it does not create PostgreSQL login roles or populate Railway secrets.
+Role provisioning and receiver configuration are authorized operator actions.
+The existing `forge` production `@forge/rag` service hosts both UI and retrieval.
+
+Production role names are `forge_rag_consumer_writer` and
+`forge_rag_consumer_auth_reader`. These are service accounts, not GitHub/user
+roles. Both use the existing RAG database. Give them only the explicit grants
+in additive rollout step 2; neither owns tables or receives administrative,
+corpus, session, usage, role-switching or sequence privileges. The existing
+verifier checks both required grants and forbidden effective/reachable grants.
+
+Doppler `forge-rag/prd` retains the public-endpoint operator connections as
+`FORGE_RAG_CONSUMER_WRITER_DATABASE_URL` and
+`FORGE_RAG_CONSUMER_AUTH_DATABASE_URL`. Railway uses the same accounts with the
+private database endpoint, under `RAG_CONSUMER_WRITER_DATABASE_URL` and
+`RAG_CONSUMER_AUTH_DATABASE_URL`. Transfer values directly through process
+memory/stdin, never arguments, output or files. Verify both accounts before
+setting the receiver. Stage the two URLs without intermediate deployments,
+then set the approved source scope and deploy the configuration together.
+A source-scope change affects newly created consumers; it does not automatically
+rewrite existing consumer grants.
+
+On 2026-09-28, Jaco authorized setup under feat-530. Existing consumer tables
+were confirmed; both accounts were created, credentials stored in the vault,
+and `db:verify-consumer-roles` passed. Source approval and receiver activation
+remain pending in the feat-530 checklist. No shared-token cutoff or migration
+grace starts with this setup.
+
 ## Backend contract
 
 All mutations require a current admitted session and same-origin request.

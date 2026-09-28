@@ -55,7 +55,8 @@ routes. Generate new key replaces the consumer's single active credential.
 
 No external consumers or implicit quotas. No secrets in logs, tests, command
 output, chat, PRs or telemetry. Preserve hashing/HTTPS and no-store secret displays.
-No production action is authorized. Portal admission and production login proof
+Production provisioning/activation requires explicit operator authorization.
+Portal admission and production login proof
 are already delivered; use the actual feat-527 backend. Development identities
 and seed data must remain local, with no production auth bypass or CI fixture setup.
 
@@ -117,3 +118,30 @@ RAG and Knowledge are image-only under-construction placeholders using the
 user-supplied capybara illustration. The mockup explicitly introduces the
 consumer-page subtitle. Retain direct creation and one-time key handling.
 See [registry evidence](evidence/feat-530/registry-mockup.md).
+
+## Production activation — 2026-09-28
+
+Owner: Jaco. After PR #2442 deployed, sign-in worked but the UI reported
+management disabled. Production lacked both consumer database URLs and the
+default source policy. Jaco explicitly authorized provisioning and activation
+under feat-530. This is operational configuration on the existing Railway
+`forge` / `production` / `@forge/rag` service, not a new service or schema feature.
+
+Activation checklist (before feat-528 reporting and feat-529 dogfood):
+
+- [x] Confirm existing production consumer tables and intended database.
+- [x] Create `forge_rag_consumer_writer` and `forge_rag_consumer_auth_reader`.
+- [x] Store generated credentials in Doppler `forge-rag/prd`; no secret values
+      in evidence or repository.
+- [x] Run `db:verify-consumer-roles` against both production accounts: passed.
+- [ ] Obtain Jaco's default source-scope choice.
+- [ ] Set both Railway consumer database URLs together, with private database
+      endpoints; set `RAG_DEFAULT_CONSUMER_SOURCE_KEYS` to the approved keys.
+- [ ] Deploy the configuration change and verify healthy startup.
+- [ ] Verify admitted production identity reports `managementAvailable: true`,
+      directory loads, and owner creation/key handling works through the UI.
+
+See `apps/rag/docs/ops/consumer-access-migration.md` for exact privileges and
+secret names. Activation does not start feat-529's seven-day grace or change
+legacy credentials. Keep feat-530 in progress until its remaining UI/live gates
+are observed.
