@@ -16,11 +16,11 @@ other worktrees are preserved.
 
 ## Acceptance state
 
-| Ticket   | Current result                                                                                                                                                                                                        | Acceptance                                                                          |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| feat-373 | Origin-issued anonymous served manifests, source parity, bounded reporting repair and a scoped Admin filter are locally verified and merged in PR #2450; ordinary deployment and deployed reconciliation are pending. | In progress; fixtures and code review do not complete the Admin gate.               |
-| feat-387 | Retry repair merged and deployed. Production preflight reached the 50,001-source sentinel; Admin confirms no generation or evaluation.                                                                                | In progress; there are no production graph metrics or terminal evaluation decision. |
-| feat-545 | Retained historical evidence reviewed; nine precise owner decisions documented and merged.                                                                                                                            | In progress; D1–D9 remain pending explicit owner acceptance or resolving evidence.  |
+| Ticket   | Current result                                                                                                                                                                       | Acceptance                                                                          |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| feat-373 | PR #2450 is deployed and real V2 evidence is visible. Production inspection found a remaining hero authority gap and a mixed-policy display-bound gap; focused repairs are underway. | In progress; the full Admin coverage and performance gate remains open.             |
+| feat-387 | Retry repair merged and deployed. Production preflight reached the 50,001-source sentinel; Admin confirms no generation or evaluation.                                               | In progress; there are no production graph metrics or terminal evaluation decision. |
+| feat-545 | Retained historical evidence reviewed; nine precise owner decisions documented and merged.                                                                                           | In progress; D1–D9 remain pending explicit owner acceptance or resolving evidence.  |
 
 No co-watch edge affects live viewer selection. No feature flag, conversion
 pilot, experiment, live promotion, manual deployment, production data repair or
@@ -55,6 +55,28 @@ verifies actual Admin HTTP and worker processes at `e0f864dd5` at 21:06:30 UTC,
 health 200, expected runner roles and compact traces. Each service had one
 successful active deployment; old active instances had drained. Only normal
 PR-to-main deployment was used.
+
+The exposure release's [migration receipt](../validation/recommendation-acceptance-20260929/migration-0105-verified.json)
+confirms 0105 completed at 22:27:58 UTC with the reviewed source checksum and no
+unfinished migrations. A metadata-only read through the deployed Admin process
+at 22:41:32 UTC verified the validated CHECK and ready, valid unique btree index
+over `(window_id, position, item_path)` only for served rows. The transaction
+remained read-only with three-second statement and one-second lock bounds.
+Database-service SSH had closed before returning a result; the existing Admin
+connection supplied the catalog receipt without any access/configuration change.
+The initial checker rejected PostgreSQL's quoted `"position"` spelling; independent
+offline review corrected this exact comparison while preserving the original
+result. No additional production query was needed for that correction, and the
+earlier transport failure's cause remains unconfirmed.
+
+The [postrelease runtime receipt](../validation/recommendation-acceptance-20260929/deployment-after.json)
+verifies actual Admin HTTP, worker and Watch processes at `811f1ec81` at
+22:45:23 UTC, all health 200 and one successful active deployment per service.
+Admin roles remain HTTP `false` / worker `true`, with compact traces. A
+[read-only signing comparison](../validation/recommendation-acceptance-20260929/signing-config-after.json)
+confirmed matching configured values at that revision without exporting keys or
+proofs. The storage owner received these receipts and retains capacity and
+loaded-retention responsibility.
 
 ## Exposure validation and observed reporting defect
 
@@ -154,6 +176,81 @@ styles and the strict visibility hook unchanged by this release. Conservative
 visibility rejection from those paint effects is an inference consistent with
 Chromium's implementation; a later observer timeout remains unknown. No
 visibility state or paint style was overridden to generate an impression.
+
+Current public route wiring can naturally exercise five of the eight anonymous
+registry combinations. Root and language home routes select
+`WatchHomeExperiencePage`; the fallback `WatchHomePage` collection carousel/grid
+emitters have no production caller. Authored dynamic grids and carousels instead
+emit `watch-home / authored / authored-block`. Public video/episode routes do not
+pass an authored experience into `mergeWatchExperience`, so the non-synthetic
+video editorial emitter is also dormant. The loading sample alone does not
+exercise search; that requires the normal search UI and returned results.
+These three dormant entries remain coverage gaps, not measured zeros. No public
+content or route was manufactured to obtain a complete registry. Generic authored
+source ambiguity remains separately tracked by feat-564.
+
+The deployed Admin [signed and dormant entry inspection](../validation/recommendation-acceptance-20260929/admin-signed-dormant.json)
+retains each position in the below-player cohort, including eligible selections,
+early selections, CTR and native/unknown visibility. These are rolling 24-hour
+cohorts read at separate page-request times, not events attributed to this
+browser. For You and all three dormant anonymous entries had no measured rows.
+The signed replay audit showed 93 across the full window; its denominator is not
+position-attributable, so no signed replay rate is inferred. Registry completeness
+remains 2/10. Filtering restored inspectability without raising the 128-group cap.
+
+## First deployed exposure observation and necessary follow-up
+
+The [paced browser receipt](../validation/recommendation-acceptance-20260929/watch-browser-paced-interim.json)
+records actual series navigation, episode playback, submitted search and home
+scrolling. Its separate network capture has 17 HTTP-200 issuance requests and
+18 HTTP-200 exposure submissions, no repeated issuance nonce, and no page errors.
+The player reached ready state 4 and advanced playback without a media error;
+this is not a click-to-first-frame latency measurement. No identity, visibility,
+user-agent or admission override was used.
+
+The [authorized anonymous cohorts](../validation/recommendation-acceptance-20260929/admin-anonymous-interim.json)
+retain the displayed V2 values by position, plus legacy unknown-served summaries.
+They include concurrent production traffic. Search shows ten served/rendered
+positions and an early selection without an eligible impression. Natural chapter
+rows include eligible impressions, an eligible selection, native/unknown
+visibility and replay rates. These observations establish persisted production
+evidence, not complete coverage, attribution to this browser, or usefulness.
+
+The shared [Evidence and retention panel](../validation/recommendation-acceptance-20260929/admin-ingestion-interim.json)
+still reports `LOSS SUSPECTED`, 189 committed rejections and zero write failures.
+This is a shared rolling-window health display, not an exposure-only audit or a
+cause attributed to this browser. Its retention label and purge timestamp do not
+prove loaded purge throughput, and newer samples do not resolve D1–D9.
+
+Two demonstrated gaps require another focused exposure release:
+
+- The active home hero still emits V1 facts with no issuance request even in
+  the paced sample. Manifest forwarding and signing configuration are intact.
+  Source review isolates the union of all playable hero pools as the only
+  content-dependent refusal: it returns no descriptor above 100 unique paths.
+  The exact production pool size is unverified; the visible DOM has only a
+  subset of pool candidates. A bounded per-candidate authority repair must keep
+  the existing limit and avoid silently dropping candidates.
+- Chapters still reach the 128-row sentinel after narrowing to `chapters-1`:
+  62 visible V2 rows plus 66 legacy rows were shown, with the truncation warning.
+  A policy-version filter is needed before the unchanged display bound. No
+  totals or complete coverage are inferred from these truncated snapshots.
+
+The initial and repeated six-navigation headed loading samples returned HTTP
+200 for every document, but FCP/LCP were absent during collection. Selecting the
+native tab did not restore them; a later screenshot was followed by a delayed
+paint entry. The cause is unconfirmed. The [diagnostic comparison](../validation/recommendation-acceptance-20260929/loading-comparison.json)
+therefore withholds a paint-performance conclusion and notes that resource/script
+counts may omit deferred work. Rapid sequences hit the existing rate limit;
+their request populations are separate from the paced sample above.
+
+A [fresh headless baseline](../validation/recommendation-acceptance-20260929/watch-browser-headless-before-followup.json)
+at `811f1ec81` has usable paint entries for all six samples and full observed
+first-party scripts of 839,151 bytes on home and 915,840 bytes on video/series.
+Its genuine HeadlessChrome agent is naturally crawler-excluded: 28 exposure and
+30 issuance attempts returned HTTP 403. This is a loading baseline for the
+follow-up release, not accepted viewer telemetry. The same mode and viewport
+must be used for its comparison; no cross-mode paint comparison is valid.
 
 ## Co-watch refusal and telemetry decisions
 
