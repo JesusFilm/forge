@@ -116,7 +116,7 @@ jest.mock("../../../src/components/library/DeleteConfirmSheet", () => ({
 jest.mock("../../../src/components/ui/Snackbar", () => ({
   Snackbar: () => null,
 }))
-// Auth, session replay and the sign-in gate are covered by its own suite.
+// AccountSection's own suite covers auth, session replay and the sign-in gate.
 jest.mock("../../../src/components/profile/AccountSection", () => ({
   AccountSection: () => null,
 }))
@@ -128,8 +128,8 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   default: () => null,
 }))
 
-import { act } from "react"
-import { Platform } from "react-native"
+import { Children, act, isValidElement, type ReactNode } from "react"
+import { Platform, ScrollView } from "react-native"
 
 import ProfileScreen from "../profile"
 import { LibraryEmptyState } from "../../../src/components/library/LibraryEmptyState"
@@ -310,6 +310,49 @@ describe("the Profile tab", () => {
     return renderer.root.findAll(() => true).findIndex(match)
   }
 
+  /** The stickyHeaderIndices the downloads list passes to its one ScrollView. */
+  function stickyIndices(renderer: TestInstance): number[] | undefined {
+    const views = renderer.root.findAll((node) => node.type === ScrollView)
+    expect(views.length).toBe(1)
+    return views[0]!.props.stickyHeaderIndices as number[] | undefined
+  }
+
+  /** Does this element subtree hold a control with this label? */
+  function elementHasLabel(node: ReactNode, label: string): boolean {
+    if (!isValidElement(node)) return false
+    const props = node.props as {
+      accessibilityLabel?: string
+      children?: ReactNode
+    }
+    if (props.accessibilityLabel === label) return true
+    return Children.toArray(props.children).some((child) =>
+      elementHasLabel(child, label),
+    )
+  }
+
+  /** The child that pins. RN's ScrollView maps stickyHeaderIndices onto
+   *  Children.toArray, which drops `false` slots, so this does the same. */
+  function pinnedChild(renderer: TestInstance): ReactNode {
+    const indices = stickyIndices(renderer)
+    expect(indices?.length).toBe(1)
+    const view = renderer.root.findAll((node) => node.type === ScrollView)[0]!
+    return Children.toArray(view.props.children as ReactNode)[indices![0]!]
+  }
+
+  it("pins the Select row, not the account card, while the list scrolls", async () => {
+    const renderer = await renderProfile("ios")
+
+    expect(elementHasLabel(pinnedChild(renderer), "Select downloads")).toBe(
+      true,
+    )
+
+    await enterSelection(renderer)
+    expect(elementHasLabel(pinnedChild(renderer), "Cancel selection")).toBe(
+      true,
+    )
+    await unmount(renderer)
+  })
+
   it("puts the account card above the downloads", async () => {
     const renderer = await renderProfile("ios")
 
@@ -399,6 +442,8 @@ describe("the Profile tab", () => {
     expect(account).toBeLessThan(empty)
     // Under a header the empty state must give up its full-screen top gap.
     expect(empties[0]!.props.style).toBeDefined()
+    // No Select row exists, so nothing may pin.
+    expect(stickyIndices(renderer)).toBeUndefined()
     expect(hasControl(renderer, "Select downloads")).toBe(false)
     expect(hasText(renderer, "My Downloads")).toBe(false)
     const privacy = treeIndex(
@@ -423,6 +468,7 @@ describe("the Profile tab", () => {
       renderer.root.findAll((node) => node.type === LibraryEmptyState).length,
     ).toBe(0)
     expect(hasControl(renderer, "Privacy Policy")).toBe(true)
+    expect(stickyIndices(renderer)).toBeUndefined()
     await unmount(renderer)
   })
 })
