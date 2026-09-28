@@ -6,6 +6,8 @@ export type FeedVideoViewProps = {
   player: VideoPlayer
   /** The caller owns the framing. */
   contentFit: VideoContentFit
+  /** The view drew a first frame: for a new source, or after a track change. */
+  onFirstFrameRender?: () => void
 }
 
 /**
@@ -13,12 +15,17 @@ export type FeedVideoViewProps = {
  * have one file to name. It spreads no picture-in-picture prop: a clip never
  * enters the OS window (R3).
  */
-export function FeedVideoView({ player, contentFit }: FeedVideoViewProps) {
+export function FeedVideoView({
+  player,
+  contentFit,
+  onFirstFrameRender,
+}: FeedVideoViewProps) {
   return (
     <VideoView
       player={player}
       style={StyleSheet.absoluteFill}
       nativeControls={false}
+      onFirstFrameRender={onFirstFrameRender}
       // iOS 16+ defaults this on, which floats a Live Text button over a
       // paused frame that shows text.
       allowsVideoFrameAnalysis={false}

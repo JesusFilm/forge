@@ -15,11 +15,14 @@ import {
 } from "react"
 import {
   AccessibilityInfo,
+  Animated,
   AppState,
   Platform,
   Pressable,
   StyleSheet,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native"
 import { Image } from "expo-image"
 import { useRouter } from "expo-router"
@@ -40,6 +43,7 @@ import { PlayerLoadingVeil } from "../watch/PlayerLoadingVeil"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { clipPosterUri, useClipAutostart } from "../../hooks/useClipAutostart"
 import { usePlayingSize } from "../../hooks/usePlayingSize"
+import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useExploreClipQueue } from "../../hooks/useExploreClipQueue"
 import { useExploreTakeover } from "../../hooks/useExploreTakeover"
 import {
@@ -77,7 +81,11 @@ import {
   type FeedState,
   type PlayerId,
 } from "../../lib/explore/feedState"
-import { clipContentFit, clipFraming } from "../../lib/explore/framing"
+import {
+  bandAspect,
+  clipContentFit,
+  clipFraming,
+} from "../../lib/explore/framing"
 import {
   resolvePlayerMode,
   type PlayerMode,
@@ -506,6 +514,14 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       : StyleSheet.absoluteFill
   const [posterShapes] = useState<PosterShapes>(() => new Map())
 
+  // First frames drawn by the active view: the veil holds until one lands.
+  const [firstFrames, setFirstFrames] = useState(0)
+  const activeIdRef = useRef(state.active)
+  activeIdRef.current = state.active
+  const handleFirstFrame = useCallback((player: PlayerId) => {
+    if (activeIdRef.current === player) setFirstFrames((n) => n + 1)
+  }, [])
+
   const views = mountedViews(state)
   const renderUnderlay = ({ pageStyle }: ExplorePagerUnderlay) =>
     views.map((player) => (
@@ -518,6 +534,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
           testID={`explore-video-region-${player}`}
           player={players[player]}
           region={videoRegion}
+          onFirstFrameRender={() => handleFirstFrame(player)}
         />
       </View>
     ))
@@ -526,24 +543,14 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
   const currentLayers =
     current == null ? null : (
       <>
-        {veil.veilVisible && (
-          <>
-            <PosterCover
-              testID="explore-clip-veil"
-              uri={veil.image?.uri ?? null}
-              region={videoRegion}
-              shapes={posterShapes}
-            />
-            {/* In the band, the spinner centres on the frame, not the screen. */}
-            <View
-              testID="explore-clip-spinner-region"
-              style={regionStyle}
-              pointerEvents="none"
-            >
-              <PlayerLoadingVeil />
-            </View>
-          </>
-        )}
+        <ClipVeil
+          visible={veil.veilVisible}
+          uri={veil.image?.uri ?? null}
+          firstFrames={firstFrames}
+          region={videoRegion}
+          shapes={posterShapes}
+          spinnerStyle={regionStyle}
+        />
         {veil.failed && <ClipFailed />}
         <ClipOverlay
           clip={current}
@@ -688,10 +695,12 @@ function FeedVideoLayer({
   testID,
   player,
   region,
+  onFirstFrameRender,
 }: {
   testID: string
   player: VideoPlayer
   region: ExploreVideoRegion | null
+  onFirstFrameRender: () => void
 }) {
   const framing = clipFraming(usePlayingSize(player))
   const style =
@@ -700,15 +709,125 @@ function FeedVideoLayer({
       : StyleSheet.absoluteFill
   return (
     <View testID={testID} style={style}>
-      <FeedVideoView player={player} contentFit={clipContentFit(framing)} />
+      <FeedVideoView
+        player={player}
+        contentFit={clipContentFit(framing)}
+        onFirstFrameRender={onFirstFrameRender}
+      />
     </View>
+  )
+}
+
+/** The dim fades in, and the whole veil fades out, over this (owner, 2026-09-28). */
+export const VEIL_FADE_MS = 300
+/** After the gate lifts, the veil waits at most this long for a first frame. */
+export const VEIL_FRAME_WAIT_MS = 2000
+
+type ClipVeilProps = {
+  /** The clip gate's veil: true while the clip loads. */
+  visible: boolean
+  uri: string | null
+  /** Counts the active view's first frames; a rise means a frame is drawn. */
+  firstFrames: number
+  region: ExploreVideoRegion | null
+  shapes: PosterShapes
+  spinnerStyle: StyleProp<ViewStyle>
+}
+
+/**
+ * The veil's poster, dim and spinner. The gate lifts when the clip plays, which
+ * can come before its first frame is drawn, so the veil stays until that frame
+ * (or the wait ends) and then fades: never a blink, and never into black.
+ */
+function ClipVeil({
+  visible,
+  uri,
+  firstFrames,
+  region,
+  shapes,
+  spinnerStyle,
+}: ClipVeilProps) {
+  const reduceMotion = useReduceMotion()
+  const fadeMs = reduceMotion ? 0 : VEIL_FADE_MS
+  const layer = useRef(new Animated.Value(1)).current
+  const dim = useRef(new Animated.Value(0)).current
+  const frameBaseline = useRef(firstFrames)
+  // Kept through the fade, after the gate has dropped the image.
+  const [heldUri, setHeldUri] = useState(uri)
+  const [shown, setShown] = useState(visible)
+  if (visible && uri != null && uri !== heldUri) setHeldUri(uri)
+  if (visible && !shown) setShown(true)
+
+  // The poster is opaque at once, to hide the player's old frame; the dim fades in.
+  useEffect(() => {
+    if (!visible) return
+    frameBaseline.current = firstFrames
+    layer.stopAnimation()
+    layer.setValue(1)
+    dim.setValue(0)
+    const fadeIn = Animated.timing(dim, {
+      toValue: 1,
+      duration: fadeMs,
+      useNativeDriver: true,
+    })
+    fadeIn.start()
+    return () => fadeIn.stop()
+    // Not firstFrames: the baseline is the count when the veil appears.
+  }, [visible, layer, dim, fadeMs])
+
+  useEffect(() => {
+    if (visible || !shown) return
+    let fadeOut: Animated.CompositeAnimation | null = null
+    const leave = () => {
+      fadeOut = Animated.timing(layer, {
+        toValue: 0,
+        duration: fadeMs,
+        useNativeDriver: true,
+      })
+      fadeOut.start(({ finished }) => {
+        if (finished) setShown(false)
+      })
+    }
+    if (firstFrames > frameBaseline.current) {
+      leave()
+      return () => fadeOut?.stop()
+    }
+    const wait = setTimeout(leave, VEIL_FRAME_WAIT_MS)
+    return () => {
+      clearTimeout(wait)
+      fadeOut?.stop()
+    }
+  }, [visible, shown, firstFrames, layer, fadeMs])
+
+  if (!shown) return null
+  return (
+    <Animated.View
+      style={[StyleSheet.absoluteFill, { opacity: layer }]}
+      pointerEvents="none"
+    >
+      <PosterCover
+        testID={visible ? "explore-clip-veil" : "explore-clip-veil-leaving"}
+        uri={heldUri}
+        region={region}
+        shapes={shapes}
+      />
+      {/* In the band, the spinner centres on the frame, not the screen. */}
+      <Animated.View
+        testID="explore-clip-spinner-region"
+        style={[spinnerStyle, { opacity: dim }]}
+        pointerEvents="none"
+      >
+        <PlayerLoadingVeil />
+      </Animated.View>
+    </Animated.View>
   )
 }
 
 /**
  * Opaque, so a player that still holds an old frame never shows through. The
- * poster sits where the video will (owner, 2026-09-28): a landscape poster fits
- * whole in the band's region, and a portrait one fills the page, as its clip does.
+ * poster sits where the video will (owner, 2026-09-28): a landscape poster fills
+ * the 16:9 box a band clip plays in, so its edges hold when the video takes
+ * over, and a portrait one fills the page, as its clip does.
  */
 function PosterCover({
   testID,
@@ -727,24 +846,32 @@ function PosterCover({
   const portrait =
     uri != null &&
     (loaded?.uri === uri ? loaded.portrait : shapes.get(uri) === true)
-  const imageStyle =
-    portrait || region == null
-      ? StyleSheet.absoluteFill
-      : [StyleSheet.absoluteFill, region]
+  if (uri == null) {
+    return <View testID={testID} style={styles.cover} pointerEvents="none" />
+  }
+  const image = (
+    <Image
+      source={uri}
+      style={StyleSheet.absoluteFill}
+      contentFit={portrait || region != null ? "cover" : "contain"}
+      recyclingKey={uri}
+      onLoad={(e) => {
+        const shape = { uri, portrait: e.source.height > e.source.width }
+        rememberPosterShape(shapes, shape.uri, shape.portrait)
+        setLoaded(shape)
+      }}
+    />
+  )
   return (
     <View testID={testID} style={styles.cover} pointerEvents="none">
-      {uri != null && (
-        <Image
-          source={uri}
-          style={imageStyle}
-          contentFit={portrait ? "cover" : "contain"}
-          recyclingKey={uri}
-          onLoad={(e) => {
-            const shape = { uri, portrait: e.source.height > e.source.width }
-            rememberPosterShape(shapes, shape.uri, shape.portrait)
-            setLoaded(shape)
-          }}
-        />
+      {portrait || region == null ? (
+        image
+      ) : (
+        <View style={[StyleSheet.absoluteFill, region, styles.posterRegion]}>
+          <View testID={`${testID}-frame`} style={styles.posterFrame}>
+            {image}
+          </View>
+        </View>
       )}
     </View>
   )
@@ -772,4 +899,12 @@ function rememberPosterShape(
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: BLACK },
   cover: { ...StyleSheet.absoluteFill, backgroundColor: BLACK },
+  posterRegion: { justifyContent: "center" },
+  // A band clip's 16:9 box: full width, centred, and never taller than the region.
+  posterFrame: {
+    width: "100%",
+    maxHeight: "100%",
+    aspectRatio: bandAspect(null),
+    overflow: "hidden",
+  },
 })

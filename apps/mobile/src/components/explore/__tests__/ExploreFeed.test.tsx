@@ -155,7 +155,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
 import ExploreTab from "../../../../app/(tabs)/explore"
-import { ExploreFeed } from "../ExploreFeed"
+import { ExploreFeed, VEIL_FADE_MS, VEIL_FRAME_WAIT_MS } from "../ExploreFeed"
 import { EXPLORE_PAGER_REST_DWELL_MS } from "../ExplorePager"
 import { AUTOSTART_VEIL_TIMEOUT_MS } from "../../../hooks/useAutostartPlayback"
 import type {
@@ -660,6 +660,26 @@ function veilShown(): boolean {
   )
 }
 
+/** The veil after its gate lifted: held for a first frame, then fading. */
+function leavingVeil(): boolean {
+  return (
+    hosts(
+      (node) => node.props.testID === "explore-clip-veil-leaving",
+      currentSlot(),
+    ).length > 0
+  )
+}
+
+/** The view bound to `player` reports its first drawn frame. */
+async function firstFrame(player: FakePlayer) {
+  const [view] = hosts(
+    (node) => node.type === "VideoView" && node.props.player === player,
+  )
+  await act(async () => {
+    ;(view.props.onFirstFrameRender as () => void)()
+  })
+}
+
 function veilImage(): unknown {
   const [veil] = hosts(
     (node) => node.props.testID === "explore-clip-veil",
@@ -928,19 +948,31 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
     expect(fit(B)).toBe("contain")
   })
 
-  it("shows the loading poster whole in the band's region, and a portrait one full bleed", async () => {
+  it("fills the band's 16:9 box with the loading poster, and the page with a portrait one", async () => {
     await mountFeed()
     await hand(1)
     expect(veilShown()).toBe(true)
     await callOverlay("onVideoRegion", { top: 59, bottom: 200 })
-    const poster = () => {
-      const [veil] = hosts((n) => n.props.testID === "explore-clip-veil")
-      return hosts((n) => n.type === "ExpoImage", veil)[0]
-    }
+    const veil = () => hosts((n) => n.props.testID === "explore-clip-veil")[0]
+    const poster = () => hosts((n) => n.type === "ExpoImage", veil())[0]
+    const frame = () =>
+      hosts((n) => n.props.testID === "explore-clip-veil-frame", veil())[0]
 
-    // Where the landscape video will play, whole: no full-bleed crop.
-    expect(flatStyle(poster())).toMatchObject({ top: 59, bottom: 200 })
-    expect(poster().props.contentFit).toBe("contain")
+    // The box a 16:9 band clip plays in (owner, 2026-09-28): the poster's
+    // edges are the video's, so they hold when the video takes over.
+    const [region] = hosts((n) => {
+      const style = flatStyle(n)
+      return style.top === 59 && style.bottom === 200
+    }, veil())
+    expect(region).toBeDefined()
+    expect(
+      hosts((n) => n.props.testID === "explore-clip-veil-frame", region),
+    ).toHaveLength(1)
+    expect(flatStyle(frame())).toMatchObject({
+      width: "100%",
+      aspectRatio: 16 / 9,
+    })
+    expect(poster().props.contentFit).toBe("cover")
 
     // A portrait poster fills the page, as its clip will.
     await act(async () => {
@@ -948,8 +980,44 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
         source: { width: 540, height: 960 },
       })
     })
+    expect(frame()).toBeUndefined()
     expect(flatStyle(poster())).toMatchObject({ top: 0, bottom: 0 })
     expect(poster().props.contentFit).toBe("cover")
+  })
+
+  it("holds the veil after play until the first frame is drawn, then fades it", async () => {
+    await mountFeed()
+    await hand(1)
+    await settleAll(A)
+    expect(A.playing).toBe(true)
+    // The gate has lifted, but no frame is drawn yet: the poster stays up.
+    expect(veilShown()).toBe(false)
+    expect(leavingVeil()).toBe(true)
+    await advance(VEIL_FRAME_WAIT_MS - 100)
+    expect(leavingVeil()).toBe(true)
+
+    await firstFrame(A)
+    await advance(VEIL_FADE_MS + 50)
+    expect(leavingVeil()).toBe(false)
+  })
+
+  it("fades the veil after the wait when no first frame comes", async () => {
+    await mountFeed()
+    await hand(1)
+    await settleAll(A)
+    await advance(VEIL_FRAME_WAIT_MS - 1)
+    expect(leavingVeil()).toBe(true)
+    await advance(1 + VEIL_FADE_MS + 50)
+    expect(leavingVeil()).toBe(false)
+  })
+
+  it("ignores a first frame from the standby view", async () => {
+    await mountFeed()
+    await hand(1)
+    await settleAll(A)
+    await firstFrame(B)
+    await advance(VEIL_FADE_MS + 50)
+    expect(leavingVeil()).toBe(true)
   })
 
   it("tells the overlay while the poster veil shows, so its band cuts no poster", async () => {
