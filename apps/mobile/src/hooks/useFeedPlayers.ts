@@ -86,7 +86,7 @@ export type FeedPlayersInput = {
   /** A loop restarts the clip. The evidence recorder rebases on it (KTD9). */
   onLoop?: (token: number) => void
   /** KTD17's stages that only this hook sees. None of them steers playback. */
-  onSourceSet?: (token: number) => void
+  onSourceSet?: (token: number, player: PlayerId) => void
   onSourceLoaded?: (token: number) => void
   /** The playing active clip drops into loading after its start, not at a seek. */
   onRebuffer?: (token: number) => void
@@ -383,7 +383,7 @@ function createFeedPlayerEngine() {
       fail(id, "sourceError", errorMessageOf(error))
       return
     }
-    if (track.token != null) inputs?.onSourceSet?.(track.token)
+    if (track.token != null) inputs?.onSourceSet?.(track.token, id)
     swap.then(
       () => {
         if (tracks[id].seq === seq) tracks[id].settled = true

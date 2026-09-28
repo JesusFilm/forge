@@ -245,14 +245,29 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     [telemetry],
   )
 
+  // Per player: its view has drawn a frame of the source it holds. A replay of
+  // the same stream is a seek, and expo-video sends no new first frame for it.
+  const [framed, setFramed] = useState<Record<PlayerId, boolean>>({
+    a: false,
+    b: false,
+  })
+  const markFramed = useCallback((player: PlayerId, value: boolean) => {
+    setFramed((last) =>
+      last[player] === value ? last : { ...last, [player]: value },
+    )
+  }, [])
+
   const { players, activePlayer, seekActive } = useFeedPlayers({
     state,
     dispatch,
     muted: exploreMuted,
     yieldsToRoot,
     onLoop: (token) => evidence.current?.onLoop(token),
-    // Only the first clip's stages count, and the standby loads after it moves.
-    onSourceSet: () => telemetry.firstMotionStage("sourceSet"),
+    onSourceSet: (_token, player) => {
+      // Only the first clip's stages count, and the standby loads after it moves.
+      telemetry.firstMotionStage("sourceSet")
+      markFramed(player, false)
+    },
     onSourceLoaded: () => telemetry.firstMotionStage("sourceLoaded"),
     onRebuffer: () => telemetry.rebuffer(),
     onClipFailed: handleClipFailed,
@@ -514,14 +529,6 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       : StyleSheet.absoluteFill
   const [posterShapes] = useState<PosterShapes>(() => new Map())
 
-  // First frames drawn by the active view: the veil holds until one lands.
-  const [firstFrames, setFirstFrames] = useState(0)
-  const activeIdRef = useRef(state.active)
-  activeIdRef.current = state.active
-  const handleFirstFrame = useCallback((player: PlayerId) => {
-    if (activeIdRef.current === player) setFirstFrames((n) => n + 1)
-  }, [])
-
   const views = mountedViews(state)
   const renderUnderlay = ({ pageStyle }: ExplorePagerUnderlay) =>
     views.map((player) => (
@@ -534,7 +541,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
           testID={`explore-video-region-${player}`}
           player={players[player]}
           region={videoRegion}
-          onFirstFrameRender={() => handleFirstFrame(player)}
+          onFirstFrameRender={() => markFramed(player, true)}
         />
       </View>
     ))
@@ -545,8 +552,9 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       <>
         <ClipVeil
           visible={veil.veilVisible}
+          failed={veil.failed}
           uri={veil.image?.uri ?? null}
-          firstFrames={firstFrames}
+          framed={framed[state.active]}
           region={videoRegion}
           shapes={posterShapes}
           spinnerStyle={regionStyle}
@@ -726,23 +734,25 @@ export const VEIL_FRAME_WAIT_MS = 2000
 type ClipVeilProps = {
   /** The clip gate's veil: true while the clip loads. */
   visible: boolean
+  /** R40: the clip cannot play, so no frame will come. */
+  failed: boolean
   uri: string | null
-  /** Counts the active view's first frames; a rise means a frame is drawn. */
-  firstFrames: number
+  /** The active view has drawn a frame of the source its player holds. */
+  framed: boolean
   region: ExploreVideoRegion | null
   shapes: PosterShapes
   spinnerStyle: StyleProp<ViewStyle>
 }
 
 /**
- * The veil's poster, dim and spinner. The gate lifts when the clip plays, which
- * can come before its first frame is drawn, so the veil stays until that frame
- * (or the wait ends) and then fades: never a blink, and never into black.
+ * The veil's poster, dim and spinner. The gate can lift before the first frame
+ * is drawn, so the poster stays until that frame (or the wait ends), then fades.
  */
 function ClipVeil({
   visible,
+  failed,
   uri,
-  firstFrames,
+  framed,
   region,
   shapes,
   spinnerStyle,
@@ -751,7 +761,6 @@ function ClipVeil({
   const fadeMs = reduceMotion ? 0 : VEIL_FADE_MS
   const layer = useRef(new Animated.Value(1)).current
   const dim = useRef(new Animated.Value(0)).current
-  const frameBaseline = useRef(firstFrames)
   // Kept through the fade, after the gate has dropped the image.
   const [heldUri, setHeldUri] = useState(uri)
   const [shown, setShown] = useState(visible)
@@ -761,7 +770,6 @@ function ClipVeil({
   // The poster is opaque at once, to hide the player's old frame; the dim fades in.
   useEffect(() => {
     if (!visible) return
-    frameBaseline.current = firstFrames
     layer.stopAnimation()
     layer.setValue(1)
     dim.setValue(0)
@@ -772,7 +780,6 @@ function ClipVeil({
     })
     fadeIn.start()
     return () => fadeIn.stop()
-    // Not firstFrames: the baseline is the count when the veil appears.
   }, [visible, layer, dim, fadeMs])
 
   useEffect(() => {
@@ -788,7 +795,7 @@ function ClipVeil({
         if (finished) setShown(false)
       })
     }
-    if (firstFrames > frameBaseline.current) {
+    if (framed || failed) {
       leave()
       return () => fadeOut?.stop()
     }
@@ -797,7 +804,7 @@ function ClipVeil({
       clearTimeout(wait)
       fadeOut?.stop()
     }
-  }, [visible, shown, firstFrames, layer, fadeMs])
+  }, [visible, shown, framed, failed, layer, fadeMs])
 
   if (!shown) return null
   return (
@@ -812,22 +819,23 @@ function ClipVeil({
         shapes={shapes}
       />
       {/* In the band, the spinner centres on the frame, not the screen. */}
-      <Animated.View
-        testID="explore-clip-spinner-region"
-        style={[spinnerStyle, { opacity: dim }]}
-        pointerEvents="none"
-      >
-        <PlayerLoadingVeil />
-      </Animated.View>
+      {!failed && (
+        <Animated.View
+          testID="explore-clip-spinner-region"
+          style={[spinnerStyle, { opacity: dim }]}
+          pointerEvents="none"
+        >
+          <PlayerLoadingVeil />
+        </Animated.View>
+      )}
     </Animated.View>
   )
 }
 
 /**
- * Opaque, so a player that still holds an old frame never shows through. The
- * poster sits where the video will (owner, 2026-09-28): a landscape poster fills
- * the 16:9 box a band clip plays in, so its edges hold when the video takes
- * over, and a portrait one fills the page, as its clip does.
+ * Opaque, to hide a player's old frame. It sits where the video will (owner,
+ * 2026-09-28): a landscape poster fills a band clip's 16:9 box, and a portrait
+ * one fills the page.
  */
 function PosterCover({
   testID,

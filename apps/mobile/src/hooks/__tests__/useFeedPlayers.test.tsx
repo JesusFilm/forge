@@ -809,7 +809,7 @@ describe("useFeedPlayers — telemetry stages (KTD17)", () => {
     const h = await mount(spies)
     await h.send(focus(), queued(1))
     const first = h.token("a")
-    expect(spies.onSourceSet.mock.calls).toEqual([[first]])
+    expect(spies.onSourceSet.mock.calls).toEqual([[first, "a"]])
     expect(spies.onSourceLoaded).not.toHaveBeenCalled()
 
     await settle(A)
@@ -817,7 +817,10 @@ describe("useFeedPlayers — telemetry stages (KTD17)", () => {
 
     await preloadSecondClip(h)
     const second = h.token("b")
-    expect(spies.onSourceSet.mock.calls).toEqual([[first], [second]])
+    expect(spies.onSourceSet.mock.calls).toEqual([
+      [first, "a"],
+      [second, "b"],
+    ])
     expect(spies.onSourceLoaded.mock.calls).toEqual([[first], [second]])
     expect(spies.onClipFailed).not.toHaveBeenCalled()
   })

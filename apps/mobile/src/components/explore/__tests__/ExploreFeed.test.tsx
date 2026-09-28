@@ -1020,6 +1020,75 @@ describe("the feed views (KTD1, KTD3, R3)", () => {
     expect(leavingVeil()).toBe(true)
   })
 
+  it("lifts the veil at once over a stream its view already drew", async () => {
+    await startWithStandby()
+    await firstFrame(B)
+    await swipeNext()
+    await advance(REST)
+    expect(B.playing).toBe(true)
+
+    // Back, and forward again inside the rest dwell: B still holds clip 2, and
+    // its new slot has not bound, so clip 2 replays by a seek with no new frame.
+    await swipePrevious()
+    await swipeNext()
+    expect(veilShown()).toBe(true)
+    await advance(REST)
+    expect(loads(B)).toEqual([feedUrl(2)])
+    expect(B.playing).toBe(true)
+    await advance(VEIL_FADE_MS + 50)
+    expect(veilShown()).toBe(false)
+    expect(leavingVeil()).toBe(false)
+  })
+
+  it("holds the veil for a new source even when the view drew the old one", async () => {
+    await AsyncStorage.setItem(
+      DEMOTION_STORAGE_KEY,
+      serializeDemotion({ demotedAtMs: T0 - 60_000, appVersion: "1.4.0" }),
+    )
+    await startFirstClip()
+    await firstFrame(A)
+    await hand(2)
+    await swipeNext()
+    await advance(REST)
+    await settleAll(A)
+    expect(loads(A)).toEqual([feedUrl(1), feedUrl(2)])
+    expect(A.playing).toBe(true)
+    await advance(VEIL_FADE_MS + 50)
+    expect(leavingVeil()).toBe(true)
+
+    await firstFrame(A)
+    await advance(VEIL_FADE_MS + 50)
+    expect(leavingVeil()).toBe(false)
+  })
+
+  it("drops the spinner and the veil at once when the clip fails (R40)", async () => {
+    await mountFeed()
+    await hand(1)
+    await settleAll(A, new Error("403"))
+    expect(hosts((node) => node.props.testID === "clip-failed")).toHaveLength(1)
+    const spinners = () =>
+      hosts((node) => node.props.testID === "explore-clip-spinner-region")
+    expect(spinners()).toHaveLength(0)
+    await advance(VEIL_FADE_MS + 50)
+    expect(veilShown()).toBe(false)
+    expect(leavingVeil()).toBe(false)
+  })
+
+  it("drops the spinner and the veil at once when the load times out (R40)", async () => {
+    await mountFeed()
+    await hand(1)
+    await act(async () => {
+      A.__settleReplace(undefined, { withholdLoad: true })
+    })
+    await advance(AUTOSTART_VEIL_TIMEOUT_MS)
+    expect(hosts((node) => node.props.testID === "clip-failed")).toHaveLength(1)
+    expect(
+      hosts((node) => node.props.testID === "explore-clip-spinner-region"),
+    ).toHaveLength(0)
+    await advance(VEIL_FADE_MS + 50)
+    expect(leavingVeil()).toBe(false)
+  })
+
   it("tells the overlay while the poster veil shows, so its band cuts no poster", async () => {
     await mountFeed()
     await hand(1)

@@ -53,10 +53,9 @@ describe("VideoDescription read-more toggle", () => {
   })
 
   it("re-measures when the description changes", () => {
-    // A mounted instance goes partial -> full under cache-first. Without the
-    // reset a stale `true` keeps a dead toggle up over shorter text. The hook
-    // keys each result on its text instead of resetting in an effect, which
-    // raced the layout event on a Galaxy S20 (useTextOverflow.test.tsx).
+    // A mounted instance goes partial -> full under cache-first, and a stale
+    // `true` would keep a dead toggle up. The hook keys each result on its text:
+    // a reset effect raced the S20's layout event (useTextOverflow.test.tsx).
     expect(SOURCE).toContain("useTextOverflow(description, overflowsCollapsed)")
     const hook = fs.readFileSync(
       path.join(__dirname, "..", "..", "..", "hooks", "useTextOverflow.ts"),
