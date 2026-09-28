@@ -16,14 +16,17 @@ export const READER_COPY = {
   choosePassageWaiting: "Choose a passage",
   translation: (name: string) => `Translation: ${name}. Change translation`,
   chooseTranslationWaiting: "Change translation",
-  /** R25: the book is not in the viewer's translation. */
-  bookFallback: (viewerName: string | null, shownName: string) =>
-    viewerName
-      ? `${viewerName} does not have this book. Shown in ${shownName}. Change translation`
-      : `This book is shown in ${shownName}. Change translation`,
+  /** R25: the book is not in the viewer's translation. The info button beside
+   *  the translation pill shows it (owner, 2026-09-28). */
+  bookFallbackNote: (
+    viewerName: string | null,
+    bookName: string,
+    shownName: string,
+  ) =>
+    `${viewerName ?? "This translation"} does not include ${bookName}. The reader shows it in ${shownName}.`,
   /** R41: BSB stands in for a default translation that is not on the device. */
-  offlineStandInLabel: (shownName: string) =>
-    `You are offline. Shown in ${shownName}. Change translation`,
+  offlineStandInNote: (shownName: string) =>
+    `You are offline. The reader shows this chapter in ${shownName}.`,
   counter: (first: number, last: number, total: number) =>
     first === last
       ? `Verse ${first} of ${total}`

@@ -168,24 +168,39 @@ describe("translationLabel", () => {
       reason: "viewer",
       viewer,
     }
-    const label = translationLabel(shown, null)
+    const label = translationLabel(shown, null, "John")
     expect(label.text).toBe("BSB")
-    expect(label.isFallback).toBe(false)
+    expect(label.note).toBeNull()
     expect(label.accessibilityLabel).toContain("Berean Standard Bible")
   })
 
-  it("names the translation shown for a book fallback (R25)", () => {
+  // The info button beside the pill shows the note (owner, 2026-09-28).
+  it("says the pick does not include the book, for a book fallback (R25)", () => {
     const shown: ShownTranslation = {
       translation: translation(),
       reason: "book-fallback",
       viewer: { translationId: "rus_syn", source: "explicit" },
     }
-    const label = translationLabel(shown, SYNODAL)
-    expect(label.isFallback).toBe(true)
-    // The top bar pill has room for the short name; the label says why.
+    const label = translationLabel(shown, SYNODAL, "Obadiah")
+    // The pill has room for the short name; the note says why.
     expect(label.text).toBe("BSB")
-    expect(label.accessibilityLabel).toContain("Berean Standard Bible")
-    expect(label.accessibilityLabel).toContain(SYNODAL.name)
+    expect(label.accessibilityLabel).toBe(
+      READER_COPY.translation("Berean Standard Bible"),
+    )
+    expect(label.note).toBe(
+      `${SYNODAL.name} does not include Obadiah. The reader shows it in Berean Standard Bible.`,
+    )
+  })
+
+  it("says so with no name when the pick is not in the catalog", () => {
+    const shown: ShownTranslation = {
+      translation: translation(),
+      reason: "book-fallback",
+      viewer: { translationId: "gone_xyz", source: "explicit" },
+    }
+    expect(translationLabel(shown, null, "Obadiah").note).toBe(
+      "This translation does not include Obadiah. The reader shows it in Berean Standard Bible.",
+    )
   })
 
   it("marks BSB as an offline stand-in (R41)", () => {
@@ -194,11 +209,10 @@ describe("translationLabel", () => {
       reason: "offline-stand-in",
       viewer: { translationId: "spa_rvg", source: "audio" },
     }
-    const label = translationLabel(shown, null)
-    expect(label.isFallback).toBe(true)
+    const label = translationLabel(shown, null, "John")
     expect(label.text).toBe("BSB")
-    expect(label.accessibilityLabel).toBe(
-      READER_COPY.offlineStandInLabel("Berean Standard Bible"),
+    expect(label.note).toBe(
+      READER_COPY.offlineStandInNote("Berean Standard Bible"),
     )
   })
 })

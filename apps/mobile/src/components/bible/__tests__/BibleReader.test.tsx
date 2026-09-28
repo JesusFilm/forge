@@ -791,10 +791,16 @@ describe("BibleReader — the chrome", () => {
     let ancestor: RenderedNode | null = label!
     while (ancestor && ancestor !== footer) ancestor = ancestor.parent ?? null
     expect(ancestor).toBeNull()
-    // It also says whose book is missing.
-    expect(String(label!.props.accessibilityLabel)).toContain(
-      "TUR GEWASIN O BAIBASIT BOUBUN",
-    )
+    // The info button beside it says whose book is missing, in the shown
+    // text's name for the book (owner, 2026-09-28).
+    expect(
+      controlHostsLabelled(
+        renderer,
+        (text) =>
+          text ===
+          "TUR GEWASIN O BAIBASIT BOUBUN does not include Genesis. The reader shows it in Berean Standard Bible.",
+      ),
+    ).toHaveLength(1)
     await pressControl(renderer, namesShown)
     expect(handlers.onOpenTranslationPicker).toHaveBeenCalledTimes(1)
     expect(handlers.onOpenTranslationPicker.mock.calls[0]?.[0]).toMatchObject({

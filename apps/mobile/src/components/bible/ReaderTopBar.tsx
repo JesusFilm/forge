@@ -1,8 +1,17 @@
-import { StyleSheet, Text, View } from "react-native"
+import { useEffect, useState } from "react"
+import {
+  AccessibilityInfo,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutRectangle,
+} from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import {
   READER_CHROME_MAX_FONT_SCALE,
+  READER_TOUCH_TARGET,
   READER_TOP_BAR_HEIGHT,
   READER_TOP_BAR_OFFSET,
 } from "../../lib/bible/reader/chrome"
@@ -53,6 +62,26 @@ export function ReaderTopBar({
   onPressDownload,
   onPressSettings,
 }: ReaderTopBarProps) {
+  const note = translation?.note ?? null
+  // The note the tip shows; a new note (or none) closes it.
+  const [tip, setTip] = useState<string | null>(null)
+  const tipOpen = tip !== null && tip === note
+  useEffect(() => {
+    if (!tipOpen) return
+    const timer = setTimeout(() => setTip(null), STAND_IN_TIP_MS)
+    return () => clearTimeout(timer)
+  }, [tipOpen, tip])
+  const toggleTip = () => {
+    if (tipOpen || note === null) {
+      setTip(null)
+      return
+    }
+    setTip(note)
+    AccessibilityInfo.announceForAccessibility(note)
+  }
+  const [leading, setLeading] = useState<LayoutRectangle | null>(null)
+  const [infoCenter, setInfoCenter] = useState(0)
+
   return (
     <View
       style={[
@@ -64,7 +93,11 @@ export function ReaderTopBar({
       ]}
       pointerEvents="box-none"
     >
-      <View style={styles.leading} pointerEvents="box-none">
+      <View
+        style={styles.leading}
+        pointerEvents="box-none"
+        onLayout={(event) => setLeading(event.nativeEvent.layout)}
+      >
         {onBack && (
           <ReaderGlassButton
             tokens={tokens}
@@ -107,14 +140,6 @@ export function ReaderTopBar({
           disabled={translation === null}
           style={styles.translation}
         >
-          {translation?.isFallback && (
-            <Ionicons
-              name="information-circle-outline"
-              size={16}
-              color={tokens.icon}
-              style={styles.fallbackIcon}
-            />
-          )}
           <Text
             style={[styles.translationText, { color: tokens.text }]}
             numberOfLines={1}
@@ -123,6 +148,26 @@ export function ReaderTopBar({
             {translation?.text ?? " "}
           </Text>
         </ReaderGlassButton>
+        {note !== null && (
+          <Pressable
+            testID="bible-stand-in-info"
+            onPress={toggleTip}
+            onLayout={(event) => {
+              const { x, width } = event.nativeEvent.layout
+              setInfoCenter(x + width / 2)
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={note}
+            accessibilityState={{ expanded: tipOpen }}
+            style={({ pressed }) => [styles.info, pressed && styles.pressed]}
+          >
+            <Ionicons
+              name="information-circle-outline"
+              size={22}
+              color={tokens.icon}
+            />
+          </Pressable>
+        )}
       </View>
       <View style={styles.trailing} pointerEvents="box-none">
         <ReaderGlassButton
@@ -141,6 +186,80 @@ export function ReaderTopBar({
           <Ionicons name="settings-outline" size={22} color={tokens.icon} />
         </ReaderGlassButton>
       </View>
+      {tipOpen && note !== null && leading && (
+        <StandInTip
+          tokens={tokens}
+          note={note}
+          top={leading.y + leading.height + TIP_GAP}
+          // The arrow points at the info button's center.
+          arrowX={leading.x + infoCenter - TIP_SIDE}
+          onPress={() => setTip(null)}
+        />
+      )}
+    </View>
+  )
+}
+
+/** Long enough to read a two-line note. */
+export const STAND_IN_TIP_MS = 5000
+const TIP_GAP = 8
+const TIP_SIDE = HORIZONTAL_PADDING
+const TIP_MAX_WIDTH = 340
+const TIP_ARROW = 12
+
+type StandInTipProps = {
+  tokens: ReaderTokens
+  note: string
+  top: number
+  arrowX: number
+  onPress: () => void
+}
+
+// The stand-in's note, under the info button. It closes on a tap, on the next
+// tap of the button, after STAND_IN_TIP_MS, or when the stand-in ends.
+function StandInTip({ tokens, note, top, arrowX, onPress }: StandInTipProps) {
+  const [width, setWidth] = useState(0)
+  const arrowLeft = Math.max(
+    TIP_ARROW,
+    Math.min(arrowX - TIP_ARROW / 2, width - TIP_ARROW * 2),
+  )
+  // The page color under the button surface makes the note opaque.
+  const layers = [
+    { backgroundColor: tokens.background },
+    { backgroundColor: tokens.buttonSurface },
+  ]
+  // The row spans the bar, so the note wraps at the row's width. An absolute
+  // view with only a left edge measures its text on one line and clips it.
+  return (
+    <View pointerEvents="box-none" style={[styles.tipRow, { top }]}>
+      <Pressable
+        testID="bible-stand-in-tip"
+        onPress={onPress}
+        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+        accessibilityRole="text"
+        accessibilityLabel={note}
+        style={styles.tip}
+      >
+        <View
+          style={[styles.tipArrow, { left: arrowLeft }]}
+          pointerEvents="none"
+        >
+          {layers.map((layer, index) => (
+            <View key={index} style={[StyleSheet.absoluteFill, layer]} />
+          ))}
+        </View>
+        <View style={styles.tipBody}>
+          {layers.map((layer, index) => (
+            <View key={index} style={[StyleSheet.absoluteFill, layer]} />
+          ))}
+          <Text
+            style={[styles.tipText, { color: tokens.text }]}
+            maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
+          >
+            {note}
+          </Text>
+        </View>
+      </Pressable>
     </View>
   )
 }
@@ -185,7 +304,43 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontFamily: "System",
   },
-  fallbackIcon: {
-    marginRight: 4,
+  // A full touch target; the negative margin keeps the icon near the pill.
+  info: {
+    width: READER_TOUCH_TARGET,
+    height: READER_TOUCH_TARGET,
+    marginLeft: -6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pressed: {
+    opacity: 0.6,
+  },
+  tipRow: {
+    position: "absolute",
+    left: TIP_SIDE,
+    right: TIP_SIDE,
+  },
+  tip: {
+    alignSelf: "flex-start",
+    maxWidth: TIP_MAX_WIDTH,
+  },
+  tipArrow: {
+    position: "absolute",
+    top: -TIP_ARROW / 2,
+    width: TIP_ARROW,
+    height: TIP_ARROW,
+    overflow: "hidden",
+    transform: [{ rotate: "45deg" }],
+  },
+  tipBody: {
+    overflow: "hidden",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  tipText: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontFamily: "System",
   },
 })

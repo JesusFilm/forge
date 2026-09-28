@@ -559,7 +559,11 @@ export function BibleReader(props: BibleReaderProps) {
         }}
         pulse={movement.pulse + picker.pulse}
         reduceMotion={reduceMotion}
-        translation={shown ? translationLabel(shown, viewerTranslation) : null}
+        translation={
+          shown && place
+            ? translationLabel(shown, viewerTranslation, place.bookName)
+            : null
+        }
         onPressTranslation={() => {
           picker.disarm()
           visit.markSheetOpen()
