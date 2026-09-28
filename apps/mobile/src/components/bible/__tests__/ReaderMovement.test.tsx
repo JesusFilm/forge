@@ -44,6 +44,7 @@ jest.mock("expo-clipboard", () => ({
   setStringAsync: jest.fn(async () => true),
 }))
 
+import { stubBookNamesStore } from "../../../test-utils/bookNamesStub"
 import { StrictMode, act } from "react"
 import {
   AccessibilityInfo,
@@ -205,6 +206,7 @@ function makeServices(
         }),
       }),
     ),
+    bookNames: stubBookNamesStore(),
     readPhoneLanguage: () => "en",
   }
 }

@@ -31,6 +31,7 @@ jest.mock("expo-router", () => ({
 import { act } from "react"
 import { StyleSheet } from "react-native"
 
+import type { BookNames } from "../../../../lib/bible/repository/bookNames"
 import { BIBLE_BOOKS, type UsfmBookId } from "../../../../lib/bible/text/books"
 import { readerTokens } from "../../../../lib/bible/theme/palettes"
 import type { VerseRef } from "../../../../lib/bible/versification/convert"
@@ -65,6 +66,7 @@ async function render(
       <PassagePicker
         tokens={TOKENS}
         translation={SYNODAL}
+        bookNames={null}
         current={null}
         onPick={onPick}
         onClose={onClose}
@@ -194,6 +196,45 @@ describe("PassagePicker", () => {
     await press(renderer, COPY.chapter(1))
     await press(renderer, COPY.verse(1))
     expect(onPick).toHaveBeenCalledWith({ book: "GEN", chapter: 1, verse: 1 })
+  })
+
+  // The owner (2026-09-28): a Korean reader must see 창세기, not Genesis.
+  describe("book names in the shown translation", () => {
+    const KOREAN: BookNames = new Map<UsfmBookId, string>([
+      ["GEN", "창세기"],
+      ["EXO", "출애굽기"],
+      ["MAT", "마태복음"],
+    ])
+    const texts = (renderer: TestInstance, text: string) =>
+      renderer.root.findAll(
+        (node) => node.type === "Text" && node.props.children === text,
+      )
+
+    it("names each book, and each step's title, as the translation does", async () => {
+      const { renderer } = await render({ bookNames: KOREAN })
+      expect(pressables(renderer, "창세기")).toHaveLength(1)
+      expect(pressables(renderer, "출애굽기")).toHaveLength(1)
+      expect(pressables(renderer, "Genesis")).toHaveLength(0)
+      // A book with no name from the translation keeps its English name.
+      expect(pressables(renderer, "Leviticus")).toHaveLength(1)
+
+      await press(renderer, "창세기")
+      expect(texts(renderer, "창세기")).not.toHaveLength(0)
+      await press(renderer, COPY.chapter(3))
+      expect(texts(renderer, COPY.chapterTitle("창세기", 3))).not.toHaveLength(
+        0,
+      )
+    })
+
+    it("keeps the English name, and the note, for a book the translation lacks", async () => {
+      const { renderer } = await render({
+        translation: { id: "xyz_nt", shortName: "XYZ", books: NEW_TESTAMENT },
+        bookNames: new Map([["MAT", "마태복음"]]),
+      })
+      const label = `Genesis, ${COPY.notInTranslation("XYZ")}`
+      expect(pressables(renderer, label)).toHaveLength(1)
+      expect(pressables(renderer, "마태복음")).toHaveLength(1)
+    })
   })
 
   it("closes from a button, not only a gesture", async () => {

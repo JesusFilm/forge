@@ -6,11 +6,17 @@ import { Directory, File, Paths } from "expo-file-system"
 import { datadogLog } from "../../../datadog"
 import type { CatalogTranslation } from "../../data/catalog"
 import {
+  getBookNamesStore,
   getChapterRepository,
   getTranslationDownloads,
   resetBibleRepositoryForTests,
 } from "../downloadRuntime"
-import { stagingDirectory, translationsDirectory } from "../storage"
+import { CHAPTER_FETCH_TIMEOUT_MS } from "../fetchChapter"
+import {
+  bookNamesDirectory,
+  stagingDirectory,
+  translationsDirectory,
+} from "../storage"
 import type { TranslationDownloadState } from "../translationDownloads"
 
 declare const __dirname: string
@@ -199,5 +205,90 @@ describe("Bible repository runtime", () => {
       ],
     ])
     expect(JSON.stringify(warn.mock.calls)).not.toMatch(/html|loved/i)
+  })
+})
+
+// The owner (2026-09-28): the passage picker names books as the shown
+// translation does. These prove the store's file and network bindings.
+describe("book names runtime", () => {
+  const KEY = { id: GUE.id, sha256: GUE.sha256 }
+
+  it("reads books.json through the global fetch, then from the device", async () => {
+    const books = {
+      translation: { id: GUE.id },
+      books: [{ id: "RUT", name: "Ruth", commonName: "Ruth-ku" }],
+    }
+    const fetchSpy = jest.fn<Promise<Response>, [string]>(
+      async () => new Response(JSON.stringify(books), { status: 200 }),
+    )
+    globalThis.fetch = fetchSpy as unknown as typeof fetch
+
+    const names = await getBookNamesStore().load(KEY)
+    expect(names?.get("RUT")).toBe("Ruth-ku")
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(
+      "https://bible.helloao.org/api/gue_wbt/books.json",
+    )
+    expect(new File(bookNamesDirectory(), "gue_wbt.json").exists).toBe(true)
+
+    // A new session reads the file, and the network is not asked again.
+    resetBibleRepositoryForTests()
+    const again = await getBookNamesStore().load(KEY)
+    expect(again?.get("RUT")).toBe("Ruth-ku")
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  // No download holds names here, so the network is the only source. A failed
+  // read must end in no names (the picker then shows BSB's), never a throw.
+  it.each<[string, () => Promise<Response>]>([
+    ["a 503", async () => new Response("", { status: 503 })],
+    ["malformed JSON", async () => new Response("{books:", { status: 200 })],
+    [
+      "a network failure",
+      async () => {
+        throw new TypeError("Network request failed")
+      },
+    ],
+  ])("gives no names and keeps no file after %s", async (_name, answer) => {
+    globalThis.fetch = jest.fn(answer) as unknown as typeof fetch
+
+    await expect(getBookNamesStore().load(KEY)).resolves.toBeNull()
+    expect(new File(bookNamesDirectory(), "gue_wbt.json").exists).toBe(false)
+  })
+
+  it("gives no names when books.json never answers", async () => {
+    jest.useFakeTimers()
+    try {
+      globalThis.fetch = jest.fn(
+        () => new Promise<Response>(() => {}),
+      ) as unknown as typeof fetch
+      const names = getBookNamesStore().load(KEY)
+      await jest.advanceTimersByTimeAsync(CHAPTER_FETCH_TIMEOUT_MS)
+      await expect(names).resolves.toBeNull()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it("keeps a download's names, so the picker needs no network for them", async () => {
+    const complete = fs.readFileSync(
+      `${__dirname}/fixtures/gue_wbt-complete.json`,
+      "utf8",
+    )
+    jest
+      .spyOn(File, "downloadFileAsync")
+      .mockImplementation(async (_url, destination) => {
+        const file = destination as File
+        file.write(complete)
+        return file
+      })
+    const fetchSpy = jest.fn(async () => new Response("", { status: 503 }))
+    globalThis.fetch = fetchSpy as unknown as typeof fetch
+
+    await expect(getTranslationDownloads().start(GUE)).resolves.toEqual({
+      status: "downloaded",
+    })
+    const names = await getBookNamesStore().load(KEY)
+    expect(names?.size).toBeGreaterThan(0)
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

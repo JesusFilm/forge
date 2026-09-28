@@ -99,6 +99,12 @@ export type TranslationDownloadsOptions = {
   directory?: () => Directory
   staging?: () => Directory
   maxBytes?: number
+  /** Gets the books of each new download, for example to keep their names.
+   *  A throw here never fails the download. */
+  onInstalled?: (
+    translation: { id: string; sha256: string },
+    books: readonly BookText[],
+  ) => void
 }
 
 type ManifestBook = { bookId: UsfmBookId; bytes: number }
@@ -456,6 +462,11 @@ export function createTranslationDownloads(
       normalized.value.books,
     )
     verified.set(translation.id, manifest)
+    try {
+      options.onInstalled?.(translation, normalized.value.books)
+    } catch {
+      // The download is complete; only the extra use of it failed.
+    }
   }
 
   async function start(

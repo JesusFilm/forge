@@ -7,6 +7,7 @@ import {
   useSheetCatalog,
 } from "../src/components/bible/sheets/useReaderSheetData"
 import { getReaderServices } from "../src/lib/bible/reader/services"
+import { useBookNames } from "../src/lib/bible/reader/useBookNames"
 import { parseReaderSheetParams } from "../src/lib/bible/sheets/routes"
 
 // feat-553 R17: the pill's passage picker, a root form sheet (KTD9) over the
@@ -22,6 +23,8 @@ export default function ReaderPassageRoute() {
     state.status === "ready" && request.translationId
       ? (state.catalog.byId.get(request.translationId) ?? null)
       : null
+  // The reader already read them, so this is a memory hit on most opens.
+  const bookNames = useBookNames(services.bookNames, translation)
 
   return (
     <>
@@ -34,6 +37,7 @@ export default function ReaderPassageRoute() {
         <PassagePicker
           tokens={tokens}
           translation={translation}
+          bookNames={bookNames}
           // With no known translation the picker shows BSB's numbers.
           current={translation ? request.translationRef : request.ref}
           onPick={(ref) => {

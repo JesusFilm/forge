@@ -109,6 +109,7 @@ jest.mock("@shopify/flash-list", () => {
   }
 })
 
+import { stubBookNamesStore } from "../../../../test-utils/bookNamesStub"
 import { StrictMode, act, type ComponentType } from "react"
 import { StyleSheet } from "react-native"
 
@@ -181,7 +182,7 @@ function memoryStorage() {
   }
 }
 
-function install(): Harness {
+function install(bookNames = stubBookNamesStore()): Harness {
   const position = createReadingPositionStore(memoryStorage())
   const settings = createReaderSettingsStore(memoryStorage())
   const loadCatalog = jest.fn(() =>
@@ -204,6 +205,7 @@ function install(): Harness {
     loadCatalog,
     positionStore: position,
     settingsStore: settings,
+    bookNames,
     readPhoneLanguage: () => "es",
   }
   mockRoute.services = services
@@ -284,6 +286,30 @@ describe("reader-passage route", () => {
       verse: 1,
     })
     expect(mockRoute.back).toHaveBeenCalledTimes(1)
+  })
+
+  // The owner (2026-09-28): the books read as the shown translation names them.
+  it("names the books as the shown translation does", async () => {
+    install(
+      stubBookNamesStore({
+        rus_syn: new Map([
+          ["GEN", "Бытие"],
+          ["PSA", "Псалтирь"],
+        ]),
+      }),
+    )
+    mockRoute.params = readerSheetHref("passage", SYNODAL_CONTEXT).params
+    const renderer = await renderRoute(ReaderPassageRoute)
+    await act(async () => {
+      for (let i = 0; i < 10; i += 1) await Promise.resolve()
+    })
+
+    expect(controls(renderer, "Бытие")).toHaveLength(1)
+    expect(controls(renderer, "Genesis")).toHaveLength(0)
+    // A book with no name from the translation keeps its English name.
+    expect(controls(renderer, "Exodus")).toHaveLength(1)
+    await press(renderer, "Псалтирь")
+    expect(controls(renderer, PASSAGE.chapter(50))).toHaveLength(1)
   })
 
   it("refuses malformed params and falls back to BSB numbers", async () => {

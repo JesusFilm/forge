@@ -79,11 +79,13 @@ import {
   getReaderServices,
   type ReaderServices,
 } from "../../lib/bible/reader/services"
+import { bookNameIn, useBookNames } from "../../lib/bible/reader/useBookNames"
 import { useDelayedFlag } from "../../lib/bible/reader/useDelayedFlag"
 import {
   useReaderChapter,
   type ReaderChapterState,
 } from "../../lib/bible/reader/useReaderChapter"
+import type { BookNames } from "../../lib/bible/repository/bookNames"
 import type { ReaderPushSource } from "../../lib/bible/routes/readerRoute"
 import {
   isStopSelected,
@@ -97,7 +99,6 @@ import { shareText } from "../../lib/bible/selection/shareText"
 import { readerTextSize } from "../../lib/bible/settings/snapshot"
 import { useReaderSettings } from "../../lib/bible/settings/store"
 import { useReaderVisitTelemetry } from "../../lib/bible/telemetry"
-import { bookByUsfm } from "../../lib/bible/text/books"
 import { chapterPositions } from "../../lib/bible/text/positions"
 import type { ChapterPosition } from "../../lib/bible/text/types"
 import {
@@ -259,6 +260,11 @@ export function BibleReader(props: BibleReaderProps) {
     audioReady: isReady,
     focused,
   })
+  // Read for each translation the reader shows, so the picker opens with them.
+  const bookNames = useBookNames(
+    services.bookNames,
+    "shown" in chapter.state ? chapter.state.shown.translation : null,
+  )
   const reduceMotion = useReduceMotion()
   const screenReader = useScreenReaderEnabled()
   const opens = useReaderOpens(focused)
@@ -341,9 +347,10 @@ export function BibleReader(props: BibleReaderProps) {
   const scrubbing = scrub !== null && scrub.chapterKey === chapterKey
   const model = useReaderModel(
     chapter.state,
-    scrub && scrub.chapterKey === chapterKey ? scrub.verse : null,
+    scrubbing ? scrub.verse : null,
+    bookNames,
   )
-  const place = movePlace(chapter.state, model)
+  const place = movePlace(chapter.state, model, bookNames)
   // U14, R37: the verses a visit shows, by BSB position. A scrub preview does
   // not count; only its release moves `model.ref`.
   const visit = useReaderVisitTelemetry({
@@ -721,6 +728,7 @@ const NO_STOPS: readonly ChapterPosition[] = []
 function useReaderModel(
   state: ReaderChapterState,
   scrubVerse: number | null,
+  bookNames: BookNames | null,
 ): ReaderModel {
   const text = state.status === "ready" ? state.text : null
   const positions = useMemo(
@@ -743,7 +751,8 @@ function useReaderModel(
   }
   const { ref, translationRef } = state
   if (!text) {
-    const bookName = bookByUsfm(ref.book).name
+    // While the chapter loads, the pill names the book as its text will.
+    const bookName = bookNameIn(bookNames, translationRef.book)
     return {
       ref,
       translationRef,
@@ -789,6 +798,7 @@ function useReaderModel(
 function movePlace(
   state: ReaderChapterState,
   model: ReaderModel,
+  bookNames: BookNames | null,
 ): MovePlace | null {
   if (!("shown" in state)) return null
   const { translationRef, shown } = state
@@ -797,7 +807,8 @@ function movePlace(
     book: translationRef.book,
     chapter: translationRef.chapter,
     translationId: shown.translation.id,
-    bookName: text?.bookName ?? bookByUsfm(translationRef.book).name,
+    bookName: text?.bookName ?? bookNameIn(bookNames, translationRef.book),
+    bookNames,
     stops: text ? model.stops : null,
     stopIndex: text ? model.stopIndex : null,
   }

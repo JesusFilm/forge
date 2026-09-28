@@ -23,6 +23,8 @@ import {
   type PassageTranslation,
 } from "../../../lib/bible/sheets/passageSteps"
 import { readerSheetControlColors } from "../../../lib/bible/sheets/theme"
+import { bookNameIn } from "../../../lib/bible/reader/useBookNames"
+import type { BookNames } from "../../../lib/bible/repository/bookNames"
 import type { BibleBook } from "../../../lib/bible/text/books"
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
 import type { VerseRef } from "../../../lib/bible/versification/convert"
@@ -36,6 +38,8 @@ export type PassagePickerProps = {
   tokens: ReaderTokens
   /** The shown translation; null shows BSB's numbers. */
   translation: (PassageTranslation & { shortName: string }) | null
+  /** The shown translation's own book names; null shows the English names. */
+  bookNames: BookNames | null
   /** The current verse in the shown numbering, to mark it. */
   current: VerseRef | null
   /** Called once, in BSB numbering (R38). */
@@ -53,6 +57,7 @@ type Step =
 export function PassagePicker({
   tokens,
   translation,
+  bookNames,
   current,
   onPick,
   onClose,
@@ -68,8 +73,8 @@ export function PassagePicker({
     step.kind === "book"
       ? COPY.chooseBook
       : step.kind === "chapter"
-        ? step.book.name
-        : COPY.chapterTitle(step.book.name, step.chapter)
+        ? bookNameIn(bookNames, step.book.usfm)
+        : COPY.chapterTitle(bookNameIn(bookNames, step.book.usfm), step.chapter)
   const back =
     step.kind === "chapter"
       ? { label: COPY.backToBooks, onPress: () => setStep({ kind: "book" }) }
@@ -96,6 +101,7 @@ export function PassagePicker({
         books={passageBooks(translation)}
         currentBook={current?.book ?? null}
         shortName={translation?.shortName ?? null}
+        bookNames={bookNames}
         onPress={(book) => setStep({ kind: "chapter", book })}
       />
     )
@@ -168,6 +174,7 @@ type BookListProps = {
   books: PassageBook[]
   currentBook: string | null
   shortName: string | null
+  bookNames: BookNames | null
   onPress: (book: BibleBook) => void
 }
 
@@ -176,6 +183,7 @@ function BookList({
   books,
   currentBook,
   shortName,
+  bookNames,
   onPress,
 }: BookListProps) {
   const sections = [
@@ -199,6 +207,7 @@ function BookList({
             {section.title}
           </Text>
           {section.books.map(({ book, inTranslation }) => {
+            const name = bookNameIn(bookNames, book.usfm)
             const selected = book.usfm === currentBook
             const note =
               !inTranslation && shortName
@@ -210,7 +219,7 @@ function BookList({
                 onPress={() => onPress(book)}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
-                accessibilityLabel={note ? `${book.name}, ${note}` : book.name}
+                accessibilityLabel={note ? `${name}, ${note}` : name}
                 style={({ pressed }) => [
                   styles.bookRow,
                   selected && { backgroundColor: tokens.buttonSurface },
@@ -226,7 +235,7 @@ function BookList({
                     ]}
                     numberOfLines={1}
                   >
-                    {book.name}
+                    {name}
                   </Text>
                   {note && (
                     <Text

@@ -6,6 +6,7 @@ import { AccessibilityInfo } from "react-native"
 
 import { READER_COPY } from "../reader/copy"
 import { chapterLabel } from "../reader/labels"
+import type { BookNames } from "../repository/bookNames"
 import { bookByUsfm, type UsfmBookId } from "../text/books"
 import type { ChapterPosition } from "../text/types"
 import { BSB_TRANSLATION_ID } from "../versification/classify"
@@ -30,6 +31,8 @@ export type MovePlace = {
   translationId: string
   /** The shown translation's name for the book. */
   bookName: string
+  /** Its names for the other books; null or a missing book reads BSB's. */
+  bookNames?: BookNames | null
   /** Null until the chapter text is ready; chapter moves work without it. */
   stops: readonly ChapterPosition[] | null
   stopIndex: number | null
@@ -65,9 +68,12 @@ export type ReaderMovementInput = {
   onVerseMove: () => void
 }
 
-/** The book name in the shown translation, or BSB's for another book. */
+/** The book name in the shown translation; BSB's when it has none. */
 function nameOf(place: MovePlace, book: UsfmBookId, chapter: number): string {
-  const name = book === place.book ? place.bookName : bookByUsfm(book).name
+  const name =
+    book === place.book
+      ? place.bookName
+      : (place.bookNames?.get(book) ?? bookByUsfm(book).name)
   return chapterLabel(name, chapter)
 }
 

@@ -54,6 +54,7 @@ jest.mock("../../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
 
+import { stubBookNamesStore } from "../../../test-utils/bookNamesStub"
 import { StrictMode, act } from "react"
 import {
   AccessibilityInfo,
@@ -213,6 +214,7 @@ function makeServices(
     loadCatalog: async () => ({ status: "ok", value: CATALOG }),
     positionStore: createReadingPositionStore(memoryStorage()),
     settingsStore: createReaderSettingsStore(memoryStorage()),
+    bookNames: stubBookNamesStore(),
     readPhoneLanguage: () => "en",
   }
   return { services, fetch }
