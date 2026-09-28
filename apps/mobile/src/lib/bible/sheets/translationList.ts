@@ -5,6 +5,7 @@ import type { Catalog, CatalogTranslation } from "../data/catalog"
 import { LANGUAGE_DEFAULT_TRANSLATIONS } from "../data/languageDefaults.generated"
 import { catalogLanguageCode } from "../language/phoneLanguage"
 import type { TranslationDownloadState } from "../repository/translationDownloads"
+import { BIBLE_BOOKS, type UsfmBookId } from "../text/books"
 import { READER_SHEET_COPY } from "./copy"
 
 type LanguageDefaults = Readonly<Record<string, string>>
@@ -130,14 +131,53 @@ function downloadStatus(
   }
 }
 
-/** R23: complete or partial, then the download state. A screen reader reads it. */
+/** A few names as one phrase: "Ruth", "Ruth and Luke", "Ruth, Luke, and John". */
+function joinNames(names: readonly string[]): string {
+  if (names.length <= 2) return names.join(" and ")
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`
+}
+
+/** Named in full up to this many books; more are a count. */
+const NAMED_BOOKS_MAX = 3
+
+// Which books a partial Bible has (owner, 2026-09-28): "Partial Bible" did not
+// say that a New Testament has no Genesis. Most partial Bibles are a New
+// Testament (705 of 1,053 on 2026-09-28), so a whole testament reads as a unit.
+export function coverageLabel(books: ReadonlySet<UsfmBookId>): string {
+  const copy = READER_SHEET_COPY.translation.coverage
+  const testaments = [
+    { name: READER_SHEET_COPY.passage.newTestament, key: "new" },
+    { name: READER_SHEET_COPY.passage.oldTestament, key: "old" },
+  ] as const
+  for (const { name, key } of testaments) {
+    const whole = BIBLE_BOOKS.filter((book) => book.testament === key)
+    if (!whole.every((book) => books.has(book.usfm))) continue
+    const extra = BIBLE_BOOKS.filter(
+      (book) => book.testament !== key && books.has(book.usfm),
+    ).map((book) => book.name)
+    if (extra.length === 0) {
+      return key === "new" ? copy.newTestament : copy.oldTestament
+    }
+    return extra.length < NAMED_BOOKS_MAX
+      ? joinNames([name, ...extra])
+      : copy.testamentAndOthers(name, extra.length)
+  }
+  const names = BIBLE_BOOKS.filter((book) => books.has(book.usfm)).map(
+    (book) => book.name,
+  )
+  return names.length <= NAMED_BOOKS_MAX
+    ? copy.only(joinNames(names))
+    : copy.someBooks(names.length, BIBLE_BOOKS.length)
+}
+
+/** R23: the books it has, then the download state. A screen reader reads it. */
 export function translationStatusLabel(
   translation: CatalogTranslation,
   state: TranslationDownloadState,
 ): string {
   const copy = READER_SHEET_COPY.translation
   return [
-    translation.complete ? copy.complete : copy.partial,
+    translation.complete ? copy.complete : coverageLabel(translation.books),
     ...downloadStatus(translation, state),
   ].join(", ")
 }

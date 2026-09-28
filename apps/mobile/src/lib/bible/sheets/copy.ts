@@ -27,7 +27,24 @@ export const READER_SHEET_COPY = {
     offlineNote:
       "You are offline. Translations on this device read with no connection.",
     complete: "Complete Bible",
-    partial: "Partial Bible",
+    /** Which books a partial Bible has (owner, 2026-09-28). */
+    coverage: {
+      newTestament: "New Testament only",
+      oldTestament: "Old Testament only",
+      testamentAndOthers: (testament: string, count: number) =>
+        `${testament} and ${count} other books`,
+      only: (names: string) => `Only ${names}`,
+      someBooks: (count: number, total: number) => `${count} of ${total} books`,
+    },
+    /** A switch to a partial Bible that lacks the current book. */
+    partialSwitch: {
+      title: (shortName: string, bookName: string) =>
+        `${shortName} does not have ${bookName}`,
+      message: (name: string, start: string, place: string) =>
+        `${name} is a partial Bible. If you switch, the reader goes to its start, ${start}. You lose your place at ${place}.`,
+      cancel: "Cancel",
+      confirm: "Switch",
+    },
     onDevice: "On this device",
     downloading: (percent: number) => `Downloading ${percent}%`,
     downloadStopped: "Download stopped",

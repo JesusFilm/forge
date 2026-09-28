@@ -1,7 +1,7 @@
 // The passage picker's steps (feat-553 U10, R17, KD15, R42). The chapter and
 // verse steps show the shown translation's own numbers; the pick goes back to
 // BSB numbering, because the saved position uses it (R38).
-import { toBsbRef } from "../repository/resolveChapter"
+import { toBsbRef, toTranslationRef } from "../repository/resolveChapter"
 import { BIBLE_BOOKS, type BibleBook, type UsfmBookId } from "../text/books"
 import { BSB_TRANSLATION_ID } from "../versification/classify"
 import { mappedLastVerse, type VerseRef } from "../versification/convert"
@@ -69,6 +69,26 @@ export function verseNumbers(
   chapter: number,
 ): number[] {
   return oneTo(lastVerse(numberingId, bookId, chapter) ?? 0)
+}
+
+/** The current verse in the numbering the picker shows for its book. While a
+ *  stand-in shows (R25), the picker follows the viewer's own pick instead. */
+export function pickerCurrent(input: {
+  translation: PassageTranslation | null
+  /** The reading position, in BSB numbering. */
+  ref: VerseRef | null
+  /** The verse on screen, in the shown translation's numbering. */
+  shownRef: VerseRef | null
+  standIn: boolean
+}): VerseRef | null {
+  const { translation, ref } = input
+  if (!translation) return ref
+  if (!input.standIn) return input.shownRef
+  if (!ref) return null
+  const numbering = numberingFor(translation, ref.book)
+  return numbering === BSB_TRANSLATION_ID
+    ? ref
+    : toTranslationRef(ref, numbering)
 }
 
 /** The pick in BSB numbering, for `moveTo`. */

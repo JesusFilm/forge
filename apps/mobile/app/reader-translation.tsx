@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react"
-import { View } from "react-native"
+import { Alert, View } from "react-native"
 import { Stack, useLocalSearchParams, useRouter } from "expo-router"
 
 import { ReaderSheetMessage } from "../src/components/bible/sheets/ReaderSheetMessage"
@@ -13,12 +13,13 @@ import type { CatalogTranslation } from "../src/lib/bible/data/catalog"
 import { READER_COPY } from "../src/lib/bible/reader/copy"
 import { getReaderServices } from "../src/lib/bible/reader/services"
 import { READER_SHEET_COPY } from "../src/lib/bible/sheets/copy"
+import { partialSwitch } from "../src/lib/bible/sheets/partialSwitch"
 import { parseReaderSheetParams } from "../src/lib/bible/sheets/routes"
 import { viewerLanguageCodes } from "../src/lib/bible/sheets/translationList"
 
-// feat-553 R23: the footer label's translation picker, a root form sheet
-// (KTD9). A pick is the viewer's explicit choice (R41). The passage stays,
-// because the saved position is in BSB numbering (R24, R38).
+// feat-553 R23: the translation pill's picker, a root form sheet (KTD9). A
+// pick is the viewer's explicit choice (R41). The passage stays (R24, R38),
+// unless a partial Bible lacks its book; see `partialSwitch`.
 export default function ReaderTranslationRoute() {
   const router = useRouter()
   const request = parseReaderSheetParams(useLocalSearchParams())
@@ -32,13 +33,45 @@ export default function ReaderTranslationRoute() {
     [audioLanguageIso3, phoneLanguage],
   )
 
-  const { positionStore } = services
+  const { positionStore, repository } = services
+  const { ref, translationRef } = request
+  // The owner (2026-09-28): a partial Bible that lacks the current book opens
+  // at its own start, after a warning. Any other pick keeps the passage.
+  const switchFor = useCallback(
+    (translation: CatalogTranslation) =>
+      partialSwitch({
+        translation,
+        ref,
+        shownRef: translationRef,
+        hasBook: repository.translationHasBook,
+      }),
+    [ref, translationRef, repository],
+  )
+  const confirmPick = useCallback(
+    (translation: CatalogTranslation, proceed: () => void) => {
+      const warning = switchFor(translation)
+      if (!warning) {
+        proceed()
+        return
+      }
+      Alert.alert(warning.title, warning.message, [
+        { text: warning.cancelLabel, style: "cancel" },
+        { text: warning.confirmLabel, onPress: proceed },
+      ])
+    },
+    [switchFor],
+  )
   const onPick = useCallback(
     (translation: CatalogTranslation) => {
-      positionStore.pickTranslation(translation.id)
+      const warning = switchFor(translation)
+      if (warning) {
+        positionStore.pickTranslationAt(translation.id, warning.start.bsb)
+      } else {
+        positionStore.pickTranslation(translation.id)
+      }
       router.back()
     },
-    [positionStore, router],
+    [positionStore, router, switchFor],
   )
   const close = useCallback(() => router.back(), [router])
 
@@ -53,6 +86,7 @@ export default function ReaderTranslationRoute() {
         offline={request.offline}
         downloads={services.downloads}
         onPick={onPick}
+        confirmPick={confirmPick}
         onClose={close}
       />
     )

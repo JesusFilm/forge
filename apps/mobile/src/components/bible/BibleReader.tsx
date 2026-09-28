@@ -135,6 +135,8 @@ const VERSE_MAX_WIDTH = 620
 export type ReaderRouteContext = {
   /** The translation whose text shows; null before the first choice. */
   translation: CatalogTranslation | null
+  /** The viewer's pick; it differs while a stand-in shows a book (R25). */
+  viewerTranslation: CatalogTranslation | null
   /** The current verse in that translation's numbering (R42). */
   translationRef: VerseRef | null
   /** The reading position in BSB numbering (R38). */
@@ -400,8 +402,13 @@ export function BibleReader(props: BibleReaderProps) {
   const picker = usePickerPulse(focused, shownChapter)
   const shown = "shown" in chapter.state ? chapter.state.shown : null
   const shownTranslation = shown?.translation ?? null
+  const viewerTranslation =
+    shown && chapter.catalog
+      ? (chapter.catalog.byId.get(shown.viewer.translationId) ?? null)
+      : null
   const context: ReaderRouteContext = {
     translation: shownTranslation,
+    viewerTranslation,
     translationRef: model.translationRef,
     ref: model.ref,
     offline: chapter.offline,
@@ -452,11 +459,6 @@ export function BibleReader(props: BibleReaderProps) {
     () => (shownTranslation ? downloads.getState(shownTranslation.id) : null),
     () => null,
   )
-  const viewerTranslation =
-    shown && chapter.catalog
-      ? (chapter.catalog.byId.get(shown.viewer.translationId) ?? null)
-      : null
-
   const pending =
     chapter.state.status === "waiting" || chapter.state.status === "loading"
   const showLoading = useDelayedFlag(pending, READER_LOADING_DELAY_MS)

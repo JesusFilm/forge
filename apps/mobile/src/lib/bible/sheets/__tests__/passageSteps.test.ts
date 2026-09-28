@@ -9,6 +9,7 @@ import {
   numberingFor,
   passageBooks,
   pickedBsbRef,
+  pickerCurrent,
   verseNumbers,
 } from "../passageSteps"
 
@@ -92,5 +93,55 @@ describe("pickedBsbRef", () => {
     expect(pickedBsbRef("BSB", { book: "JHN", chapter: 3, verse: 16 })).toEqual(
       { book: "JHN", chapter: 3, verse: 16 },
     )
+  })
+})
+
+// R25's stand-in: the picker follows the viewer's pick (owner, 2026-09-28).
+describe("pickerCurrent", () => {
+  const SYNODAL = { id: "rus_syn", books: ALL_BOOKS }
+  const BSB_PSALM_23_1 = { book: "PSA" as const, chapter: 23, verse: 1 }
+  const SYNODAL_PSALM_22_1 = { book: "PSA" as const, chapter: 22, verse: 1 }
+
+  it("marks the shown verse when the pick is what shows", () => {
+    expect(
+      pickerCurrent({
+        translation: SYNODAL,
+        ref: BSB_PSALM_23_1,
+        shownRef: SYNODAL_PSALM_22_1,
+        standIn: false,
+      }),
+    ).toEqual(SYNODAL_PSALM_22_1)
+  })
+
+  it("marks the BSB verse with no translation", () => {
+    expect(
+      pickerCurrent({
+        translation: null,
+        ref: BSB_PSALM_23_1,
+        shownRef: SYNODAL_PSALM_22_1,
+        standIn: false,
+      }),
+    ).toEqual(BSB_PSALM_23_1)
+  })
+
+  it("puts the verse in the pick's numbers while a stand-in shows", () => {
+    // The pick has Psalms: BSB Psalm 23 is Synodal Psalm 22.
+    expect(
+      pickerCurrent({
+        translation: SYNODAL,
+        ref: BSB_PSALM_23_1,
+        shownRef: BSB_PSALM_23_1,
+        standIn: true,
+      }),
+    ).toEqual(SYNODAL_PSALM_22_1)
+    // The pick lacks the book, so the picker uses BSB's numbers for it.
+    expect(
+      pickerCurrent({
+        translation: { id: "xyz_nt", books: NEW_TESTAMENT },
+        ref: BSB_PSALM_23_1,
+        shownRef: SYNODAL_PSALM_22_1,
+        standIn: true,
+      }),
+    ).toEqual(BSB_PSALM_23_1)
   })
 })

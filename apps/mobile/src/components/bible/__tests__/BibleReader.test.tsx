@@ -805,6 +805,8 @@ describe("BibleReader — the chrome", () => {
     expect(handlers.onOpenTranslationPicker).toHaveBeenCalledTimes(1)
     expect(handlers.onOpenTranslationPicker.mock.calls[0]?.[0]).toMatchObject({
       translation: { id: "BSB" },
+      // The sheets follow the pick while BSB stands in (owner, 2026-09-28).
+      viewerTranslation: { id: "aai_wbt" },
       translationRef: { book: "GEN", chapter: 1, verse: 1 },
     })
   })

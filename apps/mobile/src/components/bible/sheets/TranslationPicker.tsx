@@ -36,6 +36,9 @@ export type TranslationPickerProps = {
   offline: boolean
   downloads: Pick<TranslationDownloads, "getState" | "subscribe" | "check">
   onPick: (translation: CatalogTranslation) => void
+  /** Can ask before a pick; `proceed` makes it. With none, a tap picks. A
+   *  cancelled pick is not a change, so it is not reported (R37). */
+  confirmPick?: (translation: CatalogTranslation, proceed: () => void) => void
   onClose: () => void
 }
 
@@ -53,6 +56,7 @@ export function TranslationPicker({
   offline,
   downloads,
   onPick,
+  confirmPick,
   onClose,
 }: TranslationPickerProps) {
   const [onDeviceOnly, setOnDeviceOnly] = useState(offline)
@@ -80,12 +84,16 @@ export function TranslationPicker({
   // U14, R37: a pick is a change from the translation on screen.
   const pick = useCallback(
     (translation: CatalogTranslation) => {
-      if (translation.id !== activeId) {
-        reportTranslationChanged("picked", activeId, translation.id)
+      const proceed = () => {
+        if (translation.id !== activeId) {
+          reportTranslationChanged("picked", activeId, translation.id)
+        }
+        onPick(translation)
       }
-      onPick(translation)
+      if (confirmPick) confirmPick(translation, proceed)
+      else proceed()
     },
-    [activeId, onPick],
+    [activeId, onPick, confirmPick],
   )
 
   const colors = readerSheetColors(tokens)
