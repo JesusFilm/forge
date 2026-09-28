@@ -145,7 +145,9 @@ Datadog has recorded taps on the button since 2026-08-28, because production RUM
   - Line spacing.
   - Verse numbers: on or off.
   - Show arrow buttons: phones only.
+  - _Superseded 2026-09-28 (owner):_ the sheet holds six settings. Palette is gone, and Mode is System, Light, Dark, or True Dark. True Dark is Dark with the True Dark colors. Text size is a slider with eleven steps of 2 pt (22 to 42), and line spacing is a slider with five steps (1.2 to 1.6), right below text size. See `apps/mobile/CLAUDE.md` "Bible reader".
 - R34. The Classic palette uses the app's warm stone colors in Dark mode and a matching warm light set in Light mode. True Dark uses white with near-black text in Light mode, and black with near-white text in Dark mode.
+  - _Superseded 2026-09-28 (owner):_ three color sets remain: Light and Dark (the warm stone colors) and True Dark (black with near-white text). True Dark's white light set is gone.
 - R35. Mode and palette change the reader only. The tab bar and the mini player keep the app's style.
 - R36. The reader meets the `PRODUCT.md` accessibility floor: WCAG 2.1 AA contrast in every palette and mode, 44x44 touch targets, a label on every control, and verse-by-verse moves for screen readers.
 
