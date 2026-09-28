@@ -51,7 +51,7 @@ database into Admin.
 | [feat-527](feat-527-rag-consumer-access-lifecycle.md)             | —                                                             | Implement consumer access lifecycle (single runtime per consumer)  | in-progress | [#2397](https://github.com/JesusFilm/forge/pull/2397), [#2416](https://github.com/JesusFilm/forge/pull/2416), [#2423](https://github.com/JesusFilm/forge/pull/2423), [#2426](https://github.com/JesusFilm/forge/pull/2426), [#2435](https://github.com/JesusFilm/forge/pull/2435) |
 | [feat-528](feat-528-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting                                            | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
 | [feat-529](feat-529-rag-consumer-dogfood-migration.md)            | —                                                             | Dogfood and seven-day migration                                    | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
-| [feat-530](feat-530-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                       | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
+| [feat-530](feat-530-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                       | in-progress | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
 | [feat-532](feat-532-rag-legacy-service-credential-retirement.md)  | —                                                             | Retire legacy JesusFilm-RAG service and credentials                | not-started | [#2379](https://github.com/JesusFilm/forge/pull/2379)                                                                                                                                                                                                                             |
 | [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
 | [feat-541](feat-541-rag-database-diagram.md)                      | —                                                             | Document the RAG database schema as a complete ERD                 | complete    | [#2398](https://github.com/JesusFilm/forge/pull/2398)                                                                                                                                                                                                                             |
@@ -88,13 +88,14 @@ Feat-528 usage visibility can follow the backend, with reporting views added whe
 available. Feat-529 dogfood/migration follows usage and the usable management UI.
 The backend PR can merge with incomplete live verification recorded; exercise
 creation, ownership and credentials through the local UI next. No temporary
-production consumers or pre-UI API verification harness is required.
+production consumers or pre-UI API verification harness is required. Feat-530
+management UI is now in progress; feat-529 onboarding evidence must use that UI.
 
 [Discovery evidence](evidence/feat-518/consumer-access-discovery.md) is delivered
 in separate draft #2325; feat-518 is complete as documentation. The
 [feat-527 admission evidence](evidence/feat-527/portal-admission-slice.md)
 records the production operator setup and successful login, sign-out and
-unlisted-account denial. Feat-527 remains in progress; feat-528–530 have not
+unlisted-account denial. Feat-527 remains in progress; feat-528/529 have not
 started.
 
 J022 records portal admission through a repository portal-user allowlist changed

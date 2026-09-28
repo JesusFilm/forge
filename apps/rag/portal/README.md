@@ -70,3 +70,79 @@ The portal feature is disabled when all six `RAG_PORTAL_*` service variables
 are absent. Partial configuration fails service startup. Production now has
 all six variables, so the admission portal is enabled. It still cannot create
 consumers or issue credentials; that backend work remains in feat-527.
+
+## Consumer UI (feat-530)
+
+`/portal` now serves the management UI. `/portal/identity` provides the protected
+JSON identity proof previously returned at `/portal`. The shell and static assets
+contain no session data; identity, directory reads and mutations recheck current
+admission. Management appears only when the consumer backend is configured.
+`GET /portal/members` provides the merged allowlist for member selection; adding
+members still checks live eligibility and ownership in the backend transaction.
+
+The UI creates directly from the form, then shows the issued key once with copy/save
+controls, and clears the display on dismissal, sign-out and page navigation.
+It uses no browser storage or telemetry. Key replacement, suspension and terminal
+revocation require an explicit confirmation. Stale changes refresh the directory
+and require another explicit action. Uncertain issuance results direct the user
+to refresh and replace a lost key; mutations never automatically retry.
+
+### Local UI development
+
+`pnpm --filter @forge/rag portal:dev` is a separate local composition, never
+imported or enabled by the production server. It binds only `127.0.0.1:3445`, uses
+HTTPS and synthetic `local-owner`, `local-member`, `local-other` sign-ins, and
+requires the exact local database `forge_rag_portal_dev`. Consumer creation,
+membership, hashing, rotation, sessions and bearer authentication use the real
+PostgreSQL adapters. Retrieval returns an empty synthetic result; actual corpus
+retrieval and ops dogfood remain feat-529 work.
+
+Create the dedicated database on the local `forge-rag-postgres` container and
+apply migrations with `DATABASE_URL` pointing at it. Provision three distinct
+local roles with the runbook's consumer writer/reader and portal session grants;
+no role receives corpus writes, and the launcher verifies consumer privileges.
+Set these variables in your terminal or local secret configuration:
+
+- `RAG_CONSUMER_WRITER_DATABASE_URL`: restricted consumer writer on the dedicated DB.
+- `RAG_CONSUMER_AUTH_DATABASE_URL`: restricted credential reader on the dedicated DB.
+- `RAG_PORTAL_SESSION_DATABASE_URL`: restricted session role on the dedicated DB.
+- `RAG_PORTAL_DEV_TLS_KEY` and `RAG_PORTAL_DEV_TLS_CERT`: local certificate files.
+
+Generate a short-lived localhost certificate outside Git, for example:
+
+```bash
+openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout /tmp/rag-portal-key.pem -out /tmp/rag-portal-cert.pem -days 7 \
+  -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1'
+pnpm --filter @forge/rag portal:dev
+```
+
+Open `https://localhost:3445/portal` and accept the local development certificate
+in your browser. Choose a synthetic identity, then create a consumer using the
+UI. This local sign-in does not prove deployed GitHub admission or authorize
+production consumer registration.
+
+For repeatable browser verification, install Chromium with
+`pnpm --filter @forge/rag exec playwright install chromium`, then run
+`pnpm --filter @forge/rag portal:verify` while the launcher is running.
+`PORTAL_TEST_CHROMIUM` may point to an existing Chromium executable. The browser
+suite creates consumers through Create, verifies real bearer invalidation
+and management separation, and renders synthetic key fixtures to prevent
+credentials in failure-context artifacts. Trace/video/automatic screenshots are
+disabled. Explicit screenshots are taken only after key dismissal. Synthetic
+consumers remain in the local database. Evidence lives in ignored `apps/rag/output/`.
+
+### UI conventions
+
+Follow `docs/pages/site/index.html` and `apps/rag/dashboard/template.html`:
+warm neutral backgrounds, navy controls and restrained JFP red accents. Use
+Forge’s locally served Apercu regular/bold for typography, softer corners and
+thin dividers. Avoid full-width red rules and boxed outlines on every row action. Use one semantic table row per consumer with its
+status and available actions inline. Narrow screens scroll the table horizontally
+while keeping the consumer name visible.
+
+Keep copy minimal. The page needs its title, action buttons and consumer rows;
+omit subtitles, decorative labels, onboarding sections and footers. Field labels
+identify inputs. Show validation messages when input fails. Retain concise
+consequence/recovery text for key issuance and destructive actions. Create submits
+directly and opens Save your API key; there is no preview step.

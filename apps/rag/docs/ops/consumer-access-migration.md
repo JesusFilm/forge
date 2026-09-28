@@ -42,6 +42,8 @@ as the transaction commits, so coordinate installation with every caller.
 ## Backend contract
 
 All mutations require a current admitted session and same-origin request.
+`/portal` serves the management UI; `GET /portal/identity` is the protected
+identity proof, and `GET /portal/members` supplies admitted users for selection.
 `GET /portal/consumers` lists safe names and states for all admitted users,
 with `owned`, `credentialVersion` and `membershipVersion` for owners. `POST /portal/consumers`
 accepts only `{ "name": "lowercase-name" }`; the initial owner is the
