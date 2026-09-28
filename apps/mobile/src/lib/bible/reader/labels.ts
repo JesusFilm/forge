@@ -78,40 +78,43 @@ export type TranslationLabel = {
   /** The shown translation's short name (R25: it names what shows). */
   text: string
   accessibilityLabel: string
-  /** R25, R41: a stand-in shows; the pill marks it and the label says why. */
-  isFallback: boolean
+  /** R25, R41: why a stand-in shows, or null for the viewer's own pick. The
+   *  info button beside the pill shows it (owner, 2026-09-28). */
+  note: string | null
+  /** Which stand-in the note is for. The text can change while a book name
+   *  loads; the key does not, so an open tip stays open. */
+  noteKey: string | null
 }
 
 // The top bar's translation pill. It has room for the short name only, so the
-// reason for a stand-in is in the accessibility label. `viewerTranslation` is
-// the rules' choice before the book check, when the catalog lists it.
+// reason for a stand-in is a note. `viewerTranslation` is the rules' choice
+// before the book check; `bookName` is the book as the shown text names it.
 export function translationLabel(
   shown: ShownTranslation,
   viewerTranslation: CatalogTranslation | null,
+  bookName: string,
 ): TranslationLabel {
   const { name, shortName } = shown.translation
+  const label = {
+    text: shortName,
+    accessibilityLabel: READER_COPY.translation(name),
+  }
+  const noteKey = `${shown.reason}:${shown.translation.id}`
   switch (shown.reason) {
     case "viewer":
-      return {
-        text: shortName,
-        accessibilityLabel: READER_COPY.translation(name),
-        isFallback: false,
-      }
+      return { ...label, note: null, noteKey: null }
     case "book-fallback":
       return {
-        text: shortName,
-        accessibilityLabel: READER_COPY.bookFallback(
+        ...label,
+        note: READER_COPY.bookFallbackNote(
           viewerTranslation?.name ?? null,
+          bookName,
           name,
         ),
-        isFallback: true,
+        noteKey,
       }
     case "offline-stand-in":
-      return {
-        text: shortName,
-        accessibilityLabel: READER_COPY.offlineStandInLabel(name),
-        isFallback: true,
-      }
+      return { ...label, note: READER_COPY.offlineStandInNote(name), noteKey }
   }
 }
 

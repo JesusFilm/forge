@@ -109,8 +109,9 @@ jest.mock("@shopify/flash-list", () => {
   }
 })
 
+import { stubBookNamesStore } from "../../../../test-utils/bookNamesStub"
 import { StrictMode, act, type ComponentType } from "react"
-import { StyleSheet } from "react-native"
+import { Alert, StyleSheet } from "react-native"
 
 import ReaderPassageRoute from "../../../../../app/reader-passage"
 import ReaderSettingsRoute from "../../../../../app/reader-settings"
@@ -122,8 +123,14 @@ import {
   type ReadingPositionStore,
 } from "../../../../lib/bible/position/store"
 import { READER_COPY } from "../../../../lib/bible/reader/copy"
+import { datadogLog } from "../../../../lib/datadog"
 import type { ReaderServices } from "../../../../lib/bible/reader/services"
+import { catalogHasBook } from "../../../../lib/bible/repository/resolveChapter"
 import type { TranslationDownloadState } from "../../../../lib/bible/repository/translationDownloads"
+import {
+  DEFAULT_LINE_SPACING_STEP,
+  DEFAULT_TEXT_SIZE_STEP,
+} from "../../../../lib/bible/settings/snapshot"
 import { createReaderSettingsStore } from "../../../../lib/bible/settings/store"
 import { READER_SHEET_COPY } from "../../../../lib/bible/sheets/copy"
 import { readerSheetHref } from "../../../../lib/bible/sheets/routes"
@@ -181,7 +188,7 @@ function memoryStorage() {
   }
 }
 
-function install(): Harness {
+function install(bookNames = stubBookNamesStore()): Harness {
   const position = createReadingPositionStore(memoryStorage())
   const settings = createReaderSettingsStore(memoryStorage())
   const loadCatalog = jest.fn(() =>
@@ -189,7 +196,9 @@ function install(): Harness {
   )
   const listeners = new Set<() => void>()
   const services: ReaderServices = {
-    repository: {} as ReaderServices["repository"],
+    repository: {
+      translationHasBook: catalogHasBook,
+    } as unknown as ReaderServices["repository"],
     downloads: {
       getState: (id: string): TranslationDownloadState =>
         id === "BSB" ? { kind: "bundled" } : { kind: "not-downloaded" },
@@ -204,6 +213,7 @@ function install(): Harness {
     loadCatalog,
     positionStore: position,
     settingsStore: settings,
+    bookNames,
     readPhoneLanguage: () => "es",
   }
   mockRoute.services = services
@@ -286,6 +296,104 @@ describe("reader-passage route", () => {
     expect(mockRoute.back).toHaveBeenCalledTimes(1)
   })
 
+  // The owner (2026-09-28): the books read as the shown translation names them.
+  it("names the books as the shown translation does", async () => {
+    install(
+      stubBookNamesStore({
+        rus_syn: new Map([
+          ["GEN", "Бытие"],
+          ["PSA", "Псалтирь"],
+        ]),
+      }),
+    )
+    mockRoute.params = readerSheetHref("passage", SYNODAL_CONTEXT).params
+    const renderer = await renderRoute(ReaderPassageRoute)
+    await act(async () => {
+      for (let i = 0; i < 10; i += 1) await Promise.resolve()
+    })
+
+    expect(controls(renderer, "Бытие")).toHaveLength(1)
+    expect(controls(renderer, "Genesis")).toHaveLength(0)
+    // A book with no name from the translation keeps its English name.
+    expect(controls(renderer, "Exodus")).toHaveLength(1)
+    await press(renderer, "Псалтирь")
+    expect(controls(renderer, PASSAGE.chapter(50))).toHaveLength(1)
+  })
+
+  // R25's stand-in: BSB shows Deuteronomy because the viewer's pick, a New
+  // Testament, lacks it. The picker follows the pick (owner, 2026-09-28).
+  it("follows the viewer's pick while another translation stands in", async () => {
+    const WBT = CATALOG.byId.get("cpc_wbt")!
+    const DEUTERONOMY_2_4: VerseRef = { book: "DEU", chapter: 2, verse: 4 }
+    install(stubBookNamesStore({ cpc_wbt: new Map([["MAT", "MATEO"]]) }))
+    mockRoute.params = readerSheetHref("passage", {
+      translation: CATALOG.byId.get("BSB")!,
+      viewerTranslation: WBT,
+      translationRef: DEUTERONOMY_2_4,
+      ref: DEUTERONOMY_2_4,
+      offline: false,
+    }).params
+    const renderer = await renderRoute(ReaderPassageRoute)
+    await act(async () => {
+      for (let i = 0; i < 10; i += 1) await Promise.resolve()
+    })
+
+    const deuteronomy = `Deuteronomy, ${PASSAGE.notInTranslation("WBT")}`
+    expect(controls(renderer, deuteronomy)).toHaveLength(1)
+    expect(controls(renderer, "MATEO")).toHaveLength(1)
+    // The current verse still shows, in BSB numbers for a book WBT lacks.
+    await press(renderer, deuteronomy)
+    const [chapterTwo] = controls(renderer, PASSAGE.chapter(2))
+    expect(chapterTwo?.props.accessibilityState).toMatchObject({
+      selected: true,
+    })
+  })
+
+  // Review #9: WBT lacks Psalms, so Synodal (the phone language's default)
+  // fills it. The picker must number and name Psalms as the pill does.
+  it("numbers and names a book the pick lacks as the stand-in does", async () => {
+    const WBT = CATALOG.byId.get("cpc_wbt")!
+    const { position } = install(
+      stubBookNamesStore({
+        cpc_wbt: new Map([["MAT", "MATEO"]]),
+        rus_syn: new Map([
+          ["PSA", "Псалтирь"],
+          ["MAT", "От Матфея"],
+        ]),
+      }),
+    )
+    mockRoute.params = readerSheetHref("passage", {
+      translation: SYNODAL,
+      viewerTranslation: WBT,
+      translationRef: { book: "PSA", chapter: 22, verse: 1 },
+      ref: PSALM_23_1,
+      offline: false,
+    }).params
+    const renderer = await renderRoute(ReaderPassageRoute)
+    await act(async () => {
+      for (let i = 0; i < 10; i += 1) await Promise.resolve()
+    })
+
+    expect(controls(renderer, "MATEO")).toHaveLength(1)
+    const psalms = `Псалтирь, ${PASSAGE.notInTranslation("WBT")}`
+    await press(renderer, psalms)
+    const [chapter22] = controls(renderer, PASSAGE.chapter(22))
+    expect(chapter22?.props.accessibilityState).toMatchObject({
+      selected: true,
+    })
+    // Synodal Psalm 50 has 21 verses (BSB's has 23), and its verse 3 is BSB
+    // Psalm 51:1 (AE17).
+    await press(renderer, PASSAGE.chapter(50))
+    expect(controls(renderer, PASSAGE.verse(21))).toHaveLength(1)
+    expect(controls(renderer, PASSAGE.verse(22))).toHaveLength(0)
+    await press(renderer, PASSAGE.verse(3))
+    expect(position.getSnapshot().ref).toEqual({
+      book: "PSA",
+      chapter: 51,
+      verse: 1,
+    })
+  })
+
   it("refuses malformed params and falls back to BSB numbers", async () => {
     const { position } = install()
     mockRoute.params = {
@@ -318,9 +426,9 @@ describe("reader-passage route", () => {
 
   it("paints the sheet in the reader's theme", async () => {
     const { settings } = install()
-    settings.update({ mode: "light", palette: "trueDark" })
+    settings.update({ mode: "trueDark" })
     await renderRoute(ReaderPassageRoute)
-    expect(lastBackground()).toBe(readerTokens("trueDark", "light").background)
+    expect(lastBackground()).toBe(readerTokens("trueDark").background)
   })
 })
 
@@ -347,6 +455,104 @@ describe("reader-translation route", () => {
     expect(snapshot.sessionTranslationId).toBeNull()
     expect(snapshot.ref).toEqual(JOHN_3_16)
     expect(mockRoute.back).toHaveBeenCalledTimes(1)
+  })
+
+  // The owner (2026-09-28): a partial Bible that lacks the current book warns,
+  // then opens at its own start. cpc_wbt is a New Testament only.
+  describe("a switch to a partial Bible", () => {
+    const BSB = CATALOG.byId.get("BSB")!
+    const WBT = CATALOG.byId.get("cpc_wbt")!
+    const DEUTERONOMY_2_4: VerseRef = { book: "DEU", chapter: 2, verse: 4 }
+    const WBT_ROW = `${WBT.name}, ${translationStatusLabel(WBT, {
+      kind: "not-downloaded",
+    })}`
+    type Button = { text: string; style?: string; onPress?: () => void }
+
+    afterEach(() => {
+      jest.restoreAllMocks()
+    })
+
+    function openAt(ref: VerseRef) {
+      const harness = install()
+      harness.position.moveTo(ref)
+      mockRoute.params = readerSheetHref("translation", {
+        translation: BSB,
+        translationRef: ref,
+        ref,
+        offline: false,
+      }).params
+      return harness
+    }
+
+    function lastAlert(alert: jest.SpyInstance) {
+      const [title, message, buttons] = alert.mock.calls.at(-1) as [
+        string,
+        string,
+        Button[],
+      ]
+      return { title, message, buttons }
+    }
+
+    it("warns first, and Cancel keeps the translation, the place, and the sheet", async () => {
+      const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {})
+      const info = jest.spyOn(datadogLog, "info")
+      const { position } = openAt(DEUTERONOMY_2_4)
+      const renderer = await renderRoute(ReaderTranslationRoute)
+
+      await press(renderer, WBT_ROW)
+      expect(alert).toHaveBeenCalledTimes(1)
+      const { title, message, buttons } = lastAlert(alert)
+      expect(title).toBe("WBT does not have Deuteronomy")
+      expect(message).toBe(
+        `${WBT.name} is a partial Bible. If you switch, the reader goes to its start, Matthew 1:1. You lose your place at Deuteronomy 2:4.`,
+      )
+      expect(buttons.map((button) => button.text)).toEqual(["Cancel", "Switch"])
+
+      await act(async () => buttons[0]!.onPress?.())
+      expect(position.getSnapshot().translationId).toBeNull()
+      expect(position.getSnapshot().ref).toEqual(DEUTERONOMY_2_4)
+      expect(mockRoute.back).not.toHaveBeenCalled()
+      // A cancelled pick is not a change (R37).
+      expect(info).not.toHaveBeenCalledWith(
+        "bible_reader.translation_changed",
+        expect.anything(),
+      )
+    })
+
+    it("on Switch, picks it and opens at its start, in one change", async () => {
+      const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {})
+      const info = jest.spyOn(datadogLog, "info")
+      const { position } = openAt(DEUTERONOMY_2_4)
+      const renderer = await renderRoute(ReaderTranslationRoute)
+      await press(renderer, WBT_ROW)
+      const seen: unknown[] = []
+      position.subscribe(() => seen.push(position.getSnapshot()))
+
+      await act(async () => lastAlert(alert).buttons[1]!.onPress?.())
+      expect(position.getSnapshot()).toMatchObject({
+        translationId: "cpc_wbt",
+        ref: { book: "MAT", chapter: 1, verse: 1 },
+      })
+      // No reader ever sees WBT at Deuteronomy, or Matthew in the old pick.
+      expect(seen).toHaveLength(1)
+      expect(mockRoute.back).toHaveBeenCalledTimes(1)
+      expect(info).toHaveBeenCalledWith(
+        "bible_reader.translation_changed",
+        expect.objectContaining({ reader_to_translation_id: "cpc_wbt" }),
+      )
+    })
+
+    it("keeps the place, with no warning, when it has the book", async () => {
+      const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {})
+      const { position } = openAt(JOHN_3_16)
+      const renderer = await renderRoute(ReaderTranslationRoute)
+      await press(renderer, WBT_ROW)
+      expect(alert).not.toHaveBeenCalled()
+      expect(position.getSnapshot()).toMatchObject({
+        translationId: "cpc_wbt",
+        ref: JOHN_3_16,
+      })
+    })
   })
 
   it("lists the phone language first when no audio language is known", async () => {
@@ -410,8 +616,8 @@ describe("reader-settings route", () => {
 
     await press(renderer, SETTINGS.modes.light)
     expect(settings.getSnapshot().mode).toBe("light")
-    await press(renderer, SETTINGS.palettes.trueDark)
-    expect(settings.getSnapshot().palette).toBe("trueDark")
+    await press(renderer, SETTINGS.modes.trueDark)
+    expect(settings.getSnapshot().mode).toBe("trueDark")
     // The sheet reads the same store as the reader, so its theme follows.
     const [root] = renderer.root.findAll(
       (node) => node.props.testID === "reader-settings-sheet",
@@ -419,14 +625,24 @@ describe("reader-settings route", () => {
     const style = StyleSheet.flatten(root?.props.style as never) as {
       backgroundColor?: string
     }
-    expect(style.backgroundColor).toBe(
-      readerTokens("trueDark", "light").background,
-    )
-    expect(lastBackground()).toBe(readerTokens("trueDark", "light").background)
+    expect(style.backgroundColor).toBe(readerTokens("trueDark").background)
+    expect(lastBackground()).toBe(readerTokens("trueDark").background)
 
     await press(renderer, SETTINGS.typefaces.sans)
-    await press(renderer, SETTINGS.lineSpacings.relaxed)
-    await press(renderer, SETTINGS.textSizeStep(5, 5))
+    // A drag to a step, as the native slider view reports it.
+    const slideTo = async (label: string, step: number) => {
+      const [slider] = renderer.root.findAll(
+        (node) =>
+          node.type === "RNCSlider" && node.props.accessibilityLabel === label,
+      )
+      await act(async () => {
+        ;(slider?.props.onRNCSliderValueChange as (event: unknown) => void)({
+          nativeEvent: { value: step, fromUser: true },
+        })
+      })
+    }
+    await slideTo(SETTINGS.lineSpacing, DEFAULT_LINE_SPACING_STEP + 2)
+    await slideTo(SETTINGS.textSize, DEFAULT_TEXT_SIZE_STEP - 1)
     const [verseNumbers] = controls(renderer, SETTINGS.verseNumbers)
     const [arrows] = controls(renderer, SETTINGS.showArrows)
     await act(async () => {
@@ -435,8 +651,8 @@ describe("reader-settings route", () => {
     })
     expect(settings.getSnapshot()).toMatchObject({
       typeface: "sans",
-      lineSpacing: "relaxed",
-      textSizeStep: 4,
+      lineSpacingStep: DEFAULT_LINE_SPACING_STEP + 2,
+      textSizeStep: DEFAULT_TEXT_SIZE_STEP - 1,
       verseNumbers: false,
       showArrows: true,
     })

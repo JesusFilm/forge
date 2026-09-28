@@ -463,6 +463,52 @@ describe("R41: the saved pick and the session switch", () => {
     })
   })
 
+  // A partial Bible that lacks the book opens at its start (owner, 2026-09-28).
+  it("saves a pick with a new place as one change, and it survives a restart", async () => {
+    const storage = makeStorage()
+    const store = createReadingPositionStore(storage)
+    await store.hydrate()
+    store.moveTo(ROMANS_8_5)
+    store.switchTranslationForSession("BSB")
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    const matthew: VerseRef = { book: "MAT", chapter: 1, verse: 1 }
+    expect(store.pickTranslationAt("cpc_wbt", matthew)).toBe(true)
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(store.getSnapshot()).toMatchObject({
+      ref: matthew,
+      translationId: "cpc_wbt",
+      sessionTranslationId: null,
+    })
+    await settle()
+    const restarted = createReadingPositionStore(storage)
+    await restarted.hydrate()
+    expect(restarted.getSnapshot()).toMatchObject({
+      ref: matthew,
+      translationId: "cpc_wbt",
+    })
+  })
+
+  it("refuses a pick with a new place that is not safe or not a BSB verse", async () => {
+    const store = createReadingPositionStore(makeStorage())
+    await store.hydrate()
+    store.moveTo(JOHN_3_16)
+
+    expect(store.pickTranslationAt("../x", ROMANS_8_5)).toBe(false)
+    expect(
+      store.pickTranslationAt("cpc_wbt", {
+        book: "JHN",
+        chapter: 3,
+        verse: 99,
+      }),
+    ).toBe(false)
+    expect(store.getSnapshot()).toMatchObject({
+      ref: JOHN_3_16,
+      translationId: null,
+    })
+  })
+
   it("refuses an unsafe translation id", async () => {
     const store = createReadingPositionStore(makeStorage())
     await store.hydrate()

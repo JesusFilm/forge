@@ -1,6 +1,6 @@
-// The reader's own theme (feat-553 KTD12, R34, R35, R36). Four token sets:
-// two palettes, each in a light and a dark scheme. The app's Appearance never
-// changes; only the reader reads these.
+// The reader's own theme (feat-553 KTD12, R34, R35, R36). Three token sets:
+// Light and Dark on the app's warm stone scale, and True Dark (owner,
+// 2026-09-28). The app's Appearance never changes; only the reader reads these.
 import {
   ACCENT,
   ACCENT_ON_DARK,
@@ -8,12 +8,17 @@ import {
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../../color"
-import type { ReaderMode, ReaderPalette } from "../settings/snapshot"
+import type { ReaderMode } from "../settings/snapshot"
 import { contrastRatio } from "./contrast"
 
 export const READER_SCHEMES = ["light", "dark"] as const
 
 export type ReaderScheme = (typeof READER_SCHEMES)[number]
+
+/** Each mode but System names its theme; System picks Light or Dark. */
+export const READER_THEMES = ["light", "dark", "trueDark"] as const
+
+export type ReaderTheme = (typeof READER_THEMES)[number]
 
 export type ReaderTokens = {
   scheme: ReaderScheme
@@ -33,74 +38,55 @@ export type ReaderTokens = {
   statusBarStyle: "light" | "dark"
 }
 
-type TokenSet = Readonly<Record<ReaderScheme, Readonly<ReaderTokens>>>
+// Light and Dark are the app's warm stone scale. True Dark copies Still's
+// True Dark values (JesusFilm/still app/globals.css, read 2026-09-25).
+export const READER_THEME_TOKENS: Readonly<
+  Record<ReaderTheme, Readonly<ReaderTokens>>
+> = Object.freeze({
+  light: Object.freeze({
+    scheme: "light",
+    background: "#fafaf9",
+    text: "#1c1917",
+    secondaryText: "#57534e",
+    progressTrack: "#e7e5e4",
+    progressFill: "#57534e",
+    buttonSurface: "rgba(231, 229, 228, 0.8)",
+    icon: ACCENT,
+    statusBarStyle: "dark",
+  }),
+  dark: Object.freeze({
+    scheme: "dark",
+    background: BG_COLOR,
+    text: TEXT_PRIMARY,
+    secondaryText: TEXT_SECONDARY,
+    progressTrack: "#44403c",
+    progressFill: "#d6d3d1",
+    buttonSurface: "rgba(41, 37, 36, 0.8)",
+    icon: ACCENT_ON_DARK,
+    statusBarStyle: "light",
+  }),
+  trueDark: Object.freeze({
+    scheme: "dark",
+    background: "#000000",
+    text: "#e8e8e8",
+    secondaryText: "#ababab",
+    progressTrack: "#262626",
+    progressFill: "#dedede",
+    buttonSurface: "rgba(38, 38, 38, 0.9)",
+    icon: ACCENT_ON_DARK,
+    statusBarStyle: "light",
+  }),
+})
 
-// Classic is the app's warm stone scale. True Dark copies Still's True Dark
-// values (JesusFilm/still app/globals.css, read 2026-09-25).
-export const READER_PALETTE_TOKENS: Readonly<Record<ReaderPalette, TokenSet>> =
-  Object.freeze({
-    classic: Object.freeze({
-      light: Object.freeze({
-        scheme: "light",
-        background: "#fafaf9",
-        text: "#1c1917",
-        secondaryText: "#57534e",
-        progressTrack: "#e7e5e4",
-        progressFill: "#57534e",
-        buttonSurface: "rgba(231, 229, 228, 0.8)",
-        icon: ACCENT,
-        statusBarStyle: "dark",
-      }),
-      dark: Object.freeze({
-        scheme: "dark",
-        background: BG_COLOR,
-        text: TEXT_PRIMARY,
-        secondaryText: TEXT_SECONDARY,
-        progressTrack: "#44403c",
-        progressFill: "#d6d3d1",
-        buttonSurface: "rgba(41, 37, 36, 0.8)",
-        icon: ACCENT_ON_DARK,
-        statusBarStyle: "light",
-      }),
-    }),
-    trueDark: Object.freeze({
-      light: Object.freeze({
-        scheme: "light",
-        background: "#ffffff",
-        text: "#252525",
-        secondaryText: "#626262",
-        progressTrack: "#ededed",
-        progressFill: "#454545",
-        buttonSurface: "rgba(237, 237, 237, 0.9)",
-        icon: ACCENT,
-        statusBarStyle: "dark",
-      }),
-      dark: Object.freeze({
-        scheme: "dark",
-        background: "#000000",
-        text: "#e8e8e8",
-        secondaryText: "#ababab",
-        progressTrack: "#262626",
-        progressFill: "#dedede",
-        buttonSurface: "rgba(38, 38, 38, 0.9)",
-        icon: ACCENT_ON_DARK,
-        statusBarStyle: "light",
-      }),
-    }),
-  })
-
-export function readerTokens(
-  palette: ReaderPalette,
-  scheme: ReaderScheme,
-): ReaderTokens {
-  return READER_PALETTE_TOKENS[palette][scheme]
+export function readerTokens(theme: ReaderTheme): ReaderTokens {
+  return READER_THEME_TOKENS[theme]
 }
 
 /** System mode follows the device. With no answer, the app's dark look wins. */
-export function resolveReaderScheme(
+export function resolveReaderTheme(
   mode: ReaderMode,
   systemScheme: string | null | undefined,
-): ReaderScheme {
+): ReaderTheme {
   if (mode !== "system") return mode
   return systemScheme === "light" ? "light" : "dark"
 }

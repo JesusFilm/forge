@@ -114,7 +114,7 @@ function loadCatalog(): Catalog {
 
 const CATALOG = loadCatalog()
 const COPY = READER_SHEET_COPY.translation
-const TOKENS = readerTokens("trueDark", "light")
+const TOKENS = readerTokens("light")
 const SPANISH = CATALOG.translations.filter((t) => t.language === "spa")
 const SYNODAL = CATALOG.byId.get("rus_syn")!
 
@@ -364,6 +364,29 @@ describe("TranslationPicker", () => {
         },
       ],
     ])
+  })
+
+  // The owner (2026-09-28): a switch can ask first. Until the caller goes on,
+  // nothing is picked and nothing is logged, so a cancel is not a change.
+  it("waits for the caller to go on before it picks or logs", async () => {
+    const info = datadogLog.info as unknown as jest.Mock
+    info.mockClear()
+    let proceed: (() => void) | null = null
+    const confirmPick = jest.fn((_translation: unknown, next: () => void) => {
+      proceed = next
+    })
+    const { renderer, onPick } = await render({ activeId: "BSB", confirmPick })
+    await search(renderer, "Synodal")
+    await act(async () => {
+      rowFor(renderer, rowLabel(SYNODAL, NOT_DOWNLOADED)).props.onPress?.()
+    })
+    expect(confirmPick).toHaveBeenCalledWith(SYNODAL, expect.any(Function))
+    expect(onPick).not.toHaveBeenCalled()
+    expect(info).not.toHaveBeenCalled()
+
+    await act(async () => proceed!())
+    expect(onPick).toHaveBeenCalledWith(SYNODAL)
+    expect(info).toHaveBeenCalledTimes(1)
   })
 
   it("logs no change for a pick of the translation already shown", async () => {

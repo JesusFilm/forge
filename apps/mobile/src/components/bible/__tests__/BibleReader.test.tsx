@@ -54,6 +54,7 @@ jest.mock("../../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
 
+import { stubBookNamesStore } from "../../../test-utils/bookNamesStub"
 import { StrictMode, act } from "react"
 import {
   AccessibilityInfo,
@@ -93,10 +94,7 @@ import type {
 import { createChapterRepository } from "../../../lib/bible/repository/resolveChapter"
 import type { TranslationDownloadState } from "../../../lib/bible/repository/translationDownloads"
 import { createReaderSettingsStore } from "../../../lib/bible/settings/store"
-import {
-  READER_PALETTES,
-  READER_TEXT_SIZE_STEPS,
-} from "../../../lib/bible/settings/snapshot"
+import { READER_TEXT_SIZE_STEPS } from "../../../lib/bible/settings/snapshot"
 import type { UsfmBookId } from "../../../lib/bible/text/books"
 import {
   normalizeChapterFile,
@@ -107,7 +105,7 @@ import type { VerseRef } from "../../../lib/bible/versification/convert"
 import { fitFloor } from "../../../lib/bible/fit/fitVerse"
 import { VERSE_BOX_GAP } from "../../../lib/bible/fit/verseBox"
 import { contrastRatio } from "../../../lib/bible/theme/contrast"
-import { READER_SCHEMES, readerTokens } from "../../../lib/bible/theme/palettes"
+import { readerTokens } from "../../../lib/bible/theme/palettes"
 import { READER_COPY } from "../../../lib/bible/reader/copy"
 import {
   READER_TOP_BAR_HEIGHT,
@@ -213,6 +211,7 @@ function makeServices(
     loadCatalog: async () => ({ status: "ok", value: CATALOG }),
     positionStore: createReadingPositionStore(memoryStorage()),
     settingsStore: createReaderSettingsStore(memoryStorage()),
+    bookNames: stubBookNamesStore(),
     readPhoneLanguage: () => "en",
   }
   return { services, fetch }
@@ -789,14 +788,22 @@ describe("BibleReader — the chrome", () => {
     let ancestor: RenderedNode | null = label!
     while (ancestor && ancestor !== footer) ancestor = ancestor.parent ?? null
     expect(ancestor).toBeNull()
-    // It also says whose book is missing.
-    expect(String(label!.props.accessibilityLabel)).toContain(
-      "TUR GEWASIN O BAIBASIT BOUBUN",
-    )
+    // The info button beside it says whose book is missing, in the shown
+    // text's name for the book (owner, 2026-09-28).
+    expect(
+      controlHostsLabelled(
+        renderer,
+        (text) =>
+          text ===
+          "TUR GEWASIN O BAIBASIT BOUBUN does not include Genesis. The reader shows it in Berean Standard Bible.",
+      ),
+    ).toHaveLength(1)
     await pressControl(renderer, namesShown)
     expect(handlers.onOpenTranslationPicker).toHaveBeenCalledTimes(1)
     expect(handlers.onOpenTranslationPicker.mock.calls[0]?.[0]).toMatchObject({
       translation: { id: "BSB" },
+      // The sheets follow the pick while BSB stands in (owner, 2026-09-28).
+      viewerTranslation: { id: "aai_wbt" },
       translationRef: { book: "GEN", chapter: 1, verse: 1 },
     })
   })
@@ -1172,15 +1179,11 @@ describe("BibleReader — reader visits (U14, KTD18)", () => {
 })
 
 describe("BibleReader — theme read from the rendered tree", () => {
-  const PAIRS = READER_PALETTES.flatMap((palette) =>
-    READER_SCHEMES.map((scheme) => [palette, scheme] as const),
-  )
-
-  it.each(PAIRS)(
-    "%s %s: the verse and the footer clear 4.5:1 on the page",
-    async (palette, scheme) => {
+  it.each(["light", "dark", "trueDark"] as const)(
+    "%s: the verse and the footer clear 4.5:1 on the page",
+    async (mode) => {
       const { services } = makeServices()
-      services.settingsStore.update({ palette, mode: scheme })
+      services.settingsStore.update({ mode })
       await openAt(services, { book: "JHN", chapter: 3, verse: 16 })
       const renderer = await render(services)
       await settleFit(renderer, () => 200)
@@ -1197,7 +1200,7 @@ describe("BibleReader — theme read from the rendered tree", () => {
           contrastRatio(String(flat(node!).color), page),
         ).toBeGreaterThanOrEqual(4.5)
       }
-      expect(page).toBe(readerTokens(palette, scheme).background)
+      expect(page).toBe(readerTokens(mode).background)
     },
   )
 })

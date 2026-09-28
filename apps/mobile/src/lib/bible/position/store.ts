@@ -40,6 +40,9 @@ export type ReadingPositionStore = {
   moveTo(ref: VerseRef): boolean
   /** The viewer's pick from the translation picker; null follows the default. */
   pickTranslation(translationId: string | null): boolean
+  /** A pick with a new place, in one change, so no reader loads the old
+   *  place in the new translation (a partial Bible's start, 2026-09-28). */
+  pickTranslationAt(translationId: string, ref: VerseRef): boolean
   /** R31's switch for this session only; it never reaches storage. */
   switchTranslationForSession(translationId: string | null): boolean
   reset(): void
@@ -84,6 +87,18 @@ export function createReadingPositionStore(
     pickTranslation(translationId) {
       if (!isIdOrNull(translationId)) return false
       record.update({ translationId, sessionTranslationId: null })
+      return true
+    },
+    pickTranslationAt(translationId, ref) {
+      if (!isStorableTranslationId(translationId) || !isBsbVerseRef(ref)) {
+        return false
+      }
+      const { book, chapter, verse } = ref
+      record.update({
+        translationId,
+        sessionTranslationId: null,
+        ref: { book, chapter, verse },
+      })
       return true
     },
     switchTranslationForSession(translationId) {

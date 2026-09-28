@@ -3,29 +3,49 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react"
 import { Animated, Easing, StyleSheet, View } from "react-native"
 
-import type { MoveDirection } from "../../lib/bible/movement/move"
+import {
+  advanceStage,
+  changeReady,
+  changeTiming,
+  endChange,
+  endWait,
+  forceChange,
+  initialStage,
+  interruptChange,
+  needsInterrupt,
+  reportFit,
+  slideCurves,
+  stageStill,
+  type SlideCurve,
+  type StageVerse,
+  type VerseStage,
+} from "../../lib/bible/movement/verseStage"
 import type { VerseSlide } from "../../lib/bible/movement/useReaderMovement"
 import {
   VerseSnapshot,
+  type VerseSnapshotProps,
   VerseView,
   type ShownVerse,
   type VerseAppearance,
   type VerseViewProps,
 } from "./VerseView"
 
-/** The owner asked for a 0.3 s slide (2026-09-25). */
-export const VERSE_SLIDE_MS = 300
-/** A verse that never reports its fit still slides in after this wait. */
+export {
+  VERSE_SCRUB_SLIDE_MS,
+  VERSE_SLIDE_MS,
+} from "../../lib/bible/movement/verseStage"
+/** A verse that never reports its fit still changes after this wait. */
 export const VERSE_SLIDE_START_LIMIT_MS = 150
 /** The old verse waits this long for the next chapter to load. It matches
  *  the reader's loading delay, so it never shows with the loading mark. */
 export const VERSE_SLIDE_HOLD_MS = 300
 
-/** The band the verses slide through, in the reader's coordinates. */
+/** The band the verses move in, in the reader's coordinates. */
 export type VerseSlideClip = {
   top: number
   height: number
@@ -33,22 +53,9 @@ export type VerseSlideClip = {
 }
 
 /** The verse on screen, or null while its chapter loads or fails. */
-export type LiveVerse = { verseKey: string; view: VerseViewProps }
+export type LiveVerse = StageVerse<VerseViewProps>
 
-type Source = {
-  stop: VerseViewProps["stop"]
-  textDirection: VerseViewProps["textDirection"]
-  selected: boolean
-}
-
-type Tracked = { key: string | null; source: Source | null; slideId: number }
-
-type Outgoing = {
-  id: number
-  direction: MoveDirection
-  source: Source
-  shown: ShownVerse
-}
+type Stage = VerseStage<VerseViewProps, ShownVerse>
 
 export type VerseSliderProps = {
   live: LiveVerse | null
@@ -56,6 +63,8 @@ export type VerseSliderProps = {
    *  old verse wait. */
   loading: boolean
   slide: VerseSlide | null
+  /** The thumb is down: each new verse changes at the scrub pace. */
+  scrubbing: boolean
   reduceMotion: boolean
   clip: VerseSlideClip
   /** The still copy draws with these, like the live verse. */
@@ -64,144 +73,155 @@ export type VerseSliderProps = {
   columnWidth: number
 }
 
-// A verse move slides the old verse out and the new verse in, up for the next
-// verse and down for the one before. The old verse is a still copy, so only
-// one live verse exists. With Reduce Motion, the verse changes in place.
+// A verse change fades the old verse out and the new verse in, and each moves
+// a few points: up for the next verse, down for the one before. The old verse
+// is a still copy, so only one live verse exists. Reduce Motion changes in place.
 export function VerseSlider({
   live,
   loading,
   slide,
+  scrubbing,
   reduceMotion,
   clip,
   appearance,
   tokens,
   columnWidth,
 }: VerseSliderProps) {
-  const slideId = slide?.id ?? 0
-  const liveKey = live?.verseKey ?? null
-  const source: Source | null = live
-    ? {
-        stop: live.view.stop,
-        textDirection: live.view.textDirection,
-        selected: live.view.selected ?? false,
-      }
-    : null
-  const [tracked, setTracked] = useState<Tracked>({
-    key: liveKey,
-    source,
-    slideId,
-  })
-  const [shown, setShown] = useState<{
-    key: string
-    shown: ShownVerse
-  } | null>(null)
-  const [outgoing, setOutgoing] = useState<Outgoing | null>(null)
-  const [expired, setExpired] = useState<number | null>(null)
+  const input = { live, loading, slide, scrubbing, reduceMotion }
+  const [saved, setStage] = useState<Stage>(() => initialStage(input))
+  const stage = advanceStage(saved, input, sameSource)
+  if (stage !== saved) setStage(stage)
 
-  // A verse move whose new verse is not on screen yet; its chapter may load.
-  const pending =
-    slide !== null &&
-    slideId !== tracked.slideId &&
-    !reduceMotion &&
-    expired !== slideId &&
-    tracked.source !== null &&
-    shown !== null &&
-    shown.key === tracked.key
-      ? {
-          id: slideId,
-          direction: slide.direction,
-          source: tracked.source,
-          shown: shown.shown,
-        }
-      : null
+  const { change, shown } = stage
+  const changeId = change?.id ?? null
+  const shownKey = shown?.key ?? null
+  const ready = changeReady(stage)
+  const awaiting = !live && stage.waiting !== null
+  const timing = change ? changeTiming(change) : { duration: 0, split: 0 }
 
-  // Derived in render, so the copy and the new verse commit together. While
-  // the chapter loads, `tracked` keeps the old verse for the slide.
-  if (live && source && tracked.key !== live.verseKey) {
-    setTracked({ key: live.verseKey, source, slideId })
-    setOutgoing(pending)
-  } else if (live && source && !sameSource(tracked.source, source)) {
-    setTracked({ ...tracked, source })
-  }
-  const awaitingLive = !live && pending !== null
-  const holding = awaitingLive && loading
-
-  // A load that ends with no verse (a failure) ends the move, so a later
-  // jump, chapter swipe, or Retry cannot bring the old verse back to slide.
+  // The load may end with no verse; a failure already ended the move.
   useEffect(() => {
-    if (!awaitingLive) return
-    if (!loading) {
-      setExpired(slideId)
-      return
-    }
-    const timer = setTimeout(() => setExpired(slideId), VERSE_SLIDE_HOLD_MS)
+    if (!awaiting) return
+    const timer = setTimeout(
+      () => setStage((current) => endWait(current)),
+      VERSE_SLIDE_HOLD_MS,
+    )
     return () => clearTimeout(timer)
-  }, [awaitingLive, loading, slideId])
+  }, [awaiting])
 
   const onShown = useCallback(
     (next: ShownVerse) => {
-      if (liveKey === null) return
-      setShown((previous) =>
-        previous?.key === liveKey && sameShown(previous.shown, next)
-          ? previous
-          : { key: liveKey, shown: next },
-      )
+      if (shownKey === null) return
+      setStage((current) => reportFit(current, shownKey, next, sameShown))
     },
-    [liveKey],
+    [shownKey],
   )
 
-  const [progress] = useState(() => new Animated.Value(1))
-  useLayoutEffect(() => {
-    progress.setValue(outgoing ? 0 : 1)
-  }, [outgoing, progress])
+  // A ref, not state: a scroll reports every frame. The still copy reads it
+  // once, as it appears, so a swipe past the end leaves from where it stood.
+  const scrollOffsets = useRef(new Map<string, number>())
+  const onScrollOffset = useCallback(
+    (y: number) => {
+      if (shownKey !== null) scrollOffsets.current.set(shownKey, y)
+    },
+    [shownKey],
+  )
+  const readScrollY = (key: string) => scrollOffsets.current.get(key) ?? 0
+  const still = stageStill(stage, input)
+  const leavingKey = still?.leaving.verse.key ?? null
+  // One offset per verse: an interrupt remounts the copy after the next verse
+  // has written its own offset. Keep only the verses on screen.
+  useEffect(() => {
+    for (const key of [...scrollOffsets.current.keys()]) {
+      if (key !== shownKey && key !== leavingKey) {
+        scrollOffsets.current.delete(key)
+      }
+    }
+  }, [shownKey, leavingKey])
 
-  const [forced, setForced] = useState<number | null>(null)
-  const ready =
-    outgoing !== null && (shown?.key === liveKey || forced === outgoing.id)
+  // Each change mounts its layers on a new value at 0. A reset of one shared
+  // value reached the native side a frame late: the old copy mounted hidden,
+  // and both verses were gone for that frame (iPhone 17 Pro Max, 2026-09-28).
+  const [clock, setClock] = useState(() => newClock(changeId))
+  let progress = clock.progress
+  if (clock.id !== changeId) {
+    const next = newClock(changeId)
+    progress = next.progress
+    setClock(next)
+  }
+
+  // JS cannot read a native-driven value at once, so the progress of the
+  // running change comes from its start time; the animation is linear.
+  const started = useRef<{ id: number; at: number } | null>(null)
+  const interrupting = needsInterrupt(stage, live)
+  useLayoutEffect(() => {
+    if (!interrupting || !live || changeId === null) return
+    const run = started.current
+    const elapsed = run?.id === changeId ? performance.now() - run.at : 0
+    const done = Math.min(1, elapsed / timing.duration)
+    setStage((current) =>
+      current.change?.id === changeId
+        ? interruptChange(current, live, done)
+        : current,
+    )
+  }, [interrupting, live, changeId, timing.duration])
+
   useEffect(() => {
-    if (!outgoing || ready) return
-    const id = outgoing.id
-    const timer = setTimeout(() => setForced(id), VERSE_SLIDE_START_LIMIT_MS)
+    if (changeId === null || ready) return
+    const timer = setTimeout(
+      () => setStage((current) => forceChange(current, changeId)),
+      VERSE_SLIDE_START_LIMIT_MS,
+    )
     return () => clearTimeout(timer)
-  }, [outgoing, ready])
+  }, [changeId, ready])
   useEffect(() => {
-    if (!outgoing || !ready) return
-    const id = outgoing.id
+    if (changeId === null || !ready) return
+    // Linear: each curve carries its own easing.
     const animation = Animated.timing(progress, {
       toValue: 1,
-      duration: VERSE_SLIDE_MS,
-      easing: Easing.out(Easing.cubic),
+      duration: timing.duration,
+      easing: Easing.linear,
       useNativeDriver: true,
     })
+    started.current = { id: changeId, at: performance.now() }
+    // A stopped change reports `finished: false`, and a late report from an
+    // old change does not match the running id.
     animation.start(({ finished }) => {
-      if (finished) {
-        setOutgoing((current) => (current?.id === id ? null : current))
-      }
+      if (finished) setStage((current) => endChange(current, changeId))
     })
     return () => animation.stop()
-  }, [outgoing, ready, progress])
+  }, [changeId, ready, progress, timing.duration])
 
-  // Forward is the next verse: the old one leaves at the top.
-  const sign = outgoing?.direction === "back" ? 1 : -1
-  const distance = clip.height
-  const outgoingY = useMemo(
-    () =>
-      progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, sign * distance],
-      }),
-    [progress, sign, distance],
-  )
-  const incomingY = useMemo(
-    () =>
-      progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [-sign * distance, 0],
-      }),
-    [progress, sign, distance],
-  )
+  const direction = change?.direction ?? "forward"
+  const axis = change?.axis ?? "verse"
+  const fromOpacity = change?.from?.opacity ?? 0
+  const fromX = change?.from?.x ?? 0
+  const fromY = change?.from?.y ?? 0
+  const layers = useMemo(() => {
+    const place = { opacity: fromOpacity, x: fromX, y: fromY }
+    const curves = slideCurves(direction, axis, place, timing.split)
+    const along = (curve: SlideCurve) =>
+      progress.interpolate({ ...curve, extrapolate: "clamp" })
+    const style = (layer: {
+      opacity: SlideCurve
+      translateX: SlideCurve
+      translateY: SlideCurve
+    }) => ({
+      opacity: along(layer.opacity),
+      transform: [
+        { translateX: along(layer.translateX) },
+        { translateY: along(layer.translateY) },
+      ],
+    })
+    return {
+      incoming: style(curves.incoming),
+      outgoing: style(curves.outgoing),
+    }
+  }, [direction, axis, fromOpacity, fromX, fromY, timing.split, progress])
 
-  const still = live ? outgoing : holding ? pending : null
+  // Until the interrupt lands, the shown verse keeps its view.
+  const view =
+    live && shown ? (shown.key === live.key ? live.view : shown.view) : null
   return (
     <View
       pointerEvents="box-none"
@@ -211,15 +231,16 @@ export function VerseSlider({
         pointerEvents="box-none"
         style={[styles.stage, { top: -clip.top, height: clip.containerHeight }]}
       >
-        {live && (
+        {view && (
           <Animated.View
             pointerEvents="box-none"
-            style={[
-              StyleSheet.absoluteFill,
-              { transform: [{ translateY: incomingY }] },
-            ]}
+            style={[StyleSheet.absoluteFill, layers.incoming]}
           >
-            <VerseView {...live.view} onShown={onShown} />
+            <VerseView
+              {...view}
+              onShown={onShown}
+              onScrollOffset={onScrollOffset}
+            />
           </Animated.View>
         )}
         {still && (
@@ -230,17 +251,18 @@ export function VerseSlider({
             importantForAccessibility="no-hide-descendants"
             style={[
               StyleSheet.absoluteFill,
-              live ? { transform: [{ translateY: outgoingY }] } : null,
+              still.moving ? layers.outgoing : null,
             ]}
           >
-            <VerseSnapshot
-              stop={still.source.stop}
-              textDirection={still.source.textDirection}
+            <StillVerse
+              readScrollY={() => readScrollY(still.leaving.verse.key)}
+              stop={still.leaving.verse.view.stop}
+              textDirection={still.leaving.verse.view.textDirection}
               appearance={appearance}
               tokens={tokens}
               columnWidth={columnWidth}
-              shown={still.shown}
-              selected={still.source.selected}
+              shown={still.leaving.fit}
+              selected={still.leaving.verse.view.selected ?? false}
             />
           </Animated.View>
         )}
@@ -249,12 +271,29 @@ export function VerseSlider({
   )
 }
 
-function sameSource(a: Source | null, b: Source): boolean {
+// The live scroll view unmounts in the same commit, so its bounce back never
+// plays; the copy holds the offset it had, overscroll included, and fades.
+function StillVerse({
+  readScrollY,
+  ...snapshot
+}: Omit<VerseSnapshotProps, "scrollY"> & { readScrollY: () => number }) {
+  const [scrollY] = useState(readScrollY)
+  return <VerseSnapshot {...snapshot} scrollY={scrollY} />
+}
+
+function newClock(changeId: number | null) {
+  return {
+    id: changeId,
+    progress: new Animated.Value(changeId === null ? 1 : 0),
+  }
+}
+
+/** What the still copy draws from the live verse's props. */
+function sameSource(a: VerseViewProps, b: VerseViewProps): boolean {
   return (
-    a !== null &&
     a.stop === b.stop &&
     a.textDirection === b.textDirection &&
-    a.selected === b.selected
+    (a.selected ?? false) === (b.selected ?? false)
   )
 }
 

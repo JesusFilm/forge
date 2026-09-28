@@ -18,12 +18,15 @@ import {
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 import {
+  DEFAULT_LINE_SPACING_STEP,
   DEFAULT_READER_SETTINGS,
   DEFAULT_TEXT_SIZE_STEP,
+  READER_LINE_SPACING_STEPS,
   READER_SETTINGS_STORAGE_KEY,
   READER_SETTINGS_VERSION,
   READER_TEXT_SIZE_STEPS,
   parseStoredReaderSettings,
+  readerLineSpacing,
   readerTextSize,
   serializeReaderSettings,
   type ReaderSettings,
@@ -40,11 +43,10 @@ import {
 const KEY = READER_SETTINGS_STORAGE_KEY
 
 const CHANGED: ReaderSettings = {
-  mode: "light",
+  mode: "trueDark",
   textSizeStep: READER_TEXT_SIZE_STEPS.length - 1,
-  palette: "trueDark",
   typeface: "sans",
-  lineSpacing: "relaxed",
+  lineSpacingStep: READER_LINE_SPACING_STEPS.length - 1,
   verseNumbers: false,
   showArrows: true,
 }
@@ -82,26 +84,34 @@ function withVersion(fields: Record<string, unknown>): string {
 }
 
 describe("R33 defaults", () => {
-  it("defaults to Dark, Classic, serif, the middle size, normal spacing, verse numbers on, arrows off", () => {
+  it("defaults to Dark, serif, 30 pt, the middle spacing, verse numbers on, arrows off", () => {
     expect(DEFAULT_READER_SETTINGS).toEqual({
       mode: "dark",
-      palette: "classic",
       typeface: "serif",
       textSizeStep: DEFAULT_TEXT_SIZE_STEP,
-      lineSpacing: "normal",
+      lineSpacingStep: DEFAULT_LINE_SPACING_STEP,
       verseNumbers: true,
       showArrows: false,
     })
-    expect(READER_TEXT_SIZE_STEPS.length % 2).toBe(1)
-    expect(DEFAULT_TEXT_SIZE_STEP).toBe((READER_TEXT_SIZE_STEPS.length - 1) / 2)
+    expect(readerTextSize(DEFAULT_TEXT_SIZE_STEP)).toBe(30)
+    expect(DEFAULT_LINE_SPACING_STEP).toBe(
+      (READER_LINE_SPACING_STEPS.length - 1) / 2,
+    )
   })
 
-  it("lists the text sizes as ascending points", () => {
-    const steps = [...READER_TEXT_SIZE_STEPS]
-    expect(steps).toEqual([...steps].sort((a, b) => a - b))
-    expect(new Set(steps).size).toBe(steps.length)
-    expect(readerTextSize(DEFAULT_TEXT_SIZE_STEP)).toBe(
-      READER_TEXT_SIZE_STEPS[DEFAULT_TEXT_SIZE_STEP],
+  it("gives the text size slider eleven steps of 2 pt from 22 to 42", () => {
+    expect([...READER_TEXT_SIZE_STEPS]).toEqual([
+      22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42,
+    ])
+  })
+
+  it("gives the line spacing slider five ascending steps from compact to relaxed", () => {
+    const steps = [...READER_LINE_SPACING_STEPS]
+    expect(steps).toEqual([1.2, 1.3, 1.4, 1.5, 1.6])
+    expect(readerLineSpacing(0)).toBe(1.2)
+    expect(readerLineSpacing(99)).toBe(1.6)
+    expect(readerLineSpacing(0.5)).toBe(
+      READER_LINE_SPACING_STEPS[DEFAULT_LINE_SPACING_STEP],
     )
   })
 
@@ -135,13 +145,22 @@ describe("snapshot", () => {
   })
 
   it("keeps the good fields when one field is bad", () => {
-    const raw = withVersion({ ...CHANGED, palette: "neon", showArrows: "yes" })
+    const raw = withVersion({ ...CHANGED, mode: "neon", showArrows: "yes" })
 
     expect(parseStoredReaderSettings(raw)).toEqual({
       ...CHANGED,
-      palette: DEFAULT_READER_SETTINGS.palette,
+      mode: DEFAULT_READER_SETTINGS.mode,
       showArrows: DEFAULT_READER_SETTINGS.showArrows,
     })
+  })
+
+  it("stores True Dark as a mode, with no palette field", () => {
+    const raw = JSON.parse(serializeReaderSettings(CHANGED)) as Record<
+      string,
+      unknown
+    >
+    expect(raw.mode).toBe("trueDark")
+    expect(raw).not.toHaveProperty("palette")
   })
 
   it("clamps a text size step to the list and refuses a fraction", () => {
@@ -155,6 +174,111 @@ describe("snapshot", () => {
     expect(step(1.5)).toBe(DEFAULT_TEXT_SIZE_STEP)
     expect(step("2")).toBe(DEFAULT_TEXT_SIZE_STEP)
     expect(readerTextSize(99)).toBe(READER_TEXT_SIZE_STEPS[last])
+  })
+
+  it("clamps a line spacing step to the list and refuses a fraction", () => {
+    const step = (lineSpacingStep: unknown) =>
+      parseStoredReaderSettings(withVersion({ ...CHANGED, lineSpacingStep }))
+        ?.lineSpacingStep
+
+    expect(step(99)).toBe(READER_LINE_SPACING_STEPS.length - 1)
+    expect(step(-3)).toBe(0)
+    expect(step(1.5)).toBe(DEFAULT_LINE_SPACING_STEP)
+    expect(step("relaxed")).toBe(DEFAULT_LINE_SPACING_STEP)
+  })
+})
+
+describe("a version 1 record", () => {
+  // Version 1 had five sizes (22, 26, 30, 36, 42 pt), three named spacings,
+  // and a palette. The literal 1, not a constant: a version bump must not
+  // move this test.
+  const v1 = (fields: Record<string, unknown>) =>
+    parseStoredReaderSettings(
+      JSON.stringify({
+        version: 1,
+        mode: "light",
+        palette: "classic",
+        typeface: "sans",
+        verseNumbers: false,
+        showArrows: true,
+        ...fields,
+      }),
+    )
+
+  it("keeps each old text size, and 30 pt as the default", () => {
+    const sizes = [0, 1, 2, 3, 4].map((textSizeStep) =>
+      readerTextSize(
+        v1({ textSizeStep, lineSpacing: "normal" })?.textSizeStep ?? -1,
+      ),
+    )
+    expect(sizes).toEqual([22, 26, 30, 36, 42])
+    expect(v1({ textSizeStep: 2 })?.textSizeStep).toBe(DEFAULT_TEXT_SIZE_STEP)
+  })
+
+  it("keeps compact and relaxed at the ends, and normal at the middle step", () => {
+    const spacing = (lineSpacing: string) =>
+      readerLineSpacing(v1({ lineSpacing })?.lineSpacingStep ?? -1)
+    expect(spacing("compact")).toBe(1.2)
+    expect(spacing("normal")).toBe(1.4)
+    expect(spacing("relaxed")).toBe(1.6)
+    expect(v1({ lineSpacing: "normal" })?.lineSpacingStep).toBe(
+      DEFAULT_LINE_SPACING_STEP,
+    )
+  })
+
+  it("makes Dark with the True Dark palette the True Dark mode", () => {
+    expect(v1({ mode: "dark", palette: "trueDark" })?.mode).toBe("trueDark")
+    expect(v1({ mode: "dark", palette: "classic" })?.mode).toBe("dark")
+  })
+
+  it("drops the palette from Light and System", () => {
+    // True Dark's light variant is gone, so these keep their mode.
+    expect(v1({ mode: "light", palette: "trueDark" })?.mode).toBe("light")
+    expect(v1({ mode: "system", palette: "trueDark" })?.mode).toBe("system")
+    expect(v1({ mode: "light", palette: "trueDark" })).not.toHaveProperty(
+      "palette",
+    )
+  })
+
+  it("keeps every other setting, and defaults a bad old value", () => {
+    expect(
+      v1({ textSizeStep: 4, lineSpacing: "relaxed", mode: "sepia" }),
+    ).toEqual({
+      mode: DEFAULT_READER_SETTINGS.mode,
+      typeface: "sans",
+      textSizeStep: READER_TEXT_SIZE_STEPS.length - 1,
+      lineSpacingStep: READER_LINE_SPACING_STEPS.length - 1,
+      verseNumbers: false,
+      showArrows: true,
+    })
+    expect(
+      v1({ textSizeStep: "big", lineSpacing: "constructor" }),
+    ).toMatchObject({
+      textSizeStep: DEFAULT_TEXT_SIZE_STEP,
+      lineSpacingStep: DEFAULT_LINE_SPACING_STEP,
+    })
+  })
+
+  it("is written back as the current version on the next change", async () => {
+    const storage = makeStorage(
+      JSON.stringify({ version: 1, textSizeStep: 3, lineSpacing: "compact" }),
+    )
+    const store = createReaderSettingsStore(storage)
+    await store.hydrate()
+
+    store.update({ typeface: "sans" })
+    await settle()
+
+    const raw = JSON.parse(storage.items.get(KEY) ?? "{}") as Record<
+      string,
+      unknown
+    >
+    expect(raw.version).toBe(READER_SETTINGS_VERSION)
+    expect(raw.lineSpacing).toBeUndefined()
+    expect(stored(storage)).toMatchObject({
+      textSizeStep: 7,
+      lineSpacingStep: 0,
+    })
   })
 })
 
@@ -268,10 +392,10 @@ describe("useReaderSettings under StrictMode", () => {
     await act(settle)
 
     act(() => {
-      store.update({ palette: "trueDark" })
+      store.update({ mode: "trueDark" })
     })
 
-    expect(latest()?.palette).toBe("trueDark")
+    expect(latest()?.mode).toBe("trueDark")
   })
 })
 

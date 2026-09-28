@@ -170,16 +170,19 @@ export function isAddressOf(
   )
 }
 
+/** A parsed JSON body, or why there is none. */
+export type JsonFetchResult = { status: "ok"; raw: unknown } | ChapterFailure
+
 async function request(
-  address: ChapterAddress,
+  url: string,
   fetchImpl: FetchLike,
   signal: AbortSignal,
   maxBytes: number,
   slot: ReaderSlot,
-): Promise<ChapterFetchResult> {
+): Promise<JsonFetchResult> {
   let response: Response
   try {
-    response = await fetchImpl(chapterUrl(address), { signal })
+    response = await fetchImpl(url, { signal })
   } catch {
     return chapterFailure("offline")
   }
@@ -194,29 +197,27 @@ async function request(
   if (body.status === "too-large") return chapterFailure("too-large")
   if (body.status === "failed") return chapterFailure("offline")
 
-  let raw: unknown
   try {
-    raw = JSON.parse(new TextDecoder("utf-8").decode(body.bytes))
+    return {
+      status: "ok",
+      raw: JSON.parse(new TextDecoder("utf-8").decode(body.bytes)),
+    }
   } catch {
     return chapterFailure("malformed-text")
   }
-  const chapter = normalizeChapterFile(raw)
-  if (chapter.status !== "ok" || !isAddressOf(chapter.value, address)) {
-    return chapterFailure("malformed-text")
-  }
-  return { status: "ok", text: chapter.value }
 }
 
-// The time limit covers the headers and the body. The race ends the call
-// even when a request ignores its abort signal.
-export async function fetchChapter(
-  address: ChapterAddress,
+// One JSON file from the API. The time limit covers the headers and the
+// body, and the race ends the call even when a request ignores its abort
+// signal. The result is typed and never throws.
+export async function fetchBoundedJson(
+  url: string,
   options: FetchChapterOptions = {},
-): Promise<ChapterFetchResult> {
+): Promise<JsonFetchResult> {
   const controller = new AbortController()
   const slot = new ReaderSlot()
   let timer: ReturnType<typeof setTimeout> | undefined
-  const timedOut = new Promise<ChapterFetchResult>((resolve) => {
+  const timedOut = new Promise<JsonFetchResult>((resolve) => {
     timer = setTimeout(() => {
       // Settle first, so the abort's own rejection cannot win the race.
       resolve(chapterFailure("timeout"))
@@ -227,7 +228,7 @@ export async function fetchChapter(
   try {
     return await Promise.race([
       request(
-        address,
+        url,
         options.fetchImpl ?? defaultFetch,
         controller.signal,
         options.maxBytes ?? CHAPTER_MAX_BYTES,
@@ -238,4 +239,17 @@ export async function fetchChapter(
   } finally {
     clearTimeout(timer)
   }
+}
+
+export async function fetchChapter(
+  address: ChapterAddress,
+  options: FetchChapterOptions = {},
+): Promise<ChapterFetchResult> {
+  const result = await fetchBoundedJson(chapterUrl(address), options)
+  if (result.status !== "ok") return result
+  const chapter = normalizeChapterFile(result.raw)
+  if (chapter.status !== "ok" || !isAddressOf(chapter.value, address)) {
+    return chapterFailure("malformed-text")
+  }
+  return { status: "ok", text: chapter.value }
 }

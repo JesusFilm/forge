@@ -129,6 +129,12 @@ describe("presentReaderDownloadPrompt", () => {
       { downloads, alert },
     )
     expect(calls[0]?.message).toContain("45%")
+    // A Bible download cancels and never pauses (owner, 2026-09-28): the
+    // alert closes, or it cancels, and it offers nothing else.
+    expect(calls[0]?.buttons.map((button) => button.text)).toEqual([
+      "Keep downloading",
+      "Cancel download",
+    ])
     press(calls[0], COPY.keepGoing)
     expect(downloads.cancel).not.toHaveBeenCalled()
     press(calls[0], COPY.stop)

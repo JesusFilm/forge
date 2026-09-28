@@ -23,6 +23,8 @@ import {
   type PassageTranslation,
 } from "../../../lib/bible/sheets/passageSteps"
 import { readerSheetControlColors } from "../../../lib/bible/sheets/theme"
+import { bookNameIn } from "../../../lib/bible/reader/useBookNames"
+import type { BookNames } from "../../../lib/bible/repository/bookNames"
 import type { BibleBook } from "../../../lib/bible/text/books"
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
 import type { VerseRef } from "../../../lib/bible/versification/convert"
@@ -36,6 +38,11 @@ export type PassagePickerProps = {
   tokens: ReaderTokens
   /** The shown translation; null shows BSB's numbers. */
   translation: (PassageTranslation & { shortName: string }) | null
+  /** The translation on screen while a stand-in shows (R25). It numbers the
+   *  books that `translation` lacks; null leaves them to BSB. */
+  standIn: PassageTranslation | null
+  /** The shown translation's own book names; null shows the English names. */
+  bookNames: BookNames | null
   /** The current verse in the shown numbering, to mark it. */
   current: VerseRef | null
   /** Called once, in BSB numbering (R38). */
@@ -53,6 +60,8 @@ type Step =
 export function PassagePicker({
   tokens,
   translation,
+  standIn,
+  bookNames,
   current,
   onPick,
   onClose,
@@ -68,8 +77,8 @@ export function PassagePicker({
     step.kind === "book"
       ? COPY.chooseBook
       : step.kind === "chapter"
-        ? step.book.name
-        : COPY.chapterTitle(step.book.name, step.chapter)
+        ? bookNameIn(bookNames, step.book.usfm)
+        : COPY.chapterTitle(bookNameIn(bookNames, step.book.usfm), step.chapter)
   const back =
     step.kind === "chapter"
       ? { label: COPY.backToBooks, onPress: () => setStep({ kind: "book" }) }
@@ -84,7 +93,7 @@ export function PassagePicker({
     const now = Date.now()
     if (!acceptSheetTap(now, lastPickRef.current)) return
     lastPickRef.current = now
-    const numbering = numberingFor(translation, book.usfm)
+    const numbering = numberingFor(translation, book.usfm, standIn)
     onPick(pickedBsbRef(numbering, { book: book.usfm, chapter, verse }))
   }
 
@@ -96,11 +105,12 @@ export function PassagePicker({
         books={passageBooks(translation)}
         currentBook={current?.book ?? null}
         shortName={translation?.shortName ?? null}
+        bookNames={bookNames}
         onPress={(book) => setStep({ kind: "chapter", book })}
       />
     )
   } else {
-    const numbering = numberingFor(translation, step.book.usfm)
+    const numbering = numberingFor(translation, step.book.usfm, standIn)
     const inCurrentBook = current?.book === step.book.usfm
     body =
       step.kind === "chapter" ? (
@@ -168,6 +178,7 @@ type BookListProps = {
   books: PassageBook[]
   currentBook: string | null
   shortName: string | null
+  bookNames: BookNames | null
   onPress: (book: BibleBook) => void
 }
 
@@ -176,6 +187,7 @@ function BookList({
   books,
   currentBook,
   shortName,
+  bookNames,
   onPress,
 }: BookListProps) {
   const sections = [
@@ -199,6 +211,7 @@ function BookList({
             {section.title}
           </Text>
           {section.books.map(({ book, inTranslation }) => {
+            const name = bookNameIn(bookNames, book.usfm)
             const selected = book.usfm === currentBook
             const note =
               !inTranslation && shortName
@@ -210,7 +223,7 @@ function BookList({
                 onPress={() => onPress(book)}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
-                accessibilityLabel={note ? `${book.name}, ${note}` : book.name}
+                accessibilityLabel={note ? `${name}, ${note}` : name}
                 style={({ pressed }) => [
                   styles.bookRow,
                   selected && { backgroundColor: tokens.buttonSurface },
@@ -226,7 +239,7 @@ function BookList({
                     ]}
                     numberOfLines={1}
                   >
-                    {book.name}
+                    {name}
                   </Text>
                   {note && (
                     <Text

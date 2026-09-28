@@ -44,6 +44,7 @@ jest.mock("expo-clipboard", () => ({
   setStringAsync: jest.fn(async () => true),
 }))
 
+import { stubBookNamesStore } from "../../../test-utils/bookNamesStub"
 import { StrictMode, act } from "react"
 import {
   AccessibilityInfo,
@@ -112,7 +113,11 @@ import { CHAPTER_FLASH_MS, CHAPTER_PULSE_MS } from "../ChapterPill"
 import { SWIPE_DEMO_DELAY_MS } from "../SwipeDemo"
 import { SWIPE_DEMO_MS } from "../../../lib/bible/onboarding/swipeDemoTimeline"
 import { SWIPE_HINT_MS } from "../SwipeHint"
-import { VERSE_SLIDE_MS, VERSE_SLIDE_START_LIMIT_MS } from "../VerseSlider"
+import {
+  VERSE_SCRUB_SLIDE_MS,
+  VERSE_SLIDE_MS,
+  VERSE_SLIDE_START_LIMIT_MS,
+} from "../VerseSlider"
 
 declare const __dirname: string
 const fs = jest.requireActual<{
@@ -201,6 +206,7 @@ function makeServices(
         }),
       }),
     ),
+    bookNames: stubBookNamesStore(),
     readPhoneLanguage: () => "en",
   }
 }
@@ -248,6 +254,16 @@ async function finishTimings(match: Partial<Animated.TimingAnimationConfig>) {
   await act(async () => {
     for (const call of timingsWith(match)) call.finish()
   })
+}
+
+/** Time passes between two inputs: each running verse change ends. A verse
+ *  that waited for a change starts its own, so this takes a few passes. */
+async function endVerseChanges(settle: () => Promise<void>) {
+  for (let pass = 0; pass < 3; pass += 1) {
+    await finishTimings({ duration: VERSE_SLIDE_MS })
+    await finishTimings({ duration: VERSE_SCRUB_SLIDE_MS })
+    await settle()
+  }
 }
 
 let screenReader = false
@@ -429,6 +445,7 @@ function gestureHandlers(renderer: TestInstance): PanHandlers {
 
 /** Starts a drag; null when the reader declines it. */
 async function beginSwipe(renderer: TestInstance, from: Point, to: Point) {
+  await endVerseChanges(() => settleFit(renderer))
   const handlers = gestureHandlers(renderer)
   const claimAt = {
     x: from.x + (to.x - from.x) / 4,
@@ -554,6 +571,21 @@ describe("the verse slide", () => {
   }
   const liveY = (renderer: TestInstance) =>
     slideY(byTestId(renderer, "bible-verse")[0]!)
+  /** The translateX of the nearest moving layer above a node. */
+  function slideX(node: RenderedNode): number {
+    let current: RenderedNode | null = node
+    while (current) {
+      if (typeof current.type === "string") {
+        const transform = flat(current).transform as
+          | { translateX?: number }[]
+          | undefined
+        const x = transform?.find((step) => "translateX" in step)?.translateX
+        if (typeof x === "number") return x
+      }
+      current = current.parent ?? null
+    }
+    throw new Error("no sliding layer above the node")
+  }
   const outgoingY = (renderer: TestInstance) => slideY(outgoing(renderer)[0]!)
   const outgoingText = (renderer: TestInstance) =>
     byTestId(renderer, "bible-verse-outgoing-line").map(textOf).join(" ")
@@ -652,7 +684,7 @@ describe("the verse slide", () => {
     expect(slides()).toHaveLength(0)
   })
 
-  it("does not slide at the end of the Bible, on a chapter swipe, or on a jump", async () => {
+  it("does not slide at the end of the Bible, or on a jump", async () => {
     const end = await openAt({ book: "REV", chapter: 22, verse: 21 })
     await swipeUp(end.renderer)
     expect(outgoing(end.renderer)).toHaveLength(0)
@@ -662,11 +694,6 @@ describe("the verse slide", () => {
       chapter: 3,
       verse: 16,
     })
-    await swipeLeft(renderer)
-    await settleFit(renderer)
-    expect(pillPassage(renderer)).toBe("John 4:1")
-    expect(outgoing(renderer)).toHaveLength(0)
-
     await act(async () =>
       services.positionStore.moveTo({ book: "JHN", chapter: 4, verse: 7 }),
     )
@@ -675,6 +702,69 @@ describe("the verse slide", () => {
     expect(pillPassage(renderer)).toBe("John 4:7")
     expect(outgoing(renderer)).toHaveLength(0)
     expect(slides()).toHaveLength(0)
+  })
+
+  it("does not slide a chapter swipe past either end of the Bible", async () => {
+    const end = await openAt({ book: "REV", chapter: 22, verse: 21 })
+    await swipeLeft(end.renderer)
+    await settleFit(end.renderer)
+    expect(pillPassage(end.renderer)).toBe("Revelation 22:21")
+    expect(outgoing(end.renderer)).toHaveLength(0)
+
+    const start = await openAt({ book: "GEN", chapter: 1, verse: 1 })
+    await swipeRight(start.renderer)
+    await settleFit(start.renderer)
+    expect(pillPassage(start.renderer)).toBe("Genesis 1:1")
+    expect(outgoing(start.renderer)).toHaveLength(0)
+    expect(slides()).toHaveLength(0)
+  })
+
+  // A stop during a running change must leave no slide behind, or the next
+  // jump would slide sideways with it instead of changing in place.
+  it("leaves no slide for a jump after a chapter move stops mid-change", async () => {
+    const { services, renderer } = await openAt({
+      book: "REV",
+      chapter: 22,
+      verse: 20,
+    })
+    await swipeUp(renderer)
+    await settleFit(renderer)
+    expect(pillPassage(renderer)).toBe("Revelation 22:21")
+    expect(slides()).toHaveLength(1)
+
+    // The screen reader's chapter action: a swipe here would end the change.
+    const [verse] = byTestId(renderer, "bible-verse")
+    await act(async () =>
+      (verse!.props.onAccessibilityAction as (event: unknown) => void)({
+        nativeEvent: { actionName: "nextChapter" },
+      }),
+    )
+    await act(async () =>
+      services.positionStore.moveTo({ book: "REV", chapter: 1, verse: 1 }),
+    )
+    await flush()
+    await settleFit(renderer)
+    expect(pillPassage(renderer)).toBe("Revelation 1:1")
+    expect(slides()).toHaveLength(1)
+  })
+
+  // The owner (2026-09-28): a chapter swipe gets the same fade, sideways.
+  it("slides a chapter swipe sideways: left for the next chapter, right for the one before", async () => {
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    await swipeLeft(renderer)
+    await settleFit(renderer)
+    expect(pillPassage(renderer)).toBe("John 4:1")
+    expect(outgoing(renderer)).toHaveLength(1)
+    expect(outgoingText(renderer)).toContain("so loved the world")
+    expect(slides()).toHaveLength(1)
+    // The new chapter comes in from the right, and nothing moves up or down.
+    expect(slideX(byTestId(renderer, "bible-verse")[0]!)).toBeGreaterThan(0)
+    expect(liveY(renderer)).toBe(0)
+
+    await swipeRight(renderer)
+    await settleFit(renderer)
+    expect(pillPassage(renderer)).toBe("John 3:1")
+    expect(slideX(byTestId(renderer, "bible-verse")[0]!)).toBeLessThan(0)
   })
 })
 
@@ -802,6 +892,34 @@ describe("swipes (R12, R14, KTD13)", () => {
     expect(textNodes(renderer, "John 4")).not.toHaveLength(0)
     await drag!.release()
     expect(byTestId(renderer, "bible-chapter-preview")).toHaveLength(0)
+  })
+
+  // The preview and the announcement name the next book as the shown
+  // translation does (owner, 2026-09-28), not in BSB's English.
+  it("names the next book in the shown translation's words", async () => {
+    const services = {
+      ...makeServices(async () => ({
+        status: "ok" as const,
+        text: fixtureText(t4tJohn4),
+      })),
+      bookNames: stubBookNamesStore({
+        eng_t4t: new Map([["ACT", "Hechos"]]),
+      }),
+    }
+    services.positionStore.pickTranslation("eng_t4t")
+    const { renderer } = await openAt(
+      { book: "JHN", chapter: 21, verse: 1 },
+      { services },
+    )
+    const drag = await beginSwipe(renderer, LEFT.from, LEFT.to)
+    expect(drag).not.toBeNull()
+    expect(textNodes(renderer, "Hechos 1")).not.toHaveLength(0)
+    expect(textNodes(renderer, "Acts 1")).toHaveLength(0)
+
+    await drag!.release()
+    expect(announcements).toContain(
+      READER_COPY.movement.chapterOpened("Hechos 1"),
+    )
   })
 
   it("says no chapter comes before during a swipe right at Genesis 1 (R13)", async () => {
@@ -1300,6 +1418,7 @@ async function scrub(renderer: TestInstance, fractions: number[]) {
   )
   let at = start
   for (const fraction of fractions) {
+    await endVerseChanges(() => settleFit(renderer))
     const next = { x: COLUMN.left + fraction * COLUMN.width, y: start.y }
     const from = at
     at = next
@@ -1334,6 +1453,10 @@ describe("the verse scrubber (R18, KD7)", () => {
     expect(textNodes(renderer, "18 / 36")).toHaveLength(1)
     expect(textNodes(renderer, "Whoever believes in Him")).not.toHaveLength(0)
     expect(moveTo).not.toHaveBeenCalled()
+    // Each step fades the verse over, faster than a swipe (owner, 2026-09-28).
+    expect(byTestId(renderer, "bible-verse-outgoing")).toHaveLength(1)
+    expect(timingsWith({ duration: VERSE_SCRUB_SLIDE_MS })).toHaveLength(3)
+    expect(timingsWith({ duration: VERSE_SLIDE_MS })).toHaveLength(0)
 
     await drag.release()
     expect(pillPassage(renderer)).toBe("John 3:18")
@@ -1438,6 +1561,11 @@ describe("the verse scrubber (R18, KD7)", () => {
     await layout.beat(renderer, () => move(at(0.5), at(0.25)))
     await layout.settle(renderer)
     expect(pillPassage(renderer)).toBe("John 3:18")
+    // 3:18 interrupts the change to 3:9, then comes in and shows.
+    await endVerseChanges(() => layout.settle(renderer))
+    expect(
+      byTestId(renderer, "bible-verse-line").map(textOf).join(" "),
+    ).toContain("Whoever believes in Him")
     expect(verseOpacity()).toBe(1)
 
     await act(async () =>
@@ -1456,6 +1584,7 @@ const setClipboard = Clipboard.setStringAsync as jest.Mock
 
 /** The verse's Pressable holds `onPress`; its host View does not. */
 async function tapVerse(renderer: TestInstance) {
+  await endVerseChanges(() => settleFit(renderer))
   const [verse] = renderer.root.findAll(
     (node) =>
       node.props.testID === "bible-verse" &&

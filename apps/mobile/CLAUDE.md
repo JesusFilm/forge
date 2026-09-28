@@ -1703,6 +1703,15 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   records. The download button reads its state from the manifest and the
   files, never from a flag. The reader uses only the `expo-file-system`
   package root, never `/legacy`.
+  - **A running download shows a ring, not a percent (owner, 2026-09-28).**
+    `ReaderProgressRing` matches the watch page's ring (26 pt, 2.5 pt line).
+    Its center is an X, not the watch page's pause: a Bible download only
+    cancels, and a tap offers "Keep downloading" or "Cancel download". Do
+    not reuse `DownloadProgressRing`
+    there: it punches its center with an opaque disc, and the glass button
+    has no opaque color to match. This ring draws only its line: two half
+    rings (a circle with two colored border sides) turn inside half-width
+    clips. The button's label still says the percent.
 - **Every chapter read from `bible.helloao.org` has a time limit and a byte
   limit (KTD3).** The limits are 8 seconds and 512 KB, and each failure is a
   typed reason in `src/lib/bible/repository/errors.ts`. A whole-translation
@@ -1747,26 +1756,153 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   reserves the whole 83pt iOS bar for the window (`readerTabBarReservation`
   in `PlaybackHost.tsx`), so a 34pt-inset phone cannot show either case.
   Check on an iPhone SE.
-- **A verse move slides (owner, 2026-09-25).** `VerseSlider` slides the old
-  verse out and the new verse in over 0.3 s: up for the next verse, down for
-  the one before. Swipes, the arrow pair, and the screen reader's verse
-  actions share the `slide` signal from `useReaderMovement`. A chapter swipe,
-  a picker jump, and a scrub do not slide, and Reduce Motion turns the slide
-  off. The old verse is a still copy (`VerseSnapshot`, test ids
-  `bible-verse-outgoing*`), so only one live verse and one `bible-verse`
-  exist. Across a chapter load (and the translation wait before a new
-  book), the copy waits in place for at most `VERSE_SLIDE_HOLD_MS`. A load
-  that fails ends the move, so a later load does not slide. The first-run
-  demo plays three cycles with a pause after each, then fades
-  (`swipeDemoTimeline.ts`, one animated clock).
+- **A verse change fades, with a small move (owner, 2026-09-28).** The old
+  verse fades out as it moves `VERSE_SLIDE_SHIFT` (12 pt), then the new verse
+  fades in as it moves the same distance: up for the next verse, down for the
+  one before. It replaced a full-height slide (2026-09-25). A swipe, an
+  arrow, or a screen-reader action takes 0.3 s (`VERSE_SLIDE_MS`, the
+  `slide` signal from `useReaderMovement`). Each verse a scrub passes takes
+  0.15 s (`VERSE_SCRUB_SLIDE_MS`). A chapter move (a sideways swipe, or the
+  screen reader's chapter action) makes the same change sideways, on the
+  slide's `axis: "chapter"`: left for the next chapter, right for the one
+  before (owner, 2026-09-28). A verse move into the next chapter stays
+  vertical. A picker jump changes in place, and so does every change with
+  Reduce Motion on.
+  - **A newer verse interrupts the running change** (owner, 2026-09-28;
+    `interruptChange` in `src/lib/bible/movement/verseStage.ts`). The one
+    verse on screen at that point leaves from its current opacity and
+    offset, so a change never finishes a verse the thumb has left. The two
+    verses never show together, so no second copy is needed. A faint verse
+    fades out sooner, so the next verse comes in sooner. The accepted cost:
+    during a fast drag the verses do not reach full opacity, and a few
+    frames between two verses are blank.
+  - **JS cannot read a native-driven value at once.** The component reads
+    the progress from the change's start time (`performance.now()`; the
+    animation is linear), so the estimate can be one frame off. A stopped
+    change reports `finished: false`, and a late report from an older
+    change does not match the running id.
+  - **Each change gets a new `Animated.Value`, which starts at 0.** Do not
+    reset one shared value with `setValue`. On the iPhone 17 Pro Max
+    simulator, the reset reached the native side one frame late. The old
+    verse's copy mounted hidden, and each change began with one black frame
+    (measured 2026-09-28). Jest cannot see that frame, so
+    `VerseSlider.test.tsx` fails on any `setValue` call.
+  - **A scrolled long verse leaves from where it stood (owner, 2026-09-28).**
+    A swipe past the end of a long verse (Esther 8:9) used to play the scroll
+    view's bounce back under the verse change, and the still copy jumped to
+    the verse's top. The reader takes the swipe after 12 pt, but the native
+    scroll view keeps following the finger. The verse now reports its offset
+    (`onScrollOffset`, overscroll included) to a ref in `VerseSlider`. The
+    still copy reads it once, as it appears, and draws the verse at that
+    offset. The live scroll view unmounts in the same commit, so its bounce
+    back never plays. A swipe too short to change the verse still bounces.
+    The ref keeps one offset per verse key. An interrupt mounts the copy
+    again after the next verse has written its own offset, and one shared
+    slot then gave the copy 0 (code review, 2026-09-28).
+    The copy moves its text with a negative `marginTop`, never a transform.
+    The renderer skips a view whose layout is outside a clipping parent, and
+    a transform does not move the layout: with `translateY` the copy lost the
+    last four lines of Esther 8:9 (iPhone 17 Pro Max simulator, 2026-09-28).
+  - The old verse is a still copy (`VerseSnapshot`, test ids
+    `bible-verse-outgoing*`), so only one live verse and one `bible-verse`
+    exist. Across a chapter load (and the translation wait before a new
+    book), the copy waits in place for at most `VERSE_SLIDE_HOLD_MS`. A load
+    that fails ends the move, so a later load changes in place.
+  - The first-run demo plays three cycles with a pause after each, then
+    fades (`swipeDemoTimeline.ts`, one animated clock).
+- **Book names follow the shown translation (owner, 2026-09-28).** A Korean
+  reader sees 창세기 in the passage picker, not Genesis. The bundled catalog
+  has no book names, so `src/lib/bible/repository/bookNames.ts` reads
+  `/api/<id>/books.json` (the chapter fetch's time limit, a 256 KB cap). It
+  keeps the names in `Paths.document/bible/book-names/<id>.json`, keyed by
+  the catalog `sha256`.
+  - A download writes its names at install (`onInstalled`), so a downloaded
+    translation needs no network for them.
+  - The reader loads the names for each translation it shows
+    (`useBookNames`), so the picker usually finds them in memory.
+  - The picker, the pill while a chapter loads, and the chapter-swipe
+    preview into another book use them. A book the translation lacks, or a
+    failed read, shows the English (BSB) name.
+  - The name order is `commonName`, `name`, `title`, as in the chapter file,
+    so the picker and the pill agree.
+  - The sheets' own labels ("Choose a book", "Old Testament") stay English.
+    That is app UI localization, a separate task.
+- **A partial Bible that lacks the current book warns, then opens at its
+  start (owner, 2026-09-28).** R25's stand-in (the phone language's default,
+  else BSB, with an info button beside the translation pill) still covers a
+  move into a book the pick lacks. But a pick from the translation list that lacks
+  the current book shows a native alert first: "WBT does not have
+  Deuteronomy". Cancel keeps everything, and the sheet stays open. Switch
+  saves the pick and the translation's first book at 1:1 in one change
+  (`pickTranslationAt`), so no reader loads an in-between place.
+  - The pure rule is `partialSwitch` in `src/lib/bible/sheets/partialSwitch.ts`.
+    It asks `repository.translationHasBook`, so a download's own book list
+    wins over the catalog's.
+  - The picker's `confirmPick` runs before the pick. The
+    `bible_reader.translation_changed` event fires only on `proceed`, so a
+    cancelled switch is not logged as a change.
+  - The list names the books a partial Bible has (`coverageLabel`): "New
+    Testament only" (705 of 1,053 partial Bibles), "New Testament, Genesis,
+    and Psalms", "Only Ruth, Luke, and John", or "5 of 66 books".
+  - While a stand-in shows, the passage picker follows the viewer's pick,
+    not the stand-in: its book names, its "Not in WBT" notes, and its
+    numbers. The route param is `viewer`, sent only when the pick differs
+    from the translation that shows.
+  - A book the pick lacks has no numbers of its own. The picker numbers and
+    names it by the stand-in on screen when the stand-in has it, else by BSB
+    (`numberingFor`, `pickerBookNames`). R25 fills every missing book by one
+    rule, so the mark and the pick agree with the pill (review #9, owner,
+    2026-09-28).
 - **The translation pill is in the top bar (KD28, owner, 2026-09-27).** It
   sits right of the passage pill and shows the short name only. A stand-in
-  (R25, R41) adds an info icon, and the reason is in the accessibility label.
-  It is the same glass pill as the passage; the owner tried a chevron and a
+  (R25, R41) adds a red info button right of the pill, not inside it (owner,
+  2026-09-28). A tap shows a note under it ("Η Καινή Διαθήκη does not
+  include Genesis. The reader shows it in Berean Standard Bible."), and says
+  it aloud. The note closes on a tap, on the next tap of the button, after
+  `STAND_IN_TIP_MS`, or when the stand-in ends. The tip follows the stand-in
+  (`TranslationLabel.noteKey`), not the note text: the text names the book,
+  and that name can load after the tap. The note is the button's
+  accessibility label (`TranslationLabel.note`). The note's row spans the
+  bar: an absolute view with only a left edge measured the text on one line
+  and clipped it on the device. It is the same glass pill as the passage; the owner tried a chevron and a
   faint outline and removed both (2026-09-28). The footer has no
   translation row, and `readerFooterHeight()` keeps room for the selection
   bar, which takes the footer's place. On an iPhone SE the passage pill shortens the book name in
   the middle ("Son…8:14"), so the verse number stays visible.
+- **Text size and line spacing are step sliders (owner, 2026-09-28).** Text
+  size has eleven steps of 2 pt, from 22 to 42 (`READER_TEXT_SIZE_STEPS`).
+  Line spacing has five steps, from compact (1.2) to relaxed (1.6)
+  (`READER_LINE_SPACING_STEPS`), and sits right below text size.
+  `ReaderStepSlider` wraps the native slider
+  (`@react-native-community/slider`, the SDK 57 version 5.2.0). The thumb
+  snaps to each step, each new step applies at once, and a tap on the track
+  moves to that step (`tapToSeek` on iOS; Android does this by default).
+  - **Keep it native.** A JS (PanResponder) slider came first. In the sheet
+    it lost its touch after about 10 pt of vertical drift: iOS gave the touch
+    to the sheet's scroll or drag gesture and cancelled the JS touch, with
+    the scroll off or on. Core React Native cannot hold a touch against a
+    native gesture. Measured on the iPhone 17 Pro Max simulator, 2026-09-28:
+    a flat drag reached its step, and the same drag with a 25 pt drift
+    stopped 5 steps short.
+  - No tick dots. The library's `StepMarker` draws above the native thumb,
+    and it places each marker by a fixed 5% side margin, so the markers do
+    not line up with the native thumb positions.
+  - The settings record is version 2. `parseStoredReaderSettings` maps a
+    version 1 record: each old size is still a step, and the old "normal"
+    spacing (1.35) goes to the middle step (1.4). So an update keeps every
+    viewer's settings, and the next change writes version 2.
+  - **The screen reader says a number and a unit:** "30 points", or "140
+    percent" (the line height as a percent of the text size). Each
+    `accessibilityIncrements` entry must be a whole number other than 1.
+    Android reads each entry with `Integer.parseInt` and throws on text, and
+    the library removes the last letter of the unit after a value of 1.
+- **True Dark is a mode, not a palette (owner, 2026-09-28).** Mode is System,
+  Light, Dark, or True Dark, and the Palette row is gone, so the sheet holds
+  six settings. `resolveReaderTheme` in `src/lib/bible/theme/palettes.ts`
+  turns a mode into one of three token sets: `light`, `dark`, `trueDark`.
+  System picks Light or Dark, never True Dark. True Dark's white light set
+  was removed with the row. A version 1 record with Dark and the True Dark
+  palette reads as True Dark; any other palette value is dropped.
 - **The iPad reader rotates to landscape, and it keeps the portrait rules
   (KD25).** The app locks to portrait, but iPadOS can ignore that lock for an
   app that supports multitasking. The owner decided on 2026-09-25 that the
@@ -1802,7 +1938,8 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
 - **`expo-clipboard` moved the fingerprint runtime version (KTD15).** A
   native build (TestFlight and Play internal) must ship before any update
   from this work reaches testers. Until then, `eas update` exits 0 and
-  reaches nobody.
+  reaches nobody. `@react-native-community/slider` (2026-09-28) moved it
+  again and rides the same native build.
 - **In a worktree under `.claude/worktrees/`, run jest with
   `--no-watchman`.** Watchman roots its watch at the main checkout there, and
   its crawl covers every worktree.

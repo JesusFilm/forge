@@ -12,7 +12,7 @@ import {
 } from "../../../lib/bible/settings/store"
 import {
   readerTokens,
-  resolveReaderScheme,
+  resolveReaderTheme,
   type ReaderTokens,
 } from "../../../lib/bible/theme/palettes"
 
@@ -25,10 +25,7 @@ export function useReaderSheetTheme(store: ReaderSettingsStore): {
   const systemScheme = useColorScheme()
   return {
     settings,
-    tokens: readerTokens(
-      settings.palette,
-      resolveReaderScheme(settings.mode, systemScheme),
-    ),
+    tokens: readerTokens(resolveReaderTheme(settings.mode, systemScheme)),
   }
 }
 

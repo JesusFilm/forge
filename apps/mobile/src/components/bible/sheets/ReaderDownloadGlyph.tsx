@@ -1,11 +1,11 @@
 import type { ComponentProps } from "react"
-import { StyleSheet, Text } from "react-native"
+import { View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { READER_CHROME_MAX_FONT_SCALE } from "../../../lib/bible/reader/chrome"
 import type { TranslationDownloadState } from "../../../lib/bible/repository/translationDownloads"
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
 import { clamp } from "../../../lib/scrubber"
+import { ReaderProgressRing } from "../ReaderProgressRing"
 
 type IconName = ComponentProps<typeof Ionicons>["name"]
 
@@ -23,50 +23,51 @@ export function downloadGlyphIcon(
   }
 }
 
-/** "45%" while a download runs, else null. */
-export function downloadProgressText(
+/** The share done, from 0 to 1, while a download runs; else null. */
+export function downloadProgress(
   state: TranslationDownloadState | null,
-): string | null {
+): number | null {
   if (state?.kind !== "downloading") return null
-  const percent = clamp(Math.round(state.percent), 0, 100)
-  return `${percent}%`
+  return clamp(state.percent / 100, 0, 1)
 }
+
+/** The watch page's ring size and line (ActionButtonRow). */
+const RING_SIZE = 26
+const RING_STROKE = 2.5
 
 export type ReaderDownloadGlyphProps = {
   state: TranslationDownloadState | null
   tokens: ReaderTokens
 }
 
-// R29: the top bar's download button shows the progress in numbers. The
-// button's own label says the same words, so this glyph stays silent.
+// R29: a ring shows the progress, as the watch page's download button does
+// (owner, 2026-09-28). A Bible download cannot pause, so the center is an X:
+// a tap offers only to cancel. The button's label says the percent.
 export function ReaderDownloadGlyph({
   state,
   tokens,
 }: ReaderDownloadGlyphProps) {
-  const progress = downloadProgressText(state)
+  const progress = downloadProgress(state)
   if (progress !== null) {
     return (
-      <Text
+      <View
+        testID="reader-download-ring"
         accessible={false}
-        importantForAccessibility="no"
-        style={[styles.progress, { color: tokens.icon }]}
-        numberOfLines={1}
-        maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
+        importantForAccessibility="no-hide-descendants"
       >
-        {progress}
-      </Text>
+        <ReaderProgressRing
+          size={RING_SIZE}
+          strokeWidth={RING_STROKE}
+          progress={progress}
+          color={tokens.icon}
+          trackColor={tokens.progressTrack}
+        >
+          <Ionicons name="close" size={14} color={tokens.icon} />
+        </ReaderProgressRing>
+      </View>
     )
   }
   return (
     <Ionicons name={downloadGlyphIcon(state)} size={22} color={tokens.icon} />
   )
 }
-
-const styles = StyleSheet.create({
-  progress: {
-    fontFamily: "System",
-    fontSize: 12,
-    fontWeight: "700",
-    fontVariant: ["tabular-nums"],
-  },
-})

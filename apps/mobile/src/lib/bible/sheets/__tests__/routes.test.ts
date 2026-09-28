@@ -53,6 +53,28 @@ describe("readerSheetHref", () => {
     expect(params).toEqual({ offline: "1" })
   })
 
+  // R25's stand-in: BSB shows Deuteronomy, but the viewer picked a New
+  // Testament. The passage picker follows the pick (owner, 2026-09-28).
+  it("writes the viewer's pick only while another translation stands in", () => {
+    const standIn = readerSheetHref("passage", {
+      ...CONTEXT,
+      translation: { id: "BSB" },
+      viewerTranslation: { id: "cpc_wbt" },
+    })
+    expect(standIn.params.viewer).toBe("cpc_wbt")
+    expect(parseReaderSheetParams(standIn.params).viewerTranslationId).toBe(
+      "cpc_wbt",
+    )
+    const same = readerSheetHref("passage", {
+      ...CONTEXT,
+      viewerTranslation: { id: "rus_syn" },
+    })
+    expect(same.params.viewer).toBeUndefined()
+    expect(parseReaderSheetParams({ viewer: "../x" }).viewerTranslationId).toBe(
+      null,
+    )
+  })
+
   it("gives a push target that expo-router accepts", () => {
     const push = (href: Href): Href => href
     expect(push(readerSheetHref("settings", CONTEXT))).toBeTruthy()
@@ -66,6 +88,7 @@ describe("parseReaderSheetParams", () => {
         parseReaderSheetParams(readerSheetHref(kind, CONTEXT).params),
       ).toEqual({
         translationId: "rus_syn",
+        viewerTranslationId: null,
         ref: BSB_PSALM_23_1,
         translationRef: SYNODAL_PSALM_22_1,
         offline: false,
@@ -76,6 +99,7 @@ describe("parseReaderSheetParams", () => {
   it("reads no params as nothing known, online", () => {
     expect(parseReaderSheetParams({})).toEqual({
       translationId: null,
+      viewerTranslationId: null,
       ref: null,
       translationRef: null,
       offline: false,
@@ -145,6 +169,7 @@ describe("parseReaderSheetParams", () => {
       }),
     ).toEqual({
       translationId: null,
+      viewerTranslationId: null,
       ref: { book: "JHN", chapter: 3, verse: 16 },
       translationRef: null,
       offline: true,

@@ -79,11 +79,13 @@ import {
   getReaderServices,
   type ReaderServices,
 } from "../../lib/bible/reader/services"
+import { bookNameIn, useBookNames } from "../../lib/bible/reader/useBookNames"
 import { useDelayedFlag } from "../../lib/bible/reader/useDelayedFlag"
 import {
   useReaderChapter,
   type ReaderChapterState,
 } from "../../lib/bible/reader/useReaderChapter"
+import type { BookNames } from "../../lib/bible/repository/bookNames"
 import type { ReaderPushSource } from "../../lib/bible/routes/readerRoute"
 import {
   isStopSelected,
@@ -94,15 +96,17 @@ import {
   type VerseSelection,
 } from "../../lib/bible/selection/selection"
 import { shareText } from "../../lib/bible/selection/shareText"
-import { readerTextSize } from "../../lib/bible/settings/snapshot"
+import {
+  readerLineSpacing,
+  readerTextSize,
+} from "../../lib/bible/settings/snapshot"
 import { useReaderSettings } from "../../lib/bible/settings/store"
 import { useReaderVisitTelemetry } from "../../lib/bible/telemetry"
-import { bookByUsfm } from "../../lib/bible/text/books"
 import { chapterPositions } from "../../lib/bible/text/positions"
 import type { ChapterPosition } from "../../lib/bible/text/types"
 import {
   readerTokens,
-  resolveReaderScheme,
+  resolveReaderTheme,
   type ReaderTokens,
 } from "../../lib/bible/theme/palettes"
 import type { VerseRef } from "../../lib/bible/versification/convert"
@@ -134,6 +138,8 @@ const VERSE_MAX_WIDTH = 620
 export type ReaderRouteContext = {
   /** The translation whose text shows; null before the first choice. */
   translation: CatalogTranslation | null
+  /** The viewer's pick; it differs while a stand-in shows a book (R25). */
+  viewerTranslation: CatalogTranslation | null
   /** The current verse in that translation's numbering (R42). */
   translationRef: VerseRef | null
   /** The reading position in BSB numbering (R38). */
@@ -246,10 +252,7 @@ export function BibleReader(props: BibleReaderProps) {
   const position = useReadingPosition(services.positionStore)
   useSavedStart(services.positionStore, props.startRef)
   const systemScheme = useColorScheme()
-  const tokens = readerTokens(
-    settings.palette,
-    resolveReaderScheme(settings.mode, systemScheme),
-  )
+  const tokens = readerTokens(resolveReaderTheme(settings.mode, systemScheme))
   const focused = useIsFocused()
   const { audioLanguageIso3, isReady } = useWatchPreferences()
   const chapter = useReaderChapter({
@@ -259,6 +262,11 @@ export function BibleReader(props: BibleReaderProps) {
     audioReady: isReady,
     focused,
   })
+  // Read for each translation the reader shows, so the picker opens with them.
+  const bookNames = useBookNames(
+    services.bookNames,
+    "shown" in chapter.state ? chapter.state.shown.translation : null,
+  )
   const reduceMotion = useReduceMotion()
   const screenReader = useScreenReaderEnabled()
   const opens = useReaderOpens(focused)
@@ -338,11 +346,13 @@ export function BibleReader(props: BibleReaderProps) {
     chapterKey: string
     verse: number
   } | null>(null)
+  const scrubbing = scrub !== null && scrub.chapterKey === chapterKey
   const model = useReaderModel(
     chapter.state,
-    scrub && scrub.chapterKey === chapterKey ? scrub.verse : null,
+    scrubbing ? scrub.verse : null,
+    bookNames,
   )
-  const place = movePlace(chapter.state, model)
+  const place = movePlace(chapter.state, model, bookNames)
   // U14, R37: the verses a visit shows, by BSB position. A scrub preview does
   // not count; only its release moves `model.ref`.
   const visit = useReaderVisitTelemetry({
@@ -392,8 +402,13 @@ export function BibleReader(props: BibleReaderProps) {
   const picker = usePickerPulse(focused, shownChapter)
   const shown = "shown" in chapter.state ? chapter.state.shown : null
   const shownTranslation = shown?.translation ?? null
+  const viewerTranslation =
+    shown && chapter.catalog
+      ? (chapter.catalog.byId.get(shown.viewer.translationId) ?? null)
+      : null
   const context: ReaderRouteContext = {
     translation: shownTranslation,
+    viewerTranslation,
     translationRef: model.translationRef,
     ref: model.ref,
     offline: chapter.offline,
@@ -444,11 +459,6 @@ export function BibleReader(props: BibleReaderProps) {
     () => (shownTranslation ? downloads.getState(shownTranslation.id) : null),
     () => null,
   )
-  const viewerTranslation =
-    shown && chapter.catalog
-      ? (chapter.catalog.byId.get(shown.viewer.translationId) ?? null)
-      : null
-
   const pending =
     chapter.state.status === "waiting" || chapter.state.status === "loading"
   const showLoading = useDelayedFlag(pending, READER_LOADING_DELAY_MS)
@@ -551,7 +561,11 @@ export function BibleReader(props: BibleReaderProps) {
         }}
         pulse={movement.pulse + picker.pulse}
         reduceMotion={reduceMotion}
-        translation={shown ? translationLabel(shown, viewerTranslation) : null}
+        translation={
+          shown && place
+            ? translationLabel(shown, viewerTranslation, place.bookName)
+            : null
+        }
         onPressTranslation={() => {
           picker.disarm()
           visit.markSheetOpen()
@@ -593,7 +607,7 @@ export function BibleReader(props: BibleReaderProps) {
             chosenSize: readerTextSize(settings.textSizeStep),
             osFontScale: window.fontScale,
             typeface: settings.typeface,
-            lineSpacing: settings.lineSpacing,
+            lineSpacing: readerLineSpacing(settings.lineSpacingStep),
             verseNumbers: settings.verseNumbers,
           }}
           boxes={boxes}
@@ -608,6 +622,7 @@ export function BibleReader(props: BibleReaderProps) {
             isStopSelected(activeSelection, model.stops, model.stopIndex)
           }
           slide={movement.slide}
+          scrubbing={scrubbing}
           reduceMotion={reduceMotion}
           clip={{
             top: band.top,
@@ -719,6 +734,7 @@ const NO_STOPS: readonly ChapterPosition[] = []
 function useReaderModel(
   state: ReaderChapterState,
   scrubVerse: number | null,
+  bookNames: BookNames | null,
 ): ReaderModel {
   const text = state.status === "ready" ? state.text : null
   const positions = useMemo(
@@ -741,7 +757,8 @@ function useReaderModel(
   }
   const { ref, translationRef } = state
   if (!text) {
-    const bookName = bookByUsfm(ref.book).name
+    // While the chapter loads, the pill names the book as its text will.
+    const bookName = bookNameIn(bookNames, translationRef.book)
     return {
       ref,
       translationRef,
@@ -787,6 +804,7 @@ function useReaderModel(
 function movePlace(
   state: ReaderChapterState,
   model: ReaderModel,
+  bookNames: BookNames | null,
 ): MovePlace | null {
   if (!("shown" in state)) return null
   const { translationRef, shown } = state
@@ -795,7 +813,8 @@ function movePlace(
     book: translationRef.book,
     chapter: translationRef.chapter,
     translationId: shown.translation.id,
-    bookName: text?.bookName ?? bookByUsfm(translationRef.book).name,
+    bookName: text?.bookName ?? bookNameIn(bookNames, translationRef.book),
+    bookNames,
     stops: text ? model.stops : null,
     stopIndex: text ? model.stopIndex : null,
   }
@@ -816,32 +835,14 @@ type VerseAreaProps = {
   onPressVerse: () => void
   selected: boolean
   slide: VerseSlide | null
+  scrubbing: boolean
   reduceMotion: boolean
   clip: VerseSlideClip
 }
 
 function VerseArea(props: VerseAreaProps) {
-  const { state, model, boxes } = props
-  const { translationRef } = model
-  const live: LiveVerse | null =
-    state.status === "ready" && model.stop && translationRef
-      ? {
-          verseKey: `${state.shown.translation.id}:${translationRef.book}.${translationRef.chapter}:${model.stopIndex}`,
-          view: {
-            stop: model.stop,
-            textDirection: state.text.textDirection,
-            appearance: props.appearance,
-            tokens: props.tokens,
-            boxes,
-            columnWidth: props.columnWidth,
-            accessibilityMove: props.accessibilityMove,
-            onScrollEdges: props.onScrollEdges,
-            onPress:
-              model.stop.kind === "verse" ? props.onPressVerse : undefined,
-            selected: props.selected,
-          },
-        }
-      : null
+  const { state, boxes } = props
+  const live = liveVerse(props)
   // The slider stays mounted across a chapter load, so a verse move into the
   // next chapter still slides (owner, 2026-09-25). A move into another book
   // waits for its translation first, so "waiting" is a load too.
@@ -851,6 +852,7 @@ function VerseArea(props: VerseAreaProps) {
         live={live}
         loading={state.status === "waiting" || state.status === "loading"}
         slide={props.slide}
+        scrubbing={props.scrubbing}
         reduceMotion={props.reduceMotion}
         clip={props.clip}
         appearance={props.appearance}
@@ -864,6 +866,32 @@ function VerseArea(props: VerseAreaProps) {
       )}
     </>
   )
+}
+
+/** The verse on screen. The chapter key and index order a scrub's steps. */
+function liveVerse(props: VerseAreaProps): LiveVerse | null {
+  const { state, model } = props
+  const ref = model.translationRef
+  if (state.status !== "ready" || !ref) return null
+  if (!model.stop || model.stopIndex === null) return null
+  const chapterKey = `${state.shown.translation.id}:${ref.book}.${ref.chapter}`
+  return {
+    key: `${chapterKey}:${model.stopIndex}`,
+    chapterKey,
+    index: model.stopIndex,
+    view: {
+      stop: model.stop,
+      textDirection: state.text.textDirection,
+      appearance: props.appearance,
+      tokens: props.tokens,
+      boxes: props.boxes,
+      columnWidth: props.columnWidth,
+      accessibilityMove: props.accessibilityMove,
+      onScrollEdges: props.onScrollEdges,
+      onPress: model.stop.kind === "verse" ? props.onPressVerse : undefined,
+      selected: props.selected,
+    },
+  }
 }
 
 /** Loading, or a message in place of the verse (R31). */

@@ -171,6 +171,36 @@ describe("translation downloads", () => {
     expect(state.sha256).toBe(GUE.sha256)
   })
 
+  it("hands each new download's books on, so their names stay offline", async () => {
+    const onInstalled = jest.fn()
+    const downloads = createTranslationDownloads({
+      port: fakePort().port,
+      onInstalled,
+    })
+    await downloads.start(GUE)
+    expect(onInstalled).toHaveBeenCalledTimes(1)
+    const [translation, books] = onInstalled.mock.calls[0] as [
+      { id: string; sha256: string },
+      { bookId: string; bookName: string }[],
+    ]
+    expect(translation).toMatchObject({ id: GUE.id, sha256: GUE.sha256 })
+    expect(books.map((book) => book.bookId)).toEqual(GUE_BOOKS)
+    expect(books.every((book) => book.bookName.length > 0)).toBe(true)
+  })
+
+  it("keeps the download when the hand-on throws", async () => {
+    const downloads = createTranslationDownloads({
+      port: fakePort().port,
+      onInstalled: () => {
+        throw new Error("names")
+      },
+    })
+    await expect(downloads.start(GUE)).resolves.toEqual({
+      status: "downloaded",
+    })
+    expect(downloads.getState(GUE.id).kind).toBe("downloaded")
+  })
+
   it("asks the port for the catalog's complete.json link", async () => {
     const fake = fakePort()
     const downloads = createTranslationDownloads({ port: fake.port })
