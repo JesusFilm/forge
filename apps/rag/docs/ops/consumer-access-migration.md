@@ -67,8 +67,8 @@ rewrite existing consumer grants.
 
 On 2026-09-28, Jaco authorized setup under feat-530. Existing consumer tables
 were confirmed; both accounts were created, credentials stored in the vault,
-and `db:verify-consumer-roles` passed. Source approval and receiver activation
-remain pending in the feat-530 checklist. No shared-token cutoff or migration
+and `db:verify-consumer-roles` passed. Both private-endpoint URLs were staged in Railway with deployments suppressed.
+Source approval and deployment activation remain pending in the feat-530 checklist. No shared-token cutoff or migration
 grace starts with this setup.
 
 ## Backend contract

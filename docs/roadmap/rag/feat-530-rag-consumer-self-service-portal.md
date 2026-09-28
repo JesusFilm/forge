@@ -135,8 +135,9 @@ Activation checklist (before feat-528 reporting and feat-529 dogfood):
       in evidence or repository.
 - [x] Run `db:verify-consumer-roles` against both production accounts: passed.
 - [ ] Obtain Jaco's default source-scope choice.
-- [ ] Set both Railway consumer database URLs together, with private database
-      endpoints; set `RAG_DEFAULT_CONSUMER_SOURCE_KEYS` to the approved keys.
+- [x] Stage both Railway consumer database URLs with verified private database
+      endpoints and intermediate deployments suppressed.
+- [ ] Set `RAG_DEFAULT_CONSUMER_SOURCE_KEYS` to the approved keys.
 - [ ] Deploy the configuration change and verify healthy startup.
 - [ ] Verify admitted production identity reports `managementAvailable: true`,
       directory loads, and owner creation/key handling works through the UI.
