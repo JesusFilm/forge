@@ -58,6 +58,70 @@ export type CowatchLiveResult = Readonly<{
   }> | null
 }>
 
+/** Bounded scoring/hydration kernel shared by separately authorized live paths.
+ * Call only after exact graph authority validation in the same bounded transaction.
+ * This helper grants no serving authority and never chooses a newest generation.
+ */
+export async function loadBoundedCowatchNominations(
+  tx: Pick<Prisma.TransactionClient, "$queryRaw">,
+  input: {
+    context: CowatchLiveContext
+    graphGenerationId: string
+    generatorVersion: string
+    provenance?: Readonly<Record<string, string | number | boolean | null>>
+    now: Date
+  },
+) {
+  const interests = await loadValidatedCowatchProfileInterests(
+    tx,
+    input.context.profileProjectionId,
+    input.now,
+  )
+  const anchors = chooseCowatchAnchors({
+    seedMediaId: input.context.seedMediaId,
+    interests,
+  })
+  const rows = await tx.$queryRaw<CowatchFeature[]>(Prisma.sql`
+  SELECT ${COWATCH_FEATURE_VERSION}::text AS "contractVersion", edge.generation_id AS generation,
+    edge.source_media_id AS "sourceMediaId", edge.target_media_id AS "targetMediaId",
+    edge.session_support AS "sessionSupport", edge.distinct_viewer_support AS "distinctViewerSupport",
+    edge.confidence, edge.popularity_corrected_lift AS "popularityCorrectedLift",
+    edge.recency_weight AS "recencyWeight", edge.quality_weight AS "qualityWeight",
+    edge.effective_weight AS "effectiveWeight", edge.contamination, edge.eligible
+  FROM unnest(ARRAY[${Prisma.join(anchors.map((anchor) => anchor.mediaId))}]::text[]) anchor(media_id)
+  CROSS JOIN LATERAL (
+    SELECT * FROM recommendation_cowatch_edge
+    WHERE generation_id = ${input.graphGenerationId} AND source_media_id = anchor.media_id AND eligible
+    ORDER BY confidence DESC, popularity_corrected_lift DESC, target_media_id LIMIT 32
+  ) edge
+  ORDER BY edge.confidence DESC, edge.popularity_corrected_lift DESC, edge.target_media_id LIMIT 32
+        `)
+  const candidates = rows
+    .filter(
+      (edge) =>
+        compatibleCowatchFeature(edge, input.graphGenerationId) &&
+        !anchors.some((anchor) => anchor.mediaId === edge.targetMediaId),
+    )
+    .slice(0, 12)
+  if (candidates.length === 0)
+    return {
+      nominations: [],
+      fallbackReason: "cowatch_supported_edges_sparse" as const,
+    }
+  const nominations = await buildCowatchNominations(
+    tx,
+    candidates,
+    anchors,
+    input.context,
+    input.generatorVersion,
+    input.provenance,
+  )
+  return {
+    nominations,
+    fallbackReason: nominations.length ? null : ("cowatch_unplayable" as const),
+  }
+}
+
 /** Server-only factory. The active study/assignment resolver is injected by
  * delivery orchestration; clients cannot enable frozen serving with a flag.
  * Issuance must recheck readCowatchTrialAuthority and active study authority in
@@ -99,49 +163,13 @@ export function createDatabaseCowatchLiveSource(
           await tx.$queryRaw`SELECT set_config('statement_timeout', ${`${Math.max(1, remaining())}ms`}, true), set_config('lock_timeout', '50ms', true)`
           const current = await readCowatchTrialAuthority(tx, binding, now())
           if (current.status !== "current") return fallback(current.reason)
-          const interests = await loadValidatedCowatchProfileInterests(
-            tx,
-            context.profileProjectionId,
-            now(),
-          )
-          const anchors = chooseCowatchAnchors({
-            seedMediaId: context.seedMediaId,
-            interests,
-          })
-          const rows = await tx.$queryRaw<CowatchFeature[]>(Prisma.sql`
-          SELECT ${COWATCH_FEATURE_VERSION}::text AS "contractVersion", edge.generation_id AS generation,
-            edge.source_media_id AS "sourceMediaId", edge.target_media_id AS "targetMediaId",
-            edge.session_support AS "sessionSupport", edge.distinct_viewer_support AS "distinctViewerSupport",
-            edge.confidence, edge.popularity_corrected_lift AS "popularityCorrectedLift",
-            edge.recency_weight AS "recencyWeight", edge.quality_weight AS "qualityWeight",
-            edge.effective_weight AS "effectiveWeight", edge.contamination, edge.eligible
-          FROM unnest(ARRAY[${Prisma.join(anchors.map((anchor) => anchor.mediaId))}]::text[]) anchor(media_id)
-          CROSS JOIN LATERAL (
-            SELECT * FROM recommendation_cowatch_edge
-            WHERE generation_id = ${binding.graphGenerationId} AND source_media_id = anchor.media_id AND eligible
-            ORDER BY confidence DESC, popularity_corrected_lift DESC, target_media_id LIMIT 32
-          ) edge
-          ORDER BY edge.confidence DESC, edge.popularity_corrected_lift DESC, edge.target_media_id LIMIT 32
-        `)
-          const candidates = rows
-            .filter(
-              (edge) =>
-                compatibleCowatchFeature(edge, binding.graphGenerationId) &&
-                !anchors.some(
-                  (anchor) => anchor.mediaId === edge.targetMediaId,
-                ),
-            )
-            .slice(0, 12)
-          if (candidates.length === 0)
-            return fallback("cowatch_supported_edges_sparse")
           const bindingDigest = cowatchTrialBindingDigest(binding)
-          const nominations = await buildCowatchNominations(
-            tx,
-            candidates,
-            anchors,
+          const loaded = await loadBoundedCowatchNominations(tx, {
             context,
-            COWATCH_FROZEN_TRIAL_MODE,
-            {
+            graphGenerationId: binding.graphGenerationId,
+            generatorVersion: COWATCH_FROZEN_TRIAL_MODE,
+            now: now(),
+            provenance: {
               bindingDigest,
               studyId: binding.studyId,
               experimentGeneration: binding.experimentGeneration,
@@ -152,7 +180,9 @@ export function createDatabaseCowatchLiveSource(
               shadowDecisionId: binding.shadowDecisionId,
               trialValidUntil: binding.trialValidUntil.toISOString(),
             },
-          )
+          })
+          if (loaded.fallbackReason) return fallback(loaded.fallbackReason)
+          const nominations = loaded.nominations
           if (remaining() <= 0) return fallback("cowatch_deadline_exceeded")
           if (nominations.length === 0) return fallback("cowatch_unplayable")
           return {

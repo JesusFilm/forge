@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import { OwnerReleaseControls } from "./OwnerReleaseControls"
 
 type Props = Readonly<{
   generation: number
-  stage: "control" | "bounded" | "permanent"
+  stage: "control" | "bounded" | "permanent" | "owner_approved"
   targetManifestId: string | null
   lastKnownGoodManifestId: string
   approvalId: string | null
@@ -13,6 +14,12 @@ type Props = Readonly<{
   proposedExposureCeilingBps: number
   killSwitchEnabled: boolean
   ready: boolean
+  ownerRelease?: {
+    id: string
+    validUntil: string
+    graphGenerationId: string
+    revoked: boolean
+  } | null
 }>
 
 type MutationState =
@@ -135,8 +142,15 @@ export function PromotionControls(props: Props) {
 
   return (
     <div>
+      <OwnerReleaseControls
+        generation={props.generation}
+        killSwitchEnabled={props.killSwitchEnabled}
+        ownerRelease={props.ownerRelease}
+      />
       <div className="flex flex-wrap gap-2">
-        {!props.approvalId && props.targetManifestId ? (
+        {props.stage !== "owner_approved" &&
+        !props.approvalId &&
+        props.targetManifestId ? (
           <button
             type="button"
             className={buttonClass}
@@ -251,7 +265,7 @@ export function PromotionControls(props: Props) {
                   : "manual_emergency_stop",
               },
               props.killSwitchEnabled
-                ? "Clear the emergency hold and resume the audited stage?"
+                ? "Clear the emergency hold? Revoked direct releases remain revoked and require a new reviewed graph release."
                 : "Stop challenger influence and fence cached and persisted influence now?",
             )
           }

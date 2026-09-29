@@ -7,12 +7,21 @@ let ordinal = 0
 const day = 86_400_000
 
 /** Actual finite projection from eligible outcomes in an owned disposable DB. */
-export async function compositionGraphFixture(db: PrismaClient) {
+export async function compositionGraphFixture(
+  db: PrismaClient,
+  request?: {
+    id: string
+    expiresAt: Date
+    itemId: string
+    mediaId: string
+    selectionId: string
+  },
+) {
   const id = randomUUID()
   const now = new Date()
   const start = new Date(now.getTime() - 10 * day + ordinal++ * 3_600_000)
-  const expiresAt = new Date(now.getTime() + 15 * day)
-  const mediaA = `${id}-a`,
+  const expiresAt = request?.expiresAt ?? new Date(now.getTime() + 15 * day)
+  const mediaA = request?.mediaId ?? `${id}-a`,
     mediaB = `${id}-b`,
     mediaC = `${id}-c`
   const profile = await db.recommendationProfile.create({
@@ -38,9 +47,17 @@ export async function compositionGraphFixture(db: PrismaClient) {
     ).entries()) {
       const episodeId = `${id}-${viewer}-${position}`
       const occurredAt = new Date(start.getTime() + position * 1_000)
+      const requestLineage =
+        request && viewer === 0 && position === 0
+          ? { requestId: request.id, itemId: request.itemId }
+          : {}
       await db.recommendationPlaybackEpisode.create({
         data: {
           id: episodeId,
+          ...requestLineage,
+          selectionId: requestLineage.requestId
+            ? request?.selectionId
+            : undefined,
           mediaId,
           sessionDigest: compositionDigest(`${id}-${viewer}`),
           state: "FINALIZED",
@@ -57,6 +74,7 @@ export async function compositionGraphFixture(db: PrismaClient) {
         data: {
           id: `${episodeId}-r1`,
           episodeId,
+          ...requestLineage,
           classifierVersion: "active-watch-proxy-v1",
           factWatermark: 1,
           inputDigest: compositionDigest(episodeId),

@@ -369,7 +369,9 @@ export function PromotionDecision({
             <dd className="mt-1 text-[var(--color-text-secondary)]">
               {promotion.approval
                 ? `${promotion.approval.maxExposureBps / 100}% · digest ${promotion.approval.manifestDigest.slice(0, 12)}`
-                : "No exact approval"}
+                : promotion.stage === "owner_approved"
+                  ? "Direct owner approval · usefulness unmeasured"
+                  : "No exact approval"}
             </dd>
           </div>
           <div>
@@ -405,6 +407,15 @@ export function PromotionDecision({
               proposedExposureCeilingBps={promotion.proposedExposureCeilingBps}
               killSwitchEnabled={promotion.killSwitchEnabled}
               ready={promotion.readiness.ready}
+              ownerRelease={
+                promotion.ownerRelease
+                  ? {
+                      ...promotion.ownerRelease,
+                      validUntil:
+                        promotion.ownerRelease.validUntil.toISOString(),
+                    }
+                  : null
+              }
             />
             <StudyControls />
           </>

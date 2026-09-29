@@ -443,6 +443,11 @@ export const env = createEnv({
     // Deterministic pgvector catalog fixture for recommendation profile CI.
     // Omit to run the same proof against an approved production snapshot.
     RECOMMENDATION_PROFILE_DB_FIXTURE: z.enum(["deterministic"]).optional(),
+    // Enable only after the entire serving fleet and rollback image can read
+    // both inline and shared profile vector rows.
+    RECOMMENDATION_PROFILE_VECTOR_SHARING: z
+      .enum(["true", "false"])
+      .default("false"),
     // Opt-in real-Redis proof for feat-368 atomic delivery admission.
     RECOMMENDATION_REDIS_TEST: z.enum(["1"]).optional(),
     // Source-free serving is enabled by default; false remains a kill switch.
@@ -463,6 +468,10 @@ export const env = createEnv({
     // both legacy stage rows and compact run payloads.
     RECOMMENDATION_CANDIDATE_TRACE_FORMAT: z
       .enum(["legacy", "compact"])
+      .default("legacy"),
+    // Enable only after every reader and rollback image understands packed items.
+    RECOMMENDATION_SERVED_ITEM_FORMAT: z
+      .enum(["legacy", "packed"])
       .default("legacy"),
     // Isolated, opt-in recommendation storage benchmark settings. The script
     // validates its own safety guards even when CI skips application validation.
@@ -959,6 +968,9 @@ export const env = createEnv({
     RECOMMENDATION_PROFILE_DB_FIXTURE: emptyToUndefined(
       process.env.RECOMMENDATION_PROFILE_DB_FIXTURE,
     ),
+    RECOMMENDATION_PROFILE_VECTOR_SHARING:
+      emptyToUndefined(process.env.RECOMMENDATION_PROFILE_VECTOR_SHARING) ??
+      "false",
     RECOMMENDATION_REDIS_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_REDIS_TEST,
     ),
@@ -971,6 +983,9 @@ export const env = createEnv({
     ),
     RECOMMENDATION_CANDIDATE_TRACE_FORMAT:
       emptyToUndefined(process.env.RECOMMENDATION_CANDIDATE_TRACE_FORMAT) ??
+      "legacy",
+    RECOMMENDATION_SERVED_ITEM_FORMAT:
+      emptyToUndefined(process.env.RECOMMENDATION_SERVED_ITEM_FORMAT) ??
       "legacy",
     RECOMMENDATION_STORAGE_BENCHMARK: emptyToUndefined(
       process.env.RECOMMENDATION_STORAGE_BENCHMARK,

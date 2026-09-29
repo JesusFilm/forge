@@ -10,8 +10,7 @@ depends_on:
   - "feat-369"
   - "feat-381"
   - "feat-384"
-blocks:
-  - "feat-565"
+blocks: []
 tags: [recommendations, watch, analytics]
 ---
 
@@ -118,3 +117,11 @@ capacity sections of
 exact observations and remaining gates. Implementation and deployment do not
 complete production shadow acceptance, mature usefulness evidence or live
 promotion. This ticket remains **in progress**.
+
+## September 30 owner decision
+
+The owner approved direct co-watch/MMR activation without a trial. Feat-505 is
+therefore no longer an activation dependency of feat-565. Its study machinery and
+scientific evidence requirements remain available for later causal measurement;
+none of the missing calibration, assignments or mature outcomes is marked passed
+or complete by the direct activation decision. Usefulness remains unmeasured.

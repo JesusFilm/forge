@@ -1,10 +1,10 @@
-import { readdirSync, readFileSync } from "node:fs"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import { recommendationRuntimeMigrationSql } from "../current-schema.test-fixture"
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
   ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
@@ -29,6 +29,7 @@ import { getLiveProfileCandidates } from "../candidates/profile-candidate.servic
 import { RecommendationProfileService } from "../profile.service"
 import { createDatabaseRecommendationProfileProjectionService } from "./profile-projection.service"
 import { seedReconciliationScaleFixture } from "./reconciliation-scale.fixture"
+import { proveProfileVectorSnapshotMigration } from "./profile-vector-snapshot.native-helper"
 import { runRecommendationProfileReconciliationBatch } from "./reconciliation.service"
 import {
   profileIneligibleGenerationIdsSql,
@@ -36,25 +37,7 @@ import {
 } from "./profile-lineage"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const migrationRoot = new URL("../../../../prisma/migrations/", import.meta.url)
-const recommendationMigrations = readdirSync(migrationRoot)
-  .filter((name) => {
-    const ordinal = Number(name.slice(0, 4))
-    return (
-      (ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")) ||
-      name === "0082_user_recommendation_identity" ||
-      name === "0098_recommendation_viewing_mode" ||
-      name === "0100_recommendation_candidate_compact_trace" ||
-      name === "0101_recommendation_candidate_compact_trace_validate" ||
-      name === "0102_recommendation_candidate_stage_duplicate_index_drop" ||
-      name === "0103_recommendation_impression_visibility_capability" ||
-      name === "0104_recommendation_cowatch_shadow"
-    )
-  })
-  .sort()
-  .map((name) =>
-    readFileSync(new URL(`${name}/migration.sql`, migrationRoot), "utf8"),
-  )
+const recommendationMigrations = recommendationRuntimeMigrationSql
 
 const webCaller = {
   id: "forge-web",
@@ -410,6 +393,49 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         contributionCount: 1,
       })
       expect(interests.map((interest) => interest.kind)).toEqual(["DURABLE"])
+      if (env.RECOMMENDATION_PROFILE_VECTOR_SHARING === "true") {
+        expect(interests[0]?.vectorDigest).toMatch(/^[a-f0-9]{64}$/)
+        const [stored] = await prisma.$queryRaw<
+          Array<{ matchesContentVector: boolean; inlineAbsent: boolean }>
+        >(Prisma.sql`
+          SELECT
+            public.vector_send(snapshot.embedding) =
+              public.vector_send(content.embedding) AS "matchesContentVector",
+            interest.embedding IS NULL AS "inlineAbsent"
+          FROM recommendation_profile_interest interest
+          JOIN recommendation_profile_vector_snapshot snapshot
+            ON snapshot.digest = interest.vector_digest
+          JOIN LATERAL (
+            SELECT public.avg(chunk.embedding) AS embedding
+            FROM video_transcript transcript
+            JOIN video_transcript_chunk chunk
+              ON chunk.transcript_id = transcript.id
+            WHERE transcript.video_id = interest.medoid_media_id
+          ) content ON true
+          WHERE interest.id = ${interests[0]!.id}
+        `)
+        expect(stored).toEqual({
+          matchesContentVector: true,
+          inlineAbsent: true,
+        })
+        await expect(
+          admin.query(
+            `UPDATE recommendation_profile_vector_snapshot
+             SET created_at = now()
+             WHERE digest = $1`,
+            [interests[0]!.vectorDigest],
+          ),
+        ).rejects.toThrow(/immutable/)
+        await expect(
+          admin.query(
+            `DELETE FROM recommendation_profile_vector_snapshot
+             WHERE digest = $1`,
+            [interests[0]!.vectorDigest],
+          ),
+        ).rejects.toThrow(/foreign key constraint/)
+      } else {
+        expect(interests[0]?.vectorDigest).toBeNull()
+      }
       expect(contributions.map((contribution) => contribution.kind)).toEqual([
         "QUALIFIED_OUTCOME",
       ])
@@ -1242,3 +1268,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     })
   },
 )
+
+describe.skipIf(!RUN_REAL_DB_TEST)("profile vector snapshot migration", () => {
+  it("preserves legacy rows and exact shared-vector retention invariants", async () => {
+    await proveProfileVectorSnapshotMigration(env.DATABASE_URL)
+  })
+})

@@ -12,6 +12,7 @@ export type RetentionRoots = {
   evaluationIds?: string[]
   assignmentIds?: string[]
   experimentIds?: string[]
+  ownerReleaseIds?: string[]
 }
 type Dependencies = Record<
   | "profiles"
@@ -22,6 +23,7 @@ type Dependencies = Record<
   | "sources"
   | "graphs"
   | "protocols"
+  | "releases"
   | "studies"
   | "assignments"
   | "experiments",
@@ -82,6 +84,13 @@ async function dependencies(
       WHERE request_id = ANY(${roots.requestIds ?? []}::text[])
         OR projection_profile_id = ANY(${roots.profileIds ?? []}::text[])
         OR evaluation_id = ANY(${roots.evaluationIds ?? []}::text[]) LIMIT ${limit}
+    ), affected_graphs AS MATERIALIZED (
+      SELECT unnest(${roots.graphIds ?? []}::text[]) UNION SELECT generation_id FROM affected_sources
+        UNION SELECT protocol.config->>'cowatchGenerationId' FROM recommendation_composition_protocol protocol
+          JOIN recommendation_composition_observation observation ON observation.protocol_id = protocol.id
+          WHERE observation.run_id IN (SELECT id FROM affected_runs) AND protocol.config->>'cowatchGenerationId' IS NOT NULL
+        UNION SELECT config->>'cowatchGenerationId' FROM recommendation_composition_protocol
+          WHERE shadow_evaluation_id = ANY(${roots.evaluationIds ?? []}::text[]) AND config->>'cowatchGenerationId' IS NOT NULL
     )
     SELECT
       ((SELECT count(*) FROM root_sessions) >= ${limit} OR (SELECT count(*) FROM selected_assignments) >= ${limit} OR (SELECT count(*) FROM assignment_requests) >= ${limit} OR (SELECT count(*) FROM seed_sources) >= ${limit} OR (SELECT count(*) FROM root_sources) >= ${limit} OR (SELECT count(*) FROM affected_episodes) >= ${limit}
@@ -95,12 +104,9 @@ async function dependencies(
       ARRAY(SELECT id FROM affected_outcomes) AS outcomes,
       ARRAY(SELECT id FROM recommendation_eligibility_decision WHERE outcome_id IN (SELECT id FROM affected_outcomes) LIMIT ${limit}) AS eligibility,
       ARRAY(SELECT id FROM affected_sources) AS sources,
-      ARRAY(SELECT unnest(${roots.graphIds ?? []}::text[]) UNION SELECT generation_id FROM affected_sources
-        UNION SELECT protocol.config->>'cowatchGenerationId' FROM recommendation_composition_protocol protocol
-          JOIN recommendation_composition_observation observation ON observation.protocol_id = protocol.id
-          WHERE observation.run_id IN (SELECT id FROM affected_runs) AND protocol.config->>'cowatchGenerationId' IS NOT NULL
-        UNION SELECT config->>'cowatchGenerationId' FROM recommendation_composition_protocol
-          WHERE shadow_evaluation_id = ANY(${roots.evaluationIds ?? []}::text[]) AND config->>'cowatchGenerationId' IS NOT NULL) AS graphs,
+      ARRAY(SELECT unnest FROM affected_graphs) AS graphs,
+      ARRAY(SELECT id::text FROM recommendation_owner_release WHERE graph_generation_id IN (SELECT unnest::char(64) FROM affected_graphs)
+        OR id = ANY(${roots.ownerReleaseIds ?? []}::uuid[]) LIMIT ${limit}) AS releases,
       ARRAY(SELECT id::text FROM recommendation_composition_protocol WHERE shadow_evaluation_id = ANY(${roots.evaluationIds ?? []}::text[])) AS protocols,
       ARRAY(SELECT unnest(${roots.experimentIds ?? []}::text[]) UNION SELECT experiment_id FROM selected_assignments) AS studies,
       ARRAY(SELECT id FROM selected_assignments) AS assignments,
@@ -141,6 +147,7 @@ export async function lockRetentionRoots(
     sources: "recommendation_cowatch_source_contribution",
     graphs: "recommendation_cowatch_generation",
     protocols: "recommendation_composition_protocol",
+    releases: "recommendation_owner_release",
     studies: "recommendation_study",
     assignments: "recommendation_experiment_assignment",
     experiments: "recommendation_experiment",
@@ -149,7 +156,7 @@ export async function lockRetentionRoots(
     if (planned[key].length === 0) continue
     const column = Prisma.raw(key === "studies" ? "experiment_id" : "id")
     await tx.$queryRaw(Prisma.sql`SELECT ${column} FROM ${Prisma.raw(tables[key])}
-      WHERE ${column} = ANY(${planned[key]}::${Prisma.raw(key === "graphs" ? "char(64)[]" : key === "protocols" ? "uuid[]" : "text[]")}) ORDER BY ${column} FOR UPDATE ${Prisma.raw(key === "assignments" || key === "experiments" ? "NOWAIT" : "")}`)
+      WHERE ${column} = ANY(${planned[key]}::${Prisma.raw(key === "graphs" ? "char(64)[]" : key === "protocols" || key === "releases" ? "uuid[]" : "text[]")}) ORDER BY ${column} FOR UPDATE ${Prisma.raw(key === "assignments" || key === "experiments" ? "NOWAIT" : "")}`)
   }
   const current = await dependencies(tx, roots)
   for (const key of Object.keys(tables) as Array<keyof Dependencies>) {

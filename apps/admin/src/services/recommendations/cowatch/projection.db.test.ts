@@ -17,6 +17,7 @@ import { suppressCowatchForProfiles } from "./privacy"
 import {
   loadCowatchSourceRows,
   COWATCH_PUBLICATION_LOCK_ID,
+  parseCowatchPublicationAdmission,
   preflightCowatchShadowGeneration,
   publishCowatchShadowGeneration,
 } from "./projection.service"
@@ -587,6 +588,103 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         status: "ready",
         rawSourceCount: 2,
         sourceCount: 1,
+      })
+    })
+
+    it("refuses publication admission before writes when a ceiling or fixed-cutoff eligibility changes", async () => {
+      const day = 86_400_000
+      await episode(3871, mediaA, -12 * day)
+      await episode(3871, mediaB, -12 * day + 1_000)
+      const pending = await episode(3871, mediaC, -12 * day + 2_000)
+      await prisma.recommendationEligibilityDecision.update({
+        where: { id: `${pending.id}-eligibility` },
+        data: { isCurrent: false },
+      })
+      const scope = {
+        version: "episode-event-window-v1" as const,
+        windowStart: new Date(now.getTime() - 13 * day),
+        windowEnd: new Date(now.getTime() - 12 * day),
+        evaluationAsOf: new Date(now.getTime() - day),
+      }
+      async function admittedPreflight() {
+        const preflight = await preflightCowatchShadowGeneration(
+          prisma,
+          now,
+          scope,
+        )
+        expect(preflight.status).toBe("ready")
+        return parseCowatchPublicationAdmission(
+          {
+            version: "cowatch-publication-admission-v1",
+            expectedGeneration: preflight.generation,
+            sourceWindow: JSON.parse(JSON.stringify(scope)),
+            limits: {
+              rawSourceCount: preflight.rawSourceCount,
+              sourceCount: preflight.sourceCount,
+              attemptedPairCount: preflight.attemptedPairCount,
+              contributionCount: preflight.contributionCount,
+              edgeCount: preflight.edgeCount,
+              publicationRowCount: preflight.publicationRowCount,
+              graphRowJsonBytes: preflight.graphRowJsonBytes,
+            },
+          },
+          now,
+          scope,
+        )
+      }
+      const admission = await admittedPreflight()
+      expect(admission.limits).toMatchObject({
+        rawSourceCount: 3,
+        sourceCount: 2,
+        contributionCount: 1,
+      })
+      const tableCounts = () =>
+        Promise.all([
+          prisma.recommendationCowatchGeneration.count(),
+          prisma.recommendationCowatchSourceContribution.count(),
+          prisma.recommendationCowatchContribution.count(),
+          prisma.recommendationCowatchEdge.count(),
+        ])
+      const before = await tableCounts()
+      const refused = await publishCowatchShadowGeneration(prisma, now, scope, {
+        ...admission,
+        limits: { ...admission.limits, contributionCount: 0 },
+      })
+      expect(refused).toMatchObject({
+        status: "admission_refused",
+        publishedAt: null,
+        decisionReason: "publication_admission_count_exceeded",
+      })
+      expect(await tableCounts()).toEqual(before)
+      // This decision becomes current after preflight, while the episode and
+      // outcome timestamps remain inside the exact original historical scope.
+      await prisma.recommendationEligibilityDecision.update({
+        where: { id: `${pending.id}-eligibility` },
+        data: { isCurrent: true },
+      })
+      expect(
+        await publishCowatchShadowGeneration(prisma, now, scope, admission),
+      ).toMatchObject({
+        status: "admission_refused",
+        rawSourceCount: 3,
+        sourceCount: 3,
+        decisionReason: "publication_admission_generation_changed",
+      })
+      expect(await tableCounts()).toEqual(before)
+      const refreshed = await admittedPreflight()
+      const published = await publishCowatchShadowGeneration(
+        prisma,
+        now,
+        scope,
+        refreshed,
+      )
+      generationIds.push(refreshed.expectedGeneration)
+      expect(published).toMatchObject({
+        status: "published",
+        generation: refreshed.expectedGeneration,
+        sourceCount: 3,
+        contributionCount: 3,
+        edgeCount: 3,
       })
     })
 

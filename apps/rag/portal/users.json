@@ -1,3 +1,6 @@
 {
-  "users": [{ "login": "jaco-brink", "id": 219753371 }]
+  "users": [
+    { "login": "jaco-brink", "id": 219753371 },
+    { "login": "calebchennz", "id": 312326370 }
+  ]
 }

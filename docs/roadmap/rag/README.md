@@ -10,10 +10,10 @@ database into Admin.
 
 ## Status (September 30, 2026)
 
-- **Total tickets:** 39
+- **Total tickets:** 40
 - **Complete:** 25
 - **In progress:** 3
-- **Not started:** 11
+- **Not started:** 12
 - **Blocked:** 0
 
 ## Feature Index
@@ -53,6 +53,7 @@ database into Admin.
 | [feat-568](feat-568-rag-usage-capacity-review.md)                 | —                                                             | Review usage capacity before volume expansion                      | not-started | —                                                                                                                                                                                                                                                                                 |
 | [feat-529](feat-529-rag-consumer-dogfood-migration.md)            | —                                                             | Dogfood and seven-day migration                                    | in-progress | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2459](https://github.com/JesusFilm/forge/pull/2459), [#2468](https://github.com/JesusFilm/forge/pull/2468), [#2472](https://github.com/JesusFilm/forge/pull/2472)                                                        |
 | [feat-530](feat-530-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                       | in-progress | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2442](https://github.com/JesusFilm/forge/pull/2442), [#2445](https://github.com/JesusFilm/forge/pull/2445)                                                                                                               |
+| [feat-572](feat-572-rag-portal-session-recovery.md)               | —                                                             | Renew portal sessions and restore the active section               | not-started | [#2475](https://github.com/JesusFilm/forge/pull/2475)                                                                                                                                                                                                                             |
 | [feat-532](feat-532-rag-legacy-service-credential-retirement.md)  | —                                                             | Retire legacy JesusFilm-RAG service and credentials                | not-started | [#2379](https://github.com/JesusFilm/forge/pull/2379)                                                                                                                                                                                                                             |
 | [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
 | [feat-541](feat-541-rag-database-diagram.md)                      | —                                                             | Document the RAG database schema as a complete ERD                 | complete    | [#2398](https://github.com/JesusFilm/forge/pull/2398)                                                                                                                                                                                                                             |
