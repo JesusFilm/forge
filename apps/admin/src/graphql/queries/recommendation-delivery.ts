@@ -128,6 +128,9 @@ builder.queryFields((t) => ({
       profileTokenDigest: t.arg.string({ required: false }),
       eligibleHuman: t.arg.boolean({ required: false }),
       trafficCategory: t.arg.string({ required: false }),
+      // Additive deploy prerequisite. Governed delivery will consume this signal
+      // after every Admin instance accepts the newer Watch operation.
+      clientDeliveryContract: t.arg.string({ required: false }),
     },
     resolve: async (_root, args, ctx) => {
       return resolveRecommendationOperation(async () => {
