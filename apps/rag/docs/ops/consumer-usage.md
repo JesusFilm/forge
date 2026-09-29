@@ -170,6 +170,6 @@ unavailable. Never revive denied credentials or shared-token access incidentally
 
 Jaco owns activation and recovery. Feat-529 owns actual `forge-rag-retrieve`
 dogfood, seven-day migration and separately approved cutoff. The production
-capacity review in feat-563 must cover minute-row growth, pending-state backlog,
+capacity review in feat-568 must cover minute-row growth, pending-state backlog,
 write latency, inventory maintenance, heartbeat overhead and backup cost before
 volume expansion. Implementation tests use synthetic, disposable local data.
