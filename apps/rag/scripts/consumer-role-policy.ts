@@ -18,7 +18,11 @@ const readerPolicy: Policy = {
   "consumer_private.consumers": ["SELECT"],
   "consumer_private.credentials": ["SELECT"],
 }
-async function inspect(db: PrismaClient, policy: Policy): Promise<string> {
+async function inspect(
+  db: PrismaClient,
+  policy: Policy,
+  schema = "consumer_private",
+): Promise<string> {
   const [role] = await db.$queryRaw<Array<{ role: string; unsafe: boolean }>>`
     SELECT current_user AS role,
       EXISTS (SELECT 1 FROM pg_roles r WHERE
@@ -30,7 +34,7 @@ async function inspect(db: PrismaClient, policy: Policy): Promise<string> {
           AND EXISTS (SELECT 1 FROM pg_roles r WHERE
             (r.rolname = current_user OR pg_has_role(current_user, r.oid, 'SET'))
             AND has_schema_privilege(r.oid, n.oid, 'CREATE')))
-      OR NOT has_schema_privilege(current_user, 'consumer_private', 'USAGE') AS unsafe
+      OR NOT has_schema_privilege(current_user, ${schema}, 'USAGE') AS unsafe
   `
   if (!role || role.unsafe) throw new ConsumerRoleVerificationError()
   const privileges = await db.$queryRaw<
@@ -95,4 +99,40 @@ export async function verifyConsumerRoles(
   const writerRole = await inspect(writer, writerPolicy)
   const readerRole = await inspect(reader, readerPolicy)
   if (writerRole === readerRole) throw new ConsumerRoleVerificationError()
+}
+
+export async function verifyUsageRoles(
+  writer: PrismaClient,
+  reader: PrismaClient,
+): Promise<void> {
+  const writerPolicy: Policy = {
+    "usage_private.minutes": ["SELECT", "INSERT", "UPDATE"],
+    "usage_private.collectors": ["SELECT", "INSERT", "UPDATE"],
+    "usage_private.gaps": ["SELECT", "INSERT", "UPDATE"],
+    "usage_private.denials": ["SELECT", "INSERT", "UPDATE"],
+    "usage_private.pending": ["SELECT", "INSERT", "DELETE"],
+  }
+  const readerPolicy: Policy = Object.fromEntries(
+    [
+      "consumer_labels",
+      "report_minutes",
+      "report_collectors",
+      "report_pending",
+      "report_gaps",
+      "report_inventory",
+    ].map((table) => [`usage_private.${table}`, ["SELECT"]]),
+  )
+  const writerRole = await inspect(writer, writerPolicy, "usage_private")
+  const readerRole = await inspect(reader, readerPolicy, "usage_private")
+  if (writerRole === readerRole) throw new ConsumerRoleVerificationError()
+}
+
+export async function verifyUsageInventoryRole(
+  db: PrismaClient,
+): Promise<void> {
+  await inspect(
+    db,
+    { "usage_private.deployment_inventory": ["SELECT", "INSERT", "UPDATE"] },
+    "usage_private",
+  )
 }

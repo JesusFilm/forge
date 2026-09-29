@@ -1,3 +1,6 @@
+import { PostgresUsageStore } from "../src/adapters/postgres/consumer-usage.js"
+import { UsageCollector } from "../src/serving/http/usage.js"
+import { reportAuthorizer } from "../src/serving/http/usage-report-auth.js"
 import { fileURLToPath } from "node:url"
 
 import { serve } from "@hono/node-server"
@@ -85,6 +88,60 @@ async function main(): Promise<void> {
       "consumer source scope is invalid",
       "railway",
     )
+  const usageWriterUrl = input.RAG_USAGE_WRITER_DATABASE_URL
+  const deploymentId =
+    input.RAILWAY_DEPLOYMENT_ID ?? input.RAG_USAGE_DEPLOYMENT_ID
+  const usageReaderUrl = input.RAG_USAGE_REPORT_DATABASE_URL
+  const reportHashes = input.RAG_USAGE_REPORT_TOKEN_HASHES
+  if (
+    (reportHashes && !usageReaderUrl) ||
+    (usageReaderUrl && !sessions && !reportHashes) ||
+    (usageReaderUrl && !usageWriterUrl) ||
+    (usageWriterUrl &&
+      (!consumerAuth ||
+        !deploymentId ||
+        !/^[A-Za-z0-9-]{1,80}$/.test(deploymentId)))
+  )
+    throw environmentConfigurationError(
+      "usage_configuration_incomplete",
+      "usage configuration is incomplete",
+      "railway",
+    )
+  const usageWriter = usageWriterUrl
+    ? new PrismaClient({ datasourceUrl: usageWriterUrl })
+    : undefined
+  const usageReader = usageReaderUrl
+    ? new PrismaClient({ datasourceUrl: usageReaderUrl })
+    : undefined
+  const usage = usageWriter
+    ? new UsageCollector(new PostgresUsageStore(usageWriter, deploymentId))
+    : undefined
+  await usage?.start()
+  if (
+    usageReader &&
+    reportHashes &&
+    Object.hasOwn(JSON.parse(reportHashes), "ragbot")
+  ) {
+    const ragbotId = input.RAG_USAGE_RAGBOT_CONSUMER_ID ?? ""
+    if (!/^[0-9a-f-]{36}$/i.test(ragbotId))
+      throw environmentConfigurationError(
+        "usage_configuration_incomplete",
+        "RAGBot registration is required before its report grant",
+        "railway",
+      )
+    const rows = await usageReader.$queryRaw<
+      Array<{ consumer_id: string }>
+    >`SELECT consumer_id FROM usage_private.consumer_labels WHERE consumer_id=${ragbotId}::uuid`
+    if (!rows.length)
+      throw environmentConfigurationError(
+        "usage_configuration_incomplete",
+        "RAGBot registration is required before its report grant",
+        "railway",
+      )
+  }
+  const portalUsageReader = usageReader
+    ? new PostgresUsageStore(usageReader)
+    : undefined
   const portal = sessions
     ? {
         sessions,
@@ -98,14 +155,24 @@ async function main(): Promise<void> {
         callbackUrl: input.RAG_PORTAL_CALLBACK_URL!,
         origin: input.RAG_PORTAL_ORIGIN!,
         consumers,
+        usageReader: portalUsageReader,
         allowedSourceKeys,
       }
     : undefined
+  const usageReport =
+    usageReader && reportHashes
+      ? {
+          reader: portalUsageReader!,
+          authorize: reportAuthorizer(reportHashes),
+        }
+      : undefined
   const app = createApp({
     retriever: wiring.retriever,
     tokens: parseTokenRegistry(env.SERVE_BEARER_TOKENS),
     portal,
     consumerAuth,
+    usage,
+    usageReport,
   })
   const server = serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
     console.error(`serve: /v1 listening on :${port}`)
@@ -117,6 +184,8 @@ async function main(): Promise<void> {
     closing = true
     server.close(() => {
       void Promise.all([
+        usage?.stop().then(() => usageWriter?.$disconnect()),
+        usageReader?.$disconnect(),
         wiring.shutdown(),
         sessions?.close(),
         consumerWriter?.$disconnect(),
