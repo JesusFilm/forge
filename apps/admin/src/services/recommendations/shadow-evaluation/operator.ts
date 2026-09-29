@@ -1,9 +1,4 @@
-import {
-  Prisma,
-  RecommendationShadowEvaluationState,
-  WorkflowRunStatus,
-  type PrismaClient,
-} from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import {
   CANDIDATE_CONTEXT_VERSION,
   CANDIDATE_ELIGIBILITY_VERSION,
@@ -20,7 +15,6 @@ import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 import {
   dispatchRecommendationShadowEvaluation,
   HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY,
-  RECOMMENDATION_SHADOW_EVALUATION_WORKFLOW_KEY,
 } from "./job"
 import { createShadowEvaluation } from "./service"
 
@@ -45,9 +39,8 @@ type ExistingEvaluation = NonNullable<
 /**
  * Starts only the immutable semantic + profile hybrid shadow lane. The
  * evaluation row is canonical business truth and is committed before workflow
- * dispatch. Reusing evaluationId makes operator retries safe: an active or
- * completed workflow is returned, while a failed dispatch can be retried
- * without creating a second evaluation.
+ * dispatch. The durable dispatch owns exact retries, including ambiguous start
+ * outcomes. FAILED or a missing runtime ID never authorizes another start.
  */
 export async function startExactHybridShadowEvaluation(
   prisma: PrismaClient,
@@ -108,47 +101,6 @@ async function startExactShadowEvaluation(
   }
 
   assertExactRetry(evaluation, input, lane)
-  const priorWorkflow = await prisma.workflowRun.findFirst({
-    where: {
-      workflowKey: RECOMMENDATION_SHADOW_EVALUATION_WORKFLOW_KEY,
-      subjectType: "recommendation-shadow-evaluation",
-      subjectId: input.evaluationId,
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    select: {
-      id: true,
-      runtimeRunId: true,
-      status: true,
-      details: true,
-    },
-  })
-  if (priorWorkflow) {
-    const priorMinimumRuns = readMinimumRuns(priorWorkflow.details)
-    if (priorMinimumRuns != null && priorMinimumRuns !== input.minimumRuns) {
-      throw new RecommendationConflictError(
-        "The shadow evaluation retry does not match its original minimumRuns",
-      )
-    }
-    if (priorWorkflow.status !== WorkflowRunStatus.FAILED) {
-      return {
-        status: "already_dispatched" as const,
-        evaluationId: evaluation.id,
-        generation: evaluation.generation,
-        created,
-        dispatch: {
-          queued: true as const,
-          ledgerRunId: priorWorkflow.id,
-          runId: priorWorkflow.runtimeRunId,
-        },
-      }
-    }
-  }
-
-  if (evaluation.state !== RecommendationShadowEvaluationState.ACTIVE) {
-    throw new RecommendationConflictError(
-      "The shadow evaluation is already terminal and cannot be dispatched again",
-    )
-  }
   const dispatch = await dispatchRecommendationShadowEvaluation(
     {
       evaluationId: evaluation.id,
@@ -156,10 +108,17 @@ async function startExactShadowEvaluation(
       generatorKey: lane.generatorKey,
       minimumRuns: input.minimumRuns,
     },
-    { actorId: input.actorId },
+    { actorId: input.actorId, client: prisma, now },
   )
   return {
-    status: "queued" as const,
+    status:
+      dispatch.state === "uncertain"
+        ? ("dispatch_uncertain" as const)
+        : dispatch.state === "terminal"
+          ? ("terminal" as const)
+          : dispatch.reused
+            ? ("already_dispatched" as const)
+            : ("queued" as const),
     evaluationId: evaluation.id,
     generation: evaluation.generation,
     created,
@@ -248,19 +207,6 @@ function assertExactRetry(
       "The shadow evaluation retry does not match the exact lane evaluation",
     )
   }
-}
-
-function readMinimumRuns(details: Prisma.JsonValue): number | null {
-  if (
-    details == null ||
-    typeof details !== "object" ||
-    Array.isArray(details) ||
-    !("minimumRuns" in details)
-  ) {
-    return null
-  }
-  const value = details.minimumRuns
-  return typeof value === "number" && Number.isInteger(value) ? value : null
 }
 
 function isUniqueConflict(cause: unknown) {
