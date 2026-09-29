@@ -46,6 +46,9 @@ export default function TabLayout() {
       disableTransparentOnScrollEdge
       iconColor={{ default: MUTED, selected: ACCENT }}
       labelStyle={{ default: { color: MUTED }, selected: { color: ACCENT } }}
+      // UIKit tabs ignore React Native's allowRTL and follow the app language,
+      // so an Arabic phone would reverse the tab order (R6).
+      unstable_nativeProps={{ direction: "ltr" }}
     >
       {TAB_ROUTE_NAMES.map((name) => (
         <NativeTabs.Trigger
