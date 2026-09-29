@@ -112,6 +112,17 @@ async function main() {
       steps: !process.argv.includes("--no-steps"),
       // A/B: `--structure=clip-first` opens on the film (see RenderOptions).
       ...(process.argv.includes("--step-ring") ? { stepRing: true } : {}),
+      ...(arg("mark-layout")
+        ? { markLayout: arg("mark-layout") as "above" | "side" }
+        : {}),
+      ...(arg("film-caption-style")
+        ? {
+            filmCaptionStyle: arg("film-caption-style") as
+              | "karaoke"
+              | "typewriter"
+              | "ghost",
+          }
+        : {}),
       ...(process.argv.includes("--step-bar")
         ? { stepRing: true, stepProgress: "bar" as const }
         : {}),

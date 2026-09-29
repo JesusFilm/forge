@@ -1486,6 +1486,12 @@ export type RenderOptions = {
   stepRing?: boolean
   /** Clip-first only: the step clock as a ring (default) or a top line. */
   stepProgress?: "ring" | "bar"
+  /** 16:9 film captions with word times: karaoke (default), typewriter or
+   *  ghost (see the composition schema). */
+  filmCaptionStyle?: "karaoke" | "typewriter" | "ghost"
+  /** 16:9 source credits centred over the text (default) or in a side
+   *  column beside it (see the composition schema). */
+  markLayout?: "above" | "side"
   /** Clip-first only: how the film's captions arrive (see the card schema). */
   clipCaptionStyle?: "words" | "words-lift" | "phrase"
   /** `phrase` captions: the piece's theme word, held in the accent colour. */
@@ -2634,6 +2640,9 @@ async function renderInStage(
 
   if (options.structure === "clip-first") {
     if (options.stepRing) manifest.stepRing = true
+    if (options.filmCaptionStyle)
+      manifest.filmCaptionStyle = options.filmCaptionStyle
+    if (options.markLayout) manifest.markLayout = options.markLayout
     if (options.stepRing && options.stepProgress)
       manifest.stepProgress = options.stepProgress
     for (const card of manifest.cards) {

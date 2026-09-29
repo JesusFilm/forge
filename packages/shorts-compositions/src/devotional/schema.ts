@@ -140,6 +140,18 @@ export const devotionalCardSchema = z.object({
    *  "Let's watch"; neither is drawn as a line (the welcome names the series
    *  in the kicker, "Let's watch" brings up WATCH across the frame). */
   introFrame: z.boolean().optional(),
+  /** 16:9 reflection: Bible references for this sentence, shown as a
+   *  footnote under the text instead of being read aloud. */
+  verseRefs: z.array(z.string()).optional(),
+  /** Set by the composition, not by the pipeline: this sentence sits in the
+   *  text column beside a side credit (`markLayout: "side"`), left aligned.
+   *  Frame pixels. */
+  markColumn: z
+    .object({ top: z.number(), left: z.number(), width: z.number() })
+    .optional(),
+  /** Set by the composition: the 16:9 reflection's distance from the frame
+   *  bottom in frame pixels, when it is not the default. */
+  wideBottomPx: z.number().optional(),
   /** Source credit drawn above a reflection card's text (16:9 only). */
   sourceMark: z
     .object({
@@ -369,6 +381,16 @@ export const devotionalInputPropsSchema = z.object({
    * ring the closing card carries above its question.
    */
   stepRing: z.boolean().optional(),
+  /** 16:9 film captions with word times: `karaoke` (default) lights the word
+   *  being said; `typewriter` types each word letter by letter as it is said,
+   *  every letter gold then white; `ghost` shows the whole line faint and each
+   *  word lights gold as it is said, then stays white. */
+  filmCaptionStyle: z.enum(["karaoke", "typewriter", "ghost"]).optional(),
+  /** 16:9 source credits: `above` (default) centres the credit over the
+   *  text; `side` sets it in a column left of the text behind a vertical
+   *  rule, the text left aligned beside it for three sentences (owner's
+   *  Figma "test", 2026-09-29). */
+  markLayout: z.enum(["above", "side"]).optional(),
   /**
    * Shape of the step clock when `stepRing` is on: the orbit ring in the
    * top-right corner (default), or a thin line across the top inside the

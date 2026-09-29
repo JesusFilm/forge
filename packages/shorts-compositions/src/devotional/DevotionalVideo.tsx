@@ -16,6 +16,12 @@ import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
 import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
 import { BigStepWord } from "./BigStepWord"
 import { FILM_MARK_URIS } from "./film-marks"
+import {
+  SIDE_BOTTOM,
+  SideMarkOverlay,
+  sideDrawer,
+  useSideMarkLayout,
+} from "./SideSourceMark"
 import { SourceMarkOverlay, WIDE_TEXT_BOTTOM } from "./SourceMarkOverlay"
 import { quoteIntroTimeline } from "./quote-timing"
 import { QuoteIntro } from "./QuoteIntro"
@@ -841,7 +847,9 @@ function VideoSubtitles({
   frameWidth,
   bleedX = 0,
   hideBeforeSec = 0,
+  karaokeMode = "karaoke",
 }: {
+  karaokeMode?: "karaoke" | "typewriter" | "ghost"
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
   captionStyle?: NonNullable<DevotionalCard["captionStyle"]>
@@ -978,10 +986,20 @@ function VideoSubtitles({
                 display: "inline-block",
                 maxWidth: fullBleed ? "100%" : px(300),
                 textAlign: "center",
-                fontFamily: SANS,
+                // Typewriter captions are set in Literata (owner, 2026-09-29):
+                // typed text reads as a page, so it takes the book face.
+                fontFamily:
+                  karaokeMode === "typewriter" && c.words && !fullBleed
+                    ? SERIF
+                    : SANS,
                 // Full frame: a size up (the film IS the hook), at the same
                 // weight as the cards — 700 read as heavy over the picture.
-                fontWeight: 600,
+                // Literata runs darker than Inter at the same number, so the
+                // typewriter captions sit at the regular weight (owner, 2026-09-29).
+                fontWeight:
+                  karaokeMode === "typewriter" && c.words && !fullBleed
+                    ? 400
+                    : 600,
                 fontSize: fullBleed ? px(26) : px(20),
                 lineHeight: 1.3,
                 color: "#f4efe8",
@@ -1015,6 +1033,7 @@ function VideoSubtitles({
                   endSec={c.endSec}
                   t={t}
                   restColor="#f4efe8"
+                  mode={karaokeMode}
                 />
               ) : (
                 c.text
@@ -1040,15 +1059,106 @@ function KaraokeLine({
   endSec,
   t,
   restColor,
+  mode = "karaoke",
 }: {
   text: string
   starts: ReadonlyArray<number>
   endSec: number
   t: number
   restColor: string
+  mode?: "karaoke" | "typewriter" | "ghost"
 }) {
   const words = text.split(/\s+/).filter(Boolean)
   if (words.length !== starts.length) return <>{text}</>
+  // A letter or word lighting up: in gold over a moment, cooling to white.
+  const lightUp = (at: number, inSec: number) => ({
+    on: interpolate(t, [at, at + inSec], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    }),
+    cool: interpolate(t, [at + inSec, at + inSec + 0.5], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    }),
+  })
+  if (mode === "typewriter") {
+    // Each word is typed as it is said: its letters land one by one across
+    // the first part of the word's time, each gold, then white. Letters not
+    // yet typed keep their place (invisible), so the line never reflows.
+    return (
+      <>
+        {words.map((w, i) => {
+          const from = starts[i]
+          const to = starts[i + 1] ?? endSec
+          const step = Math.min(
+            0.055,
+            Math.max(0.02, ((to - from) / Math.max(1, w.length)) * 0.8),
+          )
+          return (
+            <span key={i}>
+              {[...w].map((ch, k) => {
+                const { on, cool } = lightUp(from + k * step, 0.04)
+                return (
+                  <span
+                    key={k}
+                    style={{
+                      opacity: on,
+                      color: interpolateColors(
+                        cool,
+                        [0, 1],
+                        ["#F2C46B", restColor],
+                      ),
+                    }}
+                  >
+                    {ch}
+                  </span>
+                )
+              })}
+              {i < words.length - 1 ? " " : ""}
+            </span>
+          )
+        })}
+      </>
+    )
+  }
+  if (mode === "ghost") {
+    // The whole line is there from the start, faint; each word lights gold
+    // as it is said, then settles to white and stays white.
+    return (
+      <>
+        {words.map((w, i) => {
+          const { on, cool } = lightUp(starts[i] - 0.03, 0.12)
+          const color =
+            on < 1
+              ? interpolateColors(
+                  on,
+                  [0, 1],
+                  ["rgba(244,239,232,0.42)", "#F2C46B"],
+                )
+              : interpolateColors(cool, [0, 1], ["#F2C46B", restColor])
+          return (
+            <span key={i}>
+              <span
+                style={{
+                  color,
+                  // The caption's dark shadow would turn a faint word grey-black;
+                  // an unsaid word keeps only a whisper of it, so it reads light.
+                  ...(on < 1
+                    ? {
+                        textShadow: `0 1px 8px rgba(0,0,0,${(0.25 + 0.65 * on).toFixed(3)})`,
+                      }
+                    : {}),
+                }}
+              >
+                {w}
+              </span>
+              {i < words.length - 1 ? " " : ""}
+            </span>
+          )
+        })}
+      </>
+    )
+  }
   // Long enough to read as a glide, short enough to keep up with speech.
   const EDGE = 0.12
   return (
@@ -4360,7 +4470,14 @@ function CardBody({
           // and that is the whole rule. Keying it to the text-placement mode
           // left it silently off.
           ...(isLandscape
-            ? { width: "100%", textAlign: "center" as const }
+            ? {
+                width: "100%",
+                // Beside a side credit the sentence is left aligned in its
+                // column (owner's Figma, 2026-09-29).
+                textAlign: card.markColumn
+                  ? ("left" as const)
+                  : ("center" as const),
+              }
             : {}),
           // With real word timings the card reveals word by word in step
           // with the voice, so the block-level reveal would fight it; the
@@ -4383,12 +4500,82 @@ function CardBody({
         )}
       </p>
     )
+    // Bible references, shown as a footnote under the sentence rather than
+    // read aloud (owner's Figma "Bible Quotes", 2026-09-29): a hairline draws
+    // left to right, then the reference fades in under it.
+    const u = (n: number) => px((n * 390) / 1080)
+    const footT = frame / fps
+    const footLine = interpolate(footT, [0.35, 1.05], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: Easing.bezier(0.4, 0, 0.2, 1),
+    })
+    const footRef = interpolate(footT, [0.85, 1.55], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: Easing.bezier(0.4, 0, 0.2, 1),
+    })
+    const footnote =
+      isLandscape && card.verseRefs && card.verseRefs.length > 0 ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: u(24),
+            marginTop: u(28),
+          }}
+        >
+          <div
+            style={{
+              width: u(1139),
+              height: Math.max(1, u(1)),
+              background: "rgba(255,255,255,0.5)",
+              transform: `scaleX(${footLine.toFixed(4)})`,
+              transformOrigin: "left center",
+            }}
+          />
+          <div
+            style={{
+              fontFamily: SERIF,
+              fontWeight: 400,
+              fontSize: u(32),
+              lineHeight: `${u(50)}px`,
+              color: "rgba(255,255,255,0.92)",
+              opacity: 0.85 * footRef,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {card.verseRefs.join(", ")}
+          </div>
+        </div>
+      ) : null
     const inner = (
       <>
         {heading}
         {paragraph}
+        {footnote}
       </>
     )
+    if (card.markColumn) {
+      // Beside a side credit: the column's own box, top aligned with the
+      // credit group, so the sentence starts where the rule starts.
+      return (
+        <AbsoluteFill>
+          <div
+            style={{
+              position: "absolute",
+              top: card.markColumn.top,
+              left: card.markColumn.left - (bleedX ?? 0),
+              width: card.markColumn.width,
+              textAlign: "left",
+            }}
+          >
+            {paragraph}
+          </div>
+        </AbsoluteFill>
+      )
+    }
     // Portrait experiment: the pipeline feeds ONE sentence per reflection card,
     // so read them like stable subtitles — a FIXED TOP anchor (upper-middle of
     // the frame) means every one-sentence card starts at the SAME Y and grows
@@ -4433,7 +4620,7 @@ function CardBody({
           // at 1080p), and on 2026-09-26 another 40px: 128px. 16:9 ONLY.
           paddingBottom:
             wideText === "bottom"
-              ? px(WIDE_TEXT_BOTTOM)
+              ? (card.wideBottomPx ?? px(WIDE_TEXT_BOTTOM))
               : igSafe
                 ? igSafeBottom
                 : style.textBottom
@@ -6422,9 +6609,50 @@ export function DevotionalVideo(props: DevotionalInputProps) {
     return start
   })
 
+  // Side credits (owner's Figma "test", 2026-09-29): the credit in a column
+  // left of the text for three sentences; see SideSourceMark.
+  const sideMarks =
+    isLandscape && wideText === "bottom" && props.markLayout === "side"
+  const sideWindows = useSideMarkLayout({
+    enabled: sideMarks,
+    cards: props.cards,
+    frameW: width,
+    frameH: height,
+    textFamily: SANS,
+    textPx: px(22),
+  })
+  const layoutCard = (card: DevotionalCard, i: number): DevotionalCard => {
+    if (!sideMarks || card.kind !== "reflection-focus") return card
+    const w = sideWindows.find((x) => i >= x.mark && i <= x.last)
+    // The sentence rides the drawer: beside the rule at the left edge while
+    // it is closed, pushed to its column as it opens. Its width never changes,
+    // so the words do not rewrap while it moves.
+    const shift = (() => {
+      if (!w) return 0
+      const from = frames[w.mark].from
+      const to = frames[w.last].from + frames[w.last].durationInFrames
+      const { open } = sideDrawer((frame - from) / fps, (to - from) / fps)
+      return (1 - open) * (w.textLeft - w.left - px(((2 + 56) * 390) / 1080))
+    })()
+    return {
+      ...card,
+      wideBottomPx: (SIDE_BOTTOM * Math.min(width, height)) / 1080,
+      ...(w
+        ? {
+            markColumn: {
+              top: w.top,
+              left: w.textLeft - shift,
+              width: w.textWidth,
+            },
+          }
+        : {}),
+    }
+  }
+
   return (
     <AbsoluteFill style={{ backgroundColor: "#0c0805" }}>
-      {props.cards.map((card, i) => {
+      {props.cards.map((rawCard, i) => {
+        const card = layoutCard(rawCard, i)
         // Delay the FIRST card's narration by the intro hold so the video
         // opens on a calm, silent beat before the voice begins.
         const audioDelay = perCardAudio && i === 0 ? introFrames : 0
@@ -6491,6 +6719,9 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                 }}
               >
                 <CardLayer
+                  {...(props.filmCaptionStyle
+                    ? { filmCaptionStyle: props.filmCaptionStyle }
+                    : {})}
                   card={card}
                   style={style}
                   px={px}
@@ -6525,7 +6756,16 @@ export function DevotionalVideo(props: DevotionalInputProps) {
       })}
       {/* Source credits (16:9): their own layer, so a credit can outlast
           the one-sentence card it opens. See SourceMarkOverlay. */}
-      {isLandscape && wideText === "bottom" ? (
+      {sideMarks ? (
+        <SideMarkOverlay
+          windows={sideWindows}
+          cards={props.cards}
+          frames={frames}
+          frame={frame}
+          fps={fps}
+          frameH={Math.min(width, height)}
+        />
+      ) : isLandscape && wideText === "bottom" ? (
         <SourceMarkOverlay
           cards={props.cards}
           frames={frames}
@@ -6651,7 +6891,9 @@ function CardLayer({
   coverSecondaryLine,
   textFont,
   bleedX,
+  filmCaptionStyle,
 }: {
+  filmCaptionStyle?: "karaoke" | "typewriter" | "ghost"
   card: DevotionalCard
   style: DevotionalStyle
   px: (n: number) => number
@@ -6710,6 +6952,7 @@ function CardLayer({
       />
       {card.kind === "video" && card.subtitles?.length ? (
         <VideoSubtitles
+          {...(filmCaptionStyle ? { karaokeMode: filmCaptionStyle } : {})}
           cues={card.subtitles}
           style={style}
           px={px}
