@@ -13,6 +13,12 @@ import {
   type DeepLinkEntry,
   type DeepLinkOrigin,
 } from "../../deepLinkOrigin"
+import {
+  PUSH_ANNOUNCEMENT_FAMILY,
+  PUSH_ANNOUNCEMENT_MAX_PAYLOAD_BYTES,
+  PUSH_ANNOUNCEMENT_PAYLOAD_VERSION,
+} from "../../push/announcementPayload"
+import { PUSH_UNRESOLVABLE_DESTINATION_MESSAGE } from "../../push/copy"
 import { LAPSE_REMINDER_PAYLOAD_VERSION } from "../constants"
 import {
   LAPSE_REMINDER_HOME_TARGET,
@@ -28,6 +34,21 @@ import {
 } from "../tapHandler"
 
 const SLUG = "the-birth-of-jesus"
+
+/** KTD14's shape: 32 random bytes base64url. Opaque to the app. */
+const NONCE = "aBcD1234_-efGHijkLMNopQRstuVWXyz0123456789A"
+
+/** An announcement as admin builds it and the OS hands it back. */
+function announcement(overrides: Record<string, unknown> = {}) {
+  return {
+    version: PUSH_ANNOUNCEMENT_PAYLOAD_VERSION,
+    family: PUSH_ANNOUNCEMENT_FAMILY,
+    kind: "video",
+    slug: SLUG,
+    nonce: NONCE,
+    ...overrides,
+  } as unknown
+}
 
 /** A payload as the OS hands it back: a plain object, trusted by nobody. */
 function payload(target: string, overrides: Record<string, unknown> = {}) {
@@ -46,7 +67,12 @@ function watchPayload(kind: "day1" | "day7", slug: string) {
 type Harness = {
   deps: LapseReminderTapDeps
   navigate: jest.Mock<void, [LapseReminderTapTarget]>
-  registerArrival: jest.Mock<void, [string, DeepLinkEntry, DeepLinkOrigin]>
+  registerArrival: jest.Mock<
+    void,
+    [string, DeepLinkEntry, DeepLinkOrigin, string | null]
+  >
+  reportOpen: jest.Mock<void, [string]>
+  showNotice: jest.Mock<void, [string]>
   clearLastResponse: jest.Mock
   unsubscribe: jest.Mock
   telemetry: { info: jest.Mock; warn: jest.Mock; error: jest.Mock }
@@ -63,8 +89,10 @@ function harness(
   const navigate = jest.fn<void, [LapseReminderTapTarget]>()
   const registerArrival = jest.fn<
     void,
-    [string, DeepLinkEntry, DeepLinkOrigin]
+    [string, DeepLinkEntry, DeepLinkOrigin, string | null]
   >()
+  const reportOpen = jest.fn<void, [string]>()
+  const showNotice = jest.fn<void, [string]>()
   const clearLastResponse = jest.fn()
   const telemetry = { info: jest.fn(), warn: jest.fn(), error: jest.fn() }
   const deps: LapseReminderTapDeps = {
@@ -82,6 +110,8 @@ function harness(
     enabled: true,
     navigate,
     registerArrival,
+    reportOpen,
+    showNotice,
     telemetry,
     ...overrides,
   }
@@ -89,6 +119,8 @@ function harness(
     deps,
     navigate,
     registerArrival,
+    reportOpen,
+    showNotice,
     clearLastResponse,
     unsubscribe,
     telemetry,
@@ -121,9 +153,13 @@ describe("decideLapseReminderTap", () => {
     expect(decideLapseReminderTap(watchPayload("day7", SLUG), true)).toEqual({
       target: { screen: "watch", slug: SLUG },
       outcome: "watch",
+      family: "reminder",
       reminderKind: "day7",
+      destinationKind: null,
       slug: SLUG,
       reason: null,
+      nonce: null,
+      notice: false,
     })
   })
 
@@ -133,9 +169,13 @@ describe("decideLapseReminderTap", () => {
     ).toEqual({
       target: { screen: "home" },
       outcome: "home",
+      family: "reminder",
       reminderKind: "day1",
+      destinationKind: null,
       slug: null,
       reason: null,
+      nonce: null,
+      notice: false,
     })
   })
 
@@ -152,9 +192,13 @@ describe("decideLapseReminderTap", () => {
       expect(decideLapseReminderTap(data, true)).toEqual({
         target: { screen: "home" },
         outcome: "rejected",
+        family: "reminder",
         reminderKind: null,
+        destinationKind: null,
         slug: null,
         reason,
+        nonce: null,
+        notice: false,
       })
     },
   )
@@ -168,6 +212,10 @@ describe("decideLapseReminderTap", () => {
 
     expect(JSON.stringify(decision)).not.toContain("a-secret-value")
     expect(Object.keys(decision).sort()).toEqual([
+      "destinationKind",
+      "family",
+      "nonce",
+      "notice",
       "outcome",
       "reason",
       "reminderKind",
@@ -180,9 +228,13 @@ describe("decideLapseReminderTap", () => {
     expect(decideLapseReminderTap(watchPayload("day7", SLUG), false)).toEqual({
       target: null,
       outcome: "gate_off",
+      family: "reminder",
       reminderKind: "day7",
+      destinationKind: null,
       slug: SLUG,
       reason: null,
+      nonce: null,
+      notice: false,
     })
   })
 
@@ -192,9 +244,13 @@ describe("decideLapseReminderTap", () => {
     ).toEqual({
       target: null,
       outcome: "gate_off",
+      family: "reminder",
       reminderKind: null,
+      destinationKind: null,
       slug: null,
       reason: "malformed_target",
+      nonce: null,
+      notice: false,
     })
   })
 
@@ -230,13 +286,20 @@ describe("the cold path", () => {
 
     handler.selectionChanged(READY)
 
-    expect(h.registerArrival).toHaveBeenCalledWith(SLUG, "cold", "reminder")
+    expect(h.registerArrival).toHaveBeenCalledWith(
+      SLUG,
+      "cold",
+      "reminder",
+      null,
+    )
     expect(h.navigate).toHaveBeenCalledTimes(1)
     expect(h.navigate).toHaveBeenCalledWith({ screen: "watch", slug: SLUG })
     expect(h.telemetry.info).toHaveBeenCalledWith("lapse_reminder.tap", {
       outcome: "watch",
       arrival: "cold",
+      family: "reminder",
       reminder_kind: "day7",
+      destination_kind: null,
       content_id: SLUG,
       parse_reason: null,
     })
@@ -265,7 +328,9 @@ describe("the cold path", () => {
     expect(h.telemetry.info).toHaveBeenCalledWith("lapse_reminder.tap", {
       outcome: "home",
       arrival: "cold",
+      family: "reminder",
       reminder_kind: "day1",
+      destination_kind: null,
       content_id: null,
       parse_reason: null,
     })
@@ -280,7 +345,9 @@ describe("the cold path", () => {
     expect(h.telemetry.info).toHaveBeenCalledWith("lapse_reminder.tap", {
       outcome: "rejected",
       arrival: "cold",
+      family: "reminder",
       reminder_kind: null,
+      destination_kind: null,
       content_id: null,
       parse_reason: "version_mismatch",
     })
@@ -419,12 +486,19 @@ describe("the warm path", () => {
 
     h.emitResponse(watchPayload("day7", SLUG))
 
-    expect(h.registerArrival).toHaveBeenCalledWith(SLUG, "warm", "reminder")
+    expect(h.registerArrival).toHaveBeenCalledWith(
+      SLUG,
+      "warm",
+      "reminder",
+      null,
+    )
     expect(h.navigate).toHaveBeenCalledWith({ screen: "watch", slug: SLUG })
     expect(h.telemetry.info).toHaveBeenCalledWith("lapse_reminder.tap", {
       outcome: "watch",
       arrival: "warm",
+      family: "reminder",
       reminder_kind: "day7",
+      destination_kind: null,
       content_id: SLUG,
       parse_reason: null,
     })
@@ -483,7 +557,9 @@ describe("the build-time gate (KTD8)", () => {
         {
           outcome: "gate_off",
           arrival: "cold",
+          family: "reminder",
           reminder_kind: "day7",
+          destination_kind: null,
           content_id: SLUG,
           parse_reason: null,
         },
@@ -610,8 +686,8 @@ describe("through the real deep-link registry", () => {
   function realHarness(lastResponse: unknown, enabled = true) {
     const h = harness(lastResponse, {
       enabled,
-      registerArrival: (slug, entry, origin) =>
-        registerDeepLinkSlug(slug, entry, origin),
+      registerArrival: (slug, entry, origin, campaign) =>
+        registerDeepLinkSlug(slug, entry, origin, Date.now(), campaign),
     })
     return h
   }
@@ -676,5 +752,310 @@ describe("through the real deep-link registry", () => {
     jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
 
     expect(consumeDeepLinkArrival(SLUG)).toBeNull()
+  })
+})
+
+// U8. The second payload family on the same handler: a notification names a
+// DESTINATION and one opaque campaign identifier, and the reminder path above
+// must keep behaving exactly as it did.
+describe("decideLapseReminderTap on an announcement", () => {
+  it("sends a video destination to the watch route (AE13)", () => {
+    expect(decideLapseReminderTap(announcement(), true)).toEqual({
+      target: { screen: "watch", slug: SLUG },
+      outcome: "watch",
+      family: "announcement",
+      reminderKind: null,
+      destinationKind: "video",
+      slug: SLUG,
+      reason: null,
+      nonce: NONCE,
+      notice: false,
+    })
+  })
+
+  it("sends a series destination to the series route (AE13)", () => {
+    const decision = decideLapseReminderTap(
+      announcement({ kind: "series", slug: "washi-gospel" }),
+      true,
+    )
+
+    expect(decision.target).toEqual({ screen: "series", slug: "washi-gospel" })
+    expect(decision.outcome).toBe("series")
+    expect(decision.destinationKind).toBe("series")
+    expect(decision.notice).toBe(false)
+  })
+
+  it("sends an experience destination to the experience route", () => {
+    const decision = decideLapseReminderTap(
+      announcement({ kind: "experience", slug: "watch-home" }),
+      true,
+    )
+
+    expect(decision.target).toEqual({
+      screen: "experience",
+      slug: "watch-home",
+    })
+    expect(decision.outcome).toBe("experience")
+    expect(decision.destinationKind).toBe("experience")
+  })
+
+  it("opens home and asks for the message on an unknown kind (AE14)", () => {
+    const decision = decideLapseReminderTap(
+      announcement({ kind: "collection" }),
+      true,
+    )
+
+    expect(decision.target).toEqual({ screen: "home" })
+    expect(decision.outcome).toBe("unresolvable")
+    expect(decision.notice).toBe(true)
+    expect(decision.reason).toBe("unknown_kind")
+    expect(decision.slug).toBeNull()
+  })
+
+  it("still carries the nonce when the destination is unreadable (R23)", () => {
+    // Admin may name a kind a released build does not know. The tap is still an
+    // OPEN, so the campaign's report must not silently under-count it.
+    const decision = decideLapseReminderTap(
+      announcement({ kind: "collection" }),
+      true,
+    )
+
+    expect(decision.nonce).toBe(NONCE)
+  })
+
+  it("opens home and asks for the message on an oversized payload", () => {
+    const decision = decideLapseReminderTap(
+      announcement({ note: "a".repeat(PUSH_ANNOUNCEMENT_MAX_PAYLOAD_BYTES) }),
+      true,
+    )
+
+    expect(decision.target).toEqual({ screen: "home" })
+    expect(decision.outcome).toBe("unresolvable")
+    expect(decision.reason).toBe("too_large")
+    expect(decision.notice).toBe(true)
+    // Nothing is trusted out of an over-cap payload, the nonce included.
+    expect(decision.nonce).toBeNull()
+  })
+
+  it("routes an announcement even with the reminders gate off (KTD12)", () => {
+    // The gate belongs to the LOCAL reminders. An announcement has already been
+    // delivered by the push service, and opening it is a different feature.
+    const decision = decideLapseReminderTap(announcement(), false)
+
+    expect(decision.target).toEqual({ screen: "watch", slug: SLUG })
+    expect(decision.outcome).toBe("watch")
+  })
+
+  it("keeps the reminder contract on a reminder payload", () => {
+    const decision = decideLapseReminderTap(watchPayload("day7", SLUG), true)
+
+    expect(decision.family).toBe("reminder")
+    expect(decision.nonce).toBeNull()
+    expect(decision.destinationKind).toBeNull()
+    expect(decision.notice).toBe(false)
+    expect(decision.target).toEqual({ screen: "watch", slug: SLUG })
+  })
+})
+
+describe("an announcement tap", () => {
+  it("reports the open BEFORE it navigates (R23)", () => {
+    const h = harness(announcement())
+    const order: string[] = []
+    h.reportOpen.mockImplementation(() => order.push("report"))
+    h.navigate.mockImplementation(() => order.push("navigate"))
+    createLapseReminderTapHandler(h.deps).attach()
+
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+    expect(h.reportOpen).toHaveBeenCalledWith(NONCE)
+    expect(h.reportOpen).toHaveBeenCalledTimes(1)
+    expect(order).toEqual(["report", "navigate"])
+  })
+
+  it("navigates when the report throws, and never retries it", () => {
+    const h = harness(announcement())
+    h.reportOpen.mockImplementation(() => {
+      throw new Error("no network")
+    })
+    createLapseReminderTapHandler(h.deps).attach()
+
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+    expect(h.navigate).toHaveBeenCalledWith({ screen: "watch", slug: SLUG })
+    expect(h.reportOpen).toHaveBeenCalledTimes(1)
+    expect(h.telemetry.info).toHaveBeenCalledWith("lapse_reminder.tap_failed", {
+      step: "report",
+      error_message: "no network",
+    })
+  })
+
+  it("reports one open per tap, not one per attach", () => {
+    const h = harness(announcement())
+    const handler = createLapseReminderTapHandler(h.deps)
+    const detach = handler.attach()
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+    detach()
+
+    expect(h.reportOpen).toHaveBeenCalledTimes(1)
+    expect(h.clearLastResponse).toHaveBeenCalled()
+  })
+
+  it("shows the copy constant on an unresolvable destination (AE14)", () => {
+    const h = harness(announcement({ kind: "collection" }))
+    createLapseReminderTapHandler(h.deps).attach()
+
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+    expect(h.showNotice).toHaveBeenCalledWith(
+      PUSH_UNRESOLVABLE_DESTINATION_MESSAGE,
+    )
+    expect(h.navigate).toHaveBeenCalledWith({ screen: "home" })
+  })
+
+  it("navigates even when showing the message throws", () => {
+    const h = harness(announcement({ kind: "collection" }))
+    h.showNotice.mockImplementation(() => {
+      throw new Error("no host")
+    })
+    createLapseReminderTapHandler(h.deps).attach()
+
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+    expect(h.navigate).toHaveBeenCalledWith({ screen: "home" })
+    expect(h.telemetry.info).toHaveBeenCalledWith("lapse_reminder.tap_failed", {
+      step: "notice",
+      error_message: "no host",
+    })
+  })
+
+  it("shows no message when the destination resolved", () => {
+    const h = harness(announcement())
+    createLapseReminderTapHandler(h.deps).attach()
+
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+    expect(h.showNotice).not.toHaveBeenCalled()
+  })
+
+  it("registers a campaign arrival carrying the nonce for a VIDEO only", () => {
+    const h = harness(announcement())
+    createLapseReminderTapHandler(h.deps).attach()
+
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+    expect(h.registerArrival).toHaveBeenCalledWith(
+      SLUG,
+      "cold",
+      "campaign",
+      NONCE,
+    )
+  })
+
+  it("registers nothing for a series or an experience destination", () => {
+    // Only the watch route reads an arrival; a list route has no episode yet.
+    for (const kind of ["series", "experience"] as const) {
+      const h = harness(announcement({ kind }))
+      createLapseReminderTapHandler(h.deps).attach()
+      jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+      expect(h.registerArrival).not.toHaveBeenCalled()
+    }
+  })
+
+  it("keeps a reminder arrival on the reminder origin", () => {
+    // Anti-vacuous for the origin above: a reminder must not become a campaign.
+    const h = harness(watchPayload("day1", SLUG))
+    createLapseReminderTapHandler(h.deps).attach()
+
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+    expect(h.registerArrival).toHaveBeenCalledWith(
+      SLUG,
+      "cold",
+      "reminder",
+      null,
+    )
+    expect(h.reportOpen).not.toHaveBeenCalled()
+  })
+
+  it("routes a warm announcement tap through the listener (AE13)", () => {
+    const h = harness(null)
+    createLapseReminderTapHandler(h.deps).attach()
+
+    h.emitResponse(announcement({ kind: "series", slug: "washi-gospel" }))
+
+    expect(h.navigate).toHaveBeenCalledWith({
+      screen: "series",
+      slug: "washi-gospel",
+    })
+    expect(h.reportOpen).toHaveBeenCalledWith(NONCE)
+  })
+
+  it("waits for the experience selection on a cold announcement tap", () => {
+    const h = harness(announcement())
+    const handler = createLapseReminderTapHandler(h.deps)
+    handler.attach()
+
+    expect(h.navigate).not.toHaveBeenCalled()
+    handler.selectionChanged(READY)
+
+    expect(h.navigate).toHaveBeenCalledWith({ screen: "watch", slug: SLUG })
+  })
+
+  it("clears the last response so a remount cannot re-route", () => {
+    const h = harness(announcement())
+    createLapseReminderTapHandler(h.deps).attach()
+
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+    expect(h.clearLastResponse).toHaveBeenCalledTimes(1)
+  })
+
+  it("names the family and the destination kind in the tap event", () => {
+    const h = harness(announcement({ kind: "series", slug: "washi-gospel" }))
+    createLapseReminderTapHandler(h.deps).attach()
+
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+    expect(tapEvents(h.telemetry)).toEqual([
+      [
+        "lapse_reminder.tap",
+        {
+          outcome: "series",
+          arrival: "cold",
+          family: "announcement",
+          reminder_kind: null,
+          destination_kind: "series",
+          content_id: "washi-gospel",
+          parse_reason: null,
+        },
+      ],
+    ])
+  })
+
+  it("never puts the campaign identifier in a log", () => {
+    const h = harness(announcement())
+    createLapseReminderTapHandler(h.deps).attach()
+
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+    expect(JSON.stringify(h.telemetry.info.mock.calls)).not.toContain(NONCE)
+  })
+})
+
+describe("an announcement through the real deep-link registry", () => {
+  it("leaves a campaign arrival the watch route can claim (KTD8)", () => {
+    const h = harness(announcement(), {
+      registerArrival: (slug, entry, origin, campaign) =>
+        registerDeepLinkSlug(slug, entry, origin, Date.now(), campaign),
+    })
+    createLapseReminderTapHandler(h.deps).attach()
+    jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
+
+    expect(consumeDeepLinkArrival(SLUG)).toEqual({
+      entry: "cold",
+      origin: "campaign",
+      campaign: NONCE,
+    })
   })
 })

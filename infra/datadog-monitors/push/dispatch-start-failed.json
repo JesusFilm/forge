@@ -1,0 +1,23 @@
+{
+  "name": "[forge-admin] push dispatch_start_failed — a campaign run never started",
+  "type": "log alert",
+  "query": "logs(\"service:forge-admin \\\"event=dispatch_start_failed\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
+  "message": "An editor scheduled, sent, or tested a campaign and the durable run did not start. The ledger row is marked failed and the campaign is back at tested with the reason on its row, so the editor can try again.\n\nUsual cause: the Postgres workflow queue is unreachable, or the worker service is down. Check the workflows dashboard for an online worker with a heartbeat under 45 seconds, then read the campaign's own error line.\n\nNo phone received anything on this path, so there is nothing to retract.\n\n@urim.chae@tandem.org.nz",
+  "tags": [
+    "service:forge-admin",
+    "env:prod",
+    "team:forge",
+    "feature:push-campaigns",
+    "area:push"
+  ],
+  "priority": 2,
+  "options": {
+    "thresholds": { "critical": 1 },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "renotify_interval": 60,
+    "enable_logs_sample": true,
+    "include_tags": true,
+    "groupby_simple_monitor": false
+  }
+}
