@@ -20,6 +20,7 @@ import {
   emptySyncStats,
 } from "./types"
 import { acquireSyncLock, refreshSyncLock, releaseSyncLock } from "./lock"
+import { CoreGraphQLError } from "./core-client"
 import {
   getWatermark,
   advanceWatermark,
@@ -65,6 +66,48 @@ const PHASE_TABLES: Record<SyncPhase, string[]> = {
   "video-subtitles": ["video_subtitle"],
   "video-dubs": ["video_dub", "mux_video"],
   "video-dub-downloads": ["video_dub_download"],
+}
+
+// Phases that resolve parent rows written by an earlier phase and skip
+// (not fail) Core rows whose parent is missing — Core carries orphans for
+// unpublished videos, so those skips cannot count as errors (#1818). A
+// phase's watermark therefore must never pass its parent's: otherwise, while
+// the parent is failing, the child keeps advancing past rows it skipped and
+// an incremental run never re-reads them once the parent recovers.
+const PHASE_WATERMARK_PARENT: Partial<Record<SyncPhase, SyncPhase>> = {
+  "video-images": "videos",
+  "video-subtitles": "videos",
+  "video-dubs": "videos",
+  "video-dub-downloads": "video-dubs",
+}
+
+async function resolveWatermarkTarget(
+  prisma: PrismaClient,
+  phase: SyncPhase,
+  fetchStartedAt: string,
+): Promise<string | null> {
+  const parent = PHASE_WATERMARK_PARENT[phase]
+  if (!parent) return fetchStartedAt
+  const parentWatermark = await getWatermark(prisma, parent)
+  if (!parentWatermark) return null
+  return Date.parse(parentWatermark) < Date.parse(fetchStartedAt)
+    ? parentWatermark
+    : fetchStartedAt
+}
+
+function describePhaseError(err: unknown) {
+  return {
+    error: err instanceof Error ? err.message : String(err),
+    ...(err instanceof CoreGraphQLError
+      ? {
+          coreErrors: err.errors.map((detail) => ({
+            message: detail.message,
+            path: detail.path,
+            code: detail.extensions?.code,
+          })),
+        }
+      : {}),
+  }
 }
 
 const LOCK_HEARTBEAT_INTERVAL_MS = 60_000
@@ -198,17 +241,32 @@ export async function runSyncPhase(
         JSON.stringify({
           event: "core-sync.phase.error",
           phase,
-          error: err instanceof Error ? err.message : String(err),
+          ...describePhaseError(err),
           service: "forge-admin",
         }),
       )
       stats = { ...emptySyncStats, errors: 1 }
     }
 
-    // Advance watermark only on zero errors
-    if (stats.errors === 0) {
-      await advanceWatermark(prisma, phase, fetchStartedAt, stats)
+    // Advance watermark only on zero errors, and never past the parent's
+    const watermarkTarget =
+      stats.errors === 0
+        ? await resolveWatermarkTarget(prisma, phase, fetchStartedAt)
+        : null
+    if (watermarkTarget) {
+      await advanceWatermark(prisma, phase, watermarkTarget, stats)
     } else {
+      if (stats.errors === 0) {
+        console.warn(
+          JSON.stringify({
+            event: "core-sync.phase.watermark-held",
+            phase,
+            parent: PHASE_WATERMARK_PARENT[phase],
+            reason: "parent_never_synced",
+            service: "forge-admin",
+          }),
+        )
+      }
       await updateStatsOnly(prisma, phase, stats).catch(() => {})
     }
 
