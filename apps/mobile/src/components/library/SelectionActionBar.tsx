@@ -2,6 +2,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useTypography } from "../../hooks/useTypography"
 import { ACCENT, TEXT_ON_OVERLAY, TEXT_PRIMARY } from "../../lib/color"
 import { formatLibraryBytes } from "../../lib/libraryDownloads"
 import { feedback } from "../../styles/shared"
@@ -30,6 +31,7 @@ export function SelectionActionBar({
   onDeletePress,
 }: SelectionActionBarProps) {
   const insets = useSafeAreaInsets()
+  const typography = useTypography()
 
   // On iOS the bar takes a UIKit tab bar's box: flush, full width, its own
   // height above the home indicator. Android keeps its flush bar as it was.
@@ -68,7 +70,9 @@ export function SelectionActionBar({
           accessibilityLabel="Retry failed downloads"
         >
           <Ionicons name="refresh" size={17} color={TEXT_PRIMARY} />
-          <Text style={styles.ghostText}>Retry failed</Text>
+          <Text style={[styles.ghostText, typography.bodySmall]}>
+            Retry failed
+          </Text>
         </Pressable>
       )}
       <Pressable
@@ -87,7 +91,7 @@ export function SelectionActionBar({
         }
       >
         <Ionicons name="trash-outline" size={17} color={TEXT_ON_OVERLAY} />
-        <Text style={styles.dangerText}>
+        <Text style={[styles.dangerText, typography.bodySmall]}>
           {count > 0
             ? `Delete ${count} · ${formatLibraryBytes(combinedBytes)}`
             : "Delete"}
@@ -137,13 +141,11 @@ const styles = StyleSheet.create({
   ghostText: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 15.5,
     fontWeight: "700",
   },
   dangerText: {
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
-    fontSize: 15.5,
     fontWeight: "700",
   },
 })

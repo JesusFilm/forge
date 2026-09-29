@@ -52,12 +52,14 @@ function NoticeCard({
   dismissLabel: string
   onDismiss: () => void
 }) {
+  const typography = useTypography()
   return (
     <View style={styles.noticeCard}>
       <Ionicons name={icon} size={18} color={iconColor} />
       <Text
         style={[
           styles.noticeText,
+          typography.caption,
           tone === "error" ? styles.noticeTextError : null,
         ]}
       >
@@ -139,7 +141,7 @@ export function MyWatchHeader() {
               >
                 Sign in · coming soon
               </Text>
-              <Text style={styles.signInSubtitle}>
+              <Text style={[styles.signInSubtitle, typography.caption]}>
                 Accounts are not available yet
               </Text>
             </View>
@@ -185,7 +187,7 @@ export function MyWatchHeader() {
             <Text style={[styles.signInTitle, typography.titleSmall]}>
               {signingIn ? "Signing in…" : "Sign in"}
             </Text>
-            <Text style={styles.signInSubtitle}>
+            <Text style={[styles.signInSubtitle, typography.caption]}>
               Keep your place across devices
             </Text>
           </View>
@@ -225,7 +227,9 @@ export function MyWatchHeader() {
         <SessionReplayView.MaskAll style={styles.identity}>
           <View style={[styles.avatar, styles.accountAvatar]}>
             {initial ? (
-              <Text style={styles.avatarInitial}>{initial}</Text>
+              <Text style={[styles.avatarInitial, typography.headingScale.h2]}>
+                {initial}
+              </Text>
             ) : (
               <Ionicons name="person" size={34} color={TEXT_PRIMARY} />
             )}
@@ -298,7 +302,6 @@ const styles = StyleSheet.create({
   avatarInitial: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 30,
     fontWeight: "700",
   },
   name: {
@@ -320,8 +323,6 @@ const styles = StyleSheet.create({
     flex: 1,
     color: TEXT_SECONDARY,
     fontFamily: "System",
-    fontSize: 13,
-    lineHeight: 16,
   },
   noticeTextError: {
     color: TEXT_PRIMARY,
@@ -346,7 +347,6 @@ const styles = StyleSheet.create({
   signInSubtitle: {
     color: TEXT_SECONDARY,
     fontFamily: "System",
-    fontSize: 13,
     marginTop: 2,
   },
   // Title only. The same dim on the subtitle gives about 2.6:1 on

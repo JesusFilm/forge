@@ -6,6 +6,7 @@ import { decidePostReauth } from "../../lib/accountDeletion"
 import { deleteAccount, signInWithHostedPage } from "../../lib/authActions"
 import { getAuthSession } from "../../lib/authSession"
 import { TEXT_PRIMARY, TEXT_SECONDARY, WARNING_COLOR } from "../../lib/color"
+import { useTypography } from "../../hooks/useTypography"
 import { feedback } from "../../styles/shared"
 
 const DANGER = "#ef4444"
@@ -59,6 +60,7 @@ function signedInUserId(): string | null {
  * the signed-out transition clears everything.
  */
 export function DeleteAccountFlow() {
+  const typography = useTypography()
   const [state, setState] = useState<FlowState>({ phase: "idle" })
   // Busy guards as refs: press handlers can fire twice off one stale
   // render, so phase checks alone cannot make the second call a no-op.
@@ -158,7 +160,9 @@ export function DeleteAccountFlow() {
         accessibilityLabel="Delete account"
         {...{ "dd-action-name": "delete-account-entry" }}
       >
-        <Text style={styles.entryLabel}>Delete account</Text>
+        <Text style={[styles.entryLabel, typography.bodySmall]}>
+          Delete account
+        </Text>
       </Pressable>
     )
   }
@@ -167,8 +171,10 @@ export function DeleteAccountFlow() {
     <View style={styles.panel}>
       {state.phase === "confirm" || state.phase === "busy" ? (
         <>
-          <Text style={styles.panelTitle}>Delete this account?</Text>
-          <Text style={styles.panelBody}>
+          <Text style={[styles.panelTitle, typography.bodySmall]}>
+            Delete this account?
+          </Text>
+          <Text style={[styles.panelBody, typography.caption]}>
             This permanently deletes your Jesus Film account everywhere —
             including your watch history and saved progress. This cannot be
             undone.
@@ -185,7 +191,7 @@ export function DeleteAccountFlow() {
               accessibilityLabel="Permanently delete account"
               {...{ "dd-action-name": "delete-account-confirm" }}
             >
-              <Text style={styles.dangerLabel}>
+              <Text style={[styles.dangerLabel, typography.bodySmall]}>
                 {state.phase === "busy" ? "Deleting…" : "Delete permanently"}
               </Text>
             </Pressable>
@@ -199,7 +205,9 @@ export function DeleteAccountFlow() {
               accessibilityRole="button"
               accessibilityLabel="Cancel deletion"
             >
-              <Text style={styles.cancelLabel}>Cancel</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                Cancel
+              </Text>
             </Pressable>
           </View>
         </>
@@ -217,7 +225,7 @@ export function DeleteAccountFlow() {
                 color={TEXT_PRIMARY}
               />
             )}
-            <Text style={styles.panelBody}>
+            <Text style={[styles.panelBody, typography.caption]}>
               {state.phase === "needsReauth" && state.signInFailed
                 ? REAUTH_FAILED_MESSAGE
                 : REAUTH_PROMPT_MESSAGE}
@@ -234,7 +242,7 @@ export function DeleteAccountFlow() {
               accessibilityRole="button"
               accessibilityLabel="Sign in again"
             >
-              <Text style={styles.cancelLabel}>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
                 {state.phase === "sheetOpen" ? "Signing in…" : "Sign in again"}
               </Text>
             </Pressable>
@@ -250,7 +258,9 @@ export function DeleteAccountFlow() {
               accessibilityRole="button"
               accessibilityLabel="Cancel deletion"
             >
-              <Text style={styles.cancelLabel}>Cancel</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                Cancel
+              </Text>
             </Pressable>
           </View>
         </>
@@ -260,7 +270,9 @@ export function DeleteAccountFlow() {
         <>
           <View style={styles.noticeRow}>
             <Ionicons name="warning" size={18} color={WARNING_COLOR} />
-            <Text style={styles.panelBody}>{WRONG_ACCOUNT_MESSAGE}</Text>
+            <Text style={[styles.panelBody, typography.caption]}>
+              {WRONG_ACCOUNT_MESSAGE}
+            </Text>
           </View>
           <View style={styles.actionRow}>
             <Pressable
@@ -278,7 +290,9 @@ export function DeleteAccountFlow() {
               accessibilityRole="button"
               accessibilityLabel="Try signing in again"
             >
-              <Text style={styles.cancelLabel}>Try again</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                Try again
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => setState({ phase: "idle" })}
@@ -289,7 +303,9 @@ export function DeleteAccountFlow() {
               accessibilityRole="button"
               accessibilityLabel="Cancel deletion"
             >
-              <Text style={styles.cancelLabel}>Cancel</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                Cancel
+              </Text>
             </Pressable>
           </View>
         </>
@@ -299,7 +315,9 @@ export function DeleteAccountFlow() {
         <>
           <View style={styles.noticeRow}>
             <Ionicons name="warning" size={18} color={WARNING_COLOR} />
-            <Text style={styles.panelBody}>{DELETE_FAILED_MESSAGE}</Text>
+            <Text style={[styles.panelBody, typography.caption]}>
+              {DELETE_FAILED_MESSAGE}
+            </Text>
           </View>
           <View style={styles.actionRow}>
             <Pressable
@@ -311,7 +329,9 @@ export function DeleteAccountFlow() {
               accessibilityRole="button"
               accessibilityLabel="Try deleting again"
             >
-              <Text style={styles.cancelLabel}>Try again</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                Try again
+              </Text>
             </Pressable>
           </View>
         </>
@@ -325,7 +345,9 @@ export function DeleteAccountFlow() {
               size={18}
               color={TEXT_PRIMARY}
             />
-            <Text style={styles.panelBody}>{DELETE_UNCONFIRMED_MESSAGE}</Text>
+            <Text style={[styles.panelBody, typography.caption]}>
+              {DELETE_UNCONFIRMED_MESSAGE}
+            </Text>
           </View>
           <View style={styles.actionRow}>
             <Pressable
@@ -337,7 +359,9 @@ export function DeleteAccountFlow() {
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
-              <Text style={styles.cancelLabel}>Close</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                Close
+              </Text>
             </Pressable>
           </View>
         </>
@@ -355,7 +379,6 @@ const styles = StyleSheet.create({
   entryLabel: {
     color: DANGER,
     fontFamily: "System",
-    fontSize: 14,
   },
   panel: {
     gap: 10,
@@ -364,15 +387,12 @@ const styles = StyleSheet.create({
   panelTitle: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 15,
     fontWeight: "700",
   },
   panelBody: {
     flex: 1,
     color: TEXT_SECONDARY,
     fontFamily: "System",
-    fontSize: 13,
-    lineHeight: 16,
   },
   noticeRow: {
     flexDirection: "row",
@@ -394,7 +414,6 @@ const styles = StyleSheet.create({
   dangerLabel: {
     color: "#ffffff",
     fontFamily: "System",
-    fontSize: 14,
     fontWeight: "700",
   },
   cancelButton: {
@@ -405,7 +424,6 @@ const styles = StyleSheet.create({
   cancelLabel: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 14,
     fontWeight: "600",
   },
 })

@@ -195,7 +195,9 @@ function DownloadTileBase({ tile, width, onPress }: DownloadTileProps) {
           </View>
         ) : view.duration != null ? (
           <View style={styles.bottomBadge}>
-            <Text style={styles.durationText}>{view.duration}</Text>
+            <Text style={[card.badgeText, typography.caption]}>
+              {view.duration}
+            </Text>
           </View>
         ) : null}
       </View>
@@ -269,17 +271,12 @@ const styles = StyleSheet.create({
   stackBadge: {
     paddingVertical: 4,
   },
-  durationText: {
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-    fontSize: 11,
-    fontWeight: "700",
-  },
+  // The weight of every other card title (HomeCard, MediaCollection, Up Next).
   title: {
     marginTop: 8,
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontWeight: "600",
+    fontWeight: "700",
   },
   meta: {
     marginTop: 2,

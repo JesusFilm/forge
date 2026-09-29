@@ -61,7 +61,9 @@ function Identity({ user }: { user: AuthUser }) {
     <SessionReplayView.MaskAll style={styles.identity}>
       <View style={styles.avatar}>
         {initial ? (
-          <Text style={styles.avatarInitial}>{initial}</Text>
+          <Text style={[styles.avatarInitial, typography.headingScale.h2]}>
+            {initial}
+          </Text>
         ) : (
           <Ionicons name="person" size={32} color={TEXT_PRIMARY} />
         )}
@@ -71,7 +73,7 @@ function Identity({ user }: { user: AuthUser }) {
           {displayName}
         </Text>
         {name && email ? (
-          <Text style={styles.email} numberOfLines={1}>
+          <Text style={[styles.email, typography.bodySmall]} numberOfLines={1}>
             {email}
           </Text>
         ) : null}
@@ -175,7 +177,6 @@ const styles = StyleSheet.create({
   avatarInitial: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 28,
     fontWeight: "700",
   },
   identityText: {
@@ -189,7 +190,6 @@ const styles = StyleSheet.create({
   email: {
     color: TEXT_SECONDARY,
     fontFamily: "System",
-    fontSize: 15,
     marginTop: 2,
   },
   actions: {

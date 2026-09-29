@@ -40,15 +40,24 @@ jest.mock("../../watch/DownloadProgressRing", () => ({
 }))
 
 import { act } from "react"
+import {
+  Dimensions,
+  StyleSheet,
+  type StyleProp,
+  type TextStyle,
+} from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { DownloadTile } from "../DownloadTile"
 import { DownloadProgressRing } from "../../watch/DownloadProgressRing"
+import { computeTypographyScale } from "../../../hooks/useTypography"
+import { formatLibraryDuration } from "../../../lib/libraryDownloads"
 import {
   buildMyWatchRail,
   type MyWatchRailTile,
 } from "../../../lib/myWatchRail"
+import { card } from "../../../styles/shared"
 import {
   OFFLINE_MANIFEST_VERSION,
   type OfflineDownloadRecord,
@@ -355,6 +364,32 @@ describe("DownloadTile poster and press", () => {
 
     expect(onPress).toHaveBeenCalledTimes(1)
     expect(onPress).toHaveBeenCalledWith(tile)
+    await unmount(renderer)
+  })
+})
+
+describe("DownloadTile type matches the Home cards", () => {
+  function hostText(renderer: TestInstance, text: string): TextStyle {
+    const [node] = renderer.root.findAll(
+      (at) => at.type === "Text" && at.props.children === text,
+    )
+    expect(node).toBeDefined()
+    return StyleSheet.flatten(node.props.style as StyleProp<TextStyle>) ?? {}
+  }
+
+  it("draws the title at the card-title weight and the duration in the shared badge style", async () => {
+    const tile = onlyTile([
+      record("birth", "downloaded", { durationSeconds: 478 }),
+    ])
+    const renderer = await renderTile(tile)
+    const caption = computeTypographyScale(Dimensions.get("window").width)
+      .caption.fontSize
+
+    // HomeCard, MediaCollection, and Up Next all draw card titles at 700.
+    expect(hostText(renderer, "The Birth of Jesus").fontWeight).toBe("700")
+    const duration = hostText(renderer, formatLibraryDuration(478)!)
+    expect(duration.fontWeight).toBe(card.badgeText.fontWeight)
+    expect(duration.fontSize).toBe(caption)
     await unmount(renderer)
   })
 })

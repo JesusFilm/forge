@@ -48,7 +48,7 @@ import {
   toggleSlug,
   type LibrarySelectionState,
 } from "../../lib/librarySelection"
-import { feedback, layout } from "../../styles/shared"
+import { feedback, layout, text } from "../../styles/shared"
 
 const HINT_VISIBLE_MS = 4000
 const LIST_END_GAP = 24
@@ -372,7 +372,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
                       allSelected ? "Deselect all" : "Select all"
                     }
                   >
-                    <Text style={styles.textPillLabel}>
+                    <Text style={[styles.textPillLabel, typography.bodySmall]}>
                       {allSelected ? "Deselect All" : "Select All"}
                     </Text>
                   </Pressable>
@@ -388,7 +388,9 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
                     accessibilityRole="button"
                     accessibilityLabel="Cancel selection"
                   >
-                    <Text style={styles.textPillLabel}>Cancel</Text>
+                    <Text style={[styles.textPillLabel, typography.bodySmall]}>
+                      Cancel
+                    </Text>
                   </Pressable>
                 </>
               ) : (
@@ -401,7 +403,9 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
                   accessibilityRole="button"
                   accessibilityLabel="Select downloads"
                 >
-                  <Text style={styles.selectPillText}>Select</Text>
+                  <Text style={[styles.selectPillText, typography.bodySmall]}>
+                    Select
+                  </Text>
                 </Pressable>
               )}
             </View>
@@ -420,7 +424,13 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
             <View style={styles.list} onLayout={handleListLayout}>
               {seriesGroups.length > 0 && (
                 <>
-                  <Text style={[styles.sectionLabel, typography.caption]}>
+                  <Text
+                    style={[
+                      text.eyebrow,
+                      styles.sectionLabel,
+                      typography.caption,
+                    ]}
+                  >
                     Series
                   </Text>
                   {seriesGroups.map((group) => (
@@ -442,7 +452,13 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
               )}
               {standaloneRecords.length > 0 && (
                 <>
-                  <Text style={[styles.sectionLabel, typography.caption]}>
+                  <Text
+                    style={[
+                      text.eyebrow,
+                      styles.sectionLabel,
+                      typography.caption,
+                    ]}
+                  >
                     Videos
                   </Text>
                   {standaloneRecords.map((record) => (
@@ -524,7 +540,6 @@ const styles = StyleSheet.create({
   selectPillText: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 15,
     fontWeight: "600",
   },
   textPill: {
@@ -534,7 +549,6 @@ const styles = StyleSheet.create({
   textPillLabel: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 15,
     fontWeight: "600",
   },
   selectionCount: {
@@ -552,12 +566,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 14,
   },
+  // Type comes from text.eyebrow, as on More's group titles.
   sectionLabel: {
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    fontWeight: "700",
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
     marginTop: 8,
     marginBottom: 12,
   },

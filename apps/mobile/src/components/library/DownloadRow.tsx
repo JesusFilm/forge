@@ -10,7 +10,6 @@ import {
   STATUS_DONE_COLOR,
   STATUS_FAILED_COLOR,
   SURFACE_COLOR,
-  TEXT_ON_OVERLAY,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../../lib/color"
@@ -20,7 +19,7 @@ import {
   recordTitle,
 } from "../../lib/libraryDownloads"
 import type { OfflineDownloadRecord } from "../../lib/offlineManifest"
-import { feedback } from "../../styles/shared"
+import { card, feedback } from "../../styles/shared"
 import { DownloadProgressRing } from "../watch/DownloadProgressRing"
 import { SelectionCheckbox } from "./SelectionCheckbox"
 
@@ -90,7 +89,7 @@ export const DownloadRow = memo(function DownloadRow({
         )}
         {duration != null && (
           <View style={styles.durationBadge}>
-            <Text style={styles.durationText}>{duration}</Text>
+            <Text style={[card.badgeText, typography.caption]}>{duration}</Text>
           </View>
         )}
       </View>
@@ -195,14 +194,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingHorizontal: 5,
     paddingVertical: 2,
-  },
-  durationText: {
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-    // Static (not screen-scaled) — round to a whole px, matching the
-    // codebase's Android sub-pixel-blur rule for any fixed font size.
-    fontSize: 11,
-    fontWeight: "700",
   },
   info: {
     flex: 1,
