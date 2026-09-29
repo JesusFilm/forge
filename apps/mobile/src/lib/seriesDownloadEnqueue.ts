@@ -103,6 +103,8 @@ export type BuildRequestContext = {
   seriesTitle: string | undefined
   /** Captured once per batch, shared by every episode's request. */
   enqueuedAt: number
+  /** The catalog tag of the series screen's captured forms (U7). */
+  titleLocale?: string
 }
 
 /**
@@ -127,6 +129,8 @@ export function buildEpisodeRequest(
   return {
     videoSlug: episode.slug,
     title: episode.title ?? "",
+    // No locale for an empty title, so the offline refresh still fills it.
+    titleLocale: episode.title ? ctx.titleLocale : undefined,
     dubDocumentId: episode.dubDocumentId,
     rendition: episode.rendition,
     // Degrade to no subtitle where this episode's track is absent (subtitleUrl

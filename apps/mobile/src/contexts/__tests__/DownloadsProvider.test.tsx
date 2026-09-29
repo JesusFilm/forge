@@ -113,9 +113,10 @@ jest.mock("../../lib/exportSweep", () => ({
   applyExportSweep: jest.fn(async () => undefined),
 }))
 
-jest.mock("../../lib/apolloClient", () => ({
-  getApolloClient: () => ({ query: jest.fn() }),
-}))
+jest.mock("../../lib/apolloClient", () => {
+  const query = jest.fn()
+  return { getApolloClient: () => ({ query }), __query: query }
+})
 
 jest.mock("../../lib/datadog", () => ({
   datadogLog: {
@@ -142,6 +143,7 @@ jest.mock("../WatchPreferencesProvider", () => {
 })
 
 import { StrictMode, act, type ReactNode } from "react"
+import { AppState, type AppStateStatus } from "react-native"
 
 import {
   DownloadsProvider,
@@ -153,10 +155,12 @@ import type { ExportSweepEffects } from "../../lib/exportSweep"
 import {
   OFFLINE_INDEX_STORAGE_KEY,
   offlineRecordKey,
+  parseOfflineRecord,
   serializeOfflineIndex,
   serializeOfflineRecord,
   type OfflineDownloadRecord,
 } from "../../lib/offlineManifest"
+import { GET_VIDEO_TEXT } from "../../lib/queries"
 import {
   TestRenderer,
   type TestInstance,
@@ -524,6 +528,118 @@ describe("cold-start phases", () => {
     expect(sweep.applyExportSweep.mock.calls[0][0]).toEqual([
       { action: "discard", note: landed, stopTaskId: null },
     ])
+    await unmount(renderer)
+  })
+})
+
+describe("offline title refresh (U7, R4)", () => {
+  const FILE = "file:///docs/offline-downloads/a/media.mp4"
+  const apollo = jest.requireMock("../../lib/apolloClient") as {
+    __query: jest.Mock
+  }
+  type QueryOptions = { query: unknown; variables: { slug?: string } }
+  let foreground: (state: AppStateStatus) => void = () => undefined
+
+  beforeEach(() => {
+    fs.fileExists.mockResolvedValue(true)
+    apollo.__query.mockReset()
+    foreground = () => undefined
+    jest.spyOn(AppState, "addEventListener").mockImplementation(((
+      _type: string,
+      handler: (state: AppStateStatus) => void,
+    ) => {
+      foreground = handler
+      return { remove: () => undefined }
+    }) as typeof AppState.addEventListener)
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  /** The refresh chain is deeper than the mount effects' three turns. */
+  async function settle() {
+    await act(async () => {
+      for (let i = 0; i < 20; i += 1) await Promise.resolve()
+    })
+  }
+
+  function textRequestSlugs(): (string | undefined)[] {
+    return (apollo.__query.mock.calls as [QueryOptions][])
+      .filter(([options]) => options.query === GET_VIDEO_TEXT)
+      .map(([options]) => options.variables.slug)
+  }
+
+  function answerText(answer: (slug: string) => Promise<unknown>) {
+    apollo.__query.mockImplementation(async (options: QueryOptions) =>
+      options.query === GET_VIDEO_TEXT
+        ? answer(options.variables.slug ?? "")
+        : { data: null },
+    )
+  }
+
+  function stored(slug: string): OfflineDownloadRecord | null {
+    return parseOfflineRecord(storage.get(offlineRecordKey(slug)) ?? null)
+  }
+
+  it("patches a record in another locale once a text request succeeds", async () => {
+    // The UI is English here, and the record was titled under Russian.
+    seedManifest([
+      record({
+        videoSlug: "a",
+        state: "downloaded",
+        committedPath: FILE,
+        title: "Русский a",
+        titleLocale: "ru",
+      }),
+    ])
+    answerText(async () => {
+      throw new Error("offline")
+    })
+    const renderer = await render()
+    await settle()
+    expect(textRequestSlugs()).toContain("a")
+    expect(stored("a")).toMatchObject({ title: "Русский a", titleLocale: "ru" })
+
+    answerText(async (slug) => ({
+      data: {
+        videoBySlug: {
+          locales: [],
+          englishLocales: [
+            { languageSlug: "english", title: `English ${slug}` },
+          ],
+        },
+      },
+    }))
+    await act(async () => {
+      foreground("active")
+    })
+    await settle()
+    expect(stored("a")).toMatchObject({
+      title: "English a",
+      titleLocale: "en",
+      state: "downloaded",
+      committedPath: FILE,
+    })
+    await unmount(renderer)
+  })
+
+  it("asks for no text when a record is titled in the UI locale", async () => {
+    seedManifest([
+      record({
+        videoSlug: "a",
+        state: "downloaded",
+        committedPath: FILE,
+        titleLocale: "en",
+      }),
+    ])
+    answerText(async () => null)
+    const renderer = await render()
+    await act(async () => {
+      foreground("active")
+    })
+    await settle()
+    expect(textRequestSlugs()).toEqual([])
     await unmount(renderer)
   })
 })

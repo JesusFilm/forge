@@ -79,6 +79,24 @@ describe("buildEpisodeRequest — series/ordering metadata (U1)", () => {
     expect(a?.seriesTitle).toBe(b?.seriesTitle)
   })
 
+  // U7: the titles were read in the series screen's captured forms.
+  it("records the batch's title locale on a titled episode", () => {
+    const request = buildEpisodeRequest(resolvedEpisode(), {
+      ...ctx,
+      titleLocale: "ru",
+    })
+    expect(request?.titleLocale).toBe("ru")
+  })
+
+  it("records no title locale on an episode with no title, so the refresh fills it", () => {
+    const request = buildEpisodeRequest(resolvedEpisode({ title: null }), {
+      ...ctx,
+      titleLocale: "ru",
+    })
+    expect(request?.title).toBe("")
+    expect(request?.titleLocale).toBeUndefined()
+  })
+
   it("returns null for a non-resolved episode without needing ctx's series fields", () => {
     expect(
       buildEpisodeRequest(

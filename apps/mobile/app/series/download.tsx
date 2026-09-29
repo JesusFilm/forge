@@ -385,6 +385,8 @@ export default function SeriesDownloadRoute() {
       // undefined on read — write the same value we'd read, not a lossy one.
       seriesTitle: series.title ?? undefined,
       enqueuedAt: Date.now(),
+      // U7: the titles were read in the screen's captured forms.
+      titleLocale: series.adminForms?.catalogTag,
     }
     // Snapshot → queue placeholders → enqueue lives in runSeriesBatchEnqueue so
     // the R10 ordering invariant is unit-tested off the route. Fresh starts go

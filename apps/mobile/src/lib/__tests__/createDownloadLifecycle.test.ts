@@ -414,6 +414,36 @@ describe("swap", () => {
     expect(midSwap.swapFrom?.dubDocumentId).toBe("dub-1")
   })
 
+  // U7: a title and its locale are one pair, so a swap writes both or neither.
+  it("a swap with a new title stores that title's locale", async () => {
+    const h = makeHarness({
+      records: [makeRecord({ title: "English title", titleLocale: "en" })],
+    })
+    const request = makeRequest({
+      title: "Русское название",
+      titleLocale: "ru",
+    })
+    request.rendition = { ...request.rendition, documentId: "rend-2" }
+    expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
+    expect(h.writes[0]).toMatchObject({
+      title: "Русское название",
+      titleLocale: "ru",
+    })
+  })
+
+  it("a swap without a title keeps the old title and its locale", async () => {
+    const h = makeHarness({
+      records: [makeRecord({ title: "Русское название", titleLocale: "ru" })],
+    })
+    const request = makeRequest({ title: "", titleLocale: "en" })
+    request.rendition = { ...request.rendition, documentId: "rend-2" }
+    expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
+    expect(h.writes[0]).toMatchObject({
+      title: "Русское название",
+      titleLocale: "ru",
+    })
+  })
+
   // U1 regression: swap() spreads `...existing`, so it must preserve the five
   // series/ordering fields without any explicit copy line.
   it("preserves series/ordering metadata across a swap rewrite (U1 regression)", async () => {

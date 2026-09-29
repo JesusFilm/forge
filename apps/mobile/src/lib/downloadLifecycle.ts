@@ -666,6 +666,8 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
       renditionDocumentId: rendition.documentId,
       qualityLabel: rendition.quality,
       title: request.title || existing.title,
+      // U7: the locale travels with the title it names.
+      titleLocale: request.title ? request.titleLocale : existing.titleLocale,
       subtitleLanguageSlug: request.subtitleLanguageSlug,
       state: "downloading",
       committedPath: null,

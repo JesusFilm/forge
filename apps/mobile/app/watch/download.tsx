@@ -140,6 +140,8 @@ export default function DownloadSheetRoute() {
     const result = await enqueue({
       videoSlug: video.slug,
       title: video.title ?? "",
+      // U7: no locale for an empty title, so the refresh still fills it.
+      titleLocale: video.title ? video.adminForms?.catalogTag : undefined,
       dubDocumentId: activeVariant.documentId,
       rendition,
       subtitleLanguageSlug: chosenSubtitle?.languageSlug ?? null,

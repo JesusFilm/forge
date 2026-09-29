@@ -77,6 +77,7 @@ import { getApolloClient } from "../lib/apolloClient"
 import { datadogLog } from "../lib/datadog"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
 import { GET_VIDEO_DUB } from "../lib/queries"
+import { useOfflineTitleRefresh } from "../hooks/useOfflineTitleRefresh"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
@@ -412,6 +413,13 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     })
   }
   const lifecycle = lifecycleRef.current
+
+  // U7 (R4): the one provider-wide refresh; it waits for the stored records.
+  useOfflineTitleRefresh({
+    ready: isReady,
+    records: Object.values(records),
+    patchTitles: lifecycle.patchTitles,
+  })
 
   const queueBatchRecords = useCallback(
     async (requests: StartDownloadRequest[]) => {
