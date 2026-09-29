@@ -118,6 +118,22 @@ function startsLocaleSyncInGuardedBlock(source) {
   )
 }
 
+/** True when RootLayout's own body calls useLocaleResolutionLog(hydrated). */
+function logsLocaleInRootLayout(source) {
+  const [code, masked] = scan(source)
+  const head = /export default function RootLayout\([^)]*\)\s*\{/.exec(masked)
+  if (!head) return false
+  const open = head.index + head[0].length - 1
+  let level = 0
+  for (let k = open; k < masked.length; k += 1) {
+    if (masked[k] === "{") level += 1
+    else if (masked[k] === "}" && (level -= 1) === 0) {
+      return code.slice(open, k).includes("useLocaleResolutionLog(hydrated)")
+    }
+  }
+  return false
+}
+
 /** True when every load of `specifier` is a require inside a `try` block. */
 function loadsOnlyInsideTry(source, specifier) {
   const [code, masked] = scan(source)
@@ -185,6 +201,33 @@ describe("UI locale start-up order (KTD3)", () => {
     ],
   ])("rejects %s (negative control)", (_label, source) => {
     expect(startsLocaleSyncInGuardedBlock(source)).toBe(false)
+  })
+})
+
+// The hook's own suite renders its own root, so only this pins the call site.
+describe("the ui_locale.resolved log", () => {
+  it("is called from RootLayout with the hydration flag", () => {
+    expect(logsLocaleInRootLayout(fs.readFileSync(LAYOUT, "utf8"))).toBe(true)
+  })
+
+  it.each([
+    [
+      "the call",
+      "export default function RootLayout() {\n  useLocaleResolutionLog(hydrated)\n}",
+      true,
+    ],
+    [
+      "a commented-out call",
+      "export default function RootLayout() {\n  // useLocaleResolutionLog(hydrated)\n}",
+      false,
+    ],
+    [
+      "a call outside RootLayout",
+      "function Other() {\n  useLocaleResolutionLog(hydrated)\n}\nexport default function RootLayout() {}",
+      false,
+    ],
+  ])("reads %s as %s", (_label, source, expected) => {
+    expect(logsLocaleInRootLayout(source)).toBe(expected)
   })
 })
 
