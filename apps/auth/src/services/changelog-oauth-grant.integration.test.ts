@@ -3267,4 +3267,354 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
       "openid profile:read email:read membership:read changelog:read",
     )
   })
+
+  it("changes People roles through Auth and constrains previously issued website and MCP credentials", async () => {
+    const { POST: changeRole } =
+      await import("@/app/api/changelog/people/role/route")
+    const { GET: people } = await import("@/app/api/changelog/people/route")
+    const { GET: currentPermission } =
+      await import("@/app/api/changelog/current-permission/route")
+    const local = await prisma.appEnvironment.findUniqueOrThrow({
+      where: { clientId: "jfp_changelog_local" },
+    })
+    const adminScope = await prisma.scope.findUniqueOrThrow({
+      where: { key: "changelog:admin" },
+    })
+    await prisma.appGrantScope.createMany({
+      data: [{ grantId, scopeId: adminScope.id }],
+      skipDuplicates: true,
+    })
+    const recipientSignup = await auth.api.signUpEmail({
+      asResponse: true,
+      body: {
+        name: "Role recipient",
+        email: `role-recipient-${randomUUID()}@example.test`,
+        password: `T3st-${randomUUID()}!`,
+      },
+    })
+    expect(recipientSignup.status).toBe(200)
+    const recipient = (
+      (await recipientSignup.json()) as { user: { id: string } }
+    ).user
+    const recipientCookie = recipientSignup.headers
+      .get("set-cookie")!
+      .split(";")[0]
+    await prisma.user.update({
+      where: { id: recipient.id },
+      data: { membershipStatus: "ACTIVE", emailVerified: true },
+    })
+    const readScope = await prisma.scope.findUniqueOrThrow({
+      where: { key: "changelog:read" },
+    })
+    const recipientGrant = await prisma.appGrant.create({
+      data: {
+        appId: local.appId,
+        environmentId: local.id,
+        subjectType: "USER",
+        userId: recipient.id,
+        status: "APPROVED",
+        approvedAt: new Date(),
+        scopes: { create: { scopeId: readScope.id } },
+      },
+    })
+    const unrelatedScope = await prisma.scope.findUniqueOrThrow({
+      where: { key: "membership:read" },
+    })
+    await prisma.appGrantScope.create({
+      data: { grantId: recipientGrant.id, scopeId: unrelatedScope.id },
+    })
+    const production = await prisma.appEnvironment.findUniqueOrThrow({
+      where: { clientId: "jfp_changelog_production" },
+    })
+    const productionGrant = await prisma.appGrant.create({
+      data: {
+        appId: production.appId,
+        environmentId: production.id,
+        subjectType: "USER",
+        userId: recipient.id,
+        status: "APPROVED",
+        approvedAt: new Date(),
+        scopes: { create: { scopeId: readScope.id } },
+      },
+    })
+    const actorFlow = await authorize({
+      requestedClientId: "jfp_changelog_local",
+      redirectUri: SEEDED_REDIRECT_URI,
+      resource: null,
+      scope: "openid changelog:admin",
+    })
+    const actorCode = await authorizationCode(actorFlow.response)
+    const actorToken = await postToken(
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: "jfp_changelog_local",
+        redirect_uri: SEEDED_REDIRECT_URI,
+        code: actorCode,
+        code_verifier: actorFlow.verifier,
+      }),
+    )
+    expect(actorToken.response.status).toBe(200)
+    const admin = String(actorToken.body.access_token)
+    const mutate = (
+      id: string,
+      role: string,
+      confirmed = false,
+      token = admin,
+      targetClientId = "jfp_changelog_local",
+    ) =>
+      changeRole(
+        new Request("http://localhost:3004/api/changelog/people/role", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            clientId: targetClientId,
+            recipientId: id,
+            role,
+            confirmSelfDemotion: confirmed,
+          }),
+        }),
+      )
+    const permission = async (token: string) => {
+      const response = await currentPermission(
+        new Request(
+          "http://localhost:3004/api/changelog/current-permission?clientId=jfp_changelog_local",
+          { headers: { authorization: `Bearer ${token}` } },
+        ),
+      )
+      expect(response.status).toBe(200)
+      return ((await response.json()) as { scopes: string[] }).scopes
+    }
+    try {
+      expect(
+        (
+          await mutate(
+            recipient.id,
+            "Admin",
+            false,
+            admin,
+            "jfp_changelog_production",
+          )
+        ).status,
+      ).toBe(403)
+      expect((await mutate(recipient.id, "Contributor")).status).toBe(200)
+      const websiteFlow = await authorize({
+        requestedClientId: "jfp_changelog_local",
+        redirectUri: SEEDED_REDIRECT_URI,
+        resource: null,
+        sessionCookie: recipientCookie,
+        scope: "openid changelog:read changelog:submit",
+      })
+      const websiteCode = await authorizationCode(
+        websiteFlow.response,
+        recipientCookie,
+      )
+      const websiteToken = await postToken(
+        new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: "jfp_changelog_local",
+          redirect_uri: SEEDED_REDIRECT_URI,
+          code: websiteCode,
+          code_verifier: websiteFlow.verifier,
+        }),
+      )
+      expect(websiteToken.response.status).toBe(200)
+      const mcpFlow = await authorize({
+        sessionCookie: recipientCookie,
+        scope: "openid changelog:read changelog:submit",
+      })
+      const mcpCode = await authorizationCode(mcpFlow.response, recipientCookie)
+      const mcpToken = await postToken(
+        new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: clientId,
+          redirect_uri: REDIRECT_URI,
+          resource: LOCAL_RESOURCE,
+          code: mcpCode,
+          code_verifier: mcpFlow.verifier,
+        }),
+      )
+      expect(mcpToken.response.status).toBe(200)
+      const issued = [
+        String(websiteToken.body.access_token),
+        String(mcpToken.body.access_token),
+      ]
+      for (const token of issued)
+        expect(await permission(token)).toEqual([
+          "changelog:read",
+          "changelog:submit",
+        ])
+      expect((await mutate(recipient.id, "Reader")).status).toBe(200)
+      for (const token of issued)
+        expect(await permission(token)).toEqual(["changelog:read"])
+      expect((await mutate(recipient.id, "No Access")).status).toBe(200)
+      for (const token of issued) expect(await permission(token)).toEqual([])
+      const directory = await people(
+        new Request(
+          "http://localhost:3004/api/changelog/people?clientId=jfp_changelog_local",
+          { headers: { authorization: `Bearer ${admin}` } },
+        ),
+      )
+      expect(directory.status).toBe(200)
+      expect(
+        (
+          (await directory.json()) as {
+            accounts: { id: string; role: string }[]
+          }
+        ).accounts.find(({ id }) => id === recipient.id)?.role,
+      ).toBe("No Access")
+      expect(
+        await prisma.appGrant.findFirst({ where: { id: recipientGrant.id } }),
+      ).not.toBeNull()
+      expect(
+        await prisma.appGrantScope.count({
+          where: { grantId: recipientGrant.id, scopeId: unrelatedScope.id },
+        }),
+      ).toBe(1)
+      expect(
+        await prisma.appGrantScope.count({
+          where: { grantId: productionGrant.id, scopeId: readScope.id },
+        }),
+      ).toBe(1)
+      expect((await mutate(recipient.id, "Admin")).status).toBe(200)
+      expect(await permission(issued[0])).toEqual([
+        "changelog:read",
+        "changelog:submit",
+      ])
+      expect(
+        (await mutate(recipient.id, "Reader", false, issued[0])).status,
+      ).toBe(403)
+
+      const approvalId = randomUUID()
+      await prisma.changelogPreapproval.create({
+        data: {
+          id: approvalId,
+          email: (
+            await prisma.user.findUniqueOrThrow({ where: { id: recipient.id } })
+          ).email,
+          environmentId: local.id,
+          approverId: userId,
+          state: "pending",
+          expiresAt: new Date(0),
+        },
+      })
+      try {
+        const blocked = await mutate(recipient.id, "Reader")
+        expect(blocked.status).toBe(409)
+        expect(await blocked.json()).toEqual({ error: "preapproval-blocked" })
+      } finally {
+        await prisma.changelogPreapproval.delete({ where: { id: approvalId } })
+      }
+      const firstTimeId = randomUUID()
+      await prisma.user.create({
+        data: {
+          id: firstTimeId,
+          name: "First-time recipient",
+          email: `first-time-role-${randomUUID()}@example.test`,
+          emailVerified: true,
+          membershipStatus: "ACTIVE",
+          actorType: "HUMAN",
+        },
+      })
+      try {
+        const firstTimeApproval = randomUUID()
+        await prisma.changelogPreapproval.create({
+          data: {
+            id: firstTimeApproval,
+            email: (
+              await prisma.user.findUniqueOrThrow({
+                where: { id: firstTimeId },
+              })
+            ).email,
+            environmentId: local.id,
+            approverId: userId,
+            state: "pending",
+            expiresAt: new Date(0),
+          },
+        })
+        expect((await mutate(firstTimeId, "Reader")).status).toBe(409)
+        await prisma.changelogPreapproval.update({
+          where: { id: firstTimeApproval },
+          data: { state: "canceled" },
+        })
+        expect((await mutate(firstTimeId, "Reader")).status).toBe(409)
+        expect(
+          await prisma.appGrant.count({
+            where: { userId: firstTimeId, environmentId: local.id },
+          }),
+        ).toBe(0)
+        await prisma.changelogPreapproval.delete({
+          where: { id: firstTimeApproval },
+        })
+      } finally {
+        await prisma.user.delete({ where: { id: firstTimeId } })
+      }
+      expect((await mutate(userId, "Reader")).status).toBe(409)
+      expect((await mutate(recipient.id, "Reader")).status).toBe(200)
+      const lastAdmin = await mutate(userId, "Reader", true)
+      expect(lastAdmin.status).toBe(409)
+      expect(await lastAdmin.json()).toEqual({ error: "last-admin" })
+      expect((await mutate(recipient.id, "Admin")).status).toBe(200)
+      const recipientAdminFlow = await authorize({
+        requestedClientId: "jfp_changelog_local",
+        redirectUri: SEEDED_REDIRECT_URI,
+        resource: null,
+        sessionCookie: recipientCookie,
+        scope: "openid changelog:admin",
+      })
+      const recipientAdminCode = await authorizationCode(
+        recipientAdminFlow.response,
+        recipientCookie,
+      )
+      const recipientAdminToken = await postToken(
+        new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: "jfp_changelog_local",
+          redirect_uri: SEEDED_REDIRECT_URI,
+          code: recipientAdminCode,
+          code_verifier: recipientAdminFlow.verifier,
+        }),
+      )
+      expect(recipientAdminToken.response.status).toBe(200)
+      const demotions = await Promise.all([
+        mutate(userId, "Reader", true),
+        mutate(
+          recipient.id,
+          "Reader",
+          true,
+          String(recipientAdminToken.body.access_token),
+        ),
+      ])
+      expect(
+        demotions
+          .map(({ status }) => status)
+          .filter((status) => status === 200),
+      ).toHaveLength(1)
+      const remaining = await prisma.appGrant.findMany({
+        where: {
+          environmentId: local.id,
+          userId: { in: [userId, recipient.id] },
+          status: "APPROVED",
+          revokedAt: null,
+        },
+        include: { scopes: { include: { scope: true } } },
+      })
+      expect(
+        new Set(
+          remaining
+            .filter((grant) =>
+              grant.scopes.some(({ scope }) => scope.key === "changelog:admin"),
+            )
+            .map((grant) => grant.userId),
+        ).size,
+      ).toBe(1)
+    } finally {
+      await prisma.user.delete({ where: { id: recipient.id } })
+      await prisma.appGrantScope.deleteMany({
+        where: { grantId, scopeId: adminScope.id },
+      })
+    }
+  }, 30_000)
 })
