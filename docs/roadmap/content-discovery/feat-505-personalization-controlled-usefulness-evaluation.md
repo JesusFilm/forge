@@ -10,7 +10,8 @@ depends_on:
   - "feat-369"
   - "feat-381"
   - "feat-384"
-blocks: []
+blocks:
+  - "feat-565"
 tags: [recommendations, watch, analytics]
 ---
 
