@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { readFileSync } from "node:fs"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { createPrismaClient } from "@/db/client"
@@ -100,6 +101,20 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         )
       }
       expect(userSnapshots[1]).toEqual(userSnapshots[0])
+      const outcomeDiagnostic = readFileSync(
+        new URL(
+          "../../../../../docs/operations/user-recommendations-outcomes.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      )
+      const diagnostic = await controller.query(outcomeDiagnostic)
+      expect(diagnostic.rows).toEqual([
+        expect.objectContaining({
+          cohort: "returning",
+          delivered_slates: "2",
+        }),
+      ])
     })
 
     it("returns identical complete Admin stage detail from actual legacy and compact writes", async () => {
