@@ -20,10 +20,11 @@ PR-only, so main never reported the collision.
 
 ## Entry Points — Read These First
 
-1. `.github/workflows/ci.yml` — advisory job and `ci-gate` boundary.
-2. `scripts/check-new-roadmap-ids.mjs` and its tests — changed ticket
+1. `.github/workflows/ci.yml` — PR advisory job and `ci-gate` boundary.
+2. `.github/workflows/roadmap-id-postmerge.yml` — independent main-push audit.
+3. `scripts/check-new-roadmap-ids.mjs` and its tests — changed ticket
    comparison and collision reporting.
-3. [PR #2485](https://github.com/JesusFilm/forge/pull/2485) and
+4. [PR #2485](https://github.com/JesusFilm/forge/pull/2485) and
    [PR #2489](https://github.com/JesusFilm/forge/pull/2489) — the observed
    event order.
 
@@ -33,26 +34,26 @@ PR-only, so main never reported the collision.
 
 ## What To Build
 
-Keep the advisory PR check, and run the same job on main pushes. On main,
-compare the current tree with the commit that first introduced the checker,
-so a later push still reports unresolved collisions from an older PR merge.
-Report each collided ID once. Keep the job outside `ci-gate` and do not require
-reruns or block merges.
+Keep the advisory PR check. Add a separate workflow for every main push.
+Compare that push with its immediate predecessor,
+without cancellation or a growing fixed-baseline diff. Report each collided ID
+once. Keep both jobs outside `ci-gate` and do not require reruns or block merges.
 
 ## Constraints
 
-Grandfather collisions already present when the checker first merged. Use
-roadmap ticket frontmatter IDs, not ID mentions in prose. Do not renumber
-existing tickets in this CI change.
+Grandfather collisions already present before each push. Use roadmap ticket
+frontmatter IDs, not ID mentions in prose. Do not renumber existing tickets in
+this CI change. This prospective check cannot retroactively run for PR #2485.
 
 ## Verification
 
-Run unit and format checks. Against current main, the baseline comparison
-must report `feat-575` and `feat-576` once each and exit nonzero. A PR with no
-new ticket ID must pass. Verify the job has no `ci-gate` dependency.
+Run unit and format checks. Against the actual #2485 merge commit and its
+immediate predecessor, the checker must report `feat-575` and `feat-576` once
+each and exit nonzero. A PR with no new ticket ID must pass. Verify the
+post-merge workflow has no cancellation and neither job is in `ci-gate`.
 
 ## Resolution
 
-[Forge PR #2498](https://github.com/JesusFilm/forge/pull/2498) extends the
-advisory job to main pushes. Local comparison against the checker-introduction
-commit reports the merged `feat-575` and `feat-576` collisions once each.
+[Forge PR #2498](https://github.com/JesusFilm/forge/pull/2498) adds the
+independent main-push workflow. A local comparison of PR #2485's merge commit
+with its immediate predecessor reports `feat-575` and `feat-576` once each.

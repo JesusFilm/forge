@@ -395,8 +395,8 @@ jobs:
 
   roadmap-id-collisions-advisory:
     # Deliberately excluded from ci-gate. Existing cross-lane collisions are
-    # grandfathered in. On main, audit everything introduced since this check
-    # first landed so a stale PR can still be reported after merging.
+    # grandfathered in; only IDs introduced by this PR can fail this job.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -407,7 +407,7 @@ jobs:
         run: node --test scripts/check-new-roadmap-ids.test.mjs
       - name: Check newly introduced roadmap IDs
         env:
-          ROADMAP_ID_BASE: ${{ github.event.pull_request.base.sha || 'c841a57e6ca697e1e5c436f3fdbd40e936874b66' }}
+          ROADMAP_ID_BASE: ${{ github.event.pull_request.base.sha }}
         run: node scripts/check-new-roadmap-ids.mjs
 
   dev-port-contract:

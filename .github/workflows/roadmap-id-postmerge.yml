@@ -1,0 +1,32 @@
+name: roadmap-id-postmerge-advisory
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  roadmap-id-collisions-advisory:
+    # No concurrency cancellation: every relevant main push gets its own audit.
+    # This job is outside forge-ci's ci-gate and is not a required status check.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+      - name: Fetch push predecessor if needed
+        env:
+          ROADMAP_ID_BASE: ${{ github.event.before }}
+        run: |
+          git cat-file -e "$ROADMAP_ID_BASE^{commit}" 2>/dev/null ||
+            git fetch --no-tags --depth=1 origin "$ROADMAP_ID_BASE"
+      - name: Test roadmap ID check
+        run: node --test scripts/check-new-roadmap-ids.test.mjs
+      - name: Check newly introduced roadmap IDs
+        env:
+          ROADMAP_ID_BASE: ${{ github.event.before }}
+        run: node scripts/check-new-roadmap-ids.mjs
