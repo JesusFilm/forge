@@ -117,7 +117,8 @@ Discovery and J021 evidence stay in separate draft
 ## Consumer Manual and test bench
 
 [feat-575](feat-575-rag-consumer-manual.md) specifies the Knowledge page with the
-planned A/D composition, database-derived filter options, generated consumer
+approved [A/D composition](evidence/feat-575/consumer-manual-combined.png),
+database-derived filter options, generated consumer
 code and a fully disabled sample bench. It blocks
 [feat-576](feat-576-rag-governed-test-bench.md), which separately specifies real
 query execution, sample removal, the Jaco-owned test-bench consumer, server-held

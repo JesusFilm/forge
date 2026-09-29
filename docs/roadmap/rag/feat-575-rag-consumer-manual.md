@@ -61,7 +61,9 @@ Seven public policy fields only. Preserve source scope, exact language/category
 filtering, tie-only source preference, and optional full-document semantics.
 Serving is read-only over the corpus; no cross-app imports. No frontend direct
 database access. No credentials or production corpus text in fixtures or evidence.
-The mockup must have Jaco's explicit approval before its image is committed.
+Jaco approved the [combined A/D mockup](evidence/feat-575/consumer-manual-combined.png)
+on 2026-09-30. Use it as the layout reference; the written spec and current
+contract govern behavior and field values.
 Keep this lane hidden from the public roadmap viewer. Label/tag the local ticket
 `ready-for-agent`; do not create a duplicate standalone-repository GitHub issue.
 

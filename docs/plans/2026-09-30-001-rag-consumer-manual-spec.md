@@ -137,4 +137,4 @@ deployment. All deferred bench work is preserved in the companion spec/ticket.
 - Follow-up: [feat-576](../roadmap/rag/feat-576-rag-governed-test-bench.md) and [execution spec](2026-09-30-002-rag-governed-test-bench-spec.md).
 - Historical design seed: [jesusfilm-rag issue 98](https://github.com/JesusFilm/jesusfilm-rag/issues/98). The user's annotated A/D combination and this spec supersede the older layouts, invented fields and illustrative values.
 - Current-state reference: Forge main at 761b33714. The public contract and current RAG architecture take precedence over legacy glossary wording that still calls the service external.
-- Visual approval is required before committing the generated mockup as an implementer reference. Approval of the image is not authorization to execute queries or configure production credentials.
+- Jaco approved the [combined A/D mockup](../roadmap/rag/evidence/feat-575/consumer-manual-combined.png) on 2026-09-30 as an implementer layout reference. Approval of the image does not authorize query execution or production credential configuration.
