@@ -1,4 +1,4 @@
-import { createLocalJWKSet, jwtVerify } from "jose"
+import { createLocalJWKSet, errors, jwtVerify } from "jose"
 
 import { getAuthBaseUrl, isChangelogProductionEnabled } from "@/config/env"
 import { prisma } from "@/db/client"
@@ -43,57 +43,60 @@ export async function currentChangelogPermission(
       const keys = await tx.jwks.findMany({
         select: { id: true, publicKey: true, alg: true },
       })
-      let subject: string
-      let sessionId: string
-      let issuedScopes: Set<string>
+      const keySet = createLocalJWKSet({
+        keys: keys.map((key) => ({
+          ...JSON.parse(key.publicKey),
+          kid: key.id,
+          alg: key.alg ?? "EdDSA",
+        })),
+      })
+      let verified: Awaited<ReturnType<typeof jwtVerify>>
       try {
-        const { payload } = await jwtVerify(
-          token,
-          createLocalJWKSet({
-            keys: keys.map((key) => ({
-              ...JSON.parse(key.publicKey),
-              kid: key.id,
-              alg: key.alg ?? "EdDSA",
-            })),
-          }),
-          {
-            issuer: `${getAuthBaseUrl()}/api/auth`,
-            audience: CHANGELOG_OAUTH_RESOURCES[target],
-            algorithms: ["EdDSA"],
-            typ: "at+jwt",
-            requiredClaims: ["exp", "iat", "sub", "sid"],
-          },
-        )
-        if (
-          typeof payload.sub !== "string" ||
-          typeof payload.sid !== "string" ||
-          typeof payload.client_id !== "string" ||
-          payload.azp !== payload.client_id ||
-          payload.cnf ||
-          payload["https://jesusfilm.org/claims/app"] !== CHANGELOG_APP_KEY ||
-          payload["https://jesusfilm.org/claims/environment"] !== target ||
-          typeof payload.scope !== "string"
-        )
-          throw new Error("invalid claims")
-        subject = payload.sub
-        sessionId = payload.sid
-        issuedScopes = new Set(payload.scope.split(" "))
-        const client = await tx.oauthClient.findUnique({
-          where: { clientId: payload.client_id },
-          select: { disabled: true },
+        verified = await jwtVerify(token, keySet, {
+          issuer: `${getAuthBaseUrl()}/api/auth`,
+          audience: CHANGELOG_OAUTH_RESOURCES[target],
+          algorithms: ["EdDSA"],
+          typ: "at+jwt",
+          requiredClaims: ["exp", "iat", "sub", "sid"],
         })
-        if (!client || client.disabled) throw new Error("disabled client")
-        // A seeded website credential is tied to its own environment. Dynamic
-        // MCP credentials use the signed resource and environment claims.
+      } catch (error) {
         if (
-          (payload.client_id === CHANGELOG_LOCAL_CLIENT_ID ||
-            payload.client_id === CHANGELOG_PRODUCTION_CLIENT_ID) &&
-          payload.client_id !== clientId
+          !(error instanceof errors.JOSEError) ||
+          error instanceof errors.JWKInvalid ||
+          error instanceof errors.JWKSInvalid ||
+          error instanceof errors.JWKSMultipleMatchingKeys
         )
-          throw new Error("different environment")
-      } catch {
+          throw error
         throw new CurrentPermissionError(401)
       }
+      const { payload } = verified
+      if (
+        typeof payload.sub !== "string" ||
+        typeof payload.sid !== "string" ||
+        typeof payload.client_id !== "string" ||
+        payload.azp !== payload.client_id ||
+        payload.cnf ||
+        payload["https://jesusfilm.org/claims/app"] !== CHANGELOG_APP_KEY ||
+        payload["https://jesusfilm.org/claims/environment"] !== target ||
+        typeof payload.scope !== "string"
+      )
+        throw new CurrentPermissionError(401)
+      const subject = payload.sub
+      const sessionId = payload.sid
+      const issuedScopes = new Set(payload.scope.split(" "))
+      const client = await tx.oauthClient.findUnique({
+        where: { clientId: payload.client_id },
+        select: { disabled: true },
+      })
+      if (!client || client.disabled) throw new CurrentPermissionError(401)
+      // A seeded website credential is tied to its own environment. Dynamic
+      // MCP credentials use the signed resource and environment claims.
+      if (
+        (payload.client_id === CHANGELOG_LOCAL_CLIENT_ID ||
+          payload.client_id === CHANGELOG_PRODUCTION_CLIENT_ID) &&
+        payload.client_id !== clientId
+      )
+        throw new CurrentPermissionError(401)
 
       // Grant writers lock this row. A reduction that already committed is
       // visible; one that commits later waits until this decision completes.
