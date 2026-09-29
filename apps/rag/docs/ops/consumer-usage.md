@@ -173,3 +173,13 @@ dogfood, seven-day migration and separately approved cutoff. The production
 capacity review in feat-568 must cover minute-row growth, pending-state backlog,
 write latency, inventory maintenance, heartbeat overhead and backup cost before
 volume expansion. Implementation tests use synthetic, disposable local data.
+
+## Applied provisioning audit
+
+The role and service-vault portion was applied on 2026-09-29. See the
+[feat-529 production audit](../../../../docs/roadmap/rag/evidence/feat-529/production-usage-role-provisioning.md)
+for exact role/ACL writes, receiver names and completed privilege checks. No
+application rows or table definitions were changed by that operation. Railway
+collection/report configuration and authoritative deployment inventory remained
+pending. This record does not authorize replaying provisioning or declare
+production reporting active.
