@@ -65,11 +65,56 @@ run had deleted zero roots; no expired request was found. Charging measured grap
 temporary and extra WAL reserves, a concurrent margin and the matched-fixture
 serving increment to every request leaves 8.096 GB at the projected peak and
 approximately 6.25 days at the previous ordinary growth rate. This satisfies the
-5 GB peak floor but not the prior seven-day projection. Publication remains pending
-storage reconciliation; no future purge, index-drop or packed-format savings are
+5 GB peak floor but not the prior seven-day projection. At that time publication remained pending
+storage reconciliation; no future purge, index-drop or packed-format savings were
 credited. The serving fixture is not a universal upper bound. See the
 [capacity observation](../validation/recommendation-owner-live-20260930/production-capacity-observation-20260929T2125.json)
 and [explicit calculation](../validation/recommendation-owner-live-20260930/production-capacity-disposition-20260929T2125.json).
+
+## September 29 final deployment and canonical-origin refusal
+
+[PR #2488](https://github.com/JesusFilm/forge/pull/2488) merged normally as
+`3abde2aa564e30c16631979b5d9403fc4c265403` after all 25 checks completed
+successfully or intentionally skipped/neutral, including the successful CI gate.
+At 22:02 UTC, Admin HTTP and worker both ran that exact revision, the earlier
+workers were absent from the active inventory, and all three services returned
+health 200. Watch remained at `0a707123`. The deployed CLI probe matched all
+16 source files and found the private database host and over 22 GB of cgroup
+headroom. Separate metadata-only checks passed exact migrations 0116, 0117 and
+0118, including shared-vector reader dependencies and immutable served payload
+constraints. None of these probes imported the publisher or changed authority.
+
+Receipts: [runtime health](../validation/recommendation-owner-live-20260930/production-runtime-health-20260929T2202.json),
+[CLI probe](../validation/recommendation-owner-live-20260930/production-deployed-cli-probe-20260929T2202.json),
+[0116 metadata](../validation/recommendation-owner-live-20260930/production-profile-vector-0116-20260929T2202.json),
+[0117/0118 metadata](../validation/recommendation-owner-live-20260930/production-storage-catalog-0117-0118-20260929T2202.json).
+
+The 21:47 [capacity observation](../validation/recommendation-owner-live-20260930/production-capacity-observation-20260929T2147.json)
+found 10,658,566,144 bytes free, no lock waiters, long transactions or replication
+slots, and 7,194 requests over the previous day. Charging the same measured
+reserves leaves 10.142 GB at the projected peak and 7.835 days of conservative
+runway. The [calculation](../validation/recommendation-owner-live-20260930/production-capacity-disposition-20260929T2147.json)
+credits no future savings and makes no storage-owner approval claim. This restores
+the declared capacity targets for that observation; repeat the bounded admission
+near actual publication if deployment delays make it stale.
+
+After normal OAuth refresh, the in-page stop confirmation displayed and submitted
+correctly. The page then reported a role refusal, with generation 1/control and
+no new stop audit. An independent unauthenticated POST with canonical HTTPS
+Origin, the required custom CSRF header, JSON content type and empty body returned
+`403 csrf_failed` before authentication. The endpoint compared Origin to its
+transport-derived request URL; the client reported every 403 as permission denial.
+Use the existing configured canonical Admin origin while retaining all other
+CSRF, permission and operator guards. Do not trust forwarded headers or grant
+additional access. The [sanitized refusal receipt](../validation/recommendation-owner-live-20260930/production-promotion-csrf-refusal.json)
+is not graph publication, a committed stop or an owner activation.
+
+The repair passed 56 focused route/component/origin tests, a fresh nonincremental
+full Admin typecheck, scoped lint and independent review. Initial markup is byte-identical at 1,499 bytes and component
+tests still observe zero initial fetches. The isolated minified component bundle
+grows by 664 bytes (170 bytes gzip), with no new dependency; the added response
+decoder runs only after a submitted mutation returns 403. See the
+[bounded load comparison](../validation/recommendation-owner-live-20260930/local-origin-repair-performance.json).
 
 ## Serving and operation contract
 

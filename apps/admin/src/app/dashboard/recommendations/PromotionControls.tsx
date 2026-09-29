@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react"
 import { OwnerReleaseControls } from "./OwnerReleaseControls"
+import { readPromotionForbiddenReason } from "./promotion-response"
 
 type Props = Readonly<{
   generation: number
@@ -117,12 +118,22 @@ export function PromotionControls(props: Props) {
         setMessage("This page is stale. Reload before making another decision.")
         return
       }
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         setState("authorization-failure")
+        setMessage("Sign in again before confirming this decision.")
+        return
+      }
+      if (response.status === 403) {
+        const reason = await readPromotionForbiddenReason(response)
+        setState(
+          reason === "permission_denied" ? "authorization-failure" : "failed",
+        )
         setMessage(
-          response.status === 401
-            ? "Sign in again before confirming this decision."
-            : "Your role is not authorized for this decision.",
+          reason === "csrf_failed"
+            ? "Request security validation failed. Reload the canonical Admin page before trying again."
+            : reason === "permission_denied"
+              ? "Your role is not authorized for this decision."
+              : "The request was refused. Reload current state before trying again.",
         )
         return
       }

@@ -62,6 +62,36 @@ async function enterGraph() {
   })
 }
 describe("direct owner operator controls", () => {
+  it.each([
+    [
+      '{"ok":false,"error":"csrf_failed"}',
+      "Request security validation failed.",
+    ],
+    [
+      '{"ok":false,"error":"permission_denied"}',
+      "Direct activation requires operator and permanent-approval permissions.",
+    ],
+    ['{"ok":true,"error":"csrf_failed"}', "The release was refused."],
+    ['{"ok":false,"error":"unexpected"}', "The release was refused."],
+    ["null", "The release was refused."],
+    ["[]", "The release was refused."],
+    ["<html>Forbidden</html>", "The release was refused."],
+  ])(
+    "explains a 403 safely and discards the prepared action: %s",
+    async (body, message) => {
+      await enterGraph()
+      fetchMock.mockResolvedValueOnce(response(prepared))
+      await act(async () => button("Prepare direct release").click())
+      fetchMock.mockResolvedValueOnce(new Response(body, { status: 403 }))
+      await act(async () => button("Activate reviewed direct release").click())
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(container.textContent).toContain(message)
+      expect(button("Activate reviewed direct release")).toBeUndefined()
+      expect(container.textContent).not.toContain("Recorded release")
+      expect(container.textContent).not.toContain("Acknowledgement unknown")
+    },
+  )
+
   it("adds no initial request and displays manual expiry and unmeasured usefulness", async () => {
     await act(async () =>
       root.render(
