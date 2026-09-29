@@ -651,6 +651,19 @@ describe("RecommendationPromotionService", () => {
       }),
     ).resolves.toMatchObject({ enabled: true, generation: 3 })
     expect(pointer.killSwitchEnabled).toBe(true)
+    expect(tx.recommendationExperiment.findFirst).not.toHaveBeenCalled()
+    expect(tx.recommendationExperiment.findMany).toHaveBeenCalledWith({
+      where: {
+        surfaceVersion: "watch-below-player-v1",
+        startsAt: { lte: new Date("2026-08-26T00:00:00.000Z") },
+        OR: [
+          { challengerManifestId: "semantic-experiment-aa-v1" },
+          { controlManifestId: "semantic-experiment-aa-v1" },
+        ],
+        state: "ACTIVE",
+      },
+      select: { id: true, generation: true },
+    })
     expect(tx.recommendationExperimentAssignment.updateMany).toHaveBeenCalled()
     expect(tx.$executeRaw).toHaveBeenCalled()
     expect(tx.recommendationPromotionEvent.create).toHaveBeenCalledWith({

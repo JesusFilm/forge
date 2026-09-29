@@ -1,0 +1,23 @@
+{
+  "purpose": "release-specific one-off read-only catalog and filesystem preflight",
+  "sourceQueries": 0,
+  "dataMutations": 0,
+  "rawOutputRetained": false,
+  "status": "passed",
+  "health": {
+    "read_only": "on",
+    "measured_at": "2026-09-29T20:10:07.533025+00:00",
+    "lock_waiters": 0,
+    "server_tls_enabled": "on",
+    "request_total_bytes": 249790464,
+    "wal_directory_bytes": 134217728,
+    "request_estimated_live_rows": 270636,
+    "transactions_older_than_30s": 0
+  },
+  "filesystem": {
+    "total_bytes": 48891670528,
+    "used_bytes": 39252209664,
+    "available_bytes": 9622683648,
+    "use_percent": "81%"
+  }
+}

@@ -162,6 +162,7 @@ export async function loadPromotionState(prisma: PrismaClient, now: Date) {
       where: { id: "recommendation-promotion-pointer" },
       include: {
         activeManifest: true,
+        activeOwnerRelease: true,
         lastKnownGoodManifest: { select: { id: true, enabled: true } },
       },
     }),
@@ -285,10 +286,11 @@ export function recommendationPromotionOverview(input: {
     lastKnownGoodManifestId: pointer.lastKnownGoodManifestId,
   })
   if (
-    studyEvaluation ||
-    pointer.reasonCode === "profile_calibration_active" ||
-    pointer.reasonCode === "profile_efficacy_active" ||
-    authorizedApproval?.manifestId === HYBRID_PERSONALIZED_MANIFEST_ID
+    pointer.stage !== "OWNER_APPROVED" &&
+    (studyEvaluation ||
+      pointer.reasonCode === "profile_calibration_active" ||
+      pointer.reasonCode === "profile_efficacy_active" ||
+      authorizedApproval?.manifestId === HYBRID_PERSONALIZED_MANIFEST_ID)
   ) {
     readiness.ready = false
     readiness.reason =
@@ -299,6 +301,17 @@ export function recommendationPromotionOverview(input: {
   return {
     generation: pointer.generation,
     stage: promotionStage(pointer.stage),
+    ownerRelease: pointer.activeOwnerRelease
+      ? {
+          id: pointer.activeOwnerRelease.id,
+          graphGenerationId: pointer.activeOwnerRelease.graphGenerationId,
+          validUntil: pointer.activeOwnerRelease.validUntil,
+          revoked:
+            pointer.activeOwnerRelease.revokedAt != null ||
+            pointer.activeOwnerRelease.pointerGeneration <
+              pointer.ownerInfluenceFloorGeneration,
+        }
+      : null,
     activeManifestId: pointer.activeManifestId,
     targetManifestId:
       authorizedApproval?.manifestId ??
@@ -363,11 +376,13 @@ function promotionEvaluationState(
 function promotionStage(
   stage: string,
 ): RecommendationPromotionOverviewData["stage"] {
-  return stage === "BOUNDED"
-    ? "bounded"
-    : stage === "PERMANENT"
-      ? "permanent"
-      : "control"
+  return stage === "OWNER_APPROVED"
+    ? "owner_approved"
+    : stage === "BOUNDED"
+      ? "bounded"
+      : stage === "PERMANENT"
+        ? "permanent"
+        : "control"
 }
 
 function promotionWorkflowState(

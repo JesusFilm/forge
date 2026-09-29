@@ -1,6 +1,10 @@
 import { RecommendationInputError } from "../errors"
 
-export type PromotionStage = "control" | "bounded" | "permanent"
+export type PromotionStage =
+  | "control"
+  | "bounded"
+  | "permanent"
+  | "owner_approved"
 export type PromotionAction =
   | "activate_bounded"
   | "confirm_permanent"
@@ -34,6 +38,8 @@ export function assertPromotionTransition(input: TransitionInput): {
   ) {
     return { nextStage: "control", nextExposureCeilingBps: 0 }
   }
+  if (input.currentStage === "owner_approved")
+    invalid("Owner releases require the direct activation operator")
   if (input.killSwitchEnabled) invalid("The promotion kill switch is enabled")
   if (!input.approvalMatches) invalid("The exact manifest approval is stale")
   if (!input.targetAvailable) invalid("The approved challenger is unavailable")
@@ -113,6 +119,17 @@ export function promotionReadiness(input: {
       ready: false,
       reason: "Emergency rollback is holding traffic on semantic control.",
       nextAction: "Review the rollback audit before clearing the kill switch.",
+    }
+  }
+  if (input.stage === "owner_approved") {
+    return {
+      ...common,
+      ready: false,
+      impact:
+        "Owner-approved co-watch/MMR for its declared eligible population.",
+      reason: "Direct owner approval; causal usefulness remains unmeasured.",
+      nextAction:
+        "Inspect graph expiry, refresh explicitly, or use emergency stop.",
     }
   }
   if (!input.targetAvailable) {

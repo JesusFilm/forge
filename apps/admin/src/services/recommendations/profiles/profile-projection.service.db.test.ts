@@ -1,10 +1,10 @@
-import { readdirSync, readFileSync } from "node:fs"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import { recommendationRuntimeMigrationSql } from "../current-schema.test-fixture"
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
   ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
@@ -36,25 +36,7 @@ import {
 } from "./profile-lineage"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const migrationRoot = new URL("../../../../prisma/migrations/", import.meta.url)
-const recommendationMigrations = readdirSync(migrationRoot)
-  .filter((name) => {
-    const ordinal = Number(name.slice(0, 4))
-    return (
-      (ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")) ||
-      name === "0082_user_recommendation_identity" ||
-      name === "0098_recommendation_viewing_mode" ||
-      name === "0100_recommendation_candidate_compact_trace" ||
-      name === "0101_recommendation_candidate_compact_trace_validate" ||
-      name === "0102_recommendation_candidate_stage_duplicate_index_drop" ||
-      name === "0103_recommendation_impression_visibility_capability" ||
-      name === "0104_recommendation_cowatch_shadow"
-    )
-  })
-  .sort()
-  .map((name) =>
-    readFileSync(new URL(`${name}/migration.sql`, migrationRoot), "utf8"),
-  )
+const recommendationMigrations = recommendationRuntimeMigrationSql
 
 const webCaller = {
   id: "forge-web",
