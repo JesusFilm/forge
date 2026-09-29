@@ -21,8 +21,9 @@ legacy rows and therefore block whole-table reclamation.
    investigation run ID. Keep these files mode 0600 outside Git. The operator
    compares the sorted original 64 IDs with a pinned SHA-256 from that audit;
    a replacement 64-ID list fails even if its selector hash matches. Review
-   current assignment, shadow, experiment-exposure, promotion-fence, conflict and
-   access-audit links; the operator checks those links again under row locks.
+   current assignment, owner-release, shadow, experiment-exposure,
+   promotion-fence, conflict and access-audit links; the operator checks those
+   links again under row locks.
    Include other uncertain investigations in the private active list.
 3. Select at most ten explicit, still-active legacy runs per reviewed manifest.
    Include protected runs so they are converted losslessly; unprotected runs

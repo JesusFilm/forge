@@ -13,6 +13,7 @@ import {
   freezeLegacyDetailRetirement,
   runLegacyDetailRetirement,
 } from "./legacy-detail-retirement.service"
+import { freezeConversionManifest } from "./legacy-candidate-trace-conversion.service"
 
 // Fixture IDs are synthetic. The real immutable-digest validator is exercised
 // separately; never place private production IDs in tests or source.
@@ -268,6 +269,71 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
           confirmTarget: frozen.targetDatabaseHash,
         }),
       ).rejects.toThrow("fingerprint")
+    })
+
+    it("converts owner-linked legacy detail and rejects an owner link added after freeze", async () => {
+      const owner = await fixture()
+      await db.recommendationRequest.update({
+        where: { id: owner.requestId },
+        data: { ownerReleaseId: randomUUID(), ownerReleaseGeneration: 1 },
+      })
+      const stageCount = await db.recommendationCandidateStageEvidence.count({
+        where: { runId: owner.id },
+      })
+      const manifest = await freeze([owner.id])
+      expect(manifest.candidates[0]?.action).toBe("convert")
+      expect(
+        await runLegacyDetailRetirement(db, manifest, {
+          execute: true,
+          confirmTarget: manifest.targetDatabaseHash,
+        }),
+      ).toMatchObject({ status: "completed", converted: 1, retired: 0 })
+      const converted = await db.recommendationCandidateRun.findUniqueOrThrow({
+        where: { id: owner.id },
+      })
+      expect(converted.traceFormatVersion).toBe(1)
+      expect(converted.legacyDetailRetiredAt).toBeNull()
+      expect(
+        await db.recommendationCandidateStageEvidence.count({
+          where: { runId: owner.id },
+        }),
+      ).toBe(0)
+      const detail = await loadRecommendationRequestDetail(db, {
+        requestId: owner.requestId,
+        actorDigest: "d".repeat(64),
+      })
+      expect(detail?.candidateExecution?.stages).toHaveLength(stageCount)
+
+      const late = await fixture()
+      const frozen = await freeze([late.id])
+      expect(frozen.candidates[0]?.action).toBe("retire")
+      await db.recommendationRequest.update({
+        where: { id: late.requestId },
+        data: { ownerReleaseId: randomUUID(), ownerReleaseGeneration: 2 },
+      })
+      await expect(
+        runLegacyDetailRetirement(db, frozen, {
+          execute: true,
+          confirmTarget: frozen.targetDatabaseHash,
+        }),
+      ).rejects.toThrow("Protection changed")
+      expect(
+        await db.recommendationCandidateStageEvidence.count({
+          where: { runId: late.id },
+        }),
+      ).toBeGreaterThan(0)
+
+      await db.$executeRaw`UPDATE recommendation_request
+        SET created_at=clock_timestamp()-interval '20 days' WHERE id=${late.requestId}`
+      await db.$executeRaw`UPDATE recommendation_candidate_run
+        SET created_at=clock_timestamp()-interval '20 days' WHERE id=${late.id}`
+      await expect(
+        freezeConversionManifest(db, {
+          runIds: [late.id],
+          createdBefore: new Date(Date.now() - 15 * 86_400_000).toISOString(),
+          holds,
+        }),
+      ).rejects.toThrow("ineligible")
     })
 
     it("backs off from retention and rolls back all updates on a deletion mismatch", async () => {
