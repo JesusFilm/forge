@@ -36,7 +36,7 @@ API-only setup
 and use the actual forge-rag-retrieve ops task over HTTP.
 Record task path/revision and approved source scope and receiver before execution.
 Prove +3 then +2 request/success counts, last activity/window, second-consumer
-isolation, revoked denial and no success increment, and honest coverage failures.
+isolation, revoked denial and no success increment, and recorded counts across interruptions.
 Support existing callers for seven days through registration. Disable legacy
 shared bearer access afterwards only in separately approved production cutover
 scope, with a named owner and exact timestamps. Verify embedding primary/fallback
@@ -52,7 +52,7 @@ by the documentation PR. Read package guidance before implementation.
 ## Verification
 
 Run the applicable plan acceptance criteria and package checks. Record synthetic
-counts, coverage, revision and outcomes only. Portal work must also verify page
+counts, windows, revision and outcomes only. Portal work must also verify page
 load performance, cross-consumer denial and concurrent owner/rotation behavior.
 
 ## Production role provisioning audit — 2026-09-29
@@ -70,18 +70,13 @@ records exact statements, credential receiver names, privilege verification and
 remaining activation work. The audit PR does not execute provisioning again or
 claim full feat-529 completion. It changes no personal consumer-key custody.
 
-## Production report coverage recovery — 2026-09-29
+## Usage reporting correction — 2026-09-29
 
-The [inventory and collector recovery audit](evidence/feat-529/production-usage-coverage-recovery.md)
-records three independently sourced deployment inventory intervals and
-reconciliation of two confirmed-stopped collectors. The existing aggregate
-reader proved five recorded requests/successes for `[03:41,03:42)` UTC with
-complete coverage and unchanged counts. Uninstrumented history and uncertain
-shutdown intervals remain unavailable. This is actual aggregate proof, not
-completion of the staged +3/+2, lifecycle, isolation or migration/cutoff criteria.
-Independent inventory must be maintained on subsequent deployments.
-
-The later 2026-09-29 product correction removes coverage/inventory as a reporting
-requirement. The recovery above is historical audit evidence only. Recorded
-counts must be visible for the original consumer/date range without interruptions
-causing suppression; no ongoing inventory upkeep or collector-stop proof is needed.
+The product owner removed coverage/inventory requirements as a design mistake;
+[fix PR #2472](https://github.com/JesusFilm/forge/pull/2472) implements the correction.
+Reporting returns recorded requests and successes for the selected consumer and
+unchanged date range, regardless of interruptions. Deployment declarations,
+collector-stop recovery and narrowed diagnostic windows are not prerequisites
+for dogfood reporting. See the corrected feat-528 plan and operator runbook.
+Historical provisioning receipts remain audit records, not setup instructions.
+The +3/+2, isolation, lifecycle and separately approved grace/cutoff checks remain.

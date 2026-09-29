@@ -4,6 +4,7 @@
 > coverage/inventory design as a mistake. Recorded counts must be shown for the
 > unchanged date range regardless of interruptions. Inventory maintenance,
 > collector recovery and narrower dates are no longer reporting requirements.
+> [Fix PR #2472](https://github.com/JesusFilm/forge/pull/2472) implements that correction.
 > Past writes and receipts below remain unchanged.
 
 ## Symptom and read-only diagnosis
