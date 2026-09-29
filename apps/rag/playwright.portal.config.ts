@@ -4,6 +4,7 @@ import { defineConfig } from "@playwright/test"
 export default defineConfig({
   testDir: "./tests",
   testMatch: "portal-*.e2e.ts",
+  testIgnore: "portal-sources.e2e.ts",
   fullyParallel: false,
   workers: 1,
   retries: 0,

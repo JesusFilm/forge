@@ -53,7 +53,8 @@
     "usage:report": "tsx scripts/usage-report.ts",
     "db:verify-usage-roles": "tsx scripts/verify-usage-roles.ts",
     "usage:reconcile": "tsx scripts/usage-reconcile.ts",
-    "usage:inventory": "tsx scripts/usage-inventory.ts"
+    "usage:inventory": "tsx scripts/usage-inventory.ts",
+    "portal:sources:verify": "playwright test --config playwright.sources.config.ts"
   },
   "dependencies": {
     "@forge/rag-contracts": "workspace:*",

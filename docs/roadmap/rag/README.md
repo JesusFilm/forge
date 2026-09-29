@@ -10,10 +10,10 @@ database into Admin.
 
 ## Status (September 29, 2026)
 
-- **Total tickets:** 36
-- **Complete:** 24
-- **In progress:** 2
-- **Not started:** 10
+- **Total tickets:** 37
+- **Complete:** 25
+- **In progress:** 3
+- **Not started:** 9
 - **Blocked:** 0
 
 ## Feature Index
@@ -56,6 +56,7 @@ database into Admin.
 | [feat-532](feat-532-rag-legacy-service-credential-retirement.md)  | —                                                             | Retire legacy JesusFilm-RAG service and credentials                | not-started | [#2379](https://github.com/JesusFilm/forge/pull/2379)                                                                                                                                                                                                                             |
 | [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
 | [feat-541](feat-541-rag-database-diagram.md)                      | —                                                             | Document the RAG database schema as a complete ERD                 | complete    | [#2398](https://github.com/JesusFilm/forge/pull/2398)                                                                                                                                                                                                                             |
+| [feat-569](feat-569-rag-portal-sources.md)                        | —                                                             | Production source catalog in the portal                            | complete    | [#2463](https://github.com/JesusFilm/forge/pull/2463)                                                                                                                                                                                                                             |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
