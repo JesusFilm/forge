@@ -44,6 +44,12 @@ export type LanguageNote = {
   greek: string
   translit: string
   lemma: string
+  /** The English words of the verse (BSB) this Greek word stands behind,
+   *  copied from the passage: the narration points at these, never at the
+   *  Greek, which the synthetic voice cannot say (owner, 2026-09-29). */
+  englishPhrase: string
+  /** Human reference of the verse, e.g. "Luke 15:20". */
+  verseRef: string
   /** What the word means here, in plain words. */
   meaning: string
   /** Verbatim words from the lexicon entry. */
@@ -357,6 +363,7 @@ const LanguageSchema = z
     reason: z.string(),
     strong: z.string(),
     osis: z.string(),
+    englishPhrase: z.string(),
     meaning: z.string(),
     quote: z.string(),
     why: z.string(),
@@ -373,11 +380,21 @@ const LANGUAGE_JSON_SCHEMA = {
       reason: { type: "string" },
       strong: { type: "string" },
       osis: { type: "string" },
+      englishPhrase: { type: "string" },
       meaning: { type: "string" },
       quote: { type: "string" },
       why: { type: "string" },
     },
-    required: ["status", "reason", "strong", "osis", "meaning", "quote", "why"],
+    required: [
+      "status",
+      "reason",
+      "strong",
+      "osis",
+      "englishPhrase",
+      "meaning",
+      "quote",
+      "why",
+    ],
   },
 }
 
@@ -389,10 +406,18 @@ export const LANGUAGE_SYSTEM_PROMPT = [
   "Pick AT MOST ONE word whose meaning in Greek changes or sharpens how a",
   "viewer reads this passage, in a way an English reader would miss. Not a",
   "word study for its own sake; not an etymology that the Greek speakers of",
-  "the day would not have heard. Give its strong and osis exactly as listed,",
-  "its meaning here in plain words, a verbatim quote from ITS lexicon entry,",
-  "and what it changes. Leave strong, osis, meaning, quote and why empty",
-  "when status is not facts.",
+  "the day would not have heard. The meaning is what the lexicon says the",
+  "WORD means, not what its root once meant: σπλαγχνίζομαι means to feel",
+  "pity or compassion; that it comes from a noun for the inward parts is",
+  "etymology, and the viewer must not be told the father felt it in his",
+  "guts. Give its strong and osis exactly as listed; englishPhrase, the",
+  "English words of THAT verse in the passage (BSB) that translate it,",
+  "copied exactly; its meaning here in plain words; a verbatim quote from",
+  "ITS lexicon entry; and what it changes. The narration will never say the",
+  "Greek word (a synthetic voice cannot pronounce it): it will point at the",
+  "English words in the verse, so the note must work that way. Leave strong,",
+  "osis, englishPhrase, meaning, quote and why empty when status is not",
+  "facts.",
   RULES,
 ].join("\n")
 
@@ -529,10 +554,29 @@ export async function researchLanguage(input: {
     out.meaning = again.meaning || out.meaning
     out.why = again.why || out.why
   }
+  const phrase = out.englishPhrase.trim()
+  if (
+    !phrase ||
+    !` ${normalizeForQuote(input.passageText)} `.includes(
+      ` ${normalizeForQuote(phrase)} `,
+    )
+  ) {
+    input.log?.(
+      `   ✂️ language note dropped: “${phrase}” is not in the passage's English`,
+    )
+    return {
+      status: "nothing-useful",
+      reason: "english phrase not in the passage",
+    }
+  }
+  const [, chapter, verse] = word.osis.split(".")
+  const book = input.passageReference.split(" ").slice(0, -1).join(" ")
   return {
     status: "facts",
     reason: out.reason,
     note: {
+      englishPhrase: phrase,
+      verseRef: `${book} ${chapter}:${verse}`,
       strong: word.strong,
       osis: word.osis,
       greek: word.greek,

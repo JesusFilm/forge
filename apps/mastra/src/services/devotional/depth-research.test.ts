@@ -8,6 +8,7 @@ import {
 } from "./depth-research"
 import type { DevotionalMessage } from "./devotional-message"
 import type { DevotionalLlm } from "./llm"
+import { foreignWords } from "./message-first-writer"
 import type { ReferenceCorpora } from "./reference-corpus"
 
 const message: DevotionalMessage = {
@@ -65,7 +66,8 @@ const base = {
   corpora,
   passageOsis: "Luke.15.11-Luke.15.32",
   passageReference: "Luke 15:11-32",
-  passageText: "…",
+  passageText:
+    "But while he was still in the distance, his father saw him and was filled with compassion.",
   message,
 }
 
@@ -156,6 +158,7 @@ describe("researchLanguage", () => {
     reason: "",
     strong: "G4697",
     osis: "Luke.15.20",
+    englishPhrase: "was filled with compassion",
     meaning: "moved with compassion",
     quote: "to be moved as to the σπλάγχνα which see hence to feel pity",
     why: "",
@@ -164,7 +167,20 @@ describe("researchLanguage", () => {
 
   it("keeps a word that is in the passage with a verbatim quote", async () => {
     const out = await researchLanguage({ ...base, llm: scripted(pick({})) })
-    expect(out.note).toMatchObject({ strong: "G4697", osis: "Luke.15.20" })
+    expect(out.note).toMatchObject({
+      strong: "G4697",
+      osis: "Luke.15.20",
+      verseRef: "Luke 15:20",
+      englishPhrase: "was filled with compassion",
+    })
+  })
+
+  it("drops a note whose English words are not in the passage", async () => {
+    const out = await researchLanguage({
+      ...base,
+      llm: scripted(pick({ englishPhrase: "his heart went out to him" })),
+    })
+    expect(out.status).toBe("nothing-useful")
   })
 
   it("drops a word that is not in the passage", async () => {
@@ -209,6 +225,8 @@ describe("buildParagraphs", () => {
         voices: { main: "female-c", depth: "male-e" },
         context: [],
         language: {
+          englishPhrase: "was filled with compassion",
+          verseRef: "Luke 15:20",
           strong: "G4697",
           osis: "Luke.15.20",
           greek: "",
@@ -244,5 +262,35 @@ describe("buildParagraphs", () => {
       "classic",
       "reflection",
     ])
+  })
+})
+
+describe("foreignWords", () => {
+  const note = {
+    englishPhrase: "was filled with compassion",
+    verseRef: "Luke 15:20",
+    strong: "G4697",
+    osis: "Luke.15.20",
+    greek: "ἐσπλαγχνίσθη",
+    translit: "esplagchnisthē",
+    lemma: "σπλαγχνίζω",
+    meaning: "",
+    quote: "",
+    why: "",
+    lexiconText: "",
+  }
+  it("catches the Greek word said aloud, in Greek or in Latin letters", () => {
+    expect(
+      foreignWords("The Greek word is esplagchnisthē. It is deep.", note),
+    ).toHaveLength(1)
+    expect(foreignWords("Luke writes ἐσπλαγχνίσθη here.", note)).toHaveLength(1)
+  })
+  it("lets the English pointing through", () => {
+    expect(
+      foreignWords(
+        "In verse 20 the father was filled with compassion. The word Luke uses means to feel pity.",
+        note,
+      ),
+    ).toEqual([])
   })
 })

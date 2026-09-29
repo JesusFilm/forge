@@ -104,7 +104,13 @@ export const SYSTEM_PROMPT = [
   "- Never announce a section ('now some historical context', 'let's look at",
   "  the Greek'). Move into it with a natural sentence. Naming a source or",
   "  the Greek word inside a sentence is fine and honest.",
-  "- A Greek word is written in Latin letters as the note gives it, once.",
+  "- NEVER say a Greek or Hebrew word, in any spelling: the synthetic voice",
+  "  cannot pronounce it, and a strange word tells the listener nothing about",
+  "  where it is. Point at the place instead: the verse and its English words,",
+  "  then what the original says there. For example: 'In verse 20 the father",
+  "  was filled with compassion. The word Luke uses there means to feel pity,",
+  "  to be moved with compassion.' Say 'the word Luke uses' or 'in the",
+  "  original', not the word itself.",
   "- Words attributed to the commentator in quotation marks must be copied",
   "  character for character from his points as given, and a code check",
   "  compares them. Quote at most one short sentence of his; paraphrase the",
@@ -129,6 +135,31 @@ export const SYSTEM_PROMPT = [
   "",
   "LENGTH: 420 to 560 words in 10 to 16 short paragraphs. Return JSON only.",
 ].join("\n")
+
+/** The note's Greek, in any of its spellings, said aloud: the voice cannot
+ *  pronounce it (owner, 2026-09-29). */
+export function foreignWords(
+  text: string,
+  note?: LanguageNote,
+): { rule: string; sentence: string; why: string }[] {
+  if (!note) return []
+  const strip = (w: string) =>
+    w.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()
+  const forms = [note.greek, note.lemma, note.translit]
+    .filter(Boolean)
+    .map(strip)
+    .map((f) => f.slice(0, Math.max(5, f.length - 3)))
+  const hits = text.split(/(?<=[.!?])\s+/).filter((s) =>
+    strip(s)
+      .split(/[^\p{L}]+/u)
+      .some((w) => w.length >= 5 && forms.some((f) => w.startsWith(f))),
+  )
+  return hits.map((sentence) => ({
+    rule: "foreign-word",
+    sentence,
+    why: "says the Greek word aloud; point at the verse's English words and say what the original means there",
+  }))
+}
 
 export async function writeMessageFirstReflection(input: {
   message: DevotionalMessage
@@ -162,7 +193,7 @@ export async function writeMessageFirstReflection(input: {
         )
       : ["- HISTORY: none worth adding."]),
     input.language
-      ? `- LANGUAGE (Abbott-Smith lexicon): ${input.language.translit} (${input.language.greek}, ${input.language.osis}): ${input.language.meaning} Source words: "${input.language.quote}". Why it matters: ${input.language.why}`
+      ? `- LANGUAGE (Abbott-Smith lexicon), ${input.language.verseRef}, the words "${input.language.englishPhrase}": ${input.language.meaning} Source words: "${input.language.quote}". Why it matters: ${input.language.why} (Do not say the Greek word.)`
       : "- LANGUAGE: none worth adding.",
   ].join("\n")
   const ask = (u: string) =>
@@ -179,7 +210,10 @@ export async function writeMessageFirstReflection(input: {
   // two repair rounds with the exact sentences that broke them.
   for (let attempt = 1; attempt <= 2; attempt++) {
     const text = out.map((p) => p.text).join("\n\n")
-    const broken = checkReflectionVoice(text, { lang: "en" })
+    const broken = [
+      ...checkReflectionVoice(text, { lang: "en" }),
+      ...foreignWords(text, input.language),
+    ]
     if (broken.length === 0) break
     input.log?.(
       `   ↻ voice repair ${attempt}/2: ${broken.map((b) => b.rule).join(", ")}`,
