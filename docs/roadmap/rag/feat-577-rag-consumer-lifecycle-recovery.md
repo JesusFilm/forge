@@ -47,5 +47,5 @@ authorization, concurrency and page-load cost.
 
 ## Resolution
 
-Implemented in the Forge consumer lifecycle recovery PR. Local verification
-and page-load evidence are recorded in the plan linked above.
+Implemented in [Forge PR #2496](https://github.com/JesusFilm/forge/pull/2496).
+Local verification and page-load evidence are recorded in the plan linked above.
