@@ -9,13 +9,25 @@ usage port, PostgreSQL adapter and transport-aware serving collector. Atomic
 admission/completion provides exact normal-operation counts; telemetry failures
 remain visible through durable gaps and conservative pending-state coverage.
 UTC windows are minute-aligned and bounded to 31 days. Report capabilities are
-independent of consumer credentials and ownership, initially only Jaco/RAGBot.
+independent of retrieval credentials and ownership. All admitted portal users
+can read all consumer reports using existing GitHub sessions (2026-09-29
+direction supersedes the earlier Jaco/RAGBot-only human policy). Optional machine
+report credentials remain independent.
 RAGBot registration through the portal remains an activation prerequisite.
 
 Verification: vertical red/green tests at the confirmed seams, regular typechecks,
 RAG lint/import-law checks, disposable PostgreSQL accounting and privilege tests,
-then full RAG suite and separate standards/spec reviews. No frontend runtime
-change, production operation, shared-token cutoff or cross-app contract change.
+then full RAG suite and separate standards/spec reviews. The protected
+`GET /portal/usage` shares window/coverage semantics with the internal report
+endpoint, using current portal admission without an ownership gate. Report reader
+configuration enables portal reports without requiring machine bearer hashes.
+
+Add a Usage navigation item and selected report page after Jaco chooses from
+three layouts: table-first comparison, ranked overview, and split list/detail.
+Mockups use synthetic data and are conversation previews, not shipped UI. Until
+selection, keep the ticket in-progress and the same PR draft. Verify browser
+authorization, coverage presentation and page-loading performance when implementing
+the chosen page. No production operation, shared-token cutoff or cross-app change.
 
 Capacity and fleet inventory follow-up is feat-563. Provisioning and recovery
 instructions live in `apps/rag/docs/ops/consumer-usage.md`. Durable learning:

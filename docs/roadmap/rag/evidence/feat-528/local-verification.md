@@ -16,7 +16,8 @@ shared-token migration or deployment was performed.
   extra or undeclared collectors and missing inventory force unavailable coverage.
   Serving and report readers cannot rewrite expectations.
 - Fixed read-only HTTP/CLI report capability, independent of retrieval and
-  ownership, initially Jaco/RAGBot only. Unknown consumers fail; unavailable
+  ownership, initially Jaco/RAGBot only (superseded for human access by the 2026-09-29
+  portal decision below). Unknown consumers fail; unavailable
   coverage is 503/nonzero; partial coverage is explicit.
 
 ## Verification results
@@ -54,3 +55,20 @@ configure their receivers and maintain truthful deployment/replica inventory.
 Register RAGBot through feat-530's portal UI before its separate report grant.
 Feat-529 owns actual ops HTTP dogfood, migration grace and production cutoff.
 Feat-563 tracks measured capacity before volume expansion. Implementation is proposed in [Forge draft PR #2455](https://github.com/JesusFilm/forge/pull/2455).
+
+## 2026-09-29 portal reporting direction
+
+Every admitted portal user can read every consumer report through `/portal/usage`
+with their existing session, without consumer ownership or a new report secret.
+The HTTP acceptance check covers another consumer's report, anonymous/retrieval-key
+denial, removal, loss of live permission, unavailable admission and revoked session.
+Internal machine authorization remains independent. Window validation and coverage
+semantics are shared. Production has not been activated by this change.
+Three synthetic layout options are supplied for selection; the Usage menu/page and
+its browser/performance verification remain pending. Earlier full-suite results
+above describe the initial accounting implementation.
+
+Expanded-scope verification: 894 tests passed and 5 database-gated tests skipped
+across 121 files (117 passed, 4 skipped). Typecheck, lint and import-law checks
+passed. Separate Standards and Spec reviews reported no new findings. No database
+schema or accounting behavior changed in the portal slice.

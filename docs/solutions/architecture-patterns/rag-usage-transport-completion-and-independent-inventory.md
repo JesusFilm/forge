@@ -34,3 +34,10 @@ Regression evidence lives in `apps/rag/src/serving/http/usage.test.ts`,
 `apps/rag/src/adapters/postgres/usage-inventory.integration.test.ts`. Force real
 DB privilege failures and a missing expected replica; handler-only mocks cannot
 prove these guarantees.
+
+Human report access and machine report credentials are separate capabilities.
+The portal reuses its live admission/session check for all-consumer reports;
+consumer ownership still controls mutations only. Share window validation and
+coverage response handling between portal and machine endpoints, while keeping
+cookie and bearer authentication at their respective boundaries. Configure the
+server's aggregate-only reader independently of optional machine bearer hashes.

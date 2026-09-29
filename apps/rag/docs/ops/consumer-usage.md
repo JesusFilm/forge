@@ -1,7 +1,8 @@
 # Consumer usage reporting (feat-528)
 
 Usage is additive metadata in `usage_private`, separate from corpus, credentials,
-portal sessions and lifecycle audit. Consumer owners receive no report access.
+portal sessions and lifecycle audit. Every admitted portal user can read every
+consumer report, independently of ownership, using their existing GitHub login.
 No IP, headers, queries, results, credential selector, secret or verifier is stored
 in accounting. Existing credential verifiers stay in `consumer_private`.
 
@@ -23,11 +24,14 @@ Unaligned boundaries are rejected rather than rounded. Metrics are unsampled
 and durable; no deletion/retention policy is introduced. Pending attempt IDs are
 random operational deduplication state and never exposed in reports.
 
-`GET /internal/usage?consumer=<stable UUID>&from=<UTC Z>&to=<UTC Z>` returns only
+Both `GET /portal/usage?consumer=<stable UUID>&from=<UTC Z>&to=<UTC Z>` (portal
+session) and `GET /internal/usage?consumer=<stable UUID>&from=<UTC Z>&to=<UTC Z>` returns only
 `consumerId`, `label`, `windowStart`, `windowEnd`, `requestCount`,
 `successfulRequestCount`, `lastActivityAt`, `generatedAt`, `completeThrough`, and
 `coverageStatus`. Counts are safe JSON integers; an overflow fails the report.
-An unknown consumer is 404, invalid window 400, missing report authority 403.
+An unknown consumer is 404, invalid window 400, missing machine report authority 403; missing/revoked portal admission 401.
+Portal reads recheck the current merged allowlist, stable GitHub identity and live
+repository permission; admission-service failure returns 503.
 Responses are `Cache-Control: no-store`. A report DB failure is 503, never zero.
 
 `pnpm usage:report --consumer <UUID> --from <UTC Z> --to <UTC Z>` uses the
@@ -118,13 +122,21 @@ column-level and SET-reachable table privileges and privileged role flags.
 The writer is separate from both consumer roles and the corpus reader.
 
 Enable collection with `RAG_USAGE_WRITER_DATABASE_URL` after registered auth
-is configured. Reporting also requires `RAG_USAGE_REPORT_DATABASE_URL` and
+is configured. Portal reporting requires `RAG_USAGE_REPORT_DATABASE_URL` alongside the existing
+portal configuration and usage writer. No new human secret is required. The
+server uses the aggregate-only reader; its database URL never reaches the browser.
+The Usage page is pending layout selection in draft PR #2455.
+
+For optional operator/RAGBot HTTP/CLI access, also configure
 `RAG_USAGE_REPORT_TOKEN_HASHES`, a JSON object mapping only `jaco` and/or
 `ragbot` to SHA-256 hashes of independently generated report secrets. Use high
 entropy secrets, deliver directly into each approved receiver, and never put
 values in command arguments, output, documentation or evidence. Hash comparison
 is constant-time. Remove/replace the corresponding hash to revoke/rotate report
-access. Retrieval credentials and portal cookies cannot authorize reporting.
+machine access. Retrieval credentials cannot authorize reports. Portal cookies
+authorize `/portal/usage` only and do not authorize `/internal/usage`. Removing
+a machine hash does not revoke portal access; removing portal admission does not
+revoke an independent machine credential. Revoke each applicable capability.
 
 Before granting RAGBot reports, an allowlisted initial owner must create it
 through feat-530's portal UI and save the one-time retrieval key directly in its

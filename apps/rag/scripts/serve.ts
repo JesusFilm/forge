@@ -88,29 +88,14 @@ async function main(): Promise<void> {
       "consumer source scope is invalid",
       "railway",
     )
-  const portal = sessions
-    ? {
-        sessions,
-        admission: createGitHubAdmission({
-          repositoryToken: input.RAG_PORTAL_GITHUB_TOKEN!,
-          clientId: input.RAG_PORTAL_CLIENT_ID!,
-          clientSecret: input.RAG_PORTAL_CLIENT_SECRET!,
-          callbackUrl: input.RAG_PORTAL_CALLBACK_URL!,
-        }),
-        clientId: input.RAG_PORTAL_CLIENT_ID!,
-        callbackUrl: input.RAG_PORTAL_CALLBACK_URL!,
-        origin: input.RAG_PORTAL_ORIGIN!,
-        consumers,
-        allowedSourceKeys,
-      }
-    : undefined
   const usageWriterUrl = input.RAG_USAGE_WRITER_DATABASE_URL
   const deploymentId =
     input.RAILWAY_DEPLOYMENT_ID ?? input.RAG_USAGE_DEPLOYMENT_ID
   const usageReaderUrl = input.RAG_USAGE_REPORT_DATABASE_URL
   const reportHashes = input.RAG_USAGE_REPORT_TOKEN_HASHES
   if (
-    !!usageReaderUrl !== !!reportHashes ||
+    (reportHashes && !usageReaderUrl) ||
+    (usageReaderUrl && !sessions && !reportHashes) ||
     (usageReaderUrl && !usageWriterUrl) ||
     (usageWriterUrl &&
       (!consumerAuth ||
@@ -154,10 +139,30 @@ async function main(): Promise<void> {
         "railway",
       )
   }
+  const portalUsageReader = usageReader
+    ? new PostgresUsageStore(usageReader)
+    : undefined
+  const portal = sessions
+    ? {
+        sessions,
+        admission: createGitHubAdmission({
+          repositoryToken: input.RAG_PORTAL_GITHUB_TOKEN!,
+          clientId: input.RAG_PORTAL_CLIENT_ID!,
+          clientSecret: input.RAG_PORTAL_CLIENT_SECRET!,
+          callbackUrl: input.RAG_PORTAL_CALLBACK_URL!,
+        }),
+        clientId: input.RAG_PORTAL_CLIENT_ID!,
+        callbackUrl: input.RAG_PORTAL_CALLBACK_URL!,
+        origin: input.RAG_PORTAL_ORIGIN!,
+        consumers,
+        usageReader: portalUsageReader,
+        allowedSourceKeys,
+      }
+    : undefined
   const usageReport =
     usageReader && reportHashes
       ? {
-          reader: new PostgresUsageStore(usageReader),
+          reader: portalUsageReader!,
           authorize: reportAuthorizer(reportHashes),
         }
       : undefined

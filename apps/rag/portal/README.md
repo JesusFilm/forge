@@ -39,7 +39,10 @@ The portal exposes login, protected identity proof, and sign-out. When the
 separate consumer writer and auth reader URLs are configured, it also mounts
 authenticated `/portal/consumers` management routes. These are the backend
 for local management UI development under feat-530; they do not
-expose usage reports. See the [consumer access migration runbook](../docs/ops/consumer-access-migration.md)
+expose usage reports themselves. With the report reader configured, the separate
+`/portal/usage` route lets every admitted portal user read every consumer report
+using their existing session, independently of ownership. Reads recheck current
+admission; database credentials stay server-side. See the [consumer access migration runbook](../docs/ops/consumer-access-migration.md)
 for the route contract, least-privilege roles, one-time secret handling and
 rollout boundary.
 
@@ -136,7 +139,8 @@ consumers remain in the local database. Evidence lives in ignored `apps/rag/outp
 
 Follow the user-supplied registry mockup: cool neutral background, blue accents,
 white table panel and locally served Apercu typography. Navigation has RAG,
-Consumers and Knowledge, without Settings. The two unfinished sections show only
+Consumers and Knowledge, without Settings. Usage joins these after layout
+selection under feat-528. The two unfinished sections show only
 the supplied capybara construction illustration, loaded on demand.
 
 Use semantic rows with name, status, actual member count and owner-only action
@@ -149,3 +153,15 @@ sections and footers. Field labels identify inputs. Show validation messages whe
 input fails. Retain concise consequence/recovery text for key issuance and
 destructive actions. Create submits directly and opens Save your API key; there
 is no preview step.
+
+## Usage page (feat-528, draft PR #2455)
+
+Add Usage navigation and the report page after Jaco selects one of three proposed
+layouts: table-first comparison, ranked overview, or consumer list with detail.
+No layout is selected yet. Every admitted user sees every consumer, including
+revoked consumers' historical reports. Keep management owner-only.
+Use a UTC window of at most 31 days with minute-aligned boundaries. Show requests,
+completed successes, last activity, complete-through and explicit coverage status.
+Unknown/unavailable data is not a reliable zero; partial totals must be marked.
+Report reads are excluded from retrieval usage accounting. Validate page loading
+and browser authorization after implementing the selected page.

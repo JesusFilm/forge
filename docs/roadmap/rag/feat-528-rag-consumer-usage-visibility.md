@@ -3,7 +3,7 @@ id: "feat-528"
 title: "Deliver RAG consumer usage reporting"
 owner: "jaco"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-09-15"
 duration: 4
 depends_on: ["feat-526", "feat-527"]
@@ -30,13 +30,27 @@ before retiring shared-token access. Planning completion is not implementation.
 
 ## What To Build
 
-Implement plan sections C and E as a separate deliverable: privacy-minimised,
-unsampled usage aggregates, coverage health/watermarks, restricted read-only
-report capability restricted to Jaco and RAGBot (no general DB credential). Register RAGBot through the feat-530 portal UI with an allowlisted initial owner first; its later narrow internal reporting tool is separate from retrieval and ownership does not grant reports. Keep durable aggregates for growth insight; no raw sensitive events or retention/deletion implementation. Record future capacity review. Deliver synthetic HTTP acceptance tests; actual ops dogfood follows in feat-529. Report consumer
-request count, successful count, last activity and UTC window. Prove +3 then +2
-requests, second-integration isolation, denied revocation with no success
-increment, and honest partial/unavailable coverage rather than false zero.
+Implement privacy-minimised, unsampled usage aggregates, coverage health and
+read-only reports. **2026-09-29 direction supersedes the Jaco/RAGBot-only human
+access policy: every admitted portal user can view every consumer's report.**
+Existing GitHub login/session and current portal admission are sufficient; no
+consumer ownership check, new human credential or report allowlist is required.
+Consumer management remains owner-restricted. Retrieval keys do not grant reports.
+Keep the optional independent operator/RAGBot HTTP/CLI capability for automation.
 
+Add **Usage** beside RAG, Consumers and Knowledge. Prepare three layout options
+for Jaco to select before implementing the page: table-first comparison,
+overview with ranked consumer usage, and consumer list with a detail pane.
+Use the selected layout to display request/success counts, last activity, UTC
+window, complete-through watermark and honest partial/unavailable coverage.
+All admitted users can select any registered consumer, including revoked consumers.
+Do not expose credentials, owner contacts or corpus content.
+
+Keep durable aggregates for growth insight; no raw sensitive events or retention
+implementation. Synthetic HTTP acceptance and role tests precede actual ops
+dogfood in feat-529. Accounting proves +3 then +2 requests, integration isolation,
+denied revocation without a success increment and honest coverage rather than
+false zero.
 Use the plan's proposed types and counting contract. Start date/duration are
 bookkeeping estimates, not an approved release schedule.
 
@@ -48,14 +62,19 @@ report argument. Credential rotation preserves usage identity.
 
 Apply the approved decisions and resolve named implementation details before activation. No IP, raw query,
 corpus, token value/selector or production evidence in records. Auth verifiers
-stay restricted. Serving never writes corpus. No cross-app imports, portal or
-implicit heavy-usage enforcement. Use the actual forge-rag-retrieve ops HTTP path in the dependent dogfood ticket. Normal PR-to-main only.
+stay restricted. Serving never writes corpus. No cross-app imports or implicit heavy-usage enforcement. Use the actual forge-rag-retrieve ops HTTP path in the dependent dogfood ticket. Normal PR-to-main only.
 
 ## Production report access
 
-After production activation, Jaco reads reports with the operator command below
-or the authenticated `GET /internal/usage` endpoint on the production RAG service.
-The current delivery returns JSON; it does not add a portal report page.
+After production activation, all admitted portal users open **Usage** in the
+existing `/portal` UI and select a UTC window and any consumer. Human access
+uses the existing GitHub OAuth login and session cookie. Each protected read
+rechecks the merged allowlist, stable GitHub identity and live Forge permission.
+`GET /portal/usage?consumer=<UUID>&from=<UTC Z>&to=<UTC Z>` uses that session,
+returns only aggregate fields and is never cached. No ownership restriction.
+
+The authenticated `GET /internal/usage` endpoint and operator command remain
+available for approved automation through independent report credentials:
 
 ```bash
 pnpm --filter @forge/rag usage:report \
@@ -71,10 +90,11 @@ consumer label, request/success counts, last activity, UTC window and coverage.
 Windows must be minute-aligned and at most 31 days. Partial coverage is visibly
 marked; unavailable coverage exits nonzero rather than presenting a reliable zero.
 
-Only Jaco and RAGBot receive independent report credentials. Portal ownership
-and retrieval keys grant no report access. RAGBot must first be created through
-feat-530's portal UI, then receive a separate report capability using the same
-bounded endpoint; its later ops-tool integration is separate from retrieval.
+The optional machine report credentials remain scoped to Jaco/RAGBot; this
+restriction does not apply to session-authenticated portal reads. RAGBot must
+first be created through feat-530's portal UI before its machine report grant.
+The portal uses the restricted server-side report reader without exposing its
+URL or credentials to the browser.
 Production requires the restricted metadata roles, server report configuration,
 receiver secrets and independently maintained deployment inventory described in
 [the operator runbook](../../../apps/rag/docs/ops/consumer-usage.md).
@@ -97,8 +117,8 @@ honest coverage gaps and crash reconciliation, and restricted read-only reportin
 See [local verification](evidence/feat-528/local-verification.md) and
 [operator instructions](../../../apps/rag/docs/ops/consumer-usage.md).
 
-The implemented deliverable is complete. Production provisioning, RAGBot portal
-registration/report grant and actual ops dogfood remain activation/dependent
-work; shared-token cutoff still requires feat-529 and separate approval.
-Capacity review is feat-563. The PR is open for approach review; production
-activation has not been performed.
+Accounting and machine reporting are implemented and locally verified. The
+expanded portal-access slice is implemented in the same draft PR. The **Usage**
+menu/page is pending Jaco's choice among three layouts; this ticket stays
+in-progress until that selected page is implemented and verified. Production
+activation and feat-529 dogfood remain pending; capacity review is feat-563.
