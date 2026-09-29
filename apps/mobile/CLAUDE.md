@@ -1718,7 +1718,7 @@ from there, so no two files can disagree about the bar's size.
   Do not delete it: expo-router resolves the platform sibling by specificity,
   and it throws without an extension-less fallback file.
 - **There is no Library tab. The downloads list lives on the root Downloads
-  screen (feat-570).** `app/downloads.tsx` hosts
+  screen (feat-581).** `app/downloads.tsx` hosts
   `src/components/library/LibraryDownloads.tsx`, which holds the list,
   selection mode and the delete flow. The My Watch tab (route `profile`) shows
   a rail of at most 10 downloads (`src/lib/myWatchRail.ts`) and opens the list
