@@ -1,185 +1,101 @@
 # Consumer usage reporting (feat-528)
 
-Usage is additive metadata in `usage_private`, separate from corpus, credentials,
-portal sessions and lifecycle audit. Every admitted portal user can read every
-consumer report, independently of ownership, using their existing GitHub login.
-No IP, headers, queries, results, credential selector, secret or verifier is stored
-in accounting. Existing credential verifiers stay in `consumer_private`.
+Usage reports answer one question: how many recorded requests and completed
+successful responses did each consumer have in the selected date range?
+Every admitted portal user can read every consumer's report using their existing
+GitHub login. Consumer ownership still controls management actions.
 
 ## Accounting and windows
 
-Every active registered credential admission increments its stable consumer's
-request count once. HTTP retries are separate attempts. Validation and retrieval
-errors count as attempts; only Node's completed `ServerResponse.finish` with a
-2xx status increments success. A disconnect before finish does not. Empty
-retrieval is a successful 200. Rotation preserves identity. Revoked/unknown auth,
-auth outages, body-limit rejections and legacy shared tokens go into bounded
-service counters without consumer attribution. Health, portal and report reads
-are excluded. Success describes server completion, not delivery to a caller.
+Every request authenticated to an active registered credential increments its
+stable consumer's request count once. HTTP retries are separate attempts;
+post-auth validation and retrieval errors count as requests. Only Node's completed
+`ServerResponse.finish` with a 2xx status increments success. A disconnect before
+finish does not. Empty retrieval is a successful 200. Rotation preserves identity.
+Revoked/unknown auth, auth outages, pre-auth body-limit rejections and legacy
+shared tokens go into service counters without consumer attribution. Health,
+portal and report reads are excluded. Success describes server completion.
 
-Reports use UTC half-open `[from,to)` windows keyed to admission, **aligned to
-minute boundaries**, with at most 31 days in one read. This implements the
-plan's proposed minute aggregates without claiming second-level precision.
-Unaligned boundaries are rejected rather than rounded. Metrics are unsampled
-and durable; no deletion/retention policy is introduced. Pending attempt IDs are
-random operational deduplication state and never exposed in reports.
+Counts are durable, unsampled minute aggregates in `usage_private`. Random pending
+attempt IDs deduplicate success updates transactionally; unfinished attempts
+remain requests without an invented success. No IP, headers, queries, results,
+credential selector, secret or verifier is stored in usage accounting.
 
-Both `GET /portal/usage?consumer=<stable UUID>&from=<UTC Z>&to=<UTC Z>` (portal
-session) and `GET /internal/usage?consumer=<stable UUID>&from=<UTC Z>&to=<UTC Z>` returns only
-`consumerId`, `label`, `windowStart`, `windowEnd`, `requestCount`,
-`successfulRequestCount`, `lastActivityAt`, `generatedAt`, `completeThrough`, and
-`coverageStatus`. Counts are safe JSON integers; an overflow fails the report.
-An unknown consumer is 404, invalid window 400, missing machine report authority 403; missing/revoked portal admission 401.
-Portal reads recheck the current merged allowlist, stable GitHub identity and live
-repository permission; admission-service failure returns 503.
-Responses are `Cache-Control: no-store`. A report DB failure is 503, never zero.
+UTC half-open `[from,to)` windows are keyed to admission, minute-aligned and
+bounded to 31 days per read. Invalid boundaries are rejected, never rounded or
+shifted. Return every recorded count in that range, including requests before
+or after a service interruption. An existing consumer with no records returns
+zero. Unknown consumers return 404; invalid windows return 400. An actual report
+DB failure returns 503 with an error, not a successful zero response.
+A failed accounting write is logged with a generic event and does not block
+retrieval or hide other recorded counts. Reports describe recorded usage;
+requests whose accounting could not be persisted cannot be reconstructed.
 
-The portal **Usage** menu opens a comparison table with UTC from/to inputs,
-consumer-name search and 20-row pagination. Open a consumer name for the report
-window, generated time and complete-through watermark. Unavailable totals are
-shown as a dash, partial totals are labelled and fully covered zero totals remain
-zero. Failed reads clear the displayed totals; reports never silently retry.
+## Portal and optional machine reports
 
-`GET /portal/usage/reports?consumer=<comma-separated UUIDs>&from=<UTC Z>&to=<UTC Z>`
-reads at most 20 distinct consumers per protected request. Every UUID/window is
-validated before reading. Admission is rechecked once for the batch; each report
-retains its own repeatable-read snapshot and generated time. A 200 batch response
-contains `{ reports: [...] }` with each row's coverage status, including unavailable.
-Read failure returns 503 without totals; unknown consumer 404, invalid/duplicate
-or oversized query 400, missing/currently denied portal admission 401. The browser
-suppresses unavailable counts. This batch API is portal-session-only; the machine
-endpoint/CLI remains single-consumer. Both paths read the same aggregate views.
+The portal Usage comparison table provides dates, consumer-name search, 20-row
+pagination, requests, successes and last activity. Consumer links open details
+with the selected window and report generation time. Show counts whenever the
+read succeeds. Clear stale totals and show an error when the read fails.
+Load the Usage client only when entering Usage; do not preload reports.
 
-`pnpm usage:report --consumer <UUID> --from <UTC Z> --to <UTC Z>` uses the
-bounded HTTP capability, with `RAG_USAGE_REPORT_URL` and
-`RAG_USAGE_REPORT_SECRET` injected from the approved receiver. The command never
-accepts SQL or database credentials. It validates fixed fields and an 8 KiB
-response cap, refuses redirects, visibly marks partial coverage, and exits
-nonzero on unavailable coverage or any report failure.
+`GET /portal/usage?consumer=<UUID>&from=<UTC Z>&to=<UTC Z>` uses the existing
+portal session. `GET /portal/usage/reports?consumer=<comma-separated UUIDs>&from=<UTC Z>&to=<UTC Z>`
+validates at most 20 distinct consumers, rechecks admission once and returns
+`{ reports: [...] }`. Each report has its own repeatable-read snapshot.
+Responses are `Cache-Control: no-store`. No consumer ownership gate applies.
 
-## Coverage and recovery
-
-Each instrumented instance persists its start, five-second heartbeat/watermark,
-and graceful stop. Admission and checkpoints serialize locally and lock the
-collector row in PostgreSQL; a closed admission watermark rejects late writes.
-Completion atomically removes pending state and increments successes once.
-Reports read counts and coverage in one repeatable-read snapshot. Complete
-coverage requires independently declared deployment/replica inventory across the
-whole window, matching collectors for every expected replica, every
-intersecting instance flushed through its interval, no pending attempts and no
-durable gaps. An open collector cannot cover a window past its acknowledged watermark; a
-heartbeat older than 30 seconds signals unavailable collection. Already flushed
-closed windows keep their coverage when later collection stops. Pending attempts or recorded gaps make covered windows
-partial. Re-reading a complete closed window preserves totals.
-
-A telemetry write failure lets bounded retrieval proceed but freezes that
-collector's progress. Recovery must persist a gap from its last acknowledged
-checkpoint before advancing again. If recording the gap fails, its watermark
-stays stale. Missing Node transport instrumentation records a gap rather than
-claiming successes. Reports before first instrumentation, across a shutdown
-without a replacement collector, or during delayed flush are unavailable.
-
-After a crash, first confirm that the exact collector instance is stopped;
-never infer death solely from a stale heartbeat. Operators can inspect the
-non-sensitive collector metadata with their restricted writer capability. Then
-run `pnpm usage:reconcile --instance <UUID> --confirmed-stopped` with the writer
-URL injected. It refuses a heartbeat less than 30 seconds old, reconciles
-pending attempts conservatively without guessing successes, and persists the
-uncertain interval as a gap. No corpus changes or destructive schema rollback
-are needed. Historical uncertainty remains visible after recovery.
-
-## Independent deployment inventory
-
-A separate operator capability maintains `deployment_inventory` with deployment
-ID, UTC start/end and expected replica count. Serving cannot create or change
-these rows, and the report role reads only the inventory view. Reports partition
-windows at every inventory/collector boundary. Missing inventory, missing or extra
-collectors, undeclared deployments or an unflushed expected replica force
-`unavailable`, even while another replica remains healthy. Unknown deployment
-instrumentation therefore cannot silently produce a complete zero.
-
-Provision an independent inventory login with only `USAGE` on `usage_private`
-and `SELECT, INSERT, UPDATE` on `deployment_inventory`, no other table or role
-rights. Inject its URL as `RAG_USAGE_INVENTORY_DATABASE_URL` into the operator
-receiver only, never serving or RAGBot. `pnpm usage:inventory` verifies the role
-before writes. Declare the deployment using
-`--deployment <ID> --from <UTC Z> --replicas <1..64>` before activation; close
-it with `--deployment <ID> --to <UTC Z>` only after every replica has stopped.
-A database guard preserves ID, start and replica expectation and permits one
-terminal close. Scaling needs a new declared deployment interval, rather than
-rewriting historical expectations. During rolling deployment, inventory includes
-both live deployments. Failures remain unavailable until inventory and all
-collectors match; do not lower the expectation to hide an uninstrumented replica.
-
-Serving records `RAILWAY_DEPLOYMENT_ID` (or explicit
-`RAG_USAGE_DEPLOYMENT_ID` for local/non-Railway use). Collection configuration
-without a deployment ID refuses startup. The inventory must come from an
-independent deployment/replica source: application self-registration cannot
-verify that source's accuracy. This authority separation is what lets a missing
-collector fail coverage rather than merely requiring a manual observation.
+Optional machine reporting uses `GET /internal/usage` and independent report
+credentials. `pnpm usage:report --consumer <UUID> --from <UTC Z> --to <UTC Z>`
+reads `RAG_USAGE_REPORT_URL` and `RAG_USAGE_REPORT_SECRET` from its receiver.
+No SQL/database credentials in arguments. The CLI validates the report contract,
+limits responses to 8 KiB, refuses redirects and exits nonzero on a failed read.
+Both APIs and CLI return only `consumerId`, `label`, `windowStart`, `windowEnd`,
+`requestCount`, `successfulRequestCount`, `lastActivityAt` and `generatedAt`.
 
 ## Provisioning and activation
 
-Use the normal PR-to-main migration/deploy flow. This implementation authorizes
-no production provisioning, consumer creation, cutover or direct deploy.
+Use normal PR-to-main migration/deploys. Provision separate restrictive logins
+with `USAGE` on `usage_private`, no ownership, admin flags, role-switching,
+sequence or unrelated application privileges:
 
-Provision distinct login roles without ownership, admin flags, role-switching,
-sequence or other application privileges. Grant `USAGE` on `usage_private` only:
-
-- Usage writer: `SELECT, INSERT, UPDATE` on `minutes`, `collectors`, `gaps`,
-  `denials`; `SELECT, INSERT, DELETE` on `pending`.
-- Report reader: `SELECT` only on `consumer_labels`, `report_minutes`,
-  `report_collectors`, `report_pending`, `report_gaps`, `report_inventory`. Views expose no
-  verifiers, contacts, ownership, lifecycle text or corpus.
+- Writer: `SELECT, INSERT, UPDATE` on `minutes` and `denials`;
+  `SELECT, INSERT, DELETE` on `pending`.
+- Reader: `SELECT` on `consumer_labels` and `report_minutes` only.
 
 Run `pnpm db:verify-usage-roles` with `RAG_USAGE_WRITER_DATABASE_URL` and
-`RAG_USAGE_REPORT_DATABASE_URL`. The verifier rejects unexpected effective,
-column-level and SET-reachable table privileges and privileged role flags.
-The writer is separate from both consumer roles and the corpus reader.
+`RAG_USAGE_REPORT_DATABASE_URL`. The verifier also permits the narrowly defined
+retired metadata grants of existing roles for rolling-deploy compatibility;
+new roles do not need those grants. Unexpected corpus/credential/table privileges
+remain rejected. No production role alteration is performed by this change.
 
-Enable collection with `RAG_USAGE_WRITER_DATABASE_URL` after registered auth
-is configured. Portal reporting requires `RAG_USAGE_REPORT_DATABASE_URL` alongside the existing
-portal configuration and usage writer. No new human secret is required. The
-server uses the aggregate-only reader; its database URL never reaches the browser.
-The Usage comparison table (selected option A) is included in draft PR #2455.
+Collection uses `RAG_USAGE_WRITER_DATABASE_URL` with registered consumer auth.
+Portal reporting uses `RAG_USAGE_REPORT_DATABASE_URL` with existing portal config
+and the usage writer. There is no separate enable flag or deployment identity
+requirement, and no additional human secret.
+Optional machine access requires independent hashed report credentials in
+`RAG_USAGE_REPORT_TOKEN_HASHES`. Register RAGBot through the portal first;
+`RAG_USAGE_RAGBOT_CONSUMER_ID` verifies that prerequisite for its machine grant.
+This is separate from the personal retrieval key.
 
-For optional operator/RAGBot HTTP/CLI access, also configure
-`RAG_USAGE_REPORT_TOKEN_HASHES`, a JSON object mapping only `jaco` and/or
-`ragbot` to SHA-256 hashes of independently generated report secrets. Use high
-entropy secrets, deliver directly into each approved receiver, and never put
-values in command arguments, output, documentation or evidence. Hash comparison
-is constant-time. Remove/replace the corresponding hash to revoke/rotate report
-machine access. Retrieval credentials cannot authorize reports. Portal cookies
-authorize `/portal/usage` only and do not authorize `/internal/usage`. Removing
-a machine hash does not revoke portal access; removing portal admission does not
-revoke an independent machine credential. Revoke each applicable capability.
+## Correction of the original design — 2026-09-29
 
-Before granting RAGBot reports, an allowlisted initial owner must create it
-through feat-530's portal UI and save the one-time retrieval key directly in its
-receiver. Set `RAG_USAGE_RAGBOT_CONSUMER_ID` to that stable ID; startup verifies
-it exists through the label view. Grant its independent report secret only after
-this registration. This is a separate operator capability, not an ownership
-permission, retrieval tool or general database credential.
+The original coverage status, collector heartbeat/watermark, crash reconciliation,
+independent deployment inventory and suppression of counts were a design mistake
+for this feature. They are removed from application/reporting code and commands.
+No inventory registration, heartbeat recovery, narrow diagnostic dates or proof
+of uninterrupted tracking is required to read usage. Dates are never changed to
+obtain a report.
 
-Activation evidence must compare independent inventory with actual live
-replicas/deployments before declaring a covered window. Do not use a healthy
-replica's heartbeat as fleet inventory. Maintain inventory on rollback and
-scaling. Roll reporting back independently: remove report access and keep
-collection where possible; otherwise missing/stopped intervals make coverage
-unavailable. Never revive denied credentials or shared-token access incidentally.
+Migration `20260929020000_simplify_usage_counting` makes the old pending
+`collector_id` nullable. New code omits it; old instances can still write it
+during a rolling deployment or rollback. Existing request/success totals and
+timestamps are untouched. Old coverage tables/views and already-applied migration
+files are retained as inert historical data for audit and rollback, not used by
+new serving/reporting code. No table/record deletion or retention policy is added.
 
-Jaco owns activation and recovery. Feat-529 owns actual `forge-rag-retrieve`
-dogfood, seven-day migration and separately approved cutoff. The production
-capacity review in feat-568 must cover minute-row growth, pending-state backlog,
-write latency, inventory maintenance, heartbeat overhead and backup cost before
-volume expansion. Implementation tests use synthetic, disposable local data.
-
-## Applied provisioning audit
-
-The role and service-vault portion was applied on 2026-09-29. See the
-[feat-529 production audit](../../../../docs/roadmap/rag/evidence/feat-529/production-usage-role-provisioning.md)
-for exact role/ACL writes, receiver names and completed privilege checks. No
-application rows or table definitions were changed by that operation. Railway
-collection/report configuration and authoritative deployment inventory remained
-pending. This record does not authorize replaying provisioning or declare
-production reporting active.
+Feat-529 owns actual ops dogfood, consumer isolation/lifecycle proofs and the
+separately approved seven-day migration/cutoff. Feat-568 reviews count-row growth,
+pending backlog, write/report latency and backup costs before volume expansion.
+Historical provisioning writes remain recorded in
+[the production audit](../../../../docs/roadmap/rag/evidence/feat-529/production-usage-role-provisioning.md).

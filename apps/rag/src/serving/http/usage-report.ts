@@ -28,7 +28,7 @@ export function createUsageReportRoutes(deps: UsageReportDeps): Hono {
   return app
 }
 
-// Authentication belongs to each caller; validation and coverage semantics are shared.
+// Authentication belongs to each caller; validation and counting semantics are shared.
 export async function usageReportResponse(
   c: Context,
   reader: UsageReader,
@@ -36,7 +36,7 @@ export async function usageReportResponse(
   try {
     const window = reportWindow(reportQuery(c))
     const report = await reader.report(window)
-    return c.json(report, report.coverageStatus === "unavailable" ? 503 : 200)
+    return c.json(report)
   } catch (error) {
     return reportErrorResponse(c, error)
   }
@@ -78,7 +78,7 @@ export async function usageReportsResponse(
       throw new UsageError("invalid_window")
     const windows = ids.map((consumer) => reportWindow({ ...query, consumer }))
     const reports = []
-    // Serial reads bound database concurrency; each report keeps its own snapshot/watermark.
+    // Serial reads bound database concurrency; each report keeps its own snapshot.
     for (const window of windows) reports.push(await reader.report(window))
     return c.json({ reports })
   } catch (error) {

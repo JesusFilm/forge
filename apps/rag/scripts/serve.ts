@@ -90,18 +90,13 @@ async function main(): Promise<void> {
       "railway",
     )
   const usageWriterUrl = input.RAG_USAGE_WRITER_DATABASE_URL
-  const deploymentId =
-    input.RAILWAY_DEPLOYMENT_ID ?? input.RAG_USAGE_DEPLOYMENT_ID
   const usageReaderUrl = input.RAG_USAGE_REPORT_DATABASE_URL
   const reportHashes = input.RAG_USAGE_REPORT_TOKEN_HASHES
   if (
     (reportHashes && !usageReaderUrl) ||
     (usageReaderUrl && !sessions && !reportHashes) ||
     (usageReaderUrl && !usageWriterUrl) ||
-    (usageWriterUrl &&
-      (!consumerAuth ||
-        !deploymentId ||
-        !/^[A-Za-z0-9-]{1,80}$/.test(deploymentId)))
+    (usageWriterUrl && !consumerAuth)
   )
     throw environmentConfigurationError(
       "usage_configuration_incomplete",
@@ -115,9 +110,8 @@ async function main(): Promise<void> {
     ? new PrismaClient({ datasourceUrl: usageReaderUrl })
     : undefined
   const usage = usageWriter
-    ? new UsageCollector(new PostgresUsageStore(usageWriter, deploymentId))
+    ? new UsageCollector(new PostgresUsageStore(usageWriter))
     : undefined
-  await usage?.start()
   if (
     usageReader &&
     reportHashes &&

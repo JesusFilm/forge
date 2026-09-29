@@ -22,6 +22,7 @@ async function inspect(
   db: PrismaClient,
   policy: Policy,
   schema = "consumer_private",
+  permittedLegacy: Policy = {},
 ): Promise<string> {
   const [role] = await db.$queryRaw<Array<{ role: string; unsafe: boolean }>>`
     SELECT current_user AS role,
@@ -70,10 +71,14 @@ async function inspect(
     ),
   )
   for (const row of privileges) {
-    const expected = required.delete(`${row.table}:${row.privilege}`)
+    const requiredGrant = required.delete(`${row.table}:${row.privilege}`)
+    const legacyGrant =
+      permittedLegacy[row.table]?.includes(row.privilege) ?? false
+    const expected = requiredGrant || legacyGrant
     if (
       row.owner ||
-      row.granted !== expected ||
+      (requiredGrant && !row.granted) ||
+      (!expected && row.granted) ||
       (!expected && (row.reachable_granted || row.column_granted))
     )
       throw new ConsumerRoleVerificationError()
@@ -107,32 +112,24 @@ export async function verifyUsageRoles(
 ): Promise<void> {
   const writerPolicy: Policy = {
     "usage_private.minutes": ["SELECT", "INSERT", "UPDATE"],
-    "usage_private.collectors": ["SELECT", "INSERT", "UPDATE"],
-    "usage_private.gaps": ["SELECT", "INSERT", "UPDATE"],
     "usage_private.denials": ["SELECT", "INSERT", "UPDATE"],
     "usage_private.pending": ["SELECT", "INSERT", "DELETE"],
   }
-  const readerPolicy: Policy = Object.fromEntries(
-    [
-      "consumer_labels",
-      "report_minutes",
-      "report_collectors",
-      "report_pending",
-      "report_gaps",
-      "report_inventory",
-    ].map((table) => [`usage_private.${table}`, ["SELECT"]]),
-  )
-  const writerRole = await inspect(writer, writerPolicy, "usage_private")
-  const readerRole = await inspect(reader, readerPolicy, "usage_private")
+  const readerPolicy: Policy = {
+    "usage_private.consumer_labels": ["SELECT"],
+    "usage_private.report_minutes": ["SELECT"],
+  }
+  // Previously provisioned roles may retain these retired metadata grants.
+  // They are not required or used; permitting them keeps rolling deployment safe.
+  const writerRole = await inspect(writer, writerPolicy, "usage_private", {
+    "usage_private.collectors": ["SELECT", "INSERT", "UPDATE"],
+    "usage_private.gaps": ["SELECT", "INSERT", "UPDATE"],
+  })
+  const readerRole = await inspect(reader, readerPolicy, "usage_private", {
+    "usage_private.report_collectors": ["SELECT"],
+    "usage_private.report_pending": ["SELECT"],
+    "usage_private.report_gaps": ["SELECT"],
+    "usage_private.report_inventory": ["SELECT"],
+  })
   if (writerRole === readerRole) throw new ConsumerRoleVerificationError()
-}
-
-export async function verifyUsageInventoryRole(
-  db: PrismaClient,
-): Promise<void> {
-  await inspect(
-    db,
-    { "usage_private.deployment_inventory": ["SELECT", "INSERT", "UPDATE"] },
-    "usage_private",
-  )
 }
