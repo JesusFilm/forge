@@ -463,6 +463,63 @@ describe.skipIf(!enabled)(
         ),
       ).toMatchObject({ status: "refused", reason: "cowatch_trial_expired" })
     })
+    it("retains first source revocation for retrospective analysis after graph deletion", async () => {
+      const f = await fixture(false)
+      // The shared fixture places shadow evidence 1s after publication; let the
+      // DB clock reach it before proving real revocation timestamp ordering.
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.max(0, f.now.getTime() - Date.now())),
+      )
+      await qualify(f)
+      const mutationStarted = new Date()
+      await prisma.recommendationPlaybackEpisode.update({
+        where: { id: f.episodes.at(-1)! },
+        data: { conflictCount: 1 },
+      })
+      const graph =
+        await prisma.recommendationCowatchGeneration.findUniqueOrThrow({
+          where: { id: f.binding.graphGenerationId },
+        })
+      const first =
+        await prisma.recommendationCowatchTrialAuthority.findUniqueOrThrow({
+          where: { generationId: f.binding.graphGenerationId },
+        })
+      expect(first.revokedAt).toEqual(graph.invalidatedAt)
+      expect(first.revokedAt!.getTime()).toBeGreaterThanOrEqual(
+        mutationStarted.getTime(),
+      )
+      expect(first.revokedAt!.getTime()).toBeLessThanOrEqual(Date.now())
+      expect(first.revokedAt!.getTime()).toBeLessThan(
+        f.binding.trialValidUntil.getTime(),
+      )
+      await prisma.recommendationPlaybackEpisode.update({
+        where: { id: f.episodes.at(-1)! },
+        data: { conflictCount: 2 },
+      })
+      await prisma.recommendationCowatchGeneration.delete({
+        where: { id: f.binding.graphGenerationId },
+      })
+      const analysisAt = new Date(f.binding.trialValidUntil.getTime() + day)
+      const retained =
+        await prisma.recommendationCowatchTrialAuthority.findUniqueOrThrow({
+          where: { generationId: f.binding.graphGenerationId },
+        })
+      expect(retained).toEqual(first)
+      expect(retained.rawPopulationExpiresAt.getTime()).toBeGreaterThan(
+        analysisAt.getTime(),
+      )
+      // This is the retained timestamp U4 compares to the original trial horizon,
+      // independent of whether the graph still exists when analysis runs.
+      expect(retained.revokedAt! <= f.binding.trialValidUntil).toBe(true)
+      await expect(
+        prisma.recommendationCowatchTrialAuthority.update({
+          where: { generationId: f.binding.graphGenerationId },
+          data: { revokedAt: analysisAt },
+        }),
+      ).rejects.toThrow(
+        "co-watch trial qualification cannot be renewed or changed",
+      )
+    })
     it("retains one-use authority across deletion and exact same-ID republish", async () => {
       const f = await fixture(false)
       await qualify(f)
@@ -1233,6 +1290,16 @@ describe.skipIf(!enabled)(
         await gate.query("SELECT pg_advisory_unlock($1)", [lockId])
         expect((await qualification).status).toBe("qualified")
         await mutation
+        const revoked =
+          await prisma.recommendationCowatchTrialAuthority.findUniqueOrThrow({
+            where: { generationId: f.binding.graphGenerationId },
+          })
+        const invalidated =
+          await prisma.recommendationCowatchGeneration.findUniqueOrThrow({
+            where: { id: f.binding.graphGenerationId },
+          })
+        expect(revoked.revokedAt).not.toBeNull()
+        expect(revoked.revokedAt).toEqual(invalidated.invalidatedAt)
         expect(
           await readCowatchTrialAuthority(prisma, f.binding, f.now),
         ).toMatchObject({

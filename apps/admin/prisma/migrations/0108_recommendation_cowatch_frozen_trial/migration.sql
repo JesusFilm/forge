@@ -56,6 +56,13 @@ BEGIN
   FOR graph_id IN SELECT DISTINCT unnest(ids) ORDER BY 1 LOOP
     UPDATE recommendation_cowatch_generation SET invalidated_at = clock_timestamp(), invalidation_reason = reason
       WHERE id = graph_id AND invalidated_at IS NULL;
+    -- Retrospective study analysis outlives graph rows. Preserve the first
+    -- invalidation in aggregate authority, including after expiry/deletion.
+    UPDATE recommendation_cowatch_trial_authority authority
+      SET revoked_at = generation.invalidated_at
+      FROM recommendation_cowatch_generation generation
+      WHERE generation.id = graph_id AND generation.invalidated_at IS NOT NULL
+        AND authority.generation_id = generation.id AND authority.revoked_at IS NULL;
   END LOOP;
 END $$;
 CREATE FUNCTION invalidate_cowatch_episode(episode_id_value text, reason text) RETURNS void LANGUAGE sql AS $$
