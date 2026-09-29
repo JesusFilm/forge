@@ -3,6 +3,13 @@ import {
   HYBRID_PERSONALIZED_MANIFEST,
   HYBRID_PERSONALIZED_MANIFEST_ID,
   isExactHybridPersonalizedManifest,
+  INCUMBENT_HYBRID_MANIFEST,
+  INCUMBENT_HYBRID_AA_MANIFEST,
+  COWATCH_MMR_TRIAL_MANIFEST,
+  isExactIncumbentHybridManifest,
+  isExactIncumbentHybridAaManifest,
+  isExactCowatchMmrTrialManifest,
+  recommendationManifestDigest,
 } from "./manifest"
 
 describe("hybrid recommendation manifest", () => {
@@ -50,5 +57,73 @@ describe("hybrid recommendation manifest", () => {
         generator: "profile",
       }),
     ).toBe(false)
+  })
+})
+
+describe("exact incumbent and combined trial manifest registry", () => {
+  it("preserves profile and viewing mode identically in incumbent A/A", () => {
+    expect(isExactIncumbentHybridManifest(INCUMBENT_HYBRID_MANIFEST)).toBe(true)
+    expect(isExactIncumbentHybridAaManifest(INCUMBENT_HYBRID_AA_MANIFEST)).toBe(
+      true,
+    )
+    const { behaviorallyEquivalentTo, ...configuration } =
+      INCUMBENT_HYBRID_AA_MANIFEST.configuration
+    expect(behaviorallyEquivalentTo).toBe(INCUMBENT_HYBRID_MANIFEST.id)
+    expect(configuration).toEqual(INCUMBENT_HYBRID_MANIFEST.configuration)
+    expect(isExactIncumbentHybridManifest(HYBRID_PERSONALIZED_MANIFEST)).toBe(
+      false,
+    )
+    expect(isExactHybridPersonalizedManifest(INCUMBENT_HYBRID_MANIFEST)).toBe(
+      false,
+    )
+  })
+  it("pins combined treatment caps, fallback and composition without permitting arbitrary changes", () => {
+    expect(isExactCowatchMmrTrialManifest(COWATCH_MMR_TRIAL_MANIFEST)).toBe(
+      true,
+    )
+    expect(COWATCH_MMR_TRIAL_MANIFEST.configuration.nominationBudgets).toEqual({
+      maximum: 64,
+      semantic: 36,
+      cowatch: 12,
+      profile: "remaining-capacity",
+      interleave: "semantic-profile-cowatch-v1",
+    })
+    expect(COWATCH_MMR_TRIAL_MANIFEST.configuration.effectAttribution).toBe(
+      "combined-cowatch-and-mmr-only",
+    )
+    for (const change of [
+      { viewingModeRanker: "disabled" },
+      { graphPolicy: "refresh-on-request" },
+      {
+        nominationBudgets: {
+          ...COWATCH_MMR_TRIAL_MANIFEST.configuration.nominationBudgets,
+          cowatch: 13,
+        },
+      },
+      {
+        composition: {
+          ...COWATCH_MMR_TRIAL_MANIFEST.configuration.composition,
+          positionLimit: 8,
+        },
+      },
+    ])
+      expect(
+        isExactCowatchMmrTrialManifest({
+          ...COWATCH_MMR_TRIAL_MANIFEST,
+          configuration: {
+            ...COWATCH_MMR_TRIAL_MANIFEST.configuration,
+            ...change,
+          },
+        }),
+      ).toBe(false)
+    expect(
+      isExactCowatchMmrTrialManifest({
+        ...COWATCH_MMR_TRIAL_MANIFEST,
+        enabled: false,
+      }),
+    ).toBe(false)
+    expect(recommendationManifestDigest(COWATCH_MMR_TRIAL_MANIFEST)).not.toBe(
+      recommendationManifestDigest(INCUMBENT_HYBRID_MANIFEST),
+    )
   })
 })
