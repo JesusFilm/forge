@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 28, 2026)
 
-- **Total tickets:** 741
-- **Complete:** 553
+- **Total tickets:** 742
+- **Complete:** 554
 - **In progress:** 59
 - **Not started:** 49
 - **Blocked:** 80
@@ -207,6 +207,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-517](content-discovery/feat-517-mobile-recommended-for-you-shelf.md)                                     | Mobile Recommended for You Home shelf                                                           | urim       | P2       | 2026-09-18 | 5    | 2026-09-22 | in-progress |
 | [feat-520](content-discovery/feat-520-watch-field-post-response-paint-attribution.md)                          | Attribute non-headless Watch paint delays after HTML response                                   | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | in-progress |
 | [feat-521](content-discovery/feat-521-watch-selection-browser-commit-waits.md)                                 | Attribute browser commit waits delaying Watch selection acknowledgments                         | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | in-progress |
+| [feat-552](content-discovery/feat-552-mobile-explore-clips-feed.md)                                            | Mobile Explore clips feed                                                                       | urim       | P2       | 2026-09-25 | 21   | 2026-10-15 | complete    |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | blocked     |
 
 ### Media Generation

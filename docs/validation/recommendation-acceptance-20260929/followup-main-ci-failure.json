@@ -1,0 +1,97 @@
+{
+  "recordedAt": "2026-09-28T23:49:42.527619+00:00",
+  "revision": "ec976e186318db70f94770d330ec93aa14ffc0eb",
+  "runId": 36499208230,
+  "attempt": 1,
+  "status": "completed",
+  "conclusion": "failure",
+  "runUrl": "https://github.com/JesusFilm/forge/actions/runs/36499208230",
+  "failedJobUrl": "https://github.com/JesusFilm/forge/actions/runs/36499208230/job/109186180063",
+  "failedTest": {
+    "file": "apps/web/src/components/home/__tests__/WatchHomePage.test.tsx",
+    "name": "WatchHomePage > playing a slide to its natural end > writes resume state once per playback second, not once per event",
+    "line": 817,
+    "assertion": "expect(carouselRenders()).toBe(rendersAfterFirst)",
+    "expected": 4,
+    "actual": 5,
+    "precedingSameSecondResumeHrefAssertionPassed": true
+  },
+  "webTests": {
+    "passed": 4720,
+    "failed": 1,
+    "skipped": 10,
+    "todo": 1
+  },
+  "sourceComparison": {
+    "webAndSharedPlayerSourceUnchangedFromReviewedPrHead": true,
+    "webLockImporterByteIdenticalToReviewedPrHead": true,
+    "fittedHeightAndCarouselHooksUnchangedFromPreFollowupBase": true
+  },
+  "watchDeployment": {
+    "id": "33ba1a5a-a596-42e3-b8fc-676940083294",
+    "status": "SKIPPED",
+    "revision": "ec976e186318db70f94770d330ec93aa14ffc0eb"
+  },
+  "disposition": "Controlled reproduction identified an unrelated initial height-fitting frame in the render-count sample. Test-only PR #2453 is awaiting CI and ordinary merge/deployment; no main CI retry or manual deployment was used. Passing #2452 PR checks remain separate from its failed main run.",
+  "localDiagnosis": {
+    "reviewedAt": "2026-09-28T23:57:34.802382+00:00",
+    "cause": "The initial useWatchHomeHeroFittedHeight animation frame can commit a legitimate height update between the first and same-second playback render snapshots. The production playback whole-second guard is intact.",
+    "controlledReproduction": {
+      "firstSnapshotRenders": 4,
+      "afterFittingFrameRenders": 5,
+      "resumeHrefStillSecond12": true,
+      "sameSecondAssertionFailed": true
+    },
+    "counterprediction": {
+      "initialFittingFrameBeforeSnapshot": true,
+      "firstSnapshotRenders": 5,
+      "sameSecondRenders": 5,
+      "sameSecondAssertionPassed": true
+    },
+    "guardMutation": {
+      "temporaryRemovalOfWholeSecondGuard": true,
+      "firstSnapshotRenders": 5,
+      "sameSecondRenders": 6,
+      "sameSecondAssertionFailed": true,
+      "runtimeHookRestoredUnchanged": true
+    },
+    "proposedRepair": "Use a fake clock, explicitly settle the initial fitting frame before the baseline, preserve same-second href/render assertions, assert one render on the next whole second, and restore real timers in finally. Test-only.",
+    "sourceEvidence": "Child retained causal reproduction, counterprediction and mutation logs under its local work/resume-render-debug; parent read all three.",
+    "rejectedMockLeakHypothesis": {
+      "reason": "Corrected signed-catalog then unsigned-hero pair passed without adding a mock reset on installed Vitest 3.2.4. The first alleged failure used an incorrect undefined expectation for an intentional null result.",
+      "scope": "No demonstrated signer leak; do not conflate with the independently reproduced fitting-frame race."
+    }
+  },
+  "repairReview": {
+    "pr": "https://github.com/JesusFilm/forge/pull/2453",
+    "head": "a167138df9a00dc7f4d95723d53a20f3e1c33e4a",
+    "base": "ec976e186318db70f94770d330ec93aa14ffc0eb",
+    "reviewedAt": "2026-09-29T00:04:13.428847+00:00",
+    "filesChanged": [
+      "apps/web/src/components/home/__tests__/WatchHomePage.test.tsx"
+    ],
+    "independentParentReviewer": {
+      "name": "integration_correctness",
+      "lenses": [
+        "correctness",
+        "testing",
+        "maintainability",
+        "adversarial timer and cleanup scenarios"
+      ],
+      "actionableFindings": 0,
+      "notes": "Settles initial fitting frame before sampling; strict same-second invariant retained; mutation still fails; finally restores real timers and existing afterEach unmounts and restores spies. Read-only review did not rerun tests."
+    },
+    "parentLocalReview": {
+      "actionableFindings": 0,
+      "notes": "Checked exact diff, Web guidance and fitting-hook source. No product/API/security/agent-action change, no generated artifacts; test uses neighboring fake-timer/finally convention. No unrelated signer edits remain."
+    },
+    "childValidation": {
+      "focusedTestsPassed": 91,
+      "scopedEslint": "passed",
+      "prettier": "passed",
+      "normalCommitHooks": "passed",
+      "independentFocusedReview": "no actionable findings"
+    },
+    "limits": "Deterministic component behavior and test isolation; not real-browser playback timing."
+  }
+}

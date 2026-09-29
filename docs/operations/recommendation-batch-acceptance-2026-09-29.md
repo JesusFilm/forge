@@ -16,11 +16,11 @@ other worktrees are preserved.
 
 ## Acceptance state
 
-| Ticket   | Current result                                                                                                                                                                       | Acceptance                                                                          |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| feat-373 | PR #2450 is deployed and real V2 evidence is visible. Production inspection found a remaining hero authority gap and a mixed-policy display-bound gap; focused repairs are underway. | In progress; the full Admin coverage and performance gate remains open.             |
-| feat-387 | Retry repair merged and deployed. Production preflight reached the 50,001-source sentinel; Admin confirms no generation or evaluation.                                               | In progress; there are no production graph metrics or terminal evaluation decision. |
-| feat-545 | Retained historical evidence reviewed; nine precise owner decisions documented and merged.                                                                                           | In progress; D1–D9 remain pending explicit owner acceptance or resolving evidence.  |
+| Ticket   | Current result                                                                                                                                                                               | Acceptance                                                                          |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| feat-373 | PR #2450 is deployed and real V2 evidence is visible. The policy filter is deployed and reconciled; the merged hero repair awaits Watch deployment after a demonstrated test-timing failure. | In progress; the full Admin coverage and performance gate remains open.             |
+| feat-387 | Retry repair merged and deployed. Production preflight reached the 50,001-source sentinel; Admin confirms no generation or evaluation.                                                       | In progress; there are no production graph metrics or terminal evaluation decision. |
+| feat-545 | Retained historical evidence reviewed; nine precise owner decisions documented and merged.                                                                                                   | In progress; D1–D9 remain pending explicit owner acceptance or resolving evidence.  |
 
 No co-watch edge affects live viewer selection. No feature flag, conversion
 pilot, experiment, live promotion, manual deployment, production data repair or
@@ -49,6 +49,24 @@ attribution contract with no new feat-373 prerequisite.
   `2026-09-28T22:21:16Z`. All 44 checks were terminal (39 success, five skipped),
   including the external Web check. All three CodeQL review threads were
   resolved and outdated, with no suppressed or dismissed alerts.
+- [PR #2452](https://github.com/JesusFilm/forge/pull/2452), active hero authority
+  and policy-isolated inspection: reviewed head
+  `40e481d52286805ff980fc7e0ede6b2ca6a3a264`, normal squash merge
+  `ec976e186318db70f94770d330ec93aa14ffc0eb` at
+  `2026-09-28T23:40:06Z`. The [final premerge snapshot](../validation/recommendation-acceptance-20260929/followup-release-pr.json)
+  has 32 terminal checks (22 success, ten skipped) and zero review threads.
+  All four CodeQL analyses and the standalone check passed; the transient
+  missing-configuration warning cleared after analysis completed. Six standard
+  whole-diff review lenses and parent conditional reviews returned no actionable
+  findings, with [explicit residual evidence limits](../validation/recommendation-acceptance-20260929/followup-review.json).
+- [PR #2453](https://github.com/JesusFilm/forge/pull/2453), deterministic playback
+  render test: reviewed head `a167138df9a00dc7f4d95723d53a20f3e1c33e4a`, normal
+  squash merge `e2582c77b92ded7891c3b645f6a177bb4cb1a097` at
+  `2026-09-29T00:06:49Z`. The [premerge receipt](../validation/recommendation-acceptance-20260929/timing-repair-release-pr.json)
+  records 25 terminal checks (18 success, seven skipped), including full Web
+  tests/build/lint, Redis integration, formatting and all CodeQL checks; zero
+  review threads. Child focused review and independent parent review found no
+  actionable issues. Application code is unchanged.
 
 The [co-watch deployment receipt](../validation/cowatch-preflight-20260929/deployment.json)
 verifies actual Admin HTTP and worker processes at `e0f864dd5` at 21:06:30 UTC,
@@ -260,6 +278,54 @@ Its genuine HeadlessChrome agent is naturally crawler-excluded: 28 exposure and
 30 issuance attempts returned HTTP 403. This is a loading baseline for the
 follow-up release, not accepted viewer telemetry. The same mode and viewport
 must be used for its comparison; no cross-mode paint comparison is valid.
+
+The headless session later expired under its documented one-hour idle timeout.
+A [refreshed baseline](../validation/recommendation-acceptance-20260929/watch-browser-headless-before-refreshed.json)
+was collected in a relaunched genuine headless session before merging PR #2453,
+at the verified Watch revision `ab54e3897`. Its Web, shared player and typed-client
+source is unchanged from `811f1ec81`. All six navigations had usable paint values;
+the browser was retained for the release comparison. Its separate
+[network population](../validation/recommendation-acceptance-20260929/watch-browser-headless-before-refreshed-network.json)
+contains 28 exposure and 30 issuance attempts, all naturally crawler-excluded
+with HTTP 403. The earlier baseline remains historical evidence rather than
+being silently reused as the same browser session.
+
+## Follow-up deployment and policy reconciliation
+
+PR #2452 passed its premerge checks, but the subsequent
+[main Web run failed](../validation/recommendation-acceptance-20260929/followup-main-ci-failure.json)
+one existing render-count assertion: 4,720 tests passed and one failed. Watch's
+deployment for `ec976e186` was skipped. At 23:58:33 UTC, the
+[actual runtime receipt](../validation/recommendation-acceptance-20260929/deployment-policy-interim.json)
+verified Admin HTTP and worker at `ec976e186`, while Watch ran `ab54e3897` from
+the preceding ordinary release. All health responses were 200, with one active
+successful deployment each, expected runner roles and compact Admin traces.
+This mixed fleet is not a deployed hero-repair claim.
+
+Controlled reproduction identified the test's initial height-fitting animation
+frame committing between two playback snapshots; the resume link correctly
+stayed at second 12. Settling that frame before sampling preserves the strict
+same-second render assertion. Temporarily removing the playback whole-second
+guard still fails the repaired test. The test-only repair is
+[PR #2453](https://github.com/JesusFilm/forge/pull/2453); application hooks remain
+unchanged. A separate signer-mock leak hypothesis was rejected after correcting
+the probe's `undefined` expectation to the contract's intentional `null`.
+No CI rerun or manual deployment was used to bypass the failed main run.
+
+The deployed [policy-isolated Admin observation](../validation/recommendation-acceptance-20260929/admin-policy-isolation.json)
+used the normal filter controls for `watch-video / chapters / carousel`,
+`chapters-1`. At 23:59:42 UTC it displayed all 74 V2 positions below the unchanged
+128-row bound. Position 0 had 321 served, 244 rendered, 49 eligible, five early
+selections, zero eligible selections, and native/unknown capability 14/35.
+Position 2 had five eligible impressions and two eligible selections (40% CTR);
+position 40 had one of each (100% CTR). These small cohorts are descriptive,
+not usefulness estimates. Zero eligible denominators remain `undefined`.
+At 00:00:45 UTC, a separate V1 filter displayed 77 positions, all with unknown
+served counts. The two rolling 24-hour reads include concurrent traffic and
+have separate request cutoffs. Anonymous replay rates remain cumulative to date;
+the signed replay count of 44 has no position-matched rate. Registry acceptance
+metadata remains 2/10. The filter resolves this cohort's mixed-policy truncation,
+not the remaining registry, ingestion-health, retention or D1–D9 gates.
 
 ## Co-watch refusal and telemetry decisions
 
