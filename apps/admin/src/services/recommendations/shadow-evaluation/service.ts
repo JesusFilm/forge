@@ -1,3 +1,8 @@
+import { persistCompositionObservation } from "../composition/service"
+import {
+  cowatchTrialCandidateReadiness,
+  requireCowatchShadowBinding,
+} from "./cowatch-readiness"
 import { randomUUID } from "node:crypto"
 import {
   Prisma,
@@ -13,9 +18,14 @@ import {
   type CandidatePresentation,
   type RecommendationCandidateContext,
 } from "../candidate"
-import { HYBRID_PERSONALIZED_MANIFEST_ID } from "../promotion/manifest"
+import {
+  COWATCH_MMR_SHADOW_SAMPLING_VERSION,
+  COWATCH_MMR_TRIAL_MANIFEST_ID,
+  HYBRID_PERSONALIZED_MANIFEST_ID,
+} from "../promotion/manifest"
+import type { ViewingModeAffinity } from "../viewing-mode"
 import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
-import { reconstructShadowHistory } from "./history"
+import { reconstructShadowHistory, type ShadowHistory } from "./history"
 import {
   aggregateShadowMetrics,
   decideShadowEvaluation,
@@ -46,9 +56,14 @@ export async function createShadowEvaluation(
     requestedSampleSize: number
     now?: Date
     evaluationId?: string
+    cowatchGenerationId?: string
   },
 ) {
   const now = input.now ?? new Date()
+  const samplingVersion =
+    input.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID
+      ? COWATCH_MMR_SHADOW_SAMPLING_VERSION
+      : SHADOW_SAMPLING_VERSION
   const requestedSampleSize = Math.max(
     1,
     Math.min(10_000, Math.trunc(input.requestedSampleSize)),
@@ -56,31 +71,52 @@ export async function createShadowEvaluation(
   if (input.windowStart >= input.windowEnd) {
     throw new RangeError("Shadow evaluation window is invalid")
   }
-  const manifest = await prisma.recommendationStrategyManifest.findUnique({
-    where: { id: input.manifestId },
-    select: { id: true, enabled: true },
-  })
-  if (!manifest?.enabled) {
-    throw new RecommendationInternalStateError(
-      "shadow_generator_manifest_unavailable",
+  return prisma.$transaction(async (tx) => {
+    const evaluationId = input.evaluationId ?? randomUUID()
+    if (input.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID) {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${evaluationId}, 565))::text`,
+      )
+    }
+    await requireCowatchShadowBinding(
+      tx,
+      {
+        id: evaluationId,
+        manifestId: input.manifestId,
+        generatorVersion: input.generatorVersion,
+        cowatchGenerationId: input.cowatchGenerationId ?? null,
+        requestedSampleSize,
+        samplingVersion,
+      },
+      now,
     )
-  }
-  return prisma.recommendationShadowEvaluation.create({
-    data: {
-      id: input.evaluationId ?? randomUUID(),
-      manifestId: manifest.id,
-      generatorVersion: input.generatorVersion.slice(0, 64),
-      samplingVersion: SHADOW_SAMPLING_VERSION,
-      contextVersion: input.contextVersion.slice(0, 64),
-      eligibilityVersion: input.eligibilityVersion.slice(0, 64),
-      retentionPolicyVersion: SHADOW_RETENTION_POLICY_VERSION,
-      windowStart: input.windowStart,
-      windowEnd: input.windowEnd,
-      requestedSampleSize,
-      expiresAt: new Date(
-        now.getTime() + SHADOW_AGGREGATE_RETENTION_DAYS * 86_400_000,
-      ),
-    },
+    const manifest = await tx.recommendationStrategyManifest.findUnique({
+      where: { id: input.manifestId },
+      select: { id: true, enabled: true },
+    })
+    if (!manifest?.enabled) {
+      throw new RecommendationInternalStateError(
+        "shadow_generator_manifest_unavailable",
+      )
+    }
+    return tx.recommendationShadowEvaluation.create({
+      data: {
+        id: evaluationId,
+        cowatchGenerationId: input.cowatchGenerationId ?? null,
+        manifestId: manifest.id,
+        generatorVersion: input.generatorVersion.slice(0, 64),
+        samplingVersion,
+        contextVersion: input.contextVersion.slice(0, 64),
+        eligibilityVersion: input.eligibilityVersion.slice(0, 64),
+        retentionPolicyVersion: SHADOW_RETENTION_POLICY_VERSION,
+        windowStart: input.windowStart,
+        windowEnd: input.windowEnd,
+        requestedSampleSize,
+        expiresAt: new Date(
+          now.getTime() + SHADOW_AGGREGATE_RETENTION_DAYS * 86_400_000,
+        ),
+      },
+    })
   })
 }
 
@@ -106,6 +142,7 @@ export async function sampleShadowEvaluationContexts(
       where: { id: input.evaluationId },
       select: {
         id: true,
+        manifestId: true,
         state: true,
         generation: true,
         samplingVersion: true,
@@ -128,6 +165,47 @@ export async function sampleShadowEvaluationContexts(
         status: "fenced" as const,
         reason: "evaluation_generation_changed",
       }
+    }
+    const trial = evaluation.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID
+    if (trial) {
+      if (
+        input.contextSource !== "profile" ||
+        evaluation.samplingVersion !== COWATCH_MMR_SHADOW_SAMPLING_VERSION
+      )
+        return {
+          status: "fenced" as const,
+          reason: "shadow_sampling_contract_invalid",
+        }
+      await tx.$queryRaw`SELECT set_config('statement_timeout', '5000', true), set_config('lock_timeout', '1000', true)`
+      await tx.$queryRaw(
+        Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${evaluation.id}, 565))::text`,
+      )
+      // Capture one immutable population. A retry must not replace expired or
+      // failed members with newly eligible requests to improve the denominator.
+      const captured =
+        await tx.recommendationShadowEvaluation.findUniqueOrThrow({
+          where: { id: evaluation.id },
+          select: {
+            sampledAt: true,
+            sampledCount: true,
+            state: true,
+            generation: true,
+          },
+        })
+      if (
+        captured.state !== RecommendationShadowEvaluationState.ACTIVE ||
+        captured.generation !== input.expectedGeneration
+      )
+        return {
+          status: "fenced" as const,
+          reason: "evaluation_generation_changed",
+        }
+      if (captured.sampledAt)
+        return {
+          status: "sampled" as const,
+          sampledCount: captured.sampledCount,
+          createdCount: 0,
+        }
     }
     type SampledRequest = {
       id: string
@@ -179,6 +257,14 @@ export async function sampleShadowEvaluationContexts(
                   ON generation.id = pointer.generation_id
                   AND generation.state = 'published'
                   AND generation.expires_at > ${now}
+                  ${
+                    trial
+                      ? Prisma.sql`AND generation.scope = 'durable'
+                    AND generation.profile_id = profile.id
+                    AND generation.privacy_generation = profile.privacy_generation
+                    AND generation.durable_interest_count > 0`
+                      : Prisma.empty
+                  }
                 WHERE link.session_digest = request.session_digest
                   AND link.expires_at > ${now}
                 UNION ALL
@@ -190,6 +276,7 @@ export async function sampleShadowEvaluationContexts(
                   AND generation.expires_at > ${now}
                 WHERE pointer.scope = 'session'
                   AND pointer.session_digest = request.session_digest
+                  ${trial ? Prisma.sql`AND false` : Prisma.empty}
               ) chosen
               ORDER BY chosen.priority, chosen.generation DESC, chosen.id
               LIMIT 1
@@ -198,6 +285,17 @@ export async function sampleShadowEvaluationContexts(
               AND request.created_at >= ${evaluation.windowStart}
               AND request.created_at < ${evaluation.windowEnd}
               AND request.expires_at > ${now}
+              ${
+                trial
+                  ? Prisma.sql`AND projection.id IS NOT NULL
+                AND request.locale = 'en'
+                AND NOT EXISTS (
+                  SELECT 1 FROM recommendation_served_item item
+                  WHERE item.request_id = request.id
+                    AND item.presentation->>'audioLanguageSlug' IS DISTINCT FROM 'english'
+                )`
+                  : Prisma.empty
+              }
               AND EXISTS (
                 SELECT 1 FROM recommendation_served_item item
                 WHERE item.request_id = request.id
@@ -288,7 +386,7 @@ export async function sampleShadowEvaluationContexts(
         state: RecommendationShadowEvaluationState.ACTIVE,
         generation: input.expectedGeneration,
       },
-      data: { sampledCount },
+      data: { sampledCount, ...(trial ? { sampledAt: now } : {}) },
     })
     if (update.count !== 1) {
       throw new RecommendationInternalStateError("shadow_sampling_fenced")
@@ -306,6 +404,8 @@ export async function sampleShadowEvaluationContexts(
  * exact published U19 projection (durable first, session-only second). A
  * missing projection is intentionally still sampled so the generator records
  * the semantic-control fallback instead of inventing profile state.
+ * The bundled trial instead applies its preregistered durable English cohort
+ * before stable sampling. Failures within that cohort stay in the denominator.
  */
 export function sampleProfileShadowEvaluationContexts(
   prisma: PrismaClient,
@@ -322,6 +422,7 @@ export function sampleProfileShadowEvaluationContexts(
 }
 
 export type ShadowGeneratorContext = Readonly<{
+  history?: ShadowHistory
   surface: "watch-below-player-v1"
   purpose: "watch"
   locale: string
@@ -349,6 +450,7 @@ export type ShadowGenerator = (context: ShadowGeneratorContext) => Promise<
     projectionCapturedAt: Date | null
     cohortQuality: number | null
     sourceFailureReason?: string | null
+    viewingMode?: ViewingModeAffinity | null
   }>
 >
 
@@ -373,6 +475,12 @@ export async function claimNextShadowRun(
   const now = input.now ?? new Date()
   const claimId = input.claimId ?? randomUUID()
   return prisma.$transaction(async (tx) => {
+    // Freeze any composition protocol before execution admission. Preparation
+    // uses this same evaluation-scoped lock, so a racing claim cannot slip
+    // between its pending-state check and immutable protocol publication.
+    await tx.$queryRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${input.evaluationId}, 565))::text`,
+    )
     const run = await tx.recommendationShadowRun.findFirst({
       where: {
         evaluationId: input.evaluationId,
@@ -498,6 +606,7 @@ export async function executeClaimedShadowRun(
           generation: true,
           manifestId: true,
           generatorVersion: true,
+          cowatchGenerationId: true,
           eligibilityVersion: true,
         },
       },
@@ -569,6 +678,20 @@ export async function executeClaimedShadowRun(
     return { status: "fenced", reason: "live_request_ineligible" }
   }
 
+  if (
+    run.evaluation.generatorVersion === COWATCH_SHADOW_GENERATOR_KEY &&
+    !/^[a-f0-9]{64}$/.test(run.evaluation.cowatchGenerationId ?? "")
+  ) {
+    await fenceShadowRun(
+      prisma,
+      run.id,
+      run.generation,
+      input.claimId,
+      now,
+      "shadow_graph_binding_required",
+    )
+    return { status: "fenced", reason: "shadow_graph_binding_required" }
+  }
   const liveItems = run.request.items.map((item) =>
     safeShadowLiveItem(item, run.request.locale),
   )
@@ -590,8 +713,10 @@ export async function executeClaimedShadowRun(
     locale: run.request.locale,
     audioLanguageSlug,
   }
+  const history = await reconstructShadowHistory(prisma, run.request, now)
   const startedAt = (input.nowMilliseconds ?? Date.now)()
   const generated = await input.generator({
+    history,
     surface: "watch-below-player-v1",
     purpose: "watch",
     locale: context.locale,
@@ -606,11 +731,29 @@ export async function executeClaimedShadowRun(
     },
     liveItems,
   })
+  if (
+    generated.nominations.some(
+      (nomination) =>
+        nomination.source.generator === "directional-cowatch" &&
+        (run.evaluation.generatorVersion !== COWATCH_SHADOW_GENERATOR_KEY ||
+          nomination.source.evidence.generation !==
+            run.evaluation.cowatchGenerationId),
+    )
+  ) {
+    await fenceShadowRun(
+      prisma,
+      run.id,
+      run.generation,
+      input.claimId,
+      now,
+      "shadow_graph_nomination_mismatch",
+    )
+    return { status: "fenced", reason: "shadow_graph_nomination_mismatch" }
+  }
   const latencyMs = Math.max(
     0,
     (input.nowMilliseconds ?? Date.now)() - startedAt,
   )
-  const history = await reconstructShadowHistory(prisma, run.request, now)
   const projection = evaluateShadowProjection({
     context,
     liveOrder: liveItems.map((item) => item.targetMediaId),
@@ -621,17 +764,39 @@ export async function executeClaimedShadowRun(
     latencyMs,
     cohortQuality: generated.cohortQuality,
     rankingMode:
-      run.evaluation.manifestId === HYBRID_PERSONALIZED_MANIFEST_ID &&
+      (run.evaluation.manifestId === HYBRID_PERSONALIZED_MANIFEST_ID ||
+        run.evaluation.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID) &&
       (run.evaluation.generatorVersion ===
         HYBRID_CANDIDATE_GENERATOR_SET_VERSION ||
         run.evaluation.generatorVersion === COWATCH_SHADOW_GENERATOR_KEY)
         ? "hybrid"
         : "semantic",
+    viewingMode: generated.viewingMode,
     currentVideoId: run.request.seedMediaId,
     history,
   })
 
   const published = await prisma.$transaction(async (tx) => {
+    // Match erasure's root-first ordering before taking the run, graph and
+    // composition locks. A reset cannot hold the profile while we hold its graph.
+    if (run.projectionProfileId) {
+      const [profile] = await tx.$queryRaw<
+        Array<{ state: string; privacyGeneration: number; expiresAt: Date }>
+      >(Prisma.sql`
+        SELECT state::text, privacy_generation AS "privacyGeneration", expires_at AS "expiresAt"
+        FROM recommendation_profile WHERE id = ${run.projectionProfileId} FOR SHARE
+      `)
+      if (
+        !profile ||
+        profile.state !== "active" ||
+        profile.privacyGeneration !== run.privacyGeneration ||
+        profile.expiresAt <= now
+      )
+        return false
+    }
+    await tx.$queryRaw(
+      Prisma.sql`SELECT id FROM recommendation_request WHERE id = ${run.requestId} FOR SHARE`,
+    )
     const currentRun = await tx.recommendationShadowRun.findUnique({
       where: { id: run.id },
       select: {
@@ -718,6 +883,12 @@ export async function executeClaimedShadowRun(
         failureReason: generated.sourceFailureReason?.slice(0, 64) ?? null,
       },
     })
+    if (update.count === 1)
+      await persistCompositionObservation(tx, {
+        runId: run.id,
+        observation: projection.compositionObservation,
+        now,
+      })
     return update.count === 1
   })
   if (!published) {
@@ -753,6 +924,7 @@ export async function completeShadowEvaluation(
       include: {
         decision: true,
         runs: {
+          take: 10_001,
           orderBy: [{ sampleOrdinal: "asc" }, { id: "asc" }],
           select: {
             state: true,
@@ -798,20 +970,43 @@ export async function completeShadowEvaluation(
       processedRuns: published.length,
       minimumRuns: input.minimumRuns,
     })
+    if (evaluation.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID) {
+      await tx.$queryRaw`SELECT set_config('statement_timeout', '5000', true), set_config('lock_timeout', '1000', true)`
+    }
+    const readinessFailure =
+      evaluation.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID &&
+      policyDecision.decision === "promote_to_experiment"
+        ? evaluation.runs.length !== evaluation.sampledCount
+          ? "cowatch_trial_sample_retention_incomplete"
+          : evaluation.runs.length > evaluation.requestedSampleSize ||
+              evaluation.runs.length > 500
+            ? "cowatch_trial_sample_overflow"
+            : await cowatchTrialCandidateReadiness(tx, evaluation, now)
+        : "cowatch_controlled_evaluation_required"
     const decision =
       evaluation.generatorVersion === COWATCH_SHADOW_GENERATOR_KEY &&
-      policyDecision.decision === "promote_to_experiment"
+      policyDecision.decision === "promote_to_experiment" &&
+      readinessFailure
         ? {
             decision: "inconclusive" as const,
-            reasonCode: "cowatch_controlled_evaluation_required",
+            reasonCode: readinessFailure,
             reevaluationCondition: "complete_feat_505_controlled_evaluation",
           }
         : policyDecision
+    const slateDigests = published.map((run) => ({
+      live: run.liveSlateDigest,
+      shadow: run.shadowSlateDigest,
+    }))
     const inputDigest = digestShadowValue(
-      published.map((run) => ({
-        live: run.liveSlateDigest,
-        shadow: run.shadowSlateDigest,
-      })),
+      evaluation.cowatchGenerationId
+        ? {
+            manifestId: evaluation.manifestId,
+            generatorVersion: evaluation.generatorVersion,
+            samplingVersion: evaluation.samplingVersion,
+            cowatchGenerationId: evaluation.cowatchGenerationId,
+            slates: slateDigests,
+          }
+        : slateDigests,
     )
     const decisionRow = await tx.recommendationShadowDecision.create({
       data: {
@@ -837,7 +1032,10 @@ export async function completeShadowEvaluation(
       },
       data: {
         state: RecommendationShadowEvaluationState.TERMINAL,
-        sampledCount: evaluation.runs.length,
+        sampledCount:
+          evaluation.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID
+            ? evaluation.sampledCount
+            : evaluation.runs.length,
         processedCount: published.length,
         failedCount: evaluation.runs.filter(
           (run) => run.state === RecommendationShadowRunState.FAILED,

@@ -162,6 +162,7 @@ export async function loadPromotionState(prisma: PrismaClient, now: Date) {
       where: { id: "recommendation-promotion-pointer" },
       include: {
         activeManifest: true,
+        activeOwnerRelease: true,
         lastKnownGoodManifest: { select: { id: true, enabled: true } },
       },
     }),
@@ -224,6 +225,7 @@ export function recommendationPromotionOverview(input: {
     id: string
     state: string
     guardrails: unknown
+    evaluationPolicyVersion?: string
     experiment: {
       challengerManifestId: string
       challengerProbability: number
@@ -264,6 +266,8 @@ export function recommendationPromotionOverview(input: {
     "passed" in evaluation.guardrails &&
     evaluation.guardrails.passed === true,
   )
+  const studyEvaluation =
+    evaluation?.evaluationPolicyVersion === "profile-study-governance-v1"
   const targetAvailable = Boolean(authorizedApproval?.manifest.enabled)
   const readiness = promotionReadiness({
     stage: promotionStage(pointer.stage),
@@ -281,9 +285,33 @@ export function recommendationPromotionOverview(input: {
         : pointer.exposureCeilingBps,
     lastKnownGoodManifestId: pointer.lastKnownGoodManifestId,
   })
+  if (
+    pointer.stage !== "OWNER_APPROVED" &&
+    (studyEvaluation ||
+      pointer.reasonCode === "profile_calibration_active" ||
+      pointer.reasonCode === "profile_efficacy_active" ||
+      authorizedApproval?.manifestId === HYBRID_PERSONALIZED_MANIFEST_ID)
+  ) {
+    readiness.ready = false
+    readiness.reason =
+      "Profile study results require their exact version-bound authority; a database PASS alone is insufficient."
+    readiness.nextAction =
+      "Open Governed profile studies to inspect calibration, comparator and current evidence."
+  }
   return {
     generation: pointer.generation,
     stage: promotionStage(pointer.stage),
+    ownerRelease: pointer.activeOwnerRelease
+      ? {
+          id: pointer.activeOwnerRelease.id,
+          graphGenerationId: pointer.activeOwnerRelease.graphGenerationId,
+          validUntil: pointer.activeOwnerRelease.validUntil,
+          revoked:
+            pointer.activeOwnerRelease.revokedAt != null ||
+            pointer.activeOwnerRelease.pointerGeneration <
+              pointer.ownerInfluenceFloorGeneration,
+        }
+      : null,
     activeManifestId: pointer.activeManifestId,
     targetManifestId:
       authorizedApproval?.manifestId ??
@@ -348,11 +376,13 @@ function promotionEvaluationState(
 function promotionStage(
   stage: string,
 ): RecommendationPromotionOverviewData["stage"] {
-  return stage === "BOUNDED"
-    ? "bounded"
-    : stage === "PERMANENT"
-      ? "permanent"
-      : "control"
+  return stage === "OWNER_APPROVED"
+    ? "owner_approved"
+    : stage === "BOUNDED"
+      ? "bounded"
+      : stage === "PERMANENT"
+        ? "permanent"
+        : "control"
 }
 
 function promotionWorkflowState(

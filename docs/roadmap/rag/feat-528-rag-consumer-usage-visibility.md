@@ -13,7 +13,7 @@ tags: ["rag", "auth", "observability"]
 
 ## Problem
 
-Formal consumer identity and independently verified usage visibility are needed
+Formal consumer identity and recorded usage visibility are needed
 before retiring shared-token access. Planning completion is not implementation.
 
 ## Entry Points — Read These First
@@ -30,7 +30,7 @@ before retiring shared-token access. Planning completion is not implementation.
 
 ## What To Build
 
-Implement privacy-minimised, unsampled usage aggregates, coverage health and
+Implement privacy-minimised, unsampled usage aggregates and
 read-only reports. **2026-09-29 direction supersedes the Jaco/RAGBot-only human
 access policy: every admitted portal user can view every consumer's report.**
 Existing GitHub login/session and current portal admission are sufficient; no
@@ -40,19 +40,18 @@ Keep the optional independent operator/RAGBot HTTP/CLI capability for automation
 
 Add **Usage** beside RAG, Consumers and Knowledge. Jaco selected option A on 2026-09-29 after reviewing three
 layouts: implement the table-first comparison with 20-row pagination and a UTC
-date/time window. Consumer names open report details with the watermark and
+date/time window. Consumer names open report details with the selected window and
 generated time. The Usage script loads on demand; each protected batch reads up
 to 20 consumers with one current admission check.
 Use the selected layout to display request/success counts, last activity, UTC
-window, complete-through watermark and honest partial/unavailable coverage.
+window and report generation time. Show recorded counts regardless of interruptions.
 All admitted users can select any registered consumer, including revoked consumers.
 Do not expose credentials, owner contacts or corpus content.
 
 Keep durable aggregates for growth insight; no raw sensitive events or retention
 implementation. Synthetic HTTP acceptance and role tests precede actual ops
 dogfood in feat-529. Accounting proves +3 then +2 requests, integration isolation,
-denied revocation without a success increment and honest coverage rather than
-false zero.
+denied revocation without a success increment and errors for failed report reads.
 Use the plan's proposed types and counting contract. Start date/duration are
 bookkeeping estimates, not an approved release schedule.
 
@@ -88,9 +87,9 @@ pnpm --filter @forge/rag usage:report \
 The approved operator receiver injects `RAG_USAGE_REPORT_URL` (the production
 service's `/internal/usage` URL) and `RAG_USAGE_REPORT_SECRET` from its secret
 manager. Do not put the secret in command arguments. The output includes the
-consumer label, request/success counts, last activity, UTC window and coverage.
-Windows must be minute-aligned and at most 31 days. Partial coverage is visibly
-marked; unavailable coverage exits nonzero rather than presenting a reliable zero.
+consumer label, request/success counts, last activity, UTC window and generation time.
+Windows must be minute-aligned and at most 31 days. Failed reads exit nonzero;
+interruptions do not suppress recorded counts.
 
 The optional machine report credentials remain scoped to Jaco/RAGBot; this
 restriction does not apply to session-authenticated portal reads. RAGBot must
@@ -98,7 +97,7 @@ first be created through feat-530's portal UI before its machine report grant.
 The portal uses the restricted server-side report reader without exposing its
 URL or credentials to the browser.
 Production requires the restricted metadata roles, server report configuration,
-receiver secrets and independently maintained deployment inventory described in
+optional machine receiver secrets described in
 [the operator runbook](../../../apps/rag/docs/ops/consumer-usage.md).
 These activation steps and actual dogfood remain pending.
 
@@ -110,30 +109,25 @@ role/integration checks; contract drift checks if changed. Record actual outcome
 without sensitive content. Complete only the implemented deliverable; shared-token
 cutoff additionally requires feat-529 and separate production cutover approval.
 
+## Product correction — 2026-09-29
+
+The coverage/inventory requirements in the original implementation were a mistake
+for the product owner’s simple usage-reporting feature. Remove coverage fields,
+count-hiding gates, collector heartbeat/watermark/gap machinery, deployment
+inventory and operator reconciliation commands. Keep transactional request and
+successful-completion counts per consumer and unchanged UTC date range.
+
+[Correction plan](../../plans/2026-09-29-feat-528-remove-usage-coverage.md).
+The original implementation and historical verification remain in
+[PR #2455](https://github.com/JesusFilm/forge/pull/2455) and
+[the historical evidence](evidence/feat-528/local-verification.md).
+These do not define current coverage requirements.
+
 ## Resolution
 
-Implemented in [Forge draft PR #2455](https://github.com/JesusFilm/forge/pull/2455):
-isolated usage accounting and report views, real HTTP
-completion/disconnect accounting, independently maintained deployment inventory,
-honest coverage gaps and crash reconciliation, and restricted read-only reporting.
-See [local verification](evidence/feat-528/local-verification.md) and
-[operator instructions](../../../apps/rag/docs/ops/consumer-usage.md).
-
-Accounting, machine reporting and selected **option A** portal comparison page
-are implemented in the same draft PR. The Usage menu uses existing GitHub login
-for every admitted user's all-consumer reports. UTC minute-aligned windows,
-search, 20-row pagination, explicit partial/unavailable coverage and read-only
-report details are included. Browser checks cover real local report reads,
-coverage presentation, fully covered zero, pagination/search/window validation,
-read failure, session expiry and responsive rendering. Initial Consumers page
-loads no Usage script or report requests; measured resource/performance evidence
-is recorded in the local verification document.
-
-Production provisioning, RAGBot machine grant and actual ops dogfood remain
-activation/dependent work; shared-token cutoff requires feat-529 and separate
-approval. Capacity review remains feat-568. Production activation has not been
-performed by this implementation.
-
-SPC-001 review correction rejects terminal collector reconciliation retries before
-mutation and preserves crash/history and healthy replacement coverage. Its public
-store regression and local verification are recorded in the evidence above.
+[Fix PR #2472](https://github.com/JesusFilm/forge/pull/2472) removes coverage from the report contract, aggregate query,
+HTTP/CLI and browser, and removes independent inventory, heartbeat/watermark,
+gap recovery and operator commands from application code. The original date
+range reports and displays 5/5 in the local real-store/browser regression.
+[Verification and safe rollout](evidence/feat-528/recorded-usage-verification.md).
+Production follows normal PR-to-main; feat-529 remains in progress.

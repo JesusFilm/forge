@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
+import type { Prisma } from "@prisma/client"
 import {
   purgeExpiredRecommendationRequests,
   readRecommendationRetentionHealth,
@@ -9,18 +10,54 @@ type RetentionHealthSnapshot = Array<{
   oldestOverdueAt: Date | null
 }>
 
+function retentionQuery(
+  profiles: Array<{ id: string; privacyGeneration: number }> = [],
+) {
+  return async (query: Prisma.Sql): Promise<unknown[]> => {
+    if (query.sql.includes("pg_try_advisory_xact_lock"))
+      return [{ locked: true }]
+    if (query.sql.includes("UPDATE recommendation_profile")) return profiles
+    if (query.sql.includes("SELECT id FROM recommendation_content_action"))
+      return (query.values[0] as string[]).map((id) => ({ id }))
+    if (query.sql.includes("seed_sources AS MATERIALIZED"))
+      return [
+        {
+          profiles: [],
+          requests: [],
+          episodes: [],
+          outcomes: [],
+          eligibility: [],
+          sources: [],
+          graphs: [],
+          protocols: [],
+          releases: [],
+          studies: [],
+          assignments: [],
+          experiments: [],
+          overflow: false,
+        },
+      ]
+    return []
+  }
+}
 function buildPrisma() {
   const requestIds = [{ id: "request-1" }, { id: "request-2" }]
   const count = () => vi.fn(async () => 0)
   const transaction = {
     $executeRaw: vi.fn(async () => 1),
-    $queryRaw: vi
-      .fn()
-      .mockResolvedValueOnce([{ locked: true }])
-      .mockResolvedValueOnce([
-        { id: "expired-profile-1", privacyGeneration: 3 },
-      ]),
+    $queryRaw: vi.fn(
+      retentionQuery([{ id: "expired-profile-1", privacyGeneration: 3 }]),
+    ),
+    recommendationOwnerRelease: {
+      findFirst: vi.fn(async (): Promise<{ expiresAt: Date } | null> => null),
+    },
+    recommendationCowatchTrialAuthority: {
+      findFirst: vi.fn(
+        async (): Promise<{ rawPopulationExpiresAt: Date } | null> => null,
+      ),
+    },
     recommendationCowatchGeneration: {
+      findMany: vi.fn(async () => []),
       deleteMany: vi.fn(async () => ({ count: 0 })),
     },
     recommendationCowatchSuppression: {
@@ -67,8 +104,19 @@ function buildPrisma() {
       findFirst: vi.fn(async () => null),
     },
     recommendationShadowEvaluation: {
+      findMany: vi.fn(async () => [{ id: "expired-evaluation-1" }]),
       deleteMany: vi.fn(async () => ({ count: 1 })),
       findFirst: vi.fn(async () => null),
+    },
+    recommendationCompositionObservation: {
+      findMany: vi.fn(async (): Promise<Array<{ runId: string }>> => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async (): Promise<{ expiresAt: Date } | null> => null),
+    },
+    recommendationCompositionProtocol: {
+      findMany: vi.fn(async (): Promise<Array<{ id: string }>> => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async (): Promise<{ expiresAt: Date } | null> => null),
     },
     recommendationPromotionEvent: {
       deleteMany: vi.fn(async () => ({ count: 3 })),
@@ -134,6 +182,7 @@ function buildPrisma() {
       findFirst: vi.fn(async () => null),
     },
     recommendationExperimentAssignment: {
+      findMany: vi.fn(async () => []),
       updateMany: vi.fn(async () => ({ count: 1 })),
       deleteMany: vi.fn(async () => ({ count: 0 })),
       findFirst: vi.fn(async () => null),
@@ -147,6 +196,7 @@ function buildPrisma() {
       findFirst: vi.fn(async () => null),
     },
     recommendationExperiment: {
+      findMany: vi.fn(async () => []),
       deleteMany: vi.fn(async () => ({ count: 0 })),
       findFirst: vi.fn(async () => null),
     },
@@ -206,7 +256,25 @@ function buildPrisma() {
     recommendationPlaybackEpisode: { findFirst: vi.fn() },
     $transaction: vi.fn(async (callback) => callback(transaction)),
   }
-  return { prisma, transaction }
+  const client = {
+    ...transaction,
+    ...prisma,
+    recommendationRequest: transaction.recommendationRequest,
+    recommendationContentAction: transaction.recommendationContentAction,
+    recommendationPlaybackEpisode: transaction.recommendationPlaybackEpisode,
+    recommendationViewer: transaction.recommendationViewer,
+    recommendationProfile: transaction.recommendationProfile,
+    recommendationCowatchTrialAuthority:
+      transaction.recommendationCowatchTrialAuthority,
+  }
+  for (const [key, value] of Object.entries(transaction)) {
+    if (
+      key.startsWith("recommendation") &&
+      key !== "recommendationRetentionRun"
+    )
+      Object.assign(client, { [key]: value })
+  }
+  return { prisma: client, transaction }
 }
 
 describe("recommendation retention service", () => {
@@ -394,7 +462,9 @@ describe("recommendation retention service", () => {
     ).toHaveBeenCalledWith({ where: { expiresAt: { lte: now } } })
     expect(
       transaction.recommendationShadowEvaluation.deleteMany,
-    ).toHaveBeenCalledWith({ where: { expiresAt: { lte: now } } })
+    ).toHaveBeenCalledWith({
+      where: { id: "expired-evaluation-1", expiresAt: { lte: now } },
+    })
     expect(
       transaction.recommendationExperimentEvaluation.deleteMany,
     ).toHaveBeenCalledWith({ where: { expiresAt: { lte: now } } })
@@ -446,10 +516,9 @@ describe("recommendation retention service", () => {
       .mockResolvedValueOnce([])
     transaction.$queryRaw
       .mockReset()
-      .mockResolvedValueOnce([{ locked: true }])
-      .mockResolvedValueOnce([
-        { id: "newly-expired-profile", privacyGeneration: 7 },
-      ])
+      .mockImplementation(
+        retentionQuery([{ id: "newly-expired-profile", privacyGeneration: 7 }]),
+      )
 
     await purgeExpiredRecommendationRequests(prisma as never, now, 1)
 
@@ -478,7 +547,7 @@ describe("recommendation retention service", () => {
     transaction.recommendationPlaybackEpisode.findMany.mockResolvedValueOnce([
       { id: "standalone-episode-1" },
     ])
-    transaction.recommendationPlaybackEpisode.findFirst.mockResolvedValueOnce({
+    transaction.recommendationPlaybackEpisode.findFirst.mockResolvedValue({
       expiresAt: new Date("2026-09-15T00:00:00.000Z"),
     })
     transaction.recommendationPlaybackEpisode.deleteMany.mockResolvedValueOnce({
@@ -512,9 +581,10 @@ describe("recommendation retention service", () => {
     transaction.watchSurfaceExposure.findMany.mockResolvedValue([])
     transaction.recommendationContentAction.findMany.mockResolvedValue([])
     transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([])
+    transaction.recommendationShadowEvaluation.findMany.mockResolvedValue([])
     transaction.recommendationViewer.findMany.mockResolvedValue([])
     transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
-    transaction.$queryRaw.mockReset().mockResolvedValue([{ locked: true }])
+    transaction.$queryRaw.mockReset().mockImplementation(retentionQuery())
     if (selection === "requests") {
       transaction.recommendationRequest.findMany.mockResolvedValue([
         { id: "request-1" },
@@ -536,9 +606,9 @@ describe("recommendation retention service", () => {
         { tokenDigest: "digest-1" },
       ])
     } else if (selection === "expired profiles") {
-      transaction.$queryRaw
-        .mockResolvedValueOnce([{ locked: true }])
-        .mockResolvedValueOnce([{ id: "profile-1", privacyGeneration: 1 }])
+      transaction.$queryRaw.mockImplementation(
+        retentionQuery([{ id: "profile-1", privacyGeneration: 1 }]),
+      )
       transaction.recommendationProfile.findMany
         .mockResolvedValueOnce([{ id: "profile-1", privacyGeneration: 1 }])
         .mockResolvedValue([])
@@ -568,9 +638,10 @@ describe("recommendation retention service", () => {
     transaction.recommendationRequest.findMany.mockResolvedValue([])
     transaction.recommendationContentAction.findMany.mockResolvedValue([])
     transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([])
+    transaction.recommendationShadowEvaluation.findMany.mockResolvedValue([])
     transaction.recommendationViewer.findMany.mockResolvedValue([])
     transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
-    transaction.$queryRaw.mockReset().mockResolvedValue([{ locked: true }])
+    transaction.$queryRaw.mockReset().mockImplementation(retentionQuery())
 
     await expect(
       purgeExpiredRecommendationRequests(prisma as never, new Date(), 1),
@@ -594,6 +665,32 @@ describe("recommendation retention service", () => {
     expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
   })
 
+  it("continues when an expired authority tombstone remains after the bounded purge", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const now = new Date("2026-09-29T00:00:00Z")
+    const rawPopulationExpiresAt = new Date("2026-09-27T00:00:00Z")
+    transaction.recommendationRequest.findMany.mockResolvedValue([])
+    transaction.recommendationContentAction.findMany.mockResolvedValue([])
+    transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([])
+    transaction.recommendationShadowEvaluation.findMany.mockResolvedValue([])
+    transaction.recommendationViewer.findMany.mockResolvedValue([])
+    transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
+    transaction.$queryRaw.mockReset().mockImplementation(retentionQuery())
+    transaction.recommendationCowatchTrialAuthority.findFirst.mockResolvedValue(
+      { rawPopulationExpiresAt },
+    )
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never, now, 1),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      rootsDeleted: 0,
+      batchLimitReached: true,
+      overdueAfterRun: true,
+      oldestExpiredAtAfter: rawPopulationExpiresAt.toISOString(),
+      rowCounts: { expiredCowatchTrialAuthorities: 1 },
+    })
+  })
+
   it("continues an expired request batch before the 24-hour propagation threshold", async () => {
     const { prisma, transaction } = buildPrisma()
     const now = new Date("2026-08-20T10:30:00.000Z")
@@ -603,7 +700,7 @@ describe("recommendation retention service", () => {
     ])
     transaction.recommendationContentAction.findMany.mockResolvedValue([])
     transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
-    transaction.$queryRaw.mockReset().mockResolvedValue([{ locked: true }])
+    transaction.$queryRaw.mockReset().mockImplementation(retentionQuery())
     transaction.recommendationRequest.findFirst.mockResolvedValueOnce({
       expiresAt: oldestExpiry,
     })

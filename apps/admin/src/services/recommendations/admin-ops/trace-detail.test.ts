@@ -32,6 +32,13 @@ describe("candidate trace read format", () => {
         hasTracePayload: true,
       }),
     ).toBe(true)
+    expect(
+      usesCompactCandidateTrace({
+        traceFormatVersion: null,
+        hasTracePayload: false,
+        legacyDetailRetiredAt: NOW,
+      }),
+    ).toBe(false)
     for (const run of [
       { traceFormatVersion: null, hasTracePayload: true },
       { traceFormatVersion: 1, hasTracePayload: false },

@@ -492,6 +492,7 @@ input[readonly] {
     order: 3;
     width: 100%;
     gap: 10px;
+    overflow-x: auto;
   }
   .nav-item {
     padding: 12px 14px;
@@ -625,15 +626,6 @@ input[readonly] {
 .usage-state {
   font-size: 12px;
   text-transform: capitalize;
-}
-.usage-coverage.complete {
-  color: #168332;
-}
-.usage-coverage.partial {
-  color: #97650b;
-}
-.usage-coverage.unavailable {
-  color: var(--muted);
 }
 .usage-error {
   color: #b42332;

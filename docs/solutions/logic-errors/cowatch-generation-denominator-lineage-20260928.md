@@ -1,6 +1,7 @@
 ---
 title: "Co-watch generations must include denominator-only sources"
 date: "2026-09-28"
+last_updated: "2026-09-29"
 category: "logic-errors"
 module: "Admin Recommendations"
 problem_type: "logic_error"
@@ -88,6 +89,25 @@ empty or truncated population.
 
 These checks establish local correctness. They do not establish production corpus
 sufficiency, useful recommendation coverage, or a causal usefulness improvement.
+
+## Finite-population follow-up (2026-09-29)
+
+A bounded population needs separate event-membership, evaluation and publication
+clocks. `episode-event-window-v1` selects episodes start-inclusive/end-exclusive,
+chooses their latest classifier revisions at the frozen evaluation cutoff, and
+then applies current validity. Bind all three scope timestamps and the scope
+version into generation identity alongside every eligible source. Use the
+cutoff for decay; store the actual publication time separately and preserve it
+on an identical rebuild.
+
+The [finite-population record](../../operations/recommendation-cowatch-finite-population-2026-09-29.md)
+distinguishes raw canonical rows, eligible sources, attempted pairs and published
+rows. Reading the first overflow row proves a lower bound, not the full count.
+Refuse before any publication, and roll back all earlier inserts after a later
+write-lock or transaction failure. A single-publisher advisory lock bounds
+concurrent writes; overlapping read-only preflights still consume resources.
+Fixture row counts and current page reuse cannot establish maximum heap, WAL or
+temporary-storage bounds for production.
 
 ## Related Issues
 

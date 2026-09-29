@@ -59,6 +59,14 @@ describe("authorized co-watch Admin inspection", () => {
         latencyP95Ms: 123,
       },
       publishedAt: new Date("2026-09-28T00:00:00.000Z"),
+      sourceWindow: {
+        version: "episode-event-window-v1",
+        windowStart: new Date("2026-09-21T00:00:00.000Z"),
+        windowEnd: new Date("2026-09-28T00:00:00.000Z"),
+        evaluationAsOf: new Date("2026-09-28T01:00:00.000Z"),
+      },
+      rawSourceCount: 15,
+      attemptedPairCount: 7,
       sourceCount: 12,
       contributionCount: 4,
       edgeCount: 2,
@@ -107,6 +115,7 @@ describe("authorized co-watch Admin inspection", () => {
         searchParams: Promise.resolve({
           anchor: "video-A",
           request: "request-1",
+          generation: "a".repeat(64),
         }),
       }),
     )
@@ -118,11 +127,20 @@ describe("authorized co-watch Admin inspection", () => {
     expect(html).toContain("controlled evaluation required feat 505")
     expect(html).toContain("video-A (session, weight 0.90)")
     expect(html).toContain("Candidate overlap")
+    expect(html).toContain("episode-event-window-v1")
+    expect(html).toContain("2026-09-28T01:00:00.000Z")
+    expect(html).toContain("includes the start and excludes the end")
+    expect(html).toContain("Raw canonical outcomes 15")
+    expect(html).toContain("attempted pairs 7")
+    // Metadata renders on the server from the existing inspection read.
+    expect(loadInspectionMock).toHaveBeenCalledOnce()
+    expect(html).not.toContain("<script")
     expect(loadInspectionMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         sourceMediaId: "video-A",
         requestId: "request-1",
+        generationId: "a".repeat(64),
         actorDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
     )

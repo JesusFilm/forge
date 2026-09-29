@@ -92,7 +92,13 @@ before dispatch. An operator retains and reuses the same tuple after an uncertai
 response. Successful and fenced workflow receipts preserve `minimumRuns`, so
 the existing operator can continue checking threshold conflicts after completion.
 
-This fixes tuple drift, not exactly-once dispatch. Keep operator invocations
+The original repair described here fixed tuple drift, not exactly-once dispatch.
+The later feat-563 release supersedes these dispatch limitations; see
+`docs/operations/recommendation-shadow-dispatch-2026-09-29.md` for the atomic
+ledger, runtime attachment and uncertain-start handling. The following paragraph
+retains the findings at the time of this preflight.
+
+Keep operator invocations
 serialized. Independent review identified existing concurrent same-ID and
 queued-ledger-without-runtime crash windows in `shadow-evaluation/operator.ts`
 and `job.ts`. A retry may report an existing queued ledger without proving a
@@ -108,6 +114,7 @@ After all preflight gates pass, the existing application invocation is:
 ```sh
 pnpm --filter @forge/admin cowatch:shadow:evaluate --execute \
   --evaluation-id "$COWATCH_EVALUATION_ID" \
+  --generation-id "$COWATCH_GENERATION_ID" \
   --window-start "$COWATCH_WINDOW_START" \
   --window-end "$COWATCH_WINDOW_END" \
   --sample-size "$COWATCH_SAMPLE_SIZE" \
@@ -115,7 +122,9 @@ pnpm --filter @forge/admin cowatch:shadow:evaluate --execute \
 ```
 
 Values must be explicit and recorded before execution. Do not regenerate the ID
-or recompute dates for a retry. The CLI rejects missing/duplicate/unknown options,
+or recompute dates for a retry. The exact graph pin was added by the controlled
+live integration; the bundle additionally requires its exact `--manifest-id`
+and a composition protocol prepared before sampling. The CLI rejects missing/duplicate/unknown options,
 invalid UUIDs or timestamps, submillisecond times, noninteger bounds, expired or
 unordered windows, samples above 10,000 and minimum runs above the sample. It
 preserves the service's existing one-minute clock-skew allowance. This example

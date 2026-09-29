@@ -21,6 +21,7 @@ import {
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
   RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+  COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
   SEMANTIC_RECOMMENDATION_CONTRACT,
   WATCH_RECOMMENDATION_SURFACE,
 } from "@/lib/recommendation-contracts"
@@ -210,6 +211,11 @@ export async function POST(request: Request) {
           ? profile.digest
           : null,
       eligibleHuman: !excluded,
+      clientDeliveryContract:
+        request.headers.get("x-forge-recommendation-delivery-contract") ===
+        COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
+          ? COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
+          : null,
       trafficCategory,
     }).catch(() => {
       upstreamAcknowledged = false

@@ -185,3 +185,46 @@ the local operator capability. Historical windows before instrumentation or
 missing inventory correctly show unavailable. No synthetic coverage is claimed
 by the launcher. Without these optional roles, the Usage menu reports that
 reporting is not enabled. This setup does not authorize production configuration.
+
+## Production sources
+
+Sources is a read-only top-level catalog available to existing admitted portal
+users. It displays the committed production snapshot, not live database counts
+or the contents of an individual consumer's retrieval allowlist.
+
+`GET /portal/sources` rechecks admission before returning the display projection.
+`src/serving/http/portal-source-brands.ts` explicitly groups existing ingestion
+keys into content brands for this view only. Add future sibling keys there during
+source onboarding; unmapped keys remain separate entries. Never pass the
+namespaced display IDs to retrieval or consumer configuration. The registry,
+corpus, `/v1` contracts, filters and citation keys retain their existing meaning.
+
+Only positive embedded-document counts appear. Unidentified-language documents
+are included once in totals and separately inspectable in language coverage.
+Expected-language warnings are checked on each constituent key before grouping,
+so a sibling domain's expected language cannot conceal an unexpected label.
+Counts represent stored documents, not deduplicated articles across domains.
+
+After the normal production ingestion job, use the existing `status-dashboard`
+workflow to refresh and validate the snapshot, build the committed dashboard,
+and hand off its PR. The portal reads `dashboard/compiled-data.json` from the
+released application. Its production observation time is shown unchanged;
+builds, merges and deployments do not make the observation newer. The reader
+caches a successful projection for the application process; a new release starts
+with the newly committed file. Failed reads stay local to Sources and can retry.
+The public GitHub Pages dashboard and its publication workflow are unchanged.
+
+`sources.js`, `sources.css` and the inventory request are deferred until Sources
+opens. Leaving the view or losing admission clears its data and ignores late
+responses. There is no browser storage, background refresh or new credential.
+
+Local browser verification requires no database or production access:
+
+```sh
+pnpm --filter @forge/rag portal:sources:verify
+```
+
+It starts an isolated server with synthetic admission and the real committed
+snapshot. A separate synthetic 265-language fixture exercises pagination.
+Install the Playwright Chromium build or set `PORTAL_TEST_CHROMIUM` to an existing
+compatible executable. Screenshots are written beneath ignored `output/sources/`.

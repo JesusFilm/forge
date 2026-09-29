@@ -93,6 +93,7 @@ describe("semanticRecommendationDelivery resolver", () => {
       profileTokenDigest: null,
       eligibleHuman: true,
       trafficCategory: undefined,
+      clientDeliveryContract: null,
       caller: {
         role: "CONSUMER_BEARER",
         id: null,
@@ -120,5 +121,39 @@ describe("semanticRecommendationDelivery resolver", () => {
     expect(deliverMock).toHaveBeenCalledWith(
       expect.objectContaining({ eligibleHuman: false }),
     )
+  })
+  it("exposes an optional parser capability and forwards it without bypassing Web caller authorization", async () => {
+    const field = schema
+      .getQueryType()!
+      .getFields().semanticRecommendationDelivery!
+    expect(
+      field.args
+        .find((arg) => arg.name === "clientDeliveryContract")
+        ?.type.toString(),
+    ).toBe("String")
+    await resolver()(
+      null,
+      { ...args, clientDeliveryContract: "cowatch-mmr-v1" },
+      {
+        user: {
+          role: "CONSUMER_BEARER",
+          id: null,
+          fleet: false,
+          rateLimitBucketKey: "web-key",
+        },
+      },
+      {} as never,
+    )
+    expect(deliverMock).toHaveBeenCalledWith(
+      expect.objectContaining({ clientDeliveryContract: "cowatch-mmr-v1" }),
+    )
+    await expect(
+      resolver()(
+        null,
+        { ...args, clientDeliveryContract: "cowatch-mmr-v1" },
+        { user: null },
+        {} as never,
+      ),
+    ).rejects.toThrow("Web consumer authentication required")
   })
 })

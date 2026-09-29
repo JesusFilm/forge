@@ -8,7 +8,6 @@ import { UsageCollector } from "./usage.js"
 it("counts completed HTTP attempts, errors, and denies without attributing revoked credentials", async () => {
   const store = new MemoryUsageStore()
   const collector = new UsageCollector(store)
-  await collector.start()
   let active = true
   let retrievalFails = false
   const app = createApp({
@@ -83,7 +82,6 @@ it("does not count a disconnected retrieval as successful", async () => {
   const { request: httpRequest } = await import("node:http")
   const store = new MemoryUsageStore(),
     collector = new UsageCollector(store)
-  await collector.start()
   let started!: () => void, release!: () => void
   const admitted = new Promise<void>((resolve) => {
     started = resolve
@@ -132,5 +130,53 @@ it("does not count a disconnected retrieval as successful", async () => {
     release()
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await collector.stop()
+  }
+})
+
+it("a failed accounting write does not block retrieval or prevent subsequent counting", async () => {
+  const { vi } = await import("vitest")
+  const store = new MemoryUsageStore()
+  const log = vi.spyOn(console, "error").mockImplementation(() => {})
+  vi.spyOn(store, "admit").mockRejectedValueOnce(
+    new Error("synthetic write failure"),
+  )
+  const collector = new UsageCollector(store)
+  const app = createApp({
+    tokens: new Map(),
+    retriever: { search: async () => [] },
+    consumerAuth: {
+      authenticate: async () => ({
+        consumerId: "00000000-0000-4000-8000-000000000528",
+        allowedSourceKeys: [],
+      }),
+    },
+    usage: collector,
+  })
+  const server = serve({ fetch: app.fetch, port: 0 })
+  await new Promise<void>((resolve) =>
+    server.listening ? resolve() : server.once("listening", resolve),
+  )
+  const address = server.address()
+  if (!address || typeof address === "string")
+    throw new UsageError("unavailable")
+  try {
+    const request = () =>
+      fetch(`http://127.0.0.1:${address.port}/v1/search`, {
+        method: "POST",
+        headers: { authorization: "Bearer rag_synthetic" },
+        body: '{"query":"synthetic"}',
+      })
+    expect((await request()).status).toBe(200)
+    await collector.flush()
+    expect(store.totals()).toEqual({ requests: 0, successes: 0 })
+    expect(log).toHaveBeenCalledWith("[rag] event=usage_unavailable")
+    expect((await request()).status).toBe(200)
+    await collector.flush()
+    expect(store.totals()).toEqual({ requests: 1, successes: 1 })
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+    await collector.stop()
+    log.mockRestore()
+    vi.restoreAllMocks()
   }
 })

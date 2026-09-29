@@ -26,6 +26,7 @@ import type { SceneRecommendation } from "@/lib/recommendations"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
   RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+  COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
   RECOMMENDATION_EVIDENCE_CONTRACT,
   RECOMMENDATION_TAB_CORRELATION_KEY,
   SEMANTIC_RECOMMENDATION_CONTRACT,
@@ -80,7 +81,11 @@ type SemanticRecommendationItem = SceneRecommendation & {
   position: number
   targetMediaId: string
   canonicalHref: string
-  candidateGenerator: "semantic" | "multi-interest-profile" | "curated"
+  candidateGenerator:
+    | "semantic"
+    | "multi-interest-profile"
+    | "directional-cowatch"
+    | "curated"
   contributors: Array<{
     generator: string
     generatorVersion: string
@@ -114,6 +119,7 @@ type SemanticEnvelope = {
       | "semantic_contextual"
       | "hybrid_personalized"
       | "viewing_mode_personalized"
+      | "cowatch_mmr_personalized"
       | "semantic_fallback"
       | "curated_fallback"
       | null
@@ -195,6 +201,7 @@ function parseItem(value: unknown): SemanticRecommendationItem | null {
     !isCanonicalWatchRecommendationHref(item.canonicalHref) ||
     (item.candidateGenerator !== "semantic" &&
       item.candidateGenerator !== "multi-interest-profile" &&
+      item.candidateGenerator !== "directional-cowatch" &&
       item.candidateGenerator !== "curated") ||
     !nonEmptyString(item.capability) ||
     !nonEmptyString(item.videoSlug, 191) ||
@@ -371,6 +378,7 @@ function parsePersonalization(
       profile.executionMode !== "semantic_contextual" &&
       profile.executionMode !== "hybrid_personalized" &&
       profile.executionMode !== "viewing_mode_personalized" &&
+      profile.executionMode !== "cowatch_mmr_personalized" &&
       profile.executionMode !== "semantic_fallback" &&
       profile.executionMode !== "curated_fallback") ||
     !nonEmptyString(profile.effectiveManifestId, 191) ||
@@ -397,6 +405,7 @@ function parsePersonalization(
         profile.executionMode === "semantic_contextual") ||
       (profile.lane === "profile_challenger" &&
         (profile.executionMode === "hybrid_personalized" ||
+          profile.executionMode === "cowatch_mmr_personalized" ||
           profile.executionMode === "viewing_mode_personalized")) ||
       (profile.lane === "semantic_fallback" &&
         (profile.executionMode === "semantic_fallback" ||
@@ -604,6 +613,8 @@ export function WatchSemanticRecommendations({
                       "content-type": "application/json",
                       "x-forge-recommendation-client":
                         RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+                      "x-forge-recommendation-delivery-contract":
+                        COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
                     },
                     body: JSON.stringify({
                       seedMediaId,
@@ -1035,6 +1046,8 @@ function viewerRecommendationExplanation(envelope: SemanticEnvelope) {
   if (mode === "curated_fallback") return "Selected videos to explore."
   if (mode === "viewing_mode_personalized")
     return "Recommended from this video and how you watch."
+  if (mode === "cowatch_mmr_personalized")
+    return "Recommended from this video and your interests."
   if (mode === "hybrid_personalized") {
     return "Recommended from this video and interests you chose to remember."
   }

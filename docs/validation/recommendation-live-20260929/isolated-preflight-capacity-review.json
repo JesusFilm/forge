@@ -1,0 +1,103 @@
+{
+  "reviewed_at": "2026-09-29T06:29:35Z",
+  "scope": "Review only; no command executed against production or Docker",
+  "decision": "CONDITIONAL GO for the proposed single isolated LOCAL read-only preflight after its admission conditions pass",
+  "worker_preflight_clearance": false,
+  "graph_publication_clearance": false,
+  "shadow_runs_clearance": false,
+  "study_enrollment_clearance": false,
+  "maximum_invocations": 1,
+  "execute": false,
+  "retry_allowed": false,
+  "window_change_allowed": false,
+  "source_window": {
+    "start_inclusive": "2026-09-22T00:00:00.000Z",
+    "end_exclusive": "2026-09-29T00:00:00.000Z",
+    "evaluationAsOf": "2026-09-29T06:15:00.000Z"
+  },
+  "container": {
+    "location": "local isolated Docker cgroup",
+    "existing_image": "node:24-bookworm",
+    "cpu_max": 1,
+    "memory_bytes": 1073741824,
+    "memory_plus_swap_bytes": 1073741824,
+    "swap_bytes": 0,
+    "pids_max": 128,
+    "node_old_space_MiB": 512,
+    "host_wall_deadline_seconds": 45,
+    "owned_container_force_removal": true,
+    "source_mount": "read-only exact deployed revision"
+  },
+  "admission_conditions": [
+    "Normal code-only PR release completed and exact deployed source/dependencies selected; new workloads remain inactive.",
+    "Local Docker daemon and hard resource controls verified; sufficient local host resources; no production/serving container shares the cgroup.",
+    "One host watchdog bounds the entire owned-container lifetime and force-removes that container on deadline/cancellation; killing only docker client is insufficient.",
+    "Current narrow DB lock/long-transaction admission passes; last disk/capacity gate is still valid, otherwise refresh only the necessary capacity measurement.",
+    "READ ONLY RepeatableRead, 5s statement, 1s lock, 30s transaction and original row/pair/session caps unchanged.",
+    "Credentials remain out of command output/files/Docker creation config; inject through attached stdin into process environment, without echo/logging.",
+    "Emit only sanitized aggregate outcome; memory/deadline/refusal is terminal, no retry or narrowed window; clean owned container on every exit."
+  ],
+  "inactive_release_evidence": {
+    "historical_full_relation_catalog_at": "2026-09-29T00:55:10.266532+00:00",
+    "new_study_trial_composition_relations_present_then": false,
+    "promotion_pointer_relation_existed_then": true,
+    "migration_catalog_at": "2026-09-29T06:16:56.798138+00:00",
+    "0107_to_0110_applied_then": false,
+    "fresh_06_16_new_table_absence_or_active_row_count_proven": false,
+    "inference": "No qualifying new study authority is evidenced. Successful unchanged plain CREATE TABLE migrations create fresh empty authority tables, not adopt older populated ones; migrations do not seed/activate them. An older promotion pointer cannot by itself satisfy activated study and dependency checks.",
+    "post_release_verification": "Bounded aggregate counts of new study/activated-study/trial-authority/composition rows remain zero; verify migration checksums and no activation action."
+  },
+  "local_review_revision": "4490d6ddc0526b59a9823d52d48df040f1e6b6d1",
+  "source_checks": [
+    {
+      "path": "apps/admin/prisma/migrations/0107_recommendation_governed_study/migration.sql",
+      "matches_HEAD": true,
+      "sha256": "d29bee126d57fd5886f1a9aeb0ee90341019690c2c979e17050b52ce56e501b5"
+    },
+    {
+      "path": "apps/admin/prisma/migrations/0108_recommendation_cowatch_frozen_trial/migration.sql",
+      "matches_HEAD": true,
+      "sha256": "94260bd78c39a1d6c1b740801becc54967c405a16087c057acb276650897e3e7"
+    },
+    {
+      "path": "apps/admin/prisma/migrations/0109_recommendation_composition_authority/migration.sql",
+      "matches_HEAD": true,
+      "sha256": "d8c0cb7fd54f7b94b113dd5e989c04949199341043f138ce884e8e612c0e09e7"
+    },
+    {
+      "path": "apps/admin/prisma/migrations/0110_recommendation_live_policy_manifests/migration.sql",
+      "matches_HEAD": true,
+      "sha256": "ce2bed91c7063b83a8d6960c2555b0af399da558f59dfe7350945e24f0b9c2c2"
+    },
+    {
+      "path": "apps/admin/src/services/recommendations/experiment/active-study-authority.ts",
+      "matches_HEAD": true,
+      "sha256": "cc297cc5b71d12342b5ed9a372b88d9a58c99e6b07542ae3590a31becca85dde"
+    },
+    {
+      "path": "apps/admin/src/services/recommendations/experiment/assignment.ts",
+      "matches_HEAD": true,
+      "sha256": "2b322989b32a282d84dda063c7f8083ad23f0d5a54633ec91b5359d371bad760"
+    },
+    {
+      "path": "apps/admin/src/services/recommendations/experiment/study-dependencies.ts",
+      "matches_HEAD": true,
+      "sha256": "d3a6ff6dd5b2611250ac7bcb207c326653daaeee4966d55993b0d25cbe5fe528"
+    },
+    {
+      "path": "apps/admin/src/services/recommendations/delivery.service.ts",
+      "matches_HEAD": true,
+      "sha256": "283a7df7583ce00f6473063c46f30875db7d47c187c0fba97cc7a158170cb478"
+    },
+    {
+      "path": "apps/admin/src/scripts/rebuild-recommendation-cowatch-shadow.ts",
+      "matches_HEAD": true,
+      "sha256": "82dd0882cca64aa26b607a7d17839a2627557f548a129a81128b69970b206783"
+    }
+  ],
+  "docker_documentation": "https://docs.docker.com/engine/containers/resource_constraints/",
+  "production_calls": 0,
+  "production_mutations": 0,
+  "preflight_executions": 0,
+  "previous_capacity_receipt": "/home/nisal/Documents/Codex/2026-09-28/recommendation-traffic-isolation/outputs/heartbeats/20260929T0616-integration-capacity-review/README.md"
+}

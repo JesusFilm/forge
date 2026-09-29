@@ -1,4 +1,6 @@
 /** Local-only UI development composition. Never imported by serve.ts. */
+import { allSources } from "../src/registry/index.js"
+import { createPortalSourcesReader } from "../src/serving/http/portal-sources.js"
 import { createServer } from "node:https"
 import { readFileSync } from "node:fs"
 import { getRequestListener } from "@hono/node-server"
@@ -65,9 +67,8 @@ const usageReader = usageReaderUrl
   : undefined
 if (usageWriter && usageReader) await verifyUsageRoles(usageWriter, usageReader)
 const usage = usageWriter
-  ? new UsageCollector(new PostgresUsageStore(usageWriter, "local-portal-dev"))
+  ? new UsageCollector(new PostgresUsageStore(usageWriter))
   : undefined
-await usage?.start()
 const keyPath = process.env.RAG_PORTAL_DEV_TLS_KEY
 const certPath = process.env.RAG_PORTAL_DEV_TLS_CERT
 if (!keyPath || !certPath) throw new PortalDevError("local_tls_files_required")
@@ -123,6 +124,7 @@ app.route(
         ? new PostgresUsageStore(usageReader)
         : undefined,
       allowedSourceKeys: ["synthetic-source"],
+      sources: createPortalSourcesReader(allSources()),
       admission: {
         current: async () => ({ sha: "5".repeat(40), allowlist: { users } }),
         eligible: async (identity) =>

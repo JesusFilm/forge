@@ -8,10 +8,13 @@ import {
 
 const NOW = new Date("2026-09-29T12:00:00.000Z")
 const EVALUATION_ID = "11111111-1111-4111-8111-111111111111"
+const GENERATION_ID = "a".repeat(64)
 const ARGS = [
   "--execute",
   "--evaluation-id",
   EVALUATION_ID,
+  "--generation-id",
+  GENERATION_ID,
   "--window-start",
   "2026-09-28T11:59:00.000Z",
   "--window-end",
@@ -44,6 +47,7 @@ describe("co-watch shadow evaluation CLI", () => {
     const tuple = parseCowatchShadowEvaluationArguments(ARGS, NOW)
     expect(tuple).toEqual({
       evaluationId: EVALUATION_ID,
+      cowatchGenerationId: GENERATION_ID,
       windowStart: new Date("2026-09-28T11:59:00.000Z"),
       windowEnd: new Date("2026-09-29T11:59:00.000Z"),
       requestedSampleSize: 100,
@@ -67,6 +71,12 @@ describe("co-watch shadow evaluation CLI", () => {
     ["unknown option", [...ARGS, "--unknown", "value"]],
     ["unexpected positional argument", [...ARGS, "value"]],
     ["invalid UUID", withValue("--evaluation-id", "not-a-uuid")],
+    ["invalid graph identity", withValue("--generation-id", "latest")],
+    ["uppercase graph identity", withValue("--generation-id", "A".repeat(64))],
+    [
+      "missing graph identity",
+      ARGS.filter((value, index) => index !== 3 && index !== 4),
+    ],
     [
       "timestamp without timezone",
       withValue("--window-end", "2026-09-29T11:59:00"),
@@ -121,6 +131,7 @@ describe("co-watch shadow evaluation CLI", () => {
     expect(JSON.parse(write.mock.calls[0][0])).toEqual({
       status: "dispatch_intent",
       evaluationId: EVALUATION_ID,
+      cowatchGenerationId: GENERATION_ID,
       windowStart: "2026-09-28T11:59:00.000Z",
       windowEnd: "2026-09-29T11:59:00.000Z",
       requestedSampleSize: 100,

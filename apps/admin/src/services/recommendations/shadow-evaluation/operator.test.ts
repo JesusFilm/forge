@@ -27,6 +27,7 @@ const NOW = new Date("2026-08-30T12:00:00.000Z")
 const WINDOW_START = new Date("2026-08-29T00:00:00.000Z")
 const WINDOW_END = new Date("2026-08-30T00:00:00.000Z")
 const EVALUATION_ID = "11111111-1111-4111-8111-111111111111"
+const GENERATION_ID = "a".repeat(64)
 
 function prisma(existing: unknown = null) {
   return {
@@ -125,7 +126,10 @@ describe("exact hybrid shadow evaluation operator", () => {
     "exposes a %s dispatch receipt without reinterpreting it",
     async (state, reused, status) => {
       const client = prisma(
-        exactEvaluation({ generatorVersion: COWATCH_SHADOW_GENERATOR_KEY }),
+        exactEvaluation({
+          generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+          cowatchGenerationId: GENERATION_ID,
+        }),
       )
       dispatchRecommendationShadowEvaluation.mockResolvedValueOnce({
         state,
@@ -135,11 +139,44 @@ describe("exact hybrid shadow evaluation operator", () => {
         runId: null,
       })
       await expect(
-        startExactCowatchShadowEvaluation(client as never, input()),
+        startExactCowatchShadowEvaluation(client as never, {
+          ...input(),
+          cowatchGenerationId: GENERATION_ID,
+        }),
       ).resolves.toMatchObject({ status, created: false, dispatch: { state } })
       expect(createShadowEvaluation).not.toHaveBeenCalled()
     },
   )
+
+  it("refuses a changed graph or a legacy unpinned evaluation without dispatch", async () => {
+    for (const cowatchGenerationId of [null, "b".repeat(64)]) {
+      const client = prisma(
+        exactEvaluation({
+          generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+          cowatchGenerationId,
+        }),
+      )
+      await expect(
+        startExactCowatchShadowEvaluation(client as never, {
+          ...input(),
+          cowatchGenerationId: GENERATION_ID,
+        }),
+      ).rejects.toThrow("does not match")
+    }
+    expect(createShadowEvaluation).not.toHaveBeenCalled()
+    expect(dispatchRecommendationShadowEvaluation).not.toHaveBeenCalled()
+  })
+
+  it("requires an explicit graph identity before creating a co-watch evaluation", async () => {
+    await expect(
+      startExactCowatchShadowEvaluation(prisma() as never, {
+        ...input(),
+        cowatchGenerationId: "latest",
+      }),
+    ).rejects.toThrow("exact graph")
+    expect(createShadowEvaluation).not.toHaveBeenCalled()
+    expect(dispatchRecommendationShadowEvaluation).not.toHaveBeenCalled()
+  })
 
   it("rejects retries whose immutable evaluation parameters do not match", async () => {
     const client = prisma(exactEvaluation({ requestedSampleSize: 499 }))
