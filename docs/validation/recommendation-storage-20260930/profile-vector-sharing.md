@@ -34,6 +34,44 @@ The extra snapshot join added 0.054 ms and 0.039 ms to these warm single-query
 plans, respectively. Loaded end-to-end candidate latency still requires a
 release gate.
 
+A later read-only, day-stratified production aggregate sampled up to 50 latest
+published generations per day over 29 days: 1,450 generations and 445
+unexpired inline interests across 25 days. It found 127 distinct canonical
+vector hashes; 396 interests used 78 vectors that appeared more than once,
+with a maximum reuse count of 19 and a 6,148-byte average vector datum. The
+8,001-row interest cap was not reached. This broader sample supports reuse
+across days, but its bounded selection is not a retained-population census or
+a precise global savings estimate.
+
+## Candidate parity and local loaded latency
+
+The deterministic native candidate fixture now stores two inline interests
+with the gate off and two snapshot-backed interests with
+`RECOMMENDATION_PROFILE_VECTOR_SHARING=true`. In each run, both vectors match
+the content medoids byte-for-byte. The same retrieval and nomination
+assertions run in both modes: four nominations in the fixed
+`a, b, b, a` target order, source ranks `1, 2, 3, 4`, interest ordinals
+`0, 1, 0, 1`, and hybrid target order `a, b`. Both modes passed 3/3 native
+tests. This verifies the candidate read path actually joined snapshot vectors
+when sharing was enabled.
+
+The two modes were measured sequentially on the owned loopback PostgreSQL
+instance. Each loaded sample was six simultaneous calls against the same
+three-video, two-interest deterministic fixture. The existing retrieval
+budget is 1,500 ms per call; every observed call completed within it.
+
+| Path                      | Shape  | First/cold |  Warm | Loaded p50 | Loaded p95 |
+| ------------------------- | ------ | ---------: | ----: | ---------: | ---------: |
+| Live profile retrieval    | Inline |      80 ms | 16 ms |      65 ms |      76 ms |
+| Live profile retrieval    | Shared |      82 ms | 19 ms |      70 ms |      90 ms |
+| Profile-source nomination | Inline |      14 ms |     — |      16 ms |      32 ms |
+| Profile-source nomination | Shared |      17 ms |     — |      22 ms |      25 ms |
+
+These small local samples prove the fixture path stays inside the service
+budget and preserves the expected candidates. They do not establish loaded
+production capacity; the release gate still requires candidate parity and
+latency on a representative retained population.
+
 ## Compatibility and retention
 
 Migration `0116` is additive and does not rewrite retained interests. New
