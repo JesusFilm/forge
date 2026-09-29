@@ -219,6 +219,7 @@ export function mapRecommendationRequestDetail(
           },
           evidenceComplete: data.candidateRun.evidenceComplete,
           fallbackReason: data.candidateRun.fallbackReason,
+          legacyDetailRetiredAt: data.candidateRun.legacyDetailRetiredAt,
           stages: candidateStages,
           suppressions: candidateStages
             .filter(

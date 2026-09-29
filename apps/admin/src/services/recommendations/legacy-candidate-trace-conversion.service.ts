@@ -6,7 +6,7 @@ import {
 } from "./errors"
 
 // Shared with retention.service.ts: acquire this BEFORE any root/run row lock.
-const RETENTION_LOCK_ID = 368_000_001
+export const RETENTION_LOCK_ID = 368_000_001
 const MAX_RUNS = 10
 const MAX_ROWS = 4_000
 const MAX_BYTES = 16 * 1024 * 1024
@@ -50,7 +50,7 @@ export function conversionManifestDigest(
   return hash(JSON.stringify(manifest))
 }
 
-function validateHolds(holds: ConversionHolds): void {
+export function validateHolds(holds: ConversionHolds): void {
   if (
     !/^[a-f0-9]{64}$/.test(holds.qualitySelectorSha256) ||
     holds.qualityRunIds.length !== 64 ||
@@ -123,7 +123,11 @@ export async function conversionDatabaseHash(
  * Reconstruct the real table row type, including inherited expiry/identity,
  * and compare BOTH directions. A validator success alone is not parity.
  */
-function traceSql(runId: string, createdBefore: string) {
+export function traceSql(
+  runId: string,
+  createdBefore: string,
+  policy: "selective" | "protected" = "selective",
+) {
   return Prisma.sql`
     WITH source_run AS MATERIALIZED (
       SELECT c.*, to_jsonb(r) AS root_snapshot,
@@ -160,19 +164,32 @@ function traceSql(runId: string, createdBefore: string) {
       SELECT x.payload, x.rows, octet_length(x.payload::text)::integer AS bytes,
         md5((to_jsonb(c)::text) || x.payload::text) AS fingerprint,
         c.trace_format_version IS NULL AND c.trace_payload IS NULL
+        AND c.legacy_detail_retired_at IS NULL
         AND c.created_at < ${createdBefore}::timestamptz
         AND c.root_created < ${createdBefore}::timestamptz
         AND c.root_expiry > clock_timestamp() AND c.expires_at = c.root_expiry
+        ${
+          policy === "selective"
+            ? Prisma.sql`
         AND c.evidence_complete AND c.composed_count > 0
         AND c.root_result IN ('served','fallback')
         AND c.generator_version <> 'seeded-curated-empty-fallback-v1'
+        `
+            : Prisma.empty
+        }
+        ${
+          policy === "selective"
+            ? Prisma.sql`
         AND c.experiment_assignment_id IS NULL
         AND NOT EXISTS(SELECT 1 FROM recommendation_shadow_run s WHERE s.request_id=c.request_id OR s.live_candidate_run_id=c.id)
         AND NOT EXISTS(SELECT 1 FROM recommendation_experiment_exposure s WHERE s.request_id=c.request_id)
         AND NOT EXISTS(SELECT 1 FROM recommendation_promotion_slate_fence s WHERE s.request_id=c.request_id)
         AND NOT EXISTS(SELECT 1 FROM recommendation_conflict s WHERE s.request_id=c.request_id)
         AND NOT EXISTS(SELECT 1 FROM recommendation_trace_access_audit s WHERE s.request_id=c.request_id)
-        AND x.rows BETWEEN 1 AND 448
+        `
+            : Prisma.empty
+        }
+        AND x.rows BETWEEN ${policy === "protected" ? 0 : 1} AND 448
         AND valid_recommendation_candidate_trace_v1(x.payload)
         AND NOT EXISTS(SELECT 1 FROM source e WHERE e.expires_at<>c.expires_at
           OR e.created_at<>date_trunc('milliseconds',e.created_at))
@@ -369,7 +386,9 @@ export async function convertLegacyCandidateTraces(
       }
     },
     {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      // Stage writers can hold the run row while inserting. Reassess with a
+      // fresh snapshot after the run lock waits for those writers to commit.
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
       timeout: 30_000,
     },
   )
