@@ -15,6 +15,10 @@ import {
   sampleShadowEvaluationContexts,
 } from "./service"
 
+vi.mock("../composition/service", () => ({
+  persistCompositionObservation: vi.fn(),
+}))
+
 const NOW = new Date("2026-08-25T10:00:00.000Z")
 const EXPIRES = new Date("2026-09-20T10:00:00.000Z")
 
@@ -233,6 +237,7 @@ describe("shadow evaluation service", () => {
 
   it("claims one pending run with an evaluation-generation fence", async () => {
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
       recommendationShadowRun: {
         findFirst: vi.fn().mockResolvedValue({ id: "run-1", generation: 1 }),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),

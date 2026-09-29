@@ -3942,6 +3942,7 @@ model RecommendationShadowRun {
   expiresAt                DateTime                       @map("expires_at")
 
   nominations RecommendationShadowNomination[]
+  compositionObservation RecommendationCompositionObservation?
 
   @@unique([evaluationId, requestId], map: "recommendation_shadow_run_evaluation_request_key")
   @@index([evaluationId, state, sampleOrdinal], map: "recommendation_shadow_run_evaluation_state_idx")
@@ -6059,4 +6060,83 @@ model RecommendationCowatchSuppression {
 
   @@index([expiresAt], map: "recommendation_cowatch_suppression_expiry_idx")
   @@map("recommendation_cowatch_suppression")
+}
+
+/// Frozen before shadow execution. Aggregate operator contract; no viewer identity.
+/// Revision/revocation are the sole mutable authority fields and never restore approval.
+model RecommendationCompositionProtocol {
+  id                   String                                 @id @db.Uuid
+  shadowEvaluationId   String                                 @unique @map("shadow_evaluation_id")
+  sourceManifestId     String                                 @map("source_manifest_id") @db.VarChar(191)
+  generatorVersion     String                                 @map("generator_version") @db.VarChar(64)
+  challengerManifestId String                                 @map("challenger_manifest_id") @db.VarChar(191)
+  composerVersion      String                                 @map("composer_version") @db.VarChar(64)
+  protocolVersion      String                                 @map("protocol_version") @db.VarChar(64)
+  config               Json
+  configDigest         String                                 @map("config_digest") @db.Char(64)
+  actorId              String                                 @map("actor_id") @db.VarChar(191)
+  authorityRevision    Int                                    @default(1) @map("authority_revision")
+  revokedAt            DateTime?                              @map("revoked_at")
+  createdAt            DateTime                               @default(now()) @map("created_at")
+  expiresAt            DateTime                               @map("expires_at")
+  observations         RecommendationCompositionObservation[]
+  decision             RecommendationCompositionDecision?
+  calibration          RecommendationCompositionCalibration?
+
+  @@index([expiresAt])
+  @@map("recommendation_composition_protocol")
+}
+
+/// Request-rooted bounded scalar evidence. Cascade/expiry or privacy changes revoke authority.
+model RecommendationCompositionObservation {
+  runId        String                            @id @map("run_id")
+  run          RecommendationShadowRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  protocolId   String                            @map("protocol_id") @db.Uuid
+  protocol     RecommendationCompositionProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  inputDigest  String                            @map("input_digest") @db.Char(64)
+  outputDigest String                            @map("output_digest") @db.Char(64)
+  metrics      Json
+  createdAt    DateTime                          @default(now()) @map("created_at")
+  expiresAt    DateTime                          @map("expires_at")
+
+  @@index([protocolId])
+  @@index([expiresAt])
+  @@map("recommendation_composition_observation")
+}
+
+/// Immutable structural/operational conclusion; never usefulness or serving authority alone.
+model RecommendationCompositionDecision {
+  protocolId        String                            @id @map("protocol_id") @db.Uuid
+  protocol          RecommendationCompositionProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  decision          String                            @db.VarChar(64)
+  reasonCode        String                            @map("reason_code") @db.VarChar(64)
+  evidenceVersion   String                            @map("evidence_version") @db.VarChar(64)
+  evidenceDigest    String                            @map("evidence_digest") @db.Char(64)
+  inputDigest       String                            @map("input_digest") @db.Char(64)
+  observationCount  Int                               @map("observation_count")
+  summary           Json
+  authorityRevision Int                               @map("authority_revision")
+  validUntil        DateTime                          @map("valid_until")
+  decidedAt         DateTime                          @default(now()) @map("decided_at")
+  expiresAt         DateTime                          @map("expires_at")
+
+  @@index([expiresAt])
+  @@map("recommendation_composition_decision")
+}
+
+/// Explicit operator review of real retained shadow observations, only for a controlled study.
+model RecommendationCompositionCalibration {
+  protocolId        String                            @id @map("protocol_id") @db.Uuid
+  protocol          RecommendationCompositionProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  evidenceDigest    String                            @map("evidence_digest") @db.Char(64)
+  configDigest      String                            @map("config_digest") @db.Char(64)
+  reviewDigest      String                            @map("review_digest") @db.Char(64)
+  authorityRevision Int                               @map("authority_revision")
+  actorId           String                            @map("actor_id") @db.VarChar(191)
+  rationale         String                            @db.VarChar(512)
+  reviewedAt        DateTime                          @default(now()) @map("reviewed_at")
+  expiresAt         DateTime                          @map("expires_at")
+
+  @@index([expiresAt])
+  @@map("recommendation_composition_calibration")
 }

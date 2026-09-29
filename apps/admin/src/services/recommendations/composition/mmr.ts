@@ -10,6 +10,12 @@ import type {
 } from "../slate"
 
 export const MMR_SLATE_POLICY_VERSION = "source-interest-theme-mmr-v1"
+export const MMR_WEIGHTS = {
+  relevance: 0.75,
+  themeSimilarity: -0.2,
+  source: 0.025,
+  interest: 0.025,
+} as const
 
 /** Canonical IDs supplied by a published editorial adapter, never inferred. */
 export type MmrSlateEditorial =
@@ -239,10 +245,10 @@ export function composeMmrSlate(input: {
       sourceGain,
       interestGain,
       score: round(
-        0.75 * finiteScore(candidate.deterministicScore) -
-          0.2 * themeSimilarity +
-          (0.025 * sourceGain) / Math.max(1, sources.length) +
-          (0.025 * interestGain) / Math.max(1, interests.length),
+        MMR_WEIGHTS.relevance * finiteScore(candidate.deterministicScore) +
+          MMR_WEIGHTS.themeSimilarity * themeSimilarity +
+          (MMR_WEIGHTS.source * sourceGain) / Math.max(1, sources.length) +
+          (MMR_WEIGHTS.interest * interestGain) / Math.max(1, interests.length),
       ),
     }
   }

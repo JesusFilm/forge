@@ -1,3 +1,4 @@
+import { persistCompositionObservation } from "../composition/service"
 import { randomUUID } from "node:crypto"
 import {
   Prisma,
@@ -373,6 +374,12 @@ export async function claimNextShadowRun(
   const now = input.now ?? new Date()
   const claimId = input.claimId ?? randomUUID()
   return prisma.$transaction(async (tx) => {
+    // Freeze any composition protocol before execution admission. Preparation
+    // uses this same evaluation-scoped lock, so a racing claim cannot slip
+    // between its pending-state check and immutable protocol publication.
+    await tx.$queryRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${input.evaluationId}, 565))::text`,
+    )
     const run = await tx.recommendationShadowRun.findFirst({
       where: {
         evaluationId: input.evaluationId,
@@ -718,6 +725,12 @@ export async function executeClaimedShadowRun(
         failureReason: generated.sourceFailureReason?.slice(0, 64) ?? null,
       },
     })
+    if (update.count === 1)
+      await persistCompositionObservation(tx, {
+        runId: run.id,
+        observation: projection.compositionObservation,
+        now,
+      })
     return update.count === 1
   })
   if (!published) {
