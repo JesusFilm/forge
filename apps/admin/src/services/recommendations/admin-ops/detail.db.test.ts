@@ -1,3 +1,4 @@
+import "../legacy-detail-retirement.db-cases"
 import { readFileSync, readdirSync } from "node:fs"
 import { PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"

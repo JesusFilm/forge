@@ -494,8 +494,9 @@ export function FinalSlatePanel({
                   </ol>
                 ) : (
                   <p className="mt-3 text-[12px] text-[var(--color-text-muted)]">
-                    No additive candidate-stage evidence was recorded for this
-                    compatible legacy item.
+                    {detail.candidateExecution?.legacyDetailRetiredAt
+                      ? "Historical stage detail was retired. The issued item and original stage counts remain available."
+                      : "No additive candidate-stage evidence was recorded for this compatible legacy item."}
                   </p>
                 )}
               </details>
