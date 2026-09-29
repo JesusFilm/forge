@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 29, 2026)
 
-- **Total tickets:** 750
-- **Complete:** 559
+- **Total tickets:** 751
+- **Complete:** 560
 - **In progress:** 62
 - **Not started:** 50
 - **Blocked:** 79
@@ -628,6 +628,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-567](platform/feat-567-changelog-people-directory.md)                            | Serve the shared Changelog People directory from Auth                              | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
 | [feat-570](platform/feat-570-changelog-current-permission.md)                          | Serve current Changelog permissions to protected consumers                         | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
 | [feat-571](platform/feat-571-changelog-people-preapprovals.md)                         | Manage Contributor preapprovals in Changelog People                                | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
+| [feat-572](platform/feat-572-changelog-people-roles.md)                                | Change Changelog People roles safely                                               | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
