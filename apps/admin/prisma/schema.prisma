@@ -3848,7 +3848,6 @@ model RecommendationCandidateStageEvidence {
   expiresAt          DateTime                   @map("expires_at")
 
   @@unique([runId, stage, ordinal], map: "recommendation_candidate_stage_ordinal_key")
-  @@index([expiresAt, id], map: "recommendation_candidate_stage_expiry_idx")
   @@map("recommendation_candidate_stage_evidence")
 }
 
