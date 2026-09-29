@@ -86,3 +86,5 @@ Keep this lane hidden from the public roadmap viewer. Label/tag the local ticket
 This ticket remains not started until implementation begins. The current PR
 publishes the spec and roadmap entry only. Live execution is separately tracked
 by [feat-576](feat-576-rag-governed-test-bench.md).
+
+Specs and roadmap publication: [#2485](https://github.com/JesusFilm/forge/pull/2485). The implementation status remains not started.

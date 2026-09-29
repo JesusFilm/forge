@@ -91,3 +91,5 @@ logs, PRs, screenshots and fixtures.
 
 Implementation depends on feat-575. This entry preserves the explicitly deferred
 work; neither publication of the spec nor mockup approval enables the test bench.
+
+Specs and roadmap publication: [#2485](https://github.com/JesusFilm/forge/pull/2485). The implementation status remains not started.

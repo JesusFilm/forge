@@ -58,8 +58,8 @@ database into Admin.
 | [feat-541](feat-541-rag-database-diagram.md)                      | —                                                             | Document the RAG database schema as a complete ERD                 | complete    | [#2398](https://github.com/JesusFilm/forge/pull/2398)                                                                                                                                                                                                                             |
 | [feat-569](feat-569-rag-portal-sources.md)                        | —                                                             | Production source catalog in the portal                            | complete    | [#2463](https://github.com/JesusFilm/forge/pull/2463)                                                                                                                                                                                                                             |
 
-| [feat-575](feat-575-rag-consumer-manual.md) | [#98](https://github.com/JesusFilm/jesusfilm-rag/issues/98) | Build Consumer Manual, database-backed filters and code samples | not-started | — |
-| [feat-576](feat-576-rag-governed-test-bench.md) | — | Enable governed test-bench execution and dedicated usage | not-started | — |
+| [feat-575](feat-575-rag-consumer-manual.md) | [#98](https://github.com/JesusFilm/jesusfilm-rag/issues/98) | Build Consumer Manual, database-backed filters and code samples | not-started | [#2485](https://github.com/JesusFilm/forge/pull/2485) |
+| [feat-576](feat-576-rag-governed-test-bench.md) | — | Enable governed test-bench execution and dedicated usage | not-started | [#2485](https://github.com/JesusFilm/forge/pull/2485) |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
