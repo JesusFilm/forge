@@ -89,6 +89,12 @@
       "passedTests": 108,
       "skippedNativeTests": 58,
       "log": "/tmp/forge-live-merged-conflict-tests.log"
+    },
+    "ciFixtureRepair": {
+      "passedFiles": 2,
+      "passedTests": 8,
+      "log": "/tmp/forge-live-ci-fixture-after.log",
+      "regressionProof": "Same two missing-table errors reproduced before fix in fresh owned PG18 fixture after normal migration replay. Legacy lifecycle isolated schema now includes0098/0106\u20130110; promotion fixture accepts explicitly enabled loopback namedCI database. No runtime behavior changed."
     }
   },
   "build": {

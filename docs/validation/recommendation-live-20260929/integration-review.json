@@ -69,6 +69,11 @@
         "Use fail-fast assignment/experiment admission against emergency rollback",
         "Preserve durable counters after lost COMMIT acknowledgement"
       ]
+    },
+    {
+      "area": "CodeQL alert117",
+      "result": "Independently traced SARIF from verified session principal ID to immutable composition review digest. No password, cookie, token or signing key enters this digest; SHA256 is deterministic audit/replay identity, not credential verification. Specific alert dismissed as false positive under existing repo playbook; no rule disabled and no hashing code changed.",
+      "url": "https://github.com/JesusFilm/forge/security/code-scanning/117"
     }
   ],
   "releaseConditions": [

@@ -34,11 +34,17 @@ const migrationSql = [
   "0075_recommendation_selection_attribution_eligibility",
   "0076_recommendation_profile_eligibility_reconciliation",
   "0082_user_recommendation_identity",
+  "0098_recommendation_viewing_mode",
   "0100_recommendation_candidate_compact_trace",
   "0101_recommendation_candidate_compact_trace_validate",
   "0102_recommendation_candidate_stage_duplicate_index_drop",
   "0103_recommendation_impression_visibility_capability",
   "0104_recommendation_cowatch_shadow",
+  "0106_recommendation_cowatch_source_window",
+  "0107_recommendation_governed_study",
+  "0108_recommendation_cowatch_frozen_trial",
+  "0109_recommendation_composition_authority",
+  "0110_recommendation_live_policy_manifests",
 ].map((migration) =>
   readFileSync(
     new URL(

@@ -53,11 +53,18 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
     beforeAll(async () => {
       const fixtureUrl = new URL(env.DATABASE_URL)
+      // The explicit native-test opt-in uses only a unique fixture schema;
+      // /postgres is the disposable service database in .github/workflows/ci.yml.
+      const ownedFixture = [
+        "/forge_study",
+        "/forge_test",
+        "/postgres",
+      ].includes(fixtureUrl.pathname)
       if (
         !["127.0.0.1", "localhost"].includes(fixtureUrl.hostname) ||
-        fixtureUrl.pathname !== "/forge_study"
+        !ownedFixture
       )
-        throw new Error("Owned loopback forge_study fixture database required")
+        throw new Error("Owned loopback promotion fixture database required")
       client = new Client({ connectionString: env.DATABASE_URL })
       await client.connect()
       await client.query(`CREATE SCHEMA "${schemaName}"`)
