@@ -56,6 +56,7 @@ let getSplashSession:
   | undefined
 let getLocaleResolution: typeof import("../src/i18n/localeStore").getLocaleResolution
 let localeResolutionAttributes: typeof import("../src/i18n/localeStore").localeResolutionAttributes
+let useT: typeof import("../src/i18n/useT").useT
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -130,6 +131,7 @@ try {
   localeStore.startLocaleSync()
   getLocaleResolution = localeStore.getLocaleResolution
   localeResolutionAttributes = localeStore.localeResolutionAttributes
+  useT = require("../src/i18n/useT").useT
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
   moduleError = `${err.message}\n\n${err.stack ?? ""}`
@@ -263,6 +265,24 @@ export const unstable_settings = {
   initialRouteName: "(tabs)",
 }
 
+// The label is read here, not in RootLayout, so a language change
+// re-renders this button and not the whole root.
+function HeaderBackButton() {
+  const router = useRouter()
+  const t = useT("Common")
+  return (
+    <Pressable
+      onPress={() => router.back()}
+      accessibilityRole="button"
+      accessibilityLabel={t("goBackAriaLabel")}
+      {...{ "dd-action-name": "header-back" }}
+      hitSlop={12}
+    >
+      <Ionicons name="chevron-back" size={28} color={ACCENT} />
+    </Pressable>
+  )
+}
+
 export default function RootLayout() {
   if (moduleError) {
     // Both, like the App Error path. Nothing reaches the session on this
@@ -306,7 +326,6 @@ export default function RootLayout() {
   }
 
   const clientRef = useRef(getApolloClient())
-  const router = useRouter()
 
   // Lock the whole app to portrait; only the fullscreen video player rotates
   // (it relaxes the lock on entry and re-asserts it on exit). Fired as early as
@@ -408,20 +427,7 @@ export default function RootLayout() {
                                   headerStyle: { backgroundColor: BG_COLOR },
                                   headerShadowVisible: false,
                                   headerTitleAlign: "center",
-                                  headerLeft: () => (
-                                    <Pressable
-                                      onPress={() => router.back()}
-                                      accessibilityRole="button"
-                                      accessibilityLabel="Go back"
-                                      hitSlop={12}
-                                    >
-                                      <Ionicons
-                                        name="chevron-back"
-                                        size={28}
-                                        color={ACCENT}
-                                      />
-                                    </Pressable>
-                                  ),
+                                  headerLeft: () => <HeaderBackButton />,
                                 }}
                               />
                               <Stack.Screen
@@ -433,20 +439,7 @@ export default function RootLayout() {
                                   headerStyle: { backgroundColor: BG_COLOR },
                                   headerShadowVisible: false,
                                   headerTitleAlign: "center",
-                                  headerLeft: () => (
-                                    <Pressable
-                                      onPress={() => router.back()}
-                                      accessibilityRole="button"
-                                      accessibilityLabel="Go back"
-                                      hitSlop={12}
-                                    >
-                                      <Ionicons
-                                        name="chevron-back"
-                                        size={28}
-                                        color={ACCENT}
-                                      />
-                                    </Pressable>
-                                  ),
+                                  headerLeft: () => <HeaderBackButton />,
                                 }}
                               />
                               <Stack.Screen
