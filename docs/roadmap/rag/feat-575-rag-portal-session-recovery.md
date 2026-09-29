@@ -1,5 +1,5 @@
 ---
-id: "feat-572"
+id: "feat-575"
 title: "Renew RAG portal sessions and restore the active section"
 owner: "jaco"
 priority: "P1"
