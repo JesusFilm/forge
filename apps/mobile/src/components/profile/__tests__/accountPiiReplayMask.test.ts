@@ -22,7 +22,8 @@ const IDENTITY_BLOCK =
   /<SessionReplayView\.MaskAll[^>]*>([\s\S]*?)<\/SessionReplayView\.MaskAll>/
 
 /** The JSX expressions that show account PII on each surface. The header
- *  shows only the display name (or the email) and the name's initial. */
+ *  shows the display name (or the email) and the initial; the Account
+ *  screen shows those and the email line too. */
 type Surface = {
   file: string
   source: string
@@ -34,6 +35,11 @@ const SURFACES: Surface[] = [
     file: "MyWatchHeader.tsx",
     source: read("..", "MyWatchHeader.tsx"),
     masked: ["{displayName}", "{initial}"],
+  },
+  {
+    file: "app/account.tsx",
+    source: read("..", "..", "..", "..", "app", "account.tsx"),
+    masked: ["{displayName}", "{email}", "{initial}"],
   },
 ]
 

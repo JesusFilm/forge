@@ -26,6 +26,18 @@ const TARGET_SIZE = 44
 // Pulls each 44pt target out so its glyph lines up with the content edge.
 const EDGE_PULL = 10
 
+type LeaveRouter = Pick<
+  ReturnType<typeof useRouter>,
+  "back" | "canGoBack" | "navigate"
+>
+
+/** Leave a screen pushed over My Watch. A cold deep link lands on an empty
+ *  stack, where back() does nothing, so it navigates to the tab instead. */
+export function leaveToMyWatch(router: LeaveRouter): void {
+  if (router.canGoBack()) router.back()
+  else router.navigate("/(tabs)/profile")
+}
+
 export function ScreenTopBar({
   title,
   showBack = false,
@@ -35,11 +47,7 @@ export function ScreenTopBar({
   const router = useRouter()
   const typography = useTypography()
 
-  const handleBack = () => {
-    // A cold deep link lands on an empty stack, where back() does nothing.
-    if (router.canGoBack()) router.back()
-    else router.navigate("/(tabs)/profile")
-  }
+  const handleBack = () => leaveToMyWatch(router)
 
   return (
     <View
