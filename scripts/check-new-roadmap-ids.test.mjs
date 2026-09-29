@@ -41,3 +41,15 @@ test("ignores untouched historical duplicates and content-only edits", () => {
     [],
   )
 })
+
+test("reports one collision when two new tickets share an ID", () => {
+  const first = "docs/roadmap/rag/feat-575-a.md"
+  const second = "docs/roadmap/platform/feat-575-b.md"
+  const current = new Map([
+    [first, "feat-575"],
+    [second, "feat-575"],
+  ])
+  assert.deepEqual(introducedCollisions([first, second], new Map(), current), [
+    { id: "feat-575", paths: [second, first] },
+  ])
+})

@@ -16,9 +16,14 @@ export function introducedCollisions(changed, oldIds, currentIds) {
     pathsById.get(id).push(file)
   }
 
-  return changed.flatMap((file) => {
-    const id = currentIds.get(file)
-    if (!id || oldIds.get(file) === id) return []
+  const introducedIds = new Set(
+    changed.flatMap((file) => {
+      const id = currentIds.get(file)
+      return id && oldIds.get(file) !== id ? [id] : []
+    }),
+  )
+
+  return [...introducedIds].flatMap((id) => {
     const paths = pathsById.get(id)
     return paths.length > 1 ? [{ id, paths: paths.sort() }] : []
   })
