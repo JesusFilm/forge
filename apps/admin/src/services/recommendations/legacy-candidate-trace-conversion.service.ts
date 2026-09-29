@@ -386,7 +386,9 @@ export async function convertLegacyCandidateTraces(
       }
     },
     {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      // Stage writers can hold the run row while inserting. Reassess with a
+      // fresh snapshot after the run lock waits for those writers to commit.
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
       timeout: 30_000,
     },
   )

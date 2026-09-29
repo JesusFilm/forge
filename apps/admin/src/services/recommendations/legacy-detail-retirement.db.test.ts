@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { Client } from "pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { createPrismaClient } from "@/db/client"
 import { loadRecommendationRequestDetail } from "./admin-ops/detail.service"
 import {
@@ -12,6 +12,12 @@ import {
   freezeLegacyDetailRetirement,
   runLegacyDetailRetirement,
 } from "./legacy-detail-retirement.service"
+
+// Fixture IDs are synthetic. The real immutable-digest validator is exercised
+// separately; never place private production IDs in tests or source.
+vi.mock("./legacy-quality-holds", () => ({
+  assertOriginalQualityHolds: vi.fn(),
+}))
 
 describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
   "protected legacy detail retirement PostgreSQL proof",
@@ -78,6 +84,18 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
       const items = await db.recommendationServedItem.findMany({
         where: { requestId: held.requestId },
       })
+      const unprotectedItems = await db.recommendationServedItem.findMany({
+        where: { requestId: unprotected.requestId },
+      })
+      const [rootsBefore] = await db.$queryRaw<Array<{ digest: string }>>`
+        SELECT md5(jsonb_agg(to_jsonb(r) ORDER BY r.id)::text) AS digest
+        FROM recommendation_request r
+        WHERE r.id IN (${held.requestId}, ${unprotected.requestId})
+      `
+      const [stagesBefore] = await db.$queryRaw<Array<{ snapshot: string }>>`
+        SELECT jsonb_agg(to_jsonb(e) ORDER BY e.stage,e.ordinal)::text AS snapshot
+        FROM recommendation_candidate_stage_evidence e WHERE e.run_id=${held.id}
+      `
       const stages = await db.recommendationCandidateStageEvidence.count({
         where: { runId: unprotected.id },
       })
@@ -110,6 +128,29 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
       expect(retiredAfter.legacyDetailRetiredAt).toBeInstanceOf(Date)
       expect(retiredAfter.nominatedCount).toBe(unprotected.nominatedCount)
       expect(retiredAfter.expiresAt).toEqual(unprotected.expiresAt)
+      const [rootsAfter] = await db.$queryRaw<Array<{ digest: string }>>`
+        SELECT md5(jsonb_agg(to_jsonb(r) ORDER BY r.id)::text) AS digest
+        FROM recommendation_request r
+        WHERE r.id IN (${held.requestId}, ${unprotected.requestId})
+      `
+      expect(rootsAfter.digest).toBe(rootsBefore.digest)
+      const [encoded] = await db.$queryRaw<Array<{ snapshot: string }>>`
+        SELECT jsonb_agg(jsonb_build_object(
+          'id', v->'id', 'run_id', c.id, 'stage', v->'stage', 'ordinal', v->'ordinal',
+          'candidate_key', v->'candidateKey', 'target_media_id', v->'targetMediaId',
+          'source_generator', v->'sourceGenerator', 'source_rank', v->'sourceRank',
+          'source_score', v->'sourceScore', 'normalized_score', v->'normalizedScore',
+          'rrf_score', v->'rrfScore', 'deterministic_score', v->'deterministicScore',
+          'final_position', v->'finalPosition', 'reason_codes', v->'reasonCodes',
+          'source_evidence', v->'sourceEvidence',
+          'created_at', (v->>'createdAt')::timestamptz,
+          'expires_at', c.expires_at
+        ) ORDER BY v->>'stage',(v->>'ordinal')::integer)::text AS snapshot
+        FROM recommendation_candidate_run c,
+          jsonb_array_elements(c.trace_payload->'stages') v
+        WHERE c.id=${held.id}
+      `
+      expect(encoded.snapshot).toBe(stagesBefore.snapshot)
       expect(
         await db.recommendationCandidateStageEvidence.count({
           where: { runId: { in: [held.id, unprotected.id] } },
@@ -137,6 +178,11 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         }),
       ).toEqual(items)
       expect(
+        await db.recommendationServedItem.findMany({
+          where: { requestId: unprotected.requestId },
+        }),
+      ).toEqual(unprotectedItems)
+      expect(
         await db.recommendationTraceAccessAudit.count({
           where: { requestId: held.requestId },
         }),
@@ -162,12 +208,27 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         VALUES ('retired-late-stage', ${unprotected.id}, 'nominated', 0,
           'retired-late-candidate', ${unprotected.expiresAt})
       `).rejects.toThrow("retired")
+      await expect(db.$executeRaw`
+        INSERT INTO recommendation_candidate_stage_evidence
+          (id, run_id, stage, ordinal, candidate_key, expires_at)
+        VALUES ('compact-late-stage', ${held.id}, 'nominated', 20,
+          'compact-late-candidate', ${held.expiresAt})
+      `).rejects.toThrow("compact")
       expect(
         await runLegacyDetailRetirement(db, manifest, {
           execute: true,
           confirmTarget: manifest.targetDatabaseHash,
         }),
       ).toMatchObject({ status: "already-completed" })
+      await db.recommendationRequest.delete({ where: { id: held.requestId } })
+      await db.recommendationRequest.delete({
+        where: { id: unprotected.requestId },
+      })
+      expect(
+        await db.recommendationCandidateRun.count({
+          where: { id: { in: [held.id, unprotected.id] } },
+        }),
+      ).toBe(0)
     })
 
     it("protects a late access link and rejects unrepresentable or changed sources", async () => {
@@ -259,6 +320,96 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         )
         await controller.query(`DROP FUNCTION "${name}"()`)
       }
+    })
+
+    it("blocks a stage INSERT started during retirement and keeps retired state immutable", async () => {
+      const run = await fixture()
+      await controller.query("BEGIN")
+      await controller.query(
+        "UPDATE recommendation_candidate_run SET legacy_detail_retired_at=now() WHERE id=$1",
+        [run.id],
+      )
+      const insertion = db.$executeRaw`
+        INSERT INTO recommendation_candidate_stage_evidence
+          (id, run_id, stage, ordinal, candidate_key, expires_at)
+        VALUES (${"late-" + randomUUID()}, ${run.id}, 'nominated', 20,
+          'late-candidate', ${run.expiresAt})
+      `
+      try {
+        const state = await Promise.race([
+          insertion.then(
+            () => "done",
+            () => "error",
+          ),
+          new Promise<"pending">((resolve) =>
+            setTimeout(() => resolve("pending"), 100),
+          ),
+        ])
+        expect(state).toBe("pending")
+      } finally {
+        await controller.query("COMMIT")
+      }
+      await expect(insertion).rejects.toThrow("retired")
+      await expect(db.$executeRaw`
+        UPDATE recommendation_candidate_run
+        SET legacy_detail_retired_at=NULL WHERE id=${run.id}
+      `).rejects.toThrow("immutable")
+      await expect(db.$executeRaw`
+        UPDATE recommendation_candidate_run
+        SET trace_format_version=1, trace_payload='{"stages":[]}'::jsonb
+        WHERE id=${run.id}
+      `).rejects.toThrow()
+      const current = await db.recommendationCandidateRun.findUniqueOrThrow({
+        where: { id: run.id },
+      })
+      expect(current.legacyDetailRetiredAt).toBeInstanceOf(Date)
+      expect(current.traceFormatVersion).toBeNull()
+    })
+
+    it("waits for an in-flight stage writer and refuses retirement after its source changes", async () => {
+      const run = await fixture()
+      const manifest = await freeze([run.id])
+      const before = await db.recommendationCandidateStageEvidence.count({
+        where: { runId: run.id },
+      })
+      await controller.query("BEGIN")
+      await controller.query(
+        "INSERT INTO recommendation_candidate_stage_evidence " +
+          "(id, run_id, stage, ordinal, candidate_key, expires_at) " +
+          "VALUES ($1, $2, 'nominated', 20, 'in-flight-candidate', $3)",
+        ["in-flight-" + randomUUID(), run.id, run.expiresAt],
+      )
+      const retirement = runLegacyDetailRetirement(db, manifest, {
+        execute: true,
+        confirmTarget: manifest.targetDatabaseHash,
+      })
+      try {
+        const state = await Promise.race([
+          retirement.then(
+            () => "done",
+            () => "error",
+          ),
+          new Promise<"pending">((resolve) =>
+            setTimeout(() => resolve("pending"), 100),
+          ),
+        ])
+        expect(state).toBe("pending")
+      } finally {
+        await controller.query("COMMIT")
+      }
+      await expect(retirement).rejects.toThrow()
+      expect(
+        await db.recommendationCandidateStageEvidence.count({
+          where: { runId: run.id },
+        }),
+      ).toBe(before + 1)
+      expect(
+        (
+          await db.recommendationCandidateRun.findUniqueOrThrow({
+            where: { id: run.id },
+          })
+        ).legacyDetailRetiredAt,
+      ).toBeNull()
     })
   },
 )

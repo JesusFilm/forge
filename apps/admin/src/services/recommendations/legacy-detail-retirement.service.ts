@@ -8,9 +8,9 @@ import {
   RETENTION_LOCK_ID,
   conversionDatabaseHash,
   traceSql,
-  validateHolds,
   type ConversionHolds,
 } from "./legacy-candidate-trace-conversion.service"
+import { assertOriginalQualityHolds } from "./legacy-quality-holds"
 
 type Database = Pick<PrismaClient, "$transaction" | "$queryRaw">
 type Transaction = Pick<Prisma.TransactionClient, "$queryRaw" | "$executeRaw">
@@ -39,17 +39,13 @@ type Assessment = {
 const MAX_RUNS = 10
 const MAX_ROWS = 4_000
 const MAX_BYTES = 16 * 1024 * 1024
-const ORIGINAL_QUALITY_SELECTOR_SHA256 =
-  "c983ec02830d1b2df637c04e47fd75bdd66c26bd4e0caba0c38ff851561589a1"
 
 function digest(body: Omit<LegacyDetailRetirementManifest, "digest">): string {
   return createHash("sha256").update(JSON.stringify(body)).digest("hex")
 }
 
 function validate(manifest: LegacyDetailRetirementManifest): void {
-  validateHolds(manifest.holds)
-  if (manifest.holds.qualitySelectorSha256 !== ORIGINAL_QUALITY_SELECTOR_SHA256)
-    throw new RecommendationInputError("Original quality selector is required")
+  assertOriginalQualityHolds(manifest.holds)
   const { digest: actual, ...body } = manifest
   if (
     manifest.version !== 1 ||
@@ -129,9 +125,7 @@ export async function freezeLegacyDetailRetirement(
   db: Database,
   input: { runIds: string[]; createdBefore: string; holds: ConversionHolds },
 ): Promise<LegacyDetailRetirementManifest> {
-  validateHolds(input.holds)
-  if (input.holds.qualitySelectorSha256 !== ORIGINAL_QUALITY_SELECTOR_SHA256)
-    throw new RecommendationInputError("Original quality selector is required")
+  assertOriginalQualityHolds(input.holds)
   if (
     input.runIds.length < 1 ||
     input.runIds.length > MAX_RUNS ||
@@ -337,7 +331,10 @@ export async function runLegacyDetailRetirement(
       }
     },
     {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      // The run lock waits for in-flight stage writers. A fresh statement
+      // snapshot after that wait must see their committed rows; a serializable
+      // transaction snapshot could miss them and retire stale source detail.
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
       timeout: 30_000,
     },
   )
