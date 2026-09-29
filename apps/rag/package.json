@@ -12,7 +12,7 @@
     "db:verify-readonly": "tsx scripts/verify-readonly.ts",
     "db:verify-consumer-roles": "tsx scripts/verify-consumer-roles.ts",
     "db:schema:check": "DATABASE_URL=${DATABASE_URL:-postgresql://forge:forge@localhost:5435/forge_rag} prisma validate && vitest run tests/schema.test.mjs tests/schema-drift.test.ts",
-    "db:verify": "vitest run --no-file-parallelism tests/database.integration.test.ts tests/adapters.integration.test.ts tests/raw-document-promotion.integration.test.ts tests/readonly-role.integration.test.ts tests/consumer-registry.integration.test.ts tests/consumer-access.integration.test.ts tests/consumer-access-roles.integration.test.ts tests/consumer-http-lifecycle.integration.test.ts src/adapters/postgres/consumer-audit.integration.test.ts src/adapters/postgres/portal-sessions.integration.test.ts",
+    "db:verify": "vitest run --no-file-parallelism tests/database.integration.test.ts tests/adapters.integration.test.ts tests/raw-document-promotion.integration.test.ts tests/readonly-role.integration.test.ts tests/consumer-registry.integration.test.ts tests/consumer-access.integration.test.ts tests/consumer-access-roles.integration.test.ts tests/consumer-http-lifecycle.integration.test.ts src/adapters/postgres/consumer-audit.integration.test.ts src/adapters/postgres/portal-sessions.integration.test.ts src/adapters/postgres/consumer-usage.integration.test.ts src/adapters/postgres/consumer-usage-reconciliation.integration.test.ts src/adapters/postgres/consumer-usage-roles.integration.test.ts src/adapters/postgres/usage-inventory.integration.test.ts",
     "db:copy-corpus": "tsx scripts/copy-corpus.ts",
     "raws:promote": "tsx scripts/promote-raw-documents.ts",
     "raws:verify-promotion": "tsx scripts/verify-raw-document-promotion.ts",
@@ -45,11 +45,15 @@
     "pages:assemble": "tsx scripts/assemble-pages.ts",
     "status:remove-source": "tsx scripts/source-status.ts remove-source",
     "start": "tsx scripts/serve.ts",
-    "test": "pnpm depcruise && vitest run --exclude tests/database.integration.test.ts --exclude tests/adapters.integration.test.ts --exclude tests/raw-document-promotion.integration.test.ts --exclude tests/consumer-registry.integration.test.ts --exclude tests/consumer-access.integration.test.ts --exclude tests/consumer-access-roles.integration.test.ts --exclude tests/consumer-http-lifecycle.integration.test.ts",
+    "test": "pnpm depcruise && vitest run --exclude tests/database.integration.test.ts --exclude tests/adapters.integration.test.ts --exclude tests/raw-document-promotion.integration.test.ts --exclude tests/consumer-registry.integration.test.ts --exclude tests/consumer-access.integration.test.ts --exclude tests/consumer-access-roles.integration.test.ts --exclude tests/consumer-http-lifecycle.integration.test.ts --exclude src/adapters/postgres/consumer-usage.integration.test.ts --exclude src/adapters/postgres/consumer-usage-reconciliation.integration.test.ts --exclude src/adapters/postgres/consumer-usage-roles.integration.test.ts --exclude src/adapters/postgres/usage-inventory.integration.test.ts",
     "test:core": "vitest run src/acquisition/core.test.ts src/indexing src/retrieval src/fakes",
     "typecheck": "tsc --noEmit",
     "portal:dev": "tsx scripts/portal-dev.ts",
-    "portal:verify": "playwright test --config playwright.portal.config.ts"
+    "portal:verify": "playwright test --config playwright.portal.config.ts",
+    "usage:report": "tsx scripts/usage-report.ts",
+    "db:verify-usage-roles": "tsx scripts/verify-usage-roles.ts",
+    "usage:reconcile": "tsx scripts/usage-reconcile.ts",
+    "usage:inventory": "tsx scripts/usage-inventory.ts"
   },
   "dependencies": {
     "@forge/rag-contracts": "workspace:*",
