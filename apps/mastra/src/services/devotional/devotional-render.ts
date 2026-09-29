@@ -26,6 +26,7 @@ import { joinAudioVarGaps, slowAndPad } from "./audio-concat"
 import { createSilentVoiceover } from "./devotional-silent-voiceover"
 import { planFaceCropAnchors } from "./face-crop-anchors"
 import { planClipFocus } from "./clip-focus"
+import { matchClipDialogueLevel } from "./dialogue-level"
 import {
   cacheDirFor,
   loadCachedAudio,
@@ -2745,6 +2746,37 @@ async function renderInStage(
       ? `stills (${aspect}) → ${videoPath.replace(/\.mp4$/, "")}-still-NN.png`
       : `render (${aspect}) → ${videoPath}`,
   )
+  // The film's people and the narrator at one loudness (owner, 2026-09-29),
+  // unless the caller set the clip's level by hand.
+  let videoAudioLevel = options.videoAudioLevel ?? 0.55
+  if (options.videoAudioLevel == null) {
+    const film = manifest.cards.find(
+      (c) => c.kind === "video" && typeof c.videoFile === "string",
+    )
+    const matched = film
+      ? await matchClipDialogueLevel({
+          clipFile: path.join(stage, String(film.videoFile)),
+          cues: (
+            (film.subtitles ?? []) as ReadonlyArray<{
+              startSec: number
+              endSec: number
+            }>
+          ).map((s) => [s.startSec, s.endSec] as const),
+          narrationFiles: manifest.cards.flatMap((c) =>
+            typeof c.audioFile === "string"
+              ? [path.join(stage, c.audioFile)]
+              : [],
+          ),
+        })
+      : null
+    if (matched) {
+      videoAudioLevel = Number(matched.level.toFixed(3))
+      log(
+        `🔊 film dialogue ${matched.dialogueLufs.toFixed(1)} LUFS, narration ` +
+          `${matched.narrationLufs.toFixed(1)} LUFS → clip level ${videoAudioLevel}`,
+      )
+    }
+  }
   await runRender(
     path.join(stage, "manifest.json"),
     videoPath,
@@ -2753,7 +2785,7 @@ async function renderInStage(
     layout,
     options.musicVolume ?? MUSIC_VOLUME_DEFAULT,
     options.cardXfadeSec ?? options.xfadeSec ?? 1.2,
-    options.videoAudioLevel ?? 0.55,
+    videoAudioLevel,
     {
       // Owner rules for the devotional cover: never a date, and nothing in
       // the date's slot either — the "Today's Devotional" label that used to

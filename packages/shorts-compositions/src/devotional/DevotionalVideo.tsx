@@ -4953,8 +4953,9 @@ function CardBody({
   // Landscape (16:9): the frame is half as tall — scale this text-dense card
   // down a notch so question + prayer clear the header and the bottom edge.
   const q = (n: number) => (isLandscape ? px(n * 0.8) : px(n))
-  // Prayer appears well after the questions — a 5s beat to sit with them first.
-  const prayerDelay = 5
+  // Prayer appears well after the questions — a 5s beat to sit with them first
+  // — or, with word times, as the voice says "Talk to God about it:".
+  const prayerDelay = card.prayerAtSec ?? 5
   /**
    * 16:9 numbers taken straight off the owner's Figma frame, converted to
    * px() units (px(n) = n * height / 390, so these hold at any 16:9 size):
@@ -4980,7 +4981,9 @@ function CardBody({
   // Both paces are DERIVED, the way the verse's is: a long question and a
   // short one should both feel unhurried instead of one racing. The questions
   // have until the prayer arrives; the prayer has the rest of the card.
-  const Q_START_SEC = 0.3
+  // On the voice's cue when the narration has word times (the question after
+  // "First, ask yourself:"), else the fixed opening beat.
+  const Q_START_SEC = card.questionAtSec ?? 0.3
   const questionChars = questions.reduce((n, t) => n + t.length, 0)
   const questionPerChar = Math.min(
     0.06,
@@ -4992,7 +4995,7 @@ function CardBody({
   // The prayer BLOCK (rule + "Pray" label) fades in at `prayerDelay`; its text
   // starts unfolding just after, so the two entrances don't stack into one
   // compounded fade — the same 0.45s beat the verse leaves before its citation.
-  const prayerTextStart = prayerDelay + 0.45
+  const prayerTextStart = card.prayerTextAtSec ?? prayerDelay + 0.45
   const prayerChars = (card.prayer ?? "").length
   const prayerPerChar = Math.min(
     0.06,

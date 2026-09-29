@@ -105,7 +105,13 @@ export type BuildManifestInput = {
   /** Cap for the clear video card (s). */
   videoCardSec?: number
   /** Localized on-screen section labels (defaults to English). */
-  labels?: { reflect: string; askYourself: string; pray: string }
+  labels?: {
+    reflect: string
+    askYourself: string
+    pray: string
+    askLead?: string
+    prayLead?: string
+  }
   /** Localized three-step column (clip-first). Defaults to English. */
   stepLabels?: readonly [string, string, string]
   /** Fixed-date occasion tag for the cover (e.g. "World Humanitarian Day"),
@@ -416,6 +422,7 @@ function buildClipFirstManifest(
       prayer: d.prayer,
       askLabel: labels.askYourself,
       prayLabel: labels.pray,
+      ...closingCueTimes(qp.words, d.question, labels),
       // No cover in this structure, so the source credit — otherwise only on
       // the cover — lands on the closing card. Not when the reflection credits
       // its sources inline, as it goes: saying it again at the end is a repeat
@@ -439,6 +446,40 @@ function buildClipFirstManifest(
     ...(endCredit ? { attribution: endCredit } : {}),
     ...(input.musicFile ? { musicFile: input.musicFile } : {}),
     cards,
+  }
+}
+
+type TimedWord = { word: string; startSec: number; endSec: number }
+
+/**
+ * Where the closing card's spoken parts begin, from the narration's word
+ * times: the question after its lead-in, the prayer's lead-in, and the prayer
+ * itself. The card lights each block as the voice reaches it; without word
+ * times it keeps its fixed pacing.
+ */
+export function closingCueTimes(
+  words: ReadonlyArray<TimedWord> | undefined,
+  question: string,
+  labels: { askLead?: string; prayLead?: string },
+): { questionAtSec?: number; prayerAtSec?: number; prayerTextAtSec?: number } {
+  if (!words || words.length === 0 || !labels.askLead || !labels.prayLead)
+    return {}
+  const count = (t: string) => t.split(/\s+/).filter(Boolean).length
+  const nAsk = count(labels.askLead)
+  const nQuestion = count(question)
+  const nPray = count(labels.prayLead)
+  // The spoken text is "<ask lead> <question>\n\n<pray lead> <prayer>", and
+  // the TTS words split on whitespace the same way; if the counts do not add
+  // up the alignment is not trusted.
+  const prayAt = nAsk + nQuestion
+  if (words.length <= prayAt + nPray) return {}
+  const norm = (w: string) => w.toLowerCase().replace(/[^a-z']/g, "")
+  if (norm(words[prayAt].word) !== norm(labels.prayLead.split(/\s+/)[0]))
+    return {}
+  return {
+    questionAtSec: words[nAsk].startSec,
+    prayerAtSec: words[prayAt].startSec,
+    prayerTextAtSec: words[prayAt + nPray].startSec,
   }
 }
 
@@ -666,6 +707,7 @@ export function buildDevotionalManifest(
       prayer: d.prayer,
       askLabel: labels.askYourself,
       prayLabel: labels.pray,
+      ...closingCueTimes(qp.words, d.question, labels),
       audioFile: qp.file,
       durationSec: qp.durationSec,
       holdSec: 5,

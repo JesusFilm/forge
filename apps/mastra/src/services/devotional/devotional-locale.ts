@@ -29,6 +29,10 @@ export type DevotionalLabels = {
   askYourself: string
   /** Eyebrow above the guided prayer. */
   pray: string
+  /** Spoken lead-ins on the closing card, before the question and before the
+   *  prayer (owner, 2026-09-29). The card clocks its two blocks to them. */
+  askLead?: string
+  prayLead?: string
 }
 
 export type DevotionalConnectors = {
@@ -215,12 +219,25 @@ export function settleLineFor(
   return EN_SETTLE_LINES[((Math.trunc(sequence) % n) + n) % n]
 }
 
+const EN_ASK_LEAD = "First, ask yourself:"
+const EN_PRAY_LEAD = "Talk to God about it:"
+
 export const EN_LOCALE: DevotionalLocale = {
   lang: "en",
   filmLanguageId: 529,
   voice: "rotate",
   stripDashes: true,
-  labels: { reflect: "Reflect", askYourself: "Ask yourself", pray: "Pray" },
+  // The closing card, in the owner's words (2026-09-29): "Let's bring this
+  // to God." on the PRAY step, then "First, ask yourself:" the question, and
+  // "Talk to God about it:" the prayer. Each label is the lead-in the viewer
+  // hears, so the screen and the voice say the same thing.
+  labels: {
+    reflect: "Reflect",
+    askYourself: "First, ask yourself",
+    pray: "Talk to God about it",
+    askLead: EN_ASK_LEAD,
+    prayLead: EN_PRAY_LEAD,
+  },
   attributionPrefix: "Adapted from a trusted classic",
   spokenDate(iso) {
     const p = parseIso(iso)
@@ -264,7 +281,12 @@ export const EN_LOCALE: DevotionalLocale = {
     reflectionOpen: (chunk) => chunk,
     conclusion: (line) => line,
     questions: (question, prayer) =>
-      [question, prayer].filter(Boolean).join("\n\n"),
+      [
+        question && `${EN_ASK_LEAD} ${question}`,
+        prayer && `${EN_PRAY_LEAD} ${prayer}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
     steps: {
       // Owner's wording, and deliberately short: it is read over the four
       // stages while none of them is lit, and the READ step follows it
@@ -277,7 +299,11 @@ export const EN_LOCALE: DevotionalLocale = {
       reflect: () => `Reflect on this.`,
       // Owner's wording for the clip-first cut, where this is the first thing
       // the voice says after the film: it invites rather than instructs.
-      reflectAfterClip: () => `Let's reflect on what this means for us.`,
+      // Replaced "Let's reflect on what this means for us." (owner,
+      // 2026-09-29): the reflection reads the story closely before it
+      // applies it, and the line now says so.
+      reflectAfterClip: () =>
+        `Let's look more closely at what this story means.`,
       // Owner's pick over "Here's something to sit with." — that opener said
       // nothing about prayer, while the card it introduces ends in one.
       pray: () => `Let's bring this to God.`,

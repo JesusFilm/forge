@@ -140,6 +140,12 @@ export const devotionalCardSchema = z.object({
    *  "Let's watch"; neither is drawn as a line (the welcome names the series
    *  in the kicker, "Let's watch" brings up WATCH across the frame). */
   introFrame: z.boolean().optional(),
+  /** `questions` card: where the voice reaches the question, the prayer's
+   *  lead-in and the prayer (s into the card). Each block arrives on its cue;
+   *  without them the card keeps its fixed pacing. */
+  questionAtSec: z.number().nonnegative().optional(),
+  prayerAtSec: z.number().nonnegative().optional(),
+  prayerTextAtSec: z.number().nonnegative().optional(),
   /** 16:9 reflection: Bible references for this sentence, shown as a
    *  footnote under the text instead of being read aloud. */
   verseRefs: z.array(z.string()).optional(),
@@ -406,7 +412,9 @@ export const devotionalInputPropsSchema = z.object({
    *  slowly. Teasers use ~0.30. Background clips (behind text cards) play at
    *  HALF this, so the clip's ambient sound is present from the start (~0.15)
    *  and rises on the video card. Default full-devo behaviour is ~0.95 + duck. */
-  videoAudioLevel: z.number().min(0).max(1).optional(),
+  // Up to 2: the pipeline matches film dialogue to the narration, and a
+  // quiet film needs a boost (Remotion amplifies past 1).
+  videoAudioLevel: z.number().min(0).max(2).optional(),
   /** Play the text-card BACKGROUND clip audio (teasers). Off => backgrounds are
    *  music-only regardless of videoAudioLevel. Full devotionals leave this off. */
   bgAudio: z.boolean().default(false),
