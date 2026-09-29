@@ -18,6 +18,7 @@ import {
   decideCompositionProtocol,
   recordCompositionCalibration,
   resolveCompositionQualification,
+  lockCompositionQualificationForIssuance,
   inspectComposition,
   purgeExpiredCompositionEvidence,
   type CompositionBinding,
@@ -592,6 +593,57 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(
         await db.recommendationCompositionProtocol.count(),
       ).toBeGreaterThan(0)
+    })
+    it("orders source erasure after an issuance holding the exact authority locks", async () => {
+      const f = await qualified()
+      let acquired!: () => void
+      let release!: () => void
+      const locked = new Promise<void>((resolve) => {
+        acquired = resolve
+      })
+      const hold = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const issuance = db.$transaction(async (tx) => {
+        const qualification = await lockCompositionQualificationForIssuance(
+          tx,
+          f.binding,
+          f.now,
+        )
+        acquired()
+        await hold
+        return qualification
+      })
+      await locked
+      const deletion = db.recommendationRequest
+        .delete({ where: { id: f.requestId } })
+        .then(() => "deleted")
+      try {
+        await expect
+          .poll(
+            async () => {
+              const rows = await db.$queryRaw<
+                Array<{ blocked: boolean }>
+              >`SELECT EXISTS (
+            SELECT 1 FROM pg_stat_activity WHERE datname = current_database()
+            AND wait_event_type = 'Lock' AND query ILIKE '%DELETE%'
+            AND query ILIKE '%recommendation_request%'
+          ) AS blocked`
+              return rows[0]?.blocked
+            },
+            { timeout: 1_000, interval: 10 },
+          )
+          .toBe(true)
+      } finally {
+        release()
+      }
+      expect(await issuance).not.toBeNull()
+      expect(await deletion).toBe("deleted")
+      expect(
+        await db.$transaction((tx) =>
+          lockCompositionQualificationForIssuance(tx, f.binding, f.now),
+        ),
+      ).toBeNull()
     })
   },
 )

@@ -599,3 +599,29 @@ export async function purgeExpiredCompositionEvidence(
     protocols: removedProtocols.count,
   }
 }
+
+/**
+ * Issuance fence: call inside the same deadline-bound transaction that persists
+ * the served slate. Source invalidators update the protocol; these shared locks
+ * keep that revocation (and manifest disablement) ordered after this issuance.
+ */
+export async function lockCompositionQualificationForIssuance(
+  tx: Database,
+  binding: CompositionBinding,
+  now = new Date(),
+) {
+  const startedAt = Date.now()
+  await tx.$queryRaw(Prisma.sql`
+    SELECT protocol.id
+    FROM recommendation_composition_protocol protocol
+    JOIN recommendation_strategy_manifest manifest
+      ON manifest.id = protocol.challenger_manifest_id
+    WHERE protocol.id = ${binding.protocolId}::uuid
+    FOR SHARE OF protocol, manifest
+  `)
+  return resolveCompositionQualification(
+    tx,
+    binding,
+    new Date(now.getTime() + Math.max(0, Date.now() - startedAt)),
+  )
+}
