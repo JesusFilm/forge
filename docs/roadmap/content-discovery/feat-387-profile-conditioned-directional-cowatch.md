@@ -13,7 +13,6 @@ depends_on:
   - "feat-383"
   - "feat-386"
 blocks:
-  - "feat-565"
   - "feat-448"
 tags:
   - "admin"
@@ -135,3 +134,12 @@ source/pair/edge counts and the exit cause remain unknown. No graph or shadow
 evaluation was published and the attempt was not retried. The operations record
 retains the exact receipt and the diagnostic/admission requirements for a later
 attempt. This is distinct from the earlier 50,001-source overflow receipt.
+
+## September 30 direct activation decision
+
+The owner approved co-watch/MMR activation without a trial. The separate direct
+path in feat-565 uses exact source qualification, current privacy/eligibility,
+bounded graph publication and runtime checks without requiring or fabricating a
+shadow promotion decision or controlled result. This removes this ticket's full
+shadow-acceptance gate as a dependency of feat-565; it does not complete the
+unobserved shadow evidence listed above or establish causal usefulness.

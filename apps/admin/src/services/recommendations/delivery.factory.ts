@@ -23,6 +23,10 @@ import {
   composeDeliveryCowatchTrial,
   resolveDeliveryStudyAuthority,
 } from "./delivery-trial.service"
+import {
+  composeDeliveryOwnerCowatch,
+  resolveDeliveryOwnerAuthority,
+} from "./delivery-owner.service"
 import { getRecommendationServingState } from "./manifest.service"
 import { getRecommendationRecentContext } from "./recent-context.service"
 import { readRecommendationRetentionHealth } from "./retention.service"
@@ -60,6 +64,12 @@ export function createRecommendationDeliveryDependencies(
     ),
     composeCowatchTrial: timed("composeCowatchTrial", (input) =>
       composeDeliveryCowatchTrial(prisma, input),
+    ),
+    resolveOwnerAuthority: timed("resolveOwnerAuthority", (input) =>
+      resolveDeliveryOwnerAuthority(prisma, input),
+    ),
+    composeOwnerCowatch: timed("composeOwnerCowatch", (input) =>
+      composeDeliveryOwnerCowatch(prisma, input),
     ),
     retrieveCuratedFallback: timed("retrieveCuratedFallback", (input) =>
       retrieveCuratedFallback(prisma, input),

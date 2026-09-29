@@ -219,6 +219,14 @@ export class RecommendationStudyService {
       expectedPointerGeneration: input.expectedPointerGeneration,
       actorId,
     })
+    const currentPointer =
+      await this.prisma.recommendationPromotionPointer.findUnique({
+        where: { id: POINTER },
+      })
+    if (currentPointer?.stage === "OWNER_APPROVED")
+      throw new RecommendationConflictError(
+        "Stop the owner-approved release before activating a study",
+      )
     const prepared = await this.prisma.recommendationStudy.findUniqueOrThrow({
       where: { experimentId: input.studyId },
       include: { experiment: true },
@@ -322,7 +330,8 @@ export class RecommendationStudyService {
         if (
           pointer.generation !== input.expectedPointerGeneration ||
           pointer.killSwitchEnabled ||
-          pointer.stage === "PERMANENT"
+          pointer.stage === "PERMANENT" ||
+          pointer.stage === "OWNER_APPROVED"
         )
           throw new RecommendationConflictError(
             "Promotion state changed or is held",

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   parseCowatchRebuildArguments,
+  cowatchRebuildFailureReceipt,
   runCowatchRebuildCli,
 } from "./rebuild-recommendation-cowatch-shadow"
 import type { CowatchPublication } from "../services/recommendations/cowatch/projection.service"
@@ -16,6 +17,74 @@ const ARGS = [
 ]
 
 describe("finite co-watch rebuild CLI", () => {
+  it("retains bounded failure classifications without private diagnostics", () => {
+    const secret = "postgresql://private-user:private-password@private-host/db"
+    expect(
+      cowatchRebuildFailureReceipt({
+        code: "P2010",
+        message: secret,
+        meta: { code: "57014", message: `SQL and credentials: ${secret}` },
+      }),
+    ).toEqual({
+      status: "failed",
+      category: "database_timeout",
+      code: "57014",
+      diagnosticsRedacted: true,
+    })
+    expect(
+      cowatchRebuildFailureReceipt({
+        cause: { code: "SELF_SIGNED_CERT_IN_CHAIN", message: secret },
+      }),
+    ).toMatchObject({
+      category: "database_tls",
+      code: "SELF_SIGNED_CERT_IN_CHAIN",
+    })
+    expect(cowatchRebuildFailureReceipt(new Error(secret))).toEqual({
+      status: "failed",
+      category: "unknown",
+      code: null,
+      diagnosticsRedacted: true,
+    })
+    expect(
+      cowatchRebuildFailureReceipt({ code: "P1001", message: secret }),
+    ).toMatchObject({ category: "database_connection", code: "P1001" })
+    expect(
+      cowatchRebuildFailureReceipt({
+        code: "P1011",
+        cause: new Error("The server does not support SSL connections"),
+      }),
+    ).toMatchObject({ category: "database_tls_unavailable", code: "P1011" })
+  })
+
+  it("does not evaluate hostile getters or follow cyclic diagnostics indefinitely", () => {
+    const cyclic: Record<string, unknown> = {}
+    cyclic.cause = cyclic
+    Object.defineProperty(cyclic, "code", {
+      get() {
+        throw new Error("private error accessor")
+      },
+    })
+    expect(cowatchRebuildFailureReceipt(cyclic)).toMatchObject({
+      category: "unknown",
+      code: null,
+    })
+    expect(
+      cowatchRebuildFailureReceipt(
+        new Proxy(
+          {},
+          {
+            getPrototypeOf() {
+              throw new Error("private prototype")
+            },
+            getOwnPropertyDescriptor() {
+              throw new Error("private descriptor")
+            },
+          },
+        ),
+      ),
+    ).toMatchObject({ category: "unknown", code: null })
+  })
+
   it("keeps the exact requested scope and defaults to read-only preflight", async () => {
     const { sourceWindow } = parseCowatchRebuildArguments(ARGS, NOW)
     const receipt: Omit<CowatchPublication, "status"> & { status: "ready" } = {

@@ -1,3 +1,4 @@
+import { ownerReleaseInfluenceAllowedSql } from "../promotion/owner-influence"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { RecommendationConflictError } from "../errors"
@@ -112,6 +113,7 @@ export async function loadCowatchSourceRows(
             OR (newer.episode_id = latest."episodeId" AND newer.classifier_version = ${CLASSIFIER_VERSION} AND newer.revision > latest.revision))
         AND NOT EXISTS (SELECT 1 FROM recommendation_promotion_slate_fence fence
           WHERE fence.request_id = latest."requestId")
+        AND ${ownerReleaseInfluenceAllowedSql(Prisma.sql`latest."requestId"`)}
       ) AS "integrityEligible"
     FROM latest
     LEFT JOIN LATERAL (
@@ -237,6 +239,20 @@ export async function preflightCowatchShadowGeneration(
       return {
         ...populationReceipt(prepared, now, sourceWindow),
         status: prepared.status,
+        supportedEdgeCount:
+          prepared.status === "ready"
+            ? prepared.graph.edges.filter((edge) => edge.eligible).length
+            : null,
+        // Aggregate input widths only, not an estimate of PostgreSQL heap,
+        // indexes, WAL or temp. Serialize one bounded row at a time.
+        graphRowJsonBytes:
+          prepared.status === "ready"
+            ? {
+                sources: rowJsonWidths(prepared.graph.sources),
+                contributions: rowJsonWidths(prepared.graph.contributions),
+                edges: rowJsonWidths(prepared.graph.edges),
+              }
+            : null,
       }
     },
     {
@@ -244,6 +260,17 @@ export async function preflightCowatchShadowGeneration(
       timeout: 30_000,
     },
   )
+}
+
+function rowJsonWidths(rows: readonly unknown[]) {
+  let total = 0
+  let maximum = 0
+  for (const row of rows) {
+    const bytes = Buffer.byteLength(JSON.stringify(row), "utf8")
+    total += bytes
+    maximum = Math.max(maximum, bytes)
+  }
+  return { total, maximum }
 }
 
 /** Atomically publishes only a complete immutable generation, always shadow. */

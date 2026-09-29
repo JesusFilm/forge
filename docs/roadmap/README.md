@@ -6,9 +6,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 29, 2026)
 
-- **Total tickets:** 747
+- **Total tickets:** 748
 - **Complete:** 559
-- **In progress:** 59
+- **In progress:** 60
 - **Not started:** 50
 - **Blocked:** 79
 - **Overdue and not complete:** 142
@@ -84,6 +84,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-391](content-discovery/feat-391-qualified-popular-trending-candidates.md)                                | Qualified popular and trending candidates                                                       | nisal      | P1       | —          | 5    | —          | blocked     |
 | [feat-392](content-discovery/feat-392-high-satisfaction-cohort-candidates.md)                                  | High-satisfaction cohort candidates                                                             | nisal      | P1       | —          | 7    | —          | blocked     |
 | [feat-449](content-discovery/feat-449-personalized-watch-row-page-orchestration.md)                            | Personalized Watch row and page orchestration                                                   | nisal      | P1       | —          | 8    | —          | blocked     |
+| [feat-573](content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                     | Sustain live co-watch with bounded graph refresh                                                | nisal      | P1       | —          | 3    | —          | blocked     |
 | [feat-097](content-discovery/feat-097-investigate-prod-query-embedding.md)                                     | Investigate Production Query Embedding Degradation                                              | nisal      | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
 | [feat-095](content-discovery/feat-095-experience-embedding-pipeline.md)                                        | Experience Embedding Pipeline                                                                   | nisal      | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
 | [feat-037](content-discovery/feat-037-video-content-vectorization.md)                                          | Video Content Vectorization for Recommendations                                                 | nisal      | P1       | 2026-04-21 | 42   | 2026-06-01 | complete    |
@@ -177,7 +178,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-514](content-discovery/feat-514-recommendation-canonical-slug-validation.md)                             | Accept canonical Watch content slugs in recommendation requests                                 | nisal      | P1       | 2026-09-16 | 1    | 2026-09-16 | complete    |
 | [feat-516](content-discovery/feat-516-mobile-recommendations-api-client.md)                                    | Mobile recommendations API client and playback attribution                                      | urim       | P1       | 2026-09-16 | 2    | 2026-09-17 | complete    |
 | [feat-533](content-discovery/feat-533-consistent-short-watch-recommendation-feedback.md)                       | Consistent short-watch feedback across recommendation APIs                                      | nisal      | P1       | 2026-09-23 | 3    | 2026-09-25 | complete    |
-| [feat-565](content-discovery/feat-565-implemented-shadow-recommendation-promotion.md)                          | Promote implemented co-watch and MMR policies through controlled evidence                       | nisal      | P1       | 2026-09-29 | 8    | 2026-10-06 | blocked     |
+| [feat-565](content-discovery/feat-565-implemented-shadow-recommendation-promotion.md)                          | Activate implemented co-watch and MMR with owner approval                                       | nisal      | P1       | 2026-09-29 | 8    | 2026-10-06 | in-progress |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | blocked     |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | blocked     |
