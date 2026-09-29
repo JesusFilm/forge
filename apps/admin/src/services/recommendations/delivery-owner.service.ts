@@ -4,7 +4,10 @@ import type {
   CandidateNomination,
   RecommendationCandidateContext,
 } from "./candidate"
-import { composeStructurallyValidMmrSlate } from "./composition/live-structure"
+import {
+  composeStructurallyValidMmrSlate,
+  type CompositionInputDiagnostic,
+} from "./composition/live-structure"
 import { compositionDigest } from "./composition/policy"
 import { loadBoundedCowatchNominations } from "./cowatch/live.service"
 import { mergeBoundedCowatchNominations } from "./delivery-candidate-mapping"
@@ -98,7 +101,11 @@ export type OwnerCompositionResult =
       platform: CandidatePlatformResult
       viewingMode: ViewingModeAffinity | null
     }>
-  | Readonly<{ status: "fallback"; reason: string }>
+  | Readonly<{
+      status: "fallback"
+      reason: string
+      compositionInputDiagnostic?: CompositionInputDiagnostic
+    }>
 
 /** Owner-approved execution has its own exact authority, never a fake study. */
 export async function composeDeliveryOwnerCowatch(
@@ -194,7 +201,7 @@ export async function composeDeliveryOwnerCowatch(
       graphGenerationId: expected.graphGenerationId,
       graphGeneratorVersion: COWATCH_OWNER_LIVE_MODE,
     })
-    if (composed.status !== "composed") return fallback(composed.reason)
+    if (composed.status !== "composed") return composed
     // No connection is held while acquiring a new bounded authority transaction.
     const current = await resolveDeliveryOwnerAuthority(prisma, {
       ...input,

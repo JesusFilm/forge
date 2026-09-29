@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { adaptSemanticCandidates } from "./candidate"
+import { loadBoundedCowatchNominations } from "./cowatch/live.service"
 import { composeMmrSlate } from "./composition/mmr"
 import {
   COWATCH_DURABLE_LINEAGE_VERSION,
@@ -12,6 +13,7 @@ import { applyMmrComposition, runCandidatePlatform } from "./orchestration"
 import {
   lockOwnerProfileForIssuance,
   lockOwnerReleaseForIssuance,
+  readActiveOwnerRelease,
 } from "./promotion/owner-authority"
 import {
   COWATCH_MMR_GENERATOR_SET_VERSION,
@@ -21,9 +23,10 @@ import {
   OWNER_RELEASE_POLICY_VERSION,
   INCUMBENT_HYBRID_MANIFEST_ID,
 } from "./promotion/manifest"
-import type {
-  OwnerDeliveryAuthority,
-  OwnerCompositionInput,
+import {
+  composeDeliveryOwnerCowatch,
+  type OwnerDeliveryAuthority,
+  type OwnerCompositionInput,
 } from "./delivery-owner.service"
 import {
   makeHarness,
@@ -35,6 +38,15 @@ import {
 vi.mock("./promotion/owner-authority", () => ({
   lockOwnerProfileForIssuance: vi.fn(),
   lockOwnerReleaseForIssuance: vi.fn(),
+  readActiveOwnerRelease: vi.fn(),
+  directDeliveryAuthorityDigest: (value: unknown) => JSON.stringify(value),
+}))
+vi.mock("./cowatch/live.service", () => ({
+  loadBoundedCowatchNominations: vi.fn(),
+}))
+vi.mock("./viewing-mode.service", () => ({
+  loadViewingModeAffinity: vi.fn(async () => null),
+  lockViewingModeAuthority: vi.fn(),
 }))
 
 const authority: OwnerDeliveryAuthority = {
@@ -120,7 +132,7 @@ function composed(input: OwnerCompositionInput) {
     ),
   }
 }
-function setup() {
+function setup(candidateTraceFormat?: "legacy" | "compact") {
   const resolveOwnerAuthority = vi.fn(
     async (): Promise<OwnerDeliveryAuthority | null> => authority,
   )
@@ -130,6 +142,7 @@ function setup() {
     >
   >(async (input) => composed(input))
   const h = makeHarness({
+    candidateTraceFormat,
     profileComparison: true,
     owner: { resolveOwnerAuthority, composeOwnerCowatch },
   })
@@ -142,6 +155,172 @@ function setup() {
 }
 
 describe("owner-approved direct delivery", () => {
+  it("carries the real owner composer failure flags into the incumbent trace without recomputation", async () => {
+    const h = setup("compact")
+    vi.mocked(readActiveOwnerRelease).mockResolvedValue(authority.release)
+    const context = {
+      surface: "watch-below-player-v1",
+      purpose: "watch",
+      locale: "en",
+      audioLanguageSlug: "english",
+    } as const
+    const base = adaptSemanticCandidates(semanticCandidates(1), context)
+      .nominations[0]!
+    vi.mocked(loadBoundedCowatchNominations).mockResolvedValue({
+      nominations: [
+        {
+          ...base,
+          nominationKey: "graph-missing-theme",
+          targetMediaId: "graph-missing-theme",
+          canonicalIdentity: {
+            videoId: "graph-missing-theme",
+            videoCoreId: "graph-missing-theme",
+            videoTitle: "Distinct graph fixture",
+            embeddingText: null,
+          },
+          presentation: {
+            ...base.presentation,
+            videoTitle: "Distinct graph fixture",
+            themes: [],
+          },
+          source: {
+            ...base.source,
+            generator: "directional-cowatch",
+            generatorVersion: COWATCH_OWNER_LIVE_MODE,
+            rank: 1,
+            score: 1,
+            evidence: { generation: authority.release.graphGenerationId },
+          },
+        },
+      ],
+      fallbackReason: null,
+    })
+    h.composeOwnerCowatch.mockImplementation((input) =>
+      composeDeliveryOwnerCowatch(h.prisma as never, input),
+    )
+    const result = await h.service.deliver(request())
+    expect(result).toMatchObject({
+      result: "fallback",
+      reason: "composition_required_input_unavailable",
+    })
+    const attempted = await h.composeOwnerCowatch.mock.results[0]!.value
+    expect(attempted).toMatchObject({
+      status: "fallback",
+      compositionInputDiagnostic: {
+        missingSource: false,
+        missingInterest: false,
+        missingTheme: true,
+        missingHistory: false,
+        selectedCount: 6,
+        themedSelectedCount: 5,
+      },
+    })
+    const payload = h.tx.recommendationCandidateRun.create.mock.calls[0]![0]
+      .data.tracePayload as {
+      stages: Array<{
+        stage: string
+        sourceGenerator: string
+        sourceEvidence: Array<{ evidence: unknown }>
+      }>
+    }
+    const rejected = payload.stages.find(
+      (row) =>
+        row.stage === "rejected" &&
+        row.sourceGenerator === "directional-cowatch",
+    )!
+    expect(rejected.sourceEvidence[0]!.evidence).toEqual(
+      attempted.status === "fallback"
+        ? attempted.compositionInputDiagnostic
+        : null,
+    )
+    expect(
+      result.items.every(
+        (item) => item.candidateGenerator !== "directional-cowatch",
+      ),
+    ).toBe(true)
+    expect(lockOwnerReleaseForIssuance).not.toHaveBeenCalled()
+  })
+  it.each(["legacy", "compact"] as const)(
+    "persists exact failed-composition aggregates in the existing %s rejection only",
+    async (format) => {
+      const diagnostic = {
+        version: "composition-input-availability-v1" as const,
+        missingSource: false,
+        missingInterest: false,
+        missingTheme: true,
+        missingHistory: false,
+        candidateCount: 31,
+        selectedCount: 6,
+        themedSelectedCount: 4,
+      }
+      const reason = "composition_required_input_unavailable"
+      const baseline = setup(format)
+      baseline.composeOwnerCowatch.mockResolvedValue({
+        status: "fallback",
+        reason,
+      })
+      const before = await baseline.service.deliver(request())
+      const h = setup(format)
+      const unexpectedExtraField = {
+        ...diagnostic,
+        privateMediaId: "discarded",
+      }
+      h.composeOwnerCowatch.mockResolvedValue({
+        status: "fallback",
+        reason,
+        compositionInputDiagnostic: unexpectedExtraField,
+      })
+      const result = await h.service.deliver(request())
+      expect(result).toEqual(before)
+      const rows = (value: ReturnType<typeof setup>) =>
+        format === "legacy"
+          ? value.evidenceWrites[0]!
+          : (
+              value.tx.recommendationCandidateRun.create.mock.calls[0]![0].data
+                .tracePayload as { stages: Array<Record<string, unknown>> }
+            ).stages
+      const evidence = rows(h)
+      expect(evidence).toHaveLength(rows(baseline).length)
+      expect(
+        rows(baseline).find(
+          (row) =>
+            row.sourceGenerator === "directional-cowatch" &&
+            row.stage === "rejected",
+        )?.sourceEvidence,
+      ).toEqual([])
+      const rejected = evidence.filter(
+        (row) =>
+          row.sourceGenerator === "directional-cowatch" &&
+          row.stage === "rejected",
+      )
+      expect(rejected).toEqual([
+        expect.objectContaining({
+          targetMediaId: null,
+          reasonCodes: [reason],
+          sourceEvidence: [
+            {
+              generator: "mmr-composition-inputs",
+              generatorVersion: diagnostic.version,
+              rank: 0,
+              score: 0,
+              evidence: diagnostic,
+              rejectionReason: reason,
+            },
+          ],
+        }),
+      ])
+      expect([...h.requests.values()][0]).toMatchObject({
+        ownerReleaseId: null,
+        ownerReleaseGeneration: null,
+        experimentAssignmentId: null,
+      })
+      expect(result.personalization?.executionMode).toBe("hybrid_personalized")
+      expect(JSON.stringify(result)).not.toContain(
+        "composition-input-availability",
+      )
+      expect(lockOwnerReleaseForIssuance).not.toHaveBeenCalled()
+    },
+  )
   beforeEach(() => {
     vi.mocked(lockOwnerProfileForIssuance).mockReset()
     vi.mocked(lockOwnerReleaseForIssuance).mockReset()

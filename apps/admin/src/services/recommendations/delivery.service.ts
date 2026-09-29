@@ -918,6 +918,9 @@ export class RecommendationDeliveryService {
                 platform,
                 owner.reason,
                 "directional-cowatch",
+                "compositionInputDiagnostic" in owner
+                  ? owner.compositionInputDiagnostic
+                  : undefined,
               )
               evidenceComplete = false
               candidateRunFallbackReason = owner.reason

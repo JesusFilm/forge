@@ -13,7 +13,9 @@ const valid = () => ({
 })
 describe("shared live MMR structural checks", () => {
   it("accepts known empty history with complete real inputs", () => {
-    expect(composeStructurallyValidMmrSlate(valid()).status).toBe("composed")
+    const result = composeStructurallyValidMmrSlate(valid())
+    expect(result.status).toBe("composed")
+    expect(result).not.toHaveProperty("compositionInputDiagnostic")
   })
   it("refuses unavailable history rather than treating it as an empty history", () => {
     expect(
@@ -21,6 +23,78 @@ describe("shared live MMR structural checks", () => {
     ).toEqual({
       status: "fallback",
       reason: "composition_required_input_unavailable",
+      compositionInputDiagnostic: {
+        version: "composition-input-availability-v1",
+        missingSource: false,
+        missingInterest: false,
+        missingTheme: false,
+        missingHistory: true,
+        candidateCount: 3,
+        selectedCount: 2,
+        themedSelectedCount: 2,
+      },
+    })
+  })
+  it("reports exact missing theme and interest flags from the attempted slate", () => {
+    const input = valid()
+    input.slate.ordered = input.slate.ordered.map((candidate) => ({
+      ...candidate,
+      presentation: { ...candidate.presentation, themes: [] },
+      sources: candidate.sources.map((source) => ({
+        ...source,
+        evidence: {},
+      })),
+    }))
+    expect(composeStructurallyValidMmrSlate(input)).toEqual({
+      status: "fallback",
+      reason: "composition_required_input_unavailable",
+      compositionInputDiagnostic: {
+        version: "composition-input-availability-v1",
+        missingSource: false,
+        missingInterest: true,
+        missingTheme: true,
+        missingHistory: false,
+        candidateCount: 3,
+        selectedCount: 2,
+        themedSelectedCount: 0,
+      },
+    })
+  })
+  it("reports an empty attempted pool without inventing source or interest coverage", () => {
+    const input = valid()
+    input.slate.ordered = []
+    expect(composeStructurallyValidMmrSlate(input)).toMatchObject({
+      compositionInputDiagnostic: {
+        missingSource: true,
+        missingInterest: true,
+        missingTheme: true,
+        missingHistory: false,
+        candidateCount: 0,
+        selectedCount: 0,
+        themedSelectedCount: 0,
+      },
+    })
+  })
+  it("bounds the aggregate to the actual 64-candidate, six-item composition", () => {
+    const input = valid()
+    const original = input.slate.ordered[0]!
+    input.slate.ordered = Array.from({ length: 70 }, (_, index) => ({
+      ...original,
+      candidateKey: `bounded-${index}`,
+      targetMediaId: `bounded-${index}`,
+      presentation: { ...original.presentation, themes: [] },
+    }))
+    input.slate.limit = 70
+    expect(composeStructurallyValidMmrSlate(input)).toMatchObject({
+      compositionInputDiagnostic: {
+        missingSource: false,
+        missingInterest: false,
+        missingTheme: true,
+        missingHistory: false,
+        candidateCount: 64,
+        selectedCount: 6,
+        themedSelectedCount: 0,
+      },
     })
   })
   it("rejects another composer version even when its candidates are eligible", () => {
