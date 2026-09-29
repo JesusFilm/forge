@@ -1,0 +1,53 @@
+{
+  "target": {
+    "project": "forge",
+    "environment": "production",
+    "service": "@forge/mastra",
+    "projectId": "98952497-a4d9-4714-8fe8-0cdbff3147c9",
+    "environmentId": "5f41e037-90e4-4674-a3ea-66bbd05fb3b4",
+    "serviceId": "cea27756-cf44-4901-b6c6-5863f99de525"
+  },
+  "originalPatchId": "ceb2e619-f136-4707-a057-dc8fca307b27",
+  "abortedDeploymentId": "d1dd4573-f20a-44a3-b827-24622e1d77f2",
+  "baselineDeploymentId": "f08d00c3-414f-40f6-8135-e99658565ffb",
+  "variableNames": [
+    "DATADOG_TRIAGE_API_KEY",
+    "DATADOG_TRIAGE_APP_KEY",
+    "LINEAR_DATADOG_TRIAGE_API_KEY"
+  ],
+  "startedAt": "2026-09-29T03:43:04.197631Z",
+  "restoreAttempted": true,
+  "stageAttempted": true,
+  "baselineSnapshotId": "109cfe6e-ebff-4160-9689-e9af734d2942",
+  "baselineSnapshotCreatedAt": "2026-09-28T01:06:45.321Z",
+  "baselinePresence": {
+    "DATADOG_TRIAGE_API_KEY": false,
+    "DATADOG_TRIAGE_APP_KEY": false,
+    "LINEAR_DATADOG_TRIAGE_API_KEY": false
+  },
+  "abortedDeploymentStatus": "REMOVED",
+  "skipDeploys": true,
+  "restoreAcknowledgedAt": "2026-09-29T03:43:10.112150Z",
+  "changedCommittedVariableNames": [
+    "DATADOG_TRIAGE_API_KEY",
+    "DATADOG_TRIAGE_APP_KEY",
+    "LINEAR_DATADOG_TRIAGE_API_KEY"
+  ],
+  "afterCommittedPresence": {
+    "DATADOG_TRIAGE_API_KEY": false,
+    "DATADOG_TRIAGE_APP_KEY": false,
+    "LINEAR_DATADOG_TRIAGE_API_KEY": false
+  },
+  "otherMastraVariablesUnchanged": true,
+  "ragVariablesUnchanged": true,
+  "runningDeploymentUnchanged": true,
+  "newStagedPatchId": "1b405e65-5df5-4462-b357-78d6dfa67a34",
+  "stageAcknowledgedAt": "2026-09-29T03:43:14.434827Z",
+  "stagedStatus": "STAGED",
+  "stagedPatchMatchesOriginal": true,
+  "committedValuesStillRestored": true,
+  "runningDeploymentStillUnchanged": true,
+  "status": "baseline_restored_and_original_change_pending",
+  "checkedAt": "2026-09-29T03:43:19.011970Z",
+  "restoreOperationId": "commitChanges/5f41e037-90e4-4674-a3ea-66bbd05fb3b4/3fea462f-4e7b-4d71-b122-8c4601f91933"
+}
