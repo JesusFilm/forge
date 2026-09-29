@@ -7,7 +7,7 @@
  * Each action resolves to a typed outcome the caller renders: success, a
  * quiet cancel, or a retryable error. R15's new-account signal is NOT an
  * outcome variant — a blocking interstitial was rejected — it raises the
- * Profile notice in newAccountNotice.ts instead.
+ * My Watch header notice in newAccountNotice.ts instead.
  */
 
 import {
