@@ -11,8 +11,8 @@ database into Admin.
 ## Status (September 29, 2026)
 
 - **Total tickets:** 36
-- **Complete:** 23
-- **In progress:** 3
+- **Complete:** 24
+- **In progress:** 2
 - **Not started:** 10
 - **Blocked:** 0
 
@@ -49,7 +49,7 @@ database into Admin.
 | [feat-479](feat-479-rag-corpus-transaction-timeouts.md)           | —                                                             | Bound corpus transactions for production latency                   | complete    | [#2233](https://github.com/JesusFilm/forge/pull/2233)                                                                                                                                                                                                                             |
 | [feat-526](feat-526-rag-consumer-access-planning.md)              | —                                                             | Plan consumer access and usage visibility                          | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
 | [feat-527](feat-527-rag-consumer-access-lifecycle.md)             | —                                                             | Implement consumer access lifecycle (single runtime per consumer)  | in-progress | [#2397](https://github.com/JesusFilm/forge/pull/2397), [#2416](https://github.com/JesusFilm/forge/pull/2416), [#2423](https://github.com/JesusFilm/forge/pull/2423), [#2426](https://github.com/JesusFilm/forge/pull/2426), [#2435](https://github.com/JesusFilm/forge/pull/2435) |
-| [feat-528](feat-528-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting                                            | in-progress | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2455](https://github.com/JesusFilm/forge/pull/2455)                                                                                                                                                                      |
+| [feat-528](feat-528-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting                                            | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2455](https://github.com/JesusFilm/forge/pull/2455)                                                                                                                                                                      |
 | [feat-563](feat-563-rag-usage-capacity-review.md)                 | —                                                             | Review usage capacity before volume expansion                      | not-started | —                                                                                                                                                                                                                                                                                 |
 | [feat-529](feat-529-rag-consumer-dogfood-migration.md)            | —                                                             | Dogfood and seven-day migration                                    | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
 | [feat-530](feat-530-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                       | in-progress | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2442](https://github.com/JesusFilm/forge/pull/2442), [#2445](https://github.com/JesusFilm/forge/pull/2445)                                                                                                               |
@@ -98,7 +98,7 @@ in separate draft #2325; feat-518 is complete as documentation. The
 records the production operator setup and successful login, sign-out and
 unlisted-account denial. Feat-527 remains in progress. Feat-528 accounting and report access are locally verified. Its broadened scope
 adds all-consumer reports for every admitted portal user, using existing GitHub
-sessions; the Usage page awaits layout selection in the same draft PR #2455.
+sessions; selected option A provides the Usage comparison page in the same draft PR #2455.
 Production activation and feat-529 dogfood remain pending.
 
 J022 records portal admission through a repository portal-user allowlist changed

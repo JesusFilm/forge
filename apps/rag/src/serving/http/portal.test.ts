@@ -179,6 +179,7 @@ it("serves a no-store static portal shell with same-origin assets and protected 
     login: "engineer",
     githubId: 42,
     managementAvailable: false,
+    usageAvailable: false,
   })
   expect(await (await f.app.request("/members", { headers })).json()).toEqual({
     users: [{ login: "engineer", id: 42 }],

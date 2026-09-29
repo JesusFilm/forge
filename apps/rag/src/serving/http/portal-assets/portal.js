@@ -9,6 +9,8 @@ let secret = null
 let revision = 0
 let lifecycle = 0
 let section = "consumers"
+let usageView = null
+let usageModule = null
 let statusFilter = "all"
 let searchTerm = ""
 let ascending = true
@@ -30,14 +32,50 @@ function showSection(next) {
     if (selected) node.setAttribute("aria-current", "page")
     else node.removeAttribute("aria-current")
   })
-  byId("page-title").textContent =
-    next === "rag" ? "RAG" : next === "knowledge" ? "Knowledge" : "Consumers"
-  byId("page-description").hidden = next !== "consumers"
+  byId("page-title").textContent = {
+    rag: "RAG",
+    knowledge: "Knowledge",
+    consumers: "Consumers",
+    usage: "Usage",
+  }[next]
+  byId("page-description").hidden = !["consumers", "usage"].includes(next)
+  byId("page-description").textContent =
+    next === "usage"
+      ? "RAG requests and completed responses across all consumers."
+      : "Manage API consumers, their members and access keys."
   byId("directory").hidden =
     next !== "consumers" || !identity?.managementAvailable
-  byId("signed-out").hidden = next !== "consumers" || Boolean(identity)
-  byId("construction").hidden = next === "consumers"
+  byId("signed-out").hidden =
+    !["consumers", "usage"].includes(next) || Boolean(identity)
+  byId("construction").hidden = ["consumers", "usage"].includes(next)
+  byId("usage").hidden = next !== "usage" || !identity
+  if (next !== "usage") usageView?.clear()
+  if (next === "usage" && identity) void showUsage()
   document.title = "Forge · " + byId("page-title").textContent
+}
+
+async function showUsage() {
+  if (!identity.usageAvailable) {
+    byId("usage").textContent = "Usage reporting is not enabled yet."
+    return
+  }
+  try {
+    usageModule ??= import("./usage.js")
+    const module = await usageModule
+    if (!identity || section !== "usage") return
+    usageView ??= module.createUsageView(byId("usage"), {
+      read: request,
+      onUnauthorized: () => {
+        signedOut()
+        notice(messages.unauthorized)
+      },
+    })
+    await usageView.load()
+  } catch {
+    usageModule = null
+    if (identity && section === "usage")
+      notice("Usage reports are unavailable. Refresh to try again.")
+  }
 }
 
 function element(tag, text, className) {
@@ -520,6 +558,7 @@ async function refresh() {
   render()
 }
 function signedOut() {
+  usageView?.clear()
   identity = null
   rows = []
   byId("rows").replaceChildren()
@@ -551,6 +590,7 @@ async function initialize() {
     )
     if (!identity.managementAvailable) {
       notice("Consumer management is not enabled yet.")
+      showSection(section)
       return
     }
     await refresh()

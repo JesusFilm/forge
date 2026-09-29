@@ -3,7 +3,7 @@ id: "feat-528"
 title: "Deliver RAG consumer usage reporting"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-15"
 duration: 4
 depends_on: ["feat-526", "feat-527"]
@@ -38,9 +38,11 @@ consumer ownership check, new human credential or report allowlist is required.
 Consumer management remains owner-restricted. Retrieval keys do not grant reports.
 Keep the optional independent operator/RAGBot HTTP/CLI capability for automation.
 
-Add **Usage** beside RAG, Consumers and Knowledge. Prepare three layout options
-for Jaco to select before implementing the page: table-first comparison,
-overview with ranked consumer usage, and consumer list with a detail pane.
+Add **Usage** beside RAG, Consumers and Knowledge. Jaco selected option A on 2026-09-29 after reviewing three
+layouts: implement the table-first comparison with 20-row pagination and a UTC
+date/time window. Consumer names open report details with the watermark and
+generated time. The Usage script loads on demand; each protected batch reads up
+to 20 consumers with one current admission check.
 Use the selected layout to display request/success counts, last activity, UTC
 window, complete-through watermark and honest partial/unavailable coverage.
 All admitted users can select any registered consumer, including revoked consumers.
@@ -117,8 +119,17 @@ honest coverage gaps and crash reconciliation, and restricted read-only reportin
 See [local verification](evidence/feat-528/local-verification.md) and
 [operator instructions](../../../apps/rag/docs/ops/consumer-usage.md).
 
-Accounting and machine reporting are implemented and locally verified. The
-expanded portal-access slice is implemented in the same draft PR. The **Usage**
-menu/page is pending Jaco's choice among three layouts; this ticket stays
-in-progress until that selected page is implemented and verified. Production
-activation and feat-529 dogfood remain pending; capacity review is feat-563.
+Accounting, machine reporting and selected **option A** portal comparison page
+are implemented in the same draft PR. The Usage menu uses existing GitHub login
+for every admitted user's all-consumer reports. UTC minute-aligned windows,
+search, 20-row pagination, explicit partial/unavailable coverage and read-only
+report details are included. Browser checks cover real local report reads,
+coverage presentation, fully covered zero, pagination/search/window validation,
+read failure, session expiry and responsive rendering. Initial Consumers page
+loads no Usage script or report requests; measured resource/performance evidence
+is recorded in the local verification document.
+
+Production provisioning, RAGBot machine grant and actual ops dogfood remain
+activation/dependent work; shared-token cutoff requires feat-529 and separate
+approval. Capacity review remains feat-563. Production activation has not been
+performed by this implementation.

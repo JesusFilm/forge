@@ -34,6 +34,22 @@ Portal reads recheck the current merged allowlist, stable GitHub identity and li
 repository permission; admission-service failure returns 503.
 Responses are `Cache-Control: no-store`. A report DB failure is 503, never zero.
 
+The portal **Usage** menu opens a comparison table with UTC from/to inputs,
+consumer-name search and 20-row pagination. Open a consumer name for the report
+window, generated time and complete-through watermark. Unavailable totals are
+shown as a dash, partial totals are labelled and fully covered zero totals remain
+zero. Failed reads clear the displayed totals; reports never silently retry.
+
+`GET /portal/usage/reports?consumer=<comma-separated UUIDs>&from=<UTC Z>&to=<UTC Z>`
+reads at most 20 distinct consumers per protected request. Every UUID/window is
+validated before reading. Admission is rechecked once for the batch; each report
+retains its own repeatable-read snapshot and generated time. A 200 batch response
+contains `{ reports: [...] }` with each row's coverage status, including unavailable.
+Read failure returns 503 without totals; unknown consumer 404, invalid/duplicate
+or oversized query 400, missing/currently denied portal admission 401. The browser
+suppresses unavailable counts. This batch API is portal-session-only; the machine
+endpoint/CLI remains single-consumer. Both paths read the same aggregate views.
+
 `pnpm usage:report --consumer <UUID> --from <UTC Z> --to <UTC Z>` uses the
 bounded HTTP capability, with `RAG_USAGE_REPORT_URL` and
 `RAG_USAGE_REPORT_SECRET` injected from the approved receiver. The command never
@@ -125,7 +141,7 @@ Enable collection with `RAG_USAGE_WRITER_DATABASE_URL` after registered auth
 is configured. Portal reporting requires `RAG_USAGE_REPORT_DATABASE_URL` alongside the existing
 portal configuration and usage writer. No new human secret is required. The
 server uses the aggregate-only reader; its database URL never reaches the browser.
-The Usage page is pending layout selection in draft PR #2455.
+The Usage comparison table (selected option A) is included in draft PR #2455.
 
 For optional operator/RAGBot HTTP/CLI access, also configure
 `RAG_USAGE_REPORT_TOKEN_HASHES`, a JSON object mapping only `jaco` and/or

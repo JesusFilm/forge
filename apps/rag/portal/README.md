@@ -71,8 +71,8 @@ Use a reviewed PR for allowlist changes.
 
 The portal feature is disabled when all six `RAG_PORTAL_*` service variables
 are absent. Partial configuration fails service startup. Production now has
-all six variables, so the admission portal is enabled. It still cannot create
-consumers or issue credentials; that backend work remains in feat-527.
+all six variables, so the admission portal is enabled. Consumer management is enabled separately through the restricted consumer
+writer/auth reader URLs; see the feat-530 activation record for its live status.
 
 ## Consumer UI (feat-530)
 
@@ -139,8 +139,7 @@ consumers remain in the local database. Evidence lives in ignored `apps/rag/outp
 
 Follow the user-supplied registry mockup: cool neutral background, blue accents,
 white table panel and locally served Apercu typography. Navigation has RAG,
-Consumers and Knowledge, without Settings. Usage joins these after layout
-selection under feat-528. The two unfinished sections show only
+Consumers, Usage and Knowledge, without Settings. The two unfinished sections show only
 the supplied capybara construction illustration, loaded on demand.
 
 Use semantic rows with name, status, actual member count and owner-only action
@@ -156,12 +155,33 @@ is no preview step.
 
 ## Usage page (feat-528, draft PR #2455)
 
-Add Usage navigation and the report page after Jaco selects one of three proposed
-layouts: table-first comparison, ranked overview, or consumer list with detail.
-No layout is selected yet. Every admitted user sees every consumer, including
-revoked consumers' historical reports. Keep management owner-only.
-Use a UTC window of at most 31 days with minute-aligned boundaries. Show requests,
-completed successes, last activity, complete-through and explicit coverage status.
-Unknown/unavailable data is not a reliable zero; partial totals must be marked.
-Report reads are excluded from retrieval usage accounting. Validate page loading
-and browser authorization after implementing the selected page.
+Jaco selected **option A**, the comparison table, on 2026-09-29. Open Usage in
+`/portal` with the existing GitHub login. Every admitted user sees every consumer,
+including revoked consumers' historical reports; management remains owner-only.
+Reporting appears when the server report reader and consumer directory are enabled.
+
+The UTC from/to controls use whole minutes and a half-open window of at most 31
+days. The default window is the previous seven days, ending one minute before
+the current UTC minute. Search consumer names and page through 20 rows at a time.
+Each row shows requests, completed successful responses, last activity and coverage.
+Open a consumer name for the window, generated time and complete-through watermark.
+Unknown/unavailable counts display a dash; partial totals stay marked. A fully
+covered zero-usage consumer displays zero. A read failure clears the prior totals.
+
+`usage.js` loads only when Usage opens. One protected `GET /portal/usage/reports`
+batch reads at most 20 UUIDs, validates the whole window/page before reading and
+rechecks current portal admission once per request. Per-report snapshots retain
+their own generated time/coverage. The single-consumer `/portal/usage` route stays
+available. All report reads are no-store and excluded from retrieval accounting.
+No browser storage or telemetry is used; leaving the section, session denial or
+sign-out clears report data and closes details.
+
+For local real-accounting/report development, optionally configure both
+`RAG_USAGE_WRITER_DATABASE_URL` and `RAG_USAGE_REPORT_DATABASE_URL` on the same
+exact `forge_rag_portal_dev` database, with the separate grants in
+`docs/ops/consumer-usage.md`. The local launcher verifies the roles and records
+collector deployment `local-portal-dev`; independently declare its inventory with
+the local operator capability. Historical windows before instrumentation or
+missing inventory correctly show unavailable. No synthetic coverage is claimed
+by the launcher. Without these optional roles, the Usage menu reports that
+reporting is not enabled. This setup does not authorize production configuration.

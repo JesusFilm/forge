@@ -64,11 +64,49 @@ The HTTP acceptance check covers another consumer's report, anonymous/retrieval-
 denial, removal, loss of live permission, unavailable admission and revoked session.
 Internal machine authorization remains independent. Window validation and coverage
 semantics are shared. Production has not been activated by this change.
-Three synthetic layout options are supplied for selection; the Usage menu/page and
-its browser/performance verification remain pending. Earlier full-suite results
+At this earlier access-only checkpoint, three synthetic layouts were supplied
+and the Usage menu/page awaited selection. Jaco subsequently chose option A;
+the selected-page verification is recorded below. Earlier full-suite results
 above describe the initial accounting implementation.
 
 Expanded-scope verification: 894 tests passed and 5 database-gated tests skipped
 across 121 files (117 passed, 4 skipped). Typecheck, lint and import-law checks
 passed. Separate Standards and Spec reviews reported no new findings. No database
 schema or accounting behavior changed in the portal slice.
+
+## Selected option A: portal comparison page
+
+The Usage menu and lazily loaded comparison table are implemented. Existing
+real-PostgreSQL management browser journeys both passed after the change (2/2),
+including creation, members, key replacement, revocation and registry navigation.
+HTTP checks cover bounded 20-consumer batches, duplicate/invalid/oversized inputs,
+per-report partial/unavailable coverage and whole-batch read failure without zeros.
+
+Manual local-browser inspection used `local-other`, a non-owner of the report
+consumers, with real session and aggregate-reader adapters: 16 reports loaded in
+232 ms after opening Usage. This isolated DB's historical coverage was correctly
+unavailable. Synthetic presentation fixtures then exercised complete zero (0/0),
+partial labels and report-detail watermark, unavailable dashes, 20+5 pagination,
+name search, invalid >31-day window (zero extra reads), 503 clearing and 401
+session clearing. No browser errors or whole-page horizontal overflow at 390 px.
+Leaving a section clears its report data and invalidates in-flight responses.
+Screenshots and machine-readable local metrics are in ignored `apps/rag/output/usage/`;
+all depicted data is synthetic. No production screenshots or credentials.
+
+Initial Consumers loading was compared with commit `6150341ca` in three cold
+browser contexts per version using the same local server/DB and identical static
+asset interception on both versions. Payload was 129,389 bytes before and 133,200
+bytes after (about +3.8 KB, below the existing 140 KB guard). Median page-ready
+was 150 ms before / 126 ms after; DOM ready 46 / 36 ms; load 91 / 74 ms. Neither
+version fetched `usage.js` or report data on the initial Consumers page. These
+are controlled local timings, not production network/capacity measurements.
+The final relative module URL is 14 bytes shorter than the measured URL.
+
+Final Standards review found no hard violations and one minor duplication in
+report error mapping; the mapping was consolidated. Spec review found no issues.
+
+Final selected-page verification: 896 tests passed, 5 database-gated tests skipped,
+across 121 files (117 passed, 4 skipped). Typecheck, lint and dependency/import-law
+checks passed. The relative lazy import was exercised in the browser; a delayed
+report response released after navigation could not repopulate the cleared table.
+No browser errors. No database schema changes in the selected-page slice.

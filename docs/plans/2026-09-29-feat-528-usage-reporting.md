@@ -24,8 +24,8 @@ configuration enables portal reports without requiring machine bearer hashes.
 
 Add a Usage navigation item and selected report page after Jaco chooses from
 three layouts: table-first comparison, ranked overview, and split list/detail.
-Mockups use synthetic data and are conversation previews, not shipped UI. Until
-selection, keep the ticket in-progress and the same PR draft. Verify browser
+Mockups use synthetic data and are conversation previews, not shipped UI. The user selected option A on 2026-09-29; implement and verify that comparison
+page in the same draft PR. Verify browser
 authorization, coverage presentation and page-loading performance when implementing
 the chosen page. No production operation, shared-token cutoff or cross-app change.
 
@@ -40,3 +40,19 @@ Reports compare every boundary with that inventory and fail closed on missing or
 undeclared collectors. Serving cannot rewrite expectations. Closed flushed
 windows retain historical coverage after a later outage. Failure acceptance
 forces real admission, completion, checkpoint and gap writes to fail/recover.
+
+## Selected layout: A (2026-09-29)
+
+Jaco selected the comparison table. Implement Usage navigation with all-consumer
+name search, 20-row pagination, UTC minute-aligned from/to inputs (maximum 31
+days), requests, successful responses, last activity and explicit coverage. Consumer
+links open report details with the complete-through watermark and generated time.
+Unavailable counts display a dash, never a reliable zero. Mark partial counts.
+
+Load the Usage client only when entering that section. One admitted batch request
+reads at most 20 reports per page, checking current portal admission once and
+validating every UUID/window before reads. Keep the single-consumer API and machine
+route unchanged. A batch response carries coverage per report; an actual read
+failure fails the whole batch. No automatic retry, browser storage or telemetry.
+Verify existing management journeys and before/after initial-page resource sizes
+and timings; inspect Usage desktop/narrow rendering and coverage/error states.

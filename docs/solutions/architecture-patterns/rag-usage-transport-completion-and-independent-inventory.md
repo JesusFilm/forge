@@ -41,3 +41,11 @@ consumer ownership still controls mutations only. Share window validation and
 coverage response handling between portal and machine endpoints, while keeping
 cookie and bearer authentication at their respective boundaries. Configure the
 server's aggregate-only reader independently of optional machine bearer hashes.
+
+An all-consumer UI should not repeat external portal-admission lookups once per
+row. Bound its batch to one 20-row page, validate all UUIDs/windows first and
+recheck admission once for that protected batch. Serial report reads bound DB
+concurrency while preserving each report's snapshot/watermark. Load its client
+module only when navigating to Usage. In the UI, suppress unavailable totals,
+mark partial counts, and invalidate in-flight rendering on navigation or session
+loss so stale responses cannot repopulate cleared report data.

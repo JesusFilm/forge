@@ -46,7 +46,7 @@ Only an existing owner can Add member from the predetermined portal-user allowli
 Added members can manage/regenerate. Preserve at least one owner, audit, revocation
 and removal/session semantics. No consumer-registration or owner-change PRs.
 As of 2026-09-29, every admitted portal user can view all consumer usage reports
-through feat-528’s Usage page using the existing GitHub login. Reports require
+through feat-528’s option A Usage comparison page using the existing GitHub login. Reports require
 portal admission, not ownership; management remains owner-only.
 
 V1 has one runtime environment per consumer and no staging environment. The
