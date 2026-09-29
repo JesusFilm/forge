@@ -64,4 +64,18 @@ family. `docs/reports/2026-09-30-recommendation-profile-footprint.md` separates
 107 MB of core profiles. Complete exact shared-vector activation first. Evaluate
 compact empty-version and repeated-metadata representations with native proofs;
 do not delete history, shorten expiry or treat the 87.22% declared-empty count as
-permission to discard state. This additional design is not yet implemented.
+permission to discard state. The first-empty future-write preparation below is
+implemented; its skip remains off pending review and activation proof.
+
+## Initial Empty Bootstrap Follow-up
+
+The future-write first-empty durable bootstrap optimization is implemented in an
+isolated preparatory branch with `RECOMMENDATION_PROFILE_EMPTY_BOOTSTRAP_SKIP`
+defaulting to `false`. An eligible first source now reserves a recoverable
+pending projection run in the classifier transaction; ordinary first-run
+creation fences stale Serializable classifier snapshots. Both parts must
+converge on HTTP and worker roles before a separate PR may activate the skip.
+No retained generations are rewritten or deleted. Native concurrency and
+recovery tests, local allocation and latency measurements, independent review,
+load validation, and a bounded activation decision remain open. See
+`docs/validation/recommendation-storage-20260930/initial-profile-bootstrap.md`.

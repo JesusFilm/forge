@@ -60,6 +60,29 @@ describe("env", () => {
   )
 
   it.each([
+    { value: undefined, expected: "false" },
+    { value: "", expected: "false" },
+    { value: "true", expected: "true" },
+    { value: "false", expected: "false" },
+  ])(
+    "resolves empty profile bootstrap skip to $expected for $value when CI skips validation",
+    async ({ value, expected }) => {
+      vi.resetModules()
+      vi.stubEnv("CI", "true")
+      vi.stubEnv("RECOMMENDATION_PROFILE_EMPTY_BOOTSTRAP_SKIP", value)
+      try {
+        const { env: runtimeEnv } = await import("@/config/env")
+        expect(runtimeEnv.RECOMMENDATION_PROFILE_EMPTY_BOOTSTRAP_SKIP).toBe(
+          expected,
+        )
+      } finally {
+        vi.unstubAllEnvs()
+        vi.resetModules()
+      }
+    },
+  )
+
+  it.each([
     { value: undefined, expected: "true" },
     { value: "", expected: "true" },
     { value: "true", expected: "true" },

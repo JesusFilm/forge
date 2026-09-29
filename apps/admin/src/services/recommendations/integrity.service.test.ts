@@ -1,8 +1,17 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+const prepareReservation = vi.hoisted(() => vi.fn(async () => null))
+vi.mock("./profiles/initial-bootstrap", () => ({
+  prepareInitialProfileProjectionReservation: prepareReservation,
+  insertInitialProfileProjectionReservation: vi.fn(),
+}))
+
 import { RecommendationIntegrityService } from "./integrity.service"
 
 const NOW = new Date("2026-08-25T12:00:00.000Z")
 const EXPIRES = new Date("2026-09-23T12:00:00.000Z")
+
+beforeEach(() => vi.clearAllMocks())
 
 function fixture() {
   const tx = {
@@ -90,6 +99,10 @@ describe("RecommendationIntegrityService", () => {
     })
 
     expect(tx.recommendationEligibilityDecision.create).toHaveBeenCalledOnce()
+    expect(prepareReservation).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ sessionDigest: "a".repeat(64) }),
+    )
   })
 
   it("keeps machine actions inspectable but learning-ineligible", async () => {

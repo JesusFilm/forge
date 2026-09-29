@@ -21,6 +21,7 @@ import { RecommendationEpisodeService } from "../episode.service"
 import { RecommendationPlaybackService } from "../playback.service"
 import { RecommendationOutcomeService } from "../outcome.service"
 import { RecommendationIntegrityService } from "../integrity.service"
+import { lockRetentionRoots } from "../retention-locks"
 import {
   createRecommendationTokenService,
   parseRecommendationKeyring,
@@ -28,6 +29,13 @@ import {
 import { getLiveProfileCandidates } from "../candidates/profile-candidate.service"
 import { RecommendationProfileService } from "../profile.service"
 import { createDatabaseRecommendationProfileProjectionService } from "./profile-projection.service"
+import {
+  canSkipInitialEmptyProfileBootstrap,
+  insertInitialProfileProjectionReservation,
+  prepareInitialProfileProjectionReservation,
+} from "./initial-bootstrap"
+import { withRecommendationSerializableRetry } from "../transaction-retry"
+import { prepareRecommendationProfileProjection } from "./job"
 import { seedReconciliationScaleFixture } from "./reconciliation-scale.fixture"
 import { proveProfileVectorSnapshotMigration } from "./profile-vector-snapshot.native-helper"
 import { runRecommendationProfileReconciliationBatch } from "./reconciliation.service"
@@ -43,6 +51,19 @@ const webCaller = {
   id: "forge-web",
   role: "CONSUMER_BEARER" as const,
   rateLimitBucketKey: "forge-web",
+}
+
+async function reserveInitialProfileProjectionForEligibleSource(
+  tx: Prisma.TransactionClient,
+  input: { sessionDigest: string; now: Date },
+): Promise<boolean> {
+  const reservation = await prepareInitialProfileProjectionReservation(
+    tx,
+    input,
+  )
+  if (!reservation) return false
+  await insertInitialProfileProjectionReservation(tx, reservation)
+  return true
 }
 
 function deterministicVector(first: number, second: number): string {
@@ -248,11 +269,14 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         await admin.query(migration)
       }
       await installCatalogFixture(admin)
-      const fixtureUrl = new URL(env.DATABASE_URL)
-      fixtureUrl.searchParams.delete("options")
-      fixtureUrl.searchParams.set("schema", schema)
       prisma = new PrismaClient({
-        datasources: { db: { url: fixtureUrl.toString() } },
+        adapter: new PrismaPg(
+          {
+            connectionString: env.DATABASE_URL,
+            options: `-c search_path=${schema},public`,
+          },
+          { schema },
+        ),
       })
     })
 
@@ -262,6 +286,888 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       await admin.query("RESET search_path")
       await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
       await admin.end()
+    })
+
+    it("admits only an untouched source-free durable scope before raw feedback", async () => {
+      const key = randomUUID()
+      const digest = (name: string) =>
+        createHash("sha256").update(`${key}:${name}`).digest("hex")
+      const grantedAt = new Date()
+      const sessionDigest = digest("session")
+      const grant = await new RecommendationProfileService({
+        prisma,
+        now: () => grantedAt,
+        newId: randomUUID,
+        newAuditId: randomUUID,
+      }).transition({
+        caller: webCaller,
+        contractVersion: "recommendation-profile-v1",
+        consentContractVersion: "recommendation-consent-v1",
+        action: "grant",
+        consentChoice: "personalization",
+        sessionDigest,
+        existingConsentReceiptDigest: null,
+        proposedConsentReceiptDigest: digest("consent"),
+        existingProfileDigest: null,
+        proposedProfileDigest: digest("profile"),
+      })
+      const scope = {
+        profileId: grant.profileId!,
+        privacyGeneration: grant.privacyGeneration!,
+        sessionDigest,
+        now: new Date(grantedAt.getTime() + 1_000),
+      }
+      await expect(
+        prisma.$transaction((tx) =>
+          reserveInitialProfileProjectionForEligibleSource(tx, {
+            sessionDigest: digest("unlinked-session"),
+            now: scope.now,
+          }),
+        ),
+      ).resolves.toBe(false)
+      await expect(
+        prisma.$transaction((tx) =>
+          canSkipInitialEmptyProfileBootstrap(tx, scope),
+        ),
+      ).resolves.toBe(true)
+      await expect(
+        prepareRecommendationProfileProjection(scope, false, prisma, true),
+      ).resolves.toEqual({ kind: "initial_no_evidence" })
+      expect(
+        await prisma.recommendationProfileProjectionRun.count({
+          where: { profileId: scope.profileId },
+        }),
+      ).toBe(0)
+      expect(
+        await prisma.recommendationProfileProjectionGeneration.count({
+          where: { profileId: scope.profileId },
+        }),
+      ).toBe(0)
+
+      const activeLink =
+        await prisma.recommendationProfileSessionLink.findFirstOrThrow({
+          where: { profileId: scope.profileId, sessionDigest },
+        })
+      await prisma.recommendationProfileSessionLink.delete({
+        where: { id: activeLink.id },
+      })
+      await expect(
+        prisma.$transaction((tx) =>
+          canSkipInitialEmptyProfileBootstrap(tx, scope),
+        ),
+      ).resolves.toBe(false)
+      await prisma.recommendationProfileSessionLink.create({ data: activeLink })
+      await expect(
+        prepareRecommendationProfileProjection(scope, false, prisma, false),
+      ).resolves.toMatchObject({ kind: "prepared" })
+      await prisma.recommendationProfileProjectionRun.deleteMany({
+        where: { profileId: scope.profileId },
+      })
+
+      const episodeId = `bootstrap-episode-${key}`
+      const expiresAt = new Date(scope.now.getTime() + 86_400_000)
+      const activeUntil = new Date(scope.now.getTime() + 60_000)
+      const hardUntil = new Date(scope.now.getTime() + 120_000)
+      await admin.query(
+        `INSERT INTO recommendation_playback_episode (
+          id, media_id, session_digest, state, active_until, hard_until,
+          next_fact_sequence, generation, claim_nonce_digest,
+          handoff_expires_at, claimed_at, created_at, expires_at
+        ) VALUES ($1, 'unembedded-source', $2, 'pending', $3, $4,
+          1, 1, $5, $4, $6, $6, $7)`,
+        [
+          episodeId,
+          sessionDigest,
+          activeUntil,
+          hardUntil,
+          digest("episode"),
+          scope.now,
+          expiresAt,
+        ],
+      )
+      await expect(
+        prisma.$transaction((tx) =>
+          canSkipInitialEmptyProfileBootstrap(tx, scope),
+        ),
+      ).resolves.toBe(false)
+      await admin.query(
+        `DELETE FROM recommendation_playback_episode WHERE id=$1`,
+        [episodeId],
+      )
+      const manifestId = `bootstrap-manifest-${key}`
+      const requestId = `bootstrap-request-${key}`
+      const itemId = `bootstrap-item-${key}`
+      await admin.query(
+        `INSERT INTO recommendation_strategy_manifest (
+          id, strategy_version, contract_version, surface_version, generator,
+          max_items
+        ) VALUES ($1, $1, 'semantic-recommendation-v1',
+          'watch-below-player-v1', 'semantic', 6)`,
+        [manifestId],
+      )
+      await admin.query("BEGIN")
+      try {
+        await admin.query(
+          `INSERT INTO recommendation_request (
+          id, contract_version, surface_version, manifest_id,
+          strategy_version, classifier_version, session_digest,
+          seed_media_id, locale, expected_item_count, state, result, delivery_jti,
+          signing_kid, created_at, issued_at, expires_at
+        ) VALUES ($1::text, 'semantic-recommendation-v1',
+          'watch-below-player-v1', $2, $2, 'legacy-position-v0', $3,
+          'seed', 'en', 1, 'issued', 'served', $1::text, 'test-kid', $4, $4, $5)`,
+          [requestId, manifestId, sessionDigest, scope.now, expiresAt],
+        )
+        await admin.query(
+          `INSERT INTO recommendation_served_item (
+          id, request_id, position, target_media_id, canonical_href,
+          candidate_generator, candidate_provenance, capability_jti,
+          signing_kid, created_at, expires_at
+        ) VALUES ($1::text, $2, 0, 'unembedded-source', '/watch/source.html',
+          'semantic', '{}', $1::text, 'test-kid', $3, $4)`,
+          [itemId, requestId, scope.now, expiresAt],
+        )
+        await admin.query(
+          `INSERT INTO recommendation_selection (
+          id, request_id, item_id, capability_jti, event_id,
+          payload_digest, claim_nonce_digest, handoff_expires_at,
+          occurred_at, expires_at
+        ) VALUES ($1::text, $2, $3::text, $3::text, $1::text,
+          $4, $4, $5, $5, $6)`,
+          [
+            `bootstrap-selection-${key}`,
+            requestId,
+            itemId,
+            digest("selection"),
+            scope.now,
+            expiresAt,
+          ],
+        )
+        await admin.query("COMMIT")
+      } catch (error) {
+        await admin.query("ROLLBACK")
+        throw error
+      }
+      await expect(
+        prisma.$transaction((tx) =>
+          canSkipInitialEmptyProfileBootstrap(tx, scope),
+        ),
+      ).resolves.toBe(false)
+      const pendingDecision = await new RecommendationIntegrityService({
+        prisma,
+        now: () => scope.now,
+      }).classifySelection(`bootstrap-selection-${key}`)
+      expect(pendingDecision.eligibleScopes).not.toContain("profile")
+      expect(
+        await prisma.recommendationProfileProjectionRun.count({
+          where: { profileId: scope.profileId },
+        }),
+      ).toBe(0)
+      await admin.query(`DELETE FROM recommendation_request WHERE id=$1`, [
+        requestId,
+      ])
+      const failedRunId = `bootstrap-failed-${key}`
+      await admin.query(
+        `INSERT INTO recommendation_profile_projection_run (
+          id, scope, profile_id, privacy_generation, session_digest,
+          state, failure_reason, completed_at, expires_at
+        ) VALUES ($1, 'durable', $2, $3, $4, 'failed',
+          'projection_attempts_exhausted', $6, $5)`,
+        [
+          failedRunId,
+          scope.profileId,
+          scope.privacyGeneration,
+          sessionDigest,
+          expiresAt,
+          scope.now,
+        ],
+      )
+      await expect(
+        prisma.$transaction((tx) =>
+          canSkipInitialEmptyProfileBootstrap(tx, scope),
+        ),
+      ).resolves.toBe(false)
+      await admin.query(
+        `DELETE FROM recommendation_profile_projection_run WHERE id=$1`,
+        [failedRunId],
+      )
+      await admin.query(
+        `INSERT INTO recommendation_profile_projection_run (
+          id, scope, profile_id, privacy_generation, session_digest,
+          state, failure_reason, completed_at, expires_at
+        ) VALUES ($1, 'durable', $2, $3, $4, 'fenced',
+          'privacy_fence', $6, $5)`,
+        [
+          `bootstrap-fenced-${key}`,
+          scope.profileId,
+          scope.privacyGeneration,
+          sessionDigest,
+          expiresAt,
+          scope.now,
+        ],
+      )
+      await expect(
+        prisma.$transaction((tx) =>
+          canSkipInitialEmptyProfileBootstrap(tx, scope),
+        ),
+      ).resolves.toBe(false)
+      await admin.query(
+        `DELETE FROM recommendation_profile_projection_run WHERE id=$1`,
+        [`bootstrap-fenced-${key}`],
+      )
+
+      const published =
+        await createDatabaseRecommendationProfileProjectionService(
+          prisma,
+        ).project({ ...scope, now: new Date(scope.now.getTime() + 1_000) })
+      expect(published.status).toBe("published")
+      await expect(
+        prisma.$transaction((tx) =>
+          canSkipInitialEmptyProfileBootstrap(tx, scope),
+        ),
+      ).resolves.toBe(false)
+      await prisma.recommendationProfileProjectionPointer.deleteMany({
+        where: { profileId: scope.profileId },
+      })
+      await expect(
+        prisma.$transaction((tx) =>
+          canSkipInitialEmptyProfileBootstrap(tx, scope),
+        ),
+      ).resolves.toBe(false)
+
+      const resetAt = new Date(scope.now.getTime() + 2_000)
+      const profileService = new RecommendationProfileService({
+        prisma,
+        now: () => resetAt,
+        newId: randomUUID,
+        newAuditId: randomUUID,
+      })
+      const reset = await profileService.transition({
+        caller: webCaller,
+        contractVersion: "recommendation-profile-v1",
+        consentContractVersion: "recommendation-consent-v1",
+        action: "reset",
+        consentChoice: "personalization",
+        sessionDigest,
+        existingConsentReceiptDigest: digest("consent"),
+        proposedConsentReceiptDigest: digest("reset-consent"),
+        existingProfileDigest: digest("profile"),
+        proposedProfileDigest: digest("reset-profile"),
+      })
+      expect(reset.profileId).toBe(scope.profileId)
+      const replacement = await prisma.recommendationProfile.findUniqueOrThrow({
+        where: { tokenDigest: digest("reset-profile") },
+      })
+      await profileService.completeErasure({
+        profileId: scope.profileId,
+        privacyGeneration: scope.privacyGeneration,
+      })
+      await expect(
+        prisma.$transaction((tx) =>
+          canSkipInitialEmptyProfileBootstrap(tx, scope),
+        ),
+      ).resolves.toBe(false)
+      await expect(
+        prisma.$transaction((tx) =>
+          canSkipInitialEmptyProfileBootstrap(tx, {
+            ...scope,
+            profileId: replacement.id,
+            privacyGeneration: reset.privacyGeneration!,
+            now: new Date(resetAt.getTime() + 1_000),
+          }),
+        ),
+      ).resolves.toBe(true)
+      await expect(
+        prisma.$transaction((tx) =>
+          reserveInitialProfileProjectionForEligibleSource(tx, {
+            sessionDigest,
+            now: scope.now,
+          }),
+        ),
+      ).resolves.toBe(false)
+      const replacementNow = new Date(resetAt.getTime() + 1_000)
+      await prisma.recommendationProfileSessionLink.updateMany({
+        where: { profileId: replacement.id },
+        data: { expiresAt: replacementNow },
+      })
+      await expect(
+        prisma.$transaction((tx) =>
+          reserveInitialProfileProjectionForEligibleSource(tx, {
+            sessionDigest,
+            now: replacementNow,
+          }),
+        ),
+      ).resolves.toBe(false)
+      await prisma.recommendationProfileSessionLink.updateMany({
+        where: { profileId: replacement.id },
+        data: { expiresAt: new Date(replacementNow.getTime() + 86_400_000) },
+      })
+      await expect(
+        prisma.$transaction((tx) =>
+          reserveInitialProfileProjectionForEligibleSource(tx, {
+            sessionDigest,
+            now: replacementNow,
+          }),
+        ),
+      ).resolves.toBe(true)
+      await expect(
+        prisma.$transaction((tx) =>
+          reserveInitialProfileProjectionForEligibleSource(tx, {
+            sessionDigest,
+            now: replacementNow,
+          }),
+        ),
+      ).resolves.toBe(false)
+      const reservation =
+        await prisma.recommendationProfileProjectionRun.findFirstOrThrow({
+          where: { profileId: replacement.id },
+        })
+      const laterWatermark = new Date(replacementNow.getTime() + 4_000)
+      await expect(
+        prepareRecommendationProfileProjection(
+          {
+            profileId: replacement.id,
+            privacyGeneration: reset.privacyGeneration,
+            sessionDigest,
+            now: new Date(laterWatermark.getTime() + 1_000),
+            evidenceWatermark: laterWatermark,
+            reconciliationCause: "evidence_advanced",
+          },
+          true,
+          prisma,
+          true,
+        ),
+      ).resolves.toMatchObject({
+        kind: "prepared",
+        run: { id: reservation.id },
+        coalesced: false,
+      })
+      await createDatabaseRecommendationProfileProjectionService(
+        prisma,
+      ).project({
+        profileId: replacement.id,
+        privacyGeneration: reset.privacyGeneration,
+        sessionDigest,
+        now: new Date(laterWatermark.getTime() + 2_000),
+      })
+      const afterPublication = await prepareRecommendationProfileProjection(
+        {
+          profileId: replacement.id,
+          privacyGeneration: reset.privacyGeneration,
+          sessionDigest,
+          now: new Date(laterWatermark.getTime() + 4_000),
+          evidenceWatermark: new Date(laterWatermark.getTime() + 3_000),
+          reconciliationCause: "evidence_advanced",
+        },
+        true,
+        prisma,
+        true,
+      )
+      expect(afterPublication.kind).toBe("prepared")
+      if (afterPublication.kind === "prepared") {
+        expect(afterPublication.run.id).not.toBe(reservation.id)
+      }
+    })
+
+    it("serializes a source-free bootstrap with later feedback and refuses to skip a prior run", async () => {
+      const key = randomUUID()
+      const digest = (name: string) =>
+        createHash("sha256").update(`${key}:${name}`).digest("hex")
+      const grantedAt = new Date()
+      const sessionDigest = digest("session")
+      const grant = await new RecommendationProfileService({
+        prisma,
+        now: () => grantedAt,
+        newId: randomUUID,
+        newAuditId: randomUUID,
+      }).transition({
+        caller: webCaller,
+        contractVersion: "recommendation-profile-v1",
+        consentContractVersion: "recommendation-consent-v1",
+        action: "grant",
+        consentChoice: "personalization",
+        sessionDigest,
+        existingConsentReceiptDigest: null,
+        proposedConsentReceiptDigest: digest("consent"),
+        existingProfileDigest: null,
+        proposedProfileDigest: digest("profile"),
+      })
+      const scope = {
+        profileId: grant.profileId!,
+        privacyGeneration: grant.privacyGeneration!,
+        sessionDigest,
+        now: new Date(grantedAt.getTime() + 1_000),
+      }
+      const scopeDigest = createHash("sha256")
+        .update(`durable:${scope.profileId}:${scope.privacyGeneration}`)
+        .digest("hex")
+      let release!: () => void
+      let observed!: () => void
+      const releasePromise = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const observedPromise = new Promise<void>((resolve) => {
+        observed = resolve
+      })
+      const statusTransaction = prisma.$transaction(async (tx) => {
+        await tx.$executeRaw(Prisma.sql`
+          SELECT pg_advisory_xact_lock(
+            hashtextextended(${`profile-projection-dispatch:${scopeDigest}`}, 459)
+          )
+        `)
+        const skipped = await canSkipInitialEmptyProfileBootstrap(tx, scope)
+        observed()
+        await releasePromise
+        return skipped
+      })
+      await observedPromise
+
+      // A raw source commits after the no-source read, before feedback can
+      // take the same dispatch lock. The source has no eligibility yet.
+      const eventAt = new Date(scope.now.getTime() + 1_000)
+      const activeUntil = new Date(eventAt.getTime() + 60_000)
+      const hardUntil = new Date(eventAt.getTime() + 120_000)
+      const expiresAt = new Date(eventAt.getTime() + 86_400_000)
+      await admin.query(
+        `INSERT INTO recommendation_playback_episode (
+          id, media_id, session_digest, state, active_until, hard_until,
+          next_fact_sequence, generation, claim_nonce_digest,
+          handoff_expires_at, claimed_at, created_at, expires_at
+        ) VALUES ($1, 'unembedded-source', $2, 'pending', $3, $4,
+          1, 1, $5, $4, $6, $6, $7)`,
+        [
+          `bootstrap-race-${key}`,
+          sessionDigest,
+          activeUntil,
+          hardUntil,
+          digest("episode"),
+          eventAt,
+          expiresAt,
+        ],
+      )
+      const feedback = prepareRecommendationProfileProjection(
+        {
+          ...scope,
+          evidenceWatermark: new Date(grantedAt.getTime() - 86_400_000),
+          reconciliationCause: "evidence_advanced",
+        },
+        true,
+        prisma,
+        true,
+      )
+      release()
+      await expect(statusTransaction).resolves.toBe(true)
+      await expect(feedback).resolves.toMatchObject({ kind: "prepared" })
+      expect(
+        await prisma.recommendationProfileProjectionRun.count({
+          where: {
+            profileId: scope.profileId,
+            privacyGeneration: scope.privacyGeneration,
+          },
+        }),
+      ).toBe(1)
+
+      const statusAfterFeedback = await prepareRecommendationProfileProjection(
+        scope,
+        false,
+        prisma,
+        true,
+      )
+      expect(statusAfterFeedback).toMatchObject({
+        kind: "prepared",
+        coalesced: false,
+      })
+    })
+
+    it("coalesces status behind a feedback-first dispatch lock", async () => {
+      const key = randomUUID()
+      const digest = (name: string) =>
+        createHash("sha256").update(`${key}:${name}`).digest("hex")
+      const grantedAt = new Date()
+      const sessionDigest = digest("session")
+      const grant = await new RecommendationProfileService({
+        prisma,
+        now: () => grantedAt,
+        newId: randomUUID,
+        newAuditId: randomUUID,
+      }).transition({
+        caller: webCaller,
+        contractVersion: "recommendation-profile-v1",
+        consentContractVersion: "recommendation-consent-v1",
+        action: "grant",
+        consentChoice: "personalization",
+        sessionDigest,
+        existingConsentReceiptDigest: null,
+        proposedConsentReceiptDigest: digest("consent"),
+        existingProfileDigest: null,
+        proposedProfileDigest: digest("profile"),
+      })
+      const scope = {
+        profileId: grant.profileId!,
+        privacyGeneration: grant.privacyGeneration!,
+        sessionDigest,
+        now: new Date(grantedAt.getTime() + 1_000),
+      }
+      const scopeDigest = createHash("sha256")
+        .update(`durable:${scope.profileId}:${scope.privacyGeneration}`)
+        .digest("hex")
+      let locked!: () => void
+      let release!: () => void
+      const lockedPromise = new Promise<void>((resolve) => {
+        locked = resolve
+      })
+      const releasePromise = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const feedback = prisma.$transaction(async (tx) => {
+        await tx.$executeRaw(Prisma.sql`
+          SELECT pg_advisory_xact_lock(
+            hashtextextended(${`profile-projection-dispatch:${scopeDigest}`}, 459)
+          )
+        `)
+        locked()
+        await releasePromise
+        return tx.recommendationProfileProjectionRun.create({
+          data: {
+            scope: "DURABLE",
+            profileId: scope.profileId,
+            privacyGeneration: scope.privacyGeneration,
+            sessionDigest,
+            reconciliationCause: "evidence_advanced",
+            expiresAt: new Date(scope.now.getTime() + 86_400_000),
+          },
+        })
+      })
+      await lockedPromise
+      const status = prepareRecommendationProfileProjection(
+        scope,
+        false,
+        prisma,
+        true,
+      )
+      await new Promise((resolve) => setTimeout(resolve, 25))
+      release()
+      const firstRun = await feedback
+      await expect(status).resolves.toMatchObject({
+        kind: "prepared",
+        run: { id: firstRun.id },
+        coalesced: false,
+      })
+      expect(
+        await prisma.recommendationProfileProjectionRun.count({
+          where: { profileId: scope.profileId },
+        }),
+      ).toBe(1)
+    })
+
+    it("retries a classifier snapshot older than a committed first status run", async () => {
+      const key = randomUUID()
+      const digest = (name: string) =>
+        createHash("sha256").update(`${key}:${name}`).digest("hex")
+      const grantedAt = new Date()
+      const sessionDigest = digest("session")
+      const grant = await new RecommendationProfileService({
+        prisma,
+        now: () => grantedAt,
+        newId: randomUUID,
+        newAuditId: randomUUID,
+      }).transition({
+        caller: webCaller,
+        contractVersion: "recommendation-profile-v1",
+        consentContractVersion: "recommendation-consent-v1",
+        action: "grant",
+        consentChoice: "personalization",
+        sessionDigest,
+        existingConsentReceiptDigest: null,
+        proposedConsentReceiptDigest: digest("consent"),
+        existingProfileDigest: null,
+        proposedProfileDigest: digest("profile"),
+      })
+      const scope = {
+        profileId: grant.profileId!,
+        privacyGeneration: grant.privacyGeneration!,
+        sessionDigest,
+        now: new Date(grantedAt.getTime() + 1_000),
+      }
+      let observed!: () => void
+      let release!: () => void
+      const observedPromise = new Promise<void>((resolve) => {
+        observed = resolve
+      })
+      const releasePromise = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      let attempts = 0
+      const classifier = withRecommendationSerializableRetry(() =>
+        prisma.$transaction(
+          async (tx) => {
+            attempts += 1
+            await tx.recommendationProfileSessionLink.findFirstOrThrow({
+              where: { profileId: scope.profileId, sessionDigest },
+            })
+            if (attempts === 1) {
+              observed()
+              await releasePromise
+            }
+            return prepareInitialProfileProjectionReservation(tx, scope)
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        ),
+      )
+      await observedPromise
+      const status = await prepareRecommendationProfileProjection(
+        scope,
+        false,
+        prisma,
+        false,
+      )
+      expect(status.kind).toBe("prepared")
+      release()
+      await expect(classifier).resolves.toBeNull()
+      expect(attempts).toBeGreaterThanOrEqual(2)
+      expect(
+        await prisma.recommendationProfileProjectionRun.count({
+          where: { profileId: scope.profileId },
+        }),
+      ).toBe(1)
+    })
+
+    it("retries a classifier waiting behind a fenced first status run", async () => {
+      const key = randomUUID()
+      const digest = (name: string) =>
+        createHash("sha256").update(`${key}:${name}`).digest("hex")
+      const grantedAt = new Date()
+      const sessionDigest = digest("session")
+      const grant = await new RecommendationProfileService({
+        prisma,
+        now: () => grantedAt,
+        newId: randomUUID,
+        newAuditId: randomUUID,
+      }).transition({
+        caller: webCaller,
+        contractVersion: "recommendation-profile-v1",
+        consentContractVersion: "recommendation-consent-v1",
+        action: "grant",
+        consentChoice: "personalization",
+        sessionDigest,
+        existingConsentReceiptDigest: null,
+        proposedConsentReceiptDigest: digest("consent"),
+        existingProfileDigest: null,
+        proposedProfileDigest: digest("profile"),
+      })
+      const profileId = grant.profileId!
+      const privacyGeneration = grant.privacyGeneration!
+      const now = new Date(grantedAt.getTime() + 1_000)
+      const scopeDigest = createHash("sha256")
+        .update(`durable:${profileId}:${privacyGeneration}`)
+        .digest("hex")
+      let locked!: () => void
+      let observed!: () => void
+      let release!: () => void
+      const lockedPromise = new Promise<void>((resolve) => {
+        locked = resolve
+      })
+      const observedPromise = new Promise<void>((resolve) => {
+        observed = resolve
+      })
+      const releasePromise = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const status = prisma.$transaction(async (tx) => {
+        await tx.$executeRaw(Prisma.sql`
+          SELECT pg_advisory_xact_lock(
+            hashtextextended(${`profile-projection-dispatch:${scopeDigest}`}, 459)
+          )
+        `)
+        locked()
+        await releasePromise
+        // The same initial-run row-version fence used by prepare().
+        await tx.$executeRaw(Prisma.sql`
+          UPDATE recommendation_profile SET updated_at = updated_at
+          WHERE id = ${profileId}
+        `)
+        return tx.recommendationProfileProjectionRun.create({
+          data: {
+            scope: "DURABLE",
+            profileId,
+            privacyGeneration,
+            sessionDigest,
+            expiresAt: new Date(now.getTime() + 86_400_000),
+          },
+        })
+      })
+      await lockedPromise
+      let attempts = 0
+      const classifier = withRecommendationSerializableRetry(() =>
+        prisma.$transaction(
+          async (tx) => {
+            attempts += 1
+            await tx.recommendationProfileSessionLink.findFirstOrThrow({
+              where: { profileId, sessionDigest },
+            })
+            if (attempts === 1) observed()
+            return prepareInitialProfileProjectionReservation(tx, {
+              sessionDigest,
+              now,
+            })
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        ),
+      )
+      await observedPromise
+      await new Promise((resolve) => setTimeout(resolve, 25))
+      release()
+      await status
+      await expect(classifier).resolves.toBeNull()
+      expect(attempts).toBeGreaterThanOrEqual(2)
+      expect(
+        await prisma.recommendationProfileProjectionRun.count({
+          where: { profileId },
+        }),
+      ).toBe(1)
+    })
+
+    it("reserves one first run for two concurrent eligible source classifiers", async () => {
+      const key = randomUUID()
+      const digest = (name: string) =>
+        createHash("sha256").update(`${key}:${name}`).digest("hex")
+      const current = new Date()
+      const sessionDigest = digest("session")
+      const grant = await new RecommendationProfileService({
+        prisma,
+        now: () => current,
+        newId: randomUUID,
+        newAuditId: randomUUID,
+      }).transition({
+        caller: webCaller,
+        contractVersion: "recommendation-profile-v1",
+        consentContractVersion: "recommendation-consent-v1",
+        action: "grant",
+        consentChoice: "personalization",
+        sessionDigest,
+        existingConsentReceiptDigest: null,
+        proposedConsentReceiptDigest: digest("consent"),
+        existingProfileDigest: null,
+        proposedProfileDigest: digest("profile"),
+      })
+      const expiresAt = new Date(current.getTime() + 7 * 86_400_000)
+      const outcomes = [1, 2].map((ordinal) => ({
+        episodeId: `bootstrap-concurrent-episode-${key}-${ordinal}`,
+        outcomeId: `bootstrap-concurrent-outcome-${key}-${ordinal}`,
+        mediaId: `bootstrap-concurrent-media-${key}-${ordinal}`,
+      }))
+      for (const source of outcomes) {
+        await admin.query(
+          `INSERT INTO recommendation_playback_episode (
+            id, media_id, session_digest, state, active_until, hard_until,
+            next_fact_sequence, generation, capability_jti, signing_kid,
+            claimed_at, finalized_at, created_at, expires_at
+          ) VALUES ($1::text,$2,$3,'finalized',$4,$5,1,1,$1::text,'test-kid',$6,$6,$6,$7)`,
+          [
+            source.episodeId,
+            source.mediaId,
+            sessionDigest,
+            new Date(current.getTime() + 60_000),
+            new Date(current.getTime() + 120_000),
+            current,
+            expiresAt,
+          ],
+        )
+        await admin.query(
+          `INSERT INTO recommendation_outcome_revision (
+            id, episode_id, classifier_version, fact_watermark, input_digest,
+            revision, qualified_view, view_quality_weight,
+            view_quality_weight_reason, reasons, learning_eligible, generation,
+            active_playback_milliseconds, duration_seconds, duration_cohort,
+            active_coverage, created_at, expires_at
+          ) VALUES ($1,$2,'active-watch-proxy-v1',0,$3,1,true,0.8,
+            'active_fraction_of_duration',ARRAY['qualified_view'],false,1,
+            60000,120,'medium','complete',$4,$5)`,
+          [
+            source.outcomeId,
+            source.episodeId,
+            digest(source.outcomeId),
+            current,
+            expiresAt,
+          ],
+        )
+      }
+      const scopeDigest = createHash("sha256")
+        .update(`durable:${grant.profileId}:${grant.privacyGeneration}`)
+        .digest("hex")
+      let locked!: () => void
+      let release!: () => void
+      let holderPid = 0
+      const lockedPromise = new Promise<void>((resolve) => {
+        locked = resolve
+      })
+      const releasePromise = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const holdScope = prisma.$transaction(async (tx) => {
+        await tx.$executeRaw(Prisma.sql`
+          SELECT pg_advisory_xact_lock(
+            hashtextextended(${`profile-projection-dispatch:${scopeDigest}`}, 459)
+          )
+        `)
+        const [holder] = await tx.$queryRaw<Array<{ pid: number }>>`
+          SELECT pg_backend_pid() AS pid
+        `
+        holderPid = holder!.pid
+        locked()
+        await releasePromise
+      })
+      await lockedPromise
+      const service = new RecommendationIntegrityService({
+        prisma,
+        now: () => new Date(current.getTime() + 1_000),
+      })
+      const decisions = outcomes.map((source) =>
+        service.classifyPlaybackOutcome(source.outcomeId),
+      )
+      try {
+        let waiters = 0
+        for (let attempt = 0; attempt < 50; attempt++) {
+          const [row] = (
+            await admin.query<{ waiters: number }>(
+              `SELECT count(*)::integer AS waiters
+               FROM pg_locks holder
+               JOIN pg_locks waiter
+                 ON waiter.locktype='advisory'
+                AND NOT waiter.granted
+                AND waiter.database IS NOT DISTINCT FROM holder.database
+                AND waiter.classid=holder.classid
+                AND waiter.objid=holder.objid
+                AND waiter.objsubid=holder.objsubid
+               WHERE holder.pid=$1 AND holder.locktype='advisory'
+                 AND holder.granted`,
+              [holderPid],
+            )
+          ).rows
+          waiters = row?.waiters ?? 0
+          if (waiters >= 2) break
+          await new Promise((resolve) => setTimeout(resolve, 20))
+        }
+        expect(waiters).toBeGreaterThanOrEqual(2)
+      } finally {
+        release()
+      }
+      await holdScope
+      const receipts = await Promise.all(decisions)
+      expect(receipts.map((receipt) => receipt.eligibleScopes)).toEqual([
+        expect.arrayContaining(["profile"]),
+        expect.arrayContaining(["profile"]),
+      ])
+      expect(
+        await prisma.recommendationEligibilityDecision.count({
+          where: { id: { in: receipts.map((receipt) => receipt.id) } },
+        }),
+      ).toBe(2)
+      expect(
+        await prisma.recommendationProfileProjectionRun.count({
+          where: { profileId: grant.profileId },
+        }),
+      ).toBe(1)
     })
 
     it("projects a qualified consented outcome and uses it in the next profile retrieval", async () => {
@@ -297,6 +1203,19 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       const profile = await prisma.recommendationProfile.findUniqueOrThrow({
         where: { id: grant.profileId! },
       })
+      await expect(
+        prepareRecommendationProfileProjection(
+          {
+            sessionDigest,
+            profileId: grant.profileId,
+            privacyGeneration: grant.privacyGeneration,
+            now: new Date(profile.createdAt.getTime() + 1),
+          },
+          false,
+          prisma,
+          true,
+        ),
+      ).resolves.toEqual({ kind: "initial_no_evidence" })
       const eventAt = new Date(
         Math.max(grantedAt.getTime(), profile.createdAt.getTime()) + 1_000,
       )
@@ -910,6 +1829,125 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           state: "eligible",
           eligibleScopes: expect.arrayContaining(["profile"]),
         })
+        if (source === "direct") {
+          const initialReservation =
+            await prisma.recommendationProfileProjectionRun.findFirstOrThrow({
+              where: { profileId: grant.profileId },
+            })
+          expect(initialReservation).toMatchObject({
+            state: "PENDING",
+            workflowRunId: null,
+            reconciliationCause: "evidence_advanced",
+          })
+          await prisma.recommendationProfileProjectionRun.delete({
+            where: { id: initialReservation.id },
+          })
+          const replay = await new RecommendationIntegrityService({
+            prisma,
+            now: () => current,
+          }).classifyPlaybackOutcome(outcome.id)
+          expect(replay.revision).toBe(1)
+          const reserved =
+            await prisma.recommendationProfileProjectionRun.findFirstOrThrow({
+              where: { profileId: grant.profileId },
+            })
+          expect(reserved.id).not.toBe(initialReservation.id)
+          const failedStart = await runRecommendationProfileReconciliationBatch(
+            {
+              prisma,
+              classifyOutcome: async () => undefined,
+              classifySelection: async () => undefined,
+              redispatchRun: async () => {
+                throw new Error("workflow start unavailable")
+              },
+            },
+            current,
+          )
+          expect(failedStart.staleRuns).toBeGreaterThanOrEqual(1)
+          expect(failedStart.dispatchFailures).toBeGreaterThanOrEqual(1)
+          const redispatchRun = vi.fn().mockResolvedValue(true)
+          const recovered = await runRecommendationProfileReconciliationBatch(
+            {
+              prisma,
+              classifyOutcome: async () => undefined,
+              classifySelection: async () => undefined,
+              redispatchRun,
+            },
+            current,
+          )
+          expect(recovered.staleRunsQueued).toBeGreaterThanOrEqual(1)
+          expect(redispatchRun).toHaveBeenCalledWith(
+            expect.objectContaining({ runId: reserved.id }),
+          )
+          await prisma.recommendationPlaybackEpisode.update({
+            where: { id: claim.episodeId },
+            data: { replayCount: 1 },
+          })
+          let locked!: () => void
+          let release!: () => void
+          let retentionPid = 0
+          const lockedPromise = new Promise<void>((resolve) => {
+            locked = resolve
+          })
+          const releasePromise = new Promise<void>((resolve) => {
+            release = resolve
+          })
+          const retention = prisma.$transaction(async (tx) => {
+            await lockRetentionRoots(tx, {
+              profileIds: [grant.profileId!],
+              episodeIds: [claim.episodeId],
+            })
+            const [holder] = await tx.$queryRaw<Array<{ pid: number }>>`
+              SELECT pg_backend_pid() AS pid
+            `
+            retentionPid = holder!.pid
+            locked()
+            await releasePromise
+          })
+          await lockedPromise
+          let classified = false
+          const reclassification = new RecommendationIntegrityService({
+            prisma,
+            now: () => current,
+          })
+            .classifyPlaybackOutcome(outcome.id)
+            .finally(() => {
+              classified = true
+            })
+          try {
+            let blockedOnProfile = false
+            for (let attempt = 0; attempt < 50; attempt++) {
+              const [row] = (
+                await admin.query<{ blocked_on_profile: boolean }>(
+                  `SELECT EXISTS (
+                     SELECT 1 FROM pg_stat_activity activity
+                     WHERE activity.datname = current_database()
+                       AND $1::integer = ANY(pg_blocking_pids(activity.pid))
+                       AND activity.query ILIKE '%FOR SHARE OF profile, link%'
+                   ) AS blocked_on_profile`,
+                  [retentionPid],
+                )
+              ).rows
+              blockedOnProfile = row!.blocked_on_profile
+              if (blockedOnProfile) break
+              await new Promise((resolve) => setTimeout(resolve, 10))
+            }
+            expect(blockedOnProfile).toBe(true)
+            expect(classified).toBe(false)
+          } finally {
+            release()
+          }
+          await retention
+          await expect(reclassification).resolves.toMatchObject({
+            state: "eligible",
+            revision: 2,
+          })
+          expect(
+            await prisma.recommendationProfileProjectionRun.count({
+              where: { profileId: grant.profileId },
+            }),
+          ).toBe(1)
+        }
         const projection =
           await createDatabaseRecommendationProfileProjectionService(
             prisma,

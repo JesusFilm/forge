@@ -5,10 +5,12 @@ import {
   RecommendationProfileProjectionScope,
 } from "@prisma/client"
 import { start } from "workflow/api"
+import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { runRecommendationProfileProjection } from "@/workflows/recommendationProfileProjection"
 import { RecommendationInternalStateError } from "../errors"
 import { createDatabaseRecommendationProfileProjectionService } from "./profile-projection.service"
+import { canSkipInitialEmptyProfileBootstrap } from "./initial-bootstrap"
 
 export const RECOMMENDATION_PROFILE_PROJECTION_WORKFLOW_KEY =
   "recommendation-profile-projection"
@@ -22,6 +24,17 @@ export type RecommendationProfileProjectionJobInput = Readonly<{
   expectedGeneration: number
 }>
 
+type PreparedProjection = Readonly<{
+  kind: "prepared"
+  run: { id: string; generation: number; workflowRunId?: string | null }
+  coalesced: boolean
+}>
+
+type PrepareResult =
+  | PreparedProjection
+  | Readonly<{ kind: "initial_no_evidence" }>
+  | Readonly<{ kind: "unavailable" }>
+
 export async function dispatchRecommendationProfileProjection(input: {
   sessionDigest: string | null
   profileId: string | null
@@ -30,20 +43,26 @@ export async function dispatchRecommendationProfileProjection(input: {
   evidenceWatermark?: Date
   reconciliationCause?: string
   force?: boolean
-}): Promise<{
-  queued: true
-  runId: string
-  workflowRunId: string | null
-  coalesced: boolean
-}> {
+}): Promise<
+  | Readonly<{
+      queued: true
+      runId: string
+      workflowRunId: string | null
+      coalesced: boolean
+    }>
+  | Readonly<{ queued: false; skipped: "initial_no_evidence" }>
+> {
   const result = await prepareRecommendationProfileProjection(input, false)
-  if (!result) {
+  if (result.kind === "unavailable") {
     throw new RangeError("Recommendation projection privacy scope is invalid")
+  }
+  if (result.kind === "initial_no_evidence") {
+    return { queued: false, skipped: "initial_no_evidence" }
   }
   return dispatchPreparedRecommendationProfileProjection(result, input.now)
 }
 
-async function prepareRecommendationProfileProjection(
+export async function prepareRecommendationProfileProjection(
   input: {
     sessionDigest: string | null
     profileId: string | null
@@ -54,7 +73,10 @@ async function prepareRecommendationProfileProjection(
     force?: boolean
   },
   requireActiveProfileSessionLink: boolean,
-) {
+  db: typeof prisma = prisma,
+  emptyBootstrapSkipEnabled = env.RECOMMENDATION_PROFILE_EMPTY_BOOTSTRAP_SKIP ===
+    "true",
+): Promise<PrepareResult> {
   const now = input.now ?? new Date()
   if (
     input.sessionDigest != null &&
@@ -69,7 +91,7 @@ async function prepareRecommendationProfileProjection(
     throw new RangeError("Recommendation projection privacy scope is invalid")
   }
   const scopeDigest = profileProjectionScopeDigest(input)
-  return prisma.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     await tx.$executeRaw(Prisma.sql`
       SELECT pg_advisory_xact_lock(
         hashtextextended(${`profile-projection-dispatch:${scopeDigest}`}, 459)
@@ -81,7 +103,7 @@ async function prepareRecommendationProfileProjection(
         input.privacyGeneration == null ||
         input.sessionDigest == null
       )
-        return null
+        return { kind: "unavailable" }
       const profile = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
         SELECT id
         FROM recommendation_profile
@@ -92,7 +114,7 @@ async function prepareRecommendationProfileProjection(
           AND expires_at > ${now}
         FOR SHARE
       `)
-      if (profile.length !== 1) return null
+      if (profile.length !== 1) return { kind: "unavailable" }
       const link = await tx.recommendationProfileSessionLink.findFirst({
         where: {
           profileId: input.profileId,
@@ -102,7 +124,7 @@ async function prepareRecommendationProfileProjection(
         },
         select: { id: true },
       })
-      if (!link) return null
+      if (!link) return { kind: "unavailable" }
     }
     const recent = input.force
       ? null
@@ -140,7 +162,11 @@ async function prepareRecommendationProfileProjection(
       const dispatchWasNeverRecorded =
         recent.state === RecommendationProfileProjectionRunState.PENDING &&
         recent.workflowRunId == null
-      return { run: recent, coalesced: !dispatchWasNeverRecorded }
+      return {
+        kind: "prepared",
+        run: recent,
+        coalesced: !dispatchWasNeverRecorded,
+      }
     }
     const pointer = await tx.$queryRaw<
       Array<{ generationId: string; pointerGeneration: number }>
@@ -152,6 +178,97 @@ async function prepareRecommendationProfileProjection(
       WHERE scope_digest = ${scopeDigest}
       LIMIT 1
     `)
+    // A first eligible decision can reserve the initial run before its
+    // post-commit callback starts a workflow. A later evidence watermark may
+    // outrun that reservation's creation time; reuse only while it remains
+    // unclaimed and no generation has been published for this privacy scope.
+    if (
+      pointer.length === 0 &&
+      !input.force &&
+      (input.reconciliationCause == null ||
+        input.reconciliationCause === "projection_request" ||
+        input.reconciliationCause === "evidence_advanced") &&
+      input.profileId != null &&
+      input.privacyGeneration != null &&
+      input.sessionDigest != null
+    ) {
+      const reservation = await tx.recommendationProfileProjectionRun.findFirst(
+        {
+          where: {
+            profileId: input.profileId,
+            privacyGeneration: input.privacyGeneration,
+            sessionDigest: input.sessionDigest,
+            state: RecommendationProfileProjectionRunState.PENDING,
+            workflowRunId: null,
+            reconciliationCause: "evidence_advanced",
+            expectedGenerationId: null,
+            expectedPointerGeneration: 0,
+            expiresAt: { gt: now },
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          select: { id: true, generation: true, workflowRunId: true },
+        },
+      )
+      if (reservation) {
+        const generation =
+          await tx.recommendationProfileProjectionGeneration.findFirst({
+            where: {
+              profileId: input.profileId,
+              privacyGeneration: input.privacyGeneration,
+            },
+            select: { id: true },
+          })
+        if (!generation) {
+          return { kind: "prepared", run: reservation, coalesced: false }
+        }
+      }
+    }
+    if (
+      emptyBootstrapSkipEnabled &&
+      !input.force &&
+      input.evidenceWatermark == null &&
+      (input.reconciliationCause ?? "projection_request") ===
+        "projection_request" &&
+      input.profileId != null &&
+      input.privacyGeneration != null &&
+      input.sessionDigest != null &&
+      pointer.length === 0 &&
+      (await canSkipInitialEmptyProfileBootstrap(tx, {
+        profileId: input.profileId,
+        privacyGeneration: input.privacyGeneration,
+        sessionDigest: input.sessionDigest,
+        now,
+      }))
+    ) {
+      return { kind: "initial_no_evidence" }
+    }
+    if (
+      pointer.length === 0 &&
+      input.profileId != null &&
+      input.privacyGeneration != null
+    ) {
+      // Fence a classifier's older Serializable snapshot even if it acquires
+      // the advisory lock after this transaction commits. This writes only when the first
+      // durable run is about to be created; skipped empty scopes write nothing.
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE recommendation_profile profile
+        SET updated_at = updated_at
+        WHERE profile.id = ${input.profileId}
+          AND profile.privacy_generation = ${input.privacyGeneration}
+          AND profile.state = 'active'
+          AND profile.token_digest IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM recommendation_profile_projection_generation generation
+            WHERE generation.profile_id = profile.id
+              AND generation.privacy_generation = profile.privacy_generation
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM recommendation_profile_projection_run existing
+            WHERE existing.profile_id = profile.id
+              AND existing.privacy_generation = profile.privacy_generation
+          )
+      `)
+    }
     const run = await tx.recommendationProfileProjectionRun.create({
       data: {
         scope: input.profileId
@@ -171,15 +288,12 @@ async function prepareRecommendationProfileProjection(
         expiresAt: new Date(now.getTime() + 24 * 3_600_000),
       },
     })
-    return { run, coalesced: false as const }
+    return { kind: "prepared", run, coalesced: false }
   })
 }
 
 async function dispatchPreparedRecommendationProfileProjection(
-  prepared: {
-    run: { id: string; generation: number; workflowRunId?: string | null }
-    coalesced: boolean
-  },
+  prepared: PreparedProjection,
   suppliedNow?: Date,
 ) {
   if (prepared.coalesced) {
@@ -279,7 +393,7 @@ export async function redispatchRecommendationProfileProjectionRun(input: {
   })
   if (!run) return null
   return dispatchPreparedRecommendationProfileProjection(
-    { run, coalesced: false },
+    { kind: "prepared", run, coalesced: false },
     now,
   )
 }
@@ -332,9 +446,10 @@ export async function dispatchRecommendationProfileFeedback(input: {
     },
     true,
   )
-  const durable = prepared
-    ? await dispatchPreparedRecommendationProfileProjection(prepared, now)
-    : null
+  const durable =
+    prepared.kind === "prepared"
+      ? await dispatchPreparedRecommendationProfileProjection(prepared, now)
+      : null
   return {
     session: null,
     durable,

@@ -10,6 +10,10 @@ import {
 } from "@prisma/client"
 import { prisma as defaultPrisma } from "@/db/client"
 import {
+  insertInitialProfileProjectionReservation,
+  prepareInitialProfileProjectionReservation,
+} from "./profiles/initial-bootstrap"
+import {
   ACTIVE_WATCH_PROXY_VERSION,
   RECOMMENDATION_CONTRACTS,
 } from "./contracts"
@@ -193,7 +197,15 @@ export class RecommendationIntegrityService {
             decision,
           })
 
-          return writeDecision(tx, {
+          const reservation = await prepareProfileEligibleFirstSource(
+            tx,
+            decision,
+            {
+              sessionDigest: outcome.episode.sessionDigest,
+              now: this.deps.now?.() ?? new Date(),
+            },
+          )
+          const receipt = await writeDecision(tx, {
             id: this.deps.newId?.() ?? randomUUID(),
             sourceKey,
             sourceType: RecommendationEligibilitySourceType.PLAYBACK_OUTCOME,
@@ -208,6 +220,9 @@ export class RecommendationIntegrityService {
             decidedAt: this.deps.now?.() ?? new Date(),
             expiresAt: outcome.expiresAt,
           })
+          if (reservation && receipt.eligibleScopes.includes("profile"))
+            await insertInitialProfileProjectionReservation(tx, reservation)
+          return receipt
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       ),
@@ -420,7 +435,12 @@ export class RecommendationIntegrityService {
             measures,
             decision,
           })
-          return writeDecision(tx, {
+          const reservation = await prepareProfileEligibleFirstSource(
+            tx,
+            decision,
+            { sessionDigest: selection.request.sessionDigest, now },
+          )
+          const receipt = await writeDecision(tx, {
             id: this.deps.newId?.() ?? randomUUID(),
             sourceKey,
             sourceType: RecommendationEligibilitySourceType.SELECTION,
@@ -435,6 +455,9 @@ export class RecommendationIntegrityService {
             decidedAt: now,
             expiresAt: selection.expiresAt,
           })
+          if (reservation && receipt.eligibleScopes.includes("profile"))
+            await insertInitialProfileProjectionReservation(tx, reservation)
+          return receipt
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       ),
@@ -601,6 +624,20 @@ function excludedDecision(reasonCode: string): RecommendationIntegrityDecision {
     eligibleScopes: [],
     contributionWeight: 0,
   }
+}
+
+async function prepareProfileEligibleFirstSource(
+  tx: Prisma.TransactionClient,
+  decision: RecommendationIntegrityDecision,
+  source: { sessionDigest: string; now: Date },
+): ReturnType<typeof prepareInitialProfileProjectionReservation> {
+  if (
+    decision.state !== "eligible" ||
+    !decision.eligibleScopes.includes("profile")
+  ) {
+    return null
+  }
+  return prepareInitialProfileProjectionReservation(tx, source)
 }
 
 async function writeDecision(

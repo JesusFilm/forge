@@ -7,12 +7,18 @@ const projectionRun = vi.hoisted(() => ({
   findUnique: vi.fn(),
   updateMany: vi.fn(),
 }))
+const projectionGeneration = vi.hoisted(() => ({ findFirst: vi.fn() }))
 const project = vi.hoisted(() => vi.fn())
 const queryRaw = vi.hoisted(() => vi.fn())
 const executeRaw = vi.hoisted(() => vi.fn())
 const sessionLink = vi.hoisted(() => ({ findFirst: vi.fn() }))
 const transaction = vi.hoisted(() => vi.fn())
+const skipBootstrap = vi.hoisted(() => vi.fn())
+const testEnv = vi.hoisted(() => ({
+  RECOMMENDATION_PROFILE_EMPTY_BOOTSTRAP_SKIP: "false",
+}))
 vi.mock("workflow/api", () => ({ start }))
+vi.mock("@/config/env", () => ({ env: testEnv }))
 vi.mock("@/db/client", () => ({
   prisma: {
     recommendationProfileProjectionRun: projectionRun,
@@ -24,6 +30,9 @@ vi.mock("@/db/client", () => ({
 vi.mock("./profile-projection.service", () => ({
   createDatabaseRecommendationProfileProjectionService: () => ({ project }),
 }))
+vi.mock("./initial-bootstrap", () => ({
+  canSkipInitialEmptyProfileBootstrap: skipBootstrap,
+}))
 
 import {
   dispatchRecommendationProfileFeedback,
@@ -34,8 +43,11 @@ import { runRecommendationProfileProjection } from "@/workflows/recommendationPr
 
 beforeEach(() => {
   vi.clearAllMocks()
+  testEnv.RECOMMENDATION_PROFILE_EMPTY_BOOTSTRAP_SKIP = "false"
+  skipBootstrap.mockResolvedValue(false)
   projectionRun.create.mockResolvedValue({ id: "run-1", generation: 1 })
   projectionRun.findFirst.mockResolvedValue(null)
+  projectionGeneration.findFirst.mockResolvedValue(null)
   projectionRun.findUnique.mockResolvedValue({
     id: "run-1",
     scope: "SESSION",
@@ -55,6 +67,7 @@ beforeEach(() => {
       $executeRaw: executeRaw,
       recommendationProfileSessionLink: sessionLink,
       recommendationProfileProjectionRun: projectionRun,
+      recommendationProfileProjectionGeneration: projectionGeneration,
     }),
   )
   project.mockResolvedValue({
@@ -147,6 +160,70 @@ describe("recommendation profile projection workflow job", () => {
         sessionDigest: "b".repeat(64),
       }),
     })
+  })
+
+  it("does not consult the bootstrap gate while disabled", async () => {
+    await dispatchRecommendationProfileProjection({
+      sessionDigest: "b".repeat(64),
+      profileId: "profile-1",
+      privacyGeneration: 4,
+    })
+    expect(skipBootstrap).not.toHaveBeenCalled()
+    expect(projectionRun.create).toHaveBeenCalledOnce()
+  })
+
+  it("skips only an untouched ordinary durable bootstrap with no raw sources", async () => {
+    testEnv.RECOMMENDATION_PROFILE_EMPTY_BOOTSTRAP_SKIP = "true"
+    queryRaw.mockResolvedValueOnce([])
+    skipBootstrap.mockResolvedValueOnce(true)
+
+    await expect(
+      dispatchRecommendationProfileProjection({
+        sessionDigest: "b".repeat(64),
+        profileId: "profile-1",
+        privacyGeneration: 4,
+      }),
+    ).resolves.toEqual({ queued: false, skipped: "initial_no_evidence" })
+    expect(skipBootstrap).toHaveBeenCalledOnce()
+    expect(projectionRun.create).not.toHaveBeenCalled()
+    expect(start).not.toHaveBeenCalled()
+  })
+
+  it("retains the old path for explicit evidence, reconciliation and session scopes", async () => {
+    testEnv.RECOMMENDATION_PROFILE_EMPTY_BOOTSTRAP_SKIP = "true"
+    await dispatchRecommendationProfileFeedback({
+      sessionDigest: "b".repeat(64),
+      profileId: "profile-1",
+      privacyGeneration: 4,
+      evidenceWatermark: new Date("2026-08-25T00:00:00.000Z"),
+    })
+    await dispatchRecommendationProfileProjection({
+      sessionDigest: "b".repeat(64),
+      profileId: "profile-1",
+      privacyGeneration: 4,
+      reconciliationCause: "eligibility_revision",
+    })
+    await dispatchRecommendationProfileProjection({
+      sessionDigest: "a".repeat(64),
+      profileId: null,
+      privacyGeneration: null,
+    })
+    expect(skipBootstrap).not.toHaveBeenCalled()
+    expect(projectionRun.create).toHaveBeenCalledTimes(3)
+  })
+
+  it("queues an ordinary durable run when the bootstrap gate finds a source", async () => {
+    testEnv.RECOMMENDATION_PROFILE_EMPTY_BOOTSTRAP_SKIP = "true"
+    queryRaw.mockResolvedValueOnce([])
+    skipBootstrap.mockResolvedValueOnce(false)
+    await expect(
+      dispatchRecommendationProfileProjection({
+        sessionDigest: "b".repeat(64),
+        profileId: "profile-1",
+        privacyGeneration: 4,
+      }),
+    ).resolves.toMatchObject({ queued: true })
+    expect(projectionRun.create).toHaveBeenCalledOnce()
   })
 
   it("skips feedback learning when no active consented profile generation is linked", async () => {
@@ -245,6 +322,44 @@ describe("recommendation profile projection workflow job", () => {
       { runId: "run-recovery", expectedGeneration: 2 },
     ])
   })
+
+  it("reuses an unstarted first-source reservation across a later watermark", async () => {
+    queryRaw.mockResolvedValueOnce([])
+    projectionRun.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: "reserved-first-source",
+      generation: 1,
+      workflowRunId: null,
+    })
+
+    await expect(
+      dispatchRecommendationProfileProjection({
+        sessionDigest: "b".repeat(64),
+        profileId: "profile-1",
+        privacyGeneration: 4,
+        evidenceWatermark: new Date("2026-08-25T00:00:00.000Z"),
+        reconciliationCause: "evidence_advanced",
+      }),
+    ).resolves.toMatchObject({ runId: "reserved-first-source" })
+    expect(projectionRun.create).not.toHaveBeenCalled()
+    expect(projectionGeneration.findFirst).toHaveBeenCalledOnce()
+  })
+
+  it.each([{ force: true }, { reconciliationCause: "eligibility_revision" }])(
+    "does not reuse an unstarted reservation for a forced or reconciliation wake: %j",
+    async (override) => {
+      queryRaw.mockResolvedValueOnce([])
+      projectionRun.findFirst.mockResolvedValueOnce(null)
+      await dispatchRecommendationProfileProjection({
+        sessionDigest: "b".repeat(64),
+        profileId: "profile-1",
+        privacyGeneration: 4,
+        evidenceWatermark: new Date("2026-08-25T00:00:00.000Z"),
+        ...override,
+      })
+      expect(projectionRun.create).toHaveBeenCalledOnce()
+      expect(projectionGeneration.findFirst).not.toHaveBeenCalled()
+    },
+  )
 
   it("claims, publishes and completes with generation fencing", async () => {
     queryRaw.mockResolvedValueOnce([{ generation: 1, attemptCount: 1 }])
