@@ -21,6 +21,7 @@ import {
   type WatchEpisode,
 } from "../../src/lib/normalizeVideo"
 import { useScreenAdminForms } from "../../src/i18n/useScreenAdminForms"
+import { useT } from "../../src/i18n/useT"
 import { videoTextVariables } from "../../src/lib/videoText"
 import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
 import {
@@ -88,6 +89,8 @@ export default function SeriesScreen() {
   const playerFrameVisible = usePlaybackFrameVisible()
   const typography = useTypography()
   const insets = useSafeAreaInsets()
+  const t = useT("Series")
+  const tSheet = useT("DownloadSheet")
 
   const { series, setSeries, languages, selectedLanguageSlug } =
     useSeriesSession()
@@ -164,7 +167,7 @@ export default function SeriesScreen() {
   // Toast a genuine series-completion: sawDownloadActivityRef skips a fresh mount
   // of an already-saved series; cancellingRef skips a cancel-revert (also lands
   // fully-downloaded). `queued` keeps inProgress true between sequential episodes.
-  const [seriesSnackbar, setSeriesSnackbar] = useState<string | null>(null)
+  const [seriesSnackbar, setSeriesSnackbar] = useState(false)
   const sawDownloadActivityRef = useRef(false)
   const cancellingRef = useRef(false)
   useEffect(() => {
@@ -178,7 +181,7 @@ export default function SeriesScreen() {
     const wasCancelling = cancellingRef.current
     cancellingRef.current = false
     if (!wasCancelling && seriesFullyDownloaded) {
-      setSeriesSnackbar("Series downloaded")
+      setSeriesSnackbar(true)
     }
   }, [downloadState.inProgress, seriesFullyDownloaded])
 
@@ -281,18 +284,19 @@ export default function SeriesScreen() {
     const savedSlugs = (series?.episodes ?? [])
       .map((episode) => episode.slug)
       .filter((slug) => getRecord(slug) != null)
-    const seriesTitle = series?.title ?? "this series"
+    const seriesTitle = series?.title ?? t("thisSeries")
 
     const confirmRemoveAll = () => {
       Alert.alert(
-        "Remove downloads?",
-        `This removes all ${savedSlugs.length} downloaded ${
-          savedSlugs.length === 1 ? "episode" : "episodes"
-        } for “${seriesTitle}.” You can download them again anytime.`,
+        t("removeDownloadsTitle"),
+        t("removeDownloadsMessage", {
+          count: savedSlugs.length,
+          title: seriesTitle,
+        }),
         [
-          { text: "Cancel", style: "cancel" },
+          { text: t("cancel"), style: "cancel" },
           {
-            text: "Remove",
+            text: t("remove"),
             style: "destructive",
             onPress: () => {
               // Sequential so the manifest index isn't raced across writes.
@@ -309,28 +313,25 @@ export default function SeriesScreen() {
     // language (audio language is set via the language pill, not here). Same-
     // language quality/subtitle re-download is a known no-op (decideEpisodeAction).
     const savedCount = downloadState.total
-    const savedLabel = `${savedCount} ${
-      savedCount === 1 ? "episode" : "episodes"
-    } saved for offline viewing`
     presentActionMenu({
       title: seriesTitle,
-      message: savedLabel,
+      message: t("savedForOffline", { count: savedCount }),
       actions: [
-        { text: "Change quality or subtitles", onPress: openDownloadSheet },
+        { text: t("changeQualityOrSubtitles"), onPress: openDownloadSheet },
         ...(RAW_EXPORT_ENABLED
           ? [
               {
-                text: rawModeLabel(Platform.OS),
+                text: rawModeLabel(Platform.OS, tSheet),
                 onPress: openRawExportSheet,
               },
             ]
           : []),
         {
-          text: "Remove all downloads",
+          text: t("removeAllDownloads"),
           style: "destructive" as const,
           onPress: confirmRemoveAll,
         },
-        { text: "Cancel", style: "cancel" as const },
+        { text: t("cancel"), style: "cancel" as const },
       ],
     })
   }, [
@@ -341,6 +342,8 @@ export default function SeriesScreen() {
     deleteDownload,
     openDownloadSheet,
     openRawExportSheet,
+    t,
+    tSheet,
   ])
 
   // Downloading → the ring's pause glyph pauses the active transfer (the pump
@@ -376,14 +379,13 @@ export default function SeriesScreen() {
       requestSeriesExportCancel(series?.slug ?? "")
       slugs.forEach((slug) => store.requestCancel(slug))
     }
-    const MESSAGE =
-      "This export is paused. Stopping ends the whole series export. Episodes already saved stay in your library."
+    const MESSAGE = t("exportPausedMessage")
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          title: "Saving to Files",
+          title: t("savingToFiles"),
           message: MESSAGE,
-          options: ["Stop Download", "Resume", "Cancel"],
+          options: [t("stopDownload"), t("resume"), t("cancel")],
           destructiveButtonIndex: 0,
           cancelButtonIndex: 2,
           userInterfaceStyle: "dark",
@@ -394,13 +396,13 @@ export default function SeriesScreen() {
         },
       )
     } else {
-      Alert.alert("Saving to Files", MESSAGE, [
-        { text: "Stop Download", style: "destructive", onPress: stopAll },
-        { text: "Resume", onPress: resumeAll },
-        { text: "Cancel", style: "cancel" },
+      Alert.alert(t("savingToFiles"), MESSAGE, [
+        { text: t("stopDownload"), style: "destructive", onPress: stopAll },
+        { text: t("resume"), onPress: resumeAll },
+        { text: t("cancel"), style: "cancel" },
       ])
     }
-  }, [downloadState.exportingSlugs])
+  }, [downloadState.exportingSlugs, t])
 
   // Paused → the ring's play glyph opens a sheet: resume, or cancel the batch
   // (keeping existing copies). Replaces the old always-on batch bar.
@@ -415,12 +417,12 @@ export default function SeriesScreen() {
         (episode) => void cancelDownload(episode.slug),
       )
     }
-    const RESUME = "Resume"
-    const CANCEL_ALL = "Cancel all downloads"
+    const RESUME = t("resume")
+    const CANCEL_ALL = t("cancelAllDownloads")
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: [CANCEL_ALL, RESUME, "Cancel"],
+          options: [CANCEL_ALL, RESUME, t("cancel")],
           destructiveButtonIndex: 0,
           cancelButtonIndex: 2,
           userInterfaceStyle: "dark",
@@ -431,10 +433,10 @@ export default function SeriesScreen() {
         },
       )
     } else {
-      Alert.alert("Downloads paused", undefined, [
+      Alert.alert(t("downloadsPaused"), undefined, [
         { text: CANCEL_ALL, style: "destructive", onPress: cancelAll },
         { text: RESUME, onPress: resumeAll },
-        { text: "Cancel", style: "cancel" },
+        { text: t("cancel"), style: "cancel" },
       ])
     }
   }, [
@@ -442,6 +444,7 @@ export default function SeriesScreen() {
     series?.episodes,
     resumeDownload,
     cancelDownload,
+    t,
   ])
 
   // Tap an episode → its detail page. Language carries via the persisted
@@ -480,9 +483,9 @@ export default function SeriesScreen() {
       <View style={layout.screenContainer}>
         <StatusBar style="light" />
         <View style={layout.centered}>
-          <Text style={text.errorTitle}>Series Not Found</Text>
+          <Text style={text.errorTitle}>{t("notFoundTitle")}</Text>
           <Text style={text.errorMessage}>
-            {error?.message ?? "This series could not be loaded."}
+            {error?.message ?? t("loadError")}
           </Text>
           <Text
             style={styles.retryLink}
@@ -491,8 +494,9 @@ export default function SeriesScreen() {
               void refetchText()
             }}
             accessibilityRole="button"
+            {...{ "dd-action-name": "series-load-retry" }}
           >
-            Retry
+            {t("retry")}
           </Text>
         </View>
         <FloatingBackButton {...BACK_BUTTON_PROPS} />
@@ -518,7 +522,9 @@ export default function SeriesScreen() {
       accessible={true}
       accessibilityRole="image"
       accessibilityLabel={
-        displayTitle ? `${displayTitle} poster` : "Series poster"
+        displayTitle
+          ? t("posterAriaLabel", { title: displayTitle })
+          : t("seriesPosterAriaLabel")
       }
     >
       <View style={styles.posterHero}>
@@ -605,7 +611,7 @@ export default function SeriesScreen() {
                       styles.gridHeading,
                     ]}
                   >
-                    Videos
+                    {t("videosHeading")}
                   </Text>
                 )}
               </>
@@ -614,7 +620,7 @@ export default function SeriesScreen() {
                 {error != null && (
                   <View style={styles.inlineError}>
                     <Text style={text.errorMessage}>
-                      Couldn&apos;t load full details.
+                      {t("detailsLoadError")}
                     </Text>
                     <Text
                       style={styles.retryLink}
@@ -623,8 +629,9 @@ export default function SeriesScreen() {
                         void refetchText()
                       }}
                       accessibilityRole="button"
+                      {...{ "dd-action-name": "series-details-retry" }}
                     >
-                      Retry
+                      {t("retry")}
                     </Text>
                   </View>
                 )}
@@ -644,9 +651,9 @@ export default function SeriesScreen() {
       )}
 
       <Snackbar
-        message={seriesSnackbar ?? ""}
-        visible={seriesSnackbar != null}
-        onDismiss={() => setSeriesSnackbar(null)}
+        message={seriesSnackbar ? t("seriesDownloaded") : ""}
+        visible={seriesSnackbar}
+        onDismiss={() => setSeriesSnackbar(false)}
       />
     </View>
   )

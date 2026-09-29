@@ -1,6 +1,8 @@
 import { useCallback } from "react"
 import { useRouter } from "expo-router"
 
+import { useT } from "../../src/i18n/useT"
+
 import { SubtitleSheetContent } from "../../src/components/watch/SubtitleSheet"
 import { SheetLoading } from "../../src/components/watch/SheetLoading"
 import { SheetError } from "../../src/components/watch/SheetError"
@@ -14,6 +16,7 @@ import { reconcileSeriesSubtitleSlug } from "../../src/lib/subtitleSelection"
 // app-wide, mirroring how the series language sheet sets audio.
 export default function SeriesSubtitleRoute() {
   const router = useRouter()
+  const t = useT("Series")
   const { series, selectedLanguageSlug } = useSeriesSession()
   const {
     subtitleLanguageSlug,
@@ -59,12 +62,7 @@ export default function SeriesSubtitleRoute() {
 
   if (!series || !selectedLanguageSlug) return <SheetLoading />
   if (error)
-    return (
-      <SheetError
-        message="Couldn't load subtitles. Check your connection and try again."
-        onRetry={retry}
-      />
-    )
+    return <SheetError message={t("subtitlesLoadError")} onRetry={retry} />
   if (subtitles == null || loading) return <SheetLoading />
 
   // Highlight the track the series actually uses (the preference resolved against

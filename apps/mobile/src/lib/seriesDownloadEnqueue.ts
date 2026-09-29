@@ -1,3 +1,4 @@
+import type { UiT } from "../i18n/useT"
 import { mapWithConcurrency } from "./concurrentMap"
 import {
   decideEpisodeAction,
@@ -331,15 +332,22 @@ export async function runSeriesBatchEnqueue(
  * downloaded · 1 couldn't start". Suppresses zero-count buckets; empty string
  * when nothing happened.
  */
-export function formatEnqueueSummary(summary: EnqueueSummary): string {
+export function formatEnqueueSummary(
+  summary: EnqueueSummary,
+  t: UiT<"SeriesDownload">,
+): string {
   const parts: string[] = []
-  if (summary.started > 0) parts.push(`${summary.started} started`)
-  if (summary.switched > 0) parts.push(`${summary.switched} switched`)
+  if (summary.started > 0) {
+    parts.push(t("startedCount", { count: summary.started }))
+  }
+  if (summary.switched > 0) {
+    parts.push(t("switchedCount", { count: summary.switched }))
+  }
   if (summary.alreadyPresent > 0) {
-    parts.push(`${summary.alreadyPresent} already downloaded`)
+    parts.push(t("alreadyDownloadedCount", { count: summary.alreadyPresent }))
   }
   if (summary.couldntStart > 0) {
-    parts.push(`${summary.couldntStart} couldn't start`)
+    parts.push(t("couldntStartCount", { count: summary.couldntStart }))
   }
   return parts.join(" · ")
 }

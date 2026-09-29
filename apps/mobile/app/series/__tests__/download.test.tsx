@@ -3,6 +3,7 @@
 // aggregate storage gate, the result-derived enqueue routing/buckets, and the
 // request builder — is factored into src/lib/seriesDownloadEnqueue.ts and unit-
 // tested here. These cover AE1/AE3/AE4/AE5/AE6/AE8 at the orchestration layer.
+import { getT } from "../../../src/i18n/useT"
 import {
   buildEpisodeRequest,
   enqueueResolvedEpisodes,
@@ -478,14 +479,17 @@ describe("AE6 — summary buckets from results, not the decision", () => {
   })
 
   it("formats an enqueue-framed line, suppressing zero buckets", () => {
-    const line = formatEnqueueSummary({
-      results: [],
-      started: 12,
-      switched: 1,
-      alreadyPresent: 3,
-      couldntStart: 0,
-      allOk: false,
-    })
+    const line = formatEnqueueSummary(
+      {
+        results: [],
+        started: 12,
+        switched: 1,
+        alreadyPresent: 3,
+        couldntStart: 0,
+        allOk: false,
+      },
+      getT("SeriesDownload"),
+    )
     expect(line).toBe("12 started · 1 switched · 3 already downloaded")
     expect(line).not.toContain("couldn't start")
   })

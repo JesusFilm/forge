@@ -14,7 +14,13 @@
     "BibleReaderSettings": "The Bible reader's settings sheet: color mode, text size, typeface, line spacing, verse numbers, and arrow buttons.",
     "BibleDownload": "A system alert that downloads a Bible translation to the device, shows the progress, removes it, or explains why a download stopped.",
     "LapseReminder": "A phone notification that the app sends one day or seven days after the viewer last used it, to invite them back to the last video they watched.",
-    "Explore": "The Explore tab: a full-screen vertical feed of short video clips. The viewer swipes up for the next clip. White text and round buttons sit over the playing video."
+    "Explore": "The Explore tab: a full-screen vertical feed of short video clips. The viewer swipes up for the next clip. White text and round buttons sit over the playing video.",
+    "Series": "The series page: a trailer or a poster, the series title, buttons for language, subtitles, download, and share, and a grid of episode cards. It also holds the menus and alerts that manage the downloads of a series, and the language and subtitle sheets.",
+    "SeriesDownload": "A sheet that downloads every episode of a series at once, or saves all of them as files in a folder on the device. It shows the quality and subtitle choices, the progress of the check, and a summary of the result.",
+    "DownloadSheet": "The download sheet of one video, and the parts that the series download sheet also uses: the choice between an offline copy in the app and a file saved on the device, the quality and subtitle lists, the terms-of-use checkbox, and the terms window. The terms themselves stay in English.",
+    "DownloadButton": "The spoken label of the round download button on a video page and on a series page. It names the state of the download and what a tap does. Only a screen reader reads it.",
+    "Library": "The list of downloaded videos in the Profile tab. Each row shows the size and the state of one download. The viewer can select videos and delete them.",
+    "ExportReport": "A small card at the bottom of the screen that reports the result after the app saves a video file, or every episode of a series, in a folder on the device."
   },
   "keys": {
     "Common.goBackAriaLabel": {
@@ -159,6 +165,48 @@
     },
     "Explore.emptyTitle": {
       "composition": "{languageName} is the name of the viewer's feed language, for example Swahili. It can arrive in English, so never inflect it."
+    },
+    "Series.thisSeries": {
+      "composition": "Takes the place of the series title in removeDownloadsMessage and as a menu title when the series has no title. Lower case in English."
+    },
+    "Series.savedOfflineAriaLabel": {
+      "role": "episode state for a screen reader",
+      "visibility": "assistive technology only",
+      "composition": "Follows the episode title after a comma, so it starts in lower case in English."
+    },
+    "SeriesDownload.episodesInLanguage": {
+      "composition": "{language} is the name of a language, for example Swahili. It can arrive in English, so never inflect it."
+    },
+    "SeriesDownload.startedCount": {
+      "composition": "One part of a summary line. The app joins the parts with a middle dot, for example: 12 started · 1 switched · 3 already downloaded."
+    },
+    "DownloadSheet.agreeToTerms": {
+      "composition": "{terms} is a link with the text of termsLink (Terms of Use). Put {terms} where the link belongs in the sentence."
+    },
+    "DownloadSheet.optionsAriaLabel": {
+      "role": "list accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{section} is a list heading, for example Quality."
+    },
+    "DownloadSheet.saveToFiles": {
+      "composition": "Files is the name of Apple's Files app."
+    },
+    "DownloadSheet.unknownSize": {
+      "composition": "Shows in place of a file size, such as 1.5 GB, when the size is not known."
+    },
+    "DownloadButton.downloadingAtAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{percent} is a whole number from 1 to 100."
+    },
+    "Library.downloadedStatus": {
+      "composition": "{size} is a file size, for example 74 MB."
+    },
+    "Library.failedCount": {
+      "composition": "Follows the size of a series in a gray line, for example: 3 videos · 1.5 GB · 2 failed. Keep the middle dot at the start."
+    },
+    "ExportReport.savedToFolder": {
+      "composition": "{folder} is the name of the folder that the viewer picked, for example Downloads."
     }
   }
 }

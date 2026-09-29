@@ -2,6 +2,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useT } from "../../i18n/useT"
 import { ACCENT, TEXT_ON_OVERLAY, TEXT_PRIMARY } from "../../lib/color"
 import { formatLibraryBytes } from "../../lib/libraryDownloads"
 import { feedback } from "../../styles/shared"
@@ -30,6 +31,7 @@ export function SelectionActionBar({
   onDeletePress,
 }: SelectionActionBarProps) {
   const insets = useSafeAreaInsets()
+  const t = useT("Library")
 
   // The bar stands in for the tab bar, so on iOS it takes the box the hidden
   // UIKit bar left behind: flush, full width, its own height above the home
@@ -70,10 +72,11 @@ export function SelectionActionBar({
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Retry failed downloads"
+          accessibilityLabel={t("retryFailedAriaLabel")}
+          {...{ "dd-action-name": "library-retry-failed" }}
         >
           <Ionicons name="refresh" size={17} color={TEXT_PRIMARY} />
-          <Text style={styles.ghostText}>Retry failed</Text>
+          <Text style={styles.ghostText}>{t("retryFailed")}</Text>
         </Pressable>
       )}
       <Pressable
@@ -88,14 +91,18 @@ export function SelectionActionBar({
         ]}
         accessibilityRole="button"
         accessibilityLabel={
-          count > 0 ? `Delete ${count} selected videos` : "Delete"
+          count > 0 ? t("deleteSelectedAriaLabel", { count }) : t("delete")
         }
+        {...{ "dd-action-name": "library-delete-selected" }}
       >
         <Ionicons name="trash-outline" size={17} color={TEXT_ON_OVERLAY} />
         <Text style={styles.dangerText}>
           {count > 0
-            ? `Delete ${count} · ${formatLibraryBytes(combinedBytes)}`
-            : "Delete"}
+            ? t("deleteWithSize", {
+                count,
+                size: formatLibraryBytes(combinedBytes),
+              })
+            : t("delete")}
         </Text>
       </Pressable>
     </View>

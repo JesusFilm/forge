@@ -56,6 +56,7 @@ import {
   nextBatchAction,
   shouldReleaseBatchScope,
 } from "../lib/batchDownloadQueue"
+import { currentAdminForms } from "../i18n/adminLanguage"
 import { normalizeDubMedia } from "../lib/normalizeVideo"
 import {
   buildReattachRequest,
@@ -183,7 +184,11 @@ async function reresolveMediaUrl(args: {
       fetchPolicy: "network-only",
       context: { fetchOptions: { signal: controller.signal } },
     })
-    const media = normalizeDubMedia(res.data?.videoDub ?? null)
+    // The forms name the subtitle tracks; the pick below reads only ids.
+    const media = normalizeDubMedia(
+      res.data?.videoDub ?? null,
+      currentAdminForms(),
+    )
     if (!media) {
       // R28: a null re-resolution is the pre-transfer step that leaves a download
       // "stuck queued / never starts" — surface each null branch distinctly.

@@ -1,5 +1,10 @@
 // Canonical source: https://www.jesusfilm.org/terms-of-use/
 // Mirrored from apps/web/src/lib/terms-of-use.ts — keep in sync.
+// KTD17: English only, outside the catalogs, until a human reviews a translation.
+
+/** The terms' language, so a screen reader reads them as English. */
+export const TERMS_OF_USE_LANGUAGE = "en"
+
 export const TERMS_OF_USE_PARAGRAPHS: readonly string[] = [
   "PLEASE CAREFULLY REVIEW THE TERMS OF USE OF THIS SITE. As your use of the site will indicate your acceptance of these terms, do not use the site if you do not agree to be bound by these terms. We may periodically change the terms, so please check them from time to time as your continued use of the site signifies your acceptance of any changed items.",
   "WHILE WE MAKE REASONABLE EFFORTS TO PROVIDE ACCURATE AND TIMELY INFORMATION, REPORTS AND PRAYER REQUESTS ON JESUSFILM.ORG /.COM /.NET, YOU SHOULD NOT ASSUME THAT THE INFORMATION PROVIDED IS ALWAYS UP TO DATE OR THAT THIS SITE CONTAINS ALL THE RELEVANT INFORMATION AVAILABLE. IN PARTICULAR, IF YOU ARE MAKING A CONTRIBUTION DECISION REGARDING JESUS FILM PROJECT, PLEASE CONSULT A NUMBER OF DIFFERENT SOURCES, INCLUDING THE CHARTER MEMBERSHIP INFORMATION AT THE EVANGELICAL COUNCIL FOR FINANCIAL ACCOUNTABILITY (ECFA).",

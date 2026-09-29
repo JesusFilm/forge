@@ -1,5 +1,6 @@
 import { useCallback } from "react"
 
+import { useT } from "../../i18n/useT"
 import { SearchableListSheet } from "../sheets/SearchableListSheet"
 import type { WatchChildLanguage } from "../../lib/normalizeVideo"
 
@@ -26,6 +27,7 @@ export function SeriesLanguageSheet({
   onLanguageChange,
   onClose,
 }: SeriesLanguageSheetProps) {
+  const t = useT("Series")
   const handleSelect = useCallback(
     (lang: WatchChildLanguage) => {
       // Exact slug match — never bcp47.
@@ -44,9 +46,9 @@ export function SeriesLanguageSheet({
       getPrimaryLabel={displayName}
       getSearchValues={getSearchValues}
       onSelect={handleSelect}
-      searchPlaceholder="Search languages..."
-      searchAccessibilityLabel="Search languages"
-      emptySearchMessage="No languages found"
+      searchPlaceholder={t("searchLanguagesPlaceholder")}
+      searchAccessibilityLabel={t("searchLanguagesAriaLabel")}
+      emptySearchMessage={t("noLanguagesFound")}
     />
   )
 }

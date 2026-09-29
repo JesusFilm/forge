@@ -1,3 +1,5 @@
+import type { UiT } from "../i18n/useT"
+import { compareIds } from "./collation"
 import type {
   OfflineDownloadRecord,
   OfflineDownloadState,
@@ -85,17 +87,22 @@ export type LibraryRowState = {
  */
 export function libraryRowState(
   record: OfflineDownloadRecord,
+  t: UiT<"Library">,
 ): LibraryRowState {
   if (record.swapFrom != null) {
     return {
-      subtitle: `${formatLibraryBytes(record.swapFrom.totalBytes)} · Downloaded`,
+      subtitle: t("downloadedStatus", {
+        size: formatLibraryBytes(record.swapFrom.totalBytes),
+      }),
       affordance: "check",
     }
   }
   switch (record.state) {
     case "downloaded":
       return {
-        subtitle: `${formatLibraryBytes(record.totalBytes)} · Downloaded`,
+        subtitle: t("downloadedStatus", {
+          size: formatLibraryBytes(record.totalBytes),
+        }),
         affordance: "check",
       }
     case "downloading": {
@@ -103,6 +110,7 @@ export function libraryRowState(
         record.totalBytes > 0
           ? Math.max(0, Math.min(1, record.bytesWritten / record.totalBytes))
           : 0
+      // No words, so the format stays here rather than in the catalog.
       return {
         subtitle: `${Math.round(fraction * 100)}% · ${formatLibraryBytes(record.totalBytes)}`,
         affordance: "ring",
@@ -110,16 +118,16 @@ export function libraryRowState(
       }
     }
     case "queued":
-      return { subtitle: "Queued", affordance: "none" }
+      return { subtitle: t("queued"), affordance: "none" }
     case "paused":
-      return { subtitle: "Paused", affordance: "resume" }
+      return { subtitle: t("paused"), affordance: "resume" }
     case "failed":
-      return { subtitle: "Download failed", affordance: "retry" }
+      return { subtitle: t("failed"), affordance: "retry" }
     case "canceled":
     default:
       // Unreachable — the provider filters canceled out of offlineRecords.
       // Degrade to the idle shape rather than throw.
-      return { subtitle: "Queued", affordance: "none" }
+      return { subtitle: t("queued"), affordance: "none" }
   }
 }
 
@@ -169,7 +177,7 @@ function compareByTime(
   bKey: string,
   order: "newestFirst" | "oldestFirst",
 ): number {
-  if (aTime == null && bTime == null) return aKey.localeCompare(bKey)
+  if (aTime == null && bTime == null) return compareIds(aKey, bKey)
   if (aTime == null) return 1
   if (bTime == null) return -1
   return order === "newestFirst" ? bTime - aTime : aTime - bTime

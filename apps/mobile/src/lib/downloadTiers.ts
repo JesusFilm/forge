@@ -1,3 +1,4 @@
+import { getT, type UiT } from "../i18n/useT"
 import type { WatchDownload } from "./normalizeVideo"
 
 // Size-based quality tiering shared by the per-video download sheet and the
@@ -14,9 +15,16 @@ export type QualityTier = (typeof QUALITY_TIERS)[number]
 
 export type TieredDownload = WatchDownload & { tier: QualityTier }
 
-export function formatFileSize(sizeString: string): string {
+export type FileSizeT = UiT<"DownloadSheet">
+
+// Units and the decimal point stay raw in every language. React callers pass
+// their own `t`; the default serves `.ts` callers.
+export function formatFileSize(
+  sizeString: string,
+  t: FileSizeT = getT("DownloadSheet"),
+): string {
   const bytes = Number(sizeString)
-  if (Number.isNaN(bytes) || bytes <= 0) return "Unknown"
+  if (Number.isNaN(bytes) || bytes <= 0) return t("unknownSize")
   const mb = bytes / 1048576
   if (mb >= 1024) {
     return `${(mb / 1024).toFixed(1)} GB`
@@ -30,11 +38,14 @@ export function formatFileSize(sizeString: string): string {
  * approximate ("~") rather than showing an exact total the storage gate would
  * later reject. A zero/unknown total already renders honestly as "Unknown".
  */
-export function formatTierSize(total: {
-  bytes: number
-  isLowerBound: boolean
-}): string {
-  const text = formatFileSize(String(total.bytes))
+export function formatTierSize(
+  total: {
+    bytes: number
+    isLowerBound: boolean
+  },
+  t: FileSizeT = getT("DownloadSheet"),
+): string {
+  const text = formatFileSize(String(total.bytes), t)
   return total.isLowerBound && total.bytes > 0 ? `~${text}` : text
 }
 

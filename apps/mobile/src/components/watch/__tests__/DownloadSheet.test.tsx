@@ -75,8 +75,11 @@ jest.mock("../../../contexts/DownloadsProvider", () => ({
 jest.mock("../../../contexts/WatchPreferencesProvider", () => ({
   useWatchPreferences: () => ({ wifiOnly: false }),
 }))
+const mockQuery = jest.fn()
 jest.mock("../../../lib/apolloClient", () => ({
-  getApolloClient: () => ({ query: jest.fn() }),
+  getApolloClient: () => ({
+    query: (...args: unknown[]) => mockQuery(...args),
+  }),
 }))
 jest.mock("../../../lib/queries", () => ({
   GET_VIDEO_DUB: "GET_VIDEO_DUB",
@@ -113,6 +116,15 @@ jest.mock("../../../i18n/catalogs.generated", () =>
             low: "Низкое",
           },
           Subtitles: { off: "Выкл.", noSubtitles: "Без субтитров" },
+          DownloadSheet: {
+            offlineWatching: "Офлайн-просмотр",
+            downloadButton: "Скачать",
+            downloadVideoAriaLabel: "Скачать видео",
+          },
+          SeriesDownload: {
+            downloadAll: "Скачать все",
+            downloadAllAriaLabel: "Скачать все серии",
+          },
         },
       },
     ),
@@ -141,9 +153,7 @@ import {
 
 import SeriesDownloadRoute from "../../../../app/series/download"
 import {
-  DOWNLOAD_MODE_LABELS,
   DownloadSheetContent,
-  formatSeriesReuseNote,
   rawModeLabel,
   suspendedInRawMode,
   type DownloadMode,
@@ -154,7 +164,15 @@ import {
 } from "../../../lib/seriesDownloadResolver"
 import type { QualityTier } from "../../../lib/downloadTiers"
 import type { OfflineDownloadRecord } from "../../../lib/offlineManifest"
-import type { WatchDownload, WatchSubtitle } from "../../../lib/normalizeVideo"
+import type {
+  WatchDownload,
+  WatchEpisode,
+  WatchSubtitle,
+} from "../../../lib/normalizeVideo"
+import {
+  adminFormsFor,
+  type AdminLanguageForms,
+} from "../../../i18n/adminLanguage"
 import {
   TestRenderer,
   hasText,
@@ -172,6 +190,16 @@ import {
 const rawExportConstants = jest.requireMock(
   "../../../lib/rawExportConstants",
 ) as { RAW_EXPORT_ENABLED: boolean }
+
+// The English the two mode rows read. Jest runs the app as iOS, so the raw row
+// names Files.
+const DOWNLOAD_MODE_LABELS = {
+  offline: "Offline Watching",
+  raw: "Save to Files",
+} as const
+const REUSE_ALL = "3 of 3 episodes reuse an offline copy at this quality."
+const REUSE_NONE =
+  "0 of 3 episodes reuse an offline copy at this quality. The other episodes download again."
 
 // ── Fixtures ────────────────────────────────────────────────────────
 
@@ -204,7 +232,12 @@ const TIERS: readonly QualityTier[] = ["highest", "high", "low"]
 
 // Module scope, and returned by identity: a fresh series object per render
 // re-creates the route's resolve callback and spins the mount effect forever.
-const mockSeries = {
+const mockSeries: {
+  slug: string
+  title: string
+  episodes: WatchEpisode[]
+  adminForms?: AdminLanguageForms
+} = {
   slug: "washi-gospel",
   title: "Washi Gospel",
   episodes: EPISODE_SLUGS.map((slug, index) => ({
@@ -460,9 +493,11 @@ afterEach(() => {
 // Owner decision 2026-09-11: the two rows carry the whole choice. No section
 // header, no description beside either label.
 describe("mode control copy", () => {
-  it("names each mode by its destination", () => {
-    expect(DOWNLOAD_MODE_LABELS.offline).toBe("Offline Watching")
-    expect(DOWNLOAD_MODE_LABELS.raw).toBe("Save to Files")
+  it("names each mode by its destination", async () => {
+    const renderer = await renderSheet()
+    expect(radioByLabel(renderer, "Offline Watching")).not.toBeNull()
+    expect(radioByLabel(renderer, "Save to Files")).not.toBeNull()
+    await unmount(renderer)
   })
 
   it("names the platform's OWN file destination on each platform", () => {
@@ -1032,11 +1067,11 @@ describe("series sheet mode control", () => {
     // Switching to raw re-defaults the quality to the saved tier, so every
     // episode reuses its copy without the viewer touching the picker.
     await chooseMode(renderer, "raw")
-    expect(hasText(renderer, formatSeriesReuseNote(3, 3))).toBe(true)
+    expect(hasText(renderer, REUSE_ALL)).toBe(true)
 
     // Picking a tier nothing is saved at is what drops the reuse to zero.
     await chooseQuality(renderer, "Quality", "Highest", "Low")
-    expect(hasText(renderer, formatSeriesReuseNote(0, 3))).toBe(true)
+    expect(hasText(renderer, REUSE_NONE)).toBe(true)
 
     await unmount(renderer)
   })
@@ -1101,7 +1136,7 @@ describe("series sheet opened for an export", () => {
     const renderer = await renderSeries({ mode: "raw" })
 
     expect(nodeByLabel(renderer, "Quality, Low")).not.toBeNull()
-    expect(hasText(renderer, formatSeriesReuseNote(3, 3))).toBe(true)
+    expect(hasText(renderer, REUSE_ALL)).toBe(true)
 
     await unmount(renderer)
   })
@@ -1156,7 +1191,7 @@ describe("series sheet opened for an export", () => {
     // Switching to raw moves back ONTO it, so the reuse is complete.
     await chooseMode(renderer, "raw")
     expect(nodeByLabel(renderer, "Quality, Highest")).not.toBeNull()
-    expect(hasText(renderer, formatSeriesReuseNote(3, 3))).toBe(true)
+    expect(hasText(renderer, REUSE_ALL)).toBe(true)
 
     await unmount(renderer)
   })
@@ -1182,17 +1217,18 @@ describe("UI language", () => {
 
   /** The distinct accessibility labels of the open panel's radio rows. */
   function panelRows(renderer: TestInstance): string[] {
-    const modeLabels: string[] = [
-      DOWNLOAD_MODE_LABELS.offline,
-      DOWNLOAD_MODE_LABELS.raw,
-    ]
+    // The mode rows are radios too; their tap names hold in every language.
+    const isModeRow = (n: RenderedNode) =>
+      String(n.props["dd-action-name"] ?? "").startsWith("download-mode-")
     return [
       ...new Set(
         renderer.root
-          .findAll((n) => n.props.accessibilityRole === "radio")
+          .findAll(
+            (n) => n.props.accessibilityRole === "radio" && !isModeRow(n),
+          )
           .map((n) => String(n.props.accessibilityLabel)),
       ),
-    ].filter((label) => !modeLabels.includes(label))
+    ]
   }
 
   it("gives a quality row the same tap name in en and ru", async () => {
@@ -1280,6 +1316,95 @@ describe("UI language", () => {
     await switchToRussian()
     const russian = pressableByLabel(renderer, "Quality, Наилучшее")
     expect(tapActionName(russian)).toBe(englishName)
+    await unmount(renderer)
+  })
+
+  it("keeps the mode and confirm tap names on the video sheet", async () => {
+    const renderer = await renderSheet()
+    const english = {
+      mode: tapActionName(radioByLabel(renderer, "Offline Watching")!),
+      confirm: tapActionName(pressableByLabel(renderer, "Download video")),
+    }
+
+    await switchToRussian()
+
+    expect(hasText(renderer, "Офлайн-просмотр")).toBe(true)
+    expect(hasText(renderer, "Скачать")).toBe(true)
+    expect(tapActionName(radioByLabel(renderer, "Офлайн-просмотр")!)).toBe(
+      english.mode,
+    )
+    expect(tapActionName(pressableByLabel(renderer, "Скачать видео"))).toBe(
+      english.confirm,
+    )
+    expect(english).toEqual({
+      mode: "download-mode-offline",
+      confirm: "download-confirm",
+    })
+    await unmount(renderer)
+  })
+
+  it("keeps the confirm tap name on the series sheet", async () => {
+    const renderer = await renderSeries()
+    const english = tapActionName(
+      pressableByLabel(renderer, "Download all episodes"),
+    )
+
+    await switchToRussian()
+
+    expect(hasText(renderer, "Скачать все")).toBe(true)
+    expect(tapActionName(pressableByLabel(renderer, "Скачать все серии"))).toBe(
+      english,
+    )
+    expect(english).toBe("series-download-confirm")
+    await unmount(renderer)
+  })
+})
+
+// KTD16: the series sheet names subtitle tracks with the series screen's
+// captured forms, not with English and not with the live UI language.
+describe("series sheet subtitle names", () => {
+  afterEach(() => {
+    delete mockSeries.adminForms
+  })
+
+  it("reads each track's name in the captured language", async () => {
+    mockSeries.adminForms = adminFormsFor("fr")
+    mockQuery.mockResolvedValue({
+      data: {
+        videoDub: {
+          downloads: [],
+          videoEdition: {
+            subtitles: [
+              {
+                documentId: "sub-es",
+                vttSrc: "https://cdn.example.com/es.vtt",
+                language: {
+                  slug: "spanish",
+                  bcp47: "es",
+                  name: { en: "Spanish", fr: "Espagnol" },
+                },
+              },
+            ],
+          },
+        },
+      },
+    })
+    mockResolveSeries.mockImplementation(
+      async (
+        _episodes: unknown,
+        choice: { qualityTier: QualityTier },
+        deps: { getDubMedia: (id: string) => Promise<unknown> },
+      ) => {
+        await deps.getDubMedia("dub-ep-one")
+        return buildResolution(choice.qualityTier)
+      },
+    )
+
+    const renderer = await renderSeries()
+    await press(pressableByLabel(renderer, "Subtitles, No subtitles"))
+
+    expect(radioByLabel(renderer, "Espagnol")).not.toBeNull()
+    expect(radioByLabel(renderer, "Spanish")).toBeNull()
     await unmount(renderer)
   })
 })

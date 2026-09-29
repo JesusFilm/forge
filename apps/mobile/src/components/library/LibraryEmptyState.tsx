@@ -9,6 +9,7 @@ import {
 import { useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import {
   ACCENT,
@@ -28,6 +29,7 @@ export type LibraryEmptyStateProps = {
 export function LibraryEmptyState({ style }: LibraryEmptyStateProps) {
   const typography = useTypography()
   const router = useRouter()
+  const t = useT("Library")
 
   return (
     <View style={[styles.root, style]}>
@@ -39,19 +41,19 @@ export function LibraryEmptyState({ style }: LibraryEmptyStateProps) {
         />
       </View>
       <Text style={[styles.heading, typography.titleLarge]}>
-        No downloads yet
+        {t("emptyTitle")}
       </Text>
-      <Text style={[styles.body, typography.body]}>
-        Videos you download will appear here so you can watch them anywhere —
-        even offline.
-      </Text>
+      <Text style={[styles.body, typography.body]}>{t("emptyBody")}</Text>
       <Pressable
         onPress={() => router.navigate("/(tabs)/watch")}
         style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
         accessibilityRole="button"
-        accessibilityLabel="Browse videos"
+        accessibilityLabel={t("browseVideos")}
+        {...{ "dd-action-name": "library-browse-videos" }}
       >
-        <Text style={[styles.buttonText, typography.body]}>Browse videos</Text>
+        <Text style={[styles.buttonText, typography.body]}>
+          {t("browseVideos")}
+        </Text>
       </Pressable>
     </View>
   )

@@ -34,6 +34,7 @@ import { SeriesGroupCard } from "./SeriesGroupCard"
 import { Snackbar } from "../ui/Snackbar"
 import { useDownloads } from "../../contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
+import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import {
   BG_COLOR,
@@ -65,6 +66,13 @@ import { feedback, layout } from "../../styles/shared"
 
 const HINT_VISIBLE_MS = 4000
 
+/** Kept as data, so the toast takes the UI language at render. */
+type DeleteResult = {
+  deletedCount: number
+  freedBytes: number
+  failedCount: number
+}
+
 export type LibraryDownloadsProps = {
   /** Scrolls above the downloads. The Profile tab puts its account card here. */
   header?: ReactNode
@@ -87,6 +95,7 @@ export function LibraryDownloads({
   const tabBarStyle = useTabBarStyle()
   const tabBarClearance = useTabBarClearance()
   const typography = useTypography()
+  const t = useT("Library")
   const router = useRouter()
   const navigation = useNavigation()
   const isFocused = useIsFocused()
@@ -116,7 +125,7 @@ export function LibraryDownloads({
     : 24
   const [hintVisible, setHintVisible] = useState(false)
   const [confirmVisible, setConfirmVisible] = useState(false)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [deleteResult, setDeleteResult] = useState<DeleteResult | null>(null)
 
   // Gated on prefsReady because longPressHintSeen reads false before the
   // persisted blob hydrates. Gated on focus because every tab mounts at cold
@@ -281,14 +290,26 @@ export function LibraryDownloads({
       failed: result.failedCount,
     })
     setSelectionState(exitSelection())
-    setToastMessage(
-      `${result.deletedCount} video${result.deletedCount === 1 ? "" : "s"} deleted · ${formatLibraryBytes(result.freedBytes)} freed${
-        result.failedCount > 0
-          ? ` · ${result.failedCount} couldn't be deleted`
-          : ""
-      }`,
-    )
+    setDeleteResult({
+      deletedCount: result.deletedCount,
+      freedBytes: result.freedBytes,
+      failedCount: result.failedCount,
+    })
   }, [selected, offlineRecords, deleteDownload])
+
+  const toastMessage =
+    deleteResult == null
+      ? null
+      : t(
+          deleteResult.failedCount > 0
+            ? "deletedWithFailuresToast"
+            : "deletedToast",
+          {
+            count: deleteResult.deletedCount,
+            size: formatLibraryBytes(deleteResult.freedBytes),
+            failed: deleteResult.failedCount,
+          },
+        )
 
   const handleRetryFailed = useCallback(async () => {
     const slugs = Array.from(selected)
@@ -344,15 +365,18 @@ export function LibraryDownloads({
                     ]}
                     accessibilityRole="button"
                     accessibilityLabel={
-                      allSelected ? "Deselect all" : "Select all"
+                      allSelected
+                        ? t("deselectAllAriaLabel")
+                        : t("selectAllAriaLabel")
                     }
+                    {...{ "dd-action-name": "library-select-all" }}
                   >
                     <Text style={styles.textPillLabel}>
-                      {allSelected ? "Deselect All" : "Select All"}
+                      {allSelected ? t("deselectAll") : t("selectAll")}
                     </Text>
                   </Pressable>
                   <Text style={[styles.selectionCount, typography.body]}>
-                    {selection.count} selected
+                    {t("selectedCount", { count: selection.count })}
                   </Text>
                   <Pressable
                     onPress={() => setSelectionState(exitSelection())}
@@ -361,9 +385,10 @@ export function LibraryDownloads({
                       pressed && feedback.pressed,
                     ]}
                     accessibilityRole="button"
-                    accessibilityLabel="Cancel selection"
+                    accessibilityLabel={t("cancelSelectionAriaLabel")}
+                    {...{ "dd-action-name": "library-cancel-selection" }}
                   >
-                    <Text style={styles.textPillLabel}>Cancel</Text>
+                    <Text style={styles.textPillLabel}>{t("cancel")}</Text>
                   </Pressable>
                 </>
               ) : (
@@ -384,9 +409,10 @@ export function LibraryDownloads({
                       pressed && feedback.pressed,
                     ]}
                     accessibilityRole="button"
-                    accessibilityLabel="Select downloads"
+                    accessibilityLabel={t("selectDownloadsAriaLabel")}
+                    {...{ "dd-action-name": "library-select" }}
                   >
-                    <Text style={styles.selectPillText}>Select</Text>
+                    <Text style={styles.selectPillText}>{t("select")}</Text>
                   </Pressable>
                 </>
               )}
@@ -394,7 +420,7 @@ export function LibraryDownloads({
             <DownloadsSummary count={offlineRecords.length} />
             {hintVisible && (
               <Text style={[styles.hint, typography.caption]}>
-                Touch and hold a video to select
+                {t("longPressHint")}
               </Text>
             )}
           </View>
@@ -407,7 +433,7 @@ export function LibraryDownloads({
               {seriesGroups.length > 0 && (
                 <>
                   <Text style={[styles.sectionLabel, typography.caption]}>
-                    Series
+                    {t("seriesSection")}
                   </Text>
                   {seriesGroups.map((group) => (
                     <SeriesGroupCard
@@ -427,7 +453,7 @@ export function LibraryDownloads({
               {standaloneRecords.length > 0 && (
                 <>
                   <Text style={[styles.sectionLabel, typography.caption]}>
-                    Videos
+                    {t("videosSection")}
                   </Text>
                   {standaloneRecords.map((record) => (
                     <DownloadRow
@@ -476,7 +502,7 @@ export function LibraryDownloads({
         clearsTabBar
         message={toastMessage ?? ""}
         visible={toastMessage != null}
-        onDismiss={() => setToastMessage(null)}
+        onDismiss={() => setDeleteResult(null)}
       />
     </View>
   )
