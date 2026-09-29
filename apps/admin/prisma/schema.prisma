@@ -4379,7 +4379,6 @@ model RecommendationRenderedFact {
   receivedAt    DateTime                 @default(now()) @map("received_at")
   expiresAt     DateTime                 @map("expires_at")
 
-  @@unique([capabilityJti, eventId], map: "recommendation_render_event_key")
   @@unique([requestId, itemId], map: "recommendation_render_item_request_key")
   @@index([requestId], map: "recommendation_render_request_idx")
   @@index([expiresAt])
@@ -4403,7 +4402,6 @@ model RecommendationImpression {
   receivedAt       DateTime                 @default(now()) @map("received_at")
   expiresAt        DateTime                 @map("expires_at")
 
-  @@unique([capabilityJti, eventId], map: "recommendation_impression_event_key")
   @@unique([requestId, itemId], map: "recommendation_impression_item_request_key")
   @@index([requestId], map: "recommendation_impression_request_idx")
   @@index([expiresAt])
