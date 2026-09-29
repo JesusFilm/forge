@@ -70,6 +70,7 @@ const recommendationMigrationSql = [
   "0100_recommendation_candidate_compact_trace",
   "0101_recommendation_candidate_compact_trace_validate",
   "0102_recommendation_candidate_stage_duplicate_index_drop",
+  "0117_recommendation_served_item_payload",
 ].map((migration) =>
   readFileSync(
     new URL(
