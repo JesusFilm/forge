@@ -51,44 +51,86 @@ progress element belongs there, and the centre stays clear for the film.
 - **No face-aware crop.** It re-frames between shots and reads as camera jerk in
   16:9. Gated in `devotional-render.ts` on `aspect !== "wide"`.
 
-## YouTube-only work (16:9), as of 2026-09-25
+## YouTube-only work (16:9), as of 2026-09-29
 
 The owner is focusing on the wide cut: this material suits YouTube better than a
 feed. Everything in this section is 16:9 ONLY and must not be added to the
-vertical cut without her asking for it.
+vertical cut without her asking for it. The vineyard (`devo_h_vineyard.mp4`,
+Matthew 20:1-16, LUMO) is the reference cut.
 
-- **The opening** (`--intro=opening`, revised 2026-09-26): the voice says
-  "Welcome to Daily Bible Pause." while the brand mark performs slowly at the
-  top and DAILY BIBLE PAUSE settles under it. The title is written word by word
-  as the voice reads it, then each under-line the same way, the third replacing
-  the second in one slot. Every word arrives gold with a faint glow and cools
-  to white. On "Let's watch." the lines leave and WATCH rises across the frame
-  at 15%, the same whisper as REFLECT and PRAY, then the film. The welcome and
-  "Let's watch" are spoken, never drawn as lines (`frameOpening`). The film
-  underneath stays sharp under a light scrim.
-- **Film captions**: the whole line stays up in white; the word being spoken
-  turns gold (karaoke). Word times come from the film's own audio, in the
-  source's `.words.json` next to its cue file.
-- **Source marks**: an avatar in a circle (a portrait for a person, a line
-  emblem for a reference work), a small caps label, the source in the serif
-  below, a hairline under it. Left-aligned at the text box's left edge (x 280
-  of 1920), above the tallest sentence it spans. One sweep left to right: the
-  hairline draws and the words follow behind a soft edge. At least five
-  seconds on screen, at 85% opacity, then a fade. Drawn on their own layer so
-  they outlast the one-sentence cards. On the vineyard: HISTORICAL NOTE FROM /
-  Society of Biblical Literature (book); GREEK VOCABULARY / the Greek (scroll);
-  REFLECTION ADAPTED FROM / J. C. Ryle (1816–1900) (portrait), placed where
-  the part built on his text begins. Life dates, never a publication year.
+### Opening: the montage (`--intro=montage`, current)
+
+- The narration is a short scripted question, one line per shot, male voice
+  (`voices.hook`). No welcome, no logo: the film's own shots carry it.
+- One shot of the film per spoken line (`--intro-shots`, source seconds), cut
+  on the line's first word from the narration's word times. Each shot pushes
+  in slowly (1 → 1.045, eased) and restarts on the cut. A shot must not cross a
+  cut in the source: check the frames, not the timestamp.
+- The narration is set in the middle of the frame, Literata, small (half the
+  big caption size), the spoken word lit gold. On the lines that carry the
+  contrast, a big caption sits under the small words (`--intro-captions
+"2=The others worked|One hour"`: small part before the bar, big after); a
+  line whose caption is the whole line shows only the big caption. The big
+  caption comes in out of a slight blur, letters drawing in from wider
+  tracking, and fades out. No answer is given in the opening.
+- Pauses between lines: `--hook-gap=0.15` (the take's own 0.6s is too slow);
+  0.4s before a lower-case continuation line; 0.9s before the last line.
+- The last line is "Let's watch.": WATCH rises across the frame at 15% (the
+  same whisper as REFLECT and PRAY) with the passage reference over it
+  ("Matthew 20:1-16", Literata 48px on 1920, slow zoom), dissolving a little
+  after WATCH. The scene starts on that line, over its first quiet seconds.
+- Joining a new opening onto a finished video without a full render: cut right
+  after "Let's watch" with a 0.5s crossfade. Past that point both videos show
+  the same film frames at a fixed offset (find it by matching frames), and the
+  film captions have not started yet. Never cut on a caption: the two renders
+  may wrap it differently.
+- The earlier `--intro=opening` (spoken welcome, title written word by word in
+  gold, DAILY BIBLE PAUSE kicker after the logo collapses) still works and is
+  the fallback.
+
+### Vertical teaser from the montage (`--intro=montage --teaser-intro`)
+
+- Same shots and voice; the last line is a call to action ("Watch the full
+  devotional on our YouTube channel.") instead of "Let's watch", over the
+  scene's first frames. Only the film card is kept, no film captions.
+- Captions: the compact phrase style (mixed sizes, content words large,
+  function words small, uppercase, newest word gold cooling to white); the big
+  caption's words are the ones set large and gold. Long lines split into
+  phrases of at most seven words.
+- `--intro-focus` gives the horizontal crop per shot (a 9:16 window keeps a
+  third of the frame; aim it at the face). `--voice-level=0` mutes the film;
+  no music (owner). `--no-step-ring`.
+
+### Reflection and captions
+
+- **Film captions**: the whole line stays up in white; the spoken word turns
+  gold with a faint glow and grows ~4% (a transform, so the line never
+  reflows; constant 0.05em side margins keep the gap). Word times come from the
+  film's own audio, in the source's `.words.json` next to its cue file.
+- **Reflection text** sits 128px off the bottom (px(46.2)); film captions 118px.
+- **Source marks** (owner's Figma "Attribution", 2026-09-28): centred over the
+  text. Avatar on top (a portrait in a 70px ring for a person; a line emblem,
+  scroll or book, for a reference work), a divider of two tapering rules with a
+  gold dot, then the label (Inter 500 caps, section name only, no "from") and
+  the source (Literata). Opens from the middle: dot, rules drawing outward,
+  then avatar, label and source fading in. At least 5s on screen at 85%, on
+  its own layer above the one-sentence cards, above the tallest sentence it
+  spans. Labels: HISTORICAL CONTEXT, ORIGINAL LANGUAGE, COMMENTARY. A person is
+  credited with life dates, never a publication year ("J. C. Ryle
+  (1816–1900)"); "adapted from" and the full citation go in the description.
   Scripture is never credited on screen: chapter and verse go inline in the
-  text and the translation is not named.
-- **No closing credit** when the reflection carries source marks: the credit
-  was already given inline.
+  text.
+- Images need clean provenance: public-domain scans (Internet Archive,
+  Wikimedia, CC0 museums), never a stock copy of an old engraving.
+- **No closing credit** when the reflection carries source marks.
 - **Takeaway card**: bare, no rules above or below it.
 - **Pauses**: the verse holds one second after the voice; two seconds of
-  silence between the question and the prayer.
-- **Voices by section** (being tried): female opens, male reads the historical
-  and language notes, female reads the reflection, male closes on the question
-  and prayer.
+  silence between the question and the prayer (widened in the take).
+- **Progress ring**: on the question card only, under the prayer, left-aligned
+  with the text, appearing when the voice has finished.
+- **Voices by section**: female for the reflection, conclusion and verse; male
+  for the opening, historical and language notes, the step into PRAY and the
+  question.
 
 ## Shared by both
 
