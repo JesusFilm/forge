@@ -267,7 +267,8 @@ function messageRole(key) {
   return "interface message"
 }
 
-function messageContexts(messages) {
+function messageContexts(messages, contexts) {
+  const overrides = contexts ? (contexts.keys ?? {}) : MESSAGE_CONTEXT_OVERRIDES
   return Object.fromEntries(
     Object.entries(messages).map(([key, message]) => {
       const namespace = key.split(".", 1)[0]
@@ -277,9 +278,10 @@ function messageContexts(messages) {
       return [
         key,
         {
-          surface:
-            UI_SURFACE_CONTEXTS[namespace] ??
-            `the ${namespace} area of the Watch experience`,
+          surface: contexts
+            ? contexts.namespaces[namespace]
+            : (UI_SURFACE_CONTEXTS[namespace] ??
+              `the ${namespace} area of the Watch experience`),
           role: messageRole(key),
           ...(hasRuntimeComposition
             ? {
@@ -287,7 +289,7 @@ function messageContexts(messages) {
                   "Rendered with runtime values or rich-text parts; judge and write the complete rendered message, not isolated fragments.",
               }
             : {}),
-          ...(MESSAGE_CONTEXT_OVERRIDES[key] ?? {}),
+          ...(overrides[key] ?? {}),
         },
       ]
     }),
@@ -545,8 +547,11 @@ function localeDisplayName(locale) {
   return locale
 }
 
-function buildSystemPrompt() {
-  return `You are a senior software localization translator for Jesus Film Project, a Christian video-streaming and discipleship website.
+const WEB_PRODUCT_DESCRIPTION =
+  "a Christian video-streaming and discipleship website"
+
+function buildSystemPrompt(contexts) {
+  return `You are a senior software localization translator for Jesus Film Project, ${contexts?.product ?? WEB_PRODUCT_DESCRIPTION}.
 
 Translate each supplied English UI message into the requested target language. Treat the English value as the meaning to preserve, not a sentence template to imitate. Use each dotted key's messageContexts entry to understand the actual screen and copy role before writing the translation.
 
@@ -565,12 +570,20 @@ Requirements:
 - Return one entry for every requested key and no extra keys.`
 }
 
+const WEB_SEARCH_INSTRUCTIONS = [
+  "SearchOverlay.searchSuggestions is a heading above proposed search phrases. SearchOverlay.directMatches is a heading above matching videos, scenes, and collections.",
+  "SearchOverlay.searchSuggestionWithLanguage is a clickable action that immediately searches for {suggestion} in {language}; use natural action wording, not disconnected field labels.",
+  "SearchOverlay.searchInLanguage names the language scope before a query is submitted. SearchOverlay.searchingInLanguage is a static scope label shown after results have loaded. Translate it with the meaning 'Results are scoped to {language}'. It must not say that a search is active, loading, or in progress, and must not end with an ellipsis.",
+  "The {language} value in these SearchOverlay messages is an interactive UI chip. Write the surrounding sentence according to target-language grammar. Case particles, postpositions, and other grammatical material may immediately precede or follow the placeholder and will render outside the clickable chip. Never rename or alter the placeholder token itself.",
+]
+
 function buildUserPrompt({
   locale,
   inventoryEntry,
   messages,
   references,
   sourceMessages = messages,
+  contexts,
 }) {
   const parsedLocale = new Intl.Locale(locale)
   const explicitScript = parsedLocale.script
@@ -597,16 +610,13 @@ function buildUserPrompt({
         "Headings, buttons, aria labels, errors, metadata, and promotional copy should fit their named UI context.",
         "Prioritize natural native-language interface writing over similarity to English. Translate the intended action or state, not the English syntax. Reorder concepts, change parts of speech, split clauses, and use idiomatic target-language patterns whenever that reads more naturally.",
         "Do not preserve English punctuation, capitalization, quotation style, or word order unless those conventions are also natural in the target language.",
-        "SearchOverlay.searchSuggestions is a heading above proposed search phrases. SearchOverlay.directMatches is a heading above matching videos, scenes, and collections.",
-        "SearchOverlay.searchSuggestionWithLanguage is a clickable action that immediately searches for {suggestion} in {language}; use natural action wording, not disconnected field labels.",
-        "SearchOverlay.searchInLanguage names the language scope before a query is submitted. SearchOverlay.searchingInLanguage is a static scope label shown after results have loaded. Translate it with the meaning 'Results are scoped to {language}'. It must not say that a search is active, loading, or in progress, and must not end with an ellipsis.",
-        "The {language} value in these SearchOverlay messages is an interactive UI chip. Write the surrounding sentence according to target-language grammar. Case particles, postpositions, and other grammatical material may immediately precede or follow the placeholder and will render outside the clickable chip. Never rename or alter the placeholder token itself.",
+        ...(contexts ? [] : WEB_SEARCH_INSTRUCTIONS),
         "When the language name itself must inflect internally, use a construction natural to the target language that accepts a citation-form language name, unless the supplied reference already demonstrates a runtime contextual form. Do not fall back to disconnected English-style labels merely to avoid target-language grammar.",
         "Existing non-English reference translations show preferred terminology; do not rewrite them.",
       ],
       targetLanguageWritingInstructions:
         targetLanguageWritingInstructions(locale),
-      messageContexts: messageContexts(messages),
+      messageContexts: messageContexts(messages, contexts),
       surroundingSourceMessages: surroundingSourceMessages(
         messages,
         sourceMessages,
@@ -675,6 +685,8 @@ async function requestTranslations({
   minimumChangeRatio,
   fetchImpl = globalThis.fetch,
   waitForRetry = wait,
+  contexts,
+  stopOnQuota = false,
 }) {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "")
   let previousError = ""
@@ -687,6 +699,7 @@ async function requestTranslations({
       messages,
       references,
       sourceMessages,
+      contexts,
     })}${
       previousError
         ? `\n\nThe previous response failed validation: ${previousError}. Return a corrected complete result.`
@@ -708,7 +721,7 @@ async function requestTranslations({
             useResponsesApi
               ? {
                   model,
-                  instructions: buildSystemPrompt(),
+                  instructions: buildSystemPrompt(contexts),
                   input: userPrompt,
                   max_output_tokens: 40_000,
                   store: false,
@@ -719,7 +732,7 @@ async function requestTranslations({
               : {
                   model,
                   messages: [
-                    { role: "system", content: buildSystemPrompt() },
+                    { role: "system", content: buildSystemPrompt(contexts) },
                     { role: "user", content: userPrompt },
                   ],
                   max_completion_tokens: 20_000,
@@ -755,8 +768,15 @@ async function requestTranslations({
         }`
       }
       previousError = `OpenAI HTTP ${response.status}: ${detail}`
+      // A used-up quota does not recover within the retry window, unlike a
+      // rate limit. Only callers that opt in stop the whole run on it.
+      const quotaExhausted =
+        stopOnQuota &&
+        response.status === 429 &&
+        detail.includes("insufficient_quota")
       const retryable =
-        [408, 409, 429].includes(response.status) || response.status >= 500
+        !quotaExhausted &&
+        ([408, 409, 429].includes(response.status) || response.status >= 500)
       if (!retryable) throw new PermanentApiError(previousError)
       if (attempt < maxAttempts) {
         await waitForRetry(
