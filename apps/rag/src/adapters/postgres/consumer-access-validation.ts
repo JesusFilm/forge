@@ -9,6 +9,7 @@ export type ConsumerRow = {
   created_at: Date
   credential_version: bigint
   membership_version: bigint
+  lifecycle_version: bigint
   member_count?: bigint
   owned?: boolean
 }

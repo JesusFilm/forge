@@ -28,7 +28,7 @@ export async function withConsumerOwner<T>(
       async (tx) => {
         const [row] = await tx.$queryRaw<ConsumerRow[]>(Prisma.sql`
         SELECT id, name, state, allowed_source_keys, created_at,
-               credential_version, membership_version
+               credential_version, membership_version, lifecycle_version
         FROM consumer_private.consumers WHERE id = ${target}::uuid FOR UPDATE
       `)
         if (!row) throw new ConsumerAccessError("missing")
