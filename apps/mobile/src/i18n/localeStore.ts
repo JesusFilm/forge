@@ -177,6 +177,14 @@ function tagsOf(locales: readonly PhoneLocale[]): string[] {
     .filter((tag): tag is string => typeof tag === "string")
 }
 
+function sameTags(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((tag, index) => tag === b[index])
+}
+
+function notifyListeners(): void {
+  listeners.forEach((listener) => listener())
+}
+
 function resolveFromPhone(
   requested: readonly string[],
 ): Pick<LocaleResolution, "tag" | "match" | "matchedIndex"> {
@@ -262,17 +270,22 @@ export function refreshLocale(): void {
     return
   }
   phoneLocales = read.locales
+  const tagsChanged = !sameTags(requested, resolution.requested)
   if (!next) {
     resolution = { ...resolution, ...resolved, requested }
+    // The epoch stays, but defaultAudioLanguage() follows the new first tag.
+    if (tagsChanged) notifyListeners()
     return
   }
   active = next
   catalogTag = resolved.tag
   resolution = { ...resolution, ...resolved, requested }
   epoch += 1
-  listeners.forEach((listener) => listener())
+  notifyListeners()
 }
 
+/** Fires on a new epoch, and on a phone-language change that keeps the
+ *  catalog. Compare a snapshot (the epoch, a default slug); never count calls. */
 export function subscribeLocale(listener: () => void): () => void {
   listeners.add(listener)
   return () => {

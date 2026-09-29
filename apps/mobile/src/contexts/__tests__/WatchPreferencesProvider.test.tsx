@@ -60,6 +60,7 @@ import {
 } from "../WatchPreferencesProvider"
 import {
   WATCH_PREFERENCES_STORAGE_KEY,
+  cachedSubtitleName,
   parseStoredPreferences,
 } from "../../lib/watchPreferences"
 import {
@@ -208,14 +209,18 @@ describe("the cached subtitle name and the UI language", () => {
 
   afterEach(() => resetLocaleStoreForTests())
 
-  it("hides a name from the old UI language after a live change", async () => {
+  // KD12: a screen open before the change keeps `en`, so it must still read
+  // the name. A screen opened after the change captures `es` and must not.
+  it("keeps the name and its tag through a live change, for each screen to gate", async () => {
     await renderWithStored(ENGLISH_NAME)
-    expect(prefs.subtitleLanguageName).toBe("French")
+    expect(cachedSubtitleName(prefs, "en")).toBe("French")
 
     await changePhone("es-MX")
 
     expect(getLocaleEpoch()).toBe(1)
-    expect(prefs.subtitleLanguageName).toBeNull()
+    expect(prefs.subtitleLanguageNameLocale).toBe("en")
+    expect(cachedSubtitleName(prefs, "en")).toBe("French")
+    expect(cachedSubtitleName(prefs, "es")).toBeNull()
     // The pick itself never follows the UI language.
     expect(prefs.subtitleLanguageSlug).toBe("french")
   })
@@ -228,15 +233,15 @@ describe("the cached subtitle name and the UI language", () => {
       prefs.setPreferredSubtitleName("Francés")
     })
 
-    expect(prefs.subtitleLanguageName).toBe("Francés")
+    expect(cachedSubtitleName(prefs, "es")).toBe("Francés")
     expect(await storedBlob()).toMatchObject({
       subtitleLanguageName: "Francés",
       subtitleLanguageNameLocale: "es",
     })
 
-    // Back to English: the Spanish name must not paint.
+    // Back to English: a screen opened now must not paint the Spanish name.
     await changePhone("en-US")
-    expect(prefs.subtitleLanguageName).toBeNull()
+    expect(cachedSubtitleName(prefs, "en")).toBeNull()
   })
 
   // U6: an open watch screen keeps its captured language through a live
@@ -253,8 +258,9 @@ describe("the cached subtitle name and the UI language", () => {
       subtitleLanguageName: "French",
       subtitleLanguageNameLocale: "en",
     })
-    // The UI is Spanish, so the English name does not paint.
-    expect(prefs.subtitleLanguageName).toBeNull()
+    // The English screen reads it; a Spanish screen does not.
+    expect(cachedSubtitleName(prefs, "en")).toBe("French")
+    expect(cachedSubtitleName(prefs, "es")).toBeNull()
   })
 
   it("clears the locale with the name", async () => {

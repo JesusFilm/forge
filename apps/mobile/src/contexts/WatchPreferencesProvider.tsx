@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { useUiTag } from "../hooks/useUiTag"
 import { datadogLog } from "../lib/datadog"
 
 import {
@@ -138,19 +137,12 @@ export function WatchPreferencesProvider({
     [persist],
   )
 
-  // A live Android language change re-renders here (KTD16), so a name cached
-  // in another UI language never paints; the watch page reads it again.
-  const uiTag = useUiTag()
-  const subtitleLanguageName =
-    prefs.subtitleLanguageNameLocale === uiTag
-      ? prefs.subtitleLanguageName
-      : null
-
+  // The name stays raw: each screen gates it on the tag it captured (KTD16),
+  // because a live Android change leaves an open screen in its old language.
   return (
     <WatchPreferencesContext.Provider
       value={{
         ...prefs,
-        subtitleLanguageName,
         setPreferredAudioLanguage,
         backfillAudioLanguageIso3,
         setPreferredSubtitleLanguage,

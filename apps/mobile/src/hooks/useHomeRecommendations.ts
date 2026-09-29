@@ -12,7 +12,7 @@ import { AppState } from "react-native"
 import { useWatchPreferences } from "../contexts/WatchPreferencesProvider"
 import { currentAdminForms } from "../i18n/adminLanguage"
 import { defaultAudioLanguage, getLocaleEpoch } from "../i18n/localeStore"
-import { useLocaleEpoch } from "../i18n/useT"
+import { useDefaultAudioSlug, useLocaleEpoch } from "../i18n/useT"
 import { datadogLog } from "../lib/datadog"
 import { resolveRecommendationContext } from "../lib/recommendations/context"
 import type { UserRecommendationSlate } from "../lib/recommendations/delivery"
@@ -79,7 +79,8 @@ type RequestLanguage = {
   defaultAudioSlug: string | null
 }
 
-/** The store's languages now: read only when an epoch is applied (KTD16). */
+/** The store's languages now: read only when an epoch or a new default audio
+ *  is applied (KTD16). */
 function readRequestLanguage(): RequestLanguage {
   return {
     epoch: getLocaleEpoch(),
@@ -98,11 +99,9 @@ export function useHomeRecommendations(
   // KTD16: a new epoch empties the shelf at once, and its fetch waits for
   // Home's focus like every other held trigger.
   const epoch = useLocaleEpoch()
+  const liveDefaultAudioSlug = useDefaultAudioSlug()
   const [language, setLanguage] = useState(readRequestLanguage)
   const epochHeld = language.epoch !== epoch
-  useEffect(() => {
-    if (focused && epochHeld) setLanguage(readRequestLanguage())
-  }, [focused, epochHeld])
 
   const context = useMemo(
     () =>
@@ -113,6 +112,19 @@ export function useHomeRecommendations(
       }),
     [audioLanguageSlug, language],
   )
+  // R21: a phone change that keeps the catalog moves only the default audio,
+  // which only a viewer with no pick hears. It re-reads at Home's focus and,
+  // unlike an epoch, keeps the slate on show through the refetch.
+  const audioStale =
+    resolveRecommendationContext({
+      audioLanguageSlug,
+      forYouLocale: language.forYouLocale,
+      defaultAudioSlug: liveDefaultAudioSlug,
+    }).audioLanguageSlug !== context.audioLanguageSlug
+
+  useEffect(() => {
+    if (focused && (epochHeld || audioStale)) setLanguage(readRequestLanguage())
+  }, [focused, epochHeld, audioStale])
 
   const focusedRef = useRef(focused)
   focusedRef.current = focused

@@ -7,6 +7,7 @@ import type {
 } from "use-intl/core"
 
 import {
+  defaultAudioLanguage,
   getActiveTranslator,
   getLocaleEpoch,
   subscribeLocale,
@@ -40,6 +41,19 @@ function bind<NS extends UiNamespace>(
 /** The store's epoch, as a React subscription (KTD2). */
 export function useLocaleEpoch(): number {
   return useSyncExternalStore(subscribeLocale, getLocaleEpoch, getLocaleEpoch)
+}
+
+function getDefaultAudioSlug(): string | null {
+  return defaultAudioLanguage()?.slug ?? null
+}
+
+/** `defaultAudioLanguage()?.slug`, live: it can change with no new epoch. */
+export function useDefaultAudioSlug(): string | null {
+  return useSyncExternalStore(
+    subscribeLocale,
+    getDefaultAudioSlug,
+    getDefaultAudioSlug,
+  )
 }
 
 // UI text for React code. A catalog change re-renders the component and

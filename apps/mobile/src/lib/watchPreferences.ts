@@ -23,7 +23,8 @@ export type WatchPreferences = {
    */
   subtitleLanguageName: string | null
   /** The UI catalog tag that `subtitleLanguageName` is written in (KTD16), or
-   *  null with no name. A name from another UI tag is dropped at read. */
+   *  null with no name. A reader shows the name only in this tag
+   *  ({@link cachedSubtitleName}). */
   subtitleLanguageNameLocale: string | null
   /** Whether subtitles are turned on app-wide. */
   subtitlesEnabled: boolean
@@ -143,6 +144,18 @@ export function serializeWatchPreferences(
     subtitleLanguageNameLocale:
       name == null ? null : (prefs.subtitleLanguageNameLocale ?? uiTag),
   })
+}
+
+/** The cached subtitle name for a screen that reads in `catalogTag`, the tag it
+ *  captured at mount (KTD16), not the live UI tag. Null for a name in another
+ *  tag, so the pill never paints another language's text. */
+export function cachedSubtitleName(
+  prefs: SubtitleName,
+  catalogTag: string | null | undefined,
+): string | null {
+  return catalogTag != null && prefs.subtitleLanguageNameLocale === catalogTag
+    ? prefs.subtitleLanguageName
+    : null
 }
 
 /** The write for a cached subtitle name: the name and the UI tag it is in. */

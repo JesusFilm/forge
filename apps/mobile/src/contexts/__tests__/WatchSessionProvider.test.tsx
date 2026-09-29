@@ -42,6 +42,8 @@ jest.mock("../WatchPreferencesProvider", () => {
     audio: "english" as string | null,
     audioIso3: null as string | null,
     subtitle: null as string | null,
+    subtitleName: null as string | null,
+    subtitleNameLocale: null as string | null,
     subtitlesEnabled: false,
     setAudio: jest.fn(),
     backfillAudioIso3: jest.fn(),
@@ -54,7 +56,8 @@ jest.mock("../WatchPreferencesProvider", () => {
       audioLanguageSlug: state.audio,
       audioLanguageIso3: state.audioIso3,
       subtitleLanguageSlug: state.subtitle,
-      subtitleLanguageName: null,
+      subtitleLanguageName: state.subtitleName,
+      subtitleLanguageNameLocale: state.subtitleNameLocale,
       subtitlesEnabled: state.subtitlesEnabled,
       isReady: state.ready,
       setPreferredAudioLanguage: state.setAudio,
@@ -101,6 +104,7 @@ import { act } from "react"
 
 import { WatchSessionProvider, useWatchSession } from "../WatchSessionProvider"
 import { adminFormsFor } from "../../i18n/adminLanguage"
+import { getCatalogTag } from "../../i18n/localeStore"
 import type { WatchVariant, WatchVideoRecord } from "../../lib/normalizeVideo"
 import {
   TestRenderer,
@@ -115,6 +119,8 @@ const prefs = jest.requireMock("../WatchPreferencesProvider") as {
     audio: string | null
     audioIso3: string | null
     subtitle: string | null
+    subtitleName: string | null
+    subtitleNameLocale: string | null
     subtitlesEnabled: boolean
     setAudio: jest.Mock
     backfillAudioIso3: jest.Mock
@@ -228,6 +234,8 @@ afterEach(async () => {
   prefs.__prefState.audio = "english"
   prefs.__prefState.audioIso3 = null
   prefs.__prefState.subtitle = null
+  prefs.__prefState.subtitleName = null
+  prefs.__prefState.subtitleNameLocale = null
   prefs.__prefState.subtitlesEnabled = false
   prefs.__prefState.setAudio.mockClear()
   prefs.__prefState.backfillAudioIso3.mockClear()
@@ -736,5 +744,39 @@ describe("the screen's captured language (U6)", () => {
       "Francés",
       "es",
     )
+  })
+
+  // KTD16: the reader gates the cached name on the screen's tag, never the
+  // live one, so the pill keeps its name and nothing writes it again.
+  it("reads a name cached in the screen's tag while the UI tag differs", async () => {
+    expect(getCatalogTag()).toBe("en")
+    prefs.__prefState.subtitle = "french"
+    prefs.__prefState.subtitleName = "Francés"
+    prefs.__prefState.subtitleNameLocale = "es"
+    answerFrenchTrack()
+    await renderProvider()
+    await act(async () => {
+      session.setVideo(spanishScreen())
+    })
+    expect(session.preferredSubtitleName).toBe("Francés")
+
+    await act(async () => {
+      session.ensureActiveVariantMedia()
+    })
+
+    expect(session.activeVariantMedia?.subtitles).toHaveLength(1)
+    expect(prefs.__prefState.setPreferredSubtitleName).not.toHaveBeenCalled()
+  })
+
+  it("hides a name cached in another tag, even the live UI tag", async () => {
+    expect(getCatalogTag()).toBe("en")
+    prefs.__prefState.subtitleName = "French"
+    prefs.__prefState.subtitleNameLocale = "en"
+    await renderProvider()
+    await act(async () => {
+      session.setVideo(spanishScreen())
+    })
+
+    expect(session.preferredSubtitleName).toBeNull()
   })
 })

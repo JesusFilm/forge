@@ -31,6 +31,7 @@ import { phoneLocales } from "../../test-utils/uiLocaleFixture"
 import {
   audioIso3BackfillPatch,
   audioLanguagePatch,
+  cachedSubtitleName,
   DEFAULT_WATCH_PREFERENCES,
   languageIso3ForSlug,
   parseStoredPreferences,
@@ -128,6 +129,30 @@ describe("the stored subtitle name and its locale", () => {
     // A later save under another UI tag must not relabel the old name.
     const raw = serializeWatchPreferences(prefs, "es")
     expect(parseStoredPreferences(raw, "es").subtitleLanguageName).toBeNull()
+  })
+})
+
+// KTD16: a screen reads the name in the tag it captured, not the live UI tag.
+describe("cachedSubtitleName", () => {
+  // Cached in English; the live UI tag is Spanish after a live change.
+  const englishName = subtitleNamePatch("French", "en")
+
+  afterEach(() => resetLocaleStoreForTests())
+
+  it("gives the name to a screen that captured the name's tag", () => {
+    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
+    startLocaleSync()
+    expect(getCatalogTag()).toBe("es")
+
+    expect(cachedSubtitleName(englishName, "en")).toBe("French")
+  })
+
+  it("hides the name from a screen that captured another tag", () => {
+    expect(cachedSubtitleName(englishName, "es")).toBeNull()
+  })
+
+  it("hides the name while the screen has no captured tag", () => {
+    expect(cachedSubtitleName(englishName, undefined)).toBeNull()
   })
 })
 

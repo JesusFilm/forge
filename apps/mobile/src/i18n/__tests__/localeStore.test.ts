@@ -224,6 +224,30 @@ describe("startLocaleSync", () => {
     expect(mockLocaleListeners).toHaveLength(1)
     expect(mockGetLocales).toHaveBeenCalledTimes(1)
   })
+
+  it("records the reason and keeps the catalog when AppState cannot subscribe", () => {
+    jest.spyOn(AppState, "addEventListener").mockImplementation(() => {
+      throw new Error("AppState unavailable")
+    })
+    mockGetLocales.mockReturnValue(phone("es-MX"))
+
+    expect(() => startLocaleSync()).not.toThrow()
+
+    expect(getCatalogTag()).toBe("es")
+    expect(getLocaleEpoch()).toBe(0)
+    expect(getLocaleResolution()).toMatchObject({
+      match: "language",
+      errorReason: null,
+      listenerErrorReason: "Error: AppState unavailable",
+    })
+    expect(
+      localeResolutionAttributes(getLocaleResolution())[
+        "ui_locale.listener_error"
+      ],
+    ).toBe("Error: AppState unavailable")
+    // Each listener is wired on its own, so the native event still arrives.
+    expect(mockLocaleListeners).toHaveLength(1)
+  })
 })
 
 describe("refreshLocale", () => {
@@ -276,6 +300,26 @@ describe("refreshLocale", () => {
     expect(() => refreshLocale()).not.toThrow()
     expect(getCatalogTag()).toBe("es")
     expect(getLocaleEpoch()).toBe(0)
+  })
+
+  // The default audio reads the first phone tag, so its readers must hear a
+  // change the catalog does not see; epoch snapshot readers stay put.
+  it("notifies with no epoch move when the tags change inside one catalog", () => {
+    mockGetLocales.mockReturnValue(phone("ha-NG"))
+    startLocaleSync()
+    const listener = jest.fn()
+    subscribeLocale(listener)
+
+    mockGetLocales.mockReturnValue(phone("yo-NG"))
+    refreshLocale()
+    expect(getCatalogTag()).toBe("en")
+    expect(getLocaleEpoch()).toBe(0)
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(defaultAudioLanguage()?.slug).toBe("yoruba")
+
+    refreshLocale()
+    refreshLocale()
+    expect(listener).toHaveBeenCalledTimes(1)
   })
 
   it("does nothing before the store starts", () => {
@@ -469,6 +513,41 @@ describe("start without the native module", () => {
     } finally {
       jest.doMock("expo-localization", () => ({
         getLocales: () => mockGetLocales(),
+      }))
+      jest.resetModules()
+    }
+  })
+
+  // A doMock cannot replace a module the registry already holds, and every
+  // start above required this one, so the case resets the registry too.
+  it("records the reason when the native locale event cannot be required", () => {
+    const reason = "Error: Cannot find module 'ExpoLocalization'"
+    jest.resetModules()
+    jest.doMock("expo-localization/build/ExpoLocalization", () => {
+      throw new Error("Cannot find module 'ExpoLocalization'")
+    })
+    try {
+      mockGetLocales.mockReturnValue(phone("es-MX"))
+      const store =
+        jest.requireActual<typeof import("../localeStore")>("../localeStore")
+      expect(() => store.startLocaleSync()).not.toThrow()
+      expect(store.getCatalogTag()).toBe("es")
+      expect(store.getLocaleEpoch()).toBe(0)
+      expect(store.getLocaleResolution()).toMatchObject({
+        errorReason: null,
+        listenerErrorReason: reason,
+      })
+      expect(
+        store.localeResolutionAttributes(store.getLocaleResolution())[
+          "ui_locale.listener_error"
+        ],
+      ).toBe(reason)
+    } finally {
+      jest.doMock("expo-localization/build/ExpoLocalization", () => ({
+        addLocaleListener: (listener: () => void) => {
+          mockLocaleListeners.push(listener)
+          return { remove: () => undefined }
+        },
       }))
       jest.resetModules()
     }

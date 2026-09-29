@@ -479,6 +479,83 @@ describe("a UI language change (KTD16)", () => {
   })
 })
 
+// R21: `ha` and `yo` have no UI catalog, so the change keeps the epoch and
+// moves only the default audio, which only a viewer with no pick hears.
+describe("a phone change that keeps the catalog (R21)", () => {
+  it("asks for the new default audio once Home has focus, and keeps the slate on show", async () => {
+    startPhone("ha-NG")
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    hook.rerender({ gateOpen: true, focused: false })
+    await flush()
+    const before = c.fetch.mock.calls.length
+    const rendersBefore = hook.all().length
+
+    await changePhone("yo-NG")
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(before)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(c.fetch.mock.calls.slice(before)).toEqual([
+      [{ locale: "en", audioLanguageSlug: "yoruba", count: 6, attempt: 1 }],
+    ])
+    const after = hook.all().slice(rendersBefore)
+    expect(after.filter((seen) => seen.slate === null)).toHaveLength(0)
+    expect(hook.latest().slate?.requestId).toBe("req-2")
+  })
+
+  it("asks for the new default audio at once while Home has focus", async () => {
+    startPhone("ha-NG")
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    const before = c.fetch.mock.calls.length
+
+    await changePhone("yo-NG")
+    await flush()
+    const audioAsked = c.fetch.mock.calls
+      .slice(before)
+      .map(
+        ([input]: [{ audioLanguageSlug: string }]) => input.audioLanguageSlug,
+      )
+    expect(audioAsked).toEqual(["yoruba"])
+  })
+
+  it("changes nothing for a viewer with an audio pick", async () => {
+    startPhone("ha-NG")
+    mockPreferences.mockReturnValue({ audioLanguageSlug: "french" })
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    const shown = hook.latest().slate
+    expect(shown).not.toBeNull()
+    const rendersBefore = hook.all().length
+
+    await changePhone("yo-NG")
+    await flush()
+    hook.rerender({ gateOpen: true, focused: false })
+    await flush()
+    hook.rerender(OPEN)
+    await flush()
+
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+    expect(c.fetch).toHaveBeenCalledWith({
+      locale: "en",
+      audioLanguageSlug: "french",
+      count: 6,
+      attempt: 1,
+    })
+    const after = hook.all().slice(rendersBefore)
+    expect(after.length).toBeGreaterThan(0)
+    expect(after.filter((seen) => seen.slate !== shown)).toHaveLength(0)
+  })
+})
+
 describe("the gate closing later", () => {
   it("drops the displayed slate and sends nothing more", async () => {
     const c = client()

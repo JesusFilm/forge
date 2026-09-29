@@ -27,7 +27,10 @@ import {
   resetReconciler,
 } from "../lib/preferenceReconciler"
 import { subtitleNameToCache } from "../lib/subtitleSelection"
-import { languageIso3ForSlug } from "../lib/watchPreferences"
+import {
+  cachedSubtitleName,
+  languageIso3ForSlug,
+} from "../lib/watchPreferences"
 import { useDownloads } from "./DownloadsProvider"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
@@ -89,7 +92,8 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     audioLanguageSlug: preferredAudioSlug,
     audioLanguageIso3: preferredAudioIso3,
     subtitleLanguageSlug: preferredSubtitleSlug,
-    subtitleLanguageName: preferredSubtitleName,
+    subtitleLanguageName,
+    subtitleLanguageNameLocale,
     subtitlesEnabled,
     isReady: preferencesReady,
     setPreferredAudioLanguage,
@@ -215,6 +219,10 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // names follow them, never the store, so a live change leaves them alone.
   const screenForms = video?.adminForms
   const screenCatalogTag = screenForms?.catalogTag
+  const preferredSubtitleName = cachedSubtitleName(
+    { subtitleLanguageName, subtitleLanguageNameLocale },
+    screenCatalogTag,
+  )
 
   const ensureActiveVariantMedia = useCallback(() => {
     ensureDubMedia(

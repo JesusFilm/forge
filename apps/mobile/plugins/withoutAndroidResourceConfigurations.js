@@ -23,6 +23,7 @@ function removeResourceConfigurations(src) {
 
 // Register BEFORE expo-localization in app.json: mods run last-registered
 // first, so an earlier entry sees the build.gradle that expo-localization wrote.
+// Verified 2026-09-30, expo-localization 57.0.2: `expo prebuild --platform android`.
 module.exports = function withoutAndroidResourceConfigurations(config) {
   if (!withAppBuildGradle) {
     console.warn(

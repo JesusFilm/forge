@@ -252,12 +252,20 @@ export default function WatchVideoPage() {
     returnPartialData: true,
   })
   // The text companion: Home's rows for this video are a cache hit for it.
-  const { data: textData, refetch: refetchText } = useQuery(GET_VIDEO_TEXT, {
+  const {
+    data: textData,
+    dataState: textDataState,
+    error: textError,
+    refetch: refetchText,
+  } = useQuery(GET_VIDEO_TEXT, {
     variables: { slug: decodedSlug, ...videoTextVariables(adminForms) },
     skip: !decodedSlug,
     fetchPolicy: "cache-first",
     returnPartialData: true,
   })
+  // A failed load keeps a partial cached row (a Home title with no
+  // description), so the text is missing unless the data is complete.
+  const textFailed = textError != null && textDataState !== "complete"
 
   const normalized = useMemo(
     // returnPartialData widens videoBySlug to a deep-partial type; normalizeVideo
@@ -892,6 +900,20 @@ export default function WatchVideoPage() {
 
         {hasVideo ? (
           <>
+            {textFailed && (
+              <View style={styles.inlineError}>
+                <Text style={text.errorMessage}>{t("detailsLoadError")}</Text>
+                <Text
+                  style={styles.retryLink}
+                  onPress={() => void refetchText()}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("retryDetailsAriaLabel")}
+                  {...{ "dd-action-name": "watch-text-retry" }}
+                >
+                  {tCommon("retry")}
+                </Text>
+              </View>
+            )}
             <ActionButtonRow
               exportEntry={exportEntry}
               downloadState={getRecord(video.slug)?.state ?? null}
@@ -1076,7 +1098,10 @@ export default function WatchVideoPage() {
                 <Text style={text.errorMessage}>{t("detailsLoadError")}</Text>
                 <Text
                   style={styles.retryLink}
-                  onPress={() => void refetch()}
+                  onPress={() => {
+                    void refetch()
+                    void refetchText()
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={t("retryDetailsAriaLabel")}
                   {...{ "dd-action-name": "watch-details-retry" }}

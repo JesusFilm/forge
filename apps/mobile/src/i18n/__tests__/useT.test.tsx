@@ -10,7 +10,7 @@ import {
   resetLocaleStoreForTests,
   startLocaleSync,
 } from "../localeStore"
-import { getT, useT } from "../useT"
+import { getT, useDefaultAudioSlug, useT } from "../useT"
 import {
   TestRenderer,
   hasText,
@@ -126,6 +126,7 @@ describe("useT", () => {
     const renderer = await render(<BackLabel />)
     const before = renders
 
+    // The tags change, so the store notifies; the epoch snapshot holds.
     await changePhoneLanguage("es-MX")
 
     expect(renders).toBe(before)
@@ -143,6 +144,25 @@ describe("useT", () => {
     await changePhoneLanguage("es-MX")
 
     expect(renders).toBe(before)
+  })
+})
+
+describe("useDefaultAudioSlug", () => {
+  function DefaultAudio() {
+    return <Text>{useDefaultAudioSlug() ?? "none"}</Text>
+  }
+
+  it("follows a phone change that keeps the catalog", async () => {
+    mockGetLocales.mockReturnValue(phone("ha-NG"))
+    startLocaleSync()
+    const renderer = await render(<DefaultAudio />)
+    expect(hasText(renderer, "hausa")).toBe(true)
+
+    await changePhoneLanguage("yo-NG")
+
+    expect(getLocaleEpoch()).toBe(0)
+    expect(hasText(renderer, "yoruba")).toBe(true)
+    await unmount(renderer)
   })
 })
 

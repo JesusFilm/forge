@@ -47,6 +47,7 @@ import { FloatingBackButton } from "../../src/components/ui/FloatingBackButton"
 import { Snackbar } from "../../src/components/ui/Snackbar"
 import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
+import { cachedSubtitleName } from "../../src/lib/watchPreferences"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import {
   deriveEpisodeBadges,
@@ -108,8 +109,12 @@ export default function SeriesScreen() {
     resumeDownload,
     cancelDownload,
   } = useDownloads()
-  const { subtitleLanguageSlug, subtitleLanguageName, subtitlesEnabled } =
-    useWatchPreferences()
+  const watchPreferences = useWatchPreferences()
+  const { subtitleLanguageSlug, subtitlesEnabled } = watchPreferences
+  const subtitleLanguageName = cachedSubtitleName(
+    watchPreferences,
+    adminForms.catalogTag,
+  )
 
   // Reconcile the persisted subtitle pref against what this series offers — an
   // unsupported pref falls back. Fetched only when a subtitle is set; the pill
@@ -210,12 +215,20 @@ export default function SeriesScreen() {
     fetchPolicy: "cache-first",
     returnPartialData: true,
   })
-  const { data: textData, refetch: refetchText } = useQuery(GET_SERIES_TEXT, {
+  const {
+    data: textData,
+    dataState: textDataState,
+    error: textError,
+    refetch: refetchText,
+  } = useQuery(GET_SERIES_TEXT, {
     variables: { slug: decodedSlug, ...videoTextVariables(adminForms) },
     skip: !decodedSlug,
     fetchPolicy: "cache-first",
     returnPartialData: true,
   })
+  // A failed load keeps a partial cached row, so the text is missing unless
+  // the data is complete.
+  const textFailed = textError != null && textDataState !== "complete"
 
   const normalized = useMemo(
     // returnPartialData widens videoBySlug to a deep-partial type; normalizeSeries
@@ -577,6 +590,21 @@ export default function SeriesScreen() {
 
             {hasSeries ? (
               <>
+                {textFailed && (
+                  <View style={styles.inlineError}>
+                    <Text style={text.errorMessage}>
+                      {t("detailsLoadError")}
+                    </Text>
+                    <Text
+                      style={styles.retryLink}
+                      onPress={() => void refetchText()}
+                      accessibilityRole="button"
+                      {...{ "dd-action-name": "series-text-retry" }}
+                    >
+                      {t("retry")}
+                    </Text>
+                  </View>
+                )}
                 <SeriesActionRow
                   onLanguage={() => router.push("/series/language")}
                   onSubtitles={() => router.push("/series/subtitle")}
