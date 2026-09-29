@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { activeTranscriptContentEmbeddingWhere } from "@/services/content-embedding-contract"
 import { buildSemanticCandidateMuxThumbnailUrl } from "../delivery-retriever"
 import {
   boundedScore,
@@ -10,10 +11,15 @@ import type {
   ShadowGeneratorContext,
 } from "../shadow-evaluation/service"
 import {
+  type CowatchAnchor,
   loadCowatchInspection,
   loadValidatedCowatchProfileInterests,
 } from "./inspection.service"
-import { COWATCH_FEATURE_VERSION, COWATCH_SHADOW_GENERATOR_KEY } from "./graph"
+import {
+  type CowatchFeature,
+  COWATCH_FEATURE_VERSION,
+  COWATCH_SHADOW_GENERATOR_KEY,
+} from "./graph"
 
 export { COWATCH_SHADOW_GENERATOR_KEY } from "./graph"
 
@@ -25,6 +31,7 @@ export type CowatchPlayableRow = Readonly<{
   playbackId: string
   durationSeconds: number | null
   imageUrl: string | null
+  themes?: string[] | null
 }>
 
 /** Shadow-only adapter. It never participates in live delivery. */
@@ -63,106 +70,11 @@ export function createDatabaseCowatchShadowGenerator(
             : "cowatch_supported_edges_sparse",
       }
     }
-    const selected = inspection.candidates
-      .map((edge) => {
-        const anchor = inspection.anchors.find(
-          (candidate) => candidate.mediaId === edge.sourceMediaId,
-        )
-        return {
-          edge,
-          anchor,
-          score: boundedScore(
-            edge.confidence *
-              Math.min(2, edge.popularityCorrectedLift) *
-              edge.recencyWeight *
-              edge.qualityWeight *
-              (anchor?.weight ?? 1),
-          ),
-        }
-      })
-      .sort(
-        (a, b) =>
-          b.score - a.score ||
-          a.edge.targetMediaId.localeCompare(b.edge.targetMediaId) ||
-          a.edge.sourceMediaId.localeCompare(b.edge.sourceMediaId),
-      )
-      .filter(
-        (entry, index, entries) =>
-          entries.findIndex(
-            (other) => other.edge.targetMediaId === entry.edge.targetMediaId,
-          ) === index,
-      )
-      .slice(0, 12)
-    const playable = await loadCowatchPlayableRows(
+    const nominations = await buildCowatchNominations(
       prisma,
-      selected.map(({ edge }) => edge.targetMediaId),
+      inspection.candidates,
+      inspection.anchors,
       context,
-    )
-    const byId = new Map(playable.map((row) => [row.videoId, row]))
-    const nominations: CandidateNomination[] = selected.flatMap(
-      ({ edge, anchor, score }, index) => {
-        const row = byId.get(edge.targetMediaId)
-        if (!row) return []
-        const presentation: CandidatePresentation = {
-          videoSlug: row.videoSlug.slice(0, 191),
-          videoTitle: row.videoTitle.slice(0, 512),
-          imageUrl:
-            row.imageUrl ||
-            buildSemanticCandidateMuxThumbnailUrl(row.playbackId, 0),
-          sceneIndex: 0,
-          description: "",
-          startSeconds: 0,
-          endSeconds: null,
-          durationSeconds: row.durationSeconds,
-          themes: [],
-          demographics: [],
-          spiritualContext: [],
-          playbackId: row.playbackId,
-          locale: context.locale,
-          audioLanguageSlug: context.audioLanguageSlug,
-          watchPlayable: true,
-          localePublished: true,
-        }
-        return [
-          {
-            nominationKey:
-              `cowatch:${index + 1}:${edge.sourceMediaId}:${edge.targetMediaId}`.slice(
-                0,
-                191,
-              ),
-            targetMediaId: edge.targetMediaId,
-            canonicalIdentity: {
-              videoId: edge.targetMediaId,
-              videoCoreId: row.videoCoreId,
-              videoTitle: row.videoTitle,
-              embeddingText: null,
-            },
-            presentation,
-            action: { kind: "scene_start" as const, startSeconds: 0 },
-            source: {
-              generator: "directional-cowatch",
-              generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
-              rank: index + 1,
-              score,
-              evidence: {
-                featureVersion: COWATCH_FEATURE_VERSION,
-                generation: edge.generation,
-                support: edge.distinctViewerSupport,
-                confidence: edge.confidence,
-                lift: edge.popularityCorrectedLift,
-                recencyWeight: edge.recencyWeight,
-                qualityWeight: edge.qualityWeight,
-                contamination: edge.contamination,
-                anchorMediaId: edge.sourceMediaId,
-                anchorKind: anchor?.kind ?? "seed",
-                anchorWeight: anchor?.weight ?? 1,
-                interestOrdinal: anchor?.interestOrdinal ?? null,
-              },
-              rejectionReason: null,
-            },
-          },
-        ]
-      },
     )
     return {
       nominations: [...fallback, ...nominations],
@@ -174,6 +86,122 @@ export function createDatabaseCowatchShadowGenerator(
         nominations.length === 0 ? "cowatch_unplayable" : null,
     }
   }
+}
+
+/** Shared deterministic scoring and current catalog hydration for shadow/live. */
+export async function buildCowatchNominations(
+  prisma: Pick<PrismaClient, "$queryRaw">,
+  candidates: readonly CowatchFeature[],
+  anchors: readonly CowatchAnchor[],
+  context: Pick<ShadowGeneratorContext, "locale" | "audioLanguageSlug">,
+  generatorVersion: string = COWATCH_SHADOW_GENERATOR_KEY,
+  provenance: Readonly<Record<string, string | number | boolean | null>> = {},
+): Promise<CandidateNomination[]> {
+  const selected = candidates
+    .map((edge) => {
+      const anchor = anchors.find(
+        (candidate) => candidate.mediaId === edge.sourceMediaId,
+      )
+      return {
+        edge,
+        anchor,
+        score: boundedScore(
+          edge.confidence *
+            Math.min(2, edge.popularityCorrectedLift) *
+            edge.recencyWeight *
+            edge.qualityWeight *
+            (anchor?.weight ?? 1),
+        ),
+      }
+    })
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        a.edge.targetMediaId.localeCompare(b.edge.targetMediaId) ||
+        a.edge.sourceMediaId.localeCompare(b.edge.sourceMediaId),
+    )
+    .filter(
+      (entry, index, entries) =>
+        entries.findIndex(
+          (other) => other.edge.targetMediaId === entry.edge.targetMediaId,
+        ) === index,
+    )
+    .slice(0, 12)
+  const playable = await loadCowatchPlayableRows(
+    prisma,
+    selected.map(({ edge }) => edge.targetMediaId),
+    context,
+  )
+  const byId = new Map(playable.map((row) => [row.videoId, row]))
+  const nominations: CandidateNomination[] = selected.flatMap(
+    ({ edge, anchor, score }, index) => {
+      const row = byId.get(edge.targetMediaId)
+      if (!row) return []
+      const presentation: CandidatePresentation = {
+        videoSlug: row.videoSlug.slice(0, 191),
+        videoTitle: row.videoTitle.slice(0, 512),
+        imageUrl:
+          row.imageUrl ||
+          buildSemanticCandidateMuxThumbnailUrl(row.playbackId, 0),
+        sceneIndex: 0,
+        description: "",
+        startSeconds: 0,
+        endSeconds: null,
+        durationSeconds: row.durationSeconds,
+        themes: (row.themes ?? [])
+          .slice(0, 16)
+          .map((theme) => theme.slice(0, 64)),
+        demographics: [],
+        spiritualContext: [],
+        playbackId: row.playbackId,
+        locale: context.locale,
+        audioLanguageSlug: context.audioLanguageSlug,
+        watchPlayable: true,
+        localePublished: true,
+      }
+      return [
+        {
+          nominationKey:
+            `cowatch:${index + 1}:${edge.sourceMediaId}:${edge.targetMediaId}`.slice(
+              0,
+              191,
+            ),
+          targetMediaId: edge.targetMediaId,
+          canonicalIdentity: {
+            videoId: edge.targetMediaId,
+            videoCoreId: row.videoCoreId,
+            videoTitle: row.videoTitle,
+            embeddingText: null,
+          },
+          presentation,
+          action: { kind: "scene_start" as const, startSeconds: 0 },
+          source: {
+            generator: "directional-cowatch",
+            generatorVersion,
+            rank: index + 1,
+            score,
+            evidence: {
+              ...provenance,
+              featureVersion: COWATCH_FEATURE_VERSION,
+              generation: edge.generation,
+              support: edge.distinctViewerSupport,
+              confidence: edge.confidence,
+              lift: edge.popularityCorrectedLift,
+              recencyWeight: edge.recencyWeight,
+              qualityWeight: edge.qualityWeight,
+              contamination: edge.contamination,
+              anchorMediaId: edge.sourceMediaId,
+              anchorKind: anchor?.kind ?? "seed",
+              anchorWeight: anchor?.weight ?? 1,
+              interestOrdinal: anchor?.interestOrdinal ?? null,
+            },
+            rejectionReason: null,
+          },
+        },
+      ]
+    },
+  )
+  return nominations
 }
 
 export async function loadCowatchPlayableRows(
@@ -189,7 +217,8 @@ export async function loadCowatchPlayableRows(
       display.title AS "videoTitle",
       playable.playback_id AS "playbackId",
       playable.duration_seconds AS "durationSeconds",
-      image.image_url AS "imageUrl"
+      image.image_url AS "imageUrl",
+      metadata.themes
     FROM video
     JOIN LATERAL (
       SELECT locale.title
@@ -203,7 +232,7 @@ export async function loadCowatchPlayableRows(
       LIMIT 1
     ) display ON true
     JOIN LATERAL (
-      SELECT mux.playback_id,
+      SELECT mux.playback_id, dub.video_edition_id,
         COALESCE(ROUND(dub.length_in_milliseconds / 1000.0)::int, dub.duration) AS duration_seconds
       FROM video_dub dub
       JOIN language ON language.id = dub.language_id
@@ -211,10 +240,24 @@ export async function loadCowatchPlayableRows(
       JOIN mux_video mux ON mux.id = dub.mux_video_id
         AND mux.playback_id IS NOT NULL
       WHERE dub.video_id = video.id
+        AND dub.published = true
         AND dub.deleted_at IS NULL
       ORDER BY dub.published DESC NULLS LAST, dub.updated_at DESC, dub.id
       LIMIT 1
     ) playable ON true
+    LEFT JOIN LATERAL (
+      SELECT chunk.felt_needs[1:16] AS themes
+      FROM video_transcript transcript
+      JOIN video_edition edition ON edition.id = transcript.video_edition_id AND edition.deleted_at IS NULL
+      JOIN video_transcript_chunk chunk ON chunk.transcript_id = transcript.id
+        AND chunk.language = ${context.locale}
+      WHERE transcript.video_id = video.id
+        AND transcript.video_edition_id = playable.video_edition_id
+        AND transcript.language = ${context.locale}
+        ${activeTranscriptContentEmbeddingWhere({ transcriptAlias: "transcript", chunkAlias: "chunk" })}
+      ORDER BY chunk.chunk_index, chunk.id
+      LIMIT 1
+    ) metadata ON true
     LEFT JOIN LATERAL (
       SELECT COALESCE(NULLIF(image.mobile_cinematic_high, ''),
         NULLIF(image.video_still, ''), NULLIF(image.thumbnail, ''),

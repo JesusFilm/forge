@@ -3849,6 +3849,8 @@ model RecommendationCandidateStageEvidence {
 /// candidate evaluation. It cannot alter serving control, assignment, or a
 /// request's canonical served items. Terminal rows are immutable in SQL.
 model RecommendationShadowEvaluation {
+  /// Immutable retained graph identity; no FK may prevent graph expiry.
+  cowatchGenerationId String? @map("cowatch_generation_id") @db.Char(64)
   id                     String                              @id @default(cuid())
   manifestId             String                              @map("manifest_id") @db.VarChar(191)
   manifest               RecommendationStrategyManifest      @relation(fields: [manifestId], references: [id], onDelete: Restrict)
@@ -5908,6 +5910,9 @@ model ShortScheduleDispatch {
 /// Shadow-only population graph publication. Its edges never authorize live
 /// delivery. A changed source contribution count fences inspection/use.
 model RecommendationCowatchGeneration {
+  lineageVersion String @default("discovery-link-v1") @map("lineage_version") @db.VarChar(64)
+  invalidatedAt DateTime? @map("invalidated_at")
+  invalidationReason String? @map("invalidation_reason") @db.VarChar(96)
   id                    String                             @id @db.Char(64)
   projectionVersion     String                             @map("projection_version") @db.VarChar(64)
   featureVersion        String                             @map("feature_version") @db.VarChar(64)
@@ -5945,6 +5950,7 @@ model RecommendationCowatchGeneration {
 /// One current integrity-eligible finalized outcome revision per generation.
 /// Singleton rows are retained because they change popularity denominators.
 model RecommendationCowatchSourceContribution {
+  viewerPrivacyGeneration Int? @map("viewer_privacy_generation")
   id                 String                          @id @default(cuid())
   generationId       String                          @map("generation_id") @db.Char(64)
   generation         RecommendationCowatchGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
@@ -5973,6 +5979,8 @@ model RecommendationCowatchSourceContribution {
 
   @@unique([generationId, outcomeId], map: "recommendation_cowatch_source_generation_outcome_key")
   @@index([viewerProfileId], map: "recommendation_cowatch_source_profile_idx")
+  @@index([outcomeId], map: "recommendation_cowatch_source_outcome_idx")
+  @@index([eligibilityDecisionId], map: "recommendation_cowatch_source_eligibility_idx")
   @@index([generationId, mediaId], map: "recommendation_cowatch_source_media_idx")
   @@index([expiresAt], map: "recommendation_cowatch_source_expiry_idx")
   @@map("recommendation_cowatch_source_contribution")
@@ -6042,6 +6050,7 @@ model RecommendationCowatchEdge {
 
   @@unique([generationId, sourceMediaId, targetMediaId], map: "recommendation_cowatch_edge_direction_key")
   @@index([generationId, eligible, sourceMediaId], map: "recommendation_cowatch_edge_anchor_idx")
+  @@index([generationId, sourceMediaId, eligible, confidence(sort: Desc), popularityCorrectedLift(sort: Desc), targetMediaId], map: "recommendation_cowatch_edge_live_idx")
   @@map("recommendation_cowatch_edge")
 }
 
@@ -6206,4 +6215,20 @@ model RecommendationStudyEvaluation {
   @@index([studyId])
   @@index([expiresAt])
   @@map("recommendation_study_evaluation")
+}
+
+/// Immutable single-use frozen trial qualification. Outlives graph deletion;
+/// contains only aggregate authority identity, never viewer identity.
+model RecommendationCowatchTrialAuthority {
+  generationId String @id @map("generation_id") @db.Char(64)
+  revokedAt DateTime? @map("revoked_at")
+  rawPopulationExpiresAt DateTime @map("raw_population_expires_at")
+  bindingDigest String @map("binding_digest") @db.Char(64)
+  binding Json
+  mode String @default("frozen-source-controlled-trial-v1") @db.VarChar(64)
+  dependencyExpiresAt DateTime @map("dependency_expires_at")
+  trialValidUntil DateTime @map("trial_valid_until")
+  qualifiedAt DateTime @default(now()) @map("qualified_at")
+  @@index([rawPopulationExpiresAt], map: "recommendation_cowatch_authority_expiry_idx")
+  @@map("recommendation_cowatch_trial_authority")
 }
