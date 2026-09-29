@@ -16,8 +16,9 @@ This is a Server-Driven UI (SDUI) app. Admin controls the content
 blocks and their order via the Experience content type. The app renders them.
 
 **Home tab — Experience-driven body, client-owned hero.** The Home body renders
-from the prod `watch-home` homepage Experience (`watchSetting.homepageExperience`,
-locale `en` — the same Experience web renders), adapted into the existing
+from the prod `watch-home` homepage Experience (`watchSetting.homepageExperience`
+in the UI catalog tag, with the `en` homepage as the fallback; see
+"Localization"), adapted into the existing
 `WatchHomeModel`/`HomeShelf` shape by `src/lib/watchHome/experienceAdapter.ts`
 (lean cards from flat `MediaCollectionBlock` items; NOT the SDUI
 `/experience/[slug]` renderers). Under-curated items (null authored
@@ -90,7 +91,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
-- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
+- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`, asking `passage(languageSlug:)` with the screen's captured text slug plus an `englishPassage`; with no passage in the UI language the card shows the English one with an English language mark), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
 
 ## Admin endpoint resolution (feat-339)
 
@@ -724,8 +725,11 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
   response's `expiresAt` is the authority on the item capabilities (ten
   minutes today): past it the hook sends no evidence and returns null from
   `select`; the UI refreshes instead.
-  `resolveRecommendationContext` maps the watch preference to
-  `{ locale: "en", audioLanguageSlug: prefs.audioLanguageSlug ?? "english" }`.
+  `resolveRecommendationContext` takes the locale from the UI catalog's
+  `forYouLocale` (`tl` sends `fil`) and the audio from the saved pick, else
+  `defaultAudioLanguage()`, else `english`. Only `coverage_unavailable`
+  starts one retry with `en` metadata and the SAME audio (KD14), and a pair
+  with no pool is not asked again in the session.
 - **Evidence and selection mirror Web's literals.** `render` carries
   `{ surfacePolicy: "watch-for-you-v1" }`, `impression`
   `{ visibilityPolicy: "watch-for-you-v1" }`, both under
