@@ -47,6 +47,14 @@ holds the real graph lock until real emergency stop reaches its pointer/trigger
 boundary, then asserts qualification refuses and stop commits. Mocks alone do not
 prove these foreign-key and trigger interactions.
 
+Runtime-backed native fixtures must also use the current schema. A fixed old
+migration list can fail on columns selected by today's Prisma client or shared
+lineage predicate before a concurrency test releases its latch; the reported
+timeout then hides a missing-column error. Use
+`current-schema.test-fixture.ts::recommendationRuntimeMigrationSql` for these
+fixtures, while preserving explicitly historical migration-upgrade tests. Inspect
+rejected background promises before changing a concurrency timeout.
+
 See `docs/operations/recommendation-owner-live-activation-2026-09-30.md` and
 `apps/admin/src/services/recommendations/promotion/owner-authority.db.test.ts`,
 `delivery-owner.db.test.ts`, and `promotion/owner-stop-lock.db.test.ts`.

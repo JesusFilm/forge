@@ -9,6 +9,17 @@ unimplemented ranking roadmap is outside this release.
 and activation pending.** This record must not be cited as proof of live viewer
 influence. Feat-565 remains in progress.
 
+[PR #2478](https://github.com/JesusFilm/forge/pull/2478) carries the direct path
+through the normal release flow. Its initial CI run passed build, unit tests,
+lint, formatting and CodeQL. Native regression tests exposed historical fixture
+migration lists that omitted 0111–0112; the missing columns also caused two
+concurrency fixtures to time out before reaching their expected locks. Nine
+runtime-backed fixtures now share the complete recommendation migration chain;
+historical upgrade tests retain their fixed chains. All seven original failures
+passed locally. The repaired Admin/profile scope passed 18 checks and the later
+retriever scope passed nine (one intentional Redis drill skipped), with no runtime
+or timeout changes. The CI gate must pass before merge.
+
 ## Serving and operation contract
 
 The exact manifest is
@@ -133,10 +144,22 @@ were removed. No production cleanup savings are assumed.
 The public database proxy refused certificate validation (`P1011`) during the
 previous read-only attempt. Its one-shot allowance is consumed. A new transport
 uses Railway's supported authenticated SSH tunnel, fixed loopback binding,
-independent deadlines and exact process/container cleanup; it has passed code and
-local orphan-cleanup review but has not yet established production connectivity.
+independent deadlines and exact process/container cleanup. The initial local
+process-group tests did not model Railway's detached SSH child: a production
+transport-only check timed out without running the source query and left its
+loopback listener alive. The exact PID, start time, executable and forward were
+verified before cleanup; port 55439 was then confirmed closed. The replacement
+supervisor passed nine local cases and independent review. A separate production
+transport-only check then established the owned tunnel and verified complete
+cleanup in 11.49 seconds; it ran no database/source query. See the
+[production transport receipt](../validation/recommendation-owner-live-20260930/private-tunnel-production-v4.json).
 Raw tunnel output and credentials are not retained. No public TLS downgrade,
 automatic retry or reduced source window is permitted.
+
+A narrow read-only catalog/filesystem check at September 29 20:10 UTC found
+9,622,683,648 bytes free, 134,217,728 bytes of allocated WAL, no lock waiters and
+no other transactions older than 30 seconds. This check did not scan source
+payloads and is not graph publication or direct-serving capacity clearance.
 
 Historical D1–D9 telemetry limitations remain owner-accepted with future fixes
 tracked by feat-566. Dormant exposure surfaces remain explicit gaps. Feat-373,
