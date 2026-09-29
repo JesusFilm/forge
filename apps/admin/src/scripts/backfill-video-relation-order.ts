@@ -1180,7 +1180,7 @@ export async function runRelationOrderBackfillCli({
         : undefined,
     })
 
-    if (activeArgs.execute && summary.errors === 0 && summary.updated > 0) {
+    if (activeArgs.execute && summary.errors === 0 && summary.selected > 0) {
       await assertLockActive()
       await requestWatchCatalogPublication(prisma)
     }

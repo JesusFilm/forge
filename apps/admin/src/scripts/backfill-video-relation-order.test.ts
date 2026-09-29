@@ -916,6 +916,55 @@ describe("runRelationOrderBackfillCli", () => {
     )
   })
 
+  it("queues Watch delivery after an executed relation backfill while holding the import lock", async () => {
+    const databaseUrl = "postgresql://user:test@db.example.test:5432/forge"
+    const identity = databaseIdentityForUrl(databaseUrl)
+    const prisma = buildPrisma()
+    const lockApi = {
+      acquireSyncLock: vi.fn().mockResolvedValue(true),
+      refreshSyncLock: vi.fn().mockResolvedValue(true),
+      releaseSyncLock: vi.fn().mockResolvedValue(true),
+    }
+    prisma.video.findMany
+      .mockResolvedValueOnce([
+        parent({ id: "series", coreId: "core-series", slug: "series" }),
+      ])
+      .mockResolvedValueOnce([
+        { id: "child", coreId: "core-child", slug: "child" },
+      ])
+    prisma.videoRelation.findMany.mockResolvedValueOnce([
+      { id: "relation", parentId: "series", childId: "child", order: 5 },
+    ])
+    coreQueryMock.mockResolvedValueOnce({
+      data: {
+        videos: [
+          {
+            id: "core-series",
+            slug: "series",
+            children: [{ id: "core-child", slug: "child" }],
+          },
+        ],
+      },
+    })
+    const summary = await runRelationOrderBackfillCli({
+      argv: [
+        "--slug=series",
+        "--execute",
+        `--confirm-database=${identity.hash}`,
+      ],
+      env: { NODE_ENV: "test", DATABASE_URL: databaseUrl },
+      logger: vi.fn(),
+      prismaFactory: () => prisma as never,
+      lockApi,
+      writeReport: vi.fn().mockResolvedValue(undefined),
+    })
+    expect(summary).toMatchObject({ errors: 0, updated: 1 })
+    expect(prisma.watchCatalogPublication.upsert).toHaveBeenCalledOnce()
+    expect(
+      prisma.watchCatalogPublication.upsert.mock.invocationCallOrder[0],
+    ).toBeLessThan(lockApi.releaseSyncLock.mock.invocationCallOrder[0])
+  })
+
   it("aborts before mutation and releases resources when the sync lock is lost", async () => {
     const databaseUrl =
       "postgresql://user:secret@db.example.test:5432/forge?connection_limit=5"

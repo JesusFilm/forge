@@ -27,12 +27,12 @@ describe("Core to Watch publication admission", () => {
       ]),
     ).toBe(false)
   })
-  it("does not rebuild for no-op imports or unrelated phases", () => {
+  it("queues no-op recovery completions but ignores unrelated phases", () => {
     expect(
       shouldRequestWatchCatalogPublication([
         { phase: "videos", updated: 0, errors: 0 },
       ]),
-    ).toBe(false)
+    ).toBe(true)
     expect(
       shouldRequestWatchCatalogPublication([
         { phase: "countries", updated: 5, errors: 0 },

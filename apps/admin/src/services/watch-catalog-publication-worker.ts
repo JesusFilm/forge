@@ -77,6 +77,15 @@ export async function publishPendingWatchCatalog(
     pending.webVersion >= pending.requestedVersion
   )
     return
+  // A restarted phase must retain its run's lock even after a long outage.
+  // Do not take a stale Core lock away from queued native recovery.
+  if (
+    await prisma.coreSyncPhaseExecution.findFirst({
+      where: { state: { in: ["PENDING", "RUNNING"] } },
+      select: { id: true },
+    })
+  )
+    return
   const holder = `watch-publication-${randomUUID()}`
   if (!(await acquireSyncLock(prisma, holder))) return
   let lockLost = false

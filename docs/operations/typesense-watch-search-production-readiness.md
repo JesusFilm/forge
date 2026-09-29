@@ -317,13 +317,17 @@ Runtime configuration:
 
 - Admin and worker: `WATCH_CATALOG_PUBLICATION_ENABLED=true` and matching
   `WATCH_SEARCH_TYPESENSE_PROFILE`/`WATCH_SEARCH_SERVING_QRELS_REVISION`.
+  Copy the existing `WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION` to the worker
+  when serving a legacy transcript collection without a persisted projection row.
 - Worker only: `TYPESENSE_HOST`, `TYPESENSE_OPERATOR_API_KEY`, and the existing
   `WEB_REVALIDATE_URL`/`WEB_REVALIDATE_TOKEN` from Admin's Web delivery setup.
 - Reader credentials stay on Admin. The worker command removes inherited reader
   credentials; build/migration commands also remove operator/publication settings.
 - Use normal PR-to-main deployments. Disable the catalog flag on Admin to serve
   the original qualified baseline; disable it on the worker to stop new builds.
-  Keep the additive tables and immutable generations for inspection.
+  Keep the additive tables and immutable generations for inspection. Drain or
+  cancel new `runCoreSyncQueued` workflows before rolling back to an image that
+  does not register them; old `coreSync` registrations remain in the new image.
 
 Inspect lag and retry state without reading credentials:
 

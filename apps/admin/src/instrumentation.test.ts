@@ -605,7 +605,7 @@ describe("Admin worker Railway credential isolation", () => {
 
     for (const command of ["buildCommand", "preDeployCommand"]) {
       expect(commands[command]).toMatch(
-        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY[^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED && /,
+        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY[^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED[^&]*WATCH_CATALOG_PUBLICATION_ENABLED && /,
       )
     }
 

@@ -197,6 +197,7 @@ describe("retryable Watch catalog delivery", () => {
   it("does not publish committed partial data from an active or failed import", async () => {
     activePhase = true
     await publishPendingWatchCatalog(prisma)
+    expect(mocks.acquire).not.toHaveBeenCalled()
     activePhase = false
     phaseErrors = 1
     await publishPendingWatchCatalog(prisma)

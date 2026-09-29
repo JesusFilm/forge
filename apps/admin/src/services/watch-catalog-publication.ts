@@ -28,14 +28,13 @@ type PhaseSummary = {
 export function shouldRequestWatchCatalogPublication(
   phases: readonly PhaseSummary[],
 ): boolean {
+  // A retry can report zero changes after its previous attempt committed the
+  // data but lost the completion acknowledgment. Always queue successful
+  // relevant runs; the publisher's content digest avoids redundant indexing.
   return (
     phases.length > 0 &&
     phases.every((p) => p.errors === 0) &&
-    phases.some(
-      (p) =>
-        RELEVANT_PHASES.has(p.phase) &&
-        (p.created ?? 0) + (p.updated ?? 0) + (p.softDeleted ?? 0) > 0,
-    )
+    phases.some((p) => RELEVANT_PHASES.has(p.phase))
   )
 }
 
