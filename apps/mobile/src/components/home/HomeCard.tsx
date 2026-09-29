@@ -112,6 +112,7 @@ export const HomeCard = memo(function HomeCard({
   const router = useRouter()
   const typography = useTypography()
   const t = useT("Home")
+  const tWatch = useT("Watch")
   const { width: screenWidth } = useWindowDimensions()
 
   const width = homeCardWidth(variant, screenWidth)
@@ -171,7 +172,10 @@ export const HomeCard = memo(function HomeCard({
       onPressIn={interactive ? handlePressIn : undefined}
       onPress={interactive ? handlePress : undefined}
       accessibilityRole={interactive ? "button" : "image"}
-      accessibilityLabel={[card.title, progressAccessibilityText(progressEntry)]
+      accessibilityLabel={[
+        card.title,
+        progressAccessibilityText(progressEntry, tWatch),
+      ]
         .filter(Boolean)
         .join(", ")}
       // Stable, low-cardinality RUM action name (auto-tracker would leak the

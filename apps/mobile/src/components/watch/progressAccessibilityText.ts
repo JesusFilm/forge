@@ -1,4 +1,4 @@
-import { getT, type UiT } from "../../i18n/useT"
+import type { UiT } from "../../i18n/useT"
 import { progressBarState } from "../../lib/watchProgress/thresholds"
 
 /**
@@ -10,9 +10,7 @@ export function progressAccessibilityText(
     | { positionSeconds: number; durationSeconds: number }
     | null
     | undefined,
-  // Home and series cards do not pass their `t` yet, so the default reads the
-  // catalog in use at the call.
-  t: UiT<"Watch"> = getT("Watch"),
+  t: UiT<"Watch">,
 ): string | null {
   const state = progressBarState(entry)
   if (!state.visible) return null

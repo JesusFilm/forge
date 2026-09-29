@@ -1820,7 +1820,9 @@ from there, so no two files can disagree about the bar's size.
   and it compares the assigned token rather than using a lookahead, whose
   `\s*` can match zero characters and slip past the value it was told to
   reject. It also fails when either layout spells a tab label: both layouts
-  read `TAB_LABELS` in `src/lib/tabBar.ts`, so a rename is a one-line change.
+  read `useTabLabels()` in `src/lib/tabBar.ts`, which maps each tab through
+  `TAB_LABEL_KEYS` to the `Tabs` catalog namespace, so a rename is a one-line
+  change and a language change relabels the bar without a remount.
 - **A fade is not available on the material.** `GlassView` renders nothing
   inside a layer whose opacity an ancestor animates, so any fade of
   `TabBarBackground` forces `PlatformBlur` on every iOS version and changes the

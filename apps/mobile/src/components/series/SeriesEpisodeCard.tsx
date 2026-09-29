@@ -87,6 +87,7 @@ export function SeriesEpisodeCard({
   downloadState,
 }: SeriesEpisodeCardProps) {
   const t = useT("Series")
+  const tWatch = useT("Watch")
   const imageUrl = resolveImageUrl(episode.posterUrl)
   const progressEntry = useWatchProgressEntry(episode.documentId)
   const badge =
@@ -101,7 +102,7 @@ export function SeriesEpisodeCard({
         accessibilityLabel={[
           title,
           badge ? t(badge.a11y) : null,
-          progressAccessibilityText(progressEntry),
+          progressAccessibilityText(progressEntry, tWatch),
         ]
           .filter(Boolean)
           .join(", ")}
