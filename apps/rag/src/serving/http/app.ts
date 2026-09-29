@@ -1,3 +1,9 @@
+import {
+  createUsageReportRoutes,
+  type UsageReportDeps,
+} from "./usage-report.js"
+import type { ServerResponse } from "node:http"
+import type { UsageCollector } from "./usage.js"
 import { searchRequestSchema, searchResponseSchema } from "@forge/rag-contracts"
 import { Hono } from "hono"
 import { bodyLimit } from "hono/body-limit"
@@ -22,12 +28,16 @@ export type AppDeps = {
   tokens: TokenRegistry
   portal?: PortalDeps
   consumerAuth?: ConsumerAuthenticator
+  usage?: UsageCollector
+  usageReport?: UsageReportDeps
 }
 
 export function createApp(deps: AppDeps): Hono<{
+  Bindings: { outgoing?: ServerResponse }
   Variables: { authenticatedConsumer: AuthenticatedConsumer | null }
 }> {
   const app = new Hono<{
+    Bindings: { outgoing?: ServerResponse }
     Variables: { authenticatedConsumer: AuthenticatedConsumer | null }
   }>()
 
@@ -35,18 +45,23 @@ export function createApp(deps: AppDeps): Hono<{
     if (error.name === "BodyLimitError") {
       return context.json({ error: "payload_too_large" }, 413)
     }
-    console.error(`[rag] event=request_failed error_name=${error.name}`)
+    console.error(`[rag] event=request_failed code=internal`)
     return context.json({ error: "internal" }, 500)
   })
 
   app.get("/v1/health", (context) => context.json({ status: "ok" }))
+  if (deps.usageReport)
+    app.route("/internal/usage", createUsageReportRoutes(deps.usageReport))
   if (deps.portal) app.route("/portal", createPortal(deps.portal))
 
   app.post(
     "/v1/search",
     bodyLimit({
       maxSize: MAX_SEARCH_BODY_BYTES,
-      onError: (context) => context.json({ error: "payload_too_large" }, 413),
+      onError: (context) => {
+        deps.usage?.denial("body_limit")
+        return context.json({ error: "payload_too_large" }, 413)
+      },
     }),
     async (context) => {
       const authorization = context.req.header("authorization")
@@ -62,6 +77,7 @@ export function createApp(deps: AppDeps): Hono<{
               scope = { allowedSourceKeys: consumer.allowedSourceKeys }
             }
           } catch {
+            deps.usage?.denial("auth_unavailable")
             return context.json({ error: "auth_unavailable" }, 503)
           }
         } else {
@@ -71,11 +87,16 @@ export function createApp(deps: AppDeps): Hono<{
         scope = lookupScope(deps.tokens, authorization)
       }
       if (!scope) {
+        deps.usage?.denial("unauthorized")
         return context.json({ error: "unauthorized" }, 401, {
           "WWW-Authenticate": "Bearer",
         })
       }
 
+      const consumer = context.get("authenticatedConsumer")
+      if (consumer)
+        await deps.usage?.admit(consumer.consumerId, context.env?.outgoing)
+      else deps.usage?.denial("legacy_unattributed")
       const text = await context.req.text()
 
       let raw: unknown

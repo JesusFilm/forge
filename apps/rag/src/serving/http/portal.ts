@@ -1,4 +1,5 @@
 import { Hono } from "hono"
+import type { PortalSources } from "./portal-sources.js"
 import { getCookie, setCookie, deleteCookie } from "hono/cookie"
 
 import { admitted } from "./portal-policy.js"
@@ -6,6 +7,8 @@ import type { SessionStore } from "../../contracts/portal-sessions.js"
 import { randomToken } from "./portal-token.js"
 import type { AdmissionProvider, GitHubIdentity } from "./portal-github.js"
 import type { ConsumerAccess } from "../../contracts/consumer-access.js"
+import type { UsageReader } from "../../contracts/consumer-usage.js"
+import { usageReportResponse, usageReportsResponse } from "./usage-report.js"
 import { createConsumerRoutes } from "./portal-consumers.js"
 import {
   portalFonts,
@@ -14,6 +17,9 @@ import {
   portalHtml,
   portalCss,
   portalScript,
+  portalUsageScript,
+  portalSourcesScript,
+  portalSourcesCss,
   portalCsp,
 } from "./portal-ui.js"
 
@@ -32,8 +38,10 @@ export type PortalDeps = {
   clientId: string
   callbackUrl: string
   origin: string
+  usageReader?: UsageReader
   consumers?: ConsumerAccess
   allowedSourceKeys?: string[]
+  sources?: () => Promise<PortalSources>
 }
 
 export function createPortal(deps: PortalDeps): Hono {
@@ -134,6 +142,30 @@ export function createPortal(deps: PortalDeps): Hono {
     return c.body(portalScript)
   })
 
+  app.get("/assets/usage.js", (c) => {
+    c.header("Content-Type", "text/javascript; charset=utf-8")
+    return c.body(portalUsageScript)
+  })
+
+  app.get("/assets/sources.js", (c) => {
+    c.header("Content-Type", "text/javascript; charset=utf-8")
+    return c.body(portalSourcesScript)
+  })
+  app.get("/assets/sources.css", (c) => {
+    c.header("Content-Type", "text/css; charset=utf-8")
+    return c.body(portalSourcesCss)
+  })
+  app.get("/sources", async (c) => {
+    const identity = await authorize(getCookie(c, SESSION_COOKIE))
+    if (!identity) return c.json({ error: "unauthorized" }, 401)
+    try {
+      if (deps.sources) return c.json(await deps.sources())
+    } catch {
+      /* Failure is isolated to this view; no data or internal errors are logged. */
+    }
+    return c.json({ error: "sources_snapshot_unavailable" }, 503)
+  })
+
   app.get("/assets/forge.svg", (c) => {
     c.header("Content-Type", "image/svg+xml")
     return c.body(portalLogo)
@@ -160,6 +192,7 @@ export function createPortal(deps: PortalDeps): Hono {
         login: identity.login,
         githubId: identity.id,
         managementAvailable: !!deps.consumers,
+        usageAvailable: !!deps.usageReader && !!deps.consumers,
       },
       200,
       {
@@ -203,6 +236,20 @@ export function createPortal(deps: PortalDeps): Hono {
         allowedSourceKeys: deps.allowedSourceKeys ?? [],
       }),
     )
+  }
+
+  if (deps.usageReader) {
+    const reader = deps.usageReader
+    app.get("/usage/reports", async (c) => {
+      const identity = await authorize(getCookie(c, SESSION_COOKIE))
+      if (!identity) return c.json({ error: "unauthorized" }, 401)
+      return usageReportsResponse(c, reader)
+    })
+    app.get("/usage", async (c) => {
+      const identity = await authorize(getCookie(c, SESSION_COOKIE))
+      if (!identity) return c.json({ error: "unauthorized" }, 401)
+      return usageReportResponse(c, reader)
+    })
   }
 
   return app

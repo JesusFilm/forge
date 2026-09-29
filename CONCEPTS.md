@@ -16,6 +16,12 @@ A deployment-specific authorization boundary within a Registered Application tha
 
 An explicit, revocable approval that gives a user or service a set of scopes for one Registered Application and Application Environment; an OAuth client's allowed scopes do not constitute an Application Grant.
 
+### Changelog Preapproval
+
+An email-addressed promise of Changelog Contributor access in one Application Environment that can become an Application Grant only after the recipient proves the matching current address and meets the redemption checks.
+
+It grants no access while unredeemed. A pending preapproval can display as expired when its time passes; it can also be renewed or canceled, and successful redemption consumes it.
+
 ### Dynamic MCP Client
 
 A public OAuth client created at runtime by an MCP host so that each host can establish its own callback metadata and client identity without a pre-seeded credential.

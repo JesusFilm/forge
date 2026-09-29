@@ -56,12 +56,34 @@ The ticket is not complete until this result is visible and reconcilable in the 
 ## Remaining evidence gate
 
 The signed below-player and For You surfaces have request-owned served facts.
-Anonymous authored Watch blocks currently emit render, eligible, and selection
-facts without a server-issued served denominator. The Admin registry exposes
-that gap; completing this ticket requires reconciling served counts for those
-registered entries and checking the resulting coverage, CTR, replay, and
-ingestion health in a deployed authorized Admin window. Local browser and
-PostgreSQL fixtures cannot establish deployed ingestion completeness.
+Origin-issued anonymous V2 evidence is deployed through PR #2450. Authorized
+Admin observations include served and rendered positions for authored home,
+search, series episodes and video chapters, with natural chapter impressions,
+selections, visibility capability and replay counts. These rolling cohorts
+include concurrent production traffic and do not establish complete coverage.
+The active hero authority and mixed-policy display-bound repairs from PR #2452
+are deployed after the test-only timing repair in PR #2453. The deployed Admin
+policy filter exposes all 74 V2 chapter positions in the inspected cohort and
+separately retains 77 legacy positions with unknown served counts. A real
+browser verifies active-card authority, focus retention, matching V2 selection
+and successful playback navigation. The final Admin hero cohort has 15 served,
+15 rendered, two eligible impressions and one early selection, with no eligible
+selection; these rolling counts include concurrent traffic.
+The batch's release and evidence boundaries are recorded in
+`docs/operations/recommendation-batch-acceptance-2026-09-29.md`.
+
+The owner explicitly retained fallback home carousel, fallback home grid and
+video editorial as unresolved coverage gaps for this batch. They currently
+have no producing public route; missing rows are unknown coverage, not measured
+zeros. This scope decision preserves their registry entries and does not
+complete this ticket. For You also had no measured rows in the inspected
+rolling window. The full coverage and ingestion-health gate remains open:
+shared health still reports loss suspected. Comparative page-loading evidence
+is retained with small-sample limits: home LCP rose 164 ms while its
+FCP/load/TTFB fell, and headed paint entries remained unavailable. It is not
+field regression clearance. Local browser and PostgreSQL fixtures cannot
+establish deployed ingestion completeness. Unreceipted transient windows retain
+V1 unknown-served facts rather than manufacturing a denominator.
 
 The origin-issued v2 implementation is described in
 `docs/plans/2026-09-29-feat-373-origin-served-manifests-plan.md`. Local browser
@@ -73,8 +95,9 @@ projections and legacy v1 facts retain an unknown denominator. Registry
 completion remains false pending deployed coverage and authorized Admin review.
 Root/language home projections use proven public pathnames; generic authored
 relative-navigation authority remains unknown and is tracked by feat-564.
-The Admin exposure table now has a registry-entry and optional placement filter
-to inspect cohorts that exceed its unchanged 128-row bound. Its anonymous report
+The Admin exposure table has registry-entry and optional placement filters;
+PR #2452 adds an optional policy filter before the unchanged 128-row bound.
+Its anonymous report
 uses an exact-partition window calculation after a production timeout was
 reproduced locally, preserving cutoffs, policy isolation and the three-second
 statement budget.

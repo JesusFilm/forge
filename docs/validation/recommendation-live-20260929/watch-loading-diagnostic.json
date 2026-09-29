@@ -1,0 +1,133 @@
+{
+  "method": "Two additional sequential navigations on each flagged route; existing postrelease session; mixed cache/network uncontrolled; same load+1500ms+200ms observer as comparison. Retain all results, including slower samples.",
+  "samples": [
+    {
+      "dclMs": 967.5,
+      "fcpMs": 1060,
+      "lcp": {
+        "host": "www.jesusfilm.org",
+        "loadTime": 1845.199999988079,
+        "renderTime": 2132,
+        "size": 638700,
+        "tag": "IMG"
+      },
+      "lcpMs": 2132,
+      "lcpResource": {
+        "durationMs": 731.3999999761581,
+        "encodedBytes": 59860,
+        "responseEndMs": 1843.199999988079,
+        "startMs": 1111.800000011921,
+        "transferBytes": 60160
+      },
+      "loadMs": 968.3000000119208,
+      "path": "/watch",
+      "requestStartMs": 3.900000035762787,
+      "responseEndMs": 730.9000000357628,
+      "responseStartMs": 396.5,
+      "scriptCount": 28,
+      "scriptEncodedBytes": 839413,
+      "status": 200,
+      "ttfbMs": 392.5999999642372,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "viewport": {
+        "height": 577,
+        "width": 1280
+      },
+      "sample": 1,
+      "measuredAt": "2026-09-29T07:11:13.060089+00:00"
+    },
+    {
+      "dclMs": 640.5,
+      "fcpMs": 804,
+      "lcp": {
+        "host": "www.jesusfilm.org",
+        "loadTime": 1299.600000023842,
+        "renderTime": 1668,
+        "size": 638700,
+        "tag": "IMG"
+      },
+      "lcpMs": 1668,
+      "lcpResource": {
+        "durationMs": 540.5,
+        "encodedBytes": 22590,
+        "responseEndMs": 1299.300000011921,
+        "startMs": 758.8000000119209,
+        "transferBytes": 22890
+      },
+      "loadMs": 641,
+      "path": "/watch",
+      "requestStartMs": 3.400000035762787,
+      "responseEndMs": 448.4000000357628,
+      "responseStartMs": 388,
+      "scriptCount": 28,
+      "scriptEncodedBytes": 839413,
+      "status": 200,
+      "ttfbMs": 384.5999999642372,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "viewport": {
+        "height": 577,
+        "width": 1280
+      },
+      "sample": 2,
+      "measuredAt": "2026-09-29T07:11:15.475964+00:00"
+    },
+    {
+      "dclMs": 703.1000000238419,
+      "fcpMs": 748,
+      "lcp": {
+        "host": null,
+        "loadTime": 0,
+        "renderTime": 748,
+        "size": 29344,
+        "tag": "H1"
+      },
+      "lcpMs": 748,
+      "lcpResource": null,
+      "loadMs": 704.5,
+      "path": "/watch/jesus.html",
+      "requestStartMs": 2.900000035762787,
+      "responseEndMs": 434,
+      "responseStartMs": 402.5,
+      "scriptCount": 35,
+      "scriptEncodedBytes": 916129,
+      "status": 200,
+      "ttfbMs": 399.5999999642372,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "viewport": {
+        "height": 577,
+        "width": 1280
+      },
+      "sample": 1,
+      "measuredAt": "2026-09-29T07:11:17.965056+00:00"
+    },
+    {
+      "dclMs": 651.5999999642372,
+      "fcpMs": 628,
+      "lcp": {
+        "host": null,
+        "loadTime": 0,
+        "renderTime": 628,
+        "size": 29344,
+        "tag": "H1"
+      },
+      "lcpMs": 628,
+      "lcpResource": null,
+      "loadMs": 652.5,
+      "path": "/watch/jesus.html",
+      "requestStartMs": 2.300000011920929,
+      "responseEndMs": 444.39999997615814,
+      "responseStartMs": 387.800000011921,
+      "scriptCount": 35,
+      "scriptEncodedBytes": 916129,
+      "status": 200,
+      "ttfbMs": 385.5,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "viewport": {
+        "height": 577,
+        "width": 1280
+      },
+      "sample": 2,
+      "measuredAt": "2026-09-29T07:11:20.388096+00:00"
+    }
+  ]
+}

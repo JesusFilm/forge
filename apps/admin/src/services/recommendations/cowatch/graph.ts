@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto"
+import {
+  assertCowatchSourceWindow,
+  type CowatchSourceWindow,
+} from "./source-window"
 
 /** Population relationship truth. No profile identity or embedding is published. */
 export const COWATCH_FEATURE_VERSION = "directional-cowatch-feature-v1" as const
@@ -6,6 +10,12 @@ export const COWATCH_PROJECTION_VERSION =
   "directional-cowatch-projection-v1" as const
 export const COWATCH_SHADOW_GENERATOR_KEY =
   "directional-cowatch-shadow-v1" as const
+export const COWATCH_LEGACY_LINEAGE_VERSION = "discovery-link-v1" as const
+export const COWATCH_DURABLE_LINEAGE_VERSION =
+  "durable-privacy-generation-v2" as const
+export type CowatchLineageVersion =
+  | typeof COWATCH_LEGACY_LINEAGE_VERSION
+  | typeof COWATCH_DURABLE_LINEAGE_VERSION
 export const COWATCH_MAX_GAP_MS = 48 * 60 * 60 * 1_000
 const HALF_LIFE_MS = 30 * 24 * 60 * 60 * 1_000
 const SHRINKAGE_SUPPORT = 5
@@ -73,7 +83,19 @@ export type CowatchGraph = Readonly<{
   edges: readonly CowatchFeature[]
   uniqueViewers: number
   qualifiedOutcomes: number
+  attemptedPairCount: number
 }>
+
+export class CowatchWorkOverflowError extends RangeError {
+  constructor(
+    readonly bound: "session_sources" | "pair_attempts",
+    readonly eligibleSourceCount: number,
+    readonly attemptedPairCount: number,
+  ) {
+    super(`co-watch ${bound} exceeds bounded projection`)
+    this.name = "CowatchWorkOverflowError"
+  }
+}
 
 /**
  * Rebuilds from current source truth. Selecting the latest revision BEFORE
@@ -84,7 +106,11 @@ export type CowatchGraph = Readonly<{
 export function buildCowatchGraph(
   outcomes: readonly CowatchOutcome[],
   now: Date,
+  sourceWindow?: CowatchSourceWindow,
+  lineageVersion: CowatchLineageVersion = COWATCH_LEGACY_LINEAGE_VERSION,
 ): CowatchGraph {
+  if (sourceWindow) assertCowatchSourceWindow(sourceWindow, now)
+  const evaluationAsOf = sourceWindow?.evaluationAsOf ?? now
   const latest = new Map<string, CowatchOutcome>()
   for (const row of outcomes) {
     const prior = latest.get(row.episodeId)
@@ -106,8 +132,11 @@ export function buildCowatchGraph(
         row.eligibilityRevision != null &&
         row.eligibilityPolicyVersion != null &&
         row.expiresAt > now &&
-        row.occurredAt <= now &&
-        row.occurredAt >= new Date(now.getTime() - 180 * 86_400_000) &&
+        (sourceWindow
+          ? row.occurredAt >= sourceWindow.windowStart &&
+            row.occurredAt < sourceWindow.windowEnd
+          : row.occurredAt <= now &&
+            row.occurredAt >= new Date(now.getTime() - 180 * 86_400_000)) &&
         Number.isFinite(row.qualityWeight) &&
         row.qualityWeight > 0,
     )
@@ -126,13 +155,21 @@ export function buildCowatchGraph(
   let pairAttempts = 0
   for (const [sessionDigest, rows] of sessions) {
     if (rows.length > MAX_SESSION_ROWS) {
-      throw new RangeError("co-watch session exceeds bounded projection")
+      throw new CowatchWorkOverflowError(
+        "session_sources",
+        eligible.length,
+        pairAttempts,
+      )
     }
     for (let a = 0; a < rows.length; a++) {
       for (let b = a + 1; b < rows.length; b++) {
         pairAttempts += 1
         if (pairAttempts > MAX_PAIR_ATTEMPTS) {
-          throw new RangeError("co-watch pair work exceeds bounded projection")
+          throw new CowatchWorkOverflowError(
+            "pair_attempts",
+            eligible.length,
+            pairAttempts,
+          )
         }
         const source = rows[a]
         const target = rows[b]
@@ -143,7 +180,8 @@ export function buildCowatchGraph(
           clamp01(source.qualityWeight) * clamp01(target.qualityWeight),
         )
         const recencyWeight = Math.exp(
-          (-Math.LN2 * (now.getTime() - target.occurredAt.getTime())) /
+          (-Math.LN2 *
+            (evaluationAsOf.getTime() - target.occurredAt.getTime())) /
             HALF_LIFE_MS,
         )
         const candidate: CowatchContribution = {
@@ -187,9 +225,22 @@ export function buildCowatchGraph(
   }
   const contributions = [...perViewerPair.values()].sort(compareContributions)
   const generation = createHash("sha256")
-    .update(COWATCH_PROJECTION_VERSION)
+    .update(
+      lineageVersion === COWATCH_LEGACY_LINEAGE_VERSION
+        ? COWATCH_PROJECTION_VERSION
+        : `${COWATCH_PROJECTION_VERSION}\0${lineageVersion}`,
+    )
     .update("\0")
-    .update(now.toISOString())
+    .update(
+      sourceWindow
+        ? JSON.stringify([
+            sourceWindow.version,
+            sourceWindow.windowStart.toISOString(),
+            sourceWindow.windowEnd.toISOString(),
+            sourceWindow.evaluationAsOf.toISOString(),
+          ])
+        : now.toISOString(),
+    )
     .update("\0")
     .update(
       JSON.stringify(
@@ -284,6 +335,7 @@ export function buildCowatchGraph(
     edges,
     uniqueViewers: allViewers,
     qualifiedOutcomes: eligible.length,
+    attemptedPairCount: pairAttempts,
   }
 }
 

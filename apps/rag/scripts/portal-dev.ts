@@ -1,4 +1,6 @@
 /** Local-only UI development composition. Never imported by serve.ts. */
+import { allSources } from "../src/registry/index.js"
+import { createPortalSourcesReader } from "../src/serving/http/portal-sources.js"
 import { createServer } from "node:https"
 import { readFileSync } from "node:fs"
 import { getRequestListener } from "@hono/node-server"
@@ -11,7 +13,12 @@ import { PostgresConsumerAuthenticator } from "../src/adapters/postgres/consumer
 import { createPostgresSessionStore } from "../src/adapters/postgres/portal-sessions.js"
 import { createApp } from "../src/serving/http/app.js"
 import { randomToken } from "../src/serving/http/portal-token.js"
-import { verifyConsumerRoles } from "./consumer-role-policy.js"
+import { PostgresUsageStore } from "../src/adapters/postgres/consumer-usage.js"
+import { UsageCollector } from "../src/serving/http/usage.js"
+import {
+  verifyConsumerRoles,
+  verifyUsageRoles,
+} from "./consumer-role-policy.js"
 
 class PortalDevError extends Error {
   constructor(
@@ -47,6 +54,21 @@ const sessions = createPostgresSessionStore(
   localDatabase(process.env.RAG_PORTAL_SESSION_DATABASE_URL),
 )
 await verifyConsumerRoles(writer, reader)
+// Optional local usage roles keep the real report/accounting path separate from corpus.
+const usageWriterUrl = process.env.RAG_USAGE_WRITER_DATABASE_URL
+const usageReaderUrl = process.env.RAG_USAGE_REPORT_DATABASE_URL
+if (!!usageWriterUrl !== !!usageReaderUrl)
+  throw new PortalDevError("local_database_required")
+const usageWriter = usageWriterUrl
+  ? new PrismaClient({ datasourceUrl: localDatabase(usageWriterUrl) })
+  : undefined
+const usageReader = usageReaderUrl
+  ? new PrismaClient({ datasourceUrl: localDatabase(usageReaderUrl) })
+  : undefined
+if (usageWriter && usageReader) await verifyUsageRoles(usageWriter, usageReader)
+const usage = usageWriter
+  ? new UsageCollector(new PostgresUsageStore(usageWriter))
+  : undefined
 const keyPath = process.env.RAG_PORTAL_DEV_TLS_KEY
 const certPath = process.env.RAG_PORTAL_DEV_TLS_CERT
 if (!keyPath || !certPath) throw new PortalDevError("local_tls_files_required")
@@ -91,13 +113,18 @@ app.route(
     retriever: { search: async () => [] },
     tokens: new Map(),
     consumerAuth: new PostgresConsumerAuthenticator(reader),
+    usage,
     portal: {
       origin,
       callbackUrl: origin + "/portal/callback",
       clientId: "local-only",
       sessions,
       consumers: new PostgresConsumerAccess(writer),
+      usageReader: usageReader
+        ? new PostgresUsageStore(usageReader)
+        : undefined,
       allowedSourceKeys: ["synthetic-source"],
+      sources: createPortalSourcesReader(allSources()),
       admission: {
         current: async () => ({ sha: "5".repeat(40), allowlist: { users } }),
         eligible: async (identity) =>
@@ -124,6 +151,8 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
     server.close(() => {
       void Promise.all([
+        usage?.stop().then(() => usageWriter?.$disconnect()),
+        usageReader?.$disconnect(),
         writer.$disconnect(),
         reader.$disconnect(),
         sessions.close(),

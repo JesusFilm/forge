@@ -10,6 +10,7 @@ export const adminSemanticRecommendationDeliveryQuery = `
     $profileTokenDigest: String
     $trafficCategory: String
     $eligibleHuman: Boolean
+    $clientDeliveryContract: String
   ) {
     semanticRecommendationDelivery(
       seedMediaId: $seedMediaId
@@ -20,6 +21,7 @@ export const adminSemanticRecommendationDeliveryQuery = `
       profileTokenDigest: $profileTokenDigest
       trafficCategory: $trafficCategory
       eligibleHuman: $eligibleHuman
+      clientDeliveryContract: $clientDeliveryContract
     ) {
       contractVersion
       surfaceVersion

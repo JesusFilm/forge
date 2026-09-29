@@ -109,6 +109,14 @@ export function makeHarness(
     profileComparison?: boolean
     database?: PrismaClient
     candidateTraceFormat?: "legacy" | "compact"
+    study?: Pick<
+      import("./delivery.types").DeliveryDependencies,
+      "resolveStudyAuthority" | "composeCowatchTrial"
+    >
+    owner?: Pick<
+      import("./delivery.types").DeliveryDependencies,
+      "resolveOwnerAuthority" | "composeOwnerCowatch"
+    >
     nowMilliseconds?: () => number
   } = {},
 ) {
@@ -229,6 +237,8 @@ export function makeHarness(
     orchestrateHybrid,
     assignExperiment,
     ...(options.profileComparison ? { assignProfileExperiment } : {}),
+    ...options.study,
+    ...options.owner,
     retrieveProfile,
     resolveRecentContext,
     authorizeProfile,

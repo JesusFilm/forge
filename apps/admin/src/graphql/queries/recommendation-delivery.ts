@@ -128,6 +128,7 @@ builder.queryFields((t) => ({
       profileTokenDigest: t.arg.string({ required: false }),
       eligibleHuman: t.arg.boolean({ required: false }),
       trafficCategory: t.arg.string({ required: false }),
+      clientDeliveryContract: t.arg.string({ required: false }),
     },
     resolve: async (_root, args, ctx) => {
       return resolveRecommendationOperation(async () => {
@@ -142,6 +143,7 @@ builder.queryFields((t) => ({
           profileTokenDigest: args.profileTokenDigest ?? null,
           eligibleHuman: args.eligibleHuman ?? true,
           trafficCategory: args.trafficCategory,
+          clientDeliveryContract: args.clientDeliveryContract ?? null,
         })
       })
     },

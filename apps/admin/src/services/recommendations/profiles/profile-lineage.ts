@@ -1,3 +1,4 @@
+import { ownerReleaseInfluenceAllowedSql } from "../promotion/owner-influence"
 import { Prisma } from "@prisma/client"
 import {
   ACTIVE_WATCH_PROXY_VERSION,
@@ -29,7 +30,8 @@ export function profileContributionInvalidPredicateSql(now: Date): Prisma.Sql {
     OR (
       contribution.kind = 'qualified_outcome'
       AND (
-        outcome.id IS NULL
+        NOT ${ownerReleaseInfluenceAllowedSql(Prisma.sql`outcome.request_id`)}
+        OR outcome.id IS NULL
         OR episode.id IS NULL
         OR decision.outcome_id IS DISTINCT FROM outcome.id
         OR decision.source_type::text <> 'playback_outcome'
@@ -64,7 +66,8 @@ export function profileContributionInvalidPredicateSql(now: Date): Prisma.Sql {
     OR (
       contribution.kind = 'session_selection'
       AND (
-        selection.id IS NULL
+        NOT ${ownerReleaseInfluenceAllowedSql(Prisma.sql`selection.request_id`)}
+        OR selection.id IS NULL
         OR decision.selection_id IS DISTINCT FROM selection.id
         OR decision.source_type::text <> 'selection'
         OR contribution.outcome_classifier_version IS NOT NULL
