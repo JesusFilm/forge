@@ -32,7 +32,13 @@ export async function readSubtitles(source: VideoSource): Promise<string[]> {
 
 const RULE = "-".repeat(60)
 
+/** Hard-wrap width; 0 leaves lines whole (for a word processor, which wraps
+ *  them itself). Set per call of formatDevotionalScript. */
+let WRAP = 80
+
 function wrap(text: string, width = 80, indent = ""): string {
+  if (WRAP === 0) return indent + text.split(/\s+/).filter(Boolean).join(" ")
+  width = Math.min(width, WRAP)
   const out: string[] = []
   let line = ""
   for (const w of text.split(/\s+/).filter(Boolean)) {
@@ -59,7 +65,10 @@ export function formatDevotionalScript(input: {
   classicCredit: string
   reflectLeadIn: string
   prayLeadIn: string
+  /** 0 for no hard wrapping (the .rtf copy). */
+  wrapWidth?: number
 }): string {
+  WRAP = input.wrapWidth ?? 80
   const { devo: d, source: s } = input
   const paragraphs = d.reflection.paragraphs ?? []
   const voiceTag = (v?: string) => (v === d.voice ? "voice A" : "voice B")
@@ -96,9 +105,11 @@ export function formatDevotionalScript(input: {
     `SUBTITLES  (${s.passage.reference}, as the film's narrator reads it: NIV)`,
     "",
     // One numbered block per cue, exactly as it will be on screen.
-    ...input.subtitles.map((c, i) => {
+    // One numbered block per cue, exactly as it will be on screen, with air
+    // between them (owner, 2026-09-29: a wall of text is hard to read).
+    ...input.subtitles.flatMap((c, i) => {
       const n = String(i + 1).padStart(2, " ")
-      return wrap(c, 76, "      ").replace(/^ {6}/, `  ${n}  `)
+      return [wrap(c, 76, "      ").replace(/^ {6}/, `  ${n}  `), ""]
     }),
     "",
     ...section(3, "STEP  WATCH -> REFLECT"),
@@ -112,6 +123,7 @@ export function formatDevotionalScript(input: {
     ...paragraphs.flatMap((p) => [
       `[${kind(p.role)} · ${voiceTag(p.voice)}${p.mark ? ` · mark: ${p.mark.label.toUpperCase()} / ${p.mark.source}` : ""}]`,
       wrap(p.text),
+      "",
       "",
     ]),
     "TAKEAWAY",

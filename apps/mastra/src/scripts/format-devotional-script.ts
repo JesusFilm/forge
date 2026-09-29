@@ -8,8 +8,9 @@
  *   pnpm --filter @forge/mastra exec tsx --env-file=.env.local \
  *     src/scripts/format-devotional-script.ts --source=lumo-luke-15 --out=<file>
  */
+import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
-import { copyFile, writeFile } from "node:fs/promises"
+import { copyFile, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 
 import {
@@ -62,18 +63,40 @@ async function main() {
 
   if (existsSync(out))
     throw new Error(`${out} exists; move it to archive/ first`)
-  await writeFile(
-    out,
+  const sheet = (wrapWidth: number) =>
     formatDevotionalScript({
       devo,
       source: src,
-      subtitles: await readSubtitles(src),
+      subtitles,
       classicCredit: "J. C. Ryle (Expository Thoughts on Luke, 1858)",
       reflectLeadIn: EN_LOCALE.connectors.steps.reflectAfterClip(),
       prayLeadIn: EN_LOCALE.connectors.steps.pray(),
-    }) + "\n",
-  )
+      wrapWidth,
+    }) + "\n"
+  const subtitles = await readSubtitles(src)
+  await writeFile(out, sheet(80))
   console.log(`wrote ${out}`)
+  // The same sheet in a large face for reading on screen (owner, 2026-09-29).
+  // macOS textutil; skipped quietly elsewhere.
+  const rtf = out.replace(/\.txt$/, ".rtf")
+  if (rtf !== out && !existsSync(rtf)) {
+    // Lines left whole, so the word processor wraps them to the window.
+    const plain = `${rtf}.tmp.txt`
+    await writeFile(plain, sheet(0))
+    const r = spawnSync("textutil", [
+      "-convert",
+      "rtf",
+      "-font",
+      "Georgia",
+      "-fontsize",
+      "18",
+      "-output",
+      rtf,
+      plain,
+    ])
+    await rm(plain, { force: true })
+    if (r.status === 0) console.log(`wrote ${rtf}`)
+  }
 }
 
 main().catch((e) => {
