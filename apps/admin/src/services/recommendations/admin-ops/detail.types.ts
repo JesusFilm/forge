@@ -173,6 +173,7 @@ export type RecommendationRequestDetailData = Readonly<{
     }>
     evidenceComplete: boolean
     fallbackReason: string | null
+    legacyDetailRetiredAt: Date | null
     stages: Array<
       Readonly<{
         stage:
@@ -445,6 +446,7 @@ export type DetailCandidateRunRow = Readonly<{
   id: string
   traceFormatVersion: number | null
   hasTracePayload: boolean
+  legacyDetailRetiredAt: Date | null
   purpose: string
   contextVersion: string
   generatorVersion: string

@@ -1,3 +1,4 @@
+import "../legacy-detail-retirement.db-cases"
 import { readFileSync, readdirSync } from "node:fs"
 import { PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
@@ -35,6 +36,7 @@ const migrationSql = [
   "0100_recommendation_candidate_compact_trace",
   "0101_recommendation_candidate_compact_trace_validate",
   "0102_recommendation_candidate_stage_duplicate_index_drop",
+  "0114_recommendation_legacy_detail_retirement",
   "0117_recommendation_served_item_payload",
 ].map((migration) =>
   readFileSync(
