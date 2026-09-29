@@ -73,7 +73,7 @@ flowchart TB
 - R1. The page shows, from top to bottom: a top bar with the title "My Watch" and a menu control, the identity header with any notice from R3, R4, or R20 under it, and the Downloads area (R5 or R9). No information rows, legal links, or version text appear on the page itself. _Changed 2026-09-30 by the mobile owner:_ the top bar shows only the menu control, with no title. The header centers the avatar over the name in every state. A chevron sits beside the signed-in name, and no line appears under it.
 - R2. When the sign-in gate is closed and the viewer is signed out, the header shows a generic avatar, "Guest", a disabled "Sign in · coming soon" indicator, and "Accounts are not available yet". A tap on the header does nothing.
 - R3. When the sign-in gate is open and the viewer is signed out, the header shows "Guest" and a Sign in button that starts the hosted sign-in, with the line "Keep your place across devices". After a failed sign-in, today's dismissible sign-in error notice shows under the header.
-- R4. When the viewer is signed in, the header shows the viewer's name, or the email when there is no name, and a chevron. A tap on the header opens the Account screen (R17). Right after a sign-in that created a new account, today's dismissible new-account notice shows under the header.
+- R4. When the viewer is signed in, the header shows the viewer's name, or the email when there is no name, and a chevron. A tap on the avatar or the name opens the Account screen (R17); a tap beside them opens nothing (owner decision, 2026-09-30). Right after a sign-in that created a new account, today's dismissible new-account notice shows under the header.
 
 **Downloads**
 
