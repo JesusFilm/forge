@@ -3,7 +3,7 @@ id: "feat-568"
 title: "Production source catalog in the RAG portal"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-29"
 duration: 2
 depends_on: []
@@ -38,3 +38,16 @@ No corpus writes, registry rekeys, public `/v1` changes, retrieval/filter change
 ## Verification
 
 Run focused facade/HTTP tests, portal browser checks including 250+ languages and mobile, page-load/resource comparisons, RAG typecheck/lint/depcruise/status checks, and touched-file formatting. Verify document/language totals against the committed snapshot; verify public artifacts are unchanged. Record local evidence and limitations before completing the ticket.
+
+## Resolution
+
+Implemented in [Forge PR #2463](https://github.com/JesusFilm/forge/pull/2463).
+Sources is an authenticated, production-only display facade over the committed
+snapshot, with explicit brand memberships and searchable language/domain detail.
+Existing ingestion keys, retrieval/filtering/citations, evaluation workflow and
+public Pages artifacts are unchanged.
+
+[Local verification](evidence/feat-568/local-verification.md) records 903 passing
+package tests, five passing browser tests, desktop/mobile inspection, and deferred
+Sources loading with no additional initial requests. Package and repository
+format checks pass. PR merge, deployment and live acceptance remain pending.
