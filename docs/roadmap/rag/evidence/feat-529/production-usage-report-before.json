@@ -1,0 +1,87 @@
+{
+  "checkedAt": "2026-09-29T05:21:49.706Z",
+  "operatorWrites": false,
+  "reports": [
+    {
+      "name": "screenshot",
+      "consumerId": "1547b524-ad60-4cf7-ac67-930b9715dc4e",
+      "label": "ragbot",
+      "windowStart": "2026-09-22T05:17:00.000Z",
+      "windowEnd": "2026-09-29T05:17:00.000Z",
+      "requestCount": 5,
+      "successfulRequestCount": 5,
+      "lastActivityAt": "2026-09-29T03:41:32.611Z",
+      "generatedAt": "2026-09-29T05:21:43.381Z",
+      "completeThrough": null,
+      "coverageStatus": "unavailable"
+    },
+    {
+      "name": "retrieval_minute",
+      "consumerId": "1547b524-ad60-4cf7-ac67-930b9715dc4e",
+      "label": "ragbot",
+      "windowStart": "2026-09-29T03:41:00.000Z",
+      "windowEnd": "2026-09-29T03:42:00.000Z",
+      "requestCount": 5,
+      "successfulRequestCount": 5,
+      "lastActivityAt": "2026-09-29T03:41:32.611Z",
+      "generatedAt": "2026-09-29T05:21:46.232Z",
+      "completeThrough": null,
+      "coverageStatus": "unavailable"
+    },
+    {
+      "name": "current_deployment",
+      "consumerId": "1547b524-ad60-4cf7-ac67-930b9715dc4e",
+      "label": "ragbot",
+      "windowStart": "2026-09-29T05:00:00.000Z",
+      "windowEnd": "2026-09-29T05:10:00.000Z",
+      "requestCount": 0,
+      "successfulRequestCount": 0,
+      "lastActivityAt": null,
+      "generatedAt": "2026-09-29T05:21:47.390Z",
+      "completeThrough": null,
+      "coverageStatus": "unavailable"
+    }
+  ],
+  "minutes": [
+    {
+      "minute": "2026-09-29T03:41:00.000Z",
+      "request_count": "5",
+      "successful_count": "5",
+      "last_activity_at": "2026-09-29T03:41:32.611Z"
+    }
+  ],
+  "collectors": [
+    {
+      "id": "9afb9b03-b356-46d8-82a0-2a50ee77688e",
+      "deployment_id": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+      "started_at": "2026-09-29T03:33:37.132Z",
+      "complete_through": "2026-09-29T04:45:50.009Z",
+      "heartbeat_at": "2026-09-29T04:45:50.009Z",
+      "stopped_at": null,
+      "heartbeat_fresh": false
+    },
+    {
+      "id": "695c954c-0f86-40cd-8f57-3a63ff033642",
+      "deployment_id": "c7992d7c-00a5-4f10-a35f-6a463ef09868",
+      "started_at": "2026-09-29T04:45:43.727Z",
+      "complete_through": "2026-09-29T04:58:20.323Z",
+      "heartbeat_at": "2026-09-29T04:58:20.323Z",
+      "stopped_at": null,
+      "heartbeat_fresh": false
+    },
+    {
+      "id": "e082410f-f69a-44a1-963a-ec2322cce080",
+      "deployment_id": "d4192ef8-9638-40d3-ac00-73f4ec6e959d",
+      "started_at": "2026-09-29T04:58:19.876Z",
+      "complete_through": "2026-09-29T05:21:45.853Z",
+      "heartbeat_at": "2026-09-29T05:21:45.853Z",
+      "stopped_at": null,
+      "heartbeat_fresh": true
+    }
+  ],
+  "inventory": [],
+  "problems": {
+    "pending_count": 0,
+    "gap_count": 0
+  }
+}

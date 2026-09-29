@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-09-29T05:29:27.325Z",
+  "operatorWrites": false,
+  "report": {
+    "consumerId": "1547b524-ad60-4cf7-ac67-930b9715dc4e",
+    "label": "ragbot",
+    "windowStart": "2026-09-29T05:27:00.000Z",
+    "windowEnd": "2026-09-29T05:28:00.000Z",
+    "requestCount": 0,
+    "successfulRequestCount": 0,
+    "lastActivityAt": null,
+    "generatedAt": "2026-09-29T05:29:24.512Z",
+    "completeThrough": "2026-09-29T05:28:00.000Z",
+    "coverageStatus": "complete"
+  }
+}

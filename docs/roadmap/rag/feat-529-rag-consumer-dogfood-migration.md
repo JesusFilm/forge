@@ -69,3 +69,14 @@ The [retrospective audit](evidence/feat-529/production-usage-role-provisioning.m
 records exact statements, credential receiver names, privilege verification and
 remaining activation work. The audit PR does not execute provisioning again or
 claim full feat-529 completion. It changes no personal consumer-key custody.
+
+## Production report coverage recovery — 2026-09-29
+
+The [inventory and collector recovery audit](evidence/feat-529/production-usage-coverage-recovery.md)
+records three independently sourced deployment inventory intervals and
+reconciliation of two confirmed-stopped collectors. The existing aggregate
+reader proved five recorded requests/successes for `[03:41,03:42)` UTC with
+complete coverage and unchanged counts. Uninstrumented history and uncertain
+shutdown intervals remain unavailable. This is actual aggregate proof, not
+completion of the staged +3/+2, lifecycle, isolation or migration/cutoff criteria.
+Independent inventory must be maintained on subsequent deployments.
