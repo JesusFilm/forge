@@ -133,3 +133,7 @@ Production provisioning, RAGBot machine grant and actual ops dogfood remain
 activation/dependent work; shared-token cutoff requires feat-529 and separate
 approval. Capacity review remains feat-563. Production activation has not been
 performed by this implementation.
+
+SPC-001 review correction rejects terminal collector reconciliation retries before
+mutation and preserves crash/history and healthy replacement coverage. Its public
+store regression and local verification are recorded in the evidence above.

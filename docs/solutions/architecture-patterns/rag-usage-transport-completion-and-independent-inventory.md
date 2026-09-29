@@ -27,7 +27,13 @@ recovery. If recording the gap also fails, coverage stays unavailable. Preserve
 pending uncertainty after response-completion loss. Reconcile a crashed instance
 only after an operator confirms it is stopped, recording uncertainty rather than
 guessing successes. A later outage does not erase the proven coverage of an
-already flushed closed window.
+already flushed closed window. Terminal reconciliation must reject or ignore a
+stopped collector before deleting pending state, recording gaps or updating its
+stop time. Retrying after the stale lease timeout must not extend that collector
+into a healthy replacement deployment. The public-store regression in
+`apps/rag/src/adapters/postgres/consumer-usage-reconciliation.integration.test.ts`
+checks closed complete, crash-partial and replacement-complete windows before
+and after a rejected retry.
 
 Regression evidence lives in `apps/rag/src/serving/http/usage.test.ts`,
 `apps/rag/src/adapters/postgres/consumer-usage-roles.integration.test.ts` and

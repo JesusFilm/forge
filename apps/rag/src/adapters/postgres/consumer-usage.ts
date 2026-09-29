@@ -60,7 +60,7 @@ export class PostgresUsageStore implements UsageWriter, UsageReader {
     await this.db.$transaction(async (tx) => {
       const rows = await tx.$queryRaw<
         Array<{ complete_through: Date }>
-      >`SELECT complete_through FROM usage_private.collectors WHERE id=${instance}::uuid AND heartbeat_at < ${new Date(at.getTime() - 30000)} FOR UPDATE`
+      >`SELECT complete_through FROM usage_private.collectors WHERE id=${instance}::uuid AND stopped_at IS NULL AND heartbeat_at < ${new Date(at.getTime() - 30000)} FOR UPDATE`
       if (!rows[0]) throw new UsageError("unavailable")
       const pending = await tx.$queryRaw<
         Array<{ admitted_at: Date }>

@@ -110,3 +110,28 @@ across 121 files (117 passed, 4 skipped). Typecheck, lint and dependency/import-
 checks passed. The relative lazy import was exercised in the browser; a delayed
 report response released after navigation could not repopulate the cleared table.
 No browser errors. No database schema changes in the selected-page slice.
+
+## SPC-001 terminal reconciliation retry correction
+
+The public usage-store regression first failed because a stopped collector's
+reconciliation retry resolved after the 30-second lease timeout. Reconciliation
+now selects only collectors with `stopped_at IS NULL` under the transaction lock;
+a terminal retry fails with `UsageError("unavailable")` before any pending deletion,
+gap insertion or stop/watermark update.
+
+`apps/rag/src/adapters/postgres/consumer-usage-reconciliation.integration.test.ts`
+reconciles a crashed collector with an unresolved admission, closes its independent
+inventory and opens a healthy replacement deployment. Before and after retrying
+at two minutes past the terminal stop, public reports remain byte-for-byte equal
+for a flushed complete window (1/1), the crash-partial window (1/0), and the
+replacement complete window (1/1), including watermarks. The old collector still
+rejects admissions. The regression is included in `db:verify`, which CI's
+`rag-postgres-integration` job invokes; the regular test command excludes this
+DB-only test. A separate file respects the 300-line ESLint limit.
+
+Validation: all four accounting/reconciliation/roles/inventory integration files
+passed (5 tests) on synthetic `forge_rag_fresh`; the full RAG suite passed 896 tests
+with 5 database-gated skips across 121 files. Typecheck, lint and depcruise passed.
+The older synthetic `forge_rag` database had no inventory guard trigger despite
+recorded migrations; the fresh database had enabled `guard_inventory`, and the
+unchanged role assertions passed there. No production or schema change was made.
