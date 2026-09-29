@@ -24,6 +24,7 @@ export function video(index: number) {
 export function userDeliveryHarness(
   primaryCount: number,
   prisma?: PrismaClient,
+  servedItemFormat?: "legacy" | "packed",
 ) {
   const h = makeHarness()
   const nominations = Array.from({ length: primaryCount }, (_, index) => {
@@ -50,6 +51,7 @@ export function userDeliveryHarness(
   }))
   const history = vi.fn(async (): Promise<UserWatchHistory> => [])
   const service = new UserRecommendationDeliveryService({
+    servedItemFormat,
     prisma: prisma ?? (h.prisma as unknown as PrismaClient),
     enabled: true,
     admission: { acquire: h.acquire, release: h.release },

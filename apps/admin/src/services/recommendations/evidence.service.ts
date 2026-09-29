@@ -152,9 +152,17 @@ export class RecommendationEvidenceService {
     const input = Input.parse(payload)
     const item = await this.deps.prisma.recommendationServedItem.findUnique({
       where: { id: input.itemId },
-      include: {
+      select: {
+        id: true,
+        requestId: true,
+        capabilityJti: true,
         request: {
-          include: {
+          select: {
+            state: true,
+            expiresAt: true,
+            sessionDigest: true,
+            surfaceVersion: true,
+            manifestId: true,
             experimentAssignment: {
               include: { experiment: true, profile: true },
             },

@@ -109,6 +109,7 @@ export function makeHarness(
     profileComparison?: boolean
     database?: PrismaClient
     candidateTraceFormat?: "legacy" | "compact"
+    servedItemFormat?: "legacy" | "packed"
     study?: Pick<
       import("./delivery.types").DeliveryDependencies,
       "resolveStudyAuthority" | "composeCowatchTrial"
@@ -221,6 +222,7 @@ export function makeHarness(
   const service = new RecommendationDeliveryService({
     prisma: options.database ?? (prisma as never),
     candidateTraceFormat: options.candidateTraceFormat,
+    servedItemFormat: options.servedItemFormat,
     admission: {
       acquire,
       release,

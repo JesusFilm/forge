@@ -411,36 +411,36 @@ export async function loadRecommendationRequestDetail(
         item.canonical_href AS "canonicalHref",
         item.candidate_generator AS "candidateGenerator",
         CASE
-          WHEN (item.candidate_provenance ->> 'sceneIndex') ~ '^[0-9]{1,9}$'
-          THEN (item.candidate_provenance ->> 'sceneIndex')::integer
+          WHEN (snapshot.candidate_provenance ->> 'sceneIndex') ~ '^[0-9]{1,9}$'
+          THEN (snapshot.candidate_provenance ->> 'sceneIndex')::integer
         END AS "sceneIndex",
         CASE
-          WHEN length(item.candidate_provenance ->> 'similarity') <= 32
-            AND (item.candidate_provenance ->> 'similarity') ~ '^-?[0-9]+([.][0-9]+)?$'
+          WHEN length(snapshot.candidate_provenance ->> 'similarity') <= 32
+            AND (snapshot.candidate_provenance ->> 'similarity') ~ '^-?[0-9]+([.][0-9]+)?$'
           THEN CASE
-            WHEN (item.candidate_provenance ->> 'similarity')::double precision BETWEEN 0 AND 1
-            THEN (item.candidate_provenance ->> 'similarity')::double precision
+            WHEN (snapshot.candidate_provenance ->> 'similarity')::double precision BETWEEN 0 AND 1
+            THEN (snapshot.candidate_provenance ->> 'similarity')::double precision
           END
         END AS similarity,
-        item.candidate_provenance -> 'viewingMode' AS "viewingMode",
-        CASE WHEN jsonb_typeof(item.presentation -> 'videoTitle') = 'string'
-          THEN left(item.presentation ->> 'videoTitle', 200) END AS "videoTitle",
-        CASE WHEN jsonb_typeof(item.presentation -> 'audioLanguageSlug') = 'string'
-          THEN left(item.presentation ->> 'audioLanguageSlug', 64) END AS "audioLanguageSlug",
+        snapshot.candidate_provenance -> 'viewingMode' AS "viewingMode",
+        CASE WHEN jsonb_typeof(snapshot.presentation -> 'videoTitle') = 'string'
+          THEN left(snapshot.presentation ->> 'videoTitle', 200) END AS "videoTitle",
+        CASE WHEN jsonb_typeof(snapshot.presentation -> 'audioLanguageSlug') = 'string'
+          THEN left(snapshot.presentation ->> 'audioLanguageSlug', 64) END AS "audioLanguageSlug",
         CASE
-          WHEN length(item.presentation ->> 'startSeconds') <= 32
-            AND (item.presentation ->> 'startSeconds') ~ '^[0-9]+([.][0-9]+)?$'
+          WHEN length(snapshot.presentation ->> 'startSeconds') <= 32
+            AND (snapshot.presentation ->> 'startSeconds') ~ '^[0-9]+([.][0-9]+)?$'
           THEN CASE
-            WHEN (item.presentation ->> 'startSeconds')::double precision BETWEEN 0 AND 86400
-            THEN (item.presentation ->> 'startSeconds')::double precision
+            WHEN (snapshot.presentation ->> 'startSeconds')::double precision BETWEEN 0 AND 86400
+            THEN (snapshot.presentation ->> 'startSeconds')::double precision
           END
         END AS "startSeconds",
         CASE
-          WHEN length(item.presentation ->> 'endSeconds') <= 32
-            AND (item.presentation ->> 'endSeconds') ~ '^[0-9]+([.][0-9]+)?$'
+          WHEN length(snapshot.presentation ->> 'endSeconds') <= 32
+            AND (snapshot.presentation ->> 'endSeconds') ~ '^[0-9]+([.][0-9]+)?$'
           THEN CASE
-            WHEN (item.presentation ->> 'endSeconds')::double precision BETWEEN 0 AND 86400
-            THEN (item.presentation ->> 'endSeconds')::double precision
+            WHEN (snapshot.presentation ->> 'endSeconds')::double precision BETWEEN 0 AND 86400
+            THEN (snapshot.presentation ->> 'endSeconds')::double precision
           END
         END AS "endSeconds",
         rendered.id AS "renderedId",
@@ -454,6 +454,13 @@ export async function loadRecommendationRequestDetail(
         selection.occurred_at AS "selectionOccurredAt",
         selection.received_at AS "selectionReceivedAt"
       FROM recommendation_served_item item
+      JOIN recommendation_request request ON request.id = item.request_id
+      CROSS JOIN LATERAL (SELECT
+        CASE WHEN request.served_item_payload IS NULL THEN item.presentation
+          ELSE request.served_item_payload -> 'items' -> item.id -> 'presentation' END AS presentation,
+        CASE WHEN request.served_item_payload IS NULL THEN item.candidate_provenance
+          ELSE request.served_item_payload -> 'items' -> item.id -> 'candidateProvenance' END AS candidate_provenance
+      ) snapshot
       LEFT JOIN recommendation_rendered_fact rendered ON rendered.item_id = item.id
       LEFT JOIN recommendation_impression impression ON impression.item_id = item.id
       LEFT JOIN recommendation_selection selection ON selection.item_id = item.id
