@@ -521,7 +521,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   quiet cancel (build 1.0.0 (5), 2026-09-07; the password form never
   triggers it, which is why the #2176 verification passed). A quiet cancel
   hides every one of these from the user: when the sheet closes and the
-  Profile tab still says Sign in, read production auth's deploy log first.
+  My Watch tab still says Sign in, read production auth's deploy log first.
   `@better-auth/utils` rides the same lockstep: it is `@better-auth/core`'s
   EXACT peer, and with both apps carrying `core`, pnpm resolved auth's peers
   against `better-call`'s `^0.5.0` walk, split `core` into two lockfile
@@ -614,7 +614,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
     because an `eas.json` edit moves the runtime version.
   - **A change needs a new bundle.** Expo inlines the value at bundle time.
     Publish only with `update:preview` or `update:production`. The app applies
-    a downloaded update on the next launch, so check the Profile tab after a
+    a downloaded update on the next launch, so check the My Watch tab after a
     second launch.
   - **Reach.** The production OTA channel is dark (see "Cold-start splash"),
     so the gate reaches installed builds only with the next native build.

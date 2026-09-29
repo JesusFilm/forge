@@ -67,7 +67,7 @@ export const TAB_LABELS = {
   explore: "Explore",
   watch: "Search",
   bible: READER_COPY.tabTitle,
-  profile: "Profile",
+  profile: "My Watch",
 } as const satisfies Record<TabRouteName, string>
 
 /** The expo-router group the tab screens live in. */

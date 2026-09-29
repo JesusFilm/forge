@@ -193,7 +193,7 @@ describe("the shared tab record (R1)", () => {
       explore: "Explore",
       watch: "Search",
       bible: READER_COPY.tabTitle,
-      profile: "Profile",
+      profile: "My Watch",
     })
   })
 
