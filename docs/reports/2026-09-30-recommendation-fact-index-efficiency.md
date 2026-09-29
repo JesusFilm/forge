@@ -1,6 +1,6 @@
 # Recommendation fact index efficiency, 2026-09-30
 
-## Shipped migration candidate
+## Migration candidate
 
 `0115_recommendation_fact_duplicate_constraints` drops the unique indexes
 behind `recommendation_render_event_key` and
@@ -12,10 +12,11 @@ keeps primary identity, capability and item uniqueness, request lookup, expiry,
 and request/item lineage constraints. It has a two-second lock acquisition
 bound and rolls back both drops if either lock is unavailable.
 
-The live catalog observation supplied to this work measured the rendered
-composite index at **125.70 MB**. That is a potential production relation-byte
-reduction for that index after the migration commits; the impression composite
-index adds further benefit, but its production size was not supplied here.
+The September 29 20:05 UTC live catalog check measured the rendered composite
+index at **125,894,656 bytes** and the impression composite at **12,558,336 bytes**:
+**138.45 MB combined**. Both were valid, with zero inbound foreign keys, and both
+individually unique capability indexes remained. This is a potential production
+relation-byte reduction after the migration commits.
 These are allocated index bytes, not a measured filesystem recovery or a
 steady-state growth forecast. The parent release must record actual relation,
 WAL, and filesystem values after deployment.
