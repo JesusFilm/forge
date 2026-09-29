@@ -1107,6 +1107,48 @@ model SyncLock {
   @@map("sync_locks")
 }
 
+/// Long Core phases execute on the native worker, not in Workflow HTTP steps.
+/// The unique run/phase pair makes workflow retries reuse the same result.
+model CoreSyncPhaseExecution {
+  id         String   @id @default(cuid())
+  syncRunId  String   @map("sync_run_id")
+  phase      String
+  input      Json
+  state      String   @default("PENDING")
+  claimToken String?  @map("claim_token")
+  attempts   Int      @default(0)
+  result     Json?
+  error      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([syncRunId, phase])
+  @@index([state, createdAt])
+  @@map("core_sync_phase_execution")
+}
+
+/// Coalesced content delivery. Search-engine qualification stays on the base
+/// Candidate; generationId names an immutable, automatically refreshed catalog.
+model WatchCatalogPublication {
+  id               String                          @id
+  requestedVersion Int                             @default(0) @map("requested_version")
+  searchVersion    Int                             @default(0) @map("search_version")
+  webVersion       Int                             @default(0) @map("web_version")
+  baseGenerationId String?                         @map("base_generation_id")
+  generationId     String?                         @map("generation_id") @db.VarChar(128)
+  generation       WatchSearchCandidateGeneration? @relation(fields: [generationId], references: [id], onDelete: Restrict)
+  rankingRevision  String?                         @map("ranking_revision")
+  sourceDigest     String?                         @map("source_digest")
+  lastRequestedAt  DateTime                        @default(now()) @map("last_requested_at")
+  lastPublishedAt  DateTime?                       @map("last_published_at")
+  retryAt          DateTime                        @default(now()) @map("retry_at")
+  attempts         Int                             @default(0)
+  lastError        String?                         @map("last_error")
+  updatedAt        DateTime                        @updatedAt @map("updated_at")
+
+  @@map("watch_catalog_publication")
+}
+
 /// Admin-owned product ledger for workflow runs. Postgres World remains the
 /// runtime source of truth; this table adds operator context that can be joined
 /// to runtime rows by `runtime_run_id`.
@@ -1304,9 +1346,10 @@ model WatchSearchCandidateGeneration {
   createdAt                    DateTime                            @default(now()) @map("created_at")
   updatedAt                    DateTime                            @updatedAt @map("updated_at")
 
-  pointers       WatchSearchCandidatePointer[]
-  qualifications WatchSearchCandidateQualification[]
-  leases         WatchSearchCandidateLease[]
+  pointers            WatchSearchCandidatePointer[]
+  qualifications      WatchSearchCandidateQualification[]
+  leases              WatchSearchCandidateLease[]
+  catalogPublications WatchCatalogPublication[]
 
   @@index([state, createdAt])
   @@index([transcriptCollection, transcriptProjectionRevision])

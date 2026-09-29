@@ -187,6 +187,7 @@ describe("syncVideos", () => {
         fn(tx),
       ),
       video: {
+        findMany: vi.fn().mockResolvedValue([]),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
     }

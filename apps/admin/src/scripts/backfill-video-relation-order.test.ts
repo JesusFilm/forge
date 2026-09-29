@@ -23,6 +23,7 @@ function buildPrisma() {
   }
   return {
     tx,
+    watchCatalogPublication: { upsert: vi.fn().mockResolvedValue({}) },
     video: {
       findMany: vi.fn(),
     },
@@ -900,6 +901,7 @@ describe("runRelationOrderBackfillCli", () => {
       writeReport,
     })
 
+    expect(prisma.watchCatalogPublication.upsert).not.toHaveBeenCalled()
     expect(summary).toMatchObject({ dryRun: true, selected: 1 })
     expect(lockApi.acquireSyncLock).toHaveBeenCalledOnce()
     expect(lockApi.refreshSyncLock).toHaveBeenCalled()

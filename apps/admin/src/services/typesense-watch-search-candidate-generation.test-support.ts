@@ -70,6 +70,7 @@ export function memoryPrisma() {
   const leases = new Map<string, Row>()
 
   const prisma: Row = {
+    watchCatalogPublication: { findFirst: vi.fn(async () => null) },
     watchSearchCandidateGeneration: {
       create: vi.fn(async ({ data }: Row) => {
         const row = {
