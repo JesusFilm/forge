@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { Prisma } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { createPrismaClient } from "@/db/client"
@@ -410,6 +411,177 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
           })
         ).legacyDetailRetiredAt,
       ).toBeNull()
+    })
+
+    it("preserves detail when an Admin read reaches its audit before retirement", async () => {
+      const run = await fixture()
+      const manifest = await freeze([run.id])
+      let reachedAudit!: () => void
+      let releaseAudit!: () => void
+      const auditReached = new Promise<void>((resolve) => {
+        reachedAudit = resolve
+      })
+      const auditRelease = new Promise<void>((resolve) => {
+        releaseAudit = resolve
+      })
+      const readerDb = {
+        $transaction: (
+          callback: (tx: Prisma.TransactionClient) => Promise<unknown>,
+          options: { isolationLevel: Prisma.TransactionIsolationLevel },
+        ) =>
+          db.$transaction(
+            (tx) =>
+              callback(
+                new Proxy(tx, {
+                  get(target, property, receiver) {
+                    if (property === "recommendationTraceAccessAudit")
+                      return {
+                        create: async (
+                          args: Parameters<
+                            typeof target.recommendationTraceAccessAudit.create
+                          >[0],
+                        ) => {
+                          reachedAudit()
+                          await auditRelease
+                          return target.recommendationTraceAccessAudit.create(
+                            args,
+                          )
+                        },
+                      }
+                    return Reflect.get(target, property, receiver)
+                  },
+                }),
+              ),
+            options,
+          ),
+      }
+      const read = loadRecommendationRequestDetail(readerDb as never, {
+        requestId: run.requestId,
+        actorDigest: "d".repeat(64),
+      })
+      await auditReached
+      const retirement = runLegacyDetailRetirement(db, manifest, {
+        execute: true,
+        confirmTarget: manifest.targetDatabaseHash,
+      })
+      try {
+        expect(
+          await Promise.race([
+            retirement.then(
+              () => "done",
+              () => "error",
+            ),
+            new Promise<"pending">((resolve) =>
+              setTimeout(() => resolve("pending"), 100),
+            ),
+          ]),
+        ).toBe("pending")
+      } finally {
+        releaseAudit()
+      }
+      const detail = await read
+      expect(detail?.candidateExecution?.stages.length).toBeGreaterThan(0)
+      await expect(retirement).rejects.toThrow("Protection changed")
+      expect(
+        await db.recommendationCandidateStageEvidence.count({
+          where: { runId: run.id },
+        }),
+      ).toBeGreaterThan(0)
+    })
+
+    it("restarts a stale Admin read after retirement wins the request lock", async () => {
+      const run = await fixture()
+      const manifest = await freeze([run.id])
+      let reachedDeletion!: () => void
+      let releaseDeletion!: () => void
+      const deletionReached = new Promise<void>((resolve) => {
+        reachedDeletion = resolve
+      })
+      const deletionRelease = new Promise<void>((resolve) => {
+        releaseDeletion = resolve
+      })
+      const retiringDb = {
+        $queryRaw: db.$queryRaw,
+        $transaction: (
+          callback: (tx: Prisma.TransactionClient) => Promise<unknown>,
+          options: {
+            isolationLevel: Prisma.TransactionIsolationLevel
+            timeout: number
+          },
+        ) =>
+          db.$transaction(
+            (tx) =>
+              callback(
+                new Proxy(tx, {
+                  get(target, property, receiver) {
+                    if (property === "$executeRaw")
+                      return async (
+                        query: Prisma.Sql | TemplateStringsArray,
+                        ...values: unknown[]
+                      ) => {
+                        const sql = "sql" in query ? query.sql : query.join("?")
+                        if (
+                          sql.includes(
+                            "DELETE FROM recommendation_candidate_stage_evidence",
+                          )
+                        ) {
+                          reachedDeletion()
+                          await deletionRelease
+                        }
+                        return target.$executeRaw(query as never, ...values)
+                      }
+                    return Reflect.get(target, property, receiver)
+                  },
+                }),
+              ),
+            options,
+          ),
+      }
+      const retirement = runLegacyDetailRetirement(
+        retiringDb as never,
+        manifest,
+        {
+          execute: true,
+          confirmTarget: manifest.targetDatabaseHash,
+        },
+      )
+      await deletionReached
+      let attempts = 0
+      const readerDb = {
+        $transaction: (
+          callback: (tx: Prisma.TransactionClient) => Promise<unknown>,
+          options: { isolationLevel: Prisma.TransactionIsolationLevel },
+        ) => {
+          attempts++
+          return db.$transaction(callback, options)
+        },
+      }
+      const read = loadRecommendationRequestDetail(readerDb as never, {
+        requestId: run.requestId,
+        actorDigest: "e".repeat(64),
+      })
+      try {
+        expect(
+          await Promise.race([
+            read.then(
+              () => "done",
+              () => "error",
+            ),
+            new Promise<"pending">((resolve) =>
+              setTimeout(() => resolve("pending"), 100),
+            ),
+          ]),
+        ).toBe("pending")
+      } finally {
+        releaseDeletion()
+      }
+      await expect(retirement).resolves.toMatchObject({ status: "completed" })
+      const detail = await read
+      expect(attempts).toBe(2)
+      expect(detail?.candidateExecution?.legacyDetailRetiredAt).toBeInstanceOf(
+        Date,
+      )
+      expect(detail?.candidateExecution?.stages).toEqual([])
     })
   },
 )

@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { mapRecommendationRequestDetail } from "./detail.mapper"
 import { shadowSlateProvenanceSql } from "./shadow-slate-provenance"
+import { withRecommendationSerializableRetry } from "../transaction-retry"
 import type {
   DetailAuditRow,
   DetailCandidateRunRow,
@@ -61,7 +62,17 @@ export async function loadRecommendationRequestDetail(
     now.getTime() +
       RECOMMENDATION_TRACE_ACCESS_RETENTION_DAYS * RECOMMENDATION_OPS_DAY_MS,
   )
-  const data = await prisma.$transaction(
+  const readConsistently = <T>(
+    read: (tx: Prisma.TransactionClient) => Promise<T>,
+  ) =>
+    withRecommendationSerializableRetry(() =>
+      prisma.$transaction(read, {
+        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      }),
+    )
+  const data = await readConsistently(
+    // A retirement that wins the root lock updates the run. Its second row
+    // lock rejects this stale snapshot, and the whole read and audit retry.
     async (tx) => {
       const roots = await tx.$queryRaw<DetailRootRow[]>(Prisma.sql`
       SELECT
@@ -161,6 +172,7 @@ export async function loadRecommendationRequestDetail(
       WHERE run.request_id = ${root.id}
         AND run.expires_at > ${now}
       LIMIT 1
+      FOR SHARE OF run
     `,
       )
       const candidateRun = candidateRuns[0] ?? null
@@ -669,9 +681,6 @@ export async function loadRecommendationRequestDetail(
         conflicts,
         controlReadiness: controlReadiness[0] ?? null,
       }
-    },
-    {
-      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
     },
   )
   if (!data) return null
