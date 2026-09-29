@@ -57,9 +57,10 @@ after migration and completion within the statement budget.
 The native migration test verifies mixed byte-exact reads, invalid shape
 rejection, immutable snapshot rows, foreign-key protection, orphan deletion
 after erasure, two concurrent shared publishers, and the writer/sweeper lock
-ordering. The existing
-profile projection fixture passes with the writer gate both on and off, and
-the full enabled suite passes 13/13 tests. Activation still requires a larger
+ordering. The proof runs from the CI selected profile projection native test
+file. The profile projection fixture passes with the writer gate both on and
+off; the default-off CI selected profile pair passed 16/16 tests after this
+change. Activation still requires a larger
 read-only retained-population reuse histogram, candidate result parity under
 loaded conditions, and query/write latency against the current service
 budget. Check the migration ordinal against the integration branch. Rollback

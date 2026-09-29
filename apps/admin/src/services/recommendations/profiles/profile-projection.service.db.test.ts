@@ -29,6 +29,7 @@ import { getLiveProfileCandidates } from "../candidates/profile-candidate.servic
 import { RecommendationProfileService } from "../profile.service"
 import { createDatabaseRecommendationProfileProjectionService } from "./profile-projection.service"
 import { seedReconciliationScaleFixture } from "./reconciliation-scale.fixture"
+import { proveProfileVectorSnapshotMigration } from "./profile-vector-snapshot.native-helper"
 import { runRecommendationProfileReconciliationBatch } from "./reconciliation.service"
 import {
   profileIneligibleGenerationIdsSql,
@@ -1267,3 +1268,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     })
   },
 )
+
+describe.skipIf(!RUN_REAL_DB_TEST)("profile vector snapshot migration", () => {
+  it("preserves legacy rows and exact shared-vector retention invariants", async () => {
+    await proveProfileVectorSnapshotMigration(env.DATABASE_URL)
+  })
+})

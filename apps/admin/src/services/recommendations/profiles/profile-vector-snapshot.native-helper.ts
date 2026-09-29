@@ -1,10 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { Client } from "pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { env } from "@/config/env"
-
-const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
+import { expect } from "vitest"
 const migration = readFileSync(
   new URL(
     "../../../../prisma/migrations/0116_recommendation_profile_vector_snapshot/migration.sql",
@@ -14,26 +11,27 @@ const migration = readFileSync(
 )
 const vector = `[${Array<number>(1536).fill(0.25).join(",")}]`
 
-describe.skipIf(!RUN_REAL_DB_TEST)("profile vector snapshot migration", () => {
+export async function proveProfileVectorSnapshotMigration(
+  databaseUrlText: string,
+): Promise<void> {
   const schema = `profile_vector_snapshot_${randomUUID().replaceAll("-", "")}`
-  let client: Client
   let heapBeforeMigration: number
   let heapAfterMigration: number
   let migrationMs: number
 
-  beforeAll(async () => {
-    const databaseUrl = new URL(env.DATABASE_URL)
-    if (
-      !["localhost", "127.0.0.1", "::1"].includes(databaseUrl.hostname) ||
-      databaseUrl.search !== "" ||
-      databaseUrl.hash !== ""
-    ) {
-      throw new Error(
-        "Profile vector snapshot fixture requires a plain local Postgres URL",
-      )
-    }
-    client = new Client({ connectionString: env.DATABASE_URL })
-    await client.connect()
+  const databaseUrl = new URL(databaseUrlText)
+  if (
+    !["localhost", "127.0.0.1", "::1"].includes(databaseUrl.hostname) ||
+    databaseUrl.search !== "" ||
+    databaseUrl.hash !== ""
+  ) {
+    throw new Error(
+      "Profile vector snapshot fixture requires a plain local Postgres URL",
+    )
+  }
+  const client = new Client({ connectionString: databaseUrlText })
+  await client.connect()
+  try {
     await client.query(
       `CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public`,
     )
@@ -80,15 +78,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)("profile vector snapshot migration", () => {
         )
       ).rows[0]?.bytes,
     )
-  })
 
-  afterAll(async () => {
-    if (!client) return
-    await client.query(`DROP SCHEMA "${schema}" CASCADE`)
-    await client.end()
-  })
-
-  it("reads inline and shared rows exactly and rejects invalid shapes", async () => {
+    // Read parity, additive migration and shape invariants.
     expect(heapAfterMigration).toBe(heapBeforeMigration)
     expect(migrationMs).toBeLessThan(10_000)
     await client.query(
@@ -129,9 +120,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)("profile vector snapshot migration", () => {
         ["a".repeat(64)],
       ),
     ).rejects.toThrow(/recommendation_profile_interest_vector_shape_check/)
-  })
 
-  it("retains referenced content, then removes the orphan after erasure", async () => {
+    // Erasure leaves shared content until the final interest is removed.
     await expect(
       client.query(
         `UPDATE recommendation_profile_vector_snapshot SET created_at = now()`,
@@ -167,10 +157,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)("profile vector snapshot migration", () => {
         )
       ).rows[0]?.count,
     ).toBe(0)
-  })
 
-  it("serializes snapshot reuse with the orphan sweep", async () => {
-    const sweeper = new Client({ connectionString: env.DATABASE_URL })
+    // Publishers share the advisory lock; the sweep needs exclusive ownership.
+    const sweeper = new Client({ connectionString: databaseUrlText })
     await sweeper.connect()
     try {
       await sweeper.query(`SET search_path TO "${schema}", public`)
@@ -222,5 +211,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)("profile vector snapshot migration", () => {
       await sweeper.query("ROLLBACK")
       await sweeper.end()
     }
-  })
-})
+  } finally {
+    await client.query("ROLLBACK")
+    await client.query(`DROP SCHEMA "${schema}" CASCADE`)
+    await client.end()
+  }
+}
