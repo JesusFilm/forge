@@ -280,7 +280,7 @@ describe("projectBiblePassage", () => {
 // ── KTD2: the companion write must not collapse the player-gating read ──────
 
 const SLUG = "the-beginning"
-const VIDEO_VARIABLES = { locale: "en", slug: SLUG }
+const VIDEO_VARIABLES = { slug: SLUG }
 
 // A complete result for GET_VIDEO_BY_SLUG. Every list the fragment selects is
 // present so the cache read below is complete for the right reason.
@@ -298,7 +298,6 @@ const VIDEO_RESULT = {
       coreId: "529",
       bcp47: "en",
     },
-    locales: [],
     parents: [],
     variants: [],
     studyQuestions: [],

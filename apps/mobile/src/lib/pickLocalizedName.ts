@@ -1,5 +1,6 @@
 // Admin stores localized name columns as jsonb locale maps: { "en": "...", "es": "..." }.
 // gql.tada types JSON fields as `unknown`, so TypeScript won't catch misuse.
+// The keys are Admin's own tags in Admin's case (`zh-hans`, `es-ES`, `npi`).
 const LOCALE_FALLBACK_ORDER = [
   "en",
   "es",
@@ -15,27 +16,47 @@ const LOCALE_FALLBACK_ORDER = [
   "zh",
 ] as const
 
+/** A name and the map key it came from; `key` is null for a plain string. */
+export type LocalizedNameEntry = {
+  readonly text: string
+  readonly key: string | null
+}
+
+function own(map: Record<string, unknown>, key: string): string | null {
+  if (!Object.prototype.hasOwnProperty.call(map, key)) return null
+  const value = map[key]
+  return typeof value === "string" && value !== "" ? value : null
+}
+
+/** The name for Admin's raw tag (exact), then `en`, then the common tags, then
+ *  the first value. The key it used lets a caller mark an English fallback
+ *  with its language (R10). */
+export function pickLocalizedNameEntry(
+  value: unknown,
+  rawTag?: string | null,
+): LocalizedNameEntry | undefined {
+  if (value == null) return undefined
+  if (typeof value === "string") return { text: value, key: null }
+  if (typeof value !== "object" || Array.isArray(value)) return undefined
+
+  const map = value as Record<string, unknown>
+  const order = rawTag
+    ? [rawTag, ...LOCALE_FALLBACK_ORDER]
+    : LOCALE_FALLBACK_ORDER
+  for (const key of order) {
+    const text = own(map, key)
+    if (text != null) return { text, key }
+  }
+  for (const [key, text] of Object.entries(map)) {
+    if (typeof text === "string" && text !== "") return { text, key }
+  }
+  return undefined
+}
+
+/** The text of {@link pickLocalizedNameEntry}. */
 export function pickLocalizedName(
   value: unknown,
-  preferredLocale?: string,
+  rawTag?: string | null,
 ): string | undefined {
-  if (value == null) return undefined
-  if (typeof value === "string") return value
-
-  if (typeof value === "object" && !Array.isArray(value)) {
-    const map = value as Record<string, string>
-
-    if (preferredLocale && map[preferredLocale]) {
-      return map[preferredLocale]
-    }
-
-    for (const locale of LOCALE_FALLBACK_ORDER) {
-      if (map[locale]) return map[locale]
-    }
-
-    const firstValue = Object.values(map)[0]
-    if (firstValue) return firstValue
-  }
-
-  return undefined
+  return pickLocalizedNameEntry(value, rawTag)?.text
 }

@@ -13,10 +13,21 @@ import { adminLegacyWatchExperienceFragment } from "@forge/admin-graphql/fragmen
 
 // ── Experience queries ──────────────────────────────────────────────
 
+// KTD10: the catalog-tag Experience and the `en` one in ONE request, because
+// Admin holds Experiences for only a few locales. `$isEnglish` skips the
+// duplicate when the catalog tag is already `en` (localeQueryVariables).
 export const GET_EXPERIENCE_BY_SLUG = adminGraphql(
   `
-    query GetExperienceBySlug($locale: String!, $slug: String!) {
+    query GetExperienceBySlug(
+      $locale: String!
+      $slug: String!
+      $isEnglish: Boolean!
+    ) {
       experienceBySlug(locale: $locale, slug: $slug) {
+        ...AdminLegacyWatchExperience
+      }
+      englishExperience: experienceBySlug(locale: "en", slug: $slug)
+        @skip(if: $isEnglish) {
         ...AdminLegacyWatchExperience
       }
     }
@@ -24,10 +35,17 @@ export const GET_EXPERIENCE_BY_SLUG = adminGraphql(
   [adminLegacyWatchExperienceFragment],
 )
 
+// KTD10 and R11: the homepage in the catalog tag and in `en`, in one request.
 export const GET_WATCH_SETTING = adminGraphql(
   `
-    query GetWatchSetting($locale: String!) {
+    query GetWatchSetting($locale: String!, $isEnglish: Boolean!) {
       watchSetting(locale: $locale) {
+        documentId
+        homepageExperience {
+          ...AdminLegacyWatchExperience
+        }
+      }
+      englishWatchSetting: watchSetting(locale: "en") @skip(if: $isEnglish) {
         documentId
         homepageExperience {
           ...AdminLegacyWatchExperience
@@ -163,11 +181,51 @@ export type SearchResponse = {
   readonly searchMode: string | null
 }
 
+// ── Video text (KTD10) ──────────────────────────────────────────────
+// The ONE spelling of a `locales(...)` argument set: every document spreads
+// these fragments, so Home's rows are a cache hit for a watch title.
+export const videoTextFragment = adminGraphql(`
+  fragment VideoText on Video @_unmask {
+    locales(languageSlug: $textSlug) {
+      documentId: id
+      languageSlug
+      title
+      description
+      snippet
+      imageAlt
+    }
+    englishLocales: locales(languageSlug: "english") {
+      documentId: id
+      languageSlug
+      title
+      description
+      snippet
+      imageAlt
+    }
+  }
+`)
+
+/** Titles only, for relatives: parents, siblings, and episodes. */
+export const videoTitleTextFragment = adminGraphql(`
+  fragment VideoTitleText on Video @_unmask {
+    locales(languageSlug: $textSlug) {
+      documentId: id
+      languageSlug
+      title
+    }
+    englishLocales: locales(languageSlug: "english") {
+      documentId: id
+      languageSlug
+      title
+    }
+  }
+`)
+
 // ── Video detail query (standalone, not Experience-bound) ──────────
 
-// Lean by design: `dubs` OMITS each dub's `downloads` + `videoEdition.subtitles`
-// (birth-of-jesus has 2,259 dubs → ~9.5MB / ~13s if projected). The active
-// language's media is fetched lazily via GET_VIDEO_DUB; keep this selection lean.
+// Lean and language-free (KTD10): `dubs` omits each dub's downloads + subtitles
+// (birth-of-jesus: 2,259 dubs, ~9.5MB), fetched lazily via GET_VIDEO_DUB, and the
+// text comes from GET_VIDEO_TEXT, so a UI language change never refetches this.
 export const watchVideoFragment = adminGraphql(`
   fragment WatchVideo on Video @_unmask {
     documentId: id
@@ -185,24 +243,11 @@ export const watchVideoFragment = adminGraphql(`
       coreId
       bcp47
     }
-    locales(locale: $locale) {
-      documentId: id
-      languageSlug
-      title
-      description
-      snippet
-      imageAlt
-    }
     parents {
       parent {
         documentId: id
         slug
         label
-        locales(locale: $locale) {
-          documentId: id
-          languageSlug
-          title
-        }
         images {
           documentId: id
           url
@@ -216,11 +261,6 @@ export const watchVideoFragment = adminGraphql(`
             documentId: id
             slug
             label
-            locales(locale: $locale) {
-              documentId: id
-              languageSlug
-              title
-            }
             images {
               documentId: id
               url
@@ -276,7 +316,7 @@ export const watchVideoFragment = adminGraphql(`
 
 export const GET_VIDEO_BY_SLUG = adminGraphql(
   `
-    query GetVideoBySlug($locale: String!, $slug: String!) {
+    query GetVideoBySlug($slug: String!) {
       videoBySlug(slug: $slug) {
         ...WatchVideo
       }
@@ -286,6 +326,35 @@ export const GET_VIDEO_BY_SLUG = adminGraphql(
 )
 
 export type WatchVideoData = AdminResultOf<typeof GET_VIDEO_BY_SLUG>
+
+// ── Video text companion (KTD10) ────────────────────────────────────
+// `documentId: id` at every level lets this write normalize onto the player
+// read's Video entities; the relation shapes mirror WatchVideo exactly.
+export const GET_VIDEO_TEXT = adminGraphql(
+  `
+    query GetVideoText($slug: String!, $textSlug: String!) {
+      videoBySlug(slug: $slug) {
+        documentId: id
+        ...VideoText
+        parents {
+          parent {
+            documentId: id
+            ...VideoTitleText
+            children {
+              child {
+                documentId: id
+                ...VideoTitleText
+              }
+            }
+          }
+        }
+      }
+    }
+  `,
+  [videoTextFragment, videoTitleTextFragment],
+)
+
+export type VideoTextData = AdminResultOf<typeof GET_VIDEO_TEXT>
 
 // ── Bible passage companion query ──────────────────────────────────
 // KTD1: `passage` stays OUT of watchVideoFragment. Five call sites execute that
@@ -343,14 +412,6 @@ export const seriesWatchVideoFragment = adminGraphql(`
       coreId
       bcp47
     }
-    locales(locale: $locale) {
-      documentId: id
-      languageSlug
-      title
-      description
-      snippet
-      imageAlt
-    }
     variants: dubs {
       documentId: id
       slug
@@ -391,7 +452,7 @@ export const seriesWatchVideoFragment = adminGraphql(`
 // union driving the sheet). Uses lean `seriesWatchVideoFragment`, NOT `watchVideoFragment`.
 export const GET_SERIES_BY_SLUG = adminGraphql(
   `
-    query GetSeriesBySlug($locale: String!, $slug: String!) {
+    query GetSeriesBySlug($slug: String!) {
       videoBySlug(slug: $slug) {
         ...SeriesWatchVideo
         children {
@@ -401,11 +462,6 @@ export const GET_SERIES_BY_SLUG = adminGraphql(
             slug
             label
             durationSeconds
-            locales(locale: $locale) {
-              documentId: id
-              languageSlug
-              title
-            }
             images {
               documentId: id
               url
@@ -428,6 +484,30 @@ export const GET_SERIES_BY_SLUG = adminGraphql(
 )
 
 export type SeriesVideoData = AdminResultOf<typeof GET_SERIES_BY_SLUG>
+
+// ── Series text companion (KTD10) ───────────────────────────────────
+// Mirrors GET_SERIES_BY_SLUG's `children { order child }`: a `children { child }`
+// write would replace that list and drop `order` from the episode grid's read.
+export const GET_SERIES_TEXT = adminGraphql(
+  `
+    query GetSeriesText($slug: String!, $textSlug: String!) {
+      videoBySlug(slug: $slug) {
+        documentId: id
+        ...VideoText
+        children {
+          order
+          child {
+            documentId: id
+            ...VideoTitleText
+          }
+        }
+      }
+    }
+  `,
+  [videoTextFragment, videoTitleTextFragment],
+)
+
+export type SeriesTextData = AdminResultOf<typeof GET_SERIES_TEXT>
 
 // ── Per-dub media (lazy) ────────────────────────────────────────────
 // The downloads + subtitles left out of WatchVideo, fetched per-dub on demand
@@ -495,64 +575,51 @@ export type WatchDubIndexData = AdminResultOf<typeof GET_VIDEO_DUB_INDEX>
 // Web's WatchHomeVideo fragment MINUS `variants: dubs`: the ~30-id bulk fetch includes the JESUS film whose
 // ~2,259 dubs re-create the 9.5MB incident (KTD-2). Hero resolves HLS lazily (useHeroStream). NEVER add `dubs`
 // — watchHomeQueries.test.ts guards it; shape must satisfy WatchHomeVideoInput in src/lib/watchHome/model.ts.
-export const watchHomeVideoFragment = adminGraphql(`
-  fragment WatchHomeVideo on Video @_unmask {
-    documentId: id
-    coreId
-    slug
-    label
-    durationSeconds
-    images {
+// The text rows come from the shared VideoText fragment (KTD10), so a watch
+// screen opened from Home reads its title from this write.
+export const watchHomeVideoFragment = adminGraphql(
+  `
+    fragment WatchHomeVideo on Video @_unmask {
       documentId: id
-      url
-      thumbnail
-      mobileCinematicHigh
-      mobileCinematicLow
-      videoStill
-    }
-    locales(locale: $locale, languageSlug: $languageSlug) {
-      documentId: id
-      languageSlug
-      title
-      description
-      snippet
-      imageAlt
-    }
-    children {
-      child {
+      coreId
+      slug
+      label
+      durationSeconds
+      images {
         documentId: id
-        coreId
-        slug
-        label
-        durationSeconds
-        images {
+        url
+        thumbnail
+        mobileCinematicHigh
+        mobileCinematicLow
+        videoStill
+      }
+      ...VideoText
+      children {
+        child {
           documentId: id
-          url
-          thumbnail
-          mobileCinematicHigh
-          mobileCinematicLow
-          videoStill
-        }
-        locales(locale: $locale, languageSlug: $languageSlug) {
-          documentId: id
-          languageSlug
-          title
-          description
-          snippet
-          imageAlt
+          coreId
+          slug
+          label
+          durationSeconds
+          images {
+            documentId: id
+            url
+            thumbnail
+            mobileCinematicHigh
+            mobileCinematicLow
+            videoStill
+          }
+          ...VideoText
         }
       }
     }
-  }
-`)
+  `,
+  [videoTextFragment],
+)
 
 export const GET_WATCH_HOME_VIDEOS = adminGraphql(
   `
-    query GetWatchHomeVideos(
-      $coreIds: [String!]!
-      $locale: String!
-      $languageSlug: String
-    ) {
+    query GetWatchHomeVideos($coreIds: [String!]!, $textSlug: String!) {
       watchHomeVideos(coreIds: $coreIds) {
         ...WatchHomeVideo
       }
@@ -562,6 +629,29 @@ export const GET_WATCH_HOME_VIDEOS = adminGraphql(
 )
 
 export type WatchHomeVideosData = AdminResultOf<typeof GET_WATCH_HOME_VIDEOS>
+
+// ── Experience card art and titles (useVideoThumbnails) ─────────────
+// Batched as aliased `video(id:)` fields with the ids as variables. Any
+// selection of `images` selects `videoStill` too (pickCardImage).
+export const videoThumbnailFragment = adminGraphql(
+  `
+    fragment VideoThumbnail on Video @_unmask {
+      documentId: id
+      images {
+        documentId: id
+        mobileCinematicHigh
+        mobileCinematicLow
+        videoStill
+        thumbnail
+        url
+      }
+      ...VideoTitleText
+    }
+  `,
+  [videoTitleTextFragment],
+)
+
+export type VideoThumbnailData = AdminResultOf<typeof videoThumbnailFragment>
 
 // ── Explore clips feed (feat-552 KTD6) ─────────────────────────────
 // Both operations run with fetchPolicy "no-cache", so a long session builds

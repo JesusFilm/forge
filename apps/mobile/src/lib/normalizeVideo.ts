@@ -1,9 +1,24 @@
 import type { WatchVideoData, WatchDubData, SeriesVideoData } from "./queries"
+import {
+  ENGLISH_ADMIN_FORMS,
+  type AdminLanguageForms,
+} from "../i18n/adminLanguage"
 import { bookByOsis, isUsfmBookId, type UsfmBookId } from "./bible/text/books"
+import { compareIds } from "./collation"
 import { isEpisodicSeriesLabel } from "./isSeriesRecord"
 import { pickCardImage } from "./cardImage"
-import { pickLocalizedName } from "./pickLocalizedName"
+import { pickLocalizedName, pickLocalizedNameEntry } from "./pickLocalizedName"
 import { cleanStreamUrl } from "./validateUrl"
+import {
+  ENGLISH_TEXT_LANG,
+  pickVideoText,
+  readDescription,
+  readSnippet,
+  readTitle,
+  textLangFor,
+  type LocalizedText,
+  type VideoTextSource,
+} from "./videoText"
 import { normalizeLanguageIso3 } from "./watchPreferences"
 
 // ── Consumer types ─────────────────────────────────────────────────
@@ -15,10 +30,14 @@ export type WatchDownload = {
   url: string
 }
 
+// KTD10 and KTD13: each Admin text field carries the language it is in, beside
+// the plain string its many readers use. `en` marks an English fallback (R10).
 export type WatchSubtitle = {
   documentId: string
   languageSlug: string
   languageName: string
+  /** The language of `languageName`; absent in older fixtures. */
+  languageNameLang?: string | null
   languageBcp47: string
   vttSrc: string
   primary: boolean
@@ -35,6 +54,8 @@ export type WatchVariant = {
   languageBcp47: string | null
   languageSlug: string | null
   languageName: string | null
+  /** The language of `languageName`. */
+  languageNameLang?: string | null
   languageNameNative: string | null
   /** ISO 639-3 code as admin sends it; null when absent or blank. */
   languageIso3: string | null
@@ -54,6 +75,8 @@ export type WatchSibling = {
   slug: string
   label: string | null
   title: string | null
+  /** The language of `title`. */
+  titleLang?: string | null
   posterUrl: string | null
 }
 
@@ -73,6 +96,8 @@ export type WatchEpisode = WatchSibling & {
 export type WatchChildLanguage = {
   slug: string
   name: string | null
+  /** The language of `name`. */
+  nameLang?: string | null
   bcp47: string | null
 }
 
@@ -86,6 +111,8 @@ export type WatchBibleCitation = {
   documentId: string
   osisId: string | null
   bookName: string | null
+  /** The language of `bookName`. */
+  bookNameLang?: string | null
   /** The book's USFM code, such as `JHN`. Null for a book BSB does not have. */
   bookUsfm: UsfmBookId | null
   chapterStart: number | null
@@ -99,9 +126,13 @@ export type WatchVideoRecord = {
   documentId: string
   slug: string
   label: string | null
+  /** Null until the text companion lands (KTD10). */
   title: string | null
+  titleLang?: string | null
   description: string | null
+  descriptionLang?: string | null
   snippet: string | null
+  snippetLang?: string | null
   posterUrl: string | null
   streamingUrl: string | null
   muxPlaybackId: string | null
@@ -111,7 +142,12 @@ export type WatchVideoRecord = {
   primaryLanguageCoreId: string | null
   /** The SERIES-labelled parent this video is an episode of; null for a standalone
    *  video, a COLLECTION member, or an orphan. */
-  parentSeries: { documentId: string; slug: string; title: string } | null
+  parentSeries: {
+    documentId: string
+    slug: string
+    title: string
+    titleLang?: string | null
+  } | null
   siblings: WatchSibling[]
   variants: WatchVariant[]
   studyQuestions: WatchStudyQuestion[]
@@ -119,6 +155,25 @@ export type WatchVideoRecord = {
   // Series-only: empty for a single video; populated by normalizeSeries.
   episodes: WatchEpisode[]
   languages: WatchChildLanguage[]
+  /** The Admin language forms this record was read with (KTD16). A screen
+   *  passes them on to every other reader of Admin content. */
+  adminForms?: AdminLanguageForms
+}
+
+/** The text companion's shape (GET_VIDEO_TEXT or GET_SERIES_TEXT). */
+type RelativeText = VideoTextSource & { documentId?: string | null }
+
+export type VideoTextInput = RelativeText & {
+  parents?:
+    | readonly {
+        parent?:
+          | (RelativeText & {
+              children?: readonly { child?: RelativeText | null }[] | null
+            })
+          | null
+      }[]
+    | null
+  children?: readonly { child?: RelativeText | null }[] | null
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -133,42 +188,43 @@ function pickPosterUrl(
   return pickCardImage(images, "card")
 }
 
+// Slugs and ids are identities, so they sort by code unit (KTD15), never in
+// the device's collation.
 function compareLanguageSlug(
   left: string | null | undefined,
   right: string | null | undefined,
 ): number {
   const byPresence = left == null ? (right == null ? 0 : 1) : -1
   if (byPresence !== 0) return byPresence
-  return (left ?? "").localeCompare(right ?? "")
+  return compareIds(left ?? "", right ?? "")
 }
 
-function pickFirstLocale(
-  locales:
-    | readonly {
-        documentId?: string | null
-        languageSlug?: string | null
-        title?: string | null
-        description?: string | null
-        snippet?: string | null
-      }[]
-    | null
-    | undefined,
-): {
-  title: string | null
-  description: string | null
-  snippet: string | null
-} {
-  if (!locales || locales.length === 0)
-    return { title: null, description: null, snippet: null }
-  const loc = [...locales].sort((a, b) => {
-    const bySlug = compareLanguageSlug(a.languageSlug, b.languageSlug)
-    if (bySlug !== 0) return bySlug
-    return (a.documentId ?? "").localeCompare(b.documentId ?? "")
-  })[0]
+function formsKey(forms: AdminLanguageForms): string {
+  return `${forms.catalogTag}\u0000${forms.rawTag}`
+}
+
+// The key of a name map tells its language: Admin's raw tag is the UI
+// language, `en` is the English fallback, and any other key is itself.
+function nameLang(
+  key: string | null,
+  forms: AdminLanguageForms,
+): string | null {
+  if (key == null) return null
+  if (key === forms.rawTag) return textLangFor(forms)
+  return key
+}
+
+/** An Admin name map in the UI language, else English (R9, R10). */
+function localizedName(
+  value: unknown,
+  forms: AdminLanguageForms,
+): LocalizedText | null {
+  if (value == null) return null
+  const entry = pickLocalizedNameEntry(value, forms.rawTag)
+  if (!entry) return null
   return {
-    title: loc.title ?? null,
-    description: loc.description ?? null,
-    snippet: loc.snippet ?? null,
+    text: entry.text,
+    lang: nameLang(entry.key, forms) ?? ENGLISH_TEXT_LANG,
   }
 }
 
@@ -255,8 +311,10 @@ type RawDub = NonNullable<WatchDubData["videoDub"]>
 // Map one lazily-fetched dub's downloads + subtitles (same projection the bulk
 // query inlined, now per active language). Missing dub/media → empty arrays =
 // "loaded, nothing". Returns a fresh object so callers can't mutate a shared empty.
+// `forms` names the subtitle languages; English for a caller that has none.
 export function normalizeDubMedia(
   raw: RawDub | null | undefined,
+  forms: AdminLanguageForms = ENGLISH_ADMIN_FORMS,
 ): VariantMedia {
   if (raw == null) return { downloads: [], subtitles: [] }
   return {
@@ -276,29 +334,55 @@ export function normalizeDubMedia(
       // it collapses to "", which is falsy, so a genuine pick reads downstream
       // as "nothing selected" and shows no captions under its own name.
       .filter((s) => s.vttSrc != null && !!s.language?.slug)
-      .map((s) => ({
-        documentId: s.documentId ?? "",
-        languageSlug: s.language?.slug ?? "",
-        languageName: s.language?.name
-          ? (pickLocalizedName(s.language.name) ?? "")
-          : "",
-        languageBcp47: s.language?.bcp47 ?? "",
-        vttSrc: s.vttSrc ?? "",
-        primary: s.primary ?? false,
-        aiGenerated: s.aiGenerated ?? false,
-      })),
+      .map((s) => {
+        const name = localizedName(s.language?.name, forms)
+        return {
+          documentId: s.documentId ?? "",
+          languageSlug: s.language?.slug ?? "",
+          languageName: name?.text ?? "",
+          languageNameLang: name?.lang ?? null,
+          languageBcp47: s.language?.bcp47 ?? "",
+          vttSrc: s.vttSrc ?? "",
+          primary: s.primary ?? false,
+          aiGenerated: s.aiGenerated ?? false,
+        }
+      }),
   }
 }
 
 // ── Normalizer ─────────────────────────────────────────────────────
 
-// Memoize by raw object reference: Apollo's stable cache reads let re-entry reuse
-// the prior record vs re-walking every dub (birth-of-jesus = 2,259 dubs =
-// multi-second freeze). WeakMap can't serve stale: new data is a new reference.
-const normalizeCache = new WeakMap<object, WatchVideoRecord | null>()
+// Memo by raw object and forms, so re-entry skips re-walking 2,259 dubs (a
+// multi-second freeze). The forms key is load-bearing: Apollo returns the SAME
+// `name` objects after a language change (KTD2, KTD16).
+const normalizeCache = new WeakMap<object, Map<string, WatchVideoRecord>>()
 
+function memoized(
+  cache: WeakMap<object, Map<string, WatchVideoRecord>>,
+  raw: object,
+  forms: AdminLanguageForms,
+  build: () => WatchVideoRecord,
+): WatchVideoRecord {
+  const key = formsKey(forms)
+  let byForms = cache.get(raw)
+  if (!byForms) {
+    byForms = new Map()
+    cache.set(raw, byForms)
+  }
+  const cached = byForms.get(key)
+  if (cached) return cached
+  const record = build()
+  byForms.set(key, record)
+  return record
+}
+
+/** The watch record from the language-free document plus the text companion
+ *  (KTD10), read with the forms the screen captured (KTD16). It never reads
+ *  the locale store. */
 export function normalizeVideo(
   raw: RawVideo | null | undefined,
+  forms: AdminLanguageForms,
+  text?: VideoTextInput | null,
 ): WatchVideoRecord | null {
   if (raw == null) return null
   // returnPartialData can surface a Video before the network fills it in. The
@@ -306,53 +390,58 @@ export function normalizeVideo(
   // and let the seed/skeleton carry the screen.
   if (!raw.documentId) return null
 
-  const cached = normalizeCache.get(raw)
-  if (cached !== undefined) return cached
-  const result = buildWatchVideoRecord(raw)
-  normalizeCache.set(raw, result)
-  return result
+  const base = memoized(normalizeCache, raw, forms, () =>
+    buildWatchVideoRecord(raw, forms),
+  )
+  return withVideoText(base, text, forms)
 }
 
-function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
-  const locale = pickFirstLocale(raw.locales)
+function buildWatchVideoRecord(
+  raw: NormalizableVideo,
+  forms: AdminLanguageForms,
+): WatchVideoRecord {
   const firstPlayable = pickFirstPlayableVariant(raw.variants)
 
   const variants: WatchVariant[] = (raw.variants ?? [])
     .filter((v) => v.published === true)
-    .map((v) => ({
-      documentId: v.documentId ?? "",
-      slug: v.slug ?? "",
-      published: v.published ?? false,
-      hls: cleanStreamUrl(v.hls),
-      duration: v.duration ?? null,
-      languageCoreId: v.language?.coreId ?? null,
-      languageBcp47: v.language?.bcp47 ?? null,
-      languageSlug: v.language?.slug ?? null,
-      languageName: v.language?.name
-        ? (pickLocalizedName(v.language.name) ?? null)
-        : null,
-      languageNameNative: (() => {
-        if (!v.language?.name || !v.language?.bcp47) return null
-        const bcp47 = v.language.bcp47.split("-")[0]
-        if (bcp47 === "en") return null
-        const native = pickLocalizedName(v.language.name, bcp47)
-        const english = pickLocalizedName(v.language.name, "en")
-        return native && native !== english ? native : null
-      })(),
-      languageIso3: normalizeLanguageIso3(v.language?.iso3),
-      muxPlaybackId: v.muxVideo?.playbackId ?? null,
-    }))
+    .map((v) => {
+      const name = localizedName(v.language?.name, forms)
+      return {
+        documentId: v.documentId ?? "",
+        slug: v.slug ?? "",
+        published: v.published ?? false,
+        hls: cleanStreamUrl(v.hls),
+        duration: v.duration ?? null,
+        languageCoreId: v.language?.coreId ?? null,
+        languageBcp47: v.language?.bcp47 ?? null,
+        languageSlug: v.language?.slug ?? null,
+        languageName: name?.text ?? null,
+        languageNameLang: name?.lang ?? null,
+        languageNameNative: (() => {
+          if (!v.language?.name || !v.language?.bcp47) return null
+          const bcp47 = v.language.bcp47.split("-")[0]
+          if (bcp47 === "en") return null
+          const native = pickLocalizedName(v.language.name, bcp47)
+          const english = pickLocalizedName(v.language.name, "en")
+          return native && native !== english ? native : null
+        })(),
+        languageIso3: normalizeLanguageIso3(v.language?.iso3),
+        muxPlaybackId: v.muxVideo?.playbackId ?? null,
+      }
+    })
 
   // Parent SERIES only (U1): a COLLECTION (or other) parent groups standalone
   // films — those must NOT fold into a Library series folder. null when absent,
-  // not a series, or the lean series fragment omits the parents chain.
+  // not a series, or the lean series fragment omits the parents chain. The
+  // title comes from the text companion (withVideoText).
   const parent = raw.parents?.[0]?.parent
   const parentSeries =
     parent && isEpisodicSeriesLabel(parent.label)
       ? {
           documentId: parent.documentId ?? "",
           slug: parent.slug ?? "",
-          title: pickFirstLocale(parent.locales).title ?? "",
+          title: "",
+          titleLang: null,
         }
       : null
 
@@ -369,7 +458,8 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
         documentId: child.documentId ?? "",
         slug: child.slug ?? "",
         label: child.label ?? null,
-        title: pickFirstLocale(child.locales).title,
+        title: null,
+        titleLang: null,
         posterUrl: pickPosterUrl(child.images),
       })) ?? []
   const siblings = dedupeByDocumentId(rawSiblings)
@@ -381,7 +471,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
       if (byOrder !== 0) return byOrder
       const bySlug = compareLanguageSlug(a.languageSlug, b.languageSlug)
       if (bySlug !== 0) return bySlug
-      return (a.documentId ?? "").localeCompare(b.documentId ?? "")
+      return compareIds(a.documentId ?? "", b.documentId ?? "")
     })
     .map((q) => ({
       documentId: q.documentId ?? "",
@@ -394,27 +484,32 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
   // property". (studyQuestions/episodes are safe: .filter() returns a copy.)
   const bibleCitations: WatchBibleCitation[] = [...(raw.bibleCitations ?? [])]
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map((c) => ({
-      documentId: c.documentId ?? "",
-      osisId: c.osisId ?? null,
-      bookName: c.bibleBook?.name
-        ? (pickLocalizedName(c.bibleBook.name) ?? null)
-        : null,
-      bookUsfm: citationBookUsfm(c.bibleBook),
-      chapterStart: c.chapterStart ?? null,
-      chapterEnd: c.chapterEnd ?? null,
-      verseStart: c.verseStart ?? null,
-      verseEnd: c.verseEnd ?? null,
-      order: c.order ?? null,
-    }))
+    .map((c) => {
+      const book = localizedName(c.bibleBook?.name, forms)
+      return {
+        documentId: c.documentId ?? "",
+        osisId: c.osisId ?? null,
+        bookName: book?.text ?? null,
+        bookNameLang: book?.lang ?? null,
+        bookUsfm: citationBookUsfm(c.bibleBook),
+        chapterStart: c.chapterStart ?? null,
+        chapterEnd: c.chapterEnd ?? null,
+        verseStart: c.verseStart ?? null,
+        verseEnd: c.verseEnd ?? null,
+        order: c.order ?? null,
+      }
+    })
 
   return {
     documentId: raw.documentId ?? "",
     slug: raw.slug ?? "",
     label: raw.label ?? null,
-    title: locale.title,
-    description: locale.description,
-    snippet: locale.snippet,
+    title: null,
+    titleLang: null,
+    description: null,
+    descriptionLang: null,
+    snippet: null,
+    snippetLang: null,
     posterUrl: pickPosterUrl(raw.images),
     streamingUrl: cleanStreamUrl(firstPlayable?.hls),
     muxPlaybackId: firstPlayable?.muxVideo?.playbackId ?? null,
@@ -428,7 +523,88 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
     bibleCitations,
     episodes: [],
     languages: [],
+    adminForms: forms,
   }
+}
+
+// ── Text merge (KTD10) ─────────────────────────────────────────────
+
+// Keyed by the base record (which already encodes the forms) and the text
+// object, so a republish with the same inputs keeps its identity.
+const textCache = new WeakMap<object, WeakMap<object, WatchVideoRecord>>()
+
+/** Every relative's rows in the companion, by Video id. */
+function relativeRows(text: VideoTextInput): Map<string, VideoTextSource> {
+  const rows = new Map<string, VideoTextSource>()
+  const add = (video: RelativeText | null | undefined) => {
+    if (video?.documentId) rows.set(video.documentId, video)
+  }
+  const parent = text.parents?.[0]?.parent
+  add(parent)
+  for (const rel of parent?.children ?? []) add(rel.child)
+  for (const rel of text.children ?? []) add(rel.child)
+  return rows
+}
+
+function titleFor(
+  rows: Map<string, VideoTextSource>,
+  documentId: string,
+  forms: AdminLanguageForms,
+): LocalizedText | null {
+  return pickVideoText(rows.get(documentId), forms, readTitle)
+}
+
+/** Adds the companion's text to a record: each field in the UI language, else
+ *  in English (R10). A companion for another video is ignored. */
+export function withVideoText(
+  base: WatchVideoRecord,
+  text: VideoTextInput | null | undefined,
+  forms: AdminLanguageForms,
+): WatchVideoRecord {
+  if (text == null || text.documentId !== base.documentId) return base
+  let byText = textCache.get(base)
+  if (!byText) {
+    byText = new WeakMap()
+    textCache.set(base, byText)
+  }
+  const cached = byText.get(text)
+  if (cached) return cached
+
+  const title = pickVideoText(text, forms, readTitle)
+  const description = pickVideoText(text, forms, readDescription)
+  const snippet = pickVideoText(text, forms, readSnippet)
+  const rows = relativeRows(text)
+  const titled = <T extends WatchSibling>(item: T): T => {
+    const itemTitle = titleFor(rows, item.documentId, forms)
+    return itemTitle
+      ? { ...item, title: itemTitle.text, titleLang: itemTitle.lang }
+      : item
+  }
+  const parentTitle = base.parentSeries
+    ? titleFor(rows, base.parentSeries.documentId, forms)
+    : null
+
+  const merged: WatchVideoRecord = {
+    ...base,
+    title: title?.text ?? null,
+    titleLang: title?.lang ?? null,
+    description: description?.text ?? null,
+    descriptionLang: description?.lang ?? null,
+    snippet: snippet?.text ?? null,
+    snippetLang: snippet?.lang ?? null,
+    parentSeries:
+      base.parentSeries && parentTitle
+        ? {
+            ...base.parentSeries,
+            title: parentTitle.text,
+            titleLang: parentTitle.lang,
+          }
+        : base.parentSeries,
+    siblings: base.siblings.map(titled),
+    episodes: base.episodes.map(titled),
+  }
+  byText.set(text, merged)
+  return merged
 }
 
 // ── Series normalizer ──────────────────────────────────────────────
@@ -446,7 +622,8 @@ function buildEpisodes(raw: RawSeriesVideo): WatchEpisode[] {
       documentId: rel.child.documentId ?? "",
       slug: rel.child.slug ?? "",
       label: rel.child.label ?? null,
-      title: pickFirstLocale(rel.child.locales).title,
+      title: null,
+      titleLang: null,
       posterUrl: pickPosterUrl(rel.child.images),
       // ?? undefined (not ?? 0): a real index/duration of 0 must round-trip as
       // 0, not be conflated with "not carried" (mirrors offlineManifest's trap).
@@ -456,43 +633,51 @@ function buildEpisodes(raw: RawSeriesVideo): WatchEpisode[] {
   return dedupeByDocumentId(episodes)
 }
 
-function buildLanguages(raw: RawSeriesVideo): WatchChildLanguage[] {
+function buildLanguages(
+  raw: RawSeriesVideo,
+  forms: AdminLanguageForms,
+): WatchChildLanguage[] {
   const seen = new Set<string>()
   const languages: WatchChildLanguage[] = []
   for (const lang of raw.childDubLanguages ?? []) {
     const slug = lang.slug
     if (slug == null || slug === "" || seen.has(slug)) continue
     seen.add(slug)
+    const name = localizedName(lang.name, forms)
     languages.push({
       slug,
-      name: lang.name ? (pickLocalizedName(lang.name) ?? null) : null,
+      name: name?.text ?? null,
+      nameLang: name?.lang ?? null,
       bcp47: lang.bcp47 ?? null,
     })
   }
   return languages
 }
 
-// Memoize on the raw reference like normalizeVideo, so a cache-first re-entry
-// doesn't re-walk children/languages.
-const normalizeSeriesCache = new WeakMap<object, WatchVideoRecord | null>()
+// Memoize on the raw reference and the forms like normalizeVideo, so a
+// cache-first re-entry doesn't re-walk children/languages.
+const normalizeSeriesCache = new WeakMap<
+  object,
+  Map<string, WatchVideoRecord>
+>()
 
 // Normalize a series Video: the shared video record (trailer = the series' own
 // playable dub, exposed as streamingUrl/variants) plus the series-only episode
-// grid and the language union that feeds the language sheet.
+// grid and the language union that feeds the language sheet. `text` is the
+// GET_SERIES_TEXT companion.
 export function normalizeSeries(
   raw: RawSeriesVideo | null | undefined,
+  forms: AdminLanguageForms,
+  text?: VideoTextInput | null,
 ): WatchVideoRecord | null {
   if (raw == null || !raw.documentId) return null
-  const cached = normalizeSeriesCache.get(raw)
-  if (cached !== undefined) return cached
   // RawSeriesVideo is the lean SeriesWatchVideo subset of WatchVideo (no parents
   // chain; per-dub duration/muxVideo dropped). Shared builder maps common fields;
   // dropped fields resolve to siblings=[]/duration=null/muxPlaybackId=null.
-  const result: WatchVideoRecord = {
-    ...buildWatchVideoRecord(raw),
+  const base = memoized(normalizeSeriesCache, raw, forms, () => ({
+    ...buildWatchVideoRecord(raw, forms),
     episodes: buildEpisodes(raw),
-    languages: buildLanguages(raw),
-  }
-  normalizeSeriesCache.set(raw, result)
-  return result
+    languages: buildLanguages(raw, forms),
+  }))
+  return withVideoText(base, text, forms)
 }

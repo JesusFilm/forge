@@ -4,6 +4,7 @@ import {
   experienceItemCoreIds,
 } from "../experienceAdapter"
 import type { WatchHomeModel, WatchHomeVideoInput } from "../model"
+import { adminFormsFor } from "../../../i18n/adminLanguage"
 import {
   parseStoredHomeSnapshot,
   serializeHomeSnapshotFromVideosJson,
@@ -810,5 +811,218 @@ describe("assembleWatchHomeModel — recommendations insert index (feat-517)", (
     for (const field of ["slate", "capabilit", "requestId", "nonce"]) {
       expect(blob).not.toContain(field)
     }
+  })
+})
+
+// ── U6. The homepage in the UI locale (KTD10, R11) ──────────────────────────
+
+describe("card text under the UI locale's homepage and the en fallback (U6)", () => {
+  const ES = adminFormsFor("es")
+  const RU = adminFormsFor("ru")
+
+  function localeRow(languageSlug: string, title: string, snippet?: string) {
+    return { languageSlug, title, description: null, snippet: snippet ?? null }
+  }
+
+  // The JESUS film as the Home query returns it under a given text slug.
+  function jesus(ui: ReturnType<typeof localeRow>[]): WatchHomeVideoInput {
+    return {
+      documentId: "d-jesus",
+      coreId: "1_jf-0-0",
+      slug: "jesus",
+      label: "FEATURE_FILM",
+      images: [],
+      locales: ui,
+      englishLocales: [localeRow("english", "JESUS", "The story of Jesus")],
+    }
+  }
+
+  // An item whose video has no row in the UI language.
+  const acts: WatchHomeVideoInput = {
+    documentId: "d-acts",
+    coreId: "6_Acts0401",
+    slug: "acts-4-1",
+    label: "SEGMENT",
+    images: [],
+    locales: [],
+    englishLocales: [localeRow("english", "Peter and John")],
+  }
+
+  function homepage(items: Record<string, unknown>[]): Block[] {
+    return [mediaCollection({ items })]
+  }
+
+  function cards(args: {
+    forms: ReturnType<typeof adminFormsFor>
+    homepageSource: "locale" | "en-fallback"
+    videos: WatchHomeVideoInput[]
+    items: Record<string, unknown>[]
+  }) {
+    const { model } = assembleWatchHomeModel({
+      configVideos: [],
+      hydrationVideos: args.videos,
+      blocks: homepage(args.items),
+      forms: args.forms,
+      homepageSource: args.homepageSource,
+    })
+    return model.sections[0].cards
+  }
+
+  // Covers AE1: with Admin's own `es` homepage, the authored text still wins.
+  it("keeps the authored Spanish card text over the video title (AE1)", () => {
+    const [card] = cards({
+      forms: ES,
+      homepageSource: "locale",
+      videos: [jesus([localeRow("spanish-latin-american", "JESÚS")])],
+      items: [
+        {
+          videoId: "v-jesus",
+          coreId: "1_jf-0-0",
+          videoSlug: "jesus",
+          titleOverride: "Ver JESÚS",
+          subtitleOverride: "La historia",
+        },
+      ],
+    })
+    expect(card.title).toBe("Ver JESÚS")
+    expect(card.titleLang).toBe("es")
+    expect(card.description).toBe("La historia")
+  })
+
+  // Covers AE2: no `ru` homepage, so the `en` one gives the shelves, and the
+  // video's Russian title beats the English authored text.
+  it("shows ИИСУС over the English authored title under the en fallback (AE2)", () => {
+    const [card] = cards({
+      forms: RU,
+      homepageSource: "en-fallback",
+      videos: [jesus([localeRow("russian", "ИИСУС", "История Иисуса")])],
+      items: [
+        {
+          videoId: "v-jesus",
+          coreId: "1_jf-0-0",
+          videoSlug: "jesus",
+          titleOverride: "JESUS",
+          subtitleOverride: "The authored subtitle",
+        },
+      ],
+    })
+    expect(card.title).toBe("ИИСУС")
+    expect(card.titleLang).toBe("ru")
+    expect(card.description).toBe("История Иисуса")
+    expect(card.descriptionLang).toBe("ru")
+  })
+
+  it("shows the English title with lang en for a video with no Russian row (AE2)", () => {
+    const [authoredCard, bareCard] = cards({
+      forms: RU,
+      homepageSource: "en-fallback",
+      videos: [acts],
+      items: [
+        {
+          videoId: "v-acts",
+          coreId: "6_Acts0401",
+          videoSlug: "acts-4-1",
+          titleOverride: "Acts 4",
+        },
+        { videoId: "v-acts", coreId: "6_Acts0401", videoSlug: "acts-4-1" },
+      ],
+    })
+    // Authored English text shows only where Admin has no Russian value.
+    expect(authoredCard.title).toBe("Acts 4")
+    expect(authoredCard.titleLang).toBe("en")
+    expect(bareCard.title).toBe("Peter and John")
+    expect(bareCard.titleLang).toBe("en")
+  })
+
+  it("does not flip the precedence under the UI locale's own homepage", () => {
+    const [card] = cards({
+      forms: RU,
+      homepageSource: "locale",
+      videos: [jesus([localeRow("russian", "ИИСУС")])],
+      items: [
+        { coreId: "1_jf-0-0", videoSlug: "jesus", titleOverride: "Иисус" },
+      ],
+    })
+    expect(card.title).toBe("Иисус")
+  })
+
+  // A catalog with no Admin language reads English rows, so there is no
+  // localized value to prefer and the authored text keeps its place.
+  it("keeps the authored text under the fallback when the catalog reads English", () => {
+    const [card] = cards({
+      forms: adminFormsFor("ab"),
+      homepageSource: "en-fallback",
+      videos: [jesus([])],
+      items: [
+        { coreId: "1_jf-0-0", videoSlug: "jesus", titleOverride: "JESUS Film" },
+      ],
+    })
+    expect(card.title).toBe("JESUS Film")
+  })
+
+  // U8 note: the authored label is display text; a localized homepage writes
+  // "Serie". The linked video's kind decides the route.
+  it("classifies a curated card on the linked video's raw kind", () => {
+    const series: WatchHomeVideoInput = {
+      documentId: "d-series",
+      coreId: "7_series",
+      slug: "the-series",
+      label: "SERIES",
+      images: [],
+      locales: [],
+      englishLocales: [],
+    }
+    const [linked, unlinked] = cards({
+      forms: ES,
+      homepageSource: "locale",
+      videos: [series],
+      items: [
+        { coreId: "7_series", videoSlug: "the-series", labelOverride: "Serie" },
+        { videoSlug: "other", labelOverride: "Serie" },
+      ],
+    })
+    expect(linked.rawLabel).toBe("SERIES")
+    expect(unlinked.rawLabel).toBe("Serie")
+  })
+
+  // The config body (the hero pools) reads the same rows. A top-level short
+  // film always reaches the short-film pool, so it needs no curated source id.
+  it("titles the hero slides in the UI language, else English", () => {
+    const shortFilm = (
+      coreId: string,
+      ui: ReturnType<typeof localeRow>[],
+      english: string,
+    ): WatchHomeVideoInput => ({
+      documentId: `d-${coreId}`,
+      coreId,
+      slug: coreId,
+      label: "SHORT_FILM",
+      images: [{ mobileCinematicHigh: `https://cdn/${coreId}.jpg` }],
+      locales: ui,
+      englishLocales: [localeRow("english", english)],
+    })
+    const { model } = assembleWatchHomeModel({
+      configVideos: [
+        shortFilm(
+          "short-ru",
+          [localeRow("russian", "Короткий фильм")],
+          "Short",
+        ),
+        shortFilm("short-en", [], "English only"),
+      ],
+      hydrationVideos: [],
+      blocks: null,
+      forms: RU,
+    })
+    const slides = new Map(
+      model.carousel.pools
+        .flatMap((pool) => pool.videos)
+        .map((slide) => [slide.slug, slide]),
+    )
+    expect(slides.get("short-ru")?.title).toBe("Короткий фильм")
+    expect(slides.get("short-ru")?.titleLang).toBe("ru")
+    expect(slides.get("short-ru")?.rawLabel).toBe("SHORT_FILM")
+    expect(slides.get("short-en")?.title).toBe("English only")
+    expect(slides.get("short-en")?.titleLang).toBe("en")
   })
 })

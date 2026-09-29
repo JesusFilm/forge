@@ -211,6 +211,11 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     ? (errorIds[activeVariantId] ?? false)
     : false
 
+  // The Admin forms the screen's record was read with (KTD16): the subtitle
+  // names follow them, never the store, so a live change leaves them alone.
+  const screenForms = video?.adminForms
+  const screenCatalogTag = screenForms?.catalogTag
+
   const ensureActiveVariantMedia = useCallback(() => {
     ensureDubMedia(
       activeVariant?.documentId,
@@ -223,7 +228,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
           // switching back to this language) reads the warm cache, no refetch.
           fetchPolicy: "cache-first",
         })
-        return normalizeDubMedia(res.data?.videoDub ?? null)
+        return normalizeDubMedia(res.data?.videoDub ?? null, screenForms)
       },
       {
         onStart: (id) => {
@@ -253,7 +258,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
           }),
       },
     )
-  }, [activeVariant?.documentId, client])
+  }, [activeVariant?.documentId, client, screenForms])
 
   // New video identity → reset choice tracking + subtitle state. Declared
   // before the resolution effects so their guards see a clean slate.
@@ -394,13 +399,16 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       activeVariantMedia.subtitles,
       preferredSubtitleName,
     )
-    if (next != null) setPreferredSubtitleName(next)
+    // KTD16: the names are in the screen's captured language, which a live
+    // change does not move, so the cache records that tag, not the current one.
+    if (next != null) setPreferredSubtitleName(next, screenCatalogTag)
   }, [
     preferencesReady,
     preferredSubtitleSlug,
     preferredSubtitleName,
     activeVariantMedia,
     setPreferredSubtitleName,
+    screenCatalogTag,
   ])
 
   const value = useMemo<WatchSessionContextValue>(

@@ -1,8 +1,9 @@
 // The top-up hydration fetch, extracted from useWatchHome so its chunking +
 // fail-fast merge are unit-testable without pulling React into the test.
 
+import type { AdminLanguageForms } from "../../i18n/adminLanguage"
 import { GET_WATCH_HOME_VIDEOS } from "../queries"
-import { ENGLISH_LANGUAGE_SLUG, HOME_LOCALE } from "./config"
+import { videoTextVariables } from "../videoText"
 import type { WatchHomeVideoInput } from "./model"
 
 export type FetchPolicy = "cache-first" | "network-only"
@@ -30,6 +31,21 @@ export type TopUpOutcome =
   | { ok: true; videos: readonly WatchHomeVideoInput[] }
   | { ok: false }
 
+/** KTD16: the last-good top-up records and the locale they were fetched in.
+ *  They are text in that locale, so another locale never reuses them. */
+export type LastGoodHydration = {
+  locale: string
+  videos: readonly WatchHomeVideoInput[]
+}
+
+/** The last-good records for `locale`, or null when they are in another one. */
+export function lastGoodHydrationFor(
+  entry: LastGoodHydration | null,
+  locale: string,
+): readonly WatchHomeVideoInput[] | null {
+  return entry != null && entry.locale === locale ? entry.videos : null
+}
+
 /**
  * The last-good hydration decision, pure so the failure→reuse path is unit-tested
  * without driving the hook: on success use the fresh records (and remember them as
@@ -55,21 +71,19 @@ export function resolveHydrationVideos(
 
 /** Top-up hydration for editor-added coreIds the config pool doesn't cover.
  *  Chunked under the 100-id cap; any rejected chunk rejects the whole top-up so
- *  the caller degrades (drop divergent items, keep the config-pool rows). */
+ *  the caller degrades (drop divergent items, keep the config-pool rows). The
+ *  text rows follow `forms` (KTD10). */
 export async function fetchTopUpVideos(
   client: TopUpApolloClient,
   coreIds: readonly string[],
   fetchPolicy: FetchPolicy,
+  forms: AdminLanguageForms,
 ): Promise<WatchHomeVideoInput[]> {
   const batches = await Promise.all(
     chunk(coreIds, VIDEOS_BY_CORE_IDS_MAX).map((ids) =>
       client.query({
         query: GET_WATCH_HOME_VIDEOS,
-        variables: {
-          coreIds: ids,
-          locale: HOME_LOCALE,
-          languageSlug: ENGLISH_LANGUAGE_SLUG,
-        },
+        variables: { coreIds: ids, ...videoTextVariables(forms) },
         fetchPolicy,
       }),
     ),

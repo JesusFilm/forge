@@ -17,7 +17,9 @@ import { StatusBar } from "expo-status-bar"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { useApolloClient, useQuery } from "@apollo/client/react"
 
-import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
+import { GET_VIDEO_BY_SLUG, GET_VIDEO_TEXT } from "../../src/lib/queries"
+import { useScreenAdminForms } from "../../src/i18n/useScreenAdminForms"
+import { videoTextVariables } from "../../src/lib/videoText"
 import { datadogLog } from "../../src/lib/datadog"
 import {
   consumeDeepLinkArrival,
@@ -27,6 +29,7 @@ import { schedulePersist } from "../../src/lib/cachePersistence"
 import type { AdminBlock } from "../../src/lib/queries"
 import {
   normalizeVideo,
+  type VideoTextInput,
   type WatchBibleCitation,
   type WatchVariant,
 } from "../../src/lib/normalizeVideo"
@@ -224,15 +227,28 @@ export default function WatchVideoPage() {
     )
   }, [])
 
+  // KTD16: the Admin language forms this screen reads with, captured at mount
+  // (or the floating session's, on an expand). Every Admin reader below takes
+  // them; none reads the locale store, so a live change moves no text here.
+  const adminForms = useScreenAdminForms(decodedSlug)
+
   const apolloClient = useApolloClient()
+  // KTD10: language-free, so a UI language change never refetches it.
   const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
-    variables: { slug: decodedSlug, locale: "en" },
+    variables: { slug: decodedSlug },
     skip: !decodedSlug,
     // cache-first, NOT cache-and-network: payload is huge (~9.5MB / 2,259 dubs)
     // and cache-and-network re-parsed it per re-entry, freezing JS. NOTE: if cache
     // persistence (U7) lands, revisit — restored snapshots need cold-start revalidation.
     fetchPolicy: "cache-first",
     // Render whatever the cache holds (prefetch) the moment it exists.
+    returnPartialData: true,
+  })
+  // The text companion: Home's rows for this video are a cache hit for it.
+  const { data: textData, refetch: refetchText } = useQuery(GET_VIDEO_TEXT, {
+    variables: { slug: decodedSlug, ...videoTextVariables(adminForms) },
+    skip: !decodedSlug,
+    fetchPolicy: "cache-first",
     returnPartialData: true,
   })
 
@@ -243,8 +259,10 @@ export default function WatchVideoPage() {
     () =>
       normalizeVideo(
         (data?.videoBySlug ?? null) as Parameters<typeof normalizeVideo>[0],
+        adminForms,
+        (textData?.videoBySlug ?? null) as VideoTextInput | null,
       ),
-    [data],
+    [data, textData, adminForms],
   )
 
   // A series reached via /watch redirects to the series page. Detection is
@@ -725,7 +743,10 @@ export default function WatchVideoPage() {
           </Text>
           <Text
             style={styles.retryLink}
-            onPress={() => void refetch()}
+            onPress={() => {
+              void refetch()
+              void refetchText()
+            }}
             accessibilityRole="button"
             accessibilityLabel="Retry loading video"
           >

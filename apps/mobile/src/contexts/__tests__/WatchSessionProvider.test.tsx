@@ -46,6 +46,7 @@ jest.mock("../WatchPreferencesProvider", () => {
     setAudio: jest.fn(),
     backfillAudioIso3: jest.fn(),
     setPreferredSubtitleLanguage: jest.fn(),
+    setPreferredSubtitleName: jest.fn(),
     setSubtitlesEnabled: jest.fn(),
   }
   return {
@@ -59,7 +60,7 @@ jest.mock("../WatchPreferencesProvider", () => {
       setPreferredAudioLanguage: state.setAudio,
       backfillAudioLanguageIso3: state.backfillAudioIso3,
       setPreferredSubtitleLanguage: state.setPreferredSubtitleLanguage,
-      setPreferredSubtitleName: jest.fn(),
+      setPreferredSubtitleName: state.setPreferredSubtitleName,
       setSubtitlesEnabled: state.setSubtitlesEnabled,
     }),
     __prefState: state,
@@ -99,6 +100,7 @@ jest.mock("../../lib/miniPlayer/store", () => {
 import { act } from "react"
 
 import { WatchSessionProvider, useWatchSession } from "../WatchSessionProvider"
+import { adminFormsFor } from "../../i18n/adminLanguage"
 import type { WatchVariant, WatchVideoRecord } from "../../lib/normalizeVideo"
 import {
   TestRenderer,
@@ -117,6 +119,7 @@ const prefs = jest.requireMock("../WatchPreferencesProvider") as {
     setAudio: jest.Mock
     backfillAudioIso3: jest.Mock
     setPreferredSubtitleLanguage: jest.Mock
+    setPreferredSubtitleName: jest.Mock
     setSubtitlesEnabled: jest.Mock
   }
 }
@@ -229,6 +232,7 @@ afterEach(async () => {
   prefs.__prefState.setAudio.mockClear()
   prefs.__prefState.backfillAudioIso3.mockClear()
   prefs.__prefState.setPreferredSubtitleLanguage.mockClear()
+  prefs.__prefState.setPreferredSubtitleName.mockClear()
   prefs.__prefState.setSubtitlesEnabled.mockClear()
   apollo.__client.query.mockReset()
   downloads.__downloadsState.ready = true
@@ -665,5 +669,72 @@ describe("the audio language code (U6)", () => {
     })
 
     expect(prefs.__prefState.backfillAudioIso3).toHaveBeenCalledTimes(0)
+  })
+})
+
+// KTD16: an open watch screen keeps the language it captured through a live
+// Android change. The store here stays on English, so this is the screen
+// opened in Spanish after the phone moved back to English.
+describe("the screen's captured language (U6)", () => {
+  function answerFrenchTrack() {
+    apollo.__client.query.mockResolvedValue({
+      data: {
+        videoDub: {
+          downloads: [],
+          videoEdition: {
+            subtitles: [
+              {
+                documentId: "sub-fr",
+                vttSrc: "https://cdn.example/fr.vtt",
+                primary: false,
+                aiGenerated: false,
+                language: {
+                  slug: "french",
+                  name: { en: "French", es: "Francés" },
+                  bcp47: "fr",
+                },
+              },
+            ],
+          },
+        },
+      },
+    })
+  }
+
+  const spanishScreen = (): WatchVideoRecord => ({
+    ...record("video-cc", MULTI_DUB),
+    adminForms: adminFormsFor("es"),
+  })
+
+  it("names the subtitle languages in the screen's forms", async () => {
+    answerFrenchTrack()
+    await renderProvider()
+    await act(async () => {
+      session.setVideo(spanishScreen())
+    })
+    await act(async () => {
+      session.ensureActiveVariantMedia()
+    })
+
+    expect(session.activeVariantMedia?.subtitles[0]?.languageName).toBe(
+      "Francés",
+    )
+  })
+
+  it("caches the subtitle name under the screen's tag, not the current UI tag", async () => {
+    prefs.__prefState.subtitle = "french"
+    answerFrenchTrack()
+    await renderProvider()
+    await act(async () => {
+      session.setVideo(spanishScreen())
+    })
+    await act(async () => {
+      session.ensureActiveVariantMedia()
+    })
+
+    expect(prefs.__prefState.setPreferredSubtitleName).toHaveBeenCalledWith(
+      "Francés",
+      "es",
+    )
   })
 })

@@ -17,8 +17,13 @@ export type WatchHomeVideoSlide = {
   kind: "video"
   id: string
   title: string
+  /** The language of `title` (KTD10). */
+  titleLang?: string | null
   description: string | null
   label: string
+  /** Admin's raw label kind, for routing; `label` is catalog text (KTD15).
+   *  Absent reads as unlabeled. */
+  rawLabel?: string | null
   slug: string | null
   parentSlug: string | null
   posterUrl: string | null

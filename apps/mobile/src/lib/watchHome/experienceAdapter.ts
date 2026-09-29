@@ -5,7 +5,19 @@
  * the Web-only category rail and the recommendations shelf are silent
  * placeholders; the last one reports its position, see KTD1).
  */
+import {
+  ENGLISH_ADMIN_FORMS,
+  type AdminLanguageForms,
+} from "../../i18n/adminLanguage"
 import { muxThumbnailFromPlaybackId } from "../muxThumbnail"
+import {
+  ENGLISH_TEXT_LANG,
+  pickUiVideoText,
+  pickVideoText,
+  readCardDescription,
+  readTitle,
+  type LocalizedText,
+} from "../videoText"
 import {
   buildVideoByCoreIdIndex,
   buildWatchHomeModelFromVideos,
@@ -15,6 +27,21 @@ import {
   type WatchHomeSection,
   type WatchHomeVideoInput,
 } from "./model"
+
+/** Which homepage the body came from (KTD10, R11): the catalog tag's own, or
+ *  the English one because Admin has none for the catalog tag. */
+export type HomepageSource = "locale" | "en-fallback"
+
+/** The language context every card is read in. */
+export type HomeTextContext = {
+  forms: AdminLanguageForms
+  homepageSource: HomepageSource
+}
+
+const ENGLISH_HOME_TEXT: HomeTextContext = {
+  forms: ENGLISH_ADMIN_FORMS,
+  homepageSource: "locale",
+}
 
 // Structural block shape — the precise gql.tada block unions assign to this;
 // field access happens via a Record cast inside blockToSection.
@@ -72,11 +99,52 @@ function mapThumbnailOrientation(value: unknown): ThumbnailOrientation | null {
   return value === "vertical" || value === "horizontal" ? value : null
 }
 
+function authored(
+  value: string | null | undefined,
+  lang: string,
+): LocalizedText | null {
+  return value != null && value.trim() !== "" ? { text: value, lang } : null
+}
+
+/** A card's title and short text. Under the catalog tag's own homepage the
+ *  authored text wins. Under the `en` fallback the video's UI-language text
+ *  wins, and the authored English text fills only its gaps (R11). */
+function cardText(
+  item: ExperienceItem,
+  hydrated: WatchHomeVideoInput | undefined,
+  context: HomeTextContext,
+): { title: LocalizedText | null; description: LocalizedText | null } {
+  const { forms, homepageSource } = context
+  const authoredLang =
+    homepageSource === "en-fallback" ? ENGLISH_TEXT_LANG : forms.catalogTag
+  const authoredTitle =
+    authored(item.titleOverride, authoredLang) ??
+    authored(item.labelOverride, authoredLang)
+  const authoredDescription = authored(item.subtitleOverride, authoredLang)
+  const videoTitle = pickVideoText(hydrated, forms, readTitle)
+  if (homepageSource === "en-fallback") {
+    return {
+      title:
+        pickUiVideoText(hydrated, forms, readTitle) ??
+        authoredTitle ??
+        videoTitle,
+      description:
+        pickUiVideoText(hydrated, forms, readCardDescription) ??
+        authoredDescription,
+    }
+  }
+  return {
+    title: authoredTitle ?? videoTitle,
+    description: authoredDescription,
+  }
+}
+
 function itemToCard(
   item: ExperienceItem,
   sourceId: string,
   index: number,
   videoByCoreId: Map<string, WatchHomeVideoInput>,
+  context: HomeTextContext,
 ): WatchHomeCard | null {
   // Match web's enrichment: curated home items carry videoId but a null
   // videoSlug, so keep the card (image + title) with an empty slug — HomeCard
@@ -92,14 +160,12 @@ function itemToCard(
   const label = item.labelOverride ?? ""
   // Under-curated items (prod "Acts of the Apostles") carry a coreId but no
   // authored title/image; hydrate both from the linked video so they read like
-  // every other card. Authored overrides always win — working shelves unchanged.
+  // every other card.
   const hydrated = item.coreId ? videoByCoreId.get(item.coreId) : undefined
-  const hydratedTitle = hydrated?.locales?.[0]?.title ?? null
   const hydratedImage = hydrated ? pickAdminImage(hydrated.images ?? []) : null
-  // Never blank: titleOverride, else labelOverride, else the linked video's
-  // title, else the slug.
-  const title =
-    item.titleOverride || item.labelOverride || hydratedTitle || slug
+  const text = cardText(item, hydrated, context)
+  // Never blank: the chosen title, else the slug.
+  const title = text.title?.text || slug
   // collectionSize is a free-text String badge (e.g. "25 items"); blank/whitespace
   // reads as absent (trimmed), then falls to the label, else no badge.
   const size = item.collectionSize?.trim() || null
@@ -120,11 +186,14 @@ function itemToCard(
     coreId: cardCoreId,
     slug,
     title,
-    description: item.subtitleOverride ?? null,
+    titleLang: text.title?.text ? text.title.lang : null,
+    description: text.description?.text ?? null,
+    descriptionLang: text.description?.lang ?? null,
     label,
-    // A curated item has no wire enum, so the authored override IS its
-    // classification label — blank means unlabeled, not the string "".
-    rawLabel: label !== "" ? label : null,
+    // Classify on the linked video's raw kind (KTD15): the authored override is
+    // display text, and a localized homepage writes "Serie", not "series". An
+    // item with no linked video falls back to its override; blank is unlabeled.
+    rawLabel: hydrated?.label || (label !== "" ? label : null),
     metaLabel,
     imageUrl,
     imageAlt: title,
@@ -158,13 +227,20 @@ function blockToSection(
   index: number,
   videoByCoreId: Map<string, WatchHomeVideoInput>,
   takenSectionIds: ReadonlySet<string>,
+  context: HomeTextContext,
 ): WatchHomeSection | null {
   const b = block as Record<string, unknown>
   const sectionKey = (b.sectionKey as string | null) ?? null
   const rawItems = (b.items as ExperienceItem[] | null | undefined) ?? []
   const cards = rawItems
     .map((item, i) =>
-      itemToCard(item, sectionKey ?? "home-experience", i, videoByCoreId),
+      itemToCard(
+        item,
+        sectionKey ?? "home-experience",
+        i,
+        videoByCoreId,
+        context,
+      ),
     )
     .filter((c): c is WatchHomeCard => c != null)
   if (cards.length === 0) return null // empty / all-dropped collection → skip
@@ -215,6 +291,9 @@ export function buildWatchHomeBodyFromExperience(
   // Hydration index from the merged bulk fetch. Defaults empty so a caller with
   // no video data (and the existing tests) renders inline-only, as before.
   videoByCoreId: Map<string, WatchHomeVideoInput> = new Map(),
+  // The language the cards are read in; English with its own homepage when
+  // absent, which is the behaviour before U6.
+  context: HomeTextContext = ENGLISH_HOME_TEXT,
 ): WatchHomeExperienceBody {
   const sections: WatchHomeSection[] = []
   // Only shelves that survive reserve an id, so a dropped block can't push its
@@ -229,6 +308,7 @@ export function buildWatchHomeBodyFromExperience(
         index,
         videoByCoreId,
         takenSectionIds,
+        context,
       )
       if (section) {
         sections.push(section)
@@ -323,18 +403,25 @@ export function assembleWatchHomeModel(args: {
   configVideos: readonly WatchHomeVideoInput[]
   hydrationVideos: readonly WatchHomeVideoInput[]
   blocks: readonly ExperienceBlock[] | null
-  languageSlug?: string
+  /** The Admin language forms the videos were fetched with (KTD10). */
+  forms?: AdminLanguageForms
+  /** Which homepage `blocks` came from; the card precedence follows it (R11). */
+  homepageSource?: HomepageSource
 }): WatchHomeBodyResolution {
+  const forms = args.forms ?? ENGLISH_ADMIN_FORMS
   const configModel = buildWatchHomeModelFromVideos({
     videos: args.configVideos,
-    languageSlug: args.languageSlug,
+    forms,
   })
   const videoByCoreId = buildVideoByCoreIdIndex([
     ...args.configVideos,
     ...args.hydrationVideos,
   ])
   const body = args.blocks
-    ? buildWatchHomeBodyFromExperience(args.blocks, videoByCoreId)
+    ? buildWatchHomeBodyFromExperience(args.blocks, videoByCoreId, {
+        forms,
+        homepageSource: args.homepageSource ?? "locale",
+      })
     : { sections: [], recommendationsInsertIndex: null }
   return resolveWatchHomeModel({
     configModel,

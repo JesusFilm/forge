@@ -1,4 +1,10 @@
-import { chunk, fetchTopUpVideos, resolveHydrationVideos } from "../topUpFetch"
+import {
+  chunk,
+  fetchTopUpVideos,
+  lastGoodHydrationFor,
+  resolveHydrationVideos,
+} from "../topUpFetch"
+import { ENGLISH_ADMIN_FORMS, adminFormsFor } from "../../../i18n/adminLanguage"
 import type { WatchHomeVideoInput } from "../model"
 
 describe("chunk", () => {
@@ -23,7 +29,12 @@ describe("fetchTopUpVideos", () => {
     const query = jest
       .fn()
       .mockResolvedValue({ data: { watchHomeVideos: [{ coreId: "x" }] } })
-    const out = await fetchTopUpVideos({ query } as never, ["x"], "cache-first")
+    const out = await fetchTopUpVideos(
+      { query } as never,
+      ["x"],
+      "cache-first",
+      ENGLISH_ADMIN_FORMS,
+    )
     expect(query).toHaveBeenCalledTimes(1)
     expect(out).toEqual([{ coreId: "x" }])
   })
@@ -39,7 +50,12 @@ describe("fetchTopUpVideos", () => {
         },
       }),
     )
-    const out = await fetchTopUpVideos({ query } as never, ids, "network-only")
+    const out = await fetchTopUpVideos(
+      { query } as never,
+      ids,
+      "network-only",
+      ENGLISH_ADMIN_FORMS,
+    )
     expect(query).toHaveBeenCalledTimes(2) // 100 + 50
     expect(out).toHaveLength(150)
   })
@@ -53,8 +69,43 @@ describe("fetchTopUpVideos", () => {
         : Promise.reject(new Error("boom")),
     )
     await expect(
-      fetchTopUpVideos({ query } as never, ids, "network-only"),
+      fetchTopUpVideos(
+        { query } as never,
+        ids,
+        "network-only",
+        ENGLISH_ADMIN_FORMS,
+      ),
     ).rejects.toThrow("boom")
+  })
+})
+
+describe("fetchTopUpVideos text rows (U6)", () => {
+  it("asks for the forms' text slug, the one argument set Home shares", async () => {
+    const query = jest.fn().mockResolvedValue({ data: { watchHomeVideos: [] } })
+    await fetchTopUpVideos(
+      { query } as never,
+      ["x"],
+      "cache-first",
+      adminFormsFor("ru"),
+    )
+    expect(query.mock.calls[0][0].variables).toEqual({
+      coreIds: ["x"],
+      textSlug: "russian",
+    })
+  })
+})
+
+// KTD16: the last-good records are text in one locale.
+describe("lastGoodHydrationFor (U6)", () => {
+  const videos: WatchHomeVideoInput[] = [{ coreId: "6_Acts0402", slug: "b" }]
+
+  it("reuses the last-good records in the same locale", () => {
+    expect(lastGoodHydrationFor({ locale: "ru", videos }, "ru")).toBe(videos)
+  })
+
+  it("never reuses them under another locale", () => {
+    expect(lastGoodHydrationFor({ locale: "en", videos }, "ru")).toBeNull()
+    expect(lastGoodHydrationFor(null, "ru")).toBeNull()
   })
 })
 

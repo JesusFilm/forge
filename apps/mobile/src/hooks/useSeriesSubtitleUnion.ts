@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import {
+  ENGLISH_ADMIN_FORMS,
+  type AdminLanguageForms,
+} from "../i18n/adminLanguage"
 import { getApolloClient } from "../lib/apolloClient"
 import { GET_VIDEO_BY_SLUG, GET_VIDEO_DUB } from "../lib/queries"
 import {
@@ -9,9 +13,6 @@ import {
 } from "../lib/normalizeVideo"
 import { resolveSeriesSubtitleUnion } from "../lib/seriesSubtitleUnion"
 import { useUiTag } from "./useUiTag"
-
-// Series locale matches the series detail + download queries.
-const LOCALE = "en"
 
 export type SeriesSubtitleUnion = {
   /** Resolved union, or null while idle/loading/errored (null = "unknown yet"). */
@@ -33,15 +34,20 @@ type State =
  * the download flow's fetches). `enabled` gates the fan-out: the detail-page pill
  * passes false until a subtitle is actually set (it only needs the union to
  * reconcile a set preference), while the picker sheet always passes true.
+ * `forms` are the series screen's captured forms (KTD16): the names are in
+ * them and sort in them, so a live language change does not re-run the union.
  */
 export function useSeriesSubtitleUnion(
   episodes: readonly { slug: string }[] | null,
   languageSlug: string | null,
   enabled = true,
+  forms?: AdminLanguageForms,
 ): SeriesSubtitleUnion {
   const [state, setState] = useState<State>({ phase: "idle" })
   const controllerRef = useRef<AbortController | null>(null)
-  const uiTag = useUiTag()
+  const currentUiTag = useUiTag()
+  const nameForms = forms ?? ENGLISH_ADMIN_FORMS
+  const uiTag = forms?.catalogTag ?? currentUiTag
 
   const active = enabled && !!episodes && !!languageSlug
 
@@ -55,14 +61,16 @@ export function useSeriesSubtitleUnion(
           episodes,
           languageSlug,
           {
+            // The language-free document (KTD10): its dedupe is the slug.
             getEpisodeVariants: async (slug) => {
               const res = await client.query({
                 query: GET_VIDEO_BY_SLUG,
-                variables: { slug, locale: LOCALE },
+                variables: { slug },
                 fetchPolicy: "cache-first" as const,
               })
               return (
-                normalizeVideo(res.data?.videoBySlug ?? null)?.variants ?? []
+                normalizeVideo(res.data?.videoBySlug ?? null, nameForms)
+                  ?.variants ?? []
               )
             },
             getDubMedia: async (dubDocumentId) => {
@@ -71,7 +79,7 @@ export function useSeriesSubtitleUnion(
                 variables: { id: dubDocumentId },
                 fetchPolicy: "cache-first" as const,
               })
-              return normalizeDubMedia(res.data?.videoDub ?? null)
+              return normalizeDubMedia(res.data?.videoDub ?? null, nameForms)
             },
             uiTag,
           },
@@ -89,7 +97,7 @@ export function useSeriesSubtitleUnion(
         setState({ phase: "error" })
       }
     },
-    [episodes, languageSlug, uiTag],
+    [episodes, languageSlug, uiTag, nameForms],
   )
 
   useEffect(() => {

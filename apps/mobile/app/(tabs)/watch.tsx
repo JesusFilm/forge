@@ -98,7 +98,7 @@ export default function DiscoverScreen() {
     getApolloClient()
       .query({
         query: GET_VIDEO_BY_SLUG,
-        variables: { slug, locale: "en" },
+        variables: { slug },
         fetchPolicy: "cache-first",
       })
       .catch(() => {

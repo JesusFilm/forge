@@ -52,6 +52,32 @@ describe("HomeCard routes on the raw label, not display text", () => {
 })
 
 /**
+ * U6: the hero's "Watch Now" routed on `isSeriesLabel(label)`, and the slide's
+ * label is catalog text, so a Spanish "Serie" opened /watch. It must route on
+ * the slide's raw kind. `slideRouteArgs.test.ts` proves the value passes.
+ */
+describe("HomeScreen's Watch Now routes on the raw label kind", () => {
+  function watchNowRoute(source: string): string {
+    const start = at(source, "const handleWatchNow")
+    return squish(source.slice(start, at(source, "router.navigate(", start)))
+  }
+
+  it("feeds rawLabel from slideRouteArgs into isSeriesLabel", () => {
+    const route = watchNowRoute(readSource("..", "HomeScreen.tsx"))
+    expect(route).toContain("isSeriesLabel(rawLabel)")
+    expect(route).not.toContain("isSeriesLabel(label)")
+  })
+
+  it("flags the old display-text compare (negative control)", () => {
+    const reverted = readSource("..", "HomeScreen.tsx").replace(
+      "isSeriesLabel(rawLabel)",
+      "isSeriesLabel(label)",
+    )
+    expect(watchNowRoute(reverted)).not.toContain("isSeriesLabel(rawLabel)")
+  })
+})
+
+/**
  * KTD15: `card.label` is catalog text, so a Spanish catalog emptied the hero's
  * short-film pool while it compared `label` with "Short film". The behaviour
  * test in watchHomeModel.test.ts proves the pool; this pins the source shape.

@@ -2,7 +2,30 @@ import {
   normalizeVideo,
   normalizeDubMedia,
   normalizeSeries,
+  type VideoTextInput,
 } from "../normalizeVideo"
+import {
+  ENGLISH_ADMIN_FORMS,
+  adminFormsFor,
+  type AdminLanguageForms,
+} from "../../i18n/adminLanguage"
+
+// The fixtures below carry their text rows on the raw object, in the text
+// companion's shape (KTD10), so each case passes the raw object as the
+// companion too. The U6 cases pass a separate companion.
+function norm(
+  raw: Parameters<typeof normalizeVideo>[0],
+  forms: AdminLanguageForms = ENGLISH_ADMIN_FORMS,
+) {
+  return normalizeVideo(raw, forms, raw as unknown as VideoTextInput)
+}
+
+function normSeries(
+  raw: Parameters<typeof normalizeSeries>[0],
+  forms: AdminLanguageForms = ENGLISH_ADMIN_FORMS,
+) {
+  return normalizeSeries(raw, forms, raw as unknown as VideoTextInput)
+}
 
 // A single dub's raw shape as returned by GET_VIDEO_DUB (the lazy per-dub media
 // query). Downloads + subtitles now live here, not on the bulk WatchVideo dubs.
@@ -231,17 +254,19 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
       },
     ],
     ...overrides,
-  } as Parameters<typeof normalizeVideo>[0]
+    // The fixture carries the text rows too, in the companion's shape (see
+    // `norm`), so it is wider than the language-free document's type.
+  } as unknown as Parameters<typeof normalizeVideo>[0]
 }
 
 describe("normalizeVideo", () => {
   it("returns null for null input", () => {
-    expect(normalizeVideo(null)).toBeNull()
-    expect(normalizeVideo(undefined)).toBeNull()
+    expect(norm(null)).toBeNull()
+    expect(norm(undefined)).toBeNull()
   })
 
   it("produces a complete record from a fully populated response", () => {
-    const result = normalizeVideo(makeRawVideo())!
+    const result = norm(makeRawVideo())!
 
     expect(result.documentId).toBe("vid-1")
     expect(result.slug).toBe("the-crucifixion")
@@ -259,7 +284,7 @@ describe("normalizeVideo", () => {
   // ONLY for a genuine episodic SERIES parent, so standalone films that merely
   // belong to a COLLECTION don't fold into a Library series folder.
   it("surfaces parentSeries only for a genuine SERIES parent", () => {
-    const result = normalizeVideo(
+    const result = norm(
       makeRawVideo({
         parents: [
           {
@@ -285,6 +310,7 @@ describe("normalizeVideo", () => {
       documentId: "parent-1",
       slug: "storyclubs",
       title: "StoryClubs",
+      titleLang: "en",
     })
   })
 
@@ -292,19 +318,19 @@ describe("normalizeVideo", () => {
   // Its members are individually watchable — they must render standalone, never
   // folded under the collection as if it were a series.
   it("resolves parentSeries to null for a COLLECTION parent", () => {
-    const result = normalizeVideo(makeRawVideo())!
+    const result = norm(makeRawVideo())!
     expect(result.parentSeries).toBeNull()
   })
 
   it("resolves parentSeries to null when the video has no parents", () => {
-    const result = normalizeVideo(makeRawVideo({ parents: [] }))!
+    const result = norm(makeRawVideo({ parents: [] }))!
     expect(result.parentSeries).toBeNull()
   })
 
   // Pins the intentional parents[0]-only contract (shared with the siblings
   // derivation): a SERIES parent behind a COLLECTION at index 0 is not searched.
   it("resolves parentSeries to null when a SERIES parent sits behind a COLLECTION at index 0", () => {
-    const result = normalizeVideo(
+    const result = norm(
       makeRawVideo({
         parents: [
           {
@@ -342,7 +368,7 @@ describe("normalizeVideo", () => {
     ).variants.map((v, index) =>
       index === 0 ? { ...v, hls: `${v.hls}\n` } : v,
     )
-    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+    const result = norm({ ...raw, variants } as typeof raw)!
 
     expect(result.streamingUrl).toBe("https://stream.mux.com/abc123.m3u8")
     expect(
@@ -355,7 +381,7 @@ describe("normalizeVideo", () => {
     const variants = (
       raw as unknown as { variants: { hls: string | null }[] }
     ).variants.map((v, index) => (index === 0 ? { ...v, hls: "  \n" } : v))
-    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+    const result = norm({ ...raw, variants } as typeof raw)!
 
     // dub-1's hls is unplayable; the pick must advance to dub-2 (Spanish).
     expect(result.streamingUrl).toBe("https://stream.mux.com/def456.m3u8")
@@ -396,7 +422,7 @@ describe("normalizeVideo", () => {
         : rel,
     )
 
-    const result = normalizeVideo(raw)!
+    const result = norm(raw)!
     const sibling = result.siblings.find((s) => s.documentId === "vid-2")!
     expect(sibling.posterUrl).toBe(
       "https://img.example.com/cinematic.jpg/f=jpg,w=1280",
@@ -404,7 +430,7 @@ describe("normalizeVideo", () => {
   })
 
   it("filters self-references from siblings", () => {
-    const result = normalizeVideo(makeRawVideo())!
+    const result = norm(makeRawVideo())!
 
     expect(result.siblings).toHaveLength(2)
     expect(result.siblings.map((s) => s.slug)).toEqual([
@@ -423,19 +449,12 @@ describe("normalizeVideo", () => {
           documentId: "vid-2",
           slug: "the-resurrection",
           label: "SEGMENT",
-          locales: [
-            {
-              documentId: "cloc-2",
-              languageSlug: "english",
-              title: "The Resurrection",
-            },
-          ],
           images: [],
         },
       },
     ]
 
-    const result = normalizeVideo(raw)!
+    const result = norm(raw)!
     const resurrectionCount = result.siblings.filter(
       (s) => s.documentId === "vid-2",
     ).length
@@ -443,18 +462,18 @@ describe("normalizeVideo", () => {
   })
 
   it("returns empty siblings for orphan videos (no parents)", () => {
-    const result = normalizeVideo(makeRawVideo({ parents: [] }))!
+    const result = norm(makeRawVideo({ parents: [] }))!
     expect(result.siblings).toEqual([])
   })
 
   it("filters unpublished variants", () => {
-    const result = normalizeVideo(makeRawVideo())!
+    const result = norm(makeRawVideo())!
     expect(result.variants).toHaveLength(2)
     expect(result.variants.every((v) => v.published)).toBe(true)
   })
 
   it("projects each dub language's ISO 639-3 code as admin sends it (U6)", () => {
-    const result = normalizeVideo(makeRawVideo())!
+    const result = norm(makeRawVideo())!
     expect(result.variants.map((v) => v.languageIso3)).toEqual(["eng", "spa"])
   })
 
@@ -469,7 +488,7 @@ describe("normalizeVideo", () => {
         ? { ...v, language: { ...v.language, iso3: "  " } }
         : { ...v, language: { ...v.language, iso3: null } },
     )
-    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+    const result = norm({ ...raw, variants } as typeof raw)!
     expect(result.variants).toHaveLength(2)
     expect(result.variants.map((v) => v.languageIso3)).toEqual([null, null])
   })
@@ -477,7 +496,7 @@ describe("normalizeVideo", () => {
   it("does not project per-dub downloads/subtitles onto bulk variants", () => {
     // The bulk WatchVideo query is lean by design — downloads/subtitles are
     // fetched lazily per dub (normalizeDubMedia), never inlined here.
-    const result = normalizeVideo(makeRawVideo())!
+    const result = norm(makeRawVideo())!
     const englishVariant = result.variants.find(
       (v) => v.languageSlug === "english",
     )!
@@ -549,38 +568,44 @@ describe("normalizeVideo", () => {
   })
 
   it("sorts study questions by order and filters empty", () => {
-    const result = normalizeVideo(makeRawVideo())!
+    const result = norm(makeRawVideo())!
     expect(result.studyQuestions).toHaveLength(2)
     expect(result.studyQuestions[0].value).toBe("First question?")
     expect(result.studyQuestions[1].value).toBe("Second question?")
   })
 
-  it("chooses broad locale rows deterministically when multiple variants share BCP-47", () => {
-    const result = normalizeVideo(
+  // KTD10: rows are chosen by the language slug (the identity), never by a
+  // sort over whatever rows came back. `hu` is shared by Hungarian and Csángó.
+  it("reads the hungarian row for hu even when a csango row comes first", () => {
+    const result = norm(
       makeRawVideo({
         locales: [
           {
-            documentId: "loc-z",
-            languageSlug: "russian-z",
-            title: "Russian Z",
-            description: "Russian Z description",
-            snippet: "Russian Z snippet",
+            documentId: "loc-csango",
+            languageSlug: "csango",
+            title: "Csángó cím",
+            description: null,
+            snippet: null,
           },
           {
-            documentId: "loc-legacy",
-            languageSlug: null,
-            title: "Legacy Russian",
-            description: "Legacy Russian description",
-            snippet: "Legacy Russian snippet",
-          },
-          {
-            documentId: "loc-a",
-            languageSlug: "russian-a",
-            title: "Russian A",
-            description: "Russian A description",
-            snippet: "Russian A snippet",
+            documentId: "loc-hu",
+            languageSlug: "hungarian",
+            title: "Magyar cím",
+            description: null,
+            snippet: null,
           },
         ],
+      }),
+      adminFormsFor("hu"),
+    )!
+
+    expect(result.title).toBe("Magyar cím")
+    expect(result.titleLang).toBe("hu")
+  })
+
+  it("sorts study questions by order, then slug, then id by code unit", () => {
+    const result = norm(
+      makeRawVideo({
         studyQuestions: [
           {
             documentId: "sq-z",
@@ -604,7 +629,6 @@ describe("normalizeVideo", () => {
       }),
     )!
 
-    expect(result.title).toBe("Russian A")
     expect(result.studyQuestions.map((question) => question.value)).toEqual([
       "A question?",
       "Z question?",
@@ -613,7 +637,7 @@ describe("normalizeVideo", () => {
   })
 
   it("normalizes bible citations with book name from locale map", () => {
-    const result = normalizeVideo(makeRawVideo())!
+    const result = norm(makeRawVideo())!
     expect(result.bibleCitations).toHaveLength(1)
     expect(result.bibleCitations[0].bookName).toBe("John")
     expect(result.bibleCitations[0].osisId).toBe("John.19.30")
@@ -627,7 +651,7 @@ describe("normalizeVideo", () => {
   // numbered books `1Cor` and the Psalms `Ps` (`youversion-reference.ts`).
   describe("citation book code", () => {
     function bookCodeFor(bibleBook: Record<string, unknown> | null) {
-      const result = normalizeVideo(
+      const result = norm(
         makeRawVideo({
           bibleCitations: [
             {
@@ -726,7 +750,7 @@ describe("normalizeVideo", () => {
 
     // The lean series fragment selects no book codes. It must still normalize.
     it("gives no code for the series fragment's book shape", () => {
-      const result = normalizeSeries(
+      const result = normSeries(
         makeRawSeries({
           bibleCitations: [
             {
@@ -770,9 +794,7 @@ describe("normalizeVideo", () => {
       },
     ])
 
-    const result = normalizeVideo(
-      makeRawVideo({ bibleCitations: frozenCitations }),
-    )!
+    const result = norm(makeRawVideo({ bibleCitations: frozenCitations }))!
 
     expect(result.bibleCitations).toHaveLength(2)
     // Ascending by order: bc-1 (order 1) before bc-2 (order 2).
@@ -781,7 +803,7 @@ describe("normalizeVideo", () => {
   })
 
   it("handles missing fields gracefully", () => {
-    const result = normalizeVideo(
+    const result = norm(
       makeRawVideo({
         locales: [],
         images: [],
@@ -862,7 +884,7 @@ describe("normalizeVideo", () => {
         },
       ],
     })
-    const result = normalizeVideo(raw)!
+    const result = norm(raw)!
     expect(result.siblings).toHaveLength(1)
     expect(result.siblings[0].slug).toBe("from-first-parent")
   })
@@ -873,17 +895,17 @@ describe("normalizeVideo — partial data (returnPartialData)", () => {
     o as unknown as Parameters<typeof normalizeVideo>[0]
 
   it("returns null for null / undefined input", () => {
-    expect(normalizeVideo(null)).toBeNull()
-    expect(normalizeVideo(undefined)).toBeNull()
+    expect(norm(null)).toBeNull()
+    expect(norm(undefined)).toBeNull()
   })
 
   it("returns null when the partial object has no documentId (no identity yet)", () => {
-    expect(normalizeVideo(partial({ slug: "lonely" }))).toBeNull()
-    expect(normalizeVideo(makeRawVideo({ documentId: "" }) as never)).toBeNull()
+    expect(norm(partial({ slug: "lonely" }))).toBeNull()
+    expect(norm(makeRawVideo({ documentId: "" }) as never)).toBeNull()
   })
 
   it("produces a valid record with empty arrays when relations are absent", () => {
-    const result = normalizeVideo(
+    const result = norm(
       partial({ documentId: "vid-9", slug: "lonely", label: "SEGMENT" }),
     )!
     expect(result).not.toBeNull()
@@ -987,15 +1009,13 @@ function makeRawSeries(overrides: Record<string, unknown> = {}) {
 
 describe("normalizeSeries", () => {
   it("returns null for null / undefined / identity-less input", () => {
-    expect(normalizeSeries(null)).toBeNull()
-    expect(normalizeSeries(undefined)).toBeNull()
-    expect(
-      normalizeSeries(makeRawSeries({ documentId: "" }) as never),
-    ).toBeNull()
+    expect(normSeries(null)).toBeNull()
+    expect(normSeries(undefined)).toBeNull()
+    expect(normSeries(makeRawSeries({ documentId: "" }) as never)).toBeNull()
   })
 
   it("maps children to episodes sorted by order", () => {
-    const result = normalizeSeries(makeRawSeries())!
+    const result = normSeries(makeRawSeries())!
     expect(result.episodes.map((e) => e.slug)).toEqual([
       "episode-1",
       "episode-2",
@@ -1010,7 +1030,7 @@ describe("normalizeSeries", () => {
   // U1: order → seriesEpisodeIndex and durationSeconds carry onto each episode
   // (previously discarded after the sort). Fixture reuses episode 1's shape.
   it("carries order → seriesEpisodeIndex and durationSeconds per episode", () => {
-    const result = normalizeSeries(
+    const result = normSeries(
       makeRawSeries({
         children: [
           {
@@ -1038,7 +1058,7 @@ describe("normalizeSeries", () => {
   })
 
   it("round-trips seriesEpisodeIndex: 0 / durationSeconds: 0 without conflating with absent", () => {
-    const result = normalizeSeries(
+    const result = normSeries(
       makeRawSeries({
         children: [
           {
@@ -1061,33 +1081,33 @@ describe("normalizeSeries", () => {
 
   it("leaves durationSeconds undefined when the child omits it", () => {
     // Default fixture children never set durationSeconds.
-    const result = normalizeSeries(makeRawSeries())!
+    const result = normSeries(makeRawSeries())!
     expect(result.episodes[0].durationSeconds).toBeUndefined()
   })
 
   it("resolves parentSeries to null for the lean series fragment (no parents chain)", () => {
-    const result = normalizeSeries(makeRawSeries())!
+    const result = normSeries(makeRawSeries())!
     expect(result.parentSeries).toBeNull()
   })
 
   it("deduplicates episodes by documentId", () => {
     const raw = makeRawSeries()
     raw!.children = [...raw!.children!, raw!.children![0]]
-    const result = normalizeSeries(raw)!
+    const result = normSeries(raw)!
     expect(result.episodes.filter((e) => e.documentId === "ep-2")).toHaveLength(
       1,
     )
   })
 
   it("builds the language union, localized and deduped by slug", () => {
-    const result = normalizeSeries(makeRawSeries())!
+    const result = normSeries(makeRawSeries())!
     expect(result.languages.map((l) => l.slug)).toEqual(["english", "spanish"])
     expect(result.languages[1].name).toBe("Spanish")
     expect(result.languages[1].bcp47).toBe("es")
   })
 
   it("exposes the series' own playable dub as the trailer", () => {
-    const result = normalizeSeries(makeRawSeries())!
+    const result = normSeries(makeRawSeries())!
     expect(result.streamingUrl).toBe("https://stream.mux.com/trailer.m3u8")
     expect(result.muxPlaybackId).toBe("trailer123")
     expect(result.variants).toHaveLength(1)
@@ -1097,7 +1117,7 @@ describe("normalizeSeries", () => {
   // player-only duration/muxVideo, so those keys are absent (undefined), not null.
   // Builder must still make a trailer from hls; dropping `?? null` should fail here.
   it("tolerates the lean dub shape (duration/muxVideo absent): trailer from hls, duration & muxPlaybackId null", () => {
-    const result = normalizeSeries(
+    const result = normSeries(
       makeRawSeries({
         variants: [
           {
@@ -1125,7 +1145,7 @@ describe("normalizeSeries", () => {
   })
 
   it("has no trailer streamingUrl when no dub is playable", () => {
-    const result = normalizeSeries(
+    const result = normSeries(
       makeRawSeries({
         variants: [
           {
@@ -1144,7 +1164,7 @@ describe("normalizeSeries", () => {
   })
 
   it("yields empty episodes/languages for a series with none", () => {
-    const result = normalizeSeries(
+    const result = normSeries(
       makeRawSeries({ children: [], childDubLanguages: [] }),
     )!
     expect(result.episodes).toEqual([])
@@ -1152,7 +1172,7 @@ describe("normalizeSeries", () => {
   })
 
   it("drops a null child relation from the episode list", () => {
-    const result = normalizeSeries(
+    const result = normSeries(
       makeRawSeries({
         children: [
           { order: 1, child: null },
@@ -1179,7 +1199,7 @@ describe("normalizeSeries", () => {
   })
 
   it("drops an empty-string language slug from the union", () => {
-    const result = normalizeSeries(
+    const result = normSeries(
       makeRawSeries({
         childDubLanguages: [
           { slug: "", name: { en: "Blank" }, bcp47: "xx" },
@@ -1192,6 +1212,292 @@ describe("normalizeSeries", () => {
 
   it("memoizes on the raw reference (cache-first re-entry returns same record)", () => {
     const raw = makeRawSeries()
-    expect(normalizeSeries(raw)).toBe(normalizeSeries(raw))
+    expect(normSeries(raw)).toBe(normSeries(raw))
+  })
+})
+
+// ── U6. Text in the UI locale (KTD10, KTD16) ───────────────────────────────
+
+const RU = adminFormsFor("ru")
+const ZH_HANS = adminFormsFor("zh-Hans")
+
+function textRow(
+  documentId: string,
+  languageSlug: string,
+  fields: { title?: string | null; description?: string | null },
+) {
+  return {
+    documentId,
+    languageSlug,
+    title: fields.title ?? null,
+    description: fields.description ?? null,
+    snippet: null,
+    imageAlt: null,
+  }
+}
+
+/** A GET_VIDEO_TEXT companion for the default fixture (vid-1). */
+function companion(overrides: Record<string, unknown> = {}): VideoTextInput {
+  return {
+    documentId: "vid-1",
+    locales: [
+      textRow("loc-ru", "russian", { title: "Распятие", description: null }),
+    ],
+    englishLocales: [
+      textRow("loc-en", "english", {
+        title: "The Crucifixion",
+        description: "A depiction of the crucifixion.",
+      }),
+    ],
+    parents: [
+      {
+        parent: {
+          documentId: "parent-1",
+          locales: [],
+          englishLocales: [
+            textRow("ploc-en", "english", { title: "The Easter Story" }),
+          ],
+          children: [
+            {
+              child: {
+                documentId: "vid-2",
+                locales: [
+                  textRow("c2-ru", "russian", { title: "Воскресение" }),
+                ],
+                englishLocales: [
+                  textRow("c2-en", "english", { title: "The Resurrection" }),
+                ],
+              },
+            },
+            {
+              child: {
+                documentId: "vid-3",
+                locales: [],
+                englishLocales: [
+                  textRow("c3-en", "english", { title: "The Ascension" }),
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ],
+    ...overrides,
+  }
+}
+
+/** The language-free document: the fixture without any text rows. */
+function heavyOnly(): Parameters<typeof normalizeVideo>[0] {
+  const strip = (video: Record<string, unknown>) => {
+    const kept = { ...video }
+    delete kept.locales
+    return kept
+  }
+  const raw = strip(makeRawVideo() as unknown as Record<string, unknown>)
+  const parent = (raw.parents as { parent: Record<string, unknown> }[])[0]
+    .parent
+  return {
+    ...raw,
+    parents: [
+      {
+        parent: {
+          ...strip(parent),
+          children: (
+            parent.children as { child: Record<string, unknown> }[]
+          ).map((rel) => ({ child: strip(rel.child) })),
+        },
+      },
+    ],
+  } as unknown as Parameters<typeof normalizeVideo>[0]
+}
+
+describe("normalizeVideo — text from the companion, per field (U6)", () => {
+  it("has no text until the companion lands", () => {
+    const result = normalizeVideo(heavyOnly(), RU)!
+    expect(result.title).toBeNull()
+    expect(result.description).toBeNull()
+    expect(result.siblings.map((s) => s.title)).toEqual([null, null])
+  })
+
+  it("shows the Russian title and the English description when Russian has no description", () => {
+    const result = normalizeVideo(heavyOnly(), RU, companion())!
+    expect(result.title).toBe("Распятие")
+    expect(result.titleLang).toBe("ru")
+    expect(result.description).toBe("A depiction of the crucifixion.")
+    expect(result.descriptionLang).toBe("en")
+  })
+
+  it("titles each sibling in Russian, else in English with lang en", () => {
+    const result = normalizeVideo(heavyOnly(), RU, companion())!
+    expect(
+      result.siblings.map((s) => ({ title: s.title, lang: s.titleLang })),
+    ).toEqual([
+      { title: "Воскресение", lang: "ru" },
+      { title: "The Ascension", lang: "en" },
+    ])
+  })
+
+  it("ignores a companion for another video", () => {
+    const result = normalizeVideo(
+      heavyOnly(),
+      RU,
+      companion({ documentId: "vid-other" }),
+    )!
+    expect(result.title).toBeNull()
+  })
+
+  it("keeps one record per raw object, forms, and companion", () => {
+    const raw = heavyOnly()
+    const text = companion()
+    expect(normalizeVideo(raw, RU, text)).toBe(normalizeVideo(raw, RU, text))
+    expect(normalizeVideo(raw, RU)).toBe(normalizeVideo(raw, RU))
+  })
+})
+
+describe("normalizeVideo — Admin names in the screen's forms (U6)", () => {
+  // Apollo returns the SAME `name` object after a language change, so a memo
+  // keyed on the raw object alone would keep the old language's names.
+  it("returns new language names after an epoch change for the same raw object", () => {
+    const raw = heavyOnly()
+    const spanish = (forms: AdminLanguageForms) =>
+      normalizeVideo(raw, forms)!.variants.find(
+        (v) => v.languageSlug === "spanish",
+      )!
+
+    expect(spanish(ENGLISH_ADMIN_FORMS).languageName).toBe("Spanish")
+    const inSpanish = spanish(adminFormsFor("es"))
+    expect(inSpanish.languageName).toBe("Español")
+    expect(inSpanish.languageNameLang).toBe("es")
+    // The English UI again: still English, from the same raw object.
+    expect(spanish(ENGLISH_ADMIN_FORMS).languageName).toBe("Spanish")
+  })
+
+  it("reads Admin's raw tag, not the catalog tag, and marks an English fallback", () => {
+    const raw = makeRawVideo({
+      variants: [
+        {
+          documentId: "dub-1",
+          slug: "x-english",
+          published: true,
+          hls: "https://stream.mux.com/abc123.m3u8",
+          duration: 1,
+          language: {
+            coreId: "529",
+            bcp47: "en",
+            slug: "english",
+            name: { en: "English", "zh-hans": "英语", "zh-Hans": "wrong" },
+            iso3: "eng",
+          },
+          muxVideo: null,
+        },
+        {
+          documentId: "dub-2",
+          slug: "x-hausa",
+          published: true,
+          hls: "https://stream.mux.com/def456.m3u8",
+          duration: 1,
+          language: {
+            coreId: "1",
+            bcp47: "ha",
+            slug: "hausa",
+            name: { en: "Hausa" },
+            iso3: "hau",
+          },
+          muxVideo: null,
+        },
+      ],
+    })
+    const [english, hausa] = normalizeVideo(raw, ZH_HANS)!.variants
+    expect(english.languageName).toBe("英语")
+    expect(english.languageNameLang).toBe("zh-Hans")
+    expect(hausa.languageName).toBe("Hausa")
+    expect(hausa.languageNameLang).toBe("en")
+  })
+
+  it("names a Bible book by the raw tag", () => {
+    const raw = makeRawVideo({
+      bibleCitations: [
+        {
+          documentId: "bc-1",
+          chapterStart: 19,
+          chapterEnd: 19,
+          verseStart: 30,
+          verseEnd: 30,
+          order: 1,
+          osisId: "John.19.30",
+          bibleBook: {
+            documentId: "bb-1",
+            name: { en: "John", ru: "Иоанна" },
+            osisId: "John",
+            paratextAbbreviation: "JHN",
+          },
+        },
+      ],
+    })
+    const [citation] = normalizeVideo(raw, RU)!.bibleCitations
+    expect(citation.bookName).toBe("Иоанна")
+    expect(citation.bookNameLang).toBe("ru")
+  })
+
+  it("names subtitle languages in the forms passed to normalizeDubMedia", () => {
+    const media = normalizeDubMedia(makeRawDub(), adminFormsFor("es"))
+    expect(media.subtitles.map((s) => s.languageName)).toEqual([
+      "English",
+      "Español",
+    ])
+  })
+
+  it("records the forms it read with, for the screen's other readers", () => {
+    expect(normalizeVideo(heavyOnly(), RU)!.adminForms).toBe(RU)
+  })
+})
+
+describe("normalizeSeries — episode titles from GET_SERIES_TEXT (U6)", () => {
+  it("titles episodes from the companion and names languages by the raw tag", () => {
+    const raw = makeRawSeries({
+      childDubLanguages: [
+        {
+          slug: "english",
+          name: { en: "English", ru: "Английский" },
+          bcp47: "en",
+        },
+      ],
+    })
+    const shape = raw as unknown as {
+      documentId: string
+      children: { child: { documentId: string } }[]
+    }
+    const text: VideoTextInput = {
+      documentId: shape.documentId,
+      locales: [textRow("s-ru", "russian", { title: "Сериал" })],
+      englishLocales: [],
+      children: shape.children.map((rel, index) => ({
+        child: {
+          documentId: rel.child.documentId,
+          locales:
+            index === 0
+              ? [textRow(`e${index}-ru`, "russian", { title: "Эпизод" })]
+              : [],
+          englishLocales: [
+            textRow(`e${index}-en`, "english", { title: `Episode ${index}` }),
+          ],
+        },
+      })),
+    }
+
+    const result = normalizeSeries(raw, RU, text)!
+    const titles = new Map(
+      result.episodes.map((e) => [e.documentId, [e.title, e.titleLang]]),
+    )
+    expect(result.title).toBe("Сериал")
+    expect(titles.get(shape.children[0].child.documentId)).toEqual([
+      "Эпизод",
+      "ru",
+    ])
+    expect(titles.get(shape.children[1].child.documentId)).toEqual([
+      "Episode 1",
+      "en",
+    ])
+    expect(result.languages[0].name).toBe("Английский")
   })
 })

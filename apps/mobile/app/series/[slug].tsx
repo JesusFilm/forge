@@ -14,11 +14,14 @@ import { useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { GET_SERIES_BY_SLUG } from "../../src/lib/queries"
+import { GET_SERIES_BY_SLUG, GET_SERIES_TEXT } from "../../src/lib/queries"
 import {
   normalizeSeries,
+  type VideoTextInput,
   type WatchEpisode,
 } from "../../src/lib/normalizeVideo"
+import { useScreenAdminForms } from "../../src/i18n/useScreenAdminForms"
+import { videoTextVariables } from "../../src/lib/videoText"
 import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
 import {
   discoverySourceFromParam,
@@ -88,6 +91,8 @@ export default function SeriesScreen() {
 
   const { series, setSeries, languages, selectedLanguageSlug } =
     useSeriesSession()
+  // KTD16: captured at mount, so a live language change moves no text here.
+  const adminForms = useScreenAdminForms(decodedSlug)
   const {
     downloadedSlugs,
     offlineRecords,
@@ -109,6 +114,7 @@ export default function SeriesScreen() {
       series?.episodes ?? null,
       selectedLanguageSlug,
       subtitlesEnabled && subtitleLanguageSlug != null,
+      adminForms,
     )
   const subtitleActionLabel = resolveSeriesSubtitleLabel(
     subtitlesEnabled,
@@ -192,8 +198,15 @@ export default function SeriesScreen() {
     [series?.episodes, offlineRecords, exportingTargets, pausedExportTargets],
   )
 
+  // KTD10: language-free; the text comes from GET_SERIES_TEXT beside it.
   const { data, loading, error, refetch } = useQuery(GET_SERIES_BY_SLUG, {
-    variables: { slug: decodedSlug, locale: "en" },
+    variables: { slug: decodedSlug },
+    skip: !decodedSlug,
+    fetchPolicy: "cache-first",
+    returnPartialData: true,
+  })
+  const { data: textData, refetch: refetchText } = useQuery(GET_SERIES_TEXT, {
+    variables: { slug: decodedSlug, ...videoTextVariables(adminForms) },
     skip: !decodedSlug,
     fetchPolicy: "cache-first",
     returnPartialData: true,
@@ -205,8 +218,10 @@ export default function SeriesScreen() {
     () =>
       normalizeSeries(
         (data?.videoBySlug ?? null) as Parameters<typeof normalizeSeries>[0],
+        adminForms,
+        (textData?.videoBySlug ?? null) as VideoTextInput | null,
       ),
-    [data],
+    [data, textData, adminForms],
   )
 
   useEffect(() => {
@@ -471,7 +486,10 @@ export default function SeriesScreen() {
           </Text>
           <Text
             style={styles.retryLink}
-            onPress={() => void refetch()}
+            onPress={() => {
+              void refetch()
+              void refetchText()
+            }}
             accessibilityRole="button"
           >
             Retry
@@ -600,7 +618,10 @@ export default function SeriesScreen() {
                     </Text>
                     <Text
                       style={styles.retryLink}
-                      onPress={() => void refetch()}
+                      onPress={() => {
+                        void refetch()
+                        void refetchText()
+                      }}
                       accessibilityRole="button"
                     >
                       Retry

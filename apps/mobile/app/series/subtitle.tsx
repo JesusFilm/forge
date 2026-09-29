@@ -23,10 +23,14 @@ export default function SeriesSubtitleRoute() {
     setSubtitlesEnabled,
   } = useWatchPreferences()
 
+  // The series screen's captured forms (KTD16) name the tracks, so this sheet
+  // and the page's pill agree, and a live language change moves neither.
+  const screenForms = series?.adminForms
   const { subtitles, loading, error, retry } = useSeriesSubtitleUnion(
     series?.episodes ?? null,
     selectedLanguageSlug,
     true,
+    screenForms,
   )
 
   const handleSubtitleChange = useCallback(
@@ -42,10 +46,11 @@ export default function SeriesSubtitleRoute() {
         ? (subtitles?.find((s) => s.languageSlug === slug)?.languageName ??
           null)
         : null
-      setPreferredSubtitleName(name)
+      setPreferredSubtitleName(name, screenForms?.catalogTag)
     },
     [
       subtitles,
+      screenForms,
       setSubtitlesEnabled,
       setPreferredSubtitleLanguage,
       setPreferredSubtitleName,
