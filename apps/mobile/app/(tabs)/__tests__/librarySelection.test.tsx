@@ -6,7 +6,7 @@
  * whole suite green and strands the iOS tab bar hidden.
  *
  * The `react` re-points below follow the in-file pattern in
- * `src/components/profile/__tests__/AccountSection.test.tsx` (apps/mobile
+ * `src/components/profile/__tests__/MyWatchHeader.test.tsx` (apps/mobile
  * CLAUDE.md, "Component render tests").
  */
 
@@ -116,9 +116,9 @@ jest.mock("../../../src/components/library/DeleteConfirmSheet", () => ({
 jest.mock("../../../src/components/ui/Snackbar", () => ({
   Snackbar: () => null,
 }))
-// AccountSection's own suite covers auth, session replay and the sign-in gate.
-jest.mock("../../../src/components/profile/AccountSection", () => ({
-  AccountSection: () => null,
+// MyWatchHeader's own suite covers auth, session replay and the sign-in gate.
+jest.mock("../../../src/components/profile/MyWatchHeader", () => ({
+  MyWatchHeader: () => null,
 }))
 jest.mock("../../../src/lib/openExternalUrl", () => ({
   openExternalUrl: jest.fn(),
@@ -133,7 +133,7 @@ import { Platform, ScrollView } from "react-native"
 
 import ProfileScreen from "../profile"
 import { LibraryEmptyState } from "../../../src/components/library/LibraryEmptyState"
-import { AccountSection } from "../../../src/components/profile/AccountSection"
+import { MyWatchHeader } from "../../../src/components/profile/MyWatchHeader"
 import { openExternalUrl } from "../../../src/lib/openExternalUrl"
 import { TAB_BAR_FLAT_STYLE } from "../../../src/lib/tabBar"
 import {
@@ -356,7 +356,7 @@ describe("the Profile tab", () => {
   it("puts the account card above the downloads", async () => {
     const renderer = await renderProfile("ios")
 
-    const account = treeIndex(renderer, (node) => node.type === AccountSection)
+    const account = treeIndex(renderer, (node) => node.type === MyWatchHeader)
     const select = treeIndex(
       renderer,
       (node) => node.props.accessibilityLabel === "Select downloads",
@@ -436,7 +436,7 @@ describe("the Profile tab", () => {
     )
     // Counts, not node arrays: a node diff on failure can exhaust jest's heap.
     expect(empties.length).toBe(1)
-    const account = treeIndex(renderer, (node) => node.type === AccountSection)
+    const account = treeIndex(renderer, (node) => node.type === MyWatchHeader)
     const empty = treeIndex(renderer, (node) => node.type === LibraryEmptyState)
     expect(account).toBeGreaterThanOrEqual(0)
     expect(account).toBeLessThan(empty)
@@ -460,7 +460,7 @@ describe("the Profile tab", () => {
     const renderer = await mountProfile("ios")
 
     expect(
-      treeIndex(renderer, (node) => node.type === AccountSection),
+      treeIndex(renderer, (node) => node.type === MyWatchHeader),
     ).toBeGreaterThanOrEqual(0)
     expect(hasControl(renderer, "Select downloads")).toBe(false)
     expect(hasText(renderer, "My Downloads")).toBe(false)

@@ -4,7 +4,7 @@
  * reader's tokens, keep their own row order, and add a credit line.
  */
 
-// tsconfig maps `react` to its .d.ts; re-point it (see AccountSection.test.tsx).
+// tsconfig maps `react` to its .d.ts; re-point it (see MyWatchHeader.test.tsx).
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike
   const path = r("path") as NodePath

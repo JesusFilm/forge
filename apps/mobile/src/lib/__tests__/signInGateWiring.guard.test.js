@@ -21,7 +21,7 @@ const ENV = "src/env.ts"
 const UNGATED_CALLERS = ["src/components/profile/DeleteAccountFlow.tsx"]
 
 const GATED_SURFACES = [
-  "src/components/profile/AccountSection.tsx",
+  "src/components/profile/MyWatchHeader.tsx",
   "src/components/watch/SignInPrompt.tsx",
 ]
 
@@ -97,7 +97,7 @@ describe("the sign-in gate wiring (feat-543)", () => {
     expect(SOURCES.length).toBeGreaterThan(100)
   })
 
-  it("finds the Profile card and the nudge as gated callers (positive control)", () => {
+  it("finds the My Watch header and the nudge as gated callers (positive control)", () => {
     const gated = hostedSignInCallers()
       .filter(({ source }) => GATE_CALL.test(source))
       .map(({ file }) => file)
