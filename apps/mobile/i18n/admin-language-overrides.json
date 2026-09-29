@@ -1,0 +1,197 @@
+{
+  "$comment": "KTD9 overrides for scripts/i18n/generate-admin-languages.mjs. `text` (key: catalog tag) sets the text slug and beats web's curated table. `audio` (key: lowercase phone tag) sets the default-audio slug and beats Admin's own tag. `forYou` (key: catalog tag) sets the For You locale. Each slug must be in web's LANGUAGE_BCP47_MAP. Census = the public `videos` list, all 1,175 videos, read on 2026-09-29. Inventory = public `watchLanguageInventory` dubbed-video counts.",
+  "text": {
+    "es": {
+      "slug": "spanish-latin-american",
+      "reason": "Census: 801 Spanish text rows are spanish-latin-american|es and 0 are spanish-castilian, web's curated audio choice."
+    },
+    "hu": {
+      "slug": "hungarian",
+      "reason": "csango also has the tag hu and comes first in web's map. Inventory 2026-09-29: hungarian 255, csango 75. No Hungarian text rows exist."
+    },
+    "id": {
+      "slug": "indonesian-yesus",
+      "reason": "Census: 1,142 Indonesian text rows are indonesian-yesus|id and 0 are indonesian-isa, web's curated choice."
+    },
+    "mai": {
+      "slug": "maithili",
+      "reason": "kortha, maithili-nepal, and vajjika also have the tag mai, and kortha comes first. Inventory 2026-09-29: maithili 76, each other 61."
+    },
+    "nb": {
+      "slug": "norwegian-bokmal",
+      "reason": "Admin tags Norwegian Bokmal as no, not nb. It is the only Norwegian slug in web's map."
+    },
+    "ps": {
+      "slug": "pashto-yusufzai",
+      "reason": "No slug has the tag ps. Largest Pashto inventory 2026-09-29: pashto-yusufzai 195, pashto-eastern-afghan 122, pashto-southern 113. No Pashto text rows exist."
+    },
+    "te": {
+      "slug": "telugu",
+      "reason": "nethakani also has the tag te and comes first in web's map. Inventory 2026-09-29: telugu 230, nethakani 61."
+    },
+    "uz": {
+      "slug": "uzbek-northern",
+      "reason": "No slug has the tag uz. Uzbekistan uses Northern Uzbek (uzn). Inventory 2026-09-29: uzbek-northern 177, uzbek-southern 61."
+    },
+    "zh": {
+      "slug": "chinese-simplified",
+      "reason": "Web's zh catalog is Simplified Chinese (583 of 590 strings equal zh-Hans). Census: 1,142 rows are chinese-simplified|zh-hans and 0 are mandarin-china, web's curated audio choice."
+    }
+  },
+  "audio": {
+    "am": {
+      "slug": "amharic",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "ar": {
+      "slug": "arabic-modern-standard",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "bn": {
+      "slug": "bangla-2",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "de": {
+      "slug": "german-standard",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "en": {
+      "slug": "english",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "es": {
+      "slug": "spanish-latin-american",
+      "reason": "Explore's reviewed device map, 2026-09-25: spanish-latin-american 631 videos, spanish-castilian 244."
+    },
+    "es-es": {
+      "slug": "spanish-castilian",
+      "reason": "Explore's reviewed region map, checked on production 2026-09-25."
+    },
+    "fa": {
+      "slug": "farsi-western",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "fil": {
+      "slug": "tagalog",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "fr": {
+      "slug": "french",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "hi": {
+      "slug": "hindi",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "hu": {
+      "slug": "hungarian",
+      "reason": "csango also has the tag hu and comes first. Inventory 2026-09-29: hungarian 255, csango 75."
+    },
+    "id": {
+      "slug": "indonesian-yesus",
+      "reason": "Explore's reviewed device map, 2026-09-25: indonesian-yesus 330 videos, indonesian-isa 206."
+    },
+    "ig": {
+      "slug": "igbo",
+      "reason": "ehugbo also has the tag ig and comes first. Inventory 2026-09-29: igbo 195, ehugbo 61."
+    },
+    "it": {
+      "slug": "italian",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "ja": {
+      "slug": "japanese",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "ko": {
+      "slug": "korean",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "mai": {
+      "slug": "maithili",
+      "reason": "kortha, maithili-nepal, and vajjika also have the tag mai. Inventory 2026-09-29: maithili 76, each other 61."
+    },
+    "ms": {
+      "slug": "malay",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "nb": {
+      "slug": "norwegian-bokmal",
+      "reason": "A phone sends nb, and Admin tags Norwegian Bokmal as no."
+    },
+    "ne": {
+      "slug": "nepali",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "nl": {
+      "slug": "dutch",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "pl": {
+      "slug": "polish",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "ps": {
+      "slug": "pashto-yusufzai",
+      "reason": "No slug has the tag ps. Largest Pashto inventory 2026-09-29: pashto-yusufzai 195."
+    },
+    "pt": {
+      "slug": "portuguese-brazil",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "pt-pt": {
+      "slug": "portuguese-portugal",
+      "reason": "Explore's reviewed region map, checked on production 2026-09-25."
+    },
+    "ru": {
+      "slug": "russian",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "sw": {
+      "slug": "swahili-tanzania",
+      "reason": "Explore's reviewed device map, 2026-09-25. There is no plain swahili slug."
+    },
+    "te": {
+      "slug": "telugu",
+      "reason": "nethakani also has the tag te and comes first. Inventory 2026-09-29: telugu 230, nethakani 61."
+    },
+    "th": {
+      "slug": "thai",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "tl": {
+      "slug": "tagalog",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "tr": {
+      "slug": "turkish",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "uk": {
+      "slug": "ukrainian",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "ur": {
+      "slug": "urdu",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "uz": {
+      "slug": "uzbek-northern",
+      "reason": "No slug has the tag uz. Inventory 2026-09-29: uzbek-northern 177, uzbek-southern 61."
+    },
+    "vi": {
+      "slug": "vietnamese",
+      "reason": "Explore's reviewed device map, checked on production 2026-09-25."
+    },
+    "zh": {
+      "slug": "mandarin-china",
+      "reason": "Explore's reviewed device map, 2026-09-25: the dubbed Mandarin inventory is mandarin-china (561 videos)."
+    }
+  },
+  "forYou": {
+    "tl": {
+      "locale": "fil",
+      "reason": "For You pools key Tagalog as fil. docs/operations/user-recommendations-activation-2026-09-14.json has fil and no tl."
+    }
+  }
+}
