@@ -5046,7 +5046,9 @@ model RecommendationProfileInterest {
   interestOrdinal    Int                                       @map("interest_ordinal")
   medoidMediaId      String                                    @map("medoid_media_id") @db.VarChar(191)
   medoidSourceDigest String                                    @map("medoid_source_digest") @db.Char(64)
-  embedding          Unsupported("vector(1536)")
+  embedding          Unsupported("vector(1536)")?
+  vectorDigest       String?                                   @map("vector_digest") @db.Char(64)
+  vectorSnapshot     RecommendationProfileVectorSnapshot?      @relation(fields: [vectorDigest], references: [digest], onDelete: Restrict)
   weight             Float
   supportCount       Int                                       @map("support_count")
   stability          Float
@@ -5056,7 +5058,19 @@ model RecommendationProfileInterest {
   @@unique([generationId, kind, interestOrdinal], map: "recommendation_profile_interest_generation_kind_ordinal_key")
   @@index([generationId, kind], map: "recommendation_profile_interest_generation_kind_idx")
   @@index([expiresAt], map: "recommendation_profile_interest_expiry_idx")
+  // The partial non-null vector_digest index is managed in migration 0116.
   @@map("recommendation_profile_interest")
+}
+
+/// Immutable content-only vector value reused by exact matching profile medoids.
+/// Profile identity, membership, weights and source lineage stay on interests.
+model RecommendationProfileVectorSnapshot {
+  digest    String                          @id @db.Char(64)
+  embedding Unsupported("vector(1536)")
+  createdAt DateTime                        @default(now()) @map("created_at")
+  interests RecommendationProfileInterest[]
+
+  @@map("recommendation_profile_vector_snapshot")
 }
 
 /// Exact ticket-local contribution lineage for replay, revision, integrity
