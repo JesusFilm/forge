@@ -54,8 +54,7 @@ let hideNativeSplashOnce:
 let getSplashSession:
   | typeof import("../src/lib/splash/splashSession").getSplashSession
   | undefined
-let getLocaleResolution: typeof import("../src/i18n/localeStore").getLocaleResolution
-let localeResolutionAttributes: typeof import("../src/i18n/localeStore").localeResolutionAttributes
+let useLocaleResolutionLog: typeof import("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
 let useT: typeof import("../src/i18n/useT").useT
 
 // require() is intentional — static imports cause silent white screens when
@@ -129,8 +128,8 @@ try {
   // phone's language. A failed phone read keeps English and does not throw.
   const localeStore = require("../src/i18n/localeStore")
   localeStore.startLocaleSync()
-  getLocaleResolution = localeStore.getLocaleResolution
-  localeResolutionAttributes = localeStore.localeResolutionAttributes
+  useLocaleResolutionLog =
+    require("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
   useT = require("../src/i18n/useT").useT
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
@@ -376,15 +375,7 @@ export default function RootLayout() {
 
   // After hydration, so MobileDatadogProvider has mounted; the SDK buffers
   // logs until its init completes. Once per process, like js_tti.
-  const localeLoggedRef = useRef(false)
-  useEffect(() => {
-    if (!hydrated || localeLoggedRef.current) return
-    localeLoggedRef.current = true
-    datadogLog.info(
-      "ui_locale.resolved",
-      localeResolutionAttributes(getLocaleResolution()),
-    )
-  }, [hydrated])
+  useLocaleResolutionLog(hydrated)
 
   if (!hydrated) {
     return <View style={{ flex: 1, backgroundColor: BG_COLOR }} />
