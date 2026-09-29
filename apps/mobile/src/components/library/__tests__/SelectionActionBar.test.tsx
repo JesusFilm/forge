@@ -1,7 +1,5 @@
-/**
- * The selection bar replaces the tab bar, so on iOS it must occupy the box the
- * hidden UIKit bar left behind. On Android it must not change at all.
- */
+// The selection bar sits on the root Downloads screen. On iOS it takes the box
+// of a UIKit tab bar over the root inset; on Android it must not change at all.
 import { act } from "react"
 import { Platform } from "react-native"
 
@@ -87,9 +85,9 @@ async function buttonStyles(): Promise<Record<string, unknown>[]> {
 }
 
 describe("iOS", () => {
-  it("occupies the box the hidden UIKit bar left behind", async () => {
-    // Flush and full width, its own height above the home indicator — the bar
-    // is hidden while selection is on, so insets.bottom is the indicator only.
+  it("stands its own height over a root inset of 34, and no more", async () => {
+    // Flush and full width, its own height above the home indicator. A root
+    // screen's inset holds no tab bar, so 34 is the indicator only.
     setPlatform("ios")
     const style = await renderBar()
     expect(style.height).toBe(TAB_BAR_HEIGHT_IOS + 34)
@@ -99,10 +97,18 @@ describe("iOS", () => {
     expect(style.bottom).toBe(0)
   })
 
-  it("sizes off the home indicator, not the inset that still holds the bar", async () => {
-    // Discriminating: hiding the tab bar is what drops insets.bottom, and that
-    // lands a frame after this mounts, so the first paint reports 83 (49pt bar
-    // + 34pt indicator). Reading it raw floats the buttons 83pt off the edge.
+  it("sits flush on a home-button iPhone, whose root inset is 0", async () => {
+    setPlatform("ios")
+    mockInsets.bottom = 0
+    const style = await renderBar()
+    expect(style.height).toBe(TAB_BAR_HEIGHT_IOS)
+    expect(style.paddingBottom).toBe(0)
+  })
+
+  it("sizes off the home indicator, not an inset that still holds the bar", async () => {
+    // The clamp's own case: 83 is a tab screen's inset (49pt bar + 34pt
+    // indicator). No host passes that since the list moved to a root route,
+    // but read raw it would float the buttons 83pt off the edge.
     setPlatform("ios")
     mockInsets.bottom = 34
     const settled = await renderBar()

@@ -21,7 +21,7 @@ export interface SelectionActionBarProps {
   onDeletePress: () => void
 }
 
-/** Bottom bar shown during selection, replacing the tab bar (R12/KTD8). */
+/** Bottom bar shown during selection on the root Downloads screen (R12). */
 export function SelectionActionBar({
   count,
   combinedBytes,
@@ -31,13 +31,13 @@ export function SelectionActionBar({
 }: SelectionActionBarProps) {
   const insets = useSafeAreaInsets()
 
-  // The bar stands in for the tab bar, so on iOS it takes the box the hidden
-  // UIKit bar left behind: flush, full width, its own height above the home
-  // indicator. Android keeps its flush bar exactly as it was.
+  // On iOS the bar takes a UIKit tab bar's box: flush, full width, its own
+  // height above the home indicator. Android keeps its flush bar as it was.
   const isPill = Platform.OS === "ios"
 
-  // The bar's own hide is what drops insets.bottom, and it lands a frame after
-  // this mounts, so the raw inset can still carry the 49pt bar. Clamp it off.
+  // A root inset (34 or 0) passes through. The clamp strips a 49pt tab bar
+  // from an inset that holds one; no host passes that since the list left
+  // the Profile tab.
   const indicator =
     insets.bottom >= TAB_BAR_HEIGHT_IOS
       ? insets.bottom - TAB_BAR_HEIGHT_IOS

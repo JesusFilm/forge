@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from "react"
+import { memo, useCallback, useEffect, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
@@ -39,6 +39,10 @@ export interface SeriesGroupCardProps {
   selected?: ReadonlySet<string>
   onToggleSeries?: (episodeSlugs: readonly string[]) => void
   onLongPress?: (episodeSlugs: readonly string[]) => void
+  /** Opens the card with no animation, at mount or when this turns true later. */
+  initiallyExpanded?: boolean
+  /** Reports the card's y in its parent, so the Downloads screen can scroll to it. */
+  onCardLayout?: (seriesSlug: string, y: number) => void
 }
 
 // buildLibraryViewModel rebuilds every group WRAPPER on each records tick, so
@@ -56,11 +60,13 @@ function arePropsEqual(
     prev.selected === next.selected &&
     prev.onToggleSeries === next.onToggleSeries &&
     prev.onLongPress === next.onLongPress &&
+    prev.initiallyExpanded === next.initiallyExpanded &&
+    prev.onCardLayout === next.onCardLayout &&
     seriesGroupContentEqual(prev.group, next.group)
   )
 }
 
-/** Collapsible series card (R4). Defaults collapsed; tapping the header toggles expansion. */
+/** Collapsible series card (R4). Collapsed unless `initiallyExpanded`; a header tap toggles it. */
 export const SeriesGroupCard = memo(function SeriesGroupCard({
   group,
   onRowPress,
@@ -70,9 +76,15 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
   selected = EMPTY_SELECTION,
   onToggleSeries,
   onLongPress,
+  initiallyExpanded = false,
+  onCardLayout,
 }: SeriesGroupCardProps) {
   const typography = useTypography()
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(initiallyExpanded)
+  // A reused Downloads screen can name this series after the card mounted.
+  useEffect(() => {
+    if (initiallyExpanded) setExpanded(true)
+  }, [initiallyExpanded])
   const posterPath = group.episodes[0]?.posterPath ?? null
   const episodeSlugs = group.episodes.map((episode) => episode.videoSlug)
   const seriesState: SeriesSelectionState = selecting
@@ -102,7 +114,13 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
   )
 
   return (
-    <View style={styles.card}>
+    <View
+      style={styles.card}
+      onLayout={
+        onCardLayout &&
+        ((event) => onCardLayout(group.seriesSlug, event.nativeEvent.layout.y))
+      }
+    >
       <Pressable
         onPress={handleToggle}
         onLongPress={() => onLongPress?.(episodeSlugs)}
