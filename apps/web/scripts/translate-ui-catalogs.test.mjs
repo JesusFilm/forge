@@ -2246,47 +2246,99 @@ describe("caller translation options", () => {
     )
     vi.stubGlobal("fetch", fetchMock)
     vi.spyOn(console, "log").mockImplementation(() => {})
-    const policyFixture = createBatchFixture({
-      catalogs: { es: sourceCatalog() },
-      manifest: provisionalManifest(["es"]),
-      progress: null,
-      policy: {
-        humanReviewedLocales: ["en"],
-        pendingTranslationPaths: [],
-        intentionallyLocaleNeutral: "common.message0",
-      },
-    })
-    const nonObjectPolicyFixture = createBatchFixture({
-      catalogs: { es: sourceCatalog() },
-      manifest: provisionalManifest(["es"]),
-      progress: null,
-      policy: ["common.message0"],
-    })
-    const contextsFixture = createBatchFixture({
-      catalogs: { es: sourceCatalog() },
-      manifest: provisionalManifest(["es"]),
-      progress: null,
-      contexts: { namespaces: { common: "the mobile settings screen" } },
-    })
+    // Each case breaks one field and keeps every other field valid, so only
+    // the check under test can reject it.
+    const validPolicy = {
+      humanReviewedLocales: ["en"],
+      pendingTranslationPaths: [],
+      intentionallyLocaleNeutral: [],
+    }
+    const validContexts = {
+      product: "a Christian video-streaming and discipleship mobile app",
+      namespaces: { common: "the mobile settings screen" },
+    }
+    const policyCases = [
+      [
+        "intentionallyLocaleNeutral is not an array",
+        { ...validPolicy, intentionallyLocaleNeutral: "common.message0" },
+        "intentionallyLocaleNeutral must be an array of strings",
+      ],
+      [
+        "humanReviewedLocales is not an array",
+        { ...validPolicy, humanReviewedLocales: "en" },
+        "humanReviewedLocales must be an array of strings",
+      ],
+      [
+        "the root is not an object",
+        ["common.message0"],
+        "must be a JSON object",
+      ],
+    ]
+    const contextsCases = [
+      [
+        "product is missing",
+        { namespaces: validContexts.namespaces },
+        "product must be a non-empty string",
+      ],
+      [
+        "namespaces is an array",
+        { ...validContexts, namespaces: ["common"] },
+        "namespaces must map each namespace",
+      ],
+      [
+        "a namespace sentence is not a string",
+        { ...validContexts, namespaces: { common: 123 } },
+        "namespaces must map each namespace",
+      ],
+      [
+        "an override has an unknown field",
+        {
+          ...validContexts,
+          keys: { "common.message0": { unknownField: "x" } },
+        },
+        "keys must map each message key",
+      ],
+      [
+        "an override value is not a string",
+        { ...validContexts, keys: { "common.message0": { role: 123 } } },
+        "keys must map each message key",
+      ],
+    ]
+    const cases = [
+      ...policyCases.map(([label, policy, detail]) => ({
+        label: `policy: ${label}`,
+        options: { policy },
+        code: "INVALID_TRANSLATION_POLICY",
+        detail,
+      })),
+      ...contextsCases.map(([label, contexts, detail]) => ({
+        label: `contexts: ${label}`,
+        options: { contexts },
+        code: "INVALID_CATALOG_CONTEXTS",
+        detail,
+      })),
+    ]
 
-    await expect(
-      main({
-        args: policyFixture.args,
+    for (const { label, options, code, detail } of cases) {
+      const fixture = createBatchFixture({
+        catalogs: { es: sourceCatalog() },
+        manifest: provisionalManifest(["es"]),
+        progress: null,
+        ...options,
+      })
+      // `.rejects` drops the label when main() resolves; this keeps it.
+      const rejection = await main({
+        args: fixture.args,
         environment: { OPENAI_API_KEY: "test-api-key" },
-      }),
-    ).rejects.toMatchObject({ code: "INVALID_TRANSLATION_POLICY" })
-    await expect(
-      main({
-        args: nonObjectPolicyFixture.args,
-        environment: { OPENAI_API_KEY: "test-api-key" },
-      }),
-    ).rejects.toMatchObject({ code: "INVALID_TRANSLATION_POLICY" })
-    await expect(
-      main({
-        args: contextsFixture.args,
-        environment: { OPENAI_API_KEY: "test-api-key" },
-      }),
-    ).rejects.toMatchObject({ code: "INVALID_CATALOG_CONTEXTS" })
+      }).then(
+        () => "resolved without an error",
+        (error) => error,
+      )
+      expect(rejection, label).toMatchObject({
+        code,
+        message: expect.stringContaining(detail),
+      })
+    }
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
