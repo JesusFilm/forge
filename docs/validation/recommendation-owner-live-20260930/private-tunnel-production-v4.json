@@ -1,0 +1,25 @@
+{
+  "scope": "transport readiness only; no database query or source CLI invocation",
+  "productionSourceInvoked": false,
+  "credentialsRetained": false,
+  "status": "transport_ready",
+  "tunnel": {
+    "transport": "railway-supported-ssh-tunnel",
+    "port": 55439,
+    "rawOutputRetained": false,
+    "ready": true,
+    "cleanupVerified": true,
+    "watchdogWallSeconds": 120.0,
+    "event": "finished",
+    "listenerOwnedByExactDescendants": true,
+    "supervisorSubreaper": true,
+    "exactPidfdSignalsOnly": true,
+    "stopReason": "normal_close",
+    "maximumOwnedDescendants": 2,
+    "detachedDescendantSeen": true,
+    "orphanAdoptionSeen": true,
+    "cleanupReserveSeconds": 5,
+    "elapsedSeconds": 11.4937,
+    "supervisorExited": true
+  }
+}

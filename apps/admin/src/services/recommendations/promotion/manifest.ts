@@ -181,6 +181,48 @@ export const COWATCH_MMR_TRIAL_MANIFEST = {
   },
 } as const satisfies PromotionManifest
 
+export const OWNER_RELEASE_POLICY_VERSION =
+  "owner-approved-no-study-v1" as const
+export const COWATCH_OWNER_LIVE_MODE = "current-source-owner-live-v1" as const
+export const OWNER_APPROVED_COWATCH_MMR_MANIFEST_ID =
+  "hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1" as const
+
+/** Separate identity preserves all study contracts; this policy makes no efficacy claim. */
+export const OWNER_APPROVED_COWATCH_MMR_MANIFEST = {
+  ...COWATCH_MMR_TRIAL_MANIFEST,
+  id: OWNER_APPROVED_COWATCH_MMR_MANIFEST_ID,
+  strategyVersion: OWNER_APPROVED_COWATCH_MMR_MANIFEST_ID,
+  configuration: {
+    ...COWATCH_MMR_TRIAL_MANIFEST.configuration,
+    executionPolicy: "profile-viewing-mode-cowatch-mmr-owner-live-v1",
+    graphPolicy: COWATCH_OWNER_LIVE_MODE,
+    authorityPolicy: OWNER_RELEASE_POLICY_VERSION,
+    shadowDecisionRequired: null,
+    shadowPopulation: null,
+    effectAttribution: "not-measured-owner-authorized",
+    graphMaximumAgeMs: 86_400_000,
+    refresh: "explicit-new-generation-and-owner-release",
+    usefulness: "not-measured-owner-authorized",
+    population: {
+      locale: "en",
+      audioLanguageSlug: "english",
+      traffic: "eligible-human",
+      profile: "current-active-durable-generation",
+      projection: "published-unexpired-durable-positive-interests",
+      clientDeliveryContract: "cowatch-mmr-v1",
+    },
+  },
+} as const satisfies PromotionManifest
+
+export function isExactOwnerApprovedCowatchMmrManifest(
+  manifest: PromotionManifest,
+) {
+  return (
+    recommendationManifestDigest(manifest) ===
+    recommendationManifestDigest(OWNER_APPROVED_COWATCH_MMR_MANIFEST)
+  )
+}
+
 export function isExactIncumbentHybridManifest(manifest: PromotionManifest) {
   return (
     recommendationManifestDigest(manifest) ===

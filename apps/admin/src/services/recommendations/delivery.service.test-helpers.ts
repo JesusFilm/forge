@@ -114,6 +114,10 @@ export function makeHarness(
       import("./delivery.types").DeliveryDependencies,
       "resolveStudyAuthority" | "composeCowatchTrial"
     >
+    owner?: Pick<
+      import("./delivery.types").DeliveryDependencies,
+      "resolveOwnerAuthority" | "composeOwnerCowatch"
+    >
     nowMilliseconds?: () => number
   } = {},
 ) {
@@ -236,6 +240,7 @@ export function makeHarness(
     assignExperiment,
     ...(options.profileComparison ? { assignProfileExperiment } : {}),
     ...options.study,
+    ...options.owner,
     retrieveProfile,
     resolveRecentContext,
     authorizeProfile,

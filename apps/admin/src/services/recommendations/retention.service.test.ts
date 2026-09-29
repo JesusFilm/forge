@@ -30,6 +30,7 @@ function retentionQuery(
           sources: [],
           graphs: [],
           protocols: [],
+          releases: [],
           studies: [],
           assignments: [],
           experiments: [],
@@ -47,6 +48,9 @@ function buildPrisma() {
     $queryRaw: vi.fn(
       retentionQuery([{ id: "expired-profile-1", privacyGeneration: 3 }]),
     ),
+    recommendationOwnerRelease: {
+      findFirst: vi.fn(async (): Promise<{ expiresAt: Date } | null> => null),
+    },
     recommendationCowatchTrialAuthority: {
       findFirst: vi.fn(
         async (): Promise<{ rawPopulationExpiresAt: Date } | null> => null,

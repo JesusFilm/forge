@@ -1,3 +1,4 @@
+import { ownerReleaseInfluenceAllowedSql } from "../promotion/owner-influence"
 import { Prisma } from "@prisma/client"
 import {
   RECOMMENDATION_INTEGRITY_POLICY_VERSION,
@@ -25,6 +26,7 @@ export function cowatchSourceInvalidSql(
               WHERE fact.episode_id = episode.id AND fact.late = true)
             OR EXISTS (SELECT 1 FROM recommendation_promotion_slate_fence fence
               WHERE fence.request_id = outcome.request_id)
+            OR NOT ${ownerReleaseInfluenceAllowedSql(Prisma.sql`outcome.request_id`)}
             OR suppression.episode_id IS NOT NULL
             OR decision.id IS NULL
             OR decision.is_current <> true

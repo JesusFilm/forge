@@ -3615,6 +3615,7 @@ enum RecommendationExperimentEvaluationRunState {
 }
 
 enum RecommendationPromotionStage {
+  OWNER_APPROVED @map("owner_approved")
   CONTROL   @map("control")
   BOUNDED   @map("bounded")
   PERMANENT @map("permanent")
@@ -3669,6 +3670,7 @@ model RecommendationStrategyManifest {
   experimentExposures          RecommendationExperimentExposure[]          @relation("RecommendationExperimentExposureManifest")
   promotionApprovals           RecommendationPromotionApproval[]
   profileProjectionGenerations RecommendationProfileProjectionGeneration[]
+  ownerReleases               RecommendationOwnerRelease[]
   personalizationDecisions     RecommendationPersonalizationDecision[]
   activePromotionPointers      RecommendationPromotionPointer[]            @relation("RecommendationPromotionPointerActive")
   fallbackPromotionPointers    RecommendationPromotionPointer[]            @relation("RecommendationPromotionPointerFallback")
@@ -3720,6 +3722,8 @@ model RecommendationRequest {
   createdAt              DateTime                            @default(now()) @map("created_at")
   issuedAt               DateTime?                           @map("issued_at")
   expiresAt              DateTime                            @map("expires_at")
+  ownerReleaseId String? @map("owner_release_id") @db.Uuid
+  ownerReleaseGeneration Int? @map("owner_release_generation")
   experimentAssignmentId String?                             @map("experiment_assignment_id")
   experimentAssignment   RecommendationExperimentAssignment? @relation(fields: [experimentAssignmentId], references: [id], onDelete: SetNull)
   experimentBypassReason String?                             @map("experiment_bypass_reason") @db.VarChar(64)
@@ -4214,6 +4218,9 @@ model RecommendationPromotionApproval {
 /// Compare-and-swap online promotion authority. The separate serving control
 /// remains the coarse recommendation-surface switch and semantic fallback.
 model RecommendationPromotionPointer {
+  activeOwnerReleaseId String? @map("active_owner_release_id") @db.Uuid
+  activeOwnerRelease RecommendationOwnerRelease? @relation(fields: [activeOwnerReleaseId], references: [id], onDelete: Restrict)
+  ownerInfluenceFloorGeneration Int @default(0) @map("owner_influence_floor_generation")
   id                      String                           @id @db.VarChar(64)
   activeManifestId        String                           @map("active_manifest_id") @db.VarChar(191)
   activeManifest          RecommendationStrategyManifest   @relation("RecommendationPromotionPointerActive", fields: [activeManifestId], references: [id], onDelete: Restrict)
@@ -6224,6 +6231,7 @@ model RecommendationStudyEvaluation {
 /// Immutable single-use frozen trial qualification. Outlives graph deletion;
 /// contains only aggregate authority identity, never viewer identity.
 model RecommendationCowatchTrialAuthority {
+  ownerInfluenceFloorGeneration Int @default(0) @map("owner_influence_floor_generation")
   generationId String @id @map("generation_id") @db.Char(64)
   revokedAt DateTime? @map("revoked_at")
   rawPopulationExpiresAt DateTime @map("raw_population_expires_at")
@@ -6235,4 +6243,30 @@ model RecommendationCowatchTrialAuthority {
   qualifiedAt DateTime @default(now()) @map("qualified_at")
   @@index([rawPopulationExpiresAt], map: "recommendation_cowatch_authority_expiry_idx")
   @@map("recommendation_cowatch_trial_authority")
+}
+
+/// Exact owner-authorized configuration and one-use graph authority, never causal evidence.
+/// No graph/source FK: their retention must remain independent.
+model RecommendationOwnerRelease {
+  id                     String                           @id @db.Uuid
+  pointerGeneration      Int                              @map("pointer_generation")
+  manifestId             String                           @map("manifest_id") @db.VarChar(191)
+  manifest               RecommendationStrategyManifest   @relation(fields: [manifestId], references: [id], onDelete: Restrict)
+  manifestDigest         String                           @map("manifest_digest") @db.Char(64)
+  graphGenerationId      String                           @unique(map: "recommendation_owner_release_graph_key") @map("graph_generation_id") @db.Char(64)
+  bindingDigest          String                           @map("binding_digest") @db.Char(64)
+  binding                Json
+  qualifiedAt            DateTime                         @map("qualified_at")
+  validUntil             DateTime                         @map("valid_until")
+  dependencyExpiresAt    DateTime                         @map("dependency_expires_at")
+  rawPopulationExpiresAt DateTime                         @map("raw_population_expires_at")
+  approvedById           String                           @map("approved_by_id") @db.VarChar(191)
+  approvedAt             DateTime                         @map("approved_at")
+  expiresAt              DateTime                         @map("expires_at")
+  revokedAt              DateTime?                        @map("revoked_at")
+  revocationReason       String?                          @map("revocation_reason") @db.VarChar(64)
+  pointers               RecommendationPromotionPointer[]
+
+  @@index([expiresAt], map: "recommendation_owner_release_expiry_idx")
+  @@map("recommendation_owner_release")
 }

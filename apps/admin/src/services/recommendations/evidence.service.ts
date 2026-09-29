@@ -1,3 +1,4 @@
+import { ownerReleaseInfluenceAllowed } from "./promotion/owner-influence"
 import { RecommendationSurfaceSchema } from "./token.service"
 import { createHash, randomUUID } from "node:crypto"
 import {
@@ -158,6 +159,8 @@ export class RecommendationEvidenceService {
         capabilityJti: true,
         request: {
           select: {
+            id: true,
+            ownerReleaseId: true,
             state: true,
             expiresAt: true,
             sessionDigest: true,
@@ -277,6 +280,10 @@ export class RecommendationEvidenceService {
           "Recommendation evidence binding is invalid",
         )
       }
+      const directInfluenceAllowed = await ownerReleaseInfluenceAllowed(
+        tx,
+        item.request,
+      )
       await lockRecommendationItemEvidence(tx, item.id)
       const receipts: RecommendationEvidenceReceipt[] = []
       let reconciledSelection = false
@@ -357,16 +364,32 @@ export class RecommendationEvidenceService {
                   : "unknown",
             },
           })
-          const reconciliation = await tx.recommendationSelection.updateMany({
-            where: {
-              requestId: item.requestId,
-              itemId: item.id,
-              attributionEligibleAt: null,
-            },
-            data: { attributionEligibleAt: now },
-          })
+          const reconciliation = directInfluenceAllowed
+            ? await tx.recommendationSelection.updateMany({
+                where: {
+                  requestId: item.requestId,
+                  itemId: item.id,
+                  attributionEligibleAt: null,
+                },
+                data: { attributionEligibleAt: now },
+              })
+            : { count: 0 }
           reconciledSelection ||= reconciliation.count === 1
           if (
+            directInfluenceAllowed &&
+            !item.request.promotionSlateFence &&
+            item.request.ownerReleaseId
+          ) {
+            await recordFirstEligiblePromotionExposure(tx, {
+              effectiveManifestId: item.request.manifestId,
+              requestId: item.requestId,
+              itemId: item.id,
+              occurredAt: new Date(event.occurredAt),
+              receivedAt: now,
+            })
+          }
+          if (
+            directInfluenceAllowed &&
             !item.request.promotionSlateFence &&
             assignment?.state ===
               RecommendationExperimentAssignmentState.ACTIVE &&

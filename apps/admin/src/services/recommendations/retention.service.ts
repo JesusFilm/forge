@@ -12,6 +12,7 @@ import {
 import { RECOMMENDATION_RETENTION_PROPAGATION_HOURS } from "./contracts"
 import { suppressCowatchForProfiles } from "./cowatch/privacy"
 import { purgeExpiredCompositionEvidence } from "./composition/service"
+import { purgeExpiredOwnerReleases } from "./promotion/owner-authority"
 import { purgeExpiredCowatchTrialAuthorities } from "./cowatch/trial-authority.service"
 import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { lockRetentionRoots } from "./retention-locks"
@@ -278,6 +279,9 @@ export async function purgeExpiredRecommendationRequests(
     await phase(async (tx) => {
       rowCounts.expiredCowatchTrialAuthorities =
         await purgeExpiredCowatchTrialAuthorities(tx, now)
+    })
+    await phase(async (tx) => {
+      rowCounts.expiredOwnerReleases = await purgeExpiredOwnerReleases(tx, now)
     })
     const expiredWatchExposures = await phase((tx) =>
       tx.watchSurfaceExposure.findMany({
@@ -803,6 +807,7 @@ export async function purgeExpiredRecommendationRequests(
       oldestExpiredCompositionObservation,
       oldestExpiredCompositionProtocol,
       oldestExpiredCowatchTrialAuthority,
+      oldestExpiredOwnerRelease,
     ] = await phase((tx) =>
       Promise.all([
         tx.recommendationRequest.findFirst({
@@ -910,6 +915,14 @@ export async function purgeExpiredRecommendationRequests(
           orderBy: { rawPopulationExpiresAt: "asc" },
           select: { rawPopulationExpiresAt: true },
         }),
+        tx.recommendationOwnerRelease.findFirst({
+          where: {
+            expiresAt: { lte: now },
+            pointers: { none: {} },
+          },
+          orderBy: { expiresAt: "asc" },
+          select: { expiresAt: true },
+        }),
       ]),
     )
     const oldestExpiredAt = earliestDate([
@@ -934,6 +947,7 @@ export async function purgeExpiredRecommendationRequests(
       oldestExpiredCompositionObservation?.expiresAt,
       oldestExpiredCompositionProtocol?.expiresAt,
       oldestExpiredCowatchTrialAuthority?.rawPopulationExpiresAt,
+      oldestExpiredOwnerRelease?.expiresAt,
     ])
     const overdueAfterRun =
       oldestExpiredAt != null &&
@@ -946,6 +960,7 @@ export async function purgeExpiredRecommendationRequests(
       oldestExpiredCompositionObservation != null ||
       oldestExpiredCompositionProtocol != null ||
       oldestExpiredCowatchTrialAuthority != null ||
+      oldestExpiredOwnerRelease != null ||
       requestIds.length === batchSize ||
       expiredWatchExposures.length === batchSize ||
       directActionIds.length === batchSize ||
