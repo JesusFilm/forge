@@ -24,7 +24,10 @@ import { _internal as rankerInternal } from "./spurgeon-ranker"
 import { _internal as translateInternal } from "./translate-devotional"
 import { _internal as depthResearchInternal } from "./depth-research"
 import { _internal as messageInternal } from "./devotional-message"
-import { _internal as endingInternal } from "./message-first-ending"
+import {
+  _internal as endingInternal,
+  _openingInternal,
+} from "./message-first-ending"
 import { _internal as mfWriterInternal } from "./message-first-writer"
 
 /**
@@ -108,6 +111,7 @@ describe("Anthropic structured-output schema compatibility", () => {
     "devotional-message": messageInternal.JSON_SCHEMA,
     "message-first-ending": endingInternal.JSON_SCHEMA,
     "message-first-ending/personal": endingInternal.PERSONAL_JSON_SCHEMA,
+    "message-first-ending/opening": _openingInternal.JSON_SCHEMA,
     "message-first-writer": mfWriterInternal.JSON_SCHEMA,
   }
 

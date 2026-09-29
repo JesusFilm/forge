@@ -18,6 +18,12 @@ import { homedir } from "node:os"
 import path from "node:path"
 
 import { composeMessageFirst } from "../services/devotional/compose-message-first"
+import { EN_LOCALE } from "../services/devotional/devotional-locale"
+import {
+  formatDevotionalScript,
+  readSubtitles,
+} from "../services/devotional/devotional-script-format"
+import { writeMessageFirstOpening } from "../services/devotional/message-first-ending"
 import {
   cacheDirFor,
   saveCachedDevo,
@@ -204,30 +210,22 @@ async function main() {
     arg("out") ?? path.join(homedir(), "Desktop/Social Media", story.out)
   await mkdir(path.join(outDir, "work"), { recursive: true })
   const d = result.devotional
-  const script = [
-    `${d.title}`,
-    `${src.passage.reference} · ${src.title} (LUMO)`,
-    "",
-    "WATCH",
-    `[film: ${src.passage.reference}]`,
-    "",
-    "REFLECT",
-    "Let's look more closely at what this story means.",
-    "",
-    ...(d.reflection.paragraphs ?? []).flatMap((p) => [
-      ...(p.mark ? [`[${p.mark.label.toUpperCase()} · ${p.mark.source}]`] : []),
-      `(${p.voice === "male-e" ? "voice B" : "voice A"}) ${p.text}`,
-      "",
-    ]),
-    `TAKEAWAY: ${d.conclusion}`,
-    "",
-    `VERSE (${d.scripture.reference}, BSB): ${d.scripture.text}`,
-    "",
-    "PRAY",
-    "Let's bring this to God.",
-    `First, ask yourself: ${d.question}`,
-    `Talk to God about it: ${d.prayer}`,
-  ].join("\n")
+  // The montage opening, from the message's tension (packaging).
+  d.openingLines = await writeMessageFirstOpening({
+    message: result.message,
+    title: d.title,
+    passageReference: src.passage.reference,
+    llm: llm(writerModel),
+  })
+  await saveCachedDevo(dir, d)
+  const script = formatDevotionalScript({
+    devo: d,
+    source: src,
+    subtitles: await readSubtitles(src),
+    classicCredit: "J. C. Ryle (Expository Thoughts on Luke, 1858)",
+    reflectLeadIn: EN_LOCALE.connectors.steps.reflectAfterClip(),
+    prayLeadIn: EN_LOCALE.connectors.steps.pray(),
+  })
   const scriptPath = await nextFree(
     path.join(outDir, `script_${story.out.toLowerCase()}.txt`),
   )

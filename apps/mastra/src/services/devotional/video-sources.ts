@@ -71,7 +71,7 @@ const SOURCES: VideoSource[] = [
     // The segment opens on 15:11 at 0.0s ("Jesus continued. There was a man
     // who had two sons") and the parable's last line ends at 226.4s; the
     // unjust manager starts speaking at 230.0s (whisper transcript,
-    // 2026-09-29). Captions are still to be made from that transcript.
+    // 2026-09-29). Captions: the narration as spoken (NIV), whisper timings.
     key: "lumo-luke-15",
     index: 1002,
     mediaComponentId: "6_GOLuke2616",
@@ -82,7 +82,7 @@ const SOURCES: VideoSource[] = [
     maxVideoCardSec: 215,
     filmMark: "lumo",
     style: "clean",
-    captions: { kind: "none" },
+    captions: { kind: "file", path: "video-sources/lumo-luke-15.en.vtt" },
   },
 ]
 

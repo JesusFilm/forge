@@ -113,3 +113,54 @@ export const _internal = {
   JSON_SCHEMA: TAKEAWAY_JSON_SCHEMA,
   PERSONAL_JSON_SCHEMA,
 }
+
+const OpeningSchema = z
+  .object({ lines: z.array(z.string().trim().min(1)) })
+  .strict()
+const OPENING_JSON_SCHEMA = {
+  name: "message_first_opening",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: { lines: { type: "array", items: { type: "string" } } },
+    required: ["lines"],
+  },
+}
+
+export const OPENING_SYSTEM_PROMPT = [
+  "You write the spoken OPENING of a Bible devotional video, heard over a",
+  'montage of the film before it plays. After "Welcome to Daily Bible',
+  'Pause." come your lines, then "Let\'s watch."',
+  "Three or four short lines. Open on the story's tension as the viewer",
+  'would feel it (Vineyard: "That\'s not fair." / "It is the first sentence',
+  'we learn, and the last one we let go of." / "Jesus told a story about',
+  'that exact complaint."). The first line is the title as given. Do not give',
+  "the answer away; do not name the lesson; no questions to the viewer about",
+  "their faith; no commands. The last line points at the story about to play.",
+  "No em dashes or en dashes. Return JSON only.",
+].join("\n")
+
+/** The montage opening, from the message's tension (feat-572 packaging). */
+export async function writeMessageFirstOpening(input: {
+  message: DevotionalMessage
+  title: string
+  passageReference: string
+  llm: DevotionalLlm
+}): Promise<string[]> {
+  const out = await input.llm.complete({
+    system: OPENING_SYSTEM_PROMPT,
+    user: [
+      messageBlock(input.message),
+      "",
+      `PASSAGE: ${input.passageReference}`,
+      `TITLE (the first line): ${input.title}`,
+    ].join("\n"),
+    jsonSchema: OPENING_JSON_SCHEMA,
+    schema: OpeningSchema,
+    temperature: 0.6,
+    maxTokens: 300,
+  })
+  return out.lines
+}
+
+export const _openingInternal = { JSON_SCHEMA: OPENING_JSON_SCHEMA }

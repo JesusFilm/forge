@@ -114,6 +114,9 @@ export type GeneratedDevotional = {
     grounding: string
     classicPoints?: number[]
   }
+  /** Spoken opening lines between the welcome and "Let's watch" (message-
+   *  first packaging); passed to the render's montage opening. */
+  openingLines?: string[]
   clipTranscript?: string
   reflection: {
     text: string
@@ -186,6 +189,7 @@ export const GeneratedDevotionalSchema = z.object({
       classicPoints: z.array(z.number()).optional(),
     })
     .optional(),
+  openingLines: z.array(z.string()).optional(),
   clipTranscript: z.string().optional(),
   scripture: z.object({
     reference: z.string(),
