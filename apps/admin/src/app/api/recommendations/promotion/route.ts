@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { isTrustedReturnToOrigin } from "@/auth/origins"
 import { hasPermission } from "@/auth/permissions"
 import { resolveAdminSessionFromRequest } from "@/auth/session"
 import { prisma } from "@/db/client"
@@ -237,7 +238,7 @@ export async function POST(request: Request): Promise<Response> {
 function hasSameOriginCsrfProof(request: Request) {
   const origin = request.headers.get("origin")
   return (
-    origin === new URL(request.url).origin &&
+    isTrustedReturnToOrigin(origin) &&
     request.headers.get("x-forge-csrf") === CSRF_HEADER_VALUE &&
     request.headers.get("content-type")?.split(";", 1)[0] === "application/json"
   )
