@@ -326,7 +326,13 @@ describe("recommendation profile projection service", () => {
       generation: 9,
       replay: false,
     })
-    expect(executeRaw).toHaveBeenCalledTimes(4)
+    // The shared-vector writer takes an additional advisory lock. Count
+    // publication statements independently of the configured lock shape.
+    expect(
+      executeRaw.mock.calls.filter(
+        ([query]) => !query.strings.join(" ").includes("pg_advisory_xact_lock"),
+      ),
+    ).toHaveLength(3)
   })
 
   it("rejects a repair publisher when the expected pointer moved", async () => {
@@ -450,7 +456,11 @@ describe("recommendation profile projection service", () => {
         sessionEvidence: [],
       }),
     ).rejects.toMatchObject({ code: "profile_projection_input_fenced" })
-    expect(executeRaw).toHaveBeenCalledOnce()
+    expect(
+      executeRaw.mock.calls.filter(
+        ([query]) => !query.strings.join(" ").includes("pg_advisory_xact_lock"),
+      ),
+    ).toHaveLength(0)
   })
 
   it("keeps source expiry in the deterministic rebuild input", async () => {
