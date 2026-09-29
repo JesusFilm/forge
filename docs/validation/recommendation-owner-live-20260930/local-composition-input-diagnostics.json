@@ -1,0 +1,29 @@
+{
+  "scope": "Record exact failed composition input diagnostics in existing owner rejection evidence",
+  "productionExecuted": false,
+  "focusedTestsPassed": 85,
+  "focusedSuitesPassed": 6,
+  "finalAffectedTestsPassed": 30,
+  "finalAffectedSuitesPassed": 2,
+  "fullAdminTypecheck": "passed; tsc --noEmit --incremental false",
+  "scopedLint": "passed",
+  "scopedPrettier": "passed",
+  "gitDiffCheck": "passed",
+  "coverage": [
+    "actual owner composer missing-theme failure passes original flags to persisted incumbent rejection",
+    "exact four input flags, empty pool, 64-candidate and six-item bounds",
+    "legacy and compact trace formats preserve fixed aggregate evidence without extra stage rows",
+    "public response equals the existing fallback response; no direct release or experiment falsely attached",
+    "success and non-input refusals carry no diagnostic; evidence field allowlist drops unexpected keys"
+  ],
+  "reviews": [
+    "parent correctness and storage-reader review: no actionable findings",
+    "independent correctness/privacy/contract review: no actionable findings"
+  ],
+  "limitations": [
+    "Local adapter reproduction proves possible theme-loss mechanisms, not historical production cause.",
+    "This diagnostic does not repair missing inputs or change ranking, selection, authority, deadlines or fallback."
+  ],
+  "additionalTrialRegressionTestsPassed": 19,
+  "additionalTrialRegressionSuitesPassed": 2
+}

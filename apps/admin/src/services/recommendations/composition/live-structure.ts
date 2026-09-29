@@ -1,6 +1,17 @@
 import { composeMmrSlate, MMR_SLATE_POLICY_VERSION } from "./mmr"
 import { compositionInputAvailability, hasMissingInput } from "./policy"
 
+export type CompositionInputDiagnostic = Readonly<{
+  version: "composition-input-availability-v1"
+  missingSource: boolean
+  missingInterest: boolean
+  missingTheme: boolean
+  missingHistory: boolean
+  candidateCount: number
+  selectedCount: number
+  themedSelectedCount: number
+}>
+
 /** Shared structural checks only. Callers must separately resolve and fence
  * their exact trial or owner-release authority; this function grants none.
  */
@@ -11,7 +22,14 @@ export function composeStructurallyValidMmrSlate(input: {
   graphGenerationId?: string | null
   graphGeneratorVersion: string
 }) {
-  const refuse = (reason: string) => ({ status: "fallback" as const, reason })
+  const refuse = (
+    reason: string,
+    compositionInputDiagnostic?: CompositionInputDiagnostic,
+  ) => ({
+    status: "fallback" as const,
+    reason,
+    ...(compositionInputDiagnostic ? { compositionInputDiagnostic } : {}),
+  })
   if (input.slate.editorial)
     return refuse("editorial_adapter_outside_supported_subset")
   if (
@@ -37,11 +55,17 @@ export function composeStructurallyValidMmrSlate(input: {
   )
     return refuse("composition_candidate_graph_mismatch")
   const result = composeMmrSlate(input.slate)
-  if (
-    hasMissingInput(
-      compositionInputAvailability(result, input.historyAvailable),
-    )
+  const availability = compositionInputAvailability(
+    result,
+    input.historyAvailable,
   )
-    return refuse("composition_required_input_unavailable")
+  if (hasMissingInput(availability))
+    return refuse("composition_required_input_unavailable", {
+      version: "composition-input-availability-v1",
+      ...availability,
+      candidateCount: Math.min(64, input.slate.ordered.length),
+      selectedCount: result.composed.length,
+      themedSelectedCount: result.coverage.itemsWithThemes,
+    })
   return { status: "composed" as const, result }
 }

@@ -528,3 +528,64 @@ that a later eligibility decision and an exceeded ceiling each retain zero new
 graph rows, then published with a fresh exact admission. Independent scoped
 review found no actionable defects. These are local checks, not a production
 publication receipt.
+
+## Adjacent-window fallback comparison
+
+A targeted read compared equal 581.488-second windows immediately before and
+after activation: **22:50:45.024–23:00:26.512 UTC** and
+**23:00:26.512–23:10:08 UTC**. Each independently capped the newest 50 retained
+request roots before filtering; neither cap was reached. Both windows had no
+experiment assignments and no expired or unissued sampled roots.
+
+| Recorded outcome                | Before | After |
+| ------------------------------- | -----: | ----: |
+| Issued requests                 |     32 |    38 |
+| Served result                   |     28 |    27 |
+| Fallback result                 |      0 |    10 |
+| Empty result / zero items       |      4 |     1 |
+| Unavailable result              |      0 |     0 |
+| Positive item count             |     28 |    37 |
+| Shared co-watch fallback marker |      0 |     8 |
+
+All ten post-activation fallback results had positive item counts. Eight carried
+the shared co-watch marker: seven missing-composition-input and one sparse-edge
+reason. Three post-window roots and four pre-window roots had incumbent semantic
+fallback reasons; these reason populations include empty outcomes and are not the
+same denominator as requests whose result is `fallback`.
+
+The new fallback labels therefore do not mean those ten responses contained no
+recommendations. This is a bounded observational comparison, not proof that
+traffic was comparable, the rollout improved availability, cards rendered, or
+recommendation quality stayed equivalent. It excludes deleted roots and HTTP
+failures leaving no retained request. Before-window runtime/bootstrap state may
+differ; no longer-term trend or causal effect is established.
+
+See the [aggregate comparison receipt](../validation/recommendation-owner-live-20260930/production-baseline-comparison-20260929T2325.json).
+
+The semantic-reason drilldown of these same capped windows found **one missing
+seed embedding and three `no_candidates` reasons before**, versus **two missing
+seed embeddings and one `no_candidates` reason after**. No recorded retrieval
+timeout, retrieval unavailable, stale/ineligible pool, parity mismatch or candidate
+platform failure appeared. These are persisted dispositions, not proof about
+HTTP failures that left no root or why a specific video lacked usable embedding
+material. See the [fixed semantic reason counts](../validation/recommendation-owner-live-20260930/production-semantic-reasons-20260929T2332.json).
+
+## Exact failed-composition diagnostics
+
+The former generic failure reason discarded the attempted composition's input
+coverage while retaining the incumbent platform. The diagnostic change preserves
+its actual source, interest, theme and history missing flags, plus bounded
+candidate/selected/themed-item counts, in the existing rejected co-watch evidence
+entry. The diagnostic is versioned, contains no identities or candidate payloads,
+adds no stage rows, and survives both compact and legacy trace persistence. It
+does not change selection, required inputs, fallback responses, authority or
+release expiry. Natural evidence from its deployed revision is still required
+to identify the actual production gap.
+
+Local tests using the real hydration SQL, profile adapter, candidate union and
+MMR reproduced two possible mechanisms: an empty first transcript chunk can hide
+later populated theme metadata; and a selected empty-theme nomination can mask
+a populated nomination for the same video. Controls that supplied the actual
+fixture labels composed successfully. These synthetic fixtures prove mechanisms,
+not the historical production cause. See the [local reproduction](../validation/recommendation-owner-live-20260930/local-composition-theme-mechanisms.json)
+and [diagnostic validation](../validation/recommendation-owner-live-20260930/local-composition-input-diagnostics.json).
