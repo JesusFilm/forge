@@ -1,6 +1,6 @@
 # RAG portal Sources — agreed scope
 
-Tracks `docs/roadmap/rag/feat-568-rag-portal-sources.md`. The user confirmed the design after the grill-me interview on 2026-09-29.
+Tracks `docs/roadmap/rag/feat-569-rag-portal-sources.md`. The user confirmed the design after the grill-me interview on 2026-09-29.
 
 ## Product decisions
 

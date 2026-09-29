@@ -1,5 +1,5 @@
 ---
-id: "feat-568"
+id: "feat-569"
 title: "Production source catalog in the RAG portal"
 owner: "jaco"
 priority: "P1"
@@ -47,7 +47,7 @@ snapshot, with explicit brand memberships and searchable language/domain detail.
 Existing ingestion keys, retrieval/filtering/citations, evaluation workflow and
 public Pages artifacts are unchanged.
 
-[Local verification](evidence/feat-568/local-verification.md) records 903 passing
+[Local verification](evidence/feat-569/local-verification.md) records 903 passing
 package tests, five passing browser tests, desktop/mobile inspection, and deferred
 Sources loading with no additional initial requests. Package and repository
 format checks pass. PR merge, deployment and live acceptance remain pending.

@@ -64,3 +64,15 @@ absence of these requests on initial load and no horizontal document overflow at
 Normal PR-to-main deployment and live portal acceptance remain external to this
 local verification. A newer inventory requires the existing post-ingestion
 status-dashboard refresh/PR workflow, not a portal refresh button.
+
+## Review after the dependency update
+
+After PR #2459 merged, this branch was updated against `main`. Independent
+standards review found one roadmap ID collision; the Sources ticket and evidence
+now use globally available feat-569. The inherited lane totals were synchronized
+with ticket frontmatter: 37 total, 25 complete, three in progress and nine not
+started. Independent spec review found no issues.
+
+Verification after the update passed: 903 package tests (five database-gated
+tests skipped), typecheck, lint, dependency import checks and five Sources browser
+tests. Final PR CI and merge remain pending.
