@@ -1,4 +1,6 @@
 import { pathToFileURL } from "node:url"
+import { constants } from "node:fs"
+import { open } from "node:fs/promises"
 import { z } from "zod"
 import {
   RecommendationConflictError,
@@ -9,12 +11,18 @@ import {
   COWATCH_SOURCE_WINDOW_VERSION,
   type CowatchSourceWindow,
 } from "../services/recommendations/cowatch/source-window"
+import {
+  parseCowatchPublicationAdmission,
+  type CowatchPublicationAdmission,
+} from "../services/recommendations/cowatch/projection.service"
 
 const VALUE_OPTIONS = new Set([
   "--window-start",
   "--window-end",
   "--evaluation-as-of",
+  "--admission-file",
 ])
+const MAX_ADMISSION_FILE_BYTES = 16_384
 
 const FAILURE_CODES: Readonly<Record<string, string>> = {
   "57014": "database_timeout",
@@ -138,7 +146,11 @@ export function parseCowatchRebuildArguments(
     values.set(key, value)
     index++
   }
-  if (values.size !== VALUE_OPTIONS.size) {
+  if (
+    !["--window-start", "--window-end", "--evaluation-as-of"].every((key) =>
+      values.has(key),
+    )
+  ) {
     throw new RecommendationInputError(
       "Required: --window-start ISO --window-end ISO --evaluation-as-of ISO; add --execute to publish",
     )
@@ -162,7 +174,64 @@ export function parseCowatchRebuildArguments(
     evaluationAsOf: timestamp("--evaluation-as-of"),
   }
   assertCowatchSourceWindow(sourceWindow, now)
-  return { execute, sourceWindow }
+  const admissionFile = values.get("--admission-file")
+  if (
+    admissionFile !== undefined &&
+    (!execute || admissionFile.length > 4096 || admissionFile.includes("\0"))
+  )
+    throw new RecommendationInputError(
+      "A valid --admission-file requires --execute",
+    )
+  return { execute, sourceWindow, admissionFile }
+}
+
+async function readPublicationAdmission(
+  path: string,
+  now: Date,
+  sourceWindow: CowatchSourceWindow,
+) {
+  // NONBLOCK prevents a named pipe from blocking before the regular-file check.
+  // Read at most bound+1 even if the file grows after stat.
+  const file = await open(
+    path,
+    constants.O_RDONLY | constants.O_NONBLOCK,
+  ).catch(() => {
+    throw new RecommendationInputError("Cannot read publication admission file")
+  })
+  try {
+    const stat = await file.stat()
+    if (
+      !stat.isFile() ||
+      stat.size === 0 ||
+      stat.size > MAX_ADMISSION_FILE_BYTES
+    )
+      throw new RecommendationInputError("Invalid publication admission file")
+    const buffer = Buffer.alloc(MAX_ADMISSION_FILE_BYTES + 1)
+    let length = 0
+    while (length < buffer.length) {
+      const { bytesRead } = await file.read(
+        buffer,
+        length,
+        buffer.length - length,
+        null,
+      )
+      if (bytesRead === 0) break
+      length += bytesRead
+    }
+    if (length > MAX_ADMISSION_FILE_BYTES)
+      throw new RecommendationInputError(
+        "Publication admission file exceeds bound",
+      )
+    return parseCowatchPublicationAdmission(
+      JSON.parse(buffer.subarray(0, length).toString("utf8")),
+      now,
+      sourceWindow,
+    )
+  } catch {
+    throw new RecommendationInputError("Invalid publication admission file")
+  } finally {
+    await file.close()
+  }
 }
 
 async function loadRuntime() {
@@ -172,8 +241,11 @@ async function loadRuntime() {
   return {
     preflight: (now: Date, scope: CowatchSourceWindow) =>
       preflightCowatchShadowGeneration(prisma, now, scope),
-    publish: (now: Date, scope: CowatchSourceWindow) =>
-      publishCowatchShadowGeneration(prisma, now, scope),
+    publish: (
+      now: Date,
+      scope: CowatchSourceWindow,
+      admission?: CowatchPublicationAdmission,
+    ) => publishCowatchShadowGeneration(prisma, now, scope, admission),
     disconnect: () => prisma.$disconnect(),
   }
 }
@@ -188,10 +260,19 @@ export async function runCowatchRebuildCli(
 ) {
   const now = (options.now ?? (() => new Date()))()
   const input = parseCowatchRebuildArguments(argv, now)
+  const admission = input.admissionFile
+    ? await readPublicationAdmission(
+        input.admissionFile,
+        now,
+        input.sourceWindow,
+      )
+    : undefined
   const runtime = await (options.loadRuntime ?? loadRuntime)()
   try {
     const result = input.execute
-      ? await runtime.publish(now, input.sourceWindow)
+      ? admission
+        ? await runtime.publish(now, input.sourceWindow, admission)
+        : await runtime.publish(now, input.sourceWindow)
       : await runtime.preflight(now, input.sourceWindow)
     // Aggregate-only output; no session, profile, episode or outcome identities.
     const write = options.write ?? ((receipt) => process.stdout.write(receipt))
@@ -210,7 +291,8 @@ if (
     .then((result) => {
       if (
         result.status === "source_overflow" ||
-        result.status === "work_overflow"
+        result.status === "work_overflow" ||
+        result.status === "admission_refused"
       )
         process.exitCode = 2
     })

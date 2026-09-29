@@ -1,7 +1,11 @@
 import { ownerReleaseInfluenceAllowedSql } from "../promotion/owner-influence"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
-import { RecommendationConflictError } from "../errors"
+import { z } from "zod"
+import {
+  RecommendationConflictError,
+  RecommendationInputError,
+} from "../errors"
 import {
   RECOMMENDATION_INTEGRITY_POLICY_VERSION,
   RECOMMENDATION_REPLAY_QUARANTINE_THRESHOLD,
@@ -18,6 +22,7 @@ import {
 import {
   assertCowatchSourceWindow,
   COWATCH_LEGACY_SOURCE_WINDOW_VERSION,
+  COWATCH_SOURCE_WINDOW_VERSION,
   type CowatchSourceWindow,
 } from "./source-window"
 
@@ -26,6 +31,78 @@ const SOURCE_WINDOW_DAYS = 180
 const GENERATION_RETENTION_DAYS = 29
 const CLASSIFIER_VERSION = "active-watch-proxy-v1"
 export const COWATCH_PUBLICATION_LOCK_ID = 387_000_001
+
+const admissionCount = (maximum: number) =>
+  z.number().int().nonnegative().max(maximum)
+const admissionWidth = z
+  .object({
+    maximum: admissionCount(Number.MAX_SAFE_INTEGER),
+    total: admissionCount(Number.MAX_SAFE_INTEGER),
+  })
+  .strict()
+  .refine((value) => value.maximum <= value.total)
+const admissionTimestamp = z.iso
+  .datetime()
+  .refine((value) => new Date(value).toISOString() === value)
+const publicationAdmissionSchema = z
+  .object({
+    version: z.literal("cowatch-publication-admission-v1"),
+    expectedGeneration: z.string().regex(/^[a-f0-9]{64}$/),
+    sourceWindow: z
+      .object({
+        version: z.literal(COWATCH_SOURCE_WINDOW_VERSION),
+        windowStart: admissionTimestamp,
+        windowEnd: admissionTimestamp,
+        evaluationAsOf: admissionTimestamp,
+      })
+      .strict(),
+    limits: z
+      .object({
+        rawSourceCount: admissionCount(MAX_SOURCE_ROWS),
+        sourceCount: admissionCount(MAX_SOURCE_ROWS),
+        attemptedPairCount: admissionCount(250_000),
+        contributionCount: admissionCount(250_000),
+        edgeCount: admissionCount(250_000),
+        publicationRowCount: admissionCount(550_001).min(1),
+        graphRowJsonBytes: z
+          .object({
+            sources: admissionWidth,
+            contributions: admissionWidth,
+            edges: admissionWidth,
+          })
+          .strict(),
+      })
+      .strict(),
+  })
+  .strict()
+
+/** A reviewed capacity ceiling, not permission to publish or a database byte estimate. */
+export type CowatchPublicationAdmission = z.infer<
+  typeof publicationAdmissionSchema
+>
+
+/** Validate before opening a database connection; never include file contents in errors. */
+export function parseCowatchPublicationAdmission(
+  input: unknown,
+  now: Date,
+  sourceWindow?: CowatchSourceWindow,
+): CowatchPublicationAdmission {
+  const parsed = publicationAdmissionSchema.safeParse(input)
+  if (!parsed.success || !sourceWindow)
+    throw new RecommendationInputError("Invalid co-watch publication admission")
+  assertCowatchSourceWindow(sourceWindow, now)
+  const expected = parsed.data.sourceWindow
+  if (
+    expected.version !== sourceWindow.version ||
+    expected.windowStart !== sourceWindow.windowStart.toISOString() ||
+    expected.windowEnd !== sourceWindow.windowEnd.toISOString() ||
+    expected.evaluationAsOf !== sourceWindow.evaluationAsOf.toISOString()
+  )
+    throw new RecommendationInputError(
+      "Co-watch publication admission source scope differs",
+    )
+  return parsed.data
+}
 
 type SourceRow = Readonly<{
   outcomeId: string
@@ -202,7 +279,12 @@ function retainedCowatchOwnersSql(): Prisma.Sql {
 }
 
 export type CowatchPublication = Readonly<{
-  status: "published" | "unchanged" | "source_overflow" | "work_overflow"
+  status:
+    | "published"
+    | "unchanged"
+    | "source_overflow"
+    | "work_overflow"
+    | "admission_refused"
   generation: string | null
   rawSourceCount: number
   /** Raw overflow observes only a lower bound, never the complete population. */
@@ -247,11 +329,7 @@ export async function preflightCowatchShadowGeneration(
         // indexes, WAL or temp. Serialize one bounded row at a time.
         graphRowJsonBytes:
           prepared.status === "ready"
-            ? {
-                sources: rowJsonWidths(prepared.graph.sources),
-                contributions: rowJsonWidths(prepared.graph.contributions),
-                edges: rowJsonWidths(prepared.graph.edges),
-              }
+            ? graphRowJsonWidths(prepared.graph)
             : null,
       }
     },
@@ -273,12 +351,58 @@ function rowJsonWidths(rows: readonly unknown[]) {
   return { total, maximum }
 }
 
+function graphRowJsonWidths(graph: ReturnType<typeof buildCowatchGraph>) {
+  return {
+    sources: rowJsonWidths(graph.sources),
+    contributions: rowJsonWidths(graph.contributions),
+    edges: rowJsonWidths(graph.edges),
+  }
+}
+
+function publicationAdmissionRefusal(
+  prepared: Prepared,
+  admission: CowatchPublicationAdmission,
+): string | null {
+  if (prepared.status !== "ready")
+    return "publication_admission_population_unavailable"
+  if (prepared.graph.generation !== admission.expectedGeneration)
+    return "publication_admission_generation_changed"
+  const { graph } = prepared
+  const actual = {
+    rawSourceCount: prepared.rawSourceCount,
+    sourceCount: graph.sources.length,
+    attemptedPairCount: graph.attemptedPairCount,
+    contributionCount: graph.contributions.length,
+    edgeCount: graph.edges.length,
+    publicationRowCount:
+      1 +
+      graph.sources.length +
+      graph.contributions.length +
+      graph.edges.length,
+  }
+  for (const key of Object.keys(actual) as Array<keyof typeof actual>)
+    if (actual[key] > admission.limits[key])
+      return "publication_admission_count_exceeded"
+  const widths = graphRowJsonWidths(graph)
+  for (const key of ["sources", "contributions", "edges"] as const) {
+    const limit = admission.limits.graphRowJsonBytes[key]
+    if (widths[key].maximum > limit.maximum || widths[key].total > limit.total)
+      return "publication_admission_width_exceeded"
+  }
+  return null
+}
+
 /** Atomically publishes only a complete immutable generation, always shadow. */
 export async function publishCowatchShadowGeneration(
   prisma: PrismaClient,
   now: Date = new Date(),
   sourceWindow?: CowatchSourceWindow,
+  admission?: CowatchPublicationAdmission,
 ): Promise<CowatchPublication> {
+  const validatedAdmission =
+    admission === undefined
+      ? undefined
+      : parseCowatchPublicationAdmission(admission, now, sourceWindow)
   return prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw(Prisma.sql`SET LOCAL statement_timeout = '5000ms'`)
@@ -295,6 +419,20 @@ export async function publishCowatchShadowGeneration(
       }
       const prepared = await prepareCowatchGeneration(tx, now, sourceWindow)
       const receipt = populationReceipt(prepared, now, sourceWindow)
+      // Same repeatable-read snapshot and global publication lock as the writes.
+      // A separate preflight cannot freeze current eligibility or privacy state.
+      if (validatedAdmission) {
+        const refusal = publicationAdmissionRefusal(
+          prepared,
+          validatedAdmission,
+        )
+        if (refusal)
+          return {
+            ...receipt,
+            status: "admission_refused",
+            decisionReason: refusal,
+          }
+      }
       if (prepared.status !== "ready")
         return { ...receipt, status: prepared.status }
       const { source, graph } = prepared

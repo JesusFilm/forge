@@ -58,3 +58,15 @@ rejected background promises before changing a concurrency timeout.
 See `docs/operations/recommendation-owner-live-activation-2026-09-30.md` and
 `apps/admin/src/services/recommendations/promotion/owner-authority.db.test.ts`,
 `delivery-owner.db.test.ts`, and `promotion/owner-stop-lock.db.test.ts`.
+
+## Bind publication to the measured population
+
+A historical event cutoff freezes event membership, but current integrity
+classification can still change eligibility. Treat a read-only preflight as an
+observation. Check its exact graph generation, source scope, row-count ceilings
+and encoded-width ceilings inside the publisher transaction before its first
+insert. Keep the existing global work bounds and statement/transaction deadlines.
+Measure the actual atomic publisher at a dominating synthetic shape; batch count
+also matters when the operator is remote because each batch adds network latency.
+Use the reviewed deployed CLI near the database when WAN round trips exceed the
+budget, preserving revision checks and aggregate-only output.

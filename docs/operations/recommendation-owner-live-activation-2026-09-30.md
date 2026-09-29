@@ -165,3 +165,60 @@ Historical D1–D9 telemetry limitations remain owner-accepted with future fixes
 tracked by feat-566. Dormant exposure surfaces remain explicit gaps. Feat-373,
 full feat-387 shadow acceptance and feat-505 usefulness are not falsely closed or
 reintroduced as activation prerequisites.
+
+## Complete population and atomic publication proof
+
+The single admitted read-only production run completed at September 29 20:24 UTC
+in **10.493 seconds**, with **39,551 raw sources**, **6,680 qualified sources**,
+**42,060 attempted pairs**, **35,632 contributions**, **9,000 edges** and **613
+supported edges**. Publication would retain **51,313 rows**, including the
+single generation. It used the fixed complete source window above and changed
+no production data. The container peaked at 572,698,624 bytes; its removal and
+owned SSH tunnel cleanup were verified. See the
+[aggregate population receipt](../validation/recommendation-owner-live-20260930/production-population-preflight.json).
+
+A synthetic fixture exceeded every observed count and encoded row-width/total
+bound without copying production values. The unchanged atomic publisher committed
+**51,956 rows in 21.647 seconds** under its existing 30-second transaction,
+5-second statement and 1-second lock limits. Allocation including all graph
+heap/index/fork families was **68,231,168 bytes**; generated WAL was
+103,812,800 bytes. Resident WAL remained at its 256 MiB baseline, and total
+temporary data was 45,371,302 bytes. These measurements are different quantities;
+adding generated WAL and temporary-file totals is not a measured simultaneous
+peak. The app used one CPU/1 GiB with a 512 MiB Node heap; peak RSS was
+614,973,440 bytes. PostgreSQL used two CPUs/2 GiB and peaked at 776,126,464 bytes.
+Neither process ran out of memory. All owned containers and their volume were
+removed. See the [publication receipt](../validation/recommendation-owner-live-20260930/local-publication-capacity.json)
+and [resource receipt](../validation/recommendation-owner-live-20260930/local-publication-resources.json).
+
+The local result does not establish completion across a remote database tunnel.
+Five bounded read-only transport probes measured roughly 144–146 milliseconds
+per round trip. The actual graph requires 104 row batches plus the generation
+insert; this WAN latency would exhaust the transaction budget. Run the reviewed
+CLI from the deployed Admin checkout using its existing private database
+connection, after verifying exact revision, dependencies and process headroom.
+No timeout expansion or local runtime upload is authorized by this result.
+
+A fixed outcome cutoff does not freeze current integrity decisions: later
+classification can add eligible sources. Publication must bind the exact
+preflight generation and source scope, and check the measured finite size
+ceilings inside its transaction before the first write. Refuse changed input;
+do not silently publish a new graph or select a smaller favorable window.
+Production publication and owner activation remain pending.
+
+The [initial admission contract](../validation/recommendation-owner-live-20260930/initial-publication-admission.json)
+binds the production generation to the dominating fixture ceilings. The reviewed
+CLI accepts `--admission-file PATH` only with `--execute`; it validates a bounded
+16 KiB regular JSON file and exact source scope before loading the database
+runtime. A changed generation or exceeded ceiling returns `admission_refused`
+and inserts no graph rows. Existing shadow callers without this optional contract
+retain their behavior. This release must pass the pinned contract; the contract
+itself does not grant production authority or replace the final capacity check.
+
+The admission change passed 49 focused unit checks, scoped lint/format and the
+full Admin typecheck. Its native PostgreSQL regression applied all 114 current
+migrations (including the independently merged storage index change), proved
+that a later eligibility decision and an exceeded ceiling each retain zero new
+graph rows, then published with a fresh exact admission. Independent scoped
+review found no actionable defects. These are local checks, not a production
+publication receipt.

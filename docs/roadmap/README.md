@@ -6,9 +6,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 29, 2026)
 
-- **Total tickets:** 748
+- **Total tickets:** 749
 - **Complete:** 559
-- **In progress:** 60
+- **In progress:** 61
 - **Not started:** 50
 - **Blocked:** 79
 - **Overdue and not complete:** 142
@@ -368,6 +368,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-557](platform/feat-557-production-database-storage-investigation.md)             | Investigate production database storage pressure                                   | nisal      | P0       | 2026-09-28 | 1    | 2026-09-28 | complete    |
 | [feat-558](platform/feat-558-production-recommendation-storage-remediation.md)         | Reduce recommendation trace storage and improve retention catch-up                 | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | complete    |
 | [feat-560](platform/feat-560-selective-legacy-trace-conversion.md)                     | Convert selected legacy traces and remove redundant stage rows                     | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | complete    |
+| [feat-574](platform/feat-574-recommendation-storage-efficiency.md)                     | Reduce recommendation event, served-item and profile storage growth                | nisal      | P0       | 2026-09-30 | 3    | 2026-10-02 | in-progress |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                        | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit Watch page-not-found telemetry                                                | codex      | P1       | —          | 2    | —          | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                                 | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
