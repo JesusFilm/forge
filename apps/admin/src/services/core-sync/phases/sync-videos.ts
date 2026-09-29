@@ -69,11 +69,18 @@ const VIDEOS_QUERY = `
       children { id }
       locked
       noIndex
-      restrictViewPlatforms
       updatedAt
     }
   }
 `
+// Never select Core's publisher-gated Video fields here
+// (`restrictViewPlatforms`, `restrictDownloadPlatforms` —
+// `t.withAuth({ isPublisher: true })` in api-media). The sync runs without a
+// publisher credential, so Core rejects the whole page with "Not authorized
+// to resolve Video.<field>" and the videos phase fails every run. Core already
+// drops watch-restricted videos, children, and parents for our
+// `x-graphql-client-name: watch` header. Pinned by
+// sync-videos.core-auth.test.ts.
 
 type CoreVideo = {
   id: string
@@ -124,7 +131,6 @@ type CoreVideo = {
   children: Array<{ id: string }>
   locked: boolean
   noIndex: boolean
-  restrictViewPlatforms: string[]
   updatedAt: string
 }
 
@@ -394,7 +400,9 @@ export async function syncVideos({
                     : null,
                   locked: video.locked,
                   noIndex: video.noIndex,
-                  restrictViewPlatforms: video.restrictViewPlatforms,
+                  // restrictViewPlatforms is deliberately omitted (see
+                  // VIDEOS_QUERY): create takes the schema default `[]`,
+                  // update leaves the stored value untouched.
                   aiMetadata: false,
                   source: "CORE",
                   primaryLanguageId,
@@ -411,7 +419,6 @@ export async function syncVideos({
                     : null,
                   locked: video.locked,
                   noIndex: video.noIndex,
-                  restrictViewPlatforms: video.restrictViewPlatforms,
                   primaryLanguageId,
                   originId,
                   updatedAt: new Date(video.updatedAt),
