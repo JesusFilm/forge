@@ -13,6 +13,25 @@ blocks:
 tags: [admin, recommendations, cowatch, experiments, ranking]
 ---
 
+## Current production disposition
+
+Owner-approved co-watch and implemented MMR were activated at **2026-09-29
+23:00:26.512 UTC** without a trial. Authenticated Admin reloaded pointer generation
+**4 / OWNER_APPROVED** with the exact active release and manifest. The first
+release's live freshness ends **2026-09-30T22:59:20.343Z**; explicit refresh and
+incumbent fallback remain in place. Feat-573 owns automatic refresh. The sections
+below retain the historical implementation and refusal record; they do not describe
+the current serving pointer. Full shadow acceptance, causal usefulness, broader
+ranking inputs and dormant exposure coverage remain separate open work.
+
+This ticket remains in progress: the bounded natural window through 23:10:08 UTC
+contained 38 issued requests but no exact direct owner provenance. Eight shared
+fallback markers comprised seven missing-composition-input reasons and one sparse
+co-watch reason. Investigate the missing input before declaring the rollout
+verified; failed owner composition persists the incumbent platform, so those
+historical rows cannot identify the missing attempted input. Full evidence and its
+attribution limits are in the activation operation record.
+
 ## Problem
 
 The owner requested live use of implemented shadow work on September 29.
@@ -171,3 +190,29 @@ CSRF guard before mutation. A canonical-origin unauthenticated diagnostic confir
 canonical-origin check and error distinction under this ticket, retaining all
 operator authorization. Pointer generation remains 1/control, no graph has been
 published and no owner release is active.
+
+## September 30 successful direct cutover
+
+The normal release chain was #2478 (direct authority), #2488 (accessible controls)
+and #2494 (canonical-origin CSRF repair). Subsequent compatible storage release
+#2495 ran on both healthy Admin roles during cutover; Watch remained healthy at
+`0a707123`. Supported stop/clear retired the empty bootstrap, with immutable
+G2/G3 audits. Two exact-source publication refusals wrote no graphs. A focused
+read-only diagnostic proved clock-dependent discovery-link expiry can change
+identity without counts; a reviewed one-use fresh-preflight/publication handoff
+retained all source, byte, transaction and process bounds and the exact generation
+recheck.
+
+The published graph contains 6,680 qualified sources, 35,632 contributions and
+9,000 edges (613 supported), from the original fixed seven-day window.
+Release `4459344d-202b-4665-aab3-75fa17920c10` selected graph
+`7a0df065a6562c562ea49809e4db4fd68d3a112729368bcfd0033679ea7270fa` through
+recent-authenticated Admin. The active response and reloaded G4 serving pointer
+agree. No study assignment, synthetic viewer evidence or causal PASS was created.
+Native production-shaped fixtures cover direct execution, source/privacy fencing,
+replacement and rollback; production supported stop/clear was observed before
+activation. We did not stop the newly activated release merely to manufacture a
+production rollback sample.
+
+Exact evidence and remaining natural issuance disposition:
+`docs/operations/recommendation-owner-live-activation-2026-09-30.md`.

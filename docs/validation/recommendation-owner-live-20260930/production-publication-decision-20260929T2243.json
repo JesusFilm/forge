@@ -1,0 +1,45 @@
+{
+  "observedAt": "2026-09-29T22:42:58.890135+00:00",
+  "availableBytes": 11164520448,
+  "reserves": {
+    "graphBytes": 68231168,
+    "ownerReleaseBytes": 32768,
+    "additionalResidentWalReserveBytes": 268435456,
+    "temporaryBytes": 45371302,
+    "concurrentMarginBytes": 134217728
+  },
+  "projectedAvailableAtPeakBytes": 10648232026,
+  "ordinaryDailyGrowthBytes": 1191328353,
+  "requestsPer24h": 7219,
+  "allRequestsChargedDirectIncrementBytes": 103491584,
+  "projectedDailyGrowthBytes": 1294819937,
+  "projectedRunwayDays": 8.22371645795874,
+  "peakMinimum5GBMet": true,
+  "priorSevenDayProjectionMet": true,
+  "longTransactions": 0,
+  "lockWaiters": 0,
+  "replicationSlots": 0,
+  "requestCapReached": false,
+  "publicationAdmission": "admitted_once_after_runtime_migration_probe_and_supported_stop_clear",
+  "claimedStorageOwnerApproval": false,
+  "futureSavingsCredit": 0,
+  "limitations": [
+    "One point-in-time observation; recheck if deployment/operation materially delays publication.",
+    "Serving increment is a measured matched fixture with one profile lineage source, not a universal upper bound.",
+    "No future purge, conversion or packed-format savings credited.",
+    "Storage task retains ownership of loaded-retention proof."
+  ],
+  "attemptId": "d4607158-17c7-4ae8-8e47-d32882971995",
+  "expectedRuntimeCommit": "4455fa50e18902d326b64ec4abcd8285ab0574de",
+  "sourceAdmissionSha256": "64ab995c65ef7eab46c184a80054866f1d2bd8705fe95f4c4bfeeda866668cea",
+  "stop": {
+    "generation": 2,
+    "auditAt": "2026-09-29T22:42:21.303Z"
+  },
+  "clear": {
+    "generation": 3,
+    "auditAt": "2026-09-29T22:42:51.890Z"
+  },
+  "approval": "Owner explicitly approved direct activation without a trial; supported Admin controls used.",
+  "recordedAt": "2026-09-29T22:43:29.951025+00:00"
+}

@@ -74,3 +74,26 @@ permission denial in both promotion clients. Test canonical HTTPS Origin with an
 internal HTTP request URL, attacker/missing/null/malformed origins, forged
 forwarded headers, and normal authentication/permission refusals. No permission
 grant or production authority change is part of this repair.
+
+## September 30 production execution
+
+Normal releases #2478, #2488 and #2494 delivered the direct path and supported
+operator repairs. On compatible storage release `8ecca9c7`, the complete bounded
+graph published at 2026-09-29T22:59:20.343Z and authenticated owner activation
+committed at 2026-09-29T23:00:26.512Z. A dashboard reload confirmed G4
+OWNER_APPROVED, exact release `4459344d-202b-4665-aab3-75fa17920c10`, and manifest
+`hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1`.
+
+Two exact-fingerprint refusals preceded publication without inserts. The
+read-only clock diagnostic proved that rolling discovery-link expiry can change
+source ownership while population counts remain unchanged; additional historical
+metadata drift was not reconstructed. The parent reviewed a single-use conditional
+preflight→publication handoff preserving the immutable window, original measured
+ceilings, private deployed CLI, deadlines, operation claims and exact generation
+recheck inside the publication transaction. It published once, with no retry loop
+or relaxed integrity rule. This changes the operational handoff, not the admission
+limits or serving contract.
+
+The initial release expires 2026-09-30T22:59:20.343Z. Automatic refresh remains
+feat-573; usefulness remains unmeasured under feat-505. See the operations record
+for actual configured authority, natural issuance and all retained limitations.
