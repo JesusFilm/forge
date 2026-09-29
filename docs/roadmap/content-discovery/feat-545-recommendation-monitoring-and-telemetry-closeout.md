@@ -38,6 +38,23 @@ The retained source discrepancies and browser-response evidence remain open,
 so this ticket is in progress. Deferring monitors does not accept those gaps or
 remove its downstream readiness dependencies.
 
+The [September 28 bounded recheck](../../operations/recommendation-evidence-telemetry-followup-2026-09-28.md)
+reproduced the indexed gaps and historical browser 503/204/status-zero counts.
+Ten later natural browser 409 resources add partial coverage, but sampled
+within-view activity cannot identify the rejected episode or establish zero
+retry amplification. No owner-accepted limitation or request-level explanation
+has closed these gaps; this ticket remains in progress.
+
+The [September 29 owner-decision record](../../operations/recommendation-evidence-closeout-decisions-2026-09-29.md)
+reconciles retained arithmetic and enumerates nine separate pending dispositions:
+Web/Admin indexed deficits, crawler rejection deficit, initial-evidence envelope,
+browser 503, browser 204s, status-zero transport observations, historical terminal
+retry coverage, and later terminal sample coverage. Each states missing evidence,
+operational consequence, proposed bounded limitation and affected gates. The reviewed aggregate artifacts cannot
+recover exact historical joins; upstream retention is not assumed. No new
+production queries or runtime changes were justified. **None of the proposed
+limitations has owner acceptance**; status and downstream blocks remain unchanged.
+
 ## Entry Points — Read These First
 
 1. `docs/operations/recommendation-evidence-acceptance-2026-09-23.md` and

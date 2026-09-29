@@ -43,7 +43,12 @@ const recommendationMigrations = readdirSync(migrationRoot)
     return (
       (ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")) ||
       name === "0082_user_recommendation_identity" ||
-      name === "0098_recommendation_viewing_mode"
+      name === "0098_recommendation_viewing_mode" ||
+      name === "0100_recommendation_candidate_compact_trace" ||
+      name === "0101_recommendation_candidate_compact_trace_validate" ||
+      name === "0102_recommendation_candidate_stage_duplicate_index_drop" ||
+      name === "0103_recommendation_impression_visibility_capability" ||
+      name === "0104_recommendation_cowatch_shadow"
     )
   })
   .sort()
@@ -1014,30 +1019,44 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
     it("keeps the transaction budget under concurrent reads and durable writes", async () => {
       let stopped = false
+      let reconciling = false
       let writes = 0
+      let overlappingWrites = 0
       const workload = (async () => {
         while (!stopped) {
-          await client.query(
+          const read = await client.query(
             `SELECT contribution_count FROM recommendation_profile_projection_generation WHERE id='g-1'`,
           )
-          await client.query(
+          expect(read.rows).toHaveLength(1)
+          const write = await client.query(
             `UPDATE recommendation_profile SET updated_at=updated_at WHERE id='p-1'`,
           )
+          expect(write.rowCount).toBe(1)
           writes++
+          if (reconciling) overlappingWrites++
           await new Promise((resolve) => setTimeout(resolve, 10))
         }
       })()
       try {
-        for (let i = 0; i < 3; i++) {
+        // Keep the load running until it has completed the required work during
+        // reconciliation. A fixed three-pass window makes faster batches fail
+        // merely because the independent writer has less time to finish.
+        for (let i = 0; i < 3 || overlappingWrites <= 10; i++) {
+          const start = performance.now()
+          reconciling = true
           await expect(
             runRecommendationProfileReconciliationBatch({ prisma }, now),
           ).resolves.toMatchObject({ affectedPointers: 0, locked: false })
+          reconciling = false
+          expect(performance.now() - start).toBeLessThan(5_000)
         }
       } finally {
+        reconciling = false
         stopped = true
         await workload
       }
       expect(writes).toBeGreaterThan(10)
+      expect(overlappingWrites).toBeGreaterThan(10)
     }, 20_000)
 
     it("keeps all four canonical lineage rules and selects only unfenced current pointers in order", async () => {

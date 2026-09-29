@@ -1,0 +1,13 @@
+{
+  "exitCode": 0,
+  "matchedSanitizedLogs": [
+    {
+      "timestamp": "2026-09-28T20:57:23.707434194Z",
+      "codes": ["57014"],
+      "statementTimeout": true,
+      "transactionClosed": false
+    }
+  ],
+  "source": "bounded Admin service error filter only",
+  "rawOutputRetained": false
+}

@@ -384,6 +384,12 @@ Use these, in this order:
    count crimson pixels against white pixels inside the mark's tile — instead
    of judging them by eye.
 
+   A one-frame fault lasts about 16.7 ms at 60 Hz, so 12 fps sees it only
+   about one time in five. For a one-frame fault, sample every frame
+   (`fps=60`) and read a brightness value for each frame (`signalstats`
+   YAVG). See the frame check in
+   [native-animated-stop-report-overwrites-immediate-setvalue.md](../ui-bugs/native-animated-stop-report-overwrites-immediate-setvalue.md).
+
 2. **Burst lossless screenshots** for measurement questions. `recordVideo`
    emits H.264, and its compression is too lossy to measure fine detail such as
    the wobble of a gradient band. Use repeated

@@ -1,14 +1,16 @@
 ---
 title: "Bind eval manifest identity through execution and evidence publication"
 date: 2026-08-10
+last_updated: "2026-09-29"
 category: architecture-patterns
-module: seeker-evals
+module: "Seeker and recommendation shadow evaluations"
 problem_type: architecture_pattern
 component: testing_framework
 severity: high
 applies_when:
   - "An evaluation manifest declares the prompt, model, question set, judge, retrieval, decoding, runtime, or comparison axis"
   - "Evaluation attempts can reuse prior evidence or publish immutable completion artifacts"
+  - "Operator retries must preserve evaluation parameters through terminal workflow receipts"
 tags:
   - seeker
   - evals
@@ -16,6 +18,8 @@ tags:
   - reproducibility
   - immutable-evidence
   - schema-validation
+  - exact-retry
+  - workflow-receipts
 related_components:
   - assistant
   - development_workflow
@@ -180,6 +184,46 @@ marker after a failed secret or inventory check.
 Instead, validate required paths, reject unsafe content, compute hashes, parse
 the completion contract, and publish `completion.json` as the final exclusive
 write.
+
+### Retry identity lost at invocation or terminalization
+
+The co-watch CLI previously generated a fresh evaluation UUID and moving 24-hour
+window on every invocation. An operator retry after an uncertain response could
+therefore create a different evaluation despite the service's exact-retry checks.
+Separately, successful and fenced jobs replaced ledger `details` without
+`minimumRuns`; later retries could no longer compare that completion threshold.
+These were code-level defects, not observed production duplicate dispatches.
+
+[PR #2448](https://github.com/JesusFilm/forge/pull/2448) closes both identity gaps:
+
+- `apps/admin/src/scripts/run-recommendation-cowatch-shadow-evaluation.ts`
+  requires an explicit evaluation UUID, window, sample size and minimum-run
+  threshold. It validates and emits that tuple before importing or dispatching
+  the runtime. Retain the tuple before execution and reuse it unchanged after
+  uncertainty; ordinary retention and window validation still apply. Unexpected
+  runtime errors produce a generic diagnostic rather than exposing private data.
+- `apps/admin/src/services/recommendations/shadow-evaluation/job.ts` preserves
+  `minimumRuns` when replacing successful or fenced terminal details. The failed
+  path already leaves those details intact. The existing operator can then
+  compare the original threshold after terminalization. Historical receipts
+  already missing the field are not repaired.
+
+The regression must cross both boundaries: advance the clock while reusing CLI
+arguments, and retry both `SUCCEEDED` and `SKIPPED` receipts with the original
+threshold and a conflicting threshold. Assert that identical retries return
+the existing workflow, conflicts reject, and neither dispatches new work.
+The fix passed 44 focused CLI, workflow and operator tests; the
+[operational record](../../operations/recommendation-cowatch-preflight-2026-09-29.md)
+retains the broader validation and production preflight limits.
+
+Exact retry comparison does not provide atomic dispatch. Concurrent same-ID
+calls and a crash between ledger creation and runtime attachment remain separate
+uncertainties tracked by
+[feat-563](../../roadmap/content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md).
+Serialize invocations, inspect ledger and runtime evidence after an uncertain
+result, and never mint another ID to bypass it. Preserving the tuple establishes
+what work was requested, not that exactly one worker started or that production
+evaluation gates passed.
 
 ## Related
 

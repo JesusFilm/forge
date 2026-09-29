@@ -10,8 +10,9 @@
     "db:migrate:status": "prisma migrate status",
     "db:provision-readonly": "tsx scripts/provision-readonly.ts",
     "db:verify-readonly": "tsx scripts/verify-readonly.ts",
+    "db:verify-consumer-roles": "tsx scripts/verify-consumer-roles.ts",
     "db:schema:check": "DATABASE_URL=${DATABASE_URL:-postgresql://forge:forge@localhost:5435/forge_rag} prisma validate && vitest run tests/schema.test.mjs tests/schema-drift.test.ts",
-    "db:verify": "vitest run --no-file-parallelism tests/database.integration.test.ts tests/adapters.integration.test.ts tests/raw-document-promotion.integration.test.ts tests/readonly-role.integration.test.ts tests/consumer-registry.integration.test.ts",
+    "db:verify": "vitest run --no-file-parallelism tests/database.integration.test.ts tests/adapters.integration.test.ts tests/raw-document-promotion.integration.test.ts tests/readonly-role.integration.test.ts tests/consumer-registry.integration.test.ts tests/consumer-access.integration.test.ts tests/consumer-access-roles.integration.test.ts tests/consumer-http-lifecycle.integration.test.ts src/adapters/postgres/consumer-audit.integration.test.ts src/adapters/postgres/portal-sessions.integration.test.ts",
     "db:copy-corpus": "tsx scripts/copy-corpus.ts",
     "raws:promote": "tsx scripts/promote-raw-documents.ts",
     "raws:verify-promotion": "tsx scripts/verify-raw-document-promotion.ts",
@@ -44,13 +45,15 @@
     "pages:assemble": "tsx scripts/assemble-pages.ts",
     "status:remove-source": "tsx scripts/source-status.ts remove-source",
     "start": "tsx scripts/serve.ts",
-    "test": "pnpm depcruise && vitest run --exclude tests/database.integration.test.ts --exclude tests/adapters.integration.test.ts --exclude tests/raw-document-promotion.integration.test.ts --exclude tests/consumer-registry.integration.test.ts",
+    "test": "pnpm depcruise && vitest run --exclude tests/database.integration.test.ts --exclude tests/adapters.integration.test.ts --exclude tests/raw-document-promotion.integration.test.ts --exclude tests/consumer-registry.integration.test.ts --exclude tests/consumer-access.integration.test.ts --exclude tests/consumer-access-roles.integration.test.ts --exclude tests/consumer-http-lifecycle.integration.test.ts",
     "test:core": "vitest run src/acquisition/core.test.ts src/indexing src/retrieval src/fakes",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "portal:dev": "tsx scripts/portal-dev.ts",
+    "portal:verify": "playwright test --config playwright.portal.config.ts"
   },
   "dependencies": {
-    "@hono/node-server": "catalog:",
     "@forge/rag-contracts": "workspace:*",
+    "@hono/node-server": "catalog:",
     "@prisma/client": "^6",
     "hono": "catalog:",
     "node-html-parser": "^7.0.1",
@@ -59,6 +62,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "1.61.1",
     "@types/node": "^22.0.0",
     "dependency-cruiser": "^17.4.0",
     "prisma": "^6",

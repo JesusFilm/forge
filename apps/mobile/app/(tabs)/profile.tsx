@@ -1,29 +1,22 @@
-import { ScrollView, View } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
-
+import { LibraryDownloads } from "../../src/components/library/LibraryDownloads"
 import { AccountSection } from "../../src/components/profile/AccountSection"
 import { NotificationTestIdSection } from "../../src/components/profile/NotificationTestIdSection"
-import { ProfileLinksSection } from "../../src/components/profile/ProfileLinksSection"
-import { useTabBarClearance } from "../../src/lib/tabBar"
-import { layout } from "../../src/styles/shared"
+import { PrivacyPolicyButton } from "../../src/components/profile/PrivacyPolicyButton"
 
+// ProfileScreen hides the other external links (socials, Give, About,
+// Contact, newsletter, Legal) for now. ProfileLinksSection stays on disk so
+// they can return.
 export default function ProfileScreen() {
-  const insets = useSafeAreaInsets()
-  const tabBarClearance = useTabBarClearance()
-
   return (
-    <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: 16,
-          paddingBottom: 24 + tabBarClearance,
-        }}
-        scrollIndicatorInsets={{ bottom: tabBarClearance }}
-      >
-        <AccountSection />
-        <NotificationTestIdSection />
-        <ProfileLinksSection />
-      </ScrollView>
-    </View>
+    <LibraryDownloads
+      header={
+        <>
+          <AccountSection />
+          <NotificationTestIdSection />
+        </>
+      }
+      title="My Downloads"
+      footer={<PrivacyPolicyButton />}
+    />
   )
 }

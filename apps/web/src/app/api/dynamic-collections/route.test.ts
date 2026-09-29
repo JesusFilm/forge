@@ -1,6 +1,10 @@
 /** @vitest-environment node */
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
+vi.mock("@/env", () => ({
+  env: { REVALIDATION_SECRET: "dynamic-feed-manifest-test-secret" },
+}))
+import { verifyWatchSurfaceManifest } from "@/lib/watch-surface-manifest.server"
 
 const { createSignature, edgeHeaders, getPage, verifySignature } = vi.hoisted(
   () => ({
@@ -38,6 +42,53 @@ function request(query: string) {
 }
 
 describe("GET /watch/api/dynamic-collections", () => {
+  it("issues immutable per-section candidate authority including the rendered CTA", async () => {
+    getPage.mockResolvedValue({
+      sections: [
+        {
+          id: "collection-1",
+          slug: "jesus",
+          title: "Jesus",
+          description: null,
+          items: [
+            {
+              id: "child",
+              coreId: "child",
+              title: "Birth",
+              videoSlug: "birth",
+              languageSlug: "spanish-castilian",
+              label: null,
+              imageUrl: null,
+              blurDataUrl: null,
+              dominantColor: null,
+              muxPlaybackId: null,
+            },
+          ],
+        },
+      ],
+      endCursor: null,
+      hasNextPage: false,
+    })
+    const response = await GET(
+      request("locale=en&languageSlug=english&first=3&cardsPerParent=12"),
+    )
+    expect(response.status).toBe(200)
+    const payload = await response.json()
+    const manifest = verifyWatchSurfaceManifest(
+      payload.sections[0].surfaceManifest,
+    )
+    expect(manifest).toMatchObject({
+      surface: "watch-home",
+      block: "authored",
+      presentation: "authored-block",
+      placement: "dynamic-collection-1",
+      items: [
+        { position: 0, itemPath: "/watch/jesus.html" },
+        { position: 1, itemPath: "/watch/birth.html/spanish-castilian.html" },
+      ],
+    })
+    expect(response.headers.get("cache-control")).toBe("no-store")
+  })
   beforeEach(() => {
     vi.restoreAllMocks()
     getPage.mockReset()

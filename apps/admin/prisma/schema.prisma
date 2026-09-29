@@ -3776,6 +3776,8 @@ model RecommendationCandidateRun {
   shortfallReason            String?               @map("shortfall_reason") @db.VarChar(64)
   evidenceComplete           Boolean               @map("evidence_complete")
   fallbackReason             String?               @map("fallback_reason") @db.VarChar(64)
+  traceFormatVersion         Int?                  @map("trace_format_version")
+  tracePayload               Json?                 @map("trace_payload") @db.JsonB
   createdAt                  DateTime              @default(now()) @map("created_at")
   expiresAt                  DateTime              @map("expires_at")
 
@@ -3839,7 +3841,6 @@ model RecommendationCandidateStageEvidence {
   expiresAt          DateTime                   @map("expires_at")
 
   @@unique([runId, stage, ordinal], map: "recommendation_candidate_stage_ordinal_key")
-  @@index([runId, stage, ordinal], map: "recommendation_candidate_stage_run_stage_idx")
   @@index([expiresAt, id], map: "recommendation_candidate_stage_expiry_idx")
   @@map("recommendation_candidate_stage_evidence")
 }
@@ -4390,6 +4391,7 @@ model RecommendationImpression {
   eventId          String                   @map("event_id") @db.VarChar(191)
   payloadDigest    String                   @map("payload_digest") @db.Char(64)
   visibilityPolicy String                   @map("visibility_policy") @db.VarChar(64)
+  visibilityCapability String               @default("unknown") @map("visibility_capability") @db.VarChar(32)
   occurredAt       DateTime                 @map("occurred_at")
   receivedAt       DateTime                 @default(now()) @map("received_at")
   expiresAt        DateTime                 @map("expires_at")
@@ -4399,6 +4401,33 @@ model RecommendationImpression {
   @@index([requestId], map: "recommendation_impression_request_idx")
   @@index([expiresAt])
   @@map("recommendation_impression")
+}
+
+/// Anonymous Watch card evidence. windowId is random per block mount and has no
+/// viewer, session, cookie, IP, or capability binding. Public target paths only.
+model WatchSurfaceExposure {
+  id                   String   @id @default(cuid())
+  eventId              String   @unique @map("event_id") @db.Uuid
+  windowId             String   @map("window_id") @db.Uuid
+  surface              String   @db.VarChar(40)
+  block                String   @db.VarChar(40)
+  presentation         String   @db.VarChar(40)
+  placement            String   @db.VarChar(64)
+  policyVersion        String   @map("policy_version") @db.VarChar(40)
+  position             Int
+  itemPath             String   @map("item_path") @db.VarChar(512)
+  kind                 String   @db.VarChar(16)
+  visibilityCapability String?  @map("visibility_capability") @db.VarChar(32)
+  duplicateCount       Int      @default(0) @map("duplicate_count")
+  occurredAt           DateTime @map("occurred_at")
+  receivedAt           DateTime @default(now()) @map("received_at")
+  expiresAt            DateTime @map("expires_at")
+
+  @@index([windowId, surface, block, presentation, placement, position, itemPath, kind], map: "watch_surface_exposure_window_item_idx")
+  @@index([surface, block, presentation, position, occurredAt], map: "watch_surface_exposure_aggregate_idx")
+  @@index([occurredAt, windowId], map: "watch_surface_exposure_window_cohort_idx")
+  @@index([expiresAt], map: "watch_surface_exposure_expiry_idx")
+  @@map("watch_surface_exposure")
 }
 
 /// Selection and one-use handoff authority commit together. The browser keeps
@@ -4477,6 +4506,7 @@ model RecommendationPlaybackEpisode {
   transportReplayReceipts RecommendationPlaybackTransportReplayReceipt[] @relation("RecommendationPlaybackTransportReplayEpisode")
   traceAccessAudits       RecommendationTraceAccessAudit[]               @relation("RecommendationTraceAccessEpisode")
   viewingModeEvidence     RecommendationViewingModeEvidence?
+  cowatchSuppression      RecommendationCowatchSuppression?
 
   @@unique([requestId, itemId, id], map: "recommendation_episode_request_item_id_key")
   @@unique([requestId, itemId, selectionId], map: "recommendation_episode_selection_lineage_key")
@@ -4600,6 +4630,9 @@ model RecommendationOutcomeRevision {
 
   eligibilityDecisions           RecommendationEligibilityDecision[]           @relation("RecommendationEligibilityOutcome")
   profileProjectionContributions RecommendationProfileProjectionContribution[]
+  cowatchSourceRows RecommendationCowatchSourceContribution[]
+  cowatchSourceContributions RecommendationCowatchContribution[] @relation("CowatchSourceOutcome")
+  cowatchTargetContributions RecommendationCowatchContribution[] @relation("CowatchTargetOutcome")
 
   @@unique([episodeId, classifierVersion, revision], map: "recommendation_outcome_episode_classifier_revision_key")
   @@unique([episodeId, classifierVersion, factWatermark, inputDigest], map: "recommendation_outcome_input_key")
@@ -4715,6 +4748,7 @@ model RecommendationEligibilityDecision {
   expiresAt             DateTime                              @map("expires_at")
 
   profileProjectionContributions RecommendationProfileProjectionContribution[]
+  cowatchSourceRows RecommendationCowatchSourceContribution[]
 
   @@unique([sourceKey, policyVersion, revision], map: "recommendation_eligibility_source_policy_revision_key")
   // Current-source lookup indexes are migration-owned partial indexes.
@@ -4841,6 +4875,8 @@ model RecommendationProfile {
   projectionPointers    RecommendationProfileProjectionPointer[]
   projectionRuns        RecommendationProfileProjectionRun[]
   viewingModeEvidence   RecommendationViewingModeEvidence[]
+  cowatchSourceRows RecommendationCowatchSourceContribution[]
+  cowatchContributions RecommendationCowatchContribution[]
 
   @@index([state, updatedAt], map: "recommendation_profile_state_updated_idx")
   @@index([erasureState, erasureRequestedAt], map: "recommendation_profile_erasure_idx")
@@ -5868,7 +5904,7 @@ model ShortScheduleDispatch {
 
 // Localized push campaigns (feat-524). Push owns its own tables; the
 // recommendation tables are untouched. Partial unique indexes and CHECK
-// constraints live in migration 0100 because Prisma cannot model them.
+// constraints live in migration 0106 because Prisma cannot model them.
 
 enum PushPlatform {
   IOS     @map("ios")
@@ -5946,7 +5982,7 @@ enum PushDeliveryStatus {
 
 /// One phone's push address. `viewerDigest` is the recommendation viewer token
 /// digest; an identity erasure or expiry nulls it and the registration stays.
-/// Migration 0100 adds the active and retired partial indexes the audience and
+/// Migration 0106 adds the active and retired partial indexes the audience and
 /// the purge read.
 model PushRegistration {
   id                String                 @id @default(cuid())
@@ -5957,7 +5993,7 @@ model PushRegistration {
   viewerDigest      String?                @map("viewer_digest") @db.Char(64)
   /// An identifier the app mints once per install and keeps in its own store.
   /// A token rotation on the same install carries the same id; a reinstall
-  /// does not. Migration 0100 adds the partial index the supersede pass reads.
+  /// does not. Migration 0106 adds the partial index the supersede pass reads.
   installId         String?                @map("install_id") @db.VarChar(64)
   platform          PushPlatform
   appBuild          String                 @map("app_build") @db.VarChar(64)
@@ -6065,7 +6101,7 @@ model PushCampaignZone {
 
 /// One campaign's row for one phone. `error` holds the provider's error code
 /// and an admin classification only, because the provider's message embeds the
-/// push token. Migration 0100 adds the daily-claim and live-uniqueness partial
+/// push token. Migration 0106 adds the daily-claim and live-uniqueness partial
 /// indexes.
 model PushDelivery {
   id             String             @id @default(cuid())
@@ -6148,4 +6184,158 @@ model PushAttribution {
   @@index([registrationId])
   @@index([viewerDigest])
   @@map("push_attribution")
+}
+
+/// Shadow-only population graph publication. Its edges never authorize live
+/// delivery. A changed source contribution count fences inspection/use.
+model RecommendationCowatchGeneration {
+  id                    String                             @id @db.Char(64)
+  projectionVersion     String                             @map("projection_version") @db.VarChar(64)
+  featureVersion        String                             @map("feature_version") @db.VarChar(64)
+  sourceCount           Int                                @map("source_count")
+  contributionCount     Int                                @map("contribution_count")
+  edgeCount             Int                                @map("edge_count")
+  distinctViewerCount   Int                                @map("distinct_viewer_count")
+  windowEnd             DateTime                           @map("window_end")
+  terminalDecision      String                             @map("terminal_decision") @db.VarChar(48)
+  decisionReason        String                             @map("decision_reason") @db.VarChar(96)
+  publishedAt           DateTime                           @default(now()) @map("published_at")
+  expiresAt             DateTime                           @map("expires_at")
+  sources               RecommendationCowatchSourceContribution[]
+  contributions         RecommendationCowatchContribution[]
+  edges                 RecommendationCowatchEdge[]
+
+  purpose          String @default("shadow_population_graph") @db.VarChar(64)
+  identityClass    String @default("aggregate_identity_free") @map("identity_class") @db.VarChar(64)
+  accessClass      String @default("recommendation_admin_aggregates") @map("access_class") @db.VarChar(64)
+  ingestionHealth  String @default("manual_bounded_snapshot") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior String @default("expire_generation_cascade") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior String @default("observed_live_baseline") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays    Int    @default(29) @map("retention_days")
+
+  @@index([publishedAt(sort: Desc)], map: "recommendation_cowatch_generation_published_idx")
+  @@index([expiresAt], map: "recommendation_cowatch_generation_expiry_idx")
+  @@map("recommendation_cowatch_generation")
+}
+
+/// One current integrity-eligible finalized outcome revision per generation.
+/// Singleton rows are retained because they change popularity denominators.
+model RecommendationCowatchSourceContribution {
+  id                 String                          @id @default(cuid())
+  generationId       String                          @map("generation_id") @db.Char(64)
+  generation         RecommendationCowatchGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  outcomeId          String                          @map("outcome_id")
+  outcome            RecommendationOutcomeRevision   @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  eligibilityDecisionId String                       @map("eligibility_decision_id")
+  eligibilityDecision   RecommendationEligibilityDecision @relation(fields: [eligibilityDecisionId], references: [id], onDelete: Cascade)
+  eligibilityRevision Int                            @map("eligibility_revision")
+  eligibilityPolicyVersion String                     @map("eligibility_policy_version") @db.VarChar(64)
+  viewerProfileId    String?                         @map("viewer_profile_id")
+  viewerProfile      RecommendationProfile?          @relation(fields: [viewerProfileId], references: [id], onDelete: Cascade)
+  mediaId            String                          @map("media_id") @db.VarChar(191)
+  sessionDigest      String                          @map("session_digest") @db.Char(64)
+  viewerKeyDigest    String                          @map("viewer_key_digest") @db.Char(64)
+  qualityWeight      Float                           @map("quality_weight")
+  occurredAt         DateTime                        @map("occurred_at")
+  expiresAt          DateTime                        @map("expires_at")
+
+  purpose          String @default("exact_outcome_lineage") @db.VarChar(64)
+  identityClass    String @default("private_pseudonymous") @map("identity_class") @db.VarChar(64)
+  accessClass      String @default("recommendation_projection_service") @map("access_class") @db.VarChar(64)
+  ingestionHealth  String @default("current_eligible_outcome") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior String @default("cascade_outcome_or_profile") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior String @default("observed_live_baseline") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays    Int    @default(29) @map("retention_days")
+
+  @@unique([generationId, outcomeId], map: "recommendation_cowatch_source_generation_outcome_key")
+  @@index([viewerProfileId], map: "recommendation_cowatch_source_profile_idx")
+  @@index([generationId, mediaId], map: "recommendation_cowatch_source_media_idx")
+  @@index([expiresAt], map: "recommendation_cowatch_source_expiry_idx")
+  @@map("recommendation_cowatch_source_contribution")
+}
+
+/// Exact eligible episode-pair lineage. Outcome and profile deletion cascades
+/// remove influence; current generations are then fenced until rebuilt.
+model RecommendationCowatchContribution {
+  id                    String                          @id @default(cuid())
+  generationId          String                          @map("generation_id") @db.Char(64)
+  generation            RecommendationCowatchGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  sourceOutcomeId       String                          @map("source_outcome_id")
+  sourceOutcome         RecommendationOutcomeRevision   @relation("CowatchSourceOutcome", fields: [sourceOutcomeId], references: [id], onDelete: Cascade)
+  targetOutcomeId       String                          @map("target_outcome_id")
+  targetOutcome         RecommendationOutcomeRevision   @relation("CowatchTargetOutcome", fields: [targetOutcomeId], references: [id], onDelete: Cascade)
+  viewerProfileId       String?                         @map("viewer_profile_id")
+  viewerProfile         RecommendationProfile?          @relation(fields: [viewerProfileId], references: [id], onDelete: Cascade)
+  sourceMediaId         String                          @map("source_media_id") @db.VarChar(191)
+  targetMediaId         String                          @map("target_media_id") @db.VarChar(191)
+  sessionDigest         String                          @map("session_digest") @db.Char(64)
+  viewerKeyDigest       String                          @map("viewer_key_digest") @db.Char(64)
+  gapMs                 Int                             @map("gap_ms")
+  qualityWeight         Float                           @map("quality_weight")
+  recencyWeight         Float                           @map("recency_weight")
+  effectiveWeight       Float                           @map("effective_weight")
+  expiresAt             DateTime                        @map("expires_at")
+
+  purpose          String @default("directional_pair_lineage") @db.VarChar(64)
+  identityClass    String @default("private_pseudonymous") @map("identity_class") @db.VarChar(64)
+  accessClass      String @default("recommendation_projection_service") @map("access_class") @db.VarChar(64)
+  ingestionHealth  String @default("bounded_pair_projection") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior String @default("cascade_outcome_or_profile") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior String @default("observed_live_baseline") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays    Int    @default(29) @map("retention_days")
+
+  @@unique([generationId, sourceOutcomeId, targetOutcomeId], map: "recommendation_cowatch_contribution_pair_key")
+  @@index([generationId, sourceMediaId, targetMediaId], map: "recommendation_cowatch_contribution_edge_idx")
+  @@index([viewerProfileId], map: "recommendation_cowatch_contribution_profile_idx")
+  @@index([expiresAt], map: "recommendation_cowatch_contribution_expiry_idx")
+  @@map("recommendation_cowatch_contribution")
+}
+
+/// Immutable directional feature values for a single graph generation.
+model RecommendationCowatchEdge {
+  id                       String                          @id @default(cuid())
+  generationId             String                          @map("generation_id") @db.Char(64)
+  generation               RecommendationCowatchGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  sourceMediaId            String                          @map("source_media_id") @db.VarChar(191)
+  targetMediaId            String                          @map("target_media_id") @db.VarChar(191)
+  sessionSupport           Int                             @map("session_support")
+  distinctViewerSupport    Int                             @map("distinct_viewer_support")
+  confidence               Float
+  popularityCorrectedLift  Float                           @map("popularity_corrected_lift")
+  recencyWeight            Float                           @map("recency_weight")
+  qualityWeight            Float                           @map("quality_weight")
+  effectiveWeight          Float                           @map("effective_weight")
+  contamination            Float
+  eligible                 Boolean
+
+  purpose          String @default("directional_feature_contract") @db.VarChar(64)
+  identityClass    String @default("aggregate_identity_free") @map("identity_class") @db.VarChar(64)
+  accessClass      String @default("recommendation_admin_aggregates") @map("access_class") @db.VarChar(64)
+  ingestionHealth  String @default("immutable_generation_publish") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior String @default("cascade_generation") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior String @default("observed_live_baseline") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays    Int    @default(29) @map("retention_days")
+
+  @@unique([generationId, sourceMediaId, targetMediaId], map: "recommendation_cowatch_edge_direction_key")
+  @@index([generationId, eligible, sourceMediaId], map: "recommendation_cowatch_edge_anchor_idx")
+  @@map("recommendation_cowatch_edge")
+}
+
+/// Outcome-scoped erasure marker, deliberately detached from the erased profile.
+/// It expires with the raw outcome and prevents a rebuild from reimporting it.
+model RecommendationCowatchSuppression {
+  episodeId String                        @id @map("episode_id")
+  episode   RecommendationPlaybackEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  expiresAt       DateTime                      @map("expires_at")
+
+  purpose          String @default("privacy_erasure_fence") @db.VarChar(64)
+  identityClass    String @default("private_episode_scoped") @map("identity_class") @db.VarChar(64)
+  accessClass      String @default("recommendation_privacy_service") @map("access_class") @db.VarChar(64)
+  ingestionHealth  String @default("profile_erasure_transaction") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior String @default("cascade_episode_expiry") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior String @default("observed_live_baseline") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays    Int    @default(29) @map("retention_days")
+
+  @@index([expiresAt], map: "recommendation_cowatch_suppression_expiry_idx")
+  @@map("recommendation_cowatch_suppression")
 }

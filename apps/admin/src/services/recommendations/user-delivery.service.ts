@@ -1,3 +1,8 @@
+import {
+  recommendationTraffic,
+  observeRecommendationTraffic,
+  CONTEXTUAL_RECOMMENDATION_CAPABILITY,
+} from "./traffic"
 import { observeRecommendationRuntime } from "@/lib/recommendation-runtime-observation"
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
@@ -194,15 +199,21 @@ export class UserRecommendationDeliveryService {
   deliver(
     input: Omit<DeliveryInput, "seedMediaId"> & { count?: number },
   ): Promise<UserRecommendationDelivery> {
-    return observeRecommendationRuntime("for_you", () =>
-      this.deliverObserved(input),
-    )
+    const traffic = recommendationTraffic(input)
+    observeRecommendationTraffic("for_you", traffic, "attempted")
+    return observeRecommendationRuntime("for_you", async () => {
+      const response = await this.deliverObserved(input)
+      if (response.requestId)
+        observeRecommendationTraffic("for_you", traffic, "committed")
+      return response
+    })
   }
 
   private async deliverObserved(
     input: Omit<DeliveryInput, "seedMediaId"> & { count?: number },
   ): Promise<UserRecommendationDelivery> {
     assertWebRecommendationCaller(input.caller)
+    const traffic = recommendationTraffic(input)
     const count = input.count ?? 6
     const startedAt = Date.now()
     let stage = "validation"
@@ -241,12 +252,65 @@ export class UserRecommendationDeliveryService {
       !Number.isInteger(count) ||
       count < 1 ||
       count > MAX_USER_RECOMMENDATIONS ||
-      !/^[a-f0-9]{64}$/.test(input.sessionDigest) ||
+      (traffic.disposition === "measured" &&
+        !/^[a-f0-9]{64}$/.test(input.sessionDigest)) ||
       !/^[a-z0-9-]{1,64}$/.test(input.audioLanguageSlug) ||
       !input.locale ||
       input.locale.length > 32
     )
       return unavailable("invalid_input")
+    if (traffic.disposition !== "measured") {
+      observeRecommendationTraffic("for_you", traffic, "persistence_avoided")
+      if (traffic.disposition === "deferred") {
+        observeRecommendationTraffic("for_you", traffic, "deferred")
+        return unavailable("traffic_deferred")
+      }
+      try {
+        const pool = await withinDeadline(
+          () =>
+            this.deps.curated({
+              locale: input.locale,
+              audioLanguageSlug: input.audioLanguageSlug,
+              interestVideoIds: [],
+              limit: MAX_USER_RECOMMENDATIONS,
+              deadlineAt: Date.now() + 1200,
+            }),
+          Date.now() + 1200,
+          Date.now,
+        )
+        const selected = composeUserRecommendations([], pool.items, [], count)
+        const response: UserRecommendationDelivery = {
+          contractVersion: USER_RECOMMENDATION_CONTRACT,
+          surfaceVersion: USER_RECOMMENDATION_SURFACE,
+          requestId: null,
+          result: selected.length ? "served" : "unavailable",
+          reason: "traffic_contextual",
+          expiresAt: null,
+          requestedCount: count,
+          profileCount: 0,
+          curatedCount: selected.length,
+          cohort: "cold_start",
+          poolVersion: pool.version,
+          items: selected.map((candidate, index) => ({
+            ...publicCandidate(candidate),
+            id: `contextual:${index + 1}`,
+            position: index,
+            targetMediaId: candidate.videoId,
+            canonicalHref: `/watch${buildCanonicalWatchVideoPath(candidate.videoSlug, input.audioLanguageSlug)}`,
+            capability: CONTEXTUAL_RECOMMENDATION_CAPABILITY,
+          })),
+        }
+        if (
+          Buffer.byteLength(JSON.stringify(response)) >
+          MAX_DELIVERY_RESPONSE_BYTES
+        )
+          return unavailable("response_too_large")
+        observeRecommendationTraffic("for_you", traffic, "contextual_fallback")
+        return observe(response)
+      } catch {
+        return unavailable("contextual_unavailable")
+      }
+    }
     if (!this.deps.enabled) return unavailable("environment_disabled")
     const start = Date.now(),
       deadline = start + 1500,

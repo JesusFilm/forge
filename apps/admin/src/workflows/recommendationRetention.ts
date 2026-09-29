@@ -9,6 +9,7 @@ export const PUSH_RETENTION_CATCH_UP_WINDOW_MS = 30_000
 type RecommendationRetentionCatchUpResult = Readonly<{
   batchesProcessed: number
   overdueAfterRun: boolean
+  catchUpNeeded?: boolean
 }>
 
 type PushRetentionCatchUpResult = RecommendationRetentionCatchUpResult
@@ -44,8 +45,8 @@ export async function runRecommendationRetentionScheduler(
       catchUp = await stepRunScheduledRecommendationRetention()
     } catch {
       // The bounded retry policy has been exhausted and every failed attempt
-      // has its own purge ledger. Keep the durable daily scheduler alive so a
-      // transient outage does not permanently stop privacy retention.
+      // has its own purge ledger. Continue shortly so an outage or held lock
+      // cannot defer expired work until the next daily run.
     }
     // Above the catch-up branch, so a long privacy backlog on the 60s cadence
     // cannot starve the push 90-day purge.
@@ -55,7 +56,9 @@ export async function runRecommendationRetentionScheduler(
       // The push purge owns its own ledger row and advisory lock. Its failure
       // must never retry the privacy purge or stop the daily scheduler.
     }
-    if (catchUp?.overdueAfterRun) {
+    // Durable workflow steps created before batchLimitReached existed can be
+    // replayed after a deploy. Keep their prior overdue continuation behavior.
+    if (catchUp == null || (catchUp.catchUpNeeded ?? catchUp.overdueAfterRun)) {
       const next = await stepNextRecommendationRetentionCatchUpRun(input)
       await sleep(next)
       continue
@@ -110,6 +113,7 @@ export async function stepRunScheduledRecommendationRetention(): Promise<Recomme
   const startedAt = Date.now()
   let batchesProcessed = 0
   let overdueAfterRun = false
+  let catchUpNeeded = false
   do {
     const attempt = await runRecommendationRetentionFromScheduler()
     if (!attempt.ok || !attempt.result) {
@@ -117,14 +121,24 @@ export async function stepRunScheduledRecommendationRetention(): Promise<Recomme
         retryAfter: "5m",
       })
     }
+    if (attempt.result.status === "skipped") {
+      throw new RetryableError(
+        "Recommendation retention purge lock unavailable",
+        {
+          retryAfter: "5m",
+        },
+      )
+    }
     batchesProcessed += 1
     overdueAfterRun = attempt.result.overdueAfterRun
+    catchUpNeeded =
+      attempt.result.batchLimitReached ?? attempt.result.overdueAfterRun
   } while (
-    overdueAfterRun &&
+    catchUpNeeded &&
     batchesProcessed < RECOMMENDATION_RETENTION_CATCH_UP_BATCH_LIMIT &&
     Date.now() - startedAt < RECOMMENDATION_RETENTION_CATCH_UP_WINDOW_MS
   )
-  return { batchesProcessed, overdueAfterRun }
+  return { batchesProcessed, overdueAfterRun, catchUpNeeded }
 }
 
 stepRunScheduledRecommendationRetention.maxRetries = 5

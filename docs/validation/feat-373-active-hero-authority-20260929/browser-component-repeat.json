@@ -1,0 +1,151 @@
+{
+  "scope": "Real Chromium component fixture; actual carousel/controller/signature verifier. Next/image/link/i18n/media adapters; mocked delivery receipts; no production or DB persistence claim. Hybrid component control: only carousel/controller TSX come from baselineRef; remaining imports/adapters are current. Six cold contexts per mode, alternating, 1280x800, 400ms shared load gate.",
+  "browser": "149.0.7827.55",
+  "baselineRef": "811f1ec81f359d1cf66cdda5bad8f5445631c44c",
+  "launch": {
+    "headless": true,
+    "browserFeatureOverrides": false
+  },
+  "candidates": 1000,
+  "signingMs": 18.883643000000006,
+  "catalogBytes": 76161,
+  "modelBytes": 242733,
+  "scriptBytes": {
+    "baseline": 829158,
+    "enabled": 831652
+  },
+  "singletonDeliveryBytes": [447, 447, 447, 447, 447, 447, 447],
+  "checks": {
+    "knownSingleton": true,
+    "slotZero": true,
+    "over100": true,
+    "focusedNodePreserved": true,
+    "currentTargetSwitch": true,
+    "deliveryAfterLoad": true,
+    "browserErrors": 0,
+    "exactSelectedTarget": true,
+    "malformedAndOversizedRequestsContained": true
+  },
+  "fcpSampleCounts": {
+    "baseline": 6,
+    "enabled": 6
+  },
+  "medians": {
+    "baseline": {
+      "dclMs": 62.599999994039536,
+      "loadMs": 420.60000002384186,
+      "fcpMs": 150,
+      "renderTwoFramesMs": 71.30000001192093,
+      "resources": 4
+    },
+    "enabled": {
+      "dclMs": 64.89999997615814,
+      "loadMs": 422.0499999523163,
+      "fcpMs": 154,
+      "renderTwoFramesMs": 73.2000000178814,
+      "resources": 5
+    }
+  },
+  "samples": {
+    "baseline": [
+      {
+        "dclMs": 68.80000001192093,
+        "loadMs": 428.10000002384186,
+        "fcpMs": 156,
+        "renderTwoFramesMs": 75,
+        "resources": 4,
+        "deliveryBeforeLoad": false
+      },
+      {
+        "dclMs": 74.19999998807907,
+        "loadMs": 427.89999997615814,
+        "fcpMs": 164,
+        "renderTwoFramesMs": 72.20000004768372,
+        "resources": 4,
+        "deliveryBeforeLoad": false
+      },
+      {
+        "dclMs": 64.19999998807907,
+        "loadMs": 420.60000002384186,
+        "fcpMs": 152,
+        "renderTwoFramesMs": 74,
+        "resources": 4,
+        "deliveryBeforeLoad": false
+      },
+      {
+        "dclMs": 61,
+        "loadMs": 420.5,
+        "fcpMs": 140,
+        "renderTwoFramesMs": 67.29999995231628,
+        "resources": 4,
+        "deliveryBeforeLoad": false
+      },
+      {
+        "dclMs": 61,
+        "loadMs": 420.4000000357628,
+        "fcpMs": 148,
+        "renderTwoFramesMs": 70.39999997615814,
+        "resources": 4,
+        "deliveryBeforeLoad": false
+      },
+      {
+        "dclMs": 60.30000001192093,
+        "loadMs": 420.60000002384186,
+        "fcpMs": 140,
+        "renderTwoFramesMs": 69.09999996423721,
+        "resources": 4,
+        "deliveryBeforeLoad": false
+      }
+    ],
+    "enabled": [
+      {
+        "dclMs": 68.90000003576279,
+        "loadMs": 425.10000002384186,
+        "fcpMs": 164,
+        "renderTwoFramesMs": 74.90000003576279,
+        "resources": 5,
+        "deliveryBeforeLoad": false
+      },
+      {
+        "dclMs": 69.60000002384186,
+        "loadMs": 424.80000001192093,
+        "fcpMs": 160,
+        "renderTwoFramesMs": 72.30000001192093,
+        "resources": 5,
+        "deliveryBeforeLoad": false
+      },
+      {
+        "dclMs": 62.59999996423721,
+        "loadMs": 421.7999999523163,
+        "fcpMs": 152,
+        "renderTwoFramesMs": 68.80000001192093,
+        "resources": 5,
+        "deliveryBeforeLoad": false
+      },
+      {
+        "dclMs": 63,
+        "loadMs": 422.2999999523163,
+        "fcpMs": 152,
+        "renderTwoFramesMs": 73,
+        "resources": 5,
+        "deliveryBeforeLoad": false
+      },
+      {
+        "dclMs": 66.79999995231628,
+        "loadMs": 419.19999998807907,
+        "fcpMs": 156,
+        "renderTwoFramesMs": 75.39999997615814,
+        "resources": 5,
+        "deliveryBeforeLoad": false
+      },
+      {
+        "dclMs": 60.10000002384186,
+        "loadMs": 419.80000001192093,
+        "fcpMs": 148,
+        "renderTwoFramesMs": 73.40000003576279,
+        "resources": 5,
+        "deliveryBeforeLoad": false
+      }
+    ]
+  }
+}

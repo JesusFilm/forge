@@ -8,6 +8,7 @@ export const adminSemanticRecommendationDeliveryQuery = `
     $sessionDigest: String!
     $consentReceiptDigest: String
     $profileTokenDigest: String
+    $trafficCategory: String
     $eligibleHuman: Boolean
   ) {
     semanticRecommendationDelivery(
@@ -17,6 +18,7 @@ export const adminSemanticRecommendationDeliveryQuery = `
       sessionDigest: $sessionDigest
       consentReceiptDigest: $consentReceiptDigest
       profileTokenDigest: $profileTokenDigest
+      trafficCategory: $trafficCategory
       eligibleHuman: $eligibleHuman
     ) {
       contractVersion
@@ -266,6 +268,29 @@ export const adminRecordRecommendationContentActionMutation = `
 
 export const adminRecordRecommendationContentActionOperation = adminGraphql(
   adminRecordRecommendationContentActionMutation,
+)
+
+export const adminRecordWatchSurfaceExposureMutation = `
+  mutation RecordWatchSurfaceExposure($events: JSON!) {
+    recordWatchSurfaceExposure(events: $events) {
+      eventId
+      status
+    }
+  }
+` as const
+
+export const adminRecordWatchSurfaceExposureOperation = adminGraphql(
+  adminRecordWatchSurfaceExposureMutation,
+)
+
+export const adminIssueWatchSurfaceDeliveryMutation = `
+  mutation IssueWatchSurfaceDelivery($manifest: JSON!, $attemptId: String!, $trafficCategory: String!) {
+    issueWatchSurfaceDelivery(manifest: $manifest, attemptId: $attemptId, trafficCategory: $trafficCategory)
+  }
+` as const
+
+export const adminIssueWatchSurfaceDeliveryOperation = adminGraphql(
+  adminIssueWatchSurfaceDeliveryMutation,
 )
 
 export const adminRecommendationProfileStatusMutation = `

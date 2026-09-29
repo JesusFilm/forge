@@ -1,3 +1,11 @@
+import {
+  signWatchHomeHeroManifestCatalog,
+  signWatchSurfaceManifest,
+} from "@/lib/watch-surface-manifest.server"
+import {
+  authoredWatchSurfaceSource,
+  watchHomeHeroSource,
+} from "@/lib/watch-surface-manifest.sources"
 import { Fragment } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
@@ -6,6 +14,7 @@ import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { WatchHomeBodyZone } from "@/components/home/WatchHomeBodyZone"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { createInitialDynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-cache-signature"
 import {
@@ -21,6 +30,7 @@ type WatchHomeExperiencePageProps = {
   blocks: readonly Section[]
   locale?: string
   languageSlug: string
+  publicDocumentPathname?: string
   legacyCategoryRailCompatibility?: boolean
   dynamicCollectionCacheScope?: DynamicCollectionFeedCacheScope
 }
@@ -133,6 +143,7 @@ export function WatchHomeExperiencePage({
   blocks,
   locale = "en",
   languageSlug,
+  publicDocumentPathname,
   legacyCategoryRailCompatibility = false,
   dynamicCollectionCacheScope = "live",
 }: WatchHomeExperiencePageProps) {
@@ -204,6 +215,12 @@ export function WatchHomeExperiencePage({
         <Fragment key={blockKey}>
           <WatchHomeTvCarousel
             pinned={false}
+            exposurePlacement={`authored-hero-${index}`}
+            heroManifestCatalog={
+              signWatchHomeHeroManifestCatalog(
+                watchHomeHeroSource(heroModel, `authored-hero-${index}`),
+              ) ?? undefined
+            }
             slides={heroModel.heroSlides}
             sequence={heroModel.carousel}
           />
@@ -214,13 +231,45 @@ export function WatchHomeExperiencePage({
 
     const renderedBlock = (
       <ExperienceSectionRenderer
-        key={blockKey}
         section={block}
         locale={locale}
         languageSlug={languageSlug}
         dynamicCollections={dynamicCollections}
       />
     )
+    const typename = (block as { readonly __typename?: string | null })
+      .__typename
+    const instrumentedBlock =
+      typename === "LanguageGlobeBlock" ? (
+        <Fragment key={blockKey}>{renderedBlock}</Fragment>
+      ) : (
+        <WatchExposureBoundary
+          key={blockKey}
+          manifest={
+            signWatchSurfaceManifest(
+              authoredWatchSurfaceSource(
+                {
+                  surface: "watch-home",
+                  block: "authored",
+                  presentation: "authored-block",
+                  placement: `authored-${index}`,
+                },
+                block,
+                languageSlug,
+                { publicDocumentPathname },
+              ),
+            ) ?? undefined
+          }
+          config={{
+            surface: "watch-home",
+            block: "authored",
+            presentation: "authored-block",
+            placement: `authored-${index}`,
+          }}
+        >
+          {renderedBlock}
+        </WatchExposureBoundary>
+      )
 
     return isStandaloneMediaBlock(block) ? (
       <div
@@ -228,10 +277,10 @@ export function WatchHomeExperiencePage({
         className={`${WATCH_PAGE_CONTENT_CLASSES} pt-16`}
         data-watch-home-content-rail
       >
-        {renderedBlock}
+        {instrumentedBlock}
       </div>
     ) : (
-      renderedBlock
+      instrumentedBlock
     )
   }
 
@@ -280,6 +329,11 @@ export function WatchHomeExperiencePage({
           )}
           {heroAboveBodyZone ? (
             <WatchHomeTvCarousel
+              heroManifestCatalog={
+                signWatchHomeHeroManifestCatalog(
+                  watchHomeHeroSource(heroModel),
+                ) ?? undefined
+              }
               slides={heroModel.heroSlides}
               sequence={heroModel.carousel}
             />

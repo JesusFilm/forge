@@ -7,7 +7,22 @@ import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+vi.mock("@/env", () => ({
+  env: {
+    REVALIDATION_SECRET: "public-local-page-fixture-key",
+    NEXT_PUBLIC_CANONICAL_ORIGIN: "https://www.jesusfilm.org",
+  },
+}))
 import type { WatchHomeModel } from "@/lib/watch-home"
+vi.mock("@/lib/watch-surface-manifest.server", () => ({
+  signWatchSurfaceManifest: () => null,
+  signWatchHomeHeroManifestCatalog: vi.fn(
+    () =>
+      null as
+        | import("@/lib/watch-home-hero-manifest").WatchHomeHeroManifestCatalog
+        | null,
+  ),
+}))
 import {
   addWatchHomeTvPlayedId,
   buildWatchHomeVideoQueue,
@@ -42,6 +57,8 @@ import {
   WATCH_HOME_INTRO_HLS_CONFIG,
   WATCH_HOME_INTRO_MAX_RESOLUTION,
 } from "@/components/home/WatchHomeTvCarousel"
+import { signWatchHomeHeroManifestCatalog } from "@/lib/watch-surface-manifest.server"
+import * as exposureBoundary from "@/components/recommendations/WatchExposureBoundary"
 import { WatchHomePage } from "@/components/home/WatchHomePage"
 
 vi.mock("next/image", () => ({
@@ -353,6 +370,73 @@ afterEach(async () => {
 })
 
 describe("WatchHomePage", () => {
+  it("selects singleton authority for the active card from an over-100 catalog without losing timeline focus", async () => {
+    const heroWindows: Array<
+      Parameters<typeof exposureBoundary.WatchExposureBoundary>[0]
+    > = []
+    vi.spyOn(exposureBoundary, "WatchExposureBoundary").mockImplementation(
+      (props) => {
+        if (props.config.block === "hero") heroWindows.push(props)
+        return <>{props.children}</>
+      },
+    )
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    const actualSigner = await vi.importActual<
+      typeof import("@/lib/watch-surface-manifest.server")
+    >("@/lib/watch-surface-manifest.server")
+    vi.mocked(signWatchHomeHeroManifestCatalog).mockImplementation(
+      actualSigner.signWatchHomeHeroManifestCatalog,
+    )
+    const videos = Array.from({ length: 110 }, (_, i) =>
+      makeCarouselSlide({
+        id: `candidate-${i}`,
+        title: `Candidate ${i}`,
+        href: `/candidate-${i}.html`,
+        durationSeconds: 600,
+      }),
+    )
+    const model = makeModel({
+      carousel: {
+        pools: [{ id: "pool-a", collectionIds: ["pool-a"], videos }],
+      },
+    })
+    await act(async () => {
+      root.render(<WatchHomePage model={model} />)
+    })
+    const initial = heroWindows.at(-1)!
+    expect(initial.manifest?.manifest.items).toHaveLength(1)
+    expect(initial.manifest?.manifest.items[0].position).toBe(0)
+    expect(
+      vi.mocked(signWatchHomeHeroManifestCatalog).mock.calls.at(-1)?.[0]?.items
+        .length,
+    ).toBeGreaterThan(100)
+    const next = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Show Candidate"]',
+    )!
+    const target = next
+      .getAttribute("aria-label")!
+      .replace("Show Candidate ", "")
+    next.focus()
+    await act(async () => {
+      next.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+    expect(document.activeElement).toBe(next)
+    expect(next.isConnected).toBe(true)
+    const changed = heroWindows.at(-1)!
+    expect(changed.manifest?.manifest.items).toEqual([
+      { position: 0, itemPath: `/watch/candidate-${target}.html` },
+    ])
+    expect(changed.measurementKey).not.toBe(initial.measurementKey)
+    expect(changed.manifest?.manifest.items).not.toEqual(
+      initial.manifest?.manifest.items,
+    )
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-actions"] a')
+        ?.getAttribute("href"),
+    ).toContain(`/candidate-${target}.html`)
+  })
+
   // The bandwidth guard's two levers at the mount seam. NOTE ON WHAT THIS
   // PROVES: jsdom does not implement HTMLMediaElement playback, so a prop
   // assertion is a pin, not an effect proof — a broken buffer cap would
@@ -694,53 +778,69 @@ describe("WatchHomePage", () => {
       // never re-render at all.
       const carouselRenders = () => muxVideoRenders.length
 
-      vi.spyOn(Math, "random").mockReturnValue(0)
-      await act(async () => {
-        root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
-      })
-
-      const video = container.querySelector(
-        '[data-testid="watch-home-tv-video"]',
-      ) as HTMLVideoElement
-      Object.defineProperty(video, "duration", {
-        configurable: true,
-        value: 123,
-      })
-
-      const setTime = (seconds: number) =>
-        Object.defineProperty(video, "currentTime", {
-          configurable: true,
-          value: seconds,
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
         })
 
-      setTime(12.1)
-      await act(async () => {
-        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
-      })
-      const hrefAfterFirst = container
-        .querySelector("a[href*='autoplay=1']")
-        ?.getAttribute("href")
-      const rendersAfterFirst = carouselRenders()
+        // Height fitting commits on its first animation frame. Settle that
+        // unrelated render before sampling, then keep time fixed between events.
+        await act(async () => {
+          vi.advanceTimersToNextFrame()
+        })
 
-      setTime(12.8)
-      await act(async () => {
-        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
-      })
+        const video = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        Object.defineProperty(video, "duration", {
+          configurable: true,
+          value: 123,
+        })
 
-      expect(
-        container.querySelector("a[href*='autoplay=1']")?.getAttribute("href"),
-      ).toBe(hrefAfterFirst)
-      expect(carouselRenders()).toBe(rendersAfterFirst)
-      expect(hrefAfterFirst).toContain("t=12")
+        const setTime = (seconds: number) =>
+          Object.defineProperty(video, "currentTime", {
+            configurable: true,
+            value: seconds,
+          })
 
-      setTime(13.2)
-      await act(async () => {
-        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
-      })
+        setTime(12.1)
+        await act(async () => {
+          video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+        })
+        const hrefAfterFirst = container
+          .querySelector("a[href*='autoplay=1']")
+          ?.getAttribute("href")
+        const rendersAfterFirst = carouselRenders()
 
-      expect(
-        container.querySelector("a[href*='autoplay=1']")?.getAttribute("href"),
-      ).toContain("t=13")
+        setTime(12.8)
+        await act(async () => {
+          video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+        })
+
+        expect(
+          container
+            .querySelector("a[href*='autoplay=1']")
+            ?.getAttribute("href"),
+        ).toBe(hrefAfterFirst)
+        expect(carouselRenders()).toBe(rendersAfterFirst)
+        expect(hrefAfterFirst).toContain("t=12")
+
+        setTime(13.2)
+        await act(async () => {
+          video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+        })
+
+        expect(
+          container
+            .querySelector("a[href*='autoplay=1']")
+            ?.getAttribute("href"),
+        ).toContain("t=13")
+        expect(carouselRenders()).toBe(rendersAfterFirst + 1)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it("re-arms the poster hold only once per slide, not on every canplay", async () => {
@@ -1263,6 +1363,31 @@ describe("WatchHomePage", () => {
     )
     expect(container.textContent).not.toContain("Featured")
     expect(container.textContent).not.toContain("Feature film")
+  })
+
+  it("labels home rail and grid exposure presentations separately", async () => {
+    const rail = makeModel().sections[0]!
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            sections: [
+              rail,
+              {
+                ...rail,
+                id: "home-collection-showcase-grid",
+                layout: "grid",
+              },
+            ],
+          })}
+        />,
+      )
+    })
+    expect(
+      Array.from(
+        container.querySelectorAll('[data-watch-exposure-block="collections"]'),
+      ).map((node) => node.getAttribute("data-watch-exposure-presentation")),
+    ).toEqual(["carousel", "grid"])
   })
 
   it("renders the hero, configured sections, promo content, and card links", async () => {

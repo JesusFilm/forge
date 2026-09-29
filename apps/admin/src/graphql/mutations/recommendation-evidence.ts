@@ -22,6 +22,11 @@ import {
   type RecommendationContentActionReceipt,
 } from "@/services/recommendations/content-action.service"
 import { PlaybackContextDiscoverySourceSchema } from "@/services/recommendations/contracts"
+import {
+  issueWatchSurfaceDelivery,
+  recordWatchSurfaceExposureBatch,
+  type WatchSurfaceExposureReceipt,
+} from "@/services/recommendations/watch-surface-exposure.service"
 
 type SelectionReceipt = {
   status: "accepted" | "replay" | "conflict"
@@ -135,6 +140,15 @@ PlaybackContextReceiptRef.implement({
   }),
 })
 
+const WatchSurfaceExposureReceiptRef =
+  builder.objectRef<WatchSurfaceExposureReceipt>("WatchSurfaceExposureReceipt")
+WatchSurfaceExposureReceiptRef.implement({
+  fields: (t) => ({
+    eventId: t.exposeString("eventId", { nullable: false }),
+    status: t.exposeString("status", { nullable: false }),
+  }),
+})
+
 function evidenceKind(kind: string): "render" | "impression" {
   if (kind !== "render" && kind !== "impression") {
     throw new RecommendationInputError(
@@ -158,6 +172,34 @@ function evidencePayload(payload: unknown): Record<string, unknown> {
 }
 
 builder.mutationFields((t) => ({
+  issueWatchSurfaceDelivery: t.field({
+    type: "JSON",
+    nullable: false,
+    authScopes: { public: true },
+    args: {
+      manifest: t.arg({ type: "JSON", required: true }),
+      attemptId: t.arg.string({ required: true }),
+      trafficCategory: t.arg.string({ required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      resolveRecommendationOperation(() =>
+        issueWatchSurfaceDelivery(prisma, ctx.user, {
+          manifest: args.manifest,
+          attemptId: args.attemptId,
+          trafficCategory: args.trafficCategory,
+        }),
+      ),
+  }),
+  recordWatchSurfaceExposure: t.field({
+    type: [WatchSurfaceExposureReceiptRef],
+    nullable: false,
+    authScopes: { public: true },
+    args: { events: t.arg({ type: "JSON", required: true }) },
+    resolve: (_root, args, ctx) =>
+      resolveRecommendationOperation(() =>
+        recordWatchSurfaceExposureBatch(prisma, ctx.user, args.events),
+      ),
+  }),
   issueWatchPlaybackContext: t.field({
     type: PlaybackContextReceiptRef,
     nullable: false,

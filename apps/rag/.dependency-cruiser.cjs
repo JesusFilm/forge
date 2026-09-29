@@ -57,7 +57,8 @@ module.exports = {
       from: { path: "^src/" },
       to: {
         couldNotResolve: true,
-        pathNot: "^(?:@forge/rag-contracts|hono|hono/body-limit|tinyld)$",
+        pathNot:
+          "^(?:@forge/rag-contracts|hono|hono/body-limit|hono/cookie|tinyld)$",
       },
     },
     {
@@ -86,7 +87,7 @@ module.exports = {
       from: {
         path: "(?:^tests/|\\.(?:test|spec)\\.[cm]?[jt]sx?$)",
         pathNot:
-          "^(?:src/adapters/|tests/(?:adapters|raw-document-promotion|consumer-registry)\\.integration\\.test\\.ts$)",
+          "^(?:src/adapters/|tests/(?:adapters|raw-document-promotion|consumer-registry|consumer-access|consumer-access-roles|consumer-http-lifecycle)\\.integration\\.test\\.ts$)",
       },
       to: { path: "^src/adapters/" },
     },

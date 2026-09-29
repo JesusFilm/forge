@@ -11,6 +11,7 @@ import {
 } from "@prisma/client"
 import { unlinkPushViewerIdentities } from "@/services/push/identity-unlink.service"
 import { RECOMMENDATION_RETENTION_PROPAGATION_HOURS } from "./contracts"
+import { suppressCowatchForProfiles } from "./cowatch/privacy"
 import { RecommendationInputError } from "./errors"
 
 export const RECOMMENDATION_RETENTION_BATCH_SIZE = 500
@@ -29,6 +30,7 @@ export type RecommendationPurgeResult = Readonly<{
   rowCounts: Record<string, number>
   oldestExpiredAtAfter: string | null
   overdueAfterRun: boolean
+  batchLimitReached: boolean
 }>
 
 function hoursBefore(now: Date, hours: number): Date {
@@ -216,6 +218,7 @@ export async function purgeExpiredRecommendationRequests(
           rowCounts: {},
           oldestExpiredAtAfter: null,
           overdueAfterRun: false,
+          batchLimitReached: false,
         }
       }
 
@@ -227,6 +230,17 @@ export async function purgeExpiredRecommendationRequests(
       })
       const requestIds = roots.map((root) => root.id)
       const rowCounts = await countRequestChildren(tx, requestIds)
+      const expiredWatchExposures = await tx.watchSurfaceExposure.findMany({
+        where: { expiresAt: { lte: now } },
+        orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+        take: batchSize,
+        select: { id: true },
+      })
+      rowCounts.expiredWatchSurfaceExposures = (
+        await tx.watchSurfaceExposure.deleteMany({
+          where: { id: { in: expiredWatchExposures.map(({ id }) => id) } },
+        })
+      ).count
       const directActions = await tx.recommendationContentAction.findMany({
         where: { requestId: null, expiresAt: { lte: now } },
         orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
@@ -311,6 +325,16 @@ export async function purgeExpiredRecommendationRequests(
       ).count
       rowCounts.expiredProfileProjectionGenerations = (
         await tx.recommendationProfileProjectionGeneration.deleteMany({
+          where: { expiresAt: { lte: now } },
+        })
+      ).count
+      rowCounts.expiredCowatchGenerations = (
+        await tx.recommendationCowatchGeneration.deleteMany({
+          where: { expiresAt: { lte: now } },
+        })
+      ).count
+      rowCounts.expiredCowatchSuppressions = (
+        await tx.recommendationCowatchSuppression.deleteMany({
           where: { expiresAt: { lte: now } },
         })
       ).count
@@ -462,6 +486,10 @@ export async function purgeExpiredRecommendationRequests(
         ...olderPendingProfileErasures,
       ]
       await eraseRetiringProfileInfluence(tx, pendingProfileErasures)
+      await suppressCowatchForProfiles(
+        tx,
+        pendingProfileErasures.map(({ id }) => id),
+      )
       if (pendingProfileErasures.length > 0) {
         const pendingProfileIds = pendingProfileErasures.map(({ id }) => id)
         await tx.recommendationProfileSessionLink.deleteMany({
@@ -588,6 +616,7 @@ export async function purgeExpiredRecommendationRequests(
       })
       const [
         oldestExpiredRoot,
+        oldestExpiredWatchExposure,
         oldestExpiredAction,
         oldestExpiredDecision,
         oldestExpiredControlEvaluation,
@@ -606,6 +635,11 @@ export async function purgeExpiredRecommendationRequests(
         oldestExpiredStandaloneEpisode,
       ] = await Promise.all([
         tx.recommendationRequest.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.watchSurfaceExposure.findFirst({
           where: { expiresAt: { lte: now } },
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
           select: { expiresAt: true },
@@ -693,6 +727,7 @@ export async function purgeExpiredRecommendationRequests(
       ])
       const oldestExpiredAt = earliestDate([
         oldestExpiredRoot?.expiresAt,
+        oldestExpiredWatchExposure?.expiresAt,
         oldestExpiredAction?.expiresAt,
         oldestExpiredDecision?.expiresAt,
         oldestExpiredControlEvaluation?.expiresAt,
@@ -714,6 +749,19 @@ export async function purgeExpiredRecommendationRequests(
         oldestExpiredAt != null &&
         oldestExpiredAt <=
           hoursBefore(now, RECOMMENDATION_RETENTION_PROPAGATION_HOURS)
+      // A full selection may leave more expired roots. An exact-size batch
+      // causes one harmless empty follow-up; no additional database scan is
+      // needed to keep younger expired backlog moving before it is overdue.
+      const batchLimitReached =
+        requestIds.length === batchSize ||
+        expiredWatchExposures.length === batchSize ||
+        directActionIds.length === batchSize ||
+        standaloneEpisodeIds.length === batchSize ||
+        expiredViewers.length === batchSize ||
+        expiredProfiles.length === batchSize ||
+        (remainingErasureCapacity > 0 &&
+          olderPendingProfileErasures.length === remainingErasureCapacity) ||
+        retiredProfiles.length === batchSize
       await tx.recommendationRetentionRun.update({
         where: { id: run.id },
         data: {
@@ -732,6 +780,7 @@ export async function purgeExpiredRecommendationRequests(
         rowCounts,
         oldestExpiredAtAfter: oldestExpiredAt?.toISOString() ?? null,
         overdueAfterRun,
+        batchLimitReached,
       }
     })
   } catch (error) {

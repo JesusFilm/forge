@@ -38,6 +38,9 @@ const INTENDED_PUBLIC_RESOLVERS = [
   // feat-368 U2/U4. Public-shaped; resolver-body authenticated for Web only.
   "semanticRecommendationDelivery",
   "recordSemanticRecommendationEvidence",
+  // feat-373. Public-shaped mutation; service body admits the Web bearer only.
+  "recordWatchSurfaceExposure",
+  "issueWatchSurfaceDelivery",
   "selectSemanticRecommendation",
   "claimSemanticRecommendationEpisode",
   "recordSemanticRecommendationPlayback",

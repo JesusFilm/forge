@@ -5,10 +5,12 @@ import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
 import {
   adminClaimSemanticRecommendationEpisodeOperation,
   adminIssueWatchPlaybackContextOperation,
+  adminIssueWatchSurfaceDeliveryOperation,
   adminRecommendationProfileStatusOperation,
   adminRecordSemanticRecommendationEvidenceOperation,
   adminRecordSemanticRecommendationPlaybackOperation,
   adminRecordRecommendationContentActionOperation,
+  adminRecordWatchSurfaceExposureOperation,
   adminSelectSemanticRecommendationOperation,
   adminSemanticRecommendationDeliveryOperation,
   adminTransitionRecommendationProfileOperation,
@@ -27,6 +29,21 @@ const DELIVERY_UPSTREAM_TIMEOUT_MS = 3_500
 const CONTEXTUAL_RECOMMENDATION_UPSTREAM_TIMEOUT_MS = 6_500
 const SELECTION_UPSTREAM_TIMEOUT_MS = 700
 const CONTENT_ACTION_UPSTREAM_TIMEOUT_MS = 900
+
+export async function issueWatchSurfaceDelivery(
+  variables: AdminVariablesOf<typeof adminIssueWatchSurfaceDeliveryOperation>,
+) {
+  const result = await client.mutate({
+    mutation: adminIssueWatchSurfaceDeliveryOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.issueWatchSurfaceDelivery) {
+    throw new RecommendationRuntimeError("evidence_unavailable")
+  }
+  return result.data.issueWatchSurfaceDelivery
+}
 
 function upstreamContext(timeoutMs: number) {
   return { fetchOptions: { signal: AbortSignal.timeout(timeoutMs) } }
@@ -678,6 +695,21 @@ export async function recordRecommendationContentAction(
     throw new RecommendationRuntimeError("content_action_unavailable")
   }
   return result.data.recordRecommendationContentAction
+}
+
+export async function recordWatchSurfaceExposure(
+  events: Record<string, unknown>[],
+) {
+  const result = await client.mutate({
+    mutation: adminRecordWatchSurfaceExposureOperation,
+    variables: { events },
+    fetchPolicy: "no-cache",
+    context: upstreamContext(CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.recordWatchSurfaceExposure) {
+    throw new RecommendationRuntimeError("evidence_failed")
+  }
+  return result.data.recordWatchSurfaceExposure
 }
 
 export async function getRecommendationProfileStatus(

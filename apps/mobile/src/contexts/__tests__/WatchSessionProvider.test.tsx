@@ -20,9 +20,11 @@ jest.mock("react/jsx-runtime", () => {
   )
 })
 
-jest.mock("@apollo/client/react", () => ({
-  useApolloClient: () => ({ query: jest.fn() }),
-}))
+// Driveable: a test answers the per-dub media query to land its subtitles.
+jest.mock("@apollo/client/react", () => {
+  const client = { query: jest.fn() }
+  return { useApolloClient: () => client, __client: client }
+})
 jest.mock("../../lib/datadog", () => ({
   datadogLog: {
     debug: jest.fn(),
@@ -35,18 +37,30 @@ jest.mock("../../lib/datadog", () => ({
 // Driveable preferences: `state` is mutated by tests; the provider reads it on
 // each render, so a flip lands with the next act that re-renders it.
 jest.mock("../WatchPreferencesProvider", () => {
-  const state = { ready: true, audio: "english" as string | null }
+  const state = {
+    ready: true,
+    audio: "english" as string | null,
+    audioIso3: null as string | null,
+    subtitle: null as string | null,
+    subtitlesEnabled: false,
+    setAudio: jest.fn(),
+    backfillAudioIso3: jest.fn(),
+    setPreferredSubtitleLanguage: jest.fn(),
+    setSubtitlesEnabled: jest.fn(),
+  }
   return {
     useWatchPreferences: () => ({
       audioLanguageSlug: state.audio,
-      subtitleLanguageSlug: null,
+      audioLanguageIso3: state.audioIso3,
+      subtitleLanguageSlug: state.subtitle,
       subtitleLanguageName: null,
-      subtitlesEnabled: false,
+      subtitlesEnabled: state.subtitlesEnabled,
       isReady: state.ready,
-      setPreferredAudioLanguage: jest.fn(),
-      setPreferredSubtitleLanguage: jest.fn(),
+      setPreferredAudioLanguage: state.setAudio,
+      backfillAudioLanguageIso3: state.backfillAudioIso3,
+      setPreferredSubtitleLanguage: state.setPreferredSubtitleLanguage,
       setPreferredSubtitleName: jest.fn(),
-      setSubtitlesEnabled: jest.fn(),
+      setSubtitlesEnabled: state.setSubtitlesEnabled,
     }),
     __prefState: state,
   }
@@ -94,7 +108,20 @@ import {
 } from "../../test-utils/rnTestRenderer"
 
 const prefs = jest.requireMock("../WatchPreferencesProvider") as {
-  __prefState: { ready: boolean; audio: string | null }
+  __prefState: {
+    ready: boolean
+    audio: string | null
+    audioIso3: string | null
+    subtitle: string | null
+    subtitlesEnabled: boolean
+    setAudio: jest.Mock
+    backfillAudioIso3: jest.Mock
+    setPreferredSubtitleLanguage: jest.Mock
+    setSubtitlesEnabled: jest.Mock
+  }
+}
+const apollo = jest.requireMock("@apollo/client/react") as {
+  __client: { query: jest.Mock }
 }
 const downloads = jest.requireMock("../DownloadsProvider") as {
   __downloadsState: {
@@ -108,7 +135,11 @@ const miniPlayer = jest.requireMock("../../lib/miniPlayer/store") as {
   }
 }
 
-function variant(languageSlug: string, id: string): WatchVariant {
+function variant(
+  languageSlug: string,
+  id: string,
+  languageIso3: string | null = null,
+): WatchVariant {
   return {
     documentId: id,
     slug: `considering-christmas/${languageSlug}`,
@@ -120,6 +151,7 @@ function variant(languageSlug: string, id: string): WatchVariant {
     languageSlug,
     languageName: languageSlug,
     languageNameNative: null,
+    languageIso3,
     muxPlaybackId: id,
   }
 }
@@ -191,6 +223,14 @@ afterEach(async () => {
   variantHistory = []
   prefs.__prefState.ready = true
   prefs.__prefState.audio = "english"
+  prefs.__prefState.audioIso3 = null
+  prefs.__prefState.subtitle = null
+  prefs.__prefState.subtitlesEnabled = false
+  prefs.__prefState.setAudio.mockClear()
+  prefs.__prefState.backfillAudioIso3.mockClear()
+  prefs.__prefState.setPreferredSubtitleLanguage.mockClear()
+  prefs.__prefState.setSubtitlesEnabled.mockClear()
+  apollo.__client.query.mockReset()
   downloads.__downloadsState.ready = true
   downloads.__downloadsState.copy = null
   miniPlayer.__sessionState.session = null
@@ -387,5 +427,243 @@ describe("the variant gate (no dub before resolution)", () => {
 
     expect(session.activeVariant?.languageSlug).toBe("thai")
     expect(session.activeVariantIndex).toBe(0)
+  })
+})
+
+/**
+ * KTD11 and R43: a "Keep watching" page hands the session the clip's languages
+ * as an explicit input. It leads the default chain and never writes the saved
+ * preferences, so none of these cases may call a preference setter.
+ */
+describe("a Keep watching intent", () => {
+  const DUBBED = {
+    audioLanguageSlug: "english",
+    subtitleLanguageSlug: null,
+    subtitlesOn: false,
+  }
+  const SUBTITLE_ONLY = {
+    audioLanguageSlug: "english",
+    subtitleLanguageSlug: "thai",
+    subtitlesOn: true,
+  }
+
+  /** One dub's media, in the wire shape `normalizeDubMedia` reads. */
+  function answerMedia(slugs: string[]) {
+    apollo.__client.query.mockResolvedValue({
+      data: {
+        videoDub: {
+          downloads: [],
+          videoEdition: {
+            subtitles: slugs.map((slug) => ({
+              documentId: `sub-${slug}`,
+              vttSrc: `https://cdn.example/${slug}.vtt`,
+              primary: false,
+              aiGenerated: false,
+              language: { slug, name: slug, bcp47: null },
+            })),
+          },
+        },
+      },
+    })
+  }
+
+  function expectNoPreferenceWrite() {
+    expect(prefs.__prefState.setAudio).not.toHaveBeenCalled()
+    expect(
+      prefs.__prefState.setPreferredSubtitleLanguage,
+    ).not.toHaveBeenCalled()
+    expect(prefs.__prefState.setSubtitlesEnabled).not.toHaveBeenCalled()
+  }
+
+  it("plays the clip's dub over a download in another language", async () => {
+    // Both the download and the saved choice name Thai: only the intent
+    // can make this English.
+    prefs.__prefState.audio = "thai"
+    downloads.__downloadsState.copy = {
+      path: OFFLINE_FILE,
+      dubDocumentId: "dubThai",
+    }
+    await renderProvider()
+
+    await act(async () => {
+      session.setSessionIntent(DUBBED)
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    expect(session.activeVariant?.languageSlug).toBe("english")
+    expect(variantHistory).not.toContain("thai")
+    expectNoPreferenceWrite()
+  })
+
+  it("still plays the clip's dub when the record loads late", async () => {
+    prefs.__prefState.audio = "thai"
+    downloads.__downloadsState.copy = {
+      path: OFFLINE_FILE,
+      dubDocumentId: "dubThai",
+    }
+    await renderProvider()
+    // The route takes the intent on its first render, long before the record.
+    await act(async () => {
+      session.setSessionIntent(DUBBED)
+    })
+    await act(async () => {})
+    expect(session.activeVariant).toBeNull()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    expect(session.activeVariant?.languageSlug).toBe("english")
+    expect(variantHistory).not.toContain("thai")
+  })
+
+  it("selects the clip's subtitle language through the raw setter", async () => {
+    prefs.__prefState.subtitle = "english"
+    answerMedia(["english", "thai"])
+    await renderProvider()
+    await act(async () => {
+      session.setSessionIntent(SUBTITLE_ONLY)
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    await act(async () => {
+      session.ensureActiveVariantMedia()
+    })
+
+    expect(session.activeVariantMedia?.subtitles).toHaveLength(2)
+    expect(session.activeSubtitleSlug).toBe("thai")
+    expectNoPreferenceWrite()
+  })
+
+  it("turns subtitles on for this session only after a subtitle-only clip", async () => {
+    await renderProvider()
+    expect(session.subtitleEnabled).toBe(false)
+
+    await act(async () => {
+      session.setSessionIntent(SUBTITLE_ONLY)
+    })
+    expect(session.subtitleEnabled).toBe(true)
+
+    // The page closes: its cleanup clears the input.
+    await act(async () => {
+      session.setSessionIntent(null)
+    })
+    expect(session.subtitleEnabled).toBe(false)
+    expect(prefs.__prefState.subtitlesEnabled).toBe(false)
+    expectNoPreferenceWrite()
+  })
+
+  it("keeps the saved subtitle setting after a dubbed clip", async () => {
+    await renderProvider()
+    await act(async () => {
+      session.setSessionIntent(DUBBED)
+    })
+    expect(session.subtitleEnabled).toBe(false)
+
+    prefs.__prefState.subtitlesEnabled = true
+    await act(async () => {
+      session.setSessionIntent({ ...DUBBED })
+    })
+    expect(session.subtitleEnabled).toBe(true)
+  })
+
+  it("lets the viewer turn the session's subtitles off", async () => {
+    await renderProvider()
+    await act(async () => {
+      session.setSessionIntent(SUBTITLE_ONLY)
+    })
+
+    await act(async () => {
+      session.setSubtitleEnabled(false)
+    })
+
+    expect(session.subtitleEnabled).toBe(false)
+  })
+})
+
+describe("the audio language code (U6)", () => {
+  const CODED_DUBS = [
+    variant("thai", "dubThai", "tha"),
+    variant("spanish", "dubSpanish", "spa"),
+    variant("english", "dubEnglish", "eng"),
+  ]
+
+  it("stores the picked dub's code with its slug", async () => {
+    await renderProvider()
+    await act(async () => {
+      session.setVideo(record("video-cc", CODED_DUBS))
+    })
+
+    await act(async () => {
+      session.setActiveVariantIndex(1)
+    })
+
+    expect(prefs.__prefState.setAudio).toHaveBeenCalledTimes(1)
+    expect(prefs.__prefState.setAudio).toHaveBeenCalledWith("spanish", "spa")
+  })
+
+  it("sends no code for a dub whose language carries none", async () => {
+    await renderProvider()
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    await act(async () => {
+      session.setActiveVariantIndex(0)
+    })
+
+    expect(prefs.__prefState.setAudio).toHaveBeenCalledWith("thai", null)
+  })
+
+  it("fills a missing code from the loaded video's dub in the stored language", async () => {
+    // A viewer who picked Spanish before the code existed: slug, no code.
+    prefs.__prefState.audio = "spanish"
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", CODED_DUBS))
+    })
+
+    expect(prefs.__prefState.backfillAudioIso3).toHaveBeenCalledWith(
+      "spanish",
+      "spa",
+    )
+    // The fill never counts as a pick.
+    expect(prefs.__prefState.setAudio).toHaveBeenCalledTimes(0)
+  })
+
+  it("leaves a stored code alone", async () => {
+    prefs.__prefState.audio = "spanish"
+    prefs.__prefState.audioIso3 = "spa"
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", CODED_DUBS))
+    })
+
+    expect(prefs.__prefState.backfillAudioIso3).toHaveBeenCalledTimes(0)
+  })
+
+  it("fills nothing when the stored language's dub carries no code", async () => {
+    prefs.__prefState.audio = "thai"
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", MULTI_DUB))
+    })
+
+    expect(prefs.__prefState.backfillAudioIso3).toHaveBeenCalledTimes(0)
+  })
+
+  it("fills nothing from a dub in another language", async () => {
+    // The video resolves to its English dub, but the stored language is Korean.
+    prefs.__prefState.audio = "korean"
+    await renderProvider()
+
+    await act(async () => {
+      session.setVideo(record("video-cc", CODED_DUBS))
+    })
+
+    expect(prefs.__prefState.backfillAudioIso3).toHaveBeenCalledTimes(0)
   })
 })

@@ -1,3 +1,4 @@
+import { signWatchSearchSurfaceManifest } from "@/services/recommendations/watch-search-surface-manifest"
 import { builder } from "@/graphql/builder"
 import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 import type {
@@ -343,6 +344,12 @@ const WatchSearchResponseRef = builder
   .objectRef<WatchSearchResponse>("WatchSearchResponse")
   .implement({
     fields: (t) => ({
+      surfaceManifest: t.field({
+        type: "JSON",
+        nullable: true,
+        resolve: (row) =>
+          signWatchSearchSurfaceManifest(row, env.WEB_REVALIDATE_TOKEN),
+      }),
       query: t.exposeString("query"),
       results: t.field({
         type: [WatchSearchResultRef],

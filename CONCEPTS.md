@@ -125,6 +125,13 @@ _Avoid:_ variant (the mobile client aliases Dubs as "variants").
 
 A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the Edition, not off individual Dubs — a Dub references the Edition whose subtitles apply, so many Dubs sharing an edition share one set of subtitle tracks.
 
+### Explore Clip
+
+A short window of one Video, played from that Video's own Dub stream in the mobile Explore feed; it is a start point and an end point over the full Video, never a separate media file.
+_Avoid:_ short (the same thing in conversation; tickets and code say clip).
+
+A clip is cut at sentence boundaries, from the subtitle timing of the Dub that plays, or by a fixed fallback rule when no usable timing exists. A clip never writes watch progress. "Keep watching" hands the viewer from a clip to the full Video, at the point the clip reached and in the clip's Dub.
+
 ### Language
 
 A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons and cross-system transport key on the slug; the BCP-47 tag is for locale negotiation and locale-sensitive search execution. The slug is unique when it is present, but it is not guaranteed to exist — a Language can carry no slug at all. A consumer must treat a missing slug as an unusable identity and drop that option, never substitute an empty string, because downstream code reads an empty string as "nothing selected".
@@ -1299,6 +1306,14 @@ The credited scripture text a Watch surface renders for a Bible Citation, resolv
 
 The split matters because a Citation always exists while a Passage may not. Admin returns none when no provider key is configured, when the citation cannot be mapped, or when the translation supplies no copyright string. Attribution is therefore fail-closed by construction: a surface holding verse text always holds the credit that belongs with it.
 
+### Bible Reader
+
+The mobile app's native reader, which shows one verse at a time from a Bible quote or from the Bible tab. It is not a way to show a Bible Passage. The reader's text comes from a public catalog of free-use translations, and the app carries one English translation (BSB) inside the install. Admin does not resolve, cache, or credit that text.
+
+The two texts can differ for the same reference. A quote card shows the Bible Passage in the translation that Admin resolved. A tap on "Read full passage" opens the reader at the first cited verse, in the viewer's own reader translation. The reader shows the credit line from its catalog, not the Passage's copyright line. One reading position serves both ways into the reader, and it is stored in BSB verse numbers, so a reference names the same verses in every translation.
+
+_Avoid_: calling reader text a "passage", and reading it from Admin's passage fields.
+
 ## Home hero UI
 
 ### Three-Layer Hero
@@ -1377,7 +1392,7 @@ The dimmed cover laid over a video's poster while a video that starts on its own
 
 The veil takes no touches, and while it is up a tap on the video body must not resolve to hiding the Chrome beneath it, or playback begins with no controls at all. It is released by the first frame, by a reported load failure, or by a time limit — whichever comes first. The time limit is not redundant: the other two releases depend on the player reporting something, and the case that strands a viewer is the one where it reports nothing, so a viewer who leaves the app mid-load and returns must also get the veil released. Releasing early only returns the controls sooner, while releasing late leaves the viewer with no way out, so the bound is set to err early.
 
-The veil is rarely the only thing covering the Chrome — the poster it darkens is a layer in its own right. A release rule that frees the veil while the poster stays leaves the viewer exactly as stranded, so every layer that can cover the Chrome must answer to the same release, not merely the topmost one. Whether a residual poster actually strands anyone depends on paint order rather than on the layers themselves: where the Chrome is drawn by the app it can paint over a leftover poster and nothing is lost, but where the player supplies its own controls inside the video surface, any layer laid over that surface hides them. Passing touches through a covering layer does not resolve this — a control that can be pressed but not seen is not a recovery affordance.
+The veil is rarely the only thing covering the Chrome — the poster it darkens is a layer in its own right. A release rule that frees the veil while the poster stays leaves the viewer exactly as stranded, so every layer that can cover the Chrome must answer to the same release, not merely the topmost one. Whether a residual poster actually strands anyone depends on paint order rather than on the layers themselves: where the Chrome is drawn by the app it can paint over a leftover poster and nothing is lost, but where the player supplies its own controls inside the video surface, any layer laid over that surface hides them. Passing touches through a covering layer does not resolve this — a control that can be pressed but not seen is not a recovery affordance. A poster can also stay briefly after the release on purpose, to hide the dark gap before the first frame appears. That is safe only where the app draws the Chrome over the poster, and only for a bounded time. On a failure the poster and the spinner leave with the veil at once, so the viewer never sees a loading sign under a can't-play message.
 
 ### Back-Swipe Strip
 
@@ -1576,15 +1591,9 @@ The pane is not the shell. A shell showing a SERVER-DECIDED denial screen is nev
 
 The stable owner identity every Seeker conversation is stored under — a namespaced string distinguishing a signed-in account from an anonymous browser session, with a shared fallback key stamped on internal callers that supply none. The key is treated as opaque past its namespace prefix (matching never splits or parses the remainder), the same value keys the subject's conversations in the persistence store and their traces in observability, and the shared fallback key aggregates many people's turns so nothing keyed to it can be attributed — or erased — per person.
 
-### Chat Deletion Record
-
-The content-free record that keeps a deleted conversation's identity bound to its exact Resource Key and prevents delayed writers from recreating that conversation.
-
-It survives ordinary retention and can exist before any conversation content was saved. Subject Erasure removes it, intentionally ending recreation protection without authorizing access to another owner's conversation.
-
 ### Subject Erasure
 
-The operator-run deletion of one Resource Key's Seeker data from every store that holds it — conversations and their messages, Chat Deletion Records, plus the observability traces keyed to the same value. Erasure matches the full key by exact equality only (never prefix or pattern), previews its blast radius read-only before any destructive run, and refuses outright when what it read cannot prove exactly what it would delete — an unprovable owner or an unaddressable row is an escalation, never a skipped record. Completion is claimed per key erased, never per person: a person's data may span several keys, anonymous keys cannot be discovered from an identity, and data under the shared fallback key is only ever removed by retention aging it out.
+The operator-run deletion of one Resource Key's Seeker data from every store that holds it — conversations and their messages, plus the observability traces keyed to the same value. Erasure matches the full key by exact equality only (never prefix or pattern), previews its blast radius read-only before any destructive run, and refuses outright when what it read cannot prove exactly what it would delete — an unprovable owner or an unaddressable row is an escalation, never a skipped record. Completion is claimed per key erased, never per person: a person's data may span several keys, anonymous keys cannot be discovered from an identity, and data under the shared fallback key is only ever removed by retention aging it out.
 
 ### Featured Video
 

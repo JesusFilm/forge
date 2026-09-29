@@ -1,5 +1,11 @@
 import { persistCandidateStageEvidence } from "./candidate-evidence-persistence"
 import {
+  CANDIDATE_TRACE_FORMAT_VERSION,
+  candidateTracePayload,
+  type CandidateEvidenceRow,
+} from "./candidate-trace"
+import { env } from "@/config/env"
+import {
   observeRecommendationRuntime,
   timeRecommendationOperation,
 } from "@/lib/recommendation-runtime-observation"
@@ -16,6 +22,8 @@ import {
 } from "@/services/scene-recommendations.service"
 import {
   DELIVERY_RETRIEVAL_BUDGET_MS,
+  MAX_DELIVERY_ITEMS,
+  MAX_DELIVERY_RESPONSE_BYTES,
   RECOMMENDATION_CONTRACTS,
   RECOMMENDATION_RAW_RETENTION_DAYS,
 } from "./contracts"
@@ -84,13 +92,109 @@ export {
   invalidateRecommendationCandidatePools,
   runRecommendationRetrievalQuery,
 } from "./delivery-runtime"
+import {
+  recommendationTraffic,
+  observeRecommendationTraffic,
+  CONTEXTUAL_RECOMMENDATION_CAPABILITY,
+} from "./traffic"
+
 export class RecommendationDeliveryService {
   constructor(private readonly deps: DeliveryDependencies) {}
 
-  deliver(input: DeliveryInput): Promise<SemanticRecommendationDelivery> {
-    return observeRecommendationRuntime("seeded", () =>
-      this.deliverObserved(input),
+  async deliver(input: DeliveryInput): Promise<SemanticRecommendationDelivery> {
+    const traffic = recommendationTraffic(input)
+    observeRecommendationTraffic("seeded", traffic, "attempted")
+    return observeRecommendationRuntime("seeded", async () => {
+      const response = await this.deliverObserved(input)
+      if (response.requestId)
+        observeRecommendationTraffic("seeded", traffic, "committed")
+      return response
+    })
+  }
+
+  private async deliverContextual(
+    input: DeliveryInput,
+    traffic: ReturnType<typeof recommendationTraffic>,
+    deadlineAt: number,
+    nowMilliseconds: () => number,
+  ): Promise<SemanticRecommendationDelivery> {
+    const response = unavailable(
+      traffic.disposition === "deferred"
+        ? "traffic_deferred"
+        : "traffic_contextual",
     )
+    const seedMediaId = input.seedMediaId.trim(),
+      locale = input.locale.trim(),
+      audioLanguageSlug = input.audioLanguageSlug.trim()
+    if (
+      !seedMediaId ||
+      seedMediaId.length > 191 ||
+      !locale ||
+      locale.length > 32 ||
+      !/^[a-z0-9-]{1,64}$/.test(audioLanguageSlug)
+    )
+      return unavailable("invalid_input")
+    if (traffic.disposition === "deferred") {
+      observeRecommendationTraffic("seeded", traffic, "deferred")
+      return { ...response, result: "empty" }
+    }
+    try {
+      const candidates = await withinDeadline(
+        () =>
+          this.deps.retrieveCuratedFallback?.({
+            seedMediaId,
+            locale,
+            audioLanguageSlug,
+            excludedMediaIds: [],
+            deadlineAt,
+          }) ?? Promise.resolve([]),
+        deadlineAt,
+        nowMilliseconds,
+      )
+      const items = candidates
+        .filter(
+          (candidate) =>
+            nominationEligibilityReasons(candidate, {
+              surface: RECOMMENDATION_CONTRACTS.surface,
+              purpose: "watch",
+              locale,
+              audioLanguageSlug,
+            }).length === 0,
+        )
+        .slice(0, MAX_DELIVERY_ITEMS)
+        .map((candidate, index) => ({
+          ...candidate.presentation,
+          videoId: candidate.targetMediaId,
+          id: `contextual:${index + 1}`,
+          position: index,
+          targetMediaId: candidate.targetMediaId,
+          canonicalHref: `/watch${buildCanonicalWatchVideoPath(candidate.presentation.videoSlug, audioLanguageSlug)}`,
+          candidateGenerator: "curated" as const,
+          contributors: [],
+          capability: CONTEXTUAL_RECOMMENDATION_CAPABILITY,
+          sceneIndex: candidate.presentation.sceneIndex,
+          durationSeconds: candidate.presentation.durationSeconds ?? null,
+          similarity: 0,
+        }))
+      const result: SemanticRecommendationDelivery = {
+        ...response,
+        result: items.length ? "fallback" : "empty",
+        requestedCount: MAX_DELIVERY_ITEMS,
+        composedCount: items.length,
+        shortfallReason:
+          items.length < MAX_DELIVERY_ITEMS ? "insufficient_candidates" : null,
+        personalization: null,
+        items,
+      }
+      if (
+        Buffer.byteLength(JSON.stringify(result)) > MAX_DELIVERY_RESPONSE_BYTES
+      )
+        return unavailable("response_too_large")
+      observeRecommendationTraffic("seeded", traffic, "contextual_fallback")
+      return result
+    } catch {
+      return unavailable("contextual_unavailable")
+    }
   }
 
   private async deliverObserved(
@@ -103,6 +207,16 @@ export class RecommendationDeliveryService {
     const issuanceDeadlineAt = serviceDeadlineAt - DELIVERY_RESPONSE_RESERVE_MS
     assertWebRecommendationCaller(input.caller)
     const webConsumerBucketKey = input.caller.rateLimitBucketKey
+    const traffic = recommendationTraffic(input)
+    if (traffic.disposition !== "measured") {
+      observeRecommendationTraffic("seeded", traffic, "persistence_avoided")
+      return this.deliverContextual(
+        input,
+        traffic,
+        serviceDeadlineAt,
+        nowMilliseconds,
+      )
+    }
     if (!/^[a-f0-9]{64}$/.test(input.sessionDigest)) {
       return unavailable("invalid_session")
     }
@@ -961,36 +1075,92 @@ export class RecommendationDeliveryService {
                 },
               },
             })
-            await tx.recommendationCandidateRun.create({
-              data: {
-                id: candidateRunId,
-                requestId,
-                purpose: context.purpose,
-                contextVersion: platform.versions.context,
-                generatorVersion: platform.versions.generator,
-                unionVersion: platform.versions.union,
-                eligibilityVersion: platform.versions.eligibility,
-                rankerVersion: platform.versions.ranker,
-                composerVersion: platform.versions.composer,
-                candidateEligibilityParity:
-                  platform.parity.candidateEligibility,
-                rankerParity: platform.parity.ranker,
-                baselineDigest: nullableDigest(platform.parity.baselineDigest),
-                platformDigest: nullableDigest(platform.parity.platformDigest),
-                nominatedCount: platform.counts.nominated,
-                canonicalizedCount: platform.counts.canonicalized,
-                deduplicatedCount: platform.counts.deduplicated,
-                rejectedCount: platform.counts.rejected,
-                scoredCount: platform.counts.scored,
-                orderedCount: platform.counts.ordered,
-                requestedCount,
-                composedCount,
-                shortfallReason,
-                evidenceComplete,
-                fallbackReason: candidateRunFallbackReason,
+            const evidenceCreatedAt = new Date()
+            const evidenceRows: CandidateEvidenceRow[] = platform.evidence.map(
+              (entry) => ({
+                id: newId(),
+                runId: candidateRunId,
+                stage: entry.stage,
+                ordinal: entry.ordinal,
+                candidateKey: entry.candidateKey.slice(0, 191),
+                targetMediaId: entry.targetMediaId?.slice(0, 191) ?? null,
+                sourceGenerator: entry.sourceGenerator,
+                sourceRank: entry.sourceRank,
+                sourceScore: entry.sourceScore,
+                normalizedScore: entry.normalizedScore,
+                rrfScore: entry.rrfScore,
+                deterministicScore: entry.deterministicScore,
+                finalPosition: entry.finalPosition,
+                reasonCodes: entry.reasonCodes.slice(0, 16),
+                sourceEvidence: entry.sourceEvidence
+                  .slice(0, 16)
+                  .map((source) => ({
+                    generator: source.generator,
+                    generatorVersion: source.generatorVersion,
+                    rank: source.rank,
+                    score: source.score,
+                    evidence: source.evidence,
+                    rejectionReason: source.rejectionReason,
+                  })),
+                createdAt: evidenceCreatedAt,
                 expiresAt,
-              },
-            })
+              }),
+            )
+            const compactTrace =
+              (this.deps.candidateTraceFormat ??
+                env.RECOMMENDATION_CANDIDATE_TRACE_FORMAT) === "compact"
+            const tracePayload = compactTrace
+              ? candidateTracePayload(evidenceRows)
+              : null
+            const createCandidateRun = () =>
+              tx.recommendationCandidateRun.create({
+                select: { id: true },
+                data: {
+                  id: candidateRunId,
+                  requestId,
+                  purpose: context.purpose,
+                  contextVersion: platform.versions.context,
+                  generatorVersion: platform.versions.generator,
+                  unionVersion: platform.versions.union,
+                  eligibilityVersion: platform.versions.eligibility,
+                  rankerVersion: platform.versions.ranker,
+                  composerVersion: platform.versions.composer,
+                  candidateEligibilityParity:
+                    platform.parity.candidateEligibility,
+                  rankerParity: platform.parity.ranker,
+                  baselineDigest: nullableDigest(
+                    platform.parity.baselineDigest,
+                  ),
+                  platformDigest: nullableDigest(
+                    platform.parity.platformDigest,
+                  ),
+                  nominatedCount: platform.counts.nominated,
+                  canonicalizedCount: platform.counts.canonicalized,
+                  deduplicatedCount: platform.counts.deduplicated,
+                  rejectedCount: platform.counts.rejected,
+                  scoredCount: platform.counts.scored,
+                  orderedCount: platform.counts.ordered,
+                  requestedCount,
+                  composedCount,
+                  shortfallReason,
+                  evidenceComplete,
+                  fallbackReason: candidateRunFallbackReason,
+                  traceFormatVersion: compactTrace
+                    ? CANDIDATE_TRACE_FORMAT_VERSION
+                    : null,
+                  tracePayload: tracePayload ?? undefined,
+                  expiresAt,
+                },
+              })
+            if (compactTrace) {
+              await timeRecommendationOperation(
+                "candidate_evidence.insert",
+                createCandidateRun,
+                evidenceRows.length,
+              )
+            } else {
+              await createCandidateRun()
+            }
             await tx.recommendationPersonalizationDecision.create({
               data: {
                 requestId,
@@ -1009,37 +1179,8 @@ export class RecommendationDeliveryService {
                 expiresAt,
               },
             })
-            if (platform.evidence.length > 0) {
-              await persistCandidateStageEvidence(
-                tx,
-                platform.evidence.map((entry) => ({
-                  id: newId(),
-                  runId: candidateRunId,
-                  stage: entry.stage,
-                  ordinal: entry.ordinal,
-                  candidateKey: entry.candidateKey.slice(0, 191),
-                  targetMediaId: entry.targetMediaId?.slice(0, 191) ?? null,
-                  sourceGenerator: entry.sourceGenerator,
-                  sourceRank: entry.sourceRank,
-                  sourceScore: entry.sourceScore,
-                  normalizedScore: entry.normalizedScore,
-                  rrfScore: entry.rrfScore,
-                  deterministicScore: entry.deterministicScore,
-                  finalPosition: entry.finalPosition,
-                  reasonCodes: entry.reasonCodes.slice(0, 16),
-                  sourceEvidence: entry.sourceEvidence
-                    .slice(0, 16)
-                    .map((source) => ({
-                      generator: source.generator,
-                      generatorVersion: source.generatorVersion,
-                      rank: source.rank,
-                      score: source.score,
-                      evidence: source.evidence,
-                      rejectionReason: source.rejectionReason,
-                    })),
-                  expiresAt,
-                })),
-              )
+            if (!compactTrace && evidenceRows.length > 0) {
+              await persistCandidateStageEvidence(tx, evidenceRows)
             }
             if (requestState === RecommendationRequestState.ISSUED) {
               await tx.recommendationEvidenceAudit.create({

@@ -31,8 +31,12 @@ sources, playlist sequence, mux inserts) until feat-160 moves curation into
 admin; `fallbackConfig.ts` is a FROZEN emergency body fallback (null / fetch
 error / zero renderable shelves) — do NOT mirror web there. `useWatchHome`
 fetches the Experience and the lean `watchHomeVideos` payload in parallel
-(**never select `dubs` in the bulk fragment; jest guards enforce it on both the
-videos fetch and the `watchSetting` path**), then top-up-fetches the divergent
+(**never select `dubs` in the bulk fragment; jest guards enforce it on the
+videos fetch, the `watchSetting` path, and Explore's `ExploreClipCandidates`
+hydration, which uses the same `watchHomeVideos` root field; the queue hook
+releases each hydration result when its clip leaves the queue and the current
+slot, and `useExploreClipQueue.test.tsx` checks against a real `InMemoryCache`
+that no inventory or hydration entry stays in the shared cache**), then top-up-fetches the divergent
 Experience coreIds the config pool doesn't cover (`topUpFetch.ts`, chunked, 3s
 deadline, last-good reuse on failure) and assembles the model via
 `assembleWatchHomeModel` — the config model (client-owned hero) is built from the
@@ -70,10 +74,10 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - **Flat container model**: Admin's `ContainerBlock` uses flat `content[]` with `ContainerSlotBlock` markers instead of nested `slots[].slotContent`. `groupBySlotMarker()` reconstructs slot groups.
 - **ExperienceProvider at root layout**: Wraps the root Stack so both tabs and video detail route have access.
 - **Three-layer hero**: the hero (zIndex 0) is absolutely-positioned behind FlashList, with an interactive overlay (zIndex 2, `pointerEvents="box-none"`) above the scroll view for anything tappable. SDUI/CuratedHomeLayout path: visual elements render in the hero layer and invisible overlay Pressables are positioned over them via `measureLayout`. HomeScreen path: visible chrome Pressables (Watch Now / insert CTA / mute) render directly in the overlay and fade with scroll, while hero swipes are claimed by a capture-phase PanResponder on the screen root and forwarded to the pager.
-- **One-decoder discipline**: only the active hero/player mounts a video decoder — episode cards and background surfaces render posters, never VideoViews. (There is no global "VideoDecoderBudget" context; that was never built.)
+- **One-decoder discipline**: only the active hero/player mounts a video decoder — episode cards and background surfaces render posters, never VideoViews. The one named exception is the Explore feed: its two feed-owned players (`src/hooks/useFeedPlayers.ts`) keep a muted, paused standby that preloads the next clip (feat-552 KTD2). (There is no global "VideoDecoderBudget" context; that was never built.)
 - **Hero transition hold**: leaving a PLAYING hero slide sets `transitionFromId` (pagerReducer) — the departing page keeps hosting the live video through the scroll animation; pause + replaceAsync swap defer until the settle (SLIDE_SHOWN), with SUSPEND/SLIDES_SET/MAX_DWELL as release valves. `heroPageVideoState()` is the tested render-time host selector; during a hold, outgoing-stream `playToEnd`/`PLAY_STARTED`/errors are guarded so they can't advance past or reveal the incoming slide.
 - **Hero stream failure cooldown**: failed `GET_VIDEO_BY_SLUG` resolutions open a per-slug module-scope backoff window (`heroStreamCooldown.ts`, 60s doubling to 10min) that suppresses hook + prefetch retries; any query success for the slug — or a successful pull-to-refresh (`clearAllHeroStreamCooldowns`) — releases it.
-- **One expo-video lifecycle adapter**: player creation goes through `useManagedVideoPlayer` (frozen source, replaceAsync swap, AppState pause/resume) — a jest guard forbids BOTH `useVideoPlayer(` and `createVideoPlayer(` outside it, plus a three-entry allowlist (`HomeHeroPager`'s bespoke swap engine, `VideoHeroRenderer`, and the shared test double `src/test-utils/expoVideoMock.ts`). `createVideoPlayer` is named separately because its player does NOT release with the component — the "outlives the route" hole.
+- **One expo-video lifecycle adapter**: player creation goes through `useManagedVideoPlayer` (frozen source, replaceAsync swap, AppState pause/resume) — a jest guard forbids BOTH `useVideoPlayer(` and `createVideoPlayer(` outside it, plus a four-entry allowlist (`HomeHeroPager`'s bespoke swap engine, `VideoHeroRenderer`, Explore's two feed players in `src/hooks/useFeedPlayers.ts`, and the shared test double `src/test-utils/expoVideoMock.ts`). The same guard pins that the feed creates exactly two players, both with `useVideoPlayer`. `createVideoPlayer` is named separately because its player does NOT release with the component — the "outlives the route" hole.
 - **expo-image everywhere**: Never use RN `<Image>`. Always `expo-image` with `recyclingKey`.
 
 ## Conventions
@@ -86,14 +90,16 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
-- **Bible verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
+- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
 
 ## Admin endpoint resolution (feat-339)
 
 **A development bundle defaults to local admin** —
-`http://localhost:3003/api/graphql`, rewritten to `10.0.2.2` on the Android
-emulator. No env file required: a fresh clone or a fresh worktree is already
-pointed at local admin. Release bundles are unchanged and default to production.
+`http://localhost:3003/api/graphql`, rewritten to `10.0.2.2` (the Android
+emulator's alias for the Mac) on every Android device, emulator or phone. The
+simulators and the emulator need no env file: a fresh clone or a fresh worktree
+is already pointed at local admin. A physical phone needs a per-machine override
+(see below). Release bundles are unchanged and default to production.
 All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
 `src/env.ts` and `src/lib/config.ts` both consume.
 
@@ -118,7 +124,8 @@ All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
 - **`EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN=1` opts back in**, deliberately and
   visibly — the startup line then names production on every launch.
 - **Only the known production host refuses.** A LAN address, a tunnel, or an
-  emulator alias boots normally, so physical-device work is unaffected.
+  emulator alias boots normally, so the refusal does not block physical-device
+  work.
 - **Every development launch prints its endpoint**:
   `[admin-endpoint] admin_endpoint.url=… admin_endpoint.kind=…`.
 - **An endpoint that refuses connections raises a dev-only banner** over Home
@@ -129,6 +136,14 @@ All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
 `.env.local`. `fetch-secrets` replaces `.env.local` wholesale, so a hand-added
 line there is lost on the next run; and `.env.development.local` is never loaded
 in production mode, so it cannot be inlined into a published bundle.
+
+**A physical phone needs a LAN override to reach local admin.** The loopback
+rewrite keys on the platform, not on an emulator. So a physical Android phone
+sends admin traffic to `10.0.2.2`, which does not exist on its network, and
+`adb reverse tcp:3003` alone does not help. On a physical iPhone, `localhost` is
+the phone. Set `EXPO_PUBLIC_ADMIN_GRAPHQL_URL=http://<mac-lan-ip>:<port>/api/graphql`
+in `.env.development.local`, then restart Metro with `--clear`. Full recipe:
+`docs/solutions/developer-experience/physical-android-dev-build-local-admin-emulator-alias.md`.
 
 Local admin needs `pnpm --filter @forge/admin dev` on port 3003 against a
 pgvector-capable Postgres. Getting production-shaped content into it is tracked
@@ -422,6 +437,15 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `src/lib/__tests__/datadogReservedAttributes.guard.test.js` now blocks a
   ninth. Background: see
   `docs/solutions/conventions/datadog-reserved-log-attribute-name-shadowing.md`.
+- **Explore's telemetry** (`src/lib/explore/telemetry.ts`, feat-552 KTD17)
+  sends product signals as RUM actions with `explore_` keys, and
+  playback-health events through the injected `telemetry` sink.
+  `useFeedPlayers` reports the stages only it sees (source set, source loaded,
+  rebuffer, clip failure) through optional callbacks; a `loading` status within
+  `SEEK_LOADING_GRACE_MS` of any seek is not a rebuffer.
+- **The Bible reader's events use `bible_reader.*` names and `reader_*`
+  attributes**, so the open source is `reader_source`, not `source`. See
+  "Bible reader (feat-553)" for the six events.
 
 ## Common Pitfalls
 
@@ -429,6 +453,15 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - **The ambient wash hands over to BLACK while the video plays (`WatchAmbient`), for EVERY video, by decision — not by detection.** It is POSTER-derived, so once playback moves past that frame it no longer describes what is on screen, and on a video with baked-in letterbox bars it frames them. It cross-fades to pure black rather than simply away, because black is what those bars ARE — handing over to `BG_COLOR` would still leave them ~28 levels off their surround. Both layers ride ONE value (the black is `playFade` inverted), so they can never both be up or both be gone. The black holds solid to the player's bottom edge then dissolves into `BG_COLOR` across the bleed, with that midpoint DERIVED from `topInset + playerHeight` — ending an opaque band on the clipped edge is the seam this layer was already fixed for once. `PLAYING_OPACITY_MULTIPLIER` is the knob (0 = full handover, 1 = old behaviour); `PLAY_FADE_MS` is deliberately slow (3s) so it reads as the room settling rather than a glitch. The animated opacity MUST NOT land in the same style array as `styles.root` — it would win over `AMBIENT_MAX_OPACITY` and silently discard the contrast ceiling while that ceiling's own guard stays green. Play state arrives via the module-scope request store (`setPlaying` / `usePlaybackPlaying`), mirroring `loadFailed`, because the host is a `<Stack>` SIBLING and no context or prop path reaches the route's layers.
 - **Detecting baked-in letterbox bars on-device was investigated and REJECTED (2026-08-27) — do not re-litigate without new evidence.** Bars are in the PIXELS, not the container: `pilgrims-progress` is stored 1920x1080 on every rendition with 137 black rows top and bottom, so `VideoTrack.size` / `VideoThumbnail.width` / aspect metadata are all blind to it. Sampling frames DOES work (Mux `image.mux.com/<id>/thumbnail.png?time=&width=64`, requiring symmetry + steadiness across >=3 mid-timeline frames — a single middle frame false-positives on dark scenes, measured on `the-birth-of-jesus`), but the framing VARIES within one video (no bars t=3-20s on the same asset), only 1 in 11 videos is affected, and each cold bespoke Mux render costs ~0.93s TTFB. The unconditional fade above solves the same symptom with none of that. **Landmine if you retry:** feeding expo-video's `VideoThumbnail` into expo-image's `generateThumbhashAsync`/`generateBlurhashAsync` HANGS FOREVER on iOS — both internal `Either.get()` casts return nil, the generator never runs, and the promise never settles, so a prototype just looks like a slow network call. The only real JS-only pixel route is an offscreen `react-native-webview` canvas (already a shipped dependency; `image.mux.com` sends `access-control-allow-origin: *`).
 - **A group `opacity` over stacked children needs `needsOffscreenAlphaCompositing` on Android.** Android applies a ViewGroup's opacity to EACH CHILD unless the subtree is composited offscreen first, so an OPAQUE overlay stops covering what is beneath it — it blends over an already-dimmed sibling instead. `WatchAmbient` is the worked case: poster + gradient under `opacity: 0.45`, where the gradient's opaque tail could never reach `BG_COLOR`, so the wash ended in a hard seam at its clipped bottom edge instead of dissolving into the page. iOS composites correctly on its own and measured byte-identical either way, which is exactly why it shipped. Diagnose it by giving the overlay an unmistakable opaque colour and sampling pixels: leaking reads as the overlay PLUS a tint (`#8a177f`), correct reads as the overlay alone (`#810e7f` = 45% magenta over `BG_COLOR`). Suspect this whenever a fade looks right on iOS and terminates in a line on Android — `zIndex` does NOT fix it, because the defect is compositing, not draw order.
+- **iOS removes a view from the accessibility tree when its frame misses its
+  parent's bounds, even when an ancestor's transform puts it back on screen.**
+  Measured 2026-09-25 on the iPhone 17 simulator (iOS 26.5): a slot at
+  `translateY: +h` inside a wrapper at `translateY: -h` drew correctly but left
+  the tree (3 elements, not 10); the same pair inside a wrapper 2h tall stayed.
+  So a pager that keeps growing offsets loses VoiceOver after one swipe.
+  `ExplorePager` rebases at every settle: layout `top` offsets cancel what its
+  two Animated nodes hold, one render moves them with the slots, and neither
+  node is written.
 - ScrollView gesture preemption: interactive hero elements need `pointerEvents="box-none"` pass-through.
 - Lazy Apollo Client init: never module-scope. Use `getApolloClient()` getter.
 - `contentParagraphs` is `string[]` (JSON field) — validate with `Array.isArray()`.
@@ -543,9 +576,22 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   pause/background/unmount/end AND on the two explicit session endings the
   mini player added — `dismiss` (the viewer closed the window) and `replace`
   (new content took the player over). Those two split what `unmount` used to
-  conflate, because progress attribution needs them apart. Progress is
-  signed-in ONLY (R10): sign-out empties store, snapshot, and queue via
-  `attachProgressLifecycle`.
+  conflate, because progress attribution needs them apart. A playback
+  request can carry a `progressHold` (`{ id, durationMs }`, feat-552 KTD12).
+  Only the watch page sets it, and only when it takes a "Keep watching"
+  intent (`src/lib/explore/watchIntent.ts`); a page with no intent publishes
+  none. While the hold is set, the page shows the R17 offer
+  (`src/components/watch/KeepWatchingOffer.tsx`). A choice seeks through
+  `seekPlayback` in `src/lib/playbackInterruption.ts` and ends the hold at
+  once. The offer's auto-hide clock starts at the host's play flag
+  (`usePlaybackPlaying`) and waits while a screen reader is on; the hold keeps
+  its own deadline.
+  While it holds, `recorder.ts` writes nothing — no sample and no forced
+  flush, the dismiss and unmount flushes included. Its clock starts at the
+  first frame and runs for `durationMs`; after that, writes resume even while
+  the request still carries the hold, and a request without it ends the hold
+  at once. Progress is signed-in ONLY (R10): sign-out empties store,
+  snapshot, and queue via `attachProgressLifecycle`.
 - **Bars**: one `WatchProgressBar` (store-subscribed by videoId, <1% hidden,
   ≥90% snaps full) on every card surface EXCEPT the Library downloads row
   (deferred — the row stores only a slug). Fold progress into
@@ -644,8 +690,9 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
   context issuance, waits the window once instead of spending an attempt; a
   limited evidence send retries once after the window, never 100 ms later; a
   limited facts batch pauses the drain for the window without spending a
-  delivery attempt, at most three times per episode, then drops the batch and
-  keeps the episode open; a limited bootstrap is a cooldown
+  delivery attempt, at most three times per watch-page episode (once per
+  Explore clip episode), then drops the batch and keeps the episode open; a
+  limited bootstrap is a cooldown
   (`bootstrap_rate_limited`), not a failed bearer.
   The bucket is 30 mutations per minute per `x-viewer-id`, shared by every
   recommendation mutation the launch sends.
@@ -696,6 +743,24 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
   reported and the recorder's claim attempt decides. `useUserRecommendations`
   serves no items, evidence or selection while `enabled` is false, and a
   selection stays single-flight across a profile refresh.
+- **Explore requests its own slate inside feat-552 KTD8's budget.**
+  `useExploreClipQueue` wraps the client with one budget for each launch: one
+  new request per 10 min, and four attempts per rolling hour with retries
+  included. A repeat of a request in flight shares its answer. The wrapper
+  sends no evidence and no selection. A request inside the spacing waits for
+  the 10-min mark; a request past the hourly cap is dropped, and the feed
+  stays on random fill.
+- **Explore clips use a separate clip-mode recorder** from
+  `src/lib/explore/clipEvidence.ts` (feat-552 KTD9). A clip episode starts
+  after 3 s of unbroken play and never sooner than 10 s after the previous
+  one started. It counts toward a cap of 12 per session, stored under
+  `explore-clip-evidence` as a SHA-256 digest of the session token, never
+  the token. It claims as `direct` with an `automatic` attempt, takes no Home
+  nonce or discovery mark, and never writes watch progress. `ExploreFeed` feeds
+  it the active player's events only: the play edge, ticks once the clip has
+  loaded, and `useFeedPlayers`' `onLoop`. It disposes the evidence at unmount,
+  and `ExploreFeed.test.tsx` pins the wiring with real clip-mode recorders over
+  a fake network.
 - **Playback attribution runs for every playback the root host owns.**
   `useManagedVideoPlayer` creates one `playbackRecorder.ts` per Admin video id
   when `ownsSession` is set (the SDUI routes never get one) and keeps it across
@@ -827,8 +892,10 @@ it defines the KD, KTD, R and AE numbers the source comments cite.
   `isReturnToHomeFromWatch` in `src/lib/recommendations/homeReturnSignal.ts`
   is true only when the previous segments start with a root `watch` or
   `series` segment outside `(tabs)`. The next segments must also start with
-  `(tabs)`. The predicate keys on the group marker, never a tab name: the
-  Discover tab is itself named `watch`. The SDUI `video`, `collection` and
+  `(tabs)`, and must not be the Explore tab (`["(tabs)", "explore"]`),
+  because Explore hosts its own recommendations (feat-552 KTD8). Apart from
+  that one Explore check, the predicate keys on the group marker, never a tab
+  name: the Discover tab is itself named `watch`. The SDUI `video`, `collection` and
   `experience` routes do not count.
   `app/__tests__/screenFreeze.guard.test.js` fails if any file under `app/` or
   `src/` sets `freezeOnBlur` or `enableFreeze`. A frozen Home stops receiving
@@ -873,6 +940,18 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   the frame's geometry and in which chrome renders beside it. Moving the view
   between parents remounts the surface, which is a black flash.
   `rootPlayerOwnership.guard.test.js` pins the shape.
+- **Explore's feed is the named exception, and it yields by takeover.** Its
+  two feed-owned players (`src/hooks/useFeedPlayers.ts`) draw through one
+  view component, `src/components/explore/FeedVideoView.tsx`, and never
+  belong to the host or its session. A feed view does not read
+  `useMiniPlayerHoldsVideo` as the heroes do: the feed hook gates play on its
+  `yieldsToRoot` input, which `ExploreFeed` takes from `useExploreTakeover`
+  (`clipYieldsToRoot` in `src/lib/explore/takeover.ts`), and no feed view spells
+  a picture-in-picture prop (R3). While Explore has focus, the takeover
+  dismisses a floating window through the store (never a `replaced` end); under
+  a picture-in-picture hold, it pauses the root player instead.
+  `rootPlayerOwnership.guard.test.js` checks the feed views as their own
+  class, with a positive control.
 - **The session lives in module scope, not React context.** `src/lib/miniPlayer/`
   holds it: `store.ts` (the session), `playbackRequest.ts` (the slot-to-host
   channel), plus the pure `presentation.ts`, `suppression.ts`, `layout.ts`,
@@ -888,13 +967,18 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   `PlaybackHost.tsx`), so the id-less render neither re-keys the progress
   recorder nor disposes the recommendation recorder. Before 2026-09-22 every
   expand ended the session as `replaced`, reloaded the video from 0:00, and
-  claimed a second recommendation episode.
+  claimed a second recommendation episode. The progress hold travels beside
+  the identity, never as a null identity, because `holdProgressIdentity`
+  would put the known identity back.
 - **A dub change keeps the viewer's place (since 2026-09-22).** The host
   classifies every source change before the swap applies: a completed
   download (`isOfflineContainerSwap`) and a dub pick (`isDubSwap`, both in
   `src/lib/playerSource.ts`) each capture the live clock and arm the
   `sourceLoad` resume latch that quality swaps use, so the seek lands before
-  any play. The two differ in what they tell the adapter: a download is
+  any play. A `seekPlayback` call during a swap that is still loading moves
+  the latch's saved position in place, so the swap lands on the seek;
+  replacing the latch object would stop the swap's timeout from releasing
+  it. The two differ in what they tell the adapter: a download is
   `"same-content"` and keeps its QoE session, a dub is `"new-content"` and
   re-keys it, because the audio asset changed. A different VIDEO takes
   neither claim and starts from its own beginning. Before this, a dub change
@@ -902,7 +986,10 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   **A download is one dub.** `resolvePlayerSource` plays the file on disk only
   while the settled dub is the downloaded one (or unknown, or has no stream);
   a pick of another language streams that dub, and subtitles follow the
-  source that plays (`playingOffline` in `app/watch/[slug].tsx`). A container
+  source that plays (`playingOffline` in `app/watch/[slug].tsx`). A page
+  with a "Keep watching" intent names its dub before the dub settles, so it
+  passes `awaitsNamedDub` and the file waits until the dub settles; the
+  clip's seed stream plays until then. A container
   swap that also changes language is `"new-content"` to the adapter. Read the
   file and its dub through ONE accessor, `committedCopyFor` in
   `DownloadsProvider`: mid-swap the file on disk is the OLD copy while the
@@ -933,9 +1020,11 @@ view into that rect. The chrome rides in the host layer too, not in the route.
 `surfaceType={Platform.OS === "android" ? "textureView" : undefined}` on each
 one. A SurfaceView composites outside the RN view hierarchy and punches through
 anything drawn above it, so controls and captions stop rendering over the
-video. `homeHeroAndroidCompositing.guard.test.ts` pins this on all five video
-surfaces (the host, `HomeHeroPager`, `VideoHeroRenderer`, and the two SDUI
-routes `app/video/[sectionKey].tsx` + `app/collection/[sectionKey].tsx`).
+video. `homeHeroAndroidCompositing.guard.test.ts` pins this on all six video
+surfaces (the host, `HomeHeroPager`, `VideoHeroRenderer`, the two SDUI routes
+`app/video/[sectionKey].tsx` + `app/collection/[sectionKey].tsx`, and
+Explore's `src/components/explore/FeedVideoView.tsx`, which draws both feed
+players).
 No-op on iOS. The guard is an ENUMERATION, not a sweep: the two SDUI routes
 predated it by four months and shipped without the prop because nobody added
 them to the list. Add a case whenever you add a `<VideoView>`.
@@ -943,14 +1032,42 @@ them to the list. Add a case whenever you add a `<VideoView>`.
 **Sheet suppression is cross-platform; the hazard it prevents is Android-only.**
 The window hides while an in-app sheet is presented and returns to its corner
 when the sheet closes. Two mechanisms, because the app presents sheets two
-ways — six real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
-`src/lib/miniPlayer/suppression.ts`, read from `app/watch/_layout.tsx` and
-`app/series/_layout.tsx`) and three sheets that are component state, counted by
+ways — nine real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
+`src/lib/miniPlayer/suppression.ts`: six read from `app/watch/_layout.tsx` and
+`app/series/_layout.tsx`, and the three Bible reader sheets read from the root
+`app/_layout.tsx`) and three sheets that are component state, counted by
 `getNonRouteSheetCounter()` and keyed by id so an unbalanced call is
 attributable. Keep both in step with those layouts. The rule runs on both
 platforms even though only Android paints through a sheet, so behaviour does
 not fork per platform. Suppression hides by opacity and drops pointer events —
 it never unmounts the view.
+
+**The Bible reader routes change how the window starts and where it rests,
+and only on those routes (feat-553 KTD10, KTD11).** Outside the reader
+routes, every rule in this section is unchanged.
+
+- **A reader route covers the watch slot and keeps it attached.**
+  `isReaderCovering(segments)` in `presentation.ts` names `reader` and the
+  three reader sheets, not the Bible tab: no watch slot is mounted under the
+  tab. A detach would release the player and restart the video at 0:00, so
+  the slot keeps its rect instead. `coverSlot` in `playbackRequest.ts` runs
+  the same admission step as a detach (`originateSession`). A started video
+  floats in the window. A video that has not started, has ended, or is
+  casting stays hidden and paused, and its autostart turns off.
+- **The cover and the return send no end report.** `uncoverSlot` clears a
+  session that the cover started through `clearWithoutReport` in `store.ts`.
+  The QoE session, the recommendation episode, and the player settings key
+  therefore survive a visit to the reader. A tap on the window over the
+  pushed reader pops back to the watch screen (`expandAction` returns
+  `pop`), so the stack never holds a second watch screen.
+- **Reader routes place the window by device.** This overrides the feat-367
+  rule that a push never moves the window, for reader routes only.
+  `readerCornerPolicy` in `layout.ts` starts the window at the top right on a
+  phone and at the bottom right on an iPad-sized screen. All four corners
+  stay allowed, between the reader's top bar and its footer. The reader keeps
+  its own remembered corner apart from the app's corner, so a drag in one
+  never moves the other. `PlaybackHost` reads the effective corner: the
+  reader corner on reader routes, and the app corner elsewhere.
 
 **Picture-in-picture: one props object, one latch, chrome-only suppression.**
 Every video view that can enter the OS window spreads
@@ -979,7 +1096,25 @@ waiting for a second tap. `/watch/[slug]` gets this from `VideoPlayer.tsx`'s
 entanglement `VideoPlayer` has to carry. Neither SDUI route autostarted for
 months because the paths were written separately and nobody compared them —
 `video/[sectionKey]` sat on a tap-to-play poster, `collection/[sectionKey]` had
-no poster at all. If you add a fourth player surface, use the hook.
+no poster at all. If you add another player surface, use the hook. Explore
+is the named exception: `useAutostartPlayback` covers one load and plays with
+no seek, so the feed uses `src/hooks/useClipAutostart.ts`, a per-clip gate
+with the same three release paths and the same `AUTOSTART_VEIL_TIMEOUT_MS`.
+Its timer runs only while a load can run: it waits for the pager's rest, and
+it does not run while the clip yields to the root player (feat-552 KTD10).
+The veil, the spinner, the poster and the still all show on its one
+`veilVisible` predicate, but the image and the spinner do not leave on it.
+After the gate lifts on play, `ClipVeil` holds them until the active view draws
+its first frame, for at most `VEIL_FRAME_WAIT_MS`; a fade at the gate lift
+shows a black band. A failure (error or timeout) releases them at once. The
+chrome renders above the hold, so the hold never hides a control. The "frame
+drawn" flag is per player and clears only on a new source, because a replay by
+seek sends no new first frame (see
+`docs/solutions/logic-errors/first-frame-veil-hold-needs-per-source-latch-and-failure-release.md`).
+The poster is the clip's authored image, else admin's
+pre-generated hero poster (`muxHeroPosterFromPlaybackId`, byte for byte with
+`WATCH_HERO_POSTER_RECIPE`). The one-player still is `muxClipStillUrl`: 540x960
+smartcrop at the clip start.
 
 The gate's release paths are the whole point, and there are three: playback
 started, the source errored, or `AUTOSTART_VEIL_TIMEOUT_MS` elapsed. The third
@@ -1002,6 +1137,87 @@ need the shared predicate and `/watch/[slug]` does not. Before copying a gate
 between player surfaces, check which side of that line you are on. The general
 rule: every layer that can hide the recovery affordance must clear on every path
 that releases the gate.
+
+## Explore clips feed (feat-552)
+
+Explore is the second tab: an endless vertical feed of 25–60 s clips of
+catalog videos in the viewer's feed language, with "Keep watching" into the
+full video. The plan is
+`docs/plans/2026-09-24-1450-feat-mobile-explore-clips-feed-plan.md`; the
+device probe is `docs/validation/explore-clips-probe.md`. The code lives in
+`src/lib/explore/` (pure rules and stores), `src/components/explore/`, and the
+`useExploreFocus`, `useFeedPlayers`, `useClipAutostart`, `useExploreClipQueue`
+and `useExploreTakeover` hooks.
+
+- **The gate is fixed per bundle, never toggled at runtime.**
+  `isExploreAvailable()` (`availability.ts`) binds the pure rule in
+  `availabilityState.ts`: the over-the-air constant `EXPLORE_ENABLED`
+  (`constants.ts`) AND (`__DEV__` OR `EXPO_PUBLIC_EXPLORE_ENABLED` is `1` or
+  `true`). A release Android bundle also needs
+  `EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED` (`1` or `true`), because one EAS
+  variable serves both platforms and Android testers wait for the low-end
+  Android pass. iOS marks the trigger `hidden`, Android sets `href: null`, and
+  the route renders nothing while closed (an Android route stays reachable by
+  URL). `exploreGateWiring.guard.test.js` pins all of it.
+- **Operator steps.** Set `EXPO_PUBLIC_EXPLORE_ENABLED=1` (plain-text
+  visibility) in the EAS environment of the build profile the testers install —
+  `preview` for internal builds, `production` for TestFlight. Never in an
+  `eas.json` `env` block (an `eas.json` edit moves the runtime version). The
+  kill switch is `EXPLORE_ENABLED = false` in an update; it reaches only builds
+  with the same runtime version.
+- **`expo-device` is a native module, so it moved the fingerprint runtime
+  version.** A native build must ship before any `eas update` reaches a tester.
+  `deviceTier.ts` probes `requireOptionalNativeModule("ExpoDevice")` before it
+  loads the package: a dev client built before the module otherwise shows a red
+  box, even though the require is caught.
+- **No work before first focus (R46).** iOS NativeTabs render every tab at
+  launch. `useExploreFocus` latches the first focus, and `ExploreFeed` mounts
+  only after it.
+- **Two feed-owned players, one reducer.** `useFeedPlayers` creates exactly two
+  `useVideoPlayer` players with a null source (the player guard's allowlist
+  names the file), and `feedState.ts` owns the states, the slot roles, the
+  swipe history, and the pause flags, so both players derive from one state per
+  commit. At most one player in the app has sound: a swipe mutes and pauses the
+  outgoing player, reveals the incoming one muted on confirmed motion, then
+  unmutes it (expo/expo#30271). A loop is a seek at the window end; native
+  `loop` stays off. Loads start only while the pager rests, and every load
+  carries a token so a late `sourceLoad` never seeks the wrong clip.
+- **The pager rebases at every settle, or iOS hides the clip from VoiceOver.**
+  See the Common Pitfalls entry on frames that miss their parent's bounds.
+  `ExplorePager.test.tsx` "accessibility tree geometry (R35)" pins it.
+- **Both video views stay mounted in the pager's underlay, keyed by player**
+  (`FeedVideoView.tsx`, Android `textureView`, no picture-in-picture props), so
+  a swipe moves a view and never remounts or rebinds it. "Keep watching"
+  unmounts both until the next focus, because the device probe could not show
+  that a cleared source frees its decoder on a low-end Android phone.
+- **One player on low-memory Android.** `resolvePlayerMode` (`playerMode.ts`)
+  gives one player below 3.5 GiB of reported memory (a phone sold as 4 GB
+  reports about 3.7 GiB), and demotes a launch after two fast standby errors;
+  `demotionStore.ts` keeps a demotion for 7 days per app version.
+- **Per-clip autostart gate.** See the autostart paragraphs in the mini player
+  section: `useClipAutostart` keeps the three release paths and
+  `AUTOSTART_VEIL_TIMEOUT_MS`, per clip.
+- **The takeover is a continuous yield.** While Explore has focus,
+  `useExploreTakeover` dismisses every floating session through the store
+  (never a `replaced` end); under a picture-in-picture hold it pauses the root
+  player instead, and a root `playing` edge pauses the clip as a system pause.
+  A floating window therefore ends when the viewer opens Explore, and only
+  there.
+- **Clips never write watch progress.** They send capped recommendation
+  evidence through the clip-mode recorder (see the recommendations section).
+  "Keep watching" opens the watch page through a one-shot intent
+  (`watchIntent.ts`) with a 6 s progress hold and the R17 offer.
+- **Clip moments come from subtitle timing on the phone.** `sentenceTiming.ts`
+  is a ported copy of TV's module with more sentence terminators (SYNC note in
+  its header; TV has not taken the additions — a follow-up in feat-552).
+  `clipTiming.ts` walks the playing dub's tracks through the shared cue cache
+  (`src/lib/vttCache.ts`, 1 MB cap per track) and stores a verdict per video,
+  edition and feed language for 7 days. Its app version is
+  `Constants.expoConfig.version`, so an over-the-air update does not clear the
+  stored verdicts.
+- **Admin load.** Hydration batches candidates through `watchHomeVideos`, one
+  public root access per request, because admin allows 60 accesses per minute
+  per public root field per caller. The inventory pool is stored for 24 h.
 
 ## Lapse reminders (local notifications)
 
@@ -1043,9 +1259,10 @@ the KTD, R and AE numbers the source comments cite.
   listener.
 - **The injected log sink must stay named `telemetry`, and every context must
   stay an inline object literal.** `datadogReservedAttributes.guard.test.js`
-  sweeps for Datadog's reserved attribute names, and it reads only sinks
-  spelled `datadogLog`, `DdLogs` or `telemetry`. It follows an INLINE literal
-  only; a context hoisted into a variable is a documented blind spot. So a
+  sweeps for Datadog's reserved attribute names. It reads only the log sinks
+  spelled `datadogLog`, `DdLogs` or `telemetry`, and the RUM action contexts
+  sent through `reportDatadogAction` (feat-552 KTD17). It follows an INLINE
+  literal only; a context hoisted into a variable is a documented blind spot. So a
   rename to `log`, or a hoisted context, takes every emit site out of the sweep
   with the whole suite still green. Datadog then drops a reserved name on
   ingest with no error, and only the facet goes missing.
@@ -1574,9 +1791,9 @@ the app's own `#1c1917` instead of the platform contrast scrim.
 
 ## Tab bar — UIKit's own bar on iOS, a flush JS bar on Android
 
-`src/lib/tabBar.ts` owns every number. Both navigators, the Library screen, the
-mini player and six scroll surfaces read it from there, so no two files can
-disagree about the bar's size.
+`src/lib/tabBar.ts` owns every number. Both navigators, the downloads list, the
+mini player and the seven surfaces in `tabBarClearance.guard.test.js` read it
+from there, so no two files can disagree about the bar's size.
 
 > **The native tabs migration shipped on 2026-09-14** (feat-500). iOS now runs
 > UIKit's own tab bar. Read the Results section of
@@ -1605,7 +1822,10 @@ disagree about the bar's size.
 - **`PlaybackHost`'s `TAB_BAR_CONTENT_HEIGHT` has the same unfixed shape.** It
   is `TAB_BAR_OCCUPIED_HEIGHT` (49), reserved by the root-mounted mini player,
   so on a 0-inset device the window reserves 49 against an 83pt bar. Not
-  investigated on device; do not copy the pattern.
+  investigated on device; do not copy the pattern. The Bible tab reader
+  corners no longer use it: `readerTabBarReservation` gives an iPhone layout
+  83 minus the root inset. An iPhone SE simulator check on 2026-09-25
+  confirmed it (feat-553).
 
 - **A tab screen's `insets.bottom` ALREADY contains the iOS bar.** Know this
   before you touch a scroll surface. `useTabBarClearance()` returns
@@ -1624,14 +1844,33 @@ disagree about the bar's size.
 - **iOS renders `app/(tabs)/_layout.ios.tsx`.** It uses `NativeTabs` from
   `expo-router/unstable-native-tabs`, which is a real `UITabBarController`. It
   builds one trigger per name in `TAB_ROUTE_NAMES`, and it sets
-  `disableAutomaticContentInsets` on each one. UIKit's automatic inset only
+  `disableAutomaticContentInsets` on each one. The Explore trigger is
+  `hidden` while `isExploreAvailable()` is false; Android sets `href: null` on
+  its Explore screen instead. UIKit's automatic inset only
   reaches a scroll view that is first in the subview chain, and no tab screen
   has one there — on Home that position holds the horizontal hero pager — so
   the screens pad themselves through `useTabBarClearance()` instead.
+- **The Bible tab is the fourth tab (feat-553).** The order in
+  `TAB_ROUTE_NAMES` is Home, Explore, Discover, Bible, Profile; Explore holds
+  the second slot (feat-552 R1). The tab
+  renders the shared reader with `host="tab"` and has no scroll surface. The
+  reader puts its footer above the bar through `readerBottomInset` in
+  `src/lib/bible/reader/chrome.ts`, so `tabBarClearance.guard.test.js` pins
+  that function for the Bible row instead of a clearance.
 - **`app/(tabs)/_layout.tsx` MUST stay on disk.** It now serves Android only.
   Do not delete it: expo-router resolves the platform sibling by specificity,
   and it throws without an extension-less fallback file.
-- **The Library screen hides the iOS bar through a module store.** `NativeTabs`
+- **There is no Library tab. The downloads list lives on Profile.**
+  `src/components/library/LibraryDownloads.tsx` holds the list, selection mode
+  and the delete flow. Profile passes its account card as `header`,
+  "My Downloads" as `title`, and `PrivacyPolicyButton` as `footer`. That
+  button is the app's only in-app privacy policy link (App Store 5.1.1(i)), so
+  keep it. The header scrolls away while the Select row pins under it
+  (`stickyHeaderIndices`).
+- **A second host shares the bar flag.** If a second tab ever hosts this list,
+  both copies mount at cold launch and share the bar flag below. That is safe
+  only while selection needs the focused tab and blur exits it.
+- **The downloads list hides the iOS bar through a module store.** `NativeTabs`
   has no per-screen `tabBarStyle`, and its only hide lever is the
   navigator-level `hidden` prop. A context cannot carry the flag, because the
   layout renders the screen and is therefore an ANCESTOR, not a descendant. So
@@ -1644,8 +1883,8 @@ disagree about the bar's size.
   frame. `SelectionActionBar` clamps it — `insets.bottom >= TAB_BAR_HEIGHT_IOS`
   gives `insets.bottom - TAB_BAR_HEIGHT_IOS`, anything smaller passes through —
   so the home indicator reads 34 from both 83 and 34, and 0 from 49 on a
-  home-button device. `library.tsx` pads its list by `TAB_BAR_HEIGHT_IOS + 24`
-  while selection runs.
+  home-button device. `LibraryDownloads.tsx` pads its list by
+  `TAB_BAR_HEIGHT_IOS + 24` while selection runs.
 - **`TabBarBackground` survives, but `SelectionActionBar` is its only
   consumer.** The navigator dropped it: UIKit draws its own material. The action
   bar stands in the same place over the same content, so the measured tint floor
@@ -1697,10 +1936,10 @@ disagree about the bar's size.
   and every Android assertion then tests the wrong navigator.
 - **`tabBarLensOrder.guard.test.js` keeps its old name and still does a job.**
   It pins `TAB_ROUTE_NAMES` against the group's route FILES, because expo-router
-  appends an undeclared `app/(tabs)/*` file as a fifth tab, which a scan of
+  appends an undeclared `app/(tabs)/*` file as an extra tab, which a scan of
   either layout cannot see. It reads the `<Tabs.Screen>` order from
   `_layout.tsx`; the iOS trigger order comes from `TAB_ROUTE_NAMES` itself and
-  `tabBarLayout.test.tsx` pins that.
+  `tabBarLayout.test.tsx` pins that. It also pins `explore` as the second tab.
 - **No test can see the RENDERED material.** Every render suite mocks
   `GlassView` and `PlatformBlur` to `() => null`, so only a simulator proves the
   frosting. The branch selection and props ARE covered — see
@@ -1708,9 +1947,13 @@ disagree about the bar's size.
   WCAG ratio from the tint's full `rgba()` -- colour AND alpha, since
   compositing a hard-coded black scored a WHITE tint 4.79:1 while it measures
   1.52:1 -- so changing `TAB_BAR_MATERIAL_TINT` either way now fails a test.
-  `tabBarClearance.guard.test.js` is an ENUMERATION of six surfaces, not a
-  sweep — a seventh scroller escapes it silently. Add a row whenever you add
-  one. It checks the clearance is APPLIED, not merely imported, and it strips
+  `tabBarClearance.guard.test.js` is an ENUMERATION of seven surfaces, not a
+  sweep — a new surface that must clear the bar escapes it silently. Add a
+  row and raise the count whenever you add one. The seventh row is the Explore
+  clip overlay, which pads its bottom region, not a scroll view; the guard's
+  tab-route map reaches it through `via`, because the route imports
+  `ExploreFeed`, which draws `ClipOverlay`. It checks the
+  clearance is APPLIED, not merely imported, and it strips
   `scrollIndicatorInsets` first -- that prop contains `bottom: tabBarClearance`
   and satisfied the naive pattern on its own.
 - **`tabBarSingleSource.guard.test.js` holds the one-source claim.** It strips
@@ -1718,7 +1961,8 @@ disagree about the bar's size.
   `// from "../../lib/tabBar"` beside a hand-copied number is a live revert --
   and it compares the assigned token rather than using a lookahead, whose
   `\s*` can match zero characters and slip past the value it was told to
-  reject.
+  reject. It also fails when either layout spells a tab label: both layouts
+  read `TAB_LABELS` in `src/lib/tabBar.ts`, so a rename is a one-line change.
 - **A fade is not available on the material.** `GlassView` renders nothing
   inside a layer whose opacity an ancestor animates, so any fade of
   `TabBarBackground` forces `PlatformBlur` on every iOS version and changes the
@@ -1728,6 +1972,308 @@ disagree about the bar's size.
   probe proved the old code was still live. Terminate and relaunch the dev
   client, and prove the reload landed with an unmistakable colour before
   trusting any measurement.
+
+## Bible reader (feat-553)
+
+The app shows Scripture one verse at a time in a native reader. One shared
+component, `src/components/bible/BibleReader.tsx`, has two hosts: the Bible
+tab (`app/(tabs)/bible.tsx`, `host="tab"`) and the pushed root route
+`app/reader.tsx` (`host="pushed"`). The three sheets are root `formSheet`
+routes in `app/_layout.tsx`: `reader-passage`, `reader-translation`, and
+`reader-settings`. The code lives under `src/lib/bible/` and
+`src/components/bible/`. The design record is
+`docs/plans/2026-09-24-1251-feat-mobile-native-bible-reader-plan.md`; it
+defines the KD, KTD, R, and AE numbers that the source comments cite.
+
+- **The reader's text is not admin's Bible Passage.** The reader shows text
+  from the Free Use Bible API at `bible.helloao.org`, and BSB ships inside the
+  app. The quote card still shows admin's resolved passage (see
+  "Conventions"). A "Read full passage" tap pushes `readerHref(ref, "quote")`
+  at the first cited verse, in BSB numbering. The tap no longer opens
+  `bible.com`, and it does not pause the video. The accessibility label stays
+  "Read full passage", so the Datadog RUM tap series continues (KD17).
+- **One build script makes every bundled Bible file (KTD1).**
+  `scripts/build-bible-data.mjs` writes 66 BSB book files as `.bible` Metro
+  assets under `assets/bible/bsb/`, the catalog snapshot
+  `assets/bible/catalog.bible`, the language table, and the versification
+  table. `metro.config.js` registers the `.bible` extension, and the jest
+  config maps it to the asset transformer. `src/lib/bible/data/bundled.ts`
+  loads a book through `expo-asset` and reads it with the `expo-file-system`
+  `File` API. The loader keeps 66 literal `require()` calls, because Metro
+  finds an asset only through a static require. Do not merge the books into
+  one JSON `require()`: Metro inlines JSON as a module, so every update would
+  then carry all of BSB.
+- **Run the script as `pnpm bible:data` in `apps/mobile`.**
+  - `--check` rebuilds every output from `src/lib/bible/data/sources.lock.json`
+    and compares it with the committed files. It needs no network.
+  - No flag rewrites the lock in its canonical form and writes every output
+    from it. The lock has one translation per line, and the root
+    `.prettierignore` skips it, so change it only through the script.
+  - `--refresh` downloads the catalog, the eBible license table, and about
+    1,250 `complete.json` files. That is about 1 GB and takes about 20
+    minutes. The cache is `$TMPDIR/forge-bible-data-cache`, so an interrupted
+    refresh continues without a second download. Set `BIBLE_DATA_CACHE_DIR`
+    to move the cache.
+  - The script runs under `node --import tsx` and loads the app's TypeScript
+    modules through `createRequire`. A plain `node` run fails with a message
+    that names `pnpm bible:data`.
+- **A defective upstream book is omitted, never the whole translation.** The
+  normalizer lists the book in `omittedBooks`, and the R25 fallback shows that
+  book from the phone language's default translation or from BSB. A verse 0
+  before verse 1 is a hidden title. A verse 0 after a verse is a parser split
+  that loses text (for example, `por_tft` MAT 14:21), so the normalizer omits
+  that book. On 2026-09-25 the catalog kept 1,252 translations and omitted 146
+  books.
+- **Text storage splits by lifetime (KTD2).** A downloaded translation lives
+  under `Paths.document` as per-book files plus a manifest, so iOS never
+  purges it. The store writes the manifest last, and a folder without a
+  complete manifest is not a download. A chapter read on demand lives under
+  `Paths.cache`, keyed by translation, book, chapter, and the catalog
+  `sha256`. That cache holds at most 30 MB and removes the oldest chapter
+  first (KD24). AsyncStorage holds only the small position and settings
+  records. The download button reads its state from the manifest and the
+  files, never from a flag. The reader uses only the `expo-file-system`
+  package root, never `/legacy`.
+  - **A running download shows a ring, not a percent (owner, 2026-09-28).**
+    `ReaderProgressRing` matches the watch page's ring (26 pt, 2.5 pt line).
+    Its center is an X, not the watch page's pause: a Bible download only
+    cancels, and a tap offers "Keep downloading" or "Cancel download". Do
+    not reuse `DownloadProgressRing`
+    there: it punches its center with an opaque disc, and the glass button
+    has no opaque color to match. This ring draws only its line: two half
+    rings (a circle with two colored border sides) turn inside half-width
+    clips. The button's label still says the percent.
+- **Every chapter read from `bible.helloao.org` has a time limit and a byte
+  limit (KTD3).** The limits are 8 seconds and 512 KB, and each failure is a
+  typed reason in `src/lib/bible/repository/errors.ts`. A whole-translation
+  download stops past 32 MB, and only one download runs at a time (KTD4).
+- **Verse numbers convert through the Copenhagen Alliance mappings (KTD6).**
+  The reading position is stored in BSB numbering, and each translation shows
+  its own numbers (R38, R42). A conversion goes from BSB to `org`, then to the
+  translation's system, and back the same way. `src/lib/bible/versification/`
+  vendors the `org`, `eng`, `lxx`, `vul`, `rsc`, and `rso` files (CC BY-SA
+  4.0).
+  - The generated `bsb` system is `eng` plus BSB's two chapter-end joins: BSB
+    3 John 1:14 holds `eng` 1:14-15, and BSB Revelation 12:17 holds `eng`
+    12:17-18.
+  - An erratum in `compact.ts` adds `ISA 64:1 = org 63:19`, which the vendored
+    `eng.json` does not have. The vendored file stays the same as upstream.
+  - The build script classifies each BOOK, not each translation, because some
+    Bibles mix systems. It reads the last verse of each chapter from
+    `complete.json`, for the discriminating chapters only, and stores those
+    numbers in `sources.lock.json`. The plan's first input, the book totals in
+    `books.json`, put about 1 book in 8 in the wrong system.
+  - `translationSystemOverrides.ts` wins over the classifier. A translation
+    that numbers every book as `eng` has no row in
+    `translationSystems.generated.ts`.
+  - At run time, a shown chapter whose last verse differs from
+    `mappedLastVerse` logs `bible_reader.versification_mismatch`.
+- **The mini player floats over the reader (KTD10, KTD11).** "Mini player and
+  the root-owned playback session" holds the cover and the corner rules. The
+  reader reads the window frame through `useFloatingObstacles`, so the
+  verse box stays clear of the window (R10). The pushed reader narrows the
+  iOS 26 back swipe to the left edge strip, as the watch screen does.
+- **The verse stays centered while it fits; it moves before it scrolls
+  (KD27).** `verseBoxes` in `src/lib/bible/fit/verseBox.ts` gives a centered
+  box and a free box (all the room between the obstacles). `planPlacedFit` in
+  `fitVerse.ts` fits the verse in the centered box, down to the floor. Only a
+  verse that would scroll there moves to the free box, fits again, and
+  scrolls only if it still does not fit. The measured heights serve both
+  boxes, so the move adds no layout pass. Loading, a message, and the gap
+  note are not measured: `unmeasuredBox` keeps them centered unless that box
+  is under `MIN_CENTERED_AREA_HEIGHT` (160). The case that needs this is a
+  short screen: on the iPhone SE Bible tab, a bottom-corner window sits at
+  the screen center, and the swipe hint raises the footer. The Bible tab
+  reserves the whole 83pt iOS bar for the window (`readerTabBarReservation`
+  in `PlaybackHost.tsx`), so a 34pt-inset phone cannot show either case.
+  Check on an iPhone SE.
+- **A verse change fades, with a small move (owner, 2026-09-28).** The old
+  verse fades out as it moves `VERSE_SLIDE_SHIFT` (12 pt), then the new verse
+  fades in as it moves the same distance: up for the next verse, down for the
+  one before. It replaced a full-height slide (2026-09-25). A swipe, an
+  arrow, or a screen-reader action takes 0.3 s (`VERSE_SLIDE_MS`, the
+  `slide` signal from `useReaderMovement`). Each verse a scrub passes takes
+  0.15 s (`VERSE_SCRUB_SLIDE_MS`). A chapter move (a sideways swipe, or the
+  screen reader's chapter action) makes the same change sideways, on the
+  slide's `axis: "chapter"`: left for the next chapter, right for the one
+  before (owner, 2026-09-28). A verse move into the next chapter stays
+  vertical. A picker jump changes in place, and so does every change with
+  Reduce Motion on.
+  - **A newer verse interrupts the running change** (owner, 2026-09-28;
+    `interruptChange` in `src/lib/bible/movement/verseStage.ts`). The one
+    verse on screen at that point leaves from its current opacity and
+    offset, so a change never finishes a verse the thumb has left. The two
+    verses never show together, so no second copy is needed. A faint verse
+    fades out sooner, so the next verse comes in sooner. The accepted cost:
+    during a fast drag the verses do not reach full opacity, and a few
+    frames between two verses are blank.
+  - **JS cannot read a native-driven value at once.** The component reads
+    the progress from the change's start time (`performance.now()`; the
+    animation is linear), so the estimate can be one frame off. A stopped
+    change reports `finished: false`, and a late report from an older
+    change does not match the running id.
+  - **Each change gets a new `Animated.Value`, which starts at 0.** Do not
+    reset one shared value with `setValue`. On the iPhone 17 Pro Max
+    simulator, the reset reached the native side one frame late. The old
+    verse's copy mounted hidden, and each change began with one black frame
+    (measured 2026-09-28). Jest cannot see that frame, so
+    `VerseSlider.test.tsx` fails on any `setValue` call.
+  - **A scrolled long verse leaves from where it stood (owner, 2026-09-28).**
+    A swipe past the end of a long verse (Esther 8:9) used to play the scroll
+    view's bounce back under the verse change, and the still copy jumped to
+    the verse's top. The reader takes the swipe after 12 pt, but the native
+    scroll view keeps following the finger. The verse now reports its offset
+    (`onScrollOffset`, overscroll included) to a ref in `VerseSlider`. The
+    still copy reads it once, as it appears, and draws the verse at that
+    offset. The live scroll view unmounts in the same commit, so its bounce
+    back never plays. A swipe too short to change the verse still bounces.
+    The ref keeps one offset per verse key. An interrupt mounts the copy
+    again after the next verse has written its own offset, and one shared
+    slot then gave the copy 0 (code review, 2026-09-28).
+    The copy moves its text with a negative `marginTop`, never a transform.
+    The renderer skips a view whose layout is outside a clipping parent, and
+    a transform does not move the layout: with `translateY` the copy lost the
+    last four lines of Esther 8:9 (iPhone 17 Pro Max simulator, 2026-09-28).
+  - The old verse is a still copy (`VerseSnapshot`, test ids
+    `bible-verse-outgoing*`), so only one live verse and one `bible-verse`
+    exist. Across a chapter load (and the translation wait before a new
+    book), the copy waits in place for at most `VERSE_SLIDE_HOLD_MS`. A load
+    that fails ends the move, so a later load changes in place.
+  - The first-run demo plays three cycles with a pause after each, then
+    fades (`swipeDemoTimeline.ts`, one animated clock).
+- **Book names follow the shown translation (owner, 2026-09-28).** A Korean
+  reader sees 창세기 in the passage picker, not Genesis. The bundled catalog
+  has no book names, so `src/lib/bible/repository/bookNames.ts` reads
+  `/api/<id>/books.json` (the chapter fetch's time limit, a 256 KB cap). It
+  keeps the names in `Paths.document/bible/book-names/<id>.json`, keyed by
+  the catalog `sha256`.
+  - A download writes its names at install (`onInstalled`), so a downloaded
+    translation needs no network for them.
+  - The reader loads the names for each translation it shows
+    (`useBookNames`), so the picker usually finds them in memory.
+  - The picker, the pill while a chapter loads, and the chapter-swipe
+    preview into another book use them. A book the translation lacks, or a
+    failed read, shows the English (BSB) name.
+  - The name order is `commonName`, `name`, `title`, as in the chapter file,
+    so the picker and the pill agree.
+  - The sheets' own labels ("Choose a book", "Old Testament") stay English.
+    That is app UI localization, a separate task.
+- **A partial Bible that lacks the current book warns, then opens at its
+  start (owner, 2026-09-28).** R25's stand-in (the phone language's default,
+  else BSB, with an info button beside the translation pill) still covers a
+  move into a book the pick lacks. But a pick from the translation list that lacks
+  the current book shows a native alert first: "WBT does not have
+  Deuteronomy". Cancel keeps everything, and the sheet stays open. Switch
+  saves the pick and the translation's first book at 1:1 in one change
+  (`pickTranslationAt`), so no reader loads an in-between place.
+  - The pure rule is `partialSwitch` in `src/lib/bible/sheets/partialSwitch.ts`.
+    It asks `repository.translationHasBook`, so a download's own book list
+    wins over the catalog's.
+  - The picker's `confirmPick` runs before the pick. The
+    `bible_reader.translation_changed` event fires only on `proceed`, so a
+    cancelled switch is not logged as a change.
+  - The list names the books a partial Bible has (`coverageLabel`): "New
+    Testament only" (705 of 1,053 partial Bibles), "New Testament, Genesis,
+    and Psalms", "Only Ruth, Luke, and John", or "5 of 66 books".
+  - While a stand-in shows, the passage picker follows the viewer's pick,
+    not the stand-in: its book names, its "Not in WBT" notes, and its
+    numbers. The route param is `viewer`, sent only when the pick differs
+    from the translation that shows.
+  - A book the pick lacks has no numbers of its own. The picker numbers and
+    names it by the stand-in on screen when the stand-in has it, else by BSB
+    (`numberingFor`, `pickerBookNames`). R25 fills every missing book by one
+    rule, so the mark and the pick agree with the pill (review #9, owner,
+    2026-09-28).
+- **The translation pill is in the top bar (KD28, owner, 2026-09-27).** It
+  sits right of the passage pill and shows the short name only. A stand-in
+  (R25, R41) adds a red info button right of the pill, not inside it (owner,
+  2026-09-28). A tap shows a note under it ("Η Καινή Διαθήκη does not
+  include Genesis. The reader shows it in Berean Standard Bible."), and says
+  it aloud. The note closes on a tap, on the next tap of the button, after
+  `STAND_IN_TIP_MS`, or when the stand-in ends. The tip follows the stand-in
+  (`TranslationLabel.noteKey`), not the note text: the text names the book,
+  and that name can load after the tap. The note is the button's
+  accessibility label (`TranslationLabel.note`). The note's row spans the
+  bar: an absolute view with only a left edge measured the text on one line
+  and clipped it on the device. It is the same glass pill as the passage; the owner tried a chevron and a
+  faint outline and removed both (2026-09-28). The footer has no
+  translation row, and `readerFooterHeight()` keeps room for the selection
+  bar, which takes the footer's place. On an iPhone SE the passage pill shortens the book name in
+  the middle ("Son…8:14"), so the verse number stays visible.
+- **Text size and line spacing are step sliders (owner, 2026-09-28).** Text
+  size has eleven steps of 2 pt, from 22 to 42 (`READER_TEXT_SIZE_STEPS`).
+  Line spacing has five steps, from compact (1.2) to relaxed (1.6)
+  (`READER_LINE_SPACING_STEPS`), and sits right below text size.
+  `ReaderStepSlider` wraps the native slider
+  (`@react-native-community/slider`, the SDK 57 version 5.2.0). The thumb
+  snaps to each step, each new step applies at once, and a tap on the track
+  moves to that step (`tapToSeek` on iOS; Android does this by default).
+  - **Keep it native.** A JS (PanResponder) slider came first. In the sheet
+    it lost its touch after about 10 pt of vertical drift: iOS gave the touch
+    to the sheet's scroll or drag gesture and cancelled the JS touch, with
+    the scroll off or on. Core React Native cannot hold a touch against a
+    native gesture. Measured on the iPhone 17 Pro Max simulator, 2026-09-28:
+    a flat drag reached its step, and the same drag with a 25 pt drift
+    stopped 5 steps short.
+  - No tick dots. The library's `StepMarker` draws above the native thumb,
+    and it places each marker by a fixed 5% side margin, so the markers do
+    not line up with the native thumb positions.
+  - The settings record is version 2. `parseStoredReaderSettings` maps a
+    version 1 record: each old size is still a step, and the old "normal"
+    spacing (1.35) goes to the middle step (1.4). So an update keeps every
+    viewer's settings, and the next change writes version 2.
+  - **The screen reader says a number and a unit:** "30 points", or "140
+    percent" (the line height as a percent of the text size). Each
+    `accessibilityIncrements` entry must be a whole number other than 1.
+    Android reads each entry with `Integer.parseInt` and throws on text, and
+    the library removes the last letter of the unit after a value of 1.
+- **True Dark is a mode, not a palette (owner, 2026-09-28).** Mode is System,
+  Light, Dark, or True Dark, and the Palette row is gone, so the sheet holds
+  six settings. `resolveReaderTheme` in `src/lib/bible/theme/palettes.ts`
+  turns a mode into one of three token sets: `light`, `dark`, `trueDark`.
+  System picks Light or Dark, never True Dark. True Dark's white light set
+  was removed with the row. A version 1 record with Dark and the True Dark
+  palette reads as True Dark; any other palette value is dropped.
+- **The iPad reader rotates to landscape, and it keeps the portrait rules
+  (KD25).** The app locks to portrait, but iPadOS can ignore that lock for an
+  app that supports multitasking. The owner decided on 2026-09-25 that the
+  landscape reader keeps the portrait layout and corner rules. Do not add a
+  landscape layout without a new owner decision.
+- **Reader telemetry: six `bible_reader.*` events with `reader_*` attributes
+  (KTD18, R37).** `src/lib/bible/telemetry.ts` holds every emit site, and
+  each context is an inline object literal, so
+  `datadogReservedAttributes.guard.test.js` can read it. No event carries
+  verse text, a response body, or personal data. An absent id or reason is
+  `"none"`, and an absent number is `0`.
+  - `bible_reader.opened` (`reader_source`: `quote`, `link`, or `tab`) and
+    `bible_reader.visit_ended` (`reader_source`, `reader_verse_count`) come
+    from `useReaderVisitTelemetry` in `BibleReader`. A visit runs from focus
+    to blur, per host. A blur to one of the reader's own three sheets does not
+    end the visit, so a sheet round trip is one visit and one open. The
+    verse count is the number of different BSB verse positions that the
+    visit showed.
+  - `bible_reader.translation_changed` (`reader_change`,
+    `reader_from_translation_id`, `reader_to_translation_id`) comes from the
+    translation picker (`picked`) and from R31's switch (`switched`).
+  - `bible_reader.download` (`reader_translation_id`, `reader_outcome`,
+    `reader_reason`, `reader_download_bytes`) comes from `runDownloadAction`
+    when the download ends. The bytes are the catalog size.
+  - `bible_reader.chapter_fetch_failed` (`reader_translation_id`,
+    `reader_book`, `reader_chapter`, `reader_reason`, `reader_http_status`)
+    comes from the fetch binding in `downloadRuntime.ts`, once per network
+    fetch. The repository shares one fetch between the two hosts.
+  - `bible_reader.versification_mismatch` (`reader_translation_id`,
+    `reader_book`, `reader_chapter`, `reader_system`,
+    `reader_mapped_last_verse`, `reader_actual_last_verse`) fires once per
+    translation, book, and chapter in each app process.
+- **`expo-clipboard` moved the fingerprint runtime version (KTD15).** A
+  native build (TestFlight and Play internal) must ship before any update
+  from this work reaches testers. Until then, `eas update` exits 0 and
+  reaches nobody. `@react-native-community/slider` (2026-09-28) moved it
+  again and rides the same native build.
+- **In a worktree under `.claude/worktrees/`, run jest with
+  `--no-watchman`.** Watchman roots its watch at the main checkout there, and
+  its crawl covers every worktree.
 
 ## Component render tests
 

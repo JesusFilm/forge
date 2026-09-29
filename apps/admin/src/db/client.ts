@@ -70,13 +70,16 @@ const embeddingGuardExtension = Prisma.defineExtension((client) =>
   client.$extends({
     query: {
       $allModels: {
-        async $allOperations({ args, query }) {
+        // Avoid expanding the union of every generated model operation here.
+        async $allOperations({
+          args,
+          query,
+        }: {
+          args: unknown
+          query: (args: never) => Promise<unknown>
+        }) {
           const { cleanedArgs, includeEmbedding } = takeEmbeddingOptIn(args)
-          // The result union across every model and operation is past what
-          // TypeScript can represent, so the inner call is typed loosely. The
-          // guard is a runtime sweep and never reads the static shape.
-          const run = query as (next: unknown) => Promise<unknown>
-          const result = await run(cleanedArgs)
+          const result = await query(cleanedArgs as never)
           return includeEmbedding ? result : stripEmbeddingFromResult(result)
         },
       },

@@ -1,0 +1,117 @@
+{
+  "measured_at": "2026-09-27T22:51:33.793467+00:00",
+  "environment": "production",
+  "inventory": [
+    {
+      "service": "@forge/admin",
+      "service_id": "bdb15048-1ca9-4217-ae01-ef7cc19ca6f4",
+      "active": [
+        {
+          "id": "316236d3-7955-4264-a5b4-969043b6b00a",
+          "status": "QUEUED",
+          "createdAt": "2026-09-27T22:48:01.237Z",
+          "commit": "08c7227d4bb10b75e48ba268bd50a4173508dfe5",
+          "image_digest": null,
+          "config_file": null,
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        },
+        {
+          "id": "d2e5c691-aae7-45c1-b9f1-13f75031f09d",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-27T22:03:11.786Z",
+          "commit": "4f257fe3f19c56f34f56fdeddeffdc1ce61c46f3",
+          "image_digest": "sha256:efaa9e64b7028a093b673066c59e558650fc998ccd40b89a10caf3ec0a687286",
+          "config_file": "/apps/admin/railway.toml",
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        }
+      ],
+      "latest": {
+        "id": "316236d3-7955-4264-a5b4-969043b6b00a",
+        "status": "QUEUED",
+        "createdAt": "2026-09-27T22:48:01.237Z",
+        "commit": "08c7227d4bb10b75e48ba268bd50a4173508dfe5"
+      }
+    },
+    {
+      "service": "@forge/admin/worker",
+      "service_id": "4f805f5d-b98b-4e0d-8a41-194176336d2c",
+      "active": [
+        {
+          "id": "a9b3284c-605d-488b-b3a1-ccfe41225521",
+          "status": "BUILDING",
+          "createdAt": "2026-09-27T22:48:00.864Z",
+          "commit": "08c7227d4bb10b75e48ba268bd50a4173508dfe5",
+          "image_digest": null,
+          "config_file": null,
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        },
+        {
+          "id": "a2c70d3f-8b61-40e7-85cd-8279bd3a59c4",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-27T22:03:11.365Z",
+          "commit": "4f257fe3f19c56f34f56fdeddeffdc1ce61c46f3",
+          "image_digest": "sha256:14ade5e8f25911cb1acd9e61f617a59ad15e6ce765773854a7ee723aa74909de",
+          "config_file": "/apps/admin/railway.worker.toml",
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        }
+      ],
+      "latest": {
+        "id": "a9b3284c-605d-488b-b3a1-ccfe41225521",
+        "status": "BUILDING",
+        "createdAt": "2026-09-27T22:48:00.864Z",
+        "commit": "08c7227d4bb10b75e48ba268bd50a4173508dfe5"
+      }
+    }
+  ],
+  "processes": {
+    "web": {
+      "RAILWAY_GIT_COMMIT_SHA": "4f257fe3f19c56f34f56fdeddeffdc1ce61c46f3",
+      "RAILWAY_DEPLOYMENT_ID": "d2e5c691-aae7-45c1-b9f1-13f75031f09d",
+      "RAILWAY_REPLICA_ID": "8b7d1e3e-cfab-45c9-8ef5-cdd90f355f3d",
+      "WORKFLOW_RUNNER_ENABLED": "false",
+      "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": null,
+      "health_status": 200
+    },
+    "worker": {
+      "RAILWAY_GIT_COMMIT_SHA": "4f257fe3f19c56f34f56fdeddeffdc1ce61c46f3",
+      "RAILWAY_DEPLOYMENT_ID": "a2c70d3f-8b61-40e7-85cd-8279bd3a59c4",
+      "RAILWAY_REPLICA_ID": "c38e6e5c-c288-4086-801b-f4bd0245c3ab",
+      "WORKFLOW_RUNNER_ENABLED": "true",
+      "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": null,
+      "health_status": 200
+    }
+  },
+  "filesystem": "Filesystem       1B-blocks        Used  Available Use% Mounted on\n/dev/zd10112   48891670528 40036839424 8838053888  82% /var/lib/postgresql/data"
+}

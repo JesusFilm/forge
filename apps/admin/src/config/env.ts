@@ -524,6 +524,17 @@ export const env = createEnv({
       .enum(["true", "false"])
       .optional()
       .default("false"),
+    // Activate only after every serving replica and rollback image can read
+    // both legacy stage rows and compact run payloads.
+    RECOMMENDATION_CANDIDATE_TRACE_FORMAT: z
+      .enum(["legacy", "compact"])
+      .default("legacy"),
+    // Isolated, opt-in recommendation storage benchmark settings. The script
+    // validates its own safety guards even when CI skips application validation.
+    RECOMMENDATION_STORAGE_BENCHMARK: z.enum(["1"]).optional(),
+    RECOMMENDATION_STORAGE_BENCHMARK_DATABASE: z.string().min(1).optional(),
+    RECOMMENDATION_STORAGE_BENCHMARK_RUNS: z.string().optional(),
+    RECOMMENDATION_STORAGE_BENCHMARK_OUTPUT: z.string().optional(),
     // JSON HMAC keyring parsed only by recommendation token.service so invalid
     // material disables attributed serving without breaking unrelated Admin
     // routes. Never log this value or surface it in validation errors.
@@ -1040,6 +1051,21 @@ export const env = createEnv({
       "true",
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED,
+    ),
+    RECOMMENDATION_CANDIDATE_TRACE_FORMAT:
+      emptyToUndefined(process.env.RECOMMENDATION_CANDIDATE_TRACE_FORMAT) ??
+      "legacy",
+    RECOMMENDATION_STORAGE_BENCHMARK: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK,
+    ),
+    RECOMMENDATION_STORAGE_BENCHMARK_DATABASE: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK_DATABASE,
+    ),
+    RECOMMENDATION_STORAGE_BENCHMARK_RUNS: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK_RUNS,
+    ),
+    RECOMMENDATION_STORAGE_BENCHMARK_OUTPUT: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK_OUTPUT,
     ),
     RECOMMENDATION_VIEWING_MODE_ENABLED:
       emptyToUndefined(process.env.RECOMMENDATION_VIEWING_MODE_ENABLED) ??

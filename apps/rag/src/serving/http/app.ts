@@ -3,17 +3,33 @@ import { Hono } from "hono"
 import { bodyLimit } from "hono/body-limit"
 
 import type { Retriever } from "../../contracts/index.js"
-import { lookupScope, resolveScope, type TokenRegistry } from "./auth.js"
+import {
+  bearerToken,
+  lookupScope,
+  resolveScope,
+  type TokenRegistry,
+} from "./auth.js"
+import { createPortal, type PortalDeps } from "./portal.js"
+import type {
+  AuthenticatedConsumer,
+  ConsumerAuthenticator,
+} from "../../contracts/consumer-access.js"
 
 const MAX_SEARCH_BODY_BYTES = 16 * 1024
 
 export type AppDeps = {
   retriever: Retriever
   tokens: TokenRegistry
+  portal?: PortalDeps
+  consumerAuth?: ConsumerAuthenticator
 }
 
-export function createApp(deps: AppDeps): Hono {
-  const app = new Hono()
+export function createApp(deps: AppDeps): Hono<{
+  Variables: { authenticatedConsumer: AuthenticatedConsumer | null }
+}> {
+  const app = new Hono<{
+    Variables: { authenticatedConsumer: AuthenticatedConsumer | null }
+  }>()
 
   app.onError((error, context) => {
     if (error.name === "BodyLimitError") {
@@ -24,6 +40,7 @@ export function createApp(deps: AppDeps): Hono {
   })
 
   app.get("/v1/health", (context) => context.json({ status: "ok" }))
+  if (deps.portal) app.route("/portal", createPortal(deps.portal))
 
   app.post(
     "/v1/search",
@@ -32,10 +49,27 @@ export function createApp(deps: AppDeps): Hono {
       onError: (context) => context.json({ error: "payload_too_large" }, 413),
     }),
     async (context) => {
-      const scope = lookupScope(
-        deps.tokens,
-        context.req.header("authorization"),
-      )
+      const authorization = context.req.header("authorization")
+      let scope = null as ReturnType<typeof lookupScope>
+      context.set("authenticatedConsumer", null)
+      if (deps.consumerAuth) {
+        const presented = bearerToken(authorization)
+        if (presented?.startsWith("rag_")) {
+          try {
+            const consumer = await deps.consumerAuth.authenticate(presented)
+            if (consumer) {
+              context.set("authenticatedConsumer", consumer)
+              scope = { allowedSourceKeys: consumer.allowedSourceKeys }
+            }
+          } catch {
+            return context.json({ error: "auth_unavailable" }, 503)
+          }
+        } else {
+          scope = lookupScope(deps.tokens, authorization)
+        }
+      } else {
+        scope = lookupScope(deps.tokens, authorization)
+      }
       if (!scope) {
         return context.json({ error: "unauthorized" }, 401, {
           "WWW-Authenticate": "Bearer",

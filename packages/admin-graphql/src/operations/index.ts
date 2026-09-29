@@ -1,6 +1,7 @@
 export {
   adminWatchSearchOperation,
   adminWatchSearchQuery,
+  adminWatchSearchLegacyQuery,
   adminWatchSearchSuggestionsOperation,
   adminWatchSearchSuggestionsQuery,
 } from "./watch-search"
@@ -17,6 +18,10 @@ export {
   adminRecordSemanticRecommendationPlaybackOperation,
   adminRecordRecommendationContentActionMutation,
   adminRecordRecommendationContentActionOperation,
+  adminRecordWatchSurfaceExposureMutation,
+  adminRecordWatchSurfaceExposureOperation,
+  adminIssueWatchSurfaceDeliveryMutation,
+  adminIssueWatchSurfaceDeliveryOperation,
   adminSelectSemanticRecommendationMutation,
   adminSelectSemanticRecommendationOperation,
   adminSemanticRecommendationDeliveryOperation,
