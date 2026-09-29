@@ -3,7 +3,7 @@ id: "feat-529"
 title: "Dogfood RAG consumer access and seven-day migration"
 owner: "jaco"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-16"
 duration: 7
 depends_on: ["feat-528", "feat-530"]
@@ -54,3 +54,18 @@ by the documentation PR. Read package guidance before implementation.
 Run the applicable plan acceptance criteria and package checks. Record synthetic
 counts, coverage, revision and outcomes only. Portal work must also verify page
 load performance, cross-consumer denial and concurrent owner/rotation behavior.
+
+## Production role provisioning audit — 2026-09-29
+
+The usage schema deployed with feat-528 already existed. Jaco authorized usage
+activation in the Ops session; the operator created three restricted PostgreSQL
+login roles, granted their explicit privileges and saved three service connection
+entries in the operational vault. This changed role/ACL security metadata, not
+application rows or table/view/column definitions. Railway settings and deployment
+inventory were not changed. Portal/model/HTTP retrieval is confirmed for consumer
+`1547b524-ad60-4cf7-ac67-930b9715dc4e` (`ragbot`, owner `jaco-brink`).
+
+The [retrospective audit](evidence/feat-529/production-usage-role-provisioning.md)
+records exact statements, credential receiver names, privilege verification and
+remaining activation work. The audit PR does not execute provisioning again or
+claim full feat-529 completion. It changes no personal consumer-key custody.

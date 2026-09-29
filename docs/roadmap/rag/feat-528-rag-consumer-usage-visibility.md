@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-15"
 duration: 4
 depends_on: ["feat-526", "feat-527"]
-blocks: ["feat-529", "feat-563"]
+blocks: ["feat-529", "feat-568"]
 tags: ["rag", "auth", "observability"]
 ---
 
@@ -131,7 +131,7 @@ is recorded in the local verification document.
 
 Production provisioning, RAGBot machine grant and actual ops dogfood remain
 activation/dependent work; shared-token cutoff requires feat-529 and separate
-approval. Capacity review remains feat-563. Production activation has not been
+approval. Capacity review remains feat-568. Production activation has not been
 performed by this implementation.
 
 SPC-001 review correction rejects terminal collector reconciliation retries before

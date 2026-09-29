@@ -29,7 +29,7 @@ page in the same draft PR. Verify browser
 authorization, coverage presentation and page-loading performance when implementing
 the chosen page. No production operation, shared-token cutoff or cross-app change.
 
-Capacity and fleet inventory follow-up is feat-563. Provisioning and recovery
+Capacity and fleet inventory follow-up is feat-568. Provisioning and recovery
 instructions live in `apps/rag/docs/ops/consumer-usage.md`. Durable learning:
 transport completion must be observed below the Fetch response abstraction;
 a heartbeat proves only the instance emitting it, not deployment inventory.

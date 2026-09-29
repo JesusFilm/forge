@@ -53,7 +53,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           "Co-watch native tests require an owned loopback fixture database",
         )
       prisma = new PrismaClient({
-        adapter: new PrismaPg({ connectionString: env.DATABASE_URL, max: 2 }),
+        adapter: new PrismaPg({ connectionString: url.toString(), max: 2 }),
       })
     })
 

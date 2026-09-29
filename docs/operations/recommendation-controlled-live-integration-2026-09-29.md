@@ -220,3 +220,11 @@ events and no OOM; application heap headroom remains unproven. The owned contain
 and named volume were removed. See `local-cowatch-envelope-storage.json` for exact
 fixture cardinality, measurements and cleanup. Production clearance still depends
 on the actual preregistered population, available space and workload deadline.
+
+The integration was reconciled with main `545a4de29` and independently reviewed.
+The final optimized Admin build, workflow registration, Web/shared-client typechecks
+and schema regeneration pass. The affected post-merge unit run passed 108 tests
+with 58 native cases skipped. Concurrent roadmap IDs were reconciled without
+changing scope: the changelog permission ticket is now feat-570 and the people
+preapproval ticket feat-571. Production deployment and trial evidence remain
+separate from these release checks.

@@ -75,5 +75,11 @@
     "Final combined checks on the integrated main baseline",
     "Exact PR head CI and unresolved-review check before authorized squash merge",
     "Ordinary deployment and migration verification before production operators"
-  ]
+  ],
+  "mergeReview": {
+    "mainRevision": "545a4de29",
+    "integrationRevision": "729a325bd",
+    "result": "Independent read-only review found no high-confidence defect. U2 finite event/cutoff guards and U3 dispatch recovery retained alongside exact graph and privacy-generation lineage; incoming fixture URL canonicalization preserved. Bootstrap argument appears once and forwards.",
+    "tests": "108 tests passed, 58 native tests skipped in the post-merge unit run"
+  }
 }

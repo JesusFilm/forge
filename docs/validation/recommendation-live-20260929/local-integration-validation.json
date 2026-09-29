@@ -79,14 +79,23 @@
     "parentReviewedLifecycleNative": {
       "passedFiles": 4,
       "passedTests": 5,
-      "log": "/tmp/forge-live-reviewed-lifecycle-native.log"
+      "log": "/tmp/forge-live-reviewed-lifecycle-native.log",
+      "coldBundleMs": 278,
+      "warmBundleMs": 234,
+      "completeRequestLimitMs": 1500
+    },
+    "postMergeAffectedUnitChecks": {
+      "passedFiles": 12,
+      "passedTests": 108,
+      "skippedNativeTests": 58,
+      "log": "/tmp/forge-live-merged-conflict-tests.log"
     }
   },
   "build": {
     "adminOptimizedBuildAndWorkflowRegistration": "passed",
-    "log": "/tmp/forge-live-parent-build.log",
+    "log": "/tmp/forge-live-merged-build.log",
     "requiredSettings": "fixture-only local values, no production credentials",
-    "scope": "Earlier integration build; final merged-baseline build pending"
+    "scope": "Final integration merged with main; optimized build, TypeScript and recommendation/Studio Workflow registration checks passed"
   },
   "migrations": {
     "freshReplayThrough": "0110_recommendation_live_policy_manifests",
@@ -100,11 +109,26 @@
     }
   },
   "remaining": [
-    "Final integrated-main build and exact-head CI, normal merge and deployment receipts",
+    "Exact PR head CI, normal merge and deployment receipts",
     "Production storage clearance, qualified graph, real calibration and mature study outcomes"
   ],
   "typecheck": {
     "admin": "passed",
-    "log": "/tmp/forge-retention-final-admin-typecheck.log"
+    "log": "/tmp/forge-retention-final-admin-typecheck.log",
+    "web": {
+      "status": "passed",
+      "log": "/tmp/forge-live-merged-web-types.log"
+    },
+    "adminGraphql": {
+      "status": "passed",
+      "log": "/tmp/forge-live-merged-client-types.log"
+    }
+  },
+  "mergedMainRevision": "545a4de293d05493b3eebeee0531aefd320018c6",
+  "schemaGeneration": {
+    "status": "passed",
+    "schemaLog": "/tmp/forge-live-merged-schema.log",
+    "clientLog": "/tmp/forge-live-merged-codegen.log",
+    "drift": "none after main bootstrap schema merge"
   }
 }

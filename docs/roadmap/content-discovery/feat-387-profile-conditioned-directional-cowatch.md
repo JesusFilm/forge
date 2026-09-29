@@ -100,3 +100,19 @@ New records declare the following handling in the schema and migration:
 | Pair contribution   | Exact directional pair lineage; private pseudonymous     | Projection service; bounded pair build              | 29 days; cascade from outcome or profile         | Live baseline |
 | Edge                | Versioned directional feature; aggregate identity free   | Admin aggregate inspection; immutable publish       | 29 days; cascade from generation                 | Live baseline |
 | Suppression         | Privacy erasure fence; episode scoped private ID         | Privacy service; erasure transaction                | At most 29 days; cascade from episode            | Live baseline |
+
+## Explicit finite populations (2026-09-29)
+
+The [finite-population operator record](../../operations/recommendation-cowatch-finite-population-2026-09-29.md)
+documents the new event-window/cutoff contract, read-only preflight, immutable
+generation identity, actual publication timestamp, exact-generation loader and
+single-publisher lock. Migration 0106 preserves explicit legacy scope for old
+writers and generations. The existing source, session, pair and timeout bounds
+remain unchanged; overflow and write-lock refusal publish nothing.
+
+Worker and parent each passed 34 focused tests, including eight native database
+cases. A measured 16,385-row publication took 4.1–15.4 seconds across recorded
+runs, with fresh relation/index allocation around 20.8 MB and WAL around 25.4 MB.
+These are local measurements, not maximum-scale capacity or production coverage.
+This ticket remains **in progress** pending fresh storage clearance and the
+actual generation, terminal shadow evaluation and authorized Admin evidence.

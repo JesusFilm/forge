@@ -11,6 +11,8 @@ let lifecycle = 0
 let section = "consumers"
 let usageView = null
 let usageModule = null
+let sourcesView = null
+let sourcesModule = null
 let statusFilter = "all"
 let searchTerm = ""
 let ascending = true
@@ -25,6 +27,7 @@ function showSection(next) {
   if (busy) return
   close()
   dismissRowMenu()
+  if (next !== section) notice("")
   section = next
   document.querySelectorAll("[data-section]").forEach((node) => {
     const selected = node.dataset.section === next
@@ -37,6 +40,7 @@ function showSection(next) {
     knowledge: "Knowledge",
     consumers: "Consumers",
     usage: "Usage",
+    sources: "Sources",
   }[next]
   byId("page-description").hidden = !["consumers", "usage"].includes(next)
   byId("page-description").textContent =
@@ -46,12 +50,35 @@ function showSection(next) {
   byId("directory").hidden =
     next !== "consumers" || !identity?.managementAvailable
   byId("signed-out").hidden =
-    !["consumers", "usage"].includes(next) || Boolean(identity)
-  byId("construction").hidden = ["consumers", "usage"].includes(next)
+    !["consumers", "usage", "sources"].includes(next) || Boolean(identity)
+  byId("construction").hidden = ["consumers", "usage", "sources"].includes(next)
+  byId("sources").hidden = next !== "sources" || !identity
+  if (next !== "sources") sourcesView?.clear()
+  if (next === "sources" && identity) void showSources()
   byId("usage").hidden = next !== "usage" || !identity
   if (next !== "usage") usageView?.clear()
   if (next === "usage" && identity) void showUsage()
   document.title = "Forge · " + byId("page-title").textContent
+}
+
+async function showSources() {
+  try {
+    sourcesModule ??= import("./sources.js")
+    const module = await sourcesModule
+    if (!identity || section !== "sources") return
+    sourcesView ??= module.createSourcesView(byId("sources"), {
+      read: request,
+      onUnauthorized: () => {
+        signedOut()
+        notice(messages.unauthorized)
+      },
+    })
+    await sourcesView.load()
+  } catch {
+    sourcesModule = null
+    if (identity && section === "sources")
+      notice("Sources are unavailable. Refresh to try again.")
+  }
 }
 
 async function showUsage() {
@@ -559,6 +586,7 @@ async function refresh() {
 }
 function signedOut() {
   usageView?.clear()
+  sourcesView?.clear()
   identity = null
   rows = []
   byId("rows").replaceChildren()
