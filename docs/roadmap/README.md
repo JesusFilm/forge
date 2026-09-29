@@ -7,8 +7,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (September 29, 2026)
 
 - **Total tickets:** 745
-- **Complete:** 556
-- **In progress:** 60
+- **Complete:** 557
+- **In progress:** 59
 - **Not started:** 50
 - **Blocked:** 79
 - **Overdue and not complete:** 142
@@ -209,7 +209,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-520](content-discovery/feat-520-watch-field-post-response-paint-attribution.md)                          | Attribute non-headless Watch paint delays after HTML response                                   | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | in-progress |
 | [feat-521](content-discovery/feat-521-watch-selection-browser-commit-waits.md)                                 | Attribute browser commit waits delaying Watch selection acknowledgments                         | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | in-progress |
 | [feat-552](content-discovery/feat-552-mobile-explore-clips-feed.md)                                            | Mobile Explore clips feed                                                                       | urim       | P2       | 2026-09-25 | 21   | 2026-10-15 | complete    |
-| [feat-563](content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md)                                  | Atomic and recoverable shadow evaluation dispatch                                               | nisal      | P2       | 2026-09-29 | 3    | 2026-10-01 | in-progress |
+| [feat-563](content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md)                                  | Atomic and recoverable shadow evaluation dispatch                                               | nisal      | P2       | 2026-09-29 | 3    | 2026-10-01 | complete    |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | blocked     |
 
 ### Media Generation
@@ -621,8 +621,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-534](platform/feat-534-changelog-membership-activation.md)                       | Activate preapproved Changelog memberships                                         | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-543](platform/feat-543-mobile-sign-in-gate.md)                                   | Mobile sign-in gate hides sign-in until an environment turns it on                 | urim       | P1       | 2026-09-23 | 2    | 2026-09-24 | in-progress |
 | [feat-556](platform/feat-556-mobile-expo-sdk57-patch-alignment.md)                     | Restore CI after Expo patch drift and stale benchmark clock                        | nisal      | P1       | 2026-09-28 | 1    | 2026-09-28 | complete    |
-| [feat-567](platform/feat-567-changelog-people-directory.md)                            | Serve the shared Changelog People directory from Auth                              | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
 | [feat-555](platform/feat-555-recommendation-legacy-trace-reclamation.md)               | Reclaim legacy recommendation trace storage after expiry                           | nisal      | P1       | 2026-09-29 | 3    | 2026-10-01 | blocked     |
+| [feat-567](platform/feat-567-changelog-people-directory.md)                            | Serve the shared Changelog People directory from Auth                              | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

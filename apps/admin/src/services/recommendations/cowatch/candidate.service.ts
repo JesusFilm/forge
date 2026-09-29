@@ -31,6 +31,7 @@ export type CowatchPlayableRow = Readonly<{
 export function createDatabaseCowatchShadowGenerator(
   prisma: PrismaClient,
   now: () => Date = () => new Date(),
+  generationId?: string,
 ): ShadowGenerator {
   return async (context) => {
     const evaluatedAt = now()
@@ -41,6 +42,7 @@ export function createDatabaseCowatchShadowGenerator(
     )
     const inspection = await loadCowatchInspection(prisma, {
       now: evaluatedAt,
+      generationId,
       sourceMediaId: context.seedMediaId,
       additionalAnchors: profileInterests.map((interest) => ({
         mediaId: interest.mediaId,

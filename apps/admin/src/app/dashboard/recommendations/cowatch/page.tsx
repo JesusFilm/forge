@@ -31,9 +31,11 @@ export default async function CowatchInspectionPage({
   const canReadTraces = hasPermission(principal, "read:recommendation-traces")
   const params = await searchParams
   const sourceMediaId = bounded(params.anchor, 191)
+  const generationId = bounded(params.generation, 64)
   const requestId = canReadTraces ? bounded(params.request, 191) : ""
   const inspection = await loadCowatchInspection(prisma, {
     now: new Date(),
+    generationId: generationId || undefined,
     sourceMediaId,
     requestId,
     actorDigest:
@@ -91,9 +93,26 @@ export default async function CowatchInspectionPage({
           <p>
             Published: {inspection.publishedAt?.toISOString() ?? "unavailable"}
           </p>
+          {inspection.sourceWindow ? (
+            <>
+              <p>Source scope: {inspection.sourceWindow.version}</p>
+              <p>
+                Window: {inspection.sourceWindow.windowStart.toISOString()} to{" "}
+                {inspection.sourceWindow.windowEnd.toISOString()} · classifier
+                cutoff: {inspection.sourceWindow.evaluationAsOf.toISOString()}
+              </p>
+              <p>
+                {inspection.sourceWindow.version === "episode-event-window-v1"
+                  ? "Episode event time includes the start and excludes the end."
+                  : "Legacy scope uses outcome-write time and the historical episode-age filter."}
+              </p>
+            </>
+          ) : null}
           <p>
-            Eligible outcomes {inspection.sourceCount} · exact contributions{" "}
-            {inspection.contributionCount} · directional edges{" "}
+            Raw canonical outcomes {inspection.rawSourceCount ?? "unrecorded"} ·
+            eligible outcomes {inspection.sourceCount} · attempted pairs{" "}
+            {inspection.attemptedPairCount ?? "unrecorded"} · exact
+            contributions {inspection.contributionCount} · directional edges{" "}
             {inspection.edgeCount} · distinct support units{" "}
             {inspection.distinctViewerCount}
           </p>
@@ -108,6 +127,15 @@ export default async function CowatchInspectionPage({
           method="get"
           className="grid gap-3 p-4 md:grid-cols-3"
         >
+          <label className="text-[12px] text-[var(--color-text-secondary)]">
+            Exact generation ID (blank selects latest)
+            <input
+              name="generation"
+              maxLength={64}
+              defaultValue={generationId}
+              className="mt-1 w-full border border-[var(--color-hairline)] bg-transparent px-2 py-2 text-[13px]"
+            />
+          </label>
           <label className="text-[12px] text-[var(--color-text-secondary)]">
             Source media ID
             <input

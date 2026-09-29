@@ -11,6 +11,7 @@ depends_on:
   - "feat-401"
 blocks:
   - "feat-426"
+  - "feat-565"
 tags:
   - "platform"
   - "auth"
