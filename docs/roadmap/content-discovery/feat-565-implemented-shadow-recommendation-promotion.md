@@ -133,3 +133,25 @@ coverage from a single activation.
 Local direct-path implementation and reviewed validation are recorded in
 `docs/operations/recommendation-owner-live-activation-2026-09-30.md`. This does not
 claim production activation or close this ticket.
+
+## September 30 production confirmation blocker
+
+PR #2478 merged as `85656b946c7519cb39d501d44ce6d1d998ec7d9b` through the
+normal release flow. The supported direct operator is implemented, superseding
+the earlier study-only operator limitation above. Activation is not yet recorded.
+
+The production emergency-stop control opened a native `window.confirm` prompt
+that the in-app browser did not expose. A fresh authenticated Admin inspection
+still showed pointer generation 1 at control with no committed stop audit. The
+original user tab recovered after a normal reload; no transition remained pending.
+The user's explicit activation approval remains valid; this is an inaccessible
+product confirmation, not a new authorization requirement.
+
+Replace that native prompt with an accessible in-page confirmation for stop,
+clear, rollback and permanent-default actions. Keep the exact confirmation text,
+explicit Confirm/Cancel, generation and CSRF checks, permission enforcement and
+unknown-acknowledgement handling. Confirm must submit at most once; cancel must
+not issue a mutation. Record the actual deployed operator outcome separately.
+The ticket remains **in progress**, including fresh capacity coordination: the
+September 29 21:25 UTC observation had 8.612 GB free, 1.074 GB resident WAL and one long
+transaction, and did not satisfy the prior seven-day runway projection.
