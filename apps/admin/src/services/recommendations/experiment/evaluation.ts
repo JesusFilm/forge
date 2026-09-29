@@ -1,3 +1,4 @@
+import { PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION } from "./assignment"
 import { createHash, randomUUID } from "node:crypto"
 import {
   Prisma,
@@ -84,7 +85,11 @@ export class RecommendationExperimentEvaluationService {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(${EVALUATION_LOCK_ID})`
         const experiment = await tx.recommendationExperiment.findUnique({
           where: { id: input.experimentId },
-          select: { generation: true, expiresAt: true },
+          select: {
+            generation: true,
+            expiresAt: true,
+            assignmentPolicyVersion: true,
+          },
         })
         if (
           !experiment ||
@@ -94,6 +99,13 @@ export class RecommendationExperimentEvaluationService {
             "Recommendation experiment generation is invalid",
           )
         }
+        if (
+          experiment.assignmentPolicyVersion ===
+          PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION
+        )
+          throw new RecommendationInputError(
+            "Profile studies require the version-bound usefulness evaluator",
+          )
         const previous =
           await tx.recommendationExperimentEvaluationRun.findFirst({
             where: {
@@ -199,6 +211,13 @@ export class RecommendationExperimentEvaluationService {
             reason: "experiment_generation_changed",
           }
         }
+        if (
+          run.experiment.assignmentPolicyVersion ===
+          PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION
+        )
+          throw new RecommendationInputError(
+            "Profile studies require the version-bound usefulness evaluator",
+          )
         assertWindow(run.windowStart, run.windowEnd, capturedAt)
 
         const evidence = await (this.deps.loadEvidence ?? loadEvidence)(tx, {

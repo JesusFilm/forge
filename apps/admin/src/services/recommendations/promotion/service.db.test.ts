@@ -28,6 +28,7 @@ const migrationSql = [
   "0070_recommendation_consent_receipts",
   "0071_recommendation_assignment_generation_key",
   "0072_recommendation_source_neutral_playback_episodes",
+  "0107_recommendation_governed_study",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -50,6 +51,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     let sequence = 0
 
     beforeAll(async () => {
+      const fixtureUrl = new URL(env.DATABASE_URL)
+      if (
+        !["127.0.0.1", "localhost"].includes(fixtureUrl.hostname) ||
+        fixtureUrl.pathname !== "/forge_study"
+      )
+        throw new Error("Owned loopback forge_study fixture database required")
       client = new Client({ connectionString: env.DATABASE_URL })
       await client.connect()
       await client.query(`CREATE SCHEMA "${schemaName}"`)
@@ -136,7 +143,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       await client.end()
     })
 
-    it("rejects profile-only authority and atomically opens the exact hybrid experiment", async () => {
+    it("retains exact approval audit but rejects legacy hybrid activation and advancement", async () => {
       const service = new RecommendationPromotionService({
         prisma,
         now: () => now,
@@ -164,107 +171,45 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       })
       expect(replayedApproval.id).toBe(firstApproval.id)
 
-      const run = await service.createRun({
-        actor,
-        action: "activate_bounded",
-        expectedPointerGeneration: 1,
-        targetManifestId: "semantic-profile-hybrid-v1",
-        approvalId: firstApproval.id,
-        evaluationId: null,
-        exposureCeilingBps: 1250,
-        recentAuthentication: true,
-      })
-      const claim = await service.claimRun({
-        runId: run.id,
-        expectedGeneration: run.generation,
-      })
-      expect(claim.status).toBe("claimed")
-      if (claim.status !== "claimed") return
-      await expect(
-        service.executeClaimedRun({
-          runId: run.id,
-          expectedGeneration: run.generation,
-          claimId: claim.claimId,
-        }),
-      ).resolves.toEqual({ status: "activated", generation: 2 })
-
-      const pointer = await prisma.recommendationPromotionPointer.findUnique({
-        where: { id: "recommendation-promotion-pointer" },
-      })
-      expect(pointer).toMatchObject({
-        activeManifestId: "semantic-profile-hybrid-v1",
-        stage: "BOUNDED",
-        exposureCeilingBps: 1250,
-        generation: 2,
-      })
-      const experiments = await prisma.recommendationExperiment.findMany({
-        orderBy: { createdAt: "asc" },
-      })
-      expect(experiments).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            id: "semantic-aa-v1",
-            state: "CLOSED",
-            generation: 2,
-          }),
-          expect.objectContaining({
-            state: "ACTIVE",
-            controlManifestId: "semantic-transcript-pgvector-v1",
-            challengerManifestId: "semantic-profile-hybrid-v1",
-            challengerProbability: 0.125,
-            assignmentPolicyVersion: "sticky-deterministic-assignment-v1",
-            evaluationPolicyVersion: "recommendation-hybrid-personalized-v1",
-            purpose: "anonymous_hybrid_personalization",
-          }),
-        ]),
-      )
-      await expect(
-        prisma.recommendationPromotionEvent.count({
-          where: { eventType: "APPROVAL_RECORDED" },
-        }),
-      ).resolves.toBe(1)
-      await expect(
-        prisma.recommendationPromotionEvent.findFirst({
-          where: { eventType: "ACTIVATION_EFFECTIVE" },
-          select: { reasonCode: true },
-        }),
-      ).resolves.toEqual({
-        reasonCode: "bounded_hybrid_shadow_authorized",
-      })
-
-      for (const [action, exposureCeilingBps] of [
-        ["activate_bounded", 1_500],
-        ["confirm_permanent", 10_000],
-      ] as const) {
+      for (const action of ["activate_bounded", "confirm_permanent"] as const)
         await expect(
           service.createRun({
             actor,
             action,
-            expectedPointerGeneration: 2,
+            expectedPointerGeneration: 1,
             targetManifestId: "semantic-profile-hybrid-v1",
             approvalId: firstApproval.id,
             evaluationId: null,
-            exposureCeilingBps,
+            exposureCeilingBps: action === "confirm_permanent" ? 10000 : 1250,
             recentAuthentication: true,
           }),
-        ).rejects.toThrow(/live evaluation/i)
-      }
-      await expect(
-        prisma.recommendationPromotionPointer.findUnique({
+        ).rejects.toThrow("governed study")
+      expect(await prisma.recommendationPromotionRun.count()).toBe(0)
+      expect(
+        await prisma.recommendationPromotionPointer.findUnique({
           where: { id: "recommendation-promotion-pointer" },
-          select: {
-            activeManifestId: true,
-            stage: true,
-            exposureCeilingBps: true,
-            generation: true,
-          },
         }),
-      ).resolves.toEqual({
-        activeManifestId: "semantic-profile-hybrid-v1",
-        stage: "BOUNDED",
-        exposureCeilingBps: 1250,
-        generation: 2,
+      ).toMatchObject({
+        activeManifestId: "semantic-transcript-pgvector-v1",
+        stage: "CONTROL",
+        exposureCeilingBps: 0,
+        generation: 1,
       })
+      expect(
+        await prisma.recommendationExperiment.count({
+          where: { challengerManifestId: "semantic-profile-hybrid-v1" },
+        }),
+      ).toBe(0)
+      expect(
+        await prisma.recommendationPromotionEvent.count({
+          where: { eventType: "APPROVAL_RECORDED" },
+        }),
+      ).toBe(1)
+      expect(
+        await prisma.recommendationPromotionEvent.count({
+          where: { eventType: "ACTIVATION_EFFECTIVE" },
+        }),
+      ).toBe(0)
     }, 30_000)
   },
 )

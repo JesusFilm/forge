@@ -4000,6 +4000,7 @@ model RecommendationShadowDecision {
 /// Immutable experiment definition. U17 activates only a behaviorally
 /// equivalent semantic A/A challenger, so assignment cannot change item order.
 model RecommendationExperiment {
+  study RecommendationStudy?
   id                      String                         @id @db.VarChar(191)
   experimentVersion       String                         @map("experiment_version") @db.VarChar(64)
   surfaceVersion          String                         @map("surface_version") @db.VarChar(64)
@@ -4124,6 +4125,7 @@ model RecommendationExperimentEvaluationRun {
 /// Immutable multi-outcome evaluation. Late evidence appends a new revision
 /// and records an explicit supersedes edge rather than mutating prior truth.
 model RecommendationExperimentEvaluation {
+  studyAuthority RecommendationStudyEvaluation?
   id                      String                                  @id @default(cuid())
   experimentId            String                                  @map("experiment_id") @db.VarChar(191)
   experiment              RecommendationExperiment                @relation(fields: [experimentId], references: [id], onDelete: Cascade)
@@ -6139,4 +6141,69 @@ model RecommendationCompositionCalibration {
 
   @@index([expiresAt])
   @@map("recommendation_composition_calibration")
+}
+
+/// Immutable reviewed protocol; no viewer identity. Operators only; expiry follows
+/// its experiment. Aggregate enrollment survives subject erasure so loss cannot
+/// silently repair a denominator. Privacy revision invalidates prior authority.
+model RecommendationStudy {
+  experimentId    String                          @id @map("experiment_id") @db.VarChar(191)
+  experiment      RecommendationExperiment        @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  protocol        Json
+  protocolDigest  String                          @map("protocol_digest") @db.Char(64)
+  preparedById    String                          @map("prepared_by_id") @db.VarChar(191)
+  preparedAt      DateTime                        @default(now()) @map("prepared_at")
+  activationId    String?                         @unique @map("activation_id") @db.Uuid
+  activationInputDigest String? @map("activation_input_digest") @db.Char(64)
+  activatedAt     DateTime?                       @map("activated_at")
+  enrolledCount   Int                             @default(0) @map("enrolled_count")
+  privacyRevision Int                             @default(0) @map("privacy_revision")
+  expiresAt       DateTime                        @map("expires_at")
+  evidence        RecommendationStudyEvidence[]
+  evaluations     RecommendationStudyEvaluation[]
+
+  @@index([expiresAt])
+  @@map("recommendation_study")
+}
+
+/// Immutable authenticated operator attestation of minimized external receipts.
+/// Numerical gates are computed, never uploaded as a PASS. No profile identifiers.
+model RecommendationStudyEvidence {
+  id             String                          @id @db.Uuid
+  studyId        String                          @map("study_id") @db.VarChar(191)
+  study          RecommendationStudy             @relation(fields: [studyId], references: [experimentId], onDelete: Cascade)
+  protocolDigest String                          @map("protocol_digest") @db.Char(64)
+  kind           String                          @db.VarChar(32)
+  payload        Json
+  inputDigest    String                          @map("input_digest") @db.Char(64)
+  evaluations    RecommendationStudyEvaluation[]
+  reviewedById   String                          @map("reviewed_by_id") @db.VarChar(191)
+  reviewedAt     DateTime                        @default(now()) @map("reviewed_at")
+  expiresAt      DateTime                        @map("expires_at")
+
+  @@index([studyId, reviewedAt])
+  @@index([expiresAt])
+  @@map("recommendation_study_evidence")
+}
+
+/// Immutable authority binding; retained aggregate only. Every advancement checks
+/// the latest revision, privacy epoch, protocol, manifests and validity again.
+model RecommendationStudyEvaluation {
+  evaluationId         String                             @id @map("evaluation_id")
+  evaluation           RecommendationExperimentEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  studyId              String                             @map("study_id") @db.VarChar(191)
+  study                RecommendationStudy                @relation(fields: [studyId], references: [experimentId], onDelete: Cascade)
+  protocolDigest       String                             @map("protocol_digest") @db.Char(64)
+  experimentGeneration Int                                @map("experiment_generation")
+  privacyRevision      Int                                @map("privacy_revision")
+  publishedById String @map("published_by_id") @db.VarChar(191)
+  evidenceId           String                             @map("evidence_id") @db.Uuid
+  evidence             RecommendationStudyEvidence        @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  mode                 String                             @db.VarChar(32)
+  result               Json
+  expiresAt            DateTime                           @map("expires_at")
+
+  @@index([studyId])
+  @@index([expiresAt])
+  @@map("recommendation_study_evaluation")
 }

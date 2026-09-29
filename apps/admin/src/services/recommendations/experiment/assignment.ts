@@ -19,6 +19,12 @@ import {
   recommendationManifestDigest,
 } from "../promotion/manifest"
 import { HYBRID_CANDIDATE_GENERATOR_SET_VERSION } from "../candidate"
+import {
+  isStudyAdmitted,
+  parseStudyProtocol,
+  studyChallengerCeilingBps,
+  studyProtocolDigest,
+} from "./study-protocol"
 
 export const RECOMMENDATION_ASSIGNMENT_POLICY_VERSION =
   "sticky-deterministic-assignment-v1" as const
@@ -107,6 +113,17 @@ export async function resolveExperimentAssignment(
   ) {
     return { assignment: null, bypassReason: "cohort_ineligible" }
   }
+  const study = experiment.study
+  if (usefulness && !study)
+    return { assignment: null, bypassReason: "cohort_ineligible" }
+  const protocol = study ? parseStudyProtocol(study.protocol) : null
+  if (
+    study &&
+    (!study.activatedAt ||
+      study.protocolDigest !== experiment.configurationDigest ||
+      studyProtocolDigest(protocol!) !== study.protocolDigest)
+  )
+    return { assignment: null, bypassReason: "cohort_ineligible" }
   const semanticAa = areSemanticAaManifestsEquivalent(experiment)
   const hybridExperiment = isHybridPersonalizedExperiment(experiment)
   if (!semanticAa && !hybridExperiment) {
@@ -132,8 +149,11 @@ export async function resolveExperimentAssignment(
   ) {
     return { assignment: null, bypassReason: "promotion_not_active" }
   }
-  const effectiveChallengerProbability =
-    promotion.stage === "PERMANENT" ? 1 : promotion.exposureCeilingBps / 10_000
+  const effectiveChallengerProbability = protocol
+    ? 0.5
+    : promotion.stage === "PERMANENT"
+      ? 1
+      : promotion.exposureCeilingBps / 10_000
   if (
     !promotion.activeApproval ||
     promotion.activeApprovalId !== promotion.activeApproval.id ||
@@ -143,7 +163,10 @@ export async function resolveExperimentAssignment(
     promotion.activeApproval.expiresAt <= now ||
     (promotion.stage === "BOUNDED" &&
       (promotion.exposureCeilingBps > promotion.activeApproval.maxExposureBps ||
-        effectiveChallengerProbability !== experiment.challengerProbability))
+        effectiveChallengerProbability !== experiment.challengerProbability ||
+        (protocol != null &&
+          promotion.exposureCeilingBps !==
+            studyChallengerCeilingBps(protocol))))
   ) {
     return { assignment: null, bypassReason: "promotion_not_approved" }
   }
@@ -212,6 +235,16 @@ export async function resolveExperimentAssignment(
   ) {
     return { assignment: null, bypassReason: "cohort_ineligible" }
   }
+
+  if (
+    protocol &&
+    !isStudyAdmitted(
+      unitDigest,
+      experiment.configurationDigest,
+      protocol.admissionBps,
+    )
+  )
+    return { assignment: null, bypassReason: "cohort_ineligible" }
 
   const arm = chooseExperimentArm({
     unitDigest,
@@ -291,7 +324,7 @@ async function findActiveExperiment(
       },
       expiresAt: { gt: now },
     },
-    include: { controlManifest: true, challengerManifest: true },
+    include: { controlManifest: true, challengerManifest: true, study: true },
     orderBy: [{ startsAt: "desc" }, { id: "asc" }],
   })
 }

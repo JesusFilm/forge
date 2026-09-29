@@ -20,16 +20,31 @@ type MutationState =
   | "pending"
   | "complete"
   | "failed"
+  | "queued"
+  | "acknowledgement-unknown"
   | "stale-page"
   | "authorization-failure"
 
 export function PromotionControls(props: Props) {
   const [state, setState] = useState<MutationState>("idle")
   const [message, setMessage] = useState<string | null>(null)
-  const disabled = state === "pending"
+  const [operationId, setOperationId] = useState<string | null>(null)
+  const disabled = [
+    "pending",
+    "queued",
+    "acknowledgement-unknown",
+    "stale-page",
+  ].includes(state)
 
   async function mutate(body: Record<string, unknown>, confirmation?: string) {
     if (confirmation && !window.confirm(confirmation)) return
+    const transition = [
+      "activate_bounded",
+      "confirm_permanent",
+      "manual_rollback",
+    ].includes(String(body.action))
+    const id = transition ? crypto.randomUUID() : null
+    if (id) setOperationId(id)
     setState("pending")
     setMessage("Submitting the governed transition…")
     try {
@@ -40,7 +55,7 @@ export function PromotionControls(props: Props) {
           "content-type": "application/json",
           "x-forge-csrf": "recommendation-promotion-v1",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, ...(id ? { operationId: id } : {}) }),
       })
       if (response.status === 409) {
         setState("stale-page")
@@ -56,10 +71,18 @@ export function PromotionControls(props: Props) {
         )
         return
       }
-      if (!response.ok) {
+      if (response.status === 400) {
         setState("failed")
         setMessage(
-          "The transition failed safely; the current strategy is unchanged.",
+          "The reviewed transition was rejected. Refresh the evidence before trying again.",
+        )
+        return
+      }
+      if (!response.ok) throw new Error("acknowledgement unknown")
+      if (transition) {
+        setState("queued")
+        setMessage(
+          "Request recorded. Queued execution has not yet been confirmed; refresh transition status.",
         )
         return
       }
@@ -67,9 +90,42 @@ export function PromotionControls(props: Props) {
       setMessage("Decision recorded. Reloading the immutable audit…")
       window.location.reload()
     } catch {
-      setState("failed")
+      setState("acknowledgement-unknown")
       setMessage(
-        "The request failed safely; the current strategy is unchanged.",
+        "Acknowledgement unknown. The transition may have been recorded. Refresh status before any retry.",
+      )
+    }
+  }
+
+  async function reconcile() {
+    try {
+      const response = await fetch(
+        `/api/recommendations/promotion${operationId ? `?operationId=${operationId}` : ""}`,
+        { cache: "no-store", credentials: "same-origin" },
+      )
+      if (!response.ok) throw new Error("status unavailable")
+      const result = await response.json()
+      if (result.run?.state === "COMPLETED") {
+        setState("complete")
+        setMessage("Execution confirmed. Reloading current serving state…")
+        window.location.reload()
+        return
+      }
+      if (["FAILED", "FENCED"].includes(result.run?.state)) {
+        setState("stale-page")
+        setMessage(
+          `Operation ${result.run.state.toLowerCase()}. Reload and review current state before another decision.`,
+        )
+        return
+      }
+      setMessage(
+        result.run
+          ? `Operation is ${result.run.state.toLowerCase()}; execution is not confirmed. Refresh status again.`
+          : `No exact operation is confirmed. Current pointer generation: ${result.pointer?.generation ?? "unavailable"}. Review the immutable audit before another decision.`,
+      )
+    } catch {
+      setMessage(
+        "Status is unavailable. Keep the operation ID and refresh when connectivity returns.",
       )
     }
   }
@@ -183,7 +239,7 @@ export function PromotionControls(props: Props) {
         <button
           type="button"
           className={buttonClass}
-          disabled={disabled}
+          disabled={state === "pending"}
           onClick={() =>
             mutate(
               {
@@ -203,6 +259,20 @@ export function PromotionControls(props: Props) {
           {props.killSwitchEnabled ? "Clear emergency hold" : "Emergency stop"}
         </button>
       </div>
+      {["queued", "acknowledgement-unknown", "stale-page"].includes(state) ? (
+        <div className="mt-3 text-[12px]">
+          <button
+            type="button"
+            className={buttonClass}
+            onClick={() => void reconcile()}
+          >
+            Refresh transition status
+          </button>
+          {operationId ? (
+            <p className="mt-2 break-all">Operation ID: {operationId}</p>
+          ) : null}
+        </div>
+      ) : null}
       <p
         className="mt-3 min-h-5 text-[12px] text-[var(--color-text-muted)]"
         role="status"

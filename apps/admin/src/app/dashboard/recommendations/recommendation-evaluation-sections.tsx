@@ -8,6 +8,7 @@ import {
   recommendationNumberFrom as numberFrom,
 } from "./recommendation-display"
 import { PromotionControls } from "./PromotionControls"
+import { StudyControls } from "./StudyControls"
 
 export function ProfileEligibilityReconciliation({
   overview,
@@ -392,18 +393,21 @@ export function PromotionDecision({
       </div>
       <div className="border-t border-[var(--color-hairline)] p-4">
         {canOperate ? (
-          <PromotionControls
-            generation={promotion.generation}
-            stage={promotion.stage}
-            targetManifestId={promotion.targetManifestId}
-            lastKnownGoodManifestId={promotion.lastKnownGoodManifestId}
-            approvalId={promotion.approval?.id ?? null}
-            evaluationId={promotion.evaluationId}
-            exposureCeilingBps={promotion.exposureCeilingBps}
-            proposedExposureCeilingBps={promotion.proposedExposureCeilingBps}
-            killSwitchEnabled={promotion.killSwitchEnabled}
-            ready={promotion.readiness.ready}
-          />
+          <>
+            <PromotionControls
+              generation={promotion.generation}
+              stage={promotion.stage}
+              targetManifestId={promotion.targetManifestId}
+              lastKnownGoodManifestId={promotion.lastKnownGoodManifestId}
+              approvalId={promotion.approval?.id ?? null}
+              evaluationId={promotion.evaluationId}
+              exposureCeilingBps={promotion.exposureCeilingBps}
+              proposedExposureCeilingBps={promotion.proposedExposureCeilingBps}
+              killSwitchEnabled={promotion.killSwitchEnabled}
+              ready={promotion.readiness.ready}
+            />
+            <StudyControls />
+          </>
         ) : (
           <p className="text-[12px] text-[var(--color-text-muted)]">
             Read-only evidence. Promotion controls require Admin authority.
@@ -458,6 +462,21 @@ export function ExperimentEvaluation({
         <p className="px-4 py-5 text-[13px] text-[var(--color-text-muted)]">
           No retained experiment evaluation is available yet. Semantic control
           remains the serving fallback.
+        </p>
+      </PageSection>
+    )
+  }
+  if (evaluation.versions.evaluation === "profile-study-governance-v1") {
+    return (
+      <PageSection
+        title="Governed profile study evaluation"
+        meta="V2 / VERSION-BOUND AUTHORITY"
+      >
+        <p className="px-4 py-5 text-[13px] text-[var(--color-text-secondary)]">
+          The latest evaluation belongs to {evaluation.experimentId}. Open
+          Governed profile studies to inspect its calibration or efficacy
+          result, exact comparator, and current evidence. A database PASS by
+          itself does not authorize promotion.
         </p>
       </PageSection>
     )

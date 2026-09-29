@@ -12,6 +12,7 @@ import {
 } from "./assignment"
 import {
   evaluateUsefulnessSnapshot,
+  evaluateUsefulnessCalibration,
   type UsefulnessSnapshot,
 } from "./usefulness-offline"
 
@@ -40,7 +41,7 @@ export async function extractUsefulnessSnapshot(
     enrollmentStart: Date
     enrollmentEnd: Date
     plannedAssignmentsPerArm: number
-    minimumUsefulDelta: number
+    minimumUsefulDelta: number | null
   },
 ) {
   if (
@@ -227,7 +228,10 @@ export async function extractUsefulnessSnapshot(
       }
       return {
         snapshot,
-        assessment: evaluateUsefulnessSnapshot(snapshot),
+        assessment:
+          input.minimumUsefulDelta === null
+            ? evaluateUsefulnessCalibration(snapshot)
+            : evaluateUsefulnessSnapshot(snapshot),
         externalEvidenceRequired: [
           "profile_unit_aa_with_viewing_mode_v2",
           "http_error_latency_guardrails",

@@ -3,6 +3,8 @@ import {
   RecommendationPromotionService,
   recommendationManifestDigest,
 } from "./service"
+import * as studyAuthority from "../experiment/study-authority"
+import { RecommendationInputError } from "../errors"
 import { HYBRID_PERSONALIZED_MANIFEST } from "./manifest"
 
 const ADMIN = { id: "admin-1", role: "ADMIN" } as const
@@ -105,6 +107,7 @@ function harness(
     `${approval.manifestId}:${approval.manifestDigest}:${approval.maxExposureBps}`,
   ])
   const tx = {
+    recommendationStudy: { findFirst: vi.fn(async () => null) },
     recommendationPromotionApproval: {
       createMany: vi.fn(async ({ data }) => {
         const key = `${data.manifestId}:${data.manifestDigest}:${data.maxExposureBps}`
@@ -151,6 +154,7 @@ function harness(
     $executeRaw: vi.fn(async () => 3),
   }
   const prisma = {
+    recommendationStudy: tx.recommendationStudy,
     $transaction: vi.fn(async (work) => {
       const pointerSnapshot = { ...pointer }
       try {
@@ -336,102 +340,99 @@ describe("RecommendationPromotionService", () => {
     expect(tx.recommendationPromotionApproval.createMany).not.toHaveBeenCalled()
   })
 
-  it("breaks the cold-start circle with exact shadow authority only for the initial bounded cohort", async () => {
-    const { service, prisma, tx, pointer, approval, run } = harness()
-    const manifest = HYBRID_PERSONALIZED_MANIFEST
-    Object.assign(approval, {
-      manifestId: manifest.id,
-      manifest,
-      manifestDigest: recommendationManifestDigest(manifest),
-      maxExposureBps: 500,
-    })
-    prisma.recommendationPromotionApproval.findUnique = vi.fn(
-      async () => approval as never,
-    )
-    prisma.recommendationExperimentEvaluation.findUnique.mockResolvedValue(
-      null as never,
-    )
-    prisma.recommendationShadowDecision.findFirst.mockResolvedValue({
-      id: "hybrid-promote-decision",
-    } as never)
-    tx.recommendationShadowDecision.findFirst.mockResolvedValue({
-      id: "hybrid-promote-decision",
-    } as never)
+  it.each([null, "evaluation-1"])(
+    "retires legacy hybrid activation even with shadow authority or legacy PASS (%s)",
+    async (evaluationId) => {
+      const { service, tx, pointer, run } = harness()
+      await expect(
+        service.createRun({
+          actor: ADMIN,
+          action: "activate_bounded",
+          expectedPointerGeneration: 1,
+          targetManifestId: HYBRID_PERSONALIZED_MANIFEST.id,
+          evaluationId,
+          exposureCeilingBps: 100,
+          recentAuthentication: false,
+        }),
+      ).rejects.toThrow("governed study")
+      Object.assign(run, {
+        targetManifestId: HYBRID_PERSONALIZED_MANIFEST.id,
+        evaluationId,
+      })
+      await expect(
+        service.executeClaimedRun({
+          runId: run.id,
+          expectedGeneration: 1,
+          claimId: run.claimId,
+        }),
+      ).rejects.toThrow("governed study")
+      expect(pointer.stage).toBe("CONTROL")
+      expect(tx.recommendationExperiment.create).not.toHaveBeenCalled()
+    },
+  )
 
+  it.each([
+    "superseded by FAIL",
+    "expired",
+    "wrong generation",
+    "privacy revoked",
+  ])("rechecks study authority at queued execution: %s", async (reason) => {
+    const { service, evaluation, run, tx } = harness()
+    Object.assign(evaluation, {
+      evaluationPolicyVersion: "profile-study-governance-v1",
+    })
+    const check = vi
+      .spyOn(studyAuthority, "assertStudyAuthority")
+      .mockRejectedValue(new RecommendationInputError(reason))
+    try {
+      await expect(
+        service.executeClaimedRun({
+          runId: run.id,
+          expectedGeneration: 1,
+          claimId: run.claimId,
+        }),
+      ).rejects.toThrow(reason)
+      expect(check).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({
+          evaluationId: evaluation.id,
+          purpose: "advancement",
+        }),
+      )
+      expect(
+        tx.recommendationPromotionPointer.updateMany,
+      ).not.toHaveBeenCalled()
+    } finally {
+      check.mockRestore()
+    }
+  })
+
+  it("prevents a legacy PASS from changing governed study admission at request and execution", async () => {
+    const { service, prisma, pointer, approval, run, tx, evaluation } =
+      harness()
+    prisma.recommendationStudy.findFirst.mockResolvedValue({
+      experimentId: "governed-aa",
+    } as never)
     await expect(
       service.createRun({
         actor: ADMIN,
         action: "activate_bounded",
-        expectedPointerGeneration: 1,
-        targetManifestId: manifest.id,
+        expectedPointerGeneration: pointer.generation,
+        targetManifestId: approval.manifestId,
         approvalId: approval.id,
-        evaluationId: null,
-        exposureCeilingBps: 100,
+        evaluationId: evaluation.id,
+        exposureCeilingBps: 200,
         recentAuthentication: false,
       }),
-    ).resolves.toMatchObject({
-      targetManifestId: manifest.id,
-      evaluationId: null,
-      exposureCeilingBps: 100,
-    })
-
-    Object.assign(run, {
-      targetManifestId: manifest.id,
-      exposureCeilingBps: 100,
-      approval,
-      evaluation: null,
-      evaluationId: null,
-    })
+    ).rejects.toThrow("Frozen study admission")
     await expect(
       service.executeClaimedRun({
         runId: run.id,
         expectedGeneration: 1,
         claimId: run.claimId,
       }),
-    ).resolves.toMatchObject({ status: "activated", generation: 2 })
-    expect(pointer).toMatchObject({
-      activeManifestId: manifest.id,
-      stage: "BOUNDED",
-      exposureCeilingBps: 100,
-    })
-    expect(tx.recommendationExperiment.updateMany).toHaveBeenCalledWith({
-      where: {
-        id: { in: ["semantic-aa-v1"] },
-        state: "ACTIVE",
-      },
-      data: {
-        state: "CLOSED",
-        generation: { increment: 1 },
-      },
-    })
-    expect(tx.recommendationExperiment.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        controlManifestId: "semantic-transcript-pgvector-v1",
-        challengerManifestId: manifest.id,
-        challengerProbability: 0.01,
-        assignmentPolicyVersion: "sticky-deterministic-assignment-v1",
-        evaluationPolicyVersion: "recommendation-hybrid-personalized-v1",
-        purpose: "anonymous_hybrid_personalization",
-      }),
-    })
-    expect(
-      tx.recommendationExperimentAssignment.updateMany,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          experimentId: { in: ["semantic-aa-v1"] },
-        }),
-        data: expect.objectContaining({
-          fenceReason: "experiment_superseded",
-        }),
-      }),
-    )
-    expect(tx.recommendationPromotionEvent.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        eventType: "ACTIVATION_EFFECTIVE",
-        reasonCode: "bounded_hybrid_shadow_authorized",
-      }),
-    })
+    ).rejects.toThrow("Frozen study admission")
+    expect(tx.recommendationPromotionPointer.updateMany).not.toHaveBeenCalled()
   })
 
   it("requires a live PASS before increasing an existing bounded cohort", async () => {
