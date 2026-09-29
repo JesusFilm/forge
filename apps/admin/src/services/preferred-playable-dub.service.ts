@@ -21,8 +21,10 @@ export async function getPreferredPlayableDubs(
     throw new RangeError("Preferred playable dub batch exceeds its limit")
   }
   const language = languageSlug || null
-  // Keep the scalar service's exact slug/BCP-47 -> primary -> longest policy,
-  // including PostgreSQL's existing DESC null ordering and id tie-break.
+  // Keep the scalar service's exact slug -> BCP-47 -> primary -> longest
+  // policy, including PostgreSQL's existing DESC null ordering and id
+  // tie-break. feat-572: the slug match outranks the tag match so sibling
+  // languages sharing a tag (yao / yao-tanzania) resolve to the requested one.
   const picks = await prisma.$queryRaw<
     Array<{ videoId: string; dubId: string | null }>
   >(Prisma.sql`
@@ -35,7 +37,7 @@ export async function getPreferredPlayableDubs(
       WHERE d.video_id = v.id AND d.deleted_at IS NULL AND d.published
         AND d.hls IS NOT NULL AND d.hls <> ''
         AND (l.slug = ${language} OR l.bcp47 = ${language})
-      ORDER BY d.duration DESC, d.id ASC LIMIT 1
+      ORDER BY (l.slug = ${language}) DESC NULLS LAST, d.duration DESC, d.id ASC LIMIT 1
     ) exact ON TRUE
     LEFT JOIN LATERAL (
       SELECT d.id FROM video_dub d

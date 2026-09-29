@@ -6,9 +6,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 29, 2026)
 
-- **Total tickets:** 747
+- **Total tickets:** 748
 - **Complete:** 559
-- **In progress:** 59
+- **In progress:** 60
 - **Not started:** 50
 - **Blocked:** 79
 - **Overdue and not complete:** 142
@@ -210,6 +210,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-521](content-discovery/feat-521-watch-selection-browser-commit-waits.md)                                 | Attribute browser commit waits delaying Watch selection acknowledgments                         | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | in-progress |
 | [feat-552](content-discovery/feat-552-mobile-explore-clips-feed.md)                                            | Mobile Explore clips feed                                                                       | urim       | P2       | 2026-09-25 | 21   | 2026-10-15 | complete    |
 | [feat-563](content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md)                                  | Atomic and recoverable shadow evaluation dispatch                                               | nisal      | P2       | 2026-09-29 | 3    | 2026-10-01 | complete    |
+| [feat-572](content-discovery/feat-572-admin-exact-language-slug-precedence.md)                                 | Admin preferred-dub matcher ranks exact language slug above BCP-47 tag                          | unassigned | P2       | 2026-09-29 | 1    | 2026-09-29 | in-progress |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | blocked     |
 
 ### Media Generation
