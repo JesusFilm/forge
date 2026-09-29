@@ -8,7 +8,11 @@ import {
 } from "./depth-research"
 import type { DevotionalMessage } from "./devotional-message"
 import type { DevotionalLlm } from "./llm"
-import { foreignWords, namedSources } from "./message-first-writer"
+import {
+  foreignWords,
+  namedSources,
+  shapeProblems,
+} from "./message-first-writer"
 import type { ReferenceCorpora } from "./reference-corpus"
 
 const message: DevotionalMessage = {
@@ -307,5 +311,42 @@ describe("namedSources", () => {
     expect(
       namedSources("The word Luke uses means to feel pity. Grace is free."),
     ).toEqual([])
+  })
+})
+
+describe("shapeProblems", () => {
+  const p = (role: "reflection" | "history" | "language" | "classic") => ({
+    role,
+    text: `${role} text.`,
+  })
+  it("flags a reflection that opens on a note", () => {
+    expect(
+      shapeProblems([p("history"), p("reflection")]).map((x) => x.rule),
+    ).toEqual(["opens-on-note"])
+  })
+  it("counts adjacent notes as one block", () => {
+    expect(
+      shapeProblems([
+        p("reflection"),
+        p("history"),
+        p("reflection"),
+        p("language"),
+        p("reflection"),
+        p("reflection"),
+      ]),
+    ).toEqual([])
+  })
+  it("flags notes scattered over three places", () => {
+    const shape = [
+      p("reflection"),
+      p("history"),
+      p("reflection"),
+      p("reflection"),
+      p("language"),
+      p("reflection"),
+      p("reflection"),
+      p("history"),
+    ]
+    expect(shapeProblems(shape).map((x) => x.rule)).toEqual(["scattered-notes"])
   })
 })

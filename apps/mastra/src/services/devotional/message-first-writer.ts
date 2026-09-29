@@ -74,9 +74,17 @@ export const SYSTEM_PROMPT = [
   "say what it means. At most one sentence of plain retelling in a row.",
   "",
   "SHAPE (a guide, not a template):",
-  "- Open on the tension: the detail that does not sit right, stated plainly.",
-  "- History and language paragraphs explain the world and the words so the",
-  "  story lands as its first hearers heard it.",
+  "- OPEN ON THE PEOPLE, never on a reference fact: the first paragraph is",
+  "  the human tension of the scene (who is hungry, ashamed, angry, and why",
+  "  it does not sit right), in the reflection's own voice.",
+  "- WEAVE the history and language notes into ONE or TWO developed blocks,",
+  "  never isolated facts (owner, 2026-09-29: they read as footnotes that",
+  "  learned to talk). A block runs: a sentence from the scene, then the",
+  "  context that explains it, then at once why it matters for the message,",
+  "  and it flows as one thought across its paragraphs. Notes that serve the",
+  "  same idea belong in the same block (the father's compassion and a son",
+  "  offered only a servant's place are one idea: this father will not take",
+  "  him back on a servant's terms).",
   "- The classic commentator's insight gives the turn, retold in the",
   "  devotional's own voice.",
   "- The last paragraphs bring it to the viewer and to Christ, and end on a",
@@ -200,6 +208,42 @@ export function namedSources(
     }))
 }
 
+/** The shape the owner asked for (2026-09-29): the reflection opens on the
+ *  scene, not on a note, and the notes sit in at most two blocks. */
+export function shapeProblems(
+  paragraphs: WrittenParagraph[],
+): { rule: string; sentence: string; why: string }[] {
+  const out: { rule: string; sentence: string; why: string }[] = []
+  const depth = (r: ParagraphRole) => r === "history" || r === "language"
+  if (paragraphs[0] && depth(paragraphs[0].role)) {
+    out.push({
+      rule: "opens-on-note",
+      sentence: paragraphs[0].text.split(/(?<=[.!?])\s/)[0],
+      why: "opens on a reference fact; open on the human tension of the scene, then bring the context in",
+    })
+  }
+  // A block is a run of paragraphs that starts with a note; a later note
+  // after two or more of the writer's own paragraphs starts a new block.
+  let blocks = 0
+  let gap = Infinity
+  for (const p of paragraphs) {
+    if (depth(p.role)) {
+      if (gap >= 2) blocks++
+      gap = 0
+    } else gap++
+  }
+  if (blocks > 2) {
+    out.push({
+      rule: "scattered-notes",
+      sentence:
+        paragraphs.find((p) => depth(p.role))?.text.split(/(?<=[.!?])\s/)[0] ??
+        "",
+      why: `the notes are spread over ${blocks} places; gather them into one or two blocks that each move from the scene to the context to what it means`,
+    })
+  }
+  return out
+}
+
 export async function writeMessageFirstReflection(input: {
   message: DevotionalMessage
   passageReference: string
@@ -253,6 +297,7 @@ export async function writeMessageFirstReflection(input: {
       ...checkReflectionVoice(text, { lang: "en" }),
       ...foreignWords(text, input.language),
       ...namedSources(text),
+      ...shapeProblems(out),
     ]
     if (broken.length === 0) break
     input.log?.(
