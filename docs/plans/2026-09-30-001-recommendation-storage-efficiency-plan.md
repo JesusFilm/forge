@@ -60,7 +60,7 @@ before schema expansion. No half-precision conversion or automatic history remov
 Reuse of unchanged inputDigest is already implemented; do not add duplicate logic.
 Any unsupported shape/version must preserve existing behavior.
 
-### U4 — Protected early legacy retirement (feat-572)
+### U4 — Protected early legacy retirement (feat-575)
 
 Deploy explicit retired-detail state/readers before deleting unprotected stage rows.
 Preserve issuance counters as historical facts. Freeze a fresh conservative protected
