@@ -53,5 +53,4 @@ Provision the separate writer, report reader and independent inventory roles;
 configure their receivers and maintain truthful deployment/replica inventory.
 Register RAGBot through feat-530's portal UI before its separate report grant.
 Feat-529 owns actual ops HTTP dogfood, migration grace and production cutoff.
-Feat-563 tracks measured capacity before volume expansion. Add the Forge PR link
-to the ticket's Resolution before merging.
+Feat-563 tracks measured capacity before volume expansion. Implementation is proposed in [Forge draft PR #2455](https://github.com/JesusFilm/forge/pull/2455).

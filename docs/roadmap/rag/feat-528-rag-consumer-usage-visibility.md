@@ -51,6 +51,35 @@ corpus, token value/selector or production evidence in records. Auth verifiers
 stay restricted. Serving never writes corpus. No cross-app imports, portal or
 implicit heavy-usage enforcement. Use the actual forge-rag-retrieve ops HTTP path in the dependent dogfood ticket. Normal PR-to-main only.
 
+## Production report access
+
+After production activation, Jaco reads reports with the operator command below
+or the authenticated `GET /internal/usage` endpoint on the production RAG service.
+The current delivery returns JSON; it does not add a portal report page.
+
+```bash
+pnpm --filter @forge/rag usage:report \
+  --consumer "<consumer-uuid>" \
+  --from "2026-10-01T00:00:00Z" \
+  --to "2026-10-02T00:00:00Z"
+```
+
+The approved operator receiver injects `RAG_USAGE_REPORT_URL` (the production
+service's `/internal/usage` URL) and `RAG_USAGE_REPORT_SECRET` from its secret
+manager. Do not put the secret in command arguments. The output includes the
+consumer label, request/success counts, last activity, UTC window and coverage.
+Windows must be minute-aligned and at most 31 days. Partial coverage is visibly
+marked; unavailable coverage exits nonzero rather than presenting a reliable zero.
+
+Only Jaco and RAGBot receive independent report credentials. Portal ownership
+and retrieval keys grant no report access. RAGBot must first be created through
+feat-530's portal UI, then receive a separate report capability using the same
+bounded endpoint; its later ops-tool integration is separate from retrieval.
+Production requires the restricted metadata roles, server report configuration,
+receiver secrets and independently maintained deployment inventory described in
+[the operator runbook](../../../apps/rag/docs/ops/consumer-usage.md).
+These activation steps and actual dogfood remain pending.
+
 ## Verification
 
 Execute the plan's section E tests, including failure and rollback cases relevant
@@ -61,7 +90,8 @@ cutoff additionally requires feat-529 and separate production cutover approval.
 
 ## Resolution
 
-Implemented locally: isolated usage accounting and report views, real HTTP
+Implemented in [Forge draft PR #2455](https://github.com/JesusFilm/forge/pull/2455):
+isolated usage accounting and report views, real HTTP
 completion/disconnect accounting, independently maintained deployment inventory,
 honest coverage gaps and crash reconciliation, and restricted read-only reporting.
 See [local verification](evidence/feat-528/local-verification.md) and
@@ -70,5 +100,5 @@ See [local verification](evidence/feat-528/local-verification.md) and
 The implemented deliverable is complete. Production provisioning, RAGBot portal
 registration/report grant and actual ops dogfood remain activation/dependent
 work; shared-token cutoff still requires feat-529 and separate approval.
-Capacity review is feat-563. Add the Forge PR link here before merging this local
-implementation; no PR or production deployment is claimed by this resolution.
+Capacity review is feat-563. The PR is open for approach review; production
+activation has not been performed.
