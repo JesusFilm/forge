@@ -150,12 +150,58 @@ export const CONTEXT_SYSTEM_PROMPT = [
 
 /** The part of an entry worth showing: the paragraphs that cite the passage,
  *  else its opening, capped so a long article does not drown the rest. */
+const STOP = new Set([
+  "there",
+  "their",
+  "which",
+  "would",
+  "about",
+  "after",
+  "these",
+  "those",
+  "while",
+  "where",
+  "every",
+  "being",
+  "because",
+  "still",
+  "never",
+  "again",
+])
+
 export function entryExcerpt(
   e: DictionaryEntry,
   book: string,
   chapter: number,
   cap = 1400,
+  passageText = "",
 ): string {
+  // A long work (a chapter of Edersheim, 40,000 characters) is cut to the
+  // paragraphs that talk about THIS passage: those sharing at least three
+  // of its distinctive words.
+  if (e.text.length > 6000 && passageText) {
+    const words = new Set(
+      (passageText.toLowerCase().match(/[a-z]{5,}/g) ?? []).filter(
+        (w) => !STOP.has(w),
+      ),
+    )
+    const paras = e.text
+      .split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+    const picked: string[] = []
+    let size = 0
+    for (const p of paras) {
+      const hits = new Set(
+        (p.toLowerCase().match(/[a-z]{5,}/g) ?? []).filter((w) => words.has(w)),
+      )
+      if (hits.size < 3) continue
+      if (size + p.length > 9000) break
+      picked.push(p)
+      size += p.length
+    }
+    if (picked.length) return picked.join("\n\n")
+  }
   const paras = e.text
     .split(/\n{2,}/)
     .map((p) => p.trim())
@@ -195,7 +241,10 @@ export async function researchContext(input: {
   const shown = new Map(
     entries.map((e) => [
       e.id,
-      { entry: e, excerpt: entryExcerpt(e, bookName, chapter) },
+      {
+        entry: e,
+        excerpt: entryExcerpt(e, bookName, chapter, 1400, input.passageText),
+      },
     ]),
   )
   void book

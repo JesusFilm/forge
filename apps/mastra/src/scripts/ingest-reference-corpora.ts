@@ -8,6 +8,8 @@
  *   tbesg.txt            STEPBible TBESG: Abbott-Smith (1922) lexicon  CC BY 4.0 STEPBible.org
  *   tagnt-mat-jhn.txt    STEPBible TAGNT: Greek Gospels, Strong-tagged CC BY 4.0 STEPBible.org
  *   eng-kjv/46-SIReng-kjv.usfm  Sirach (Ecclesiasticus), KJV 1611, eBible.org  public domain
+ *   edersheim-lifetimes.txt  Edersheim, The Life and Times of Jesus the
+ *                        Messiah (1883), CCEL plain text           public domain
  *
  * The ThML files are CCEL's own XML, taken from the raw folder of
  * github.com/neuu-org/bible-dictionary-dataset (their parsed JSON is not used).
@@ -67,6 +69,67 @@ const STEP_BOOKS: Record<string, string> = {
   Mrk: "Mark",
   Luk: "Luke",
   Jhn: "John",
+}
+
+const ROMAN: Record<string, number> = { i: 1, v: 5, x: 10, l: 50, c: 100 }
+const roman = (r: string) =>
+  [...r.toLowerCase()].reduce(
+    (n, ch, i, all) =>
+      ROMAN[ch] < (ROMAN[all[i + 1]] ?? 0) ? n - ROMAN[ch] : n + ROMAN[ch],
+    0,
+  )
+const GOSPEL: Record<string, string> = {
+  Matt: "Matt",
+  Mark: "Mark",
+  Luke: "Luke",
+  John: "John",
+}
+
+export function parseEdersheim(txt: string) {
+  const lines = txt.split("\n")
+  const heads: number[] = []
+  lines.forEach((l, i) => {
+    if (/^CHAPTER [IVXLC]+\.\s*$/.test(l)) heads.push(i)
+  })
+  let book = 0
+  return heads.map((h, k) => {
+    const chapter = roman(lines[h].replace(/^CHAPTER |\.\s*$/g, ""))
+    if (chapter === 1) book++
+    const body = lines.slice(h + 1, heads[k + 1] ?? lines.length)
+    const blank = body.findIndex((l) => l.trim() === "")
+    const title = body.slice(0, blank).join(" ").replace(/\s+/g, " ").trim()
+    const text = body
+      .slice(blank + 1)
+      .join("\n")
+      .replace(/_{10,}/g, "")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n /g, "\n")
+      .replace(/([^\n])\n(?!\n)/g, "$1 ")
+      .trim()
+    const refs = [
+      ...new Set(
+        [
+          ...text.matchAll(
+            /St\. (Matt|Mark|Luke|John)\.? ([ivxlc]+)\.(?:\s*(\d+)(?:\s*-\s*(\d+))?)?/g,
+          ),
+        ].map((m) => {
+          const c = roman(m[2])
+          const b = GOSPEL[m[1]]
+          if (!m[3]) return `${b}.${c}`
+          return m[4]
+            ? `${b}.${c}.${m[3]}-${b}.${c}.${m[4]}`
+            : `${b}.${c}.${m[3]}`
+        }),
+      ),
+    ]
+    return {
+      id: `Edersheim:${book}.${chapter}`,
+      term: title,
+      source: "Edersheim, The Life and Times of Jesus the Messiah (1883)",
+      text,
+      refs,
+    }
+  })
 }
 
 async function main() {
@@ -160,6 +223,14 @@ async function main() {
     }
   }
 
+  // Edersheim, by chapter: Jewish law, custom and the rabbinic texts behind
+  // the Gospel stories, each chapter indexed by the Gospel passages it cites
+  // ("St. Luke xv. 11-32"), so the context agent finds it like a dictionary
+  // entry (owner, 2026-09-29).
+  const edersheim = parseEdersheim(
+    await readFile(path.join(RAW, "edersheim-lifetimes.txt"), "utf8"),
+  )
+
   const write = (file: string, meta: object, data: unknown) =>
     writeFile(
       path.join(CORPUS, file),
@@ -192,6 +263,15 @@ async function main() {
       license: "CC BY 4.0 (STEPBible.org, Tyndale House Cambridge)",
     },
     words,
+  )
+  await write(
+    "edersheim.json",
+    {
+      source:
+        "Alfred Edersheim, The Life and Times of Jesus the Messiah (1883), via CCEL",
+      license: "public-domain",
+    },
+    edersheim,
   )
   await write(
     "sirach-kjv.json",

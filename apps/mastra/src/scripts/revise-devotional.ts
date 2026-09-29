@@ -28,6 +28,7 @@ import { reviseMessageFirstReflection } from "../services/devotional/message-fir
 import {
   ancientEntry,
   loadReferenceCorpora,
+  verifyQuote,
 } from "../services/devotional/reference-corpus"
 import { videoSource } from "../services/devotional/video-sources"
 
@@ -54,19 +55,34 @@ async function main() {
   // --history=Sir.19.30,Sir.33.19-Sir.33.23: verified source texts for a
   // historical paragraph the note asks for, with its on-screen credit.
   const corpora = loadReferenceCorpora()
+  // --history=Sir.33.19-Sir.33.23 (an ancient text) and/or
+  // --work="Edersheim:4.17#<verbatim words>" (a passage of a longer work,
+  // checked word for word and handed over with its whole paragraph).
   const history = (arg("history") ?? "")
     .split(",")
     .filter(Boolean)
     .map((r) => {
       const e = ancientEntry(corpora, r.trim())
       if (!e) throw new Error(`--history: ${r} is not in the corpora`)
-      return e
+      return { ...e, text: `(King James Version) ${e.text}` }
     })
+  for (const w of process.argv.filter((a) => a.startsWith("--work="))) {
+    const [id, quote] = w.slice("--work=".length).split("#")
+    const e = corpora.dictionaries.find((d) => d.id === id)
+    if (!e || !quote) throw new Error(`--work: ${id} is not in the corpora`)
+    const para = e.text.split(/\n{2,}/).find((p) => verifyQuote(quote, p))
+    if (!para) throw new Error(`--work: “${quote}” is not in ${id}`)
+    history.push({
+      ...e,
+      id: `${e.source}, ${e.term.toLowerCase()}`,
+      text: para,
+    })
+  }
   const problems = [`The owner's note: ${note}`]
   if (history.length) {
     problems.push(
       "HISTORY SOURCES for that paragraph (role 'history'; verified; quote only their exact words, or paraphrase without quotation marks, and do not name the book aloud, it is credited on screen):",
-      ...history.map((e) => `${e.id} (King James Version): ${e.text}`),
+      ...history.map((e) => `${e.id}: ${e.text}`),
     )
   }
   const written = await reviseMessageFirstReflection({
@@ -87,12 +103,15 @@ async function main() {
   const markOf = new Map(
     paragraphs.filter((p) => p.mark).map((p) => [p.role, p.mark!]),
   )
-  if (history.length && !markOf.has("history")) {
+  // New sources replace the section's old credit.
+  if (history.length) {
     markOf.set("history", {
       label: "Historical context",
-      source: "Book of Sirach",
+      source: [...new Set(history.map((e) => e.source.replace(/\s*\(.*$/, "")))]
+        .map((x) => (x.startsWith("Edersheim") ? "Alfred Edersheim (1883)" : x))
+        .join(" · "),
       portrait: "book",
-      evidence: history.map((e) => `${e.id} (KJV): ${e.text}`).join("\n\n"),
+      evidence: history.map((e) => `${e.id}: ${e.text}`).join("\n\n"),
     })
   }
   const depthVoice = paragraphs.find((p) => p.role === "language")?.voice

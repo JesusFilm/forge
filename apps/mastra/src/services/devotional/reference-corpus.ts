@@ -187,13 +187,14 @@ export function loadReferenceCorpora(dir?: string): ReferenceCorpora {
   )
   const greek = readData<GreekWord[]>(resolved, "tagnt-gospels.json")
   const ancient = readData<Record<string, string>>(resolved, "sirach-kjv.json")
+  const edersheim = readData<DictionaryEntry[]>(resolved, "edersheim.json")
   if (!easton || !smith || !lexicon || !greek) {
     throw new Error(
       `reference corpora missing in ${resolved}: run scripts/ingest-reference-corpora.ts`,
     )
   }
   const corpora: ReferenceCorpora = {
-    dictionaries: [...easton.data, ...smith.data],
+    dictionaries: [...easton.data, ...smith.data, ...(edersheim?.data ?? [])],
     lexicon: lexicon.data,
     lexiconSource: String(lexicon.meta.source ?? "Abbott-Smith lexicon"),
     greek: greek.data,
