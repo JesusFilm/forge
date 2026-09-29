@@ -6,6 +6,7 @@
 
 const fs = require("fs")
 const path = require("path")
+const { parse, TYPE } = require("@formatjs/icu-messageformat-parser")
 const ops = require("./catalogOps")
 
 const MOBILE_DIR = path.resolve(__dirname, "../../..")
@@ -297,7 +298,50 @@ function policyProblems(raw, source, webTags) {
       )
     }
   }
+  for (const key of wordlessKeysNotNeutral(
+    source,
+    policy.intentionallyLocaleNeutral,
+  )) {
+    problems.push(
+      `intentionallyLocaleNeutral: ${key} has no words, so each translation equals English; add it`,
+    )
+  }
   return problems
+}
+
+// The literal text of a parsed message, branches and tag children included.
+function literalText(elements) {
+  return elements
+    .map((element) => {
+      if (element.type === TYPE.literal) return element.value
+      if (element.type === TYPE.tag) return literalText(element.children)
+      if (element.type === TYPE.plural || element.type === TYPE.select) {
+        return Object.values(element.options)
+          .map((option) => literalText(option.value))
+          .join(" ")
+      }
+      return ""
+    })
+    .join("")
+}
+
+// Web's copy check rejects a translation equal to English unless the key is
+// locale-neutral, so a message with no letter outside its placeholders fails
+// every locale of a paid run.
+function wordlessKeysNotNeutral(source, neutralKeys) {
+  const neutral = new Set(neutralKeys)
+  return Object.keys(source)
+    .filter((key) => {
+      if (neutral.has(key)) return false
+      let elements
+      try {
+        elements = parse(source[key])
+      } catch {
+        return false
+      }
+      return !/\p{L}/u.test(literalText(elements))
+    })
+    .sort(ops.codePointCompare)
 }
 
 function namespacesOf(source) {
@@ -492,4 +536,5 @@ module.exports = {
   recordProblems,
   stalePlaceholderProblems,
   untranslatedProblems,
+  wordlessKeysNotNeutral,
 }

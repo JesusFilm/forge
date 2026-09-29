@@ -2183,7 +2183,11 @@ the KD, KTD, R, and U numbers that the source cites.
 
 1. Edit `messages/en.json`. A new namespace needs a sentence in
    `i18n/translation-contexts.json` (`namespaces.<Namespace>`). Add a `keys`
-   override when the key name does not tell the translator the role.
+   override when the key name does not tell the translator the role. A
+   message with no words (only placeholders and punctuation, such as
+   `{name}, {status}`) goes on `intentionallyLocaleNeutral` in
+   `i18n/translation-policy.json`: web's copy check rejects a translation
+   that equals English, so the command and CI refuse such a key otherwise.
 2. In `apps/mobile`, run `node scripts/i18n/translate-catalogs.mjs`. It is not
    a `package.json` script, because a new script entry moves the fingerprint
    runtime version.
@@ -2249,8 +2253,9 @@ each). `--yes` skips the prompt, for non-interactive use only.
 - **CI.** `src/i18n/__tests__/` has `catalogParity`, `catalogFormat`,
   `sourceRecord`, and `translationPolicy`. They check key parity in both
   directions, placeholders and plurals, that every message formats, the source
-  record, the pending list, the context sentences, the model table, and the
-  stub manifest. `scripts/i18n/__tests__/` covers the command, the gate, and
+  record, the pending list, the context sentences, the model table, the stub
+  manifest, and that each message with no words is locale-neutral.
+  `scripts/i18n/__tests__/` covers the command, the gate, and
   the report. A change to web's two script files or to
   `docs/i18n/watch-ui-official-language-inventory.json` also runs the mobile
   jobs. The mobile test job writes `scripts/i18n/pending-report.mjs` to the

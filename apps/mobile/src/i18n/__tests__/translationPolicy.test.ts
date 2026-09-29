@@ -12,6 +12,7 @@ import {
   readJson,
   readPolicy,
   REAL_PATHS,
+  wordlessKeysNotNeutral,
 } from "../../../scripts/i18n/lib/catalogChecks"
 
 const { source, catalogs } = readCatalogDir(REAL_PATHS.messagesDir)
@@ -68,6 +69,38 @@ describe("translation-policy.json", () => {
     const raw = { humanReviewedLocales: ["en"], ...over }
     expect(policyProblems(raw, { "Common.a": "A" }, ["en", "crk"])).toEqual([
       expect.stringContaining(problem),
+    ])
+  })
+})
+
+// Web's copy check rejects a translation equal to English, so a message with no
+// letter outside its placeholders must be locale-neutral before a paid run.
+describe("a message with no words", () => {
+  const source = {
+    "Common.pair": "{name}, {status}",
+    "Common.tagged": "<b>{name}</b> · {note}",
+    "Common.count": "{count, plural, one {# video} other {# videos}}",
+    "Common.suffix": "{seconds}s",
+    "Common.back": "Go back",
+  }
+
+  it("names each such key that is not locale-neutral, and only those", () => {
+    expect(wordlessKeysNotNeutral(source, [])).toEqual([
+      "Common.pair",
+      "Common.tagged",
+    ])
+    expect(
+      wordlessKeysNotNeutral(source, ["Common.pair", "Common.tagged"]),
+    ).toEqual([])
+  })
+
+  it("fails the policy check and names the key", () => {
+    const raw = {
+      humanReviewedLocales: ["en"],
+      intentionallyLocaleNeutral: ["Common.tagged"],
+    }
+    expect(policyProblems(raw, source, ["en"])).toEqual([
+      expect.stringContaining("Common.pair has no words"),
     ])
   })
 })

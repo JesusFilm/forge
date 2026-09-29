@@ -85,6 +85,10 @@ export function policyProblems(
   webTags: string[],
 ): string[]
 export function contextProblems(raw: unknown, source: FlatCatalog): string[]
+export function wordlessKeysNotNeutral(
+  source: FlatCatalog,
+  neutralKeys: string[],
+): string[]
 export function modelTableProblems(
   raw: unknown,
   webTags: string[],

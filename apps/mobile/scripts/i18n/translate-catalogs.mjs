@@ -421,6 +421,17 @@ async function buildPlan(options, paths) {
       `${paths.contexts}:\n  ${contextProblems.join("\n  ")}`,
     )
   }
+  const wordless = checks.wordlessKeysNotNeutral(
+    state.source,
+    state.policy.intentionallyLocaleNeutral,
+  )
+  if (wordless.length) {
+    throw new CommandError(
+      "WORDLESS_KEY_NOT_NEUTRAL",
+      `These messages have no words, so web's copy check fails each translation. ` +
+        `Add them to intentionallyLocaleNeutral in ${paths.policy}:\n  ${wordless.join("\n  ")}`,
+    )
+  }
   const invalidated = ops.invalidateChangedKeys(state)
   const { messageContractError } = await import(
     pathToFileURL(paths.webTranslator).href

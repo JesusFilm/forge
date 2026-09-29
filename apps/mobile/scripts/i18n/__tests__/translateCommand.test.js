@@ -446,6 +446,16 @@ describe("refusals before any request", () => {
     expect(result.stderr).toContain("namespace Player")
   })
 
+  it("refuses a message with no words that is not locale-neutral", () => {
+    const result = refusal(
+      { en: { ...EN, Common: { ...EN.Common, pair: "{name}, {status}" } } },
+      ["--yes"],
+    )
+    expect(result.status).toBe(2)
+    expect(result.stderr).toContain("have no words")
+    expect(result.stderr).toContain("Common.pair")
+  })
+
   it("refuses a model table entry that is not an API model ID", () => {
     const result = refusal(
       {
