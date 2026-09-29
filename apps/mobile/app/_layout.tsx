@@ -54,6 +54,8 @@ let hideNativeSplashOnce:
 let getSplashSession:
   | typeof import("../src/lib/splash/splashSession").getSplashSession
   | undefined
+let getLocaleResolution: typeof import("../src/i18n/localeStore").getLocaleResolution
+let localeResolutionAttributes: typeof import("../src/i18n/localeStore").localeResolutionAttributes
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -122,6 +124,12 @@ try {
   // the layout returns a bare view and the host does not mount at all.
   nativeSplash.preventNativeSplashAutoHide()
   getSplashSession?.().start()
+  // KTD3: module scope, so the first frame and the first request use the
+  // phone's language. A failed phone read keeps English and does not throw.
+  const localeStore = require("../src/i18n/localeStore")
+  localeStore.startLocaleSync()
+  getLocaleResolution = localeStore.getLocaleResolution
+  localeResolutionAttributes = localeStore.localeResolutionAttributes
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
   moduleError = `${err.message}\n\n${err.stack ?? ""}`
@@ -345,6 +353,18 @@ export default function RootLayout() {
     if (!hydrated || jsTtiEmittedRef.current) return
     jsTtiEmittedRef.current = true
     addDatadogTiming("js_tti")
+  }, [hydrated])
+
+  // After hydration, so MobileDatadogProvider has mounted; the SDK buffers
+  // logs until its init completes. Once per process, like js_tti.
+  const localeLoggedRef = useRef(false)
+  useEffect(() => {
+    if (!hydrated || localeLoggedRef.current) return
+    localeLoggedRef.current = true
+    datadogLog.info(
+      "ui_locale.resolved",
+      localeResolutionAttributes(getLocaleResolution()),
+    )
   }, [hydrated])
 
   if (!hydrated) {

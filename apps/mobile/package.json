@@ -28,6 +28,9 @@
     "@expo/vector-icons": "^15.0.2",
     "@forge/admin-graphql": "workspace:*",
     "@forge/watch-url-policy": "workspace:*",
+    "@formatjs/icu-messageformat-parser": "3.5.10",
+    "@formatjs/intl-locale": "5.3.12",
+    "@formatjs/intl-pluralrules": "6.3.15",
     "@hebcal/hdate": "^0.21.1",
     "@kesha-antonov/react-native-background-downloader": "^4.5.5",
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -50,6 +53,7 @@
     "expo-image": "~57.0.5",
     "expo-linear-gradient": "^57.0.2",
     "expo-linking": "~57.0.11",
+    "expo-localization": "~57.0.2",
     "expo-network": "~57.0.2",
     "expo-notifications": "~57.0.21",
     "expo-router": "~57.0.23",
@@ -67,6 +71,7 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.2",
     "react-native-webview": "13.16.1",
+    "use-intl": "4.13.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -98,7 +103,7 @@
       "\\.bible$": "jest-expo/src/preset/assetFileTransformer.js"
     },
     "transformIgnorePatterns": [
-      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|expo-glass-effect|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod|@datadog))"
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|expo-glass-effect|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod|@datadog|use-intl|intl-messageformat|@formatjs))"
     ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1",
