@@ -116,3 +116,22 @@ runs, with fresh relation/index allocation around 20.8 MB and WAL around 25.4 MB
 These are local measurements, not maximum-scale capacity or production coverage.
 This ticket remains **in progress** pending fresh storage clearance and the
 actual generation, terminal shadow evaluation and authorized Admin evidence.
+
+## Reviewed integration release
+
+[PR #2470](https://github.com/JesusFilm/forge/pull/2470) merged as
+`0a70712399bf99e10d88477b98cc34c8ababcc6b`. The production Admin/worker health
+and bounded 0107–0110 catalog checks passed; all eight new authority tables were
+empty, with no activated study or graph trial authority. See the release and
+capacity sections of
+`docs/operations/recommendation-controlled-live-integration-2026-09-29.md` for
+exact observations and remaining gates. Implementation and deployment do not
+complete production shadow acceptance, mature usefulness evidence or live
+promotion. This ticket remains **in progress**.
+
+The one isolated read-only September 22–29 preflight subsequently exited with
+code 1 before a usable aggregate result. Resource limits and cleanup passed;
+source/pair/edge counts and the exit cause remain unknown. No graph or shadow
+evaluation was published and the attempt was not retried. The operations record
+retains the exact receipt and the diagnostic/admission requirements for a later
+attempt. This is distinct from the earlier 50,001-source overflow receipt.

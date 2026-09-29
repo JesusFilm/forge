@@ -91,3 +91,15 @@ Production qualification and usefulness remain open. A frozen trial graph expire
 at its declared horizon; a permanent default also needs a reviewed refresh and
 requalification policy informed by the controlled result. Keep this ticket in
 progress until actual live dispositions and rollback evidence exist.
+
+## Reviewed integration release
+
+[PR #2470](https://github.com/JesusFilm/forge/pull/2470) merged as
+`0a70712399bf99e10d88477b98cc34c8ababcc6b`. The production Admin/worker health
+and bounded 0107–0110 catalog checks passed; all eight new authority tables were
+empty, with no activated study or graph trial authority. See the release and
+capacity sections of
+`docs/operations/recommendation-controlled-live-integration-2026-09-29.md` for
+exact observations and remaining gates. Implementation and deployment do not
+complete production shadow acceptance, mature usefulness evidence or live
+promotion. This ticket remains **in progress**.

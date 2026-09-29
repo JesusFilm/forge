@@ -228,3 +228,153 @@ with 58 native cases skipped. Concurrent roadmap IDs were reconciled without
 changing scope: the changelog permission ticket is now feat-570 and the people
 preapproval ticket feat-571. Production deployment and trial evidence remain
 separate from these release checks.
+
+## Reviewed production release and inactive authority
+
+[PR #2470](https://github.com/JesusFilm/forge/pull/2470) merged through the
+normal squash flow at `0a70712399bf99e10d88477b98cc34c8ababcc6b` on September 29
+at 06:49:43 UTC. Exact reviewed head `637ffd96a4a34b1f9411feb83cf2fec7babcfb52`
+passed the required checks with no unresolved review threads. Main's
+[forge-ci run](https://github.com/JesusFilm/forge/actions/runs/36533138768)
+also passed. `integration-release.json` retains the check and merge evidence.
+
+The release check at 06:59 UTC observed Admin HTTP and the worker as sole
+successful deployments on that exact merge, HTTP health 200, compact candidate
+traces, and worker roles false/true respectively. Watch was still queued at that
+observation; its final rollout and browser receipt are recorded separately.
+
+A bounded read-only production check at 06:59:34–06:59:37 UTC verified the exact
+0107–0110 migration checksums, no unfinished migrations, eight new tables, 27
+valid/ready indexes, 13 named constraints, six columns, 48 enabled triggers and
+three exact static manifest definitions. All eight new authority tables were
+empty. No activated study, new-policy experiment or graph trial authority was
+present. Counts stop at one and prove emptiness only; they are not full population
+counts. See `integration-migrations.json` and `integration-admin-deployment.json`
+in `docs/validation/recommendation-live-20260929/`. Registry availability does
+not constitute an approved trial or a changed default.
+
+The initial PR CI failures were isolated-fixture defects: the retention lifecycle
+fixture stopped before the new composition migrations, and the promotion fixture
+excluded CI's loopback database name. Both were reproduced and repaired; eight
+focused native cases and the loopback `postgres`-name case passed before the
+final green run. CodeQL alert 117 was independently traced to the verified actor
+identifier in a deterministic audit digest and dismissed as a documented false
+positive; no credential hash or security rule was changed.
+
+## Capacity disposition after implementation
+
+The storage owner's 06:16–06:20 UTC observation found 10.191 GB available, with
+8.44–11.70 days to exhaustion at comparable recent positive growth before new
+work. A single row-envelope graph would retain another 1.576 GB, before temporary
+work, WAL and study costs. No loaded retention cycle was yet proven. The owner
+supported this inactive code/migration release, but did not clear A/A enrollment,
+graph publication or the proposed 500-request/200-minimum shadow evaluation.
+See `production-capacity-decision.json`.
+
+The shared-worker preflight was not admitted: a database timeout cannot bound
+synchronous JavaScript heap and runtime in that worker. A reviewed isolated local
+replacement uses one CPU, a hard 1 GiB memory limit with no swap, a 512 MiB V8
+old-space setting, 128 PIDs and an independent 45-second cleanup deadline. Its fixture proof
+verified both normal cleanup and forced timeout cleanup. The original read-only
+transaction and population bounds remain unchanged. The owner's conditional
+admission applies to exactly one invocation after fresh database/disk checks,
+with source window September 22–29 UTC and evaluation cutoff September 29 at
+06:15 UTC. It supplies no publication or trial authority; a refusal cannot be
+retried with a smaller population. See `isolated-preflight-capacity-review.json`
+and `local-isolated-preflight-runner.json`.
+
+A/A admission is a deterministic fraction, not a hard assignment or request cap.
+`plannedAssignmentsPerArm=200` is an evaluation minimum. Pricing only admitted
+requests would omit discovery/profile reads on otherwise routable requests, shared
+study accounting writes, repeat requests, exposure storage and bulk stop/expiry
+work. The smallest legal 0.02% fraction is not a useful default proposal: even
+treating the historical 8,420 candidate runs/day as distinct eligible profiles
+would yield only about 1.7 assignments per arm over two days. Actual current
+cohort and repeat-visit rates, full retained/index/WAL costs and transient/rollback
+costs remain unmeasured. No study dates or fraction have been activated. The independently reviewed
+`incumbent-aa-budget-proposal.md` in the validation directory retains an inactive
+illustrative protocol, workload ledger and one proposed aggregate query for
+future storage-owner review; that additional query has not been executed.
+
+The first two loaded retention cycles, expected September 30 and October 1 at
+10:30 UTC, remain the storage workstream's observation gate. A/A needs at least
+two complete UTC enrollment days, at least 200 profiles per arm and each profile's
+24-hour follow-up plus six hours for facts. Natural evidence cannot be replaced
+with the local synthetic lifecycle proof. Feat-387, feat-505 and feat-565 remain
+in progress. The accepted D1–D9 historical limitations close feat-545 only;
+feat-566 retains the future remediation commitment without an agreed delivery date.
+
+## One isolated production preflight: terminal refusal
+
+The fresh 07:00 UTC storage admission found no lock waiters or transactions older
+than 30 seconds, 10.185 GB free and comparable positive-growth estimates of
+9.65–11.95 days to exhaustion. It cleared only the previously reviewed isolated
+read-only invocation. `isolated-preflight-admission.json` retains the scope.
+
+That one invocation ran September 29 at 07:01:54–07:01:56 UTC against the fixed
+September 22–29 source window and 06:15 evaluation cutoff. The container verified
+one CPU, 1 GiB memory, zero swap, 128 PIDs, non-root execution and a 512 MiB Node
+old-space limit. It exited with code 1 after 2.29 seconds without a usable
+aggregate CLI result. No OOM or deadline kill occurred, and cleanup removed the
+exact owned container. `production-cowatch-preflight.json` records the terminal
+refusal and the pinned source revision.
+
+This result supplies no source, pair or edge counts. It does not establish a
+source overflow, a successful database connection, or successful population
+inspection. Raw diagnostics were deliberately withheld and not retained, so the
+underlying exit cause cannot be recovered from this receipt. The transport-level
+`receipt_received` means a runner receipt arrived, not that preflight passed.
+The reviewed command has no `--execute` path; no graph publication, evaluation,
+experiment activation or retry was performed.
+
+A subsequent attempt needs a reviewed way to retain a bounded, secret-free error
+classification, resolution of its actual failure cause, and fresh narrow
+admission for the unchanged declared population. Do not infer a ready population
+or narrow the window to obtain one. Graph publication, shadow evaluation and
+A/A enrollment remain uncleared. Feat-387 owns this unresolved preflight and its
+production/Admin acceptance; feat-505/565 retain their later evidence gates.
+
+## All services converged
+
+At 07:09:33 UTC, Admin HTTP, its worker and Watch each had one successful active
+deployment at `0a70712399bf99e10d88477b98cc34c8ababcc6b`; all three local health
+requests returned HTTP 200. Admin retained compact traces and the expected
+HTTP/worker roles. `integration-deployment.json` records this completed normal
+autodeployment, superseding the earlier queued Watch observation. Both main CI
+workflows passed. This completes code deployment only; the production trial
+authorities remain inactive under the separately recorded evidence gates.
+
+## Production browser and page-loading observations
+
+The genuine headless Chromium client remained machine-excluded. The old browser
+request retained `viewing-mode-v1` with no co-watch capability and received six
+items from the new Admin. After Watch deployed, a natural request sent both
+`viewing-mode-v1` and `cowatch-mmr-v1` and received HTTP 200 with six contextual
+items. No durable human identity, enrollment or qualified trial was manufactured.
+The allowlisted `watch-capability-before.json` and `watch-capability-after.json`
+retain this compatibility observation without request bodies, tokens or viewer
+identifiers. It does not prove execution of co-watch or MMR for a viewer.
+
+All six after-release navigations across Watch home, JESUS and NUA returned HTTP
+200 with the expected headings. Before/after samples use the same browser version
+and measured 1280×577 inner viewport; the earlier collector's 1280×800 prose is
+not the measured viewport. There were two samples per route with uncontrolled
+network and mixed cache state, and the browser restarted after idle. Encoded
+first-party scripts grew by 18 bytes on home and 87 bytes on each detail route,
+with unchanged script counts.
+
+The original comparison is retained, including slower results: median
+DOM-content-loaded times were 1,093→1,077 ms on home, 574→1,146 ms on JESUS and
+862→974 ms on NUA; largest-contentful-paint times were 1,452→2,794 ms,
+422→1,256 ms and 1,168→1,126 ms respectively. A bounded additional diagnostic
+collected two more navigations on each flagged route. Home LCP was 2,132/1,668 ms
+and used image responses of different sizes with 731/541 ms fetch durations.
+JESUS LCP was its heading at 748/628 ms, with TTFB 400/386 ms versus baseline
+261/240 ms. Those observations expose network/content variation but do not
+establish the cause of every difference or erase the slower samples.
+
+The loading comparison and diagnostic receipts are in the validation directory.
+This small observational check establishes neither a statistically reliable
+performance pass nor a regression attributable to the integration. Keep production
+latency as an explicit operational trial guardrail; no co-watch performance or
+usefulness claim follows from a healthy page or a contextual machine response.
