@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  ancientEntry,
   entriesCiting,
   greekWords,
   osisSpan,
@@ -34,6 +35,14 @@ const corpora: ReferenceCorpora = {
   ],
   lexicon: {},
   lexiconSource: "test",
+  ancient: {
+    "Sir.19.30":
+      "A man\u2019s attire, and excessive laughter, and gait, shew what he is.",
+    "Sir.33.19":
+      "Give not thy son and wife, thy brother and friend, power over thee while thou livest, and give not thy goods to another.",
+    "Sir.33.20":
+      "As long as thou livest and hast breath in thee, give not thyself over to any.",
+  },
   greek: [
     {
       osis: "Luke.15.20",
@@ -141,5 +150,22 @@ describe("verifyQuote", () => {
     expect(verifyQuote("designates the beans of the carob tre", text)).toBe(
       false,
     )
+  })
+})
+
+describe("ancientEntry", () => {
+  it("joins a verse range into one quotable entry", () => {
+    const e = ancientEntry(corpora, "Sir.33.19-Sir.33.20")
+    expect(e?.id).toBe("Sirach 33:19-20")
+    expect(verifyQuote("give not thy goods to another", e!.text)).toBe(true)
+    expect(verifyQuote("thou livest and hast breath in thee", e!.text)).toBe(
+      true,
+    )
+  })
+  it("refuses a range with a missing verse", () => {
+    expect(ancientEntry(corpora, "Sir.33.19-Sir.33.21")).toBeNull()
+  })
+  it("names a single verse", () => {
+    expect(ancientEntry(corpora, "Sir.19.30")?.id).toBe("Sirach 19:30")
   })
 })

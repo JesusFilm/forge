@@ -48,6 +48,33 @@ export type ReferenceCorpora = {
   lexicon: Record<string, LexiconEntry>
   lexiconSource: string
   greek: GreekWord[]
+  /** Ancient texts by OSIS verse (Sirach, KJV): primary sources for customs. */
+  ancient: Record<string, string>
+}
+
+/** An ancient text's verses as one dictionary-like entry the context agent
+ *  can quote ("Sir.33.19-Sir.33.23"), or null when a verse is missing. */
+export function ancientEntry(
+  corpora: ReferenceCorpora,
+  osisRange: string,
+): DictionaryEntry | null {
+  const m = /^(\w+)\.(\d+)\.(\d+)(?:-\w+\.\d+\.(\d+))?$/.exec(osisRange)
+  if (!m) return null
+  const [book, ch, from, to] = [m[1], m[2], Number(m[3]), Number(m[4] ?? m[3])]
+  const lines: string[] = []
+  for (let v = from; v <= to; v++) {
+    const t = corpora.ancient[`${book}.${ch}.${v}`]
+    if (!t) return null
+    lines.push(t)
+  }
+  const ref = `${book === "Sir" ? "Sirach" : book} ${ch}:${from}${to > from ? `-${to}` : ""}`
+  return {
+    id: ref,
+    term: ref,
+    source: "Book of Sirach (KJV)",
+    text: lines.join(" "),
+    refs: [],
+  }
 }
 
 type Span = { book: string; from: number; to: number }
@@ -159,6 +186,7 @@ export function loadReferenceCorpora(dir?: string): ReferenceCorpora {
     "abbott-smith.json",
   )
   const greek = readData<GreekWord[]>(resolved, "tagnt-gospels.json")
+  const ancient = readData<Record<string, string>>(resolved, "sirach-kjv.json")
   if (!easton || !smith || !lexicon || !greek) {
     throw new Error(
       `reference corpora missing in ${resolved}: run scripts/ingest-reference-corpora.ts`,
@@ -169,6 +197,7 @@ export function loadReferenceCorpora(dir?: string): ReferenceCorpora {
     lexicon: lexicon.data,
     lexiconSource: String(lexicon.meta.source ?? "Abbott-Smith lexicon"),
     greek: greek.data,
+    ancient: ancient?.data ?? {},
   }
   cache = { dir: resolved, corpora }
   return corpora

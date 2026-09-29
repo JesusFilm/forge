@@ -25,6 +25,10 @@ import type { ReflectionParagraph } from "../services/devotional/generate-devoti
 import { stripDashes } from "../services/devotional/generate-devotional"
 import { createDevotionalLlm } from "../services/devotional/llm"
 import { reviseMessageFirstReflection } from "../services/devotional/message-first-writer"
+import {
+  ancientEntry,
+  loadReferenceCorpora,
+} from "../services/devotional/reference-corpus"
 import { videoSource } from "../services/devotional/video-sources"
 
 const arg = (name: string) =>
@@ -47,9 +51,27 @@ async function main() {
       "revise works on message-first devotionals (tagged paragraphs)",
     )
   }
+  // --history=Sir.19.30,Sir.33.19-Sir.33.23: verified source texts for a
+  // historical paragraph the note asks for, with its on-screen credit.
+  const corpora = loadReferenceCorpora()
+  const history = (arg("history") ?? "")
+    .split(",")
+    .filter(Boolean)
+    .map((r) => {
+      const e = ancientEntry(corpora, r.trim())
+      if (!e) throw new Error(`--history: ${r} is not in the corpora`)
+      return e
+    })
+  const problems = [`The owner's note: ${note}`]
+  if (history.length) {
+    problems.push(
+      "HISTORY SOURCES for that paragraph (role 'history'; verified; quote only their exact words, or paraphrase without quotation marks, and say which book says it):",
+      ...history.map((e) => `${e.id} (King James Version): ${e.text}`),
+    )
+  }
   const written = await reviseMessageFirstReflection({
     paragraphs: paragraphs.map((p) => ({ role: p.role!, text: p.text })),
-    problems: [`The owner's note: ${note}`],
+    problems,
     message: {
       ...devo.message,
       classicPoints: devo.message.classicPoints ?? [],
@@ -65,12 +87,24 @@ async function main() {
   const markOf = new Map(
     paragraphs.filter((p) => p.mark).map((p) => [p.role, p.mark!]),
   )
+  if (history.length && !markOf.has("history")) {
+    markOf.set("history", {
+      label: "Historical context",
+      source: "Book of Sirach",
+      portrait: "book",
+      evidence: history.map((e) => `${e.id} (KJV): ${e.text}`).join("\n\n"),
+    })
+  }
+  const depthVoice = paragraphs.find((p) => p.role === "language")?.voice
   const voiceOf = new Map(paragraphs.map((p) => [p.role, p.voice]))
   const credited = new Set<string>()
   const next: ReflectionParagraph[] = written.map((w) => {
     const mark = !credited.has(w.role) ? markOf.get(w.role) : undefined
     if (mark) credited.add(w.role)
-    const voice = voiceOf.get(w.role) ?? devo.voice
+    const voice =
+      voiceOf.get(w.role) ??
+      (w.role === "history" ? depthVoice : undefined) ??
+      devo.voice
     return {
       text: stripDashes(w.text),
       role: w.role,

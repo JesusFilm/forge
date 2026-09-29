@@ -50,6 +50,8 @@ const STORIES: Record<
   {
     setting?: { reference: string; osis: [string, number, number] }
     terms?: string[]
+    /** Ancient texts for the context agent (primary sources for customs). */
+    ancient?: string[]
     out: string
   }
 > = {
@@ -155,6 +157,7 @@ async function main() {
         entries,
       },
       ...(story.terms ? { contextTerms: story.terms } : {}),
+      ...(story.ancient ? { contextAncient: story.ancient } : {}),
       review: (devotional) =>
         reviewDevotionalText({
           devotional,

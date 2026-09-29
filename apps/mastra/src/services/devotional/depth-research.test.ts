@@ -39,6 +39,7 @@ const corpora: ReferenceCorpora = {
     },
   },
   lexiconSource: "test",
+  ancient: {},
   greek: [
     {
       osis: "Luke.15.20",

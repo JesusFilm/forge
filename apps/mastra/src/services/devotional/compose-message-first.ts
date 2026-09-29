@@ -51,6 +51,8 @@ export type MessageFirstInput = {
   }
   /** Extra dictionary headwords worth looking up for this story. */
   contextTerms?: string[]
+  /** Ancient texts the context agent may quote ("Sir.19.30"). */
+  contextAncient?: string[]
   corpora: ReferenceCorpora
   sequence: number
   date: string
@@ -216,6 +218,7 @@ export async function composeMessageFirst(
       ...(input.settingText ? { settingText: input.settingText } : {}),
       message,
       ...(input.contextTerms ? { terms: input.contextTerms } : {}),
+      ...(input.contextAncient ? { ancient: input.contextAncient } : {}),
       llm: input.llms.depth,
       log,
     }),

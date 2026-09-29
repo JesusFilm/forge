@@ -7,6 +7,7 @@
  *   smith_bibledict.xml  Smith's Bible Dictionary (1863), CCEL ThML    public domain
  *   tbesg.txt            STEPBible TBESG: Abbott-Smith (1922) lexicon  CC BY 4.0 STEPBible.org
  *   tagnt-mat-jhn.txt    STEPBible TAGNT: Greek Gospels, Strong-tagged CC BY 4.0 STEPBible.org
+ *   eng-kjv/46-SIReng-kjv.usfm  Sirach (Ecclesiasticus), KJV 1611, eBible.org  public domain
  *
  * The ThML files are CCEL's own XML, taken from the raw folder of
  * github.com/neuu-org/bible-dictionary-dataset (their parsed JSON is not used).
@@ -137,6 +138,28 @@ async function main() {
     })
   }
 
+  // Sirach, KJV (USFM): the ancient Jewish wisdom book the historical notes
+  // may quote as a primary source for customs (owner, 2026-09-29).
+  const sirach: Record<string, string> = {}
+  let chapter = 0
+  for (const line of (
+    await readFile(path.join(RAW, "eng-kjv/46-SIReng-kjv.usfm"), "utf8")
+  ).split("\n")) {
+    const c = /^\\c\s+(\d+)/.exec(line)
+    if (c) {
+      chapter = Number(c[1])
+      continue
+    }
+    const v = /^\\v\s+(\d+)\s+(.*)/.exec(line)
+    if (v && chapter) {
+      sirach[`Sir.${chapter}.${Number(v[1])}`] = v[2]
+        .replace(/\\w\s+([^|\\]*)\|[^\\]*\\w\*/g, "$1")
+        .replace(/\\[a-z0-9]+\*?/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+    }
+  }
+
   const write = (file: string, meta: object, data: unknown) =>
     writeFile(
       path.join(CORPUS, file),
@@ -170,8 +193,17 @@ async function main() {
     },
     words,
   )
+  await write(
+    "sirach-kjv.json",
+    {
+      source:
+        "Sirach (Ecclesiasticus), King James Version 1611, via eBible.org",
+      license: "public-domain",
+    },
+    sirach,
+  )
   console.log(
-    `easton ${easton.length}, smith ${smith.length}, lexicon ${Object.keys(lexicon).length}, greek words ${words.length}`,
+    `sirach ${Object.keys(sirach).length} verses, easton ${easton.length}, smith ${smith.length}, lexicon ${Object.keys(lexicon).length}, greek words ${words.length}`,
   )
 }
 

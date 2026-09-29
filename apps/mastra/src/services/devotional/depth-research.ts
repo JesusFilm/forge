@@ -3,6 +3,7 @@ import { z } from "zod"
 import { messageBlock, type DevotionalMessage } from "./devotional-message"
 import type { DevotionalLlm } from "./llm"
 import {
+  ancientEntry,
   entriesCiting,
   greekWords,
   normalizeForQuote,
@@ -135,7 +136,10 @@ const CONTEXT_JSON_SCHEMA = {
 export const CONTEXT_SYSTEM_PROMPT = [
   "You research HISTORICAL, CULTURAL, SOCIAL, ECONOMIC or RELIGIOUS context",
   "for a short Bible devotional video, from entries of Easton's Bible",
-  "Dictionary (1897) and Smith's Bible Dictionary (1863).",
+  "Dictionary (1897) and Smith's Bible Dictionary (1863), and from ancient",
+  "texts such as the Book of Sirach, a Jewish wisdom book of the second",
+  "century BC. An ancient text shows what people then valued or advised;",
+  "state it as what that book says, never as proof of what everyone did.",
   "Return at most two facts. A good fact is one the viewer would not know from",
   "watching the scene, that changes how a moment in the story lands: a law, a",
   "custom, an economic reality, a religious boundary, who the audience was.",
@@ -169,6 +173,8 @@ export async function researchContext(input: {
   message: DevotionalMessage
   /** Extra headwords to look up besides the entries that cite the passage. */
   terms?: string[]
+  /** Ancient texts to offer as primary sources ("Sir.19.30"). */
+  ancient?: string[]
   llm: DevotionalLlm
   log?: (m: string) => void
 }): Promise<{ status: DepthStatus; reason: string; facts: ContextFact[] }> {
@@ -180,7 +186,10 @@ export async function researchContext(input: {
   const extra = input.corpora.dictionaries.filter(
     (e) => wanted.has(e.term.toLowerCase()) && !citing.includes(e),
   )
-  const entries = [...citing, ...extra]
+  const ancient = (input.ancient ?? [])
+    .map((r) => ancientEntry(input.corpora, r))
+    .filter((e): e is DictionaryEntry => e != null)
+  const entries = [...citing, ...extra, ...ancient]
   const shown = new Map(
     entries.map((e) => [
       e.id,
