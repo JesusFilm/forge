@@ -258,12 +258,28 @@ describe("DownloadTile series states (R7)", () => {
     )
 
     expect(tileLabel(renderer)).toBe(
-      "Birth of Jesus, 3 episodes, Downloading, 50%",
+      "Birth of Jesus, 3 episodes, In progress, 50%",
     )
     expect(hasText(renderer, "3 episodes")).toBe(true)
     const rings = nodesOfType(renderer, DownloadProgressRing)
     expect(rings.length).toBe(1)
     expect(rings[0].props.progress).toBeCloseTo(0.5)
+    await unmount(renderer)
+  })
+
+  it("in progress: a series with only a paused episode is not Downloading", async () => {
+    const renderer = await renderTile(
+      onlyTile([
+        episode(1, "downloaded"),
+        episode(2, "paused", { bytesWritten: 5 * MB }),
+      ]),
+    )
+
+    expect(tileLabel(renderer)).toMatch(
+      /^Birth of Jesus, 2 episodes, In progress/,
+    )
+    expect(tileLabel(renderer)).not.toMatch(/Downloading/)
+    expect(nodesOfType(renderer, DownloadProgressRing).length).toBe(1)
     await unmount(renderer)
   })
 

@@ -35,9 +35,21 @@ const mockRouter = {
   push: jest.fn(),
   replace: jest.fn(),
 }
-jest.mock("expo-router", () => ({
-  useRouter: () => mockRouter,
-}))
+// Focus is a store, so a change re-renders the screen like a real pop does.
+const mockFocus = { focused: true, listeners: new Set<() => void>() }
+jest.mock("expo-router", () => {
+  const { useSyncExternalStore } =
+    jest.requireMock<typeof import("react")>("react")
+  const subscribe = (listener: () => void) => {
+    mockFocus.listeners.add(listener)
+    return () => mockFocus.listeners.delete(listener)
+  }
+  return {
+    useRouter: () => mockRouter,
+    useIsFocused: () =>
+      useSyncExternalStore(subscribe, () => mockFocus.focused),
+  }
+})
 const mockInsets = { top: 59, right: 0, bottom: 34, left: 0 }
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => mockInsets,
@@ -201,6 +213,13 @@ function leaveCount(): number {
   )
 }
 
+async function setFocused(focused: boolean): Promise<void> {
+  await act(async () => {
+    mockFocus.focused = focused
+    mockFocus.listeners.forEach((listener) => listener())
+  })
+}
+
 function contentPaddingBottom(renderer: TestInstance): number {
   const [scroll] = renderer.root.findAll(
     (node) => node.props.contentContainerStyle != null,
@@ -225,6 +244,8 @@ beforeEach(() => {
   mockInsets.bottom = 34
   mockSignInGate.open = true
   mockSignInGate.calls = 0
+  mockFocus.focused = true
+  mockFocus.listeners.clear()
   resetSnapshot(SIGNED_OUT)
 })
 
@@ -480,6 +501,27 @@ describe("AccountScreen leaves only on signed-in to signed-out (KTD9)", () => {
     await unmount(renderer)
   })
 
+  // back() pops the TOP route, so a sign-out while /watch covers Account must
+  // wait for Account to be on top again, or it pops /watch instead.
+  it("a sign-out while another screen covers Account leaves only once Account is on top again", async () => {
+    setSnapshot(SIGNED_IN)
+    const renderer = await renderScreen()
+    await setFocused(false)
+
+    await act(async () => {
+      setSnapshot(SIGNED_OUT)
+    })
+
+    expect(leaveCount()).toBe(0)
+    expect(hasText(renderer, NOT_SIGNED_IN)).toBe(false)
+
+    await setFocused(true)
+
+    expect(mockRouter.back).toHaveBeenCalledTimes(1)
+    expect(mockRouter.navigate).toHaveBeenCalledTimes(0)
+    await unmount(renderer)
+  })
+
   it("a switch from account A to account B during re-auth keeps the screen open", async () => {
     setSnapshot(SIGNED_IN)
     mockedDelete.mockResolvedValueOnce({ status: "fresh-session-required" })
@@ -517,6 +559,23 @@ describe("AccountScreen under StrictMode", () => {
 
     expect(mockRouter.back).toHaveBeenCalledTimes(1)
     expect(mockRouter.navigate).toHaveBeenCalledTimes(0)
+    await unmount(renderer)
+  })
+
+  it("a sign-out while covered leaves exactly once, after Account regains focus", async () => {
+    setSnapshot(SIGNED_IN)
+    const renderer = await renderScreen({ strict: true })
+    await setFocused(false)
+
+    await act(async () => {
+      setSnapshot(SIGNED_OUT)
+    })
+    expect(leaveCount()).toBe(0)
+
+    await setFocused(true)
+
+    expect(leaveCount()).toBe(1)
+    expect(mockRouter.back).toHaveBeenCalledTimes(1)
     await unmount(renderer)
   })
 

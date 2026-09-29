@@ -32,6 +32,8 @@ const mockRouter = {
   push: jest.fn(),
   back: jest.fn(),
   navigate: jest.fn(),
+  replace: jest.fn(),
+  dismissTo: jest.fn(),
   canGoBack: () => true,
 }
 const mockParams: { series?: string } = {}
@@ -207,6 +209,11 @@ afterEach(() => {
   mockedResetTabBarHidden.mockClear()
   mockNavigation.setOptions.mockClear()
   mockNavigation.addListener.mockClear()
+  mockRouter.push.mockClear()
+  mockRouter.back.mockClear()
+  mockRouter.navigate.mockClear()
+  mockRouter.replace.mockClear()
+  mockRouter.dismissTo.mockClear()
   mockBlurListeners.length = 0
   mockDownloads.offlineRecords = ONE_VIDEO
   mockDownloads.isReady = true
@@ -441,8 +448,7 @@ describe("selection on a root route", () => {
 })
 
 describe("deleting on the Downloads screen", () => {
-  it("shows the empty state and the toast after every record goes", async () => {
-    const renderer = await renderScreen("ios")
+  async function deleteEveryRecord(renderer: TestInstance) {
     await enterSelection(renderer)
     await press(pressableByLabel(renderer, "Select all"))
 
@@ -456,6 +462,11 @@ describe("deleting on the Downloads screen", () => {
     await act(async () => {
       await (sheet.props.onConfirm as () => Promise<void>)()
     })
+  }
+
+  it("shows the empty state and the toast after every record goes", async () => {
+    const renderer = await renderScreen("ios")
+    await deleteEveryRecord(renderer)
 
     expect(nodesOfType(renderer, LibraryEmptyState).length).toBe(1)
     expect(hasText(renderer, "No Downloads Yet")).toBe(true)
@@ -465,6 +476,22 @@ describe("deleting on the Downloads screen", () => {
     expect(toast.props.message).toMatch(/^1 video deleted · /)
     // No tab bar under a root route, so the toast lifts off the inset only.
     expect(toast.props.clearsTabBar).toBeFalsy()
+    await unmount(renderer)
+  })
+
+  it("pops back to the tab navigator from Browse videos, never pushes one", async () => {
+    // This screen sits on the ROOT stack, so navigate("/(tabs)") pushes a
+    // second tab navigator over it and a back-swipe returns here.
+    const renderer = await renderScreen("ios")
+    await deleteEveryRecord(renderer)
+
+    await press(pressableByLabel(renderer, "Browse videos"))
+
+    expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1)
+    expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
+    expect(mockRouter.navigate).toHaveBeenCalledTimes(0)
+    expect(mockRouter.push).toHaveBeenCalledTimes(0)
+    expect(mockRouter.replace).toHaveBeenCalledTimes(0)
     await unmount(renderer)
   })
 

@@ -225,6 +225,10 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
     )
   }
 
+  // POP_TO the existing tab navigator; its new `screen: "index"` param selects
+  // Home. With no (tabs) below, dismissTo replaces this screen with one.
+  const handleBrowse = () => router.dismissTo("/(tabs)")
+
   const handleDeletePress = () => setConfirmVisible(true)
   const handleCancelDelete = () => setConfirmVisible(false)
 
@@ -458,7 +462,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
               )}
             </View>
           ) : (
-            <LibraryEmptyState />
+            <LibraryEmptyState onBrowse={handleBrowse} />
           ))}
       </ScrollView>
 

@@ -44,7 +44,7 @@ const SURFACES: Surface[] = [
 ]
 
 /** No JSX expression may render a raw user field outside the mask. */
-const RAW_USER_FIELD = /\{\s*snapshot\.user\.(email|name)\b[^}]*\}/
+const RAW_USER_FIELD = /\{\s*(?:snapshot\.)?user\.(email|name)\b[^}]*\}/
 
 describe.each(SURFACES)(
   "account PII is masked in session replays: $file",
@@ -68,6 +68,22 @@ describe.each(SURFACES)(
     })
   },
 )
+
+describe("the raw user field rule", () => {
+  it.each(["{user.email}", "{ user.name }", "{snapshot.user.email}"])(
+    "catches %s outside the mask",
+    (expression) => {
+      const source = `<Text>${expression}</Text><SessionReplayView.MaskAll>{email}</SessionReplayView.MaskAll>`
+      const outside = source.replace(IDENTITY_BLOCK, "")
+      expect(outside).toMatch(RAW_USER_FIELD)
+    },
+  )
+
+  it("ignores helper calls and non-JSX reads", () => {
+    const source = "const email = user.email\nconst id = accountIdentity(user)"
+    expect(source).not.toMatch(RAW_USER_FIELD)
+  })
+})
 
 describe("the global replay level", () => {
   it("still masks inputs only", () => {

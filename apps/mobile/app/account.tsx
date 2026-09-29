@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { SessionReplayView } from "@datadog/mobile-react-native-session-replay"
-import { useRouter } from "expo-router"
+import { useIsFocused, useRouter } from "expo-router"
 
 import { DeleteAccountFlow } from "../src/components/profile/DeleteAccountFlow"
 import {
@@ -35,15 +35,18 @@ import {
  *  a ref: no effect cleanup touches it, so a StrictMode remount stays correct. */
 function useLeaveOnSignOut(status: AuthSessionSnapshot["status"]): boolean {
   const router = useRouter()
+  const isFocused = useIsFocused()
   const [previous, setPrevious] = useState(status)
   const [leaving, setLeaving] = useState(false)
   if (status !== previous) {
     setPrevious(status)
     if (previous === "signedIn" && status === "signedOut") setLeaving(true)
   }
+  // back() pops the TOP route. While another screen covers Account, wait until
+  // Account is on top again, so the covering screen is not popped instead.
   useEffect(() => {
-    if (leaving) leaveToMyWatch(router)
-  }, [leaving, router])
+    if (leaving && isFocused) leaveToMyWatch(router)
+  }, [leaving, isFocused, router])
   return leaving
 }
 

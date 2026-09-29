@@ -70,7 +70,7 @@ function tileView(tile: MyWatchRailTile): TileView {
     if (state.status === "inProgress") {
       return {
         ...base,
-        stateText: "Downloading",
+        stateText: "In progress",
         badge: { kind: "ring", progress: state.progress },
       }
     }

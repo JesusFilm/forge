@@ -105,6 +105,19 @@ describe("LibraryEmptyState", () => {
     await unmount(renderer)
   })
 
+  it("runs the host's onBrowse in place of the default navigate", async () => {
+    const onBrowse = jest.fn()
+    const renderer = await render({ onBrowse })
+
+    await press(pressableByLabel(renderer, "Browse videos"))
+
+    expect(onBrowse).toHaveBeenCalledTimes(1)
+    expect(mockRouter.navigate).toHaveBeenCalledTimes(0)
+    expect(mockRouter.push).toHaveBeenCalledTimes(0)
+    expect(mockRouter.replace).toHaveBeenCalledTimes(0)
+    await unmount(renderer)
+  })
+
   it("applies the host's style to its root, so a page can center it", async () => {
     const renderer = await render({ style: { justifyContent: "center" } })
 
