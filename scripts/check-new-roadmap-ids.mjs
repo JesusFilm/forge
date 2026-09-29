@@ -25,7 +25,10 @@ export function introducedCollisions(changed, oldIds, currentIds) {
 }
 
 function git(...args) {
-  return execFileSync("git", args, { encoding: "utf8" })
+  return execFileSync("git", args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  })
 }
 
 function allTickets(directory, relative = "docs/roadmap") {
