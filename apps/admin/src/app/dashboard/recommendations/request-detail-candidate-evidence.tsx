@@ -204,7 +204,10 @@ export function RecommendationCandidateEvidence({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[13px] text-[var(--color-text-secondary)]">
-                  Purpose {detail.candidateExecution.purpose} · evidence{" "}
+                  Purpose {detail.candidateExecution.purpose} · evidence
+                  {detail.candidateExecution.legacyDetailRetiredAt
+                    ? " at issuance "
+                    : " "}
                   {detail.candidateExecution.evidenceComplete
                     ? "complete"
                     : "incomplete"}
@@ -228,7 +231,7 @@ export function RecommendationCandidateEvidence({
                     {formatRecommendationDateTime(
                       detail.candidateExecution.legacyDetailRetiredAt,
                     )}
-                    . Stage counts above record the original issuance.
+                    . Stage counts record the original issuance.
                   </p>
                 ) : null}
               </div>
