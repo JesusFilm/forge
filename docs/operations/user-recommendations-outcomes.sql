@@ -1,6 +1,10 @@
 -- Read-only seven-day diagnostic. Group by delivery cohort, never export identities.
 WITH slates AS MATERIALIZED (
-  SELECT request.id, first_item.candidate_provenance->>'cohort' AS cohort
+  SELECT request.id,
+    (CASE WHEN request.served_item_payload IS NULL
+      THEN first_item.candidate_provenance
+      ELSE request.served_item_payload -> 'items' -> first_item.id -> 'candidateProvenance'
+    END)->>'cohort' AS cohort
   FROM recommendation_request request
   JOIN recommendation_served_item first_item
     ON first_item.request_id = request.id AND first_item.position = 0

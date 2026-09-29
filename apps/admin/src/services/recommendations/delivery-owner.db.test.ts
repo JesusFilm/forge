@@ -26,6 +26,7 @@ import {
   INCUMBENT_HYBRID_MANIFEST_ID,
 } from "./promotion/manifest"
 import { ownerReleaseInfluenceAllowed } from "./promotion/owner-influence"
+import { servedSnapshotValue } from "./served-item-payload"
 
 // Only local synthetic source/retrieval inputs. Real qualification, operator,
 // source hydration/MMR, current authority and issuance persistence execute.
@@ -143,6 +144,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const harness = makeHarness({
         database: db,
         candidateTraceFormat: "compact",
+        servedItemFormat: "packed",
         profileComparison: true,
         owner: {
           resolveOwnerAuthority: (input) =>
@@ -209,6 +211,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           ownerReleaseGeneration: activated.pointerGeneration,
           experimentAssignmentId: null,
           state: "ISSUED",
+          servedItemPayload: { version: 1 },
         })
         const trace = JSON.stringify(saved.candidateRun?.tracePayload)
         expect(trace.match(/ownerBindingDigest/g)).toHaveLength(1)
@@ -511,10 +514,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const operator = new RecommendationOwnerReleaseOperator({ prisma: db })
       const promotion = createRecommendationPromotionService(db)
       const actor = { id: "native-owner-operator", role: "ADMIN" as const }
-      const { items: templateItems, ...template } =
+      const { items, servedItemPayload, ...template } =
         await db.recommendationRequest.findFirstOrThrow({
           include: { items: true },
         })
+      const templateItems = items.map((item) =>
+        servedSnapshotValue(servedItemPayload, item),
+      )
       const requests: Array<{ id: string; ownerReleaseId: string }> = []
       let lastOperation: Parameters<typeof operator.activate>[0] | undefined
       for (let index = 0; index < 2; index++) {

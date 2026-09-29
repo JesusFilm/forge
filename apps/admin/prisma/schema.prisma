@@ -3709,6 +3709,8 @@ model RecommendationRequest {
   locale                 String                              @db.VarChar(32)
   purpose                String                              @default("seeded") @db.VarChar(32)
   expectedItemCount      Int                                 @map("expected_item_count")
+  /// Versioned immutable presentation and provenance snapshots keyed by served item id.
+  servedItemPayload      Json?                               @map("served_item_payload") @db.JsonB
   state                  RecommendationRequestState          @default(PREPARED)
   result                 RecommendationDeliveryResult
   fallbackReason         String?                             @map("fallback_reason") @db.VarChar(64)

@@ -25,6 +25,7 @@ import {
 } from "../promotion/manifest"
 import type { ViewingModeAffinity } from "../viewing-mode"
 import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
+import { servedSnapshotValue } from "../served-item-payload"
 import { reconstructShadowHistory, type ShadowHistory } from "./history"
 import {
   aggregateShadowMetrics,
@@ -292,7 +293,10 @@ export async function sampleShadowEvaluationContexts(
                 AND NOT EXISTS (
                   SELECT 1 FROM recommendation_served_item item
                   WHERE item.request_id = request.id
-                    AND item.presentation->>'audioLanguageSlug' IS DISTINCT FROM 'english'
+                    AND (CASE WHEN request.served_item_payload IS NULL
+                      THEN item.presentation
+                      ELSE request.served_item_payload -> 'items' -> item.id -> 'presentation'
+                    END)->>'audioLanguageSlug' IS DISTINCT FROM 'english'
                 )`
                   : Prisma.empty
               }
@@ -621,6 +625,7 @@ export async function executeClaimedShadowRun(
           seedMediaId: true,
           locale: true,
           expectedItemCount: true,
+          servedItemPayload: true,
           sessionDigest: true,
           createdAt: true,
           expiresAt: true,
@@ -628,9 +633,11 @@ export async function executeClaimedShadowRun(
             orderBy: [{ position: "asc" }, { id: "asc" }],
             take: MAX_SHADOW_ITEMS,
             select: {
+              id: true,
               targetMediaId: true,
               position: true,
               presentation: true,
+              candidateProvenance: true,
             },
           },
         },
@@ -693,7 +700,10 @@ export async function executeClaimedShadowRun(
     return { status: "fenced", reason: "shadow_graph_binding_required" }
   }
   const liveItems = run.request.items.map((item) =>
-    safeShadowLiveItem(item, run.request.locale),
+    safeShadowLiveItem(
+      servedSnapshotValue(run.request.servedItemPayload, item),
+      run.request.locale,
+    ),
   )
   const audioLanguageSlug = liveItems[0]?.presentation.audioLanguageSlug
   if (!audioLanguageSlug) {
