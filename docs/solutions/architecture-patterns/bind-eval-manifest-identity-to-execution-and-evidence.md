@@ -225,6 +225,23 @@ result, and never mint another ID to bypass it. Preserving the tuple establishes
 what work was requested, not that exactly one worker started or that production
 evaluation gates passed.
 
+### September 29 dispatch follow-up
+
+Feat-563 now reserves a deterministic ledger identity and uses a database
+compare-and-set to claim start ownership. Persist intent before crossing the
+external queue boundary. A prepared reservation can be resumed; an attempted
+reservation without acknowledgement remains uncertain because the installed
+Workflow runtime cannot disprove acceptance. Runtime self-attachment and
+terminal updates must match both dispatch input and attached runtime identity.
+Never overwrite the immutable tuple with result fields, and never turn a
+missing runtime ID or a failed ledger status into automatic permission to start.
+
+The [operator record](../../operations/recommendation-shadow-dispatch-2026-09-29.md)
+documents native concurrent-admission/crash tests, bounded reconciliation and
+the residual acknowledgement uncertainty. This supersedes the earlier
+application-level concurrent-admission gap; it does not claim exactly-once
+external queue delivery or authorize a production evaluation.
+
 ## Related
 
 - [Mastra offline search eval orchestration boundary pattern](mastra-offline-search-eval-orchestration-boundary-pattern.md)
