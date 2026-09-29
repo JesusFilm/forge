@@ -1855,12 +1855,11 @@ function provisionalManifest(locales) {
 }
 
 // OpenAI's 429 bodies for a used-up quota and for a transient rate limit.
-function quotaExhaustedResponse() {
+function quotaExhaustedResponse(messageSuffix = "") {
   return new Response(
     JSON.stringify({
       error: {
-        message:
-          "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        message: `You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.${messageSuffix}`,
         type: "insufficient_quota",
         param: null,
         code: "insufficient_quota",
@@ -1889,18 +1888,6 @@ function rateLimitedResponse(retryAfterSeconds) {
       },
     },
   )
-}
-
-// main() uses the real retry wait; fake setTimeout keeps a retry from sleeping.
-async function settleWithFakeTimers(promise) {
-  let settled = false
-  const tracked = promise.finally(() => {
-    settled = true
-  })
-  for (let tick = 0; tick < 200 && !settled; tick += 1) {
-    await vi.advanceTimersByTimeAsync(60_000)
-  }
-  return tracked
 }
 
 describe("caller translation options", () => {
@@ -2269,6 +2256,12 @@ describe("caller translation options", () => {
         intentionallyLocaleNeutral: "common.message0",
       },
     })
+    const nonObjectPolicyFixture = createBatchFixture({
+      catalogs: { es: sourceCatalog() },
+      manifest: provisionalManifest(["es"]),
+      progress: null,
+      policy: ["common.message0"],
+    })
     const contextsFixture = createBatchFixture({
       catalogs: { es: sourceCatalog() },
       manifest: provisionalManifest(["es"]),
@@ -2279,6 +2272,12 @@ describe("caller translation options", () => {
     await expect(
       main({
         args: policyFixture.args,
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_TRANSLATION_POLICY" })
+    await expect(
+      main({
+        args: nonObjectPolicyFixture.args,
         environment: { OPENAI_API_KEY: "test-api-key" },
       }),
     ).rejects.toMatchObject({ code: "INVALID_TRANSLATION_POLICY" })
@@ -2303,14 +2302,15 @@ describe("caller translation options", () => {
       const fetchMock = vi.fn(async () => quotaExhaustedResponse())
       vi.stubGlobal("fetch", fetchMock)
       process.exitCode = undefined
-      await settleWithFakeTimers(
-        main({
-          args: [...fixture.args, ...extraArgs],
-          environment: { OPENAI_API_KEY: "test-api-key" },
-        }),
-      )
+      const run = main({
+        args: [...fixture.args, ...extraArgs],
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      })
+      await vi.runAllTimersAsync()
+      await run
       return fetchMock
     }
+    // main() uses the real retry wait; fake setTimeout keeps a retry from sleeping.
     vi.useFakeTimers({ toFake: ["setTimeout"] })
     vi.spyOn(console, "log").mockImplementation(() => {})
     const errors = vi.spyOn(console, "error").mockImplementation(() => {})
@@ -2354,6 +2354,34 @@ describe("caller translation options", () => {
     ).rejects.toMatchObject({
       name: "PermanentApiError",
       message: expect.stringContaining("insufficient_quota"),
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(waitForRetry).not.toHaveBeenCalled()
+  })
+
+  it("finds the quota code after a long error message with stopOnQuota", async () => {
+    const fetchImpl = vi.fn(async () =>
+      quotaExhaustedResponse(" Contact support.".repeat(60)),
+    )
+    const waitForRetry = vi.fn().mockResolvedValue(undefined)
+
+    await expect(
+      requestTranslations({
+        apiKey: "test-api-key",
+        locale: "es",
+        inventoryEntry: { countries: [{ name: "Spain" }] },
+        messages: { "common.greeting": "Hello" },
+        references: {},
+        model: MODEL,
+        maxAttempts: 4,
+        minimumChangeRatio: 1,
+        fetchImpl,
+        waitForRetry,
+        stopOnQuota: true,
+      }),
+    ).rejects.toMatchObject({
+      name: "PermanentApiError",
+      message: expect.not.stringContaining("insufficient_quota"),
     })
     expect(fetchImpl).toHaveBeenCalledTimes(1)
     expect(waitForRetry).not.toHaveBeenCalled()

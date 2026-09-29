@@ -759,9 +759,11 @@ async function requestTranslations({
     }
 
     if (!response.ok) {
+      let body = ""
       let detail = "response body unavailable"
       try {
-        detail = (await response.text()).slice(0, 800)
+        body = await response.text()
+        detail = body.slice(0, 800)
       } catch (error) {
         detail = `response body unavailable: ${
           error instanceof Error ? error.message : String(error)
@@ -773,7 +775,7 @@ async function requestTranslations({
       const quotaExhausted =
         stopOnQuota &&
         response.status === 429 &&
-        detail.includes("insufficient_quota")
+        body.includes("insufficient_quota")
       const retryable =
         !quotaExhausted &&
         ([408, 409, 429].includes(response.status) || response.status >= 500)

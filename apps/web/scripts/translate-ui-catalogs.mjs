@@ -109,12 +109,12 @@ function isNonEmptyString(value) {
 // this script translates pending paths like any other English copy.
 function loadTranslationPolicy(path = DEFAULT_TRANSLATION_POLICY_PATH) {
   const policy = readJson(path)
+  const invalid = (detail) =>
+    new TranslationCliError("INVALID_TRANSLATION_POLICY", `${path}: ${detail}`)
+  if (!isPlainObject(policy)) throw invalid("must be a JSON object")
   for (const field of ["humanReviewedLocales", "intentionallyLocaleNeutral"]) {
     if (policy[field] !== undefined && !isStringArray(policy[field])) {
-      throw new TranslationCliError(
-        "INVALID_TRANSLATION_POLICY",
-        `${path}: ${field} must be an array of strings`,
-      )
+      throw invalid(`${field} must be an array of strings`)
     }
   }
   return {
