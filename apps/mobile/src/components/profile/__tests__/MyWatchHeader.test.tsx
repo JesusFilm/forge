@@ -610,6 +610,19 @@ describe("MyWatchHeader signed-in row (R4, R19, KTD10)", () => {
       (node) => node.props.children === name,
     )
     expect(isAncestor(nameRow!, nameNode)).toBe(true)
+    // The name itself sits on the avatar's axis: the row pads both sides
+    // equally, and the chevron hangs in the right padding out of the flow.
+    const row = styleOf(nameRow!)
+    expect(Number(row.paddingHorizontal)).toBeGreaterThan(0)
+    expect(row.paddingLeft ?? row.paddingHorizontal).toBe(
+      row.paddingRight ?? row.paddingHorizontal,
+    )
+    const slot = closest(
+      chevron,
+      (node) => styleOf(node).position === "absolute",
+    )
+    expect(slot).not.toBeNull()
+    expect(isAncestor(nameRow!, slot!)).toBe(true)
     await unmount(renderer)
   })
 

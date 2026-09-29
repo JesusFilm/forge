@@ -241,7 +241,13 @@ export function MyWatchHeader() {
             >
               {displayName}
             </Text>
-            <Ionicons name="chevron-forward" size={22} color={TEXT_SECONDARY} />
+            <View style={styles.chevronSlot}>
+              <Ionicons
+                name="chevron-forward"
+                size={CHEVRON_SIZE}
+                color={TEXT_SECONDARY}
+              />
+            </View>
           </View>
         </SessionReplayView.MaskAll>
       </Pressable>
@@ -263,6 +269,8 @@ export function MyWatchHeader() {
 }
 
 const AVATAR_SIZE = 72
+const CHEVRON_SIZE = 22
+const CHEVRON_GAP = 4
 
 const styles = StyleSheet.create({
   container: {
@@ -280,11 +288,20 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
     minHeight: 44,
   },
+  // Equal padding on both sides keeps the name itself on the avatar's axis;
+  // the chevron hangs in the right padding, inside the tap target.
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    paddingHorizontal: CHEVRON_SIZE + CHEVRON_GAP,
     maxWidth: "100%",
+  },
+  chevronSlot: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    right: 0,
+    justifyContent: "center",
   },
   avatar: {
     width: AVATAR_SIZE,
