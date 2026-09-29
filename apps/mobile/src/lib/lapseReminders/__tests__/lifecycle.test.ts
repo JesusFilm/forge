@@ -30,6 +30,16 @@ import {
  *  unless the test asks for it. 2026-09-16 10:00 local. */
 const NOW = new Date(2026, 8, 16, 10, 0, 0, 0).getTime()
 
+/** KTD13: a cleanup dismisses exactly these, in this order, and nothing else. */
+const DISMISS_CALLS = LAPSE_REMINDER_KINDS.map(
+  (kind) => `dismiss:${LAPSE_REMINDER_IDENTIFIERS[kind]}`,
+)
+
+/** Every dismiss the pass asked for, so a dismiss-all revert is visible. */
+function dismissCalls(adapter: { calls: string[] }): string[] {
+  return adapter.calls.filter((call) => call.startsWith("dismiss"))
+}
+
 type ScheduledReminder = {
   body: string
   data: LapseReminderPayload
@@ -57,8 +67,10 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
   const pending = new Map<string, ScheduledReminder>()
   const identifiersUsed = new Set<string>()
   const calls: string[] = []
+  // KTD13: the tray is a SET OF IDENTIFIERS, not a count, because the pass now
+  // dismisses by identifier and an announcement in the same tray must survive.
+  const tray = new Set<string>()
   let maxPending = 0
-  let delivered = 0
   let permissionReads = 0
 
   async function wait(call: string) {
@@ -71,11 +83,12 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
     pending,
     identifiersUsed,
     calls,
-    deliver(count: number) {
-      delivered += count
+    tray,
+    deliver(...identifiers: string[]) {
+      for (const identifier of identifiers) tray.add(identifier)
     },
     get delivered() {
-      return delivered
+      return tray.size
     },
     get maxPending() {
       return maxPending
@@ -120,11 +133,11 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
       if (options.failCancel?.(identifier)) throw new Error("cancel failed")
       pending.delete(identifier)
     },
-    async dismissDelivered() {
-      calls.push("dismiss")
-      await wait("dismiss")
+    async dismiss(identifier: string) {
+      calls.push(`dismiss:${identifier}`)
+      await wait(`dismiss:${identifier}`)
       if (options.failDismiss?.()) throw new Error("dismiss failed")
-      delivered = 0
+      tray.delete(identifier)
     },
   }
 }
@@ -135,6 +148,8 @@ type Harness = {
   adapter: FakeAdapter
   deps: LapseReminderLifecycleDeps
   logs: { event: string; context: Record<string, unknown> }[]
+  /** Every permission the pass handed to the injected hook (U7/KTD9). */
+  permissionReads: { granted: boolean }[]
   emitAppState: (state: string) => void
   emitClear: () => void
   appStateListenerCount: () => number
@@ -151,10 +166,13 @@ function createHarness(
     /** Leave hydration pending until the test resolves it. */
     deferHydration?: boolean
     now?: () => number
+    /** Makes the injected permission hook throw, like a wedged consumer. */
+    failPermissionHook?: boolean
   } = {},
 ): Harness {
   const adapter = createFakeAdapter(options)
   const logs: { event: string; context: Record<string, unknown> }[] = []
+  const permissionReads: { granted: boolean }[] = []
   const appStateListeners = new Set<(state: string) => void>()
   const clearListeners = new Set<() => void>()
   let record = options.record ?? null
@@ -186,6 +204,10 @@ function createHarness(
       return () => appStateListeners.delete(listener)
     },
     now: options.now ?? (() => NOW),
+    onPermissionRead: (permission) => {
+      permissionReads.push(permission)
+      if (options.failPermissionHook) throw new Error("consumer wedged")
+    },
     telemetry: {
       info: (event, context) => logs.push({ event, context }),
       warn: () => {},
@@ -197,6 +219,7 @@ function createHarness(
     adapter,
     deps,
     logs,
+    permissionReads,
     emitAppState: (state) => {
       for (const listener of [...appStateListeners]) listener(state)
     },
@@ -322,12 +345,30 @@ describe("the lapse reminder schedule pass", () => {
     const lifecycle = createLapseReminderLifecycle(harness.deps)
 
     await lifecycle.runPass("mount")
-    harness.adapter.deliver(1)
+    harness.adapter.deliver(LAPSE_REMINDER_IDENTIFIERS.day1)
     harness.setRecord("parable-of-the-pharisee-and-tax-collector")
     await lifecycle.runPass("active")
 
     expect(harness.adapter.delivered).toBe(0)
     expect(identifiersOf(harness.adapter)).toEqual(BOTH_IDENTIFIERS)
+  })
+
+  it("leaves an announcement in the tray when it empties its own (AE21)", async () => {
+    // KTD13. The tray is shared, and an announcement the viewer has not opened
+    // yet is not this feature's to remove. A dismiss-all turns this red.
+    const harness = createHarness({ record: "noelevator" })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    harness.adapter.deliver(
+      LAPSE_REMINDER_IDENTIFIERS.day1,
+      "announcement-delivery-nonce",
+    )
+    harness.setRecord("parable-of-the-pharisee-and-tax-collector")
+    await lifecycle.runPass("active")
+
+    expect([...harness.adapter.tray]).toEqual(["announcement-delivery-nonce"])
+    expect(dismissCalls(harness.adapter)).toEqual(DISMISS_CALLS)
   })
 
   it("leaves the tray alone while the video is unchanged", async () => {
@@ -337,7 +378,7 @@ describe("the lapse reminder schedule pass", () => {
     const lifecycle = createLapseReminderLifecycle(harness.deps)
 
     await lifecycle.runPass("mount")
-    harness.adapter.deliver(1)
+    harness.adapter.deliver(LAPSE_REMINDER_IDENTIFIERS.day1)
     await lifecycle.runPass("active")
     await lifecycle.runPass("background")
 
@@ -350,7 +391,7 @@ describe("the lapse reminder schedule pass", () => {
     const harness = createHarness({ record: "noelevator" })
     const lifecycle = createLapseReminderLifecycle(harness.deps)
 
-    harness.adapter.deliver(1)
+    harness.adapter.deliver(LAPSE_REMINDER_IDENTIFIERS.day1)
     await lifecycle.runPass("mount")
 
     expect(harness.adapter.delivered).toBe(1)
@@ -389,7 +430,7 @@ describe("the lapse reminder schedule pass", () => {
       data: {} as LapseReminderPayload,
       date: new Date(NOW),
     })
-    harness.adapter.deliver(1)
+    harness.adapter.deliver(LAPSE_REMINDER_IDENTIFIERS.day1)
     const lifecycle = createLapseReminderLifecycle(harness.deps)
 
     await lifecycle.runPass("active")
@@ -400,7 +441,7 @@ describe("the lapse reminder schedule pass", () => {
       "permission",
       `cancel:${LAPSE_REMINDER_IDENTIFIERS.day1}`,
       `cancel:${LAPSE_REMINDER_IDENTIFIERS.day7}`,
-      "dismiss",
+      ...DISMISS_CALLS,
     ])
     expect(harness.logs).toContainEqual({
       event: "lapse_reminder.pass",
@@ -410,7 +451,10 @@ describe("the lapse reminder schedule pass", () => {
 
   it("stands down with the gate off, without reading permission (KTD8)", async () => {
     const harness = createHarness({ enabled: false, record: "washi-gospel" })
-    harness.adapter.deliver(2)
+    harness.adapter.deliver(
+      LAPSE_REMINDER_IDENTIFIERS.day1,
+      LAPSE_REMINDER_IDENTIFIERS.day7,
+    )
     const lifecycle = createLapseReminderLifecycle(harness.deps)
 
     await lifecycle.runPass("mount")
@@ -421,7 +465,7 @@ describe("the lapse reminder schedule pass", () => {
     expect(harness.adapter.calls).toEqual([
       `cancel:${LAPSE_REMINDER_IDENTIFIERS.day1}`,
       `cancel:${LAPSE_REMINDER_IDENTIFIERS.day7}`,
-      "dismiss",
+      ...DISMISS_CALLS,
     ])
     expect(harness.logs).toContainEqual({
       event: "lapse_reminder.pass",
@@ -470,7 +514,7 @@ describe("the lapse reminder schedule pass", () => {
     const lifecycle = createLapseReminderLifecycle(harness.deps)
     const detach = lifecycle.attach()
     await settle()
-    harness.adapter.deliver(1)
+    harness.adapter.deliver(LAPSE_REMINDER_IDENTIFIERS.day1)
 
     harness.setRecord(null)
     harness.emitClear()
@@ -579,7 +623,7 @@ describe("the lapse reminder schedule pass", () => {
       harness.logs
         .filter((entry) => entry.event === "lapse_reminder.step_failed")
         .map((entry) => entry.context.step),
-    ).toEqual(["cancel", "cancel", "dismiss"])
+    ).toEqual(["cancel", "cancel", "dismiss", "dismiss"])
   })
 
   it("leaves correct reminders alone when the permission read rejects", async () => {
@@ -598,7 +642,7 @@ describe("the lapse reminder schedule pass", () => {
     expect(harness.adapter.pending.size).toBe(2)
     expect(harness.adapter.calls).not.toContain("cancel:lapse-reminder-day1")
     expect(harness.adapter.calls).not.toContain("cancel:lapse-reminder-day7")
-    expect(harness.adapter.calls).not.toContain("dismiss")
+    expect(dismissCalls(harness.adapter)).toEqual([])
   })
 
   it("reports an unreadable permission apart from a denial", async () => {
@@ -627,7 +671,7 @@ describe("the lapse reminder schedule pass", () => {
     await lifecycle.runPass("record_cleared")
 
     expect(harness.adapter.pending.size).toBe(0)
-    expect(harness.adapter.calls).toContain("dismiss")
+    expect(dismissCalls(harness.adapter)).toEqual(DISMISS_CALLS)
     expect(harness.logs).toContainEqual({
       event: "lapse_reminder.pass",
       context: {
@@ -738,7 +782,7 @@ describe("the lapse reminder schedule pass", () => {
     })
     const lifecycle = createLapseReminderLifecycle(harness.deps)
 
-    harness.adapter.deliver(1)
+    harness.adapter.deliver(LAPSE_REMINDER_IDENTIFIERS.day1)
     harness.setRecord(null)
     await lifecycle.runPass("record_cleared")
     expect(harness.adapter.delivered).toBe(1)
@@ -958,5 +1002,93 @@ describe("the lapse reminder attach", () => {
       BOTH_IDENTIFIERS,
     )
     detach()
+  })
+})
+
+// U7/KTD9: push registration hangs off this hook, so it never performs a second
+// permission read. The pass already holds the answer, and a second read on every
+// foreground would double the native calls for nothing.
+describe("the injected permission-read hook (U7)", () => {
+  it("hands the granted permission to the hook, once per pass", async () => {
+    const harness = createHarness({ record: "the-birth-of-jesus" })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    await settle()
+
+    expect(harness.permissionReads).toEqual([{ granted: true }])
+    expect(harness.adapter.permissionReads).toBe(1)
+  })
+
+  it("hands a denial to the hook too, which is what R29 reports on", async () => {
+    const harness = createHarness({ granted: false })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    await settle()
+
+    expect(harness.permissionReads).toEqual([{ granted: false }])
+  })
+
+  it("fires on every pass, so a grant given in Settings is seen", async () => {
+    const harness = createHarness({ record: "the-birth-of-jesus" })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+    const detach = lifecycle.attach()
+    await settle()
+
+    harness.emitAppState("active")
+    harness.emitAppState("background")
+    await settle()
+
+    expect(harness.permissionReads).toHaveLength(3)
+    detach()
+  })
+
+  it("stays silent when the permission read failed", async () => {
+    // A failed read is not a denial. Reporting one as a denial would take a
+    // phone out of every later audience over a transient fault.
+    const harness = createHarness({ failPermission: () => true })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    await settle()
+
+    expect(harness.permissionReads).toEqual([])
+  })
+
+  it("schedules the reminders even when the hook throws", async () => {
+    // The reminders are the pass's job and push is a passenger. A consumer that
+    // throws synchronously must not cost a viewer their reminders.
+    const harness = createHarness({
+      record: "the-birth-of-jesus",
+      failPermissionHook: true,
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    await settle()
+
+    expect(identifiersOf(harness.adapter)).toEqual(BOTH_IDENTIFIERS)
+    expect(harness.logs).toEqual(
+      expect.arrayContaining([
+        {
+          event: "lapse_reminder.pass",
+          context: { pass_reason: "mount", outcome: "scheduled" },
+        },
+      ]),
+    )
+  })
+
+  it("runs without the hook at all, which is the reminders-only wiring", async () => {
+    const harness = createHarness({ record: "the-birth-of-jesus" })
+    const lifecycle = createLapseReminderLifecycle({
+      ...harness.deps,
+      onPermissionRead: undefined,
+    })
+
+    await lifecycle.runPass("mount")
+    await settle()
+
+    expect(identifiersOf(harness.adapter)).toEqual(BOTH_IDENTIFIERS)
   })
 })

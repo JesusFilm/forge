@@ -37,18 +37,20 @@ describe("RecommendationEpisodeService", () => {
         newClaimNonce: () => "source-neutral-claim-nonce",
       })
 
-      await expect(
-        service.issueContext({
-          caller,
-          sessionDigest: "a".repeat(64),
-          mediaId: "target-video",
-          discoverySource,
-          provenance: { campaign: "bounded-campaign" },
-        }),
-      ).resolves.toEqual({
+      const receipt = await service.issueContext({
+        caller,
+        sessionDigest: "a".repeat(64),
+        mediaId: "target-video",
+        discoverySource,
+        provenance: { campaign: "bounded-campaign" },
+      })
+      // U5 reads the episode id from this receipt to attribute a push open.
+      expect(receipt).toEqual({
+        episodeId: "context-episode-1",
         claimNonce: "source-neutral-claim-nonce",
         contextVersion: "playback-context-v1",
       })
+      expect(receipt.episodeId).toBe(created[0].id)
       expect(created[0]).toMatchObject({
         id: "context-episode-1",
         requestId: null,

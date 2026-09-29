@@ -15,6 +15,15 @@
 
 import type { DeepLinkEntry, DeepLinkOrigin } from "../deepLinkOrigin"
 import { telemetryErrorMessage } from "../downloadErrors"
+import {
+  notificationFamily,
+  parsePushAnnouncementPayload,
+  pushAnnouncementNonce,
+  type NotificationFamily,
+  type PushAnnouncementKind,
+  type PushAnnouncementParseReason,
+} from "../push/announcementPayload"
+import { PUSH_UNRESOLVABLE_DESTINATION_MESSAGE } from "../push/copy"
 import type { LapseReminderKind } from "./constants"
 import type { LapseReminderTelemetry } from "./lifecycle"
 import {
@@ -28,19 +37,31 @@ import {
  */
 export const LAPSE_REMINDER_TAP_DEADLINE_MS = 3_000
 
-/** Where a tap sends the viewer. */
+/** Where a tap sends the viewer. The three slug routes plus Home. */
 export type LapseReminderTapTarget =
   | { screen: "watch"; slug: string }
+  | { screen: "series"; slug: string }
+  | { screen: "experience"; slug: string }
   | { screen: "home" }
 
 /** What a tap did. A fixed set, because KTD9 facets on it. */
-export type LapseReminderTapOutcome = "watch" | "home" | "rejected" | "gate_off"
+export type LapseReminderTapOutcome =
+  | "watch"
+  | "series"
+  | "experience"
+  | "home"
+  | "rejected"
+  | "gate_off"
+  /** An announcement whose destination this build cannot read (R21). */
+  | "unresolvable"
 
 /** The dependency that failed, for the failure event. Mirrors the pass's own. */
 export type LapseReminderTapStep =
   | "read"
   | "subscribe"
   | "register"
+  | "report"
+  | "notice"
   | "navigate"
   | "clear"
 
@@ -49,9 +70,17 @@ export type LapseReminderTapDecision = {
   /** Null means navigate nowhere, which only the build-time gate produces. */
   target: LapseReminderTapTarget | null
   outcome: LapseReminderTapOutcome
+  /** Which payload contract matched (KTD9). */
+  family: NotificationFamily
   reminderKind: LapseReminderKind | null
+  /** The announcement destination kind; null on the reminder family. */
+  destinationKind: PushAnnouncementKind | null
   slug: string | null
-  reason: LapseReminderParseReason | null
+  reason: LapseReminderParseReason | PushAnnouncementParseReason | null
+  /** The opaque campaign identifier, for the open report (KTD14). */
+  nonce: string | null
+  /** True when the viewer must be told the destination could not be opened. */
+  notice: boolean
 }
 
 /** What the experience selection looks like to the cold wait. */
@@ -78,12 +107,19 @@ export type LapseReminderTapDeps = {
   navigate: (target: LapseReminderTapTarget) => void
   /** Keyed by the VALIDATED slug, never by the payload's own url: the deep-link
    *  url parser strips a `.html` suffix, so a url-keyed arrival for such a slug
-   *  is filed under a name the watch route never consumes. */
+   *  is filed under a name the watch route never consumes. The campaign
+   *  identifier rides along so the watch route can mark the acquisition. */
   registerArrival: (
     slug: string,
     entry: DeepLinkEntry,
     origin: DeepLinkOrigin,
+    campaign: string | null,
   ) => void
+  /** R23: starts one open report and returns. It must never block navigation,
+   *  and KTD7 defers a rate limit rather than retrying it. */
+  reportOpen: (nonce: string) => void
+  /** R21's message surface, for a destination this build cannot read. */
+  showNotice: (message: string) => void
   /** Named `telemetry` on purpose: datadogReservedAttributes.guard only sweeps
    *  sinks spelled datadogLog, DdLogs or telemetry, so a rename makes every
    *  emit site below invisible to it. */
@@ -96,42 +132,101 @@ export type LapseReminderTapHandler = {
   selectionChanged: (selection: LapseReminderSelection) => void
 }
 
+/** The route each destination kind opens (R20). */
+const ANNOUNCEMENT_SCREENS: Record<
+  PushAnnouncementKind,
+  "watch" | "series" | "experience"
+> = {
+  video: "watch",
+  series: "series",
+  experience: "experience",
+}
+
+/**
+ * One announcement's destination (R20, R21, R30). It never checks whether the
+ * destination still exists: that route owns its own not-found screen, and a
+ * check would delay every cold tap by a round trip.
+ */
+function decideAnnouncementTap(data: unknown): LapseReminderTapDecision {
+  const parsed = parsePushAnnouncementPayload(data)
+  if (!parsed.ok) {
+    return {
+      target: { screen: "home" },
+      outcome: "unresolvable",
+      family: "announcement",
+      reminderKind: null,
+      destinationKind: null,
+      slug: null,
+      reason: parsed.reason,
+      // R23: a tap on a destination this build cannot read is still an OPEN, so
+      // the report must not under-count it when admin names a newer kind.
+      nonce: pushAnnouncementNonce(data),
+      notice: true,
+    }
+  }
+  const screen = ANNOUNCEMENT_SCREENS[parsed.kind]
+  return {
+    target: { screen, slug: parsed.slug },
+    outcome: screen,
+    family: "announcement",
+    reminderKind: null,
+    destinationKind: parsed.kind,
+    slug: parsed.slug,
+    reason: null,
+    nonce: parsed.nonce,
+    notice: false,
+  }
+}
+
 /**
  * Validates one arriving payload and decides where it sends the viewer. Pure,
- * and it returns nothing the payload carried beyond the validated slug: KTD9
- * facets on the kind, the outcome and the reason, all fixed sets.
+ * and it returns nothing the payload carried beyond the validated slug and the
+ * opaque campaign identifier: KTD9 facets on the kinds, the outcome and the
+ * reason, all fixed sets.
  */
 export function decideLapseReminderTap(
   data: unknown,
   enabled: boolean,
 ): LapseReminderTapDecision {
+  // KTD9: dispatch by family first. Anything without the announcement
+  // discriminator is a reminder, so a reminder pending from an older build
+  // still routes exactly as it did.
+  //
+  // `enabled` is the LOCAL reminders' gate, so an announcement ignores it: the
+  // push service already delivered that notification, and KTD12 keeps an
+  // already-delivered notification's open working whatever a switch says.
+  if (notificationFamily(data) === "announcement") {
+    return decideAnnouncementTap(data)
+  }
+
   const parsed = parseLapseReminderPayload(data)
   const reminderKind = parsed.ok ? parsed.kind : null
   const slug = parsed.ok ? parsed.slug : null
   const reason = parsed.ok ? null : parsed.reason
+  const base = {
+    family: "reminder" as const,
+    reminderKind,
+    destinationKind: null,
+    slug,
+    reason,
+    nonce: null,
+    notice: false,
+  }
 
   // KTD8: an off build still names the tap it consumed, so a reminder left
   // pending by an earlier build stays visible instead of going quiet.
   if (!enabled) {
-    return { target: null, outcome: "gate_off", reminderKind, slug, reason }
+    return { ...base, target: null, outcome: "gate_off" }
   }
   if (slug != null) {
-    return {
-      target: { screen: "watch", slug },
-      outcome: "watch",
-      reminderKind,
-      slug,
-      reason,
-    }
+    return { ...base, target: { screen: "watch", slug }, outcome: "watch" }
   }
   // R13: the Home marker and every rejected payload both land on Home. The
   // outcome keeps them apart, and only a rejection carries a reason.
   return {
+    ...base,
     target: { screen: "home" },
     outcome: parsed.ok ? "home" : "rejected",
-    reminderKind,
-    slug,
-    reason,
   }
 }
 
@@ -166,11 +261,32 @@ export function createLapseReminderTapHandler(
   function consume(data: unknown, arrival: DeepLinkEntry) {
     const decision = decideLapseReminderTap(data, deps.enabled)
     const target = decision.target
+    // R23: before the navigation, and fire-and-forget, so a slow or failing
+    // report cannot delay the screen the viewer asked for.
+    if (decision.nonce != null) {
+      try {
+        deps.reportOpen(decision.nonce)
+      } catch (error) {
+        logFailure("report", error)
+      }
+    }
     if (target != null && target.screen === "watch") {
       try {
-        deps.registerArrival(target.slug, arrival, "reminder")
+        deps.registerArrival(
+          target.slug,
+          arrival,
+          decision.family === "announcement" ? "campaign" : "reminder",
+          decision.nonce,
+        )
       } catch (error) {
         logFailure("register", error)
+      }
+    }
+    if (decision.notice) {
+      try {
+        deps.showNotice(PUSH_UNRESOLVABLE_DESTINATION_MESSAGE)
+      } catch (error) {
+        logFailure("notice", error)
       }
     }
     if (target != null) {
@@ -183,7 +299,9 @@ export function createLapseReminderTapHandler(
     deps.telemetry.info("lapse_reminder.tap", {
       outcome: decision.outcome,
       arrival,
+      family: decision.family,
       reminder_kind: decision.reminderKind,
+      destination_kind: decision.destinationKind,
       content_id: decision.slug,
       parse_reason: decision.reason,
     })
@@ -226,8 +344,11 @@ export function createLapseReminderTapHandler(
     }
     if (last != null) {
       // With the gate off there is no navigation, so there is nothing to wait
-      // for: consume it now and leave nothing pending.
-      if (!deps.enabled) consume(last, "cold")
+      // for: consume it now and leave nothing pending. An announcement still
+      // navigates with that gate off, so it still waits for the selection.
+      const navigates =
+        deps.enabled || notificationFamily(last) === "announcement"
+      if (!navigates) consume(last, "cold")
       else {
         pending = { data: last }
         timer = setTimeout(settleCold, LAPSE_REMINDER_TAP_DEADLINE_MS)

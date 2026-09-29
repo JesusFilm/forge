@@ -120,9 +120,11 @@ export class RecommendationEpisodeService {
     const activeUntil = new Date(now.getTime() + EPISODE_ACTIVE_MS)
     const hardUntil = new Date(now.getTime() + EPISODE_HARD_MS)
 
+    // U5 attributes a push open to this episode, so the caller needs its id.
+    const episodeId = newId()
     await this.deps.prisma.recommendationPlaybackEpisode.create({
       data: {
-        id: newId(),
+        id: episodeId,
         requestId: null,
         itemId: null,
         selectionId: null,
@@ -141,7 +143,7 @@ export class RecommendationEpisodeService {
       },
     })
 
-    return { claimNonce, contextVersion: PLAYBACK_CONTEXT_VERSION }
+    return { episodeId, claimNonce, contextVersion: PLAYBACK_CONTEXT_VERSION }
   }
 
   select(input: Parameters<RecommendationEpisodeService["selectObserved"]>[0]) {

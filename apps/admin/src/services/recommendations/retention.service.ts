@@ -9,6 +9,7 @@ import {
   RecommendationRetentionRunStatus,
   type PrismaClient,
 } from "@prisma/client"
+import { unlinkPushViewerIdentities } from "@/services/push/identity-unlink.service"
 import { RECOMMENDATION_RETENTION_PROPAGATION_HOURS } from "./contracts"
 import { suppressCowatchForProfiles } from "./cowatch/privacy"
 import { purgeExpiredCompositionEvidence } from "./composition/service"
@@ -470,15 +471,26 @@ export async function purgeExpiredRecommendationRequests(
         select: { tokenDigest: true },
       }),
     )
-    await countPhase("expiredViewers", (tx) =>
-      tx.recommendationViewer.deleteMany({
-        where: {
-          tokenDigest: {
-            in: expiredViewers.map((viewer) => viewer.tokenDigest),
+    await phase(async (tx) => {
+      // A viewer expiry ends the push link in the same transaction. The
+      // registration keeps the phone's push address; only the digest goes.
+      const pushUnlink = await unlinkPushViewerIdentities(
+        tx,
+        expiredViewers.map((viewer) => viewer.tokenDigest),
+      )
+      rowCounts.pushRegistrationsUnlinked = pushUnlink.registrationsUnlinked
+      rowCounts.pushOpensDeleted = pushUnlink.opensDeleted
+      rowCounts.pushAttributionsDeleted = pushUnlink.attributionsDeleted
+      rowCounts.expiredViewers = (
+        await tx.recommendationViewer.deleteMany({
+          where: {
+            tokenDigest: {
+              in: expiredViewers.map((viewer) => viewer.tokenDigest),
+            },
           },
-        },
-      }),
-    )
+        })
+      ).count
+    })
     await countPhase("expiredConsentReceipts", (tx) =>
       tx.recommendationConsentReceipt.updateMany({
         where: {

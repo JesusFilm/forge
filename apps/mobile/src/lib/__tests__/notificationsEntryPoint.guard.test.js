@@ -38,15 +38,21 @@ const ADAPTER = "src/lib/lapseReminders/notificationsAdapter.ts"
 // tap. `npx expo install` pins the SDK line; this pins the patch.
 const MINIMUM_VERSION = [57, 0, 17]
 
-/** Exactly the calls the adapter makes (U4/KTD1). */
+/** Exactly the calls the adapter makes (U4/KTD1, plus U7's push port). */
 const REQUIRED_CALLS = [
   // Channel first: Android 13 shows no permission prompt until one exists (KTD6).
+  // The same call creates U7's announcements channel (KTD9).
   "setNotificationChannelAsync",
+  // U7/KTD9's push port: the token read and the rotation subscription.
+  "getExpoPushTokenAsync",
+  "addPushTokenListener",
   "getPermissionsAsync",
   "requestPermissionsAsync",
   "scheduleNotificationAsync",
   "cancelScheduledNotificationAsync",
-  "dismissAllNotificationsAsync",
+  // U8/KTD13: BY IDENTIFIER. The tray is shared with announcements, so the
+  // dismiss-all spelling below is banned rather than merely unused.
+  "dismissNotificationAsync",
   // Development-only read, used by U7 to prove same-identifier replacement.
   "getAllScheduledNotificationsAsync",
   "getLastNotificationResponse",
@@ -61,6 +67,23 @@ const DEPRECATED_CALLS = [
   "getLastNotificationResponseAsync",
   "clearLastNotificationResponseAsync",
 ]
+
+/**
+ * Calls the adapter must NOT bind although the module supplies them. U8/KTD13:
+ * dismiss-all empties a tray the announcements share, so an announcement the
+ * viewer has not opened yet would vanish on the next reminder pass (AE21). The
+ * lifecycle suite catches that through its fake; this catches the adapter
+ * reaching for the module's own whole-tray call.
+ */
+const FORBIDDEN_CALLS = ["dismissAllNotificationsAsync"]
+
+/**
+ * Exactly the packages the adapter may import (KTD9 admits the second one: the
+ * Expo token read needs the EAS project id, which lives in the app config).
+ * Pinned because this file is the app's ONE native-notification seam, and a
+ * third package here would widen it without any behavioural suite noticing.
+ */
+const ALLOWED_PACKAGES = ["expo-notifications", "expo-constants"]
 
 function readInstalled(relative) {
   const pkg = path.dirname(
@@ -111,6 +134,16 @@ function docBlockFor(source, call) {
   const open = source.lastIndexOf("/**", close)
   if (open === -1) return null
   return source.slice(open, close + 2)
+}
+
+/** Every non-relative module a source imports or requires, in source order. */
+function packageImports(source) {
+  const specifiers = [
+    ...source.matchAll(/^\s*import\s[\s\S]*?from\s+["']([^"']+)["']/gm),
+    ...source.matchAll(/^\s*import\s+["']([^"']+)["']/gm),
+    ...source.matchAll(/\brequire\s*\(\s*["']([^"']+)["']\s*\)/g),
+  ].map((match) => match[1])
+  return specifiers.filter((specifier) => !specifier.startsWith("."))
 }
 
 /** True when `version` is at or above `floor`, compared part by part. */
@@ -179,6 +212,19 @@ describe("the notifications adapter imports a module that supplies its calls", (
     }
   })
 
+  it("binds the per-identifier dismiss and never the whole-tray one (AE21)", () => {
+    const source = readAdapterSource()
+    const notifications = require(SPECIFIER)
+
+    // The forbidden call really exists, so its absence is a CHOICE rather than
+    // an artefact of the module not having it.
+    for (const call of FORBIDDEN_CALLS) {
+      expect(typeof notifications[call]).toBe("function")
+      expect(source).not.toContain(call)
+    }
+    expect(source).toContain("dismissNotificationAsync(identifier)")
+  })
+
   it("the adapter names the specifier and binds neither deprecated spelling", () => {
     const source = readAdapterSource()
 
@@ -191,6 +237,29 @@ describe("the notifications adapter imports a module that supplies its calls", (
     // The trailing paren is what separates the sync call from its own prefix.
     expect(source).toContain("getLastNotificationResponse()")
     expect(source).toContain("clearLastNotificationResponse()")
+  })
+
+  it("imports exactly the packages the ports need", () => {
+    // KTD9 admits `expo-constants` for the project id the token read needs. A
+    // third package would widen the app's one native-notification seam, and no
+    // behavioural suite would see it.
+    expect(packageImports(readAdapterSource()).sort()).toEqual(
+      [...ALLOWED_PACKAGES].sort(),
+    )
+  })
+
+  it("reads package imports the way that rule intends (positive control)", () => {
+    expect(
+      packageImports(
+        [
+          'import * as Notifications from "expo-notifications"',
+          'import Constants from "expo-constants"',
+          'import { x } from "./constants"',
+          'const y = require("expo-device")',
+        ].join("\n"),
+      ),
+    ).toEqual(["expo-notifications", "expo-constants", "expo-device"])
+    expect(packageImports("export const A = 1")).toEqual([])
   })
 
   it("separates the sync call from its async prefix (negative control)", () => {

@@ -1,0 +1,174 @@
+/**
+ * The registration payload (R2) and its change key (R3). Pure: the caller
+ * supplies the token, the permission, the app language and the device
+ * environment, and nothing here touches a native module.
+ *
+ * Every normalizer below exists because admin validates the field and answers
+ * BAD_USER_INPUT for a shape it refuses, which loses the whole registration.
+ * The bounds mirror `apps/admin/src/services/push/contracts.ts`: the language
+ * slug at 191 characters, the locale at 35, the build and the zone at 64, and
+ * the install id at 8 to 64 characters of `[A-Za-z0-9._-]`. The store mints
+ * the install id and holds it to that shape, so nothing here reshapes it.
+ */
+
+import {
+  PUSH_APP_BUILD_MAX_CHARS,
+  PUSH_DEFAULT_APP_LANGUAGE_SLUG,
+  PUSH_DEFAULT_PHONE_LOCALE,
+  PUSH_DEFAULT_TIME_ZONE,
+  PUSH_PHONE_LOCALE_MAX_CHARS,
+  PUSH_TIME_ZONE_MAX_CHARS,
+  type PushPermissionState,
+} from "./constants"
+
+export type PushDevicePlatform = "IOS" | "ANDROID"
+
+/** What the phone itself supplies, read once per payload build. */
+export type PushDeviceEnvironment = {
+  platform: PushDevicePlatform
+  appBuild: string
+  phoneLocale: string
+  timeZone: string
+}
+
+/** The recommendation viewer handle, both halves or nothing (KTD7). */
+export type PushViewerHandle = {
+  viewerToken: string
+  sessionToken: string
+}
+
+export type PushRegistrationPayload = {
+  expoPushToken: string
+  /** This install's own id. Admin supersedes the install's previous token by
+   *  it, so a viewer's other phones keep their registrations. */
+  installId: string
+  platform: PushDevicePlatform
+  appBuild: string
+  appLanguageSlug: string
+  phoneLocale: string
+  timeZone: string
+  permission: PushPermissionState
+  viewerToken?: string
+  sessionToken?: string
+}
+
+/** Admin's language-slug shape: non-empty, no spaces, 191 characters. */
+const LANGUAGE_SLUG = /^\S{1,191}$/
+/** Admin's BCP-47 shape. A subtag is alphanumeric; the first is alphabetic. */
+const LOCALE_SUBTAG = /^[A-Za-z0-9]{1,8}$/
+const LOCALE_PRIMARY = /^[A-Za-z]{2,8}$/
+/** The singleton subtags that open an extension: `-u-`, `-t-`, `-x-`. */
+const LOCALE_SINGLETON = /^[A-Za-z0-9]$/
+
+export function normalizeAppBuild(raw: string | null | undefined): string {
+  const build = (raw ?? "").trim()
+  if (build.length === 0) return "unknown"
+  return build.slice(0, PUSH_APP_BUILD_MAX_CHARS)
+}
+
+/** The marketing version plus the platform build number when one is resolved. */
+export function resolveAppBuild(
+  version: string | null | undefined,
+  build: string | number | null | undefined,
+): string {
+  const left = (version ?? "").trim()
+  const right = build == null ? "" : String(build).trim()
+  if (left.length === 0 && right.length === 0) return "unknown"
+  if (right.length === 0) return normalizeAppBuild(left)
+  if (left.length === 0) return normalizeAppBuild(right)
+  return normalizeAppBuild(`${left}+${right}`)
+}
+
+/**
+ * A BCP-47 tag admin will accept. Extensions are dropped: admin matches the
+ * language subtag and reads the region, so a calendar or numbering extension
+ * only risks the 35-character column. Over-long tags lose whole subtags from
+ * the right, which keeps the language and usually the region.
+ */
+export function normalizePhoneLocale(raw: string | null | undefined): string {
+  const parts = (raw ?? "").trim().split("-")
+  if (!LOCALE_PRIMARY.test(parts[0] ?? "")) return PUSH_DEFAULT_PHONE_LOCALE
+  const kept: string[] = [parts[0]]
+  for (const part of parts.slice(1)) {
+    if (LOCALE_SINGLETON.test(part)) break
+    if (!LOCALE_SUBTAG.test(part)) break
+    const next = [...kept, part].join("-")
+    if (next.length > PUSH_PHONE_LOCALE_MAX_CHARS) break
+    kept.push(part)
+  }
+  return kept.join("-")
+}
+
+export function normalizeTimeZone(raw: string | null | undefined): string {
+  const zone = (raw ?? "").trim()
+  if (zone.length === 0 || zone.length > PUSH_TIME_ZONE_MAX_CHARS) {
+    return PUSH_DEFAULT_TIME_ZONE
+  }
+  return zone
+}
+
+function normalizeLanguageSlug(raw: string | null | undefined): string {
+  const slug = (raw ?? "").trim()
+  return LANGUAGE_SLUG.test(slug) ? slug : PUSH_DEFAULT_APP_LANGUAGE_SLUG
+}
+
+export function buildPushRegistrationPayload(input: {
+  expoPushToken: string
+  installId: string
+  permission: PushPermissionState
+  appLanguageSlug: string | null
+  identity: PushViewerHandle | null
+  environment: PushDeviceEnvironment
+}): PushRegistrationPayload {
+  const payload: PushRegistrationPayload = {
+    expoPushToken: input.expoPushToken,
+    installId: input.installId,
+    platform: input.environment.platform,
+    appBuild: normalizeAppBuild(input.environment.appBuild),
+    appLanguageSlug: normalizeLanguageSlug(input.appLanguageSlug),
+    phoneLocale: normalizePhoneLocale(input.environment.phoneLocale),
+    timeZone: normalizeTimeZone(input.environment.timeZone),
+    permission: input.permission,
+  }
+  // Both halves or neither: admin refuses an incomplete handle rather than
+  // degrading it to anonymous, so a half-handle loses the registration.
+  if (input.identity == null) return payload
+  return {
+    ...payload,
+    viewerToken: input.identity.viewerToken,
+    sessionToken: input.identity.sessionToken,
+  }
+}
+
+/**
+ * R3's change key. Not a cryptographic digest: it only has to change when the
+ * payload does, and it is what gets PERSISTED — the token and the viewer
+ * handle never are. Two FNV-1a passes with different offsets, so a collision
+ * needs both 32-bit halves to agree.
+ */
+export function hashPushRegistrationPayload(
+  payload: PushRegistrationPayload,
+): string {
+  const source = [
+    payload.expoPushToken,
+    payload.installId,
+    payload.platform,
+    payload.appBuild,
+    payload.appLanguageSlug,
+    payload.phoneLocale,
+    payload.timeZone,
+    payload.permission,
+    payload.viewerToken ?? "",
+    payload.sessionToken ?? "",
+  ].join("\u0000")
+  return `${fnv1a(source, 0x811c9dc5)}${fnv1a(source, 0x01000193)}`
+}
+
+function fnv1a(source: string, offset: number): string {
+  let hash = offset
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0")
+}
