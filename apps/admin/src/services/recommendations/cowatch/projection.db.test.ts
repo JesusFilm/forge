@@ -41,8 +41,15 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     const expiresAt = new Date(now.getTime() + 20 * 86_400_000)
 
     beforeAll(() => {
+      const url = new URL(env.DATABASE_URL)
+      if (
+        !["127.0.0.1", "localhost"].includes(url.hostname) ||
+        !["/forge_test", "/forge_feat387_test"].includes(url.pathname)
+      ) {
+        throw new Error("Owned loopback co-watch fixture database required")
+      }
       prisma = new PrismaClient({
-        adapter: new PrismaPg({ connectionString: env.DATABASE_URL, max: 2 }),
+        adapter: new PrismaPg({ connectionString: url.toString(), max: 2 }),
       })
     })
 
