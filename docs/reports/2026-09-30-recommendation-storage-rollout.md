@@ -150,3 +150,57 @@ concurrent WAL/workload changes and is not credited as profile savings. Existing
 inline interests are not rewritten. See
 `docs/reports/2026-09-30-recommendation-profile-footprint.md` for the new measured
 profile-family breakdown and the gated initial-empty bootstrap follow-up.
+
+## Packed served snapshots active at 22:56 UTC
+
+PR #2495 passed 19 successful checks at reviewed head `2be6a809d`, then merged
+at 22:41:56 as `8ecca9c7`. At 22:55:28 both actual Admin HTTP and worker ran
+that revision with health 200, correct runner roles and one active successful
+deployment each. Old processes had drained. Imports of each deployed config at
+22:56:16 reported packed served snapshots, shared vectors and compact traces,
+with no profile/served environment override. Compatible mixed-reader rollback
+images remain recorded in the aggregate activation receipt.
+
+The separate cohort beginning 22:56:30 contained twelve requests at 22:59:46:
+nine packed multi-item requests, one inline single-item request and two empty
+results. There were no format, membership, placeholder, count or expiry
+mismatches, and no unexpected inline multi-item served requests. Ten seeded
+served requests had retrieval p95 280.25 ms; none exceeded 1,500 ms. No For You
+request occurred in this cohort; its independent gate was not changed.
+
+The authenticated Admin full-detail smoke displayed six cards with presentation
+titles and all 198 stored/declared observations for one packed request. One
+disclosure expanded to eight stage entries. The exact request's normal
+`trace_detail` access audit increased by one. The temporary browser tab and
+private selector bridge were closed. Only aggregate results were emitted.
+
+Filesystem availability was 11,037,532,160 bytes at 22:55:28. At 22:59:46 the
+database allocated 37,287,720,639 bytes and WAL 603,979,776 bytes. Request and
+item relations allocated 250,912,768 and 2,566,553,600 bytes respectively. There
+were no lock waiters, old transactions or expired request roots. No filesystem
+saving is credited to the new formats: existing rows were not rewritten.
+
+These small persisted samples exclude unpersisted errors. Retrieval latency
+does not include persistence; `pg_stat_statements` is absent. Native write
+benchmarks are recorded separately. Representative loaded latency, a comparable
+growth window and the first two nonempty scheduled retention cycles remain open.
+Receipt: `outputs/heartbeats/20260929T2242-served-snapshot-activation` in the
+task artifact directory.
+
+## Shared-vector observation through 23:02 UTC
+
+The post-22:31 cohort at 22:59:47 contained 123 generations and 75 interests,
+all shared, referencing 36 distinct vectors with zero inline, shape, digest,
+missing-snapshot or expiry mismatches. There were 149 completed projection jobs
+and one fenced job. Its reason was `pointer_generation_fenced`, and the same
+scope had a completed run at or after its creation. This is a concurrent
+publication fence, not an unexplained failed vector write. Eighty-five persisted
+served requests had retrieval p95 284.2 ms; none exceeded 1,500 ms. The longer
+sample still does not establish representative loaded capacity or monthly growth.
+
+The initial-empty bootstrap optimization remains disabled. Review requires an
+atomic pending-run reservation with the first eligible source decision so failed
+asynchronous feedback cannot strand a newly evidenced profile. This preserves
+the existing reconciliation mechanism without creating a record for every empty
+profile. Native failure/recovery, concurrency and loaded cost checks remain
+activation gates; no retained profile history is rewritten.
