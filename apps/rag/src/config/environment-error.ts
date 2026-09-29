@@ -14,6 +14,7 @@ export const ENVIRONMENT_TARGETS = [
 export type EnvironmentTarget = (typeof ENVIRONMENT_TARGETS)[number]
 
 export type EnvironmentConfigurationErrorCode =
+  | "usage_configuration_incomplete"
   | "consumer_access_configuration_incomplete"
   | "consumer_access_requires_portal"
   | "consumer_source_scope_invalid"

@@ -3,11 +3,12 @@ id: "feat-563"
 title: "Atomic and recoverable shadow evaluation dispatch"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
-start_date: ""
+status: "in-progress"
+start_date: "2026-09-29"
 duration: 3
 depends_on: []
-blocks: []
+blocks:
+  - "feat-565"
 tags:
   - "admin"
   - "recommendations"

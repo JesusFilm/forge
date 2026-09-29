@@ -7,6 +7,7 @@ export const portalHtml = asset("index.html")
 export const portalLogo = asset("forge.svg")
 export const portalCss = asset("portal.css")
 export const portalScript = asset("portal.js")
+export const portalUsageScript = asset("usage.js")
 // Vendored from Forge web/public/fonts; no runtime dependency on another app.
 export const portalFonts = {
   "apercu-regular.woff2": readFileSync(
