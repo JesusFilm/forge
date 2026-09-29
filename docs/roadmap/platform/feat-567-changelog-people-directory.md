@@ -1,5 +1,5 @@
 ---
-id: "feat-565"
+id: "feat-567"
 title: "Serve the shared Changelog People directory from Auth"
 owner: "edmondshen"
 priority: "P1"

@@ -1,10 +1,43 @@
 # Recommendation telemetry closeout decisions — September 29, 2026
 
-Feat-545 remains **in progress**. This record completes a bounded review of the
-retained September 23 and September 28 evidence and prepares owner decisions;
-**none of the proposed limitations below has been accepted**. The September 24
-scope transfer and Datadog deferral did not accept these coverage gaps. Merging
-this documentation does not accept a limitation or satisfy feature acceptance.
+Feat-545 is **complete by explicit owner acceptance of bounded historical
+limitations**, with future remediation still open. On September 29, 2026, after
+the nine gaps were explained, **nisal** accepted D1–D9 with the caveat that they
+will be fixed later. The actual decisions below supersede the pending proposals.
+The September 24 scope transfer and Datadog deferral were not acceptance.
+Missing historical evidence has not been recovered or reclassified as passing.
+
+## Accepted decisions and future remediation
+
+Decision date: **2026-09-29**; owner: **nisal**. The owner's reply was:
+“I accept theese with the caveat we will fix theese at some point”. This explicitly
+answers the request to accept all nine limitations after their explanation.
+
+| Row | Actual decision                                              | Retained residual risk                                                                                                         |
+| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| D1  | Accepted for the September 23 fixed window only              | Web net deficit of eight remains unexplained; unmatched membership/cardinality and cause are unknown.                          |
+| D2  | Accepted independently for the same fixed window             | Admin net deficit of five remains unexplained; overlap with D1 is unknown. Do not sum into thirteen lost facts.                |
+| D3  | Accepted for the same fixed window                           | Net indexed crawler-rejection deficit of one remains unexplained; it does not prove crawler acceptance.                        |
+| D4  | Accepted for the same fixed window                           | Net primary/application difference of one remains unexplained; exact commit, abort and acknowledgement disposition is unknown. |
+| D5  | Accepted for the retained September 23 browser sample        | The one browser 503 has no exact origin, durable or recovery join.                                                             |
+| D6  | Accepted for the same browser sample                         | The two 204 resources have unknown methods and server/evidence dispositions.                                                   |
+| D7  | Accepted for the same browser sample                         | All 28 status-zero observations retain unknown transport, commit and retry dispositions.                                       |
+| D8  | Accepted for the two September 23 primary 409 responses only | Exact episode, continued activity and absence of rejected-episode retry amplification remain unproven.                         |
+| D9  | Accepted for the retained September 24–27 sample only        | The ten later 409 resources and same-view later 200s do not establish exact episode or retry/activity proof, or repair D8.     |
+
+These decisions satisfy feat-545's historical disposition gate, including its
+historical natural terminal-response coverage gate. Its existing downstream
+dependencies on feat-372, feat-381 and feat-447 remain recorded and are now
+satisfied **only as to feat-545**. This does not complete those features or their
+other requirements. No new dependency on feat-373 is introduced for feat-505.
+
+The caveat is tracked in
+[feat-566](../roadmap/content-discovery/feat-566-recommendation-evidence-gap-remediation.md).
+That work must address future reconciliation and terminal-response proof, and
+recover historical joins only where records permit. An irrecoverable old join
+cannot be recreated by new instrumentation. Remediation remains open; no delivery
+date was agreed. Fresh health, storage, experiment and live-promotion gates remain
+required. Datadog installation remains deferred.
 
 ## Scope and method
 
@@ -66,10 +99,11 @@ clean final pointer audit, retain their original credit. These do not reconstruc
 missing source observations or browser receipts.
 HTTP 499 does not prove acknowledgement, rollback or lack of a committed write.
 
-## Owner decisions, one per gap
+## Original proposed limitations, one per gap
 
-Decision owner for every row: **nisal**. Decision state for every row:
-**pending; no limitation accepted**. The proposed limitations apply only to
+Decision owner for every row: **nisal**. Every row below was subsequently
+accepted as recorded above. These retained proposals define the precise scope
+and evidence that could resolve each gap. The limitations apply only to
 the named historical population or retained later sample. They do not authorize
 activation or excuse a subsequently demonstrated runtime defect.
 
@@ -87,8 +121,9 @@ activation or excuse a subsequently demonstrated runtime defect.
 
 **Affected gates for each D1–D9:** feat-545's complete operational/client/durable
 reconciliation; D8 and D9 also directly affect the natural terminal-response browser
-gate. All unresolved rows preserve feat-545's downstream readiness blocks on
-**feat-372, feat-381 and feat-447**. Accepting one row does not close the others.
+gate. Before the explicit acceptance above, unresolved rows preserved feat-545's
+downstream readiness blocks on **feat-372, feat-381 and feat-447**. All nine rows
+now have individual accepted dispositions; the missing evidence remains missing.
 No new dependency on feat-373 is introduced for feat-505.
 
 For D5, [the retained individual observation](../validation/evidence-acceptance-20260923/rum-interim-discrepancy.json)
