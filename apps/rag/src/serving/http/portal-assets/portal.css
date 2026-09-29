@@ -492,6 +492,7 @@ input[readonly] {
     order: 3;
     width: 100%;
     gap: 10px;
+    overflow-x: auto;
   }
   .nav-item {
     padding: 12px 14px;

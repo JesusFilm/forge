@@ -1,3 +1,4 @@
+import { createPortalSourcesReader } from "../src/serving/http/portal-sources.js"
 import { PostgresUsageStore } from "../src/adapters/postgres/consumer-usage.js"
 import { UsageCollector } from "../src/serving/http/usage.js"
 import { reportAuthorizer } from "../src/serving/http/usage-report-auth.js"
@@ -157,6 +158,7 @@ async function main(): Promise<void> {
         consumers,
         usageReader: portalUsageReader,
         allowedSourceKeys,
+        sources: createPortalSourcesReader(allSources()),
       }
     : undefined
   const usageReport =
