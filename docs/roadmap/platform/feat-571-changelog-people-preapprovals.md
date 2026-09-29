@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-29"
 duration: 1
 depends_on: ["feat-567"]
-blocks: []
+blocks: ["feat-572"]
 tags: ["auth", "changelog"]
 ---
 

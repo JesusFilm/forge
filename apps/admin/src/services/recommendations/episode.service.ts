@@ -197,9 +197,19 @@ export class RecommendationEpisodeService {
     const now = this.deps.now?.() ?? new Date()
     const item = await this.deps.prisma.recommendationServedItem.findUnique({
       where: { id: input.itemId },
-      include: {
+      select: {
+        id: true,
+        requestId: true,
+        targetMediaId: true,
+        canonicalHref: true,
+        capabilityJti: true,
         request: {
-          include: {
+          select: {
+            state: true,
+            expiresAt: true,
+            sessionDigest: true,
+            surfaceVersion: true,
+            manifestId: true,
             experimentAssignment: {
               include: { experiment: true, profile: true },
             },
@@ -533,7 +543,11 @@ export class RecommendationEpisodeService {
         where: { claimNonceDigest },
         include: {
           request: {
-            include: {
+            select: {
+              id: true,
+              state: true,
+              expiresAt: true,
+              sessionDigest: true,
               experimentAssignment: { include: { profile: true } },
             },
           },

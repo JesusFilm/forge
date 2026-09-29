@@ -29,6 +29,8 @@ import {
   getUserWatchHistory,
   type UserWatchHistory,
 } from "./user-history.service"
+import { env } from "@/config/env"
+import { servedSnapshotCreate } from "./served-item-payload"
 
 export const USER_RECOMMENDATION_SURFACE = "watch-for-you-v1" as const
 export const USER_RECOMMENDATION_CONTRACT = "user-recommendation-v1" as const
@@ -542,8 +544,8 @@ export class UserRecommendationDeliveryService {
                   responseBytes,
                   issuedAt: now,
                   expiresAt,
-                  items: {
-                    create: prepared.map((item) => ({
+                  ...servedSnapshotCreate(
+                    prepared.map((item) => ({
                       id: item.id,
                       position: item.position,
                       targetMediaId: item.candidate.videoId,
@@ -571,7 +573,9 @@ export class UserRecommendationDeliveryService {
                       signingKid: token.activeKid,
                       expiresAt,
                     })),
-                  },
+                    this.deps.servedItemFormat ??
+                      env.RECOMMENDATION_SERVED_ITEM_FORMAT,
+                  ),
                 },
               })
               await tx.recommendationEvidenceAudit.create({

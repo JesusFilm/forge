@@ -371,6 +371,113 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         },
       ])
 
+      // Missing versions must fail even when the item map is empty.
+      await client.query("BEGIN")
+      await client.query(`INSERT INTO recommendation_request (
+          id, contract_version, surface_version, manifest_id,
+          strategy_version, classifier_version, session_digest, seed_media_id,
+          locale, expected_item_count, state, result, created_at, expires_at,
+          served_item_payload
+        ) SELECT 'admin-trace-malformed-zero', contract_version,
+          surface_version, manifest_id, strategy_version,
+          classifier_version, session_digest, seed_media_id, locale, 0, 'prepared', 'empty',
+          created_at, expires_at, '{"items":{}}'::jsonb
+        FROM recommendation_request WHERE id = 'admin-trace-request'`)
+      await expect(client.query("COMMIT")).rejects.toThrow(
+        "Unsupported served item payload",
+      )
+
+      // A nonempty legacy child set cannot be relabeled as an empty payload.
+      await client.query("BEGIN")
+      await client.query(`UPDATE recommendation_request
+        SET served_item_payload = '{"items":{}}'::jsonb
+        WHERE id = 'admin-trace-request'`)
+      await expect(client.query("COMMIT")).rejects.toThrow(
+        "Unsupported served item payload",
+      )
+
+      // Exercise the same Admin reader against both stored representations.
+      await client.query("BEGIN")
+      await client.query(`UPDATE recommendation_request request
+        SET served_item_payload = jsonb_build_object(
+          'version', 1, 'items', jsonb_build_object(item.id,
+            jsonb_build_object('presentation', item.presentation,
+              'candidateProvenance', item.candidate_provenance)))
+        FROM recommendation_served_item item
+        WHERE request.id = item.request_id AND request.id = 'admin-trace-request'`)
+      await client.query(`UPDATE recommendation_served_item
+        SET presentation = '{}'::jsonb, candidate_provenance = '{}'::jsonb
+        WHERE id = 'admin-trace-item'`)
+      await client.query("COMMIT")
+      const packedDetail = await loadRecommendationRequestDetail(prisma, {
+        requestId: "admin-trace-request",
+        actorDigest,
+        now,
+      })
+      expect(packedDetail?.items).toEqual(detail?.items)
+
+      await client.query("BEGIN")
+      await expect(
+        client.query(`UPDATE recommendation_request
+          SET served_item_payload = jsonb_set(served_item_payload, '{version}', '2')
+          WHERE id = 'admin-trace-request'`),
+      ).rejects.toThrow("Served item payload is immutable")
+      await client.query("ROLLBACK")
+
+      // Moving an item must recheck both its old packed root and its new root.
+      await client.query("BEGIN")
+      await client.query(`INSERT INTO recommendation_request (
+          id, contract_version, surface_version, manifest_id,
+          strategy_version, classifier_version, session_digest, seed_media_id,
+          locale, expected_item_count, state, result, created_at, expires_at,
+          served_item_payload
+        ) SELECT 'admin-trace-move-a', contract_version, surface_version,
+          manifest_id, strategy_version, classifier_version, session_digest,
+          seed_media_id, locale, 1, 'prepared', 'empty', created_at, expires_at,
+          jsonb_build_object('version', 1, 'items', jsonb_build_object(
+            'admin-trace-move-item', jsonb_build_object(
+              'presentation', '{}'::jsonb, 'candidateProvenance', '{}'::jsonb)))
+        FROM recommendation_request WHERE id = 'admin-trace-request'`)
+      await client.query(`INSERT INTO recommendation_request (
+          id, contract_version, surface_version, manifest_id,
+          strategy_version, classifier_version, session_digest, seed_media_id,
+          locale, expected_item_count, state, result, created_at, expires_at
+        ) SELECT 'admin-trace-move-b', contract_version, surface_version,
+          manifest_id, strategy_version, classifier_version, session_digest,
+          seed_media_id, locale, 0, 'prepared', 'empty', created_at, expires_at
+        FROM recommendation_request WHERE id = 'admin-trace-request'`)
+      await client.query(
+        `INSERT INTO recommendation_served_item (
+          id, request_id, position, target_media_id, canonical_href,
+          candidate_generator, candidate_provenance, presentation, expires_at
+        ) VALUES ('admin-trace-move-item', 'admin-trace-move-a', 0,
+          'target-video', '/watch/target-video.html', 'semantic',
+          '{}'::jsonb, '{}'::jsonb, $1)`,
+        [expiresAt],
+      )
+      await client.query("COMMIT")
+      await client.query("BEGIN")
+      await client.query(`UPDATE recommendation_served_item
+        SET request_id = 'admin-trace-move-b'
+        WHERE id = 'admin-trace-move-item'`)
+      await expect(client.query("COMMIT")).rejects.toThrow(
+        "recommendation request item set is incomplete",
+      )
+      await client.query("BEGIN")
+      await expect(
+        client.query(`UPDATE recommendation_request
+          SET served_item_payload = jsonb_set(served_item_payload, '{items}', '{}'::jsonb)
+          WHERE id = 'admin-trace-request'`),
+      ).rejects.toThrow("Served item payload is immutable")
+      await client.query("ROLLBACK")
+      await client.query("BEGIN")
+      await expect(
+        client.query(`UPDATE recommendation_served_item
+          SET expires_at = expires_at + interval '1 day'
+          WHERE id = 'admin-trace-item'`),
+      ).rejects.toThrow("recommendation child expiry must match request root")
+      await client.query("ROLLBACK")
+
       // A reader deployed before compact writing must return the same detail
       // while old and new evidence coexist, then after legacy rows are gone.
       const legacyStage = (

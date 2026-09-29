@@ -97,6 +97,7 @@ import {
   lockOwnerReleaseForIssuance,
 } from "./promotion/owner-authority"
 import { nominationEligibilityReasons } from "./eligibility"
+import { servedSnapshotCreate } from "./served-item-payload"
 
 export type {
   RecommendationPersonalizationDelivery,
@@ -1244,8 +1245,8 @@ export class RecommendationDeliveryService {
                 experimentAssignmentId:
                   experiment.assignment?.assignmentId ?? null,
                 experimentBypassReason: experiment.bypassReason,
-                items: {
-                  create: prepared.map(
+                ...servedSnapshotCreate(
+                  prepared.map(
                     ({
                       candidate,
                       sources,
@@ -1319,7 +1320,9 @@ export class RecommendationDeliveryService {
                       expiresAt,
                     }),
                   ),
-                },
+                  this.deps.servedItemFormat ??
+                    env.RECOMMENDATION_SERVED_ITEM_FORMAT,
+                ),
               },
             })
             const evidenceCreatedAt = new Date()
