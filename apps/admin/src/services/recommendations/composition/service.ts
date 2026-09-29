@@ -215,6 +215,17 @@ export async function persistCompositionObservation(
   tx: Database,
   input: { runId: string; observation: CompositionObservation; now: Date },
 ) {
+  // Publication callers take these same locks before mutating the run. Direct
+  // callers also start at privacy roots, matching profile -> graph invalidation.
+  const roots = await tx.recommendationShadowRun.findUnique({
+    where: { id: input.runId },
+    select: { requestId: true, projectionProfileId: true },
+  })
+  if (!roots) return
+  if (roots.projectionProfileId)
+    await tx.$queryRaw`SELECT id FROM recommendation_profile WHERE id = ${roots.projectionProfileId} FOR SHARE`
+  await tx.$queryRaw`SELECT id FROM recommendation_request WHERE id = ${roots.requestId} FOR SHARE`
+  await tx.$queryRaw`SELECT id FROM recommendation_shadow_run WHERE id = ${input.runId} FOR SHARE`
   const run = await tx.recommendationShadowRun.findUnique({
     where: { id: input.runId },
     include: {
@@ -225,7 +236,12 @@ export async function persistCompositionObservation(
       },
     },
   })
-  if (!run) return
+  if (
+    !run ||
+    run.requestId !== roots.requestId ||
+    run.projectionProfileId !== roots.projectionProfileId
+  )
+    return
   const protocol = await tx.recommendationCompositionProtocol.findUnique({
     where: { shadowEvaluationId: run.evaluationId },
   })

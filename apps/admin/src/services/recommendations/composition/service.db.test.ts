@@ -9,7 +9,10 @@ import {
   COWATCH_MMR_TRIAL_MANIFEST,
 } from "../promotion/manifest"
 import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
-import { compositionGraphFixture } from "./graph.test-fixture"
+import {
+  compositionGraphFixture,
+  playableCompositionGraph,
+} from "./graph.test-fixture"
 import {
   createShadowEvaluation,
   claimNextShadowRun,
@@ -17,9 +20,18 @@ import {
   completeShadowEvaluation,
 } from "../shadow-evaluation/service"
 import { MMR_SLATE_POLICY_VERSION } from "./mmr"
-import { compositionDigest } from "./policy"
+import { compositionDigest, observeComposition } from "./policy"
+import { createDatabaseCowatchLiveSource } from "../cowatch/live.service"
+import {
+  COWATCH_FROZEN_TRIAL_MODE,
+  qualifyCowatchTrialAuthority,
+  type CowatchTrialBinding,
+} from "../cowatch/trial-authority.service"
+import { recommendationManifestDigest } from "../promotion/manifest"
+import { runCandidatePlatform } from "../orchestration"
 import {
   prepareCompositionProtocol,
+  persistCompositionObservation,
   decideCompositionProtocol,
   recordCompositionCalibration,
   resolveCompositionQualification,
@@ -81,6 +93,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         graph?: Awaited<ReturnType<typeof compositionGraphFixture>>
         evaluationGraphId?: string
         wrongNominationGraph?: boolean
+        manualPublication?: boolean
       } = {},
     ) {
       const now = options.graph?.now ?? new Date(Date.now() - 2_000)
@@ -145,14 +158,18 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const createdAt = new Date(now.getTime() - 86_400_000),
         expiresAt = new Date(createdAt.getTime() + 29 * 86_400_000)
       const profile = options.profile
-        ? await db.recommendationProfile.create({
-            data: {
-              privacyGeneration: 1,
-              tokenDigest: compositionDigest(runId),
-              choice: "DURABLE_ALLOWED",
-              expiresAt,
-            },
-          })
+        ? options.graph
+          ? await db.recommendationProfile.findUniqueOrThrow({
+              where: { id: options.graph.profileId },
+            })
+          : await db.recommendationProfile.create({
+              data: {
+                privacyGeneration: 1,
+                tokenDigest: compositionDigest(runId),
+                choice: "DURABLE_ALLOWED",
+                expiresAt,
+              },
+            })
         : null
       await db.$transaction(async (tx) => {
         await tx.recommendationRequest.create({
@@ -248,39 +265,46 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         }),
         now: executionAt,
       }
-      expect(await executeClaimedShadowRun(db, execution)).toMatchObject({
-        status: "published",
-        replay: false,
-      })
-      expect(await executeClaimedShadowRun(db, execution)).toMatchObject({
-        status: "published",
-        replay: true,
-      })
-      if (options.graph) {
-        // Parent owns the integrated candidate gate. This fixture explicitly
-        // records its separate terminal result after actual shadow publication.
-        await db.recommendationShadowDecision.create({
-          data: {
-            evaluationId,
-            decision: "PROMOTE_TO_EXPERIMENT",
-            reasonCode: "native_fixture_only",
-            reevaluationCondition: "not_production_evidence",
-            inputDigest: compositionDigest(evaluationId),
-            decidedAt: executionAt,
-            expiresAt,
-          },
-        })
-        await db.recommendationShadowEvaluation.update({
-          where: { id: evaluationId },
-          data: { state: "TERMINAL" },
+      if (options.manualPublication) {
+        await db.recommendationShadowRun.update({
+          where: { id: runId },
+          data: { state: "PUBLISHED", finishedAt: executionAt },
         })
       } else {
-        await completeShadowEvaluation(db, {
-          evaluationId,
-          expectedGeneration: 1,
-          minimumRuns: 1,
-          now: executionAt,
+        expect(await executeClaimedShadowRun(db, execution)).toMatchObject({
+          status: "published",
+          replay: false,
         })
+        expect(await executeClaimedShadowRun(db, execution)).toMatchObject({
+          status: "published",
+          replay: true,
+        })
+        if (options.graph) {
+          // Parent owns the integrated candidate gate. This fixture explicitly
+          // records its separate terminal result after actual shadow publication.
+          await db.recommendationShadowDecision.create({
+            data: {
+              evaluationId,
+              decision: "PROMOTE_TO_EXPERIMENT",
+              reasonCode: "native_fixture_only",
+              reevaluationCondition: "not_production_evidence",
+              inputDigest: compositionDigest(evaluationId),
+              decidedAt: executionAt,
+              expiresAt,
+            },
+          })
+          await db.recommendationShadowEvaluation.update({
+            where: { id: evaluationId },
+            data: { state: "TERMINAL" },
+          })
+        } else {
+          await completeShadowEvaluation(db, {
+            evaluationId,
+            expectedGeneration: 1,
+            minimumRuns: 1,
+            now: executionAt,
+          })
+        }
       }
       return {
         now: executionAt,
@@ -331,6 +355,195 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       ).not.toBeNull()
       return { ...f, decision, review, reviewInput, binding }
     }
+
+    it("accepts actual governed U5 live nominations and empties unauthorized graph fallback", async () => {
+      const graph = await compositionGraphFixture(db)
+      const f = await qualified({ graph })
+      await playableCompositionGraph(db, graph)
+      const generation =
+        await db.recommendationCowatchGeneration.findUniqueOrThrow({
+          where: { id: graph.generationId },
+        })
+      const candidateDecision =
+        await db.recommendationShadowDecision.findUniqueOrThrow({
+          where: { evaluationId: f.evaluationId },
+        })
+      const binding: CowatchTrialBinding = {
+        mode: COWATCH_FROZEN_TRIAL_MODE,
+        studyId: randomUUID(),
+        experimentGeneration: 1,
+        protocolDigest: "b".repeat(64),
+        manifestId: f.binding.manifestId,
+        manifestDigest: recommendationManifestDigest(
+          COWATCH_MMR_TRIAL_MANIFEST,
+        ),
+        graphGenerationId: graph.generationId,
+        sourceWindow: {
+          version: "episode-event-window-v1",
+          windowStart: generation.windowStart!,
+          windowEnd: generation.windowEnd,
+          evaluationAsOf: generation.evaluationAsOf!,
+        },
+        calibrationCompletedAt: new Date(generation.publishedAt.getTime() - 1),
+        enrollmentEnd: new Date(f.now.getTime() + 86_400_000),
+        trialValidUntil: new Date(
+          f.now.getTime() + 86_400_000 + 30 * 3_600_000,
+        ),
+        shadowEvaluationId: f.evaluationId,
+        shadowDecisionId: candidateDecision.id,
+      }
+      expect(
+        await qualifyCowatchTrialAuthority(db, binding, f.now),
+      ).toMatchObject({ status: "qualified" })
+      const source = createDatabaseCowatchLiveSource(db, {
+        now: () => f.now,
+        resolveActiveAuthority: async (context) => ({
+          binding,
+          validUntil: binding.trialValidUntil,
+          requestContextDigest: context.requestContextDigest,
+        }),
+      })
+      const sourceResult = await source({
+        seedMediaId: graph.mediaA,
+        locale: "en",
+        audioLanguageSlug: "english",
+        profileProjectionId: null,
+        requestContextDigest: "c".repeat(64),
+        deadlineAt: Date.now() + 2000,
+      })
+      expect(sourceResult).toMatchObject({
+        disposition: "candidate",
+        fallbackReason: null,
+      })
+      expect(sourceResult.nominations[0]?.source.generatorVersion).toBe(
+        COWATCH_FROZEN_TRIAL_MODE,
+      )
+      const context = slate().context
+      const ordered = runCandidatePlatform({
+        nominations: [...sourceResult.nominations, ...nominations()],
+        context,
+        limit: 6,
+        generatorVersion: "fixture",
+      }).ordered
+      const composeInput = {
+        prisma: db,
+        binding: f.binding,
+        slate: { ordered, context, limit: 6 },
+        historyAvailable: true,
+        deadlineMs: Date.now() + 2000,
+        now: f.now,
+      }
+      const verifyStudyAuthority = async ({
+        contextDigest,
+      }: {
+        contextDigest: string
+      }) => ({
+        binding: f.binding,
+        contextDigest,
+        experimentId: binding.studyId,
+        experimentGeneration: 1,
+        studyProtocolDigest: binding.protocolDigest,
+        challengerManifestId: f.binding.manifestId,
+        validUntil: binding.trialValidUntil,
+      })
+      const composed = await composeAuthorizedMmrSlate({
+        ...composeInput,
+        verifyStudyAuthority,
+      })
+      expect(composed.status).toBe("composed")
+      expect(
+        composed.result.composed.map((row) => row.targetMediaId),
+      ).toContain(graph.mediaB)
+      const refused = await composeAuthorizedMmrSlate({
+        ...composeInput,
+        verifyStudyAuthority: async () => null,
+      })
+      expect(refused.status).toBe("fallback")
+      expect(refused.result.composed).toEqual([])
+    })
+    it.each(["service", "database_guard"] as const)(
+      "orders %s publication after a privacy writer without holding its graph",
+      async (path) => {
+        const graph = await compositionGraphFixture(db)
+        const f = await fixture({
+          graph,
+          profile: true,
+          manualPublication: true,
+        })
+        let held!: () => void, continueWriter!: () => void
+        const locked = new Promise<void>((resolve) => {
+          held = resolve
+        })
+        const release = new Promise<void>((resolve) => {
+          continueWriter = resolve
+        })
+        const writer = db.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT id FROM recommendation_profile WHERE id = ${graph.profileId} FOR UPDATE`
+          held()
+          await release
+          await tx.recommendationProfile.update({
+            where: { id: graph.profileId },
+            data: { privacyGeneration: 2 },
+          })
+        })
+        await locked
+        const observation = observeComposition(
+          { ...slate(), historyAvailable: true },
+          1,
+        )
+        const publication = db
+          .$transaction(async (tx) => {
+            if (path === "service")
+              return persistCompositionObservation(tx, {
+                runId: f.runId,
+                observation,
+                now: f.now,
+              })
+            return tx.recommendationCompositionObservation.create({
+              data: {
+                runId: f.runId,
+                protocolId: f.protocolId,
+                inputDigest: observation.inputDigest,
+                outputDigest: observation.outputDigest,
+                metrics: observation.metrics,
+                createdAt: f.now,
+                expiresAt: graph.expiresAt,
+              },
+            })
+          })
+          .then(
+            () => ({ ok: true as const }),
+            (error) => ({ ok: false as const, error }),
+          )
+        try {
+          await expect
+            .poll(
+              async () => {
+                const rows = await db.$queryRaw<
+                  Array<{ blocked: boolean }>
+                >`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND (query ILIKE '%recommendation_composition_observation%' OR (query ILIKE '%recommendation_profile%' AND query ILIKE '%FOR SHARE%'))) AS blocked`
+                return rows[0]?.blocked
+              },
+              { timeout: 1000, interval: 10 },
+            )
+            .toBe(true)
+        } finally {
+          continueWriter()
+        }
+        await writer
+        const result = await publication
+        expect(result.ok).toBe(path === "service")
+        if (!result.ok)
+          expect(String(result.error)).toContain(
+            "composition graph binding unavailable",
+          )
+        expect(
+          await db.recommendationCompositionObservation.count({
+            where: { runId: f.runId },
+          }),
+        ).toBe(0)
+      },
+    )
 
     it("binds exact graph identity in preparation, evidence, review and live lookup", async () => {
       const graph = await compositionGraphFixture(db)

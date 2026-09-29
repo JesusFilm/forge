@@ -131,10 +131,18 @@ CREATE TRIGGER composition_decision_immutable BEFORE UPDATE OR DELETE ON recomme
 CREATE TRIGGER composition_calibration_immutable BEFORE UPDATE OR DELETE ON recommendation_composition_calibration FOR EACH ROW EXECUTE FUNCTION protect_composition_history();
 
 CREATE FUNCTION composition_observation_guard() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE root recommendation_shadow_run; contract recommendation_composition_protocol; request_root recommendation_request; profile_root recommendation_profile; evaluation_root recommendation_shadow_evaluation; graph_root recommendation_cowatch_generation;
+DECLARE root recommendation_shadow_run; contract recommendation_composition_protocol; request_root recommendation_request; profile_root recommendation_profile; evaluation_root recommendation_shadow_evaluation; graph_root recommendation_cowatch_generation; root_request_id text; root_profile_id text;
 BEGIN
   IF TG_OP = 'UPDATE' THEN RAISE EXCEPTION 'composition observation is immutable'; END IF;
+  SELECT request_id, projection_profile_id INTO root_request_id, root_profile_id FROM recommendation_shadow_run WHERE id = NEW.run_id;
+  IF root_profile_id IS NOT NULL THEN
+    SELECT * INTO profile_root FROM recommendation_profile WHERE id = root_profile_id FOR SHARE;
+  END IF;
+  SELECT * INTO request_root FROM recommendation_request WHERE id = root_request_id FOR SHARE;
   SELECT * INTO root FROM recommendation_shadow_run WHERE id = NEW.run_id FOR SHARE;
+  IF root.request_id IS DISTINCT FROM root_request_id OR root.projection_profile_id IS DISTINCT FROM root_profile_id THEN
+    RAISE EXCEPTION 'composition roots changed during publication';
+  END IF;
   SELECT * INTO contract FROM recommendation_composition_protocol WHERE id = NEW.protocol_id;
   IF contract.config->>'cowatchGenerationId' IS NOT NULL THEN
     SELECT * INTO graph_root FROM recommendation_cowatch_generation WHERE id = (contract.config->>'cowatchGenerationId')::char(64) FOR SHARE;
@@ -150,9 +158,7 @@ BEGIN
     OR evaluation_root.manifest_id <> contract.source_manifest_id
     OR evaluation_root.generator_version <> contract.generator_version
   THEN RAISE EXCEPTION 'composition evaluation binding unavailable'; END IF;
-  SELECT * INTO request_root FROM recommendation_request WHERE id = root.request_id FOR SHARE;
   IF root.projection_profile_id IS NOT NULL THEN
-    SELECT * INTO profile_root FROM recommendation_profile WHERE id = root.projection_profile_id FOR SHARE;
     IF profile_root.id IS NULL OR profile_root.state <> 'active' OR profile_root.privacy_generation <> root.privacy_generation
       OR NEW.expires_at > profile_root.expires_at
     THEN RAISE EXCEPTION 'composition profile binding unavailable'; END IF;

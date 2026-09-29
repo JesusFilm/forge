@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client"
-import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
+import { COWATCH_FROZEN_TRIAL_MODE } from "../cowatch/trial-authority.service"
 import { runRecommendationRetrievalQuery } from "../delivery-runtime"
 import { composeMmrSlate, MMR_SLATE_POLICY_VERSION } from "./mmr"
 import {
@@ -45,10 +45,22 @@ export async function composeAuthorizedMmrSlate(input: {
   const now = input.now ?? new Date(startedAt)
   const currentNow = () =>
     new Date(now.getTime() + Math.max(0, Date.now() - startedAt))
+  const hasCowatchInput =
+    Boolean(input.binding.cowatchGenerationId) ||
+    input.slate.ordered
+      .slice(0, 64)
+      .some((candidate) =>
+        candidate.nominations.some(
+          (nomination) => nomination.source.generator === "directional-cowatch",
+        ),
+      )
   const fallback = (reason: string) => ({
     status: "fallback" as const,
     result: composeMmrSlate({
       ...input.slate,
+      // The caller executes the exact incumbent on fallback. Never leak graph
+      // candidates from an input whose live authority could not be verified.
+      ordered: hasCowatchInput ? [] : input.slate.ordered,
       policyVersion: "deterministic-composition-fallback",
     }),
     provenance: {
@@ -75,7 +87,7 @@ export async function composeAuthorizedMmrSlate(input: {
             nomination.source.generator === "directional-cowatch" &&
             (!input.binding.cowatchGenerationId ||
               nomination.source.generatorVersion !==
-                COWATCH_SHADOW_GENERATOR_KEY ||
+                COWATCH_FROZEN_TRIAL_MODE ||
               nomination.source.evidence.generation !==
                 input.binding.cowatchGenerationId),
         ),
