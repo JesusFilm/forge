@@ -23,6 +23,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useGuardedViewabilityCallback } from "../../hooks/useGuardedViewabilityCallback"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
+import { useUiTag } from "../../hooks/useUiTag"
 import { useHomeRecommendations } from "../../hooks/useHomeRecommendations"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useTypography } from "../../hooks/useTypography"
@@ -97,6 +99,9 @@ const HERO_SWIPE_COMMIT_PX = 40
 // ── Component ───────────────────────────────────────────────────────────────
 
 export function HomeScreen() {
+  const t = useT("Home")
+  const epoch = useLocaleEpoch()
+  const uiTag = useUiTag()
   const insets = useSafeAreaInsets()
   const tabBarClearance = useTabBarClearance()
   const navigation = useNavigation()
@@ -163,6 +168,7 @@ export function HomeScreen() {
       playedIds: playedIdsRef.current,
       startPoolIndex: startPoolIndexRef.current,
       sessionSeed: sessionSeedRef.current,
+      uiTag,
     })
     if (queue.wrapped && queue.videos.length > 0) {
       // wrapped=true means every eligible slide was already played and the queue was rebuilt
@@ -173,7 +179,7 @@ export function HomeScreen() {
     return queue.slides
     // playedIdsRef/startPoolIndexRef are stable refs read at build time, not
     // rebuild triggers; memoryHydrated is the rebuild trigger for them.
-  }, [model, memoryHydrated, resetPlayedIds])
+  }, [model, memoryHydrated, resetPlayedIds, uiTag])
 
   const heroVisible = heroSlides.length > 0
 
@@ -243,9 +249,9 @@ export function HomeScreen() {
   const activeInsertAction = useMemo(
     () =>
       activeSlide?.kind === "mux"
-        ? muxSlideDisplayCopy(activeSlide, new Date()).action
+        ? muxSlideDisplayCopy(activeSlide, new Date(), uiTag).action
         : null,
-    [activeSlide],
+    [activeSlide, uiTag],
   )
 
   // ── Hero swipe (capture-phase PanResponder on the screen root) ─────────────
@@ -501,6 +507,12 @@ export function HomeScreen() {
     ],
   )
 
+  // Recycled feed cells take the new language on a catalog change (KTD5).
+  const feedExtraData = useMemo(
+    () => ({ activeIndex, epoch }),
+    [activeIndex, epoch],
+  )
+
   const contentContainerStyle = useMemo(
     () => ({
       // Hero-less degraded render: feed starts below the absolute header
@@ -517,7 +529,7 @@ export function HomeScreen() {
     return (
       <View style={[layout.centered, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={ACCENT} />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>{t("loading")}</Text>
       </View>
     )
   }
@@ -525,9 +537,10 @@ export function HomeScreen() {
   if (error != null && model == null) {
     return (
       <View style={[layout.centered, { paddingTop: insets.top }]}>
-        <Text style={text.errorTitle}>Something went wrong</Text>
+        <Text style={text.errorTitle}>{t("loadErrorTitle")}</Text>
+        {/* The hook sets one retryable failure, so its text is the catalog's. */}
         <Text style={[text.errorMessage, styles.errorMessageSpacing]}>
-          {error}
+          {t("loadErrorMessage")}
         </Text>
         <Pressable
           style={({ pressed }) => [
@@ -536,9 +549,10 @@ export function HomeScreen() {
           ]}
           onPress={refetch}
           accessibilityRole="button"
-          accessibilityLabel="Retry loading"
+          accessibilityLabel={t("retryAriaLabel")}
+          {...{ "dd-action-name": "home-load-retry" }}
         >
-          <Text style={styles.retryText}>Retry</Text>
+          <Text style={styles.retryText}>{t("retry")}</Text>
         </Pressable>
       </View>
     )
@@ -549,7 +563,7 @@ export function HomeScreen() {
   if (model == null || (model.sections.length === 0 && !heroVisible)) {
     return (
       <View style={[layout.centered, { paddingTop: insets.top }]}>
-        <Text style={styles.emptyText}>No content available</Text>
+        <Text style={styles.emptyText}>{t("empty")}</Text>
       </View>
     )
   }
@@ -582,7 +596,7 @@ export function HomeScreen() {
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         getItemType={getItemType}
-        extraData={activeIndex}
+        extraData={feedExtraData}
         onViewableItemsChanged={handleFeedViewableItemsChanged}
         viewabilityConfig={IMPRESSION_VIEWABILITY_CONFIG}
         onScroll={handleScroll}
@@ -649,6 +663,7 @@ const HeroChrome = memo(function HeroChrome({
   onInsertAction,
 }: HeroChromeProps) {
   const typography = useTypography()
+  const t = useT("Home")
 
   return (
     <View
@@ -667,11 +682,13 @@ const HeroChrome = memo(function HeroChrome({
             ]}
             onPress={onWatchNow}
             accessibilityRole="button"
-            accessibilityLabel={`Watch ${slide.title} now`}
+            accessibilityLabel={t("watchNowAriaLabel", { title: slide.title })}
             // Stable RUM action name — the a11y label leaks the title (KTD10).
             {...{ "dd-action-name": "hero-card" }}
           >
-            <Text style={[styles.ctaText, typography.body]}>Watch Now</Text>
+            <Text style={[styles.ctaText, typography.body]}>
+              {t("watchNow")}
+            </Text>
           </Pressable>
         )}
         {slide.kind === "mux" && insertAction != null && (
@@ -683,6 +700,7 @@ const HeroChrome = memo(function HeroChrome({
             onPress={onInsertAction}
             accessibilityRole="link"
             accessibilityLabel={insertAction.label}
+            {...{ "dd-action-name": "hero-insert-action" }}
           >
             <Text style={[styles.ctaText, typography.body]}>
               {insertAction.label}
@@ -697,8 +715,9 @@ const HeroChrome = memo(function HeroChrome({
             pressed && feedback.pressed,
           ]}
           onPress={onToggleMute}
-          accessibilityLabel={muted ? "Unmute video" : "Mute video"}
+          accessibilityLabel={muted ? t("unmuteAriaLabel") : t("muteAriaLabel")}
           accessibilityRole="button"
+          {...{ "dd-action-name": "hero-mute-toggle" }}
         >
           <Ionicons
             name={muted ? "volume-mute" : "volume-high"}

@@ -1,6 +1,8 @@
+import { useMemo } from "react"
 import { Platform, type ViewStyle } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { useT, type UiMessageKey } from "../i18n/useT"
 import { BG_COLOR } from "./color"
 
 /**
@@ -58,16 +60,34 @@ export const TAB_ROUTE_NAMES = [
 export type TabRouteName = (typeof TAB_ROUTE_NAMES)[number]
 
 /**
- * Every tab's label, for both navigators. A rename is a one-line change here;
+ * Every tab's label key in the `Tabs` catalog, for both navigators.
  * `tabBarSingleSource.guard.test.js` fails if a layout spells a label itself.
  */
-export const TAB_LABELS = {
-  index: "Home",
-  explore: "Explore",
-  watch: "Search",
-  bible: "Bible",
-  profile: "Profile",
-} as const satisfies Record<TabRouteName, string>
+export const TAB_LABEL_KEYS = {
+  index: "home",
+  explore: "explore",
+  watch: "search",
+  bible: "bible",
+  profile: "profile",
+} as const satisfies Record<TabRouteName, UiMessageKey<"Tabs">>
+
+/**
+ * The tab labels in the UI language. Both layouts read them at render, so a
+ * language change relabels the bar without a remount (KTD2).
+ */
+export function useTabLabels(): Record<TabRouteName, string> {
+  const t = useT("Tabs")
+  return useMemo(
+    () => ({
+      index: t(TAB_LABEL_KEYS.index),
+      explore: t(TAB_LABEL_KEYS.explore),
+      watch: t(TAB_LABEL_KEYS.watch),
+      bible: t(TAB_LABEL_KEYS.bible),
+      profile: t(TAB_LABEL_KEYS.profile),
+    }),
+    [t],
+  )
+}
 
 /** The expo-router group the tab screens live in. */
 export const TAB_GROUP_SEGMENT = "(tabs)"

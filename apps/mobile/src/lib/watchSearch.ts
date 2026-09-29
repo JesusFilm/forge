@@ -1,6 +1,7 @@
 import { CombinedGraphQLErrors } from "@apollo/client/errors"
 
 import type { AdminLanguageForms } from "../i18n/adminLanguage"
+import type { UiT } from "../i18n/useT"
 import { isBrowseTopicTerm } from "./browseTopics"
 
 import type {
@@ -175,26 +176,41 @@ export function mapWatchSearchResponse(
   }
 }
 
+export type SearchErrorKind = "rateLimited" | "unavailable" | "failed"
+
 /**
- * User-facing copy for a failed search. Admin returns these in a 200 body, and
- * Apollo v4 throws CombinedGraphQLErrors. It never sets a domain `code`: the
- * rate limiter stamps `extensions.http.statusCode` and thrown service errors
- * mask to INTERNAL_SERVER_ERROR, so branch on what is actually sent.
+ * The kind of a failed search. Admin returns these in a 200 body, and Apollo
+ * v4 throws CombinedGraphQLErrors. It never sets a domain `code`: the rate
+ * limiter stamps `extensions.http.statusCode` and thrown service errors mask
+ * to INTERNAL_SERVER_ERROR, so branch on what is actually sent.
  */
-export function parseSearchError(error: unknown): string {
-  if (!CombinedGraphQLErrors.is(error))
-    return "Search failed. Please try again."
+export function searchErrorKind(error: unknown): SearchErrorKind {
+  if (!CombinedGraphQLErrors.is(error)) return "failed"
 
   const extensions = error.errors[0]?.extensions
   const status = (extensions?.http as { statusCode?: unknown } | undefined)
     ?.statusCode
 
-  if (status === 429) return "Too many requests. Please try again in a minute."
-  if (typeof status === "number" && status >= 500) {
-    return "Search is temporarily unavailable. Please try again."
+  if (status === 429) return "rateLimited"
+  if (typeof status === "number" && status >= 500) return "unavailable"
+  if (extensions?.code === "INTERNAL_SERVER_ERROR") return "unavailable"
+  return "failed"
+}
+
+/**
+ * User-facing copy for a failed search. The screen keeps the kind, so the
+ * message follows a language change while it shows (KTD15).
+ */
+export function searchErrorMessage(
+  kind: SearchErrorKind,
+  t: UiT<"Discover">,
+): string {
+  switch (kind) {
+    case "rateLimited":
+      return t("rateLimitedError")
+    case "unavailable":
+      return t("unavailableError")
+    case "failed":
+      return t("failedError")
   }
-  if (extensions?.code === "INTERNAL_SERVER_ERROR") {
-    return "Search is temporarily unavailable. Please try again."
-  }
-  return "Search failed. Please try again."
 }

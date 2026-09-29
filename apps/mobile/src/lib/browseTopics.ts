@@ -1,9 +1,11 @@
 // Hardcoded Discover empty-state categories, mirroring web's search overlay
-// (apps/web/src/lib/search-categories.ts). `searchTerm` (not label) drives admin
-// search; `gradient` is the card fill, `glyph` an Ionicons name shown top-left.
+// (apps/web/src/lib/search-categories.ts). `searchTerm` (not the label) drives
+// admin search; the card shows `labelKey` from the `BrowseTopics` catalog.
+
+import type { UiMessageKey } from "../i18n/useT"
 
 export type BrowseTopic = {
-  readonly label: string
+  readonly labelKey: UiMessageKey<"BrowseTopics">
   readonly searchTerm: string
   readonly gradient: readonly [string, string]
   readonly glyph: string
@@ -11,37 +13,37 @@ export type BrowseTopic = {
 
 export const BROWSE_TOPICS: readonly BrowseTopic[] = [
   {
-    label: "Bible Stories",
+    labelKey: "bibleStories",
     searchTerm: "bible stories",
     gradient: ["#667EEA", "#764BA2"],
     glyph: "book-outline",
   },
   {
-    label: "Parables",
+    labelKey: "parables",
     searchTerm: "parables",
     gradient: ["#F093FB", "#F5576C"],
     glyph: "chatbubbles-outline",
   },
   {
-    label: "Animated",
+    labelKey: "animated",
     searchTerm: "animated",
     gradient: ["#4FACFE", "#00C2D6"],
     glyph: "film-outline",
   },
   {
-    label: "Study",
+    labelKey: "study",
     searchTerm: "study",
     gradient: ["#0BAB64", "#3BB78F"],
     glyph: "bulb-outline",
   },
   {
-    label: "Family",
+    labelKey: "family",
     searchTerm: "family",
     gradient: ["#A45EDB", "#FA709A"],
     glyph: "people-outline",
   },
   {
-    label: "Christmas",
+    labelKey: "christmas",
     searchTerm: "christmas",
     gradient: ["#DC2626", "#7F1D1D"],
     glyph: "star-outline",

@@ -36,6 +36,8 @@ import {
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
+import { useUiTag } from "../../hooks/useUiTag"
+import { useLocaleEpoch } from "../../i18n/useT"
 import { datadogLog } from "../../lib/datadog"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -122,6 +124,7 @@ export function HomeHeroPager({
   // R9/R10. Read here rather than taken as a prop: the hero must yield the
   // decoder on every route that mounts it, with no wiring to forget.
   const windowHoldsVideo = useMiniPlayerHoldsVideo()
+  const epoch = useLocaleEpoch()
 
   const pageHeight = heroHeight ?? Math.round(screenWidth * 1.2)
 
@@ -615,7 +618,7 @@ export function HomeHeroPager({
         data={state.slides}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}|${windowHoldsVideo}`}
+        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}|${windowHoldsVideo}|${epoch}`}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -708,10 +711,13 @@ const HeroPage = memo(function HeroPage({
   // Mux overlay copy is time-of-day sensitive — resolve at DISPLAY time
   // (Eastern-hour rule), not at queue-build time. Memoized per slide entry
   // (the intended display-time semantics; per-render recompute is wasteful).
+  const uiTag = useUiTag()
   const muxCopy = useMemo(
     () =>
-      slide.kind === "mux" ? muxSlideDisplayCopy(slide, new Date()) : null,
-    [slide],
+      slide.kind === "mux"
+        ? muxSlideDisplayCopy(slide, new Date(), uiTag)
+        : null,
+    [slide, uiTag],
   )
   const eyebrow = muxCopy?.label ?? slide.label
   const title = muxCopy?.title ?? slide.title

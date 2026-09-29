@@ -3,15 +3,15 @@ import { NativeTabs } from "expo-router/unstable-native-tabs"
 import { ACCENT, BG_COLOR, TEXT_SECONDARY as MUTED } from "../../src/lib/color"
 import { isExploreAvailable } from "../../src/lib/explore/availability"
 import {
-  TAB_LABELS,
   TAB_ROUTE_NAMES,
   type TabRouteName,
+  useTabLabels,
 } from "../../src/lib/tabBar"
 import { useTabBarHidden } from "../../src/lib/tabBarVisibility"
 
 /**
  * One SF Symbol per tab. The Record is exhaustive, so a new tab without an icon
- * stops compiling. The labels live in TAB_LABELS, shared with the Android bar.
+ * stops compiling. The labels come from useTabLabels, shared with Android.
  */
 const TAB_ICONS = {
   index: "house.fill",
@@ -34,6 +34,7 @@ const TAB_ICONS = {
  */
 export default function TabLayout() {
   const hidden = useTabBarHidden()
+  const labels = useTabLabels()
 
   return (
     <NativeTabs
@@ -64,9 +65,7 @@ export default function TabLayout() {
           disableAutomaticContentInsets
         >
           <NativeTabs.Trigger.Icon sf={TAB_ICONS[name]} />
-          <NativeTabs.Trigger.Label>
-            {TAB_LABELS[name]}
-          </NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>{labels[name]}</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       ))}
     </NativeTabs>

@@ -29,6 +29,7 @@ import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { prefetchHeroStream } from "../../hooks/useHeroStream"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { card as cardStyle, feedback } from "../../styles/shared"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -110,6 +111,7 @@ export const HomeCard = memo(function HomeCard({
 }: HomeCardProps) {
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("Home")
   const { width: screenWidth } = useWindowDimensions()
 
   const width = homeCardWidth(variant, screenWidth)
@@ -178,8 +180,8 @@ export const HomeCard = memo(function HomeCard({
       accessibilityHint={
         interactive
           ? isSeries
-            ? "Opens this series"
-            : "Opens this video"
+            ? t("opensSeriesAriaHint")
+            : t("opensVideoAriaHint")
           : undefined
       }
     >

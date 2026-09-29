@@ -19,6 +19,7 @@ import { useLocalSearchParams } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useTypography } from "../src/hooks/useTypography"
+import { useT } from "../src/i18n/useT"
 import {
   ACCENT_ON_DARK,
   BG_COLOR,
@@ -35,18 +36,8 @@ import {
   text,
 } from "../src/styles/shared"
 import {
-  BETA_CTA_LABEL,
   BETA_SIGNUP_URL,
   HIGHLIGHTS,
-  HIGHLIGHTS_LABEL,
-  INVITE_BODY,
-  INVITE_EYEBROW,
-  INVITE_HEADLINE_ACCENT,
-  INVITE_HEADLINE_PREFIX,
-  INVITE_HEADLINE_SUFFIX,
-  MISSION_EYEBROW,
-  MISSION_HEADLINE,
-  MISSION_INTRO,
   MISSION_POINTS,
   MISSION_WASH,
 } from "../src/components/home/missionContent"
@@ -55,8 +46,27 @@ import {
 // eyebrow clears it now that no native header reserves that space.
 const BACK_BUTTON_CLEARANCE = BACK_BUTTON_PROPS.topOffset + 40 + 14
 
+// A private-use character marks where the accent sits in the headline, so a
+// language can put it first, last, or in the middle.
+const ACCENT_MARK = "\uE000"
+const ISOLATE_MARKS = /[\u2068\u2069]/g
+
+function splitAtAccent(sentence: string): [string, string] {
+  const at = sentence.indexOf(ACCENT_MARK)
+  if (at < 0) return [sentence, ""]
+  // The translator isolates the value in a right-to-left catalog (KTD13).
+  return [
+    sentence.slice(0, at).replace(ISOLATE_MARKS, ""),
+    sentence.slice(at + ACCENT_MARK.length).replace(ISOLATE_MARKS, ""),
+  ]
+}
+
 export default function MissionScreen() {
   const typography = useTypography()
+  const t = useT("Mission")
+  const [headlineBefore, headlineAfter] = splitAtAccent(
+    t("inviteHeadline", { accent: ACCENT_MARK }),
+  )
   const insets = useSafeAreaInsets()
   const { section } = useLocalSearchParams<{ section?: string }>()
 
@@ -119,29 +129,29 @@ export default function MissionScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[text.eyebrow, styles.eyebrow, typography.caption]}>
-          {MISSION_EYEBROW}
+          {t("eyebrow")}
         </Text>
         <Text
           style={[styles.headline, typography.headingScale.h2]}
           accessibilityRole="header"
         >
-          {MISSION_HEADLINE}
+          {t("headline")}
         </Text>
-        <Text style={[styles.intro, typography.body]}>{MISSION_INTRO}</Text>
+        <Text style={[styles.intro, typography.body]}>{t("intro")}</Text>
 
         <View style={styles.cardStack}>
           {MISSION_POINTS.map((point) => (
-            <View key={point.title} style={styles.pointCard}>
+            <View key={point.titleKey} style={styles.pointCard}>
               <Ionicons
                 name={point.icon}
                 size={28}
                 color={hexToRgba(TEXT_PRIMARY, 0.4)}
               />
               <Text style={[styles.cardTitle, typography.titleSmall]}>
-                {point.title}
+                {t(point.titleKey)}
               </Text>
               <Text style={[styles.cardBody, typography.bodySmall]}>
-                {point.description}
+                {t(point.descriptionKey)}
               </Text>
             </View>
           ))}
@@ -152,11 +162,11 @@ export default function MissionScreen() {
           accessibilityRole="header"
           onLayout={handleRoadmapLayout}
         >
-          {HIGHLIGHTS_LABEL}
+          {t("highlightsHeading")}
         </Text>
         <View style={styles.cardStack}>
           {HIGHLIGHTS.map((highlight) => (
-            <View key={highlight.title} style={styles.highlightCard}>
+            <View key={highlight.titleKey} style={styles.highlightCard}>
               <Text
                 style={[
                   styles.cardTitle,
@@ -164,10 +174,10 @@ export default function MissionScreen() {
                   typography.titleSmall,
                 ]}
               >
-                {highlight.title}
+                {t(highlight.titleKey)}
               </Text>
               <Text style={[styles.cardBody, typography.bodySmall]}>
-                {highlight.description}
+                {t(highlight.descriptionKey)}
               </Text>
             </View>
           ))}
@@ -182,20 +192,20 @@ export default function MissionScreen() {
               typography.caption,
             ]}
           >
-            {INVITE_EYEBROW}
+            {t("inviteEyebrow")}
           </Text>
           <Text
             style={[styles.inviteHeadline, typography.headingScale.h3]}
             accessibilityRole="header"
           >
-            {INVITE_HEADLINE_PREFIX}
+            {headlineBefore}
             <Text style={styles.inviteHeadlineAccent}>
-              {INVITE_HEADLINE_ACCENT}
+              {t("inviteHeadlineAccent")}
             </Text>
-            {INVITE_HEADLINE_SUFFIX}
+            {headlineAfter}
           </Text>
           <Text style={[styles.inviteBody, typography.body]}>
-            {INVITE_BODY}
+            {t("inviteBody")}
           </Text>
           <Pressable
             onPress={handleBetaPress}
@@ -205,10 +215,11 @@ export default function MissionScreen() {
             ]}
             android_ripple={{ color: "rgba(0, 0, 0, 0.1)" }}
             accessibilityRole="button"
-            accessibilityLabel={BETA_CTA_LABEL}
+            accessibilityLabel={t("betaCta")}
+            {...{ "dd-action-name": "mission-beta-signup" }}
           >
             <Text style={[styles.betaButtonText, typography.body]}>
-              {BETA_CTA_LABEL}
+              {t("betaCta")}
             </Text>
           </Pressable>
         </View>

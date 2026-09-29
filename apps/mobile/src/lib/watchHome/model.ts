@@ -17,7 +17,7 @@ import {
   ENGLISH_ADMIN_FORMS,
   type AdminLanguageForms,
 } from "../../i18n/adminLanguage"
-import { getT } from "../../i18n/useT"
+import { getT, type UiT } from "../../i18n/useT"
 import { pickCardImage } from "../cardImage"
 import { labelText } from "../videoLabel"
 import {
@@ -164,13 +164,16 @@ function formatDuration(seconds: number): string {
  * wins over the label. Search passes an empty `label` — it wants no label
  * fallback — so callers must treat "" as "no chip".
  */
-export function buildMetaLabel(args: {
-  label: string
-  durationSeconds: number | null
-  childCount: number
-}): string | null {
+export function buildMetaLabel(
+  args: {
+    label: string
+    durationSeconds: number | null
+    childCount: number
+  },
+  t: UiT<"Home">,
+): string | null {
   if (args.childCount > 0) {
-    return `${args.childCount} ${args.childCount === 1 ? "episode" : "episodes"}`
+    return t("episodeCount", { count: args.childCount })
   }
   if (args.durationSeconds != null) {
     const duration = formatDuration(args.durationSeconds)
@@ -240,11 +243,14 @@ function normalizeCard(args: {
     descriptionLang: description?.lang ?? null,
     label,
     rawLabel: args.video.label ?? null,
-    metaLabel: buildMetaLabel({
-      label,
-      durationSeconds: args.video.durationSeconds ?? null,
-      childCount,
-    }),
+    metaLabel: buildMetaLabel(
+      {
+        label,
+        durationSeconds: args.video.durationSeconds ?? null,
+        childCount,
+      },
+      getT("Home"),
+    ),
     imageUrl,
     imageAlt: imageAlt?.text ?? title,
     playbackId,

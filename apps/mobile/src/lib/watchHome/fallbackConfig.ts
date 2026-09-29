@@ -4,6 +4,14 @@
  * Experience null / error / zero shelves (R6/R7) and is expected to drift. feat-160 retires it.
  */
 
+import { getT, type UiMessageKey } from "../../i18n/useT"
+
+// A shelf title is a getter, so the model built after a language change takes
+// the new catalog. Only titles render; eyebrows and descriptions are not drawn.
+function shelfTitle(key: UiMessageKey<"HomeShelves">): string {
+  return getT("HomeShelves")(key)
+}
+
 export type WatchHomeSourceConfig = {
   id: string
   limitChildren?: number
@@ -65,7 +73,9 @@ export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
     id: "home-video-gospels",
     layout: "rail",
     eyebrow: "Video Bible Collection",
-    title: "Discover the full story",
+    get title() {
+      return shelfTitle("fullStoryTitle")
+    },
     description:
       "Explore our collection of videos and resources that bring the Bible to life through engaging stories and teachings.",
     sources: collectionShowcaseSources,
@@ -74,7 +84,9 @@ export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
     id: "home-collection-showcase-grid",
     layout: "grid",
     eyebrow: "Video Bible Collection",
-    title: "Scripture Told Through Film",
+    get title() {
+      return shelfTitle("scriptureThroughFilmTitle")
+    },
     description:
       "Explore our collection of videos and resources that bring the Bible to life through engaging stories and teachings.",
     sources: collectionShowcaseSources,
@@ -84,7 +96,9 @@ export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
     id: "home-collection-showcase-grid-christmas-advent",
     layout: "grid",
     eyebrow: "Christmas Advent",
-    title: "Christmas Advent Countdown",
+    get title() {
+      return shelfTitle("adventCountdownTitle")
+    },
     description:
       "Join our Advent journey with a daily video that builds anticipation for Christmas, exploring the hope, joy, and promise of Jesus' arrival.",
     sources: christmasAdventShowcaseSources,
@@ -94,7 +108,9 @@ export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
     id: "home-collection-bibleproject-advent",
     layout: "grid",
     eyebrow: "Bible Project",
-    title: "BibleProject Advent",
+    get title() {
+      return shelfTitle("bibleProjectAdventTitle")
+    },
     primaryCollectionId: "11_Advent",
     orientation: "vertical",
     childLimit: 12,
@@ -103,6 +119,7 @@ export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
     id: "home-collection-nua",
     layout: "grid",
     eyebrow: "NUA Series",
+    // A series name, the same in every language, so it stays out of the catalog.
     title: "NUA",
     primaryCollectionId: "7_0-ncs",
     childLimit: 12,
@@ -111,6 +128,7 @@ export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
     id: "home-collection-nua-origins-worth",
     layout: "grid",
     eyebrow: "Worth Series",
+    // A series name, the same in every language, so it stays out of the catalog.
     title: "NUA Worth",
     primaryCollectionId: "7_Origins2Worth",
     childLimit: 12,
@@ -119,14 +137,18 @@ export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
     id: "home-collection-new-believer-course",
     layout: "grid",
     eyebrow: "Video Course",
-    title: "Journey with Jesus",
+    get title() {
+      return shelfTitle("journeyWithJesusTitle")
+    },
     sources: newBelieverCourse,
   },
   {
     id: "home-collection-showcase-grid-vertical",
     layout: "grid",
     eyebrow: "Every Gospel, Told on Video",
-    title: "Scripture, Spoken Exactly as Written",
+    get title() {
+      return shelfTitle("scriptureAsWrittenTitle")
+    },
     description:
       "Explore our collection of videos and resources that bring the Bible to life through engaging stories and teachings.",
     sources: collectionLumo,

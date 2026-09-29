@@ -14,7 +14,7 @@ import { useIsFocused, useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { currentAdminForms } from "../../src/i18n/adminLanguage"
-import { useLocaleEpoch } from "../../src/i18n/useT"
+import { useLocaleEpoch, useT } from "../../src/i18n/useT"
 import { getApolloClient } from "../../src/lib/apolloClient"
 import { datadogLog, reportDatadogAction } from "../../src/lib/datadog"
 import {
@@ -36,8 +36,10 @@ import {
   MAX_QUERY_LENGTH,
   buildWatchSearchInput,
   mapWatchSearchResponse,
-  parseSearchError,
+  searchErrorKind,
+  searchErrorMessage,
   searchLanguageFor,
+  type SearchErrorKind,
   type SearchLanguage,
 } from "../../src/lib/watchSearch"
 import {
@@ -75,6 +77,7 @@ const SKELETON_DELAY_MS = 500
 const MAX_PREFETCH_INFLIGHT = 3
 
 export default function DiscoverScreen() {
+  const t = useT("Discover")
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const tabBarClearance = useTabBarClearance()
@@ -190,7 +193,8 @@ export default function DiscoverScreen() {
   const [loading, setLoading] = useState(false)
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // The kind, not the text, so an error on screen follows a language change.
+  const [error, setError] = useState<SearchErrorKind | null>(null)
   // Which request failed, so the footer Retry re-runs the search instead of
   // paging a query the visible results don't belong to.
   const [errorSource, setErrorSource] = useState<"search" | "page">("search")
@@ -485,7 +489,7 @@ export default function DiscoverScreen() {
         fadeAnim.setValue(1)
         scaleAnim.setValue(1)
         setErrorSource("search")
-        setError(parseSearchError(e))
+        setError(searchErrorKind(e))
         // warn, not error — two constraints: benign rate-limits share this
         // path (R34), and error-level logs copy every attribute incl.
         // watch_search.query into RUM errors, outside the R43 Logs posture.
@@ -641,7 +645,7 @@ export default function DiscoverScreen() {
     } catch (e: unknown) {
       if (requestIdRef.current !== thisRequest) return
       setErrorSource("page")
-      setError(parseSearchError(e))
+      setError(searchErrorKind(e))
       // warn, not error: R34 benign rate-limits + the R43 level constraint
       // (see the search catch); no impressions on failure (F2).
       datadogLog.warn(
@@ -734,11 +738,11 @@ export default function DiscoverScreen() {
             style={styles.input}
             value={query}
             onChangeText={handleChangeText}
-            placeholder="Search for videos about any topic..."
+            placeholder={t("searchPlaceholder")}
             placeholderTextColor={TEXT_SECONDARY}
             // The screen no longer has a "Search" heading; keep the field
             // named for VoiceOver once typed text replaces the placeholder.
-            accessibilityLabel="Search"
+            accessibilityLabel={t("searchFieldAriaLabel")}
             returnKeyType="search"
             autoCapitalize="none"
             autoCorrect={false}
@@ -750,7 +754,8 @@ export default function DiscoverScreen() {
               onPress={handleClear}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Clear search"
+              accessibilityLabel={t("clearSearchAriaLabel")}
+              {...{ "dd-action-name": "discover-search-clear" }}
             >
               <Ionicons name="close-circle" size={20} color={TEXT_SECONDARY} />
             </Pressable>
@@ -775,19 +780,21 @@ export default function DiscoverScreen() {
         {!loading && searched && results.length === 0 && !error && (
           <View style={styles.emptyState}>
             <Text style={styles.noResultsTitle}>
-              No results for &apos;{query.trim()}&apos;
+              {t("noResultsTitle", { query: query.trim() })}
             </Text>
-            <Text style={styles.noResultsBody}>
-              Try different keywords or browse experiences
-            </Text>
+            <Text style={styles.noResultsBody}>{t("noResultsBody")}</Text>
           </View>
         )}
 
         {error && results.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Text style={styles.retryLink} onPress={() => search(query)}>
-              Retry
+            <Text style={styles.errorText}>{searchErrorMessage(error, t)}</Text>
+            <Text
+              style={styles.retryLink}
+              onPress={() => search(query)}
+              {...{ "dd-action-name": "discover-search-retry" }}
+            >
+              {t("retry")}
             </Text>
           </View>
         )}
@@ -805,6 +812,8 @@ export default function DiscoverScreen() {
               data={results}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
+              // Recycled cells take the new language on a catalog change.
+              extraData={epoch}
               numColumns={2}
               keyboardDismissMode="on-drag"
               onViewableItemsChanged={handleViewableItemsChanged}
@@ -819,7 +828,9 @@ export default function DiscoverScreen() {
                 <>
                   {error && (
                     <View style={styles.inlineError}>
-                      <Text style={styles.errorText}>{error}</Text>
+                      <Text style={styles.errorText}>
+                        {searchErrorMessage(error, t)}
+                      </Text>
                       {/* A failed search leaves the PREVIOUS query's results up,
                           so retrying must re-run the search — paging here would
                           append a different query onto them. */}
@@ -830,8 +841,9 @@ export default function DiscoverScreen() {
                             ? loadMore
                             : () => search(query)
                         }
+                        {...{ "dd-action-name": "discover-search-retry" }}
                       >
-                        Retry
+                        {t("retry")}
                       </Text>
                     </View>
                   )}
@@ -841,8 +853,9 @@ export default function DiscoverScreen() {
                         style={styles.loadMoreButton}
                         onPress={loadMore}
                         suppressHighlighting={loadingMore}
+                        {...{ "dd-action-name": "discover-load-more" }}
                       >
-                        {loadingMore ? "Loading..." : "Load more"}
+                        {loadingMore ? t("loadingMore") : t("loadMore")}
                       </Text>
                     </View>
                   )}

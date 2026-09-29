@@ -28,7 +28,14 @@
     "Sections": "Content blocks that editors arrange on a story page: video cards, video rows, a row of story links, a faith quiz button, and a muted video at the top. It also holds the video and collection pages that open from those blocks, and their error messages.",
     "BibleQuotes": "A row of cards on the watch page, each with a Bible verse that the video cites. The last card invites the viewer to a free Bible study. Book names and Bible text come from each translation, not from these strings.",
     "StudyQuestions": "A list of study questions about the video on the watch page. The viewer opens a question to read its answer. When a question has no answer, the app offers a chat with a person or a way to send a Bible question.",
-    "ListSheet": "A sheet with a search field and a list of choices, such as languages, subtitles, or Bible translations. The current choice shows at the top. It also holds the loading and error states of a sheet."
+    "ListSheet": "A sheet with a search field and a list of choices, such as languages, subtitles, or Bible translations. The current choice shows at the top. It also holds the loading and error states of a sheet.",
+    "Tabs": "The labels of the five tabs in the bar at the bottom of every main screen. The iOS tab bar cuts off a long label and no setting can widen it, so each label must be one short word where the language allows.",
+    "Home": "The Home tab: a large hero video at the top with a Watch Now button and a sound button, a row of small hero cards under it, rows of video cards, and the loading, error, and empty states. The episode count also shows on the video cards in search results.",
+    "HomeHero": "The promotional slides in the Home hero, between the video slides. Each slide has a short label that shows in capital letters above the title, a title, a description, and sometimes a button that opens a web page. Some titles greet the viewer by the time of day.",
+    "HomeShelves": "The titles of the built-in rows of videos that Home shows when it cannot load its curated page.",
+    "Discover": "The search tab: a search field, a grid of video results, a button that loads more results, and the messages for no results and for a failed search.",
+    "BrowseTopics": "The topic cards that the search tab shows before the viewer types. Each card names a topic of Christian videos, and a tap searches that topic.",
+    "Mission": "The mission page and the three mission cards at the bottom of Home. The page describes the ministry's video library, the tools it builds next, and an invitation to test new tools early. An eyebrow is a short line in capital letters above a heading."
   },
   "keys": {
     "Common.goBackAriaLabel": {
@@ -306,6 +313,88 @@
       "role": "list row accessibility label",
       "visibility": "assistive technology only",
       "composition": "{name} is the name of a choice, such as a language, and {status} is a short state, such as Downloaded. Keep only the separator that the language uses between two phrases."
+    },
+    "Tabs.home": {
+      "role": "tab bar label",
+      "composition": "The tab that opens the Home screen. Use one short word where the language allows: the iOS tab bar cuts off a long label."
+    },
+    "Tabs.explore": {
+      "role": "tab bar label",
+      "composition": "The tab that opens a feed of short video clips to explore, one after another. Use one short word where the language allows: the iOS tab bar cuts off a long label."
+    },
+    "Tabs.search": {
+      "role": "tab bar label",
+      "composition": "The tab that opens the search screen. Use one short word where the language allows: the iOS tab bar cuts off a long label."
+    },
+    "Tabs.bible": {
+      "role": "tab bar label",
+      "composition": "The tab that opens the Bible reader. Use one short word where the language allows: the iOS tab bar cuts off a long label."
+    },
+    "Tabs.profile": {
+      "role": "tab bar label",
+      "composition": "The tab that opens the viewer's account and downloaded videos. Use one short word where the language allows: the iOS tab bar cuts off a long label."
+    },
+    "Common.searchAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "A round button in the top bar that opens the search tab."
+    },
+    "Common.profileAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "A round button in the top bar that opens the Profile tab."
+    },
+    "Common.comingSoon": {
+      "role": "status line",
+      "composition": "Shows under the title of a screen that is not ready yet."
+    },
+    "Home.watchNowAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{title} is the title of the video in the hero."
+    },
+    "Home.slidePositionAriaLabel": {
+      "role": "page indicator accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "Tells which hero slide shows, for example Slide 2 of 7."
+    },
+    "Home.featuredFallbackTitle": {
+      "composition": "Shows under a small hero card when its slide has no title. Keep it short."
+    },
+    "Home.episodeCount": {
+      "role": "badge on a video card",
+      "composition": "The number of episodes in a series. Keep it short."
+    },
+    "Home.shelfAriaLabel": {
+      "role": "list accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{shelf} is the title of a row of videos or cards."
+    },
+    "HomeHero.joinUsAction": {
+      "role": "button caption",
+      "composition": "Opens a web page where the viewer can join the mission."
+    },
+    "HomeHero.togetherAction": {
+      "role": "button caption",
+      "composition": "Opens a web page about partnering with the ministry."
+    },
+    "Discover.noResultsTitle": {
+      "composition": "{query} is the text that the viewer typed. Put it in the quotation marks of the language. In this message format, two apostrophes ('') print one apostrophe."
+    },
+    "Discover.loadingMore": {
+      "role": "button caption",
+      "composition": "Takes the place of loadMore on the same button while more results load."
+    },
+    "BrowseTopics.searchTopicAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{topic} is one of the topic names in this list, for example Parables. A tap searches that topic."
+    },
+    "Mission.inviteHeadline": {
+      "composition": "{accent} is inviteHeadlineAccent (the next generation), which shows in color. Put {accent} where it belongs in the sentence."
+    },
+    "Mission.inviteHeadlineAccent": {
+      "composition": "Fills {accent} in inviteHeadline, so it must fit that sentence."
     }
   }
 }

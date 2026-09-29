@@ -179,8 +179,6 @@ import { HomeScreen } from "../HomeScreen"
 import {
   RecommendationsShelf,
   RECOMMENDATION_CARD_ACTION_NAME,
-  RECOMMENDATIONS_SHELF_LOADING_LABEL,
-  RECOMMENDATIONS_SHELF_TITLE,
   RECOMMENDATIONS_SKELETON_CARD_TEST_ID,
   type RecommendationsShelfProps,
 } from "../RecommendationsShelf"
@@ -198,6 +196,10 @@ import type {
 } from "../../../lib/recommendations/delivery"
 import { decodeWatchSeed } from "../../../lib/watchSeed"
 import type { HomeFeedItem } from "../../../lib/watchHome/homeFeed"
+
+// The English catalog text (U10). Literals, so an English change fails here.
+const RECOMMENDATIONS_SHELF_TITLE = "Recommended for You"
+const RECOMMENDATIONS_SHELF_LOADING_LABEL = "Loading recommendations"
 import type {
   WatchHomeModel,
   WatchHomeSection,

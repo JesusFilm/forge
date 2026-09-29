@@ -15,6 +15,7 @@ import {
 
 import type { WatchHomeCard, WatchHomeSection } from "../../lib/watchHome/model"
 import { useTypography } from "../../hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { carousel, layout, text, CARD_GAP } from "../../styles/shared"
 import { HomeCard, homeCardWidth, type HomeCardVariant } from "./HomeCard"
 
@@ -28,6 +29,8 @@ export type HomeShelfProps = {
 
 export const HomeShelf = memo(function HomeShelf({ section }: HomeShelfProps) {
   const typography = useTypography()
+  const t = useT("Home")
+  const epoch = useLocaleEpoch()
   const { width: screenWidth } = useWindowDimensions()
 
   const variant: HomeCardVariant =
@@ -56,13 +59,17 @@ export const HomeShelf = memo(function HomeShelf({ section }: HomeShelfProps) {
         data={section.cards}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
+        extraData={epoch}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={carousel.listContent}
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
-        accessibilityLabel={`${section.cards.length} items in ${section.title}`}
+        accessibilityLabel={t("shelfAriaLabel", {
+          count: section.cards.length,
+          shelf: section.title,
+        })}
       />
     </View>
   )

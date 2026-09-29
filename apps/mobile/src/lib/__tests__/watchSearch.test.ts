@@ -7,11 +7,17 @@ import {
   buildWatchSearchInput,
   mapWatchSearchResponse,
   mapWatchSearchResult,
-  parseSearchError,
+  searchErrorKind,
+  searchErrorMessage,
   searchLanguageFor,
   stripHtml,
 } from "../watchSearch"
 import { adminFormsFor } from "../../i18n/adminLanguage"
+import { getT } from "../../i18n/useT"
+
+// The screen's two steps in one, so each case still pins the English copy.
+const parseSearchError = (error: unknown) =>
+  searchErrorMessage(searchErrorKind(error), getT("Discover"))
 
 // Admin returns every watchSearch field nullable; the UI reads slug/title/type/id
 // unconditionally. These cover the narrowing at that seam.

@@ -19,6 +19,7 @@ import { useRouter } from "expo-router"
 import { useGuardedViewabilityCallback } from "../../hooks/useGuardedViewabilityCallback"
 import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
 import { useTypography } from "../../hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import {
   isSlateExpired,
   type UserRecommendationItem,
@@ -40,12 +41,6 @@ import {
 import { HomeCard, homeCardHeight, homeCardWidth } from "./HomeCard"
 
 // ── Constants ───────────────────────────────────────────────────────────────
-
-/** R4: the app's own string. The block's authored title is not read (KD8). */
-export const RECOMMENDATIONS_SHELF_TITLE = "Recommended for You"
-
-/** What a screen reader hears while the skeleton pulses. */
-export const RECOMMENDATIONS_SHELF_LOADING_LABEL = "Loading recommendations"
 
 export const RECOMMENDATIONS_SKELETON_CARD_TEST_ID =
   "recommendations-skeleton-card"
@@ -148,6 +143,7 @@ function RecommendationsShelfSkeleton({
   pulsing: boolean
   screenWidth: number
 }) {
+  const t = useT("Home")
   const opacity = useShimmerOpacity(pulsing)
   const size = {
     width: homeCardWidth("landscape", screenWidth),
@@ -158,8 +154,9 @@ function RecommendationsShelfSkeleton({
       style={[carousel.listContent, styles.skeletonRow]}
       accessible={pulsing}
       accessibilityRole={pulsing ? "progressbar" : undefined}
+      // What a screen reader hears while the skeleton pulses.
       accessibilityLabel={
-        pulsing ? RECOMMENDATIONS_SHELF_LOADING_LABEL : undefined
+        pulsing ? t("recommendationsLoadingAriaLabel") : undefined
       }
       accessibilityElementsHidden={!pulsing}
       importantForAccessibility={pulsing ? "yes" : "no-hide-descendants"}
@@ -189,9 +186,13 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
   onRefresh,
 }: RecommendationsShelfProps) {
   const typography = useTypography()
+  const t = useT("Home")
+  const epoch = useLocaleEpoch()
   const router = useRouter()
   const { width: screenWidth } = useWindowDimensions()
   const cardWidth = homeCardWidth("landscape", screenWidth)
+  // R4: the app's own string. The block's authored title is not read (KD8).
+  const title = t("recommendedTitle")
 
   // R7: FlashList mounts this row within its draw distance, so the first mount
   // is the deferred-fetch signal. Home owns the latch, this only reports.
@@ -312,7 +313,7 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
       style={[text.sectionHeadingPadded, typography.titleSmall]}
       accessibilityRole="header"
     >
-      {RECOMMENDATIONS_SHELF_TITLE}
+      {title}
     </Text>
   )
 
@@ -338,6 +339,7 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
         data={rows}
         renderItem={renderItem}
         keyExtractor={(row) => row.id}
+        extraData={epoch}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={carousel.listContent}
@@ -346,7 +348,10 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
         decelerationRate="fast"
         onViewableItemsChanged={handleViewableItemsChanged}
         viewabilityConfig={IMPRESSION_VIEWABILITY_CONFIG}
-        accessibilityLabel={`${items.length} items in ${RECOMMENDATIONS_SHELF_TITLE}`}
+        accessibilityLabel={t("shelfAriaLabel", {
+          count: items.length,
+          shelf: title,
+        })}
       />
     </View>
   )
