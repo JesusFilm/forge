@@ -3,7 +3,7 @@ id: "feat-577"
 title: "Bound Core sync workflow steps to prevent overlapping retries"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-30"
 duration: 3
 depends_on: []
@@ -53,4 +53,21 @@ a phase; it does not forcibly interrupt an already-running phase.
 Test real Postgres concurrent enqueue, exclusive workers, dead-owner recovery,
 completed-result replay, failed-phase watermark preservation, and first-import
 cross-page series links. Test bounded Workflow polling and importer/backfill
-regressions. Production deploy and daily schedule verification remain required.
+regressions. Verify the production deployment and daily schedule.
+
+## Completion evidence
+
+PR #2493 deployed through main. CI passed 7,819 Admin tests and the build,
+schema, lint, formatting, and database checks. Six focused tests also passed
+against real PostgreSQL, covering concurrent enqueue, worker exclusion,
+recovery, completed-result replay, failure watermarks, and cross-page links.
+
+Production workflow `wrun_01M3QN1PG8MNWBKXNG5JHB4M7J` performed a full Videos
+import. The initial execution continued beyond five minutes without an HTTP
+retry. An unrelated worker deployment interrupted it; the same run/phase row
+recovered on attempt `2` and completed with 1,134 updates and zero errors at
+`2026-09-29T23:03:42Z`. The successful attempt lasted 741,181 ms. The workflow
+ledger reached SUCCEEDED, released its lock, and queued catalog publication
+version `3`. No manual phase completion or lock clearing was used.
+
+The native daily schedule remains 07:00 UTC (20:00 NZDT / 19:00 NZST).

@@ -1,7 +1,7 @@
 ---
 title: "Recover Breaking Point on Watch"
 type: fix
-status: active
+status: complete
 date: 2026-09-30
 ---
 
@@ -32,11 +32,13 @@ operator acceptance and promoting it. Preserve actual failing and missing
 gate results; never label an incomplete evaluation qualified. Serving pointer
 and environment selector must be coordinated through the normal release flow.
 
-Current evidence and the exact remaining release sequence are in
-`apps/admin/docs/breaking-point-watch-recovery.md`. Content, routes, playback,
-snapshot construction, development evaluation, and the single held-out run
-are complete. Operator acceptance of failed/missing gates remains pending;
-the public serving pin is unchanged.
+The manual qualification checkpoint in
+`apps/admin/docs/breaking-point-watch-recovery.md` is historical. Its failed and
+missing gates remain failed and missing; no operator acceptance was submitted.
+The later authorized content-delivery implementation in PR #2493 supersedes
+that release sequence. See `2026-09-30-automatic-core-watch-publication.md` for
+actual publication evidence. Public Watch search now shows the series and all
+four episodes while the qualified engine baseline remains unchanged.
 
 Acceptance: searching `Breaking Point` on Watch returns Holly's series, its
 public route presents all four episodes, and episode playback is available.

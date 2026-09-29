@@ -97,6 +97,21 @@ subsequently authorized ordinary automatic catalog publication and durable
 import execution (feat-579/577). Track deployment and actual public verification
 in feat-578; the old broad evaluation does not become passing evidence.
 
+PR #2493 subsequently deployed automatic catalog publication. Its first
+request built `core-catalog-6eac2756e41ad0517ca9b31b1cf9c68f` and acknowledged
+both search and Web delivery at `2026-09-29T22:35:24Z`. Canonical-origin public
+search and the Watch UI returned Breaking Point first, followed by all four
+episodes. Autocomplete also contained them. Playback from the newly indexed
+Jesus episode route (`bp-3-jesus`) advanced with no media error. The existing
+SERVING baseline and EVALUATION pointers did not move.
+
+The first complete publication took about 4 minutes 23 seconds for this catalog.
+An executed metadata backfill then queued another request automatically; its
+unchanged content digest reused the READY index and completed both deliveries
+in about 46 seconds. The 30-second poll is not an end-to-end visibility promise.
+Forge imports published Core data daily at 07:00 UTC; it does not control when
+editors upload or publish content in Core.
+
 ## Why This Works
 
 The public importer needs the already-filtered Watch projection; selecting a
@@ -118,6 +133,18 @@ concurrent native workers. Real database testing caught a Prisma compound-key
 upsert race, now handled by reading the winning unique execution record. A
 worker restart reruns the idempotent phase, with a bounded restart count; it does
 not resume at an exact page offset. Keep old workflow entry points during rollout.
+
+The production verification exercised this recovery during an unrelated main
+deployment: the same run/phase row advanced from one attempt to two after the
+worker restarted. Long full replays still benefit from a quiet deployment
+window because each restart repeats the phase and consumes the bounded recovery
+allowance. A rollout-induced restart is distinct from the former HTTP timeout
+that started overlapping phase bodies every five minutes.
+
+The recovered phase completed all 1,134 updates with zero errors in 741,181 ms.
+Its workflow reached SUCCEEDED and automatically queued publication version `3`.
+Both search and Web acknowledged that version by `2026-09-29T23:04:40Z`, with
+no publication retries or error; the final public search remained healthy.
 
 Successful imports/backfills queue durable delivery. Separate search and Web
 acknowledgments make failures retryable, including absent Web credentials.
