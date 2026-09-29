@@ -1,8 +1,5 @@
-/**
- * The no-downloads message (R9, KTD11). My Watch shows it full-page and the
- * Downloads screen shows it after the viewer deletes everything. The copy is
- * the owner's, so the suite pins it byte for byte.
- */
+/** The no-downloads message (R9, KTD11), on My Watch and on the Downloads
+ *  screen. The copy is the owner's, so the suite pins it byte for byte. */
 
 // apps/mobile's tsconfig maps `react` to its .d.ts. These mocks re-point
 // `react` at the real package (see apps/mobile/CLAUDE.md "Component render tests").

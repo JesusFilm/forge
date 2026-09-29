@@ -108,10 +108,8 @@ function compareRanked(a: RankedTile, b: RankedTile): number {
   )
 }
 
-/**
- * The My Watch Downloads rail (KTD4): series and single videos in one order,
- * newest first, capped. A one-episode series becomes a video tile (R21).
- */
+/** The My Watch Downloads rail (KTD4): series and single videos in one order,
+ *  newest first, capped. A one-episode series becomes a video tile (R21). */
 export function buildMyWatchRail(
   records: readonly OfflineDownloadRecord[],
 ): MyWatchRailTile[] {

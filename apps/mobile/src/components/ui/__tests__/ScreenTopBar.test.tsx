@@ -1,8 +1,6 @@
-/**
- * The shared top bar for My Watch and the three screens it opens (KTD2): a
- * header title, an optional back control with a navigate fallback, and an
- * optional trailing action. Every control is a 44pt target.
- */
+/** The shared top bar for My Watch and the three screens it opens (KTD2): a
+ *  header title, an optional back control with a navigate fallback, and an
+ *  optional trailing action. Every control is a 44pt target. */
 
 // apps/mobile's tsconfig maps `react` to its .d.ts. These mocks re-point
 // `react` at the real package (see apps/mobile/CLAUDE.md "Component render tests").
