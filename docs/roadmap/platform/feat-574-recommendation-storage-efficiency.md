@@ -50,3 +50,10 @@ Native PostgreSQL exact-value/reader/expiry tests and physical table/index/TOAST
 benchmarks; relevant unit/type/lint/migration/format checks; independent review;
 normal PR-to-main deployment and actual fleet health and filesystem measurements.
 Keep status in progress until the full intended production result is verified.
+
+## September 30 Rollout Evidence
+
+See `docs/reports/2026-09-30-recommendation-storage-rollout.md` for reviewed PRs,
+actual deployment state, the finite retirement pilot and open activation gates.
+This ticket remains in progress. Local byte reductions and row deletion are not
+credited as production filesystem savings.

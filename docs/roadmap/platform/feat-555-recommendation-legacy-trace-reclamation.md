@@ -157,3 +157,15 @@ processes drained. The last observed legacy write was September 27 at
 retention will have cleared every row at that instant. Recheck the live writer
 fleet, last legacy timestamp, and exact emptiness before any reclamation.
 Evidence: `docs/reports/2026-09-28-production-db-storage/production-rollout.md`.
+
+## September 30 Authorized Exception
+
+Feat-575 (formerly feat-572) separately permits finite early retirement of
+unprotected legacy stage detail while preserving exact protected observations,
+request roots, served items and ordinary privacy expiry. The first ten-run pilot
+removed 1,063 stage rows with zero immediate filesystem savings; see
+`docs/reports/2026-09-30-recommendation-storage-rollout.md`. This supersedes the
+expiry-only route solely for that explicitly reviewed category. Remaining
+protected/uncertain legacy detail still blocks reclamation until converted under
+separate review or normally expired. All exact-emptiness, fleet, locking,
+loaded-retention, capacity and separately reviewed deployment gates remain.
