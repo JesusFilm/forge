@@ -65,7 +65,7 @@ export type DevotionalAgentLlms = {
   highlights?: DevotionalLlm
 }
 
-function modelFor(agent: DevotionalAgent): string {
+export function modelFor(agent: DevotionalAgent): string {
   return DEVOTIONAL_AGENT_MODELS[agent] || getDevotionalModel()
 }
 

@@ -30,6 +30,14 @@ describe("checkReflectionVoice", () => {
       ])
     })
 
+    it("lets narration through when the leading clause has its own subject", () => {
+      // The elder son's record, not an order (2026-09-29 false positive).
+      expect(reasons("He had stayed, never disobeyed, never left.")).toEqual([])
+      expect(
+        reasons("In every storm, remember that Jesus is with you."),
+      ).toEqual(["command"])
+    })
+
     it("catches 'let us' and 'ask yourself'", () => {
       expect(reasons("Let us hold these doctrines firmly.")).toEqual([
         "command",

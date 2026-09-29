@@ -260,6 +260,8 @@ export type ReviewNarrativeInput = {
   conclusion: string
   question: string
   prayer: string
+  /** The message the piece was written to serve (message-first path). */
+  message?: { idea: string; tension: string }
   llm: DevotionalLlm
 }
 
@@ -274,6 +276,13 @@ export function buildNarrativeUserPrompt(input: ReviewNarrativeInput): string {
   return [
     `SCENE: ${input.sceneTitle}`,
     `VERSE ON SCREEN (${input.scripture.reference}): ${input.scripture.text}`,
+    ...(input.message
+      ? [
+          `INTENDED MESSAGE: ${input.message.idea}`,
+          `ITS TENSION: ${input.message.tension}`,
+          "Judge the line against this message: a paragraph that does not serve it is a tangent. If the message itself is not what the passage says, report that as contradicts-story on paragraph 0.",
+        ]
+      : []),
     "",
     "REFLECTION, paragraph by paragraph:",
     ...input.paragraphs.map(

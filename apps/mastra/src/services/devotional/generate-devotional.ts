@@ -79,6 +79,9 @@ export type ReflectionParagraph = {
   text: string
   voice?: DevotionalVoiceName
   mark?: SourceMark
+  /** What the paragraph draws on (message-first writer): the fidelity check
+   *  compares only the `classic` paragraphs with the commentary. */
+  role?: "reflection" | "history" | "language" | "classic"
 }
 
 /** The non-reflection segments an authored devotional can voice separately. */
@@ -102,6 +105,15 @@ export type GeneratedDevotional = {
    *  of assuming it matches the full passage. Best-effort: absent when no
    *  subtitle track was published or the fetch failed, in which case every
    *  consumer falls back to its pre-existing, transcript-free behavior. */
+  /** The message the text was written to serve (message-first path,
+   *  feat-572): later agents and the narrative editor receive it. */
+  message?: {
+    idea: string
+    tension: string
+    askDirection: string
+    grounding: string
+    classicPoints?: number[]
+  }
   clipTranscript?: string
   reflection: {
     text: string
@@ -165,6 +177,15 @@ export const GeneratedDevotionalSchema = z.object({
   clip: z.object({ index: z.number(), id: z.string(), title: z.string() }),
   passage: z.object({ reference: z.string(), osisRef: z.string() }),
   title: z.string(),
+  message: z
+    .object({
+      idea: z.string(),
+      tension: z.string(),
+      askDirection: z.string(),
+      grounding: z.string(),
+      classicPoints: z.array(z.number()).optional(),
+    })
+    .optional(),
   clipTranscript: z.string().optional(),
   scripture: z.object({
     reference: z.string(),
@@ -191,6 +212,9 @@ export const GeneratedDevotionalSchema = z.object({
               portrait: z.enum(["ryle", "scroll", "book"]).optional(),
               evidence: z.string().optional(),
             })
+            .optional(),
+          role: z
+            .enum(["reflection", "history", "language", "classic"])
             .optional(),
         }),
       )

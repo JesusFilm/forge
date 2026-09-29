@@ -62,6 +62,9 @@ export class DevotionalQualityGateError extends Error {
 export type DevotionalReview = {
   /** Human-readable reasons the text should not ship. Empty = clean. */
   blocking: string[]
+  /** The specific findings behind `blocking`, each with the check's own
+   *  suggested fix, for a writer to act on (message-first path). */
+  problems: string[]
 }
 
 export type ReviewDevotionalTextInput = {
@@ -87,6 +90,7 @@ export async function reviewDevotionalText(
   const d = input.devotional
   const log = input.log ?? (() => {})
   const blocking: string[] = []
+  const problems: string[] = []
 
   // Deterministic voice rules FIRST: they cost nothing, they never flake, and
   // a run that trips them is going to be regenerated anyway — no reason to buy
@@ -100,6 +104,7 @@ export async function reviewDevotionalText(
   })
   for (const f of voice) {
     log(`   ⛔ [voice/${f.rule}] ${f.why}\n      “${f.sentence}”`)
+    problems.push(`voice/${f.rule}: “${f.sentence}”. ${f.why}`)
   }
   if (voice.length > 0) {
     const rules = [...new Set(voice.map((f) => f.rule))].join(", ")
@@ -154,6 +159,8 @@ export async function reviewDevotionalText(
   )
   for (const i of depth.issues) {
     log(`   ⚠️ [${i.severity}/${i.kind}] ${i.problem}\n      → ${i.suggestion}`)
+    if (i.severity === "high")
+      problems.push(`depth/${i.kind}: ${i.problem} Fix: ${i.suggestion}`)
   }
   if (depth.skipped) blocking.push("depth check could not run")
   else if (!depth.solid || depth.depthScore <= DEPTH_SCORE_FLOOR) {
@@ -181,6 +188,7 @@ export async function reviewDevotionalText(
     conclusion: d.conclusion,
     question: d.question,
     prayer: d.prayer,
+    ...(d.message ? { message: d.message } : {}),
     llm:
       input.narrativeLlm ??
       createAgentLlm(narrativeEditorAgent, narrativeEditorModel()),
@@ -188,6 +196,16 @@ export async function reviewDevotionalText(
   log(`✍️  narrative: ${narrative.summary}`)
   if (narrative.throughline) log(`   line: ${narrative.throughline}`)
   for (const i of narrative.issues) {
+    // Medium tangents and repetitions go back too: they are the editor's
+    // clearest calls, and a writer that never hears them repeats them.
+    if (
+      i.severity === "high" ||
+      (i.severity === "medium" &&
+        (i.kind === "tangent" || i.kind === "repetition"))
+    )
+      problems.push(
+        `narrative/${i.kind} in paragraph ${i.paragraph}: “${i.quote}”. Fix: ${i.fix === "cut" ? "cut it" : `replace with “${i.replacement}”`} (${i.why})`,
+      )
     log(
       `   ${i.severity === "high" ? "⛔" : "✂️"} [${i.severity}/${i.kind}] ¶${i.paragraph}: “${i.quote}”\n` +
         `      → ${i.fix === "cut" ? "cut" : `“${i.replacement}”`} (${i.why})`,
@@ -204,12 +222,20 @@ export async function reviewDevotionalText(
   // An authored devotional credits several sources; the commentary excerpt
   // covers only the paragraphs under ITS credit. Checking the history and
   // language notes against Ryle would flag every one of them as invented.
-  const fidelityText = d.reflection.paragraphs?.some((p) => p.mark)
-    ? paragraphs
-        .filter((p) => p.evidence === d.reflection.sourceExcerpt)
+  // When the writer tagged its paragraphs, only those that retell the
+  // commentator are his: a credit carries forward on screen, but the writer's
+  // own application after it is not Ryle's and must not be judged as if it were.
+  const fidelityText = d.reflection.paragraphs?.some((p) => p.role)
+    ? d.reflection.paragraphs
+        .filter((p) => p.role === "classic")
         .map((p) => p.text)
         .join("\n\n")
-    : d.reflection.text
+    : d.reflection.paragraphs?.some((p) => p.mark)
+      ? paragraphs
+          .filter((p) => p.evidence === d.reflection.sourceExcerpt)
+          .map((p) => p.text)
+          .join("\n\n")
+      : d.reflection.text
   if (input.checkFidelity && d.reflection.sourceExcerpt && fidelityText) {
     const fidelity = await critiqueReflectionFidelity({
       sourceExcerpt: d.reflection.sourceExcerpt,
@@ -221,6 +247,8 @@ export async function reviewDevotionalText(
       `📜 source fidelity: ${fidelity.faithful ? "OK" : "ISSUES FOUND"} — ${fidelity.summary}`,
     )
     for (const i of fidelity.issues) {
+      if (i.severity === "high")
+        problems.push(`fidelity/${i.kind}: ${i.problem} Fix: ${i.suggestion}`)
       log(
         `   ⚠️ [${i.severity}/${i.kind}] ${i.problem}\n      → ${i.suggestion}`,
       )
@@ -252,5 +280,5 @@ export async function reviewDevotionalText(
     )
   }
 
-  return { blocking }
+  return { blocking, problems }
 }

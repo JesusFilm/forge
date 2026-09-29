@@ -69,6 +69,13 @@ const BARE_IMPERATIVE = new RegExp(
   `^(?:[^,]{0,40},\\s*)?(?:${IMPERATIVE_VERBS})\\b`,
   "i",
 )
+/**
+ * …but a leading clause with its own subject is narration, and the verb after
+ * the comma continues it: "He had stayed, never disobeyed, never left." is the
+ * elder son's record, not an order (flagged 2026-09-29).
+ */
+const NARRATED_LEAD =
+  /^(?:he|she|they|it|i|we|you|his|her|their|the\s+\w+)\s+(?:\w+\s+){0,3}?(?:had|has|have|was|were|is|are|did|does|\w+ed)\b[^,]{0,30},/i
 
 /** The altar call wearing a conditional: "…if he will only come to Christ". */
 const CONDITIONAL_APPEAL =
@@ -372,7 +379,7 @@ function checkCommandsAndAppeals(all: string[]): VoiceFinding[] {
       })
       continue
     }
-    if (BARE_IMPERATIVE.test(s)) {
+    if (BARE_IMPERATIVE.test(s) && !NARRATED_LEAD.test(s)) {
       found.push({
         rule: "command",
         sentence: s,

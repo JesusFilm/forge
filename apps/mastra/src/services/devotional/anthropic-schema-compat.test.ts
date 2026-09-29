@@ -22,6 +22,10 @@ import { _internal as narrativeInternal } from "./narrative-editor"
 import { _internal as pickerInternal } from "./reflection-point-picker"
 import { _internal as rankerInternal } from "./spurgeon-ranker"
 import { _internal as translateInternal } from "./translate-devotional"
+import { _internal as depthResearchInternal } from "./depth-research"
+import { _internal as messageInternal } from "./devotional-message"
+import { _internal as endingInternal } from "./message-first-ending"
+import { _internal as mfWriterInternal } from "./message-first-writer"
 
 /**
  * Regression guard for the real OpenRouter→Anthropic structured-output contract.
@@ -97,6 +101,14 @@ describe("Anthropic structured-output schema compatibility", () => {
     "reflection-highlighter": highlighterInternal.JSON_SCHEMA,
     "russian-accent": accentInternal.JSON_SCHEMA,
     "scripture-selector": selectorInternal.JSON_SCHEMA,
+    // Message-first path (feat-572).
+    "depth-research": depthResearchInternal.JSON_SCHEMA,
+    "depth-research/language": depthResearchInternal.LANGUAGE_JSON_SCHEMA,
+    "depth-research/audit": depthResearchInternal.AUDIT_JSON_SCHEMA,
+    "devotional-message": messageInternal.JSON_SCHEMA,
+    "message-first-ending": endingInternal.JSON_SCHEMA,
+    "message-first-ending/personal": endingInternal.PERSONAL_JSON_SCHEMA,
+    "message-first-writer": mfWriterInternal.JSON_SCHEMA,
   }
 
   /** Modules covered above, by filename — `hook-picker` contributes two. */

@@ -1,0 +1,244 @@
+import { z } from "zod"
+
+import type { ContextFact, LanguageNote } from "./depth-research"
+import { messageBlock, type DevotionalMessage } from "./devotional-message"
+import type { DevotionalLlm } from "./llm"
+import { checkReflectionVoice } from "./reflection-voice-check"
+
+/**
+ * The writer of the message-first path (feat-572). One continuous reflection
+ * built from the message, the classic's points and the verified depth notes,
+ * returned as paragraphs tagged with what each one draws on, so the source
+ * credits and the evidence the narrative editor checks come from the writer's
+ * own account of where each paragraph came from.
+ */
+
+export type ParagraphRole = "reflection" | "history" | "language" | "classic"
+
+export type WrittenParagraph = { role: ParagraphRole; text: string }
+
+const Schema = z
+  .object({
+    paragraphs: z.array(
+      z
+        .object({
+          role: z.enum(["reflection", "history", "language", "classic"]),
+          text: z.string().trim().min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
+
+const JSON_SCHEMA = {
+  name: "message_first_reflection",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      paragraphs: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            role: {
+              type: "string",
+              enum: ["reflection", "history", "language", "classic"],
+            },
+            text: { type: "string" },
+          },
+          required: ["role", "text"],
+        },
+      },
+    },
+    required: ["paragraphs"],
+  },
+}
+
+export const SYSTEM_PROMPT = [
+  "You write the spoken REFLECTION of a Bible devotional video. The viewer has",
+  "just watched a film scene that reads the passage word for word. Two voices",
+  "read your text: the main voice, and a second voice for the historical and",
+  "language paragraphs. It is heard, not read: short sentences, one thought",
+  "each, plain words.",
+  "",
+  "You are given THE MESSAGE the piece serves, the passage, the classic",
+  "commentator's points, and research notes that have been checked against",
+  "their sources. Build ONE line of thought that carries the viewer from what",
+  "they just watched to the message. Every paragraph must move that line on.",
+  "Use a research note only where it serves the line, and when you use one,",
+  "say in the next sentence what it changes about the moment in the story.",
+  "A note that does not clearly bear on the message is left out.",
+  "Do not retell the story the viewer just watched: point to a detail and",
+  "say what it means. At most one sentence of plain retelling in a row.",
+  "",
+  "SHAPE (a guide, not a template):",
+  "- Open on the tension: the detail that does not sit right, stated plainly.",
+  "- History and language paragraphs explain the world and the words so the",
+  "  story lands as its first hearers heard it.",
+  "- The classic commentator's insight gives the turn; name him in a sentence",
+  "  when you use his thought or his words ('Ryle says it plainly: ...').",
+  "- The last paragraphs bring it to the viewer and to Christ, and end on a",
+  "  statement, never on a command or an audit of their faith.",
+  "",
+  "ROLES: tag each paragraph with what it draws on: 'history' (a context",
+  "note), 'language' (the Greek note), 'classic' (the commentator's points),",
+  "'reflection' (your own connective or applied voice). A paragraph has ONE",
+  "role; split it when it would need two. 'classic' is ONLY for paragraphs",
+  "that carry the commentator's own claims, and it is checked against him:",
+  "your own observations, however natural, are 'reflection'.",
+  "Any sentence that uses a research note sits in a paragraph with that",
+  "note's role, so it is credited on screen.",
+  "",
+  "THE STORY: every detail about what happens must match the passage exactly:",
+  "who ran, who went out, who spoke, what was said, in what order. Do not",
+  "improve the story with a parallel or a detail it does not have. What a",
+  "character CLAIMS is his claim, not a fact: the narrator says the younger",
+  "son squandered his wealth in wild living; the prostitutes are his",
+  "brother's accusation. Say who says what.",
+  "",
+  "SOURCES:",
+  "- History and language paragraphs may say only what their note says. No",
+  "  added numbers, dates, customs or word meanings from memory.",
+  "- Never announce a section ('now some historical context', 'let's look at",
+  "  the Greek'). Move into it with a natural sentence. Naming a source or",
+  "  the Greek word inside a sentence is fine and honest.",
+  "- A Greek word is written in Latin letters as the note gives it, once.",
+  "- Words attributed to the commentator in quotation marks must be copied",
+  "  character for character from his points as given, and a code check",
+  "  compares them. Quote at most one short sentence of his; paraphrase the",
+  "  rest without quotation marks, and never put a paraphrase in quotes.",
+  "- When the commentator's section ends and your own voice resumes, do not",
+  "  keep attributing to him: a later 'Ryle says' must be his words.",
+  "- Bible references in parentheses are not read aloud later; do not use",
+  "  them. If a verse matters, say it in words.",
+  "",
+  "VOICE RULES (owner's standing rules):",
+  "- The audience already follows Jesus. Deepen, do not evangelize.",
+  "- DESCRIBE, DON'T COMMAND: a synthetic voice must not order the viewer",
+  "  about. No imperatives, no 'we must', no 'let us', no 'you should'. State",
+  "  what is true and let it land. A gentle 'notice' or 'look at' to point",
+  "  the eye is fine.",
+  "- No denominational polemic; no predestination; no 'lives for you'",
+  "  phrasing about Christ (use intercession wording).",
+  "- Keep the order of events and who someone was: the detail a point rests",
+  "  on stays.",
+  "- No sentence that could sit in any devotional about any passage.",
+  "- No em dashes or en dashes anywhere.",
+  "",
+  "LENGTH: 420 to 560 words in 10 to 16 short paragraphs. Return JSON only.",
+].join("\n")
+
+export async function writeMessageFirstReflection(input: {
+  message: DevotionalMessage
+  passageReference: string
+  passageText: string
+  settingText?: string
+  classicName: string
+  classicPoints: string[]
+  context: ContextFact[]
+  language?: LanguageNote
+  llm: DevotionalLlm
+  log?: (m: string) => void
+}): Promise<WrittenParagraph[]> {
+  const user = [
+    messageBlock(input.message),
+    "",
+    `PASSAGE (${input.passageReference}, BSB), which the viewer just watched:`,
+    input.passageText,
+    ...(input.settingText
+      ? ["", "SETTING (who Jesus is speaking to):", input.settingText]
+      : []),
+    "",
+    `CLASSIC COMMENTATOR: ${input.classicName}. His points:`,
+    ...input.classicPoints.map((p, i) => `(${i + 1}) ${p}`),
+    "",
+    "RESEARCH NOTES (verified against the sources):",
+    ...(input.context.length
+      ? input.context.map(
+          (f) =>
+            `- HISTORY (${f.source}, "${f.term}"): ${f.claim} Source words: "${f.quote}". Why it matters: ${f.why}`,
+        )
+      : ["- HISTORY: none worth adding."]),
+    input.language
+      ? `- LANGUAGE (Abbott-Smith lexicon): ${input.language.translit} (${input.language.greek}, ${input.language.osis}): ${input.language.meaning} Source words: "${input.language.quote}". Why it matters: ${input.language.why}`
+      : "- LANGUAGE: none worth adding.",
+  ].join("\n")
+  const ask = (u: string) =>
+    input.llm.complete({
+      system: SYSTEM_PROMPT,
+      user: u,
+      jsonSchema: JSON_SCHEMA,
+      schema: Schema,
+      temperature: 0.6,
+      maxTokens: 3000,
+    })
+  let out = (await ask(user)).paragraphs
+  // The owner's voice rules are checked mechanically, as for the modernizer;
+  // two repair rounds with the exact sentences that broke them.
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const text = out.map((p) => p.text).join("\n\n")
+    const broken = checkReflectionVoice(text, { lang: "en" })
+    if (broken.length === 0) break
+    input.log?.(
+      `   ↻ voice repair ${attempt}/2: ${broken.map((b) => b.rule).join(", ")}`,
+    )
+    out = (
+      await ask(
+        [
+          user,
+          "",
+          "Your previous reflection:",
+          JSON.stringify({ paragraphs: out }),
+          "",
+          "It broke rules that are checked mechanically. Rewrite ONLY these sentences, keep everything else word for word:",
+          ...broken.map((b) => `- “${b.sentence}”: ${b.why}`),
+        ].join("\n"),
+      )
+    ).paragraphs
+  }
+  return out
+}
+
+/** One targeted rewrite for problems a check found (the checks used to only
+ *  reject; their reasons now come back to the writer). Only the sentences the
+ *  problems name should change. */
+export async function reviseMessageFirstReflection(input: {
+  paragraphs: WrittenParagraph[]
+  problems: string[]
+  message: DevotionalMessage
+  passageReference: string
+  passageText: string
+  classicName: string
+  classicPoints: string[]
+  llm: DevotionalLlm
+}): Promise<WrittenParagraph[]> {
+  const out = await input.llm.complete({
+    system: SYSTEM_PROMPT,
+    user: [
+      messageBlock(input.message),
+      "",
+      `PASSAGE (${input.passageReference}, BSB):`,
+      input.passageText,
+      "",
+      `CLASSIC COMMENTATOR: ${input.classicName}. His points:`,
+      ...input.classicPoints.map((p, i) => `(${i + 1}) ${p}`),
+      "",
+      "YOUR REFLECTION:",
+      JSON.stringify({ paragraphs: input.paragraphs }),
+      "",
+      "Reviewers found these problems. Fix each one where it occurs, changing",
+      "as little as possible; keep every other sentence and every role as it",
+      "is, unless a problem is about the role. Return the full reflection.",
+      ...input.problems.map((p) => `- ${p}`),
+    ].join("\n"),
+    jsonSchema: JSON_SCHEMA,
+    schema: Schema,
+    temperature: 0.3,
+    maxTokens: 3000,
+  })
+  return out.paragraphs
+}
+
+export const _internal = { JSON_SCHEMA }
