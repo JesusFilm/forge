@@ -1,3 +1,4 @@
+import "../legacy-detail-retirement.db-cases"
 import { PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Client } from "pg"

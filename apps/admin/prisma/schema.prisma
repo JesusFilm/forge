@@ -3782,6 +3782,7 @@ model RecommendationCandidateRun {
   fallbackReason             String?               @map("fallback_reason") @db.VarChar(64)
   traceFormatVersion         Int?                  @map("trace_format_version")
   tracePayload               Json?                 @map("trace_payload") @db.JsonB
+  legacyDetailRetiredAt       DateTime?             @map("legacy_detail_retired_at")
   createdAt                  DateTime              @default(now()) @map("created_at")
   expiresAt                  DateTime              @map("expires_at")
 
