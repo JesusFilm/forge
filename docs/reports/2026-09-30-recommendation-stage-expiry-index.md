@@ -8,7 +8,7 @@ No production change has been made by this unit. Migration `0118` is provisional
 until integration checks the current next number. Keep `feat-574` in progress
 until release and observed production recovery.
 
-The September 30 20:29 UTC aggregate production preflight measured the valid
+The September 29 20:29 UTC aggregate production preflight measured the valid
 index at **1,961,811,968 bytes**. It backs zero constraints and has zero catalog
 dependents. Its six recorded scans and 1,290,399 tuples read are unchanged since
 the September 28 assessment; the stats reset interval is unknown. It is neither
@@ -80,4 +80,6 @@ Production release still requires fresh catalog/query-consumer review, exact
 migration numbering, normal PR-to-main deployment, live lock/health and volume
 monitoring, actual relation/filesystem bytes afterward, and protection of the
 first loaded retention cycles. This migration deletes no stage evidence and
-does not change the 29-day retention contract.
+does not change the 29-day retention contract. This 1.96 GB is part of the
+previously measured 18.39 GB stage-relation total, not additional to it; subsequent
+whole-relation reclamation must use the remaining measured allocation.
