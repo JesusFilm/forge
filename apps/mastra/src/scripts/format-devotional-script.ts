@@ -72,6 +72,7 @@ async function main() {
       reflectLeadIn: EN_LOCALE.connectors.steps.reflectAfterClip(),
       prayLeadIn: EN_LOCALE.connectors.steps.pray(),
       wrapWidth,
+      montage: process.argv.includes("--montage"),
     }) + "\n"
   const subtitles = await readSubtitles(src)
   await writeFile(out, sheet(80))

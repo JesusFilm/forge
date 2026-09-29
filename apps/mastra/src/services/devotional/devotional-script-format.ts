@@ -67,6 +67,9 @@ export function formatDevotionalScript(input: {
   prayLeadIn: string
   /** 0 for no hard wrapping (the .rtf copy). */
   wrapWidth?: number
+  /** The montage opening speaks no welcome (only its lines, then
+   *  "Let's watch."). */
+  montage?: boolean
 }): string {
   WRAP = input.wrapWidth ?? 80
   const { devo: d, source: s } = input
@@ -91,8 +94,9 @@ export function formatDevotionalScript(input: {
     `Title: ${d.title}`,
     "",
     ...section(1, "OPENING"),
-    "[spoken only]  Welcome to Daily Bible Pause.",
-    "",
+    ...(input.montage
+      ? ["[spoken over the film's shots, one line per shot]", ""]
+      : ["[spoken only]  Welcome to Daily Bible Pause.", ""]),
     ...(d.openingLines?.length
       ? d.openingLines.flatMap((l) => [l, ""])
       : ["(no opening lines yet)", ""]),
