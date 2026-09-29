@@ -156,6 +156,57 @@ fully covered whole-minute portal report after activation; a default seven-day
 window includes uninstrumented history and cannot prove complete coverage.
 This handoff is a plan, not evidence that production reporting is active.
 
+### Applied Railway variable activation — 2026-09-29
+
+Jaco subsequently authorized the agent to apply exactly the two reviewed
+variables and completed Railway CLI authentication. At
+`2026-09-29T03:28:01.498201Z`, Railway acknowledged a service-specific
+`variableCollectionUpsert` for `forge` / `production` / `@forge/rag`, with
+`replace: false` and `skipDeploys: false`. Both variables were absent before the
+operation and were copied directly from the vault sources listed above. URL
+account names and the independently pinned production database host were
+checked before transfer. Values remained in subprocess memory/stdin; no secret
+was printed or saved in this audit.
+
+The subsequent comparison confirmed exactly these two variable names changed,
+both values matched their vault sources, and every other returned variable was
+unchanged. An unrelated staged patch for another service existed before the
+operation and remained unchanged afterward. No environment-wide patch was
+committed, no variable was removed and no local worktree code was deployed.
+Safe receipt: [production-usage-variable-activation.json](production-usage-variable-activation.json).
+
+The update triggered deployment `3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7` from
+merged main commit `2233e06a2edc0b98457b4967c197141e4ba3e172` (PR #2460),
+created at `2026-09-29T03:28:01.503Z`. Railway reported `SUCCESS` at
+`2026-09-29T03:33:41.130Z`; the health endpoint returned HTTP 200. A subsequent
+read through the aggregate-only account confirmed an open collector for this
+deployment with a fresh heartbeat and acknowledged watermark. Safe receipts:
+[deployment verification](production-usage-deployment-verification.json) and
+[collector verification](production-usage-collector-verification.json).
+Its inventory view contained no row for this deployment, so complete report
+coverage remains unproven. This variable change enables the service's usage
+collector to write its own accounting/heartbeat rows; it is distinct from the
+earlier role-only provisioning. The operator issued no application-row writes,
+inventory declarations, schema changes, credential rotations or cutoff in this
+step. Inventory and counted/report coverage proof remain pending.
+
+Retained operator source:
+`/home/jacobuntu/Ops/config/ragbot/operator/activate-usage-variables.py`;
+SHA-256 `89d38802553772ec3edf3f2074d9ba77d5b290e35819fcff2ce53ca8a148fbd9`.
+It refuses preexisting usage settings or staged changes for the target service;
+do not rerun it to verify activation.
+
+After the RAG update's completed comparison, Jaco reported accidentally applying
+the unrelated staged patch. A read-only inspection identified patch
+`ceb2e619-f136-4707-a057-dc8fca307b27`, applied at
+`2026-09-29T03:30:27.934Z` by `jaco-brink`, affecting only `@forge/mastra`.
+It contained `DATADOG_TRIAGE_API_KEY`, `DATADOG_TRIAGE_APP_KEY` and
+`LINEAR_DATADOG_TRIAGE_API_KEY`, and triggered deployment
+`d1dd4573-f20a-44a3-b827-24622e1d77f2`. This was a later, separately applied
+change, outside the RAG mutation. The agent inspected it without reverting any
+configuration; the original staging author was not established by the available
+patch/audit records.
+
 To retire these capabilities later, first establish whether serving/reporting
 has been activated and which callers depend on them, then disable the applicable
 capability, revoke grants/login and remove receiver entries in explicitly scoped
