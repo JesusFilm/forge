@@ -1,0 +1,29 @@
+{
+  "recordedAt": "2026-09-28T22:59:20.190214+00:00",
+  "runtimeRevision": "811f1ec81f359d1cf66cdda5bad8f5445631c44c",
+  "browser": "Genuine headed Chrome154,1280x800,no user-agent/header/visibility overrides",
+  "steps": [
+    "Opened existing NUA series, scrolled400px, observed10V2rendered attempted facts after issuance",
+    "Selected existing episode9; navigation settled to its public episode URL",
+    "Clicked Watch now, observed video readyState4,pausedfalse,currentTime1.790583,errornull; paused through UI",
+    "Opened search, searched Jesus, explicitly submitted query, observed10results and selectedJESUS",
+    "Opened home, observed activeLUMOhero and authored blocks, scrolled700px"
+  ],
+  "playerObservation": {
+    "intervalUtc": ["2026-09-28T22:49:49Z", "2026-09-28T22:50:56Z"],
+    "readyState": 4,
+    "paused": false,
+    "currentTime": 1.790583,
+    "error": null,
+    "limitation": "Observation of working startup, not measured click-to-first-frame latency."
+  },
+  "pageErrorsSinceClearedBeforeFirstPostreleaseLoadingSample": 0,
+  "networkReceipt": "watch-browser-paced-interim-network.json",
+  "limitations": [
+    "HTTP200 and attempted payloads alone are not durable counts; separately retained Admin cohorts establish persisted aggregates.",
+    "Admin rolling24h rows include concurrent real production traffic and cannot be attributed solely to this browser.",
+    "Screenshots are ordinary visual observations; no fake visibility or telemetry events were injected.",
+    "Headed native paint metrics were unavailable during loading samples; no paint-performance conclusion is claimed.",
+    "Hero remainsV1 and chapters mixed-policy cohort remains truncated; both have scoped follow-up implementation underway."
+  ]
+}

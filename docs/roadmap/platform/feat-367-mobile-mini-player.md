@@ -259,3 +259,37 @@ The round's three behaviour findings landed (`ab63f8080`, `20dda25d5`,
    computed against the old frame. The glide's live-drag guard stops the glide
    from compounding it; it does not fix the snap. The fix belongs in
    `MiniPlayerWindow.tsx` — expose or stop the running settle.
+
+## Test timing follow-up (2026-09-29)
+
+PR [#2450](https://github.com/JesusFilm/forge/pull/2450) exposed a likely existing
+clock race in `apps/mobile/src/components/watch/__tests__/PlaybackHost.test.tsx`:
+`the dismissal exit (R6) > slides a bottom-corner dismissal from the corner it
+occupies`. The [first Mobile job failed](https://github.com/JesusFilm/forge/actions/runs/36490543062/job/109158139973)
+when `exitTranslation` dereferenced an absent `playback-exit` node at line 459,
+called by the transient-state assertion at line 2483.
+
+That test starts at line 2459 without `jest.useFakeTimers()`, unlike adjacent
+dismissal cases; `afterEach` restores real timers at line 551. In
+`apps/mobile/src/components/watch/PlaybackHost.tsx`, dismissal starts a 220 ms
+animation and a 470 ms release watchdog (lines 145, 156 and 1480–1489). Either
+completion calls `reportExitComplete`, clears the session and removes the exit
+wrapper. A slow test can therefore reach its assertion after the wrapper has
+legitimately disappeared. This is a source-supported timing explanation, not a
+reproduced application defect; separate SplashHost teardown warnings do not
+establish the same cause.
+
+One [failed-job rerun passed](https://github.com/JesusFilm/forge/actions/runs/36490543062/job/109160196555)
+at the unchanged head `e1ceb8f056f7fc8a43b71181a8d47bf04b8b5821`. Mobile source,
+tests, dependencies and configuration were unchanged from the prior passing
+head `556b2164df2104f905463a6cccf8f4fdd7afe0c9`; their difference comprised only
+the Web browser fixture and validation documents. The rerun records recovery,
+not a timing fix.
+
+Proposed narrow follow-up under this ticket: install fake timers before this
+case mounts, assert the translation target and opacity while dismissal remains
+`exiting`, then advance the clock inside `act` and verify session/wrapper
+removal. Keep the assertions and runtime release behavior intact. Verify the
+focused dismissal suite and normal Mobile CI; do not suppress warnings or
+lengthen production animation timers to make the test pass. The existing
+feature status and outstanding acceptance requirements remain unchanged.

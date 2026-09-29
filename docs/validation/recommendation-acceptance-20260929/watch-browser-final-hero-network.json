@@ -1,0 +1,89 @@
+{
+  "recordedAt": "2026-09-29T00:37:04.268538+00:00",
+  "phase": "headed-final-complete",
+  "heroIssuanceRequests": [
+    {
+      "httpStatus": "200",
+      "manifestItems": 1,
+      "publicItems": [
+        {
+          "position": 0,
+          "itemPath": "/watch/4-god-forgiveness.html"
+        }
+      ],
+      "count": 2
+    },
+    {
+      "httpStatus": "200",
+      "manifestItems": 1,
+      "publicItems": [
+        {
+          "position": 0,
+          "itemPath": "/watch/angels-at-the-tomb.html"
+        }
+      ],
+      "count": 1
+    },
+    {
+      "httpStatus": "200",
+      "manifestItems": 1,
+      "publicItems": [
+        {
+          "position": 0,
+          "itemPath": "/watch/2-the-blood-of-jesus.html"
+        }
+      ],
+      "count": 1
+    }
+  ],
+  "heroAttemptedFacts": [
+    {
+      "httpStatus": "200",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "position": 0,
+      "publicItemPath": "/watch/paying-taxes-to-caesar.html",
+      "capability": null,
+      "count": 1
+    },
+    {
+      "httpStatus": "200",
+      "policyVersion": "watch-exposure-v2",
+      "kind": "rendered",
+      "position": 0,
+      "publicItemPath": "/watch/4-god-forgiveness.html",
+      "capability": null,
+      "count": 2
+    },
+    {
+      "httpStatus": "200",
+      "policyVersion": "watch-exposure-v2",
+      "kind": "rendered",
+      "position": 0,
+      "publicItemPath": "/watch/angels-at-the-tomb.html",
+      "capability": null,
+      "count": 1
+    },
+    {
+      "httpStatus": "200",
+      "policyVersion": "watch-exposure-v2",
+      "kind": "rendered",
+      "position": 0,
+      "publicItemPath": "/watch/2-the-blood-of-jesus.html",
+      "capability": null,
+      "count": 1
+    },
+    {
+      "httpStatus": "200",
+      "policyVersion": "watch-exposure-v2",
+      "kind": "selected",
+      "position": 0,
+      "publicItemPath": "/watch/2-the-blood-of-jesus.html",
+      "capability": null,
+      "count": 1
+    }
+  ],
+  "repeatedHeroIssuanceNonces": 0,
+  "rawIdentifiersRetained": false,
+  "limits": "Observed requests and public content paths only; signatures, credentials and event/window/attempt/viewer identifiers are not retained. HTTP 200 is not a durable count. V2 facts mean the browser parsed a receipt; persisted cohort totals are reconciled separately in Admin."
+}

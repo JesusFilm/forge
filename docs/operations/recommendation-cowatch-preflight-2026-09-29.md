@@ -51,12 +51,35 @@ not measured. No graph was published, thresholds were not relaxed, and the
 source window was not narrowed to obtain a successful result. No production
 privacy deletion, revision change, repair or fault was manufactured.
 
-The authorized Admin reconciliation is also outstanding. An SQL aggregate and
-local fixtures cannot replace that gate. An authorized Admin session alone
-would not remove the source-cap refusal. A later runnable attempt requires a
+The authorized Admin inspection subsequently reconciled the **absence** of a
+generation and evaluation; see the dated addendum below. It cannot satisfy the
+graph/evaluation evidence gate or remove the source-cap refusal. A later runnable attempt requires a
 separately reviewed finite workload preserving source/denominator and privacy
 semantics, fresh storage timing/capacity clearance, and the normal operators.
 Feat-505 still governs any later causal usefulness or promotion decision.
+
+## Authorized Admin addendum
+
+On September 28 UTC, between 20:54 and 20:57, the parent opened the production
+`/dashboard/recommendations/cowatch` page using the authorized Admin session.
+The [sanitized UI receipt](../validation/cowatch-preflight-20260929/admin-inspection.json)
+records generation unavailable, latest evaluation not run,
+`generation_unavailable`, zero displayed generation contribution/edge/support
+counts, no chosen anchors and no supported shadow candidates. The page explicitly
+showed shadow-only, no promotion and live baseline fallback. Those zero generation
+counts do not measure eligible source coverage. No inspection form, generation
+or evaluation operator was submitted; ordinary access auditing may occur.
+
+PR #2448 passed all 25 CI checks (17 success, eight skipped), including the full
+Admin suite, and squash-merged at `2026-09-28T20:56:28Z` as
+`e0f864dd5436c0c1c0307de3b4c3dd4bb38906df`. The reviewed head was
+`bfbbaea09598cb36869bb7c0fd3345e55057f65e`, with no unresolved review threads.
+The [ordinary deployment receipt](../validation/cowatch-preflight-20260929/deployment.json)
+at `2026-09-28T21:06:30Z` verifies that merged revision in both running Admin HTTP
+and worker processes, HTTP health 200, expected workflow-runner roles and compact
+traces. Each service had one successful active deployment and no old active
+instance. This deploys the retry repair; it does not override the source refusal
+or dispatch a generation/evaluation.
 
 ## Operator repair
 
