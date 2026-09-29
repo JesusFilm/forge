@@ -3042,7 +3042,7 @@ is `docs/roadmap/platform/feat-524-localized-push-campaigns.md`.
 
 - Tables: `push_registration`, `push_test_device`, `push_campaign`,
   `push_campaign_copy`, `push_campaign_zone`, `push_delivery`, `push_open`,
-  `push_attribution` (migration `0119_push_campaigns`). The recommendation
+  `push_attribution` (migration `0120_push_campaigns`). The recommendation
   tables do not change. The partial unique index `push_delivery_daily_claim_key`
   is the "one announcement per device per local day" rule; the claim is one
   multi-row `INSERT ... ON CONFLICT DO NOTHING` with no conflict target.
@@ -3106,7 +3106,7 @@ in the build and pre-deploy commands. Budgets: `PUSH_BATCH_PAGE_SIZE` 5000,
 
 ### Deploy order
 
-1. Merge with `PUSH_CAMPAIGNS_ENABLED` unset. Both admin services run migration 0119. Confirm `prisma migrate status` is clean on both.
+1. Merge with `PUSH_CAMPAIGNS_ENABLED` unset. Both admin services run migration 0120. Confirm `prisma migrate status` is clean on both.
 2. **Restart the recommendation-retention scheduler run once.** U1 added
    `stepRunPushRetention` inside the durable
    `runRecommendationRetentionScheduler` loop. The run that is alive at deploy
@@ -3130,7 +3130,7 @@ the current group missed and ends the run as paused. Cancel scheduled and
 sending campaigns from the dashboard, then roll the worker back. A run left
 asleep on a worker without the workflow fails on wake and the recovery sweep
 pauses its campaign at the next worker start. Registrations survive a rollback;
-migration 0119 alters no existing table, so a code redeploy needs no data
+migration 0120 alters no existing table, so a code redeploy needs no data
 restore. A rollback also removes `stepRunPushRetention` from the retention
 loop, so cancel the live recommendation-retention scheduler run once after it,
 as deploy step 2 does, or its replay can fail with `corrupted-event-log`.

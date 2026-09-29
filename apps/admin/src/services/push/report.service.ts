@@ -27,7 +27,7 @@ import { PushNotFoundError } from "./errors"
 export const PUSH_REPORT_UNKNOWN_KEY = "(unknown)"
 
 /**
- * The DB literals migration 0119 mapped the delivery enums onto. A bound
+ * The DB literals migration 0120 mapped the delivery enums onto. A bound
  * parameter arrives as text and Postgres has no `enum = text` operator, so the
  * SQL below casts the column; `report.service.db.test.ts` proves each literal.
  */

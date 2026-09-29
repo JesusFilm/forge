@@ -1227,6 +1227,10 @@ export class TypesenseWatchSearchService {
       resolveWatchSearchRuntimeEnv().transcriptProjectionRevision ?? null
   }
 
+  getLexicalCollection(): string {
+    return this.profile.binding.lexical
+  }
+
   async searchWithDiagnostics(input: WatchSearchInput): Promise<{
     response: WatchSearchResponse
     diagnostics: TypesenseWatchSearchDiagnostics

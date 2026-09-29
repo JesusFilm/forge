@@ -164,6 +164,15 @@ export function resolveWatchSearchTranscriptPublicationEnabled(
   )
 }
 
+export function resolveWatchCatalogPublicationEnabled(
+  value: unknown = env.WATCH_CATALOG_PUBLICATION_ENABLED,
+): boolean {
+  return runtimeWatchSearchFlag(
+    value,
+    watchSearchTranscriptPublicationEnabledEnvSchema,
+  )
+}
+
 /**
  * `createEnv` deliberately skips transforms while CI builds. Normalize the
  * search controls again at runtime so Railway's raw strings cannot become
@@ -432,6 +441,8 @@ export const env = createEnv({
       watchSearchDefaultShadowEnabledEnvSchema,
     WATCH_SEARCH_FLEET_PRIMARY_ENABLED: watchSearchFleetPrimaryEnabledEnvSchema,
     WATCH_SEARCH_TYPESENSE_PROFILE: watchSearchTypesenseProfileEnvSchema,
+    WATCH_CATALOG_PUBLICATION_ENABLED:
+      watchSearchTranscriptPublicationEnabledEnvSchema,
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       watchSearchCandidateComparisonEnabledEnvSchema,
     WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED:
@@ -508,11 +519,11 @@ export const env = createEnv({
     // Deterministic pgvector catalog fixture for recommendation profile CI.
     // Omit to run the same proof against an approved production snapshot.
     RECOMMENDATION_PROFILE_DB_FIXTURE: z.enum(["deterministic"]).optional(),
-    // Enable only after the entire serving fleet and rollback image can read
-    // both inline and shared profile vector rows.
+    // Both inline and shared readers must remain in every serving/rollback image.
+    // Explicit false stops new shared writes without rewriting retained rows.
     RECOMMENDATION_PROFILE_VECTOR_SHARING: z
       .enum(["true", "false"])
-      .default("false"),
+      .default("true"),
     // Opt-in real-Redis proof for feat-368 atomic delivery admission.
     RECOMMENDATION_REDIS_TEST: z.enum(["1"]).optional(),
     // Source-free serving is enabled by default; false remains a kill switch.
@@ -972,6 +983,9 @@ export const env = createEnv({
       "false",
     WATCH_SEARCH_TYPESENSE_PROFILE:
       emptyToUndefined(process.env.WATCH_SEARCH_TYPESENSE_PROFILE) ?? "CURRENT",
+    WATCH_CATALOG_PUBLICATION_ENABLED: emptyToUndefined(
+      process.env.WATCH_CATALOG_PUBLICATION_ENABLED,
+    ),
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       emptyToUndefined(process.env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED) ??
       "false",
@@ -1053,7 +1067,7 @@ export const env = createEnv({
     ),
     RECOMMENDATION_PROFILE_VECTOR_SHARING:
       emptyToUndefined(process.env.RECOMMENDATION_PROFILE_VECTOR_SHARING) ??
-      "false",
+      "true",
     RECOMMENDATION_REDIS_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_REDIS_TEST,
     ),

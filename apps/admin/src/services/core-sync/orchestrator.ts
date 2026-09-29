@@ -9,6 +9,11 @@
 // Phase order: languages → countries → keywords → video-origins → videos → video-images → video-editions → video-subtitles → video-dubs → video-dub-downloads
 // Later phases resolve coreId → id maps from earlier ones.
 
+import { resolveWatchCatalogPublicationEnabled } from "@/config/env"
+import {
+  requestWatchCatalogPublication,
+  shouldRequestWatchCatalogPublication,
+} from "../watch-catalog-publication"
 import type { PrismaClient } from "@prisma/client"
 import {
   PHASE_ORDER,
@@ -351,11 +356,19 @@ export async function finishSyncRun(
   run: SyncRunContext,
   phases: PhaseResult[],
 ): Promise<SyncResult> {
-  await releaseSyncLock(prisma, run.runId).catch(() => {})
-
+  // Persist delivery intent while this import still owns the source-data lock.
+  try {
+    if (shouldRequestWatchCatalogPublication(phases)) {
+      await requestWatchCatalogPublication(prisma)
+    }
+  } finally {
+    await releaseSyncLock(prisma, run.runId).catch(() => {})
+  }
   const coverageAudit = await runCoverageAudit(prisma).catch(() => undefined)
-  await refreshWatchRouteManifestAfterCoreSync({ prisma, phases })
-  await refreshWatchSeoManifestAfterCoreSync({ prisma, phases })
+  if (!resolveWatchCatalogPublicationEnabled()) {
+    await refreshWatchRouteManifestAfterCoreSync({ prisma, phases })
+    await refreshWatchSeoManifestAfterCoreSync({ prisma, phases })
+  }
 
   return {
     incremental: run.incremental,

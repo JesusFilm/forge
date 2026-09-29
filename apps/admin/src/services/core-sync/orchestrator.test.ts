@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { resolveScope } from "./orchestrator"
 
+vi.mock("../watch-catalog-publication", async (original) => ({
+  ...(await original<typeof import("../watch-catalog-publication")>()),
+  requestWatchCatalogPublication: vi.fn().mockResolvedValue(undefined),
+}))
+
 const refreshAfterCoreSyncMock = vi.hoisted(() => vi.fn())
 const refreshSeoAfterCoreSyncMock = vi.hoisted(() => vi.fn())
 
