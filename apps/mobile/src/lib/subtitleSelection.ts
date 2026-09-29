@@ -70,8 +70,8 @@ export function resolveSubtitleActionLabel(
 /**
  * The subtitle a series should treat as active: the persisted preference resolved
  * against what the series actually offers (the episode subtitle union), via the
- * same {@link resolveDefaultSlug} fallback the video page uses (preferred → device
- * locale → primary → English → first). So a preference the series doesn't carry
+ * same {@link resolveDefaultSlug} fallback the video page uses (preferred → phone
+ * language → primary → English → first). So a preference the series doesn't carry
  * (e.g. a Cantonese pick on an English/Japanese series) falls back to a supported
  * track instead of being shown verbatim. Null when off or the series has none.
  */

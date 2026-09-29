@@ -238,6 +238,41 @@ describe("Admin language tables", () => {
     expect(forms.hu.textSlug).toBe("csango")
   })
 
+  it("lists only the audio overrides as reviewed", () => {
+    const { args } = fixture({
+      overrides: {
+        ...BASE_OVERRIDES,
+        text: { hu: entry("hungarian") },
+        audio: {
+          hu: entry("hungarian"),
+          "es-es": entry("spanish-castilian"),
+        },
+      },
+    })
+    const { audio, reviewedAudio } = tables(args)
+    expect(reviewedAudio).toEqual({
+      "es-es": "spanish-castilian",
+      hu: "hungarian",
+    })
+    // Admin's own tags go only to the full reverse table.
+    expect(audio.ha).toBe("hausa")
+    expect(audio["es-es"]).toBe("spanish-castilian")
+  })
+
+  it("writes the reviewed table into the generated file", () => {
+    const { args, outFile } = fixture({
+      overrides: {
+        ...BASE_OVERRIDES,
+        audio: { "es-es": entry("spanish-castilian") },
+      },
+    })
+    expect(runGenerator(args).status).toBe(0)
+    const source = fs.readFileSync(outFile, "utf8")
+    expect(source).toMatch(
+      /export const REVIEWED_AUDIO_SLUG_BY_TAG[^=]*= \{\s*"es-es": "spanish-castilian",\s*\}/,
+    )
+  })
+
   it("keys the reverse table on the lowercase Admin tag", () => {
     const { audio } = tables(fixture().args)
     expect(audio["es-es"]).toBe("spanish-castilian")

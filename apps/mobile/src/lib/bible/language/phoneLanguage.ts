@@ -1,7 +1,7 @@
 // The catalog keys its languages by ISO 639-3 individual codes, with no
 // macrolanguage codes such as zho (feat-553 KTD8). The phone's ISO 639-1 code
 // and admin's macrolanguage codes both go through the tables below.
-import { getDeviceLanguageCode } from "../../resolveDefaultLanguage"
+import { defaultAudioLanguage } from "../../../i18n/localeStore"
 import { LANGUAGE_DEFAULT_TRANSLATIONS } from "../data/languageDefaults.generated"
 
 /** Every ISO 639-1 code to its ISO 639-3 code; a macrolanguage stays macro. */
@@ -277,8 +277,12 @@ export function catalogLanguageCode(
   return null
 }
 
-/** The phone's language subtag ("zh" for "zh-Hant-TW"), or null. */
+/**
+ * The language subtag ("zh" for "zh-Hant-TW") of the phone's first language,
+ * the one the default audio uses (KD11, KTD12), or null.
+ */
 export function readPhoneLanguageCode(): string | null {
-  const language = getDeviceLanguageCode()
-  return language !== null && /^[a-z]{2,3}$/.test(language) ? language : null
+  const tag = defaultAudioLanguage()?.tag
+  const language = tag?.trim().toLowerCase().split(/[-_]/)[0] ?? ""
+  return /^[a-z]{2,3}$/.test(language) ? language : null
 }

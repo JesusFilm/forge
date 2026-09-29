@@ -159,6 +159,10 @@
       "slug": "thai",
       "reason": "Explore's reviewed device map, checked on production 2026-09-25."
     },
+    "ti-er": {
+      "slug": "tigrinya-eritrea",
+      "reason": "Admin tags tigrinya-ethiopia (\"Tigrinya, Ethiopia\") as ti-ER, but ER is Eritrea; tigrinya-eritrea is ti. Checked on production 2026-09-29. Keeps the player's answer for a ti-ER phone before U9."
+    },
     "tl": {
       "slug": "tagalog",
       "reason": "Explore's reviewed device map, checked on production 2026-09-25."

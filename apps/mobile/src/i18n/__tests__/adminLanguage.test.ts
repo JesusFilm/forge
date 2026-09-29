@@ -1,15 +1,13 @@
 import {
-  DEVICE_LANGUAGE_SLUGS,
-  DEVICE_REGION_LANGUAGE_SLUGS,
-  languageSlugForLocale,
-} from "../../lib/explore/deviceLanguageMap"
-import {
   adminFormsFor,
   audioSlugForLocaleTag,
   currentAdminForms,
   ENGLISH_ADMIN_FORMS,
 } from "../adminLanguage"
-import { ADMIN_LANGUAGE_FORMS } from "../adminLanguages.generated"
+import {
+  ADMIN_LANGUAGE_FORMS,
+  REVIEWED_AUDIO_SLUG_BY_TAG,
+} from "../adminLanguages.generated"
 import { getCatalogTag } from "../localeStore"
 
 jest.mock("../localeStore", () => ({
@@ -146,15 +144,6 @@ describe("audioSlugForLocaleTag", () => {
     expect(audioSlugForLocaleTag("ha-NG")).toBe("hausa")
   })
 
-  it("matches the exact tag before the language subtag", () => {
-    expect(audioSlugForLocaleTag("es-ES")).toBe("spanish-castilian")
-    expect(audioSlugForLocaleTag("es-MX")).toBe("spanish-latin-american")
-    expect(audioSlugForLocaleTag("es")).toBe("spanish-latin-american")
-    // Admin's own region tag names another Language.
-    expect(audioSlugForLocaleTag("zh-Hant-TW")).toBe("mandarin-taiwan")
-    expect(audioSlugForLocaleTag("zh-Hans-CN")).toBe("mandarin-china")
-  })
-
   it("ignores case and accepts an underscore separator", () => {
     expect(audioSlugForLocaleTag("PT_pt")).toBe("portuguese-portugal")
     expect(audioSlugForLocaleTag(" ES-es ")).toBe("spanish-castilian")
@@ -180,53 +169,52 @@ describe("audioSlugForLocaleTag", () => {
     expect(audioSlugForLocaleTag(undefined)).toBeNull()
   })
 
-  it("resolves every reviewed Explore entry to the same slug", () => {
-    const reviewed = {
-      ...DEVICE_LANGUAGE_SLUGS,
-      ...DEVICE_REGION_LANGUAGE_SLUGS,
-    }
-    expect(Object.keys(reviewed).length).toBeGreaterThan(25)
-    for (const [tag, slug] of Object.entries(reviewed)) {
+  it("resolves every reviewed entry to its own slug", () => {
+    const reviewed = Object.entries(REVIEWED_AUDIO_SLUG_BY_TAG)
+    expect(reviewed.length).toBeGreaterThan(30)
+    for (const [tag, slug] of reviewed) {
       expect([tag, audioSlugForLocaleTag(tag)]).toEqual([tag, slug])
     }
   })
+})
 
-  it("agrees with Explore on common phone tags", () => {
-    const phoneTags = [
-      "en-US",
-      "es-MX",
-      "es-ES",
-      "pt-BR",
-      "pt-PT",
-      "zh-Hans-CN",
-      "fr-CA",
-      "ar-EG",
-      "ko-KR",
-      "ja-JP",
-      "ru-RU",
-      "hi-IN",
-      "id-ID",
-      "fil-PH",
-      "sw-KE",
-      "de-DE",
-      "vi-VN",
-      "th-TH",
-      "tr-TR",
-      "uk-UA",
-      "ur-PK",
-      "fa-IR",
-      "am-ET",
-      "ne-NP",
-      "nl-NL",
-      "pl-PL",
-      "it-IT",
-      "ms-MY",
-    ]
-    for (const tag of phoneTags) {
-      expect([tag, audioSlugForLocaleTag(tag)]).toEqual([
-        tag,
-        languageSlugForLocale(tag),
-      ])
-    }
+// U9 rule: a reviewed audio entry beats an Admin tag that nobody reviewed.
+// Order: reviewed exact tag, reviewed language subtag, then Admin's exact tag,
+// then Admin's language subtag.
+describe("audioSlugForLocaleTag precedence", () => {
+  it("lets a reviewed language entry beat Admin's own region tag", () => {
+    // Admin tags bangla-muslim bn-BD, mandarin-taiwan zh-Hant-TW, and
+    // portuguese-mozambique pt-MZ. Explore and the player give the others.
+    expect(audioSlugForLocaleTag("bn-BD")).toBe("bangla-2")
+    expect(audioSlugForLocaleTag("zh-Hant-TW")).toBe("mandarin-china")
+    expect(audioSlugForLocaleTag("zh-Hans-CN")).toBe("mandarin-china")
+    expect(audioSlugForLocaleTag("pt-MZ")).toBe("portuguese-brazil")
+  })
+
+  it("lets a reviewed region entry beat the reviewed language entry", () => {
+    expect(audioSlugForLocaleTag("es-ES")).toBe("spanish-castilian")
+    expect(audioSlugForLocaleTag("pt-PT")).toBe("portuguese-portugal")
+  })
+
+  it("uses the reviewed language entry for a region that has none", () => {
+    expect(audioSlugForLocaleTag("es-MX")).toBe("spanish-latin-american")
+    expect(audioSlugForLocaleTag("es-419")).toBe("spanish-latin-american")
+    expect(audioSlugForLocaleTag("pt-BR")).toBe("portuguese-brazil")
+  })
+
+  it("keeps a reviewed region entry when a script comes before the region", () => {
+    expect(audioSlugForLocaleTag("pt-Latn-PT")).toBe("portuguese-portugal")
+    expect(audioSlugForLocaleTag("es-Latn-ES")).toBe("spanish-castilian")
+  })
+
+  it("maps ti-ER to Tigrinya, Eritrea, not to Admin's mis-tagged ti-ER", () => {
+    // Admin tags "Tigrinya, Ethiopia" as ti-ER, but ER is Eritrea.
+    expect(audioSlugForLocaleTag("ti-ER")).toBe("tigrinya-eritrea")
+    expect(audioSlugForLocaleTag("ti")).toBe("tigrinya-eritrea")
+  })
+
+  it("uses Admin's exact tag before its language subtag for an unreviewed language", () => {
+    expect(audioSlugForLocaleTag("fan-GA")).toBe("fang-gabon")
+    expect(audioSlugForLocaleTag("fan-GQ")).toBe("fang-equatorial-guinea")
   })
 })

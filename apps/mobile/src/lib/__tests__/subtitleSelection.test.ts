@@ -1,3 +1,18 @@
+// The phone's languages reach the resolver through the real locale store.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+
+import {
+  defaultAudioLanguage,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../i18n/localeStore"
+import { phoneLocales } from "../../test-utils/uiLocaleFixture"
 import {
   deriveSubtitleLabel,
   reconcileSeriesSubtitleSlug,
@@ -143,6 +158,52 @@ describe("reconcileSeriesSubtitleSlug", () => {
     const slug = reconcileSeriesSubtitleSlug(true, "cantonese", SUBS, null)
     expect(slug).not.toBe("cantonese")
     expect(["english", "french"]).toContain(slug)
+  })
+})
+
+// R22, KD11: with no pick, the default subtitle follows the same phone
+// language as the default audio.
+describe("the default subtitle language", () => {
+  afterEach(() => resetLocaleStoreForTests())
+
+  function setPhone(...tags: string[]) {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReturnValue(tags.flatMap((tag) => phoneLocales(tag)))
+    startLocaleSync()
+  }
+
+  function track(languageSlug: string, languageBcp47: string): WatchSubtitle {
+    return { ...sub(languageSlug, languageSlug), languageBcp47 }
+  }
+
+  it("follows a Russian phone, the same language as the default audio", () => {
+    setPhone("ru-RU")
+    const union = [track("english", "en"), track("russian", "ru")]
+    expect(reconcileSeriesSubtitleSlug(true, null, union, "en")).toBe("russian")
+    expect(defaultAudioLanguage()?.slug).toBe("russian")
+  })
+
+  it("follows the phone's first language, not the UI fallback", () => {
+    setPhone("ha-NG", "en-US")
+    const union = [track("english", "en"), track("hausa", "ha")]
+    expect(reconcileSeriesSubtitleSlug(true, null, union, "en")).toBe("hausa")
+  })
+
+  it("picks Traditional Chinese for a zh-Hant-TW phone, whatever the order", () => {
+    setPhone("zh-Hant-TW")
+    const union = [
+      track("chinese-simplified", "zh-hans"),
+      track("chinese-traditional", "zh-hant"),
+    ]
+    expect(reconcileSeriesSubtitleSlug(true, null, union, null)).toBe(
+      "chinese-traditional",
+    )
+  })
+
+  it("uses the primary language when the phone list is empty", () => {
+    setPhone()
+    const union = [track("english", "en"), track("french", "fr")]
+    expect(reconcileSeriesSubtitleSlug(true, null, union, "fr")).toBe("french")
   })
 })
 

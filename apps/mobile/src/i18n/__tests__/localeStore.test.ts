@@ -1,6 +1,7 @@
 import { AppState, type AppStateStatus } from "react-native"
 
 import {
+  defaultAudioLanguage,
   getActiveTranslator,
   getCatalogTag,
   getLocaleEpoch,
@@ -285,6 +286,77 @@ describe("refreshLocale", () => {
   })
 })
 
+// KTD12: one phone-language default for audio, subtitles, the Bible reader,
+// For You, and Explore.
+describe("defaultAudioLanguage", () => {
+  it("is null before the first read", () => {
+    expect(defaultAudioLanguage()).toBeNull()
+  })
+
+  it("is null when the phone list is empty", () => {
+    mockGetLocales.mockReturnValue([])
+    startLocaleSync()
+    expect(defaultAudioLanguage()).toBeNull()
+  })
+
+  it("is null when getLocales throws", () => {
+    mockGetLocales.mockImplementation(() => {
+      throw new Error("Cannot find native module 'ExpoLocalization'")
+    })
+    startLocaleSync()
+    expect(defaultAudioLanguage()).toBeNull()
+  })
+
+  it("takes the first phone language before any catalog fallback", () => {
+    // ha has no catalog, so the UI falls to es; the audio stays Hausa (AE10).
+    mockGetLocales.mockReturnValue(phone("ha-NG", "es-MX"))
+    startLocaleSync()
+    expect(getCatalogTag()).toBe("es")
+    expect(defaultAudioLanguage()).toEqual({ tag: "ha-NG", slug: "hausa" })
+  })
+
+  it("maps a Russian phone to the russian slug", () => {
+    mockGetLocales.mockReturnValue(phone("ru-RU"))
+    startLocaleSync()
+    expect(defaultAudioLanguage()).toEqual({ tag: "ru-RU", slug: "russian" })
+  })
+
+  it("maps through the reviewed entries", () => {
+    mockGetLocales.mockReturnValue(phone("es-ES"))
+    startLocaleSync()
+    expect(defaultAudioLanguage()?.slug).toBe("spanish-castilian")
+    mockGetLocales.mockReturnValue(phone("bn-BD"))
+    refreshLocale()
+    expect(defaultAudioLanguage()?.slug).toBe("bangla-2")
+  })
+
+  it("keeps the tag when no slug maps, so a caller can match on it", () => {
+    mockGetLocales.mockReturnValue(phone("xx-YY"))
+    startLocaleSync()
+    expect(defaultAudioLanguage()).toEqual({ tag: "xx-YY", slug: null })
+  })
+
+  it("skips entries without a language tag", () => {
+    mockGetLocales.mockReturnValue([
+      null,
+      { languageCode: "x" },
+      ...phone("ko"),
+    ])
+    startLocaleSync()
+    expect(defaultAudioLanguage()).toEqual({ tag: "ko", slug: "korean" })
+  })
+
+  it("follows a phone change that keeps the catalog, with no epoch change", () => {
+    mockGetLocales.mockReturnValue(phone("ha-NG"))
+    startLocaleSync()
+    mockGetLocales.mockReturnValue(phone("yo-NG"))
+    refreshLocale()
+    expect(getCatalogTag()).toBe("en")
+    expect(getLocaleEpoch()).toBe(0)
+    expect(defaultAudioLanguage()).toEqual({ tag: "yo-NG", slug: "yoruba" })
+  })
+})
+
 describe("ui_locale telemetry attributes", () => {
   it("describes a language fallback", () => {
     mockGetLocales.mockReturnValue(phone("es-MX"))
@@ -392,6 +464,8 @@ describe("start without the native module", () => {
       expect(
         store.getActiveTranslator().translate("Common.goBackAriaLabel"),
       ).toBe("Go back")
+      // The default audio then falls to the video's primary language.
+      expect(store.defaultAudioLanguage()).toBeNull()
     } finally {
       jest.doMock("expo-localization", () => ({
         getLocales: () => mockGetLocales(),

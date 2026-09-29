@@ -5,6 +5,7 @@
 import { AppState } from "react-native"
 import type { Locale as PhoneLocale } from "expo-localization"
 
+import { audioSlugForLocaleTag } from "./audioSlug"
 import {
   CATALOG_LOADERS,
   CATALOG_TAGS,
@@ -292,6 +293,24 @@ export function getCatalogTag(): CatalogTag {
 /** The raw `getLocales()` result from the last read; empty before start. */
 export function getPhoneLocales(): readonly PhoneLocale[] {
   return phoneLocales
+}
+
+export type DefaultAudioLanguage = {
+  /** The phone's first language tag, as the phone sends it (`es-MX`). */
+  tag: string
+  /** Its Language slug, or null when no table entry maps the tag. */
+  slug: string | null
+}
+
+/**
+ * KTD12: the default audio, subtitle, Bible, For You, and Explore language.
+ * It is the phone's first language, before any catalog fallback. Null before
+ * the first read, or when the list is empty (a dev client without the module).
+ */
+export function defaultAudioLanguage(): DefaultAudioLanguage | null {
+  const tag = tagsOf(phoneLocales).find((value) => value.trim() !== "")
+  if (tag === undefined) return null
+  return { tag, slug: audioSlugForLocaleTag(tag) }
 }
 
 export function getLocaleResolution(): LocaleResolution {
