@@ -38,15 +38,17 @@ export function LibraryEmptyState({ style }: LibraryEmptyStateProps) {
           color={TEXT_SECONDARY}
         />
       </View>
-      <Text style={[styles.heading, typography.titleLarge]}>
-        No downloads yet
+      <Text
+        style={[styles.heading, typography.titleLarge]}
+        accessibilityRole="header"
+      >
+        No Downloads Yet
       </Text>
       <Text style={[styles.body, typography.body]}>
-        Videos you download will appear here so you can watch them anywhere —
-        even offline.
+        Download a video to watch it offline
       </Text>
       <Pressable
-        onPress={() => router.navigate("/(tabs)/watch")}
+        onPress={() => router.navigate("/(tabs)")}
         style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
         accessibilityRole="button"
         accessibilityLabel="Browse videos"
