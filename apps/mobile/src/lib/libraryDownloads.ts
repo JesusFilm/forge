@@ -162,7 +162,7 @@ export function seriesGroupContentEqual(
 
 /** Shared comparator: a known time wins; missing time sorts last, tie-broken
  *  by a stable key so output order never depends on input order. */
-function compareByTime(
+export function compareByTime(
   aTime: number | undefined,
   bTime: number | undefined,
   aKey: string,
@@ -194,7 +194,7 @@ function compareEpisodes(
   )
 }
 
-function newestEnqueuedAt(
+export function newestEnqueuedAt(
   records: readonly OfflineDownloadRecord[],
 ): number | undefined {
   let max: number | undefined
