@@ -76,6 +76,7 @@ describe("buildTranslationList", () => {
     expect(SPANISH_COUNT).toBeGreaterThan(1)
     const list = buildTranslationList({
       catalog: CATALOG,
+      uiTag: "en",
       viewerLanguages: ["spa"],
       onDeviceOnly: false,
       getState: statesOf({}),
@@ -92,6 +93,7 @@ describe("buildTranslationList", () => {
   it("lists every catalog translation exactly once online", () => {
     const list = buildTranslationList({
       catalog: CATALOG,
+      uiTag: "en",
       viewerLanguages: ["spa"],
       onDeviceOnly: false,
       getState: statesOf({}),
@@ -105,6 +107,7 @@ describe("buildTranslationList", () => {
   it("puts the audio language before the phone language", () => {
     const list = buildTranslationList({
       catalog: CATALOG,
+      uiTag: "en",
       viewerLanguages: ["rus", "spa"],
       onDeviceOnly: false,
       getState: statesOf({}),
@@ -123,6 +126,7 @@ describe("buildTranslationList", () => {
   it("orders the rest by the language's English name", () => {
     const list = buildTranslationList({
       catalog: CATALOG,
+      uiTag: "en",
       viewerLanguages: [],
       onDeviceOnly: false,
       getState: statesOf({}),
@@ -134,9 +138,43 @@ describe("buildTranslationList", () => {
     expect(names).toEqual(sorted)
   })
 
+  // KTD15: names sort in the UI tag's collation, so one tag gives one order
+  // on every device. Russian collation puts Cyrillic first; English puts it last.
+  it("orders translation names by the UI tag it gets", () => {
+    const base = CATALOG.byId.get("BSB")
+    if (!base) throw new Error("no BSB in the catalog")
+    const named = (id: string, name: string) => ({
+      ...base,
+      id,
+      name,
+      language: "xyz",
+    })
+    const translations = [
+      named("t-en", "English Bible"),
+      named("t-ru", "Русская Библия"),
+      named("t-de", "Deutsche Bibel"),
+    ]
+    const catalog: Catalog = {
+      translations,
+      byId: new Map(translations.map((t) => [t.id, t])),
+    }
+    const order = (uiTag: string) =>
+      buildTranslationList({
+        catalog,
+        uiTag,
+        viewerLanguages: [],
+        onDeviceOnly: false,
+        getState: statesOf({}),
+        languageDefaults: {},
+      }).map((translation) => translation.id)
+    expect(order("ru")).toEqual(["t-ru", "t-de", "t-en"])
+    expect(order("en")).toEqual(["t-de", "t-en", "t-ru"])
+  })
+
   it("puts a complete Bible before a partial one in one language", () => {
     const list = buildTranslationList({
       catalog: CATALOG,
+      uiTag: "en",
       viewerLanguages: ["eng"],
       onDeviceOnly: false,
       getState: statesOf({}),
@@ -154,6 +192,7 @@ describe("buildTranslationList", () => {
   it("offline, lists only BSB and downloaded translations", () => {
     const list = buildTranslationList({
       catalog: CATALOG,
+      uiTag: "en",
       viewerLanguages: ["spa"],
       onDeviceOnly: true,
       getState: statesOf({

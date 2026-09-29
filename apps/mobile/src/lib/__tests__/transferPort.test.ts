@@ -26,6 +26,7 @@ import { OFFLINE_ROOT } from "../offlineFileSystem"
 import type { RawExportTransferSpec } from "../rawExport"
 import {
   RAW_EXPORT_ID_PREFIX,
+  RAW_EXPORT_MAX_FILENAME_BYTES,
   RAW_EXPORT_MAX_FILENAME_LENGTH,
 } from "../rawExportConstants"
 import {
@@ -38,6 +39,7 @@ import {
   exportStagingDir,
   isUnderExportRoot,
   normalizeUri,
+  suffixFileName,
   translateInterruptionForExport,
 } from "../transferPort"
 
@@ -120,6 +122,113 @@ describe("buildExportFileName (R34)", () => {
 
   it("never produces a hidden file from a dot-only title", () => {
     expect(buildExportFileName("...", "video").startsWith(".")).toBe(false)
+  })
+})
+
+// R23: the saved name keeps the title's letters in any script. File systems
+// cap a name at 255 UTF-8 bytes, and a cut inside a surrogate pair leaves a
+// name the native bridge cannot carry.
+// encodeURIComponent is an oracle apart from the code under test: it writes
+// UTF-8 and throws URIError on a lone surrogate.
+function bytes(name: string): number {
+  return encodeURIComponent(name).replace(/%[0-9A-F]{2}/g, "x").length
+}
+
+function wellFormed(name: string): boolean {
+  try {
+    encodeURIComponent(name)
+    return true
+  } catch {
+    return false
+  }
+}
+
+describe("byte oracle", () => {
+  it("counts UTF-8 bytes and catches a lone surrogate (controls)", () => {
+    expect(bytes("aЖあ𠀀")).toBe(1 + 2 + 3 + 4)
+    expect(wellFormed("𠀀".slice(0, 1))).toBe(false)
+    expect(wellFormed("𠀀")).toBe(true)
+  })
+})
+
+describe("buildExportFileName in other scripts (R23, KTD15)", () => {
+  it("keeps Cyrillic letters", () => {
+    expect(buildExportFileName("ИИСУС", "jesus")).toBe("ИИСУС.mp4")
+  })
+
+  it("keeps a letter's combining marks", () => {
+    expect(buildExportFileName("यीशु", "jesus")).toBe("यीशु.mp4")
+  })
+
+  it("keeps digits of any script and replaces spaces and symbols", () => {
+    expect(buildExportFileName("耶稣 ٣", "jesus")).toBe("耶稣_٣.mp4")
+    expect(buildExportFileName("a/b\\c:d", "jesus")).toBe("a_b_c_d.mp4")
+  })
+
+  it("replaces an emoji with one underscore, not two", () => {
+    expect(buildExportFileName("Jesus😀", "jesus")).toBe("Jesus_.mp4")
+  })
+
+  it("keeps an astral letter whole", () => {
+    expect(buildExportFileName("𐐷𐐷", "jesus")).toBe("𐐷𐐷.mp4")
+  })
+
+  it("composes a decomposed title, so the byte count is stable", () => {
+    expect(buildExportFileName("José", "jesus")).toBe("José.mp4")
+  })
+
+  it("caps a 200-character title in a 3-byte script at 255 bytes", () => {
+    const name = buildExportFileName("あ".repeat(200), "jesus")
+    expect(bytes(name)).toBeLessThanOrEqual(RAW_EXPORT_MAX_FILENAME_BYTES)
+    expect(name).toBe(`${"あ".repeat(83)}.mp4`)
+    expect(wellFormed(name)).toBe(true)
+  })
+
+  it("stops before a 4-byte letter that would pass the byte cap", () => {
+    const name = buildExportFileName(
+      `${"あ".repeat(83)}${"𠀀".repeat(10)}`,
+      "jesus",
+    )
+    expect(name).toBe(`${"あ".repeat(83)}.mp4`)
+    expect(wellFormed(name)).toBe(true)
+  })
+
+  it("cuts between code points at the length cap too", () => {
+    const name = buildExportFileName(`a${"𠀀".repeat(200)}`, "jesus")
+    expect(name.length).toBeLessThanOrEqual(RAW_EXPORT_MAX_FILENAME_LENGTH)
+    expect(name).toBe(`a${"𠀀".repeat(57)}.mp4`)
+    expect(wellFormed(name)).toBe(true)
+  })
+
+  it("keeps the internal staged path on the ASCII sanitizer", () => {
+    const staged = buildStagedExportPath({
+      root: ROOT,
+      videoSlug: "jesus",
+      title: "ИИСУС",
+      fallbackName: "jesus",
+    })
+    expect(segmentsOf(staged).pop()).toBe("_____.mp4")
+    expect(staged).toMatch(/^[\x21-\x7e]+$/)
+  })
+})
+
+describe("suffixFileName in other scripts (R23)", () => {
+  it("keeps the ASCII shape", () => {
+    expect(suffixFileName("Jesus.mp4", 1)).toBe("Jesus.mp4")
+    expect(suffixFileName("Jesus.mp4", 2)).toBe("Jesus (2).mp4")
+  })
+
+  it("gives up whole letters to fit the byte cap", () => {
+    const name = suffixFileName(`${"あ".repeat(83)}.mp4`, 2)
+    expect(bytes(name)).toBeLessThanOrEqual(RAW_EXPORT_MAX_FILENAME_BYTES)
+    expect(name).toBe(`${"あ".repeat(82)} (2).mp4`)
+  })
+
+  it("never splits a surrogate pair at the length cap", () => {
+    const name = suffixFileName(`a${"𠀀".repeat(57)}.mp4`, 2)
+    expect(name.length).toBeLessThanOrEqual(RAW_EXPORT_MAX_FILENAME_LENGTH)
+    expect(name).toBe(`a${"𠀀".repeat(55)} (2).mp4`)
+    expect(wellFormed(name)).toBe(true)
   })
 })
 

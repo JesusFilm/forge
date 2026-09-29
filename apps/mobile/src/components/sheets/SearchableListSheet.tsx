@@ -13,6 +13,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
 import { useSheetListHeight } from "../../hooks/useSheetListHeight"
+import { useUiTag } from "../../hooks/useUiTag"
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { acceptSheetTap, assembleSheetList } from "../../lib/sheetListLogic"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
@@ -105,6 +106,7 @@ export function SearchableListSheet<T>({
   // Debounce so a fast double-tap can't fire the selection (and router.back())
   // twice and pop the underlying screen.
   const lastSelectRef = useRef(0)
+  const uiTag = useUiTag()
 
   const { active, filtered } = useMemo(
     () =>
@@ -116,6 +118,7 @@ export function SearchableListSheet<T>({
         getPrimaryLabel,
         getSearchValues,
         keepRowOrder,
+        uiTag,
       }),
     [
       rows,
@@ -125,6 +128,7 @@ export function SearchableListSheet<T>({
       getPrimaryLabel,
       getSearchValues,
       keepRowOrder,
+      uiTag,
     ],
   )
 

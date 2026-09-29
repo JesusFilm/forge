@@ -8,6 +8,7 @@ import {
   type WatchSubtitle,
 } from "../lib/normalizeVideo"
 import { resolveSeriesSubtitleUnion } from "../lib/seriesSubtitleUnion"
+import { useUiTag } from "./useUiTag"
 
 // Series locale matches the series detail + download queries.
 const LOCALE = "en"
@@ -40,6 +41,7 @@ export function useSeriesSubtitleUnion(
 ): SeriesSubtitleUnion {
   const [state, setState] = useState<State>({ phase: "idle" })
   const controllerRef = useRef<AbortController | null>(null)
+  const uiTag = useUiTag()
 
   const active = enabled && !!episodes && !!languageSlug
 
@@ -71,6 +73,7 @@ export function useSeriesSubtitleUnion(
               })
               return normalizeDubMedia(res.data?.videoDub ?? null)
             },
+            uiTag,
           },
           controller.signal,
         )
@@ -86,7 +89,7 @@ export function useSeriesSubtitleUnion(
         setState({ phase: "error" })
       }
     },
-    [episodes, languageSlug],
+    [episodes, languageSlug, uiTag],
   )
 
   useEffect(() => {

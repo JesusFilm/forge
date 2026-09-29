@@ -1,3 +1,34 @@
+// A fixture `es` catalog joins the real set, so the tier text can read Spanish.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(jest.requireActual("../../i18n/catalogs.generated"), {
+      es: { DownloadQuality: { highest: "Máxima", high: "Alta", low: "Baja" } },
+    }),
+)
+jest.mock("../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../i18n/pluralData.generated"),
+      ["es"],
+    ),
+)
+
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../i18n/localeStore"
+import { getT } from "../../i18n/useT"
+import { phoneLocales } from "../../test-utils/uiLocaleFixture"
 import {
   decideEpisodeAction,
   deriveDownloadedSelection,
@@ -90,7 +121,7 @@ describe("resolveSeriesDownload", () => {
     const res = await resolveSeriesDownload(
       [episode("a"), episode("b")],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: null,
       },
@@ -99,7 +130,7 @@ describe("resolveSeriesDownload", () => {
     expect(res.resolvedCount).toBe(2)
     expect(res.totalBytes).toBe(6000)
     expect(res.totalIsLowerBound).toBe(false)
-    expect(res.resolved[0].resolvedTier).toBe("Highest")
+    expect(res.resolved[0].resolvedTier).toBe("highest")
     expect(res.resolved[0].rendition?.size).toBe("3000")
   })
 
@@ -111,19 +142,19 @@ describe("resolveSeriesDownload", () => {
     const res = await resolveSeriesDownload(
       [episode("a"), episode("b")],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: null,
       },
       deps,
     )
     // Two episodes — the tier totals are independent of the selected tier.
-    expect(res.tierTotals.Highest.bytes).toBe(6000)
-    expect(res.tierTotals.High.bytes).toBe(4000)
-    expect(res.tierTotals.Low.bytes).toBe(2000)
-    expect(res.tierTotals.Highest.isLowerBound).toBe(false)
+    expect(res.tierTotals.highest.bytes).toBe(6000)
+    expect(res.tierTotals.high.bytes).toBe(4000)
+    expect(res.tierTotals.low.bytes).toBe(2000)
+    expect(res.tierTotals.highest.isLowerBound).toBe(false)
     // The selected tier's total equals the resolution totalBytes.
-    expect(res.tierTotals.Highest.bytes).toBe(res.totalBytes)
+    expect(res.tierTotals.highest.bytes).toBe(res.totalBytes)
   })
 
   it("tier totals use the same nearest fallback as the download", async () => {
@@ -138,12 +169,12 @@ describe("resolveSeriesDownload", () => {
     }
     const res = await resolveSeriesDownload(
       [episode("a")],
-      { qualityTier: "Low", languageSlug: "es", subtitleLanguageSlug: null },
+      { qualityTier: "low", languageSlug: "es", subtitleLanguageSlug: null },
       deps,
     )
-    expect(res.tierTotals.Highest.bytes).toBe(3000)
-    expect(res.tierTotals.High.bytes).toBe(3000) // ties prefer higher quality
-    expect(res.tierTotals.Low.bytes).toBe(1000)
+    expect(res.tierTotals.highest.bytes).toBe(3000)
+    expect(res.tierTotals.high.bytes).toBe(3000) // ties prefer higher quality
+    expect(res.tierTotals.low.bytes).toBe(1000)
   })
 
   it("marks a tier lower-bound when an episode lacks a size for it", async () => {
@@ -158,14 +189,14 @@ describe("resolveSeriesDownload", () => {
     const res = await resolveSeriesDownload(
       [episode("a")],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: null,
       },
       deps,
     )
-    expect(res.tierTotals.Highest).toEqual({ bytes: 3000, isLowerBound: false })
-    expect(res.tierTotals.Low).toEqual({ bytes: 0, isLowerBound: true })
+    expect(res.tierTotals.highest).toEqual({ bytes: 3000, isLowerBound: false })
+    expect(res.tierTotals.low).toEqual({ bytes: 0, isLowerBound: true })
   })
 
   it("skips an episode lacking the chosen language without failing it", async () => {
@@ -177,7 +208,7 @@ describe("resolveSeriesDownload", () => {
     const res = await resolveSeriesDownload(
       [episode("a"), episode("b")],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: null,
       },
@@ -202,12 +233,12 @@ describe("resolveSeriesDownload", () => {
     }
     const res = await resolveSeriesDownload(
       [episode("a")],
-      { qualityTier: "High", languageSlug: "es", subtitleLanguageSlug: null },
+      { qualityTier: "high", languageSlug: "es", subtitleLanguageSlug: null },
       deps,
     )
     expect(res.resolvedCount).toBe(1)
     expect(res.resolved[0].rendition).toBeDefined()
-    expect(["Highest", "Low"]).toContain(res.resolved[0].resolvedTier)
+    expect(["highest", "low"]).toContain(res.resolved[0].resolvedTier)
   })
 
   it("marks an episode with no downloadable rendition as skipped-no-rendition", async () => {
@@ -218,7 +249,7 @@ describe("resolveSeriesDownload", () => {
     const res = await resolveSeriesDownload(
       [episode("a")],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: null,
       },
@@ -236,7 +267,7 @@ describe("resolveSeriesDownload", () => {
     const res = await resolveSeriesDownload(
       [episode("a")],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: "fr",
       },
@@ -255,7 +286,7 @@ describe("resolveSeriesDownload", () => {
     const res = await resolveSeriesDownload(
       [episode("a")],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: null,
       },
@@ -282,7 +313,7 @@ describe("resolveSeriesDownload", () => {
     const res = await resolveSeriesDownload(
       [withIndex],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: null,
       },
@@ -301,7 +332,7 @@ describe("resolveSeriesDownload", () => {
     const res = await resolveSeriesDownload(
       [zeroIndex],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: null,
       },
@@ -321,7 +352,7 @@ describe("resolveSeriesDownload", () => {
     const res = await resolveSeriesDownload(
       [episode("a"), episode("b")],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: null,
       },
@@ -332,6 +363,48 @@ describe("resolveSeriesDownload", () => {
     expect(res.episodes.find((e) => e.slug === "b")?.status).toBe(
       "failed-resolve",
     )
+  })
+})
+
+// KTD15: tiers are identifiers, and only the sheet renders their text. So the
+// UI language cannot change which rendition a series downloads.
+describe("tier choice across UI languages", () => {
+  beforeEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+  })
+  afterAll(() => resetLocaleStoreForTests())
+
+  const deps: SeriesResolveDeps = {
+    getEpisodeVariants: async (slug) => [variant("es", `${slug}-es`)],
+    getDubMedia: async (dubId) => threeTier(dubId),
+  }
+
+  async function pickHigh() {
+    const res = await resolveSeriesDownload(
+      [episode("a")],
+      { qualityTier: "high", languageSlug: "es", subtitleLanguageSlug: null },
+      deps,
+    )
+    const [first] = res.resolved
+    return {
+      tier: first?.resolvedTier,
+      rendition: first?.rendition?.documentId,
+    }
+  }
+
+  it("picks the same tier under an es catalog as under en", async () => {
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+    const english = await pickHigh()
+
+    mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
+    refreshLocale()
+    // The tier text now reads Spanish, so no text compare could match "High".
+    expect(getT("DownloadQuality")("high")).toBe("Alta")
+
+    expect(await pickHigh()).toEqual(english)
+    expect(english).toEqual({ tier: "high", rendition: "a-es-mid" })
   })
 })
 
@@ -485,7 +558,7 @@ describe("episodeChoiceFor (lockstep with buildEpisodeRequest)", () => {
       size: "1000",
       url: "u",
     },
-    resolvedTier: "Highest",
+    resolvedTier: "highest",
     subtitleUrl,
     sizeBytes: 1000,
     sizeUnknown: false,
@@ -565,9 +638,9 @@ describe("deriveDownloadedSelection", () => {
     posterUrl: null,
     status: "resolved",
     dubDocumentId: dub,
-    tiered: [tier(`${slug}-hi`, "Highest"), tier(`${slug}-lo`, "Low")],
-    rendition: tier(`${slug}-hi`, "Highest"),
-    resolvedTier: "Highest",
+    tiered: [tier(`${slug}-hi`, "highest"), tier(`${slug}-lo`, "low")],
+    rendition: tier(`${slug}-hi`, "highest"),
+    resolvedTier: "highest",
     sizeBytes: 1000,
     sizeUnknown: false,
   })
@@ -601,7 +674,7 @@ describe("deriveDownloadedSelection", () => {
       b: rec("dub", "b-lo", "ja"),
     }
     const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
-    expect(sel).toEqual({ tier: "Low", subtitleSlug: "ja" })
+    expect(sel).toEqual({ tier: "low", subtitleSlug: "ja" })
   })
 
   it("has no subtitle to disable when saved without subtitles", () => {
@@ -610,7 +683,7 @@ describe("deriveDownloadedSelection", () => {
       a: rec("dub", "a-hi", null),
     }
     const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
-    expect(sel).toEqual({ tier: "Highest", subtitleSlug: undefined })
+    expect(sel).toEqual({ tier: "highest", subtitleSlug: undefined })
   })
 
   it("detects the subtitle language even when some episodes lack that track", () => {
@@ -622,7 +695,7 @@ describe("deriveDownloadedSelection", () => {
       b: rec("dub", "b-hi", null),
     }
     const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
-    expect(sel).toEqual({ tier: "Highest", subtitleSlug: "ja" })
+    expect(sel).toEqual({ tier: "highest", subtitleSlug: "ja" })
   })
 
   it("disables nothing for a PARTIAL series (not every episode saved)", () => {
@@ -659,7 +732,7 @@ describe("deriveDownloadedSelection", () => {
       b: rec("dub", "b-hi", "en"),
     }
     const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
-    expect(sel).toEqual({ tier: "Highest", subtitleSlug: undefined })
+    expect(sel).toEqual({ tier: "highest", subtitleSlug: undefined })
   })
 
   it("ignores a record downloaded in a different audio language", () => {

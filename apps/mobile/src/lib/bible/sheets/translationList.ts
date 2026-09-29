@@ -1,6 +1,7 @@
 // The translation picker's list (feat-553 U10, R23, R30, R41): the viewer's
 // languages first, then every other catalog language by its English name.
 // Pure; the picker passes the download states in.
+import { compareIds, nameComparator } from "../../collation"
 import type { Catalog, CatalogTranslation } from "../data/catalog"
 import { LANGUAGE_DEFAULT_TRANSLATIONS } from "../data/languageDefaults.generated"
 import { catalogLanguageCode } from "../language/phoneLanguage"
@@ -46,16 +47,15 @@ export type TranslationListInput = {
   onDeviceOnly: boolean
   getState: (translationId: string) => TranslationDownloadState
   languageDefaults?: LanguageDefaults
-}
-
-function byText(a: string, b: string): number {
-  return a.toLowerCase().localeCompare(b.toLowerCase())
+  /** The UI language tag the names collate in (KTD15). */
+  uiTag: string
 }
 
 export function buildTranslationList(
   input: TranslationListInput,
 ): CatalogTranslation[] {
   const defaults = input.languageDefaults ?? LANGUAGE_DEFAULT_TRANSLATIONS
+  const byText = nameComparator(input.uiTag)
   const viewerRank = new Map(
     input.viewerLanguages.map((language, index) => [language, index]),
   )
@@ -80,7 +80,7 @@ export function buildTranslationList(
     if (aRank !== bRank) return aRank < bRank ? -1 : 1
     if (a.language !== b.language) {
       const byName = byText(a.languageEnglishName, b.languageEnglishName)
-      return byName !== 0 ? byName : byText(a.language, b.language)
+      return byName !== 0 ? byName : compareIds(a.language, b.language)
     }
     return withinLanguage(a, b)
   })

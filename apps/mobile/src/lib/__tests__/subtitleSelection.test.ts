@@ -4,7 +4,9 @@ import {
   resolveActiveSubtitle,
   resolveSeriesSubtitleLabel,
   resolveSubtitleActionLabel,
+  subtitleLabelText,
   subtitleNameToCache,
+  SUBTITLES_OFF,
 } from "../subtitleSelection"
 import type { WatchSubtitle } from "../normalizeVideo"
 
@@ -45,9 +47,9 @@ describe("resolveActiveSubtitle", () => {
 })
 
 describe("deriveSubtitleLabel", () => {
-  it("returns 'Off' when subtitles are disabled, regardless of the slug", () => {
-    expect(deriveSubtitleLabel(false, "french", SUBS)).toBe("Off")
-    expect(deriveSubtitleLabel(false, null, SUBS)).toBe("Off")
+  it("returns the off state when subtitles are disabled, regardless of the slug", () => {
+    expect(deriveSubtitleLabel(false, "french", SUBS)).toBe(SUBTITLES_OFF)
+    expect(deriveSubtitleLabel(false, null, SUBS)).toBe(SUBTITLES_OFF)
   })
 
   it("returns null when enabled but no slug is selected", () => {
@@ -69,9 +71,9 @@ describe("deriveSubtitleLabel", () => {
 })
 
 describe("resolveSubtitleActionLabel", () => {
-  it("returns 'Off' when disabled, ignoring the fallback name", () => {
+  it("returns the off state when disabled, ignoring the fallback name", () => {
     expect(resolveSubtitleActionLabel(false, "english", SUBS, "French")).toBe(
-      "Off",
+      SUBTITLES_OFF,
     )
   })
 
@@ -81,10 +83,14 @@ describe("resolveSubtitleActionLabel", () => {
     )
   })
 
-  it("returns 'Off' when the dub is loaded with no subtitle tracks", () => {
+  it("returns the off state when the dub is loaded with no subtitle tracks", () => {
     // The reported bug: a loaded-empty dub ([]) must say "Off", not a stale name.
-    expect(resolveSubtitleActionLabel(true, "arabic", [], "Arabic")).toBe("Off")
-    expect(resolveSubtitleActionLabel(true, null, [], "French")).toBe("Off")
+    expect(resolveSubtitleActionLabel(true, "arabic", [], "Arabic")).toBe(
+      SUBTITLES_OFF,
+    )
+    expect(resolveSubtitleActionLabel(true, null, [], "French")).toBe(
+      SUBTITLES_OFF,
+    )
   })
 
   it("paints the cached name while the dub media is still loading (null)", () => {
@@ -101,6 +107,21 @@ describe("resolveSubtitleActionLabel", () => {
 
   it("returns null when enabled, not loaded, and there is no cached name", () => {
     expect(resolveSubtitleActionLabel(true, null, null, null)).toBeNull()
+  })
+})
+
+// KTD15: logic returns the off state as a sentinel, never the word "Off";
+// only the render turns it into catalog text.
+describe("the off state", () => {
+  it("is not a string, so no caller can show it untranslated", () => {
+    expect(typeof SUBTITLES_OFF).not.toBe("string")
+    expect(resolveSubtitleActionLabel(false, null, SUBS, null)).not.toBe("Off")
+  })
+
+  it("becomes the text the render passes in", () => {
+    expect(subtitleLabelText(SUBTITLES_OFF, "Выкл.")).toBe("Выкл.")
+    expect(subtitleLabelText("English", "Выкл.")).toBe("English")
+    expect(subtitleLabelText(null, "Выкл.")).toBeNull()
   })
 })
 
@@ -132,13 +153,13 @@ describe("resolveSeriesSubtitleLabel", () => {
     ).toBe("Cantonese")
   })
 
-  it("returns 'Off' when subtitles are disabled", () => {
+  it("returns the off state when subtitles are disabled", () => {
     expect(
       resolveSeriesSubtitleLabel(false, "english", "English", SUBS, null),
-    ).toBe("Off")
+    ).toBe(SUBTITLES_OFF)
     expect(
       resolveSeriesSubtitleLabel(false, "english", "English", null, null),
-    ).toBe("Off")
+    ).toBe(SUBTITLES_OFF)
   })
 
   it("shows the preferred name when the resolved union offers it", () => {
@@ -161,11 +182,11 @@ describe("resolveSeriesSubtitleLabel", () => {
     expect(["English", "French"]).toContain(label)
   })
 
-  it("shows 'Off' when the resolved series has no subtitles", () => {
+  it("shows the off state when the resolved series has no subtitles", () => {
     // Empty union → the series has no subtitles: "Off", not the stale cached name.
     expect(
       resolveSeriesSubtitleLabel(true, "cantonese", "Cantonese", [], null),
-    ).toBe("Off")
+    ).toBe(SUBTITLES_OFF)
   })
 })
 

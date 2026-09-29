@@ -28,6 +28,7 @@ import type {
 } from "./rawExport"
 import {
   RAW_EXPORT_DIR_NAME,
+  RAW_EXPORT_MAX_FILENAME_BYTES,
   RAW_EXPORT_MAX_FILENAME_LENGTH,
 } from "./rawExportConstants"
 
@@ -69,19 +70,86 @@ export function exportStagingDir(root: string, videoSlug: string): string {
   return joinUnderRoot(root, videoSlug)
 }
 
+function titleOrFallback(
+  title: string | null | undefined,
+  fallbackName: string,
+): string {
+  return title && title.trim().length > 0 ? title : fallbackName
+}
+
+// Letters with their combining marks, and digits, in any script (R23).
+const NAME_CHARACTER = /[\p{L}\p{M}\p{N}._-]/u
+
+function utf8Bytes(codePoint: number): number {
+  if (codePoint < 0x80) return 1
+  if (codePoint < 0x800) return 2
+  return codePoint < 0x10000 ? 3 : 4
+}
+
+/** The longest prefix inside both bounds, cut only between code points. */
+function truncateName(
+  text: string,
+  maxUnits: number,
+  maxBytes: number,
+): string {
+  let units = 0
+  let bytes = 0
+  let end = 0
+  for (const character of text) {
+    units += character.length
+    bytes += utf8Bytes(character.codePointAt(0) ?? 0)
+    if (units > maxUnits || bytes > maxBytes) break
+    end = units
+  }
+  return text.slice(0, end)
+}
+
+function byteLength(text: string): number {
+  let bytes = 0
+  for (const character of text)
+    bytes += utf8Bytes(character.codePointAt(0) ?? 0)
+  return bytes
+}
+
 /**
- * R34: the saved asset takes its name from the staged file, so the viewer-legible
- * name has to live in the path. The title is untrusted, so it is sanitized on
- * the same basis as every other segment and then bounded.
+ * R34, R23: the name the viewer sees in the picked folder. It keeps the title's
+ * letters and digits in any script and replaces every other character. The
+ * title is untrusted, so the result is also bounded in code units and bytes.
  */
 export function buildExportFileName(
   title: string | null | undefined,
   fallbackName: string,
 ): string {
-  const source = title && title.trim().length > 0 ? title : fallbackName
+  // NFC first, so a decomposed title counts the same bytes it shows.
+  const source = titleOrFallback(title, fallbackName).normalize("NFC")
+  let safe = ""
+  for (const character of source) {
+    safe += NAME_CHARACTER.test(character) ? character : "_"
+  }
+  // A leading dot would hide the file in the viewer's folder.
+  safe = safe.replace(/^\.+/, "_")
+  const stem = truncateName(
+    safe,
+    RAW_EXPORT_MAX_FILENAME_LENGTH - FILE_EXTENSION.length,
+    RAW_EXPORT_MAX_FILENAME_BYTES - FILE_EXTENSION.length,
+  )
+  return `${stem === "" ? "_" : stem}${FILE_EXTENSION}`
+}
+
+/**
+ * The internal staged name: today's ASCII sanitizer, never the viewer's name.
+ * The copy into the folder renames the staged file to `buildExportFileName`.
+ */
+function buildStagedFileName(
+  title: string | null | undefined,
+  fallbackName: string,
+): string {
   // A leading dot would stage a hidden file, which the launch sweep and any
   // operator listing the root would both miss.
-  const safe = sanitizeSegment(source).replace(/^\.+/, "_")
+  const safe = sanitizeSegment(titleOrFallback(title, fallbackName)).replace(
+    /^\.+/,
+    "_",
+  )
   const stem = safe.slice(
     0,
     RAW_EXPORT_MAX_FILENAME_LENGTH - FILE_EXTENSION.length,
@@ -91,8 +159,8 @@ export function buildExportFileName(
 
 /**
  * `Jesus.mp4` at index 2 becomes `Jesus (2).mp4`; index 1 is the bare name. The
- * stem gives up whatever the suffix needs, so a de-duplicated name still fits
- * the same bound the staged name was built to.
+ * stem gives up whole characters to make room for the suffix, so a
+ * de-duplicated name still fits both bounds the exported name was built to.
  */
 export function suffixFileName(fileName: string, index: number): string {
   if (index <= 1) return fileName
@@ -101,9 +169,13 @@ export function suffixFileName(fileName: string, index: number): string {
   const stem = hasExtension ? fileName.slice(0, dot) : fileName
   const extension = hasExtension ? fileName.slice(dot) : ""
   const suffix = ` (${index})`
-  const room = RAW_EXPORT_MAX_FILENAME_LENGTH - extension.length - suffix.length
-  const trimmed = room > 0 ? stem.slice(0, room) : ""
-  return `${trimmed}${suffix}${extension}`
+  const tail = `${suffix}${extension}`
+  const trimmed = truncateName(
+    stem,
+    Math.max(0, RAW_EXPORT_MAX_FILENAME_LENGTH - tail.length),
+    Math.max(0, RAW_EXPORT_MAX_FILENAME_BYTES - byteLength(tail)),
+  )
+  return `${trimmed}${tail}`
 }
 
 /** Where one export stages its bytes. Every dynamic segment is sanitized. */
@@ -116,7 +188,7 @@ export function buildStagedExportPath(args: {
   return joinUnderRoot(
     args.root,
     args.videoSlug,
-    buildExportFileName(args.title, args.fallbackName),
+    buildStagedFileName(args.title, args.fallbackName),
   )
 }
 

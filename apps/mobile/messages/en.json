@@ -1,5 +1,25 @@
 {
   "Common": {
     "goBackAriaLabel": "Go back"
+  },
+  "VideoLabel": {
+    "behindTheScenes": "Behind the scenes",
+    "collection": "Collection",
+    "episode": "Episode",
+    "featureFilm": "Feature film",
+    "segment": "Segment",
+    "series": "Series",
+    "shortFilm": "Short film",
+    "trailer": "Trailer",
+    "video": "Video"
+  },
+  "DownloadQuality": {
+    "highest": "Highest",
+    "high": "High",
+    "low": "Low"
+  },
+  "Subtitles": {
+    "off": "Off",
+    "noSubtitles": "No subtitles"
   }
 }

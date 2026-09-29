@@ -23,6 +23,11 @@ import {
   iconInnerSlop,
 } from "../../lib/actionRowSpacing"
 import { BG_COLOR, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
+import { useT } from "../../i18n/useT"
+import {
+  subtitleLabelText,
+  type SubtitleActionLabel,
+} from "../../lib/subtitleSelection"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
 import type { OfflineDownloadState } from "../../lib/offlineManifest"
@@ -84,8 +89,8 @@ export interface ActionButtonRowProps {
   exportEntry?: ExportSessionEntry | null
   /** Selected dub language name shown on the Language row. */
   languageLabel?: string | null
-  /** Selected subtitle name (or "Off") shown on the Subtitles row. */
-  subtitleLabel?: string | null
+  /** Selected subtitle name, or the off state, shown on the Subtitles row. */
+  subtitleLabel?: SubtitleActionLabel
   /** Subtitles on → bright row; off → muted, matching the "Off" state. */
   subtitleActive?: boolean
 }
@@ -103,6 +108,7 @@ export function ActionButtonRow({
   subtitleActive,
 }: ActionButtonRowProps) {
   const typography = useTypography()
+  const tSubtitles = useT("Subtitles")
 
   // Measured inputs for the spacing mode: the row's inner width plus each
   // pill's NATURAL width (the real pills clamp at the column, so only the
@@ -122,7 +128,9 @@ export function ActionButtonRow({
   const shareSlop = { left: inner, right: ICON_HIT_SLOP_MAX }
 
   const language = languageLabel?.trim() || "Language"
-  const subtitle = subtitleLabel?.trim() || "Subtitles"
+  const subtitle =
+    subtitleLabelText(subtitleLabel ?? null, tSubtitles("off"))?.trim() ||
+    "Subtitles"
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
   const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
   // The ring IS the control, so its glyph, its label and whether it accepts a
@@ -198,6 +206,8 @@ export function ActionButtonRow({
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
           accessibilityLabel={`Subtitles, ${subtitle}`}
+          // The label carries catalog text, so the RUM name is fixed (KTD15).
+          {...{ "dd-action-name": "watch-subtitles" }}
         >
           <PillContent
             kind="subtitle"

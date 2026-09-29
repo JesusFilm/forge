@@ -23,7 +23,7 @@ function resolvedEpisode(
       size: "1000",
       url: "https://cdn.example/e2.mp4",
     },
-    resolvedTier: "Highest",
+    resolvedTier: "highest",
     subtitleUrl: null,
     seriesEpisodeIndex: 2,
     durationSeconds: 725,

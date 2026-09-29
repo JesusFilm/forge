@@ -14,7 +14,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons"
 
+import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
+import { useUiTag } from "../../hooks/useUiTag"
+import { nameComparator } from "../../lib/collation"
 import {
   ACCENT,
   TEXT_BODY,
@@ -143,6 +146,7 @@ export function Dropdown({
   open,
   onToggle,
   onSelect,
+  actionName,
 }: {
   sectionLabel: string
   options: DropdownOption[]
@@ -150,6 +154,11 @@ export function Dropdown({
   open: boolean
   onToggle: () => void
   onSelect: (key: string) => void
+  /**
+   * Stem of the RUM tap names (`<stem>-toggle`, `<stem>-option`). The labels
+   * hold catalog text, which would split the tap series by language (KTD15).
+   */
+  actionName: string
 }) {
   const typography = useTypography()
   const selected = options.find((o) => o.key === selectedKey) ?? options[0]
@@ -171,6 +180,7 @@ export function Dropdown({
         accessibilityLabel={
           selected != null ? `${sectionLabel}, ${selected.label}` : sectionLabel
         }
+        {...{ "dd-action-name": `${actionName}-toggle` }}
       >
         <Text style={[styles.dropdownValue, typography.body]} numberOfLines={1}>
           {selected?.label}
@@ -217,6 +227,7 @@ export function Dropdown({
                     accessibilityLabel={
                       opt.note != null ? `${opt.label}, ${opt.note}` : opt.label
                     }
+                    {...{ "dd-action-name": `${actionName}-option` }}
                   >
                     <Text
                       style={[
@@ -367,6 +378,8 @@ export function SubtitlePicker({
   onToggle: () => void
   onSelect: (slug: string | null) => void
 }) {
+  const tSubtitles = useT("Subtitles")
+  const uiTag = useUiTag()
   const options = useMemo<DropdownOption[]>(() => {
     // Only a saved subtitle LANGUAGE is "already downloaded" — the "No subtitles"
     // row is never disabled (re-downloading "no subtitle" isn't a thing).
@@ -377,15 +390,14 @@ export function SubtitlePicker({
         ? { ...opt, disabled: true, note: "Already downloaded" }
         : opt
     const base: DropdownOption[] = [
-      mark({ key: NO_SUBTITLE_KEY, label: "No subtitles" }),
+      mark({ key: NO_SUBTITLE_KEY, label: tSubtitles("noSubtitles") }),
     ]
-    const sorted = [...union.entries()].sort((a, b) =>
-      a[1].toLowerCase().localeCompare(b[1].toLowerCase()),
-    )
+    const compareNames = nameComparator(uiTag)
+    const sorted = [...union.entries()].sort((a, b) => compareNames(a[1], b[1]))
     for (const [slug, name] of sorted)
       base.push(mark({ key: slug, label: name }))
     return base
-  }, [union, downloadedSlug])
+  }, [union, downloadedSlug, tSubtitles, uiTag])
 
   return (
     <Dropdown
@@ -395,6 +407,7 @@ export function SubtitlePicker({
       open={open}
       onToggle={onToggle}
       onSelect={(key) => onSelect(key === NO_SUBTITLE_KEY ? null : key)}
+      actionName="download-subtitles"
     />
   )
 }
@@ -602,6 +615,8 @@ export function DownloadSheetContent({
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
+  const tQuality = useT("DownloadQuality")
+  const tSubtitles = useT("Subtitles")
 
   const tiered = useMemo(() => tierDownloads(downloads), [downloads])
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -659,7 +674,7 @@ export function DownloadSheetContent({
     () =>
       tiered.map((t, index) => ({
         key: String(index),
-        label: t.tier,
+        label: tQuality(t.tier),
         trailing: formatFileSize(t.size),
         // Only in raw mode: the held copy exports instantly, every other
         // quality has to come down the wire first. In offline mode the same
@@ -669,7 +684,7 @@ export function DownloadSheetContent({
             ? "Downloads again"
             : undefined,
       })),
-    [tiered, rawMode, heldIndex],
+    [tiered, rawMode, heldIndex, tQuality],
   )
   const selectedQualityKey = String(selectedIndex)
 
@@ -787,7 +802,7 @@ export function DownloadSheetContent({
                 <Text style={[styles.metaPillText, typography.bodySmall]}>
                   {(subtitleSlug != null
                     ? subtitleUnion.get(subtitleSlug)
-                    : null) ?? "No subtitles"}
+                    : null) ?? tSubtitles("noSubtitles")}
                 </Text>
               </View>
             )}
@@ -807,6 +822,7 @@ export function DownloadSheetContent({
             setSelectedIndex(Number(key))
             setQualityOpen(false)
           }}
+          actionName="download-quality"
         />
 
         {/* R5: only an offline copy can carry a subtitle, so the picker leaves

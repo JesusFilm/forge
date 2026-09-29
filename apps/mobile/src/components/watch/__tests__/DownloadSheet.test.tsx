@@ -90,8 +90,54 @@ jest.mock("../../../lib/seriesDownloadResolver", () => ({
   resolveSeriesDownload: (...args: unknown[]) => mockResolveSeries(...args),
 }))
 
+// ── UI language seams ───────────────────────────────────────────────
+// A fixture `ru` catalog joins the real set, so a test can change the UI
+// language while the sheet is on screen.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(
+      jest.requireActual("../../../i18n/catalogs.generated"),
+      {
+        ru: {
+          DownloadQuality: {
+            highest: "Наилучшее",
+            high: "Высокое",
+            low: "Низкое",
+          },
+          Subtitles: { off: "Выкл.", noSubtitles: "Без субтитров" },
+        },
+      },
+    ),
+)
+jest.mock("../../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../../i18n/pluralData.generated"),
+      ["ru"],
+    ),
+)
+
 import { act } from "react"
 import { Alert } from "react-native"
+
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import {
+  phoneLocales,
+  tapActionName,
+} from "../../../test-utils/uiLocaleFixture"
 
 import SeriesDownloadRoute from "../../../../app/series/download"
 import {
@@ -154,7 +200,7 @@ const DOWNLOADS: WatchDownload[] = [
 ]
 
 const EPISODE_SLUGS = ["ep-one", "ep-two", "ep-three"] as const
-const TIERS: readonly QualityTier[] = ["Highest", "High", "Low"]
+const TIERS: readonly QualityTier[] = ["highest", "high", "low"]
 
 // Module scope, and returned by identity: a fresh series object per render
 // re-creates the route's resolve callback and spins the mount effect forever.
@@ -207,11 +253,11 @@ function buildResolution(tier: QualityTier) {
 
 /** A verified offline copy of every episode at the Highest tier. */
 function savedRecord(slug: string): OfflineDownloadRecord {
-  return savedRecordAt(slug, "Highest")
+  return savedRecordAt(slug, "highest")
 }
 
 /**
- * The same copy at a named tier. "Highest" is ALSO the sheet's own opening
+ * The same copy at a named tier. "highest" is ALSO the sheet's own opening
  * default, so a fixture saved there cannot tell an assignment apart from the
  * value the state already held.
  */
@@ -375,7 +421,7 @@ async function chooseQuality(
   renderer: TestInstance,
   section: string,
   current: string,
-  next: QualityTier,
+  next: string,
 ) {
   await press(pressableByLabel(renderer, `${section}, ${current}`))
   await press(pressableByLabel(renderer, next))
@@ -1046,11 +1092,11 @@ describe("series sheet opened for an export", () => {
 
   it("keeps the saved quality, so every episode reuses its offline copy", async () => {
     // Saved at a tier that is NOT the sheet's opening default, so only the
-    // assignment can produce this result. With the fixture at "Highest" the
+    // assignment can produce this result. With the fixture at "highest" the
     // assignment writes the value the state already holds, and deleting it
     // leaves the test green.
     mockGetRecord.mockImplementation((slug: string) =>
-      savedRecordAt(slug, "Low"),
+      savedRecordAt(slug, "low"),
     )
     const renderer = await renderSeries({ mode: "raw" })
 
@@ -1067,7 +1113,7 @@ describe("series sheet opened for an export", () => {
     // run, and the seed must leave it alone. The resolution is held open here
     // because it settles instantly otherwise, which skips this window.
     mockGetRecord.mockImplementation((slug: string) =>
-      savedRecordAt(slug, "Low"),
+      savedRecordAt(slug, "low"),
     )
     let releaseFirst!: () => void
     const held = new Promise<void>((resolve) => {
@@ -1112,6 +1158,128 @@ describe("series sheet opened for an export", () => {
     expect(nodeByLabel(renderer, "Quality, Highest")).not.toBeNull()
     expect(hasText(renderer, formatSeriesReuseNote(3, 3))).toBe(true)
 
+    await unmount(renderer)
+  })
+})
+
+// KTD15: tier and "no subtitles" text comes from the catalog at render, and
+// each control whose label moved there keeps one RUM action name.
+describe("UI language", () => {
+  beforeEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+  })
+  afterAll(() => resetLocaleStoreForTests())
+
+  async function switchToRussian() {
+    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
+    await act(async () => {
+      refreshLocale()
+    })
+  }
+
+  /** The distinct accessibility labels of the open panel's radio rows. */
+  function panelRows(renderer: TestInstance): string[] {
+    const modeLabels: string[] = [
+      DOWNLOAD_MODE_LABELS.offline,
+      DOWNLOAD_MODE_LABELS.raw,
+    ]
+    return [
+      ...new Set(
+        renderer.root
+          .findAll((n) => n.props.accessibilityRole === "radio")
+          .map((n) => String(n.props.accessibilityLabel)),
+      ),
+    ].filter((label) => !modeLabels.includes(label))
+  }
+
+  it("gives a quality row the same tap name in en and ru", async () => {
+    const renderer = await renderSheet()
+    await press(pressableByLabel(renderer, "Select a file size, Highest"))
+    const english = pressableByLabel(renderer, "High")
+    const englishName = tapActionName(english)
+
+    await switchToRussian()
+    // The row stays open and now reads Russian, so the label alone would
+    // split the tap series by language.
+    const russian = pressableByLabel(renderer, "Высокое")
+    expect(nodeByLabel(renderer, "High")).toBeNull()
+    expect(tapActionName(russian)).toBe(englishName)
+    expect(englishName).toBe("download-quality-option")
+    await unmount(renderer)
+  })
+
+  it("gives the dropdown trigger the same tap name in en and ru", async () => {
+    const renderer = await renderSheet()
+    const englishName = tapActionName(
+      pressableByLabel(renderer, "Select a file size, Highest"),
+    )
+    await switchToRussian()
+    const russian = pressableByLabel(renderer, "Select a file size, Наилучшее")
+    expect(tapActionName(russian)).toBe(englishName)
+    expect(englishName).toBe("download-quality-toggle")
+    await unmount(renderer)
+  })
+
+  it("reads the no-subtitles row from the catalog, with one tap name", async () => {
+    const renderer = await renderSheet({ subtitleLanguageSlug: null })
+    await press(pressableByLabel(renderer, "Subtitles, No subtitles"))
+    const englishName = tapActionName(
+      pressableByLabel(renderer, "No subtitles"),
+    )
+
+    await switchToRussian()
+    const russian = pressableByLabel(renderer, "Без субтитров")
+    expect(tapActionName(russian)).toBe(englishName)
+    expect(englishName).toBe("download-subtitles-option")
+    await unmount(renderer)
+  })
+
+  it("sorts subtitle names by the UI tag", async () => {
+    const subtitles: WatchSubtitle[] = [
+      ...SUBTITLES,
+      {
+        documentId: "s-ru",
+        languageSlug: "russian",
+        languageName: "Русский",
+        languageBcp47: "ru",
+        vttSrc: "https://cdn.example.com/ru.vtt",
+        primary: false,
+        aiGenerated: false,
+      },
+    ]
+    const renderer = await renderSheet({ subtitles })
+    await press(pressableByLabel(renderer, "Subtitles, Spanish"))
+    expect(panelRows(renderer)).toEqual([
+      "No subtitles",
+      "English",
+      "Spanish",
+      "Русский",
+    ])
+
+    await switchToRussian()
+    // Russian collation puts Cyrillic before Latin.
+    expect(panelRows(renderer)).toEqual([
+      "Без субтитров",
+      "Русский",
+      "English",
+      "Spanish",
+    ])
+    await unmount(renderer)
+  })
+
+  it("renders the series quality text from the catalog", async () => {
+    const renderer = await renderSeries()
+    expect(nodeByLabel(renderer, "Quality, Highest")).not.toBeNull()
+    const englishName = tapActionName(
+      pressableByLabel(renderer, "Quality, Highest"),
+    )
+
+    await switchToRussian()
+    const russian = pressableByLabel(renderer, "Quality, Наилучшее")
+    expect(tapActionName(russian)).toBe(englishName)
     await unmount(renderer)
   })
 })

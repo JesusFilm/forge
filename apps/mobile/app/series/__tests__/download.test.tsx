@@ -77,7 +77,7 @@ const resolvedEpisode = (
   status: "resolved",
   dubDocumentId,
   rendition: dl(`${slug}-r`, "high", String(sizeBytes)),
-  resolvedTier: "Highest",
+  resolvedTier: "highest",
   subtitleUrl: null,
   subtitleMissing: false,
   sizeBytes,
@@ -121,9 +121,9 @@ function resolutionOf(resolved: SeriesEpisodeResolution[]) {
     totalBytes: resolved.reduce((s, e) => s + (e.sizeBytes ?? 0), 0),
     totalIsLowerBound: resolved.some((e) => e.sizeUnknown === true),
     tierTotals: {
-      Highest: { bytes: 0, isLowerBound: false },
-      High: { bytes: 0, isLowerBound: false },
-      Low: { bytes: 0, isLowerBound: false },
+      highest: { bytes: 0, isLowerBound: false },
+      high: { bytes: 0, isLowerBound: false },
+      low: { bytes: 0, isLowerBound: false },
     },
   }
 }
@@ -147,7 +147,7 @@ describe("AE1 — resolved total and request shape", () => {
     const res = await resolveSeriesDownload(
       [episode("a"), episode("b")],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: null,
       },
@@ -513,7 +513,7 @@ describe("AE8 — all-skipped resolution", () => {
     const res = await resolveSeriesDownload(
       [episode("a"), episode("b")],
       {
-        qualityTier: "Highest",
+        qualityTier: "highest",
         languageSlug: "es",
         subtitleLanguageSlug: null,
       },

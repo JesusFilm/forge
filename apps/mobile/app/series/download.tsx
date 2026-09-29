@@ -55,10 +55,12 @@ import { getApolloClient } from "../../src/lib/apolloClient"
 import { GET_VIDEO_DUB, GET_VIDEO_DUB_INDEX } from "../../src/lib/queries"
 import { normalizeDubMedia } from "../../src/lib/normalizeVideo"
 import {
+  QUALITY_TIERS,
   formatFileSize,
   formatTierSize,
   type QualityTier,
 } from "../../src/lib/downloadTiers"
+import { useT } from "../../src/i18n/useT"
 import {
   decideEpisodeAction,
   deriveDownloadedSelection,
@@ -76,9 +78,6 @@ import {
   type EnqueueSummary,
 } from "../../src/lib/seriesDownloadEnqueue"
 import { freeDiskBytes } from "../../src/lib/offlineFileSystem"
-
-// Series locale matches the series detail query (app/series/[slug].tsx).
-const QUALITY_TIERS: readonly QualityTier[] = ["Highest", "High", "Low"]
 
 type SheetPhase =
   | { kind: "resolving" }
@@ -102,8 +101,9 @@ export default function SeriesDownloadRoute() {
   const { wifiOnly } = useWatchPreferences()
   const typography = useTypography()
   const insets = useSafeAreaInsets()
+  const tQuality = useT("DownloadQuality")
 
-  const [qualityTier, setQualityTier] = useState<QualityTier>("Highest")
+  const [qualityTier, setQualityTier] = useState<QualityTier>("highest")
   const [qualityOpen, setQualityOpen] = useState(false)
   const [subtitleSlug, setSubtitleSlug] = useState<string | null>(null)
   const [subtitleOpen, setSubtitleOpen] = useState(false)
@@ -313,7 +313,7 @@ export default function SeriesDownloadRoute() {
         const isDownloaded = savedTier === t
         return {
           key: t,
-          label: t,
+          label: tQuality(t),
           disabled: isDownloaded,
           note: isDownloaded ? ALREADY_DOWNLOADED : undefined,
           trailing: resolution
@@ -321,7 +321,7 @@ export default function SeriesDownloadRoute() {
             : undefined,
         }
       }),
-    [resolution, savedTier],
+    [resolution, savedTier, tQuality],
   )
 
   // Every resolved episode already saved at this exact quality+subtitle → the
@@ -574,6 +574,7 @@ export default function SeriesDownloadRoute() {
           setQualityTier(key as QualityTier)
           setQualityOpen(false)
         }}
+        actionName="download-quality"
       />
 
       {/* No audio picker: the download language is the series' selected dub

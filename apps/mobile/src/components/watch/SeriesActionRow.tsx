@@ -12,6 +12,11 @@ import {
   DOWNLOAD_DONE_COLOR,
   EXPORT_IN_PROGRESS_COLOR,
 } from "../../lib/downloadGlyph"
+import { useT } from "../../i18n/useT"
+import {
+  subtitleLabelText,
+  type SubtitleActionLabel,
+} from "../../lib/subtitleSelection"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
 import { DownloadProgressRing } from "./DownloadProgressRing"
@@ -37,8 +42,8 @@ export type SeriesActionRowProps = {
   onShare: () => void
   /** Selected language name shown in the Language pill. */
   languageLabel?: string | null
-  /** Selected subtitle name (or "Off") shown in the Subtitles pill. */
-  subtitleLabel?: string | null
+  /** Selected subtitle name, or the off state, shown in the Subtitles pill. */
+  subtitleLabel?: SubtitleActionLabel
   /** Subtitles on → bright pill; off → muted, matching the "Off" state. */
   subtitleActive?: boolean
   /** Series-wide download progress driving the Download icon/ring. */
@@ -66,9 +71,12 @@ export function SeriesActionRow({
   onResumeExport,
 }: SeriesActionRowProps) {
   const typography = useTypography()
+  const tSubtitles = useT("Subtitles")
 
   const language = languageLabel?.trim() || "Language"
-  const subtitle = subtitleLabel?.trim() || "Subtitles"
+  const subtitle =
+    subtitleLabelText(subtitleLabel ?? null, tSubtitles("off"))?.trim() ||
+    "Subtitles"
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
   const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
   const allDownloaded = seriesAllDownloaded(downloadState)
@@ -122,6 +130,8 @@ export function SeriesActionRow({
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
           accessibilityLabel={`Subtitles, ${subtitle}`}
+          // The label carries catalog text, so the RUM name is fixed (KTD15).
+          {...{ "dd-action-name": "series-subtitles" }}
         >
           <MaterialCommunityIcons
             name="closed-caption-outline"

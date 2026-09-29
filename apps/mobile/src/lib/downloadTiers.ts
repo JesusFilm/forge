@@ -4,7 +4,13 @@ import type { WatchDownload } from "./normalizeVideo"
 // series resolver. Extracted from DownloadSheet so both consumers pick tiers
 // from one implementation rather than drifting copies.
 
-export type QualityTier = "Highest" | "High" | "Low"
+/**
+ * Tier identifiers, best first. They are also the `DownloadQuality` catalog
+ * keys, so the sheets render the text and no logic ever reads it (KTD15).
+ */
+export const QUALITY_TIERS = ["highest", "high", "low"] as const
+
+export type QualityTier = (typeof QUALITY_TIERS)[number]
 
 export type TieredDownload = WatchDownload & { tier: QualityTier }
 
@@ -40,19 +46,19 @@ export function tierDownloads(downloads: WatchDownload[]): TieredDownload[] {
   if (sorted.length === 0) return []
   const head = sorted[0]
   if (sorted.length === 1) {
-    return [{ ...head, tier: "Highest" }]
+    return [{ ...head, tier: "highest" }]
   }
   const tail = sorted[sorted.length - 1]
   if (sorted.length === 2) {
     return [
-      { ...head, tier: "Highest" },
-      { ...tail, tier: "Low" },
+      { ...head, tier: "highest" },
+      { ...tail, tier: "low" },
     ]
   }
   const middle = sorted[Math.floor(sorted.length / 2)]
   return [
-    { ...head, tier: "Highest" },
-    { ...middle, tier: "High" },
-    { ...tail, tier: "Low" },
+    { ...head, tier: "highest" },
+    { ...middle, tier: "high" },
+    { ...tail, tier: "low" },
   ]
 }

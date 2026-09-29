@@ -19,6 +19,7 @@ import {
   translationStatusLabel,
 } from "../../../lib/bible/sheets/translationList"
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
+import { useUiTag } from "../../../hooks/useUiTag"
 import { SearchableListSheet } from "../../sheets/SearchableListSheet"
 import { ReaderSheetHeader } from "./ReaderSheetHeader"
 import { useDownloadsVersion } from "./useDownloadsVersion"
@@ -61,6 +62,7 @@ export function TranslationPicker({
 }: TranslationPickerProps) {
   const [onDeviceOnly, setOnDeviceOnly] = useState(offline)
   const version = useDownloadsVersion(downloads)
+  const uiTag = useUiTag()
 
   const rows = useMemo(() => {
     const list = buildTranslationList({
@@ -68,12 +70,21 @@ export function TranslationPicker({
       viewerLanguages,
       onDeviceOnly,
       getState: downloads.getState,
+      uiTag,
     })
     // The "Current" row reads from the rows, so keep it when the filter hides it.
     const active = activeId ? catalog.byId.get(activeId) : undefined
     return active && !list.includes(active) ? [active, ...list] : list
     // `version` makes both memos read the store again after a change.
-  }, [catalog, viewerLanguages, onDeviceOnly, downloads, activeId, version])
+  }, [
+    catalog,
+    viewerLanguages,
+    onDeviceOnly,
+    downloads,
+    activeId,
+    version,
+    uiTag,
+  ])
 
   const getStatus = useCallback(
     (translation: CatalogTranslation) =>

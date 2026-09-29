@@ -14,6 +14,7 @@ import {
   type WatchHomeSectionConfig,
   type WatchHomeSourceConfig,
 } from "./config"
+import { getT } from "../../i18n/useT"
 import { pickCardImage } from "../cardImage"
 import { labelText } from "../videoLabel"
 import {
@@ -176,7 +177,7 @@ function normalizeCard(args: {
   const playbackId: string | null = null
   const adminImageUrl = pickAdminImage(args.video.images ?? [])
   const imageUrl = adminImageUrl ?? muxThumbnail(playbackId)
-  const label = labelText(args.video.label)
+  const label = labelText(args.video.label, getT("VideoLabel"))
   const childCount =
     "children" in args.video && Array.isArray(args.video.children)
       ? args.video.children.length
@@ -453,7 +454,8 @@ function buildCarouselPools(args: {
       video,
       languageSlug: args.languageSlug,
     })
-    if (!parentCard || parentCard.label !== "Short film") continue
+    // KTD15: classify on the raw kind; `label` is catalog text.
+    if (!parentCard || parentCard.rawLabel !== "SHORT_FILM") continue
     const slide = cardToCarouselSlide(parentCard)
     if (slide) shortFilmById.set(slide.id, slide)
   }
