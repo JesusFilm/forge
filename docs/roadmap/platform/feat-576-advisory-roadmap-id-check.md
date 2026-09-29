@@ -3,7 +3,7 @@ id: "feat-576"
 title: "Report new roadmap ticket ID collisions in advisory CI"
 owner: "jaco"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-30"
 duration: 1
 depends_on: []
@@ -47,3 +47,10 @@ hidden from public roadmap output.
 Run the checker tests, exercise it against a duplicate-introducing fixture,
 check formatting, and confirm the job is absent from `ci-gate` and the active
 GitHub ruleset's required checks.
+
+## Resolution
+
+[Forge PR #2489](https://github.com/JesusFilm/forge/pull/2489) adds the
+advisory check. A new ID collision exits with failure; existing duplicate
+IDs do not fail unrelated PRs. The job is excluded from `ci-gate` and is not
+required by the active Main ruleset.
