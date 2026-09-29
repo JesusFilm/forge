@@ -8,6 +8,13 @@ export type AdmissionProvider = {
   exchange(code: string): Promise<GitHubIdentity>
 }
 
+export class OAuthInvalidError extends Error {
+  constructor() {
+    super("oauth_invalid")
+    this.name = "OAuthInvalidError"
+  }
+}
+
 const api = "https://api.github.com"
 const repository = "JesusFilm/forge"
 const headers = (token: string) => ({
@@ -125,13 +132,15 @@ export function createGitHubAdmission(config: {
           signal: AbortSignal.timeout(5000),
         },
       )
-      if (!response.ok) throw new Error("oauth_exchange_failed")
+      if (!response.ok) throw new Error("github_unverified")
       const tokenResult = object(await response.json())
+      if (tokenResult.error === "bad_verification_code")
+        throw new OAuthInvalidError()
       if (
         typeof tokenResult.access_token !== "string" ||
         tokenResult.token_type !== "bearer"
       )
-        throw new Error("oauth_exchange_failed")
+        throw new Error("github_unverified")
       const user = object(await json(`${api}/user`, tokenResult.access_token))
       if (
         !Number.isSafeInteger(user.id) ||

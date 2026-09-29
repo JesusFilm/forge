@@ -3,9 +3,16 @@ import type { PortalSources } from "./portal-sources.js"
 import { getCookie, setCookie, deleteCookie } from "hono/cookie"
 
 import { admitted } from "./portal-policy.js"
-import type { SessionStore } from "../../contracts/portal-sessions.js"
+import type {
+  PortalSessionExpiry,
+  SessionStore,
+} from "../../contracts/portal-sessions.js"
 import { randomToken } from "./portal-token.js"
-import type { AdmissionProvider, GitHubIdentity } from "./portal-github.js"
+import {
+  OAuthInvalidError,
+  type AdmissionProvider,
+  type GitHubIdentity,
+} from "./portal-github.js"
 import type { ConsumerAccess } from "../../contracts/consumer-access.js"
 import type { UsageReader } from "../../contracts/consumer-usage.js"
 import { usageReportResponse, usageReportsResponse } from "./usage-report.js"
@@ -31,6 +38,8 @@ const cookie = {
   sameSite: "Lax" as const,
   path: "/",
 }
+const cookieAge = (expiry: PortalSessionExpiry) =>
+  Math.max(1, Math.ceil((Date.parse(expiry.expiresAt) - Date.now()) / 1000))
 
 export type PortalDeps = {
   admission: AdmissionProvider
@@ -74,9 +83,13 @@ export function createPortal(deps: PortalDeps): Hono {
 
   const authorize = async (
     token: string | undefined,
+    knownSession?: GitHubIdentity | null,
   ): Promise<GitHubIdentity | null> => {
     if (!token) return null
-    const identity = await deps.sessions.getSession(token)
+    const identity =
+      knownSession === undefined
+        ? await deps.sessions.getSession(token)
+        : knownSession
     if (!identity) return null
     const publication = await deps.admission.current()
     if (!admitted(publication.allowlist, identity.login, identity.id))
@@ -87,9 +100,9 @@ export function createPortal(deps: PortalDeps): Hono {
 
   app.get("/login", async (c) => {
     const state = randomToken()
-    const browser = randomToken()
+    const browser = getCookie(c, STATE_COOKIE) ?? randomToken()
     await deps.sessions.createState(state, browser)
-    setCookie(c, STATE_COOKIE, browser, { ...cookie, maxAge: 600 })
+    setCookie(c, STATE_COOKIE, browser, { ...cookie, maxAge: 7 * 24 * 3600 })
     const url = new URL("https://github.com/login/oauth/authorize")
     url.searchParams.set("client_id", deps.clientId)
     url.searchParams.set("redirect_uri", deps.callbackUrl)
@@ -101,31 +114,42 @@ export function createPortal(deps: PortalDeps): Hono {
     const state = c.req.query("state")
     const code = c.req.query("code")
     const browser = getCookie(c, STATE_COOKIE)
-    deleteCookie(c, STATE_COOKIE, cookie)
     if (
       !state ||
       !code ||
       !browser ||
       !(await deps.sessions.consumeState(state, browser))
     )
-      return c.json({ error: "oauth_invalid" }, 401)
+      return c.redirect("/portal?recovery=oauth_invalid", 303)
     let identity: GitHubIdentity
     try {
       identity = await deps.admission.exchange(code)
-    } catch {
-      return c.json({ error: "oauth_invalid" }, 401)
+    } catch (error) {
+      return c.redirect(
+        error instanceof OAuthInvalidError
+          ? "/portal?recovery=oauth_invalid"
+          : "/portal?recovery=unavailable",
+        303,
+      )
     }
-    const publication = await deps.admission.current()
-    if (
-      !admitted(publication.allowlist, identity.login, identity.id) ||
-      !(await deps.admission.eligible(identity))
-    )
-      return c.json({ error: "admission_denied" }, 403)
+    try {
+      const publication = await deps.admission.current()
+      if (
+        !admitted(publication.allowlist, identity.login, identity.id) ||
+        !(await deps.admission.eligible(identity))
+      )
+        return c.redirect("/portal?recovery=admission_denied", 303)
+    } catch {
+      return c.redirect("/portal?recovery=unavailable", 303)
+    }
     const previous = getCookie(c, SESSION_COOKIE)
     if (previous) await deps.sessions.revokeSession(previous)
     const token = randomToken()
-    await deps.sessions.createSession(token, identity)
-    setCookie(c, SESSION_COOKIE, token, { ...cookie, maxAge: 7200 })
+    const expiry = await deps.sessions.createSession(token, identity)
+    setCookie(c, SESSION_COOKIE, token, {
+      ...cookie,
+      maxAge: cookieAge(expiry),
+    })
     return c.redirect("/portal", 303)
   })
 
@@ -182,23 +206,52 @@ export function createPortal(deps: PortalDeps): Hono {
   }
 
   app.get("/identity", async (c) => {
-    const identity = await authorize(getCookie(c, SESSION_COOKIE))
-    if (!identity)
-      return c.json({ error: "unauthorized" }, 401, {
+    const token = getCookie(c, SESSION_COOKIE)
+    const session = token ? await deps.sessions.getSession(token) : null
+    if (!token || !session)
+      return c.json({ error: "session_expired" }, 401, {
         "Cache-Control": "no-store",
       })
+    const identity = await authorize(token, session)
+    if (!identity)
+      return c.json({ error: "admission_denied" }, 403, {
+        "Cache-Control": "no-store",
+      })
+    const expiry = await deps.sessions.getExpiry(token)
+    if (!expiry) return c.json({ error: "session_expired" }, 401)
     return c.json(
       {
         login: identity.login,
         githubId: identity.id,
         managementAvailable: !!deps.consumers,
         usageAvailable: !!deps.usageReader && !!deps.consumers,
+        ...expiry,
       },
       200,
       {
         "Cache-Control": "no-store",
       },
     )
+  })
+
+  app.post("/session/renew", async (c) => {
+    if (
+      c.req.header("origin") !== origin.origin ||
+      c.req.header("sec-fetch-site") === "cross-site"
+    )
+      return c.json({ error: "origin_invalid" }, 403)
+    const token = getCookie(c, SESSION_COOKIE)
+    const session = token ? await deps.sessions.getSession(token) : null
+    if (!token || !session) return c.json({ error: "session_expired" }, 401)
+    if (!(await authorize(token, session)))
+      return c.json({ error: "admission_denied" }, 403)
+    const expiry = await deps.sessions.renewSession(token)
+    if (!expiry) return c.json({ error: "session_expired" }, 401)
+    setCookie(c, SESSION_COOKIE, token, {
+      ...cookie,
+      maxAge: cookieAge(expiry),
+    })
+    return c.json(expiry)
   })
 
   app.get("/members", async (c) => {
@@ -218,10 +271,9 @@ export function createPortal(deps: PortalDeps): Hono {
     )
       return c.json({ error: "origin_invalid" }, 403)
     const token = getCookie(c, SESSION_COOKIE)
-    const identity = await authorize(token)
-    if (!identity || !token) return c.json({ error: "unauthorized" }, 401)
-    await deps.sessions.revokeSession(token)
+    if (token) await deps.sessions.revokeSession(token)
     deleteCookie(c, SESSION_COOKIE, cookie)
+    deleteCookie(c, STATE_COOKIE, cookie)
     return c.json({ signedOut: true }, 200, { "Cache-Control": "no-store" })
   })
 

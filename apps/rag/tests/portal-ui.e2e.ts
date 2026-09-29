@@ -270,7 +270,7 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
   // Check a second independently signed-in context for authorization separation.
   const other = await browser.newContext({
     ignoreHTTPSErrors: true,
-    baseURL: "https://localhost:3445",
+    baseURL: process.env.PORTAL_TEST_BASE_URL ?? "https://localhost:3445",
   })
   const otherPage = await other.newPage()
   await login(otherPage, "local-other")

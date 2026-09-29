@@ -26,7 +26,10 @@ const dateTime = (value) =>
       })
     : "—"
 const count = (value) => value.toLocaleString()
-export function createUsageView(container, { read, onUnauthorized }) {
+export function createUsageView(
+  container,
+  { read, onUnauthorized, savedWindow, onWindowChange },
+) {
   let consumers = [],
     page = 0,
     search = "",
@@ -52,6 +55,24 @@ export function createUsageView(container, { read, onUnauthorized }) {
   }
   const from = field("From (UTC)", start)
   const to = field("To (UTC, exclusive)", end)
+  if (savedWindow) {
+    const minute = /^\d{4}-\d\d-\d\dT\d\d:\d\d$/
+    const a = new Date(savedWindow.from + "Z")
+    const b = new Date(savedWindow.to + "Z")
+    if (
+      minute.test(savedWindow.from) &&
+      minute.test(savedWindow.to) &&
+      Number.isFinite(a.getTime()) &&
+      Number.isFinite(b.getTime()) &&
+      a.toISOString().slice(0, 16) === savedWindow.from &&
+      b.toISOString().slice(0, 16) === savedWindow.to &&
+      b > a &&
+      b - a <= 31 * 86400000
+    ) {
+      from.value = savedWindow.from
+      to.value = savedWindow.to
+    }
+  }
   const apply = make("button", "Update reports")
   apply.type = "submit"
   controls.append(apply)
@@ -160,6 +181,7 @@ export function createUsageView(container, { read, onUnauthorized }) {
       return null
     }
     error.textContent = ""
+    onWindowChange?.({ from: from.value, to: to.value })
     return { from: a.toISOString(), to: b.toISOString() }
   }
   function fail(failure) {

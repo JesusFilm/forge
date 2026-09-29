@@ -3,7 +3,7 @@ id: "feat-575"
 title: "Renew RAG portal sessions and restore the active section"
 owner: "jaco"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-30"
 duration: 3
 depends_on: []
