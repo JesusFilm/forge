@@ -37,6 +37,7 @@ function fixture() {
     create,
     addMember,
     list: async () => [],
+    listForUsage: async () => [],
     members: async () => [],
     removeMember: async () => {},
     rotate: async () => ({
@@ -44,6 +45,11 @@ function fixture() {
       credentialVersion: 2,
     }),
     transition: async () => {},
+    recover: async () => ({
+      secret: "synthetic-recovered",
+      credentialVersion: 3,
+    }),
+    delete: async () => {},
   } satisfies ConsumerAccess
   const current = vi.fn(async () => ({
     sha: "merged",

@@ -81,8 +81,10 @@ grace starts with this setup.
 All mutations require a current admitted session and same-origin request.
 `/portal` serves the management UI; `GET /portal/identity` is the protected
 identity proof, and `GET /portal/members` supplies admitted users for selection.
-`GET /portal/consumers` lists safe names and states for all admitted users,
-with `owned`, `credentialVersion` and `membershipVersion` for owners. `POST /portal/consumers`
+`GET /portal/consumers` lists nondeleted names and states for all admitted users,
+with `owned`, `credentialVersion`, `membershipVersion` and `lifecycleVersion` for owners.
+`GET /portal/consumers/history` lists names, states and UUIDs including deleted
+consumers for the Usage page. `POST /portal/consumers`
 accepts only `{ "name": "lowercase-name" }`; the initial owner is the
 authenticated GitHub ID. `GET/POST /portal/consumers/:id/members` lists and
 adds owners; addition accepts only `{ "githubUserId": 123, "expectedVersion": 1 }` present in the
@@ -91,8 +93,14 @@ current merged allowlist and still eligible. `DELETE
 least one. `POST /portal/consumers/:id/rotate` requires the current
 `expectedVersion` and optionally accepts `reason: "lost"` to audit recovery;
 it returns the replacement secret once. `POST
-/portal/consumers/:id/state` accepts `active`, `suspended` or `revoked`;
-only a suspended consumer can resume, and revocation is terminal. Ownership
+/portal/consumers/:id/state` accepts `active` or `suspended` with an expected
+lifecycle version; only a suspended consumer can resume. `DELETE
+/portal/consumers/:id` accepts the exact name and expected lifecycle version,
+permanently disables the credential and releases the name. The consumer UUID,
+usage and audit history remain, and the deleted consumer is hidden from the
+directory. Legacy revoked consumers can use `POST
+/portal/consumers/:id/recover` with expected credential and lifecycle versions;
+this issues a new one-time key and never reactivates the old one. Ownership
 checks and changes are serialized by a row lock. A stale rotation gets 409.
 
 The directory never returns verifiers or another owner's secret. Restricted

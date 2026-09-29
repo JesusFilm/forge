@@ -33,14 +33,33 @@ test.beforeAll(async () => {
   const ragbot = (await consumers.list("42")).find(
     (row) => row.name === "ragbot",
   )!
+  const unused = (await consumers.list("42")).find(
+    (row) => row.name === "unused",
+  )!
+  const historical = await consumers.create({
+    name: "historical",
+    actorGithubUserId: "42",
+    allowedSourceKeys: [],
+  })
   const at = new Date("2026-09-29T03:41:32Z")
   await db.$executeRaw`INSERT INTO usage_private.minutes(consumer_id, minute, request_count, successful_count, last_activity_at) VALUES(${ragbot.consumerId}::uuid, date_trunc('minute', ${at}::timestamptz, 'UTC'), 5, 5, ${at})`
+  await db.$executeRaw`INSERT INTO usage_private.minutes(consumer_id, minute, request_count, successful_count, last_activity_at) VALUES(${historical.consumer.consumerId}::uuid, date_trunc('minute', ${at}::timestamptz, 'UTC'), 2, 2, ${at})`
+  await consumers.delete({
+    consumerId: historical.consumer.consumerId,
+    actorGithubUserId: "42",
+    name: "historical",
+    expectedVersion: 1,
+  })
   // Only this test's two directory fixtures; other DB integration tests create
   // many unrelated consumers. Reports still use the real PostgreSQL adapter.
-  const listAll = consumers.list.bind(consumers)
-  consumers.list = async (actor) =>
-    (await listAll(actor)).filter((row) =>
-      ["ragbot", "unused"].includes(row.name),
+  const listHistory = consumers.listForUsage.bind(consumers)
+  consumers.listForUsage = async () =>
+    (await listHistory()).filter((row) =>
+      [
+        ragbot.consumerId,
+        unused.consumerId,
+        historical.consumer.consumerId,
+      ].includes(row.consumerId),
     )
   const admission = fixture()
   admission.sessions.set("synthetic-usage-test", { id: 42, login: "engineer" })
@@ -122,6 +141,11 @@ test("shows all recorded counts for the unchanged date range and loads usage onl
     }),
   })
   await expect(unused.getByRole("cell")).toHaveText(["0", "0", "—"])
+  const deleted = page.getByRole("row").filter({
+    has: page.getByRole("button", { name: /View report for historical/ }),
+  })
+  await expect(deleted).toContainText("deleted")
+  await expect(deleted.getByRole("cell")).toHaveText(["2", "2", /2026/])
   await expect(
     page.getByRole("columnheader", { name: "Coverage" }),
   ).toHaveCount(0)

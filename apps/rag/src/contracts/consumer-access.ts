@@ -13,7 +13,12 @@ export type ConsumerDirectoryEntry = ConsumerRecord & {
   owned: boolean
   credentialVersion: number
   membershipVersion: number
+  lifecycleVersion: number
 }
+export type ConsumerUsageEntry = Pick<
+  ConsumerRecord,
+  "consumerId" | "name" | "state"
+>
 
 export type ConsumerMutation = {
   consumerId: string
@@ -35,13 +40,22 @@ export type RotateConsumerCredential = VersionedConsumerMutation & {
   reason?: "routine" | "lost"
 }
 export type TransitionConsumer = ConsumerMutation & {
-  state: "active" | "suspended" | "revoked"
+  state: "active" | "suspended"
+  expectedVersion: number
+}
+export type RecoverConsumer = VersionedConsumerMutation & {
+  expectedLifecycleVersion: number
+}
+export type DeleteConsumer = ConsumerMutation & {
+  expectedVersion: number
+  name: string
 }
 
 /** The caller's ID comes only from a freshly admitted portal session. */
 export type ConsumerAccess = {
   recordAllowlistRevision(sha: string): Promise<void>
   list(actorGithubUserId: string): Promise<ConsumerDirectoryEntry[]>
+  listForUsage(): Promise<ConsumerUsageEntry[]>
   create(input: {
     name: string
     actorGithubUserId: string
@@ -59,6 +73,10 @@ export type ConsumerAccess = {
     input: RotateConsumerCredential,
   ): Promise<{ secret: string; credentialVersion: number }>
   transition(input: TransitionConsumer): Promise<void>
+  recover(
+    input: RecoverConsumer,
+  ): Promise<{ secret: string; credentialVersion: number }>
+  delete(input: DeleteConsumer): Promise<void>
 }
 
 export type AuthenticatedConsumer = {

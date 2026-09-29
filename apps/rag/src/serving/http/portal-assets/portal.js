@@ -141,12 +141,13 @@ const menuIcons = {
   ],
   Suspend: ["M8 3v18M16 3v18"],
   Resume: ["m8 3 12 9-12 9z"],
-  Revoke: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M5.6 5.6l12.8 12.8"],
+  Recover: ["M3 12a9 9 0 1 0 9-9M3 3v9h9"],
+  Delete: ["M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15M10 10v7M14 10v7"],
 }
 const messages = {
   unauthorized: "Your session has ended or access has changed. Sign in again.",
   forbidden:
-    "This action is unavailable. Membership or access may have changed, or this consumer may be revoked.",
+    "This action is unavailable. Membership or access may have changed.",
   conflict:
     "The name is already used or another member changed this consumer. Refresh and review before trying again.",
   invalid: "Check the consumer name and selected member.",
@@ -346,6 +347,34 @@ function confirm(title, description, label, action, danger = false) {
   )
   content.append(actions)
 }
+function confirmDelete(row) {
+  const content = form(
+    "Delete consumer?",
+    `This permanently disables ${row.name} and frees its name. Usage and audit history remain. Type the consumer name to confirm.`,
+  )
+  const label = element("label", "Consumer name")
+  const input = element("input")
+  input.setAttribute("autocomplete", "off")
+  label.append(input)
+  const actions = element("div", undefined, "actions")
+  const remove = button(
+    "Delete consumer",
+    () =>
+      mutate(
+        "/consumers/" + row.consumerId,
+        { name: input.value, expectedVersion: row.lifecycleVersion },
+        "DELETE",
+      ),
+    "danger",
+  )
+  remove.disabled = true
+  input.addEventListener("input", () => {
+    remove.disabled = input.value !== row.name
+  })
+  actions.append(button("Cancel", close), remove)
+  content.append(label, actions)
+  input.focus()
+}
 async function members(row) {
   const selectedRevision = ++revision
   const content = form(
@@ -390,11 +419,12 @@ async function members(row) {
         ),
       )
       remove.disabled =
-        membership.members.length <= 1 || row.state === "revoked"
+        membership.members.length <= 1 ||
+        (row.state !== "active" && row.state !== "suspended")
       line.append(remove)
       body.append(line)
     }
-    if (row.state !== "revoked") {
+    if (row.state === "active" || row.state === "suspended") {
       const label = element("label", "Add member")
       const select = element("select")
       select.setAttribute("aria-label", "Add member")
@@ -496,7 +526,7 @@ function render() {
         }),
       )
       const path = "/consumers/" + row.consumerId
-      if (row.state !== "revoked") {
+      if (row.state === "active" || row.state === "suspended") {
         actions.append(
           button("Generate new key", () =>
             confirm(
@@ -522,25 +552,37 @@ function render() {
               label + " consumer?",
               "Suspended consumers cannot retrieve content. You can resume them later.",
               label,
-              () => mutate(path + "/state", { state: next }),
+              () =>
+                mutate(path + "/state", {
+                  state: next,
+                  expectedVersion: row.lifecycleVersion,
+                }),
             ),
           ),
         )
+      } else if (row.state === "revoked") {
         actions.append(
-          button(
-            "Revoke",
-            () =>
-              confirm(
-                "Revoke consumer?",
-                "This permanently disables the consumer. It cannot be resumed or issued another key.",
-                "Revoke consumer",
-                () => mutate(path + "/state", { state: "revoked" }),
-                true,
-              ),
-            "danger",
+          button("Recover", () =>
+            confirm(
+              "Recover consumer?",
+              "The revoked key stays invalid. A new key is issued once; save it before closing this dialog.",
+              "Recover and issue key",
+              () =>
+                mutate(
+                  path + "/recover",
+                  {
+                    expectedVersion: row.credentialVersion,
+                    expectedLifecycleVersion: row.lifecycleVersion,
+                  },
+                  "POST",
+                  true,
+                  (result) => issued(result, row.name),
+                ),
+            ),
           ),
         )
       }
+      actions.append(button("Delete", () => confirmDelete(row), "danger"))
       const trigger = button(
         "⋮",
         () => {
@@ -582,6 +624,16 @@ function render() {
 async function refresh() {
   const data = await request("/consumers")
   rows = data.consumers
+  const revokedFilter = document.querySelector('[data-filter="revoked"]')
+  revokedFilter.hidden = !rows.some((row) => row.state === "revoked")
+  if (revokedFilter.hidden && statusFilter === "revoked") {
+    statusFilter = "all"
+    document.querySelectorAll("[data-filter]").forEach((node) => {
+      const selected = node.dataset.filter === "all"
+      node.classList.toggle("selected", selected)
+      node.setAttribute("aria-pressed", String(selected))
+    })
+  }
   render()
 }
 function signedOut() {

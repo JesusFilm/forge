@@ -2,7 +2,7 @@
 export type ConsumerRecord = {
   consumerId: string
   name: string
-  state: "pending" | "active" | "suspended" | "revoked"
+  state: "pending" | "active" | "suspended" | "revoked" | "deleted"
   allowedSourceKeys: string[]
   createdAt: Date
 }

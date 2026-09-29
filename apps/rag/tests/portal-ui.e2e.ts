@@ -219,15 +219,16 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
   await signOut(page)
   await login(page, "local-member")
   await page.getByRole("searchbox", { name: "Search consumers" }).fill(name)
-  await rowAction(page, "Revoke")
-  await dialog(page)
-    .getByRole("button", { name: "Revoke consumer", exact: true })
-    .click()
-  await expect(consumerRow(page)).toContainText("revoked")
-  expect(await searchStatus(second)).toBe(401)
+  await rowAction(page, "Delete")
   await expect(
-    consumerRow(page).getByRole("button", { name: "Generate new key" }),
-  ).toHaveCount(0)
+    dialog(page).getByRole("button", { name: "Delete consumer" }),
+  ).toBeDisabled()
+  await dialog(page).getByLabel("Consumer name").fill(name)
+  await dialog(page)
+    .getByRole("button", { name: "Delete consumer", exact: true })
+    .click()
+  await expect(consumerRow(page)).toHaveCount(0)
+  expect(await searchStatus(second)).toBe(401)
   expect(errors).toEqual([])
 
   // A lost issuance response must not cause another creation POST.

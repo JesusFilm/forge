@@ -143,7 +143,8 @@ Consumers, Usage and Knowledge, without Settings. The two unfinished sections sh
 the supplied capybara construction illustration, loaded on demand.
 
 Use semantic rows with name, status, actual member count and owner-only action
-popover. Provide name search, All/Active/Revoked filters, name sorting and real
+popover. Provide name search, All/Active/Suspended filters, plus Revoked when
+legacy revoked consumers exist, name sorting and real
 pagination (20 rows). Narrow screens scroll the table within the panel. Popovers
 support keyboard traversal, Escape and outside dismissal.
 
@@ -157,7 +158,7 @@ is no preview step.
 
 Jaco selected **option A**, the comparison table, on 2026-09-29. Open Usage in
 `/portal` with the existing GitHub login. Every admitted user sees every consumer,
-including revoked consumers' historical reports; management remains owner-only.
+including revoked and deleted consumers' historical reports; management remains owner-only.
 Reporting appears when the server report reader and consumer directory are enabled.
 
 The UTC from/to controls use whole minutes and a half-open window of at most 31

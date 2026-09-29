@@ -5,15 +5,23 @@ import { Prisma, type PrismaClient } from "../../generated/prisma/index.js"
 import type {
   ConsumerAccess,
   ConsumerDirectoryEntry,
+  ConsumerUsageEntry,
   IssuedConsumer,
   AddConsumerMemberMutation,
   RemoveConsumerMemberMutation,
   RotateConsumerCredential,
   TransitionConsumer,
+  RecoverConsumer,
+  DeleteConsumer,
 } from "../../contracts/consumer-access.js"
 import { ConsumerAccessError } from "../../contracts/consumer-access.js"
 import { credentialVerifier } from "./consumer-auth.js"
 import { withConsumerOwner } from "./consumer-access-ownership.js"
+import {
+  transitionConsumer,
+  recoverConsumer,
+  deleteConsumer,
+} from "./consumer-lifecycle.js"
 import {
   consumerRecord,
   githubId,
@@ -38,14 +46,14 @@ export class PostgresConsumerAccess implements ConsumerAccess {
     const actor = githubId(actorGithubUserId)
     const rows = await this.writer.$queryRaw<ConsumerRow[]>(Prisma.sql`
       SELECT c.id, c.name, c.state, c.allowed_source_keys, c.created_at,
-             c.credential_version, c.membership_version,
+             c.credential_version, c.membership_version, c.lifecycle_version,
              (SELECT COUNT(*) FROM consumer_private.members m
               WHERE m.consumer_id = c.id) AS member_count, EXISTS (
                SELECT 1 FROM consumer_private.members m
                WHERE m.consumer_id = c.id AND m.github_user_id = ${actor}::bigint
                  AND m.role = 'owner'
              ) AS owned
-      FROM consumer_private.consumers c ORDER BY c.name
+      FROM consumer_private.consumers c WHERE c.deleted_at IS NULL ORDER BY c.name
     `)
     return rows.map((row) => ({
       ...consumerRecord(row),
@@ -53,7 +61,15 @@ export class PostgresConsumerAccess implements ConsumerAccess {
       owned: row.owned === true,
       credentialVersion: Number(row.credential_version),
       membershipVersion: Number(row.membership_version),
+      lifecycleVersion: Number(row.lifecycle_version),
     }))
+  }
+
+  async listForUsage(): Promise<ConsumerUsageEntry[]> {
+    return this.writer.$queryRaw<ConsumerUsageEntry[]>(Prisma.sql`
+      SELECT id AS "consumerId", name, state
+      FROM consumer_private.consumers ORDER BY name, created_at, id
+    `)
   }
 
   async create(input: {
@@ -147,7 +163,11 @@ export class PostgresConsumerAccess implements ConsumerAccess {
           throw new ConsumerAccessError("invalid")
         if (row.membership_version !== BigInt(input.expectedVersion))
           throw new ConsumerAccessError("conflict")
-        if (row.state === "revoked" || row.state === "pending")
+        if (
+          row.state === "revoked" ||
+          row.state === "pending" ||
+          row.state === "deleted"
+        )
           throw new ConsumerAccessError("forbidden")
         const admissionSha = await withDeadline(
           8_000,
@@ -236,7 +256,11 @@ export class PostgresConsumerAccess implements ConsumerAccess {
       input.actorGithubUserId,
       input.admissionSha,
       async (tx, row, admissionSha) => {
-        if (row.state === "revoked" || row.state === "pending")
+        if (
+          row.state === "revoked" ||
+          row.state === "pending" ||
+          row.state === "deleted"
+        )
           throw new ConsumerAccessError("forbidden")
         if (row.credential_version !== BigInt(input.expectedVersion))
           throw new ConsumerAccessError("conflict")
@@ -249,7 +273,8 @@ export class PostgresConsumerAccess implements ConsumerAccess {
         if (updated !== 1) throw new ConsumerAccessError("missing")
         await tx.$executeRaw(Prisma.sql`
         UPDATE consumer_private.consumers
-        SET credential_version = ${version}, updated_at = now()
+        SET credential_version = ${version},
+            lifecycle_version = lifecycle_version + 1, updated_at = now()
         WHERE id = ${row.id}::uuid
       `)
         await tx.$executeRaw(Prisma.sql`
@@ -265,46 +290,17 @@ export class PostgresConsumerAccess implements ConsumerAccess {
     )
   }
 
-  async transition(input: TransitionConsumer): Promise<void> {
-    await withConsumerOwner(
-      this.writer,
-      input.consumerId,
-      input.actorGithubUserId,
-      input.admissionSha,
-      async (tx, row, admissionSha) => {
-        if (
-          row.state === "revoked" ||
-          (input.state === "active" && row.state !== "suspended")
-        )
-          throw new ConsumerAccessError("forbidden")
-        if (input.state === "suspended" && row.state !== "active")
-          throw new ConsumerAccessError("forbidden")
-        await tx.$executeRaw(Prisma.sql`
-        UPDATE consumer_private.consumers SET state = ${input.state}, updated_at = now()
-        WHERE id = ${row.id}::uuid
-      `)
-        if (input.state === "revoked") {
-          await tx.$executeRaw(Prisma.sql`
-          UPDATE consumer_private.credentials SET revoked_at = now()
-          WHERE consumer_id = ${row.id}::uuid
-        `)
-        }
-        const action =
-          input.state === "active"
-            ? "resumed"
-            : input.state === "suspended"
-              ? "suspended"
-              : "revoked"
-        await tx.$executeRaw(Prisma.sql`
-        INSERT INTO consumer_private.lifecycle_audit
-          (consumer_id, actor_github_user_id, action, admission_sha,
-           membership_version, credential_version)
-        VALUES (${row.id}::uuid, ${input.actorGithubUserId}::bigint,
-                ${action}, ${admissionSha ?? null},
-                ${row.membership_version}, ${row.credential_version})
-      `)
-      },
-      input.verifyCurrentAdmission,
-    )
+  transition(input: TransitionConsumer): Promise<void> {
+    return transitionConsumer(this.writer, input)
+  }
+
+  recover(
+    input: RecoverConsumer,
+  ): Promise<{ secret: string; credentialVersion: number }> {
+    return recoverConsumer(this.writer, input)
+  }
+
+  delete(input: DeleteConsumer): Promise<void> {
+    return deleteConsumer(this.writer, input)
   }
 }
