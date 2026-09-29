@@ -87,6 +87,21 @@ const flush = async () => {
   for (let i = 0; i < 10; i += 1) await Promise.resolve()
 }
 
+function deps(
+  w: ReturnType<typeof world>,
+  fetchText: OfflineTitleRefreshDeps["fetchText"],
+  overrides: Partial<OfflineTitleRefreshDeps> = {},
+): OfflineTitleRefreshDeps {
+  return {
+    records: () => [...w.map.values()],
+    forms: () => RU,
+    epoch: () => 1,
+    fetchText,
+    patch: w.lifecycle.patchTitles,
+    ...overrides,
+  }
+}
+
 describe("recordsNeedingTitles", () => {
   it("reads a record with no titleLocale as en", () => {
     const legacy = record("a")
@@ -108,21 +123,6 @@ describe("recordsNeedingTitles", () => {
 })
 
 describe("refreshOfflineTitles", () => {
-  function deps(
-    w: ReturnType<typeof world>,
-    fetchText: OfflineTitleRefreshDeps["fetchText"],
-    overrides: Partial<OfflineTitleRefreshDeps> = {},
-  ): OfflineTitleRefreshDeps {
-    return {
-      records: () => [...w.map.values()],
-      forms: () => RU,
-      epoch: () => 1,
-      fetchText,
-      patch: w.lifecycle.patchTitles,
-      ...overrides,
-    }
-  }
-
   it("refreshes a record with no titleLocale under a non-en UI, and patches only the titles", async () => {
     const w = world([
       record("a", { seriesSlug: "s", seriesTitle: "English s" }),
@@ -171,14 +171,14 @@ describe("refreshOfflineTitles", () => {
     })
   })
 
+  const failingFor = (failed: string) => async (slug: string) => {
+    if (slug === failed) throw new Error("offline")
+    return text(slug, `Русский ${slug}`)
+  }
+
   it("writes nothing for a record whose request failed, so the next pass tries again", async () => {
     const w = world([record("a"), record("b")])
-    await refreshOfflineTitles(
-      deps(w, async (slug) => {
-        if (slug === "a") throw new Error("offline")
-        return text(slug, "Русский b")
-      }),
-    )
+    await refreshOfflineTitles(deps(w, failingFor("a")))
     expect(w.map.get("a")?.titleLocale).toBeUndefined()
     expect(w.map.get("b")?.titleLocale).toBe("ru")
   })
@@ -187,12 +187,7 @@ describe("refreshOfflineTitles", () => {
     const w = world([
       record("a", { seriesSlug: "s", seriesTitle: "English s" }),
     ])
-    await refreshOfflineTitles(
-      deps(w, async (slug) => {
-        if (slug === "s") throw new Error("offline")
-        return text(slug, "Русский a")
-      }),
-    )
+    await refreshOfflineTitles(deps(w, failingFor("s")))
     expect(w.map.get("a")).toMatchObject({
       title: "English a",
       seriesTitle: "English s",
@@ -253,13 +248,7 @@ describe("createOfflineTitleRefresher", () => {
   it("runs one pass at a time, and one more for a request that came during it", async () => {
     const w = world([record("a")])
     const { pending, fetchText } = deferredFetch()
-    const refresher = createOfflineTitleRefresher({
-      records: () => [...w.map.values()],
-      forms: () => RU,
-      epoch: () => 1,
-      fetchText,
-      patch: w.lifecycle.patchTitles,
-    })
+    const refresher = createOfflineTitleRefresher(deps(w, fetchText))
     refresher.request()
     refresher.request()
     refresher.request()

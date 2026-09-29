@@ -2,19 +2,6 @@
  *  rows mounted, so a recycled row must redraw in the new language, and its tap
  *  must keep one RUM name in every language. */
 
-// tsconfig maps `react` to its .d.ts; re-point it (see AccountSection.test.tsx).
-jest.mock("react", () => {
-  const r = require as unknown as NodeRequireLike
-  const path = r("path") as NodePath
-  return jest.requireActual(path.dirname(r.resolve("react/package.json")))
-})
-jest.mock("react/jsx-runtime", () => {
-  const r = require as unknown as NodeRequireLike
-  const path = r("path") as NodePath
-  return jest.requireActual(
-    path.join(path.dirname(r.resolve("react/package.json")), "jsx-runtime.js"),
-  )
-})
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
@@ -37,11 +24,7 @@ type MockRowProps = {
 // FlashList v2's ViewHolder redraws a mounted row only when its item, the
 // list's extraData, or renderItem changes. This mock keeps that rule.
 jest.mock("@shopify/flash-list", () => {
-  const r = require as unknown as NodeRequireLike
-  const path = r("path") as NodePath
-  const react = jest.requireActual(
-    path.dirname(r.resolve("react/package.json")),
-  ) as {
+  const react = jest.requireActual("react") as {
     Fragment: unknown
     memo: (
       component: (props: MockRowProps) => unknown,
@@ -129,8 +112,6 @@ import {
   TestRenderer,
   hasText,
   unmount,
-  type NodePath,
-  type NodeRequireLike,
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
@@ -211,40 +192,23 @@ afterEach(async () => {
 })
 
 describe("SearchableListSheet after a language change", () => {
-  it("redraws a mounted row in the new language", async () => {
+  it("redraws a mounted row in the new language, and keeps each RUM name", async () => {
     mockGetLocales.mockReturnValue(phoneLocales("en-US"))
     startLocaleSync()
     const renderer = await render()
-    expect(rowFor(renderer, "Alpha").props.accessibilityLabel).toBe(
-      "Alpha, Downloaded",
-    )
+    const alpha = () => rowFor(renderer, "Alpha")
+    expect(alpha().props.accessibilityLabel).toBe("Alpha, Downloaded")
     expect(hasText(renderer, "Current")).toBe(true)
+    expect(tapActionName(alpha())).toBe("list-sheet-row")
 
     await changePhoneLanguage("ru-RU")
 
-    expect(rowFor(renderer, "Alpha").props.accessibilityLabel).toBe(
-      "Alpha — Скачано",
-    )
+    expect(alpha().props.accessibilityLabel).toBe("Alpha — Скачано")
     expect(hasText(renderer, "Скачано")).toBe(true)
     expect(hasText(renderer, "Downloaded")).toBe(false)
     expect(hasText(renderer, "Текущий")).toBe(true)
-  })
+    expect(tapActionName(alpha())).toBe("list-sheet-row")
 
-  it("keeps one RUM name for a row tap in every language", async () => {
-    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
-    startLocaleSync()
-    const renderer = await render()
-    expect(tapActionName(rowFor(renderer, "Alpha"))).toBe("list-sheet-row")
-
-    await changePhoneLanguage("ru-RU")
-
-    expect(tapActionName(rowFor(renderer, "Alpha"))).toBe("list-sheet-row")
-  })
-
-  it("keeps one RUM name for the clear-search tap in every language", async () => {
-    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
-    startLocaleSync()
-    const renderer = await render()
     const [search] = renderer.root.findAll((node) => node.type === TextInput)
     await act(async () => {
       ;(search.props.onChangeText as (text: string) => void)("Al")

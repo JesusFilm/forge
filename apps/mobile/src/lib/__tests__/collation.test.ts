@@ -3,24 +3,20 @@ import { compareIds, nameComparator } from "../collation"
 const NAMES = ["English", "Русский", "Deutsch"]
 
 describe("nameComparator (KTD15)", () => {
-  it("orders names by the UI tag it gets, not by the device default", () => {
+  it("orders names by the UI tag it gets, whatever the input order", () => {
     // Russian collation puts Cyrillic before Latin; English puts it after.
-    expect([...NAMES].sort(nameComparator("ru"))).toEqual([
-      "Русский",
-      "Deutsch",
-      "English",
-    ])
+    for (const input of [NAMES, [...NAMES].reverse()]) {
+      expect([...input].sort(nameComparator("ru"))).toEqual([
+        "Русский",
+        "Deutsch",
+        "English",
+      ])
+    }
     expect([...NAMES].sort(nameComparator("en"))).toEqual([
       "Deutsch",
       "English",
       "Русский",
     ])
-  })
-
-  it("gives the same order for a fixed tag, whatever the input order", () => {
-    const forward = [...NAMES].sort(nameComparator("ru"))
-    const backward = [...NAMES].reverse().sort(nameComparator("ru"))
-    expect(backward).toEqual(forward)
   })
 
   it("ignores case, as the lower-cased compare it replaces did", () => {
@@ -33,9 +29,7 @@ describe("nameComparator (KTD15)", () => {
   })
 
   it("falls back to the default collation for a tag Intl refuses", () => {
-    const compare = nameComparator("not a tag")
-    expect([...NAMES].sort(compare)).toEqual([...NAMES].sort(compare))
-    expect(compare("a", "b")).toBeLessThan(0)
+    expect(nameComparator("not a tag")("a", "b")).toBeLessThan(0)
   })
 })
 

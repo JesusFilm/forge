@@ -5,15 +5,24 @@ import {
   resolveRecommendationContext,
 } from "../context"
 
+function context(
+  audioLanguageSlug: string | null,
+  forYouLocale: string,
+  defaultAudioSlug: string | null,
+) {
+  return resolveRecommendationContext({
+    audioLanguageSlug,
+    forYouLocale,
+    defaultAudioSlug,
+  })
+}
+
 describe("resolveRecommendationContext", () => {
   it("uses English metadata and English audio when nothing else is known", () => {
-    expect(
-      resolveRecommendationContext({
-        audioLanguageSlug: null,
-        forYouLocale: "en",
-        defaultAudioSlug: null,
-      }),
-    ).toEqual({ locale: "en", audioLanguageSlug: "english" })
+    expect(context(null, "en", null)).toEqual({
+      locale: "en",
+      audioLanguageSlug: "english",
+    })
     expect(ENGLISH_FOR_YOU_LOCALE).toBe("en")
     expect(DEFAULT_AUDIO_LANGUAGE_SLUG).toBe("english")
   })
@@ -25,35 +34,25 @@ describe("resolveRecommendationContext", () => {
       ["ru", "ru"],
       ["tl", "fil"],
     ] as const) {
-      expect(
-        resolveRecommendationContext({
-          audioLanguageSlug: null,
-          forYouLocale: adminFormsFor(tag).forYouLocale,
-          defaultAudioSlug: null,
-        }).locale,
-      ).toBe(locale)
+      expect(context(null, adminFormsFor(tag).forYouLocale, null).locale).toBe(
+        locale,
+      )
     }
   })
 
   // KTD12: a Hausa phone with no pick asks for Hausa audio, as the player does.
   it("takes the phone's default audio when there is no saved pick", () => {
-    expect(
-      resolveRecommendationContext({
-        audioLanguageSlug: null,
-        forYouLocale: "en",
-        defaultAudioSlug: "hausa",
-      }),
-    ).toEqual({ locale: "en", audioLanguageSlug: "hausa" })
+    expect(context(null, "en", "hausa")).toEqual({
+      locale: "en",
+      audioLanguageSlug: "hausa",
+    })
   })
 
   it("prefers the saved pick over the phone's default audio", () => {
-    expect(
-      resolveRecommendationContext({
-        audioLanguageSlug: "english",
-        forYouLocale: "ru",
-        defaultAudioSlug: "russian",
-      }),
-    ).toEqual({ locale: "ru", audioLanguageSlug: "english" })
+    expect(context("english", "ru", "russian")).toEqual({
+      locale: "ru",
+      audioLanguageSlug: "english",
+    })
   })
 
   it("skips a slug Admin would reject, then falls back to English", () => {
@@ -76,12 +75,6 @@ describe("resolveRecommendationContext", () => {
   })
 
   it("never sends a blank locale", () => {
-    expect(
-      resolveRecommendationContext({
-        audioLanguageSlug: null,
-        forYouLocale: "  ",
-        defaultAudioSlug: null,
-      }).locale,
-    ).toBe("en")
+    expect(context(null, "  ", null).locale).toBe("en")
   })
 })

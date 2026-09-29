@@ -267,23 +267,16 @@ describe("markPending", () => {
     expect(s.record.englishHashes["A.a"]).toBe(ops.englishHash("Hello there"))
   })
 
-  it("keeps a current translation and fills only the locales that lack the key", () => {
+  it("keeps a current translation, fills only the locales that lack the key, and keeps the first pending date", () => {
     const s = state({
       source: { "A.a": "Hello" },
       catalogs: { es: { "A.a": "Hola" }, fr: {} },
+      policy: { pendingKeys: { "A.a": "2026-09-01" } },
     })
     expect(ops.markPending(s, ["A.a"], "2026-09-29")).toEqual({
       "A.a": { replaced: [], filled: ["fr"] },
     })
     expect(s.catalogs.es["A.a"]).toBe("Hola")
-  })
-
-  it("keeps the first date of a key that is already pending", () => {
-    const s = state({
-      source: { "A.a": "Hello" },
-      policy: { pendingKeys: { "A.a": "2026-09-01" } },
-    })
-    ops.markPending(s, ["A.a"], "2026-09-29")
     expect(s.policy.pendingKeys["A.a"]).toBe("2026-09-01")
   })
 
@@ -338,15 +331,11 @@ describe("progressFileName", () => {
     model: "gpt-5.4-mini-2026-03-17",
   }
 
-  it("names the English digest, the policy digest, and the model", () => {
+  it("names the English digest, the policy digest, and the model, and changes with each", () => {
     const name = ops.progressFileName(base)
     expect(name).toMatch(
       /^forge-mobile-ui-[0-9a-f]{8}-en[0-9a-f]{12}-policy[0-9a-f]{12}-gpt-5\.4-mini-2026-03-17\.json$/,
     )
-  })
-
-  it("changes with the English, the policy, and the model", () => {
-    const name = ops.progressFileName(base)
     expect(
       ops.progressFileName({ ...base, sourceFlat: { "A.a": "Hi" } }),
     ).not.toBe(name)

@@ -254,58 +254,40 @@ describe("the shared tab record (R1)", () => {
       SENTINEL_LABELS,
     )
   })
-
-  it("keeps the English labels in the English catalog", async () => {
-    await usePhoneLanguage("en-US")
-    setPlatform("ios")
-    await renderIos()
-    expect(mockTriggers.map(triggerLabel)).toEqual(ENGLISH_LABELS)
-    setPlatform("android")
-    await renderAndroid()
-    expect(mockScreens.map((s) => s.options.title)).toEqual(ENGLISH_LABELS)
-  })
 })
 
 // KTD2: the bar relabels in place. A remount would rebuild the tab
 // controller and drop each tab's navigation state.
 describe("a language change", () => {
-  async function mountAndRelabel(
-    layout: React.ComponentType,
-    labels: () => unknown[],
-  ): Promise<unknown[]> {
-    await usePhoneLanguage("en-US")
-    let renderer!: TestInstance
-    await act(async () => {
-      renderer = TestRenderer.create(createElement(layout))
-    })
-    expect(labels()).toEqual(ENGLISH_LABELS)
-    mockTriggers.length = 0
-    mockScreens.length = 0
+  it.each([
+    ["ios", IosTabLayout, () => mockTriggers.map(triggerLabel), "nativeTabs"],
+    [
+      "android",
+      AndroidTabLayout,
+      () => mockScreens.map((s) => s.options.title),
+      "tabs",
+    ],
+  ] as const)(
+    "relabels the %s bar from English without a remount",
+    async (os, layout, labels, navigator) => {
+      setPlatform(os)
+      await usePhoneLanguage("en-US")
+      let renderer!: TestInstance
+      await act(async () => {
+        renderer = TestRenderer.create(createElement(layout))
+      })
+      expect(labels()).toEqual(ENGLISH_LABELS)
+      mockTriggers.length = 0
+      mockScreens.length = 0
 
-    await usePhoneLanguage("es-ES")
+      await usePhoneLanguage("es-ES")
 
-    const relabelled = labels()
-    renderer.unmount()
-    return relabelled
-  }
-
-  it("relabels the iOS bar without a remount", async () => {
-    setPlatform("ios")
-    const labels = await mountAndRelabel(IosTabLayout, () =>
-      mockTriggers.map(triggerLabel),
-    )
-    expect(labels).toEqual(SENTINEL_LABELS)
-    expect(mockMounts.nativeTabs).toBe(1)
-  })
-
-  it("relabels the Android bar without a remount", async () => {
-    setPlatform("android")
-    const labels = await mountAndRelabel(AndroidTabLayout, () =>
-      mockScreens.map((s) => s.options.title),
-    )
-    expect(labels).toEqual(SENTINEL_LABELS)
-    expect(mockMounts.tabs).toBe(1)
-  })
+      const relabelled = labels()
+      renderer.unmount()
+      expect(relabelled).toEqual(SENTINEL_LABELS)
+      expect(mockMounts[navigator]).toBe(1)
+    },
+  )
 })
 
 describe("iOS — the native bar", () => {

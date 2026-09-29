@@ -1,19 +1,6 @@
 /** The translation picker after a UI language change (KTD5, KTD16). The list
  *  keeps its rows mounted, so a recycled row must redraw in the new language. */
 
-// tsconfig maps `react` to its .d.ts; re-point it (see AccountSection.test.tsx).
-jest.mock("react", () => {
-  const r = require as unknown as NodeRequireLike
-  const path = r("path") as NodePath
-  return jest.requireActual(path.dirname(r.resolve("react/package.json")))
-})
-jest.mock("react/jsx-runtime", () => {
-  const r = require as unknown as NodeRequireLike
-  const path = r("path") as NodePath
-  return jest.requireActual(
-    path.join(path.dirname(r.resolve("react/package.json")), "jsx-runtime.js"),
-  )
-})
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
@@ -36,11 +23,7 @@ type MockRowProps = {
 // FlashList v2's ViewHolder redraws a mounted row only when its item, the
 // list's extraData, or renderItem changes. This mock keeps that rule.
 jest.mock("@shopify/flash-list", () => {
-  const r = require as unknown as NodeRequireLike
-  const path = r("path") as NodePath
-  const react = jest.requireActual(
-    path.dirname(r.resolve("react/package.json")),
-  ) as {
+  const react = jest.requireActual("react") as {
     Fragment: unknown
     memo: (
       component: (props: MockRowProps) => unknown,
@@ -126,8 +109,6 @@ import { readerTokens } from "../../../../lib/bible/theme/palettes"
 import {
   TestRenderer,
   unmount,
-  type NodePath,
-  type NodeRequireLike,
   type TestInstance,
 } from "../../../../test-utils/rnTestRenderer"
 import { phoneLocales } from "../../../../test-utils/uiLocaleFixture"

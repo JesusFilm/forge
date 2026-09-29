@@ -74,13 +74,6 @@ async function render(): Promise<TestInstance> {
   return renderer!
 }
 
-async function changePhoneLanguage(tag: string) {
-  mockGetLocales.mockReturnValue(phoneLocales(tag))
-  await act(async () => {
-    refreshLocale()
-  })
-}
-
 beforeEach(() => {
   onSelect.mockReset()
   resetLocaleStoreForTests()
@@ -95,34 +88,26 @@ afterEach(() => {
 afterAll(() => resetLocaleStoreForTests())
 
 describe("TopicCard", () => {
-  it("shows the English label and searches its term", async () => {
+  it("shows its label in the UI language and always searches the English term", async () => {
     const card = await render()
     expect(hasText(card, "Parables")).toBe(true)
+    const english = pressableByLabel(card, "Search Parables")
+    const englishName = tapActionName(english)
+    act(() => english.props.onPress?.())
+    expect(onSelect).toHaveBeenLastCalledWith("parables")
 
-    act(() => pressableByLabel(card, "Search Parables").props.onPress?.())
-
-    expect(onSelect).toHaveBeenCalledWith("parables")
-  })
-
-  it("shows the translated label and still searches the English term", async () => {
-    const card = await render()
-    await changePhoneLanguage("ru-RU")
+    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
+    await act(async () => {
+      refreshLocale()
+    })
 
     expect(hasText(card, "Притчи")).toBe(true)
     expect(hasText(card, "Parables")).toBe(false)
-    act(() => pressableByLabel(card, "Искать: Притчи").props.onPress?.())
-
-    expect(onSelect).toHaveBeenCalledWith("parables")
-  })
-
-  it("keeps one tap name in both languages", async () => {
-    const card = await render()
-    const english = tapActionName(pressableByLabel(card, "Search Parables"))
-
-    await changePhoneLanguage("ru-RU")
-
-    const russian = tapActionName(pressableByLabel(card, "Искать: Притчи"))
-    expect(russian).toBe(english)
-    expect(english).toBe("browse-topic")
+    const russian = pressableByLabel(card, "Искать: Притчи")
+    act(() => russian.props.onPress?.())
+    expect(onSelect).toHaveBeenCalledTimes(2)
+    expect(onSelect).toHaveBeenLastCalledWith("parables")
+    expect(tapActionName(russian)).toBe(englishName)
+    expect(englishName).toBe("browse-topic")
   })
 })

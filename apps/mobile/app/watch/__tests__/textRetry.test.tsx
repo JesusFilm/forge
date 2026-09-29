@@ -224,15 +224,18 @@ const JESUS: Omit<WatchVideoRecord, "title"> = {
   languages: [],
 }
 
-const NETWORK_ERROR = new Error("Network request failed")
-
-function recordLanded() {
-  mockRecordQuery.current = {
-    data: { videoBySlug: JESUS },
-    dataState: "complete",
-    loading: false,
-    error: undefined,
-  }
+const FAILED: QueryAnswer = {
+  data: undefined,
+  dataState: "empty",
+  loading: false,
+  error: new Error("Network request failed"),
+}
+const TEXT = { videoBySlug: { documentId: "video-jesus", title: "JESUS" } }
+const LOADED_TEXT: QueryAnswer = {
+  data: TEXT,
+  dataState: "complete",
+  loading: false,
+  error: undefined,
 }
 
 let mounted: TestInstance | null = null
@@ -283,14 +286,25 @@ afterEach(async () => {
 })
 
 describe("a failed text load on a loaded watch page", () => {
-  it("offers a retry that reloads only the text", async () => {
-    recordLanded()
-    mockTextQuery.current = {
-      data: undefined,
-      dataState: "empty",
+  beforeEach(() => {
+    mockRecordQuery.current = {
+      data: { videoBySlug: JESUS },
+      dataState: "complete",
       loading: false,
-      error: NETWORK_ERROR,
+      error: undefined,
     }
+  })
+
+  it.each<[string, QueryAnswer]>([
+    ["with no data", FAILED],
+    // Apollo keeps the previous result on a failure: Home's cached row can hold
+    // a title while the description and study questions never arrived.
+    [
+      "over a partial cached row",
+      { ...FAILED, data: TEXT, dataState: "partial" },
+    ],
+  ])("offers a retry that reloads only the text, %s", async (_, answer) => {
+    mockTextQuery.current = answer
 
     const renderer = await render()
 
@@ -302,49 +316,19 @@ describe("a failed text load on a loaded watch page", () => {
     expect(mockRefetch).not.toHaveBeenCalled()
   })
 
-  // Apollo keeps the previous result on a failure: Home's cached row can hold
-  // a title while the description and study questions never arrived.
-  it("offers the retry when a partial cached row survives the failure", async () => {
-    recordLanded()
-    mockTextQuery.current = {
-      data: { videoBySlug: { documentId: "video-jesus", title: "JESUS" } },
-      dataState: "partial",
-      loading: false,
-      error: NETWORK_ERROR,
-    }
-
-    const renderer = await render()
-
-    expect(retries(renderer, "watch-text-retry").length).toBeGreaterThan(0)
-  })
-
-  it("shows no retry when the text loads", async () => {
-    recordLanded()
-    mockTextQuery.current = {
-      data: { videoBySlug: { documentId: "video-jesus", title: "JESUS" } },
-      dataState: "complete",
-      loading: false,
-      error: undefined,
-    }
+  it.each<[string, QueryAnswer]>([
+    ["the text loads", LOADED_TEXT],
+    [
+      "a refetch fails over complete text",
+      { ...LOADED_TEXT, error: FAILED.error },
+    ],
+  ])("shows no retry when %s", async (_, answer) => {
+    mockTextQuery.current = answer
 
     const renderer = await render()
 
     expect(retries(renderer, "watch-text-retry")).toHaveLength(0)
     expect(hasText(renderer, DETAILS_ERROR)).toBe(false)
-  })
-
-  it("shows no retry when a refetch fails over complete text", async () => {
-    recordLanded()
-    mockTextQuery.current = {
-      data: { videoBySlug: { documentId: "video-jesus", title: "JESUS" } },
-      dataState: "complete",
-      loading: false,
-      error: NETWORK_ERROR,
-    }
-
-    const renderer = await render()
-
-    expect(retries(renderer, "watch-text-retry")).toHaveLength(0)
   })
 })
 
@@ -359,18 +343,8 @@ describe("a failed record load on a seeded watch page", () => {
         playbackId: "seedEnglish",
       }),
     }
-    mockRecordQuery.current = {
-      data: undefined,
-      dataState: "empty",
-      loading: false,
-      error: NETWORK_ERROR,
-    }
-    mockTextQuery.current = {
-      data: undefined,
-      dataState: "empty",
-      loading: false,
-      error: NETWORK_ERROR,
-    }
+    mockRecordQuery.current = FAILED
+    mockTextQuery.current = FAILED
 
     const renderer = await render()
 

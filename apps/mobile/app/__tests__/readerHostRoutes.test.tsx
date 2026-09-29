@@ -278,8 +278,7 @@ function controls(renderer: TestInstance, matches: (label: string) => boolean) {
 function pills(renderer: TestInstance, passage: string) {
   return controls(
     renderer,
-    (label) =>
-      label === readerT("choosePassageAriaLabel", { passage: passage }),
+    (label) => label === readerT("choosePassageAriaLabel", { passage }),
   )
 }
 

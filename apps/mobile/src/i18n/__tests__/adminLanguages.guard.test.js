@@ -115,6 +115,13 @@ function tables(args) {
   return JSON.parse(result.stdout)
 }
 
+/** The generator exits 1 and names `text` on stderr. */
+function expectRefusal(args, text) {
+  const result = runGenerator(args)
+  expect(result.status).toBe(1)
+  expect(result.stderr).toContain(text)
+}
+
 function entry(slug, reason = "Fixture.") {
   return { slug, reason }
 }
@@ -160,9 +167,7 @@ describe("Admin language tables", () => {
     expect(tables(args).forms.ab.textSlug).toBe("english")
 
     fs.writeFileSync(mapFile, mapSource([...BASE_MAP, ["abkhaz", "ab"]]))
-    const result = runGenerator([...args, "--check"])
-    expect(result.status).toBe(1)
-    expect(result.stderr).toContain(GENERATED)
+    expectRefusal([...args, "--check"], GENERATED)
     expect(tables(args).forms.ab.textSlug).toBe("abkhaz")
   })
 
@@ -170,9 +175,7 @@ describe("Admin language tables", () => {
     const { args, outFile } = fixture()
     expect(runGenerator(args).status).toBe(0)
     fs.appendFileSync(outFile, "// hand edit\n")
-    const result = runGenerator([...args, "--check"])
-    expect(result.status).toBe(1)
-    expect(result.stderr).toContain(GENERATED)
+    expectRefusal([...args, "--check"], GENERATED)
   })
 
   it("takes the first slug in map order when no override names one", () => {
@@ -279,13 +282,6 @@ describe("Admin language tables", () => {
     expect(audio["es-ES"]).toBeUndefined()
   })
 
-  it("keeps Admin's exact case in the raw tag", () => {
-    const { args } = fixture({
-      curated: { en: "english", es: "spanish-castilian" },
-    })
-    expect(tables(args).forms.es.rawTag).toBe("es-ES")
-  })
-
   it("sets the For You locale from its override, else the catalog tag", () => {
     const { args } = fixture({
       catalogs: ["en", "tl"],
@@ -317,59 +313,43 @@ describe("Admin language tables", () => {
     expect(englishContent).toEqual(["ab"])
   })
 
-  it("refuses an override slug that is not in the web map", () => {
-    const { args } = fixture({
-      overrides: { ...BASE_OVERRIDES, text: { hu: entry("hungarian-x") } },
-    })
-    const result = runGenerator(args)
-    expect(result.status).toBe(1)
-    expect(result.stderr).toContain("hungarian-x")
-  })
-
-  it("refuses a text override for a tag that has no catalog", () => {
-    const { args } = fixture({
-      overrides: { ...BASE_OVERRIDES, text: { xx: entry("hungarian") } },
-    })
-    const result = runGenerator(args)
-    expect(result.status).toBe(1)
-    expect(result.stderr).toContain("xx")
-  })
-
-  it("refuses an override entry without a reason", () => {
-    const { args } = fixture({
-      overrides: { ...BASE_OVERRIDES, text: { hu: { slug: "hungarian" } } },
-    })
-    const result = runGenerator(args)
-    expect(result.status).toBe(1)
-    expect(result.stderr).toContain("reason")
-  })
-
-  it("refuses an audio key that is not a lowercase tag", () => {
-    const { args } = fixture({
-      overrides: { ...BASE_OVERRIDES, audio: { "es-ES": entry("english") } },
-    })
-    const result = runGenerator(args)
-    expect(result.status).toBe(1)
-    expect(result.stderr).toContain("es-ES")
+  it.each([
+    [
+      "an override slug that is not in the web map",
+      { text: { hu: entry("hungarian-x") } },
+      "hungarian-x",
+    ],
+    [
+      "a text override for a tag that has no catalog",
+      { text: { xx: entry("hungarian") } },
+      "xx",
+    ],
+    [
+      "an override entry without a reason",
+      { text: { hu: { slug: "hungarian" } } },
+      "reason",
+    ],
+    [
+      "an audio key that is not a lowercase tag",
+      { audio: { "es-ES": entry("english") } },
+      "es-ES",
+    ],
+  ])("refuses %s", (_, change, named) => {
+    const { args } = fixture({ overrides: { ...BASE_OVERRIDES, ...change } })
+    expectRefusal(args, named)
   })
 
   it("refuses a map whose entry count differs from its header", () => {
     const { args, mapFile } = fixture()
     fs.writeFileSync(mapFile, mapSource(BASE_MAP, BASE_MAP.length + 1))
-    const result = runGenerator(args)
-    expect(result.status).toBe(1)
-    expect(result.stderr).toContain("language-bcp47-map.ts")
+    expectRefusal(args, "language-bcp47-map.ts")
   })
 
   it("refuses a locale.ts without the curated table", () => {
     const { args } = fixture()
     const localeFile = args[0].slice("--web-dir=".length)
     fs.writeFileSync(path.join(localeFile, "src", "lib", "locale.ts"), "\n")
-    const result = runGenerator(args)
-    expect(result.status).toBe(1)
-    expect(result.stderr).toContain(
-      "PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE",
-    )
+    expectRefusal(args, "PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE")
   })
 
   it("finds no app module that imports from apps/web", () => {

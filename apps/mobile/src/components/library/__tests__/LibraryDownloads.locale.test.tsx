@@ -175,11 +175,16 @@ afterEach(() => {
 afterAll(() => resetLocaleStoreForTests())
 
 describe("the downloads list after a UI language change", () => {
-  it("shows the new language in a row whose props did not change", async () => {
+  it("relabels rows and cards whose props did not change, and keeps their tap names", async () => {
     const list = await render()
-    const row = "The Birth of Jesus, 74 MB · Downloaded"
     expect(hasText(list, "74 MB · Downloaded")).toBe(true)
-    const english = tapActionName(pressableByLabel(list, row))
+    expect(hasPart(list, "1 videos · 0 MB")).toBe(true)
+    expect(hasPart(list, "· 1 failed")).toBe(true)
+    const english = [
+      "The Birth of Jesus, 74 MB · Downloaded",
+      "Lumo, 1 videos",
+      "Select downloads",
+    ].map((label) => tapActionName(pressableByLabel(list, label)))
 
     mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
     await act(async () => {
@@ -188,43 +193,18 @@ describe("the downloads list after a UI language change", () => {
 
     expect(hasText(list, "74 MB · Descargado")).toBe(true)
     expect(hasText(list, "74 MB · Downloaded")).toBe(false)
-    const spanish = pressableByLabel(
-      list,
-      "The Birth of Jesus, 74 MB · Descargado",
-    )
-    expect(tapActionName(spanish)).toBe(english)
-    expect(english).toBe("library-download-row")
-  })
-
-  it("shows the new language on a series card whose group did not change", async () => {
-    const list = await render()
-    expect(hasPart(list, "1 videos · 0 MB")).toBe(true)
-    expect(hasPart(list, "· 1 failed")).toBe(true)
-    const english = tapActionName(pressableByLabel(list, "Lumo, 1 videos"))
-
-    mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
-    await act(async () => {
-      refreshLocale()
-    })
-
     expect(hasPart(list, "1 video · 0 MB")).toBe(true)
     expect(hasPart(list, "· 1 con error")).toBe(true)
-    expect(tapActionName(pressableByLabel(list, "Lumo, 1 video"))).toBe(english)
-  })
-
-  it("keeps the Select tap name when its label changes language", async () => {
-    const list = await render()
-    const english = tapActionName(pressableByLabel(list, "Select downloads"))
-
-    mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
-    await act(async () => {
-      refreshLocale()
-    })
-
     expect(hasText(list, "Seleccionar")).toBe(true)
-    expect(tapActionName(pressableByLabel(list, "Seleccionar descargas"))).toBe(
-      english,
-    )
-    expect(english).toBe("library-select")
+    const spanish = [
+      "The Birth of Jesus, 74 MB · Descargado",
+      "Lumo, 1 video",
+      "Seleccionar descargas",
+    ].map((label) => tapActionName(pressableByLabel(list, label)))
+    expect(spanish).toEqual(english)
+    expect([english[0], english[2]]).toEqual([
+      "library-download-row",
+      "library-select",
+    ])
   })
 })

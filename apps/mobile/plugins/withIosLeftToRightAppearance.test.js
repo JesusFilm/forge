@@ -128,13 +128,6 @@ describe("insertLeftToRightAppearance", () => {
     )
   })
 
-  it("is idempotent: two passes leave the statement once", () => {
-    const once = insertLeftToRightAppearance(APP_DELEGATE)
-    const twice = insertLeftToRightAppearance(once)
-    expect(twice).toBe(once)
-    expect(count(twice, LEFT_TO_RIGHT_STATEMENT)).toBe(1)
-  })
-
   it.each([
     ["before", (src) => castInjected(insertLeftToRightAppearance(src))],
     ["after", (src) => insertLeftToRightAppearance(castInjected(src))],
@@ -166,6 +159,7 @@ describe("withIosLeftToRightAppearance (exported entry point)", () => {
       swiftConfig(first.modResults.contents),
     )
     expect(mockCalls).toEqual(["withAppDelegate", "withAppDelegate"])
+    expect(second.modResults.contents).toBe(first.modResults.contents)
     expect(count(second.modResults.contents, LEFT_TO_RIGHT_STATEMENT)).toBe(1)
   })
 

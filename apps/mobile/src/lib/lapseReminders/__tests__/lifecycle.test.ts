@@ -11,7 +11,6 @@
 import { AppState, type AppStateStatus } from "react-native"
 
 import {
-  refreshLocale,
   resetLocaleStoreForTests,
   startLocaleSync,
 } from "../../../i18n/localeStore"
@@ -1029,57 +1028,41 @@ describe("the pass in the UI language", () => {
     jest.restoreAllMocks()
   })
 
-  it("renames the Android channel on the next pass after a language change", async () => {
-    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
-    startLocaleSync()
-    const harness = createHarness({ record: "the-birth-of-jesus" })
-    const lifecycle = createLapseReminderLifecycle(harness.deps)
+  it.each([
+    [
+      "uses the untitled body for an English title",
+      "The Birth of Jesus",
+      "en",
+      ["Continúa donde lo dejaste.", "Tu video te espera cuando quieras."],
+    ],
+    [
+      "names the video for a title in the UI language",
+      "El nacimiento de Jesús",
+      "es",
+      [
+        "Sigue viendo El nacimiento de Jesús.",
+        "El nacimiento de Jesús te espera cuando quieras.",
+      ],
+    ],
+  ])(
+    "%s under a Spanish UI",
+    async (_name, recordTitle, recordTitleLocale, [day1, day7]) => {
+      mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
+      startLocaleSync()
+      const harness = createHarness({
+        record: "the-birth-of-jesus",
+        recordTitle,
+        recordTitleLocale,
+      })
 
-    await lifecycle.runPass("mount")
-    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
-    refreshLocale()
-    await lifecycle.runPass("active")
+      await createLapseReminderLifecycle(harness.deps).runPass("mount")
 
-    expect(harness.adapter.channelNames).toEqual(["Reminders", "Recordatorios"])
-    expect(bodyOf(harness.adapter, "day1")).toBe("Continúa donde lo dejaste.")
-  })
+      expect(bodyOf(harness.adapter, "day1")).toBe(day1)
+      expect(bodyOf(harness.adapter, "day7")).toBe(day7)
+    },
+  )
 
-  it("uses the untitled body for an English title under a Spanish UI", async () => {
-    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
-    startLocaleSync()
-    const harness = createHarness({
-      record: "the-birth-of-jesus",
-      recordTitle: "The Birth of Jesus",
-      recordTitleLocale: "en",
-    })
-    const lifecycle = createLapseReminderLifecycle(harness.deps)
-
-    await lifecycle.runPass("mount")
-
-    expect(bodyOf(harness.adapter, "day1")).toBe("Continúa donde lo dejaste.")
-    expect(bodyOf(harness.adapter, "day7")).toBe(
-      "Tu video te espera cuando quieras.",
-    )
-  })
-
-  it("names the video when the title is in the UI language", async () => {
-    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
-    startLocaleSync()
-    const harness = createHarness({
-      record: "the-birth-of-jesus",
-      recordTitle: "El nacimiento de Jesús",
-      recordTitleLocale: "es",
-    })
-    const lifecycle = createLapseReminderLifecycle(harness.deps)
-
-    await lifecycle.runPass("mount")
-
-    expect(bodyOf(harness.adapter, "day1")).toBe(
-      "Sigue viendo El nacimiento de Jesús.",
-    )
-  })
-
-  it("bakes the new language into the pass that a return to the app runs", async () => {
+  it("bakes the new language and channel name into the pass that a return to the app runs", async () => {
     // The store's listener is registered at module scope, before any provider
     // mounts, so it sits first on the one AppState emitter.
     const listeners: ((state: AppStateStatus) => void)[] = []
@@ -1110,7 +1093,7 @@ describe("the pass in the UI language", () => {
 
     expect(listeners).toHaveLength(2)
     expect(bodyOf(harness.adapter, "day1")).toBe("Continúa donde lo dejaste.")
-    expect(harness.adapter.channelNames.at(-1)).toBe("Recordatorios")
+    expect(harness.adapter.channelNames).toEqual(["Reminders", "Recordatorios"])
     detach()
   })
 })

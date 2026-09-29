@@ -1849,10 +1849,7 @@ describe("verse selection (R19)", () => {
     await tapVerse(renderer)
     const reference = `${psalm.bookName} 50:1-2`
     expect(selected(renderer)).toBe(reference)
-    await pressLabel(
-      renderer,
-      readerT("shareAriaLabel", { reference: reference }),
-    )
+    await pressLabel(renderer, readerT("shareAriaLabel", { reference }))
     const message = String(
       (share.mock.calls[0]?.[0] as { message?: string }).message,
     )
@@ -1922,7 +1919,7 @@ describe("a passage-picker jump pulses the pill (R39)", () => {
   async function openPicker(opened: Opened, passage: string) {
     await pressLabel(
       opened.renderer,
-      readerT("choosePassageAriaLabel", { passage: passage }),
+      readerT("choosePassageAriaLabel", { passage }),
     )
     expect(opened.onOpenPassagePicker).toHaveBeenCalledTimes(1)
     await opened.setFocus(false)

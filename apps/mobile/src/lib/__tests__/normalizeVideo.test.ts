@@ -254,8 +254,6 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
       },
     ],
     ...overrides,
-    // The fixture carries the text rows too, in the companion's shape (see
-    // `norm`), so it is wider than the language-free document's type.
   } as unknown as Parameters<typeof normalizeVideo>[0]
 }
 
@@ -655,14 +653,21 @@ describe("normalizeVideo", () => {
         studyQuestions: ui,
         englishStudyQuestions: english,
       }) as unknown as VideoTextInput
-    const ENGLISH_LIST = [question("en-1", "english", 1)]
+    const ENGLISH_LIST = [
+      question("en-1", "english", 1),
+      question("de-1", "german", 1),
+    ]
 
-    it("shows only the UI language's list", () => {
+    it("shows only the UI language's list, never a row of another language", () => {
       const result = normalizeVideo(
         makeRawVideo({ studyQuestions: null }),
         adminFormsFor("ru"),
         text(
-          [question("ru-2", "russian", 2), question("ru-1", "russian", 1)],
+          [
+            question("ru-2", "russian", 2),
+            question("fr-1", "french", 1),
+            question("ru-1", "russian", 1),
+          ],
           ENGLISH_LIST,
         ),
       )!
@@ -681,23 +686,6 @@ describe("normalizeVideo", () => {
       )!
       expect(result.studyQuestions.map((q) => q.value)).toEqual(["en-1?"])
       expect(result.studyQuestionsLang).toBe("en")
-    })
-
-    it("never mixes in a row of another language", () => {
-      const result = normalizeVideo(
-        makeRawVideo({ studyQuestions: null }),
-        adminFormsFor("ru"),
-        text(
-          [question("ru-1", "russian", 1), question("fr-1", "french", 1)],
-          [question("en-1", "english", 1), question("de-1", "german", 1)],
-        ),
-      )!
-      expect(result.studyQuestions.map((q) => q.value)).toEqual(["ru-1?"])
-    })
-
-    it("shows none before the text companion lands", () => {
-      const result = normalizeVideo(makeRawVideo(), adminFormsFor("ru"), null)!
-      expect(result.studyQuestions).toEqual([])
     })
   })
 
@@ -1382,18 +1370,16 @@ describe("normalizeVideo — text from the companion, per field (U6)", () => {
     expect(result.title).toBeNull()
     expect(result.description).toBeNull()
     expect(result.siblings.map((s) => s.title)).toEqual([null, null])
+    // The raw document still carries study questions; only the companion shows them.
+    expect(result.studyQuestions).toEqual([])
   })
 
-  it("shows the Russian title and the English description when Russian has no description", () => {
+  it("reads each field and sibling title in Russian, else in English", () => {
     const result = normalizeVideo(heavyOnly(), RU, companion())!
     expect(result.title).toBe("Распятие")
     expect(result.titleLang).toBe("ru")
     expect(result.description).toBe("A depiction of the crucifixion.")
     expect(result.descriptionLang).toBe("en")
-  })
-
-  it("titles each sibling in Russian, else in English with lang en", () => {
-    const result = normalizeVideo(heavyOnly(), RU, companion())!
     expect(
       result.siblings.map((s) => ({ title: s.title, lang: s.titleLang })),
     ).toEqual([
@@ -1438,68 +1424,46 @@ describe("normalizeVideo — Admin names in the screen's forms (U6)", () => {
   })
 
   it("reads Admin's raw tag, not the catalog tag, and marks an English fallback", () => {
-    const raw = makeRawVideo({
-      variants: [
-        {
-          documentId: "dub-1",
-          slug: "x-english",
-          published: true,
-          hls: "https://stream.mux.com/abc123.m3u8",
-          duration: 1,
-          language: {
-            coreId: "529",
-            bcp47: "en",
-            slug: "english",
-            name: { en: "English", "zh-hans": "英语", "zh-Hans": "wrong" },
-            iso3: "eng",
-          },
-          muxVideo: null,
-        },
-        {
-          documentId: "dub-2",
-          slug: "x-hausa",
-          published: true,
-          hls: "https://stream.mux.com/def456.m3u8",
-          duration: 1,
-          language: {
-            coreId: "1",
-            bcp47: "ha",
-            slug: "hausa",
-            name: { en: "Hausa" },
-            iso3: "hau",
-          },
-          muxVideo: null,
-        },
-      ],
-    })
-    const [english, hausa] = normalizeVideo(raw, ZH_HANS)!.variants
+    const raw = makeRawVideo()
+    const variants = (
+      raw as unknown as { variants: { language: object | null }[] }
+    ).variants.map((v, index) =>
+      index === 0
+        ? {
+            ...v,
+            language: {
+              ...v.language,
+              name: { en: "English", "zh-hans": "英语", "zh-Hans": "wrong" },
+            },
+          }
+        : v,
+    )
+    // Spanish has no zh-hans name, so it falls back to English.
+    const [english, spanish] = normalizeVideo(
+      { ...raw, variants } as typeof raw,
+      ZH_HANS,
+    )!.variants
     expect(english.languageName).toBe("英语")
     expect(english.languageNameLang).toBe("zh-Hans")
-    expect(hausa.languageName).toBe("Hausa")
-    expect(hausa.languageNameLang).toBe("en")
+    expect(spanish.languageName).toBe("Spanish")
+    expect(spanish.languageNameLang).toBe("en")
   })
 
   it("names a Bible book by the raw tag", () => {
-    const raw = makeRawVideo({
-      bibleCitations: [
-        {
-          documentId: "bc-1",
-          chapterStart: 19,
-          chapterEnd: 19,
-          verseStart: 30,
-          verseEnd: 30,
-          order: 1,
-          osisId: "John.19.30",
-          bibleBook: {
-            documentId: "bb-1",
-            name: { en: "John", ru: "Иоанна" },
-            osisId: "John",
-            paratextAbbreviation: "JHN",
-          },
-        },
-      ],
-    })
-    const [citation] = normalizeVideo(raw, RU)!.bibleCitations
+    const raw = makeRawVideo()
+    const [cite] = (
+      raw as unknown as { bibleCitations: { bibleBook: object }[] }
+    ).bibleCitations
+    const bibleCitations = [
+      {
+        ...cite,
+        bibleBook: { ...cite.bibleBook, name: { en: "John", ru: "Иоанна" } },
+      },
+    ]
+    const [citation] = normalizeVideo(
+      { ...raw, bibleCitations } as typeof raw,
+      RU,
+    )!.bibleCitations
     expect(citation.bookName).toBe("Иоанна")
     expect(citation.bookNameLang).toBe("ru")
   })

@@ -191,7 +191,6 @@ function renderController(
   mounted.push(renderer)
   return {
     latest: () => seen[seen.length - 1]!,
-    /** Every render's controller, in order. */
     all: () => seen,
     rerender: (next: UseHomeRecommendationsOptions) =>
       act(() => {
@@ -312,33 +311,49 @@ describe("the deferred first fetch", () => {
 
 // ── U7: the UI language (KTD11, KTD16) ──────────────────────────────────────
 
-describe("the request's languages (KTD11)", () => {
-  it("asks for the table's For You locale with the saved pick", async () => {
-    startPhone("ru-RU")
-    mockPreferences.mockReturnValue({ audioLanguageSlug: "english" })
-    const c = client()
-    const hook = renderController(OPEN, c)
-    act(() => hook.latest().reportShelfMounted())
-    await flush()
-    expect(c.fetch).toHaveBeenCalledWith({
-      locale: "ru",
-      audioLanguageSlug: "english",
-      count: 6,
-      attempt: 1,
-    })
-  })
+async function mountShelf(
+  c: TestClient,
+  initial: UseHomeRecommendationsOptions = OPEN,
+  options: { strict?: boolean } = {},
+) {
+  const hook = renderController(initial, c, options)
+  act(() => hook.latest().reportShelfMounted())
+  await flush()
+  return hook
+}
 
-  // KTD12: no pick, so the phone's language picks the audio, as the player
+type FetchInput = { locale: string; audioLanguageSlug: string }
+
+function askedSince(c: TestClient, before: number): FetchInput[] {
+  return c.fetch.mock.calls.slice(before).map(([input]: [FetchInput]) => input)
+}
+
+describe("the request's languages (KTD11)", () => {
+  // KTD12: with no pick, the phone's language picks the audio, as the player
   // does. `ha` has no UI catalog, so the metadata stays English.
-  it("asks a Hausa phone with no pick for Hausa audio", async () => {
-    startPhone("ha-NG")
+  it.each<[string, string, string | null, string, string]>([
+    [
+      "the table's For You locale with the saved pick",
+      "ru-RU",
+      "english",
+      "ru",
+      "english",
+    ],
+    [
+      "Hausa audio for a Hausa phone with no pick",
+      "ha-NG",
+      null,
+      "en",
+      "hausa",
+    ],
+  ])("asks for %s", async (_name, phone, pick, locale, audio) => {
+    startPhone(phone)
+    mockPreferences.mockReturnValue({ audioLanguageSlug: pick })
     const c = client()
-    const hook = renderController(OPEN, c)
-    act(() => hook.latest().reportShelfMounted())
-    await flush()
+    await mountShelf(c)
     expect(c.fetch).toHaveBeenCalledWith({
-      locale: "en",
-      audioLanguageSlug: "hausa",
+      locale,
+      audioLanguageSlug: audio,
       count: 6,
       attempt: 1,
     })
@@ -389,14 +404,13 @@ describe("the request's languages (KTD11)", () => {
       report: () => undefined,
     }
     const memory = createCoverageMemory()
-    const c = client({
-      fetch: jest.fn((input) =>
-        fetchUserRecommendationsWithCoverage(input, deps, memory),
-      ),
-    })
-    const hook = renderController(OPEN, c)
-    act(() => hook.latest().reportShelfMounted())
-    await flush()
+    const hook = await mountShelf(
+      client({
+        fetch: jest.fn((input) =>
+          fetchUserRecommendationsWithCoverage(input, deps, memory),
+        ),
+      }),
+    )
     expect(asked).toEqual(["ru:english", "en:english"])
     expect(hook.latest().status).toBe("served")
     expect(hook.latest().slate?.items.map((entry) => entry.videoTitle)).toEqual(
@@ -409,9 +423,7 @@ describe("a UI language change (KTD16)", () => {
   it("clears the shelf to its skeleton at once and refetches in the new locale", async () => {
     startPhone("en-US")
     const c = client()
-    const hook = renderController(OPEN, c, { strict: true })
-    act(() => hook.latest().reportShelfMounted())
-    await flush()
+    const hook = await mountShelf(c, OPEN, { strict: true })
     const oldSlate = hook.latest().slate
     expect(oldSlate).not.toBeNull()
     const before = c.fetch.mock.calls.length
@@ -422,60 +434,36 @@ describe("a UI language change (KTD16)", () => {
     // No render after the change carries the old slate, not even for one commit.
     const after = hook.all().slice(rendersBefore)
     expect(after.filter((seen) => seen.slate === oldSlate)).toHaveLength(0)
-    const localesAsked = c.fetch.mock.calls
-      .slice(before)
-      .map(([input]: [{ locale: string }]) => input.locale)
+    const localesAsked = askedSince(c, before).map((input) => input.locale)
     expect(localesAsked.length).toBeGreaterThan(0)
     expect(new Set(localesAsked)).toEqual(new Set(["ru"]))
     expect(hook.latest().status).toBe("served")
   })
 
-  it("holds the new locale's fetch until Home has focus", async () => {
+  it("clears the shelf in the commit after the change, and holds the new locale's fetch until Home has focus", async () => {
     startPhone("en-US")
     const c = client()
-    const hook = renderController(OPEN, c, { strict: true })
-    act(() => hook.latest().reportShelfMounted())
-    await flush()
+    const hook = await mountShelf(c, OPEN, { strict: true })
     hook.rerender({ gateOpen: true, focused: false })
     await flush()
+    const oldSlate = hook.latest().slate
+    expect(oldSlate).not.toBeNull()
     const before = c.fetch.mock.calls.length
+    const rendersBefore = hook.all().length
 
     await changePhone("ru-RU")
     await flush()
+    const after = hook.all().slice(rendersBefore)
+    expect(after.length).toBeGreaterThan(0)
+    expect(after.filter((seen) => seen.slate === oldSlate)).toHaveLength(0)
     expect(hook.latest().slate).toBeNull()
     expect(hook.latest().status).toBe("idle")
     expect(c.fetch).toHaveBeenCalledTimes(before)
 
     hook.rerender(OPEN)
     await flush()
-    const localesAsked = c.fetch.mock.calls
-      .slice(before)
-      .map(([input]: [{ locale: string }]) => input.locale)
-    expect(localesAsked).toEqual(["ru"])
+    expect(askedSince(c, before).map((input) => input.locale)).toEqual(["ru"])
     expect(hook.latest().slate).not.toBeNull()
-  })
-
-  it("never shows the old slate in the commit that follows the change", async () => {
-    startPhone("en-US")
-    const c = client()
-    const hook = renderController({ gateOpen: true, focused: false }, c)
-    act(() => hook.latest().reportShelfMounted())
-    hook.rerender(OPEN)
-    await flush()
-    hook.rerender({ gateOpen: true, focused: false })
-    await flush()
-    expect(hook.latest().slate).not.toBeNull()
-
-    const oldSlate = hook.latest().slate
-    const rendersBefore = hook.all().length
-    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
-    act(() => {
-      refreshLocale()
-    })
-    const after = hook.all().slice(rendersBefore)
-    expect(after.length).toBeGreaterThan(0)
-    expect(after.filter((seen) => seen.slate === oldSlate)).toHaveLength(0)
-    expect(hook.latest().slate).toBeNull()
   })
 })
 
@@ -485,9 +473,7 @@ describe("a phone change that keeps the catalog (R21)", () => {
   it("asks for the new default audio once Home has focus, and keeps the slate on show", async () => {
     startPhone("ha-NG")
     const c = client()
-    const hook = renderController(OPEN, c)
-    act(() => hook.latest().reportShelfMounted())
-    await flush()
+    const hook = await mountShelf(c)
     hook.rerender({ gateOpen: true, focused: false })
     await flush()
     const before = c.fetch.mock.calls.length
@@ -499,8 +485,8 @@ describe("a phone change that keeps the catalog (R21)", () => {
 
     hook.rerender(OPEN)
     await flush()
-    expect(c.fetch.mock.calls.slice(before)).toEqual([
-      [{ locale: "en", audioLanguageSlug: "yoruba", count: 6, attempt: 1 }],
+    expect(askedSince(c, before)).toEqual([
+      { locale: "en", audioLanguageSlug: "yoruba", count: 6, attempt: 1 },
     ])
     const after = hook.all().slice(rendersBefore)
     expect(after.filter((seen) => seen.slate === null)).toHaveLength(0)
@@ -510,28 +496,21 @@ describe("a phone change that keeps the catalog (R21)", () => {
   it("asks for the new default audio at once while Home has focus", async () => {
     startPhone("ha-NG")
     const c = client()
-    const hook = renderController(OPEN, c)
-    act(() => hook.latest().reportShelfMounted())
-    await flush()
+    await mountShelf(c)
     const before = c.fetch.mock.calls.length
 
     await changePhone("yo-NG")
     await flush()
-    const audioAsked = c.fetch.mock.calls
-      .slice(before)
-      .map(
-        ([input]: [{ audioLanguageSlug: string }]) => input.audioLanguageSlug,
-      )
-    expect(audioAsked).toEqual(["yoruba"])
+    expect(
+      askedSince(c, before).map((input) => input.audioLanguageSlug),
+    ).toEqual(["yoruba"])
   })
 
   it("changes nothing for a viewer with an audio pick", async () => {
     startPhone("ha-NG")
     mockPreferences.mockReturnValue({ audioLanguageSlug: "french" })
     const c = client()
-    const hook = renderController(OPEN, c)
-    act(() => hook.latest().reportShelfMounted())
-    await flush()
+    const hook = await mountShelf(c)
     const shown = hook.latest().slate
     expect(shown).not.toBeNull()
     const rendersBefore = hook.all().length

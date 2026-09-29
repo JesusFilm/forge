@@ -582,17 +582,20 @@ describe("offline title refresh (U7, R4)", () => {
     return parseOfflineRecord(storage.get(offlineRecordKey(slug)) ?? null)
   }
 
-  it("patches a record in another locale once a text request succeeds", async () => {
-    // The UI is English here, and the record was titled under Russian.
+  function seedDownloaded(fields: Partial<OfflineDownloadRecord>) {
     seedManifest([
       record({
         videoSlug: "a",
         state: "downloaded",
         committedPath: FILE,
-        title: "Русский a",
-        titleLocale: "ru",
+        ...fields,
       }),
     ])
+  }
+
+  it("patches a record in another locale once a text request succeeds", async () => {
+    // The UI is English here, and the record was titled under Russian.
+    seedDownloaded({ title: "Русский a", titleLocale: "ru" })
     answerText(async () => {
       throw new Error("offline")
     })
@@ -625,14 +628,7 @@ describe("offline title refresh (U7, R4)", () => {
   })
 
   it("asks for no text when a record is titled in the UI locale", async () => {
-    seedManifest([
-      record({
-        videoSlug: "a",
-        state: "downloaded",
-        committedPath: FILE,
-        titleLocale: "en",
-      }),
-    ])
+    seedDownloaded({ titleLocale: "en" })
     answerText(async () => null)
     const renderer = await render()
     await act(async () => {

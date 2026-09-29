@@ -144,8 +144,7 @@ describe("buildTranslationList", () => {
   // KTD15: names sort in the UI tag's collation, so one tag gives one order
   // on every device. Russian collation puts Cyrillic first; English puts it last.
   it("orders translation names by the UI tag it gets", () => {
-    const base = CATALOG.byId.get("BSB")
-    if (!base) throw new Error("no BSB in the catalog")
+    const base = CATALOG.byId.get("BSB")!
     const named = (id: string, name: string) => ({
       ...base,
       id,

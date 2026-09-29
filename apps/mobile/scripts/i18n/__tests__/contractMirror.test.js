@@ -13,40 +13,31 @@ const WEB_TRANSLATOR = path.resolve(
   "../../../../web/scripts/openai-catalog-translator.mjs",
 )
 
+const KEY = "Common.a"
+const PLURAL = "{count, plural, one {# video} other {# videos}}"
+// [source, value] pairs for KEY.
 const CASES = [
-  ["Common.a", "Go back", "Volver"],
-  ["Common.a", "Go back", undefined],
-  ["Common.a", "Go back", "   "],
-  ["Common.a", "", ""],
-  ["Common.a", "Go back", "```Volver```"],
-  ["Common.a", "Hi {name}", "Hola {name"],
-  ["Common.a", "Hi {name}", "Hola {nombre}"],
-  ["Common.a", "Hi {name}", "Hola"],
-  ["Common.a", "<b>Hi</b>", "Hola"],
-  ["Common.a", "<b>Hi</b>", "<strong>Hola</strong>"],
-  [
-    "Common.a",
-    "{count, plural, one {# video} other {# videos}}",
-    "{count, plural, one {un vídeo} other {vídeos}}",
-  ],
-  [
-    "Common.a",
-    "{count, plural, one {# video} other {# videos}}",
-    "{count, plural, one {# vídeo} other {# vídeos}}",
-  ],
-  [
-    "Common.a",
-    "{count, plural, one {# video} other {# videos}}",
-    "{count} vídeos",
-  ],
-  ["Common.a", "{count} videos", "vídeos"],
+  ["Go back", "Volver"],
+  ["Go back", undefined],
+  ["Go back", "   "],
+  ["", ""],
+  ["Go back", "```Volver```"],
+  ["Hi {name}", "Hola {name"],
+  ["Hi {name}", "Hola {nombre}"],
+  ["Hi {name}", "Hola"],
+  ["<b>Hi</b>", "Hola"],
+  ["<b>Hi</b>", "<strong>Hola</strong>"],
+  [PLURAL, "{count, plural, one {un vídeo} other {vídeos}}"],
+  [PLURAL, "{count, plural, one {# vídeo} other {# vídeos}}"],
+  [PLURAL, "{count} vídeos"],
+  ["{count} videos", "vídeos"],
 ]
 
 function webResults() {
   const script = `
     const { messageContractError } = await import(${JSON.stringify(pathToFileURL(WEB_TRANSLATOR).href)})
     const cases = JSON.parse(process.argv[1])
-    process.stdout.write(JSON.stringify(cases.map(([k, s, v]) => messageContractError(k, s, v ?? undefined))))
+    process.stdout.write(JSON.stringify(cases.map(([s, v]) => messageContractError(${JSON.stringify(KEY)}, s, v ?? undefined))))
   `
   const result = childProcess.spawnSync(
     process.execPath,
@@ -59,8 +50,8 @@ function webResults() {
 
 describe("contract mirror", () => {
   it("agrees with web's messageContractError on every case", () => {
-    const mirror = CASES.map(([key, source, value]) =>
-      contractError(key, source, value),
+    const mirror = CASES.map(([source, value]) =>
+      contractError(KEY, source, value),
     )
     expect(mirror).toEqual(webResults())
     // The table must hold passing and failing cases, or agreement proves little.

@@ -14,14 +14,10 @@ describe("progressAccessibilityText", () => {
     expect(progressAccessibilityText(at(0.5), t)).toBeNull()
   })
 
-  it("reads the English text byte-identical", () => {
-    expect(progressAccessibilityText(at(42), t)).toBe("42% watched")
-    expect(progressAccessibilityText(at(95), t)).toBe("watched")
-  })
-
-  it("uses the translator the card passes", () => {
+  it("reads the English text byte-identical, through the card's translator", () => {
     const spy = jest.fn(t)
     expect(progressAccessibilityText(at(42), spy)).toBe("42% watched")
+    expect(progressAccessibilityText(at(95), spy)).toBe("watched")
     expect(spy).toHaveBeenCalledWith("percentWatchedAriaLabel", { percent: 42 })
   })
 })

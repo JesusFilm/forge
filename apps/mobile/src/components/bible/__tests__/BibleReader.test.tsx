@@ -920,8 +920,7 @@ describe("BibleReader — the pushed reader's start (U11, AE15)", () => {
   const pills = (renderer: TestInstance, passage: string) =>
     controlHostsLabelled(
       renderer,
-      (label) =>
-        label === readerT("choosePassageAriaLabel", { passage: passage }),
+      (label) => label === readerT("choosePassageAriaLabel", { passage }),
     )
 
   const saved = (ref: VerseRef) =>

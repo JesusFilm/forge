@@ -129,96 +129,6 @@ describe("videoMetaFromResult (U6)", () => {
   })
 })
 
-// ── The effect follows the UI language (KTD16) ──────────────────────────────
-
-const EXPERIENCE = {
-  slug: "easter",
-  blocks: [{ __typename: "VideoCardBlock", videoId: "a" }],
-} as unknown as WatchExperience
-
-let seen: VideoMetaMap[] = []
-
-function Probe() {
-  seen.push(useVideoThumbnails(EXPERIENCE))
-  return null
-}
-
-describe("useVideoThumbnails across a live language change (U6)", () => {
-  let mounted: TestInstance | null = null
-  const query = jest.fn()
-
-  beforeEach(() => {
-    seen = []
-    query.mockReset()
-    ;(getApolloClient as jest.Mock).mockReturnValue({ query })
-    resetLocaleStoreForTests()
-    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
-    startLocaleSync()
-  })
-
-  afterEach(async () => {
-    await act(async () => {
-      mounted?.unmount()
-    })
-    mounted = null
-    resetLocaleStoreForTests()
-  })
-
-  it("asks again in the new language and never shows the old titles", async () => {
-    let answerRussian: (value: unknown) => void = () => undefined
-    query.mockImplementation(
-      ({ variables }: { variables: Record<string, string> }) =>
-        variables.textSlug === "english"
-          ? Promise.resolve({
-              data: {
-                v0: video(
-                  "a",
-                  [{ languageSlug: "english", title: "JESUS" }],
-                  "JESUS",
-                ),
-              },
-            })
-          : new Promise((resolve) => {
-              answerRussian = resolve
-            }),
-    )
-    await act(async () => {
-      mounted = TestRenderer.create(
-        createElement(StrictMode, null, createElement(Probe)),
-      )
-    })
-    expect(seen.at(-1)?.get("a")?.title).toBe("JESUS")
-
-    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
-    await act(async () => {
-      refreshLocale()
-    })
-
-    expect(query.mock.calls.at(-1)?.[0].variables).toMatchObject({
-      textSlug: "russian",
-      id0: "a",
-    })
-    // The art stays; the English title leaves while Russian loads.
-    expect(seen.at(-1)?.get("a")).toEqual({
-      thumbnail: "https://cdn/a.jpg",
-      title: null,
-    })
-
-    await act(async () => {
-      answerRussian({
-        data: {
-          v0: video(
-            "a",
-            [{ languageSlug: "russian", title: "ИИСУС" }],
-            "JESUS",
-          ),
-        },
-      })
-    })
-    expect(seen.at(-1)?.get("a")?.title).toBe("ИИСУС")
-  })
-})
-
 // ── Admin's alias limit ──────────────────────────────────────────────────────
 
 // Admin rejects a document with more than 200 aliases ("Aliases limit of 200
@@ -265,27 +175,39 @@ describe("the thumbnail batch stays under Admin's alias limit", () => {
   })
 })
 
-const LARGE_EXPERIENCE = {
-  slug: "large",
-  blocks: Array.from({ length: 57 }, (_, i) => ({
-    __typename: "VideoCardBlock",
-    videoId: `v${i}`,
-  })),
-} as unknown as WatchExperience
+// ── The hook ─────────────────────────────────────────────────────────────────
 
-let largeSeen: VideoMetaMap[] = []
+function experienceOf(slug: string, videoIds: string[]): WatchExperience {
+  return {
+    slug,
+    blocks: videoIds.map((videoId) => ({
+      __typename: "VideoCardBlock",
+      videoId,
+    })),
+  } as unknown as WatchExperience
+}
 
-function LargeProbe() {
-  largeSeen.push(useVideoThumbnails(LARGE_EXPERIENCE))
+let experience: WatchExperience
+let seen: VideoMetaMap[] = []
+
+function Probe() {
+  seen.push(useVideoThumbnails(experience))
   return null
 }
 
-describe("useVideoThumbnails with a large Experience", () => {
+describe("useVideoThumbnails", () => {
   let mounted: TestInstance | null = null
   const query = jest.fn()
 
+  async function mount(root: ReturnType<typeof createElement>) {
+    await act(async () => {
+      mounted = TestRenderer.create(root)
+    })
+  }
+
   beforeEach(() => {
-    largeSeen = []
+    experience = experienceOf("easter", ["a"])
+    seen = []
     query.mockReset()
     ;(getApolloClient as jest.Mock).mockReturnValue({ query })
     resetLocaleStoreForTests()
@@ -301,45 +223,101 @@ describe("useVideoThumbnails with a large Experience", () => {
     resetLocaleStoreForTests()
   })
 
-  function answer(variables: Record<string, string>) {
-    const data: Record<string, unknown> = {}
-    for (const [name, id] of Object.entries(variables)) {
-      if (name.startsWith("id")) data[`v${name.slice(2)}`] = video(id, [], id)
-    }
-    return { data }
-  }
-
-  it("splits the ids into batches and merges every title", async () => {
+  // KTD16: the effect follows the UI language.
+  it("asks again in the new language and never shows the old titles", async () => {
+    let answerRussian: (value: unknown) => void = () => undefined
     query.mockImplementation(
       ({ variables }: { variables: Record<string, string> }) =>
-        Promise.resolve(answer(variables)),
+        variables.textSlug === "english"
+          ? Promise.resolve({
+              data: {
+                v0: video(
+                  "a",
+                  [{ languageSlug: "english", title: "JESUS" }],
+                  "JESUS",
+                ),
+              },
+            })
+          : new Promise((resolve) => {
+              answerRussian = resolve
+            }),
     )
+    await mount(createElement(StrictMode, null, createElement(Probe)))
+    expect(seen.at(-1)?.get("a")?.title).toBe("JESUS")
+
+    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
     await act(async () => {
-      mounted = TestRenderer.create(createElement(LargeProbe))
+      refreshLocale()
     })
-    expect(query).toHaveBeenCalledTimes(2)
-    for (const [{ variables }] of query.mock.calls) {
-      const ids = Object.keys(variables).filter((k) => k.startsWith("id"))
-      expect(ids.length).toBeLessThanOrEqual(VIDEO_THUMBNAIL_BATCH_SIZE)
-    }
-    const map = largeSeen.at(-1)
-    expect(map?.size).toBe(57)
-    expect(map?.get("v0")?.title).toBe("v0")
-    expect(map?.get("v56")?.title).toBe("v56")
+
+    expect(query.mock.calls.at(-1)?.[0].variables).toMatchObject({
+      textSlug: "russian",
+      id0: "a",
+    })
+    // The art stays; the English title leaves while Russian loads.
+    expect(seen.at(-1)?.get("a")).toEqual({
+      thumbnail: "https://cdn/a.jpg",
+      title: null,
+    })
+
+    await act(async () => {
+      answerRussian({
+        data: {
+          v0: video(
+            "a",
+            [{ languageSlug: "russian", title: "ИИСУС" }],
+            "JESUS",
+          ),
+        },
+      })
+    })
+    expect(seen.at(-1)?.get("a")?.title).toBe("ИИСУС")
   })
 
-  it("keeps the batches that succeed when one batch fails", async () => {
-    query.mockImplementation(
-      ({ variables }: { variables: Record<string, string> }) =>
-        variables.id0 === "v0"
-          ? Promise.reject(new Error("offline"))
-          : Promise.resolve(answer(variables)),
-    )
-    await act(async () => {
-      mounted = TestRenderer.create(createElement(LargeProbe))
+  describe("with a large Experience", () => {
+    function answer(variables: Record<string, string>) {
+      const data: Record<string, unknown> = {}
+      for (const [name, id] of Object.entries(variables)) {
+        if (name.startsWith("id")) data[`v${name.slice(2)}`] = video(id, [], id)
+      }
+      return { data }
+    }
+
+    beforeEach(() => {
+      experience = experienceOf(
+        "large",
+        Array.from({ length: 57 }, (_, i) => `v${i}`),
+      )
     })
-    const map = largeSeen.at(-1)
-    expect(map?.has("v0")).toBe(false)
-    expect(map?.get("v56")?.title).toBe("v56")
+
+    it("splits the ids into batches and merges every title", async () => {
+      query.mockImplementation(
+        ({ variables }: { variables: Record<string, string> }) =>
+          Promise.resolve(answer(variables)),
+      )
+      await mount(createElement(Probe))
+      expect(query).toHaveBeenCalledTimes(2)
+      for (const [{ variables }] of query.mock.calls) {
+        const ids = Object.keys(variables).filter((k) => k.startsWith("id"))
+        expect(ids.length).toBeLessThanOrEqual(VIDEO_THUMBNAIL_BATCH_SIZE)
+      }
+      const map = seen.at(-1)
+      expect(map?.size).toBe(57)
+      expect(map?.get("v0")?.title).toBe("v0")
+      expect(map?.get("v56")?.title).toBe("v56")
+    })
+
+    it("keeps the batches that succeed when one batch fails", async () => {
+      query.mockImplementation(
+        ({ variables }: { variables: Record<string, string> }) =>
+          variables.id0 === "v0"
+            ? Promise.reject(new Error("offline"))
+            : Promise.resolve(answer(variables)),
+      )
+      await mount(createElement(Probe))
+      const map = seen.at(-1)
+      expect(map?.has("v0")).toBe(false)
+      expect(map?.get("v56")?.title).toBe("v56")
+    })
   })
 })

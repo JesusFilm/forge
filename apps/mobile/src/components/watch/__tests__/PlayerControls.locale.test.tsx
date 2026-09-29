@@ -3,18 +3,6 @@
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 
-jest.mock("react", () => {
-  const r = require as unknown as NodeRequireLike
-  const path = r("path") as NodePath
-  return jest.requireActual(path.dirname(r.resolve("react/package.json")))
-})
-jest.mock("react/jsx-runtime", () => {
-  const r = require as unknown as NodeRequireLike
-  const path = r("path") as NodePath
-  return jest.requireActual(
-    path.join(path.dirname(r.resolve("react/package.json")), "jsx-runtime.js"),
-  )
-})
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
@@ -83,8 +71,6 @@ import {
   TestRenderer,
   press,
   unmount,
-  type NodePath,
-  type NodeRequireLike,
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
@@ -159,7 +145,7 @@ afterEach(async () => {
 })
 
 describe("PlayerControls after a language change", () => {
-  it("keeps the play button's RUM name in English and Russian", async () => {
+  it("keeps the play tap name and the seek bar's raw action names", async () => {
     mockGetLocales.mockReturnValue(phoneLocales("en-US"))
     startLocaleSync()
     const player = makePlayer()
@@ -172,13 +158,6 @@ describe("PlayerControls after a language change", () => {
     expect(tapActionName(play)).toBe("player-play")
     await press(play)
     expect(player.play).toHaveBeenCalledTimes(1)
-  })
-
-  it("keeps the seek bar's raw action names under a translated label", async () => {
-    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
-    startLocaleSync()
-    const player = makePlayer()
-    mounted = await render(player)
 
     const bar = seekBar(mounted)
     expect(bar.props.accessibilityLabel).toBe("Полоса перемотки")
@@ -187,7 +166,6 @@ describe("PlayerControls after a language change", () => {
       "increment",
       "decrement",
     ])
-
     await act(async () => {
       ;(
         bar.props.onAccessibilityAction as (event: {

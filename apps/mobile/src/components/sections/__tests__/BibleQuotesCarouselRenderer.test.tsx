@@ -255,43 +255,22 @@ describe("BibleQuotesCarouselRenderer — the passage language", () => {
     mockUiTag = "en"
   })
 
-  it("marks an English passage for screen readers and sets it left to right", () => {
-    mockUiTag = "ar"
-    const renderer = render([{ ...PASSAGE_QUOTE, textLang: "en" }])
-    expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual(["en"])
+  it.each([
+    ["an English passage in an Arabic UI", "ar", "en", ["en"], "ltr"],
+    ["an Arabic passage in an Arabic UI", "ar", "ar", [undefined], "rtl"],
+    ["an English passage in an English UI", "en", "en", ["en"], undefined],
+    ["a Russian passage in an English UI", "en", "ru", [undefined], undefined],
+  ])("marks and sets %s", (_case, uiTag, textLang, marks, direction) => {
+    mockUiTag = uiTag
+    const renderer = render([{ ...PASSAGE_QUOTE, textLang }])
+    expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual(marks)
     for (const needle of PASSAGE_TEXTS) {
-      expect(flatStyle(findText(renderer, needle)).writingDirection).toBe("ltr")
-      expect(flatStyle(findText(renderer, needle)).direction).toBe("ltr")
+      const style = flatStyle(findText(renderer, needle))
+      expect([style.writingDirection, style.direction]).toEqual([
+        direction,
+        direction,
+      ])
     }
-  })
-
-  it("sets an Arabic passage right to left", () => {
-    mockUiTag = "ar"
-    const renderer = render([{ ...PASSAGE_QUOTE, textLang: "ar" }])
-    expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual([undefined])
-    for (const needle of PASSAGE_TEXTS) {
-      expect(flatStyle(findText(renderer, needle)).writingDirection).toBe("rtl")
-      expect(flatStyle(findText(renderer, needle)).direction).toBe("rtl")
-    }
-  })
-
-  it("adds no direction to an English passage in an English UI", () => {
-    const renderer = render([{ ...PASSAGE_QUOTE, textLang: "en" }])
-    expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual(["en"])
-    for (const needle of PASSAGE_TEXTS) {
-      expect(flatStyle(findText(renderer, needle)).writingDirection).toBe(
-        undefined,
-      )
-    }
-  })
-
-  it("leaves a passage in the UI language without the English mark", () => {
-    const renderer = render([{ ...PASSAGE_QUOTE, textLang: "ru" }])
-    expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual([undefined])
-    expect(
-      flatStyle(findText(renderer, "Let’s make man in our image"))
-        .writingDirection,
-    ).toBeUndefined()
   })
 
   it("leaves the Experience quote as it was", () => {

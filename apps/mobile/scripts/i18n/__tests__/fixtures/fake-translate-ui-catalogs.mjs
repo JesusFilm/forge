@@ -1,11 +1,9 @@
 // Test stand-in for web's translate-ui-catalogs.mjs. It sends no request: it
-// logs its argv, writes `[<locale>] <English>` for each key it must fill, and
-// writes a progress file as the real script does.
+// logs its argv and writes `[<locale>] <English>` for each key it must fill.
+// No test reads a progress file, so it writes none.
 
-import { createHash } from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
-import { fileURLToPath } from "node:url"
 import { messageContractError } from "./openai-catalog-translator.mjs"
 
 // The command reads this file's text for these names, as it reads web's.
@@ -32,7 +30,6 @@ if (unknown.length > 0) {
 }
 const value = (name) => args[args.indexOf(name) + 1]
 const list = (name) => (process.env[name] ?? "").split(",").filter(Boolean)
-const render = (json) => `${JSON.stringify(json, null, 2)}\n`
 const log = (entry) =>
   fs.appendFileSync(process.env.FAKE_WEB_LOG, `${JSON.stringify(entry)}\n`)
 
@@ -55,23 +52,14 @@ function unflatten(flat) {
   return tree
 }
 
-log({ script: path.basename(fileURLToPath(import.meta.url)), argv: args })
+log({ argv: args })
 
 const messagesDir = value("--messages-dir")
-const progressPath = value("--progress")
 const policy = JSON.parse(fs.readFileSync(value("--policy"), "utf8"))
 const neutral = new Set(policy.intentionallyLocaleNeutral ?? [])
 const source = flatten(
   JSON.parse(fs.readFileSync(path.join(messagesDir, "en.json"), "utf8")),
 )
-const progress = fs.existsSync(progressPath)
-  ? JSON.parse(fs.readFileSync(progressPath, "utf8"))
-  : {
-      model: value("--model"),
-      completedLocales: [],
-      generatedLocales: [],
-      catalogDigests: {},
-    }
 
 let failed = false
 for (const locale of value("--locales").split(",").sort()) {
@@ -108,18 +96,8 @@ for (const locale of value("--locales").split(",").sort()) {
         messageContractError(key, source[key], catalog[key]) !== null),
   )
   for (const key of keys) catalog[key] = `[${locale}] ${source[key]}`
-  fs.writeFileSync(file, render(unflatten(catalog)))
+  fs.writeFileSync(file, `${JSON.stringify(unflatten(catalog), null, 2)}\n`)
   log({ locale, translated: keys })
-  progress.completedLocales = [
-    ...new Set([...progress.completedLocales, locale]),
-  ].sort()
-  progress.generatedLocales = [
-    ...new Set([...progress.generatedLocales, locale]),
-  ].sort()
-  progress.catalogDigests[locale] = createHash("sha256")
-    .update(render(catalog))
-    .digest("hex")
-  fs.writeFileSync(progressPath, render(progress))
   console.log(
     JSON.stringify({
       event: "locale_complete",

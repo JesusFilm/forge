@@ -369,10 +369,6 @@ describe("resolveSeriesDownload", () => {
 // KTD15: tiers are identifiers, and only the sheet renders their text. So the
 // UI language cannot change which rendition a series downloads.
 describe("tier choice across UI languages", () => {
-  beforeEach(() => {
-    resetLocaleStoreForTests()
-    mockGetLocales.mockReset()
-  })
   afterAll(() => resetLocaleStoreForTests())
 
   const deps: SeriesResolveDeps = {
@@ -394,6 +390,7 @@ describe("tier choice across UI languages", () => {
   }
 
   it("picks the same tier under an es catalog as under en", async () => {
+    resetLocaleStoreForTests()
     mockGetLocales.mockReturnValue(phoneLocales("en-US"))
     startLocaleSync()
     const english = await pickHigh()

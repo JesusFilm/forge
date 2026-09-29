@@ -161,7 +161,19 @@ jest.mock("../../../src/components/ui/Snackbar", () => ({
 }))
 
 const DETAILS_ERROR = "Couldn't load full details."
-const NETWORK_ERROR = new Error("Network request failed")
+const FAILED: QueryAnswer = {
+  data: undefined,
+  dataState: "empty",
+  loading: false,
+  error: new Error("Network request failed"),
+}
+const TEXT = { videoBySlug: { documentId: "video-the-chosen" } }
+const LOADED_TEXT: QueryAnswer = {
+  data: TEXT,
+  dataState: "complete",
+  loading: false,
+  error: undefined,
+}
 
 /** The loaded series with no text, as the merge leaves it after a failure. */
 const THE_CHOSEN: WatchVideoRecord = {
@@ -246,14 +258,16 @@ afterEach(async () => {
 })
 
 describe("a failed text load on a loaded series page", () => {
-  it("offers a retry that reloads only the text", async () => {
-    seriesLoaded()
-    mockTextQuery.current = {
-      data: undefined,
-      dataState: "empty",
-      loading: false,
-      error: NETWORK_ERROR,
-    }
+  beforeEach(seriesLoaded)
+
+  it.each<[string, QueryAnswer]>([
+    ["with no data", FAILED],
+    [
+      "over a partial cached row",
+      { ...FAILED, data: TEXT, dataState: "partial" },
+    ],
+  ])("offers a retry that reloads only the text, %s", async (_, answer) => {
+    mockTextQuery.current = answer
 
     const renderer = await render()
 
@@ -264,28 +278,14 @@ describe("a failed text load on a loaded series page", () => {
     expect(mockRefetch).not.toHaveBeenCalled()
   })
 
-  it("offers the retry when a partial cached row survives the failure", async () => {
-    seriesLoaded()
-    mockTextQuery.current = {
-      data: { videoBySlug: { documentId: "video-the-chosen" } },
-      dataState: "partial",
-      loading: false,
-      error: NETWORK_ERROR,
-    }
-
-    const renderer = await render()
-
-    expect(retries(renderer, "series-text-retry").length).toBeGreaterThan(0)
-  })
-
-  it("shows no retry when the text loads", async () => {
-    seriesLoaded()
-    mockTextQuery.current = {
-      data: { videoBySlug: { documentId: "video-the-chosen" } },
-      dataState: "complete",
-      loading: false,
-      error: undefined,
-    }
+  it.each<[string, QueryAnswer]>([
+    ["the text loads", LOADED_TEXT],
+    [
+      "a refetch fails over complete text",
+      { ...LOADED_TEXT, error: FAILED.error },
+    ],
+  ])("shows no retry when %s", async (_, answer) => {
+    mockTextQuery.current = answer
 
     const renderer = await render()
 

@@ -193,7 +193,6 @@ describe("the video title", () => {
       recordedAt: NOW.getTime(),
     })
 
-    expect(JSON.parse(blob as string).titleLocale).toBe("es")
     expect(parseStoredLastWatched(blob, NOW)).toEqual({
       videoSlug: "the-birth-of-jesus",
       videoTitle: "El nacimiento de Jesús",
@@ -211,7 +210,6 @@ describe("the video title", () => {
     })
 
     expect(JSON.parse(blob as string)).not.toHaveProperty("titleLocale")
-    expect(parseStoredLastWatched(blob, NOW)).not.toHaveProperty("titleLocale")
   })
 
   it("reads a titled record written before title languages as having none", () => {

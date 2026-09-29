@@ -30,22 +30,39 @@ const WEB_TAGS = [
 
 describe("resolveLocale", () => {
   it.each([
-    ["es-MX", "es"],
-    ["zh-Hant-TW", "zh-Hant"],
-    ["zh-TW", "zh-Hant"],
-    ["zh-HK", "zh-Hant"],
-    ["zh-CN", "zh-Hans"],
-    ["zh-Hans-CN", "zh-Hans"],
-    ["sr-Latn-RS", "sr-Latn"],
-    ["sr-RS", "sr"],
-    ["zh", "zh"],
-    ["en-US", "en"],
-    ["tl", "tl"],
-    ["fil", "fil"],
-    ["fil-PH", "fil"],
-    ["yue-Hant-HK", "yue"],
-  ])("maps %s to %s", (phoneTag, catalogTag) => {
-    expect(resolveLocale([phoneTag], WEB_TAGS).tag).toBe(catalogTag)
+    ["es-MX", "es", "language"],
+    ["zh-Hant-TW", "zh-Hant", "script"],
+    ["zh-TW", "zh-Hant", "inferred_script"],
+    ["zh-HK", "zh-Hant", "inferred_script"],
+    ["zh-CN", "zh-Hans", "inferred_script"],
+    ["zh-Hans-CN", "zh-Hans", "script"],
+    ["zh-Hans", "zh-Hans", "exact"],
+    ["sr-Latn-RS", "sr-Latn", "script"],
+    ["sr-RS", "sr", "language"],
+    ["zh", "zh", "exact"],
+    ["en-US", "en", "language"],
+    ["tl", "tl", "exact"],
+    ["fil", "fil", "exact"],
+    ["fil-PH", "fil", "language"],
+    ["yue-Hant-HK", "yue", "language"],
+    // A script is inferred only when the phone sends none, so an explicit
+    // script outranks the region table.
+    ["zh-Hans-TW", "zh-Hans", "script"],
+    ["uz-AF", "uz-Arab", "inferred_script"],
+    ["sd-IN", "sd-Deva", "inferred_script"],
+    // Case, underscores, and extension subtags do not matter.
+    ["ZH-hant-tw", "zh-Hant", "script"],
+    ["pt_BR", "pt", "language"],
+    ["ar-EG-u-nu-latn", "ar", "language"],
+    // Legacy Android language codes map to their current codes.
+    ["iw-IL", "he", "language"],
+    ["in-ID", "id", "language"],
+  ])("maps %s to %s by a %s match", (phoneTag, tag, match) => {
+    expect(resolveLocale([phoneTag], WEB_TAGS)).toEqual({
+      tag,
+      match,
+      matchedIndex: 0,
+    })
   })
 
   it("walks the whole list, so [ha, fr] resolves to fr", () => {
@@ -70,31 +87,6 @@ describe("resolveLocale", () => {
       match: "language",
       matchedIndex: 0,
     })
-  })
-
-  it("names how each entry matched", () => {
-    expect(resolveLocale(["zh-Hant-TW"], WEB_TAGS).match).toBe("script")
-    expect(resolveLocale(["zh-TW"], WEB_TAGS).match).toBe("inferred_script")
-    expect(resolveLocale(["es-MX"], WEB_TAGS).match).toBe("language")
-    expect(resolveLocale(["zh-Hans"], WEB_TAGS).match).toBe("exact")
-  })
-
-  it("infers a script only when the phone sends no script", () => {
-    // An explicit script outranks the region table.
-    expect(resolveLocale(["zh-Hans-TW"], WEB_TAGS).tag).toBe("zh-Hans")
-    expect(resolveLocale(["uz-AF"], WEB_TAGS).tag).toBe("uz-Arab")
-    expect(resolveLocale(["sd-IN"], WEB_TAGS).tag).toBe("sd-Deva")
-  })
-
-  it("ignores case, underscores, and extension subtags", () => {
-    expect(resolveLocale(["ZH-hant-tw"], WEB_TAGS).tag).toBe("zh-Hant")
-    expect(resolveLocale(["pt_BR"], WEB_TAGS).tag).toBe("pt")
-    expect(resolveLocale(["ar-EG-u-nu-latn"], WEB_TAGS).tag).toBe("ar")
-  })
-
-  it("maps legacy Android language codes to their current codes", () => {
-    expect(resolveLocale(["iw-IL"], WEB_TAGS).tag).toBe("he")
-    expect(resolveLocale(["in-ID"], WEB_TAGS).tag).toBe("id")
   })
 
   it("returns the catalog's own spelling of the tag", () => {

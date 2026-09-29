@@ -150,29 +150,20 @@ describe("byte oracle", () => {
 })
 
 describe("buildExportFileName in other scripts (R23, KTD15)", () => {
-  it("keeps Cyrillic letters", () => {
-    expect(buildExportFileName("ИИСУС", "jesus")).toBe("ИИСУС.mp4")
-  })
-
-  it("keeps a letter's combining marks", () => {
-    expect(buildExportFileName("यीशु", "jesus")).toBe("यीशु.mp4")
-  })
-
-  it("keeps digits of any script and replaces spaces and symbols", () => {
-    expect(buildExportFileName("耶稣 ٣", "jesus")).toBe("耶稣_٣.mp4")
-    expect(buildExportFileName("a/b\\c:d", "jesus")).toBe("a_b_c_d.mp4")
-  })
-
-  it("replaces an emoji with one underscore, not two", () => {
-    expect(buildExportFileName("Jesus😀", "jesus")).toBe("Jesus_.mp4")
-  })
-
-  it("keeps an astral letter whole", () => {
-    expect(buildExportFileName("𐐷𐐷", "jesus")).toBe("𐐷𐐷.mp4")
-  })
-
-  it("composes a decomposed title, so the byte count is stable", () => {
-    expect(buildExportFileName("José", "jesus")).toBe("José.mp4")
+  it.each([
+    ["keeps Cyrillic letters", "ИИСУС", "ИИСУС.mp4"],
+    ["keeps a letter's combining marks", "यीशु", "यीशु.mp4"],
+    ["keeps digits of any script", "耶稣 ٣", "耶稣_٣.mp4"],
+    ["replaces spaces and symbols", "a/b\\c:d", "a_b_c_d.mp4"],
+    ["replaces an emoji with one underscore, not two", "Jesus😀", "Jesus_.mp4"],
+    ["keeps an astral letter whole", "𐐷𐐷", "𐐷𐐷.mp4"],
+    [
+      "composes a decomposed title, so the byte count is stable",
+      "Jose\u0301",
+      "Jos\u00e9.mp4",
+    ],
+  ])("%s", (_case, title, expected) => {
+    expect(buildExportFileName(title, "jesus")).toBe(expected)
   })
 
   it("caps a 200-character title in a 3-byte script at 255 bytes", () => {

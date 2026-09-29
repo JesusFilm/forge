@@ -67,6 +67,11 @@ async function render(element: ReactElement): Promise<TestInstance> {
   return renderer
 }
 
+function startOn(tag: string) {
+  mockGetLocales.mockReturnValue(phone(tag))
+  startLocaleSync()
+}
+
 async function changePhoneLanguage(tag: string) {
   mockGetLocales.mockReturnValue(phone(tag))
   await act(async () => {
@@ -88,41 +93,32 @@ describe("useT", () => {
     await unmount(renderer)
   })
 
-  it("re-renders with the new text after an epoch change", async () => {
-    mockGetLocales.mockReturnValue(phone("en-US"))
-    startLocaleSync()
-    const renderer = await render(<BackLabel />)
-    expect(hasText(renderer, "Go back")).toBe(true)
+  it.each([
+    ["plain", (element: ReactElement) => element],
+    [
+      "StrictMode",
+      (element: ReactElement) => <StrictMode>{element}</StrictMode>,
+    ],
+  ])(
+    "re-renders with the new text on each epoch change (%s)",
+    async (_, wrap) => {
+      startOn("en-US")
+      const renderer = await render(wrap(<BackLabel />))
+      expect(hasText(renderer, "Go back")).toBe(true)
 
-    await changePhoneLanguage("es-MX")
+      await changePhoneLanguage("es-MX")
+      expect(getLocaleEpoch()).toBe(1)
+      expect(hasText(renderer, "Volver")).toBe(true)
+      expect(hasText(renderer, "Go back")).toBe(false)
 
-    expect(getLocaleEpoch()).toBe(1)
-    expect(hasText(renderer, "Volver")).toBe(true)
-    expect(hasText(renderer, "Go back")).toBe(false)
-    await unmount(renderer)
-  })
-
-  it("behaves the same under StrictMode", async () => {
-    mockGetLocales.mockReturnValue(phone("en-US"))
-    startLocaleSync()
-    const renderer = await render(
-      <StrictMode>
-        <BackLabel />
-      </StrictMode>,
-    )
-    expect(hasText(renderer, "Go back")).toBe(true)
-
-    await changePhoneLanguage("es-MX")
-    expect(hasText(renderer, "Volver")).toBe(true)
-
-    await changePhoneLanguage("en-GB")
-    expect(hasText(renderer, "Go back")).toBe(true)
-    await unmount(renderer)
-  })
+      await changePhoneLanguage("en-GB")
+      expect(hasText(renderer, "Go back")).toBe(true)
+      await unmount(renderer)
+    },
+  )
 
   it("does not re-render when a refresh keeps the same catalog", async () => {
-    mockGetLocales.mockReturnValue(phone("es-ES"))
-    startLocaleSync()
+    startOn("es-ES")
     const renderer = await render(<BackLabel />)
     const before = renders
 
@@ -135,8 +131,7 @@ describe("useT", () => {
   })
 
   it("stops listening after unmount", async () => {
-    mockGetLocales.mockReturnValue(phone("en-US"))
-    startLocaleSync()
+    startOn("en-US")
     const renderer = await render(<BackLabel />)
     await unmount(renderer)
     const before = renders
@@ -153,8 +148,7 @@ describe("useDefaultAudioSlug", () => {
   }
 
   it("follows a phone change that keeps the catalog", async () => {
-    mockGetLocales.mockReturnValue(phone("ha-NG"))
-    startLocaleSync()
+    startOn("ha-NG")
     const renderer = await render(<DefaultAudio />)
     expect(hasText(renderer, "hausa")).toBe(true)
 
@@ -168,8 +162,7 @@ describe("useDefaultAudioSlug", () => {
 
 describe("getT", () => {
   it("reads the catalog in use at call time, outside React", async () => {
-    mockGetLocales.mockReturnValue(phone("en-US"))
-    startLocaleSync()
+    startOn("en-US")
     const t = getT("Common")
     expect(t("goBackAriaLabel")).toBe("Go back")
 

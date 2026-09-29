@@ -67,11 +67,6 @@ function firstMuxSlide(slides: readonly { kind: string }[]): WatchHomeMuxSlide {
   return slide as WatchHomeMuxSlide
 }
 
-function usePhoneLanguage(tag: string) {
-  mockGetLocales.mockReturnValue(phoneLocales(tag))
-  refreshLocale()
-}
-
 beforeEach(() => {
   resetLocaleStoreForTests()
   mockGetLocales.mockReset()
@@ -86,6 +81,10 @@ describe("formatWatchHomeDatePrefix", () => {
     ["de", "4. Juni"],
     ["ru", "4 июн."],
     ["zh-Hans", "6月4日"],
+    // `crk` has no date data in the runtime; a malformed tag throws. Both
+    // fall back to US English.
+    ["crk", "Jun 4"],
+    ["not a tag!", "Jun 4"],
   ])("formats with the UI tag %s", (tag, text) => {
     expect(formatWatchHomeDatePrefix(morningNow, tag)).toBe(text)
   })
@@ -93,12 +92,6 @@ describe("formatWatchHomeDatePrefix", () => {
   it("keeps the Eastern calendar day in every language", () => {
     expect(formatWatchHomeDatePrefix(lateNightNow, "en")).toBe("Jun 3")
     expect(formatWatchHomeDatePrefix(lateNightNow, "de")).toBe("3. Juni")
-  })
-
-  it("falls back to US English for a tag the runtime lacks or rejects", () => {
-    // `crk` has no date data in the runtime; a malformed tag throws.
-    expect(formatWatchHomeDatePrefix(morningNow, "crk")).toBe("Jun 4")
-    expect(formatWatchHomeDatePrefix(morningNow, "not a tag!")).toBe("Jun 4")
   })
 })
 
@@ -134,7 +127,8 @@ describe("the rotation key", () => {
   it("stays the en-CA day in any UI language", () => {
     expect(offset(morningNow)).toBe(simpleHash("2026-06-04pool-a"))
 
-    usePhoneLanguage("de-DE")
+    mockGetLocales.mockReturnValue(phoneLocales("de-DE"))
+    refreshLocale()
 
     expect(offset(morningNow)).toBe(simpleHash("2026-06-04pool-a"))
     // The key is the Eastern day, so 11pm Eastern is still June 3.

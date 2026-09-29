@@ -51,36 +51,23 @@ function row(overrides: Partial<WatchSearchResultItem> = {}) {
 
 // U7 (R9, KTD9): results come back in the UI language's text rows.
 describe("searchLanguageFor", () => {
-  it("sends the mapped slug for the UI catalog", () => {
-    expect(searchLanguageFor(adminFormsFor("ru"), "jesus").display).toBe(
-      "russian",
-    )
-    expect(searchLanguageFor(adminFormsFor("es"), "jesus").display).toBe(
-      "spanish-latin-american",
-    )
-  })
-
-  it("sends english for a catalog with no Admin language", () => {
-    expect(searchLanguageFor(adminFormsFor("ab"), "jesus").display).toBe(
-      "english",
-    )
+  // `ab` has no Admin language, so it sends english.
+  it.each([
+    ["ru", "russian"],
+    ["es", "spanish-latin-american"],
+    ["ab", "english"],
+  ])("sends the mapped slug for the UI catalog %s", (tag, slug) => {
+    expect(searchLanguageFor(adminFormsFor(tag), "jesus").display).toBe(slug)
   })
 
   // Browse-topic terms are English, whatever the UI language.
-  it("names English as the query language of a browse-topic term only", () => {
-    expect(searchLanguageFor(adminFormsFor("ru"), "family").query).toBe(
-      "english",
-    )
-    expect(searchLanguageFor(adminFormsFor("ru"), " Family ").query).toBe(
-      "english",
-    )
-    expect(searchLanguageFor(adminFormsFor("ru"), "family jesus").query).toBe(
-      null,
-    )
-    expect(
-      searchLanguageFor(adminFormsFor("ru"), "\u0441\u0435\u043c\u044c\u044f")
-        .query,
-    ).toBe(null)
+  it.each([
+    ["family", "english"],
+    [" Family ", "english"],
+    ["family jesus", null],
+    ["\u0441\u0435\u043c\u044c\u044f", null],
+  ])("gives the query %j the query language %p", (query, language) => {
+    expect(searchLanguageFor(adminFormsFor("ru"), query).query).toBe(language)
   })
 })
 

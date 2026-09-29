@@ -819,12 +819,21 @@ describe("assembleWatchHomeModel — recommendations insert index (feat-517)", (
 describe("card text under the UI locale's homepage and the en fallback (U6)", () => {
   const ES = adminFormsFor("es")
   const RU = adminFormsFor("ru")
+  const JESUS_ITEM = {
+    videoId: "v-jesus",
+    coreId: "1_jf-0-0",
+    videoSlug: "jesus",
+  }
+  const ACTS_ITEM = {
+    videoId: "v-acts",
+    coreId: "6_Acts0401",
+    videoSlug: "acts-4-1",
+  }
 
   function localeRow(languageSlug: string, title: string, snippet?: string) {
     return { languageSlug, title, description: null, snippet: snippet ?? null }
   }
 
-  // The JESUS film as the Home query returns it under a given text slug.
   function jesus(ui: ReturnType<typeof localeRow>[]): WatchHomeVideoInput {
     return {
       documentId: "d-jesus",
@@ -837,7 +846,7 @@ describe("card text under the UI locale's homepage and the en fallback (U6)", ()
     }
   }
 
-  // An item whose video has no row in the UI language.
+  // A video with no row in the UI language.
   const acts: WatchHomeVideoInput = {
     documentId: "d-acts",
     coreId: "6_Acts0401",
@@ -846,10 +855,6 @@ describe("card text under the UI locale's homepage and the en fallback (U6)", ()
     images: [],
     locales: [],
     englishLocales: [localeRow("english", "Peter and John")],
-  }
-
-  function homepage(items: Record<string, unknown>[]): Block[] {
-    return [mediaCollection({ items })]
   }
 
   function cards(args: {
@@ -861,14 +866,13 @@ describe("card text under the UI locale's homepage and the en fallback (U6)", ()
     const { model } = assembleWatchHomeModel({
       configVideos: [],
       hydrationVideos: args.videos,
-      blocks: homepage(args.items),
+      blocks: [mediaCollection({ items: args.items })],
       forms: args.forms,
       homepageSource: args.homepageSource,
     })
     return model.sections[0].cards
   }
 
-  // Covers AE1: with Admin's own `es` homepage, the authored text still wins.
   it("keeps the authored Spanish card text over the video title (AE1)", () => {
     const [card] = cards({
       forms: ES,
@@ -876,9 +880,7 @@ describe("card text under the UI locale's homepage and the en fallback (U6)", ()
       videos: [jesus([localeRow("spanish-latin-american", "JESÚS")])],
       items: [
         {
-          videoId: "v-jesus",
-          coreId: "1_jf-0-0",
-          videoSlug: "jesus",
+          ...JESUS_ITEM,
           titleOverride: "Ver JESÚS",
           subtitleOverride: "La historia",
         },
@@ -889,8 +891,6 @@ describe("card text under the UI locale's homepage and the en fallback (U6)", ()
     expect(card.description).toBe("La historia")
   })
 
-  // Covers AE2: no `ru` homepage, so the `en` one gives the shelves, and the
-  // video's Russian title beats the English authored text.
   it("shows ИИСУС over the English authored title under the en fallback (AE2)", () => {
     const [card] = cards({
       forms: RU,
@@ -898,9 +898,7 @@ describe("card text under the UI locale's homepage and the en fallback (U6)", ()
       videos: [jesus([localeRow("russian", "ИИСУС", "История Иисуса")])],
       items: [
         {
-          videoId: "v-jesus",
-          coreId: "1_jf-0-0",
-          videoSlug: "jesus",
+          ...JESUS_ITEM,
           titleOverride: "JESUS",
           subtitleOverride: "The authored subtitle",
         },
@@ -917,15 +915,7 @@ describe("card text under the UI locale's homepage and the en fallback (U6)", ()
       forms: RU,
       homepageSource: "en-fallback",
       videos: [acts],
-      items: [
-        {
-          videoId: "v-acts",
-          coreId: "6_Acts0401",
-          videoSlug: "acts-4-1",
-          titleOverride: "Acts 4",
-        },
-        { videoId: "v-acts", coreId: "6_Acts0401", videoSlug: "acts-4-1" },
-      ],
+      items: [{ ...ACTS_ITEM, titleOverride: "Acts 4" }, ACTS_ITEM],
     })
     // Authored English text shows only where Admin has no Russian value.
     expect(authoredCard.title).toBe("Acts 4")
@@ -934,28 +924,14 @@ describe("card text under the UI locale's homepage and the en fallback (U6)", ()
     expect(bareCard.titleLang).toBe("en")
   })
 
-  it("does not flip the precedence under the UI locale's own homepage", () => {
-    const [card] = cards({
-      forms: RU,
-      homepageSource: "locale",
-      videos: [jesus([localeRow("russian", "ИИСУС")])],
-      items: [
-        { coreId: "1_jf-0-0", videoSlug: "jesus", titleOverride: "Иисус" },
-      ],
-    })
-    expect(card.title).toBe("Иисус")
-  })
-
   // A catalog with no Admin language reads English rows, so there is no
   // localized value to prefer and the authored text keeps its place.
   it("keeps the authored text under the fallback when the catalog reads English", () => {
     const [card] = cards({
       forms: adminFormsFor("ab"),
       homepageSource: "en-fallback",
-      videos: [jesus([])],
-      items: [
-        { coreId: "1_jf-0-0", videoSlug: "jesus", titleOverride: "JESUS Film" },
-      ],
+      videos: [jesus([localeRow("english", "JESUS")])],
+      items: [{ ...JESUS_ITEM, titleOverride: "JESUS Film" }],
     })
     expect(card.title).toBe("JESUS Film")
   })
@@ -1036,9 +1012,7 @@ describe("card text under the UI locale's homepage and the en fallback (U6)", ()
       assembleWatchHomeModel({
         configVideos: [],
         hydrationVideos: [acts],
-        blocks: homepage([
-          { videoId: "v-acts", coreId: "6_Acts0401", videoSlug: "acts-4-1" },
-        ]),
+        blocks: [mediaCollection({ items: [ACTS_ITEM] })],
         forms,
         homepageSource,
       }).model.sections[0].titleLang

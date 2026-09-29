@@ -612,19 +612,13 @@ describe("the session's Admin language forms", () => {
   const EN = adminFormsFor("en")
   const RU = adminFormsFor("ru")
 
-  it("takes the forms its screen noted when the session starts", () => {
+  // AE11: the phone moves to Russian while the window plays; the expand
+  // remounts a screen that must read the session's English forms back.
+  it("keeps the forms its screen noted through an expand after a language change", () => {
     const store = createMiniPlayerStore()
     store.noteScreenAdminForms("birth-of-jesus", EN)
     store.start({ videoId: "v1", videoSlug: "birth-of-jesus", title: "T" })
     expect(store.getSnapshot().session?.adminForms).toBe(EN)
-  })
-
-  // AE11: the phone moves to Russian while the window plays; the expand
-  // remounts a screen that must read the session's English forms back.
-  it("keeps its first forms through an expand after a language change", () => {
-    const store = createMiniPlayerStore()
-    store.noteScreenAdminForms("birth-of-jesus", EN)
-    store.start({ videoId: "v1", videoSlug: "birth-of-jesus", title: "T" })
     // A screen that ignored the session would note Russian here.
     store.noteScreenAdminForms("birth-of-jesus", RU)
     store.start({ videoId: null, videoSlug: "birth-of-jesus", title: "T" })
@@ -652,12 +646,9 @@ describe("the session's Admin language forms", () => {
       expect(screenAdminForms(session, "birth-of-jesus", RU)).toBe(EN)
     })
 
-    it("reads the current forms for any other video", () => {
+    it("reads the current forms for another video, or a session with none", () => {
       expect(screenAdminForms(session, "the-baptism", RU)).toBe(RU)
       expect(screenAdminForms(null, "birth-of-jesus", RU)).toBe(RU)
-    })
-
-    it("reads the current forms when the session has none", () => {
       expect(
         screenAdminForms(
           { videoSlug: "birth-of-jesus", adminForms: null },

@@ -7,12 +7,13 @@ const path = require("path")
 const ops = require("../lib/catalogOps")
 const {
   DEFAULT_MODEL,
+  hashesOf,
   makeWorkspace,
-  removeWorkspaces,
+  removeTempDirs,
   runCommand,
 } = require("./fixtures/workspace.cjs")
 
-afterAll(removeWorkspaces)
+afterAll(removeTempDirs)
 
 const EN = {
   Common: {
@@ -51,6 +52,26 @@ function translatedBy(workspace) {
       .filter((entry) => entry.locale)
       .map((entry) => [entry.locale, entry.translated]),
   )
+}
+
+/** Common.back changed from "Go back" after its translations were recorded. */
+function changedBackWorkspace(catalogs) {
+  return makeWorkspace({
+    en: { ...EN, Common: { ...EN.Common, back: "Go back now" } },
+    catalogs,
+    policy: NEUTRAL,
+    record: hashesOf(EN),
+  })
+}
+
+/** Runs a command that must stop early: no file changes, no web script run. */
+function refusal(options, args, env) {
+  const ws = makeWorkspace({ en: EN, catalogs: { es: {} }, ...options })
+  const before = ws.snapshot()
+  const result = runCommand(ws, args, env)
+  expect(ws.snapshot()).toEqual(before)
+  expect(ws.readLog()).toEqual([])
+  return result
 }
 
 describe("a full run", () => {
@@ -132,22 +153,9 @@ describe("a full run", () => {
   })
 
   it("clears a changed key in every locale, and the fake translator fills it again", () => {
-    const en = { ...EN, Common: { ...EN.Common, back: "Go back now" } }
-    const ws = makeWorkspace({
-      en,
-      catalogs: {
-        es: ES,
-        fr: { ...ES, Common: { ...ES.Common, back: "Retour" } },
-      },
-      policy: NEUTRAL,
-      record: {
-        ...Object.fromEntries(
-          Object.entries(ops.flattenCatalog(EN)).map(([k, v]) => [
-            k,
-            ops.englishHash(v),
-          ]),
-        ),
-      },
+    const ws = changedBackWorkspace({
+      es: ES,
+      fr: { ...ES, Common: { ...ES.Common, back: "Retour" } },
     })
     expect(runCommand(ws, ["--yes"]).status).toBe(0)
     expect(translatedBy(ws)).toEqual({
@@ -162,28 +170,19 @@ describe("a full run", () => {
     )
   })
 
-  it("leaves the stub manifest byte-identical, and records provenance for each translated locale", () => {
+  it("records provenance only for a translated, machine-translated locale, and leaves the stub manifest byte-identical", () => {
     const ws = makeWorkspace({
       en: EN,
-      catalogs: { es: {}, fr: ES },
-      policy: NEUTRAL,
+      catalogs: { de: {}, es: {}, fr: ES },
+      policy: { ...NEUTRAL, humanReviewedLocales: ["de", "en"] },
     })
     const manifest = fs.readFileSync(ws.files.manifest)
     expect(runCommand(ws, ["--yes"]).status).toBe(0)
     expect(fs.readFileSync(ws.files.manifest).equals(manifest)).toBe(true)
+    // de is human-reviewed, and fr needed no translation.
     expect(ws.readJson("provenance").machineTranslatedLocales).toEqual({
       es: { model: DEFAULT_MODEL, generatedOn: today() },
     })
-  })
-
-  it("never records provenance for a human-reviewed locale", () => {
-    const ws = makeWorkspace({
-      en: EN,
-      catalogs: { es: {} },
-      policy: { ...NEUTRAL, humanReviewedLocales: ["en", "es"] },
-    })
-    expect(runCommand(ws, ["--yes"]).status).toBe(0)
-    expect(ws.readJson("provenance").machineTranslatedLocales).toEqual({})
   })
 
   it("runs one web script call per model group, each with its own progress path", () => {
@@ -227,24 +226,20 @@ describe("a full run", () => {
 
   it("removes a pending key only after every translated locale has it", () => {
     const pendingEs = { ...ES, Common: { ...ES.Common, back: "Go back" } }
-    const policy = { ...NEUTRAL, pendingKeys: { "Common.back": "2026-09-01" } }
-    const partial = makeWorkspace({
-      en: EN,
-      catalogs: { es: pendingEs, fr: pendingEs },
-      policy,
-    })
+    const workspace = () =>
+      makeWorkspace({
+        en: EN,
+        catalogs: { es: pendingEs, fr: pendingEs },
+        policy: { ...NEUTRAL, pendingKeys: { "Common.back": "2026-09-01" } },
+      })
+    const partial = workspace()
     expect(
       runCommand(partial, ["--yes"], { FAKE_FAIL_LOCALES: "fr" }).status,
     ).toBe(1)
     expect(partial.readJson("policy").pendingKeys).toEqual({
       "Common.back": "2026-09-01",
     })
-
-    const full = makeWorkspace({
-      en: EN,
-      catalogs: { es: pendingEs, fr: pendingEs },
-      policy,
-    })
+    const full = workspace()
     expect(runCommand(full, ["--yes"]).status).toBe(0)
     expect(full.readJson("policy").pendingKeys).toEqual({})
   })
@@ -275,7 +270,7 @@ describe("a quota stop", () => {
       /Failed 1 locale:\n\s+fr: .*insufficient_quota/,
     )
     expect(result.stdout).toMatch(/Not started 2 locales: ar, pt/)
-    expect(result.stdout).toMatch(/quota/i)
+    expect(result.stdout).toMatch(/quota is used up/)
     expect(
       Object.keys(ws.readJson("provenance").machineTranslatedLocales),
     ).toEqual(["es"])
@@ -294,15 +289,7 @@ describe("the no-network modes", () => {
         fr: { Common: { gone: "Parti" } },
       },
       policy: { ...NEUTRAL, pendingKeys: { "Common.gone": "2026-09-01" } },
-      record: {
-        ...Object.fromEntries(
-          Object.entries(ops.flattenCatalog(EN)).map(([k, v]) => [
-            k,
-            ops.englishHash(v),
-          ]),
-        ),
-        "Common.gone": ops.englishHash("Gone"),
-      },
+      record: { ...hashesOf(EN), "Common.gone": ops.englishHash("Gone") },
       contexts: {
         product: "a test app",
         namespaces: { Common: "Shared labels.", Player: "The player." },
@@ -320,22 +307,11 @@ describe("the no-network modes", () => {
   })
 
   it("--mark-pending writes the new English into every locale and records the date", () => {
-    const en = { ...EN, Common: { ...EN.Common, back: "Go back now" } }
-    const ws = makeWorkspace({
-      en,
-      catalogs: {
-        es: ES,
-        fr: {
-          Common: { count: "{count, plural, one {# vidéo} other {# vidéos}}" },
-        },
+    const ws = changedBackWorkspace({
+      es: ES,
+      fr: {
+        Common: { count: "{count, plural, one {# vidéo} other {# vidéos}}" },
       },
-      policy: NEUTRAL,
-      record: Object.fromEntries(
-        Object.entries(ops.flattenCatalog(EN)).map(([k, v]) => [
-          k,
-          ops.englishHash(v),
-        ]),
-      ),
     })
     const before = today()
     const result = runCommand(ws, ["--mark-pending", "Common.back"])
@@ -352,39 +328,22 @@ describe("the no-network modes", () => {
   })
 
   it("--mark-pending refuses a key that is not in en.json", () => {
-    const ws = makeWorkspace({ en: EN, catalogs: { es: ES }, policy: NEUTRAL })
-    const before = ws.snapshot()
-    const result = runCommand(ws, ["--mark-pending", "Common.nope"])
+    const result = refusal({ catalogs: { es: ES }, policy: NEUTRAL }, [
+      "--mark-pending",
+      "Common.nope",
+    ])
     expect(result.status).toBe(2)
     expect(result.stderr).toContain("Common.nope")
-    expect(ws.snapshot()).toEqual(before)
   })
 
   it("--restamp records every key while no locale holds a translation", () => {
     const ws = makeWorkspace({ en: EN, record: {} })
     expect(runCommand(ws, ["--restamp"]).status).toBe(0)
-    expect(ws.readJson("record").englishHashes).toEqual(
-      Object.fromEntries(
-        Object.entries(ops.flattenCatalog(EN))
-          .map(([k, v]) => [k, ops.englishHash(v)])
-          .sort(([a], [b]) => ops.codePointCompare(a, b)),
-      ),
-    )
+    expect(ws.readJson("record").englishHashes).toEqual(hashesOf(EN))
   })
 
   it("--restamp refuses a changed key while a locale holds a translation of the old English", () => {
-    const en = { ...EN, Common: { ...EN.Common, back: "Go back now" } }
-    const ws = makeWorkspace({
-      en,
-      catalogs: { es: ES },
-      policy: NEUTRAL,
-      record: Object.fromEntries(
-        Object.entries(ops.flattenCatalog(EN)).map(([k, v]) => [
-          k,
-          ops.englishHash(v),
-        ]),
-      ),
-    })
+    const ws = changedBackWorkspace({ es: ES })
     const result = runCommand(ws, ["--restamp"])
     expect(result.status).toBe(1)
     expect(result.stderr).toMatch(/Common\.back.*es/)
@@ -417,113 +376,80 @@ describe("the no-network modes", () => {
     expect(ws.snapshot()).toEqual(before)
     expect(webRuns(ws)).toEqual([])
   })
-
-  it("--dry-run shows a new progress path after a policy edit", () => {
-    const ws = makeWorkspace({ en: EN, catalogs: { es: {} } })
-    const progressOf = () =>
-      JSON.parse(runCommand(ws, ["--dry-run", "--json"]).stdout).groups[0]
-        .progress
-    const first = progressOf()
-    fs.writeFileSync(
-      ws.files.policy,
-      ops.renderJson({
-        ...ws.readJson("policy"),
-        intentionallyLocaleNeutral: ["Player.brand"],
-      }),
-    )
-    expect(progressOf()).not.toBe(first)
-  })
 })
 
 describe("refusals before any request", () => {
-  it("refuses a web script that lacks the caller options, and changes nothing", () => {
-    const ws = makeWorkspace({
-      en: EN,
-      catalogs: { es: {} },
-      webScript: "fake-translate-ui-catalogs-without-caller-options.mjs",
-    })
-    const before = ws.snapshot()
-    const result = runCommand(ws, ["--yes"])
+  it("refuses a web script that lacks the caller options", () => {
+    const result = refusal(
+      { webScript: "fake-translate-ui-catalogs-without-caller-options.mjs" },
+      ["--yes"],
+    )
     expect(result.status).toBe(2)
     expect(result.stderr).toContain("--policy, --contexts, --stop-on-quota")
-    expect(ws.snapshot()).toEqual(before)
-    expect(ws.readLog()).toEqual([])
   })
 
   it("refuses to send requests without --yes when stdin is not a terminal", () => {
-    const ws = makeWorkspace({ en: EN, catalogs: { es: {} } })
-    const before = ws.snapshot()
-    const result = runCommand(ws, [])
+    const result = refusal({}, [])
     expect(result.status).toBe(1)
     expect(result.stderr).toContain("--yes")
-    expect(ws.snapshot()).toEqual(before)
-    expect(webRuns(ws)).toEqual([])
   })
 
-  it("refuses without an API key, and changes nothing", () => {
-    const ws = makeWorkspace({ en: EN, catalogs: { es: {} } })
-    const before = ws.snapshot()
-    const result = runCommand(ws, ["--yes"], { OPENAI_API_KEY: "" })
+  it("refuses without an API key", () => {
+    const result = refusal({}, ["--yes"], { OPENAI_API_KEY: "" })
     expect(result.status).toBe(2)
     expect(result.stderr).toContain("OPENAI_API_KEY")
-    expect(ws.snapshot()).toEqual(before)
   })
 
   it("refuses a malformed policy", () => {
-    const ws = makeWorkspace({ en: EN, catalogs: { es: {} } })
-    fs.writeFileSync(
-      ws.files.policy,
-      JSON.stringify({ pendingKeys: ["Common.back"] }),
-    )
-    const result = runCommand(ws, ["--dry-run"])
+    const result = refusal({ policy: { pendingKeys: ["Common.back"] } }, [
+      "--dry-run",
+    ])
     expect(result.status).toBe(2)
     expect(result.stderr).toContain("pendingKeys")
   })
 
   it("refuses a namespace with no context sentence, and names it", () => {
-    const ws = makeWorkspace({
-      en: EN,
-      catalogs: { es: {} },
-      contexts: {
-        product: "a test app",
-        namespaces: { Common: "Shared labels." },
+    const result = refusal(
+      {
+        contexts: {
+          product: "a test app",
+          namespaces: { Common: "Shared labels." },
+        },
       },
-    })
-    const before = ws.snapshot()
-    const result = runCommand(ws, ["--yes"])
+      ["--yes"],
+    )
     expect(result.status).toBe(2)
     expect(result.stderr).toContain("namespace Player")
-    expect(ws.snapshot()).toEqual(before)
-    expect(webRuns(ws)).toEqual([])
   })
 
   it("refuses a model table entry that is not an API model ID", () => {
-    const ws = makeWorkspace({
-      en: EN,
-      catalogs: { zh: {} },
-      modelTable: {
-        defaultModel: DEFAULT_MODEL,
-        locales: { zh: "codex-local-agent" },
+    const result = refusal(
+      {
+        catalogs: { zh: {} },
+        modelTable: {
+          defaultModel: DEFAULT_MODEL,
+          locales: { zh: "codex-local-agent" },
+        },
       },
-    })
-    const result = runCommand(ws, ["--dry-run"])
+      ["--dry-run"],
+    )
     expect(result.status).toBe(2)
     expect(result.stderr).toContain("codex-local-agent")
   })
 
   it.each([["xx"], ["crk"], ["en"]])("refuses --locales %s", (tag) => {
-    const ws = makeWorkspace({
-      en: EN,
-      catalogs: { es: {} },
-      webTags: ["en", "crk", "es"],
-    })
-    const result = runCommand(ws, ["--dry-run", "--locales", tag])
+    const result = refusal({ webTags: ["en", "crk", "es"] }, [
+      "--dry-run",
+      "--locales",
+      tag,
+    ])
     expect(result.status).toBe(2)
     expect(result.stderr).toContain(tag)
   })
 
   it("refuses two modes at once", () => {
-    const ws = makeWorkspace({ en: EN })
-    expect(runCommand(ws, ["--restamp", "--prune-only"]).status).toBe(2)
+    const result = refusal({}, ["--restamp", "--prune-only"])
+    expect(result.status).toBe(2)
+    expect(result.stderr).toContain("Choose one mode")
   })
 })

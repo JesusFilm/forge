@@ -1006,19 +1006,7 @@ describe("the UI language (U7)", () => {
   const RUSSIAN = "russian"
 
   // KTD11: never `en` for a non-English UI.
-  it("asks for Explore's slate in the table's For You locale", async () => {
-    const w = world({
-      inventories: { [SW]: ["a", "b", "c"] },
-      adminForms: () => RU,
-    })
-    render(w.deps, FOCUSED)
-    await flush()
-    expect(w.recs.client.fetch.mock.calls).toEqual([
-      [{ locale: "ru", audioLanguageSlug: SW, count: 6, attempt: 1 }],
-    ])
-  })
-
-  it("hydrates with the UI text slug, and a clip shows its UI-language title", async () => {
+  it("asks for the slate in the table's For You locale, and hydrates in the UI text slug", async () => {
     const w = world({
       inventories: { [SW]: ["a", "b", "c"] },
       adminForms: () => RU,
@@ -1026,6 +1014,9 @@ describe("the UI language (U7)", () => {
     })
     const view = render(w.deps, FOCUSED)
     await flush()
+    expect(w.recs.client.fetch.mock.calls).toEqual([
+      [{ locale: "ru", audioLanguageSlug: SW, count: 6, attempt: 1 }],
+    ])
     expect(w.admin.hydrationCalls[0]?.textSlug).toBe(RUSSIAN)
     expect(view.history()[0]).toMatchObject({
       title: "Title a in russian",
@@ -1115,28 +1106,20 @@ describe("the UI language (U7)", () => {
     })
   })
 
-  it("names the feed language in the UI locale for the empty state (R9)", async () => {
-    const names = { [SW]: { en: "Swahili", ru: "суахили" } }
-    const russian = world({
+  // R9: the empty state names the feed language in the UI locale.
+  it.each<[string, AdminLanguageForms, boolean, string]>([
+    ["in Russian from Admin's name map", RU, true, "суахили"],
+    ["in English from Admin's name map", ENGLISH_ADMIN_FORMS, true, "Swahili"],
+    ["as the title-cased slug when Admin sends no name", RU, false, "Swahili"],
+  ])("names the feed language %s", async (_name, forms, named, expected) => {
+    const w = world({
       inventories: { [SW]: [] },
-      languageNames: names,
-      adminForms: () => RU,
+      languageNames: named ? { [SW]: { en: "Swahili", ru: "суахили" } } : {},
+      adminForms: () => forms,
     })
-    const ru = render(russian.deps, FOCUSED)
-    await flush()
-    expect(ru.latest().queue.feedLanguageName).toBe("суахили")
-
-    const english = world({ inventories: { [SW]: [] }, languageNames: names })
-    const en = render(english.deps, FOCUSED)
-    await flush()
-    expect(en.latest().queue.feedLanguageName).toBe("Swahili")
-  })
-
-  it("title-cases the slug when Admin sends no name", async () => {
-    const w = world({ inventories: { [SW]: [] }, adminForms: () => RU })
     const view = render(w.deps, FOCUSED)
     await flush()
-    expect(view.latest().queue.feedLanguageName).toBe("Swahili")
+    expect(view.latest().queue.feedLanguageName).toBe(expected)
   })
 })
 

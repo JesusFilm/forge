@@ -1,6 +1,6 @@
-/** U10: Discover's text reads the catalog. A result cell whose props do not
- *  change still takes the new language, and each moved control keeps one tap
- *  name in both languages. React re-points: "Component render tests". */
+/** Discover in the UI language: the search language of each generation (U7,
+ *  R9, KTD16) and the catalog text, with one tap name per control (U10).
+ *  React re-points: "Component render tests". */
 
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike
@@ -23,6 +23,9 @@ type MockCall = {
   reject: (error: unknown) => void
 }
 const mockCalls: MockCall[] = []
+const mockTopics: { onSelect: ((term: string) => void) | null } = {
+  onSelect: null,
+}
 const mockGetLocales = jest.fn()
 // Stable identities, as in the app: a new callback each render would re-render
 // every memoized cell and hide a cell that misses the language change.
@@ -113,13 +116,16 @@ jest.mock("../../../src/components/search/SearchResultSkeleton", () => ({
   SearchResultSkeleton: () => null,
 }))
 jest.mock("../../../src/components/search/BrowseTopics", () => ({
-  BrowseTopics: () => null,
+  BrowseTopics: ({ onSelect }: { onSelect: (term: string) => void }) => {
+    mockTopics.onSelect = onSelect
+    return null
+  },
 }))
 jest.mock("../../../src/components/search/useSearchPreviewCycle", () => ({
   useSearchPreviewCycle: () => -1,
 }))
 
-import { act, createElement } from "react"
+import { StrictMode, act, createElement } from "react"
 import type React from "react"
 import { Animated, TextInput } from "react-native"
 
@@ -129,6 +135,7 @@ import {
   resetLocaleStoreForTests,
   startLocaleSync,
 } from "../../../src/i18n/localeStore"
+import { recordResultsViewed } from "../../../src/lib/watchSearchEvents"
 import {
   phoneLocales,
   tapActionName,
@@ -143,28 +150,43 @@ import {
   type TestInstance,
 } from "../../../src/test-utils/rnTestRenderer"
 
-const SERIES = {
-  type: "VIDEO",
-  id: "a",
-  slug: "slug-a",
-  title: "The Chosen Few",
-  imageUrl: null,
-  snippet: null,
-  startSeconds: null,
-  playbackId: null,
-  score: null,
-  label: "SERIES",
-  childCount: 3,
-  durationSeconds: null,
+function video(id: string, title: string) {
+  return {
+    type: "VIDEO",
+    id,
+    slug: `slug-${id}`,
+    title,
+    imageUrl: null,
+    snippet: null,
+    startSeconds: null,
+    playbackId: null,
+    score: null,
+    label: null as string | null,
+    childCount: null as number | null,
+    durationSeconds: null,
+  }
 }
 
-function page(results: readonly object[], hasMore: boolean) {
+const SERIES = {
+  ...video("a", "The Chosen Few"),
+  label: "SERIES",
+  childCount: 3,
+}
+
+function videos(language: string, ...ids: string[]) {
+  return ids.map((id) => video(id, `${language} ${id}`))
+}
+
+function page(
+  results: readonly object[],
+  { hasMore = true, nextOffset = results.length } = {},
+) {
   return {
     data: {
       watchSearch: {
         query: "jesus",
         hasMore,
-        nextOffset: results.length,
+        nextOffset,
         results,
         requestId: null,
         latencyMs: null,
@@ -181,7 +203,11 @@ function render(): TestInstance {
   let renderer!: TestInstance
   act(() => {
     renderer = TestRenderer.create(
-      createElement(DiscoverScreen) as unknown as React.ReactElement,
+      createElement(
+        StrictMode,
+        null,
+        createElement(DiscoverScreen),
+      ) as unknown as React.ReactElement,
     )
   })
   mounted.push(renderer)
@@ -217,6 +243,12 @@ async function answer(call: MockCall, value: unknown): Promise<void> {
   await settle()
 }
 
+function startIn(tag: string): void {
+  resetLocaleStoreForTests()
+  mockGetLocales.mockReturnValue(phoneLocales(tag))
+  startLocaleSync()
+}
+
 async function changePhoneLanguage(tag: string): Promise<void> {
   mockGetLocales.mockReturnValue(phoneLocales(tag))
   await act(async () => {
@@ -234,13 +266,30 @@ function pressableText(renderer: TestInstance, text: string): RenderedNode {
   return found!
 }
 
+function pressText(renderer: TestInstance, text: string): void {
+  const onPress = pressableText(renderer, text).props.onPress as () => void
+  // A sync act scope: an unawaited async one never flushes later updates.
+  act(() => {
+    onPress()
+  })
+}
+
+/** The result titles on screen, read from each card's spoken label. */
+function titles(renderer: TestInstance): unknown[] {
+  return renderer.root
+    .findAll(
+      (node) =>
+        node.props["dd-action-name"] === "search-result" &&
+        typeof node.props.onPress === "function",
+    )
+    .map((node) => node.props.accessibilityLabel)
+}
+
 beforeEach(() => {
   jest.useFakeTimers()
   mockCalls.length = 0
-  resetLocaleStoreForTests()
-  mockGetLocales.mockReset()
-  mockGetLocales.mockReturnValue(phoneLocales("en-US"))
-  startLocaleSync()
+  mockTopics.onSelect = null
+  startIn("en-US")
   // The results animate on the native driver, which jest does not run.
   jest.spyOn(Animated, "parallel").mockImplementation(
     () =>
@@ -262,6 +311,92 @@ afterEach(() => {
   resetLocaleStoreForTests()
 })
 
+describe("Discover search language (U7)", () => {
+  it("asks in the UI's text slug and names no query language for a typed query", async () => {
+    startIn("ru-RU")
+    const screen = render()
+    await type(screen, "jesus")
+    expect(mockCalls).toHaveLength(1)
+    expect(mockCalls[0]!.input.displayLanguageSlug).toBe("russian")
+    expect(mockCalls[0]!.input).not.toHaveProperty("queryLanguageSlug")
+  })
+
+  it("names English as the query language of a browse topic", async () => {
+    startIn("ru-RU")
+    render()
+    await act(async () => {
+      mockTopics.onSelect?.("family")
+    })
+    await settle()
+    expect(mockCalls[0]!.input).toMatchObject({
+      query: "family",
+      displayLanguageSlug: "russian",
+      queryLanguageSlug: "english",
+    })
+  })
+
+  it("runs the visible query again in the new language, and never appends an old-language page", async () => {
+    const screen = render()
+    await type(screen, "jesus")
+    await answer(mockCalls[0]!, page(videos("english", "a", "b")))
+    expect(titles(screen)).toEqual(["english a", "english b"])
+
+    // A page starts in English, then the UI language changes under it.
+    pressText(screen, "Load more")
+    expect(mockCalls[1]!.input).toMatchObject({
+      displayLanguageSlug: "english",
+      offset: 2,
+    })
+    await changePhoneLanguage("ru-RU")
+    await settle()
+
+    // The visible query runs again, in Russian, from the first page.
+    expect(mockCalls[2]!.input).toMatchObject({
+      query: "jesus",
+      displayLanguageSlug: "russian",
+      offset: 0,
+    })
+    expect(mockCalls).toHaveLength(3)
+
+    // The English page lands late: it must not join any list.
+    await answer(
+      mockCalls[1]!,
+      page(videos("english", "c", "d"), { nextOffset: 4 }),
+    )
+    expect(titles(screen)).not.toContain("english c")
+
+    await answer(mockCalls[2]!, page(videos("russian", "x", "y")))
+    expect(titles(screen)).toEqual(["russian x", "russian y"])
+
+    // The next page belongs to the Russian generation.
+    await settle(1_000)
+    pressText(screen, "Показать ещё")
+    expect(mockCalls[3]!.input).toMatchObject({
+      displayLanguageSlug: "russian",
+      offset: 2,
+    })
+    await answer(mockCalls[3]!, page(videos("russian", "z"), { nextOffset: 3 }))
+    expect(titles(screen)).toEqual(["russian x", "russian y", "russian z"])
+  })
+
+  it("reports the viewed results with the search's own language slug", async () => {
+    startIn("ru-RU")
+    const screen = render()
+    await type(screen, "jesus")
+    await answer(mockCalls[0]!, page(videos("russian", "a")))
+    expect(recordResultsViewed).toHaveBeenCalledWith(
+      expect.objectContaining({ searchLanguageSlug: "russian" }),
+    )
+  })
+
+  it("sends nothing on a language change while no search is on screen", async () => {
+    render()
+    await changePhoneLanguage("ru-RU")
+    await settle()
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
 describe("Discover text (U10)", () => {
   it("names the search field and the empty result in English", async () => {
     const screen = render()
@@ -271,7 +406,7 @@ describe("Discover text (U10)", () => {
     expect(input(screen).props.accessibilityLabel).toBe("Search")
 
     await type(screen, " jesus ")
-    await answer(mockCalls[0]!, page([], false))
+    await answer(mockCalls[0]!, page([], { hasMore: false }))
 
     expect(hasText(screen, "No results for 'jesus'")).toBe(true)
     expect(
@@ -297,7 +432,7 @@ describe("Discover text (U10)", () => {
     await changePhoneLanguage("ru-RU")
     const screen = render()
     await type(screen, "jesus")
-    await answer(mockCalls[0]!, page([], false))
+    await answer(mockCalls[0]!, page([], { hasMore: false }))
 
     expect(hasText(screen, "Ничего не найдено по запросу «jesus»")).toBe(true)
   })
@@ -305,7 +440,7 @@ describe("Discover text (U10)", () => {
   it("relabels a result cell whose props did not change", async () => {
     const screen = render()
     await type(screen, "jesus")
-    await answer(mockCalls[0]!, page([SERIES], true))
+    await answer(mockCalls[0]!, page([SERIES]))
     expect(hasText(screen, "3 episodes")).toBe(true)
     expect(hasText(screen, "Load more")).toBe(true)
 
@@ -320,7 +455,7 @@ describe("Discover text (U10)", () => {
     expect(input(screen).props.placeholder).toBe("Поиск видео на любую тему...")
 
     // The rerun retires the pager at once, and its answer brings it back.
-    await answer(mockCalls[1]!, page([SERIES], true))
+    await answer(mockCalls[1]!, page([SERIES]))
     expect(hasText(screen, "Показать ещё")).toBe(true)
     expect(hasText(screen, "Load more")).toBe(false)
   })
@@ -328,7 +463,7 @@ describe("Discover text (U10)", () => {
   it("keeps each moved control's tap name in both languages", async () => {
     const screen = render()
     await type(screen, "jesus")
-    await answer(mockCalls[0]!, page([SERIES], true))
+    await answer(mockCalls[0]!, page([SERIES]))
     const english = [
       tapActionName(pressableByLabel(screen, "Clear search")),
       tapActionName(pressableText(screen, "Load more")),
@@ -336,7 +471,7 @@ describe("Discover text (U10)", () => {
 
     await changePhoneLanguage("ru-RU")
     await settle()
-    await answer(mockCalls[1]!, page([SERIES], true))
+    await answer(mockCalls[1]!, page([SERIES]))
 
     const russian = [
       tapActionName(pressableByLabel(screen, "Очистить поиск")),

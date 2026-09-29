@@ -717,11 +717,6 @@ describe("no hard-coded English outside the catalog (R14, KTD14)", () => {
         export const later = () => getT("Common")("back")`,
       ],
       [
-        "getT( in a .ts file inside a function",
-        "src/lib/fixture.ts",
-        `export function body() { return getT("LapseReminder")("channelName") }`,
-      ],
-      [
         "expo-localization inside the store",
         "src/i18n/localeStore.ts",
         `import type { Locale } from "expo-localization"

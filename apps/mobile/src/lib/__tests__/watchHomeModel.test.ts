@@ -399,21 +399,16 @@ describe("short-film pool under another UI language", () => {
     return model.carousel.pools.find((pool) => pool.id === "shortFilms")
   }
 
-  it("is not empty when the label text comes from a non-English catalog", () => {
-    const pool = shortFilmPool("es-ES")
+  // es: a text compare on "Short film" would empty the pool. fr: the feature
+  // film's text reads "Short film", so a text compare would admit it.
+  it.each([
+    ["es-ES", "Cortometraje"],
+    ["fr-FR", "Court métrage"],
+    ["en-US", "Short film"],
+  ])("holds only the short film under %s, labeled %s", (tag, label) => {
+    const pool = shortFilmPool(tag)
     expect(pool?.videos.map((video) => video.id)).toEqual(["standalone-short"])
-    // The text really is Spanish, so a compare on "Short film" finds nothing.
-    expect(pool?.videos.map((video) => video.label)).toEqual(["Cortometraje"])
-  })
-
-  it("admits no other kind when its text reads 'Short film'", () => {
-    const pool = shortFilmPool("fr-FR")
-    expect(pool?.videos.map((video) => video.id)).toEqual(["standalone-short"])
-  })
-
-  it("keeps the English label text byte-identical", () => {
-    const pool = shortFilmPool("en-US")
-    expect(pool?.videos.map((video) => video.label)).toEqual(["Short film"])
+    expect(pool?.videos.map((video) => video.label)).toEqual([label])
   })
 })
 

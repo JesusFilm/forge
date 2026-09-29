@@ -122,21 +122,21 @@ afterEach(async () => {
 })
 
 describe("watch download sheet: title locale (U7)", () => {
-  it("records the screen's captured catalog tag with the title", async () => {
-    await download({ title: "Рождение Иисуса", catalogTag: "ru" })
-    expect(mockStart).toHaveBeenCalledTimes(1)
-    expect(mockStart.mock.calls[0][0]).toMatchObject({
-      title: "Рождение Иисуса",
-      titleLocale: "ru",
-    })
-  })
-
-  it("sends the same locale on a swap", async () => {
-    mockParams.current = { swap: "1" }
-    await download({ title: "Рождение Иисуса", catalogTag: "ru" })
-    expect(mockSwap).toHaveBeenCalledTimes(1)
-    expect(mockSwap.mock.calls[0][0]).toMatchObject({ titleLocale: "ru" })
-  })
+  it.each([
+    ["a download", {}, mockStart],
+    ["a swap", { swap: "1" }, mockSwap],
+  ])(
+    "records the screen's captured catalog tag with the title on %s",
+    async (_, params, send) => {
+      mockParams.current = params
+      await download({ title: "Рождение Иисуса", catalogTag: "ru" })
+      expect(send).toHaveBeenCalledTimes(1)
+      expect(send.mock.calls[0][0]).toMatchObject({
+        title: "Рождение Иисуса",
+        titleLocale: "ru",
+      })
+    },
+  )
 
   it("records no locale while the text has not given a title", async () => {
     await download({ title: null, catalogTag: "ru" })

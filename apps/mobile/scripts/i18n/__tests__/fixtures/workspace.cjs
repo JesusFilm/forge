@@ -1,7 +1,8 @@
 "use strict"
 /* eslint-disable @typescript-eslint/no-require-imports */
-// A temporary mobile + web layout for the translate command tests. The command
-// reads every path from --mobile-dir, --web-dir, --inventory, and --progress-dir.
+// Temporary files for the i18n script tests. makeWorkspace builds a mobile +
+// web layout; the command reads every path from --mobile-dir, --web-dir,
+// --inventory, and --progress-dir.
 
 const childProcess = require("child_process")
 const fs = require("fs")
@@ -22,11 +23,32 @@ const DEFAULT_MODEL = "gpt-5.4-mini-2026-03-17"
 // Never a real credential: every test run points the web script at a fake.
 const TEST_API_KEY = "test-only-not-a-key"
 
-const roots = []
+const tempDirs = []
+
+function tempDir() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mobile-i18n-"))
+  tempDirs.push(dir)
+  return dir
+}
+
+function removeTempDirs() {
+  for (const dir of tempDirs.splice(0))
+    fs.rmSync(dir, { recursive: true, force: true })
+}
 
 function writeJson(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(file, ops.renderJson(value))
+}
+
+/** The source record of a nested English catalog. */
+function hashesOf(tree) {
+  return Object.fromEntries(
+    Object.entries(ops.flattenCatalog(tree)).map(([key, text]) => [
+      key,
+      ops.englishHash(text),
+    ]),
+  )
 }
 
 function namespacesOf(tree) {
@@ -50,8 +72,7 @@ function makeWorkspace({
   webScript = "fake-translate-ui-catalogs.mjs",
   inventory,
 } = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "mobile-i18n-"))
-  roots.push(root)
+  const root = tempDir()
   const mobileDir = path.join(root, "mobile")
   const messagesDir = path.join(mobileDir, "messages")
   const i18nDir = path.join(mobileDir, "i18n")
@@ -63,7 +84,6 @@ function makeWorkspace({
     modelTable: path.join(i18nDir, "model-table.json"),
     record: path.join(i18nDir, "source-record.json"),
   }
-  const sourceFlat = ops.flattenCatalog(en)
   writeJson(path.join(messagesDir, "en.json"), en)
   for (const [locale, tree] of Object.entries(catalogs)) {
     writeJson(path.join(messagesDir, `${locale}.json`), tree)
@@ -91,16 +111,7 @@ function makeWorkspace({
     files.modelTable,
     modelTable ?? { defaultModel: DEFAULT_MODEL, locales: {} },
   )
-  writeJson(files.record, {
-    englishHashes:
-      record ??
-      Object.fromEntries(
-        Object.entries(sourceFlat).map(([key, text]) => [
-          key,
-          ops.englishHash(text),
-        ]),
-      ),
-  })
+  writeJson(files.record, { englishHashes: record ?? hashesOf(en) })
 
   let resolvedWebDir = webDir
   if (!resolvedWebDir) {
@@ -133,10 +144,7 @@ function makeWorkspace({
   fs.mkdirSync(progressDir)
 
   const workspace = {
-    root,
-    mobileDir,
     messagesDir,
-    webDir: resolvedWebDir,
     inventory: inventoryPath,
     progressDir,
     files,
@@ -158,8 +166,6 @@ function makeWorkspace({
           fs.readFileSync(path.join(messagesDir, `${locale}.json`), "utf8"),
         ),
       ),
-    hasCatalog: (locale) =>
-      fs.existsSync(path.join(messagesDir, `${locale}.json`)),
     readLog: () =>
       fs.existsSync(workspace.log)
         ? fs
@@ -205,13 +211,12 @@ function runCommand(workspace, args, env) {
   )
 }
 
-function runCommandAsync(workspace, args, env) {
+function spawnNode(args, env) {
   return new Promise((resolve, reject) => {
-    const child = childProcess.spawn(
-      process.execPath,
-      [COMMAND, ...workspace.args, ...args],
-      { env: commandEnv(workspace, env), stdio: ["ignore", "pipe", "pipe"] },
-    )
+    const child = childProcess.spawn(process.execPath, args, {
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+    })
     let stdout = ""
     let stderr = ""
     child.stdout.on("data", (chunk) => (stdout += chunk))
@@ -221,21 +226,25 @@ function runCommandAsync(workspace, args, env) {
   })
 }
 
-function removeWorkspaces() {
-  for (const root of roots.splice(0))
-    fs.rmSync(root, { recursive: true, force: true })
+function runCommandAsync(workspace, args, env) {
+  return spawnNode(
+    [COMMAND, ...workspace.args, ...args],
+    commandEnv(workspace, env),
+  )
 }
 
 module.exports = {
-  COMMAND,
   DEFAULT_MODEL,
   MOBILE_DIR,
   REAL_INVENTORY,
   REAL_WEB_DIR,
-  REPO_DIR,
-  TEST_API_KEY,
+  commandEnv,
+  hashesOf,
   makeWorkspace,
-  removeWorkspaces,
+  removeTempDirs,
   runCommand,
   runCommandAsync,
+  spawnNode,
+  tempDir,
+  writeJson,
 }

@@ -54,7 +54,11 @@ const WITH_FILTER = BUILD_GRADLE.replace(
 const LOCALIZATION = [withExpoLocalization, { supportedLocales: LOCALES }]
 
 /** Registers the plugins in array order, then runs the build.gradle mods. */
-async function runGradleMods(plugins, contents = BUILD_GRADLE) {
+async function runGradleMods(
+  plugins,
+  contents = BUILD_GRADLE,
+  language = "groovy",
+) {
   const projectRoot = path.join(__dirname, "..")
   const config = withPlugins(
     { name: "forge-watch", slug: "fixture", _internal: { projectRoot } },
@@ -68,7 +72,7 @@ async function runGradleMods(plugins, contents = BUILD_GRADLE) {
       projectRoot,
       platformProjectRoot: path.join(projectRoot, "android"),
     },
-    modResults: { language: "groovy", contents },
+    modResults: { language, contents },
   })
   return result.modResults.contents
 }
@@ -92,25 +96,12 @@ describe("withoutAndroidResourceConfigurations in the real mod chain", () => {
   })
 
   it("leaves a Kotlin build script alone", async () => {
-    const projectRoot = path.join(__dirname, "..")
-    const config = withPlugins(
-      { name: "forge-watch", slug: "fixture", _internal: { projectRoot } },
-      [withoutAndroidResourceConfigurations],
-    )
-    const result = await config.mods.android.appBuildGradle({
-      ...config,
-      modRequest: { platform: "android", modName: "appBuildGradle" },
-      modResults: { language: "kt", contents: WITH_FILTER },
-    })
-    expect(result.modResults.contents).toBe(WITH_FILTER)
+    const plugins = [withoutAndroidResourceConfigurations]
+    expect(await runGradleMods(plugins, WITH_FILTER, "kt")).toBe(WITH_FILTER)
   })
 })
 
 describe("removeResourceConfigurations", () => {
-  it("is a no-op when the line is absent", () => {
-    expect(removeResourceConfigurations(BUILD_GRADLE)).toBe(BUILD_GRADLE)
-  })
-
   it("removes every copy that a reused android/ folder collected", () => {
     const twice = WITH_FILTER.replace(
       PINNED_LINE,

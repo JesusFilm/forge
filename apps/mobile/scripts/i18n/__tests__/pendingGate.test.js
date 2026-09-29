@@ -4,23 +4,18 @@
 // over-the-air update need an empty pending list, unless I18N_ALLOW_PENDING=1.
 const childProcess = require("child_process")
 const fs = require("fs")
-const os = require("os")
 const path = require("path")
+const {
+  MOBILE_DIR,
+  removeTempDirs,
+  tempDir,
+  writeJson,
+} = require("./fixtures/workspace.cjs")
 
-const MOBILE_DIR = path.join(__dirname, "..", "..", "..")
 const GATE = path.join(MOBILE_DIR, "scripts", "i18n", "check-pending-gate.mjs")
 const HOOK = path.join(MOBILE_DIR, "scripts", "eas-build-pre-install.sh")
-const tempDirs = []
 
-afterAll(() => {
-  for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true })
-})
-
-function tempDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pending-gate-"))
-  tempDirs.push(dir)
-  return dir
-}
+afterAll(removeTempDirs)
 
 function policyFile(pendingKeys, raw) {
   const file = path.join(tempDir(), "translation-policy.json")
@@ -167,19 +162,11 @@ describe("eas-build-pre-install.sh", () => {
   function hookFixture(pendingKeys) {
     const root = tempDir()
     fs.mkdirSync(path.join(root, "scripts", "i18n"), { recursive: true })
-    fs.mkdirSync(path.join(root, "i18n"))
-    fs.copyFileSync(
-      HOOK,
-      path.join(root, "scripts", "eas-build-pre-install.sh"),
-    )
-    fs.copyFileSync(
-      GATE,
-      path.join(root, "scripts", "i18n", "check-pending-gate.mjs"),
-    )
-    fs.writeFileSync(
-      path.join(root, "i18n", "translation-policy.json"),
-      JSON.stringify({ pendingKeys }),
-    )
+    fs.copyFileSync(HOOK, path.join(root, path.relative(MOBILE_DIR, HOOK)))
+    fs.copyFileSync(GATE, path.join(root, path.relative(MOBILE_DIR, GATE)))
+    writeJson(path.join(root, "i18n", "translation-policy.json"), {
+      pendingKeys,
+    })
     return root
   }
 

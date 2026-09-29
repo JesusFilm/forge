@@ -27,10 +27,6 @@ describe("deriveLanguageDisplay", () => {
     expect(
       deriveLanguageDisplay("russian", "русский", { inUiLanguage: true }),
     ).toEqual({ slug: "russian", name: "русский", nativeName: null })
-    expect(
-      deriveLanguageDisplay("english", "английский", { inUiLanguage: true })
-        .name,
-    ).toBe("английский")
   })
 
   it("still title-cases the slug when a UI-language name is blank", () => {

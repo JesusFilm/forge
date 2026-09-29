@@ -94,8 +94,8 @@ jest.mock("../../../lib/seriesDownloadResolver", () => ({
 }))
 
 // ── UI language seams ───────────────────────────────────────────────
-// A fixture `ru` catalog joins the real set, so a test can change the UI
-// language while the sheet is on screen.
+// Fixture `ru` and `fr` catalogs join the real set, so a test can change the
+// UI language while the sheet is on screen.
 const mockGetLocales = jest.fn()
 jest.mock("expo-localization", () => ({
   getLocales: () => mockGetLocales(),
@@ -126,6 +126,18 @@ jest.mock("../../../i18n/catalogs.generated", () =>
             downloadAllAriaLabel: "Скачать все серии",
           },
         },
+        fr: {
+          DownloadSheet: {
+            termsTitle: "Conditions d'utilisation",
+            cancel: "Annuler",
+            accept: "Accepter",
+            acceptTermsAriaLabel: "Accepter les conditions d'utilisation",
+            agreeAriaLabel: "J'accepte les conditions d'utilisation",
+            agreeToTerms: "J'accepte les {terms}.",
+            termsLink: "conditions d'utilisation",
+            readTermsAriaLabel: "Lire les conditions d'utilisation",
+          },
+        },
       },
     ),
 )
@@ -134,12 +146,13 @@ jest.mock("../../../i18n/pluralData.generated", () =>
     .requireActual("../../../test-utils/uiLocaleFixture")
     .withFixturePluralData(
       jest.requireActual("../../../i18n/pluralData.generated"),
-      ["ru"],
+      ["ru", "fr"],
     ),
 )
 
 import { act } from "react"
 import { Alert } from "react-native"
+import { StyleSheet } from "react-native"
 
 import {
   refreshLocale,
@@ -155,9 +168,12 @@ import {
 import SeriesDownloadRoute from "../../../../app/series/download"
 import {
   DownloadSheetContent,
+  TermsAcceptanceRow,
+  TermsModal,
   suspendedInRawMode,
   type DownloadMode,
 } from "../DownloadSheet"
+import { TERMS_OF_USE_PARAGRAPHS } from "../../../lib/terms-of-use"
 import { rawModeLabel } from "../../../lib/rawModeLabel"
 import {
   summarizeResolution,
@@ -1233,31 +1249,41 @@ describe("UI language", () => {
     ]
   }
 
-  it("gives a quality row the same tap name in en and ru", async () => {
+  it("keeps each video-sheet control's tap name in en and ru", async () => {
     const renderer = await renderSheet()
     await press(pressableByLabel(renderer, "Select a file size, Highest"))
-    const english = pressableByLabel(renderer, "High")
-    const englishName = tapActionName(english)
+    const names = (labels: string[]) => [
+      tapActionName(pressableByLabel(renderer, labels[0])),
+      tapActionName(pressableByLabel(renderer, labels[1])),
+      tapActionName(radioByLabel(renderer, labels[2])!),
+      tapActionName(pressableByLabel(renderer, labels[3])),
+    ]
+    const english = names([
+      "Select a file size, Highest",
+      "High",
+      "Offline Watching",
+      "Download video",
+    ])
 
     await switchToRussian()
-    // The row stays open and now reads Russian, so the label alone would
-    // split the tap series by language.
-    const russian = pressableByLabel(renderer, "Высокое")
+    // The open row now reads Russian, so the label alone would split the tap
+    // series by language.
     expect(nodeByLabel(renderer, "High")).toBeNull()
-    expect(tapActionName(russian)).toBe(englishName)
-    expect(englishName).toBe("download-quality-option")
-    await unmount(renderer)
-  })
-
-  it("gives the dropdown trigger the same tap name in en and ru", async () => {
-    const renderer = await renderSheet()
-    const englishName = tapActionName(
-      pressableByLabel(renderer, "Select a file size, Highest"),
-    )
-    await switchToRussian()
-    const russian = pressableByLabel(renderer, "Select a file size, Наилучшее")
-    expect(tapActionName(russian)).toBe(englishName)
-    expect(englishName).toBe("download-quality-toggle")
+    expect(hasText(renderer, "Офлайн-просмотр")).toBe(true)
+    expect(hasText(renderer, "Скачать")).toBe(true)
+    const russian = names([
+      "Select a file size, Наилучшее",
+      "Высокое",
+      "Офлайн-просмотр",
+      "Скачать видео",
+    ])
+    expect(russian).toEqual(english)
+    expect(english).toEqual([
+      "download-quality-toggle",
+      "download-quality-option",
+      "download-mode-offline",
+      "download-confirm",
+    ])
     await unmount(renderer)
   })
 
@@ -1308,56 +1334,137 @@ describe("UI language", () => {
     await unmount(renderer)
   })
 
-  it("renders the series quality text from the catalog", async () => {
+  it("keeps the series sheet's quality and confirm tap names", async () => {
     const renderer = await renderSeries()
-    expect(nodeByLabel(renderer, "Quality, Highest")).not.toBeNull()
-    const englishName = tapActionName(
-      pressableByLabel(renderer, "Quality, Highest"),
-    )
-
-    await switchToRussian()
-    const russian = pressableByLabel(renderer, "Quality, Наилучшее")
-    expect(tapActionName(russian)).toBe(englishName)
-    await unmount(renderer)
-  })
-
-  it("keeps the mode and confirm tap names on the video sheet", async () => {
-    const renderer = await renderSheet()
-    const english = {
-      mode: tapActionName(radioByLabel(renderer, "Offline Watching")!),
-      confirm: tapActionName(pressableByLabel(renderer, "Download video")),
-    }
-
-    await switchToRussian()
-
-    expect(hasText(renderer, "Офлайн-просмотр")).toBe(true)
-    expect(hasText(renderer, "Скачать")).toBe(true)
-    expect(tapActionName(radioByLabel(renderer, "Офлайн-просмотр")!)).toBe(
-      english.mode,
-    )
-    expect(tapActionName(pressableByLabel(renderer, "Скачать видео"))).toBe(
-      english.confirm,
-    )
-    expect(english).toEqual({
-      mode: "download-mode-offline",
-      confirm: "download-confirm",
-    })
-    await unmount(renderer)
-  })
-
-  it("keeps the confirm tap name on the series sheet", async () => {
-    const renderer = await renderSeries()
-    const english = tapActionName(
-      pressableByLabel(renderer, "Download all episodes"),
-    )
+    const english = [
+      tapActionName(pressableByLabel(renderer, "Quality, Highest")),
+      tapActionName(pressableByLabel(renderer, "Download all episodes")),
+    ]
 
     await switchToRussian()
 
     expect(hasText(renderer, "Скачать все")).toBe(true)
-    expect(tapActionName(pressableByLabel(renderer, "Скачать все серии"))).toBe(
-      english,
+    expect([
+      tapActionName(pressableByLabel(renderer, "Quality, Наилучшее")),
+      tapActionName(pressableByLabel(renderer, "Скачать все серии")),
+    ]).toEqual(english)
+    expect(english[1]).toBe("series-download-confirm")
+    await unmount(renderer)
+  })
+})
+
+// AE12, KTD17: in a French UI the terms window keeps the terms in English, read
+// by an English voice, while its own controls take the catalog's French.
+describe("the terms window and row in a French UI (AE12)", () => {
+  beforeEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+  })
+  afterAll(() => resetLocaleStoreForTests())
+
+  function startIn(tag: string) {
+    mockGetLocales.mockReturnValue(phoneLocales(tag))
+    startLocaleSync()
+    refreshLocale()
+  }
+
+  async function mount(
+    element: Parameters<typeof TestRenderer.create>[0],
+  ): Promise<TestInstance> {
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(element)
+    })
+    return renderer
+  }
+
+  const modal = () =>
+    mount(<TermsModal visible onAccept={jest.fn()} onCancel={jest.fn()} />)
+  const row = () =>
+    mount(
+      <TermsAcceptanceRow
+        accepted={false}
+        onToggle={jest.fn()}
+        onOpenTerms={jest.fn()}
+      />,
     )
-    expect(english).toBe("series-download-confirm")
+
+  /** Host Text contents, in render order. */
+  function texts(renderer: TestInstance): string[] {
+    return renderer.root
+      .findAll((node) => node.type === "Text")
+      .map((node) => String(node.props.children))
+  }
+
+  it("shows the terms in English, and its title and buttons in French", async () => {
+    startIn("fr-FR")
+    const renderer = await modal()
+
+    const paragraphs = renderer.root.findAll(
+      (node) =>
+        node.type === "Text" &&
+        TERMS_OF_USE_PARAGRAPHS.includes(node.props.children as string),
+    )
+    expect(paragraphs).toHaveLength(TERMS_OF_USE_PARAGRAPHS.length)
+    for (const node of paragraphs) {
+      expect(node.props.accessibilityLanguage).toBe("en")
+      expect(StyleSheet.flatten(node.props.style as never)).toMatchObject({
+        writingDirection: "ltr",
+      })
+    }
+    expect(hasText(renderer, "Conditions d'utilisation")).toBe(true)
+    expect(hasText(renderer, "Terms of Use")).toBe(false)
+    expect(hasText(renderer, "Accepter")).toBe(true)
+    expect(hasText(renderer, "Annuler")).toBe(true)
+    await unmount(renderer)
+  })
+
+  it("keeps the button tap names in both languages", async () => {
+    startIn("en-US")
+    const renderer = await modal()
+    const english = [
+      tapActionName(pressableByLabel(renderer, "Accept terms of use")),
+      tapActionName(pressableByLabel(renderer, "Cancel")),
+    ]
+
+    mockGetLocales.mockReturnValue(phoneLocales("fr-FR"))
+    await act(async () => {
+      refreshLocale()
+    })
+
+    expect([
+      tapActionName(
+        pressableByLabel(renderer, "Accepter les conditions d'utilisation"),
+      ),
+      tapActionName(pressableByLabel(renderer, "Annuler")),
+    ]).toEqual(english)
+    expect(english).toEqual(["download-terms-accept", "download-terms-cancel"])
+    await unmount(renderer)
+  })
+
+  it("reads the same English checkbox row as before", async () => {
+    const renderer = await row()
+    expect(texts(renderer)).toEqual(["I agree to the ", "Terms of Use"])
+    expect(
+      pressableByLabel(renderer, "I agree to the Terms of Use"),
+    ).toBeTruthy()
+    expect(pressableByLabel(renderer, "Read Terms of Use")).toBeTruthy()
+    await unmount(renderer)
+  })
+
+  it("puts the link where the French sentence puts it", async () => {
+    startIn("fr-FR")
+    const renderer = await row()
+    expect(texts(renderer)).toEqual([
+      "J'accepte les ",
+      "conditions d'utilisation",
+      ".",
+    ])
+    expect(
+      tapActionName(
+        pressableByLabel(renderer, "Lire les conditions d'utilisation"),
+      ),
+    ).toBe("download-terms-read")
     await unmount(renderer)
   })
 })

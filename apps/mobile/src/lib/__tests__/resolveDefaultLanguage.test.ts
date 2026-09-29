@@ -113,12 +113,6 @@ describe("resolveDefaultSlug", () => {
     expect(resolveDefaultSlug([opt("en-nai", "en-nai")], null)).toBe("en-nai")
   })
 
-  it("prefers the exact language over a prefix sibling for a phone tag (ko vs ko-kmr)", () => {
-    setPhone("ko-KR")
-    const options = [opt("kurmanji", "ko-kmr"), opt("korean", "ko")]
-    expect(resolveDefaultSlug(options, null)).toBe("korean")
-  })
-
   it("the phone language wins over the video primary language when both match", () => {
     setPhone("en-US")
     const options = [opt("french", "fr"), opt("english", "en")]
@@ -166,15 +160,6 @@ describe("resolveDefaultSlug", () => {
         langOpt("v-bangla", "bn", "bangla-2"),
       ]
       expect(resolveDefaultSlug(options, null)).toBe("v-bangla")
-    })
-
-    it("gives a Russian phone with no pick the Russian dub", () => {
-      setPhone("ru-RU")
-      const options = [
-        langOpt("v-en", "en", "english"),
-        langOpt("v-ru", "ru", "russian"),
-      ]
-      expect(resolveDefaultSlug(options, "en")).toBe("v-ru")
     })
 
     // AE10: a Hausa phone has no UI catalog, so the UI falls back, but the

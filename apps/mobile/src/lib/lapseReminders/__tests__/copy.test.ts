@@ -46,12 +46,6 @@ jest.mock("../../../i18n/pluralData.generated", () =>
 const FSI = "⁨"
 const PDI = "⁩"
 
-function useLanguage(tag: string) {
-  mockGetLocales.mockReturnValue(phoneLocales(tag))
-  startLocaleSync()
-  refreshLocale()
-}
-
 beforeEach(() => {
   resetLocaleStoreForTests()
   mockGetLocales.mockReset()
@@ -82,7 +76,6 @@ describe("lapseReminderBody in English", () => {
   it("leaves no placeholder in any body", () => {
     for (const kind of LAPSE_REMINDER_KINDS) {
       expect(lapseReminderBody(kind, "A Title")).not.toMatch(/[{}]/)
-      expect(lapseReminderBody(kind, null)).not.toMatch(/[{}]/)
     }
   })
 
@@ -106,9 +99,13 @@ describe("lapseReminderBody in English", () => {
 })
 
 describe("lapseReminderBody in another UI language", () => {
-  it("builds the body from the catalog in use when it runs", () => {
-    useLanguage("es-MX")
+  beforeEach(() => {
+    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
+    startLocaleSync()
+    refreshLocale()
+  })
 
+  it("builds the body from the catalog in use when it runs", () => {
     expect(lapseReminderBody("day1", null)).toBe("Continúa donde lo dejaste.")
     expect(lapseReminderBody("day7", "Jesús", "es")).toBe(
       "Jesús te espera cuando quieras.",
@@ -117,31 +114,18 @@ describe("lapseReminderBody in another UI language", () => {
   })
 
   it("isolates a right-to-left title with FSI and PDI", () => {
-    useLanguage("es-MX")
-
     expect(lapseReminderBody("day1", "يسوع", "es")).toBe(
       `Sigue viendo ${FSI}يسوع${PDI}.`,
     )
   })
 
-  it("uses the untitled copy for a title written in another language", () => {
-    useLanguage("es-MX")
-
-    expect(lapseReminderBody("day1", "The Birth of Jesus", "en")).toBe(
-      "Continúa donde lo dejaste.",
-    )
-  })
-
   it("reads a record with no title language as English", () => {
-    useLanguage("es-MX")
-
     expect(lapseReminderBody("day7", "The Birth of Jesus")).toBe(
       "Tu video te espera cuando quieras.",
     )
   })
 
-  it("names the video again when the UI returns to the title's language", () => {
-    useLanguage("es-MX")
+  it("uses the untitled copy for a title in another language, and names the video again when the UI returns to it", () => {
     expect(lapseReminderBody("day1", "The Birth of Jesus", "en")).toBe(
       "Continúa donde lo dejaste.",
     )

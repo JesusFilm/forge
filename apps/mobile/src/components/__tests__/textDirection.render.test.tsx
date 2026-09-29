@@ -163,6 +163,15 @@ const CARD = {
   metaLabel: null,
 } as unknown as WatchHomeCard
 
+const EPISODE = {
+  documentId: "e1",
+  slug: "e1",
+  label: null,
+  title: "Episode One",
+  titleLang: "en",
+  posterUrl: null,
+}
+
 function variant(slug: string, name: string, lang: string): WatchVariant {
   return {
     documentId: `doc-${slug}`,
@@ -201,74 +210,6 @@ function languageSheet(variants: WatchVariant[]) {
   )
 }
 
-describe("the watch title", () => {
-  it("renders Arabic text right to left in an Arabic UI", () => {
-    mockUiTag = "ar"
-    const renderer = render(
-      <VideoMetadata
-        label={null}
-        title="يسوع"
-        titleLang="ar"
-        subtitle={null}
-      />,
-    )
-    expectDirection(renderer, "يسوع", RTL)
-  })
-
-  it("renders an English fallback title left to right, marked English", () => {
-    mockUiTag = "ar"
-    const renderer = render(
-      <VideoMetadata
-        label={null}
-        title="JESUS"
-        titleLang="en"
-        subtitle={null}
-      />,
-    )
-    expectDirection(renderer, "JESUS", LTR, "en")
-  })
-
-  it("renders the description in its own language", () => {
-    mockUiTag = "ar"
-    const renderer = render(
-      <VideoDescription description="Life of Jesus" descriptionLang="en" />,
-    )
-    expectDirection(renderer, "Life of Jesus", LTR, "en")
-  })
-})
-
-describe("the watch study questions", () => {
-  it("renders the UI heading and an English fallback list in an Arabic UI", () => {
-    mockUiTag = "ar"
-    const renderer = render(
-      <RelatedQuestionsRenderer
-        section={QUESTIONS}
-        headingLang="ar"
-        questionsLang="en"
-      />,
-    )
-    expectDirection(renderer, "Study questions", RTL)
-    expectDirection(renderer, "Who is Jesus?", LTR, "en")
-    expect(pressableLanguages(renderer, "Who is Jesus?")).toEqual(["en"])
-  })
-})
-
-describe("a Home card title (AE5)", () => {
-  it("renders `lang: ar` with the right-to-left style", () => {
-    mockUiTag = "ar"
-    const renderer = render(<HomeCard card={CARD} variant="landscape" />)
-    expectDirection(renderer, "يسوع", RTL)
-  })
-
-  it("renders `lang: en` in an Arabic UI left to right, marked English", () => {
-    mockUiTag = "ar"
-    const card = { ...CARD, title: "JESUS", titleLang: "en" }
-    const renderer = render(<HomeCard card={card} variant="landscape" />)
-    expectDirection(renderer, "JESUS", LTR, "en")
-    expect(pressableLanguages(renderer, "JESUS")).toEqual(["en"])
-  })
-})
-
 function shelf(title: string, titleLang?: string): WatchHomeSection {
   return {
     id: "s1",
@@ -283,56 +224,87 @@ function shelf(title: string, titleLang?: string): WatchHomeSection {
   }
 }
 
-describe("a Home shelf heading", () => {
-  it("renders an English fallback heading left to right, marked English", () => {
+function title(text: string, lang: string) {
+  return (
+    <VideoMetadata label={null} title={text} titleLang={lang} subtitle={null} />
+  )
+}
+
+describe("an Arabic UI (AE5)", () => {
+  beforeEach(() => {
     mockUiTag = "ar"
+  })
+
+  it("renders an Arabic watch title right to left", () => {
+    expectDirection(render(title("يسوع", "ar")), "يسوع", RTL)
+  })
+
+  it("renders an English fallback watch title left to right, marked English", () => {
+    expectDirection(render(title("JESUS", "en")), "JESUS", LTR, "en")
+  })
+
+  it("renders the description in its own language", () => {
     const renderer = render(
-      <HomeShelf section={shelf("What Really Makes Us Happy?", "en")} />,
+      <VideoDescription description="Life of Jesus" descriptionLang="en" />,
     )
-    expectDirection(renderer, "What Really Makes Us Happy?", LTR, "en")
+    expectDirection(renderer, "Life of Jesus", LTR, "en")
+  })
+
+  it("renders the study questions' UI heading and an English fallback list", () => {
+    const renderer = render(
+      <RelatedQuestionsRenderer
+        section={QUESTIONS}
+        headingLang="ar"
+        questionsLang="en"
+      />,
+    )
+    expectDirection(renderer, "Study questions", RTL)
+    expectDirection(renderer, "Who is Jesus?", LTR, "en")
+    expect(pressableLanguages(renderer, "Who is Jesus?")).toEqual(["en"])
+  })
+
+  it("renders a Home card title with `lang: ar` right to left", () => {
+    expectDirection(
+      render(<HomeCard card={CARD} variant="landscape" />),
+      "يسوع",
+      RTL,
+    )
+  })
+
+  it("renders a Home card title with `lang: en` left to right, marked English", () => {
+    const card = { ...CARD, title: "JESUS", titleLang: "en" }
+    const renderer = render(<HomeCard card={card} variant="landscape" />)
+    expectDirection(renderer, "JESUS", LTR, "en")
+    expect(pressableLanguages(renderer, "JESUS")).toEqual(["en"])
+  })
+
+  it("renders an English fallback shelf heading left to right, marked English", () => {
+    const heading = "What Really Makes Us Happy?"
+    const renderer = render(<HomeShelf section={shelf(heading, "en")} />)
+    expectDirection(renderer, heading, LTR, "en")
   })
 
   it("renders the app's own shelf heading as UI text", () => {
-    mockUiTag = "ar"
-    const renderer = render(<HomeShelf section={shelf("مختارات")} />)
-    expectDirection(renderer, "مختارات", RTL)
+    expectDirection(
+      render(<HomeShelf section={shelf("مختارات")} />),
+      "مختارات",
+      RTL,
+    )
   })
 
-  it("adds no style in an English UI", () => {
-    const renderer = render(<HomeShelf section={shelf("Picks", "en")} />)
-    expectDirection(renderer, "Picks", null)
-  })
-})
-
-describe("a series episode card title", () => {
-  it("renders an English fallback title left to right in an Arabic UI", () => {
-    mockUiTag = "ar"
+  it("renders an English fallback episode title left to right", () => {
     const renderer = render(
-      <SeriesEpisodeCard
-        episode={{
-          documentId: "e1",
-          slug: "e1",
-          label: null,
-          title: "Episode One",
-          titleLang: "en",
-          posterUrl: null,
-        }}
-        onSelect={() => {}}
-      />,
+      <SeriesEpisodeCard episode={EPISODE} onSelect={() => {}} />,
     )
     expectDirection(renderer, "Episode One", LTR, "en")
   })
-})
 
-describe("a language sheet row", () => {
   it("renders an Arabic language name right to left", () => {
-    mockUiTag = "ar"
     const renderer = render(languageSheet([variant("arabic", "العربية", "ar")]))
     expectDirection(renderer, "العربية", RTL)
   })
 
-  it("renders an English fallback name left to right, marked English", () => {
-    mockUiTag = "ar"
+  it("renders an English fallback language name left to right, marked English", () => {
     const renderer = render(languageSheet([variant("hausa", "Hausa", "en")]))
     expectDirection(renderer, "Hausa", LTR, "en")
     expect(pressableLanguages(renderer, "Hausa")).toEqual(["en"])
@@ -341,6 +313,7 @@ describe("a language sheet row", () => {
 
 describe("an English UI", () => {
   it("adds no direction style and no language mark to any covered surface", () => {
+    const card = { ...CARD, title: "Card", titleLang: "en" }
     const renderer = render(
       <>
         <VideoMetadata
@@ -350,21 +323,9 @@ describe("an English UI", () => {
           subtitle={null}
         />
         <VideoDescription description="Life of Jesus" descriptionLang="en" />
-        <HomeCard
-          card={{ ...CARD, title: "Card", titleLang: "en" }}
-          variant="landscape"
-        />
-        <SeriesEpisodeCard
-          episode={{
-            documentId: "e1",
-            slug: "e1",
-            label: null,
-            title: "Episode One",
-            titleLang: "en",
-            posterUrl: null,
-          }}
-          onSelect={() => {}}
-        />
+        <HomeCard card={card} variant="landscape" />
+        <HomeShelf section={{ ...shelf("Picks", "en"), cards: [card] }} />
+        <SeriesEpisodeCard episode={EPISODE} onSelect={() => {}} />
         {languageSheet([variant("english", "English", "en")])}
         <RelatedQuestionsRenderer
           section={QUESTIONS}
@@ -377,6 +338,7 @@ describe("an English UI", () => {
       "JESUS",
       "Life of Jesus",
       "Card",
+      "Picks",
       "Episode One",
       "English",
       "Who is Jesus?",

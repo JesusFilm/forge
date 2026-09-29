@@ -709,37 +709,32 @@ describe("the screen's captured language (U6)", () => {
     })
   }
 
-  const spanishScreen = (): WatchVideoRecord => ({
-    ...record("video-cc", MULTI_DUB),
-    adminForms: adminFormsFor("es"),
-  })
-
-  it("names the subtitle languages in the screen's forms", async () => {
-    answerFrenchTrack()
+  async function openSpanishScreen() {
+    expect(getCatalogTag()).toBe("en")
     await renderProvider()
     await act(async () => {
-      session.setVideo(spanishScreen())
+      session.setVideo({
+        ...record("video-cc", MULTI_DUB),
+        adminForms: adminFormsFor("es"),
+      })
     })
+  }
+
+  async function loadMedia() {
     await act(async () => {
       session.ensureActiveVariantMedia()
     })
+  }
+
+  it("names the subtitle languages in the screen's forms, and caches the name under the screen's tag", async () => {
+    prefs.__prefState.subtitle = "french"
+    answerFrenchTrack()
+    await openSpanishScreen()
+    await loadMedia()
 
     expect(session.activeVariantMedia?.subtitles[0]?.languageName).toBe(
       "Francés",
     )
-  })
-
-  it("caches the subtitle name under the screen's tag, not the current UI tag", async () => {
-    prefs.__prefState.subtitle = "french"
-    answerFrenchTrack()
-    await renderProvider()
-    await act(async () => {
-      session.setVideo(spanishScreen())
-    })
-    await act(async () => {
-      session.ensureActiveVariantMedia()
-    })
-
     expect(prefs.__prefState.setPreferredSubtitleName).toHaveBeenCalledWith(
       "Francés",
       "es",
@@ -749,33 +744,23 @@ describe("the screen's captured language (U6)", () => {
   // KTD16: the reader gates the cached name on the screen's tag, never the
   // live one, so the pill keeps its name and nothing writes it again.
   it("reads a name cached in the screen's tag while the UI tag differs", async () => {
-    expect(getCatalogTag()).toBe("en")
     prefs.__prefState.subtitle = "french"
     prefs.__prefState.subtitleName = "Francés"
     prefs.__prefState.subtitleNameLocale = "es"
     answerFrenchTrack()
-    await renderProvider()
-    await act(async () => {
-      session.setVideo(spanishScreen())
-    })
+    await openSpanishScreen()
     expect(session.preferredSubtitleName).toBe("Francés")
 
-    await act(async () => {
-      session.ensureActiveVariantMedia()
-    })
+    await loadMedia()
 
     expect(session.activeVariantMedia?.subtitles).toHaveLength(1)
     expect(prefs.__prefState.setPreferredSubtitleName).not.toHaveBeenCalled()
   })
 
   it("hides a name cached in another tag, even the live UI tag", async () => {
-    expect(getCatalogTag()).toBe("en")
     prefs.__prefState.subtitleName = "French"
     prefs.__prefState.subtitleNameLocale = "en"
-    await renderProvider()
-    await act(async () => {
-      session.setVideo(spanishScreen())
-    })
+    await openSpanishScreen()
 
     expect(session.preferredSubtitleName).toBeNull()
   })

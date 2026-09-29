@@ -464,32 +464,14 @@ describe("ClipOverlay — side rail in another UI language (R7, KTD15)", () => {
     })
   }
 
-  it('renders "Keep watching" from the catalog, with its English tap name', () => {
-    const renderer = render()
-    const english = tapActionName(pressableByLabel(renderer, "Keep watching"))
-
-    changePhoneLanguage("ru-RU")
-
-    const russian = pressableByLabel(renderer, "Смотреть дальше")
-    expect(russian.props.accessibilityHint).toBe(
-      "Открывает полное видео с этого места",
-    )
-    expect(
-      renderer.root.findAll(
-        (n) => n.props.accessibilityLabel === "Keep watching",
-      ),
-    ).toHaveLength(0)
-    expect(tapActionName(russian)).toBe(english)
-    expect(english).toBe("explore-keep-watching")
-  })
-
-  it("keeps the mute and share tap names when the labels change language", () => {
+  it("relabels the rail and keeps each control's tap name", () => {
     const renderer = render()
     const unmuted = render(props({ muted: true }))
     const english = [
       tapActionName(pressableByLabel(renderer, "Mute")),
       tapActionName(pressableByLabel(unmuted, "Unmute")),
       tapActionName(pressableByLabel(renderer, "Share")),
+      tapActionName(pressableByLabel(renderer, "Keep watching")),
     ]
 
     changePhoneLanguage("ru-RU")
@@ -500,12 +482,27 @@ describe("ClipOverlay — side rail in another UI language (R7, KTD15)", () => {
       "Смотреть дальше",
     ])
     expect(hasText(renderer, "Без звука")).toBe(true)
+    const keepWatching = pressableByLabel(renderer, "Смотреть дальше")
+    expect(keepWatching.props.accessibilityHint).toBe(
+      "Открывает полное видео с этого места",
+    )
+    expect(
+      renderer.root.findAll(
+        (n) => n.props.accessibilityLabel === "Keep watching",
+      ),
+    ).toHaveLength(0)
     expect([
       tapActionName(pressableByLabel(renderer, "Без звука")),
       tapActionName(pressableByLabel(unmuted, "Со звуком")),
       tapActionName(pressableByLabel(renderer, "Поделиться")),
+      tapActionName(keepWatching),
     ]).toEqual(english)
-    expect(english).toEqual(["explore-mute", "explore-unmute", "explore-share"])
+    expect(english).toEqual([
+      "explore-mute",
+      "explore-unmute",
+      "explore-share",
+      "explore-keep-watching",
+    ])
   })
 })
 

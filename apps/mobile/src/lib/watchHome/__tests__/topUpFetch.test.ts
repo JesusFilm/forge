@@ -24,17 +24,21 @@ describe("chunk", () => {
   })
 })
 
+function topUp(
+  query: unknown,
+  ids: string[],
+  policy: Parameters<typeof fetchTopUpVideos>[2],
+  forms = ENGLISH_ADMIN_FORMS,
+) {
+  return fetchTopUpVideos({ query } as never, ids, policy, forms)
+}
+
 describe("fetchTopUpVideos", () => {
   it("fires a single call for a <=100-id set and returns the records", async () => {
     const query = jest
       .fn()
       .mockResolvedValue({ data: { watchHomeVideos: [{ coreId: "x" }] } })
-    const out = await fetchTopUpVideos(
-      { query } as never,
-      ["x"],
-      "cache-first",
-      ENGLISH_ADMIN_FORMS,
-    )
+    const out = await topUp(query, ["x"], "cache-first")
     expect(query).toHaveBeenCalledTimes(1)
     expect(out).toEqual([{ coreId: "x" }])
   })
@@ -50,12 +54,7 @@ describe("fetchTopUpVideos", () => {
         },
       }),
     )
-    const out = await fetchTopUpVideos(
-      { query } as never,
-      ids,
-      "network-only",
-      ENGLISH_ADMIN_FORMS,
-    )
+    const out = await topUp(query, ids, "network-only")
     expect(query).toHaveBeenCalledTimes(2) // 100 + 50
     expect(out).toHaveLength(150)
   })
@@ -82,12 +81,7 @@ describe("fetchTopUpVideos", () => {
 describe("fetchTopUpVideos text rows (U6)", () => {
   it("asks for the forms' text slug, the one argument set Home shares", async () => {
     const query = jest.fn().mockResolvedValue({ data: { watchHomeVideos: [] } })
-    await fetchTopUpVideos(
-      { query } as never,
-      ["x"],
-      "cache-first",
-      adminFormsFor("ru"),
-    )
+    await topUp(query, ["x"], "cache-first", adminFormsFor("ru"))
     expect(query.mock.calls[0][0].variables).toEqual({
       coreIds: ["x"],
       textSlug: "russian",

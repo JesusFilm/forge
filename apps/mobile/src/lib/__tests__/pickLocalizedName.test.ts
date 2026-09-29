@@ -12,18 +12,15 @@ describe("pickLocalizedNameEntry (U6: Admin's raw tag, then en)", () => {
     ).toEqual({ text: "西班牙语", key: "zh-hans" })
   })
 
-  it("falls back to en when the raw tag has no name", () => {
-    expect(
-      pickLocalizedNameEntry({ es: "Español", en: "Spanish" }, "ru"),
-    ).toEqual({ text: "Spanish", key: "en" })
-  })
-
-  it("skips a blank name under the raw tag", () => {
-    expect(pickLocalizedNameEntry({ ru: "", en: "Spanish" }, "ru")).toEqual({
-      text: "Spanish",
-      key: "en",
-    })
-  })
+  it.each([[{ es: "Español", en: "Spanish" }], [{ ru: "", en: "Spanish" }]])(
+    "falls back to en when the raw tag has no name or a blank one: %j",
+    (map) => {
+      expect(pickLocalizedNameEntry(map, "ru")).toEqual({
+        text: "Spanish",
+        key: "en",
+      })
+    },
+  )
 
   it("reports a null key for a plain string", () => {
     expect(pickLocalizedNameEntry("Español", "ru")).toEqual({

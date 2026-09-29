@@ -66,28 +66,20 @@ beforeEach(() => {
 afterAll(() => resetLocaleStoreForTests())
 
 describe("buildMetaLabel episode count", () => {
-  it("counts one episode and three episodes in English", () => {
-    expect(episodes(1)).toBe("1 episode")
-    expect(episodes(3)).toBe("3 episodes")
-  })
-
   it.each([
-    [1, "1 эпизод"],
-    [3, "3 эпизода"],
-    [5, "5 эпизодов"],
-    [21, "21 эпизод"],
-  ])("takes the Russian form for %i", (count, text) => {
-    usePhoneLanguage("ru-RU")
+    ["en-US", 1, "1 episode"],
+    ["en-US", 3, "3 episodes"],
+    ["ru-RU", 1, "1 эпизод"],
+    ["ru-RU", 3, "3 эпизода"],
+    ["ru-RU", 5, "5 эпизодов"],
+    ["ru-RU", 21, "21 эпизод"],
+  ])("takes the %s form for %i", (tag, count, text) => {
+    usePhoneLanguage(tag)
     expect(episodes(count)).toBe(text)
   })
 
   it("keeps the duration and the label out of the count", () => {
     usePhoneLanguage("ru-RU")
-    expect(
-      buildMetaLabel(
-        { label: "Series", durationSeconds: 90, childCount: 0 },
-        getT("Home"),
-      ),
-    ).toBe("1:30")
+    expect(episodes(0)).toBe("1:30")
   })
 })

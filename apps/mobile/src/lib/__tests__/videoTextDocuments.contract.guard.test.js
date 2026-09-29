@@ -5,7 +5,7 @@
 /* global describe, expect, it, require */
 const { readFileSync } = require("node:fs")
 const path = require("node:path")
-const { buildSchema, print, validate } = require("graphql")
+const { buildSchema, parse, print, validate } = require("graphql")
 
 const queries = require("../queries")
 const {
@@ -64,7 +64,6 @@ describe("U6 documents against the committed Admin SDL", () => {
 
   // Positive control: a document with an unknown argument fails the same check.
   it("rejects a locales(...) argument Admin does not know (positive control)", () => {
-    const { parse } = require("graphql")
     const bad = parse(
       'query Bad($slug: String!) { videoBySlug(slug: $slug) { locales(language: "x") { title } } }',
     )

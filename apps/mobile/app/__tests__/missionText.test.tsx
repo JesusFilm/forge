@@ -186,13 +186,12 @@ describe("the Home mission rail", () => {
 
   it("relabels its cards and keeps their tap names", async () => {
     const rail = await render(<HomeMissionSection />)
+    const hasLabel = (label: string) =>
+      rail.root.findAll(
+        (node: RenderedNode) => node.props.accessibilityLabel === label,
+      ).length > 0
     expect(hasText(rail, "OUR MISSION")).toBe(true)
-    const list = rail.root.findAll(
-      (node: RenderedNode) =>
-        node.props.accessibilityLabel ===
-        "3 items in Built for global missions",
-    )
-    expect(list.length).toBeGreaterThan(0)
+    expect(hasLabel("3 items in Built for global missions")).toBe(true)
     const english = tapActionName(
       pressableByLabel(rail, "Become a beta tester"),
     )
@@ -200,13 +199,7 @@ describe("the Home mission rail", () => {
     await changePhoneLanguage("es-ES")
 
     expect(hasText(rail, "NUESTRA MISIÓN")).toBe(true)
-    expect(
-      rail.root.findAll(
-        (node: RenderedNode) =>
-          node.props.accessibilityLabel ===
-          "3 tarjetas en Hecho para misiones globales",
-      ).length,
-    ).toBeGreaterThan(0)
+    expect(hasLabel("3 tarjetas en Hecho para misiones globales")).toBe(true)
     expect(tapActionName(pressableByLabel(rail, "Prueba la beta"))).toBe(
       english,
     )

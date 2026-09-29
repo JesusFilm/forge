@@ -250,6 +250,10 @@ describe("useBibleVerses", () => {
   describe("the passage language", () => {
     const RU = adminFormsFor("ru")
     const ES = adminFormsFor("es")
+    type PassageEntry = {
+      passage: Record<string, unknown> | null
+      englishPassage?: Record<string, unknown> | null
+    }
 
     it("asks by the route's captured slug, not the store's", async () => {
       const query = jest.fn().mockResolvedValue(response([]))
@@ -266,109 +270,59 @@ describe("useBibleVerses", () => {
       })
     })
 
-    it("shows the passage Admin gives for the UI slug, marked in the UI language", async () => {
-      const query = jest.fn().mockResolvedValue(
-        response([
-          {
-            documentId: "c1",
-            passage: rawPassage({ content: "Y dijo Dios", versionId: 147 }),
-            englishPassage: rawPassage({ versionId: 3034 }),
-          },
-        ]),
-      )
-      mockGetClient.mockReturnValue({ query })
-      const hook = renderHook({
-        slug: "the-beginning",
-        citations: [citation("c1")],
-        forms: ES,
-      })
-      await flush()
-      expect(verseCards(hook.latest())[0]).toMatchObject({
-        text: "Y dijo Dios",
-        textLang: "es",
-      })
-    })
-
-    it("keeps the English passage, marked en, when Admin has none for the slug", async () => {
-      const query = jest.fn().mockResolvedValue(
-        response([
-          {
-            documentId: "c1",
-            passage: null,
-            englishPassage: rawPassage({ content: "God said" }),
-          },
-        ]),
-      )
-      mockGetClient.mockReturnValue({ query })
-      const hook = renderHook({
-        slug: "the-beginning",
-        citations: [citation("c1")],
-        forms: RU,
-      })
-      await flush()
-      expect(verseCards(hook.latest())[0]).toMatchObject({
-        text: "God said",
-        textLang: "en",
-      })
-    })
-
-    // Admin answers an unmapped slug with its English launch version, so the
-    // same version id as the English passage means the text is English.
-    it("marks a passage en when Admin answered the slug with the English version", async () => {
-      const query = jest.fn().mockResolvedValue(
-        response([
-          {
-            documentId: "c1",
-            passage: rawPassage({ content: "God said", versionId: 3034 }),
-            englishPassage: rawPassage({
-              content: "God said",
-              versionId: 3034,
-            }),
-          },
-        ]),
-      )
-      mockGetClient.mockReturnValue({ query })
-      const hook = renderHook({
-        slug: "the-beginning",
-        citations: [citation("c1")],
-        forms: RU,
-      })
-      await flush()
-      expect(verseCards(hook.latest())[0]?.textLang).toBe("en")
-    })
-
-    it("marks an English UI's passage en", async () => {
+    it.each<
+      [string, AdminLanguageForms, PassageEntry, Record<string, unknown>]
+    >([
+      [
+        "shows the UI slug's passage, marked in the UI language",
+        ES,
+        {
+          passage: rawPassage({ content: "Y dijo Dios", versionId: 147 }),
+          englishPassage: rawPassage({ versionId: 3034 }),
+        },
+        { text: "Y dijo Dios", textLang: "es" },
+      ],
+      [
+        "keeps the English passage, marked en, when Admin has none for the slug",
+        RU,
+        { passage: null, englishPassage: rawPassage({ content: "God said" }) },
+        { text: "God said", textLang: "en" },
+      ],
+      [
+        // Admin answers an unmapped slug with its English launch version, so
+        // the same version id as the English passage means the text is English.
+        "marks a passage en when Admin answered the slug with the English version",
+        RU,
+        {
+          passage: rawPassage({ content: "God said", versionId: 3034 }),
+          englishPassage: rawPassage({ content: "God said", versionId: 3034 }),
+        },
+        { textLang: "en" },
+      ],
+      [
+        "marks an English UI's passage en",
+        ENGLISH_ADMIN_FORMS,
+        { passage: rawPassage() },
+        { textLang: "en" },
+      ],
+      [
+        "gives no language to a card with no passage",
+        RU,
+        { passage: null, englishPassage: null },
+        { text: "", textLang: null },
+      ],
+    ])("%s", async (_name, forms, entry, card) => {
       const query = jest
         .fn()
-        .mockResolvedValue(
-          response([{ documentId: "c1", passage: rawPassage() }]),
-        )
+        .mockResolvedValue(response([{ documentId: "c1", ...entry }]))
       mockGetClient.mockReturnValue({ query })
       const hook = renderHook({
         slug: "the-beginning",
         citations: [citation("c1")],
+        forms,
       })
       await flush()
-      expect(verseCards(hook.latest())[0]?.textLang).toBe("en")
-    })
-
-    it("gives no language to a card with no passage", async () => {
-      const query = jest
-        .fn()
-        .mockResolvedValue(
-          response([{ documentId: "c1", passage: null, englishPassage: null }]),
-        )
-      mockGetClient.mockReturnValue({ query })
-      const hook = renderHook({
-        slug: "the-beginning",
-        citations: [citation("c1")],
-        forms: RU,
-      })
-      await flush()
-      expect(verseCards(hook.latest())[0]).toMatchObject({
-        text: "",
-        textLang: null,
-      })
+      expect(verseCards(hook.latest())[0]).toMatchObject(card)
     })
 
     it("asks again when the route's slug changes to another language", async () => {

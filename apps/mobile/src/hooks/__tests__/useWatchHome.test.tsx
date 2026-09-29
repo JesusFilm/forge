@@ -416,15 +416,8 @@ async function answerVideos(locale: string) {
 async function answerSetting(locale: string, data: unknown) {
   await settle(() => {
     for (const call of pending(settingDocument, locale)) {
-      call.resolve({ data })
-    }
-  })
-}
-
-async function failSetting(locale: string) {
-  await settle(() => {
-    for (const call of pending(settingDocument, locale)) {
-      call.reject(new Error("offline"))
+      if (data instanceof Error) call.reject(data)
+      else call.resolve({ data })
     }
   })
 }
@@ -435,17 +428,6 @@ async function changePhone(tag: string) {
     refreshLocale()
   })
   await step()
-}
-
-async function renderStrictProbe(): Promise<TestInstance> {
-  let renderer: TestInstance | undefined
-  await act(() => {
-    renderer = TestRenderer.create(
-      createElement(StrictMode, null, createElement(Probe)),
-    )
-  })
-  await step()
-  return renderer as TestInstance
 }
 
 function cardTitles(frame: Frame): string[] {
@@ -459,22 +441,43 @@ function sectionIds(frame: Frame): string[] {
 }
 
 describe("useWatchHome in the UI locale (U6)", () => {
+  let probe: TestInstance | undefined
+
+  /** Starts the phone on `tag`, then mounts the probe under StrictMode. */
+  async function renderStrictProbe(tag: string): Promise<void> {
+    mockGetLocales.mockReturnValue(phoneLocales(tag))
+    startLocaleSync()
+    await act(() => {
+      probe = TestRenderer.create(
+        createElement(StrictMode, null, createElement(Probe)),
+      )
+    })
+    await step()
+  }
+
+  /** A cold launch with no network: only the stored snapshot can paint. */
+  async function renderOffline(snapshot: string, tag: string): Promise<void> {
+    storage.getItem.mockResolvedValue(snapshot)
+    mockGetApolloClient.mockReturnValue({
+      query: jest.fn(() => Promise.reject(new Error("offline"))),
+    })
+    await renderStrictProbe(tag)
+  }
+
   beforeEach(() => {
     calls = []
     resetLocaleStoreForTests()
+    useDeferredClient()
   })
 
-  afterEach(() => resetLocaleStoreForTests())
-
-  function startPhone(tag: string) {
-    mockGetLocales.mockReturnValue(phoneLocales(tag))
-    startLocaleSync()
-  }
+  afterEach(async () => {
+    if (probe) await unmount(probe)
+    probe = undefined
+    resetLocaleStoreForTests()
+  })
 
   it("asks for the catalog tag's homepage, the en one, and the text slug", async () => {
-    startPhone("es-MX")
-    useDeferredClient()
-    const renderer = await renderStrictProbe()
+    await renderStrictProbe("es-MX")
 
     expect(pending(settingDocument, "es")[0]?.variables).toEqual({
       locale: "es",
@@ -483,14 +486,10 @@ describe("useWatchHome in the UI locale (U6)", () => {
     expect(pending(videosDocument, "es")[0]?.variables).toMatchObject({
       textSlug: "spanish-latin-american",
     })
-    await unmount(renderer)
   })
 
-  // Covers AE1: Admin's own `es` homepage renders, authored text first.
   it("renders the es homepage with its authored Spanish card text (AE1)", async () => {
-    startPhone("es-MX")
-    useDeferredClient()
-    const renderer = await renderStrictProbe()
+    await renderStrictProbe("es-MX")
 
     await answerVideos("es")
     await answerSetting("es", {
@@ -500,15 +499,11 @@ describe("useWatchHome in the UI locale (U6)", () => {
 
     expect(sectionIds(frames[frames.length - 1])).toEqual(["ver"])
     expect(cardTitles(frames[frames.length - 1])).toEqual(["Ver JESÚS"])
-    await unmount(renderer)
   })
 
-  // Covers AE2: no `ru` homepage; the `en` one gives the shelves, and the
-  // video's Russian title beats its English authored text.
+  // The video's Russian title beats the en homepage's English authored text.
   it("falls back to the en homepage with Russian video titles (AE2)", async () => {
-    startPhone("ru-RU")
-    useDeferredClient()
-    const renderer = await renderStrictProbe()
+    await renderStrictProbe("ru-RU")
 
     await answerVideos("ru")
     await answerSetting("ru", {
@@ -522,15 +517,11 @@ describe("useWatchHome in the UI locale (U6)", () => {
     const blob = storage.setItem.mock.calls.at(-1)?.[1] as string
     expect(blob).toContain('"locale":"ru"')
     expect(blob).toContain('"homepageSource":"en-fallback"')
-    await unmount(renderer)
   })
 
-  // Covers AE6: the old epoch's answer lands after the change and is dropped;
-  // no English frame ever paints before the Spanish one.
+  // No English frame may paint before the Spanish one.
   it("drops a response for the old epoch after a language change (AE6)", async () => {
-    startPhone("en-US")
-    useDeferredClient()
-    const renderer = await renderStrictProbe()
+    await renderStrictProbe("en-US")
     expect(pending(videosDocument, "en").length).toBeGreaterThan(0)
 
     await changePhone("es-MX")
@@ -549,31 +540,22 @@ describe("useWatchHome in the UI locale (U6)", () => {
     expect(frames.some((frame) => sectionIds(frame).includes("old"))).toBe(
       false,
     )
-    await unmount(renderer)
   })
 
-  // Covers AE6: the old body leaves at once, and a failed Experience fetch in
-  // the new locale shows the fallback body, never the old last-good body.
   it("clears the old body at once and never reuses its last-good blocks (AE6)", async () => {
-    startPhone("en-US")
-    useDeferredClient()
-    const renderer = await renderStrictProbe()
+    await renderStrictProbe("en-US")
     await answerVideos("en")
     await answerSetting("en", { watchSetting: homepage("first", "JESUS") })
     expect(sectionIds(frames[frames.length - 1])).toEqual(["first"])
 
     const beforeChange = frames.length
     await changePhone("es-MX")
-    const afterChange = frames.slice(beforeChange)
-    expect(afterChange.length).toBeGreaterThan(0)
-    expect(afterChange[0].model).toBeNull()
+    expect(frames[beforeChange]?.model).toBeNull()
     ;(datadogLog.warn as jest.Mock).mockClear()
     await answerVideos("es")
-    await failSetting("es")
+    await answerSetting("es", new Error("offline"))
 
-    const last = frames[frames.length - 1]
-    expect(last.model).not.toBeNull()
-    expect(sectionIds(last)).not.toContain("first")
+    expect(frames[frames.length - 1].model).not.toBeNull()
     expect(
       frames.slice(beforeChange).some((f) => sectionIds(f).includes("first")),
     ).toBe(false)
@@ -581,31 +563,24 @@ describe("useWatchHome in the UI locale (U6)", () => {
       reason: "error",
       body_source: "config",
     })
-    await unmount(renderer)
   })
 
   it("never paints an en snapshot under es", async () => {
-    storage.getItem.mockResolvedValue(
+    await renderOffline(
       serializeHomeSnapshotFromVideosJson(
         JSON.stringify([jesusIn("english")]),
         new Date(),
         JSON.stringify(homepage("first", "JESUS").homepageExperience.blocks),
         "[]",
       ),
+      "es-MX",
     )
-    startPhone("es-MX")
-    mockGetApolloClient.mockReturnValue({
-      query: jest.fn(() => Promise.reject(new Error("offline"))),
-    })
-
-    const renderer = await renderStrictProbe()
 
     expect(frames.every((frame) => frame.model == null)).toBe(true)
-    await unmount(renderer)
   })
 
   it("paints a snapshot with no locale field under en", async () => {
-    storage.getItem.mockResolvedValue(
+    await renderOffline(
       JSON.stringify({
         version: 3,
         persistedAt: Date.now(),
@@ -613,20 +588,14 @@ describe("useWatchHome in the UI locale (U6)", () => {
         blocks: homepage("first", "JESUS").homepageExperience.blocks,
         hydrationVideos: [],
       }),
+      "en-US",
     )
-    startPhone("en-US")
-    mockGetApolloClient.mockReturnValue({
-      query: jest.fn(() => Promise.reject(new Error("offline"))),
-    })
-
-    const renderer = await renderStrictProbe()
 
     expect(sectionIds(firstPaint().frame)).toEqual(["first"])
-    await unmount(renderer)
   })
 
   it("repaints a snapshot saved under the en fallback with its precedence", async () => {
-    storage.getItem.mockResolvedValue(
+    await renderOffline(
       serializeHomeSnapshotFromVideosJson(
         JSON.stringify([jesusIn("russian")]),
         new Date(),
@@ -634,15 +603,9 @@ describe("useWatchHome in the UI locale (U6)", () => {
         "[]",
         { locale: "ru", homepageSource: "en-fallback" },
       ),
+      "ru-RU",
     )
-    startPhone("ru-RU")
-    mockGetApolloClient.mockReturnValue({
-      query: jest.fn(() => Promise.reject(new Error("offline"))),
-    })
-
-    const renderer = await renderStrictProbe()
 
     expect(cardTitles(firstPaint().frame)).toEqual(["ИИСУС"])
-    await unmount(renderer)
   })
 })

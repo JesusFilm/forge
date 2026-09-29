@@ -47,21 +47,12 @@ const ARABIC_TV = "تلفاز غرفة المعيشة"
 beforeEach(() => {
   resetLocaleStoreForTests()
   mockGetLocales.mockReset()
+  mockGetLocales.mockReturnValue(phoneLocales("ar-EG"))
+  startLocaleSync()
 })
 
 describe("castButtonLabel in the UI language", () => {
-  it("keeps the English label byte-identical", () => {
-    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
-    startLocaleSync()
-
-    expect(castButtonLabel("active", "Living Room TV", getT("Cast"))).toBe(
-      "Casting to Living Room TV",
-    )
-  })
-
   it("isolates an Arabic device name in the Arabic label", () => {
-    mockGetLocales.mockReturnValue(phoneLocales("ar-EG"))
-    startLocaleSync()
     const t = getT("Cast")
 
     expect(castButtonLabel("idle", null, t)).toBe("إرسال")
@@ -71,18 +62,12 @@ describe("castButtonLabel in the UI language", () => {
   })
 
   it("isolates a Latin device name in the Arabic label", () => {
-    mockGetLocales.mockReturnValue(phoneLocales("ar-EG"))
-    startLocaleSync()
-
     expect(
       castIndicatorLabel("connecting", "Living Room TV", getT("Cast")),
     ).toBe(`جارٍ الاتصال بـ ${FSI}Living Room TV${PDI}…`)
   })
 
   it("falls back to English for a key the Arabic catalog lacks", () => {
-    mockGetLocales.mockReturnValue(phoneLocales("ar-EG"))
-    startLocaleSync()
-
     expect(castIndicatorLabel("active", null, getT("Cast"))).toBe("Casting")
   })
 })

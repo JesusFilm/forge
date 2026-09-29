@@ -45,10 +45,7 @@ jest.mock("../../../../i18n/catalogs.generated", () =>
       jest.requireActual("../../../../i18n/catalogs.generated"),
       {
         fr: {
-          BibleReaderSettings: {
-            title: "Réglages du lecteur",
-            aboutTitle: "À propos du texte",
-          },
+          BibleReaderSettings: { aboutTitle: "À propos du texte" },
         },
       },
     ),
@@ -108,10 +105,7 @@ const COPY = {
     trueDark: settingsT("modeTrueDark"),
   },
   typeface: settingsT("typeface"),
-  typefaces: {
-    serif: settingsT("typefaceSerif"),
-    sans: settingsT("typefaceSans"),
-  },
+  typefaces: { sans: settingsT("typefaceSans") },
   textSize: settingsT("textSize"),
   lineSpacing: settingsT("lineSpacing"),
   verseNumbers: settingsT("verseNumbers"),

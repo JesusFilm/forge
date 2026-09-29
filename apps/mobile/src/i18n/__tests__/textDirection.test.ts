@@ -16,14 +16,12 @@ describe("textDirectionStyle (KTD13)", () => {
     },
   )
 
-  it("returns the left-to-right style for English text in a right-to-left UI", () => {
+  it("returns the left-to-right style for left-to-right text in a right-to-left UI", () => {
     expect(textDirectionStyle("en", "ar")).toEqual(LTR)
     expect(textDirectionStyle("en", "fa")).toEqual(LTR)
     expect(textDirectionStyle("en", "ur")).toEqual(LTR)
-  })
-
-  it("returns the left-to-right style for any left-to-right text in a right-to-left UI", () => {
-    // A captured screen keeps its old text after the UI language changes.
+    // Not only English: a captured screen keeps its old text after the UI
+    // language changes.
     expect(textDirectionStyle("ru", "ar")).toEqual(LTR)
   })
 

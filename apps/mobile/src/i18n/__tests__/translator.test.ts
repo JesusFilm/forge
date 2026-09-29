@@ -114,43 +114,22 @@ describe("plural polyfill on a Hermes-like engine (KTD1)", () => {
     expect(t.translate("Watch.episodes", { count: 2 })).toBe("2 episodes")
   })
 
-  it("formats ar with all six categories", () => {
-    const pick = categories("ar")
-    expect([0, 1, 2, 5, 11, 100].map(pick)).toEqual([
-      "zero",
-      "one",
-      "two",
-      "few",
-      "many",
-      "other",
-    ])
-  })
-
-  it("formats ru with one, few, and many", () => {
-    const pick = categories("ru")
-    expect([1, 2, 5, 21, 1.5].map(pick)).toEqual([
-      "one",
-      "few",
-      "many",
-      "one",
-      "other",
-    ])
-  })
-
-  it("formats zh-Hans under the bare zh data", () => {
-    const pick = categories("zh-Hans")
-    expect([1, 2].map(pick)).toEqual(["other", "other"])
-    expect(new Intl.PluralRules("zh").resolvedOptions().locale).toBe("zh")
-  })
-
-  it("formats sr-Latn under the bare sr data", () => {
-    const pick = categories("sr-Latn")
-    expect([1, 3, 5, 21].map(pick)).toEqual(["one", "few", "other", "one"])
-  })
-
-  it("formats qu, which has no CLDR data, with English rules", () => {
-    const pick = categories("qu")
-    expect([1, 2].map(pick)).toEqual(["one", "other"])
+  // zh-Hans and sr-Latn load the bare zh and sr data; qu has no CLDR data, so
+  // it formats with English rules.
+  it.each<[keyof typeof PLURAL_TAG, number[], string[]]>([
+    [
+      "ar",
+      [0, 1, 2, 5, 11, 100],
+      ["zero", "one", "two", "few", "many", "other"],
+    ],
+    ["ru", [1, 2, 5, 21, 1.5], ["one", "few", "many", "one", "other"]],
+    ["zh-Hans", [1, 2], ["other", "other"]],
+    ["sr-Latn", [1, 3, 5, 21], ["one", "few", "other", "one"]],
+    ["qu", [1, 2], ["one", "other"]],
+  ])("formats %s plurals under its data tag", (tag, counts, expected) => {
+    expect(counts.map(categories(tag))).toEqual(expected)
+    const dataTag = PLURAL_TAG[tag]
+    expect(new Intl.PluralRules(dataTag).resolvedOptions().locale).toBe(dataTag)
   })
 })
 
@@ -215,9 +194,6 @@ describe("missing keys and format errors", () => {
     const zh = make("zh-Hans", { Watch: {} }, english)
     expect(zh.translate("Watch.episodes", { count: 1 })).toBe("1 episode")
     expect(zh.translate("Watch.episodes", { count: 3 })).toBe("3 episodes")
-
-    const ru = make("ru", { Watch: {} }, english)
-    expect(ru.translate("Watch.episodes", { count: 21 })).toBe("21 episodes")
   })
 
   it("returns the key path when English also has no message", () => {
@@ -251,34 +227,17 @@ describe("bidirectional isolation of values (KTD13)", () => {
       at: "{count, number} {device}",
     },
   }
-  const EN_CAST = { Cast: { castingTo: "Casting to {device}" } }
+  const CAST = { ar: AR, en: { Cast: { castingTo: "Casting to {device}" } } }
 
-  it("wraps an Arabic device name in an ar catalog", () => {
-    const t = make("ar", AR)
-    expect(t.translate("Cast.castingTo", { device: "جهاز التلفاز" })).toBe(
-      `جارٍ الإرسال إلى ${FSI}جهاز التلفاز${PDI}`,
-    )
-  })
-
-  it("wraps a Latin value in a right-to-left catalog", () => {
-    const t = make("ar", AR)
-    expect(t.translate("Cast.castingTo", { device: "Living Room TV" })).toBe(
-      `جارٍ الإرسال إلى ${FSI}Living Room TV${PDI}`,
-    )
-  })
-
-  it("leaves a Latin value in an en catalog byte-identical", () => {
-    const t = make("en", EN_CAST)
-    expect(t.translate("Cast.castingTo", { device: "Living Room TV" })).toBe(
-      "Casting to Living Room TV",
-    )
-  })
-
-  it("wraps a right-to-left value in an en catalog", () => {
-    const t = make("en", EN_CAST)
-    expect(t.translate("Cast.castingTo", { device: "جهاز التلفاز" })).toBe(
-      `Casting to ${FSI}جهاز التلفاز${PDI}`,
-    )
+  // Only a Latin value in an en catalog stays byte-identical.
+  it.each([
+    ["ar", "جهاز التلفاز", `جارٍ الإرسال إلى ${FSI}جهاز التلفاز${PDI}`],
+    ["ar", "Living Room TV", `جارٍ الإرسال إلى ${FSI}Living Room TV${PDI}`],
+    ["en", "Living Room TV", "Casting to Living Room TV"],
+    ["en", "جهاز التلفاز", `Casting to ${FSI}جهاز التلفاز${PDI}`],
+  ] as const)("formats %s with the device %s", (tag, device, expected) => {
+    const t = make(tag, CAST[tag])
+    expect(t.translate("Cast.castingTo", { device })).toBe(expected)
   })
 
   it("never wraps a plural count", () => {

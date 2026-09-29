@@ -667,18 +667,12 @@ describe("the phone language", () => {
     expect(readPhoneLanguageCode()).toBe("ha")
   })
 
-  it("is null for an empty phone list or a failed read", () => {
-    setPhone()
-    expect(readPhoneLanguageCode()).toBeNull()
-    resetLocaleStoreForTests()
+  it("is null for a failed read or an empty phone list, never the Intl default", () => {
     mockGetLocales.mockImplementation(() => {
       throw new Error("Cannot find native module 'ExpoLocalization'")
     })
     startLocaleSync()
     expect(readPhoneLanguageCode()).toBeNull()
-  })
-
-  it("never reads the Intl default locale", () => {
     setPhone()
     jest.spyOn(Intl, "DateTimeFormat").mockImplementation(
       () =>

@@ -2,7 +2,6 @@
 /* global afterAll, describe, expect, it, require */
 // Web's REAL translate-ui-catalogs.mjs against a fake OpenAI-compatible server
 // on 127.0.0.1 (the script honors OPENAI_BASE_URL). No request leaves the host.
-const childProcess = require("child_process")
 const fs = require("fs")
 const http = require("http")
 const path = require("path")
@@ -11,14 +10,15 @@ const {
   DEFAULT_MODEL,
   REAL_INVENTORY,
   REAL_WEB_DIR,
-  TEST_API_KEY,
+  commandEnv,
   makeWorkspace,
-  removeWorkspaces,
+  removeTempDirs,
   runCommand,
   runCommandAsync,
+  spawnNode,
 } = require("./fixtures/workspace.cjs")
 
-afterAll(removeWorkspaces)
+afterAll(removeTempDirs)
 
 // Only for a local check of the chain against an unmerged web script (plan U1).
 const CHAIN_WEB_DIR = process.env.I18N_REAL_CHAIN_WEB_DIR ?? REAL_WEB_DIR
@@ -31,7 +31,8 @@ const webSupportsCallerOptions = (() => {
   return CALLER_OPTIONS.every((flag) => text.includes(`"${flag}"`))
 })()
 
-function startFakeOpenAi({ quotaLocales = [] } = {}) {
+/** Serves `run(url)`, then closes; a locale in quotaLocales gets HTTP 429. */
+async function withFakeOpenAi({ quotaLocales = [] }, run) {
   const requests = []
   const server = http.createServer((request, response) => {
     let body = ""
@@ -47,7 +48,6 @@ function startFakeOpenAi({ quotaLocales = [] } = {}) {
       requests.push({
         locale,
         keys: Object.keys(prompt.messagesToTranslate),
-        model: payload.model,
         system,
         contexts: prompt.messageContexts,
       })
@@ -76,60 +76,52 @@ function startFakeOpenAi({ quotaLocales = [] } = {}) {
       )
     })
   })
-  return new Promise((resolve) => {
-    server.listen(0, "127.0.0.1", () =>
-      resolve({
-        url: `http://127.0.0.1:${server.address().port}/v1`,
-        requests,
-        close: () => new Promise((done) => server.close(done)),
-      }),
-    )
-  })
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve))
+  try {
+    const result = await run(`http://127.0.0.1:${server.address().port}/v1`)
+    return { result, requests }
+  } finally {
+    await new Promise((done) => server.close(done))
+  }
 }
 
 function keysByLocale(requests) {
-  const out = {}
-  for (const { locale, keys } of requests) out[locale] = keys
-  return out
+  return Object.fromEntries(requests.map(({ locale, keys }) => [locale, keys]))
 }
 
 function runWebDirectly(workspace, serverUrl, locales) {
-  return new Promise((resolve, reject) => {
-    const child = childProcess.spawn(
-      process.execPath,
-      [
-        path.join(REAL_WEB_DIR, "scripts/translate-ui-catalogs.mjs"),
-        "--messages-dir",
-        workspace.messagesDir,
-        "--inventory",
-        REAL_INVENTORY,
-        "--manifest",
-        workspace.files.manifest,
-        "--progress",
-        path.join(workspace.progressDir, "direct.json"),
-        "--locales",
-        locales,
-        "--model",
-        DEFAULT_MODEL,
-        "--concurrency",
-        "1",
-        "--max-attempts",
-        "1",
-      ],
-      {
-        env: {
-          PATH: process.env.PATH,
-          OPENAI_API_KEY: TEST_API_KEY,
-          OPENAI_BASE_URL: serverUrl,
-        },
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    )
-    let stderr = ""
-    child.stderr.on("data", (chunk) => (stderr += chunk))
-    child.on("error", reject)
-    child.on("close", (status) => resolve({ status, stderr }))
-  })
+  return spawnNode(
+    [
+      path.join(REAL_WEB_DIR, "scripts/translate-ui-catalogs.mjs"),
+      "--messages-dir",
+      workspace.messagesDir,
+      "--inventory",
+      REAL_INVENTORY,
+      "--manifest",
+      workspace.files.manifest,
+      "--progress",
+      path.join(workspace.progressDir, "direct.json"),
+      "--locales",
+      locales,
+      "--model",
+      DEFAULT_MODEL,
+      "--concurrency",
+      "1",
+      "--max-attempts",
+      "1",
+    ],
+    commandEnv(workspace, { OPENAI_BASE_URL: serverUrl }),
+  )
+}
+
+function runChain(workspace, locales, quotaLocales) {
+  return withFakeOpenAi({ quotaLocales }, (url) =>
+    runCommandAsync(
+      workspace,
+      ["--yes", "--locales", locales, "--concurrency", "1"],
+      { OPENAI_BASE_URL: url },
+    ),
+  )
 }
 
 const PROBE_EN = {
@@ -165,15 +157,12 @@ describe("the key-set prediction (KTD6 step 4)", () => {
     const predicted = JSON.parse(dryRun.stdout).groups[0].locales
     expect(predicted.es).toEqual(["Probe.missing", "Probe.copy", "Probe.count"])
 
-    const server = await startFakeOpenAi()
-    try {
-      const result = await runWebDirectly(ws, server.url, "es,fr")
-      expect(result.stderr).toBe("")
-      expect(result.status).toBe(0)
-      expect(keysByLocale(server.requests)).toEqual(predicted)
-    } finally {
-      await server.close()
-    }
+    const { result, requests } = await withFakeOpenAi({}, (url) =>
+      runWebDirectly(ws, url, "es,fr"),
+    )
+    expect(result.stderr).toBe("")
+    expect(result.status).toBe(0)
+    expect(keysByLocale(requests)).toEqual(predicted)
   })
 })
 
@@ -232,27 +221,18 @@ describeChain(
         runCommand(ws, ["--dry-run", "--json", "--locales", "es,fr"]).stdout,
       ).groups[0].locales
       const manifest = fs.readFileSync(ws.files.manifest)
-      const server = await startFakeOpenAi()
-      try {
-        const result = await runCommandAsync(
-          ws,
-          ["--yes", "--locales", "es,fr", "--concurrency", "1"],
-          { OPENAI_BASE_URL: server.url },
-        )
-        expect(result.stderr).toBe("")
-        expect(result.status).toBe(0)
-        expect(keysByLocale(server.requests)).toEqual(predicted)
-        expect(predicted.es).toEqual(["Probe.back"])
-        // --contexts reached the prompt: the product, the surface, the override.
-        const [first] = server.requests
-        expect(first.system).toContain(CHAIN_CONTEXTS.product)
-        expect(first.contexts["Probe.back"]).toMatchObject({
-          surface: CHAIN_CONTEXTS.namespaces.Probe,
-          visibility: "assistive technology only",
-        })
-      } finally {
-        await server.close()
-      }
+      const { result, requests } = await runChain(ws, "es,fr")
+      expect(result.stderr).toBe("")
+      expect(result.status).toBe(0)
+      expect(keysByLocale(requests)).toEqual(predicted)
+      expect(predicted.es).toEqual(["Probe.back"])
+      // --contexts reached the prompt: the product, the surface, the override.
+      const [first] = requests
+      expect(first.system).toContain(CHAIN_CONTEXTS.product)
+      expect(first.contexts["Probe.back"]).toMatchObject({
+        surface: CHAIN_CONTEXTS.namespaces.Probe,
+        visibility: "assistive technology only",
+      })
       expect(ws.readCatalog("es")).toEqual({
         "Probe.back": "⟦es⟧ Go back now",
         "Probe.count": "{count, plural, one {# vídeo} other {# vídeos}}",
@@ -276,19 +256,9 @@ describeChain(
 
     it("stops at the first quota error with no retry (AE8), and names the unfinished locales", async () => {
       const ws = chainWorkspace({ es: {}, fr: {}, pt: {} })
-      const server = await startFakeOpenAi({ quotaLocales: ["fr"] })
-      let result
-      try {
-        result = await runCommandAsync(
-          ws,
-          ["--yes", "--locales", "es,fr,pt", "--concurrency", "1"],
-          { OPENAI_BASE_URL: server.url },
-        )
-      } finally {
-        await server.close()
-      }
+      const { result, requests } = await runChain(ws, "es,fr,pt", ["fr"])
       expect(result.status).toBe(1)
-      expect(server.requests.map((r) => r.locale)).toEqual(["es", "fr"])
+      expect(requests.map((r) => r.locale)).toEqual(["es", "fr"])
       expect(result.stdout).toMatch(/Finished 1 locale: es/)
       expect(result.stdout).toMatch(/fr: .*insufficient_quota/)
       expect(result.stdout).toMatch(/Not started 1 locale: pt/)

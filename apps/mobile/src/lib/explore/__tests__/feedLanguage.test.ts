@@ -148,19 +148,14 @@ describe("the feed language and the player's default", () => {
     { slug: "v-castilian", languageSlug: "spanish-castilian" },
   ]
 
-  it("gives a no-pick Russian phone russian, the slug the player picks", () => {
-    setPhone("ru-RU")
-    expect(noPickFeedLanguage()).toBe("russian")
-    expect(defaultAudioLanguage()?.slug).toBe("russian")
-    expect(playerPick(DUBS)).toBe("russian")
-  })
-
   it.each([
+    ["ru-RU", "russian"],
     ["es-MX", "spanish-latin-american"],
     ["es-ES", "spanish-castilian"],
-  ])("agrees with the player for a %s phone", (tag, slug) => {
+  ])("gives a no-pick %s phone %s, the slug the player picks", (tag, slug) => {
     setPhone(tag)
     expect(noPickFeedLanguage()).toBe(slug)
+    expect(defaultAudioLanguage()?.slug).toBe(slug)
     expect(playerPick(DUBS)).toBe(slug)
   })
 })
@@ -221,29 +216,18 @@ function retiredSlugForLocale(locale: string): string | null {
 }
 
 describe("the retired reviewed map", () => {
-  it("resolves every old entry to the same slug", () => {
-    const entries = [
-      ...Object.entries(RETIRED_LANGUAGE_SLUGS),
-      ...Object.entries(RETIRED_REGION_SLUGS),
-    ]
-    expect(entries).toHaveLength(30)
-    for (const [tag, slug] of entries) {
-      expect(slug).toMatch(AUDIO_LANGUAGE_SLUG_PATTERN)
-      expect([
-        tag,
-        resolveFeedLanguage({ preferredAudioSlug: null, deviceLocale: tag }),
-      ]).toEqual([tag, slug])
-    }
-  })
-
-  // Admin's own region tags (bn-BD, zh-Hant-TW, pt-MZ, and others) must not
-  // move a language that the old map named.
-  it("gives the same slug for each old language under any region or script", () => {
+  // Every old entry, and each old language under Admin's own region tags
+  // (bn-BD, zh-Hant-TW, pt-MZ, and others), keeps the slug the old map named.
+  it("gives the same slug for each old entry under any region or script", () => {
+    expect(
+      Object.keys({ ...RETIRED_LANGUAGE_SLUGS, ...RETIRED_REGION_SLUGS }),
+    ).toHaveLength(30)
     const suffixes = ["", "-US", "-GB", "-BD", "-IN", "-MZ", "-CN", "-TW"]
     const tags = [
       ...Object.keys(RETIRED_LANGUAGE_SLUGS).flatMap((language) =>
         suffixes.map((suffix) => `${language}${suffix}`),
       ),
+      ...Object.keys(RETIRED_REGION_SLUGS),
       "zh-Hant-TW",
       "zh-Hans-CN",
       "es-419",
@@ -258,6 +242,7 @@ describe("the retired reviewed map", () => {
       const old = retiredSlugForLocale(tag)
       if (old == null) continue
       compared += 1
+      expect(old).toMatch(AUDIO_LANGUAGE_SLUG_PATTERN)
       expect([
         tag,
         resolveFeedLanguage({ preferredAudioSlug: null, deviceLocale: tag }),

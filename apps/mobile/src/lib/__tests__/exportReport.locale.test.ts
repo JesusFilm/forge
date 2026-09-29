@@ -48,12 +48,6 @@ jest.mock("../../i18n/pluralData.generated", () =>
     ),
 )
 
-function useLanguage(tag: string) {
-  mockGetLocales.mockReturnValue(phoneLocales(tag))
-  startLocaleSync()
-  refreshLocale()
-}
-
 function run(signals: readonly ExportReportSignal[]): ExportReportRecord {
   const records = signals.reduce<ExportReportRecord[]>(
     (current, signal) => foldSignal(current, signal, 0),
@@ -83,15 +77,10 @@ beforeEach(() => {
 afterAll(() => resetLocaleStoreForTests())
 
 describe("the export report in another UI language", () => {
-  it("formats both counts of a series run in English", () => {
-    useLanguage("en-US")
-    expect(viewFor(run(RUN), getT("ExportReport")).headline).toBe(
-      "Saved 2 of 5 episodes.",
-    )
-  })
-
   it("formats both counts of a series run in a fixture es catalog", () => {
-    useLanguage("es-ES")
+    mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
+    startLocaleSync()
+    refreshLocale()
     const view = viewFor(run(RUN), getT("ExportReport"))
 
     expect(view.headline).toBe("Se guardaron 2 de 5 episodios.")

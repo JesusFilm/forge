@@ -188,49 +188,9 @@ function makeHarness(options: HarnessOptions = {}) {
   }
 }
 
-// U7 (R4): the offline title refresh writes through the lifecycle, one field
-// set at a time, over the record as it is at write time.
+// U7 (R4): the offline title refresh writes through the lifecycle. The field
+// merge over the current record is pinned in offlineTitleRefresh.test.ts.
 describe("patchTitles", () => {
-  it("writes the titles and their locale, and keeps every other field", async () => {
-    const h = makeHarness({
-      records: [makeRecord({ seriesSlug: "washi", seriesTitle: "Washi" })],
-    })
-    await h.lifecycle.patchTitles("washi-gospel-1", {
-      title: "Васи — серия 1",
-      seriesTitle: "Васи",
-      titleLocale: "ru",
-    })
-    expect(h.records.get("washi-gospel-1")).toEqual(
-      makeRecord({
-        seriesSlug: "washi",
-        title: "Васи — серия 1",
-        seriesTitle: "Васи",
-        titleLocale: "ru",
-      }),
-    )
-  })
-
-  it("patches over the record as it is now, so a state write is kept", async () => {
-    const h = makeHarness({
-      records: [makeRecord({ state: "downloading", bytesWritten: 10 })],
-    })
-    // A state write lands after the refresh read the record, before its patch.
-    h.records.set(
-      "washi-gospel-1",
-      makeRecord({ state: "downloaded", bytesWritten: 1000 }),
-    )
-    await h.lifecycle.patchTitles("washi-gospel-1", {
-      title: "Новое",
-      titleLocale: "ru",
-    })
-    expect(h.records.get("washi-gospel-1")).toMatchObject({
-      state: "downloaded",
-      bytesWritten: 1000,
-      title: "Новое",
-      titleLocale: "ru",
-    })
-  })
-
   it("writes nothing for a record that is gone", async () => {
     const h = makeHarness()
     await h.lifecycle.patchTitles("washi-gospel-1", {
@@ -415,27 +375,20 @@ describe("swap", () => {
   })
 
   // U7: a title and its locale are one pair, so a swap writes both or neither.
-  it("a swap with a new title stores that title's locale", async () => {
-    const h = makeHarness({
-      records: [makeRecord({ title: "English title", titleLocale: "en" })],
-    })
-    const request = makeRequest({
-      title: "Русское название",
-      titleLocale: "ru",
-    })
-    request.rendition = { ...request.rendition, documentId: "rend-2" }
-    expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
-    expect(h.writes[0]).toMatchObject({
-      title: "Русское название",
-      titleLocale: "ru",
-    })
-  })
-
-  it("a swap without a title keeps the old title and its locale", async () => {
-    const h = makeHarness({
-      records: [makeRecord({ title: "Русское название", titleLocale: "ru" })],
-    })
-    const request = makeRequest({ title: "", titleLocale: "en" })
+  it.each([
+    [
+      "with a new title stores that title's locale",
+      { title: "English title", titleLocale: "en" },
+      { title: "Русское название", titleLocale: "ru" },
+    ],
+    [
+      "without a title keeps the old title and its locale",
+      { title: "Русское название", titleLocale: "ru" },
+      { title: "", titleLocale: "en" },
+    ],
+  ])("a swap %s", async (_case, stored, requested) => {
+    const h = makeHarness({ records: [makeRecord(stored)] })
+    const request = makeRequest(requested)
     request.rendition = { ...request.rendition, documentId: "rend-2" }
     expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
     expect(h.writes[0]).toMatchObject({

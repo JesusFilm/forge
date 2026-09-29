@@ -130,7 +130,6 @@ describe("resolveSubtitleActionLabel", () => {
 describe("the off state", () => {
   it("is not a string, so no caller can show it untranslated", () => {
     expect(typeof SUBTITLES_OFF).not.toBe("string")
-    expect(resolveSubtitleActionLabel(false, null, SUBS, null)).not.toBe("Off")
   })
 
   it("becomes the text the render passes in", () => {
@@ -176,17 +175,11 @@ describe("the default subtitle language", () => {
     return { ...sub(languageSlug, languageSlug), languageBcp47 }
   }
 
-  it("follows a Russian phone, the same language as the default audio", () => {
-    setPhone("ru-RU")
-    const union = [track("english", "en"), track("russian", "ru")]
-    expect(reconcileSeriesSubtitleSlug(true, null, union, "en")).toBe("russian")
-    expect(defaultAudioLanguage()?.slug).toBe("russian")
-  })
-
-  it("follows the phone's first language, not the UI fallback", () => {
+  it("follows the phone's first language, the same as the default audio, not the UI fallback", () => {
     setPhone("ha-NG", "en-US")
     const union = [track("english", "en"), track("hausa", "ha")]
     expect(reconcileSeriesSubtitleSlug(true, null, union, "en")).toBe("hausa")
+    expect(defaultAudioLanguage()?.slug).toBe("hausa")
   })
 
   it("picks Traditional Chinese for a zh-Hant-TW phone, whatever the order", () => {

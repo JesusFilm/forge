@@ -90,23 +90,16 @@ function Probe() {
 
 let mounted: TestInstance | null = null
 
+// A fresh element each time: React skips a root update to the same element.
+const tree = () => (
+  <StrictMode>
+    <Probe />
+  </StrictMode>
+)
+
 async function mount() {
   await act(async () => {
-    mounted = TestRenderer.create(
-      <StrictMode>
-        <Probe />
-      </StrictMode>,
-    )
-  })
-}
-
-async function rerender() {
-  await act(async () => {
-    mounted?.update(
-      <StrictMode>
-        <Probe />
-      </StrictMode>,
-    )
+    mounted = TestRenderer.create(tree())
   })
 }
 
@@ -146,41 +139,34 @@ describe("useExperience across a live language change (U6)", () => {
     })
   })
 
-  it("keeps the last good Experience while the new locale loads", async () => {
+  it.each<[string, Record<string, unknown> | null, string]>([
+    [
+      "keeps the last good Experience while the new locale loads",
+      null,
+      "Easter",
+    ],
+    [
+      "renders the en variant when the new locale has none",
+      { experienceBySlug: null, englishExperience: EASTER_EN_FALLBACK },
+      "Easter (en fallback)",
+    ],
+    [
+      "renders the new locale's own Experience once it resolves",
+      { experienceBySlug: EASTER_ES, englishExperience: EASTER_EN },
+      "Pascua",
+    ],
+  ])("%s", async (_name, answer, title) => {
     await mount()
     expect(seen.at(-1)).toBe("Easter")
-
     await changePhone("es-MX")
-
+    if (answer) {
+      mockAnswers.set("es", answer)
+      await act(async () => {
+        mounted?.update(tree())
+      })
+    }
     // Never null in between, or the media route would lose its section.
     expect(seen).not.toContain(null)
-    expect(seen.at(-1)).toBe("Easter")
-  })
-
-  it("renders the en variant when the new locale has none", async () => {
-    await mount()
-    await changePhone("es-MX")
-
-    mockAnswers.set("es", {
-      experienceBySlug: null,
-      englishExperience: EASTER_EN_FALLBACK,
-    })
-    await rerender()
-
-    expect(seen.at(-1)).toBe("Easter (en fallback)")
-    expect(seen).not.toContain(null)
-  })
-
-  it("renders the new locale's own Experience once it resolves", async () => {
-    await mount()
-    await changePhone("es-MX")
-
-    mockAnswers.set("es", {
-      experienceBySlug: EASTER_ES,
-      englishExperience: EASTER_EN,
-    })
-    await rerender()
-
-    expect(seen.at(-1)).toBe("Pascua")
+    expect(seen.at(-1)).toBe(title)
   })
 })

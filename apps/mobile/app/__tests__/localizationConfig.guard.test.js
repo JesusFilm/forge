@@ -126,27 +126,9 @@ describe("expo-localization plugin options (KTD4)", () => {
   })
 
   it.each([
-    ["false", false],
-    ["true", true],
-    ["null", null],
-  ])("rejects a forcesRTL key set to %s (negative control)", (_, value) => {
-    const config = withOptions(expo(), (o) => ({ ...o, forcesRTL: value }))
-    expect(localizationProblems(config, nativeLocales())).toEqual([
-      "remove forcesRTL from the plugin",
-    ])
-  })
-
-  it("rejects a forcesRTL key in expo.extra or ios.infoPlist", () => {
-    const config = clone(expo())
-    config.extra = { ...config.extra, forcesRTL: false }
-    config.ios.infoPlist.ExpoLocalization_forcesRTL = false
-    expect(localizationProblems(config, nativeLocales())).toEqual([
-      "remove forcesRTL from expo.extra",
-      "remove ExpoLocalization_forcesRTL from ios.infoPlist",
-    ])
-  })
-
-  it.each([
+    ["forcesRTL", false, "remove forcesRTL from the plugin"],
+    ["forcesRTL", true, "remove forcesRTL from the plugin"],
+    ["forcesRTL", null, "remove forcesRTL from the plugin"],
     ["supportsRTL", true, "supportsRTL must be false"],
     ["supportsRTL", undefined, "supportsRTL must be false"],
     [
@@ -162,6 +144,16 @@ describe("expo-localization plugin options (KTD4)", () => {
   ])("rejects %s set to %s (negative control)", (key, value, problem) => {
     const config = withOptions(expo(), (o) => ({ ...o, [key]: value }))
     expect(localizationProblems(config, nativeLocales())).toEqual([problem])
+  })
+
+  it("rejects a forcesRTL key in expo.extra or ios.infoPlist", () => {
+    const config = clone(expo())
+    config.extra = { ...config.extra, forcesRTL: false }
+    config.ios.infoPlist.ExpoLocalization_forcesRTL = false
+    expect(localizationProblems(config, nativeLocales())).toEqual([
+      "remove forcesRTL from expo.extra",
+      "remove ExpoLocalization_forcesRTL from ios.infoPlist",
+    ])
   })
 
   it("rejects a missing UIPrefersShowingLanguageSettings (negative control)", () => {

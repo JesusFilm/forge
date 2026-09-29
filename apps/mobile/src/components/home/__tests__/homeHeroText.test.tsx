@@ -1,7 +1,7 @@
 /** U10: the hero's own copy reads the catalog. Insert copy and fallback shelf
  *  titles read it at each read, and the selector rail relabels a card whose
  *  props did not change. Tap names stay the same in both languages. */
-import { act } from "react"
+import { act, type ReactElement } from "react"
 
 jest.mock("expo-image", () => ({ Image: () => null }))
 
@@ -100,6 +100,15 @@ const video: WatchHomeVideoSlide = {
 
 const mounted: TestInstance[] = []
 
+async function mount(element: ReactElement): Promise<TestInstance> {
+  let renderer!: TestInstance
+  await act(async () => {
+    renderer = TestRenderer.create(element)
+  })
+  mounted.push(renderer)
+  return renderer
+}
+
 async function changePhoneLanguage(tag: string) {
   mockGetLocales.mockReturnValue(phoneLocales(tag))
   await act(async () => {
@@ -121,13 +130,15 @@ afterEach(() => {
 afterAll(() => resetLocaleStoreForTests())
 
 describe("the hero's config copy", () => {
-  it("reads the catalog in use at each read", async () => {
+  it("reads the catalog in use at each read, and keeps series names", async () => {
     const welcome = insert("welcome-start")
+    const titles = () => WATCH_HOME_SECTIONS.map((section) => section.title)
     expect(welcome.title).toBe("Today's Video Picks")
     expect(overlayForInsert(welcome, morningNow).title).toBe(
       "Good Morning! Today's Bible Moments Await.",
     )
     expect(insert("join-us").action?.label).toBe("Join Us")
+    expect(titles()[0]).toBe("Discover the full story")
 
     await changePhoneLanguage("es-ES")
 
@@ -138,33 +149,20 @@ describe("the hero's config copy", () => {
     expect(insert("join-us").action?.label).toBe("Únete")
     // A key the fixture lacks falls back to English, never to the key name.
     expect(welcome.label).toBe("Faith & Scripture")
-  })
-
-  it("reads the fallback shelf titles, and keeps series names", async () => {
-    const titles = () => WATCH_HOME_SECTIONS.map((section) => section.title)
-    expect(titles()[0]).toBe("Discover the full story")
-
-    await changePhoneLanguage("es-ES")
-
     expect(titles()[0]).toBe("Descubre la historia completa")
     expect(titles()).toEqual(expect.arrayContaining(["NUA", "NUA Worth"]))
   })
 })
 
 describe("the hero selector rail", () => {
-  async function renderRail(slides: readonly WatchHomeSlide[]) {
-    let renderer!: TestInstance
-    await act(async () => {
-      renderer = TestRenderer.create(
-        <HomeHeroSelectorRail
-          slides={slides}
-          activeIndex={0}
-          onSelectSlide={() => {}}
-        />,
-      )
-    })
-    mounted.push(renderer)
-    return renderer
+  function renderRail(slides: readonly WatchHomeSlide[]) {
+    return mount(
+      <HomeHeroSelectorRail
+        slides={slides}
+        activeIndex={0}
+        onSelectSlide={() => {}}
+      />,
+    )
   }
 
   it("relabels an insert card whose props did not change", async () => {
@@ -203,13 +201,7 @@ describe("the hero selector rail", () => {
 
 describe("the hero pager dots", () => {
   it("name the slide position in the UI language", async () => {
-    let renderer!: TestInstance
-    await act(async () => {
-      renderer = TestRenderer.create(
-        <HomePagerDots count={7} activeIndex={1} />,
-      )
-    })
-    mounted.push(renderer)
+    const renderer = await mount(<HomePagerDots count={7} activeIndex={1} />)
     const label = () =>
       renderer.root.findAll(
         (node: RenderedNode) => node.props.accessible === true,

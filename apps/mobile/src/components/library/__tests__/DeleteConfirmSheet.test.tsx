@@ -66,18 +66,22 @@ import { DeleteConfirmSheet } from "../DeleteConfirmSheet"
 const MB = 1024 * 1024
 const mounted: TestInstance[] = []
 
+function sheet(count: number, visible = true) {
+  return (
+    <DeleteConfirmSheet
+      visible={visible}
+      count={count}
+      combinedBytes={74 * MB}
+      onConfirm={jest.fn()}
+      onCancel={jest.fn()}
+    />
+  )
+}
+
 async function render(count: number): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
-    renderer = TestRenderer.create(
-      <DeleteConfirmSheet
-        visible
-        count={count}
-        combinedBytes={74 * MB}
-        onConfirm={jest.fn()}
-        onCancel={jest.fn()}
-      />,
-    )
+    renderer = TestRenderer.create(sheet(count))
   })
   mounted.push(renderer)
   return renderer
@@ -118,6 +122,23 @@ describe("DeleteConfirmSheet", () => {
     expect(hasText(three, "Delete 3 videos?")).toBe(true)
   })
 
+  it("stays on screen through the close animation, then unmounts", async () => {
+    jest.useFakeTimers()
+    try {
+      const renderer = await render(3)
+      act(() => renderer.update(sheet(3, false)))
+      expect(hasText(renderer, "Delete 3 videos?")).toBe(true)
+
+      // Longer than the sheet's 280 ms close animation.
+      act(() => {
+        jest.advanceTimersByTime(1000)
+      })
+      expect(renderer.toJSON()).toBeNull()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
   it.each([
     [1, "Удалить 1 ролик?"],
     [3, "Удалить 3 ролика?"],
@@ -138,28 +159,18 @@ describe("DeleteConfirmSheet", () => {
 
   it("keeps each tap name when the labels change language", async () => {
     const renderer = await render(3)
-    const english = {
-      delete: tapActionName(pressableByLabel(renderer, "Delete")),
-      cancel: tapActionName(pressableByLabel(renderer, "Cancel")),
-      dismiss: tapActionName(pressableByLabel(renderer, "Dismiss")),
-    }
+    const names = (labels: string[]) =>
+      labels.map((label) => tapActionName(pressableByLabel(renderer, label)))
+    const english = names(["Delete", "Cancel", "Dismiss"])
 
     await changePhoneLanguage("ru-RU")
 
     expect(hasText(renderer, "Удалить 3 ролика?")).toBe(true)
-    expect(tapActionName(pressableByLabel(renderer, "Удалить"))).toBe(
-      english.delete,
-    )
-    expect(tapActionName(pressableByLabel(renderer, "Отмена"))).toBe(
-      english.cancel,
-    )
-    expect(tapActionName(pressableByLabel(renderer, "Закрыть"))).toBe(
-      english.dismiss,
-    )
-    expect(english).toEqual({
-      delete: "library-delete-confirm",
-      cancel: "library-delete-cancel",
-      dismiss: "library-delete-dismiss",
-    })
+    expect(names(["Удалить", "Отмена", "Закрыть"])).toEqual(english)
+    expect(english).toEqual([
+      "library-delete-confirm",
+      "library-delete-cancel",
+      "library-delete-dismiss",
+    ])
   })
 })

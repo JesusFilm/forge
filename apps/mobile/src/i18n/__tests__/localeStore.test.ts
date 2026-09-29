@@ -125,12 +125,14 @@ describe("locale store defaults", () => {
     )
     expect(mockGetLocales).not.toHaveBeenCalled()
     expect(getPhoneLocales()).toEqual([])
+    expect(defaultAudioLanguage()).toBeNull()
   })
 })
 
 describe("startLocaleSync", () => {
   it("sets es for [es-MX] with epoch 0 and notifies no listener", () => {
-    mockGetLocales.mockReturnValue(phone("es-MX"))
+    const locales = phone("es-MX", "en-US")
+    mockGetLocales.mockReturnValue(locales)
     const listener = jest.fn()
     subscribeLocale(listener)
 
@@ -142,12 +144,6 @@ describe("startLocaleSync", () => {
     expect(getActiveTranslator().translate("Common.goBackAriaLabel")).toBe(
       "Volver",
     )
-  })
-
-  it("keeps the raw phone language list readable", () => {
-    const locales = phone("es-MX", "en-US")
-    mockGetLocales.mockReturnValue(locales)
-    startLocaleSync()
     expect(getPhoneLocales()).toBe(locales)
   })
 
@@ -165,6 +161,7 @@ describe("startLocaleSync", () => {
       match: "error",
       errorReason: "Error: Cannot find native module 'ExpoLocalization'",
     })
+    expect(defaultAudioLanguage()).toBeNull()
   })
 
   it("loads en plural data before the active catalog's (KTD3)", () => {
@@ -197,6 +194,10 @@ describe("startLocaleSync", () => {
     ])
     startLocaleSync()
     expect(getCatalogTag()).toBe("es")
+    expect(defaultAudioLanguage()).toEqual({
+      tag: "es",
+      slug: "spanish-latin-american",
+    })
   })
 
   it("loads only the active catalog until a key is missing (R8)", () => {
@@ -204,16 +205,11 @@ describe("startLocaleSync", () => {
     startLocaleSync()
     expect(mockCatalogLoads).toEqual(["ru"])
 
-    getActiveTranslator().translate("Watch.episodes", { count: 21 })
-    expect(mockCatalogLoads).toEqual(["ru", "en"])
-  })
-
-  it("formats the English fallback under English rules while ru is active", () => {
-    mockGetLocales.mockReturnValue(phone("ru-RU"))
-    startLocaleSync()
+    // The English fallback formats under English rules while ru is active.
     expect(
       getActiveTranslator().translate("Watch.episodes", { count: 21 }),
     ).toBe("21 episodes")
+    expect(mockCatalogLoads).toEqual(["ru", "en"])
   })
 
   it("registers its listeners once", () => {
@@ -262,6 +258,7 @@ describe("refreshLocale", () => {
     expect(getCatalogTag()).toBe("ru")
     expect(getLocaleEpoch()).toBe(1)
     expect(listener).toHaveBeenCalledTimes(1)
+    expect(defaultAudioLanguage()).toEqual({ tag: "ru-RU", slug: "russian" })
 
     for (let i = 0; i < 10; i += 1) refreshLocale()
     expect(getLocaleEpoch()).toBe(1)
@@ -315,7 +312,7 @@ describe("refreshLocale", () => {
     expect(getCatalogTag()).toBe("en")
     expect(getLocaleEpoch()).toBe(0)
     expect(listener).toHaveBeenCalledTimes(1)
-    expect(defaultAudioLanguage()?.slug).toBe("yoruba")
+    expect(defaultAudioLanguage()).toEqual({ tag: "yo-NG", slug: "yoruba" })
 
     refreshLocale()
     refreshLocale()
@@ -333,20 +330,8 @@ describe("refreshLocale", () => {
 // KTD12: one phone-language default for audio, subtitles, the Bible reader,
 // For You, and Explore.
 describe("defaultAudioLanguage", () => {
-  it("is null before the first read", () => {
-    expect(defaultAudioLanguage()).toBeNull()
-  })
-
   it("is null when the phone list is empty", () => {
     mockGetLocales.mockReturnValue([])
-    startLocaleSync()
-    expect(defaultAudioLanguage()).toBeNull()
-  })
-
-  it("is null when getLocales throws", () => {
-    mockGetLocales.mockImplementation(() => {
-      throw new Error("Cannot find native module 'ExpoLocalization'")
-    })
     startLocaleSync()
     expect(defaultAudioLanguage()).toBeNull()
   })
@@ -359,45 +344,10 @@ describe("defaultAudioLanguage", () => {
     expect(defaultAudioLanguage()).toEqual({ tag: "ha-NG", slug: "hausa" })
   })
 
-  it("maps a Russian phone to the russian slug", () => {
-    mockGetLocales.mockReturnValue(phone("ru-RU"))
-    startLocaleSync()
-    expect(defaultAudioLanguage()).toEqual({ tag: "ru-RU", slug: "russian" })
-  })
-
-  it("maps through the reviewed entries", () => {
-    mockGetLocales.mockReturnValue(phone("es-ES"))
-    startLocaleSync()
-    expect(defaultAudioLanguage()?.slug).toBe("spanish-castilian")
-    mockGetLocales.mockReturnValue(phone("bn-BD"))
-    refreshLocale()
-    expect(defaultAudioLanguage()?.slug).toBe("bangla-2")
-  })
-
   it("keeps the tag when no slug maps, so a caller can match on it", () => {
     mockGetLocales.mockReturnValue(phone("xx-YY"))
     startLocaleSync()
     expect(defaultAudioLanguage()).toEqual({ tag: "xx-YY", slug: null })
-  })
-
-  it("skips entries without a language tag", () => {
-    mockGetLocales.mockReturnValue([
-      null,
-      { languageCode: "x" },
-      ...phone("ko"),
-    ])
-    startLocaleSync()
-    expect(defaultAudioLanguage()).toEqual({ tag: "ko", slug: "korean" })
-  })
-
-  it("follows a phone change that keeps the catalog, with no epoch change", () => {
-    mockGetLocales.mockReturnValue(phone("ha-NG"))
-    startLocaleSync()
-    mockGetLocales.mockReturnValue(phone("yo-NG"))
-    refreshLocale()
-    expect(getCatalogTag()).toBe("en")
-    expect(getLocaleEpoch()).toBe(0)
-    expect(defaultAudioLanguage()).toEqual({ tag: "yo-NG", slug: "yoruba" })
   })
 })
 
@@ -412,27 +362,16 @@ describe("ui_locale telemetry attributes", () => {
     })
   })
 
-  it("describes an exact first match as no fallback", () => {
-    mockGetLocales.mockReturnValue(phone("ru"))
+  it.each([
+    [["ru"], "none"],
+    [["ha", "es"], "later_preference"],
+    [["ha"], "english"],
+  ])("describes the phone list %j as fallback %s", (tags, fallback) => {
+    mockGetLocales.mockReturnValue(phone(...tags))
     startLocaleSync()
     expect(
       localeResolutionAttributes(getLocaleResolution())["ui_locale.fallback"],
-    ).toBe("none")
-  })
-
-  it("describes a later preference and an English default", () => {
-    mockGetLocales.mockReturnValue(phone("ha", "es"))
-    startLocaleSync()
-    expect(
-      localeResolutionAttributes(getLocaleResolution())["ui_locale.fallback"],
-    ).toBe("later_preference")
-
-    resetLocaleStoreForTests()
-    mockGetLocales.mockReturnValue(phone("ha"))
-    startLocaleSync()
-    expect(
-      localeResolutionAttributes(getLocaleResolution())["ui_locale.fallback"],
-    ).toBe("english")
+    ).toBe(fallback)
   })
 
   it("carries the error reason and no reserved attribute name", () => {

@@ -22,24 +22,21 @@ const SLUG = "birth-of-jesus"
 const ES = "spanish-latin-american"
 const RU = "russian"
 
-function row(id: string, languageSlug: string, title: string) {
-  return {
-    __typename: "VideoLocale" as const,
-    documentId: id,
-    languageSlug,
-    title,
-    description: `${title} description`,
-    snippet: `${title} snippet`,
-    imageAlt: `${title} image`,
-  }
-}
-
 function titleRow(id: string, languageSlug: string, title: string) {
   return {
     __typename: "VideoLocale" as const,
     documentId: id,
     languageSlug,
     title,
+  }
+}
+
+function row(id: string, languageSlug: string, title: string) {
+  return {
+    ...titleRow(id, languageSlug, title),
+    description: `${title} description`,
+    snippet: `${title} snippet`,
+    imageAlt: `${title} image`,
   }
 }
 
@@ -164,6 +161,38 @@ function homeResult(uiRow: ReturnType<typeof row>): WatchHomeVideosData {
 
 const esText = { slug: SLUG, textSlug: ES }
 
+/** A cache-only client whose watch screen holds the Spanish text result. */
+async function watchSpanishText() {
+  const client = new ApolloClient({
+    cache: new InMemoryCache(),
+    link: new ApolloLink(() => {
+      throw new Error("cache-only: no request expected")
+    }),
+  })
+  client.writeQuery({
+    query: GET_VIDEO_TEXT,
+    variables: esText,
+    data: textResult(ES_ROW),
+  })
+  const watch = client.watchQuery({
+    query: GET_VIDEO_TEXT,
+    variables: esText,
+    fetchPolicy: "cache-only",
+  })
+  const emitted: unknown[] = []
+  const subscription = watch.subscribe((result) => emitted.push(result.data))
+  await flush()
+  const writeHome = async (textSlug: string, uiRow: ReturnType<typeof row>) => {
+    client.writeQuery({
+      query: GET_WATCH_HOME_VIDEOS,
+      variables: { coreIds: ["1_jf6101-0-0"], textSlug },
+      data: homeResult(uiRow),
+    })
+    await flush()
+  }
+  return { watch, emitted, subscription, writeHome }
+}
+
 describe("GET_VIDEO_TEXT beside the language-free watch document", () => {
   it("leaves the player-gating read intact after the text write", () => {
     const cache = new InMemoryCache()
@@ -190,76 +219,27 @@ describe("GET_VIDEO_TEXT beside the language-free watch document", () => {
   // same Video entity, and the watch screen's text must not move. The watch
   // screen holds the query's current result, so that is what this observes.
   it("keeps the watch text result object and title after a Home write under ru", async () => {
-    const client = new ApolloClient({
-      cache: new InMemoryCache(),
-      link: new ApolloLink(() => {
-        throw new Error("cache-only: no request expected")
-      }),
-    })
-    client.writeQuery({
-      query: GET_VIDEO_TEXT,
-      variables: esText,
-      data: textResult(ES_ROW),
-    })
-    const watch = client.watchQuery({
-      query: GET_VIDEO_TEXT,
-      variables: esText,
-      fetchPolicy: "cache-only",
-    })
-    const emitted: unknown[] = []
-    const subscription = watch.subscribe((result) => emitted.push(result.data))
-    await flush()
+    const { watch, emitted, subscription, writeHome } = await watchSpanishText()
     const before = watch.getCurrentResult().data
     expect(before?.videoBySlug?.locales?.[0]?.title).toBe(
       "El nacimiento de Jesús",
     )
     const emittedBefore = emitted.length
 
-    client.writeQuery({
-      query: GET_WATCH_HOME_VIDEOS,
-      variables: { coreIds: ["1_jf6101-0-0"], textSlug: RU },
-      data: homeResult(RU_ROW),
-    })
-    await flush()
-    const after = watch.getCurrentResult().data
+    await writeHome(RU, RU_ROW)
 
-    expect(after).toBe(before)
+    expect(watch.getCurrentResult().data).toBe(before)
     expect(emitted).toHaveLength(emittedBefore)
-    expect(after?.videoBySlug?.locales?.[0]?.title).toBe(
-      "El nacimiento de Jesús",
-    )
     subscription.unsubscribe()
   })
 
   // Negative control: a write that DOES change the watch rows is seen, so the
   // case above is not passing on a watcher that never updates.
   it("does see a change to the watch rows themselves (positive control)", async () => {
-    const client = new ApolloClient({
-      cache: new InMemoryCache(),
-      link: new ApolloLink(() => {
-        throw new Error("cache-only: no request expected")
-      }),
-    })
-    client.writeQuery({
-      query: GET_VIDEO_TEXT,
-      variables: esText,
-      data: textResult(ES_ROW),
-    })
-    const watch = client.watchQuery({
-      query: GET_VIDEO_TEXT,
-      variables: esText,
-      fetchPolicy: "cache-only",
-    })
-    const subscription = watch.subscribe(() => {})
-    await flush()
+    const { watch, subscription, writeHome } = await watchSpanishText()
     const before = watch.getCurrentResult().data
 
-    client.writeQuery({
-      query: GET_WATCH_HOME_VIDEOS,
-      variables: { coreIds: ["1_jf6101-0-0"], textSlug: ES },
-      data: homeResult({ ...ES_ROW, title: "Nacimiento (editado)" }),
-    })
-    await flush()
+    await writeHome(ES, { ...ES_ROW, title: "Nacimiento (editado)" })
 
     expect(watch.getCurrentResult().data).not.toBe(before)
     expect(
@@ -379,14 +359,19 @@ function seriesTextWithoutOrder(): DocumentNode {
   return parse(stripped)
 }
 
+function seriesCache() {
+  const cache = new InMemoryCache()
+  cache.writeQuery({
+    query: GET_SERIES_BY_SLUG,
+    variables: { slug: SERIES_SLUG },
+    data: SERIES_RESULT,
+  })
+  return cache
+}
+
 describe("GET_SERIES_TEXT beside the language-free series document", () => {
   it("keeps the episode order in the series read after the text write", () => {
-    const cache = new InMemoryCache()
-    cache.writeQuery({
-      query: GET_SERIES_BY_SLUG,
-      variables: { slug: SERIES_SLUG },
-      data: SERIES_RESULT,
-    })
+    const cache = seriesCache()
     cache.writeQuery({
       query: GET_SERIES_TEXT,
       variables: { slug: SERIES_SLUG, textSlug: ES },
@@ -404,12 +389,7 @@ describe("GET_SERIES_TEXT beside the language-free series document", () => {
   // replaces the list and the series read loses `order`. If this case ever
   // goes green, the relation-shape comment in queries.ts is out of date.
   it("loses the series read when the text write drops `order`", () => {
-    const cache = new InMemoryCache()
-    cache.writeQuery({
-      query: GET_SERIES_BY_SLUG,
-      variables: { slug: SERIES_SLUG },
-      data: SERIES_RESULT,
-    })
+    const cache = seriesCache()
     const withoutOrder = {
       videoBySlug: {
         ...SERIES_TEXT_RESULT.videoBySlug,

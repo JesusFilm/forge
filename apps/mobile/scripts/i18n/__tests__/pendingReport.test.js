@@ -3,36 +3,27 @@
 // The CI job-summary report (KTD8, R17): lines, never a failure.
 const childProcess = require("child_process")
 const fs = require("fs")
-const os = require("os")
 const path = require("path")
-const ops = require("../lib/catalogOps")
+const {
+  removeTempDirs,
+  tempDir,
+  writeJson,
+} = require("./fixtures/workspace.cjs")
 
 const REPORT = path.join(__dirname, "..", "pending-report.mjs")
-const roots = []
 
-afterAll(() => {
-  for (const root of roots) fs.rmSync(root, { recursive: true, force: true })
-})
-
-function writeJson(file, value) {
-  fs.mkdirSync(path.dirname(file), { recursive: true })
-  fs.writeFileSync(file, ops.renderJson(value))
-}
+afterAll(removeTempDirs)
 
 function fixture({
   policy,
   nativeLocales = ["en", "es"],
   webTags = ["en", "es", "fr", "de"],
 } = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pending-report-"))
-  roots.push(root)
+  const root = tempDir()
   const mobile = path.join(root, "mobile")
-  writeJson(path.join(mobile, "messages/en.json"), {
-    Common: { back: "Go back", next: "Next" },
-  })
-  writeJson(path.join(mobile, "messages/es.json"), {
-    Common: { back: "Go back", next: "Next" },
-  })
+  const english = { Common: { back: "Go back", next: "Next" } }
+  writeJson(path.join(mobile, "messages/en.json"), english)
+  writeJson(path.join(mobile, "messages/es.json"), english)
   writeJson(path.join(mobile, "messages/fr.json"), {
     Common: { back: "Retour", next: "Next" },
   })

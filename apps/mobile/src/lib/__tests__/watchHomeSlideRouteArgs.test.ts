@@ -42,14 +42,11 @@ describe("slideRouteArgs", () => {
   })
 
   // KTD15: Watch Now routes on the raw kind; the label is catalog text.
-  it("passes the raw label kind through for routing", () => {
+  it("passes the raw label kind through for routing, absent as null", () => {
     expect(
       slideRouteArgs(videoSlide({ label: "Serie", rawLabel: "SERIES" }))
         .rawLabel,
     ).toBe("SERIES")
-  })
-
-  it("reads an absent raw label as null", () => {
     expect(slideRouteArgs(videoSlide()).rawLabel).toBeNull()
   })
 

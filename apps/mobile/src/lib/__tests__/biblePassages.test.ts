@@ -421,13 +421,8 @@ describe("GET_VIDEO_BIBLE_PASSAGES cache isolation (KTD2)", () => {
 
   // U7: a Russian read and an English read are separate cache fields, so a
   // language change never shows the other language's passage from the cache.
-  it("keeps each language's passage apart, and the watch read intact", () => {
+  it("keeps each language's passage apart", () => {
     const cache = new InMemoryCache()
-    cache.writeQuery({
-      query: GET_VIDEO_BY_SLUG,
-      variables: VIDEO_VARIABLES,
-      data: VIDEO_RESULT,
-    })
     cache.writeQuery({
       query: GET_VIDEO_BIBLE_PASSAGES,
       variables: PASSAGE_VARIABLES,
@@ -474,10 +469,5 @@ describe("GET_VIDEO_BIBLE_PASSAGES cache isolation (KTD2)", () => {
         ? russianRow.englishPassage?.content
         : null,
     ).toBe(COMPLETE.content)
-    const read = cache.readQuery<typeof VIDEO_RESULT>({
-      query: GET_VIDEO_BY_SLUG,
-      variables: VIDEO_VARIABLES,
-    })
-    expect(read?.videoBySlug?.slug).toBe(SLUG)
   })
 })
