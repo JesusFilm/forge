@@ -2,11 +2,8 @@ import type { PrismaClient } from "@prisma/client"
 import { COWATCH_FROZEN_TRIAL_MODE } from "../cowatch/trial-authority.service"
 import { runRecommendationRetrievalQuery } from "../delivery-runtime"
 import { composeMmrSlate, MMR_SLATE_POLICY_VERSION } from "./mmr"
-import {
-  compositionDigest,
-  hasMissingInput,
-  compositionInputAvailability,
-} from "./policy"
+import { compositionDigest } from "./policy"
+import { composeStructurallyValidMmrSlate } from "./live-structure"
 import {
   resolveCompositionQualification,
   type CompositionBinding,
@@ -70,37 +67,15 @@ export async function composeAuthorizedMmrSlate(input: {
     },
   })
   if (Date.now() >= input.deadlineMs) return fallback("composition_deadline")
-  if (input.slate.editorial)
-    return fallback("editorial_adapter_outside_supported_subset")
-  if (
-    input.binding.composerVersion !== MMR_SLATE_POLICY_VERSION ||
-    (input.slate.policyVersion &&
-      input.slate.policyVersion !== MMR_SLATE_POLICY_VERSION)
-  )
-    return fallback("composition_version_mismatch")
-  if (
-    input.slate.ordered
-      .slice(0, 64)
-      .some((candidate) =>
-        candidate.nominations.some(
-          (nomination) =>
-            nomination.source.generator === "directional-cowatch" &&
-            (!input.binding.cowatchGenerationId ||
-              nomination.source.generatorVersion !==
-                COWATCH_FROZEN_TRIAL_MODE ||
-              nomination.source.evidence.generation !==
-                input.binding.cowatchGenerationId),
-        ),
-      )
-  )
-    return fallback("composition_candidate_graph_mismatch")
-  const result = composeMmrSlate(input.slate)
-  if (
-    hasMissingInput(
-      compositionInputAvailability(result, input.historyAvailable),
-    )
-  )
-    return fallback("composition_required_input_unavailable")
+  const structural = composeStructurallyValidMmrSlate({
+    slate: input.slate,
+    historyAvailable: input.historyAvailable,
+    composerVersion: input.binding.composerVersion,
+    graphGenerationId: input.binding.cowatchGenerationId,
+    graphGeneratorVersion: COWATCH_FROZEN_TRIAL_MODE,
+  })
+  if (structural.status !== "composed") return fallback(structural.reason)
+  const result = structural.result
   let authority: CompositionStudyAuthority | null
   const contextDigest = compositionDigest(input.slate.context)
   try {

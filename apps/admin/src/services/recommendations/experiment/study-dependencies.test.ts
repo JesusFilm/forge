@@ -83,12 +83,18 @@ function harness() {
     binding = studyCowatchBinding(p, identity)!
   const authority = {
     bindingDigest: cowatchTrialBindingDigest(binding),
+    ownerInfluenceFloorGeneration: 0,
     revokedAt: null as Date | null,
     qualifiedAt: new Date("2026-10-04T12:00:00Z"),
     dependencyExpiresAt: new Date("2026-10-10T00:00:00Z"),
     trialValidUntil: new Date(horizon),
   }
   const tx = {
+    recommendationPromotionPointer: {
+      findUnique: vi
+        .fn()
+        .mockResolvedValue({ ownerInfluenceFloorGeneration: 0 }),
+    },
     recommendationCowatchTrialAuthority: {
       findUnique: vi.fn().mockResolvedValue(authority),
     },
@@ -105,6 +111,15 @@ function harness() {
   return { p, authority, tx }
 }
 describe("exact study dependency authority", () => {
+  it("rejects cached authority after the influence floor advances", async () => {
+    const { p, tx } = harness()
+    tx.recommendationPromotionPointer.findUnique.mockResolvedValue({
+      ownerInfluenceFloorGeneration: 1,
+    })
+    expect(
+      await readStudyDependencies(tx as never, p, identity, new Date(start)),
+    ).toBeNull()
+  })
   it("binds the complete incumbent and combined treatment policies", () => {
     const p = protocol()
     expect(

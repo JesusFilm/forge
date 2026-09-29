@@ -1,3 +1,4 @@
+import { ownerReleaseInfluenceAllowedSql } from "../promotion/owner-influence"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import {
@@ -404,6 +405,7 @@ export async function loadDatabaseProfileProjectionEvidence(
             SELECT 1 FROM recommendation_promotion_slate_fence fence
             WHERE fence.request_id = outcome.request_id
           )
+          AND ${ownerReleaseInfluenceAllowedSql(Prisma.sql`outcome.request_id`)}
         ORDER BY outcome.created_at DESC, outcome.id
         LIMIT 64
       `)
@@ -475,6 +477,7 @@ export async function loadDatabaseProfileProjectionEvidence(
             SELECT 1 FROM recommendation_promotion_slate_fence fence
             WHERE fence.request_id = episode.request_id
           )
+          AND ${ownerReleaseInfluenceAllowedSql(Prisma.sql`outcome.request_id`)}
         ORDER BY outcome.created_at DESC, outcome.id
         LIMIT 64
       `)

@@ -1,3 +1,4 @@
+import { ownerReleaseInfluenceAllowed } from "./promotion/owner-influence"
 import { createHash, randomUUID } from "node:crypto"
 import {
   Prisma,
@@ -101,6 +102,8 @@ export class RecommendationIntegrityService {
               },
               request: {
                 select: {
+                  id: true,
+                  ownerReleaseId: true,
                   promotionSlateFence: {
                     select: { reasonCode: true, fencedAt: true },
                   },
@@ -135,31 +138,37 @@ export class RecommendationIntegrityService {
             outcome.episode.finalizedAt,
             outcome.request?.promotionSlateFence?.fencedAt,
           ])
-          const decision = outcome.request?.promotionSlateFence
-            ? rollbackFencedDecision()
-            : outcome.classifierVersion !== ACTIVE_WATCH_PROXY_VERSION ||
-                outcome.episode.state !==
-                  RecommendationEpisodeState.FINALIZED ||
-                outcome.episode.finalizedAt == null
-              ? excludedDecision("finalized_active_watch_outcome_required")
-              : legacyReplayRequiresProof && !replayProofComplete
-                ? excludedDecision("legacy_transport_receipt_evidence_missing")
-                : decideRecommendationEligibility({
-                    sourceType: "playback_outcome",
-                    actorClass: "human_anonymous",
-                    qualifiedView: outcome.qualifiedView,
-                    baseWeight: outcome.viewQualityWeight ?? 0,
-                    late: outcome.episode.facts.some((fact) => fact.late),
-                    // Playback exact-payload replays are acknowledgement recovery,
-                    // not evidence tampering. Same-ID/different-payload facts are
-                    // represented by conflictCount and remain fail-closed.
-                    replayCount: outcome.episode.replayCount,
-                    conflictCount: outcome.episode.conflictCount,
-                    contributionOrdinal: measures.contributionOrdinal,
-                    distinctAnonymousSupport: measures.distinctSupport,
-                    identityConcentration: measures.identityConcentration,
-                    superseded: outcome.supersededBy != null,
-                  })
+          const directInfluenceAllowed = outcome.request
+            ? await ownerReleaseInfluenceAllowed(tx, outcome.request)
+            : true
+          const decision =
+            outcome.request?.promotionSlateFence || !directInfluenceAllowed
+              ? rollbackFencedDecision()
+              : outcome.classifierVersion !== ACTIVE_WATCH_PROXY_VERSION ||
+                  outcome.episode.state !==
+                    RecommendationEpisodeState.FINALIZED ||
+                  outcome.episode.finalizedAt == null
+                ? excludedDecision("finalized_active_watch_outcome_required")
+                : legacyReplayRequiresProof && !replayProofComplete
+                  ? excludedDecision(
+                      "legacy_transport_receipt_evidence_missing",
+                    )
+                  : decideRecommendationEligibility({
+                      sourceType: "playback_outcome",
+                      actorClass: "human_anonymous",
+                      qualifiedView: outcome.qualifiedView,
+                      baseWeight: outcome.viewQualityWeight ?? 0,
+                      late: outcome.episode.facts.some((fact) => fact.late),
+                      // Playback exact-payload replays are acknowledgement recovery,
+                      // not evidence tampering. Same-ID/different-payload facts are
+                      // represented by conflictCount and remain fail-closed.
+                      replayCount: outcome.episode.replayCount,
+                      conflictCount: outcome.episode.conflictCount,
+                      contributionOrdinal: measures.contributionOrdinal,
+                      distinctAnonymousSupport: measures.distinctSupport,
+                      identityConcentration: measures.identityConcentration,
+                      superseded: outcome.supersededBy != null,
+                    })
 
           const inputDigest = eligibilityInputDigest({
             sourceType: "playback_outcome",
@@ -179,6 +188,7 @@ export class RecommendationIntegrityService {
             superseded: outcome.supersededBy != null,
             promotionFence:
               outcome.request?.promotionSlateFence?.reasonCode ?? null,
+            directInfluenceAllowed,
             measures,
             decision,
           })
@@ -217,6 +227,8 @@ export class RecommendationIntegrityService {
             include: {
               request: {
                 select: {
+                  id: true,
+                  ownerReleaseId: true,
                   promotionSlateFence: {
                     select: { reasonCode: true, fencedAt: true },
                   },
@@ -231,22 +243,26 @@ export class RecommendationIntegrityService {
           }
           const measures = await measureActionSource(tx, action)
           const actorClass = enumToken(action.actorClass)
-          const decision = action.request?.promotionSlateFence
-            ? rollbackFencedDecision()
-            : decideRecommendationEligibility({
-                sourceType: "content_action",
-                actorClass,
-                qualifiedView: true,
-                baseWeight: actionWeight(enumToken(action.actionClass)),
-                late: action.late,
-                replayCount: action.replayCount,
-                conflictCount: action.conflictCount,
-                contributionOrdinal: measures.contributionOrdinal,
-                distinctAnonymousSupport: measures.distinctSupport,
-                identityConcentration: measures.identityConcentration,
-                actionClass: enumToken(action.actionClass),
-                actionDetail: action.actionDetail,
-              })
+          const directInfluenceAllowed = action.request
+            ? await ownerReleaseInfluenceAllowed(tx, action.request)
+            : true
+          const decision =
+            action.request?.promotionSlateFence || !directInfluenceAllowed
+              ? rollbackFencedDecision()
+              : decideRecommendationEligibility({
+                  sourceType: "content_action",
+                  actorClass,
+                  qualifiedView: true,
+                  baseWeight: actionWeight(enumToken(action.actionClass)),
+                  late: action.late,
+                  replayCount: action.replayCount,
+                  conflictCount: action.conflictCount,
+                  contributionOrdinal: measures.contributionOrdinal,
+                  distinctAnonymousSupport: measures.distinctSupport,
+                  identityConcentration: measures.identityConcentration,
+                  actionClass: enumToken(action.actionClass),
+                  actionDetail: action.actionDetail,
+                })
           const evidenceWatermark = latestDate([
             action.receivedAt,
             action.request?.promotionSlateFence?.fencedAt,
@@ -262,6 +278,7 @@ export class RecommendationIntegrityService {
             conflictCount: action.conflictCount,
             promotionFence:
               action.request?.promotionSlateFence?.reasonCode ?? null,
+            directInfluenceAllowed,
             measures,
             decision,
           })
@@ -302,6 +319,8 @@ export class RecommendationIntegrityService {
                 select: {
                   sessionDigest: true,
                   surfaceVersion: true,
+                  id: true,
+                  ownerReleaseId: true,
                   promotionSlateFence: {
                     select: { reasonCode: true, fencedAt: true },
                   },
@@ -360,22 +379,26 @@ export class RecommendationIntegrityService {
             selection.attributionEligibleAt != null &&
             impression.expiresAt >= selection.attributionEligibleAt &&
             impression.expiresAt > now
-          const decision = selection.request.promotionSlateFence
-            ? rollbackFencedDecision()
-            : !hasEligibleImpression
-              ? excludedDecision("eligible_impression_required")
-              : decideRecommendationEligibility({
-                  sourceType: "selection",
-                  actorClass: "human_anonymous",
-                  qualifiedView: true,
-                  baseWeight: 1,
-                  late: false,
-                  replayCount: 0,
-                  conflictCount,
-                  contributionOrdinal: measures.contributionOrdinal,
-                  distinctAnonymousSupport: measures.distinctSupport,
-                  identityConcentration: measures.identityConcentration,
-                })
+          const directInfluenceAllowed = selection.request
+            ? await ownerReleaseInfluenceAllowed(tx, selection.request)
+            : true
+          const decision =
+            selection.request.promotionSlateFence || !directInfluenceAllowed
+              ? rollbackFencedDecision()
+              : !hasEligibleImpression
+                ? excludedDecision("eligible_impression_required")
+                : decideRecommendationEligibility({
+                    sourceType: "selection",
+                    actorClass: "human_anonymous",
+                    qualifiedView: true,
+                    baseWeight: 1,
+                    late: false,
+                    replayCount: 0,
+                    conflictCount,
+                    contributionOrdinal: measures.contributionOrdinal,
+                    distinctAnonymousSupport: measures.distinctSupport,
+                    identityConcentration: measures.identityConcentration,
+                  })
           const evidenceWatermark = latestDate([
             selection.receivedAt,
             selection.attributionEligibleAt,
@@ -393,6 +416,7 @@ export class RecommendationIntegrityService {
             conflictCount,
             promotionFence:
               selection.request.promotionSlateFence?.reasonCode ?? null,
+            directInfluenceAllowed,
             measures,
             decision,
           })

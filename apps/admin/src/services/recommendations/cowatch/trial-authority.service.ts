@@ -123,6 +123,13 @@ export async function qualifyCowatchTrialAuthority(
       await tx.$executeRaw`SET LOCAL statement_timeout = '5000ms'`
       await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`
       await tx.$queryRaw`SELECT id FROM recommendation_cowatch_generation WHERE id = ${binding.graphGenerationId} FOR UPDATE`
+      // Legacy rollback owns the pointer before slate-fence triggers acquire
+      // graph locks. Refuse qualification immediately so rollback can proceed.
+      await tx.$queryRaw`SELECT id FROM recommendation_promotion_pointer WHERE id = 'recommendation-promotion-pointer' FOR SHARE NOWAIT`
+      const promotion = await tx.recommendationPromotionPointer.findUnique({
+        where: { id: "recommendation-promotion-pointer" },
+      })
+      if (!promotion) return refuse("cowatch_authority_unqualified")
       const generation = await tx.recommendationCowatchGeneration.findUnique({
         where: { id: binding.graphGenerationId },
       })
@@ -147,6 +154,12 @@ export async function qualifyCowatchTrialAuthority(
         where: { generationId: generation.id },
       })
       if (existing?.revokedAt) return refuse("cowatch_generation_invalidated")
+      if (
+        existing &&
+        existing.ownerInfluenceFloorGeneration !==
+          promotion.ownerInfluenceFloorGeneration
+      )
+        return refuse("cowatch_authority_mismatch")
       if (existing)
         return existing.bindingDigest === bindingDigest
           ? { status: "unchanged" as const, authority: existing }
@@ -232,6 +245,8 @@ export async function qualifyCowatchTrialAuthority(
       const authority = await tx.recommendationCowatchTrialAuthority.create({
         data: {
           generationId: generation.id,
+          ownerInfluenceFloorGeneration:
+            promotion.ownerInfluenceFloorGeneration,
           bindingDigest,
           binding: cowatchTrialBindingRecord(binding),
           dependencyExpiresAt,
@@ -254,7 +269,9 @@ export async function qualifyCowatchTrialAuthority(
 export async function readCowatchTrialAuthority(
   db: Pick<
     Prisma.TransactionClient,
-    "recommendationCowatchTrialAuthority" | "recommendationCowatchGeneration"
+    | "recommendationCowatchTrialAuthority"
+    | "recommendationCowatchGeneration"
+    | "recommendationPromotionPointer"
   >,
   binding: CowatchTrialBinding,
   now: Date,
@@ -273,6 +290,15 @@ export async function readCowatchTrialAuthority(
     where: { generationId: binding.graphGenerationId },
   })
   if (!authority) return refuse("cowatch_authority_unqualified")
+  const promotion = await db.recommendationPromotionPointer.findUnique({
+    where: { id: "recommendation-promotion-pointer" },
+  })
+  if (
+    !promotion ||
+    authority.ownerInfluenceFloorGeneration !==
+      promotion.ownerInfluenceFloorGeneration
+  )
+    return refuse("cowatch_authority_mismatch")
   if (authority.bindingDigest !== cowatchTrialBindingDigest(binding))
     return refuse("cowatch_authority_mismatch")
   const generation = await db.recommendationCowatchGeneration.findUnique({
@@ -300,6 +326,7 @@ export async function lockCowatchTrialAuthorityForIssuance(
     | "$queryRaw"
     | "recommendationCowatchTrialAuthority"
     | "recommendationCowatchGeneration"
+    | "recommendationPromotionPointer"
   >,
   binding: CowatchTrialBinding,
   now: Date,
