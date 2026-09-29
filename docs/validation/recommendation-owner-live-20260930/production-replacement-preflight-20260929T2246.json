@@ -1,0 +1,78 @@
+{
+  "mode": "preflight",
+  "expectedRuntimeCommit": "4455fa50e18902d326b64ec4abcd8285ab0574de",
+  "remoteProgramSha256": "2effef8c1d3340082a87185e2d8e58d84b7c52f7a062c9f3bceca141e290d70f",
+  "pinsSha256": "c68a2d9a5242f7a7e5bcbaf26d2687fde1c97f9c848057b1036f36a9c92fb93b",
+  "automaticRetryPermitted": false,
+  "activationAuthority": false,
+  "publicationAuthority": false,
+  "sourceWindow": {
+    "evaluationAsOf": "2026-09-29T19:00:00.000Z",
+    "version": "episode-event-window-v1",
+    "windowEnd": "2026-09-29T19:00:00.000Z",
+    "windowStart": "2026-09-22T19:00:00.000Z"
+  },
+  "executed": true,
+  "dispatchExpiresAt": "2026-09-29T22:48:31.487Z",
+  "startedAt": "2026-09-29T22:46:31.487999+00:00",
+  "transportExitCode": 0,
+  "rawTransportStdoutWithheld": true,
+  "rawTransportStderrWithheld": true,
+  "status": "completed",
+  "receipt": {
+    "probe": "forge_owner_post_stop_preflight_broker",
+    "status": "completed",
+    "attemptId": "c806ab0b-dca6-4fcc-bca4-82b6cc4237d2",
+    "runtimeCommit": "4455fa50e18902d326b64ec4abcd8285ab0574de",
+    "scopeSha256": "6c7e135a21fcef490a84fc396c880173d836ef558776535328da9de0d995391a",
+    "dispatchExpiresAt": "2026-09-29T22:48:31.487Z",
+    "childExitCode": 0,
+    "timedOut": false,
+    "aggregateReceipt": {
+      "status": "ready",
+      "terminalDecision": "no_promotion",
+      "decisionReason": "complete_bounded_population_preflight",
+      "generation": "aabb668443e4152c03f0052b6f80123595d101a2c10180ce861098a2afdcd98f",
+      "rawSourceCount": 39551,
+      "sourceCount": 6680,
+      "attemptedPairCount": 42060,
+      "contributionCount": 35632,
+      "edgeCount": 9000,
+      "publicationRowCount": 51313,
+      "supportedEdgeCount": 613,
+      "rawSourceCountIsLowerBound": false,
+      "sourceWindow": {
+        "evaluationAsOf": "2026-09-29T19:00:00.000Z",
+        "version": "episode-event-window-v1",
+        "windowEnd": "2026-09-29T19:00:00.000Z",
+        "windowStart": "2026-09-22T19:00:00.000Z"
+      },
+      "publishedAt": null,
+      "graphRowJsonBytes": {
+        "sources": {
+          "maximum": 863,
+          "total": 5461462
+        },
+        "contributions": {
+          "maximum": 541,
+          "total": 18788550
+        },
+        "edges": {
+          "maximum": 507,
+          "total": 4398777
+        }
+      }
+    },
+    "rawStdoutWithheld": true,
+    "rawStderrWithheld": true,
+    "stdoutBytes": 739,
+    "stderrBytes": 0,
+    "stdoutCaptureTruncated": false,
+    "automaticRetryPermitted": false,
+    "activationPerformed": false,
+    "readOnlyPreflight": true,
+    "publicationPerformed": false,
+    "admissionFileCreated": false
+  },
+  "endedAt": "2026-09-29T22:46:42.288857+00:00"
+}

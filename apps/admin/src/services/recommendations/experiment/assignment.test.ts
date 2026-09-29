@@ -9,6 +9,7 @@ import {
   HYBRID_PERSONALIZED_MANIFEST,
   recommendationManifestDigest,
 } from "../promotion/manifest"
+import { parseStudyProtocol, studyProtocolDigest } from "./study-protocol"
 
 const experiment = {
   id: "semantic-aa-v1",
@@ -59,6 +60,7 @@ function harness(existing: ExperimentAssignmentContext | null = null) {
       }
     : null
   const prisma = {
+    $queryRaw: vi.fn().mockResolvedValue([]),
     recommendationExperiment: {
       findFirst: vi.fn().mockResolvedValue(experiment),
     },
@@ -148,12 +150,48 @@ const hybridExperiment = {
 describe("resolveExperimentAssignment", () => {
   it("assigns A/A by profile generation and keeps the assignment across sessions and later sparse inputs", async () => {
     const { prisma, assignment } = harness()
+    const protocol = parseStudyProtocol({
+      version: "profile-study-governance-v1",
+      studyId: experiment.id,
+      mode: "calibration",
+      comparison: "semantic-aa",
+      identity: "anonymous-profile-generation-v1",
+      surface: experiment.surfaceVersion,
+      cohort: "human-en-english-durable-v1",
+      controlManifestId: experiment.controlManifestId,
+      challengerManifestId: experiment.challengerManifestId,
+      controlManifestDigest: recommendationManifestDigest(
+        experiment.controlManifest,
+      ),
+      challengerManifestDigest: recommendationManifestDigest(
+        experiment.challengerManifest,
+      ),
+      incumbentExecution: "hybrid_personalized",
+      controlExecution: "semantic_contextual",
+      admissionBps: 10_000,
+      challengerProbability: 0.5,
+      startsAt: "2026-08-19T00:00:00.000Z",
+      endsAt: "2026-08-21T00:00:00.000Z",
+      expiresAt: "2026-09-10T00:00:00.000Z",
+      stoppingRule: "fixed-enrollment-window-v1",
+      plannedAssignmentsPerArm: 200,
+      minimumUsefulDelta: null,
+      evidenceMaxAgeHours: 24,
+      calibrationEvaluationId: null,
+    })
     prisma.recommendationExperiment.findFirst.mockResolvedValue({
       ...experiment,
+      configurationDigest: studyProtocolDigest(protocol),
       assignmentPolicyVersion: PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION,
       outcomePolicyVersion: PROFILE_USEFULNESS_OUTCOME_POLICY_VERSION,
-      startsAt: new Date("2026-08-19T00:00:00Z"),
-      endsAt: new Date("2026-08-21T00:00:00Z"),
+      startsAt: new Date(protocol.startsAt),
+      endsAt: new Date(protocol.endsAt),
+      expiresAt: new Date(protocol.expiresAt),
+      study: {
+        protocol,
+        protocolDigest: studyProtocolDigest(protocol),
+        activatedAt: new Date("2026-08-18T12:00:00Z"),
+      },
     })
     prisma.recommendationProfile.findFirst.mockResolvedValue({
       id: "profile-1",
@@ -164,6 +202,22 @@ describe("resolveExperimentAssignment", () => {
       profileTokenDigest: "d".repeat(64),
       profileUsefulness: { eligibleForEnrollment: true },
     }
+    const configured = await prisma.recommendationExperiment.findFirst()
+    assignment.create.mockImplementation(async ({ data }) => {
+      const created = { ...data, state: "ACTIVE" }
+      assignment.findUnique.mockResolvedValue({
+        ...created,
+        profile: {
+          id: "profile-1",
+          state: "ACTIVE",
+          choice: "DURABLE_ALLOWED",
+          privacyGeneration: 2,
+          expiresAt: new Date(protocol.expiresAt),
+        },
+        experiment: { ...configured, state: "ACTIVE" },
+      } as never)
+      return created
+    })
     const first = await resolveExperimentAssignment(prisma as never, args)
     const created = assignment.create.mock.calls[0]?.[0].data
     expect(created).toMatchObject({
@@ -198,6 +252,26 @@ describe("resolveExperimentAssignment", () => {
       }),
     ).toMatchObject({ assignment: null, bypassReason: "cohort_ineligible" })
     expect(assignment.create).toHaveBeenCalledOnce()
+  })
+
+  it("refuses profile enrollment without an activated immutable study", async () => {
+    const { prisma, assignment } = harness()
+    prisma.recommendationExperiment.findFirst.mockResolvedValue({
+      ...experiment,
+      assignmentPolicyVersion: PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION,
+      outcomePolicyVersion: PROFILE_USEFULNESS_OUTCOME_POLICY_VERSION,
+      startsAt: new Date("2026-08-19T00:00:00Z"),
+      endsAt: new Date("2026-08-21T00:00:00Z"),
+      study: null,
+    })
+    expect(
+      await resolveExperimentAssignment(prisma as never, {
+        ...base,
+        profileTokenDigest: "d".repeat(64),
+        profileUsefulness: { eligibleForEnrollment: true },
+      }),
+    ).toMatchObject({ assignment: null, bypassReason: "cohort_ineligible" })
+    expect(assignment.create).not.toHaveBeenCalled()
   })
 
   it("does not enroll a cold profile or mix the legacy session A/A with profile comparison", async () => {

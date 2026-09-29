@@ -1,0 +1,31 @@
+{
+  "observedDateUTC": "2026-09-29",
+  "runtimeCommit": "3abde2aa564e30c16631979b5d9403fc4c265403",
+  "browser": {
+    "authenticatedRoleDisplayed": "ADMIN",
+    "pointerGeneration": 1,
+    "stage": "CONTROL",
+    "confirmation": "in_page_confirm_clicked",
+    "responseMessage": "Your role is not authorized for this decision.",
+    "committedStopAuditVisible": false
+  },
+  "unauthenticatedDiagnostic": {
+    "method": "POST",
+    "url": "https://admin.jesusfilm.org/api/recommendations/promotion",
+    "headers": {
+      "Origin": "https://admin.jesusfilm.org",
+      "Content-Type": "application/json",
+      "x-forge-csrf": "recommendation-promotion-v1"
+    },
+    "body": {},
+    "cookiesSent": false,
+    "httpStatus": 403,
+    "response": {
+      "ok": false,
+      "error": "csrf_failed"
+    }
+  },
+  "interpretation": "The canonical-origin request is rejected by the CSRF guard before authentication. The UI conflates this with permission denial. Request.url origin is transport-derived; use the configured canonical Admin origin without trusting forwarded headers.",
+  "graphPublished": false,
+  "ownerReleaseActivated": false
+}

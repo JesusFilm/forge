@@ -1,0 +1,55 @@
+{
+  "without-study-panel": {
+    "samples": [
+      {
+        "dcl": 549,
+        "load": 550.4000000357628,
+        "studyRequests": 0
+      },
+      {
+        "dcl": 193.30000001192093,
+        "load": 194.60000002384183,
+        "studyRequests": 0
+      },
+      {
+        "dcl": 149.80000001192093,
+        "load": 150.9000000357628,
+        "studyRequests": 0
+      },
+      {
+        "dcl": 146.30000001192093,
+        "load": 147.80000001192093,
+        "studyRequests": 0
+      }
+    ],
+    "medianDcl": 171.55000001192093,
+    "medianLoad": 172.75000002980232
+  },
+  "with-study-panel": {
+    "samples": [
+      {
+        "dcl": 166.4000000357628,
+        "load": 167.70000004768372,
+        "studyRequests": 0
+      },
+      {
+        "dcl": 135.70000004768372,
+        "load": 137.20000004768372,
+        "studyRequests": 0
+      },
+      {
+        "dcl": 142.80000001192093,
+        "load": 144,
+        "studyRequests": 0
+      },
+      {
+        "dcl": 139.79999995231628,
+        "load": 141.19999998807907,
+        "studyRequests": 0
+      }
+    ],
+    "medianDcl": 141.2999999821186,
+    "medianLoad": 142.59999999403954
+  },
+  "fixture": "Owned disposable database; optimized production build; 4 warm navigations each; no production or maximum-scale claim."
+}

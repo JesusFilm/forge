@@ -8,6 +8,10 @@ import { describe, expect, it, vi } from "vitest"
 import type { CandidateNomination } from "../candidate"
 import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 import {
+  COWATCH_MMR_SHADOW_SAMPLING_VERSION,
+  COWATCH_MMR_TRIAL_MANIFEST_ID,
+} from "../promotion/manifest"
+import {
   claimNextShadowRun,
   completeShadowEvaluation,
   executeClaimedShadowRun,
@@ -15,13 +19,19 @@ import {
   sampleShadowEvaluationContexts,
 } from "./service"
 
+vi.mock("../composition/service", () => ({
+  persistCompositionObservation: vi.fn(),
+}))
+
 const NOW = new Date("2026-08-25T10:00:00.000Z")
 const EXPIRES = new Date("2026-09-20T10:00:00.000Z")
 
 function liveItem(targetMediaId: string, position: number) {
   return {
+    id: `item-${targetMediaId}`,
     targetMediaId,
     position,
+    candidateProvenance: {},
     presentation: {
       videoSlug: targetMediaId,
       videoTitle: targetMediaId,
@@ -97,6 +107,7 @@ function claimedRun(overrides: Record<string, unknown> = {}) {
       seedMediaId: "seed-media",
       locale: "en",
       expectedItemCount: 2,
+      servedItemPayload: null,
       items: [liveItem("video-a", 0), liveItem("video-b", 1)],
     },
     projectionProfile: null,
@@ -105,6 +116,58 @@ function claimedRun(overrides: Record<string, unknown> = {}) {
 }
 
 describe("shadow evaluation service", () => {
+  it("refuses a mismatched trial sampling contract and preserves its first sampled population on retry", async () => {
+    const evaluation = {
+      id: "trial",
+      manifestId: COWATCH_MMR_TRIAL_MANIFEST_ID,
+      state: RecommendationShadowEvaluationState.ACTIVE,
+      generation: 1,
+      samplingVersion: "stable-request-hash-v1",
+    }
+    const tx = {
+      recommendationShadowEvaluation: {
+        findUnique: vi.fn(async () => evaluation),
+        findUniqueOrThrow: vi.fn(async () => ({
+          ...evaluation,
+          sampledAt: NOW,
+          sampledCount: 2,
+        })),
+      },
+      recommendationShadowRun: {
+        count: vi.fn(async () => 2),
+        createMany: vi.fn(),
+      },
+      $queryRaw: vi.fn(async () => []),
+    }
+    const prisma = {
+      $transaction: vi.fn(async (operation) => operation(tx)),
+    } as unknown as PrismaClient
+    const input = { evaluationId: "trial", expectedGeneration: 1, now: NOW }
+    await expect(
+      sampleProfileShadowEvaluationContexts(prisma, input),
+    ).resolves.toMatchObject({
+      status: "fenced",
+      reason: "shadow_sampling_contract_invalid",
+    })
+    expect(tx.$queryRaw).not.toHaveBeenCalled()
+    evaluation.samplingVersion = COWATCH_MMR_SHADOW_SAMPLING_VERSION
+    await expect(
+      sampleShadowEvaluationContexts(prisma, input),
+    ).resolves.toMatchObject({ status: "fenced" })
+    await expect(
+      sampleProfileShadowEvaluationContexts(prisma, input),
+    ).resolves.toEqual({ status: "sampled", sampledCount: 2, createdCount: 0 })
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(2) // Deadline and evaluation lock, no replacement sample query.
+    expect(tx.recommendationShadowRun.createMany).not.toHaveBeenCalled()
+    tx.recommendationShadowEvaluation.findUniqueOrThrow.mockResolvedValue({
+      ...evaluation,
+      sampledAt: NOW,
+      sampledCount: 0,
+    })
+    await expect(
+      sampleProfileShadowEvaluationContexts(prisma, input),
+    ).resolves.toEqual({ status: "sampled", sampledCount: 0, createdCount: 0 })
+  })
   it("samples issued live contexts deterministically without reading viewer identity", async () => {
     const requests = [
       {
@@ -233,6 +296,7 @@ describe("shadow evaluation service", () => {
 
   it("claims one pending run with an evaluation-generation fence", async () => {
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
       recommendationShadowRun: {
         findFirst: vi.fn().mockResolvedValue({ id: "run-1", generation: 1 }),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -272,79 +336,122 @@ describe("shadow evaluation service", () => {
     )
   })
 
-  it("publishes bounded counterfactual evidence without mutating live request items", async () => {
-    const run = claimedRun()
-    const tx = {
-      recommendationShadowRun: {
-        findUnique: vi.fn().mockResolvedValue(run),
-        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-      },
-      recommendationRequest: {
-        findUnique: vi.fn().mockResolvedValue({
-          state: "ISSUED",
-          items: run.request.items,
-        }),
-      },
-      recommendationShadowNomination: {
-        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
-        createMany: vi.fn().mockResolvedValue({ count: 1 }),
-      },
-    }
-    const prisma = {
-      recommendationShadowRun: {
-        findUnique: vi.fn().mockResolvedValue(run),
-      },
-      $transaction: vi.fn(async (operation) => operation(tx)),
-    } as unknown as PrismaClient
-    const generator = vi.fn().mockResolvedValue({
-      nominations: [nomination("video-b")],
-      cohortQuality: 0.8,
-      projectionCapturedAt: new Date("2026-08-25T09:59:00.000Z"),
-    })
-
-    const result = await executeClaimedShadowRun(prisma, {
-      runId: "shadow-run-1",
-      expectedRunGeneration: 3,
-      expectedEvaluationGeneration: 3,
-      claimId: "11111111-1111-4111-8111-111111111111",
-      now: NOW,
-      generator,
-    })
-
-    expect(result).toMatchObject({ status: "published", replay: false })
-    expect(generator).toHaveBeenCalledWith(
-      expect.not.objectContaining({ sessionDigest: expect.anything() }),
-    )
-    expect(tx.recommendationRequest.findUnique).toHaveBeenCalledTimes(1)
-    expect(tx.recommendationShadowNomination.createMany).toHaveBeenCalledWith({
-      data: [
-        expect.objectContaining({
-          targetMediaId: "video-b",
-          overlapsLive: true,
-          provenance: expect.objectContaining({
-            interestOrdinal: 1,
-            slatePolicy: "source-interest-theme-mmr-shadow-v1",
-            slatePosition: 0,
-            slateDecision: "pending",
-            slateHistory: "unavailable",
-            slateEditorial: "adapter_pending",
+  it.each(["legacy", "packed"])(
+    "publishes bounded counterfactual evidence from %s items without mutating the live slate",
+    async (format) => {
+      const source = claimedRun()
+      const run =
+        format === "packed"
+          ? {
+              ...source,
+              request: {
+                ...source.request,
+                servedItemPayload: {
+                  version: 1,
+                  items: Object.fromEntries(
+                    source.request.items.map((item) => [
+                      item.id,
+                      {
+                        presentation: item.presentation,
+                        candidateProvenance: item.candidateProvenance,
+                      },
+                    ]),
+                  ),
+                },
+                items: source.request.items.map((item) => ({
+                  ...item,
+                  presentation: {},
+                  candidateProvenance: {},
+                })),
+              },
+            }
+          : source
+      const tx = {
+        $queryRaw: vi.fn().mockResolvedValue([]),
+        recommendationShadowRun: {
+          findUnique: vi.fn().mockResolvedValue(run),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        recommendationRequest: {
+          findUnique: vi.fn().mockResolvedValue({
+            state: "ISSUED",
+            items: run.request.items,
           }),
-          expiresAt: EXPIRES,
+        },
+        recommendationShadowNomination: {
+          deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+      }
+      const prisma = {
+        recommendationShadowRun: {
+          findUnique: vi.fn().mockResolvedValue(run),
+        },
+        $transaction: vi.fn(async (operation) => operation(tx)),
+      } as unknown as PrismaClient
+      const generator = vi.fn().mockResolvedValue({
+        nominations: [nomination("video-b")],
+        cohortQuality: 0.8,
+        projectionCapturedAt: new Date("2026-08-25T09:59:00.000Z"),
+      })
+
+      const result = await executeClaimedShadowRun(prisma, {
+        runId: "shadow-run-1",
+        expectedRunGeneration: 3,
+        expectedEvaluationGeneration: 3,
+        claimId: "11111111-1111-4111-8111-111111111111",
+        now: NOW,
+        generator,
+      })
+
+      expect(result).toMatchObject({ status: "published", replay: false })
+      expect(generator).toHaveBeenCalledWith(
+        expect.not.objectContaining({ sessionDigest: expect.anything() }),
+      )
+      expect(generator).toHaveBeenCalledWith(
+        expect.objectContaining({
+          liveItems: source.request.items.map((item) =>
+            expect.objectContaining({
+              targetMediaId: item.targetMediaId,
+              position: item.position,
+              presentation: expect.objectContaining(item.presentation),
+            }),
+          ),
         }),
-      ],
-    })
-    expect(
-      JSON.stringify(tx.recommendationShadowNomination.createMany.mock.calls),
-    ).not.toContain("must-not-persist")
-    expect(tx.recommendationShadowRun.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          state: RecommendationShadowRunState.PUBLISHED,
-          liveSlateUnchanged: true,
+      )
+      expect(tx.recommendationRequest.findUnique).toHaveBeenCalledTimes(1)
+      expect(tx.recommendationShadowNomination.createMany).toHaveBeenCalledWith(
+        {
+          data: [
+            expect.objectContaining({
+              targetMediaId: "video-b",
+              overlapsLive: true,
+              provenance: expect.objectContaining({
+                interestOrdinal: 1,
+                slatePolicy: "source-interest-theme-mmr-shadow-v1",
+                slatePosition: 0,
+                slateDecision: "pending",
+                slateHistory: "unavailable",
+                slateEditorial: "adapter_pending",
+              }),
+              expiresAt: EXPIRES,
+            }),
+          ],
+        },
+      )
+      expect(
+        JSON.stringify(tx.recommendationShadowNomination.createMany.mock.calls),
+      ).not.toContain("must-not-persist")
+      expect(tx.recommendationShadowRun.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            state: RecommendationShadowRunState.PUBLISHED,
+            liveSlateUnchanged: true,
+          }),
         }),
-      }),
-    )
-  })
+      )
+    },
+  )
 
   it("returns an idempotent replay without invoking the generator", async () => {
     const generator = vi.fn()
@@ -374,6 +481,7 @@ describe("shadow evaluation service", () => {
   it("fences a late claim when the evaluation generation changes before publish", async () => {
     const run = claimedRun()
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
       recommendationShadowRun: {
         findUnique: vi.fn().mockResolvedValue({
           state: RecommendationShadowRunState.CLAIMED,

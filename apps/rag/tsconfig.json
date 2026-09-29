@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "strict": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -14,7 +14,8 @@
     "src/**/*.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts",
-    "playwright.portal.config.ts"
+    "playwright.portal.config.ts",
+    "playwright.sources.config.ts"
   ],
   "exclude": ["node_modules"]
 }

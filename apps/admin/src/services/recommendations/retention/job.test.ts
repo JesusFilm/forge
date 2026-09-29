@@ -98,7 +98,34 @@ describe("recommendation retention job", () => {
       data: expect.objectContaining({
         details: expect.objectContaining({
           batchLimitReached: false,
+          profileVectorSweepSkipped: false,
           purgeStatus: "succeeded",
+        }),
+      }),
+    })
+  })
+
+  it("records a busy vector sweep without marking the root purge as skipped", async () => {
+    purgeExpiredRecommendationRequests.mockResolvedValueOnce({
+      ...purgeResult,
+      profileVectorSweepSkipped: true,
+    })
+
+    await expect(
+      runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      profileVectorSweepSkipped: true,
+      batchLimitReached: false,
+    })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        status: "SUCCEEDED",
+        details: expect.objectContaining({
+          purgeStatus: "succeeded",
+          batchLimitReached: false,
+          profileVectorSweepSkipped: true,
         }),
       }),
     })

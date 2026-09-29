@@ -201,7 +201,7 @@ export class RecommendationPlaybackService {
     const episode =
       await this.deps.prisma.recommendationPlaybackEpisode.findUnique({
         where: { id: parsed.episodeId },
-        include: { request: true },
+        include: { request: { select: { generation: true } } },
       })
     if (!episode) rejectPlaybackBinding("episode_missing")
     if (episode.sessionDigest !== parsed.sessionDigest) {
@@ -278,7 +278,7 @@ export class RecommendationPlaybackService {
               await lockRecommendationEpisode(tx, parsed.episodeId)
               const locked = await tx.recommendationPlaybackEpisode.findUnique({
                 where: { id: parsed.episodeId },
-                include: { request: true },
+                include: { request: { select: { generation: true } } },
               })
               if (
                 !locked ||

@@ -14,6 +14,7 @@ import {
   assignProfileUsefulnessExperiment,
   lockProfileUsefulnessAssignment,
 } from "./usefulness-routing"
+import { parseStudyProtocol, studyProtocolDigest } from "./study-protocol"
 import { extractUsefulnessSnapshot } from "./usefulness-extractor"
 
 describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
@@ -27,16 +28,26 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     let prisma: PrismaClient
     let profileId: string
     const digest = "9".repeat(64)
-    const configurationDigest = "7".repeat(64)
+    let configurationDigest = "7".repeat(64)
     const extraction = {
       experimentId: "semantic-aa-v1",
       configurationDigest,
-      enrollmentStart: new Date(assignedAt.getTime() - 3_600_000),
-      enrollmentEnd: new Date(assignedAt.getTime() + 3_600_000),
+      enrollmentStart: new Date(
+        Math.floor(now.getTime() / 86_400_000) * 86_400_000 - 3 * 86_400_000,
+      ),
+      enrollmentEnd: new Date(
+        Math.floor(now.getTime() / 86_400_000) * 86_400_000 - 86_400_000,
+      ),
       plannedAssignmentsPerArm: 200,
       minimumUsefulDelta: 0.01,
     }
     beforeAll(async () => {
+      const url = new URL(env.DATABASE_URL)
+      if (
+        !["127.0.0.1", "localhost"].includes(url.hostname) ||
+        url.pathname !== "/forge_study"
+      )
+        throw new Error("Owned loopback forge_study fixture database required")
       admin = new Client({ connectionString: env.DATABASE_URL })
       await admin.connect()
       await admin.query(`CREATE SCHEMA "${schema}"`)
@@ -49,7 +60,11 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
               Number(name.slice(0, 4)) <= 82 &&
               name.includes("recommendation")) ||
             name === "0082_user_recommendation_identity" ||
-            name === "0098_recommendation_viewing_mode",
+            name === "0098_recommendation_viewing_mode" ||
+            name === "0057_semantic_control_readiness" ||
+            name === "0100_recommendation_candidate_compact_trace" ||
+            name === "0103_recommendation_impression_visibility_capability" ||
+            name === "0107_recommendation_governed_study",
         )
         .sort()) {
         await admin.query(
@@ -80,6 +95,53 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await prisma.recommendationStrategyManifest.findUniqueOrThrow({
           where: { id: "semantic-experiment-aa-v1" },
         })
+      const control =
+        await prisma.recommendationStrategyManifest.findUniqueOrThrow({
+          where: { id: "semantic-transcript-pgvector-v1" },
+        })
+      const protocol = parseStudyProtocol({
+        version: "profile-study-governance-v1",
+        studyId: extraction.experimentId,
+        mode: "calibration",
+        comparison: "semantic-aa",
+        identity: "anonymous-profile-generation-v1",
+        surface: "watch-below-player-v1",
+        cohort: "human-en-english-durable-v1",
+        controlManifestId: control.id,
+        challengerManifestId: manifest.id,
+        controlManifestDigest: recommendationManifestDigest(control),
+        challengerManifestDigest: recommendationManifestDigest(manifest),
+        incumbentExecution: "hybrid_personalized",
+        controlExecution: "semantic_contextual",
+        admissionBps: 10000,
+        challengerProbability: 0.5,
+        startsAt: extraction.enrollmentStart.toISOString(),
+        endsAt: extraction.enrollmentEnd.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        stoppingRule: "fixed-enrollment-window-v1",
+        plannedAssignmentsPerArm: 200,
+        minimumUsefulDelta: null,
+        evidenceMaxAgeHours: 24,
+        calibrationEvaluationId: null,
+      })
+      configurationDigest = studyProtocolDigest(protocol)
+      extraction.configurationDigest = configurationDigest
+      await prisma.recommendationExperiment.update({
+        where: { id: extraction.experimentId },
+        data: { configurationDigest },
+      })
+      await prisma.recommendationStudy.create({
+        data: {
+          experimentId: extraction.experimentId,
+          protocol,
+          protocolDigest: configurationDigest,
+          preparedById: "fixture-operator",
+          activationId: randomUUID(),
+          activationInputDigest: "a".repeat(64),
+          activatedAt: extraction.enrollmentStart,
+          expiresAt,
+        },
+      })
       const approval = await prisma.recommendationPromotionApproval.create({
         data: {
           manifestId: manifest.id,

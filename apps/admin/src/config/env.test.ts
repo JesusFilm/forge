@@ -59,6 +59,48 @@ describe("env", () => {
     },
   )
 
+  it.each([
+    { value: undefined, expected: "true" },
+    { value: "", expected: "true" },
+    { value: "true", expected: "true" },
+    { value: "false", expected: "false" },
+  ])(
+    "resolves profile vector sharing to $expected for $value when CI skips validation",
+    async ({ value, expected }) => {
+      vi.resetModules()
+      vi.stubEnv("CI", "true")
+      vi.stubEnv("RECOMMENDATION_PROFILE_VECTOR_SHARING", value)
+      try {
+        const { env: runtimeEnv } = await import("@/config/env")
+        expect(runtimeEnv.RECOMMENDATION_PROFILE_VECTOR_SHARING).toBe(expected)
+      } finally {
+        vi.unstubAllEnvs()
+        vi.resetModules()
+      }
+    },
+  )
+
+  it.each([
+    { value: undefined, expected: "packed" },
+    { value: "", expected: "packed" },
+    { value: "legacy", expected: "legacy" },
+    { value: "packed", expected: "packed" },
+  ])(
+    "resolves served item format to $expected for $value when CI skips validation",
+    async ({ value, expected }) => {
+      vi.resetModules()
+      vi.stubEnv("CI", "true")
+      vi.stubEnv("RECOMMENDATION_SERVED_ITEM_FORMAT", value)
+      try {
+        const { env: runtimeEnv } = await import("@/config/env")
+        expect(runtimeEnv.RECOMMENDATION_SERVED_ITEM_FORMAT).toBe(expected)
+      } finally {
+        vi.unstubAllEnvs()
+        vi.resetModules()
+      }
+    },
+  )
+
   describe("Watch search Web routing", () => {
     it("normalizes and caches the production resolver path under CI", async () => {
       vi.resetModules()

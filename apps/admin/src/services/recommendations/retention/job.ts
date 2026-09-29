@@ -125,6 +125,8 @@ export async function runRecommendationRetentionJob(
             rootsDeleted: result.rootsDeleted,
             overdueAfterRun: result.overdueAfterRun,
             batchLimitReached: result.batchLimitReached,
+            profileVectorSweepSkipped:
+              result.profileVectorSweepSkipped ?? false,
             purgeStatus: result.status,
           },
         },

@@ -143,7 +143,9 @@ existing owner can Add member, choosing from the current predetermined allowlist
 Added members have equivalent management/regeneration rights. Enforce minimum
 one owner in backend transactions, including concurrent removals. Admission and
 membership must both hold for management; all admitted users may view the safe
-consumer directory, but not owner-restricted audit or aggregate reports.
+consumer directory, but not owner-restricted audit. The original aggregate-report
+restriction recorded at discovery is superseded by the 2026-09-29 feat-528
+decision: every admitted portal user can view every consumer report.
 
 Acceptance: malformed/duplicate handles, known eligibility/ineligibility,
 private visibility and unavailable lookup; before/after allowlist merge;

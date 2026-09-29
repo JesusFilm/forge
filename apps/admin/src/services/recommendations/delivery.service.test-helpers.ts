@@ -109,6 +109,15 @@ export function makeHarness(
     profileComparison?: boolean
     database?: PrismaClient
     candidateTraceFormat?: "legacy" | "compact"
+    servedItemFormat?: "legacy" | "packed"
+    study?: Pick<
+      import("./delivery.types").DeliveryDependencies,
+      "resolveStudyAuthority" | "composeCowatchTrial"
+    >
+    owner?: Pick<
+      import("./delivery.types").DeliveryDependencies,
+      "resolveOwnerAuthority" | "composeOwnerCowatch"
+    >
     nowMilliseconds?: () => number
   } = {},
 ) {
@@ -217,6 +226,7 @@ export function makeHarness(
   const service = new RecommendationDeliveryService({
     prisma: options.database ?? (prisma as never),
     candidateTraceFormat: options.candidateTraceFormat,
+    servedItemFormat: options.servedItemFormat,
     admission: {
       acquire,
       release,
@@ -229,6 +239,8 @@ export function makeHarness(
     orchestrateHybrid,
     assignExperiment,
     ...(options.profileComparison ? { assignProfileExperiment } : {}),
+    ...options.study,
+    ...options.owner,
     retrieveProfile,
     resolveRecentContext,
     authorizeProfile,

@@ -70,6 +70,11 @@ export async function manageChangelogPreapprovals(
         existing.version !== operation.version
       )
         throw new ContributorManagementError(409, "approval-conflict")
+      if (
+        operation.action === "cancel" &&
+        (existing.state !== "pending" || existing.expiresAt <= now)
+      )
+        throw new ContributorManagementError(409, "approval-conflict")
       return display(
         await tx.changelogPreapproval.update({
           where: { id: existing.id, version: operation.version },

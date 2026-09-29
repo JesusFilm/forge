@@ -29,7 +29,11 @@ export type SemanticRecommendationDeliveryItem = SceneRecommendation & {
   position: number
   targetMediaId: string
   canonicalHref: string
-  candidateGenerator: "semantic" | "multi-interest-profile" | "curated"
+  candidateGenerator:
+    | "semantic"
+    | "multi-interest-profile"
+    | "directional-cowatch"
+    | "curated"
   contributors: RecommendationCandidateContributor[]
   capability: string
 }
@@ -66,6 +70,7 @@ export type RecommendationPersonalizationDelivery = Readonly<{
 export type DeliveryDependencies = {
   prisma: PrismaClient
   candidateTraceFormat?: "legacy" | "compact"
+  servedItemFormat?: "legacy" | "packed"
   admission: RecommendationDeliveryAdmission
   getServingState(input: {
     deadlineAt: number
@@ -113,9 +118,30 @@ export type DeliveryDependencies = {
     sessionDigest: string
     profileTokenDigest: string
     eligibleForEnrollment: boolean
+    clientDeliveryContract?: string | null
     now: Date
     deadlineAt: number
   }) => Promise<ExperimentAssignmentResolution>
+  resolveStudyAuthority?: (
+    input: Parameters<
+      typeof import("./delivery-trial.service").resolveDeliveryStudyAuthority
+    >[1],
+  ) => ReturnType<
+    typeof import("./delivery-trial.service").resolveDeliveryStudyAuthority
+  >
+  composeCowatchTrial?: (
+    input: import("./delivery-trial.service").TrialCompositionInput,
+  ) => Promise<import("./delivery-trial.service").TrialCompositionResult>
+  resolveOwnerAuthority?: (
+    input: Parameters<
+      typeof import("./delivery-owner.service").resolveDeliveryOwnerAuthority
+    >[1],
+  ) => ReturnType<
+    typeof import("./delivery-owner.service").resolveDeliveryOwnerAuthority
+  >
+  composeOwnerCowatch?: (
+    input: import("./delivery-owner.service").OwnerCompositionInput,
+  ) => Promise<import("./delivery-owner.service").OwnerCompositionResult>
   retrieveProfile?: (input: {
     sessionDigest: string
     profileTokenDigest: string | null
@@ -160,4 +186,5 @@ export type DeliveryInput = {
   profileTokenDigest?: string | null
   eligibleHuman?: boolean
   trafficCategory?: string | null
+  clientDeliveryContract?: string | null
 }

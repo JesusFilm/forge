@@ -1,0 +1,20 @@
+{
+  "fixture": "forge-owner-capacity-20260930",
+  "configured": {
+    "NanoCpus": 2000000000,
+    "Memory": 2147483648,
+    "MemorySwap": 2147483648
+  },
+  "runtime": {
+    "cpu.max": "200000 100000",
+    "memory.max": "2147483648",
+    "memory.swap.max": "0",
+    "memory.peak": "280133632"
+  },
+  "peakIsSinceFixtureCreation": true,
+  "oomKilled": false,
+  "remainingMeasurementChildDatabases": 0,
+  "onlyOwnedContainerWillBeRemoved": true,
+  "containerRemoved": true,
+  "ownedVolumesRemoved": true
+}

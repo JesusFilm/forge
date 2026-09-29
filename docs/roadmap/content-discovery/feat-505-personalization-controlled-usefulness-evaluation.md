@@ -85,3 +85,43 @@ owner-excluded feat-373 is no longer a dependency. Production readiness capture
 at 2026-09-16T00:21:39.730Z found no assignments, shadow runs or decisions.
 Actual calibration, approved profile-unit A/A, external guardrails and mature
 controlled results remain pending. This ticket stays in progress.
+
+## September 29 governed live integration
+
+The owner subsequently authorized taking the implemented shadow policies live
+through controlled evidence. This supersedes the earlier preparation-only
+activation restriction, while preserving the scoped cohort, attribution,
+operational readiness and maturity requirements.
+
+`experiment/study-service.ts` now prepares immutable protocols, records external
+evidence, activates exact studies and publishes mature evaluations. The incumbent
+A/A executes the actual profile/viewing-mode policy in both arms; semantic-only
+calibration cannot authorize the co-watch/MMR bundle. The bundle binds one frozen
+graph and independently qualified composer through admission, final issuance and
+evaluation. Request-local fallbacks retain original assignment denominators.
+
+See `docs/operations/recommendation-controlled-live-integration-2026-09-29.md`
+for the execution contract, local validation and production sequence. Local
+synthetic outcomes prove the lifecycle, not useful production effects. Fresh
+storage clearance, real A/A calibration, exact shadow/composition approvals,
+naturally mature controlled outcomes and external guardrails remain open.
+
+## Reviewed integration release
+
+[PR #2470](https://github.com/JesusFilm/forge/pull/2470) merged as
+`0a70712399bf99e10d88477b98cc34c8ababcc6b`. The production Admin/worker health
+and bounded 0107–0110 catalog checks passed; all eight new authority tables were
+empty, with no activated study or graph trial authority. See the release and
+capacity sections of
+`docs/operations/recommendation-controlled-live-integration-2026-09-29.md` for
+exact observations and remaining gates. Implementation and deployment do not
+complete production shadow acceptance, mature usefulness evidence or live
+promotion. This ticket remains **in progress**.
+
+## September 30 owner decision
+
+The owner approved direct co-watch/MMR activation without a trial. Feat-505 is
+therefore no longer an activation dependency of feat-565. Its study machinery and
+scientific evidence requirements remain available for later causal measurement;
+none of the missing calibration, assignments or mature outcomes is marked passed
+or complete by the direct activation decision. Usefulness remains unmeasured.

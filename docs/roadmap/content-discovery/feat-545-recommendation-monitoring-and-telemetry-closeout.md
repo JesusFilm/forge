@@ -3,7 +3,7 @@ id: "feat-545"
 title: "Recommendation telemetry and browser evidence closeout"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: ""
 duration: 2
 depends_on: []
@@ -34,26 +34,32 @@ The last verified Datadog policy rejected MCP writes for organization 678835
 the visible inventory. After considering temporary REST API credentials and a
 Slack alert destination, the owner deferred this optional installation on
 September 24. No Datadog key or alert destination is needed for this ticket.
-The retained source discrepancies and browser-response evidence remain open,
-so this ticket is in progress. Deferring monitors does not accept those gaps or
-remove its downstream readiness dependencies.
+Deferring monitors did not accept source discrepancies or browser-response gaps.
+The later explicit September 29 decision below closes their historical disposition.
 
 The [September 28 bounded recheck](../../operations/recommendation-evidence-telemetry-followup-2026-09-28.md)
 reproduced the indexed gaps and historical browser 503/204/status-zero counts.
 Ten later natural browser 409 resources add partial coverage, but sampled
 within-view activity cannot identify the rejected episode or establish zero
-retry amplification. No owner-accepted limitation or request-level explanation
-has closed these gaps; this ticket remains in progress.
+retry amplification. That recheck did not close the gaps by evidence.
 
 The [September 29 owner-decision record](../../operations/recommendation-evidence-closeout-decisions-2026-09-29.md)
-reconciles retained arithmetic and enumerates nine separate pending dispositions:
+reconciles retained arithmetic and enumerates nine separate dispositions:
 Web/Admin indexed deficits, crawler rejection deficit, initial-evidence envelope,
 browser 503, browser 204s, status-zero transport observations, historical terminal
 retry coverage, and later terminal sample coverage. Each states missing evidence,
 operational consequence, proposed bounded limitation and affected gates. The reviewed aggregate artifacts cannot
 recover exact historical joins; upstream retention is not assumed. No new
-production queries or runtime changes were justified. **None of the proposed
-limitations has owner acceptance**; status and downstream blocks remain unchanged.
+production queries or runtime changes were justified by that review.
+
+On September 29, **nisal explicitly accepted D1–D9 after explanation, with the
+caveat that they will be fixed later**. The decision record names every accepted
+row, its exact historical population and remaining uncertainty. This completes
+this ticket by owner disposition, not by recovery of the missing evidence.
+[Feat-566](feat-566-recommendation-evidence-gap-remediation.md) tracks the required
+future remediation; it remains open and has no agreed delivery date. Existing
+downstream dependencies remain recorded and are satisfied only as to this ticket.
+Fresh health, storage, experiment and promotion gates remain separate requirements.
 
 ## Entry Points — Read These First
 
