@@ -223,7 +223,9 @@ export type AdminLanguageForms = {
   readonly rawTag: string
 }
 
-// One entry per web catalog. A catalog with no Admin language reads English.
+// One entry per web catalog, one line each. A catalog with no Admin language
+// reads English.
+// prettier-ignore
 export const ADMIN_LANGUAGE_FORMS: Readonly<Record<string, AdminLanguageForms>> = {
 ${formLines}
 }
