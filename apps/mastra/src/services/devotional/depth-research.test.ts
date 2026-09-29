@@ -8,7 +8,7 @@ import {
 } from "./depth-research"
 import type { DevotionalMessage } from "./devotional-message"
 import type { DevotionalLlm } from "./llm"
-import { foreignWords } from "./message-first-writer"
+import { foreignWords, namedSources } from "./message-first-writer"
 import type { ReferenceCorpora } from "./reference-corpus"
 
 const message: DevotionalMessage = {
@@ -292,6 +292,20 @@ describe("foreignWords", () => {
         "In verse 20 the father was filled with compassion. The word Luke uses means to feel pity.",
         note,
       ),
+    ).toEqual([])
+  })
+})
+
+describe("namedSources", () => {
+  it("catches a commentator or a book named aloud", () => {
+    expect(namedSources("Ryle says it plainly. Grace is free.")).toHaveLength(1)
+    expect(
+      namedSources("The Book of Sirach advised fathers to wait."),
+    ).toHaveLength(1)
+  })
+  it("lets the Gospel's author and plain retelling through", () => {
+    expect(
+      namedSources("The word Luke uses means to feel pity. Grace is free."),
     ).toEqual([])
   })
 })

@@ -77,8 +77,8 @@ export const SYSTEM_PROMPT = [
   "- Open on the tension: the detail that does not sit right, stated plainly.",
   "- History and language paragraphs explain the world and the words so the",
   "  story lands as its first hearers heard it.",
-  "- The classic commentator's insight gives the turn; name him in a sentence",
-  "  when you use his thought or his words ('Ryle says it plainly: ...').",
+  "- The classic commentator's insight gives the turn, retold in the",
+  "  devotional's own voice.",
   "- The last paragraphs bring it to the viewer and to Christ, and end on a",
   "  statement, never on a command or an audit of their faith.",
   "",
@@ -102,8 +102,16 @@ export const SYSTEM_PROMPT = [
   "- History and language paragraphs may say only what their note says. No",
   "  added numbers, dates, customs or word meanings from memory.",
   "- Never announce a section ('now some historical context', 'let's look at",
-  "  the Greek'). Move into it with a natural sentence. Naming a source or",
-  "  the Greek word inside a sentence is fine and honest.",
+  "  the Greek'). Move into it with a natural sentence.",
+  "- NEVER NAME A SOURCE in the spoken text: no commentator ('Ryle says'),",
+  "  no dictionary, lexicon or book title. Every source is credited on",
+  "  screen while its paragraph plays, and the video's description says",
+  "  the reflection is adapted from the commentator (owner, 2026-09-29): time",
+  "  spent saying where a thing comes from is time not spent on the thing.",
+  "  Retell the commentator's thought as the devotional's own. For an ancient",
+  "  text, say what was advised or believed then ('Jewish wisdom of that time",
+  "  advised fathers...'), never as what everyone did. Luke may be named as",
+  "  the Gospel's author ('the word Luke uses').",
   "- NEVER say a Greek or Hebrew word, in any spelling: the synthetic voice",
   "  cannot pronounce it, and a strange word tells the listener nothing about",
   "  where it is. Point at the place instead: the verse and its English words,",
@@ -111,12 +119,8 @@ export const SYSTEM_PROMPT = [
   "  was filled with compassion. The word Luke uses there means to feel pity,",
   "  to be moved with compassion.' Say 'the word Luke uses' or 'in the",
   "  original', not the word itself.",
-  "- Words attributed to the commentator in quotation marks must be copied",
-  "  character for character from his points as given, and a code check",
-  "  compares them. Quote at most one short sentence of his; paraphrase the",
-  "  rest without quotation marks, and never put a paraphrase in quotes.",
-  "- When the commentator's section ends and your own voice resumes, do not",
-  "  keep attributing to him: a later 'Ryle says' must be his words.",
+  "- No quotation marks around the commentator's words: they are adapted,",
+  "  not quoted, so paraphrase them in plain modern speech.",
   "- Bible references in parentheses are not read aloud later; do not use",
   "  them. If a verse matters, say it in words.",
   "",
@@ -159,6 +163,36 @@ export function foreignWords(
     sentence,
     why: "says the Greek word aloud; point at the verse's English words and say what the original means there",
   }))
+}
+
+/** Sources named aloud (owner, 2026-09-29: they are credited on screen). */
+export const SOURCE_NAMES = [
+  "Ryle",
+  "Sirach",
+  "Ben Sira",
+  "Ecclesiasticus",
+  "Easton",
+  "Smith's",
+  "Abbott-Smith",
+  "lexicon",
+  "dictionary",
+  "commentator",
+  "Henry",
+  "Spurgeon",
+]
+
+export function namedSources(
+  text: string,
+): { rule: string; sentence: string; why: string }[] {
+  const re = new RegExp(`\\b(?:${SOURCE_NAMES.join("|")})\\b`, "i")
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .filter((s) => re.test(s))
+    .map((sentence) => ({
+      rule: "names-source",
+      sentence,
+      why: "names a source aloud; it is credited on screen, so say the thing itself",
+    }))
 }
 
 export async function writeMessageFirstReflection(input: {
@@ -213,6 +247,7 @@ export async function writeMessageFirstReflection(input: {
     const broken = [
       ...checkReflectionVoice(text, { lang: "en" }),
       ...foreignWords(text, input.language),
+      ...namedSources(text),
     ]
     if (broken.length === 0) break
     input.log?.(

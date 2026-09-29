@@ -65,7 +65,7 @@ async function main() {
   const problems = [`The owner's note: ${note}`]
   if (history.length) {
     problems.push(
-      "HISTORY SOURCES for that paragraph (role 'history'; verified; quote only their exact words, or paraphrase without quotation marks, and say which book says it):",
+      "HISTORY SOURCES for that paragraph (role 'history'; verified; quote only their exact words, or paraphrase without quotation marks, and do not name the book aloud, it is credited on screen):",
       ...history.map((e) => `${e.id} (King James Version): ${e.text}`),
     )
   }
