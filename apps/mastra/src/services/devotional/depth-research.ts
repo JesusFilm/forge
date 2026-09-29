@@ -379,7 +379,7 @@ export const AUDIT_SYSTEM_PROMPT = [
   "left, supported = false. No em dashes or en dashes. Return JSON only.",
 ].join("\n")
 
-async function auditClaims(input: {
+export async function auditClaims(input: {
   facts: ContextFact[]
   shown: Map<string, { entry: DictionaryEntry; excerpt: string }>
   llm: DevotionalLlm
@@ -482,7 +482,7 @@ export const LANGUAGE_SYSTEM_PROMPT = [
 ].join("\n")
 
 /** Parts of speech that never carry a devotional point. */
-const FUNCTION_LEMMAS = new Set([
+export const FUNCTION_LEMMAS = new Set([
   "ὁ",
   "καί",
   "δέ",

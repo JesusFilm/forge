@@ -29,6 +29,8 @@ import {
   _openingInternal,
 } from "./message-first-ending"
 import { _internal as mfWriterInternal } from "./message-first-writer"
+import { _internal as researchInternal } from "./research-brief"
+import { _internal as storytellerInternal } from "./storyteller-writer"
 
 /**
  * Regression guard for the real OpenRouter→Anthropic structured-output contract.
@@ -113,6 +115,9 @@ describe("Anthropic structured-output schema compatibility", () => {
     "message-first-ending/personal": endingInternal.PERSONAL_JSON_SCHEMA,
     "message-first-ending/opening": _openingInternal.JSON_SCHEMA,
     "message-first-writer": mfWriterInternal.JSON_SCHEMA,
+    // Storyteller path.
+    "research-brief": researchInternal.JSON_SCHEMA,
+    "storyteller-writer": storytellerInternal.JSON_SCHEMA,
   }
 
   /** Modules covered above, by filename — `hook-picker` contributes two. */
