@@ -3365,6 +3365,7 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     const mutate = (
       id: string,
       role: string,
+      expectedRole: string,
       confirmed = false,
       token = admin,
       targetClientId = "jfp_changelog_local",
@@ -3380,6 +3381,7 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
             clientId: targetClientId,
             recipientId: id,
             role,
+            expectedRole,
             confirmSelfDemotion: confirmed,
           }),
         }),
@@ -3400,13 +3402,19 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
           await mutate(
             recipient.id,
             "Admin",
+            "Reader",
             false,
             admin,
             "jfp_changelog_production",
           )
         ).status,
       ).toBe(403)
-      expect((await mutate(recipient.id, "Contributor")).status).toBe(200)
+      expect((await mutate(recipient.id, "Contributor", "Reader")).status).toBe(
+        200,
+      )
+      const stale = await mutate(recipient.id, "Admin", "Reader")
+      expect(stale.status).toBe(409)
+      expect(await stale.json()).toEqual({ error: "role-changed" })
       const websiteFlow = await authorize({
         requestedClientId: "jfp_changelog_local",
         redirectUri: SEEDED_REDIRECT_URI,
@@ -3453,7 +3461,9 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
           "changelog:read",
           "changelog:submit",
         ])
-      expect((await mutate(recipient.id, "Reader")).status).toBe(200)
+      expect((await mutate(recipient.id, "Reader", "Contributor")).status).toBe(
+        200,
+      )
       for (const token of issued)
         expect(await permission(token)).toEqual(["changelog:read"])
       await prisma.appGrantScope.create({
@@ -3462,7 +3472,9 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
           scopeId: additionalChangelogScope.id,
         },
       })
-      expect((await mutate(recipient.id, "No Access")).status).toBe(200)
+      expect((await mutate(recipient.id, "No Access", "Reader")).status).toBe(
+        200,
+      )
       for (const token of issued) expect(await permission(token)).toEqual([])
       expect(
         await prisma.appGrantScope.count({
@@ -3499,13 +3511,16 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
           where: { grantId: productionGrant.id, scopeId: readScope.id },
         }),
       ).toBe(1)
-      expect((await mutate(recipient.id, "Admin")).status).toBe(200)
+      expect((await mutate(recipient.id, "Admin", "No Access")).status).toBe(
+        200,
+      )
       expect(await permission(issued[0])).toEqual([
         "changelog:read",
         "changelog:submit",
       ])
       expect(
-        (await mutate(recipient.id, "Reader", false, issued[0])).status,
+        (await mutate(recipient.id, "Reader", "Admin", false, issued[0]))
+          .status,
       ).toBe(403)
 
       const approvalId = randomUUID()
@@ -3522,7 +3537,7 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
         },
       })
       try {
-        const blocked = await mutate(recipient.id, "Reader")
+        const blocked = await mutate(recipient.id, "Reader", "Admin")
         expect(blocked.status).toBe(409)
         expect(await blocked.json()).toEqual({ error: "preapproval-blocked" })
       } finally {
@@ -3555,12 +3570,16 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
             expiresAt: new Date(0),
           },
         })
-        expect((await mutate(firstTimeId, "Reader")).status).toBe(409)
+        expect((await mutate(firstTimeId, "Reader", "No Access")).status).toBe(
+          409,
+        )
         await prisma.changelogPreapproval.update({
           where: { id: firstTimeApproval },
           data: { state: "canceled" },
         })
-        expect((await mutate(firstTimeId, "Reader")).status).toBe(409)
+        expect((await mutate(firstTimeId, "Reader", "No Access")).status).toBe(
+          409,
+        )
         expect(
           await prisma.appGrant.count({
             where: { userId: firstTimeId, environmentId: local.id },
@@ -3572,12 +3591,12 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
       } finally {
         await prisma.user.delete({ where: { id: firstTimeId } })
       }
-      expect((await mutate(userId, "Reader")).status).toBe(409)
-      expect((await mutate(recipient.id, "Reader")).status).toBe(200)
-      const lastAdmin = await mutate(userId, "Reader", true)
+      expect((await mutate(userId, "Reader", "Admin")).status).toBe(409)
+      expect((await mutate(recipient.id, "Reader", "Admin")).status).toBe(200)
+      const lastAdmin = await mutate(userId, "Reader", "Admin", true)
       expect(lastAdmin.status).toBe(409)
       expect(await lastAdmin.json()).toEqual({ error: "last-admin" })
-      expect((await mutate(recipient.id, "Admin")).status).toBe(200)
+      expect((await mutate(recipient.id, "Admin", "Reader")).status).toBe(200)
       const recipientAdminFlow = await authorize({
         requestedClientId: "jfp_changelog_local",
         redirectUri: SEEDED_REDIRECT_URI,
@@ -3600,10 +3619,11 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
       )
       expect(recipientAdminToken.response.status).toBe(200)
       const demotions = await Promise.all([
-        mutate(userId, "Reader", true),
+        mutate(userId, "Reader", "Admin", true),
         mutate(
           recipient.id,
           "Reader",
+          "Admin",
           true,
           String(recipientAdminToken.body.access_token),
         ),

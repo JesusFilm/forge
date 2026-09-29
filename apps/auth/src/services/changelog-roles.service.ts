@@ -18,6 +18,7 @@ export async function setChangelogRole(
   clientId: string,
   recipientId: string,
   role: ChangelogRole,
+  expectedRole: ChangelogRole,
   confirmSelfDemotion: boolean,
 ) {
   return withChangelogAdmin(
@@ -82,6 +83,15 @@ export async function setChangelogRole(
           .filter(({ key }) => key.startsWith("changelog:")),
       )
       const currentScopes = new Set(changelogScopes.map(({ key }) => key))
+      const currentRole: ChangelogRole = currentScopes.has("changelog:admin")
+        ? "Admin"
+        : currentScopes.has("changelog:submit")
+          ? "Contributor"
+          : currentScopes.has("changelog:read")
+            ? "Reader"
+            : "No Access"
+      if (currentRole !== expectedRole)
+        throw new ContributorManagementError(409, "role-changed")
       const nextScopes = roleScopes[role]
       if (
         actorId === recipientId &&

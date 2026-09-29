@@ -28,6 +28,10 @@ reduction on their next protected request.
 - `apps/auth/src/services/changelog-oauth-grant.integration.test.ts`: native HTTP
   role and previously issued credential checks.
 
+The role POST requires `expectedRole`, the role shown by People when the Admin
+opened the form. Auth compares it with the effective role inside the grant
+transaction and returns `409 role-changed` when another change won first.
+
 ## Verification
 
 Run Auth typecheck, lint, the native HTTP integration suite against disposable

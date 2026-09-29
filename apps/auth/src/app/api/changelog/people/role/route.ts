@@ -15,17 +15,23 @@ export async function POST(request: Request) {
       Array.isArray(body) ||
       Object.keys(body).some(
         (key) =>
-          !["clientId", "recipientId", "role", "confirmSelfDemotion"].includes(
-            key,
-          ),
+          ![
+            "clientId",
+            "recipientId",
+            "role",
+            "expectedRole",
+            "confirmSelfDemotion",
+          ].includes(key),
       ) ||
       !("clientId" in body) ||
       !("recipientId" in body) ||
       !("role" in body) ||
+      !("expectedRole" in body) ||
       typeof body.clientId !== "string" ||
       typeof body.recipientId !== "string" ||
       !/^[a-zA-Z0-9_-]{1,128}$/.test(body.recipientId) ||
       !roles.includes(body.role as ChangelogRole) ||
+      !roles.includes(body.expectedRole as ChangelogRole) ||
       ("confirmSelfDemotion" in body &&
         typeof body.confirmSelfDemotion !== "boolean") ||
       new URL(request.url).search
@@ -37,6 +43,7 @@ export async function POST(request: Request) {
         body.clientId,
         body.recipientId,
         body.role as ChangelogRole,
+        body.expectedRole as ChangelogRole,
         "confirmSelfDemotion" in body && body.confirmSelfDemotion === true,
       ),
     )
