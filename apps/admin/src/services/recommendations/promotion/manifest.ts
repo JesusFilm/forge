@@ -91,6 +91,8 @@ export const COWATCH_MMR_TRIAL_MANIFEST_ID =
   "hybrid-profile-viewing-mode-cowatch-mmr-v1"
 export const COWATCH_MMR_GENERATOR_SET_VERSION =
   "semantic-profile-cowatch-generators-v1"
+export const COWATCH_MMR_SHADOW_SAMPLING_VERSION =
+  "stable-durable-en-request-hash-v1"
 
 export const INCUMBENT_HYBRID_MANIFEST_CONFIGURATION = {
   ...HYBRID_PERSONALIZED_MANIFEST_CONFIGURATION,
@@ -110,6 +112,7 @@ export const INCUMBENT_HYBRID_MANIFEST_CONFIGURATION = {
     results: ["fallback", "empty"],
     semanticGenerator: SEMANTIC_CANDIDATE_GENERATOR_VERSION,
     curatedGenerator: "seeded-curated-empty-fallback-v1",
+    curatedRanker: HYBRID_DETERMINISTIC_RANKER_VERSION,
     curatedInventory: "approved-locale-audio-pool-only",
     eligibility: CANDIDATE_ELIGIBILITY_VERSION,
   },
@@ -161,6 +164,15 @@ export const COWATCH_MMR_TRIAL_MANIFEST = {
     composition: MMR_CONFIG,
     graphPolicy: "frozen-source-controlled-trial-v1",
     effectAttribution: "combined-cowatch-and-mmr-only",
+    shadowPopulation: {
+      samplingVersion: COWATCH_MMR_SHADOW_SAMPLING_VERSION,
+      requestState: "issued",
+      locale: "en",
+      audioLanguageSlug: "english",
+      profile: "current-active-durable-generation",
+      projection: "published-unexpired-durable-positive-interests",
+      eligibilityTiming: "before-stable-hash-sampling",
+    },
     operationalFallback: {
       ...INCUMBENT_HYBRID_MANIFEST_CONFIGURATION.operationalFallback,
       reasonCode: "cowatch_mmr_incumbent_fallback",
