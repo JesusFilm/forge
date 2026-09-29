@@ -29,7 +29,6 @@ import {
   resetPlaybackTransportForTests,
   setPlaybackTransport,
 } from "../../../src/lib/playbackInterruption"
-import { KEEP_WATCHING_OFFER_COPY } from "../../../src/components/watch/KeepWatchingOffer"
 import {
   TestRenderer,
   press,
@@ -383,7 +382,7 @@ function lastSlot(): SlotProps {
 // The dropped choice (owner, 2026-09-28). The finder below still looks for
 // it, so a regression that brings it back turns these tests red.
 const START = "Start from the beginning"
-const RESUME_AT_1_10_00 = KEEP_WATCHING_OFFER_COPY.resumeAt("1:10:00")
+const RESUME_AT_1_10_00 = "Resume at 1:10:00"
 
 /** The R17 offer's choices on screen, by label. */
 function offerChoices(renderer: TestInstance): string[] {

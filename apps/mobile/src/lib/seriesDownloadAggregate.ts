@@ -1,4 +1,3 @@
-import { getT } from "../i18n/useT"
 import type { DownloadButtonT } from "./downloadGlyph"
 import { clampFraction, type ExportSessionSnapshot } from "./exportSession"
 import type { SeriesExportRunProgress } from "./seriesExportProgress"
@@ -236,8 +235,7 @@ export function deriveEpisodeBadges(
 // idle / partial / all-downloaded labels are reachable here.
 export function seriesDownloadLabel(
   state: SeriesDownloadState,
-  // React callers pass their own `t`, so a language change re-renders them.
-  t: DownloadButtonT = getT("DownloadButton"),
+  t: DownloadButtonT,
 ): string {
   const { downloaded, total } = state
   if (seriesAllDownloaded(state)) return t("allDownloadedAriaLabel")

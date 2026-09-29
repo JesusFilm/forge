@@ -4,6 +4,7 @@
  * nothing to fall to. See the plan for the tiers and their reasons.
  */
 
+import { compareIds } from "./collation"
 import {
   extractMuxPlaybackId,
   isMuxPlaybackId,
@@ -104,7 +105,7 @@ function pinDub(
 ): WatchVariant | null {
   const published = [...variants]
     .filter((v) => v.published)
-    .sort((a, b) => a.documentId.localeCompare(b.documentId))
+    .sort((a, b) => compareIds(a.documentId, b.documentId))
 
   const qualified = published.filter(
     (v) => playbackIdOf(v) != null && hasUsableRuntime(v.duration),
@@ -149,7 +150,7 @@ function orderedPositions(
     .sort((a, b) => {
       const byOrder = (a.citation.order ?? 0) - (b.citation.order ?? 0)
       if (byOrder !== 0) return byOrder
-      return a.citation.documentId.localeCompare(b.citation.documentId)
+      return compareIds(a.citation.documentId, b.citation.documentId)
     })
     .forEach(({ inputIndex }, position) => positions.set(inputIndex, position))
   return positions

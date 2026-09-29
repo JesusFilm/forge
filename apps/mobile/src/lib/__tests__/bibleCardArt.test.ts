@@ -118,6 +118,16 @@ describe("deriveBibleCardArt — still selection", () => {
     expect(forward.candidates[0]?.[0]).toContain("/playbackA/")
   })
 
+  it("pins by code unit, so the device language cannot change the dub (KTD15)", () => {
+    // A collator puts "alpha" first; a code-unit compare puts "Zeta" first.
+    const upper = variant({ documentId: "Zeta", muxPlaybackId: "playbackZ" })
+    const lower = variant({ documentId: "alpha", muxPlaybackId: "playbackA" })
+
+    const result = deriveBibleCardArt(input({ variants: [lower, upper] }))
+
+    expect(result.candidates[0]?.[0]).toContain("/playbackZ/")
+  })
+
   it("does not follow the active dub: a second dub never changes the URLs (R4)", () => {
     // The viewer switching audio language re-renders with the same variants
     // array; nothing about the pin reads which one is playing.

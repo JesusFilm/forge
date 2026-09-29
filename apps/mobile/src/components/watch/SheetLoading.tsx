@@ -1,5 +1,6 @@
 import { Animated, StyleSheet, View } from "react-native"
 
+import { useT } from "../../i18n/useT"
 import { SURFACE_COLOR } from "../../lib/color"
 import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
 
@@ -9,11 +10,12 @@ import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
  */
 export function SheetLoading({ rows = 4 }: { rows?: number }) {
   const opacity = useShimmerOpacity()
+  const t = useT("ListSheet")
   return (
     <View
       style={styles.container}
       accessibilityRole="progressbar"
-      accessibilityLabel="Loading"
+      accessibilityLabel={t("loadingAriaLabel")}
     >
       {Array.from({ length: rows }, (_, i) => (
         <Animated.View key={i} style={[styles.row, { opacity }]} />

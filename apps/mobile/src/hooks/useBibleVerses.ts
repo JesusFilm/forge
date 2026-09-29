@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { AdminLanguageForms } from "../i18n/adminLanguage"
+import { useT } from "../i18n/useT"
 import { getApolloClient } from "../lib/apolloClient"
 import { isBsbVerseRef } from "../lib/bible/position/snapshot"
 import type { VerseRef } from "../lib/bible/versification/convert"
@@ -308,6 +309,7 @@ export function useBibleVerses(
   /** The route's captured forms (KTD16); never the store's. */
   forms: AdminLanguageForms,
 ): BibleQuotesState {
+  const t = useT("BibleQuotes")
   const [read, setRead] = useState<ReadState>(IDLE)
   // A superseded video's response must never land on the new one's cards.
   const requestIdRef = useRef(0)
@@ -504,7 +506,7 @@ export function useBibleVerses(
       const artIndex = firstUsable === -1 ? artCandidates.length : firstUsable
       return {
         // R10: a citation with no renderable passage keeps its own reference.
-        reference: passage?.reference ?? formatCitationLabel(citation),
+        reference: passage?.reference ?? formatCitationLabel(citation, t),
         text: passage?.content ?? "",
         attribution: null,
         imageUrl: artCandidates[artIndex] ?? null,
@@ -525,14 +527,14 @@ export function useBibleVerses(
     // promotional card out of the ladder, rather than an index check a later
     // edit could break. Its empty candidate list is the second belt.
     cards.push({
-      reference: "FREE RESOURCES",
-      text: "Want to explore life's biggest questions?",
+      reference: t("promoEyebrow"),
+      text: t("promoText"),
       attribution: null,
       imageUrl: PROMO_IMAGE_URL,
       artCandidates: [],
       artIndex: 0,
       backgroundColor: null,
-      ctaLabel: "Join Our Bible Study",
+      ctaLabel: t("joinBibleStudy"),
       ctaLink: JOIN_BIBLE_STUDY_URL,
       translation: null,
       copyright: null,
@@ -550,5 +552,6 @@ export function useBibleVerses(
     artFailures,
     slug,
     reportArtworkFailure,
+    t,
   ])
 }

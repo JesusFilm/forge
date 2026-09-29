@@ -19,6 +19,7 @@ import { useApolloClient, useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG, GET_VIDEO_TEXT } from "../../src/lib/queries"
 import { useScreenAdminForms } from "../../src/i18n/useScreenAdminForms"
+import { useT } from "../../src/i18n/useT"
 import { videoTextVariables } from "../../src/lib/videoText"
 import { datadogLog } from "../../src/lib/datadog"
 import {
@@ -138,6 +139,10 @@ export default function WatchVideoPage() {
   }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const scrollViewRef = useRef<ScrollView>(null)
+  const t = useT("Watch")
+  const tCast = useT("Cast")
+  const tCommon = useT("Common")
+  const tSheet = useT("DownloadSheet")
 
   const router = useRouter()
   const {
@@ -595,12 +600,12 @@ export default function WatchVideoPage() {
   const castReset = cast.reset
   useEffect(() => {
     if (castSessionState.phase === "failed") {
-      setSnackbarMessage("Casting failed. Playback continues on your phone.")
+      setSnackbarMessage(tCast("failedMessage"))
       castReset()
     } else if (castSessionState.phase === "ended") {
       castReset()
     }
-  }, [castSessionState, castReset, setSnackbarMessage])
+  }, [castSessionState, castReset, setSnackbarMessage, tCast])
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -743,9 +748,9 @@ export default function WatchVideoPage() {
       <View style={layout.screenContainer}>
         <StatusBar style="light" />
         <View style={layout.centered}>
-          <Text style={text.errorTitle}>Video Not Found</Text>
+          <Text style={text.errorTitle}>{t("notFoundTitle")}</Text>
           <Text style={text.errorMessage}>
-            {error?.message ?? "This video could not be loaded."}
+            {error?.message ?? t("loadError")}
           </Text>
           <Text
             style={styles.retryLink}
@@ -754,9 +759,10 @@ export default function WatchVideoPage() {
               void refetchText()
             }}
             accessibilityRole="button"
-            accessibilityLabel="Retry loading video"
+            accessibilityLabel={t("retryAriaLabel")}
+            {...{ "dd-action-name": "watch-load-retry" }}
           >
-            Retry
+            {tCommon("retry")}
           </Text>
         </View>
         <FloatingBackButton {...BACK_BUTTON_PROPS} icon="chevron-down" />
@@ -768,7 +774,7 @@ export default function WatchVideoPage() {
     hasVideo && video.studyQuestions.length > 0
       ? {
           __typename: "RelatedQuestionsBlock",
-          heading: "Study Questions",
+          heading: t("studyQuestionsHeading"),
           questions: video.studyQuestions.map((q) => ({
             question: q.value,
             answer: "",
@@ -782,7 +788,7 @@ export default function WatchVideoPage() {
     hasVideo && routeCitations.length > 0
       ? {
           __typename: "BibleQuotesCarouselBlock",
-          heading: "Bible Quotes",
+          heading: t("bibleQuotesHeading"),
           quotes: bibleQuotes.cards,
         }
       : null
@@ -900,22 +906,26 @@ export default function WatchVideoPage() {
                 // video that is being exported over an existing transfer.
                 if (exportEntry) {
                   if (exportEntry.paused) {
-                    Alert.alert("Saving to Files", "This export is paused.", [
-                      {
-                        text: "Stop Download",
-                        style: "destructive",
-                        onPress: () => {
-                          exportControls.stop(video.slug)
+                    Alert.alert(
+                      t("savingToFilesTitle"),
+                      t("exportPausedMessage"),
+                      [
+                        {
+                          text: t("stopDownload"),
+                          style: "destructive",
+                          onPress: () => {
+                            exportControls.stop(video.slug)
+                          },
                         },
-                      },
-                      {
-                        text: "Resume",
-                        onPress: () => {
-                          exportControls.resume(video.slug)
+                        {
+                          text: t("resume"),
+                          onPress: () => {
+                            exportControls.resume(video.slug)
+                          },
                         },
-                      },
-                      { text: "Cancel", style: "cancel" },
-                    ])
+                        { text: t("cancel"), style: "cancel" },
+                      ],
+                    )
                   } else {
                     // Running → the ring's pause glyph pauses it immediately,
                     // mirroring the offline control.
@@ -930,12 +940,12 @@ export default function WatchVideoPage() {
                   // Four options outrun Android's three-button dialog, so the
                   // menu goes through presentActionMenu rather than Alert.
                   presentActionMenu({
-                    title: "Offline download",
-                    message: "This video is saved for offline viewing.",
+                    title: t("offlineDownloadTitle"),
+                    message: t("savedOfflineMessage"),
                     ios: "alert",
                     actions: [
                       {
-                        text: "Change quality / language",
+                        text: t("changeQualityOrLanguage"),
                         onPress: () => router.push("/watch/download?swap=1"),
                       },
                       // R33's switch removes the whole export feature, so the
@@ -946,54 +956,62 @@ export default function WatchVideoPage() {
                       ...(RAW_EXPORT_ENABLED
                         ? [
                             {
-                              text: rawModeLabel(Platform.OS),
+                              text: rawModeLabel(Platform.OS, tSheet),
                               onPress: () =>
                                 router.push("/watch/download?mode=raw"),
                             },
                           ]
                         : []),
                       {
-                        text: "Remove download",
+                        text: t("removeDownload"),
                         style: "destructive" as const,
                         onPress: () => {
                           void deleteDownload(video.slug)
                         },
                       },
-                      { text: "Cancel", style: "cancel" as const },
+                      { text: t("cancel"), style: "cancel" as const },
                     ],
                   })
                 } else if (state === "paused") {
                   // Paused (mirrors the series ring): resume, or remove entirely.
-                  Alert.alert("Offline download", "This download is paused.", [
-                    {
-                      text: "Remove download",
-                      style: "destructive",
-                      onPress: () => {
-                        void deleteDownload(video.slug)
+                  Alert.alert(
+                    t("offlineDownloadTitle"),
+                    t("downloadPausedMessage"),
+                    [
+                      {
+                        text: t("removeDownload"),
+                        style: "destructive",
+                        onPress: () => {
+                          void deleteDownload(video.slug)
+                        },
                       },
-                    },
-                    {
-                      text: "Resume",
-                      onPress: () => void resumeDownload(video.slug),
-                    },
-                    { text: "Cancel", style: "cancel" },
-                  ])
+                      {
+                        text: t("resume"),
+                        onPress: () => void resumeDownload(video.slug),
+                      },
+                      { text: t("cancel"), style: "cancel" },
+                    ],
+                  )
                 } else if (state === "downloading") {
                   // In flight → the ring's pause glyph pauses it immediately.
                   void pauseDownload(video.slug)
                 } else if (state === "queued") {
                   // Queued in a series batch — no live transfer to pause yet, so
                   // offer to remove it from the download.
-                  Alert.alert("Offline download", "This download is queued.", [
-                    {
-                      text: "Remove download",
-                      style: "destructive",
-                      onPress: () => {
-                        void deleteDownload(video.slug)
+                  Alert.alert(
+                    t("offlineDownloadTitle"),
+                    t("downloadQueuedMessage"),
+                    [
+                      {
+                        text: t("removeDownload"),
+                        style: "destructive",
+                        onPress: () => {
+                          void deleteDownload(video.slug)
+                        },
                       },
-                    },
-                    { text: "Cancel", style: "cancel" },
-                  ])
+                      { text: t("cancel"), style: "cancel" },
+                    ],
+                  )
                 } else {
                   // Idle / failed / canceled → the download picker (retry included).
                   router.push("/watch/download")
@@ -1046,16 +1064,15 @@ export default function WatchVideoPage() {
           <>
             {error != null && (
               <View style={styles.inlineError}>
-                <Text style={text.errorMessage}>
-                  Couldn&apos;t load full details.
-                </Text>
+                <Text style={text.errorMessage}>{t("detailsLoadError")}</Text>
                 <Text
                   style={styles.retryLink}
                   onPress={() => void refetch()}
                   accessibilityRole="button"
-                  accessibilityLabel="Retry loading video details"
+                  accessibilityLabel={t("retryDetailsAriaLabel")}
+                  {...{ "dd-action-name": "watch-details-retry" }}
                 >
-                  Retry
+                  {tCommon("retry")}
                 </Text>
               </View>
             )}
@@ -1083,7 +1100,8 @@ export default function WatchVideoPage() {
             onPress={handleScrollToTop}
             style={styles.scrollTopButton}
             accessibilityRole="button"
-            accessibilityLabel="Scroll to top"
+            accessibilityLabel={t("scrollToTopAriaLabel")}
+            {...{ "dd-action-name": "watch-scroll-top" }}
           >
             <Ionicons name="chevron-up" size={22} color={TEXT_PRIMARY} />
           </Pressable>

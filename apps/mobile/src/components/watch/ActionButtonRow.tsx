@@ -109,6 +109,9 @@ export function ActionButtonRow({
 }: ActionButtonRowProps) {
   const typography = useTypography()
   const tSubtitles = useT("Subtitles")
+  const t = useT("Watch")
+  const tCommon = useT("Common")
+  const tDownload = useT("DownloadButton")
 
   // Measured inputs for the spacing mode: the row's inner width plus each
   // pill's NATURAL width (the real pills clamp at the column, so only the
@@ -127,15 +130,20 @@ export function ActionButtonRow({
   const downloadSlop = { left: ICON_HIT_SLOP_MAX, right: inner }
   const shareSlop = { left: inner, right: ICON_HIT_SLOP_MAX }
 
-  const language = languageLabel?.trim() || "Language"
+  const language = languageLabel?.trim() || t("language")
   const subtitle =
     subtitleLabelText(subtitleLabel ?? null, tSubtitles("off"))?.trim() ||
-    "Subtitles"
+    t("subtitles")
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
   const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
   // The ring IS the control, so its glyph, its label and whether it accepts a
   // tap are ONE decision — downloadGlyphInfo owns all three (KTD6).
-  const dl = downloadGlyphInfo(downloadState, downloadProgress, exportEntry)
+  const dl = downloadGlyphInfo(
+    downloadState,
+    downloadProgress,
+    exportEntry,
+    tDownload,
+  )
   // The completed tick reads a touch larger than the idle/failed glyphs.
   const staticIconSize = downloadState === "downloaded" ? 28 : 24
 
@@ -188,7 +196,8 @@ export function ActionButtonRow({
           onPress={onLanguage}
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={`Language, ${language}`}
+          accessibilityLabel={t("languageAriaLabel", { language })}
+          {...{ "dd-action-name": "watch-language" }}
         >
           <PillContent
             kind="language"
@@ -205,7 +214,7 @@ export function ActionButtonRow({
           onPress={onSubtitles}
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={`Subtitles, ${subtitle}`}
+          accessibilityLabel={t("subtitlesAriaLabel", { subtitle })}
           // The label carries catalog text, so the RUM name is fixed (KTD15).
           {...{ "dd-action-name": "watch-subtitles" }}
         >
@@ -234,6 +243,7 @@ export function ActionButtonRow({
         hitSlop={downloadSlop}
         accessibilityRole="button"
         accessibilityLabel={dl.a11yLabel}
+        {...{ "dd-action-name": "watch-download" }}
       >
         {dl.inProgress ? (
           <DownloadProgressRing
@@ -259,7 +269,8 @@ export function ActionButtonRow({
         ]}
         hitSlop={shareSlop}
         accessibilityRole="button"
-        accessibilityLabel="Share"
+        accessibilityLabel={tCommon("shareAriaLabel")}
+        {...{ "dd-action-name": "watch-share" }}
       >
         <Ionicons name="share-outline" size={24} color={TEXT_SECONDARY} />
       </Pressable>

@@ -2,6 +2,7 @@ import { useCallback } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { animateLayout } from "../ui/AnimatedChevron"
+import { useT } from "../../i18n/useT"
 import { TEXT_BODY } from "../../lib/color"
 import {
   useTextOverflow,
@@ -23,6 +24,7 @@ function overflowsCollapsed(e: TextLayoutEvent): boolean {
 
 export function VideoDescription({ description }: VideoDescriptionProps) {
   const typography = useTypography()
+  const t = useT("Common")
 
   // A mounted instance can go partial -> full under cache-first, so the hook
   // re-measures when the text changes.
@@ -69,10 +71,15 @@ export function VideoDescription({ description }: VideoDescriptionProps) {
           onPress={handleToggle}
           style={styles.toggleButton}
           accessibilityRole="button"
-          accessibilityLabel={expanded ? "Show less" : "Read more"}
+          accessibilityLabel={expanded ? t("showLess") : t("readMore")}
+          {...{
+            "dd-action-name": expanded
+              ? "watch-description-less"
+              : "watch-description-more",
+          }}
         >
           <Text style={[text.accentLinkText, typography.bodySmall]}>
-            {expanded ? "Show less" : "Read more"}
+            {expanded ? t("showLess") : t("readMore")}
           </Text>
         </Pressable>
       )}

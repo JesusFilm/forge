@@ -14,6 +14,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useTypography } from "../../hooks/useTypography"
 import { useSheetListHeight } from "../../hooks/useSheetListHeight"
 import { useUiTag } from "../../hooks/useUiTag"
+import { useLocaleEpoch, useT, type UiT } from "../../i18n/useT"
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { acceptSheetTap, assembleSheetList } from "../../lib/sheetListLogic"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
@@ -64,13 +65,19 @@ export type SearchableListSheetProps<T> = {
   // Keep `rows` in the caller's order instead of sorting them by name.
   keepRowOrder?: boolean
   colors?: SearchableListSheetColors
+  // The RUM prefix for the row and clear-search taps. The row label carries
+  // translated text, so Datadog must not name the tap from it (KTD15).
+  actionName?: string
 }
 
 function accessibleName(
+  t: UiT<"ListSheet">,
   primary: string,
   status: string | null | undefined,
 ): string {
-  return status ? `${primary}, ${status}` : primary
+  return status
+    ? t("rowWithStatusAriaLabel", { name: primary, status })
+    : primary
 }
 
 // Generic searchable list sheet: FlashList + search + "Current" section + 500ms
@@ -94,6 +101,7 @@ export function SearchableListSheet<T>({
   headerTop,
   keepRowOrder = false,
   colors = DEFAULT_LIST_SHEET_COLORS,
+  actionName = "list-sheet",
 }: SearchableListSheetProps<T>) {
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
@@ -107,6 +115,8 @@ export function SearchableListSheet<T>({
   // twice and pop the underlying screen.
   const lastSelectRef = useRef(0)
   const uiTag = useUiTag()
+  const t = useT("ListSheet")
+  const epoch = useLocaleEpoch()
 
   const { active, filtered } = useMemo(
     () =>
@@ -162,7 +172,8 @@ export function SearchableListSheet<T>({
           onPress={() => handleSelect(item)}
           accessibilityRole="radio"
           accessibilityState={{ selected: false }}
-          accessibilityLabel={accessibleName(getPrimaryLabel(item), status)}
+          accessibilityLabel={accessibleName(t, getPrimaryLabel(item), status)}
+          {...{ "dd-action-name": `${actionName}-row` }}
         >
           <View style={styles.nameColumn}>
             <Text
@@ -208,6 +219,8 @@ export function SearchableListSheet<T>({
       typography,
       primaryText,
       secondaryText,
+      t,
+      actionName,
     ],
   )
 
@@ -246,7 +259,8 @@ export function SearchableListSheet<T>({
             onPress={() => setQuery("")}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Clear search"
+            accessibilityLabel={t("clearSearchAriaLabel")}
+            {...{ "dd-action-name": `${actionName}-clear-search` }}
           >
             <Ionicons
               name="close-circle"
@@ -262,7 +276,7 @@ export function SearchableListSheet<T>({
           <Text
             style={[styles.currentLabel, typography.bodySmall, secondaryText]}
           >
-            Current
+            {t("current")}
           </Text>
           <View
             style={[styles.listRow, { backgroundColor: colors.surface }]}
@@ -271,6 +285,7 @@ export function SearchableListSheet<T>({
             // child texts one by one.
             accessible
             accessibilityLabel={accessibleName(
+              t,
               getPrimaryLabel(active),
               activeStatus,
             )}
@@ -338,6 +353,8 @@ export function SearchableListSheet<T>({
           data={filtered}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
+          // Recycled rows redraw on a language change (KTD5).
+          extraData={epoch}
           keyboardShouldPersistTaps="handled"
           // Off by intent: FlashList v2's default maintainVisibleContentPosition
           // (for chat-like lists) makes our list jump when the search swaps data

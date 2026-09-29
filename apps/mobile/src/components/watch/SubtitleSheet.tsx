@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { SearchableListSheet } from "../sheets/SearchableListSheet"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import {
   ACCENT,
   SURFACE_COLOR,
@@ -40,6 +41,7 @@ export function SubtitleSheetContent({
   onClose,
 }: SubtitleSheetProps) {
   const typography = useTypography()
+  const t = useT("Watch")
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -82,7 +84,7 @@ export function SubtitleSheetContent({
           color={TEXT_SECONDARY}
         />
         <Text style={[styles.emptyText, typography.body]}>
-          No subtitles available
+          {t("noSubtitlesAvailable")}
         </Text>
       </View>
     )
@@ -90,14 +92,16 @@ export function SubtitleSheetContent({
 
   const toggleRow = (
     <View style={styles.toggleRow}>
-      <Text style={[styles.toggleLabel, typography.titleSmall]}>Subtitles</Text>
+      <Text style={[styles.toggleLabel, typography.titleSmall]}>
+        {t("subtitles")}
+      </Text>
       <Switch
         value={localToggle}
         onValueChange={handleToggle}
         trackColor={{ false: SURFACE_COLOR, true: ACCENT }}
         thumbColor="#ffffff"
         accessibilityRole="switch"
-        accessibilityLabel="Enable subtitles"
+        accessibilityLabel={t("enableSubtitlesAriaLabel")}
       />
     </View>
   )
@@ -111,10 +115,11 @@ export function SubtitleSheetContent({
       getPrimaryLabel={getPrimaryLabel}
       getSearchValues={getSearchValues}
       onSelect={handleSelect}
-      searchPlaceholder="Search subtitles..."
-      searchAccessibilityLabel="Search subtitles"
-      emptySearchMessage="No subtitles found"
+      searchPlaceholder={t("searchSubtitlesPlaceholder")}
+      searchAccessibilityLabel={t("searchSubtitlesAriaLabel")}
+      emptySearchMessage={t("noSubtitlesFound")}
       headerTop={toggleRow}
+      actionName="subtitle-sheet"
     />
   )
 }

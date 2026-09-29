@@ -140,8 +140,9 @@ function SignInPromptBanner() {
           onPress={() => setPhase("idle")}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel="Dismiss"
+          accessibilityLabel={t("dismissAriaLabel")}
           style={({ pressed }) => [pressed && feedback.pressed]}
+          {...{ "dd-action-name": "signin-prompt-error-dismiss" }}
         >
           <Ionicons name="close" size={18} color={TEXT_SECONDARY} />
         </Pressable>
@@ -161,18 +162,18 @@ function SignInPromptBanner() {
           pressed && feedback.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Sign in"
+        accessibilityLabel={t("signIn")}
         {...{ "dd-action-name": "signin-prompt-accept" }}
       >
         <Text style={styles.signInLabel}>
-          {busy ? "Signing in…" : "Sign in"}
+          {busy ? t("signingIn") : t("signIn")}
         </Text>
       </Pressable>
       <Pressable
         onPress={dismiss}
         hitSlop={12}
         accessibilityRole="button"
-        accessibilityLabel="Dismiss"
+        accessibilityLabel={t("dismissAriaLabel")}
         {...{ "dd-action-name": "signin-prompt-dismiss" }}
       >
         <Ionicons name="close" size={18} color={TEXT_SECONDARY} />

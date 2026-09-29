@@ -1,4 +1,4 @@
-import { getT, type UiT } from "../i18n/useT"
+import type { UiT } from "../i18n/useT"
 
 /**
  * Both platforms open a folder picker, so both labels name the same act. The
@@ -11,8 +11,7 @@ import { getT, type UiT } from "../i18n/useT"
  */
 export function rawModeLabel(
   platformOS: string,
-  // A `.ts` module, so a menu built at tap time reads the catalog in use then.
-  t: UiT<"DownloadSheet"> = getT("DownloadSheet"),
+  t: UiT<"DownloadSheet">,
 ): string {
   return platformOS === "ios" ? t("saveToFiles") : t("saveToDevice")
 }

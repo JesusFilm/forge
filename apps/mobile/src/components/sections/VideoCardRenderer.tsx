@@ -6,6 +6,7 @@ import { useRouter } from "expo-router"
 import { SURFACE_COLOR } from "../../lib/color"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { card, text } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
@@ -23,9 +24,10 @@ export interface VideoCardRendererProps {
 export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const router = useRouter()
   const typography = useTypography()
+  const tCommon = useT("Common")
 
   const s = section as Record<string, unknown>
-  const title = (s.title as string | null) ?? "Untitled"
+  const title = (s.title as string | null) ?? tCommon("untitled")
   const subtitle = s.subtitle as string | null
   const sectionKey = s.sectionKey as string | null
   const streamingUrl = blockStreamingUrl(s)
@@ -43,7 +45,8 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   return (
     <PressableCard
       onPress={handlePress}
-      accessibilityLabel={`Play ${title}`}
+      accessibilityLabel={tCommon("playTitleAriaLabel", { title })}
+      {...{ "dd-action-name": "section-video-card" }}
       style={styles.container}
       surfaceStyle={[card.surface, styles.localCard]}
       background={

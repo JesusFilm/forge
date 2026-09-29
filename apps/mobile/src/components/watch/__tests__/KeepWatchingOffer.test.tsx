@@ -8,7 +8,6 @@ import { act, type ReactElement } from "react"
 import { AccessibilityInfo, StyleSheet } from "react-native"
 
 import {
-  KEEP_WATCHING_OFFER_COPY,
   KeepWatchingOffer,
   formatOfferPosition,
   offerResumeSeconds,
@@ -29,7 +28,7 @@ jest.mock("react-native-safe-area-context", () => ({
 
 /** AE6: saved progress at 1:10:00. */
 const SAVED = 4200
-const RESUME = KEEP_WATCHING_OFFER_COPY.resumeAt("1:10:00")
+const RESUME = "Resume at 1:10:00"
 
 let screenReaderOn = false
 let screenReaderListener: ((enabled: boolean) => void) | null = null

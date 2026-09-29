@@ -1,24 +1,15 @@
 import { useCallback } from "react"
 
 import { SearchableListSheet } from "../sheets/SearchableListSheet"
+import { useT } from "../../i18n/useT"
 import type { WatchVariant } from "../../lib/normalizeVideo"
-
-function displayName(v: WatchVariant): string {
-  return v.languageName ?? "Unknown"
-}
 
 // Dub rows keyed by slug for selection, documentId for the list key; a variant
 // without `hls` isn't playable, so it silently ignores taps.
 const getSelectionId = (v: WatchVariant) => v.slug
 const getKey = (v: WatchVariant) => v.documentId
 const getSecondaryLabel = (v: WatchVariant) => v.languageNameNative
-const getSearchValues = (v: WatchVariant) => [
-  displayName(v),
-  v.languageNameNative,
-]
 const isSelectable = (v: WatchVariant) => !!v.hls
-
-export const DOWNLOADED_DUB_LABEL = "Downloaded"
 
 export type LanguageSheetProps = {
   variants: WatchVariant[]
@@ -37,6 +28,15 @@ export function LanguageSheetContent({
   onLanguageChange,
   onClose,
 }: LanguageSheetProps) {
+  const t = useT("Watch")
+  const displayName = useCallback(
+    (v: WatchVariant) => v.languageName ?? t("unknownLanguage"),
+    [t],
+  )
+  const getSearchValues = useCallback(
+    (v: WatchVariant) => [displayName(v), v.languageNameNative],
+    [displayName],
+  )
   const handleSelect = useCallback(
     (variant: WatchVariant) => {
       onLanguageChange(variant.slug)
@@ -48,9 +48,9 @@ export function LanguageSheetContent({
     (v: WatchVariant) =>
       downloadedDubDocumentId != null &&
       v.documentId === downloadedDubDocumentId
-        ? DOWNLOADED_DUB_LABEL
+        ? t("downloadedStatus")
         : null,
-    [downloadedDubDocumentId],
+    [downloadedDubDocumentId, t],
   )
 
   return (
@@ -65,9 +65,10 @@ export function LanguageSheetContent({
       getSearchValues={getSearchValues}
       isSelectable={isSelectable}
       onSelect={handleSelect}
-      searchPlaceholder="Search languages..."
-      searchAccessibilityLabel="Search languages"
-      emptySearchMessage="No languages found"
+      searchPlaceholder={t("searchLanguagesPlaceholder")}
+      searchAccessibilityLabel={t("searchLanguagesAriaLabel")}
+      emptySearchMessage={t("noLanguagesFound")}
+      actionName="watch-language-sheet"
     />
   )
 }

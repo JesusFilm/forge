@@ -21,6 +21,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { carousel, card, feedback, text, CARD_GAP } from "../../styles/shared"
 import type { WatchSibling } from "../../lib/normalizeVideo"
 import { encodeWatchSeed } from "../../lib/watchSeed"
@@ -42,6 +43,9 @@ const CARD_ASPECT_RATIO = 16 / 9
 export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("Watch")
+  const tCommon = useT("Common")
+  const epoch = useLocaleEpoch()
   const { width: screenWidth } = useWindowDimensions()
 
   const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
@@ -50,7 +54,7 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
   const renderItem = useCallback(
     ({ item }: { item: WatchSibling }) => {
       const isCurrent = item.slug === currentSlug
-      const title = item.title ?? item.label ?? "Untitled"
+      const title = item.title ?? item.label ?? tCommon("untitled")
 
       const handlePress = () => {
         if (!isCurrent) {
@@ -80,8 +84,11 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
           onPress={handlePress}
           accessibilityRole="button"
           accessibilityLabel={
-            isCurrent ? `Currently playing ${title}` : `Play ${title}`
+            isCurrent
+              ? t("currentlyPlayingAriaLabel", { title })
+              : tCommon("playTitleAriaLabel", { title })
           }
+          {...{ "dd-action-name": "watch-up-next-card" }}
         >
           {item.posterUrl != null ? (
             <Image
@@ -113,7 +120,7 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
           {isCurrent && (
             <View style={styles.playingPill} pointerEvents="none">
               <Text style={[styles.playingPillText, typography.caption]}>
-                Playing
+                {t("playingBadge")}
               </Text>
             </View>
           )}
@@ -129,7 +136,7 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
         </Pressable>
       )
     },
-    [currentSlug, cardWidth, cardHeight, typography, router],
+    [currentSlug, cardWidth, cardHeight, typography, router, t, tCommon],
   )
 
   if (siblings.length === 0) return null
@@ -140,11 +147,12 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
         style={[text.sectionHeadingPadded, typography.titleLarge]}
         accessibilityRole="header"
       >
-        Up Next
+        {t("upNextHeading")}
       </Text>
       <FlatList
         data={siblings}
         renderItem={renderItem}
+        extraData={epoch}
         keyExtractor={(item) => item.documentId}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -152,7 +160,9 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
-        accessibilityLabel={`${siblings.length} sibling videos`}
+        accessibilityLabel={t("upNextListAriaLabel", {
+          count: siblings.length,
+        })}
       />
     </View>
   )

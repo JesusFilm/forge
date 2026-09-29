@@ -14,13 +14,10 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { useT } from "../../i18n/useT"
 import { BLACK, SURFACE_COLOR, TEXT_PRIMARY, hexToRgba } from "../../lib/color"
 import { KEEP_WATCHING_OFFER_DURATION_MS } from "../../lib/explore/watchIntent"
 import { feedback } from "../../styles/shared"
-
-export const KEEP_WATCHING_OFFER_COPY = {
-  resumeAt: (time: string) => `Resume at ${time}`,
-} as const
 
 /** h:mm:ss from an hour and m:ss below it, the shape AE6 names ("1:10:00"). */
 export function formatOfferPosition(seconds: number): string {
@@ -69,6 +66,7 @@ export function KeepWatchingOffer({
 }: KeepWatchingOfferProps) {
   const insets = useSafeAreaInsets()
   const screenReaderOn = useScreenReaderEnabled()
+  const t = useT("Watch")
   // Latched: a pause or a rebuffer after the first frame does not stop the
   // clock, as it does not stop the progress hold's clock.
   const [clockArmed, setClockArmed] = useState(clockStarted)
@@ -95,9 +93,9 @@ export function KeepWatchingOffer({
   // The owner dropped "Start from the beginning" (2026-09-28), so the card
   // shows only when a later saved place gives a "Resume at" choice.
   if (resumeAtSeconds == null) return null
-  const resumeLabel = KEEP_WATCHING_OFFER_COPY.resumeAt(
-    formatOfferPosition(resumeAtSeconds),
-  )
+  const resumeLabel = t("resumeAt", {
+    time: formatOfferPosition(resumeAtSeconds),
+  })
 
   return (
     <View

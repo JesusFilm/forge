@@ -72,11 +72,14 @@ export function SeriesActionRow({
 }: SeriesActionRowProps) {
   const typography = useTypography()
   const tSubtitles = useT("Subtitles")
+  const t = useT("Watch")
+  const tCommon = useT("Common")
+  const tDownload = useT("DownloadButton")
 
-  const language = languageLabel?.trim() || "Language"
+  const language = languageLabel?.trim() || t("language")
   const subtitle =
     subtitleLabelText(subtitleLabel ?? null, tSubtitles("off"))?.trim() ||
-    "Subtitles"
+    t("subtitles")
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
   const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
   const allDownloaded = seriesAllDownloaded(downloadState)
@@ -95,16 +98,16 @@ export function SeriesActionRow({
   const downloadA11y = exporting
     ? pausedExport
       ? onResumeExport
-        ? "Saving to Files, paused. Tap to resume or stop"
-        : "Saving to Files, paused"
+        ? tDownload("exportPausedAriaLabel")
+        : tDownload("exportPausedInertAriaLabel")
       : onPauseExport
-        ? "Saving to Files. Tap to pause"
-        : "Saving to Files"
+        ? tDownload("exportingAriaLabel")
+        : tDownload("exportingInertAriaLabel")
     : downloadState.pausedAggregate
-      ? "Downloads paused. Tap for resume or cancel options"
+      ? tDownload("seriesPausedAriaLabel")
       : downloadState.inProgress
-        ? "Pause downloads"
-        : seriesDownloadLabel(downloadState)
+        ? tDownload("pauseDownloadsAriaLabel")
+        : seriesDownloadLabel(downloadState, tDownload)
 
   return (
     <View style={styles.row}>
@@ -115,7 +118,8 @@ export function SeriesActionRow({
           onPress={onLanguage}
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={`Language, ${language}`}
+          accessibilityLabel={t("languageAriaLabel", { language })}
+          {...{ "dd-action-name": "series-language" }}
         >
           <Ionicons name="globe-outline" size={21} color={TEXT_SECONDARY} />
           <Text
@@ -129,7 +133,7 @@ export function SeriesActionRow({
           onPress={onSubtitles}
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={`Subtitles, ${subtitle}`}
+          accessibilityLabel={t("subtitlesAriaLabel", { subtitle })}
           // The label carries catalog text, so the RUM name is fixed (KTD15).
           {...{ "dd-action-name": "series-subtitles" }}
         >
@@ -160,6 +164,7 @@ export function SeriesActionRow({
           ]}
           accessibilityRole="button"
           accessibilityLabel={downloadA11y}
+          {...{ "dd-action-name": "series-download" }}
         >
           {exporting ? (
             <DownloadProgressRing
@@ -212,7 +217,8 @@ export function SeriesActionRow({
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Share"
+          accessibilityLabel={tCommon("shareAriaLabel")}
+          {...{ "dd-action-name": "series-share" }}
         >
           <Ionicons name="share-outline" size={24} color={TEXT_SECONDARY} />
         </Pressable>

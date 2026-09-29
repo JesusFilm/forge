@@ -12,6 +12,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import {
   ACCENT,
   BG_COLOR,
@@ -35,16 +36,15 @@ const CHAT_WITH_PERSON_URL =
   "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch"
 const ASK_BIBLE_QUESTION_URL =
   "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch"
-const FALLBACK_BODY =
-  "Have a private discussion with someone who is ready to listen."
 
 function AnswerFallback() {
   const typography = useTypography()
+  const t = useT("StudyQuestions")
 
   return (
     <View style={styles.fallbackContainer}>
       <Text style={[styles.fallbackBody, typography.bodySmall]}>
-        {FALLBACK_BODY}
+        {t("fallbackBody")}
       </Text>
       <View style={styles.fallbackButtonRow}>
         <Pressable
@@ -55,7 +55,8 @@ function AnswerFallback() {
           android_ripple={{ color: "rgba(0, 0, 0, 0.1)" }}
           onPress={() => Linking.openURL(CHAT_WITH_PERSON_URL)}
           accessibilityRole="link"
-          accessibilityLabel="Chat with a person"
+          accessibilityLabel={t("chatAriaLabel")}
+          {...{ "dd-action-name": "study-questions-chat" }}
         >
           <Ionicons
             name="chatbubble-outline"
@@ -63,7 +64,7 @@ function AnswerFallback() {
             color={BG_COLOR}
             style={styles.fallbackButtonIcon}
           />
-          <Text style={styles.fallbackButtonText}>Chat</Text>
+          <Text style={styles.fallbackButtonText}>{t("chat")}</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [
@@ -73,7 +74,8 @@ function AnswerFallback() {
           android_ripple={{ color: "rgba(0, 0, 0, 0.1)" }}
           onPress={() => Linking.openURL(ASK_BIBLE_QUESTION_URL)}
           accessibilityRole="link"
-          accessibilityLabel="Ask a Bible question"
+          accessibilityLabel={t("askBibleQuestionAriaLabel")}
+          {...{ "dd-action-name": "study-questions-ask" }}
         >
           <Ionicons
             name="mail-outline"
@@ -81,7 +83,7 @@ function AnswerFallback() {
             color={BG_COLOR}
             style={styles.fallbackButtonIcon}
           />
-          <Text style={styles.fallbackButtonText}>Ask Bible Question</Text>
+          <Text style={styles.fallbackButtonText}>{t("askBibleQuestion")}</Text>
         </Pressable>
       </View>
     </View>
@@ -134,6 +136,7 @@ export function RelatedQuestionsRenderer({
   section,
 }: RelatedQuestionsRendererProps) {
   const typography = useTypography()
+  const t = useT("StudyQuestions")
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
   const s = section as Record<string, unknown>
@@ -173,7 +176,8 @@ export function RelatedQuestionsRenderer({
             onPress={handleCtaPress}
             style={[button.iconButton44, styles.localCtaButton]}
             accessibilityRole="link"
-            accessibilityLabel={ctaLabel ?? "Ask a question"}
+            accessibilityLabel={ctaLabel ?? t("askQuestionAriaLabel")}
+            {...{ "dd-action-name": "study-questions-cta" }}
           >
             <Ionicons
               name="chatbubble-ellipses-outline"

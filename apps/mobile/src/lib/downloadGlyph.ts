@@ -1,4 +1,4 @@
-import { getT, type UiT } from "../i18n/useT"
+import type { UiT } from "../i18n/useT"
 import {
   ACCENT_ON_DARK,
   STATUS_DONE_COLOR,
@@ -101,9 +101,8 @@ function settled(
 export function downloadGlyphInfo(
   state: OfflineDownloadState | null | undefined,
   progress: number | null | undefined,
-  exporting?: ExportSessionEntry | null,
-  // React callers pass their own `t`, so a language change re-renders them.
-  t: DownloadButtonT = getT("DownloadButton"),
+  exporting: ExportSessionEntry | null | undefined,
+  t: DownloadButtonT,
 ): DownloadGlyphInfo {
   // R16: an export outranks every offline state, a finished copy included.
   // It now mirrors the offline affordance exactly — same arrow, same red ring,

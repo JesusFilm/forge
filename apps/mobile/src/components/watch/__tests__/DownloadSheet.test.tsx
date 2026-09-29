@@ -146,6 +146,7 @@ import {
   resetLocaleStoreForTests,
   startLocaleSync,
 } from "../../../i18n/localeStore"
+import { getT } from "../../../i18n/useT"
 import {
   phoneLocales,
   tapActionName,
@@ -503,8 +504,9 @@ describe("mode control copy", () => {
   it("names the platform's OWN file destination on each platform", () => {
     // jest runs this app as iOS only, so the Android wording is unreachable
     // through the rendered sheet. Pin the resolver directly instead.
-    expect(rawModeLabel("ios")).toBe("Save to Files")
-    expect(rawModeLabel("android")).toBe("Save to Device")
+    const t = getT("DownloadSheet")
+    expect(rawModeLabel("ios", t)).toBe("Save to Files")
+    expect(rawModeLabel("android", t)).toBe("Save to Device")
   })
 
   it("renders no section header above the two rows", async () => {

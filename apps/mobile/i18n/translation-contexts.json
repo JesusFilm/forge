@@ -20,7 +20,15 @@
     "DownloadSheet": "The download sheet of one video, and the parts that the series download sheet also uses: the choice between an offline copy in the app and a file saved on the device, the quality and subtitle lists, the terms-of-use checkbox, and the terms window. The terms themselves stay in English.",
     "DownloadButton": "The spoken label of the round download button on a video page and on a series page. It names the state of the download and what a tap does. Only a screen reader reads it.",
     "Library": "The list of downloaded videos in the Profile tab. Each row shows the size and the state of one download. The viewer can select videos and delete them.",
-    "ExportReport": "A small card at the bottom of the screen that reports the result after the app saves a video file, or every episode of a series, in a folder on the device."
+    "ExportReport": "A small card at the bottom of the screen that reports the result after the app saves a video file, or every episode of a series, in a folder on the device.",
+    "Watch": "The watch page of one video: the title, the language and subtitle buttons, the download and share buttons, the description, the Up Next row, and the messages and alerts about offline downloads. It also holds the language and subtitle sheets, which the series page uses too.",
+    "Player": "The video player's controls over the playing video: play, pause, skip, the seek bar, full screen, and a settings sheet for the playback speed and the video quality. Most of these strings are spoken labels for a screen reader.",
+    "MiniPlayer": "A small floating video window that keeps a video playing while the viewer uses other screens. It has a play or pause button and a close button, and a screen reader reads its state.",
+    "Cast": "Sending the video to a TV with Google Cast or AirPlay: the Cast button, the text that names the TV that plays the video, and the message when casting fails. A TV name comes from the TV, not from these strings.",
+    "Sections": "Content blocks that editors arrange on a story page: video cards, video rows, a row of story links, a faith quiz button, and a muted video at the top. It also holds the video and collection pages that open from those blocks, and their error messages.",
+    "BibleQuotes": "A row of cards on the watch page, each with a Bible verse that the video cites. The last card invites the viewer to a free Bible study. Book names and Bible text come from each translation, not from these strings.",
+    "StudyQuestions": "A list of study questions about the video on the watch page. The viewer opens a question to read its answer. When a question has no answer, the app offers a chat with a person or a way to send a Bible question.",
+    "ListSheet": "A sheet with a search field and a list of choices, such as languages, subtitles, or Bible translations. The current choice shows at the top. It also holds the loading and error states of a sheet."
   },
   "keys": {
     "Common.goBackAriaLabel": {
@@ -207,6 +215,97 @@
     },
     "ExportReport.savedToFolder": {
       "composition": "{folder} is the name of the folder that the viewer picked, for example Downloads."
+    },
+    "Common.untitled": {
+      "role": "fallback title",
+      "composition": "Shows in place of a video title when the video has none."
+    },
+    "Common.playTitleAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{title} is the title of a video. A tap plays that video."
+    },
+    "Watch.language": {
+      "role": "button label",
+      "composition": "Shows on the language button when the name of the audio language is not known yet."
+    },
+    "Watch.subtitles": {
+      "role": "button label and switch label",
+      "composition": "Shows on the subtitle button when no subtitle name is known, and next to the switch that turns subtitles on."
+    },
+    "Watch.watchedAriaLabel": {
+      "role": "progress accessibility text",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader reads it after a video title and a comma, for a video that the viewer finished."
+    },
+    "Watch.percentWatchedAriaLabel": {
+      "role": "progress accessibility text",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader reads it after a video title and a comma. {percent} is a whole number from 1 to 99."
+    },
+    "Watch.unknownLanguage": {
+      "role": "fallback language name",
+      "composition": "Shows in the language list when a language has no name."
+    },
+    "Player.seekSeconds": {
+      "role": "short time label",
+      "composition": "Shows for a moment after a double tap that skips the video forward or back. {seconds} is a number, for example 10s. Use the shortest symbol for seconds that the language uses."
+    },
+    "Player.elapsedAriaLabel": {
+      "role": "time accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{elapsed} and {duration} are times such as 1:05, the played time and the length of the video."
+    },
+    "Player.speedNormal": {
+      "role": "playback speed option",
+      "composition": "The name of the speed 1×, the usual speed of a video."
+    },
+    "Cast.castingToAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{device} is the name of a TV, for example Living Room TV."
+    },
+    "Cast.castingTo": {
+      "role": "status text",
+      "composition": "{device} is the name of a TV, for example Living Room TV."
+    },
+    "Cast.connectingTo": {
+      "role": "status text",
+      "composition": "{device} is the name of a TV, for example Living Room TV."
+    },
+    "Sections.quizBadge": {
+      "role": "badge label",
+      "composition": "A short label on the quiz button. The app shows it in capital letters where the script has them."
+    },
+    "Sections.sectionNotFound": {
+      "role": "error message",
+      "composition": "{key} is an internal name of a page section."
+    },
+    "Sections.collectionNotFound": {
+      "role": "error message",
+      "composition": "{key} is an internal name of a page section."
+    },
+    "BibleQuotes.promoEyebrow": {
+      "role": "card heading",
+      "composition": "A short heading in capital letters above the invitation."
+    },
+    "BibleQuotes.loadingCardAriaLabel": {
+      "role": "card accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{reference} is a Bible reference, for example John 3:16, whose text is still loading."
+    },
+    "BibleQuotes.shareMessage": {
+      "role": "share message",
+      "composition": "The text that the viewer shares from the app. {url} is a web address; keep it on its own line."
+    },
+    "BibleQuotes.unknownBook": {
+      "role": "fallback book name",
+      "composition": "Shows in place of a Bible book name when the name is not known, before the chapter and verse numbers."
+    },
+    "ListSheet.rowWithStatusAriaLabel": {
+      "role": "list row accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{name} is the name of a choice, such as a language, and {status} is a short state, such as Downloaded. Keep only the separator that the language uses between two phrases."
     }
   }
 }
