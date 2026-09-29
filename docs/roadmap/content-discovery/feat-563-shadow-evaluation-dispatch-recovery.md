@@ -3,7 +3,7 @@ id: "feat-563"
 title: "Atomic and recoverable shadow evaluation dispatch"
 owner: "nisal"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-29"
 duration: 3
 depends_on: []
@@ -76,3 +76,20 @@ preserving `minimumRuns` do not provide atomic dispatch or crash recovery.
 - Run focused operator/job/DB tests and affected Admin lint/typecheck checks.
   Include exact retained retry and terminal receipts; no raw identities or keys.
 - Update the operational instructions and run `pnpm --filter roadmap lint`.
+
+## Resolution
+
+The application now reserves one deterministic dispatch ledger for each exact
+evaluation/generation tuple and atomically claims start ownership. Prepared
+reservations can resume; attempted starts remain uncertain until runtime
+attachment or supported reconciliation establishes their state. Runtime and
+terminal writes are fenced by dispatch input and runtime identity. Legacy
+failed or missing-runtime receipts cannot trigger blind redispatch.
+
+The [operator record](../../operations/recommendation-shadow-dispatch-2026-09-29.md)
+contains the recovery contract and validation: 93 focused worker tests, an
+independent 59-test parent rerun including 17 real PostgreSQL cases, full Admin
+typecheck/lint/format checks and a successful production Workflow build.
+The installed runtime still cannot disprove an unacknowledged start without an
+ID. That explicit uncertainty requires investigation, not forced recovery.
+No production evaluation, graph approval or live promotion is inferred.
