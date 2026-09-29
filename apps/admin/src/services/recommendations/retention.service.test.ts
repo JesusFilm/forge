@@ -10,6 +10,13 @@ type RetentionHealthSnapshot = Array<{
   oldestOverdueAt: Date | null
 }>
 
+function rawSqlText(query: unknown): string {
+  if (typeof query === "string") return query
+  return query != null && typeof query === "object" && "sql" in query
+    ? String(query.sql)
+    : ""
+}
+
 function retentionQuery(
   profiles: Array<{ id: string; privacyGeneration: number }> = [],
 ) {
@@ -44,7 +51,13 @@ function buildPrisma() {
   const requestIds = [{ id: "request-1" }, { id: "request-2" }]
   const count = () => vi.fn(async () => 0)
   const transaction = {
-    $executeRaw: vi.fn(async () => 1),
+    $executeRaw: vi.fn(async (query: unknown) =>
+      rawSqlText(query).includes(
+        "DELETE FROM recommendation_profile_vector_snapshot",
+      )
+        ? 0
+        : 1,
+    ),
     $queryRaw: vi.fn(
       retentionQuery([{ id: "expired-profile-1", privacyGeneration: 3 }]),
     ),
@@ -320,6 +333,31 @@ describe("recommendation retention service", () => {
     expect(transaction.pushAttribution.deleteMany).not.toHaveBeenCalled()
     expect(transaction.pushOpen.deleteMany).not.toHaveBeenCalled()
     expect(transaction.pushRegistration.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("skips only vector orphan collection while a publisher holds its shared lock", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const normalQuery = retentionQuery([])
+    transaction.$queryRaw.mockImplementation(async (query: Prisma.Sql) =>
+      query.sql.includes("pg_try_advisory_xact_lock(368000002)")
+        ? [{ locked: false }]
+        : normalQuery(query),
+    )
+
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never, new Date(), 500),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      profileVectorSweepSkipped: true,
+      rowCounts: { orphanProfileVectorSnapshots: 0 },
+    })
+    expect(
+      transaction.$executeRaw.mock.calls.some(([query]) =>
+        rawSqlText(query).includes(
+          "DELETE FROM recommendation_profile_vector_snapshot",
+        ),
+      ),
+    ).toBe(false)
   })
 
   it("takes one advisory-locked bounded batch and records sanitized counts", async () => {

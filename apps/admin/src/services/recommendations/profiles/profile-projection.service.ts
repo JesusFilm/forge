@@ -1,6 +1,7 @@
 import { ownerReleaseInfluenceAllowedSql } from "../promotion/owner-influence"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { env } from "@/config/env"
 import {
   ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
   activeTranscriptContentEmbeddingWhere,
@@ -566,6 +567,13 @@ export async function publishDatabaseProfileProjection(
           hashtextextended(${`profile-projection:${scopeDigest}`}, 386)
         )
       `)
+        if (env.RECOMMENDATION_PROFILE_VECTOR_SHARING === "true") {
+          // Independent publishers may share this lock. The orphan sweep
+          // takes its exclusive form only for its short deletion phase.
+          await tx.$executeRaw(
+            Prisma.sql`SELECT pg_advisory_xact_lock_shared(368000002)`,
+          )
+        }
         let profileExpiresAt: Date | null = null
         if (input.scope === "durable") {
           const profiles = await tx.$queryRaw<Array<{ expiresAt: Date }>>(
@@ -918,6 +926,43 @@ async function insertInterest(
       "profile_projection_embedding_dimension_invalid",
     )
   }
+  const vectorText = toPgVector(input.vector)
+  if (env.RECOMMENDATION_PROFILE_VECTOR_SHARING === "true") {
+    // Hash PostgreSQL's stored float32 representation, not the JS float64
+    // input. Equality is checked below even if a digest ever collides.
+    await tx.$executeRaw(Prisma.sql`
+      INSERT INTO recommendation_profile_vector_snapshot (digest, embedding)
+      VALUES (
+        encode(sha256(convert_to((${vectorText}::public.vector(1536))::text, 'UTF8')), 'hex'),
+        ${vectorText}::public.vector(1536)
+      )
+      ON CONFLICT (digest) DO NOTHING
+    `)
+    const inserted = await tx.$executeRaw(Prisma.sql`
+      INSERT INTO recommendation_profile_interest (
+        id, generation_id, kind, interest_ordinal, medoid_media_id,
+        medoid_source_digest, vector_digest, weight, support_count, stability,
+        expires_at
+      )
+      SELECT
+        ${randomUUID()}, ${input.generationId},
+        ${input.kind}::"RecommendationProfileInterestKind", ${input.ordinal},
+        ${input.medoidMediaId.slice(0, 191)}, ${digestText(input.medoidSourceId)},
+        snapshot.digest, ${input.weight}, ${input.supportCount},
+        ${input.stability}, ${input.expiresAt}
+      FROM recommendation_profile_vector_snapshot snapshot
+      WHERE snapshot.digest =
+        encode(sha256(convert_to((${vectorText}::public.vector(1536))::text, 'UTF8')), 'hex')
+        AND public.vector_send(snapshot.embedding) =
+          public.vector_send(${vectorText}::public.vector(1536))
+    `)
+    if (inserted !== 1) {
+      throw new RecommendationInternalStateError(
+        "profile_projection_vector_snapshot_collision",
+      )
+    }
+    return
+  }
   await tx.$executeRaw(Prisma.sql`
     INSERT INTO recommendation_profile_interest (
       id, generation_id, kind, interest_ordinal, medoid_media_id,
@@ -927,7 +972,7 @@ async function insertInterest(
       ${randomUUID()}, ${input.generationId},
       ${input.kind}::"RecommendationProfileInterestKind", ${input.ordinal},
       ${input.medoidMediaId.slice(0, 191)}, ${digestText(input.medoidSourceId)},
-      ${toPgVector(input.vector)}::public.vector(1536), ${input.weight},
+      ${vectorText}::public.vector(1536), ${input.weight},
       ${input.supportCount}, ${input.stability}, ${input.expiresAt}
     )
   `)

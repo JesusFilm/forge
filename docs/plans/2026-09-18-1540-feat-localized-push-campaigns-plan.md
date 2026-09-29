@@ -517,7 +517,7 @@ Delivery row statuses split into claims, which may have reached the phone (reser
 - **Migration scope.** Migration 0119 creates push tables only and alters no existing table, so rollback is a code redeploy with no data restore; the migration safety test checks concurrent-index use only, so the scope invariant is asserted by review.
   - Refined 2026-09-25 (merge with `main`): `main` took the number 0099 first (#2417, `0099_recommendation_playback_signal_readiness`), so the push migration is `0100_push_campaigns`. Its SQL did not change.
   - Refined 2026-09-29 (merge with `main`): `main` then added migrations 0100 to 0105 (the last is `0105_watch_surface_served_manifest`), so the push migration is `0106_push_campaigns`. Its SQL did not change.
-  - Refined 2026-09-30 (merge with `main`): `main` then added migrations 0106 to 0115, 0117, and 0118, and an open branch claims 0116, so the push migration is `0119_push_campaigns`, above every known claim. Its SQL did not change.
+  - Refined 2026-09-30 (merge with `main`): `main` then added migrations 0106 to 0118 (with no 0113), so the push migration is `0119_push_campaigns`, above every known claim. Its SQL did not change.
 - **Rollback with registrations live.** Turn the flag off, cancel scheduled and sending campaigns, then roll back the worker; a run left asleep on a worker without the workflow fails on wake. Rolling admin back below U2 while the app build is live produces one failed registration per launch, which is bounded noise.
 
 ### Sequencing and Rollout

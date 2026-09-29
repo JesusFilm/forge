@@ -38,6 +38,7 @@ export type RecommendationPurgeResult = Readonly<{
   oldestExpiredAtAfter: string | null
   overdueAfterRun: boolean
   batchLimitReached: boolean
+  profileVectorSweepSkipped?: boolean
 }>
 
 function hoursBefore(now: Date, hours: number): Date {
@@ -206,6 +207,7 @@ export async function purgeExpiredRecommendationRequests(
   })
 
   const rowCounts: Record<string, number> = {}
+  let profileVectorSweepSkipped = false
   const deadline = Date.now() + RECOMMENDATION_RETENTION_TIMEOUT_MS
   const phase = async <T>(
     operation: (tx: Prisma.TransactionClient) => Promise<T>,
@@ -409,6 +411,34 @@ export async function purgeExpiredRecommendationRequests(
         where: { expiresAt: { lte: now } },
       }),
     )
+    await phase(async (tx) => {
+      // Publisher transactions hold this dedicated key in shared mode from
+      // before their profile row locks until commit. Do not block other
+      // retention phases when a publisher is active.
+      const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>(
+        Prisma.sql`SELECT pg_try_advisory_xact_lock(368000002) AS locked`,
+      )
+      if (!lock?.locked) {
+        profileVectorSweepSkipped = true
+        rowCounts.orphanProfileVectorSnapshots = 0
+        return
+      }
+      rowCounts.orphanProfileVectorSnapshots = await tx.$executeRaw(Prisma.sql`
+        DELETE FROM recommendation_profile_vector_snapshot snapshot
+        WHERE snapshot.digest IN (
+          SELECT candidate.digest
+          FROM recommendation_profile_vector_snapshot candidate
+          WHERE candidate.created_at < ${hoursBefore(now, 24)}
+            AND NOT EXISTS (
+              SELECT 1 FROM recommendation_profile_interest interest
+              WHERE interest.vector_digest = candidate.digest
+            )
+          ORDER BY candidate.created_at, candidate.digest
+          LIMIT ${batchSize}
+          FOR UPDATE SKIP LOCKED
+        )
+      `)
+    })
     const expiredGraphs = await phase((tx) =>
       tx.recommendationCowatchGeneration.findMany({
         where: { expiresAt: { lte: now } },
@@ -985,7 +1015,8 @@ export async function purgeExpiredRecommendationRequests(
       expiredShadowEvaluations.length === batchSize ||
       expiredAssignments.length === batchSize ||
       expiredExperiments.length === batchSize ||
-      retiredProfiles.length === batchSize
+      retiredProfiles.length === batchSize ||
+      rowCounts.orphanProfileVectorSnapshots === batchSize
     await phase((tx) =>
       tx.recommendationRetentionRun.update({
         where: { id: run.id },
@@ -1007,6 +1038,7 @@ export async function purgeExpiredRecommendationRequests(
       oldestExpiredAtAfter: oldestExpiredAt?.toISOString() ?? null,
       overdueAfterRun,
       batchLimitReached,
+      profileVectorSweepSkipped,
     }
   } catch (error) {
     const durable = await prisma.recommendationRetentionRun
@@ -1048,6 +1080,7 @@ export async function purgeExpiredRecommendationRequests(
         oldestExpiredAtAfter: null,
         overdueAfterRun: false,
         batchLimitReached: Object.keys(committedCounts).length > 0,
+        profileVectorSweepSkipped,
       }
     }
     throw error
