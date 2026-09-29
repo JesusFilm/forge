@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { RecommendationConflictError } from "../errors"
 import {
   RECOMMENDATION_INTEGRITY_POLICY_VERSION,
   RECOMMENDATION_REPLAY_QUARANTINE_THRESHOLD,
@@ -8,13 +9,20 @@ import {
   buildCowatchGraph,
   COWATCH_FEATURE_VERSION,
   COWATCH_PROJECTION_VERSION,
+  CowatchWorkOverflowError,
   type CowatchOutcome,
 } from "./graph"
+import {
+  assertCowatchSourceWindow,
+  COWATCH_LEGACY_SOURCE_WINDOW_VERSION,
+  type CowatchSourceWindow,
+} from "./source-window"
 
 const MAX_SOURCE_ROWS = 50_000
 const SOURCE_WINDOW_DAYS = 180
 const GENERATION_RETENTION_DAYS = 29
 const CLASSIFIER_VERSION = "active-watch-proxy-v1"
+export const COWATCH_PUBLICATION_LOCK_ID = 387_000_001
 
 type SourceRow = Readonly<{
   outcomeId: string
@@ -43,7 +51,9 @@ type SourceRow = Readonly<{
 export async function loadCowatchSourceRows(
   db: Pick<PrismaClient, "$queryRaw">,
   now: Date,
+  sourceWindow?: CowatchSourceWindow,
 ): Promise<SourceRow[]> {
+  if (sourceWindow) assertCowatchSourceWindow(sourceWindow, now)
   return db.$queryRaw<SourceRow[]>(Prisma.sql`
     WITH latest AS MATERIALIZED (
       SELECT DISTINCT ON (episode.id)
@@ -66,8 +76,13 @@ export async function loadCowatchSourceRows(
       FROM recommendation_outcome_revision outcome
       JOIN recommendation_playback_episode episode ON episode.id = outcome.episode_id
       WHERE outcome.classifier_version = ${CLASSIFIER_VERSION}
-        AND outcome.created_at >= ${new Date(now.getTime() - SOURCE_WINDOW_DAYS * 86_400_000)}
-        AND outcome.created_at <= ${now}
+        AND ${
+          sourceWindow
+            ? Prisma.sql`COALESCE(episode.claimed_at, episode.created_at) >= ${sourceWindow.windowStart}
+            AND COALESCE(episode.claimed_at, episode.created_at) < ${sourceWindow.windowEnd}`
+            : Prisma.sql`outcome.created_at >= ${new Date(now.getTime() - SOURCE_WINDOW_DAYS * 86_400_000)}`
+        }
+        AND outcome.created_at <= ${sourceWindow?.evaluationAsOf ?? now}
       ORDER BY episode.id, outcome.revision DESC, outcome.id DESC
     )
     SELECT latest.*,
@@ -126,72 +141,78 @@ export async function loadCowatchSourceRows(
 export type CowatchPublication = Readonly<{
   status: "published" | "unchanged" | "source_overflow" | "work_overflow"
   generation: string | null
-  sourceCount: number
-  contributionCount: number
-  edgeCount: number
+  rawSourceCount: number
+  /** Raw overflow observes only a lower bound, never the complete population. */
+  rawSourceCountIsLowerBound: boolean
+  sourceCount: number | null
+  attemptedPairCount: number | null
+  contributionCount: number | null
+  edgeCount: number | null
+  publicationRowCount: number | null
+  publishedAt: Date | null
+  sourceWindow: ReturnType<typeof describeSourceWindow>
   terminalDecision: "no_promotion"
   decisionReason: string
 }>
+
+type Prepared = Awaited<ReturnType<typeof prepareCowatchGeneration>>
+
+/**
+ * Same selection and work bounds as publication, in a read-only snapshot.
+ * Preflights can overlap a publisher; they hold no publication lock and write
+ * no graph rows. Operators must budget their read/heap/temp work separately.
+ */
+export async function preflightCowatchShadowGeneration(
+  prisma: PrismaClient,
+  now: Date,
+  sourceWindow: CowatchSourceWindow,
+) {
+  return prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SET TRANSACTION READ ONLY`
+      await tx.$executeRaw`SET LOCAL statement_timeout = '5000ms'`
+      await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`
+      const prepared = await prepareCowatchGeneration(tx, now, sourceWindow)
+      return {
+        ...populationReceipt(prepared, now, sourceWindow),
+        status: prepared.status,
+      }
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      timeout: 30_000,
+    },
+  )
+}
 
 /** Atomically publishes only a complete immutable generation, always shadow. */
 export async function publishCowatchShadowGeneration(
   prisma: PrismaClient,
   now: Date = new Date(),
+  sourceWindow?: CowatchSourceWindow,
 ): Promise<CowatchPublication> {
   return prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw(Prisma.sql`SET LOCAL statement_timeout = '5000ms'`)
       await tx.$executeRaw(Prisma.sql`SET LOCAL lock_timeout = '1000ms'`)
-      const source = await loadCowatchSourceRows(tx, now)
-      if (source.length > MAX_SOURCE_ROWS) {
-        return {
-          status: "source_overflow",
-          generation: null,
-          sourceCount: source.length,
-          contributionCount: 0,
-          edgeCount: 0,
-          terminalDecision: "no_promotion",
-          decisionReason: "source_window_exceeds_bounded_projection",
-        }
+      // One publisher across all scopes bounds concurrent write amplification.
+      // Refuse before source work rather than queueing behind another rebuild.
+      const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>`
+        SELECT pg_try_advisory_xact_lock(${COWATCH_PUBLICATION_LOCK_ID}::bigint) AS locked
+      `
+      if (!lock?.locked) {
+        throw new RecommendationConflictError(
+          "A co-watch publication is already running; retry the same source scope after it completes",
+        )
       }
+      const prepared = await prepareCowatchGeneration(tx, now, sourceWindow)
+      const receipt = populationReceipt(prepared, now, sourceWindow)
+      if (prepared.status !== "ready")
+        return { ...receipt, status: prepared.status }
+      const { source, graph } = prepared
       const profileByOutcome = new Map(
         source.map((row) => [row.outcomeId, row.profileId]),
       )
-      const rows: CowatchOutcome[] = source.map((row) => ({
-        outcomeId: row.outcomeId,
-        episodeId: row.episodeId,
-        revision: row.revision,
-        mediaId: row.mediaId,
-        sessionDigest: row.sessionDigest,
-        viewerKey:
-          row.profileId == null
-            ? `session:${row.sessionDigest}`
-            : `profile:${row.profileId}`,
-        occurredAt: row.occurredAt,
-        qualified: row.qualified,
-        finalized: row.finalized,
-        integrityEligible: row.integrityEligible,
-        eligibilityDecisionId: row.eligibilityDecisionId,
-        eligibilityRevision: row.eligibilityRevision,
-        eligibilityPolicyVersion: row.eligibilityPolicyVersion,
-        qualityWeight: row.qualityWeight ?? 0,
-        expiresAt: row.expiresAt,
-      }))
-      let graph: ReturnType<typeof buildCowatchGraph>
-      try {
-        graph = buildCowatchGraph(rows, now)
-      } catch (error) {
-        if (!(error instanceof RangeError)) throw error
-        return {
-          status: "work_overflow",
-          generation: null,
-          sourceCount: rows.length,
-          contributionCount: 0,
-          edgeCount: 0,
-          terminalDecision: "no_promotion",
-          decisionReason: "projection_work_exceeds_bound",
-        }
-      }
       const safeEdges = graph.edges.filter((edge) => edge.eligible)
       const decisionReason =
         graph.qualifiedOutcomes === 0
@@ -201,21 +222,19 @@ export async function publishCowatchShadowGeneration(
             : "controlled_evaluation_required_feat_505"
       const existing = await tx.recommendationCowatchGeneration.findUnique({
         where: { id: graph.generation },
-        select: { id: true },
+        select: { id: true, publishedAt: true },
       })
       if (existing) {
         return {
+          ...receipt,
           status: "unchanged",
-          generation: graph.generation,
-          sourceCount: graph.qualifiedOutcomes,
-          contributionCount: graph.contributions.length,
-          edgeCount: graph.edges.length,
-          terminalDecision: "no_promotion",
+          publishedAt: existing.publishedAt,
           decisionReason,
         }
       }
+      const publishedAt = new Date()
       const expiresAt = new Date(
-        now.getTime() + GENERATION_RETENTION_DAYS * 86_400_000,
+        publishedAt.getTime() + GENERATION_RETENTION_DAYS * 86_400_000,
       )
       await tx.recommendationCowatchGeneration.create({
         data: {
@@ -226,10 +245,16 @@ export async function publishCowatchShadowGeneration(
           contributionCount: graph.contributions.length,
           edgeCount: graph.edges.length,
           distinctViewerCount: graph.uniqueViewers,
-          windowEnd: now,
+          windowEnd: sourceWindow?.windowEnd ?? now,
+          windowStart: sourceWindow?.windowStart ?? null,
+          evaluationAsOf: sourceWindow?.evaluationAsOf ?? null,
+          sourceWindowVersion:
+            sourceWindow?.version ?? COWATCH_LEGACY_SOURCE_WINDOW_VERSION,
+          rawSourceCount: source.length,
+          attemptedPairCount: graph.attemptedPairCount,
           terminalDecision: "no_promotion",
           decisionReason,
-          publishedAt: now,
+          publishedAt,
           expiresAt,
         },
       })
@@ -296,12 +321,9 @@ export async function publishCowatchShadowGeneration(
         })
       }
       return {
+        ...receipt,
         status: "published",
-        generation: graph.generation,
-        sourceCount: graph.qualifiedOutcomes,
-        contributionCount: graph.contributions.length,
-        edgeCount: graph.edges.length,
-        terminalDecision: "no_promotion",
+        publishedAt,
         decisionReason,
       }
     },
@@ -310,4 +332,91 @@ export async function publishCowatchShadowGeneration(
       timeout: 30_000,
     },
   )
+}
+
+function describeSourceWindow(now: Date, scope?: CowatchSourceWindow) {
+  return (
+    scope ?? {
+      version: COWATCH_LEGACY_SOURCE_WINDOW_VERSION,
+      windowStart: new Date(now.getTime() - SOURCE_WINDOW_DAYS * 86_400_000),
+      windowEnd: now,
+      evaluationAsOf: now,
+    }
+  )
+}
+
+async function prepareCowatchGeneration(
+  tx: Pick<PrismaClient, "$queryRaw">,
+  now: Date,
+  sourceWindow?: CowatchSourceWindow,
+) {
+  const source = await loadCowatchSourceRows(tx, now, sourceWindow)
+  if (source.length > MAX_SOURCE_ROWS) {
+    return {
+      status: "source_overflow" as const,
+      rawSourceCount: source.length,
+      sourceCount: null,
+      attemptedPairCount: null,
+    }
+  }
+  const rows: CowatchOutcome[] = source.map((row) => ({
+    ...row,
+    viewerKey:
+      row.profileId == null
+        ? `session:${row.sessionDigest}`
+        : `profile:${row.profileId}`,
+    qualityWeight: row.qualityWeight ?? 0,
+  }))
+  try {
+    const graph = buildCowatchGraph(rows, now, sourceWindow)
+    return {
+      status: "ready" as const,
+      rawSourceCount: source.length,
+      sourceCount: graph.qualifiedOutcomes,
+      attemptedPairCount: graph.attemptedPairCount,
+      source,
+      graph,
+    }
+  } catch (error) {
+    if (!(error instanceof CowatchWorkOverflowError)) throw error
+    return {
+      status: "work_overflow" as const,
+      rawSourceCount: source.length,
+      sourceCount: error.eligibleSourceCount,
+      attemptedPairCount: error.attemptedPairCount,
+    }
+  }
+}
+
+function populationReceipt(
+  prepared: Prepared,
+  now: Date,
+  sourceWindow?: CowatchSourceWindow,
+): Omit<CowatchPublication, "status"> {
+  return {
+    generation: prepared.status === "ready" ? prepared.graph.generation : null,
+    rawSourceCount: prepared.rawSourceCount,
+    rawSourceCountIsLowerBound: prepared.status === "source_overflow",
+    sourceCount: prepared.sourceCount,
+    attemptedPairCount: prepared.attemptedPairCount,
+    contributionCount:
+      prepared.status === "ready" ? prepared.graph.contributions.length : null,
+    edgeCount: prepared.status === "ready" ? prepared.graph.edges.length : null,
+    publicationRowCount:
+      prepared.status === "ready"
+        ? 1 +
+          prepared.graph.sources.length +
+          prepared.graph.contributions.length +
+          prepared.graph.edges.length
+        : null,
+    sourceWindow: describeSourceWindow(now, sourceWindow),
+    publishedAt: null,
+    terminalDecision: "no_promotion",
+    decisionReason:
+      prepared.status === "source_overflow"
+        ? "source_window_exceeds_bounded_projection"
+        : prepared.status === "work_overflow"
+          ? "projection_work_exceeds_bound"
+          : "complete_bounded_population_preflight",
+  }
 }
