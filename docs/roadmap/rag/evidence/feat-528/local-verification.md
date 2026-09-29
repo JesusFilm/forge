@@ -1,5 +1,11 @@
 # Feat-528 local implementation verification
 
+> Historical audit/verification only. The product owner removed coverage,
+> deployment inventory and collector recovery requirements on 2026-09-29 as a
+> design mistake. Old coverage results and activation recommendations below are
+> superseded by the corrected consumer-usage runbook; recorded past writes remain
+> unchanged. Do not run the retired inventory/reconciliation commands.
+
 All data and credentials in these checks were synthetic, in a disposable local
 PostgreSQL 18/pgvector container. No production action, consumer onboarding,
 shared-token migration or deployment was performed.

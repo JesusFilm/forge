@@ -321,8 +321,7 @@ no browser or machine receiver receives a general database credential or SQL.
 The HTTP and CLI capabilities are implemented in feat-528 draft PR #2455.
 Report rows contain only consumer ID, approved
 label, `windowStart`, `windowEnd`, `requestCount`,
-`successfulRequestCount`, `lastActivityAt`, `generatedAt`, `completeThrough` and
-`coverageStatus` (`complete | partial | unavailable`). No owner contact in rows.
+`successfulRequestCount`, `lastActivityAt` and `generatedAt`. No owner contact in rows.
 
 Counting contract:
 
@@ -354,16 +353,18 @@ not promise infinite unbounded storage.
 Do not sample counts. Test atomic increments and idempotent completion under
 concurrency, retry, process crash and rotation.
 
-Telemetry failure must not masquerade as zero: report independent collector
-heartbeat/watermark and unresolved pending intervals; window coverage is complete
-only after all participating instances have reconciled and flushed it. Preserve
-gaps durably after recovery. If a write fails, bounded retrieval may continue,
-but the report must mark the affected interval partial/unavailable; if the gap
-cannot be durably recorded, stale heartbeat/watermark must force unavailable.
-Never return a clean zero on DB failure, unavailable historical coverage, delayed flush,
-missing deployment instrumentation or unknown consumer. Unknown consumer is a
-report error; zero is only an existing consumer in a fully covered retained window.
-A report exits nonzero on unavailable coverage and visibly marks partial coverage.
+Reports always return the recorded counts for the consumer and selected date
+range, regardless of tracking interruptions or time before instrumentation.
+Do not change or narrow selected dates to obtain totals. Existing consumers
+with no recorded requests return zero; unknown consumers are errors. A report DB
+read failure is an error, never a successful zero. Accounting-write failures
+must not block retrieval or suppress other recorded counts.
+
+Product correction (2026-09-29): the original coverage status, collector
+heartbeats/watermarks, independent deployment inventory and reconciliation were
+unnecessary for this feature and are removed. Keep only atomic request accounting,
+completion deduplication and read-only aggregates. Applied migration history and
+old metadata remain inert for audit/rolling rollback compatibility.
 
 ## D. Shared-token migration and rollback
 
@@ -378,12 +379,12 @@ After foundation and usage visibility, dogfood/support existing callers for
 seven days to register through the new path. Record a communicated start and
 cutoff timestamp in the separately approved production cutover scope. After the
 seven days, disable the shared legacy bearer path under that approval, with
-owner migration status, successful actual ops dogfood and complete reporting
-coverage as cutover checks. Escalate unmet checks to the cutover owner; this plan
+owner migration status, successful actual ops dogfood and verified consumer
+request/success counts as cutover checks. Escalate unmet checks to the cutover owner; this plan
 authorizes neither automatic production action nor a silent grace extension.
 
 Use additive schema rollout and normal PR-to-main deployments only. Roll back
-reporting independently while marking coverage unavailable. Auth rollback must
+reporting independently; disabled or failed report reads return errors. Auth rollback must
 preserve current deny state and cannot revive revoked credentials or automatically
 reenable shared tokens; prefer disabling retrieval to restoring unauthorized
 access. Rehearse rollback with synthetic metadata before rollout. No destructive
@@ -405,12 +406,11 @@ Real dogfood is a later approved environment operation, not performed by these d
    allowlisted initial owner and one-time issuance through the delivered portal UI.
    Use local data for isolation checks during UI development. No privileged
    bypass or special auth path.
-3. Establish a retained, fully covered UTC report window and obtain a baseline
+3. Establish the UTC report window for the intended requests and obtain a baseline
    using the report reader. Existing unused integration reports 0/0/null.
 4. Through the **actual `forge-rag-retrieve` ops task and real `POST /v1/search` endpoint**, send
    three known synthetic successful requests. Disable retries or record actual
-   HTTP attempts. Suppress bodies/headers in all captured output. Wait for the
-   watermark to cover them: report deltas must be requests +3, successes +3,
+   HTTP attempts. Suppress bodies/headers in all captured output. Wait for successful response completion and accounting persistence: report deltas must be requests +3, successes +3,
    last activity inside the stated window.
 5. Send two more: deltas become +5/+5. Send one request with the second integration:
    its delta is +1/+1 and the dogfood consumer stays +5/+5. Repeat the same read-only report and
@@ -421,13 +421,15 @@ Real dogfood is a later approved environment operation, not performed by these d
    Issue its approved replacement and verify identity continuity; revoke the
    consumer and verify new requests reject its credential. Check
    suspension/resumption, source isolation and concurrent revoke.
-8. Interrupt collector/storage and simulate missing instrumentation, delayed flush,
-   crash and unavailable historical coverage. Reports visibly become partial/unavailable, never
-   clean zero. Recover and demonstrate gap handling and exact concurrent counts.
+8. Interrupt accounting/storage and restart serving. Recorded requests remain
+   visible for the same original date range; unfinished attempts are requests
+   without successes. Recover and demonstrate exact concurrent counts and
+   idempotent completion. Real report read failures return errors, not zero.
+
 9. Verify report principal cannot write, read credentials/contacts or read corpus;
    inspect report schema/log sinks using synthetic sentinel values for leakage.
 10. Rehearse shared-token grace/cutoff and rollback. Record only synthetic counts,
-    window, coverage, pass/fail, receiver label and code revision in release
+    window, pass/fail, receiver label and code revision in release
     evidence; no tokens, selectors, IPs, raw queries, corpus or production evidence.
 
 Admission/membership acceptance for feat-527/530: malformed/duplicate handles,

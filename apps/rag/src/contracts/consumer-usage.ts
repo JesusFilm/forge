@@ -17,8 +17,6 @@ export type UsageReport = {
   successfulRequestCount: number
   lastActivityAt: string | null
   generatedAt: string
-  completeThrough: string | null
-  coverageStatus: "complete" | "partial" | "unavailable"
 }
 export type ServiceDenial =
   | "unauthorized"
@@ -26,11 +24,8 @@ export type ServiceDenial =
   | "body_limit"
   | "legacy_unattributed"
 export type UsageWriter = {
-  open(instance: string, at: Date): Promise<void>
-  admit(instance: string, consumerId: string, at: Date): Promise<string>
+  admit(consumerId: string, at: Date): Promise<string>
   complete(attempt: string, successful: boolean): Promise<void>
-  checkpoint(instance: string, at: Date, stop?: boolean): Promise<void>
-  gap(instance: string, from: Date, to: Date): Promise<void>
   denial(reason: ServiceDenial, at: Date): Promise<void>
 }
 export type UsageReader = {
@@ -66,7 +61,5 @@ export const usageReportSchema = z
       .max(Number.MAX_SAFE_INTEGER),
     lastActivityAt: z.iso.datetime().nullable(),
     generatedAt: z.iso.datetime(),
-    completeThrough: z.iso.datetime().nullable(),
-    coverageStatus: z.enum(["complete", "partial", "unavailable"]),
   })
   .strict()

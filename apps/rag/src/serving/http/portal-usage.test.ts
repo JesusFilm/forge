@@ -17,8 +17,6 @@ it("lets every admitted portal user read any consumer report using their session
         successfulRequestCount: 3,
         lastActivityAt: null,
         generatedAt: "2026-09-29T01:00:00Z",
-        completeThrough: w.to.toISOString(),
-        coverageStatus: "complete",
       }),
     },
   })
@@ -60,7 +58,7 @@ it("lets every admitted portal user read any consumer report using their session
   expect((await app.request(url, { headers })).status).toBe(401)
 })
 
-it("reads one bounded page of all-consumer reports with per-report coverage", async () => {
+it("reads one bounded page of all-consumer reports with recorded counts", async () => {
   const f = fixture()
   f.sessions.set("synthetic-session", { id: 42, login: "engineer" })
   const ids = [
@@ -79,8 +77,6 @@ it("reads one bounded page of all-consumer reports with per-report coverage", as
         successfulRequestCount: 3,
         lastActivityAt: null,
         generatedAt: "2026-09-29T01:00:00Z",
-        completeThrough: null,
-        coverageStatus: w.consumerId === ids[0] ? "partial" : "unavailable",
       }),
     },
   })
@@ -92,10 +88,7 @@ it("reads one bounded page of all-consumer reports with per-report coverage", as
   expect(response.status).toBe(200)
   expect(response.headers.get("cache-control")).toBe("no-store")
   expect(await response.json()).toMatchObject({
-    reports: [
-      { consumerId: ids[0], requestCount: 5, coverageStatus: "partial" },
-      { consumerId: ids[1], coverageStatus: "unavailable" },
-    ],
+    reports: [{ consumerId: ids[0], requestCount: 5 }, { consumerId: ids[1] }],
   })
   for (const consumer of [
     "",

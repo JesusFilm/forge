@@ -37,7 +37,7 @@ export function createUsageView(container, { read, onUnauthorized }) {
   const status = make("p", "", "subtle")
   status.setAttribute("role", "status")
   const controls = make("form", undefined, "usage-controls")
-  const end = new Date(Math.floor(Date.now() / 60000) * 60000 - 60000)
+  const end = new Date(Math.floor(Date.now() / 60000) * 60000)
   const start = new Date(end.getTime() - 7 * 86400000)
   function field(label, value) {
     const wrapper = make("label", label)
@@ -78,7 +78,6 @@ export function createUsageView(container, { read, onUnauthorized }) {
     ["Requests", "numeric"],
     ["Successful", "numeric"],
     ["Last activity (UTC)", ""],
-    ["Coverage", ""],
   ]) {
     const cell = make("th", text, css)
     cell.scope = "col"
@@ -108,7 +107,7 @@ export function createUsageView(container, { read, onUnauthorized }) {
   details.close()
   const note = make(
     "p",
-    "Successful counts completed 2xx responses. Partial reports may be missing requests; unavailable reports cannot provide reliable totals.",
+    "Requests include failed attempts. Successful responses have completed with a 2xx status.",
     "usage-note subtle",
   )
   container.replaceChildren(
@@ -124,16 +123,13 @@ export function createUsageView(container, { read, onUnauthorized }) {
   function showDetails(report) {
     details.replaceChildren(make("h2", report.label))
     const list = make("dl")
-    const usable = report.coverageStatus !== "unavailable"
     for (const [label, value] of [
       [
         "Window (UTC)",
         dateTime(report.windowStart) + " – " + dateTime(report.windowEnd),
       ],
-      ["Requests", usable ? count(report.requestCount) : "—"],
-      ["Successful", usable ? count(report.successfulRequestCount) : "—"],
-      ["Coverage", report.coverageStatus],
-      ["Complete through (UTC)", dateTime(report.completeThrough)],
+      ["Requests", count(report.requestCount)],
+      ["Successful", count(report.successfulRequestCount)],
       ["Report generated (UTC)", dateTime(report.generatedAt)],
     ])
       list.append(make("dt", label), make("dd", value))
@@ -172,7 +168,7 @@ export function createUsageView(container, { read, onUnauthorized }) {
       return
     }
     error.textContent =
-      "Usage reports are unavailable. Refresh to try again. No reliable totals are shown."
+      "Usage reports are unavailable. Refresh to try again. No totals could be read."
   }
   async function render() {
     clearTimeout(searchTimer)
@@ -209,15 +205,10 @@ export function createUsageView(container, { read, onUnauthorized }) {
         name.append(make("div", row.state, "subtle usage-state"))
       const requests = make("td", "—", "numeric"),
         success = make("td", "—", "numeric")
-      const last = make("td", "—"),
-        coverage = make(
-          "td",
-          window ? "Loading…" : "Not loaded",
-          "usage-coverage",
-        )
-      tr.append(name, requests, success, last, coverage)
+      const last = make("td", "—")
+      tr.append(name, requests, success, last)
       body.append(tr)
-      entries.set(row.consumerId, { link, requests, success, last, coverage })
+      entries.set(row.consumerId, { link, requests, success, last })
     }
     if (!visible.length) {
       const row = make("tr"),
@@ -226,7 +217,7 @@ export function createUsageView(container, { read, onUnauthorized }) {
           consumers.length ? "No matching consumers." : "No consumers yet.",
           "empty",
         )
-      cell.colSpan = 5
+      cell.colSpan = 4
       row.append(cell)
       body.append(row)
     }
@@ -247,21 +238,20 @@ export function createUsageView(container, { read, onUnauthorized }) {
         if (!entry) continue
         reports.set(report.consumerId, report)
         entry.link.disabled = false
-        const usable = report.coverageStatus !== "unavailable"
-        entry.requests.textContent = usable ? count(report.requestCount) : "—"
-        entry.success.textContent = usable
-          ? count(report.successfulRequestCount)
-          : "—"
+        entry.requests.textContent = count(report.requestCount)
+        entry.success.textContent = count(report.successfulRequestCount)
         entry.last.textContent = dateTime(report.lastActivityAt)
-        entry.coverage.textContent = report.coverageStatus
-        entry.coverage.className = "usage-coverage " + report.coverageStatus
       }
       status.textContent =
         "Updated " + dateTime(data.reports[0]?.generatedAt) + " UTC"
     } catch (failure) {
       if (selected !== generation) return
-      for (const entry of entries.values())
-        entry.coverage.textContent = "Unavailable"
+      for (const entry of entries.values()) {
+        entry.requests.textContent = "—"
+        entry.success.textContent = "—"
+        entry.last.textContent = "—"
+        entry.link.disabled = true
+      }
       status.textContent = ""
       fail(failure)
     }

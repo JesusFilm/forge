@@ -36,7 +36,7 @@ API-only setup
 and use the actual forge-rag-retrieve ops task over HTTP.
 Record task path/revision and approved source scope and receiver before execution.
 Prove +3 then +2 request/success counts, last activity/window, second-consumer
-isolation, revoked denial and no success increment, and honest coverage failures.
+isolation, revoked denial and no success increment, and recorded counts across interruptions.
 Support existing callers for seven days through registration. Disable legacy
 shared bearer access afterwards only in separately approved production cutover
 scope, with a named owner and exact timestamps. Verify embedding primary/fallback
@@ -52,7 +52,7 @@ by the documentation PR. Read package guidance before implementation.
 ## Verification
 
 Run the applicable plan acceptance criteria and package checks. Record synthetic
-counts, coverage, revision and outcomes only. Portal work must also verify page
+counts, windows, revision and outcomes only. Portal work must also verify page
 load performance, cross-consumer denial and concurrent owner/rotation behavior.
 
 ## Production role provisioning audit — 2026-09-29
@@ -69,3 +69,13 @@ The [retrospective audit](evidence/feat-529/production-usage-role-provisioning.m
 records exact statements, credential receiver names, privilege verification and
 remaining activation work. The audit PR does not execute provisioning again or
 claim full feat-529 completion. It changes no personal consumer-key custody.
+
+## Usage reporting correction — 2026-09-29
+
+The product owner removed coverage/inventory requirements as a design mistake.
+Reporting returns recorded requests and successes for the selected consumer and
+unchanged date range, regardless of interruptions. Deployment declarations,
+collector-stop recovery and narrowed diagnostic windows are not prerequisites
+for dogfood reporting. See the corrected feat-528 plan and operator runbook.
+Historical provisioning receipts remain audit records, not setup instructions.
+The +3/+2, isolation, lifecycle and separately approved grace/cutoff checks remain.

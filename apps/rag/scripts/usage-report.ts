@@ -57,12 +57,8 @@ async function main(): Promise<void> {
   }
   const text = Buffer.concat(chunks).toString("utf8")
   const report = usageReportSchema.parse(JSON.parse(text))
-  if (![200, 503].includes(response.status) || !report.coverageStatus)
-    throw new UsageError("unavailable")
+  if (response.status !== 200) throw new UsageError("unavailable")
   console.log(JSON.stringify(report))
-  if (report.coverageStatus === "partial")
-    console.error("usage coverage: partial")
-  if (report.coverageStatus === "unavailable") process.exitCode = 1
 }
 main().catch(() => {
   console.error("usage report unavailable")

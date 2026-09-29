@@ -67,9 +67,8 @@ const usageReader = usageReaderUrl
   : undefined
 if (usageWriter && usageReader) await verifyUsageRoles(usageWriter, usageReader)
 const usage = usageWriter
-  ? new UsageCollector(new PostgresUsageStore(usageWriter, "local-portal-dev"))
+  ? new UsageCollector(new PostgresUsageStore(usageWriter))
   : undefined
-await usage?.start()
 const keyPath = process.env.RAG_PORTAL_DEV_TLS_KEY
 const certPath = process.env.RAG_PORTAL_DEV_TLS_CERT
 if (!keyPath || !certPath) throw new PortalDevError("local_tls_files_required")
