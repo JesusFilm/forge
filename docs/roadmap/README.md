@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 29, 2026)
 
-- **Total tickets:** 744
-- **Complete:** 555
+- **Total tickets:** 745
+- **Complete:** 556
 - **In progress:** 60
 - **Not started:** 50
 - **Blocked:** 79
@@ -621,6 +621,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-534](platform/feat-534-changelog-membership-activation.md)                       | Activate preapproved Changelog memberships                                         | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-543](platform/feat-543-mobile-sign-in-gate.md)                                   | Mobile sign-in gate hides sign-in until an environment turns it on                 | urim       | P1       | 2026-09-23 | 2    | 2026-09-24 | in-progress |
 | [feat-556](platform/feat-556-mobile-expo-sdk57-patch-alignment.md)                     | Restore CI after Expo patch drift and stale benchmark clock                        | nisal      | P1       | 2026-09-28 | 1    | 2026-09-28 | complete    |
+| [feat-567](platform/feat-567-changelog-people-directory.md)                            | Serve the shared Changelog People directory from Auth                              | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
 | [feat-555](platform/feat-555-recommendation-legacy-trace-reclamation.md)               | Reclaim legacy recommendation trace storage after expiry                           | nisal      | P1       | 2026-09-29 | 3    | 2026-10-01 | blocked     |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
