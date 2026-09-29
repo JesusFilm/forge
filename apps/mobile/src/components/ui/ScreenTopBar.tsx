@@ -16,7 +16,8 @@ export type ScreenTopBarAction = {
 }
 
 export type ScreenTopBarProps = {
-  title: string
+  /** Omitted on the My Watch tab, whose tab bar item already names it. */
+  title?: string
   /** Adds a leading back control, for a screen pushed over My Watch. */
   showBack?: boolean
   trailingAction?: ScreenTopBarAction
@@ -68,16 +69,20 @@ export function ScreenTopBar({
             <Ionicons name="chevron-back" size={28} color={TEXT_PRIMARY} />
           </Pressable>
         )}
-        <Text
-          accessibilityRole="header"
-          numberOfLines={1}
-          style={[
-            styles.title,
-            showBack ? typography.titleLarge : typography.headingScale.h2,
-          ]}
-        >
-          {title}
-        </Text>
+        {title != null ? (
+          <Text
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={[
+              styles.title,
+              showBack ? typography.titleLarge : typography.headingScale.h2,
+            ]}
+          >
+            {title}
+          </Text>
+        ) : (
+          <View style={styles.spacer} />
+        )}
         {trailingAction != null && (
           <Pressable
             onPress={trailingAction.onPress}
@@ -123,5 +128,8 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontFamily: "System",
     fontWeight: "700",
+  },
+  spacer: {
+    flex: 1,
   },
 })

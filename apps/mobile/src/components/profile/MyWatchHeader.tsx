@@ -78,9 +78,9 @@ function NoticeCard({
 
 function GuestIdentity({ nameSize }: { nameSize: TextStyle }) {
   return (
-    <View style={styles.identityRow}>
+    <View style={styles.identity}>
       <View style={[styles.avatar, styles.guestAvatar]}>
-        <Ionicons name="person" size={28} color={TEXT_SECONDARY} />
+        <Ionicons name="person" size={34} color={TEXT_SECONDARY} />
       </View>
       <Text style={[styles.name, nameSize]} numberOfLines={1}>
         Guest
@@ -89,9 +89,9 @@ function GuestIdentity({ nameSize }: { nameSize: TextStyle }) {
   )
 }
 
-/** The My Watch identity header: Guest with the sign-in card when signed out,
- *  the viewer's name when signed in. The signed-in row opens the Account
- *  screen, which holds Sign out and Delete account. */
+/** The My Watch identity header: a centered avatar over the name. Guest adds
+ *  the sign-in card when signed out. A tap on the signed-in name opens the
+ *  Account screen, which holds Sign out and Delete account. */
 export function MyWatchHeader() {
   const typography = useTypography()
   const router = useRouter()
@@ -213,7 +213,7 @@ export function MyWatchHeader() {
       <Pressable
         onPress={() => router.navigate("/account")}
         style={({ pressed }) => [
-          styles.accountRow,
+          styles.accountTarget,
           pressed && feedback.pressed,
         ]}
         accessibilityRole="button"
@@ -222,25 +222,24 @@ export function MyWatchHeader() {
       >
         {/* Session Replay masks inputs, not rendered text. The name falls back
             to the email, and the initial comes from the name, so both mask. */}
-        <SessionReplayView.MaskAll style={styles.identityMask}>
+        <SessionReplayView.MaskAll style={styles.identity}>
           <View style={[styles.avatar, styles.accountAvatar]}>
             {initial ? (
               <Text style={styles.avatarInitial}>{initial}</Text>
             ) : (
-              <Ionicons name="person" size={28} color={TEXT_PRIMARY} />
+              <Ionicons name="person" size={34} color={TEXT_PRIMARY} />
             )}
           </View>
-          <View style={styles.identityText}>
+          <View style={styles.nameRow}>
             <Text
               style={[styles.name, typography.titleLarge]}
               numberOfLines={1}
             >
               {displayName}
             </Text>
-            <Text style={styles.secondaryLine}>Manage account</Text>
+            <Ionicons name="chevron-forward" size={22} color={TEXT_SECONDARY} />
           </View>
         </SessionReplayView.MaskAll>
-        <Ionicons name="chevron-forward" size={20} color={TEXT_SECONDARY} />
       </Pressable>
       {newAccountNotice === snapshot.user.id ? (
         // R15. Non-blocking on purpose: an interstitial on every first
@@ -259,7 +258,7 @@ export function MyWatchHeader() {
   )
 }
 
-const AVATAR_SIZE = 56
+const AVATAR_SIZE = 72
 
 const styles = StyleSheet.create({
   container: {
@@ -267,22 +266,21 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     gap: 12,
   },
-  identityRow: {
-    flexDirection: "row",
+  identity: {
     alignItems: "center",
-    gap: 14,
+    gap: 10,
   },
-  accountRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+  // Sized to its content, so a tap beside the name opens nothing.
+  accountTarget: {
+    alignSelf: "center",
+    maxWidth: "100%",
     minHeight: 44,
   },
-  identityMask: {
-    flex: 1,
+  nameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 4,
+    maxWidth: "100%",
   },
   avatar: {
     width: AVATAR_SIZE,
@@ -300,23 +298,14 @@ const styles = StyleSheet.create({
   avatarInitial: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: "700",
-  },
-  identityText: {
-    flex: 1,
   },
   name: {
     flexShrink: 1,
     color: TEXT_PRIMARY,
     fontFamily: "System",
     fontWeight: "700",
-  },
-  secondaryLine: {
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    fontSize: 13,
-    marginTop: 2,
   },
   noticeCard: {
     flexDirection: "row",

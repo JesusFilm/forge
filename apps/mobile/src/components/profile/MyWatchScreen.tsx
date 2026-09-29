@@ -16,8 +16,9 @@ import { MyWatchHeader } from "./MyWatchHeader"
 
 const CONTENT_BOTTOM_GAP = 24
 
-/** The My Watch tab page (R1): top bar, identity header, then the Downloads
- *  rail or one whole-page empty message. Every exit uses navigate (KTD12). */
+/** The My Watch tab page (R1): a menu-only top bar, the identity header, then
+ *  the Downloads rail or one whole-page empty message. Every exit uses
+ *  navigate (KTD12). */
 export function MyWatchScreen() {
   const router = useRouter()
   const typography = useTypography()
@@ -61,7 +62,7 @@ export function MyWatchScreen() {
 
   return (
     <View style={layout.screenContainer}>
-      <ScreenTopBar title="My Watch" trailingAction={menuAction} />
+      <ScreenTopBar trailingAction={menuAction} />
       <ScrollView
         contentContainerStyle={[
           styles.content,

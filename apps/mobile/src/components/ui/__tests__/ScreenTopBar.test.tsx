@@ -106,6 +106,24 @@ describe("ScreenTopBar", () => {
     await unmount(renderer)
   })
 
+  it("renders no header text when the title is omitted, and keeps the trailing action", async () => {
+    const renderer = await render({
+      trailingAction: {
+        icon: "menu",
+        accessibilityLabel: "More",
+        onPress: () => {},
+      },
+    })
+
+    expect(
+      hostNodes(renderer, (node) => node.props.accessibilityRole === "header")
+        .length,
+    ).toBe(0)
+    expect(hostNodes(renderer, (node) => node.type === "Text").length).toBe(0)
+    expect(pressableByLabel(renderer, "More")).toBeDefined()
+    await unmount(renderer)
+  })
+
   it("renders no back control when none is asked for", async () => {
     const renderer = await render({ title: "My Watch" })
 

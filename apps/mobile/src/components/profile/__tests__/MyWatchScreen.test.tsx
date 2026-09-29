@@ -198,10 +198,11 @@ beforeEach(() => {
 })
 
 describe("MyWatchScreen with no downloads (R1, R2, R9)", () => {
-  it("gate closed, records ready: top bar, Guest header, the empty message, no rail (AE1)", async () => {
+  it("gate closed, records ready: menu control, Guest header, the empty message, no rail (AE1)", async () => {
     const renderer = await renderScreen()
 
-    expect(hasExactText(renderer, "My Watch")).toBe(true)
+    // The page shows no title: the tab bar item already names it.
+    expect(hasExactText(renderer, "My Watch")).toBe(false)
     expect(pressableByLabel(renderer, "More")).toBeDefined()
     expect(hasExactText(renderer, "Guest")).toBe(true)
     expect(hasExactText(renderer, "Sign in · coming soon")).toBe(true)

@@ -177,6 +177,21 @@ function treeIndex(
   return renderer.root.findAll(() => true).findIndex(predicate)
 }
 
+/** The node itself or its nearest ancestor that `predicate` accepts. */
+function closest(
+  node: RenderedNode,
+  predicate: (node: RenderedNode) => boolean,
+): RenderedNode | null {
+  for (let at: RenderedNode | null | undefined = node; at; at = at.parent) {
+    if (predicate(at)) return at
+  }
+  return null
+}
+
+function isAncestor(ancestor: RenderedNode, node: RenderedNode): boolean {
+  return closest(node, (at) => at === ancestor) != null
+}
+
 function insideReplayMask(node: RenderedNode): boolean {
   for (let at = node.parent; at != null; at = at.parent) {
     if (at.type === SessionReplayView.MaskAll) return true
@@ -375,6 +390,25 @@ describe("MyWatchHeader sign-in gate (feat-543)", () => {
     await unmount(renderer)
   })
 
+  it("gate closed: centers the Guest avatar over the name, as the signed-in header does", async () => {
+    mockSignInGate.open = false
+    const renderer = await renderHeader()
+
+    const guest = firstWhere(
+      renderer,
+      (node) => node.props.children === "Guest",
+    )
+    const column = closest(
+      guest,
+      (node) => styleOf(node).alignItems === "center",
+    )
+    expect(column).not.toBeNull()
+    expect(styleOf(column!).flexDirection ?? "column").toBe("column")
+    const avatar = firstWhere(renderer, (node) => node.props.name === "person")
+    expect(isAncestor(column!, avatar)).toBe(true)
+    await unmount(renderer)
+  })
+
   it("gate closed: the card is announced as disabled, and a tap starts nothing and opens nothing (AE1, R6, R2)", async () => {
     mockSignInGate.open = false
     const renderer = await renderHeader()
@@ -543,6 +577,39 @@ describe("MyWatchHeader signed-in row (R4, R19, KTD10)", () => {
     expect(mockRouter.navigate).toHaveBeenCalledTimes(1)
     expect(mockRouter.navigate).toHaveBeenCalledWith("/account")
     expect(mockRouter.push).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  it("centers the avatar over the name, with the chevron beside the name and no Manage account line", async () => {
+    setSnapshot(SIGNED_IN)
+    const renderer = await renderHeader()
+    const name = SIGNED_IN.user.name
+
+    expect(hasText(renderer, "Manage account")).toBe(false)
+    const identity = firstWhere(
+      renderer,
+      (node) => node.type === SessionReplayView.MaskAll,
+    )
+    expect(styleOf(identity).alignItems).toBe("center")
+    expect(styleOf(identity).flexDirection ?? "column").toBe("column")
+    // The avatar initial comes before the name, so it sits above it.
+    expect(
+      treeIndex(renderer, (node) => node.props.children === "T"),
+    ).toBeLessThan(treeIndex(renderer, (node) => node.props.children === name))
+    const chevron = firstWhere(
+      renderer,
+      (node) => node.props.name === "chevron-forward",
+    )
+    const nameRow = closest(
+      chevron,
+      (node) => styleOf(node).flexDirection === "row",
+    )
+    expect(nameRow).not.toBeNull()
+    const nameNode = firstWhere(
+      renderer,
+      (node) => node.props.children === name,
+    )
+    expect(isAncestor(nameRow!, nameNode)).toBe(true)
     await unmount(renderer)
   })
 
