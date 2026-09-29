@@ -23,3 +23,6 @@ the unavailable seven-day history, inspect safe receipts and relative links,
 then run changed-file formatting and hidden-roadmap checks. No new application
 regression test is needed for a configuration-only recovery; the production
 read-only report probe is the acceptance signal.
+
+Later product direction removed coverage/inventory as a design mistake. This
+retrospective record preserves past writes, not an ongoing setup/upkeep requirement.

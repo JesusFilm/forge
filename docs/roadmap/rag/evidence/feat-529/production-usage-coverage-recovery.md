@@ -1,5 +1,11 @@
 # Production usage inventory and collector recovery
 
+> Historical database-write audit only. Later on 2026-09-29, Jaco removed the
+> coverage/inventory design as a mistake. Recorded counts must be shown for the
+> unchanged date range regardless of interruptions. Inventory maintenance,
+> collector recovery and narrower dates are no longer reporting requirements.
+> Past writes and receipts below remain unchanged.
+
 ## Symptom and read-only diagnosis
 
 On 2026-09-29 Jaco reported successful RAGBot retrievals but dashes in the portal
@@ -104,9 +110,8 @@ inspect the recorded five retrievals. A window crossing unknown startup or
 unflushed shutdown periods remains unavailable rather than claiming complete
 totals.
 
-Independent inventory still needs maintenance on every deployment, scaling or
-rollback. Automatic maintenance is not installed by this audit. Why replaced
-collectors did not persist graceful stops is not yet established; the existing
-reconciliation path repaired the present records, not that operational cause.
+No automation was installed by this historical operation. The later product
+correction removes independent inventory and collector-stop recovery from current
+reporting, so there is no deployment-upkeep requirement to carry forward.
 Feat-529's staged +3/+2, lifecycle, isolation and seven-day/cutoff acceptance
 remain separately tracked; aggregate 5/5 is not proof of the full ticket.

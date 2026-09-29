@@ -80,3 +80,8 @@ complete coverage and unchanged counts. Uninstrumented history and uncertain
 shutdown intervals remain unavailable. This is actual aggregate proof, not
 completion of the staged +3/+2, lifecycle, isolation or migration/cutoff criteria.
 Independent inventory must be maintained on subsequent deployments.
+
+The later 2026-09-29 product correction removes coverage/inventory as a reporting
+requirement. The recovery above is historical audit evidence only. Recorded
+counts must be visible for the original consumer/date range without interruptions
+causing suppression; no ongoing inventory upkeep or collector-stop proof is needed.
