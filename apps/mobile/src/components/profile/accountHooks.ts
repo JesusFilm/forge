@@ -4,7 +4,11 @@ import {
   getAccountDeletedNotice,
   subscribeToAccountDeletedNotice,
 } from "../../lib/accountDeletedNotice"
-import { getAuthSession, type AuthSessionSnapshot } from "../../lib/authSession"
+import {
+  getAuthSession,
+  type AuthSessionSnapshot,
+  type AuthUser,
+} from "../../lib/authSession"
 import {
   getNewAccountNotice,
   subscribeToNewAccountNotice,
@@ -27,6 +31,21 @@ export function useAuthSnapshot(): AuthSessionSnapshot {
 /** The account id the R15 new-account notice belongs to, or null. */
 export function useNewAccountNotice(): string | null {
   return useSyncExternalStore(subscribeToNewAccountNotice, getNewAccountNotice)
+}
+
+/** What the header and the Account screen show for a signed-in viewer. The
+ *  name falls back to the email, so every value is PII and renders masked. */
+export function accountIdentity(user: AuthUser): {
+  name: string | undefined
+  displayName: string
+  initial: string | undefined
+} {
+  const name = user.name?.trim() || undefined
+  return {
+    name,
+    displayName: name || user.email || "Signed in",
+    initial: name ? Array.from(name)[0]?.toLocaleUpperCase() : undefined,
+  }
 }
 
 /** True while the R20 account-deleted notice is raised. */

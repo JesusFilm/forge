@@ -35,13 +35,8 @@ export function SelectionActionBar({
   // height above the home indicator. Android keeps its flush bar as it was.
   const isPill = Platform.OS === "ios"
 
-  // A root inset (34 or 0) passes through. The clamp strips a 49pt tab bar
-  // from an inset that holds one; no host passes that since the list left
-  // the Profile tab.
-  const indicator =
-    insets.bottom >= TAB_BAR_HEIGHT_IOS
-      ? insets.bottom - TAB_BAR_HEIGHT_IOS
-      : insets.bottom
+  // The host is a root route, so the inset holds the home indicator only.
+  const indicator = insets.bottom
 
   const shape = isPill
     ? {

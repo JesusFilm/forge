@@ -16,10 +16,12 @@ import {
 } from "../../lib/color"
 import {
   formatLibraryDuration,
+  recordTitle,
   seriesGroupContentEqual,
 } from "../../lib/libraryDownloads"
 import type { MyWatchRailTile } from "../../lib/myWatchRail"
 import { card, feedback } from "../../styles/shared"
+import { RING_TRACK_COLOR, THUMB_GRADIENT } from "../library/DownloadRow"
 import { DownloadProgressRing } from "../watch/DownloadProgressRing"
 
 type IconName = ComponentProps<typeof Ionicons>["name"]
@@ -46,23 +48,12 @@ export type DownloadTileProps = {
 }
 
 const POSTER_ASPECT = 16 / 9
-const THUMB_GRADIENT: readonly [string, string] = ["#2a2f37", "#15171c"]
-const RING_TRACK_COLOR = "rgba(255, 255, 255, 0.18)"
 const CHIP_SIZE = 30
 const TILE_ACTION_NAME = "my-watch-download-tile"
 
 const QUEUED: TileBadge = { kind: "pill", icon: "time-outline", failed: false }
 const PAUSED: TileBadge = { kind: "pill", icon: "pause", failed: false }
 const FAILED: TileBadge = { kind: "pill", icon: "alert-circle", failed: true }
-
-/** The list row's title fallback, for a legacy record stored without one. */
-function slugToTitle(slug: string): string {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
 
 function tileView(tile: MyWatchRailTile): TileView {
   if (tile.kind === "series") {
@@ -88,7 +79,7 @@ function tileView(tile: MyWatchRailTile): TileView {
 
   const { record, rowState } = tile
   const base = {
-    title: record.title || slugToTitle(record.videoSlug),
+    title: recordTitle(record),
     episodesText: null,
     duration: formatLibraryDuration(record.durationSeconds),
     posterPath: record.posterPath,

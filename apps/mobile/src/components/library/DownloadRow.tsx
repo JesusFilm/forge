@@ -17,24 +17,17 @@ import {
 import {
   formatLibraryDuration,
   libraryRowState,
+  recordTitle,
 } from "../../lib/libraryDownloads"
 import type { OfflineDownloadRecord } from "../../lib/offlineManifest"
 import { feedback } from "../../styles/shared"
 import { DownloadProgressRing } from "../watch/DownloadProgressRing"
 import { SelectionCheckbox } from "./SelectionCheckbox"
 
-const RING_TRACK_COLOR = "rgba(255, 255, 255, 0.18)"
-const THUMB_GRADIENT: readonly [string, string] = ["#2a2f37", "#15171c"]
+/** Shared with the My Watch rail tile, so a download looks the same in both. */
+export const RING_TRACK_COLOR = "rgba(255, 255, 255, 0.18)"
+export const THUMB_GRADIENT: readonly [string, string] = ["#2a2f37", "#15171c"]
 const GROUPED_DIVIDER_COLOR = "rgba(255, 255, 255, 0.09)"
-
-/** Humanize a video slug as a title fallback when the record has no stored title. */
-function slugToTitle(slug: string): string {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
 
 export interface DownloadRowProps {
   record: OfflineDownloadRecord
@@ -65,7 +58,7 @@ export const DownloadRow = memo(function DownloadRow({
   onLongPress,
 }: DownloadRowProps) {
   const typography = useTypography()
-  const title = record.title || slugToTitle(record.videoSlug)
+  const title = recordTitle(record)
   const duration = formatLibraryDuration(record.durationSeconds)
   const rowState = useMemo(() => libraryRowState(record), [record])
   const failed = rowState.affordance === "retry"

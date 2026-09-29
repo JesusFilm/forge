@@ -6,6 +6,7 @@ import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
 import {
+  accountIdentity,
   useAccountDeletedNotice,
   useAuthSnapshot,
   useNewAccountNotice,
@@ -205,9 +206,7 @@ export function MyWatchHeader() {
     )
   }
 
-  const name = snapshot.user.name?.trim()
-  const displayName = name || snapshot.user.email || "Signed in"
-  const initial = name ? Array.from(name)[0]?.toLocaleUpperCase() : undefined
+  const { displayName, initial } = accountIdentity(snapshot.user)
 
   return (
     <View style={styles.container}>

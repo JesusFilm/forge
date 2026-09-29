@@ -105,22 +105,6 @@ describe("iOS", () => {
     expect(style.paddingBottom).toBe(0)
   })
 
-  it("sizes off the home indicator, not an inset that still holds the bar", async () => {
-    // The clamp's own case: 83 is a tab screen's inset (49pt bar + 34pt
-    // indicator). No host passes that since the list moved to a root route,
-    // but read raw it would float the buttons 83pt off the edge.
-    setPlatform("ios")
-    mockInsets.bottom = 34
-    const settled = await renderBar()
-    mockInsets.bottom = 83
-    const firstFrame = await renderBar()
-
-    expect(firstFrame.height).toBe(settled.height)
-    expect(firstFrame.paddingBottom).toBe(settled.paddingBottom)
-    expect(firstFrame.height).toBe(TAB_BAR_HEIGHT_IOS + 34)
-    expect(firstFrame.paddingBottom).toBe(34)
-  })
-
   it("keeps its side padding when there is no notch to clear", async () => {
     // Discriminating: React Native resolves an edge padding ahead of
     // `paddingHorizontal`, so a bare `insets.left` erases the 16pt gutter and

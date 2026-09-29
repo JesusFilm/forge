@@ -7,7 +7,10 @@ import { SessionReplayView } from "@datadog/mobile-react-native-session-replay"
 import { useRouter } from "expo-router"
 
 import { DeleteAccountFlow } from "../src/components/profile/DeleteAccountFlow"
-import { useAuthSnapshot } from "../src/components/profile/accountHooks"
+import {
+  accountIdentity,
+  useAuthSnapshot,
+} from "../src/components/profile/accountHooks"
 import { ScreenTopBar, leaveToMyWatch } from "../src/components/ui/ScreenTopBar"
 import { useMiniPlayerBottomClearance } from "../src/hooks/useMiniPlayerBottomClearance"
 import { useTypography } from "../src/hooks/useTypography"
@@ -46,10 +49,8 @@ function useLeaveOnSignOut(status: AuthSessionSnapshot["status"]): boolean {
 
 function Identity({ user }: { user: AuthUser }) {
   const typography = useTypography()
-  const name = user.name?.trim()
+  const { name, displayName, initial } = accountIdentity(user)
   const email = user.email
-  const displayName = name || email || "Signed in"
-  const initial = name ? Array.from(name)[0]?.toLocaleUpperCase() : undefined
 
   // Session Replay masks inputs, not rendered text. The name falls back to
   // the email, and the initial comes from the name, so all three mask.
