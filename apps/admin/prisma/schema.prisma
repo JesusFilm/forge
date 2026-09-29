@@ -5987,7 +5987,7 @@ enum PushDeliveryStatus {
 model PushRegistration {
   id                String                 @id @default(cuid())
   expoPushToken     String                 @unique @map("expo_push_token") @db.VarChar(191)
-  /// Shown on the app's Profile screen so an admin user can list a test phone.
+  /// Revealed on the app's mission screen so an admin user can list a test phone.
   /// It is a separate identifier and never the push token.
   testDeviceId      String                 @unique @map("test_device_id") @db.VarChar(64)
   viewerDigest      String?                @map("viewer_digest") @db.Char(64)

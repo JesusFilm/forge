@@ -1,7 +1,7 @@
 "use client"
 
 /**
- * R31 — the test-device list. The ID is the one the app shows on its Profile
+ * R31 — the test-device list. The ID is the one the app reveals on its mission
  * screen, never the push token, and the service refuses a token-shaped string.
  */
 import { useActionState } from "react"

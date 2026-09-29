@@ -79,7 +79,7 @@ export async function stepRunPushRetention(): Promise<PushRetentionCatchUpResult
     const attempt = await runPushRetentionFromScheduler()
     if (!attempt.ok || !attempt.result) {
       throw new RetryableError("Push retention purge failed", {
-        retryAfter: "5m",
+        retryAfter: "1m",
       })
     }
     batchesProcessed += 1
@@ -92,7 +92,9 @@ export async function stepRunPushRetention(): Promise<PushRetentionCatchUpResult
   return { batchesProcessed, overdueAfterRun }
 }
 
-stepRunPushRetention.maxRetries = 5
+// The loop's next pass is the real retry. A long budget here would hold every
+// privacy catch-up pass behind a failing push purge.
+stepRunPushRetention.maxRetries = 1
 
 export async function stepMarkRecommendationRetentionSchedulerStarted(input: {
   ledgerRunId?: string

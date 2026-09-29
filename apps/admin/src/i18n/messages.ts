@@ -1020,7 +1020,7 @@ export const adminMessages = {
           eyebrow: "Push campaigns / Test devices",
           title: "Test devices",
           description:
-            "A test device is any device whose notification test ID an admin user has added here. To find the ID, open the mission page at the bottom of the app's Home tab, then hold “Become a beta tester” for 5 seconds.",
+            "A test device is any device whose notification test ID an admin user has added here. To find the ID, tap the “Our mission” card at the bottom of the app's Home tab. On the mission page, hold its “Become a beta tester” button for 5 seconds. The Home card with the same name does not show the ID.",
           emptyTitle: "No test devices yet",
           emptyDescription:
             "Paste the notification test ID from the app, give it a label, and add it.",

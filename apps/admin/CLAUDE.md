@@ -3127,7 +3127,9 @@ sending campaigns from the dashboard, then roll the worker back. A run left
 asleep on a worker without the workflow fails on wake and the recovery sweep
 pauses its campaign at the next worker start. Registrations survive a rollback;
 migration 0106 alters no existing table, so a code redeploy needs no data
-restore.
+restore. A rollback also removes `stepRunPushRetention` from the retention
+loop, so cancel the live recommendation-retention scheduler run once after it,
+as deploy step 2 does, or its replay can fail with `corrupted-event-log`.
 
 A cancel is not instant once a group has gone out. The runtime cancel event
 makes the run terminal and every later step is refused, so the cancel emits it

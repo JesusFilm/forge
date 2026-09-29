@@ -430,7 +430,9 @@ describe("recommendation retention workflow", () => {
         RetryableError.is(error) &&
         error.message === "Push retention purge failed",
     )
-    expect(stepRunPushRetention.maxRetries).toBe(5)
+    // One retry: a failing push purge must not hold the 60-second privacy
+    // catch-up passes, and the next loop pass retries it anyway.
+    expect(stepRunPushRetention.maxRetries).toBe(1)
   })
 
   it("drains the push backlog up to its batch cap in one step", async () => {

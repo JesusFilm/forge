@@ -89,7 +89,7 @@ const PushDeviceRegistrationReceiptRef =
   )
 PushDeviceRegistrationReceiptRef.implement({
   description:
-    "What one registration answers. The test ID is the identifier the app shows on Profile; it is never the push token.",
+    "What one registration answers. The test ID is the identifier the app reveals on its mission screen; it is never the push token.",
   fields: (t) => ({
     testDeviceId: t.exposeString("testDeviceId", { nullable: false }),
     status: t.field({

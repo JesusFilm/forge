@@ -11,7 +11,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 )
 jest.mock("expo-clipboard", () => ({ setStringAsync: jest.fn() }))
 
-import type { AlertButton } from "react-native"
+import { Alert, type AlertButton } from "react-native"
 
 import {
   PUSH_REGISTRATION_RECORD_VERSION,
@@ -25,6 +25,8 @@ import {
 } from "../constants"
 import {
   createPushRegistrationStore,
+  getPushRegistrationStore,
+  resetPushRegistrationStoreForTests,
   type PushRegistrationSnapshot,
 } from "../store"
 import {
@@ -149,6 +151,23 @@ describe("revealPushTestId", () => {
       PUSH_TEST_ID_COPY_ACTION,
     ])
     expect(options).toEqual({ cancelable: true })
+  })
+
+  it("reads the app's own store and shows the native alert by default", async () => {
+    // The production call passes no deps. Permission is launch state that only
+    // the app-wide store holds, so a default that built its own store would lose it.
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {})
+    try {
+      getPushRegistrationStore().setPermission("denied")
+
+      await revealPushTestId()
+
+      expect(alert).toHaveBeenCalledTimes(1)
+      expect(alert.mock.calls[0][1]).toBe(PUSH_TEST_ID_NOTIFICATIONS_OFF)
+    } finally {
+      alert.mockRestore()
+      resetPushRegistrationStoreForTests()
+    }
   })
 
   it("still shows the alert when the stored record cannot be read", async () => {
