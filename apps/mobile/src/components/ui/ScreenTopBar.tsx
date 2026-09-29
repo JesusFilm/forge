@@ -21,6 +21,9 @@ export type ScreenTopBarProps = {
   /** Adds a leading back control, for a screen pushed over My Watch. */
   showBack?: boolean
   trailingAction?: ScreenTopBarAction
+  /** Floats the bar over the page instead of taking a row, so the page can
+   *  start its content just under the safe area. The host pads for that. */
+  overlay?: boolean
 }
 
 const TARGET_SIZE = 44
@@ -43,18 +46,31 @@ export function ScreenTopBar({
   title,
   showBack = false,
   trailingAction,
+  overlay = false,
 }: ScreenTopBarProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const typography = useTypography()
 
   const handleBack = () => leaveToMyWatch(router)
+  // Overlaid, only the controls take touches, so a drag beside them scrolls.
+  const passThrough = overlay ? "box-none" : "auto"
 
   return (
     <View
-      style={[styles.bar, { paddingTop: insets.top + HOME_HEADER_ROW_TOP }]}
+      pointerEvents={passThrough}
+      style={[
+        overlay ? styles.overlay : styles.bar,
+        { paddingTop: insets.top + HOME_HEADER_ROW_TOP },
+      ]}
     >
-      <View style={styles.row}>
+      {overlay && (
+        <View
+          pointerEvents="none"
+          style={[styles.statusBackdrop, { height: insets.top }]}
+        />
+      )}
+      <View style={styles.row} pointerEvents={passThrough}>
         {showBack && (
           <Pressable
             onPress={handleBack}
@@ -81,7 +97,7 @@ export function ScreenTopBar({
             {title}
           </Text>
         ) : (
-          <View style={styles.spacer} />
+          <View style={styles.spacer} pointerEvents="none" />
         )}
         {trailingAction != null && (
           <Pressable
@@ -111,6 +127,22 @@ const styles = StyleSheet.create({
     backgroundColor: BG_COLOR,
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingBottom: 8,
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+    paddingHorizontal: HORIZONTAL_PADDING,
+  },
+  // Keeps scrolled content from showing under the status bar.
+  statusBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: BG_COLOR,
   },
   row: {
     minHeight: TARGET_SIZE,

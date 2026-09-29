@@ -84,6 +84,7 @@ import { act } from "react"
 import { ScrollView, StyleSheet, type ViewStyle } from "react-native"
 
 import { MyWatchScreen } from "../MyWatchScreen"
+import { ScreenTopBar } from "../../ui/ScreenTopBar"
 import { DownloadProgressRing } from "../../watch/DownloadProgressRing"
 import { tabBarClearanceFor } from "../../../lib/tabBar"
 import {
@@ -243,6 +244,25 @@ describe("MyWatchScreen with no downloads (R1, R2, R9)", () => {
     expect(Number(content.paddingBottom)).toBeGreaterThanOrEqual(
       tabBarClearanceFor(mockInsets),
     )
+    await unmount(renderer)
+  })
+
+  it("floats the menu bar, so the header starts just under the safe area", async () => {
+    const renderer = await renderScreen()
+    const [page] = renderer.root.findAll(
+      (node) => node.type === ScrollView && node.props.horizontal !== true,
+    )
+    const content = StyleSheet.flatten(
+      page.props.contentContainerStyle as ViewStyle,
+    )
+
+    expect(
+      renderer.root.findAll(
+        (node) => node.type === ScreenTopBar && node.props.overlay === true,
+      ).length,
+    ).toBe(1)
+    // The page pads the inset itself, because the overlaid bar takes no row.
+    expect(Number(content.paddingTop)).toBe(mockInsets.top + 16)
     await unmount(renderer)
   })
 })

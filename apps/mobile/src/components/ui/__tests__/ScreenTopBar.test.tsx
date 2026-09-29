@@ -124,6 +124,48 @@ describe("ScreenTopBar", () => {
     await unmount(renderer)
   })
 
+  it("overlay: floats over the page, backs only the status bar, and passes touches beside its controls", async () => {
+    const onPress = jest.fn()
+    const renderer = await render({
+      overlay: true,
+      trailingAction: { icon: "menu", accessibilityLabel: "More", onPress },
+    })
+
+    const [root] = hostNodes(renderer, (node) => node.type === "View")
+    expect(styleOf(root).position).toBe("absolute")
+    expect(root.props.pointerEvents).toBe("box-none")
+    const backdrops = hostNodes(
+      renderer,
+      (node) =>
+        node.type === "View" &&
+        node.props.pointerEvents === "none" &&
+        styleOf(node).height === mockInsets.top,
+    )
+    expect(backdrops.length).toBe(1)
+    // Every non-control View lets a drag through to the page underneath.
+    const blocking = hostNodes(
+      renderer,
+      (node) =>
+        node.type === "View" &&
+        typeof node.props.onClick !== "function" &&
+        node.props.accessibilityRole !== "button" &&
+        node.props.pointerEvents !== "box-none" &&
+        node.props.pointerEvents !== "none",
+    )
+    expect(blocking.length).toBe(0)
+    await press(pressableByLabel(renderer, "More"))
+    expect(onPress).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("keeps a row in the layout when not overlaid", async () => {
+    const renderer = await render({ title: "Downloads", showBack: true })
+
+    const [root] = hostNodes(renderer, (node) => node.type === "View")
+    expect(styleOf(root).position).toBeUndefined()
+    await unmount(renderer)
+  })
+
   it("renders no back control when none is asked for", async () => {
     const renderer = await render({ title: "My Watch" })
 
