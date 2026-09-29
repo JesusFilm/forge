@@ -3,7 +3,7 @@ id: "feat-575"
 title: "Renew RAG portal sessions and restore the active section"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-30"
 duration: 3
 depends_on: []
@@ -84,3 +84,7 @@ revocation, and restricted role grants. Check frontend page-load and request
 cost because portal initialization and navigation change. Run touched-scope
 format, lint, typecheck, dependency, and CI-sensitive checks. Keep test
 artifacts free of credentials and issued keys.
+
+## Resolution
+
+Implemented in Forge [#2499](https://github.com/JesusFilm/forge/pull/2499).
