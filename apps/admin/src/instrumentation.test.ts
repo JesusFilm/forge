@@ -1,3 +1,9 @@
+vi.mock("@/services/core-sync/phase-execution", () => ({
+  ensureCoreSyncPhaseWorkerStarted: vi.fn(),
+}))
+vi.mock("@/services/watch-catalog-publication-worker", () => ({
+  ensureWatchCatalogPublicationWorkerStarted: vi.fn(),
+}))
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -127,7 +133,7 @@ vi.mock("@/services/typesense-watch-search-transcript-publication", () => ({
 vi.mock("@/services/watch-search.service", () => ({
   prewarmWatchSearchQueryEmbeddings,
 }))
-vi.mock("@/db/client", () => ({ prisma }))
+vi.mock("@/db/client", () => ({ prisma, syncPrisma: prisma }))
 
 describe("workflow instrumentation", () => {
   beforeEach(() => {
@@ -599,7 +605,7 @@ describe("Admin worker Railway credential isolation", () => {
 
     for (const command of ["buildCommand", "preDeployCommand"]) {
       expect(commands[command]).toMatch(
-        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY[^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED && /,
+        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY[^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED[^&]*WATCH_CATALOG_PUBLICATION_ENABLED && /,
       )
     }
 

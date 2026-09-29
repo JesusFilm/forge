@@ -164,6 +164,15 @@ export function resolveWatchSearchTranscriptPublicationEnabled(
   )
 }
 
+export function resolveWatchCatalogPublicationEnabled(
+  value: unknown = env.WATCH_CATALOG_PUBLICATION_ENABLED,
+): boolean {
+  return runtimeWatchSearchFlag(
+    value,
+    watchSearchTranscriptPublicationEnabledEnvSchema,
+  )
+}
+
 /**
  * `createEnv` deliberately skips transforms while CI builds. Normalize the
  * search controls again at runtime so Railway's raw strings cannot become
@@ -370,6 +379,8 @@ export const env = createEnv({
       watchSearchDefaultShadowEnabledEnvSchema,
     WATCH_SEARCH_FLEET_PRIMARY_ENABLED: watchSearchFleetPrimaryEnabledEnvSchema,
     WATCH_SEARCH_TYPESENSE_PROFILE: watchSearchTypesenseProfileEnvSchema,
+    WATCH_CATALOG_PUBLICATION_ENABLED:
+      watchSearchTranscriptPublicationEnabledEnvSchema,
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       watchSearchCandidateComparisonEnabledEnvSchema,
     WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED:
@@ -890,6 +901,9 @@ export const env = createEnv({
       "false",
     WATCH_SEARCH_TYPESENSE_PROFILE:
       emptyToUndefined(process.env.WATCH_SEARCH_TYPESENSE_PROFILE) ?? "CURRENT",
+    WATCH_CATALOG_PUBLICATION_ENABLED: emptyToUndefined(
+      process.env.WATCH_CATALOG_PUBLICATION_ENABLED,
+    ),
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       emptyToUndefined(process.env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED) ??
       "false",

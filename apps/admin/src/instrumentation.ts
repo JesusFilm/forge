@@ -230,6 +230,13 @@ async function startWorkflowWorld(): Promise<void> {
   const world = getWorld()
   await world.start?.()
   await startWorkflowWorkerHeartbeat()
+  const { prisma, syncPrisma } = await import("@/db/client")
+  const { ensureCoreSyncPhaseWorkerStarted } =
+    await import("@/services/core-sync/phase-execution")
+  ensureCoreSyncPhaseWorkerStarted(syncPrisma)
+  const { ensureWatchCatalogPublicationWorkerStarted } =
+    await import("@/services/watch-catalog-publication-worker")
+  ensureWatchCatalogPublicationWorkerStarted(syncPrisma)
   await ensureStudioCalendarSchedulerStarted()
   await ensureStudioCalendarPublicationSchedulerStarted()
   await ensureCoreSyncSchedulerStarted()
@@ -248,7 +255,6 @@ async function startWorkflowWorld(): Promise<void> {
   scheduleProfileReconciliationRecovery(
     ensureRecommendationProfileReconciliationSchedulerStarted,
   )
-  const { prisma } = await import("@/db/client")
   await ensureWatchSearchTranscriptPublicationWorkerStarted(prisma)
   void ensureRecommendationRecovery(
     ensureRecommendationEpisodeFinalizationRecovery,

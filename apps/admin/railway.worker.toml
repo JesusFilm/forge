@@ -22,7 +22,7 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY TYPESENSE_OPERATOR_API_KEY WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED && export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps"
+buildCommand = "unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY TYPESENSE_OPERATOR_API_KEY WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED WATCH_CATALOG_PUBLICATION_ENABLED && export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps"
 watchPatterns = [
   "/apps/admin/**",
   "/packages/experience-schema/**",
@@ -33,7 +33,7 @@ watchPatterns = [
 ]
 
 [deploy]
-preDeployCommand = "unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY TYPESENSE_OPERATOR_API_KEY WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED && pnpm --filter @forge/admin db:migrate:deploy"
+preDeployCommand = "unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY TYPESENSE_OPERATOR_API_KEY WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED WATCH_CATALOG_PUBLICATION_ENABLED && pnpm --filter @forge/admin db:migrate:deploy"
 startCommand = "unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY && cd apps/admin && export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && HOSTNAME=0.0.0.0 NODE_OPTIONS='--enable-source-maps --require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
