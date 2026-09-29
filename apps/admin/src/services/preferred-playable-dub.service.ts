@@ -37,7 +37,7 @@ export async function getPreferredPlayableDubs(
       WHERE d.video_id = v.id AND d.deleted_at IS NULL AND d.published
         AND d.hls IS NOT NULL AND d.hls <> ''
         AND (l.slug = ${language} OR l.bcp47 = ${language})
-      ORDER BY (l.slug = ${language}) DESC, d.duration DESC, d.id ASC LIMIT 1
+      ORDER BY (l.slug = ${language}) DESC NULLS LAST, d.duration DESC, d.id ASC LIMIT 1
     ) exact ON TRUE
     LEFT JOIN LATERAL (
       SELECT d.id FROM video_dub d

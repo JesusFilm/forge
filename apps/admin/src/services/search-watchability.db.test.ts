@@ -176,6 +176,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                 bcp47: tag,
               },
             })
+            // `Language.slug` is nullable. A slug-less language on the same
+            // tag pins the batched matcher's `(l.slug = $1) DESC` rank: without
+            // NULLS LAST, NULL sorts ahead of TRUE and this dub would win even
+            // though it is the shortest, before duration is ever compared.
+            const nullSlugLanguage = await tx.language.create({
+              data: { coreId: `${prefix}-null-slug`, slug: null, bcp47: tag },
+            })
             const primaryLanguage = await tx.language.create({
               data: {
                 coreId: `${prefix}-primary`,
@@ -224,6 +231,14 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             await tx.videoDub.create({
               data: {
                 ...base,
+                coreId: `${prefix}-null-slug-dub`,
+                languageId: nullSlugLanguage.id,
+                duration: 10,
+              },
+            })
+            await tx.videoDub.create({
+              data: {
+                ...base,
                 coreId: `${prefix}-primary-dub`,
                 languageId: primaryLanguage.id,
                 duration: 50,
@@ -250,7 +265,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                 })
               )?.preferredVariant?.documentId
 
-            // The exact slug wins even though the tag-only sibling is longer.
+            // The exact slug wins even though the tag-only sibling is longer
+            // and the slug-less sibling shares its tag.
             expect(await batched(tag)).toBe(exactDub.id)
             expect(await snapshot(tag)).toBe(exactDub.id)
             // The sibling still resolves by its own slug.
