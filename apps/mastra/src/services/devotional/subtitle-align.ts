@@ -14,7 +14,14 @@
 
 const FETCH_TIMEOUT_MS = 15_000
 
-export type SubtitleCue = { start: number; end: number; text: string }
+export type SubtitleCue = {
+  start: number
+  end: number
+  text: string
+  /** Start of each whitespace-separated word of `text`, in the same (source)
+   *  seconds as `start`. Present only when a word-timing file was supplied. */
+  words?: number[]
+}
 
 /** "HH:MM:SS,mmm" (srt) or "HH:MM:SS.mmm" / "MM:SS.mmm" (vtt) → seconds. */
 function timeToSeconds(ts: string): number | null {
@@ -310,7 +317,14 @@ export type EditedWindow = AlignedWindow & {
 }
 
 /** A caption timed against the FINAL, edited clip (gaps cut, speed applied). */
-export type TimedCaption = { text: string; startSec: number; endSec: number }
+export type TimedCaption = {
+  text: string
+  startSec: number
+  endSec: number
+  /** Start of each word of `text` on the same timeline as `startSec`, for
+   *  the word-by-word (karaoke) highlight. One entry per word of `text`. */
+  words?: number[]
+}
 
 /**
  * Remap subtitle cues from SOURCE film time onto the edited clip's timeline.
@@ -341,10 +355,18 @@ export function mapCuesToEditedTimeline(
       if (to - from < minDurationSec) continue
       const text = cue.text.trim()
       if (!text) continue
+      const at = (src: number) => (elapsed + (src - seg.startSec)) / speed
+      // Word times follow the same edit; a word outside this segment's part
+      // of the cue (a cue split by a cut) is held at the part's edge.
+      const words =
+        cue.words && cue.words.length === text.split(/\s+/).length
+          ? cue.words.map((w) => at(Math.min(to, Math.max(from, w))))
+          : undefined
       out.push({
         text,
-        startSec: (elapsed + (from - seg.startSec)) / speed,
-        endSec: (elapsed + (to - seg.startSec)) / speed,
+        startSec: at(from),
+        endSec: at(to),
+        ...(words ? { words } : {}),
       })
     }
     elapsed += seg.lengthSec

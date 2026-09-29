@@ -3,7 +3,7 @@ import path from "node:path"
 import { getDevotionalCacheDir } from "../../config/env"
 
 import type { ProducedDevotionalAudio } from "./devotional-audio"
-import { resolveVoiceId } from "./elevenlabs-voiceover"
+import { resolveVoiceId, voiceNameForId } from "./elevenlabs-voiceover"
 import type { MusicMood } from "./elevenlabs-music"
 import type { DevotionalLang } from "./devotional-locale"
 import type { GeneratedDevotional } from "./generate-devotional"
@@ -218,12 +218,21 @@ export function reuseMapFromSegments(
 ): Map<string, ProducedDevotionalAudio["segments"][number]> {
   const out = new Map<string, ProducedDevotionalAudio["segments"][number]>()
   const wantVoiceId = resolveVoiceId(voice)
+  // Authored devotionals read different segments in different voices, so a
+  // cache can legitimately hold several. Each entry is keyed under the voice
+  // that ACTUALLY made its bytes (read back from its own voiceId), never under
+  // the one being asked for — so a female take can only ever be replayed where
+  // the script asks for the female voice. Voices outside the registry are
+  // dropped, as before: their bytes cannot be named.
+  const nameFor = (voiceId: string) =>
+    voiceId === wantVoiceId ? voice : voiceNameForId(voiceId)
   // Entries with no recorded SPOKEN text predate keying on it, so what they
   // actually say cannot be known — only what they showed. Reusing them is the
   // bug above, so they are dropped and re-synthesised once.
   const usable = segments.filter(
     (s) =>
-      s.audio.voiceId === wantVoiceId && (s.spoken ?? "").trim().length > 0,
+      nameFor(s.audio.voiceId) !== undefined &&
+      (s.spoken ?? "").trim().length > 0,
   )
   // Roles are derived over the USABLE set, so first/last mean what they will
   // mean on THIS run rather than what they meant for another voice's cache.
@@ -238,7 +247,7 @@ export function reuseMapFromSegments(
           ? "reflection-last"
           : "reflection-mid"
       : s.id
-    out.set(audioReuseKey(role, s.spoken ?? "", voice), s)
+    out.set(audioReuseKey(role, s.spoken ?? "", nameFor(s.audio.voiceId)!), s)
   }
   return out
 }

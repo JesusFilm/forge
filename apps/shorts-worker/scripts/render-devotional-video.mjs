@@ -353,6 +353,16 @@ async function main() {
   // Cap parallel Chrome workers — lower avoids memory pressure / browser
   // crashes on a loaded machine (default lets Remotion decide).
   const concurrency = Number(arg("concurrency", "")) || null
+  // GPU for the headless browser. Remotion's default on this machine is
+  // SwiftShader (the CPU pretending to be a GPU), and nearly every devotional
+  // frame carries a backdrop blur and soft text shadows, which is exactly what
+  // SwiftShader is slowest at. `--gl=angle` hands them to Metal.
+  const gl = arg("gl", "") || null
+  const chromiumOptions = gl ? { gl } : {}
+  // DRAFT: the same composition at a fraction of the pixels, for reviewing
+  // motion and timing (owner: "even 240 would be enough to see what's what").
+  // 0.25 of 1080p is 270p. Layout is identical; only the output is smaller.
+  const scale = Number(arg("scale", "")) || null
   const outPath = abs(arg("out", "devo/artifacts/video/design-grain.mp4"))
   // Preview mode: render N evenly-spaced STILL frames instead of encoding the
   // whole video. Each still costs one frame of Chrome rasterization rather
@@ -616,6 +626,7 @@ async function main() {
     console.log("Selecting composition…")
     const composition = await selectComposition({
       serveUrl,
+      chromiumOptions,
       // "devotional" (9:16 social) or "devotional-wide" (16:9 desktop/YouTube).
       id: arg("comp", "devotional"),
       inputProps,
@@ -646,6 +657,7 @@ async function main() {
         await renderStill({
           composition,
           serveUrl,
+          chromiumOptions,
           output: stillPath,
           frame: frames[i],
           inputProps,
@@ -677,6 +689,7 @@ async function main() {
     await renderMedia({
       composition,
       serveUrl,
+      chromiumOptions,
       codec: "h264",
       outputLocation: outPath,
       inputProps,
@@ -691,8 +704,10 @@ async function main() {
       // `crf` is the final h264 encode. 18 is Remotion's default; 16 gives the
       // text cards and the film grain more bitrate to sit in, which matters
       // because YouTube re-encodes whatever we upload.
-      jpegQuality: 95,
-      crf: 16,
+      // A draft has nothing to preserve: default quality, and the smaller frame.
+      jpegQuality: scale && scale < 1 ? 80 : 95,
+      crf: scale && scale < 1 ? 23 : 16,
+      ...(scale ? { scale } : {}),
       ...(range ? { frameRange: range } : {}),
       ...(concurrency ? { concurrency } : {}),
       onProgress: ({ progress }) => {

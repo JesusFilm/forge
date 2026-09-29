@@ -10,6 +10,10 @@ import path from "node:path"
 
 import { getDevotionalModel, getDevotionalTranslateModel } from "../config/env"
 import { prepareAndRenderDevotional } from "../services/devotional/devotional-render"
+import {
+  listVideoSources,
+  videoSource,
+} from "../services/devotional/video-sources"
 import { createDevotionalLlm } from "../services/devotional/llm"
 
 function arg(name: string, fallback?: string): string | undefined {
@@ -18,9 +22,20 @@ function arg(name: string, fallback?: string): string | undefined {
 }
 
 async function main() {
-  const chapterIndex = Number(arg("chapter", "19"))
+  // A registered film other than JESUS (`--source=lumo-matt-20`). It brings its
+  // own clip, window, corner mark and grade; the chapter number is its cache
+  // key.
+  const sourceKey = arg("source")
+  const source = sourceKey ? videoSource(sourceKey) : undefined
+  if (sourceKey && !source) {
+    const known = listVideoSources()
+      .map((s) => s.key)
+      .join(", ")
+    throw new Error(`unknown --source=${sourceKey}; known: ${known}`)
+  }
+  const chapterIndex = source ? source.index : Number(arg("chapter", "19"))
   const sequence = Number(arg("seq", "0"))
-  const style = arg("style", "splittone")
+  const style = arg("style", source?.style ?? "restored")
   const layout = arg("layout", "grounded")
   const aspect = arg("aspect", "portrait") as "portrait" | "wide"
   const lang = arg("lang", "en") as "en" | "ru" | "es"
@@ -88,6 +103,8 @@ async function main() {
       ...(arg("stills") ? { stills: Number(arg("stills")) } : {}),
       ...(arg("stills-frames") ? { stillsFrames: arg("stills-frames") } : {}),
       ...(arg("frame-range") ? { frameRange: arg("frame-range") } : {}),
+      // Quarter-size review render (270p), written as `…-draft.mp4`.
+      ...(process.argv.includes("--draft") ? { draft: true } : {}),
       ...(arg("grain-size") ? { grainSizePx: Number(arg("grain-size")) } : {}),
       ...(arg("grain-filter") ? { grainFilter: arg("grain-filter") } : {}),
       ...(arg("grain-blend") ? { grainBlend: arg("grain-blend") } : {}),
@@ -99,7 +116,15 @@ async function main() {
         ? { stepRing: true, stepProgress: "bar" as const }
         : {}),
       ...(arg("intro")
-        ? { intro: arg("intro") as "cover" | "bands" | "hook" }
+        ? {
+            intro: arg("intro") as
+              | "cover"
+              | "bands"
+              | "hook"
+              | "watch"
+              | "opening"
+              | "montage",
+          }
         : {}),
       // YouTube opening (`--intro=hook --hook="..."`): the voice asks the
       // devotional's question over the film's first seconds. Its recorded
@@ -111,6 +136,29 @@ async function main() {
       // Borrow the opening's extra footage from this point in the film rather
       // than slowing the scene's own run-up.
       ...(arg("hook-bg") ? { hookBgStartSec: Number(arg("hook-bg")) } : {}),
+      // `--intro=montage`: one shot of the film per spoken line of --hook,
+      // cut on the line's first word. `--intro-shots` is a source time (s) per
+      // line, in order; the last --hook line ("Let's watch.") has no shot, the
+      // scene itself starts there. `--intro-captions` puts a caption on chosen
+      // lines, by 0-based line number: "1=THEY WORKED ALL DAY;2=ONE HOUR".
+      ...(arg("hook-gap") ? { hookGapSec: Number(arg("hook-gap")) } : {}),
+      ...(arg("intro-focus")
+        ? { introFocus: arg("intro-focus")!.split(",").map(Number) }
+        : {}),
+      ...(arg("intro-shots")
+        ? { introShots: arg("intro-shots")!.split(",").map(Number) }
+        : {}),
+      ...(arg("intro-captions")
+        ? {
+            introCaptions: Object.fromEntries(
+              arg("intro-captions")!
+                .split(";")
+                .map((kv) => kv.split("="))
+                .filter((kv) => kv.length === 2)
+                .map(([k, v]) => [Number(k), v.trim()]),
+            ),
+          }
+        : {}),
       // `--teaser-intro`: render ONLY the opening, ending on `--cta`.
       introTeaser: process.argv.includes("--teaser-intro"),
       // Social opening: `--quote-a/--quote-b` (+ `--quote-a-strong`, etc.).
@@ -138,7 +186,9 @@ async function main() {
                 ? { questions: arg("questions")!.split("|") }
                 : {}),
               ...(arg("cta") ? { ctaLine: arg("cta") } : {}),
-              ...(arg("cta-label") ? { ctaLabel: arg("cta-label") } : {}),
+              ...(arg("cta-label") != null
+                ? { ctaLabel: arg("cta-label") }
+                : {}),
             },
           }
         : {}),
@@ -173,6 +223,27 @@ async function main() {
       ...(arg("settle-line") ? { settleLine: arg("settle-line") } : {}),
       // Title leads the cover, the mark follows two seconds later (owner rule).
       coverTitleFirst: !process.argv.includes("--no-cover-title-first"),
+      // The kicker beside the mark once the lockup collapses ("TODAY'S
+      // DEVOTIONAL"), the quiet line under the title, and a cover that leaves
+      // the footage sharp and carries only a light scrim (owner, 2026-09-25).
+      ...(arg("cover-date-label")
+        ? { coverDateLabel: arg("cover-date-label") }
+        : {}),
+      ...(arg("cover-line") ? { coverSecondaryLine: arg("cover-line") } : {}),
+      ...(process.argv.includes("--cover-sharp") ? { coverBgSharp: true } : {}),
+      // Play a different film than the chapter's own (LUMO, say). The window
+      // has to come with it: the catalog knows nothing about a non-JESUS clip.
+      ...(arg("film-mark") ? { filmMark: arg("film-mark") as "lumo" } : {}),
+      ...(arg("clip-id")
+        ? {
+            clipOverride: {
+              id: arg("clip-id")!,
+              startSec: Number(arg("clip-start", "0")),
+              lengthSec: Number(arg("clip-len", "60")),
+              ...(arg("clip-title") ? { title: arg("clip-title") } : {}),
+            },
+          }
+        : {}),
       suppressOccasion: process.argv.includes("--no-occasion"),
       ...(arg("caption-offset")
         ? { captionOffsetSec: Number(arg("caption-offset")) }

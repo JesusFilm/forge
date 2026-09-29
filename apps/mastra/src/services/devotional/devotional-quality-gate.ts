@@ -4,9 +4,14 @@ import {
   buildCoherenceLlm,
   buildFidelityCriticLlm,
   buildReflectionCriticLlm,
+  narrativeEditorModel,
 } from "./devotional-models"
 import { critiqueReflection } from "./devotional-reflection-critic"
 import type { GeneratedDevotional } from "./generate-devotional"
+import type { DevotionalLlm } from "./llm"
+import { narrativeParagraphs, reviewNarrative } from "./narrative-editor"
+import { createAgentLlm } from "../../mastra/agents/devotional/agent-llm"
+import { narrativeEditorAgent } from "../../mastra/agents/devotional/narrative-editor-agent"
 import { critiqueReflectionFidelity } from "./reflection-fidelity-critic"
 import { checkReflectionVoice } from "./reflection-voice-check"
 
@@ -71,6 +76,9 @@ export type ReviewDevotionalTextInput = {
    *  check at all. */
   lang?: DevotionalLang
   log?: (msg: string) => void
+  /** Override the narrative editor's LLM (tests). Defaults to the Mastra
+   *  agent, so Studio-published instruction edits apply. */
+  narrativeLlm?: DevotionalLlm
 }
 
 export async function reviewDevotionalText(
@@ -154,11 +162,59 @@ export async function reviewDevotionalText(
     blocking.push("depth: high-severity issue")
   }
 
-  if (input.checkFidelity && d.reflection.sourceExcerpt) {
+  // NARRATIVE EDITOR — the whole piece as a listener hears it, and every
+  // credited paragraph's claims against its own source (see
+  // narrative-editor.ts). Advisory below high severity: its medium/low
+  // findings are an editor's suggestions, logged with the exact fix.
+  const paragraphs = narrativeParagraphs(
+    d.reflection.paragraphs?.length
+      ? d.reflection.paragraphs
+      : d.reflection.text
+          .split(/\n{2,}/)
+          .map((text) => ({ text: text.trim() }))
+          .filter((p) => p.text),
+  )
+  const narrative = await reviewNarrative({
+    sceneTitle: d.clip.title,
+    scripture: { reference: d.scripture.reference, text: d.scripture.text },
+    paragraphs,
+    conclusion: d.conclusion,
+    question: d.question,
+    prayer: d.prayer,
+    llm:
+      input.narrativeLlm ??
+      createAgentLlm(narrativeEditorAgent, narrativeEditorModel()),
+  })
+  log(`✍️  narrative: ${narrative.summary}`)
+  if (narrative.throughline) log(`   line: ${narrative.throughline}`)
+  for (const i of narrative.issues) {
+    log(
+      `   ${i.severity === "high" ? "⛔" : "✂️"} [${i.severity}/${i.kind}] ¶${i.paragraph}: “${i.quote}”\n` +
+        `      → ${i.fix === "cut" ? "cut" : `“${i.replacement}”`} (${i.why})`,
+    )
+  }
+  if (narrative.skipped) blocking.push("narrative review could not run")
+  else if (narrative.issues.some((i) => i.severity === "high")) {
+    const high = narrative.issues.filter((i) => i.severity === "high")
+    blocking.push(
+      `narrative: ${high.length} high-severity issue(s), first is ${high[0].kind} “${high[0].quote}”`,
+    )
+  }
+
+  // An authored devotional credits several sources; the commentary excerpt
+  // covers only the paragraphs under ITS credit. Checking the history and
+  // language notes against Ryle would flag every one of them as invented.
+  const fidelityText = d.reflection.paragraphs?.some((p) => p.mark)
+    ? paragraphs
+        .filter((p) => p.evidence === d.reflection.sourceExcerpt)
+        .map((p) => p.text)
+        .join("\n\n")
+    : d.reflection.text
+  if (input.checkFidelity && d.reflection.sourceExcerpt && fidelityText) {
     const fidelity = await critiqueReflectionFidelity({
       sourceExcerpt: d.reflection.sourceExcerpt,
       focusReference: input.passageReference ?? d.passage.reference,
-      adapted: d.reflection.text,
+      adapted: fidelityText,
       llm: buildFidelityCriticLlm(),
     })
     log(

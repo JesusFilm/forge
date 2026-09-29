@@ -24,6 +24,12 @@ export const DEVOTIONAL_FILTER_IDS = [
   // 2026-09-18: a candidate to replace splittone, whose teal shadow layer
   // read as a green cast over every clip.
   "cinema",
+  // 2026-09-25 (owner: "the filter makes the video gloomy"). `restored` is for
+  // the 1979 JESUS film: keeps colour instead of halving it, lifts the blacks,
+  // warms the midtones, and cuts the grain and vignette that were doing most of
+  // the gloom. `clean` is for LUMO, whose own photography needs no grade at all.
+  "restored",
+  "clean",
 ] as const
 export type DevotionalFilterId = (typeof DEVOTIONAL_FILTER_IDS)[number]
 
@@ -247,6 +253,62 @@ export const DEVOTIONAL_FILTERS: Record<DevotionalFilterId, DevotionalFilter> =
       gradeVideoCard: true,
       blobs: [BW_BLOB_A, BW_BLOB_B],
     },
+    // For OLD footage. The gloom in `splittone` came from four things at once:
+    // saturation halved, a heavy vignette, grain at 0.30, and a blue-grey wash
+    // over the shadows. Here the base keeps most of its colour, the blacks are
+    // lifted a little so faces and cloth stay readable, the shadow wash turns
+    // warm instead of cold, and grain and vignette drop to a hint.
+    restored: {
+      id: "restored",
+      label: "Restored (warm, lifted)",
+      textBg: "#0e0c0b",
+      mediaBg: "#0e0c0b",
+      body: "#eae6df",
+      heading: "#ffffff",
+      secondary: "rgba(255,255,255,0.74)",
+      eyebrow: "#e6a35c",
+      rule: "#e6a35c",
+      highlight: "#e6a35c",
+      highlightItalic: false,
+      closing: "#e6a35c",
+      grainMedia: 0.12,
+      grainText: 0.08,
+      vignetteMedia: "inset 0 0 70px 6px rgba(0,0,0,0.26)",
+      vignetteText: "inset 0 0 80px 10px rgba(0,0,0,0.3)",
+      mediaBase: "saturate(0.92) contrast(1.04) brightness(1.1)",
+      splitTone: true,
+      splitToneShadow: "rgb(58,44,34)",
+      splitToneShadowOpacity: 0.28,
+      splitToneHighlight: "rgb(255,226,186)",
+      splitToneHighlightOpacity: 0.3,
+      gradeVideoCard: true,
+      blobs: [BW_BLOB_A, BW_BLOB_B],
+    },
+    // For footage that already looks the way it should (LUMO). The palette is
+    // ours; the picture is left alone. No split tone, no grain, and only enough
+    // vignette to stop the frame edges glowing under the captions.
+    clean: {
+      id: "clean",
+      label: "Clean (no grade)",
+      textBg: "#0e0c0b",
+      mediaBg: "#0e0c0b",
+      body: "#eae6df",
+      heading: "#ffffff",
+      secondary: "rgba(255,255,255,0.74)",
+      eyebrow: "#e6a35c",
+      rule: "#e6a35c",
+      highlight: "#e6a35c",
+      highlightItalic: false,
+      closing: "#e6a35c",
+      grainMedia: 0,
+      grainText: 0.06,
+      vignetteMedia: "inset 0 0 60px 0px rgba(0,0,0,0.18)",
+      vignetteText: "inset 0 0 70px 8px rgba(0,0,0,0.26)",
+      mediaBase: "none",
+      splitTone: false,
+      gradeVideoCard: false,
+      blobs: [BW_BLOB_A, BW_BLOB_B],
+    },
     sepia: {
       id: "sepia",
       label: "Sepia",
@@ -343,6 +405,8 @@ const NATIVE_LAYOUT: Record<DevotionalFilterId, DevotionalLayoutId> = {
   teal: "editorial",
   sepia: "classic",
   cinema: "grounded",
+  restored: "grounded",
+  clean: "grounded",
 }
 
 /**

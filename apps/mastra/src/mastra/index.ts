@@ -102,6 +102,7 @@ import { copyAgent } from "./agents/devotional/copy-agent"
 import { setInstructionResolver } from "./agents/devotional/instruction-resolver"
 import { highlighterAgent } from "./agents/devotional/highlighter-agent"
 import { modernizerAgent } from "./agents/devotional/modernizer-agent"
+import { narrativeEditorAgent } from "./agents/devotional/narrative-editor-agent"
 import { safetyAgent } from "./agents/devotional/safety-agent"
 import { scriptureAgent } from "./agents/devotional/scripture-agent"
 import { spurgeonRankerAgent } from "./agents/devotional/spurgeon-ranker-agent"
@@ -162,6 +163,7 @@ export const mastra = new Mastra({
     copyAgent,
     highlighterAgent,
     spurgeonRankerAgent,
+    narrativeEditorAgent,
   },
   workflows: {
     transcriptEmbeddingWorkflow,

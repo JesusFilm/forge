@@ -172,10 +172,11 @@ describe("loadReusableAudio", () => {
     expect(last?.id).toBe("reflection-3")
   })
 
-  it("DROPS segments synthesized by a different voice", async () => {
-    // The wrong-voice trap. The key's voice component is the voice we ASKED
-    // for; the bytes on disk belong to whoever ran last. Without comparing the
-    // stored voiceId, a `--voice=` audition silently replays the old voice.
+  it("never replays a take under a voice that did not make it", async () => {
+    // The wrong-voice trap. The bytes on disk belong to whoever synthesized
+    // them; a `--voice=` audition must not replay the old voice under the new
+    // label. Entries are keyed under their OWN voice, so a lookup for male-d
+    // cannot find a Russian take — while a lookup for Russian still can.
     await saveCachedAudio(
       dir,
       produced([
@@ -184,42 +185,61 @@ describe("loadReusableAudio", () => {
       ]),
     )
     const reusable = await loadReusableAudio(dir, "male-d")
-    expect(reusable.size).toBe(0)
+    expect(reusable.get(audioReuseKey("cover", "Cover line.", "male-d"))).toBe(
+      undefined,
+    )
+    expect(
+      reusable.get(audioReuseKey("cover", "Cover line.", "russian"))?.id,
+    ).toBe("cover")
   })
 
-  it("keeps only the segments matching the requested voice in a mixed cache", async () => {
+  it("keeps a mixed-voice cache, each take under the voice that made it", async () => {
+    // Authored devotionals read different segments in different voices, so a
+    // single cache legitimately holds several. Dropping the ones that are not
+    // the devotional's own voice re-synthesised (and re-billed) them on every
+    // render.
     await saveCachedAudio(
       dir,
       produced([
         segment("cover", "Cover line.", MALE_D),
-        segment("reflection-1", "Stale take.", RUSSIAN),
+        segment("reflection-1", "Her take.", DEVOTIONAL_VOICES["female-c"]),
       ]),
     )
     const reusable = await loadReusableAudio(dir, "male-d")
-    expect([...reusable.values()].map((s) => s.id)).toEqual(["cover"])
+    expect(
+      reusable.get(audioReuseKey("cover", "Cover line.", "male-d"))?.id,
+    ).toBe("cover")
+    expect(
+      reusable.get(audioReuseKey("reflection-first", "Her take.", "female-c"))
+        ?.id,
+    ).toBe("reflection-1")
+    // …and not under the devotional's own voice.
+    expect(
+      reusable.get(audioReuseKey("reflection-first", "Her take.", "male-d")),
+    ).toBe(undefined)
   })
 
-  it("derives roles over the USABLE set, so a dropped segment cannot shift them", async () => {
-    // reflection-1 belongs to another voice, so on this run reflection-2 is the
-    // FIRST usable reflection and must be keyed as such.
+  it("derives reflection roles over the whole cached script, whatever the voices", async () => {
+    // A reflection's position (first / mid / last) belongs to the SCRIPT, not
+    // to a voice, and the synthesis loop looks takes up by that position. So
+    // with reflection-1 read by another voice, reflection-2 is still the MIDDLE
+    // of the reflection and must be found there.
     await saveCachedAudio(
       dir,
       produced([
         segment("reflection-1", "Other voice.", RUSSIAN),
-        segment("reflection-2", "Now the opener.", MALE_D),
-        segment("reflection-3", "Now the closer.", MALE_D),
+        segment("reflection-2", "In the middle.", MALE_D),
+        segment("reflection-3", "The closer.", MALE_D),
       ]),
     )
     const reusable = await loadReusableAudio(dir, "male-d")
     expect(
-      reusable.get(
-        audioReuseKey("reflection-first", "Now the opener.", "male-d"),
-      )?.id,
+      reusable.get(audioReuseKey("reflection-mid", "In the middle.", "male-d"))
+        ?.id,
     ).toBe("reflection-2")
     expect(
-      reusable.get(
-        audioReuseKey("reflection-last", "Now the closer.", "male-d"),
-      )?.id,
+      reusable.get(audioReuseKey("reflection-last", "The closer.", "male-d"))
+        ?.id,
     ).toBe("reflection-3")
   })
 })

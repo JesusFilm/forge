@@ -354,18 +354,22 @@ export function QuoteIntro({
             >
               {cta}
             </div>
-            <div
-              style={{
-                fontFamily: sans,
-                fontWeight: 600,
-                fontSize: px(15),
-                letterSpacing: px(3),
-                color: GOLD,
-                textShadow: `0 0 ${px(10)}px rgba(242,196,107,0.5)`,
-              }}
-            >
-              {(ctaLabel ?? "Watch on YouTube").toUpperCase()}
-            </div>
+            {/* An empty ctaLabel names no destination on purpose: the teaser
+                also runs on feeds where pointing at YouTube is wrong (owner). */}
+            {(ctaLabel ?? "Watch on YouTube").trim() ? (
+              <div
+                style={{
+                  fontFamily: sans,
+                  fontWeight: 600,
+                  fontSize: px(15),
+                  letterSpacing: px(3),
+                  color: GOLD,
+                  textShadow: `0 0 ${px(10)}px rgba(242,196,107,0.5)`,
+                }}
+              >
+                {(ctaLabel ?? "Watch on YouTube").trim().toUpperCase()}
+              </div>
+            ) : null}
           </div>
         ) : (
           <div

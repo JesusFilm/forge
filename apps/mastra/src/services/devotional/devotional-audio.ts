@@ -14,7 +14,11 @@ import {
 import { EN_LOCALE, type DevotionalLocale } from "./devotional-locale"
 import { occasionFor } from "./devotional-occasions"
 import { audioReuseKey } from "./devotional-cache"
-import type { GeneratedDevotional } from "./generate-devotional"
+import type {
+  GeneratedDevotional,
+  SourceMark,
+  VoicedRole,
+} from "./generate-devotional"
 
 /**
  * Produce the AUDIO for a generated devotional: per-card narration in the
@@ -34,6 +38,11 @@ export type NarrationSegment = {
   text: string
   /** Clean text shown ON-SCREEN (no spoken connector). Defaults to `text`. */
   display?: string
+  /** Read this segment in a different voice than the devotional's own
+   *  (authored devotionals: "female opens, male reads the history"). */
+  voice?: DevotionalVoiceName
+  /** The source credit drawn while this segment plays. */
+  mark?: SourceMark
 }
 
 export { splitReflection } from "./reflection-split"
@@ -205,6 +214,7 @@ function buildClipFirstSegments(
   // first seconds, before the scene is heard. Nothing is drawn for it, so it
   // carries no display text.
   if (hookLine && hookLine.trim()) {
+    const hookVoice = d.voices?.hook
     segments.push({
       id: "hook",
       text: ensureTerminal(hookLine.trim()),
@@ -212,44 +222,87 @@ function buildClipFirstSegments(
       // carries its own display text — every other clip-first opening is
       // voice only.
       display: hookLine.trim(),
+      ...(hookVoice ? { voice: hookVoice } : {}),
     })
   }
-  const chunks = splitReflection(d.reflection.text.trim())
+  // A role's voice, for authored devotionals; undefined = the devotional's own.
+  const roleVoice = (role: VoicedRole) => d.voices?.[role]
+  const withVoice = (seg: NarrationSegment, role: VoicedRole) => {
+    const v = roleVoice(role)
+    return v ? { ...seg, voice: v } : seg
+  }
+  // Authored paragraphs: each is split on its own, so a voice change or a
+  // source mark always falls on a paragraph boundary. The mark rides on the
+  // paragraph's FIRST chunk only, so it appears once, when that source begins.
+  type Chunk = { text: string; voice?: DevotionalVoiceName; mark?: SourceMark }
+  const chunks: Chunk[] = d.reflection.paragraphs?.length
+    ? d.reflection.paragraphs.flatMap((p) =>
+        splitReflection(p.text.trim()).map((text, j) => ({
+          text,
+          ...(p.voice ? { voice: p.voice } : {}),
+          ...(p.mark && j === 0 ? { mark: p.mark } : {}),
+        })),
+      )
+    : splitReflection(d.reflection.text.trim()).map((text) => ({ text }))
   if (chunks.length > 0) {
-    segments.push({
-      id: "step-reflect",
-      text: c.steps.reflectAfterClip(),
-      display: "",
-    })
+    segments.push(
+      withVoice(
+        {
+          id: "step-reflect",
+          text: c.steps.reflectAfterClip(),
+          display: "",
+        },
+        "step-reflect",
+      ),
+    )
   }
   chunks.forEach((chunk, i) => {
     segments.push({
       id: `reflection-${i + 1}`,
-      text: c.reflectionOpen(chunk),
-      display: chunk,
+      text: c.reflectionOpen(chunk.text),
+      display: chunk.text,
+      ...(chunk.voice ? { voice: chunk.voice } : {}),
+      ...(chunk.mark ? { mark: chunk.mark } : {}),
     })
   })
   if (d.conclusion.trim()) {
-    segments.push({
-      id: "conclusion",
-      text: c.conclusion(ensureTerminal(d.conclusion)),
-    })
+    segments.push(
+      withVoice(
+        {
+          id: "conclusion",
+          text: c.conclusion(ensureTerminal(d.conclusion)),
+        },
+        "conclusion",
+      ),
+    )
   }
   const ref = d.scripture.reference.trim()
   const verse = d.scripture.text.trim()
   if (verse) {
     // The verse closes the reflection here. Spoken exactly as the classic
     // steps-on scripture segment is, so the cached take is reused.
-    segments.push({
-      id: "scripture",
-      text: c.scripture(locale.spokenReference(ref), verse),
-    })
+    segments.push(
+      withVoice(
+        {
+          id: "scripture",
+          text: c.scripture(locale.spokenReference(ref), verse),
+        },
+        "scripture",
+      ),
+    )
   }
   const q = d.question.trim()
   const pr = d.prayer.trim()
   if (q || pr) {
-    segments.push({ id: "step-pray", text: c.steps.pray(), display: "" })
-    segments.push({ id: "questions", text: c.questions(q, pr) })
+    segments.push(
+      withVoice(
+        { id: "step-pray", text: c.steps.pray(), display: "" },
+        "step-pray",
+      ),
+    )
+    segments.push(
+      withVoice({ id: "questions", text: c.questions(q, pr) }, "questions"),
+    )
   }
   return segments
 }
@@ -393,10 +446,11 @@ export function buildNarrationSegments(
  * and expression than a flat read, without the default's over-emoting.
  */
 const COVER_VOICE_SETTINGS: ElevenVoiceSettings = {
-  stability: 0.45,
+  stability: 0.35,
   similarity_boost: 0.85,
-  style: 0.3,
+  style: 0.45,
   use_speaker_boost: true,
+  speed: 1.1,
 }
 
 /**
@@ -411,6 +465,9 @@ const WEIGHTY_VOICE_SETTINGS: ElevenVoiceSettings = {
   similarity_boost: 0.9,
   style: 0.0,
   use_speaker_boost: true,
+  // The close keeps its steadiness (it has to sound finished, not cut off) but
+  // takes the same pace as everything else, so the piece does not sag at the end.
+  speed: 1.1,
 }
 
 /**
@@ -593,7 +650,11 @@ export async function produceDevotionalAudio(
   const LAST_REFLECTION_TEMPO = 0.92
 
   for (const seg of segs) {
-    const voiceSettings = voiceSettingsFor(seg.id, devotional.voice)
+    // An authored segment may carry its own voice; everything else reads in
+    // the devotional's. Used for the settings, the reuse key AND the call, so
+    // a cached take is only ever replayed under the voice that made it.
+    const segVoice = seg.voice ?? devotional.voice
+    const voiceSettings = voiceSettingsFor(seg.id, segVoice)
     // Speakify the TTS input only; keep seg.text (clean) for on-screen display.
     const prepared = deps.speakify ? await deps.speakify(seg.text) : seg.text
     // With `joinVarGaps`, TTS each SENTENCE separately and rejoin with real
@@ -621,9 +682,7 @@ export async function produceDevotionalAudio(
       // Keyed on the SPOKEN text, not the displayed one: the two diverge
       // exactly where a connector moves, and matching on the display replays
       // audio that says something the current script doesn't.
-      const hit = deps.reusable.get(
-        audioReuseKey(role, seg.text, devotional.voice),
-      )
+      const hit = deps.reusable.get(audioReuseKey(role, seg.text, segVoice))
       // Reuse is a cost optimization, and it must not quietly cost the caller
       // the thing they asked for: a cached segment from before word timing
       // existed has no alignment, and reusing it left its card falling back to
@@ -656,7 +715,7 @@ export async function produceDevotionalAudio(
       const speak = () =>
         voiceover({
           text: units[ui],
-          voice: devotional.voice,
+          voice: segVoice,
           ...(voiceSettings ? { voiceSettings } : {}),
           ...(deps.withTimestamps ? { withTimestamps: true } : {}),
         })

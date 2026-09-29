@@ -26,6 +26,7 @@ export type DevotionalAgent =
   | "coherence"
   | "reflectionCritic"
   | "fidelityCritic"
+  | "narrativeEditor"
 
 export const DEVOTIONAL_AGENT_MODELS: Record<DevotionalAgent, string> = {
   scripture: "openai/gpt-4o-mini",
@@ -48,6 +49,9 @@ export const DEVOTIONAL_AGENT_MODELS: Record<DevotionalAgent, string> = {
   // erasure / imprecise theology) — needs the same strength as the modernizer
   // since it's re-deriving the same judgment call in reverse.
   fidelityCritic: "anthropic/claude-sonnet-4.5",
+  // Whole-piece narrative read + claims against the credited sources: an
+  // editor's judgment across a long text, so the strong model.
+  narrativeEditor: "anthropic/claude-sonnet-4.5",
 }
 
 /** LLM instances keyed to the seams `composeDevotionalContent` uses. */
@@ -91,4 +95,9 @@ export function buildReflectionCriticLlm(): DevotionalLlm {
 /** LLM for the source-fidelity critic. */
 export function buildFidelityCriticLlm(): DevotionalLlm {
   return createDevotionalLlm({ model: modelFor("fidelityCritic") })
+}
+
+/** Model for the narrative editor (the agent wraps it; see quality gate). */
+export function narrativeEditorModel(): string {
+  return modelFor("narrativeEditor")
 }

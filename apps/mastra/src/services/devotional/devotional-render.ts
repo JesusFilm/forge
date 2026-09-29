@@ -1,10 +1,19 @@
 import { spawn } from "node:child_process"
 import { once } from "node:events"
-import { createWriteStream } from "node:fs"
-import { copyFile, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises"
+import { createWriteStream, readFileSync } from "node:fs"
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { Readable } from "node:stream"
+import { pathToFileURL } from "node:url"
 import { repoRoot } from "./repo-root"
 
 import {
@@ -43,6 +52,7 @@ import {
 import {
   generateDevotional,
   type GeneratedDevotional,
+  type SourceMark,
 } from "./generate-devotional"
 import { buildDevotionalAgentLlms } from "./devotional-models"
 import {
@@ -59,12 +69,15 @@ import {
   findActBreak,
   fetchEditedWindow,
   mapCuesToEditedTimeline,
+  parseSubtitles,
   type SubtitleCue,
   type TimedCaption,
 } from "./subtitle-align"
-import { passageForChapter } from "./jesus-film-passages"
+import { type ChapterPassage, passageForChapter } from "./jesus-film-passages"
+import { voiceNameForId } from "./elevenlabs-voiceover"
+import { videoSourceForIndex } from "./video-sources"
 import type { DevotionalLlm } from "./llm"
-import { rotateFilter } from "./voice-rotation"
+import { DEFAULT_FILTER } from "./voice-rotation"
 
 /**
  * Render a video-first devotional to an MP4. `renderDevotionalVideo` is the
@@ -119,6 +132,29 @@ const DOWNLOAD_TIMEOUT_MS = 120_000
 const FFMPEG_TIMEOUT_MS = Number(process.env.DEVO_FFMPEG_TIMEOUT_MS ?? 600_000)
 const FFPROBE_TIMEOUT_MS = 30_000
 const RENDER_TIMEOUT_MS = 20 * 60_000
+/**
+ * The render watchdog scales with the piece. Twenty minutes was sized for the
+ * three-minute devotional; the 7.5-minute vineyard cut reached 90% when it
+ * fired and left a file with no index (owner saw nothing). Five seconds of
+ * budget per second of video, never below the old floor, and overridable.
+ */
+function renderTimeoutMsFor(manifestPath: string): number {
+  const override = Number(process.env.DEVO_RENDER_TIMEOUT_MS)
+  if (Number.isFinite(override) && override > 0) return override
+  try {
+    const m = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+      cards?: { durationSec?: number; holdSec?: number }[]
+    }
+    const sec = (m.cards ?? []).reduce(
+      (a, c) =>
+        a + (Number(c.durationSec) || 0) + (Number(c.holdSec) || 0) + 0.8,
+      8,
+    )
+    return Math.max(RENDER_TIMEOUT_MS, Math.round(sec * 5 * 1000))
+  } catch {
+    return RENDER_TIMEOUT_MS
+  }
+}
 // Hard cap on a downloaded film. JESUS-film chapters are ~100MB; this rejects a
 // hostile/misconfigured response before it can exhaust memory or disk.
 const MAX_DOWNLOAD_BYTES = 600 * 1024 * 1024
@@ -139,6 +175,14 @@ const CARD_TAIL_SEC = 0.8
  *  Past this the scene starts under the tail of the line rather than the whole
  *  opening being a talking head over a muted film. */
 const HOOK_LEAD_CAP_SEC = 14
+/** The framed `opening` (welcome, lines, "Let's watch") is three beats longer
+ *  than a bare question, and WATCH needs its breath after "Let's watch". */
+const FRAMED_OPENING_CAP_SEC = 18
+/** `montage`: six or seven spoken lines, each with its own shot. The lead
+ *  ends on the last line, where the scene itself begins. */
+const MONTAGE_CAP_SEC = 24
+/** Montage teaser: how long the call to action holds after the voice ends. */
+const TEASER_CTA_HOLD_SEC = 1.6
 /** `intro: "hook"`: silence after the spoken question — a breath, plus the
  *  time the title takes to leave. The film's first line lands after it. */
 const HOOK_TAIL_SEC = 1.8
@@ -239,6 +283,7 @@ export function shiftCaptions(
         ...c,
         startSec: c.startSec + offsetSec,
         endSec: c.endSec + offsetSec,
+        ...(c.words ? { words: c.words.map((w) => w + offsetSec) } : {}),
       }))
       // Shift the PAIR, then drop what a negative offset pushed off the front
       // entirely. Clamping the two ends independently collapsed any cue ending
@@ -402,6 +447,311 @@ const INTERMEDIATE_X264 = [
 /** Spawn ffmpeg with `args`, capturing stderr for the error message and
  *  watchdog-killing a hung encode so it can't wedge the run. Shared by every
  *  ffmpeg call in this module (single-trim and multi-segment concat alike). */
+/** Integrated loudness (LUFS) of an audio file, or null if it cannot be read. */
+function measureLoudness(file: string): Promise<number | null> {
+  return new Promise((resolve) => {
+    const c = spawn(
+      "ffmpeg",
+      [
+        "-hide_banner",
+        "-nostats",
+        "-i",
+        file,
+        "-af",
+        "ebur128",
+        "-f",
+        "null",
+        "-",
+      ],
+      { stdio: ["ignore", "ignore", "pipe"] },
+    )
+    let err = ""
+    c.stderr.on("data", (d) => (err += d.toString()))
+    c.on("error", () => resolve(null))
+    c.on("close", () => {
+      // The summary block at the end carries the integrated figure.
+      const m = [...err.matchAll(/^\s*I:\s*(-?\d+(?:\.\d+)?) LUFS/gm)].at(-1)
+      resolve(m ? Number(m[1]) : null)
+    })
+  })
+}
+
+/**
+ * Bring every voice in a multi-voice devotional to the same loudness.
+ *
+ * The authored vineyard cut reads history in one voice and reflection in
+ * another, and the two ElevenLabs voices came out 3.5 dB apart (-23.5 vs -20.0
+ * LUFS): every hand-over would have dropped or jumped. Gain is set PER VOICE,
+ * from that voice's average, so each keeps its own sentence-to-sentence
+ * dynamics; a limiter catches the peaks a boost pushes up. A devotional read in
+ * one voice is left exactly as it was.
+ */
+async function levelVoices(
+  staged: { voiceId: string; path: string }[],
+  log: (m: string) => void,
+): Promise<void> {
+  const voices = [...new Set(staged.map((s) => s.voiceId))]
+  if (voices.length < 2) return
+  const TARGET_LUFS = -20
+  const MAX_GAIN_DB = 8
+  for (const v of voices) {
+    const files = staged.filter((s) => s.voiceId === v)
+    const levels = (
+      await Promise.all(files.map((f) => measureLoudness(f.path)))
+    ).filter((x): x is number => x != null && Number.isFinite(x))
+    if (!levels.length) continue
+    const avg = levels.reduce((a, b) => a + b, 0) / levels.length
+    const gain = Math.max(
+      -MAX_GAIN_DB,
+      Math.min(MAX_GAIN_DB, TARGET_LUFS - avg),
+    )
+    if (Math.abs(gain) < 0.5) continue
+    for (const f of files) {
+      const tmp = `${f.path}.lvl.mp3`
+      await runFfmpeg([
+        "-y",
+        "-i",
+        f.path,
+        "-af",
+        `volume=${gain.toFixed(2)}dB,alimiter=limit=0.891:level=false`,
+        "-c:a",
+        "libmp3lame",
+        "-b:a",
+        "192k",
+        tmp,
+      ])
+      await copyFile(tmp, f.path)
+      await rm(tmp, { force: true })
+    }
+    log(
+      `voice level: ${voiceNameForId(v) ?? v} ${avg.toFixed(1)} LUFS → ` +
+        `${gain >= 0 ? "+" : ""}${gain.toFixed(1)} dB (${files.length} segment(s))`,
+    )
+  }
+}
+
+/**
+ * Word times for a local cue file, from its `.words.json` sibling (see the
+ * note inside the file): one array of word starts per cue, in file order. Each
+ * array is attached to the cue with the same start and text, so the alignment
+ * and gap removal upstream may drop or reorder cues freely. No file, or a file
+ * that does not match the cues, leaves the captions as they were.
+ */
+async function attachWordTimes(
+  cues: SubtitleCue[],
+  cueFile: string,
+  log: (m: string) => void,
+): Promise<SubtitleCue[]> {
+  const wordsFile = cueFile.replace(/\.vtt$/, ".words.json")
+  let perCue: number[][]
+  try {
+    perCue = (
+      JSON.parse(await readFile(wordsFile, "utf8")) as { cues: number[][] }
+    ).cues
+  } catch {
+    return cues
+  }
+  const fileCues = parseSubtitles(await readFile(cueFile, "utf8"))
+  if (fileCues.length !== perCue.length) {
+    log(
+      `⚠️  ${path.basename(wordsFile)} does not match its cue file; no word highlight`,
+    )
+    return cues
+  }
+  const byKey = new Map<string, number[]>()
+  fileCues.forEach((c, i) => {
+    const words = perCue[i]
+    if (words?.length === c.text.trim().split(/\s+/).length) {
+      byKey.set(`${c.start.toFixed(2)}|${c.text.trim()}`, words)
+    }
+  })
+  let hits = 0
+  const out = cues.map((c) => {
+    const words = byKey.get(`${c.start.toFixed(2)}|${c.text.trim()}`)
+    if (!words) return c
+    hits++
+    return { ...c, words }
+  })
+  log(`captions: word times for ${hits}/${cues.length} cue(s)`)
+  return out
+}
+
+/**
+ * Where each line of a spoken opening begins, from the narration's word
+ * times. Lines are counted in words the way the composition counts them, so
+ * the cut and the caption land on the same frame. Null when the word times do
+ * not cover every line.
+ */
+export function montageLineStarts(
+  lines: ReadonlyArray<string>,
+  words: ReadonlyArray<{ startSec: number }>,
+): number[] | null {
+  const out: number[] = []
+  let at = 0
+  for (const line of lines) {
+    const w = words[at]
+    if (!w) return null
+    out.push(w.startSec)
+    at += line.split(/\s+/).filter(Boolean).length
+  }
+  return out
+}
+
+/** The beat kept before a continuation line ("…the landowner / but the
+ *  workers themselves"), which the owner wanted as a slight pause. */
+const HOOK_CONTINUATION_GAP_SEC = 0.4
+/** The beat before the hook's last line ("Let's watch."), the turn into the
+ *  film: longer, so it lands as a turn (owner, 2026-09-28). */
+const HOOK_LAST_LINE_GAP_SEC = 0.9
+
+/**
+ * Set the silence between the lines of a spoken take, and shift the word
+ * times to match: a pause longer than its target loses its middle, a shorter
+ * one gets silence added at its middle, so no word or breath is cut. Lines are
+ * counted in words. Returns null when the word times do not cover the lines.
+ */
+async function tightenLinePauses(
+  dir: string,
+  bytes: Uint8Array,
+  words: ReadonlyArray<TimedWord>,
+  lines: ReadonlyArray<string>,
+  gapSec: number,
+): Promise<{
+  bytes: Uint8Array
+  words: TimedWord[]
+  removedSec: number
+} | null> {
+  // Each edit is at `at` (source seconds): drop `drop` seconds centred there,
+  // or insert `add` seconds of silence there.
+  const edits: Array<{ at: number; drop: number; add: number }> = []
+  let at = 0
+  for (let li = 0; li < lines.length - 1; li++) {
+    at += lines[li].split(/\s+/).filter(Boolean).length
+    const a = words[at - 1]
+    const b = words[at]
+    if (!a || !b) return null
+    const next = lines[li + 1].trim()
+    const target =
+      li + 1 === lines.length - 1
+        ? HOOK_LAST_LINE_GAP_SEC
+        : /^[a-z]/.test(next)
+          ? Math.max(gapSec, HOOK_CONTINUATION_GAP_SEC)
+          : gapSec
+    const gap = b.startSec - a.endSec
+    const mid = (a.endSec + b.startSec) / 2
+    if (gap - target > 0.05) edits.push({ at: mid, drop: gap - target, add: 0 })
+    else if (target - gap > 0.05)
+      edits.push({ at: mid, drop: 0, add: target - gap })
+  }
+  if (!edits.length) return null
+  const src = path.join(dir, "hook-untightened.mp3")
+  const dst = path.join(dir, "hook-tightened.mp3")
+  await writeFile(src, bytes)
+  // Pieces of the source to keep, each followed by any silence to add.
+  const pieces: Array<{ from: number; to: number | null; pad: number }> = []
+  let from = 0
+  for (const e of edits) {
+    pieces.push({ from, to: e.at - e.drop / 2, pad: e.add })
+    from = e.at + e.drop / 2
+  }
+  pieces.push({ from, to: null, pad: 0 })
+  const filter =
+    pieces
+      .map(
+        (pc, i) =>
+          `[0]atrim=start=${pc.from.toFixed(3)}${pc.to != null ? `:end=${pc.to.toFixed(3)}` : ""},asetpts=PTS-STARTPTS` +
+          `${pc.pad > 0 ? `,apad=pad_dur=${pc.pad.toFixed(3)}` : ""}[k${i}]`,
+      )
+      .join(";") +
+    `;${pieces.map((_, i) => `[k${i}]`).join("")}concat=n=${pieces.length}:v=0:a=1`
+  await runFfmpeg([
+    "-y",
+    "-i",
+    src,
+    "-filter_complex",
+    filter,
+    "-c:a",
+    "libmp3lame",
+    "-b:a",
+    "192k",
+    dst,
+  ])
+  const shift = (t: number) =>
+    t + edits.filter((e) => e.at < t).reduce((n, e) => n + e.add - e.drop, 0)
+  return {
+    bytes: new Uint8Array(await readFile(dst)),
+    words: words.map((w) => ({
+      ...w,
+      startSec: shift(w.startSec),
+      endSec: shift(w.endSec),
+    })),
+    removedSec: edits.reduce((n, e) => n + e.drop - e.add, 0),
+  }
+}
+
+/** Silence between the spoken question and the prayer (owner: about 2s). */
+const QUESTION_TO_PRAYER_GAP_SEC = 2.0
+
+type TimedWord = { word: string; startSec: number; endSec: number }
+
+const bare = (w: string) => w.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "")
+
+/**
+ * Widen the pause between the end of `first` and the start of `second` in a
+ * take that speaks both, to `gapSec` of silence, and shift the word times
+ * after it to match. The cut is made in the middle of the existing pause, so
+ * no breath or word is split. Leaves the take untouched (and says so) when the
+ * word times do not line up with the two texts, or the pause is already long.
+ */
+async function widenPauseAfterWords(
+  file: string,
+  words: ReadonlyArray<TimedWord>,
+  first: string,
+  second: string,
+  gapSec: number,
+  log: (m: string) => void,
+): Promise<TimedWord[]> {
+  const out = words.map((w) => ({ ...w }))
+  const count = first.split(/\s+/).filter(Boolean).length
+  const next = second.split(/\s+/).filter(Boolean)[0] ?? ""
+  const a = out[count - 1]
+  const b = out[count]
+  if (!a || !b || bare(b.word) !== bare(next)) {
+    log(
+      `⚠️  question/prayer pause: word times do not line up, pause left as is`,
+    )
+    return out
+  }
+  const extra = gapSec - (b.startSec - a.endSec)
+  if (extra <= 0.05) return out
+  const cut = (a.endSec + b.startSec) / 2
+  const tmp = `${file}.gap.mp3`
+  await runFfmpeg([
+    "-y",
+    "-i",
+    file,
+    "-filter_complex",
+    `[0]atrim=0:${cut.toFixed(3)},apad=pad_dur=${extra.toFixed(3)}[a];` +
+      `[0]atrim=${cut.toFixed(3)},asetpts=PTS-STARTPTS[b];` +
+      `[a][b]concat=n=2:v=0:a=1`,
+    "-c:a",
+    "libmp3lame",
+    "-b:a",
+    "192k",
+    tmp,
+  ])
+  await copyFile(tmp, file)
+  await rm(tmp, { force: true })
+  for (let i = count; i < out.length; i++) {
+    out[i].startSec += extra
+    out[i].endSec += extra
+  }
+  log(
+    `question → prayer pause widened to ${gapSec.toFixed(1)}s (+${extra.toFixed(2)}s)`,
+  )
+  return out
+}
+
 function runFfmpeg(args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const c = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] })
@@ -718,6 +1068,14 @@ function trimClipVariableSpeed(
   }>,
   normalize = false,
 ): Promise<void> {
+  // Defence in depth for the bug above: a piece with no length is read by
+  // ffmpeg as "the rest of the file". Drop it here too, whoever built it.
+  segments = segments.filter((seg) => seg.lengthSec > 0.05)
+  if (segments.length === 0) {
+    return Promise.reject(
+      new Error("trimClipVariableSpeed: no segment has any length"),
+    )
+  }
   const args = ["-y"]
   for (const seg of segments) {
     args.push(
@@ -733,13 +1091,19 @@ function trimClipVariableSpeed(
   const parts: string[] = []
   segments.forEach((seg, i) => {
     filters.push(`[${i}:v]setpts=PTS/${seg.speed}[v${i}]`)
-    // atempo only accepts 0.5-100, so a slower piece chains two stages. A
-    // silenced piece skips the arithmetic entirely.
-    const a = seg.silent
-      ? "volume=0"
-      : seg.speed >= 0.5
+    // atempo only accepts 0.5-100, so a slower piece chains two stages.
+    //
+    // A SILENCED piece still has to be re-timed. It used to skip atempo, so its
+    // (silent) audio kept the SOURCE length while its picture was sped to the
+    // on-screen one — and concat pads each piece to its longest stream. On the
+    // vineyard cut the 11.4s borrowed lead came out 12.8s: the scene started
+    // 1.4s late, every caption ran 1.4s early, and the opening left that 1.4s
+    // as dead air. Muted and re-timed now, so both streams end together.
+    const tempo =
+      seg.speed >= 0.5
         ? `atempo=${seg.speed}`
         : `atempo=0.5,atempo=${seg.speed / 0.5}`
+    const a = seg.silent ? `${tempo},volume=0` : tempo
     filters.push(`[${i}:a]${a},asetpts=N/SR/TB[a${i}]`)
     parts.push(`[v${i}][a${i}]`)
   })
@@ -763,6 +1127,12 @@ function trimClipVariableSpeed(
   return runFfmpeg(args)
 }
 
+function renderGl(): string | undefined {
+  const v = process.env.DEVO_RENDER_GL
+  if (v !== undefined) return v.trim() || undefined
+  return process.platform === "darwin" ? "angle" : undefined
+}
+
 function runRender(
   manifest: string,
   out: string,
@@ -780,6 +1150,8 @@ function runRender(
     /** Leave the cover's date slot out entirely (no date, no label). */
     hideCoverDate?: boolean
     coverTitleFirst?: boolean
+    coverSecondaryLine?: string
+    coverBgSharp?: boolean
     textFont?: "sans" | "serif"
     videoFilter?: string
     /** Review preview: render N evenly spaced PNG stills INSTEAD of the MP4.
@@ -797,6 +1169,8 @@ function runRender(
     blurScale?: number
     /** Render only this slice of the timeline, "start-end" in frames. */
     frameRange?: string
+    /** Draft: output at this fraction of full size (0.25 of 1080p = 270p). */
+    draftScale?: number
   } = {},
 ): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -823,7 +1197,17 @@ function runRender(
           : []),
         ...(opts.hideCoverDate ? ["--hide-cover-date=true"] : []),
         ...(opts.frameRange ? [`--frame-range=${opts.frameRange}`] : []),
+        // GPU by default on a Mac: 3x faster on these blur-heavy frames with a
+        // visually identical result (measured 2026-09-25: 300 frames 47s on
+        // SwiftShader, 16s on ANGLE/Metal, SSIM 0.98). DEVO_RENDER_GL=swiftshader
+        // (or any other value) overrides; an empty value keeps Remotion's own.
+        ...(renderGl() ? [`--gl=${renderGl()}`] : []),
+        ...(opts.draftScale ? [`--scale=${opts.draftScale}`] : []),
         ...(opts.coverTitleFirst ? ["--cover-title-first=true"] : []),
+        ...(opts.coverSecondaryLine
+          ? [`--cover-secondary=${opts.coverSecondaryLine}`]
+          : []),
+        ...(opts.coverBgSharp ? ["--cover-bg-sharp=true"] : []),
         ...(opts.textFont ? [`--text-font=${opts.textFont}`] : []),
         ...(opts.videoFilter ? [`--vfilter=${opts.videoFilter}`] : []),
         ...(opts.stills ? [`--stills=${opts.stills}`] : []),
@@ -838,10 +1222,11 @@ function runRender(
     // Remotion + headless Chrome can hang (first-run browser download stall, a
     // wedged render). Watchdog SIGKILLs past the budget so the step fails and is
     // retryable instead of blocking the daily job indefinitely.
+    const budgetMs = renderTimeoutMsFor(manifest)
     const timer = setTimeout(() => {
       c.kill("SIGKILL")
-      reject(new Error(`render timed out after ${RENDER_TIMEOUT_MS}ms`))
-    }, RENDER_TIMEOUT_MS)
+      reject(new Error(`render timed out after ${budgetMs}ms`))
+    }, budgetMs)
     c.on("error", (e) => {
       clearTimeout(timer)
       reject(e)
@@ -950,6 +1335,32 @@ export type RenderOptions = {
   /** Title animates first, logo follows ~2s in. Off by default: it changes the
    *  opening seconds, and the established devotional opens with the mark. */
   coverTitleFirst?: boolean
+  /** Quiet line under the cover title, in the date's type treatment. */
+  coverSecondaryLine?: string
+  /** Leave the footage under the cover SHARP: no blur, only a light scrim
+   *  (owner, 2026-09-25 — "do not blur the background"). */
+  coverBgSharp?: boolean
+  /**
+   * Use a DIFFERENT film than the chapter's own, by Arclight media-component id.
+   *
+   * The catalog only knows the 61 JESUS-film chapters, but the Arclight endpoint
+   * serves any component, so a LUMO gospel segment (e.g. `6_GOMatt2515`) plays
+   * through the same path. Its window has to come with it: `passageForChapter`
+   * has nothing to say about a clip that is not a JESUS chapter.
+   *
+   * LUMO carries no subtitle track in the API, so the clip renders WITHOUT
+   * captions until we transcribe it. The render says so in the log.
+   */
+  clipOverride?: {
+    id: string
+    title?: string
+    startSec: number
+    lengthSec: number
+    /** Ceiling on the film card for this clip (default 60s). */
+    maxVideoCardSec?: number
+  }
+  /** Draw the film's own mark in the top-left while the clip plays. */
+  filmMark?: "lumo"
   /** Leave today's fixed-date occasion unspoken and off the cover. */
   suppressOccasion?: boolean
   /** Render ONLY the cover card — the opening seconds, animation and all. */
@@ -1019,7 +1430,21 @@ export type RenderOptions = {
   clipTrimEndSec?: number
   /** Clip-first only: intro overlay over the film's muted lead (`--muted-lead`).
    *  `hook` draws nothing and instead opens on a spoken question (`hookLine`). */
-  intro?: "cover" | "bands" | "hook" | "watch"
+  intro?: "cover" | "bands" | "hook" | "watch" | "opening" | "montage"
+  /** `intro: "montage"`: a source time (s) per spoken line of `hookLine`, the
+   *  shot shown while that line is said. The last line has no shot: the scene
+   *  starts on it. */
+  introShots?: number[]
+  /** `intro: "montage"`: on-screen captions keyed by 0-based line number. */
+  introCaptions?: Record<number, string>
+  /** Tighten the silence between the hook's lines to this many seconds, in
+   *  the recorded take (no re-narration). A line that starts lower-case (a
+   *  continuation, "but the workers themselves") keeps a longer beat,
+   *  HOOK_CONTINUATION_GAP_SEC. Unset: the take's own pauses. */
+  hookGapSec?: number
+  /** `montage`, vertical: horizontal focus (0..1) per shot, plus one for the
+   *  scene after the last cut. */
+  introFocus?: number[]
   /** `intro: "hook"` only: the question the voice asks over the film's first
    *  seconds. Its recorded length sets the lead, so nothing has to be timed by
    *  hand. Must reach every `buildNarrationSegments` call in a run. */
@@ -1053,6 +1478,10 @@ export type RenderOptions = {
    *  screen should show (a welcome before the question). Defaults to
    *  `hookLine`. Never reaches the narration, so it is free to change. */
   hookTitle?: string
+  /** `opening` only: `hookLine` was framed by the welcome before it and
+   *  "Let's watch" after it, both spoken but not drawn as lines (see
+   *  frameOpening). Set by the pipeline, not by callers. */
+  openingFrame?: boolean
   /** Clip-first only: corner progress ring clocking each step (see schema). */
   stepRing?: boolean
   /** Clip-first only: the step clock as a ring (default) or a top line. */
@@ -1076,6 +1505,9 @@ export type RenderOptions = {
    *  stepper's travelling light, a verse unfolding under the voice — are all
    *  motion. A twelfth of the encode answers the same question. */
   frameRange?: string
+  /** DRAFT: render at a quarter size (270p) for review. Written next to the
+   *  full render as `-draft.mp4`, so it never replaces a finished video. */
+  draft?: boolean
   /** Grain tile size in px (default 260). See `grainSizePx` in the composition
    *  schema for why the tile size, not opacity, is the lever. */
   grainSizePx?: number
@@ -1105,9 +1537,9 @@ export async function renderDevotionalVideo(
 ): Promise<string> {
   const log = options.log ?? ((m: string) => console.log(m))
   const locale = options.locale ?? EN_LOCALE
-  // Filter ROTATES per devotional (owner: option b) — splittone → grain →
-  // tealorange by sequence; layout stays fixed for readable, consistent text.
-  const style = options.style ?? rotateFilter(devo.sequence)
+  // One grade for the whole series (owner, 2026-09-25): the rotation is gone.
+  // `clean` is passed explicitly for footage that needs no grade at all.
+  const style = options.style ?? DEFAULT_FILTER
   const layout = options.layout ?? "grounded"
   const now = new Date()
   // Cover date via the locale ("Thursday · December 25" / "Четверг · 25 декабря";
@@ -1165,39 +1597,115 @@ async function renderInStage(
   // HERE, before the clip window is cut, because the lead pulls that window
   // earlier by exactly this much.
   let hookLeadSec = 0
+  /** `montage`: when each spoken line of the hook begins (s from card start). */
+  let montageStarts: number[] | null = null
+  /** Length of the spoken hook as staged (after any pause tightening). */
+  let hookSpokenSec = 0
   // `watch` is the same machinery as `hook` — a spoken opening in front of the
   // scene — drawn as the step's own screen instead of a title.
-  if (options.intro === "hook" || options.intro === "watch") {
+  const spokenOpening =
+    options.intro === "opening" && audio.segments.some((s) => s.id === "hook")
+  if (options.intro === "opening" && !spokenOpening) {
+    // The silent opening: its length is set by the reading, not by a voice, so
+    // it takes `mutedLeadSec` straight and skips the probe. Everything
+    // downstream (the borrowed run-up, the caption shift, the seam) is the same
+    // machinery the spoken openings use.
+    hookLeadSec = Math.min(HOOK_LEAD_CAP_SEC, options.mutedLeadSec ?? 8)
+    log(`opening lead: ${hookLeadSec.toFixed(1)}s, silent`)
+  } else if (
+    options.intro === "hook" ||
+    options.intro === "watch" ||
+    options.intro === "montage" ||
+    spokenOpening
+  ) {
     const seg = audio.segments.find((s) => s.id === "hook")
     if (!seg) {
       log(
         `⚠️  intro=hook but no "hook" segment was produced — the film will simply open unheard`,
       )
     } else {
+      if (options.hookGapSec != null && seg.audio.words?.length) {
+        const tightened = await tightenLinePauses(
+          stage,
+          seg.audio.bytes,
+          seg.audio.words,
+          (options.hookLine ?? "").split(/\n\s*\n/).filter((p) => p.trim()),
+          options.hookGapSec,
+        )
+        if (tightened) {
+          seg.audio = {
+            ...seg.audio,
+            bytes: tightened.bytes,
+            words: tightened.words,
+          }
+          log(
+            `hook pauses set to ${options.hookGapSec.toFixed(2)}s, ` +
+              `${HOOK_LAST_LINE_GAP_SEC}s before the last line ` +
+              `(net −${tightened.removedSec.toFixed(1)}s)`,
+          )
+        }
+      }
       const probe = path.join(stage, "hook-probe.mp3")
       await writeFile(probe, seg.audio.bytes)
       const spokenSec = await probeDuration(probe)
+      hookSpokenSec = spokenSec
       // A breath after the question before the scene takes over.
       // The question, a breath, and the time the title needs to leave: the
       // scene must not start speaking while its words are still on screen.
-      hookLeadSec = Math.min(HOOK_LEAD_CAP_SEC, spokenSec + HOOK_TAIL_SEC)
+      const cap =
+        options.intro === "montage"
+          ? MONTAGE_CAP_SEC
+          : options.openingFrame
+            ? FRAMED_OPENING_CAP_SEC
+            : HOOK_LEAD_CAP_SEC
+      hookLeadSec = Math.min(cap, spokenSec + HOOK_TAIL_SEC)
+      // MONTAGE: the lead ends where the last line ("Let's watch.") begins, so
+      // the scene starts on it, with WATCH over its first quiet seconds.
+      if (options.intro === "montage") {
+        montageStarts = montageLineStarts(
+          (options.hookLine ?? "").split(/\n\s*\n/).filter((p) => p.trim()),
+          seg.audio.words ?? [],
+        )
+        const last = montageStarts?.[montageStarts.length - 1]
+        if (last != null) hookLeadSec = Math.min(cap, last + 0.1)
+        else
+          log(`⚠️  montage: no word times for the hook, cutting shots evenly`)
+      }
       log(
         `hook: "${(options.hookLine ?? seg.text).trim()}" (${spokenSec.toFixed(1)}s) → ` +
           `${hookLeadSec.toFixed(1)}s before the scene is heard`,
       )
-      if (spokenSec + HOOK_TAIL_SEC > HOOK_LEAD_CAP_SEC) {
+      if (spokenSec + HOOK_TAIL_SEC > cap) {
         log(
-          `⚠️  the hook runs past the ${HOOK_LEAD_CAP_SEC}s cap; the film comes up while it is still speaking`,
+          `⚠️  the hook runs past the ${cap}s cap; the film comes up while it is still speaking`,
         )
       }
     }
   }
-  log(`download clip ${devo.clip.id} (lang ${locale.lang})…`)
+  // A registered non-JESUS source (LUMO, …) supplies its own clip, window and
+  // mark by chapter index; an explicit override on the command line still wins.
+  const registered = videoSourceForIndex(devo.clip.index)
+  const clipOverride =
+    options.clipOverride ??
+    (registered
+      ? {
+          id: registered.mediaComponentId,
+          title: registered.title,
+          startSec: registered.window.startSec,
+          lengthSec: registered.window.lengthSec,
+          ...(registered.maxVideoCardSec != null
+            ? { maxVideoCardSec: registered.maxVideoCardSec }
+            : {}),
+        }
+      : undefined)
+  const filmMark = options.filmMark ?? registered?.filmMark
+  const clipId = clipOverride?.id ?? devo.clip.id
+  log(`download clip ${clipId} (lang ${locale.lang})…`)
   const full = path.join(stage, "full.mp4")
   const clip = path.join(stage, "clip.mp4")
-  const clipInfo = await arclightClipInfo(devo.clip.id, locale.filmLanguageId)
+  const clipInfo = await arclightClipInfo(clipId, locale.filmLanguageId)
   log(
-    `source ${clipInfo.downloadUrl.split("/").pop()} for ${devo.clip.id} ` +
+    `source ${clipInfo.downloadUrl.split("/").pop()} for ${clipId} ` +
       `(Arclight's own "high" is 720p; a 1080p Mux rendition is used when published)`,
   )
   await download(clipInfo.downloadUrl, full)
@@ -1236,7 +1744,20 @@ async function renderInStage(
   // Clamped to what atempo keeps natural — past ~1.3 the dialogue starts to
   // sound hurried even with pitch preserved.
   const VIDEO_SPEED = Math.min(1.3, Math.max(1, options.videoSpeed ?? 1.12))
-  const window = passageForChapter(devo.clip.index, options.episode)
+  const window = clipOverride
+    ? ({
+        index: devo.clip.index,
+        osisRef: "",
+        reference: clipOverride.title ?? devo.clip.title,
+        mood: devo.mood,
+        themes: [],
+        clipStartSec: clipOverride.startSec,
+        clipLengthSec: clipOverride.lengthSec,
+        ...(clipOverride.maxVideoCardSec != null
+          ? { maxVideoCardSec: clipOverride.maxVideoCardSec }
+          : {}),
+      } as ChapterPassage)
+    : passageForChapter(devo.clip.index, options.episode)
   // Owner rule: the "clear" video card (before it cuts to blurred-background
   // text cards) must stay in this range — long enough to feel like a real
   // scene, never so long it drags. Without a cap this was set to the FULL
@@ -1296,17 +1817,42 @@ async function renderInStage(
     // failed the clip simply rendered without captions and nothing said so —
     // which is how an episode shipped with the subtitles missing and no trace
     // in the log to explain it.
-    if (!clipInfo.subtitleUrl) {
+    // A registered source may bring its own cue file (LUMO has no subtitle
+    // track in Arclight): read from disk through the SAME alignment and
+    // gap-removal path, so its dead air is cut exactly as a JESUS chapter's is.
+    const localCues =
+      registered?.captions.kind === "file" && locale.lang === "en"
+        ? // repoRoot, not import.meta.url: the Mastra bundle moves this file
+          // and every url-relative path with it (see repo-root.ts).
+          path.join(
+            repoRoot(),
+            "apps/mastra/src/services/devotional",
+            registered.captions.path,
+          )
+        : undefined
+    const subtitleUrl = localCues
+      ? pathToFileURL(localCues).href
+      : clipInfo.subtitleUrl
+    if (localCues) log(`captions: ${path.basename(localCues)} (local cue file)`)
+    if (!subtitleUrl) {
       log(
-        `⚠️  no subtitle track for ${devo.clip.id} in ${locale.lang}; the clip will have NO captions`,
+        `⚠️  no subtitle track for ${clipId} in ${locale.lang}; the clip will have NO captions`,
       )
     }
-    if (clipInfo.subtitleUrl) {
+    if (subtitleUrl) {
       const edited = await fetchEditedWindow(
-        clipInfo.subtitleUrl,
+        subtitleUrl,
         winStart,
         winLen,
-        {},
+        localCues
+          ? {
+              // node's fetch has no file: scheme; hand it the file instead.
+              fetchFn: (async () =>
+                new Response(
+                  await readFile(localCues, "utf8"),
+                )) as typeof fetch,
+            }
+          : {},
         {
           ...(window.minGapSec != null ? { minGapSec: window.minGapSec } : {}),
           ...(window.maxGapSec != null ? { maxGapSec: window.maxGapSec } : {}),
@@ -1319,7 +1865,9 @@ async function renderInStage(
         winStart = edited.startSec
         winLen = edited.lengthSec
         clipSegments = edited.segments
-        sourceCues = edited.cues
+        sourceCues = localCues
+          ? await attachWordTimes(edited.cues, localCues, log)
+          : edited.cues
         if (!edited.snapped) {
           log(
             `⚠️  window ${winStart.toFixed(0)}s +${winLen.toFixed(0)}s could not snap to ` +
@@ -1362,7 +1910,33 @@ async function renderInStage(
       // from the same film plays first, then the scene's own run-up, both at
       // normal speed. Two shots and a cut is ordinary film language; a ten
       // second shot at a third speed is not.
-      if (options.hookBgStartSec != null) {
+      const shots = options.introShots ?? []
+      if (options.intro === "montage" && shots.length > 0) {
+        // One shot per line, cut on the line's first word; the scene takes
+        // over on the last line. Each shot plays at the series speed, like the
+        // film it is cut from.
+        const n = shots.length
+        const starts =
+          montageStarts && montageStarts.length >= n
+            ? montageStarts
+            : shots.map((_, k) => (k * hookLeadSec) / n)
+        hookLead = shots
+          .map((src, k) => {
+            const from = k === 0 ? 0 : starts[k]
+            const to = k + 1 < n ? starts[k + 1] : hookLeadSec
+            return {
+              startSec: src,
+              lengthSec: Math.max(0, to - from) * VIDEO_SPEED,
+              speed: VIDEO_SPEED,
+              silent: true as const,
+            }
+          })
+          .filter((sg) => sg.lengthSec > 0.05)
+        log(
+          `montage lead: ${n} shot(s) over ${hookLeadSec.toFixed(1)}s ` +
+            `(${hookLead.map((sg) => `${sg.startSec}s×${(sg.lengthSec / VIDEO_SPEED).toFixed(1)}`).join(", ")})`,
+        )
+      } else if (options.hookBgStartSec != null) {
         const runUpOnScreen = room / VIDEO_SPEED
         const borrowedSec = Math.max(0, hookLeadSec - runUpOnScreen)
         hookLead = [
@@ -1376,12 +1950,20 @@ async function renderInStage(
                 },
               ]
             : []),
-          {
-            startSec: runUp - room,
-            lengthSec: room,
-            speed: VIDEO_SPEED,
-            silent: true as const,
-          },
+          // A scene that starts speaking at 0s has NO run-up to show. A
+          // zero-length segment here does not mean "nothing" to ffmpeg — it
+          // means "to the end of the file": the vineyard clip came out 595s
+          // long and silent, and the film card lost its sound entirely.
+          ...(room > 0.05
+            ? [
+                {
+                  startSec: runUp - room,
+                  lengthSec: room,
+                  speed: VIDEO_SPEED,
+                  silent: true as const,
+                },
+              ]
+            : []),
         ]
         log(
           `hook lead: ${borrowedSec.toFixed(1)}s borrowed from ${options.hookBgStartSec}s + ` +
@@ -1698,17 +2280,37 @@ async function renderInStage(
 
   const segments: StagedSegment[] = []
   let n = 1
+  const toLevel: { voiceId: string; path: string }[] = []
   for (const s of audio.segments) {
     const file = `${String(n).padStart(2, "0")}-${s.id}.mp3`
     await writeFile(path.join(stage, file), s.audio.bytes)
+    toLevel.push({ voiceId: s.audio.voiceId, path: path.join(stage, file) })
+    n++
+  }
+  await levelVoices(toLevel, log)
+  n = 1
+  for (const s of audio.segments) {
+    const file = `${String(n).padStart(2, "0")}-${s.id}.mp3`
+    let words = s.audio.words
+    // The question and the prayer are one take, and the voice went from one
+    // to the other too quickly (owner, 2026-09-26): the pause between them is
+    // widened in the take itself, so an approved narration is kept as it is.
+    if (s.id === "questions" && words?.length) {
+      words = await widenPauseAfterWords(
+        path.join(stage, file),
+        words,
+        devo.question,
+        devo.prayer,
+        QUESTION_TO_PRAYER_GAP_SEC,
+        log,
+      )
+    }
     segments.push({
       id: s.id,
       file,
       durationSec: await probeDuration(path.join(stage, file)),
       text: s.text,
-      ...(s.audio.words && s.audio.words.length > 0
-        ? { words: s.audio.words }
-        : {}),
+      ...(words && words.length > 0 ? { words } : {}),
     })
     n++
   }
@@ -1750,9 +2352,31 @@ async function renderInStage(
     await writeFile(path.join(stage, musicFile), audio.music.audio.bytes)
   }
 
+  // Source credits live on the NARRATION segments (they come from the authored
+  // paragraphs), the manifest builds from the PRODUCED ones — so they are
+  // looked up by id here. Same builder, same options as the audio used.
+  const sourceMarks: Record<string, SourceMark> = {}
+  for (const seg of buildNarrationSegments(devo, locale, {
+    suppressOccasion: options.suppressOccasion ?? false,
+    ...(options.structure ? { structure: options.structure } : {}),
+    ...(options.steps ? { steps: true } : {}),
+    ...(options.hookLine ? { hookLine: options.hookLine } : {}),
+  })) {
+    // The evidence is for the editor, not the screen: keep it out of the
+    // manifest the composition reads.
+    if (seg.mark) {
+      sourceMarks[seg.id] = {
+        label: seg.mark.label,
+        source: seg.mark.source,
+        ...(seg.mark.portrait ? { portrait: seg.mark.portrait } : {}),
+      }
+    }
+  }
+
   const manifest = buildDevotionalManifest({
     devotional: devo,
     segments,
+    ...(Object.keys(sourceMarks).length ? { sourceMarks } : {}),
     ...(options.structure ? { structure: options.structure } : {}),
     clipFile: "clip.mp4",
     clipDurationSec,
@@ -1774,6 +2398,13 @@ async function renderInStage(
         }
       : {}),
     ...(options.intro ? { intro: options.intro } : {}),
+    ...(filmMark ? { filmMark } : {}),
+    ...(options.openingFrame ? { openingFrame: true } : {}),
+    ...(options.introCaptions ? { introCaptions: options.introCaptions } : {}),
+    ...(options.introTeaser && options.intro === "montage"
+      ? { introCta: true }
+      : {}),
+    ...(options.introFocus ? { introFocus: options.introFocus } : {}),
     ...(options.hookLine
       ? {
           hookParts: options.hookLine
@@ -1822,7 +2453,16 @@ async function renderInStage(
   // one being kept.
   // TEASER: the opening card alone, closing on its call to action — a short
   // social cut whose whole job is to send the viewer to the full devotional.
-  if (options.introTeaser) {
+  if (options.introTeaser && options.intro === "montage") {
+    // The montage teaser: the opening alone, ending on its call to action
+    // (the hook's last line) over the scene's first quiet seconds. No film
+    // captions: the scene never gets to speak.
+    const film = manifest.cards.find((c) => c.kind === "video")
+    if (!film) throw new Error("montage teaser: no video card")
+    film.durationSec = hookSpokenSec + TEASER_CTA_HOLD_SEC
+    delete film.subtitles
+    manifest.cards = [film]
+  } else if (options.introTeaser) {
     manifest.cards = manifest.cards.filter((c) => c.kind === "quote-intro")
     if (manifest.cards.length === 0) {
       throw new Error(
@@ -1875,10 +2515,15 @@ async function renderInStage(
   //     start without shrinking the length asked ffmpeg for 39s→173s of a 142s
   //     clip, which is how both of the above happened at once.
   // A short source is fine — the composition loops at `bgDurationSec`.
-  const bgStart = options.episode ? (window?.clipStartSec ?? 0) : 0
+  // A registered source is scoped the same way an episode is: its Arclight
+  // component usually carries more than the one scene (the LUMO segment for the
+  // vineyard runs on to the road to Jerusalem, the blind men and the entry),
+  // and the reflection on the workers must not play over a donkey.
+  const scoped = Boolean(options.episode) || Boolean(registered)
+  const bgStart = scoped ? (window?.clipStartSec ?? 0) : 0
   const bgAvailable = Math.max(1, usableDur - bgStart)
   const bgWindowLen =
-    options.episode && !options.bgExtendPastEpisode
+    scoped && !options.bgExtendPastEpisode
       ? Math.min(window?.clipLengthSec ?? bgAvailable, bgAvailable)
       : bgAvailable
   const bgLen = Math.min(bgTimelineSec, bgWindowLen)
@@ -2068,7 +2713,16 @@ async function renderInStage(
     lang: locale.lang,
     aspect,
     ...(options.episode ? { episode: options.episode } : {}),
-    ...(options.structure === "clip-first" ? { variant: "clipfirst" } : {}),
+    ...(options.structure === "clip-first" || options.draft
+      ? {
+          variant: [
+            options.structure === "clip-first" ? "clipfirst" : "",
+            options.draft ? "draft" : "",
+          ]
+            .filter(Boolean)
+            .join("-"),
+        }
+      : {}),
   })
   // Stills write PNGs derived from this name and never produce the MP4, so a
   // preview must NOT burn the next free version number — it would leave a gap
@@ -2101,11 +2755,16 @@ async function renderInStage(
         ? { coverDateLabel: options.coverDateLabel }
         : { hideCoverDate: true }),
       coverTitleFirst: options.coverTitleFirst ?? false,
+      ...(options.coverSecondaryLine
+        ? { coverSecondaryLine: options.coverSecondaryLine }
+        : {}),
+      ...(options.coverBgSharp ? { coverBgSharp: true } : {}),
       ...(options.textFont ? { textFont: options.textFont } : {}),
       ...(options.videoFilter ? { videoFilter: options.videoFilter } : {}),
       ...(options.stills ? { stills: options.stills } : {}),
       ...(options.stillsFrames ? { stillsFrames: options.stillsFrames } : {}),
       ...(options.frameRange ? { frameRange: options.frameRange } : {}),
+      ...(options.draft ? { draftScale: 0.25 } : {}),
       ...(options.grainSizePx ? { grainSizePx: options.grainSizePx } : {}),
       ...(options.grainFilter ? { grainFilter: options.grainFilter } : {}),
       ...(options.grainBlend ? { grainBlend: options.grainBlend } : {}),
@@ -2508,12 +3167,38 @@ export function printDevotionalForReview(
   return lines.join("\n")
 }
 
+/**
+ * The YouTube `opening`, spoken (owner, 2026-09-26): the voice first says
+ * "Welcome to Daily Bible Pause.", then the opening's own lines, and "Let's
+ * watch." as WATCH appears across the frame, just before the film. All three
+ * are one take, so the narration's word times drive every beat; the welcome
+ * and "Let's watch" are marked so the composition does not draw them as lines.
+ * The on-screen title stays the opening's own first line.
+ */
+export function frameOpening<
+  T extends Pick<
+    RenderOptions,
+    "intro" | "hookLine" | "hookTitle" | "openingFrame"
+  >,
+>(input: T, locale: DevotionalLocale): T {
+  const hook = input.hookLine?.trim()
+  if (input.intro !== "opening" || !hook || input.openingFrame) return input
+  const steps = locale.connectors.steps
+  return {
+    ...input,
+    hookLine: [steps.welcome(), hook, steps.watch()].join("\n\n"),
+    hookTitle: input.hookTitle ?? hook.split(/\n\s*\n/)[0]?.trim() ?? hook,
+    openingFrame: true,
+  }
+}
+
 export async function prepareAndRenderDevotional(
   input: PrepareAndRenderInput,
 ): Promise<RenderedDevotional> {
   const log = input.log ?? ((m: string) => console.log(m))
   const lang = input.lang ?? "en"
   const locale = localeFor(lang)
+  input = frameOpening(input, locale)
 
   // Text and audio are cached separately so render-only tweaks reuse both, a
   // TTS glitch can regenerate just the audio (keeping the wording), and a hand
@@ -2611,11 +3296,6 @@ export async function prepareAndRenderDevotional(
     ...(input.hookLine ? { hookLine: input.hookLine } : {}),
   }).map((s) => s.text)
   let approval = await approvalState(cacheDir, spoken)
-  if (approval !== "approved" && input.approveText) {
-    await writeApproval(cacheDir, textFingerprint(spoken), input.date)
-    log("✅ text approved — this wording, and only this wording")
-    approval = "approved"
-  }
 
   // QUALITY GATE — runs on the FINAL text, before any audio or video work,
   // and ONLY while no human has signed off on this wording.
@@ -2625,6 +3305,11 @@ export async function prepareAndRenderDevotional(
   // silentPreview bypasses both this gate and the human-approval gate below —
   // this run is design-only (no TTS spend), and the critics are LLM calls
   // that shouldn't block a preview on their own non-determinism.
+  //
+  // `--approve` signs off AFTER this gate, never instead of it: it used to write
+  // the approval first, which made the gate see approved text and skip itself,
+  // so a devotional rendered with --approve from its first run was never read
+  // by any critic (the vineyard went out that way, 2026-09-26).
   const review =
     approval === "approved" || input.silentPreview
       ? { blocking: [] as string[] }
@@ -2645,6 +3330,11 @@ export async function prepareAndRenderDevotional(
     } else {
       throw new DevotionalQualityGateError(review.blocking)
     }
+  }
+  if (approval !== "approved" && input.approveText) {
+    await writeApproval(cacheDir, textFingerprint(spoken), input.date)
+    log("✅ text approved — this wording, and only this wording")
+    approval = "approved"
   }
 
   // HUMAN GATE — the critics have passed, the text is cached, and nothing has

@@ -109,7 +109,45 @@ export const devotionalCardSchema = z.object({
    * sound comes up (the YouTube opening, where the thumbnail has already said
    * what the series is). Needs `mutedLeadSec` for its length.
    */
-  intro: z.enum(["cover", "bands", "hook", "watch"]).optional(),
+  intro: z
+    .enum(["cover", "bands", "hook", "watch", "opening", "montage"])
+    .optional(),
+  /** `montage`: a caption on chosen spoken lines (0-based), drawn while that
+   *  line is said. */
+  /** `montage` / `opening`: the passage the film reads ("Matthew 20:1-16"),
+   *  drawn over WATCH as the scene begins. */
+  passageRef: z.string().optional(),
+  /** `montage` teaser: the last spoken line is a call to action. */
+  introCta: z.boolean().optional(),
+  /** `montage`, vertical: horizontal focus (0..1) per shot, then one more for
+   *  the scene after the last cut. */
+  introFocus: z.array(z.number()).optional(),
+  introCaptions: z
+    .array(
+      z.object({
+        line: z.number().int(),
+        text: z.string(),
+        /** The spoken words set small ABOVE the big caption ("The others
+         *  worked" over ONE HOUR). Absent: the caption stands alone. */
+        lead: z.string().optional(),
+      }),
+    )
+    .optional(),
+  /** Mark of the film this devotional is cut from, drawn small in the top-left
+   *  while the clip plays. See `film-marks.ts`. */
+  filmMark: z.enum(["lumo"]).optional(),
+  /** `opening`: `introParts` opens with the spoken welcome and closes with
+   *  "Let's watch"; neither is drawn as a line (the welcome names the series
+   *  in the kicker, "Let's watch" brings up WATCH across the frame). */
+  introFrame: z.boolean().optional(),
+  /** Source credit drawn above a reflection card's text (16:9 only). */
+  sourceMark: z
+    .object({
+      label: z.string(),
+      source: z.string(),
+      portrait: z.enum(["ryle", "scroll", "book"]).optional(),
+    })
+    .optional(),
   /** `quote-intro` card: the opening quotation, in two halves so each can
    *  arrive from its own side, with the phrase to carry the weight in each. */
   quoteA: z.string().optional(),
@@ -165,6 +203,9 @@ export const devotionalCardSchema = z.object({
         text: z.string(),
         startSec: z.number().nonnegative(),
         endSec: z.number().positive(),
+        /** Start of each word of `text`, same timeline: the word being
+         *  spoken is lit (karaoke). One entry per whitespace-separated word. */
+        words: z.array(z.number()).optional(),
       }),
     )
     .optional(),

@@ -163,6 +163,28 @@ describe("repetition the viewer hears", () => {
     expect(found.map((f) => f.rule)).toContain("scripture-echo")
   })
 
+  it("lets a language note quote a translation to set the original against it", () => {
+    // The owner's vineyard devotional (2026-09-28): the translation is quoted
+    // on purpose, to show what the Greek says instead.
+    const verse =
+      "Do I not have the right to do as I please with what is mine? Or are you envious because I am generous?"
+    const note =
+      "The landowner's last line is softened in English. Most translations give us " +
+      '"are you envious because I am generous?" The Greek is blunter and stranger: ' +
+      '"is your eye evil because I am good?"'
+    expect(checkReflectionVoice(note, { scriptureText: verse })).toEqual([])
+  })
+
+  it("still flags the same words said as prose, outside a wording comparison", () => {
+    const verse =
+      "Do I not have the right to do as I please with what is mine? Or are you envious because I am generous?"
+    const found = checkReflectionVoice(
+      "The landowner asks them whether they are envious because I am generous, and that stings.",
+      { scriptureText: verse },
+    )
+    expect(found.map((f) => f.rule)).toContain("scripture-echo")
+  })
+
   it("leaves a reflection alone when it only reuses the passage's nouns", () => {
     const found = checkReflectionVoice(
       "Fear is not the same thing as unbelief. The storm on the lake proved " +
@@ -198,6 +220,17 @@ describe("what the reflection opens with", () => {
         "nothing to earn any of it.",
     )
     expect(found).toEqual([])
+  })
+
+  it("accepts an opening that points the viewer at a detail to make a point", () => {
+    // The owner's own opening (2026-09-28).
+    const found = checkReflectionVoice(
+      "Notice this: the workers hired first were paid exactly what they had " +
+        "agreed to that morning. Nothing was taken from them. They stood in " +
+        "the heat all day. They grumbled at the landowner. They were given " +
+        "what they were promised.",
+    )
+    expect(found.map((f) => f.rule)).not.toContain("opens-on-recap")
   })
 
   it("allows the claim to arrive in the second sentence", () => {

@@ -1,6 +1,6 @@
 import { quoteIntroTimeline } from "@forge/shorts-compositions/devotional-timing"
 
-import type { GeneratedDevotional } from "./generate-devotional"
+import type { GeneratedDevotional, SourceMark } from "./generate-devotional"
 import { splitReflection } from "./reflection-split"
 
 // The lead lives with the audio that carries it (devotional-audio.ts), so the
@@ -42,11 +42,25 @@ export type DevotionalManifest = {
   /** Seconds of background skipped before the first card on it; see schema. */
   bgStartOffsetSec?: number
   /** Clip-first: intro overlay over the film's muted lead (see card schema). */
-  intro?: "cover" | "bands" | "hook" | "watch"
+  intro?: "cover" | "bands" | "hook" | "watch" | "opening" | "montage"
+  /** `montage`: captions keyed by 0-based spoken line. */
+  introCaptions?: Record<number, string>
+  /** `montage` teaser: the last line is a call to action. */
+  introCta?: boolean
+  /** `montage`, vertical: horizontal focus per shot. */
+  introFocus?: number[]
+  /** Mark of the film the clip comes from (top-left while it plays). */
+  filmMark?: "lumo"
+  /** Source credits by segment id (authored devotionals): drawn on the
+   *  reflection card whose paragraph uses that source. */
+  sourceMarks?: Record<string, SourceMark>
   /** `intro: "hook"`: the question drawn on screen as the piece's title. */
   hookText?: string
   /** `intro: "watch"`: the spoken opening split into its sentences. */
   hookParts?: string[]
+  /** `opening`: the first and last hook parts are the spoken welcome and
+   *  "Let's watch", not lines to draw (see frameOpening). */
+  openingFrame?: boolean
   /** Clip-first: corner progress ring clocking each step (composition prop). */
   stepRing?: boolean
   /** Shape of that clock: orbit ring (default) or a line across the top. */
@@ -100,11 +114,25 @@ export type BuildManifestInput = {
    *  screen, before the clip's own audio eases in. */
   mutedLeadSec?: number
   /** Clip-first: intro overlay over the film's muted lead (see card schema). */
-  intro?: "cover" | "bands" | "hook" | "watch"
+  intro?: "cover" | "bands" | "hook" | "watch" | "opening" | "montage"
+  /** `montage`: captions keyed by 0-based spoken line. */
+  introCaptions?: Record<number, string>
+  /** `montage` teaser: the last line is a call to action. */
+  introCta?: boolean
+  /** `montage`, vertical: horizontal focus per shot. */
+  introFocus?: number[]
+  /** Mark of the film the clip comes from (top-left while it plays). */
+  filmMark?: "lumo"
+  /** Source credits by segment id (authored devotionals): drawn on the
+   *  reflection card whose paragraph uses that source. */
+  sourceMarks?: Record<string, SourceMark>
   /** `intro: "hook"`: the question drawn on screen as the piece's title. */
   hookText?: string
   /** `intro: "watch"`: the spoken opening split into its sentences. */
   hookParts?: string[]
+  /** `opening`: the first and last hook parts are the spoken welcome and
+   *  "Let's watch", not lines to draw (see frameOpening). */
+  openingFrame?: boolean
   /** Social opening card placed before the film (`--intro=quote`). */
   quoteIntro?: {
     quoteA: string
@@ -207,7 +235,7 @@ function buildClipFirstManifest(
       ...(q.bgStartSec != null ? { bgStartSec: q.bgStartSec } : {}),
       ...(q.bgRate != null ? { bgRate: q.bgRate } : {}),
       ...(q.ctaLine ? { ctaLine: q.ctaLine } : {}),
-      ...(q.ctaLabel ? { ctaLabel: q.ctaLabel } : {}),
+      ...(q.ctaLabel != null ? { ctaLabel: q.ctaLabel } : {}),
       ...(q.keySfx ? { keySfx: q.keySfx } : {}),
       ...(q.transitionSfx ? { transitionSfx: q.transitionSfx } : {}),
     })
@@ -220,8 +248,14 @@ function buildClipFirstManifest(
   // the audio cache once it has been recorded, and attaching it on sight put
   // the YouTube welcome over the film's first line in a cut that never asked
   // for it (owner-reported: "the voice overlaps with the video sound").
+  // `opening` is spoken too when the cut was given its lines to say (owner,
+  // 2026-09-25: "we start with the female voice"); without a hook line it
+  // stays the silent, read-only opening and there is no segment to find.
   const hookSeg =
-    input.intro === "hook" || input.intro === "watch"
+    input.intro === "hook" ||
+    input.intro === "watch" ||
+    input.intro === "opening" ||
+    input.intro === "montage"
       ? input.segments.find((s) => s.id === "hook")
       : undefined
   cards.push({
@@ -239,17 +273,62 @@ function buildClipFirstManifest(
     // The intro names the three steps in the locale's words, same as the
     // stepper screens (a Spanish cut once opened on WATCH / REFLECT / PRAY).
     // `hook` draws no steps at all — it is only a voice over the film.
+    ...(input.filmMark ? { filmMark: input.filmMark } : {}),
     ...(input.intro
-      ? input.intro === "hook" || input.intro === "watch"
+      ? input.intro === "hook" ||
+        input.intro === "watch" ||
+        input.intro === "opening" ||
+        input.intro === "montage"
         ? {
             intro: input.intro,
             ...(input.intro === "watch" ? { steps: STEPS } : {}),
             // The opening's beats follow the voice, so the card carries both
             // the sentences and the narration's word times.
-            ...(input.intro === "watch" && input.hookParts?.length
+            // The `opening` beats carry no voice, so its lines come straight
+            // from the render option rather than from narration segments.
+            ...((input.intro === "watch" ||
+              input.intro === "opening" ||
+              input.intro === "montage") &&
+            input.hookParts?.length
               ? { introParts: input.hookParts }
               : {}),
-            ...(input.intro === "watch" && hookSeg?.words?.length
+            ...(input.intro === "montage" && input.introCta
+              ? { introCta: true }
+              : {}),
+            ...(input.intro === "montage" && input.introFocus?.length
+              ? { introFocus: input.introFocus }
+              : {}),
+            // The passage the scene reads, over WATCH as the film begins.
+            ...((input.intro === "montage" || input.intro === "opening") &&
+            d.passage?.reference
+              ? { passageRef: d.passage.reference }
+              : {}),
+            ...(input.intro === "montage" && input.introCaptions
+              ? {
+                  // "The others worked|One hour": small lead, big caption.
+                  introCaptions: Object.entries(input.introCaptions).map(
+                    ([line, spec]) => {
+                      const [a, b] = spec.split("|").map((x) => x.trim())
+                      return b != null
+                        ? {
+                            line: Number(line),
+                            text: b,
+                            ...(a ? { lead: a } : {}),
+                          }
+                        : { line: Number(line), text: a }
+                    },
+                  ),
+                }
+              : {}),
+            ...(input.intro === "opening" && input.openingFrame
+              ? { introFrame: true }
+              : {}),
+            // The spoken openings' beats follow the voice, so their card
+            // carries the narration's word times.
+            ...((input.intro === "watch" ||
+              input.intro === "opening" ||
+              input.intro === "montage") &&
+            hookSeg?.words?.length
               ? { words: hookSeg.words }
               : {}),
             // The spoken question doubles as the on-screen title. It comes
@@ -279,11 +358,13 @@ function buildClipFirstManifest(
     if (highlightIndex >= 0) usedHighlights.add(highlightIndex)
     const highlight =
       highlightIndex >= 0 ? d.reflectionHighlights?.[highlightIndex] : undefined
+    const mark = input.sourceMarks?.[seg.id]
     cards.push({
       kind: "reflection-focus",
       sectionLabel: "",
       text: cardText,
       ...(highlight ? { highlight } : {}),
+      ...(mark ? { sourceMark: mark } : {}),
       audioFile: seg.file,
       durationSec: seg.durationSec,
       bgFile: clip,
@@ -299,11 +380,18 @@ function buildClipFirstManifest(
   })
   if (conclusion) cards.push(conclusion)
 
-  // The verse is the reflection's closing word, not its opening.
+  const endCredit = d.reflection.paragraphs?.some((p) => p.mark)
+    ? undefined
+    : d.reflection.attribution
+
+  // The verse is the reflection's closing word, not its opening. It holds a
+  // second after the voice finishes (owner, 2026-09-26: it "disappears too
+  // quickly").
   const scripture = withAudio("scripture", {
     kind: "scripture",
     verse: d.scripture.text,
     citation: d.scripture.reference,
+    holdSec: 1,
     // Shown after the citation ("LUKE 8:16 · BSB"): the viewer should know
     // which translation they are hearing. Absent when the verse could not be
     // verified against a corpus (the model's own wording, flagged upstream).
@@ -325,10 +413,10 @@ function buildClipFirstManifest(
       askLabel: labels.askYourself,
       prayLabel: labels.pray,
       // No cover in this structure, so the source credit — otherwise only on
-      // the cover — lands on the closing card.
-      ...(d.reflection.attribution
-        ? { attribution: d.reflection.attribution }
-        : {}),
+      // the cover — lands on the closing card. Not when the reflection credits
+      // its sources inline, as it goes: saying it again at the end is a repeat
+      // (owner, 2026-09-26).
+      ...(endCredit ? { attribution: endCredit } : {}),
       audioFile: qp.file,
       durationSec: qp.durationSec,
       holdSec: 5,
@@ -344,9 +432,7 @@ function buildClipFirstManifest(
     // The take fades in from black over 0.6s; the stepper is the first card
     // on it here and would flash black after the film.
     bgStartOffsetSec: 0.75,
-    ...(d.reflection.attribution
-      ? { attribution: d.reflection.attribution }
-      : {}),
+    ...(endCredit ? { attribution: endCredit } : {}),
     ...(input.musicFile ? { musicFile: input.musicFile } : {}),
     cards,
   }

@@ -62,6 +62,34 @@ export function stripDashes(text: string): string {
     .trim()
 }
 
+/** A credit drawn on screen while the paragraph that uses the source plays. */
+export type SourceMark = {
+  /** Small caps line above, e.g. "HISTORICAL NOTE FROM". */
+  label: string
+  /** The source itself, in the serif, e.g. "Society of Biblical Literature". */
+  source: string
+  /** A portrait in a circle to the left, for a human author. */
+  portrait?: "ryle" | "scroll" | "book"
+  /** What the source actually says, for the narrative editor to check this
+   *  section's claims against. Never drawn on screen. */
+  evidence?: string
+}
+
+export type ReflectionParagraph = {
+  text: string
+  voice?: DevotionalVoiceName
+  mark?: SourceMark
+}
+
+/** The non-reflection segments an authored devotional can voice separately. */
+export type VoicedRole =
+  | "hook"
+  | "step-reflect"
+  | "conclusion"
+  | "scripture"
+  | "step-pray"
+  | "questions"
+
 export type GeneratedDevotional = {
   date: string
   clip: { index: number; id: string; title: string }
@@ -94,7 +122,21 @@ export type GeneratedDevotional = {
      *  half, then video act 2, then the second half — so each half comments
      *  on what the viewer has just watched. */
     parts?: string[]
+    /**
+     * AUTHORED reflections only (owner-approved scripts, not the generator).
+     * The reflection as paragraphs, each with the voice that reads it and the
+     * on-screen source mark it carries, if any. When present it replaces the
+     * automatic sentence split of `text`: every paragraph is split on its own,
+     * so a voice change or a mark always lands on a paragraph boundary.
+     * `text` stays their concatenation, for everything that reads prose.
+     */
+    paragraphs?: ReflectionParagraph[]
   }
+  /**
+   * Per-role voices for AUTHORED devotionals ("female opens, male closes").
+   * Anything unset reads in `voice`.
+   */
+  voices?: Partial<Record<VoicedRole, DevotionalVoiceName>>
   /** One phrase to accent per reflection chunk (verbatim substring, or ""),
    *  aligned with splitReflection(reflection.text). */
   reflectionHighlights: string[]
@@ -108,6 +150,14 @@ export type GeneratedDevotional = {
   voice: DevotionalVoiceName
   sequence: number
 }
+
+const VOICE_ENUM = z.enum([
+  "male-d",
+  "male-e",
+  "female-c",
+  "russian",
+  "spanish",
+])
 
 /** Zod schema mirroring GeneratedDevotional, for crossing Mastra step boundaries. */
 export const GeneratedDevotionalSchema = z.object({
@@ -129,13 +179,42 @@ export const GeneratedDevotionalSchema = z.object({
     flavor: z.enum(["commentary", "spurgeon"]),
     sourceExcerpt: z.string().optional(),
     parts: z.array(z.string()).optional(),
+    paragraphs: z
+      .array(
+        z.object({
+          text: z.string(),
+          voice: VOICE_ENUM.optional(),
+          mark: z
+            .object({
+              label: z.string(),
+              source: z.string(),
+              portrait: z.enum(["ryle", "scroll", "book"]).optional(),
+              evidence: z.string().optional(),
+            })
+            .optional(),
+        }),
+      )
+      .optional(),
   }),
+  voices: z
+    .partialRecord(
+      z.enum([
+        "hook",
+        "step-reflect",
+        "conclusion",
+        "scripture",
+        "step-pray",
+        "questions",
+      ]),
+      VOICE_ENUM,
+    )
+    .optional(),
   reflectionHighlights: z.array(z.string()),
   conclusion: z.string(),
   question: z.string(),
   prayer: z.string(),
   mood: z.enum(["peace", "hope", "lament", "awe"]),
-  voice: z.enum(["male-d", "male-e", "female-c", "russian", "spanish"]),
+  voice: VOICE_ENUM,
   sequence: z.number(),
 }) satisfies z.ZodType<GeneratedDevotional>
 

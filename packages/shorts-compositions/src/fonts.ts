@@ -16,6 +16,7 @@ import {
   EB_GARAMOND_LATIN_WOFF2_BASE64,
   EB_GARAMOND_LATIN_ITALIC_WOFF2_BASE64,
 } from "./fonts-ebgaramond-data"
+import { PT_SERIF_LATIN_WOFF2_BASE64 } from "./fonts-ptserif-data"
 import {
   SOURCE_SERIF_4_LATIN_ITALIC_WOFF2_BASE64,
   SOURCE_SERIF_4_LATIN_WOFF2_BASE64,
@@ -31,6 +32,9 @@ export const SHORT_FONT_FAMILIES = {
   // prayer, conclusion). Variable wght 200-900, so `fontWeight: 300` on the
   // prayer and `400` elsewhere are real weights, not synthesized ones.
   sourceSerif: "Source Serif 4",
+  // The source-credit line only (owner's Figma, 2026-09-25). Latin only, and
+  // no Greek: the Greek-vocabulary credit sets in Literata instead.
+  ptSerif: "PT Serif",
 } as const
 
 // Google Fonts unicode-ranges: Cyrillic copy (the devotional is Russian) needs
@@ -100,6 +104,7 @@ export const FONT_SOURCES: ReadonlyArray<{
     base64: SOURCE_SERIF_4_LATIN_ITALIC_WOFF2_BASE64,
     style: "italic",
   },
+  { family: SHORT_FONT_FAMILIES.ptSerif, base64: PT_SERIF_LATIN_WOFF2_BASE64 },
 ]
 
 const registerFont = async (

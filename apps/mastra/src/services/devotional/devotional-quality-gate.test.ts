@@ -20,6 +20,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const checkDevotionalCoherence = vi.fn()
 const critiqueReflection = vi.fn()
 const critiqueReflectionFidelity = vi.fn()
+const reviewNarrative = vi.fn()
 
 vi.mock("./devotional-coherence", () => ({
   checkDevotionalCoherence: (...a: unknown[]) => checkDevotionalCoherence(...a),
@@ -35,6 +36,19 @@ vi.mock("./devotional-models", () => ({
   buildCoherenceLlm: () => ({}),
   buildReflectionCriticLlm: () => ({}),
   buildFidelityCriticLlm: () => ({}),
+  narrativeEditorModel: () => "test-model",
+}))
+// The narrative editor's LLM call is mocked; its paragraph bookkeeping
+// (narrativeParagraphs) stays real, since the gate's fidelity scoping reads it.
+vi.mock("./narrative-editor", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./narrative-editor")>()),
+  reviewNarrative: (...a: unknown[]) => reviewNarrative(...a),
+}))
+vi.mock("../../mastra/agents/devotional/agent-llm", () => ({
+  createAgentLlm: () => ({}),
+}))
+vi.mock("../../mastra/agents/devotional/narrative-editor-agent", () => ({
+  narrativeEditorAgent: {},
 }))
 
 const { reviewDevotionalText } = await import("./devotional-quality-gate")
@@ -89,6 +103,11 @@ function allClean() {
     faithful: true,
     issues: [],
     summary: "faithful",
+  })
+  reviewNarrative.mockResolvedValue({
+    throughline: "grace finds the lost",
+    issues: [],
+    summary: "holds its line",
   })
 }
 
@@ -377,5 +396,107 @@ describe("reviewDevotionalText", () => {
     // The suggestion was computed and dropped before; it is the one output that
     // tells an operator WHAT to change.
     expect(lines.join("\n")).toContain("Luke 19:10")
+  })
+})
+
+describe("reviewDevotionalText — narrative editor", () => {
+  const issue = (severity: "high" | "medium" | "low") => ({
+    kind: "tangent" as const,
+    severity,
+    paragraph: 0,
+    quote: "Roman taxation had pushed many small farmers off their land.",
+    fix: "cut" as const,
+    replacement: "",
+    why: "never used again",
+  })
+
+  it("blocks on a high-severity finding", async () => {
+    reviewNarrative.mockResolvedValue({
+      throughline: "x",
+      issues: [issue("high")],
+      summary: "a claim its source does not support",
+    })
+    const r = await reviewDevotionalText({
+      devotional: devotional(),
+      checkFidelity: true,
+    })
+    expect(r.blocking.some((b) => b.startsWith("narrative:"))).toBe(true)
+  })
+
+  it("does NOT block on medium findings: those are an editor's suggestions", async () => {
+    reviewNarrative.mockResolvedValue({
+      throughline: "x",
+      issues: [issue("medium"), issue("low")],
+      summary: "two cuts suggested",
+    })
+    const r = await reviewDevotionalText({
+      devotional: devotional(),
+      checkFidelity: true,
+    })
+    expect(r.blocking).toEqual([])
+  })
+
+  it("blocks when the editor could not run", async () => {
+    reviewNarrative.mockResolvedValue({
+      throughline: "",
+      issues: [],
+      summary: "narrative review skipped after retry: request_failed",
+      skipped: true,
+    })
+    const r = await reviewDevotionalText({
+      devotional: devotional(),
+      checkFidelity: true,
+    })
+    expect(r.blocking).toContain("narrative review could not run")
+  })
+
+  it("carries each credit and its evidence forward to the paragraphs under it", async () => {
+    await reviewDevotionalText({
+      devotional: devotional({
+        reflection: {
+          text: "Own voice.\n\nA denarius was a day's wage.\n\nStill history.\n\nRyle says grace.",
+          source: "J.C. Ryle",
+          attribution: "",
+          flavor: "commentary",
+          sourceExcerpt: "RYLE EXCERPT",
+          paragraphs: [
+            { text: "Own voice." },
+            {
+              text: "A denarius was a day's wage.",
+              mark: {
+                label: "Historical context",
+                source: "SBL",
+                evidence: "SBL NOTES",
+              },
+            },
+            { text: "Still history." },
+            {
+              text: "Ryle says grace.",
+              mark: {
+                label: "Commentary",
+                source: "J. C. Ryle",
+                evidence: "RYLE EXCERPT",
+              },
+            },
+          ],
+        },
+      }),
+      checkFidelity: true,
+    })
+    const call = reviewNarrative.mock.calls.at(-1)?.[0] as {
+      paragraphs: Array<{ mark?: { source: string }; evidence?: string }>
+    }
+    expect(call.paragraphs.map((p) => p.mark?.source ?? null)).toEqual([
+      null,
+      "SBL",
+      "SBL",
+      "J. C. Ryle",
+    ])
+    expect(call.paragraphs[2].evidence).toBe("SBL NOTES")
+    // Fidelity reads only the paragraphs credited to the commentary excerpt:
+    // the history note is not Ryle's, and would read as invented against him.
+    expect(critiqueReflectionFidelity).toHaveBeenCalledWith(
+      expect.objectContaining({ adapted: "Ryle says grace." }),
+    )
   })
 })

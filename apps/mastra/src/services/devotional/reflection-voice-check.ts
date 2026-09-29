@@ -230,7 +230,29 @@ const ECHO_RUN_QUOTE = 3
  * verse's own quoted line needs only a short run to count, because both sides
  * are speech; loose prose needs a long one.
  */
-function scriptureEcho(text: string, scripture: string): VoiceFinding | null {
+/**
+ * A sentence that says it is comparing WORDINGS ("Most translations give us
+ * 'are you envious because I am generous?' The Greek is blunter..."). Quoting a
+ * translation in order to set the original against it is the point of a
+ * language note, not a retelling; the owner's vineyard devotional was blocked
+ * for exactly that. Only the quoted words inside such a sentence are exempt:
+ * the same line said as prose still counts.
+ */
+const WORDING_FRAME =
+  /\b(?:translat\w*|render(?:s|ed|ing)?|the greek|the hebrew|the aramaic|the original|literally|word for word)\b/i
+
+/** The text with the quotations of any wording-comparison sentence removed. */
+function withoutComparedWordings(text: string): string {
+  return sentences(text)
+    .map((s) => (WORDING_FRAME.test(s) ? s.replace(/[“"][^”"]+[”"]/g, " ") : s))
+    .join(" ")
+}
+
+function scriptureEcho(
+  rawText: string,
+  scripture: string,
+): VoiceFinding | null {
+  const text = withoutComparedWordings(rawText)
   const verseQuotes = quotedSpans(scripture)
   for (const said of quotedSpans(text)) {
     for (const verse of verseQuotes) {
@@ -280,6 +302,10 @@ const CLAIM_BY_SENTENCE = 2
  */
 const MIN_REFLECTION_SENTENCES = 5
 
+/** An opening that directs the viewer's attention before making its point. */
+const ATTENTION_OPENER =
+  /^(?:notice|look (?:again )?at|consider|see how|watch how|listen to|think about)\b/i
+
 /** Past-tense narration: the scene being reported rather than commented on. */
 const PAST_IRREGULAR =
   /\b(?:was|were|came|went|woke|awoke|cried|said|saw|took|gave|found|forgot|fell|ran|began|told|left|knew|made|brought|stood|sat|lay|rose|spoke|declared|murmured)\b/i
@@ -304,6 +330,11 @@ const ADDRESSES = /\b(?:we|us|our|you|your|yourself|ourselves|i|me|my)\b/i
 function opensOnRecap(all: string[]): VoiceFinding | null {
   if (all.length < MIN_REFLECTION_SENTENCES) return null
   const lead = all.slice(0, CLAIM_BY_SENTENCE)
+  // Pointing the viewer at a detail is the commentator's move, not a recap:
+  // "Notice this: the workers hired first were paid exactly what they agreed
+  // to" is there to set up "Nothing was taken from them" (owner's own
+  // opening, 2026-09-28, which this rule blocked).
+  if (ATTENTION_OPENER.test(lead[0] ?? "")) return null
   if (lead.some((s) => PRESENT_CLAIM.test(s))) return null
   // Absence of a claim is not enough on its own — the opening has to actually
   // be reporting the scene. Requiring both keeps the rule off openings that

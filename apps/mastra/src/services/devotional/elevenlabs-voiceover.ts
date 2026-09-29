@@ -62,13 +62,26 @@ export type ElevenVoiceSettings = {
   similarity_boost: number
   style: number
   use_speaker_boost: boolean
+  /**
+   * Pace, 0.7 to 1.2, where 1 is the voice's own. It moves the pauses as well
+   * as the words, so 1.1 takes noticeably more than a tenth off a paragraph.
+   * English narration only; the Russian recipe is approved at native pace.
+   */
+  speed?: number
 }
 
+/**
+ * Reflection-body delivery. Owner's pick from a four-way audition on
+ * 2026-09-25: the earlier 0.35 / 0.45 at native pace read "too slow and too
+ * monotone". Stability is what flattens a read, so it comes DOWN and style goes
+ * up, and the pace goes to 1.1. Calm is still the brief: livelier, never loud.
+ */
 export const DEFAULT_VOICE_SETTINGS: ElevenVoiceSettings = {
-  stability: 0.35,
+  stability: 0.25,
   similarity_boost: 0.85,
-  style: 0.45,
+  style: 0.6,
   use_speaker_boost: true,
+  speed: 1.1,
 }
 
 /** One spoken word with the real time ElevenLabs says it, in seconds from the
@@ -193,6 +206,17 @@ export function wordsFromAlignment(alignment: {
 /** Resolve a named alias (e.g. "male-d") to a voice id; pass ids through unchanged. */
 export function resolveVoiceId(voice: string): string {
   return (DEVOTIONAL_VOICES as Record<string, string>)[voice] ?? voice
+}
+
+/** The registry name for a voice id, or undefined for a voice we do not know
+ *  (an experiment's raw id). The inverse of `resolveVoiceId`. */
+export function voiceNameForId(
+  voiceId: string,
+): DevotionalVoiceName | undefined {
+  for (const [name, id] of Object.entries(DEVOTIONAL_VOICES)) {
+    if (id === voiceId) return name as DevotionalVoiceName
+  }
+  return undefined
 }
 
 export async function generateElevenVoiceover(

@@ -3,7 +3,7 @@ import { z } from "zod"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 
 /**
- * Pick the 3 STRONGEST phrases across the WHOLE reflection to emphasize (orange
+ * Pick the strongest phrases across the WHOLE reflection to emphasize (orange
  * italic accent) — NOT one per paragraph. Each is copied VERBATIM so the
  * composition can find and color it. Returns a per-chunk array aligned with
  * `chunks`: the phrase for the chunk that contains it, "" otherwise — so only
@@ -13,7 +13,22 @@ import { DevotionalLlmError, type DevotionalLlm } from "./llm"
  * chunks get "" (no accent).
  */
 
-const MAX_HIGHLIGHTS = 3
+/**
+ * How many phrases to accent. It used to be a flat 3, which was right when a
+ * reflection was six or seven chunks. The vineyard-era reflections carry
+ * historical and language notes as well, and at that length three accents
+ * disappear (owner, 2026-09-25: "there is more text now, so more of it can be
+ * marked"). Roughly one accent per two chunks, never fewer than 3, never more
+ * than 8 — past that everything is emphasized and nothing is.
+ */
+const MIN_HIGHLIGHTS = 3
+const HIGHLIGHT_CEILING = 8
+export function highlightCount(chunkCount: number): number {
+  return Math.max(
+    MIN_HIGHLIGHTS,
+    Math.min(HIGHLIGHT_CEILING, Math.round(chunkCount / 2)),
+  )
+}
 
 const HighlightsSchema = z.object({ phrases: z.array(z.string()) }).strict()
 
@@ -27,16 +42,21 @@ const JSON_SCHEMA = {
   },
 }
 
-export const SYSTEM_PROMPT = [
-  "You choose the phrases to visually emphasize in a devotional reflection",
-  "(shown in an accent color).",
-  `From the WHOLE reflection, pick the ${MAX_HIGHLIGHTS} STRONGEST phrases — the`,
-  "lines that carry the most emotional or spiritual weight and should land hardest.",
-  "Each phrase must be SHORT (about 2–7 words) and copied EXACTLY (verbatim, same",
-  "words and punctuation) from the reflection. Do not pick more than",
-  `${MAX_HIGHLIGHTS}. Spread them across the reflection, not all in one place.`,
-  "Return JSON { phrases: string[] }.",
-].join("\n")
+export const systemPrompt = (max: number): string =>
+  [
+    "You choose the phrases to visually emphasize in a devotional reflection",
+    "(shown in an accent color, bold and italic).",
+    `From the WHOLE reflection, pick the ${max} STRONGEST phrases — the`,
+    "lines that carry the most emotional or spiritual weight and should land hardest.",
+    "A phrase may be a few words or a whole short sentence (about 2 to 12 words),",
+    "and must be copied EXACTLY (verbatim, same words and punctuation) from the",
+    `reflection. Do not pick more than ${max}. Spread them across the reflection,`,
+    "not all in one place, and never mark two in the same sentence.",
+    "Return JSON { phrases: string[] }.",
+  ].join("\n")
+
+/** Back-compat for callers and tests that want the default shape. */
+export const SYSTEM_PROMPT = systemPrompt(MIN_HIGHLIGHTS)
 
 export type PickHighlightsInput = {
   chunks: string[]
@@ -53,12 +73,15 @@ export async function pickReflectionHighlights(
   let result: z.infer<typeof HighlightsSchema>
   try {
     result = await input.llm.complete({
-      system: SYSTEM_PROMPT,
+      system: systemPrompt(highlightCount(input.chunks.length)),
       user: full,
       jsonSchema: JSON_SCHEMA,
       schema: HighlightsSchema,
       temperature: 0.2,
-      maxTokens: 200,
+      // Up to eight phrases of up to twelve words each. The old 200 fitted the
+      // old three short ones; at the new count the JSON was cut off mid-array,
+      // failed the schema, and the call quietly returned no accents at all.
+      maxTokens: 700,
     })
   } catch (error) {
     if (error instanceof DevotionalLlmError) return input.chunks.map(() => "")
@@ -77,7 +100,7 @@ export async function pickReflectionHighlights(
   const phrases = (result.phrases ?? [])
     .map((p) => normalizeHighlight(p, full))
     .filter((p): p is string => p !== null)
-    .slice(0, MAX_HIGHLIGHTS)
+    .slice(0, highlightCount(input.chunks.length))
   const used = new Set<string>()
   return input.chunks.map((chunk) => {
     const hit = phrases.find((p) => !used.has(p) && chunk.includes(p))

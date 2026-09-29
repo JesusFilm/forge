@@ -15,6 +15,8 @@ import {
 import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
 import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
 import { BigStepWord } from "./BigStepWord"
+import { FILM_MARK_URIS } from "./film-marks"
+import { SourceMarkOverlay, WIDE_TEXT_BOTTOM } from "./SourceMarkOverlay"
 import { quoteIntroTimeline } from "./quote-timing"
 import { QuoteIntro } from "./QuoteIntro"
 import { StepProgressLine } from "./StepProgressLine"
@@ -251,8 +253,12 @@ function LetterReveal({
             style={{
               opacity: t,
               color: inHl ? style.highlight : undefined,
-              // Highlighted phrases are always italic (owner rule).
+              // Highlighted phrases are always italic (owner rule), and since
+              // 2026-09-25 they also carry weight: with longer reflections the
+              // colour alone stopped reading as emphasis (owner: "write them
+              // bolder, keep the gold").
               fontStyle: inHl ? "italic" : undefined,
+              fontWeight: inHl ? 600 : undefined,
             }}
           >
             {ch}
@@ -686,6 +692,9 @@ function PhraseCaption({
   frameHeight,
   frameWidth,
   themeWord,
+  wordStarts,
+  strongWords,
+  centreY,
 }: {
   cue: { text: string; startSec: number; endSec: number }
   t: number
@@ -693,11 +702,23 @@ function PhraseCaption({
   frameHeight: number
   frameWidth: number
   themeWord?: string
+  /** Real word times (a narrated line): each word lands as it is SAID,
+   *  instead of the paced build used for film captions. */
+  wordStarts?: ReadonlyArray<number>
+  /** Words to set large and keep gold, overriding the automatic pick. */
+  strongWords?: ReadonlyArray<string>
+  /** Vertical centre of the block, px of a 1920 frame (default 1060). */
+  centreY?: number
 }) {
   const tokens = cue.text.split(/\s+/).filter(Boolean)
-  const starts = phraseWordStarts(tokens, cue.startSec)
+  const starts =
+    wordStarts && wordStarts.length === tokens.length
+      ? [...wordStarts]
+      : phraseWordStarts(tokens, cue.startSec)
   const unit = (pxOf1080: number) => (pxOf1080 / PHRASE_FRAME_PX.w) * REF
-  const strong = phraseStrongWords(tokens, themeWord)
+  const strong = strongWords?.length
+    ? new Set(strongWords.map((w) => phraseWordKey(w)))
+    : phraseStrongWords(tokens, themeWord)
   const sized = tokens.map((token) => {
     const k = phraseWordKey(token)
     if (strong.has(k))
@@ -728,7 +749,8 @@ function PhraseCaption({
         position: "absolute",
         left: 0,
         right: 0,
-        top: (PHRASE_CENTRE_Y_PX / PHRASE_FRAME_PX.h) * frameHeight,
+        top:
+          ((centreY ?? PHRASE_CENTRE_Y_PX) / PHRASE_FRAME_PX.h) * frameHeight,
         transform: "translateY(-50%)",
         display: "flex",
         flexDirection: "column",
@@ -913,7 +935,9 @@ function VideoSubtitles({
           : fullBleed
             ? FULL_BLEED_CAPTION_TOP
             : `calc(${VIDEO_WINDOW_BOTTOM_PCT}% + ${px(16)}px)`,
-        bottom: isLandscape ? px(28) : safeBottom,
+        // 16:9: 40px higher than the old 78px (owner, 2026-09-26), in step
+        // with the reflection text.
+        bottom: isLandscape ? px(42.4) : safeBottom,
         display: "flex",
         // Landscape keeps growing UP toward the picture above it. Portrait
         // has real space below the video, so cues grow DOWN into it. Full
@@ -984,6 +1008,14 @@ function VideoSubtitles({
                     ? { liftScale: WORDS_LIFT_SCALE }
                     : {})}
                 />
+              ) : c.words ? (
+                <KaraokeLine
+                  text={c.text}
+                  starts={c.words}
+                  endSec={c.endSec}
+                  t={t}
+                  restColor="#f4efe8"
+                />
               ) : (
                 c.text
               )}
@@ -992,6 +1024,79 @@ function VideoSubtitles({
         )
       })}
     </div>
+  )
+}
+
+/**
+ * A film caption with the spoken word lit (owner, 2026-09-26): the whole line
+ * stays up as before, in white, and the word being said turns gold with a
+ * faint glow and grows slightly, karaoke style. (A gold pill behind the word
+ * was tried first and dropped by the owner.) Word times come from the film's own audio (see the source's
+ * `.words.json`); a line whose times do not match its words stays plain.
+ */
+function KaraokeLine({
+  text,
+  starts,
+  endSec,
+  t,
+  restColor,
+}: {
+  text: string
+  starts: ReadonlyArray<number>
+  endSec: number
+  t: number
+  restColor: string
+}) {
+  const words = text.split(/\s+/).filter(Boolean)
+  if (words.length !== starts.length) return <>{text}</>
+  // Long enough to read as a glide, short enough to keep up with speech.
+  const EDGE = 0.12
+  return (
+    <>
+      {words.map((w, i) => {
+        const from = starts[i]
+        const to = starts[i + 1] ?? endSec
+        // Up quickly as the word begins, down as the next one takes over.
+        // Always a glide, never a switch: a short word gets a shorter edge
+        // rather than a hard cut (hard cuts read as the word jumping).
+        const edge = Math.max(0.03, Math.min(EDGE, (to - from) / 3))
+        const lit = interpolate(
+          t,
+          [from - edge, from, to - edge, to],
+          [0, 1, 1, 0],
+          { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+        )
+        // The word itself turns gold, with a faint glow, and grows a touch
+        // (owner, 2026-09-28: no pill behind it, no jumps). The growth is a
+        // transform, which never re-lays the line, so neighbours stay put.
+        const glow = lit
+        return (
+          <span key={i}>
+            <span
+              style={{
+                display: "inline-block",
+                // A constant side margin keeps the gap visible when the lit
+                // word grows; constant, so no word ever reflows.
+                margin: "0 0.05em",
+                transform: `scale(${(1 + 0.04 * lit).toFixed(4)})`,
+                transformOrigin: "50% 70%",
+                color: interpolateColors(lit, [0, 1], [restColor, "#F2C46B"]),
+                ...(glow > 0.01
+                  ? {
+                      textShadow:
+                        `0 0 0.18em rgba(242,196,107,${(0.45 * glow).toFixed(3)}), ` +
+                        "0 2px 12px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.95)",
+                    }
+                  : {}),
+              }}
+            >
+              {w}
+            </span>
+            {i < words.length - 1 ? " " : ""}
+          </span>
+        )
+      })}
+    </>
   )
 }
 
@@ -1266,6 +1371,110 @@ export function introPartTimes(
   return out
 }
 
+/**
+ * `montage`: when each spoken line starts, from the narration's word times
+ * (the pipeline cuts the shots on exactly these instants). Lines are counted
+ * in words, as the pipeline counts them.
+ */
+export function montageLineStarts(
+  parts: ReadonlyArray<string>,
+  words: ReadonlyArray<{ startSec: number }>,
+  leadSec: number,
+): number[] {
+  const lines = parts.filter(Boolean)
+  const out: number[] = []
+  let at = 0
+  lines.forEach((line, i) => {
+    out.push(words[at]?.startSec ?? (leadSec * i) / Math.max(1, lines.length))
+    at += line.split(/\s+/).filter(Boolean).length
+  })
+  return out
+}
+
+/** `montage`: the horizontal focus (0..1) of the shot on screen at `t`. After
+ *  the last cut (the scene itself) it holds the last value given. */
+function montageFocusAt(
+  t: number,
+  starts: ReadonlyArray<number>,
+  focus: ReadonlyArray<number>,
+): number {
+  const cuts = starts.slice(0, -1)
+  let k = 0
+  while (k + 1 < cuts.length && t >= cuts[k + 1]) k++
+  if (starts.length > 1 && t >= starts[starts.length - 1]) k = focus.length - 1
+  return focus[Math.min(k, focus.length - 1)] ?? 0.5
+}
+
+/** `montage`: a slow push-in across each shot (1 → 1.045), eased, restarting
+ *  on every cut. 1 outside the lead. */
+function montagePush(
+  t: number,
+  starts: ReadonlyArray<number>,
+  leadSec: number,
+): number {
+  if (starts.length < 2 || t >= leadSec) return 1
+  // The last line is the scene itself; the shots are the lines before it.
+  const cuts = starts.slice(0, -1)
+  let k = 0
+  while (k + 1 < cuts.length && t >= cuts[k + 1]) k++
+  const from = k === 0 ? 0 : cuts[k]
+  const to = k + 1 < cuts.length ? cuts[k + 1] : leadSec
+  const p = Math.max(0, Math.min(1, (t - from) / Math.max(0.1, to - from)))
+  return 1 + 0.045 * Easing.bezier(0.33, 0, 0.67, 1)(p)
+}
+
+/**
+ * The passage the scene reads, over the big WATCH as the film begins (owner,
+ * 2026-09-28): Literata at 48px on a 1920 frame, a slow push in, and it
+ * dissolves a little after WATCH does. `t` is seconds since WATCH began.
+ */
+function WatchPassage({
+  text,
+  t,
+  watchSec,
+  px,
+}: {
+  text: string
+  t: number
+  watchSec: number
+  px: (n: number) => number
+}) {
+  const total = watchSec + 0.5
+  const opacity = interpolate(
+    t,
+    [0.15, 1.0, total - 1.0, total],
+    [0, 1, 1, 0],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: Easing.bezier(0.42, 0, 0.58, 1),
+    },
+  )
+  if (opacity <= 0) return null
+  const scale = interpolate(t, [0, total], [1, 1.06], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  })
+  return (
+    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+      <div
+        style={{
+          fontFamily: SERIF,
+          fontWeight: 400,
+          fontSize: px(48 / 2.7692),
+          color: "#ffffff",
+          whiteSpace: "nowrap",
+          textShadow: `0 ${px(1)}px ${px(14)}px rgba(0,0,0,0.55)`,
+          opacity,
+          transform: `scale(${scale.toFixed(4)})`,
+        }}
+      >
+        {text}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
 function ClipIntro({
   variant,
   leadSec,
@@ -1281,8 +1490,12 @@ function ClipIntro({
   hookText,
   parts = [],
   introWords = [],
+  framed = false,
+  captions = [],
+  passageRef,
+  cta = false,
 }: {
-  variant: "cover" | "bands" | "hook" | "watch"
+  variant: "cover" | "bands" | "hook" | "watch" | "opening" | "montage"
   leadSec: number
   frame: number
   fps: number
@@ -1307,6 +1520,15 @@ function ClipIntro({
     startSec: number
     endSec: number
   }>
+  /** `opening`: the first and last parts are the spoken welcome and "Let's
+   *  watch" (see the manifest's `introFrame`). */
+  framed?: boolean
+  /** `montage`: captions on chosen spoken lines. */
+  captions?: ReadonlyArray<{ line: number; text: string; lead?: string }>
+  /** The passage the scene reads, drawn over WATCH. */
+  passageRef?: string
+  /** `montage` teaser: the last line is a call to action, not "Let's watch". */
+  cta?: boolean
 }) {
   const bleed = {
     position: "absolute" as const,
@@ -1404,6 +1626,512 @@ function ClipIntro({
     whiteSpace: "nowrap" as const,
     textShadow: "0 1px 8px rgba(0,0,0,0.45)",
   })
+
+  if (variant === "montage") {
+    // The film's own shots, one per spoken line and cut on its first word
+    // (the cuts are in the footage, built by the pipeline from the narration's
+    // word times; each shot also pushes in slowly, see montagePush). Over them
+    // only what the owner scripted (2026-09-28): the contrast in big caps on
+    // the lines that carry it (THEY WORKED ALL DAY / ONE HOUR / THE SAME PAY),
+    // nothing big on the question, the whole narration as a subtitle below, and
+    // WATCH across the frame at a whisper as the voice says "Let's watch" and
+    // the scene begins. No answer is given here.
+    const lines = parts.filter(Boolean)
+    const starts = montageLineStarts(lines, introWords, L)
+    const watchAt = starts.length > 1 ? starts[starts.length - 1] : L
+    // The last line ("Let's watch.") is said as the scene begins; its subtitle
+    // stays through it, over the film's first quiet seconds.
+    const lineEnd = (i: number) =>
+      i + 1 < starts.length ? starts[i + 1] : Math.max(L, watchAt + 1.3)
+    // Calm and a little mysterious at first: a deeper scrim on the first shot
+    // that eases as the contrast begins, and gone once the film has the frame.
+    const scrim = interpolate(
+      t,
+      [0, starts[1] ?? 2, watchAt, watchAt + 0.8],
+      [0.42, 0.26, 0.26, 0],
+      clampBoth,
+    )
+    const watchFrom = watchAt - 0.15
+    const watchFrames = Math.max(1, Math.round(2.6 * fps))
+    // The narration as a subtitle, one line at a time, the spoken word lit —
+    // the same treatment as the film's own captions that follow, so the two
+    // read as one piece.
+    const wordStarts = introWords.map((w) => w.startSec)
+    let wi = 0
+    const subtitles = lines.map((line, i) => {
+      const n = line.split(/\s+/).filter(Boolean).length
+      const ws = wordStarts.slice(wi, wi + n)
+      wi += n
+      return { i, line, ws }
+    })
+    const wide = frameWidth > frameHeight
+    // VERTICAL TEASER (owner, 2026-09-29): the same shots and voice, the
+    // narration set as the compact phrase captions (words of different sizes,
+    // the contrast words large and gold), and the last line is a call to watch
+    // the full devotional on YouTube instead of "Let's watch".
+    if (cta && !wide) {
+      const last = lines.length - 1
+      return (
+        <div style={{ ...bleed, pointerEvents: "none" }}>
+          {/* One even dim for the whole teaser (house style: no band). */}
+          <AbsoluteFill style={{ background: "rgba(0,0,0,0.25)" }} />
+          {subtitles.map(({ i, line, ws }) => {
+            const from = starts[i]
+            if (i === last) {
+              // The call to action fades up and holds.
+              const o = interpolate(t, [from - 0.1, from + 1.2], [0, 1], {
+                ...clampBoth,
+                easing: ease,
+              })
+              if (o <= 0) return null
+              return (
+                <AbsoluteFill key={i} style={{ opacity: o }}>
+                  <PhraseCaption
+                    cue={{ text: line, startSec: from - 10, endSec: from + 60 }}
+                    t={t}
+                    px={px}
+                    frameHeight={frameHeight}
+                    frameWidth={frameWidth}
+                    wordStarts={ws.map(() => from - 10)}
+                    strongWords={["YouTube"]}
+                    centreY={960}
+                  />
+                </AbsoluteFill>
+              )
+            }
+            const to = lineEnd(i)
+            const cap = captions.find((c) => c.line === i)
+            // A long line is set as consecutive phrases,
+            // each replacing the last as the voice reaches it (at most seven words): the phrase
+            // block holds three lines, and a whole question in it was cut off.
+            const tokens = line.split(/\s+/).filter(Boolean)
+            const n = Math.max(1, Math.ceil(tokens.length / 7))
+            const size = Math.ceil(tokens.length / n)
+            const chunks = Array.from({ length: n }, (_, c) => ({
+              text: tokens.slice(c * size, (c + 1) * size).join(" "),
+              ws: ws.slice(c * size, (c + 1) * size),
+            })).filter((c) => c.text)
+            return chunks.map((c, ci) => {
+              const cFrom = ci === 0 ? from : (c.ws[0] ?? from)
+              const cTo =
+                ci + 1 < chunks.length ? (chunks[ci + 1].ws[0] ?? to) : to
+              const o = interpolate(
+                t,
+                [cFrom - 0.12, cFrom, cTo - 0.15, cTo],
+                [0, 1, 1, 0],
+                clampBoth,
+              )
+              if (o <= 0) return null
+              return (
+                <AbsoluteFill key={`${i}-${ci}`} style={{ opacity: o }}>
+                  <PhraseCaption
+                    cue={{ text: c.text, startSec: cFrom, endSec: cTo }}
+                    t={t}
+                    px={px}
+                    frameHeight={frameHeight}
+                    frameWidth={frameWidth}
+                    wordStarts={c.ws}
+                    {...(cap
+                      ? { strongWords: cap.text.split(/\s+/).filter(Boolean) }
+                      : {})}
+                  />
+                </AbsoluteFill>
+              )
+            })
+          })}
+        </div>
+      )
+    }
+    return (
+      <div style={{ ...bleed, pointerEvents: "none" }}>
+        <AbsoluteFill style={{ background: `rgba(0,0,0,${scrim})` }} />
+        {/* The narration itself, in the middle of the frame (owner,
+            2026-09-28): each line small, half the size of the big captions;
+            where a line carries a big caption, only the words before it are
+            set small, above it ("The others worked" over ONE HOUR). "Let's
+            watch" has WATCH and the passage instead. */}
+        {subtitles.map(({ i, line, ws }) => {
+          if (i === lines.length - 1) return null
+          const from = starts[i]
+          const to = lineEnd(i)
+          const cap = captions.find((c) => c.line === i)
+          const small = cap ? cap.lead : line
+          const inP = interpolate(t, [from - 0.05, from + 0.75], [0, 1], {
+            ...clampBoth,
+            easing: Easing.bezier(0.16, 1, 0.3, 1),
+          })
+          const outP = interpolate(t, [to - 0.35, to - 0.02], [1, 0], {
+            ...clampBoth,
+            easing: ease,
+          })
+          const o = inP * outP
+          if (o <= 0) return null
+          const bigPx = px(wide ? 34 : 30)
+          const smallWords = small ? small.split(/\s+/).filter(Boolean) : []
+          return (
+            <AbsoluteFill
+              key={i}
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: o,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: px(6),
+                  maxWidth: px(430),
+                  textAlign: "center",
+                }}
+              >
+                {small ? (
+                  <div
+                    style={{
+                      fontFamily: SERIF,
+                      fontWeight: 400,
+                      fontSize: bigPx / 2,
+                      lineHeight: 1.35,
+                      color: "#f4efe8",
+                      textWrap: "balance",
+                      textShadow: `0 ${px(1)}px ${px(14)}px rgba(0,0,0,0.6)`,
+                      filter:
+                        inP < 0.99
+                          ? `blur(${(px(2) * (1 - inP)).toFixed(2)}px)`
+                          : undefined,
+                    }}
+                  >
+                    {ws.length >= smallWords.length ? (
+                      <KaraokeLine
+                        text={small}
+                        starts={ws.slice(0, smallWords.length)}
+                        endSec={cap ? (ws[smallWords.length] ?? to) : to}
+                        t={t}
+                        restColor="#f4efe8"
+                      />
+                    ) : (
+                      small
+                    )}
+                  </div>
+                ) : null}
+                {cap ? (
+                  <div
+                    style={{
+                      fontFamily: SERIF,
+                      fontWeight: 600,
+                      fontSize: bigPx,
+                      letterSpacing: px(2.2 + 3.2 * (1 - inP)),
+                      textTransform: "uppercase",
+                      color: "#ffffff",
+                      whiteSpace: "nowrap",
+                      textShadow: `0 ${px(2)}px ${px(22)}px rgba(0,0,0,0.6)`,
+                      filter:
+                        inP < 0.99
+                          ? `blur(${(px(3) * (1 - inP)).toFixed(2)}px)`
+                          : undefined,
+                    }}
+                  >
+                    {cap.text}
+                  </div>
+                ) : null}
+              </div>
+            </AbsoluteFill>
+          )
+        })}
+        {t >= watchFrom ? (
+          <Sequence
+            from={Math.round(watchFrom * fps)}
+            durationInFrames={watchFrames}
+            layout="none"
+          >
+            <BigStepWord
+              label={steps[0] ?? "WATCH"}
+              frame={frame - Math.round(watchFrom * fps)}
+              fps={fps}
+              px={px}
+              durationInFrames={watchFrames}
+              serif={SERIF}
+            />
+          </Sequence>
+        ) : null}
+        {passageRef && t >= watchFrom ? (
+          <WatchPassage
+            text={passageRef}
+            t={t - watchFrom}
+            watchSec={watchFrames / fps}
+            px={px}
+          />
+        ) : null}
+      </div>
+    )
+  }
+
+  if (variant === "opening") {
+    // The opening the owner settled on (2026-09-25, revised 2026-09-26):
+    //   * the voice opens with "Welcome to Daily Bible Pause." while the brand
+    //     mark performs at the top, slowly, and the series name settles under
+    //     it (it said "Today's devotional"; the owner wants the name);
+    //   * the TITLE is written word by word as the voice reads it, and so is
+    //     each under-line; every word arrives gold with a faint glow, as if it
+    //     were being lit, and cools to white;
+    //   * the third line REPLACES the second in the same slot, so the eye
+    //     stays in one place instead of reading a growing stack;
+    //   * "Let's watch": the lines leave and WATCH rises across the frame at a
+    //     whisper, the way REFLECT and PRAY do, then the film.
+    // Nothing moves except the mark and WATCH. The words only fade.
+    const all = parts.filter(Boolean)
+    const lines = framed ? all.slice(1, -1) : all
+    const title = lines[0] ?? ""
+    const unders = lines.slice(1)
+
+    const BRAND_SPAN_SEC = 3.6
+    const UNDER_FIRST_SEC = 3.4
+    const underSpan = Math.max(
+      1.6,
+      (L - UNDER_FIRST_SEC - 0.8) / Math.max(1, unders.length),
+    )
+    // Word times per part, from the narration (spoken opening). A part's words
+    // are counted the way introPartTimes counts them, so the two agree.
+    const spoken = introWords.length > 0
+    const partStarts: number[][] = []
+    {
+      let at = 0
+      for (const part of all) {
+        const n = part.split(/\s+/).filter(Boolean).length
+        partStarts.push(introWords.slice(at, at + n).map((w) => w.startSec))
+        at += n
+      }
+    }
+    const lineIndex = (i: number) => (framed ? i + 1 : i)
+    const beats = spoken ? introPartTimes(all, introWords) : []
+    // When line i (0 = title) begins: the voice's first word of it, or an even
+    // pace for a silent opening.
+    const lineStart = (i: number) =>
+      beats[lineIndex(i)]?.from ??
+      (i === 0 ? 0 : UNDER_FIRST_SEC + (i - 1) * underSpan)
+    const wordStart = (i: number, w: number) =>
+      partStarts[lineIndex(i)]?.[w] ?? lineStart(i) + w * 0.2
+
+    const watchBeat = framed && spoken ? beats[beats.length - 1] : undefined
+    const watchAt = watchBeat?.from ?? null
+
+    // Everything drawn leaves before the film speaks; with "Let's watch" it
+    // leaves as the voice says it, to make way for WATCH.
+    const allOut =
+      watchAt != null
+        ? interpolate(t, [watchAt - 0.25, watchAt + 0.35], [1, 0], clampBoth)
+        : interpolate(t, [L - 0.8, L - 0.15], [1, 0], clampBoth)
+    // The series name settles in once the lockup has collapsed into the small
+    // mark (owner, 2026-09-26), not while the long logo is still on screen:
+    // the slow morph ends at 0.82 of its span (see AnimatedBrandMark).
+    const kickerFrom = BRAND_SPAN_SEC * 0.82 + 0.15
+    const kicker = interpolate(t, [kickerFrom, kickerFrom + 0.6], [0, 1], {
+      ...clampBoth,
+      easing: ease,
+    })
+    // The picture stays sharp (owner). Only a scrim carries the text, and it
+    // lifts before the film speaks. A touch heavier than the first cut: LUMO's
+    // vineyard is bright, and white text on sunlit leaves was on the edge.
+    const scrim = interpolate(
+      t,
+      [0, 0.5, L - 0.9, L - 0.15],
+      [0.16, 0.44, 0.44, 0],
+      clampBoth,
+    )
+    const wide = frameWidth > frameHeight
+
+    // One word of a line: in over 0.3s as the voice reaches it, gold with a
+    // faint glow for a moment, then cooling to white (owner, 2026-09-26: "like
+    // it is gently lighting up"; the glow is the step light's, much lighter).
+    const litWord = (word: string, at: number, key: number, white: string) => {
+      const on = interpolate(t, [at - 0.05, at + 0.3], [0, 1], {
+        ...clampBoth,
+        easing: ease,
+      })
+      const cool = interpolate(t, [at + 0.45, at + 1.05], [0, 1], {
+        ...clampBoth,
+        easing: ease,
+      })
+      const glow = on * (1 - cool)
+      return (
+        <span key={key}>
+          <span
+            style={{
+              opacity: on,
+              color: interpolateColors(cool, [0, 1], [INTRO_GOLD, white]),
+              textShadow:
+                `0 0 ${px(5)}px rgba(242,196,107,${(0.32 * glow).toFixed(3)}), ` +
+                `0 ${px(2)}px ${px(20)}px rgba(0,0,0,0.58)`,
+            }}
+          >
+            {word}
+          </span>{" "}
+        </span>
+      )
+    }
+    const writeLine = (i: number, text: string, white: string) =>
+      text
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((w, k) => litWord(w, wordStart(i, k), k, white))
+
+    const watchFrom = watchAt != null ? watchAt - 0.2 : null
+    const watchFrames =
+      watchFrom != null
+        ? Math.max(1, Math.round((L + 0.9 - watchFrom) * fps))
+        : 0
+
+    return (
+      <div style={{ ...bleed, pointerEvents: "none" }}>
+        <AbsoluteFill style={{ background: `rgba(0,0,0,${scrim})` }} />
+
+        {/* the mark, performing slowly, at the top and out of the title's way */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: wide ? "14%" : "20%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: px(9),
+            opacity: allOut,
+          }}
+        >
+          <AnimatedBrandMark
+            px={px}
+            frame={frame}
+            fps={fps}
+            spanSec={BRAND_SPAN_SEC}
+          />
+          <div
+            style={{
+              fontFamily: SANS,
+              fontWeight: 700,
+              fontSize: px(10),
+              letterSpacing: px(2.6),
+              textTransform: "uppercase",
+              color: "rgba(214,217,224,0.8)",
+              opacity: kicker,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Daily Bible Pause
+          </div>
+        </div>
+
+        {/* the title, and one under-line at a time beneath it */}
+        <AbsoluteFill
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            padding: `0 ${px(34)}px`,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: px(20),
+              // Wide enough that the second line sets as TWO lines, not three
+              // (owner, 2026-09-25). `width` as well as `maxWidth`: in a
+              // centring flex parent this column otherwise shrinks to its
+              // widest child — the short title — and the under-line, which is
+              // absolutely positioned inside it, wrapped to that width.
+              width: wide ? frameWidth * 0.74 : "100%",
+              maxWidth: "100%",
+              textAlign: "center",
+              opacity: allOut,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: SERIF,
+                fontWeight: 600,
+                fontSize: px(wide ? 40 : 34),
+                lineHeight: 1.18,
+                textWrap: "balance",
+              }}
+            >
+              {writeLine(0, title, "#ffffff")}
+            </div>
+            {/* One slot. Each line clears as the next one begins, so the
+                reader's eye never has to move or re-scan. */}
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: px(wide ? 58 : 66),
+              }}
+            >
+              {unders.map((line, i) => {
+                const isLast = i === unders.length - 1
+                const off = isLast
+                  ? 1
+                  : interpolate(
+                      t,
+                      [lineStart(i + 2) - 0.45, lineStart(i + 2) - 0.05],
+                      [1, 0],
+                      clampBoth,
+                    )
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      fontFamily: SERIF,
+                      fontWeight: 400,
+                      fontSize: px(wide ? 22 : 21),
+                      lineHeight: 1.35,
+                      // NOT `balance`: on this sentence the balancer prefers
+                      // three even lines to two full ones, which is exactly
+                      // what the owner asked to get rid of (2026-09-25).
+                      textWrap: "pretty",
+                      opacity: off,
+                    }}
+                  >
+                    {writeLine(i + 1, line, "rgba(255,255,255,0.9)")}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </AbsoluteFill>
+
+        {watchFrom != null && t >= watchFrom ? (
+          <Sequence
+            from={Math.round(watchFrom * fps)}
+            durationInFrames={watchFrames}
+            layout="none"
+          >
+            <BigStepWord
+              label={steps[0] ?? "WATCH"}
+              frame={frame - Math.round(watchFrom * fps)}
+              fps={fps}
+              px={px}
+              durationInFrames={watchFrames}
+              serif={SERIF}
+            />
+          </Sequence>
+        ) : null}
+        {passageRef && watchFrom != null && t >= watchFrom ? (
+          <WatchPassage
+            text={passageRef}
+            t={t - watchFrom}
+            watchSec={watchFrames / fps}
+            px={px}
+          />
+        ) : null}
+      </div>
+    )
+  }
 
   if (variant === "watch") {
     // THREE BEATS, each moving with the voice that carries it (owner):
@@ -1987,12 +2715,17 @@ function AnimatedBrandMark({
   px,
   frame,
   fps,
+  spanSec = 1.0,
 }: {
   px: (n: number) => number
   frame: number
   fps: number
+  /** How long the whole stamp → morph takes. The end card runs it in a second
+   *  because it only has two; the opening takes its time (owner: "there is
+   *  nowhere to rush, nothing can be understood at that speed"). */
+  spanSec?: number
 }) {
-  const span = Math.max(1, Math.round(1.0 * fps))
+  const span = Math.max(1, Math.round(spanSec * fps))
   const p = Math.max(0, Math.min(1, frame / span))
   const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
   const inOutCubic = {
@@ -2008,15 +2741,25 @@ function AnimatedBrandMark({
     [1.4, 0.93, 1.05, 1.0],
     clamp,
   )
-  const clipW = interpolate(p, [0.16, 0.35], [lockupW, symbolW], {
+  // The collapse used to take 19% of the span whatever the span was: on the
+  // two-second opening that is under half a second, and the owner could not
+  // see what had happened. On a long span the lockup now HOLDS so it can be
+  // read, and then crops down slowly over half the span. The end card (1s)
+  // keeps the original quick keyframes — it has no time to spare.
+  const slow = spanSec > 1.5
+  const cropFrom = slow ? 0.3 : 0.16
+  const cropTo = slow ? 0.82 : 0.35
+  const swapFrom = slow ? 0.68 : 0.29
+  const swapTo = slow ? 0.82 : 0.35
+  const clipW = interpolate(p, [cropFrom, cropTo], [lockupW, symbolW], {
     ...clamp,
     ...inOutCubic,
   })
-  const lockupOpacity = interpolate(p, [0.29, 0.35], [1, 0], {
+  const lockupOpacity = interpolate(p, [swapFrom, swapTo], [1, 0], {
     ...clamp,
     ...inOutCubic,
   })
-  const symbolOpacity = interpolate(p, [0.29, 0.35], [0, 1], {
+  const symbolOpacity = interpolate(p, [swapFrom, swapTo], [0, 1], {
     ...clamp,
     ...inOutCubic,
   })
@@ -2468,18 +3211,16 @@ function CoverIntro({
         ...inOutCubic,
       })
 
-  // ---- headline: rises in below the row, UNLESS textStatic — social test
-  // cards want the title readable from frame 0 while the logo still animates.
+  // ---- headline: FADES in, and does not move. It used to rise from below,
+  // which the owner rejected (2026-09-25): "words can just appear calmly,
+  // without any extra movement". The logo is the only thing that animates in
+  // the opening, so the words are read rather than watched.
   const headOpacity = textStatic
     ? 1
     : titleLeads
       ? interpolate(pTitle, [0, 0.75], [0, 1], { ...clamp, ...outCubic })
       : interpolate(p, [0.72, 0.94], [0, 1], { ...clamp, ...outCubic })
-  const headY = textStatic
-    ? 0
-    : titleLeads
-      ? interpolate(pTitle, [0, 1], [cpx(10.8), 0], { ...clamp, ...outCubic })
-      : interpolate(p, [0.72, 0.96], [cpx(10.8), 0], { ...clamp, ...outCubic })
+  const headY = 0
 
   // ---- secondary line: reveals letter-by-letter once the logo settles (no
   // date-wipe slot to wait for, so it can start right after the morph
@@ -3061,10 +3802,14 @@ function CardBody({
             extrapolateRight: "clamp",
           })
         : 1
-    // Clip-first hand-over screen: the top row already says where the viewer
-    // is, so the middle carries only the step's NAME, at a whisper, arriving
-    // out of the blur (owner, 2026-09-23).
-    if (isLine) {
+    // Clip-first hand-over screen, 16:9 ONLY: there the top row already says
+    // where the viewer is, so the middle carries only the step's NAME, at a
+    // whisper, arriving out of the blur (owner, 2026-09-23).
+    // In 9:16 the top strip is where every social UI puts its own chrome, so
+    // the row is not drawn there and the vertical column stays the stepper:
+    // the light travels down onto the next step, which warms and begins
+    // (owner, 2026-09-24).
+    if (isLine && isLandscape) {
       const labels = card.steps ?? ["WATCH", "REFLECT", "PRAY"]
       return (
         <BigStepWord
@@ -3581,52 +4326,67 @@ function CardBody({
         </span>
       </Eyebrow>
     )
+    const paragraph = (
+      <p
+        style={{
+          margin: 0,
+          // The reflection body stays on Inter even in the serif cut: it is
+          // the longest block of reading in the piece and the owner found the
+          // sans easier to read at speed. Every other main text element
+          // follows `textFont`.
+          fontFamily: SANS,
+          fontWeight: 400,
+          // Owner-picked sizes: right panel 55px, bottom band 60px (desktop
+          // 16:9). Portrait was 69px (px(25)) — read fine in the desktop
+          // preview but too large once actually viewed on a phone inside
+          // Instagram/Reels (owner: screenshots showing 4-6 lines eating
+          // most of the screen), so trimmed to 58px (px(21)), then to 52px
+          // (px(19)) after the owner asked again on the word-reveal cut.
+          fontSize:
+            wideText === "right"
+              ? px(20)
+              : wideText === "bottom"
+                ? px(22)
+                : px(21),
+          lineHeight: 1.46,
+          color: style.body,
+          // The wide cut centres its reflection (owner, 2026-09-25). Set HERE
+          // and not only on the wrapper: the wrapper is a flex column that
+          // centres its items, so the paragraph hugs its longest line and a
+          // `text-align` up there has nothing to act on — every line still
+          // starts at the same left edge.
+          // Keyed to the ASPECT, not to `wideText`: the wide cut centres its
+          // reflection (owner, 2026-09-25) and the vertical one does not,
+          // and that is the whole rule. Keying it to the text-placement mode
+          // left it silently off.
+          ...(isLandscape
+            ? { width: "100%", textAlign: "center" as const }
+            : {}),
+          // With real word timings the card reveals word by word in step
+          // with the voice, so the block-level reveal would fight it; the
+          // whole-block settle stays for every card without timings.
+          ...(wordTimings ? {} : reveal(frame, fps, 0.35, 1, "popUp")),
+        }}
+      >
+        {wordTimings ? (
+          <WordReveal
+            timings={wordTimings}
+            frame={frame}
+            fps={fps}
+            audioDelaySec={0}
+            {...(card.highlight ? { highlight: card.highlight } : {})}
+            style={style}
+            restColor={style.body}
+          />
+        ) : (
+          withHighlight(card.text ?? "", card.highlight, style)
+        )}
+      </p>
+    )
     const inner = (
       <>
         {heading}
-        <p
-          style={{
-            margin: 0,
-            // The reflection body stays on Inter even in the serif cut: it is
-            // the longest block of reading in the piece and the owner found the
-            // sans easier to read at speed. Every other main text element
-            // follows `textFont`.
-            fontFamily: SANS,
-            fontWeight: 400,
-            // Owner-picked sizes: right panel 55px, bottom band 60px (desktop
-            // 16:9). Portrait was 69px (px(25)) — read fine in the desktop
-            // preview but too large once actually viewed on a phone inside
-            // Instagram/Reels (owner: screenshots showing 4-6 lines eating
-            // most of the screen), so trimmed to 58px (px(21)), then to 52px
-            // (px(19)) after the owner asked again on the word-reveal cut.
-            fontSize:
-              wideText === "right"
-                ? px(20)
-                : wideText === "bottom"
-                  ? px(22)
-                  : px(21),
-            lineHeight: 1.46,
-            color: style.body,
-            // With real word timings the card reveals word by word in step
-            // with the voice, so the block-level reveal would fight it; the
-            // whole-block settle stays for every card without timings.
-            ...(wordTimings ? {} : reveal(frame, fps, 0.35, 1, "popUp")),
-          }}
-        >
-          {wordTimings ? (
-            <WordReveal
-              timings={wordTimings}
-              frame={frame}
-              fps={fps}
-              audioDelaySec={0}
-              {...(card.highlight ? { highlight: card.highlight } : {})}
-              style={style}
-              restColor={style.body}
-            />
-          ) : (
-            withHighlight(card.text ?? "", card.highlight, style)
-          )}
-        </p>
+        {paragraph}
       </>
     )
     // Portrait experiment: the pipeline feeds ONE sentence per reflection card,
@@ -3668,12 +4428,12 @@ function CardBody({
             : topAnchored
               ? px(120)
               : undefined,
-          // Owner rule (bottom band): 48px from the last line to the frame
-          // edge at 1080p — px(17.35) ≈ 48px. Reflection text is LEFT-aligned
-          // (owner: centered reflection is hard to read) — ragged right.
+          // Owner rule (bottom band): the band used to sit 48px off the frame
+          // edge; on 2026-09-25 the owner asked for it about 40px higher (88px
+          // at 1080p), and on 2026-09-26 another 40px: 128px. 16:9 ONLY.
           paddingBottom:
             wideText === "bottom"
-              ? px(17.35)
+              ? px(WIDE_TEXT_BOTTOM)
               : igSafe
                 ? igSafeBottom
                 : style.textBottom
@@ -3684,7 +4444,11 @@ function CardBody({
           // rail), which read as the text sitting off-centre.
           paddingLeft: igSafe ? igSafeRight : undefined,
           paddingRight: igSafe ? igSafeRight : undefined,
-          textAlign: wideText === "bottom" ? "left" : undefined,
+          // The wide cut CENTRES its reflection (owner, 2026-09-25). This
+          // reverses an older rule of hers — "centered reflection is hard to
+          // read" — which still stands for the vertical cut, where the text is
+          // longer on screen and the eye has further to travel back.
+          textAlign: isLandscape ? "center" : undefined,
         }}
       >
         {frosted ? <FrostPanel px={px}>{inner}</FrostPanel> : inner}
@@ -3696,9 +4460,12 @@ function CardBody({
     // The emotional ending: always centered on the blurred background, whatever
     // the layout — a held, highlighted closing beat (not bottom-anchored, not in
     // a frost panel).
+    // 16:9 sets the takeaway bare, no rules above or below (owner,
+    // 2026-09-26: "they feel unnecessary now"). Portrait keeps the styles' own
+    // treatment, which the owner has signed off and asked not to touch.
     const body = (
       <>
-        {style.pullquote === "glyph" ? (
+        {isLandscape ? null : style.pullquote === "glyph" ? (
           <div
             style={{
               fontFamily: SERIF,
@@ -3748,7 +4515,7 @@ function CardBody({
             withHighlight(card.text ?? "", card.highlight, style)
           )}
         </p>
-        {style.pullquote === "glyph" ? (
+        {!isLandscape && style.pullquote === "glyph" ? (
           <div
             style={{
               marginTop: px(30),
@@ -3759,24 +4526,7 @@ function CardBody({
             }}
           />
         ) : null}
-        {style.pullquote === "bars" ? (
-          <div
-            style={{
-              marginTop: px(30),
-              width: px(48),
-              height: px(4),
-              background: style.rule,
-              ...reveal(frame, fps, 0.9, 1, "fade"),
-            }}
-          />
-        ) : null}
-        {/* 16:9 closes the quote with a rule matching the one above it
-            (owner's design): in a wide frame a single top rule left the line
-            hanging, and the pair balances it. Portrait keeps the styles'
-            own treatment, which the owner has already signed off. */}
-        {isLandscape &&
-        style.pullquote !== "glyph" &&
-        style.pullquote !== "bars" ? (
+        {!isLandscape && style.pullquote === "bars" ? (
           <div
             style={{
               marginTop: px(30),
@@ -3823,7 +4573,7 @@ function CardBody({
         questions={card.questionsList ?? []}
         watchLabel={card.watchLabel ?? "Let's watch."}
         {...(card.ctaLine ? { cta: card.ctaLine } : {})}
-        {...(card.ctaLabel ? { ctaLabel: card.ctaLabel } : {})}
+        {...(card.ctaLabel != null ? { ctaLabel: card.ctaLabel } : {})}
         {...(card.keySfx ? { keySfx: card.keySfx } : {})}
         {...(card.transitionSfx ? { transitionSfx: card.transitionSfx } : {})}
         px={px}
@@ -3841,28 +4591,72 @@ function CardBody({
     // easing in, the spoken "Let's watch" is also shown, then dissolves out as
     // the film takes over.
     const lead = card.mutedLeadSec ?? 0
+    // The film's own mark, small in the top-left for the whole clip: credit for
+    // the pictures, at the size of the reflection author's avatar (owner).
+    // It waits out the opening — during those seconds the frame belongs to our
+    // own brand, and two marks at once would read as a co-production card.
+    const filmMark = card.filmMark ? (
+      <img
+        src={FILM_MARK_URIS[card.filmMark]}
+        alt=""
+        style={{
+          position: "absolute",
+          // Owner's numbers, set in Figma on the 1920x1080 frame: 98px tall at
+          // x=72 y=56. px() is keyed to the SHORT side (390 reference), so in a
+          // 1080-high frame those become 35.4 / 26 / 20.2.
+          //
+          // `-bleedX`: in 16:9 the card is laid out inside a centred column and
+          // a plain `left: 72` lands 261px further right — the frame's corner is
+          // OUTSIDE the column (owner: "the LUMO logo is too far right, it
+          // should be in the top-left corner"). Same escape the captions and the
+          // intro scrim use.
+          left: px(26) - (bleedX ?? 0),
+          top: px(20.2),
+          height: px(35.4),
+          width: "auto",
+          opacity:
+            0.82 *
+            interpolate(
+              frame / fps,
+              [Math.max(0, lead - 0.2), Math.max(0.3, lead + 0.6)],
+              [0, 1],
+              { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+            ),
+          filter: `drop-shadow(0 ${px(1)}px ${px(5)}px rgba(0,0,0,0.55))`,
+          pointerEvents: "none",
+        }}
+      />
+    ) : null
     if (card.intro && lead > 0) {
       return (
-        <ClipIntro
-          variant={card.intro}
-          leadSec={lead}
-          frame={frame}
-          fps={fps}
-          px={px}
-          style={style}
-          steps={card.steps ?? ["WATCH", "REFLECT", "PRAY"]}
-          pieceSec={pieceSec ?? durationInFrames / fps}
-          clipSrc={card.videoFile ? staticFile(card.videoFile) : null}
-          frameWidth={vw}
-          frameHeight={vh}
-          bleedX={bleedX ?? 0}
-          {...(card.hookText ? { hookText: card.hookText } : {})}
-          {...(card.introParts ? { parts: card.introParts } : {})}
-          {...(card.words ? { introWords: card.words } : {})}
-        />
+        <>
+          {filmMark}
+          <ClipIntro
+            variant={card.intro}
+            leadSec={lead}
+            frame={frame}
+            fps={fps}
+            px={px}
+            style={style}
+            steps={card.steps ?? ["WATCH", "REFLECT", "PRAY"]}
+            pieceSec={pieceSec ?? durationInFrames / fps}
+            clipSrc={card.videoFile ? staticFile(card.videoFile) : null}
+            frameWidth={vw}
+            frameHeight={vh}
+            bleedX={bleedX ?? 0}
+            {...(card.hookText ? { hookText: card.hookText } : {})}
+            {...(card.introParts ? { parts: card.introParts } : {})}
+            {...(card.words ? { introWords: card.words } : {})}
+            framed={card.introFrame === true}
+            {...(card.introCaptions ? { captions: card.introCaptions } : {})}
+            {...(card.passageRef ? { passageRef: card.passageRef } : {})}
+            cta={card.introCta === true}
+          />
+        </>
       )
     }
-    if (!card.leadLabel || lead <= 0) return null
+    if (!card.leadLabel || lead <= 0) return filmMark
+
     const t = frame / fps
     // Build the hold from a knot that is already past the fade-in, then put the
     // fade-out after it. Writing the last knot as `lead + 0.35` against a third
@@ -4045,7 +4839,7 @@ function CardBody({
           questions). Same fill/orbit animation + timing as before — it just
           flows inline here instead of the old bottom-corner overlay. Left out
           when the corner ring clocks the whole PRAY step instead. */}
-      {hideRing ? null : (
+      {hideRing || isLandscape ? null : (
         <div
           style={{
             // Owner widened the gap under the ring in 16:9 and left-aligned it
@@ -4221,6 +5015,26 @@ function CardBody({
               card.prayer
             )}
           </p>
+        </div>
+      ) : null}
+      {/* 16:9: the ring comes AFTER the prayer (owner, 2026-09-26), under the
+          text and on the column's left edge, once the voice has finished: it
+          is the clock for the silence the card leaves to pray in. Shown even
+          when the step ring is on, since the wide cut has no corner ring. */}
+      {isLandscape ? (
+        <div style={{ marginTop: L_GAP * 2, alignSelf: "flex-start" }}>
+          <ProgressRing
+            px={px}
+            fps={fps}
+            frame={frame}
+            startFrame={Math.round(
+              (card.durationSec ?? prayerTextStart + 2) * fps,
+            )}
+            durationInFrames={durationInFrames}
+            isLandscape
+            inline
+            size={px(30)}
+          />
         </div>
       ) : null}
       {card.attribution ? (
@@ -4439,6 +5253,19 @@ function Background({
     />
   )
   const bgTextLayer = bgTextVideo
+  // `montage` opening: each borrowed shot pushes in slowly, cut to cut.
+  const montageScale =
+    isVideoCard && card.intro === "montage"
+      ? montagePush(
+          frame / fps,
+          montageLineStarts(
+            card.introParts ?? [],
+            card.words ?? [],
+            card.mutedLeadSec ?? 0,
+          ),
+          card.mutedLeadSec ?? 0,
+        )
+      : 1
 
   // The video card shows the horizontal clip FITTED (whole frame visible) with a
   // blurred, enlarged copy filling the wings — no dead letterbox bars. Text
@@ -4567,7 +5394,7 @@ function Background({
                 filter:
                   `${videoGrade ?? ""} ${watchIntroBlurPx > 0.05 ? `blur(${watchIntroBlurPx.toFixed(2)}px)` : ""}`.trim() ||
                   undefined,
-                transform: `scale(${kbFit})`,
+                transform: `scale(${(kbFit * montageScale).toFixed(5)})`,
               }
             : fullBleedVideo
               ? {
@@ -4579,26 +5406,45 @@ function Background({
                   width: "100%",
                   height: "100%",
                   objectFit: "cover",
-                  ...(card.clipFocus && card.clipFocus.length > 0
+                  ...(card.intro === "montage" && card.introFocus?.length
                     ? {
+                        // Each borrowed shot is framed on its own subject.
                         objectPosition: `${(
                           coverObjectPositionX(
-                            pathAt(
-                              card.clipFocus,
-                              (frame +
-                                (props.continuousClip
-                                  ? Math.max(0, Math.round(bgStartFrame))
-                                  : 0)) /
-                                fps,
+                            montageFocusAt(
+                              frame / fps,
+                              montageLineStarts(
+                                card.introParts ?? [],
+                                card.words ?? [],
+                                card.mutedLeadSec ?? 0,
+                              ),
+                              card.introFocus,
                             ),
                             { width, height },
                             { width: 16, height: 9 },
                           ) * 100
                         ).toFixed(2)}% 50%`,
                       }
-                    : {}),
+                    : card.clipFocus && card.clipFocus.length > 0
+                      ? {
+                          objectPosition: `${(
+                            coverObjectPositionX(
+                              pathAt(
+                                card.clipFocus,
+                                (frame +
+                                  (props.continuousClip
+                                    ? Math.max(0, Math.round(bgStartFrame))
+                                    : 0)) /
+                                  fps,
+                              ),
+                              { width, height },
+                              { width: 16, height: 9 },
+                            ) * 100
+                          ).toFixed(2)}% 50%`,
+                        }
+                      : {}),
                   filter: videoGrade || undefined,
-                  transform: `scale(${kbFit})`,
+                  transform: `scale(${(kbFit * montageScale).toFixed(5)})`,
                 }
               : {
                   // Portrait: squarish crop (owner), anchored near the TOP of
@@ -5479,10 +6325,26 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                   // only when the film's own sound arrives. Muting it from the
                   // card's first frame left the opening on dead air — the lead
                   // is silent footage, so there was nothing else to hear.
+                  // `opening` likewise (owner-reported on the vineyard cut:
+                  // three seconds of digital silence after the spoken title,
+                  // because the bed was muted for the whole film card and the
+                  // borrowed lead footage is silent by design).
+                  // For `opening` the bed hands over to the NARRATOR, not to the
+                  // cut: a scene can open on seconds of near-silent picture
+                  // (LUMO's vineyard does, ~2.4s at -45 dB), and ducking at the
+                  // cut left exactly that as dead air after the title.
                   start:
                     c.intro === "hook"
                       ? frames[i].from + Math.round((c.mutedLeadSec ?? 0) * fps)
-                      : frames[i].from,
+                      : c.intro === "opening" || c.intro === "montage"
+                        ? frames[i].from +
+                          Math.round(
+                            Math.max(
+                              c.mutedLeadSec ?? 0,
+                              c.subtitles?.[0]?.startSec ?? 0,
+                            ) * fps,
+                          )
+                        : frames[i].from,
                   // Keep the music muted through the trailing crossfade too —
                   // the clip's own audio plays until the video card fully
                   // dissolves into the next. Must match the ACTUAL transition
@@ -5661,6 +6523,19 @@ export function DevotionalVideo(props: DevotionalInputProps) {
           </Sequence>
         )
       })}
+      {/* Source credits (16:9): their own layer, so a credit can outlast
+          the one-sentence card it opens. See SourceMarkOverlay. */}
+      {isLandscape && wideText === "bottom" ? (
+        <SourceMarkOverlay
+          cards={props.cards}
+          frames={frames}
+          frame={frame}
+          fps={fps}
+          px={px}
+          textFamily={SANS}
+          textWidth={columnWidth}
+        />
+      ) : null}
       {props.stepRing ? (
         props.stepProgress === "ring" || props.stepProgress === "bar" ? (
           <StepRingOverlay
@@ -5671,10 +6546,9 @@ export function DevotionalVideo(props: DevotionalInputProps) {
             px={px}
             shape={props.stepProgress}
           />
-        ) : (
-          // Default since 2026-09-22 (owner): the named row across the top,
-          // each hairline filling as its own stage runs. The corner ring is
-          // still reachable with `--step-ring`/`--step-bar`.
+        ) : width > height ? (
+          // Default since 2026-09-22 (owner) in 16:9 ONLY: the named row
+          // across the top, each hairline filling as its own stage runs.
           <StepRowOverlay
             cards={props.cards}
             frames={frames}
@@ -5682,6 +6556,20 @@ export function DevotionalVideo(props: DevotionalInputProps) {
             fps={fps}
             px={px}
             stepLabels={props.cards.find((c) => c.steps)?.steps}
+          />
+        ) : (
+          // 9:16 keeps the corner progress ring it has always had. The named
+          // row is a 16:9 device: in a feed that top strip belongs to the
+          // app's own chrome, but the corner ring sits clear of it and is how
+          // a vertical viewer knows how far through the stage they are
+          // (owner, 2026-09-24).
+          <StepRingOverlay
+            cards={props.cards}
+            frames={frames}
+            frame={frame}
+            fps={fps}
+            px={px}
+            shape="ring"
           />
         )
       ) : null}
@@ -5840,7 +6728,10 @@ function CardLayer({
           bleedX={bleedX ?? 0}
           hideBeforeSec={
             // The scene's own dialogue starts exactly at the lead's end.
-            card.intro === "hook" || card.intro === "watch"
+            card.intro === "hook" ||
+            card.intro === "watch" ||
+            card.intro === "opening" ||
+            card.intro === "montage"
               ? (card.mutedLeadSec ?? 0)
               : 0
           }

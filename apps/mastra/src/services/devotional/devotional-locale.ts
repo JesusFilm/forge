@@ -85,6 +85,8 @@ export type DevotionalConnectors = {
      *  (steps off). With steps on this is called with no argument. */
     read: (ref?: string) => string
     watch: () => string
+    /** Spoken first on the YouTube `opening` (owner, 2026-09-26). */
+    welcome: () => string
     reflect: () => string
     /** The REFLECT lead-in when the clip has ALREADY played (clip-first
      *  structure): an invitation, not an instruction. */
@@ -271,6 +273,7 @@ export const EN_LOCALE: DevotionalLocale = {
       read: (ref) =>
         `Here's where we're reading today.${ref ? ` ${ref}.` : ""}`,
       watch: () => `Let's watch.`,
+      welcome: () => `Welcome to Daily Bible Pause.`,
       reflect: () => `Reflect on this.`,
       // Owner's wording for the clip-first cut, where this is the first thing
       // the voice says after the film: it invites rather than instructs.
@@ -379,6 +382,7 @@ export const RU_LOCALE: DevotionalLocale = {
       intro: () => `Давай остановимся и послушаем Писание`,
       read: (ref) => `Вот отрывок из Писания.${ref ? ` ${ref}.` : ""}`,
       watch: () => `Давайте посмотрим.`,
+      welcome: () => `Добро пожаловать в Daily Bible Pause.`,
       reflect: () => `Подумай над этим.`,
       reflectAfterClip: () => `Давайте подумаем, что это значит для нас.`,
       pray: () => `Принесём это Богу.`,
@@ -471,6 +475,7 @@ export const ES_LOCALE: DevotionalLocale = {
       intro: () => `Hagamos una pausa y escuchemos la Escritura`,
       read: (ref) => `Hoy leemos aquí.${ref ? ` ${ref}.` : ""}`,
       watch: () => `Veamos.`,
+      welcome: () => `Bienvenidos a Daily Bible Pause.`,
       reflect: () => `Reflexiona sobre esto.`,
       reflectAfterClip: () =>
         `Reflexionemos sobre lo que esto significa para nosotros.`,

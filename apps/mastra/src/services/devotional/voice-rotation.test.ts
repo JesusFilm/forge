@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import {
-  FILTER_ROTATION,
-  rotateFilter,
-  rotateVoice,
-  VOICE_ROTATION,
-} from "./voice-rotation"
+import { DEFAULT_FILTER, rotateVoice, VOICE_ROTATION } from "./voice-rotation"
 
 describe("rotateVoice", () => {
   it("rotates D -> E -> C across consecutive devotionals", () => {
@@ -33,18 +28,8 @@ describe("rotateVoice", () => {
   })
 })
 
-describe("rotateFilter", () => {
-  it("rotates splittone → grain → tealorange and wraps (seq 0 keeps the approved look)", () => {
-    expect(rotateFilter(0)).toBe("splittone")
-    expect(rotateFilter(1)).toBe("grain")
-    expect(rotateFilter(2)).toBe("tealorange")
-    expect(rotateFilter(3)).toBe("splittone")
-  })
-
-  it("normalizes bad counters and stays inside the active set", () => {
-    expect(rotateFilter(-1)).toBe("tealorange")
-    for (let s = 0; s < 12; s++) {
-      expect(FILTER_ROTATION).toContain(rotateFilter(s))
-    }
+describe("DEFAULT_FILTER", () => {
+  it("is the one grade the series uses, so nothing varies by sequence", () => {
+    expect(DEFAULT_FILTER).toBe("restored")
   })
 })

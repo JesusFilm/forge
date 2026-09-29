@@ -26,17 +26,16 @@ export function rotateVoice(sequence: number): DevotionalVoiceName {
 }
 
 /**
- * Visual filter rotation (owner choice 2026-07-14, option b): rotate the color
- * grade per devotional like the voices — brand consistency comes from the
- * font/logo/graphics, not a single grade. Active filters only (teal/sepia are
- * legacy). splittone first so sequence 0 keeps the originally-approved look.
+ * The grade no longer rotates (owner, 2026-09-25). Rotating it was a 2026-07-14
+ * decision meant to keep the feed from looking samey, but in practice it made
+ * the series look inconsistent while the gloom of the old grade was the real
+ * problem. One grade now, and it is `restored`: the 1979 film keeps its colour,
+ * the blacks are lifted, the midtones are warm, and grain and vignette are a
+ * hint rather than a layer.
+ *
+ * Footage that is already beautiful takes `clean` instead (LUMO), passed
+ * explicitly per render. Anything else is a per-render `--style=` override.
  */
-export const FILTER_ROTATION = ["splittone", "grain", "tealorange"] as const
+export const DEFAULT_FILTER = "restored" as const
 
-export type DevotionalFilter = (typeof FILTER_ROTATION)[number]
-
-export function rotateFilter(sequence: number): DevotionalFilter {
-  const n = FILTER_ROTATION.length
-  const i = ((Math.trunc(sequence) % n) + n) % n
-  return FILTER_ROTATION[i]
-}
+export type DevotionalFilter = typeof DEFAULT_FILTER

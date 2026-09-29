@@ -18,6 +18,7 @@ import { _internal as safetyInternal } from "./safety-gate"
 import { _internal as writerInternal } from "./devotional-writer"
 import { _internal as fidelityInternal } from "./reflection-fidelity-critic"
 import { _internal as modernizerInternal } from "./reflection-modernizer"
+import { _internal as narrativeInternal } from "./narrative-editor"
 import { _internal as pickerInternal } from "./reflection-point-picker"
 import { _internal as rankerInternal } from "./spurgeon-ranker"
 import { _internal as translateInternal } from "./translate-devotional"
@@ -80,6 +81,7 @@ describe("Anthropic structured-output schema compatibility", () => {
     "devotional-coherence": coherenceInternal.JSON_SCHEMA,
     "devotional-reflection-critic": depthInternal.JSON_SCHEMA,
     "reflection-fidelity-critic": fidelityInternal.JSON_SCHEMA,
+    "narrative-editor": narrativeInternal.JSON_SCHEMA,
     "reflection-point-picker": pickerInternal.JSON_SCHEMA,
     "reflection-modernizer": modernizerInternal.JSON_SCHEMA,
     "devotional-conclusion": conclusionInternal.JSON_SCHEMA,
@@ -109,9 +111,10 @@ describe("Anthropic structured-output schema compatibility", () => {
       // otherwise pass this test AND the coverage test below while checking
       // absolutely nothing — a guard that reports success on zero coverage is
       // worse than no guard.
-      expect(schema, `${name}: _internal entry resolved to nothing`).toMatchObject(
-        { name: expect.any(String), schema: { type: "object" } },
-      )
+      expect(
+        schema,
+        `${name}: _internal entry resolved to nothing`,
+      ).toMatchObject({ name: expect.any(String), schema: { type: "object" } })
       expect(findForbiddenKeywords(schema)).toEqual([])
     })
   }

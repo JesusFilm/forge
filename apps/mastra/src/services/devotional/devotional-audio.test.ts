@@ -259,8 +259,11 @@ describe("produceDevotionalAudio", () => {
     // cover uses the engaged story-opening delivery (steadier than the emotive
     // default, a little style); reflection uses the emotive default (undefined);
     // conclusion + questions use the weighty, settled delivery.
-    expect(voiceover.mock.calls[0][0].voiceSettings?.stability).toBe(0.45)
-    expect(voiceover.mock.calls[0][0].voiceSettings?.style).toBe(0.3)
+    expect(voiceover.mock.calls[0][0].voiceSettings?.stability).toBe(0.35)
+    expect(voiceover.mock.calls[0][0].voiceSettings?.style).toBe(0.45)
+    // Every English role now carries the owner-approved pace (2026-09-25).
+    expect(voiceover.mock.calls[0][0].voiceSettings?.speed).toBe(1.1)
+    expect(voiceover.mock.calls[3][0].voiceSettings?.speed).toBe(1.1)
     expect(voiceover.mock.calls[2][0].voiceSettings).toBeUndefined() // reflection-1
     expect(voiceover.mock.calls[3][0].voiceSettings?.stability).toBe(0.78) // conclusion
     expect(voiceover.mock.calls[4][0].voiceSettings?.stability).toBe(0.78) // questions
@@ -366,6 +369,63 @@ describe("music library reuse", () => {
     })
     expect(music).toHaveBeenCalledTimes(1)
     expect(out.music).not.toBeNull()
+  })
+})
+
+describe("buildNarrationSegments — authored paragraphs and voices", () => {
+  const AUTHORED: GeneratedDevotional = {
+    ...DEVO,
+    reflection: {
+      ...DEVO.reflection,
+      text: "Her first line. Her second line. His history. Her close.",
+      paragraphs: [
+        { text: "Her first line. Her second line.", voice: "female-c" },
+        {
+          text: "His history.",
+          voice: "male-e",
+          mark: {
+            label: "HISTORICAL NOTE FROM",
+            source: "Society of Biblical Literature",
+          },
+        },
+        { text: "Her close.", voice: "female-c" },
+      ],
+    },
+    voices: { hook: "female-c", "step-pray": "male-e", questions: "male-e" },
+  }
+  const segs = buildNarrationSegments(AUTHORED, undefined, {
+    structure: "clip-first",
+    hookLine: "That is not fair",
+  })
+  const reflections = segs.filter((s) => /^reflection-\d+$/.test(s.id))
+
+  it("reads every card in its own paragraph's voice, and no card spans two paragraphs", () => {
+    // A paragraph still shows sentence by sentence, as every reflection does;
+    // what must hold is that a voice change always falls BETWEEN cards.
+    expect(reflections.map((s) => [s.display, s.voice])).toEqual([
+      ["Her first line.", "female-c"],
+      ["Her second line.", "female-c"],
+      ["His history.", "male-e"],
+      ["Her close.", "female-c"],
+    ])
+  })
+
+  it("puts a source mark on the first card of the paragraph that uses it, and only there", () => {
+    expect(reflections.map((s) => s.mark?.source ?? null)).toEqual([
+      null,
+      null,
+      "Society of Biblical Literature",
+      null,
+    ])
+  })
+
+  it("voices the named roles and leaves the rest to the devotional's own voice", () => {
+    const byId = Object.fromEntries(segs.map((s) => [s.id, s.voice]))
+    expect(byId.hook).toBe("female-c")
+    expect(byId["step-pray"]).toBe("male-e")
+    expect(byId.questions).toBe("male-e")
+    // Not named in `voices`: reads in `voice`, so it carries no override.
+    expect(byId.conclusion).toBeUndefined()
   })
 })
 

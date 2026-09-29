@@ -32,6 +32,21 @@ vi.mock("./devotional-models", () => ({
   buildCoherenceLlm: () => ({}),
   buildReflectionCriticLlm: () => ({}),
   buildFidelityCriticLlm: () => ({}),
+  narrativeEditorModel: () => "test-model",
+}))
+vi.mock("./narrative-editor", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./narrative-editor")>()),
+  reviewNarrative: async () => ({
+    throughline: "x",
+    issues: [],
+    summary: "clean",
+  }),
+}))
+vi.mock("../../mastra/agents/devotional/agent-llm", () => ({
+  createAgentLlm: () => ({}),
+}))
+vi.mock("../../mastra/agents/devotional/narrative-editor-agent", () => ({
+  narrativeEditorAgent: {},
 }))
 
 const { generateDevotional } = await import("./generate-devotional")
