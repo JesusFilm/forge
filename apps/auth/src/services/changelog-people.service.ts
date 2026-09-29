@@ -66,15 +66,29 @@ export async function listChangelogPeople(
         where: { environmentId: environment.id, state: "pending" },
         orderBy: { createdAt: "desc" },
       })
-      const recipients = await tx.user.findMany({
-        where: {
-          actorType: "HUMAN",
-          emailVerified: true,
-          OR: approvals.map(({ email }) => ({
-            email: { equals: email, mode: "insensitive" as const },
-          })),
-        },
-      })
+      const emails = [
+        ...new Set(approvals.map(({ email }) => email.trim().toLowerCase())),
+      ]
+      // Bind the growing approval set once; Prisma OR filters create one
+      // parameter per email and cannot use the normalized-email index.
+      const recipients = emails.length
+        ? await tx.$queryRaw<
+            {
+              id: string
+              email: string
+              ineligible: boolean
+            }[]
+          >`
+            SELECT u.id, u.email,
+                   (u.membership_status IN ('suspended', 'disabled') OR
+                    (u.expires_at IS NOT NULL AND u.expires_at <= ${now})) AS ineligible
+            FROM "user" AS u
+            WHERE lower(u.email) = ANY(ARRAY(
+              SELECT jsonb_array_elements_text(${JSON.stringify(emails)}::jsonb)
+            ))
+              AND u.actor_type = 'human' AND u.email_verified = true
+          `
+        : []
       const byEmail = new Map<string, (typeof recipients)[number] | null>()
       for (const user of recipients) {
         const email = user.email.trim().toLowerCase()
@@ -84,13 +98,7 @@ export async function listChangelogPeople(
         const recipient = byEmail.get(approval.email.trim().toLowerCase())
         // A verified inactive identity makes the approval ineligible for the
         // directory. An unverified match cannot establish association.
-        if (
-          recipient &&
-          (recipient.membershipStatus === "SUSPENDED" ||
-            recipient.membershipStatus === "DISABLED" ||
-            (recipient.expiresAt && recipient.expiresAt <= now))
-        )
-          return []
+        if (recipient?.ineligible) return []
         const account = recipient ? accounts.get(recipient.id) : undefined
         if (account) account.hasBlockingPreapproval = true
         return [
