@@ -190,11 +190,7 @@ describe("consumer HTTP lifecycle backed by PostgreSQL", () => {
             expectedVersion: 4,
           })
         ).status,
-      ).toBe(400)
-      await db.$transaction(async (tx) => {
-        await tx.$executeRaw`UPDATE consumer_private.consumers SET state = 'revoked', lifecycle_version = lifecycle_version + 1 WHERE id = ${issued.consumerId}::uuid`
-        await tx.$executeRaw`UPDATE consumer_private.credentials SET revoked_at = now() WHERE consumer_id = ${issued.consumerId}::uuid`
-      })
+      ).toBe(200)
       expect((await requestSearch(replacement.secret)).status).toBe(401)
       expect(
         (await mutate(path + "/state", { state: "active", expectedVersion: 5 }))
@@ -211,12 +207,14 @@ describe("consumer HTTP lifecycle backed by PostgreSQL", () => {
       const recovered: { secret: string } = await recovery.json()
       expect((await requestSearch(replacement.secret)).status).toBe(401)
       expect((await requestSearch(recovered.secret)).status).toBe(200)
-      const deleted = await app.request(path, {
-        method: "DELETE",
-        headers,
-        body: JSON.stringify({ name, expectedVersion: 6 }),
-      })
-      expect(deleted.status).toBe(200)
+      expect(
+        (
+          await mutate(path + "/state", {
+            state: "revoked",
+            expectedVersion: 6,
+          })
+        ).status,
+      ).toBe(200)
       expect((await requestSearch(recovered.secret)).status).toBe(401)
       const historyResponse = await app.request("/portal/consumers/history", {
         headers,
@@ -228,10 +226,10 @@ describe("consumer HTTP lifecycle backed by PostgreSQL", () => {
       expect(history.consumers).toContainEqual(
         expect.objectContaining({
           consumerId: issued.consumerId,
-          state: "deleted",
+          state: "revoked",
         }),
       )
-      expect((await mutate("/portal/consumers", { name })).status).toBe(201)
+      expect((await mutate("/portal/consumers", { name })).status).toBe(409)
       const [denials] = await db.$queryRaw<Array<{ count: bigint }>>`
         SELECT count(*) AS count FROM consumer_private.lifecycle_audit
         WHERE consumer_id = ${issued.consumerId}::uuid AND action = 'denied'

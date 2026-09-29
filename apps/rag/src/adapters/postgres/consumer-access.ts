@@ -12,16 +12,11 @@ import type {
   RotateConsumerCredential,
   TransitionConsumer,
   RecoverConsumer,
-  DeleteConsumer,
 } from "../../contracts/consumer-access.js"
 import { ConsumerAccessError } from "../../contracts/consumer-access.js"
 import { credentialVerifier } from "./consumer-auth.js"
 import { withConsumerOwner } from "./consumer-access-ownership.js"
-import {
-  transitionConsumer,
-  recoverConsumer,
-  deleteConsumer,
-} from "./consumer-lifecycle.js"
+import { transitionConsumer, recoverConsumer } from "./consumer-lifecycle.js"
 import {
   consumerRecord,
   githubId,
@@ -53,7 +48,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
                WHERE m.consumer_id = c.id AND m.github_user_id = ${actor}::bigint
                  AND m.role = 'owner'
              ) AS owned
-      FROM consumer_private.consumers c WHERE c.deleted_at IS NULL ORDER BY c.name
+      FROM consumer_private.consumers c ORDER BY c.name
     `)
     return rows.map((row) => ({
       ...consumerRecord(row),
@@ -163,11 +158,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
           throw new ConsumerAccessError("invalid")
         if (row.membership_version !== BigInt(input.expectedVersion))
           throw new ConsumerAccessError("conflict")
-        if (
-          row.state === "revoked" ||
-          row.state === "pending" ||
-          row.state === "deleted"
-        )
+        if (row.state === "revoked" || row.state === "pending")
           throw new ConsumerAccessError("forbidden")
         const admissionSha = await withDeadline(
           8_000,
@@ -256,11 +247,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
       input.actorGithubUserId,
       input.admissionSha,
       async (tx, row, admissionSha) => {
-        if (
-          row.state === "revoked" ||
-          row.state === "pending" ||
-          row.state === "deleted"
-        )
+        if (row.state === "revoked" || row.state === "pending")
           throw new ConsumerAccessError("forbidden")
         if (row.credential_version !== BigInt(input.expectedVersion))
           throw new ConsumerAccessError("conflict")
@@ -298,9 +285,5 @@ export class PostgresConsumerAccess implements ConsumerAccess {
     input: RecoverConsumer,
   ): Promise<{ secret: string; credentialVersion: number }> {
     return recoverConsumer(this.writer, input)
-  }
-
-  delete(input: DeleteConsumer): Promise<void> {
-    return deleteConsumer(this.writer, input)
   }
 }

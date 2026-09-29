@@ -7,20 +7,16 @@ and request history belong to the RAG context.
 
 **Consumer**:
 A named caller with a stable identity, owners, and one current retrieval
-credential. Its name is a reusable label; its identity is not.
+credential. Its name and identity stay reserved through revocation.
 
 **Suspension**:
 A reversible pause of a consumer's retrieval access. Its current credential is
 retained for a later resumption.
 
 **Revocation**:
-A permanent invalidation of a credential. Existing revoked consumers may regain
-access only through recovery with a different credential.
+An immediate invalidation of the current credential. The consumer stays visible
+and retains its name, owners, usage, and audit history.
 
-**Recovery**:
+**Restoration**:
 Restoration of a revoked consumer's access under the same identity with a newly
 issued credential. The revoked credential remains invalid.
-
-**Deletion**:
-Permanent retirement of a consumer from management and retrieval. Its name may
-be reused by a new consumer, while its identity and history remain distinct.

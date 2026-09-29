@@ -141,8 +141,8 @@ const menuIcons = {
   ],
   Suspend: ["M8 3v18M16 3v18"],
   Resume: ["m8 3 12 9-12 9z"],
-  Recover: ["M3 12a9 9 0 1 0 9-9M3 3v9h9"],
-  Delete: ["M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15M10 10v7M14 10v7"],
+  "Restore with new key": ["M3 12a9 9 0 1 0 9-9M3 3v9h9"],
+  Revoke: ["M3 12h18M12 3v18"],
 }
 const messages = {
   unauthorized: "Your session has ended or access has changed. Sign in again.",
@@ -261,7 +261,7 @@ async function mutate(
       notice("Changes saved. The directory could not refresh; try Refresh.")
     })
 }
-function issued(result, name) {
+function issued(result, name, onSaved) {
   const content = form("Save your API key", "Consumer: " + name)
   secret = result.secret
   const key = element("p", secret, "secret")
@@ -292,6 +292,7 @@ function issued(result, name) {
       () => {
         close()
         notice("")
+        onSaved?.()
       },
       "",
     ),
@@ -346,34 +347,6 @@ function confirm(title, description, label, action, danger = false) {
     button(label, action, danger ? "danger" : ""),
   )
   content.append(actions)
-}
-function confirmDelete(row) {
-  const content = form(
-    "Delete consumer?",
-    `This permanently disables ${row.name} and frees its name. Usage and audit history remain. Type the consumer name to confirm.`,
-  )
-  const label = element("label", "Consumer name")
-  const input = element("input")
-  input.setAttribute("autocomplete", "off")
-  label.append(input)
-  const actions = element("div", undefined, "actions")
-  const remove = button(
-    "Delete consumer",
-    () =>
-      mutate(
-        "/consumers/" + row.consumerId,
-        { name: input.value, expectedVersion: row.lifecycleVersion },
-        "DELETE",
-      ),
-    "danger",
-  )
-  remove.disabled = true
-  input.addEventListener("input", () => {
-    remove.disabled = input.value !== row.name
-  })
-  actions.append(button("Cancel", close), remove)
-  content.append(label, actions)
-  input.focus()
 }
 async function members(row) {
   const selectedRevision = ++revision
@@ -562,11 +535,11 @@ function render() {
         )
       } else if (row.state === "revoked") {
         actions.append(
-          button("Recover", () =>
+          button("Restore with new key", () =>
             confirm(
-              "Recover consumer?",
-              "The revoked key stays invalid. A new key is issued once; save it before closing this dialog.",
-              "Recover and issue key",
+              "Restore consumer with new key?",
+              "The old key stays invalid. A new key is issued once; save it before closing the next dialog. The consumer name stays reserved.",
+              "Restore with new key",
               () =>
                 mutate(
                   path + "/recover",
@@ -576,13 +549,33 @@ function render() {
                   },
                   "POST",
                   true,
-                  (result) => issued(result, row.name),
+                  (result) =>
+                    issued(result, row.name, () => selectStatus("active")),
                 ),
             ),
           ),
         )
       }
-      actions.append(button("Delete", () => confirmDelete(row), "danger"))
+      if (row.state === "active" || row.state === "suspended") {
+        actions.append(
+          button(
+            "Revoke",
+            () =>
+              confirm(
+                "Revoke consumer?",
+                "This immediately disables the consumer and its current key. Its name stays reserved. You can restore it later only with a new key.",
+                "Revoke consumer",
+                () =>
+                  mutate(path + "/state", {
+                    state: "revoked",
+                    expectedVersion: row.lifecycleVersion,
+                  }),
+                true,
+              ),
+            "danger",
+          ),
+        )
+      }
       const trigger = button(
         "⋮",
         () => {
@@ -624,16 +617,6 @@ function render() {
 async function refresh() {
   const data = await request("/consumers")
   rows = data.consumers
-  const revokedFilter = document.querySelector('[data-filter="revoked"]')
-  revokedFilter.hidden = !rows.some((row) => row.state === "revoked")
-  if (revokedFilter.hidden && statusFilter === "revoked") {
-    statusFilter = "all"
-    document.querySelectorAll("[data-filter]").forEach((node) => {
-      const selected = node.dataset.filter === "all"
-      node.classList.toggle("selected", selected)
-      node.setAttribute("aria-pressed", String(selected))
-    })
-  }
   render()
 }
 function signedOut() {
@@ -712,18 +695,21 @@ document
   .forEach((node) =>
     node.addEventListener("click", () => showSection(node.dataset.section)),
   )
-document.querySelectorAll("[data-filter]").forEach((node) =>
-  node.addEventListener("click", () => {
-    statusFilter = node.dataset.filter
-    pageIndex = 0
-    document.querySelectorAll("[data-filter]").forEach((item) => {
-      const selected = item.dataset.filter === statusFilter
-      item.classList.toggle("selected", selected)
-      item.setAttribute("aria-pressed", String(selected))
-    })
-    render()
-  }),
-)
+function selectStatus(status) {
+  statusFilter = status
+  pageIndex = 0
+  document.querySelectorAll("[data-filter]").forEach((item) => {
+    const selected = item.dataset.filter === statusFilter
+    item.classList.toggle("selected", selected)
+    item.setAttribute("aria-pressed", String(selected))
+  })
+  render()
+}
+document
+  .querySelectorAll("[data-filter]")
+  .forEach((node) =>
+    node.addEventListener("click", () => selectStatus(node.dataset.filter)),
+  )
 byId("search").addEventListener("input", (event) => {
   searchTerm = event.target.value.trim().toLowerCase()
   pageIndex = 0

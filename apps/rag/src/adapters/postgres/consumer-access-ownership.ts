@@ -32,7 +32,6 @@ export async function withConsumerOwner<T>(
         FROM consumer_private.consumers WHERE id = ${target}::uuid FOR UPDATE
       `)
         if (!row) throw new ConsumerAccessError("missing")
-        if (row.state === "deleted") throw new ConsumerAccessError("missing")
         const membership = await tx.$queryRaw<
           Array<{ github_user_id: bigint }>
         >(Prisma.sql`

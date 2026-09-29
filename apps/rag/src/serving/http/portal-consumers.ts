@@ -219,7 +219,7 @@ export function createConsumerRoutes(deps: Deps) {
     )
       return c.json({ error: "invalid" }, 400)
     const state = (body as { state?: unknown }).state
-    if (state !== "active" && state !== "suspended")
+    if (state !== "active" && state !== "suspended" && state !== "revoked")
       return c.json({ error: "invalid" }, 400)
     await deps.consumers.transition({
       consumerId: c.req.param("id"),
@@ -258,29 +258,6 @@ export function createConsumerRoutes(deps: Deps) {
       verifyCurrentAdmission: verifyCurrentAdmission(identity(c)),
     })
     return c.json(result, 200, { "Cache-Control": "no-store" })
-  })
-  app.delete("/:id", async (c) => {
-    const body: unknown = await c.req.json().catch(() => null)
-    if (
-      !body ||
-      typeof body !== "object" ||
-      Array.isArray(body) ||
-      Object.keys(body).sort().join(",") !== "expectedVersion,name" ||
-      !Number.isSafeInteger(
-        (body as { expectedVersion?: unknown }).expectedVersion,
-      ) ||
-      typeof (body as { name?: unknown }).name !== "string"
-    )
-      return c.json({ error: "invalid" }, 400)
-    await deps.consumers.delete({
-      consumerId: c.req.param("id"),
-      actorGithubUserId: String(identity(c).id),
-      expectedVersion: (body as { expectedVersion: number }).expectedVersion,
-      name: (body as { name: string }).name,
-      admissionSha: c.get("publication").sha,
-      verifyCurrentAdmission: verifyCurrentAdmission(identity(c)),
-    })
-    return c.json({ deleted: true })
   })
   return app
 }

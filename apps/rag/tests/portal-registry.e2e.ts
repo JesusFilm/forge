@@ -54,11 +54,11 @@ test("registry search, filters, sorting, pages and placeholder navigation", asyn
   await page.getByRole("button", { name: "Actions for registry-24" }).click()
   await page
     .locator("#row-menu")
-    .getByRole("button", { name: "Recover" })
+    .getByRole("button", { name: "Restore with new key" })
     .click()
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Recover and issue key" })
+    .getByRole("button", { name: "Restore with new key" })
     .click()
   await expect(
     page.getByRole("heading", { name: "Save your API key" }),

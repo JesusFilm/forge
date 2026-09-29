@@ -13,8 +13,8 @@ const suffix = crypto.randomUUID().slice(0, 8)
 beforeAll(() => db.$connect())
 afterAll(() => db.$disconnect())
 
-describe("consumer recovery and deletion", () => {
-  it("keeps owner changes, rotation, suspension, recovery and deletion isolated", async () => {
+describe("consumer revocation and restoration", () => {
+  it("keeps owner changes, rotation, suspension, revocation and restoration isolated", async () => {
     const created = await access.create({
       name: "lifecycle-" + suffix,
       actorGithubUserId: "4301",
@@ -83,10 +83,10 @@ describe("consumer recovery and deletion", () => {
       consumerId: id,
     })
     await expect(
-      access.delete({
+      access.transition({
         consumerId: id,
         actorGithubUserId: "4301",
-        name: created.consumer.name,
+        state: "revoked",
         expectedVersion: 1,
       }),
     ).rejects.toMatchObject({ code: "conflict" })
@@ -130,9 +130,11 @@ describe("consumer recovery and deletion", () => {
         expectedVersion: 3,
       }),
     ).rejects.toMatchObject({ code: "conflict" })
-    await db.$transaction(async (tx) => {
-      await tx.$executeRaw`UPDATE consumer_private.consumers SET state = 'revoked', lifecycle_version = lifecycle_version + 1 WHERE id = ${id}::uuid`
-      await tx.$executeRaw`UPDATE consumer_private.credentials SET revoked_at = now() WHERE consumer_id = ${id}::uuid`
+    await access.transition({
+      consumerId: id,
+      actorGithubUserId: "4301",
+      state: "revoked",
+      expectedVersion: 4,
     })
     expect(await auth.authenticate(replacement.secret)).toBeNull()
     await expect(
@@ -173,43 +175,28 @@ describe("consumer recovery and deletion", () => {
       VALUES (${id}::uuid, current_date, 'success', 1)
     `
     await expect(
-      access.delete({
-        consumerId: id,
-        actorGithubUserId: "4301",
-        name: "wrong-name",
-        expectedVersion: 6,
-      }),
-    ).rejects.toMatchObject({ code: "conflict" })
-    await expect(
-      access.delete({
-        consumerId: id,
-        actorGithubUserId: "4301",
+      access.create({
         name: created.consumer.name,
-        expectedVersion: 5,
+        actorGithubUserId: "4301",
+        allowedSourceKeys: [],
       }),
     ).rejects.toMatchObject({ code: "conflict" })
-    await access.delete({
+    await access.transition({
       consumerId: id,
       actorGithubUserId: "4301",
-      name: created.consumer.name,
+      state: "revoked",
       expectedVersion: 6,
     })
     expect(await auth.authenticate(recovered.secret)).toBeNull()
     expect(
       (await access.list("4301")).find((row) => row.consumerId === id),
-    ).toBeUndefined()
+    ).toMatchObject({ state: "revoked" })
     expect(
       (await access.listForUsage()).find((row) => row.consumerId === id),
     ).toMatchObject({
       name: created.consumer.name,
-      state: "deleted",
+      state: "revoked",
     })
-    const recreated = await access.create({
-      name: created.consumer.name,
-      actorGithubUserId: "4301",
-      allowedSourceKeys: [],
-    })
-    expect(recreated.consumer.consumerId).not.toBe(id)
     const [history] = await db.$queryRaw<Array<{ count: bigint }>>`
       SELECT count(*) AS count FROM consumer_private.lifecycle_audit WHERE consumer_id = ${id}::uuid
     `
@@ -218,5 +205,49 @@ describe("consumer recovery and deletion", () => {
       SELECT count(*) AS count FROM consumer_private.usage_daily WHERE consumer_id = ${id}::uuid
     `
     expect(usage.count).toBe(1n)
+  })
+
+  it("revokes a suspended consumer without releasing its name or old key", async () => {
+    const name = "suspended-revoke-" + suffix
+    const created = await access.create({
+      name,
+      actorGithubUserId: "4301",
+      allowedSourceKeys: [],
+    })
+    const consumerId = created.consumer.consumerId
+    await access.transition({
+      consumerId,
+      actorGithubUserId: "4301",
+      state: "suspended",
+      expectedVersion: 1,
+    })
+    await access.transition({
+      consumerId,
+      actorGithubUserId: "4301",
+      state: "revoked",
+      expectedVersion: 2,
+    })
+    await expect(
+      access.transition({
+        consumerId,
+        actorGithubUserId: "4301",
+        state: "active",
+        expectedVersion: 3,
+      }),
+    ).rejects.toMatchObject({ code: "forbidden" })
+    expect(await auth.authenticate(created.secret)).toBeNull()
+    await expect(
+      access.create({ name, actorGithubUserId: "4301", allowedSourceKeys: [] }),
+    ).rejects.toMatchObject({ code: "conflict" })
+    const restored = await access.recover({
+      consumerId,
+      actorGithubUserId: "4301",
+      expectedVersion: 1,
+      expectedLifecycleVersion: 3,
+    })
+    expect(await auth.authenticate(created.secret)).toBeNull()
+    expect(await auth.authenticate(restored.secret)).toMatchObject({
+      consumerId,
+    })
   })
 })

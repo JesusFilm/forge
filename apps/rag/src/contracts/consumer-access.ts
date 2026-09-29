@@ -40,15 +40,11 @@ export type RotateConsumerCredential = VersionedConsumerMutation & {
   reason?: "routine" | "lost"
 }
 export type TransitionConsumer = ConsumerMutation & {
-  state: "active" | "suspended"
+  state: "active" | "suspended" | "revoked"
   expectedVersion: number
 }
 export type RecoverConsumer = VersionedConsumerMutation & {
   expectedLifecycleVersion: number
-}
-export type DeleteConsumer = ConsumerMutation & {
-  expectedVersion: number
-  name: string
 }
 
 /** The caller's ID comes only from a freshly admitted portal session. */
@@ -76,7 +72,6 @@ export type ConsumerAccess = {
   recover(
     input: RecoverConsumer,
   ): Promise<{ secret: string; credentialVersion: number }>
-  delete(input: DeleteConsumer): Promise<void>
 }
 
 export type AuthenticatedConsumer = {

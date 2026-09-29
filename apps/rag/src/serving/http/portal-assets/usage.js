@@ -195,10 +195,7 @@ export function createUsageView(container, { read, onUnauthorized }) {
       const tr = make("tr"),
         name = make("th")
       name.scope = "row"
-      const displayName =
-        row.state === "deleted"
-          ? row.name + " · " + row.consumerId.slice(0, 8)
-          : row.name
+      const displayName = row.name
       const link = action(displayName, "View report for " + displayName, () => {
         const report = reports.get(row.consumerId)
         if (report) showDetails(report)

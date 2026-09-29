@@ -37,7 +37,7 @@ describe.skipIf(!databaseUrl)("consumer audit compatibility", () => {
     expect(audit.every((entry) => entry.admission_sha === freshSha)).toBe(true)
   })
 
-  it("deletes a pending foundation consumer without a credential", async () => {
+  it("does not revoke a pending foundation consumer without a credential", async () => {
     const pending = await db.$transaction(async (tx) => {
       const [row] = await tx.$queryRaw<Array<{ id: string }>>`
         INSERT INTO consumer_private.consumers (name, allowed_source_keys)
@@ -50,19 +50,21 @@ describe.skipIf(!databaseUrl)("consumer audit compatibility", () => {
       return row
     })
     await expect(
-      access.delete({
+      access.transition({
         consumerId: pending.id,
         actorGithubUserId: "4202",
-        name: "pending-" + suffix,
+        state: "revoked",
         expectedVersion: 1,
       }),
     ).rejects.toMatchObject({ code: "forbidden" })
-    await access.delete({
-      consumerId: pending.id,
-      actorGithubUserId: "4201",
-      name: "pending-" + suffix,
-      expectedVersion: 1,
-    })
+    await expect(
+      access.transition({
+        consumerId: pending.id,
+        actorGithubUserId: "4201",
+        state: "revoked",
+        expectedVersion: 1,
+      }),
+    ).rejects.toMatchObject({ code: "forbidden" })
     const audit = await db.$queryRaw<
       Array<{ action: string; credential_version: bigint }>
     >`
@@ -70,7 +72,7 @@ describe.skipIf(!databaseUrl)("consumer audit compatibility", () => {
       WHERE consumer_id = ${pending.id}::uuid ORDER BY action
     `
     expect(audit).toEqual([
-      { action: "deleted", credential_version: 0n },
+      { action: "denied", credential_version: 0n },
       { action: "denied", credential_version: 0n },
     ])
   })

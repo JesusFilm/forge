@@ -44,10 +44,10 @@ test.beforeAll(async () => {
   const at = new Date("2026-09-29T03:41:32Z")
   await db.$executeRaw`INSERT INTO usage_private.minutes(consumer_id, minute, request_count, successful_count, last_activity_at) VALUES(${ragbot.consumerId}::uuid, date_trunc('minute', ${at}::timestamptz, 'UTC'), 5, 5, ${at})`
   await db.$executeRaw`INSERT INTO usage_private.minutes(consumer_id, minute, request_count, successful_count, last_activity_at) VALUES(${historical.consumer.consumerId}::uuid, date_trunc('minute', ${at}::timestamptz, 'UTC'), 2, 2, ${at})`
-  await consumers.delete({
+  await consumers.transition({
     consumerId: historical.consumer.consumerId,
     actorGithubUserId: "42",
-    name: "historical",
+    state: "revoked",
     expectedVersion: 1,
   })
   // Only this test's two directory fixtures; other DB integration tests create
@@ -141,11 +141,11 @@ test("shows all recorded counts for the unchanged date range and loads usage onl
     }),
   })
   await expect(unused.getByRole("cell")).toHaveText(["0", "0", "—"])
-  const deleted = page.getByRole("row").filter({
+  const revoked = page.getByRole("row").filter({
     has: page.getByRole("button", { name: /View report for historical/ }),
   })
-  await expect(deleted).toContainText("deleted")
-  await expect(deleted.getByRole("cell")).toHaveText(["2", "2", /2026/])
+  await expect(revoked).toContainText("revoked")
+  await expect(revoked.getByRole("cell")).toHaveText(["2", "2", /2026/])
   await expect(
     page.getByRole("columnheader", { name: "Coverage" }),
   ).toHaveCount(0)

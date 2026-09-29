@@ -3,7 +3,6 @@ import { Prisma, type PrismaClient } from "../../generated/prisma/index.js"
 import type {
   TransitionConsumer,
   RecoverConsumer,
-  DeleteConsumer,
 } from "../../contracts/consumer-access.js"
 import { ConsumerAccessError } from "../../contracts/consumer-access.js"
 import { credentialVerifier } from "./consumer-auth.js"
@@ -15,7 +14,11 @@ export async function transitionConsumer(
   writer: PrismaClient,
   input: TransitionConsumer,
 ): Promise<void> {
-  if (input.state !== "active" && input.state !== "suspended")
+  if (
+    input.state !== "active" &&
+    input.state !== "suspended" &&
+    input.state !== "revoked"
+  )
     throw new ConsumerAccessError("invalid")
   await withConsumerOwner(
     writer,
@@ -34,12 +37,29 @@ export async function transitionConsumer(
         throw new ConsumerAccessError("forbidden")
       if (input.state === "suspended" && row.state !== "active")
         throw new ConsumerAccessError("forbidden")
+      if (
+        input.state === "revoked" &&
+        row.state !== "active" &&
+        row.state !== "suspended"
+      )
+        throw new ConsumerAccessError("forbidden")
       await tx.$executeRaw(Prisma.sql`
         UPDATE consumer_private.consumers SET state = ${input.state},
           lifecycle_version = lifecycle_version + 1, updated_at = now()
         WHERE id = ${row.id}::uuid
       `)
-      const action = input.state === "active" ? "resumed" : "suspended"
+      if (input.state === "revoked") {
+        await tx.$executeRaw(Prisma.sql`
+          UPDATE consumer_private.credentials SET revoked_at = now()
+          WHERE consumer_id = ${row.id}::uuid
+        `)
+      }
+      const action =
+        input.state === "active"
+          ? "resumed"
+          : input.state === "suspended"
+            ? "suspended"
+            : "revoked"
       await tx.$executeRaw(Prisma.sql`
         INSERT INTO consumer_private.lifecycle_audit
           (consumer_id, actor_github_user_id, action, admission_sha,
@@ -104,47 +124,6 @@ export async function recoverConsumer(
             'recovered', ${admissionSha ?? null}, ${row.membership_version}, ${version})
         `)
       return { secret: issued, credentialVersion: version }
-    },
-    input.verifyCurrentAdmission,
-  )
-}
-
-export async function deleteConsumer(
-  writer: PrismaClient,
-  input: DeleteConsumer,
-): Promise<void> {
-  if (
-    !Number.isSafeInteger(input.expectedVersion) ||
-    input.expectedVersion < 1 ||
-    !/^[a-z0-9-]{1,80}$/.test(input.name)
-  )
-    throw new ConsumerAccessError("invalid")
-  const retiredVerifier = randomBytes(32).toString("hex")
-  await withConsumerOwner(
-    writer,
-    input.consumerId,
-    input.actorGithubUserId,
-    input.admissionSha,
-    async (tx, row, admissionSha) => {
-      if (row.name !== input.name) throw new ConsumerAccessError("conflict")
-      if (row.lifecycle_version !== BigInt(input.expectedVersion))
-        throw new ConsumerAccessError("conflict")
-      await tx.$executeRaw(Prisma.sql`
-          UPDATE consumer_private.credentials SET verifier = ${retiredVerifier}, revoked_at = now()
-          WHERE consumer_id = ${row.id}::uuid
-        `)
-      await tx.$executeRaw(Prisma.sql`
-          UPDATE consumer_private.consumers SET state = 'deleted', deleted_at = now(),
-            lifecycle_version = lifecycle_version + 1, updated_at = now()
-          WHERE id = ${row.id}::uuid
-        `)
-      await tx.$executeRaw(Prisma.sql`
-          INSERT INTO consumer_private.lifecycle_audit
-            (consumer_id, actor_github_user_id, action, admission_sha,
-             membership_version, credential_version)
-          VALUES (${row.id}::uuid, ${input.actorGithubUserId}::bigint,
-            'deleted', ${admissionSha ?? null}, ${row.membership_version}, ${row.credential_version})
-        `)
     },
     input.verifyCurrentAdmission,
   )

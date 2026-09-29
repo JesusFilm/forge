@@ -49,7 +49,6 @@ function fixture() {
       secret: "synthetic-recovered",
       credentialVersion: 3,
     }),
-    delete: async () => {},
   } satisfies ConsumerAccess
   const current = vi.fn(async () => ({
     sha: "merged",
