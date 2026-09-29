@@ -19,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useUiTag } from "../../hooks/useUiTag"
 import { useLocaleEpoch, useT } from "../../i18n/useT"
 import {
   BG_COLOR,
@@ -92,6 +93,7 @@ export const HomeMissionSection = memo(function HomeMissionSection() {
   const t = useT("Mission")
   const tHome = useT("Home")
   const epoch = useLocaleEpoch()
+  const uiTag = useUiTag()
   const router = useRouter()
   const { width: screenWidth } = useWindowDimensions()
   const cardWidth = homeCardWidth("landscape", screenWidth)
@@ -147,7 +149,7 @@ export const HomeMissionSection = memo(function HomeMissionSection() {
         />
         <View style={styles.cardFooter}>
           <Text style={[styles.cardEyebrow, typography.caption]}>
-            {t(spec.eyebrowKey).toUpperCase()}
+            {t(spec.eyebrowKey).toLocaleUpperCase(uiTag)}
           </Text>
           <Text
             style={[styles.cardTitle, typography.titleSmall]}
@@ -158,7 +160,7 @@ export const HomeMissionSection = memo(function HomeMissionSection() {
         </View>
       </Pressable>
     ),
-    [typography, cardWidth, handlePress, t],
+    [typography, cardWidth, handlePress, t, uiTag],
   )
 
   return (

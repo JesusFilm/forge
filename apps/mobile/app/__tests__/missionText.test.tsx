@@ -49,6 +49,7 @@ jest.mock("../../src/i18n/catalogs.generated", () =>
             missionCardEyebrow: "Nuestra misión",
           },
         },
+        tr: { Mission: { missionCardEyebrow: "Misyonumuz" } },
       },
     ),
 )
@@ -57,7 +58,7 @@ jest.mock("../../src/i18n/pluralData.generated", () =>
     .requireActual("../../src/test-utils/uiLocaleFixture")
     .withFixturePluralData(
       jest.requireActual("../../src/i18n/pluralData.generated"),
-      ["es"],
+      ["es", "tr"],
     ),
 )
 
@@ -176,6 +177,13 @@ describe("the mission page", () => {
 })
 
 describe("the Home mission rail", () => {
+  it("upper-cases a card eyebrow with the UI language's rules", async () => {
+    await changePhoneLanguage("tr-TR")
+    const rail = await render(<HomeMissionSection />)
+    // Turkish upper-cases "i" to the dotted "İ"; the root rules give "I".
+    expect(hasText(rail, "MİSYONUMUZ")).toBe(true)
+  })
+
   it("relabels its cards and keeps their tap names", async () => {
     const rail = await render(<HomeMissionSection />)
     expect(hasText(rail, "OUR MISSION")).toBe(true)

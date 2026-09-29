@@ -796,7 +796,7 @@ const HeroPage = memo(function HeroPage({
         <Text
           style={[styles.eyebrow, typography.caption, eyebrowDirection.style]}
         >
-          {eyebrow.toUpperCase()}
+          {eyebrow.toLocaleUpperCase(uiTag)}
         </Text>
         <Text
           style={[

@@ -53,6 +53,7 @@ export function SeriesLanguageSheet({
       searchPlaceholder={t("searchLanguagesPlaceholder")}
       searchAccessibilityLabel={t("searchLanguagesAriaLabel")}
       emptySearchMessage={t("noLanguagesFound")}
+      actionName="series-language-sheet"
     />
   )
 }

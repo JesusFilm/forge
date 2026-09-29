@@ -160,6 +160,7 @@ export function TranslationPicker({
         emptySearchMessage={t("noMatch")}
         headerTop={headerTop}
         colors={colors}
+        actionName="bible-translation-sheet"
       />
     </View>
   )
