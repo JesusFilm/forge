@@ -222,6 +222,15 @@ export function RecommendationCandidateEvidence({
                     )}
                   </p>
                 ) : null}
+                {detail.candidateExecution.legacyDetailRetiredAt ? (
+                  <p className="mt-2 text-[12px] text-[var(--color-warning)]">
+                    Historical candidate stage detail retired on{" "}
+                    {formatRecommendationDateTime(
+                      detail.candidateExecution.legacyDetailRetiredAt,
+                    )}
+                    . Stage counts above record the original issuance.
+                  </p>
+                ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
                 <StatusPill

@@ -33,8 +33,13 @@ export type {
 } from "./detail.types"
 
 export function usesCompactCandidateTrace(
-  run: Pick<DetailCandidateRunRow, "traceFormatVersion" | "hasTracePayload">,
+  run: Pick<DetailCandidateRunRow, "traceFormatVersion" | "hasTracePayload"> &
+    Partial<Pick<DetailCandidateRunRow, "legacyDetailRetiredAt">>,
 ): boolean {
+  if (run.legacyDetailRetiredAt != null) {
+    if (run.traceFormatVersion == null && !run.hasTracePayload) return false
+    throw new Error("Unsupported recommendation candidate trace format")
+  }
   if (run.traceFormatVersion == null && !run.hasTracePayload) return false
   if (run.traceFormatVersion === 1 && run.hasTracePayload) return true
   throw new Error("Unsupported recommendation candidate trace format")
@@ -131,6 +136,7 @@ export async function loadRecommendationRequestDetail(
         run.id,
         run.trace_format_version AS "traceFormatVersion",
         (run.trace_payload IS NOT NULL) AS "hasTracePayload",
+        run.legacy_detail_retired_at AS "legacyDetailRetiredAt",
         run.purpose,
         run.context_version AS "contextVersion",
         run.generator_version AS "generatorVersion",
@@ -230,8 +236,9 @@ export async function loadRecommendationRequestDetail(
                 AND trace_run.expires_at > ${now}
             ) stage`
         : Prisma.sql`FROM recommendation_candidate_stage_evidence stage`
-      const candidateStages = candidateRun
-        ? await tx.$queryRaw<DetailCandidateStageRow[]>(Prisma.sql`
+      const candidateStages =
+        candidateRun && !candidateRun.legacyDetailRetiredAt
+          ? await tx.$queryRaw<DetailCandidateStageRow[]>(Prisma.sql`
           SELECT
             stage.stage,
             stage.ordinal,
@@ -300,7 +307,7 @@ export async function loadRecommendationRequestDetail(
             stage.id ASC
           LIMIT 448
         `)
-        : []
+          : []
 
       const shadowRuns = await tx.$queryRaw<DetailShadowRunRow[]>(Prisma.sql`
         SELECT

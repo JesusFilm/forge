@@ -90,6 +90,7 @@ function hybridDetail(): RecommendationRequestDetailData {
       },
       evidenceComplete: true,
       fallbackReason: null,
+      legacyDetailRetiredAt: null,
       stages: [
         {
           stage: "ordered",
