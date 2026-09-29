@@ -98,6 +98,18 @@ reconciliation, privacy reset/erasure and unchanged serving/shadow fallback.
 If any source can be lost because no initial job exists, stop and resolve that
 counterexample before activation; do not waive it as an existing race.
 
+The review identified one such window: the old pending initial workflow can
+observe an eligible source committed before its evidence load when asynchronous
+feedback fails. A skipped bootstrap has no pending workflow. Preserve that
+recovery by reserving an existing pending projection run atomically with the first
+profile-eligible selection or playback-outcome decision, using the same dispatch
+lock and active profile/link/privacy checks. Ineligible decisions create no
+reservation. Existing stale-run reconciliation must discover the null-workflow
+reservation after feedback failure; successful feedback must coalesce it without
+losing a later watermark. Do not add a per-empty-profile marker or an unbounded
+raw-source sweep. Test decision replay, both lock orders, privacy/link changes,
+failure followed by reconciliation and actual first nonempty publication.
+
 Measure whole fixture heap/index/TOAST and WAL with the same input mix, retaining
 the common core profile, consent, link and audit footprint. Include avoided
 workflow rows in the comparison. Measure dispatch/status latency under load,
