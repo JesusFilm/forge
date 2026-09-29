@@ -86,3 +86,23 @@ owner-excluded feat-373 is no longer a dependency. Production readiness capture
 at 2026-09-16T00:21:39.730Z found no assignments, shadow runs or decisions.
 Actual calibration, approved profile-unit A/A, external guardrails and mature
 controlled results remain pending. This ticket stays in progress.
+
+## September 29 governed live integration
+
+The owner subsequently authorized taking the implemented shadow policies live
+through controlled evidence. This supersedes the earlier preparation-only
+activation restriction, while preserving the scoped cohort, attribution,
+operational readiness and maturity requirements.
+
+`experiment/study-service.ts` now prepares immutable protocols, records external
+evidence, activates exact studies and publishes mature evaluations. The incumbent
+A/A executes the actual profile/viewing-mode policy in both arms; semantic-only
+calibration cannot authorize the co-watch/MMR bundle. The bundle binds one frozen
+graph and independently qualified composer through admission, final issuance and
+evaluation. Request-local fallbacks retain original assignment denominators.
+
+See `docs/operations/recommendation-controlled-live-integration-2026-09-29.md`
+for the execution contract, local validation and production sequence. Local
+synthetic outcomes prove the lifecycle, not useful production effects. Fresh
+storage clearance, real A/A calibration, exact shadow/composition approvals,
+naturally mature controlled outcomes and external guardrails remain open.

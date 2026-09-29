@@ -8,6 +8,8 @@ import {
 import {
   buildCowatchGraph,
   COWATCH_FEATURE_VERSION,
+  COWATCH_DURABLE_LINEAGE_VERSION,
+  COWATCH_LEGACY_LINEAGE_VERSION,
   COWATCH_PROJECTION_VERSION,
   CowatchWorkOverflowError,
   type CowatchOutcome,
@@ -31,6 +33,7 @@ type SourceRow = Readonly<{
   mediaId: string
   sessionDigest: string
   profileId: string | null
+  privacyGeneration: number | null
   occurredAt: Date
   qualityWeight: number | null
   qualified: boolean
@@ -87,12 +90,17 @@ export async function loadCowatchSourceRows(
     )
     SELECT latest.*,
       profile.id AS "profileId",
+      profile.privacy_generation AS "privacyGeneration",
       decision.id AS "eligibilityDecisionId",
       decision.revision AS "eligibilityRevision",
       decision.policy_version AS "eligibilityPolicyVersion",
       (
         decision.id IS NOT NULL
         AND suppression.episode_id IS NULL
+        AND (${sourceWindow == null} OR (
+          ownership.invalid IS NOT TRUE
+          AND (profile.id IS NOT NULL OR ownership.known = false)
+        ))
         AND latest."factWatermark" = latest."nextFactSequence" - 1
         AND latest."episodeExpiresAt" > ${now}
         AND latest."conflictCount" = 0
@@ -100,13 +108,16 @@ export async function loadCowatchSourceRows(
         AND NOT EXISTS (SELECT 1 FROM recommendation_playback_fact fact
           WHERE fact.episode_id = latest."episodeId" AND fact.late = true)
         AND NOT EXISTS (SELECT 1 FROM recommendation_outcome_revision newer
-          WHERE newer.supersedes_id = latest."outcomeId")
+          WHERE newer.supersedes_id = latest."outcomeId"
+            OR (newer.episode_id = latest."episodeId" AND newer.classifier_version = ${CLASSIFIER_VERSION} AND newer.revision > latest.revision))
         AND NOT EXISTS (SELECT 1 FROM recommendation_promotion_slate_fence fence
           WHERE fence.request_id = latest."requestId")
       ) AS "integrityEligible"
     FROM latest
     LEFT JOIN LATERAL (
-      SELECT linked_profile.id
+      SELECT identity.id, identity.privacy_generation
+      FROM (
+      SELECT linked_profile.id, linked_profile.privacy_generation, 0 AS priority, link.linked_at AS identified_at, link.id AS identity_id
       FROM recommendation_profile_session_link link
       JOIN recommendation_profile linked_profile
         ON linked_profile.id = link.profile_id
@@ -115,9 +126,28 @@ export async function loadCowatchSourceRows(
         AND linked_profile.expires_at > ${now}
       WHERE link.session_digest = latest."sessionDigest"
         AND link.expires_at > ${now}
-      ORDER BY link.linked_at DESC, link.id DESC
+      UNION ALL
+      SELECT retained.profile_id, retained.privacy_generation,
+        CASE WHEN retained.episode_id = latest."episodeId" THEN 1 ELSE 2 END AS priority,
+        retained.occurred_at AS identified_at, retained.id AS identity_id
+      FROM (${retainedCowatchOwnersSql()}) retained
+      WHERE ${sourceWindow != null}
+        AND retained.lineage_version = ${COWATCH_DURABLE_LINEAGE_VERSION}
+        AND retained.generation_expires_at > ${now} AND retained.source_expires_at > ${now}
+        AND retained.state = 'active' AND retained.profile_expires_at > ${now}
+        AND retained.privacy_generation = retained.captured_generation
+      ) identity
+      ORDER BY identity.priority, identity.identified_at DESC, identity.identity_id DESC
       LIMIT 1
     ) profile ON true
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*) > 0 AS known,
+        BOOL_OR(retained.state IS DISTINCT FROM 'active' OR retained.profile_expires_at <= ${now}
+          OR (retained.lineage_version = ${COWATCH_DURABLE_LINEAGE_VERSION}
+            AND retained.captured_generation IS DISTINCT FROM retained.privacy_generation)) AS invalid
+      FROM (${retainedCowatchOwnersSql()}) retained
+      WHERE ${sourceWindow != null}
+    ) ownership ON true
     LEFT JOIN LATERAL (
       SELECT eligible.id, eligible.revision, eligible.policy_version
       FROM recommendation_eligibility_decision eligible
@@ -136,6 +166,37 @@ export async function loadCowatchSourceRows(
     ORDER BY latest."occurredAt", latest."episodeId"
     LIMIT ${MAX_SOURCE_ROWS + 1}
   `)
+}
+
+/** Two indexed reverse lookups retain ownership across revisions and an
+ * existing episode becoming eligible later in the same private session.
+ * UNION ALL duplicates are harmless; recovery prefers the exact episode.
+ * Invalid/expired known ownership may never fall through to anonymous.
+ */
+function retainedCowatchOwnersSql(): Prisma.Sql {
+  return Prisma.sql`
+    SELECT source.id, source.viewer_profile_id AS profile_id,
+      source.viewer_privacy_generation AS captured_generation, source.occurred_at,
+      source.expires_at AS source_expires_at, generation.lineage_version,
+      generation.expires_at AS generation_expires_at, outcome.episode_id,
+      profile.privacy_generation, profile.state, profile.expires_at AS profile_expires_at
+    FROM recommendation_cowatch_source_contribution source
+    JOIN recommendation_outcome_revision outcome ON outcome.id = source.outcome_id
+    JOIN recommendation_cowatch_generation generation ON generation.id = source.generation_id
+    LEFT JOIN recommendation_profile profile ON profile.id = source.viewer_profile_id
+    WHERE source.session_digest = latest."sessionDigest" AND source.viewer_profile_id IS NOT NULL
+    UNION ALL
+    SELECT source.id, source.viewer_profile_id AS profile_id,
+      source.viewer_privacy_generation AS captured_generation, source.occurred_at,
+      source.expires_at AS source_expires_at, generation.lineage_version,
+      generation.expires_at AS generation_expires_at, outcome.episode_id,
+      profile.privacy_generation, profile.state, profile.expires_at AS profile_expires_at
+    FROM recommendation_outcome_revision outcome
+    JOIN recommendation_cowatch_source_contribution source ON source.outcome_id = outcome.id
+    JOIN recommendation_cowatch_generation generation ON generation.id = source.generation_id
+    LEFT JOIN recommendation_profile profile ON profile.id = source.viewer_profile_id
+    WHERE outcome.episode_id = latest."episodeId" AND source.viewer_profile_id IS NOT NULL
+  `
 }
 
 export type CowatchPublication = Readonly<{
@@ -211,7 +272,7 @@ export async function publishCowatchShadowGeneration(
         return { ...receipt, status: prepared.status }
       const { source, graph } = prepared
       const profileByOutcome = new Map(
-        source.map((row) => [row.outcomeId, row.profileId]),
+        source.map((row) => [row.outcomeId, row]),
       )
       const safeEdges = graph.edges.filter((edge) => edge.eligible)
       const decisionReason =
@@ -240,6 +301,9 @@ export async function publishCowatchShadowGeneration(
         data: {
           id: graph.generation,
           projectionVersion: COWATCH_PROJECTION_VERSION,
+          lineageVersion: sourceWindow
+            ? COWATCH_DURABLE_LINEAGE_VERSION
+            : COWATCH_LEGACY_LINEAGE_VERSION,
           featureVersion: COWATCH_FEATURE_VERSION,
           sourceCount: graph.qualifiedOutcomes,
           contributionCount: graph.contributions.length,
@@ -267,7 +331,11 @@ export async function publishCowatchShadowGeneration(
             eligibilityDecisionId: row.eligibilityDecisionId!,
             eligibilityRevision: row.eligibilityRevision!,
             eligibilityPolicyVersion: row.eligibilityPolicyVersion!,
-            viewerProfileId: profileByOutcome.get(row.outcomeId) ?? null,
+            viewerProfileId:
+              profileByOutcome.get(row.outcomeId)?.profileId ?? null,
+            viewerPrivacyGeneration: sourceWindow
+              ? (profileByOutcome.get(row.outcomeId)?.privacyGeneration ?? null)
+              : null,
             mediaId: row.mediaId,
             sessionDigest: row.sessionDigest,
             viewerKeyDigest: createHash("sha256")
@@ -286,7 +354,8 @@ export async function publishCowatchShadowGeneration(
             generationId: graph.generation,
             sourceOutcomeId: row.sourceOutcomeId,
             targetOutcomeId: row.targetOutcomeId,
-            viewerProfileId: profileByOutcome.get(row.sourceOutcomeId) ?? null,
+            viewerProfileId:
+              profileByOutcome.get(row.sourceOutcomeId)?.profileId ?? null,
             sourceMediaId: row.sourceMediaId,
             targetMediaId: row.targetMediaId,
             sessionDigest: row.sessionDigest,
@@ -364,11 +433,20 @@ async function prepareCowatchGeneration(
     viewerKey:
       row.profileId == null
         ? `session:${row.sessionDigest}`
-        : `profile:${row.profileId}`,
+        : sourceWindow
+          ? `profile:${row.profileId}:${row.privacyGeneration}`
+          : `profile:${row.profileId}`,
     qualityWeight: row.qualityWeight ?? 0,
   }))
   try {
-    const graph = buildCowatchGraph(rows, now, sourceWindow)
+    const graph = buildCowatchGraph(
+      rows,
+      now,
+      sourceWindow,
+      sourceWindow
+        ? COWATCH_DURABLE_LINEAGE_VERSION
+        : COWATCH_LEGACY_LINEAGE_VERSION,
+    )
     return {
       status: "ready" as const,
       rawSourceCount: source.length,

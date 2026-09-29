@@ -3,6 +3,7 @@ import {
   buildCowatchGraph,
   compatibleCowatchFeature,
   COWATCH_FEATURE_VERSION,
+  COWATCH_DURABLE_LINEAGE_VERSION,
   COWATCH_MAX_GAP_MS,
   CowatchWorkOverflowError,
   type CowatchOutcome,
@@ -43,6 +44,30 @@ function pair(viewer: string, session: string, a = "A", b = "B") {
 }
 
 describe("directional co-watch graph", () => {
+  it("binds durable lineage and captured privacy generation into identity", () => {
+    const rows = pair("profile:viewer:1", "session")
+    const scope = {
+      version: "episode-event-window-v1" as const,
+      windowStart: new Date(NOW.getTime() - 3 * DAY),
+      windowEnd: NOW,
+      evaluationAsOf: NOW,
+    }
+    const legacy = buildCowatchGraph(rows, NOW, scope)
+    const durable = buildCowatchGraph(
+      rows,
+      NOW,
+      scope,
+      COWATCH_DURABLE_LINEAGE_VERSION,
+    )
+    const reset = buildCowatchGraph(
+      rows.map((row) => ({ ...row, viewerKey: "profile:viewer:2" })),
+      NOW,
+      scope,
+      COWATCH_DURABLE_LINEAGE_VERSION,
+    )
+    expect(durable.generation).not.toBe(legacy.generation)
+    expect(reset.generation).not.toBe(durable.generation)
+  })
   it("keeps direction, bounded gap and session/pair dedup exact", () => {
     const graph = buildCowatchGraph(
       [

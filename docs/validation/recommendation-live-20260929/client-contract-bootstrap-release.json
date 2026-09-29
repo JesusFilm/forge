@@ -1,0 +1,24 @@
+{
+  "headRefOid": "1381c2d8a4553438cb3425e3d075260f03b09ac8",
+  "mergeCommit": {
+    "oid": "e5a78708d20cd1fe5b5ae400d4240abfccfe3f59"
+  },
+  "mergedAt": "2026-09-29T05:54:34Z",
+  "number": 2469,
+  "state": "MERGED",
+  "url": "https://github.com/JesusFilm/forge/pull/2469",
+  "preMerge": {
+    "ciGate": "SUCCESS",
+    "allRequiredChecks": "passed",
+    "unresolvedReviewThreads": 0,
+    "mergeState": "CLEAN",
+    "headMatched": true
+  },
+  "localValidation": [
+    "Admin and client typechecks",
+    "SDL generation and unchanged optimized gql.tada regeneration",
+    "Existing and capability-aware GraphQL operation validation",
+    "Repository lint/format hooks"
+  ],
+  "scope": "Nullable schema argument accepted but not consumed by delivery until dependent integration"
+}

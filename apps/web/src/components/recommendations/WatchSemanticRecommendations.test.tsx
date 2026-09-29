@@ -91,12 +91,64 @@ describe("WatchSemanticRecommendations", () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           "x-forge-recommendation-client": "viewing-mode-v1",
+          "x-forge-recommendation-delivery-contract": "cowatch-mmr-v1",
         }),
       }),
     )
     expect(container.textContent).toContain("Target video")
   })
 
+  it("renders the governed co-watch/MMR response without exposing trial internals", async () => {
+    startRecommendationConsentBootstrap()
+    completeRecommendationConsentBootstrap()
+    const trial = {
+      ...sixItemDelivery,
+      personalization: {
+        ...sixItemDelivery.personalization,
+        lane: "profile_challenger",
+        executionMode: "cowatch_mmr_personalized",
+        effectiveManifestId: "hybrid-profile-viewing-mode-cowatch-mmr-v1",
+      },
+      items: sixItemDelivery.items.map((item) => ({
+        ...item,
+        candidateGenerator: "directional-cowatch",
+        contributors: [
+          ...item.contributors,
+          {
+            generator: "directional-cowatch",
+            generatorVersion: "frozen-source-controlled-trial-v1",
+            rank: 1,
+          },
+        ],
+      })),
+    }
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input).endsWith("/api/recommendations")
+          ? jsonResponse({ delivery: trial })
+          : acceptedEvidenceResponse(init),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    act(() =>
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      ),
+    )
+    await flush()
+    expect(
+      container.querySelectorAll("a[data-recommendation-key]"),
+    ).toHaveLength(6)
+    expect(container.textContent).toContain(
+      "Recommended from this video and your interests.",
+    )
+    expect(container.innerHTML).not.toMatch(
+      /graphGeneration|compositionProtocol|evidenceDigest/,
+    )
+  })
   it("renders the compatible profile lane with a privacy-safe explanation", async () => {
     const profileDelivery = {
       ...delivery,

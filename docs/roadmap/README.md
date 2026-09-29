@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 29, 2026)
 
-- **Total tickets:** 745
-- **Complete:** 557
+- **Total tickets:** 747
+- **Complete:** 559
 - **In progress:** 59
 - **Not started:** 50
 - **Blocked:** 79
@@ -623,6 +623,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-556](platform/feat-556-mobile-expo-sdk57-patch-alignment.md)                     | Restore CI after Expo patch drift and stale benchmark clock                        | nisal      | P1       | 2026-09-28 | 1    | 2026-09-28 | complete    |
 | [feat-555](platform/feat-555-recommendation-legacy-trace-reclamation.md)               | Reclaim legacy recommendation trace storage after expiry                           | nisal      | P1       | 2026-09-29 | 3    | 2026-10-01 | blocked     |
 | [feat-567](platform/feat-567-changelog-people-directory.md)                            | Serve the shared Changelog People directory from Auth                              | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
+| [feat-570](platform/feat-570-changelog-current-permission.md)                          | Serve current Changelog permissions to protected consumers                         | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
+| [feat-571](platform/feat-571-changelog-people-preapprovals.md)                         | Manage Contributor preapprovals in Changelog People                                | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

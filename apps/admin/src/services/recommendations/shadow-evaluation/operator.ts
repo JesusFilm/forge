@@ -10,7 +10,10 @@ import {
   RecommendationInputError,
   RecommendationInternalStateError,
 } from "../errors"
-import { HYBRID_PERSONALIZED_MANIFEST_ID } from "../promotion/manifest"
+import {
+  COWATCH_MMR_TRIAL_MANIFEST_ID,
+  HYBRID_PERSONALIZED_MANIFEST_ID,
+} from "../promotion/manifest"
 import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 import {
   dispatchRecommendationShadowEvaluation,
@@ -30,6 +33,8 @@ type OperatorInput = Readonly<{
   minimumRuns: number
   actorId: string
   now?: Date
+  cowatchGenerationId?: string
+  manifestId?: string
 }>
 
 type ExistingEvaluation = NonNullable<
@@ -47,6 +52,7 @@ export async function startExactHybridShadowEvaluation(
   input: OperatorInput,
 ) {
   return startExactShadowEvaluation(prisma, input, {
+    manifestId: HYBRID_PERSONALIZED_MANIFEST_ID,
     generatorVersion: HYBRID_CANDIDATE_GENERATOR_SET_VERSION,
     generatorKey: HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY,
   })
@@ -54,9 +60,15 @@ export async function startExactHybridShadowEvaluation(
 
 export async function startExactCowatchShadowEvaluation(
   prisma: PrismaClient,
-  input: OperatorInput,
+  input: OperatorInput & Readonly<{ cowatchGenerationId: string }>,
 ) {
+  if (!/^[a-f0-9]{64}$/.test(input.cowatchGenerationId)) {
+    throw new RecommendationInputError(
+      "Co-watch shadow evaluation requires an exact graph generation ID",
+    )
+  }
   return startExactShadowEvaluation(prisma, input, {
+    manifestId: input.manifestId ?? HYBRID_PERSONALIZED_MANIFEST_ID,
     generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
     generatorKey: COWATCH_SHADOW_GENERATOR_KEY,
   })
@@ -65,10 +77,32 @@ export async function startExactCowatchShadowEvaluation(
 async function startExactShadowEvaluation(
   prisma: PrismaClient,
   input: OperatorInput,
-  lane: Readonly<{ generatorVersion: string; generatorKey: string }>,
+  lane: Readonly<{
+    manifestId: string
+    generatorVersion: string
+    generatorKey: string
+  }>,
 ) {
   const now = input.now ?? new Date()
   assertBoundedClosedWindow(input, now)
+  if (
+    (input.manifestId !== undefined && input.manifestId !== lane.manifestId) ||
+    (lane.manifestId !== HYBRID_PERSONALIZED_MANIFEST_ID &&
+      !(
+        lane.generatorKey === COWATCH_SHADOW_GENERATOR_KEY &&
+        lane.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID
+      ))
+  ) {
+    throw new RecommendationInputError("Unsupported exact shadow manifest")
+  }
+  if (
+    lane.generatorKey !== COWATCH_SHADOW_GENERATOR_KEY &&
+    input.cowatchGenerationId !== undefined
+  ) {
+    throw new RecommendationInputError(
+      "Only a co-watch shadow evaluation can bind a graph generation",
+    )
+  }
 
   let evaluation = await findEvaluation(prisma, input.evaluationId)
   let created = false
@@ -76,13 +110,16 @@ async function startExactShadowEvaluation(
     try {
       await createShadowEvaluation(prisma, {
         evaluationId: input.evaluationId,
-        manifestId: HYBRID_PERSONALIZED_MANIFEST_ID,
+        manifestId: lane.manifestId,
         generatorVersion: lane.generatorVersion,
         contextVersion: CANDIDATE_CONTEXT_VERSION,
         eligibilityVersion: CANDIDATE_ELIGIBILITY_VERSION,
         windowStart: input.windowStart,
         windowEnd: input.windowEnd,
         requestedSampleSize: input.requestedSampleSize,
+        ...(input.cowatchGenerationId
+          ? { cowatchGenerationId: input.cowatchGenerationId }
+          : {}),
         now,
       })
       created = true
@@ -107,6 +144,9 @@ async function startExactShadowEvaluation(
       expectedGeneration: evaluation.generation,
       generatorKey: lane.generatorKey,
       minimumRuns: input.minimumRuns,
+      ...(input.cowatchGenerationId
+        ? { cowatchGenerationId: input.cowatchGenerationId }
+        : {}),
     },
     { actorId: input.actorId, client: prisma, now },
   )
@@ -133,6 +173,7 @@ function findEvaluation(prisma: PrismaClient, evaluationId: string) {
       id: true,
       manifestId: true,
       generatorVersion: true,
+      cowatchGenerationId: true,
       contextVersion: true,
       eligibilityVersion: true,
       state: true,
@@ -191,11 +232,17 @@ function assertBoundedClosedWindow(input: OperatorInput, now: Date) {
 function assertExactRetry(
   evaluation: ExistingEvaluation,
   input: OperatorInput,
-  lane: Readonly<{ generatorVersion: string; generatorKey: string }>,
+  lane: Readonly<{
+    manifestId: string
+    generatorVersion: string
+    generatorKey: string
+  }>,
 ) {
   if (
-    evaluation.manifestId !== HYBRID_PERSONALIZED_MANIFEST_ID ||
+    evaluation.manifestId !== lane.manifestId ||
     evaluation.generatorVersion !== lane.generatorVersion ||
+    (evaluation.cowatchGenerationId ?? null) !==
+      (input.cowatchGenerationId ?? null) ||
     evaluation.contextVersion !== CANDIDATE_CONTEXT_VERSION ||
     evaluation.eligibilityVersion !== CANDIDATE_ELIGIBILITY_VERSION ||
     evaluation.windowStart.getTime() !== input.windowStart.getTime() ||

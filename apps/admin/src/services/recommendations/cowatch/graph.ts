@@ -10,6 +10,12 @@ export const COWATCH_PROJECTION_VERSION =
   "directional-cowatch-projection-v1" as const
 export const COWATCH_SHADOW_GENERATOR_KEY =
   "directional-cowatch-shadow-v1" as const
+export const COWATCH_LEGACY_LINEAGE_VERSION = "discovery-link-v1" as const
+export const COWATCH_DURABLE_LINEAGE_VERSION =
+  "durable-privacy-generation-v2" as const
+export type CowatchLineageVersion =
+  | typeof COWATCH_LEGACY_LINEAGE_VERSION
+  | typeof COWATCH_DURABLE_LINEAGE_VERSION
 export const COWATCH_MAX_GAP_MS = 48 * 60 * 60 * 1_000
 const HALF_LIFE_MS = 30 * 24 * 60 * 60 * 1_000
 const SHRINKAGE_SUPPORT = 5
@@ -101,6 +107,7 @@ export function buildCowatchGraph(
   outcomes: readonly CowatchOutcome[],
   now: Date,
   sourceWindow?: CowatchSourceWindow,
+  lineageVersion: CowatchLineageVersion = COWATCH_LEGACY_LINEAGE_VERSION,
 ): CowatchGraph {
   if (sourceWindow) assertCowatchSourceWindow(sourceWindow, now)
   const evaluationAsOf = sourceWindow?.evaluationAsOf ?? now
@@ -218,7 +225,11 @@ export function buildCowatchGraph(
   }
   const contributions = [...perViewerPair.values()].sort(compareContributions)
   const generation = createHash("sha256")
-    .update(COWATCH_PROJECTION_VERSION)
+    .update(
+      lineageVersion === COWATCH_LEGACY_LINEAGE_VERSION
+        ? COWATCH_PROJECTION_VERSION
+        : `${COWATCH_PROJECTION_VERSION}\0${lineageVersion}`,
+    )
     .update("\0")
     .update(
       sourceWindow

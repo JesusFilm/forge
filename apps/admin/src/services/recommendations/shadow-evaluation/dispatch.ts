@@ -11,6 +11,7 @@ import { prisma } from "@/db/client"
 import { runRecommendationShadowEvaluation } from "@/workflows/recommendationShadowEvaluation"
 import { RECOMMENDATION_RAW_RETENTION_DAYS } from "../contracts"
 import { RecommendationConflictError } from "../errors"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 
 export const RECOMMENDATION_SHADOW_EVALUATION_WORKFLOW_KEY =
   "recommendation-shadow-evaluation"
@@ -22,6 +23,7 @@ export type RecommendationShadowEvaluationJobInput = Readonly<{
   expectedGeneration: number
   generatorKey: string
   minimumRuns: number
+  cowatchGenerationId?: string
   ledgerRunId?: string
 }>
 type DispatchInput = Omit<RecommendationShadowEvaluationJobInput, "ledgerRunId">
@@ -56,6 +58,17 @@ export async function dispatchRecommendationShadowEvaluation(
     await client.recommendationShadowEvaluation.findUniqueOrThrow({
       where: { id: input.evaluationId },
     })
+  if (
+    input.generatorKey === COWATCH_SHADOW_GENERATOR_KEY
+      ? !/^[a-f0-9]{64}$/.test(input.cowatchGenerationId ?? "") ||
+        evaluation.cowatchGenerationId !== input.cowatchGenerationId
+      : input.cowatchGenerationId !== undefined ||
+        evaluation.cowatchGenerationId != null
+  ) {
+    throw new RecommendationConflictError(
+      "The shadow dispatch does not match its exact graph generation",
+    )
+  }
   const tuple = {
     ...input,
     manifestId: evaluation.manifestId,
@@ -325,7 +338,8 @@ function matchesInput(
     details.evaluationId === input.evaluationId &&
     details.expectedGeneration === input.expectedGeneration &&
     details.generatorKey === input.generatorKey &&
-    details.minimumRuns === input.minimumRuns
+    details.minimumRuns === input.minimumRuns &&
+    details.cowatchGenerationId === input.cowatchGenerationId
   )
 }
 
@@ -336,6 +350,7 @@ function assertLegacyInput(ledger: WorkflowRun, input: DispatchInput) {
     "expectedGeneration",
     "generatorKey",
     "minimumRuns",
+    "cowatchGenerationId",
   ] as const) {
     if (details[key] !== undefined && details[key] !== input[key])
       throw new RecommendationConflictError(

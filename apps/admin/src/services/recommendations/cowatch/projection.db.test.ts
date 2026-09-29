@@ -10,6 +10,7 @@ import { loadCowatchInspection } from "./inspection.service"
 import {
   buildCowatchGraph,
   COWATCH_FEATURE_VERSION,
+  COWATCH_DURABLE_LINEAGE_VERSION,
   COWATCH_PROJECTION_VERSION,
 } from "./graph"
 import { suppressCowatchForProfiles } from "./privacy"
@@ -43,11 +44,14 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     beforeAll(() => {
       const url = new URL(env.DATABASE_URL)
       if (
-        !["127.0.0.1", "localhost"].includes(url.hostname) ||
-        !["/forge_test", "/forge_feat387_test"].includes(url.pathname)
-      ) {
-        throw new Error("Owned loopback co-watch fixture database required")
-      }
+        !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) ||
+        !["/forge_test", "/forge_feat387_test", "/forge_feat565_test"].includes(
+          url.pathname,
+        )
+      )
+        throw new Error(
+          "Co-watch native tests require an owned loopback fixture database",
+        )
       prisma = new PrismaClient({
         adapter: new PrismaPg({ connectionString: url.toString(), max: 2 }),
       })
@@ -760,12 +764,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           fresh.map((row) => ({
             ...row,
             viewerKey: row.profileId
-              ? `profile:${row.profileId}`
+              ? `profile:${row.profileId}:${row.privacyGeneration}`
               : `session:${row.sessionDigest}`,
             qualityWeight: row.qualityWeight ?? 0,
           })),
           now,
           scope,
+          COWATCH_DURABLE_LINEAGE_VERSION,
         )
         expect(rebuilt.generation).toBe(expected.generation)
         expect(

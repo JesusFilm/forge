@@ -1,5 +1,5 @@
 ---
-id: "feat-565"
+id: "feat-570"
 title: "Serve current Changelog permissions to protected consumers"
 owner: "edmondshen"
 priority: "P1"

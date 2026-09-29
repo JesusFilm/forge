@@ -73,3 +73,21 @@ promotion of the implemented policies, not a blanket readiness declaration.
   results and supported recent-auth permanent-default operation.
 - Close only when both declared policies have the recorded live disposition and
   rollback evidence; code deployment alone is insufficient.
+
+## September 29 integration
+
+The integrated implementation adds `cowatch/live.service.ts`, immutable frozen
+trial authority, separate `composition/` qualification, governed study operators
+and `delivery-trial.service.ts`. The exact bundle manifest combines at most 64
+nominations and serves at most six results under the existing request deadline.
+Authority is checked again at issuance; source or composition failure serves the
+assigned incumbent with an explicit fallback record. The initial shadow sample,
+including an empty cohort, is immutable and cannot shrink to hide retained-data
+loss. No registry insertion enrolls viewers or changes the default policy.
+
+Local evidence and the release sequence are in
+`docs/operations/recommendation-controlled-live-integration-2026-09-29.md`.
+Production qualification and usefulness remain open. A frozen trial graph expires
+at its declared horizon; a permanent default also needs a reviewed refresh and
+requalification policy informed by the controlled result. Keep this ticket in
+progress until actual live dispositions and rollback evidence exist.

@@ -180,6 +180,24 @@ describe("RecommendationExperimentEvaluationService", () => {
     })
   })
 
+  it("never publishes a legacy PASS for the profile usefulness policy", async () => {
+    const { service, runs, evaluations } = harness()
+    const run = runs.get("run-1")!
+    run.experiment = {
+      ...experiment,
+      assignmentPolicyVersion: "profile-usefulness-assignment-v1",
+    }
+    await expect(
+      service.evaluateClaimedRun({
+        runId: "run-1",
+        expectedGeneration: 1,
+        expectedExperimentGeneration: 1,
+        claimId: run.claimId,
+      }),
+    ).rejects.toThrow("version-bound usefulness")
+    expect(evaluations).toHaveLength(0)
+  })
+
   it("fences stale workflow claims and experiment generations", async () => {
     const { service, runs } = harness()
     await expect(
