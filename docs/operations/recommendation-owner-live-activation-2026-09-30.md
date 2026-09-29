@@ -5,9 +5,10 @@ that decision without creating study assignments, shadow/composition PASS record
 calibration or efficacy evidence. Usefulness remains unmeasured. The wider
 unimplemented ranking roadmap is outside this release.
 
-**Current disposition: implementation validated locally; production publication
-and activation pending.** This record must not be cited as proof of live viewer
-influence. Feat-565 remains in progress.
+**Current disposition: direct implementation merged and deployed; production
+graph publication and activation remain pending.** The initial operator attempt
+did not commit. Feat-565 remains in progress; this record is not proof of live
+viewer influence.
 
 [PR #2478](https://github.com/JesusFilm/forge/pull/2478) carries the direct path
 through the normal release flow. Its initial CI run passed build, unit tests,
@@ -18,7 +19,57 @@ runtime-backed fixtures now share the complete recommendation migration chain;
 historical upgrade tests retain their fixed chains. All seven original failures
 passed locally. The repaired Admin/profile scope passed 18 checks and the later
 retriever scope passed nine (one intentional Redis drill skipped), with no runtime
-or timeout changes. The CI gate must pass before merge.
+or timeout changes. All 25 checks were successful or intentionally skipped
+at reviewed head `d0bb991969f01adf669ce6d1af3fff64864970af`, including the CI gate.
+The PR merged normally as `85656b946c7519cb39d501d44ce6d1d998ec7d9b`.
+
+## September 29 production deployment and operator repair
+
+At 21:23 UTC, both Admin HTTP and worker ran `85656b946` and returned health 200;
+Watch remained healthy at compatible revision `0a707123`. A later storage revision
+was already building, so this is a point-in-time observation. The 21:20 read-only
+catalog check passed all 17 checks for exact migrations 0111/0112, their constraints,
+triggers and manifest. It found no owner release and pointer generation 1/control.
+The deployed CLI probe matched all 16 pinned source files, found the private
+database connection and reported approximately 23 GB of available cgroup memory.
+Neither probe published a graph or activated authority. Receipts:
+[runtime health](../validation/recommendation-owner-live-20260930/production-runtime-health-20260929T2123.json),
+[owner migrations](../validation/recommendation-owner-live-20260930/production-owner-migrations-20260929T2120.json),
+[CLI probe](../validation/recommendation-owner-live-20260930/production-deployed-cli-probe-20260929T2120.json).
+
+The supported emergency-stop action opened a native browser confirmation that
+automation could neither inspect nor accept, and the owner could not see. A fresh
+authenticated page still showed generation 1/control and no stop audit. Normal
+reload recovered the original tab; temporary recovery tabs were closed. Replace
+the native prompt with an explicit in-page Confirm/Cancel panel while preserving
+the action, generation, authentication and CSRF contract. No committed stop, graph
+publication or owner activation is claimed from those interactions.
+
+The replacement passed 20 focused component tests, scoped lint, a fresh full
+Admin typecheck and independent review. An
+isolated local browser fixture at 1,100 and 390 pixels showed the confirmation,
+focused Cancel, produced no initial or cancelled POST and exactly one confirmed
+POST, with no horizontal overflow. Fifty server-render samples per version had
+median 0.525/0.548 ms and p95 0.762/0.781 ms before/after; initial HTML grew by
+14 bytes. These component measurements are not full-page production Web Vitals.
+See the [local receipt](../validation/recommendation-owner-live-20260930/local-confirmation-browser.json),
+[desktop](../validation/recommendation-owner-live-20260930/confirmation-desktop.png)
+and [mobile](../validation/recommendation-owner-live-20260930/confirmation-mobile.png)
+screenshots.
+
+A separate bounded read at 21:25 UTC found 8,611,950,592 bytes free, 1,073,741,824
+bytes of resident WAL, no lock waiters or replication slots, one transaction older
+than 30 seconds and 7,265 requests in the prior 24 hours (cap not reached). There
+were zero graph generations and owner releases. The latest completed retention
+run had deleted zero roots; no expired request was found. Charging measured graph,
+temporary and extra WAL reserves, a concurrent margin and the matched-fixture
+serving increment to every request leaves 8.096 GB at the projected peak and
+approximately 6.25 days at the previous ordinary growth rate. This satisfies the
+5 GB peak floor but not the prior seven-day projection. Publication remains pending
+storage reconciliation; no future purge, index-drop or packed-format savings are
+credited. The serving fixture is not a universal upper bound. See the
+[capacity observation](../validation/recommendation-owner-live-20260930/production-capacity-observation-20260929T2125.json)
+and [explicit calculation](../validation/recommendation-owner-live-20260930/production-capacity-disposition-20260929T2125.json).
 
 ## Serving and operation contract
 

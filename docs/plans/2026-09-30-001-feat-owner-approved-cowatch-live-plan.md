@@ -38,3 +38,20 @@ Parent owns plan, dependency/index updates, migration-number coordination, safe 
 ## Follow-up and truthful closeout
 
 Feat-505 remains optional unperformed causal measurement, no longer a feat-565 activation dependency. Feat-566 remains accepted historical telemetry remediation. Feat-373's dormant coverage gaps and full feat-393's additional signals remain unresolved. Automatic graph refresh and capacity sustainability must be recorded as a concrete follow-up if not delivered; report the initial live graph deadline rather than implying perpetual useful graph coverage.
+
+## September 30 operator confirmation repair
+
+After the reviewed implementation merged in PR #2478, native browser confirmation
+blocked the supported emergency-stop interaction: the prompt was not visible in
+the in-app browser, and a fresh authenticated inspection still showed generation
+1/control with no committed stop audit. Replace `PromotionControls` native
+confirmation with an in-page, keyboard-accessible Confirm/Cancel panel. Preserve
+the exact text, request bodies, permission/CSRF/generation checks and uncertain
+acknowledgement behavior; consume confirmation synchronously to prevent duplicate
+POSTs. The closed panel adds no initial network request or rendered dialog.
+
+Verify cancel and Escape without POST, exact single confirmed submission for
+stop/clear/rollback/permanent actions, stale-generation and authorization errors,
+keyboard focus, and bounded initial-render cost. Production publication and
+activation remain unrecorded; this repair does not imply capacity admission or
+successful operator execution.
