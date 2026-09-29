@@ -751,9 +751,7 @@ export default function WatchVideoPage() {
         <StatusBar style="light" />
         <View style={layout.centered}>
           <Text style={text.errorTitle}>{t("notFoundTitle")}</Text>
-          <Text style={text.errorMessage}>
-            {error?.message ?? t("loadError")}
-          </Text>
+          <Text style={text.errorMessage}>{t("loadError")}</Text>
           <Text
             style={styles.retryLink}
             onPress={() => {

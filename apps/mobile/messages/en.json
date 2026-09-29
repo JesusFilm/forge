@@ -545,6 +545,7 @@
     "nowPlayingAriaLabel": "Now playing: {title}",
     "noPlayableVideos": "No playable videos",
     "errorTitle": "Something went wrong",
+    "loadErrorMessage": "This page could not be loaded.",
     "tryAgain": "Try Again",
     "retryExperienceAriaLabel": "Retry loading experience",
     "noContent": "No content available",

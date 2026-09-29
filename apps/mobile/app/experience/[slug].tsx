@@ -45,7 +45,7 @@ export default function ExperienceScreen() {
     content = (
       <View style={layout.centered}>
         <Text style={text.errorTitle}>{t("errorTitle")}</Text>
-        <Text style={text.errorMessage}>{error}</Text>
+        <Text style={text.errorMessage}>{t("loadErrorMessage")}</Text>
         <Pressable
           onPress={refetch}
           style={[button.accent, styles.retryButton]}

@@ -2256,6 +2256,22 @@ each). `--yes` skips the prompt, for non-interactive use only.
   jobs. The mobile test job writes `scripts/i18n/pending-report.mjs` to the
   job summary: the pending count, the oldest pending key, and each web
   catalog that mobile lacks or has not declared natively.
+- **No hard-coded English (KTD14).** `src/i18n/__tests__/noHardcodedCopy.guard.test.js`
+  parses `app/` and `src/` with the TypeScript compiler. It fails on JSX text,
+  a literal in a copy prop, `Alert.alert` text, a registered copy module that
+  stops reading the catalog, `getT(` in a `.tsx` file, a store read at module
+  scope, a second `expo-localization` importer, and any read of the `Intl`
+  default locale. Brands, legal modules, and dev-only files sit on an exact
+  allowlist, each with a reason; an unused entry fails too. Text that a
+  variable carries is invisible to it, so error screens show catalog text,
+  never `error.message` (`app/__tests__/errorScreenCopy.guard.test.js`).
+- **Text direction (KTD13).** `useTextDirection()` in
+  `src/i18n/textDirection.ts` gives the direction style for left-aligned text:
+  `rtl` for a right-to-left language, `ltr` for English fallback text in a
+  right-to-left UI, and nothing in an English UI. Admin text passes its own
+  `*Lang` field; UI text uses the catalog tag. English fallback text also gets
+  `accessibilityLanguage="en"` on iOS. It never applies to containers or to
+  centered text, and the layout never mirrors (KTD4).
 
 ### Merge two catalog PRs
 
