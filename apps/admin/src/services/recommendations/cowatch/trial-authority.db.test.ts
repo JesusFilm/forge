@@ -76,7 +76,7 @@ describe.skipIf(!enabled)(
       })
       await prisma.$disconnect()
     })
-    async function fixture() {
+    async function fixture(linkedProfile = true) {
       const id = `${prefix}-${ordinal++}`
       const created = new Date()
       const start = new Date(created.getTime() - 10 * day + ordinal * 3_600_000)
@@ -94,14 +94,15 @@ describe.skipIf(!enabled)(
           expiresAt,
         },
       })
-      await prisma.recommendationProfileSessionLink.create({
-        data: {
-          profileId,
-          privacyGeneration: 1,
-          sessionDigest: digest(`${id}-viewer-0`),
-          expiresAt: new Date(created.getTime() + 60_000),
-        },
-      })
+      if (linkedProfile)
+        await prisma.recommendationProfileSessionLink.create({
+          data: {
+            profileId,
+            privacyGeneration: 1,
+            sessionDigest: digest(`${id}-viewer-0`),
+            expiresAt: new Date(created.getTime() + 60_000),
+          },
+        })
       const episodes: string[] = []
       for (let viewer = 0; viewer < 10; viewer++) {
         for (const [index, mediaId] of (viewer < 5
@@ -416,7 +417,7 @@ describe.skipIf(!enabled)(
       ).toMatchObject({ status: "refused", reason: "cowatch_trial_expired" })
     })
     it("retains one-use authority across deletion and exact same-ID republish", async () => {
-      const f = await fixture()
+      const f = await fixture(false)
       await qualify(f)
       await prisma.recommendationCowatchGeneration.delete({
         where: { id: f.binding.graphGenerationId },
@@ -480,6 +481,86 @@ describe.skipIf(!enabled)(
       ).rejects.toThrow()
       await qualify(f)
     })
+    it.each(["source", "graph", "outcome"] as const)(
+      "does not anonymize episodes after %s lineage deletion and link cleanup",
+      async (kind) => {
+        const f = await fixture()
+        await qualify(f)
+        await prisma.recommendationProfileSessionLink.deleteMany({
+          where: { profileId: f.profileId },
+        })
+        const outcomeId = `${f.episodes[0]}-r1`
+        const original =
+          await prisma.recommendationOutcomeRevision.findUniqueOrThrow({
+            where: { id: outcomeId },
+          })
+        const eligibility =
+          await prisma.recommendationEligibilityDecision.findUniqueOrThrow({
+            where: { id: `${f.episodes[0]}-eligible` },
+          })
+        if (kind === "source")
+          await prisma.recommendationCowatchSourceContribution.deleteMany({
+            where: { generationId: f.binding.graphGenerationId, outcomeId },
+          })
+        else if (kind === "graph")
+          await prisma.recommendationCowatchGeneration.delete({
+            where: { id: f.binding.graphGenerationId },
+          })
+        else {
+          await prisma.recommendationOutcomeRevision.delete({
+            where: { id: outcomeId },
+          })
+          await prisma.recommendationOutcomeRevision.create({
+            data: {
+              ...original,
+              id: `${outcomeId}-reclassified`,
+              revision: 2,
+              activeIntervals: undefined,
+              inputDigest: digest(`${outcomeId}-reclassified`),
+              createdAt: original.createdAt,
+            },
+          })
+          await prisma.recommendationEligibilityDecision.create({
+            data: {
+              ...eligibility,
+              id: `${eligibility.id}-reclassified`,
+              outcomeId: `${outcomeId}-reclassified`,
+              revision: 2,
+              inputDigest: digest(`${eligibility.id}-reclassified`),
+            },
+          })
+        }
+        expect(
+          await prisma.recommendationCowatchSuppression.count({
+            where: { episodeId: f.episodes[0] },
+          }),
+        ).toBe(1)
+        const rebuilt = await publishCowatchShadowGeneration(
+          prisma,
+          f.now,
+          f.binding.sourceWindow,
+        )
+        graphIds.push(rebuilt.generation!)
+        expect(rebuilt.sourceCount).toBe(kind === "graph" ? 13 : 14)
+        expect(
+          await prisma.recommendationCowatchSourceContribution.count({
+            where: {
+              generationId: rebuilt.generation!,
+              outcome: { episodeId: f.episodes[0] },
+            },
+          }),
+        ).toBe(0)
+        expect(
+          (
+            await publishCowatchShadowGeneration(
+              prisma,
+              f.now,
+              f.binding.sourceWindow,
+            )
+          ).generation,
+        ).toBe(rebuilt.generation)
+      },
+    )
     it.each(["reset", "delete", "service"] as const)(
       "retains suppression after link cleanup on %s",
       async (mode) => {

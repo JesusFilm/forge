@@ -64,11 +64,23 @@ CREATE FUNCTION invalidate_cowatch_episode(episode_id_value text, reason text) R
     WHERE outcome.episode_id = episode_id_value
   ), reason);
 $$;
+-- Removing private lineage must not turn a retained episode anonymous after
+-- discovery-link cleanup. Unconditional suppression avoids racing link cleanup.
+CREATE FUNCTION suppress_cowatch_retained_outcome(outcome_id_value text) RETURNS void LANGUAGE sql AS $$
+  INSERT INTO recommendation_cowatch_suppression(episode_id, expires_at)
+    SELECT DISTINCT episode.id, episode.expires_at
+    FROM recommendation_cowatch_source_contribution source
+    JOIN recommendation_outcome_revision outcome ON outcome.id = source.outcome_id
+    JOIN recommendation_playback_episode episode ON episode.id = outcome.episode_id
+    WHERE source.outcome_id = outcome_id_value AND source.viewer_profile_id IS NOT NULL
+    ON CONFLICT (episode_id) DO NOTHING;
+$$;
 CREATE FUNCTION cowatch_dependency_changed() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE row_value jsonb; episode_value text; ids char(64)[];
 BEGIN
   row_value := CASE WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
   IF TG_TABLE_NAME = 'recommendation_outcome_revision' THEN
+    IF TG_OP = 'DELETE' THEN PERFORM suppress_cowatch_retained_outcome(row_value->>'id'); END IF;
     SELECT ARRAY(
       SELECT source.generation_id FROM recommendation_cowatch_source_contribution source WHERE source.outcome_id = row_value->>'id'
       UNION
@@ -93,6 +105,9 @@ BEGIN
       WHERE outcome.request_id = row_value->>'request_id') INTO ids;
     PERFORM invalidate_cowatch_generations(ids, 'promotion_fenced');
   ELSE
+    IF TG_TABLE_NAME = 'recommendation_cowatch_source_contribution' AND TG_OP = 'DELETE' AND (row_value->>'viewer_profile_id') IS NOT NULL THEN
+      PERFORM suppress_cowatch_retained_outcome(row_value->>'outcome_id');
+    END IF;
     PERFORM invalidate_cowatch_generations(ARRAY[(row_value->>'generation_id')::char(64)], 'graph_lineage_changed');
   END IF;
   RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
