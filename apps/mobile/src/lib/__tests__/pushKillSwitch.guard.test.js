@@ -113,7 +113,7 @@ describe("the push registration kill-switch", () => {
   })
 
   it("keeps the constants file a leaf that imports nothing", () => {
-    // The Profile row reads this file too, and that screen must never reach
+    // The mission screen reads this file too, and it must never reach
     // the notifications adapter. One import here can open that path.
     expect(readImports(fs.readFileSync(FLAG, "utf8"))).toEqual([])
   })

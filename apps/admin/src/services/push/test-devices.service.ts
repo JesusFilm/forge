@@ -1,6 +1,6 @@
 /**
  * R31 — the test-device list. An admin user pastes the notification test ID a
- * phone shows on its Profile screen, with a label.
+ * phone reveals on its mission screen, with a label.
  *
  * The ID is never the push token, so a token-shaped string is refused before
  * anything else happens: a pasted token in an admin table is a leak, and the

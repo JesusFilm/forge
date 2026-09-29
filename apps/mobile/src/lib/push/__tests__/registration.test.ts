@@ -1026,7 +1026,7 @@ describe("the kill switch (KTD12)", () => {
 
     expect(harness.register).not.toHaveBeenCalled()
     expect(harness.outcomes()).toEqual(["gate_off"])
-    // The permission label still reaches the store, so Profile keeps working.
+    // The permission label still reaches the store for the test ID reveal.
     expect(harness.permissions).toEqual(["granted"])
   })
 

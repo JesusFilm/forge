@@ -1,8 +1,8 @@
 /**
  * The stored registration record. It holds what R3 and R29 need across
  * launches — the change key, the last success, the remembered revocation — and
- * the test ID R31 shows on Profile. It never holds the push token or a viewer
- * handle, which is the property the Profile row and the audience both rest on.
+ * the test ID R31 reveals. It never holds the push token or a viewer handle,
+ * which is the property the test ID reveal and the audience both rest on.
  *
  * Every case drives an injected storage seam. The vendor's own AsyncStorage
  * mock stands in for the native module the module-scope import needs.
@@ -317,7 +317,7 @@ describe("the push registration store", () => {
     expect(store.getSnapshot().permission).toBe("granted")
   })
 
-  it("starts with an unknown permission, so Profile shows no denial by default", async () => {
+  it("starts with an unknown permission, so the reveal shows no denial by default", async () => {
     const { store } = createStore()
 
     expect(store.getSnapshot()).toEqual({

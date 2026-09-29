@@ -120,10 +120,6 @@ jest.mock("../../../src/components/ui/Snackbar", () => ({
 jest.mock("../../../src/components/profile/AccountSection", () => ({
   AccountSection: () => null,
 }))
-// NotificationTestIdSection's own suite covers the push test ID and its store.
-jest.mock("../../../src/components/profile/NotificationTestIdSection", () => ({
-  NotificationTestIdSection: () => null,
-}))
 jest.mock("../../../src/lib/openExternalUrl", () => ({
   openExternalUrl: jest.fn(),
 }))

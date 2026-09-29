@@ -49,7 +49,7 @@ export type PushRegistrationReceiptStatus = Exclude<
 >
 
 export type PushDeviceRegistrationReceipt = Readonly<{
-  /** R31 — the app shows this on its Profile screen; never the token. */
+  /** R31 — the app reveals this on its mission screen; never the token. */
   testDeviceId: string
   status: PushRegistrationReceiptStatus
 }>
@@ -259,7 +259,7 @@ async function writeRegistration(
 
 /**
  * Registers or refreshes one phone. The receipt carries the phone's test ID so
- * the Profile screen can show it on every launch.
+ * the app's mission screen can reveal it on every launch.
  */
 export async function registerPushDevice(
   prisma: PrismaClient,

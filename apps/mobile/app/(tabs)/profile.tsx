@@ -1,6 +1,5 @@
 import { LibraryDownloads } from "../../src/components/library/LibraryDownloads"
 import { AccountSection } from "../../src/components/profile/AccountSection"
-import { NotificationTestIdSection } from "../../src/components/profile/NotificationTestIdSection"
 import { PrivacyPolicyButton } from "../../src/components/profile/PrivacyPolicyButton"
 
 // ProfileScreen hides the other external links (socials, Give, About,
@@ -9,12 +8,7 @@ import { PrivacyPolicyButton } from "../../src/components/profile/PrivacyPolicyB
 export default function ProfileScreen() {
   return (
     <LibraryDownloads
-      header={
-        <>
-          <AccountSection />
-          <NotificationTestIdSection />
-        </>
-      }
+      header={<AccountSection />}
       title="My Downloads"
       footer={<PrivacyPolicyButton />}
     />

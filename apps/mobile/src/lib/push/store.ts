@@ -1,10 +1,10 @@
 /**
  * The stored registration record, as a plain module store — the pattern the
- * last-watched record uses, so the registration controller and the Profile row
+ * last-watched record uses, so the registration controller and the test ID reveal
  * both read it with no React dependency and no native module.
  *
  * It holds the change key (R3), the last success (R3's weekly refresh), the
- * remembered revocation (R29), the test ID Profile shows (R31) and the install
+ * remembered revocation (R29), the test ID the reveal shows (R31) and the install
  * id admin supersedes registrations by. It holds NEITHER the push token nor a
  * viewer handle: nothing that identifies the phone to a third party is
  * persisted, and the token is re-read from the adapter whenever it is needed.
@@ -36,7 +36,7 @@ export type PushRegistrationRecord = {
   revocationReportedAt: number | null
 }
 
-/** What the Profile row renders from. */
+/** What the test ID reveal reads. */
 export type PushRegistrationSnapshot = {
   testDeviceId: string | null
   permission: PushPermissionState | "unknown"
@@ -242,7 +242,7 @@ export function createPushRegistrationStore(deps: PushRegistrationStoreDeps) {
       })
     },
 
-    /** The permission label the lifecycle pass read, for the Profile row. It is
+    /** The permission label the lifecycle pass read, for the test ID reveal. It is
      *  launch state, never persisted: the OS is the authority on it. */
     setPermission(next: PushPermissionState): void {
       permission = next

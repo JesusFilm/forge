@@ -307,7 +307,7 @@ export async function refreshReportAction(formData: FormData): Promise<void> {
   if (campaignId) revalidatePath(pushCampaignPath(campaignId))
 }
 
-/** R31 — an admin user pastes the ID the app shows on its Profile screen. */
+/** R31 — an admin user pastes the ID the app reveals on its mission screen. */
 export async function addTestDeviceAction(
   _previous: PushActionState,
   formData: FormData,

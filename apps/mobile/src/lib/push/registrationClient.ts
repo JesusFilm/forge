@@ -105,7 +105,7 @@ export async function registerPushDevice(
     const receipt = data.registerPushDevice
     if (receipt?.testDeviceId == null || receipt.testDeviceId.length === 0) {
       // Admin declares the field non-null, so an empty one is a contract break;
-      // storing it would leave Profile showing a blank row for good.
+      // storing it would leave the test ID reveal blank for good.
       throw new PushClientError("GRAPHQL_ERROR", { definitive: true })
     }
     return { testDeviceId: receipt.testDeviceId, status: receipt.status }

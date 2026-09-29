@@ -48,6 +48,7 @@ The app already asks for notification permission for lapse reminders, so a share
 - **The app models destinations, not campaigns.** A notification carries a destination kind and slug plus an opaque campaign identifier, so a new server-side notification type needs no app release. Governs R7, R20, R21, R23, R30.
 - **One announcement per phone per local day.** The campaign that claims the phone first wins. Governs R15.
 - **A test send precedes every real send.** A test phone is any phone whose notification test ID, shown on the app's Profile screen, an admin user has added to the test-device list. Governs R10, R31. (session-settled: user-approved - chosen over designating test phones by a signed-in email allowlist: keeps registration anonymous and needs no sign-in.)
+  - Refined 2026-09-29 (owner decision): the app reveals the test ID only through a 5-second hold on the mission screen's beta button, not on Profile. See R31.
 - **A campaign freezes when sending starts.** Cancel is allowed; edit is not. Governs R11.
 - **Any signed-in admin user may create, test, schedule, and send.** The same person completes the send-now confirmation. Governs R28. (session-settled: user-approved - chosen over a restricted campaign role and over a second-person confirmation for send now: the smallest build, and it fits the one-editor assumption.)
 - **Country is where the phone registered from.** The phone's region setting is the fallback, and the value is a best-effort label because the raw origin is reachable without the edge. Governs R14.
@@ -114,6 +115,7 @@ This plan covers **localized push campaigns** as one unit: registration and tap 
 - R10. An editor cannot schedule a campaign or send it now until they have sent it to at least one phone on the test-device list.
 - R11. Once sending starts, the campaign's copy, destination, and audience are fixed; the editor can cancel the waves that have not started, but cannot edit.
 - R31. An admin user maintains the test-device list by pasting a phone's notification test ID with a label, and the app shows that ID on its Profile screen; the ID is a separate identifier and never the push token.
+  - Refined 2026-09-29 (owner decision): the app no longer shows the test ID on Profile. A 5-second hold on “Become a beta tester” on the mission screen (`app/mission.tsx`) opens a native alert with the ID, Close, and Copy test ID (`src/lib/push/testIdReveal.ts`). A shorter press still opens the signup page. The share action is gone. The alert keeps the registering and notifications-off states, and neither offers the copy action. The admin test-device page tells staff where to find the ID.
 
 ```mermaid
 stateDiagram-v2
@@ -863,6 +865,7 @@ First internal campaign, go or no-go: author copy in three languages with a seri
 - `apps/mobile/src/lib/push/operationNames.ts`, `apps/mobile/src/lib/authHeaders.ts`, and `authHeaders.test.ts` (fleet bearer allowlist)
 - `apps/mobile/src/contexts/LapseReminderProvider.tsx` (own the rotation subscription; wire the hook)
 - `apps/mobile/app/(tabs)/profile.tsx` (notification test ID row with copy and share)
+  - Refined 2026-09-29: the row is removed. The reveal lives in `app/mission.tsx` and `src/lib/push/testIdReveal.ts`. See R31.
 - `apps/mobile/src/lib/__tests__/notificationsEntryPoint.guard.test.js`, `appJsonNotifications.guard.test.js`, and `pushKillSwitch.guard.test.js`
 - `apps/mobile/app.json` and `apps/mobile/google-services.json` (Android Firebase config referenced by the app config; the entitlement mode only if U9 finds it needed)
 
@@ -873,6 +876,7 @@ First internal campaign, go or no-go: author copy in three languages with a seri
 3. A denied read after a stored registration sends one revocation report and remembers it; the revocation report runs even when the kill switch is off.
 4. Create the announcements channel in the same pass that creates the reminders channel, before any permission read.
 5. Store the test device id returned by registration and show it on Profile with copy and share; never show the token. Before the first successful registration the row shows a registering placeholder, when permission is denied it shows a notifications-off placeholder, and copy and share stay disabled until an ID is stored.
+   - Refined 2026-09-29 (owner decision): the app reveals the test ID only through a 5-second hold on the mission screen's beta button, not on Profile. See R31.
 6. Failures log through the named telemetry sink with a feature-prefixed attribute set and never surface to the viewer.
 
 **Patterns to follow:** `apps/mobile/src/lib/lapseReminders/lifecycle.ts` for the pass and injected deps; `apps/mobile/src/lib/recommendations/transport.ts` for deadlines; `apps/mobile/src/lib/recommendations/enabled.ts` for the opt-in reader; `apps/mobile/src/lib/lapseReminders/constants.ts` for the zero-import kill switch.
@@ -890,8 +894,11 @@ First internal campaign, go or no-go: author copy in three languages with a seri
 - The identity client returning disabled yields a payload without a viewer handle.
 - The entry-point guard admits exactly the new adapter calls and import and still forbids deprecated ones; the app.json guard pins the Firebase file key and finds background remote notifications unset.
 - The Profile row renders the stored test ID and never the token; with no stored ID it renders the registering placeholder with copy and share disabled, and with permission denied it renders the notifications-off placeholder.
+  - Refined 2026-09-29: these states now belong to the reveal's alert, which offers only Close when there is no ID. See R31.
 
 **Verification:** A dev-client build registers against a local admin through the fake-admin proxy log with one call per launch; the Profile row shows and shares the test ID; the guard suites pass.
+
+- Refined 2026-09-29: the test ID check is now the alert from a 5-second hold on the mission screen's beta button, with Copy test ID. See R31.
 
 ### U8. Mobile tap routing, foreground banner, and attribution mark
 
@@ -963,6 +970,7 @@ First internal campaign, go or no-go: author copy in three languages with a seri
 1. Complete the credentials table in Operational Notes with each proof recorded, including the Expo project's access-token requirement and the worker concurrency value.
 2. Build the production archive from the merged tree, read the entitlement, set the plugin's production mode only if needed and prove a development build still signs, submit iOS through the verified recipe, and write and run the Play internal-testing steps.
 3. Run the device pass on a physical iPhone and a physical Android phone: a registration row per phone with platform, country, country source, app language, time zone, and active status; the Profile test ID; cold and warm taps for each destination kind; the foreground banner; the reminder still silent; a zone change after a restart; an experience tap surviving the stack swap.
+   - Refined 2026-09-29: read the test ID from the mission screen's hidden alert, not from Profile. See R31.
 4. Run the first internal campaign per the go-or-no-go checklist in Operational Notes, then the first real campaign as a one-country wave, and record the batch size and concurrency that held.
 
 **Execution note:** This unit is release and verification work; prefer runtime evidence over unit coverage.

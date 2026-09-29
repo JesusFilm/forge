@@ -170,7 +170,7 @@ export const ExpoPushTokenSchema = z
   .refine(isExpoPushTokenShape, "That is not an Expo push token")
 
 /**
- * The notification test ID the app shows on its Profile screen.
+ * The notification test ID the app reveals on its mission screen.
  *
  * Lowercase letters and digits only. A push token carries brackets or
  * dashes, so no token can pass as a test ID by accident.

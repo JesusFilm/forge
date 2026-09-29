@@ -99,7 +99,7 @@ export class PushTokenShapedIdError extends PushServiceError {
   constructor() {
     super(
       "token_shaped_id",
-      "That looks like a push token; paste the notification test ID from the app's Profile screen",
+      "That looks like a push token; paste the notification test ID from the app instead",
     )
     this.name = "PushTokenShapedIdError"
   }

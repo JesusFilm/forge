@@ -1,7 +1,8 @@
 /**
  * Dependency-free constants for push registration. Every later push module
- * imports this leaf, and so does the Profile row, so it holds no logic and no
- * import: the Profile screen must never reach the notifications adapter.
+ * imports this leaf, and so does the mission screen's test ID reveal, so it
+ * holds no logic and no import: that screen must never reach the
+ * notifications adapter.
  */
 
 /**
@@ -117,14 +118,17 @@ export const PUSH_PHONE_LOCALE_MAX_CHARS = 35
 /** Admin caps the IANA zone name at 64 characters. */
 export const PUSH_TIME_ZONE_MAX_CHARS = 64
 
-/** R31's Profile row. One named constant per string, so copy edits sit here. */
-export const PUSH_TEST_ID_SECTION_TITLE = "Notifications"
-export const PUSH_TEST_ID_ROW_LABEL = "Notification test ID"
+/**
+ * R31's hidden reveal: holding the mission screen's beta button for this long
+ * shows the notification test ID. One named constant per string, so copy edits
+ * sit here.
+ */
+export const PUSH_TEST_ID_REVEAL_HOLD_MS = 5_000
+export const PUSH_TEST_ID_ALERT_TITLE = "Notification test ID"
 export const PUSH_TEST_ID_HELP =
   "Share this ID with the team to receive test announcements on this phone."
 export const PUSH_TEST_ID_REGISTERING = "Registering this phone…"
 export const PUSH_TEST_ID_NOTIFICATIONS_OFF =
   "Notifications are off for this phone. Turn them on in Settings to receive announcements."
-export const PUSH_TEST_ID_COPY_LABEL = "Copy notification test ID"
-export const PUSH_TEST_ID_SHARE_LABEL = "Share notification test ID"
-export const PUSH_TEST_ID_COPIED = "Copied"
+export const PUSH_TEST_ID_CLOSE_ACTION = "Close"
+export const PUSH_TEST_ID_COPY_ACTION = "Copy test ID"

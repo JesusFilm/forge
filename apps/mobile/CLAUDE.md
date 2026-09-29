@@ -1410,6 +1410,21 @@ design record is
   is simply retried on a later launch. A reported revocation also CLEARS the
   payload hash, because admin drops a denied row from every audience and the
   next grant must register rather than read its own payload as unchanged.
+- **The test ID is hidden on purpose (owner decision, 2026-09-29).** No
+  screen shows it. A 5-second hold (`PUSH_TEST_ID_REVEAL_HOLD_MS`) on
+  "Become a beta tester" in `app/mission.tsx` opens a native alert with the
+  ID, Close, and "Copy test ID" (`src/lib/push/testIdReveal.ts`). A shorter
+  press still opens the beta signup page. The alert reads the store only after
+  `hydrate()`, because nothing may have read the record yet on that launch.
+  Before the first registration the alert reads "Registering this phone…",
+  and while permission is denied it says so. Neither state offers the copy
+  action.
+- **The reveal's tests drive React Native's own press timers.**
+  `app/__tests__/missionBetaReveal.test.tsx` sends responder events to the
+  button's host view, so it fails if the hold length or the split between a
+  press and a hold changes. The copy action uses `expo-clipboard`, not React
+  Native's deprecated `Clipboard`. The admin test-device page tells staff
+  where to find the ID, so change the two together.
 - **The install id is minted once and kept for the life of the install.**
   `ensureInstallId()` mints a UUID on the first read and persists it, and
   nothing regenerates it: a revocation report and a later success both carry it
