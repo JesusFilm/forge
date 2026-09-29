@@ -2,12 +2,18 @@ import { pathToFileURL } from "node:url"
 import { z } from "zod"
 import { RECOMMENDATION_RAW_RETENTION_DAYS } from "../services/recommendations/contracts"
 import {
+  COWATCH_MMR_TRIAL_MANIFEST_ID,
+  HYBRID_PERSONALIZED_MANIFEST_ID,
+} from "../services/recommendations/promotion/manifest"
+import {
   RecommendationConflictError,
   RecommendationInputError,
 } from "../services/recommendations/errors"
 
 const VALUE_OPTIONS = new Set([
   "--evaluation-id",
+  "--generation-id",
+  "--manifest-id",
   "--window-start",
   "--window-end",
   "--sample-size",
@@ -41,15 +47,34 @@ export function parseCowatchShadowEvaluationArguments(
     values.set(key, value)
     index++
   }
-  if (!execute || values.size !== VALUE_OPTIONS.size) {
+  if (
+    !execute ||
+    values.size !== VALUE_OPTIONS.size - (values.has("--manifest-id") ? 0 : 1)
+  ) {
     throw new RecommendationInputError(
-      "Required: --execute --evaluation-id UUID --window-start ISO --window-end ISO --sample-size --minimum-runs",
+      "Required: --execute --evaluation-id UUID --generation-id SHA256 --window-start ISO --window-end ISO --sample-size --minimum-runs",
     )
   }
 
   const evaluationId = values.get("--evaluation-id")!
   if (!z.uuid().safeParse(evaluationId).success) {
     throw new RecommendationInputError("--evaluation-id must be a UUID")
+  }
+  const cowatchGenerationId = values.get("--generation-id")!
+  if (!/^[a-f0-9]{64}$/.test(cowatchGenerationId)) {
+    throw new RecommendationInputError(
+      "--generation-id must be an exact lowercase SHA256 graph identity",
+    )
+  }
+  const manifestId =
+    values.get("--manifest-id") ?? HYBRID_PERSONALIZED_MANIFEST_ID
+  if (
+    manifestId !== HYBRID_PERSONALIZED_MANIFEST_ID &&
+    manifestId !== COWATCH_MMR_TRIAL_MANIFEST_ID
+  ) {
+    throw new RecommendationInputError(
+      "--manifest-id must name an exact supported co-watch shadow manifest",
+    )
   }
   function timestamp(key: string) {
     const value = values.get(key)!
@@ -92,6 +117,8 @@ export function parseCowatchShadowEvaluationArguments(
   }
   return {
     evaluationId,
+    cowatchGenerationId,
+    ...(values.has("--manifest-id") ? { manifestId } : {}),
     windowStart,
     windowEnd,
     requestedSampleSize,

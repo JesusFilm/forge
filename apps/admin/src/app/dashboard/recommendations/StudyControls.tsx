@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 type Study = {
   experimentId: string
@@ -50,6 +50,7 @@ export function StudyControls() {
   const [protocol, setProtocol] = useState("")
   const [evidence, setEvidence] = useState("")
   const [busy, setBusy] = useState(false)
+  const operationInFlight = useRef(false)
   const [unknown, setUnknown] = useState<{
     action: string
     id: string
@@ -63,8 +64,21 @@ export function StudyControls() {
   const study = status?.studies.find((s) => s.experimentId === selected)
   const disabled = busy || unknown !== null
 
-  async function refresh(pending = unknown) {
+  async function runOperation(work: () => Promise<void>) {
+    // Closing the panel or a second click can precede React's busy render.
+    // Keep one lock through the write and its durable-status reconciliation.
+    if (operationInFlight.current) return
+    operationInFlight.current = true
     setBusy(true)
+    try {
+      await work()
+    } finally {
+      operationInFlight.current = false
+      setBusy(false)
+    }
+  }
+
+  async function refreshStatus(pending = unknown) {
     try {
       const query = pending
         ? `?studyId=${encodeURIComponent(pending.studyId)}&operationId=${pending.id}`
@@ -111,9 +125,11 @@ export function StudyControls() {
       setMessage(
         "Status is unavailable. Serving state has not been confirmed; refresh when connectivity returns.",
       )
-    } finally {
-      setBusy(false)
     }
+  }
+
+  function refresh() {
+    return runOperation(() => refreshStatus())
   }
 
   async function mutate(
@@ -122,47 +138,52 @@ export function StudyControls() {
     studyId: string,
     operationId?: string,
   ) {
-    const id = operationId ?? crypto.randomUUID()
-    const pending = { action, id, studyId, protocol: payload.protocol, payload }
-    setBusy(true)
-    setMessage(`Submitting ${action}…`)
-    try {
-      const response = await fetch("/api/recommendations/studies", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "content-type": "application/json",
-          "x-forge-csrf": "recommendation-study-v1",
-        },
-        body: JSON.stringify({
-          action,
-          ...payload,
-          ...(action === "activate" || action === "evaluate"
-            ? { operationId: id }
-            : action === "evidence"
-              ? { evidenceId: id }
-              : {}),
-        }),
-      })
-      if ([400, 401, 403, 409].includes(response.status)) {
-        const result = await response.json()
-        setMessage(
-          `Not accepted: ${result.error}. Refresh status before changing the reviewed inputs.`,
-        )
-        return
+    return runOperation(async () => {
+      const id = operationId ?? crypto.randomUUID()
+      const pending = {
+        action,
+        id,
+        studyId,
+        protocol: payload.protocol,
+        payload,
       }
-      if (!response.ok) throw new Error("acknowledgement unknown")
-      setSelected(studyId)
-      setUnknown(pending)
-      await refresh(pending)
-    } catch {
-      setUnknown(pending)
-      setMessage(
-        "Acknowledgement unknown: the server may have recorded this operation. Refresh status before another action.",
-      )
-    } finally {
-      setBusy(false)
-    }
+      setMessage(`Submitting ${action}…`)
+      try {
+        const response = await fetch("/api/recommendations/studies", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "content-type": "application/json",
+            "x-forge-csrf": "recommendation-study-v1",
+          },
+          body: JSON.stringify({
+            action,
+            ...payload,
+            ...(action === "activate" || action === "evaluate"
+              ? { operationId: id }
+              : action === "evidence"
+                ? { evidenceId: id }
+                : {}),
+          }),
+        })
+        if ([400, 401, 403, 409].includes(response.status)) {
+          const result = await response.json()
+          setMessage(
+            `Not accepted: ${result.error}. Refresh status before changing the reviewed inputs.`,
+          )
+          return
+        }
+        if (!response.ok) throw new Error("acknowledgement unknown")
+        setSelected(studyId)
+        setUnknown(pending)
+        await refreshStatus(pending)
+      } catch {
+        setUnknown(pending)
+        setMessage(
+          "Acknowledgement unknown: the server may have recorded this operation. Refresh status before another action.",
+        )
+      }
+    })
   }
 
   function template(bundle = false) {
@@ -176,7 +197,7 @@ export function StudyControls() {
           comparison: bundle ? "incumbent-cowatch-mmr" : "incumbent-aa",
           identity: "anonymous-profile-generation-v1",
           surface: "watch-below-player-v1",
-          cohort: "human-en-english-durable-v1",
+          cohort: "human-en-english-durable-client-cowatch-mmr-v1",
           controlManifestId: "hybrid-profile-viewing-mode-v1",
           challengerManifestId: bundle
             ? "hybrid-profile-viewing-mode-cowatch-mmr-v1"
@@ -310,7 +331,7 @@ export function StudyControls() {
         aria-expanded={open}
         onClick={() => {
           setOpen(!open)
-          if (!open && !status) void refresh()
+          if (!open && !status && !operationInFlight.current) void refresh()
         }}
       >
         Governed profile studies
@@ -322,7 +343,9 @@ export function StudyControls() {
             comparator. Semantic control differs from the live hybrid incumbent
             and cannot authorize an incremental co-watch or MMR default.
             Enrollment admission is separate from the 50/50 split among admitted
-            profiles.
+            profiles. New incumbent studies enroll only clients supporting the
+            trial response. Assigned profiles remain in the cohort when an older
+            tab needs an incumbent fallback.
           </p>
           <button
             className={button}

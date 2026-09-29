@@ -1,0 +1,110 @@
+{
+  "kind": "owned-local-validation",
+  "productionEvidence": false,
+  "integrationHeadBeforeParentCommit": "ab16ec7fdadc3ced857262cdfd245f9395317413",
+  "tests": {
+    "combinedRecommendationAndOperatorUnits": {
+      "passedFiles": 101,
+      "passedTests": 873,
+      "skippedNativeTests": 273,
+      "log": "/tmp/forge-live-reviewed-unit.log"
+    },
+    "parentNative": {
+      "passedFiles": 3,
+      "passedTests": 4,
+      "log": "/tmp/forge-live-parent-native-final.log"
+    },
+    "compositionControls": {
+      "passedTests": 4,
+      "log": "/tmp/forge-live-composition-controls.log"
+    },
+    "activatedBundleNative": {
+      "passedTests": 1,
+      "log": "/tmp/delivery-bundle-native.log",
+      "coldMs": 307,
+      "warmMs": 196,
+      "completeRequestLimitMs": 1500,
+      "fixture": "Owned PostgreSQL, 2CPU/2GiB, synthetic retrieval/signing; service-computed calibration, approvals and actual adapter issuance"
+    },
+    "existingStudyNativeAfterFixtureExtraction": {
+      "passedTests": 8
+    },
+    "adminApiAndOperatorControls": {
+      "passedTests": 32,
+      "log": "/tmp/forge-live-api-controls-final.log"
+    },
+    "watchConsumer": {
+      "passedFiles": 2,
+      "passedTests": 66,
+      "log": "/tmp/forge-live-reviewed-web.log"
+    },
+    "boundedOperatorBody": {
+      "passedTests": 18,
+      "log": "/tmp/forge-live-bounded-body.log"
+    },
+    "shadowDecisionIdRegression": {
+      "passedTests": 18,
+      "log": "/tmp/forge-live-study-id-regression.log"
+    },
+    "activatedBundleParentVerification": {
+      "passedTests": 1,
+      "log": "/tmp/forge-live-parent-bundle-native.log",
+      "coldMs": 304,
+      "warmMs": 210,
+      "completeRequestLimitMs": 1500,
+      "fixtureOnly": true
+    },
+    "retentionIndependentNative": {
+      "passedTests": 13,
+      "log": "/tmp/forge-live-reviewed-retention-native.log"
+    },
+    "retentionWorkerRegression": {
+      "passedTests": 35,
+      "nativeRepairTests": 13,
+      "unitTests": 18,
+      "existingProfileNativeTests": 3,
+      "trialRetentionNativeTests": 1,
+      "log": "/tmp/forge-retention-final-regressions.log",
+      "oneConnection1000RootsMs": 1865,
+      "loadedProfileErasureMs": 462,
+      "fixture": "Owned PostgreSQL18,2CPU/2GiB"
+    },
+    "capabilityWorkerVerification": {
+      "passedScopedTests": 127,
+      "passedNativeTests": 17,
+      "coldMs": 312,
+      "warmMs": 247,
+      "scope": "Explicit enrollment capability, sticky older-tab fallback, calibration cohort, actual bundle and study lifecycle"
+    },
+    "parentReviewedLifecycleNative": {
+      "passedFiles": 4,
+      "passedTests": 5,
+      "log": "/tmp/forge-live-reviewed-lifecycle-native.log"
+    }
+  },
+  "build": {
+    "adminOptimizedBuildAndWorkflowRegistration": "passed",
+    "log": "/tmp/forge-live-parent-build.log",
+    "requiredSettings": "fixture-only local values, no production credentials",
+    "scope": "Earlier integration build; final merged-baseline build pending"
+  },
+  "migrations": {
+    "freshReplayThrough": "0110_recommendation_live_policy_manifests",
+    "passed": true,
+    "log": "/tmp/forge-live-parent-migration-reviewed.log",
+    "sha256": {
+      "apps/admin/prisma/migrations/0109_recommendation_composition_authority/migration.sql": "d8c0cb7fd54f7b94b113dd5e989c04949199341043f138ce884e8e612c0e09e7",
+      "apps/admin/prisma/migrations/0110_recommendation_live_policy_manifests/migration.sql": "ce2bed91c7063b83a8d6960c2555b0af399da558f59dfe7350945e24f0b9c2c2",
+      "apps/admin/prisma/migrations/0108_recommendation_cowatch_frozen_trial/migration.sql": "94260bd78c39a1d6c1b740801becc54967c405a16087c057acb276650897e3e7",
+      "apps/admin/prisma/migrations/0107_recommendation_governed_study/migration.sql": "d29bee126d57fd5886f1a9aeb0ee90341019690c2c979e17050b52ce56e501b5"
+    }
+  },
+  "remaining": [
+    "Final integrated-main build and exact-head CI, normal merge and deployment receipts",
+    "Production storage clearance, qualified graph, real calibration and mature study outcomes"
+  ],
+  "typecheck": {
+    "admin": "passed",
+    "log": "/tmp/forge-retention-final-admin-typecheck.log"
+  }
+}

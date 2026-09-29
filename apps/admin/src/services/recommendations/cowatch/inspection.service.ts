@@ -167,29 +167,32 @@ export async function loadCowatchInspection(
     generationId?: string
   },
 ): Promise<CowatchInspection> {
-  const [generation, evaluation] = await Promise.all([
-    input.generationId !== undefined
-      ? prisma.recommendationCowatchGeneration.findUnique({
-          where: { id: input.generationId },
-        })
-      : prisma.recommendationCowatchGeneration.findFirst({
-          orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-        }),
-    prisma.recommendationShadowEvaluation.findFirst({
-      where: { generatorVersion: COWATCH_SHADOW_GENERATOR_KEY },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      select: {
-        id: true,
-        state: true,
-        processedCount: true,
-        sampledCount: true,
-        coverage: true,
-        overlap: true,
-        latencyP95Ms: true,
-        decision: { select: { decision: true, reasonCode: true } },
-      },
-    }),
-  ])
+  const generation = await (input.generationId !== undefined
+    ? prisma.recommendationCowatchGeneration.findUnique({
+        where: { id: input.generationId },
+      })
+    : prisma.recommendationCowatchGeneration.findFirst({
+        orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+      }))
+  const evaluation = generation
+    ? await prisma.recommendationShadowEvaluation.findFirst({
+        where: {
+          generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+          cowatchGenerationId: generation.id,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: {
+          id: true,
+          state: true,
+          processedCount: true,
+          sampledCount: true,
+          coverage: true,
+          overlap: true,
+          latencyP95Ms: true,
+          decision: { select: { decision: true, reasonCode: true } },
+        },
+      })
+    : null
   const shadowEvaluation = evaluation
     ? {
         id: evaluation.id,

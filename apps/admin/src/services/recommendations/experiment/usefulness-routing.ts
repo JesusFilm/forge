@@ -15,6 +15,7 @@ export function assignProfileUsefulnessExperiment(
     sessionDigest: string
     profileTokenDigest: string
     eligibleForEnrollment: boolean
+    clientDeliveryContract?: string | null
     now: Date
     deadlineAt: number
   },
@@ -56,6 +57,7 @@ export function assignProfileUsefulnessExperiment(
         eligibleHuman: true,
         profileUsefulness: {
           eligibleForEnrollment: input.eligibleForEnrollment,
+          clientDeliveryContract: input.clientDeliveryContract,
         },
         now: input.now,
       })

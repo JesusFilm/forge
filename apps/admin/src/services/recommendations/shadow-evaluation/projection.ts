@@ -10,7 +10,9 @@ import { evaluateCandidateEligibility } from "../eligibility"
 import {
   scoreAndOrderCandidates,
   scoreAndOrderHybridCandidates,
+  applyViewingModeAffinity,
 } from "../ranker"
+import type { ViewingModeAffinity } from "../viewing-mode"
 import { composeRecommendationSlate } from "../slate"
 import { unionAndCanonicalizeCandidates } from "../union"
 import {
@@ -74,6 +76,7 @@ export function evaluateShadowProjection(input: {
   latencyMs: number
   cohortQuality: number | null
   rankingMode?: "semantic" | "hybrid"
+  viewingMode?: ViewingModeAffinity | null
   currentVideoId?: string | null
   history?: ShadowHistory
 }): ShadowProjectionResult {
@@ -89,7 +92,10 @@ export function evaluateShadowProjection(input: {
   )
   const ordered =
     input.rankingMode === "hybrid"
-      ? scoreAndOrderHybridCandidates(eligibility.eligible)
+      ? applyViewingModeAffinity(
+          scoreAndOrderHybridCandidates(eligibility.eligible),
+          input.viewingMode,
+        )
       : scoreAndOrderCandidates(eligibility.eligible)
   const composed = composeRecommendationSlate(
     ordered,

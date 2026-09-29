@@ -1,7 +1,14 @@
+SET lock_timeout = '2s';
+SET statement_timeout = '15s';
 ALTER TABLE recommendation_shadow_evaluation ADD COLUMN cowatch_generation_id char(64);
+ALTER TABLE recommendation_shadow_evaluation ADD COLUMN sampled_at timestamptz;
 CREATE OR REPLACE FUNCTION prevent_terminal_shadow_evaluation_mutation()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+  IF TG_OP = 'UPDATE' AND OLD.sampled_at IS NOT NULL AND
+     (NEW.sampled_at IS DISTINCT FROM OLD.sampled_at OR NEW.sampled_count IS DISTINCT FROM OLD.sampled_count) THEN
+    RAISE EXCEPTION 'shadow evaluation sampling receipt is immutable';
+  END IF;
   IF TG_OP = 'UPDATE' AND NEW.cowatch_generation_id IS DISTINCT FROM OLD.cowatch_generation_id THEN
     RAISE EXCEPTION 'shadow evaluation graph identity is immutable';
   END IF;
@@ -210,3 +217,5 @@ BEGIN
   RAISE EXCEPTION 'co-watch privacy suppression must survive its raw episode';
 END $$;
 CREATE TRIGGER cowatch_suppression_immutable BEFORE UPDATE OR DELETE ON recommendation_cowatch_suppression FOR EACH ROW EXECUTE FUNCTION cowatch_suppression_immutable();
+RESET statement_timeout;
+RESET lock_timeout;

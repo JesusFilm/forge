@@ -10,6 +10,7 @@ import {
 } from "@prisma/client"
 import {
   DELIVERY_RETRIEVAL_BUDGET_MS,
+  COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
   RECOMMENDATION_CONTRACTS,
   RECOMMENDATION_RAW_RETENTION_DAYS,
 } from "../contracts"
@@ -31,6 +32,8 @@ import {
   studyExperimentMatchesProtocol,
   studyChallengerCeilingBps,
   studyProtocolDigest,
+  studyMatchesIncumbent,
+  INCUMBENT_CLIENT_COHORT,
 } from "./study-protocol"
 
 export const RECOMMENDATION_ASSIGNMENT_POLICY_VERSION =
@@ -84,7 +87,10 @@ export async function resolveExperimentAssignment(
     profileTokenDigest: string | null
     eligibleHuman: boolean
     now?: Date
-    profileUsefulness?: { eligibleForEnrollment: boolean }
+    profileUsefulness?: {
+      eligibleForEnrollment: boolean
+      clientDeliveryContract?: string | null
+    }
   },
 ): Promise<ExperimentAssignmentResolution> {
   if (!input.eligibleHuman) {
@@ -255,6 +261,14 @@ export async function resolveExperimentAssignment(
 
   // Eligibility gates enrollment, never a later exclusion from the assigned
   // denominator. An already assigned viewer retains their arm if inputs thin.
+  if (
+    protocol &&
+    studyMatchesIncumbent(protocol) &&
+    (protocol.cohort !== INCUMBENT_CLIENT_COHORT ||
+      input.profileUsefulness?.clientDeliveryContract !==
+        COWATCH_MMR_CLIENT_DELIVERY_CONTRACT)
+  )
+    return { assignment: null, bypassReason: "cohort_ineligible" }
   if (
     input.profileUsefulness &&
     (!input.profileUsefulness.eligibleForEnrollment || now >= experiment.endsAt)

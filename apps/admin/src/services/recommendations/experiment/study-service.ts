@@ -37,6 +37,7 @@ import {
   studyChallengerCeilingBps,
   studyGuardrails,
   studyMatchesIncumbent,
+  assertStudyClientCohort,
   STUDY_POLICY_VERSION,
   type StudyProtocol,
 } from "./study-protocol"
@@ -80,6 +81,7 @@ export class RecommendationStudyService {
             )
           return existing
         }
+        assertStudyClientCohort(protocol)
         if (Date.parse(protocol.startsAt) <= now.getTime())
           throw new RecommendationInputError(
             "Prepare a future enrollment interval",
@@ -224,6 +226,7 @@ export class RecommendationStudyService {
     if (prepared.protocolDigest !== input.protocolDigest)
       throw new RecommendationConflictError("Protocol changed")
     const preparedProtocol = parseStudyProtocol(prepared.protocol)
+    assertStudyClientCohort(preparedProtocol)
     const binding = studyCowatchBinding(preparedProtocol, {
       experimentId: prepared.experimentId,
       experimentGeneration: prepared.experiment.generation,

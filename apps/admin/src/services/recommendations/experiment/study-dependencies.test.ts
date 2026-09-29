@@ -31,7 +31,7 @@ const protocol = () =>
     comparison: "incumbent-cowatch-mmr",
     identity: "anonymous-profile-generation-v1",
     surface: "watch-below-player-v1",
-    cohort: "human-en-english-durable-v1",
+    cohort: "human-en-english-durable-client-cowatch-mmr-v1",
     controlManifestId: INCUMBENT_HYBRID_MANIFEST.id,
     challengerManifestId: COWATCH_MMR_TRIAL_MANIFEST.id,
     controlManifestDigest: recommendationManifestDigest(
@@ -203,6 +203,18 @@ describe("exact study dependency authority", () => {
       expiresAt: new Date(p.expiresAt),
     }
     expect(calibrationMatchesProtocol(authority, p)).toBe(true)
+    // Earlier A/A is readable, but its enrollment population differs.
+    expect(
+      calibrationMatchesProtocol(
+        {
+          ...authority,
+          study: {
+            protocol: { ...calibration, cohort: "human-en-english-durable-v1" },
+          },
+        },
+        p,
+      ),
+    ).toBe(false)
     expect(
       calibrationMatchesProtocol(
         { ...authority, expiresAt: new Date(horizon) },
@@ -212,6 +224,7 @@ describe("exact study dependency authority", () => {
     const semantic = parseStudyProtocol({
       ...calibration,
       comparison: "semantic-aa",
+      cohort: "human-en-english-durable-v1",
       controlManifestId: "semantic-transcript-pgvector-v1",
       challengerManifestId: "semantic-experiment-aa-v1",
       controlExecution: "semantic_contextual",

@@ -8,6 +8,10 @@ import { describe, expect, it, vi } from "vitest"
 import type { CandidateNomination } from "../candidate"
 import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 import {
+  COWATCH_MMR_SHADOW_SAMPLING_VERSION,
+  COWATCH_MMR_TRIAL_MANIFEST_ID,
+} from "../promotion/manifest"
+import {
   claimNextShadowRun,
   completeShadowEvaluation,
   executeClaimedShadowRun,
@@ -109,6 +113,58 @@ function claimedRun(overrides: Record<string, unknown> = {}) {
 }
 
 describe("shadow evaluation service", () => {
+  it("refuses a mismatched trial sampling contract and preserves its first sampled population on retry", async () => {
+    const evaluation = {
+      id: "trial",
+      manifestId: COWATCH_MMR_TRIAL_MANIFEST_ID,
+      state: RecommendationShadowEvaluationState.ACTIVE,
+      generation: 1,
+      samplingVersion: "stable-request-hash-v1",
+    }
+    const tx = {
+      recommendationShadowEvaluation: {
+        findUnique: vi.fn(async () => evaluation),
+        findUniqueOrThrow: vi.fn(async () => ({
+          ...evaluation,
+          sampledAt: NOW,
+          sampledCount: 2,
+        })),
+      },
+      recommendationShadowRun: {
+        count: vi.fn(async () => 2),
+        createMany: vi.fn(),
+      },
+      $queryRaw: vi.fn(async () => []),
+    }
+    const prisma = {
+      $transaction: vi.fn(async (operation) => operation(tx)),
+    } as unknown as PrismaClient
+    const input = { evaluationId: "trial", expectedGeneration: 1, now: NOW }
+    await expect(
+      sampleProfileShadowEvaluationContexts(prisma, input),
+    ).resolves.toMatchObject({
+      status: "fenced",
+      reason: "shadow_sampling_contract_invalid",
+    })
+    expect(tx.$queryRaw).not.toHaveBeenCalled()
+    evaluation.samplingVersion = COWATCH_MMR_SHADOW_SAMPLING_VERSION
+    await expect(
+      sampleShadowEvaluationContexts(prisma, input),
+    ).resolves.toMatchObject({ status: "fenced" })
+    await expect(
+      sampleProfileShadowEvaluationContexts(prisma, input),
+    ).resolves.toEqual({ status: "sampled", sampledCount: 2, createdCount: 0 })
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(2) // Deadline and evaluation lock, no replacement sample query.
+    expect(tx.recommendationShadowRun.createMany).not.toHaveBeenCalled()
+    tx.recommendationShadowEvaluation.findUniqueOrThrow.mockResolvedValue({
+      ...evaluation,
+      sampledAt: NOW,
+      sampledCount: 0,
+    })
+    await expect(
+      sampleProfileShadowEvaluationContexts(prisma, input),
+    ).resolves.toEqual({ status: "sampled", sampledCount: 0, createdCount: 0 })
+  })
   it("samples issued live contexts deterministically without reading viewer identity", async () => {
     const requests = [
       {
@@ -280,6 +336,7 @@ describe("shadow evaluation service", () => {
   it("publishes bounded counterfactual evidence without mutating live request items", async () => {
     const run = claimedRun()
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
       recommendationShadowRun: {
         findUnique: vi.fn().mockResolvedValue(run),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -379,6 +436,7 @@ describe("shadow evaluation service", () => {
   it("fences a late claim when the evaluation generation changes before publish", async () => {
     const run = claimedRun()
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
       recommendationShadowRun: {
         findUnique: vi.fn().mockResolvedValue({
           state: RecommendationShadowRunState.CLAIMED,

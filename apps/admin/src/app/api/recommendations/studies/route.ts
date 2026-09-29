@@ -9,6 +9,7 @@ import {
 } from "@/services/recommendations/errors"
 import { RecommendationStudyService } from "@/services/recommendations/experiment/study-service"
 import { recommendationManifestDigest } from "@/services/recommendations/promotion/manifest"
+import { readRecommendationOperatorBody } from "../operator-body"
 
 const common = {
   studyId: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
@@ -130,23 +131,9 @@ export async function POST(request: Request) {
     return response(401, "recent_authentication_required")
   let input: z.infer<typeof inputSchema>
   try {
-    const reader = request.body?.getReader()
-    if (!reader) return response(400, "invalid_input")
-    const decoder = new TextDecoder()
-    let bytes = 0
-    const chunks: string[] = []
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      bytes += value.byteLength
-      if (bytes > 65_536) {
-        await reader.cancel()
-        return response(413, "body_too_large")
-      }
-      chunks.push(decoder.decode(value, { stream: true }))
-    }
-    chunks.push(decoder.decode())
-    input = inputSchema.parse(JSON.parse(chunks.join("")))
+    const body = await readRecommendationOperatorBody(request)
+    if (!body.ok) return response(body.status, body.error)
+    input = inputSchema.parse(body.value)
   } catch {
     return response(400, "invalid_input")
   }

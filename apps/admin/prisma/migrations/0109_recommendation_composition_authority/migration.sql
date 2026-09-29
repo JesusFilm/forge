@@ -1,3 +1,7 @@
+SET lock_timeout = '2s';
+SET statement_timeout = '15s';
+-- Bounded retention discovers composition dependencies by their request root.
+CREATE INDEX recommendation_shadow_run_request_idx ON recommendation_shadow_run (request_id);
 -- CreateTable
 CREATE TABLE "recommendation_composition_protocol" (
     "id" UUID NOT NULL,
@@ -283,3 +287,5 @@ BEGIN
   RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
 END $$;
 CREATE TRIGGER composition_nomination_changed AFTER UPDATE OR DELETE ON recommendation_shadow_nomination FOR EACH ROW EXECUTE FUNCTION fence_composition_nomination();
+RESET statement_timeout;
+RESET lock_timeout;

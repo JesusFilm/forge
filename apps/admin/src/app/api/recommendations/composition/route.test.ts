@@ -65,6 +65,20 @@ describe("composition operator API", () => {
       ).status,
     ).toBe(401)
   })
+  it("bounds body bytes before parsing or invoking an operator", async () => {
+    const result = await POST(
+      request({
+        action: "calibrate",
+        protocolId,
+        rationale: "x".repeat(65_537),
+      }),
+    )
+    expect(result.status).toBe(413)
+    expect(await result.json()).toEqual({ ok: false, error: "body_too_large" })
+    expect(mocks.prepare).not.toHaveBeenCalled()
+    expect(mocks.decide).not.toHaveBeenCalled()
+    expect(mocks.calibrate).not.toHaveBeenCalled()
+  })
   it("passes the trusted session to service authorization and preserves forbidden errors", async () => {
     mocks.decide.mockRejectedValue(new ForbiddenError("recent auth required"))
     expect((await POST(request({ action: "decide", protocolId }))).status).toBe(

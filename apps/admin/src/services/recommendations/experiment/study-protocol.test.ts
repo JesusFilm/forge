@@ -7,6 +7,8 @@ import {
   studyChallengerCeilingBps,
   studyGuardrails,
   studyProtocolDigest,
+  assertStudyClientCohort,
+  INCUMBENT_CLIENT_COHORT,
 } from "./study-protocol"
 
 export const protocolFixture = () => ({
@@ -186,7 +188,7 @@ describe("incumbent comparison and combined trial protocol", () => {
       trialValidUntil: "2026-10-04T06:00:00.000Z",
       earliestDependencyExpiresAt: "2026-10-05T00:00:00.000Z",
       shadowEvaluationId: "11111111-1111-4111-8111-111111111111",
-      shadowDecisionId: "22222222-2222-4222-8222-222222222222",
+      shadowDecisionId: "clhcm5ov00000kk08kb183tmh",
     },
     composition: {
       protocolId: "33333333-3333-4333-8333-333333333333",
@@ -202,6 +204,37 @@ describe("incumbent comparison and combined trial protocol", () => {
   it("allows graph-free exact incumbent calibration and digest-bound combined efficacy", () => {
     expect(parseStudyProtocol(incumbent()).comparison).toBe("incumbent-aa")
     expect(parseStudyProtocol(trial()).comparison).toBe("incumbent-cowatch-mmr")
+  })
+  it("keeps earlier protocols readable but requires the frozen client cohort for new incumbent studies", () => {
+    for (const value of [incumbent(), trial()]) {
+      const legacy = parseStudyProtocol(value)
+      expect(legacy.cohort).toBe("human-en-english-durable-v1")
+      expect(() => assertStudyClientCohort(legacy)).toThrow(
+        "capability-at-enrollment",
+      )
+      const current = parseStudyProtocol({
+        ...value,
+        cohort: INCUMBENT_CLIENT_COHORT,
+      })
+      expect(() => assertStudyClientCohort(current)).not.toThrow()
+      expect(studyProtocolDigest(current)).not.toBe(studyProtocolDigest(legacy))
+    }
+    expect(() =>
+      assertStudyClientCohort(parseStudyProtocol(protocolFixture())),
+    ).not.toThrow()
+  })
+  it("retains actual CUID decision identity and refuses unbounded identifiers", () => {
+    const valid = trial()
+    expect(parseStudyProtocol(valid).cowatch?.shadowDecisionId).toBe(
+      valid.cowatch.shadowDecisionId,
+    )
+    for (const shadowDecisionId of ["", "x".repeat(192)])
+      expect(() =>
+        parseStudyProtocol({
+          ...valid,
+          cowatch: { ...valid.cowatch, shadowDecisionId },
+        }),
+      ).toThrow("Invalid immutable study protocol")
   })
   it("refuses comparator substitution, graph mismatch, incomplete follow-up and placeholder effect margins", () => {
     const valid = trial()

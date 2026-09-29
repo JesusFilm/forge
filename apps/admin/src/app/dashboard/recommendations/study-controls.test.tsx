@@ -16,6 +16,45 @@ const response = (value: unknown, status = 200) => ({
   status,
   json: async () => value,
 })
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+function preparedStatus() {
+  return {
+    studies: [
+      {
+        experimentId: "fixture",
+        protocolDigest: "a".repeat(64),
+        protocol: {
+          admissionBps: 1000,
+          mode: "calibration",
+          endsAt: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+        },
+        activatedAt: null,
+        activationId: null,
+        enrolledCount: 0,
+        privacyRevision: 0,
+        evidence: [
+          {
+            id: "evidence",
+            kind: "readiness",
+            reviewedAt: new Date().toISOString(),
+            payload: {
+              validUntil: new Date(Date.now() + 3_600_000).toISOString(),
+            },
+          },
+        ],
+        evaluations: [],
+      },
+    ],
+    pointer: { generation: 2, stage: "CONTROL", killSwitchEnabled: false },
+    manifests: [],
+  }
+}
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true)
   vi.stubGlobal("fetch", fetchMock)
@@ -27,6 +66,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount())
   container.remove()
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
 describe("operator study control loading and recovery", () => {
@@ -64,41 +104,15 @@ describe("operator study control loading and recovery", () => {
       comparison: "incumbent-aa",
       controlExecution: "profile-viewing-mode-incumbent-v1",
       admissionBps: null,
+      cohort: "human-en-english-durable-client-cowatch-mmr-v1",
       minimumUsefulDelta: null,
       cowatch: null,
       composition: null,
     })
   })
   it("retries an uncertain study activation with the exact saved ID and inputs", async () => {
-    const study = {
-      experimentId: "fixture",
-      protocolDigest: "a".repeat(64),
-      protocol: {
-        admissionBps: 1000,
-        mode: "calibration",
-        endsAt: new Date(Date.now() + 3 * 86_400_000).toISOString(),
-      },
-      activatedAt: null,
-      activationId: null,
-      enrolledCount: 0,
-      privacyRevision: 0,
-      evidence: [
-        {
-          id: "evidence",
-          kind: "readiness",
-          reviewedAt: new Date().toISOString(),
-          payload: {
-            validUntil: new Date(Date.now() + 3_600_000).toISOString(),
-          },
-        },
-      ],
-      evaluations: [],
-    }
-    const status = {
-      studies: [study],
-      pointer: { generation: 2, stage: "CONTROL", killSwitchEnabled: false },
-      manifests: [],
-    }
+    const status = preparedStatus()
+    const study = status.studies[0]!
     fetchMock.mockResolvedValueOnce(response(status))
     vi.spyOn(window, "confirm").mockReturnValue(true)
     await act(async () => root.render(<StudyControls />))
@@ -128,7 +142,77 @@ describe("operator study control loading and recovery", () => {
     await act(async () => getButton("Retry exact saved operation").click())
     expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual(first)
     expect(container.textContent).toContain("Recorded activate reconciled")
-    vi.restoreAllMocks()
+  })
+  it("keeps one operation locked across close/reopen, POST and reconciliation", async () => {
+    const status = preparedStatus()
+    const initial = deferred<ReturnType<typeof response>>()
+    const submission = deferred<ReturnType<typeof response>>()
+    const reconciliation = deferred<ReturnType<typeof response>>()
+    fetchMock
+      .mockReturnValueOnce(initial.promise)
+      .mockReturnValueOnce(submission.promise)
+      .mockReturnValueOnce(reconciliation.promise)
+    vi.spyOn(window, "confirm").mockReturnValue(true)
+    await act(async () => root.render(<StudyControls />))
+    await act(async () => getButton("Governed profile studies").click())
+    await act(async () => getButton("Governed profile studies").click())
+    await act(async () => getButton("Governed profile studies").click())
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(getButton("Refresh study status").disabled).toBe(true)
+    expect(getButton("Start incumbent A/A protocol").disabled).toBe(true)
+
+    await act(async () => initial.resolve(response(status)))
+    await act(async () => {
+      const select = container.querySelector("select")!
+      select.value = "fixture"
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+    expect(getButton("Activate reviewed study").disabled).toBe(false)
+    await act(async () => {
+      // Both events run before React can render the disabled state.
+      getButton("Activate reviewed study").click()
+      getButton("Activate reviewed study").click()
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const operation = JSON.parse(fetchMock.mock.calls[1][1].body).operationId
+    expect(operation).toMatch(/^[a-f0-9-]{36}$/)
+    expect(getButton("Activate reviewed study").disabled).toBe(true)
+    expect(getButton("Refresh study status").disabled).toBe(true)
+    await act(async () => getButton("Governed profile studies").click())
+    await act(async () => getButton("Governed profile studies").click())
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(getButton("Activate reviewed study").disabled).toBe(true)
+
+    await act(async () => submission.resolve(response({ ok: true })))
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls[2][0]).toContain(`operationId=${operation}`)
+    expect(getButton("Refresh study status").disabled).toBe(true)
+    expect(getButton("Retry exact saved operation").disabled).toBe(true)
+    expect(getButton("Activate reviewed study").disabled).toBe(true)
+    await act(async () => getButton("Governed profile studies").click())
+    await act(async () => getButton("Governed profile studies").click())
+    await act(async () => getButton("Retry exact saved operation").click())
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(getButton("Refresh study status").disabled).toBe(true)
+
+    await act(async () =>
+      reconciliation.resolve(
+        response({
+          ...status,
+          studies: [
+            {
+              ...status.studies[0],
+              activatedAt: new Date().toISOString(),
+              activationId: operation,
+            },
+          ],
+        }),
+      ),
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(getButton("Refresh study status").disabled).toBe(false)
+    expect(container.textContent).toContain("Recorded activate reconciled")
+    expect(container.textContent).not.toContain("Retry exact saved operation")
   })
   it("treats accepted promotion as queued and reconciles its exact operation", async () => {
     await act(async () =>

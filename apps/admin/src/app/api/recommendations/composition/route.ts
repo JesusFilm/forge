@@ -3,6 +3,7 @@ import { resolveAdminSessionFromRequest } from "@/auth/session"
 import { prisma } from "@/db/client"
 import { ForbiddenError } from "@/services/errors"
 import { RecommendationConflictError } from "@/services/recommendations/errors"
+import { readRecommendationOperatorBody } from "../operator-body"
 import {
   prepareCompositionProtocol,
   PrepareComposition,
@@ -55,7 +56,9 @@ export async function POST(request: Request) {
   const session = await resolveAdminSessionFromRequest(request)
   if (!session) return error(401, "authentication_required")
   try {
-    const input = Input.parse(await request.json())
+    const body = await readRecommendationOperatorBody(request)
+    if (!body.ok) return error(body.status, body.error)
+    const input = Input.parse(body.value)
     const operator = {
       actor: session.principal,
       authenticatedAt: session.authenticatedAt,

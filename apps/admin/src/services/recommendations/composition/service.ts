@@ -673,30 +673,43 @@ export async function inspectComposition(
   }
 }
 
-/** Scheduler seam: delete expired request evidence first, then aggregate roots.
- * Cascading child decisions/reviews share their protocol's immutable expiry.
- * Call with the scheduler's transaction; at most 500 observations + 50 protocols.
+/** Standalone bounded retention phase; never carry its protocol locks into
+ * request/profile/graph deletion. Skip contended observations/protocols rather
+ * than waiting while a source invalidator owns the opposite end of a cascade.
+ * Aggregate roots are removed after their observations have drained.
  */
 export async function purgeExpiredCompositionEvidence(
   tx: Database,
   now = new Date(),
 ) {
-  const observations = await tx.recommendationCompositionObservation.findMany({
-    where: { expiresAt: { lte: now } },
-    orderBy: { expiresAt: "asc" },
-    take: 500,
-    select: { runId: true },
-  })
+  const observations = await tx.$queryRaw<
+    Array<{ runId: string; protocolId: string }>
+  >(Prisma.sql`
+    SELECT run_id AS "runId", protocol_id AS "protocolId" FROM recommendation_composition_observation
+    WHERE expires_at <= ${now} ORDER BY expires_at, run_id LIMIT 500 FOR UPDATE SKIP LOCKED
+  `)
+  const protocolIds = [...new Set(observations.map((row) => row.protocolId))]
+  const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT id FROM recommendation_composition_protocol WHERE id = ANY(${protocolIds}::uuid[])
+    ORDER BY id FOR UPDATE SKIP LOCKED
+  `)
+  const admitted = new Set(locked.map((row) => row.id))
   const removedObservations =
     await tx.recommendationCompositionObservation.deleteMany({
-      where: { runId: { in: observations.map((row) => row.runId) } },
+      where: {
+        runId: {
+          in: observations
+            .filter((row) => admitted.has(row.protocolId))
+            .map((row) => row.runId),
+        },
+      },
     })
-  const protocols = await tx.recommendationCompositionProtocol.findMany({
-    where: { expiresAt: { lte: now } },
-    orderBy: { expiresAt: "asc" },
-    take: 50,
-    select: { id: true },
-  })
+  const protocols = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT protocol.id FROM recommendation_composition_protocol protocol
+    WHERE protocol.expires_at <= ${now} AND NOT EXISTS (
+      SELECT 1 FROM recommendation_composition_observation observation WHERE observation.protocol_id = protocol.id
+    ) ORDER BY protocol.expires_at, protocol.id LIMIT 50 FOR UPDATE OF protocol SKIP LOCKED
+  `)
   const removedProtocols =
     await tx.recommendationCompositionProtocol.deleteMany({
       where: { id: { in: protocols.map((row) => row.id) } },

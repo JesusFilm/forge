@@ -11,6 +11,9 @@ import { RecommendationInputError } from "../errors"
 
 export const STUDY_POLICY_VERSION = "profile-study-governance-v1"
 export const STUDY_DAY_MS = 86_400_000
+/** Capability is required at enrollment; older-tab follow-up retains the unit. */
+export const INCUMBENT_CLIENT_COHORT =
+  "human-en-english-durable-client-cowatch-mmr-v1" as const
 const digest = z.string().regex(/^[a-f0-9]{64}$/)
 const date = z.string().datetime({ offset: false })
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/)
@@ -31,7 +34,8 @@ const CowatchStudyBindingSchema = z
     trialValidUntil: date,
     earliestDependencyExpiresAt: date,
     shadowEvaluationId: z.string().uuid(),
-    shadowDecisionId: z.string().uuid(),
+    // Shadow decisions use Prisma cuid(), unlike operator-issued evaluation UUIDs.
+    shadowDecisionId: z.string().min(1).max(191),
   })
   .strict()
 const CompositionStudyBindingSchema = z
@@ -62,7 +66,7 @@ export const StudyProtocolSchema = z
     ]),
     identity: z.literal("anonymous-profile-generation-v1"),
     surface: z.literal("watch-below-player-v1"),
-    cohort: z.literal("human-en-english-durable-v1"),
+    cohort: z.enum(["human-en-english-durable-v1", INCUMBENT_CLIENT_COHORT]),
     controlManifestId: z.enum([
       "semantic-transcript-pgvector-v1",
       INCUMBENT_HYBRID_MANIFEST_ID,
@@ -145,6 +149,12 @@ export const StudyProtocolSchema = z
     const incumbent =
       p.comparison === "incumbent-aa" ||
       p.comparison === "incumbent-cowatch-mmr"
+    if (!incumbent && p.cohort !== "human-en-english-durable-v1")
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Legacy semantic studies retain their original enrollment cohort",
+      })
     const expectedChallenger = {
       "semantic-aa": "semantic-experiment-aa-v1",
       "semantic-profile": "semantic-profile-hybrid-v1",
@@ -204,6 +214,17 @@ export function parseStudyProtocol(value: unknown): StudyProtocol {
 }
 export const studyMatchesIncumbent = (p: StudyProtocol) =>
   p.comparison === "incumbent-aa" || p.comparison === "incumbent-cowatch-mmr"
+
+/** Legacy immutable protocols remain readable, but cannot start new live studies. */
+export function assertStudyClientCohort(protocol: StudyProtocol) {
+  if (
+    studyMatchesIncumbent(protocol) &&
+    protocol.cohort !== INCUMBENT_CLIENT_COHORT
+  )
+    throw new RecommendationInputError(
+      "Incumbent studies require the capability-at-enrollment cohort",
+    )
+}
 
 export function studyExperimentMatchesProtocol(
   experiment: {

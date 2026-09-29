@@ -1,0 +1,79 @@
+{
+  "kind": "pre-release-code-review",
+  "productionAcceptance": false,
+  "base": "10cfa4601",
+  "scope": "Governed study lifecycle, finite co-watch/live MMR integration, migrations, retention/privacy, operator API/UI and Watch consumer contracts; committed integration plus parent changes",
+  "reviews": [
+    {
+      "area": "correctness",
+      "initialResult": "No actionable finding"
+    },
+    {
+      "area": "database migrations",
+      "result": "Added bounded lock and statement waits to 0108/0109; native migration replay and 0110 concurrent-writer recovery proof pass"
+    },
+    {
+      "area": "security",
+      "result": "No actionable finding; shared bounded operator body reader also added"
+    },
+    {
+      "area": "performance",
+      "result": "No actionable code finding; production latency, workload size and storage clearance remain unproven"
+    },
+    {
+      "area": "testing",
+      "result": "Added actual activated-bundle database proof and composition operator acknowledgement tests"
+    },
+    {
+      "area": "reliability",
+      "result": "No actionable new finding; uncertain Workflow start remains fenced rather than automatically retried"
+    },
+    {
+      "area": "project standards",
+      "result": "Typed migration recovery error and documented narrow standalone deploy-script environment exception"
+    },
+    {
+      "area": "maintainability",
+      "result": "No actionable finding"
+    },
+    {
+      "area": "TypeScript",
+      "result": "Final full Admin typecheck passes; scoped ESLint and formatting pass"
+    },
+    {
+      "area": "API contract",
+      "result": "Added explicit browser capability, capability-at-enrollment cohort and sticky older-tab fallback; additive schema prerequisite PR2469"
+    },
+    {
+      "area": "agent parity",
+      "result": "Added exact-generation read API with aggregate/trace permissions and audit parity; independent security re-review clean"
+    },
+    {
+      "area": "frontend races",
+      "result": "Fixed overlapping initial refresh and mutation lock; deferred-response regression and independent re-review pass"
+    },
+    {
+      "area": "institutional learnings",
+      "result": "Checked immutable manifest identity, trace amplification, zero-purge evidence and retention accounting"
+    },
+    {
+      "area": "adversarial retention",
+      "result": "All eight concrete findings repaired and independently re-reviewed; 35 worker regression tests and 13 parent native regressions pass. No residual actionable finding.",
+      "findings": [
+        "Commit deletion counters atomically with rows",
+        "Lock/count/delete direct actions in one phase",
+        "Include retained source session aliases",
+        "Bound unique roots rather than duplicate session joins",
+        "Prelock evaluation cascade authority",
+        "Prelock assignment/profile-reset authority",
+        "Use fail-fast assignment/experiment admission against emergency rollback",
+        "Preserve durable counters after lost COMMIT acknowledgement"
+      ]
+    }
+  ],
+  "releaseConditions": [
+    "Final combined checks on the integrated main baseline",
+    "Exact PR head CI and unresolved-review check before authorized squash merge",
+    "Ordinary deployment and migration verification before production operators"
+  ]
+}

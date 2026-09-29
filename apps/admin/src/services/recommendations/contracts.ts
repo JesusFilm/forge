@@ -20,6 +20,8 @@ export const RECOMMENDATION_CONTENT_ACTION_CONTRACT =
 export const RECOMMENDATION_PROFILE_CONTRACT =
   "recommendation-profile-v1" as const
 export const RECOMMENDATION_PROFILE_SESSION_LINK_HOURS = 24
+/** Parser capability only: never authorization to serve or enroll a study. */
+export const COWATCH_MMR_CLIENT_DELIVERY_CONTRACT = "cowatch-mmr-v1" as const
 
 export const MAX_DELIVERY_ITEMS = 6
 export const MAX_DELIVERY_RESPONSE_BYTES = 64 * 1024
@@ -124,6 +126,7 @@ export const RecommendationExecutionModeSchema = z.enum([
   "semantic_contextual",
   "hybrid_personalized",
   "viewing_mode_personalized",
+  "cowatch_mmr_personalized",
   "semantic_fallback",
   "curated_fallback",
 ])

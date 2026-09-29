@@ -25,7 +25,9 @@ import {
   createHybridPersonalizedShadowGenerator,
   HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY,
   runRecommendationShadowEvaluationJob,
+  resolveShadowGenerator,
 } from "./job"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 
 const input = {
   evaluationId: "evaluation-1",
@@ -71,6 +73,26 @@ beforeEach(() => {
 })
 
 describe("recommendation shadow evaluation job", () => {
+  it("refuses an unpinned co-watch runtime before sampling", async () => {
+    await expect(
+      runRecommendationShadowEvaluationJob(
+        {
+          ...input,
+          generatorKey: COWATCH_SHADOW_GENERATOR_KEY,
+          ledgerRunId: "ledger-1",
+        },
+        "runtime-1",
+      ),
+    ).resolves.toMatchObject({
+      status: "fenced",
+      reason: "cowatch_dispatch_generation_unpinned",
+    })
+    expect(service.sampleProfileShadowEvaluationContexts).not.toHaveBeenCalled()
+    expect(() => resolveShadowGenerator(COWATCH_SHADOW_GENERATOR_KEY)).toThrow(
+      "unpinned",
+    )
+  })
+
   it("does no sampling or receipt write for a conflicting runtime", async () => {
     dispatchState.markRecommendationShadowEvaluationRuntimeStarted.mockResolvedValueOnce(
       false,

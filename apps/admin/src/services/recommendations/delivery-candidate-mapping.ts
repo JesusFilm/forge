@@ -65,6 +65,36 @@ export function mergeBoundedHybridNominations(
   return merged
 }
 
+/** Exact trial manifest budget: retain the semantic reserve and bound graph fanout. */
+export function mergeBoundedCowatchNominations(
+  semantic: readonly CandidateNomination[],
+  profile: readonly CandidateNomination[],
+  cowatch: readonly CandidateNomination[],
+): CandidateNomination[] {
+  const semanticReserve = semantic.slice(0, 36)
+  const graphReserve = cowatch.slice(0, 12)
+  const profileReserve = profile.slice(
+    0,
+    MAX_CANDIDATE_NOMINATIONS - semanticReserve.length - graphReserve.length,
+  )
+  const merged: CandidateNomination[] = []
+  for (
+    let index = 0;
+    index <
+    Math.max(
+      semanticReserve.length,
+      profileReserve.length,
+      graphReserve.length,
+    );
+    index++
+  ) {
+    for (const source of [semanticReserve, profileReserve, graphReserve]) {
+      if (source[index]) merged.push(source[index])
+    }
+  }
+  return merged
+}
+
 export function preparedCandidatesFromPlatform(
   platform: CandidatePlatformResult,
 ): PreparedCandidate[] {
@@ -94,8 +124,10 @@ export function preparedCandidatesFromPlatform(
 
 export function selectedCandidateGenerator(
   sources: PreparedCandidate["sources"],
-): "semantic" | "multi-interest-profile" | "curated" {
+): "semantic" | "multi-interest-profile" | "directional-cowatch" | "curated" {
   if (sources.some((source) => source.generator === "curated")) return "curated"
+  if (sources.some((source) => source.generator === "directional-cowatch"))
+    return "directional-cowatch"
   return sources.some((source) => source.generator === "multi-interest-profile")
     ? "multi-interest-profile"
     : "semantic"

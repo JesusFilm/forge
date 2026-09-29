@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
+import { LIVE_POLICY_MIGRATION } from "./live-policy-migration-recovery"
 
 import {
   RECOVERABLE_MIGRATION,
@@ -76,6 +77,41 @@ describe("deployWithKnownRecovery", () => {
   const result = (code: number, output = ""): CommandResult => ({
     code,
     output,
+  })
+
+  it.each(["P3009", "P3018"])(
+    "verifies the reviewed live-policy checksum before resolving its replayable %s failure",
+    async (code) => {
+      const runner = vi
+        .fn()
+        .mockResolvedValueOnce(result(1, `${code} ${LIVE_POLICY_MIGRATION}`))
+        .mockResolvedValue(result(0))
+      const verifyLivePolicyRecovery = vi.fn(async () => {
+        expect(runner).toHaveBeenCalledTimes(1)
+      })
+      await deployWithKnownRecovery(runner, { verifyLivePolicyRecovery })
+      expect(verifyLivePolicyRecovery).toHaveBeenCalledOnce()
+      expect(runner).toHaveBeenNthCalledWith(2, [
+        "migrate",
+        "resolve",
+        "--rolled-back",
+        LIVE_POLICY_MIGRATION,
+      ])
+    },
+  )
+
+  it("leaves unknown or changed live-policy state unresolved", async () => {
+    const runner = vi
+      .fn()
+      .mockResolvedValue(result(1, `P3009 ${LIVE_POLICY_MIGRATION}`))
+    await expect(
+      deployWithKnownRecovery(runner, {
+        verifyLivePolicyRecovery: async () => {
+          throw new Error("identity mismatch")
+        },
+      }),
+    ).rejects.toThrow("identity mismatch")
+    expect(runner).toHaveBeenCalledTimes(1)
   })
 
   it("does not run recovery when migrate deploy succeeds", async () => {

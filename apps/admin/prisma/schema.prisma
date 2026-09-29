@@ -3865,6 +3865,7 @@ model RecommendationShadowEvaluation {
   windowEnd              DateTime                            @map("window_end")
   requestedSampleSize    Int                                 @map("requested_sample_size")
   sampledCount           Int                                 @default(0) @map("sampled_count")
+  sampledAt              DateTime?                           @map("sampled_at") @db.Timestamptz(6)
   processedCount         Int                                 @default(0) @map("processed_count")
   failedCount            Int                                 @default(0) @map("failed_count")
   fencedCount            Int                                 @default(0) @map("fenced_count")
@@ -3947,6 +3948,7 @@ model RecommendationShadowRun {
   compositionObservation RecommendationCompositionObservation?
 
   @@unique([evaluationId, requestId], map: "recommendation_shadow_run_evaluation_request_key")
+  @@index([requestId], map: "recommendation_shadow_run_request_idx")
   @@index([evaluationId, state, sampleOrdinal], map: "recommendation_shadow_run_evaluation_state_idx")
   @@index([projectionProfileId, privacyGeneration], map: "recommendation_shadow_run_profile_generation_idx")
   @@index([heartbeatAt], map: "recommendation_shadow_run_heartbeat_idx")
