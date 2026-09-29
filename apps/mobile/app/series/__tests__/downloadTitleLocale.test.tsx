@@ -1,5 +1,6 @@
-/** U7 (R4): a series batch records the locale its titles were read in, the
- *  series screen's captured Admin forms, on every episode request. */
+/** The series download sheet, rendered. U7 (R4): a series batch records the
+ *  locale its titles were read in, the series screen's captured Admin forms,
+ *  on every episode request. */
 
 import { act } from "react"
 
@@ -9,6 +10,7 @@ import type { StartDownloadRequest } from "../../../src/lib/downloadRequestBuild
 import type { SeriesDownloadResolution } from "../../../src/lib/seriesDownloadResolver"
 import {
   TestRenderer,
+  hasText,
   type TestInstance,
 } from "../../../src/test-utils/rnTestRenderer"
 
@@ -22,6 +24,7 @@ const mockRecords = jest.fn(async (_requests: StartDownloadRequest[]) => {})
 const mockResolution: { current: SeriesDownloadResolution | null } = {
   current: null,
 }
+const mockFreeBytes = { current: 10 ** 12 }
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn() }),
@@ -51,7 +54,7 @@ jest.mock("../../../src/lib/seriesDownloadResolver", () => ({
   resolveSeriesDownload: async () => mockResolution.current,
 }))
 jest.mock("../../../src/lib/offlineFileSystem", () => ({
-  freeDiskBytes: async () => 10 ** 12,
+  freeDiskBytes: async () => mockFreeBytes.current,
 }))
 jest.mock("../../../src/lib/apolloClient", () => ({
   getApolloClient: () => ({ query: jest.fn() }),
@@ -114,38 +117,53 @@ afterEach(async () => {
     renderer?.unmount()
   })
   renderer = null
+  mockFreeBytes.current = 10 ** 12
+})
+
+/** Renders the sheet for a Russian series and presses the confirm button. */
+async function renderAndConfirm(): Promise<TestInstance> {
+  mockResolution.current = RESOLUTION
+  mockSeriesSession.current = {
+    series: {
+      slug: "storyclubs",
+      title: "Клубы историй",
+      episodes: [{ slug: "episode-1", title: "Эпизод 1" }],
+      adminForms: adminFormsFor("ru"),
+    },
+    selectedLanguageSlug: "russian",
+    languages: [{ slug: "russian", name: "Русский" }],
+  }
+  await act(async () => {
+    renderer = TestRenderer.create(<SeriesDownloadRoute />)
+  })
+  await settle()
+
+  const confirm = renderer!.root.findAll(
+    (node) =>
+      node.props["dd-action-name"] === "series-download-confirm" &&
+      typeof node.props.onPress === "function",
+  )[0]
+  if (!confirm) throw new Error("the route rendered no confirm button")
+  expect(confirm.props.disabled).toBe(false)
+  const press = confirm.props.onPress as () => void
+  await act(async () => {
+    press()
+  })
+  await settle()
+  return renderer!
+}
+
+describe("series download sheet: storage message", () => {
+  it("says the check failed when the free space is unreadable", async () => {
+    mockFreeBytes.current = 0
+    const sheet = await renderAndConfirm()
+    expect(hasText(sheet, "Couldn't check storage. Try again.")).toBe(true)
+  })
 })
 
 describe("series download sheet: title locale (U7)", () => {
   it("records the screen's captured catalog tag on each episode request", async () => {
-    mockResolution.current = RESOLUTION
-    mockSeriesSession.current = {
-      series: {
-        slug: "storyclubs",
-        title: "Клубы историй",
-        episodes: [{ slug: "episode-1", title: "Эпизод 1" }],
-        adminForms: adminFormsFor("ru"),
-      },
-      selectedLanguageSlug: "russian",
-      languages: [{ slug: "russian", name: "Русский" }],
-    }
-    await act(async () => {
-      renderer = TestRenderer.create(<SeriesDownloadRoute />)
-    })
-    await settle()
-
-    const confirm = renderer!.root.findAll(
-      (node) =>
-        node.props["dd-action-name"] === "series-download-confirm" &&
-        typeof node.props.onPress === "function",
-    )[0]
-    if (!confirm) throw new Error("the route rendered no confirm button")
-    expect(confirm.props.disabled).toBe(false)
-    const press = confirm.props.onPress as () => void
-    await act(async () => {
-      press()
-    })
-    await settle()
+    await renderAndConfirm()
 
     expect(mockRecords).toHaveBeenCalledTimes(1)
     expect(mockRecords.mock.calls[0][0]).toEqual([

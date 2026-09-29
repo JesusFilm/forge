@@ -22,6 +22,11 @@ type ModelTable = { defaultModel: string; locales: Record<string, string> }
 type Contexts = { namespaces: Record<string, string> }
 type Provenance = { machineTranslatedLocales: Record<string, unknown> }
 
+const withoutCatalog = (provenance: Provenance, tags: string[]) =>
+  Object.keys(provenance.machineTranslatedLocales).filter(
+    (locale) => !tags.includes(locale),
+  )
+
 describe("translation-policy.json", () => {
   it("is valid for the mobile command and web's --policy loader", () => {
     expect(
@@ -144,18 +149,25 @@ describe("script-manifest.json", () => {
     expect(manifestProblems(readJson(REAL_PATHS.manifest))).toEqual([])
   })
 
-  it("fails a stub that carries a machine-translated list", () => {
+  it.each([
+    [
+      { machineTranslatedLocales: ["es"] },
+      "machineTranslatedLocales must be absent; provenance lives in translation-provenance.json",
+    ],
+    [
+      { provisionalLocales: ["es"] },
+      "provisionalLocales must be an empty array",
+    ],
+  ])("fails a stub that lists a locale %#", (over, problem) => {
     expect(
       manifestProblems({
         authoredInventoryLocales: [],
         provisionalLocales: [],
         existingNonInventoryLocales: [],
         missingCatalogs: [],
-        machineTranslatedLocales: ["es"],
+        ...over,
       }),
-    ).toEqual([
-      "machineTranslatedLocales must be absent; provenance lives in translation-provenance.json",
-    ])
+    ).toEqual([problem])
   })
 })
 
@@ -164,23 +176,42 @@ describe("translation-provenance.json", () => {
 
   it("records only machine-translated locales that have a catalog", () => {
     expect(provenanceProblems(provenance, realPolicy)).toEqual([])
-    for (const locale of Object.keys(provenance.machineTranslatedLocales)) {
-      expect(Object.keys(catalogs)).toContain(locale)
-    }
+    expect(withoutCatalog(provenance, Object.keys(catalogs))).toEqual([])
   })
 
-  it("fails an entry without an API model or a date", () => {
+  it("names a machine-translated locale that has no catalog", () => {
+    expect(
+      withoutCatalog({ machineTranslatedLocales: { es: {}, fr: {} } }, ["es"]),
+    ).toEqual(["fr"])
+  })
+
+  const valid = { model: "gpt-5.6", generatedOn: "2026-09-01" }
+  it.each([
+    [
+      { es: { model: "codex-local-agent" } },
+      [
+        "es.model must be an OpenAI API model ID",
+        "es.generatedOn must be a YYYY-MM-DD date",
+      ],
+    ],
+    [
+      { crk: valid, en: valid },
+      [
+        "crk is human-reviewed or English-only",
+        "en is human-reviewed or English-only",
+      ],
+    ],
+  ])("fails a bad entry %#", (machineTranslatedLocales, problems) => {
     expect(
       provenanceProblems(
+        { reviewStatus: "machine-translated", machineTranslatedLocales },
         {
-          reviewStatus: "machine-translated",
-          machineTranslatedLocales: { es: { model: "codex-local-agent" } },
+          humanReviewedLocales: ["en"],
+          intentionallyLocaleNeutral: [],
+          englishOnlyLocales: ["crk"],
+          pendingKeys: {},
         },
-        realPolicy,
       ),
-    ).toEqual([
-      "es.model must be an OpenAI API model ID",
-      "es.generatedOn must be a YYYY-MM-DD date",
-    ])
+    ).toEqual(problems)
   })
 })

@@ -55,8 +55,9 @@ describe("resolveRecommendationContext", () => {
     })
   })
 
-  it("skips a slug Admin would reject, then falls back to English", () => {
+  it("skips a slug Admin would reject, then falls back to the phone's audio, then English", () => {
     for (const bad of ["", "  ", "French", "fr_FR", "x".repeat(65)]) {
+      expect(context(bad, "en", "hausa").audioLanguageSlug).toBe("hausa")
       expect(
         resolveRecommendationContext({
           audioLanguageSlug: bad,

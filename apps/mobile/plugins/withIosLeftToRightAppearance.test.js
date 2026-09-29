@@ -122,7 +122,9 @@ describe("insertLeftToRightAppearance", () => {
     const out = insertLeftToRightAppearance(APP_DELEGATE)
     const lines = out.split("\n")
     const added = lines.filter((line) => !APP_DELEGATE.includes(line))
-    expect(added.map((line) => line.trim())).toContain(LEFT_TO_RIGHT_STATEMENT)
+    expect(added.map((line) => line.trim())).toContain(
+      "UIView.appearance().semanticContentAttribute = .forceLeftToRight",
+    )
     expect(lines.filter((line) => !added.includes(line)).join("\n")).toBe(
       APP_DELEGATE,
     )

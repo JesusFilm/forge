@@ -149,13 +149,18 @@ const blocks = [
   collection("second"),
 ]
 
-type Frame = { model: WatchHomeModel | null; index: number | null }
+type Frame = {
+  model: WatchHomeModel | null
+  index: number | null
+  loading: boolean
+  error: string | null
+}
 
 let frames: Frame[] = []
 
 function Probe(): null {
-  const { model, recommendationsInsertIndex } = useWatchHome()
-  frames.push({ model, index: recommendationsInsertIndex })
+  const { model, recommendationsInsertIndex, loading, error } = useWatchHome()
+  frames.push({ model, index: recommendationsInsertIndex, loading, error })
   return null
 }
 
@@ -342,8 +347,28 @@ function jesusIn(textSlug: string): WatchHomeVideoInput {
   }
 }
 
-/** A homepage whose one card links the JESUS film. */
-function homepage(sectionKey: string, titleOverride: string) {
+const JESUS_ITEM = {
+  videoId: "v-jesus",
+  coreId: "1_jf-0-0",
+  videoSlug: "jesus",
+}
+// No Home video covers this item, so the hook tops it up.
+const ACTS_ITEM = { videoId: "v-acts", coreId: "6_Acts0401", videoSlug: "acts" }
+const ACTS: WatchHomeVideoInput = {
+  documentId: "d-acts",
+  coreId: "6_Acts0401",
+  slug: "acts",
+  label: "SEGMENT",
+  images: [],
+  locales: [{ languageSlug: "english", title: "Peter and John" }],
+}
+
+/** A homepage whose one card links the item, by default the JESUS film. */
+function homepage(
+  sectionKey: string,
+  titleOverride: string | null,
+  item = JESUS_ITEM,
+) {
   return {
     homepageExperience: {
       blocks: [
@@ -352,14 +377,7 @@ function homepage(sectionKey: string, titleOverride: string) {
           sectionKey,
           title: sectionKey,
           mediaCollectionVariant: "carousel",
-          items: [
-            {
-              videoId: "v-jesus",
-              coreId: "1_jf-0-0",
-              videoSlug: "jesus",
-              titleOverride,
-            },
-          ],
+          items: [{ ...item, titleOverride }],
         },
       ],
     },
@@ -404,11 +422,19 @@ async function settle(settleCalls: () => void) {
   await step()
 }
 
-async function answerVideos(locale: string) {
+/** Answers every open videos call for the locale, the top-up included. */
+async function answerVideos(
+  locale: string,
+  answer?: WatchHomeVideoInput[] | Error,
+) {
   const slug = adminFormsFor(locale).textSlug
   await settle(() => {
     for (const call of pending(videosDocument, locale)) {
-      call.resolve({ data: { watchHomeVideos: [jesusIn(slug)] } })
+      if (answer instanceof Error) {
+        call.reject(answer)
+      } else {
+        call.resolve({ data: { watchHomeVideos: answer ?? [jesusIn(slug)] } })
+      }
     }
   })
 }
@@ -494,7 +520,7 @@ describe("useWatchHome in the UI locale (U6)", () => {
     await answerVideos("es")
     await answerSetting("es", {
       watchSetting: homepage("ver", "Ver JESÚS"),
-      englishWatchSetting: null,
+      englishWatchSetting: homepage("films", "JESUS"),
     })
 
     expect(sectionIds(frames[frames.length - 1])).toEqual(["ver"])
@@ -533,7 +559,7 @@ describe("useWatchHome in the UI locale (U6)", () => {
     await answerVideos("es")
     await answerSetting("es", {
       watchSetting: homepage("ver", "Ver JESÚS"),
-      englishWatchSetting: null,
+      englishWatchSetting: homepage("films", "JESUS"),
     })
 
     expect(cardTitles(frames[frames.length - 1])).toEqual(["Ver JESÚS"])
@@ -563,6 +589,39 @@ describe("useWatchHome in the UI locale (U6)", () => {
       reason: "error",
       body_source: "config",
     })
+  })
+
+  it("shows the retry message, not a spinner, when the new locale fails", async () => {
+    await renderStrictProbe("en-US")
+    await answerVideos("en")
+    await answerSetting("en", { watchSetting: homepage("first", "JESUS") })
+
+    await changePhone("es-MX")
+    await answerVideos("es", new Error("offline"))
+    await answerSetting("es", new Error("offline"))
+
+    expect(frames[frames.length - 1]).toMatchObject({
+      model: null,
+      loading: false,
+      error: "Couldn't load videos. Please try again.",
+    })
+  })
+
+  it("never reuses the old locale's top-up records after a failed top-up", async () => {
+    const acts = homepage("acts", null, ACTS_ITEM)
+    await renderStrictProbe("en-US")
+    await answerVideos("en")
+    await answerSetting("en", { watchSetting: acts })
+    await answerVideos("en", [ACTS])
+    expect(cardTitles(frames[frames.length - 1])).toEqual(["Peter and John"])
+
+    await changePhone("es-MX")
+    await answerVideos("es")
+    await answerSetting("es", { watchSetting: acts, englishWatchSetting: acts })
+    await answerVideos("es", new Error("offline"))
+
+    // With no records the card falls back to its slug.
+    expect(cardTitles(frames[frames.length - 1])).toEqual(["acts"])
   })
 
   it("never paints an en snapshot under es", async () => {

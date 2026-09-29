@@ -73,19 +73,19 @@ import {
   startLocaleSync,
 } from "../../i18n/localeStore"
 import { datadogLog } from "../../lib/datadog"
-import {
-  createCoverageMemory,
-  fetchUserRecommendationsWithCoverage,
-  type DeliveryDeps,
-  type RawUserRecommendationDelivery,
-} from "../../lib/recommendations/delivery"
-import { phoneLocales } from "../../test-utils/uiLocaleFixture"
-import type { UserRecommendationsClient } from "../useUserRecommendations"
+import * as delivery from "../../lib/recommendations/delivery"
 import type {
+  DeliveryDeps,
   DeliveryResult,
+  RawUserRecommendationDelivery,
   UserRecommendationItem,
   UserRecommendationSlate,
 } from "../../lib/recommendations/delivery"
+import { phoneLocales } from "../../test-utils/uiLocaleFixture"
+import {
+  getUserRecommendationsClient,
+  type UserRecommendationsClient,
+} from "../useUserRecommendations"
 import {
   TestRenderer,
   type NodePath,
@@ -359,8 +359,8 @@ describe("the request's languages (KTD11)", () => {
     })
   })
 
-  // AE9 through the real coverage retry: Admin has no (ru, english) pool, so
-  // the shelf shows the (en, english) slate and its English titles.
+  // AE9 through the app's client and its coverage retry: Admin has no
+  // (ru, english) pool, so the shelf shows the (en, english) slate.
   it("shows the English-metadata slate when the Russian pair has no pool (AE9)", async () => {
     startPhone("ru-RU")
     mockPreferences.mockReturnValue({ audioLanguageSlug: "english" })
@@ -403,14 +403,11 @@ describe("the request's languages (KTD11)", () => {
       touch: () => undefined,
       report: () => undefined,
     }
-    const memory = createCoverageMemory()
+    const spy = jest.spyOn(delivery, "getDeliveryDeps").mockReturnValue(deps)
     const hook = await mountShelf(
-      client({
-        fetch: jest.fn((input) =>
-          fetchUserRecommendationsWithCoverage(input, deps, memory),
-        ),
-      }),
+      client({ fetch: jest.fn(getUserRecommendationsClient().fetch) }),
     )
+    spy.mockRestore()
     expect(asked).toEqual(["ru:english", "en:english"])
     expect(hook.latest().status).toBe("served")
     expect(hook.latest().slate?.items.map((entry) => entry.videoTitle)).toEqual(

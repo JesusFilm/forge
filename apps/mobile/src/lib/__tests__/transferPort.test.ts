@@ -173,12 +173,14 @@ describe("buildExportFileName in other scripts (R23, KTD15)", () => {
     expect(wellFormed(name)).toBe(true)
   })
 
+  // 240 + 4 + 4 bytes fit the 251-byte stem; a third 4-byte letter does not.
   it("stops before a 4-byte letter that would pass the byte cap", () => {
     const name = buildExportFileName(
-      `${"あ".repeat(83)}${"𠀀".repeat(10)}`,
+      `${"あ".repeat(80)}${"𠀀".repeat(3)}`,
       "jesus",
     )
-    expect(name).toBe(`${"あ".repeat(83)}.mp4`)
+    expect(name).toBe(`${"あ".repeat(80)}${"𠀀".repeat(2)}.mp4`)
+    expect(bytes(name)).toBe(252)
     expect(wellFormed(name)).toBe(true)
   })
 

@@ -64,36 +64,6 @@ import {
   type VideoMetaMap,
 } from "../useVideoThumbnails"
 
-describe("useVideoThumbnails internals", () => {
-  describe("SAFE_ID_RE validation", () => {
-    const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/
-
-    it("accepts standard CUID-style videoIds", () => {
-      expect(SAFE_ID_RE.test("cmpbs74n6036v6d819ppuc9fo")).toBe(true)
-    })
-
-    it("accepts IDs with hyphens and underscores", () => {
-      expect(SAFE_ID_RE.test("abc-123_def")).toBe(true)
-    })
-
-    it("rejects IDs with quotes", () => {
-      expect(SAFE_ID_RE.test('abc"def')).toBe(false)
-    })
-
-    it("rejects IDs with spaces", () => {
-      expect(SAFE_ID_RE.test("abc def")).toBe(false)
-    })
-
-    it("rejects IDs with GraphQL injection attempts", () => {
-      expect(SAFE_ID_RE.test('") { __typename } v99: video(id: "x')).toBe(false)
-    })
-
-    it("rejects empty string", () => {
-      expect(SAFE_ID_RE.test("")).toBe(false)
-    })
-  })
-})
-
 function video(
   id: string,
   ui: { languageSlug: string; title: string }[],
@@ -272,6 +242,43 @@ describe("useVideoThumbnails", () => {
       })
     })
     expect(seen.at(-1)?.get("a")?.title).toBe("ИИСУС")
+  })
+
+  it("sends only ids of letters, digits, hyphens, and underscores", async () => {
+    experience = experienceOf("easter", [
+      "cmpbs74n6036v6d819ppuc9fo",
+      "abc-123_def",
+      'abc"def',
+      "abc def",
+      '") { __typename } v99: video(id: "x',
+    ])
+    query.mockResolvedValue({ data: {} })
+    await mount(createElement(Probe))
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query.mock.calls[0][0].variables).toEqual({
+      textSlug: "english",
+      id0: "cmpbs74n6036v6d819ppuc9fo",
+      id1: "abc-123_def",
+    })
+  })
+
+  it("keeps the last art when every batch fails", async () => {
+    query.mockImplementation(
+      ({ variables }: { variables: Record<string, string> }) =>
+        variables.textSlug === "english"
+          ? Promise.resolve({ data: { v0: video("a", [], "JESUS") } })
+          : Promise.reject(new Error("offline")),
+    )
+    await mount(createElement(Probe))
+    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
+    await act(async () => {
+      refreshLocale()
+    })
+
+    expect(seen.at(-1)?.get("a")).toEqual({
+      thumbnail: "https://cdn/a.jpg",
+      title: null,
+    })
   })
 
   describe("with a large Experience", () => {

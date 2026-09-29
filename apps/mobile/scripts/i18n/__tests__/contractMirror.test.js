@@ -20,6 +20,7 @@ const CASES = [
   ["Go back", "Volver"],
   ["Go back", undefined],
   ["Go back", "   "],
+  ["Go back", ""],
   ["", ""],
   ["Go back", "```Volver```"],
   ["Hi {name}", "Hola {name"],

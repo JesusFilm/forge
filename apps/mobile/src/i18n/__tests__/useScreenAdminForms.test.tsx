@@ -125,6 +125,16 @@ async function mount(slug: string) {
   })
 }
 
+async function rerender(slug: string) {
+  await act(async () => {
+    mounted?.update(
+      <StrictMode>
+        <Screen slug={slug} />
+      </StrictMode>,
+    )
+  })
+}
+
 async function unmount() {
   await act(async () => {
     mounted?.unmount()
@@ -164,13 +174,7 @@ describe("useScreenAdminForms (KTD16, AE11)", () => {
     await changePhone("ru-RU")
     expect(getLocaleEpoch()).toBe(1)
     // A re-render of the open screen must read the forms it captured.
-    await act(async () => {
-      mounted?.update(
-        <StrictMode>
-          <Screen slug={SLUG} />
-        </StrictMode>,
-      )
-    })
+    await rerender(SLUG)
 
     expect(lastFrame()).toEqual({ title: "The Birth", dub: "Spanish" })
   })
@@ -200,18 +204,15 @@ describe("useScreenAdminForms (KTD16, AE11)", () => {
     expect(lastFrame()).toEqual({ title: "Рождение", dub: "Испанский" })
   })
 
-  it("reads the new language again when the same route gets a new slug", async () => {
+  it("reads the new language for a new slug on the same route, then holds it", async () => {
     await mount(SLUG)
     await changePhone("ru-RU")
 
-    await act(async () => {
-      mounted?.update(
-        <StrictMode>
-          <Screen slug="the-baptism" />
-        </StrictMode>,
-      )
-    })
+    await rerender("the-baptism")
+    expect(lastFrame().dub).toBe("Испанский")
 
+    await changePhone("en-US")
+    await rerender("the-baptism")
     expect(lastFrame().dub).toBe("Испанский")
   })
 })

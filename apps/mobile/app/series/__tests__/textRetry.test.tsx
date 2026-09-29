@@ -281,6 +281,10 @@ describe("a failed text load on a loaded series page", () => {
   it.each<[string, QueryAnswer]>([
     ["the text loads", LOADED_TEXT],
     [
+      "the text is still loading",
+      { data: undefined, dataState: "empty", loading: true, error: undefined },
+    ],
+    [
       "a refetch fails over complete text",
       { ...LOADED_TEXT, error: FAILED.error },
     ],

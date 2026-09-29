@@ -491,32 +491,47 @@ describe("useBibleVerses", () => {
 
   // An upstream change that starts suppressing verses must not look like
   // admin's designed no-passage outcome.
-  it("warns with the missing field when a passage fails the gate", async () => {
-    mockGetClient.mockReturnValue({
-      query: jest
-        .fn()
-        .mockResolvedValue(
-          response([
-            { documentId: "c1", passage: rawPassage({ versionTitle: null }) },
-          ]),
-        ),
-    })
+  it.each<[string, AdminLanguageForms, Record<string, unknown>, string]>([
+    [
+      "a passage",
+      ENGLISH_ADMIN_FORMS,
+      { passage: rawPassage({ versionTitle: null }) },
+      "versionTitle",
+    ],
+    [
+      "the English fallback passage",
+      adminFormsFor("ru"),
+      { passage: null, englishPassage: rawPassage({ copyright: null }) },
+      "copyright",
+    ],
+  ])(
+    "warns with the missing field when %s fails the gate",
+    async (_, forms, entry, field) => {
+      mockGetClient.mockReturnValue({
+        query: jest
+          .fn()
+          .mockResolvedValue(
+            response([{ documentId: "c1", passage: null, ...entry }]),
+          ),
+      })
 
-    const hook = renderHook({
-      slug: "the-beginning",
-      citations: [citation("c1")],
-    })
-    await flush()
+      const hook = renderHook({
+        slug: "the-beginning",
+        citations: [citation("c1")],
+        forms,
+      })
+      await flush()
 
-    expect(verseCards(hook.latest())[0]).toMatchObject({ text: "" })
-    expect(mockWarn).toHaveBeenCalledWith(
-      "bible_passages.degraded",
-      expect.objectContaining({
-        reason: "gate_rejected",
-        missing_field: "versionTitle",
-      }),
-    )
-  })
+      expect(verseCards(hook.latest())[0]).toMatchObject({ text: "" })
+      expect(mockWarn).toHaveBeenCalledWith(
+        "bible_passages.degraded",
+        expect.objectContaining({
+          reason: "gate_rejected",
+          missing_field: field,
+        }),
+      )
+    },
+  )
 
   it("joins passages to citations by documentId, not by order", async () => {
     mockGetClient.mockReturnValue({

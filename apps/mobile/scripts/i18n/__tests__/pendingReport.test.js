@@ -25,7 +25,7 @@ function fixture({
   writeJson(path.join(mobile, "messages/en.json"), english)
   writeJson(path.join(mobile, "messages/es.json"), english)
   writeJson(path.join(mobile, "messages/fr.json"), {
-    Common: { back: "Retour", next: "Next" },
+    Common: { back: "Retour" },
   })
   if (policy !== null) {
     writeJson(
@@ -34,8 +34,8 @@ function fixture({
         humanReviewedLocales: ["en"],
         englishOnlyLocales: [],
         pendingKeys: {
-          "Common.next": "2026-09-10",
-          "Common.back": "2026-09-01",
+          "Common.back": "2026-09-10",
+          "Common.next": "2026-09-01",
         },
       },
     )
@@ -65,7 +65,7 @@ describe("pending-report.mjs", () => {
     const text = fs.readFileSync(summary, "utf8")
     expect(text).toContain("Pending keys: 2")
     expect(text).toMatch(
-      /Oldest pending key: `Common\.back`, pending since 2026-09-01/,
+      /Oldest pending key: `Common\.next`, pending since 2026-09-01/,
     )
     expect(text).toMatch(/`Common\.back` still shows English in 1 catalog: es/)
     expect(text).toMatch(

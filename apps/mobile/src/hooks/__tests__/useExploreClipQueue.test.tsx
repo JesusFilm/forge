@@ -759,6 +759,12 @@ describe("a warm open (KTD6)", () => {
       readyClip("c", { feedLanguageSlug: EN }),
       undefined,
     ],
+    [
+      "read in another UI language",
+      { storedAt: T0 - 30_000 },
+      readyClip("c", { textSlug: "russian" }),
+      undefined,
+    ],
   ])(
     "drops a stored clip %s and computes a new one",
     async (_case, stamp, clip, recordEntries) => {
@@ -1106,15 +1112,90 @@ describe("the UI language (U7)", () => {
     })
   })
 
+  it("drops a hydration no clip holds at a focus with new forms, and reads it again", async () => {
+    let forms: AdminLanguageForms = ENGLISH_ADMIN_FORMS
+    const w = world({
+      inventories: { [SW]: ["a", "b", "c"] },
+      adminForms: () => forms,
+      textRows: true,
+    })
+    // The hold leaves b and c hydrated in English, with no clip made yet.
+    const view = render(w.deps, { ...FOCUSED, holdLookahead: true })
+    await flush()
+    expect(ids(view.history())).toEqual(["video-a"])
+
+    forms = RU
+    view.rerender({ focused: false })
+    await flush()
+    view.rerender({ focused: true })
+    await flush()
+    view.rerender({ holdLookahead: false })
+    await flush()
+    expect(w.admin.hydrationCalls.at(-1)).toMatchObject({
+      coreIds: ["core-b", "core-c"],
+      textSlug: RUSSIAN,
+    })
+    expect(view.latest().feed.queued).toMatchObject({
+      videoId: "video-b",
+      title: "Title b in russian",
+    })
+  })
+
+  it("asks for the slate again in the new For You locale when the feed keeps its slug", async () => {
+    let forms: AdminLanguageForms = ENGLISH_ADMIN_FORMS
+    const w = world({
+      inventories: { [SW]: ["a", "b", "c"] },
+      deliver: async () => SERVED([]),
+      adminForms: () => forms,
+    })
+    const view = render(w.deps, FOCUSED)
+    await flush(EXPLORE_DELIVERY_SPACING_MS)
+    w.recs.client.fetch.mockClear()
+
+    forms = RU
+    view.rerender({ focused: false })
+    await flush()
+    view.rerender({ focused: true })
+    await flush()
+    expect(w.recs.client.fetch.mock.calls).toEqual([
+      [{ locale: "ru", audioLanguageSlug: SW, count: 6, attempt: 1 }],
+    ])
+  })
+
+  // R21: `ha` and `yo` have no UI catalog, so only the phone tag changes.
+  it("moves the feed at the next focus after a phone change that keeps the UI catalog", async () => {
+    mockPreferences.mockReturnValue({ audioLanguageSlug: null })
+    let device = "ha-NG"
+    const w = world({
+      inventories: { hausa: ["a"], yoruba: ["x"] },
+      deviceLocale: () => device,
+    })
+    const view = render(w.deps, FOCUSED)
+    await flush()
+    expect(view.latest().queue.feedLanguageSlug).toBe("hausa")
+
+    device = "yo-NG"
+    view.rerender({ focused: false })
+    await flush()
+    view.rerender({ focused: true })
+    await flush()
+    expect(view.latest().queue.feedLanguageSlug).toBe("yoruba")
+  })
+
   // R9: the empty state names the feed language in the UI locale.
   it.each<[string, AdminLanguageForms, boolean, string]>([
     ["in Russian from Admin's name map", RU, true, "суахили"],
-    ["in English from Admin's name map", ENGLISH_ADMIN_FORMS, true, "Swahili"],
+    [
+      "in English from Admin's name map",
+      ENGLISH_ADMIN_FORMS,
+      true,
+      "Kiswahili",
+    ],
     ["as the title-cased slug when Admin sends no name", RU, false, "Swahili"],
   ])("names the feed language %s", async (_name, forms, named, expected) => {
     const w = world({
       inventories: { [SW]: [] },
-      languageNames: named ? { [SW]: { en: "Swahili", ru: "суахили" } } : {},
+      languageNames: named ? { [SW]: { en: "Kiswahili", ru: "суахили" } } : {},
       adminForms: () => forms,
     })
     const view = render(w.deps, FOCUSED)
@@ -1162,6 +1243,22 @@ describe("a language change (R24)", () => {
     view.dispatch({ type: "swipeNext" })
     await flush()
     expect(view.latest().feed.queued?.feedLanguageSlug).toBe(EN)
+  })
+
+  it("never names the old feed language while the new pool loads (R9)", async () => {
+    const w = world({
+      inventories: { [SW]: ["a"], [EN]: ["x"] },
+      languageNames: { [SW]: { en: "Kiswahili" } },
+    })
+    const view = render(w.deps, FOCUSED)
+    await flush()
+    expect(view.latest().queue.feedLanguageName).toBe("Kiswahili")
+
+    w.admin.holdInventory = true
+    mockPreferences.mockReturnValue({ audioLanguageSlug: EN })
+    view.rerender({})
+    await flush()
+    expect(view.latest().queue.feedLanguageName).toBe("English")
   })
 
   it("holds the slate request of an early change until the spacing mark", async () => {

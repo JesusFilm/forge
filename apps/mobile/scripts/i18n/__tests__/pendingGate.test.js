@@ -53,6 +53,23 @@ describe("check-pending-gate.mjs", () => {
     expect(result.stderr).toContain("I18N_ALLOW_PENDING=1")
   })
 
+  it("lists the pending keys oldest first", () => {
+    const pending = { "A.new": "2026-09-20", "B.old": "2026-09-01" }
+    const result = runGate(["--policy", policyFile(pending)], {
+      EAS_BUILD_PROFILE: "production",
+    })
+    expect(result.stderr).toContain(
+      "2 pending keys still show English in other locales: B.old (since 2026-09-01), A.new (since 2026-09-20).",
+    )
+  })
+
+  // A 0 exit here would let `update:production` run its `&& eas update`.
+  it("fails closed on an argument it does not know, outside a build too", () => {
+    const result = runGate(["--update-productoin"], {})
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain("Unknown argument: --update-productoin")
+  })
+
   it("exits 0 for the preview profile with one pending key", () => {
     const result = runGate(["--policy", policyFile(ONE_PENDING)], {
       EAS_BUILD_PROFILE: "preview",

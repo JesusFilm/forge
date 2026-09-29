@@ -7,6 +7,7 @@ import {
   fetchUserRecommendationsWithCoverage,
   isSlateExpired,
   validateServedSlate,
+  type CoverageMemory,
   type DeliveryDeps,
   type RawUserRecommendationDelivery,
 } from "../delivery"
@@ -359,6 +360,7 @@ describe("fetchUserRecommendationsWithCoverage", () => {
   /** One session: every `ask` in a test shares one coverage memory. */
   function coverageSession(
     answer: (locale: string) => RawUserRecommendationDelivery,
+    memory: CoverageMemory = createCoverageMemory(),
   ) {
     const query = jest.fn(
       async (variables: { locale: string; audioLanguageSlug: string }) =>
@@ -375,7 +377,6 @@ describe("fetchUserRecommendationsWithCoverage", () => {
       touch: jest.fn(),
       report: jest.fn(),
     }
-    const memory = createCoverageMemory()
     return {
       query,
       ask: (locale: string, audioLanguageSlug: string) =>
@@ -402,7 +403,11 @@ describe("fetchUserRecommendationsWithCoverage", () => {
   })
 
   it("does not retry when the first request already used en", async () => {
-    const s = coverageSession(() => unavailable("coverage_unavailable"))
+    // A memory that forgets: a real one would answer the retry itself.
+    const s = coverageSession(() => unavailable("coverage_unavailable"), {
+      has: () => false,
+      add: () => undefined,
+    })
     await expect(s.ask("en", "hausa")).resolves.toEqual(NO_POOL)
     expect(s.asked()).toEqual(["en:hausa"])
   })
@@ -423,6 +428,18 @@ describe("fetchUserRecommendationsWithCoverage", () => {
     expect(s.asked()).toEqual(["ru:hausa", "en:hausa"])
     await expect(s.ask("ru", "hausa")).resolves.toEqual(NO_POOL)
     expect(s.query).toHaveBeenCalledTimes(2)
+  })
+
+  it("keys the memory by the pair, so a new audio asks again", async () => {
+    const s = coverageSession(() => unavailable("coverage_unavailable"))
+    await s.ask("ru", "hausa")
+    await s.ask("ru", "russian")
+    expect(s.asked()).toEqual([
+      "ru:hausa",
+      "en:hausa",
+      "ru:russian",
+      "en:russian",
+    ])
   })
 
   it("remembers only a coverage answer, so a pair that served is asked again", async () => {

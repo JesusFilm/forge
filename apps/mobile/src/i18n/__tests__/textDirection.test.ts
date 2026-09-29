@@ -55,12 +55,14 @@ describe("textAccessibilityLanguage (R10)", () => {
     expect(textAccessibilityLanguage("en", "ru", "ios")).toBe("en")
   })
 
-  it("marks nothing for text in the UI language", () => {
-    expect(textAccessibilityLanguage("en", "en", "ios")).toBeUndefined()
-    expect(textAccessibilityLanguage("ar", "ar", "ios")).toBeUndefined()
-    expect(
-      textAccessibilityLanguage("zh-Hans", "zh-Hans", "ios"),
-    ).toBeUndefined()
+  // Admin spells tags its own way, so only the primary language must match.
+  it.each([
+    ["en", "en"],
+    ["ar", "ar"],
+    ["zh-hans", "zh-Hans"],
+    ["pt-br", "pt"],
+  ])("marks nothing for %s text in a %s UI", (lang, uiTag) => {
+    expect(textAccessibilityLanguage(lang, uiTag, "ios")).toBeUndefined()
   })
 
   it("marks nothing when the language of the text is not known", () => {

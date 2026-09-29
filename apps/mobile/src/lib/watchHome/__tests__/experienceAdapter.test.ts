@@ -915,11 +915,18 @@ describe("card text under the UI locale's homepage and the en fallback (U6)", ()
       forms: RU,
       homepageSource: "en-fallback",
       videos: [acts],
-      items: [{ ...ACTS_ITEM, titleOverride: "Acts 4" }, ACTS_ITEM],
+      items: [
+        { ...ACTS_ITEM, titleOverride: "Acts 4", subtitleOverride: "Healing" },
+        ACTS_ITEM,
+      ],
     })
     // Authored English text shows only where Admin has no Russian value.
-    expect(authoredCard.title).toBe("Acts 4")
-    expect(authoredCard.titleLang).toBe("en")
+    expect(authoredCard).toMatchObject({
+      title: "Acts 4",
+      titleLang: "en",
+      description: "Healing",
+      descriptionLang: "en",
+    })
     expect(bareCard.title).toBe("Peter and John")
     expect(bareCard.titleLang).toBe("en")
   })

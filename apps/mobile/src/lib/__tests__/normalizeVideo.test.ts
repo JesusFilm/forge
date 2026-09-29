@@ -522,6 +522,21 @@ describe("normalizeVideo", () => {
       expect(media.subtitles[1].aiGenerated).toBe(true)
     })
 
+    it("reads an absent primary or AI flag as false", () => {
+      const [english] = makeRawDub().videoEdition.subtitles
+      const media = normalizeDubMedia(
+        makeRawDub({
+          videoEdition: {
+            subtitles: [{ ...english, primary: null, aiGenerated: null }],
+          },
+        }),
+      )
+      expect(media.subtitles[0]).toMatchObject({
+        primary: false,
+        aiGenerated: false,
+      })
+    })
+
     // Admin's Language.slug is nullable and real rows hit it (a French track on
     // considering-christmas, 2026-08-13). A slug-less track cannot be selected:
     // it keys as "" everywhere, and "" is falsy, so the watch route's
@@ -658,34 +673,32 @@ describe("normalizeVideo", () => {
       question("de-1", "german", 1),
     ]
 
-    it("shows only the UI language's list, never a row of another language", () => {
+    it.each<[string, ReturnType<typeof question>[], string[], string]>([
+      [
+        "only the UI language's list, never a row of another language",
+        [
+          question("ru-2", "russian", 2),
+          question("fr-1", "french", 1),
+          question("ru-1", "russian", 1),
+        ],
+        ["ru-1?", "ru-2?"],
+        "ru",
+      ],
+      [
+        "a UI list of one question, not the English list",
+        [question("ru-1", "russian", 1)],
+        ["ru-1?"],
+        "ru",
+      ],
+      ["the English list when the UI language has none", [], ["en-1?"], "en"],
+    ])("shows %s", (_, ui, values, lang) => {
       const result = normalizeVideo(
         makeRawVideo({ studyQuestions: null }),
         adminFormsFor("ru"),
-        text(
-          [
-            question("ru-2", "russian", 2),
-            question("fr-1", "french", 1),
-            question("ru-1", "russian", 1),
-          ],
-          ENGLISH_LIST,
-        ),
+        text(ui, ENGLISH_LIST),
       )!
-      expect(result.studyQuestions.map((q) => q.value)).toEqual([
-        "ru-1?",
-        "ru-2?",
-      ])
-      expect(result.studyQuestionsLang).toBe("ru")
-    })
-
-    it("shows the English list when the UI language has none", () => {
-      const result = normalizeVideo(
-        makeRawVideo({ studyQuestions: null }),
-        adminFormsFor("ru"),
-        text([], ENGLISH_LIST),
-      )!
-      expect(result.studyQuestions.map((q) => q.value)).toEqual(["en-1?"])
-      expect(result.studyQuestionsLang).toBe("en")
+      expect(result.studyQuestions.map((q) => q.value)).toEqual(values)
+      expect(result.studyQuestionsLang).toBe(lang)
     })
   })
 
@@ -1386,6 +1399,22 @@ describe("normalizeVideo — text from the companion, per field (U6)", () => {
       { title: "Воскресение", lang: "ru" },
       { title: "The Ascension", lang: "en" },
     ])
+  })
+
+  // A catalog with no Admin language (az-Arab) reads the English rows, and
+  // that text must not lay out right to left.
+  it.each<[string, AdminLanguageForms, string, string]>([
+    ["a blank Russian title", RU, "russian", "  "],
+    [
+      "an English row read under az-Arab",
+      adminFormsFor("az-Arab"),
+      "english",
+      "The Crucifixion",
+    ],
+  ])("marks %s as the English title", (_, forms, slug, title) => {
+    const locales = [textRow("loc-ui", slug, { title })]
+    const result = normalizeVideo(heavyOnly(), forms, companion({ locales }))!
+    expect([result.title, result.titleLang]).toEqual(["The Crucifixion", "en"])
   })
 
   it("ignores a companion for another video", () => {

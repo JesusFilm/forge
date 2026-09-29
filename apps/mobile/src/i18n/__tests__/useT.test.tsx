@@ -1,15 +1,17 @@
 // The store, the translator, and useT together, with the real en.json and
-// generated index. Only the native module is faked, and a fixture `es`
-// catalog joins the real set so a language change can happen.
+// generated index. Only the native module is faked, and fixture `es` and `ar`
+// catalogs join the real set so a language change can happen.
 import { StrictMode, act, type ReactElement } from "react"
 import { Text } from "react-native"
 
+import * as localeStore from "../localeStore"
 import {
   getLocaleEpoch,
   refreshLocale,
   resetLocaleStoreForTests,
   startLocaleSync,
 } from "../localeStore"
+import { useTextDirection } from "../textDirection"
 import { getT, useDefaultAudioSlug, useT } from "../useT"
 import {
   TestRenderer,
@@ -29,10 +31,11 @@ jest.mock("expo-localization/build/ExpoLocalization", () => ({
 jest.mock("../catalogs.generated", () => {
   const actual = jest.requireActual("../catalogs.generated")
   return {
-    CATALOG_TAGS: [...actual.CATALOG_TAGS, "es"],
+    CATALOG_TAGS: [...actual.CATALOG_TAGS, "es", "ar"],
     CATALOG_LOADERS: {
       ...actual.CATALOG_LOADERS,
       es: () => ({ Common: { goBackAriaLabel: "Volver" } }),
+      ar: () => ({}),
     },
   }
 })
@@ -40,7 +43,7 @@ jest.mock("../pluralData.generated", () => {
   const actual = jest.requireActual("../pluralData.generated")
   return {
     ...actual,
-    PLURAL_DATA_TAG: { ...actual.PLURAL_DATA_TAG, es: "es" },
+    PLURAL_DATA_TAG: { ...actual.PLURAL_DATA_TAG, es: "es", ar: "en" },
     PLURAL_DATA_LOADERS: {
       ...actual.PLURAL_DATA_LOADERS,
       es: () =>
@@ -83,6 +86,10 @@ beforeEach(() => {
   resetLocaleStoreForTests()
   mockGetLocales.mockReset()
   renders = 0
+})
+
+afterEach(() => {
+  jest.restoreAllMocks()
 })
 
 describe("useT", () => {
@@ -130,15 +137,27 @@ describe("useT", () => {
     await unmount(renderer)
   })
 
+  // A render count cannot rise after unmount, so the case watches the store's
+  // calls to the listener that React subscribed.
   it("stops listening after unmount", async () => {
+    const subscribe = localeStore.subscribeLocale
+    const heard = jest.fn()
+    jest.spyOn(localeStore, "subscribeLocale").mockImplementation((listener) =>
+      subscribe(() => {
+        heard()
+        listener()
+      }),
+    )
     startOn("en-US")
     const renderer = await render(<BackLabel />)
-    await unmount(renderer)
-    const before = renders
-
     await changePhoneLanguage("es-MX")
+    expect(heard).toHaveBeenCalled()
 
-    expect(renders).toBe(before)
+    await unmount(renderer)
+    heard.mockClear()
+    await changePhoneLanguage("en-GB")
+
+    expect(heard).not.toHaveBeenCalled()
   })
 })
 
@@ -156,6 +175,24 @@ describe("useDefaultAudioSlug", () => {
 
     expect(getLocaleEpoch()).toBe(0)
     expect(hasText(renderer, "yoruba")).toBe(true)
+    await unmount(renderer)
+  })
+})
+
+describe("useTextDirection", () => {
+  function FallbackText() {
+    const { text } = useTextDirection()
+    return <Text>{text("en").style?.direction ?? "none"}</Text>
+  }
+
+  it("re-reads the style for a live UI language change", async () => {
+    startOn("en-US")
+    const renderer = await render(<FallbackText />)
+    expect(hasText(renderer, "none")).toBe(true)
+
+    await changePhoneLanguage("ar-EG")
+
+    expect(hasText(renderer, "ltr")).toBe(true)
     await unmount(renderer)
   })
 })

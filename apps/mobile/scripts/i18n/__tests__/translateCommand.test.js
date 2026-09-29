@@ -2,6 +2,7 @@
 /* global afterAll, describe, expect, it, require */
 // scripts/i18n/translate-catalogs.mjs against a fake web script (KTD6, R20).
 // webScriptChain.test.js drives web's real script against a fake API server.
+const crypto = require("crypto")
 const fs = require("fs")
 const path = require("path")
 const ops = require("../lib/catalogOps")
@@ -35,6 +36,10 @@ const NEUTRAL = { intentionallyLocaleNeutral: ["Player.brand"] }
 
 function today() {
   return new Date().toISOString().slice(0, 10)
+}
+
+function sha256(text, length) {
+  return crypto.createHash("sha256").update(text).digest("hex").slice(0, length)
 }
 
 function flagValue(argv, flag) {
@@ -82,7 +87,14 @@ describe("a full run", () => {
       policy: NEUTRAL,
       webTags: ["en", "crk", "es", "fr"],
     })
-    const policy = ops.normalizePolicy(ws.readJson("policy"))
+    const json = (value) => `${JSON.stringify(value, null, 2)}\n`
+    const progress = [
+      "forge-mobile-ui",
+      sha256(ws.messagesDir, 8),
+      `en${sha256(json(ops.flattenCatalog(EN)), 12)}`,
+      `policy${sha256(json(ops.normalizePolicy(ws.readJson("policy"))), 12)}`,
+      `${DEFAULT_MODEL}.json`,
+    ].join("-")
     const result = runCommand(ws, ["--yes"])
     expect(result.status).toBe(0)
     const runs = webRuns(ws)
@@ -95,15 +107,7 @@ describe("a full run", () => {
       "--manifest",
       ws.files.manifest,
       "--progress",
-      path.join(
-        ws.progressDir,
-        ops.progressFileName({
-          messagesDir: ws.messagesDir,
-          sourceFlat: ops.flattenCatalog(EN),
-          policy,
-          model: DEFAULT_MODEL,
-        }),
-      ),
+      path.join(ws.progressDir, progress),
       "--policy",
       ws.files.policy,
       "--contexts",
@@ -118,6 +122,13 @@ describe("a full run", () => {
       "--max-attempts",
       "4",
     ])
+  })
+
+  it("accepts API_OPENAI as the key, as web's script does", () => {
+    const ws = makeWorkspace({ en: EN, catalogs: { es: {} }, policy: NEUTRAL })
+    const env = { OPENAI_API_KEY: "", API_OPENAI: "test-only-not-a-key" }
+    expect(runCommand(ws, ["--yes"], env).status).toBe(0)
+    expect(webRuns(ws)).toHaveLength(1)
   })
 
   it("passes --max-attempts and --concurrency through", () => {
@@ -185,14 +196,16 @@ describe("a full run", () => {
     })
   })
 
-  it("runs one web script call per model group, each with its own progress path", () => {
+  it("runs one web script call per model group, each with its own progress path, after a failed locale too", () => {
     const ws = makeWorkspace({
       en: EN,
       catalogs: { ar: {}, es: {} },
       policy: NEUTRAL,
       modelTable: { defaultModel: DEFAULT_MODEL, locales: { ar: "gpt-5.6" } },
     })
-    expect(runCommand(ws, ["--yes"]).status).toBe(0)
+    expect(runCommand(ws, ["--yes"], { FAKE_FAIL_LOCALES: "es" }).status).toBe(
+      1,
+    )
     const runs = webRuns(ws)
     expect(runs.map((run) => flagValue(run.argv, "--model"))).toEqual([
       DEFAULT_MODEL,
@@ -244,12 +257,17 @@ describe("a full run", () => {
     expect(full.readJson("policy").pendingKeys).toEqual({})
   })
 
-  it("needs no confirmation and no web script when nothing needs a translation", () => {
-    const ws = makeWorkspace({ en: EN, catalogs: { es: ES }, policy: NEUTRAL })
+  it("needs no confirmation and no web script when nothing needs a translation, and settles the pending list", () => {
+    const ws = makeWorkspace({
+      en: EN,
+      catalogs: { es: ES },
+      policy: { ...NEUTRAL, pendingKeys: { "Common.back": "2026-09-01" } },
+    })
     const result = runCommand(ws, [])
     expect(result.status).toBe(0)
     expect(result.stdout).toContain("No locale needs a translation")
     expect(webRuns(ws)).toEqual([])
+    expect(ws.readJson("policy").pendingKeys).toEqual({})
   })
 })
 
@@ -352,7 +370,7 @@ describe("the no-network modes", () => {
     )
   })
 
-  it("--dry-run prints the plan, including a key that fails the contract check, and writes nothing", () => {
+  it("--dry-run prints the plan and the request ceiling, including a key that fails the contract check, and writes nothing", () => {
     const ws = makeWorkspace({
       en: EN,
       catalogs: {
@@ -362,11 +380,17 @@ describe("the no-network modes", () => {
       webTags: ["en", "es", "fr"],
     })
     const before = ws.snapshot()
-    const result = runCommand(ws, ["--dry-run", "--json"])
+    const result = runCommand(ws, [
+      "--dry-run",
+      "--json",
+      "--max-attempts",
+      "3",
+    ])
     expect(result.status).toBe(0)
     const plan = JSON.parse(result.stdout)
     expect(plan.seeded).toEqual(["fr"])
     expect(plan.requests).toBe(2)
+    expect(plan.maxRequests).toBe(6)
     expect(plan.groups).toHaveLength(1)
     expect(plan.groups[0].model).toBe(DEFAULT_MODEL)
     expect(plan.groups[0].locales).toEqual({

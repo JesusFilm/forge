@@ -162,13 +162,25 @@ describe("refreshOfflineTitles", () => {
     })
   })
 
-  it("keeps the English title, stamped with the UI locale, when Admin has no row", async () => {
-    const w = world([record("a")])
+  it("writes the English title, stamped with the UI locale, when Admin has no Russian row", async () => {
+    const w = world([record("a", { title: "Stored a" })])
     await refreshOfflineTitles(deps(w, async (slug) => text(slug, null)))
     expect(w.map.get("a")).toMatchObject({
       title: "English a",
       titleLocale: "ru",
     })
+  })
+
+  // ab has no Admin language, so its raw tag is en. A raw-tag stamp would
+  // never match the catalog tag, and every pass would ask again.
+  it("stamps the catalog tag, so the next pass skips the record", async () => {
+    const w = world([record("a")])
+    const fetchText = jest.fn(async (slug: string) => text(slug, null))
+    const abDeps = deps(w, fetchText, { forms: () => adminFormsFor("ab") })
+    await refreshOfflineTitles(abDeps)
+    await refreshOfflineTitles(abDeps)
+    expect(w.map.get("a")?.titleLocale).toBe("ab")
+    expect(fetchText).toHaveBeenCalledTimes(1)
   })
 
   const failingFor = (failed: string) => async (slug: string) => {
@@ -230,6 +242,20 @@ describe("refreshOfflineTitles", () => {
       deps(w, fetchText, { forms: () => ENGLISH_ADMIN_FORMS }),
     )
     expect(fetchText).not.toHaveBeenCalled()
+  })
+
+  it("sends at most three text requests at once", async () => {
+    const w = world(["a", "b", "c", "d", "e"].map((slug) => record(slug)))
+    const { pending, fetchText } = deferredFetch()
+    const run = refreshOfflineTitles(deps(w, fetchText))
+    await flush()
+    expect(pending).toHaveLength(3)
+    for (let i = 0; i < 5; i += 1) {
+      pending[i]!.resolve(null)
+      await flush()
+    }
+    await run
+    expect(fetchText).toHaveBeenCalledTimes(5)
   })
 
   it("refreshes at most one batch per pass", async () => {

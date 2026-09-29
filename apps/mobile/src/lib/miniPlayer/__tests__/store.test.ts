@@ -625,11 +625,12 @@ describe("the session's Admin language forms", () => {
     expect(store.getSnapshot().session?.adminForms).toBe(EN)
   })
 
-  it("starts another video with that video's own noted forms", () => {
+  it("keeps the notes of a stack of open screens, so each video starts with its own", () => {
     const store = createMiniPlayerStore()
     store.noteScreenAdminForms("birth-of-jesus", EN)
-    store.start({ videoId: "v1", videoSlug: "birth-of-jesus", title: "T" })
     store.noteScreenAdminForms("the-baptism", RU)
+    store.start({ videoId: "v1", videoSlug: "birth-of-jesus", title: "T" })
+    expect(store.getSnapshot().session?.adminForms).toBe(EN)
     store.start({ videoId: "v2", videoSlug: "the-baptism", title: "B" })
     expect(store.getSnapshot().session?.adminForms).toBe(RU)
   })

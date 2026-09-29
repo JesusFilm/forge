@@ -339,6 +339,11 @@ describe("Admin language tables", () => {
     expectRefusal(args, named)
   })
 
+  it("refuses a curated entry whose slug is not in the web map", () => {
+    const { args } = fixture({ curated: { en: "english", hu: "hungarian-x" } })
+    expectRefusal(args, "sends hu to hungarian-x")
+  })
+
   it("refuses a map whose entry count differs from its header", () => {
     const { args, mapFile } = fixture()
     fs.writeFileSync(mapFile, mapSource(BASE_MAP, BASE_MAP.length + 1))

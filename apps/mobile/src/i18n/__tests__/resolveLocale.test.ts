@@ -123,6 +123,8 @@ describe("isRtlTag", () => {
     "az-Arab",
     "ms-Arab",
     "uz-Arab",
+    // Admin spells raw tags in lower case.
+    "az-arab",
   ])("treats %s as right-to-left", (tag) => {
     expect(isRtlTag(tag)).toBe(true)
   })

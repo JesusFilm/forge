@@ -665,6 +665,8 @@ describe("the phone language", () => {
     expect(readPhoneLanguageCode()).toBe("zh")
     setPhone("ha-NG", "en-US")
     expect(readPhoneLanguageCode()).toBe("ha")
+    setPhone("fil-PH", "en-US")
+    expect(readPhoneLanguageCode()).toBe("fil")
   })
 
   it("is null for a failed read or an empty phone list, never the Intl default", () => {

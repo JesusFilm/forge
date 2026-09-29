@@ -28,8 +28,10 @@ describe("nameComparator (KTD15)", () => {
     expect(nameComparator("en")("e", "é")).not.toBe(0)
   })
 
+  // A collator ignores the width of a full-width letter; the last-resort
+  // lower-cased compare does not, so only the default collation gives 0.
   it("falls back to the default collation for a tag Intl refuses", () => {
-    expect(nameComparator("not a tag")("a", "b")).toBeLessThan(0)
+    expect(nameComparator("not a tag")("Ａ", "a")).toBe(0)
   })
 })
 

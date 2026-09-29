@@ -1,4 +1,4 @@
-import { print } from "graphql"
+import { parse, print } from "graphql"
 import type { DocumentNode } from "graphql"
 
 import * as queries from "../queries"
@@ -336,13 +336,12 @@ describe("one argument set for every locales(...) selection (KTD10)", () => {
     'locales(languageSlug: "english")',
   ])
 
+  const localeCalls = (sdl: string) => sdl.match(/\blocales\([^)]*\)/g) ?? []
+
   it("every exported document spells locales(...) only the two shared ways", () => {
-    const seen: string[] = []
-    for (const [, doc] of exportedDocuments()) {
-      for (const call of asSdl(doc).match(/\blocales\([^)]*\)/g) ?? []) {
-        seen.push(call)
-      }
-    }
+    const seen = exportedDocuments().flatMap(([, doc]) =>
+      localeCalls(asSdl(doc)),
+    )
     // Positive control: the scan found the shared fragments.
     expect(seen.length).toBeGreaterThan(0)
     expect(seen.filter((call) => !ALLOWED.has(call))).toEqual([])
@@ -362,17 +361,30 @@ describe("one argument set for every locales(...) selection (KTD10)", () => {
   })
 
   it("flags a hand-built locale pair (negative control)", () => {
-    const call = "locales(locale: $locale, languageSlug: $languageSlug)"
-    expect(ALLOWED.has(call)).toBe(false)
+    const sdl = asSdl(
+      parse(
+        "{ video { locales(locale: $locale, languageSlug: $slug) { title } } }",
+      ),
+    )
+    expect(localeCalls(sdl).filter((call) => !ALLOWED.has(call))).toEqual([
+      "locales(locale: $locale, languageSlug: $slug)",
+    ])
   })
 })
 
 describe("the homepage and Experience documents ask for the UI locale and en", () => {
-  it("GET_WATCH_SETTING asks for both homepages, skipping en under en", () => {
+  it("GET_WATCH_SETTING asks for both homepages' blocks, skipping en under en", () => {
     const sdl = documentNamed("GET_WATCH_SETTING")
-    expect(sdl).toContain("watchSetting(locale: $locale)")
-    expect(sdl).toContain(
-      'englishWatchSetting: watchSetting(locale: "en") @skip(if: $isEnglish)',
+    const selectsBlocks = (field: string) =>
+      new RegExp(
+        field.replace(/[()$]/g, "\\$&") +
+          String.raw`\s*\{\s*documentId\s+homepageExperience\s*\{\s*\.\.\.AdminLegacyWatchExperience\b`,
+      )
+    expect(sdl).toMatch(selectsBlocks("watchSetting(locale: $locale)"))
+    expect(sdl).toMatch(
+      selectsBlocks(
+        'englishWatchSetting: watchSetting(locale: "en") @skip(if: $isEnglish)',
+      ),
     )
   })
 

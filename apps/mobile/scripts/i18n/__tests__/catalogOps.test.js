@@ -217,33 +217,40 @@ describe("predictKeys and planRun (step 4)", () => {
     })
     const plan = ops.planRun(s, {
       locales: ["es", "fr", "ar"],
-      modelFor: (locale) => (locale === "ar" ? "gpt-5.6" : "gpt-mini"),
+      modelFor: (locale) => (locale === "ar" ? "gpt-mini" : "gpt-5.6"),
       messageContractError: contractError,
     })
     expect(plan.groups).toEqual([
-      { model: "gpt-5.6", keysByLocale: { ar: ["A.a"] } },
-      { model: "gpt-mini", keysByLocale: { es: ["A.a"] } },
+      { model: "gpt-5.6", keysByLocale: { es: ["A.a"] } },
+      { model: "gpt-mini", keysByLocale: { ar: ["A.a"] } },
     ])
     expect(plan.upToDate).toEqual(["fr"])
   })
 })
 
 describe("settlePendingKeys (step 6)", () => {
-  it("removes a pending key only when every translated locale is complete", () => {
+  it("removes a pending key only when every translated locale is complete and passes the contract", () => {
     const s = state({
-      source: { "A.a": "Hello", "A.b": "Bye" },
+      source: { "A.a": "Hello", "A.b": "Bye", "A.c": "{n} left" },
       catalogs: {
-        es: { "A.a": "Hola", "A.b": "Adiós" },
-        fr: { "A.a": "Bonjour", "A.b": "Bye" },
-        crk: { "A.a": "Hello", "A.b": "Bye" },
+        es: { "A.a": "Hola", "A.b": "Adiós", "A.c": "Quedan" },
+        fr: { "A.a": "Bonjour", "A.b": "Bye", "A.c": "{n} restants" },
+        crk: { "A.a": "Hello", "A.b": "Bye", "A.c": "{n} left" },
       },
       policy: {
         englishOnlyLocales: ["crk"],
-        pendingKeys: { "A.a": "2026-09-01", "A.b": "2026-09-01" },
+        pendingKeys: {
+          "A.a": "2026-09-01",
+          "A.b": "2026-09-01",
+          "A.c": "2026-09-01",
+        },
       },
     })
     expect(ops.settlePendingKeys(s, contractError)).toEqual(["A.a"])
-    expect(s.policy.pendingKeys).toEqual({ "A.b": "2026-09-01" })
+    expect(s.policy.pendingKeys).toEqual({
+      "A.b": "2026-09-01",
+      "A.c": "2026-09-01",
+    })
   })
 })
 
@@ -331,11 +338,14 @@ describe("progressFileName", () => {
     model: "gpt-5.4-mini-2026-03-17",
   }
 
-  it("names the English digest, the policy digest, and the model, and changes with each", () => {
+  it("names the directory digest, the English digest, the policy digest, and the model, and changes with each", () => {
     const name = ops.progressFileName(base)
     expect(name).toMatch(
       /^forge-mobile-ui-[0-9a-f]{8}-en[0-9a-f]{12}-policy[0-9a-f]{12}-gpt-5\.4-mini-2026-03-17\.json$/,
     )
+    expect(
+      ops.progressFileName({ ...base, messagesDir: "/other/mobile/messages" }),
+    ).not.toBe(name)
     expect(
       ops.progressFileName({ ...base, sourceFlat: { "A.a": "Hi" } }),
     ).not.toBe(name)

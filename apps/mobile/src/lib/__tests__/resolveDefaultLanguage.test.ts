@@ -97,6 +97,12 @@ describe("resolveDefaultSlug", () => {
     expect(resolveDefaultSlug(enCollision(), null)).toBe("english")
   })
 
+  it("prefers the longest exact tag the phone names (pt-PT over pt)", () => {
+    setPhone("pt-PT")
+    const options = [opt("portuguese", "pt"), opt("portuguese-pt", "pt-PT")]
+    expect(resolveDefaultSlug(options, null)).toBe("portuguese-pt")
+  })
+
   it("prefers the exact tag at the video-primary step", () => {
     setPhone("fr-FR")
     expect(resolveDefaultSlug(enCollision(), "en")).toBe("english")
@@ -176,6 +182,13 @@ describe("resolveDefaultSlug", () => {
       )
       expect(resolveDefaultSlug([english, spanish, french], "fr")).toBe("v-fr")
       expect(resolveDefaultSlug([spanish, english], "fr")).toBe("v-en")
+    })
+
+    // Admin has no Esperanto dub, so the phone's slug is null.
+    it("never matches a phone language with no slug to a dub with no slug", () => {
+      setPhone("eo")
+      const options = [opt("english", "en"), opt("french", "fr")]
+      expect(resolveDefaultSlug(options, "fr")).toBe("french")
     })
 
     it("falls to the primary language, then English, when the phone list is empty", () => {

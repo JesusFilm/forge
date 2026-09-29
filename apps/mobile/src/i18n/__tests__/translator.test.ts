@@ -221,10 +221,9 @@ describe("bidirectional isolation of values (KTD13)", () => {
   const AR = {
     Cast: {
       castingTo: "جارٍ الإرسال إلى {device}",
-      items: "{count, plural, other {# عناصر}}",
-      kind: "{kind, select, movie {فيلم} other {عنصر}}",
-      kindAgain: "{kind, select, movie {فيلم} other {عنصر}} {kind}",
-      at: "{count, number} {device}",
+      kind: "{kind, select, movie {فيلم} other {عنصر}} {kind}",
+      removal: "{count, plural, other {حذف {count} من {title}}}",
+      at: "{count, number} {device} {count}",
     },
   }
   const CAST = { ar: AR, en: { Cast: { castingTo: "Casting to {device}" } } }
@@ -235,27 +234,21 @@ describe("bidirectional isolation of values (KTD13)", () => {
     ["ar", "Living Room TV", `جارٍ الإرسال إلى ${FSI}Living Room TV${PDI}`],
     ["en", "Living Room TV", "Casting to Living Room TV"],
     ["en", "جهاز التلفاز", `Casting to ${FSI}جهاز التلفاز${PDI}`],
+    ["en", "הסלון", `Casting to ${FSI}הסלון${PDI}`],
   ] as const)("formats %s with the device %s", (tag, device, expected) => {
     const t = make(tag, CAST[tag])
     expect(t.translate("Cast.castingTo", { device })).toBe(expected)
   })
 
-  it("never wraps a plural count", () => {
-    const t = make("ar", AR)
-    expect(t.translate("Cast.items", { count: 3 })).not.toContain(FSI)
-  })
-
-  it("never wraps a select argument, even one also used as a plain value", () => {
-    const t = make("ar", AR)
-    expect(t.translate("Cast.kind", { kind: "movie" })).toBe("فيلم")
-    expect(t.translate("Cast.kindAgain", { kind: "movie" })).toBe("فيلم movie")
-  })
-
-  it("wraps only the plain argument next to a number argument", () => {
-    const t = make("ar", AR)
-    const out = t.translate("Cast.at", { count: 2, device: "TV" })
-    expect(out.startsWith(FSI)).toBe(false)
-    expect(out.endsWith(`${FSI}TV${PDI}`)).toBe(true)
+  // Every value is a string, so the type guard lets it through: only the
+  // message walk keeps an argument that drives a select, plural, or number
+  // unwrapped where it also appears as a plain `{arg}`.
+  it.each([
+    ["kind", { kind: "movie" }, "فيلم movie"],
+    ["removal", { count: "3", title: "Jesus" }, `حذف 3 من ${FSI}Jesus${PDI}`],
+    ["at", { count: "2", device: "TV" }, `2 ${FSI}TV${PDI} 2`],
+  ])("wraps only the plain arguments of %s", (key, values, expected) => {
+    expect(make("ar", AR).translate(`Cast.${key}`, values)).toBe(expected)
   })
 })
 
@@ -269,21 +262,15 @@ describe("pseudo-locale", () => {
     },
   }
 
-  function pseudo() {
-    return make("en", translator.pseudoLocalizeMessages(SOURCE))
-  }
-
-  it("accents the text and makes it about 40% longer", () => {
-    const out = pseudo().translate("Common.goBackAriaLabel")
-    expect(out).not.toBe("Go back")
-    expect(out).not.toMatch(/[A-Za-z]/)
-    expect(out.length).toBeGreaterThanOrEqual(Math.ceil("Go back".length * 1.4))
-  })
-
-  it("keeps placeholders, plurals, and apostrophes working", () => {
-    const t = pseudo()
-    expect(t.translate("Common.greeting", { name: "Ana" })).toContain("Ana")
-    expect(t.translate("Common.episodes", { count: 2 })).toContain("2")
-    expect(t.translate("Common.apostrophe")).toContain("'")
+  // The padding is ceil(40%) of the literal characters, spaces included, and
+  // counts the text in each plural branch.
+  it.each([
+    ["goBackAriaLabel", undefined, "[Ĝö ƀàçķ ~~~]"],
+    ["greeting", { name: "Ana" }, "[Ĥéļļö, Ana ~~~]"],
+    ["episodes", { count: 2 }, "[2 éþîšöðéš ~~~~~~~]"],
+    ["apostrophe", undefined, "[Ðöñ'ţ šţöþ ~~~~]"],
+  ])("accents, brackets, and pads %s", (key, values, expected) => {
+    const t = make("en", translator.pseudoLocalizeMessages(SOURCE))
+    expect(t.translate(`Common.${key}`, values)).toBe(expected)
   })
 })

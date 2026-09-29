@@ -30,10 +30,11 @@ jest.mock("expo-localization/build/ExpoLocalization", () => ({
 }))
 
 // A fixture catalog set: mobile ships only `en` today. Each loader records
-// its call, so a case can prove which catalogs reached the heap (R8).
+// its call, so a case can prove which catalogs reached the heap (R8). The
+// `fr` catalog file fails to load, and `fr` has no plural data either.
 const mockCatalogLoads: string[] = []
 jest.mock("../catalogs.generated", () => {
-  const catalogs: Record<string, object> = {
+  const catalogs: Record<string, object | null> = {
     en: {
       Common: { goBackAriaLabel: "Go back" },
       Watch: {
@@ -42,6 +43,10 @@ jest.mock("../catalogs.generated", () => {
     },
     es: { Common: { goBackAriaLabel: "Volver" } },
     ru: { Common: { goBackAriaLabel: "Назад" }, Watch: {} },
+    "zh-Hans": {
+      Watch: { episodes: "{count, plural, one {# 集 (one)} other {# 集}}" },
+    },
+    fr: null,
   }
   return {
     CATALOG_TAGS: Object.keys(catalogs),
@@ -50,6 +55,7 @@ jest.mock("../catalogs.generated", () => {
         tag,
         () => {
           mockCatalogLoads.push(tag)
+          if (!messages) throw new Error(`broken ${tag} catalog`)
           return messages
         },
       ]),
@@ -64,7 +70,13 @@ jest.mock("../pluralData.generated", () => {
     data()
   }
   return {
-    PLURAL_DATA_TAG: { en: "en", es: "es", ru: "ru" },
+    PLURAL_DATA_TAG: {
+      en: "en",
+      es: "es",
+      ru: "ru",
+      "zh-Hans": "zh",
+      fr: "fr",
+    },
     PLURAL_DATA_LOADERS: {
       en: load("en", () =>
         jest.requireActual("@formatjs/intl-pluralrules/locale-data/en.js"),
@@ -74,6 +86,9 @@ jest.mock("../pluralData.generated", () => {
       ),
       ru: load("ru", () =>
         jest.requireActual("@formatjs/intl-pluralrules/locale-data/ru.js"),
+      ),
+      zh: load("zh", () =>
+        jest.requireActual("@formatjs/intl-pluralrules/locale-data/zh.js"),
       ),
     },
   }
@@ -164,17 +179,21 @@ describe("startLocaleSync", () => {
     expect(defaultAudioLanguage()).toBeNull()
   })
 
-  it("loads en plural data before the active catalog's (KTD3)", () => {
-    mockGetLocales.mockReturnValue(phone("ru-RU"))
+  // zh-Hans formats plurals under the zh data, where 1 is "other" (KTD1).
+  it("loads en plural data, then the data tag of the active catalog (KTD3)", () => {
+    mockGetLocales.mockReturnValue(phone("zh-Hans"))
     mockPluralLoads.length = 0
     // Fresh modules: pluralRules.ts loads each tag once per module instance.
     jest.isolateModules(() => {
       const store =
         jest.requireActual<typeof import("../localeStore")>("../localeStore")
       store.startLocaleSync()
-      expect(store.getCatalogTag()).toBe("ru")
+      expect(store.getCatalogTag()).toBe("zh-Hans")
+      expect(
+        store.getActiveTranslator().translate("Watch.episodes", { count: 1 }),
+      ).toBe("1 集")
     })
-    expect(mockPluralLoads).toEqual(["en", "ru"])
+    expect(mockPluralLoads).toEqual(["en", "zh"])
   })
 
   it("keeps en when getLocales returns no list", () => {
@@ -190,7 +209,7 @@ describe("startLocaleSync", () => {
     mockGetLocales.mockReturnValue([
       null,
       { languageCode: "x" },
-      ...phone("es"),
+      ...phone("", "es"),
     ])
     startLocaleSync()
     expect(getCatalogTag()).toBe("es")
@@ -352,26 +371,37 @@ describe("defaultAudioLanguage", () => {
 })
 
 describe("ui_locale telemetry attributes", () => {
-  it("describes a language fallback", () => {
-    mockGetLocales.mockReturnValue(phone("es-MX"))
-    startLocaleSync()
-    expect(localeResolutionAttributes(getLocaleResolution())).toEqual({
-      "ui_locale.resolved": "es",
-      "ui_locale.requested": "es-MX",
-      "ui_locale.fallback": "language",
-    })
-  })
-
+  // `requested` is always the first phone tag, so a later-preference match
+  // still shows the demand for the missing catalog.
   it.each([
-    [["ru"], "none"],
-    [["ha", "es"], "later_preference"],
-    [["ha"], "english"],
-  ])("describes the phone list %j as fallback %s", (tags, fallback) => {
-    mockGetLocales.mockReturnValue(phone(...tags))
+    [["es-MX"], "es", "language"],
+    [["ru"], "ru", "none"],
+    [["ha", "es"], "es", "later_preference"],
+    [["ha"], "en", "english"],
+  ])(
+    "describes the phone list %j as %s, fallback %s",
+    (tags, tag, fallback) => {
+      mockGetLocales.mockReturnValue(phone(...tags))
+      startLocaleSync()
+      expect(localeResolutionAttributes(getLocaleResolution())).toEqual({
+        "ui_locale.resolved": tag,
+        "ui_locale.requested": tags[0],
+        "ui_locale.fallback": fallback,
+      })
+    },
+  )
+
+  it("names the phone language and both failures when its catalog cannot load", () => {
+    mockGetLocales.mockReturnValue(phone("fr-FR"))
     startLocaleSync()
-    expect(
-      localeResolutionAttributes(getLocaleResolution())["ui_locale.fallback"],
-    ).toBe(fallback)
+    expect(getCatalogTag()).toBe("en")
+    expect(localeResolutionAttributes(getLocaleResolution())).toEqual({
+      "ui_locale.resolved": "en",
+      "ui_locale.requested": "fr-FR",
+      "ui_locale.fallback": "error",
+      "ui_locale.error_reason": "Error: broken fr catalog",
+      "ui_locale.plural_error": 'Error: No plural data loader for "fr"',
+    })
   })
 
   it("carries the error reason and no reserved attribute name", () => {
