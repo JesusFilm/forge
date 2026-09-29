@@ -67,11 +67,14 @@ export function MyWatchScreen() {
 
   return (
     <View style={layout.screenContainer}>
+      {/* Android sorts screen-reader order by position, and a list that also
+          starts at y 0 is taller than the bar, so it would read before More. */}
       <ScrollView
+        style={{ marginTop: insets.top }}
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + CONTENT_TOP_GAP,
+            paddingTop: CONTENT_TOP_GAP,
             paddingBottom: CONTENT_BOTTOM_GAP + tabBarClearance,
           },
         ]}
@@ -127,6 +130,8 @@ const styles = StyleSheet.create({
   },
   headingRow: {
     flexDirection: "row",
+    // At a large text size, See all moves under the heading, not off screen.
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: HORIZONTAL_PADDING,

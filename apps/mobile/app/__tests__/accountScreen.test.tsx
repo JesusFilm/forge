@@ -308,6 +308,25 @@ describe("AccountScreen signed in (R17)", () => {
     await unmount(renderer)
   })
 
+  it("keeps the initial at its size under a large text size, and lets the name grow", async () => {
+    setSnapshot(SIGNED_IN)
+    const renderer = await renderScreen()
+    const initial = renderer.root.findAll((node) => node.props.children === "T")
+    const name = renderer.root.findAll(
+      (node) => node.props.children === SIGNED_IN.user.name,
+    )
+
+    // The avatar circle has a fixed size; the name truncates instead.
+    expect(initial.some((node) => node.props.allowFontScaling === false)).toBe(
+      true,
+    )
+    expect(name.length).toBeGreaterThan(0)
+    expect(name.every((node) => node.props.allowFontScaling !== false)).toBe(
+      true,
+    )
+    await unmount(renderer)
+  })
+
   it("with no name, shows the email once, inside the replay mask (R19)", async () => {
     setSnapshot(SIGNED_IN_NO_NAME)
     const renderer = await renderScreen()

@@ -261,8 +261,37 @@ describe("MyWatchScreen with no downloads (R1, R2, R9)", () => {
         (node) => node.type === ScreenTopBar && node.props.overlay === true,
       ).length,
     ).toBe(1)
-    // The page pads the inset itself, because the overlaid bar takes no row.
-    expect(Number(content.paddingTop)).toBe(mockInsets.top + 16)
+    // The page clears the inset itself, because the overlaid bar takes no row.
+    // The list starts below the inset, not at 0, so Android's position sort
+    // puts the bar's More button first for a screen reader.
+    expect(
+      Number(StyleSheet.flatten(page.props.style as ViewStyle).marginTop),
+    ).toBe(mockInsets.top)
+    expect(Number(content.paddingTop)).toBe(16)
+    await unmount(renderer)
+  })
+})
+
+describe("MyWatchScreen under a large text size", () => {
+  it("wraps See all under the Downloads heading instead of off the screen", async () => {
+    mockDownloads.offlineRecords = [record("v-1", "downloaded")]
+    const renderer = await renderScreen()
+    const [heading] = renderer.root.findAll(
+      (node) =>
+        node.props.accessibilityRole === "header" &&
+        node.props.children === "Downloads",
+    )
+    const [seeAll] = renderer.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === "See all downloads" &&
+        typeof node.props.onPress === "function",
+    )
+    const row = heading.parent!
+
+    expect(seeAll.parent).toBe(row)
+    expect(StyleSheet.flatten(row.props.style as ViewStyle).flexWrap).toBe(
+      "wrap",
+    )
     await unmount(renderer)
   })
 })

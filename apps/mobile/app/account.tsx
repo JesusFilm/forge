@@ -60,8 +60,12 @@ function Identity({ user }: { user: AuthUser }) {
   return (
     <SessionReplayView.MaskAll style={styles.identity}>
       <View style={styles.avatar}>
+        {/* The circle has a fixed size, so the initial must not grow out of it. */}
         {initial ? (
-          <Text style={[styles.avatarInitial, typography.headingScale.h2]}>
+          <Text
+            allowFontScaling={false}
+            style={[styles.avatarInitial, typography.headingScale.h2]}
+          >
             {initial}
           </Text>
         ) : (

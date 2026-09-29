@@ -626,6 +626,25 @@ describe("MyWatchHeader signed-in row (R4, R19, KTD10)", () => {
     await unmount(renderer)
   })
 
+  it("keeps the initial at its size under a large text size, and lets the name grow", async () => {
+    setSnapshot(SIGNED_IN)
+    const renderer = await renderHeader()
+    const initial = renderer.root.findAll((node) => node.props.children === "T")
+    const name = renderer.root.findAll(
+      (node) => node.props.children === SIGNED_IN.user.name,
+    )
+
+    // The avatar circle has a fixed size; the name row truncates instead.
+    expect(initial.some((node) => node.props.allowFontScaling === false)).toBe(
+      true,
+    )
+    expect(name.length).toBeGreaterThan(0)
+    expect(name.every((node) => node.props.allowFontScaling !== false)).toBe(
+      true,
+    )
+    await unmount(renderer)
+  })
+
   it("does not render Sign out or Delete account; those live on the Account screen", async () => {
     setSnapshot(SIGNED_IN)
     const renderer = await renderHeader()

@@ -226,8 +226,12 @@ export function MyWatchHeader() {
             to the email, and the initial comes from the name, so both mask. */}
         <SessionReplayView.MaskAll style={styles.identity}>
           <View style={[styles.avatar, styles.accountAvatar]}>
+            {/* The circle has a fixed size, so the initial must not grow out of it. */}
             {initial ? (
-              <Text style={[styles.avatarInitial, typography.headingScale.h2]}>
+              <Text
+                allowFontScaling={false}
+                style={[styles.avatarInitial, typography.headingScale.h2]}
+              >
                 {initial}
               </Text>
             ) : (
