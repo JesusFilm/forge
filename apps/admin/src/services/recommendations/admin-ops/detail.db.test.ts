@@ -35,6 +35,7 @@ const migrationSql = [
   "0100_recommendation_candidate_compact_trace",
   "0101_recommendation_candidate_compact_trace_validate",
   "0102_recommendation_candidate_stage_duplicate_index_drop",
+  "0118_recommendation_candidate_stage_expiry_index_drop",
 ].map((migration) =>
   readFileSync(
     new URL(

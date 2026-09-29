@@ -45,6 +45,7 @@ const migrationSql = [
   "0108_recommendation_cowatch_frozen_trial",
   "0109_recommendation_composition_authority",
   "0110_recommendation_live_policy_manifests",
+  "0118_recommendation_candidate_stage_expiry_index_drop",
 ].map((migration) =>
   readFileSync(
     new URL(
