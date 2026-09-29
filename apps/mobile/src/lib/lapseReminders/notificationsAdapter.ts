@@ -12,7 +12,6 @@ import * as Notifications from "expo-notifications"
 
 import {
   LAPSE_REMINDER_CHANNEL_ID,
-  LAPSE_REMINDER_CHANNEL_NAME,
   type LapseReminderPermission,
 } from "./constants"
 import type { LapseReminderPayload } from "./payload"
@@ -37,7 +36,7 @@ export type LapseReminderScheduleInput = {
 }
 
 export type LapseReminderNotificationsAdapter = {
-  ensureChannel: () => Promise<void>
+  ensureChannel: (name: string) => Promise<void>
   getPermission: () => Promise<LapseReminderPermission>
   requestPermission: () => Promise<LapseReminderPermission>
   schedule: (input: LapseReminderScheduleInput) => Promise<void>
@@ -58,10 +57,11 @@ function toPermission(status: {
 
 export const lapseReminderNotifications: LapseReminderNotificationsAdapter = {
   /** KTD6: Android 13 shows no permission prompt until a channel exists. The
-   *  plugin's `defaultChannel` option creates none, so the app creates this. */
-  async ensureChannel() {
+   *  plugin's `defaultChannel` option creates none, so the app creates this.
+   *  A call with the same id and a new name renames the existing channel. */
+  async ensureChannel(name) {
     await Notifications.setNotificationChannelAsync(LAPSE_REMINDER_CHANNEL_ID, {
-      name: LAPSE_REMINDER_CHANNEL_NAME,
+      name,
       importance: Notifications.AndroidImportance.DEFAULT,
     })
   },

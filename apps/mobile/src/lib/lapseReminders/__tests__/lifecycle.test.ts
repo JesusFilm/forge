@@ -8,11 +8,18 @@
  * third that survives to the end of a test.
  */
 
+import { AppState, type AppStateStatus } from "react-native"
+
 import {
-  LAPSE_REMINDER_COPY,
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import { phoneLocales } from "../../../test-utils/uiLocaleFixture"
+import {
   LAPSE_REMINDER_IDENTIFIERS,
   LAPSE_REMINDER_KINDS,
-  LAPSE_REMINDER_TITLE_TOKEN,
+  type LapseReminderKind,
 } from "../constants"
 import {
   LAPSE_REMINDER_HOME_TARGET,
@@ -25,6 +32,53 @@ import {
   createLapseReminderLifecycle,
   type LapseReminderLifecycleDeps,
 } from "../lifecycle"
+
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+// A fixture `es` catalog joins the real set, so a pass can run after the
+// phone's language changes. English cases never start the store.
+jest.mock("../../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(
+      jest.requireActual("../../../i18n/catalogs.generated"),
+      {
+        es: {
+          LapseReminder: {
+            day1Body: "Continúa donde lo dejaste.",
+            day7Body: "Tu video te espera cuando quieras.",
+            day1TitledBody: "Sigue viendo {title}.",
+            day7TitledBody: "{title} te espera cuando quieras.",
+            channelName: "Recordatorios",
+          },
+        },
+      },
+    ),
+)
+jest.mock("../../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../../i18n/pluralData.generated"),
+      ["es"],
+    ),
+)
+
+beforeEach(() => {
+  resetLocaleStoreForTests()
+  mockGetLocales.mockReset()
+})
+
+/** R14's untitled English copy, pinned verbatim. */
+const UNTITLED: Record<LapseReminderKind, string> = {
+  day1: "Pick up where you left off.",
+  day7: "Your video is still here whenever you are ready.",
+}
 
 /** A fixed instant inside the delivery window, so nothing snaps in these tests
  *  unless the test asks for it. 2026-09-16 10:00 local. */
@@ -57,6 +111,7 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
   const pending = new Map<string, ScheduledReminder>()
   const identifiersUsed = new Set<string>()
   const calls: string[] = []
+  const channelNames: string[] = []
   let maxPending = 0
   let delivered = 0
   let permissionReads = 0
@@ -71,6 +126,7 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
     pending,
     identifiersUsed,
     calls,
+    channelNames,
     deliver(count: number) {
       delivered += count
     },
@@ -83,8 +139,9 @@ function createFakeAdapter(options: FakeAdapterOptions = {}) {
     get permissionReads() {
       return permissionReads
     },
-    async ensureChannel() {
+    async ensureChannel(name: string) {
       calls.push("channel")
+      channelNames.push(name)
       await wait("channel")
       if (options.failChannel?.()) throw new Error("channel failed")
     },
@@ -148,6 +205,7 @@ function createHarness(
     enabled?: boolean
     record?: string | null
     recordTitle?: string | null
+    recordTitleLocale?: string
     /** Leave hydration pending until the test resolves it. */
     deferHydration?: boolean
     now?: () => number
@@ -174,6 +232,7 @@ function createHarness(
         : {
             videoSlug: record,
             videoTitle: options.recordTitle ?? null,
+            titleLocale: options.recordTitleLocale,
             recordedAt: NOW,
           },
     hydrateRecord: () => hydration,
@@ -241,7 +300,7 @@ describe("the lapse reminder schedule pass", () => {
         LAPSE_REMINDER_IDENTIFIERS[kind],
       )
       expect(scheduled?.date.getTime()).toBe(targets[kind].getTime())
-      expect(scheduled?.body).toBe(LAPSE_REMINDER_COPY[kind])
+      expect(scheduled?.body).toBe(UNTITLED[kind])
       expect(scheduled?.data).toEqual({
         version: 1,
         kind,
@@ -286,9 +345,9 @@ describe("the lapse reminder schedule pass", () => {
       const scheduled = harness.adapter.pending.get(
         LAPSE_REMINDER_IDENTIFIERS[kind],
       )
-      expect(scheduled?.body).toBe(LAPSE_REMINDER_COPY[kind])
+      expect(scheduled?.body).toBe(UNTITLED[kind])
       expect(scheduled?.body).not.toContain("null")
-      expect(scheduled?.body).not.toContain(LAPSE_REMINDER_TITLE_TOKEN)
+      expect(scheduled?.body).not.toContain("{title}")
     }
   })
 
@@ -957,6 +1016,101 @@ describe("the lapse reminder attach", () => {
     expect([...harness.adapter.identifiersUsed].sort()).toEqual(
       BOTH_IDENTIFIERS,
     )
+    detach()
+  })
+})
+
+describe("the pass in the UI language", () => {
+  function bodyOf(adapter: FakeAdapter, kind: LapseReminderKind) {
+    return adapter.pending.get(LAPSE_REMINDER_IDENTIFIERS[kind])?.body
+  }
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  it("renames the Android channel on the next pass after a language change", async () => {
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+    const harness = createHarness({ record: "the-birth-of-jesus" })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
+    refreshLocale()
+    await lifecycle.runPass("active")
+
+    expect(harness.adapter.channelNames).toEqual(["Reminders", "Recordatorios"])
+    expect(bodyOf(harness.adapter, "day1")).toBe("Continúa donde lo dejaste.")
+  })
+
+  it("uses the untitled body for an English title under a Spanish UI", async () => {
+    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
+    startLocaleSync()
+    const harness = createHarness({
+      record: "the-birth-of-jesus",
+      recordTitle: "The Birth of Jesus",
+      recordTitleLocale: "en",
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+
+    expect(bodyOf(harness.adapter, "day1")).toBe("Continúa donde lo dejaste.")
+    expect(bodyOf(harness.adapter, "day7")).toBe(
+      "Tu video te espera cuando quieras.",
+    )
+  })
+
+  it("names the video when the title is in the UI language", async () => {
+    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
+    startLocaleSync()
+    const harness = createHarness({
+      record: "the-birth-of-jesus",
+      recordTitle: "El nacimiento de Jesús",
+      recordTitleLocale: "es",
+    })
+    const lifecycle = createLapseReminderLifecycle(harness.deps)
+
+    await lifecycle.runPass("mount")
+
+    expect(bodyOf(harness.adapter, "day1")).toBe(
+      "Sigue viendo El nacimiento de Jesús.",
+    )
+  })
+
+  it("bakes the new language into the pass that a return to the app runs", async () => {
+    // The store's listener is registered at module scope, before any provider
+    // mounts, so it sits first on the one AppState emitter.
+    const listeners: ((state: AppStateStatus) => void)[] = []
+    jest.spyOn(AppState, "addEventListener").mockImplementation(((
+      _type: string,
+      listener: (state: AppStateStatus) => void,
+    ) => {
+      listeners.push(listener)
+      return { remove: () => undefined }
+    }) as unknown as typeof AppState.addEventListener)
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+    const harness = createHarness({ record: "the-birth-of-jesus" })
+    const lifecycle = createLapseReminderLifecycle({
+      ...harness.deps,
+      subscribeToAppState: (listener) => {
+        const subscription = AppState.addEventListener("change", listener)
+        return () => subscription.remove()
+      },
+    })
+    const detach = lifecycle.attach()
+    await settle()
+    expect(bodyOf(harness.adapter, "day1")).toBe(UNTITLED.day1)
+
+    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
+    for (const listener of listeners) listener("active")
+    await settle()
+
+    expect(listeners).toHaveLength(2)
+    expect(bodyOf(harness.adapter, "day1")).toBe("Continúa donde lo dejaste.")
+    expect(harness.adapter.channelNames.at(-1)).toBe("Recordatorios")
     detach()
   })
 })

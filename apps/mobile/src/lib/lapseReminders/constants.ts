@@ -1,7 +1,7 @@
 /**
- * Dependency-free constants for the lapse reminders. Every later reminder
- * module imports this leaf, so it holds no logic and no import. The
- * last-watched record owns its own storage key; it is not one of these.
+ * Dependency-free constants for the lapse reminders. Every reminder module
+ * imports this leaf, so it holds no logic and no import. The record's storage
+ * key and the reminder text (the catalog, via copy.ts) live elsewhere.
  */
 
 /**
@@ -21,29 +21,6 @@ export type LapseReminderKind = (typeof LAPSE_REMINDER_KINDS)[number]
  */
 export const LAPSE_REMINDERS_ENABLED: boolean = true
 
-/**
- * R14's fixed English copy. Placeholder until the ministry stakeholder signs
- * off. Neither string names the video, and neither is localized: the app's own
- * UI is English-only today.
- */
-export const LAPSE_REMINDER_COPY: Record<LapseReminderKind, string> = {
-  day1: "Pick up where you left off.",
-  day7: "Your video is still here whenever you are ready.",
-}
-
-/** The token every titled string substitutes. One spelling, one source. */
-export const LAPSE_REMINDER_TITLE_TOKEN = "{title}"
-
-/**
- * R14a's titled copy, used when the record carries a title. A record written
- * before titles, or one whose title failed the sanitizer, takes the untitled
- * strings above instead, so neither set may be deleted.
- */
-export const LAPSE_REMINDER_COPY_TITLED: Record<LapseReminderKind, string> = {
-  day1: "Continue watching {title}.",
-  day7: "{title} is still here whenever you are ready.",
-}
-
 /** R6's delivery window in local time. The start hour is inclusive. */
 export const LAPSE_REMINDER_WINDOW_START_HOUR = 9
 
@@ -62,9 +39,6 @@ export const LAPSE_REMINDER_DAY_OFFSETS: Record<LapseReminderKind, number> = {
  * request, or Android 13 shows no prompt at all.
  */
 export const LAPSE_REMINDER_CHANNEL_ID = "lapse-reminders"
-
-/** Viewer-visible in the Android notification settings, so it reads plainly. */
-export const LAPSE_REMINDER_CHANNEL_NAME = "Reminders"
 
 /**
  * KTD2's two fixed identifiers. Scheduling under an identifier that is already

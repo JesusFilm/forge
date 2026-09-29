@@ -25,6 +25,42 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("expo-router", () => ({
   useNavigation: () => ({ addListener: () => () => {} }),
 }))
+// A fixture catalog's missing key logs once through Datadog; keep it quiet.
+jest.mock("../../../../lib/datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+// A fixture `fr` catalog joins the real set; English cases never start the
+// store, so they read en.json as before.
+jest.mock("../../../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(
+      jest.requireActual("../../../../i18n/catalogs.generated"),
+      {
+        fr: {
+          BibleReaderSettings: {
+            title: "Réglages du lecteur",
+            aboutTitle: "À propos du texte",
+          },
+        },
+      },
+    ),
+)
+jest.mock("../../../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../../../i18n/pluralData.generated"),
+      ["fr"],
+    ),
+)
 
 import { act } from "react"
 import Slider from "@react-native-community/slider"
@@ -32,7 +68,13 @@ import { StyleSheet } from "react-native"
 
 import type { ReaderLayout } from "../../../../lib/bible/reader/chrome"
 import { READER_TOUCH_TARGET } from "../../../../lib/bible/reader/chrome"
-import { READER_SHEET_COPY } from "../../../../lib/bible/sheets/copy"
+import {
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../../i18n/localeStore"
+import { getT } from "../../../../i18n/useT"
+import { BIBLE_NOTICES } from "../../../../lib/bible/sheets/copy"
+import { phoneLocales } from "../../../../test-utils/uiLocaleFixture"
 import {
   DEFAULT_READER_SETTINGS,
   READER_LINE_SPACING_STEPS,
@@ -55,7 +97,27 @@ import {
   type ReaderStepSliderProps,
 } from "../ReaderStepSlider"
 
-const COPY = READER_SHEET_COPY.settings
+const settingsT = getT("BibleReaderSettings")
+const COPY = {
+  ...BIBLE_NOTICES,
+  mode: settingsT("mode"),
+  modes: {
+    system: settingsT("modeSystem"),
+    light: settingsT("modeLight"),
+    dark: settingsT("modeDark"),
+    trueDark: settingsT("modeTrueDark"),
+  },
+  typeface: settingsT("typeface"),
+  typefaces: {
+    serif: settingsT("typefaceSerif"),
+    sans: settingsT("typefaceSans"),
+  },
+  textSize: settingsT("textSize"),
+  lineSpacing: settingsT("lineSpacing"),
+  verseNumbers: settingsT("verseNumbers"),
+  showArrows: settingsT("showArrows"),
+  aboutTitle: settingsT("aboutTitle"),
+}
 const TOKENS = readerTokens("dark")
 const SIZES = READER_TEXT_SIZE_STEPS.length
 const SPACINGS = READER_LINE_SPACING_STEPS.length
@@ -358,7 +420,7 @@ describe("ReaderSettingsSheet", () => {
 
   it("closes from a button", async () => {
     const { renderer, onClose } = await render()
-    await press(renderer, READER_SHEET_COPY.close)
+    await press(renderer, getT("BibleReader")("sheetCloseAriaLabel"))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -371,5 +433,48 @@ describe("ReaderSettingsSheet", () => {
       backgroundColor?: string
     }
     expect(style.backgroundColor).toBe(TOKENS.background)
+  })
+})
+
+describe("the license notices under another UI language (KTD17)", () => {
+  afterEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+  })
+
+  function textNode(renderer: TestInstance, text: string): RenderedNode {
+    const [node] = renderer.root.findAll(
+      (candidate) =>
+        candidate.type === "Text" && candidate.props.children === text,
+    )
+    if (!node) throw new Error(`no text "${text}"`)
+    return node
+  }
+
+  it("keeps each notice in English, marked as English, left to right", async () => {
+    mockGetLocales.mockReturnValue(phoneLocales("fr-FR"))
+    startLocaleSync()
+    const { renderer } = await render({
+      currentCredit: { name: "Louis Segond", credit: "public domain" },
+    })
+
+    // Anti-vacuous: the UI around the notices did change language.
+    expect(hasText(renderer, "À propos du texte")).toBe(true)
+    expect(hasText(renderer, "About the text")).toBe(false)
+    for (const notice of [
+      BIBLE_NOTICES.bsbCredit,
+      BIBLE_NOTICES.catalogCredit,
+      BIBLE_NOTICES.versificationCredit,
+      BIBLE_NOTICES.currentCredit("Louis Segond", "public domain"),
+    ]) {
+      const node = textNode(renderer, notice)
+      expect(node.props.accessibilityLanguage).toBe("en")
+      expect(StyleSheet.flatten(node.props.style as never)).toMatchObject({
+        writingDirection: "ltr",
+      })
+    }
+    expect(BIBLE_NOTICES.bsbCredit).toBe(
+      "The Berean Standard Bible (BSB) is in the public domain. It is part of the app.",
+    )
   })
 })

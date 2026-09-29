@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useT, type UiMessageKey } from "../../i18n/useT"
 import { SURFACE_COLOR, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { openExternalUrl } from "../../lib/openExternalUrl"
 import {
@@ -14,48 +15,52 @@ import {
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"]
 
 type ExternalLink = {
-  label: string
+  labelKey: UiMessageKey<"Profile">
   url: string
 }
 
-type SocialLink = ExternalLink & {
+type SocialLink = {
+  /** A brand name, which stays as it is in every language. */
+  brand: string
   icon: IoniconsName
+  url: string
 }
 
 // URLs mirror apps/web/src/components/home/WatchHomeFooter.tsx (socialLinks +
 // navLinks). Keep in sync when the web footer changes.
 const SOCIAL_LINKS: readonly SocialLink[] = [
-  { label: "X", icon: "logo-x", url: "https://twitter.com/jesusfilm" },
+  { brand: "X", icon: "logo-x", url: "https://twitter.com/jesusfilm" },
   {
-    label: "Facebook",
+    brand: "Facebook",
     icon: "logo-facebook",
     url: "https://www.facebook.com/jesusfilm",
   },
   {
-    label: "Instagram",
+    brand: "Instagram",
     icon: "logo-instagram",
     url: "https://www.instagram.com/jesusfilm",
   },
   {
-    label: "YouTube",
+    brand: "YouTube",
     icon: "logo-youtube",
     url: "https://www.youtube.com/user/jesusfilm",
   },
 ]
 
 const NAV_LINKS: readonly ExternalLink[] = [
-  { label: "Give", url: "https://www.jesusfilm.org/give/" },
-  { label: "About", url: "https://www.jesusfilm.org/about/" },
-  { label: "Contact", url: "https://www.jesusfilm.org/contact/" },
-  {
-    label: "Sign Up For Our Newsletter",
-    url: "https://www.jesusfilm.org/email/",
-  },
-  { label: "Privacy Policy", url: "https://www.jesusfilm.org/privacy/" },
-  { label: "Legal Statement", url: "https://www.jesusfilm.org/legal/" },
+  { labelKey: "giveLink", url: "https://www.jesusfilm.org/give/" },
+  { labelKey: "aboutLink", url: "https://www.jesusfilm.org/about/" },
+  { labelKey: "contactLink", url: "https://www.jesusfilm.org/contact/" },
+  { labelKey: "newsletterLink", url: "https://www.jesusfilm.org/email/" },
+  { labelKey: "privacyPolicy", url: "https://www.jesusfilm.org/privacy/" },
+  { labelKey: "legalStatementLink", url: "https://www.jesusfilm.org/legal/" },
 ]
 
+/** The organization's name is not translated, as on web. */
+const ORGANIZATION_NAME = "Jesus Film Project"
+
 export function ProfileLinksSection() {
+  const t = useT("Profile")
   const typography = useTypography()
 
   return (
@@ -63,14 +68,14 @@ export function ProfileLinksSection() {
       <View style={styles.socialRow}>
         {SOCIAL_LINKS.map((link) => (
           <Pressable
-            key={link.label}
+            key={link.brand}
             onPress={() => openExternalUrl(link.url)}
             style={({ pressed }) => [
               button.iconButton44,
               pressed && feedback.pressed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel={link.label}
+            accessibilityLabel={link.brand}
           >
             <Ionicons name={link.icon} size={24} color={TEXT_PRIMARY} />
           </Pressable>
@@ -80,7 +85,7 @@ export function ProfileLinksSection() {
       <View style={styles.linkGroup}>
         {NAV_LINKS.map((link, index) => (
           <Pressable
-            key={link.label}
+            key={link.labelKey}
             onPress={() => openExternalUrl(link.url)}
             style={({ pressed }) => [
               styles.linkRow,
@@ -88,10 +93,11 @@ export function ProfileLinksSection() {
               pressed && feedback.pressed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel={link.label}
+            accessibilityLabel={t(link.labelKey)}
+            {...{ "dd-action-name": `profile-link-${link.labelKey}` }}
           >
             <Text style={[styles.linkLabel, typography.body]} numberOfLines={1}>
-              {link.label}
+              {t(link.labelKey)}
             </Text>
             <Ionicons name="chevron-forward" size={18} color={TEXT_SECONDARY} />
           </Pressable>
@@ -99,7 +105,7 @@ export function ProfileLinksSection() {
       </View>
 
       <Text style={[styles.attribution, typography.caption]}>
-        Jesus Film Project
+        {ORGANIZATION_NAME}
       </Text>
     </View>
   )

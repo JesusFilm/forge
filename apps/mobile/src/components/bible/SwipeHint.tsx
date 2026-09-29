@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react"
 import { Animated, Easing, StyleSheet, Text } from "react-native"
 
+import { useT } from "../../i18n/useT"
 import {
   READER_CHROME_MAX_FONT_SCALE,
   READER_HINT_ROW_HEIGHT,
 } from "../../lib/bible/reader/chrome"
-import { READER_COPY } from "../../lib/bible/reader/copy"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 
 /** R15: fade in, three gentle bounces over about 3 seconds, fade out. */
@@ -35,6 +35,7 @@ export type SwipeHintProps = {
 type Phase = "waiting" | "showing" | "faded"
 
 export function SwipeHint({ tokens, reduceMotion, playKey }: SwipeHintProps) {
+  const t = useT("BibleReader")
   const [progress] = useState(() => new Animated.Value(0))
   const [phase, setPhase] = useState<Phase>("waiting")
 
@@ -82,7 +83,7 @@ export function SwipeHint({ tokens, reduceMotion, playKey }: SwipeHintProps) {
         numberOfLines={1}
         maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
       >
-        {READER_COPY.movement.hint}
+        {t("swipeHint")}
       </Text>
     </Animated.View>
   )

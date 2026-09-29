@@ -11,6 +11,7 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
+import { getCatalogTag } from "../../i18n/localeStore"
 import { withTimeout } from "../withTimeout"
 import {
   LAST_WATCHED_STORAGE_KEY,
@@ -28,6 +29,8 @@ export type LastWatchedStoreDeps = {
   setItem: (key: string, value: string) => Promise<void>
   removeItem: (key: string) => Promise<void>
   now: () => Date
+  /** The UI catalog tag, stamped on a titled write (KTD16). */
+  titleLocale?: () => string
 }
 
 export type LastWatchedStore = ReturnType<typeof createLastWatchedStore>
@@ -125,9 +128,12 @@ export function createLastWatchedStore(deps: LastWatchedStoreDeps) {
     },
 
     write(videoSlug: string, videoTitle: string | null): void {
+      const title = sanitizeLastWatchedTitle(videoTitle)
+      const titleLocale = title == null ? undefined : deps.titleLocale?.()
       const next: LastWatchedRecord = {
         videoSlug,
-        videoTitle: sanitizeLastWatchedTitle(videoTitle),
+        videoTitle: title,
+        ...(titleLocale === undefined ? {} : { titleLocale }),
         recordedAt: deps.now().getTime(),
       }
       const blob = serializeLastWatched(next)
@@ -184,6 +190,9 @@ export function getLastWatchedStore(): LastWatchedStore {
       setItem: (key, value) => AsyncStorage.setItem(key, value),
       removeItem: (key) => AsyncStorage.removeItem(key),
       now: () => new Date(),
+      // The watch screen reads its title in the UI language (U6), so the tag
+      // at write time names the title's language.
+      titleLocale: getCatalogTag,
     })
   }
   return store

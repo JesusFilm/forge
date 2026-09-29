@@ -5,7 +5,10 @@ import { parseCatalog, type Catalog } from "../../data/catalog"
 import { catalogHasBook } from "../../repository/resolveChapter"
 import type { UsfmBookId } from "../../text/books"
 import type { VerseRef } from "../../versification/convert"
+import { getT } from "../../../../i18n/useT"
 import { partialSwitch, translationStart } from "../partialSwitch"
+
+const T = getT("BibleTranslationPicker")
 
 declare const __dirname: string
 const fs = jest.requireActual<{
@@ -58,7 +61,7 @@ describe("partialSwitch", () => {
   }
 
   it("warns for a book the translation lacks, and names both places", () => {
-    expect(partialSwitch(input)).toEqual({
+    expect(partialSwitch(T, input)).toEqual({
       start: {
         shown: { book: "MAT", chapter: 1, verse: 1 },
         bsb: { book: "MAT", chapter: 1, verse: 1 },
@@ -72,7 +75,7 @@ describe("partialSwitch", () => {
 
   it("names the place as the reader shows it, in the shown numbers", () => {
     // Synodal Psalm 22 is BSB Psalm 23; the viewer saw Psalm 22.
-    const warning = partialSwitch({
+    const warning = partialSwitch(T, {
       ...input,
       ref: { book: "PSA", chapter: 23, verse: 1 },
       shownRef: { book: "PSA", chapter: 22, verse: 1 },
@@ -82,9 +85,12 @@ describe("partialSwitch", () => {
 
   it("does not warn when the translation has the book, or with no place", () => {
     expect(
-      partialSwitch({ ...input, ref: { book: "JHN", chapter: 3, verse: 16 } }),
+      partialSwitch(T, {
+        ...input,
+        ref: { book: "JHN", chapter: 3, verse: 16 },
+      }),
     ).toBeNull()
-    expect(partialSwitch({ ...input, translation: SYNODAL })).toBeNull()
-    expect(partialSwitch({ ...input, ref: null })).toBeNull()
+    expect(partialSwitch(T, { ...input, translation: SYNODAL })).toBeNull()
+    expect(partialSwitch(T, { ...input, ref: null })).toBeNull()
   })
 })

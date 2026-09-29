@@ -22,13 +22,15 @@ import {
   READER_TOUCH_TARGET,
   readerFooterHeight,
 } from "../../../lib/bible/reader/chrome"
-import { READER_COPY } from "../../../lib/bible/reader/copy"
 import { readerTokens } from "../../../lib/bible/theme/palettes"
 import {
   SELECTION_COPIED_MS,
   SelectionBar,
   type SelectionBarProps,
 } from "../SelectionBar"
+import { getT } from "../../../i18n/useT"
+
+const readerT = getT("BibleReader")
 
 jest.mock("expo-clipboard", () => ({
   setStringAsync: jest.fn(async () => true),
@@ -133,7 +135,7 @@ describe("SelectionBar (R19, KTD15)", () => {
       (node) =>
         typeof node.type === "string" &&
         node.props.accessibilityLabel ===
-          READER_COPY.selection.selected(REFERENCE),
+          readerT("selectedAriaLabel", { reference: REFERENCE }),
     )
     expect(heading).toBeDefined()
   })
@@ -143,8 +145,14 @@ describe("SelectionBar (R19, KTD15)", () => {
       .spyOn(Share, "share")
       .mockResolvedValue({ action: Share.sharedAction })
     const { renderer } = await render()
-    await pressLabel(renderer, READER_COPY.selection.copyLabel(REFERENCE))
-    await pressLabel(renderer, READER_COPY.selection.shareLabel(REFERENCE))
+    await pressLabel(
+      renderer,
+      readerT("copyAriaLabel", { reference: REFERENCE }),
+    )
+    await pressLabel(
+      renderer,
+      readerT("shareAriaLabel", { reference: REFERENCE }),
+    )
     expect(setString).toHaveBeenCalledTimes(1)
     expect(share).toHaveBeenCalledTimes(1)
     const copied = setString.mock.calls[0]?.[0]
@@ -155,29 +163,38 @@ describe("SelectionBar (R19, KTD15)", () => {
   it("says Copied after a copy, then goes back", async () => {
     jest.useFakeTimers()
     const { renderer } = await render()
-    await pressLabel(renderer, READER_COPY.selection.copyLabel(REFERENCE))
-    expect(textCount(renderer, READER_COPY.selection.copied)).toBe(1)
-    expect(textCount(renderer, READER_COPY.selection.copy)).toBe(0)
-    expect(announcements).toContain(READER_COPY.selection.copied)
+    await pressLabel(
+      renderer,
+      readerT("copyAriaLabel", { reference: REFERENCE }),
+    )
+    expect(textCount(renderer, readerT("copied"))).toBe(1)
+    expect(textCount(renderer, readerT("copy"))).toBe(0)
+    expect(announcements).toContain(readerT("copied"))
     await act(async () => {
       jest.advanceTimersByTime(SELECTION_COPIED_MS)
     })
-    expect(textCount(renderer, READER_COPY.selection.copied)).toBe(0)
-    expect(textCount(renderer, READER_COPY.selection.copy)).toBe(1)
+    expect(textCount(renderer, readerT("copied"))).toBe(0)
+    expect(textCount(renderer, readerT("copy"))).toBe(1)
   })
 
   it("does not say Copied when the clipboard refuses the text", async () => {
     setString.mockImplementation(async () => false)
     const { renderer } = await render()
-    await pressLabel(renderer, READER_COPY.selection.copyLabel(REFERENCE))
-    expect(textCount(renderer, READER_COPY.selection.copied)).toBe(0)
-    expect(announcements).not.toContain(READER_COPY.selection.copied)
+    await pressLabel(
+      renderer,
+      readerT("copyAriaLabel", { reference: REFERENCE }),
+    )
+    expect(textCount(renderer, readerT("copied"))).toBe(0)
+    expect(announcements).not.toContain(readerT("copied"))
   })
 
   it("forgets Copied when the selection changes", async () => {
     const { renderer, props } = await render()
-    await pressLabel(renderer, READER_COPY.selection.copyLabel(REFERENCE))
-    expect(textCount(renderer, READER_COPY.selection.copied)).toBe(1)
+    await pressLabel(
+      renderer,
+      readerT("copyAriaLabel", { reference: REFERENCE }),
+    )
+    expect(textCount(renderer, readerT("copied"))).toBe(1)
     await act(async () => {
       renderer.update(
         <StrictMode>
@@ -185,13 +202,16 @@ describe("SelectionBar (R19, KTD15)", () => {
         </StrictMode>,
       )
     })
-    expect(textCount(renderer, READER_COPY.selection.copied)).toBe(0)
+    expect(textCount(renderer, readerT("copied"))).toBe(0)
   })
 
   it("swallows a dismissed share sheet", async () => {
     jest.spyOn(Share, "share").mockRejectedValue(new Error("dismissed"))
     const { renderer } = await render()
-    await pressLabel(renderer, READER_COPY.selection.shareLabel(REFERENCE))
+    await pressLabel(
+      renderer,
+      readerT("shareAriaLabel", { reference: REFERENCE }),
+    )
     // A rejection that escaped would fail the suite as unhandled.
     await act(async () => {
       await Promise.resolve()
@@ -200,7 +220,7 @@ describe("SelectionBar (R19, KTD15)", () => {
 
   it("clears the selection from its Clear button", async () => {
     const { renderer, onClear } = await render()
-    await pressLabel(renderer, READER_COPY.selection.clearLabel)
+    await pressLabel(renderer, readerT("clearAriaLabel"))
     expect(onClear).toHaveBeenCalledTimes(1)
   })
 

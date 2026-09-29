@@ -78,7 +78,7 @@ import {
   type CatalogTranslation,
 } from "../../../../lib/bible/data/catalog"
 import type { TranslationDownloadState } from "../../../../lib/bible/repository/translationDownloads"
-import { READER_SHEET_COPY } from "../../../../lib/bible/sheets/copy"
+import { getT } from "../../../../i18n/useT"
 import { translationStatusLabel } from "../../../../lib/bible/sheets/translationList"
 import { readerTokens } from "../../../../lib/bible/theme/palettes"
 import { datadogLog } from "../../../../lib/datadog"
@@ -113,7 +113,15 @@ function loadCatalog(): Catalog {
 }
 
 const CATALOG = loadCatalog()
-const COPY = READER_SHEET_COPY.translation
+const pickerT = getT("BibleTranslationPicker")
+const COPY = {
+  searchLabel: pickerT("searchAriaLabel"),
+  onDeviceOnly: pickerT("onDeviceOnly"),
+  complete: pickerT("completeBible"),
+  downloadStopped: pickerT("downloadStopped"),
+  downloading: (percent: number) => pickerT("downloading", { percent }),
+}
+const CLOSE = getT("BibleReader")("sheetCloseAriaLabel")
 const TOKENS = readerTokens("light")
 const SPANISH = CATALOG.translations.filter((t) => t.language === "spa")
 const SYNODAL = CATALOG.byId.get("rus_syn")!
@@ -205,7 +213,7 @@ function rowLabel(
   translation: CatalogTranslation,
   state: TranslationDownloadState,
 ): string {
-  return `${translation.name}, ${translationStatusLabel(translation, state)}`
+  return `${translation.name}, ${translationStatusLabel(pickerT, translation, state)}`
 }
 
 function rowFor(renderer: TestInstance, label: string): RenderedNode {
@@ -437,7 +445,7 @@ describe("TranslationPicker", () => {
     const [close] = renderer.root.findAll(
       (node) =>
         typeof node.type !== "string" &&
-        node.props.accessibilityLabel === READER_SHEET_COPY.close &&
+        node.props.accessibilityLabel === CLOSE &&
         typeof node.props.onPress === "function",
     )
     await act(async () => {

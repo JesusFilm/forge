@@ -7,7 +7,8 @@ import type { ShownTranslation } from "../../language/defaultTranslation"
 import { normalizeChapterFile } from "../../text/normalize"
 import { chapterPositions } from "../../text/positions"
 import type { Chapter, ChapterPosition } from "../../text/types"
-import { READER_COPY } from "../copy"
+import { getT } from "../../../../i18n/useT"
+import { BIBLE_NOTICES } from "../../sheets/copy"
 import {
   chapterLabel,
   chapterProgress,
@@ -19,6 +20,8 @@ import {
   verseAtProgress,
   verseRangeLabel,
 } from "../labels"
+
+const T = getT("BibleReader")
 
 function chapterOf(raw: unknown): Chapter {
   const result = normalizeChapterFile(raw)
@@ -105,10 +108,11 @@ describe("stops and counters", () => {
 
   it("reads the counter aloud in words", () => {
     expect(
-      counterAccessibilityLabel(stopAt(matthew18, 11), matthew18.lastVerse),
+      counterAccessibilityLabel(T, stopAt(matthew18, 11), matthew18.lastVerse),
     ).toBe("Verse 11 of 35")
     expect(
       counterAccessibilityLabel(
+        T,
         stopAt(t4tJohn4Chapter, 6),
         t4tJohn4Chapter.lastVerse,
       ),
@@ -168,7 +172,7 @@ describe("translationLabel", () => {
       reason: "viewer",
       viewer,
     }
-    const label = translationLabel(shown, null, "John")
+    const label = translationLabel(T, shown, null, "John")
     expect(label.text).toBe("BSB")
     expect(label.note).toBeNull()
     expect(label.noteKey).toBeNull()
@@ -182,11 +186,11 @@ describe("translationLabel", () => {
       reason: "book-fallback",
       viewer: { translationId: "rus_syn", source: "explicit" },
     }
-    const label = translationLabel(shown, SYNODAL, "Obadiah")
+    const label = translationLabel(T, shown, SYNODAL, "Obadiah")
     // The pill has room for the short name; the note says why.
     expect(label.text).toBe("BSB")
     expect(label.accessibilityLabel).toBe(
-      READER_COPY.translation("Berean Standard Bible"),
+      "Translation: Berean Standard Bible. Change translation",
     )
     expect(label.note).toBe(
       `${SYNODAL.name} does not include Obadiah. The reader shows it in Berean Standard Bible.`,
@@ -194,7 +198,7 @@ describe("translationLabel", () => {
     // The key names the stand-in, not the book, so a name that loads later
     // keeps the same key.
     expect(label.noteKey).toBe(`book-fallback:${shown.translation.id}`)
-    expect(translationLabel(shown, SYNODAL, "Авдий").noteKey).toBe(
+    expect(translationLabel(T, shown, SYNODAL, "Авдий").noteKey).toBe(
       label.noteKey,
     )
   })
@@ -205,7 +209,7 @@ describe("translationLabel", () => {
       reason: "book-fallback",
       viewer: { translationId: "gone_xyz", source: "explicit" },
     }
-    expect(translationLabel(shown, null, "Obadiah").note).toBe(
+    expect(translationLabel(T, shown, null, "Obadiah").note).toBe(
       "This translation does not include Obadiah. The reader shows it in Berean Standard Bible.",
     )
   })
@@ -216,10 +220,10 @@ describe("translationLabel", () => {
       reason: "offline-stand-in",
       viewer: { translationId: "spa_rvg", source: "audio" },
     }
-    const label = translationLabel(shown, null, "John")
+    const label = translationLabel(T, shown, null, "John")
     expect(label.text).toBe("BSB")
     expect(label.note).toBe(
-      READER_COPY.offlineStandInNote("Berean Standard Bible"),
+      "You are offline. The reader shows this chapter in Berean Standard Bible.",
     )
     expect(label.noteKey).toBe(`offline-stand-in:${shown.translation.id}`)
   })
@@ -227,11 +231,11 @@ describe("translationLabel", () => {
 
 describe("copy", () => {
   it("credits Still in the footer (KD10, KD16)", () => {
-    expect(READER_COPY.stillCredit).toBe("Powered by StillBibleApp.com")
+    expect(BIBLE_NOTICES.stillCredit).toBe("Powered by StillBibleApp.com")
   })
 
   it("says which verse the translation lacks (R21, AE9)", () => {
-    expect(READER_COPY.missingVerse(11)).toBe(
+    expect(T("missingVerse", { verse: 11 })).toBe(
       "This translation has no verse 11.",
     )
   })

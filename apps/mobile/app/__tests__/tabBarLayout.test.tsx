@@ -16,7 +16,6 @@ import {
   TestRenderer,
   type TestInstance,
 } from "../../src/test-utils/rnTestRenderer"
-import { READER_COPY } from "../../src/lib/bible/reader/copy"
 import { TAB_LABELS, TAB_ROUTE_NAMES } from "../../src/lib/tabBar"
 import {
   resetTabBarHidden,
@@ -192,7 +191,7 @@ describe("the shared tab record (R1)", () => {
       index: "Home",
       explore: "Explore",
       watch: "Search",
-      bible: READER_COPY.tabTitle,
+      bible: "Bible",
       profile: "Profile",
     })
   })

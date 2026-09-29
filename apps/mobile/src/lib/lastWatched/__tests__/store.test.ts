@@ -467,6 +467,27 @@ describe("the title on the write path", () => {
     expect(JSON.parse(raw).videoTitle).toBe("The Birth of Jesus")
   })
 
+  it("stamps a title with the UI language it was written in (KTD16)", async () => {
+    const storage = makeStorage()
+    const store = createLastWatchedStore({
+      getItem: storage.getItem,
+      setItem: storage.setItem,
+      removeItem: storage.removeItem,
+      now: () => NOW,
+      titleLocale: () => "es",
+    })
+
+    store.write("the-birth-of-jesus", "El nacimiento de Jesús")
+    await Promise.resolve()
+
+    expect(store.getRecord()?.titleLocale).toBe("es")
+    const raw = storage.items.get(LAST_WATCHED_STORAGE_KEY) as string
+    expect(JSON.parse(raw).titleLocale).toBe("es")
+
+    store.write("the-light", null)
+    expect(store.getRecord()).not.toHaveProperty("titleLocale")
+  })
+
   it("stores no title when the writer supplies none", () => {
     const { store } = makeStore()
 

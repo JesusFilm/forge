@@ -3,6 +3,7 @@
 // retries, updates, and removes. The top bar shows the progress.
 import { Alert } from "react-native"
 
+import { getT, type UiT } from "../../../i18n/useT"
 import { formatFileSize } from "../../downloadTiers"
 import type { CatalogTranslation } from "../data/catalog"
 import { getTranslationDownloads } from "../repository/downloadRuntime"
@@ -13,7 +14,6 @@ import {
 } from "../repository/translationDownloads"
 import { reportTranslationDownload } from "../telemetry"
 import { BSB_TRANSLATION_ID } from "../versification/classify"
-import { READER_SHEET_COPY } from "./copy"
 import { isUpdateAvailable } from "./translationList"
 
 export type DownloadPromptAction =
@@ -45,36 +45,47 @@ export function formatDownloadSize(bytes: number): string {
   return formatFileSize(String(bytes))
 }
 
-const COPY = READER_SHEET_COPY.download
-
-const OK: DownloadPromptButton = {
-  label: COPY.ok,
-  style: "default",
-  action: "dismiss",
-}
+type DownloadT = UiT<"BibleDownload">
 
 function failedMessage(
+  t: DownloadT,
   translation: CatalogTranslation,
   state: Extract<TranslationDownloadState, { kind: "failed" }>,
 ): string {
-  const bodies = COPY.failedBody
-  if (state.reason === "no-space") {
-    return bodies["no-space"](
-      formatDownloadSize(translation.downloadBytes * DOWNLOAD_SPACE_FACTOR),
-    )
+  switch (state.reason) {
+    case "no-space":
+      return t("failedNoSpace", {
+        size: formatDownloadSize(
+          translation.downloadBytes * DOWNLOAD_SPACE_FACTOR,
+        ),
+      })
+    case "network":
+      return t("failedNetwork")
+    case "too-large":
+      return t("failedTooLarge")
+    case "invalid-data":
+      return t("failedInvalidData")
+    case "write-failed":
+      return t("failedWriteFailed")
   }
-  return bodies[state.reason]
 }
 
+// A native alert, so its text comes from the catalog in use when it opens.
 export function downloadPrompt(input: DownloadPromptInput): DownloadPrompt {
+  const t = getT("BibleDownload")
+  const OK: DownloadPromptButton = {
+    label: t("ok"),
+    style: "default",
+    action: "dismiss",
+  }
   const { translation, state, runningId } = input
   const { name } = translation
   const size = formatDownloadSize(translation.downloadBytes)
   // R30: BSB is inside the app, whatever a state says.
   if (translation.id === BSB_TRANSLATION_ID || state.kind === "bundled") {
     return {
-      title: COPY.bundledTitle(name),
-      message: COPY.bundledBody,
+      title: t("bundledTitle", { name }),
+      message: t("bundledBody"),
       buttons: [OK],
     }
   }
@@ -84,12 +95,12 @@ export function downloadPrompt(input: DownloadPromptInput): DownloadPrompt {
     action: "start",
   })
   const close: DownloadPromptButton = {
-    label: READER_SHEET_COPY.close,
+    label: t("close"),
     style: "cancel",
     action: "dismiss",
   }
   const remove: DownloadPromptButton = {
-    label: COPY.remove,
+    label: t("remove"),
     style: "destructive",
     action: "remove",
   }
@@ -98,55 +109,59 @@ export function downloadPrompt(input: DownloadPromptInput): DownloadPrompt {
   switch (state.kind) {
     case "downloading":
       return {
-        title: COPY.runningTitle(name),
+        title: t("runningTitle", { name }),
         message:
           state.phase === "install"
-            ? COPY.installingBody
-            : COPY.runningBody(Math.round(state.percent), size),
+            ? t("installingBody")
+            : t("runningBody", { percent: Math.round(state.percent), size }),
         buttons: [
-          { label: COPY.keepGoing, style: "cancel", action: "dismiss" },
-          { label: COPY.stop, style: "destructive", action: "cancel-download" },
+          { label: t("keepGoing"), style: "cancel", action: "dismiss" },
+          {
+            label: t("stop"),
+            style: "destructive",
+            action: "cancel-download",
+          },
         ],
       }
     case "downloaded":
       if (isUpdateAvailable(translation, state) && !busy) {
         return {
-          title: COPY.updateTitle(name),
-          message: COPY.updateBody(size),
-          buttons: [close, remove, start(COPY.update)],
+          title: t("updateTitle", { name }),
+          message: t("updateBody", { size }),
+          buttons: [close, remove, start(t("update"))],
         }
       }
       return {
-        title: COPY.onDeviceTitle(name),
-        message: COPY.onDeviceBody(formatDownloadSize(state.bytes)),
+        title: t("onDeviceTitle", { name }),
+        message: t("onDeviceBody", { size: formatDownloadSize(state.bytes) }),
         buttons: [close, remove],
       }
     case "failed":
       if (busy) break
       return {
-        title: COPY.failedTitle(name),
-        message: failedMessage(translation, state),
+        title: t("failedTitle", { name }),
+        message: failedMessage(t, translation, state),
         buttons:
           state.reason === "too-large"
             ? [OK]
             : [
-                { label: COPY.cancel, style: "cancel", action: "dismiss" },
-                start(COPY.retry),
+                { label: t("cancel"), style: "cancel", action: "dismiss" },
+                start(t("retry")),
               ],
       }
     case "checking":
     case "not-downloaded":
       if (busy) break
       return {
-        title: COPY.startTitle(name),
-        message: COPY.startBody(size),
+        title: t("startTitle", { name }),
+        message: t("startBody", { size }),
         buttons: [
-          { label: COPY.cancel, style: "cancel", action: "dismiss" },
-          start(COPY.start),
+          { label: t("cancel"), style: "cancel", action: "dismiss" },
+          start(t("start")),
         ],
       }
   }
-  return { title: COPY.busyTitle, message: COPY.busyBody, buttons: [OK] }
+  return { title: t("busyTitle"), message: t("busyBody"), buttons: [OK] }
 }
 
 export type DownloadPromptDownloads = Pick<

@@ -4,7 +4,16 @@
     "Common": "Shared controls that many screens of the mobile app use, such as the back button in the top bar.",
     "VideoLabel": "A short label that names the kind of video (for example a feature film or an episode). It shows on Home cards, and in capital letters above the title on the watch page.",
     "DownloadQuality": "The video quality choices in the download sheet, where the viewer picks how large an offline copy or a saved file is.",
-    "Subtitles": "The subtitle control on the watch page and the subtitle choice in the download sheet."
+    "Subtitles": "The subtitle control on the watch page and the subtitle choice in the download sheet.",
+    "Profile": "The Profile tab, which shows the viewer's account, the list of downloaded videos, and a link to the privacy policy. It also holds links to the organization's web pages.",
+    "Auth": "Sign-in and sign-out text in the Profile tab, and the small banner on the watch page that asks a signed-out viewer to sign in so the app keeps their place in a video.",
+    "DeleteAccount": "The account deletion steps in the Profile tab: the confirmation, the request to sign in again, and the result messages. The deletion is permanent, so the text must be exact.",
+    "BibleReader": "The Bible reader screen, which shows one verse at a time. It has a top bar (back, the passage, the translation, download, settings), a footer with the chapter and a verse counter, swipe hints, a verse selection bar with Copy and Share, and error messages. Book names and Bible text come from each translation, not from these strings.",
+    "BiblePassagePicker": "A sheet over the Bible reader where the viewer chooses a book, then a chapter, then a verse.",
+    "BibleTranslationPicker": "A sheet over the Bible reader where the viewer chooses a Bible translation. Each row shows which books the translation has and whether it is on the device.",
+    "BibleReaderSettings": "The Bible reader's settings sheet: color mode, text size, typeface, line spacing, verse numbers, and arrow buttons.",
+    "BibleDownload": "A system alert that downloads a Bible translation to the device, shows the progress, removes it, or explains why a download stopped.",
+    "LapseReminder": "A phone notification that the app sends one day or seven days after the viewer last used it, to invite them back to the last video they watched."
   },
   "keys": {
     "Common.goBackAriaLabel": {
@@ -18,6 +27,100 @@
     "Subtitles.noSubtitles": {
       "role": "unavailable-state label",
       "composition": "Shows in place of the subtitle choice when the video has no subtitle track."
+    },
+    "Auth.signInComingSoonAriaLabel": {
+      "role": "disabled-button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader reads the button name, the state, and the reason as one label."
+    },
+    "BibleReader.chapterOpenedAriaAnnouncement": {
+      "role": "screen reader announcement",
+      "visibility": "assistive technology only",
+      "composition": "{chapter} is a book name and a chapter number, for example John 4."
+    },
+    "BibleReader.choosePassageAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{passage} is a Bible reference, for example John 3:16. The screen reader reads the reference, then what the button does."
+    },
+    "BibleReader.verseAriaValue": {
+      "role": "slider accessibility value",
+      "visibility": "assistive technology only",
+      "composition": "{chapter} is a book name and a chapter number, for example John 3."
+    },
+    "BibleReader.versesAriaValue": {
+      "role": "slider accessibility value",
+      "visibility": "assistive technology only",
+      "composition": "One stop covers a range of verses. {chapter} is a book name and a chapter number."
+    },
+    "BibleReader.verseAriaLabel": {
+      "role": "verse accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{text} is the Bible text of the verse."
+    },
+    "BibleReader.versesAriaLabel": {
+      "role": "verse accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "One stop covers a range of verses. {text} is their Bible text."
+    },
+    "BiblePassagePicker.bookWithNoteAriaLabel": {
+      "role": "list row accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{name} is a book name and {note} is a short note about it. Keep only the separator that the language uses between two phrases."
+    },
+    "BibleTranslationPicker.twoNames": {
+      "role": "list of two names",
+      "composition": "Joins two Bible book names, for example Ruth and Luke."
+    },
+    "BibleTranslationPicker.threeNames": {
+      "role": "list of three names",
+      "composition": "Joins three Bible book names, for example Ruth, Luke, and John."
+    },
+    "BibleReaderSettings.textSizeAriaUnit": {
+      "role": "slider unit",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader says a number, then this unit, for example 30 points. A point is a unit of text size."
+    },
+    "BibleReaderSettings.lineSpacingAriaUnit": {
+      "role": "slider unit",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader says a number, then this unit, for example 140 percent."
+    },
+    "BibleReaderSettings.typefaceSerif": {
+      "role": "typeface option",
+      "composition": "A typeface with serifs. The option shows in that typeface."
+    },
+    "BibleReaderSettings.typefaceSans": {
+      "role": "typeface option",
+      "composition": "A sans-serif typeface. The option shows in that typeface. Keep it short."
+    },
+    "BibleReaderSettings.modeTrueDark": {
+      "role": "color mode option",
+      "composition": "A dark mode with a pure black background, darker than the Dark mode."
+    },
+    "LapseReminder.channelName": {
+      "role": "Android notification category name",
+      "composition": "Shows in the phone's notification settings for this app. Keep it short."
+    },
+    "Auth.signInPromptMessage": {
+      "role": "banner message",
+      "composition": "Promise only that the app keeps the viewer's place from now on. Never say that it keeps the place in the video they just watched: that place is not saved."
+    },
+    "DeleteAccount.failedMessage": {
+      "role": "error message",
+      "composition": "The deletion stops at the first failed step, so nothing was changed. {email} is a support email address."
+    },
+    "DeleteAccount.reauthFailedMessage": {
+      "role": "error message",
+      "composition": "The deletion did not start. Keep it clearly different from the message for a failed deletion."
+    },
+    "DeleteAccount.wrongAccountMessage": {
+      "role": "notice",
+      "composition": "A different account signed in, so the app deleted nothing. The original account still exists."
+    },
+    "DeleteAccount.unconfirmedMessage": {
+      "role": "notice",
+      "composition": "The app cannot tell whether the server finished the deletion. Do not say that it did or that it did not."
     }
   }
 }

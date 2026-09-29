@@ -4,9 +4,9 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { SessionReplayView } from "@datadog/mobile-react-native-session-replay"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { DeleteAccountFlow } from "./DeleteAccountFlow"
 import { signInWithHostedPage, signOut } from "../../lib/authActions"
-import { SIGN_IN_ERROR_MESSAGE } from "../../lib/authCopy"
 import { getAuthSession } from "../../lib/authSession"
 import { isSignInAvailable } from "../../lib/signInGate"
 import {
@@ -47,6 +47,7 @@ type SignInPhase = "idle" | "busy" | "error"
  * session transition (store/snapshot/queue reset).
  */
 export function AccountSection() {
+  const t = useT("Auth")
   const typography = useTypography()
   const snapshot = useAuthSnapshot()
   const newAccountNotice = useNewAccountNotice()
@@ -68,7 +69,7 @@ export function AccountSection() {
             style={styles.signInCta}
             accessibilityRole="button"
             accessibilityState={{ disabled: true }}
-            accessibilityLabel="Sign in, coming soon, Accounts are not available yet"
+            accessibilityLabel={t("signInComingSoonAriaLabel")}
           >
             <Ionicons
               name="person-circle-outline"
@@ -84,10 +85,10 @@ export function AccountSection() {
                   styles.signInDimmed,
                 ]}
               >
-                Sign in (Coming soon)
+                {t("signInComingSoon")}
               </Text>
               <Text style={styles.signInSubtitle}>
-                Accounts are not available yet
+                {t("accountsUnavailable")}
               </Text>
             </View>
           </Pressable>
@@ -100,13 +101,14 @@ export function AccountSection() {
         {signInPhase === "error" ? (
           <View style={styles.errorCard}>
             <Ionicons name="warning" size={20} color={WARNING_COLOR} />
-            <Text style={styles.errorText}>{SIGN_IN_ERROR_MESSAGE}</Text>
+            <Text style={styles.errorText}>{t("signInErrorMessage")}</Text>
             <Pressable
               onPress={() => setSignInPhase("idle")}
               hitSlop={12}
               accessibilityRole="button"
-              accessibilityLabel="Dismiss"
+              accessibilityLabel={t("dismissAriaLabel")}
               style={({ pressed }) => [pressed && feedback.pressed]}
+              {...{ "dd-action-name": "profile-sign-in-error-dismiss" }}
             >
               <Ionicons name="close" size={20} color={TEXT_SECONDARY} />
             </Pressable>
@@ -137,17 +139,15 @@ export function AccountSection() {
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Sign in"
+          accessibilityLabel={t("signIn")}
           {...{ "dd-action-name": "profile-sign-in" }}
         >
           <Ionicons name="person-circle-outline" size={28} color={ACCENT} />
           <View style={styles.signInTextBlock}>
             <Text style={[styles.signInTitle, typography.titleSmall]}>
-              {signingIn ? "Signing in…" : "Sign in"}
+              {signingIn ? t("signingIn") : t("signIn")}
             </Text>
-            <Text style={styles.signInSubtitle}>
-              Keep your place across devices
-            </Text>
+            <Text style={styles.signInSubtitle}>{t("signInSubtitle")}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={TEXT_SECONDARY} />
         </Pressable>
@@ -156,7 +156,9 @@ export function AccountSection() {
   }
 
   const displayName =
-    snapshot.user.name?.trim() || snapshot.user.email || "Signed in"
+    snapshot.user.name?.trim() ||
+    snapshot.user.email ||
+    t("signedInFallbackName")
 
   return (
     <View style={styles.container}>
@@ -166,17 +168,14 @@ export function AccountSection() {
         // continue-watching row reads as lost history.
         <View style={styles.noticeCard}>
           <Ionicons name="information-circle" size={18} color={ACCENT} />
-          <Text style={styles.noticeText}>
-            This is a new account, so there is no watch history yet. If you
-            expected to see yours, you may have signed in with a different email
-            than you use on the web.
-          </Text>
+          <Text style={styles.noticeText}>{t("newAccountNotice")}</Text>
           <Pressable
             onPress={clearNewAccountNotice}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Dismiss new account notice"
+            accessibilityLabel={t("dismissNewAccountNoticeAriaLabel")}
             style={({ pressed }) => [pressed && feedback.pressed]}
+            {...{ "dd-action-name": "profile-new-account-notice-dismiss" }}
           >
             <Ionicons name="close" size={18} color={TEXT_SECONDARY} />
           </Pressable>
@@ -215,11 +214,11 @@ export function AccountSection() {
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Sign out"
+          accessibilityLabel={t("signOut")}
           {...{ "dd-action-name": "profile-sign-out" }}
         >
           <Text style={styles.signOutLabel}>
-            {signingOut ? "Signing out…" : "Sign out"}
+            {signingOut ? t("signingOut") : t("signOut")}
           </Text>
         </Pressable>
         <DeleteAccountFlow />

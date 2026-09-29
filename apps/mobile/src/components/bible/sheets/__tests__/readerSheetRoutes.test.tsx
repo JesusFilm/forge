@@ -122,7 +122,6 @@ import {
   createReadingPositionStore,
   type ReadingPositionStore,
 } from "../../../../lib/bible/position/store"
-import { READER_COPY } from "../../../../lib/bible/reader/copy"
 import { datadogLog } from "../../../../lib/datadog"
 import type { ReaderServices } from "../../../../lib/bible/reader/services"
 import { catalogHasBook } from "../../../../lib/bible/repository/resolveChapter"
@@ -132,7 +131,8 @@ import {
   DEFAULT_TEXT_SIZE_STEP,
 } from "../../../../lib/bible/settings/snapshot"
 import { createReaderSettingsStore } from "../../../../lib/bible/settings/store"
-import { READER_SHEET_COPY } from "../../../../lib/bible/sheets/copy"
+import { getT } from "../../../../i18n/useT"
+import { BIBLE_NOTICES } from "../../../../lib/bible/sheets/copy"
 import { readerSheetHref } from "../../../../lib/bible/sheets/routes"
 import { translationStatusLabel } from "../../../../lib/bible/sheets/translationList"
 import { readerTokens } from "../../../../lib/bible/theme/palettes"
@@ -168,9 +168,30 @@ const CATALOG = loadCatalog()
 const SYNODAL = CATALOG.byId.get("rus_syn")!
 const JOHN_3_16: VerseRef = { book: "JHN", chapter: 3, verse: 16 }
 const PSALM_23_1: VerseRef = { book: "PSA", chapter: 23, verse: 1 }
-const PASSAGE = READER_SHEET_COPY.passage
-const TRANSLATION = READER_SHEET_COPY.translation
-const SETTINGS = READER_SHEET_COPY.settings
+const readerT = getT("BibleReader")
+const passageT = getT("BiblePassagePicker")
+const pickerT = getT("BibleTranslationPicker")
+const settingsT = getT("BibleReaderSettings")
+const PASSAGE = {
+  chapter: (chapter: number) => passageT("chapterAriaLabel", { chapter }),
+  verse: (verse: number) => passageT("verseAriaLabel", { verse }),
+  notInTranslation: (shortName: string) =>
+    passageT("notInTranslation", { shortName }),
+}
+const TRANSLATION = { onDeviceOnly: pickerT("onDeviceOnly") }
+const SETTINGS = {
+  modes: {
+    light: settingsT("modeLight"),
+    trueDark: settingsT("modeTrueDark"),
+  },
+  typefaces: { sans: settingsT("typefaceSans") },
+  lineSpacing: settingsT("lineSpacing"),
+  textSize: settingsT("textSize"),
+  verseNumbers: settingsT("verseNumbers"),
+  showArrows: settingsT("showArrows"),
+  aboutTitle: settingsT("aboutTitle"),
+  currentCredit: BIBLE_NOTICES.currentCredit,
+}
 
 type Harness = {
   position: ReadingPositionStore
@@ -445,7 +466,7 @@ describe("reader-translation route", () => {
     }).params
     const renderer = await renderRoute(ReaderTranslationRoute)
 
-    const label = `${SYNODAL.name}, ${translationStatusLabel(SYNODAL, {
+    const label = `${SYNODAL.name}, ${translationStatusLabel(pickerT, SYNODAL, {
       kind: "not-downloaded",
     })}`
     await press(renderer, label)
@@ -463,7 +484,7 @@ describe("reader-translation route", () => {
     const BSB = CATALOG.byId.get("BSB")!
     const WBT = CATALOG.byId.get("cpc_wbt")!
     const DEUTERONOMY_2_4: VerseRef = { book: "DEU", chapter: 2, verse: 4 }
-    const WBT_ROW = `${WBT.name}, ${translationStatusLabel(WBT, {
+    const WBT_ROW = `${WBT.name}, ${translationStatusLabel(pickerT, WBT, {
       kind: "not-downloaded",
     })}`
     type Button = { text: string; style?: string; onPress?: () => void }
@@ -584,7 +605,7 @@ describe("reader-translation route", () => {
     const { position } = install()
     mockRoute.params = { translation: ["BSB"], ref: "nonsense", offline: 1 }
     const renderer = await renderRoute(ReaderTranslationRoute)
-    const label = `${SYNODAL.name}, ${translationStatusLabel(SYNODAL, {
+    const label = `${SYNODAL.name}, ${translationStatusLabel(pickerT, SYNODAL, {
       kind: "not-downloaded",
     })}`
     await press(renderer, label)
@@ -599,12 +620,12 @@ describe("reader-translation route", () => {
       Promise.resolve({ status: "failed", reason: "read-failed" }),
     )
     const renderer = await renderRoute(ReaderTranslationRoute)
-    expect(hasText(renderer, READER_COPY.failure.catalogTitle)).toBe(true)
+    expect(hasText(renderer, readerT("catalogTitle"))).toBe(true)
     loadCatalog.mockImplementation(() =>
       Promise.resolve({ status: "ok", value: CATALOG }),
     )
-    await press(renderer, READER_COPY.failure.retry)
-    expect(hasText(renderer, READER_COPY.failure.catalogTitle)).toBe(false)
+    await press(renderer, readerT("retry"))
+    expect(hasText(renderer, readerT("catalogTitle"))).toBe(false)
     expect(controls(renderer, TRANSLATION.onDeviceOnly)).toHaveLength(1)
   })
 })

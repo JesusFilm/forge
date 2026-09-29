@@ -1,7 +1,6 @@
 import { Platform, type ViewStyle } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { READER_COPY } from "./bible/reader/copy"
 import { BG_COLOR } from "./color"
 
 /**
@@ -66,7 +65,7 @@ export const TAB_LABELS = {
   index: "Home",
   explore: "Explore",
   watch: "Search",
-  bible: READER_COPY.tabTitle,
+  bible: "Bible",
   profile: "Profile",
 } as const satisfies Record<TabRouteName, string>
 

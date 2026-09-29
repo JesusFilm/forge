@@ -17,7 +17,7 @@ import {
   LAPSE_REMINDER_KINDS,
   type LapseReminderKind,
 } from "./constants"
-import { lapseReminderBody } from "./copy"
+import { lapseReminderBody, lapseReminderChannelName } from "./copy"
 import { buildLapseReminderPayload, type LapseReminderPayload } from "./payload"
 import { computeLapseReminderTargets } from "./schedule"
 
@@ -56,10 +56,10 @@ export type LapseReminderPassStep =
  * here, where its consumer can see all of it.
  */
 export type LapseReminderSchedulingPort = {
-  /** Idempotent upsert, owned by the pass rather than by the one-shot prompt.
-   *  A channel created only on the prompt's single launch is gone for the life
-   *  of the install if that one call fails. */
-  ensureChannel: () => Promise<void>
+  /** Idempotent upsert, owned by the pass rather than by the one-shot prompt,
+   *  whose one failed call would lose the channel for good. Each pass sends
+   *  the name in the UI language, so a language change renames it. */
+  ensureChannel: (name: string) => Promise<void>
   getPermission: () => Promise<{ granted: boolean }>
   schedule: (input: {
     identifier: string
@@ -75,7 +75,12 @@ export type LapseReminderLifecycleDeps = {
   adapter: LapseReminderSchedulingPort
   /** KTD8's build-time gate. Off still runs the pass; it only never schedules. */
   enabled: boolean
-  getRecord: () => { videoSlug: string; videoTitle: string | null } | null
+  getRecord: () => {
+    videoSlug: string
+    videoTitle: string | null
+    /** The title's UI language; absent on a record written before it. */
+    titleLocale?: string
+  } | null
   /** Bounded and never rejecting. Awaited before any payload is built, or a
    *  cold launch would overwrite a real record with Home. */
   hydrateRecord: () => Promise<void>
@@ -237,7 +242,7 @@ export function createLapseReminderLifecycle(
 
       try {
         await withTimeout(
-          deps.adapter.ensureChannel(),
+          deps.adapter.ensureChannel(lapseReminderChannelName()),
           LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
         )
       } catch (error) {
@@ -264,7 +269,11 @@ export function createLapseReminderLifecycle(
           await withTimeout(
             deps.adapter.schedule({
               identifier: LAPSE_REMINDER_IDENTIFIERS[kind],
-              body: lapseReminderBody(kind, record?.videoTitle ?? null),
+              body: lapseReminderBody(
+                kind,
+                record?.videoTitle ?? null,
+                record?.titleLocale,
+              ),
               // The record names its slug `videoSlug`; the payload takes `slug`.
               data: buildLapseReminderPayload(
                 kind,

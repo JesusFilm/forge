@@ -17,6 +17,9 @@ import {
   translationStatusLabel,
   viewerLanguageCodes,
 } from "../translationList"
+import { getT } from "../../../../i18n/useT"
+
+const T = getT("BibleTranslationPicker")
 
 declare const __dirname: string
 const fs = jest.requireActual<{
@@ -256,14 +259,14 @@ describe("row labels", () => {
   })
 
   it("says whether the Bible is complete, and whether it is on the device", () => {
-    expect(translationStatusLabel(bsb, { kind: "bundled" })).toBe(
+    expect(translationStatusLabel(T, bsb, { kind: "bundled" })).toBe(
       "Complete Bible, On this device",
     )
-    expect(translationStatusLabel(synodal, NOT_DOWNLOADED)).toBe(
+    expect(translationStatusLabel(T, synodal, NOT_DOWNLOADED)).toBe(
       "Complete Bible",
     )
     expect(
-      translationStatusLabel(synodal, {
+      translationStatusLabel(T, synodal, {
         kind: "downloading",
         phase: "transfer",
         percent: 45,
@@ -272,11 +275,11 @@ describe("row labels", () => {
       }),
     ).toBe("Complete Bible, Downloading 45%")
     expect(
-      translationStatusLabel(synodal, { kind: "failed", reason: "network" }),
+      translationStatusLabel(T, synodal, { kind: "failed", reason: "network" }),
     ).toBe("Complete Bible, Download stopped")
     // A partial Bible says which books it has (owner, 2026-09-28).
     const newTestament = CATALOG.byId.get("cpc_wbt")!
-    expect(translationStatusLabel(newTestament, NOT_DOWNLOADED)).toBe(
+    expect(translationStatusLabel(T, newTestament, NOT_DOWNLOADED)).toBe(
       "New Testament only",
     )
   })
@@ -286,7 +289,7 @@ describe("row labels", () => {
     expect(isUpdateAvailable(synodal, old)).toBe(true)
     expect(isUpdateAvailable(synodal, downloaded("rus_syn"))).toBe(false)
     expect(isUpdateAvailable(bsb, { kind: "bundled" })).toBe(false)
-    expect(translationStatusLabel(synodal, old)).toBe(
+    expect(translationStatusLabel(T, synodal, old)).toBe(
       "Complete Bible, On this device, Update available",
     )
   })
@@ -298,31 +301,37 @@ describe("coverageLabel", () => {
     BIBLE_BOOKS.filter((book) => book.testament === key).map((b) => b.usfm)
 
   it("names a whole testament as a unit", () => {
-    expect(coverageLabel(books(...testament("new")))).toBe("New Testament only")
-    expect(coverageLabel(books(...testament("old")))).toBe("Old Testament only")
+    expect(coverageLabel(T, books(...testament("new")))).toBe(
+      "New Testament only",
+    )
+    expect(coverageLabel(T, books(...testament("old")))).toBe(
+      "Old Testament only",
+    )
   })
 
   it("names up to two books added to a testament, and counts more", () => {
     const nt = testament("new")
-    expect(coverageLabel(books(...nt, "GEN"))).toBe("New Testament and Genesis")
-    expect(coverageLabel(books(...nt, "PSA", "GEN"))).toBe(
+    expect(coverageLabel(T, books(...nt, "GEN"))).toBe(
+      "New Testament and Genesis",
+    )
+    expect(coverageLabel(T, books(...nt, "PSA", "GEN"))).toBe(
       "New Testament, Genesis, and Psalms",
     )
-    expect(coverageLabel(books(...nt, "GEN", "RUT", "PSA"))).toBe(
+    expect(coverageLabel(T, books(...nt, "GEN", "RUT", "PSA"))).toBe(
       "New Testament and 3 other books",
     )
-    expect(coverageLabel(books(...testament("old"), "MAT"))).toBe(
+    expect(coverageLabel(T, books(...testament("old"), "MAT"))).toBe(
       "Old Testament and Matthew",
     )
   })
 
   it("names up to three books in canon order, and counts more", () => {
-    expect(coverageLabel(books("MRK"))).toBe("Only Mark")
-    expect(coverageLabel(books("LUK", "PSA"))).toBe("Only Psalms and Luke")
-    expect(coverageLabel(books("JHN", "RUT", "LUK"))).toBe(
+    expect(coverageLabel(T, books("MRK"))).toBe("Only Mark")
+    expect(coverageLabel(T, books("LUK", "PSA"))).toBe("Only Psalms and Luke")
+    expect(coverageLabel(T, books("JHN", "RUT", "LUK"))).toBe(
       "Only Ruth, Luke, and John",
     )
-    expect(coverageLabel(books("RUT", "PRO", "LUK", "JHN", "ACT"))).toBe(
+    expect(coverageLabel(T, books("RUT", "PRO", "LUK", "JHN", "ACT"))).toBe(
       "5 of 66 books",
     )
   })
@@ -330,7 +339,7 @@ describe("coverageLabel", () => {
   it("labels every partial Bible in the catalog", () => {
     for (const translation of CATALOG.translations) {
       if (translation.complete) continue
-      expect(coverageLabel(translation.books)).not.toBe("")
+      expect(coverageLabel(T, translation.books)).not.toBe("")
     }
   })
 })

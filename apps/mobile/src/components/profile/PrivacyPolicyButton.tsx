@@ -2,6 +2,7 @@ import { Platform, Pressable, StyleSheet, Text } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { TEXT_PRIMARY, hexToRgba } from "../../lib/color"
 import { openExternalUrl } from "../../lib/openExternalUrl"
 import { feedback } from "../../styles/shared"
@@ -10,10 +11,10 @@ import { feedback } from "../../styles/shared"
 // requires: keep it reachable. Same URL as the web footer.
 export const PRIVACY_POLICY_URL = "https://www.jesusfilm.org/privacy/"
 
-const LABEL = "Privacy Policy"
 const CONTENT_COLOR = hexToRgba(TEXT_PRIMARY, 0.9)
 
 export function PrivacyPolicyButton() {
+  const t = useT("Profile")
   const typography = useTypography()
 
   return (
@@ -25,14 +26,15 @@ export function PrivacyPolicyButton() {
       ]}
       android_ripple={{ color: "rgba(255, 255, 255, 0.1)" }}
       accessibilityRole="button"
-      accessibilityLabel={LABEL}
+      accessibilityLabel={t("privacyPolicy")}
+      {...{ "dd-action-name": "profile-privacy-policy" }}
     >
       <Ionicons
         name="shield-checkmark-outline"
         size={18}
         color={CONTENT_COLOR}
       />
-      <Text style={[styles.label, typography.body]}>{LABEL}</Text>
+      <Text style={[styles.label, typography.body]}>{t("privacyPolicy")}</Text>
     </Pressable>
   )
 }

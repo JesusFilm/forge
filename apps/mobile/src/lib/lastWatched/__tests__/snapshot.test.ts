@@ -185,6 +185,78 @@ describe("the video title", () => {
     })
   })
 
+  it("round-trips the title's UI language with the title (KTD16)", () => {
+    const blob = serializeLastWatched({
+      videoSlug: "the-birth-of-jesus",
+      videoTitle: "El nacimiento de Jesús",
+      titleLocale: "es",
+      recordedAt: NOW.getTime(),
+    })
+
+    expect(JSON.parse(blob as string).titleLocale).toBe("es")
+    expect(parseStoredLastWatched(blob, NOW)).toEqual({
+      videoSlug: "the-birth-of-jesus",
+      videoTitle: "El nacimiento de Jesús",
+      titleLocale: "es",
+      recordedAt: NOW.getTime(),
+    })
+  })
+
+  it("stores no title language when there is no title", () => {
+    const blob = serializeLastWatched({
+      videoSlug: "the-birth-of-jesus",
+      videoTitle: null,
+      titleLocale: "es",
+      recordedAt: NOW.getTime(),
+    })
+
+    expect(JSON.parse(blob as string)).not.toHaveProperty("titleLocale")
+    expect(parseStoredLastWatched(blob, NOW)).not.toHaveProperty("titleLocale")
+  })
+
+  it("reads a titled record written before title languages as having none", () => {
+    const legacy = JSON.stringify({
+      version: 1,
+      videoSlug: "the-birth-of-jesus",
+      videoTitle: "The Birth of Jesus",
+      recordedAt: NOW.getTime(),
+    })
+
+    const record = parseStoredLastWatched(legacy, NOW)
+    expect(record?.videoTitle).toBe("The Birth of Jesus")
+    expect(record).not.toHaveProperty("titleLocale")
+  })
+
+  it("drops the title when its stored language is unusable", () => {
+    // The serializer never writes such a language, so the title's language is
+    // unknown, and only the untitled copy is safe.
+    for (const titleLocale of [7, "", "not a tag", "x".repeat(40), {}]) {
+      const record = parseStoredLastWatched(
+        storedBlob({ videoTitle: "The Birth of Jesus", titleLocale }),
+        NOW,
+      )
+      expect(record?.videoSlug).toBe("the-birth-of-jesus")
+      expect(record?.videoTitle).toBeNull()
+      expect(record).not.toHaveProperty("titleLocale")
+    }
+  })
+
+  it("accepts every catalog tag shape as a title language", () => {
+    for (const titleLocale of [
+      "en",
+      "zh-Hans",
+      "es-419",
+      "mey-Latn",
+      "sr-Latn",
+    ]) {
+      const record = parseStoredLastWatched(
+        storedBlob({ videoTitle: "Title", titleLocale }),
+        NOW,
+      )
+      expect(record?.titleLocale).toBe(titleLocale)
+    }
+  })
+
   it("keeps the record when the title is unusable, and drops only the title", () => {
     for (const videoTitle of [123, null, "", "   ", {}, []]) {
       const record = parseStoredLastWatched(storedBlob({ videoTitle }), NOW)
