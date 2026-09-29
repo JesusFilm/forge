@@ -60,9 +60,49 @@ jest.mock("../ClipDescription", () => {
   }
 })
 
+// A fixture `ru` catalog joins the real set, so the rail can change language
+// while it is on screen.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(
+      jest.requireActual("../../../i18n/catalogs.generated"),
+      {
+        ru: {
+          Explore: {
+            mute: "Без звука",
+            unmute: "Со звуком",
+            share: "Поделиться",
+            keepWatchingAriaLabel: "Смотреть дальше",
+            keepWatchingAriaHint: "Открывает полное видео с этого места",
+          },
+        },
+      },
+    ),
+)
+jest.mock("../../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../../i18n/pluralData.generated"),
+      ["ru"],
+    ),
+)
+
 import { ClipOverlay, type ClipOverlayProps } from "../ClipOverlay"
 import { clipPosterUri } from "../../../hooks/useClipAutostart"
-import { EXPLORE_COPY } from "../../../lib/explore/copy"
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
 import {
   INITIAL_FEED_STATE,
   feedReducer,
@@ -82,6 +122,10 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import {
+  phoneLocales,
+  tapActionName,
+} from "../../../test-utils/uiLocaleFixture"
 
 // 12:04 to 12:31: a 27 s window inside the full asset.
 const CLIP: FeedClip = {
@@ -220,6 +264,7 @@ function barValue(renderer: TestInstance) {
     min: number
     max: number
     now: number
+    text: string
   }
 }
 
@@ -321,11 +366,7 @@ describe("ClipOverlay — clip information", () => {
 describe("ClipOverlay — side rail (R11, R16, R18)", () => {
   it("stacks Mute, Share, and Keep watching, with Keep watching lowest", () => {
     const rail = jsonById(render(), "clip-overlay-rail")
-    expect(labelsIn(rail)).toEqual([
-      EXPLORE_COPY.mute,
-      EXPLORE_COPY.share,
-      EXPLORE_COPY.keepWatching,
-    ])
+    expect(labelsIn(rail)).toEqual(["Mute", "Share", "Keep watching"])
   })
 
   it("makes Keep watching the clip's thumbnail in a circle, with a shadowed play glyph and no visible label", () => {
@@ -333,14 +374,16 @@ describe("ClipOverlay — side rail (R11, R16, R18)", () => {
     // The host view: the composite Pressable holds a style FUNCTION.
     const [button] = renderer.root.findAll(
       (n) =>
-        n.props.accessibilityLabel === EXPLORE_COPY.keepWatching &&
+        n.props.accessibilityLabel === "Keep watching" &&
         typeof n.type === "string",
     )
     const style = flatStyle(button?.props.style)
     expect(style.minWidth).toBeGreaterThanOrEqual(44)
     expect(style.minHeight).toBeGreaterThanOrEqual(44)
     expect(button.props.accessibilityRole).toBe("button")
-    expect(button.props.accessibilityHint).toBe(EXPLORE_COPY.keepWatchingHint)
+    expect(button.props.accessibilityHint).toBe(
+      "Opens the full video at this point",
+    )
 
     const circleJson = jsonById(renderer, "clip-keep-watching-circle")
     const circle = flatStyle(circleJson.props.style)
@@ -371,14 +414,14 @@ describe("ClipOverlay — side rail (R11, R16, R18)", () => {
     const onToggleMute = jest.fn()
     const renderer = render(props({ onToggleMute }))
     act(() => {
-      pressableByLabel(renderer, EXPLORE_COPY.mute).props.onPress?.()
+      pressableByLabel(renderer, "Mute").props.onPress?.()
     })
     expect(onToggleMute).toHaveBeenCalledTimes(1)
     expect(
       labelsIn(
         jsonById(render(props({ muted: true })), "clip-overlay-rail"),
       )[0],
-    ).toBe(EXPLORE_COPY.unmute)
+    ).toBe("Unmute")
   })
 
   it("passes the reached position to Keep watching", () => {
@@ -386,7 +429,7 @@ describe("ClipOverlay — side rail (R11, R16, R18)", () => {
     const onKeepWatching = jest.fn()
     const renderer = render(props({ onKeepWatching }))
     act(() => {
-      pressableByLabel(renderer, EXPLORE_COPY.keepWatching).props.onPress?.()
+      pressableByLabel(renderer, "Keep watching").props.onPress?.()
     })
     expect(onKeepWatching).toHaveBeenCalledWith(730)
   })
@@ -397,9 +440,72 @@ describe("ClipOverlay — side rail (R11, R16, R18)", () => {
     const onKeepWatching = jest.fn()
     const renderer = render(props({ onKeepWatching }))
     act(() => {
-      pressableByLabel(renderer, EXPLORE_COPY.keepWatching).props.onPress?.()
+      pressableByLabel(renderer, "Keep watching").props.onPress?.()
     })
     expect(onKeepWatching).toHaveBeenCalledWith(CLIP.window.startSeconds)
+  })
+})
+
+// KTD15: the rail reads the catalog, and each control keeps one RUM action
+// name in every language, because Datadog otherwise names a tap by its label.
+describe("ClipOverlay — side rail in another UI language (R7, KTD15)", () => {
+  beforeEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+  })
+  afterAll(() => resetLocaleStoreForTests())
+
+  function changePhoneLanguage(tag: string) {
+    mockGetLocales.mockReturnValue(phoneLocales(tag))
+    act(() => {
+      refreshLocale()
+    })
+  }
+
+  it('renders "Keep watching" from the catalog, with its English tap name', () => {
+    const renderer = render()
+    const english = tapActionName(pressableByLabel(renderer, "Keep watching"))
+
+    changePhoneLanguage("ru-RU")
+
+    const russian = pressableByLabel(renderer, "Смотреть дальше")
+    expect(russian.props.accessibilityHint).toBe(
+      "Открывает полное видео с этого места",
+    )
+    expect(
+      renderer.root.findAll(
+        (n) => n.props.accessibilityLabel === "Keep watching",
+      ),
+    ).toHaveLength(0)
+    expect(tapActionName(russian)).toBe(english)
+    expect(english).toBe("explore-keep-watching")
+  })
+
+  it("keeps the mute and share tap names when the labels change language", () => {
+    const renderer = render()
+    const unmuted = render(props({ muted: true }))
+    const english = [
+      tapActionName(pressableByLabel(renderer, "Mute")),
+      tapActionName(pressableByLabel(unmuted, "Unmute")),
+      tapActionName(pressableByLabel(renderer, "Share")),
+    ]
+
+    changePhoneLanguage("ru-RU")
+
+    expect(labelsIn(jsonById(renderer, "clip-overlay-rail"))).toEqual([
+      "Без звука",
+      "Поделиться",
+      "Смотреть дальше",
+    ])
+    expect(hasText(renderer, "Без звука")).toBe(true)
+    expect([
+      tapActionName(pressableByLabel(renderer, "Без звука")),
+      tapActionName(pressableByLabel(unmuted, "Со звуком")),
+      tapActionName(pressableByLabel(renderer, "Поделиться")),
+    ]).toEqual(english)
+    expect(english).toEqual(["explore-mute", "explore-unmute", "explore-share"])
   })
 })
 
@@ -636,6 +742,8 @@ describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
     player.currentTime = 730
     const renderer = render()
     expect(barValue(renderer)).toMatchObject({ min: 0, max: 27, now: 6 })
+    expect(progressBar(renderer).props.accessibilityLabel).toBe("Clip progress")
+    expect(barValue(renderer).text).toBe("6 of 27 seconds")
   })
 
   it("holds at the clip's start under the veil, whatever time the player holds", () => {
@@ -680,7 +788,6 @@ describe("ClipOverlay — progress bar (R12, R35, KTD22)", () => {
   })
 
   it("shows the clip time in a pill above a drag, and hides it on release", () => {
-    expect(EXPLORE_COPY.scrubTime(12, 48)).toBe("0:12 / 0:48")
     const renderer = render()
     const handlers = progressBar(renderer).props as unknown as Handlers
     act(() => {
@@ -870,17 +977,14 @@ describe("ClipOverlay — description (R15)", () => {
     )
     measureDescription(renderer, 3)
     act(() => {
-      pressableByLabel(
-        renderer,
-        EXPLORE_COPY.descriptionMoreLabel,
-      ).props.onPress?.()
+      pressableByLabel(renderer, "Show the full description").props.onPress?.()
     })
     expect(state.phase).toBe("playing")
     expect(state.overlay).toBeNull()
     act(() => {
       pressableByLabel(
         renderer,
-        EXPLORE_COPY.descriptionLessLabel,
+        "Show less of the description",
       ).props.onPress?.()
     })
     expect(state.phase).toBe("playing")
@@ -907,7 +1011,7 @@ describe("ClipOverlay — share (R18, R44)", () => {
     const { spy, settle } = deferredShare()
     const renderer = render()
     act(() => {
-      pressableByLabel(renderer, EXPLORE_COPY.share).props.onPress?.()
+      pressableByLabel(renderer, "Share").props.onPress?.()
     })
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -927,7 +1031,7 @@ describe("ClipOverlay — share (R18, R44)", () => {
       const onOverlayClose = jest.fn()
       const renderer = render(props({ onOverlayOpen, onOverlayClose }))
       act(() => {
-        pressableByLabel(renderer, EXPLORE_COPY.share).props.onPress?.()
+        pressableByLabel(renderer, "Share").props.onPress?.()
       })
       expect(onOverlayOpen).toHaveBeenCalledTimes(1)
       expect(onOverlayClose).not.toHaveBeenCalled()
@@ -958,7 +1062,7 @@ describe("ClipOverlay — share (R18, R44)", () => {
         }),
       )
       act(() => {
-        pressableByLabel(renderer, EXPLORE_COPY.share).props.onPress?.()
+        pressableByLabel(renderer, "Share").props.onPress?.()
       })
       expect(state.phase).toBe("paused")
       await act(async () => {

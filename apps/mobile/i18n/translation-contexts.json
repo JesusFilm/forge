@@ -13,7 +13,8 @@
     "BibleTranslationPicker": "A sheet over the Bible reader where the viewer chooses a Bible translation. Each row shows which books the translation has and whether it is on the device.",
     "BibleReaderSettings": "The Bible reader's settings sheet: color mode, text size, typeface, line spacing, verse numbers, and arrow buttons.",
     "BibleDownload": "A system alert that downloads a Bible translation to the device, shows the progress, removes it, or explains why a download stopped.",
-    "LapseReminder": "A phone notification that the app sends one day or seven days after the viewer last used it, to invite them back to the last video they watched."
+    "LapseReminder": "A phone notification that the app sends one day or seven days after the viewer last used it, to invite them back to the last video they watched.",
+    "Explore": "The Explore tab: a full-screen vertical feed of short video clips. The viewer swipes up for the next clip. White text and round buttons sit over the playing video."
   },
   "keys": {
     "Common.goBackAriaLabel": {
@@ -121,6 +122,43 @@
     "DeleteAccount.unconfirmedMessage": {
       "role": "notice",
       "composition": "The app cannot tell whether the server finished the deletion. Do not say that it did or that it did not."
+    },
+    "Explore.mute": {
+      "role": "button caption",
+      "composition": "A caption under a round sound button. The button turns the clip's sound off. At most two short lines."
+    },
+    "Explore.unmute": {
+      "role": "button caption",
+      "composition": "A caption under a round sound button. The button turns the clip's sound back on. At most two short lines."
+    },
+    "Explore.share": {
+      "composition": "A caption under a round share button. At most two short lines."
+    },
+    "Explore.nextClipAriaLabel": {
+      "role": "screen reader action name",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader offers it on the clip. It moves to the next clip, like a swipe up."
+    },
+    "Explore.previousClipAriaLabel": {
+      "role": "screen reader action name",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader offers it on the clip. It moves back to the previous clip, like a swipe down."
+    },
+    "Explore.descriptionMore": {
+      "role": "inline text button",
+      "composition": "Shows after the one visible line of a cut clip description, and opens the full description. Lower case in English. Keep it one short word."
+    },
+    "Explore.descriptionLess": {
+      "role": "inline text button",
+      "composition": "Shows under an open clip description, and closes it to one line. Lower case in English. Keep it one short word."
+    },
+    "Explore.progressAriaValue": {
+      "role": "progress bar spoken value",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader reads it as the value of the clip progress bar. {elapsed} and {length} are whole seconds, for example 6 of 27 seconds."
+    },
+    "Explore.emptyTitle": {
+      "composition": "{languageName} is the name of the viewer's feed language, for example Swahili. It can arrive in English, so never inflect it."
     }
   }
 }

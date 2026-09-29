@@ -18,7 +18,7 @@ import {
 } from "react-native"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
-import { EXPLORE_COPY } from "../../lib/explore/copy"
+import { useT } from "../../i18n/useT"
 
 /** KTD25: the pager rests this long with no new pan before loads may start. */
 export const EXPLORE_PAGER_REST_DWELL_MS = 200
@@ -370,6 +370,7 @@ export function ExplorePager({
   onGestureLatchChange,
 }: ExplorePagerProps) {
   const reduceMotion = useReduceMotion()
+  const t = useT("Explore")
   const [placement, setPlacement] = useState(INITIAL_PLACEMENT)
   const [height, setHeight] = useState(() => Dimensions.get("window").height)
 
@@ -407,13 +408,10 @@ export function ExplorePager({
   const accessibility = useMemo<ExplorePagerAccessibility>(() => {
     const actions: ExplorePagerAccessibility["accessibilityActions"] = []
     if (canSwipeNext) {
-      actions.push({ name: "next", label: EXPLORE_COPY.pagerActions.next })
+      actions.push({ name: "next", label: t("nextClipAriaLabel") })
     }
     if (canSwipePrevious) {
-      actions.push({
-        name: "previous",
-        label: EXPLORE_COPY.pagerActions.previous,
-      })
+      actions.push({ name: "previous", label: t("previousClipAriaLabel") })
     }
     return {
       accessibilityActions: actions,
@@ -422,7 +420,7 @@ export function ExplorePager({
         if (name === "next" || name === "previous") engine.requestMove(name)
       },
     }
-  }, [canSwipeNext, canSwipePrevious, engine])
+  }, [canSwipeNext, canSwipePrevious, engine, t])
 
   const underlay = useMemo<ExplorePagerUnderlay>(
     () => ({

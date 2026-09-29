@@ -217,5 +217,27 @@
     "day1TitledBody": "Continue watching {title}.",
     "day7TitledBody": "{title} is still here whenever you are ready.",
     "channelName": "Reminders"
+  },
+  "Explore": {
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "share": "Share",
+    "keepWatchingAriaLabel": "Keep watching",
+    "keepWatchingAriaHint": "Opens the full video at this point",
+    "clipSurfaceAriaHint": "Plays or pauses the clip",
+    "nextClipAriaLabel": "Next clip",
+    "previousClipAriaLabel": "Previous clip",
+    "descriptionMore": "more",
+    "descriptionMoreAriaLabel": "Show the full description",
+    "descriptionLess": "less",
+    "descriptionLessAriaLabel": "Show less of the description",
+    "progressAriaLabel": "Clip progress",
+    "progressAriaValue": "{elapsed, number} of {length, plural, one {# second} other {# seconds}}",
+    "offlineTitle": "You're offline",
+    "offlineBody": "Check your connection, then try again.",
+    "retry": "Try again",
+    "emptyTitle": "No clips in {languageName} yet",
+    "emptyBody": "Pick another language on any video's page to see more clips.",
+    "clipFailed": "This clip can't play. Swipe for the next one."
   }
 }

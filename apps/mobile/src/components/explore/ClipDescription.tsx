@@ -9,8 +9,8 @@ import {
   useWindowDimensions,
 } from "react-native"
 
+import { useT } from "../../i18n/useT"
 import { TEXT_ON_OVERLAY } from "../../lib/color"
-import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import {
   useTextOverflow,
@@ -50,6 +50,7 @@ export function ClipDescription({
   onCollapse,
 }: ClipDescriptionProps) {
   const typography = useTypography()
+  const t = useT("Explore")
   const { height } = useWindowDimensions()
   // The hook's reset on new text does not call `onCollapse`: a swipe has
   // already cleared the feed's pause, and a late call would act on the next clip.
@@ -93,9 +94,10 @@ export function ClipDescription({
             hitSlop={TOGGLE_HIT_SLOP}
             style={styles.less}
             accessibilityRole="button"
-            accessibilityLabel={EXPLORE_COPY.descriptionLessLabel}
+            accessibilityLabel={t("descriptionLessAriaLabel")}
+            {...{ "dd-action-name": "explore-description-less" }}
           >
-            <Text style={toggleStyle}>{EXPLORE_COPY.descriptionLess}</Text>
+            <Text style={toggleStyle}>{t("descriptionLess")}</Text>
           </Pressable>
         </ScrollView>
       ) : (
@@ -112,9 +114,10 @@ export function ClipDescription({
               hitSlop={TOGGLE_HIT_SLOP}
               style={styles.more}
               accessibilityRole="button"
-              accessibilityLabel={EXPLORE_COPY.descriptionMoreLabel}
+              accessibilityLabel={t("descriptionMoreAriaLabel")}
+              {...{ "dd-action-name": "explore-description-more" }}
             >
-              <Text style={toggleStyle}>{EXPLORE_COPY.descriptionMore}</Text>
+              <Text style={toggleStyle}>{t("descriptionMore")}</Text>
             </Pressable>
           )}
         </View>

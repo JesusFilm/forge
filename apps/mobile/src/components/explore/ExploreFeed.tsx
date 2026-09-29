@@ -41,6 +41,7 @@ import { ClipFailed, ExploreStates } from "./ExploreStates"
 import { FeedVideoView } from "./FeedVideoView"
 import { PlayerLoadingVeil } from "../watch/PlayerLoadingVeil"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
+import { useT } from "../../i18n/useT"
 import { clipPosterUri, useClipAutostart } from "../../hooks/useClipAutostart"
 import { usePlayingSize } from "../../hooks/usePlayingSize"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
@@ -60,7 +61,6 @@ import {
   getClipRecordStore,
   type ClipRecordInput,
 } from "../../lib/explore/clipRecord"
-import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { getDemotionStore } from "../../lib/explore/demotionStore"
 import { readDeviceTier } from "../../lib/explore/deviceTier"
 import {
@@ -647,6 +647,7 @@ function ClipPage({
   posterShapes,
   children,
 }: ClipPageProps) {
+  const t = useT("Explore")
   const surface = useRef<View>(null)
   const wasCurrent = useRef(role === "current")
   useEffect(() => {
@@ -687,7 +688,7 @@ function ClipPage({
         onPress={onTap}
         accessibilityRole="button"
         accessibilityLabel={clip.title}
-        accessibilityHint={EXPLORE_COPY.clipSurfaceHint}
+        accessibilityHint={t("clipSurfaceAriaHint")}
         {...accessibility}
       />
       {children}
