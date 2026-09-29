@@ -14,7 +14,7 @@
     "eas-build-pre-install": "bash scripts/eas-build-pre-install.sh",
     "eas-build-on-success": "bash scripts/eas-build-on-success.sh",
     "update:preview": "touch src/env.ts && EXPO_NO_DOTENV=1 eas update --channel preview --environment preview --message \"preview update\"",
-    "update:production": "touch src/env.ts && EXPO_NO_DOTENV=1 eas update --channel production --environment production --message \"production update\"",
+    "update:production": "node scripts/i18n/check-pending-gate.mjs --update-production && touch src/env.ts && EXPO_NO_DOTENV=1 eas update --channel production --environment production --message \"production update\"",
     "icons:generate": "node scripts/generate-app-icon.mjs",
     "bible:data": "node --import tsx scripts/build-bible-data.mjs"
   },

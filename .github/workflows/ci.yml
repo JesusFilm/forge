@@ -73,6 +73,14 @@ jobs:
             | map(select(type == "string" and startswith("@forge/")))
             | unique
           ')
+          # Mobile runs web's translation script on its own catalogs, so a change
+          # to the script or to the language inventory re-runs mobile's suites.
+          if git diff --name-only "$BASE" HEAD -- \
+            apps/web/scripts/translate-ui-catalogs.mjs \
+            apps/web/scripts/openai-catalog-translator.mjs \
+            docs/i18n/watch-ui-official-language-inventory.json | grep -q .; then
+            SERVICES=$(echo "$SERVICES" | jq -c '. + ["@forge/mobile"] | unique')
+          fi
           echo "Affected services: $SERVICES"
           echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
           if git diff --name-only "$BASE" HEAD -- apps/rag/portal/users.json | grep -q .; then
@@ -488,6 +496,10 @@ jobs:
           psql --version | grep -F 'PostgreSQL) 18.'
       - name: Test package
         run: pnpm --filter "${{ matrix.service }}" run --if-present test
+      # Lines in the job summary, never a failure: the jest suites enforce.
+      - name: Report mobile translation status
+        if: ${{ !cancelled() && matrix.service == '@forge/mobile' }}
+        run: node apps/mobile/scripts/i18n/pending-report.mjs
 
   expo-doctor:
     runs-on: ubuntu-latest

@@ -1,0 +1,23 @@
+{
+  "product": "a Christian video-streaming and discipleship app for iPhone and Android phones",
+  "namespaces": {
+    "Common": "Shared controls that many screens of the mobile app use, such as the back button in the top bar.",
+    "VideoLabel": "A short label that names the kind of video (for example a feature film or an episode). It shows on Home cards, and in capital letters above the title on the watch page.",
+    "DownloadQuality": "The video quality choices in the download sheet, where the viewer picks how large an offline copy or a saved file is.",
+    "Subtitles": "The subtitle control on the watch page and the subtitle choice in the download sheet."
+  },
+  "keys": {
+    "Common.goBackAriaLabel": {
+      "role": "back-navigation accessibility label",
+      "visibility": "assistive technology only"
+    },
+    "Subtitles.off": {
+      "role": "subtitle state label",
+      "composition": "Shows in the subtitle control when no subtitle track plays. Keep it as short as the language allows."
+    },
+    "Subtitles.noSubtitles": {
+      "role": "unavailable-state label",
+      "composition": "Shows in place of the subtitle choice when the video has no subtitle track."
+    }
+  }
+}
