@@ -1347,15 +1347,17 @@ export class VideoService {
           AND vd.hls IS NOT NULL
           AND vd.hls <> ''
         ORDER BY
+          -- feat-572: an exact language slug outranks a BCP-47 tag match so
+          -- sibling languages sharing a tag (yao / yao-tanzania) resolve to
+          -- the one the visitor asked for, not the longer dub.
           CASE
             WHEN requested.audio_language_slug IS NOT NULL
-              AND (
-                l.slug = requested.audio_language_slug
-                OR l.bcp47 = requested.audio_language_slug
-              ) THEN 0
+              AND l.slug = requested.audio_language_slug THEN 0
+            WHEN requested.audio_language_slug IS NOT NULL
+              AND l.bcp47 = requested.audio_language_slug THEN 1
             WHEN v.primary_language_id IS NOT NULL
-              AND vd.language_id = v.primary_language_id THEN 1
-            ELSE 2
+              AND vd.language_id = v.primary_language_id THEN 2
+            ELSE 3
           END ASC,
           CASE
             WHEN requested.audio_language_slug IS NOT NULL
@@ -1488,21 +1490,22 @@ export class VideoService {
         : null
 
     if (normalizedLanguageSlug) {
-      const exact = await this.prisma.videoDub.findFirst({
-        ...query,
-        where: {
-          ...baseWhere,
-          language: {
-            deletedAt: null,
-            OR: [
-              { slug: normalizedLanguageSlug },
-              { bcp47: normalizedLanguageSlug },
-            ],
+      // feat-572: exact slug first, BCP-47 tag only on a miss, so sibling
+      // languages sharing a tag resolve to the requested one.
+      for (const language of [
+        { slug: normalizedLanguageSlug },
+        { bcp47: normalizedLanguageSlug },
+      ]) {
+        const exact = await this.prisma.videoDub.findFirst({
+          ...query,
+          where: {
+            ...baseWhere,
+            language: { deletedAt: null, ...language },
           },
-        },
-        orderBy: [{ duration: "desc" }, { id: "asc" }],
-      })
-      if (exact) return exact
+          orderBy: [{ duration: "desc" }, { id: "asc" }],
+        })
+        if (exact) return exact
+      }
     }
 
     const video = await this.prisma.video.findFirst({

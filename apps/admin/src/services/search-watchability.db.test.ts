@@ -155,6 +155,124 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
     })
 
+    it("ranks an exact language slug above a shared BCP-47 tag in every preferred-dub matcher", async () => {
+      // feat-572: `yao` (slug === bcp47) and `yao-tanzania` (bcp47 `yao`)
+      // both matched the same tier, so the longer dub won regardless of the
+      // requested slug. Fixture dubs carry no Mux row so the snapshot path
+      // schedules no poster work.
+      const rollback = new RollbackFixture()
+      try {
+        await prisma.$transaction(
+          async (tx) => {
+            const prefix = `slug-precedence-${randomUUID()}`
+            const tag = `${prefix}-yao`
+            const exactLanguage = await tx.language.create({
+              data: { coreId: `${prefix}-exact`, slug: tag, bcp47: tag },
+            })
+            const tagOnlyLanguage = await tx.language.create({
+              data: {
+                coreId: `${prefix}-tag-only`,
+                slug: `${tag}-tanzania`,
+                bcp47: tag,
+              },
+            })
+            const primaryLanguage = await tx.language.create({
+              data: {
+                coreId: `${prefix}-primary`,
+                slug: `${prefix}-english`,
+                bcp47: `${prefix}-en`,
+              },
+            })
+            const video = await tx.video.create({
+              data: {
+                coreId: prefix,
+                slug: prefix,
+                primaryLanguageId: primaryLanguage.id,
+              },
+            })
+            await tx.videoLocale.create({
+              data: {
+                videoId: video.id,
+                languageId: primaryLanguage.id,
+                languageSlug: primaryLanguage.slug,
+                locale: "en",
+                title: "Slug precedence fixture",
+                status: "PUBLISHED",
+              },
+            })
+            const base = {
+              videoId: video.id,
+              published: true,
+              hls: "https://fixture.test/master.m3u8",
+            }
+            const exactDub = await tx.videoDub.create({
+              data: {
+                ...base,
+                coreId: `${prefix}-exact-dub`,
+                languageId: exactLanguage.id,
+                duration: 100,
+              },
+            })
+            const tagOnlyDub = await tx.videoDub.create({
+              data: {
+                ...base,
+                coreId: `${prefix}-tag-only-dub`,
+                languageId: tagOnlyLanguage.id,
+                duration: 9_000,
+              },
+            })
+            await tx.videoDub.create({
+              data: {
+                ...base,
+                coreId: `${prefix}-primary-dub`,
+                languageId: primaryLanguage.id,
+                duration: 50,
+              },
+            })
+
+            const db = tx as unknown as PrismaClient
+            const batched = async (languageSlug: string) =>
+              (
+                await getPreferredPlayableDubs(tx, {
+                  videoIds: [video.id],
+                  languageSlug,
+                  query: { select: { id: true } },
+                })
+              )[0]?.id
+            const snapshot = async (languageSlug: string) =>
+              (
+                await new VideoService(db).getWatchRouteSnapshotBySlug({
+                  slug: video.slug!,
+                  locale: "en",
+                  languageSlug,
+                  subtitleLanguageSlug: null,
+                  user: null,
+                })
+              )?.preferredVariant?.documentId
+
+            // The exact slug wins even though the tag-only sibling is longer.
+            expect(await batched(tag)).toBe(exactDub.id)
+            expect(await snapshot(tag)).toBe(exactDub.id)
+            // The sibling still resolves by its own slug.
+            expect(await batched(tagOnlyLanguage.slug!)).toBe(tagOnlyDub.id)
+            expect(await snapshot(tagOnlyLanguage.slug!)).toBe(tagOnlyDub.id)
+            // With the exact-slug language withdrawn, the tag match still
+            // resolves (the bcp47 fallback is preserved, not dropped).
+            await tx.language.update({
+              where: { id: exactLanguage.id },
+              data: { deletedAt: new Date() },
+            })
+            expect(await batched(tag)).toBe(tagOnlyDub.id)
+            expect(await snapshot(tag)).toBe(tagOnlyDub.id)
+            throw rollback
+          },
+          { timeout: 30_000 },
+        )
+      } catch (error) {
+        if (error !== rollback) throw error
+      }
+    }, 35_000)
+
     it("keeps DEFAULT and MODERN on the same eligible edition and owner", async () => {
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`
       const rollback = new RollbackFixture()
