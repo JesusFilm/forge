@@ -1,7 +1,5 @@
-/**
- * U14 (KTD13, AE5, R10): left-aligned text takes its direction from its own
- * language. An English UI renders every covered surface with no new props.
- */
+/** U14 (KTD13, AE5, R10): left-aligned text takes its direction from its own
+ *  language. An English UI renders every covered surface with no new props. */
 let mockUiTag = "en"
 jest.mock("../../hooks/useUiTag", () => ({
   useUiTag: () => mockUiTag,

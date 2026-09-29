@@ -111,11 +111,9 @@ function byteLength(text: string): number {
   return bytes
 }
 
-/**
- * R34, R23: the name the viewer sees in the picked folder. It keeps the title's
- * letters and digits in any script and replaces every other character. The
- * title is untrusted, so the result is also bounded in code units and bytes.
- */
+/** R34, R23: the name the viewer sees in the picked folder. It keeps the title's
+ *  letters and digits in any script and replaces every other character. The
+ *  title is untrusted, so the result is also bounded in code units and bytes. */
 export function buildExportFileName(
   title: string | null | undefined,
   fallbackName: string,
@@ -136,10 +134,8 @@ export function buildExportFileName(
   return `${stem === "" ? "_" : stem}${FILE_EXTENSION}`
 }
 
-/**
- * The internal staged name: today's ASCII sanitizer, never the viewer's name.
- * The copy into the folder renames the staged file to `buildExportFileName`.
- */
+/** The internal staged name: today's ASCII sanitizer, never the viewer's name.
+ *  The copy into the folder renames the staged file to `buildExportFileName`. */
 function buildStagedFileName(
   title: string | null | undefined,
   fallbackName: string,

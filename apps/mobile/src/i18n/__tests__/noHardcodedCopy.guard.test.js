@@ -256,10 +256,8 @@ function bindingNames(name, into) {
   }
 }
 
-/**
- * Parse one file and apply every rule. `translatorTypes` holds the aliases of
- * `UiT` declared in other files, such as `DownloadButtonT`.
- */
+/** Parse one file and apply every rule. `translatorTypes` holds the aliases of
+ *  `UiT` declared in other files, such as `DownloadButtonT`. */
 function analyzeSource(file, source, translatorTypes = []) {
   const sf = ts.createSourceFile(
     file,

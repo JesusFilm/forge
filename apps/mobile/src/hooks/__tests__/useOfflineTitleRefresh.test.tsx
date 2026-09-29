@@ -1,7 +1,5 @@
-/**
- * U7 (R4): the triggers of the offline title refresh. The pass itself is
- * `offlineTitleRefresh.test.ts`; this suite pins when the hook asks for one.
- */
+/** U7 (R4): the triggers of the offline title refresh. The pass itself is
+ *  `offlineTitleRefresh.test.ts`; this suite pins when the hook asks for one. */
 
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike

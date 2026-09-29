@@ -1,8 +1,6 @@
-/**
- * U7 (R4): a download from the watch sheet records the locale its title was
- * read in, the screen's captured Admin forms. A title already in the UI
- * language then needs no refresh request.
- */
+/** U7 (R4): a download from the watch sheet records the locale its title was
+ *  read in, the screen's captured Admin forms. A title already in the UI
+ *  language then needs no refresh request. */
 
 import { act } from "react"
 

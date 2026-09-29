@@ -1,8 +1,6 @@
-/**
- * U10: the hero's own copy reads the catalog. Insert copy and fallback shelf
- * titles read it at each read, and the selector rail relabels a card whose
- * props did not change. Tap names stay the same in both languages.
- */
+/** U10: the hero's own copy reads the catalog. Insert copy and fallback shelf
+ *  titles read it at each read, and the selector rail relabels a card whose
+ *  props did not change. Tap names stay the same in both languages. */
 import { act } from "react"
 
 jest.mock("expo-image", () => ({ Image: () => null }))

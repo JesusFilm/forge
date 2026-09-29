@@ -12,9 +12,8 @@ type LanguageOption = {
 }
 
 // Exact tags first, from the whole tag down to the language: "en" and "en-nai"
-// share a prefix, so a pure prefix scan lets ARRAY ORDER pick the winner — which
-// handed JESUS "English, North American Indigenous" (index 266) over plain
-// English (index 614) across its 2281 dubs.
+// share a prefix, so a prefix scan lets ARRAY ORDER pick the winner — it gave
+// JESUS "English, North American Indigenous" (266) over plain English (614).
 function matchByBcp47(
   options: LanguageOption[],
   targetBcp47: string,

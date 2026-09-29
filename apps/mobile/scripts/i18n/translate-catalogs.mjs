@@ -14,6 +14,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 const require = createRequire(import.meta.url)
 const ops = require("./lib/catalogOps.js")
 const checks = require("./lib/catalogChecks.js")
+const { formatWithPrettier, list, plural } = require("./lib/scriptFormat.js")
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const MOBILE = path.resolve(HERE, "../..")
@@ -219,24 +220,14 @@ function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
-let prettier
-function loadPrettier() {
-  if (prettier !== undefined) return prettier
-  try {
-    prettier = createRequire(path.join(REPO, "package.json"))("prettier")
-  } catch {
-    prettier = null
-  }
-  return prettier
-}
-
 // The repo's `format` job runs prettier on every tracked JSON file.
 async function formatJson(file, value) {
-  const text = ops.renderJson(value)
-  const formatter = loadPrettier()
-  if (!formatter) return text
-  const config = (await formatter.resolveConfig(file)) ?? {}
-  return formatter.format(text, { ...config, filepath: file })
+  return formatWithPrettier(ops.renderJson(value), {
+    repoDir: REPO,
+    configFile: file,
+    options: { filepath: file },
+    optional: true,
+  })
 }
 
 function writeIfChanged(file, text) {
@@ -292,15 +283,6 @@ function localSteps(state, contexts) {
   pruned.contextOverrides = pruneContextOverrides(contexts, state.source)
   const englishOnlySynced = ops.syncEnglishOnly(state)
   return { pruned, englishOnlySynced }
-}
-
-function list(items, limit = 12) {
-  if (items.length <= limit) return items.join(", ")
-  return `${items.slice(0, limit).join(", ")}, and ${items.length - limit} more`
-}
-
-function plural(count, word) {
-  return `${count} ${word}${count === 1 ? "" : "s"}`
 }
 
 function printLocalChanges(changes) {

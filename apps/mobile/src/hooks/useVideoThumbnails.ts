@@ -6,6 +6,7 @@ import { currentAdminForms } from "../i18n/adminLanguage"
 import { useLocaleEpoch } from "../i18n/useT"
 import { getApolloClient } from "../lib/apolloClient"
 import { pickThumbnailUrl } from "../lib/types"
+import { chunk } from "../lib/watchHome/topUpFetch"
 import {
   videoThumbnailFragment,
   type AdminBlock,
@@ -150,13 +151,9 @@ export function useVideoThumbnails(
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
-    const batches: string[][] = []
-    for (let i = 0; i < videoIds.length; i += VIDEO_THUMBNAIL_BATCH_SIZE) {
-      batches.push(videoIds.slice(i, i + VIDEO_THUMBNAIL_BATCH_SIZE))
-    }
     const client = getApolloClient()
     void Promise.allSettled(
-      batches.map((ids) =>
+      chunk(videoIds, VIDEO_THUMBNAIL_BATCH_SIZE).map((ids) =>
         client
           .query({
             query: videoThumbnailsDocument(ids.length),

@@ -22,10 +22,8 @@ export type WatchPreferences = {
    * media fetched lazily, so the slug alone can't be mapped without a fetch.
    */
   subtitleLanguageName: string | null
-  /**
-   * The UI catalog tag that `subtitleLanguageName` is written in (KTD16), or
-   * null with no name. A name from another UI tag is dropped at read.
-   */
+  /** The UI catalog tag that `subtitleLanguageName` is written in (KTD16), or
+   *  null with no name. A name from another UI tag is dropped at read. */
   subtitleLanguageNameLocale: string | null
   /** Whether subtitles are turned on app-wide. */
   subtitlesEnabled: boolean
@@ -81,10 +79,8 @@ function normalizeNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null
 }
 
-/**
- * The cached subtitle name only when it is in `uiTag`, so the pill never paints
- * another language's text; the watch page then reads the name again.
- */
+/** The cached subtitle name only when it is in `uiTag`, so the pill never paints
+ *  another language's text; the watch page then reads the name again. */
 function subtitleNameFor(
   obj: Record<string, unknown>,
   uiTag: string,

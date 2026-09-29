@@ -8,8 +8,7 @@ import {
   type ReactNode,
 } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { getCatalogTag } from "../i18n/localeStore"
-import { useLocaleEpoch } from "../i18n/useT"
+import { useUiTag } from "../hooks/useUiTag"
 import { datadogLog } from "../lib/datadog"
 
 import {
@@ -141,9 +140,9 @@ export function WatchPreferencesProvider({
 
   // A live Android language change re-renders here (KTD16), so a name cached
   // in another UI language never paints; the watch page reads it again.
-  useLocaleEpoch()
+  const uiTag = useUiTag()
   const subtitleLanguageName =
-    prefs.subtitleLanguageNameLocale === getCatalogTag()
+    prefs.subtitleLanguageNameLocale === uiTag
       ? prefs.subtitleLanguageName
       : null
 

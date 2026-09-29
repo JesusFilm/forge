@@ -19,6 +19,7 @@ import { useLocalSearchParams } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useTypography } from "../src/hooks/useTypography"
+import { INLINE_MARK, splitAtMarker } from "../src/i18n/splitAtMarker"
 import { useT } from "../src/i18n/useT"
 import {
   ACCENT_ON_DARK,
@@ -46,26 +47,12 @@ import {
 // eyebrow clears it now that no native header reserves that space.
 const BACK_BUTTON_CLEARANCE = BACK_BUTTON_PROPS.topOffset + 40 + 14
 
-// A private-use character marks where the accent sits in the headline, so a
-// language can put it first, last, or in the middle.
-const ACCENT_MARK = "\uE000"
-const ISOLATE_MARKS = /[\u2068\u2069]/g
-
-function splitAtAccent(sentence: string): [string, string] {
-  const at = sentence.indexOf(ACCENT_MARK)
-  if (at < 0) return [sentence, ""]
-  // The translator isolates the value in a right-to-left catalog (KTD13).
-  return [
-    sentence.slice(0, at).replace(ISOLATE_MARKS, ""),
-    sentence.slice(at + ACCENT_MARK.length).replace(ISOLATE_MARKS, ""),
-  ]
-}
-
 export default function MissionScreen() {
   const typography = useTypography()
   const t = useT("Mission")
-  const [headlineBefore, headlineAfter] = splitAtAccent(
-    t("inviteHeadline", { accent: ACCENT_MARK }),
+  const [headlineBefore, headlineAfter] = splitAtMarker(
+    t("inviteHeadline", { accent: INLINE_MARK }),
+    INLINE_MARK,
   )
   const insets = useSafeAreaInsets()
   const { section } = useLocalSearchParams<{ section?: string }>()

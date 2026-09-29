@@ -69,10 +69,9 @@ export function resolveHydrationVideos(
   return { hydrationVideos: lastGood ?? [], nextLastGood: lastGood }
 }
 
-/** Top-up hydration for editor-added coreIds the config pool doesn't cover.
- *  Chunked under the 100-id cap; any rejected chunk rejects the whole top-up so
- *  the caller degrades (drop divergent items, keep the config-pool rows). The
- *  text rows follow `forms` (KTD10). */
+/** Top-up hydration for editor-added coreIds the config pool doesn't cover, in
+ *  `forms` (KTD10). Chunked under the 100-id cap; one rejected chunk rejects the
+ *  whole top-up, so the caller drops divergent items and keeps config-pool rows. */
 export async function fetchTopUpVideos(
   client: TopUpApolloClient,
   coreIds: readonly string[],

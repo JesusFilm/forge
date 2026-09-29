@@ -23,11 +23,9 @@ function lookupKeys(exact: string): string[] {
   return [...new Set(keys)]
 }
 
-/**
- * The default-audio slug for a phone language tag such as `es-ES` or
- * `zh-Hant-TW`, else null. A reviewed entry wins over Admin's own tags: the
- * reviewed keys first, then Admin's, each from the exact tag to the language.
- */
+/** The default-audio slug for a phone language tag such as `es-ES` or
+ *  `zh-Hant-TW`, else null. A reviewed entry wins over Admin's own tags: the
+ *  reviewed keys first, then Admin's, each from the exact tag to the language. */
 export function audioSlugForLocaleTag(
   tag: string | null | undefined,
 ): string | null {

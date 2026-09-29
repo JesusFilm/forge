@@ -293,10 +293,9 @@ function dedupeByDocumentId<T extends { documentId: string | null }>(
 
 type RawDub = NonNullable<WatchDubData["videoDub"]>
 
-// Map one lazily-fetched dub's downloads + subtitles (same projection the bulk
-// query inlined, now per active language). Missing dub/media → empty arrays =
-// "loaded, nothing". Returns a fresh object so callers can't mutate a shared empty.
-// `forms` names the subtitle languages; English for a caller that has none.
+// One lazily-fetched dub's downloads + subtitles (the bulk query's projection,
+// per language). Missing dub/media → "loaded, nothing", as a FRESH object so no
+// caller mutates a shared empty. `forms` names the subtitles; English if absent.
 export function normalizeDubMedia(
   raw: RawDub | null | undefined,
   forms: AdminLanguageForms = ENGLISH_ADMIN_FORMS,
@@ -415,10 +414,9 @@ function buildWatchVideoRecord(
       }
     })
 
-  // Parent SERIES only (U1): a COLLECTION (or other) parent groups standalone
-  // films — those must NOT fold into a Library series folder. null when absent,
-  // not a series, or the lean series fragment omits the parents chain. The
-  // title comes from the text companion (withVideoText).
+  // Parent SERIES only (U1): any other parent (a COLLECTION) groups standalone
+  // films, which must NOT fold into a Library series folder. null when absent or
+  // not a series (or no parents chain); its title comes from withVideoText.
   const parent = raw.parents?.[0]?.parent
   const parentSeries =
     parent && isEpisodicSeriesLabel(parent.label)
@@ -685,10 +683,9 @@ const normalizeSeriesCache = new WeakMap<
   Map<string, WatchVideoRecord>
 >()
 
-// Normalize a series Video: the shared video record (trailer = the series' own
-// playable dub, exposed as streamingUrl/variants) plus the series-only episode
-// grid and the language union that feeds the language sheet. `text` is the
-// GET_SERIES_TEXT companion.
+// A series Video: the shared record (trailer = the series' own playable dub, as
+// streamingUrl/variants), the episode grid, and the language union behind the
+// language sheet. `text` is the GET_SERIES_TEXT companion.
 export function normalizeSeries(
   raw: RawSeriesVideo | null | undefined,
   forms: AdminLanguageForms,

@@ -1,12 +1,6 @@
-/**
- * Real-contract guard for U6: every document that reads Admin content in the
- * UI locale validates against the COMMITTED Admin SDL. The shape guards in
- * queries.test.ts prove the spelling; this proves that Admin will parse it
- * (the argument names, the literal `"english"`, and the `@skip` aliases).
- *
- * Plain JS, as in operations.contract.guard.test.js: this guard reads the SDL
- * with fs/path, and the RN tsconfig has no Node types.
- */
+/** U6: every UI-locale Admin document validates against the COMMITTED SDL (the
+ *  argument names, the `"english"` literal, the `@skip` aliases). Plain JS, as
+ *  it reads the SDL with fs/path and the RN tsconfig has no Node types. */
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* global describe, expect, it, require */
 const { readFileSync } = require("node:fs")

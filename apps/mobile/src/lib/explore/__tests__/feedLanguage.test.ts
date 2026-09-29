@@ -1,8 +1,6 @@
-/**
- * The feed language (R19, KTD7, KTD12): the saved dub preference, else the
- * phone's first language through the default-audio table, else English. One
- * slug serves eligibility, the pool, and the recommendations request.
- */
+/** The feed language (R19, KTD7, KTD12): the saved dub preference, else the
+ *  phone's first language through the default-audio table, else English. One
+ *  slug serves eligibility, the pool, and the recommendations request. */
 
 // The phone's languages reach Explore through the real locale store.
 const mockGetLocales = jest.fn()

@@ -178,12 +178,9 @@ export function mapWatchSearchResponse(
 
 export type SearchErrorKind = "rateLimited" | "unavailable" | "failed"
 
-/**
- * The kind of a failed search. Admin returns these in a 200 body, and Apollo
- * v4 throws CombinedGraphQLErrors. It never sets a domain `code`: the rate
- * limiter stamps `extensions.http.statusCode` and thrown service errors mask
- * to INTERNAL_SERVER_ERROR, so branch on what is actually sent.
- */
+/** The kind of a failed search. Apollo v4 throws Admin's 200-body errors as
+ *  CombinedGraphQLErrors with no domain `code`, so branch on what is sent: the
+ *  limiter's `extensions.http.statusCode`, or INTERNAL_SERVER_ERROR (masked). */
 export function searchErrorKind(error: unknown): SearchErrorKind {
   if (!CombinedGraphQLErrors.is(error)) return "failed"
 
@@ -197,10 +194,8 @@ export function searchErrorKind(error: unknown): SearchErrorKind {
   return "failed"
 }
 
-/**
- * User-facing copy for a failed search. The screen keeps the kind, so the
- * message follows a language change while it shows (KTD15).
- */
+/** User-facing copy for a failed search. The screen keeps the kind, so the
+ *  message follows a language change while it shows (KTD15). */
 export function searchErrorMessage(
   kind: SearchErrorKind,
   t: UiT<"Discover">,

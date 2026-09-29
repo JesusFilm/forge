@@ -1,7 +1,5 @@
-/**
- * The translation picker after a UI language change (KTD5, KTD16). The list
- * keeps its rows mounted, so a recycled row must redraw in the new language.
- */
+/** The translation picker after a UI language change (KTD5, KTD16). The list
+ *  keeps its rows mounted, so a recycled row must redraw in the new language. */
 
 // tsconfig maps `react` to its .d.ts; re-point it (see AccountSection.test.tsx).
 jest.mock("react", () => {

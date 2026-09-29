@@ -1,9 +1,6 @@
-/**
- * KTD16: the Experience media routes read the root Experience, so a live
- * language change must never blank it while the new locale loads — the
- * section lookup would miss and the route would unmount its player. Rendered
- * under StrictMode for the epoch-change path.
- */
+/** KTD16: the media routes read the root Experience, so a language change must
+ *  never blank it while the new locale loads, or the section lookup misses and
+ *  the route unmounts its player. StrictMode covers the epoch-change path. */
 
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike

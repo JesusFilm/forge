@@ -125,11 +125,9 @@ describe("buildExportFileName (R34)", () => {
   })
 })
 
-// R23: the saved name keeps the title's letters in any script. File systems
-// cap a name at 255 UTF-8 bytes, and a cut inside a surrogate pair leaves a
-// name the native bridge cannot carry.
-// encodeURIComponent is an oracle apart from the code under test: it writes
-// UTF-8 and throws URIError on a lone surrogate.
+// R23: the name keeps a title's letters in any script, fits 255 UTF-8 bytes
+// (the file system cap), and never splits a surrogate pair (the bridge cannot
+// carry half). encodeURIComponent checks both apart from the code under test.
 function bytes(name: string): number {
   return encodeURIComponent(name).replace(/%[0-9A-F]{2}/g, "x").length
 }

@@ -5,10 +5,8 @@ import type { WatchDownload } from "./normalizeVideo"
 // series resolver. Extracted from DownloadSheet so both consumers pick tiers
 // from one implementation rather than drifting copies.
 
-/**
- * Tier identifiers, best first. They are also the `DownloadQuality` catalog
- * keys, so the sheets render the text and no logic ever reads it (KTD15).
- */
+/** Tier identifiers, best first. They are also the `DownloadQuality` catalog
+ *  keys, so the sheets render the text and no logic ever reads it (KTD15). */
 export const QUALITY_TIERS = ["highest", "high", "low"] as const
 
 export type QualityTier = (typeof QUALITY_TIERS)[number]

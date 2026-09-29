@@ -41,11 +41,9 @@ export type LastWatchedStoreDeps = {
   titleLocale?: (videoSlug: string) => string
 }
 
-/**
- * U7 (KTD16): the language of a playing video's title. Its screen captured
- * forms at mount, and a live change does not move them, so the session's
- * forms name the title's language; the current ones do when none were noted.
- */
+/** U7 (KTD16): the language of a playing video's title. Its screen captured
+ *  forms at mount, and a live change does not move them, so the session's
+ *  forms name the title's language; the current ones do when none were noted. */
 export function screenTitleLocale(
   videoSlug: string,
   session: Pick<MiniPlayerSession, "videoSlug" | "adminForms"> | null,

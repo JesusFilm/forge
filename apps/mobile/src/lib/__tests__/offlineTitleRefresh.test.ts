@@ -1,8 +1,6 @@
-/**
- * U7 (R4): stored offline titles follow the UI language once the app is
- * online. The refresh writes through the lifecycle's field-level patch, so a
- * download state change that lands while it fetches is never lost.
- */
+/** U7 (R4): stored offline titles follow the UI language once the app is
+ *  online. The refresh writes through the lifecycle's field-level patch, so a
+ *  download state change that lands while it fetches is never lost. */
 import { ENGLISH_ADMIN_FORMS, adminFormsFor } from "../../i18n/adminLanguage"
 import {
   createDownloadLifecycle,

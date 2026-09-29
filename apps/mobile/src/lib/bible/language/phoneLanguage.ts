@@ -277,10 +277,8 @@ export function catalogLanguageCode(
   return null
 }
 
-/**
- * The language subtag ("zh" for "zh-Hant-TW") of the phone's first language,
- * the one the default audio uses (KD11, KTD12), or null.
- */
+/** The language subtag ("zh" for "zh-Hant-TW") of the phone's first language,
+ *  the one the default audio uses (KD11, KTD12), or null. */
 export function readPhoneLanguageCode(): string | null {
   const tag = defaultAudioLanguage()?.tag
   const language = tag?.trim().toLowerCase().split(/[-_]/)[0] ?? ""

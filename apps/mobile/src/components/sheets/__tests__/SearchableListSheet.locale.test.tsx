@@ -1,8 +1,6 @@
-/**
- * The list sheet after a UI language change (KTD5, KTD15). The list keeps its
- * rows mounted, so a recycled row must redraw in the new language, and its tap
- * must keep one RUM name in every language.
- */
+/** The list sheet after a UI language change (KTD5, KTD15). The list keeps its
+ *  rows mounted, so a recycled row must redraw in the new language, and its tap
+ *  must keep one RUM name in every language. */
 
 // tsconfig maps `react` to its .d.ts; re-point it (see AccountSection.test.tsx).
 jest.mock("react", () => {

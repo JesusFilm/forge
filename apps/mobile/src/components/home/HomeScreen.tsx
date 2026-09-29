@@ -335,10 +335,9 @@ export function HomeScreen() {
     const { slug, title, rawLabel, imageUrl, playbackId } =
       slideRouteArgs(activeSlide)
     if (slug == null) return
-    // Same routing rule as HomeCard / Discover (series-shaped label → series
-    // page, else watch page), with a seed for instant paint. navigate (not
-    // push) dedupes a double-tap into one screen. The raw kind, never the
-    // catalog text: "Serie" is not "series" (KTD15).
+    // HomeCard / Discover's routing on the RAW kind, never catalog text ("Serie"
+    // is not "series", KTD15): a series opens the series page, else the watch
+    // page, seeded for instant paint. navigate (not push) dedupes a double-tap.
     const seed = encodeWatchSeed({ slug, title, imageUrl, playbackId })
     const route = isSeriesLabel(rawLabel) ? "series" : "watch"
     router.navigate(`/${route}/${encodeURIComponent(slug)}?seed=${seed}`)

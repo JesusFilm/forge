@@ -1,7 +1,5 @@
-/**
- * The player chrome after a UI language change (KTD15). Labels translate, but
- * a tap keeps one RUM name and an accessibility action keeps its raw name.
- */
+/** The player chrome after a UI language change (KTD15). Labels translate, but
+ *  a tap keeps one RUM name and an accessibility action keeps its raw name. */
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 

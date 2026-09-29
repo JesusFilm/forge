@@ -50,8 +50,8 @@ type LooseTranslate = ((key: string, values?: TranslationValues) => string) & {
 // to format, so the wrapper can tell a failure from a real string.
 const FAILED = "\u0000ui-message-failed\u0000"
 
-const FIRST_STRONG_ISOLATE = "\u2068"
-const POP_DIRECTIONAL_ISOLATE = "\u2069"
+export const FIRST_STRONG_ISOLATE = "\u2068"
+export const POP_DIRECTIONAL_ISOLATE = "\u2069"
 
 // Strong right-to-left letters: Hebrew through Arabic Extended, the Hebrew and
 // Arabic presentation forms, and the supplementary right-to-left blocks.
@@ -170,9 +170,18 @@ export function createUiTranslator(options: UiTranslatorOptions): UiTranslator {
     getMessageFallback: () => FAILED,
   }) as unknown as LooseTranslate
 
+  // `messages` is fixed for the translator's life, so each key walks it once.
+  const messageByKey = new Map<string, string | undefined>()
+  function cachedMessageAt(key: string): string | undefined {
+    if (messageByKey.has(key)) return messageByKey.get(key)
+    const message = messageAt(messages, key)
+    messageByKey.set(key, message)
+    return message
+  }
+
   function attempt(key: string, values?: TranslationValues): string | null {
     failureCode = null
-    const message = messageAt(messages, key)
+    const message = cachedMessageAt(key)
     const prepared =
       message === undefined ? values : isolateValues(message, values, rtlText)
     const text = t(key, prepared)

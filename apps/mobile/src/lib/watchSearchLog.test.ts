@@ -114,6 +114,7 @@ describe("buildWatchSearchLogAttributes", () => {
     query: "jesus",
     offset: 0,
     clientLatencyMs: 320,
+    searchLanguageSlug: "english",
   } as const
 
   it("emits under the exact shared message web and TV use", () => {

@@ -24,19 +24,7 @@ function parseArgs(argv) {
   return options
 }
 
-function list(items, limit = LISTED) {
-  if (items.length === 0) return "none"
-  const shown = items.slice(0, limit).join(", ")
-  return items.length > limit
-    ? `${shown}, and ${items.length - limit} more`
-    : shown
-}
-
-function plural(count, word) {
-  return `${count} ${word}${count === 1 ? "" : "s"}`
-}
-
-function daysSince(date) {
+function daysSince(date, plural) {
   const days = Math.floor(
     (Date.now() - Date.parse(`${date}T00:00:00Z`)) / 86_400_000,
   )
@@ -53,6 +41,7 @@ function attempt(lines, label, action) {
 
 function report(options) {
   const checks = require("./lib/catalogChecks.js")
+  const { list, plural } = require("./lib/scriptFormat.js")
   const messagesDir = path.join(options.mobileDir, "messages")
   const i18nDir = path.join(options.mobileDir, "i18n")
   const lines = ["### Mobile UI translations", ""]
@@ -66,13 +55,13 @@ function report(options) {
     lines.push(`- Pending keys: ${summary.count}`)
     if (summary.oldest) {
       lines.push(
-        `- Oldest pending key: \`${summary.oldest.key}\`, pending since ${summary.oldest.since}${daysSince(summary.oldest.since)}`,
+        `- Oldest pending key: \`${summary.oldest.key}\`, pending since ${summary.oldest.since}${daysSince(summary.oldest.since, plural)}`,
       )
     }
     for (const { key, englishIn } of summary.keys) {
       if (englishIn.length === 0) continue
       lines.push(
-        `- \`${key}\` still shows English in ${plural(englishIn.length, "catalog")}: ${list(englishIn)}`,
+        `- \`${key}\` still shows English in ${plural(englishIn.length, "catalog")}: ${list(englishIn, LISTED, "none")}`,
       )
     }
   })
@@ -82,14 +71,14 @@ function report(options) {
     const mobileTags = new Set(checks.catalogTagsIn(messagesDir))
     const lacking = webTags.filter((tag) => !mobileTags.has(tag))
     lines.push(
-      `- Web catalogs that mobile lacks (${lacking.length}): ${list(lacking, Infinity)}`,
+      `- Web catalogs that mobile lacks (${lacking.length}): ${list(lacking, Infinity, "none")}`,
     )
     const declared = new Set(
       checks.readJson(path.join(i18nDir, "native-locales.json")),
     )
     const undeclared = webTags.filter((tag) => !declared.has(tag))
     lines.push(
-      `- Web catalogs that native-locales.json does not declare (${undeclared.length}): ${list(undeclared, Infinity)}`,
+      `- Web catalogs that native-locales.json does not declare (${undeclared.length}): ${list(undeclared, Infinity, "none")}`,
     )
   })
   return `${lines.join("\n")}\n`

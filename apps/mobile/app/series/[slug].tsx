@@ -62,7 +62,7 @@ import {
 import { getExportSessionStore } from "../../src/lib/exportSession"
 import { requestSeriesExportCancel } from "../../src/lib/seriesExportProgress"
 import { presentActionMenu } from "../../src/lib/actionMenu"
-import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
+import { rawModeLabel } from "../../src/lib/rawModeLabel"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
 
 const EMPTY_EPISODES: WatchEpisode[] = []

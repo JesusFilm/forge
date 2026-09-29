@@ -27,11 +27,9 @@ export function withFixtureCatalogs<T extends CatalogIndex>(
   }
 }
 
-/**
- * The real plural index, with each fixture tag formatting plurals as English.
- * No fixture catalog here holds a plural message, and this keeps every plural
- * data load inside the generated index (catalogIndex.guard.test.js).
- */
+/** The real plural index, with each fixture tag formatting plurals as English.
+ *  No fixture catalog here holds a plural message, and this keeps every plural
+ *  data load inside the generated index (catalogIndex.guard.test.js). */
 export function withFixturePluralData<T extends PluralIndex>(
   actual: T,
   tags: readonly string[],
@@ -51,11 +49,9 @@ type TreeNode = {
   parent?: TreeNode | null
 }
 
-/**
- * The RUM tap-action name, resolved in the order of
- * `@datadog/mobile-react-native` 3.5 (`DdEventsInterceptor`): the closest
- * `dd-action-name` up the tree, else the node's accessibility label.
- */
+/** The RUM tap-action name, resolved in the order of
+ *  `@datadog/mobile-react-native` 3.5 (`DdEventsInterceptor`): the closest
+ *  `dd-action-name` up the tree, else the node's accessibility label. */
 export function tapActionName(node: TreeNode): unknown {
   for (let n: TreeNode | null | undefined = node; n; n = n.parent) {
     const name = n.props["dd-action-name"]

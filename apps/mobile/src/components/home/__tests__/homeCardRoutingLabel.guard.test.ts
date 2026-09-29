@@ -51,11 +51,9 @@ describe("HomeCard routes on the raw label, not display text", () => {
   })
 })
 
-/**
- * U6: the hero's "Watch Now" routed on `isSeriesLabel(label)`, and the slide's
- * label is catalog text, so a Spanish "Serie" opened /watch. It must route on
- * the slide's raw kind. `slideRouteArgs.test.ts` proves the value passes.
- */
+/** U6: the hero's "Watch Now" routed on `isSeriesLabel(label)`, and the slide's
+ *  label is catalog text, so a Spanish "Serie" opened /watch. It must route on
+ *  the slide's raw kind. `slideRouteArgs.test.ts` proves the value passes. */
 describe("HomeScreen's Watch Now routes on the raw label kind", () => {
   function watchNowRoute(source: string): string {
     const start = at(source, "const handleWatchNow")
@@ -77,11 +75,9 @@ describe("HomeScreen's Watch Now routes on the raw label kind", () => {
   })
 })
 
-/**
- * KTD15: `card.label` is catalog text, so a Spanish catalog emptied the hero's
- * short-film pool while it compared `label` with "Short film". The behaviour
- * test in watchHomeModel.test.ts proves the pool; this pins the source shape.
- */
+/** KTD15: `card.label` is catalog text, so a Spanish catalog emptied the hero's
+ *  short-film pool while it compared `label` with "Short film". The behaviour
+ *  test in watchHomeModel.test.ts proves the pool; this pins the source shape. */
 describe("the short-film hero pool classifies on the raw label kind", () => {
   const MODEL = ["..", "..", "..", "lib", "watchHome", "model.ts"]
   const VIDEO_LABEL = ["..", "..", "..", "lib", "videoLabel.ts"]
@@ -92,11 +88,15 @@ describe("the short-film hero pool classifies on the raw label kind", () => {
     return squish(source.slice(start, at(source, "shortFilmById.set", start)))
   }
 
+  // `video` is the input record, whose `label` is the raw kind (the card's
+  // `rawLabel`); any other `.label` compare in the loop reads catalog text.
   function classifiesOnRawKind(source: string): boolean {
     const loop = poolLoop(source)
+    const rest = loop.replace(/\bvideo\.label(!==|===)"SHORT_FILM"/, "")
     return (
-      /\.rawLabel(!==|===)"SHORT_FILM"/.test(loop) &&
-      !/\.label(!==|===)/.test(loop)
+      loop.includes("for(constvideoofargs.videoByCoreId.values())") &&
+      rest !== loop &&
+      !/\.label(!==|===)/.test(rest)
     )
   }
 
@@ -118,17 +118,26 @@ describe("the short-film hero pool classifies on the raw label kind", () => {
     )
   }
 
-  it("compares rawLabel with the SHORT_FILM kind", () => {
+  it("compares the record's raw label with the SHORT_FILM kind", () => {
     expect(classifiesOnRawKind(readSource(...MODEL))).toBe(true)
   })
 
   it("flags the old display-text compare (negative control)", () => {
     const reverted = readSource(...MODEL).replace(
-      /\.rawLabel\s*!==\s*"SHORT_FILM"/,
-      '.label !== "Short film"',
+      /video\.label\s*!==\s*"SHORT_FILM"/,
+      'parentCard.label !== "Short film"',
     )
     expect(reverted).not.toBe(readSource(...MODEL))
     expect(classifiesOnRawKind(reverted)).toBe(false)
+  })
+
+  it("flags a card-text compare beside the raw one (negative control)", () => {
+    const added = readSource(...MODEL).replace(
+      "if (!parentCard) continue",
+      'if (!parentCard || parentCard.label !== "Short film") continue',
+    )
+    expect(added).not.toBe(readSource(...MODEL))
+    expect(classifiesOnRawKind(added)).toBe(false)
   })
 
   it("holds no English label text in the model or the label module", () => {

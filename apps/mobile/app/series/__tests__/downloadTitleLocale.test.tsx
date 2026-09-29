@@ -1,7 +1,5 @@
-/**
- * U7 (R4): a series batch records the locale its titles were read in, the
- * series screen's captured Admin forms, on every episode request.
- */
+/** U7 (R4): a series batch records the locale its titles were read in, the
+ *  series screen's captured Admin forms, on every episode request. */
 
 import { act } from "react"
 

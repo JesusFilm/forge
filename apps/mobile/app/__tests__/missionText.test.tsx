@@ -1,8 +1,6 @@
-/**
- * U10: the mission page and the Home mission rail read the `Mission` catalog.
- * The invite headline keeps its colored accent wherever a language puts it,
- * and each moved control keeps one tap name in both languages.
- */
+/** U10: the mission page and the Home mission rail read the `Mission` catalog.
+ *  The invite headline keeps its colored accent wherever a language puts it,
+ *  and each moved control keeps one tap name in both languages. */
 import { act, type ReactElement } from "react"
 
 jest.mock("@expo/vector-icons/Ionicons", () => ({

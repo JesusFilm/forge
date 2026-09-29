@@ -1,9 +1,6 @@
-/**
- * KTD16 and AE11: a watch screen keeps the language it opened in through a live
- * Android language change and through a mini-player expand of the same video,
- * while a new video opens in the new language. Rendered under StrictMode so the
- * capture runs its double render and the note effect runs its remount cycle.
- */
+/** KTD16, AE11: a watch screen keeps its opening language through a live
+ *  Android language change and a mini-player expand; a new video opens in the
+ *  new language. StrictMode runs the capture's double render and remount. */
 
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike

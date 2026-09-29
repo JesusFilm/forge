@@ -77,7 +77,7 @@ import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkele
 import { WatchAmbient } from "../../src/components/watch/WatchAmbient"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
-import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
+import { rawModeLabel } from "../../src/lib/rawModeLabel"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
 import { presentActionMenu } from "../../src/lib/actionMenu"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"

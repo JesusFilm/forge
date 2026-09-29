@@ -1,8 +1,6 @@
-/**
- * U10: Discover's text reads the catalog. A result cell whose props do not
- * change still takes the new language, and each moved control keeps one tap
- * name in both languages. React re-points: "Component render tests".
- */
+/** U10: Discover's text reads the catalog. A result cell whose props do not
+ *  change still takes the new language, and each moved control keeps one tap
+ *  name in both languages. React re-points: "Component render tests". */
 
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike

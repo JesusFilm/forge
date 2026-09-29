@@ -155,10 +155,10 @@ import {
 import SeriesDownloadRoute from "../../../../app/series/download"
 import {
   DownloadSheetContent,
-  rawModeLabel,
   suspendedInRawMode,
   type DownloadMode,
 } from "../DownloadSheet"
+import { rawModeLabel } from "../../../lib/rawModeLabel"
 import {
   summarizeResolution,
   type SeriesEpisodeResolution,

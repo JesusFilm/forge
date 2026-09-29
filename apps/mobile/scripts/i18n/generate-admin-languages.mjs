@@ -3,10 +3,10 @@
 // text at development time; the app never imports apps/web. Not a package.json
 // script (KTD4): run `node scripts/i18n/generate-admin-languages.mjs [--check]`.
 
-import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import fs from "node:fs"
+import { formatWithPrettier, objectKey } from "./lib/scriptFormat.js"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const MOBILE = path.resolve(HERE, "../..")
@@ -193,10 +193,6 @@ function sortedObject(map) {
   )
 }
 
-function objectKey(key) {
-  return /^[A-Za-z_$][\w$]*$/.test(key) ? key : JSON.stringify(key)
-}
-
 function slugLines(table) {
   return Object.entries(table)
     .map(([tag, slug]) => `  ${objectKey(tag)}: ${JSON.stringify(slug)},`)
@@ -244,14 +240,6 @@ ${slugLines(reviewedAudio)}
 `
 }
 
-async function format(source) {
-  const prettier = createRequire(path.join(REPO, "package.json"))("prettier")
-  // Resolve the config for the real output path, so a test out file formats
-  // exactly as the committed file does.
-  const config = await prettier.resolveConfig(OUT_FILE)
-  return prettier.format(source, { ...config, parser: "typescript" })
-}
-
 async function main() {
   const options = parseArgs(process.argv.slice(2))
   const entries = readLanguageMap(options.webDir)
@@ -269,7 +257,13 @@ async function main() {
     return
   }
 
-  const source = await format(tableSource(tables))
+  // Resolve the config for the real output path, so a test out file formats
+  // exactly as the committed file does.
+  const source = await formatWithPrettier(tableSource(tables), {
+    repoDir: REPO,
+    configFile: OUT_FILE,
+    options: { parser: "typescript" },
+  })
   const shown = path.relative(process.cwd(), options.out)
   if (options.mode === "check") {
     const current = fs.existsSync(options.out)

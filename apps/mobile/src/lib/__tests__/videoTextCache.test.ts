@@ -1,9 +1,6 @@
-/**
- * KTD10 against a real InMemoryCache. The text companions write onto the same
- * normalized Video entities as the language-free player documents, so these
- * cases pin the cache mechanism, not only the document shapes that
- * `queries.test.ts` checks.
- */
+/** KTD10 against a real InMemoryCache. The text companions write onto the same
+ *  normalized Video entities as the language-free player documents, so these
+ *  cases pin the cache mechanism, not only the shapes `queries.test.ts` checks. */
 import { ApolloClient, ApolloLink, InMemoryCache } from "@apollo/client"
 import { parse, print } from "graphql"
 import type { DocumentNode } from "graphql"

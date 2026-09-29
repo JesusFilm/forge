@@ -122,21 +122,6 @@ describe("the hero's date prefix", () => {
       "4. Juni: Today's Video Picks",
     )
   })
-
-  it("reads the UI tag from the store when a caller passes none", () => {
-    const slide = firstMuxSlide(
-      mergeWatchHomeMuxInserts([], [welcome], morningNow),
-    )
-    expect(muxSlideDisplayCopy(slide, morningNow).title).toBe(
-      "Jun 4: Today's Video Picks",
-    )
-
-    usePhoneLanguage("de-DE")
-
-    expect(muxSlideDisplayCopy(slide, morningNow).title).toBe(
-      "4. Juni: Today's Video Picks",
-    )
-  })
 })
 
 describe("the rotation key", () => {

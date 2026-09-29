@@ -23,11 +23,9 @@ function validSlug(value: string | null | undefined): string | null {
   return slug && AUDIO_LANGUAGE_SLUG_PATTERN.test(slug) ? slug : null
 }
 
-/**
- * KTD11, KTD12: the metadata locale is the table's For You locale for the UI
- * catalog. The audio is the saved pick, else the phone's default audio, else
- * English. A value Admin would reject is skipped, never sent.
- */
+/** KTD11, KTD12: the metadata locale is the table's For You locale for the UI
+ *  catalog. The audio is the saved pick, else the phone's default audio, else
+ *  English. A value Admin would reject is skipped, never sent. */
 export function resolveRecommendationContext(input: {
   /** The viewer's saved audio pick. */
   audioLanguageSlug: string | null | undefined

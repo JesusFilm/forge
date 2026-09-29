@@ -1,8 +1,6 @@
-/**
- * Dependency-free constants for the lapse reminders. Every reminder module
- * imports this leaf, so it holds no logic and no import. The record's storage
- * key and the reminder text (the catalog, via copy.ts) live elsewhere.
- */
+/** Dependency-free constants for the lapse reminders. Every reminder module
+ *  imports this leaf, so it holds no logic and no import. The record's storage
+ *  key and the reminder text (the catalog, via copy.ts) live elsewhere. */
 
 /**
  * R5's two kinds, in the order a pass schedules them. The schedule pass and the

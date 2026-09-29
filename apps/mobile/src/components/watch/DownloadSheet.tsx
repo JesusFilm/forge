@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons"
 
+import { INLINE_MARK, splitAtMarker } from "../../i18n/splitAtMarker"
 import { useT, type UiT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import { useUiTag } from "../../hooks/useUiTag"
@@ -33,10 +34,6 @@ import {
   TERMS_OF_USE_LANGUAGE,
   TERMS_OF_USE_PARAGRAPHS,
 } from "../../lib/terms-of-use"
-
-// The label lives in a `.ts` module so a menu built at tap time can read it;
-// both detail routes import it from here.
-export { rawModeLabel }
 
 type SheetT = UiT<"DownloadSheet">
 
@@ -170,10 +167,8 @@ export function Dropdown({
   open: boolean
   onToggle: () => void
   onSelect: (key: string) => void
-  /**
-   * Stem of the RUM tap names (`<stem>-toggle`, `<stem>-option`). The labels
-   * hold catalog text, which would split the tap series by language (KTD15).
-   */
+  /** Stem of the RUM tap names (`<stem>-toggle`, `<stem>-option`). The labels
+   *  hold catalog text, which would split the tap series by language (KTD15). */
   actionName: string
 }) {
   const typography = useTypography()
@@ -525,7 +520,10 @@ export function TermsAcceptanceRow({
 }) {
   const typography = useTypography()
   const t = useT("DownloadSheet")
-  const [before, after] = splitAtLink(t("agreeToTerms", { terms: LINK_MARK }))
+  const [before, after] = splitAtMarker(
+    t("agreeToTerms", { terms: INLINE_MARK }),
+    INLINE_MARK,
+  )
   return (
     <View style={styles.touRow}>
       <Pressable
@@ -560,21 +558,6 @@ export function TermsAcceptanceRow({
       )}
     </View>
   )
-}
-
-// A private-use character marks where the link sits in the sentence, so a
-// language can put the link first, last, or in the middle.
-const LINK_MARK = "\uE000"
-const ISOLATE_MARKS = /[\u2068\u2069]/g
-
-function splitAtLink(sentence: string): [string, string] {
-  const at = sentence.indexOf(LINK_MARK)
-  if (at < 0) return [sentence, ""]
-  // The translator isolates the value in a right-to-left catalog (KTD13).
-  return [
-    sentence.slice(0, at).replace(ISOLATE_MARKS, ""),
-    sentence.slice(at + LINK_MARK.length).replace(ISOLATE_MARKS, ""),
-  ]
 }
 
 export type DownloadSheetProps = {

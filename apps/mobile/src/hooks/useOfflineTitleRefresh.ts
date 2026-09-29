@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { AppState } from "react-native"
 
 import { currentAdminForms } from "../i18n/adminLanguage"
-import { getCatalogTag, getLocaleEpoch } from "../i18n/localeStore"
-import { useLocaleEpoch } from "../i18n/useT"
+import { getLocaleEpoch } from "../i18n/localeStore"
 import type { OfflineTitlePatch } from "../lib/downloadLifecycle"
 import type { OfflineDownloadRecord } from "../lib/offlineManifest"
 import {
@@ -12,6 +11,7 @@ import {
   recordsNeedingTitles,
   type OfflineTitleRefreshDeps,
 } from "../lib/offlineTitleRefresh"
+import { useUiTag } from "./useUiTag"
 
 export type UseOfflineTitleRefreshOptions = {
   /** The stored records have loaded. */
@@ -21,11 +21,9 @@ export type UseOfflineTitleRefreshOptions = {
   patchTitles: (videoSlug: string, fields: OfflineTitlePatch) => Promise<void>
 }
 
-/**
- * U7 (R4): the offline library's titles follow the UI language. A pass runs
- * when the records load, when the UI language changes, when a record needs
- * titles, and on each return to the foreground (the app may be online again).
- */
+/** U7 (R4): the offline library's titles follow the UI language. A pass runs
+ *  when the records load, when the UI language changes, when a record needs
+ *  titles, and on each return to the foreground (the app may be online again). */
 export function useOfflineTitleRefresh(
   options: UseOfflineTitleRefreshOptions,
   fetchText: OfflineTitleRefreshDeps["fetchText"] = fetchOfflineTitleText,
@@ -46,14 +44,14 @@ export function useOfflineTitleRefresh(
     }),
   )
 
-  const epoch = useLocaleEpoch()
-  const staleKey = recordsNeedingTitles(records, getCatalogTag())
+  const uiTag = useUiTag()
+  const staleKey = recordsNeedingTitles(records, uiTag)
     .map((record) => record.videoSlug)
     .join("\n")
 
   useEffect(() => {
     if (ready && staleKey !== "") refresher.request()
-  }, [ready, staleKey, epoch, refresher])
+  }, [ready, staleKey, uiTag, refresher])
 
   useEffect(() => {
     if (!ready) return

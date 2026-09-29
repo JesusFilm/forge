@@ -4,11 +4,9 @@ export type VideoLabelT = UiT<"VideoLabel">
 
 type VideoLabelKey = UiMessageKey<"VideoLabel">
 
-/**
- * Admin's video `label` enum, mapped to its catalog key. Feature-agnostic on
- * purpose: the home model and both detail routes render it, so it cannot live
- * in either one. Logic never reads the text; it compares the raw enum (KTD15).
- */
+/** Admin's video `label` enum, mapped to its catalog key. Feature-agnostic on
+ *  purpose: the home model and both detail routes render it, so it cannot live
+ *  in either one. Logic never reads the text; it compares the raw enum (KTD15). */
 const LABEL_KEYS: Readonly<Record<string, VideoLabelKey>> = {
   BEHIND_THE_SCENES: "behindTheScenes",
   COLLECTION: "collection",

@@ -1,8 +1,6 @@
-/**
- * The Experience card art and titles (useVideoThumbnails). The batch document
- * itself validates against the Admin SDL in
- * src/lib/__tests__/videoTextDocuments.contract.guard.test.js.
- */
+/** The Experience card art and titles (useVideoThumbnails). The batch document
+ *  itself validates against the Admin SDL in
+ *  src/lib/__tests__/videoTextDocuments.contract.guard.test.js. */
 
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike

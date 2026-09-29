@@ -1,14 +1,8 @@
 import type { UiT } from "../i18n/useT"
 
-/**
- * Both platforms open a folder picker, so both labels name the same act. The
- * noun follows the platform: Apple's app is called Files, and Android's picker
- * is the system file chooser whatever the OEM ships.
- *
- * A function of the OS, not a `Platform.OS` conditional read inline, because
- * jest runs this app as iOS ONLY — an inline read would leave the Android
- * wording permanently unexercised.
- */
+/** The folder-picker label; the noun follows the platform (Apple's app is
+ *  Files). The OS is an argument because jest runs as iOS only, and an inline
+ *  `Platform.OS` read would leave the Android label untested. */
 export function rawModeLabel(
   platformOS: string,
   t: UiT<"DownloadSheet">,

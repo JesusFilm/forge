@@ -302,11 +302,9 @@ export type DefaultAudioLanguage = {
   slug: string | null
 }
 
-/**
- * KTD12: the default audio, subtitle, Bible, For You, and Explore language.
- * It is the phone's first language, before any catalog fallback. Null before
- * the first read, or when the list is empty (a dev client without the module).
- */
+/** KTD12: the default audio, subtitle, Bible, For You, and Explore language.
+ *  It is the phone's first language, before any catalog fallback. Null before
+ *  the first read, or when the list is empty (a dev client without the module). */
 export function defaultAudioLanguage(): DefaultAudioLanguage | null {
   const tag = tagsOf(phoneLocales).find((value) => value.trim() !== "")
   if (tag === undefined) return null

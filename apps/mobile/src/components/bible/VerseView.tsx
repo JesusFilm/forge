@@ -21,7 +21,7 @@ import {
   type ViewStyle,
 } from "react-native"
 
-import { useT } from "../../i18n/useT"
+import { useT, type UiMessageKey } from "../../i18n/useT"
 import {
   fitCandidates,
   planPlacedFit,
@@ -62,12 +62,15 @@ export type VerseAppearance = {
   verseNumbers: boolean
 }
 
+const VERSE_ACTION_NAMES = [
+  "increment",
+  "decrement",
+  "nextChapter",
+  "previousChapter",
+] as const
+
 /** The screen reader's verse moves (KTD14). */
-export type VerseAction =
-  | "increment"
-  | "decrement"
-  | "nextChapter"
-  | "previousChapter"
+export type VerseAction = (typeof VERSE_ACTION_NAMES)[number]
 
 export type VerseAccessibilityMove = {
   /** Reads the verse, the total, and the chapter. */
@@ -104,24 +107,22 @@ export type VerseViewProps = {
 export type ShownVerse = { box: VerseBox; size: number; scroll: boolean }
 
 // The names stay raw in every language; only the labels are translated.
+const VERSE_ACTION_LABEL_KEYS = {
+  increment: "nextVerseAriaLabel",
+  decrement: "previousVerseAriaLabel",
+  nextChapter: "nextChapterAriaLabel",
+  previousChapter: "previousChapterAriaLabel",
+} as const satisfies Record<VerseAction, UiMessageKey<"BibleReader">>
+
 function verseActions(t: ReaderT): { name: VerseAction; label: string }[] {
-  return [
-    { name: "increment", label: t("nextVerseAriaLabel") },
-    { name: "decrement", label: t("previousVerseAriaLabel") },
-    { name: "nextChapter", label: t("nextChapterAriaLabel") },
-    { name: "previousChapter", label: t("previousChapterAriaLabel") },
-  ]
+  return VERSE_ACTION_NAMES.map((name) => ({
+    name,
+    label: t(VERSE_ACTION_LABEL_KEYS[name]),
+  }))
 }
 
-const VERSE_ACTION_NAMES: readonly string[] = [
-  "increment",
-  "decrement",
-  "nextChapter",
-  "previousChapter",
-] satisfies VerseAction[]
-
 function isVerseAction(name: string): name is VerseAction {
-  return VERSE_ACTION_NAMES.includes(name)
+  return (VERSE_ACTION_NAMES as readonly string[]).includes(name)
 }
 
 /** The adjustable role and actions, for the verse and for the gap note. */

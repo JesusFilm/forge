@@ -1,11 +1,9 @@
 import type { WatchSubtitle } from "./normalizeVideo"
 import { resolveDefaultSlug } from "./resolveDefaultLanguage"
 
-/**
- * The subtitles-off state. A symbol, not the word "Off", so no logic can read
- * display text and no caller can show it untranslated: only the render turns
- * it into catalog text, through {@link subtitleLabelText} (KTD15).
- */
+/** The subtitles-off state. A symbol, not the word "Off", so no logic can read
+ *  display text and no caller can show it untranslated: only the render turns
+ *  it into catalog text, through {@link subtitleLabelText} (KTD15). */
 export const SUBTITLES_OFF: unique symbol = Symbol("subtitles-off")
 
 /** A subtitle name, the off state, or null while nothing is known yet. */
@@ -32,11 +30,9 @@ export function resolveActiveSubtitle(
   return subtitles.find((s) => s.languageSlug === slug) ?? null
 }
 
-/**
- * Subtitles-control label: the off state when disabled, else the active
- * subtitle's language name, or null while the dub's media is still loading
- * (the caller then shows a static "Subtitles" label).
- */
+/** Subtitles-control label: the off state when disabled, else the active
+ *  subtitle's language name, or null while the dub's media is still loading
+ *  (the caller then shows a static "Subtitles" label). */
 export function deriveSubtitleLabel(
   enabled: boolean,
   slug: string | null | undefined,

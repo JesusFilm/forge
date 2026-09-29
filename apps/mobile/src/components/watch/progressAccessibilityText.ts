@@ -1,10 +1,8 @@
 import type { UiT } from "../../i18n/useT"
 import { progressBarState } from "../../lib/watchProgress/thresholds"
 
-/**
- * Fold progress into the card's accessibilityLabel (mobile a11y
- * convention — a deliberate divergence from web's silent bar).
- */
+/** Fold progress into the card's accessibilityLabel (mobile a11y
+ *  convention — a deliberate divergence from web's silent bar). */
 export function progressAccessibilityText(
   entry:
     | { positionSeconds: number; durationSeconds: number }

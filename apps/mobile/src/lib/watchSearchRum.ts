@@ -1,5 +1,4 @@
 import { type SearchResult } from "./queries"
-import { SEARCH_LANGUAGE_SLUG } from "./watchSearch"
 
 /** Action name shared with web and TV so cross-app dashboards join on it. */
 export const WATCH_SEARCH_RESULT_CLICKED_ACTION = "watch_search.result_clicked"
@@ -11,8 +10,8 @@ export type WatchSearchResultClickOptions = {
   position: number
   /** Client-generated correlation id shared with the per-search log. */
   searchRequestId: string
-  /** The display slug the search sent (U7); English when absent. */
-  searchLanguageSlug?: string
+  /** The display slug the search sent (U7). */
+  searchLanguageSlug: string
 }
 
 /**
@@ -26,7 +25,7 @@ export function buildWatchSearchResultClickContext(
   {
     position,
     searchRequestId,
-    searchLanguageSlug = SEARCH_LANGUAGE_SLUG,
+    searchLanguageSlug,
   }: WatchSearchResultClickOptions,
 ): Record<string, number | string> {
   return {

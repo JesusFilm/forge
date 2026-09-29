@@ -762,10 +762,8 @@ function createQueueEngine(deps: ExploreClipQueueDeps, host: EngineHost) {
       wake()
     },
 
-    /**
-     * KTD16: new text forms at a focus. Hydrations no clip holds were read in
-     * the old language, so they go; each video hydrates again when needed.
-     */
+    /** KTD16: new text forms at a focus. Hydrations no clip holds were read in
+     *  the old language, so they go; each video hydrates again when needed. */
     changeTextForms(input: PumpInput): void {
       if (queue == null || queue.media.size === 0) return
       const held = new Set(queue.ahead.map((clip) => clip.videoId))

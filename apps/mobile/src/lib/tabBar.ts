@@ -71,10 +71,8 @@ export const TAB_LABEL_KEYS = {
   profile: "profile",
 } as const satisfies Record<TabRouteName, UiMessageKey<"Tabs">>
 
-/**
- * The tab labels in the UI language. Both layouts read them at render, so a
- * language change relabels the bar without a remount (KTD2).
- */
+/** The tab labels in the UI language. Both layouts read them at render, so a
+ *  language change relabels the bar without a remount (KTD2). */
 export function useTabLabels(): Record<TabRouteName, string> {
   const t = useT("Tabs")
   return useMemo(

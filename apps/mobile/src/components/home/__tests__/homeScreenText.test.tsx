@@ -1,8 +1,6 @@
-/**
- * U10: Home's own states and hero controls read the `Home` catalog, and each
- * moved control keeps one tap name in both languages. The feed's children
- * stay mocked out, as in homeSplashHandover.test.tsx.
- */
+/** U10: Home's own states and hero controls read the `Home` catalog, and each
+ *  moved control keeps one tap name in both languages. The feed's children
+ *  stay mocked out, as in homeSplashHandover.test.tsx. */
 
 jest.mock("@react-native-async-storage/async-storage", () => ({
   __esModule: true,

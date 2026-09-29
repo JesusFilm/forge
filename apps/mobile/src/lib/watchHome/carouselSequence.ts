@@ -4,7 +4,6 @@
  * eligibility is poster + slug (KTD-4); `overlayForInsert` re-evaluates at display time. Pure TS only.
  */
 
-import { getCatalogTag } from "../../i18n/localeStore"
 import { muxHlsUrlFromPlaybackId } from "../muxThumbnail"
 import type { WatchHomeMuxInsertConfig } from "./config"
 
@@ -209,10 +208,8 @@ const DATE_PREFIX_FORMAT: Intl.DateTimeFormatOptions = {
   timeZone: "America/New_York",
 }
 
-/**
- * The displayed date, in the UI language (U10). `en-US` is the fallback for a
- * tag the runtime lacks, so it never takes the phone's default locale.
- */
+/** The displayed date, in the UI language (U10). `en-US` is the fallback for a
+ *  tag the runtime lacks, so it never takes the phone's default locale. */
 export function formatWatchHomeDatePrefix(now: Date, uiTag: string): string {
   try {
     return new Intl.DateTimeFormat([uiTag, "en-US"], DATE_PREFIX_FORMAT).format(
@@ -282,7 +279,7 @@ export function overlayForInsert(
 export function muxSlideDisplayCopy(
   slide: WatchHomeMuxSlide,
   now: Date,
-  uiTag: string = getCatalogTag(),
+  uiTag: string,
 ): WatchHomeMuxOverlayCopy {
   const copy = overlayForInsert(slide.insert, now)
   if (!slide.prefixTitleWithDate) return copy
@@ -365,7 +362,7 @@ export function mergeWatchHomeMuxInserts(
   inserts: readonly WatchHomeMuxInsertConfig[],
   now = new Date(),
   sessionSeed = WATCH_HOME_DEFAULT_SESSION_SEED,
-  uiTag: string = getCatalogTag(),
+  uiTag: string,
 ): WatchHomeSlide[] {
   const enabled = inserts.filter((insert) => insert.enabled)
   if (enabled.length === 0) return [...videos]
@@ -424,7 +421,7 @@ export type WatchHomeHeroQueueInput = {
   now?: Date
   sessionSeed?: string
   /** The UI catalog tag for the displayed date prefix. */
-  uiTag?: string
+  uiTag: string
 }
 
 /**
@@ -440,7 +437,7 @@ export function buildWatchHomeHeroQueue({
   startPoolIndex = 0,
   now = new Date(),
   sessionSeed = WATCH_HOME_DEFAULT_SESSION_SEED,
-  uiTag = getCatalogTag(),
+  uiTag,
 }: WatchHomeHeroQueueInput): {
   slides: WatchHomeSlide[]
   videos: WatchHomeVideoSlide[]

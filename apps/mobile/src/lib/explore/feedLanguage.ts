@@ -1,9 +1,6 @@
-/**
- * The feed language (R19, KTD7, KTD12): the saved dub preference, else the
- * phone's first language through the default-audio table, else English.
- * Eligibility, the pool, and Explore's recommendations request all use this
- * one slug, never the client's own `english` default.
- */
+/** The feed language (R19, KTD7, KTD12): the saved dub, else the phone's first
+ *  language via the default-audio table, else English. Eligibility, the pool and
+ *  Explore's recommendations all use it, never the client's `english` default. */
 
 import { audioSlugForLocaleTag } from "../../i18n/audioSlug"
 import { defaultAudioLanguage } from "../../i18n/localeStore"
@@ -14,10 +11,8 @@ import {
 
 export const FEED_FALLBACK_LANGUAGE_SLUG = DEFAULT_AUDIO_LANGUAGE_SLUG
 
-/**
- * The phone's first language tag, the one the player's default audio uses.
- * The whole tag is kept, because a region can name another Language (`es-ES`).
- */
+/** The phone's first language tag, the one the player's default audio uses.
+ *  The whole tag is kept, because a region can name another Language (`es-ES`). */
 export function readDeviceLocale(): string | null {
   return defaultAudioLanguage()?.tag ?? null
 }

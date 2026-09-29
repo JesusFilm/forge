@@ -275,10 +275,9 @@ export function useWatchHome(): WatchHomeState {
       // the persisted blob.
       const videosJson = JSON.stringify(videos)
 
-      // Derive the Experience body. A transient Experience error (incl. the
-      // deadline above) reuses the last-good blocks of THIS locale, so a network
-      // blip can't downgrade a good body to config (#1), and a blip right after a
-      // language change can't paint the old language's body (KTD16).
+      // Derive the Experience body. A transient error (incl. the deadline above)
+      // reuses THIS locale's last-good blocks: a blip can't downgrade a good body
+      // to config (#1) or, after a language change, paint the old one (KTD16).
       let experienceBlocks: ExperienceBlockList | null = null
       let homepageSource: HomepageSource = "locale"
       let fallbackReason: WatchHomeFallbackReason = "null"
@@ -385,10 +384,9 @@ export function useWatchHome(): WatchHomeState {
         ? homepageSource
         : "locale"
       const hydrationVideosJson = JSON.stringify(hydrationVideos)
-      // Keep the painted snapshot model when the config videos, the body source,
-      // the homepage source, AND the hydration inputs are all unchanged — avoids
-      // resetting the hero pager on a no-op revalidation, while still repainting
-      // when hydration lands.
+      // Keep the painted snapshot model when the config videos, body source,
+      // homepage source AND hydration inputs are unchanged: a no-op revalidation
+      // must not reset the hero pager, but landed hydration still repaints.
       const snapshotStillCurrent =
         mode === "initial" &&
         videosJson === snapshotVideosJsonRef.current &&

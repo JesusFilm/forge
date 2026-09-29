@@ -201,9 +201,6 @@ jest.mock("../../../src/components/watch/PlayerSlot", () => ({
     return null
   },
 }))
-jest.mock("../../../src/components/watch/DownloadSheet", () => ({
-  rawModeLabel: () => "",
-}))
 jest.mock("../../../src/components/watch/VideoDetailSkeleton", () => ({
   VideoDetailSkeleton: () => null,
 }))

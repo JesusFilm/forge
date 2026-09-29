@@ -22,11 +22,13 @@ const clickInput = {
   resultType: "video",
   position: 3,
   visibleResultIds: ["video-123", "video-456"],
+  searchLanguageSlug: "english",
 }
 
 const viewedInput = {
   requestId: VALID_REQUEST_ID,
   visibleResultIds: ["video-123", "exp-1"],
+  searchLanguageSlug: "english",
 }
 
 beforeEach(() => {

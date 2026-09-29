@@ -52,10 +52,8 @@ function clipClock(seconds: number): string {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`
 }
 
-/**
- * The pill above a scrub: "0:12 / 0:48". Digits and a slash only, so it stays
- * out of the catalog: the translator rejects a message that equals English.
- */
+/** The pill above a scrub: "0:12 / 0:48". Digits and a slash only, so it stays
+ *  out of the catalog: the translator rejects a message that equals English. */
 function scrubTime(elapsed: number, length: number): string {
   return `${clipClock(elapsed)} / ${clipClock(length)}`
 }

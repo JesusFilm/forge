@@ -189,11 +189,9 @@ function englishPassageOf(row: RawCitationRow) {
   return "englishPassage" in row ? row.englishPassage : null
 }
 
-/**
- * R9, R10: the passage for the route's slug, else the English one. Admin
- * answers a slug it cannot map with its English version, so a passage with the
- * English passage's version id is English text.
- */
+/** R9, R10: the passage for the route's slug, else the English one. Admin
+ *  answers a slug it cannot map with its English version, so a passage with the
+ *  English passage's version id is English text. */
 function choosePassage(
   row: RawCitationRow,
   local: BiblePassageProjection,

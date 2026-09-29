@@ -348,11 +348,9 @@ function isUncovered(result: DeliveryResult): boolean {
   )
 }
 
-/**
- * One delivery attempt with KTD11's retry: only `coverage_unavailable` starts
- * it, it keeps the audio (KD14), and a first request in `en` has none. A pair
- * that answered it is not requested again in this session.
- */
+/** One delivery attempt with KTD11's retry: only `coverage_unavailable` starts
+ *  it, it keeps the audio (KD14), and a first request in `en` has none. A pair
+ *  that answered it is not requested again in this session. */
 export async function fetchUserRecommendationsWithCoverage(
   input: FetchUserRecommendationsInput,
   deps: DeliveryDeps,

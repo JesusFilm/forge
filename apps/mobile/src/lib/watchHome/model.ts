@@ -185,11 +185,15 @@ export function buildMetaLabel(
   return args.label
 }
 
+/** The catalog text a card reads, resolved once per model build. */
+type CardCopy = { videoLabel: UiT<"VideoLabel">; home: UiT<"Home"> }
+
 function normalizeCard(args: {
   sectionId: string
   sourceId: string
   video: WatchHomeVideoInput | WatchHomeChildVideoInput
   forms: AdminLanguageForms
+  copy: CardCopy
   parent?: WatchHomeVideoInput | null
 }): WatchHomeCard | null {
   if (!args.video.documentId || !args.video.coreId) return null
@@ -203,7 +207,7 @@ function normalizeCard(args: {
   const playbackId: string | null = null
   const adminImageUrl = pickAdminImage(args.video.images ?? [])
   const imageUrl = adminImageUrl ?? muxThumbnail(playbackId)
-  const label = labelText(args.video.label, getT("VideoLabel"))
+  const label = labelText(args.video.label, args.copy.videoLabel)
   const childCount =
     "children" in args.video && Array.isArray(args.video.children)
       ? args.video.children.length
@@ -252,7 +256,7 @@ function normalizeCard(args: {
         durationSeconds: args.video.durationSeconds ?? null,
         childCount,
       },
-      getT("Home"),
+      args.copy.home,
     ),
     imageUrl,
     imageAlt: imageAlt?.text ?? title,
@@ -270,6 +274,7 @@ function cardEntriesForSource(args: {
   source: WatchHomeSourceConfig
   videoByCoreId: Map<string, WatchHomeVideoInput>
   forms: AdminLanguageForms
+  copy: CardCopy
   missingData: WatchHomeMissingData[]
 }): WatchHomeCard[] {
   const parent = args.videoByCoreId.get(args.source.id)
@@ -297,6 +302,7 @@ function cardEntriesForSource(args: {
               video: rel.child,
               parent,
               forms: args.forms,
+              copy: args.copy,
             })
           : null,
       )
@@ -308,6 +314,7 @@ function cardEntriesForSource(args: {
     sourceId: args.source.id,
     video: parent,
     forms: args.forms,
+    copy: args.copy,
   })
   return card ? [card] : []
 }
@@ -316,6 +323,7 @@ function cardsForPrimaryCollection(args: {
   section: WatchHomeSectionConfig
   videoByCoreId: Map<string, WatchHomeVideoInput>
   forms: AdminLanguageForms
+  copy: CardCopy
   missingData: WatchHomeMissingData[]
 }): WatchHomeCard[] {
   const collectionId = args.section.primaryCollectionId
@@ -344,6 +352,7 @@ function cardsForPrimaryCollection(args: {
             video: rel.child,
             parent,
             forms: args.forms,
+            copy: args.copy,
           })
         : null,
     )
@@ -353,6 +362,7 @@ function cardsForPrimaryCollection(args: {
 function buildSections(args: {
   videoByCoreId: Map<string, WatchHomeVideoInput>
   forms: AdminLanguageForms
+  copy: CardCopy
   missingData: WatchHomeMissingData[]
 }): WatchHomeSection[] {
   return WATCH_HOME_SECTIONS.map((section) => {
@@ -364,6 +374,7 @@ function buildSections(args: {
               source,
               videoByCoreId: args.videoByCoreId,
               forms: args.forms,
+              copy: args.copy,
               missingData: args.missingData,
             }),
           )
@@ -371,6 +382,7 @@ function buildSections(args: {
             section,
             videoByCoreId: args.videoByCoreId,
             forms: args.forms,
+            copy: args.copy,
             missingData: args.missingData,
           })
 
@@ -419,6 +431,7 @@ function eligibleSlidesForSource(args: {
   sourceId: string
   videoByCoreId: Map<string, WatchHomeVideoInput>
   forms: AdminLanguageForms
+  copy: CardCopy
   missingData: WatchHomeMissingData[]
 }): WatchHomeVideoSlide[] {
   if (WATCH_HOME_COLLECTION_BLACKLIST.has(args.sourceId)) return []
@@ -447,6 +460,7 @@ function eligibleSlidesForSource(args: {
     sourceId: args.sourceId,
     video: parent,
     forms: args.forms,
+    copy: args.copy,
   })
   const slide = card ? cardToCarouselSlide(card) : null
   return slide ? [slide] : []
@@ -455,6 +469,7 @@ function eligibleSlidesForSource(args: {
 function buildCarouselPools(args: {
   videoByCoreId: Map<string, WatchHomeVideoInput>
   forms: AdminLanguageForms
+  copy: CardCopy
   missingData: WatchHomeMissingData[]
 }): WatchHomeCarouselPool[] {
   const pools = WATCH_HOME_PLAYLIST_SEQUENCE.map((group, index) => {
@@ -467,6 +482,7 @@ function buildCarouselPools(args: {
         sourceId,
         videoByCoreId: args.videoByCoreId,
         forms: args.forms,
+        copy: args.copy,
         missingData: args.missingData,
       }),
     )
@@ -482,14 +498,16 @@ function buildCarouselPools(args: {
   // its child short films are hls-filtered out. Collect parent short films only.
   const shortFilmById = new Map<string, WatchHomeVideoSlide>()
   for (const video of args.videoByCoreId.values()) {
+    // KTD15: classify on the raw kind (the card's `rawLabel`), never on text.
+    if (video.label !== "SHORT_FILM") continue
     const parentCard = normalizeCard({
       sectionId: "home-carousel-short-films",
       sourceId: video.coreId ?? video.documentId ?? "unknown",
       video,
       forms: args.forms,
+      copy: args.copy,
     })
-    // KTD15: classify on the raw kind; `label` is catalog text.
-    if (!parentCard || parentCard.rawLabel !== "SHORT_FILM") continue
+    if (!parentCard) continue
     const slide = cardToCarouselSlide(parentCard)
     if (slide) shortFilmById.set(slide.id, slide)
   }
@@ -597,9 +615,10 @@ export function buildWatchHomeModelFromVideos(args: {
     }
   }
 
-  const sections = buildSections({ videoByCoreId, forms, missingData })
+  const copy: CardCopy = { videoLabel: getT("VideoLabel"), home: getT("Home") }
+  const sections = buildSections({ videoByCoreId, forms, copy, missingData })
   const carousel: WatchHomeCarouselSequenceData = {
-    pools: buildCarouselPools({ videoByCoreId, forms, missingData }),
+    pools: buildCarouselPools({ videoByCoreId, forms, copy, missingData }),
     muxInserts: WATCH_HOME_MUX_INSERTS,
   }
   const cardMissing = sections.flatMap((section) =>

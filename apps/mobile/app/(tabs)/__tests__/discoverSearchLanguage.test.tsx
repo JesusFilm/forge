@@ -1,8 +1,6 @@
-/**
- * U7 (R9, KTD16): Discover asks in the UI language, pins it to each search
- * generation, and runs the visible query again after a change. An old page
- * never joins the new list. React re-points: "Component render tests".
- */
+/** U7 (R9, KTD16): Discover asks in the UI language, pins it to each search
+ *  generation, and runs the visible query again after a change; an old page
+ *  never joins the new list. React re-points: "Component render tests". */
 
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike

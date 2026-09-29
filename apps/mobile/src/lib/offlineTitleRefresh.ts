@@ -1,8 +1,6 @@
-/**
- * U7 (R4): stored offline titles follow the UI language once the text
- * companion answers. The write is the lifecycle's field-level patch, so a
- * download state write that lands meanwhile is kept.
- */
+/** U7 (R4): stored offline titles follow the UI language once the text
+ *  companion answers. The write is the lifecycle's field-level patch, so a
+ *  download state write that lands meanwhile is kept. */
 import type { AdminLanguageForms } from "../i18n/adminLanguage"
 import type { OfflineTitlePatch } from "./downloadLifecycle"
 import type { OfflineDownloadRecord } from "./offlineManifest"

@@ -1,8 +1,6 @@
-/**
- * The one place a reminder body is built (R14a). It reads the catalog in use
- * when a pass schedules, so a pending reminder keeps the language it was
- * scheduled in, as it keeps its title.
- */
+/** The one place a reminder body is built (R14a). It reads the catalog in use
+ *  when a pass schedules, so a pending reminder keeps the language it was
+ *  scheduled in, as it keeps its title. */
 
 import { getCatalogTag } from "../../i18n/localeStore"
 import { getT, type UiMessageKey } from "../../i18n/useT"
