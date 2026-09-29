@@ -1,5 +1,5 @@
 ---
-id: "feat-576"
+id: "feat-579"
 title: "Publish Core catalog changes into the serving Watch search index"
 owner: "nisal"
 priority: "P1"

@@ -121,4 +121,4 @@ makes every MODERN request fail. A rollback also needs coordinated normal
 releases; retain both generations and their qualifications.
 
 Automatic future catalog publication and bounded Core workflow steps remain
-separate follow-ups in feat-576 and feat-577.
+separate follow-ups in feat-579 and feat-577.

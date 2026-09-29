@@ -94,7 +94,7 @@ The new immutable search generation `breaking-point-recovery-20260930` contains
 all five records and privately returns Breaking Point first. Public search
 still selects the September 8 generation. **End-to-end search recovery was still pending at that checkpoint.** The user
 subsequently authorized ordinary automatic catalog publication and durable
-import execution (feat-576/577). Track deployment and actual public verification
+import execution (feat-579/577). Track deployment and actual public verification
 in feat-578; the old broad evaluation does not become passing evidence.
 
 ## Why This Works
@@ -146,7 +146,7 @@ The September failure is proven; the original August 3 onset remains unproven.
 ## Related Issues
 
 - [Recovery record](../../roadmap/platform/feat-578-breaking-point-watch-recovery.md)
-- [Automatic search publication](../../roadmap/content-discovery/feat-576-watch-search-catalog-publication.md)
+- [Automatic search publication](../../roadmap/content-discovery/feat-579-watch-search-catalog-publication.md)
 - [Bounded workflow steps](../../roadmap/platform/feat-577-core-sync-bounded-workflow-steps.md)
 - [Core projection coverage](../platform/admin-core-sync-entity-coverage.md)
 - [Previous 300-second Workflow failure](../workflow-issues/transcript-embedding-backfill-cancel-and-resume-operations.md)

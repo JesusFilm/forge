@@ -7,7 +7,7 @@ status: "in-progress"
 start_date: "2026-09-30"
 duration: 1
 depends_on:
-  - "feat-576"
+  - "feat-579"
   - "feat-577"
 blocks: []
 tags:
@@ -89,7 +89,7 @@ merged PR alone.
 - Watch serves immutable Candidate generation
   `candidate-revision-v4-curations-v2-20260908t210300z`, with 1,175 catalog
   documents. Refreshing Current aliases alone will not change the serving pin.
-  The missing automatic catalog publication path is tracked in feat-576.
+  The missing automatic catalog publication path is tracked in feat-579.
 - After the external lock became stale normally, scoped full recovery workflow
   `wrun_01M3QD5PSDVWS3RSPRDK2FXRRB` acquired `sync-1790713191409` at
   `20:19:51Z`. Videos began committing successfully. Its step failed at
