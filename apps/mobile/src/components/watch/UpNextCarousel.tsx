@@ -21,6 +21,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { useTextDirection } from "../../i18n/textDirection"
 import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { carousel, card, feedback, text, CARD_GAP } from "../../styles/shared"
 import type { WatchSibling } from "../../lib/normalizeVideo"
@@ -46,6 +47,7 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
   const t = useT("Watch")
   const tCommon = useT("Common")
   const epoch = useLocaleEpoch()
+  const direction = useTextDirection()
   const { width: screenWidth } = useWindowDimensions()
 
   const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
@@ -55,6 +57,14 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
     ({ item }: { item: WatchSibling }) => {
       const isCurrent = item.slug === currentSlug
       const title = item.title ?? item.label ?? tCommon("untitled")
+      // A raw label stand-in has no known language; "untitled" is UI text.
+      const titleDirection = direction.text(
+        item.title != null
+          ? item.titleLang
+          : item.label != null
+            ? null
+            : direction.uiTag,
+      )
 
       const handlePress = () => {
         if (!isCurrent) {
@@ -127,8 +137,13 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
 
           <View style={styles.titleOverlay} pointerEvents="none">
             <Text
-              style={[styles.cardTitle, typography.bodySmall]}
+              style={[
+                styles.cardTitle,
+                typography.bodySmall,
+                titleDirection.style,
+              ]}
               numberOfLines={2}
+              accessibilityLanguage={titleDirection.accessibilityLanguage}
             >
               {title}
             </Text>
@@ -136,7 +151,16 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
         </Pressable>
       )
     },
-    [currentSlug, cardWidth, cardHeight, typography, router, t, tCommon],
+    [
+      currentSlug,
+      cardWidth,
+      cardHeight,
+      typography,
+      router,
+      t,
+      tCommon,
+      direction,
+    ],
   )
 
   if (siblings.length === 0) return null
@@ -144,7 +168,7 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
   return (
     <View>
       <Text
-        style={[text.sectionHeadingPadded, typography.titleLarge]}
+        style={[text.sectionHeadingPadded, typography.titleLarge, direction.ui]}
         accessibilityRole="header"
       >
         {t("upNextHeading")}

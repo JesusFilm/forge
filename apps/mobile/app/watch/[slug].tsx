@@ -20,6 +20,7 @@ import { useApolloClient, useQuery } from "@apollo/client/react"
 import { GET_VIDEO_BY_SLUG, GET_VIDEO_TEXT } from "../../src/lib/queries"
 import { useScreenAdminForms } from "../../src/i18n/useScreenAdminForms"
 import { useT } from "../../src/i18n/useT"
+import { useUiTag } from "../../src/hooks/useUiTag"
 import { videoTextVariables } from "../../src/lib/videoText"
 import { datadogLog } from "../../src/lib/datadog"
 import {
@@ -143,6 +144,7 @@ export default function WatchVideoPage() {
   const tCast = useT("Cast")
   const tCommon = useT("Common")
   const tSheet = useT("DownloadSheet")
+  const uiTag = useUiTag()
 
   const router = useRouter()
   const {
@@ -886,6 +888,7 @@ export default function WatchVideoPage() {
         <VideoMetadata
           label={video?.label ?? null}
           title={displayTitle}
+          titleLang={video?.title != null ? video.titleLang : null}
           subtitle={null}
         />
 
@@ -1027,7 +1030,10 @@ export default function WatchVideoPage() {
 
             <SignInPrompt />
 
-            <VideoDescription description={video.description} />
+            <VideoDescription
+              description={video.description}
+              descriptionLang={video.descriptionLang}
+            />
 
             {video.siblings.length > 0 && (
               <View style={styles.sectionGap}>
@@ -1040,7 +1046,11 @@ export default function WatchVideoPage() {
 
             {studyQuestionsBlock != null && (
               <View style={styles.sectionGap}>
-                <RelatedQuestionsRenderer section={studyQuestionsBlock} />
+                <RelatedQuestionsRenderer
+                  section={studyQuestionsBlock}
+                  headingLang={uiTag}
+                  questionsLang={video.studyQuestionsLang}
+                />
               </View>
             )}
 
@@ -1056,6 +1066,7 @@ export default function WatchVideoPage() {
                   onArtworkFailed={bibleQuotes.reportArtworkFailure}
                   videoSlug={decodedSlug}
                   showShareButton={false}
+                  headingLang={uiTag}
                 />
               </View>
             )}

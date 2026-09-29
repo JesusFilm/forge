@@ -2,6 +2,7 @@ import { useCallback } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { animateLayout } from "../ui/AnimatedChevron"
+import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import { TEXT_BODY } from "../../lib/color"
 import {
@@ -13,6 +14,8 @@ import { layout, text } from "../../styles/shared"
 
 export interface VideoDescriptionProps {
   description: string | null
+  /** The language of `description` (KTD13); null when it is not known. */
+  descriptionLang?: string | null
 }
 
 const COLLAPSED_LINES = 3
@@ -22,9 +25,13 @@ function overflowsCollapsed(e: TextLayoutEvent): boolean {
   return e.nativeEvent.lines.length > COLLAPSED_LINES
 }
 
-export function VideoDescription({ description }: VideoDescriptionProps) {
+export function VideoDescription({
+  description,
+  descriptionLang,
+}: VideoDescriptionProps) {
   const typography = useTypography()
   const t = useT("Common")
+  const bodyDirection = useTextDirection().text(descriptionLang)
 
   // A mounted instance can go partial -> full under cache-first, so the hook
   // re-measures when the text changes.
@@ -44,8 +51,9 @@ export function VideoDescription({ description }: VideoDescriptionProps) {
   return (
     <View style={[layout.sectionOuter, styles.localContainer]}>
       <Text
-        style={[styles.body, typography.body]}
+        style={[styles.body, typography.body, bodyDirection.style]}
         numberOfLines={expanded ? undefined : COLLAPSED_LINES}
+        accessibilityLanguage={bodyDirection.accessibilityLanguage}
       >
         {description}
       </Text>
@@ -59,7 +67,7 @@ export function VideoDescription({ description }: VideoDescriptionProps) {
         importantForAccessibility="no-hide-descendants"
       >
         <Text
-          style={[styles.body, typography.body]}
+          style={[styles.body, typography.body, bodyDirection.style]}
           onTextLayout={handleMeasureLayout}
         >
           {description}

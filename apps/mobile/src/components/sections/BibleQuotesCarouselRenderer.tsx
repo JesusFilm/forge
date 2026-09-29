@@ -42,6 +42,7 @@ import {
 } from "../../lib/bibleCardTreatment"
 import type { VerseRef } from "../../lib/bible/versification/convert"
 import { datadogLog } from "../../lib/datadog"
+import { useTextDirection } from "../../i18n/textDirection"
 import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -64,8 +65,6 @@ import type { AdminBlock } from "../../lib/queries"
 // — a rename on either side would typecheck clean and silently stop rendering
 // the credit. `text` is widened because admin's Experience quote type declares
 // it nullable.
-const ENGLISH_TEXT_DIRECTION = { writingDirection: "ltr" } as const
-
 type QuoteItem = {
   reference: string
   text: string | null
@@ -105,6 +104,9 @@ export interface BibleQuotesCarouselRendererProps {
   videoSlug?: string
   /** The header's share button. The video details page turns it off. */
   showShareButton?: boolean
+  /** The language of the heading (KTD13). Absent on the Experience and SDUI
+   *  paths, whose text language is not known. */
+  headingLang?: string | null
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -250,10 +252,10 @@ function QuoteCard({
 
   const showVerse = !loading && verseText.length > 0
 
-  // R10, KTD13: an English passage keeps its language mark and reads left to
-  // right. U14's direction helper replaces this for every other language.
+  // R10: an English passage keeps its language mark. KTD13: the passage takes
+  // its direction from its own language.
   const englishPassage = quote.textLang === "en"
-  const passageDirection = englishPassage ? ENGLISH_TEXT_DIRECTION : null
+  const passageDirection = useTextDirection().text(quote.textLang).style
 
   // The card is a fixed square and its content is bottom-aligned, so the drop
   // order has to be decided here rather than left to overflow.
@@ -521,8 +523,10 @@ export function BibleQuotesCarouselRenderer({
   onArtworkFailed,
   videoSlug,
   showShareButton = true,
+  headingLang,
 }: BibleQuotesCarouselRendererProps) {
   const typography = useTypography()
+  const headingDirection = useTextDirection().text(headingLang)
   const reduceMotion = useReduceMotion()
   const t = useT("BibleQuotes")
   const tCommon = useT("Common")
@@ -674,8 +678,10 @@ export function BibleQuotesCarouselRenderer({
               text.sectionHeading,
               styles.localHeading,
               typography.titleLarge,
+              headingDirection.style,
             ]}
             accessibilityRole="header"
+            accessibilityLanguage={headingDirection.accessibilityLanguage}
           >
             {heading}
           </Text>

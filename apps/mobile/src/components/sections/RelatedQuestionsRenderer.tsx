@@ -12,6 +12,10 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
+import {
+  useTextDirection,
+  type TextDirectionProps,
+} from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import {
   ACCENT,
@@ -30,6 +34,10 @@ type QuestionItem = {
 
 export interface RelatedQuestionsRendererProps {
   section: AdminBlock
+  /** The language of the heading and of the questions (KTD13). Absent on the
+   *  Experience and SDUI paths, whose text language is not known. */
+  headingLang?: string | null
+  questionsLang?: string | null
 }
 
 const CHAT_WITH_PERSON_URL =
@@ -40,10 +48,11 @@ const ASK_BIBLE_QUESTION_URL =
 function AnswerFallback() {
   const typography = useTypography()
   const t = useT("StudyQuestions")
+  const direction = useTextDirection()
 
   return (
     <View style={styles.fallbackContainer}>
-      <Text style={[styles.fallbackBody, typography.bodySmall]}>
+      <Text style={[styles.fallbackBody, typography.bodySmall, direction.ui]}>
         {t("fallbackBody")}
       </Text>
       <View style={styles.fallbackButtonRow}>
@@ -94,10 +103,12 @@ function QuestionRow({
   item,
   isExpanded,
   onToggle,
+  questionDirection,
 }: {
   item: QuestionItem
   isExpanded: boolean
   onToggle: () => void
+  questionDirection: TextDirectionProps
 }) {
   const typography = useTypography()
   const hasAnswer = item.answer != null && item.answer.trim() !== ""
@@ -109,9 +120,18 @@ function QuestionRow({
         onPress={onToggle}
         accessibilityRole="button"
         accessibilityLabel={item.question}
+        accessibilityLanguage={questionDirection.accessibilityLanguage}
         accessibilityState={{ expanded: isExpanded }}
       >
-        <Text style={[styles.questionText, typography.body]} numberOfLines={3}>
+        <Text
+          style={[
+            styles.questionText,
+            typography.body,
+            questionDirection.style,
+          ]}
+          numberOfLines={3}
+          accessibilityLanguage={questionDirection.accessibilityLanguage}
+        >
           {item.question}
         </Text>
         <AnimatedChevron
@@ -134,9 +154,14 @@ function QuestionRow({
 
 export function RelatedQuestionsRenderer({
   section,
+  headingLang,
+  questionsLang,
 }: RelatedQuestionsRendererProps) {
   const typography = useTypography()
   const t = useT("StudyQuestions")
+  const direction = useTextDirection()
+  const headingDirection = direction.text(headingLang)
+  const questionDirection = direction.text(questionsLang)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
   const s = section as Record<string, unknown>
@@ -165,8 +190,10 @@ export function RelatedQuestionsRenderer({
               text.sectionHeading,
               styles.localHeading,
               typography.titleLarge,
+              headingDirection.style,
             ]}
             accessibilityRole="header"
+            accessibilityLanguage={headingDirection.accessibilityLanguage}
           >
             {heading}
           </Text>
@@ -193,6 +220,7 @@ export function RelatedQuestionsRenderer({
           item={item}
           isExpanded={expandedIndex === index}
           onToggle={() => handleToggle(index)}
+          questionDirection={questionDirection}
         />
       ))}
     </View>

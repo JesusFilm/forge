@@ -19,6 +19,7 @@ import { useRouter } from "expo-router"
 import { useGuardedViewabilityCallback } from "../../hooks/useGuardedViewabilityCallback"
 import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
 import { useTypography } from "../../hooks/useTypography"
+import { useTextDirection } from "../../i18n/textDirection"
 import { useLocaleEpoch, useT } from "../../i18n/useT"
 import {
   isSlateExpired,
@@ -193,6 +194,7 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
   const cardWidth = homeCardWidth("landscape", screenWidth)
   // R4: the app's own string. The block's authored title is not read (KD8).
   const title = t("recommendedTitle")
+  const titleDirection = useTextDirection().ui
 
   // R7: FlashList mounts this row within its draw distance, so the first mount
   // is the deferred-fetch signal. Home owns the latch, this only reports.
@@ -310,7 +312,7 @@ export const RecommendationsShelf = memo(function RecommendationsShelf({
   // One heading for both branches, so the placeholder cannot drift from it.
   const heading = (
     <Text
-      style={[text.sectionHeadingPadded, typography.titleSmall]}
+      style={[text.sectionHeadingPadded, typography.titleSmall, titleDirection]}
       accessibilityRole="header"
     >
       {title}

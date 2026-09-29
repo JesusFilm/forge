@@ -37,6 +37,7 @@ import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useUiTag } from "../../hooks/useUiTag"
+import { textDirectionProps } from "../../i18n/textDirection"
 import { useLocaleEpoch } from "../../i18n/useT"
 import { datadogLog } from "../../lib/datadog"
 import { PlatformBlur } from "../ui/PlatformBlur"
@@ -722,6 +723,12 @@ const HeroPage = memo(function HeroPage({
   const eyebrow = muxCopy?.label ?? slide.label
   const title = muxCopy?.title ?? slide.title
   const insertAction = muxCopy?.action ?? null
+  // A video slide's label is UI text; the Mux copy's language is not known.
+  const eyebrowDirection = textDirectionProps(muxCopy ? null : uiTag, uiTag)
+  const titleDirection = textDirectionProps(
+    slide.kind === "video" ? slide.titleLang : null,
+    uiTag,
+  )
 
   // Pages host DISPLAY content only — interactive chrome lives in HomeScreen's
   // zIndex-2 overlay, since the FlashList over the hero swallows taps here. The
@@ -786,12 +793,19 @@ const HeroPage = memo(function HeroPage({
             JESUS FILM PROJECT
           </Text>
         )}
-        <Text style={[styles.eyebrow, typography.caption]}>
+        <Text
+          style={[styles.eyebrow, typography.caption, eyebrowDirection.style]}
+        >
           {eyebrow.toUpperCase()}
         </Text>
         <Text
-          style={[styles.title, typography.headingScale.h2]}
+          style={[
+            styles.title,
+            typography.headingScale.h2,
+            titleDirection.style,
+          ]}
           accessibilityRole="header"
+          accessibilityLanguage={titleDirection.accessibilityLanguage}
           numberOfLines={3}
         >
           {title}

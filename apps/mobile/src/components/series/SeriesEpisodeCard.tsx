@@ -9,6 +9,7 @@ import {
 import { useWatchProgressEntry } from "../../hooks/useWatchProgressEntry"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useTextDirection } from "../../i18n/textDirection"
 import { useT, type UiMessageKey } from "../../i18n/useT"
 import type { WatchEpisode } from "../../lib/normalizeVideo"
 import {
@@ -93,19 +94,25 @@ export function SeriesEpisodeCard({
   const badge =
     downloadState && downloadState !== "none" ? BADGE[downloadState] : null
   const title = episode.title ?? t("episodeFallbackTitle")
+  const titleDirection = useTextDirection().text(episode.titleLang)
+  const labelParts = [
+    title,
+    badge ? t(badge.a11y) : null,
+    progressAccessibilityText(progressEntry, tWatch),
+  ].filter(Boolean)
 
   return (
     <View style={styles.cardOuter}>
       <Pressable
         onPress={() => onSelect(episode)}
         accessibilityRole="button"
-        accessibilityLabel={[
-          title,
-          badge ? t(badge.a11y) : null,
-          progressAccessibilityText(progressEntry, tWatch),
-        ]
-          .filter(Boolean)
-          .join(", ")}
+        accessibilityLabel={labelParts.join(", ")}
+        // The mark fits only a label that is the Admin title alone (R10).
+        accessibilityLanguage={
+          episode.title != null && labelParts.length === 1
+            ? titleDirection.accessibilityLanguage
+            : undefined
+        }
         {...{ "dd-action-name": "series-episode-card" }}
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       >
@@ -131,7 +138,11 @@ export function SeriesEpisodeCard({
 
           {episode.title ? (
             <View style={styles.titleOverlay}>
-              <Text style={styles.title} numberOfLines={2}>
+              <Text
+                style={[styles.title, titleDirection.style]}
+                numberOfLines={2}
+                accessibilityLanguage={titleDirection.accessibilityLanguage}
+              >
                 {episode.title}
               </Text>
             </View>

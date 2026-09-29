@@ -1,6 +1,7 @@
 import { useCallback } from "react"
 
 import { SearchableListSheet } from "../sheets/SearchableListSheet"
+import { useUiTag } from "../../hooks/useUiTag"
 import { useT } from "../../i18n/useT"
 import type { WatchVariant } from "../../lib/normalizeVideo"
 
@@ -29,9 +30,15 @@ export function LanguageSheetContent({
   onClose,
 }: LanguageSheetProps) {
   const t = useT("Watch")
+  const uiTag = useUiTag()
   const displayName = useCallback(
     (v: WatchVariant) => v.languageName ?? t("unknownLanguage"),
     [t],
+  )
+  // The "unknown language" fallback is UI text, in the catalog language.
+  const displayLang = useCallback(
+    (v: WatchVariant) => (v.languageName != null ? v.languageNameLang : uiTag),
+    [uiTag],
   )
   const getSearchValues = useCallback(
     (v: WatchVariant) => [displayName(v), v.languageNameNative],
@@ -60,6 +67,7 @@ export function LanguageSheetContent({
       getSelectionId={getSelectionId}
       getKey={getKey}
       getPrimaryLabel={displayName}
+      getPrimaryLang={displayLang}
       getSecondaryLabel={getSecondaryLabel}
       getStatusLabel={getStatusLabel}
       getSearchValues={getSearchValues}

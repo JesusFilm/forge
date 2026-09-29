@@ -4,6 +4,7 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import {
@@ -68,6 +69,7 @@ export const DownloadRow = memo(function DownloadRow({
   const typography = useTypography()
   // Its own subscription, so a memoized row takes a new UI language too.
   const t = useT("Library")
+  const uiDirection = useTextDirection().ui
   const title = record.title || slugToTitle(record.videoSlug)
   const duration = formatLibraryDuration(record.durationSeconds)
   const rowState = useMemo(() => libraryRowState(record, t), [record, t])
@@ -115,6 +117,7 @@ export const DownloadRow = memo(function DownloadRow({
             styles.subtitle,
             typography.caption,
             failed && styles.subtitleFailed,
+            uiDirection,
           ]}
           numberOfLines={1}
         >

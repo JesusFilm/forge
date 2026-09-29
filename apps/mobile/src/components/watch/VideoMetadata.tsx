@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native"
 
 import { useT } from "../../i18n/useT"
-import { useUiTag } from "../../hooks/useUiTag"
+import { useTextDirection } from "../../i18n/textDirection"
 import { TEXT_SECONDARY } from "../../lib/color"
 import { displayLabel } from "../../lib/videoLabel"
 import { text } from "../../styles/shared"
@@ -10,26 +10,39 @@ import { useTypography } from "../../hooks/useTypography"
 export interface VideoMetadataProps {
   label: string | null
   title: string | null
+  /** The language of `title` (KTD13); null when it is not known. */
+  titleLang?: string | null
   subtitle: string | null
 }
 
-export function VideoMetadata({ label, title, subtitle }: VideoMetadataProps) {
+export function VideoMetadata({
+  label,
+  title,
+  titleLang,
+  subtitle,
+}: VideoMetadataProps) {
   const typography = useTypography()
   const tLabel = useT("VideoLabel")
-  const uiTag = useUiTag()
+  const direction = useTextDirection()
 
   if (title == null) return null
+  const titleDirection = direction.text(titleLang)
 
   return (
     <View style={styles.container}>
       {label != null && (
-        <Text style={[styles.label, typography.caption]}>
-          {displayLabel(label, tLabel).toLocaleUpperCase(uiTag)}
+        <Text style={[styles.label, typography.caption, direction.ui]}>
+          {displayLabel(label, tLabel).toLocaleUpperCase(direction.uiTag)}
         </Text>
       )}
       <Text
-        style={[text.sectionHeading, typography.titleLarge]}
+        style={[
+          text.sectionHeading,
+          typography.titleLarge,
+          titleDirection.style,
+        ]}
         accessibilityRole="header"
+        accessibilityLanguage={titleDirection.accessibilityLanguage}
       >
         {title}
       </Text>

@@ -11,6 +11,9 @@ function displayName(lang: WatchChildLanguage): string {
   return lang.name ?? lang.slug
 }
 
+// A slug stand-in has no known language.
+const displayLang = (lang: WatchChildLanguage) =>
+  lang.name != null ? lang.nameLang : null
 const getSlug = (lang: WatchChildLanguage) => lang.slug
 const getSearchValues = (lang: WatchChildLanguage) => [displayName(lang)]
 
@@ -44,6 +47,7 @@ export function SeriesLanguageSheet({
       getSelectionId={getSlug}
       getKey={getSlug}
       getPrimaryLabel={displayName}
+      getPrimaryLang={displayLang}
       getSearchValues={getSearchValues}
       onSelect={handleSelect}
       searchPlaceholder={t("searchLanguagesPlaceholder")}

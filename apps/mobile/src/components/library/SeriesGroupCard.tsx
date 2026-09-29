@@ -4,6 +4,7 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import {
@@ -75,6 +76,7 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
   const typography = useTypography()
   // Its own subscription, so the memoized card takes a new UI language too.
   const t = useT("Library")
+  const uiDirection = useTextDirection().ui
   const [expanded, setExpanded] = useState(false)
   const posterPath = group.episodes[0]?.posterPath ?? null
   const episodeSlugs = group.episodes.map((episode) => episode.videoSlug)
@@ -152,7 +154,10 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
           <Text style={[styles.title, typography.body]} numberOfLines={1}>
             {group.seriesTitle}
           </Text>
-          <Text style={[styles.meta, typography.caption]} numberOfLines={1}>
+          <Text
+            style={[styles.meta, typography.caption, uiDirection]}
+            numberOfLines={1}
+          >
             {t("seriesMeta", {
               count: group.episodeCount,
               size: formatLibraryBytes(group.combinedBytes),

@@ -25,6 +25,10 @@ jest.mock("../../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: (...a: unknown[]) => mockWarn(...a) },
 }))
 
+// The UI language, for the passage-direction cases (KTD13).
+let mockUiTag = "en"
+jest.mock("../../../hooks/useUiTag", () => ({ useUiTag: () => mockUiTag }))
+
 import { act } from "react"
 import type React from "react"
 import { AccessibilityInfo, Dimensions } from "react-native"
@@ -241,15 +245,43 @@ describe("BibleQuotesCarouselRenderer — the passage language", () => {
     return [...new Set(cards.map((node) => node.props.accessibilityLanguage))]
   }
 
+  const PASSAGE_TEXTS = [
+    "Let’s make man in our image",
+    "World English Bible British Edition",
+    "Public Domain",
+  ]
+
+  afterEach(() => {
+    mockUiTag = "en"
+  })
+
   it("marks an English passage for screen readers and sets it left to right", () => {
+    mockUiTag = "ar"
     const renderer = render([{ ...PASSAGE_QUOTE, textLang: "en" }])
     expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual(["en"])
-    for (const needle of [
-      "Let’s make man in our image",
-      "World English Bible British Edition",
-      "Public Domain",
-    ]) {
+    for (const needle of PASSAGE_TEXTS) {
       expect(flatStyle(findText(renderer, needle)).writingDirection).toBe("ltr")
+      expect(flatStyle(findText(renderer, needle)).direction).toBe("ltr")
+    }
+  })
+
+  it("sets an Arabic passage right to left", () => {
+    mockUiTag = "ar"
+    const renderer = render([{ ...PASSAGE_QUOTE, textLang: "ar" }])
+    expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual([undefined])
+    for (const needle of PASSAGE_TEXTS) {
+      expect(flatStyle(findText(renderer, needle)).writingDirection).toBe("rtl")
+      expect(flatStyle(findText(renderer, needle)).direction).toBe("rtl")
+    }
+  })
+
+  it("adds no direction to an English passage in an English UI", () => {
+    const renderer = render([{ ...PASSAGE_QUOTE, textLang: "en" }])
+    expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual(["en"])
+    for (const needle of PASSAGE_TEXTS) {
+      expect(flatStyle(findText(renderer, needle)).writingDirection).toBe(
+        undefined,
+      )
     }
   })
 

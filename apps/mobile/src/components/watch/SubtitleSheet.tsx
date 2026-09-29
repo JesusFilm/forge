@@ -16,6 +16,7 @@ import type { WatchSubtitle } from "../../lib/normalizeVideo"
 const getSelectionId = (s: WatchSubtitle) => s.languageSlug
 const getKey = (s: WatchSubtitle) => s.documentId
 const getPrimaryLabel = (s: WatchSubtitle) => s.languageName
+const getPrimaryLang = (s: WatchSubtitle) => s.languageNameLang
 const getSearchValues = (s: WatchSubtitle) => [s.languageName]
 
 export type SubtitleSheetProps = {
@@ -113,6 +114,7 @@ export function SubtitleSheetContent({
       getSelectionId={getSelectionId}
       getKey={getKey}
       getPrimaryLabel={getPrimaryLabel}
+      getPrimaryLang={getPrimaryLang}
       getSearchValues={getSearchValues}
       onSelect={handleSelect}
       searchPlaceholder={t("searchSubtitlesPlaceholder")}

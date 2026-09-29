@@ -21,6 +21,7 @@ import {
   type WatchEpisode,
 } from "../../src/lib/normalizeVideo"
 import { useScreenAdminForms } from "../../src/i18n/useScreenAdminForms"
+import { useTextDirection } from "../../src/i18n/textDirection"
 import { useT } from "../../src/i18n/useT"
 import { videoTextVariables } from "../../src/lib/videoText"
 import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
@@ -91,6 +92,7 @@ export default function SeriesScreen() {
   const insets = useSafeAreaInsets()
   const t = useT("Series")
   const tSheet = useT("DownloadSheet")
+  const uiDirection = useTextDirection().ui
 
   const { series, setSeries, languages, selectedLanguageSlug } =
     useSeriesSession()
@@ -571,6 +573,7 @@ export default function SeriesScreen() {
             <VideoMetadata
               label={series?.label ?? "SERIES"}
               title={displayTitle}
+              titleLang={series?.title != null ? series.titleLang : null}
               subtitle={null}
             />
 
@@ -602,13 +605,17 @@ export default function SeriesScreen() {
                   subtitleActive={subtitleActive}
                   downloadState={downloadState}
                 />
-                <VideoDescription description={series.description} />
+                <VideoDescription
+                  description={series.description}
+                  descriptionLang={series.descriptionLang}
+                />
                 {series.episodes.length > 0 && (
                   <Text
                     style={[
                       text.sectionHeadingPadded,
                       typography.titleLarge,
                       styles.gridHeading,
+                      uiDirection,
                     ]}
                   >
                     {t("videosHeading")}

@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from "react-native"
 
+import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import { TEXT_ON_OVERLAY } from "../../lib/color"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
@@ -20,6 +21,8 @@ import { useTypography } from "../../hooks/useTypography"
 
 export type ClipDescriptionProps = {
   description: string | null
+  /** The language of `description` (KTD13); null when it is not known. */
+  descriptionLang?: string | null
   /** "more" was tapped. The clip keeps playing; the overlay holds the video. */
   onExpand: () => void
   /** "less" was tapped. */
@@ -46,11 +49,13 @@ function overflowsOneLine(e: TextLayoutEvent): boolean {
 /** The clip's description: one line, with "more" at its end when it overflows (R15). */
 export function ClipDescription({
   description,
+  descriptionLang,
   onExpand,
   onCollapse,
 }: ClipDescriptionProps) {
   const typography = useTypography()
   const t = useT("Explore")
+  const bodyDirection = useTextDirection().text(descriptionLang)
   const { height } = useWindowDimensions()
   // The hook's reset on new text does not call `onCollapse`: a swipe has
   // already cleared the feed's pause, and a late call would act on the next clip.
@@ -78,7 +83,7 @@ export function ClipDescription({
 
   if (description == null || description.length === 0) return null
 
-  const bodyStyle = [styles.body, typography.bodySmall]
+  const bodyStyle = [styles.body, typography.bodySmall, bodyDirection.style]
   const toggleStyle = [styles.toggleText, typography.bodySmall]
 
   return (
@@ -88,7 +93,12 @@ export function ClipDescription({
           style={{ maxHeight: Math.round(height * EXPANDED_MAX_SCREEN_SHARE) }}
           nestedScrollEnabled
         >
-          <Text style={bodyStyle}>{description}</Text>
+          <Text
+            style={bodyStyle}
+            accessibilityLanguage={bodyDirection.accessibilityLanguage}
+          >
+            {description}
+          </Text>
           <Pressable
             onPress={handleCollapse}
             hitSlop={TOGGLE_HIT_SLOP}
@@ -105,6 +115,7 @@ export function ClipDescription({
           <Text
             style={[bodyStyle, styles.line]}
             numberOfLines={COLLAPSED_LINES}
+            accessibilityLanguage={bodyDirection.accessibilityLanguage}
           >
             {description}
           </Text>

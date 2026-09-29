@@ -24,6 +24,7 @@ import { ClipDescription } from "./ClipDescription"
 import { ClipProgressBar } from "./ClipProgressBar"
 import { SubtitleOverlay } from "../watch/SubtitleOverlay"
 import { clipPosterUri } from "../../hooks/useClipAutostart"
+import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import type { CaptionBox } from "../../lib/captionBox"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
@@ -104,6 +105,7 @@ export function ClipOverlay({
 }: ClipOverlayProps) {
   const typography = useTypography()
   const t = useT("Explore")
+  const titleDirection = useTextDirection().text(clip.titleLang)
   const tabBarClearance = useTabBarClearance()
   const safeTop = useSafeAreaInsets().top
   const [bottomHeight, setBottomHeight] = useState(0)
@@ -319,14 +321,20 @@ export function ClipOverlay({
             onLayout={handleInfoLayout}
           >
             <Text
-              style={[styles.title, typography.titleSmall]}
+              style={[
+                styles.title,
+                typography.titleSmall,
+                titleDirection.style,
+              ]}
               numberOfLines={2}
               accessibilityRole="header"
+              accessibilityLanguage={titleDirection.accessibilityLanguage}
             >
               {clip.title}
             </Text>
             <ClipDescription
               description={clip.description}
+              descriptionLang={clip.descriptionLang}
               onExpand={handleExpand}
               onCollapse={handleCollapse}
             />
