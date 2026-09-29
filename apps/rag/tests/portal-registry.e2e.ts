@@ -12,11 +12,13 @@ test("registry search, filters, sorting, pages and placeholder navigation", asyn
         consumers: Array.from({ length: 25 }, (_, index) => ({
           consumerId: "registry-" + index,
           name: "registry-" + String(index).padStart(2, "0"),
-          state: index === 24 ? "revoked" : "active",
+          state:
+            index === 24 ? "revoked" : index === 23 ? "suspended" : "active",
           memberCount: index === 0 ? 1 : 2,
           owned: true,
           credentialVersion: 1,
           membershipVersion: 1,
+          lifecycleVersion: 1,
         })),
       },
     })
@@ -40,6 +42,27 @@ test("registry search, filters, sorting, pages and placeholder navigation", asyn
     "Showing 1 of 1 consumers",
   )
   await expect(page.locator("#rows")).toContainText("registry-24")
+  await page.route("**/portal/consumers/registry-24/recover", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        secret: "rag_synthetic-recovery",
+        credentialVersion: 2,
+      }),
+    }),
+  )
+  await page.getByRole("button", { name: "Actions for registry-24" }).click()
+  await page
+    .locator("#row-menu")
+    .getByRole("button", { name: "Restore with new key" })
+    .click()
+  await expect(
+    page.getByRole("heading", { name: "Save your API key" }),
+  ).toBeVisible()
+  await page.getByRole("button", { name: "I’ve saved the key" }).click()
+  await expect(page.getByLabel("One-time API key")).toHaveCount(0)
+  await page.getByRole("button", { name: "Suspended", exact: true }).click()
+  await expect(page.locator("#rows")).toContainText("registry-23")
   await page.getByRole("button", { name: "All", exact: true }).click()
   await page.getByRole("button", { name: "Name" }).click()
   await expect(page.locator("#rows tr").first()).toContainText("registry-24")

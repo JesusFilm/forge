@@ -124,6 +124,7 @@ export function createUsageView(container, { read, onUnauthorized }) {
     details.replaceChildren(make("h2", report.label))
     const list = make("dl")
     for (const [label, value] of [
+      ["Consumer ID", report.consumerId],
       [
         "Window (UTC)",
         dateTime(report.windowStart) + " – " + dateTime(report.windowEnd),
@@ -194,7 +195,8 @@ export function createUsageView(container, { read, onUnauthorized }) {
       const tr = make("tr"),
         name = make("th")
       name.scope = "row"
-      const link = action(row.name, "View report for " + row.name, () => {
+      const displayName = row.name
+      const link = action(displayName, "View report for " + displayName, () => {
         const report = reports.get(row.consumerId)
         if (report) showDetails(report)
       })
@@ -266,7 +268,7 @@ export function createUsageView(container, { read, onUnauthorized }) {
     status.textContent = "Loading consumers…"
     error.textContent = ""
     try {
-      const data = await read("/consumers")
+      const data = await read("/consumers/history")
       if (selected !== generation) return
       for (const control of [input, apply, refresh]) control.disabled = false
       consumers = data.consumers.sort((a, b) => a.name.localeCompare(b.name))
