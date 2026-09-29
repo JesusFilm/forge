@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 import { runRecommendationRetrievalQuery } from "../delivery-runtime"
 import { composeMmrSlate, MMR_SLATE_POLICY_VERSION } from "./mmr"
 import {
@@ -65,6 +66,22 @@ export async function composeAuthorizedMmrSlate(input: {
       input.slate.policyVersion !== MMR_SLATE_POLICY_VERSION)
   )
     return fallback("composition_version_mismatch")
+  if (
+    input.slate.ordered
+      .slice(0, 64)
+      .some((candidate) =>
+        candidate.nominations.some(
+          (nomination) =>
+            nomination.source.generator === "directional-cowatch" &&
+            (!input.binding.cowatchGenerationId ||
+              nomination.source.generatorVersion !==
+                COWATCH_SHADOW_GENERATOR_KEY ||
+              nomination.source.evidence.generation !==
+                input.binding.cowatchGenerationId),
+        ),
+      )
+  )
+    return fallback("composition_candidate_graph_mismatch")
   const result = composeMmrSlate(input.slate)
   if (
     hasMissingInput(
@@ -140,6 +157,7 @@ export async function composeAuthorizedMmrSlate(input: {
       compositionEvidenceDigest: input.binding.evidenceDigest,
       compositionReviewDigest: input.binding.reviewDigest,
       compositionAuthorityRevision: input.binding.authorityRevision,
+      cowatchGenerationId: input.binding.cowatchGenerationId ?? null,
       experimentId: authority.experimentId,
       experimentGeneration: authority.experimentGeneration,
       studyProtocolDigest: authority.studyProtocolDigest,

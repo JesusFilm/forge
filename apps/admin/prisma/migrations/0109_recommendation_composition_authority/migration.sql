@@ -131,11 +131,25 @@ CREATE TRIGGER composition_decision_immutable BEFORE UPDATE OR DELETE ON recomme
 CREATE TRIGGER composition_calibration_immutable BEFORE UPDATE OR DELETE ON recommendation_composition_calibration FOR EACH ROW EXECUTE FUNCTION protect_composition_history();
 
 CREATE FUNCTION composition_observation_guard() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE root recommendation_shadow_run; contract recommendation_composition_protocol; request_root recommendation_request; profile_root recommendation_profile;
+DECLARE root recommendation_shadow_run; contract recommendation_composition_protocol; request_root recommendation_request; profile_root recommendation_profile; evaluation_root recommendation_shadow_evaluation; graph_root recommendation_cowatch_generation;
 BEGIN
   IF TG_OP = 'UPDATE' THEN RAISE EXCEPTION 'composition observation is immutable'; END IF;
   SELECT * INTO root FROM recommendation_shadow_run WHERE id = NEW.run_id FOR SHARE;
+  SELECT * INTO contract FROM recommendation_composition_protocol WHERE id = NEW.protocol_id;
+  IF contract.config->>'cowatchGenerationId' IS NOT NULL THEN
+    SELECT * INTO graph_root FROM recommendation_cowatch_generation WHERE id = (contract.config->>'cowatchGenerationId')::char(64) FOR SHARE;
+    IF graph_root.id IS NULL OR graph_root.invalidated_at IS NOT NULL
+      OR graph_root.lineage_version <> 'durable-privacy-generation-v2'
+      OR NEW.expires_at > graph_root.expires_at
+      OR NEW.expires_at > (contract.config->>'cowatchDependencyExpiresAt')::timestamptz
+    THEN RAISE EXCEPTION 'composition graph binding unavailable'; END IF;
+  END IF;
   SELECT * INTO contract FROM recommendation_composition_protocol WHERE id = NEW.protocol_id FOR UPDATE;
+  SELECT * INTO evaluation_root FROM recommendation_shadow_evaluation WHERE id = root.evaluation_id;
+  IF evaluation_root.cowatch_generation_id IS DISTINCT FROM contract.config->>'cowatchGenerationId'
+    OR evaluation_root.manifest_id <> contract.source_manifest_id
+    OR evaluation_root.generator_version <> contract.generator_version
+  THEN RAISE EXCEPTION 'composition evaluation binding unavailable'; END IF;
   SELECT * INTO request_root FROM recommendation_request WHERE id = root.request_id FOR SHARE;
   IF root.projection_profile_id IS NOT NULL THEN
     SELECT * INTO profile_root FROM recommendation_profile WHERE id = root.projection_profile_id FOR SHARE;
@@ -143,6 +157,12 @@ BEGIN
       OR NEW.expires_at > profile_root.expires_at
     THEN RAISE EXCEPTION 'composition profile binding unavailable'; END IF;
   END IF;
+  IF EXISTS (SELECT 1 FROM recommendation_shadow_nomination nomination
+    WHERE nomination.run_id = root.id AND nomination.generator = 'directional-cowatch'
+      AND (contract.config->>'cowatchGenerationId' IS NULL
+        OR nomination.provenance->>'generation' IS DISTINCT FROM contract.config->>'cowatchGenerationId'
+        OR nomination.generator_version <> 'directional-cowatch-shadow-v1'))
+  THEN RAISE EXCEPTION 'composition nomination graph mismatch'; END IF;
   IF request_root.state <> 'issued' OR NEW.expires_at > request_root.expires_at
     OR contract.revoked_at IS NOT NULL OR root.state <> 'published'
     OR root.evaluation_id <> contract.shadow_evaluation_id
@@ -204,6 +224,7 @@ CREATE TRIGGER composition_request_fence AFTER UPDATE ON recommendation_request 
 CREATE FUNCTION fence_composition_evaluation() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF NEW.generation <> OLD.generation OR NEW.manifest_id <> OLD.manifest_id
+    OR NEW.cowatch_generation_id IS DISTINCT FROM OLD.cowatch_generation_id
     OR NEW.generator_version <> OLD.generator_version OR NEW.sampling_version <> OLD.sampling_version
     OR NEW.context_version <> OLD.context_version OR NEW.eligibility_version <> OLD.eligibility_version
     OR NEW.retention_policy_version <> OLD.retention_policy_version
@@ -214,3 +235,45 @@ BEGIN
   RETURN NEW;
 END $$;
 CREATE TRIGGER composition_evaluation_fence AFTER UPDATE ON recommendation_shadow_evaluation FOR EACH ROW EXECUTE FUNCTION fence_composition_evaluation();
+
+-- Reverse graph authority lookup is indexed. No FK: aggregate history must not
+-- prevent graph/source retention deletion or retain source rows beyond their TTL.
+CREATE INDEX composition_protocol_graph_idx ON recommendation_composition_protocol ((config->>'cowatchGenerationId'));
+ALTER TABLE recommendation_composition_protocol ADD CONSTRAINT composition_graph_binding CHECK (
+  (generator_version <> 'directional-cowatch-shadow-v1' AND config->>'cowatchGenerationId' IS NULL)
+  OR (generator_version = 'directional-cowatch-shadow-v1'
+    AND source_manifest_id = 'hybrid-profile-viewing-mode-cowatch-mmr-v1'
+    AND challenger_manifest_id = source_manifest_id
+    AND COALESCE(config->>'cowatchGenerationId' ~ '^[a-f0-9]{64}$', false)
+    AND config->>'cowatchDependencyExpiresAt' IS NOT NULL)
+);
+CREATE FUNCTION fence_composition_graph() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' OR NEW.invalidated_at IS DISTINCT FROM OLD.invalidated_at THEN
+    UPDATE recommendation_composition_protocol SET authority_revision = authority_revision + 1,
+      revoked_at = COALESCE(revoked_at, clock_timestamp())
+      WHERE config->>'cowatchGenerationId' = OLD.id AND revoked_at IS NULL;
+  END IF;
+  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+END $$;
+CREATE TRIGGER composition_graph_removed BEFORE DELETE ON recommendation_cowatch_generation FOR EACH ROW EXECUTE FUNCTION fence_composition_graph();
+CREATE TRIGGER composition_graph_invalidated AFTER UPDATE ON recommendation_cowatch_generation FOR EACH ROW EXECUTE FUNCTION fence_composition_graph();
+
+-- Freeze graph population as soon as a composition protocol is prepared, before
+-- shadow execution and before the later single-use frozen-trial qualification.
+CREATE OR REPLACE FUNCTION cowatch_graph_appended() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM invalidate_cowatch_generations(ARRAY(
+    SELECT DISTINCT row.generation_id FROM cowatch_inserted row
+    WHERE EXISTS (SELECT 1 FROM recommendation_cowatch_trial_authority authority WHERE authority.generation_id = row.generation_id)
+      OR EXISTS (SELECT 1 FROM recommendation_composition_protocol protocol WHERE protocol.config->>'cowatchGenerationId' = row.generation_id)
+  ), 'graph_appended');
+  RETURN NULL;
+END $$;
+
+CREATE FUNCTION fence_composition_nomination() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  DELETE FROM recommendation_composition_observation WHERE run_id = OLD.run_id;
+  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+END $$;
+CREATE TRIGGER composition_nomination_changed AFTER UPDATE OR DELETE ON recommendation_shadow_nomination FOR EACH ROW EXECUTE FUNCTION fence_composition_nomination();

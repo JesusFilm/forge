@@ -11,12 +11,18 @@ vi.mock("@/auth/session", () => ({
   resolveAdminSessionFromRequest: mocks.session,
 }))
 vi.mock("@/db/client", () => ({ prisma: {} }))
-vi.mock("@/services/recommendations/composition/service", () => ({
-  prepareCompositionProtocol: mocks.prepare,
-  decideCompositionProtocol: mocks.decide,
-  recordCompositionCalibration: mocks.calibrate,
-  inspectComposition: mocks.inspect,
-}))
+vi.mock(
+  "@/services/recommendations/composition/service",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/services/recommendations/composition/service")
+    >()),
+    prepareCompositionProtocol: mocks.prepare,
+    decideCompositionProtocol: mocks.decide,
+    recordCompositionCalibration: mocks.calibrate,
+    inspectComposition: mocks.inspect,
+  }),
+)
 import { GET, POST } from "./route"
 const protocolId = "11111111-1111-4111-8111-111111111111"
 function request(body: unknown, origin = "http://localhost:3003") {
@@ -68,6 +74,32 @@ describe("composition operator API", () => {
       actor: { id: "admin", role: "ADMIN" },
       authenticatedAt: expect.any(Date),
     })
+  })
+  it("passes the exact optional graph pin through strict preparation", async () => {
+    const body = {
+      action: "prepare",
+      protocolId,
+      shadowEvaluationId: protocolId,
+      sourceManifestId: "bundle",
+      challengerManifestId: "bundle",
+      generatorVersion: "generator",
+      cowatchGenerationId: "a".repeat(64),
+      thresholds: {
+        minimumRuns: 1,
+        maxFallbackRate: 0,
+        maxMissingInputRate: 0,
+        maxLatencyMs: 200,
+        minimumFillRate: 1,
+      },
+    }
+    mocks.prepare.mockResolvedValue({ id: protocolId })
+    expect((await POST(request(body))).status).toBe(200)
+    expect(mocks.prepare.mock.calls[0]?.[2]).toMatchObject({
+      cowatchGenerationId: "a".repeat(64),
+    })
+    expect(
+      (await POST(request({ ...body, cowatchGenerationId: "latest" }))).status,
+    ).toBe(400)
   })
   it("rejects client approval claims and returns uncached exact decisions", async () => {
     expect(

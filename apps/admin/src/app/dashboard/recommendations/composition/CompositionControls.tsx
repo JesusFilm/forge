@@ -107,6 +107,7 @@ export function CompositionControls(props: {
               sourceManifestId: data.get("sourceManifestId"),
               generatorVersion: data.get("generatorVersion"),
               challengerManifestId: data.get("challengerManifestId"),
+              cowatchGenerationId: data.get("cowatchGenerationId") || null,
               thresholds: Object.fromEntries(
                 [
                   "minimumRuns",
@@ -135,6 +136,15 @@ export function CompositionControls(props: {
               />
             </label>
           ))}
+          <label className="block">
+            Co-watch graph generation (required for the co-watch/MMR bundle)
+            <input
+              name="cowatchGenerationId"
+              pattern="[a-f0-9]{64}"
+              maxLength={64}
+              className="mt-1 block w-full rounded border p-2"
+            />
+          </label>
           <p>
             Prespecify operational thresholds. No default thresholds are
             supplied.

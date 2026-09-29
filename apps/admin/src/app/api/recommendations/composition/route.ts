@@ -3,26 +3,16 @@ import { resolveAdminSessionFromRequest } from "@/auth/session"
 import { prisma } from "@/db/client"
 import { ForbiddenError } from "@/services/errors"
 import { RecommendationConflictError } from "@/services/recommendations/errors"
-import { CompositionThresholds } from "@/services/recommendations/composition/policy"
 import {
   prepareCompositionProtocol,
+  PrepareComposition,
   decideCompositionProtocol,
   recordCompositionCalibration,
   inspectComposition,
 } from "@/services/recommendations/composition/service"
 
 const Input = z.discriminatedUnion("action", [
-  z
-    .object({
-      action: z.literal("prepare"),
-      protocolId: z.string().uuid(),
-      shadowEvaluationId: z.string().uuid(),
-      sourceManifestId: z.string().min(1).max(191),
-      generatorVersion: z.string().min(1).max(64),
-      challengerManifestId: z.string().min(1).max(191),
-      thresholds: CompositionThresholds,
-    })
-    .strict(),
+  PrepareComposition.extend({ action: z.literal("prepare") }),
   z
     .object({ action: z.literal("decide"), protocolId: z.string().uuid() })
     .strict(),

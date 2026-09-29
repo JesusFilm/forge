@@ -4,7 +4,12 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import { beforeAll, afterAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { HYBRID_CANDIDATE_GENERATOR_SET_VERSION } from "../candidate"
-import { HYBRID_PERSONALIZED_MANIFEST } from "../promotion/manifest"
+import {
+  HYBRID_PERSONALIZED_MANIFEST,
+  COWATCH_MMR_TRIAL_MANIFEST,
+} from "../promotion/manifest"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
+import { compositionGraphFixture } from "./graph.test-fixture"
 import {
   createShadowEvaluation,
   claimNextShadowRun,
@@ -18,6 +23,7 @@ import {
   decideCompositionProtocol,
   recordCompositionCalibration,
   resolveCompositionQualification,
+  resolveRetainedCompositionQualification,
   lockCompositionQualificationForIssuance,
   inspectComposition,
   purgeExpiredCompositionEvidence,
@@ -49,6 +55,11 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         create: HYBRID_PERSONALIZED_MANIFEST,
         update: {},
       })
+      await db.recommendationStrategyManifest.upsert({
+        where: { id: COWATCH_MMR_TRIAL_MANIFEST.id },
+        create: COWATCH_MMR_TRIAL_MANIFEST,
+        update: {},
+      })
       await db.recommendationStrategyManifest.create({
         data: {
           ...HYBRID_PERSONALIZED_MANIFEST,
@@ -64,9 +75,15 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     })
 
     async function fixture(
-      options: { profile?: boolean; minimumRuns?: number } = {},
+      options: {
+        profile?: boolean
+        minimumRuns?: number
+        graph?: Awaited<ReturnType<typeof compositionGraphFixture>>
+        evaluationGraphId?: string
+        wrongNominationGraph?: boolean
+      } = {},
     ) {
-      const now = new Date(Date.now() - 2_000)
+      const now = options.graph?.now ?? new Date(Date.now() - 2_000)
       const evaluationId = randomUUID(),
         protocolId = randomUUID(),
         requestId = randomUUID(),
@@ -75,9 +92,16 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const input = {
         protocolId,
         shadowEvaluationId: evaluationId,
-        sourceManifestId: HYBRID_PERSONALIZED_MANIFEST.id,
-        generatorVersion: HYBRID_CANDIDATE_GENERATOR_SET_VERSION,
-        challengerManifestId: challengerId,
+        sourceManifestId: options.graph
+          ? COWATCH_MMR_TRIAL_MANIFEST.id
+          : HYBRID_PERSONALIZED_MANIFEST.id,
+        generatorVersion: options.graph
+          ? COWATCH_SHADOW_GENERATOR_KEY
+          : HYBRID_CANDIDATE_GENERATOR_SET_VERSION,
+        challengerManifestId: options.graph
+          ? COWATCH_MMR_TRIAL_MANIFEST.id
+          : challengerId,
+        cowatchGenerationId: options.graph?.generationId ?? null,
         thresholds: { ...thresholds, minimumRuns: options.minimumRuns ?? 1 },
       }
       const protocol = await prepareCompositionProtocol(
@@ -86,17 +110,38 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         input,
         now,
       )
-      await createShadowEvaluation(db, {
-        evaluationId,
-        manifestId: input.sourceManifestId,
-        generatorVersion: input.generatorVersion,
-        contextVersion: "fixture-context-v1",
-        eligibilityVersion: "fixture-eligibility-v1",
-        windowStart: new Date(now.getTime() - 2 * 86_400_000),
-        windowEnd: new Date(now.getTime() - 86_400_000),
-        requestedSampleSize: 1,
-        now,
-      })
+      if (options.graph) {
+        await db.recommendationShadowEvaluation.create({
+          data: {
+            id: evaluationId,
+            manifestId: input.sourceManifestId,
+            cowatchGenerationId:
+              options.evaluationGraphId ?? options.graph.generationId,
+            generatorVersion: input.generatorVersion,
+            contextVersion: "fixture-context-v1",
+            eligibilityVersion: "fixture-eligibility-v1",
+            samplingVersion: "fixture-sampling-v1",
+            retentionPolicyVersion: "fixture-root-v1",
+            windowStart: new Date(now.getTime() - 2 * 86_400_000),
+            windowEnd: new Date(now.getTime() - 86_400_000),
+            requestedSampleSize: 1,
+            createdAt: now,
+            expiresAt: new Date(now.getTime() + 28 * 86_400_000),
+          },
+        })
+      } else {
+        await createShadowEvaluation(db, {
+          evaluationId,
+          manifestId: input.sourceManifestId,
+          generatorVersion: input.generatorVersion,
+          contextVersion: "fixture-context-v1",
+          eligibilityVersion: "fixture-eligibility-v1",
+          windowStart: new Date(now.getTime() - 2 * 86_400_000),
+          windowEnd: new Date(now.getTime() - 86_400_000),
+          requestedSampleSize: 1,
+          now,
+        })
+      }
       const createdAt = new Date(now.getTime() - 86_400_000),
         expiresAt = new Date(createdAt.getTime() + 29 * 86_400_000)
       const profile = options.profile
@@ -182,7 +227,22 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         expectedEvaluationGeneration: 1,
         claimId: claim.claimId,
         generator: async () => ({
-          nominations: nominations(),
+          nominations: nominations().map((row, index) =>
+            options.wrongNominationGraph && index === 0
+              ? {
+                  ...row,
+                  source: {
+                    ...row.source,
+                    generator: "directional-cowatch",
+                    generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+                    evidence: {
+                      ...row.source.evidence,
+                      generation: "0".repeat(64),
+                    },
+                  },
+                }
+              : row,
+          ),
           projectionCapturedAt: executionAt,
           cohortQuality: 0.9,
         }),
@@ -196,12 +256,32 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         status: "published",
         replay: true,
       })
-      await completeShadowEvaluation(db, {
-        evaluationId,
-        expectedGeneration: 1,
-        minimumRuns: 1,
-        now: executionAt,
-      })
+      if (options.graph) {
+        // Parent owns the integrated candidate gate. This fixture explicitly
+        // records its separate terminal result after actual shadow publication.
+        await db.recommendationShadowDecision.create({
+          data: {
+            evaluationId,
+            decision: "PROMOTE_TO_EXPERIMENT",
+            reasonCode: "native_fixture_only",
+            reevaluationCondition: "not_production_evidence",
+            inputDigest: compositionDigest(evaluationId),
+            decidedAt: executionAt,
+            expiresAt,
+          },
+        })
+        await db.recommendationShadowEvaluation.update({
+          where: { id: evaluationId },
+          data: { state: "TERMINAL" },
+        })
+      } else {
+        await completeShadowEvaluation(db, {
+          evaluationId,
+          expectedGeneration: 1,
+          minimumRuns: 1,
+          now: executionAt,
+        })
+      }
       return {
         now: executionAt,
         operator,
@@ -238,7 +318,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       )
       const binding: CompositionBinding = {
         protocolId: f.protocolId,
-        manifestId: challengerId,
+        manifestId: f.input.challengerManifestId,
+        cowatchGenerationId: f.input.cowatchGenerationId,
         composerVersion: MMR_SLATE_POLICY_VERSION,
         configDigest: f.protocol.configDigest,
         evidenceDigest: decision.evidenceDigest,
@@ -250,6 +331,229 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       ).not.toBeNull()
       return { ...f, decision, review, reviewInput, binding }
     }
+
+    it("binds exact graph identity in preparation, evidence, review and live lookup", async () => {
+      const graph = await compositionGraphFixture(db)
+      const f = await qualified({ graph })
+      expect(f.protocol.config).toMatchObject({
+        cowatchGenerationId: graph.generationId,
+      })
+      expect(f.decision.validUntil.getTime()).toBeLessThanOrEqual(
+        graph.expiresAt.getTime(),
+      )
+      expect(
+        await resolveCompositionQualification(
+          db,
+          { ...f.binding, cowatchGenerationId: "0".repeat(64) },
+          f.now,
+        ),
+      ).toBeNull()
+      expect(
+        await resolveCompositionQualification(
+          db,
+          { ...f.binding, cowatchGenerationId: null },
+          f.now,
+        ),
+      ).toBeNull()
+      expect(
+        await resolveCompositionQualification(
+          db,
+          f.binding,
+          f.decision.validUntil,
+        ),
+      ).toBeNull()
+      expect(
+        await resolveRetainedCompositionQualification(
+          db,
+          f.binding,
+          new Date(f.now.getTime() + 86_400_000),
+        ),
+      ).not.toBeNull()
+      await expect(
+        prepareCompositionProtocol(
+          db,
+          f.operator,
+          { ...f.input, cowatchGenerationId: null },
+          f.now,
+        ),
+      ).rejects.toThrow("composition_graph_binding_required")
+      await expect(
+        prepareCompositionProtocol(
+          db,
+          f.operator,
+          { ...f.input, sourceManifestId: HYBRID_PERSONALIZED_MANIFEST.id },
+          f.now,
+        ),
+      ).rejects.toThrow("composition_graph_binding_required")
+    })
+    it("refuses new composition approval after graph expiry and wrong graph candidate inputs", async () => {
+      const graph = await compositionGraphFixture(db)
+      const f = await fixture({ graph })
+      await expect(
+        decideCompositionProtocol(
+          db,
+          { actor, authenticatedAt: graph.expiresAt },
+          f.protocolId,
+          graph.expiresAt,
+        ),
+      ).rejects.toThrow("composition_graph_unavailable")
+      const candidateSlate = slate()
+      const candidate = candidateSlate.ordered[0]!
+      const wrongNomination = {
+        ...candidate.selectedNomination,
+        source: {
+          ...candidate.selectedNomination.source,
+          generator: "directional-cowatch",
+          generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+          evidence: { generation: "0".repeat(64) },
+        },
+      }
+      const result = await composeAuthorizedMmrSlate({
+        prisma: db,
+        binding: {
+          protocolId: f.protocolId,
+          manifestId: f.input.challengerManifestId,
+          composerVersion: MMR_SLATE_POLICY_VERSION,
+          configDigest: f.protocol.configDigest,
+          evidenceDigest: "a".repeat(64),
+          reviewDigest: "b".repeat(64),
+          authorityRevision: 1,
+          cowatchGenerationId: graph.generationId,
+        },
+        slate: {
+          ...candidateSlate,
+          ordered: [
+            {
+              ...candidate,
+              nominations: [wrongNomination],
+              selectedNomination: wrongNomination,
+            },
+          ],
+        },
+        historyAvailable: true,
+        deadlineMs: Date.now() + 2000,
+        verifyStudyAuthority: async () => null,
+        now: f.now,
+      })
+      expect(result).toMatchObject({
+        status: "fallback",
+        provenance: { reason: "composition_candidate_graph_mismatch" },
+      })
+    })
+    it("rolls back observation publication for a nomination from a different graph", async () => {
+      const graph = await compositionGraphFixture(db)
+      await expect(
+        fixture({ graph, wrongNominationGraph: true }),
+      ).rejects.toThrow("composition nomination graph mismatch")
+      const protocol =
+        await db.recommendationCompositionProtocol.findFirstOrThrow({
+          where: {
+            config: {
+              path: ["cowatchGenerationId"],
+              equals: graph.generationId,
+            },
+          },
+        })
+      expect(
+        await db.recommendationCompositionObservation.count({
+          where: { protocolId: protocol.id },
+        }),
+      ).toBe(0)
+    })
+    it("refuses evidence when the evaluation pins a different graph", async () => {
+      const graph = await compositionGraphFixture(db)
+      const f = await fixture({ graph, evaluationGraphId: "0".repeat(64) })
+      expect(
+        await db.recommendationCompositionObservation.count({
+          where: { protocolId: f.protocolId },
+        }),
+      ).toBe(0)
+      await expect(
+        decideCompositionProtocol(db, f.operator, f.protocolId, f.now),
+      ).rejects.toThrow("composition_shadow_not_terminal")
+    })
+    it.each([
+      "profile_generation",
+      "source_deletion",
+      "graph_deletion",
+      "edge_append",
+    ] as const)(
+      "irreversibly revokes graph qualification after %s",
+      async (mutation) => {
+        const graph = await compositionGraphFixture(db)
+        const f = await qualified({ graph })
+        if (mutation === "profile_generation")
+          await db.recommendationProfile.update({
+            where: { id: graph.profileId },
+            data: { privacyGeneration: 2 },
+          })
+        if (mutation === "source_deletion")
+          await db.recommendationCowatchSourceContribution.deleteMany({
+            where: { generationId: graph.generationId },
+          })
+        if (mutation === "graph_deletion")
+          await db.recommendationCowatchGeneration.delete({
+            where: { id: graph.generationId },
+          })
+        if (mutation === "edge_append") {
+          const edge = await db.recommendationCowatchEdge.findFirstOrThrow({
+            where: { generationId: graph.generationId },
+          })
+          await db.recommendationCowatchEdge.create({
+            data: { ...edge, id: randomUUID(), targetMediaId: randomUUID() },
+          })
+        }
+        expect(
+          await resolveCompositionQualification(db, f.binding, f.now),
+        ).toBeNull()
+        expect(
+          await resolveRetainedCompositionQualification(
+            db,
+            f.binding,
+            new Date(f.now.getTime() + 86_400_000),
+          ),
+        ).toBeNull()
+        await expect(
+          recordCompositionCalibration(db, f.operator, f.reviewInput, f.now),
+        ).rejects.toThrow("composition_evidence_revoked")
+        const protocol =
+          await db.recommendationCompositionProtocol.findUniqueOrThrow({
+            where: { id: f.protocolId },
+          })
+        expect(protocol.revokedAt).not.toBeNull()
+        expect(protocol.authorityRevision).toBeGreaterThan(1)
+      },
+    )
+    it("fences graph append from preparation before trial qualification", async () => {
+      const graph = await compositionGraphFixture(db)
+      const now = graph.now
+      const input = {
+        protocolId: randomUUID(),
+        shadowEvaluationId: randomUUID(),
+        sourceManifestId: COWATCH_MMR_TRIAL_MANIFEST.id,
+        challengerManifestId: COWATCH_MMR_TRIAL_MANIFEST.id,
+        generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+        cowatchGenerationId: graph.generationId,
+        thresholds,
+      }
+      await prepareCompositionProtocol(
+        db,
+        { actor, authenticatedAt: now },
+        input,
+        now,
+      )
+      const edge = await db.recommendationCowatchEdge.findFirstOrThrow({
+        where: { generationId: graph.generationId },
+      })
+      await db.recommendationCowatchEdge.create({
+        data: { ...edge, id: randomUUID(), targetMediaId: randomUUID() },
+      })
+      const protocol =
+        await db.recommendationCompositionProtocol.findUniqueOrThrow({
+          where: { id: input.protocolId },
+        })
+      expect(protocol.revokedAt).not.toBeNull()
+    })
 
     it("persists separate evidence atomically and requires exact calibration after candidate PASS", async () => {
       const f = await fixture()
@@ -339,6 +643,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       "profile_state",
       "profile_delete",
       "observation_delete",
+      "nomination_delete",
       "request_state",
     ] as const)(
       "immediately revokes approved authority on %s",
@@ -380,6 +685,10 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           await db.recommendationCompositionObservation.delete({
             where: { runId: f.runId },
           })
+        if (kind === "nomination_delete")
+          await db.recommendationShadowNomination.deleteMany({
+            where: { runId: f.runId },
+          })
         if (kind === "request_state")
           await db.recommendationRequest.update({
             where: { id: f.requestId },
@@ -412,6 +721,19 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           f.decision.validUntil,
         ),
       ).toBeNull()
+      expect(
+        await resolveRetainedCompositionQualification(
+          db,
+          f.binding,
+          new Date(f.now.getTime() - 1),
+        ),
+      ).toBeNull()
+      await expect(
+        db.recommendationStrategyManifest.update({
+          where: { id: challengerId },
+          data: { maxItems: 5 },
+        }),
+      ).rejects.toThrow("manifests are immutable")
       for (const changed of [
         { manifestId: "other" },
         { composerVersion: "other" },
@@ -433,70 +755,79 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await decideCompositionProtocol(db, f.operator, f.protocolId, f.now),
       ).toMatchObject({ decision: "inconclusive" })
     })
-    it("serves MMR only with current exact study authority and records its provenance", async () => {
-      const f = await qualified()
-      const common = {
-        prisma: db,
-        binding: f.binding,
-        slate: slate(),
-        historyAvailable: true,
-        deadlineMs: Date.now() + 2_000,
-        now: f.now,
-      }
-      expect(
-        await composeAuthorizedMmrSlate({
-          ...common,
-          verifyStudyAuthority: async () => null,
-        }),
-      ).toMatchObject({ status: "fallback" })
-      const verifyStudyAuthority = async ({
-        contextDigest,
-      }: {
-        contextDigest: string
-      }) => ({
-        binding: f.binding,
-        contextDigest,
-        experimentId: "fixture-study",
-        experimentGeneration: 1,
-        studyProtocolDigest: "b".repeat(64),
-        challengerManifestId: challengerId,
-        validUntil: f.decision.validUntil,
-      })
-      expect(
-        await composeAuthorizedMmrSlate({ ...common, verifyStudyAuthority }),
-      ).toMatchObject({
-        status: "composed",
-        provenance: {
-          composerVersion: MMR_SLATE_POLICY_VERSION,
+    it.each([false, true])(
+      "serves MMR with exact study authority, graph=%s",
+      async (cowatch) => {
+        const graph = cowatch ? await compositionGraphFixture(db) : undefined
+        const f = await qualified({ graph })
+        const common = {
+          prisma: db,
+          binding: f.binding,
+          slate: slate(),
+          historyAvailable: true,
+          deadlineMs: Date.now() + 2_000,
+          now: f.now,
+        }
+        expect(
+          await composeAuthorizedMmrSlate({
+            ...common,
+            verifyStudyAuthority: async () => null,
+          }),
+        ).toMatchObject({ status: "fallback" })
+        const verifyStudyAuthority = async ({
+          contextDigest,
+        }: {
+          contextDigest: string
+        }) => ({
+          binding: f.binding,
+          contextDigest,
           experimentId: "fixture-study",
-          compositionEvidenceDigest: f.decision.evidenceDigest,
-        },
-      })
-      expect(
-        await composeAuthorizedMmrSlate({
-          ...common,
-          historyAvailable: false,
-          verifyStudyAuthority,
-        }),
-      ).toMatchObject({
-        status: "fallback",
-        provenance: { reason: "composition_required_input_unavailable" },
-      })
-      expect(
-        await composeAuthorizedMmrSlate({
-          ...common,
-          verifyStudyAuthority: async (input) => {
-            await db.recommendationRequest.delete({
-              where: { id: f.requestId },
-            })
-            return verifyStudyAuthority(input)
+          experimentGeneration: 1,
+          studyProtocolDigest: "b".repeat(64),
+          challengerManifestId: f.binding.manifestId,
+          validUntil: f.decision.validUntil,
+        })
+        expect(
+          await composeAuthorizedMmrSlate({ ...common, verifyStudyAuthority }),
+        ).toMatchObject({
+          status: "composed",
+          provenance: {
+            composerVersion: MMR_SLATE_POLICY_VERSION,
+            experimentId: "fixture-study",
+            compositionEvidenceDigest: f.decision.evidenceDigest,
           },
-        }),
-      ).toMatchObject({
-        status: "fallback",
-        provenance: { reason: "composition_qualification_revoked" },
-      })
-    })
+        })
+        expect(
+          await composeAuthorizedMmrSlate({
+            ...common,
+            historyAvailable: false,
+            verifyStudyAuthority,
+          }),
+        ).toMatchObject({
+          status: "fallback",
+          provenance: { reason: "composition_required_input_unavailable" },
+        })
+        expect(
+          await composeAuthorizedMmrSlate({
+            ...common,
+            verifyStudyAuthority: async (input) => {
+              if (graph)
+                await db.recommendationCowatchSourceContribution.deleteMany({
+                  where: { generationId: graph.generationId },
+                })
+              else
+                await db.recommendationRequest.delete({
+                  where: { id: f.requestId },
+                })
+              return verifyStudyAuthority(input)
+            },
+          }),
+        ).toMatchObject({
+          status: "fallback",
+          provenance: { reason: "composition_qualification_revoked" },
+        })
+      },
+    )
     it("enforces recent human operator permission independently of the route", async () => {
       const f = await fixture()
       await expect(
@@ -594,56 +925,67 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await db.recommendationCompositionProtocol.count(),
       ).toBeGreaterThan(0)
     })
-    it("orders source erasure after an issuance holding the exact authority locks", async () => {
-      const f = await qualified()
-      let acquired!: () => void
-      let release!: () => void
-      const locked = new Promise<void>((resolve) => {
-        acquired = resolve
-      })
-      const hold = new Promise<void>((resolve) => {
-        release = resolve
-      })
-      const issuance = db.$transaction(async (tx) => {
-        const qualification = await lockCompositionQualificationForIssuance(
-          tx,
-          f.binding,
-          f.now,
-        )
-        acquired()
-        await hold
-        return qualification
-      })
-      await locked
-      const deletion = db.recommendationRequest
-        .delete({ where: { id: f.requestId } })
-        .then(() => "deleted")
-      try {
-        await expect
-          .poll(
-            async () => {
-              const rows = await db.$queryRaw<
-                Array<{ blocked: boolean }>
-              >`SELECT EXISTS (
+    it.each([false, true])(
+      "orders source erasure after exact issuance locks, graph=%s",
+      async (cowatch) => {
+        const graph = cowatch ? await compositionGraphFixture(db) : undefined
+        const f = await qualified({ graph })
+        let acquired!: () => void
+        let release!: () => void
+        const locked = new Promise<void>((resolve) => {
+          acquired = resolve
+        })
+        const hold = new Promise<void>((resolve) => {
+          release = resolve
+        })
+        const issuance = db.$transaction(async (tx) => {
+          const qualification = await lockCompositionQualificationForIssuance(
+            tx,
+            f.binding,
+            f.now,
+          )
+          acquired()
+          await hold
+          return qualification
+        })
+        await locked
+        const deletion = (
+          graph
+            ? db.recommendationCowatchSourceContribution.deleteMany({
+                where: { generationId: graph.generationId },
+              })
+            : db.recommendationRequest.delete({ where: { id: f.requestId } })
+        ).then(() => "deleted")
+        const table = graph
+          ? "%recommendation_cowatch_source_contribution%"
+          : "%recommendation_request%"
+        try {
+          await expect
+            .poll(
+              async () => {
+                const rows = await db.$queryRaw<
+                  Array<{ blocked: boolean }>
+                >`SELECT EXISTS (
             SELECT 1 FROM pg_stat_activity WHERE datname = current_database()
             AND wait_event_type = 'Lock' AND query ILIKE '%DELETE%'
-            AND query ILIKE '%recommendation_request%'
+            AND query ILIKE ${table}
           ) AS blocked`
-              return rows[0]?.blocked
-            },
-            { timeout: 1_000, interval: 10 },
-          )
-          .toBe(true)
-      } finally {
-        release()
-      }
-      expect(await issuance).not.toBeNull()
-      expect(await deletion).toBe("deleted")
-      expect(
-        await db.$transaction((tx) =>
-          lockCompositionQualificationForIssuance(tx, f.binding, f.now),
-        ),
-      ).toBeNull()
-    })
+                return rows[0]?.blocked
+              },
+              { timeout: 1_000, interval: 10 },
+            )
+            .toBe(true)
+        } finally {
+          release()
+        }
+        expect(await issuance).not.toBeNull()
+        expect(await deletion).toBe("deleted")
+        expect(
+          await db.$transaction((tx) =>
+            lockCompositionQualificationForIssuance(tx, f.binding, f.now),
+          ),
+        ).toBeNull()
+      },
+    )
   },
 )
