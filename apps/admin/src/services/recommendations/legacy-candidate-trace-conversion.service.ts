@@ -181,6 +181,8 @@ export function traceSql(
           policy === "selective"
             ? Prisma.sql`
         AND c.experiment_assignment_id IS NULL
+        AND NOT EXISTS(SELECT 1 FROM recommendation_request r
+          WHERE r.id=c.request_id AND r.owner_release_id IS NOT NULL)
         AND NOT EXISTS(SELECT 1 FROM recommendation_shadow_run s WHERE s.request_id=c.request_id OR s.live_candidate_run_id=c.id)
         AND NOT EXISTS(SELECT 1 FROM recommendation_experiment_exposure s WHERE s.request_id=c.request_id)
         AND NOT EXISTS(SELECT 1 FROM recommendation_promotion_slate_fence s WHERE s.request_id=c.request_id)

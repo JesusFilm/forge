@@ -89,6 +89,7 @@ async function linkedProtection(
   const [row] = await tx.$queryRaw<Array<{ protected: boolean }>>(Prisma.sql`
     SELECT (
       r.experiment_assignment_id IS NOT NULL
+      OR r.owner_release_id IS NOT NULL
       OR EXISTS (SELECT 1 FROM recommendation_shadow_run s
         WHERE s.request_id=r.id OR s.live_candidate_run_id=c.id)
       OR EXISTS (SELECT 1 FROM recommendation_experiment_exposure s WHERE s.request_id=r.id)
