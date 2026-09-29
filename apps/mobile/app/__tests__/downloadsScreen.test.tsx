@@ -159,6 +159,7 @@ import { DeleteConfirmSheet } from "../../src/components/library/DeleteConfirmSh
 import { LibraryEmptyState } from "../../src/components/library/LibraryEmptyState"
 import { SelectionActionBar } from "../../src/components/library/SelectionActionBar"
 import { SeriesGroupCard } from "../../src/components/library/SeriesGroupCard"
+import { ScreenTopBar } from "../../src/components/ui/ScreenTopBar"
 import { Snackbar } from "../../src/components/ui/Snackbar"
 import { TAB_BAR_HEIGHT_IOS } from "../../src/lib/tabBar"
 import {
@@ -464,6 +465,17 @@ describe("deleting on the Downloads screen", () => {
     expect(toast.props.message).toMatch(/^1 video deleted · /)
     // No tab bar under a root route, so the toast lifts off the inset only.
     expect(toast.props.clearsTabBar).toBeFalsy()
+    await unmount(renderer)
+  })
+
+  it("draws the top bar under the confirm sheet's scrim", async () => {
+    // The scrim (zIndex 20) fills only its parent view, so a top bar outside
+    // that view stays bright, with its back control live under the sheet.
+    const renderer = await renderScreen("ios")
+    const topBar = nodesOfType(renderer, ScreenTopBar)[0]!
+    const sheet = nodesOfType(renderer, DeleteConfirmSheet)[0]!
+    // A boolean: a failing matcher on renderer nodes prints them and OOMs.
+    expect(topBar.parent === sheet.parent).toBe(true)
     await unmount(renderer)
   })
 })

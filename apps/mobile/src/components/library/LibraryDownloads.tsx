@@ -16,6 +16,7 @@ import { DownloadsSummary } from "./DownloadsSummary"
 import { LibraryEmptyState } from "./LibraryEmptyState"
 import { SelectionActionBar } from "./SelectionActionBar"
 import { SeriesGroupCard } from "./SeriesGroupCard"
+import { ScreenTopBar } from "../ui/ScreenTopBar"
 import { Snackbar } from "../ui/Snackbar"
 import { useDownloads } from "../../contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
@@ -64,8 +65,8 @@ type FocusLayout = {
   cardY: Map<string, number>
 }
 
-/** The full downloads list, with selection mode and deletion. Its one host is
- *  the root `app/downloads.tsx` route, which draws the top bar above it. */
+/** The full downloads list, with its top bar, selection mode and deletion.
+ *  Its one host is the root `app/downloads.tsx` route. */
 export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
   const typography = useTypography()
   const router = useRouter()
@@ -340,6 +341,8 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
 
   return (
     <View style={layout.screenContainer}>
+      {/* Inside this root so the delete sheet's scrim dims it too. */}
+      <ScreenTopBar title="Downloads" showBack />
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: bottomPad }}
