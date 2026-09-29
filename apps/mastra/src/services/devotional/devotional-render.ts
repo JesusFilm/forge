@@ -54,6 +54,7 @@ import {
   generateDevotional,
   type GeneratedDevotional,
   type SourceMark,
+  type VerseCallout,
 } from "./generate-devotional"
 import { buildDevotionalAgentLlms } from "./devotional-models"
 import {
@@ -2306,8 +2307,10 @@ async function renderInStage(
       words = await widenPauseAfterWords(
         path.join(stage, file),
         words,
-        devo.question,
-        devo.prayer,
+        // The take says the locale's lead-ins too ("First, ask yourself:" …
+        // "Talk to God about it:"), so they count as words of each part.
+        [locale.labels.askLead, devo.question].filter(Boolean).join(" "),
+        [locale.labels.prayLead, devo.prayer].filter(Boolean).join(" "),
         QUESTION_TO_PRAYER_GAP_SEC,
         log,
       )
@@ -2363,6 +2366,7 @@ async function renderInStage(
   // paragraphs), the manifest builds from the PRODUCED ones — so they are
   // looked up by id here. Same builder, same options as the audio used.
   const sourceMarks: Record<string, SourceMark> = {}
+  const verseCallouts: Record<string, VerseCallout> = {}
   for (const seg of buildNarrationSegments(devo, locale, {
     suppressOccasion: options.suppressOccasion ?? false,
     ...(options.structure ? { structure: options.structure } : {}),
@@ -2371,6 +2375,7 @@ async function renderInStage(
   })) {
     // The evidence is for the editor, not the screen: keep it out of the
     // manifest the composition reads.
+    if (seg.callout) verseCallouts[seg.id] = seg.callout
     if (seg.mark) {
       sourceMarks[seg.id] = {
         label: seg.mark.label,
@@ -2384,6 +2389,7 @@ async function renderInStage(
     devotional: devo,
     segments,
     ...(Object.keys(sourceMarks).length ? { sourceMarks } : {}),
+    ...(Object.keys(verseCallouts).length ? { verseCallouts } : {}),
     ...(options.structure ? { structure: options.structure } : {}),
     clipFile: "clip.mp4",
     clipDurationSec,

@@ -154,7 +154,13 @@ async function main() {
     corpora: loadReferenceCorpora(),
     sequence: seq,
     date: new Date().toISOString().slice(0, 10),
-    voices: { main: "female-c", depth: "male-e" },
+    verses: Object.fromEntries(
+      Array.from({ length: v2 - v1 + 1 }, (_, i) => [
+        `${chapterKey}.${v1 + i}`,
+        bsb.verses[`${chapterKey}.${v1 + i}`]!,
+      ]),
+    ),
+    voices: { main: "female-d", depth: "male-e" },
     llms: {
       research: llm(MODELS.research),
       audit: llm(MODELS.audit),

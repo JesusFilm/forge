@@ -84,6 +84,15 @@ export type ReviewDevotionalTextInput = {
   narrativeLlm?: DevotionalLlm
 }
 
+/** Narrative findings that mean "not true", the ones a storyteller text is
+ *  stopped for; the rest is an editor's advice. */
+const FACT_KINDS = new Set([
+  "unsupported-claim",
+  "contradicts-story",
+  "misquote",
+  "planted-association",
+])
+
 export async function reviewDevotionalText(
   input: ReviewDevotionalTextInput,
 ): Promise<DevotionalReview> {
@@ -114,59 +123,69 @@ export async function reviewDevotionalText(
     )
   }
 
-  const coherence = await checkDevotionalCoherence({
-    sceneTitle: d.clip.title,
-    scriptureReference: d.scripture.reference,
-    scriptureText: d.scripture.text,
-    title: d.title,
-    reflection: d.reflection.text,
-    conclusion: d.conclusion,
-    question: d.question,
-    prayer: d.prayer,
-    passageReference: input.passageReference,
-    llm: buildCoherenceLlm(),
-  })
-  log(
-    `🔎 coherence: ${coherence.coherent ? "OK" : "ISSUES FOUND"} — ${coherence.summary}`,
-  )
-  for (const i of coherence.issues) {
-    log(`   ⚠️ [${i.severity}/${i.area}] ${i.problem}\n      → ${i.suggestion}`)
-  }
-  // The critic suggests a better-fitting verse when the chosen one is a poor
-  // match. It used to be computed and dropped on the floor; surface it, since
-  // it is the one piece of advice that tells the operator WHAT to change.
-  if (coherence.suggestedScriptureReference) {
+  // Storyteller texts (owner, 2026-09-29) keep the standing rules and the
+  // fact check; the coherence, depth and fidelity critics were dropped from
+  // that path (the depth score flipped 4/5 to 2/5 on the same text).
+  const storyteller = d.textPipeline === "storyteller"
+  if (!storyteller) {
+    const coherence = await checkDevotionalCoherence({
+      sceneTitle: d.clip.title,
+      scriptureReference: d.scripture.reference,
+      scriptureText: d.scripture.text,
+      title: d.title,
+      reflection: d.reflection.text,
+      conclusion: d.conclusion,
+      question: d.question,
+      prayer: d.prayer,
+      passageReference: input.passageReference,
+      llm: buildCoherenceLlm(),
+    })
     log(
-      `   💡 better-fitting scripture: ${coherence.suggestedScriptureReference}`,
+      `🔎 coherence: ${coherence.coherent ? "OK" : "ISSUES FOUND"} — ${coherence.summary}`,
     )
-  }
-  if (coherence.skipped) blocking.push("coherence check could not run")
-  else if (!coherence.coherent) {
-    blocking.push(`coherence: ${coherence.summary}`)
-  } else if (coherence.issues.some((i) => i.severity === "high")) {
-    blocking.push("coherence: high-severity issue")
-  }
+    for (const i of coherence.issues) {
+      log(
+        `   ⚠️ [${i.severity}/${i.area}] ${i.problem}\n      → ${i.suggestion}`,
+      )
+    }
+    // The critic suggests a better-fitting verse when the chosen one is a poor
+    // match. It used to be computed and dropped on the floor; surface it, since
+    // it is the one piece of advice that tells the operator WHAT to change.
+    if (coherence.suggestedScriptureReference) {
+      log(
+        `   💡 better-fitting scripture: ${coherence.suggestedScriptureReference}`,
+      )
+    }
+    if (coherence.skipped) blocking.push("coherence check could not run")
+    else if (!coherence.coherent) {
+      blocking.push(`coherence: ${coherence.summary}`)
+    } else if (coherence.issues.some((i) => i.severity === "high")) {
+      blocking.push("coherence: high-severity issue")
+    }
 
-  const depth = await critiqueReflection({
-    sceneTitle: d.clip.title,
-    reflection: d.reflection.text,
-    conclusion: d.conclusion,
-    ...(d.clipTranscript ? { clipTranscript: d.clipTranscript } : {}),
-    llm: buildReflectionCriticLlm(),
-  })
-  log(
-    `🔬 reflection depth ${depth.depthScore}/5 (${depth.solid ? "solid" : "THIN"}) — ${depth.summary}`,
-  )
-  for (const i of depth.issues) {
-    log(`   ⚠️ [${i.severity}/${i.kind}] ${i.problem}\n      → ${i.suggestion}`)
-    if (i.severity === "high")
-      problems.push(`depth/${i.kind}: ${i.problem} Fix: ${i.suggestion}`)
-  }
-  if (depth.skipped) blocking.push("depth check could not run")
-  else if (!depth.solid || depth.depthScore <= DEPTH_SCORE_FLOOR) {
-    blocking.push(`depth ${depth.depthScore}/5: ${depth.summary}`)
-  } else if (depth.issues.some((i) => i.severity === "high")) {
-    blocking.push("depth: high-severity issue")
+    const depth = await critiqueReflection({
+      sceneTitle: d.clip.title,
+      reflection: d.reflection.text,
+      conclusion: d.conclusion,
+      ...(d.clipTranscript ? { clipTranscript: d.clipTranscript } : {}),
+      llm: buildReflectionCriticLlm(),
+    })
+    log(
+      `🔬 reflection depth ${depth.depthScore}/5 (${depth.solid ? "solid" : "THIN"}) — ${depth.summary}`,
+    )
+    for (const i of depth.issues) {
+      log(
+        `   ⚠️ [${i.severity}/${i.kind}] ${i.problem}\n      → ${i.suggestion}`,
+      )
+      if (i.severity === "high")
+        problems.push(`depth/${i.kind}: ${i.problem} Fix: ${i.suggestion}`)
+    }
+    if (depth.skipped) blocking.push("depth check could not run")
+    else if (!depth.solid || depth.depthScore <= DEPTH_SCORE_FLOOR) {
+      blocking.push(`depth ${depth.depthScore}/5: ${depth.summary}`)
+    } else if (depth.issues.some((i) => i.severity === "high")) {
+      blocking.push("depth: high-severity issue")
+    }
   }
 
   // NARRATIVE EDITOR — the whole piece as a listener hears it, and every
@@ -212,8 +231,14 @@ export async function reviewDevotionalText(
     )
   }
   if (narrative.skipped) blocking.push("narrative review could not run")
-  else if (narrative.issues.some((i) => i.severity === "high")) {
-    const high = narrative.issues.filter((i) => i.severity === "high")
+  else if (
+    narrative.issues.some(
+      (i) => i.severity === "high" && (!storyteller || FACT_KINDS.has(i.kind)),
+    )
+  ) {
+    const high = narrative.issues.filter(
+      (i) => i.severity === "high" && (!storyteller || FACT_KINDS.has(i.kind)),
+    )
     blocking.push(
       `narrative: ${high.length} high-severity issue(s), first is ${high[0].kind} “${high[0].quote}”`,
     )
@@ -236,7 +261,12 @@ export async function reviewDevotionalText(
           .map((p) => p.text)
           .join("\n\n")
       : d.reflection.text
-  if (input.checkFidelity && d.reflection.sourceExcerpt && fidelityText) {
+  if (
+    !storyteller &&
+    input.checkFidelity &&
+    d.reflection.sourceExcerpt &&
+    fidelityText
+  ) {
     const fidelity = await critiqueReflectionFidelity({
       sourceExcerpt: d.reflection.sourceExcerpt,
       focusReference: input.passageReference ?? d.passage.reference,
@@ -259,7 +289,7 @@ export async function reviewDevotionalText(
     } else if (fidelity.issues.some((i) => i.severity === "high")) {
       blocking.push("fidelity: high-severity issue")
     }
-  } else if (input.checkFidelity) {
+  } else if (input.checkFidelity && !storyteller) {
     // Asked to check fidelity but there is nothing to check against.
     //
     // WARN, do not block. This is deliberately weaker than the `skipped` case

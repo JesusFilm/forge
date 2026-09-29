@@ -50,6 +50,8 @@ export type StorytellerInput = {
   corpora: ReferenceCorpora
   sequence: number
   date: string
+  /** The passage verse by verse (OSIS → text), for the language callout. */
+  verses?: Record<string, string>
   voices: { main: DevotionalVoiceName; depth: DevotionalVoiceName }
   llms: {
     research: DevotionalLlm
@@ -74,8 +76,43 @@ export type StorytellerResult = {
   baseline?: { question: string; prayer: string }
 }
 
-/** Credits at the start of every run of a sourced section (a fact woven in
- *  twice is credited both times). */
+/** The word of a verse's English phrase the note turns on: its last word
+ *  that is not a function word ("it was fitting" → "fitting"). */
+export function calloutWord(phrase: string): string {
+  const FUNCTION = new Set([
+    "a",
+    "an",
+    "and",
+    "the",
+    "it",
+    "was",
+    "is",
+    "to",
+    "of",
+    "in",
+    "for",
+    "with",
+    "him",
+    "his",
+    "he",
+    "be",
+    "been",
+    "had",
+    "has",
+    "have",
+  ])
+  const words = phrase
+    .split(/\s+/)
+    .map((w) => w.replace(/[^A-Za-z'-]/g, ""))
+    .filter(Boolean)
+  return (
+    [...words].reverse().find((w) => !FUNCTION.has(w.toLowerCase())) ?? phrase
+  )
+}
+
+/** Each source is credited once, where it is first used (owner, 2026-09-30:
+ *  a credit at every return flashes too often); the language note also shows
+ *  its verse, the word lit. */
 export function creditedParagraphs(
   script: StoryScript,
   opts: {
@@ -83,6 +120,8 @@ export function creditedParagraphs(
     brief: ResearchBrief
     corpora: ReferenceCorpora
     classicCredit: string
+    /** Verse text by OSIS, for the language note's callout. */
+    verses?: Record<string, string>
   },
 ): ReflectionParagraph[] {
   const { brief } = opts
@@ -101,12 +140,19 @@ export function creditedParagraphs(
           : f.source.replace(/\s*\(\d{4}\)$/, ""),
       ),
     ),
-  ].join(" · ")
+  ]
+  // Two dictionaries in one short credit: the side column is narrow, and
+  // "Easton's Bible Dictionary · Smith's Bible Dictionary" ran to four lines.
+  const historyCredit =
+    historySource.length === 2 &&
+    historySource.every((x) => x.endsWith(" Bible Dictionary"))
+      ? `${historySource.map((x) => x.replace(/ Bible Dictionary$/, "")).join(" & ")} Bible Dictionaries`
+      : historySource.join(" · ")
   const mark = (role: string): SourceMark | undefined => {
     if (role === "history" && brief.history.length)
       return {
         label: "Historical context",
-        source: historySource,
+        source: historyCredit,
         portrait: "book",
         evidence: historyEvidence,
       }
@@ -126,10 +172,22 @@ export function creditedParagraphs(
       }
     return undefined
   }
-  return script.paragraphs.map((p, i) => {
-    const m =
-      script.paragraphs[i - 1]?.role !== p.role ? mark(p.role) : undefined
+  const credited = new Set<string>()
+  const lang = brief.language
+  const verse = lang ? opts.verses?.[lang.osis] : undefined
+  const callout =
+    lang && verse
+      ? {
+          text: verse,
+          highlight: calloutWord(lang.englishPhrase),
+          reference: lang.verseRef,
+        }
+      : undefined
+  return script.paragraphs.map((p) => {
+    const m = !credited.has(p.role) ? mark(p.role) : undefined
+    if (m) credited.add(p.role)
     return {
+      ...(p.role === "language" && callout ? { callout } : {}),
       text: stripDashes(p.text),
       role: p.role,
       voice:
@@ -213,6 +271,7 @@ export async function composeStoryteller(
       brief,
       corpora: input.corpora,
       classicCredit: input.classic.credit,
+      ...(input.verses ? { verses: input.verses } : {}),
     })
     return reviewNarrative({
       sceneTitle: input.clip.title,
@@ -284,6 +343,7 @@ export async function composeStoryteller(
     brief,
     corpora: input.corpora,
     classicCredit: input.classic.credit,
+    ...(input.verses ? { verses: input.verses } : {}),
   })
   const text = paragraphs.map((p) => p.text).join(" ")
   const reflectionHighlights = await pickReflectionHighlights({
@@ -307,6 +367,7 @@ export async function composeStoryteller(
     clip: input.clip,
     passage: input.passage,
     title: stripDashes(script.title),
+    textPipeline: "storyteller",
     message: brief.message,
     openingLines: script.openingLines.map(stripDashes),
     clipTranscript: input.passageText,

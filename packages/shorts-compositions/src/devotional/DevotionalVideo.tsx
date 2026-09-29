@@ -23,6 +23,7 @@ import {
   useSideMarkLayout,
 } from "./SideSourceMark"
 import { SourceMarkOverlay, WIDE_TEXT_BOTTOM } from "./SourceMarkOverlay"
+import { VerseCalloutOverlay } from "./VerseCalloutOverlay"
 import { quoteIntroTimeline } from "./quote-timing"
 import { QuoteIntro } from "./QuoteIntro"
 import { StepProgressLine } from "./StepProgressLine"
@@ -6759,6 +6760,16 @@ export function DevotionalVideo(props: DevotionalInputProps) {
       })}
       {/* Source credits (16:9): their own layer, so a credit can outlast
           the one-sentence card it opens. See SourceMarkOverlay. */}
+      {isLandscape ? (
+        <VerseCalloutOverlay
+          cards={props.cards}
+          frames={frames}
+          frame={frame}
+          fps={fps}
+          px={px}
+          serif={VERSE_SERIF}
+        />
+      ) : null}
       {sideMarks ? (
         <SideMarkOverlay
           windows={sideWindows}

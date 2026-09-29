@@ -54,6 +54,11 @@ export type DevotionalManifest = {
   /** Source credits by segment id (authored devotionals): drawn on the
    *  reflection card whose paragraph uses that source. */
   sourceMarks?: Record<string, SourceMark>
+  /** Verse callouts by narration segment id (see VerseCallout). */
+  verseCallouts?: Record<
+    string,
+    { text: string; highlight: string; reference: string }
+  >
   /** `intro: "hook"`: the question drawn on screen as the piece's title. */
   hookText?: string
   /** `intro: "watch"`: the spoken opening split into its sentences. */
@@ -136,6 +141,11 @@ export type BuildManifestInput = {
   /** Source credits by segment id (authored devotionals): drawn on the
    *  reflection card whose paragraph uses that source. */
   sourceMarks?: Record<string, SourceMark>
+  /** Verse callouts by narration segment id (see VerseCallout). */
+  verseCallouts?: Record<
+    string,
+    { text: string; highlight: string; reference: string }
+  >
   /** `intro: "hook"`: the question drawn on screen as the piece's title. */
   hookText?: string
   /** `intro: "watch"`: the spoken opening split into its sentences. */
@@ -369,12 +379,14 @@ function buildClipFirstManifest(
     const highlight =
       highlightIndex >= 0 ? d.reflectionHighlights?.[highlightIndex] : undefined
     const mark = input.sourceMarks?.[seg.id]
+    const callout = input.verseCallouts?.[seg.id]
     cards.push({
       kind: "reflection-focus",
       sectionLabel: "",
       text: cardText,
       ...(highlight ? { highlight } : {}),
       ...(mark ? { sourceMark: mark } : {}),
+      ...(callout ? { verseCallout: callout } : {}),
       audioFile: seg.file,
       durationSec: seg.durationSec,
       bgFile: clip,

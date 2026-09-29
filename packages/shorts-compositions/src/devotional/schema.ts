@@ -146,6 +146,13 @@ export const devotionalCardSchema = z.object({
   questionAtSec: z.number().nonnegative().optional(),
   prayerAtSec: z.number().nonnegative().optional(),
   prayerTextAtSec: z.number().nonnegative().optional(),
+  /** 16:9 reflection: a verse shown at the top of the frame, one word lit,
+   *  while the original-language note about it plays (owner's Figma
+   *  "Reflection card · Greek", 2026-09-30). Consecutive cards with the same
+   *  verse share one callout. */
+  verseCallout: z
+    .object({ text: z.string(), highlight: z.string(), reference: z.string() })
+    .optional(),
   /** 16:9 reflection: Bible references for this sentence, shown as a
    *  footnote under the text instead of being read aloud. */
   verseRefs: z.array(z.string()).optional(),

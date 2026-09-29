@@ -82,6 +82,15 @@ export type ReflectionParagraph = {
   /** What the paragraph draws on (message-first writer): the fidelity check
    *  compares only the `classic` paragraphs with the commentary. */
   role?: "reflection" | "history" | "language" | "classic"
+  /** A verse shown at the top of the frame while this paragraph plays, one
+   *  word lit (the original-language note: owner's Figma, 2026-09-30). */
+  callout?: VerseCallout
+}
+
+export type VerseCallout = {
+  text: string
+  highlight: string
+  reference: string
 }
 
 /** The non-reflection segments an authored devotional can voice separately. */
@@ -114,6 +123,9 @@ export type GeneratedDevotional = {
     grounding: string
     classicPoints?: number[]
   }
+  /** Which text path wrote this devotional. "storyteller" texts were already
+   *  fact-checked when written; the gate runs only the checks that path keeps. */
+  textPipeline?: "storyteller"
   /** Spoken opening lines between the welcome and "Let's watch" (message-
    *  first packaging); passed to the render's montage opening. */
   openingLines?: string[]
@@ -170,6 +182,7 @@ const VOICE_ENUM = z.enum([
   "male-d",
   "male-e",
   "female-c",
+  "female-d",
   "russian",
   "spanish",
 ])
@@ -190,6 +203,7 @@ export const GeneratedDevotionalSchema = z.object({
     })
     .optional(),
   openingLines: z.array(z.string()).optional(),
+  textPipeline: z.literal("storyteller").optional(),
   clipTranscript: z.string().optional(),
   scripture: z.object({
     reference: z.string(),
@@ -219,6 +233,13 @@ export const GeneratedDevotionalSchema = z.object({
             .optional(),
           role: z
             .enum(["reflection", "history", "language", "classic"])
+            .optional(),
+          callout: z
+            .object({
+              text: z.string(),
+              highlight: z.string(),
+              reference: z.string(),
+            })
             .optional(),
         }),
       )

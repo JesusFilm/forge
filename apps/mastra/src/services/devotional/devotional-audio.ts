@@ -17,6 +17,7 @@ import { audioReuseKey } from "./devotional-cache"
 import type {
   GeneratedDevotional,
   SourceMark,
+  VerseCallout,
   VoicedRole,
 } from "./generate-devotional"
 
@@ -43,6 +44,8 @@ export type NarrationSegment = {
   voice?: DevotionalVoiceName
   /** The source credit drawn while this segment plays. */
   mark?: SourceMark
+  /** The verse shown while this segment plays (every chunk of its paragraph). */
+  callout?: VerseCallout
 }
 
 export { splitReflection } from "./reflection-split"
@@ -234,13 +237,19 @@ function buildClipFirstSegments(
   // Authored paragraphs: each is split on its own, so a voice change or a
   // source mark always falls on a paragraph boundary. The mark rides on the
   // paragraph's FIRST chunk only, so it appears once, when that source begins.
-  type Chunk = { text: string; voice?: DevotionalVoiceName; mark?: SourceMark }
+  type Chunk = {
+    text: string
+    voice?: DevotionalVoiceName
+    mark?: SourceMark
+    callout?: VerseCallout
+  }
   const chunks: Chunk[] = d.reflection.paragraphs?.length
     ? d.reflection.paragraphs.flatMap((p) =>
         splitReflection(p.text.trim()).map((text, j) => ({
           text,
           ...(p.voice ? { voice: p.voice } : {}),
           ...(p.mark && j === 0 ? { mark: p.mark } : {}),
+          ...(p.callout ? { callout: p.callout } : {}),
         })),
       )
     : splitReflection(d.reflection.text.trim()).map((text) => ({ text }))
@@ -263,6 +272,7 @@ function buildClipFirstSegments(
       display: chunk.text,
       ...(chunk.voice ? { voice: chunk.voice } : {}),
       ...(chunk.mark ? { mark: chunk.mark } : {}),
+      ...(chunk.callout ? { callout: chunk.callout } : {}),
     })
   })
   if (d.conclusion.trim()) {

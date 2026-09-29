@@ -40,6 +40,9 @@ export const DEVOTIONAL_VOICES = {
   "male-d": "HKFOb9iktHA85uKXydRT",
   "male-e": "xLeLcqgjUx3wQJFSESKj",
   "female-c": "WonySogMOJVSOnlOGFQh",
+  // Owner's pick for the reflection voice from the Prodigal Son on
+  // (2026-09-30), replacing female-c there.
+  "female-d": "98ujrzs7rxAMEsaC4EpW",
   // Russian-locale narration voice (owner pick "JFvoice_Rus"); selected in
   // devotional-locale.ts. Good for Russian, NOT for English (owner-tested).
   // (English uses the rotation above; a fixed English voice was a local
