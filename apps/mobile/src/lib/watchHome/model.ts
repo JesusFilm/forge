@@ -126,6 +126,9 @@ export type WatchHomeSection = {
   id: string
   eyebrow: string
   title: string
+  /** The homepage's language for an Experience shelf; absent for the app's
+   *  own shelves, whose titles are UI text (KTD13). */
+  titleLang?: string | null
   description: string | null
   layout: "rail" | "grid"
   orientation: "horizontal" | "vertical"

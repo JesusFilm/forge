@@ -1025,4 +1025,24 @@ describe("card text under the UI locale's homepage and the en fallback (U6)", ()
     expect(slides.get("short-en")?.title).toBe("English only")
     expect(slides.get("short-en")?.titleLang).toBe("en")
   })
+
+  // Found on an Arabic simulator: an English heading from the en fallback
+  // homepage aligned right, because its section carried no language.
+  it("gives each shelf heading the language of its homepage", () => {
+    const shelfLang = (
+      forms: ReturnType<typeof adminFormsFor>,
+      homepageSource: "locale" | "en-fallback",
+    ) =>
+      assembleWatchHomeModel({
+        configVideos: [],
+        hydrationVideos: [acts],
+        blocks: homepage([
+          { videoId: "v-acts", coreId: "6_Acts0401", videoSlug: "acts-4-1" },
+        ]),
+        forms,
+        homepageSource,
+      }).model.sections[0].titleLang
+    expect(shelfLang(RU, "en-fallback")).toBe("en")
+    expect(shelfLang(ES, "locale")).toBe("es")
+  })
 })

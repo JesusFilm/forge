@@ -70,6 +70,7 @@ import { act, type ReactElement } from "react"
 import { StyleSheet } from "react-native"
 
 import { HomeCard } from "../home/HomeCard"
+import { HomeShelf } from "../home/HomeShelf"
 import { RelatedQuestionsRenderer } from "../sections/RelatedQuestionsRenderer"
 import { SeriesEpisodeCard } from "../series/SeriesEpisodeCard"
 import { LanguageSheetContent } from "../watch/LanguageSheet"
@@ -77,7 +78,7 @@ import { VideoDescription } from "../watch/VideoDescription"
 import { VideoMetadata } from "../watch/VideoMetadata"
 import type { WatchVariant } from "../../lib/normalizeVideo"
 import type { AdminBlock } from "../../lib/queries"
-import type { WatchHomeCard } from "../../lib/watchHome/model"
+import type { WatchHomeCard, WatchHomeSection } from "../../lib/watchHome/model"
 import {
   TestRenderer,
   type RenderedNode,
@@ -267,6 +268,41 @@ describe("a Home card title (AE5)", () => {
     const renderer = render(<HomeCard card={card} variant="landscape" />)
     expectDirection(renderer, "JESUS", LTR, "en")
     expect(pressableLanguages(renderer, "JESUS")).toEqual(["en"])
+  })
+})
+
+function shelf(title: string, titleLang?: string): WatchHomeSection {
+  return {
+    id: "s1",
+    eyebrow: "",
+    title,
+    titleLang,
+    description: null,
+    layout: "rail",
+    orientation: "horizontal",
+    showSequenceNumbers: false,
+    cards: [CARD],
+  }
+}
+
+describe("a Home shelf heading", () => {
+  it("renders an English fallback heading left to right, marked English", () => {
+    mockUiTag = "ar"
+    const renderer = render(
+      <HomeShelf section={shelf("What Really Makes Us Happy?", "en")} />,
+    )
+    expectDirection(renderer, "What Really Makes Us Happy?", LTR, "en")
+  })
+
+  it("renders the app's own shelf heading as UI text", () => {
+    mockUiTag = "ar"
+    const renderer = render(<HomeShelf section={shelf("مختارات")} />)
+    expectDirection(renderer, "مختارات", RTL)
+  })
+
+  it("adds no style in an English UI", () => {
+    const renderer = render(<HomeShelf section={shelf("Picks", "en")} />)
+    expectDirection(renderer, "Picks", null)
   })
 })
 

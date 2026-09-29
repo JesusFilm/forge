@@ -263,6 +263,10 @@ function blockToSection(
     eyebrow: categoryLabel,
     // Empty admin title falls back to the category label so a shelf is never headless.
     title: blockTitle || categoryLabel,
+    titleLang:
+      context.homepageSource === "en-fallback"
+        ? ENGLISH_TEXT_LANG
+        : context.forms.catalogTag,
     description: (b.subtitle as string | null) ?? null,
     layout,
     orientation: thumbnailOrientation ?? orientation,
