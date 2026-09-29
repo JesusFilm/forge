@@ -125,7 +125,7 @@ These do not define current coverage requirements.
 
 ## Resolution
 
-The correction removes coverage from the report contract, aggregate query,
+[Fix PR #2472](https://github.com/JesusFilm/forge/pull/2472) removes coverage from the report contract, aggregate query,
 HTTP/CLI and browser, and removes independent inventory, heartbeat/watermark,
 gap recovery and operator commands from application code. The original date
 range reports and displays 5/5 in the local real-store/browser regression.

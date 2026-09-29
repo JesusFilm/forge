@@ -72,7 +72,8 @@ claim full feat-529 completion. It changes no personal consumer-key custody.
 
 ## Usage reporting correction — 2026-09-29
 
-The product owner removed coverage/inventory requirements as a design mistake.
+The product owner removed coverage/inventory requirements as a design mistake;
+[fix PR #2472](https://github.com/JesusFilm/forge/pull/2472) implements the correction.
 Reporting returns recorded requests and successes for the selected consumer and
 unchanged date range, regardless of interruptions. Deployment declarations,
 collector-stop recovery and narrowed diagnostic windows are not prerequisites
