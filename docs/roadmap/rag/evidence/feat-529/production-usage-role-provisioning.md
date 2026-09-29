@@ -121,6 +121,41 @@ No Railway access was available in the provisioning session, so those actions
 were not attempted. Follow [the usage runbook](../../../../../apps/rag/docs/ops/consumer-usage.md)
 and then perform feat-529's counted HTTP, isolation, lifecycle and coverage proof.
 
+### Manual Railway activation handoff — 2026-09-29
+
+Jaco elected to apply Railway settings manually. The agent cancelled its pending
+browserless CLI sign-in; no Railway configuration or inventory rows were changed
+in that activation attempt. On `forge` / `production` / `@forge/rag`, stage both
+settings below and apply them together through the normal service configuration
+deployment of merged code:
+
+| Railway variable                | Existing Doppler source (`forge-rag/prd`) |
+| ------------------------------- | ----------------------------------------- |
+| `RAG_USAGE_WRITER_DATABASE_URL` | `FORGE_RAG_USAGE_WRITER_DATABASE_URL`     |
+| `RAG_USAGE_REPORT_DATABASE_URL` | `FORGE_RAG_USAGE_REPORT_DATABASE_URL`     |
+
+Use the corresponding provisioned account and the same production database.
+The stored operator URLs use the public endpoint and passed the role checks.
+For a private-network service connection, retain the credentials/database and
+use the actual private host and port from that database's Railway configuration;
+do not invent a hostname or port. Transfer values directly from the vault to
+Railway, without including them in audit evidence.
+
+There is no separate usage-enable flag. Railway supplies `RAILWAY_DEPLOYMENT_ID`;
+do not pin a static override. Existing consumer auth and portal session
+configuration are prerequisites. Portal access needs neither machine report
+hashes nor `RAG_USAGE_RAGBOT_CONSUMER_ID`. The inventory credential belongs only
+in the independent operator receiver, not the serving environment or RAGBot.
+
+After configuration deployment, capture its ID, merged revision, authoritative
+UTC active interval and configured replica count, including overlapping live
+deployments. Use those facts to declare inventory through `pnpm usage:inventory`
+and record the exact inserted/closed rows in a subsequent audit receipt. Do not
+close an interval until every replica has stopped. Verify collectors and a
+fully covered whole-minute portal report after activation; a default seven-day
+window includes uninstrumented history and cannot prove complete coverage.
+This handoff is a plan, not evidence that production reporting is active.
+
 To retire these capabilities later, first establish whether serving/reporting
 has been activated and which callers depend on them, then disable the applicable
 capability, revoke grants/login and remove receiver entries in explicitly scoped
