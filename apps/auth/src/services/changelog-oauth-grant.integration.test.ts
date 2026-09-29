@@ -3320,6 +3320,13 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     const unrelatedScope = await prisma.scope.findUniqueOrThrow({
       where: { key: "membership:read" },
     })
+    const additionalChangelogScope = await prisma.scope.create({
+      data: {
+        key: `changelog:extra-${randomUUID()}`,
+        label: "Extra Changelog scope",
+        description: "Test scope removed by No Access",
+      },
+    })
     await prisma.appGrantScope.create({
       data: { grantId: recipientGrant.id, scopeId: unrelatedScope.id },
     })
@@ -3449,8 +3456,22 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
       expect((await mutate(recipient.id, "Reader")).status).toBe(200)
       for (const token of issued)
         expect(await permission(token)).toEqual(["changelog:read"])
+      await prisma.appGrantScope.create({
+        data: {
+          grantId: recipientGrant.id,
+          scopeId: additionalChangelogScope.id,
+        },
+      })
       expect((await mutate(recipient.id, "No Access")).status).toBe(200)
       for (const token of issued) expect(await permission(token)).toEqual([])
+      expect(
+        await prisma.appGrantScope.count({
+          where: {
+            grantId: recipientGrant.id,
+            scopeId: additionalChangelogScope.id,
+          },
+        }),
+      ).toBe(0)
       const directory = await people(
         new Request(
           "http://localhost:3004/api/changelog/people?clientId=jfp_changelog_local",
@@ -3612,6 +3633,7 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
       ).toBe(1)
     } finally {
       await prisma.user.delete({ where: { id: recipient.id } })
+      await prisma.scope.delete({ where: { id: additionalChangelogScope.id } })
       await prisma.appGrantScope.deleteMany({
         where: { grantId, scopeId: adminScope.id },
       })

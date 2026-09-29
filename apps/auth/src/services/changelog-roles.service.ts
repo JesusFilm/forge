@@ -76,18 +76,12 @@ export async function setChangelogRole(
       const activeGrants = grants.filter(
         (grant) => grant.userId === recipientId,
       )
-      const changelogScopes = [
-        "changelog:admin",
-        "changelog:submit",
-        "changelog:read",
-      ]
-      const currentScopes = new Set(
-        activeGrants.flatMap((grant) =>
-          grant.scopes
-            .map(({ scope }) => scope.key)
-            .filter((key) => changelogScopes.includes(key)),
-        ),
+      const changelogScopes = activeGrants.flatMap((grant) =>
+        grant.scopes
+          .map(({ scope }) => scope)
+          .filter(({ key }) => key.startsWith("changelog:")),
       )
+      const currentScopes = new Set(changelogScopes.map(({ key }) => key))
       const nextScopes = roleScopes[role]
       if (
         actorId === recipientId &&
@@ -121,12 +115,12 @@ export async function setChangelogRole(
 
       const scopeRecords = await tx.scope.findMany({
         where: {
-          key: { in: changelogScopes },
+          key: { in: nextScopes },
         },
       })
-      if (scopeRecords.length !== 3)
+      if (scopeRecords.length !== nextScopes.length)
         throw new ContributorManagementError(503, "management-unavailable")
-      const changelogScopeIds = scopeRecords.map(({ id }) => id)
+      const changelogScopeIds = changelogScopes.map(({ id }) => id)
       await tx.appGrantScope.deleteMany({
         where: {
           grantId: { in: activeGrants.map(({ id }) => id) },
