@@ -3,10 +3,9 @@
  * language) and the audio language slug (playback dub). Admin never substitutes
  * one for the other, so the client must name both explicitly.
  */
-import { HOME_LOCALE } from "../watchHome/config"
 
-/** Mobile's UI is English until the string-localization work lands. */
-export const RECOMMENDATION_UI_LOCALE = HOME_LOCALE
+/** The For You locale of the English metadata retry (KTD11). */
+export const ENGLISH_FOR_YOU_LOCALE = "en"
 
 /** The language-entity slug for English audio (Web's `en` mapping). */
 export const DEFAULT_AUDIO_LANGUAGE_SLUG = "english"
@@ -19,20 +18,30 @@ export type RecommendationContext = {
   audioLanguageSlug: string
 }
 
+function validSlug(value: string | null | undefined): string | null {
+  const slug = value?.trim()
+  return slug && AUDIO_LANGUAGE_SLUG_PATTERN.test(slug) ? slug : null
+}
+
 /**
- * The viewer's persisted audio preference wins when it is a valid slug; an
- * absent or malformed preference falls back to English rather than sending
- * a value Admin would reject.
+ * KTD11, KTD12: the metadata locale is the table's For You locale for the UI
+ * catalog. The audio is the saved pick, else the phone's default audio, else
+ * English. A value Admin would reject is skipped, never sent.
  */
-export function resolveRecommendationContext(preferences: {
+export function resolveRecommendationContext(input: {
+  /** The viewer's saved audio pick. */
   audioLanguageSlug: string | null | undefined
+  /** `AdminLanguageForms.forYouLocale` of the forms in use. */
+  forYouLocale: string
+  /** `defaultAudioLanguage()?.slug`: the phone's first language. */
+  defaultAudioSlug: string | null | undefined
 }): RecommendationContext {
-  const preferred = preferences.audioLanguageSlug?.trim()
+  const locale = input.forYouLocale.trim()
   return {
-    locale: RECOMMENDATION_UI_LOCALE,
+    locale: locale === "" ? ENGLISH_FOR_YOU_LOCALE : locale,
     audioLanguageSlug:
-      preferred && AUDIO_LANGUAGE_SLUG_PATTERN.test(preferred)
-        ? preferred
-        : DEFAULT_AUDIO_LANGUAGE_SLUG,
+      validSlug(input.audioLanguageSlug) ??
+      validSlug(input.defaultAudioSlug) ??
+      DEFAULT_AUDIO_LANGUAGE_SLUG,
   }
 }

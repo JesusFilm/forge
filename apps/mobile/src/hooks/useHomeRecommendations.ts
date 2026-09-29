@@ -10,6 +10,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AppState } from "react-native"
 
 import { useWatchPreferences } from "../contexts/WatchPreferencesProvider"
+import { currentAdminForms } from "../i18n/adminLanguage"
+import { defaultAudioLanguage, getLocaleEpoch } from "../i18n/localeStore"
+import { useLocaleEpoch } from "../i18n/useT"
 import { datadogLog } from "../lib/datadog"
 import { resolveRecommendationContext } from "../lib/recommendations/context"
 import type { UserRecommendationSlate } from "../lib/recommendations/delivery"
@@ -70,15 +73,45 @@ function isTerminalNonServed(status: UserRecommendationsStatus): boolean {
   )
 }
 
+type RequestLanguage = {
+  epoch: number
+  forYouLocale: string
+  defaultAudioSlug: string | null
+}
+
+/** The store's languages now: read only when an epoch is applied (KTD16). */
+function readRequestLanguage(): RequestLanguage {
+  return {
+    epoch: getLocaleEpoch(),
+    forYouLocale: currentAdminForms().forYouLocale,
+    defaultAudioSlug: defaultAudioLanguage()?.slug ?? null,
+  }
+}
+
 export function useHomeRecommendations(
   options: UseHomeRecommendationsOptions,
   client: UserRecommendationsClient = getUserRecommendationsClient(),
 ): HomeRecommendationsController {
   const { gateOpen, focused } = options
   const { audioLanguageSlug } = useWatchPreferences()
+
+  // KTD16: a new epoch empties the shelf at once, and its fetch waits for
+  // Home's focus like every other held trigger.
+  const epoch = useLocaleEpoch()
+  const [language, setLanguage] = useState(readRequestLanguage)
+  const epochHeld = language.epoch !== epoch
+  useEffect(() => {
+    if (focused && epochHeld) setLanguage(readRequestLanguage())
+  }, [focused, epochHeld])
+
   const context = useMemo(
-    () => resolveRecommendationContext({ audioLanguageSlug }),
-    [audioLanguageSlug],
+    () =>
+      resolveRecommendationContext({
+        audioLanguageSlug,
+        forYouLocale: language.forYouLocale,
+        defaultAudioSlug: language.defaultAudioSlug,
+      }),
+    [audioLanguageSlug, language],
   )
 
   const focusedRef = useRef(focused)
@@ -170,7 +203,7 @@ export function useHomeRecommendations(
     refetchAlways()
   }, [focused, latched, refetchAlways])
 
-  const enabled = latched && gateOpen
+  const enabled = latched && gateOpen && !epochHeld
   const recommendations = useUserRecommendations(
     {
       locale: context.locale,
@@ -266,7 +299,9 @@ export function useHomeRecommendations(
     tracker().setFocused(focused)
   }, [focused, tracker])
 
-  const trackedRequestId = enabled ? (displaySlate?.requestId ?? null) : null
+  // The effect above clears the held slate one commit late; this never shows it.
+  const shownSlate = enabled ? displaySlate : null
+  const trackedRequestId = shownSlate?.requestId ?? null
   useEffect(() => {
     tracker().setRequestId(trackedRequestId)
   }, [trackedRequestId, tracker])
@@ -274,7 +309,7 @@ export function useHomeRecommendations(
   return useMemo(
     () => ({
       status,
-      slate: displaySlate,
+      slate: shownSlate,
       reportShelfMounted,
       reportShelfVisible,
       reportVisibleCards,
@@ -285,7 +320,7 @@ export function useHomeRecommendations(
     }),
     [
       status,
-      displaySlate,
+      shownSlate,
       reportShelfMounted,
       reportShelfVisible,
       reportVisibleCards,

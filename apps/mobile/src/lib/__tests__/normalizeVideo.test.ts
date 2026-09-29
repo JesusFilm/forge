@@ -609,7 +609,7 @@ describe("normalizeVideo", () => {
         studyQuestions: [
           {
             documentId: "sq-z",
-            languageSlug: "russian-z",
+            languageSlug: "russian",
             value: "Z question?",
             order: 1,
           },
@@ -621,12 +621,13 @@ describe("normalizeVideo", () => {
           },
           {
             documentId: "sq-a",
-            languageSlug: "russian-a",
+            languageSlug: "russian",
             value: "A question?",
             order: 1,
           },
         ],
       }),
+      adminFormsFor("ru"),
     )!
 
     expect(result.studyQuestions.map((question) => question.value)).toEqual([
@@ -634,6 +635,70 @@ describe("normalizeVideo", () => {
       "Z question?",
       "Legacy question?",
     ])
+  })
+
+  // R9, R10 (U7): the text companion asks by the UI slug and for the English
+  // list; the page shows one language's list, never every language at once.
+  describe("study questions in the UI language", () => {
+    const question = (id: string, slug: string | null, order: number) => ({
+      documentId: id,
+      languageSlug: slug,
+      value: `${id}?`,
+      order,
+    })
+    const text = (
+      ui: ReturnType<typeof question>[],
+      english: ReturnType<typeof question>[],
+    ) =>
+      ({
+        documentId: "vid-1",
+        studyQuestions: ui,
+        englishStudyQuestions: english,
+      }) as unknown as VideoTextInput
+    const ENGLISH_LIST = [question("en-1", "english", 1)]
+
+    it("shows only the UI language's list", () => {
+      const result = normalizeVideo(
+        makeRawVideo({ studyQuestions: null }),
+        adminFormsFor("ru"),
+        text(
+          [question("ru-2", "russian", 2), question("ru-1", "russian", 1)],
+          ENGLISH_LIST,
+        ),
+      )!
+      expect(result.studyQuestions.map((q) => q.value)).toEqual([
+        "ru-1?",
+        "ru-2?",
+      ])
+      expect(result.studyQuestionsLang).toBe("ru")
+    })
+
+    it("shows the English list when the UI language has none", () => {
+      const result = normalizeVideo(
+        makeRawVideo({ studyQuestions: null }),
+        adminFormsFor("ru"),
+        text([], ENGLISH_LIST),
+      )!
+      expect(result.studyQuestions.map((q) => q.value)).toEqual(["en-1?"])
+      expect(result.studyQuestionsLang).toBe("en")
+    })
+
+    it("never mixes in a row of another language", () => {
+      const result = normalizeVideo(
+        makeRawVideo({ studyQuestions: null }),
+        adminFormsFor("ru"),
+        text(
+          [question("ru-1", "russian", 1), question("fr-1", "french", 1)],
+          [question("en-1", "english", 1), question("de-1", "german", 1)],
+        ),
+      )!
+      expect(result.studyQuestions.map((q) => q.value)).toEqual(["ru-1?"])
+    })
+
+    it("shows none before the text companion lands", () => {
+      const result = normalizeVideo(makeRawVideo(), adminFormsFor("ru"), null)!
+      expect(result.studyQuestions).toEqual([])
+    })
   })
 
   it("normalizes bible citations with book name from locale map", () => {

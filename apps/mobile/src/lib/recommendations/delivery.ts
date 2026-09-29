@@ -7,6 +7,7 @@
 import type { AdminResultOf } from "@forge/admin-graphql"
 
 import { validateActionUrl } from "../validateUrl"
+import { ENGLISH_FOR_YOU_LOCALE } from "./context"
 import {
   USER_RECOMMENDATIONS,
   USER_RECOMMENDATION_CONTRACT,
@@ -303,6 +304,69 @@ export async function fetchUserRecommendations(
     report("unavailable", reason, attempt)
     return { kind: "unavailable", reason, retryable: !failure.definitive }
   }
+}
+
+// ── KTD11: the English-metadata retry ──────────────────────────────
+
+/** Admin has no pool for the (locale, audio) pair. Not transient. */
+export const COVERAGE_UNAVAILABLE_REASON = "coverage_unavailable"
+
+/** The metadata locale of the retry. The audio never changes (KD14). */
+const RETRY_LOCALE = ENGLISH_FOR_YOU_LOCALE
+
+const UNCOVERED: DeliveryResult = {
+  kind: "unavailable",
+  reason: COVERAGE_UNAVAILABLE_REASON,
+  retryable: false,
+}
+
+/** The (locale, audio) pairs that answered `coverage_unavailable`. */
+export type CoverageMemory = {
+  has: (locale: string, audioLanguageSlug: string) => boolean
+  add: (locale: string, audioLanguageSlug: string) => void
+}
+
+export function createCoverageMemory(): CoverageMemory {
+  const pairs = new Set<string>()
+  const key = (locale: string, audio: string) => `${locale}\u0000${audio}`
+  return {
+    has: (locale, audio) => pairs.has(key(locale, audio)),
+    add: (locale, audio) => {
+      pairs.add(key(locale, audio))
+    },
+  }
+}
+
+// Pools change on Admin's schedule, not within a launch, so a session memory
+// keeps the retry off the 30-per-minute budget on every Home visit.
+const sessionCoverage = createCoverageMemory()
+
+function isUncovered(result: DeliveryResult): boolean {
+  return (
+    result.kind === "unavailable" &&
+    result.reason === COVERAGE_UNAVAILABLE_REASON
+  )
+}
+
+/**
+ * One delivery attempt with KTD11's retry: only `coverage_unavailable` starts
+ * it, it keeps the audio (KD14), and a first request in `en` has none. A pair
+ * that answered it is not requested again in this session.
+ */
+export async function fetchUserRecommendationsWithCoverage(
+  input: FetchUserRecommendationsInput,
+  deps: DeliveryDeps,
+  coverage: CoverageMemory = sessionCoverage,
+): Promise<DeliveryResult> {
+  const ask = async (locale: string): Promise<DeliveryResult> => {
+    if (coverage.has(locale, input.audioLanguageSlug)) return UNCOVERED
+    const result = await fetchUserRecommendations({ ...input, locale }, deps)
+    if (isUncovered(result)) coverage.add(locale, input.audioLanguageSlug)
+    return result
+  }
+  const first = await ask(input.locale)
+  if (!isUncovered(first) || input.locale === RETRY_LOCALE) return first
+  return ask(RETRY_LOCALE)
 }
 
 let defaultDeps: DeliveryDeps | null = null

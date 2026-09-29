@@ -110,6 +110,13 @@ export type DownloadLifecycleDeps = {
 
 export type DownloadLifecycle = ReturnType<typeof createDownloadLifecycle>
 
+/** The fields the offline title refresh may write (U7). */
+export type OfflineTitlePatch = {
+  title?: string
+  seriesTitle?: string
+  titleLocale: string
+}
+
 type HandlerArgs = {
   videoSlug: string
   committedPath: string
@@ -844,6 +851,17 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
     }
   }
 
+  // U7: a field-level patch over the record as it is at write time, so a
+  // state write that landed while the refresh fetched is never undone.
+  const patchTitles = async (
+    videoSlug: string,
+    fields: OfflineTitlePatch,
+  ): Promise<void> => {
+    const current = deps.getRecord(videoSlug)
+    if (!current) return
+    await deps.writeRecord({ ...current, ...fields })
+  }
+
   return {
     start,
     swap,
@@ -854,5 +872,6 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
     cancel,
     supersede,
     deleteDownload,
+    patchTitles,
   }
 }

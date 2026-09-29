@@ -1,4 +1,20 @@
-import { BROWSE_TOPICS } from "../browseTopics"
+import { BROWSE_TOPICS, isBrowseTopicTerm } from "../browseTopics"
+
+describe("isBrowseTopicTerm", () => {
+  it("knows every topic's search term, in any case and with spaces", () => {
+    for (const topic of BROWSE_TOPICS) {
+      expect(isBrowseTopicTerm(topic.searchTerm)).toBe(true)
+      expect(isBrowseTopicTerm(` ${topic.searchTerm.toUpperCase()} `)).toBe(
+        true,
+      )
+    }
+  })
+
+  it("rejects a typed query that only contains a term", () => {
+    expect(isBrowseTopicTerm("family movies")).toBe(false)
+    expect(isBrowseTopicTerm("")).toBe(false)
+  })
+})
 
 describe("BROWSE_TOPICS", () => {
   it("has exactly six topics in the web-parity order", () => {

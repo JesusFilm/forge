@@ -324,13 +324,19 @@ export default function WatchVideoPage() {
   // Threaded from here: the hook's only call site, and the only place the dubs
   // and authored image are in scope. `loading` is the settled signal — the
   // query returns partial cached data with neither runtime nor playback id.
-  const bibleQuotes = useBibleVerses(decodedSlug, routeCitations, {
-    variants: video?.slug === decodedSlug ? video.variants : EMPTY_VARIANTS,
-    authoredImageUrl: video?.slug === decodedSlug ? video.posterUrl : null,
-    primaryLanguageCoreId:
-      video?.slug === decodedSlug ? video.primaryLanguageCoreId : null,
-    payloadSettled: !loading,
-  })
+  const bibleQuotes = useBibleVerses(
+    decodedSlug,
+    routeCitations,
+    {
+      variants: video?.slug === decodedSlug ? video.variants : EMPTY_VARIANTS,
+      authoredImageUrl: video?.slug === decodedSlug ? video.posterUrl : null,
+      primaryLanguageCoreId:
+        video?.slug === decodedSlug ? video.primaryLanguageCoreId : null,
+      payloadSettled: !loading,
+    },
+    // KTD16: the route's captured forms, so a live change moves no passage.
+    adminForms,
+  )
 
   // KD3: no pause. The video keeps playing while the reader covers this screen.
   const openBibleReader = useCallback(

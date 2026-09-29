@@ -11,9 +11,11 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 )
 
+import { adminFormsFor } from "../../../i18n/adminLanguage"
 import {
   LAST_WATCHED_HYDRATE_TIMEOUT_MS,
   createLastWatchedStore,
+  screenTitleLocale,
 } from "../store"
 import {
   LAST_WATCHED_STORAGE_KEY,
@@ -486,6 +488,58 @@ describe("the title on the write path", () => {
 
     store.write("the-light", null)
     expect(store.getRecord()).not.toHaveProperty("titleLocale")
+  })
+
+  // U7 (KTD16): an open screen keeps its captured language after a live
+  // change, so the stamp is the language of THAT screen's title.
+  it("asks for the locale of the slug it writes", () => {
+    const storage = makeStorage()
+    const titleLocale = jest.fn((slug: string) =>
+      slug === "the-birth-of-jesus" ? "ru" : "es",
+    )
+    const store = createLastWatchedStore({
+      getItem: storage.getItem,
+      setItem: storage.setItem,
+      removeItem: storage.removeItem,
+      now: () => NOW,
+      titleLocale,
+    })
+    store.write("the-birth-of-jesus", "Рождение Иисуса")
+    expect(titleLocale).toHaveBeenCalledWith("the-birth-of-jesus")
+    expect(store.getRecord()?.titleLocale).toBe("ru")
+  })
+})
+
+describe("screenTitleLocale (U7)", () => {
+  const RU = adminFormsFor("ru")
+  const ES = adminFormsFor("es")
+
+  it("uses the playing session's captured catalog tag for its own video", () => {
+    expect(
+      screenTitleLocale(
+        "the-birth-of-jesus",
+        { videoSlug: "the-birth-of-jesus", adminForms: RU },
+        ES,
+      ),
+    ).toBe("ru")
+  })
+
+  it("uses the current tag for another video, or with no captured forms", () => {
+    expect(
+      screenTitleLocale(
+        "the-light",
+        { videoSlug: "the-birth-of-jesus", adminForms: RU },
+        ES,
+      ),
+    ).toBe("es")
+    expect(
+      screenTitleLocale(
+        "the-birth-of-jesus",
+        { videoSlug: "the-birth-of-jesus", adminForms: null },
+        ES,
+      ),
+    ).toBe("es")
+    expect(screenTitleLocale("the-birth-of-jesus", null, ES)).toBe("es")
   })
 
   it("stores no title when the writer supplies none", () => {

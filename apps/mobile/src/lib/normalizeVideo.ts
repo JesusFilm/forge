@@ -7,10 +7,11 @@ import { bookByOsis, isUsfmBookId, type UsfmBookId } from "./bible/text/books"
 import { compareIds } from "./collation"
 import { isEpisodicSeriesLabel } from "./isSeriesRecord"
 import { pickCardImage } from "./cardImage"
-import { pickLocalizedName, pickLocalizedNameEntry } from "./pickLocalizedName"
+import { pickAdminName, pickLocalizedName } from "./pickLocalizedName"
 import { cleanStreamUrl } from "./validateUrl"
 import {
   ENGLISH_TEXT_LANG,
+  ENGLISH_TEXT_SLUG,
   pickVideoText,
   readDescription,
   readSnippet,
@@ -18,6 +19,7 @@ import {
   textLangFor,
   type LocalizedText,
   type VideoTextSource,
+  videoTextVariables,
 } from "./videoText"
 import { normalizeLanguageIso3 } from "./watchPreferences"
 
@@ -151,6 +153,8 @@ export type WatchVideoRecord = {
   siblings: WatchSibling[]
   variants: WatchVariant[]
   studyQuestions: WatchStudyQuestion[]
+  /** The language of `studyQuestions`: the UI's, or `en` for the English list. */
+  studyQuestionsLang?: string | null
   bibleCitations: WatchBibleCitation[]
   // Series-only: empty for a single video; populated by normalizeSeries.
   episodes: WatchEpisode[]
@@ -174,6 +178,9 @@ export type VideoTextInput = RelativeText & {
       }[]
     | null
   children?: readonly { child?: RelativeText | null }[] | null
+  /** GET_VIDEO_TEXT only: the UI slug's list and the English list (U7). */
+  studyQuestions?: readonly RawStudyQuestion[] | null
+  englishStudyQuestions?: readonly RawStudyQuestion[] | null
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -203,30 +210,8 @@ function formsKey(forms: AdminLanguageForms): string {
   return `${forms.catalogTag}\u0000${forms.rawTag}`
 }
 
-// The key of a name map tells its language: Admin's raw tag is the UI
-// language, `en` is the English fallback, and any other key is itself.
-function nameLang(
-  key: string | null,
-  forms: AdminLanguageForms,
-): string | null {
-  if (key == null) return null
-  if (key === forms.rawTag) return textLangFor(forms)
-  return key
-}
-
 /** An Admin name map in the UI language, else English (R9, R10). */
-function localizedName(
-  value: unknown,
-  forms: AdminLanguageForms,
-): LocalizedText | null {
-  if (value == null) return null
-  const entry = pickLocalizedNameEntry(value, forms.rawTag)
-  if (!entry) return null
-  return {
-    text: entry.text,
-    lang: nameLang(entry.key, forms) ?? ENGLISH_TEXT_LANG,
-  }
-}
+const localizedName = pickAdminName
 
 type RawVariant = NonNullable<RawVideo["variants"]>[number]
 type RawVariantLanguage = NonNullable<RawVariant["language"]>
@@ -464,21 +449,6 @@ function buildWatchVideoRecord(
       })) ?? []
   const siblings = dedupeByDocumentId(rawSiblings)
 
-  const studyQuestions: WatchStudyQuestion[] = (raw.studyQuestions ?? [])
-    .filter((q) => q.value != null && q.value !== "")
-    .sort((a, b) => {
-      const byOrder = (a.order ?? 0) - (b.order ?? 0)
-      if (byOrder !== 0) return byOrder
-      const bySlug = compareLanguageSlug(a.languageSlug, b.languageSlug)
-      if (bySlug !== 0) return bySlug
-      return compareIds(a.documentId ?? "", b.documentId ?? "")
-    })
-    .map((q) => ({
-      documentId: q.documentId ?? "",
-      value: q.value ?? "",
-      order: q.order ?? 0,
-    }))
-
   // Copy before sort: Apollo freezes cached results, and Array.sort mutates in
   // place — sorting the raw frozen array throws "Cannot assign to read-only
   // property". (studyQuestions/episodes are safe: .filter() returns a copy.)
@@ -519,7 +489,9 @@ function buildWatchVideoRecord(
     parentSeries,
     siblings,
     variants,
-    studyQuestions,
+    // The text companion carries them (U7), so none show before it lands.
+    studyQuestions: [],
+    studyQuestionsLang: null,
     bibleCitations,
     episodes: [],
     languages: [],
@@ -528,6 +500,54 @@ function buildWatchVideoRecord(
 }
 
 // ── Text merge (KTD10) ─────────────────────────────────────────────
+
+type RawStudyQuestion = {
+  documentId?: string | null
+  languageSlug?: string | null
+  value?: string | null
+  order?: number | null
+}
+
+// A row with no slug is the older fixture shape; Admin's filter sends the slug.
+function studyQuestionsIn(
+  rows: readonly RawStudyQuestion[] | null | undefined,
+  slug: string,
+): WatchStudyQuestion[] {
+  return (rows ?? [])
+    .filter((q) => q.languageSlug == null || q.languageSlug === slug)
+    .filter((q) => q.value != null && q.value !== "")
+    .sort((a, b) => {
+      const byOrder = (a.order ?? 0) - (b.order ?? 0)
+      if (byOrder !== 0) return byOrder
+      const bySlug = compareLanguageSlug(a.languageSlug, b.languageSlug)
+      if (bySlug !== 0) return bySlug
+      return compareIds(a.documentId ?? "", b.documentId ?? "")
+    })
+    .map((q) => ({
+      documentId: q.documentId ?? "",
+      value: q.value ?? "",
+      order: q.order ?? 0,
+    }))
+}
+
+/** R9, R10: the UI language's list, else the English list, never a mix. */
+function pickStudyQuestions(
+  text: VideoTextInput,
+  forms: AdminLanguageForms,
+): { questions: WatchStudyQuestion[]; lang: string | null } {
+  const ui = studyQuestionsIn(
+    text.studyQuestions,
+    videoTextVariables(forms).textSlug,
+  )
+  if (ui.length > 0) return { questions: ui, lang: textLangFor(forms) }
+  const english = studyQuestionsIn(
+    text.englishStudyQuestions,
+    ENGLISH_TEXT_SLUG,
+  )
+  return english.length > 0
+    ? { questions: english, lang: ENGLISH_TEXT_LANG }
+    : { questions: [], lang: null }
+}
 
 // Keyed by the base record (which already encodes the forms) and the text
 // object, so a republish with the same inputs keeps its identity.
@@ -584,6 +604,8 @@ export function withVideoText(
     ? titleFor(rows, base.parentSeries.documentId, forms)
     : null
 
+  const study = pickStudyQuestions(text, forms)
+
   const merged: WatchVideoRecord = {
     ...base,
     title: title?.text ?? null,
@@ -592,6 +614,8 @@ export function withVideoText(
     descriptionLang: description?.lang ?? null,
     snippet: snippet?.text ?? null,
     snippetLang: snippet?.lang ?? null,
+    studyQuestions: study.questions,
+    studyQuestionsLang: study.lang,
     parentSeries:
       base.parentSeries && parentTitle
         ? {

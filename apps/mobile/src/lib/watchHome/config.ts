@@ -12,9 +12,7 @@ import {
 } from "./heroConfig"
 import { WATCH_HOME_SECTIONS } from "./fallbackConfig"
 
-// Home reads its locale from the store (U6: currentAdminForms, videoTextVariables).
-// HOME_LOCALE stays only for the For You request, which U7 moves to the table.
-export const HOME_LOCALE = "en"
+// Home and For You read their languages from the store (U6, U7).
 export const ENGLISH_LANGUAGE_SLUG = "english"
 
 /**

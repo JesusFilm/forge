@@ -125,7 +125,11 @@ describe("Bible passages stay off the player-gating queries", () => {
   // Positive control. Without it the two negatives above pass vacuously the day
   // the field is renamed on admin's side.
   it("SELECTS passage on the companion operation", () => {
-    expect(passagesSdl).toMatch(/\bpassage\s*\{/)
+    expect(passagesSdl).toMatch(/\bpassage\(languageSlug: \$textSlug\)\s*\{/)
+    // U7: the English passage for R10, skipped under an English UI.
+    expect(passagesSdl).toMatch(
+      /englishPassage: passage\(languageSlug: "english"\) @skip\(if: \$isEnglish\)\s*\{/,
+    )
     expect(passagesSdl).toContain("versionAbbreviation")
   })
 
@@ -265,7 +269,26 @@ describe("the heavy video documents are language-free (KTD10)", () => {
     expect(sdl).not.toMatch(/\$locale\b/)
     expect(sdl).not.toMatch(/\$textSlug\b/)
     expect(sdl).not.toMatch(/\blocales\s*\(/)
+    // U7: study questions are text, so they moved to the companion.
+    expect(sdl).not.toMatch(/\bstudyQuestions\b/)
     expect(operationOnly(sdl)).toMatch(/\(\$slug: String!\)/)
+  })
+})
+
+describe("study questions ask by the UI slug, with the English list (U7)", () => {
+  it("GET_VIDEO_TEXT selects both lists", () => {
+    const sdl = documentNamed("GET_VIDEO_TEXT")
+    expect(sdl).toMatch(/\bstudyQuestions\(languageSlug: \$textSlug\)\s*\{/)
+    expect(sdl).toMatch(
+      /englishStudyQuestions: studyQuestions\(languageSlug: "english"\)\s*\{/,
+    )
+  })
+
+  it("no exported document selects study questions with no language", () => {
+    for (const [name, doc] of exportedDocuments()) {
+      const bare = asSdl(doc).match(/\bstudyQuestions\s*\{/g) ?? []
+      expect({ name, bare: bare.length }).toEqual({ name, bare: 0 })
+    }
   })
 })
 
@@ -290,7 +313,7 @@ describe("GET_VIDEO_TEXT and GET_SERIES_TEXT (the text companions)", () => {
     const sdl = operationOnly(documentNamed("GET_VIDEO_TEXT"))
     expect(sdl).toMatch(/parents\s*\{\s*parent\s*\{/)
     expect(sdl).toMatch(/children\s*\{\s*child\s*\{/)
-    expect(sdl).not.toMatch(/\border\b/)
+    expect(sdl).not.toMatch(/children\s*\{\s*order\b/)
   })
 
   it("GET_SERIES_TEXT keeps the series document's `children { order child }`", () => {

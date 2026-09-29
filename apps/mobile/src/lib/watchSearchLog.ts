@@ -69,6 +69,8 @@ export type WatchSearchLogAttributesInput = {
   latencyMs?: number | null
   degraded?: boolean | null
   responseSearchMode?: string | null
+  /** The display slug the search sent (U7); English when absent. */
+  searchLanguageSlug?: string
 } & (
   | { requestType: "search" }
   | { requestType: "load_more"; priorVisibleCount: number }
@@ -99,7 +101,8 @@ export function buildWatchSearchLogAttributes(
     "watch_search.result_count": outcome.result_count,
     "watch_search.visible_result_count": visibleResultCount,
     "watch_search.client_latency_ms": nonNegativeInt(input.clientLatencyMs),
-    "watch_search.search_language_slug": SEARCH_LANGUAGE_SLUG,
+    "watch_search.search_language_slug":
+      input.searchLanguageSlug ?? SEARCH_LANGUAGE_SLUG,
     "watch_search.offset": nonNegativeInt(input.offset),
   }
 

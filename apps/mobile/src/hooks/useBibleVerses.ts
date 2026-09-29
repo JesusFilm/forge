@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
+import type { AdminLanguageForms } from "../i18n/adminLanguage"
 import { getApolloClient } from "../lib/apolloClient"
 import { isBsbVerseRef } from "../lib/bible/position/snapshot"
 import type { VerseRef } from "../lib/bible/versification/convert"
@@ -11,6 +12,7 @@ import {
 } from "../lib/biblePassageCooldown"
 import {
   projectBiblePassage,
+  type BiblePassageProjection,
   type RenderableBiblePassage,
 } from "../lib/biblePassages"
 import { formatCitationLabel } from "../lib/citationFormat"
@@ -20,6 +22,12 @@ import {
   GET_VIDEO_BIBLE_PASSAGES,
   type VideoBiblePassagesData,
 } from "../lib/queries"
+import {
+  ENGLISH_TEXT_LANG,
+  ENGLISH_TEXT_SLUG,
+  textLangFor,
+  videoTextVariables,
+} from "../lib/videoText"
 import { withTimeout } from "../lib/withTimeout"
 
 const JOIN_BIBLE_STUDY_URL =
@@ -88,6 +96,9 @@ export type BibleQuoteBlock = {
   /** Passage-only. Absent on the Experience and SDUI paths, which are unchanged. */
   translation: string | null
   copyright: string | null
+  /** The language of the verse, translation, and copyright: the UI's, or `en`
+   *  for the English passage (R10). Null when the card shows no passage. */
+  textLang: string | null
   /** Where "Read full passage" opens the reader, in BSB numbering (KTD17).
    *  Named like `artCandidates`. Null shows no button, whatever the passage. */
   citationStart: VerseRef | null
@@ -124,7 +135,9 @@ export type BibleQuotesState = {
   reportArtworkFailure: (cardIndex: number, failedUrl: string) => void
 }
 
-type PassageMap = ReadonlyMap<string, RenderableBiblePassage>
+type PassageEntry = { passage: RenderableBiblePassage; lang: string }
+
+type PassageMap = ReadonlyMap<string, PassageEntry>
 
 const NO_PASSAGES: PassageMap = new Map()
 
@@ -153,14 +166,67 @@ type RawCitationRow = NonNullable<
   NonNullable<VideoBiblePassagesData["videoBySlug"]>["bibleCitations"]
 >[number]
 
+/** The language the passage read asks in, taken from the route's forms. */
+type PassageLanguage = { textSlug: string; lang: string }
+
+function passageLanguage(forms: AdminLanguageForms): PassageLanguage {
+  return {
+    textSlug: videoTextVariables(forms).textSlug,
+    lang: textLangFor(forms),
+  }
+}
+
+/** The companion's variables. An English UI skips the duplicate English read. */
+export function biblePassageVariables(
+  slug: string,
+  textSlug: string,
+): { slug: string; textSlug: string; isEnglish: boolean } {
+  return { slug, textSlug, isEnglish: textSlug === ENGLISH_TEXT_SLUG }
+}
+
+function englishPassageOf(row: RawCitationRow) {
+  return "englishPassage" in row ? row.englishPassage : null
+}
+
+/**
+ * R9, R10: the passage for the route's slug, else the English one. Admin
+ * answers a slug it cannot map with its English version, so a passage with the
+ * English passage's version id is English text.
+ */
+function choosePassage(
+  row: RawCitationRow,
+  local: BiblePassageProjection,
+  english: BiblePassageProjection,
+  language: PassageLanguage,
+): PassageEntry | null {
+  if (local.status === "renderable") {
+    // The gate passed both, so each version id is a positive integer.
+    const sameAsEnglish =
+      english.status === "renderable" &&
+      englishPassageOf(row)?.versionId === row.passage?.versionId
+    const englishText = language.textSlug === ENGLISH_TEXT_SLUG || sameAsEnglish
+    return {
+      passage: local.passage,
+      lang: englishText ? ENGLISH_TEXT_LANG : language.lang,
+    }
+  }
+  return english.status === "renderable"
+    ? { passage: english.passage, lang: ENGLISH_TEXT_LANG }
+    : null
+}
+
 /**
  * Project the response into a passage map, logging each degraded path under its
  * own reason. The three stay distinguishable on purpose: `no_passage` is a
  * designed outcome, `gate_rejected` is the signal that an upstream change
  * started suppressing verses, and they must not read the same in Datadog.
  */
-function collectPassages(rows: readonly RawCitationRow[], slug: string) {
-  const passages = new Map<string, RenderableBiblePassage>()
+function collectPassages(
+  rows: readonly RawCitationRow[],
+  slug: string,
+  language: PassageLanguage,
+) {
+  const passages = new Map<string, PassageEntry>()
   let absent = 0
 
   for (const row of rows) {
@@ -168,14 +234,20 @@ function collectPassages(rows: readonly RawCitationRow[], slug: string) {
     if (documentId == null || documentId === "") continue
 
     const projection = projectBiblePassage(row.passage)
-    if (projection.status === "renderable") {
-      passages.set(documentId, projection.passage)
+    const english = projectBiblePassage(englishPassageOf(row))
+    const chosen = choosePassage(row, projection, english, language)
+    if (chosen != null) {
+      passages.set(documentId, chosen)
       continue
     }
-    if (projection.status === "rejected") {
+    const rejected = [projection, english].find(
+      (p): p is Extract<BiblePassageProjection, { status: "rejected" }> =>
+        p.status === "rejected",
+    )
+    if (rejected != null) {
       datadogLog.warn("bible_passages.degraded", {
         reason: "gate_rejected",
-        missing_field: projection.missingField,
+        missing_field: rejected.missingField,
         slug,
       })
       continue
@@ -199,15 +271,21 @@ function collectPassages(rows: readonly RawCitationRow[], slug: string) {
  * the network. Used while the failure cooldown is open: the cooldown guards
  * against repeating a stall, and a cache read cannot stall.
  */
-function readCachedPassages(slug: string): ReadState {
+function readCachedPassages(
+  slug: string,
+  language: PassageLanguage,
+): ReadState {
   try {
     const cached = getApolloClient().readQuery({
       query: GET_VIDEO_BIBLE_PASSAGES,
-      variables: { slug },
+      variables: biblePassageVariables(slug, language.textSlug),
     })
     const rows = cached?.videoBySlug?.bibleCitations
     if (rows == null) return SETTLED_EMPTY
-    return { status: "settled", passages: collectPassages(rows, slug) }
+    return {
+      status: "settled",
+      passages: collectPassages(rows, slug, language),
+    }
   } catch {
     // A cache miss on an incomplete entry reads as no passages, never a throw.
     return SETTLED_EMPTY
@@ -227,6 +305,8 @@ export function useBibleVerses(
   slug: string,
   citations: WatchBibleCitation[],
   art: BibleCardArtSource,
+  /** The route's captured forms (KTD16); never the store's. */
+  forms: AdminLanguageForms,
 ): BibleQuotesState {
   const [read, setRead] = useState<ReadState>(IDLE)
   // A superseded video's response must never land on the new one's cards.
@@ -235,9 +315,11 @@ export function useBibleVerses(
 
   const { variants, authoredImageUrl, primaryLanguageCoreId, payloadSettled } =
     art
+  const { textSlug, lang: uiLang } = passageLanguage(forms)
 
   useEffect(() => {
     const thisRequest = ++requestIdRef.current
+    const language: PassageLanguage = { textSlug, lang: uiLang }
 
     // R12: a video with no citations makes no request.
     if (!slug || !hasCitations) {
@@ -255,7 +337,7 @@ export function useBibleVerses(
         reason: "cooldown_suppressed",
         slug,
       })
-      setRead(readCachedPassages(slug))
+      setRead(readCachedPassages(slug, language))
       return
     }
 
@@ -287,7 +369,7 @@ export function useBibleVerses(
           withTimeout(
             getApolloClient().query({
               query: GET_VIDEO_BIBLE_PASSAGES,
-              variables: { slug },
+              variables: biblePassageVariables(slug, textSlug),
               fetchPolicy: "cache-first",
             }),
             PASSAGE_FETCH_DEADLINE_MS,
@@ -315,7 +397,7 @@ export function useBibleVerses(
       const rows = outcome.value?.data?.videoBySlug?.bibleCitations ?? []
       setRead({
         status: "settled",
-        passages: collectPassages(rows, slug),
+        passages: collectPassages(rows, slug, language),
       })
     })()
 
@@ -326,7 +408,7 @@ export function useBibleVerses(
       requestIdRef.current += 1
       controller.abort()
     }
-  }, [slug, hasCitations])
+  }, [slug, hasCitations, textSlug, uiLang])
 
   // The hold's own release. Re-armed per video, and cleared on the way out so
   // a StrictMode setup -> cleanup -> setup cycle re-arms rather than firing the
@@ -411,7 +493,8 @@ export function useBibleVerses(
 
   return useMemo(() => {
     const cards: BibleQuoteBlock[] = citations.map((citation, index) => {
-      const passage = passages.get(citation.documentId)
+      const entry = passages.get(citation.documentId)
+      const passage = entry?.passage
       const artCandidates = cardArt.candidates[index] ?? []
       // The best rung this card has not already failed. Resolved by URL, so a
       // list that gains a higher tier after a republish is still tried.
@@ -432,6 +515,7 @@ export function useBibleVerses(
         ctaLink: null,
         translation: passage?.versionTitle ?? null,
         copyright: passage?.copyright ?? null,
+        textLang: entry?.lang ?? null,
         citationStart: citationReaderStart(citation),
         loading,
       }
@@ -452,6 +536,7 @@ export function useBibleVerses(
       ctaLink: JOIN_BIBLE_STUDY_URL,
       translation: null,
       copyright: null,
+      textLang: null,
       citationStart: null,
       loading: false,
     })

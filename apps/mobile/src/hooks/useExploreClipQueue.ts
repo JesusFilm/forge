@@ -10,6 +10,10 @@ import { AppState } from "react-native"
 
 import { useWatchPreferences } from "../contexts/WatchPreferencesProvider"
 import {
+  currentAdminForms,
+  type AdminLanguageForms,
+} from "../i18n/adminLanguage"
+import {
   getApolloClient,
   isUnreachableEndpointError,
 } from "../lib/apolloClient"
@@ -70,10 +74,12 @@ import {
   type ExplorePoolState,
 } from "../lib/explore/telemetry"
 import type { ClipTier, FeedClip, ReadyClip } from "../lib/explore/types"
+import { deriveLanguageDisplay } from "../lib/language-display"
 import { muxClipStillUrl } from "../lib/muxThumbnail"
+import { pickAdminName } from "../lib/pickLocalizedName"
 import { EXPLORE_CLIP_CANDIDATES, EXPLORE_INVENTORY } from "../lib/queries"
-import { RECOMMENDATION_UI_LOCALE } from "../lib/recommendations/context"
 import type { DeliveryResult } from "../lib/recommendations/delivery"
+import { textLangFor, videoTextVariables } from "../lib/videoText"
 import {
   getUserRecommendationsClient,
   useUserRecommendations,
@@ -236,6 +242,8 @@ export type ExploreClipQueueDeps = {
   random: RandomSource
   now: () => number
   deviceLocale: () => string | null
+  /** The UI's Admin forms now. Read only when the tab gains focus (KTD16). */
+  adminForms: () => AdminLanguageForms
 }
 
 let defaultDeps: ExploreClipQueueDeps | null = null
@@ -257,6 +265,7 @@ function getExploreClipQueueDeps(): ExploreClipQueueDeps {
     random: Math.random,
     now: Date.now,
     deviceLocale: readDeviceLocale,
+    adminForms: currentAdminForms,
   }
   return defaultDeps
 }
@@ -300,6 +309,9 @@ export type UseExploreClipQueueInput = {
 export type ExploreClipQueue = {
   /** R19: the one slug for eligibility, the pool, and the slate. */
   feedLanguageSlug: string
+  /** R9: the feed language's name in the UI language, else in English, else
+   *  the title-cased slug. The empty state names the feed with it. */
+  feedLanguageName: string
   /** R37 / R47. The feed dispatches `offline` or `empty` while preparing. */
   signal: ClipQueueSignal | null
   /** The offline retry. It fetches the pool again when there is none. */
@@ -338,6 +350,13 @@ type EngineHost = {
   markStillLoaded: (uri: string) => void
   /** `changeLanguage`'s `refreshRecommendations` effect. */
   refreshSlate: (languageSlug: string) => void
+  /** The text forms the tab captured at its last focus (KTD16). */
+  textForms: () => AdminLanguageForms
+  /** A pool arrived for this language, with Admin's name map for it. */
+  setLanguageName: (
+    languageSlug: string,
+    name: Readonly<Record<string, string>> | null,
+  ) => void
 }
 
 type Apply = (state: ClipQueueState) => ClipQueueState
@@ -397,6 +416,7 @@ function createQueueEngine(deps: ExploreClipQueueDeps, host: EngineHost) {
     if (queue.pool != null && queue.pool.fetchedAt > pool.fetchedAt) return
     queue = setPool(queue, pool, deps.random)
     retryStep = 0
+    host.setLanguageName(pool.languageSlug, pool.languageName)
     if (poolReported) return
     poolReported = true
     host.setPoolState(poolState)
@@ -457,6 +477,7 @@ function createQueueEngine(deps: ExploreClipQueueDeps, host: EngineHost) {
     applyPool(pool, "warm")
     const clip = usableStoredClip(readyClip, {
       feedLanguageSlug: slug,
+      textSlug: videoTextVariables(host.textForms()).textSlug,
       poolFetchedAt: pool.fetchedAt,
       recordedWindows: (videoId) => deps.record.getWindows(videoId),
     })
@@ -491,12 +512,15 @@ function createQueueEngine(deps: ExploreClipQueueDeps, host: EngineHost) {
     effect: Extract<ClipQueueEffect, { kind: "hydrate" }>,
     signal: AbortSignal,
   ): Promise<Apply> {
+    // The forms of this request, so its answer is read in its own language.
+    const forms = host.textForms()
     try {
       const result = await deps.getClient().query({
         query: EXPLORE_CLIP_CANDIDATES,
         variables: {
           coreIds: [...effect.coreIds],
           audioLanguageSlug: effect.audioLanguageSlug,
+          ...videoTextVariables(forms),
         },
         fetchPolicy: "no-cache",
         context: { fetchOptions: { signal } },
@@ -504,10 +528,15 @@ function createQueueEngine(deps: ExploreClipQueueDeps, host: EngineHost) {
       if (result.error) throw result.error
       const videos = result.data?.watchHomeVideos
       // No body is not an answer: every candidate would read as ineligible.
-      if (videos == null) {
+      // Text read before a focus changed the forms is in the old language.
+      const textSlug = videoTextVariables(forms).textSlug
+      if (
+        videos == null ||
+        videoTextVariables(host.textForms()).textSlug !== textSlug
+      ) {
         return (state) => hydrationFailed(state, effect.token, "transient")
       }
-      return (state) => applyHydration(state, effect.token, videos)
+      return (state) => applyHydration(state, effect.token, videos, forms)
     } catch (error) {
       const reason = deps.classifyFailure(error)
       return (state) => hydrationFailed(state, effect.token, reason)
@@ -733,6 +762,23 @@ function createQueueEngine(deps: ExploreClipQueueDeps, host: EngineHost) {
       wake()
     },
 
+    /**
+     * KTD16: new text forms at a focus. Hydrations no clip holds were read in
+     * the old language, so they go; each video hydrates again when needed.
+     */
+    changeTextForms(input: PumpInput): void {
+      if (queue == null || queue.media.size === 0) return
+      const held = new Set(queue.ahead.map((clip) => clip.videoId))
+      if (input.feedHoldsQueued && queue.handedOff != null) {
+        held.add(queue.handedOff.videoId)
+      }
+      if (input.currentClip != null) held.add(input.currentClip.videoId)
+      const media = new Map([...queue.media].filter(([id]) => held.has(id)))
+      if (media.size === queue.media.size) return
+      queue = { ...queue, media }
+      wake()
+    },
+
     /** A served slate for the feed language, applied once per request. */
     applySlate(
       slug: string,
@@ -838,6 +884,27 @@ function createSlateScheduler(
   }
 }
 
+// ── KTD16: the languages the tab captured at focus ─────────────────
+
+type CapturedLanguages = {
+  deviceLocale: string | null
+  forms: AdminLanguageForms
+}
+
+function captureLanguages(deps: ExploreClipQueueDeps): CapturedLanguages {
+  return { deviceLocale: deps.deviceLocale(), forms: deps.adminForms() }
+}
+
+function sameLanguages(a: CapturedLanguages, b: CapturedLanguages): boolean {
+  return (
+    a.deviceLocale === b.deviceLocale &&
+    a.forms.catalogTag === b.forms.catalogTag &&
+    a.forms.textSlug === b.forms.textSlug &&
+    a.forms.forYouLocale === b.forms.forYouLocale &&
+    a.forms.rawTag === b.forms.rawTag
+  )
+}
+
 // ── The hook ────────────────────────────────────────────────────────
 
 export function useExploreClipQueue(
@@ -857,19 +924,37 @@ export function useExploreClipQueue(
   // The first render's deps serve the hook's whole life.
   const [d] = useState(deps)
   const { audioLanguageSlug } = useWatchPreferences()
+
+  // KTD16: the phone language and the text forms are read when the tab gains
+  // focus, never while it plays, so a live change keeps the clip queue whole.
+  const [captured, setCaptured] = useState(() => captureLanguages(d))
+  const capturedRef = useRef(captured)
+  capturedRef.current = captured
+  useEffect(() => {
+    if (!focused) return
+    setCaptured((held) => {
+      const next = captureLanguages(d)
+      return sameLanguages(held, next) ? held : next
+    })
+  }, [d, focused])
+
   const feedLanguageSlug = useMemo(
     () =>
       resolveFeedLanguage({
         preferredAudioSlug: audioLanguageSlug,
-        deviceLocale: d.deviceLocale(),
+        deviceLocale: captured.deviceLocale,
       }),
-    [audioLanguageSlug, d],
+    [audioLanguageSlug, captured.deviceLocale],
   )
 
   const [tick, setTick] = useState(0)
   const [signal, setSignal] = useState<ClipQueueSignal | null>(null)
   const [poolState, setPoolState] = useState<ExplorePoolState | null>(null)
   const [loadedStills, setLoadedStills] = useState<readonly string[]>([])
+  const [languageName, setLanguageName] = useState<{
+    slug: string
+    name: Readonly<Record<string, string>> | null
+  } | null>(null)
 
   const callbacksRef = useRef<Callbacks>(input)
   const feedSlugRef = useRef(feedLanguageSlug)
@@ -890,11 +975,22 @@ export function useExploreClipQueue(
             : appendBounded(held, uri, MAX_TRACKED_STILLS),
         ),
       refreshSlate: (slug) => refreshSlateRef.current(slug),
+      textForms: () => capturedRef.current.forms,
+      setLanguageName: (slug, name) =>
+        setLanguageName((held) =>
+          held?.slug === slug && held.name === name ? held : { slug, name },
+        ),
     }),
   )
 
   // ── KTD8: Explore's own slate ────────────────────────────────────
-  const [requestedSlug, setRequestedSlug] = useState<string | null>(null)
+  // KTD11: the For You locale rides with the slug the budget admitted, so a
+  // new locale waits for the budget like a new slug does.
+  const [requested, setRequested] = useState<{
+    slug: string
+    locale: string
+  } | null>(null)
+  const requestedSlug = requested?.slug ?? null
   const [client] = useState(() =>
     d.budget.wrap(d.recommendations, {
       now: d.now,
@@ -903,7 +999,7 @@ export function useExploreClipQueue(
   )
   const recommendations = useUserRecommendations(
     {
-      locale: RECOMMENDATION_UI_LOCALE,
+      locale: requested?.locale ?? captured.forms.forYouLocale,
       audioLanguageSlug: requestedSlug ?? feedLanguageSlug,
       count: EXPLORE_RECOMMENDATION_COUNT,
       // Nothing is sent until the budget admits the first request.
@@ -913,8 +1009,18 @@ export function useExploreClipQueue(
   )
   const [scheduler] = useState(() =>
     createSlateScheduler(d, {
-      requestSlug: setRequestedSlug,
-      refresh: () => innerRefreshRef.current(),
+      requestSlug: (slug) =>
+        setRequested({
+          slug,
+          locale: capturedRef.current.forms.forYouLocale,
+        }),
+      refresh: () => {
+        const locale = capturedRef.current.forms.forYouLocale
+        setRequested((held) =>
+          held != null && held.locale !== locale ? { ...held, locale } : held,
+        )
+        innerRefreshRef.current()
+      },
     }),
   )
 
@@ -955,6 +1061,30 @@ export function useExploreClipQueue(
     engine.start(feedLanguageSlug)
     scheduler.want(feedLanguageSlug)
   }, [engine, scheduler, feedLanguageSlug])
+
+  // KTD16: new forms at a focus. The queue drops text read in the old
+  // language, and the slate asks again in the new For You locale.
+  const textSlug = videoTextVariables(captured.forms).textSlug
+  const forYouLocale = captured.forms.forYouLocale
+  const appliedFormsRef = useRef({ textSlug, forYouLocale })
+  const pumpInputRef = useRef<PumpInput | null>(null)
+  useEffect(() => {
+    const applied = appliedFormsRef.current
+    if (
+      applied.textSlug === textSlug &&
+      applied.forYouLocale === forYouLocale
+    ) {
+      return
+    }
+    appliedFormsRef.current = { textSlug, forYouLocale }
+    if (!engine.started()) return
+    if (applied.textSlug !== textSlug && pumpInputRef.current != null) {
+      engine.changeTextForms(pumpInputRef.current)
+    }
+    if (applied.forYouLocale !== forYouLocale) {
+      scheduler.want(feedSlugRef.current)
+    }
+  }, [engine, scheduler, textSlug, forYouLocale])
 
   const served =
     recommendations.status === "served" ? recommendations.slate : null
@@ -1009,14 +1139,16 @@ export function useExploreClipQueue(
   }, [engine, playerMode, nextClip])
 
   useEffect(() => {
-    engine.pump({
+    const pumpInput: PumpInput = {
       wantsClip,
       feedHoldsQueued,
       gestureActive,
       holdLookahead,
       currentClip,
       playerMode,
-    })
+    }
+    pumpInputRef.current = pumpInput
+    engine.pump(pumpInput)
   }, [
     engine,
     tick,
@@ -1033,15 +1165,33 @@ export function useExploreClipQueue(
     playerMode === "one" && currentClip != null ? stillUriOf(currentClip) : null
   const stillLoaded = stillUri != null && loadedStills.includes(stillUri)
 
+  const feedLanguageName = useMemo(() => {
+    const map =
+      languageName?.slug === feedLanguageSlug ? languageName.name : null
+    const picked = map == null ? null : pickAdminName(map, captured.forms)
+    return deriveLanguageDisplay(feedLanguageSlug, picked?.text ?? null, {
+      inUiLanguage: picked?.lang === textLangFor(captured.forms),
+    }).name
+  }, [languageName, feedLanguageSlug, captured.forms])
+
   return useMemo(
     () => ({
       feedLanguageSlug,
+      feedLanguageName,
       signal,
       retry: retryQueue,
       poolState,
       stillUri,
       stillLoaded,
     }),
-    [feedLanguageSlug, signal, retryQueue, poolState, stillUri, stillLoaded],
+    [
+      feedLanguageSlug,
+      feedLanguageName,
+      signal,
+      retryQueue,
+      poolState,
+      stillUri,
+      stillLoaded,
+    ],
   )
 }

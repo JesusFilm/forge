@@ -290,12 +290,6 @@ export const watchVideoFragment = adminGraphql(`
         playbackId
       }
     }
-    studyQuestions {
-      documentId: id
-      languageSlug
-      value: text
-      order
-    }
     bibleCitations {
       documentId: id
       chapterStart
@@ -336,6 +330,18 @@ export const GET_VIDEO_TEXT = adminGraphql(
       videoBySlug(slug: $slug) {
         documentId: id
         ...VideoText
+        studyQuestions(languageSlug: $textSlug) {
+          documentId: id
+          languageSlug
+          value: text
+          order
+        }
+        englishStudyQuestions: studyQuestions(languageSlug: "english") {
+          documentId: id
+          languageSlug
+          value: text
+          order
+        }
         parents {
           parent {
             documentId: id
@@ -367,12 +373,27 @@ export type VideoTextData = AdminResultOf<typeof GET_VIDEO_TEXT>
 // reference with a plain object and the player-gating read collapses — silently,
 // because a SUCCESSFUL passage read is what triggers it.
 export const GET_VIDEO_BIBLE_PASSAGES = adminGraphql(`
-  query GetVideoBiblePassages($slug: String!) {
+  query GetVideoBiblePassages(
+    $slug: String!
+    $textSlug: String!
+    $isEnglish: Boolean!
+  ) {
     videoBySlug(slug: $slug) {
       documentId: id
       bibleCitations {
         documentId: id
-        passage {
+        passage(languageSlug: $textSlug) {
+          content
+          copyright
+          humanReference
+          provider
+          reference
+          versionAbbreviation
+          versionId
+          versionTitle
+        }
+        englishPassage: passage(languageSlug: "english")
+          @skip(if: $isEnglish) {
           content
           copyright
           humanReference
@@ -423,12 +444,6 @@ export const seriesWatchVideoFragment = adminGraphql(`
         slug
         name
       }
-    }
-    studyQuestions {
-      documentId: id
-      languageSlug
-      value: text
-      order
     }
     bibleCitations {
       documentId: id
@@ -681,6 +696,7 @@ export const EXPLORE_INVENTORY = adminGraphql(
       watchLanguageInventory(languageSlug: $languageSlug, limit: $limit) {
         language {
           slug
+          name
         }
         audioCollections {
           ...ExploreInventoryItem
@@ -702,14 +718,17 @@ export type ExploreInventoryData = AdminResultOf<typeof EXPLORE_INVENTORY>
 // Up to three queued candidates of one audio language in ONE root-field access
 // (admin allows 60 per minute, one per alias). The dub can be in another
 // language, so the caller checks its slug. NEVER add `dubs`; no bare `url`.
-export const EXPLORE_CLIP_CANDIDATES = adminGraphql(`
+export const EXPLORE_CLIP_CANDIDATES = adminGraphql(
+  `
   query ExploreClipCandidates(
     $coreIds: [String!]!
     $audioLanguageSlug: String!
+    $textSlug: String!
   ) {
     watchHomeVideos(coreIds: $coreIds) {
       documentId: id
       coreId
+      ...VideoText
       images {
         documentId: id
         thumbnail
@@ -743,7 +762,9 @@ export const EXPLORE_CLIP_CANDIDATES = adminGraphql(`
       }
     }
   }
-`)
+`,
+  [videoTextFragment],
+)
 
 export type ExploreClipCandidatesData = AdminResultOf<
   typeof EXPLORE_CLIP_CANDIDATES

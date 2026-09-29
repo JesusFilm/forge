@@ -188,6 +188,59 @@ function makeHarness(options: HarnessOptions = {}) {
   }
 }
 
+// U7 (R4): the offline title refresh writes through the lifecycle, one field
+// set at a time, over the record as it is at write time.
+describe("patchTitles", () => {
+  it("writes the titles and their locale, and keeps every other field", async () => {
+    const h = makeHarness({
+      records: [makeRecord({ seriesSlug: "washi", seriesTitle: "Washi" })],
+    })
+    await h.lifecycle.patchTitles("washi-gospel-1", {
+      title: "Васи — серия 1",
+      seriesTitle: "Васи",
+      titleLocale: "ru",
+    })
+    expect(h.records.get("washi-gospel-1")).toEqual(
+      makeRecord({
+        seriesSlug: "washi",
+        title: "Васи — серия 1",
+        seriesTitle: "Васи",
+        titleLocale: "ru",
+      }),
+    )
+  })
+
+  it("patches over the record as it is now, so a state write is kept", async () => {
+    const h = makeHarness({
+      records: [makeRecord({ state: "downloading", bytesWritten: 10 })],
+    })
+    // A state write lands after the refresh read the record, before its patch.
+    h.records.set(
+      "washi-gospel-1",
+      makeRecord({ state: "downloaded", bytesWritten: 1000 }),
+    )
+    await h.lifecycle.patchTitles("washi-gospel-1", {
+      title: "Новое",
+      titleLocale: "ru",
+    })
+    expect(h.records.get("washi-gospel-1")).toMatchObject({
+      state: "downloaded",
+      bytesWritten: 1000,
+      title: "Новое",
+      titleLocale: "ru",
+    })
+  })
+
+  it("writes nothing for a record that is gone", async () => {
+    const h = makeHarness()
+    await h.lifecycle.patchTitles("washi-gospel-1", {
+      title: "Новое",
+      titleLocale: "ru",
+    })
+    expect(h.writes).toHaveLength(0)
+  })
+})
+
 describe("start", () => {
   it("refuses a live non-placeholder record with `exists`", async () => {
     const h = makeHarness({ records: [makeRecord()] })

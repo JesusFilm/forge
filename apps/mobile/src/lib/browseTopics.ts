@@ -47,3 +47,12 @@ export const BROWSE_TOPICS: readonly BrowseTopic[] = [
     glyph: "star-outline",
   },
 ] as const
+
+const TOPIC_TERMS: ReadonlySet<string> = new Set(
+  BROWSE_TOPICS.map((topic) => topic.searchTerm),
+)
+
+/** A topic's own search term. Its words are English in every UI (U7). */
+export function isBrowseTopicTerm(query: string): boolean {
+  return TOPIC_TERMS.has(query.trim().toLowerCase())
+}

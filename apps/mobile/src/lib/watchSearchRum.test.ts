@@ -99,6 +99,15 @@ describe("buildWatchSearchResultClickContext", () => {
     expect(context["watch_search.search_language_slug"]).toBe("english")
   })
 
+  it("emits the search's own display slug when the UI is not English (U7)", () => {
+    const context = buildWatchSearchResultClickContext(makeResult(), {
+      position: 1,
+      searchRequestId: "req-1",
+      searchLanguageSlug: "russian",
+    })
+    expect(context["watch_search.search_language_slug"]).toBe("russian")
+  })
+
   it("omits route_language_slug, which the request never carries", () => {
     // buildWatchSearchInput deliberately sends no routeLanguageSlug; reporting
     // one would fabricate a request field that was never on the wire.

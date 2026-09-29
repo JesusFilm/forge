@@ -301,6 +301,7 @@ const recordEntry = (n: number) => ({
 function queueResult(): ExploreClipQueue {
   return {
     feedLanguageSlug: "english",
+    feedLanguageName: "English",
     signal: null,
     retry: jest.fn(),
     poolState: null,

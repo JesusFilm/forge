@@ -32,6 +32,11 @@ jest.mock("../../lib/apolloClient", () => ({
 import { StrictMode, act } from "react"
 import type React from "react"
 
+import {
+  ENGLISH_ADMIN_FORMS,
+  adminFormsFor,
+  type AdminLanguageForms,
+} from "../../i18n/adminLanguage"
 import { REQUEST_TIMEOUT_MS, getApolloClient } from "../../lib/apolloClient"
 import { datadogLog } from "../../lib/datadog"
 import type { WatchBibleCitation, WatchVariant } from "../../lib/normalizeVideo"
@@ -90,6 +95,7 @@ function response(
   entries: ReadonlyArray<{
     documentId: string
     passage: Record<string, unknown> | null
+    englishPassage?: Record<string, unknown> | null
   }>,
 ) {
   return {
@@ -99,6 +105,9 @@ function response(
         bibleCitations: entries.map((entry) => ({
           documentId: entry.documentId,
           passage: entry.passage,
+          ...(entry.englishPassage === undefined
+            ? {}
+            : { englishPassage: entry.englishPassage }),
         })),
       },
     },
@@ -121,6 +130,8 @@ type HarnessProps = {
   slug: string
   citations: WatchBibleCitation[]
   art?: BibleCardArtSource
+  /** The route's captured forms (KTD16). English when a case omits them. */
+  forms?: AdminLanguageForms
 }
 
 /**
@@ -140,8 +151,15 @@ function renderHook(initial: HarnessProps, options: { strict?: boolean } = {}) {
       ? ((<StrictMode>{element}</StrictMode>) as React.ReactElement)
       : element
   const seen: BibleQuotesState[] = []
-  function Harness({ slug, citations, art }: HarnessProps) {
-    seen.push(useBibleVerses(slug, citations, art ?? NO_ART))
+  function Harness({ slug, citations, art, forms }: HarnessProps) {
+    seen.push(
+      useBibleVerses(
+        slug,
+        citations,
+        art ?? NO_ART,
+        forms ?? ENGLISH_ADMIN_FORMS,
+      ),
+    )
     return null
   }
   let renderer!: TestInstance
@@ -218,8 +236,161 @@ describe("useBibleVerses", () => {
 
     expect(query).toHaveBeenCalledTimes(1)
     expect(query.mock.calls[0][0]).toMatchObject({
-      variables: { slug: "the-beginning" },
+      variables: {
+        slug: "the-beginning",
+        textSlug: "english",
+        isEnglish: true,
+      },
       fetchPolicy: "cache-first",
+    })
+  })
+
+  // ── U7: the passage in the route's language (R9, R10, KTD16) ────────────
+
+  describe("the passage language", () => {
+    const RU = adminFormsFor("ru")
+    const ES = adminFormsFor("es")
+
+    it("asks by the route's captured slug, not the store's", async () => {
+      const query = jest.fn().mockResolvedValue(response([]))
+      mockGetClient.mockReturnValue({ query })
+      renderHook(
+        { slug: "the-beginning", citations: [citation("c1")], forms: ES },
+        { strict: false },
+      )
+      await flush()
+      expect(query.mock.calls[0][0].variables).toEqual({
+        slug: "the-beginning",
+        textSlug: "spanish-latin-american",
+        isEnglish: false,
+      })
+    })
+
+    it("shows the passage Admin gives for the UI slug, marked in the UI language", async () => {
+      const query = jest.fn().mockResolvedValue(
+        response([
+          {
+            documentId: "c1",
+            passage: rawPassage({ content: "Y dijo Dios", versionId: 147 }),
+            englishPassage: rawPassage({ versionId: 3034 }),
+          },
+        ]),
+      )
+      mockGetClient.mockReturnValue({ query })
+      const hook = renderHook({
+        slug: "the-beginning",
+        citations: [citation("c1")],
+        forms: ES,
+      })
+      await flush()
+      expect(verseCards(hook.latest())[0]).toMatchObject({
+        text: "Y dijo Dios",
+        textLang: "es",
+      })
+    })
+
+    it("keeps the English passage, marked en, when Admin has none for the slug", async () => {
+      const query = jest.fn().mockResolvedValue(
+        response([
+          {
+            documentId: "c1",
+            passage: null,
+            englishPassage: rawPassage({ content: "God said" }),
+          },
+        ]),
+      )
+      mockGetClient.mockReturnValue({ query })
+      const hook = renderHook({
+        slug: "the-beginning",
+        citations: [citation("c1")],
+        forms: RU,
+      })
+      await flush()
+      expect(verseCards(hook.latest())[0]).toMatchObject({
+        text: "God said",
+        textLang: "en",
+      })
+    })
+
+    // Admin answers an unmapped slug with its English launch version, so the
+    // same version id as the English passage means the text is English.
+    it("marks a passage en when Admin answered the slug with the English version", async () => {
+      const query = jest.fn().mockResolvedValue(
+        response([
+          {
+            documentId: "c1",
+            passage: rawPassage({ content: "God said", versionId: 3034 }),
+            englishPassage: rawPassage({
+              content: "God said",
+              versionId: 3034,
+            }),
+          },
+        ]),
+      )
+      mockGetClient.mockReturnValue({ query })
+      const hook = renderHook({
+        slug: "the-beginning",
+        citations: [citation("c1")],
+        forms: RU,
+      })
+      await flush()
+      expect(verseCards(hook.latest())[0]?.textLang).toBe("en")
+    })
+
+    it("marks an English UI's passage en", async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValue(
+          response([{ documentId: "c1", passage: rawPassage() }]),
+        )
+      mockGetClient.mockReturnValue({ query })
+      const hook = renderHook({
+        slug: "the-beginning",
+        citations: [citation("c1")],
+      })
+      await flush()
+      expect(verseCards(hook.latest())[0]?.textLang).toBe("en")
+    })
+
+    it("gives no language to a card with no passage", async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValue(
+          response([{ documentId: "c1", passage: null, englishPassage: null }]),
+        )
+      mockGetClient.mockReturnValue({ query })
+      const hook = renderHook({
+        slug: "the-beginning",
+        citations: [citation("c1")],
+        forms: RU,
+      })
+      await flush()
+      expect(verseCards(hook.latest())[0]).toMatchObject({
+        text: "",
+        textLang: null,
+      })
+    })
+
+    it("asks again when the route's slug changes to another language", async () => {
+      const query = jest.fn().mockResolvedValue(response([]))
+      mockGetClient.mockReturnValue({ query })
+      const hook = renderHook(
+        { slug: "the-beginning", citations: [citation("c1")] },
+        { strict: false },
+      )
+      await flush()
+      hook.rerender({
+        slug: "the-beginning",
+        citations: [citation("c1")],
+        forms: RU,
+      })
+      await flush()
+      expect(
+        query.mock.calls.map(
+          ([options]: [{ variables: { textSlug: string } }]) =>
+            options.variables.textSlug,
+        ),
+      ).toEqual(["english", "russian"])
     })
   })
 

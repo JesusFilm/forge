@@ -94,7 +94,6 @@ import { readSeconds, safely } from "../../lib/explore/playerRead"
 import { getExploreTelemetry } from "../../lib/explore/telemetry"
 import type { ReadyClip, FeedClip } from "../../lib/explore/types"
 import { openKeepWatching } from "../../lib/explore/watchIntent"
-import { deriveLanguageDisplay } from "../../lib/language-display"
 
 const BOTH_PLAYERS: readonly PlayerId[] = ["a", "b"]
 
@@ -609,9 +608,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       {stateScreen != null && (
         <ExploreStates
           phase={stateScreen}
-          languageName={
-            deriveLanguageDisplay(queue.feedLanguageSlug, null).name
-          }
+          languageName={queue.feedLanguageName}
           onRetry={handleRetry}
         />
       )}

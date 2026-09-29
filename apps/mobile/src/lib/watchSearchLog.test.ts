@@ -120,6 +120,17 @@ describe("buildWatchSearchLogAttributes", () => {
     expect(WATCH_SEARCH_LOG_MESSAGE).toBe("watch_search analytics")
   })
 
+  it("names the search's own display slug (U7)", () => {
+    expect(
+      buildWatchSearchLogAttributes({
+        ...baseInput,
+        requestType: "search",
+        outcome: { outcome: "completed", result_count: 1 },
+        searchLanguageSlug: "russian",
+      })["watch_search.search_language_slug"],
+    ).toBe("russian")
+  })
+
   it("builds the exact success bag for a search, all response scalars present", () => {
     expect(
       buildWatchSearchLogAttributes({

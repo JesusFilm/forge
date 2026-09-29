@@ -45,6 +45,22 @@ describe("parseOfflineRecord", () => {
     expect(parseOfflineRecord(serializeOfflineRecord(RECORD))).toEqual(RECORD)
   })
 
+  // U7 (R4): the language of the stored titles. A record from before U7 has
+  // none, and the title refresh reads that as `en`.
+  it("keeps the titles' locale, and reads a record without one as absent", () => {
+    const stamped = { ...RECORD, titleLocale: "ru" }
+    expect(
+      parseOfflineRecord(serializeOfflineRecord(stamped))?.titleLocale,
+    ).toBe("ru")
+    expect(
+      parseOfflineRecord(serializeOfflineRecord(RECORD))?.titleLocale,
+    ).toBeUndefined()
+    expect(
+      parseOfflineRecord(JSON.stringify({ ...RECORD, titleLocale: 7 }))
+        ?.titleLocale,
+    ).toBeUndefined()
+  })
+
   it("round-trips a mid-swap record's swapFrom snapshot", () => {
     const swapping: OfflineDownloadRecord = {
       ...RECORD,

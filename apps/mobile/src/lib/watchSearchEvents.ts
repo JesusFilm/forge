@@ -24,11 +24,15 @@ export type RecordResultClickedInput = {
   resultType: string
   position: number
   visibleResultIds: readonly string[]
+  /** The display slug the search sent (U7); English when absent. */
+  searchLanguageSlug?: string
 }
 
 export type RecordResultsViewedInput = {
   requestId: string | null | undefined
   visibleResultIds: readonly string[]
+  /** The display slug the search sent (U7); English when absent. */
+  searchLanguageSlug?: string
 }
 
 // Admin's event path THROWS on an id failing this shape (unlike the search
@@ -88,7 +92,7 @@ export function buildResultClickedVariables(
     // Mobile never sends routeLanguageSlug on the search request; reporting
     // one here would fabricate a request field (buildWatchSearchInput).
     routeLanguageSlug: null,
-    searchLanguageSlug: SEARCH_LANGUAGE_SLUG,
+    searchLanguageSlug: input.searchLanguageSlug ?? SEARCH_LANGUAGE_SLUG,
   } satisfies RecordWatchSearchEventVariables
 }
 
@@ -109,7 +113,7 @@ export function buildResultsViewedVariables(
     position: null,
     visibleResultIds,
     routeLanguageSlug: null,
-    searchLanguageSlug: SEARCH_LANGUAGE_SLUG,
+    searchLanguageSlug: input.searchLanguageSlug ?? SEARCH_LANGUAGE_SLUG,
   } satisfies RecordWatchSearchEventVariables
 }
 

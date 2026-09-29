@@ -34,6 +34,11 @@ const U6_DOCUMENTS = [
   "GET_WATCH_HOME_VIDEOS",
   "GET_WATCH_SETTING",
   "GET_EXPERIENCE_BY_SLUG",
+  // U7: the passage by slug, the Explore text rows, and the language name.
+  "GET_VIDEO_BIBLE_PASSAGES",
+  "EXPLORE_CLIP_CANDIDATES",
+  "EXPLORE_INVENTORY",
+  "WATCH_SEARCH",
 ]
 
 describe("U6 documents against the committed Admin SDL", () => {

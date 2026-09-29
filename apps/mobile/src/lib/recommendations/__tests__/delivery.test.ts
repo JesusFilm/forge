@@ -2,7 +2,9 @@ import {
   TRANSIENT_DELIVERY_REASONS,
   buildDeliveryVariables,
   classifyDelivery,
+  createCoverageMemory,
   fetchUserRecommendations,
+  fetchUserRecommendationsWithCoverage,
   isSlateExpired,
   validateServedSlate,
   type DeliveryDeps,
@@ -342,5 +344,139 @@ describe("fetchUserRecommendations", () => {
       ).rejects.toBeInstanceOf(RangeError)
     }
     expect(d.getIdentity).not.toHaveBeenCalled()
+  })
+})
+
+// ── KTD11: the English-metadata retry and the session's no-pool pairs ───────
+
+describe("fetchUserRecommendationsWithCoverage", () => {
+  function coverageDeps(
+    answer: (locale: string) => RawUserRecommendationDelivery,
+  ) {
+    const query = jest.fn(async (variables: { locale: string }) =>
+      answer(variables.locale),
+    )
+    const d: DeliveryDeps = {
+      getIdentity: jest.fn(async () => ({
+        kind: "ready" as const,
+        identity: IDENTITY,
+        personalization: true,
+      })),
+      query,
+      invalidateIdentity: jest.fn(async () => undefined),
+      touch: jest.fn(),
+      report: jest.fn(),
+    }
+    return { d, query }
+  }
+
+  const asked = (query: jest.Mock) =>
+    query.mock.calls.map(
+      ([v]: [{ locale: string; audioLanguageSlug: string }]) =>
+        `${v.locale}:${v.audioLanguageSlug}`,
+    )
+
+  // AE9: a Russian UI with a saved English pick. Admin has no (ru, english)
+  // pool, so the retry asks for English metadata with the SAME audio (KD14).
+  it("retries coverage_unavailable with English metadata and the same audio", async () => {
+    const { d, query } = coverageDeps((locale) =>
+      locale === "ru" ? unavailable("coverage_unavailable") : served(),
+    )
+    const result = await fetchUserRecommendationsWithCoverage(
+      { locale: "ru", audioLanguageSlug: "english" },
+      d,
+      createCoverageMemory(),
+    )
+    expect(result.kind).toBe("served")
+    expect(asked(query)).toEqual(["ru:english", "en:english"])
+  })
+
+  it("does not retry when the first request already used en", async () => {
+    const { d, query } = coverageDeps(() => unavailable("coverage_unavailable"))
+    const result = await fetchUserRecommendationsWithCoverage(
+      { locale: "en", audioLanguageSlug: "hausa" },
+      d,
+      createCoverageMemory(),
+    )
+    expect(result).toEqual({
+      kind: "unavailable",
+      reason: "coverage_unavailable",
+      retryable: false,
+    })
+    expect(asked(query)).toEqual(["en:hausa"])
+  })
+
+  it.each([
+    ["empty", unavailable("empty")],
+    ["fallback", { ...unavailable("pool_fallback"), result: "fallback" }],
+    ["transient", unavailable("cooldown")],
+  ])("does not retry a %s answer", async (_name, answer) => {
+    const { d, query } = coverageDeps(
+      () => answer as RawUserRecommendationDelivery,
+    )
+    await fetchUserRecommendationsWithCoverage(
+      { locale: "ru", audioLanguageSlug: "russian" },
+      d,
+      createCoverageMemory(),
+    )
+    expect(asked(query)).toEqual(["ru:russian"])
+  })
+
+  it("never asks again for a pair with no pool in the same session", async () => {
+    const memory = createCoverageMemory()
+    const { d, query } = coverageDeps((locale) =>
+      locale === "ru" ? unavailable("coverage_unavailable") : served(),
+    )
+    await fetchUserRecommendationsWithCoverage(
+      { locale: "ru", audioLanguageSlug: "english" },
+      d,
+      memory,
+    )
+    await fetchUserRecommendationsWithCoverage(
+      { locale: "ru", audioLanguageSlug: "english" },
+      d,
+      memory,
+    )
+    expect(asked(query)).toEqual(["ru:english", "en:english", "en:english"])
+  })
+
+  it("sends nothing when both pairs are known to have no pool", async () => {
+    const memory = createCoverageMemory()
+    const { d, query } = coverageDeps(() => unavailable("coverage_unavailable"))
+    await fetchUserRecommendationsWithCoverage(
+      { locale: "ru", audioLanguageSlug: "hausa" },
+      d,
+      memory,
+    )
+    expect(asked(query)).toEqual(["ru:hausa", "en:hausa"])
+    const again = await fetchUserRecommendationsWithCoverage(
+      { locale: "ru", audioLanguageSlug: "hausa" },
+      d,
+      memory,
+    )
+    expect(again).toEqual({
+      kind: "unavailable",
+      reason: "coverage_unavailable",
+      retryable: false,
+    })
+    expect(query).toHaveBeenCalledTimes(2)
+  })
+
+  it("remembers only a coverage answer, so a pair that served is asked again", async () => {
+    const memory = createCoverageMemory()
+    let answer = served()
+    const { d, query } = coverageDeps(() => answer)
+    await fetchUserRecommendationsWithCoverage(
+      { locale: "ru", audioLanguageSlug: "russian" },
+      d,
+      memory,
+    )
+    answer = unavailable("empty")
+    await fetchUserRecommendationsWithCoverage(
+      { locale: "ru", audioLanguageSlug: "russian" },
+      d,
+      memory,
+    )
+    expect(asked(query)).toEqual(["ru:russian", "ru:russian"])
   })
 })

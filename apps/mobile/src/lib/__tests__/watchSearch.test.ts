@@ -3,12 +3,15 @@ import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import type { WatchSearchResultItem } from "../queries"
 import {
   SEARCH_LANGUAGE_SLUG,
+  ENGLISH_SEARCH_LANGUAGE,
   buildWatchSearchInput,
   mapWatchSearchResponse,
   mapWatchSearchResult,
   parseSearchError,
+  searchLanguageFor,
   stripHtml,
 } from "../watchSearch"
+import { adminFormsFor } from "../../i18n/adminLanguage"
 
 // Admin returns every watchSearch field nullable; the UI reads slug/title/type/id
 // unconditionally. These cover the narrowing at that seam.
@@ -40,13 +43,69 @@ function row(overrides: Partial<WatchSearchResultItem> = {}) {
   } as WatchSearchResultItem
 }
 
+// U7 (R9, KTD9): results come back in the UI language's text rows.
+describe("searchLanguageFor", () => {
+  it("sends the mapped slug for the UI catalog", () => {
+    expect(searchLanguageFor(adminFormsFor("ru"), "jesus").display).toBe(
+      "russian",
+    )
+    expect(searchLanguageFor(adminFormsFor("es"), "jesus").display).toBe(
+      "spanish-latin-american",
+    )
+  })
+
+  it("sends english for a catalog with no Admin language", () => {
+    expect(searchLanguageFor(adminFormsFor("ab"), "jesus").display).toBe(
+      "english",
+    )
+  })
+
+  // Browse-topic terms are English, whatever the UI language.
+  it("names English as the query language of a browse-topic term only", () => {
+    expect(searchLanguageFor(adminFormsFor("ru"), "family").query).toBe(
+      "english",
+    )
+    expect(searchLanguageFor(adminFormsFor("ru"), " Family ").query).toBe(
+      "english",
+    )
+    expect(searchLanguageFor(adminFormsFor("ru"), "family jesus").query).toBe(
+      null,
+    )
+    expect(
+      searchLanguageFor(adminFormsFor("ru"), "\u0441\u0435\u043c\u044c\u044f")
+        .query,
+    ).toBe(null)
+  })
+})
+
 // Admin resolves availability, playbackId and durationSeconds against the target
 // language. Sending a BCP-47 tag where a language.slug is expected resolved the
 // target to the literal "en", which matches no language row — every result came
 // back UNAVAILABLE with a null playbackId (verified against prod).
 describe("buildWatchSearchInput", () => {
+  it("sends the pinned display slug, and a query slug only when one is set", () => {
+    const typed = buildWatchSearchInput({
+      language: { display: "russian", query: null },
+      query: "jesus",
+      offset: 0,
+      limit: 20,
+    })
+    expect(typed.displayLanguageSlug).toBe("russian")
+    expect(typed).not.toHaveProperty("queryLanguageSlug")
+
+    const topic = buildWatchSearchInput({
+      language: { display: "russian", query: "english" },
+      query: "family",
+      offset: 0,
+      limit: 20,
+    })
+    expect(topic.displayLanguageSlug).toBe("russian")
+    expect(topic.queryLanguageSlug).toBe("english")
+  })
+
   it("sends the language SLUG, never a BCP-47 tag", () => {
     const input = buildWatchSearchInput({
+      language: ENGLISH_SEARCH_LANGUAGE,
       query: "jesus",
       offset: 0,
       limit: 20,
@@ -60,6 +119,7 @@ describe("buildWatchSearchInput", () => {
   // so "jesus in spanish" would stop returning Spanish results.
   it("omits targetLanguageSlug so query-named-language inference still runs", () => {
     const input = buildWatchSearchInput({
+      language: ENGLISH_SEARCH_LANGUAGE,
       query: "jesus",
       offset: 0,
       limit: 20,
@@ -71,6 +131,7 @@ describe("buildWatchSearchInput", () => {
   // mobile has no URL language segment to source it from.
   it("omits routeLanguageSlug, which has no mobile equivalent", () => {
     const input = buildWatchSearchInput({
+      language: ENGLISH_SEARCH_LANGUAGE,
       query: "jesus",
       offset: 0,
       limit: 20,
@@ -81,6 +142,7 @@ describe("buildWatchSearchInput", () => {
   it("threads query, paging and the correlation id through", () => {
     expect(
       buildWatchSearchInput({
+        language: ENGLISH_SEARCH_LANGUAGE,
         query: "hope",
         offset: 40,
         limit: 20,
@@ -96,7 +158,12 @@ describe("buildWatchSearchInput", () => {
   })
 
   it("omits clientRequestId entirely when none is supplied", () => {
-    const input = buildWatchSearchInput({ query: "hope", offset: 0, limit: 20 })
+    const input = buildWatchSearchInput({
+      language: ENGLISH_SEARCH_LANGUAGE,
+      query: "hope",
+      offset: 0,
+      limit: 20,
+    })
     expect(input).not.toHaveProperty("clientRequestId")
   })
 })

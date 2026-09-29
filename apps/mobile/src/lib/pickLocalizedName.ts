@@ -1,3 +1,6 @@
+import type { AdminLanguageForms } from "../i18n/adminLanguage"
+import { ENGLISH_TEXT_LANG, textLangFor, type LocalizedText } from "./videoText"
+
 // Admin stores localized name columns as jsonb locale maps: { "en": "...", "es": "..." }.
 // gql.tada types JSON fields as `unknown`, so TypeScript won't catch misuse.
 // The keys are Admin's own tags in Admin's case (`zh-hans`, `es-ES`, `npi`).
@@ -59,4 +62,24 @@ export function pickLocalizedName(
   rawTag?: string | null,
 ): string | undefined {
   return pickLocalizedNameEntry(value, rawTag)?.text
+}
+
+// The key of a name map tells its language: Admin's raw tag is the UI
+// language, `en` is the English fallback, and any other key is itself.
+function nameLang(key: string | null, forms: AdminLanguageForms): string {
+  if (key == null) return ENGLISH_TEXT_LANG
+  if (key === forms.rawTag) return textLangFor(forms)
+  return key
+}
+
+/** An Admin name map in the UI language, else English (R9, R10), with the
+ *  language the chosen name is in. */
+export function pickAdminName(
+  value: unknown,
+  forms: AdminLanguageForms,
+): LocalizedText | null {
+  if (value == null) return null
+  const entry = pickLocalizedNameEntry(value, forms.rawTag)
+  if (!entry) return null
+  return { text: entry.text, lang: nameLang(entry.key, forms) }
 }

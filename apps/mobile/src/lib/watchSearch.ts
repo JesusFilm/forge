@@ -1,5 +1,8 @@
 import { CombinedGraphQLErrors } from "@apollo/client/errors"
 
+import type { AdminLanguageForms } from "../i18n/adminLanguage"
+import { isBrowseTopicTerm } from "./browseTopics"
+
 import type {
   SearchResponse,
   SearchResult,
@@ -18,6 +21,32 @@ import type {
  */
 export const SEARCH_LANGUAGE_SLUG = "english"
 
+/** The languages one search asks in. Discover pins it per search (KTD16). */
+export type SearchLanguage = {
+  /** The UI's text slug: results come back in its text rows (R9). */
+  readonly display: string
+  /** The query's own language, when the app knows it; null lets Admin infer. */
+  readonly query: string | null
+}
+
+export const ENGLISH_SEARCH_LANGUAGE: SearchLanguage = {
+  display: SEARCH_LANGUAGE_SLUG,
+  query: null,
+}
+
+/** KTD9: the mapped text slug (`english` for a catalog with no Admin
+ *  language). A browse-topic term is English whatever the UI shows. */
+export function searchLanguageFor(
+  forms: AdminLanguageForms,
+  query: string,
+): SearchLanguage {
+  const display = forms.textSlug.trim()
+  return {
+    display: display === "" ? SEARCH_LANGUAGE_SLUG : display,
+    query: isBrowseTopicTerm(query) ? SEARCH_LANGUAGE_SLUG : null,
+  }
+}
+
 // Web's query cap (search-actions.ts truncatedQuery). One constant for the
 // screen's input truncation AND the log builder's cap, so they can't drift.
 export const MAX_QUERY_LENGTH = 200
@@ -27,6 +56,7 @@ export type WatchSearchInputArgs = {
   offset: number
   limit: number
   clientRequestId?: string
+  language: SearchLanguage
 }
 
 /**
@@ -39,10 +69,12 @@ export function buildWatchSearchInput({
   offset,
   limit,
   clientRequestId,
+  language,
 }: WatchSearchInputArgs) {
   return {
     query,
-    displayLanguageSlug: SEARCH_LANGUAGE_SLUG,
+    displayLanguageSlug: language.display,
+    ...(language.query ? { queryLanguageSlug: language.query } : {}),
     ...(clientRequestId ? { clientRequestId } : {}),
     limit,
     offset,

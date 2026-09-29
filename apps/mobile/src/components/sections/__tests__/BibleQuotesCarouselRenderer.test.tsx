@@ -226,6 +226,48 @@ function passageLinks(renderer: TestInstance): RenderedNode[] {
   )
 }
 
+// U7: the passage's language (R10, KTD13). An English passage on a card in
+// another UI language carries the English mark and a left-to-right direction.
+describe("BibleQuotesCarouselRenderer — the passage language", () => {
+  /** The quote card's language marks (its composite and host nodes agree). */
+  function cardLanguages(renderer: TestInstance, reference: string): unknown[] {
+    const cards = renderer.root.findAll(
+      (node) =>
+        node.props.accessible === true &&
+        typeof node.props.accessibilityLabel === "string" &&
+        node.props.accessibilityLabel.startsWith(reference),
+    )
+    expect(cards.length).toBeGreaterThan(0)
+    return [...new Set(cards.map((node) => node.props.accessibilityLanguage))]
+  }
+
+  it("marks an English passage for screen readers and sets it left to right", () => {
+    const renderer = render([{ ...PASSAGE_QUOTE, textLang: "en" }])
+    expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual(["en"])
+    for (const needle of [
+      "Let’s make man in our image",
+      "World English Bible British Edition",
+      "Public Domain",
+    ]) {
+      expect(flatStyle(findText(renderer, needle)).writingDirection).toBe("ltr")
+    }
+  })
+
+  it("leaves a passage in the UI language without the English mark", () => {
+    const renderer = render([{ ...PASSAGE_QUOTE, textLang: "ru" }])
+    expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual([undefined])
+    expect(
+      flatStyle(findText(renderer, "Let’s make man in our image"))
+        .writingDirection,
+    ).toBeUndefined()
+  })
+
+  it("leaves the Experience quote as it was", () => {
+    const renderer = render([EXPERIENCE_QUOTE])
+    expect(cardLanguages(renderer, "John 3:16")).toEqual([undefined])
+  })
+})
+
 describe("BibleQuotesCarouselRenderer — passage cards", () => {
   it("renders the verse, the translation, the copyright and the link", () => {
     const renderer = render([PASSAGE_QUOTE])

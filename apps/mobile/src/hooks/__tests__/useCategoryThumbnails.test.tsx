@@ -52,4 +52,12 @@ it("fetches once the tab takes focus", async () => {
   // finds every term already claimed and issues nothing.
   await mount(true)
   expect(mockQuery).toHaveBeenCalled()
+  // U7: a topic term is English words, so it names English as its language.
+  const calls = mockQuery.mock.calls as unknown as [
+    { variables: { input: Record<string, unknown> } },
+  ][]
+  for (const [options] of calls) {
+    expect(options.variables.input.queryLanguageSlug).toBe("english")
+    expect(options.variables.input.displayLanguageSlug).toBe("english")
+  }
 })

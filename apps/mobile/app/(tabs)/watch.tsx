@@ -13,6 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useIsFocused, useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { currentAdminForms } from "../../src/i18n/adminLanguage"
+import { useLocaleEpoch } from "../../src/i18n/useT"
 import { getApolloClient } from "../../src/lib/apolloClient"
 import { datadogLog, reportDatadogAction } from "../../src/lib/datadog"
 import {
@@ -30,10 +32,13 @@ import {
   recordResultsViewed,
 } from "../../src/lib/watchSearchEvents"
 import {
+  ENGLISH_SEARCH_LANGUAGE,
   MAX_QUERY_LENGTH,
   buildWatchSearchInput,
   mapWatchSearchResponse,
   parseSearchError,
+  searchLanguageFor,
+  type SearchLanguage,
 } from "../../src/lib/watchSearch"
 import {
   GET_VIDEO_BY_SLUG,
@@ -126,11 +131,13 @@ export default function DiscoverScreen() {
         const clickKey = `${requestId}:${result.id}:${position}`
         if (!reportedClicksRef.current.has(clickKey)) {
           reportedClicksRef.current.add(clickKey)
+          const searchLanguageSlug = submittedLanguageRef.current.display
           reportDatadogAction(
             WATCH_SEARCH_RESULT_CLICKED_ACTION,
             buildWatchSearchResultClickContext(result, {
               position,
               searchRequestId: requestId,
+              searchLanguageSlug,
             }),
           )
           void recordResultClicked({
@@ -139,6 +146,7 @@ export default function DiscoverScreen() {
             resultType: result.type,
             position,
             visibleResultIds: resultsRef.current.map((r) => r.id),
+            searchLanguageSlug,
           })
         }
       } catch {
@@ -204,6 +212,9 @@ export default function DiscoverScreen() {
   // the live one — borrowing the live id let a page started after a newer
   // search began pass the staleness guard and append to the wrong results.
   const submittedRequestIdRef = useRef(0)
+  // KTD16: the languages the visible results were asked in, pinned with their
+  // generation, so a page never mixes two languages.
+  const submittedLanguageRef = useRef<SearchLanguage>(ENGLISH_SEARCH_LANGUAGE)
   // Synchronous re-entrancy latch: `loadingMore` state is a render-time snapshot,
   // so two presses in one frame both read false and double-append.
   const loadingMoreRef = useRef(false)
@@ -325,7 +336,11 @@ export default function DiscoverScreen() {
     for (const id of newIds) {
       recorded.add(id)
     }
-    void recordResultsViewed({ requestId, visibleResultIds: newIds })
+    void recordResultsViewed({
+      requestId,
+      visibleResultIds: newIds,
+      searchLanguageSlug: submittedLanguageRef.current.display,
+    })
   }, [])
 
   const search = useCallback(
@@ -335,6 +350,8 @@ export default function DiscoverScreen() {
       // otherwise a stale result lands over the browse grid after clearing, and
       // its guarded finally never resets loading.
       const thisRequest = ++requestIdRef.current
+      // Read before any await: this generation asks in these languages.
+      const language = searchLanguageFor(currentAdminForms(), trimmed)
       // Bumping the generation orphans any in-flight load-more: its guarded
       // finally can no longer fire, so release both flags here or "Load more"
       // stays stuck on "Loading..." for the rest of the session.
@@ -400,6 +417,7 @@ export default function DiscoverScreen() {
               clientRequestId: searchRequestId,
               limit: PAGE_SIZE,
               offset: 0,
+              language,
             }),
           },
           fetchPolicy: "no-cache",
@@ -420,6 +438,7 @@ export default function DiscoverScreen() {
         searchRequestIdRef.current = adoptedRequestId
         submittedTermRef.current = trimmed
         submittedRequestIdRef.current = thisRequest
+        submittedLanguageRef.current = language
         batchStartRef.current = 0
         setResults([...page.results])
         setHasMore(page.hasMore)
@@ -435,6 +454,7 @@ export default function DiscoverScreen() {
             query: trimmed,
             offset: 0,
             clientLatencyMs: Date.now() - startedAt,
+            searchLanguageSlug: language.display,
             latencyMs: page.latencyMs,
             degraded: page.degraded,
             responseSearchMode: page.searchMode,
@@ -478,6 +498,7 @@ export default function DiscoverScreen() {
             query: trimmed,
             offset: 0,
             clientLatencyMs: Date.now() - startedAt,
+            searchLanguageSlug: language.display,
           }),
         )
       } finally {
@@ -497,6 +518,21 @@ export default function DiscoverScreen() {
       reportViewed,
     ],
   )
+
+  // KTD16: a new UI language runs the visible query again. The new search
+  // takes a new generation, so a page still in flight is dropped.
+  const epoch = useLocaleEpoch()
+  const searchedEpochRef = useRef(epoch)
+  const rerunRef = useRef<() => void>(() => {})
+  rerunRef.current = () => {
+    const visible = query.trim()
+    if (searched && visible) void search(visible)
+  }
+  useEffect(() => {
+    if (searchedEpochRef.current === epoch) return
+    searchedEpochRef.current = epoch
+    rerunRef.current()
+  }, [epoch])
 
   function handleChangeText(text: string) {
     setQuery(text)
@@ -534,6 +570,7 @@ export default function DiscoverScreen() {
     // Pagination shares the initiating search's correlation id (request_type
     // distinguishes the page from the initial fetch).
     const term = submittedTermRef.current
+    const language = submittedLanguageRef.current
     const searchRequestId = searchRequestIdRef.current
     const startedAt = Date.now()
 
@@ -546,6 +583,7 @@ export default function DiscoverScreen() {
             clientRequestId: searchRequestId,
             limit: PAGE_SIZE,
             offset: nextOffset,
+            language,
           }),
         },
         fetchPolicy: "no-cache",
@@ -593,6 +631,7 @@ export default function DiscoverScreen() {
           // render's const.
           offset: nextOffset,
           clientLatencyMs: Date.now() - startedAt,
+          searchLanguageSlug: language.display,
           latencyMs: page.latencyMs,
           degraded: page.degraded,
           responseSearchMode: page.searchMode,
@@ -615,6 +654,7 @@ export default function DiscoverScreen() {
           query: term,
           offset: nextOffset,
           clientLatencyMs: Date.now() - startedAt,
+          searchLanguageSlug: language.display,
         }),
       )
     } finally {

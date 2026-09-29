@@ -94,7 +94,6 @@ const VIDEO_RESULT: WatchVideoData = {
       },
     ],
     variants: [],
-    studyQuestions: [],
     bibleCitations: [],
   },
 } as unknown as WatchVideoData
@@ -106,6 +105,8 @@ function textResult(uiRow: ReturnType<typeof row>): VideoTextData {
       documentId: "vid-birth",
       locales: [uiRow],
       englishLocales: [EN_ROW],
+      studyQuestions: [],
+      englishStudyQuestions: [],
       parents: [
         {
           __typename: "VideoRelation",

@@ -48,6 +48,22 @@ describe("buildResultClickedVariables", () => {
     })
   })
 
+  // U7: the event joins its search only when it names the same slug.
+  it("carries the search's own display slug", () => {
+    expect(
+      buildResultClickedVariables({
+        ...clickInput,
+        searchLanguageSlug: "russian",
+      })?.searchLanguageSlug,
+    ).toBe("russian")
+    expect(
+      buildResultsViewedVariables({
+        ...viewedInput,
+        searchLanguageSlug: "russian",
+      })?.searchLanguageSlug,
+    ).toBe("russian")
+  })
+
   it("never carries an occurredAt key — admin stamps its own clock", () => {
     const variables = buildResultClickedVariables(clickInput)
     expect(variables).not.toHaveProperty("occurredAt")

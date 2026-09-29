@@ -63,6 +63,8 @@ import type { AdminBlock } from "../../lib/queries"
 // — a rename on either side would typecheck clean and silently stop rendering
 // the credit. `text` is widened because admin's Experience quote type declares
 // it nullable.
+const ENGLISH_TEXT_DIRECTION = { writingDirection: "ltr" } as const
+
 type QuoteItem = {
   reference: string
   text: string | null
@@ -76,6 +78,7 @@ type QuoteItem = {
     BibleQuoteBlock,
     | "translation"
     | "copyright"
+    | "textLang"
     | "citationStart"
     | "loading"
     | "artCandidates"
@@ -244,6 +247,11 @@ function QuoteCard({
 
   const showVerse = !loading && verseText.length > 0
 
+  // R10, KTD13: an English passage keeps its language mark and reads left to
+  // right. U14's direction helper replaces this for every other language.
+  const englishPassage = quote.textLang === "en"
+  const passageDirection = englishPassage ? ENGLISH_TEXT_DIRECTION : null
+
   // The card is a fixed square and its content is bottom-aligned, so the drop
   // order has to be decided here rather than left to overflow.
   const fitInput = {
@@ -304,6 +312,7 @@ function QuoteCard({
           ? `${quote.reference}, loading`
           : composeCardLabel(quote.reference, verseText)
       }
+      accessibilityLanguage={englishPassage ? "en" : undefined}
     >
       {imageUrl != null && (
         <Image
@@ -402,6 +411,7 @@ function QuoteCard({
               isWatchCard
                 ? [styles.passageVerse, verseTypography(typography)]
                 : [styles.authoredVerse, typography.body],
+              passageDirection,
             ]}
             numberOfLines={isWatchCard ? regions.verseLines : undefined}
           >
@@ -410,7 +420,7 @@ function QuoteCard({
         )}
         {regions.translation && quote.translation != null && (
           <Text
-            style={[styles.translation, typography.caption]}
+            style={[styles.translation, typography.caption, passageDirection]}
             numberOfLines={TRANSLATION_MAX_LINES}
           >
             {quote.translation}
@@ -418,7 +428,7 @@ function QuoteCard({
         )}
         {regions.copyright && quote.copyright != null && (
           <Text
-            style={[styles.copyright, typography.caption]}
+            style={[styles.copyright, typography.caption, passageDirection]}
             numberOfLines={COPYRIGHT_MAX_LINES}
           >
             {quote.copyright}
