@@ -114,13 +114,14 @@ export function createPortal(deps: PortalDeps): Hono {
     const state = c.req.query("state")
     const code = c.req.query("code")
     const browser = getCookie(c, STATE_COOKIE)
-    if (
-      !state ||
-      !code ||
-      !browser ||
-      !(await deps.sessions.consumeState(state, browser))
-    )
+    if (!state || !code || !browser)
       return c.redirect("/portal?recovery=oauth_invalid", 303)
+    try {
+      if (!(await deps.sessions.consumeState(state, browser)))
+        return c.redirect("/portal?recovery=oauth_invalid", 303)
+    } catch {
+      return c.redirect("/portal?recovery=unavailable", 303)
+    }
     let identity: GitHubIdentity
     try {
       identity = await deps.admission.exchange(code)
@@ -142,14 +143,18 @@ export function createPortal(deps: PortalDeps): Hono {
     } catch {
       return c.redirect("/portal?recovery=unavailable", 303)
     }
-    const previous = getCookie(c, SESSION_COOKIE)
-    if (previous) await deps.sessions.revokeSession(previous)
-    const token = randomToken()
-    const expiry = await deps.sessions.createSession(token, identity)
-    setCookie(c, SESSION_COOKIE, token, {
-      ...cookie,
-      maxAge: cookieAge(expiry),
-    })
+    try {
+      const previous = getCookie(c, SESSION_COOKIE)
+      if (previous) await deps.sessions.revokeSession(previous)
+      const token = randomToken()
+      const expiry = await deps.sessions.createSession(token, identity)
+      setCookie(c, SESSION_COOKIE, token, {
+        ...cookie,
+        maxAge: cookieAge(expiry),
+      })
+    } catch {
+      return c.redirect("/portal?recovery=unavailable", 303)
+    }
     return c.redirect("/portal", 303)
   })
 

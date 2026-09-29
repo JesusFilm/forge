@@ -120,4 +120,28 @@ describe("portal session recovery", () => {
     )
     expect(callback.headers.get("cache-control")).toBe("no-store")
   })
+
+  it.each(["consumeState", "revokeSession", "createSession"] as const)(
+    "returns a session-store %s outage to the readable fallback",
+    async (operation) => {
+      const f = fixture()
+      const login = await f.start()
+      let cookie = login.browser
+      if (operation === "revokeSession") {
+        const first = await f.callback(login.state, login.browser)
+        cookie += "; " + first.headers.get("set-cookie")!.split(";")[0]
+      }
+      const retry = operation === "revokeSession" ? await f.start() : login
+      if (operation === "revokeSession")
+        cookie = retry.browser + "; " + cookie.split("; ").slice(1).join("; ")
+      vi.spyOn(f.deps.sessions, operation).mockRejectedValueOnce(
+        new Error("session store unavailable"),
+      )
+      const response = await f.callback(retry.state, cookie)
+      expect(response.status).toBe(303)
+      expect(response.headers.get("location")).toBe(
+        "/portal?recovery=unavailable",
+      )
+    },
+  )
 })

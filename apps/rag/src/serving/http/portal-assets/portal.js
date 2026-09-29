@@ -817,8 +817,8 @@ async function initialize() {
     account.replaceChildren(
       element("span", "@" + identity.login, "subtle"),
       button("Sign out", () => {
-        close()
         pendingRecovery = false
+        close(false)
         setMarker(signedInKey, false)
         setMarker(attemptKey, false)
         channel?.postMessage({ type: "signed-out" })
