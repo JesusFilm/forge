@@ -104,3 +104,19 @@ discovery-link cleanup. That differs from the initial handoff's moving identity
 lookup, and from the owner release's 24-hour freshness deadline. Report release
 expiry, underlying graph retention, source expiry, natural issuance and human
 exposure as separate facts.
+
+## Preserve the failed attempt's input diagnosis
+
+An owner composer can reject its attempted slate and correctly serve a complete
+incumbent slate. Inspecting the retained incumbent candidates cannot reveal which
+input was missing in the rejected attempt. Preserve bounded missing-input flags
+and counts at the structural decision itself, then carry them unchanged into the
+existing rejection evidence. Keep that aggregate separate from candidate
+nominations, identities and the public recommendation response. Exercise both
+compact and legacy trace formats and assert unchanged response and stage count.
+
+Operational reporting also needs distinct populations: a `fallback` result can
+still contain recommendation cards, while an `empty` result has none. Compare
+recorded result, execution mode, reason and item count explicitly. Short adjacent
+windows can explain a new failure category, but they do not establish equivalent
+traffic, long-term availability, viewer exposure or recommendation usefulness.

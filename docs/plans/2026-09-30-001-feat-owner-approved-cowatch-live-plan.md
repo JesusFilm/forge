@@ -97,3 +97,24 @@ limits or serving contract.
 The initial release expires 2026-09-30T22:59:20.343Z. Automatic refresh remains
 feat-573; usefulness remains unmeasured under feat-505. See the operations record
 for actual configured authority, natural issuance and all retained limitations.
+
+## Diagnose natural missing-input fallback
+
+After direct owner activation, the bounded 23:00:26.512–23:10:08 UTC production
+sample contained 38 issued roots and no exact direct provenance. Seven shared
+fallback markers reported `composition_required_input_unavailable`; one reported
+sparse supported edges. Failed composition currently discards its actual coverage
+flags and persists the incumbent platform, preventing exact diagnosis from the
+retained rows. The shared markers do not establish an owner-specific attempt rate.
+
+Preserve the four missing-input booleans and bounded candidate, selected-item and
+themed-item counts from the actual failed structural composition. Carry a fixed
+diagnostic version through owner delivery into the existing rejected co-watch
+evidence entry. Add no trace rows, identities, payload dumps, public contract or
+database migration. Keep current fallback reasons, output, authority fences,
+manifest, weights, deadlines and required inputs unchanged. Test the originating
+coverage values and end-to-end persistence without substituting incumbent metrics.
+After normal review, green CI, merge and deployment, inspect one bounded natural
+fallback sample to identify the exact missing input. Theme hydration is a grounded
+hypothesis, not yet a demonstrated production cause; do not patch or relax it to
+force direct execution.
