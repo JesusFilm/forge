@@ -80,7 +80,7 @@ Both real page accesses created their expected audit rows, verified at 21:31:11.
 No permission change was needed. This bounded smoke does not prove universal
 recommendation quality or replace verification on the eventual reclamation release.
 
-## Remaining work
+## Remaining work at 21:42 UTC
 
 The packed served-item and shared profile-vector implementations must pass actual
 reader-fleet and rollback-image gates before writer activation through normal
@@ -120,3 +120,33 @@ therefore cannot promise physical recovery of the remaining 16.431 GB. No furthe
 cohort was executed. A larger campaign needs a separately reviewed finite plan
 and a concrete reclamation benefit; prioritize new-write reductions and scheduled
 retention while retaining normal protected/uncertain expiry.
+
+## Shared-vector activation at 22:30 UTC
+
+PR #2491 passed 18 successful checks at reviewed head `d04bb12ca` and merged
+normally at 22:17:12 as `f8d388d97`. At 22:30:35, deployed configuration imports
+from both actual Admin containers reported profile sharing `true`, served format
+`legacy` and trace format `compact`, with no explicit profile/served override.
+At 22:30:47 both actual HTTP and worker processes ran `f8d388d97`, returned health
+200 and had their expected runner roles. Compatible mixed-reader rollback images
+remain recorded in the receipt. Unrelated later descendant releases were building
+and were not treated as current serving evidence.
+
+The latest 200-generation sample at 22:30:13 included 175 interests, eight shared
+references and five distinct shared vectors, with zero invalid shapes, missing
+snapshots or digest mismatches. The sample crosses the activation boundary, so
+the other inline interests are retained history. A separate post-convergence
+cohort starts at 22:31. At 22:34:29 it contained 14 generations and 16 interests,
+all shared, with no inline writes or shape/digest/missing/expiry mismatches.
+The projection ledger had 18 completed jobs, one pending and no failure reasons
+or expired claims. Eight persisted served requests had retrieval p95 272.45 ms;
+one fallback took 169 ms and none exceeded 1,500 ms. The small sample excludes
+unpersisted failures and is not representative loaded-capacity proof. Latest
+100 served requests remained legacy as intended. Packed-item activation PR #2495
+is now in CI and remains separately gated.
+
+Direct filesystem availability was 11,140,534,272 bytes at 22:30:47. This includes
+concurrent WAL/workload changes and is not credited as profile savings. Existing
+inline interests are not rewritten. See
+`docs/reports/2026-09-30-recommendation-profile-footprint.md` for the new measured
+profile-family breakdown and the gated initial-empty bootstrap follow-up.
