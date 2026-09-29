@@ -232,9 +232,6 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
   await page.getByRole("button", { name: "Revoked", exact: true }).click()
   await expect(consumerRow(page)).toBeVisible()
   await rowAction(page, "Restore with new key")
-  await dialog(page)
-    .getByRole("button", { name: "Restore with new key", exact: true })
-    .click()
   const restored = await key(page)
   await save(page)
   await expect(

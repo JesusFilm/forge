@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto"
 import { Prisma, type PrismaClient } from "../../generated/prisma/index.js"
 import type {
   TransitionConsumer,
@@ -6,9 +5,8 @@ import type {
 } from "../../contracts/consumer-access.js"
 import { ConsumerAccessError } from "../../contracts/consumer-access.js"
 import { credentialVerifier } from "./consumer-auth.js"
+import { consumerSecret } from "./consumer-credential.js"
 import { withConsumerOwner } from "./consumer-access-ownership.js"
-
-const secret = () => `rag_${randomBytes(32).toString("base64url")}`
 
 export async function transitionConsumer(
   writer: PrismaClient,
@@ -84,7 +82,7 @@ export async function recoverConsumer(
     input.expectedLifecycleVersion < 1
   )
     throw new ConsumerAccessError("invalid")
-  const issued = secret()
+  const issued = consumerSecret()
   const digest = credentialVerifier(issued)
   return withConsumerOwner(
     writer,

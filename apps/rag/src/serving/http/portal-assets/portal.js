@@ -536,22 +536,16 @@ function render() {
       } else if (row.state === "revoked") {
         actions.append(
           button("Restore with new key", () =>
-            confirm(
-              "Restore consumer with new key?",
-              "The old key stays invalid. A new key is issued once; save it before closing the next dialog. The consumer name stays reserved.",
-              "Restore with new key",
-              () =>
-                mutate(
-                  path + "/recover",
-                  {
-                    expectedVersion: row.credentialVersion,
-                    expectedLifecycleVersion: row.lifecycleVersion,
-                  },
-                  "POST",
-                  true,
-                  (result) =>
-                    issued(result, row.name, () => selectStatus("active")),
-                ),
+            mutate(
+              path + "/recover",
+              {
+                expectedVersion: row.credentialVersion,
+                expectedLifecycleVersion: row.lifecycleVersion,
+              },
+              "POST",
+              true,
+              (result) =>
+                issued(result, row.name, () => selectStatus("active")),
             ),
           ),
         )

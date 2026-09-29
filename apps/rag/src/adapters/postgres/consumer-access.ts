@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto"
 import { withDeadline } from "../../contracts/deadline.js"
 
 import { Prisma, type PrismaClient } from "../../generated/prisma/index.js"
@@ -15,6 +14,7 @@ import type {
 } from "../../contracts/consumer-access.js"
 import { ConsumerAccessError } from "../../contracts/consumer-access.js"
 import { credentialVerifier } from "./consumer-auth.js"
+import { consumerSecret } from "./consumer-credential.js"
 import { withConsumerOwner } from "./consumer-access-ownership.js"
 import { transitionConsumer, recoverConsumer } from "./consumer-lifecycle.js"
 import {
@@ -24,7 +24,6 @@ import {
   uniqueConflict,
 } from "./consumer-access-validation.js"
 import type { ConsumerMember } from "../../contracts/consumer-registry.js"
-const secret = () => `rag_${randomBytes(32).toString("base64url")}`
 
 export class PostgresConsumerAccess implements ConsumerAccess {
   constructor(private readonly writer: PrismaClient) {}
@@ -80,7 +79,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
     )
       throw new ConsumerAccessError("invalid")
     const actor = githubId(input.actorGithubUserId)
-    const issued = secret()
+    const issued = consumerSecret()
     const digest = credentialVerifier(issued)
     try {
       const consumer = await this.writer.$transaction(
@@ -239,7 +238,7 @@ export class PostgresConsumerAccess implements ConsumerAccess {
       input.expectedVersion < 1
     )
       throw new ConsumerAccessError("invalid")
-    const issued = secret()
+    const issued = consumerSecret()
     const digest = credentialVerifier(issued)
     return withConsumerOwner(
       this.writer,

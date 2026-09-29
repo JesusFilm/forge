@@ -56,10 +56,6 @@ test("registry search, filters, sorting, pages and placeholder navigation", asyn
     .locator("#row-menu")
     .getByRole("button", { name: "Restore with new key" })
     .click()
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Restore with new key" })
-    .click()
   await expect(
     page.getByRole("heading", { name: "Save your API key" }),
   ).toBeVisible()
