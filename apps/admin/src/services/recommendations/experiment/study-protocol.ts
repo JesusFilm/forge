@@ -1,6 +1,12 @@
 import { createHash } from "node:crypto"
 import { z } from "zod"
-import { digestValue } from "../promotion/manifest"
+import {
+  digestValue,
+  INCUMBENT_HYBRID_MANIFEST_ID,
+  INCUMBENT_HYBRID_AA_MANIFEST_ID,
+  COWATCH_MMR_TRIAL_MANIFEST_ID,
+} from "../promotion/manifest"
+import { MMR_SLATE_POLICY_VERSION } from "../composition/mmr"
 import { RecommendationInputError } from "../errors"
 
 export const STUDY_POLICY_VERSION = "profile-study-governance-v1"
@@ -9,6 +15,38 @@ const digest = z.string().regex(/^[a-f0-9]{64}$/)
 const date = z.string().datetime({ offset: false })
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/)
 
+const CowatchStudyBindingSchema = z
+  .object({
+    mode: z.literal("frozen-source-controlled-trial-v1"),
+    graphGenerationId: digest,
+    sourceWindow: z
+      .object({
+        version: z.literal("episode-event-window-v1"),
+        windowStart: date,
+        windowEnd: date,
+        evaluationAsOf: date,
+      })
+      .strict(),
+    calibrationCompletedAt: date,
+    trialValidUntil: date,
+    earliestDependencyExpiresAt: date,
+    shadowEvaluationId: z.string().uuid(),
+    shadowDecisionId: z.string().uuid(),
+  })
+  .strict()
+const CompositionStudyBindingSchema = z
+  .object({
+    protocolId: z.string().uuid(),
+    manifestId: z.literal(COWATCH_MMR_TRIAL_MANIFEST_ID),
+    composerVersion: z.literal(MMR_SLATE_POLICY_VERSION),
+    configDigest: digest,
+    evidenceDigest: digest,
+    reviewDigest: digest,
+    authorityRevision: z.number().int().nonnegative(),
+    cowatchGenerationId: digest,
+  })
+  .strict()
+
 // Adding a new challenger requires an exact runtime adapter and its own reviewed
 // comparator. This is deliberately not an arbitrary-manifest approval mechanism.
 export const StudyProtocolSchema = z
@@ -16,21 +54,38 @@ export const StudyProtocolSchema = z
     version: z.literal(STUDY_POLICY_VERSION),
     studyId: id,
     mode: z.enum(["calibration", "efficacy"]),
-    comparison: z.enum(["semantic-aa", "semantic-profile"]),
+    comparison: z.enum([
+      "semantic-aa",
+      "semantic-profile",
+      "incumbent-aa",
+      "incumbent-cowatch-mmr",
+    ]),
     identity: z.literal("anonymous-profile-generation-v1"),
     surface: z.literal("watch-below-player-v1"),
     cohort: z.literal("human-en-english-durable-v1"),
-    controlManifestId: z.literal("semantic-transcript-pgvector-v1"),
+    controlManifestId: z.enum([
+      "semantic-transcript-pgvector-v1",
+      INCUMBENT_HYBRID_MANIFEST_ID,
+    ]),
     challengerManifestId: z.enum([
       "semantic-experiment-aa-v1",
       "semantic-profile-hybrid-v1",
+      INCUMBENT_HYBRID_AA_MANIFEST_ID,
+      COWATCH_MMR_TRIAL_MANIFEST_ID,
     ]),
     controlManifestDigest: digest,
     challengerManifestDigest: digest,
     // Existing durable-profile delivery is hybrid. A semantic comparison cannot
     // certify an incremental co-watch/MMR improvement over that incumbent.
     incumbentExecution: z.literal("hybrid_personalized"),
-    controlExecution: z.literal("semantic_contextual"),
+    controlExecution: z.enum([
+      "semantic_contextual",
+      "profile-viewing-mode-incumbent-v1",
+    ]),
+    // Optional only for the legacy semantic protocol shape; new incumbent
+    // calibration must be graph-free, and bundle efficacy requires both.
+    cowatch: CowatchStudyBindingSchema.nullable().optional(),
+    composition: CompositionStudyBindingSchema.nullable().optional(),
     admissionBps: z
       .number()
       .int()
@@ -64,8 +119,7 @@ export const StudyProtocolSchema = z
       })
     if (
       p.mode === "calibration" &&
-      (p.comparison !== "semantic-aa" ||
-        p.challengerManifestId !== "semantic-experiment-aa-v1" ||
+      (!["semantic-aa", "incumbent-aa"].includes(p.comparison) ||
         end - start < 2 * STUDY_DAY_MS ||
         start % STUDY_DAY_MS !== 0 ||
         end % STUDY_DAY_MS !== 0 ||
@@ -75,20 +129,71 @@ export const StudyProtocolSchema = z
       ctx.addIssue({
         code: "custom",
         message:
-          "Calibration requires two complete UTC days and equivalent semantic arms",
+          "Calibration requires two complete UTC days and exact equivalent arms",
       })
     if (
       p.mode === "efficacy" &&
-      (p.comparison !== "semantic-profile" ||
-        p.challengerManifestId !== "semantic-profile-hybrid-v1" ||
+      (!["semantic-profile", "incumbent-cowatch-mmr"].includes(p.comparison) ||
         p.calibrationEvaluationId === null ||
         p.minimumUsefulDelta === null)
     )
       ctx.addIssue({
         code: "custom",
         message:
-          "Efficacy requires exact profile challenger and prior calibration authority",
+          "Efficacy requires an exact challenger and prior calibration authority",
       })
+    const incumbent =
+      p.comparison === "incumbent-aa" ||
+      p.comparison === "incumbent-cowatch-mmr"
+    const expectedChallenger = {
+      "semantic-aa": "semantic-experiment-aa-v1",
+      "semantic-profile": "semantic-profile-hybrid-v1",
+      "incumbent-aa": INCUMBENT_HYBRID_AA_MANIFEST_ID,
+      "incumbent-cowatch-mmr": COWATCH_MMR_TRIAL_MANIFEST_ID,
+    }[p.comparison]
+    if (
+      p.controlManifestId !==
+        (incumbent
+          ? INCUMBENT_HYBRID_MANIFEST_ID
+          : "semantic-transcript-pgvector-v1") ||
+      p.controlExecution !==
+        (incumbent
+          ? "profile-viewing-mode-incumbent-v1"
+          : "semantic_contextual") ||
+      p.challengerManifestId !== expectedChallenger
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Study comparator and exact execution manifests disagree",
+      })
+    if (p.comparison === "incumbent-cowatch-mmr") {
+      const graph = p.cowatch
+      if (
+        !graph ||
+        !p.composition ||
+        graph.graphGenerationId !== p.composition.cowatchGenerationId ||
+        Date.parse(graph.trialValidUntil) !== end + 30 * 3_600_000 ||
+        Date.parse(graph.earliestDependencyExpiresAt) <=
+          Date.parse(graph.trialValidUntil) ||
+        Date.parse(graph.calibrationCompletedAt) >= start ||
+        Date.parse(graph.sourceWindow.windowStart) >=
+          Date.parse(graph.sourceWindow.windowEnd) ||
+        Date.parse(graph.sourceWindow.windowEnd) >
+          Date.parse(graph.sourceWindow.evaluationAsOf) ||
+        Date.parse(graph.sourceWindow.evaluationAsOf) >= start
+      )
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "Exact graph and composition bindings must cover complete trial follow-up",
+        })
+    } else if (p.cowatch != null || p.composition != null) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "This comparator is graph-free and has no composition authority",
+      })
+    }
   })
 export type StudyProtocol = z.infer<typeof StudyProtocolSchema>
 export function parseStudyProtocol(value: unknown): StudyProtocol {
@@ -97,6 +202,32 @@ export function parseStudyProtocol(value: unknown): StudyProtocol {
     throw new RecommendationInputError("Invalid immutable study protocol")
   return result.data
 }
+export const studyMatchesIncumbent = (p: StudyProtocol) =>
+  p.comparison === "incumbent-aa" || p.comparison === "incumbent-cowatch-mmr"
+
+export function studyExperimentMatchesProtocol(
+  experiment: {
+    id: string
+    controlManifestId: string
+    challengerManifestId: string
+    startsAt: Date
+    endsAt: Date
+    expiresAt: Date
+    challengerProbability: number
+  },
+  p: StudyProtocol,
+) {
+  return (
+    experiment.id === p.studyId &&
+    experiment.controlManifestId === p.controlManifestId &&
+    experiment.challengerManifestId === p.challengerManifestId &&
+    experiment.challengerProbability === 0.5 &&
+    experiment.startsAt.getTime() === Date.parse(p.startsAt) &&
+    experiment.endsAt.getTime() === Date.parse(p.endsAt) &&
+    experiment.expiresAt.getTime() === Date.parse(p.expiresAt)
+  )
+}
+
 export const studyProtocolDigest = (protocol: StudyProtocol) =>
   digestValue(protocol)
 export const studyChallengerCeilingBps = (protocol: StudyProtocol) =>
@@ -133,11 +264,11 @@ const ReceiptSchema = z
   .strict()
 const ArmSchema = z
   .object({
-    requests: z.number().int().positive(),
+    requests: z.number().int().nonnegative(),
     timeoutsOrErrors: z.number().int().nonnegative(),
     requestsWithCards: z.number().int().nonnegative(),
     p95LatencyMs: z.number().finite().nonnegative(),
-    claimedEpisodes: z.number().int().positive(),
+    claimedEpisodes: z.number().int().nonnegative(),
     missingActiveEpisodes: z.number().int().nonnegative(),
     attributionFailures: z.number().int().nonnegative(),
     fatalPlaybackErrors: z.number().int().nonnegative(),
@@ -220,6 +351,13 @@ export function studyGuardrails(
   const c = e.control,
     t = e.challenger
   const reasons: string[] = []
+  if (
+    c.requests === 0 ||
+    t.requests === 0 ||
+    c.claimedEpisodes === 0 ||
+    t.claimedEpisodes === 0
+  )
+    return { passed: false, reasons: ["operational_evidence_population_empty"] }
   if (
     c.missingActiveEpisodes / c.claimedEpisodes > 0.05 ||
     t.missingActiveEpisodes / t.claimedEpisodes > 0.05

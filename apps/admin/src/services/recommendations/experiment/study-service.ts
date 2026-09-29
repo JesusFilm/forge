@@ -8,30 +8,35 @@ import {
   RecommendationConflictError,
   RecommendationInputError,
 } from "../errors"
-import {
-  digestValue,
-  isEquivalentSemanticChallenger,
-  isExactHybridPersonalizedManifest,
-  recommendationManifestDigest,
-} from "../promotion/manifest"
+import { digestValue } from "../promotion/manifest"
 import { promotionEventData } from "../promotion/workflow"
 import { invalidateRecommendationCandidatePools } from "../delivery.service"
 import {
   PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION,
   PROFILE_USEFULNESS_OUTCOME_POLICY_VERSION,
 } from "./assignment"
-import { extractUsefulnessSnapshot } from "./usefulness-extractor"
+import { extractUsefulnessSnapshotInTransaction } from "./usefulness-extractor"
 import {
   evaluateUsefulnessSnapshot,
   evaluateUsefulnessCalibration,
 } from "./usefulness-offline"
-import { assertStudyAuthority } from "./study-authority"
+import { assertCalibrationForProtocol } from "./study-authority"
+import { lockStudyAdmissionAuthority } from "./active-study-authority"
+import {
+  studyCowatchBinding,
+  studyManifestPairIsExact,
+  studyDependencyInterruption,
+  lockStudyDependenciesForEvaluation,
+} from "./study-dependencies"
+import { resolveCompositionQualification } from "../composition/service"
+import { qualifyCowatchTrialAuthority } from "../cowatch/trial-authority.service"
 import {
   parseStudyProtocol,
   parseStudyEvidence,
   studyProtocolDigest,
   studyChallengerCeilingBps,
   studyGuardrails,
+  studyMatchesIncumbent,
   STUDY_POLICY_VERSION,
   type StudyProtocol,
 } from "./study-protocol"
@@ -80,6 +85,23 @@ export class RecommendationStudyService {
             "Prepare a future enrollment interval",
           )
         await this.validateManifests(tx, protocol, now)
+        if (protocol.mode === "efficacy")
+          await assertCalibrationForProtocol(tx, protocol, now)
+        if (protocol.composition) {
+          const composition = await resolveCompositionQualification(
+            tx,
+            protocol.composition,
+            now,
+          )
+          if (
+            !composition ||
+            composition.validUntil.getTime() <
+              Date.parse(protocol.cowatch!.earliestDependencyExpiresAt)
+          )
+            throw new RecommendationInputError(
+              "Exact reviewed composition authority does not cover the study horizon",
+            )
+        }
         await tx.recommendationExperiment.create({
           data: {
             id: protocol.studyId,
@@ -195,6 +217,27 @@ export class RecommendationStudyService {
       expectedPointerGeneration: input.expectedPointerGeneration,
       actorId,
     })
+    const prepared = await this.prisma.recommendationStudy.findUniqueOrThrow({
+      where: { experimentId: input.studyId },
+      include: { experiment: true },
+    })
+    if (prepared.protocolDigest !== input.protocolDigest)
+      throw new RecommendationConflictError("Protocol changed")
+    const preparedProtocol = parseStudyProtocol(prepared.protocol)
+    const binding = studyCowatchBinding(preparedProtocol, {
+      experimentId: prepared.experimentId,
+      experimentGeneration: prepared.experiment.generation,
+      protocolDigest: prepared.protocolDigest,
+    })
+    if (binding && !prepared.activatedAt) {
+      const qualification = await qualifyCowatchTrialAuthority(
+        this.prisma,
+        binding,
+        now,
+      )
+      if (qualification.status === "refused")
+        throw new RecommendationInputError(qualification.reason)
+    }
     const result = await this.prisma.$transaction(
       async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LOCK})`
@@ -239,12 +282,17 @@ export class RecommendationStudyService {
             "Readiness must remain valid at enrollment start",
           )
         await this.validateManifests(tx, protocol, now)
+        await lockStudyAdmissionAuthority(tx, {
+          protocol,
+          identity: {
+            experimentId: study.experimentId,
+            experimentGeneration: study.experiment.generation,
+            protocolDigest: study.protocolDigest,
+          },
+          now,
+        })
         if (protocol.mode === "efficacy")
-          await assertStudyAuthority(tx, {
-            evaluationId: protocol.calibrationEvaluationId!,
-            purpose: "calibration",
-            now,
-          })
+          await assertCalibrationForProtocol(tx, protocol, now)
         const overlap = await tx.recommendationExperiment.findFirst({
           where: {
             id: { not: study.experimentId },
@@ -430,17 +478,24 @@ export class RecommendationStudyService {
     const protocol = parseStudyProtocol(study.protocol)
     if (!study.activatedAt || input.protocolDigest !== study.protocolDigest)
       throw new RecommendationInputError("An activated exact study is required")
-    const { snapshot } = await extractUsefulnessSnapshot(this.prisma, {
-      experimentId: study.experimentId,
-      configurationDigest: study.protocolDigest,
-      enrollmentStart: new Date(protocol.startsAt),
-      enrollmentEnd: new Date(protocol.endsAt),
-      plannedAssignmentsPerArm: protocol.plannedAssignmentsPerArm,
-      minimumUsefulDelta: protocol.minimumUsefulDelta,
-    })
     return this.prisma.$transaction(
       async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LOCK})`
+        await tx.$executeRaw`SET LOCAL lock_timeout = '2s'`
+        await lockStudyDependenciesForEvaluation(
+          tx,
+          protocol,
+          {
+            experimentId: study.experimentId,
+            experimentGeneration: study.experiment.generation,
+            protocolDigest: study.protocolDigest,
+          },
+          this.now(),
+        )
+        // Source writers use the matching shared lock. READ COMMITTED observes
+        // every writer that committed while this publication was waiting.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${study.experimentId}, 505505))`
+        await tx.$queryRaw`SELECT experiment_id FROM recommendation_study WHERE experiment_id = ${study.experimentId} FOR UPDATE`
         const replay = await tx.recommendationStudyEvaluation.findFirst({
           where: { evaluation: { runId: input.operationId } },
         })
@@ -460,15 +515,20 @@ export class RecommendationStudyService {
           where: { experimentId: study.experimentId },
           include: { experiment: true },
         })
-        if (
-          current.privacyRevision !== study.privacyRevision ||
-          current.enrolledCount !== study.enrolledCount ||
-          current.experiment.generation !== study.experiment.generation
-        )
+        if (current.experiment.generation !== study.experiment.generation)
           throw new RecommendationConflictError(
-            "Study changed during extraction",
+            "Study generation changed before extraction",
           )
         const now = this.now()
+        const { snapshot, sourceAuthorityExpiresAt } =
+          await extractUsefulnessSnapshotInTransaction(tx, {
+            experimentId: study.experimentId,
+            configurationDigest: study.protocolDigest,
+            enrollmentStart: new Date(protocol.startsAt),
+            enrollmentEnd: new Date(protocol.endsAt),
+            plannedAssignmentsPerArm: protocol.plannedAssignmentsPerArm,
+            minimumUsefulDelta: protocol.minimumUsefulDelta,
+          })
         const receipt = await tx.recommendationStudyEvidence.findUniqueOrThrow({
           where: { id: input.evidenceId },
         })
@@ -484,30 +544,67 @@ export class RecommendationStudyService {
           throw new RecommendationInputError(
             "Mature outcome guardrail evidence is required",
           )
-        await this.validateManifests(tx, protocol, now)
+        const interruptions: string[] = []
+        if (sourceAuthorityExpiresAt <= new Date(snapshot.capturedAt))
+          interruptions.push("captured_source_expiry_unhealthy")
+        try {
+          await this.validateManifests(tx, protocol, now)
+        } catch (error) {
+          if (!(error instanceof RecommendationInputError)) throw error
+          interruptions.push("study_manifest_or_shadow_authority_interrupted")
+        }
         let aaPassed = protocol.mode === "calibration"
         if (protocol.mode === "efficacy") {
-          await assertStudyAuthority(tx, {
-            evaluationId: protocol.calibrationEvaluationId!,
-            purpose: "calibration",
-            now,
-          })
-          aaPassed = true
+          try {
+            // Retrospective proof needs coverage through the frozen horizon,
+            // not a fresh serving authorization after follow-up has ended.
+            await assertCalibrationForProtocol(
+              tx,
+              protocol,
+              new Date(Date.parse(protocol.endsAt) + 30 * 3_600_000 - 1),
+            )
+            aaPassed = true
+          } catch (error) {
+            if (!(error instanceof RecommendationInputError)) throw error
+            interruptions.push("calibration_authority_interrupted")
+          }
         }
+        const sourceInterruption = await studyDependencyInterruption(
+          tx,
+          protocol,
+          {
+            experimentId: study.experimentId,
+            experimentGeneration: study.experiment.generation,
+            protocolDigest: study.protocolDigest,
+          },
+        )
+        if (sourceInterruption) interruptions.push(sourceInterruption)
         const guardrails = studyGuardrails(evidence)
         snapshot.health.assignmentLedgerCount = current.enrolledCount
         snapshot.health.aaPassed = aaPassed
         snapshot.health.guardrailsPassed = guardrails.passed
-        const assessment =
+        let assessment =
           protocol.mode === "calibration"
             ? evaluateUsefulnessCalibration(snapshot)
             : evaluateUsefulnessSnapshot(snapshot)
+        if (interruptions.length)
+          assessment = {
+            ...assessment,
+            decision: "data_unhealthy",
+            reasonCodes: [...assessment.reasonCodes, ...interruptions],
+            uncertainty: null,
+          }
         const decision = assessment.decision
         const result = {
           ...assessment,
           decision,
           mode: protocol.mode,
-          comparatorMatchesIncumbent: false,
+          comparatorMatchesIncumbent: studyMatchesIncumbent(protocol),
+          effectAttribution:
+            protocol.comparison === "incumbent-cowatch-mmr"
+              ? "combined-cowatch-and-mmr-only"
+              : protocol.comparison,
+          permanentDefaultAuthority: false,
           calibration:
             protocol.mode === "calibration"
               ? calibrationSummary(snapshot.units)
@@ -520,15 +617,21 @@ export class RecommendationStudyService {
           orderBy: { revision: "desc" },
         })
         const revision = (previous?.revision ?? 0) + 1
-        const expiresAt =
-          protocol.mode === "calibration"
-            ? study.expiresAt
-            : new Date(
-                Math.min(
-                  Date.parse(evidence.validUntil),
-                  study.expiresAt.getTime(),
-                ),
-              )
+        const expiresAt = new Date(
+          Math.min(
+            sourceAuthorityExpiresAt.getTime(),
+            study.expiresAt.getTime(),
+            protocol.mode === "calibration"
+              ? Infinity
+              : Date.parse(evidence.validUntil),
+          ),
+        )
+        // Publication changes the row once, so a source writer using an older
+        // repeatable snapshot cannot miss the first published authority.
+        const publishedStudy = await tx.recommendationStudy.update({
+          where: { experimentId: study.experimentId },
+          data: { privacyRevision: { increment: 1 } },
+        })
         await tx.recommendationExperimentEvaluationRun.create({
           data: {
             id: input.operationId,
@@ -567,7 +670,7 @@ export class RecommendationStudyService {
             inputDigest: digestValue({
               input: assessment.inputDigest,
               evidence: receipt.inputDigest,
-              privacyRevision: study.privacyRevision,
+              privacyRevision: publishedStudy.privacyRevision,
               protocol: study.protocolDigest,
             }),
             counts: json({
@@ -591,7 +694,7 @@ export class RecommendationStudyService {
             studyId: study.experimentId,
             protocolDigest: study.protocolDigest,
             experimentGeneration: study.experiment.generation,
-            privacyRevision: study.privacyRevision,
+            privacyRevision: publishedStudy.privacyRevision,
             evidenceId: receipt.id,
             publishedById: actorId,
             mode: protocol.mode,
@@ -600,7 +703,7 @@ export class RecommendationStudyService {
           },
         })
       },
-      { isolationLevel: "Serializable", timeout: 20_000, maxWait: 2_000 },
+      { isolationLevel: "ReadCommitted", timeout: 20_000, maxWait: 2_000 },
     )
   }
 
@@ -618,18 +721,14 @@ export class RecommendationStudyService {
       }),
     ])
     if (
-      !control?.enabled ||
+      !control ||
       !challenger ||
-      recommendationManifestDigest(control) !== p.controlManifestDigest ||
-      recommendationManifestDigest(challenger) !== p.challengerManifestDigest ||
-      !(p.mode === "calibration"
-        ? isEquivalentSemanticChallenger(challenger)
-        : isExactHybridPersonalizedManifest(challenger))
+      !studyManifestPairIsExact(p, control, challenger)
     )
       throw new RecommendationInputError(
         "Exact study manifests are unavailable or changed",
       )
-    if (p.mode === "efficacy") {
+    if (p.comparison === "semantic-profile") {
       const decision = await tx.recommendationShadowDecision.findFirst({
         where: {
           decision: "PROMOTE_TO_EXPERIMENT",

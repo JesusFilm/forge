@@ -110,6 +110,26 @@ describe("immutable profile study protocol", () => {
     )
     if (e.kind !== "outcomes") throw new Error("fixture")
     expect(studyGuardrails(e).passed).toBe(true)
+    const empty = {
+      requests: 0,
+      timeoutsOrErrors: 0,
+      requestsWithCards: 0,
+      p95LatencyMs: 0,
+      claimedEpisodes: 0,
+      missingActiveEpisodes: 0,
+      attributionFailures: 0,
+      fatalPlaybackErrors: 0,
+    }
+    const emptyEvidence = parseStudyEvidence(
+      { ...e, control: empty, challenger: empty },
+      p,
+      new Date(e.capturedAt),
+    )
+    if (emptyEvidence.kind !== "outcomes") throw new Error("fixture")
+    expect(studyGuardrails(emptyEvidence)).toEqual({
+      passed: false,
+      reasons: ["operational_evidence_population_empty"],
+    })
     expect(
       studyGuardrails({
         ...e,
@@ -133,5 +153,83 @@ describe("immutable profile study protocol", () => {
     expect(() =>
       parseStudyEvidence(e, p, new Date("2026-10-06T00:00:00Z")),
     ).toThrow()
+  })
+})
+
+describe("incumbent comparison and combined trial protocol", () => {
+  const incumbent = () => ({
+    ...protocolFixture(),
+    comparison: "incumbent-aa",
+    controlManifestId: "hybrid-profile-viewing-mode-v1",
+    challengerManifestId: "hybrid-profile-viewing-mode-aa-v1",
+    controlExecution: "profile-viewing-mode-incumbent-v1",
+    cowatch: null,
+    composition: null,
+  })
+  const trial = () => ({
+    ...incumbent(),
+    mode: "efficacy",
+    comparison: "incumbent-cowatch-mmr",
+    challengerManifestId: "hybrid-profile-viewing-mode-cowatch-mmr-v1",
+    calibrationEvaluationId: "prior-calibration",
+    minimumUsefulDelta: 0.01,
+    cowatch: {
+      mode: "frozen-source-controlled-trial-v1",
+      graphGenerationId: "a".repeat(64),
+      sourceWindow: {
+        version: "episode-event-window-v1",
+        windowStart: "2026-09-25T00:00:00.000Z",
+        windowEnd: "2026-09-28T00:00:00.000Z",
+        evaluationAsOf: "2026-09-28T00:00:00.000Z",
+      },
+      calibrationCompletedAt: "2026-09-29T00:00:00.000Z",
+      trialValidUntil: "2026-10-04T06:00:00.000Z",
+      earliestDependencyExpiresAt: "2026-10-05T00:00:00.000Z",
+      shadowEvaluationId: "11111111-1111-4111-8111-111111111111",
+      shadowDecisionId: "22222222-2222-4222-8222-222222222222",
+    },
+    composition: {
+      protocolId: "33333333-3333-4333-8333-333333333333",
+      manifestId: "hybrid-profile-viewing-mode-cowatch-mmr-v1",
+      composerVersion: "source-interest-theme-mmr-v1",
+      configDigest: "b".repeat(64),
+      evidenceDigest: "c".repeat(64),
+      reviewDigest: "d".repeat(64),
+      authorityRevision: 0,
+      cowatchGenerationId: "a".repeat(64),
+    },
+  })
+  it("allows graph-free exact incumbent calibration and digest-bound combined efficacy", () => {
+    expect(parseStudyProtocol(incumbent()).comparison).toBe("incumbent-aa")
+    expect(parseStudyProtocol(trial()).comparison).toBe("incumbent-cowatch-mmr")
+  })
+  it("refuses comparator substitution, graph mismatch, incomplete follow-up and placeholder effect margins", () => {
+    const valid = trial()
+    for (const changed of [
+      { ...incumbent(), challengerManifestId: "semantic-experiment-aa-v1" },
+      { ...incumbent(), cowatch: valid.cowatch },
+      { ...valid, controlManifestId: "semantic-transcript-pgvector-v1" },
+      { ...valid, cowatch: null },
+      { ...valid, composition: null },
+      {
+        ...valid,
+        composition: {
+          ...valid.composition,
+          cowatchGenerationId: "f".repeat(64),
+        },
+      },
+      {
+        ...valid,
+        cowatch: {
+          ...valid.cowatch,
+          earliestDependencyExpiresAt: valid.cowatch.trialValidUntil,
+        },
+      },
+      { ...valid, minimumUsefulDelta: null },
+      { ...incumbent(), minimumUsefulDelta: 0.006 },
+    ])
+      expect(() => parseStudyProtocol(changed)).toThrow(
+        "Invalid immutable study protocol",
+      )
   })
 })

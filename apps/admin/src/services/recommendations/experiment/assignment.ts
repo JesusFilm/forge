@@ -19,9 +19,16 @@ import {
   recommendationManifestDigest,
 } from "../promotion/manifest"
 import { HYBRID_CANDIDATE_GENERATOR_SET_VERSION } from "../candidate"
+import { studyManifestPairIsExact } from "./study-dependencies"
+import {
+  lockStudyAdmissionAuthority,
+  readActiveStudyAuthority,
+} from "./active-study-authority"
+import { RecommendationInternalStateError } from "../errors"
 import {
   isStudyAdmitted,
   parseStudyProtocol,
+  studyExperimentMatchesProtocol,
   studyChallengerCeilingBps,
   studyProtocolDigest,
 } from "./study-protocol"
@@ -121,12 +128,81 @@ export async function resolveExperimentAssignment(
     study &&
     (!study.activatedAt ||
       study.protocolDigest !== experiment.configurationDigest ||
-      studyProtocolDigest(protocol!) !== study.protocolDigest)
+      studyProtocolDigest(protocol!) !== study.protocolDigest ||
+      !studyExperimentMatchesProtocol(experiment, protocol!))
   )
     return { assignment: null, bypassReason: "cohort_ineligible" }
+  const profile =
+    (usefulness || isHybridPersonalizedExperiment(experiment)) &&
+    input.profileTokenDigest
+      ? await prisma.recommendationProfile.findFirst({
+          where: {
+            tokenDigest: input.profileTokenDigest,
+            state: RecommendationProfileState.ACTIVE,
+            expiresAt: { gt: now },
+          },
+          select: { id: true, privacyGeneration: true },
+        })
+      : null
+  if (
+    (usefulness || isHybridPersonalizedExperiment(experiment)) &&
+    profile == null
+  ) {
+    return {
+      assignment: null,
+      bypassReason: "personalization_not_consented",
+    }
+  }
+  const unitKind = profile
+    ? RecommendationExperimentUnitKind.ANONYMOUS_PROFILE
+    : RecommendationExperimentUnitKind.ANONYMOUS_SESSION
+  const unitDigest = digestAssignmentUnit(
+    experiment.id,
+    profile
+      ? `profile:${profile.id}:${profile.privacyGeneration}`
+      : `session:${input.sessionDigest}`,
+  )
+  const where = {
+    experimentId_unitDigest_generation: {
+      experimentId: experiment.id,
+      unitDigest,
+      generation: experiment.generation,
+    },
+  } as const
+  const existing = await prisma.recommendationExperimentAssignment.findUnique({
+    where,
+  })
+  if (existing) {
+    if (
+      existing.state !== RecommendationExperimentAssignmentState.ACTIVE ||
+      existing.configurationDigest !== experiment.configurationDigest ||
+      existing.generation !== experiment.generation ||
+      existing.expiresAt <= now ||
+      (usefulness &&
+        existing.assignedAt.getTime() + 86_400_000 <= now.getTime()) ||
+      (profile != null &&
+        (existing.profileId !== profile.id ||
+          existing.privacyGeneration !== profile.privacyGeneration))
+    ) {
+      return { assignment: null, bypassReason: "assignment_fenced" }
+    }
+    if (usefulness)
+      return {
+        assignment: assignmentContext(existing, experiment),
+        bypassReason: null,
+      }
+  }
+
   const semanticAa = areSemanticAaManifestsEquivalent(experiment)
   const hybridExperiment = isHybridPersonalizedExperiment(experiment)
-  if (!semanticAa && !hybridExperiment) {
+  const governed =
+    protocol != null &&
+    studyManifestPairIsExact(
+      protocol,
+      experiment.controlManifest,
+      experiment.challengerManifest,
+    )
+  if (!semanticAa && !hybridExperiment && !governed) {
     return { assignment: null, bypassReason: "manifest_not_equivalent" }
   }
   if (hybridExperiment && input.profileTokenDigest == null) {
@@ -171,61 +247,11 @@ export async function resolveExperimentAssignment(
     return { assignment: null, bypassReason: "promotion_not_approved" }
   }
 
-  const profile =
-    (hybridExperiment || usefulness) && input.profileTokenDigest
-      ? await prisma.recommendationProfile.findFirst({
-          where: {
-            tokenDigest: input.profileTokenDigest,
-            state: RecommendationProfileState.ACTIVE,
-            expiresAt: { gt: now },
-          },
-          select: { id: true, privacyGeneration: true },
-        })
-      : null
-  if ((hybridExperiment || usefulness) && profile == null) {
-    return {
-      assignment: null,
-      bypassReason: "personalization_not_consented",
-    }
-  }
-  const unitKind = profile
-    ? RecommendationExperimentUnitKind.ANONYMOUS_PROFILE
-    : RecommendationExperimentUnitKind.ANONYMOUS_SESSION
-  const unitDigest = digestAssignmentUnit(
-    experiment.id,
-    profile
-      ? `profile:${profile.id}:${profile.privacyGeneration}`
-      : `session:${input.sessionDigest}`,
-  )
-  const where = {
-    experimentId_unitDigest_generation: {
-      experimentId: experiment.id,
-      unitDigest,
-      generation: experiment.generation,
-    },
-  } as const
-  const existing = await prisma.recommendationExperimentAssignment.findUnique({
-    where,
-  })
-  if (existing) {
-    if (
-      existing.state !== RecommendationExperimentAssignmentState.ACTIVE ||
-      existing.configurationDigest !== experiment.configurationDigest ||
-      existing.generation !== experiment.generation ||
-      existing.expiresAt <= now ||
-      (usefulness &&
-        existing.assignedAt.getTime() + 86_400_000 <= now.getTime()) ||
-      (profile != null &&
-        (existing.profileId !== profile.id ||
-          existing.privacyGeneration !== profile.privacyGeneration))
-    ) {
-      return { assignment: null, bypassReason: "assignment_fenced" }
-    }
+  if (existing)
     return {
       assignment: assignmentContext(existing, experiment),
       bypassReason: null,
     }
-  }
 
   // Eligibility gates enrollment, never a later exclusion from the assigned
   // denominator. An already assigned viewer retains their arm if inputs thin.
@@ -246,6 +272,20 @@ export async function resolveExperimentAssignment(
   )
     return { assignment: null, bypassReason: "cohort_ineligible" }
 
+  if (usefulness && protocol && study) {
+    await lockStudyAdmissionAuthority(
+      prisma as unknown as Prisma.TransactionClient,
+      {
+        protocol,
+        identity: {
+          experimentId: experiment.id,
+          experimentGeneration: experiment.generation,
+          protocolDigest: study.protocolDigest,
+        },
+        now,
+      },
+    )
+  }
   const arm = chooseExperimentArm({
     unitDigest,
     configurationDigest: experiment.configurationDigest,
@@ -278,8 +318,19 @@ export async function resolveExperimentAssignment(
         expiresAt,
       },
     })
+    const context = assignmentContext(created, experiment)
+    if (
+      usefulness &&
+      !(await readActiveStudyAuthority(
+        prisma as unknown as Prisma.TransactionClient,
+        { assignment: context, now },
+      ))
+    )
+      throw new RecommendationInternalStateError(
+        "study_admission_authority_fenced",
+      )
     return {
-      assignment: assignmentContext(created, experiment),
+      assignment: context,
       bypassReason: null,
     }
   } catch (error) {

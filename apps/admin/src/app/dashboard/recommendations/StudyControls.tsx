@@ -18,7 +18,9 @@ type Study = {
   }[]
   evaluations: {
     evaluationId: string
-    result: { decision: string }
+    result: { decision: string; reasonCodes?: string[] }
+    privacyRevision: number
+    expiresAt: string
     evaluation: { runId: string }
   }[]
 }
@@ -53,6 +55,7 @@ export function StudyControls() {
     id: string
     studyId: string
     protocol?: unknown
+    payload: Record<string, unknown>
   } | null>(null)
   const [message, setMessage] = useState(
     "Prepare, review, and activate an immutable bounded study. Calibration never proves usefulness.",
@@ -98,7 +101,7 @@ export function StudyControls() {
           )
         } else
           setMessage(
-            "Acknowledgement remains unknown. Keep this operation ID and refresh status; do not submit another operation.",
+            "Acknowledgement remains unknown. Refresh status or retry the exact saved operation with the same ID and inputs.",
           )
       } else
         setMessage(
@@ -117,9 +120,10 @@ export function StudyControls() {
     action: string,
     payload: Record<string, unknown>,
     studyId: string,
+    operationId?: string,
   ) {
-    const id = crypto.randomUUID()
-    const pending = { action, id, studyId, protocol: payload.protocol }
+    const id = operationId ?? crypto.randomUUID()
+    const pending = { action, id, studyId, protocol: payload.protocol, payload }
     setBusy(true)
     setMessage(`Submitting ${action}…`)
     try {
@@ -161,28 +165,34 @@ export function StudyControls() {
     }
   }
 
-  function template() {
+  function template(bundle = false) {
     const manifests = status?.manifests ?? []
     setProtocol(
       JSON.stringify(
         {
           version: "profile-study-governance-v1",
           studyId: "",
-          mode: "calibration",
-          comparison: "semantic-aa",
+          mode: bundle ? "efficacy" : "calibration",
+          comparison: bundle ? "incumbent-cowatch-mmr" : "incumbent-aa",
           identity: "anonymous-profile-generation-v1",
           surface: "watch-below-player-v1",
           cohort: "human-en-english-durable-v1",
-          controlManifestId: "semantic-transcript-pgvector-v1",
-          challengerManifestId: "semantic-experiment-aa-v1",
+          controlManifestId: "hybrid-profile-viewing-mode-v1",
+          challengerManifestId: bundle
+            ? "hybrid-profile-viewing-mode-cowatch-mmr-v1"
+            : "hybrid-profile-viewing-mode-aa-v1",
           controlManifestDigest: manifests.find(
-            (m) => m.id === "semantic-transcript-pgvector-v1",
+            (m) => m.id === "hybrid-profile-viewing-mode-v1",
           )?.digest,
           challengerManifestDigest: manifests.find(
-            (m) => m.id === "semantic-experiment-aa-v1",
+            (m) =>
+              m.id ===
+              (bundle
+                ? "hybrid-profile-viewing-mode-cowatch-mmr-v1"
+                : "hybrid-profile-viewing-mode-aa-v1"),
           )?.digest,
           incumbentExecution: "hybrid_personalized",
-          controlExecution: "semantic_contextual",
+          controlExecution: "profile-viewing-mode-incumbent-v1",
           admissionBps: null,
           challengerProbability: 0.5,
           startsAt: "",
@@ -193,6 +203,35 @@ export function StudyControls() {
           minimumUsefulDelta: null,
           evidenceMaxAgeHours: 24,
           calibrationEvaluationId: null,
+          cowatch: bundle
+            ? {
+                mode: "frozen-source-controlled-trial-v1",
+                graphGenerationId: "",
+                sourceWindow: {
+                  version: "episode-event-window-v1",
+                  windowStart: "",
+                  windowEnd: "",
+                  evaluationAsOf: "",
+                },
+                calibrationCompletedAt: "",
+                trialValidUntil: "",
+                earliestDependencyExpiresAt: "",
+                shadowEvaluationId: "",
+                shadowDecisionId: "",
+              }
+            : null,
+          composition: bundle
+            ? {
+                protocolId: "",
+                manifestId: "hybrid-profile-viewing-mode-cowatch-mmr-v1",
+                composerVersion: "source-interest-theme-mmr-v1",
+                configDigest: "",
+                evidenceDigest: "",
+                reviewDigest: "",
+                authorityRevision: null,
+                cowatchGenerationId: "",
+              }
+            : null,
         },
         null,
         2,
@@ -293,6 +332,23 @@ export function StudyControls() {
           >
             Refresh study status
           </button>
+          {unknown ? (
+            <button
+              className={button}
+              disabled={busy}
+              type="button"
+              onClick={() =>
+                void mutate(
+                  unknown.action,
+                  unknown.payload,
+                  unknown.studyId,
+                  unknown.id,
+                )
+              }
+            >
+              Retry exact saved operation
+            </button>
+          ) : null}
           <label className="block text-[12px]">
             Study
             <select
@@ -329,8 +385,8 @@ export function StudyControls() {
               <p>
                 Fixed time window; minimum{" "}
                 {String(study.protocol.plannedAssignmentsPerArm)} assignments
-                per arm. Recorded assignments: {study.enrolledCount}. Privacy
-                revision: {study.privacyRevision}.
+                per arm. Recorded assignments: {study.enrolledCount}. Input
+                authority revision: {study.privacyRevision}.
               </p>
               <p className="break-all">
                 Protocol digest: {study.protocolDigest}
@@ -340,8 +396,22 @@ export function StudyControls() {
                 {study.evaluations[0]?.result.decision ?? "No evaluation"}.{" "}
                 {study.protocol.mode === "calibration"
                   ? "Calibration has no efficacy authority."
-                  : "Latest authority is rechecked before advancement."}
+                  : "This bounded combined trial cannot authorize permanent graph refresh."}
               </p>
+              {study.evaluations[0] ? (
+                <p>
+                  Recorded input epoch:{" "}
+                  {study.evaluations[0].privacyRevision ===
+                  study.privacyRevision
+                    ? "unchanged"
+                    : "invalidated; republish after reconciliation"}
+                  . Publication validity ends {study.evaluations[0].expiresAt}.
+                  Reasons:{" "}
+                  {study.evaluations[0].result.reasonCodes?.join(", ") ??
+                    "none recorded"}
+                  . Serving dependencies are rechecked for each request.
+                </p>
+              ) : null}
               <details>
                 <summary>Review frozen protocol</summary>
                 <pre className="overflow-auto">
@@ -489,10 +559,25 @@ export function StudyControls() {
               className={button}
               type="button"
               disabled={disabled || !status}
-              onClick={template}
+              onClick={() => template(false)}
             >
-              Start A/A protocol
+              Start incumbent A/A protocol
             </button>
+            <button
+              className={button}
+              disabled={disabled}
+              type="button"
+              onClick={() => template(true)}
+            >
+              Start combined co-watch/MMR protocol
+            </button>
+            <p>
+              Complete incumbent A/A first. Combined efficacy requires its exact
+              calibration result, a freshly qualified graph and a separately
+              reviewed composition binding. It measures their combined effect;
+              permanent default needs a separately reviewed graph refresh
+              policy.
+            </p>
             <label className="block text-[12px]">
               Protocol JSON
               <textarea

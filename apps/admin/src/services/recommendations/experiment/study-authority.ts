@@ -3,11 +3,14 @@ import { RecommendationInputError } from "../errors"
 import { recommendationManifestDigest } from "../promotion/manifest"
 import {
   parseStudyProtocol,
+  studyExperimentMatchesProtocol,
   studyProtocolDigest,
   STUDY_POLICY_VERSION,
+  studyMatchesIncumbent,
+  type StudyProtocol,
 } from "./study-protocol"
 
-export async function assertStudyAuthority(
+export async function readStudyEvaluationAuthority(
   tx: Prisma.TransactionClient,
   input: {
     evaluationId: string
@@ -15,12 +18,6 @@ export async function assertStudyAuthority(
     now: Date
   },
 ) {
-  await tx.$queryRaw`SELECT study.experiment_id
-    FROM recommendation_study_evaluation authority
-    JOIN recommendation_study study ON study.experiment_id = authority.study_id
-    JOIN recommendation_experiment experiment ON experiment.id = study.experiment_id
-    WHERE authority.evaluation_id = ${input.evaluationId}
-    FOR SHARE OF study, experiment`
   const authority = await tx.recommendationStudyEvaluation.findUnique({
     where: { evaluationId: input.evaluationId },
     include: {
@@ -34,10 +31,7 @@ export async function assertStudyAuthority(
       evaluation: { include: { supersededBy: true } },
     },
   })
-  if (!authority)
-    throw new RecommendationInputError(
-      "Version-bound study authority is required",
-    )
+  if (!authority) return null
   const { study, evaluation } = authority
   const experiment = study.experiment
   const protocol = parseStudyProtocol(study.protocol)
@@ -62,6 +56,7 @@ export async function assertStudyAuthority(
     evaluation.evaluationPolicyVersion !== STUDY_POLICY_VERSION ||
     result.schemaVersion !== "recommendation-usefulness-offline-v2" ||
     studyProtocolDigest(protocol) !== study.protocolDigest ||
+    !studyExperimentMatchesProtocol(experiment, protocol) ||
     evaluation.experimentId !== study.experimentId ||
     result.decision !== expected ||
     authority.mode !==
@@ -71,9 +66,31 @@ export async function assertStudyAuthority(
     protocol.challengerManifestDigest !==
       recommendationManifestDigest(experiment.challengerManifest)
   )
+    return null
+  return authority
+}
+
+export async function assertStudyAuthority(
+  tx: Prisma.TransactionClient,
+  input: {
+    evaluationId: string
+    purpose: "calibration" | "advancement"
+    now: Date
+  },
+) {
+  await tx.$queryRaw`SELECT study.experiment_id
+    FROM recommendation_study_evaluation authority
+    JOIN recommendation_study study ON study.experiment_id = authority.study_id
+    JOIN recommendation_experiment experiment ON experiment.id = study.experiment_id
+    WHERE authority.evaluation_id = ${input.evaluationId}
+    FOR SHARE OF study, experiment`
+  const authority = await readStudyEvaluationAuthority(tx, input)
+  if (!authority)
     throw new RecommendationInputError(
       "Study authority is stale, superseded or invalid",
     )
+  const { study, evaluation } = authority
+  const protocol = parseStudyProtocol(study.protocol)
   const [health] = await tx.$queryRaw<
     Array<{ invalid: boolean }>
   >`SELECT EXISTS (
@@ -131,10 +148,60 @@ export async function assertStudyAuthority(
     )
   if (
     input.purpose === "advancement" &&
-    protocol.controlExecution !== String(protocol.incumbentExecution)
+    protocol.comparison === "incumbent-cowatch-mmr"
   )
     throw new RecommendationInputError(
+      "Permanent co-watch/MMR requires a reviewed post-study graph refresh policy",
+    )
+  if (input.purpose === "advancement" && !studyMatchesIncumbent(protocol))
+    throw new RecommendationInputError(
       "Study comparator does not match the live incumbent",
+    )
+  return authority
+}
+
+/** Comparator matching is independent of a PASS label. Semantic A/A can never
+ * authorize a trial against the live profile + viewing-mode incumbent. */
+export function calibrationMatchesProtocol(
+  authority: {
+    study: { protocol: unknown }
+    evaluation: { evaluatedAt: Date }
+    expiresAt: Date
+  },
+  protocol: StudyProtocol,
+): boolean {
+  const calibration = parseStudyProtocol(authority.study.protocol)
+  return (
+    calibration.comparison ===
+      (studyMatchesIncumbent(protocol) ? "incumbent-aa" : "semantic-aa") &&
+    calibration.controlManifestId === protocol.controlManifestId &&
+    calibration.controlManifestDigest === protocol.controlManifestDigest &&
+    calibration.controlExecution === protocol.controlExecution &&
+    calibration.identity === protocol.identity &&
+    calibration.cohort === protocol.cohort &&
+    calibration.surface === protocol.surface &&
+    Date.parse(calibration.endsAt) + 30 * 3_600_000 <=
+      Date.parse(protocol.startsAt) &&
+    authority.expiresAt.getTime() >
+      Date.parse(protocol.endsAt) + 30 * 3_600_000 &&
+    (!protocol.cowatch ||
+      authority.evaluation.evaluatedAt.getTime() ===
+        Date.parse(protocol.cowatch.calibrationCompletedAt))
+  )
+}
+export async function assertCalibrationForProtocol(
+  tx: Prisma.TransactionClient,
+  protocol: StudyProtocol,
+  now: Date,
+) {
+  const authority = await assertStudyAuthority(tx, {
+    evaluationId: protocol.calibrationEvaluationId!,
+    purpose: "calibration",
+    now,
+  })
+  if (!calibrationMatchesProtocol(authority, protocol))
+    throw new RecommendationInputError(
+      "Calibration comparator or validity horizon does not match this study",
     )
   return authority
 }

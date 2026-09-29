@@ -60,6 +60,7 @@ function harness(existing: ExperimentAssignmentContext | null = null) {
       }
     : null
   const prisma = {
+    $queryRaw: vi.fn().mockResolvedValue([]),
     recommendationExperiment: {
       findFirst: vi.fn().mockResolvedValue(experiment),
     },
@@ -201,6 +202,22 @@ describe("resolveExperimentAssignment", () => {
       profileTokenDigest: "d".repeat(64),
       profileUsefulness: { eligibleForEnrollment: true },
     }
+    const configured = await prisma.recommendationExperiment.findFirst()
+    assignment.create.mockImplementation(async ({ data }) => {
+      const created = { ...data, state: "ACTIVE" }
+      assignment.findUnique.mockResolvedValue({
+        ...created,
+        profile: {
+          id: "profile-1",
+          state: "ACTIVE",
+          choice: "DURABLE_ALLOWED",
+          privacyGeneration: 2,
+          expiresAt: new Date(protocol.expiresAt),
+        },
+        experiment: { ...configured, state: "ACTIVE" },
+      } as never)
+      return created
+    })
     const first = await resolveExperimentAssignment(prisma as never, args)
     const created = assignment.create.mock.calls[0]?.[0].data
     expect(created).toMatchObject({
