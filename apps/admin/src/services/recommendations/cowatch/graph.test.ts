@@ -4,6 +4,7 @@ import {
   compatibleCowatchFeature,
   COWATCH_FEATURE_VERSION,
   COWATCH_MAX_GAP_MS,
+  CowatchWorkOverflowError,
   type CowatchOutcome,
 } from "./graph"
 
@@ -170,5 +171,64 @@ describe("directional co-watch graph", () => {
     expect(graph.contributions[0].recencyWeight).toBeGreaterThan(0)
     expect(graph.contributions[0].recencyWeight).toBeLessThan(1)
     expect(graph.contributions[0].effectiveWeight).toBeLessThan(0.5)
+  })
+
+  it("binds event boundaries and recency to the explicit scope, not rebuild time", () => {
+    const scope = {
+      version: "episode-event-window-v1" as const,
+      windowStart: new Date(NOW.getTime() - 2 * DAY),
+      windowEnd: new Date(NOW.getTime() - DAY),
+      evaluationAsOf: NOW,
+    }
+    const rows = [
+      ...pair("v1", "s1"),
+      outcome("before", "before", "C", -1),
+      outcome("end", "end", "C", DAY),
+      outcome("single", "single", "C", 2_000),
+    ]
+    const graph = buildCowatchGraph(rows, NOW, scope)
+    expect(graph.sources).toHaveLength(3)
+    expect(graph.contributions).toHaveLength(1)
+    expect(graph.attemptedPairCount).toBe(1)
+    expect(
+      buildCowatchGraph(rows, new Date(NOW.getTime() + 1_000), scope),
+    ).toEqual(graph)
+    expect(
+      buildCowatchGraph(rows, NOW, {
+        ...scope,
+        windowEnd: new Date(scope.windowEnd.getTime() - 1),
+      }).generation,
+    ).not.toBe(graph.generation)
+    expect(buildCowatchGraph(rows.slice(0, 2), NOW, scope).generation).not.toBe(
+      graph.generation,
+    )
+    // A pinned source cutoff never exempts its sources from current expiry.
+    expect(
+      buildCowatchGraph(rows, new Date(NOW.getTime() + DAY), scope).sources,
+    ).toHaveLength(0)
+  })
+
+  it("refuses 257 eligible session sources and 250001 attempted pairs", () => {
+    const session = Array.from({ length: 257 }, (_, index) =>
+      outcome("v", "s", "A", index),
+    )
+    expect(
+      buildCowatchGraph(session.slice(0, 256), NOW).attemptedPairCount,
+    ).toBe(32_640)
+    expect(() => buildCowatchGraph(session, NOW)).toThrow(
+      CowatchWorkOverflowError,
+    )
+    const dense = Array.from({ length: 8 }, (_, viewer) =>
+      Array.from({ length: 256 }, (_, index) =>
+        outcome(`v${viewer}`, `s${viewer}`, "A", index),
+      ),
+    ).flat()
+    expect(() => buildCowatchGraph(dense, NOW)).toThrow(
+      expect.objectContaining({
+        bound: "pair_attempts",
+        attemptedPairCount: 250_001,
+        eligibleSourceCount: 2_048,
+      }),
+    )
   })
 })
