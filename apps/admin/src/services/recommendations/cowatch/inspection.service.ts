@@ -18,6 +18,7 @@ import {
   COWATCH_SHADOW_GENERATOR_KEY,
   type CowatchFeature,
 } from "./graph"
+import { COWATCH_LEGACY_SOURCE_WINDOW_VERSION } from "./source-window"
 
 export type CowatchAnchor = Readonly<{
   mediaId: string
@@ -75,6 +76,14 @@ export type CowatchInspection = Readonly<{
   }> | null
   generation: string | null
   publishedAt: Date | null
+  sourceWindow: Readonly<{
+    version: string
+    windowStart: Date
+    windowEnd: Date
+    evaluationAsOf: Date
+  }> | null
+  rawSourceCount: number | null
+  attemptedPairCount: number | null
   sourceCount: number
   contributionCount: number
   edgeCount: number
@@ -155,12 +164,18 @@ export async function loadCowatchInspection(
     requestId?: string | null
     actorDigest?: string | null
     additionalAnchors?: readonly CowatchAnchor[]
+    /** Exact identity never falls back to the newest generation. */
+    generationId?: string
   },
 ): Promise<CowatchInspection> {
   const [generation, evaluation] = await Promise.all([
-    prisma.recommendationCowatchGeneration.findFirst({
-      orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-    }),
+    input.generationId !== undefined
+      ? prisma.recommendationCowatchGeneration.findUnique({
+          where: { id: input.generationId },
+        })
+      : prisma.recommendationCowatchGeneration.findFirst({
+          orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+        }),
     prisma.recommendationShadowEvaluation.findFirst({
       where: { generatorVersion: COWATCH_SHADOW_GENERATOR_KEY },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -193,6 +208,9 @@ export async function loadCowatchInspection(
     shadowEvaluation,
     generation: null,
     publishedAt: null,
+    sourceWindow: null,
+    rawSourceCount: null,
+    attemptedPairCount: null,
     sourceCount: 0,
     contributionCount: 0,
     edgeCount: 0,
@@ -447,6 +465,19 @@ export async function loadCowatchInspection(
     shadowEvaluation,
     generation: generation.id,
     publishedAt: generation.publishedAt,
+    sourceWindow: {
+      version:
+        generation.sourceWindowVersion ?? COWATCH_LEGACY_SOURCE_WINDOW_VERSION,
+      // Historical rows used both an outcome-write and an event-age window.
+      // Name that contract explicitly; do not relabel it as a finite event scope.
+      windowStart:
+        generation.windowStart ??
+        new Date(generation.windowEnd.getTime() - 180 * 86_400_000),
+      windowEnd: generation.windowEnd,
+      evaluationAsOf: generation.evaluationAsOf ?? generation.windowEnd,
+    },
+    rawSourceCount: generation.rawSourceCount,
+    attemptedPairCount: generation.attemptedPairCount,
     sourceCount: generation.sourceCount,
     contributionCount: generation.contributionCount,
     edgeCount: generation.edgeCount,
