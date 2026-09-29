@@ -36,6 +36,12 @@ jest.mock("../../i18n/pluralData.generated", () =>
 )
 
 import { StrictMode, act, createElement } from "react"
+import {
+  Kind,
+  type DocumentNode,
+  type FragmentDefinitionNode,
+  type SelectionSetNode,
+} from "graphql"
 
 import { adminFormsFor } from "../../i18n/adminLanguage"
 import {
@@ -53,8 +59,10 @@ import {
   type TestInstance,
 } from "../../test-utils/rnTestRenderer"
 import {
+  VIDEO_THUMBNAIL_BATCH_SIZE,
   useVideoThumbnails,
   videoMetaFromResult,
+  videoThumbnailsDocument,
   type VideoMetaMap,
 } from "../useVideoThumbnails"
 
@@ -210,5 +218,130 @@ describe("useVideoThumbnails across a live language change (U6)", () => {
       })
     })
     expect(seen.at(-1)?.get("a")?.title).toBe("ИИСУС")
+  })
+})
+
+// ── Admin's alias limit ──────────────────────────────────────────────────────
+
+// Admin rejects a document with more than 200 aliases ("Aliases limit of 200
+// exceeded"), counted after fragment spreads expand.
+const ADMIN_ALIAS_LIMIT = 200
+
+function expandedAliasCount(document: DocumentNode): number {
+  const fragments = new Map<string, FragmentDefinitionNode>()
+  for (const definition of document.definitions) {
+    if (definition.kind === Kind.FRAGMENT_DEFINITION)
+      fragments.set(definition.name.value, definition)
+  }
+  const count = (set: SelectionSetNode | undefined): number =>
+    (set?.selections ?? []).reduce((total, selection) => {
+      if (selection.kind === Kind.FIELD)
+        return total + (selection.alias ? 1 : 0) + count(selection.selectionSet)
+      if (selection.kind === Kind.FRAGMENT_SPREAD)
+        return total + count(fragments.get(selection.name.value)?.selectionSet)
+      return total + count(selection.selectionSet)
+    }, 0)
+  return document.definitions.reduce(
+    (total, definition) =>
+      definition.kind === Kind.OPERATION_DEFINITION
+        ? total + count(definition.selectionSet)
+        : total,
+    0,
+  )
+}
+
+describe("the thumbnail batch stays under Admin's alias limit", () => {
+  it("counts the production failure exactly (anti-vacuous)", () => {
+    // 57 videos was the Experience that Admin rejected with "found 342".
+    expect(
+      expandedAliasCount(videoThumbnailsDocument(57) as DocumentNode),
+    ).toBe(342)
+  })
+
+  it("keeps a full batch at or under the limit", () => {
+    expect(
+      expandedAliasCount(
+        videoThumbnailsDocument(VIDEO_THUMBNAIL_BATCH_SIZE) as DocumentNode,
+      ),
+    ).toBeLessThanOrEqual(ADMIN_ALIAS_LIMIT)
+  })
+})
+
+const LARGE_EXPERIENCE = {
+  slug: "large",
+  blocks: Array.from({ length: 57 }, (_, i) => ({
+    __typename: "VideoCardBlock",
+    videoId: `v${i}`,
+  })),
+} as unknown as WatchExperience
+
+let largeSeen: VideoMetaMap[] = []
+
+function LargeProbe() {
+  largeSeen.push(useVideoThumbnails(LARGE_EXPERIENCE))
+  return null
+}
+
+describe("useVideoThumbnails with a large Experience", () => {
+  let mounted: TestInstance | null = null
+  const query = jest.fn()
+
+  beforeEach(() => {
+    largeSeen = []
+    query.mockReset()
+    ;(getApolloClient as jest.Mock).mockReturnValue({ query })
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+  })
+
+  afterEach(async () => {
+    await act(async () => {
+      mounted?.unmount()
+    })
+    mounted = null
+    resetLocaleStoreForTests()
+  })
+
+  function answer(variables: Record<string, string>) {
+    const data: Record<string, unknown> = {}
+    for (const [name, id] of Object.entries(variables)) {
+      if (name.startsWith("id")) data[`v${name.slice(2)}`] = video(id, [], id)
+    }
+    return { data }
+  }
+
+  it("splits the ids into batches and merges every title", async () => {
+    query.mockImplementation(
+      ({ variables }: { variables: Record<string, string> }) =>
+        Promise.resolve(answer(variables)),
+    )
+    await act(async () => {
+      mounted = TestRenderer.create(createElement(LargeProbe))
+    })
+    expect(query).toHaveBeenCalledTimes(2)
+    for (const [{ variables }] of query.mock.calls) {
+      const ids = Object.keys(variables).filter((k) => k.startsWith("id"))
+      expect(ids.length).toBeLessThanOrEqual(VIDEO_THUMBNAIL_BATCH_SIZE)
+    }
+    const map = largeSeen.at(-1)
+    expect(map?.size).toBe(57)
+    expect(map?.get("v0")?.title).toBe("v0")
+    expect(map?.get("v56")?.title).toBe("v56")
+  })
+
+  it("keeps the batches that succeed when one batch fails", async () => {
+    query.mockImplementation(
+      ({ variables }: { variables: Record<string, string> }) =>
+        variables.id0 === "v0"
+          ? Promise.reject(new Error("offline"))
+          : Promise.resolve(answer(variables)),
+    )
+    await act(async () => {
+      mounted = TestRenderer.create(createElement(LargeProbe))
+    })
+    const map = largeSeen.at(-1)
+    expect(map?.has("v0")).toBe(false)
+    expect(map?.get("v56")?.title).toBe("v56")
   })
 })

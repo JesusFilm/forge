@@ -22,6 +22,10 @@ export type VideoMetaMap = Map<string, VideoMeta>
 const FETCH_TIMEOUT_MS = 15_000
 const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/
 
+// Admin rejects more than 200 aliases per document, and each video costs 6
+// (its own alias plus the fragment's). 30 videos stay at 180.
+export const VIDEO_THUMBNAIL_BATCH_SIZE = 30
+
 function collectVideoIds(experience: WatchExperience | null): string[] {
   if (!experience?.blocks) return []
   const ids = new Set<string>()
@@ -70,8 +74,8 @@ const documentsByCount = new Map<
   TypedDocumentNode<VideoThumbnailsResult, VideoThumbnailsVariables>
 >()
 
-/** One aliased `video(id:)` per id in ONE request, each spreading the typed
- *  VideoThumbnail fragment. The ids travel as variables, never in the text. */
+/** One aliased `video(id:)` per id, each spreading the typed VideoThumbnail
+ *  fragment; ids travel as variables. Callers send at most one batch size. */
 export function videoThumbnailsDocument(
   count: number,
 ): TypedDocumentNode<VideoThumbnailsResult, VideoThumbnailsVariables> {
@@ -146,22 +150,37 @@ export function useVideoThumbnails(
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
-    getApolloClient()
-      .query({
-        query: videoThumbnailsDocument(videoIds.length),
-        variables: videoThumbnailsVariables(videoIds, textSlug),
-        fetchPolicy: "cache-first",
-        context: { fetchOptions: { signal: controller.signal } },
-      })
-      .then((result) => {
+    const batches: string[][] = []
+    for (let i = 0; i < videoIds.length; i += VIDEO_THUMBNAIL_BATCH_SIZE) {
+      batches.push(videoIds.slice(i, i + VIDEO_THUMBNAIL_BATCH_SIZE))
+    }
+    const client = getApolloClient()
+    void Promise.allSettled(
+      batches.map((ids) =>
+        client
+          .query({
+            query: videoThumbnailsDocument(ids.length),
+            variables: videoThumbnailsVariables(ids, textSlug),
+            fetchPolicy: "cache-first",
+            context: { fetchOptions: { signal: controller.signal } },
+          })
+          .then((result) => videoMetaFromResult(ids, result.data, forms)),
+      ),
+    )
+      .then((results) => {
         if (cancelled) return
-        setMeta({
-          textSlug,
-          map: videoMetaFromResult(videoIds, result.data, forms),
-        })
-      })
-      .catch(() => {
-        if (__DEV__) console.warn("[useVideoThumbnails] fetch failed")
+        const map: VideoMetaMap = new Map()
+        let answered = false
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            answered = true
+            for (const [id, entry] of result.value) map.set(id, entry)
+          } else if (__DEV__) {
+            console.warn("[useVideoThumbnails] fetch failed")
+          }
+        }
+        // As before: a fetch where every batch failed keeps the last map.
+        if (answered) setMeta({ textSlug, map })
       })
       .finally(() => clearTimeout(timer))
 
