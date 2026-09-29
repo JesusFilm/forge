@@ -281,6 +281,10 @@ is redundant and loses the plugin's column-pruning.
 ## Conventions (Unit 1 baseline — expands with each unit)
 
 - Env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
+  Standalone migration deploy/recovery scripts may read required database and
+  retry settings before application auth configuration exists; validate the
+  inputs and never print connection strings. This exception does not apply to
+  application services or other operator scripts.
 - Env vars managed by Doppler (project: `forge-admin`). Use `pnpm fetch-secrets` for local dev.
 - Tests colocated as `*.test.ts` / `*.test.tsx` beside source files.
 - Next production builds use `tsconfig.build.json` to exclude colocated tests

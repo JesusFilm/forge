@@ -778,53 +778,69 @@ describe("WatchHomePage", () => {
       // never re-render at all.
       const carouselRenders = () => muxVideoRenders.length
 
-      vi.spyOn(Math, "random").mockReturnValue(0)
-      await act(async () => {
-        root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
-      })
-
-      const video = container.querySelector(
-        '[data-testid="watch-home-tv-video"]',
-      ) as HTMLVideoElement
-      Object.defineProperty(video, "duration", {
-        configurable: true,
-        value: 123,
-      })
-
-      const setTime = (seconds: number) =>
-        Object.defineProperty(video, "currentTime", {
-          configurable: true,
-          value: seconds,
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
         })
 
-      setTime(12.1)
-      await act(async () => {
-        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
-      })
-      const hrefAfterFirst = container
-        .querySelector("a[href*='autoplay=1']")
-        ?.getAttribute("href")
-      const rendersAfterFirst = carouselRenders()
+        // Height fitting commits on its first animation frame. Settle that
+        // unrelated render before sampling, then keep time fixed between events.
+        await act(async () => {
+          vi.advanceTimersToNextFrame()
+        })
 
-      setTime(12.8)
-      await act(async () => {
-        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
-      })
+        const video = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        Object.defineProperty(video, "duration", {
+          configurable: true,
+          value: 123,
+        })
 
-      expect(
-        container.querySelector("a[href*='autoplay=1']")?.getAttribute("href"),
-      ).toBe(hrefAfterFirst)
-      expect(carouselRenders()).toBe(rendersAfterFirst)
-      expect(hrefAfterFirst).toContain("t=12")
+        const setTime = (seconds: number) =>
+          Object.defineProperty(video, "currentTime", {
+            configurable: true,
+            value: seconds,
+          })
 
-      setTime(13.2)
-      await act(async () => {
-        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
-      })
+        setTime(12.1)
+        await act(async () => {
+          video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+        })
+        const hrefAfterFirst = container
+          .querySelector("a[href*='autoplay=1']")
+          ?.getAttribute("href")
+        const rendersAfterFirst = carouselRenders()
 
-      expect(
-        container.querySelector("a[href*='autoplay=1']")?.getAttribute("href"),
-      ).toContain("t=13")
+        setTime(12.8)
+        await act(async () => {
+          video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+        })
+
+        expect(
+          container
+            .querySelector("a[href*='autoplay=1']")
+            ?.getAttribute("href"),
+        ).toBe(hrefAfterFirst)
+        expect(carouselRenders()).toBe(rendersAfterFirst)
+        expect(hrefAfterFirst).toContain("t=12")
+
+        setTime(13.2)
+        await act(async () => {
+          video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+        })
+
+        expect(
+          container
+            .querySelector("a[href*='autoplay=1']")
+            ?.getAttribute("href"),
+        ).toContain("t=13")
+        expect(carouselRenders()).toBe(rendersAfterFirst + 1)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it("re-arms the poster hold only once per slide, not on every canplay", async () => {

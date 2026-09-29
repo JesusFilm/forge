@@ -14,6 +14,17 @@ export async function suppressCowatchForProfiles(
     JOIN recommendation_profile_session_link link
       ON link.session_digest = episode.session_digest
     WHERE link.profile_id IN (${ids})
+    UNION
+    SELECT DISTINCT episode.id, episode.expires_at
+    FROM recommendation_cowatch_source_contribution source
+    JOIN recommendation_playback_episode episode ON episode.session_digest = source.session_digest
+    WHERE source.viewer_profile_id IN (${ids})
+    UNION
+    SELECT DISTINCT episode.id, episode.expires_at
+    FROM recommendation_cowatch_source_contribution source
+    JOIN recommendation_outcome_revision outcome ON outcome.id = source.outcome_id
+    JOIN recommendation_playback_episode episode ON episode.id = outcome.episode_id
+    WHERE source.viewer_profile_id IN (${ids})
     ON CONFLICT (episode_id) DO NOTHING
   `)
   await tx.$executeRaw(Prisma.sql`
@@ -23,6 +34,9 @@ export async function suppressCowatchForProfiles(
         SELECT link.session_digest
         FROM recommendation_profile_session_link link
         WHERE link.profile_id IN (${ids})
+        UNION
+        SELECT retained.session_digest FROM recommendation_cowatch_source_contribution retained
+        WHERE retained.viewer_profile_id IN (${ids})
       )
   `)
   await tx.$executeRaw(Prisma.sql`
@@ -32,6 +46,9 @@ export async function suppressCowatchForProfiles(
         SELECT link.session_digest
         FROM recommendation_profile_session_link link
         WHERE link.profile_id IN (${ids})
+        UNION
+        SELECT retained.session_digest FROM recommendation_cowatch_source_contribution retained
+        WHERE retained.viewer_profile_id IN (${ids})
       )
   `)
 }

@@ -1,3 +1,6 @@
+import { assertStudyAuthority } from "../experiment/study-authority"
+import { PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION } from "../experiment/assignment"
+import { STUDY_POLICY_VERSION } from "../experiment/study-protocol"
 import { randomUUID } from "node:crypto"
 import {
   Prisma,
@@ -53,6 +56,7 @@ type Dependencies = Readonly<{
 
 export type CreatePromotionRunInput = Readonly<{
   actor: Principal
+  operationId?: string
   action: PromotionAction
   expectedPointerGeneration: number
   targetManifestId: string
@@ -180,6 +184,23 @@ export class RecommendationPromotionService {
 
   async createRun(input: CreatePromotionRunInput) {
     authorizeRunRequest(input)
+    if (
+      !isRollback(input.action) &&
+      input.targetManifestId === HYBRID_PERSONALIZED_MANIFEST_ID
+    )
+      throw new RecommendationInputError(
+        "Hybrid activation and advancement require the governed study flow with an incumbent-matched comparator",
+      )
+    if (input.operationId) {
+      const existing =
+        await this.deps.prisma.recommendationPromotionRun.findUnique({
+          where: { id: input.operationId },
+        })
+      if (existing) {
+        assertReplayInputs(existing, input)
+        return { ...existing, replayed: true }
+      }
+    }
     const now = this.now()
     const [pointer, approval, evaluation] = await Promise.all([
       this.deps.prisma.recommendationPromotionPointer.findUnique({
@@ -200,6 +221,41 @@ export class RecommendationPromotionService {
     ])
     if (!pointer || pointer.generation !== input.expectedPointerGeneration) {
       throw new RecommendationConflictError("Promotion page is stale")
+    }
+    if (
+      !isRollback(input.action) &&
+      evaluation?.evaluationPolicyVersion !== STUDY_POLICY_VERSION
+    ) {
+      const governed = await this.deps.prisma.recommendationStudy.findFirst({
+        where: {
+          activatedAt: { not: null },
+          expiresAt: { gt: now },
+          experiment: {
+            state: "ACTIVE",
+            challengerManifestId: pointer.activeManifestId,
+          },
+        },
+        select: { experimentId: true },
+      })
+      if (governed)
+        throw new RecommendationInputError(
+          "Frozen study admission cannot be changed by a legacy transition",
+        )
+    }
+    if (
+      !isRollback(input.action) &&
+      evaluation &&
+      (evaluation.evaluationPolicyVersion === STUDY_POLICY_VERSION ||
+        evaluation.experiment.assignmentPolicyVersion ===
+          PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION)
+    ) {
+      await this.deps.prisma.$transaction((tx) =>
+        assertStudyAuthority(tx, {
+          evaluationId: evaluation.id,
+          purpose: "advancement",
+          now,
+        }),
+      )
     }
     const initialShadowWhere = approval
       ? exactPersonalizedShadowAuthorizationWhere(approval.manifest, now)
@@ -232,8 +288,18 @@ export class RecommendationPromotionService {
         now,
       })
     }
-    const runId = this.newId()
+    const runId = input.operationId ?? this.newId()
     return this.deps.prisma.$transaction(async (tx) => {
+      if (input.operationId) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${input.operationId}, 505))`
+        const existing = await tx.recommendationPromotionRun.findUnique({
+          where: { id: input.operationId },
+        })
+        if (existing) {
+          assertReplayInputs(existing, input)
+          return { ...existing, replayed: true }
+        }
+      }
       const run = await tx.recommendationPromotionRun.create({
         data: {
           id: runId,
@@ -281,7 +347,7 @@ export class RecommendationPromotionService {
           }),
         })
       }
-      return run
+      return { ...run, replayed: false }
     })
   }
 
@@ -344,6 +410,46 @@ export class RecommendationPromotionService {
 
         const action = policyAction(run.action)
         const rollback = isRollback(action)
+        if (
+          !rollback &&
+          run.targetManifestId === HYBRID_PERSONALIZED_MANIFEST_ID
+        )
+          throw new RecommendationInputError(
+            "Hybrid activation and advancement require the governed study flow with an incumbent-matched comparator",
+          )
+        if (
+          !rollback &&
+          run.evaluation?.evaluationPolicyVersion !== STUDY_POLICY_VERSION
+        ) {
+          const governed = await tx.recommendationStudy.findFirst({
+            where: {
+              activatedAt: { not: null },
+              expiresAt: { gt: now },
+              experiment: {
+                state: "ACTIVE",
+                challengerManifestId: pointer.activeManifestId,
+              },
+            },
+            select: { experimentId: true },
+          })
+          if (governed)
+            throw new RecommendationInputError(
+              "Frozen study admission cannot be changed by a legacy transition",
+            )
+        }
+        if (
+          !rollback &&
+          run.evaluation &&
+          (run.evaluation.evaluationPolicyVersion === STUDY_POLICY_VERSION ||
+            run.evaluation.experiment.assignmentPolicyVersion ===
+              PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION)
+        ) {
+          await assertStudyAuthority(tx, {
+            evaluationId: run.evaluation.id,
+            purpose: "advancement",
+            now,
+          })
+        }
         const initialShadowWhere = run.approval
           ? exactPersonalizedShadowAuthorizationWhere(
               run.approval.manifest,
@@ -941,4 +1047,30 @@ function isRollback(action: PromotionAction) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value != null && !Array.isArray(value)
+}
+
+function assertReplayInputs(
+  run: {
+    action: string
+    expectedPointerGeneration: number
+    targetManifestId: string
+    approvalId: string | null
+    evaluationId: string | null
+    exposureCeilingBps: number
+    requestedActorId: string | null
+  },
+  input: CreatePromotionRunInput,
+) {
+  if (
+    run.action !== databaseAction(input.action) ||
+    run.expectedPointerGeneration !== input.expectedPointerGeneration ||
+    run.targetManifestId !== input.targetManifestId ||
+    run.approvalId !== (input.approvalId ?? null) ||
+    run.evaluationId !== (input.evaluationId ?? null) ||
+    run.exposureCeilingBps !== input.exposureCeilingBps ||
+    run.requestedActorId !== input.actor.id
+  )
+    throw new RecommendationConflictError(
+      "Operation ID already binds another transition",
+    )
 }

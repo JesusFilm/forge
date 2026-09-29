@@ -8,12 +8,12 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 28, 2026)
+## Status (September 29, 2026)
 
-- **Total tickets:** 35
-- **Complete:** 23
-- **In progress:** 1
-- **Not started:** 11
+- **Total tickets:** 37
+- **Complete:** 25
+- **In progress:** 3
+- **Not started:** 9
 - **Blocked:** 0
 
 ## Feature Index
@@ -49,12 +49,14 @@ database into Admin.
 | [feat-479](feat-479-rag-corpus-transaction-timeouts.md)           | —                                                             | Bound corpus transactions for production latency                   | complete    | [#2233](https://github.com/JesusFilm/forge/pull/2233)                                                                                                                                                                                                                             |
 | [feat-526](feat-526-rag-consumer-access-planning.md)              | —                                                             | Plan consumer access and usage visibility                          | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
 | [feat-527](feat-527-rag-consumer-access-lifecycle.md)             | —                                                             | Implement consumer access lifecycle (single runtime per consumer)  | in-progress | [#2397](https://github.com/JesusFilm/forge/pull/2397), [#2416](https://github.com/JesusFilm/forge/pull/2416), [#2423](https://github.com/JesusFilm/forge/pull/2423), [#2426](https://github.com/JesusFilm/forge/pull/2426), [#2435](https://github.com/JesusFilm/forge/pull/2435) |
-| [feat-528](feat-528-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting                                            | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
-| [feat-529](feat-529-rag-consumer-dogfood-migration.md)            | —                                                             | Dogfood and seven-day migration                                    | not-started | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
+| [feat-528](feat-528-rag-consumer-usage-visibility.md)             | —                                                             | Deliver usage reporting                                            | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2455](https://github.com/JesusFilm/forge/pull/2455), [#2472](https://github.com/JesusFilm/forge/pull/2472)                                                                                                               |
+| [feat-568](feat-568-rag-usage-capacity-review.md)                 | —                                                             | Review usage capacity before volume expansion                      | not-started | —                                                                                                                                                                                                                                                                                 |
+| [feat-529](feat-529-rag-consumer-dogfood-migration.md)            | —                                                             | Dogfood and seven-day migration                                    | in-progress | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2459](https://github.com/JesusFilm/forge/pull/2459), [#2468](https://github.com/JesusFilm/forge/pull/2468), [#2472](https://github.com/JesusFilm/forge/pull/2472)                                                        |
 | [feat-530](feat-530-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                       | in-progress | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2442](https://github.com/JesusFilm/forge/pull/2442), [#2445](https://github.com/JesusFilm/forge/pull/2445)                                                                                                               |
 | [feat-532](feat-532-rag-legacy-service-credential-retirement.md)  | —                                                             | Retire legacy JesusFilm-RAG service and credentials                | not-started | [#2379](https://github.com/JesusFilm/forge/pull/2379)                                                                                                                                                                                                                             |
 | [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
 | [feat-541](feat-541-rag-database-diagram.md)                      | —                                                             | Document the RAG database schema as a complete ERD                 | complete    | [#2398](https://github.com/JesusFilm/forge/pull/2398)                                                                                                                                                                                                                             |
+| [feat-569](feat-569-rag-portal-sources.md)                        | —                                                             | Production source catalog in the portal                            | complete    | [#2463](https://github.com/JesusFilm/forge/pull/2463)                                                                                                                                                                                                                             |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
@@ -95,8 +97,10 @@ management UI is now in progress; feat-529 onboarding evidence must use that UI.
 in separate draft #2325; feat-518 is complete as documentation. The
 [feat-527 admission evidence](evidence/feat-527/portal-admission-slice.md)
 records the production operator setup and successful login, sign-out and
-unlisted-account denial. Feat-527 remains in progress; feat-528/529 have not
-started.
+unlisted-account denial. Feat-527 remains in progress. Feat-528 accounting and report access are locally verified. Its broadened scope
+adds all-consumer reports for every admitted portal user, using existing GitHub
+sessions; selected option A provides the Usage comparison page in the same draft PR #2455.
+Production activation and feat-529 dogfood remain pending.
 
 J022 records portal admission through a repository portal-user allowlist changed
 by normal PRs, with safe contributor/read-write CI checks. GitHub OAuth accepts

@@ -4,6 +4,10 @@ const resolveAdminSessionFromRequest = vi.hoisted(() => vi.fn())
 const approveBoundedStage = vi.hoisted(() => vi.fn())
 const dispatchRecommendationPromotion = vi.hoisted(() => vi.fn())
 const setKillSwitch = vi.hoisted(() => vi.fn())
+const prisma = vi.hoisted(() => ({
+  recommendationPromotionPointer: { findUnique: vi.fn() },
+  recommendationPromotionRun: { findUnique: vi.fn() },
+}))
 
 vi.mock("@/auth/session", () => ({ resolveAdminSessionFromRequest }))
 vi.mock("@/services/recommendations/promotion/service", () => ({
@@ -15,7 +19,7 @@ vi.mock("@/services/recommendations/promotion/service", () => ({
 vi.mock("@/services/recommendations/promotion/job", () => ({
   dispatchRecommendationPromotion,
 }))
-vi.mock("@/db/client", () => ({ prisma: {} }))
+vi.mock("@/db/client", () => ({ prisma }))
 
 function request(body: unknown, headers: Record<string, string> = {}) {
   return new Request("http://localhost:3003/api/recommendations/promotion", {
@@ -76,6 +80,32 @@ describe("recommendation promotion mutation endpoint", () => {
       }),
     )
     expect(response.status).toBe(403)
+  })
+  it("returns bounded durable status for the exact dispatched operation", async () => {
+    const { GET } = await import("./route")
+    const id = "00000000-0000-4000-8000-000000000001"
+    prisma.recommendationPromotionRun.findUnique.mockResolvedValue({
+      id,
+      state: "PENDING",
+    })
+    const result = await GET(
+      new Request(
+        `http://localhost:3003/api/recommendations/promotion?operationId=${id}`,
+      ),
+    )
+    expect(result.headers.get("cache-control")).toBe("no-store")
+    expect(await result.json()).toMatchObject({ run: { id, state: "PENDING" } })
+    expect(prisma.recommendationPromotionRun.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id } }),
+    )
+    resolveAdminSessionFromRequest.mockResolvedValue(null)
+    expect(
+      (
+        await GET(
+          new Request("http://localhost:3003/api/recommendations/promotion"),
+        )
+      ).status,
+    ).toBe(401)
   })
 
   it("requires a recent session for permanent-default confirmation", async () => {

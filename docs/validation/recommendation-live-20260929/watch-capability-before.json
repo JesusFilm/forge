@@ -1,0 +1,17 @@
+{
+  "measuredAt": "2026-09-29T07:06:47.832724+00:00",
+  "phase": "shadow-live-before",
+  "method": "POST",
+  "path": "/watch/api/recommendations",
+  "httpStatus": 200,
+  "capabilityHeader": null,
+  "viewingModeHeader": "viewing-mode-v1",
+  "genuineHeadlessUserAgent": true,
+  "hasDelivery": true,
+  "servedItemCount": 6,
+  "notes": [
+    "Natural page request from genuine machine-excluded headless Chromium; no human identity or enrollment manufactured.",
+    "Only allowlisted public contract/status fields retained; no raw bodies, headers, tokens, cookies or viewer identifiers.",
+    "This validates client capability transport, not qualified human study enrollment or co-watch execution."
+  ]
+}

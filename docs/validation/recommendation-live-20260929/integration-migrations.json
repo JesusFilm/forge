@@ -1,0 +1,583 @@
+{
+  "probe": "forge_live_migrations_0107_0110_verification",
+  "executed": true,
+  "expectedRuntimeCommit": "0a70712399bf99e10d88477b98cc34c8ababcc6b",
+  "sqlSha256": "6420fe61c9d7c3af16a3797090e716d7410241f6d57cba84bb1d7b1c439ad870",
+  "expectedMigrationChecksums": [
+    {
+      "name": "0107_recommendation_governed_study",
+      "checksum": "d29bee126d57fd5886f1a9aeb0ee90341019690c2c979e17050b52ce56e501b5"
+    },
+    {
+      "name": "0108_recommendation_cowatch_frozen_trial",
+      "checksum": "94260bd78c39a1d6c1b740801becc54967c405a16087c057acb276650897e3e7"
+    },
+    {
+      "name": "0109_recommendation_composition_authority",
+      "checksum": "d8c0cb7fd54f7b94b113dd5e989c04949199341043f138ce884e8e612c0e09e7"
+    },
+    {
+      "name": "0110_recommendation_live_policy_manifests",
+      "checksum": "ce2bed91c7063b83a8d6960c2555b0af399da558f59dfe7350945e24f0b9c2c2"
+    }
+  ],
+  "transport": "RailwaySSHAdmin",
+  "statementTimeoutMs": 3000,
+  "lockTimeoutMs": 1000,
+  "wallTimeoutMs": 15000,
+  "environment": "production",
+  "startedAt": "2026-09-29T06:59:34.675988+00:00",
+  "transportExitCode": 0,
+  "unparsedStdoutLinesWithheld": 0,
+  "rawStderrWithheld": true,
+  "stderrLineCount": 1,
+  "status": "metadata_pass",
+  "runtimeCommit": "0a70712399bf99e10d88477b98cc34c8ababcc6b",
+  "revisionSource": "RailwayAdminEnvironment",
+  "checks": {
+    "columnsExact": true,
+    "triggersEnabled": true,
+    "noActivatedStudy": true,
+    "indexesValidAndReady": true,
+    "noGraphTrialAuthority": true,
+    "noNewPolicyExperiment": true,
+    "noUnfinishedMigrations": true,
+    "migrationChecksumsExact": true,
+    "namedConstraintsValidated": true,
+    "tablesAndConstraintsExact": true,
+    "threeManifestDefinitionsExact": true,
+    "allEightNewAuthorityTablesEmpty": true,
+    "readOnly": true,
+    "expectedRuntimeCommit": true,
+    "statementTimeout": true,
+    "lockTimeout": true
+  },
+  "receipt": {
+    "probe": "forge_live_migrations_0107_0110",
+    "checks": {
+      "columnsExact": true,
+      "triggersEnabled": true,
+      "noActivatedStudy": true,
+      "indexesValidAndReady": true,
+      "noGraphTrialAuthority": true,
+      "noNewPolicyExperiment": true,
+      "noUnfinishedMigrations": true,
+      "migrationChecksumsExact": true,
+      "namedConstraintsValidated": true,
+      "tablesAndConstraintsExact": true,
+      "threeManifestDefinitionsExact": true,
+      "allEightNewAuthorityTablesEmpty": true,
+      "readOnly": true,
+      "expectedRuntimeCommit": true,
+      "statementTimeout": true,
+      "lockTimeout": true
+    },
+    "catalog": {
+      "tables": [
+        {
+          "ok": true,
+          "name": "recommendation_composition_calibration"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_decision"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_observation"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_protocol"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_trial_authority"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_evaluation"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_evidence"
+        }
+      ],
+      "columns": [
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_generation.invalidated_at"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_generation.invalidation_reason"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_generation.lineage_version"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_source_contribution.viewer_privacy_generation"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_shadow_evaluation.cowatch_generation_id"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_shadow_evaluation.sampled_at"
+        }
+      ],
+      "indexes": [
+        {
+          "ok": true,
+          "name": "composition_protocol_graph_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_calibration_expires_at_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_calibration_pkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_decision_expires_at_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_decision_pkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_observation_expires_at_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_observation_pkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_observation_protocol_id_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_protocol_expires_at_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_protocol_pkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_protocol_shadow_evaluation_id_key"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_authority_expiry_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_edge_live_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_source_eligibility_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_source_outcome_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_source_session_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_trial_authority_pkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_shadow_run_request_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_activation_id_key"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_evaluation_expires_at_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_evaluation_pkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_evaluation_study_id_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_evidence_expires_at_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_evidence_pkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_evidence_study_id_reviewed_at_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_expires_at_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_pkey"
+        }
+      ],
+      "triggers": [
+        {
+          "ok": true,
+          "name": "recommendation_candidate_run.recommendation_study_source_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_calibration.composition_calibration_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_decision.composition_decision_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_observation.composition_observation_deleted"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_observation.composition_observation_guard"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_protocol.composition_protocol_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_contribution.cowatch_pair_appended"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_contribution.cowatch_pair_changed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_edge.cowatch_edge_appended"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_edge.cowatch_edge_changed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_generation.composition_graph_invalidated"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_generation.composition_graph_removed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_generation.cowatch_generation_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_generation.cowatch_generation_removed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_source_contribution.cowatch_source_appended"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_source_contribution.cowatch_source_changed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_suppression.cowatch_suppression_changed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_suppression.cowatch_suppression_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_trial_authority.cowatch_authority_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_eligibility_decision.cowatch_eligibility_changed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_eligibility_decision.recommendation_study_source_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_experiment_assignment.recommendation_study_assignment_accounting"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_experiment_exposure.recommendation_study_source_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_impression.recommendation_study_source_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_outcome_revision.cowatch_outcome_changed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_outcome_revision.cowatch_outcome_removed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_outcome_revision.recommendation_study_source_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_personalization_decision.recommendation_study_source_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_playback_episode.cowatch_episode_changed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_playback_episode.recommendation_study_source_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_playback_fact.cowatch_fact_changed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_playback_fact.recommendation_study_source_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile.composition_profile_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile.cowatch_profile_changed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile.recommendation_study_profile_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_promotion_slate_fence.cowatch_promotion_fence_changed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_promotion_slate_fence.recommendation_study_source_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_request.composition_request_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_request.recommendation_study_source_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_selection.recommendation_study_source_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_shadow_evaluation.composition_evaluation_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_shadow_evaluation.recommendation_shadow_evaluation_terminal_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_shadow_nomination.composition_nomination_changed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_shadow_run.composition_run_fence"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_evaluation.recommendation_study_evaluation_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study_evidence.recommendation_study_evidence_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_study.recommendation_study_protocol_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_viewing_mode_evidence.recommendation_study_source_fence"
+        }
+      ],
+      "migrations": [
+        {
+          "ok": true,
+          "name": "0107_recommendation_governed_study"
+        },
+        {
+          "ok": true,
+          "name": "0108_recommendation_cowatch_frozen_trial"
+        },
+        {
+          "ok": true,
+          "name": "0109_recommendation_composition_authority"
+        },
+        {
+          "ok": true,
+          "name": "0110_recommendation_live_policy_manifests"
+        }
+      ],
+      "constraints": [
+        {
+          "ok": true,
+          "name": "composition_decision_bounds"
+        },
+        {
+          "ok": true,
+          "name": "composition_graph_binding"
+        },
+        {
+          "ok": true,
+          "name": "composition_observation_bounds"
+        },
+        {
+          "ok": true,
+          "name": "composition_protocol_bounds"
+        },
+        {
+          "ok": true,
+          "name": "cowatch_lineage_version_check"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_calibration_protocol_id_fkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_decision_protocol_id_fkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_observation_protocol_id_fkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_composition_observation_run_id_fkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_experiment_evaluation_retention_check"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_experiment_retention_check"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_personalization_execution_mode_check"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_personalization_projection_check"
+        }
+      ]
+    },
+    "lockTimeout": "1s",
+    "serverMajor": 18,
+    "statementTimeout": "3s",
+    "transactionReadOnly": "on",
+    "newAuthorityTableCounts": [
+      {
+        "empty": true,
+        "table": "recommendation_composition_calibration",
+        "rowLimit": 1,
+        "rowCountCapped": 0,
+        "oneMeansAtLeastOne": true
+      },
+      {
+        "empty": true,
+        "table": "recommendation_composition_decision",
+        "rowLimit": 1,
+        "rowCountCapped": 0,
+        "oneMeansAtLeastOne": true
+      },
+      {
+        "empty": true,
+        "table": "recommendation_composition_observation",
+        "rowLimit": 1,
+        "rowCountCapped": 0,
+        "oneMeansAtLeastOne": true
+      },
+      {
+        "empty": true,
+        "table": "recommendation_composition_protocol",
+        "rowLimit": 1,
+        "rowCountCapped": 0,
+        "oneMeansAtLeastOne": true
+      },
+      {
+        "empty": true,
+        "table": "recommendation_cowatch_trial_authority",
+        "rowLimit": 1,
+        "rowCountCapped": 0,
+        "oneMeansAtLeastOne": true
+      },
+      {
+        "empty": true,
+        "table": "recommendation_study",
+        "rowLimit": 1,
+        "rowCountCapped": 0,
+        "oneMeansAtLeastOne": true
+      },
+      {
+        "empty": true,
+        "table": "recommendation_study_evaluation",
+        "rowLimit": 1,
+        "rowCountCapped": 0,
+        "oneMeansAtLeastOne": true
+      },
+      {
+        "empty": true,
+        "table": "recommendation_study_evidence",
+        "rowLimit": 1,
+        "rowCountCapped": 0,
+        "oneMeansAtLeastOne": true
+      }
+    ],
+    "experimentPolicyInspection": {
+      "complete": true,
+      "rowLimit": 1001,
+      "newPolicyPresent": false,
+      "rowsInspectedCapped": 1
+    }
+  },
+  "endedAt": "2026-09-29T06:59:37.916467+00:00"
+}

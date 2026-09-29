@@ -1,9 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { cowatchSourceInvalidSql } from "./lineage"
 import { profileLineageEligibleSql } from "../profiles/profile-lineage"
-import {
-  RECOMMENDATION_INTEGRITY_POLICY_VERSION,
-  RECOMMENDATION_REPLAY_QUARANTINE_THRESHOLD,
-} from "../integrity-policy"
 import {
   RECOMMENDATION_OPS_DAY_MS,
   RECOMMENDATION_TRACE_ACCESS_REASON,
@@ -18,6 +15,7 @@ import {
   COWATCH_SHADOW_GENERATOR_KEY,
   type CowatchFeature,
 } from "./graph"
+import { COWATCH_LEGACY_SOURCE_WINDOW_VERSION } from "./source-window"
 
 export type CowatchAnchor = Readonly<{
   mediaId: string
@@ -51,14 +49,16 @@ export function chooseCowatchAnchors(input: {
         ]
       : []),
   ]
-  return ordered
-    .filter(
-      (anchor, index) =>
-        ordered.findIndex(
-          (candidate) => candidate.mediaId === anchor.mediaId,
-        ) === index,
-    )
-    .slice(0, 5)
+  const distinct = ordered.filter(
+    (anchor, index) =>
+      ordered.findIndex((candidate) => candidate.mediaId === anchor.mediaId) ===
+      index,
+  )
+  const selected = distinct.slice(0, 5)
+  const seed = distinct.find((anchor) => anchor.mediaId === input.seedMediaId)
+  return seed && !selected.some((anchor) => anchor.mediaId === seed.mediaId)
+    ? [...selected.slice(0, 4), seed]
+    : selected
 }
 
 export type CowatchInspection = Readonly<{
@@ -75,6 +75,14 @@ export type CowatchInspection = Readonly<{
   }> | null
   generation: string | null
   publishedAt: Date | null
+  sourceWindow: Readonly<{
+    version: string
+    windowStart: Date
+    windowEnd: Date
+    evaluationAsOf: Date
+  }> | null
+  rawSourceCount: number | null
+  attemptedPairCount: number | null
   sourceCount: number
   contributionCount: number
   edgeCount: number
@@ -155,27 +163,36 @@ export async function loadCowatchInspection(
     requestId?: string | null
     actorDigest?: string | null
     additionalAnchors?: readonly CowatchAnchor[]
+    /** Exact identity never falls back to the newest generation. */
+    generationId?: string
   },
 ): Promise<CowatchInspection> {
-  const [generation, evaluation] = await Promise.all([
-    prisma.recommendationCowatchGeneration.findFirst({
-      orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-    }),
-    prisma.recommendationShadowEvaluation.findFirst({
-      where: { generatorVersion: COWATCH_SHADOW_GENERATOR_KEY },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      select: {
-        id: true,
-        state: true,
-        processedCount: true,
-        sampledCount: true,
-        coverage: true,
-        overlap: true,
-        latencyP95Ms: true,
-        decision: { select: { decision: true, reasonCode: true } },
-      },
-    }),
-  ])
+  const generation = await (input.generationId !== undefined
+    ? prisma.recommendationCowatchGeneration.findUnique({
+        where: { id: input.generationId },
+      })
+    : prisma.recommendationCowatchGeneration.findFirst({
+        orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+      }))
+  const evaluation = generation
+    ? await prisma.recommendationShadowEvaluation.findFirst({
+        where: {
+          generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+          cowatchGenerationId: generation.id,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: {
+          id: true,
+          state: true,
+          processedCount: true,
+          sampledCount: true,
+          coverage: true,
+          overlap: true,
+          latencyP95Ms: true,
+          decision: { select: { decision: true, reasonCode: true } },
+        },
+      })
+    : null
   const shadowEvaluation = evaluation
     ? {
         id: evaluation.id,
@@ -193,6 +210,9 @@ export async function loadCowatchInspection(
     shadowEvaluation,
     generation: null,
     publishedAt: null,
+    sourceWindow: null,
+    rawSourceCount: null,
+    attemptedPairCount: null,
     sourceCount: 0,
     contributionCount: 0,
     edgeCount: 0,
@@ -293,46 +313,7 @@ export async function loadCowatchInspection(
           ON decision.id = source_row.eligibility_decision_id
         LEFT JOIN recommendation_cowatch_suppression suppression ON suppression.episode_id = episode.id
         WHERE source_row.generation_id = ${generation.id}
-          AND (
-            source_row.expires_at <= ${input.now}
-            OR outcome.expires_at <= ${input.now}
-            OR episode.expires_at <= ${input.now}
-            OR outcome.qualified_view = false
-            OR outcome.classifier_version <> 'active-watch-proxy-v1'
-            OR episode.state <> 'finalized'
-            OR episode.finalized_at IS NULL
-            OR episode.media_id <> source_row.media_id
-            OR outcome.fact_watermark <> episode.next_fact_sequence - 1
-            OR episode.conflict_count > 0
-            OR episode.replay_count >= ${RECOMMENDATION_REPLAY_QUARANTINE_THRESHOLD}
-            OR EXISTS (SELECT 1 FROM recommendation_playback_fact fact
-              WHERE fact.episode_id = episode.id AND fact.late = true)
-            OR EXISTS (SELECT 1 FROM recommendation_promotion_slate_fence fence
-              WHERE fence.request_id = outcome.request_id)
-            OR suppression.episode_id IS NOT NULL
-            OR decision.id IS NULL
-            OR decision.is_current <> true
-            OR decision.state <> 'eligible'
-            OR decision.source_type <> 'playback_outcome'
-            OR decision.outcome_id IS DISTINCT FROM outcome.id
-            OR decision.revision <> source_row.eligibility_revision
-            OR decision.policy_version <> ${RECOMMENDATION_INTEGRITY_POLICY_VERSION}
-            OR decision.policy_version <> source_row.eligibility_policy_version
-            OR decision.expires_at <= ${input.now}
-            OR NOT ('aggregate' = ANY(decision.eligible_scopes))
-            OR (source_row.viewer_profile_id IS NOT NULL AND (
-              profile.state IS DISTINCT FROM 'active' OR profile.expires_at <= ${input.now}
-              OR NOT EXISTS (
-                SELECT 1 FROM recommendation_profile_session_link link
-                WHERE link.profile_id = profile.id
-                  AND link.session_digest = source_row.session_digest
-                  AND link.privacy_generation = profile.privacy_generation
-                  AND link.expires_at > ${input.now}
-              )
-            ))
-            OR EXISTS (SELECT 1 FROM recommendation_outcome_revision newer
-              WHERE newer.supersedes_id = outcome.id)
-          )
+          AND ${cowatchSourceInvalidSql(input.now, generation.lineageVersion)}
       `),
     prisma.$queryRaw<Array<{ invalid: bigint }>>(Prisma.sql`
         SELECT COUNT(*)::bigint AS invalid
@@ -399,6 +380,7 @@ export async function loadCowatchInspection(
       : Promise.resolve([]),
   ])
   const staleReasons = [
+    ...(generation.invalidatedAt ? ["source_lineage_invalidated"] : []),
     ...(generation.projectionVersion !== COWATCH_PROJECTION_VERSION ||
     generation.featureVersion !== COWATCH_FEATURE_VERSION
       ? ["contract_incompatible"]
@@ -447,6 +429,19 @@ export async function loadCowatchInspection(
     shadowEvaluation,
     generation: generation.id,
     publishedAt: generation.publishedAt,
+    sourceWindow: {
+      version:
+        generation.sourceWindowVersion ?? COWATCH_LEGACY_SOURCE_WINDOW_VERSION,
+      // Historical rows used both an outcome-write and an event-age window.
+      // Name that contract explicitly; do not relabel it as a finite event scope.
+      windowStart:
+        generation.windowStart ??
+        new Date(generation.windowEnd.getTime() - 180 * 86_400_000),
+      windowEnd: generation.windowEnd,
+      evaluationAsOf: generation.evaluationAsOf ?? generation.windowEnd,
+    },
+    rawSourceCount: generation.rawSourceCount,
+    attemptedPairCount: generation.attemptedPairCount,
     sourceCount: generation.sourceCount,
     contributionCount: generation.contributionCount,
     edgeCount: generation.edgeCount,

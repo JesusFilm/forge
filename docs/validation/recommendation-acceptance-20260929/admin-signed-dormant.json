@@ -1,0 +1,145 @@
+{
+  "window": "24h rolling at each page request",
+  "adminRuntimeRevision": "811f1ec81f359d1cf66cdda5bad8f5445631c44c",
+  "watchRuntimeAtInspection": "837028bf2b225094fd7c39ec1c4d117ee5065b61",
+  "transport": "Existing authorized Admin browser session; scoped rendered DOM only",
+  "headers": [
+    "Placement / policy",
+    "Position",
+    "Served",
+    "Rendered",
+    "Eligible",
+    "Selected",
+    "Eligible selections",
+    "CTR",
+    "Early selections",
+    "Repeats",
+    "Replay rate to date",
+    "Visibility V2 / unknown"
+  ],
+  "registryCompleteness": "2/10",
+  "signedReplayCountAllPositions": 93,
+  "cohorts": [
+    {
+      "at": "2026-09-28T22:35:41.685Z",
+      "filter": "watch-video:below-player:recommendation-list",
+      "placement": "",
+      "rows": [
+        [
+          "primary / watch-below-player-v1",
+          "0",
+          "7117",
+          "5598",
+          "260",
+          "31",
+          "6",
+          "2.3%",
+          "25",
+          "not attributable",
+          "not attributable",
+          "7 / 253"
+        ],
+        [
+          "primary / watch-below-player-v1",
+          "1",
+          "6893",
+          "5483",
+          "237",
+          "18",
+          "7",
+          "3.0%",
+          "11",
+          "not attributable",
+          "not attributable",
+          "8 / 229"
+        ],
+        [
+          "primary / watch-below-player-v1",
+          "2",
+          "6700",
+          "5374",
+          "203",
+          "15",
+          "3",
+          "1.5%",
+          "12",
+          "not attributable",
+          "not attributable",
+          "6 / 197"
+        ],
+        [
+          "primary / watch-below-player-v1",
+          "3",
+          "6510",
+          "5265",
+          "135",
+          "15",
+          "5",
+          "3.7%",
+          "10",
+          "not attributable",
+          "not attributable",
+          "7 / 128"
+        ],
+        [
+          "primary / watch-below-player-v1",
+          "4",
+          "6246",
+          "5143",
+          "122",
+          "9",
+          "3",
+          "2.5%",
+          "6",
+          "not attributable",
+          "not attributable",
+          "7 / 115"
+        ],
+        [
+          "primary / watch-below-player-v1",
+          "5",
+          "6071",
+          "5038",
+          "118",
+          "12",
+          "4",
+          "3.4%",
+          "8",
+          "not attributable",
+          "not attributable",
+          "8 / 110"
+        ]
+      ],
+      "warnings": []
+    },
+    {
+      "at": "2026-09-28T22:36:03.656Z",
+      "filter": "watch-home:for-you:recommendation-list",
+      "placement": "",
+      "rows": [],
+      "warnings": ["No measured Watch exposure events in this window."]
+    },
+    {
+      "at": "2026-09-28T22:36:50.994Z",
+      "filter": "watch-home:collections:carousel",
+      "placement": "",
+      "rows": [],
+      "warnings": ["No measured Watch exposure events in this window."]
+    },
+    {
+      "at": "2026-09-28T22:37:07.343Z",
+      "filter": "watch-home:collections:grid",
+      "placement": "",
+      "rows": [],
+      "warnings": ["No measured Watch exposure events in this window."]
+    },
+    {
+      "at": "2026-09-28T22:37:54.921Z",
+      "filter": "watch-video:editorial:authored-block",
+      "placement": "",
+      "rows": [],
+      "warnings": ["No measured Watch exposure events in this window."]
+    }
+  ],
+  "interpretation": "Signed historical cohort and dormant registry reads after Admin deployment, before Watch deployment. No measured rows means unknown coverage, not a measured zero population. Replay count retains full24h window and lacks a matching signed denominator; anonymous per-row replay rates have distinct semantics. No viewer/session/trace IDs exported."
+}

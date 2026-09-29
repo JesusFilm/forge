@@ -1,0 +1,244 @@
+{
+  "measuredAt": "2026-09-29T00:32:03.265776+00:00",
+  "baselineRuntimeRevision": "ab54e389755ef134257b228a5c1d388761dcae93",
+  "afterRuntimeRevision": "e2582c77b92ded7891c3b645f6a177bb4cb1a097",
+  "allSixNavigationsEachPhaseHttp200": true,
+  "sameUserAgentAndViewport": true,
+  "routes": [
+    {
+      "path": "/watch",
+      "samplesPerPhase": 2,
+      "medians": {
+        "ttfbMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 755.95,
+          "after": 574.95,
+          "delta": -181.0,
+          "deltaPercent": -23.943
+        },
+        "dclMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 1307.95,
+          "after": 864.85,
+          "delta": -443.1,
+          "deltaPercent": -33.877
+        },
+        "loadMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 1736.0,
+          "after": 1213.7,
+          "delta": -522.3,
+          "deltaPercent": -30.086
+        },
+        "fcpMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 1472.0,
+          "after": 1004.0,
+          "delta": -468.0,
+          "deltaPercent": -31.793
+        },
+        "lcpMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 2028.0,
+          "after": 2192.0,
+          "delta": 164.0,
+          "deltaPercent": 8.087
+        },
+        "htmlEncodedBytes": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 89712.0,
+          "after": 98442.0,
+          "delta": 8730.0,
+          "deltaPercent": 9.731
+        },
+        "firstPartyScriptEncodedBytes": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 839152.0,
+          "after": 839395.0,
+          "delta": 243.0,
+          "deltaPercent": 0.029
+        },
+        "firstPartyScriptCount": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 28.0,
+          "after": 28.0,
+          "delta": 0.0,
+          "deltaPercent": 0.0
+        },
+        "resourceCount": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 86.0,
+          "after": 91.0,
+          "delta": 5.0,
+          "deltaPercent": 5.814
+        }
+      }
+    },
+    {
+      "path": "/watch/jesus.html",
+      "samplesPerPhase": 2,
+      "medians": {
+        "ttfbMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 518.55,
+          "after": 362.3,
+          "delta": -156.25,
+          "deltaPercent": -30.132
+        },
+        "dclMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 834.0,
+          "after": 678.95,
+          "delta": -155.05,
+          "deltaPercent": -18.591
+        },
+        "loadMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 906.0,
+          "after": 869.25,
+          "delta": -36.75,
+          "deltaPercent": -4.056
+        },
+        "fcpMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 896.0,
+          "after": 696.0,
+          "delta": -200.0,
+          "deltaPercent": -22.321
+        },
+        "lcpMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 896.0,
+          "after": 696.0,
+          "delta": -200.0,
+          "deltaPercent": -22.321
+        },
+        "htmlEncodedBytes": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 123634.0,
+          "after": 123229.5,
+          "delta": -404.5,
+          "deltaPercent": -0.327
+        },
+        "firstPartyScriptEncodedBytes": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 915838.0,
+          "after": 916042.0,
+          "delta": 204.0,
+          "deltaPercent": 0.022
+        },
+        "firstPartyScriptCount": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 35.0,
+          "after": 35.0,
+          "delta": 0.0,
+          "deltaPercent": 0.0
+        },
+        "resourceCount": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 67.5,
+          "after": 71.0,
+          "delta": 3.5,
+          "deltaPercent": 5.185
+        }
+      }
+    },
+    {
+      "path": "/watch/nua-fresh-perspective.html",
+      "samplesPerPhase": 2,
+      "medians": {
+        "ttfbMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 1273.4,
+          "after": 345.95,
+          "delta": -927.45,
+          "deltaPercent": -72.833
+        },
+        "dclMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 1442.6,
+          "after": 519.65,
+          "delta": -922.95,
+          "deltaPercent": -63.978
+        },
+        "loadMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 1605.55,
+          "after": 519.95,
+          "delta": -1085.6,
+          "deltaPercent": -67.615
+        },
+        "fcpMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 1482.0,
+          "after": 598.0,
+          "delta": -884.0,
+          "deltaPercent": -59.649
+        },
+        "lcpMs": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 1736.0,
+          "after": 598.0,
+          "delta": -1138.0,
+          "deltaPercent": -65.553
+        },
+        "htmlEncodedBytes": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 68101.0,
+          "after": 68042.0,
+          "delta": -59.0,
+          "deltaPercent": -0.087
+        },
+        "firstPartyScriptEncodedBytes": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 915838.0,
+          "after": 916042.0,
+          "delta": 204.0,
+          "deltaPercent": 0.022
+        },
+        "firstPartyScriptCount": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 35.0,
+          "after": 35.0,
+          "delta": 0.0,
+          "deltaPercent": 0.0
+        },
+        "resourceCount": {
+          "beforeValidSamples": 2,
+          "afterValidSamples": 2,
+          "before": 77.0,
+          "after": 78.5,
+          "delta": 1.5,
+          "deltaPercent": 1.948
+        }
+      }
+    }
+  ],
+  "limitations": "Two navigations per route/phase, same genuine headless Chrome154 session, crawler-excluded telemetry, mixed warm caches, shared host, no CPU/network emulation; Collection follows load plus a1.5s wait and200ms observer interval, plus command overhead; this is not a fixed cutoff. Null metrics are excluded and valid counts reported per metric. Runtime revisions are annotations supported by separate runtime receipts, not verified by this helper. This small diagnostic comparison cannot establish population performance or causality. Resource totals include post-load activity observed before collection."
+}

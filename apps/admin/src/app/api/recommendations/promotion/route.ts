@@ -28,6 +28,7 @@ const TransitionInput = z
       "confirm_permanent",
       "manual_rollback",
     ]),
+    operationId: z.string().uuid().optional(),
     expectedPointerGeneration: z.number().int().positive(),
     targetManifestId: z.string().min(1).max(191),
     approvalId: z.string().min(1).max(191).nullable().optional(),
@@ -46,6 +47,43 @@ const KillSwitchInput = z
   .strict()
 
 const MutationInput = z.union([ApprovalInput, TransitionInput, KillSwitchInput])
+
+export async function GET(request: Request): Promise<Response> {
+  const session = await resolveAdminSessionFromRequest(request)
+  if (!session) return error(401, "authentication_required")
+  if (!hasPermission(session.principal, "operate:recommendation-experiments"))
+    return error(403, "permission_denied")
+  const operationId = new URL(request.url).searchParams.get("operationId")
+  if (operationId && !z.string().uuid().safeParse(operationId).success)
+    return error(400, "invalid_operation")
+  const [pointer, run] = await Promise.all([
+    prisma.recommendationPromotionPointer.findUnique({
+      where: { id: "recommendation-promotion-pointer" },
+      select: {
+        generation: true,
+        stage: true,
+        killSwitchEnabled: true,
+        activeManifestId: true,
+      },
+    }),
+    operationId
+      ? prisma.recommendationPromotionRun.findUnique({
+          where: { id: operationId },
+          select: {
+            id: true,
+            state: true,
+            workflowRunId: true,
+            failureReason: true,
+            completedAt: true,
+          },
+        })
+      : null,
+  ])
+  return Response.json(
+    { ok: true, pointer, run },
+    { headers: { "cache-control": "no-store" } },
+  )
+}
 
 export async function POST(request: Request): Promise<Response> {
   if (!hasSameOriginCsrfProof(request)) return error(403, "csrf_failed")
@@ -92,6 +130,7 @@ export async function POST(request: Request): Promise<Response> {
     }
     const dispatch = await dispatchRecommendationPromotion({
       actor: session.principal,
+      operationId: input.operationId,
       action: input.action,
       expectedPointerGeneration: input.expectedPointerGeneration,
       targetManifestId: input.targetManifestId,
@@ -109,7 +148,7 @@ export async function POST(request: Request): Promise<Response> {
     if (cause instanceof RecommendationInputError) {
       return error(400, "transition_rejected")
     }
-    return error(500, "mutation_failed")
+    return error(503, "acknowledgement_unknown_reconcile_status")
   }
 }
 

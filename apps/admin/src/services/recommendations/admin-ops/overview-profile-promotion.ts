@@ -224,6 +224,7 @@ export function recommendationPromotionOverview(input: {
     id: string
     state: string
     guardrails: unknown
+    evaluationPolicyVersion?: string
     experiment: {
       challengerManifestId: string
       challengerProbability: number
@@ -264,6 +265,8 @@ export function recommendationPromotionOverview(input: {
     "passed" in evaluation.guardrails &&
     evaluation.guardrails.passed === true,
   )
+  const studyEvaluation =
+    evaluation?.evaluationPolicyVersion === "profile-study-governance-v1"
   const targetAvailable = Boolean(authorizedApproval?.manifest.enabled)
   const readiness = promotionReadiness({
     stage: promotionStage(pointer.stage),
@@ -281,6 +284,18 @@ export function recommendationPromotionOverview(input: {
         : pointer.exposureCeilingBps,
     lastKnownGoodManifestId: pointer.lastKnownGoodManifestId,
   })
+  if (
+    studyEvaluation ||
+    pointer.reasonCode === "profile_calibration_active" ||
+    pointer.reasonCode === "profile_efficacy_active" ||
+    authorizedApproval?.manifestId === HYBRID_PERSONALIZED_MANIFEST_ID
+  ) {
+    readiness.ready = false
+    readiness.reason =
+      "Profile study results require their exact version-bound authority; a database PASS alone is insufficient."
+    readiness.nextAction =
+      "Open Governed profile studies to inspect calibration, comparator and current evidence."
+  }
   return {
     generation: pointer.generation,
     stage: promotionStage(pointer.stage),

@@ -149,6 +149,33 @@ describe("POST /watch/api/recommendations", () => {
     },
   )
 
+  it.each([undefined, "unknown-parser", "cowatch-mmr-v1"])(
+    "forwards only the explicitly supported browser delivery contract %s",
+    async (capability) => {
+      query.mockResolvedValueOnce({
+        data: { semanticRecommendationDelivery: delivery },
+      })
+      const response = await POST(
+        request(
+          JSON.stringify({
+            seedMediaId: "seed-1",
+            locale: "en",
+            audioLanguageSlug: "english",
+          }),
+          {
+            "x-forge-recommendation-client": "viewing-mode-v1",
+            ...(capability
+              ? { "x-forge-recommendation-delivery-contract": capability }
+              : {}),
+          },
+        ),
+      )
+      expect(response.status).toBe(200)
+      expect(query.mock.calls[0]?.[0]?.variables.clientDeliveryContract).toBe(
+        capability === "cowatch-mmr-v1" ? capability : null,
+      )
+    },
+  )
   it.each([undefined, "older-client", "viewing-mode-v1"])(
     "preserves mode-ranked cards for client version %s",
     async (clientVersion) => {

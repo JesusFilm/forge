@@ -1,13 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const start = vi.hoisted(() => vi.fn())
-const workflowRun = vi.hoisted(() => ({ update: vi.fn() }))
-const workflowLog = vi.hoisted(() => ({
-  createWorkflowRunLog: vi.fn(),
-  attachWorkflowRuntimeRunId: vi.fn(),
-  markWorkflowRunFailed: vi.fn(),
-  markWorkflowRunRuntimeStarted: vi.fn(),
-  markWorkflowRunStarted: vi.fn(),
+const dispatchState = vi.hoisted(() => ({
+  markRecommendationShadowEvaluationRuntimeStarted: vi.fn(),
+  finishRecommendationShadowDispatch: vi.fn(),
 }))
 const service = vi.hoisted(() => ({
   sampleShadowEvaluationContexts: vi.fn(),
@@ -19,18 +14,20 @@ const service = vi.hoisted(() => ({
   completeShadowEvaluation: vi.fn(),
 }))
 
-vi.mock("workflow/api", () => ({ start }))
-vi.mock("@/db/client", () => ({ prisma: { workflowRun } }))
-vi.mock("@/services/workflow-run-log.service", () => workflowLog)
+vi.mock("@/db/client", () => ({ prisma: {} }))
+vi.mock("./dispatch", async (original) => ({
+  ...(await original<typeof import("./dispatch")>()),
+  ...dispatchState,
+}))
 vi.mock("./service", () => service)
 
 import {
   createHybridPersonalizedShadowGenerator,
-  dispatchRecommendationShadowEvaluation,
   HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY,
   runRecommendationShadowEvaluationJob,
+  resolveShadowGenerator,
 } from "./job"
-import { runRecommendationShadowEvaluation } from "@/workflows/recommendationShadowEvaluation"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 
 const input = {
   evaluationId: "evaluation-1",
@@ -41,12 +38,10 @@ const input = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  workflowLog.createWorkflowRunLog.mockResolvedValue({ id: "ledger-1" })
-  workflowLog.attachWorkflowRuntimeRunId.mockResolvedValue(undefined)
-  workflowLog.markWorkflowRunStarted.mockResolvedValue(undefined)
-  workflowLog.markWorkflowRunFailed.mockResolvedValue(undefined)
-  workflowRun.update.mockResolvedValue({})
-  start.mockResolvedValue({ runId: "runtime-1" })
+  dispatchState.markRecommendationShadowEvaluationRuntimeStarted.mockResolvedValue(
+    true,
+  )
+  dispatchState.finishRecommendationShadowDispatch.mockResolvedValue(undefined)
   service.sampleShadowEvaluationContexts.mockResolvedValue({
     status: "sampled",
     sampledCount: 1,
@@ -78,69 +73,54 @@ beforeEach(() => {
 })
 
 describe("recommendation shadow evaluation job", () => {
-  it("creates business-observable workflow truth before durable dispatch", async () => {
+  it("refuses an unpinned co-watch runtime before sampling", async () => {
     await expect(
-      dispatchRecommendationShadowEvaluation(input),
-    ).resolves.toEqual({
-      queued: true,
-      ledgerRunId: "ledger-1",
-      runId: "runtime-1",
+      runRecommendationShadowEvaluationJob(
+        {
+          ...input,
+          generatorKey: COWATCH_SHADOW_GENERATOR_KEY,
+          ledgerRunId: "ledger-1",
+        },
+        "runtime-1",
+      ),
+    ).resolves.toMatchObject({
+      status: "fenced",
+      reason: "cowatch_dispatch_generation_unpinned",
     })
-
-    expect(workflowLog.createWorkflowRunLog).toHaveBeenCalledBefore(start)
-    expect(start).toHaveBeenCalledWith(runRecommendationShadowEvaluation, [
-      { ...input, ledgerRunId: "ledger-1" },
-    ])
-    expect(workflowLog.attachWorkflowRuntimeRunId).toHaveBeenCalledWith(
-      "ledger-1",
-      "runtime-1",
+    expect(service.sampleProfileShadowEvaluationContexts).not.toHaveBeenCalled()
+    expect(() => resolveShadowGenerator(COWATCH_SHADOW_GENERATOR_KEY)).toThrow(
+      "unpinned",
     )
   })
 
-  it("keeps an already-started shadow evaluation queued when attachment fails", async () => {
-    workflowLog.attachWorkflowRuntimeRunId.mockRejectedValueOnce(
-      new Error("attachment unavailable"),
+  it("does no sampling or receipt write for a conflicting runtime", async () => {
+    dispatchState.markRecommendationShadowEvaluationRuntimeStarted.mockResolvedValueOnce(
+      false,
     )
-
     await expect(
-      dispatchRecommendationShadowEvaluation(input),
-    ).resolves.toEqual({
-      queued: true,
-      ledgerRunId: "ledger-1",
-      runId: "runtime-1",
+      runRecommendationShadowEvaluationJob(
+        { ...input, ledgerRunId: "ledger-1" },
+        "conflicting-runtime",
+      ),
+    ).resolves.toMatchObject({
+      status: "fenced",
+      reason: "dispatch_runtime_conflict",
     })
-    expect(workflowLog.markWorkflowRunFailed).not.toHaveBeenCalled()
-  })
-
-  it("marks shadow dispatch failed when workflow start fails", async () => {
-    start.mockRejectedValueOnce(new Error("runtime unavailable"))
-
-    await expect(dispatchRecommendationShadowEvaluation(input)).rejects.toThrow(
-      "runtime unavailable",
-    )
-    expect(workflowLog.markWorkflowRunFailed).toHaveBeenCalledOnce()
-  })
-
-  it("attributes an operator-triggered dispatch to the authenticated actor", async () => {
-    await dispatchRecommendationShadowEvaluation(input, {
-      actorId: "admin-1",
-    })
-
-    expect(workflowLog.createWorkflowRunLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        trigger: "manual",
-        actorId: "admin-1",
-        subjectId: "evaluation-1",
-      }),
-    )
+    expect(service.sampleShadowEvaluationContexts).not.toHaveBeenCalled()
+    expect(
+      dispatchState.finishRecommendationShadowDispatch,
+    ).not.toHaveBeenCalled()
   })
 
   it("heartbeats and generation-fences every claimed projection", async () => {
     await expect(
-      runRecommendationShadowEvaluationJob({
-        ...input,
-        ledgerRunId: "ledger-1",
-      }),
+      runRecommendationShadowEvaluationJob(
+        {
+          ...input,
+          ledgerRunId: "ledger-1",
+        },
+        "runtime-1",
+      ),
     ).resolves.toMatchObject({
       status: "decided",
       processedRuns: 1,
@@ -166,13 +146,13 @@ describe("recommendation shadow evaluation job", () => {
     expect(service.completeShadowEvaluation).toHaveBeenCalledAfter(
       service.executeClaimedShadowRun,
     )
-    expect(workflowRun.update).toHaveBeenCalledWith(
+    expect(
+      dispatchState.finishRecommendationShadowDispatch,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ minimumRuns: input.minimumRuns }),
+      "runtime-1",
       expect.objectContaining({
-        where: { id: "ledger-1" },
-        data: expect.objectContaining({
-          summary: expect.stringContaining("promote_to_experiment"),
-          details: expect.objectContaining({ minimumRuns: input.minimumRuns }),
-        }),
+        summary: expect.stringContaining("promote_to_experiment"),
       }),
     )
   })
@@ -203,20 +183,21 @@ describe("recommendation shadow evaluation job", () => {
       }
 
       await expect(
-        runRecommendationShadowEvaluationJob({
-          ...input,
-          ledgerRunId: "ledger-1",
-        }),
+        runRecommendationShadowEvaluationJob(
+          {
+            ...input,
+            ledgerRunId: "ledger-1",
+          },
+          "runtime-1",
+        ),
       ).resolves.toMatchObject({ status: "fenced", reason: result.reason })
-      expect(workflowRun.update).toHaveBeenCalledWith(
+      expect(
+        dispatchState.finishRecommendationShadowDispatch,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ minimumRuns: input.minimumRuns }),
+        "runtime-1",
         expect.objectContaining({
-          where: { id: "ledger-1" },
-          data: expect.objectContaining({
-            details: expect.objectContaining({
-              minimumRuns: input.minimumRuns,
-              reason: result.reason,
-            }),
-          }),
+          details: expect.objectContaining({ reason: result.reason }),
         }),
       )
     },

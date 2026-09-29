@@ -1,0 +1,94 @@
+{
+  "measuredAt": "2026-09-29T04:48:37.353Z",
+  "node": "v24.16.0",
+  "fixture": "64 unique eligible UUID candidates with varied SHA-derived IDs/digests; 36 semantic + 28 profile incumbent, 36 semantic + 16 profile + 12 graph trial; six positions; actual compact serialization",
+  "addedAuthorityProvenance": {
+    "compositionProtocolId": "aa9fa66d-70e4-4832-81fd-3617dc0ff8dc",
+    "compositionEvidenceDigest": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+    "compositionReviewDigest": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d",
+    "compositionAuthorityRevision": 1,
+    "graphGenerationId": "3f79bb7b435b05321651daefd374cdc681dc06faa65e374e38337b88ca046dea",
+    "experimentId": "6cd42eed-531b-40fd-8e81-0a25eeca6f90",
+    "experimentGeneration": 1,
+    "studyProtocolDigest": "18ac3e7343f016890c510e93f935261169d9e3f565436429830faf0934f4f8e4"
+  },
+  "results": [
+    {
+      "name": "incumbent",
+      "nominationCount": 64,
+      "orderedCount": 64,
+      "composedCount": 6,
+      "stages": 326,
+      "counts": {
+        "nominated": 64,
+        "canonicalized": 64,
+        "deduplicated": 64,
+        "rejected": 0,
+        "scored": 64,
+        "ordered": 64,
+        "composed": 6
+      },
+      "sourceEvidenceOccurrences": 326,
+      "serializedBytes": 228894,
+      "serializeP95Ms": 3.6216329999999743
+    },
+    {
+      "name": "trial-unannotated",
+      "nominationCount": 64,
+      "orderedCount": 64,
+      "composedCount": 6,
+      "stages": 384,
+      "counts": {
+        "nominated": 64,
+        "canonicalized": 64,
+        "deduplicated": 64,
+        "rejected": 58,
+        "scored": 64,
+        "ordered": 64,
+        "composed": 6
+      },
+      "sourceEvidenceOccurrences": 384,
+      "serializedBytes": 317934,
+      "serializeP95Ms": 5.013079000000062
+    },
+    {
+      "name": "trial-annotated",
+      "nominationCount": 64,
+      "orderedCount": 64,
+      "composedCount": 6,
+      "stages": 384,
+      "counts": {
+        "nominated": 64,
+        "canonicalized": 64,
+        "deduplicated": 64,
+        "rejected": 58,
+        "scored": 64,
+        "ordered": 64,
+        "composed": 6
+      },
+      "sourceEvidenceOccurrences": 384,
+      "serializedBytes": 523110,
+      "serializeP95Ms": 7.654742999999826
+    },
+    {
+      "name": "trial-optimized",
+      "nominationCount": 64,
+      "orderedCount": 64,
+      "composedCount": 6,
+      "stages": 384,
+      "counts": {
+        "nominated": 64,
+        "canonicalized": 64,
+        "deduplicated": 64,
+        "rejected": 58,
+        "scored": 64,
+        "ordered": 64,
+        "composed": 6
+      },
+      "sourceEvidenceOccurrences": 384,
+      "serializedBytes": 318473,
+      "serializeP95Ms": 4.774756000000025
+    }
+  ],
+  "limits": "Local synthetic logical JSON bytes and serialization CPU only. No PostgreSQL physical/index/TOAST measurements, retrieval, persistence, network, or usefulness inference."
+}

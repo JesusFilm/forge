@@ -55,6 +55,9 @@ describe("co-watch shadow candidate adapter", () => {
     vi.mocked(loadValidatedCowatchProfileInterests).mockResolvedValue([])
     vi.mocked(loadCowatchInspection).mockResolvedValue({
       generation: "g".repeat(64),
+      sourceWindow: null,
+      rawSourceCount: 6,
+      attemptedPairCount: 3,
       shadowEvaluation: null,
       state: "current",
       publishedAt: NOW,
@@ -106,7 +109,12 @@ describe("co-watch shadow candidate adapter", () => {
     const generated = await createDatabaseCowatchShadowGenerator(
       prisma,
       () => NOW,
+      "g".repeat(64),
     )(context)
+    expect(loadCowatchInspection).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({ generationId: "g".repeat(64) }),
+    )
     expect(generated.nominations.map((row) => row.source.generator)).toEqual([
       "live-baseline",
       "directional-cowatch",

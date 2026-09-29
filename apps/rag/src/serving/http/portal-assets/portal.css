@@ -492,6 +492,7 @@ input[readonly] {
     order: 3;
     width: 100%;
     gap: 10px;
+    overflow-x: auto;
   }
   .nav-item {
     padding: 12px 14px;
@@ -545,4 +546,143 @@ input[readonly] {
   stroke-linecap: round;
   stroke-linejoin: round;
   flex: 0 0 auto;
+}
+
+#usage {
+  padding: 18px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.usage-controls {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.usage-controls label {
+  flex: 1 1 220px;
+  margin: 0;
+  max-width: 320px;
+}
+.usage-controls input {
+  border-color: var(--border);
+}
+.usage-search {
+  margin: 0;
+  font-weight: 400;
+  flex: 1;
+  max-width: 500px;
+}
+.usage-search input {
+  background: #fafbfe;
+  border-color: var(--border);
+}
+.usage-table {
+  min-width: 850px;
+}
+.usage-table thead th:first-child {
+  width: 26%;
+}
+.usage-table thead th:nth-child(2),
+.usage-table thead th:nth-child(3) {
+  width: 15%;
+}
+.usage-table thead th:nth-child(4) {
+  width: 27%;
+}
+.usage-table thead th:last-child {
+  width: 17%;
+  text-align: left;
+}
+.usage-table .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.usage-table tbody td {
+  font-size: 14px;
+}
+.usage-table tbody td:last-child {
+  text-align: left;
+  text-transform: capitalize;
+}
+.usage-link {
+  background: transparent;
+  color: var(--navy);
+  border: 0;
+  border-radius: 0;
+  padding: 4px 0;
+  text-align: left;
+  white-space: normal;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.usage-link:disabled {
+  opacity: 1;
+  color: var(--ink);
+  text-decoration: none;
+}
+.usage-state {
+  font-size: 12px;
+  text-transform: capitalize;
+}
+.usage-error {
+  color: #b42332;
+}
+.usage-error:empty {
+  display: none;
+}
+.usage-details {
+  width: min(600px, calc(100vw - 32px));
+  padding: 24px;
+}
+.usage-details dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 12px;
+}
+.usage-details dt {
+  color: var(--muted);
+}
+.usage-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.usage-note {
+  font-size: 13px;
+  margin: 24px 24px 6px;
+}
+@media (max-width: 760px) {
+  nav {
+    gap: 0;
+    justify-content: space-between;
+  }
+  .nav-item {
+    padding-inline: 10px;
+  }
+  #usage {
+    padding: 12px;
+  }
+  .usage-controls label {
+    max-width: none;
+    flex-basis: 100%;
+  }
+  .usage-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .usage-details {
+    padding: 20px 0;
+  }
+  .usage-details dl {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .usage-details dd {
+    margin-bottom: 12px;
+  }
+  .usage-note {
+    margin-inline: 0;
+  }
 }

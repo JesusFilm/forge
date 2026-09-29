@@ -4,13 +4,13 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 28, 2026)
+## Status (September 29, 2026)
 
-- **Total tickets:** 739
-- **Complete:** 553
+- **Total tickets:** 747
+- **Complete:** 559
 - **In progress:** 59
-- **Not started:** 47
-- **Blocked:** 80
+- **Not started:** 50
+- **Blocked:** 79
 - **Overdue and not complete:** 142
 
 ## Feature Index
@@ -21,7 +21,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------- | -------- | ---------- | ---- | ---------- | ----------- |
 | [feat-368](content-discovery/feat-368-production-semantic-recommendation-tracer.md)                            | Production semantic recommendation tracer                                                       | nisal      | P0       | —          | 10   | —          | complete    |
 | [feat-369](content-discovery/feat-369-recommendation-playback-episodes-active-playback.md)                     | Recommendation playback episodes and active-playback proxy                                      | nisal      | P0       | —          | 6    | —          | complete    |
-| [feat-372](content-discovery/feat-372-recommendation-mission-value-actions.md)                                 | Recommendation mission-value actions                                                            | nisal      | P0       | —          | 4    | —          | blocked     |
+| [feat-372](content-discovery/feat-372-recommendation-mission-value-actions.md)                                 | Recommendation mission-value actions                                                            | nisal      | P0       | —          | 4    | —          | not-started |
 | [feat-373](content-discovery/feat-373-watch-surface-impressions-ctr.md)                                        | Watch surface impressions and CTR                                                               | nisal      | P0       | —          | 5    | —          | in-progress |
 | [feat-376](content-discovery/feat-376-recommendation-integrity-eligibility.md)                                 | Recommendation integrity and evidence eligibility                                               | nisal      | P0       | —          | 6    | —          | complete    |
 | [feat-378](content-discovery/feat-378-consent-aware-recommendation-profile.md)                                 | Anonymous recommendation profile                                                                | nisal      | P0       | —          | 7    | —          | complete    |
@@ -30,10 +30,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-383](content-discovery/feat-383-shadow-candidate-evaluation.md)                                          | Shadow candidate evaluation                                                                     | nisal      | P0       | —          | 5    | —          | complete    |
 | [feat-384](content-discovery/feat-384-recommendation-experiment-spine.md)                                      | Recommendation experiment spine                                                                 | nisal      | P0       | —          | 7    | —          | complete    |
 | [feat-385](content-discovery/feat-385-hybrid-recommendation-promotion-rollback.md)                             | Hybrid recommendation promotion and rollback                                                    | nisal      | P0       | —          | 6    | —          | complete    |
-| [feat-447](content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md)                         | Live anonymous-profile hybrid personalization rollout                                           | nisal      | P0       | —          | 8    | —          | blocked     |
+| [feat-447](content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md)                         | Live anonymous-profile hybrid personalization rollout                                           | nisal      | P0       | —          | 8    | —          | in-progress |
 | [feat-459](content-discovery/feat-459-recommendation-profile-eligibility-reconciliation.md)                    | Recommendation profile eligibility reconciliation                                               | nisal      | P0       | —          | 6    | —          | complete    |
 | [feat-464](content-discovery/feat-464-recommendation-evidence-transport-crawler-integrity.md)                  | Recommendation evidence transport and crawler integrity                                         | nisal      | P0       | —          | 3    | —          | complete    |
-| [feat-545](content-discovery/feat-545-recommendation-monitoring-and-telemetry-closeout.md)                     | Recommendation telemetry and browser evidence closeout                                          | nisal      | P0       | —          | 2    | —          | in-progress |
+| [feat-545](content-discovery/feat-545-recommendation-monitoring-and-telemetry-closeout.md)                     | Recommendation telemetry and browser evidence closeout                                          | nisal      | P0       | —          | 2    | —          | complete    |
 | [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)                                          | pgvector Setup and Embedding Indexing                                                           | nisal      | P0       | 2026-04-07 | 14   | 2026-04-20 | complete    |
 | [feat-010](content-discovery/feat-010-semantic-search-api.md)                                                  | Semantic Search API                                                                             | nisal      | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
 | [feat-011](content-discovery/feat-011-search-ui-web.md)                                                        | Search UI — Web                                                                                 | urim       | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
@@ -177,10 +177,13 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-514](content-discovery/feat-514-recommendation-canonical-slug-validation.md)                             | Accept canonical Watch content slugs in recommendation requests                                 | nisal      | P1       | 2026-09-16 | 1    | 2026-09-16 | complete    |
 | [feat-516](content-discovery/feat-516-mobile-recommendations-api-client.md)                                    | Mobile recommendations API client and playback attribution                                      | urim       | P1       | 2026-09-16 | 2    | 2026-09-17 | complete    |
 | [feat-533](content-discovery/feat-533-consistent-short-watch-recommendation-feedback.md)                       | Consistent short-watch feedback across recommendation APIs                                      | nisal      | P1       | 2026-09-23 | 3    | 2026-09-25 | complete    |
+| [feat-565](content-discovery/feat-565-implemented-shadow-recommendation-promotion.md)                          | Promote implemented co-watch and MMR policies through controlled evidence                       | nisal      | P1       | 2026-09-29 | 8    | 2026-10-06 | blocked     |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | blocked     |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | blocked     |
 | [feat-448](content-discovery/feat-448-learned-sequential-profile-item-representations.md)                      | Learned sequential profile and item representations                                             | nisal      | P2       | —          | 12   | —          | blocked     |
+| [feat-564](content-discovery/feat-564-cached-watch-public-navigation-authority.md)                             | Public navigation authority for cached Watch relative links                                     | nisal      | P2       | —          | 3    | —          | not-started |
+| [feat-566](content-discovery/feat-566-recommendation-evidence-gap-remediation.md)                              | Remediate accepted recommendation evidence gaps                                                 | nisal      | P2       | —          | 5    | —          | not-started |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-143](content-discovery/feat-143-drop-legacy-search-trace-aggregate-unique-key.md)                        | Drop legacy search trace aggregate unique key                                                   | nisal      | P2       | 2026-05-26 | 1    | 2026-05-26 | not-started |
@@ -205,6 +208,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-517](content-discovery/feat-517-mobile-recommended-for-you-shelf.md)                                     | Mobile Recommended for You Home shelf                                                           | urim       | P2       | 2026-09-18 | 5    | 2026-09-22 | in-progress |
 | [feat-520](content-discovery/feat-520-watch-field-post-response-paint-attribution.md)                          | Attribute non-headless Watch paint delays after HTML response                                   | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | in-progress |
 | [feat-521](content-discovery/feat-521-watch-selection-browser-commit-waits.md)                                 | Attribute browser commit waits delaying Watch selection acknowledgments                         | nisal      | P2       | 2026-09-18 | 3    | 2026-09-20 | in-progress |
+| [feat-552](content-discovery/feat-552-mobile-explore-clips-feed.md)                                            | Mobile Explore clips feed                                                                       | urim       | P2       | 2026-09-25 | 21   | 2026-10-15 | complete    |
+| [feat-563](content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md)                                  | Atomic and recoverable shadow evaluation dispatch                                               | nisal      | P2       | 2026-09-29 | 3    | 2026-10-01 | complete    |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | blocked     |
 
 ### Media Generation
@@ -617,6 +622,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-543](platform/feat-543-mobile-sign-in-gate.md)                                   | Mobile sign-in gate hides sign-in until an environment turns it on                 | urim       | P1       | 2026-09-23 | 2    | 2026-09-24 | in-progress |
 | [feat-556](platform/feat-556-mobile-expo-sdk57-patch-alignment.md)                     | Restore CI after Expo patch drift and stale benchmark clock                        | nisal      | P1       | 2026-09-28 | 1    | 2026-09-28 | complete    |
 | [feat-555](platform/feat-555-recommendation-legacy-trace-reclamation.md)               | Reclaim legacy recommendation trace storage after expiry                           | nisal      | P1       | 2026-09-29 | 3    | 2026-10-01 | blocked     |
+| [feat-567](platform/feat-567-changelog-people-directory.md)                            | Serve the shared Changelog People directory from Auth                              | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
+| [feat-570](platform/feat-570-changelog-current-permission.md)                          | Serve current Changelog permissions to protected consumers                         | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
+| [feat-571](platform/feat-571-changelog-people-preapprovals.md)                         | Manage Contributor preapprovals in Changelog People                                | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
