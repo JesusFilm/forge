@@ -24,7 +24,11 @@ const button = (text: string) =>
   Array.from(container.querySelectorAll("button")).find(
     (element) => element.textContent === text,
   )!
-const response = (status: number) => ({ ok: status < 300, status })
+const response = (status: number) => ({
+  ok: status < 300,
+  status,
+  json: async () => ({ ok: false, error: "permission_denied" }),
+})
 
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true)
@@ -101,6 +105,41 @@ const actions = [
 ]
 
 describe("in-page promotion confirmation", () => {
+  it.each([
+    [
+      '{"ok":false,"error":"csrf_failed"}',
+      "Request security validation failed.",
+      "failed",
+    ],
+    [
+      '{"ok":false,"error":"permission_denied"}',
+      "Your role is not authorized",
+      "authorization-failure",
+    ],
+    ['{"ok":true,"error":"csrf_failed"}', "The request was refused.", "failed"],
+    ['{"ok":false,"error":"unexpected"}', "The request was refused.", "failed"],
+    ["null", "The request was refused.", "failed"],
+    ["[]", "The request was refused.", "failed"],
+    ["<html>Forbidden</html>", "The request was refused.", "failed"],
+  ])(
+    "explains a 403 safely without retrying: %s",
+    async (body, message, state) => {
+      fetchMock.mockResolvedValue(new Response(body, { status: 403 }))
+      await act(async () => root.render(<PromotionControls {...props} />))
+      await act(async () => button("Emergency stop").click())
+      expect(fetchMock).not.toHaveBeenCalled()
+      await act(async () => button("Confirm").click())
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(container.textContent).toContain(message)
+      expect(
+        container.querySelector(`[data-mutation-state="${state}"]`),
+      ).not.toBeNull()
+      expect(container.textContent).not.toContain("Decision recorded")
+      expect(container.textContent).not.toContain("Acknowledgement unknown")
+      expect(window.confirm).not.toHaveBeenCalled()
+    },
+  )
+
   it("adds no initial request or confirmation markup to the collapsed page", async () => {
     const markup = renderToStaticMarkup(<PromotionControls {...props} />)
     expect(markup).not.toContain("Confirm promotion action")

@@ -155,3 +155,19 @@ not issue a mutation. Record the actual deployed operator outcome separately.
 The ticket remains **in progress**, including fresh capacity coordination: the
 September 29 21:25 UTC observation had 8.612 GB free, 1.074 GB resident WAL and one long
 transaction, and did not satisfy the prior seven-day runway projection.
+
+## September 30 canonical-origin blocker
+
+PR #2488 merged as `3abde2aa564e30c16631979b5d9403fc4c265403`; both Admin
+processes and compatible Watch were healthy at September 29 22:02 UTC. Exact
+0116/0117/0118 catalog and deployed publication-source checks passed. The earlier
+21:25 capacity concern is historical: the 21:47 observation restored 10.659 GB
+free and a conservative 7.835-day projection, without credit for future savings.
+Fresh admission remains necessary at actual publication.
+
+The in-page confirmation now works, but the supported POST was rejected by the
+CSRF guard before mutation. A canonical-origin unauthenticated diagnostic confirms
+`csrf_failed`; the client mislabeled this as a role refusal. Repair the exact
+canonical-origin check and error distinction under this ticket, retaining all
+operator authorization. Pointer generation remains 1/control, no graph has been
+published and no owner release is active.

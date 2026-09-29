@@ -545,10 +545,11 @@ export const env = createEnv({
     RECOMMENDATION_CANDIDATE_TRACE_FORMAT: z
       .enum(["legacy", "compact"])
       .default("legacy"),
-    // Enable only after every reader and rollback image understands packed items.
+    // Mixed readers and the rollback image must continue to understand packed items.
+    // Explicit legacy stops new packed writes without rewriting retained requests.
     RECOMMENDATION_SERVED_ITEM_FORMAT: z
       .enum(["legacy", "packed"])
-      .default("legacy"),
+      .default("packed"),
     // Isolated, opt-in recommendation storage benchmark settings. The script
     // validates its own safety guards even when CI skips application validation.
     RECOMMENDATION_STORAGE_BENCHMARK: z.enum(["1"]).optional(),
@@ -1083,7 +1084,7 @@ export const env = createEnv({
       "legacy",
     RECOMMENDATION_SERVED_ITEM_FORMAT:
       emptyToUndefined(process.env.RECOMMENDATION_SERVED_ITEM_FORMAT) ??
-      "legacy",
+      "packed",
     RECOMMENDATION_STORAGE_BENCHMARK: emptyToUndefined(
       process.env.RECOMMENDATION_STORAGE_BENCHMARK,
     ),

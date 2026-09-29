@@ -3,7 +3,7 @@ id: "feat-579"
 title: "Publish Core catalog changes into the serving Watch search index"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-30"
 duration: 5
 depends_on: []
@@ -67,3 +67,25 @@ An imported published video becomes searchable within the declared lag budget.
 Unpublication and Watch restriction changes remove it. New playable child dubs
 update parent-series availability. Recovery after a failed batch converges
 without manual whole-index promotion or exposure of partially updated records.
+
+## Production publication evidence
+
+PR #2493 merged as `a0fc474b31e14d9ea6229c8a8a909ae3d036e097`. Production
+startup automatically requested version `1` and published the READY generation
+`core-catalog-6eac2756e41ad0517ca9b31b1cf9c68f`. Search and Web acknowledgments
+both reached `1` by `2026-09-29T22:35:24Z`, with no retries or error. Public
+search, autocomplete, and Watch UI returned Breaking Point and all four episodes.
+
+An executed localized-metadata backfill queued version `2`; both deliveries
+completed by `22:36:50Z`. The content digest avoided rebuilding identical
+collections. Route/SEO manifests were regenerated and Web cache invalidations
+acknowledged. Qualified SERVING and EVALUATION pointers remained unchanged.
+
+The first full build and delivery took about 4 minutes 23 seconds; the unchanged
+backfill delivery took about 46 seconds. The 30-second worker poll is only one
+part of that latency. Forge's daily Core pull remains 07:00 UTC. Full importer
+verification is recorded in the automatic publication plan. It succeeded with
+1,134 updates and zero errors, then automatically queued version `3`. Search
+acknowledged it at `23:04:19Z` and Web by `23:04:40Z`, with no publication error
+or retry. The final public search probe still returned all five Breaking Point
+records with `degraded: false`.

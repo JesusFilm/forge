@@ -55,3 +55,22 @@ stop/clear/rollback/permanent actions, stale-generation and authorization errors
 keyboard focus, and bounded initial-render cost. Production publication and
 activation remain unrecorded; this repair does not imply capacity admission or
 successful operator execution.
+
+## September 30 canonical-origin repair
+
+PR #2488 deployed the accessible confirmation to both Admin processes at
+`3abde2aa564e30c16631979b5d9403fc4c265403`. The supported stop POST then returned
+403 without changing generation 1/control or adding a stop audit. A separate
+unauthenticated POST with the canonical Admin Origin, exact CSRF header, JSON
+content type and empty body returned `csrf_failed` before authentication. The
+client incorrectly presented every 403 as permission denial.
+
+Use the existing configured canonical Admin origin for the promotion endpoint's
+exact Origin comparison. Do not derive trust from the internal transport URL,
+Host or forwarded headers, and do not add a second allowed origin. Preserve the
+custom CSRF header, JSON content type, session, role, recent-authentication, body
+size and generation checks. Report an explicit CSRF refusal separately from
+permission denial in both promotion clients. Test canonical HTTPS Origin with an
+internal HTTP request URL, attacker/missing/null/malformed origins, forged
+forwarded headers, and normal authentication/permission refusals. No permission
+grant or production authority change is part of this repair.

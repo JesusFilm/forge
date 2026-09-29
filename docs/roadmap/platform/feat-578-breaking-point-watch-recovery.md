@@ -3,7 +3,7 @@ id: "feat-578"
 title: "Recover Breaking Point on Watch after Core sync repair"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-30"
 duration: 1
 depends_on:
@@ -65,7 +65,7 @@ Watch search finds Breaking Point; the public series route renders. Record any
 remaining operational gap separately rather than asserting recovery from a
 merged PR alone.
 
-## Recovery evidence so far
+## Historical recovery checkpoints
 
 - Production Admin deployment `c40c3a39-444d-47bc-a75c-50e0bcc090d1` and worker
   `4ef58ec0-3d1e-4b6f-ab7d-fa3a3e2e0fd5` reached `SUCCESS` on merged
@@ -142,4 +142,27 @@ merged PR alone.
   `apps/admin/docs/breaking-point-watch-recovery.md`, which records failed and
   missing gates, exact snapshot identity, and the coordinated release plan.
   No acceptance has been recorded, no qualification stored, and SERVING has
-  not moved. The recovery remains in progress until public search is verified.
+  not moved. Recovery was still in progress at that checkpoint.
+
+## Public recovery after automatic catalog publication
+
+PR #2493 deployed through main and automatically published
+`core-catalog-6eac2756e41ad0517ca9b31b1cf9c68f`. At `2026-09-29T22:35:24Z`,
+requested, search, and Web versions were all `1`, with no error or retry.
+Route and SEO manifests were regenerated and Web invalidations acknowledged.
+SERVING remained the qualified September 8 baseline at version `5`;
+EVALUATION remained version `10`. No failed qualification was accepted.
+
+Canonical-origin public search returned the series first and all four episodes
+next, with `degraded: false`. Autocomplete and the live Watch UI independently
+contained the five records. Opening Jesus from search at the current
+`/watch/bp-3-jesus.html` route succeeded, and playback advanced beyond 59 seconds
+with no media error. Earlier playback evidence covers the other episodes.
+
+The executed `7_KnowGodBP` localized-metadata backfill processed one video and
+22 locales with zero errors. It automatically queued version `2`, and search
+and Web both acknowledged it by `22:36:50Z`. See the automatic publication plan
+for the full-import verification and final completion evidence. That full import
+subsequently succeeded with 1,134 updates and zero errors, automatically queued
+version `3`, and completed both deliveries by `23:04:40Z`. Final public search
+still returned the series and four episodes without a degraded response.
