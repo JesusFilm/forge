@@ -16,11 +16,11 @@ other worktrees are preserved.
 
 ## Acceptance state
 
-| Ticket   | Current result                                                                                                                                                                               | Acceptance                                                                          |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| feat-373 | PR #2450 is deployed and real V2 evidence is visible. The policy filter is deployed and reconciled; the merged hero repair awaits Watch deployment after a demonstrated test-timing failure. | In progress; the full Admin coverage and performance gate remains open.             |
-| feat-387 | Retry repair merged and deployed. Production preflight reached the 50,001-source sentinel; Admin confirms no generation or evaluation.                                                       | In progress; there are no production graph metrics or terminal evaluation decision. |
-| feat-545 | Retained historical evidence reviewed; nine precise owner decisions documented and merged.                                                                                                   | In progress; D1–D9 remain pending explicit owner acceptance or resolving evidence.  |
+| Ticket   | Current result                                                                                                                                                                                         | Acceptance                                                                          |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| feat-373 | Origin-issued evidence, singleton hero authority and policy filtering are deployed. Real browser interactions and authorized Admin cohorts are reconciled; coverage and health limits remain explicit. | In progress; dormant/unknown coverage and the full evidence gate remain open.       |
+| feat-387 | Retry repair merged and deployed. Production preflight reached the 50,001-source sentinel; Admin confirms no generation or evaluation.                                                                 | In progress; there are no production graph metrics or terminal evaluation decision. |
+| feat-545 | Retained historical evidence reviewed; nine precise owner decisions documented and merged.                                                                                                             | In progress; D1–D9 remain pending explicit owner acceptance or resolving evidence.  |
 
 No co-watch edge affects live viewer selection. No feature flag, conversion
 pilot, experiment, live promotion, manual deployment, production data repair or
@@ -246,18 +246,19 @@ This is a shared rolling-window health display, not an exposure-only audit or a
 cause attributed to this browser. Its retention label and purge timestamp do not
 prove loaded purge throughput, and newer samples do not resolve D1–D9.
 
-Two demonstrated gaps require another focused exposure release:
+The first deployed observation identified two gaps that required another focused
+exposure release:
 
-- The active home hero still emits V1 facts with no issuance request even in
+- The active home hero emitted V1 facts with no issuance request even in
   the paced sample. Manifest forwarding and signing configuration are intact.
-  Source review isolates the union of all playable hero pools as the only
-  content-dependent refusal: it returns no descriptor above 100 unique paths.
+  Source review isolated the union of all playable hero pools as the only
+  content-dependent refusal: it returned no descriptor above 100 unique paths.
   The exact production pool size is unverified; the visible DOM has only a
   subset of pool candidates. A bounded per-candidate authority repair must keep
   the existing limit and avoid silently dropping candidates.
-- Chapters still reach the 128-row sentinel after narrowing to `chapters-1`:
+- Chapters reached the 128-row sentinel after narrowing to `chapters-1`:
   62 visible V2 rows plus 66 legacy rows were shown, with the truncation warning.
-  A policy-version filter is needed before the unchanged display bound. No
+  A policy-version filter was needed before the unchanged display bound. No
   totals or complete coverage are inferred from these truncated snapshots.
 
 The initial and repeated postrelease six-navigation headed loading samples returned HTTP
@@ -311,6 +312,9 @@ guard still fails the repaired test. The test-only repair is
 unchanged. A separate signer-mock leak hypothesis was rejected after correcting
 the probe's `undefined` expectation to the contract's intentional `null`.
 No CI rerun or manual deployment was used to bypass the failed main run.
+The repair's [new main runs](../validation/recommendation-acceptance-20260929/timing-repair-main-ci.json)
+passed application CI and all four CodeQL analyses on attempt one. Web passed
+4,721 tests (ten skipped and one TODO), including all 72 home-page tests.
 
 The deployed [policy-isolated Admin observation](../validation/recommendation-acceptance-20260929/admin-policy-isolation.json)
 used the normal filter controls for `watch-video / chapters / carousel`,
@@ -326,6 +330,71 @@ have separate request cutoffs. Anonymous replay rates remain cumulative to date;
 the signed replay count of 44 has no position-matched rate. Registry acceptance
 metadata remains 2/10. The filter resolves this cohort's mixed-policy truncation,
 not the remaining registry, ingestion-health, retention or D1–D9 gates.
+
+## Final deployed browser and Admin observation
+
+At 00:30:59 UTC, the [final actual runtime receipt](../validation/recommendation-acceptance-20260929/deployment-final.json)
+verified Watch `e2582c77b` and Admin HTTP/worker `ec976e186`. All three services
+had one active successful deployment and health 200; the old Watch instance had
+drained. Expected runner roles and compact Admin traces were preserved. The
+test-only PR #2453 did not rebuild Admin. No additional migration or signing
+configuration change was needed, and the storage owner received this receipt.
+
+The [final genuine-browser record](../validation/recommendation-acceptance-20260929/watch-browser-final.json)
+verifies keyboard changes through the visible desktop timeline, retained focus,
+singleton authority at position 0 for the active path, and a matching V2
+selection followed by navigation to `/watch/2-the-blood-of-jesus.html`. The player
+reached ready state 4, advanced to 21.74 seconds and had no media error; this is
+not a startup-latency measurement. Earlier automation attempts targeted hidden
+compact-timeline duplicates or raced natural advancement and are excluded from
+the successful interaction proof. The bounded
+[network capture](../validation/recommendation-acceptance-20260929/watch-browser-final-network.json)
+contains 15 HTTP-200 issuance requests and 17 HTTP-200 exposure submissions,
+zero repeated issuance nonces, no rate-limit responses and no page errors.
+The [hero-specific capture](../validation/recommendation-acceptance-20260929/watch-browser-final-hero-network.json)
+contains four singleton issuances across three public paths, four matching V2
+rendered facts and one V2 selection. These are request observations, separately
+reconciled against persisted Admin cohorts. On the observed home navigation,
+the earliest issuance resource started 487 ms after load.
+
+One transient initial hero emitted a V1 rendered fact without observed issuance.
+Source review found the initial deterministic pool card can retire during the
+per-visit draw before activation/load-gated issuance; cleanup truthfully leaves
+unreceipted buffered facts as V1. The aggregate observation is consistent with
+that fallback but cannot prove its exact gate/retirement ordering. No source
+authority omission was demonstrated. Its served denominator remains unknown.
+
+The [final authorized Admin view](../validation/recommendation-acceptance-20260929/admin-final.json)
+shows hero V2 position 0 with 15 served, 15 rendered, two eligible impressions,
+one selection, zero eligible selections, one early selection, zero repeats and
+0% replay rate. CTR is correctly 0/2, and both eligible impressions have unknown
+visibility capability. This rolling 24-hour cohort includes concurrent traffic;
+it is not an isolated count of this browser's events. Registry metadata remains
+2/10. The shared health panel reports `Loss suspected`, 195 committed rejections,
+zero write failures, 44 replays, zero conflicts and 72 selections without an
+impression. Its retention label is `Healthy`, with the same September 28 purge
+timestamp; this neither proves loaded retention nor resolves historical D1–D9.
+
+The [matched headless comparison](../validation/recommendation-acceptance-20260929/loading-comparison-final.json)
+uses six navigations per phase in the same relaunched Chrome 154 session and
+1280×800 viewport. Every document returned 200 and every sample has FCP/LCP.
+No page errors were observed. The after-phase network capture has 28 exposure
+and 26 issuance requests, all naturally crawler-excluded with HTTP 403.
+
+| Route  | FCP median before → after | LCP median before → after | Encoded first-party script delta  |
+| ------ | ------------------------- | ------------------------- | --------------------------------- |
+| Home   | 1,472 → 1,004 ms          | 2,028 → 2,192 ms          | +243 bytes; count unchanged at 28 |
+| JESUS  | 896 → 696 ms              | 896 → 696 ms              | +204 bytes; count unchanged at 35 |
+| Series | 1,482 → 598 ms            | 1,736 → 598 ms            | +204 bytes; count unchanged at 35 |
+
+Home encoded HTML increased by 8,730 bytes (9.7%) in this sample. Home LCP rose
+164 ms (8.1%), while its FCP, load and TTFB fell. Two mixed-cache navigations per
+route, uncontrolled media candidates and a shared host cannot establish a causal
+speedup or field regression clearance. These timings are retained without
+discarding the slower home LCP. The child also retained two controlled six-pair
+component comparisons and the +2,494-byte raw bundle delta, with their explicit
+hybrid-baseline and mocked-media limits. The missing headed paint measurements
+remain unresolved; no cross-mode comparison or broad performance claim is made.
 
 ## Co-watch refusal and telemetry decisions
 
@@ -355,6 +424,15 @@ the six standard lenses plus security, API contracts, reliability, adversarial
 and TypeScript review, with a final focused recheck after fixes. No blocking
 findings remain in those reviewed snapshots; later changes require their own
 checks and exact-head CI verification.
+
+The final parent evidence delta received independent correctness/testing,
+project-standards/agent-native/learning-consistency, and maintainability/adversarial
+claims review. No actionable findings remained. Reviewers recomputed the retained
+loading medians, cohort arithmetic and network counts offline, and checked that
+source authority, shared health, performance limits and owner decisions remained
+distinct. The final documentation checks passed roadmap lint, JSON parsing,
+relative-link validation and whitespace checks; no additional production queries
+were needed for review.
 
 - [feat-563](../roadmap/content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md)
   records existing same-ID dispatch races and queued-without-runtime recovery

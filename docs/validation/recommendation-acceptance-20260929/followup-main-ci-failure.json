@@ -32,7 +32,7 @@
     "status": "SKIPPED",
     "revision": "ec976e186318db70f94770d330ec93aa14ffc0eb"
   },
-  "disposition": "Controlled reproduction identified an unrelated initial height-fitting frame in the render-count sample. Test-only PR #2453 is awaiting CI and ordinary merge/deployment; no main CI retry or manual deployment was used. Passing #2452 PR checks remain separate from its failed main run.",
+  "disposition": "The causal test-only repair merged in PR #2453. Its new main CI and CodeQL runs passed on attempt1; the old failed main run remains unchanged. The ordinary Watch deployment succeeded and actual runtime at e2582c77 was verified at2026-09-29T00:30:59.998238Z. No CI retry or manual deployment was used.",
   "localDiagnosis": {
     "reviewedAt": "2026-09-28T23:57:34.802382+00:00",
     "cause": "The initial useWatchHomeHeroFittedHeight animation frame can commit a legitimate height update between the first and same-second playback render snapshots. The production playback whole-second guard is intact.",
@@ -93,5 +93,14 @@
       "independentFocusedReview": "no actionable findings"
     },
     "limits": "Deterministic component behavior and test isolation; not real-browser playback timing."
-  }
+  },
+  "repairMerge": {
+    "pr": 2453,
+    "head": "a167138df9a00dc7f4d95723d53a20f3e1c33e4a",
+    "commit": "e2582c77b92ded7891c3b645f6a177bb4cb1a097",
+    "mergedAt": "2026-09-29T00:06:49Z",
+    "method": "normal squash merge with exact head pinned"
+  },
+  "successfulMainCiReceipt": "timing-repair-main-ci.json",
+  "finalRuntimeReceipt": "deployment-final.json"
 }

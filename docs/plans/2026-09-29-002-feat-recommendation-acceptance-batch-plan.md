@@ -211,3 +211,23 @@ and performance evidence. Leave ticket status open for unmet Admin or owner gate
 Production corpus sufficiency, a working authorized Admin session, precise new
 served-contract shape and historical join recoverability are execution facts.
 Report their actual outcomes; do not assume success or waive acceptance gates.
+
+## Bounded execution handoff
+
+The [acceptance record](../operations/recommendation-batch-acceptance-2026-09-29.md)
+links the three Sol tasks, independent reviews, exact-head PR/CI records,
+migration and runtime verification, browser/loading observations and authorized
+Admin reconciliation. PRs #2447, #2448, #2450, #2452 and #2453 merged through the
+normal flow. Actual final runtime is Watch `e2582c77b` with compatible Admin
+HTTP/worker `ec976e186`, all healthy. The test-only release followed a proven
+timing race; the original failed main run was preserved rather than retried.
+
+U1's implementation and bounded deployed observations are recorded. Feat-373
+remains in progress for retained dormant/unknown coverage and the full evidence
+gate, including shared loss-suspected health and performance limits. U2's
+preflight refused at the 50,001-source sentinel before eligibility; no production
+generation or shadow evaluation ran. A new attempt needs a separately reviewed
+finite workload and fresh storage-owner clearance. U3's nine decision records
+remain pending explicit owner acceptance or resolving evidence. The owner's
+three-surface coverage decision does not accept D1–D9. This plan stays active for
+those remaining gates; code release does not mark its feature objectives complete.
