@@ -140,6 +140,8 @@ export const CONTEXT_SYSTEM_PROMPT = [
   "texts such as the Book of Sirach, a Jewish wisdom book of the second",
   "century BC. An ancient text shows what people then valued or advised;",
   "state it as what that book says, never as proof of what everyone did.",
+  "Prefer ONE fact whose meaning for this story follows from the entry itself;",
+  "a second only if it carries its own clear point. Put that meaning in why.",
   "Return at most two facts. A good fact is one the viewer would not know from",
   "watching the scene, that changes how a moment in the story lands: a law, a",
   "custom, an economic reality, a religious boundary, who the audience was.",

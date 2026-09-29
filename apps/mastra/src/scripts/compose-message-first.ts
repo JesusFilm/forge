@@ -68,6 +68,11 @@ const STORIES: Record<
       "Shoe",
       "Robe",
     ],
+    // Ben Sira on not handing a son the estate while alive: a father gave up
+    // his standing and his honor (owner, 2026-09-29). Sirach 19:30 on a man's
+    // gait is left out: it does not say running was shameful, so it carried
+    // no point of its own.
+    ancient: ["Sir.33.19-Sir.33.23"],
     out: "Prodigal",
   },
 }
