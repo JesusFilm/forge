@@ -3,7 +3,7 @@ id: "feat-580"
 title: "Audit roadmap ID collisions after stale PRs merge"
 owner: "jaco"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-30"
 duration: 1
 depends_on: []
@@ -50,3 +50,9 @@ existing tickets in this CI change.
 Run unit and format checks. Against current main, the baseline comparison
 must report `feat-575` and `feat-576` once each and exit nonzero. A PR with no
 new ticket ID must pass. Verify the job has no `ci-gate` dependency.
+
+## Resolution
+
+[Forge PR #2498](https://github.com/JesusFilm/forge/pull/2498) extends the
+advisory job to main pushes. Local comparison against the checker-introduction
+commit reports the merged `feat-575` and `feat-576` collisions once each.
