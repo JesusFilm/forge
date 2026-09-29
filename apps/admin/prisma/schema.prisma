@@ -5979,6 +5979,7 @@ model RecommendationCowatchSourceContribution {
 
   @@unique([generationId, outcomeId], map: "recommendation_cowatch_source_generation_outcome_key")
   @@index([viewerProfileId], map: "recommendation_cowatch_source_profile_idx")
+  @@index([sessionDigest], map: "recommendation_cowatch_source_session_idx")
   @@index([outcomeId], map: "recommendation_cowatch_source_outcome_idx")
   @@index([eligibilityDecisionId], map: "recommendation_cowatch_source_eligibility_idx")
   @@index([generationId, mediaId], map: "recommendation_cowatch_source_media_idx")

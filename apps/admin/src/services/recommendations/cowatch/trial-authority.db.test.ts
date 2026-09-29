@@ -76,7 +76,10 @@ describe.skipIf(!enabled)(
       })
       await prisma.$disconnect()
     })
-    async function fixture(linkedProfile = true) {
+    async function fixture(
+      linkedProfile = true,
+      options: { profileLifetimeMs?: number; negativeEpisode?: boolean } = {},
+    ) {
       const id = `${prefix}-${ordinal++}`
       const created = new Date()
       const start = new Date(created.getTime() - 10 * day + ordinal * 3_600_000)
@@ -91,7 +94,9 @@ describe.skipIf(!enabled)(
           privacyGeneration: 1,
           tokenDigest: digest(profileId),
           choice: "DURABLE_ALLOWED",
-          expiresAt,
+          expiresAt: new Date(
+            created.getTime() + (options.profileLifetimeMs ?? 20 * day),
+          ),
         },
       })
       if (linkedProfile)
@@ -110,6 +115,11 @@ describe.skipIf(!enabled)(
           : [mediaC]
         ).entries()) {
           const episodeId = `${id}-episode-${viewer}-${index}`
+          const qualifiedView = !(
+            options.negativeEpisode &&
+            viewer === 0 &&
+            index === 1
+          )
           const occurredAt = new Date(start.getTime() + index * 1_000)
           episodes.push(episodeId)
           await prisma.recommendationPlaybackEpisode.create({
@@ -135,7 +145,7 @@ describe.skipIf(!enabled)(
               factWatermark: 1,
               inputDigest: digest(episodeId),
               revision: 1,
-              qualifiedView: true,
+              qualifiedView,
               viewQualityWeight: 1,
               viewQualityWeightReason: "active_fraction_of_duration",
               activePlaybackMilliseconds: 30_000,
@@ -264,6 +274,43 @@ describe.skipIf(!enabled)(
         binding,
         context,
       }
+    }
+    async function reclassify(episodeId: string, createdAt: Date) {
+      const original =
+        await prisma.recommendationOutcomeRevision.findUniqueOrThrow({
+          where: { id: `${episodeId}-r1` },
+        })
+      const eligibility =
+        await prisma.recommendationEligibilityDecision.findUniqueOrThrow({
+          where: { id: `${episodeId}-eligible` },
+        })
+      const outcomeId = `${episodeId}-r2`
+      await prisma.recommendationOutcomeRevision.create({
+        data: {
+          ...original,
+          id: outcomeId,
+          revision: 2,
+          supersedesId: original.id,
+          qualifiedView: true,
+          activeIntervals: undefined,
+          inputDigest: digest(outcomeId),
+          createdAt,
+        },
+      })
+      await prisma.recommendationEligibilityDecision.update({
+        where: { id: eligibility.id },
+        data: { isCurrent: false },
+      })
+      await prisma.recommendationEligibilityDecision.create({
+        data: {
+          ...eligibility,
+          id: `${episodeId}-eligible-r2`,
+          outcomeId,
+          revision: 2,
+          inputDigest: digest(`${outcomeId}-eligible`),
+        },
+      })
+      return outcomeId
     }
     async function playable(f: Awaited<ReturnType<typeof fixture>>) {
       await prisma.language.create({
@@ -541,7 +588,7 @@ describe.skipIf(!enabled)(
           f.binding.sourceWindow,
         )
         graphIds.push(rebuilt.generation!)
-        expect(rebuilt.sourceCount).toBe(kind === "graph" ? 13 : 14)
+        expect(rebuilt.sourceCount).toBe(13)
         expect(
           await prisma.recommendationCowatchSourceContribution.count({
             where: {
@@ -561,6 +608,195 @@ describe.skipIf(!enabled)(
         ).toBe(rebuilt.generation)
       },
     )
+    it("prevents in-place source ownership or expiry changes", async () => {
+      const f = await fixture()
+      const source =
+        await prisma.recommendationCowatchSourceContribution.findUniqueOrThrow({
+          where: {
+            generationId_outcomeId: {
+              generationId: f.binding.graphGenerationId,
+              outcomeId: `${f.episodes[0]}-r1`,
+            },
+          },
+        })
+      await expect(
+        prisma.recommendationCowatchSourceContribution.update({
+          where: { id: source.id },
+          data: { viewerProfileId: null, viewerPrivacyGeneration: null },
+        }),
+      ).rejects.toThrow("co-watch source lineage is append only")
+      await expect(
+        prisma.recommendationCowatchSourceContribution.update({
+          where: { id: source.id },
+          data: { expiresAt: new Date(source.expiresAt.getTime() - day) },
+        }),
+      ).rejects.toThrow("co-watch source lineage is append only")
+      expect(
+        await prisma.recommendationCowatchSourceContribution.findUniqueOrThrow({
+          where: { id: source.id },
+        }),
+      ).toMatchObject({
+        viewerProfileId: f.profileId,
+        expiresAt: source.expiresAt,
+      })
+    })
+    it.each([false, true])(
+      "recovers retained ownership after link cleanup when previously negative is %s",
+      async (negativeEpisode) => {
+        const f = await fixture(true, { negativeEpisode })
+        await prisma.recommendationProfileSessionLink.deleteMany({
+          where: { profileId: f.profileId },
+        })
+        const episodeId = f.episodes[1]
+        const outcomeId = await reclassify(episodeId, f.now)
+        const rebuilt = await publishCowatchShadowGeneration(prisma, f.now, {
+          ...f.binding.sourceWindow,
+          evaluationAsOf: f.now,
+        })
+        graphIds.push(rebuilt.generation!)
+        expect(rebuilt.sourceCount).toBe(15)
+        expect(
+          await prisma.recommendationCowatchSourceContribution.findUniqueOrThrow(
+            {
+              where: {
+                generationId_outcomeId: {
+                  generationId: rebuilt.generation!,
+                  outcomeId,
+                },
+              },
+            },
+          ),
+        ).toMatchObject({
+          viewerProfileId: f.profileId,
+          viewerPrivacyGeneration: 1,
+        })
+      },
+    )
+    it("excludes passive expired retained ownership instead of converting it to anonymous", async () => {
+      const f = await fixture(true, { profileLifetimeMs: 3_600_000 })
+      await prisma.recommendationProfileSessionLink.deleteMany({
+        where: { profileId: f.profileId },
+      })
+      const rebuilt = await publishCowatchShadowGeneration(
+        prisma,
+        new Date(f.now.getTime() + 2 * 3_600_000),
+        f.binding.sourceWindow,
+      )
+      graphIds.push(rebuilt.generation!)
+      expect(rebuilt.sourceCount).toBe(13)
+      expect(
+        await prisma.recommendationCowatchSourceContribution.count({
+          where: {
+            generationId: rebuilt.generation!,
+            outcome: { episodeId: { in: f.episodes.slice(0, 2) } },
+          },
+        }),
+      ).toBe(0)
+    })
+    it.each(["reset", "service", "source-delete"] as const)(
+      "preserves exact episode ownership across a session change during %s",
+      async (mode) => {
+        const f = await fixture()
+        await prisma.recommendationProfileSessionLink.deleteMany({
+          where: { profileId: f.profileId },
+        })
+        await prisma.recommendationPlaybackEpisode.update({
+          where: { id: f.episodes[0] },
+          data: { sessionDigest: digest(`${f.id}-changed-session`) },
+        })
+        if (mode === "reset")
+          await prisma.recommendationProfile.update({
+            where: { id: f.profileId },
+            data: { privacyGeneration: 2 },
+          })
+        else if (mode === "service")
+          await prisma.$transaction((tx) =>
+            suppressCowatchForProfiles(tx, [f.profileId]),
+          )
+        else
+          await prisma.recommendationCowatchSourceContribution.deleteMany({
+            where: { outcomeId: `${f.episodes[0]}-r1` },
+          })
+        const rebuilt = await publishCowatchShadowGeneration(
+          prisma,
+          f.now,
+          f.binding.sourceWindow,
+        )
+        graphIds.push(rebuilt.generation!)
+        expect(rebuilt.sourceCount).toBe(13)
+        expect(
+          await prisma.recommendationCowatchSuppression.count({
+            where: { episodeId: { in: f.episodes.slice(0, 2) } },
+          }),
+        ).toBe(2)
+      },
+    )
+    it("suppresses previously negative session episodes when cleanup and reclassification race with reset", async () => {
+      const f = await fixture(true, { negativeEpisode: true })
+      const gate = new Client({ connectionString: env.DATABASE_URL })
+      const cleaner = new Client({
+        connectionString: env.DATABASE_URL,
+        application_name: `${f.id}-cleaner`,
+      })
+      await gate.connect()
+      await cleaner.connect()
+      let cleanup: Promise<unknown> | undefined
+      let correction: Promise<unknown> | undefined
+      try {
+        await gate.query("BEGIN")
+        await gate.query(
+          "SELECT id FROM recommendation_cowatch_generation WHERE id = $1 FOR UPDATE",
+          [f.binding.graphGenerationId],
+        )
+        // A link-cleanup transaction removes the discovery row, then waits on
+        // the graph while deleting the last retained owner. Concurrent outcome
+        // correction may commit first: reset must still suppress that episode.
+        await cleaner.query("BEGIN")
+        await cleaner.query(
+          "DELETE FROM recommendation_profile_session_link WHERE profile_id = $1",
+          [f.profileId],
+        )
+        cleanup = cleaner.query(
+          "DELETE FROM recommendation_cowatch_source_contribution WHERE viewer_profile_id = $1",
+          [f.profileId],
+        )
+        await eventually(
+          async () =>
+            (
+              await gate.query(
+                "SELECT wait_event_type FROM pg_stat_activity WHERE application_name = $1",
+                [`${f.id}-cleaner`],
+              )
+            ).rows[0]?.wait_event_type === "Lock",
+        )
+        correction = reclassify(f.episodes[1], f.now)
+        await correction
+        await gate.query("COMMIT")
+        await cleanup
+        await cleaner.query("COMMIT")
+        await prisma.recommendationProfile.update({
+          where: { id: f.profileId },
+          data: { privacyGeneration: 2 },
+        })
+        const rebuilt = await publishCowatchShadowGeneration(prisma, f.now, {
+          ...f.binding.sourceWindow,
+          evaluationAsOf: f.now,
+        })
+        graphIds.push(rebuilt.generation!)
+        expect(rebuilt.sourceCount).toBe(13)
+        expect(
+          await prisma.recommendationCowatchSuppression.count({
+            where: { episodeId: { in: f.episodes.slice(0, 2) } },
+          }),
+        ).toBe(2)
+      } finally {
+        await gate.query("ROLLBACK")
+        await Promise.allSettled([cleanup, correction])
+        await cleaner.query("ROLLBACK")
+        await cleaner.end()
+        await gate.end()
+      }
+    })
     it.each(["reset", "delete", "service"] as const)(
       "retains suppression after link cleanup on %s",
       async (mode) => {
@@ -639,6 +875,7 @@ describe.skipIf(!enabled)(
     )
     it.each([
       "negative",
+      "superseding-classifier",
       "eligibility",
       "episode",
       "source",
@@ -653,7 +890,7 @@ describe.skipIf(!enabled)(
         const f = await fixture()
         await qualify(f)
         const singleton = f.episodes.at(-1)!
-        if (kind === "negative") {
+        if (kind === "negative" || kind === "superseding-classifier") {
           const prior =
             await prisma.recommendationOutcomeRevision.findUniqueOrThrow({
               where: { id: `${singleton}-r1` },
@@ -663,6 +900,10 @@ describe.skipIf(!enabled)(
               ...prior,
               activeIntervals: undefined,
               id: `${singleton}-r2`,
+              classifierVersion:
+                kind === "superseding-classifier"
+                  ? "corrected-proxy-v2"
+                  : prior.classifierVersion,
               revision: 2,
               qualifiedView: false,
               supersedesId: prior.id,
@@ -935,7 +1176,7 @@ describe.skipIf(!enabled)(
         invalidationWalBytes: Number(mutationWal.bytes),
         plan,
       })
-    })
+    }, 30_000)
     it("a source writer cannot commit valid authority while qualification holds the graph lock", async () => {
       const f = await fixture()
       const gate = new Client({ connectionString: env.DATABASE_URL })

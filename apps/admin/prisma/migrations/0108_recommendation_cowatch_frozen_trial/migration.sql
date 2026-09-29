@@ -18,6 +18,7 @@ ALTER TABLE recommendation_cowatch_generation
   ADD COLUMN invalidation_reason varchar(96),
   ADD CONSTRAINT cowatch_lineage_version_check CHECK (lineage_version IN ('discovery-link-v1', 'durable-privacy-generation-v2'));
 ALTER TABLE recommendation_cowatch_source_contribution ADD COLUMN viewer_privacy_generation integer;
+CREATE INDEX recommendation_cowatch_source_session_idx ON recommendation_cowatch_source_contribution(session_digest);
 CREATE INDEX recommendation_cowatch_source_outcome_idx ON recommendation_cowatch_source_contribution(outcome_id);
 CREATE INDEX recommendation_cowatch_source_eligibility_idx ON recommendation_cowatch_source_contribution(eligibility_decision_id);
 CREATE INDEX recommendation_cowatch_edge_live_idx ON recommendation_cowatch_edge
@@ -64,10 +65,15 @@ CREATE FUNCTION invalidate_cowatch_episode(episode_id_value text, reason text) R
     WHERE outcome.episode_id = episode_id_value
   ), reason);
 $$;
--- Removing private lineage must not turn a retained episode anonymous after
+-- Removing private lineage must not turn retained session episodes anonymous after
 -- discovery-link cleanup. Unconditional suppression avoids racing link cleanup.
 CREATE FUNCTION suppress_cowatch_retained_outcome(outcome_id_value text) RETURNS void LANGUAGE sql AS $$
   INSERT INTO recommendation_cowatch_suppression(episode_id, expires_at)
+    SELECT DISTINCT episode.id, episode.expires_at
+    FROM recommendation_cowatch_source_contribution source
+    JOIN recommendation_playback_episode episode ON episode.session_digest = source.session_digest
+    WHERE source.outcome_id = outcome_id_value AND source.viewer_profile_id IS NOT NULL
+    UNION
     SELECT DISTINCT episode.id, episode.expires_at
     FROM recommendation_cowatch_source_contribution source
     JOIN recommendation_outcome_revision outcome ON outcome.id = source.outcome_id
@@ -83,6 +89,8 @@ BEGIN
     IF TG_OP = 'DELETE' THEN PERFORM suppress_cowatch_retained_outcome(row_value->>'id'); END IF;
     SELECT ARRAY(
       SELECT source.generation_id FROM recommendation_cowatch_source_contribution source WHERE source.outcome_id = row_value->>'id'
+      UNION
+      SELECT source.generation_id FROM recommendation_cowatch_source_contribution source WHERE source.outcome_id = row_value->>'supersedes_id'
       UNION
       SELECT source.generation_id FROM recommendation_outcome_revision outcome
       JOIN recommendation_cowatch_source_contribution source ON source.outcome_id = outcome.id
@@ -105,6 +113,11 @@ BEGIN
       WHERE outcome.request_id = row_value->>'request_id') INTO ids;
     PERFORM invalidate_cowatch_generations(ids, 'promotion_fenced');
   ELSE
+    -- A captured source is immutable. In-place reassignment could erase the
+    -- only retained private owner and make a later rebuild anonymous.
+    IF TG_TABLE_NAME = 'recommendation_cowatch_source_contribution' AND TG_OP = 'UPDATE' THEN
+      RAISE EXCEPTION 'co-watch source lineage is append only';
+    END IF;
     IF TG_TABLE_NAME = 'recommendation_cowatch_source_contribution' AND TG_OP = 'DELETE' AND (row_value->>'viewer_profile_id') IS NOT NULL THEN
       PERFORM suppress_cowatch_retained_outcome(row_value->>'outcome_id');
     END IF;
@@ -143,6 +156,10 @@ BEGIN
   -- after short-lived discovery links have already been cleaned up.
   IF TG_OP = 'DELETE' OR NEW.state IS DISTINCT FROM OLD.state OR NEW.privacy_generation IS DISTINCT FROM OLD.privacy_generation THEN
     INSERT INTO recommendation_cowatch_suppression(episode_id, expires_at)
+      SELECT DISTINCT episode.id, episode.expires_at FROM recommendation_cowatch_source_contribution source
+      JOIN recommendation_playback_episode episode ON episode.session_digest = source.session_digest
+      WHERE source.viewer_profile_id = OLD.id
+      UNION
       SELECT DISTINCT episode.id, episode.expires_at FROM recommendation_cowatch_source_contribution source
       JOIN recommendation_outcome_revision outcome ON outcome.id = source.outcome_id
       JOIN recommendation_playback_episode episode ON episode.id = outcome.episode_id

@@ -97,6 +97,10 @@ export async function loadCowatchSourceRows(
       (
         decision.id IS NOT NULL
         AND suppression.episode_id IS NULL
+        AND (${sourceWindow == null} OR (
+          ownership.invalid IS NOT TRUE
+          AND (profile.id IS NOT NULL OR ownership.known = false)
+        ))
         AND latest."factWatermark" = latest."nextFactSequence" - 1
         AND latest."episodeExpiresAt" > ${now}
         AND latest."conflictCount" = 0
@@ -123,19 +127,27 @@ export async function loadCowatchSourceRows(
       WHERE link.session_digest = latest."sessionDigest"
         AND link.expires_at > ${now}
       UNION ALL
-      SELECT retained_profile.id, retained_profile.privacy_generation, 1 AS priority, retained.occurred_at AS identified_at, retained.id AS identity_id
-      FROM recommendation_cowatch_source_contribution retained
-      JOIN recommendation_cowatch_generation retained_generation ON retained_generation.id = retained.generation_id
-        AND retained_generation.lineage_version = ${COWATCH_DURABLE_LINEAGE_VERSION}
-        AND retained_generation.expires_at > ${now}
-      JOIN recommendation_profile retained_profile ON retained_profile.id = retained.viewer_profile_id
-        AND retained_profile.privacy_generation = retained.viewer_privacy_generation
-        AND retained_profile.state = 'active' AND retained_profile.expires_at > ${now}
-      WHERE ${sourceWindow != null} AND retained.outcome_id = latest."outcomeId" AND retained.expires_at > ${now}
+      SELECT retained.profile_id, retained.privacy_generation,
+        CASE WHEN retained.episode_id = latest."episodeId" THEN 1 ELSE 2 END AS priority,
+        retained.occurred_at AS identified_at, retained.id AS identity_id
+      FROM (${retainedCowatchOwnersSql()}) retained
+      WHERE ${sourceWindow != null}
+        AND retained.lineage_version = ${COWATCH_DURABLE_LINEAGE_VERSION}
+        AND retained.generation_expires_at > ${now} AND retained.source_expires_at > ${now}
+        AND retained.state = 'active' AND retained.profile_expires_at > ${now}
+        AND retained.privacy_generation = retained.captured_generation
       ) identity
       ORDER BY identity.priority, identity.identified_at DESC, identity.identity_id DESC
       LIMIT 1
     ) profile ON true
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*) > 0 AS known,
+        BOOL_OR(retained.state IS DISTINCT FROM 'active' OR retained.profile_expires_at <= ${now}
+          OR (retained.lineage_version = ${COWATCH_DURABLE_LINEAGE_VERSION}
+            AND retained.captured_generation IS DISTINCT FROM retained.privacy_generation)) AS invalid
+      FROM (${retainedCowatchOwnersSql()}) retained
+      WHERE ${sourceWindow != null}
+    ) ownership ON true
     LEFT JOIN LATERAL (
       SELECT eligible.id, eligible.revision, eligible.policy_version
       FROM recommendation_eligibility_decision eligible
@@ -154,6 +166,37 @@ export async function loadCowatchSourceRows(
     ORDER BY latest."occurredAt", latest."episodeId"
     LIMIT ${MAX_SOURCE_ROWS + 1}
   `)
+}
+
+/** Two indexed reverse lookups retain ownership across revisions and an
+ * existing episode becoming eligible later in the same private session.
+ * UNION ALL duplicates are harmless; recovery prefers the exact episode.
+ * Invalid/expired known ownership may never fall through to anonymous.
+ */
+function retainedCowatchOwnersSql(): Prisma.Sql {
+  return Prisma.sql`
+    SELECT source.id, source.viewer_profile_id AS profile_id,
+      source.viewer_privacy_generation AS captured_generation, source.occurred_at,
+      source.expires_at AS source_expires_at, generation.lineage_version,
+      generation.expires_at AS generation_expires_at, outcome.episode_id,
+      profile.privacy_generation, profile.state, profile.expires_at AS profile_expires_at
+    FROM recommendation_cowatch_source_contribution source
+    JOIN recommendation_outcome_revision outcome ON outcome.id = source.outcome_id
+    JOIN recommendation_cowatch_generation generation ON generation.id = source.generation_id
+    LEFT JOIN recommendation_profile profile ON profile.id = source.viewer_profile_id
+    WHERE source.session_digest = latest."sessionDigest" AND source.viewer_profile_id IS NOT NULL
+    UNION ALL
+    SELECT source.id, source.viewer_profile_id AS profile_id,
+      source.viewer_privacy_generation AS captured_generation, source.occurred_at,
+      source.expires_at AS source_expires_at, generation.lineage_version,
+      generation.expires_at AS generation_expires_at, outcome.episode_id,
+      profile.privacy_generation, profile.state, profile.expires_at AS profile_expires_at
+    FROM recommendation_outcome_revision outcome
+    JOIN recommendation_cowatch_source_contribution source ON source.outcome_id = outcome.id
+    JOIN recommendation_cowatch_generation generation ON generation.id = source.generation_id
+    LEFT JOIN recommendation_profile profile ON profile.id = source.viewer_profile_id
+    WHERE outcome.episode_id = latest."episodeId" AND source.viewer_profile_id IS NOT NULL
+  `
 }
 
 export type CowatchPublication = Readonly<{
