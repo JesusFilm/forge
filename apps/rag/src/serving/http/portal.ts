@@ -6,6 +6,8 @@ import type { SessionStore } from "../../contracts/portal-sessions.js"
 import { randomToken } from "./portal-token.js"
 import type { AdmissionProvider, GitHubIdentity } from "./portal-github.js"
 import type { ConsumerAccess } from "../../contracts/consumer-access.js"
+import type { UsageReader } from "../../contracts/consumer-usage.js"
+import { usageReportResponse, usageReportsResponse } from "./usage-report.js"
 import { createConsumerRoutes } from "./portal-consumers.js"
 import {
   portalFonts,
@@ -14,6 +16,7 @@ import {
   portalHtml,
   portalCss,
   portalScript,
+  portalUsageScript,
   portalCsp,
 } from "./portal-ui.js"
 
@@ -32,6 +35,7 @@ export type PortalDeps = {
   clientId: string
   callbackUrl: string
   origin: string
+  usageReader?: UsageReader
   consumers?: ConsumerAccess
   allowedSourceKeys?: string[]
 }
@@ -134,6 +138,11 @@ export function createPortal(deps: PortalDeps): Hono {
     return c.body(portalScript)
   })
 
+  app.get("/assets/usage.js", (c) => {
+    c.header("Content-Type", "text/javascript; charset=utf-8")
+    return c.body(portalUsageScript)
+  })
+
   app.get("/assets/forge.svg", (c) => {
     c.header("Content-Type", "image/svg+xml")
     return c.body(portalLogo)
@@ -160,6 +169,7 @@ export function createPortal(deps: PortalDeps): Hono {
         login: identity.login,
         githubId: identity.id,
         managementAvailable: !!deps.consumers,
+        usageAvailable: !!deps.usageReader && !!deps.consumers,
       },
       200,
       {
@@ -203,6 +213,20 @@ export function createPortal(deps: PortalDeps): Hono {
         allowedSourceKeys: deps.allowedSourceKeys ?? [],
       }),
     )
+  }
+
+  if (deps.usageReader) {
+    const reader = deps.usageReader
+    app.get("/usage/reports", async (c) => {
+      const identity = await authorize(getCookie(c, SESSION_COOKIE))
+      if (!identity) return c.json({ error: "unauthorized" }, 401)
+      return usageReportsResponse(c, reader)
+    })
+    app.get("/usage", async (c) => {
+      const identity = await authorize(getCookie(c, SESSION_COOKIE))
+      if (!identity) return c.json({ error: "unauthorized" }, 401)
+      return usageReportResponse(c, reader)
+    })
   }
 
   return app

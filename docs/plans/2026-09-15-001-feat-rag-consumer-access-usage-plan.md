@@ -118,8 +118,9 @@ Added members become owners with the same management and token-regeneration
 rights. No per-consumer registration or owner-change PR is involved.
 
 One-time display, verifier-only persistence, immediate atomic replacement,
-Jaco/RAGBot-only aggregates, seven-day grace and actual ops HTTP dogfood remain
-accepted. RAGBot is the first ordinary consumer. The management portal now precedes dogfood;
+seven-day grace and actual ops HTTP dogfood remain accepted. The 2026-09-29
+direction supersedes the earlier human reporting restriction: every admitted
+portal user can view every consumer report using their existing session. RAGBot is the first ordinary consumer. The management portal now precedes dogfood;
 feat-527 supplies the same authenticated creation/membership backend for an
 actual locally developed portal UI, without a SQL, authorization or PR bypass.
 
@@ -224,7 +225,8 @@ allowlist. Added members have owner-equivalent management/regeneration rights.
 Recheck admission, ownership, target eligibility and lifecycle state inside the
 transaction after locks. Other-consumer ownership grants no rights. Enforce
 last-owner protection under concurrency. Directory access does not expose
-owner-restricted audit, secrets, verifiers or aggregate reports.
+owner-restricted audit, secrets or verifiers. Aggregate reports are available
+to every admitted portal user independently of ownership.
 
 Owner removal denies the next management action, including existing sessions;
 it cannot retract a copied secret, so coordinate rotation/revocation. Removing a
@@ -304,15 +306,20 @@ objects in newly instrumented paths. Do not commit production evidence.
 
 ## C. Separate observable deliverable
 
-Build a repeatable operator-only read-only report command (proposed
-`usage:report --consumer <stable-id> --from <UTC> --to <UTC>`)
-and a documented report schema, not a public dashboard. Initially only Jaco and
-RAGBot may read reports. Give RAGBot a dedicated authenticated, read-only report
-capability through a bounded endpoint/ops task with fixed aggregate fields and
-validated windows, not a general database credential or arbitrary SQL. The
-server-side report role reads aggregate views only. Other engineers
-and consumer owners gain no report access by virtue of ownership. The command is future
-work; it does not exist in this PR. Report rows contain only consumer ID, approved
+Build a read-only **Usage** page within the existing consumer portal. Every
+admitted portal user may view every consumer's aggregate report using their
+GitHub session, with admission rechecked on every read. No additional human
+report credential, consumer membership or report allowlist is required.
+Provide three layout options and implement the selected one after Jaco chooses.
+This 2026-09-29 decision supersedes the earlier Jaco/RAGBot-only human policy.
+
+Retain the bounded operator command
+`usage:report --consumer <stable-id> --from <UTC> --to <UTC>` and optional
+independent Jaco/RAGBot bearer capability for automation. RAGBot must be registered
+before its machine grant. The server-side report role reads aggregate views only;
+no browser or machine receiver receives a general database credential or SQL.
+The HTTP and CLI capabilities are implemented in feat-528 draft PR #2455.
+Report rows contain only consumer ID, approved
 label, `windowStart`, `windowEnd`, `requestCount`,
 `successfulRequestCount`, `lastActivityAt`, `generatedAt`, `completeThrough` and
 `coverageStatus` (`complete | partial | unavailable`). No owner contact in rows.
@@ -455,7 +462,8 @@ Git-backed owner projection exists in this model.
 Enforce CSRF/session protections, no-store issuance responses and no analytics or
 session replay on secret displays. Warn that rotation immediately invalidates the
 old key. Store only the one-way verifier and never offer reveal-again. Reports
-remain Jaco/RAGBot-only through the separate narrow tool. Validate eventual UI
+are visible to all admitted portal users for all consumers through Usage, while
+the optional machine tool retains its independent bearer authorization. Validate eventual UI
 page-load performance as well as authorization/concurrency and response-loss cases.
 
 J021 proves an isolated OAuth/session skeleton, not production readiness. Its
