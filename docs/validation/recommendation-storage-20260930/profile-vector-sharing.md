@@ -54,6 +54,38 @@ the retention batch size. Migration DDL uses a 2-second lock timeout and
 fixture with 2,001 preexisting inline rows confirmed unchanged heap bytes
 after migration and completion within the statement budget.
 
+## Production-scale migration lock check
+
+Two additional disposable local schemas each held 160,000 preexisting inline
+interests with 1536-dimensional float32 vectors. Each interest table had a
+62,423,040-byte main heap, 65,912,832 bytes of indexes, and 1,325,580,288
+bytes of TOAST data (1,453,957,120 bytes total). The row count and main heap
+exceed the September 30 production aggregate of 73,537 rows and 21,118,976
+main-heap bytes; the partial index build scans the main heap, not the full
+TOAST relation. This fixture retains the realistically toasted vector datum
+and existing inline rows. No production DDL was run.
+
+The actual `0116` migration SQL completed in 56.38 ms in the stronger second
+run, including its transaction and partial index build, while separate
+clients repeatedly read a real four-interest generation and wrote interests.
+Polling `pg_locks` approximately every millisecond observed the migration's
+`AccessExclusiveLock` for 43.57 ms. That observation is a sampled lower bound;
+the whole transaction duration is an upper bound on the lock hold time. Reads
+and writes had no errors:
+
+| Concurrent operation | Baseline p50 | During DDL p50 | During DDL p95 | During DDL max |
+| -------------------- | -----------: | -------------: | -------------: | -------------: |
+| Four-interest read   |     1.263 ms |       1.126 ms |       1.603 ms |       42.75 ms |
+| Interest write       |     2.050 ms |       2.012 ms |       2.794 ms |       44.58 ms |
+
+One read and one write waited more than 10 ms during DDL. The first independent
+160,000-row run also completed in 64.18 ms, with 48.86 ms of sampled exclusive
+lock observation and no reader/writer errors. Both were far below the existing
+2-second lock and 10-second statement limits, so this check did not justify
+changing them. These are local single-host measurements, not a production
+latency guarantee; migration scheduling should still use the normal release
+gate and monitor lock waiters.
+
 The native migration test verifies mixed byte-exact reads, invalid shape
 rejection, immutable snapshot rows, foreign-key protection, orphan deletion
 after erasure, two concurrent shared publishers, and the writer/sweeper lock
