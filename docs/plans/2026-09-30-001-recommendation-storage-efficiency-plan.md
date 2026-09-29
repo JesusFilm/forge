@@ -60,6 +60,56 @@ before schema expansion. No half-precision conversion or automatic history remov
 Reuse of unchanged inputDigest is already implemented; do not add duplicate logic.
 Any unsupported shape/version must preserve existing behavior.
 
+#### U3 follow-up — Initial no-evidence footprint
+
+The user prioritizes making the full profile family substantially smaller.
+September 29 at 22:19 UTC, 218,001 of 218,003 first durable generations declared
+no evidence. The recent cohort's median initial publication was 0.470 seconds
+after profile creation. This supports a narrow future-write optimization;
+existing generations must not be deleted or rewritten.
+
+Prefer avoiding ordinary initial status/grant dispatch under the existing
+per-scope dispatch transaction lock. Admit a skip only for a valid durable
+profile/privacy scope with no current pointer, no prior scoped generation or
+projection run, and no raw evidence in any channel. Validate the active session
+link as well as the active profile/privacy generation. Explicit feedback,
+reconciliation and session-scope work always retain the existing path. The source
+test must conservatively cover raw selection/playback episode/outcome rows,
+including pending eligibility, across initiating and active linked sessions.
+Include raw explicit-preference and negative-action channels. The eligible
+evidence loader alone cannot prove absence; downstream publisher arrays also
+filter out unavailable embeddings. Both pending and missing-embedding evidence
+must retain normal publication. Check indexed query plans and bounded work.
+
+Return an explicit internal skipped outcome, distinct from unavailable/revoked
+authority, so the existing dispatcher does not turn a successful skip into an
+exception. Keep the public GraphQL contract and all persisted job/receipt shapes
+unchanged. Preserve profile/consent/session creation, normal candidate fallback,
+all later empty replacements and nonempty publications. Add a reversible gate;
+avoid a new table or identity-bearing logging. Do not use a completed-null
+projection run as a substitute without a separately reviewed compatibility plan.
+
+Before implementation, trace all raw evidence producers and prepare callers.
+Prove both dispatch lock orderings: a skip creates no run that can swallow later
+feedback, while a feedback run prepared first prevents a skip. Cover evidence
+arriving during/after preparation, late watermarks, raw evidence without vectors,
+first nonempty upgrade, prior pointer/generation/run exclusions, session scope,
+reconciliation, privacy reset/erasure and unchanged serving/shadow fallback.
+If any source can be lost because no initial job exists, stop and resolve that
+counterexample before activation; do not waive it as an existing race.
+
+Measure whole fixture heap/index/TOAST and WAL with the same input mix, retaining
+the common core profile, consent, link and audit footprint. Include avoided
+workflow rows in the comparison. Measure dispatch/status latency under load,
+because the no-pointer path now performs raw-evidence reads before skipping.
+Only publish the affected fixture's measured reduction, not an assumed population
+or filesystem saving.
+
+Use a separate reviewed PR and normal deployment after the current shared-vector
+and packed-item activation checks. Update this plan if analysis proves the
+minimal compatible result cannot safely represent these cases. Do not broaden
+to changes in consent/product behavior or historical deletion.
+
 ### U4 — Protected early legacy retirement (feat-575)
 
 Deploy explicit retired-detail state/readers before deleting unprotected stage rows.
