@@ -6488,18 +6488,40 @@ function StepRowOverlay({
   )
   if (on <= 0.01) return null
   return (
-    <div style={{ position: "absolute", top: px(24), left: 0, right: 0 }}>
-      <StepProgressLine
-        steps={labels}
-        starts={starts}
-        endFrame={endFrame}
-        frame={frame}
-        fps={fps}
-        px={px}
-        widthPx={px(287)}
-        opacity={on}
+    <>
+      {/* A soft dark ellipse behind the row so the labels read over bright
+          film (Figma 366-2094: 868×126 at 1080p, black 60% → 0, blur 40,
+          85% opacity). */}
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: px(27.7),
+          width: px(289.3),
+          height: px(42),
+          transform: "translate(-50%, -50%)",
+          borderRadius: px(33),
+          background:
+            "radial-gradient(closest-side, rgba(0,0,0,0.6), rgba(0,0,0,0))",
+          // Figma's layer blur 40 is about half that as a CSS radius.
+          filter: `blur(${px(6.7)}px)`,
+          opacity: 0.85 * on,
+          pointerEvents: "none",
+        }}
       />
-    </div>
+      <div style={{ position: "absolute", top: px(24), left: 0, right: 0 }}>
+        <StepProgressLine
+          steps={labels}
+          starts={starts}
+          endFrame={endFrame}
+          frame={frame}
+          fps={fps}
+          px={px}
+          widthPx={px(287)}
+          opacity={on}
+        />
+      </div>
+    </>
   )
 }
 

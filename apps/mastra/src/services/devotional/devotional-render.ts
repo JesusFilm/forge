@@ -212,6 +212,8 @@ const BG_SAFETY_SEC = 5
  * ground while the motion stays close to life.
  */
 const BG_LOOPED_MIN_RATE = 0.85
+/** Ceiling on the backdrop's speed behind the reflection: never full speed. */
+const REFLECTION_BG_MAX_RATE = 0.85
 /**
  * How long each backdrop seam dissolves.
  *
@@ -2605,10 +2607,15 @@ async function renderInStage(
   // so loop and slow together rather than stretching one clip to a crawl.
   // Keep the motion close to life and let the scene begin again instead, which
   // reads better than stretching one pass to a crawl.
+  // Behind the reflection the film is always a touch slow (owner,
+  // 2026-09-30): at full speed its action pulls the eye from the words.
   const bgRate =
     bgTimelineSec > bgLen
-      ? Math.max(BG_LOOPED_MIN_RATE, Math.min(1, bgLen / bgTimelineSec))
-      : 1
+      ? Math.max(
+          BG_LOOPED_MIN_RATE,
+          Math.min(REFLECTION_BG_MAX_RATE, bgLen / bgTimelineSec),
+        )
+      : REFLECTION_BG_MAX_RATE
   // Where the backdrop should visibly start over: the moment the reflection
   // opens. Video cards are excluded from this timeline (the clip itself is on
   // screen then), so this is the intro hold plus the cards before the first
