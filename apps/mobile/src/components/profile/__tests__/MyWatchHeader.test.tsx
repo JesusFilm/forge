@@ -304,7 +304,11 @@ describe("MyWatchHeader hosted-auth wiring (feat-349 U3)", () => {
     )
 
     // Dismissing returns to the idle card so the user can retry.
-    await press(pressableByLabel(renderer, "Dismiss"))
+    const dismiss = pressableByLabel(renderer, "Dismiss")
+    expect(dismiss.props["dd-action-name"]).toBe(
+      "profile-sign-in-error-dismiss",
+    )
+    await press(dismiss)
     expect(hasText(renderer, "Something went wrong")).toBe(false)
     expect(pressableByLabel(renderer, "Sign in").props.disabled).toBe(false)
     await unmount(renderer)
@@ -731,7 +735,11 @@ describe("MyWatchHeader notices (R4, R20)", () => {
       ),
     )
 
-    await press(pressableByLabel(renderer, "Dismiss new account notice"))
+    const dismiss = pressableByLabel(renderer, "Dismiss new account notice")
+    expect(dismiss.props["dd-action-name"]).toBe(
+      "profile-new-account-notice-dismiss",
+    )
+    await press(dismiss)
     expect(hasText(renderer, NEW_ACCOUNT_TEXT)).toBe(false)
     expect(getNewAccountNotice()).toBeNull()
     await unmount(renderer)
@@ -781,7 +789,11 @@ describe("MyWatchHeader notices (R4, R20)", () => {
     const renderer = await renderHeader()
     expect(hasText(renderer, DELETED_TEXT)).toBe(true)
 
-    await press(pressableByLabel(renderer, "Dismiss account deleted notice"))
+    const dismiss = pressableByLabel(renderer, "Dismiss account deleted notice")
+    expect(dismiss.props["dd-action-name"]).toBe(
+      "my-watch-account-deleted-dismiss",
+    )
+    await press(dismiss)
 
     expect(hasText(renderer, DELETED_TEXT)).toBe(false)
     expect(getAccountDeletedNotice()).toBe(false)

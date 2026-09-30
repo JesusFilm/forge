@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useDownloads } from "../../contexts/DownloadsProvider"
 import { useTypography } from "../../hooks/useTypography"
+import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import { TEXT_SECONDARY } from "../../lib/color"
 import { buildMyWatchRail, type MyWatchRailTile } from "../../lib/myWatchRail"
@@ -29,6 +30,7 @@ export function MyWatchScreen() {
   const typography = useTypography()
   const t = useT("MyWatch")
   const tLibrary = useT("Library")
+  const uiDirection = useTextDirection().ui
   const tabBarClearance = useTabBarClearance()
   const insets = useSafeAreaInsets()
   const { offlineRecords, isReady } = useDownloads()
@@ -92,7 +94,11 @@ export function MyWatchScreen() {
             <View>
               <View style={styles.headingRow}>
                 <Text
-                  style={[text.sectionHeading, typography.titleSmall]}
+                  style={[
+                    text.sectionHeading,
+                    typography.titleSmall,
+                    uiDirection,
+                  ]}
                   accessibilityRole="header"
                 >
                   {tLibrary("downloadsTitle")}

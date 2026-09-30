@@ -74,6 +74,7 @@ import { SeriesEpisodeCard } from "../series/SeriesEpisodeCard"
 import { LanguageSheetContent } from "../watch/LanguageSheet"
 import { VideoDescription } from "../watch/VideoDescription"
 import { VideoMetadata } from "../watch/VideoMetadata"
+import { ScreenTopBar } from "../ui/ScreenTopBar"
 import type { WatchVariant } from "../../lib/normalizeVideo"
 import type { AdminBlock } from "../../lib/queries"
 import type { WatchHomeCard, WatchHomeSection } from "../../lib/watchHome/model"
@@ -299,6 +300,14 @@ describe("an Arabic UI (AE5)", () => {
     expectDirection(renderer, "Episode One", LTR, "en")
   })
 
+  it("renders the screen top bar title as UI text", () => {
+    expectDirection(
+      render(<ScreenTopBar title="الحساب" showBack />),
+      "الحساب",
+      RTL,
+    )
+  })
+
   it("renders an Arabic language name right to left", () => {
     const renderer = render(languageSheet([variant("arabic", "العربية", "ar")]))
     expectDirection(renderer, "العربية", RTL)
@@ -332,6 +341,7 @@ describe("an English UI", () => {
           headingLang="en"
           questionsLang="en"
         />
+        <ScreenTopBar title="Account" showBack />
       </>,
     )
     for (const needle of [
@@ -342,6 +352,7 @@ describe("an English UI", () => {
       "Episode One",
       "English",
       "Who is Jesus?",
+      "Account",
     ]) {
       expectDirection(renderer, needle, null, undefined)
     }

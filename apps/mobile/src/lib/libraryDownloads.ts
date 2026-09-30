@@ -97,12 +97,8 @@ export type LibraryRowState = LibraryRowAffordanceState & {
   subtitle: string
 }
 
-/**
- * One offline record's row state — the single source of truth that the list
- * row and the My Watch rail tile both read. A mid-swap record's `state` is
- * "downloading" even though the old copy is still the playable truth (R6) —
- * `swapFrom`, not `state`, decides.
- */
+/** One record's row state, shared by the list row and the My Watch rail tile.
+ *  Mid-swap, `swapFrom` decides, not `state`: the old copy still plays (R6). */
 export function libraryRowAffordance(
   record: OfflineDownloadRecord,
 ): LibraryRowAffordanceState {

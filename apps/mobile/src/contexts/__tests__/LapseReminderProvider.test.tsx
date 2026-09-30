@@ -19,6 +19,39 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 jest.mock("../../lib/lapseReminders/constants", () => ({
   ...jest.requireActual("../../lib/lapseReminders/constants"),
 }))
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+// A fixture `es` catalog, so a pass can run after the phone's language
+// changes. Cases that never start the store read the real English catalog.
+jest.mock("../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(jest.requireActual("../../i18n/catalogs.generated"), {
+      es: {
+        LapseReminder: {
+          day1Body: "Continúa donde lo dejaste.",
+          day7Body: "Tu video te espera cuando quieras.",
+          day1TitledBody: "Sigue viendo {title}.",
+          day7TitledBody: "{title} te espera cuando quieras.",
+          channelName: "Recordatorios",
+        },
+        Push: { announcementsChannelName: "Anuncios" },
+      },
+    }),
+)
+jest.mock("../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../i18n/pluralData.generated"),
+      ["es"],
+    ),
+)
 jest.mock("../../lib/lapseReminders/notificationsAdapter", () => {
   // A named parameter inside a function TYPE trips babel-plugin-jest-hoist's
   // out-of-scope check, so this factory keeps no listener registry: the test
@@ -191,6 +224,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { router } from "expo-router"
 
 import { LapseReminderProvider } from "../LapseReminderProvider"
+import {
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../i18n/localeStore"
+import { phoneLocales } from "../../test-utils/uiLocaleFixture"
 import { ExperienceSelectionProvider } from "../ExperienceSelectionProvider"
 import { WatchPreferencesProvider } from "../WatchPreferencesProvider"
 import {
@@ -1147,6 +1185,33 @@ describe("an announcement tap (U8)", () => {
     })
     expect(reportPushOpen).not.toHaveBeenCalled()
     expect(getPushNoticeSnapshot().message).toBeNull()
+    await act(async () => renderer.unmount())
+  })
+})
+
+// KTD9: the announcements channel takes its name on each pass, so a language
+// change renames it on the next pass, as it renames the reminder channel.
+describe("the notification channels after a UI language change", () => {
+  afterEach(() => resetLocaleStoreForTests())
+
+  it("renames both channels on the next pass", async () => {
+    // Started before the render, so the store's AppState listener runs first.
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+    const renderer = await render()
+    expect(adapter.ensureChannel).toHaveBeenLastCalledWith("Reminders")
+    expect(adapter.ensureAnnouncementsChannel).toHaveBeenLastCalledWith(
+      "Announcements",
+    )
+
+    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
+    await emitAppState("active")
+    await flush()
+
+    expect(adapter.ensureChannel).toHaveBeenLastCalledWith("Recordatorios")
+    expect(adapter.ensureAnnouncementsChannel).toHaveBeenLastCalledWith(
+      "Anuncios",
+    )
     await act(async () => renderer.unmount())
   })
 })
