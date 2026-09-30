@@ -377,7 +377,7 @@ describe("the homepage and Experience documents ask for the UI locale and en", (
     const sdl = documentNamed("GET_WATCH_SETTING")
     const selectsBlocks = (field: string) =>
       new RegExp(
-        field.replace(/[()$]/g, "\\$&") +
+        field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
           String.raw`\s*\{\s*documentId\s+homepageExperience\s*\{\s*\.\.\.AdminLegacyWatchExperience\b`,
       )
     expect(sdl).toMatch(selectsBlocks("watchSetting(locale: $locale)"))

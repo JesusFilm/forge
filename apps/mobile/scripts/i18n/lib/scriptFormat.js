@@ -23,8 +23,30 @@ async function formatWithPrettier(
   return prettier.format(source, { ...config, ...options })
 }
 
+const UNSAFE_CODE_CHARS = {
+  "<": "\\u003C",
+  ">": "\\u003E",
+  "\b": "\\b",
+  "\f": "\\f",
+  "\n": "\\n",
+  "\r": "\\r",
+  "\t": "\\t",
+  "\0": "\\0",
+  "\u2028": "\\u2028",
+  "\u2029": "\\u2029",
+}
+
+// A value as a JS literal for generated source. JSON.stringify alone leaves
+// characters that can end a script tag or a line in some parsers.
+function codeString(value) {
+  return JSON.stringify(value).replace(
+    /[<>\b\f\n\r\t\0\u2028\u2029]/g,
+    (char) => UNSAFE_CODE_CHARS[char],
+  )
+}
+
 function objectKey(key) {
-  return /^[A-Za-z_$][\w$]*$/.test(key) ? key : JSON.stringify(key)
+  return /^[A-Za-z_$][\w$]*$/.test(key) ? key : codeString(key)
 }
 
 function list(items, limit = 12, empty = "") {
@@ -39,4 +61,4 @@ function plural(count, word) {
   return `${count} ${word}${count === 1 ? "" : "s"}`
 }
 
-module.exports = { formatWithPrettier, list, objectKey, plural }
+module.exports = { codeString, formatWithPrettier, list, objectKey, plural }

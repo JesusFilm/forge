@@ -7,7 +7,11 @@ import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import fs from "node:fs"
-import { formatWithPrettier, objectKey } from "./lib/scriptFormat.js"
+import {
+  codeString,
+  formatWithPrettier,
+  objectKey,
+} from "./lib/scriptFormat.js"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const MOBILE = path.resolve(HERE, "../..")
@@ -105,12 +109,12 @@ function catalogsSource(tags, messagesImportPath) {
   const loaders = tags
     .map(
       (tag) =>
-        `  ${objectKey(tag)}: () => require(${JSON.stringify(`${messagesImportPath}/${tag}.json`)}),`,
+        `  ${objectKey(tag)}: () => require(${codeString(`${messagesImportPath}/${tag}.json`)}),`,
     )
     .join("\n")
   return `${HEADER}
 
-export const CATALOG_TAGS = ${JSON.stringify(tags)} as const
+export const CATALOG_TAGS = ${codeString(tags)} as const
 
 export type CatalogTag = (typeof CATALOG_TAGS)[number]
 
@@ -127,19 +131,19 @@ function pluralDataSource(tags, dataTags) {
     ...new Set(byCatalog.map(([, dataTag]) => dataTag)),
   ].sort()
   const mapping = byCatalog
-    .map(([tag, dataTag]) => `  ${objectKey(tag)}: ${JSON.stringify(dataTag)},`)
+    .map(([tag, dataTag]) => `  ${objectKey(tag)}: ${codeString(dataTag)},`)
     .join("\n")
   const loaders = loadedTags
     .map(
       (dataTag) =>
-        `  ${objectKey(dataTag)}: () => require(${JSON.stringify(`${PLURAL_DATA_PACKAGE}/locale-data/${dataTag}.js`)}),`,
+        `  ${objectKey(dataTag)}: () => require(${codeString(`${PLURAL_DATA_PACKAGE}/locale-data/${dataTag}.js`)}),`,
     )
     .join("\n")
   return `${HEADER}
 
 import type { CatalogTag } from "./catalogs.generated"
 
-export const PLURAL_DATA_TAGS = ${JSON.stringify(loadedTags)} as const
+export const PLURAL_DATA_TAGS = ${codeString(loadedTags)} as const
 
 export type PluralDataTag = (typeof PLURAL_DATA_TAGS)[number]
 

@@ -9,6 +9,7 @@ export function formatWithPrettier(
     optional?: boolean
   },
 ): Promise<string>
+export function codeString(value: unknown): string
 export function objectKey(key: string): string
 export function list(
   items: readonly string[],
