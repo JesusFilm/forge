@@ -14,7 +14,10 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import path from "node:path"
 
-import { composeStoryteller } from "../services/devotional/compose-storyteller"
+import {
+  composeStoryteller,
+  type StorytellerResult,
+} from "../services/devotional/compose-storyteller"
 import {
   cacheDirFor,
   saveCachedDevo,
@@ -132,10 +135,22 @@ async function main() {
   // 45s cut the writer's response off mid-body.
   const llm = (model: string) =>
     createDevotionalLlm({ model, timeoutMs: 300_000 })
-  const scripture = await selectScriptureForPassage({
-    reference: src.passage.reference,
-    llm: llm(modelFor("scripture")),
-  })
+  // Blind writer A/B (owner, 2026-09-30): --brief-in reuses one run's brief
+  // and verse so every writer gets the same material; --ab-out writes the
+  // result there and leaves the devotional cache and the owner's folder alone.
+  const abOut = arg("ab-out")
+  const pinned = arg("brief-in")
+    ? (JSON.parse(await readFile(arg("brief-in")!, "utf8")) as {
+        brief: StorytellerResult["brief"]
+        scripture: Awaited<ReturnType<typeof selectScriptureForPassage>>
+      })
+    : undefined
+  const scripture =
+    pinned?.scripture ??
+    (await selectScriptureForPassage({
+      reference: src.passage.reference,
+      llm: llm(modelFor("scripture")),
+    }))
   log(`verse: ${scripture.reference}: ${scripture.text}`)
 
   const result = await composeStoryteller({
@@ -164,13 +179,43 @@ async function main() {
     llms: {
       research: llm(MODELS.research),
       audit: llm(MODELS.audit),
-      writer: llm(MODELS.writer),
-      factCheck: llm(MODELS.factCheck),
+      writer: llm(arg("writer") ?? MODELS.writer),
+      factCheck: llm(arg("fact-check") ?? MODELS.factCheck),
       highlights: llm(modelFor("highlighter")),
-      baseline: llm(modelFor("copywriter")),
+      ...(abOut ? {} : { baseline: llm(modelFor("copywriter")) }),
     },
+    ...(pinned ? { brief: pinned.brief } : {}),
+    ...(arg("brief-out")
+      ? {
+          onBrief: (brief: StorytellerResult["brief"]) =>
+            writeFile(
+              arg("brief-out")!,
+              JSON.stringify({ brief, scripture }, null, 2),
+            ),
+        }
+      : {}),
     log,
   })
+  if (abOut) {
+    await mkdir(abOut, { recursive: true })
+    const tag = arg("ab-tag") ?? "run"
+    await writeFile(
+      path.join(abOut, `${tag}.json`),
+      JSON.stringify(
+        {
+          writer: arg("writer") ?? MODELS.writer,
+          devotional: result.devotional,
+          checks: result.checks,
+          openFacts: result.openFacts,
+        },
+        null,
+        2,
+      ),
+    )
+    log(`A/B run written to ${path.join(abOut, `${tag}.json`)}`)
+    if (result.openFacts.length) process.exitCode = 2
+    return
+  }
 
   const dir = cacheDirFor(src.index, seq)
   const cached = path.join(dir, "devo.json")

@@ -53,6 +53,12 @@ export type StorytellerInput = {
   /** The passage verse by verse (OSIS → text), for the language callout. */
   verses?: Record<string, string>
   voices: { main: DevotionalVoiceName; depth: DevotionalVoiceName }
+  /** A brief from an earlier run: skips the researcher, so several writers
+   *  can be compared on exactly the same material (blind A/B). */
+  brief?: ResearchBrief
+  /** Called as soon as the brief exists, before any writing, so a failure
+   *  later in the run does not lose the (paid) research. */
+  onBrief?: (brief: ResearchBrief) => Promise<void>
   llms: {
     research: DevotionalLlm
     audit: DevotionalLlm
@@ -213,18 +219,21 @@ export async function composeStoryteller(
     return ps.length ? ps.map((p) => p.text) : [e.text]
   })
 
-  const brief = await researchBrief({
-    corpora: input.corpora,
-    passage: input.passage,
-    passageText: input.passageText,
-    ...(input.settingText ? { settingText: input.settingText } : {}),
-    classic: { name: input.classic.name, points },
-    ...(input.contextTerms ? { terms: input.contextTerms } : {}),
-    ...(input.contextAncient ? { ancient: input.contextAncient } : {}),
-    llm: input.llms.research,
-    auditLlm: input.llms.audit,
-    log,
-  })
+  const brief =
+    input.brief ??
+    (await researchBrief({
+      corpora: input.corpora,
+      passage: input.passage,
+      passageText: input.passageText,
+      ...(input.settingText ? { settingText: input.settingText } : {}),
+      classic: { name: input.classic.name, points },
+      ...(input.contextTerms ? { terms: input.contextTerms } : {}),
+      ...(input.contextAncient ? { ancient: input.contextAncient } : {}),
+      llm: input.llms.research,
+      auditLlm: input.llms.audit,
+      log,
+    }))
+  if (input.onBrief) await input.onBrief(brief)
   note(`💡 ${brief.message.idea}`)
   note(`   tension: ${brief.message.tension}`)
   note(

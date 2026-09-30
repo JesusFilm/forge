@@ -176,9 +176,21 @@ export function createDevotionalLlm(options: {
       })
       const text = extractText(payload)
       if (text == null) {
+        // Say WHY: an empty answer after a long wait is usually a length cap
+        // or a content filter, and the bare message named neither.
+        const choice = (
+          payload as {
+            choices?: {
+              finish_reason?: string
+              native_finish_reason?: string
+            }[]
+          }
+        ).choices?.[0]
         throw new DevotionalLlmError(
           "validation",
-          "devotional model response did not include text output",
+          `devotional model response did not include text output (finish: ${
+            choice?.finish_reason ?? "?"
+          }${choice?.native_finish_reason ? `/${choice.native_finish_reason}` : ""})`,
         )
       }
 
