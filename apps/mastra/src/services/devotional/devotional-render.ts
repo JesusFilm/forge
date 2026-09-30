@@ -1558,7 +1558,7 @@ export type RenderOptions = {
   stepProgress?: "ring" | "bar"
   /** 16:9 film captions with word times: karaoke (default), typewriter or
    *  ghost (see the composition schema). */
-  filmCaptionStyle?: "karaoke" | "typewriter" | "ghost"
+  filmCaptionStyle?: "karaoke" | "typewriter" | "ghost" | "scroll"
   /** 16:9 source credits centred over the text (default) or in a side
    *  column beside it (see the composition schema). */
   markLayout?: "above" | "side"

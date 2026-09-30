@@ -120,7 +120,8 @@ async function main() {
             filmCaptionStyle: arg("film-caption-style") as
               | "karaoke"
               | "typewriter"
-              | "ghost",
+              | "ghost"
+              | "scroll",
           }
         : {}),
       ...(process.argv.includes("--step-bar")

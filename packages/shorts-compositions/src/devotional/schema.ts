@@ -415,7 +415,9 @@ export const devotionalInputPropsSchema = z.object({
    *  being said; `typewriter` types each word letter by letter as it is said,
    *  every letter gold then white; `ghost` shows the whole line faint and each
    *  word lights gold as it is said, then stays white. */
-  filmCaptionStyle: z.enum(["karaoke", "typewriter", "ghost"]).optional(),
+  filmCaptionStyle: z
+    .enum(["karaoke", "typewriter", "ghost", "scroll"])
+    .optional(),
   /** 16:9 source credits: `above` (default) centres the credit over the
    *  text; `side` sets it in a column left of the text behind a vertical
    *  rule, the text left aligned beside it for three sentences (owner's

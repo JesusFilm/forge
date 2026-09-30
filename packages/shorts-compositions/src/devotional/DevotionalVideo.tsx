@@ -27,6 +27,7 @@ import { VerseCalloutOverlay } from "./VerseCalloutOverlay"
 import { quoteIntroTimeline } from "./quote-timing"
 import { QuoteIntro } from "./QuoteIntro"
 import { KineticCaption } from "./KineticCaption"
+import { ScrollingScripture } from "./ScrollingScripture"
 import { StepProgressLine } from "./StepProgressLine"
 import { StepperStack } from "./Stepper"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
@@ -851,7 +852,7 @@ function VideoSubtitles({
   hideBeforeSec = 0,
   karaokeMode = "karaoke",
 }: {
-  karaokeMode?: "karaoke" | "typewriter" | "ghost"
+  karaokeMode?: "karaoke" | "typewriter" | "ghost" | "scroll"
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
   captionStyle?: NonNullable<DevotionalCard["captionStyle"]>
@@ -931,6 +932,19 @@ function VideoSubtitles({
   // 16:9 with verse addresses (Figma 366-2094): the captions lift to leave
   // room for a hairline and the address beneath them, and a soft dark
   // ellipse sits behind the whole block so the text reads over bright film.
+  // The owner's scrolling-Scripture treatment (Figma 373-2235): the
+  // narration as numbered verses under the chapter, scrolling upward.
+  if (karaokeMode === "scroll" && isLandscape && !fullBleed) {
+    return (
+      <ScrollingScripture
+        cues={cues}
+        t={t}
+        frameWidth={frameWidth ?? 1920}
+        frameHeight={frameHeight ?? 1080}
+        bleedX={bleedX}
+      />
+    )
+  }
   const withVerse =
     isLandscape && !fullBleed && cues.some((c) => c.verse != null)
   const first = cues[0]
@@ -1156,7 +1170,7 @@ function KaraokeLine({
   endSec: number
   t: number
   restColor: string
-  mode?: "karaoke" | "typewriter" | "ghost"
+  mode?: "karaoke" | "typewriter" | "ghost" | "scroll"
 }) {
   const words = text.split(/\s+/).filter(Boolean)
   if (words.length !== starts.length) return <>{text}</>
@@ -2018,8 +2032,24 @@ function ClipIntro({
             opacity: brandOut,
           }}
         >
+          {/* A soft dark ellipse under the mark: over faces and bright film
+              the small red mark all but vanished (owner, 2026-09-30). */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: px(-6),
+              width: px(230),
+              height: px(58),
+              transform: "translateX(-50%)",
+              borderRadius: "50%",
+              background:
+                "radial-gradient(closest-side, rgba(0,0,0,0.55), rgba(0,0,0,0))",
+              filter: `blur(${px(7)}px)`,
+            }}
+          />
           <AnimatedBrandMark
-            px={(n) => px(n * 0.8)}
+            px={(n) => px(n * 1.15)}
             frame={frame}
             fps={fps}
             spanSec={3.6}
@@ -7240,7 +7270,7 @@ function CardLayer({
   bleedX,
   filmCaptionStyle,
 }: {
-  filmCaptionStyle?: "karaoke" | "typewriter" | "ghost"
+  filmCaptionStyle?: "karaoke" | "typewriter" | "ghost" | "scroll"
   card: DevotionalCard
   style: DevotionalStyle
   px: (n: number) => number

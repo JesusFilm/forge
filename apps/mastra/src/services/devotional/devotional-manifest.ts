@@ -78,7 +78,7 @@ export type DevotionalManifest = {
   /** Shape of that clock: orbit ring (default) or a line across the top. */
   stepProgress?: "ring" | "bar"
   /** 16:9 film captions: karaoke (default), typewriter or ghost. */
-  filmCaptionStyle?: "karaoke" | "typewriter" | "ghost"
+  filmCaptionStyle?: "karaoke" | "typewriter" | "ghost" | "scroll"
   /** 16:9 source credits: centred above the text (default) or beside it. */
   markLayout?: "above" | "side"
   /** Held beat on the LAST card after its narration ends (s). Same reason. */
