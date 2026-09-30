@@ -70,8 +70,13 @@ deployment/merge remain outside this authorization.
 The protected review tunnel serves the authenticated draft and exact MP4; its
 bytes match the recorded render. Chrome blocked exact-draft navigation after
 loading the authenticated project list. Actual ChatGPT discovered the real
-OAuth endpoints, and a predefined local client/form is prepared; saving the
-connection and Auth handle/consent submission await action-time confirmation.
+OAuth endpoints. After the owner approved connection creation and test-account
+login/consent, ChatGPT redirected to actual Auth with PKCE and the approved
+resource/scopes. Chrome blocked the navigation following login submission with
+`ERR_BLOCKED_BY_CLIENT`; the owner must clear that browser block before consent
+and the client workflow can be observed. The web MCP connection does not itself
+install the portable skill; native installation and manual context loading must
+be qualified separately.
 The authorize-resource and missing-renewal-scope defects found during setup were
 fixed and tested, including two consecutive installed-provider refreshes.
 Actual ChatGPT workflow, browser correction/approval and hosted release gates

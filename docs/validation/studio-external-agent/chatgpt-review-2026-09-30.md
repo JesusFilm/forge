@@ -5,7 +5,7 @@ remains applicable; Claude is deferred to the designer with access. ChatGPT
 results must not be used as Claude compatibility evidence.
 
 The owner explicitly authorized a temporary synthetic operator browser session
-and Cloudflare tunnels. A private, one-hour capability grants access to the
+and Cloudflare tunnels. A private, expiring capability grants access to the
 isolated fixture Manager. The gateway preserves Manager cookie verification and
 current Admin operator-membership validation. It checks the public Origin before
 translating the request to the configured loopback origin. Raw Admin GraphQL,
@@ -62,10 +62,24 @@ accepts only that configured client; its metadata is reachable and unauthenticat
 initialization returns 401 with the correct protected-resource challenge. The
 provider guard still blocks nonfixture paid requests.
 
-The browser connection form is prepared. Saving the ChatGPT connection and
-submitting the temporary Auth handle/consent await the browser's required
-action-time confirmation. No real ChatGPT tool invocation, token renewal or
-end-to-end creation/revision result is claimed yet.
+The owner subsequently approved saving the connection and submitting the
+temporary Auth handle/consent. ChatGPT accepted Create, displayed its connection
+confirmation, and redirected to actual Auth with the exact registered callback,
+resource, PKCE S256 and approved scopes including `offline_access`. The normal
+Auth login form accepted submission of the temporary test credential; the next
+navigation encountered Chrome `ERR_BLOCKED_BY_CLIENT`. Automation stopped and
+the owner was asked to clear the browser block. Successful login, consent,
+token exchange, ChatGPT tool invocation and renewal are not established by
+this observation. The review capability was extended until 08:19 UTC on
+September 30; unauthenticated access still returned 401 and authorized access
+returned 200. Private credentials and entry URLs remain outside the repository.
+
+The custom web MCP connection does not install the portable skill. The current
+server advertises tools, and `shorts.instructions` exposes hosted agent guidance,
+not the packaged `skills/shorts-creator` files. Native ChatGPT skill installation
+therefore remains unqualified. Supplying and verifying every packaged file as
+conversation reference material can qualify manual skill-context loading, but
+must not be reported as native installation or inferred from attachment success.
 
 Installed-provider inspection also identified missing `offline_access` in Shorts
 client/resource scopes. Better Auth 1.7.1 can omit a refresh token entirely, or
