@@ -535,4 +535,8 @@ describe("voiceTake", () => {
       expect(voiceTake(id, "female-d")).toBe("")
     expect(voiceTake("reflection-3", "male-e")).toBe("")
   })
+  it("reads scripture calmly, under its own tag, in a voice with a fast take", () => {
+    expect(voiceTake("scripture", "female-d")).toBe("calm")
+    expect(voiceTake("scripture", "male-e")).toBe("")
+  })
 })

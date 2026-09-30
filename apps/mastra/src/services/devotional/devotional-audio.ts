@@ -525,6 +525,9 @@ const VOICE_DELIVERY: Record<
 /** The cache tag of the delivery a segment is read with ("" = default). */
 export function voiceTake(id: string, voice: string): string {
   if (id === "cover" || id === "conclusion" || id === "questions") return ""
+  // Scripture is read calmly, like the close (owner, 2026-09-30). Tagged, so
+  // a scripture read under this voice's old default is not replayed as calm.
+  if (id === "scripture") return VOICE_DELIVERY[voice] ? "calm" : ""
   return VOICE_DELIVERY[voice]?.take ?? ""
 }
 
@@ -541,6 +544,8 @@ function voiceSettingsFor(
   }
   if (id === "cover") return COVER_VOICE_SETTINGS
   if (id === "conclusion" || id === "questions") return WEIGHTY_VOICE_SETTINGS
+  // Scripture keeps the close's calm pace in a voice with a faster delivery.
+  if (id === "scripture" && VOICE_DELIVERY[voice]) return WEIGHTY_VOICE_SETTINGS
   return VOICE_DELIVERY[voice]?.settings
 }
 
