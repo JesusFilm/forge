@@ -17,6 +17,19 @@ const IN_FLIGHT_STATES: ReadonlySet<OfflineDownloadState> = new Set([
   "queued",
 ])
 
+/** A record's display title. A legacy record stored without one shows its
+ *  slug as words, so the list row and the rail tile always agree. */
+export function recordTitle(record: OfflineDownloadRecord): string {
+  return (
+    record.title ||
+    record.videoSlug
+      .split("-")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
+  )
+}
+
 /**
  * Bytes credited for storage/selection math: a finished copy's full size, an
  * in-flight transfer's bytes written so far — and a mid-swap record BOTH (its
@@ -162,7 +175,7 @@ export function seriesGroupContentEqual(
 
 /** Shared comparator: a known time wins; missing time sorts last, tie-broken
  *  by a stable key so output order never depends on input order. */
-function compareByTime(
+export function compareByTime(
   aTime: number | undefined,
   bTime: number | undefined,
   aKey: string,
@@ -194,7 +207,7 @@ function compareEpisodes(
   )
 }
 
-function newestEnqueuedAt(
+export function newestEnqueuedAt(
   records: readonly OfflineDownloadRecord[],
 ): number | undefined {
   let max: number | undefined

@@ -16,7 +16,7 @@ tags:
 
 ## Problem
 
-feat-543 hides the two signed-out sign-in entry points on mobile, the Profile card and the watch-page nudge, behind `EXPO_PUBLIC_SIGN_IN_ENABLED`. The gate is scaffolding for one phase: it exists only until the team opens accounts on mobile. After that, the gate is dead code, a second place to change sign-in copy, and a source of two accepted problems. A signed-in tester sees the disabled card for a moment after a cold launch, and a tester whose session expires cannot sign in again or delete the account in the app.
+feat-543 hides the two signed-out sign-in entry points on mobile, the sign-in card in the My Watch header and the watch-page nudge, behind `EXPO_PUBLIC_SIGN_IN_ENABLED`. The gate is scaffolding for one phase: it exists only until the team opens accounts on mobile. After that, the gate is dead code, a second place to change sign-in copy, and a source of two accepted problems. A signed-in tester sees the disabled card for a moment after a cold launch, and a tester whose session expires cannot sign in again or delete the account in the app.
 
 The start date is an estimate. The trigger is the step 0 decision below, not the date.
 
@@ -26,7 +26,7 @@ This ticket deletes the gate. It does not open the gate. To open sign-in for one
 
 1. `docs/plans/2026-09-23-1104-feat-mobile-sign-in-gate-plan.md`: the plan that added the gate. Read the Scope Boundaries and the Risks.
 2. `apps/mobile/src/lib/signInGate.ts` and `apps/mobile/src/lib/signInGateState.ts`: the predicate and its rule.
-3. `apps/mobile/src/components/profile/AccountSection.tsx`: the signed-out branch renders the disabled card while the gate is closed.
+3. `apps/mobile/src/components/profile/MyWatchHeader.tsx`: the signed-out branch renders the disabled card while the gate is closed. (Before 2026-09-29 this code was `AccountSection.tsx`.)
 4. `apps/mobile/src/components/watch/SignInPrompt.tsx`: `SignInPrompt` is a thin gate around `SignInPromptBanner`.
 5. `apps/mobile/src/lib/__tests__/signInGateWiring.guard.test.js`: the source guard. Rule 5 is not gate-specific (see KEEP list).
 
@@ -37,7 +37,7 @@ The greps are the source of truth, not the file list above. The code will move b
 ```bash
 git grep -nE 'EXPO_PUBLIC_SIGN_IN_ENABLED' -- apps/mobile
 git grep -nE 'isSignInAvailable|resolveSignInAvailable|signInGate' -- apps/mobile
-git grep -nE 'Sign in \(Coming soon\)|Accounts are not available yet' -- apps/mobile
+git grep -nE 'Sign in · coming soon|Accounts are not available yet' -- apps/mobile
 git grep -nE 'feat-543' -- apps/mobile
 ```
 
@@ -59,9 +59,9 @@ For each grep hit, delete the gate and keep the open path:
 
 - The predicate, the rule, and their suites: `signInGate.ts`, `signInGateState.ts`, and the tests beside them.
 - The three registrations in `apps/mobile/src/env.ts` (`_inlined`, `client`, `runtimeEnvStrict`), the sign-in cases in `apps/mobile/src/__tests__/env.test.ts`, and the block in `apps/mobile/.env.example`.
-- The disabled card in `AccountSection.tsx`: the signed-out branch renders only the live "Sign in" card.
+- The disabled card in `MyWatchHeader.tsx`: the signed-out branch renders only the live "Sign in" card.
 - The thin gate in `SignInPrompt.tsx`: `SignInPrompt` renders the banner directly again.
-- The mutable gate holders and the gated cases in `AccountSection.test.tsx` and `SignInPrompt.test.tsx`. Keep every open-gate case.
+- The mutable gate holders and the gated cases in `MyWatchHeader.test.tsx` and `SignInPrompt.test.tsx`. Keep every open-gate case.
 - Rules 1 to 4 and the positive control in `signInGateWiring.guard.test.js`.
 - The sign-in gate bullet in `apps/mobile/CLAUDE.md`.
 
@@ -69,7 +69,8 @@ For each grep hit, delete the gate and keep the open path:
 
 - The "Sign in again" step in `apps/mobile/src/components/profile/DeleteAccountFlow.tsx`. It was never gated.
 - The nudge's arming, cooldown, and per-session cap in `apps/mobile/src/lib/watchProgress/signInPrompt.ts`, and the banner body in `SignInPrompt.tsx`.
-- The live Profile card: its sign-in handler, busy state, error card, and `dd-action-name` `profile-sign-in`.
+- The live sign-in card in the My Watch header: its sign-in handler, busy state, error card, and `dd-action-name` `profile-sign-in`.
+- The Account screen (`apps/mobile/app/account.tsx`). It never reads the gate: it shows only for a signed-in viewer, and its Delete account flow holds the "Sign in again" step above.
 - `signInWithHostedPage` in `apps/mobile/src/lib/authActions.ts`.
 - Guard Rule 5: only `src/lib/authActions.ts` calls the auth client's sign-in methods. Keep it in a guard of its own, or keep the file with that rule only and a new header.
 - The CONCEPTS.md "Sign-In Gate" entry. TV's `EXPO_PUBLIC_TV_PROFILE_ENABLED` is still a sign-in gate. Remove only mobile-specific wording, if any.
@@ -80,7 +81,7 @@ For each grep hit, delete the gate and keep the open path:
 Follow `docs/solutions/workflow-issues/mechanism-retirement-docs-prose-sweep.md`:
 
 ```bash
-git grep -niE 'EXPO_PUBLIC_SIGN_IN_ENABLED|isSignInAvailable|sign-in gate|Coming soon\)|feat-543' -- '*.md'
+git grep -niE 'EXPO_PUBLIC_SIGN_IN_ENABLED|isSignInAvailable|sign-in gate|Coming soon\)|Sign in · coming soon|feat-543' -- '*.md'
 ```
 
 Check CONCEPTS.md "Sign-In Gate", `apps/mobile/CLAUDE.md`, and `docs/roadmap/`. Classify each hit by its content. Leave a historical record as it is. Put a dated supersession note next to an instruction that still names the gate as live.

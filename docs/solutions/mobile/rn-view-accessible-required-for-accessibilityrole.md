@@ -1,6 +1,7 @@
 ---
 title: "RN View with accessibilityRole needs accessible={true} to reach the iOS a11y tree"
 date: "2026-06-08"
+last_updated: "2026-09-30"
 category: mobile
 module: apps/mobile
 problem_type: ui_bug
@@ -82,7 +83,7 @@ After the fix, `idb ui describe-all` returned `role=AXSlider label='Seek bar' va
 
 - **Prop rule:** any `View` carrying `accessibilityRole`, `accessibilityLabel`, `accessibilityValue`, or `accessibilityActions` must also set `accessible`. Without it, those props are dead weight.
 - **Prefer `Pressable`** for anything interactive — it provides the implicit promotion, press feedback, and hit-slop. Reserve plain `View` + `accessible` for cases where gesture ownership (here, `PanResponder` — `react-native-gesture-handler` is forbidden under Expo Go) rules out `Pressable`.
-- **Verify the tree, not the props** (auto memory [claude]): after any a11y change, run `idb ui describe-all` against the running simulator and confirm the element appears with the expected role/label/value. Typecheck and unit tests prove the props exist; only the live a11y tree proves the native layer sees the element.
+- **Verify the tree, not the props** (auto memory [claude]): after any a11y change, run `idb ui describe-all` against the running simulator and confirm the element appears with the expected role/label/value. Typecheck and unit tests prove the props exist; only the live a11y tree proves the native layer sees the element. On Android, run `adb shell uiautomator dump` and read the node order: it is the sorted accessibility order, which also shows whether an element comes in the right place. See [Android puts a floating overlay bar after a full-screen list in screen-reader order](../ui-bugs/android-talkback-order-overlay-bar-after-full-screen-list.md).
 - **Grep heuristic** for the silent-exclusion bug:
   ```bash
   grep -rn "accessibilityRole" apps/mobile/src | grep -v "accessible"
@@ -95,3 +96,4 @@ After the fix, `idb ui describe-all` returned `role=AXSlider label='Seek bar' va
 - `docs/solutions/best-practices/react-native-tvos-porting-pitfalls-20260414.md` — `accessible={false}` on a Pressable to suppress focus; opposite polarity, same promotion mechanism.
 - `docs/solutions/mobile/audit-driven-video-detail-refactor.md` — removing a misleading `accessibilityRole="adjustable"` from a carousel; same role, same a11y-role-misuse theme.
 - `docs/solutions/mobile/hero-mute-button-hybrid-overlay-touch-target.md` — `Pressable` with `accessibilityRole="button"`; illustrates the implicit promotion a plain `View` lacks.
+- `docs/solutions/ui-bugs/android-talkback-order-overlay-bar-after-full-screen-list.md` — the Android sibling defect: the element is in the tree, but in the wrong place, because Android sorts sibling views by position.

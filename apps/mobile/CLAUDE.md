@@ -462,6 +462,13 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `ExplorePager` rebases at every settle: layout `top` offsets cancel what its
   two Animated nodes hold, one render moves them with the slots, and neither
   node is written.
+- **Android orders screen-reader focus by position, not by JSX order.** A
+  floating bar at y 0 over a full-screen list that also starts at y 0 comes
+  after the whole list, because the taller view sorts first. Start the list
+  below the bar's top edge (My Watch uses `marginTop: insets.top`).
+  `experimental_accessibilityOrder` does nothing in React Native 0.86: its
+  native flag is off. Check the order with `adb shell uiautomator dump`. See
+  `docs/solutions/ui-bugs/android-talkback-order-overlay-bar-after-full-screen-list.md`.
 - ScrollView gesture preemption: interactive hero elements need `pointerEvents="box-none"` pass-through.
 - Lazy Apollo Client init: never module-scope. Use `getApolloClient()` getter.
 - `contentParagraphs` is `string[]` (JSON field) — validate with `Array.isArray()`.
@@ -525,7 +532,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   quiet cancel (build 1.0.0 (5), 2026-09-07; the password form never
   triggers it, which is why the #2176 verification passed). A quiet cancel
   hides every one of these from the user: when the sheet closes and the
-  Profile tab still says Sign in, read production auth's deploy log first.
+  My Watch tab still says Sign in, read production auth's deploy log first.
   `@better-auth/utils` rides the same lockstep: it is `@better-auth/core`'s
   EXACT peer, and with both apps carrying `core`, pnpm resolved auth's peers
   against `better-call`'s `^0.5.0` walk, split `core` into two lockfile
@@ -593,21 +600,25 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   at once. Progress is signed-in ONLY (R10): sign-out empties store,
   snapshot, and queue via `attachProgressLifecycle`.
 - **Bars**: one `WatchProgressBar` (store-subscribed by videoId, <1% hidden,
-  ≥90% snaps full) on every card surface EXCEPT the Library downloads row
-  (deferred — the row stores only a slug). Fold progress into
+  ≥90% snaps full) on every card surface EXCEPT the downloads list rows and
+  the My Watch rail tiles (deferred — a download record stores only a slug).
+  Fold progress into
   `accessibilityLabel` via `progressAccessibilityText`.
 - **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
   only — never email or display name.
 - **The sign-in gate (feat-543) hides sign-in from a signed-out viewer until
-  an operator opens it.** It covers two entry points: the Profile card and the
+  an operator opens it.** It covers two entry points: the sign-in card in the
+  My Watch header (`src/components/profile/MyWatchHeader.tsx`) and the
   watch-page nudge. `isSignInAvailable()` in `src/lib/signInGate.ts` is the one
   predicate. Its rule, in `src/lib/signInGateState.ts`, is a SYNC copy of TV's
   feat-322 rule. A development bundle (`__DEV__`) always shows sign-in. A
   release bundle shows it only when `EXPO_PUBLIC_SIGN_IN_ENABLED` is exactly
   `1` or `true`; every other value hides it, including `TRUE` and an unset
-  value. While the gate is closed, the Profile card is disabled and reads
-  "Sign in (Coming soon)", and the nudge never mounts. A signed-in tester sees
+  value. While the gate is closed, the header card is disabled and reads
+  "Sign in · coming soon", and the nudge never mounts. A signed-in tester sees
   no change, and the "Sign in again" step in account deletion is never gated.
+  The Account screen (`app/account.tsx`) never reads the gate: it shows only
+  for a signed-in viewer, who opens it from the header.
   `src/lib/__tests__/signInGateWiring.guard.test.js` fails when a caller of
   `signInWithHostedPage` does not read the gate. The removal is `feat-544`.
   - **Defaults.** Leave the value unset in production. Set preview on
@@ -618,7 +629,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
     because an `eas.json` edit moves the runtime version.
   - **A change needs a new bundle.** Expo inlines the value at bundle time.
     Publish only with `update:preview` or `update:production`. The app applies
-    a downloaded update on the next launch, so check the Profile tab after a
+    a downloaded update on the next launch, so check the My Watch tab after a
     second launch.
   - **Reach.** The production OTA channel is dark (see "Cold-start splash"),
     so the gate reaches installed builds only with the next native build.
@@ -1806,8 +1817,9 @@ the app's own `#1c1917` instead of the platform contrast scrim.
 
 ## Tab bar — UIKit's own bar on iOS, a flush JS bar on Android
 
-`src/lib/tabBar.ts` owns every number. Both navigators, the downloads list, the
-mini player and the seven surfaces in `tabBarClearance.guard.test.js` read it
+`src/lib/tabBar.ts` owns every number. Both navigators, the root-screen
+clearance hook, the mini player and the seven surfaces in
+`tabBarClearance.guard.test.js` read it
 from there, so no two files can disagree about the bar's size.
 
 > **The native tabs migration shipped on 2026-09-14** (feat-500). iOS now runs
@@ -1866,7 +1878,7 @@ from there, so no two files can disagree about the bar's size.
   has one there — on Home that position holds the horizontal hero pager — so
   the screens pad themselves through `useTabBarClearance()` instead.
 - **The Bible tab is the fourth tab (feat-553).** The order in
-  `TAB_ROUTE_NAMES` is Home, Explore, Discover, Bible, Profile; Explore holds
+  `TAB_ROUTE_NAMES` is Home, Explore, Discover, Bible, My Watch; Explore holds
   the second slot (feat-552 R1). The tab
   renders the shared reader with `host="tab"` and has no scroll surface. The
   reader puts its footer above the bar through `readerBottomInset` in
@@ -1875,31 +1887,32 @@ from there, so no two files can disagree about the bar's size.
 - **`app/(tabs)/_layout.tsx` MUST stay on disk.** It now serves Android only.
   Do not delete it: expo-router resolves the platform sibling by specificity,
   and it throws without an extension-less fallback file.
-- **There is no Library tab. The downloads list lives on Profile.**
-  `src/components/library/LibraryDownloads.tsx` holds the list, selection mode
-  and the delete flow. Profile passes its account card as `header`,
-  "My Downloads" as `title`, and `PrivacyPolicyButton` as `footer`. That
-  button is the app's only in-app privacy policy link (App Store 5.1.1(i)), so
-  keep it. The header scrolls away while the Select row pins under it
-  (`stickyHeaderIndices`).
-- **A second host shares the bar flag.** If a second tab ever hosts this list,
-  both copies mount at cold launch and share the bar flag below. That is safe
-  only while selection needs the focused tab and blur exits it.
-- **The downloads list hides the iOS bar through a module store.** `NativeTabs`
-  has no per-screen `tabBarStyle`, and its only hide lever is the
-  navigator-level `hidden` prop. A context cannot carry the flag, because the
-  layout renders the screen and is therefore an ANCESTOR, not a descendant. So
-  the flag lives in `src/lib/tabBarVisibility.ts`. Call `setTabBarHidden(true)`
-  to hide it, and `resetTabBarHidden()` on blur and on unmount, or a tab switch
-  strands the bar hidden. Android keeps its own lever,
-  `navigation.setOptions({ tabBarStyle })`.
-- **The hide removes the 49pt bar from `insets.bottom`, one frame later.** Two
-  places add it back by hand, and neither may trust the raw inset during that
-  frame. `SelectionActionBar` clamps it — `insets.bottom >= TAB_BAR_HEIGHT_IOS`
-  gives `insets.bottom - TAB_BAR_HEIGHT_IOS`, anything smaller passes through —
-  so the home indicator reads 34 from both 83 and 34, and 0 from 49 on a
-  home-button device. `LibraryDownloads.tsx` pads its list by
-  `TAB_BAR_HEIGHT_IOS + 24` while selection runs.
+- **There is no Library tab. The downloads list lives on the root Downloads
+  screen (feat-581).** `app/downloads.tsx` hosts
+  `src/components/library/LibraryDownloads.tsx`, which holds the list,
+  selection mode and the delete flow. The My Watch tab (route `profile`) shows
+  a rail of at most 10 downloads (`src/lib/myWatchRail.ts`) and opens the list
+  with "See all". A series tile opens it at that series (`?series=<slug>`).
+  The Select row pins at the top of the list (`stickyHeaderIndices`). The
+  app's only in-app privacy policy link (App Store 5.1.1(i)) is on the More
+  screen (`app/more.tsx`).
+- **No screen hides the bar today.** A root route covers the bar, so the list
+  no longer hides it. `src/lib/tabBarVisibility.ts` and the `hidden` prop on
+  `NativeTabs` stay with no writer; a follow-up can remove them. If a tab
+  screen must hide the bar again, use that store: `NativeTabs` has no
+  per-screen `tabBarStyle`, and a context cannot reach the layout, which is an
+  ANCESTOR of the screen. Call `resetTabBarHidden()` on blur and on unmount, or
+  a tab switch strands the bar hidden.
+- **A root screen pads for the mini player, not for the bar.** Its
+  `insets.bottom` holds the home indicator only (34 on a current iPhone),
+  never the 83 a tab screen reports. The Downloads, More and Account screens
+  pad their scroll content with `useMiniPlayerBottomClearance()` plus their own
+  end gap, on both platforms. Never use `useTabBarClearance()` there: it
+  returns 0 on Android and leaves the last rows under the system navigation
+  bar. The clearance reaches the top of the floating window, because
+  `PlaybackHost` reserves the bar under the window on every route except the
+  reader. `SelectionActionBar` and the snackbar add `insets.bottom` themselves,
+  so the host container adds no pad.
 - **`TabBarBackground` survives, but `SelectionActionBar` is its only
   consumer.** The navigator dropped it: UIKit draws its own material. The action
   bar stands in the same place over the same content, so the measured tint floor
@@ -2293,7 +2306,7 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
 ## Component render tests
 
 Component render tests use the in-file react re-point pattern — see
-`src/components/profile/__tests__/AccountSection.test.tsx`. The app's
+`src/components/profile/__tests__/MyWatchHeader.test.tsx`. The app's
 tsconfig maps `react` to its `.d.ts`, and jest-expo mirrors tsconfig paths
 into jest's `moduleNameMapper`, so each render suite re-points `react` and
 `react/jsx-runtime` at the real package via `jest.mock`. No new test

@@ -1,29 +1,14 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   BackHandler,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  type LayoutChangeEvent,
 } from "react-native"
 import { useIsFocused, useNavigation, useRouter } from "expo-router"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
-
-import {
-  TAB_BAR_HEIGHT_IOS,
-  useTabBarClearance,
-  useTabBarStyle,
-} from "../../lib/tabBar"
-import { resetTabBarHidden, setTabBarHidden } from "../../lib/tabBarVisibility"
 
 import { DeleteConfirmSheet } from "./DeleteConfirmSheet"
 import { DownloadRow } from "./DownloadRow"
@@ -31,6 +16,7 @@ import { DownloadsSummary } from "./DownloadsSummary"
 import { LibraryEmptyState } from "./LibraryEmptyState"
 import { SelectionActionBar } from "./SelectionActionBar"
 import { SeriesGroupCard } from "./SeriesGroupCard"
+import { ScreenTopBar } from "../ui/ScreenTopBar"
 import { Snackbar } from "../ui/Snackbar"
 import { useDownloads } from "../../contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
@@ -47,6 +33,7 @@ import {
   buildLibraryViewModel,
   formatLibraryBytes,
 } from "../../lib/libraryDownloads"
+import { useMiniPlayerBottomClearance } from "../../hooks/useMiniPlayerBottomClearance"
 import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
 import {
   INITIAL_SELECTION_STATE,
@@ -61,31 +48,26 @@ import {
   toggleSlug,
   type LibrarySelectionState,
 } from "../../lib/librarySelection"
-import { feedback, layout } from "../../styles/shared"
+import { feedback, layout, text } from "../../styles/shared"
 
 const HINT_VISIBLE_MS = 4000
+const LIST_END_GAP = 24
 
 export type LibraryDownloadsProps = {
-  /** Scrolls above the downloads. The Profile tab puts its account card here. */
-  header?: ReactNode
-  /** Leads the Select row; selection mode needs that row for its controls. */
-  title?: string
-  /** Ends the scroll content. The Profile tab puts its privacy link here. */
-  footer?: ReactNode
+  /** A series slug to open and scroll to once, from `/downloads?series=`. */
+  focusSeriesSlug?: string
 }
 
-/**
- * The downloads library as a whole tab screen. The Profile tab renders it
- * under the account card; there is no separate Library tab.
- */
-export function LibraryDownloads({
-  header,
-  title,
-  footer,
-}: LibraryDownloadsProps) {
-  const insets = useSafeAreaInsets()
-  const tabBarStyle = useTabBarStyle()
-  const tabBarClearance = useTabBarClearance()
+type FocusLayout = {
+  headHeight: number | null
+  listY: number | null
+  /** Each card's y inside the list, keyed by series slug. */
+  cardY: Map<string, number>
+}
+
+/** The full downloads list, with its top bar, selection mode and deletion.
+ *  Its one host is the root `app/downloads.tsx` route. */
+export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
   const typography = useTypography()
   const router = useRouter()
   const navigation = useNavigation()
@@ -107,20 +89,16 @@ export function LibraryDownloads({
     INITIAL_SELECTION_STATE,
   )
   const { selecting, selected } = selectionState
-  // The iOS action bar stands where the native tab bar did, but hiding that bar
-  // drops the bar height out of insets.bottom — so add it back here.
-  const selectionPad = selecting
-    ? Platform.OS === "android"
-      ? 120
-      : TAB_BAR_HEIGHT_IOS + 24
-    : 24
+  // The selection bar is shorter than the mini player's band, so selection
+  // adds nothing to this pad.
+  const bottomPad = useMiniPlayerBottomClearance() + LIST_END_GAP
   const [hintVisible, setHintVisible] = useState(false)
   const [confirmVisible, setConfirmVisible] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // Gated on prefsReady because longPressHintSeen reads false before the
-  // persisted blob hydrates. Gated on focus because every tab mounts at cold
-  // launch, and the timer would expire while another tab is on screen.
+  // persisted blob hydrates. Gated on focus so the timer does not run out
+  // under a screen pushed on top of this one.
   useEffect(() => {
     if (
       !isFocused ||
@@ -145,32 +123,15 @@ export function LibraryDownloads({
     longPressHintSeen,
   ])
 
-  // KTD8: the action bar replaces the tab bar during selection; restored
-  // whenever selection turns off, on blur (switching tabs), and on unmount.
-  //
-  // Two mechanisms, because the two navigators take different levers. Android's
-  // JS bar hides per screen through `setOptions`; iOS runs a UITabBarController
-  // whose only hide lever is the navigator-level `hidden` prop, so the flag has
-  // to travel UP to `_layout.ios.tsx` through the module store.
-  useEffect(() => {
-    setTabBarHidden(selecting)
-    if (Platform.OS === "ios") return
-    navigation.setOptions({
-      tabBarStyle: selecting ? { display: "none" } : tabBarStyle,
-    })
-  }, [selecting, navigation, tabBarStyle])
-
-  useEffect(() => {
-    const unsubscribeBlur = navigation.addListener("blur", () => {
-      setSelectionState(exitSelection())
-    })
-    return () => {
-      unsubscribeBlur()
-      resetTabBarHidden()
-      if (Platform.OS === "ios") return
-      navigation.setOptions({ tabBarStyle })
-    }
-  }, [navigation, tabBarStyle])
+  // A screen pushed on top must not inherit selection: the back handler below
+  // stays registered while selecting and would take that screen's back press.
+  useEffect(
+    () =>
+      navigation.addListener("blur", () => {
+        setSelectionState(exitSelection())
+      }),
+    [navigation],
+  )
 
   // R20: prune selected slugs the provider no longer has; auto-exit when empty.
   // Keyed ONLY on offlineRecords (selectionState via ref) — reacting to the
@@ -264,6 +225,10 @@ export function LibraryDownloads({
     )
   }
 
+  // POP_TO the existing tab navigator; its new `screen: "index"` param selects
+  // Home. With no (tabs) below, dismissTo replaces this screen with one.
+  const handleBrowse = () => router.dismissTo("/(tabs)")
+
   const handleDeletePress = () => setConfirmVisible(true)
   const handleCancelDelete = () => setConfirmVisible(false)
 
@@ -313,26 +278,86 @@ export function LibraryDownloads({
     [selected, offlineRecords],
   )
 
-  const hasHeader = header != null
+  // KTD5: open at `focusSeriesSlug` once, with no animation, as app/mission.tsx
+  // does for `?section=`. Layout events arrive in no fixed order, so each one
+  // records its value and retries until all three are known.
+  const scrollRef = useRef<ScrollView>(null)
+  const focusLayoutRef = useRef<FocusLayout>({
+    headHeight: null,
+    listY: null,
+    cardY: new Map(),
+  })
+  const focusRef = useRef(focusSeriesSlug)
+  focusRef.current = focusSeriesSlug
+  const seriesGroupsRef = useRef(seriesGroups)
+  seriesGroupsRef.current = seriesGroups
+  const didFocusRef = useRef(false)
+
+  const scrollToFocusedSeries = useCallback(() => {
+    const slug = focusRef.current
+    const { headHeight, listY, cardY } = focusLayoutRef.current
+    // A deleted series keeps its last recorded y; never scroll to that.
+    const present = seriesGroupsRef.current.some((g) => g.seriesSlug === slug)
+    const y = slug == null ? undefined : cardY.get(slug)
+    if (didFocusRef.current || !present || y == null) return
+    if (headHeight == null || listY == null) return
+    didFocusRef.current = true
+    // The Select row pins over the top of the viewport; land the card under it.
+    scrollRef.current?.scrollTo({
+      y: Math.max(0, listY + y - headHeight),
+      animated: false,
+    })
+  }, [])
+
+  // Re-arm only for a CHANGED value on a reused screen. At mount a layout event
+  // can beat this effect, and re-arming then would scroll a second time.
+  const armedSlugRef = useRef(focusSeriesSlug)
+  useEffect(() => {
+    if (armedSlugRef.current === focusSeriesSlug) return
+    armedSlugRef.current = focusSeriesSlug
+    didFocusRef.current = false
+    scrollToFocusedSeries()
+  }, [focusSeriesSlug, scrollToFocusedSeries])
+
+  const handleHeadLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      focusLayoutRef.current.headHeight = event.nativeEvent.layout.height
+      scrollToFocusedSeries()
+    },
+    [scrollToFocusedSeries],
+  )
+  const handleListLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      focusLayoutRef.current.listY = event.nativeEvent.layout.y
+      scrollToFocusedSeries()
+    },
+    [scrollToFocusedSeries],
+  )
+  const handleCardLayout = useCallback(
+    (seriesSlug: string, y: number) => {
+      focusLayoutRef.current.cardY.set(seriesSlug, y)
+      scrollToFocusedSeries()
+    },
+    [scrollToFocusedSeries],
+  )
+
   const hasRecords = isReady && offlineRecords.length > 0
 
   return (
-    <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
+    <View style={layout.screenContainer}>
+      {/* Inside this root so the delete sheet's scrim dims it too. */}
+      <ScreenTopBar title="Downloads" showBack />
       <ScrollView
-        contentContainerStyle={{
-          flexGrow: 1,
-          paddingBottom: selectionPad + tabBarClearance,
-        }}
-        // A header scrolls away; the head pins under it so Select and Cancel
-        // stay in reach however far the list scrolls.
-        stickyHeaderIndices={hasRecords ? [hasHeader ? 1 : 0] : undefined}
+        ref={scrollRef}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: bottomPad }}
+        // The head pins so Select and Cancel stay in reach however far the
+        // list scrolls. It must stay the FIRST child for this index to hold.
+        stickyHeaderIndices={hasRecords ? [0] : undefined}
         showsVerticalScrollIndicator={false}
       >
-        {hasHeader && <View style={styles.header}>{header}</View>}
-
         {/* Selection and the hint both need records, so the whole head does. */}
         {hasRecords && (
-          <View style={styles.head}>
+          <View style={styles.head} onLayout={handleHeadLayout}>
             <View style={styles.headRow}>
               {selecting ? (
                 <>
@@ -347,7 +372,7 @@ export function LibraryDownloads({
                       allSelected ? "Deselect all" : "Select all"
                     }
                   >
-                    <Text style={styles.textPillLabel}>
+                    <Text style={[styles.textPillLabel, typography.bodySmall]}>
                       {allSelected ? "Deselect All" : "Select All"}
                     </Text>
                   </Pressable>
@@ -363,32 +388,25 @@ export function LibraryDownloads({
                     accessibilityRole="button"
                     accessibilityLabel="Cancel selection"
                   >
-                    <Text style={styles.textPillLabel}>Cancel</Text>
+                    <Text style={[styles.textPillLabel, typography.bodySmall]}>
+                      Cancel
+                    </Text>
                   </Pressable>
                 </>
               ) : (
-                <>
-                  {title != null && (
-                    <Text
-                      style={[styles.title, typography.titleSmall]}
-                      numberOfLines={1}
-                      accessibilityRole="header"
-                    >
-                      {title}
-                    </Text>
-                  )}
-                  <Pressable
-                    onPress={handleSelectPress}
-                    style={({ pressed }) => [
-                      styles.selectPill,
-                      pressed && feedback.pressed,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel="Select downloads"
-                  >
-                    <Text style={styles.selectPillText}>Select</Text>
-                  </Pressable>
-                </>
+                <Pressable
+                  onPress={handleSelectPress}
+                  style={({ pressed }) => [
+                    styles.selectPill,
+                    pressed && feedback.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Select downloads"
+                >
+                  <Text style={[styles.selectPillText, typography.bodySmall]}>
+                    Select
+                  </Text>
+                </Pressable>
               )}
             </View>
             <DownloadsSummary count={offlineRecords.length} />
@@ -403,10 +421,16 @@ export function LibraryDownloads({
         {/* Before the manifest hydrates, show neither the list nor the empty state. */}
         {isReady &&
           (hasRecords ? (
-            <View style={styles.list}>
+            <View style={styles.list} onLayout={handleListLayout}>
               {seriesGroups.length > 0 && (
                 <>
-                  <Text style={[styles.sectionLabel, typography.caption]}>
+                  <Text
+                    style={[
+                      text.eyebrow,
+                      styles.sectionLabel,
+                      typography.caption,
+                    ]}
+                  >
                     Series
                   </Text>
                   {seriesGroups.map((group) => (
@@ -420,13 +444,21 @@ export function LibraryDownloads({
                       selected={selected}
                       onToggleSeries={handleToggleSeries}
                       onLongPress={handleLongPress}
+                      initiallyExpanded={group.seriesSlug === focusSeriesSlug}
+                      onCardLayout={handleCardLayout}
                     />
                   ))}
                 </>
               )}
               {standaloneRecords.length > 0 && (
                 <>
-                  <Text style={[styles.sectionLabel, typography.caption]}>
+                  <Text
+                    style={[
+                      text.eyebrow,
+                      styles.sectionLabel,
+                      typography.caption,
+                    ]}
+                  >
                     Videos
                   </Text>
                   {standaloneRecords.map((record) => (
@@ -446,12 +478,8 @@ export function LibraryDownloads({
               )}
             </View>
           ) : (
-            <LibraryEmptyState
-              style={hasHeader ? styles.emptyUnderHeader : undefined}
-            />
+            <LibraryEmptyState onBrowse={handleBrowse} />
           ))}
-
-        {footer != null && <View style={styles.footer}>{footer}</View>}
       </ScrollView>
 
       {selecting && (
@@ -473,7 +501,6 @@ export function LibraryDownloads({
       />
 
       <Snackbar
-        clearsTabBar
         message={toastMessage ?? ""}
         visible={toastMessage != null}
         onDismiss={() => setToastMessage(null)}
@@ -487,9 +514,6 @@ export function LibraryDownloads({
 const PILL_BG = "rgba(255, 255, 255, 0.09)"
 
 const styles = StyleSheet.create({
-  header: {
-    paddingTop: 16,
-  },
   head: {
     // Opaque because the head pins over the rows scrolling under it.
     backgroundColor: BG_COLOR,
@@ -499,22 +523,21 @@ const styles = StyleSheet.create({
   },
   headRow: {
     flexDirection: "row",
+    // At a large text size, Cancel moves to a new line, not off screen.
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
   },
-  title: {
-    flexShrink: 1,
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-    fontWeight: "700",
-  },
+  // The pills set a minimum height, not a height, so a large text size
+  // grows them instead of clipping the label.
   selectPill: {
-    // Often alone in a space-between row, so push it to the trailing edge.
+    // Alone in a space-between row, so push it to the trailing edge.
     marginLeft: "auto",
-    height: 34,
+    minHeight: 34,
     paddingHorizontal: 16,
-    borderRadius: 17,
+    paddingVertical: 6,
+    borderRadius: 999,
     backgroundColor: PILL_BG,
     alignItems: "center",
     justifyContent: "center",
@@ -522,17 +545,15 @@ const styles = StyleSheet.create({
   selectPillText: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 15,
     fontWeight: "600",
   },
   textPill: {
-    height: 34,
+    minHeight: 34,
     justifyContent: "center",
   },
   textPillLabel: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 15,
     fontWeight: "600",
   },
   selectionCount: {
@@ -550,26 +571,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 14,
   },
+  // Type comes from text.eyebrow, as on More's group titles.
   sectionLabel: {
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    fontWeight: "700",
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
     marginTop: 8,
     marginBottom: 12,
   },
   list: {
     paddingHorizontal: 16,
-  },
-  emptyUnderHeader: {
-    paddingTop: 24,
-  },
-  footer: {
-    // With the content grown to the screen height, a short page rests the
-    // footer at the bottom; a long list pushes it past the last row.
-    marginTop: "auto",
-    paddingTop: 32,
-    alignItems: "center",
   },
 })

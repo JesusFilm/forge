@@ -7,9 +7,13 @@
  * Each action resolves to a typed outcome the caller renders: success, a
  * quiet cancel, or a retryable error. R15's new-account signal is NOT an
  * outcome variant — a blocking interstitial was rejected — it raises the
- * Profile notice in newAccountNotice.ts instead.
+ * My Watch header notice in newAccountNotice.ts instead.
  */
 
+import {
+  clearAccountDeletedNotice,
+  noteAccountDeleted,
+} from "./accountDeletedNotice"
 import {
   outcomeFromDeleteResult,
   type DeleteAccountOutcome,
@@ -105,6 +109,7 @@ async function runHostedSignIn(): Promise<SignInOutcome> {
     if (wasAccountCreatedThisSignIn(user.createdAt, user.sessionCreatedAt)) {
       noteAccountCreated(user.id)
     }
+    clearAccountDeletedNotice()
   } catch {
     // Total-catch: a throwing notice subscriber must not reject the shared
     // single-flight promise the UI awaits without .catch — the sign-in itself
@@ -138,6 +143,16 @@ export async function signOut(): Promise<void> {
   await getAuthSession().signOut()
 }
 
+/** Total-catch: a throwing notice subscriber must not reject a completed
+ *  deletion that the UI awaits. */
+function raiseAccountDeletedNotice() {
+  try {
+    noteAccountDeleted()
+  } catch {
+    // The deletion itself succeeded; only the notice is lost.
+  }
+}
+
 /**
  * Delete the account (U7): no verification email exists platform-wide, so
  * a stale session asks for SSO re-auth first (the fresh-session check);
@@ -166,6 +181,8 @@ export async function deleteAccount(): Promise<DeleteAccountOutcome> {
       return { status: "unconfirmed" }
     }
     if (signedIn) return { status: "error" }
+    // The probe has already committed the signed-out state.
+    raiseAccountDeletedNotice()
     try {
       await store.signOut()
     } catch {
@@ -174,6 +191,8 @@ export async function deleteAccount(): Promise<DeleteAccountOutcome> {
     return { status: "deleted" }
   }
   if (outcome.status === "deleted") {
+    // KTD8: raise the notice before the sign-out closes the Account screen.
+    raiseAccountDeletedNotice()
     // The account is gone; signOut's remote leg fails harmlessly and the
     // local clear + progress lifecycle run off the signed-out transition.
     // Guard it: commit() invokes subscribers synchronously, so a throwing

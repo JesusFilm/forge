@@ -1524,6 +1524,20 @@ The space a scrolling surface holds free at its bottom edge so the tab bar canno
 
 What the clearance has to contain depends on who draws the bar, and the wrong answer is silent rather than loud. Where the platform owns the bar, the platform already counts the bar's height inside the safe area it reports, so the clearance adds only a breathing gap above it; adding the bar's height a second time double-counts it and strands content well above the bar. Where the app draws the bar itself and the bar displaces content instead of floating over it, no clearance is needed at all. Ownership is therefore part of the term's meaning, not an implementation detail of it: when a bar changes hands between the app and the platform, every surface that reserves space against it changes meaning too, including the surfaces that read the safe area directly and never ask for the clearance.
 
+### Root Route
+
+A screen that opens over the whole tab group instead of inside one tab, so it covers the tab bar while it is shown.
+_Avoid:_ root screen, root-stack screen
+
+Two rules follow from that position, and a break in either one is silent. First, the safe area that a Root Route reports holds only the device's home indicator, never the tab bar. So a Root Route reserves its bottom space for the floating Mini Player and never takes a Tab Bar Clearance. Second, a return to a tab from a Root Route must go back to the tab group that is already beneath it. A forward move to the tabs from there stacks a second copy of the whole tab group on top, and the back gesture then returns to the screen the viewer just left. A cold open straight into a Root Route usually has the tab group beneath it already, so a back move still has somewhere to go.
+
+### My Watch
+
+The viewer's own tab: what they saved to watch offline, their account, and the app's support, about, and legal information.
+_Avoid:_ Profile tab
+
+The tab is a page, not a list. It previews the most recent downloads and gives every management task (the full list, selection, and deletion) to a separate Root Route. Account actions and app information also move to their own Root Routes. So the tab never hides the tab bar, and the one in-app path to the privacy policy is on the information screen, not on the tab. Sign-in starts from the tab's header only while the Sign-In Gate is open.
+
 ## Offline downloads
 
 ### Download Record

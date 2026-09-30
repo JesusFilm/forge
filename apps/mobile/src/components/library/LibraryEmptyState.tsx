@@ -22,10 +22,13 @@ const ICON_WRAP_SIZE = 84
 
 export type LibraryEmptyStateProps = {
   style?: StyleProp<ViewStyle>
+  /** Replaces the default tab switch. A root-stack host must pop back to the
+   *  tab navigator: navigate("/(tabs)") there pushes a second one. */
+  onBrowse?: () => void
 }
 
 /** R17: only rendered once the persisted manifest has hydrated and holds zero records. */
-export function LibraryEmptyState({ style }: LibraryEmptyStateProps) {
+export function LibraryEmptyState({ style, onBrowse }: LibraryEmptyStateProps) {
   const typography = useTypography()
   const router = useRouter()
 
@@ -38,15 +41,17 @@ export function LibraryEmptyState({ style }: LibraryEmptyStateProps) {
           color={TEXT_SECONDARY}
         />
       </View>
-      <Text style={[styles.heading, typography.titleLarge]}>
-        No downloads yet
+      <Text
+        style={[styles.heading, typography.titleLarge]}
+        accessibilityRole="header"
+      >
+        No Downloads Yet
       </Text>
       <Text style={[styles.body, typography.body]}>
-        Videos you download will appear here so you can watch them anywhere —
-        even offline.
+        Download a video to watch it offline
       </Text>
       <Pressable
-        onPress={() => router.navigate("/(tabs)/watch")}
+        onPress={() => (onBrowse ? onBrowse() : router.navigate("/(tabs)"))}
         style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
         accessibilityRole="button"
         accessibilityLabel="Browse videos"
