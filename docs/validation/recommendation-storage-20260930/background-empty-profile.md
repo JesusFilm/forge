@@ -1,8 +1,9 @@
 # First-empty profile completion validation
 
-The new writer is disabled by default with
-`RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP=false`. It changes only future
-first durable projections. A claimed run can complete with
+The reader-first release shipped with the writer disabled. This activation
+makes `RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP=true` the default for future
+first durable projections; explicit `false` stops new empty completions while
+compatible readers keep replaying existing ones. A claimed run can complete with
 `projection_id = NULL` and `last_transition_reason = first_empty_no_evidence`
 when the original and transaction-reloaded eligible source arrays are empty,
 the profile/privacy authority is active, the run claim has an explicit virgin
