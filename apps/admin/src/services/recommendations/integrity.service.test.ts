@@ -45,7 +45,162 @@ function fixture() {
   return { prisma, tx }
 }
 
+function playbackReuseFixture(initialPopulation = 5) {
+  const { prisma, tx } = fixture()
+  const outcome = {
+    id: "outcome-reuse",
+    classifierVersion: "active-watch-proxy-v1",
+    revision: 1,
+    inputDigest: "1".repeat(64),
+    qualifiedView: true,
+    viewQualityWeight: 0.8,
+    createdAt: NOW,
+    expiresAt: EXPIRES,
+    supersededBy: null,
+    request: null,
+    episode: {
+      id: "episode-reuse",
+      sessionDigest: "a".repeat(64),
+      mediaId: "media-reuse",
+      capabilityJti: "episode-jti",
+      state: "FINALIZED",
+      finalizedAt: NOW,
+      transportReplayCount: 0,
+      transportReplayReceipts: [] as Array<{ id: string }>,
+      replayCount: 0,
+      conflictCount: 0,
+      createdAt: NOW,
+      facts: [{ late: false }],
+    },
+  }
+  tx.recommendationOutcomeRevision.findUnique.mockResolvedValue(outcome)
+  let ordinal = 1
+  let population = initialPopulation
+  tx.recommendationPlaybackEpisode.count.mockImplementation(async (...args) => {
+    const [{ where }] = args as unknown as [{ where: Record<string, unknown> }]
+    return where.OR ? ordinal : where.sessionDigest ? 1 : population
+  })
+  tx.recommendationPlaybackEpisode.findMany.mockImplementation(async () =>
+    Array.from({ length: population }, (_, index) => ({
+      sessionDigest: String(index).padStart(64, "0"),
+    })),
+  )
+  let previous: Record<string, unknown> | null = null
+  tx.recommendationEligibilityDecision.findFirst.mockImplementation(
+    async () => previous,
+  )
+  tx.recommendationEligibilityDecision.create.mockImplementation(
+    async ({ data }) => {
+      previous = { ...data }
+      return data
+    },
+  )
+  let sequence = 0
+  const service = new RecommendationIntegrityService({
+    prisma: prisma as never,
+    now: () => NOW,
+    newId: () => `decision-reuse-${++sequence}`,
+  })
+  return {
+    tx,
+    outcome,
+    classify: () => service.classifyPlaybackOutcome(outcome.id),
+    drift: (nextPopulation = 6) => {
+      population = nextPopulation
+    },
+    exceedContributionCap: () => {
+      ordinal = 3
+    },
+    changePrevious: (data: Record<string, unknown>) => {
+      previous = { ...previous, ...data }
+    },
+  }
+}
+
 describe("RecommendationIntegrityService", () => {
+  it("retains the untouched positive playback receipt when only ambient measurements change", async () => {
+    const source = playbackReuseFixture()
+    const first = await source.classify()
+    expect(first.eligibleScopes).toEqual(["profile", "aggregate"])
+    source.drift()
+    expect(await source.classify()).toEqual(first)
+    expect(
+      source.tx.recommendationEligibilityDecision.create,
+    ).toHaveBeenCalledOnce()
+    expect(
+      source.tx.recommendationEligibilityDecision.updateMany,
+    ).toHaveBeenCalledOnce()
+  })
+
+  it("still supersedes when measurement drift changes the policy verdict", async () => {
+    const source = playbackReuseFixture()
+    const first = await source.classify()
+    source.exceedContributionCap()
+    const next = await source.classify()
+    expect(next).toMatchObject({
+      revision: 2,
+      state: "excluded",
+      reasonCodes: ["identity_content_contribution_cap"],
+    })
+    expect(next.id).not.toBe(first.id)
+  })
+
+  it("still supersedes identical positive verdicts when non-measure evidence changes", async () => {
+    const source = playbackReuseFixture()
+    const first = await source.classify()
+    source.drift()
+    source.outcome.episode.transportReplayCount = 1
+    source.outcome.episode.transportReplayReceipts.push({ id: "receipt-1" })
+    const next = await source.classify()
+    expect(next).toMatchObject({
+      revision: 2,
+      state: first.state,
+      eligibleScopes: first.eligibleScopes,
+    })
+    expect(next.id).not.toBe(first.id)
+  })
+
+  it("keeps non-aggregate and non-positive receipts outside measurement reuse", async () => {
+    const sparse = playbackReuseFixture(1)
+    const sparseFirst = await sparse.classify()
+    sparse.drift(2)
+    expect(await sparse.classify()).toMatchObject({
+      revision: 2,
+      state: sparseFirst.state,
+      eligibleScopes: ["profile"],
+    })
+    const excluded = playbackReuseFixture()
+    excluded.outcome.qualifiedView = false
+    const excludedFirst = await excluded.classify()
+    excluded.drift()
+    expect(await excluded.classify()).toMatchObject({
+      revision: 2,
+      state: excludedFirst.state,
+      reasonCodes: ["qualified_view_required"],
+    })
+  })
+
+  it.each([
+    ["not current", { isCurrent: false }],
+    ["wrong source", { outcomeId: "other-outcome" }],
+    ["wrong policy", { policyVersion: "other-policy" }],
+    ["wrong actor", { actorClass: "INTERNAL" }],
+    ["changed expiry", { expiresAt: new Date(EXPIRES.getTime() - 1) }],
+    ["expired", { expiresAt: NOW }],
+    ["changed watermark", { evidenceWatermark: new Date(NOW.getTime() - 1) }],
+    ["changed digest", { inputDigest: "f".repeat(64) }],
+    ["changed scopes", { eligibleScopes: ["profile"] }],
+    ["duplicated scopes", { eligibleScopes: ["profile", "profile"] }],
+    ["changed reason", { reasonCodes: ["aggregate_distinct_support_pending"] }],
+    ["changed weight", { contributionWeight: 0.5 }],
+  ])("does not reuse a playback receipt with %s", async (_label, change) => {
+    const source = playbackReuseFixture()
+    await source.classify()
+    source.drift()
+    source.changePrevious(change)
+    expect(await source.classify()).toMatchObject({ revision: 2 })
+  })
+
   it("classifies an immutable playback outcome through the current eligibility decision", async () => {
     const { prisma, tx } = fixture()
     tx.recommendationOutcomeRevision.findUnique.mockResolvedValue({

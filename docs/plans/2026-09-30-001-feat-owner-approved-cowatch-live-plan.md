@@ -118,3 +118,46 @@ After normal review, green CI, merge and deployment, inspect one bounded natural
 fallback sample to identify the exact missing input. Theme hydration is a grounded
 hypothesis, not yet a demonstrated production cause; do not patch or relax it to
 force direct execution.
+
+## Diagnose and recover source revocation
+
+The exact G4 release and graph were invalidated for `eligibility_changed` at
+2026-09-29T23:35:33.097Z. The later diagnostic deployment is healthy, but revoked
+authority returns to incumbent delivery before composition and therefore cannot
+produce new missing-input observations. Inspect only the captured finite graph
+source population and retained eligibility successors to distinguish changed
+effective eligibility from unchanged positive reclassification. Return aggregate
+counts, preserve source-loss and revision-gap uncertainty, and do not infer the
+initiating event from the first stored trigger reason.
+
+Use existing reviewed source preflight, fresh capacity admission, finite graph
+publication and supported owner replacement for recovery. Keep the original fixed
+source window, integrity and work limits. Revoked graph/release identities remain
+immutable; no direct SQL repair, relaxed source validation, study prerequisite or
+new approval is introduced. Any demonstrated bookkeeping invalidation repair
+requires a separate scoped implementation and native regression proof before the
+normal PR-to-main rollout. Confirm actual direct execution independently of the
+configured pointer, and keep feat-565 open until the operational result is known.
+
+## Preserve unchanged positive decisions during ambient measurement drift
+
+The complete retained G4 source population has 55 immediate eligibility successors.
+All retain the same positive aggregate decision, reasons, scopes, weight, actor and
+source; 53 also change population measurements. Thirty-six successors fall within
+60 seconds of first revocation. This associates ordinary reclassification with
+revocation but does not reconstruct its initiating transaction or prove all changes
+were measurement-only.
+
+Repair only the demonstrated producer mechanism: playback classification may reuse
+an untouched current positive receipt when the current effective decision, source,
+policy, actor, expiry and evidence watermark are identical, and hashing the complete
+current input with only the previous stored population measurements substituted
+reproduces the previous input digest exactly. Recompute current measurements and
+eligibility first, so threshold crossings still append. Keep the original receipt
+and digest; do not rewrite history, adopt verdict-only hashing, alter triggers or
+weaken source validation. Non-measure evidence changes must still supersede even
+when their resulting positive verdict is unchanged. Selection/action behavior is
+outside this change. Prove exact receipt/graph preservation, threshold and evidence
+invalidation, and one-current-decision concurrency with native fixtures before
+normal review and release. This reduces avoidable churn; automatic refresh for
+legitimate source changes and expiry remains feat-573.
