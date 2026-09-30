@@ -3,7 +3,7 @@ id: "feat-548"
 title: "Qualify ChatGPT and Codex through the full review loop"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "blocked"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -66,3 +66,13 @@ ChatGPT result establishes Claude compatibility. The owner also authorized a
 temporary synthetic operator browser session and Cloudflare Tunnel access to
 the isolated local fixture environment. Paid provider calls and production
 deployment/merge remain outside this authorization.
+
+The protected review tunnel serves the authenticated draft and exact MP4; its
+bytes match the recorded render. Chrome blocked exact-draft navigation after
+loading the authenticated project list. Actual ChatGPT discovered the real
+OAuth endpoints, and a predefined local client/form is prepared; saving the
+connection and Auth handle/consent submission await action-time confirmation.
+The authorize-resource and missing-renewal-scope defects found during setup were
+fixed and tested, including two consecutive installed-provider refreshes.
+Actual ChatGPT workflow, browser correction/approval and hosted release gates
+remain incomplete. See the September 30 qualification evidence.

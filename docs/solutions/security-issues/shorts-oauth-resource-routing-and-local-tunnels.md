@@ -38,3 +38,19 @@ app. Gateway Origin validation happened before translation to the app's configur
 loopback origin. Exact render bytes were retrieved and digest-checked, but a Chrome
 navigation block prevented browser approval evidence. Keep transport, browser,
 real-client and hosted release qualification distinct.
+
+## Test consecutive renewal, not just the first refresh
+
+Better Auth 1.7.1 decides whether to create a refresh token using originally
+requested scopes, while the stored token carries resource-intersected scopes.
+Omitting `offline_access` from the Shorts resource can therefore allow an initial
+refresh token but prevent its replacement on the next refresh. Seeded clients
+without that scope can fail earlier or receive no refresh token at all.
+
+Keep the Shorts client/resource ceiling, protected-resource discovery and client
+login guidance aligned on `offline_access`. It grants renewal, not another tool
+capability. Reconnect for fresh user consent after updating the seed; do not add
+scope to already-issued credentials. The installed-provider regression exercises
+two rotations, unchanged authority, no-offline behavior and denied escalation
+or cross-resource refresh. Local task database restrictions belong in the private
+runner, so the opt-in repository suite remains portable to other scratch databases.

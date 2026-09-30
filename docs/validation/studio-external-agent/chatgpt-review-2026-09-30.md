@@ -72,4 +72,18 @@ client/resource scopes. Better Auth 1.7.1 can omit a refresh token entirely, or
 issue a first refresh token whose effective stored scopes prevent replacement
 on rotation. A single renewal probe is insufficient. Consecutive refresh
 rotation, negative no-offline behavior, resource binding and scope escalation
-checks are required before closing renewal qualification.
+checks were added against the installed provider. All nine PostgreSQL provider
+integration tests passed, including two consecutive Shorts refresh rotations,
+no refresh token without the offline scope, rejected scope escalation and
+rejected cross-resource refresh. The fixture skips provider consent for this
+contract test; actual ChatGPT browser consent and renewal remain separate gates.
+Auth unit tests passed (617; 105 database-gated skips), and Auth/Manager typechecks,
+lint and focused Manager discovery/portable-skill checks passed. The Manager
+production build passed and its public discovery now advertises `offline_access`.
+
+The regenerated portable ZIP is 29,009 bytes, SHA-256
+`bddc6f5a79a92dfa72ff70b34f4605dfb840d7c9658152772598de065677309e`.
+Its connection reference now requests renewal and tells older connections to
+reconnect for fresh consent. The authoring workflow is unchanged. Earlier
+real-Codex replay evidence explicitly refers to the prior 28,788-byte archive;
+this packaging update is not a new real-client replay.
