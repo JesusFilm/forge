@@ -89,6 +89,43 @@ export function kineticPhrases(tokens: ReadonlyArray<Token>): Token[][] {
   return out
 }
 
+const capsCache = new Map<string, number>()
+
+/** Width of `text` set as the hero (Literata 500, caps, tracked, with the
+ *  gap each word leaves after it). Falls back to an estimate outside a DOM. */
+function measureCaps(
+  text: string,
+  size: number,
+  tracking: number,
+  gap: number,
+): number {
+  const key = `${text}|${size}|${tracking}`
+  const hit = capsCache.get(key)
+  if (hit != null) return hit
+  const words = text.split(/\s+/).filter(Boolean)
+  const estimate = () =>
+    text.length * (size * 0.8 + tracking) + gap * words.length
+  if (typeof document === "undefined" || !document.body) return estimate()
+  const probe = document.createElement("span")
+  probe.style.cssText =
+    "position:absolute;visibility:hidden;white-space:pre;left:-99999px;top:0"
+  probe.style.fontFamily = SERIF
+  probe.style.fontSize = `${size}px`
+  probe.style.fontWeight = "500"
+  probe.style.letterSpacing = `${tracking}px`
+  probe.style.textTransform = "uppercase"
+  document.body.appendChild(probe)
+  let w = 0
+  for (const word of words) {
+    probe.textContent = word.replace(/[.,;:!?]+$/, "")
+    w += probe.getBoundingClientRect().width + gap
+  }
+  probe.remove()
+  // Only a measurement made with the real face is kept (see measureText).
+  if (document.fonts.check(`500 ${size}px ${SERIF}`)) capsCache.set(key, w)
+  return w
+}
+
 function Word({
   t,
   time,
@@ -154,6 +191,7 @@ export function KineticCaption({
   side = "left",
   portrait = false,
   maxWidth,
+  sizes = {},
 }: {
   line: string
   hero: string
@@ -169,7 +207,13 @@ export function KineticCaption({
    *  app's own UI, and never wider than `maxWidth`. */
   portrait?: boolean
   maxWidth?: number
+  /** Per-role size multipliers (the vertical teaser sets the type larger and
+   *  lets it overlap the picture: owner, 2026-09-30). */
+  sizes?: { hero?: number; accent?: number; plain?: number }
 }) {
+  const kHero = sizes.hero ?? 1
+  const kAccent = sizes.accent ?? 1
+  const kPlain = sizes.plain ?? 1
   const tokens = kineticTokens(line, hero, accents, starts)
   const phrases = kineticPhrases(tokens)
   const ink = "#f4efe8"
@@ -179,13 +223,17 @@ export function KineticCaption({
     .filter((x) => x.role === "hero")
     .map((x) => x.word)
     .join(" ")
-  const heroFit = maxWidth
-    ? Math.min(1, maxWidth / Math.max(1, heroText.length * px(46) * 0.66))
-    : 1
+  // Measured with the loaded face: a per-character guess (0.66 em) let
+  // "ONE WORD" run off the frame at the teaser's larger size.
+  const heroSize = px(46) * kHero
+  const heroW = heroText
+    ? measureCaps(heroText, heroSize, px(1.2), px(46) * kHero * 0.26)
+    : 0
+  const heroFit = maxWidth && heroW > 0 ? Math.min(1, maxWidth / heroW) : 1
   const style = (t: Token, scale = 1) =>
     t.role === "hero"
       ? {
-          size: px(46) * scale * heroFit,
+          size: heroSize * scale * heroFit,
           font: SERIF,
           weight: 500,
           caps: true,
@@ -194,14 +242,14 @@ export function KineticCaption({
         }
       : t.role === "accent"
         ? {
-            size: px(24) * scale,
+            size: px(24) * kAccent * scale,
             font: SERIF,
             weight: 400,
             italic: true,
             color: gold,
           }
         : {
-            size: px(10.5) * scale,
+            size: px(10.5) * kPlain * scale,
             font: SANS,
             weight: 600,
             caps: true,
@@ -209,7 +257,8 @@ export function KineticCaption({
             color: ink,
           }
 
-  const edge = side === "left" ? { left: px(46) } : { right: px(46) }
+  const inset = portrait ? px(28) : px(46)
+  const edge = side === "left" ? { left: inset } : { right: inset }
   if (layout === "stack") {
     return (
       <div
@@ -329,5 +378,75 @@ export function KineticCaption({
         </div>
       </div>
     </>
+  )
+}
+
+/**
+ * The quiet close for the vertical teaser (`introCtaStyle: "calm"`): the call
+ * to action as one centred sentence in the serif, no caps hero and no word
+ * arrivals. It fades up as a whole with a short rise, under a gold hairline,
+ * so the ending settles instead of shouting.
+ */
+export function CalmCallToAction({
+  line,
+  time,
+  px,
+  maxWidth,
+}: {
+  line: string
+  /** Seconds since the line began. */
+  time: number
+  px: (n: number) => number
+  maxWidth: number
+}) {
+  const p = interpolate(time, [0, 1.3], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: Easing.bezier(0.33, 0, 0.2, 1),
+  })
+  const rule = interpolate(time, [0.3, 1.6], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: Easing.bezier(0.33, 0, 0.2, 1),
+  })
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: "30%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: px(14),
+      }}
+    >
+      <div
+        style={{
+          width: px(34) * rule,
+          height: Math.max(2, px(1)),
+          background: "#f2c46b",
+          opacity: 0.85,
+        }}
+      />
+      <div
+        style={{
+          maxWidth,
+          textAlign: "center",
+          textWrap: "balance",
+          fontFamily: SERIF,
+          fontWeight: 400,
+          fontSize: px(30),
+          lineHeight: 1.25,
+          color: "#f4efe8",
+          opacity: p,
+          transform: `translateY(${((1 - p) * px(6)).toFixed(2)}px)`,
+          textShadow: "0 2px 18px rgba(0,0,0,0.55)",
+        }}
+      >
+        {line}
+      </div>
+    </div>
   )
 }

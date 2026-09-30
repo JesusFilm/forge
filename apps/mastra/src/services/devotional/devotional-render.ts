@@ -1616,6 +1616,8 @@ export type RenderOptions = {
   /** Render ONLY the social opening, closing on its call to action: the teaser
    *  that points at the full devotional. */
   introTeaser?: boolean
+  /** Teaser: how the closing call to action looks (default `kinetic`). */
+  introCtaStyle?: "kinetic" | "calm"
   /** `intro: "hook"` only: what is DRAWN, when the voice says more than the
    *  screen should show (a welcome before the question). Defaults to
    *  `hookLine`. Never reaches the narration, so it is free to change. */
@@ -2566,13 +2568,17 @@ async function renderInStage(
         }
       : {}),
     ...(options.intro ? { intro: options.intro } : {}),
-    ...(filmMark ? { filmMark } : {}),
+    // The teaser carries no film mark: its corner stays clear (owner).
+    ...(filmMark && !options.introTeaser ? { filmMark } : {}),
     ...(options.openingFrame ? { openingFrame: true } : {}),
     ...(options.introCaptions ? { introCaptions: options.introCaptions } : {}),
     ...(options.introKinetic ? { introKinetic: options.introKinetic } : {}),
     ...(locale.introKicker ? { introKicker: locale.introKicker } : {}),
     ...(options.introTeaser && options.intro === "montage"
       ? { introCta: true }
+      : {}),
+    ...(options.introTeaser && options.introCtaStyle
+      ? { introCtaStyle: options.introCtaStyle }
       : {}),
     ...(options.introFocus ? { introFocus: options.introFocus } : {}),
     ...(options.hookLine

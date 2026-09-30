@@ -56,6 +56,9 @@ export type DevotionalManifest = {
   }[]
   /** `montage` teaser: the last line is a call to action. */
   introCta?: boolean
+  /** Teaser CTA look: `calm` sets the last line as one quiet centred line
+   *  instead of another kinetic stack. */
+  introCtaStyle?: "kinetic" | "calm"
   /** `montage`, vertical: horizontal focus per shot. */
   introFocus?: number[]
   /** Mark of the film the clip comes from (top-left while it plays). */
@@ -154,6 +157,9 @@ export type BuildManifestInput = {
   }[]
   /** `montage` teaser: the last line is a call to action. */
   introCta?: boolean
+  /** Teaser CTA look: `calm` sets the last line as one quiet centred line
+   *  instead of another kinetic stack. */
+  introCtaStyle?: "kinetic" | "calm"
   /** `montage`, vertical: horizontal focus per shot. */
   introFocus?: number[]
   /** Mark of the film the clip comes from (top-left while it plays). */
@@ -336,6 +342,11 @@ function buildClipFirstManifest(
               : {}),
             ...(input.intro === "montage" && input.introCta
               ? { introCta: true }
+              : {}),
+            ...(input.intro === "montage" &&
+            input.introCta &&
+            input.introCtaStyle === "calm"
+              ? { introCtaStyle: "calm" as const }
               : {}),
             ...(input.intro === "montage" && input.introFocus?.length
               ? { introFocus: input.introFocus }

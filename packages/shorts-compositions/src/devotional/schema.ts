@@ -122,6 +122,8 @@ export const devotionalCardSchema = z.object({
   passageRef: z.string().optional(),
   /** `montage` teaser: the last spoken line is a call to action. */
   introCta: z.boolean().optional(),
+  /** Teaser CTA look: `calm` is one quiet centred line, not a kinetic stack. */
+  introCtaStyle: z.enum(["kinetic", "calm"]).optional(),
   /** `montage`, vertical: horizontal focus (0..1) per shot, then one more for
    *  the scene after the last cut. */
   introFocus: z.array(z.number()).optional(),

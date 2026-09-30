@@ -26,7 +26,7 @@ import { SourceMarkOverlay, WIDE_TEXT_BOTTOM } from "./SourceMarkOverlay"
 import { VerseCalloutOverlay } from "./VerseCalloutOverlay"
 import { quoteIntroTimeline } from "./quote-timing"
 import { QuoteIntro } from "./QuoteIntro"
-import { KineticCaption } from "./KineticCaption"
+import { CalmCallToAction, KineticCaption } from "./KineticCaption"
 import { ScrollingScripture } from "./ScrollingScripture"
 import { StepProgressLine } from "./StepProgressLine"
 import { StepperStack } from "./Stepper"
@@ -1728,6 +1728,7 @@ function ClipIntro({
   captions = [],
   passageRef,
   cta = false,
+  ctaCalm = false,
   kinetic = [],
   kicker = "IN THIS DEVOTIONAL",
 }: {
@@ -1765,6 +1766,8 @@ function ClipIntro({
   passageRef?: string
   /** `montage` teaser: the last line is a call to action, not "Let's watch". */
   cta?: boolean
+  /** Teaser: close on one quiet centred line (see CalmCallToAction). */
+  ctaCalm?: boolean
   /** `montage`: the words under the Jesus Film mark, in the film's language. */
   kicker?: string
   /** `montage`: kinetic captions per line, the "stack" layout (owner's pick,
@@ -1973,6 +1976,24 @@ function ClipIntro({
                 })
             if (t < from - 0.1 || out <= 0) return null
             const side = spec?.side ?? "left"
+            if (isLast && ctaCalm) {
+              return (
+                <AbsoluteFill key={i}>
+                  <AbsoluteFill
+                    style={{
+                      background:
+                        "linear-gradient(0deg, rgba(0,0,0,0.5), rgba(0,0,0,0.15) 50%, rgba(0,0,0,0) 75%)",
+                    }}
+                  />
+                  <CalmCallToAction
+                    line={line}
+                    time={t - from}
+                    px={px}
+                    maxWidth={frameWidth * 0.8}
+                  />
+                </AbsoluteFill>
+              )
+            }
             return (
               <AbsoluteFill key={i} style={{ opacity: out }}>
                 <AbsoluteFill
@@ -1991,7 +2012,8 @@ function ClipIntro({
                   px={(n) => px((n * 390) / 360)}
                   side={side}
                   portrait
-                  maxWidth={frameWidth * 0.84}
+                  maxWidth={frameWidth - 2 * px((28 * 390) / 360)}
+                  sizes={{ hero: 1.3, accent: 1.4, plain: 1.6 }}
                 />
               </AbsoluteFill>
             )
@@ -5247,6 +5269,7 @@ function CardBody({
             {...(card.introKicker ? { kicker: card.introKicker } : {})}
             {...(card.passageRef ? { passageRef: card.passageRef } : {})}
             cta={card.introCta === true}
+            ctaCalm={card.introCtaStyle === "calm"}
           />
         </>
       )

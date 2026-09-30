@@ -200,6 +200,10 @@ async function main() {
         : {}),
       // `--teaser-intro`: render ONLY the opening, ending on `--cta`.
       introTeaser: process.argv.includes("--teaser-intro"),
+      // `--cta-style=calm`: the teaser closes on one quiet centred line.
+      ...(arg("cta-style") === "calm"
+        ? { introCtaStyle: "calm" as const }
+        : {}),
       // Social opening: `--quote-a/--quote-b` (+ `--quote-a-strong`, etc.).
       ...(arg("quote-a") && arg("quote-b")
         ? {
