@@ -523,16 +523,21 @@ const styles = StyleSheet.create({
   },
   headRow: {
     flexDirection: "row",
+    // At a large text size, Cancel moves to a new line, not off screen.
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
   },
+  // The pills set a minimum height, not a height, so a large text size
+  // grows them instead of clipping the label.
   selectPill: {
     // Alone in a space-between row, so push it to the trailing edge.
     marginLeft: "auto",
-    height: 34,
+    minHeight: 34,
     paddingHorizontal: 16,
-    borderRadius: 17,
+    paddingVertical: 6,
+    borderRadius: 999,
     backgroundColor: PILL_BG,
     alignItems: "center",
     justifyContent: "center",
@@ -543,7 +548,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   textPill: {
-    height: 34,
+    minHeight: 34,
     justifyContent: "center",
   },
   textPillLabel: {

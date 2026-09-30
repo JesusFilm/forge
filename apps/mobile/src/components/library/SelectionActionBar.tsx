@@ -13,6 +13,9 @@ const BAR_SIDE_PADDING = 16
 const BAR_BG = "rgba(12, 12, 13, 0.94)"
 const BAR_BORDER = "rgba(255, 255, 255, 0.09)"
 const GHOST_BG = "rgba(255, 255, 255, 0.09)"
+// The bar keeps a tab bar's fixed height, so its labels stop growing where
+// they still fit a 40 pt button, as the Bible reader's chrome does.
+export const ACTION_LABEL_MAX_FONT_SCALE = 1.3
 
 export interface SelectionActionBarProps {
   count: number
@@ -70,7 +73,10 @@ export function SelectionActionBar({
           accessibilityLabel="Retry failed downloads"
         >
           <Ionicons name="refresh" size={17} color={TEXT_PRIMARY} />
-          <Text style={[styles.ghostText, typography.bodySmall]}>
+          <Text
+            maxFontSizeMultiplier={ACTION_LABEL_MAX_FONT_SCALE}
+            style={[styles.ghostText, typography.bodySmall]}
+          >
             Retry failed
           </Text>
         </Pressable>
@@ -87,11 +93,16 @@ export function SelectionActionBar({
         ]}
         accessibilityRole="button"
         accessibilityLabel={
-          count > 0 ? `Delete ${count} selected videos` : "Delete"
+          count > 0
+            ? `Delete ${count} selected video${count === 1 ? "" : "s"}`
+            : "Delete"
         }
       >
         <Ionicons name="trash-outline" size={17} color={TEXT_ON_OVERLAY} />
-        <Text style={[styles.dangerText, typography.bodySmall]}>
+        <Text
+          maxFontSizeMultiplier={ACTION_LABEL_MAX_FONT_SCALE}
+          style={[styles.dangerText, typography.bodySmall]}
+        >
           {count > 0
             ? `Delete ${count} · ${formatLibraryBytes(combinedBytes)}`
             : "Delete"}

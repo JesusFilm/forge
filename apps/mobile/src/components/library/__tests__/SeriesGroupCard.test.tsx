@@ -105,6 +105,36 @@ afterEach(() => {
   mockedAnimateLayout.mockClear()
 })
 
+describe("SeriesGroupCard video count", () => {
+  /** The meta line interpolates the count, so its children are an array. */
+  function metaHas(renderer: TestInstance, text: string): boolean {
+    return (
+      renderer.root.findAll(
+        (node) =>
+          Array.isArray(node.props.children) &&
+          (node.props.children as unknown[]).includes(text),
+      ).length > 0
+    )
+  }
+
+  it("says 1 video for a one-episode series, in the row and in its label", async () => {
+    const single = buildLibraryViewModel([episode("ep-1", 1)]).seriesGroups[0]!
+    const renderer = await render({ group: single })
+
+    expect(metaHas(renderer, "1 video")).toBe(true)
+    expect(pressableByLabel(renderer, "The Chosen, 1 video")).toBeTruthy()
+    await unmount(renderer)
+  })
+
+  it("says 2 videos for a two-episode series", async () => {
+    const renderer = await render()
+
+    expect(metaHas(renderer, "2 videos")).toBe(true)
+    expect(pressableByLabel(renderer, HEADER_LABEL)).toBeTruthy()
+    await unmount(renderer)
+  })
+})
+
 describe("SeriesGroupCard expansion", () => {
   it("renders collapsed without the input", async () => {
     const renderer = await render()

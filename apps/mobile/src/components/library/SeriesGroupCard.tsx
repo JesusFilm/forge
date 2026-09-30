@@ -86,6 +86,7 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
     if (initiallyExpanded) setExpanded(true)
   }, [initiallyExpanded])
   const posterPath = group.episodes[0]?.posterPath ?? null
+  const videoCount = `${group.episodeCount} video${group.episodeCount === 1 ? "" : "s"}`
   const episodeSlugs = group.episodes.map((episode) => episode.videoSlug)
   const seriesState: SeriesSelectionState = selecting
     ? seriesSelectionState(episodeSlugs, selected)
@@ -126,7 +127,7 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
         onLongPress={() => onLongPress?.(episodeSlugs)}
         style={({ pressed }) => [styles.header, pressed && feedback.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`${group.seriesTitle}, ${group.episodeCount} videos`}
+        accessibilityLabel={`${group.seriesTitle}, ${videoCount}`}
         accessibilityState={
           // R11: expose the tri-state header checkbox ("mixed" for partial)
           // the same way DownloadRow exposes per-row selection.
@@ -164,8 +165,7 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
             {group.seriesTitle}
           </Text>
           <Text style={[styles.meta, typography.caption]} numberOfLines={1}>
-            {group.episodeCount} videos ·{" "}
-            {formatLibraryBytes(group.combinedBytes)}
+            {videoCount} · {formatLibraryBytes(group.combinedBytes)}
             {group.failedEpisodeCount > 0 && (
               <Text style={styles.metaFailed}>
                 {" "}

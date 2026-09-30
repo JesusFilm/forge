@@ -1,14 +1,17 @@
 // The selection bar sits on the root Downloads screen. On iOS it takes the box
 // of a UIKit tab bar over the root inset; on Android it must not change at all.
 import { act } from "react"
-import { Platform } from "react-native"
+import { Platform, Text } from "react-native"
 
 import {
   TestRenderer,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 import { TAB_BAR_HEIGHT_IOS } from "../../../lib/tabBar"
-import { SelectionActionBar } from "../SelectionActionBar"
+import {
+  ACTION_LABEL_MAX_FONT_SCALE,
+  SelectionActionBar,
+} from "../SelectionActionBar"
 
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
@@ -39,12 +42,12 @@ afterEach(() => {
   Object.assign(mockInsets, BASE_INSETS)
 })
 
-async function render(hasFailed = false): Promise<TestInstance> {
+async function render(hasFailed = false, count = 3): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
     renderer = TestRenderer.create(
       <SelectionActionBar
-        count={3}
+        count={count}
         combinedBytes={1024}
         hasFailed={hasFailed}
         onRetryFailed={() => {}}
@@ -170,5 +173,39 @@ describe("both action buttons fit the capsule on iOS", () => {
     const styles = await buttonStyles()
     expect(new Set(styles.map((s) => s.backgroundColor)).size).toBe(2)
     styles.forEach((s) => expect(s.height).toBe(48))
+  })
+})
+
+describe("the button labels under a large text size", () => {
+  it("stop growing where they still fit the fixed-height buttons", async () => {
+    const renderer = await render(true)
+    const labels = renderer.root.findAll(
+      (n) => n.type === Text && typeof n.props.children !== "undefined",
+    )
+
+    // Retry failed and Delete; the bar keeps a tab bar's fixed height.
+    expect(labels.length).toBe(2)
+    for (const label of labels) {
+      expect(label.props.maxFontSizeMultiplier).toBe(
+        ACTION_LABEL_MAX_FONT_SCALE,
+      )
+    }
+    expect(ACTION_LABEL_MAX_FONT_SCALE).toBeGreaterThan(1)
+    expect(ACTION_LABEL_MAX_FONT_SCALE).toBeLessThanOrEqual(1.3)
+  })
+})
+
+describe("the delete button's screen-reader label", () => {
+  const deleteLabels = async (count: number) =>
+    (await render(false, count)).root
+      .findAll((n) => typeof n.props.onPress === "function")
+      .map((n) => n.props.accessibilityLabel as string)
+
+  it("says video for one selected video", async () => {
+    expect(await deleteLabels(1)).toContain("Delete 1 selected video")
+  })
+
+  it("says videos for two selected videos", async () => {
+    expect(await deleteLabels(2)).toContain("Delete 2 selected videos")
   })
 })

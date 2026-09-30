@@ -351,6 +351,52 @@ describe("the Downloads screen", () => {
     await unmount(renderer)
   })
 
+  it("lets the head pills grow under a large text size, so no label clips", async () => {
+    const renderer = await renderScreen("ios")
+    const pillStyle = (label: string) => {
+      const [control] = renderer.root.findAll(
+        (node) =>
+          node.props.accessibilityLabel === label &&
+          typeof node.props.onPress === "function",
+      )
+      const style = control!.props.style as
+        | ((state: { pressed: boolean }) => unknown)
+        | unknown
+      return flatten(
+        typeof style === "function" ? style({ pressed: false }) : style,
+      )
+    }
+
+    expect(pillStyle("Select downloads").height).toBeUndefined()
+    expect(pillStyle("Select downloads").minHeight).toBe(34)
+    await enterSelection(renderer)
+    for (const label of ["Select all", "Cancel selection"]) {
+      expect(pillStyle(label).height).toBeUndefined()
+      expect(pillStyle(label).minHeight).toBe(34)
+    }
+    await unmount(renderer)
+  })
+
+  it("wraps the selection row under a large text size, so Cancel stays on screen", async () => {
+    const renderer = await renderScreen("ios")
+    await enterSelection(renderer)
+    const [cancel] = renderer.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === "Cancel selection" &&
+        typeof node.props.onPress === "function",
+    )
+    const [selectAll] = renderer.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === "Select all" &&
+        typeof node.props.onPress === "function",
+    )
+    const row = cancel!.parent!
+
+    expect(selectAll!.parent).toBe(row)
+    expect(flatten(row.props.style).flexWrap).toBe("wrap")
+    await unmount(renderer)
+  })
+
   it("shows the empty state at its full-screen gap with no downloads", async () => {
     mockDownloads.offlineRecords = []
     const renderer = await mountScreen("ios")
