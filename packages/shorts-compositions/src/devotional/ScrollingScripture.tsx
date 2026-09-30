@@ -113,7 +113,8 @@ export function ScrollingScripture({
     else break
   }
   const lineH = dp(70)
-  const windowH = dp(380)
+  // Three lines on screen (owner's Figma 380-2266): a 224px window.
+  const windowH = dp(224)
   // One continuous, slow drift (owner: "slow and smooth, not in jerks"):
   // each line reaches the middle halfway through its own reading, and the
   // text keeps moving between those moments instead of waiting and jumping.
@@ -157,37 +158,41 @@ export function ScrollingScripture({
   )
   if (opacity <= 0 && centres) return null
   const chapter = first.verse?.split(":")[0] ?? ""
-  const left = (518 / 1920) * frameWidth - bleedX
+  // The block is centred on the frame, 839 wide; nothing crosses the
+  // hairline's ends, verse numbers included.
+  const blockW = dp(839)
+  const numW = dp(118)
+  const left = frameWidth / 2 - blockW / 2 - bleedX
   let n = 0
   return (
     <div
       style={{ position: "absolute", inset: 0, opacity, pointerEvents: "none" }}
     >
-      {/* The film behind the verses is blurred and darkened (owner: moving
-          footage made them hard to read), with edges that melt away so the
-          panel never shows as a box. */}
+      {/* The film behind the verses is softly blurred and darkened, only
+          as far as the three lines reach, so it reads as depth rather than
+          a smudge. */}
       <div
         style={{
           position: "absolute",
-          left: left - dp(230),
-          top: dp(470),
-          width: dp(1250),
-          height: dp(700),
-          backdropFilter: `blur(${dp(18)}px)`,
-          WebkitBackdropFilter: `blur(${dp(18)}px)`,
-          background: "rgba(0,0,0,0.38)",
+          left: left - dp(140),
+          top: dp(640),
+          width: blockW + dp(280),
+          height: dp(420),
+          backdropFilter: `blur(${dp(12)}px)`,
+          WebkitBackdropFilter: `blur(${dp(12)}px)`,
+          background: "rgba(0,0,0,0.26)",
           WebkitMaskImage:
-            "radial-gradient(closest-side, #000 55%, transparent 100%)",
+            "radial-gradient(closest-side, #000 40%, transparent 100%)",
           maskImage:
-            "radial-gradient(closest-side, #000 55%, transparent 100%)",
+            "radial-gradient(closest-side, #000 40%, transparent 100%)",
         }}
       />
       <div
         style={{
           position: "absolute",
           left,
-          top: dp(561),
-          width: dp(790),
+          top: dp(657),
+          width: blockW,
           display: "flex",
           flexDirection: "column",
           gap: dp(20),
@@ -215,9 +220,9 @@ export function ScrollingScripture({
       <div
         style={{
           position: "absolute",
-          left: left - dp(100),
-          top: dp(655),
-          width: dp(890),
+          left,
+          top: dp(657 + 50 + 20 + 24),
+          width: blockW,
           height: windowH,
           overflow: "hidden",
           WebkitMaskImage:
@@ -245,14 +250,15 @@ export function ScrollingScripture({
             <div key={vi} style={{ display: "flex" }}>
               <div
                 style={{
-                  width: dp(100),
+                  width: numW,
                   flex: "none",
+                  paddingLeft: dp(20),
                   color: "rgba(255,255,255,0.5)",
                 }}
               >
                 {v.num != null ? `${v.num}.` : ""}
               </div>
-              <div style={{ width: dp(790) }}>
+              <div style={{ width: blockW - numW }}>
                 {v.words.map((w, wi) => {
                   const idx = n++
                   const on = idx === k
