@@ -157,6 +157,8 @@ are observed.
 
 ## Resolution — 2026-09-30
 
+Closure PR: [#2513](https://github.com/JesusFilm/forge/pull/2513).
+
 This owner acceptance supersedes the earlier forward-looking closure gates in
 this ticket.
 
