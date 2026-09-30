@@ -63,3 +63,19 @@ work reused feat-572. Historical pilot receipts retain the original number. The
 pilot preserved all 64 original quality holdouts and 8,621 observations, retired
 1,062 unprotected observations and losslessly converted one protected observation.
 Later finite cohorts require fresh review; the pilot does not authorize a loop.
+
+## Finite campaign preparation
+
+`docs/operations/finite-legacy-recommendation-retirement-campaign.md` defines
+a bounded, explicit roster with a private digest, current hold file, fresh
+fleet/capacity receipt per ten-run transaction, aggregate ledger replay, and
+fail-stop behavior. A v2 manifest converts incomplete, zero-composed or other
+uncertain unprotected runs losslessly when exact typed row parity succeeds;
+it never retires that detail. Unrepresentable rows stay intact and block
+whole-table reclaim. Expired roots are outside the campaign and follow
+ordinary bounded retention. This is local preparation only: no larger
+production cohort or physical reclamation has been executed, so status stays
+in progress. Feat-555's separately reviewed exact-empty migration requires
+fresh retention health, expired-root cleanup, fleet/rollback and headroom
+proof. Feat-554's first two loaded normal retention cycles remain open
+monitoring/closure work after any earlier physical reclaim.
