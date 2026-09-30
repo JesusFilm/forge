@@ -139,3 +139,14 @@ The local-only bounded lock-admission follow-up is specified in
 `docs/validation/recommendation-storage-20260930/legacy-lock-admission-grace.md`.
 The observed `database-capacity` stop did not distinguish WAL from lock
 waiters; this preparation does not change ticket status or authorize deployment.
+
+## Owner-authorized unattended finite job
+
+The owner requested automatic progress without per-cohort AI turns, with a quiet
+24-hour monitor. `docs/plans/2026-10-01-001-unattended-legacy-detail-drain.md`
+defines an explicit finite campaign authorization and additive lease variant.
+Existing manual-session constraints remain unchanged. Do not restamp approvals or
+replay old proposals. The job must preserve the existing transaction limits,
+protected parity, automatic live measurements and fail-stop reconciliation.
+Implementation, review, normal deployment and a fresh exact launch remain required;
+this ticket stays in progress until the production result is verified.

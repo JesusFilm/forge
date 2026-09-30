@@ -62,12 +62,17 @@ const Holds = z.object({
   qualityRunIds: z.array(RunId).length(64),
   activeInvestigationRunIds: z.array(RunId).max(10_000),
 })
+const UnattendedAuthorization = z.strictObject({
+  kind: z.literal("unattended-finite-v1"),
+  scopeSha256: Hash,
+})
 const Lease = z.object({
   reviewedAt: Iso,
   expiresAt: Iso,
   canonicalRegistrySha256: Hash,
   reviewReceiptSha256: Hash,
   holds: Holds,
+  authorization: UnattendedAuthorization.optional(),
 })
 const Source = z.object({
   revision: Revision,
@@ -177,11 +182,29 @@ function assertSource(source: SourceInput): void {
     "source",
   )
 }
-function assertLease(lease: LeaseInput, now = Date.now()): void {
+function assertLease(
+  lease: LeaseInput,
+  source: SourceInput,
+  now = Date.now(),
+): void {
+  const hasAuthorization = Object.prototype.hasOwnProperty.call(
+    lease,
+    "authorization",
+  )
+  const authorization = hasAuthorization
+    ? UnattendedAuthorization.safeParse(lease.authorization)
+    : null
+  guard(!hasAuthorization || authorization?.success, "lease")
+  const reviewedAt = ms(lease.reviewedAt)
+  const expiresAt = ms(lease.expiresAt)
   guard(
-    ms(lease.expiresAt) === ms(lease.reviewedAt) + 30 * 60_000 &&
-      now >= ms(lease.reviewedAt) &&
-      now < ms(lease.expiresAt) &&
+    (hasAuthorization
+      ? expiresAt > reviewedAt &&
+        expiresAt <= reviewedAt + 12 * 60 * 60_000 &&
+        source.reviewedAt === lease.reviewedAt
+      : expiresAt === reviewedAt + 30 * 60_000) &&
+      now >= reviewedAt &&
+      now < expiresAt &&
       lease.holds.qualitySelectorSha256 === QUALITY_SELECTOR &&
       new Set(lease.holds.qualityRunIds).size === 64 &&
       new Set(lease.holds.activeInvestigationRunIds).size ===
@@ -238,7 +261,7 @@ export function assertPermit(
 ): void {
   const now = Date.now()
   assertSource(source)
-  assertLease(lease, now)
+  assertLease(lease, source, now)
   guard(now < ms(stopBefore), "retention-boundary")
   guard(
     fresh(permit.measuredAt, 90_000, now) &&
@@ -657,8 +680,9 @@ export async function runLegacyDetailSession(
           start.source.targetDatabaseHash === expectedTargetHash,
         "activation",
       )
-      assertLease(start.lease)
-      guard(fresh(start.source.reviewedAt, 120_000), "source-review")
+      assertLease(start.lease, start.source)
+      if (!Object.prototype.hasOwnProperty.call(start.lease, "authorization"))
+        guard(fresh(start.source.reviewedAt, 120_000), "source-review")
       await actualDatabaseGate(db, start.source)
       const quality = await qualitySnapshot(
         db,

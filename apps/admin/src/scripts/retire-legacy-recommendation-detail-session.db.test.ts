@@ -163,7 +163,10 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
     it("executes exactly ten waves and one thousand runs with durable command ordering and typed parity", async () => {
       const url = new URL(process.env.DATABASE_URL!)
       expect(url.hostname).toBe("127.0.0.1")
-      expect(url.pathname).toBe("/forge_legacy_session_owned_20260930")
+      expect([
+        "/forge_legacy_session_owned_20260930",
+        "/forge_unattended_owned_20261001",
+      ]).toContain(url.pathname)
       expect(process.env.NEXT_PUBLIC_DATADOG_VERSION).toBe(revision)
       const qualityIds: string[] = []
       for (let index = 0; index < 64; index++)
@@ -265,9 +268,127 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         qualityBaseline,
         stopBefore: iso(20 * 60_000),
       }
+      const campaignReviewedAt = iso(-3 * 60_000)
+      const campaignStart = {
+        ...start,
+        source: { ...start.source, reviewedAt: campaignReviewedAt },
+        lease: {
+          ...lease,
+          reviewedAt: campaignReviewedAt,
+          expiresAt: new Date(
+            Date.parse(campaignReviewedAt) + 12 * 60 * 60_000,
+          ).toISOString(),
+          authorization: {
+            kind: "unattended-finite-v1",
+            scopeSha256: "1".repeat(64),
+          },
+        },
+      }
+      const malformedAuthorization = new CommandPipe()
+      malformedAuthorization.send({
+        ...start,
+        lease: {
+          ...lease,
+          authorization: {
+            kind: "unattended-finite-v1",
+            scopeSha256: "1".repeat(64),
+            extra: true,
+          },
+        },
+      })
+      await expect(
+        runLegacyDetailSession(
+          db,
+          malformedAuthorization,
+          () => {},
+          cohort.digest,
+          target,
+        ),
+      ).rejects.toThrow()
+      const staleManual = new CommandPipe()
+      staleManual.send({
+        ...start,
+        source: { ...start.source, reviewedAt: iso(-121_000) },
+      })
+      await expect(
+        runLegacyDetailSession(
+          db,
+          staleManual,
+          () => {},
+          cohort.digest,
+          target,
+        ),
+      ).rejects.toThrow("source-review")
       const [initialLedger] = await db.$queryRawUnsafe<Array<{ n: bigint }>>(
         `SELECT count(*) AS n FROM recommendation_legacy_detail_retirement_run`,
       )
+      const staleCampaign = new CommandPipe()
+      staleCampaign.send(campaignStart)
+      await expect(
+        runLegacyDetailSession(
+          db,
+          staleCampaign,
+          (frame) => {
+            if ((frame as Record<string, unknown>).kind === "ready")
+              staleCampaign.send({
+                kind: "freeze-batch",
+                seq: 1,
+                planDigest: cohort.digest,
+                waveIndex: 14,
+                batchIndex: 0,
+                permit: {
+                  ...permit(target, registrySha256),
+                  measuredAt: iso(-120_000),
+                },
+              })
+          },
+          cohort.digest,
+          target,
+        ),
+      ).rejects.toThrow("permit")
+      const changedCampaign = new CommandPipe()
+      changedCampaign.send({
+        ...campaignStart,
+        source: {
+          ...campaignStart.source,
+          sourceHashes: {
+            ...campaignStart.source.sourceHashes,
+            [sourceFiles[0]!]: "0".repeat(64),
+          },
+        },
+      })
+      await expect(
+        runLegacyDetailSession(
+          db,
+          changedCampaign,
+          () => {},
+          cohort.digest,
+          target,
+        ),
+      ).rejects.toThrow("source")
+      const expiredCampaign = new CommandPipe()
+      expiredCampaign.send({
+        ...campaignStart,
+        lease: {
+          ...campaignStart.lease,
+          expiresAt: new Date(
+            Date.parse(campaignReviewedAt) + 2 * 60_000,
+          ).toISOString(),
+        },
+      })
+      await expect(
+        runLegacyDetailSession(
+          db,
+          expiredCampaign,
+          () => {},
+          cohort.digest,
+          target,
+        ),
+      ).rejects.toThrow("cohort")
+      const [afterCampaignRefusals] = await db.$queryRawUnsafe<
+        Array<{ n: bigint }>
+      >(`SELECT count(*) AS n FROM recommendation_legacy_detail_retirement_run`)
+      expect(afterCampaignRefusals.n).toBe(initialLedger.n)
       const stale = new CommandPipe()
       stale.send(start)
       await expect(
@@ -385,7 +506,7 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         seq++
         pipe.send({ ...body, seq, planDigest: cohort.digest })
       }
-      pipe.send(start)
+      pipe.send(campaignStart)
       await runLegacyDetailSession(
         db,
         pipe,
@@ -468,7 +589,12 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         stopBefore = start.stopBefore,
       ) => {
         const attempt = new CommandPipe()
-        attempt.send({ ...start, cohort: changed, stopBefore })
+        attempt.send({
+          ...start,
+          source: source(target),
+          cohort: changed,
+          stopBefore,
+        })
         await expect(
           runLegacyDetailSession(db, attempt, () => {}, changed.digest, target),
         ).rejects.toThrow()
@@ -510,7 +636,7 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
       await rejected({ ...overRowsBody, digest: sha(overRowsBody) })
       await rejected(cohort, iso(31 * 60_000))
       const replay = new CommandPipe()
-      replay.send(start)
+      replay.send({ ...start, source: source(target) })
       await expect(
         runLegacyDetailSession(
           db,
@@ -571,7 +697,7 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
           seq: ++smallSeq,
           planDigest: smallCohort.digest,
         })
-      smallPipe.send({ ...start, cohort: smallCohort })
+      smallPipe.send({ ...start, source: source(target), cohort: smallCohort })
       await runLegacyDetailSession(
         db,
         smallPipe,
