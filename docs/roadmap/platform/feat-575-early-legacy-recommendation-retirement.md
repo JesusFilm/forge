@@ -133,3 +133,9 @@ snapshot. The root-supplied finite stop time cannot exceed the manual
 30-minute lease. This is local code preparation; later cohort admission,
 client compatibility, deployment, and production cleanup require separate
 review. The ticket remains in progress.
+
+The local-only bounded lock-admission follow-up is specified in
+`docs/plans/2026-09-30-003-legacy-detail-persistent-session.md` and validated in
+`docs/validation/recommendation-storage-20260930/legacy-lock-admission-grace.md`.
+The observed `database-capacity` stop did not distinguish WAL from lock
+waiters; this preparation does not change ticket status or authorize deployment.

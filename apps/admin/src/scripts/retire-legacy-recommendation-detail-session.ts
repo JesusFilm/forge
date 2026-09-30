@@ -7,6 +7,7 @@ import { createHash } from "node:crypto"
 import { Console } from "node:console"
 import { readFileSync } from "node:fs"
 import { createInterface } from "node:readline"
+import { setTimeout as delay } from "node:timers/promises"
 import { pathToFileURL } from "node:url"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
@@ -229,7 +230,7 @@ function assertCohort(
   guard(seen.size >= 1 && seen.size <= 1_000, "cohort-size")
 }
 
-function assertPermit(
+export function assertPermit(
   permit: PermitInput,
   source: SourceInput,
   lease: LeaseInput,
@@ -514,31 +515,40 @@ async function qualitySnapshot(
 
 export const readLegacySessionQuality = qualitySnapshot
 
-async function actualDatabaseGate(
+export async function actualDatabaseGate(
   db: PrismaClient,
   source: SourceInput,
 ): Promise<void> {
-  assertSource(source)
-  await readOnly(db, async (tx) => {
-    guard(
-      (await conversionDatabaseHash(tx)) === source.targetDatabaseHash,
-      "target",
-    )
-    const [state] = await tx.$queryRawUnsafe<
-      Array<{ wal_bytes: string; lock_waiters: number }>
-    >(`SELECT (SELECT coalesce(sum(size),0)::text FROM pg_ls_waldir()) AS wal_bytes,
+  // A transient external waiter may clear before the next read. Never hold
+  // a database transaction open while waiting, and never retry a mutation.
+  for (let sample = 0; sample < 3; sample++) {
+    assertSource(source)
+    const lockWaiters = await readOnly(db, async (tx) => {
+      guard(
+        (await conversionDatabaseHash(tx)) === source.targetDatabaseHash,
+        "target",
+      )
+      const [state] = await tx.$queryRawUnsafe<
+        Array<{ wal_bytes: string; lock_waiters: number }>
+      >(`SELECT (SELECT coalesce(sum(size),0)::text FROM pg_ls_waldir()) AS wal_bytes,
       (SELECT count(*)::int FROM pg_stat_activity
        WHERE datname=current_database() AND pid<>pg_backend_pid()
          AND wait_event_type='Lock') AS lock_waiters`)
-    guard(
-      state &&
-        /^\d+$/.test(state.wal_bytes) &&
-        Number.isSafeInteger(Number(state.wal_bytes)) &&
-        Number(state.wal_bytes) <= 2_000_000_000 &&
-        state.lock_waiters === 0,
-      "database-capacity",
-    )
-  })
+      guard(
+        state &&
+          /^\d+$/.test(state.wal_bytes) &&
+          Number.isSafeInteger(Number(state.wal_bytes)) &&
+          Number(state.wal_bytes) <= 2_000_000_000 &&
+          Number.isInteger(state.lock_waiters) &&
+          state.lock_waiters >= 0,
+        "database-capacity",
+      )
+      return state.lock_waiters
+    })
+    if (lockWaiters === 0) return
+    if (sample < 2) await delay(100)
+  }
+  guard(false, "database-capacity")
 }
 
 function assertBatchBaseline(
@@ -690,6 +700,12 @@ export async function runLegacyDetailSession(
           "wave-deadline",
         )
         await actualDatabaseGate(db, start.source)
+        assertPermit(permit, start.source, start.lease, start.stopBefore)
+        guard(
+          ms(wave.plannedEnd) > Date.now() &&
+            ms(wave.plannedEnd) - Date.now() < 15 * 60_000,
+          "wave-deadline",
+        )
         if (batchPosition === 0) {
           await qualitySnapshot(db, start.qualityBaseline, start.lease)
         }
@@ -762,6 +778,7 @@ export async function runLegacyDetailSession(
         )
         assertPermit(permit, start.source, start.lease, start.stopBefore)
         await actualDatabaseGate(db, start.source)
+        assertPermit(permit, start.source, start.lease, start.stopBefore)
         assertExecutionHeadroom(wave, start.lease, start.stopBefore)
         const receipt = await runLegacyDetailRetirement(db, frozen.manifest, {
           execute: true,
