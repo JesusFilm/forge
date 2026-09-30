@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto"
+import { createHash } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import type { Principal } from "@/auth/principal"
@@ -202,7 +202,6 @@ export async function issueWatchSurfaceDelivery(
     manifest.items.map(({ position, itemPath }) => [position, itemPath]),
   ])
   const rows = manifest.items.map((item) => ({
-    id: randomUUID(),
     eventId: digestUuid(
       `${windowId}:${binding}:${item.position}:${item.itemPath}`,
     ),
@@ -321,7 +320,6 @@ export async function recordWatchSurfaceExposureBatch(
   }
   const inserted = await prisma.watchSurfaceExposure.createManyAndReturn({
     data: [...unique.values()].map((event) => ({
-      id: randomUUID(),
       ...event,
       expiresAt:
         issuedExpiries.get(event.eventId) ??
@@ -433,7 +431,6 @@ export async function recordWatchSurfaceExposure(
   try {
     await prisma.watchSurfaceExposure.create({
       data: {
-        id: randomUUID(),
         ...event,
         occurredAt,
         expiresAt:
