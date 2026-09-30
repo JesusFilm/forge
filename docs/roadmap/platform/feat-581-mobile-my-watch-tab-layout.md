@@ -3,7 +3,7 @@ id: "feat-581"
 title: "Mobile My Watch tab: downloads rail, More, and Account screens"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-29"
 duration: 2
 depends_on: []
