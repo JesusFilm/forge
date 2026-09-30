@@ -269,6 +269,9 @@ export type ReviewNarrativeInput = {
   prayer: string
   /** The message the piece was written to serve (message-first path). */
   message?: { idea: string; tension: string }
+  /** The spoken opening before the film; its preview line is a promise the
+   *  reflection must keep. */
+  opening?: string[]
   llm: DevotionalLlm
 }
 
@@ -288,6 +291,14 @@ export function buildNarrativeUserPrompt(input: ReviewNarrativeInput): string {
           `INTENDED MESSAGE: ${input.message.idea}`,
           `ITS TENSION: ${input.message.tension}`,
           "Judge the line against this message: a paragraph that does not serve it is a tangent. If the message itself is not what the passage says, report that as contradicts-story on paragraph 0.",
+        ]
+      : []),
+    ...(input.opening?.length
+      ? [
+          "",
+          "SPOKEN OPENING, before the film:",
+          ...input.opening.map((l) => `- ${l}`),
+          "The opening's 'In this devotional' line is a promise. If it promises something the reflection does not deliver, or says what the finding means and so gives the answer away, report it as unsupported-claim: quote the opening line exactly, and set paragraph to the reflection paragraph it points at.",
         ]
       : []),
     "",

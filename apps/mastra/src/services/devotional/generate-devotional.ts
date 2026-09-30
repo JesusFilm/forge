@@ -129,6 +129,10 @@ export type GeneratedDevotional = {
   /** Spoken opening lines between the welcome and "Let's watch" (message-
    *  first packaging); passed to the render's montage opening. */
   openingLines?: string[]
+  /** The promise every title and cover variant must express (storyteller). */
+  promise?: string
+  /** Each opening line with what should be on screen under it. */
+  openingPlan?: { line: string; visual: string; onScreen: string }[]
   clipTranscript?: string
   reflection: {
     text: string
@@ -203,6 +207,12 @@ export const GeneratedDevotionalSchema = z.object({
     })
     .optional(),
   openingLines: z.array(z.string()).optional(),
+  promise: z.string().optional(),
+  openingPlan: z
+    .array(
+      z.object({ line: z.string(), visual: z.string(), onScreen: z.string() }),
+    )
+    .optional(),
   textPipeline: z.literal("storyteller").optional(),
   clipTranscript: z.string().optional(),
   scripture: z.object({

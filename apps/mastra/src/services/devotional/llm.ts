@@ -209,7 +209,12 @@ export function createDevotionalLlm(options: {
       if (!parsed.success) {
         throw new DevotionalLlmError(
           "validation",
-          "devotional model response failed schema validation",
+          // Name the fields: "failed schema validation" alone sent every
+          // diagnosis back through a paid re-run.
+          `devotional model response failed schema validation: ${parsed.error.issues
+            .slice(0, 3)
+            .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+            .join("; ")}`,
           parsed.error,
         )
       }

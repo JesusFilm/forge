@@ -289,6 +289,9 @@ export async function composeStoryteller(
         text: input.scripture.text,
       },
       paragraphs: narrativeParagraphs(paragraphs),
+      opening: script.opening.flatMap((o) =>
+        o.onScreen ? [o.line, `(on screen) ${o.onScreen}`] : [o.line],
+      ),
       conclusion: script.takeaway,
       question: script.question,
       prayer: script.prayer,
@@ -380,7 +383,12 @@ export async function composeStoryteller(
     title: stripDashes(script.title),
     textPipeline: "storyteller",
     message: brief.message,
-    openingLines: script.openingLines.map(stripDashes),
+    openingLines: script.opening.map((o) => stripDashes(o.line)),
+    promise: stripDashes(script.promise),
+    openingPlan: script.opening.map((o) => ({
+      ...o,
+      line: stripDashes(o.line),
+    })),
     clipTranscript: input.passageText,
     scripture: input.scripture,
     reflection: {
