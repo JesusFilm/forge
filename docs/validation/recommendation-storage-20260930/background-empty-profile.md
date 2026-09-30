@@ -1,8 +1,9 @@
 # First-empty profile completion validation
 
-The new writer is disabled by default with
-`RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP=false`. It changes only future
-first durable projections. A claimed run can complete with
+The reader-first release shipped with the writer disabled. This activation
+makes `RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP=true` the default for future
+first durable projections; explicit `false` stops new empty completions while
+compatible readers keep replaying existing ones. A claimed run can complete with
 `projection_id = NULL` and `last_transition_reason = first_empty_no_evidence`
 when the original and transaction-reloaded eligible source arrays are empty,
 the profile/privacy authority is active, the run claim has an explicit virgin
@@ -103,3 +104,15 @@ dispatch is best effort, as before; this change does not create a new outbox.
 The local fixture does not establish the production raw-empty fraction; the
 observed declared-empty generation proportion is an upper bound. Production
 activation requires the normal PR-to-main process and root-owned rollout review.
+
+## Reader convergence before writer activation
+
+The root-owned September 30 reader receipt records actual Admin HTTP and worker
+processes converged on `a549b86a4`, healthy, with the effective empty-completion
+flag false and compatible rollback images captured. Aggregate-only receipts are
+`outputs/heartbeats/20260930T0243-background-empty-profile/{runtime-reader-converged,effective-reader-converged,retention-reader-converged}.json`
+in the task artifact directory. This establishes the reader-first prerequisite;
+it does not show that the writer flag is active or that production has saved
+storage. The separate default-on activation still requires CI, normal merge and
+deploy, effective flag verification on both roles, and the post-activation
+acceptance probes above.

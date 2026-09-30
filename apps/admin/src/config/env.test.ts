@@ -93,8 +93,8 @@ describe("env", () => {
   )
 
   it.each([
-    { value: undefined, expected: "false" },
-    { value: "", expected: "false" },
+    { value: undefined, expected: "true" },
+    { value: "", expected: "true" },
     { value: "true", expected: "true" },
     { value: "false", expected: "false" },
   ])(
