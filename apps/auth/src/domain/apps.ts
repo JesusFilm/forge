@@ -639,40 +639,67 @@ if (
   throw new Error("Local Shorts origin must not replace a hosted environment")
 }
 
+// Resource ceilings are independent of any particular client's requested scopes.
+export const STUDIO_MCP_RESOURCE_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+  "offline_access",
+  "shorts:read",
+  "shorts:edit",
+  "shorts:render",
+  "shorts:chat",
+  "shorts:narration",
+  "shorts:instructions:read",
+] satisfies AuthScopeKey[]
+
+export const STUDIO_CHATGPT_CLIENT_ID = "jfp_shorts_mcp_chatgpt"
+export const STUDIO_CHATGPT_CALLBACK =
+  "https://chatgpt.com/connector_platform_oauth_redirect"
+export const STUDIO_CHATGPT_SCOPES = [
+  "offline_access",
+  "shorts:read",
+  "shorts:edit",
+  "shorts:render",
+  "shorts:narration",
+] satisfies AuthScopeKey[]
+
 export const STUDIO_MCP_APP_SEED: RegisteredAppSeed = {
   key: "shorts-mcp",
   displayName: "Shorts MCP",
   description: "Delegated Shorts authoring without human review authority.",
   ...FIRST_PARTY_OWNER,
-  environments: MANAGER_APP_SEED.environments.map((e) => {
-    const origin =
-      e.kind === "local" && shortsLocalOrigin
-        ? shortsLocalOrigin
-        : e.allowedOrigins[0]!
-    return {
-      ...e,
-      clientId: `jfp_shorts_mcp_${e.kind}`,
-      managerSessionServiceClientId: undefined,
-      managerSessionServiceAudience: undefined,
-      allowedOrigins: [origin],
-      postLogoutRedirectUris: [new URL("/login", origin).toString()],
-      mcpResourceAudience: new URL("/mcp", origin).toString(),
-      redirectUris: [new URL("/mcp/oauth/callback", origin).toString()],
-      defaultScopes: [
-        "openid",
-        "profile:read",
-        "email:read",
-        "offline_access",
-        "shorts:read",
-        "shorts:edit",
-        "shorts:render",
-        "shorts:chat",
-        "shorts:narration",
-        "shorts:instructions:read",
-      ],
+  environments: [
+    ...MANAGER_APP_SEED.environments.map((e) => {
+      const origin =
+        e.kind === "local" && shortsLocalOrigin
+          ? shortsLocalOrigin
+          : e.allowedOrigins[0]!
+      return {
+        ...e,
+        clientId: `jfp_shorts_mcp_${e.kind}`,
+        managerSessionServiceClientId: undefined,
+        managerSessionServiceAudience: undefined,
+        allowedOrigins: [origin],
+        postLogoutRedirectUris: [new URL("/login", origin).toString()],
+        mcpResourceAudience: new URL("/mcp", origin).toString(),
+        redirectUris: [new URL("/mcp/oauth/callback", origin).toString()],
+        defaultScopes: STUDIO_MCP_RESOURCE_SCOPES,
+        autoApprove: false,
+      }
+    }),
+    {
+      key: "chatgpt",
+      kind: "production",
+      clientId: STUDIO_CHATGPT_CLIENT_ID,
+      mcpResourceAudience: "https://manager.jesusfilm.org/mcp",
+      redirectUris: [STUDIO_CHATGPT_CALLBACK],
+      postLogoutRedirectUris: [],
+      allowedOrigins: ["https://chatgpt.com"],
+      defaultScopes: STUDIO_CHATGPT_SCOPES,
       autoApprove: false,
-    }
-  }),
+    },
+  ],
 }
 
 export const FIRST_PARTY_APP_SEEDS = [

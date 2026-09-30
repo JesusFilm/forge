@@ -153,3 +153,26 @@ it("does not advertise retired Studio scopes", () => {
   expect(scopes).toContain("shorts:read")
   expect(scopes.some((scope) => scope.startsWith("studio:"))).toBe(false)
 })
+
+it("keeps the production Shorts resource ceiling independent of the narrow ChatGPT client", async () => {
+  const { STUDIO_CHATGPT_SCOPES, STUDIO_MCP_RESOURCE_SCOPES } =
+    await import("./apps")
+  const catalog = createOAuthResourceCatalog({
+    authIssuer: AUTH_ISSUER,
+    customAudiences: [],
+  })
+  const resource = resolveOAuthResource(
+    catalog,
+    "https://manager.jesusfilm.org/mcp",
+  )
+  expect(resource).toMatchObject({
+    trustedApp: "shorts-mcp",
+    trustedEnvironment: "production",
+    allowedScopes: STUDIO_MCP_RESOURCE_SCOPES,
+  })
+  expect(resource?.allowedScopes).toContain("shorts:chat")
+  expect(STUDIO_CHATGPT_SCOPES).not.toContain("shorts:chat")
+  expect(catalog.filter((r) => r.resourceClass === "shorts-mcp")).toHaveLength(
+    4,
+  )
+})

@@ -81,3 +81,23 @@ The authorize-resource and missing-renewal-scope defects found during setup were
 fixed and tested, including two consecutive installed-provider refreshes.
 Actual ChatGPT workflow, browser correction/approval and hosted release gates
 remain incomplete. See the September 30 qualification evidence.
+
+## Dedicated production ChatGPT client — 2026-10-01
+
+The normal Auth seed now defines `jfp_shorts_mcp_chatgpt` as a separate public
+web client with the exact ChatGPT callback, required PKCE, authorization-code
+and refresh grants, narrow Shorts scopes and normal consent. Shared Shorts
+resource ceilings and existing Manager callbacks remain unchanged. No user
+grants or Operator memberships are created. The installed-provider contract
+proves repeat seeding, consent without a human AppGrant, denied redirect/PKCE/
+scope/resource violations, and no premature access token. Actual client and
+human-review qualification remain open after deployment.
+
+Setup: `apps/manager/docs/shorts-chatgpt-production.md`. The earlier authenticated
+API-registration proposal is no longer necessary once this seed is deployed.
+
+Validation: 619 Auth unit tests passed (106 opt-in database skips), all ten
+installed-provider tests passed against a new isolated database, and Auth
+Prisma generation, typecheck, lint and touched-file formatting passed. Existing
+client/operator gates keep this ticket blocked; the seeded client is not proof
+of an actual ChatGPT connection.

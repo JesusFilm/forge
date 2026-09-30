@@ -1082,4 +1082,111 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { email } })
     await prisma.user.delete({ where: { id: user.id } })
   })
+
+  it("keeps the seeded hosted ChatGPT client consented, scoped and idempotent without app grants", async () => {
+    const {
+      STUDIO_CHATGPT_CLIENT_ID: clientId,
+      STUDIO_CHATGPT_CALLBACK: redirectUri,
+      STUDIO_CHATGPT_SCOPES: scopes,
+    } = await import("@/domain/apps")
+    const resource = "https://manager.jesusfilm.org/mcp"
+    const grantsBefore = await prisma.appGrant.count()
+    const before = await prisma.oauthClient.findUniqueOrThrow({
+      where: { clientId },
+    })
+    await seedFirstPartyApps()
+    const after = await prisma.oauthClient.findUniqueOrThrow({
+      where: { clientId },
+    })
+    expect(after.id).toBe(before.id)
+    expect(after).toMatchObject({
+      public: true,
+      requirePKCE: true,
+      skipConsent: false,
+      tokenEndpointAuthMethod: "none",
+      applicationType: "web",
+      scopes,
+      redirectUris: [redirectUri],
+    })
+    expect(
+      await prisma.oauthClientResource.findMany({
+        where: { clientId },
+        select: { resourceId: true },
+      }),
+    ).toEqual([{ resourceId: resource }])
+    expect(await prisma.appGrant.count()).toBe(grantsBefore)
+    const signup = await auth.api.signUpEmail({
+      asResponse: true,
+      headers: new Headers(),
+      body: {
+        email: `chatgpt_seed_${randomUUID()}@example.test`,
+        password: `T3st-${randomUUID()}!`,
+        name: "Hosted client fixture",
+      },
+    })
+    expect(signup.status).toBe(200)
+    const cookie = signup.headers.get("set-cookie")?.split(";")[0]
+    if (!cookie) throw new Error("Missing fixture cookie")
+    const signedUp = await signup.json()
+    const pkce = pkcePair()
+    const params = {
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: scopes.join(" "),
+      resource,
+      code_challenge: pkce.challenge,
+      code_challenge_method: "S256",
+    }
+    async function authorize(overrides: Record<string, string> = {}) {
+      const url = new URL("http://localhost:3004/api/auth/oauth2/authorize")
+      url.search = new URLSearchParams({ ...params, ...overrides }).toString()
+      return routeGet(new Request(url, { headers: { cookie: cookie! } }), {
+        params: Promise.resolve({ all: ["oauth2", "authorize"] }),
+      })
+    }
+    try {
+      expect(
+        await prisma.appGrant.count({ where: { userId: signedUp.user.id } }),
+      ).toBe(0)
+      const accepted = await authorize()
+      expect(accepted.status).toBe(302)
+      const consent = new URL(
+        accepted.headers.get("location")!,
+        "http://localhost:3004",
+      )
+      expect(consent.pathname).toBe("/oauth/consent")
+      expect(consent.searchParams.get("code")).toBeNull()
+      // Reaching consent requires no AppGrant for a HUMAN. It does not imply
+      // consent was given or that Manager's current Operator check will pass.
+      const rejectedRequests: Record<string, string>[] = [
+        { redirect_uri: "https://chatgpt.com/unregistered" },
+        { code_challenge: "", code_challenge_method: "" },
+        { scope: scopes.join(" ") + " shorts:chat" },
+        { resource: ADMIN_MCP_AUDIENCE },
+      ]
+      for (const override of rejectedRequests) {
+        const denied = await authorize(override)
+        const location = denied.headers.get("location")
+        const target = location
+          ? new URL(location, "http://localhost:3004")
+          : null
+        expect(target?.pathname).not.toBe("/oauth/consent")
+        expect(target?.searchParams.get("code") ?? null).toBeNull()
+        expect(denied.status >= 400 || target?.searchParams.has("error")).toBe(
+          true,
+        )
+      }
+      expect(
+        await prisma.oauthAccessToken.count({
+          where: { clientId, userId: signedUp.user.id },
+        }),
+      ).toBe(0)
+      expect(
+        await prisma.appGrant.count({ where: { userId: signedUp.user.id } }),
+      ).toBe(0)
+    } finally {
+      await prisma.user.delete({ where: { id: signedUp.user.id } })
+    }
+  })
 })

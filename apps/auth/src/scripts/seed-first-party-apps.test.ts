@@ -4,6 +4,10 @@ import {
   ADMIN_MCP_DEFAULT_SCOPES,
   CHANGELOG_DEFAULT_SCOPES,
   STUDIO_MCP_APP_SEED,
+  STUDIO_MCP_RESOURCE_SCOPES,
+  STUDIO_CHATGPT_CLIENT_ID,
+  STUDIO_CHATGPT_CALLBACK,
+  STUDIO_CHATGPT_SCOPES,
 } from "@/domain/apps"
 
 const upsertScope = vi.fn()
@@ -59,11 +63,13 @@ const PUBLIC_RESOURCE_ROWS: Array<{
   disabled: boolean
   identifier: string
 }> = [
-  ...STUDIO_MCP_APP_SEED.environments.map((e) => ({
-    identifier: e.mcpResourceAudience!,
-    disabled: false,
-    allowedScopes: [...e.defaultScopes],
-  })),
+  ...STUDIO_MCP_APP_SEED.environments
+    .filter((e) => e.key !== "chatgpt")
+    .map((e) => ({
+      identifier: e.mcpResourceAudience!,
+      disabled: false,
+      allowedScopes: [...STUDIO_MCP_RESOURCE_SCOPES],
+    })),
   ...[
     "http://localhost:3003/mcp",
     "https://admin-preview.jesusfilm.org/mcp",
@@ -134,13 +140,13 @@ describe("seedFirstPartyApps", () => {
   it("seeds scopes and OAuth clients for every first-party app", async () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
-    // shorts-mcp 4 + admin 4 + manager 4 + web 4 + mastra-studio 4 + chat 2 +
-    // changelog 2 + admin-mcp 5 + mobile 2 + tv 4 = 35 environments across 10
+    // shorts-mcp 5 + admin 4 + manager 4 + web 4 + mastra-studio 4 + chat 2 +
+    // changelog 2 + admin-mcp 5 + mobile 2 + tv 4 = 36 environments across 10
     // apps; oauthClients adds the 4 manager session-service clients on top.
     await expect(seedFirstPartyApps()).resolves.toEqual({
       apps: 10,
-      environments: 35,
-      oauthClients: 39,
+      environments: 36,
+      oauthClients: 40,
       // Includes separate Shorts render and narration consent scopes.
       scopes: 31,
       resourceRepair: {
@@ -928,5 +934,63 @@ describe("seedFirstPartyApps", () => {
 
     expect(findManyOAuthClients).not.toHaveBeenCalled()
     expect(transaction).not.toHaveBeenCalled()
+  })
+
+  it("seeds a dedicated consented ChatGPT client without changing Manager callback or resource ceiling", async () => {
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+    await seedFirstPartyApps()
+    const expected = {
+      redirectUris: [STUDIO_CHATGPT_CALLBACK],
+      scopes: STUDIO_CHATGPT_SCOPES,
+      public: true,
+      requirePKCE: true,
+      tokenEndpointAuthMethod: "none",
+      applicationType: "web",
+      skipConsent: false,
+      grantTypes: ["authorization_code", "refresh_token"],
+      responseTypes: ["code"],
+      clientCredentialsScopes: [],
+    }
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: STUDIO_CHATGPT_CLIENT_ID },
+        create: expect.objectContaining(expected),
+        update: expect.objectContaining(expected),
+      }),
+    )
+    expect(upsertAppEnvironment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          key: "chatgpt",
+          kind: "PRODUCTION",
+          autoApprove: false,
+          status: "APPROVED",
+        }),
+      }),
+    )
+    expect(upsertOAuthClientResource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: {
+          clientId: STUDIO_CHATGPT_CLIENT_ID,
+          resourceId: "https://manager.jesusfilm.org/mcp",
+        },
+      }),
+    )
+    expect(upsertOAuthResource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { identifier: "https://manager.jesusfilm.org/mcp" },
+        update: expect.objectContaining({
+          allowedScopes: STUDIO_MCP_RESOURCE_SCOPES,
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_shorts_mcp_production" },
+        update: expect.objectContaining({
+          redirectUris: ["https://manager.jesusfilm.org/mcp/oauth/callback"],
+        }),
+      }),
+    )
   })
 })
