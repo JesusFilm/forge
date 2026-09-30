@@ -61,3 +61,28 @@ acquisition path and confirms that it emits its diagnostic through
 `console.info`. The change does not alter the shared pool logger or any
 retirement guard. A fresh deployed start-only handshake remains required
 before production cleanup writes.
+
+## Later fixed-cohort and expiry proof
+
+The continuation change passed the same native PostgreSQL fixture (`1/1`,
+152.38 seconds including seeding and the expiry-boundary wait). It exercised the original 1,000-run,
+100-transaction path and then a separately fixed four-run cohort arranged as
+two batches in one wave and one batch in the next. The receipts reported the
+actual three batch ledgers, two waves and four runs. Start rejected an
+eleven-run batch, a batch declaring more than 4,000 rows and a stop time past
+the manual lease. A replay against already retired rows failed before a new
+write.
+
+The original 64 quality runs remained exact while live. A changed retained
+run failed its parent fingerprint. On a disposable fixture, a deleted root
+failed the quality gate just before its recorded expiry, then passed after
+both original run and parent expiry with a 63-live/1-expired-purged partition
+whose original observation counts still totaled 8,621. A deleted run whose
+parent remained present failed even after both expiries. The fixture moves
+its expiry clock only inside a local transaction with PostgreSQL replication
+triggers disabled; production lifecycle triggers are unchanged.
+
+Admin typecheck, scoped ESLint, Prettier, the CLI stdout regression (`2/2`)
+and `git diff --check` passed. These are disposable-database and local-process
+results, not production cleanup, filesystem recovery, client compatibility or
+later-cohort admission.

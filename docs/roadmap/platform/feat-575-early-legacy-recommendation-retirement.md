@@ -119,3 +119,17 @@ on stdout before `ready`; no cleanup command was sent. A CLI-local channel
 isolation fix and actual-subprocess regression are under review. The ticket
 remains in progress until a normal deployed handshake, a fresh finite
 admission, and the intended retirement and physical verification complete.
+
+## Expiry-aware finite-session continuation preparation
+
+The later-session contract in
+`docs/plans/2026-09-30-003-legacy-detail-persistent-session.md` keeps the
+original pinned 64-run, 8,621-observation inventory while allowing ordinary
+retention to purge expired roots. The Admin session accepts only a fresh fixed
+cohort of at most 1,000 runs in bounded partial waves and batches. It checks
+present original rows for exact parity and recognizes a missing original only
+after both recorded expiries and exact parent absence in one read-only
+snapshot. The root-supplied finite stop time cannot exceed the manual
+30-minute lease. This is local code preparation; later cohort admission,
+client compatibility, deployment, and production cleanup require separate
+review. The ticket remains in progress.

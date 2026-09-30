@@ -61,3 +61,30 @@ estimate. Independently review the server and local client, then publish only
 through the normal PR-to-main flow. A production session requires a fresh
 root-reviewed private cohort, source and target pins, actual compatible fleet
 convergence, current external measurements, and a separate root go/no-go.
+
+## Later fixed-cohort continuation
+
+The first speed pilot's dated retention boundary and exactly 1,000-run shape
+are not reusable after ordinary expiry begins. A later separately reviewed
+session accepts one to ten waves, one to ten batches per wave, and one to ten
+runs per batch, with at most 1,000 distinct runs overall. Every batch remains
+sorted and fixed in the reviewed digest. The existing 4,000-row and 16 MiB
+transaction ceilings apply to each batch; an oversized ten-run group must be
+repartitioned before review. The session never selects replacements or retries
+an uncertain execute.
+
+The root supplies a finite `stopBefore` no later than the actual 30-minute
+hold-review lease expiry. Each selected run and request root must remain live
+at least five minutes beyond its wave end. The 40-second write headroom, fresh
+external permits, exact source and target checks, one-shot markers, and v2
+service limits remain in force.
+
+The immutable original 64-run inventory and 8,621 original observations are
+checked in one repeatable-read snapshot. A present run must retain exact typed
+parent, item, expiry and observation parity. A missing run is counted as
+expired and purged only when both original run and request-root expiries have
+passed and the exact request parent is absent. Missing before either expiry,
+or a missing run with a surviving parent, stops the session. Receipts expose
+only aggregate live and expired-purged counts and a private partition digest;
+they never treat observations from purged roots as live evidence. Ordinary
+privacy expiry continues independently.
