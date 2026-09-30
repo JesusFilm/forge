@@ -68,7 +68,9 @@ export type LapseReminderSchedulingPort = {
     date: Date
   }) => Promise<void>
   cancel: (identifier: string) => Promise<void>
-  dismissDelivered: () => Promise<void>
+  /** KTD13: by identifier. Dismiss-all would take an announcement the viewer
+   *  has not opened yet out of the shared tray (AE21). */
+  dismiss: (identifier: string) => Promise<void>
 }
 
 export type LapseReminderLifecycleDeps = {
@@ -82,6 +84,12 @@ export type LapseReminderLifecycleDeps = {
   subscribeToRecordClear: (listener: () => void) => () => void
   subscribeToAppState: (listener: (state: string) => void) => () => void
   now: () => number
+  /**
+   * U7/KTD9: fired with the permission this pass just read, granted or denied.
+   * Push registration hangs off it so it never performs a second permission
+   * read. Never awaited, and a hook that throws costs the pass nothing.
+   */
+  onPermissionRead?: (permission: { granted: boolean }) => void
   /** Named `telemetry` on purpose: datadogReservedAttributes.guard only sweeps
    *  sinks spelled datadogLog, DdLogs or telemetry, so a rename makes every
    *  emit site below invisible to it. */
@@ -125,20 +133,24 @@ export function createLapseReminderLifecycle(
   }
 
   /** Each removal step reports whether it landed, so a clear that could not
-   *  finish can hand the rest of its cleanup to the next pass. */
+   *  finish can hand the rest of its cleanup to the next pass. One dismiss per
+   *  reminder identifier (KTD13), so nothing else in the tray is touched. */
   async function dismissDelivered(
     reason: LapseReminderPassReason,
   ): Promise<boolean> {
-    try {
-      await withTimeout(
-        deps.adapter.dismissDelivered(),
-        LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
-      )
-      return true
-    } catch (error) {
-      logStepFailure(reason, "dismiss", null, error)
-      return false
+    let cleaned = true
+    for (const kind of LAPSE_REMINDER_KINDS) {
+      try {
+        await withTimeout(
+          deps.adapter.dismiss(LAPSE_REMINDER_IDENTIFIERS[kind]),
+          LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
+        )
+      } catch (error) {
+        logStepFailure(reason, "dismiss", kind, error)
+        cleaned = false
+      }
     }
+    return cleaned
   }
 
   async function cancelReminder(
@@ -182,6 +194,13 @@ export function createLapseReminderLifecycle(
         deps.adapter.getPermission(),
         LAPSE_REMINDER_ADAPTER_DEADLINE_MS,
       )
+      try {
+        // A read that LANDED, so push may act on it. A failed read is not a
+        // denial and reaches nobody.
+        deps.onPermissionRead?.({ granted: status.granted })
+      } catch {
+        // The reminders are this pass's job; the hook is a passenger.
+      }
       return status.granted ? "granted" : "denied"
     } catch (error) {
       logStepFailure(reason, "permission", null, error)

@@ -70,3 +70,53 @@ Measure the actual atomic publisher at a dominating synthetic shape; batch count
 also matters when the operator is remote because each batch adds network latency.
 Use the reviewed deployed CLI near the database when WAN round trips exceed the
 budget, preserving revision checks and aggregate-only output.
+
+## Fixed event windows still have moving identity inputs
+
+The first production publication refused two exact generations while all aggregate
+counts stayed equal. A fixed event cutoff does not freeze current profile-session
+links, privacy state, or integrity decisions. Discovery links last 24 hours and
+`loadCowatchSourceRows` evaluates them at the operation's current wall clock; the
+graph hash includes the resulting viewer identity. Before the first graph exists,
+there is no retained durable ownership to recover when a discovery link expires.
+
+To isolate this from nondeterministic computation, use one bounded READ ONLY
+RepeatableRead snapshot and compare the same deployed source reader with two
+explicit wall clocks. Rebuild identical loaded inputs to test determinism, and
+compare eligible source components in memory. Retain aggregate change counts only.
+The production diagnostic found three profile-to-session changes and unchanged
+membership/counts; repeated builds were deterministic. The earlier-clock hash did
+not reproduce the historical preflight hash, so intervening metadata changes
+remained unresolved. A current snapshot cannot reconstruct historical metadata.
+
+Review a finite conditional handoff before execution: one complete fresh preflight,
+exact original window, every count and encoded-width ceiling unchanged, then at
+most one immediate publication pinned to that observed fingerprint. Preserve the
+publisher's in-transaction exact-generation recheck, operation claims, deadlines
+and fail-closed handling. If it refuses or acknowledgement is uncertain, stop and
+reconcile; do not loop through new fingerprints or shorten the source window.
+This removes manual dispatch delay without weakening source integrity. Deployed
+source imports used by an inline diagnostic must handle the Admin package's
+CommonJS default export under tsx; a fake ESM fixture alone missed that boundary.
+
+Published durable graph lineage retains captured owner/privacy generation beyond
+discovery-link cleanup. That differs from the initial handoff's moving identity
+lookup, and from the owner release's 24-hour freshness deadline. Report release
+expiry, underlying graph retention, source expiry, natural issuance and human
+exposure as separate facts.
+
+## Preserve the failed attempt's input diagnosis
+
+An owner composer can reject its attempted slate and correctly serve a complete
+incumbent slate. Inspecting the retained incumbent candidates cannot reveal which
+input was missing in the rejected attempt. Preserve bounded missing-input flags
+and counts at the structural decision itself, then carry them unchanged into the
+existing rejection evidence. Keep that aggregate separate from candidate
+nominations, identities and the public recommendation response. Exercise both
+compact and legacy trace formats and assert unchanged response and stage count.
+
+Operational reporting also needs distinct populations: a `fallback` result can
+still contain recommendation cards, while an `empty` result has none. Compare
+recorded result, execution mode, reason and item count explicitly. Short adjacent
+windows can explain a new failure category, but they do not establish equivalent
+traffic, long-term availability, viewer exposure or recommendation usefulness.

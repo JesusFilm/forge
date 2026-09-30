@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { getKnownRecommendationWorkflowIds } from "./registry"
+import {
+  getKnownPushWorkflowIds,
+  getKnownRecommendationWorkflowIds,
+} from "./registry"
+import { runPushCampaign } from "./pushCampaign"
 import {
   runRecommendationRetention,
   runRecommendationRetentionScheduler,
@@ -33,6 +37,23 @@ describe("recommendation workflow registry", () => {
           workflowId?: string
         }
       ).workflowId ?? runRecommendationProfileReconciliationScheduler.name,
+    )
+  })
+})
+
+describe("push workflow registry", () => {
+  it("keeps the campaign run in the deployment discovery graph", () => {
+    const workflowIds = getKnownPushWorkflowIds()
+
+    expect(workflowIds).toContain(
+      (runPushCampaign as typeof runPushCampaign & { workflowId?: string })
+        .workflowId ?? runPushCampaign.name,
+    )
+  })
+
+  it("keeps the push list separate from the recommendation list", () => {
+    expect(getKnownRecommendationWorkflowIds()).not.toContain(
+      getKnownPushWorkflowIds()[0],
     )
   })
 })

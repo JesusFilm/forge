@@ -13,6 +13,25 @@ blocks:
 tags: [admin, recommendations, cowatch, experiments, ranking]
 ---
 
+## Current production disposition
+
+Owner-approved co-watch and implemented MMR were activated at **2026-09-29
+23:00:26.512 UTC** without a trial. Authenticated Admin reloaded pointer generation
+**4 / OWNER_APPROVED** with the exact active release and manifest. The first
+release's live freshness ends **2026-09-30T22:59:20.343Z**; explicit refresh and
+incumbent fallback remain in place. Feat-573 owns automatic refresh. The sections
+below retain the historical implementation and refusal record; they do not describe
+the current serving pointer. Full shadow acceptance, causal usefulness, broader
+ranking inputs and dormant exposure coverage remain separate open work.
+
+This ticket remains in progress: the bounded natural window through 23:10:08 UTC
+contained 38 issued requests but no exact direct owner provenance. Eight shared
+fallback markers comprised seven missing-composition-input reasons and one sparse
+co-watch reason. Investigate the missing input before declaring the rollout
+verified; failed owner composition persists the incumbent platform, so those
+historical rows cannot identify the missing attempted input. Full evidence and its
+attribution limits are in the activation operation record.
+
 ## Problem
 
 The owner requested live use of implemented shadow work on September 29.
@@ -133,3 +152,67 @@ coverage from a single activation.
 Local direct-path implementation and reviewed validation are recorded in
 `docs/operations/recommendation-owner-live-activation-2026-09-30.md`. This does not
 claim production activation or close this ticket.
+
+## September 30 production confirmation blocker
+
+PR #2478 merged as `85656b946c7519cb39d501d44ce6d1d998ec7d9b` through the
+normal release flow. The supported direct operator is implemented, superseding
+the earlier study-only operator limitation above. Activation is not yet recorded.
+
+The production emergency-stop control opened a native `window.confirm` prompt
+that the in-app browser did not expose. A fresh authenticated Admin inspection
+still showed pointer generation 1 at control with no committed stop audit. The
+original user tab recovered after a normal reload; no transition remained pending.
+The user's explicit activation approval remains valid; this is an inaccessible
+product confirmation, not a new authorization requirement.
+
+Replace that native prompt with an accessible in-page confirmation for stop,
+clear, rollback and permanent-default actions. Keep the exact confirmation text,
+explicit Confirm/Cancel, generation and CSRF checks, permission enforcement and
+unknown-acknowledgement handling. Confirm must submit at most once; cancel must
+not issue a mutation. Record the actual deployed operator outcome separately.
+The ticket remains **in progress**, including fresh capacity coordination: the
+September 29 21:25 UTC observation had 8.612 GB free, 1.074 GB resident WAL and one long
+transaction, and did not satisfy the prior seven-day runway projection.
+
+## September 30 canonical-origin blocker
+
+PR #2488 merged as `3abde2aa564e30c16631979b5d9403fc4c265403`; both Admin
+processes and compatible Watch were healthy at September 29 22:02 UTC. Exact
+0116/0117/0118 catalog and deployed publication-source checks passed. The earlier
+21:25 capacity concern is historical: the 21:47 observation restored 10.659 GB
+free and a conservative 7.835-day projection, without credit for future savings.
+Fresh admission remains necessary at actual publication.
+
+The in-page confirmation now works, but the supported POST was rejected by the
+CSRF guard before mutation. A canonical-origin unauthenticated diagnostic confirms
+`csrf_failed`; the client mislabeled this as a role refusal. Repair the exact
+canonical-origin check and error distinction under this ticket, retaining all
+operator authorization. Pointer generation remains 1/control, no graph has been
+published and no owner release is active.
+
+## September 30 successful direct cutover
+
+The normal release chain was #2478 (direct authority), #2488 (accessible controls)
+and #2494 (canonical-origin CSRF repair). Subsequent compatible storage release
+#2495 ran on both healthy Admin roles during cutover; Watch remained healthy at
+`0a707123`. Supported stop/clear retired the empty bootstrap, with immutable
+G2/G3 audits. Two exact-source publication refusals wrote no graphs. A focused
+read-only diagnostic proved clock-dependent discovery-link expiry can change
+identity without counts; a reviewed one-use fresh-preflight/publication handoff
+retained all source, byte, transaction and process bounds and the exact generation
+recheck.
+
+The published graph contains 6,680 qualified sources, 35,632 contributions and
+9,000 edges (613 supported), from the original fixed seven-day window.
+Release `4459344d-202b-4665-aab3-75fa17920c10` selected graph
+`7a0df065a6562c562ea49809e4db4fd68d3a112729368bcfd0033679ea7270fa` through
+recent-authenticated Admin. The active response and reloaded G4 serving pointer
+agree. No study assignment, synthetic viewer evidence or causal PASS was created.
+Native production-shaped fixtures cover direct execution, source/privacy fencing,
+replacement and rollback; production supported stop/clear was observed before
+activation. We did not stop the newly activated release merely to manufacture a
+production rollback sample.
+
+Exact evidence and remaining natural issuance disposition:
+`docs/operations/recommendation-owner-live-activation-2026-09-30.md`.

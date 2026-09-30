@@ -1,0 +1,28 @@
+{
+  "observedAt": "2026-09-29T21:25:10.48812+00:00",
+  "availableBytes": 8611950592,
+  "reserves": {
+    "graphBytes": 68231168,
+    "ownerReleaseBytes": 32768,
+    "additionalResidentWalReserveBytes": 268435456,
+    "temporaryBytes": 45371302,
+    "concurrentMarginBytes": 134217728
+  },
+  "projectedAvailableAtPeakBytes": 8095662170,
+  "ordinaryDailyGrowthBytes": 1191328353,
+  "requestsPer24h": 7265,
+  "allRequestsChargedDirectIncrementBytes": 104151040,
+  "projectedDailyGrowthBytes": 1295479393,
+  "projectedRunwayDays": 6.2491632161377035,
+  "peakMinimum5GBMet": true,
+  "priorSevenDayProjectionMet": false,
+  "longTransactions": 1,
+  "publicationAdmission": "pending_storage_reconciliation",
+  "savingsCredit": 0,
+  "limitations": [
+    "Serving increment is a measured matched fixture with one profile lineage source, not a universal upper bound.",
+    "WAL already allocated is reflected in observed free space; reserve is additional.",
+    "No future purge, index removal, conversion, or packed-format savings credited.",
+    "Storage task owns current long-transaction diagnosis and loaded-retention proof."
+  ]
+}

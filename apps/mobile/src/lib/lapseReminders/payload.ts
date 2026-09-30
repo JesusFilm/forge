@@ -4,6 +4,7 @@
  * payload is therefore untrusted on the way back in, whatever wrote it.
  */
 
+import { utf8ByteLength } from "../utf8ByteLength"
 import {
   LAPSE_REMINDER_KINDS,
   LAPSE_REMINDER_PAYLOAD_VERSION,
@@ -51,22 +52,6 @@ const WATCH_TARGET_PREFIX = "forgemobile://watch/"
 // RFC 3986's unreserved set. Everything else is either a delimiter the route
 // would read as structure or a character no slug producer emits.
 const SLUG_PATTERN = /^[A-Za-z0-9._~-]+$/
-
-/** UTF-8 length of a string, which is what the cap above counts. */
-function utf8ByteLength(value: string): number {
-  let bytes = 0
-  for (let index = 0; index < value.length; index += 1) {
-    const code = value.charCodeAt(index)
-    if (code < 0x80) bytes += 1
-    else if (code < 0x800) bytes += 2
-    else if (code >= 0xd800 && code <= 0xdbff) {
-      // A surrogate pair is one four-byte character; skip its low half.
-      bytes += 4
-      index += 1
-    } else bytes += 3
-  }
-  return bytes
-}
 
 /** True for a slug the watch route can carry and the parser will accept. */
 function isValidSlug(slug: string): boolean {

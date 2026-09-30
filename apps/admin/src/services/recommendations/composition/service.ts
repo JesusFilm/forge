@@ -230,7 +230,7 @@ export async function persistCompositionObservation(
     where: { id: input.runId },
     include: {
       evaluation: true,
-      request: true,
+      request: { select: { state: true, createdAt: true, expiresAt: true } },
       projectionProfile: {
         select: { state: true, privacyGeneration: true, expiresAt: true },
       },
@@ -323,7 +323,7 @@ async function loadCurrentEvidence(
         include: {
           run: {
             include: {
-              request: true,
+              request: { select: { state: true, expiresAt: true } },
               projectionProfile: {
                 select: {
                   state: true,

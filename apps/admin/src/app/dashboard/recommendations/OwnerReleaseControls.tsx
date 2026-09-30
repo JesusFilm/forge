@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { readPromotionForbiddenReason } from "./promotion-response"
 type PreparedRelease = {
   operationId: string
   expectedPointerGeneration: number
@@ -101,14 +102,20 @@ export function OwnerReleaseControls(props: {
         }),
       })
       if ([400, 401, 403, 409].includes(response.status)) {
+        const forbiddenReason =
+          response.status === 403
+            ? await readPromotionForbiddenReason(response)
+            : null
         setState("idle")
         setReview(null)
         setMessage(
           response.status === 401
             ? "Sign in again to use direct activation."
-            : response.status === 403
-              ? "Direct activation requires operator and permanent-approval permissions."
-              : "The release was refused. Reload current state and review graph availability before another operation.",
+            : forbiddenReason === "csrf_failed"
+              ? "Request security validation failed. Reload the canonical Admin page before trying again."
+              : forbiddenReason === "permission_denied"
+                ? "Direct activation requires operator and permanent-approval permissions."
+                : "The release was refused. Reload current state and review graph availability before another operation.",
         )
         return
       }

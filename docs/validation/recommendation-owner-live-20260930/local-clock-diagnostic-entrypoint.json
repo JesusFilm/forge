@@ -1,0 +1,60 @@
+{
+  "productionExecuted": false,
+  "localOnly": true,
+  "exitCode": 0,
+  "receipt": {
+    "status": "diagnosed",
+    "terminalDecision": "no_promotion",
+    "sourceWindow": {
+      "version": "episode-event-window-v1",
+      "windowStart": "2026-09-22T19:00:00.000Z",
+      "windowEnd": "2026-09-29T19:00:00.000Z",
+      "evaluationAsOf": "2026-09-29T19:00:00.000Z"
+    },
+    "priorNow": "2026-09-29T22:46:31.487Z",
+    "currentNow": "2026-09-29T22:56:46.827Z",
+    "prior": {
+      "generation": "e7a5a49f0fac5fb11d5181de4afe9ff61d86b9e234ea68526656070e16be2e08",
+      "rawSourceCount": 0,
+      "sourceCount": 0,
+      "attemptedPairCount": 0,
+      "contributionCount": 0,
+      "edgeCount": 0,
+      "sameInputDeterministic": true
+    },
+    "current": {
+      "generation": "e7a5a49f0fac5fb11d5181de4afe9ff61d86b9e234ea68526656070e16be2e08",
+      "rawSourceCount": 0,
+      "sourceCount": 0,
+      "attemptedPairCount": 0,
+      "contributionCount": 0,
+      "edgeCount": 0,
+      "sameInputDeterministic": true
+    },
+    "changes": {
+      "commonSources": 0,
+      "eligibleAdded": 0,
+      "eligibleRemoved": 0,
+      "changedSources": 0,
+      "viewerKey": 0,
+      "outcome": 0,
+      "decision": 0,
+      "weight": 0,
+      "session": 0,
+      "profileToSession": 0,
+      "sessionToProfile": 0,
+      "profileToDifferentProfileOrGeneration": 0,
+      "sessionToDifferentSession": 0
+    },
+    "priorClockMatchesRetainedPreflight": false,
+    "generationChangedByClock": false,
+    "sameDatabaseSnapshot": true,
+    "readOnly": true,
+    "sourceIdentitiesRetained": false,
+    "historicalDatabaseSnapshotReconstructed": false
+  },
+  "rawStderrWithheld": true,
+  "stderrLineCount": 0,
+  "sourceCheckout": "/home/nisal/.codex/worktrees/recommendation-owner-live-evidence-20260930/forge/apps/admin",
+  "relevantSourceFilesMatch4455": true
+}

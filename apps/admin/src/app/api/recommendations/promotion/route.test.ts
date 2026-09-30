@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+const env = vi.hoisted(() => ({ ADMIN_BASE_URL: "http://localhost:3003" }))
 const resolveAdminSessionFromRequest = vi.hoisted(() => vi.fn())
 const approveBoundedStage = vi.hoisted(() => vi.fn())
 const dispatchRecommendationPromotion = vi.hoisted(() => vi.fn())
@@ -13,6 +14,7 @@ const prisma = vi.hoisted(() => ({
 }))
 
 vi.mock("@/auth/session", () => ({ resolveAdminSessionFromRequest }))
+vi.mock("@/config/env", () => ({ env }))
 vi.mock("@/services/recommendations/promotion/service", () => ({
   createRecommendationPromotionService: () => ({
     approveBoundedStage,
@@ -43,6 +45,7 @@ function request(body: unknown, headers: Record<string, string> = {}) {
 describe("recommendation promotion mutation endpoint", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    env.ADMIN_BASE_URL = "http://localhost:3003"
     resolveAdminSessionFromRequest.mockResolvedValue({
       principal: { id: "admin-1", role: "ADMIN" },
       authenticatedAt: new Date("2026-08-26T00:00:00.000Z"),
@@ -191,6 +194,113 @@ describe("recommendation promotion mutation endpoint", () => {
   })
 })
 
+describe("canonical Admin origin behind an internal proxy", () => {
+  const canonicalOrigin = "https://admin.jesusfilm.org"
+  const internalUrl =
+    "http://admin.railway.internal:8080/api/recommendations/promotion"
+  const stop = {
+    action: "set_kill_switch",
+    expectedPointerGeneration: 2,
+    enabled: true,
+    reason: "operator_incident",
+  }
+  function proxiedRequest(
+    origin: string | null,
+    headers: Record<string, string> = {},
+  ) {
+    const input = request(stop, { ...headers, origin: origin ?? "" })
+    if (origin === null) input.headers.delete("origin")
+    return new Request(internalUrl, input)
+  }
+  beforeEach(() => {
+    vi.clearAllMocks()
+    env.ADMIN_BASE_URL = canonicalOrigin
+    resolveAdminSessionFromRequest.mockResolvedValue({
+      principal: { id: "admin-1", role: "ADMIN" },
+      authenticatedAt: new Date(),
+    })
+    setKillSwitch.mockResolvedValue({ enabled: true, generation: 3 })
+  })
+
+  it("passes canonical HTTPS origin through to normal authentication on an internal HTTP URL", async () => {
+    resolveAdminSessionFromRequest.mockResolvedValue(null)
+    const { POST } = await import("./route")
+    const result = await POST(proxiedRequest(canonicalOrigin))
+    expect(result.status).toBe(401)
+    expect(await result.json()).toEqual({
+      ok: false,
+      error: "authentication_required",
+    })
+    expect(resolveAdminSessionFromRequest).toHaveBeenCalledTimes(1)
+    expect(setKillSwitch).not.toHaveBeenCalled()
+  })
+
+  it("applies the authenticated exact-generation emergency stop with the canonical origin", async () => {
+    const { POST } = await import("./route")
+    const result = await POST(proxiedRequest(canonicalOrigin))
+    expect(result.status).toBe(202)
+    expect(setKillSwitch).toHaveBeenCalledExactlyOnceWith({
+      actor: { id: "admin-1", role: "ADMIN" },
+      expectedPointerGeneration: 2,
+      enabled: true,
+      reason: "operator_incident",
+    })
+    expect(dispatchRecommendationPromotion).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    null,
+    "",
+    "null",
+    "not an origin",
+    "https://attacker.example",
+    "http://admin.railway.internal:8080",
+    "http://admin.jesusfilm.org",
+    "https://admin.jesusfilm.org/",
+    "https://admin.jesusfilm.org.attacker.example",
+    "https://admin.jesusfilm.org https://attacker.example",
+  ])(
+    "rejects origin %s before authentication despite spoofed forwarding headers",
+    async (origin) => {
+      const { POST } = await import("./route")
+      const result = await POST(
+        proxiedRequest(origin, {
+          host: "admin.jesusfilm.org",
+          forwarded: "proto=https;host=admin.jesusfilm.org",
+          "x-forwarded-host": "admin.jesusfilm.org",
+          "x-forwarded-proto": "https",
+        }),
+      )
+      expect(result.status).toBe(403)
+      expect(await result.json()).toEqual({ ok: false, error: "csrf_failed" })
+      expect(resolveAdminSessionFromRequest).not.toHaveBeenCalled()
+      expect(setKillSwitch).not.toHaveBeenCalled()
+      expect(approveBoundedStage).not.toHaveBeenCalled()
+      expect(prepareOwnerRelease).not.toHaveBeenCalled()
+      expect(activateOwnerRelease).not.toHaveBeenCalled()
+      expect(dispatchRecommendationPromotion).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ["x-forge-csrf", ""],
+    ["x-forge-csrf", "wrong-value"],
+    ["content-type", "text/plain"],
+  ])(
+    "still requires the custom header and JSON content type: %s=%s",
+    async (header, value) => {
+      const { POST } = await import("./route")
+      const result = await POST(
+        proxiedRequest(canonicalOrigin, { [header]: value }),
+      )
+      expect(result.status).toBe(403)
+      expect(await result.json()).toEqual({ ok: false, error: "csrf_failed" })
+      expect(resolveAdminSessionFromRequest).not.toHaveBeenCalled()
+      expect(setKillSwitch).not.toHaveBeenCalled()
+    },
+  )
+})
+
 const directInput = {
   action: "prepare_owner_release",
   operationId: "00000000-0000-4000-8000-000000000001",
@@ -200,6 +310,7 @@ const directInput = {
 describe("direct owner release endpoint", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    env.ADMIN_BASE_URL = "http://localhost:3003"
     vi.setSystemTime(new Date("2026-09-30T02:00:00Z"))
     resolveAdminSessionFromRequest.mockResolvedValue({
       principal: { id: "admin-1", role: "ADMIN" },

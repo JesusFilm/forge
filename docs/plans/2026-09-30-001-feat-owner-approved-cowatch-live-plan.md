@@ -38,3 +38,83 @@ Parent owns plan, dependency/index updates, migration-number coordination, safe 
 ## Follow-up and truthful closeout
 
 Feat-505 remains optional unperformed causal measurement, no longer a feat-565 activation dependency. Feat-566 remains accepted historical telemetry remediation. Feat-373's dormant coverage gaps and full feat-393's additional signals remain unresolved. Automatic graph refresh and capacity sustainability must be recorded as a concrete follow-up if not delivered; report the initial live graph deadline rather than implying perpetual useful graph coverage.
+
+## September 30 operator confirmation repair
+
+After the reviewed implementation merged in PR #2478, native browser confirmation
+blocked the supported emergency-stop interaction: the prompt was not visible in
+the in-app browser, and a fresh authenticated inspection still showed generation
+1/control with no committed stop audit. Replace `PromotionControls` native
+confirmation with an in-page, keyboard-accessible Confirm/Cancel panel. Preserve
+the exact text, request bodies, permission/CSRF/generation checks and uncertain
+acknowledgement behavior; consume confirmation synchronously to prevent duplicate
+POSTs. The closed panel adds no initial network request or rendered dialog.
+
+Verify cancel and Escape without POST, exact single confirmed submission for
+stop/clear/rollback/permanent actions, stale-generation and authorization errors,
+keyboard focus, and bounded initial-render cost. Production publication and
+activation remain unrecorded; this repair does not imply capacity admission or
+successful operator execution.
+
+## September 30 canonical-origin repair
+
+PR #2488 deployed the accessible confirmation to both Admin processes at
+`3abde2aa564e30c16631979b5d9403fc4c265403`. The supported stop POST then returned
+403 without changing generation 1/control or adding a stop audit. A separate
+unauthenticated POST with the canonical Admin Origin, exact CSRF header, JSON
+content type and empty body returned `csrf_failed` before authentication. The
+client incorrectly presented every 403 as permission denial.
+
+Use the existing configured canonical Admin origin for the promotion endpoint's
+exact Origin comparison. Do not derive trust from the internal transport URL,
+Host or forwarded headers, and do not add a second allowed origin. Preserve the
+custom CSRF header, JSON content type, session, role, recent-authentication, body
+size and generation checks. Report an explicit CSRF refusal separately from
+permission denial in both promotion clients. Test canonical HTTPS Origin with an
+internal HTTP request URL, attacker/missing/null/malformed origins, forged
+forwarded headers, and normal authentication/permission refusals. No permission
+grant or production authority change is part of this repair.
+
+## September 30 production execution
+
+Normal releases #2478, #2488 and #2494 delivered the direct path and supported
+operator repairs. On compatible storage release `8ecca9c7`, the complete bounded
+graph published at 2026-09-29T22:59:20.343Z and authenticated owner activation
+committed at 2026-09-29T23:00:26.512Z. A dashboard reload confirmed G4
+OWNER_APPROVED, exact release `4459344d-202b-4665-aab3-75fa17920c10`, and manifest
+`hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1`.
+
+Two exact-fingerprint refusals preceded publication without inserts. The
+read-only clock diagnostic proved that rolling discovery-link expiry can change
+source ownership while population counts remain unchanged; additional historical
+metadata drift was not reconstructed. The parent reviewed a single-use conditional
+preflight→publication handoff preserving the immutable window, original measured
+ceilings, private deployed CLI, deadlines, operation claims and exact generation
+recheck inside the publication transaction. It published once, with no retry loop
+or relaxed integrity rule. This changes the operational handoff, not the admission
+limits or serving contract.
+
+The initial release expires 2026-09-30T22:59:20.343Z. Automatic refresh remains
+feat-573; usefulness remains unmeasured under feat-505. See the operations record
+for actual configured authority, natural issuance and all retained limitations.
+
+## Diagnose natural missing-input fallback
+
+After direct owner activation, the bounded 23:00:26.512–23:10:08 UTC production
+sample contained 38 issued roots and no exact direct provenance. Seven shared
+fallback markers reported `composition_required_input_unavailable`; one reported
+sparse supported edges. Failed composition currently discards its actual coverage
+flags and persists the incumbent platform, preventing exact diagnosis from the
+retained rows. The shared markers do not establish an owner-specific attempt rate.
+
+Preserve the four missing-input booleans and bounded candidate, selected-item and
+themed-item counts from the actual failed structural composition. Carry a fixed
+diagnostic version through owner delivery into the existing rejected co-watch
+evidence entry. Add no trace rows, identities, payload dumps, public contract or
+database migration. Keep current fallback reasons, output, authority fences,
+manifest, weights, deadlines and required inputs unchanged. Test the originating
+coverage values and end-to-end persistence without substituting incumbent metrics.
+After normal review, green CI, merge and deployment, inspect one bounded natural
+fallback sample to identify the exact missing input. Theme hydration is a grounded
+hypothesis, not yet a demonstrated production cause; do not patch or relax it to
+force direct execution.

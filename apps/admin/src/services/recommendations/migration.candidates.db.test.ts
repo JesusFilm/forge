@@ -36,6 +36,7 @@ const migrationSql = [
   "0100_recommendation_candidate_compact_trace",
   "0101_recommendation_candidate_compact_trace_validate",
   "0102_recommendation_candidate_stage_duplicate_index_drop",
+  "0118_recommendation_candidate_stage_expiry_index_drop",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -254,6 +255,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(indexes.rows.map((row) => row.indexname)).not.toContain(
         "recommendation_candidate_stage_run_stage_idx",
       )
+      expect(indexes.rows.map((row) => row.indexname)).not.toContain(
+        "recommendation_candidate_stage_expiry_idx",
+      )
 
       await insertRequest("compact-trace-request", 0)
       await client.query(
@@ -367,6 +371,11 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     })
 
     it("fails a contended duplicate-index drop promptly and succeeds on retry", async () => {
+      const dropSql = migrationSql.find((sql) =>
+        sql.includes(
+          'DROP INDEX "recommendation_candidate_stage_run_stage_idx"',
+        ),
+      )!
       await client.query(
         `CREATE INDEX recommendation_candidate_stage_run_stage_idx
          ON recommendation_candidate_stage_evidence (run_id, stage, ordinal)`,
@@ -379,7 +388,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         await blocker.query(
           "LOCK TABLE recommendation_candidate_stage_evidence IN ACCESS SHARE MODE",
         )
-        await expect(client.query(migrationSql.at(-1)!)).rejects.toMatchObject({
+        await expect(client.query(dropSql)).rejects.toMatchObject({
           code: "55P03",
         })
         await client.query("ROLLBACK")
@@ -393,7 +402,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         await blocker.query("ROLLBACK")
         await blocker.end()
       }
-      await client.query(migrationSql.at(-1)!)
+      await client.query(dropSql)
       const removedIndex = await client.query<{ indexname: string }>(
         `SELECT indexname FROM pg_indexes WHERE schemaname = $1
          AND indexname = 'recommendation_candidate_stage_run_stage_idx'`,
@@ -929,6 +938,90 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(index.rows[0]?.indexdef).toContain(
         "WHERE (finalization_due_at IS NOT NULL)",
       )
+    })
+
+    it("leaves stage evidence and its index intact on a contended drop, then succeeds", async () => {
+      const dropSql = migrationSql.find((sql) =>
+        sql.includes('DROP INDEX "recommendation_candidate_stage_expiry_idx"'),
+      )!
+      await insertRequest("expiry-index-retained-request", 0)
+      await client.query(
+        `INSERT INTO recommendation_candidate_run (
+          id, request_id, purpose, context_version, generator_version,
+          union_version, eligibility_version, ranker_version, composer_version,
+          candidate_eligibility_parity, ranker_parity, nominated_count,
+          canonicalized_count, deduplicated_count, rejected_count,
+          scored_count, ordered_count, composed_count, evidence_complete,
+          expires_at
+        ) VALUES (
+          'expiry-index-retained-run', 'expiry-index-retained-request', 'watch',
+          'recommendation-context-v1', 'semantic-transcript-candidate-v1',
+          'canonical-video-union-v1', 'watch-playable-locale-v1',
+          'semantic-deterministic-ranker-v1', 'minimal-playable-slate-v1',
+          'passed', 'passed', 1, 1, 1, 0, 1, 1, 1, true, $1
+        )`,
+        [expiresAt],
+      )
+      await client.query(
+        `INSERT INTO recommendation_candidate_stage_evidence
+          (id, run_id, stage, ordinal, candidate_key, expires_at)
+         VALUES ('expiry-index-retained-stage', 'expiry-index-retained-run',
+           'nominated', 0, 'video-a', $1)`,
+        [expiresAt],
+      )
+      await client.query(
+        `CREATE INDEX recommendation_candidate_stage_expiry_idx
+         ON recommendation_candidate_stage_evidence (expires_at, id)`,
+      )
+      const other = new Client({ connectionString: databaseUrl })
+      await other.connect()
+      try {
+        await other.query(`SET search_path TO "${schemaName}", public`)
+        await client.query("BEGIN")
+        await client.query(
+          "LOCK TABLE recommendation_candidate_stage_evidence IN ACCESS SHARE MODE",
+        )
+        await expect(other.query(dropSql)).rejects.toMatchObject({
+          code: "55P03",
+        })
+        await other.query("ROLLBACK")
+        const retained = await client.query(
+          `SELECT count(*)::int AS stages FROM recommendation_candidate_stage_evidence`,
+        )
+        expect(retained.rows[0]?.stages).toBeGreaterThan(0)
+        const index = await client.query(
+          `SELECT 1 FROM pg_indexes WHERE schemaname = $1
+           AND indexname = 'recommendation_candidate_stage_expiry_idx'`,
+          [schemaName],
+        )
+        expect(index.rows).toHaveLength(1)
+        await client.query("COMMIT")
+        await other.query(dropSql)
+        const dropped = await client.query(
+          `SELECT 1 FROM pg_indexes WHERE schemaname = $1
+           AND indexname = 'recommendation_candidate_stage_expiry_idx'`,
+          [schemaName],
+        )
+        expect(dropped.rows).toHaveLength(0)
+        expect(
+          (
+            await client.query(
+              `SELECT count(*)::int AS stages FROM recommendation_candidate_stage_evidence`,
+            )
+          ).rows[0]?.stages,
+        ).toBe(retained.rows[0]?.stages)
+        await client.query(
+          "DELETE FROM recommendation_request WHERE id = 'expiry-index-retained-request'",
+        )
+        const cascaded = await client.query(
+          `SELECT 1 FROM recommendation_candidate_stage_evidence
+           WHERE run_id = 'expiry-index-retained-run'`,
+        )
+        expect(cascaded.rows).toHaveLength(0)
+      } finally {
+        await client.query("ROLLBACK")
+        await other.end()
+      }
     })
 
     afterAll(async () => {

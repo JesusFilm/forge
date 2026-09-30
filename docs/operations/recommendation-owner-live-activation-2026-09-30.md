@@ -5,9 +5,17 @@ that decision without creating study assignments, shadow/composition PASS record
 calibration or efficacy evidence. Usefulness remains unmeasured. The wider
 unimplemented ranking roadmap is outside this release.
 
-**Current disposition: implementation validated locally; production publication
-and activation pending.** This record must not be cited as proof of live viewer
-influence. Feat-565 remains in progress.
+**Current disposition: owner-approved co-watch and implemented MMR are enabled;
+direct natural execution is not yet observed.**
+Authenticated Admin recorded activation at **September 29 23:00:26.512 UTC**
+(September 30 12:00:26 NZDT), then a reload confirmed pointer generation **4**,
+stage **OWNER_APPROVED**, and the exact current release. No trial was created.
+The initial owner release expires **September 30 22:59:20.343 UTC** (October 1
+11:59:20 NZDT); refresh is manual and expiry serves the compatible incumbent.
+Causal usefulness remains unmeasured. Natural issuance is reported separately
+below; an active pointer alone does not prove viewer exposure or improvement.
+Earlier pending/refused sections are chronological evidence, superseded by this
+current disposition and the activation receipt below.
 
 [PR #2478](https://github.com/JesusFilm/forge/pull/2478) carries the direct path
 through the normal release flow. Its initial CI run passed build, unit tests,
@@ -18,7 +26,305 @@ runtime-backed fixtures now share the complete recommendation migration chain;
 historical upgrade tests retain their fixed chains. All seven original failures
 passed locally. The repaired Admin/profile scope passed 18 checks and the later
 retriever scope passed nine (one intentional Redis drill skipped), with no runtime
-or timeout changes. The CI gate must pass before merge.
+or timeout changes. All 25 checks were successful or intentionally skipped
+at reviewed head `d0bb991969f01adf669ce6d1af3fff64864970af`, including the CI gate.
+The PR merged normally as `85656b946c7519cb39d501d44ce6d1d998ec7d9b`.
+
+## September 29 production deployment and operator repair
+
+At 21:23 UTC, both Admin HTTP and worker ran `85656b946` and returned health 200;
+Watch remained healthy at compatible revision `0a707123`. A later storage revision
+was already building, so this is a point-in-time observation. The 21:20 read-only
+catalog check passed all 17 checks for exact migrations 0111/0112, their constraints,
+triggers and manifest. It found no owner release and pointer generation 1/control.
+The deployed CLI probe matched all 16 pinned source files, found the private
+database connection and reported approximately 23 GB of available cgroup memory.
+Neither probe published a graph or activated authority. Receipts:
+[runtime health](../validation/recommendation-owner-live-20260930/production-runtime-health-20260929T2123.json),
+[owner migrations](../validation/recommendation-owner-live-20260930/production-owner-migrations-20260929T2120.json),
+[CLI probe](../validation/recommendation-owner-live-20260930/production-deployed-cli-probe-20260929T2120.json).
+
+The supported emergency-stop action opened a native browser confirmation that
+automation could neither inspect nor accept, and the owner could not see. A fresh
+authenticated page still showed generation 1/control and no stop audit. Normal
+reload recovered the original tab; temporary recovery tabs were closed. Replace
+the native prompt with an explicit in-page Confirm/Cancel panel while preserving
+the action, generation, authentication and CSRF contract. No committed stop, graph
+publication or owner activation is claimed from those interactions.
+
+The replacement passed 20 focused component tests, scoped lint, a fresh full
+Admin typecheck and independent review. An
+isolated local browser fixture at 1,100 and 390 pixels showed the confirmation,
+focused Cancel, produced no initial or cancelled POST and exactly one confirmed
+POST, with no horizontal overflow. Fifty server-render samples per version had
+median 0.525/0.548 ms and p95 0.762/0.781 ms before/after; initial HTML grew by
+14 bytes. These component measurements are not full-page production Web Vitals.
+See the [local receipt](../validation/recommendation-owner-live-20260930/local-confirmation-browser.json),
+[desktop](../validation/recommendation-owner-live-20260930/confirmation-desktop.png)
+and [mobile](../validation/recommendation-owner-live-20260930/confirmation-mobile.png)
+screenshots.
+
+A separate bounded read at 21:25 UTC found 8,611,950,592 bytes free, 1,073,741,824
+bytes of resident WAL, no lock waiters or replication slots, one transaction older
+than 30 seconds and 7,265 requests in the prior 24 hours (cap not reached). There
+were zero graph generations and owner releases. The latest completed retention
+run had deleted zero roots; no expired request was found. Charging measured graph,
+temporary and extra WAL reserves, a concurrent margin and the matched-fixture
+serving increment to every request leaves 8.096 GB at the projected peak and
+approximately 6.25 days at the previous ordinary growth rate. This satisfies the
+5 GB peak floor but not the prior seven-day projection. At that time publication remained pending
+storage reconciliation; no future purge, index-drop or packed-format savings were
+credited. The serving fixture is not a universal upper bound. See the
+[capacity observation](../validation/recommendation-owner-live-20260930/production-capacity-observation-20260929T2125.json)
+and [explicit calculation](../validation/recommendation-owner-live-20260930/production-capacity-disposition-20260929T2125.json).
+
+## September 29 final deployment and canonical-origin refusal
+
+[PR #2488](https://github.com/JesusFilm/forge/pull/2488) merged normally as
+`3abde2aa564e30c16631979b5d9403fc4c265403` after all 25 checks completed
+successfully or intentionally skipped/neutral, including the successful CI gate.
+At 22:02 UTC, Admin HTTP and worker both ran that exact revision, the earlier
+workers were absent from the active inventory, and all three services returned
+health 200. Watch remained at `0a707123`. The deployed CLI probe matched all
+16 source files and found the private database host and over 22 GB of cgroup
+headroom. Separate metadata-only checks passed exact migrations 0116, 0117 and
+0118, including shared-vector reader dependencies and immutable served payload
+constraints. None of these probes imported the publisher or changed authority.
+
+Receipts: [runtime health](../validation/recommendation-owner-live-20260930/production-runtime-health-20260929T2202.json),
+[CLI probe](../validation/recommendation-owner-live-20260930/production-deployed-cli-probe-20260929T2202.json),
+[0116 metadata](../validation/recommendation-owner-live-20260930/production-profile-vector-0116-20260929T2202.json),
+[0117/0118 metadata](../validation/recommendation-owner-live-20260930/production-storage-catalog-0117-0118-20260929T2202.json).
+
+The 21:47 [capacity observation](../validation/recommendation-owner-live-20260930/production-capacity-observation-20260929T2147.json)
+found 10,658,566,144 bytes free, no lock waiters, long transactions or replication
+slots, and 7,194 requests over the previous day. Charging the same measured
+reserves leaves 10.142 GB at the projected peak and 7.835 days of conservative
+runway. The [calculation](../validation/recommendation-owner-live-20260930/production-capacity-disposition-20260929T2147.json)
+credits no future savings and makes no storage-owner approval claim. This restores
+the declared capacity targets for that observation; repeat the bounded admission
+near actual publication if deployment delays make it stale.
+
+After normal OAuth refresh, the in-page stop confirmation displayed and submitted
+correctly. The page then reported a role refusal, with generation 1/control and
+no new stop audit. An independent unauthenticated POST with canonical HTTPS
+Origin, the required custom CSRF header, JSON content type and empty body returned
+`403 csrf_failed` before authentication. The endpoint compared Origin to its
+transport-derived request URL; the client reported every 403 as permission denial.
+Use the existing configured canonical Admin origin while retaining all other
+CSRF, permission and operator guards. Do not trust forwarded headers or grant
+additional access. The [sanitized refusal receipt](../validation/recommendation-owner-live-20260930/production-promotion-csrf-refusal.json)
+is not graph publication, a committed stop or an owner activation.
+
+The repair passed 56 focused route/component/origin tests, a fresh nonincremental
+full Admin typecheck, scoped lint and independent review. Initial markup is byte-identical at 1,499 bytes and component
+tests still observe zero initial fetches. The isolated minified component bundle
+grows by 664 bytes (170 bytes gzip), with no new dependency; the added response
+decoder runs only after a submitted mutation returns 403. See the
+[bounded load comparison](../validation/recommendation-owner-live-20260930/local-origin-repair-performance.json).
+
+## September 29 reviewed origin repair and stop footprint
+
+[PR #2494](https://github.com/JesusFilm/forge/pull/2494) merged normally at
+22:27:41 UTC as `4455fa50e18902d326b64ec4abcd8285ab0574de`, with all 26 checks
+complete and the CI gate successful at reviewed head
+`b884eb06b3895e84c2dfbea54950bd7ae10167d6`. This section records the release
+decision; the production cutover receipt below determines actual live status.
+
+Before using emergency stop to close the bootstrap A/A row, a bounded read at
+22:16 UTC verified the exact stop selector matched only `semantic-aa-v1`. The
+pointer was generation 1/control without an owner release. There were **zero
+assignments and zero linked retained requests**, with neither cap reached. Thus
+there were no existing bootstrap request roots to fence at that observation;
+CONTROL already prevents new A/A enrollment. The native zero-assignment stop/clear
+fixture covers this observed root population. Pending evaluation/promotion run
+cost, mutation latency and concurrent lock changes were not measured by the read.
+Any unknown acknowledgement still requires current-state reconciliation before
+retry. See the [stop footprint](../validation/recommendation-owner-live-20260930/production-stop-footprint-20260929T2216.json).
+
+A nonempty stop could have changed the co-watch source population by fencing
+retained requests. The complete zero-root observation removed that specific
+concern, so no second source preflight was dispatched merely for stop/clear. The
+publisher must still match the exact admitted generation and count/byte bounds
+before any inserts; natural source changes may legitimately refuse publication.
+
+## September 29 supported cutover and exact-source refusal
+
+At 22:41 UTC, both Admin processes ran `4455fa50` with health 200 and all older
+processes drained; compatible Watch remained healthy. The deployed CLI matched
+all 16 pinned files and dependencies, used the private database host and had more
+than 21 GB of memory headroom. The exact 0119 migration ledger checksum passed
+with no unfinished migration. An unauthenticated canonical-origin POST now reached
+`401 authentication_required`; the attacker-origin control remained `403 csrf_failed`.
+
+After normal OAuth refresh, supported Admin stop committed generation 2 at
+**22:42:21.303 UTC**. Clearing the hold committed generation 3/control at
+**22:42:51.890 UTC**. Both immutable audit entries were visible in Admin. This
+closed the empty bootstrap authority without reviving it or any old release.
+The final capacity read at 22:42:58 UTC found **11,164,520,448 bytes free**, no
+lock waiters, long transactions or replication slots, and 7,219 requests in the
+prior 24 hours. The unchanged reserves leave 10,648,232,026 bytes at projected
+peak and 8.224 days of projected runway; no future savings are credited.
+
+The first explicit publication attempt `d4607158-17c7-4ae8-8e47-d32882971995`
+finished at 22:43:47 UTC with `admission_refused` /
+`publication_admission_generation_changed`, before inserts. All aggregate counts
+were unchanged, but the exact generation was now
+`1939c3e3580419d7f9771594a6aa3a65e47299c6cacf4dceeeeda63d23f263bc`.
+No graph was published and no activation was attempted. The generation includes
+source identities, revisions, current eligibility decisions and viewer ownership;
+equal counts do not prove equal inputs. The exact changed fields were not collected.
+This demonstrated drift justifies one fresh bounded read of the same fixed window;
+it does not permit automatic retry, relaxed bounds or a favorable-window search.
+
+Receipts: [runtime health](../validation/recommendation-owner-live-20260930/production-runtime-health-20260929T2241.json),
+[CLI probe](../validation/recommendation-owner-live-20260930/production-deployed-cli-probe-20260929T2242.json),
+[0119 ledger](../validation/recommendation-owner-live-20260930/production-migration-ledger-0119-20260929T2242.json),
+[origin checks](../validation/recommendation-owner-live-20260930/production-canonical-origin-20260929T2242.json),
+[capacity observation](../validation/recommendation-owner-live-20260930/production-capacity-observation-20260929T2243.json),
+[publication decision](../validation/recommendation-owner-live-20260930/production-publication-decision-20260929T2243.json),
+[refused publication](../validation/recommendation-owner-live-20260930/production-publication-refused-20260929T2243.json).
+
+The single replacement read completed at 22:46:42 UTC through the pinned deployed
+read-only CLI. The source window and aggregate counts stayed unchanged; all JSON
+widths remained under the original measured ceilings, with 613 supported edges.
+Its generation was `aabb668443e4152c03f0052b6f80123595d101a2c10180ce861098a2afdcd98f`.
+Independent review confirmed the replacement admission changed only that exact
+generation; source bounds and all resource allowances were unchanged.
+
+The second distinct attempt `8ca78d2b-ceee-4909-b073-6348ff1c6f1f` again refused
+before inserts at 22:48:17 UTC. Its current generation was
+`54be78f2de9afd874ebf56911cb3898a092135d34824b35ca0fd8d533f634145`, with the same
+aggregate counts. Neither attempt published a graph. Recurring drift now requires
+a focused cause investigation before another publication; repeated hash rebinding
+without that investigation is not an accepted execution strategy.
+
+See the [replacement preflight](../validation/recommendation-owner-live-20260930/production-replacement-preflight-20260929T2246.json),
+[replacement admission](../validation/recommendation-owner-live-20260930/replacement-publication-admission.json)
+and [second refusal](../validation/recommendation-owner-live-20260930/production-publication-refused-20260929T2248.json).
+
+Code investigation found that discovery links last 24 hours, independently of
+the fixed seven-day source window. Before a first graph is retained, crossing a
+link deadline can change a qualified source's viewer identity from profile to
+session without changing aggregate counts. Published durable graph lineage retains
+that ownership and does not depend on keeping discovery links alive. Eligibility
+reclassification can also change decision identities without changing verdicts;
+no exact production cause is inferred from the aggregate refusals alone.
+
+A focused two-clock read-only diagnostic will compare the same current database
+snapshot using the earlier and current wall clocks. It returns aggregate component
+changes only and cannot reconstruct historical metadata. If this confirms clock
+expiry, the bounded operational remedy is one fresh preflight followed immediately
+by one exact-generation publication after automatic verification of the unchanged
+scope and ceilings. This removes the manual review delay while retaining the
+publisher's in-transaction refusal. It does not guarantee stable inputs or permit
+retry loops. Capacity and runtime admission remain separate requirements.
+
+At 22:55 UTC, normal storage release [PR #2495](https://github.com/JesusFilm/forge/pull/2495)
+had moved both healthy Admin processes to `8ecca9c7`; old processes were drained.
+Its only runtime change defaults future served snapshots to the already supported
+packed format. All 16 co-watch publication source/dependency pins were identical,
+with no new migration or source/authority change. Mixed readers and 0117 had
+already passed their exact checks. No future packed-storage savings were credited.
+The fresh capacity read found **11,037,495,296 bytes free**, no lock waiters,
+long transactions or replication slots, and 7,180 requests/day: 10.521 GB projected
+peak free and 8.129 days of runway using the unchanged conservative reserves.
+
+The read-only diagnostic completed at **22:58:33 UTC**. Within the same database
+snapshot, moving the clock from 22:46:31 to 22:58:28 changed exactly **three
+qualified sources from profile to session identity**, with no eligibility
+membership, outcome, decision, weight or session changes. Every population count
+was unchanged and repeated builds from identical loaded inputs were deterministic.
+Clock expiry therefore demonstrably changes the hash without changing counts.
+The earlier-clock hash did not reproduce the retained preflight hash: additional
+intervening metadata changes remain unresolved. This is not a reconstructed
+historical snapshot or proof that expiry was the sole cause of either refusal.
+
+Independent review and 18 local control-flow tests passed for a one-use wrapper
+that calls the unchanged preflight once, verifies complete results against every
+original scope/count/byte ceiling, then immediately dispatches the unchanged
+publisher once with that exact new fingerprint. It has no retry loop; stale,
+truncated, overflowing or uncertain reads never publish. Existing operation claims,
+private-host checks, process/transaction deadlines and in-transaction generation
+revalidation remain. The reviewed decision was dispatched at 22:59 UTC; its actual
+publication receipt below determines the result.
+
+Receipts: [runtime](../validation/recommendation-owner-live-20260930/production-runtime-health-20260929T2255.json),
+[capacity](../validation/recommendation-owner-live-20260930/production-capacity-observation-20260929T2255.json),
+[calculation](../validation/recommendation-owner-live-20260930/production-capacity-disposition-20260929T2255.json),
+[clock diagnostic](../validation/recommendation-owner-live-20260930/production-clock-diagnostic-20260929T2258.json)
+and [one-use decision](../validation/recommendation-owner-live-20260930/production-once-batch-decision-20260929T2259.json).
+
+## Successful graph publication and direct activation
+
+The one-use batch completed successfully at **22:59:29 UTC**. Its fresh preflight
+and publisher agreed on exact generation
+`7a0df065a6562c562ea49809e4db4fd68d3a112729368bcfd0033679ea7270fa`.
+The publisher retained **51,313 rows** from the unchanged fixed window: 6,680
+sources, 35,632 contributions, 9,000 edges and one generation. The preflight found
+613 supported edges; all original count and byte ceilings passed. Publication
+was recorded at **22:59:20.343 UTC** through the actual deployed CLI/private DB,
+with existing transaction/process limits. The temporary admission file was removed.
+The publisher's `no_promotion` / `controlled_evaluation_required_feat_505` remains
+its truthful shadow-publication decision; it does not itself grant live authority.
+The separate explicit owner-approved path below does that without claiming a PASS.
+
+Authenticated Admin prepared that graph with exact manifest
+`hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1`, binding digest
+`af6083ffbe53380d5f5cc16cd2d0c7fb117a5f983f4c8755fd43c241289c30a2`
+and expected generation 3. The prepared release deadline was
+**2026-09-30T22:59:20.343Z**, earlier than its dependency deadline
+**2026-10-21T19:00:53.714Z**. The already approved activation used operation/release
+ID `4459344d-202b-4665-aab3-75fa17920c10` exactly once.
+
+The response reconciled **Recorded release: active**. Reloading serving state
+showed generation **4 / Owner Approved**, the exact active manifest and release,
+no emergency hold, and immutable **Activation Effective / Owner Approved Without
+Trial** audit at **23:00:26.512 UTC**. The existing `Not ready` readiness badge and
+absence of a retained evaluation refer to the unperformed measured promotion path;
+they do not override this separately recorded owner-approved authority. Causal
+usefulness remains unmeasured. The supported restore/stop controls remain available;
+the native authority/issuance/rollback fixtures cover their direct-release fences.
+
+Receipts: [final preflight](../validation/recommendation-owner-live-20260930/production-final-preflight-20260929T2259.json),
+[exact admission](../validation/recommendation-owner-live-20260930/final-publication-admission.json),
+[publication](../validation/recommendation-owner-live-20260930/production-graph-publication-20260929T2259.json),
+[binding](../validation/recommendation-owner-live-20260930/production-publication-binding-20260929T2259.json)
+and [authenticated activation/reload](../validation/recommendation-owner-live-20260930/production-owner-activation-20260929T2300.json).
+
+## First natural issuance observation
+
+One bounded read of retained requests created from activation through
+**23:04:08 UTC** found **16 issued requests**, with the 50-root cap not reached.
+All had no experiment assignment. **Zero** carried the exact owner release and
+direct composer provenance. Three had the shared co-watch/MMR incumbent fallback
+marker without owner attribution. Those markers alone do not identify an owner
+attempt or establish an owner fallback rate. No expired roots were in the sample;
+deleted/unissued requests and older prepared requests are outside its coverage.
+
+This proves the configured active release separately from natural direct execution,
+which was not observed in this first window. It does not prove human exposure,
+selected co-watch cards or usefulness. Inspect the bounded recorded fallback reasons
+to distinguish sparse graph coverage from a demonstrated runtime failure; do not
+manufacture viewer traffic or silently reinterpret the empty direct count as PASS.
+See the [natural issuance receipt](../validation/recommendation-owner-live-20260930/production-natural-issuance-20260929T2304.json).
+
+The targeted reason read extended that same activation window through **23:10:08
+UTC**. It found **38 issued roots**, with the cap not reached and no experiment
+assignments. Direct owner provenance remained absent. Of eight shared fallback
+markers, **seven reported `composition_required_input_unavailable`** and **one
+reported `cowatch_supported_edges_sparse`**; no deadline, source-unavailable,
+authority-unavailable or unplayable reason appeared. These markers still lack
+release attribution and do not establish an owner-specific attempt rate. See the
+[fixed reason aggregates](../validation/recommendation-owner-live-20260930/production-fallback-reasons-20260929T2310.json).
+
+The missing-input reason is a concrete investigation item before closing feat-565.
+The structural gate requires source and profile-interest evidence, recent-history
+availability, and nonblank themes on every composed item. Failed owner composition
+retains the incumbent candidate platform, so historical retained candidate rows
+cannot reconstruct which input was missing in that attempted co-watch composition.
+Trace the actual adapters and obtain discriminating bounded evidence; do not weaken
+the required-input contract or label enabled authority as verified viewer influence.
 
 ## Serving and operation contract
 
@@ -177,7 +483,7 @@ no production data. The container peaked at 572,698,624 bytes; its removal and
 owned SSH tunnel cleanup were verified. See the
 [aggregate population receipt](../validation/recommendation-owner-live-20260930/production-population-preflight.json).
 
-A synthetic fixture exceeded every observed count and encoded row-width/total
+A synthetic fixture matched or exceeded every observed count and encoded row-width/total
 bound without copying production values. The unchanged atomic publisher committed
 **51,956 rows in 21.647 seconds** under its existing 30-second transaction,
 5-second statement and 1-second lock limits. Allocation including all graph
@@ -204,7 +510,7 @@ classification can add eligible sources. Publication must bind the exact
 preflight generation and source scope, and check the measured finite size
 ceilings inside its transaction before the first write. Refuse changed input;
 do not silently publish a new graph or select a smaller favorable window.
-Production publication and owner activation remain pending.
+At that earlier preflight stage, production publication and owner activation remained pending; the successful cutover above supersedes that disposition.
 
 The [initial admission contract](../validation/recommendation-owner-live-20260930/initial-publication-admission.json)
 binds the production generation to the dominating fixture ceilings. The reviewed
@@ -222,3 +528,64 @@ that a later eligibility decision and an exceeded ceiling each retain zero new
 graph rows, then published with a fresh exact admission. Independent scoped
 review found no actionable defects. These are local checks, not a production
 publication receipt.
+
+## Adjacent-window fallback comparison
+
+A targeted read compared equal 581.488-second windows immediately before and
+after activation: **22:50:45.024–23:00:26.512 UTC** and
+**23:00:26.512–23:10:08 UTC**. Each independently capped the newest 50 retained
+request roots before filtering; neither cap was reached. Both windows had no
+experiment assignments and no expired or unissued sampled roots.
+
+| Recorded outcome                | Before | After |
+| ------------------------------- | -----: | ----: |
+| Issued requests                 |     32 |    38 |
+| Served result                   |     28 |    27 |
+| Fallback result                 |      0 |    10 |
+| Empty result / zero items       |      4 |     1 |
+| Unavailable result              |      0 |     0 |
+| Positive item count             |     28 |    37 |
+| Shared co-watch fallback marker |      0 |     8 |
+
+All ten post-activation fallback results had positive item counts. Eight carried
+the shared co-watch marker: seven missing-composition-input and one sparse-edge
+reason. Three post-window roots and four pre-window roots had incumbent semantic
+fallback reasons; these reason populations include empty outcomes and are not the
+same denominator as requests whose result is `fallback`.
+
+The new fallback labels therefore do not mean those ten responses contained no
+recommendations. This is a bounded observational comparison, not proof that
+traffic was comparable, the rollout improved availability, cards rendered, or
+recommendation quality stayed equivalent. It excludes deleted roots and HTTP
+failures leaving no retained request. Before-window runtime/bootstrap state may
+differ; no longer-term trend or causal effect is established.
+
+See the [aggregate comparison receipt](../validation/recommendation-owner-live-20260930/production-baseline-comparison-20260929T2325.json).
+
+The semantic-reason drilldown of these same capped windows found **one missing
+seed embedding and three `no_candidates` reasons before**, versus **two missing
+seed embeddings and one `no_candidates` reason after**. No recorded retrieval
+timeout, retrieval unavailable, stale/ineligible pool, parity mismatch or candidate
+platform failure appeared. These are persisted dispositions, not proof about
+HTTP failures that left no root or why a specific video lacked usable embedding
+material. See the [fixed semantic reason counts](../validation/recommendation-owner-live-20260930/production-semantic-reasons-20260929T2332.json).
+
+## Exact failed-composition diagnostics
+
+The former generic failure reason discarded the attempted composition's input
+coverage while retaining the incumbent platform. The diagnostic change preserves
+its actual source, interest, theme and history missing flags, plus bounded
+candidate/selected/themed-item counts, in the existing rejected co-watch evidence
+entry. The diagnostic is versioned, contains no identities or candidate payloads,
+adds no stage rows, and survives both compact and legacy trace persistence. It
+does not change selection, required inputs, fallback responses, authority or
+release expiry. Natural evidence from its deployed revision is still required
+to identify the actual production gap.
+
+Local tests using the real hydration SQL, profile adapter, candidate union and
+MMR reproduced two possible mechanisms: an empty first transcript chunk can hide
+later populated theme metadata; and a selected empty-theme nomination can mask
+a populated nomination for the same video. Controls that supplied the actual
+fixture labels composed successfully. These synthetic fixtures prove mechanisms,
+not the historical production cause. See the [local reproduction](../validation/recommendation-owner-live-20260930/local-composition-theme-mechanisms.json)
+and [diagnostic validation](../validation/recommendation-owner-live-20260930/local-composition-input-diagnostics.json).
