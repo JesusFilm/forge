@@ -125,3 +125,13 @@ Forge's file roadmap is the configured tracker. Draft tickets are reviewed befor
 allocating final global feature IDs and bidirectional dependencies. Existing
 completed foundation tickets remain complete; this work extends their policies
 rather than reopening them.
+
+## Owner-approved qualification amendment — September 30, 2026
+
+For immediate qualification, use ChatGPT and Codex. The owner does not have
+Claude access; Claude qualification is deferred to the designer who does.
+ChatGPT evidence must not imply Claude compatibility. Product authority,
+provider-spending boundaries and exact-render human approval are unchanged.
+The owner authorized temporary synthetic operator browser access and Cloudflare
+tunnels for the isolated test environment. Current evidence and remaining gates
+are in `docs/validation/studio-external-agent/chatgpt-review-2026-09-30.md`.

@@ -19,8 +19,9 @@ speech quality, authenticated browser approval, or an OCI deployment.
 - Every launch requires a **new** absolute output directory outside the checkout
   whose parent already exists. Directories are0700; tokens/configuration/audits
   are private. Existing directories and checkout-resolving symlinks are rejected.
-- No cookie creation, synthetic browser sign-in, or authentication bypass route
-  exists. The browser qualification restriction remains in force.
+- This launcher contains no cookie creation or synthetic browser sign-in route.
+  On September 30 the owner authorized a separate private review gateway and
+  temporary operator session; see [current qualification](chatgpt-review-2026-09-30.md).
 - Next and Admin inherit `guard.mjs` through `NODE_OPTIONS` before application
   imports and worker creation. It blocks unregistered external fetches and
   non-loopback TCP/Unix socket connections. Exact source/HLS URLs and the single
@@ -74,8 +75,9 @@ in the prompt. Resume the returned client session for feedback/disconnect checks
 Keep transcripts and transfer URLs private; publish only redacted observations.
 Record real-client/version/modality evidence separately from this smoke. Timing
 must separate render completion, inspection preparation, client interpretation,
-handoff, and any single repair. Claude and authenticated human approval remain
-unqualified until their respective access is available.
+handoff, and any single repair. ChatGPT is now the immediate second-client qualification target; Claude is
+deferred to the designer. Authenticated human approval remains unqualified until
+it is observed, independently of session authorization.
 
 ## Recorded client qualification
 

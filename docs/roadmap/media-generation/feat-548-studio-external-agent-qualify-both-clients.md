@@ -1,9 +1,9 @@
 ---
 id: "feat-548"
-title: "Qualify Claude and Codex through the full review loop"
+title: "Qualify ChatGPT and Codex through the full review loop"
 owner: "tataihono"
 priority: "P1"
-status: "blocked"
+status: "in-progress"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
@@ -20,7 +20,7 @@ Prove the complete experience in each supported client and publish an actionable
 
 Approved acceptance criteria:
 
-- [ ] For both Claude and Codex, record exact client/version, connection/auth steps, environment, and grants; demonstrate discovery/create/edit/render/inspection/handoff/revision.
+- [ ] For both ChatGPT and Codex, record exact client/version, connection/auth steps, environment, and grants; demonstrate discovery/create/edit/render/inspection/handoff/revision.
 - [ ] Each client resumes after a disconnect, handles an expired media capability, and reconciles an intervening human edit without duplicate effects.
 - [x] Demonstrate approved-existing-voice narration and correction/reuse behavior with disclosed fake versus real provider evidence; obtain explicit authorization before any paid qualification.
 - [x] Record output-ready, evidence-ready, inspection-complete, and repair timings separately with short duration, cut count, network/worker conditions, and warm/cold state.
@@ -57,3 +57,12 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 ## Final integration assessment — 2026-09-23
 
 Actual Codex completed creation/render/inspection/revision, preserved an attributed synthetic human edit, resumed after local credential expiry, corrected narration once and reused unchanged audio without consuming a pass. Required actual Claude and authenticated operator review/approval plus reachable-test OAuth qualification remain unavailable. Direct HTTP media download failed in this read-only client configuration; MCP refresh/images and a separate backend expiry probe are evidenced distinctly. Both rebuilt renderer image targets passed local execution; hosted dedicated-VM checks remain a release gate. No paid call, production deployment or merge occurred.
+
+## Qualification scope update — 2026-09-30
+
+The owner authorized immediate qualification with ChatGPT and Codex instead of
+Claude. Claude qualification is deferred to the designer who has access; no
+ChatGPT result establishes Claude compatibility. The owner also authorized a
+temporary synthetic operator browser session and Cloudflare Tunnel access to
+the isolated local fixture environment. Paid provider calls and production
+deployment/merge remain outside this authorization.
