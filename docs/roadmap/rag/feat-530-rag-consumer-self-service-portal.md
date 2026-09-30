@@ -3,7 +3,7 @@ id: "feat-530"
 title: "Deliver internal RAG consumer self-service portal"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-16"
 duration: 5
 depends_on: ["feat-526", "feat-527"]
@@ -146,10 +146,26 @@ Activation checklist (before feat-528 reporting and feat-529 dogfood):
 - [x] Railway deployment `39957625-7834-4803-afbc-4ef2493ef68d` succeeded.
 - [x] Reload the production portal as `@jaco-brink`: consumer directory loads,
       Create consumer is available, disabled notice is absent, and registry is empty.
-- [ ] Verify owner creation and one-time key handling through the production UI.
-      No production consumer or API key was issued during activation verification.
+- [x] Owner subsequently confirmed creation of `ragbot` and `website-factory`
+      through the production portal UI and saved their issued keys in Bitwarden.
+      See the [closure record](evidence/feat-529/owner-acceptance.md).
 
 See `apps/rag/docs/ops/consumer-access-migration.md` for exact privileges and
 secret names. Activation does not start feat-529's seven-day grace or change
 legacy credentials. Keep feat-530 in progress until its remaining UI/live gates
 are observed.
+
+## Resolution — 2026-09-30
+
+This owner acceptance supersedes the earlier forward-looking closure gates in
+this ticket.
+
+The management UI shipped in [PR #2442](https://github.com/JesusFilm/forge/pull/2442)
+and was activated in production under the recorded operator authorization.
+The owner confirmed production creation of two consumers through that UI,
+credential custody in Bitwarden, report detail and access-boundary checks.
+The earlier local UI, authorization, concurrency and page-load checks remain
+recorded in [local evidence](evidence/feat-530/local-ui.md). The owner accepted
+the remaining live failure-injection and session checks as unverified; see the
+[closure record](evidence/feat-529/owner-acceptance.md). No production change is
+made by this documentation closure.

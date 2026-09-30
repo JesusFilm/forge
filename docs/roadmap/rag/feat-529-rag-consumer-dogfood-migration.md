@@ -3,7 +3,7 @@ id: "feat-529"
 title: "Dogfood RAG consumer access and seven-day migration"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-16"
 duration: 7
 depends_on: ["feat-528", "feat-530"]
@@ -80,3 +80,17 @@ collector-stop recovery and narrowed diagnostic windows are not prerequisites
 for dogfood reporting. See the corrected feat-528 plan and operator runbook.
 Historical provisioning receipts remain audit records, not setup instructions.
 The +3/+2, isolation, lifecycle and separately approved grace/cutoff checks remain.
+
+## Resolution — 2026-09-30
+
+This owner acceptance supersedes the earlier forward-looking closure gates in
+this ticket.
+
+The owner accepted live operation with two portal-created consumers and
+independently increasing request counts. The [closure record](evidence/feat-529/owner-acceptance.md)
+separates those observations from the unperformed scripted +3/+2 and exact
+`forge-rag-retrieve` revision checks. The seven-day registration grace and
+shared-bearer cutoff were not executed; the owner waived them as closure gates.
+Legacy bearer access remains until a separately authorized production change.
+No credential, configuration or production data is changed by this ticket
+closure.

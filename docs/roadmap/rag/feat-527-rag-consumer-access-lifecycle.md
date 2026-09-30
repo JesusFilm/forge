@@ -3,7 +3,7 @@ id: "feat-527"
 title: "Implement formal RAG consumer access lifecycle"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-15"
 duration: 5
 depends_on: ["feat-526", "feat-518"]
@@ -118,3 +118,17 @@ rollback. Management UI work is next under feat-530, with end-to-end checks defe
 local UI development. Restricted consumer roles and source configuration are
 required before activation; incomplete live verification does not block merging
 this backend slice. Production admission above is already delivered.
+
+## Resolution — 2026-09-30
+
+This owner acceptance supersedes the earlier forward-looking closure gates in
+this ticket.
+
+The access backend, portal admission, restricted roles and migration runbook were
+shipped in the linked PRs above. The owner accepted the working production
+consumer flow described in the [closure record](evidence/feat-529/owner-acceptance.md):
+two consumers were created through the portal, their credentials were saved in
+Bitwarden, their usage increased independently, and a revoked key received HTTP 401. The owner also confirmed report and access-boundary checks. The live
+failure-injection and session checks listed in earlier evidence were not
+performed and are accepted as unverified for this ticket's closure. This
+documentation decision makes no production access change.
