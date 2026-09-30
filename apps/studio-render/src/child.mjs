@@ -5,6 +5,12 @@ import { readFile as read, stat } from "node:fs/promises"
 import { createServer } from "node:http"
 import { pipeline } from "node:stream/promises"
 import { resolve } from "node:path"
+// Opt in before importing the pinned SDK: intermediate audio mixers bypass
+// renderMedia's encoder override and must obey the same fixed task budget.
+process.env.FORGE_STUDIO_CODEC_THREADS = "1"
+// Avoid Chromium surface-copy GPU crashes under the fixed contained profile.
+// The SDK preserves exact dimensions below 8192px; Studio admits at most 7680px.
+process.env.DISABLE_FROM_SURFACE = "1"
 const { selectComposition, renderMedia } = await import("/runtime/renderer.cjs")
 const input = JSON.parse(await read("/input/input.json", "utf8"))
 const served = new Map()

@@ -727,7 +727,11 @@ async function classifyAuthorizeRequest(
   if (resources.length > 1) return "invalid-target"
   if (resources.length === 1) {
     const target = resolveOAuthResource(oauthResourceCatalog, resources[0])
-    if (target?.resourceClass === "admin-mcp") return "provider"
+    if (
+      target?.resourceClass === "admin-mcp" ||
+      target?.resourceClass === "shorts-mcp"
+    )
+      return "provider"
     if (target?.resourceClass === "changelog-mcp") return "changelog"
     return "invalid-target"
   }
