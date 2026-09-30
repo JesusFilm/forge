@@ -96,6 +96,21 @@ uncertain manifest. The native and campaign-loop proof is recorded in
 `docs/validation/recommendation-legacy-campaign-20260930/README.md`; it does not
 admit a production roster or establish filesystem recovery.
 
+## Unattended finite operation
+
+When the owner authorizes an unattended campaign, separate its fixed human review
+from refreshed machine measurements. Pin one immutable roster, source, target,
+hold registry and deadline; deriving a new execution window must not mint a new
+review timestamp. Preserve the small transaction limits and require independent
+durable reconciliation before moving to the next child. An uncertain response
+stops the campaign rather than retrying a potentially committed operation.
+
+The historical cursor includes both wave and batch: comparing only wave numbers
+can accidentally re-admit an already processed prefix after a midwave stop.
+Keep completed audit bytes losslessly compressed and verify decompression before
+removing raw copies; local audit accumulation is a separate capacity concern.
+See `docs/operations/unattended-legacy-recommendation-drain.md`.
+
 ## Related
 
 - `docs/solutions/best-practices/recommendation-trace-capacity-and-retention-proof-20260928.md`
