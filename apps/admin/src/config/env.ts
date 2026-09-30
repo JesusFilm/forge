@@ -380,6 +380,11 @@ export const env = createEnv({
     DATABASE_URL: z.string().url(),
     // Opt-in disposable Studio integration database; never falls back to DATABASE_URL.
     STUDIO_TEST_DATABASE_URL: z.string().url().optional(),
+    // Opt-in disposable exposure reconciliation database; the test enforces loopback and name guards.
+    WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL: z
+      .string()
+      .url()
+      .optional(),
     ADMIN_SESSION_SECRET: z.string().min(32),
     // Optional admin OAuth cookie prefix. Use a unique value for local
     // worktree previews sharing localhost so branches do not overwrite each
@@ -906,6 +911,9 @@ export const env = createEnv({
 
     DATABASE_URL: process.env.DATABASE_URL,
     STUDIO_TEST_DATABASE_URL: process.env.STUDIO_TEST_DATABASE_URL,
+    WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL: emptyToUndefined(
+      process.env.WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL,
+    ),
     NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(
       process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
     ),
