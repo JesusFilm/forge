@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { continueRender, delayRender, Easing, interpolate } from "remotion"
 
 import { SHORT_FONT_FAMILIES } from "../fonts"
-import { TEASER_FONT_FAMILIES } from "./teaser-fonts"
+import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
 
 /**
  * The film's narration as Scripture (owner's Figma "Video clip · Scrolling",
@@ -59,6 +59,49 @@ export function scriptureVerses(cues: ReadonlyArray<ScriptureCue>): Verse[] {
   return verses
 }
 
+/**
+ * Where the list should sit at `t`: one continuous, slow drift (owner: "slow
+ * and smooth, not in jerks"). Each line reaches the middle halfway through
+ * its own reading, and the text keeps moving between those moments instead
+ * of waiting and jumping. `centres` are the words' vertical centres as laid
+ * out.
+ */
+export function scriptureScrollY(
+  words: ReadonlyArray<{ start: number }>,
+  centres: ReadonlyArray<number>,
+  t: number,
+  lineH: number,
+): number {
+  if (!words.length || centres.length !== words.length) return 0
+  const keys: { at: number; y: number }[] = []
+  let i = 0
+  while (i < words.length) {
+    let j = i
+    while (
+      j + 1 < words.length &&
+      Math.abs(centres[j + 1] - centres[i]) < lineH / 2
+    )
+      j++
+    const end = j + 1 < words.length ? words[j + 1].start : words[j].start + 0.6
+    const at = (words[i].start + end) / 2
+    // Keep the knots strictly increasing even for a line read in no time.
+    const prev = keys[keys.length - 1]
+    keys.push({
+      at: prev && at <= prev.at ? prev.at + 0.001 : at,
+      y: centres[i],
+    })
+    i = j + 1
+  }
+  return keys.length > 1
+    ? interpolate(
+        t,
+        keys.map((key) => key.at),
+        keys.map((key) => key.y),
+        { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+      )
+    : keys[0].y
+}
+
 export function ScrollingScripture({
   cues,
   t,
@@ -78,32 +121,49 @@ export function ScrollingScripture({
   const verses = scriptureVerses(cues)
   const all = verses.flatMap((v) => v.words)
   const listRef = useRef<HTMLDivElement>(null)
-  const [centres, setCentres] = useState<number[] | null>(null)
-  const [handle] = useState(() => delayRender("Measuring the scripture layout"))
+  const [ready, setReady] = useState(false)
+  const [handle] = useState(() => delayRender("Loading the scripture face"))
 
-  useLayoutEffect(() => {
+  // Wait for Literata itself, not just for "fonts ready": the face is
+  // registered asynchronously, and a layout read before it lands wraps the
+  // verses in the narrower fallback. That is how the first render drifted a
+  // line behind every minute (owner, 2026-09-30).
+  useEffect(() => {
     let dead = false
-    const font = `400 ${dp(56)}px ${SERIF}`
-    document.fonts
-      .load(font)
+    loadLiterata()
+      .then(() => document.fonts.load(`400 ${dp(56)}px ${SERIF}`))
       .then(() => document.fonts.ready)
       .then(() => {
-        if (dead || !listRef.current) return
-        const spans = listRef.current.querySelectorAll<HTMLElement>("[data-w]")
-        setCentres(
-          Array.from(spans).map((s) => s.offsetTop + s.offsetHeight / 2),
-        )
+        if (!dead) setReady(true)
       })
-      .catch(() => setCentres([]))
+      .catch(() => {
+        if (!dead) setReady(true)
+      })
     return () => {
       dead = true
     }
-    // Measured once: the layout does not change from frame to frame.
+    // Once per mount.
   }, [])
-  // Released only after the measured positions are on screen.
   useEffect(() => {
-    if (centres) continueRender(handle)
-  }, [centres, handle])
+    if (ready) continueRender(handle)
+  }, [ready, handle])
+
+  const lineH = dp(70)
+  // Three lines on screen (owner's Figma 380-2266): a 224px window.
+  const windowH = dp(224)
+
+  // Positions are read from the laid-out page on EVERY frame, never cached:
+  // nothing measured under another font or width can steer the scroll.
+  useLayoutEffect(() => {
+    const list = listRef.current
+    if (!ready || !list) return
+    const spans = list.querySelectorAll<HTMLElement>("[data-w]")
+    const centres = Array.from(spans).map(
+      (el) => el.offsetTop + el.offsetHeight / 2,
+    )
+    const y = scriptureScrollY(all, centres, t, lineH)
+    list.style.transform = `translateY(${(windowH / 2 - y).toFixed(2)}px)`
+  })
 
   if (!all.length) return null
   // The word being spoken: the last one whose time has come.
@@ -111,37 +171,6 @@ export function ScrollingScripture({
   for (let i = 0; i < all.length; i++) {
     if (all[i].start <= t) k = i
     else break
-  }
-  const lineH = dp(70)
-  // Three lines on screen (owner's Figma 380-2266): a 224px window.
-  const windowH = dp(224)
-  // One continuous, slow drift (owner: "slow and smooth, not in jerks"):
-  // each line reaches the middle halfway through its own reading, and the
-  // text keeps moving between those moments instead of waiting and jumping.
-  let y = 0
-  if (centres && centres.length === all.length) {
-    const keys: { at: number; y: number }[] = []
-    let i = 0
-    while (i < all.length) {
-      let j = i
-      while (
-        j + 1 < all.length &&
-        Math.abs(centres[j + 1] - centres[i]) < lineH / 2
-      )
-        j++
-      const end = j + 1 < all.length ? all[j + 1].start : all[j].start + 0.6
-      keys.push({ at: (all[i].start + end) / 2, y: centres[i] })
-      i = j + 1
-    }
-    y =
-      keys.length > 1
-        ? interpolate(
-            t,
-            keys.map((k) => k.at),
-            keys.map((k) => k.y),
-            { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-          )
-        : (keys[0]?.y ?? 0)
   }
   const first = cues[0]
   const last = cues[cues.length - 1]
@@ -156,7 +185,7 @@ export function ScrollingScripture({
     [0, 1, 1, 0],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   )
-  if (opacity <= 0 && centres) return null
+  if (opacity <= 0 && ready) return null
   const chapter = first.verse?.split(":")[0] ?? ""
   // The block is centred on the frame, 839 wide; nothing crosses the
   // hairline's ends, verse numbers included.
@@ -236,7 +265,6 @@ export function ScrollingScripture({
           ref={listRef}
           style={{
             position: "relative",
-            transform: `translateY(${(windowH / 2 - y).toFixed(2)}px)`,
             display: "flex",
             flexDirection: "column",
             fontFamily: SERIF,

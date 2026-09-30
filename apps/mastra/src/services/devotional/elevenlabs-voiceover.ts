@@ -51,6 +51,10 @@ export const DEVOTIONAL_VOICES = {
   // "El Faraon - Full, Clear" from the voice library: Latin American, older
   // male, deep and clear. Owner's pick from six samples (2026-09-18).
   spanish: "8mBRP99B2Ng2QwsJMFQl",
+  // "Luisa (Narrator)" from the voice library: natural, relatable, neutral
+  // Latin American narrator. Owner's pick for the Spanish reflection voice
+  // (2026-09-30), beside El Faraon for the notes.
+  "spanish-female": "1u9q7vX1Lcx74yAcFPt7",
 } as const
 
 export type DevotionalVoiceName = keyof typeof DEVOTIONAL_VOICES
