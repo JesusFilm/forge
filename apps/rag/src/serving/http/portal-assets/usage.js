@@ -26,7 +26,26 @@ const dateTime = (value) =>
       })
     : "—"
 const count = (value) => value.toLocaleString()
-export function createUsageView(container, { read, onUnauthorized }) {
+function utcWindow(from, to) {
+  const minute = /^\d{4}-\d\d-\d\dT\d\d:\d\d$/
+  if (!minute.test(from) || !minute.test(to)) return null
+  const start = new Date(from + "Z")
+  const end = new Date(to + "Z")
+  if (
+    !Number.isFinite(start.getTime()) ||
+    !Number.isFinite(end.getTime()) ||
+    start.toISOString().slice(0, 16) !== from ||
+    end.toISOString().slice(0, 16) !== to ||
+    end <= start ||
+    end - start > 31 * 86400000
+  )
+    return null
+  return { from: start.toISOString(), to: end.toISOString() }
+}
+export function createUsageView(
+  container,
+  { read, onUnauthorized, savedWindow, onWindowChange },
+) {
   let consumers = [],
     page = 0,
     search = "",
@@ -52,6 +71,12 @@ export function createUsageView(container, { read, onUnauthorized }) {
   }
   const from = field("From (UTC)", start)
   const to = field("To (UTC, exclusive)", end)
+  if (savedWindow) {
+    if (utcWindow(savedWindow.from, savedWindow.to)) {
+      from.value = savedWindow.from
+      to.value = savedWindow.to
+    }
+  }
   const apply = make("button", "Update reports")
   apply.type = "submit"
   controls.append(apply)
@@ -145,22 +170,15 @@ export function createUsageView(container, { read, onUnauthorized }) {
   details.addEventListener("close", () => details.replaceChildren())
   function windowQuery() {
     if (!controls.reportValidity()) return null
-    const a = new Date(from.value + "Z"),
-      b = new Date(to.value + "Z")
-    if (
-      !Number.isFinite(a.getTime()) ||
-      !Number.isFinite(b.getTime()) ||
-      a.getTime() % 60000 ||
-      b.getTime() % 60000 ||
-      b <= a ||
-      b - a > 31 * 86400000
-    ) {
+    const window = utcWindow(from.value, to.value)
+    if (!window) {
       error.textContent =
         "Choose a UTC window of up to 31 days, ending after its start, with whole minutes."
       return null
     }
     error.textContent = ""
-    return { from: a.toISOString(), to: b.toISOString() }
+    onWindowChange?.({ from: from.value, to: to.value })
+    return window
   }
   function fail(failure) {
     if (failure.code === "unauthorized") {

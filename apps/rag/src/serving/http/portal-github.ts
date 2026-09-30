@@ -8,6 +8,22 @@ export type AdmissionProvider = {
   exchange(code: string): Promise<GitHubIdentity>
 }
 
+export class OAuthInvalidError extends Error {
+  constructor() {
+    super("oauth_invalid")
+    this.name = "OAuthInvalidError"
+  }
+}
+
+export class GitHubVerificationError extends Error {
+  constructor(
+    code: "github_unverified" | "github_stale" | "oauth_identity_invalid",
+  ) {
+    super(code)
+    this.name = "GitHubVerificationError"
+  }
+}
+
 const api = "https://api.github.com"
 const repository = "JesusFilm/forge"
 const headers = (token: string) => ({
@@ -28,7 +44,7 @@ async function json(
       : AbortSignal.timeout(5000),
     cache: "no-store",
   })
-  if (!response.ok) throw new Error("github_unverified")
+  if (!response.ok) throw new GitHubVerificationError("github_unverified")
   const responseDate = Date.parse(response.headers.get("date") ?? "")
   const age = Number(response.headers.get("age") ?? "0")
   if (
@@ -37,13 +53,13 @@ async function json(
     age > 60 ||
     Math.abs(Date.now() - responseDate) > 60_000
   )
-    throw new Error("github_stale")
+    throw new GitHubVerificationError("github_stale")
   return response.json()
 }
 
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new Error("github_unverified")
+    throw new GitHubVerificationError("github_unverified")
   return value as Record<string, unknown>
 }
 
@@ -64,7 +80,7 @@ export function createGitHubAdmission(config: {
       )
       const commit = object(branch.commit)
       if (typeof commit.sha !== "string" || !/^[a-f0-9]{40}$/.test(commit.sha))
-        throw new Error("github_unverified")
+        throw new GitHubVerificationError("github_unverified")
       const sha = commit.sha
       const data = object(
         await json(
@@ -74,7 +90,7 @@ export function createGitHubAdmission(config: {
         ),
       )
       if (data.encoding !== "base64" || typeof data.content !== "string")
-        throw new Error("github_unverified")
+        throw new GitHubVerificationError("github_unverified")
       const allowlist = parsePortalAllowlist(
         JSON.parse(Buffer.from(data.content, "base64").toString("utf8")),
       )
@@ -125,20 +141,22 @@ export function createGitHubAdmission(config: {
           signal: AbortSignal.timeout(5000),
         },
       )
-      if (!response.ok) throw new Error("oauth_exchange_failed")
+      if (!response.ok) throw new GitHubVerificationError("github_unverified")
       const tokenResult = object(await response.json())
+      if (tokenResult.error === "bad_verification_code")
+        throw new OAuthInvalidError()
       if (
         typeof tokenResult.access_token !== "string" ||
         tokenResult.token_type !== "bearer"
       )
-        throw new Error("oauth_exchange_failed")
+        throw new GitHubVerificationError("github_unverified")
       const user = object(await json(`${api}/user`, tokenResult.access_token))
       if (
         !Number.isSafeInteger(user.id) ||
         (user.id as number) <= 0 ||
         typeof user.login !== "string"
       )
-        throw new Error("oauth_identity_invalid")
+        throw new GitHubVerificationError("oauth_identity_invalid")
       return { id: user.id as number, login: user.login }
     },
   }

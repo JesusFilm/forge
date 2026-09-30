@@ -26,6 +26,7 @@ class PortalDevError extends Error {
       | "local_database_required"
       | "isolated_local_database_required"
       | "local_tls_files_required"
+      | "local_port_invalid"
       | "local_oauth_unavailable",
   ) {
     super(code)
@@ -72,7 +73,10 @@ const usage = usageWriter
 const keyPath = process.env.RAG_PORTAL_DEV_TLS_KEY
 const certPath = process.env.RAG_PORTAL_DEV_TLS_CERT
 if (!keyPath || !certPath) throw new PortalDevError("local_tls_files_required")
-const origin = "https://localhost:3445"
+const port = Number(process.env.RAG_PORTAL_DEV_PORT ?? 3445)
+if (!Number.isSafeInteger(port) || port < 1024 || port > 65535)
+  throw new PortalDevError("local_port_invalid")
+const origin = `https://localhost:${port}`
 const users = [
   { id: 53001, login: "local-owner" },
   { id: 53002, login: "local-member" },
@@ -96,13 +100,16 @@ app.post("/local-sign-in", async (c) => {
   const user = users.find((entry) => String(entry.id) === body.id)
   if (!user) return c.body(null, 403)
   const token = randomToken()
-  await sessions.createSession(token, user)
+  const expiry = await sessions.createSession(token, user)
   setCookie(c, "__Host-rag_portal", token, {
     httpOnly: true,
     secure: true,
     sameSite: "Lax",
     path: "/",
-    maxAge: 7200,
+    maxAge: Math.max(
+      1,
+      Math.ceil((Date.parse(expiry.expiresAt) - Date.now()) / 1000),
+    ),
   })
   return c.redirect("/portal", 303)
 })
@@ -142,10 +149,8 @@ const server = createServer(
   { key: readFileSync(keyPath), cert: readFileSync(certPath) },
   getRequestListener(app.fetch),
 )
-server.listen(3445, "127.0.0.1", () => {
-  console.log(
-    "Local RAG portal: https://localhost:3445/portal (synthetic sign-in)",
-  )
+server.listen(port, "127.0.0.1", () => {
+  console.log(`Local RAG portal: ${origin}/portal (synthetic sign-in)`)
 })
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {

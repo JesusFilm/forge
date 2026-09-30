@@ -70,3 +70,5 @@ converged on the compatible `a549b86a4` reader with the effective writer flag
 still false; a separate normal PR enables new writes by default. Local bytes
 are not production savings. Keep this ticket in progress through activation,
 rollback readiness, and measured production verification.
+
+The exposure window-index follow-up has a local 1.5-million-row online-DDL proof and a dry-run-first Admin operator in a separate proposed PR. It has not run against production; the old eight-key index and Prisma history remain authoritative until root-owned create/observe/drop gates and a later forward-only schema reconciliation. See `docs/operations/watch-exposure-online-index.md` and `docs/reports/2026-09-30-watch-exposure-index-feasibility.md`. Keep this ticket in progress.
