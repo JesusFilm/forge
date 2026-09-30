@@ -522,8 +522,27 @@ const VOICE_DELIVERY: Record<
   },
 }
 
+/**
+ * The opening is read on Eleven v4 (owner's pick "B", 2026-09-30): the story
+ * voice on v2 was right for the reflection but flat for the teaser. Plain
+ * text, no audio tags: the model's own reading was the most energetic. The
+ * Russian voice keeps its tuned recipe.
+ */
+export function segmentModel(id: string, voice: string): string | undefined {
+  if (voice === "russian") return undefined
+  return id === "hook" ? "eleven_v4" : undefined
+}
+
 /** The cache tag of the delivery a segment is read with ("" = default). */
 export function voiceTake(id: string, voice: string): string {
+  // A different model is a different recording: tag it, so a v2 reading is
+  // never replayed where v4 is asked for (and never re-billed the other way).
+  const model = segmentModel(id, voice) ? "v4" : ""
+  const delivery = baseTake(id, voice)
+  return [delivery, model].filter(Boolean).join("+")
+}
+
+function baseTake(id: string, voice: string): string {
   if (id === "cover" || id === "conclusion" || id === "questions") return ""
   // Scripture is read calmly, like the close (owner, 2026-09-30). Tagged, so
   // a scripture read under this voice's old default is not replayed as calm.
@@ -763,11 +782,13 @@ export async function produceDevotionalAudio(
     // revealed at a steady pace, so anything unaccounted for drops the words.
     const unitTempos: number[] = []
     for (let ui = 0; ui < units.length; ui++) {
+      const segModel = segmentModel(seg.id, segVoice)
       const speak = () =>
         voiceover({
           text: units[ui],
           voice: segVoice,
           ...(voiceSettings ? { voiceSettings } : {}),
+          ...(segModel ? { model: segModel } : {}),
           ...(deps.withTimestamps ? { withTimestamps: true } : {}),
         })
       // ACTUALLY retry retryable failures. `voiceover` already classifies

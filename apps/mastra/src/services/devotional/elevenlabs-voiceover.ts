@@ -167,6 +167,9 @@ export type GenerateVoiceoverInput = {
   voice?: DevotionalVoiceName | string
   /** Override the tuned delivery settings. */
   voiceSettings?: ElevenVoiceSettings
+  /** Model for this call only (e.g. "eleven_v4" for the opening); defaults
+   *  to the configured TTS model. */
+  model?: string
   /** Injectable for tests; defaults to the resolved ElevenLabs env config. */
   config?: ElevenLabsConfig
   fetchImpl?: typeof fetch
@@ -270,7 +273,7 @@ export async function generateElevenVoiceover(
       },
       body: JSON.stringify({
         text,
-        model_id: config.ttsModel,
+        model_id: input.model ?? config.ttsModel,
         voice_settings: input.voiceSettings ?? DEFAULT_VOICE_SETTINGS,
       }),
       signal: AbortSignal.timeout(timeoutMs),
@@ -370,7 +373,7 @@ export async function generateElevenVoiceover(
       format: "mp3",
       bytes,
       voiceId,
-      model: config.ttsModel,
+      model: input.model ?? config.ttsModel,
       characterCount: text.length,
       ...(words && words.length > 0 ? { words } : {}),
     },

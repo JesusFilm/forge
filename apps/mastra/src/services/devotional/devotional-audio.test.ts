@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   buildNarrationSegments,
   produceDevotionalAudio,
+  segmentModel,
   voiceTake,
 } from "./devotional-audio"
 import type { GeneratedDevotional } from "./generate-devotional"
@@ -534,6 +535,13 @@ describe("voiceTake", () => {
     for (const id of ["cover", "conclusion", "questions"])
       expect(voiceTake(id, "female-d")).toBe("")
     expect(voiceTake("reflection-3", "male-e")).toBe("")
+  })
+  it("reads the opening on Eleven v4, under its own tag", () => {
+    expect(segmentModel("hook", "male-e")).toBe("eleven_v4")
+    expect(voiceTake("hook", "male-e")).toBe("v4")
+    expect(voiceTake("hook", "female-d")).toBe("f4+v4")
+    expect(segmentModel("hook", "russian")).toBeUndefined()
+    expect(segmentModel("reflection-2", "male-e")).toBeUndefined()
   })
   it("reads scripture calmly, under its own tag, in a voice with a fast take", () => {
     expect(voiceTake("scripture", "female-d")).toBe("calm")
