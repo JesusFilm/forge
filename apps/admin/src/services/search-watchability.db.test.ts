@@ -267,8 +267,17 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
             // The exact slug wins even though the tag-only sibling is longer
             // and the slug-less sibling shares its tag.
+            const scalar = async (languageSlug: string) =>
+              (
+                await new VideoService(db).getPreferredPlayableDub({
+                  videoId: video.id,
+                  languageSlug,
+                  query: { select: { id: true } },
+                })
+              )?.id
             expect(await batched(tag)).toBe(exactDub.id)
             expect(await snapshot(tag)).toBe(exactDub.id)
+            expect(await scalar(tag)).toBe(exactDub.id)
             // The sibling still resolves by its own slug.
             expect(await batched(tagOnlyLanguage.slug!)).toBe(tagOnlyDub.id)
             expect(await snapshot(tagOnlyLanguage.slug!)).toBe(tagOnlyDub.id)
@@ -280,6 +289,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             })
             expect(await batched(tag)).toBe(tagOnlyDub.id)
             expect(await snapshot(tag)).toBe(tagOnlyDub.id)
+            expect(await scalar(tag)).toBe(tagOnlyDub.id)
             throw rollback
           },
           { timeout: 30_000 },
@@ -419,6 +429,15 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             )
             // Without a subtitle preference the longest exact-slug dub wins.
             expect(await snapshot(null)).toBe(exactPlainDub.id)
+            // With the subtitle-bearing exact-slug dub withdrawn, the plain
+            // exact-slug dub still beats the tag-only dub that carries the
+            // subtitle: a subtitle tier sorted above the slug tier would
+            // return `tagSubbedDub` here.
+            await tx.videoDub.update({
+              where: { id: exactSubbedDub.id },
+              data: { deletedAt: new Date() },
+            })
+            expect(await snapshot(subtitleLanguage.slug)).toBe(exactPlainDub.id)
             expect(exactPlainDub.id).not.toBe(tagSubbedDub.id)
             throw rollback
           },
