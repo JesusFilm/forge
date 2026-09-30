@@ -76,6 +76,26 @@ for (const name of requiredSteps) {
   })
 }
 
+const refreshModule = "src/workflows/recommendationCowatchRefresh.ts"
+assertRegistration({
+  entries: manifest.workflows?.[refreshModule],
+  kind: "workflow",
+  name: "runRecommendationCowatchRefreshScheduler",
+  routeSource: workflowRouteSource,
+})
+for (const name of [
+  "stepMarkRecommendationCowatchRefreshStarted",
+  "stepRunRecommendationCowatchRefresh",
+  "stepRecordRecommendationCowatchRefreshHeartbeat",
+]) {
+  assertRegistration({
+    entries: manifest.steps?.[refreshModule],
+    kind: "step",
+    name,
+    routeSource: stepRouteSource,
+  })
+}
+
 console.log(
-  `Verified ${requiredWorkflows.length} retention workflows and ${requiredSteps.length} steps, including the push retention step`,
+  `Verified retention workflows and steps, plus the co-watch refresh scheduler and its three steps`,
 )

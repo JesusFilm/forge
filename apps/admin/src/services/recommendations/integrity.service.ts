@@ -205,11 +205,25 @@ export class RecommendationIntegrityService {
             measures,
             decision,
             inputDigest,
-            playbackDigestWithMeasures: (storedMeasures) =>
-              eligibilityInputDigest({
+            playbackInputMatchesReceipt: (storedMeasures, storedDigest) => {
+              const currentInput = {
                 ...classificationInput,
                 measures: storedMeasures,
-              }),
+              }
+              if (eligibilityInputDigest(currentInput) === storedDigest)
+                return true
+              // The pre-owner-authority producer omitted this one field. A
+              // currently allowed source may keep that exact legacy receipt;
+              // all other evidence remains in the hash. Never infer permission
+              // from the old format or accept a previously recorded false flag.
+              return (
+                directInfluenceAllowed === true &&
+                eligibilityInputDigest({
+                  ...currentInput,
+                  directInfluenceAllowed: undefined,
+                }) === storedDigest
+              )
+            },
             evidenceWatermark,
             decidedAt: this.deps.now?.() ?? new Date(),
             expiresAt: outcome.expiresAt,
@@ -622,7 +636,10 @@ async function writeDecision(
     measures: SourceMeasures
     decision: RecommendationIntegrityDecision
     inputDigest: string
-    playbackDigestWithMeasures?: (measures: SourceMeasures) => string
+    playbackInputMatchesReceipt?: (
+      measures: SourceMeasures,
+      digest: string,
+    ) => boolean
     evidenceWatermark: Date | null
     decidedAt: Date
     expiresAt: Date
@@ -663,7 +680,7 @@ async function writeDecision(
   // hashes to that receipt. Never rewrite its digest, measurements or lifetime.
   const unchangedPositivePlayback =
     previous != null &&
-    input.playbackDigestWithMeasures != null &&
+    input.playbackInputMatchesReceipt != null &&
     input.sourceType === RecommendationEligibilitySourceType.PLAYBACK_OUTCOME &&
     previous.isCurrent &&
     previous.sourceKey === input.sourceKey &&
@@ -684,11 +701,14 @@ async function writeDecision(
     input.decision.eligibleScopes.includes("aggregate") &&
     sameTokens(previous.eligibleScopes, input.decision.eligibleScopes) &&
     sameTokens(previous.reasonCodes, input.decision.reasonCodes) &&
-    input.playbackDigestWithMeasures({
-      contributionOrdinal: previous.contributionOrdinal,
-      distinctSupport: previous.distinctSupport,
-      identityConcentration: previous.identityConcentration,
-    }) === previous.inputDigest
+    input.playbackInputMatchesReceipt(
+      {
+        contributionOrdinal: previous.contributionOrdinal,
+        distinctSupport: previous.distinctSupport,
+        identityConcentration: previous.identityConcentration,
+      },
+      previous.inputDigest,
+    )
   if (
     previous &&
     (previous.inputDigest === input.inputDigest || unchangedPositivePlayback)

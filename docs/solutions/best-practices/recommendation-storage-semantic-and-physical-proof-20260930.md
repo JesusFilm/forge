@@ -111,6 +111,28 @@ Keep completed audit bytes losslessly compressed and verify decompression before
 removing raw copies; local audit accumulation is a separate capacity concern.
 See `docs/operations/unattended-legacy-recommendation-drain.md`.
 
+## Retained overlap changes query work
+
+A refresh cadence increases both stored generations and the retained ownership
+receipts consulted by the next source query. Test that overlap before granting
+automatic publication. The October 1 Co-watch query passed current-production
+equivalence with three generations, but materializing every raw row against every
+retained receipt expanded 40,605 rows into 3.1 million matches at 60 generations
+and exceeded the five-second statement limit.
+
+Preaggregate invalid ownership and preferred valid identity independently by
+session and episode, then join those bounded keys to raw rows. Preserve exact
+episode identity priority, live-link priority and invalid ownership fences; an
+identity optimization must not permit legacy or invalid receipts to fall through
+to anonymous ownership. A frozen-reference native test compares all fields,
+ordering and the resulting graph, including foreign-session episode matches.
+
+The corrected owned fixture took 2.33 seconds at 60 generations, while a bounded
+same-snapshot production comparison proved exact row/graph equality. These are
+query proofs, not evidence of future production disk headroom. Keep measured
+physical reserve, temporary-space caps, statement limits and grant refusal
+separate. See `docs/validation/cowatch-restoration-20261001/retained-overlap-proof.json`.
+
 ## Related
 
 - `docs/solutions/best-practices/recommendation-trace-capacity-and-retention-proof-20260928.md`

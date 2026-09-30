@@ -51,6 +51,9 @@ const ensureCoreSyncSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureVideoDbBackupSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureSearchTraceRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureRecommendationRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
+const ensureRecommendationCowatchRefreshSchedulerStarted = vi.hoisted(() =>
+  vi.fn(),
+)
 const ensureRecommendationControlReadinessSchedulerStarted = vi.hoisted(() =>
   vi.fn(),
 )
@@ -90,6 +93,9 @@ function clearWorkflowStartupState() {
     __forgeAdminProfileReconciliationRecovery?: {
       retryTimer?: ReturnType<typeof setTimeout>
     }
+    __forgeAdminCowatchRefreshRecovery?: {
+      retryTimer?: ReturnType<typeof setTimeout>
+    }
   }
   if (workflowGlobal.__forgeAdminWorkflowStartup?.retryTimer) {
     clearTimeout(workflowGlobal.__forgeAdminWorkflowStartup.retryTimer)
@@ -106,6 +112,9 @@ function clearWorkflowStartupState() {
     )
   }
   delete workflowGlobal.__forgeAdminProfileReconciliationRecovery
+  if (workflowGlobal.__forgeAdminCowatchRefreshRecovery?.retryTimer)
+    clearTimeout(workflowGlobal.__forgeAdminCowatchRefreshRecovery.retryTimer)
+  delete workflowGlobal.__forgeAdminCowatchRefreshRecovery
 }
 
 vi.mock("@/config/env", () => mockEnv)
@@ -124,6 +133,9 @@ vi.mock("@/services/search-trace-retention/job", () => ({
 }))
 vi.mock("@/services/recommendations/retention/job", () => ({
   ensureRecommendationRetentionSchedulerStarted,
+}))
+vi.mock("@/services/recommendations/cowatch/refresh.job", () => ({
+  ensureRecommendationCowatchRefreshSchedulerStarted,
 }))
 vi.mock("@/services/recommendations/control-readiness/job", () => ({
   ensureRecommendationControlReadinessSchedulerStarted,
@@ -161,6 +173,7 @@ describe("workflow instrumentation", () => {
     ensureVideoDbBackupSchedulerStarted.mockReset()
     ensureSearchTraceRetentionSchedulerStarted.mockReset()
     ensureRecommendationRetentionSchedulerStarted.mockReset()
+    ensureRecommendationCowatchRefreshSchedulerStarted.mockReset()
     ensureRecommendationControlReadinessSchedulerStarted.mockReset()
     ensurePlaybackObservationSnapshotBootstrapStarted.mockReset()
     ensureRecommendationProfileReconciliationSchedulerStarted.mockReset()
@@ -417,6 +430,9 @@ describe("workflow instrumentation", () => {
     expect(ensureCoreSyncSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureVideoDbBackupSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureSearchTraceRetentionSchedulerStarted).toHaveBeenCalledTimes(1)
+    expect(
+      ensureRecommendationCowatchRefreshSchedulerStarted,
+    ).toHaveBeenCalledTimes(1)
     expect(ensureRecommendationRetentionSchedulerStarted).toHaveBeenCalledTimes(
       1,
     )
@@ -482,6 +498,34 @@ describe("workflow instrumentation", () => {
     expect(
       ensureRecommendationProfileReconciliationSchedulerStarted,
     ).toHaveBeenCalledTimes(2)
+  })
+
+  it("recovers co-watch scheduler failures independently of profile reconciliation", async () => {
+    vi.useFakeTimers()
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const { register } = await import("./instrumentation")
+      await register()
+      ensureRecommendationCowatchRefreshSchedulerStarted.mockRejectedValueOnce(
+        new Error("temporary scheduler recovery failure"),
+      )
+      await vi.advanceTimersByTimeAsync(10 * 60_000)
+      expect(
+        ensureRecommendationCowatchRefreshSchedulerStarted,
+      ).toHaveBeenCalledTimes(3)
+      expect(
+        ensureRecommendationProfileReconciliationSchedulerStarted,
+      ).toHaveBeenCalledTimes(3)
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "[recommendation-cowatch-refresh] event=scheduler_recovery_failure",
+        ),
+      )
+    } finally {
+      warn.mockRestore()
+    }
   })
 
   it("does not block worker startup when recommendation recovery fails", async () => {

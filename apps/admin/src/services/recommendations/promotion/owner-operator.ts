@@ -122,66 +122,14 @@ export class RecommendationOwnerReleaseOperator {
           now,
           prepared.validUntil,
         )
-        const generation = pointer.generation + 1
-        const approvedAt = operationNow()
-        const release = await tx.recommendationOwnerRelease.create({
-          data: {
-            id: input.operationId,
-            pointerGeneration: generation,
-            ...prepared,
-            approvedById: input.actor.id!,
-            approvedAt,
-            // Minimized activation metadata follows the existing promotion audit lifetime.
-            expiresAt: new Date(
-              Math.max(
-                prepared.rawPopulationExpiresAt.getTime(),
-                approvedAt.getTime() + 2_555 * 86_400_000,
-              ),
-            ),
-          },
-        })
-        const updated = await tx.recommendationPromotionPointer.updateMany({
-          where: {
-            id: POINTER_ID,
-            generation: input.expectedPointerGeneration,
-            killSwitchEnabled: false,
-          },
-          data: {
-            activeManifestId: release.manifestId,
-            activeOwnerReleaseId: release.id,
-            activeApprovalId: null,
-            stage: "OWNER_APPROVED",
-            generation,
-            exposureCeilingBps: 10_000,
-            reasonCode: "owner_approved_direct_release",
-          },
-        })
-        if (updated.count !== 1)
-          throw new RecommendationConflictError("Promotion page is stale")
-        await tx.recommendationPromotionEvent.create({
-          data: promotionEventData({
-            id: randomUUID(),
-            dedupeKey: `owner-release:${release.id}`,
-            eventType: "ACTIVATION_EFFECTIVE",
-            fromManifestId: pointer.activeManifestId,
-            toManifestId: release.manifestId,
-            fromStage: pointer.stage,
-            toStage: "OWNER_APPROVED",
-            pointerGeneration: generation,
-            exposureCeilingBps: 10_000,
-            actorClass: "admin",
-            actorId: input.actor.id,
-            reasonCode: "owner_approved_without_trial",
-            inputDigest: release.bindingDigest,
-            details: {
-              ownerReleaseId: release.id,
-              graphGenerationId: release.graphGenerationId,
-              validUntil: release.validUntil.toISOString(),
-              usefulness: "unmeasured",
-              refresh: "manual",
-            },
-            now,
-          }),
+        const release = await commitPreparedOwnerRelease(tx, {
+          operationId: input.operationId,
+          expectedPointerGeneration: input.expectedPointerGeneration,
+          approvedById: input.actor.id!,
+          approvedAt: operationNow(),
+          prepared,
+          pointer,
+          now,
         })
         return this.receipt(tx, release, operationNow())
       },
@@ -302,7 +250,7 @@ function assertReplay(
     )
 }
 
-async function assertPointerAndOverlap(
+export async function assertPointerAndOverlap(
   tx: Prisma.TransactionClient,
   expectedGeneration: number,
   now: Date,
@@ -336,4 +284,87 @@ async function assertPointerAndOverlap(
       "An active experiment overlaps this direct release",
     )
   return pointer
+}
+
+/** Internal commit seam: callers must establish human or persisted delegated authority first. */
+export async function commitPreparedOwnerRelease(
+  tx: Prisma.TransactionClient,
+  input: {
+    operationId: string
+    expectedPointerGeneration: number
+    approvedById: string
+    approvedAt: Date
+    prepared: Awaited<ReturnType<typeof prepareOwnerReleaseBinding>>
+    pointer: Awaited<ReturnType<typeof assertPointerAndOverlap>>
+    now: Date
+    refreshGrantId?: string
+  },
+) {
+  const generation = input.expectedPointerGeneration + 1
+  const release = await tx.recommendationOwnerRelease.create({
+    data: {
+      id: input.operationId,
+      pointerGeneration: generation,
+      ...input.prepared,
+      approvedById: input.approvedById,
+      approvedAt: input.approvedAt,
+      expiresAt: new Date(
+        Math.max(
+          input.prepared.rawPopulationExpiresAt.getTime(),
+          input.approvedAt.getTime() + 2_555 * 86_400_000,
+        ),
+      ),
+    },
+  })
+  const updated = await tx.recommendationPromotionPointer.updateMany({
+    where: {
+      id: POINTER_ID,
+      generation: input.expectedPointerGeneration,
+      killSwitchEnabled: false,
+    },
+    data: {
+      activeManifestId: release.manifestId,
+      activeOwnerReleaseId: release.id,
+      activeApprovalId: null,
+      stage: "OWNER_APPROVED",
+      generation,
+      exposureCeilingBps: 10_000,
+      reasonCode: input.refreshGrantId
+        ? "owner_delegated_graph_refresh"
+        : "owner_approved_direct_release",
+    },
+  })
+  if (updated.count !== 1)
+    throw new RecommendationConflictError("Promotion page is stale")
+  await tx.recommendationPromotionEvent.create({
+    data: promotionEventData({
+      id: randomUUID(),
+      dedupeKey: `owner-release:${release.id}`,
+      eventType: "ACTIVATION_EFFECTIVE",
+      fromManifestId: input.pointer.activeManifestId,
+      toManifestId: release.manifestId,
+      fromStage: input.pointer.stage,
+      toStage: "OWNER_APPROVED",
+      pointerGeneration: generation,
+      exposureCeilingBps: 10_000,
+      actorClass: input.refreshGrantId ? "system" : "admin",
+      actorId: input.refreshGrantId ? null : input.approvedById,
+      reasonCode: input.refreshGrantId
+        ? "owner_delegated_graph_refresh"
+        : "owner_approved_without_trial",
+      inputDigest: release.bindingDigest,
+      details: {
+        ownerReleaseId: release.id,
+        graphGenerationId: release.graphGenerationId,
+        validUntil: release.validUntil.toISOString(),
+        usefulness: "unmeasured",
+        refresh: input.refreshGrantId ? "bounded_delegation" : "manual",
+        ...(input.refreshGrantId
+          ? { refreshGrantId: input.refreshGrantId }
+          : {}),
+      },
+      now: input.now,
+    }),
+  })
+  return release
 }

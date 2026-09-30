@@ -255,6 +255,13 @@ export async function loadCowatchPlayableRows(
         AND transcript.video_edition_id = playable.video_edition_id
         AND transcript.language = ${context.locale}
         ${activeTranscriptContentEmbeddingWhere({ transcriptAlias: "transcript", chunkAlias: "chunk" })}
+        -- Empty opening chunks must not hide later real theme metadata. Keep
+        -- the same bounded labels consumed by composition; absent labels stay
+        -- unavailable rather than being inferred from another locale/edition.
+        AND EXISTS (
+          SELECT 1 FROM unnest(chunk.felt_needs[1:16]) AS theme(label)
+          WHERE LEFT(theme.label, 64) ~ '[^[:space:]]'
+        )
       ORDER BY chunk.chunk_index, chunk.id
       LIMIT 1
     ) metadata ON true

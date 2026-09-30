@@ -12,6 +12,7 @@ import {
 import { unlinkPushViewerIdentities } from "@/services/push/identity-unlink.service"
 import { RECOMMENDATION_RETENTION_PROPAGATION_HOURS } from "./contracts"
 import { suppressCowatchForProfiles } from "./cowatch/privacy"
+import { purgeExpiredCowatchRefreshMetadata } from "./cowatch/refresh-retention"
 import { purgeExpiredCompositionEvidence } from "./composition/service"
 import { purgeExpiredOwnerReleases } from "./promotion/owner-authority"
 import { purgeExpiredCowatchTrialAuthorities } from "./cowatch/trial-authority.service"
@@ -285,6 +286,11 @@ export async function purgeExpiredRecommendationRequests(
     })
     await phase(async (tx) => {
       rowCounts.expiredOwnerReleases = await purgeExpiredOwnerReleases(tx, now)
+    })
+    await phase(async (tx) => {
+      const removed = await purgeExpiredCowatchRefreshMetadata(tx, now)
+      rowCounts.expiredCowatchRefreshAttempts = removed.attempts
+      rowCounts.expiredCowatchRefreshGrants = removed.grants
     })
     const expiredWatchExposures = await phase((tx) =>
       tx.watchSurfaceExposure.findMany({

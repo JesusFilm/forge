@@ -45,6 +45,40 @@ hashing. Threshold crossings and non-measure evidence changes still supersede,
 even if some other changed evidence happens to produce the same positive verdict.
 Selection and content-action classification retain their existing behavior.
 
+## Legacy digest compatibility found on October 1
+
+Generation 6 still revoked after measurement-only reuse shipped. Retained evidence
+showed 12 positive eligibility replacements near its revocation. Eight captured
+digests exactly reproduced the current input with the previous measures and only
+`directInfluenceAllowed` omitted, matching the older serialization. All 12 successor
+digests matched the complete current input. The earliest successor preceded graph
+invalidation by 11 ms and reproduced this legacy form. This identifies a concrete
+producer defect and strongly supports the revocation trigger; timestamps alone do
+not reconstruct the invalidating database transaction. Four other captured digests
+did not match either representation and must continue to revoke.
+
+The compatibility path accepts only playback input with current
+`directInfluenceAllowed === true`. After recomputing the decision and enforcing
+every existing source/actor/policy/watermark/expiry/effective-decision guard, try
+the modern hash first, then the exact historic serialization with that single
+property omitted. No arbitrary hash mismatch, previously explicit `false`, changed
+evidence or newly disallowed influence can reuse a receipt. The stored digest,
+measures and expiry remain unchanged.
+
+Native regressions use the real producer, publication and invalidation triggers:
+modern and legacy measurement changes (including concurrent classifications) retain
+the same receipt and authority; threshold crossings and other evidence changes
+still revoke. Historic digests are seeded only before graph publication in the
+owned fixture. Never repair production by editing a captured receipt or clearing
+revocation.
+
+The [sanitized investigation](../../validation/cowatch-restoration-20261001/production-investigation.md)
+contains the digest reconstruction, timing, deployed revisions and limits of this
+evidence. Separately, missing-theme composition can come from selecting an empty
+first transcript chunk or losing metadata when the candidate union selects another
+presentation. Fix the bounded exact-video/playback/locale metadata path; do not
+infer that a theme fallback invalidated graph authority.
+
 ## Verification and remaining work
 
 The regression tests exercise unchanged receipt reuse, threshold crossings,
