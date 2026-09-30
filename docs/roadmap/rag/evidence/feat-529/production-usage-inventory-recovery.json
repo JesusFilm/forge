@@ -1,0 +1,278 @@
+{
+  "target": "forge/production/@forge/rag",
+  "startedAt": "2026-09-29T05:26:26.182Z",
+  "status": "inventory_and_reconciliation_complete",
+  "plannedInventory": [
+    {
+      "deploymentId": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+      "startsAt": "2026-09-29T03:34:00Z",
+      "endsAt": "2026-09-29T04:45:52.727Z",
+      "expectedReplicas": 1
+    },
+    {
+      "deploymentId": "c7992d7c-00a5-4f10-a35f-6a463ef09868",
+      "startsAt": "2026-09-29T04:46:00Z",
+      "endsAt": "2026-09-29T04:58:26.354Z",
+      "expectedReplicas": 1
+    },
+    {
+      "deploymentId": "d4192ef8-9638-40d3-ac00-73f4ec6e959d",
+      "startsAt": "2026-09-29T04:59:00Z",
+      "endsAt": null,
+      "expectedReplicas": 1
+    }
+  ],
+  "independentSource": {
+    "a": {
+      "createdAt": "2026-09-29T03:28:01.503Z",
+      "deploymentStopped": true,
+      "id": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+      "instances": [
+        {
+          "id": "aa88ecb4-dc1e-4406-9811-81d05dbe85b4",
+          "status": "REMOVED"
+        },
+        {
+          "id": "7862f68c-ce0c-4e02-8c66-ea5583bed10e",
+          "status": "REMOVED"
+        }
+      ],
+      "status": "REMOVED",
+      "statusUpdatedAt": "2026-09-29T04:45:52.726Z",
+      "updatedAt": "2026-09-29T04:45:52.727Z",
+      "replicaConfiguration": {
+        "numReplicas": 1,
+        "multiRegionConfig": {
+          "us-west2": {
+            "numReplicas": 1
+          }
+        }
+      },
+      "commitHash": "2233e06a2edc0b98457b4967c197141e4ba3e172"
+    },
+    "b": {
+      "createdAt": "2026-09-29T04:40:39.252Z",
+      "deploymentStopped": true,
+      "id": "c7992d7c-00a5-4f10-a35f-6a463ef09868",
+      "instances": [
+        {
+          "id": "b93985c2-3c57-4537-9002-9c4f9ec95625",
+          "status": "REMOVED"
+        },
+        {
+          "id": "adf1c17f-5cc5-4bc7-83c4-53f64c312061",
+          "status": "REMOVED"
+        }
+      ],
+      "status": "REMOVED",
+      "statusUpdatedAt": "2026-09-29T04:58:25.843Z",
+      "updatedAt": "2026-09-29T04:58:25.844Z",
+      "replicaConfiguration": {
+        "numReplicas": 1,
+        "multiRegionConfig": {
+          "us-west2": {
+            "numReplicas": 1
+          }
+        }
+      },
+      "commitHash": "d2afabcb20987715f10aa2b01d54a8983aa92223"
+    },
+    "c": {
+      "createdAt": "2026-09-29T04:53:07.979Z",
+      "deploymentStopped": false,
+      "id": "d4192ef8-9638-40d3-ac00-73f4ec6e959d",
+      "instances": [
+        {
+          "id": "34ac6ec5-2c0c-4753-b11d-d1f99b4faf63",
+          "status": "REMOVED"
+        },
+        {
+          "id": "1115802f-f524-44ce-864f-d8303fbccf9e",
+          "status": "RUNNING"
+        }
+      ],
+      "status": "SUCCESS",
+      "statusUpdatedAt": "2026-09-29T04:58:22.683Z",
+      "updatedAt": "2026-09-29T04:58:22.684Z",
+      "replicaConfiguration": {
+        "numReplicas": 1,
+        "multiRegionConfig": {
+          "us-west2": {
+            "numReplicas": 1
+          }
+        }
+      },
+      "commitHash": "21e8de13ecd55b021a1b6c1858c1925298ecc895"
+    }
+  },
+  "containerEvents": [
+    {
+      "deploymentId": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+      "controlPlaneContainerEvents": [
+        {
+          "timestamp": "2026-09-29T03:32:59.812604808Z",
+          "event": "Starting Container"
+        },
+        {
+          "timestamp": "2026-09-29T03:33:02.890519371Z",
+          "event": "Stopping Container"
+        },
+        {
+          "timestamp": "2026-09-29T03:33:36.933510733Z",
+          "event": "Starting Container"
+        },
+        {
+          "timestamp": "2026-09-29T04:45:52.646941681Z",
+          "event": "Stopping Container"
+        }
+      ]
+    },
+    {
+      "deploymentId": "c7992d7c-00a5-4f10-a35f-6a463ef09868",
+      "controlPlaneContainerEvents": [
+        {
+          "timestamp": "2026-09-29T04:45:04.450359819Z",
+          "event": "Starting Container"
+        },
+        {
+          "timestamp": "2026-09-29T04:45:07.478378740Z",
+          "event": "Stopping Container"
+        },
+        {
+          "timestamp": "2026-09-29T04:45:43.565295799Z",
+          "event": "Starting Container"
+        },
+        {
+          "timestamp": "2026-09-29T04:58:26.354299618Z",
+          "event": "Stopping Container"
+        }
+      ]
+    },
+    {
+      "deploymentId": "d4192ef8-9638-40d3-ac00-73f4ec6e959d",
+      "controlPlaneContainerEvents": [
+        {
+          "timestamp": "2026-09-29T04:57:42.203085961Z",
+          "event": "Starting Container"
+        },
+        {
+          "timestamp": "2026-09-29T04:57:44.366479867Z",
+          "event": "Stopping Container"
+        },
+        {
+          "timestamp": "2026-09-29T04:58:19.951875720Z",
+          "event": "Starting Container"
+        }
+      ]
+    }
+  ],
+  "reconciledCollectors": [
+    {
+      "collectorId": "9afb9b03-b356-46d8-82a0-2a50ee77688e",
+      "deploymentId": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+      "reconciledAt": "2026-09-29T05:26:40.429Z"
+    },
+    {
+      "collectorId": "695c954c-0f86-40cd-8f57-3a63ff033642",
+      "deploymentId": "c7992d7c-00a5-4f10-a35f-6a463ef09868",
+      "reconciledAt": "2026-09-29T05:26:43.511Z"
+    }
+  ],
+  "before": {
+    "consumerId": "1547b524-ad60-4cf7-ac67-930b9715dc4e",
+    "label": "ragbot",
+    "windowStart": "2026-09-29T03:41:00.000Z",
+    "windowEnd": "2026-09-29T03:42:00.000Z",
+    "requestCount": 5,
+    "successfulRequestCount": 5,
+    "lastActivityAt": "2026-09-29T03:41:32.611Z",
+    "generatedAt": "2026-09-29T05:26:33.661Z",
+    "completeThrough": null,
+    "coverageStatus": "unavailable"
+  },
+  "pendingBefore": 0,
+  "inventoryCommittedAt": "2026-09-29T05:26:38.384Z",
+  "afterInventory": {
+    "consumerId": "1547b524-ad60-4cf7-ac67-930b9715dc4e",
+    "label": "ragbot",
+    "windowStart": "2026-09-29T03:41:00.000Z",
+    "windowEnd": "2026-09-29T03:42:00.000Z",
+    "requestCount": 5,
+    "successfulRequestCount": 5,
+    "lastActivityAt": "2026-09-29T03:41:32.611Z",
+    "generatedAt": "2026-09-29T05:26:38.384Z",
+    "completeThrough": "2026-09-29T03:42:00.000Z",
+    "coverageStatus": "complete"
+  },
+  "after": {
+    "consumerId": "1547b524-ad60-4cf7-ac67-930b9715dc4e",
+    "label": "ragbot",
+    "windowStart": "2026-09-29T03:41:00.000Z",
+    "windowEnd": "2026-09-29T03:42:00.000Z",
+    "requestCount": 5,
+    "successfulRequestCount": 5,
+    "lastActivityAt": "2026-09-29T03:41:32.611Z",
+    "generatedAt": "2026-09-29T05:26:44.360Z",
+    "completeThrough": "2026-09-29T03:42:00.000Z",
+    "coverageStatus": "complete"
+  },
+  "finalInventory": [
+    {
+      "deployment_id": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+      "starts_at": "2026-09-29T03:34:00.000Z",
+      "ends_at": "2026-09-29T04:45:52.727Z",
+      "expected_replicas": 1
+    },
+    {
+      "deployment_id": "c7992d7c-00a5-4f10-a35f-6a463ef09868",
+      "starts_at": "2026-09-29T04:46:00.000Z",
+      "ends_at": "2026-09-29T04:58:26.354Z",
+      "expected_replicas": 1
+    },
+    {
+      "deployment_id": "d4192ef8-9638-40d3-ac00-73f4ec6e959d",
+      "starts_at": "2026-09-29T04:59:00.000Z",
+      "ends_at": null,
+      "expected_replicas": 1
+    }
+  ],
+  "finalCollectors": [
+    {
+      "id": "9afb9b03-b356-46d8-82a0-2a50ee77688e",
+      "deployment_id": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+      "started_at": "2026-09-29T03:33:37.132Z",
+      "complete_through": "2026-09-29T05:26:40.429Z",
+      "heartbeat_at": "2026-09-29T05:26:40.429Z",
+      "stopped_at": "2026-09-29T05:26:40.429Z"
+    },
+    {
+      "id": "695c954c-0f86-40cd-8f57-3a63ff033642",
+      "deployment_id": "c7992d7c-00a5-4f10-a35f-6a463ef09868",
+      "started_at": "2026-09-29T04:45:43.727Z",
+      "complete_through": "2026-09-29T05:26:43.511Z",
+      "heartbeat_at": "2026-09-29T05:26:43.511Z",
+      "stopped_at": "2026-09-29T05:26:43.511Z"
+    },
+    {
+      "id": "e082410f-f69a-44a1-963a-ec2322cce080",
+      "deployment_id": "d4192ef8-9638-40d3-ac00-73f4ec6e959d",
+      "started_at": "2026-09-29T04:58:19.876Z",
+      "complete_through": "2026-09-29T05:26:41.057Z",
+      "heartbeat_at": "2026-09-29T05:26:41.057Z",
+      "stopped_at": null
+    }
+  ],
+  "finalGaps": [
+    {
+      "started_at": "2026-09-29T04:45:50.009Z",
+      "ended_at": "2026-09-29T05:26:40.429Z"
+    },
+    {
+      "started_at": "2026-09-29T04:58:20.323Z",
+      "ended_at": "2026-09-29T05:26:43.511Z"
+    }
+  ],
+  "futureProofFrom": "2026-09-29T05:27:00.000Z",
+  "futureProofTo": "2026-09-29T05:28:00.000Z",
+  "checkedAt": "2026-09-29T05:26:46.335Z"
+}
