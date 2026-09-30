@@ -60,38 +60,25 @@ the browser, logs and repository. The session role has only `USAGE` on
 renewal; its corpus and `consumer_private` reads were denied in the
 operator permission check.
 
-Before enabling renewal in an existing environment, grant the portal session
-role only `UPDATE (expires_at)` on `portal_private.sessions`. Use the role
-configured by `RAG_PORTAL_DATABASE_URL`; do not grant table-wide `UPDATE` or
-extend another database role. The additive migration retains existing sessions'
-original expiry and gives new OAuth sign-ins the eight-hour idle and 24-hour
-absolute limits.
+The Railway pre-deploy command applies the additive migration, then runs
+`db:grant-portal-session-renewal` before the new service starts. The script
+connects with the configured restricted `RAG_PORTAL_DATABASE_URL`, obtains its
+role from PostgreSQL `current_user`, checks its existing portal-only privileges,
+and verifies both connections reach the same PostgreSQL cluster and database,
+and uses the migration administrator connection to grant only
+`UPDATE (expires_at)` on `portal_private.sessions`. It then reconnects as the
+restricted role to verify the expiry update is available while table-wide,
+other session-column, OAuth-state update and non-portal data privileges remain unavailable.
+An unexpected role, database, or privilege stops the deployment. The grant is
+idempotent and the script prints a redacted receipt containing the database and
+role names plus the checked permission booleans; it never prints either URL.
+The deployment log and reviewed script commit are the audit record. After the
+first production deployment, record the deployment ID and receipt result in
+`docs/roadmap/rag/evidence/feat-575/` without credentials or session values.
 
-This grant is a receiver-first deployment dependency. An operator should obtain
-the portal session role from the existing restricted portal database URL, then
-apply the following statement through the database administrator connection,
-substituting that verified role as a quoted SQL identifier:
-
-```sql
-GRANT UPDATE (expires_at) ON portal_private.sessions TO <portal_session_role>;
-```
-
-Connect with the restricted portal URL and check the effective privileges before
-merging the renewal PR. The role name comes from `current_user`; the result must
-be `true, false, false` in the order shown. Do not paste connection URLs into
-logs or evidence.
-
-```sql
-SELECT current_user,
-  has_column_privilege(current_user, 'portal_private.sessions', 'expires_at', 'UPDATE') AS expiry_update,
-  has_table_privilege(current_user, 'portal_private.sessions', 'UPDATE') AS table_update,
-  has_column_privilege(current_user, 'portal_private.sessions', 'github_login', 'UPDATE') AS identity_update;
-```
-
-Run the portal session restricted-role integration check with
-`RAG_PORTAL_SESSION_DATABASE_URL` set to that same URL. Stop the rollout if the
-grant is missing or broader than the expiry column. No production role change
-is performed by this repository migration.
+The migration retains existing sessions' original expiry and gives new OAuth
+sign-ins the eight-hour idle and 24-hour absolute limits. Environments without
+portal configuration skip the grant.
 
 The allowlisted login, protected identity response, sign-out, next-request
 unauthorized response and unlisted-account denial were observed in a real
