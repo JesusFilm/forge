@@ -170,7 +170,7 @@ export class RecommendationIntegrityService {
                       superseded: outcome.supersededBy != null,
                     })
 
-          const inputDigest = eligibilityInputDigest({
+          const classificationInput = {
             sourceType: "playback_outcome",
             outcomeId: outcome.id,
             classifierVersion: outcome.classifierVersion,
@@ -191,7 +191,8 @@ export class RecommendationIntegrityService {
             directInfluenceAllowed,
             measures,
             decision,
-          })
+          }
+          const inputDigest = eligibilityInputDigest(classificationInput)
 
           return writeDecision(tx, {
             id: this.deps.newId?.() ?? randomUUID(),
@@ -204,6 +205,11 @@ export class RecommendationIntegrityService {
             measures,
             decision,
             inputDigest,
+            playbackDigestWithMeasures: (storedMeasures) =>
+              eligibilityInputDigest({
+                ...classificationInput,
+                measures: storedMeasures,
+              }),
             evidenceWatermark,
             decidedAt: this.deps.now?.() ?? new Date(),
             expiresAt: outcome.expiresAt,
@@ -616,6 +622,7 @@ async function writeDecision(
     measures: SourceMeasures
     decision: RecommendationIntegrityDecision
     inputDigest: string
+    playbackDigestWithMeasures?: (measures: SourceMeasures) => string
     evidenceWatermark: Date | null
     decidedAt: Date
     expiresAt: Date
@@ -636,9 +643,56 @@ async function writeDecision(
       eligibleScopes: true,
       contributionWeight: true,
       evidenceWatermark: true,
+      isCurrent: true,
+      sourceKey: true,
+      sourceType: true,
+      outcomeId: true,
+      contentActionId: true,
+      selectionId: true,
+      policyVersion: true,
+      actorClass: true,
+      expiresAt: true,
+      contributionOrdinal: true,
+      distinctSupport: true,
+      identityConcentration: true,
     },
   })
-  if (previous?.inputDigest === input.inputDigest) {
+  // Ambient population measurements can move without changing this playback's
+  // evidence or effective eligibility. Preserve its original receipt only when
+  // the complete current input, with the stored measurements substituted, still
+  // hashes to that receipt. Never rewrite its digest, measurements or lifetime.
+  const unchangedPositivePlayback =
+    previous != null &&
+    input.playbackDigestWithMeasures != null &&
+    input.sourceType === RecommendationEligibilitySourceType.PLAYBACK_OUTCOME &&
+    previous.isCurrent &&
+    previous.sourceKey === input.sourceKey &&
+    previous.sourceType === input.sourceType &&
+    previous.outcomeId === input.outcomeId &&
+    previous.contentActionId === input.contentActionId &&
+    previous.selectionId === input.selectionId &&
+    previous.policyVersion === RECOMMENDATION_INTEGRITY_POLICY_VERSION &&
+    previous.actorClass === input.actorClass &&
+    previous.expiresAt.getTime() === input.expiresAt.getTime() &&
+    previous.expiresAt.getTime() > input.decidedAt.getTime() &&
+    previous.evidenceWatermark?.getTime() ===
+      input.evidenceWatermark?.getTime() &&
+    previous.state === RecommendationEligibilityState.ELIGIBLE &&
+    input.decision.state === "eligible" &&
+    input.decision.contributionWeight > 0 &&
+    previous.contributionWeight === input.decision.contributionWeight &&
+    input.decision.eligibleScopes.includes("aggregate") &&
+    sameTokens(previous.eligibleScopes, input.decision.eligibleScopes) &&
+    sameTokens(previous.reasonCodes, input.decision.reasonCodes) &&
+    input.playbackDigestWithMeasures({
+      contributionOrdinal: previous.contributionOrdinal,
+      distinctSupport: previous.distinctSupport,
+      identityConcentration: previous.identityConcentration,
+    }) === previous.inputDigest
+  if (
+    previous &&
+    (previous.inputDigest === input.inputDigest || unchangedPositivePlayback)
+  ) {
     return {
       id: previous.id,
       sourceKey: input.sourceKey,
@@ -696,6 +750,17 @@ async function writeDecision(
     inputDigest: input.inputDigest,
     evidenceWatermark: input.evidenceWatermark,
   }
+}
+
+function sameTokens(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((value) => right.includes(value)) &&
+    right.every((value) => left.includes(value))
+  )
 }
 
 function sourceKeyFor(

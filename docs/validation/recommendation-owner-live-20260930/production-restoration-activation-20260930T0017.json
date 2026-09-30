@@ -1,0 +1,23 @@
+{
+  "evidenceType": "authenticated_admin_browser_observation",
+  "observedAt": "2026-09-30T00:20:45.697172+00:00",
+  "activationAuditAt": "2026-09-30T00:17:30.177Z",
+  "pointerGeneration": 5,
+  "stage": "OWNER_APPROVED",
+  "manifest": "hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1",
+  "releaseId": "d48ea9a5-3946-49e7-8cec-8a5074ea8155",
+  "graphGeneration": "f2d67e9f7a2209059922504c9fd3b7ed788133c567129dd1e20d04945a8b4a79",
+  "bindingDigest": "be6c5da9b6e8f4f94ea80875312de68e16a31b0e4147f3652b9b53815a108130",
+  "validUntil": "2026-10-01T00:16:49.581Z",
+  "earliestDependencyExpiry": "2026-10-21T19:00:53.714Z",
+  "operationId": "d48ea9a5-3946-49e7-8cec-8a5074ea8155",
+  "currentReleaseRevokedLabel": false,
+  "browserReloadVerified": true,
+  "trialCreated": false,
+  "actualNaturalExecution": "separately pending",
+  "limitations": [
+    "Configured authority at observation time only; does not establish exposure or usefulness.",
+    "Graph source invalidation and expiry remain active; automatic refresh is not implemented.",
+    "Normal sign-in and post-activation navigation hit browser timeouts; resulting authenticated page and exact current release were read without repeating activation."
+  ]
+}

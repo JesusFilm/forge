@@ -5,17 +5,152 @@ that decision without creating study assignments, shadow/composition PASS record
 calibration or efficacy evidence. Usefulness remains unmeasured. The wider
 unimplemented ranking roadmap is outside this release.
 
-**Current disposition: owner-approved co-watch and implemented MMR are enabled;
-direct natural execution is not yet observed.**
-Authenticated Admin recorded activation at **September 29 23:00:26.512 UTC**
-(September 30 12:00:26 NZDT), then a reload confirmed pointer generation **4**,
-stage **OWNER_APPROVED**, and the exact current release. No trial was created.
-The initial owner release expires **September 30 22:59:20.343 UTC** (October 1
-11:59:20 NZDT); refresh is manual and expiry serves the compatible incumbent.
-Causal usefulness remains unmeasured. Natural issuance is reported separately
-below; an active pointer alone does not prove viewer exposure or improvement.
-Earlier pending/refused sections are chronological evidence, superseded by this
-current disposition and the activation receipt below.
+**Current disposition: the G5 replacement was also revoked, at September 30
+00:22:59.967 UTC (13:22:59 NZDT), 5 minutes 30 seconds after activation.
+Co-watch/MMR is not currently eligible to serve. Existing incumbent recommendations
+continue. No exact direct natural execution has been observed.**
+G5 activated at 00:17:30.177 UTC and had passed current source qualification.
+Its first-source invalidation reason is again `eligibility_changed`; expiry and
+operator stop did not cause it. Further graph publication is paused pending the
+producer repair, rather than repeatedly replacing short-lived releases. No trial
+or causal-usefulness claim is made. Historical active observations below remain
+valid only at their recorded times.
+
+## G5 natural fallback and second revocation
+
+The first two minutes contained 13 issued roots with no direct execution or shared
+co-watch fallback marker. The next three minutes contained another 13 issued roots,
+including three valid missing-input diagnostics. **All three were missing theme
+metadata only:** source, interest and history inputs were available. Each attempted
+six selected items; two attempts had themes on four items and one on two items.
+No diagnostic was missing, malformed, duplicated or capped. Shared markers alone
+do not independently identify an owner release or an owner attempt rate.
+
+The complete five-minute post-activation sample had 26 issued roots: 19 served,
+six fallback and one empty. All six fallback requests still had recommendation
+cards; five requests had durable profile projections. No exact direct co-watch/MMR
+execution appeared. The adjacent equal-length pre-activation sample had 11 issued
+roots, one fallback and one empty. These small differing cohorts are observational,
+not a causal or long-term failure-rate comparison.
+
+One conditional current-catalog read selected the newest matching fallback root,
+then refused because exact G5 authority was no longer available. It read no theme
+metadata and does not establish whether labels are absent or missed by hydration.
+An exact release/graph/pointer read confirmed revocation at 00:22:59.967 UTC,
+329.803 seconds after approval, with pointer G5 still selecting that release and
+influence floor 2. A bounded comparison of all 6,680 captured G5 sources found 20
+immediate successors: all retained the same positive effective decision, all changed
+population measurements and input digest, and all had successor timestamps within
+60 seconds of revocation. No source loss, revision gap or negative successor was
+observed. This strengthens the measurement-churn diagnosis but does not prove no
+other evidence changed in those transactions.
+
+Receipts: [first issuance](../validation/recommendation-owner-live-20260930/production-restored-issuance-20260930T0019.json),
+[exact input flags](../validation/recommendation-owner-live-20260930/production-restored-input-flags-20260930T0022.json),
+[cohort comparison](../validation/recommendation-owner-live-20260930/production-restored-cohort-comparison-20260930T0022.json),
+[catalog refusal](../validation/recommendation-owner-live-20260930/production-restored-catalog-20260930T0024.json),
+[second revocation](../validation/recommendation-owner-live-20260930/production-restoration-revocation-20260930T0024.json),
+[G5 successors](../validation/recommendation-owner-live-20260930/production-restoration-eligibility-replacements-20260930T0025.json).
+
+## Playback measurement-only reuse repair
+
+The repair recomputes current playback eligibility, then preserves an untouched
+current positive receipt only when exact source/policy/actor/expiry/watermark and
+effective-decision checks pass and the complete current input rehashed with only
+stored previous measurements equals the previous digest. It adds no database
+writes, authority path or migration. Full evidence changes and threshold crossings
+still supersede and revoke; selection/action classification is unchanged.
+
+Focused validation passed 43 checks: 30 integrity-service cases, 10 unchanged
+policy cases and three native PostgreSQL cases. The native cases use actual
+producer receipts, publication, supported owner qualification and invalidation
+triggers. Concurrent positive measurement-only calls preserve the entire stored
+row, one current decision and graph/release authority. Concurrent threshold changes
+create one replacement and revoke. Changed accepted replay evidence still revokes
+even with an unchanged positive verdict. Scoped ESLint and diff checks passed.
+Independent correctness and adversarial reviews found no actionable defects.
+Fresh typechecking and normal deployment are recorded at closeout; this local
+proof is not a production recovery claim.
+
+## September 30 supported restoration and eligibility diagnosis
+
+At 00:15:17 UTC, one bounded aggregate comparison inspected all 6,680 retained
+sources captured by G4. Fifty-five decisions had immediate retained successors,
+with no missing sources or revision gaps. All 55 successors remained eligible for
+the same aggregate contribution with unchanged verdict, reason set, scopes,
+weight, actor and source. All changed input digest; 53 changed population
+measurements. Thirty-six successor timestamps were within 60 seconds of the first
+revocation and 19 were later. These timestamps associate replacement with the
+revocation; they do not reconstruct its initiating transaction or prove that every
+change was measurement-only.
+
+The producer recomputes media-wide support/concentration and includes those
+measurements in its full input digest. Ordinary audience growth can therefore
+supersede an equivalent positive decision and invalidate its dependent graph.
+A narrow playback-only reuse repair is being implemented for proven measurement-only
+drift. Changed evidence, effective eligibility, privacy and integrity fences must
+continue to supersede and revoke. Automatic replacement after legitimate source
+changes or expiry remains feat-573.
+
+Admin HTTP and worker were healthy on `c4aa0f40` with prior deployments drained;
+0120's exact migration checksum and no unfinished migrations passed. Compatible
+Watch remained healthy on `0a707123` while its next deployment built. Fresh capacity
+included the already retained G4 graph plus one additional full publication:
+11.078 GB available, projected 10.562 GB at peak and 8.15 days of conservative
+runway, with no future purge credit or lock waiters/long transactions.
+
+One fresh fixed-window preflight and one exact-generation publication retained
+the original source/pair/row/byte ceilings. The replacement published at
+00:16:49.581 UTC: 39,551 raw sources, 6,680 qualified sources, 42,060 attempted
+pairs, 35,632 contributions, 9,000 edges and 51,313 publication rows. Supported
+Admin preparation qualified current dependencies and activation advanced G4 to G5
+using one operation identity. No old row was revived and no invalidation was
+bypassed. The shadow graph's `no_promotion` decision remains unchanged; separate
+explicit owner authority enables this direct release without a trial.
+
+Receipts: [eligibility comparison](../validation/recommendation-owner-live-20260930/production-eligibility-replacements-20260930T0015.json),
+[runtime](../validation/recommendation-owner-live-20260930/production-restoration-runtime-20260930T0015.json),
+[migration](../validation/recommendation-owner-live-20260930/production-ledger-0120-20260930T0015.json),
+[capacity decision](../validation/recommendation-owner-live-20260930/restoration-capacity-decision-20260930T0015.json),
+[publication](../validation/recommendation-owner-live-20260930/production-restoration-publication-20260930T0016.json),
+[activation](../validation/recommendation-owner-live-20260930/production-restoration-activation-20260930T0017.json).
+
+## September 30 missing-input diagnostics and source revocation
+
+[PR #2503](https://github.com/JesusFilm/forge/pull/2503) merged as
+`f9c3a0974e888274233d042b07c82c454821407b`. At September 29 23:54:47 UTC,
+Admin HTTP and worker both ran that revision with health 200, prior deployments
+were drained, and compatible Watch remained healthy at `0a707123`. This change
+preserves exact failed-composition input flags; it does not repair missing inputs
+or restore graph authority.
+
+The first fully post-deployment window, 23:54:48–23:58:00 UTC, contained 11 issued
+roots, no missing-input fallback diagnostics, no shared co-watch fallback marker
+and no exact direct owner execution. Neither root cap was reached. These zeros
+do not demonstrate healthy composition: authenticated Admin subsequently showed
+the selected release as revoked. A point read of the exact release, graph and
+promotion pointer confirmed `eligibility_changed` at **23:35:33.097 UTC**, about
+35 minutes after approval. Pointer generation 4 still selects the release and its
+influence floor is 2; the graph invalidation, not an operator stop or deadline,
+revoked this release. Authority resolution rejects it before composition.
+
+The recorded reason identifies an update or deletion of a captured eligibility
+decision; it does not alone prove changed ranking eligibility or identify the
+initiating event. Ordinary reconciliation can supersede a decision even when the
+replacement remains eligible. Diagnose that distinction before changing any
+invalidation rule. Recovery requires a newly qualified finite graph and supported
+replacement release; the immutable revoked release cannot be revived. The
+conditional theme catalog reader has not run in production because no exact
+missing-theme diagnostic was observed and the required current authority is gone.
+
+Receipts: [healthy diagnostic deployment](../validation/recommendation-owner-live-20260930/production-diagnostic-runtime-20260929T2354.json),
+[input flags](../validation/recommendation-owner-live-20260930/production-input-flags-20260929T2358.json),
+[natural issuance](../validation/recommendation-owner-live-20260930/production-natural-issuance-20260929T2358.json),
+[exact revocation](../validation/recommendation-owner-live-20260930/production-owner-revocation-20260930T0002.json).
+The issuance helper's historical `activationTime` field is the start of this
+explicit observation window, not a new activation timestamp. An earlier point
+read failed with SQLSTATE 42P18 before returning data; explicitly typing its unused
+cutoff parameter repaired the query for the single successful read above.
 
 [PR #2478](https://github.com/JesusFilm/forge/pull/2478) carries the direct path
 through the normal release flow. Its initial CI run passed build, unit tests,

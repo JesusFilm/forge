@@ -15,14 +15,17 @@ tags: [admin, recommendations, cowatch, experiments, ranking]
 
 ## Current production disposition
 
-Owner-approved co-watch and implemented MMR were activated at **2026-09-29
-23:00:26.512 UTC** without a trial. Authenticated Admin reloaded pointer generation
-**4 / OWNER_APPROVED** with the exact active release and manifest. The first
-release's live freshness ends **2026-09-30T22:59:20.343Z**; explicit refresh and
-incumbent fallback remain in place. Feat-573 owns automatic refresh. The sections
-below retain the historical implementation and refusal record; they do not describe
-the current serving pointer. Full shadow acceptance, causal usefulness, broader
-ranking inputs and dormant exposure coverage remain separate open work.
+**The G5 replacement is revoked as of September 30 00:22:59.967 UTC; co-watch/MMR
+is not currently eligible to serve.** It activated normally at 00:17:30.177 UTC,
+then lost authority to another `eligibility_changed` invalidation. All 20 immediate
+captured-source successors kept the same positive effective decision and changed
+population measurements. Repair avoidable measurement-only revision churn before
+another publication. Three natural fallback diagnostics before revocation prove
+missing themes only, while other required inputs were available; the conditional
+catalog read then refused revoked authority. Existing cards continued on fallback.
+No direct co-watch execution has been observed. Feat-573 owns automatic refresh for
+expiry and legitimate source changes. Full shadow acceptance, causal usefulness,
+broader ranking inputs and dormant exposure coverage remain separate open work.
 
 This ticket remains in progress: the bounded natural window through 23:10:08 UTC
 contained 38 issued requests but no exact direct owner provenance. Eight shared
