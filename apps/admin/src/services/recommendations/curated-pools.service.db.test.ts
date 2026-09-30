@@ -8,6 +8,7 @@ import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { CuratedPoolsService } from "./curated-pools.service"
+import type { CuratedDeliveryDiagnostics } from "./delivery-diagnostics"
 import { retrieveCuratedFallback } from "./curated-fallback"
 import { createRecommendationDeliveryService } from "./delivery.factory"
 import { createUserRecommendationDeliveryService } from "./user-delivery.service"
@@ -130,7 +131,12 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
 
     it("imports, activates, rejects bad generations, rechecks eligibility and rolls back exact order/provenance", async () => {
       const read = () => service.getCandidates({ ...context, limit: 6 })
-      expect(await read()).toEqual({ version: null, poolKeys: [], items: [] })
+      expect(await read()).toEqual({
+        version: null,
+        contextAvailable: false,
+        poolKeys: [],
+        items: [],
+      })
       const report = await service.importGeneration({
         source: source("fixture-v1"),
         contexts: [context],
@@ -173,6 +179,30 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         similarity: null,
         startSeconds: 0,
       })
+      // Publication drift can exhaust an approved context without removing
+      // its immutable starter pool. Keep that distinct from absent coverage.
+      await admin.query("UPDATE video_dub SET published=false")
+      const exhausted = await read()
+      expect(exhausted).toEqual({
+        version: "fixture-v1",
+        contextAvailable: true,
+        poolKeys: [],
+        items: [],
+      })
+      let diagnostics: CuratedDeliveryDiagnostics | undefined
+      expect(
+        await retrieveCuratedFallback(prisma, {
+          ...context,
+          seedMediaId: "video-1",
+          excludedMediaIds: [],
+          deadlineAt: Date.now() + 1500,
+          onDiagnostics: (value) => {
+            diagnostics = value
+          },
+        }),
+      ).toEqual([])
+      expect(diagnostics).toEqual({ state: "available", nominatedCount: 0 })
+      await admin.query("UPDATE video_dub SET published=true")
       const seededFallback = await retrieveCuratedFallback(prisma, {
         ...context,
         seedMediaId: "video-1",
@@ -223,9 +253,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         ).items,
       ).toEqual([])
       expect(
-        (await service.getCandidates({ ...context, locale: "fr", limit: 6 }))
-          .items,
-      ).toEqual([])
+        await service.getCandidates({ ...context, locale: "fr", limit: 6 }),
+      ).toEqual({
+        version: "fixture-v1",
+        contextAvailable: false,
+        poolKeys: [],
+        items: [],
+      })
 
       const invalid = source("invalid")
       invalid.candidates[0]!.alternateCoreVideoIds.push("missing-core-id")

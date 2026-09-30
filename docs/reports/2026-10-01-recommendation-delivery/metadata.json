@@ -1,0 +1,21 @@
+{
+  "source": "Forge Railway production Admin PostgreSQL",
+  "read_only": true,
+  "admin_database_identity_verified": true,
+  "admin_revision": "99554c8b0759ca4d88d02a0d63bf518e0a89b4cf",
+  "web_revision": "2cada63166aabfa2d9214009c6515a4c7576e880",
+  "database_first_checked_at_utc": "2026-09-30T19:30:46.998Z",
+  "cohort_start_utc": "2026-09-29T18:42:00Z",
+  "cohort_end_exclusive_utc": "2026-09-30T18:42:00Z",
+  "display_timezone": "Pacific/Auckland",
+  "statement_timeout_ms": 25000,
+  "lock_timeout_ms": 2000,
+  "notes": [
+    "All statements ran serially inside read-only transactions with rollback; PostgreSQL and client timestamps were parsed as UTC.",
+    "Historical request counts and current catalog/pool/replay observations are distinct snapshots.",
+    "Replays retain deployed retrieval CTEs with equivalent contract predicates and replace response projection with aggregate counts. Audio-prefilter variants add the same exact-audio eligibility predicate before the neighbor limit. Chinese variant changes display lookup only.",
+    "Candidate counts precede application canonical deduplication, ranking, final eligibility and issuance. These are not full service or load/performance acceptance tests.",
+    "No viewer/session identifiers, credentials or embedding vectors exported. Seed IDs identify public catalog videos.",
+    "No production data, configuration, application source or deployment changed."
+  ]
+}
