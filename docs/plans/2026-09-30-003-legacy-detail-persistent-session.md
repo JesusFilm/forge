@@ -88,3 +88,25 @@ or a missing run with a surviving parent, stops the session. Receipts expose
 only aggregate live and expired-purged counts and a private partition digest;
 they never treat observations from purged roots as live evidence. Ordinary
 privacy expiry continues independently.
+
+## Bounded read-only lock admission follow-up
+
+A stopped continuation reported `database-capacity`, which combines the WAL
+ceiling and live lock-waiter check. The archived guard result does not identify
+which predicate failed. A narrow local change permits only a transient positive
+lock-waiter count to clear: after a valid WAL sample at or below 2 GB, sample
+at most twice more with 100 ms between samples. Each sample uses a new bounded
+read-only transaction so PostgreSQL sees a fresh state. Source and database
+identity remain checked; malformed or excessive WAL, wrong identity or source,
+and persistent waiters still fail immediately or after the finite waiter-only
+grace. The zero-waiter requirement remains mandatory before continuing.
+
+This grace does not retry freeze, dry-run, execute, a SQL mutation, or a cohort.
+It does not extend the hold lease, permit freshness, execution headroom, row or
+byte budget, lock timeout, statement timeout, or transaction timeout. Freeze
+rechecks permit and wave deadline after the read-only gate. Execute rechecks
+permit after its final gate, before the unchanged 40-second headroom check and
+write. Local unit and PostgreSQL proof is recorded in
+`docs/validation/recommendation-storage-20260930/legacy-lock-admission-grace.md`.
+Normal review and PR-to-main deployment remain required; no production cause
+or safety benefit can be inferred from the conflated stop reason alone.
