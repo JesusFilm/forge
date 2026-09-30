@@ -247,7 +247,15 @@ export function reuseMapFromSegments(
           ? "reflection-last"
           : "reflection-mid"
       : s.id
-    out.set(audioReuseKey(role, s.spoken ?? "", nameFor(s.audio.voiceId)!), s)
+    const voice = nameFor(s.audio.voiceId)!
+    out.set(
+      audioReuseKey(
+        role,
+        s.spoken ?? "",
+        s.take ? `${voice}@${s.take}` : voice,
+      ),
+      s,
+    )
   }
   return out
 }

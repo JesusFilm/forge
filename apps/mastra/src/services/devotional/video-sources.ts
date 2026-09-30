@@ -34,6 +34,12 @@ export type VideoSource = {
    * speed it up a little").
    */
   maxVideoCardSec?: number
+  /**
+   * Playback speed of the film card. LUMO is shot at a natural pace; the
+   * JESUS film's 1.12 made its actors look jerky (owner, 2026-09-30), so
+   * LUMO plays at 1.05. `--video-speed` still wins.
+   */
+  videoSpeed?: number
   /** Mark drawn in the top-left while the clip plays. */
   filmMark: "lumo"
   /** LUMO's own photography needs no grade at all (owner). */
@@ -60,8 +66,10 @@ const SOURCES: VideoSource[] = [
     // whisper transcript, not guessed from pictures (the first cut, 155s, let
     // "Now Jesus was going up to Jerusalem" into the card).
     window: { startSec: 0, lengthSec: 149 },
-    // 141s kept after the dead air is cut, ×1.12 → ~126s on screen.
-    maxVideoCardSec: 135,
+    // 141s kept after the dead air is cut: ×1.12 → ~126s on screen, ×1.05
+    // (the LUMO speed since 2026-09-30) → ~134s.
+    maxVideoCardSec: 145,
+    videoSpeed: 1.05,
     filmMark: "lumo",
     style: "clean",
     captions: { kind: "file", path: "video-sources/lumo-matt-20.en.vtt" },
@@ -79,7 +87,9 @@ const SOURCES: VideoSource[] = [
     film: "lumo",
     passage: { reference: "Luke 15:11-32", osisRef: "Luke.15.11-Luke.15.32" },
     window: { startSec: 0, lengthSec: 228 },
-    maxVideoCardSec: 215,
+    // ×1.05 (not 1.12) keeps the whole parable ~213s on screen plus the tail.
+    maxVideoCardSec: 232,
+    videoSpeed: 1.05,
     filmMark: "lumo",
     style: "clean",
     captions: { kind: "file", path: "video-sources/lumo-luke-15.en.vtt" },

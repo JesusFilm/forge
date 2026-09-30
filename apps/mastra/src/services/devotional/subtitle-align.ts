@@ -21,6 +21,9 @@ export type SubtitleCue = {
   /** Start of each whitespace-separated word of `text`, in the same (source)
    *  seconds as `start`. Present only when a word-timing file was supplied. */
   words?: number[]
+  /** The verse the cue starts in ("Luke 15:12"), from a `.verses.json`
+   *  sidecar; shown under the film captions. */
+  verse?: string
 }
 
 /** "HH:MM:SS,mmm" (srt) or "HH:MM:SS.mmm" / "MM:SS.mmm" (vtt) → seconds. */
@@ -324,6 +327,7 @@ export type TimedCaption = {
   /** Start of each word of `text` on the same timeline as `startSec`, for
    *  the word-by-word (karaoke) highlight. One entry per word of `text`. */
   words?: number[]
+  verse?: string
 }
 
 /**
@@ -367,6 +371,7 @@ export function mapCuesToEditedTimeline(
         startSec: at(from),
         endSec: at(to),
         ...(words ? { words } : {}),
+        ...(cue.verse ? { verse: cue.verse } : {}),
       })
     }
     elapsed += seg.lengthSec

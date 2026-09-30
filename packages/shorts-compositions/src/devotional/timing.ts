@@ -45,7 +45,9 @@ export function framesFromDurations(
       1,
       Math.round((c.durationSec ?? 0) * fps) +
         Math.round((c.holdSec ?? 0) * fps) +
-        tailFrames +
+        // A card may carry its own breath: shorter between two sentences of
+        // one voice (owner, 2026-09-30).
+        (c.tailSec != null ? Math.round(c.tailSec * fps) : tailFrames) +
         (i === 0 ? introHoldFrames : 0) +
         (i === lastIndex ? outroHoldFrames : 0),
     )

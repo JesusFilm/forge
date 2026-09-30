@@ -5,41 +5,37 @@ import {
   CARD_TAIL_FRAMES,
   INTRO_HOLD_FRAMES,
   OUTRO_HOLD_FRAMES,
+  framesFromDurations,
 } from "./timing"
 
-// Option A (per-card audio): total = sum of each card's snippet + a small tail
-// pad per card. Otherwise (single narration): the audio length + 1s tail.
+// Option A (per-card audio): the canvas is exactly the cards as DevotionalVideo
+// lays them out (framesFromDurations: each card's snippet, hold and own tail,
+// plus the intro and outro holds). Summing seconds here instead once ignored a
+// card's `tailSec`, and the canvas ran 24s past the last card in black.
+// Otherwise (single narration): the audio length + 1s tail.
 export const calculateDevotionalMetadata: CalculateMetadataFunction<
   DevotionalInputProps
 > = ({ props }) => {
   const perCard =
     props.cards.length > 0 &&
     props.cards.every((c) => typeof c.durationSec === "number")
-  const outroSec =
+  const fps = DEVOTIONAL_FPS
+  const outroFrames =
     props.outroHoldSec != null
-      ? props.outroHoldSec
-      : OUTRO_HOLD_FRAMES / DEVOTIONAL_FPS
-  // Must match the per-card layout in DevotionalVideo (framesFromDurations),
-  // which honors the introHoldSec override — otherwise the canvas is longer
-  // than the cards and the tail renders black.
-  const introSec =
+      ? Math.round(props.outroHoldSec * fps)
+      : OUTRO_HOLD_FRAMES
+  const introFrames =
     props.introHoldSec != null
-      ? props.introHoldSec
-      : INTRO_HOLD_FRAMES / DEVOTIONAL_FPS
-  const totalSec = perCard
-    ? props.cards.reduce(
-        (sum, c) =>
-          sum +
-          (c.durationSec ?? 0) +
-          (c.holdSec ?? 0) +
-          CARD_TAIL_FRAMES / DEVOTIONAL_FPS,
-        0,
-      ) +
-      introSec +
-      outroSec
-    : props.audioDurationSec + 1
-  return {
-    durationInFrames: Math.max(1, Math.round(totalSec * DEVOTIONAL_FPS)),
-    fps: DEVOTIONAL_FPS,
-  }
+      ? Math.round(props.introHoldSec * fps)
+      : INTRO_HOLD_FRAMES
+  const durationInFrames = perCard
+    ? framesFromDurations(
+        props.cards,
+        fps,
+        CARD_TAIL_FRAMES,
+        outroFrames,
+        introFrames,
+      ).reduce((sum, f) => sum + f.durationInFrames, 0)
+    : Math.round((props.audioDurationSec + 1) * fps)
+  return { durationInFrames: Math.max(1, durationInFrames), fps }
 }

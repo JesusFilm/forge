@@ -91,7 +91,9 @@ export function VerseCalloutOverlay({
             textAlign: "center",
             fontFamily: serif,
             fontStyle: "italic",
-            fontWeight: 400,
+            // Lighter than the Figma frame's regular (owner, 2026-09-30:
+            // too bold on the picture), the word a step above it.
+            fontWeight: 300,
             fontSize: u(56),
             lineHeight: 1.25,
             color: REST,
@@ -104,7 +106,7 @@ export function VerseCalloutOverlay({
               {text.slice(0, at)}
               <span
                 style={{
-                  fontWeight: 700,
+                  fontWeight: 500,
                   color: interpolateColors(lit, [0, 1], [REST, GOLD]),
                 }}
               >

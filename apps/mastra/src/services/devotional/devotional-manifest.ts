@@ -91,6 +91,8 @@ export type StagedSegment = {
    *  timestamps AND the audio was not re-timed after synthesis, so a card
    *  either carries trustworthy word timing or none at all. */
   words?: { word: string; startSec: number; endSec: number }[]
+  /** Which voice read it (ElevenLabs id), for the pauses between cards. */
+  voiceId?: string
 }
 
 export type BuildManifestInput = {
@@ -181,6 +183,8 @@ export type BuildManifestInput = {
     text: string
     startSec: number
     endSec: number
+    words?: number[]
+    verse?: string
   }>
   /** TWO-ACT LAYOUT (opt-in per chapter). The clip's second act, played after
    *  the first half of the reflection. When set — together with
@@ -370,7 +374,15 @@ function buildClipFirstManifest(
     .filter((s) => /^reflection-\d+$/.test(s.id))
     .sort((a, b) => Number(a.id.split("-")[1]) - Number(b.id.split("-")[1]))
   const usedHighlights = new Set<number>()
-  reflectionSegments.forEach((seg) => {
+  // Two sentences read by the same voice need only a short breath between
+  // them; a change of voice keeps the full pause (owner, 2026-09-30).
+  const SAME_VOICE_TAIL_SEC = 0.35
+  const sameVoiceNext = (i: number) => {
+    const a = reflectionSegments[i]
+    const b = reflectionSegments[i + 1]
+    return !!(a?.voiceId && b?.voiceId && a.voiceId === b.voiceId)
+  }
+  reflectionSegments.forEach((seg, segIndex) => {
     const cardText = seg.text ?? ""
     const highlightIndex = (d.reflectionHighlights ?? []).findIndex(
       (h, i) => h && !usedHighlights.has(i) && cardText.includes(h),
@@ -387,6 +399,7 @@ function buildClipFirstManifest(
       ...(highlight ? { highlight } : {}),
       ...(mark ? { sourceMark: mark } : {}),
       ...(callout ? { verseCallout: callout } : {}),
+      ...(sameVoiceNext(segIndex) ? { tailSec: SAME_VOICE_TAIL_SEC } : {}),
       audioFile: seg.file,
       durationSec: seg.durationSec,
       bgFile: clip,

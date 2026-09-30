@@ -42,6 +42,9 @@ export const devotionalCardSchema = z.object({
   durationSec: z.number().positive().optional(),
   /** Extra silent hold added to this card's on-screen time (seconds). */
   holdSec: z.number().nonnegative().optional(),
+  /** The breath after this card's voice (s), when not the default pad: the
+   *  pipeline shortens it between two sentences read by the same voice. */
+  tailSec: z.number().nonnegative().optional(),
   /** Small section label shown above the title (e.g. "Reflect" on the first reflection card). */
   sectionLabel: z.string().optional(),
   /**
@@ -231,6 +234,8 @@ export const devotionalCardSchema = z.object({
         /** Start of each word of `text`, same timeline: the word being
          *  spoken is lit (karaoke). One entry per whitespace-separated word. */
         words: z.array(z.number()).optional(),
+        /** The verse the line starts in ("Luke 15:12"), shown under it. */
+        verse: z.string().optional(),
       }),
     )
     .optional(),

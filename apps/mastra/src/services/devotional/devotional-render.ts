@@ -78,6 +78,7 @@ import {
 import { type ChapterPassage, passageForChapter } from "./jesus-film-passages"
 import { voiceNameForId } from "./elevenlabs-voiceover"
 import { videoSourceForIndex } from "./video-sources"
+import { planBrollAnchors, planBrollSegments } from "./broll-plan"
 import type { DevotionalLlm } from "./llm"
 import { DEFAULT_FILTER } from "./voice-rotation"
 
@@ -188,6 +189,9 @@ const TEASER_CTA_HOLD_SEC = 1.6
 /** `intro: "hook"`: silence after the spoken question — a breath, plus the
  *  time the title takes to leave. The film's first line lands after it. */
 const HOOK_TAIL_SEC = 1.8
+/** Montage: how long WATCH holds over the muted last shot, from the start of
+ *  "Let's watch", before the film is heard. Matches BigStepWord's 2.6s. */
+const MONTAGE_WATCH_SEC = 2.6
 /** `intro: "hook"`: the slowest the run-up may be stretched before the shot
  *  reads as slow motion rather than a held opening. A three-line opening
  *  (welcome, question, connector) needs about a third of real speed on a scene
@@ -567,14 +571,39 @@ async function attachWordTimes(
       byKey.set(`${c.start.toFixed(2)}|${c.text.trim()}`, words)
     }
   })
+  // The verse each cue starts in, from a `.verses.json` sibling when there
+  // is one (LUMO reads Scripture: its captions carry their address).
+  const verseByKey = new Map<string, string>()
+  try {
+    const v = JSON.parse(
+      await readFile(cueFile.replace(/\.vtt$/, ".verses.json"), "utf8"),
+    ) as { book: string; chapter: number; cues: number[] }
+    if (v.cues.length === fileCues.length) {
+      fileCues.forEach((c, i) =>
+        verseByKey.set(
+          `${c.start.toFixed(2)}|${c.text.trim()}`,
+          `${v.book} ${v.chapter}:${v.cues[i]}`,
+        ),
+      )
+    }
+  } catch {
+    // no sidecar: captions without addresses
+  }
   let hits = 0
   const out = cues.map((c) => {
-    const words = byKey.get(`${c.start.toFixed(2)}|${c.text.trim()}`)
-    if (!words) return c
-    hits++
-    return { ...c, words }
+    const key = `${c.start.toFixed(2)}|${c.text.trim()}`
+    const words = byKey.get(key)
+    const verse = verseByKey.get(key)
+    if (!words && !verse) return c
+    if (words) hits++
+    return { ...c, ...(words ? { words } : {}), ...(verse ? { verse } : {}) }
   })
-  log(`captions: word times for ${hits}/${cues.length} cue(s)`)
+  log(
+    `captions: word times for ${hits}/${cues.length} cue(s)` +
+      (verseByKey.size
+        ? `, verse addresses for ${out.filter((c) => c.verse).length}`
+        : ""),
+  )
   return out
 }
 
@@ -1667,15 +1696,20 @@ async function renderInStage(
             ? FRAMED_OPENING_CAP_SEC
             : HOOK_LEAD_CAP_SEC
       hookLeadSec = Math.min(cap, spokenSec + HOOK_TAIL_SEC)
-      // MONTAGE: the lead ends where the last line ("Let's watch.") begins, so
-      // the scene starts on it, with WATCH over its first quiet seconds.
+      // MONTAGE: "Let's watch.", WATCH and the passage now play over the last
+      // shot, still muted and softly blurred, and the film is heard only once
+      // WATCH has had its moment (owner, 2026-09-30). The teaser keeps the old
+      // cut: its last line is a call to action, and the scene starts on it.
       if (options.intro === "montage") {
         montageStarts = montageLineStarts(
           (options.hookLine ?? "").split(/\n\s*\n/).filter((p) => p.trim()),
           seg.audio.words ?? [],
         )
         const last = montageStarts?.[montageStarts.length - 1]
-        if (last != null) hookLeadSec = Math.min(cap, last + 0.1)
+        if (last != null)
+          hookLeadSec = options.introTeaser
+            ? Math.min(cap, last + 0.1)
+            : Math.min(cap, Math.max(last + MONTAGE_WATCH_SEC, spokenSec + 0.4))
         else
           log(`⚠️  montage: no word times for the hook, cutting shots evenly`)
       }
@@ -1751,7 +1785,14 @@ async function renderInStage(
   // scene, and 1.12 is only the default that suited the ones tuned so far.
   // Clamped to what atempo keeps natural — past ~1.3 the dialogue starts to
   // sound hurried even with pitch preserved.
-  const VIDEO_SPEED = Math.min(1.3, Math.max(1, options.videoSpeed ?? 1.12))
+  // The film's own cues, in source seconds, for choosing the backdrop behind
+  // each reflection paragraph (see broll-plan.ts). Set when the clip's
+  // captions are read below.
+  let brollCues: SubtitleCue[] = []
+  const VIDEO_SPEED = Math.min(
+    1.3,
+    Math.max(1, options.videoSpeed ?? registered?.videoSpeed ?? 1.12),
+  )
   const window = clipOverride
     ? ({
         index: devo.clip.index,
@@ -1876,6 +1917,7 @@ async function renderInStage(
         sourceCues = localCues
           ? await attachWordTimes(edited.cues, localCues, log)
           : edited.cues
+        if (localCues) brollCues = sourceCues
         if (!edited.snapped) {
           log(
             `⚠️  window ${winStart.toFixed(0)}s +${winLen.toFixed(0)}s could not snap to ` +
@@ -1921,8 +1963,8 @@ async function renderInStage(
       const shots = options.introShots ?? []
       if (options.intro === "montage" && shots.length > 0) {
         // One shot per line, cut on the line's first word; the scene takes
-        // over on the last line. Each shot plays at the series speed, like the
-        // film it is cut from.
+        // over on the last line. Shots play at natural speed (owner,
+        // 2026-09-30): behind spoken lines a sped-up take reads as jerky.
         const n = shots.length
         const starts =
           montageStarts && montageStarts.length >= n
@@ -1934,15 +1976,15 @@ async function renderInStage(
             const to = k + 1 < n ? starts[k + 1] : hookLeadSec
             return {
               startSec: src,
-              lengthSec: Math.max(0, to - from) * VIDEO_SPEED,
-              speed: VIDEO_SPEED,
+              lengthSec: Math.max(0, to - from),
+              speed: 1,
               silent: true as const,
             }
           })
           .filter((sg) => sg.lengthSec > 0.05)
         log(
           `montage lead: ${n} shot(s) over ${hookLeadSec.toFixed(1)}s ` +
-            `(${hookLead.map((sg) => `${sg.startSec}s×${(sg.lengthSec / VIDEO_SPEED).toFixed(1)}`).join(", ")})`,
+            `(${hookLead.map((sg) => `${sg.startSec}s×${sg.lengthSec.toFixed(1)}`).join(", ")}, natural speed)`,
         )
       } else if (options.hookBgStartSec != null) {
         const runUpOnScreen = room / VIDEO_SPEED
@@ -2320,6 +2362,7 @@ async function renderInStage(
       file,
       durationSec: await probeDuration(path.join(stage, file)),
       text: s.text,
+      voiceId: s.audio.voiceId,
       ...(words && words.length > 0 ? { words } : {}),
     })
     n++
@@ -2594,16 +2637,42 @@ async function renderInStage(
         CARD_TAIL_SEC
     }
   }
-  const bgSegments = planBackgroundSegments({
-    startSec: bgStart,
-    windowLen: bgLen,
-    coverSec: bgTimelineSec,
-    speed: bgRate,
-    restartAtSec: bgRestartAtSec,
-    // Generous: a few seams cost a few seconds, and running long is harmless
-    // while running short freezes the picture.
-    extraSourceSec: BG_SEAM_XFADE_SEC * 4,
-  })
+  const brollAnchors =
+    brollCues.length > 0 && !options.episode
+      ? planBrollAnchors({
+          cards: manifest.cards,
+          paragraphs: devo.reflection.paragraphs ?? [],
+          cues: brollCues,
+          introHoldSec: Number(manifest.introHoldSec) || 0,
+          speed: bgRate,
+          windowStart: bgStart,
+          windowEnd: bgStart + bgWindowLen,
+        })
+      : []
+  for (const a of brollAnchors)
+    log(
+      `backdrop: ${a.atSec.toFixed(1)}s → film ${a.sourceSec.toFixed(1)}s (${a.why})`,
+    )
+  const bgSegments =
+    brollAnchors.length > 0
+      ? planBrollSegments({
+          anchors: brollAnchors,
+          windowStart: bgStart,
+          windowLen: bgWindowLen,
+          coverSec: bgTimelineSec,
+          speed: bgRate,
+          dissolveSec: BG_SEAM_XFADE_SEC,
+        })
+      : planBackgroundSegments({
+          startSec: bgStart,
+          windowLen: bgLen,
+          coverSec: bgTimelineSec,
+          speed: bgRate,
+          restartAtSec: bgRestartAtSec,
+          // Generous: a few seams cost a few seconds, and running long is
+          // harmless while running short freezes the picture.
+          extraSourceSec: BG_SEAM_XFADE_SEC * 4,
+        })
   await buildBackground(
     full,
     path.join(stage, "bg.mp4"),

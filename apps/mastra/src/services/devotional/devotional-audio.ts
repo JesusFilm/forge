@@ -500,6 +500,34 @@ const RU_CLOSE_VOICE_SETTINGS: ElevenVoiceSettings = {
   use_speaker_boost: true,
 }
 
+/**
+ * The reflection voice's delivery (owner's pick F4, 2026-09-30: faster and
+ * livelier; it ran slower than the notes voice). The close keeps the weighty
+ * settings. `take` versions the settings in the audio cache key, so a take
+ * made under the old delivery is never replayed under the new one.
+ */
+const VOICE_DELIVERY: Record<
+  string,
+  { settings: ElevenVoiceSettings; take: string }
+> = {
+  "female-d": {
+    settings: {
+      stability: 0.18,
+      similarity_boost: 0.85,
+      style: 0.8,
+      use_speaker_boost: true,
+      speed: 1.2,
+    },
+    take: "f4",
+  },
+}
+
+/** The cache tag of the delivery a segment is read with ("" = default). */
+export function voiceTake(id: string, voice: string): string {
+  if (id === "cover" || id === "conclusion" || id === "questions") return ""
+  return VOICE_DELIVERY[voice]?.take ?? ""
+}
+
 /** Per-segment voice settings; undefined → the service's emotive default. */
 function voiceSettingsFor(
   id: string,
@@ -513,7 +541,7 @@ function voiceSettingsFor(
   }
   if (id === "cover") return COVER_VOICE_SETTINGS
   if (id === "conclusion" || id === "questions") return WEIGHTY_VOICE_SETTINGS
-  return undefined
+  return VOICE_DELIVERY[voice]?.settings
 }
 
 export type ProducedSegment = {
@@ -522,6 +550,8 @@ export type ProducedSegment = {
   text: string
   /** What the voice actually says — the reuse key (see `audioReuseKey`). */
   spoken?: string
+  /** The delivery version it was read with (see `voiceTake`). */
+  take?: string
   audio: VoiceoverAudio
 }
 
@@ -692,7 +722,10 @@ export async function produceDevotionalAudio(
       // Keyed on the SPOKEN text, not the displayed one: the two diverge
       // exactly where a connector moves, and matching on the display replays
       // audio that says something the current script doesn't.
-      const hit = deps.reusable.get(audioReuseKey(role, seg.text, segVoice))
+      const take = voiceTake(seg.id, segVoice)
+      const hit = deps.reusable.get(
+        audioReuseKey(role, seg.text, take ? `${segVoice}@${take}` : segVoice),
+      )
       // Reuse is a cost optimization, and it must not quietly cost the caller
       // the thing they asked for: a cached segment from before word timing
       // existed has no alignment, and reusing it left its card falling back to
@@ -705,6 +738,9 @@ export async function produceDevotionalAudio(
           id: seg.id,
           text: seg.display ?? seg.text,
           spoken: seg.text,
+          ...(voiceTake(seg.id, segVoice)
+            ? { take: voiceTake(seg.id, segVoice) }
+            : {}),
           audio: hit.audio,
         })
         reused.push(seg.id)
@@ -831,6 +867,9 @@ export async function produceDevotionalAudio(
       id: seg.id,
       text: seg.display ?? seg.text,
       spoken: seg.text,
+      ...(voiceTake(seg.id, segVoice)
+        ? { take: voiceTake(seg.id, segVoice) }
+        : {}),
       audio: {
         ...audio,
         bytes,

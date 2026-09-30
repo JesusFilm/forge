@@ -927,7 +927,34 @@ function VideoSubtitles({
       </AbsoluteFill>
     )
   }
-  return (
+  // 16:9 with verse addresses (Figma 366-2094): the captions lift to leave
+  // room for a hairline and the address beneath them, and a soft dark
+  // ellipse sits behind the whole block so the text reads over bright film.
+  const withVerse =
+    isLandscape && !fullBleed && cues.some((c) => c.verse != null)
+  const first = cues[0]
+  const last = cues[cues.length - 1]
+  // The scrim and the address hold across the gaps between cues, so the
+  // block never blinks off between two lines; only the verse number changes.
+  const blockOpacity =
+    withVerse && first && last
+      ? interpolate(
+          t,
+          [
+            first.startSec - fade,
+            first.startSec,
+            last.endSec,
+            last.endSec + fade,
+          ],
+          [0, 1, 1, 0],
+          { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+        )
+      : 0
+  const currentVerse = withVerse
+    ? ([...cues].reverse().find((c) => t >= c.startSec - fade && c.verse)
+        ?.verse ?? first?.verse)
+    : undefined
+  const captions = (
     <div
       style={{
         position: "absolute",
@@ -945,8 +972,8 @@ function VideoSubtitles({
             ? FULL_BLEED_CAPTION_TOP
             : `calc(${VIDEO_WINDOW_BOTTOM_PCT}% + ${px(16)}px)`,
         // 16:9: 40px higher than the old 78px (owner, 2026-09-26), in step
-        // with the reflection text.
-        bottom: isLandscape ? px(42.4) : safeBottom,
+        // with the reflection text. With an address below: 201px at 1080p.
+        bottom: isLandscape ? (withVerse ? px(67) : px(42.4)) : safeBottom,
         display: "flex",
         // Landscape keeps growing UP toward the picture above it. Portrait
         // has real space below the video, so cues grow DOWN into it. Full
@@ -1044,6 +1071,67 @@ function VideoSubtitles({
         )
       })}
     </div>
+  )
+  if (!withVerse || blockOpacity <= 0) return captions
+  return (
+    <>
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "73%",
+          width: px(262),
+          height: px(158),
+          transform: "translate(-50%, -50%)",
+          borderRadius: "50%",
+          background:
+            "radial-gradient(closest-side, rgba(0,0,0,0.6), rgba(0,0,0,0))",
+          filter: `blur(${px(13.3)}px)`,
+          opacity: blockOpacity,
+          pointerEvents: "none",
+        }}
+      />
+      {captions}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: px(29),
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: px(6.67),
+          opacity: blockOpacity,
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          style={{
+            width: px(42),
+            height: px(0.67),
+            borderRadius: px(0.34),
+            background: "#f2c46b",
+            opacity: 0.5,
+          }}
+        />
+        <div
+          style={{
+            fontFamily: SANS,
+            fontWeight: 400,
+            fontSize: px(9.33),
+            lineHeight: `${px(16.67)}px`,
+            color: "rgba(255,255,255,0.92)",
+            opacity: 0.85,
+            fontVariantNumeric: "tabular-nums",
+            textShadow: "0 1px 8px rgba(0,0,0,0.8)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {currentVerse}
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -1534,6 +1622,26 @@ function montagePush(
   return 1 + 0.045 * Easing.bezier(0.33, 0, 0.67, 1)(p)
 }
 
+/** `montage`: "Let's watch", WATCH and the passage sit over the last shot
+ *  while it is still muted, the picture softly blurred behind them (owner,
+ *  2026-09-30); the blur lifts as the film is heard. */
+function montageWatchBlur(
+  t: number,
+  starts: ReadonlyArray<number>,
+  leadSec: number,
+  maxPx: number,
+): number {
+  if (starts.length < 2) return 0
+  const watchAt = starts[starts.length - 1]
+  if (leadSec - watchAt < 1) return 0
+  return interpolate(
+    t,
+    [watchAt - 0.2, watchAt + 0.5, leadSec - 0.2, leadSec + 0.5],
+    [0, maxPx, maxPx, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  )
+}
+
 /**
  * The passage the scene reads, over the big WATCH as the film begins (owner,
  * 2026-09-28): Literata at 48px on a 1920 frame, a slow push in, and it
@@ -1756,12 +1864,22 @@ function ClipIntro({
       i + 1 < starts.length ? starts[i + 1] : Math.max(L, watchAt + 1.3)
     // Calm and a little mysterious at first: a deeper scrim on the first shot
     // that eases as the contrast begins, and gone once the film has the frame.
-    const scrim = interpolate(
-      t,
-      [0, starts[1] ?? 2, watchAt, watchAt + 0.8],
-      [0.42, 0.26, 0.26, 0],
-      clampBoth,
-    )
+    // With WATCH over the muted last shot (not the teaser), a lighter dim
+    // holds until the film is heard.
+    const scrim =
+      !cta && L - watchAt >= 1
+        ? interpolate(
+            t,
+            [0, starts[1] ?? 2, watchAt, L - 0.2, L + 0.5],
+            [0.42, 0.26, 0.26, 0.2, 0],
+            clampBoth,
+          )
+        : interpolate(
+            t,
+            [0, starts[1] ?? 2, watchAt, watchAt + 0.8],
+            [0.42, 0.26, 0.26, 0],
+            clampBoth,
+          )
     const watchFrom = watchAt - 0.15
     const watchFrames = Math.max(1, Math.round(2.6 * fps))
     // The narration as a subtitle, one line at a time, the spoken word lit —
@@ -1853,9 +1971,59 @@ function ClipIntro({
         </div>
       )
     }
+    // The Jesus Film mark performs at the top as the piece opens, with
+    // IN THIS DEVOTIONAL settling under it (owner, 2026-09-30); both leave
+    // before WATCH takes the frame.
+    const brandOut = interpolate(t, [watchAt - 0.9, watchAt - 0.2], [1, 0], {
+      ...clampBoth,
+      easing: ease,
+    })
+    const kickerIn = interpolate(t, [0.7, 1.6], [0, 1], {
+      ...clampBoth,
+      easing: ease,
+    })
+    const brand =
+      !cta && brandOut > 0 ? (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: wide ? "8%" : "11%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: px(7),
+            opacity: brandOut,
+          }}
+        >
+          <AnimatedBrandMark
+            px={(n) => px(n * 0.8)}
+            frame={frame}
+            fps={fps}
+            spanSec={3.6}
+          />
+          <div
+            style={{
+              fontFamily: SANS,
+              fontWeight: 500,
+              fontSize: px(wide ? 8.5 : 11),
+              letterSpacing: px(2.2 + 1.2 * (1 - kickerIn)),
+              color: "rgba(255,255,255,0.78)",
+              whiteSpace: "nowrap",
+              opacity: kickerIn,
+              transform: `translateY(${(-px(6) * (1 - kickerIn)).toFixed(1)}px)`,
+              textShadow: `0 ${px(1)}px ${px(10)}px rgba(0,0,0,0.5)`,
+            }}
+          >
+            IN THIS DEVOTIONAL
+          </div>
+        </div>
+      ) : null
     return (
       <div style={{ ...bleed, pointerEvents: "none" }}>
         <AbsoluteFill style={{ background: `rgba(0,0,0,${scrim})` }} />
+        {brand}
         {/* The narration itself, in the middle of the frame (owner,
             2026-09-28): each line small, half the size of the big captions;
             where a line carries a big caption, only the words before it are
@@ -4437,6 +4605,75 @@ function CardBody({
         </span>
       </Eyebrow>
     )
+    // A short sentence ("He stayed." "He pleads.") has its own weight: in the
+    // wide cut it is set larger and arrives like the opening's big captions,
+    // out of a slight blur, letters drawing in from wider tracking, with a
+    // gentle zoom (owner, 2026-09-30).
+    const shortLine =
+      isLandscape &&
+      (card.text ?? "").trim().split(/\s+/).filter(Boolean).length <= 4
+    if (shortLine) {
+      const inP = interpolate(frame / fps, [0.02, 0.8], [0, 1], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+        easing: Easing.bezier(0.4, 0, 0.2, 1),
+      })
+      const big = (
+        <p
+          style={{
+            margin: 0,
+            width: "100%",
+            textAlign: card.markColumn ? "left" : "center",
+            fontFamily: SERIF,
+            fontWeight: 600,
+            fontSize: px(30),
+            lineHeight: 1.2,
+            letterSpacing: px(0.4 + 2.6 * (1 - inP)),
+            color: "#ffffff",
+            opacity: inP,
+            transform: `scale(${(0.96 + 0.04 * inP).toFixed(4)})`,
+            transformOrigin: card.markColumn ? "left center" : "center",
+            textShadow: `0 ${px(2)}px ${px(22)}px rgba(0,0,0,0.6)`,
+            filter:
+              inP < 0.99
+                ? `blur(${(px(3) * (1 - inP)).toFixed(2)}px)`
+                : undefined,
+          }}
+        >
+          {card.text}
+        </p>
+      )
+      if (card.markColumn) {
+        return (
+          <AbsoluteFill>
+            <div
+              style={{
+                position: "absolute",
+                top: card.markColumn.top,
+                left: card.markColumn.left - (bleedX ?? 0),
+                width: card.markColumn.width,
+              }}
+            >
+              {big}
+            </div>
+          </AbsoluteFill>
+        )
+      }
+      return (
+        <AbsoluteFill
+          style={{
+            justifyContent: "flex-end",
+            padding: pad,
+            paddingBottom:
+              wideText === "bottom"
+                ? (card.wideBottomPx ?? px(WIDE_TEXT_BOTTOM))
+                : undefined,
+          }}
+        >
+          {big}
+        </AbsoluteFill>
+      )
+    }
     const paragraph = (
       <p
         style={{
@@ -5320,7 +5557,18 @@ function Background({
           [px(3), px(6), px(6), 0],
           { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
         )
-      : 0
+      : card.intro === "montage" && card.mutedLeadSec && !card.introCta
+        ? montageWatchBlur(
+            frame / fps,
+            montageLineStarts(
+              card.introParts ?? [],
+              card.words ?? [],
+              card.mutedLeadSec,
+            ),
+            card.mutedLeadSec,
+            px(2.5),
+          )
+        : 0
 
   const kbLanding =
     card.kind === "quote-intro"
@@ -6670,6 +6918,10 @@ export function DevotionalVideo(props: DevotionalInputProps) {
         const textFadeFrames = Math.min(
           Math.round(TEXT_FADE_OUT_SEC * fps),
           Math.max(1, Math.round(frames[i].durationInFrames * 0.3)),
+          // A short breath fades the text within it, not over the last word.
+          card.tailSec != null
+            ? Math.max(4, Math.round((card.tailSec + 0.1) * fps))
+            : Infinity,
         )
         const textFadeStart =
           frames[i].from + frames[i].durationInFrames - textFadeFrames
