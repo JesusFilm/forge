@@ -1729,6 +1729,7 @@ function ClipIntro({
   passageRef,
   cta = false,
   kinetic = [],
+  kicker = "IN THIS DEVOTIONAL",
 }: {
   variant: "cover" | "bands" | "hook" | "watch" | "opening" | "montage"
   leadSec: number
@@ -1764,6 +1765,8 @@ function ClipIntro({
   passageRef?: string
   /** `montage` teaser: the last line is a call to action, not "Let's watch". */
   cta?: boolean
+  /** `montage`: the words under the Jesus Film mark, in the film's language. */
+  kicker?: string
   /** `montage`: kinetic captions per line, the "stack" layout (owner's pick,
    *  2026-09-30). When set, they replace the small line + big caption. */
   kinetic?: ReadonlyArray<{
@@ -2001,7 +2004,11 @@ function ClipIntro({
     // With kinetic captions the spoken preview says "In this devotional"
     // itself, so the kicker leaves before that line instead of doubling it.
     const previewAt = kinetic.length
-      ? starts[lines.findIndex((l) => /^\s*in this devotional\b/i.test(l))]
+      ? starts[
+          lines.findIndex((l) =>
+            /^\s*(in this devotional|en este devocional)\b/i.test(l),
+          )
+        ]
       : undefined
     const brandGone = previewAt ?? watchAt
     const brandOut = interpolate(
@@ -2067,7 +2074,7 @@ function ClipIntro({
               textShadow: `0 ${px(1)}px ${px(10)}px rgba(0,0,0,0.5)`,
             }}
           >
-            IN THIS DEVOTIONAL
+            {kicker}
           </div>
         </div>
       ) : null
@@ -5163,6 +5170,7 @@ function CardBody({
             framed={card.introFrame === true}
             {...(card.introCaptions ? { captions: card.introCaptions } : {})}
             {...(card.introKinetic ? { kinetic: card.introKinetic } : {})}
+            {...(card.introKicker ? { kicker: card.introKicker } : {})}
             {...(card.passageRef ? { passageRef: card.passageRef } : {})}
             cta={card.introCta === true}
           />

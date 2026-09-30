@@ -1908,16 +1908,17 @@ async function renderInStage(
     // A registered source may bring its own cue file (LUMO has no subtitle
     // track in Arclight): read from disk through the SAME alignment and
     // gap-removal path, so its dead air is cut exactly as a JESUS chapter's is.
-    const localCues =
-      registered?.captions.kind === "file" && locale.lang === "en"
-        ? // repoRoot, not import.meta.url: the Mastra bundle moves this file
-          // and every url-relative path with it (see repo-root.ts).
-          path.join(
-            repoRoot(),
-            "apps/mastra/src/services/devotional",
-            registered.captions.path,
-          )
+    const cueFile =
+      registered?.captions.kind === "file"
+        ? locale.lang === "en"
+          ? registered.captions.path
+          : registered.captions.byLang?.[locale.lang as "ru" | "es"]
         : undefined
+    const localCues = cueFile
+      ? // repoRoot, not import.meta.url: the Mastra bundle moves this file
+        // and every url-relative path with it (see repo-root.ts).
+        path.join(repoRoot(), "apps/mastra/src/services/devotional", cueFile)
+      : undefined
     const subtitleUrl = localCues
       ? pathToFileURL(localCues).href
       : clipInfo.subtitleUrl
@@ -2497,6 +2498,7 @@ async function renderInStage(
     ...(options.openingFrame ? { openingFrame: true } : {}),
     ...(options.introCaptions ? { introCaptions: options.introCaptions } : {}),
     ...(options.introKinetic ? { introKinetic: options.introKinetic } : {}),
+    ...(locale.introKicker ? { introKicker: locale.introKicker } : {}),
     ...(options.introTeaser && options.intro === "montage"
       ? { introCta: true }
       : {}),

@@ -45,6 +45,8 @@ export type DevotionalManifest = {
   intro?: "cover" | "bands" | "hook" | "watch" | "opening" | "montage"
   /** `montage`: captions keyed by 0-based spoken line. */
   introCaptions?: Record<number, string>
+  /** `montage`: the localized words under the Jesus Film mark. */
+  introKicker?: string
   /** `montage`: kinetic captions per spoken line. */
   introKinetic?: {
     line: number
@@ -141,6 +143,8 @@ export type BuildManifestInput = {
   intro?: "cover" | "bands" | "hook" | "watch" | "opening" | "montage"
   /** `montage`: captions keyed by 0-based spoken line. */
   introCaptions?: Record<number, string>
+  /** `montage`: the localized words under the Jesus Film mark. */
+  introKicker?: string
   /** `montage`: kinetic captions per spoken line. */
   introKinetic?: {
     line: number
@@ -343,6 +347,9 @@ function buildClipFirstManifest(
               : {}),
             ...(input.intro === "montage" && input.introKinetic?.length
               ? { introKinetic: input.introKinetic }
+              : {}),
+            ...(input.intro === "montage" && input.introKicker
+              ? { introKicker: input.introKicker }
               : {}),
             ...(input.intro === "montage" && input.introCaptions
               ? {

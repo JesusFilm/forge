@@ -127,6 +127,9 @@ export const devotionalCardSchema = z.object({
   introFocus: z.array(z.number()).optional(),
   /** `montage`: kinetic captions (the "stack" layout) per spoken line:
    *  the whole line on screen, its hero phrase large, accents in italic. */
+  /** `montage`: the words under the Jesus Film mark ("IN THIS DEVOTIONAL"),
+   *  localized. */
+  introKicker: z.string().optional(),
   introKinetic: z
     .array(
       z.object({

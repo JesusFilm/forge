@@ -100,6 +100,9 @@ export type DevotionalConnectors = {
 }
 
 export type DevotionalLocale = {
+  /** The words under the Jesus Film mark in the montage opening; English
+   *  ("IN THIS DEVOTIONAL") when absent. */
+  introKicker?: string
   lang: DevotionalLang
   /** Arclight audio language id for the JESUS-film clip (en=529, ru=3934). */
   filmLanguageId: number
@@ -456,6 +459,9 @@ export function normalizeEsCaption(text: string): string {
     .trim()
 }
 
+const ES_ASK_LEAD = "Primero, pregúntate:"
+const ES_PRAY_LEAD = "Habla con Dios de esto:"
+
 /**
  * Spanish (Latin American): neutral vocabulary, "tú" address, no "vosotros".
  * The film is the Latin American dub (Arclight 21028); scripture is the
@@ -465,10 +471,19 @@ export function normalizeEsCaption(text: string): string {
  */
 export const ES_LOCALE: DevotionalLocale = {
   lang: "es",
+  introKicker: "EN ESTE DEVOCIONAL",
   filmLanguageId: 21028,
   voice: "spanish",
   stripDashes: true,
-  labels: { reflect: "Reflexiona", askYourself: "Pregúntate", pray: "Ora" },
+  // Mirrors the English closing card (owner, 2026-09-29): the label is the
+  // lead-in the viewer hears, so screen and voice say the same thing.
+  labels: {
+    reflect: "Reflexiona",
+    askYourself: "Primero, pregúntate",
+    pray: "Habla con Dios de esto",
+    askLead: ES_ASK_LEAD,
+    prayLead: ES_PRAY_LEAD,
+  },
   stepLabels: ["VER", "REFLEXIONAR", "ORAR"],
   scripture: { fetch: fetchValeraPassage, translation: "Reina-Valera 1909" },
   attributionPrefix: "Adaptado de un clásico de confianza",
@@ -496,15 +511,22 @@ export const ES_LOCALE: DevotionalLocale = {
     reflectionOpen: (chunk) => chunk,
     conclusion: (line) => line,
     questions: (question, prayer) =>
-      [question, prayer].filter(Boolean).join("\n\n"),
+      [
+        question && `${ES_ASK_LEAD} ${question}`,
+        prayer && `${ES_PRAY_LEAD} ${prayer}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
     steps: {
       intro: () => `Hagamos una pausa y escuchemos la Escritura`,
       read: (ref) => `Hoy leemos aquí.${ref ? ` ${ref}.` : ""}`,
       watch: () => `Veamos.`,
       welcome: () => `Bienvenidos a Daily Bible Pause.`,
       reflect: () => `Reflexiona sobre esto.`,
+      // The English cut's wording ("Let's look more closely at what this
+      // story means"), 2026-09-30.
       reflectAfterClip: () =>
-        `Reflexionemos sobre lo que esto significa para nosotros.`,
+        `Miremos más de cerca lo que significa esta historia.`,
       pray: () => `Llevemos esto a Dios.`,
     },
   },

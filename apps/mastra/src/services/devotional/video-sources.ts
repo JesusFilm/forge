@@ -57,7 +57,15 @@ export type VideoSource = {
    * cue file is made ONCE (whisper timings, BSB words) and checked in beside
    * this table, then reused by every render.
    */
-  captions: { kind: "none" } | { kind: "file"; path: string }
+  captions:
+    | { kind: "none" }
+    | {
+        kind: "file"
+        /** The English cue file. */
+        path: string
+        /** Cue files for other languages' dubs, e.g. the Spanish (21028). */
+        byLang?: Partial<Record<"ru" | "es", string>>
+      }
 }
 
 const SOURCES: VideoSource[] = [
@@ -101,7 +109,13 @@ const SOURCES: VideoSource[] = [
     filmCaptionStyle: "scroll",
     filmMark: "lumo",
     style: "clean",
-    captions: { kind: "file", path: "video-sources/lumo-luke-15.en.vtt" },
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-15.en.vtt",
+      // The Latin American dub reads the NVI word for word (whisper small,
+      // corrected against the NVI text, 2026-09-30).
+      byLang: { es: "video-sources/lumo-luke-15.es.vtt" },
+    },
   },
 ]
 

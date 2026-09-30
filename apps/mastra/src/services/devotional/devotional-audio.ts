@@ -520,6 +520,19 @@ const VOICE_DELIVERY: Record<
     },
     take: "f4",
   },
+  // The Spanish reflection voice (Luisa) read the Prodigal at 8:03 on the
+  // default 1.1: brought up toward the English F4 pace so the cut fits the
+  // 8-minute limit with the same text (2026-09-30).
+  "spanish-female": {
+    settings: {
+      stability: 0.25,
+      similarity_boost: 0.85,
+      style: 0.6,
+      use_speaker_boost: true,
+      speed: 1.18,
+    },
+    take: "s118",
+  },
 }
 
 /**
