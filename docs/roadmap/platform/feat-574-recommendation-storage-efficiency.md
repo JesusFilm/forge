@@ -61,10 +61,12 @@ credited as production filesystem savings.
 The user's follow-up prioritizes substantial reduction across the whole profile
 family. `docs/reports/2026-09-30-recommendation-profile-footprint.md` separates
 interests from generation/lineage/pointer allocation and core profiles. A
-default-off future-write branch now keeps a completed first-empty projection run
+reader-first future-write release now keeps a completed first-empty projection run
 but omits its generation and pointer only after claim, privacy, source snapshot,
 and retained-history checks. It has no retained rewrite or shorter expiry.
 `docs/validation/recommendation-storage-20260930/background-empty-profile.md`
-records the native proof and activation gates. Its local bytes are not production
-savings. Keep this ticket in progress through review, reader-first fleet
-convergence, later writer activation, and measured production verification.
+records native proof and activation gates. The actual HTTP and worker fleet
+converged on the compatible `a549b86a4` reader with the effective writer flag
+still false; a separate normal PR enables new writes by default. Local bytes
+are not production savings. Keep this ticket in progress through activation,
+rollback readiness, and measured production verification.
