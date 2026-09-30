@@ -12,6 +12,7 @@ import { wire } from "../src/main.js"
 import { createApp, parseTokenRegistry } from "../src/serving/http/index.js"
 import { createGitHubAdmission } from "../src/serving/http/portal-github.js"
 import { createPostgresSessionStore } from "../src/adapters/postgres/portal-sessions.js"
+import { verifyPortalSessionRenewal } from "./lib/portal-session-renewal-grant.js"
 import { PostgresConsumerAccess } from "../src/adapters/postgres/consumer-access.js"
 import { PostgresConsumerAuthenticator } from "../src/adapters/postgres/consumer-auth.js"
 import { PrismaClient } from "../src/generated/prisma/index.js"
@@ -46,6 +47,8 @@ async function main(): Promise<void> {
       "portal configuration is incomplete",
       "railway",
     )
+  if (configured.length)
+    await verifyPortalSessionRenewal(input.RAG_PORTAL_DATABASE_URL!)
   const sessions = configured.length
     ? createPostgresSessionStore(input.RAG_PORTAL_DATABASE_URL!)
     : undefined

@@ -81,6 +81,22 @@ function restricted(proof: RoleProof): boolean {
   )
 }
 
+/** Fails startup if a deployment bypassed the pre-deploy grant command. */
+export async function verifyPortalSessionRenewal(
+  sessionUrl: string,
+): Promise<void> {
+  const session = new PrismaClient({ datasourceUrl: sessionUrl })
+  try {
+    const proof = await roleProof(session)
+    if (!restricted(proof) || !proof.expiryUpdate)
+      throw new PortalSessionGrantError(
+        "portal_session_grant_verification_failed",
+      )
+  } finally {
+    await session.$disconnect()
+  }
+}
+
 /** Runs after schema migration and before the portal service starts. */
 export async function grantPortalSessionRenewal(
   administratorUrl: string,

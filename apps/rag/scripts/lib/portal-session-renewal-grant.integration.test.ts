@@ -3,7 +3,10 @@ import { randomBytes } from "node:crypto"
 import { PrismaClient } from "../../src/generated/prisma/index.js"
 import { describe, expect, it } from "vitest"
 
-import { grantPortalSessionRenewal } from "./portal-session-renewal-grant.js"
+import {
+  grantPortalSessionRenewal,
+  verifyPortalSessionRenewal,
+} from "./portal-session-renewal-grant.js"
 
 const administratorUrl = process.env.DATABASE_URL
 
@@ -24,6 +27,9 @@ describe.skipIf(!administratorUrl)("portal renewal role grant", () => {
       await administrator.$executeRawUnsafe(
         `GRANT SELECT, INSERT, DELETE ON portal_private.oauth_states, portal_private.sessions TO "${role}"`,
       )
+      await expect(
+        verifyPortalSessionRenewal(sessionUrl.toString()),
+      ).rejects.toThrow("portal_session_grant_verification_failed")
       expect(
         await grantPortalSessionRenewal(
           administratorUrl!,
@@ -34,6 +40,9 @@ describe.skipIf(!administratorUrl)("portal renewal role grant", () => {
         role,
         expiryUpdate: true,
       })
+      await expect(
+        verifyPortalSessionRenewal(sessionUrl.toString()),
+      ).resolves.toBeUndefined()
       await expect(
         grantPortalSessionRenewal(administratorUrl!, sessionUrl.toString()),
       ).resolves.toMatchObject({ role, expiryUpdate: true })

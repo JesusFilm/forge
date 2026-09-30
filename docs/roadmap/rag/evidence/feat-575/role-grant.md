@@ -9,7 +9,8 @@ configured restricted portal session role, verifies its existing privileges
 and database-cluster identity, grants only `UPDATE (expires_at)` through the
 migration administrator connection, then verifies the restricted role again.
 The command prints a receipt with the database and role names and permission
-booleans, without connection strings or session values.
+booleans, without connection strings or session values. Portal startup repeats
+the restricted-role verification so a skipped pre-deploy command fails visibly.
 
 ## Isolated PostgreSQL verification
 

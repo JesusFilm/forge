@@ -64,14 +64,16 @@ The Railway pre-deploy command applies the additive migration, then runs
 `db:grant-portal-session-renewal` before the new service starts. The script
 connects with the configured restricted `RAG_PORTAL_DATABASE_URL`, obtains its
 role from PostgreSQL `current_user`, checks its existing portal-only privileges,
-and verifies both connections reach the same PostgreSQL cluster and database,
-and uses the migration administrator connection to grant only
+and verifies both connections reach the same PostgreSQL cluster and database.
+It uses the migration administrator connection to grant only
 `UPDATE (expires_at)` on `portal_private.sessions`. It then reconnects as the
 restricted role to verify the expiry update is available while table-wide,
 other session-column, OAuth-state update and non-portal data privileges remain unavailable.
 An unexpected role, database, or privilege stops the deployment. The grant is
 idempotent and the script prints a redacted receipt containing the database and
 role names plus the checked permission booleans; it never prints either URL.
+Portal startup independently verifies the restricted role, so a Railway
+dashboard override that skips pre-deploy cannot silently enable broken renewal.
 The deployment log and reviewed script commit are the audit record. After the
 first production deployment, record the deployment ID and receipt result in
 `docs/roadmap/rag/evidence/feat-575/` without credentials or session values.
