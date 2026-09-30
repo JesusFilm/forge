@@ -99,3 +99,18 @@ A same-fixture, two-batch local process measurement compares old and new CLI
 freeze cost; it is not a production throughput estimate. This ticket stays
 in progress until the full finite roster and exact empty-table route are
 verified. Expired members remain under ordinary retention without refill.
+
+## Bounded persistent-session preparation
+
+`docs/plans/2026-09-30-003-legacy-detail-persistent-session.md` defines a
+separately reviewed 1,000-run speed pilot. The new Admin session CLI keeps one
+bidirectional process for ten fixed 100-run waves while the unchanged v2
+service performs only ten-run transactions. Each freeze requires a private
+archived manifest ACK; each execute requires a fresh operator permit and an
+exclusive durable attempt marker. The server checks current target, source,
+WAL, locks, typed baseline, durable ledger and original quality parity. A real
+30-minute manual hold-review lease and canonical registry digest are required;
+the client must stop on any changed file or uncertain response. This local
+preparation is not broad cohort approval and does not change ordinary expiry.
+The disposable-database receipt is in
+`docs/validation/recommendation-storage-20260930/legacy-persistent-session.md`.
