@@ -289,6 +289,287 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
     }, 35_000)
 
+    it("keeps the subtitle tier below the slug tier and above duration in the snapshot matcher", async () => {
+      // feat-572: the slug/bcp47 rank is the first ORDER BY key; the subtitle
+      // preference only breaks ties inside a rank. A tag-only dub carrying the
+      // requested subtitle must not beat an exact-slug dub without one, while
+      // inside the exact-slug rank the subtitle-bearing dub beats a longer one.
+      const rollback = new RollbackFixture()
+      try {
+        await prisma.$transaction(
+          async (tx) => {
+            const prefix = `slug-subtitle-${randomUUID()}`
+            const tag = `${prefix}-yao`
+            const exactLanguage = await tx.language.create({
+              data: { coreId: `${prefix}-exact`, slug: tag, bcp47: tag },
+            })
+            const tagOnlyLanguage = await tx.language.create({
+              data: {
+                coreId: `${prefix}-tag-only`,
+                slug: `${tag}-tanzania`,
+                bcp47: tag,
+              },
+            })
+            const subtitleLanguage = await tx.language.create({
+              data: {
+                coreId: `${prefix}-sub`,
+                slug: `${prefix}-french`,
+                bcp47: `${prefix}-fr`,
+              },
+            })
+            const primaryLanguage = await tx.language.create({
+              data: {
+                coreId: `${prefix}-primary`,
+                slug: `${prefix}-english`,
+                bcp47: `${prefix}-en`,
+              },
+            })
+            const video = await tx.video.create({
+              data: {
+                coreId: prefix,
+                slug: prefix,
+                primaryLanguageId: primaryLanguage.id,
+              },
+            })
+            await tx.videoLocale.create({
+              data: {
+                videoId: video.id,
+                languageId: primaryLanguage.id,
+                languageSlug: primaryLanguage.slug,
+                locale: "en",
+                title: "Slug subtitle fixture",
+                status: "PUBLISHED",
+              },
+            })
+            const edition = async (suffix: string) =>
+              tx.videoEdition.create({
+                data: { coreId: `${prefix}-${suffix}`, name: suffix },
+              })
+            const [exactSubbed, exactPlain, tagSubbed] = await Promise.all([
+              edition("exact-subbed"),
+              edition("exact-plain"),
+              edition("tag-subbed"),
+            ])
+            const dub = (
+              suffix: string,
+              languageId: string,
+              videoEditionId: string,
+              duration: number,
+            ) =>
+              tx.videoDub.create({
+                data: {
+                  coreId: `${prefix}-${suffix}`,
+                  videoId: video.id,
+                  videoEditionId,
+                  languageId,
+                  published: true,
+                  hls: "https://fixture.test/master.m3u8",
+                  duration,
+                },
+              })
+            const exactSubbedDub = await dub(
+              "exact-subbed-dub",
+              exactLanguage.id,
+              exactSubbed.id,
+              100,
+            )
+            const exactPlainDub = await dub(
+              "exact-plain-dub",
+              exactLanguage.id,
+              exactPlain.id,
+              500,
+            )
+            const tagSubbedDub = await dub(
+              "tag-subbed-dub",
+              tagOnlyLanguage.id,
+              tagSubbed.id,
+              9_000,
+            )
+            for (const [suffix, videoEditionId] of [
+              ["exact-subbed", exactSubbed.id],
+              ["tag-subbed", tagSubbed.id],
+            ] as const) {
+              await tx.videoSubtitle.create({
+                data: {
+                  coreId: `${prefix}-${suffix}-vtt`,
+                  videoId: video.id,
+                  videoEditionId,
+                  languageId: subtitleLanguage.id,
+                  vttSrc: "https://fixture.test/sub.vtt",
+                },
+              })
+            }
+
+            const db = tx as unknown as PrismaClient
+            const snapshot = async (subtitleLanguageSlug: string | null) =>
+              (
+                await new VideoService(db).getWatchRouteSnapshotBySlug({
+                  slug: video.slug!,
+                  locale: "en",
+                  languageSlug: tag,
+                  subtitleLanguageSlug,
+                  user: null,
+                })
+              )?.preferredVariant?.documentId
+
+            // Inside the exact-slug rank the subtitle-bearing dub wins over
+            // the longer plain one; the tag-only dub with the subtitle loses.
+            expect(await snapshot(subtitleLanguage.slug)).toBe(
+              exactSubbedDub.id,
+            )
+            // Without a subtitle preference the longest exact-slug dub wins.
+            expect(await snapshot(null)).toBe(exactPlainDub.id)
+            expect(exactPlainDub.id).not.toBe(tagSubbedDub.id)
+            throw rollback
+          },
+          { timeout: 30_000 },
+        )
+      } catch (error) {
+        if (error !== rollback) throw error
+      }
+    }, 35_000)
+
+    it("ranks an exact language slug above a shared tag on each collection-feed child, keeping primary and longest fallbacks", async () => {
+      // feat-572: the collection feed picks one playback per child with its
+      // own ORDER BY (a fourth matcher). Child A pins slug > tag; child B pins
+      // the primary-language tier (no match -> primary beats a longer dub);
+      // child C pins the preserved bcp47 fallback; child D pins the
+      // longest-dub fallback (no match, no primary dub).
+      const rollback = new RollbackFixture()
+      try {
+        await prisma.$transaction(
+          async (tx) => {
+            const prefix = `slug-feed-${randomUUID()}`
+            const tag = `${prefix}-yao`
+            const exactLanguage = await tx.language.create({
+              data: { coreId: `${prefix}-exact`, slug: tag, bcp47: tag },
+            })
+            const tagOnlyLanguage = await tx.language.create({
+              data: {
+                coreId: `${prefix}-tag-only`,
+                slug: `${tag}-tanzania`,
+                bcp47: tag,
+              },
+            })
+            const primaryLanguage = await tx.language.create({
+              data: {
+                coreId: `${prefix}-primary`,
+                slug: `${prefix}-english`,
+                bcp47: `${prefix}-en`,
+              },
+            })
+            const otherLanguage = await tx.language.create({
+              data: {
+                coreId: `${prefix}-other`,
+                slug: `${prefix}-other`,
+                bcp47: `${prefix}-ot`,
+              },
+            })
+            const tagOnlyLanguage2 = await tx.language.create({
+              data: {
+                coreId: `${prefix}-longest`,
+                slug: `${prefix}-longest`,
+                bcp47: `${prefix}-lo`,
+              },
+            })
+            const locale = (videoId: string) =>
+              tx.videoLocale.create({
+                data: {
+                  videoId,
+                  languageId: primaryLanguage.id,
+                  languageSlug: primaryLanguage.slug,
+                  locale: "en",
+                  title: "Feed fixture",
+                  status: "PUBLISHED",
+                },
+              })
+            const parent = await tx.video.create({
+              data: {
+                coreId: prefix,
+                slug: prefix,
+                label: "COLLECTION",
+                primaryLanguageId: primaryLanguage.id,
+              },
+            })
+            await locale(parent.id)
+            const child = async (suffix: string, order: number) => {
+              const created = await tx.video.create({
+                data: {
+                  coreId: `${prefix}-${suffix}`,
+                  slug: `${prefix}-${suffix}`,
+                  primaryLanguageId: primaryLanguage.id,
+                },
+              })
+              await locale(created.id)
+              await tx.videoRelation.create({
+                data: { parentId: parent.id, childId: created.id, order },
+              })
+              return created
+            }
+            const dub = (
+              videoId: string,
+              suffix: string,
+              languageId: string,
+              duration: number,
+            ) =>
+              tx.videoDub.create({
+                data: {
+                  coreId: `${prefix}-${suffix}`,
+                  videoId,
+                  languageId,
+                  published: true,
+                  hls: "https://fixture.test/master.m3u8",
+                  duration,
+                },
+              })
+            const childA = await child("a", 1)
+            await dub(childA.id, "a-exact", exactLanguage.id, 100)
+            await dub(childA.id, "a-tag", tagOnlyLanguage.id, 9_000)
+            const childB = await child("b", 2)
+            await dub(childB.id, "b-primary", primaryLanguage.id, 50)
+            await dub(childB.id, "b-other", otherLanguage.id, 9_000)
+            const childC = await child("c", 3)
+            await dub(childC.id, "c-other", otherLanguage.id, 9_000)
+            await dub(childC.id, "c-tag-only", tagOnlyLanguage.id, 10)
+            const childD = await child("d", 4)
+            await dub(childD.id, "d-short", otherLanguage.id, 20)
+            await dub(childD.id, "d-long", tagOnlyLanguage2.id, 9_000)
+
+            // The feed opens its own transaction; an interactive `tx` cannot
+            // nest one, so run its callback on the fixture transaction.
+            const db = {
+              $transaction: async (run: (client: typeof tx) => unknown) =>
+                run(tx),
+            } as unknown as PrismaClient
+            const feed = await new VideoService(db).getWatchCollectionFeed({
+              cardsPerParent: 8,
+              locale: "en",
+              languageSlug: tag,
+            })
+            const items = feed.nodes.find(
+              (node) => node.id === parent.id,
+            )?.items
+            const slugOf = (id: string) =>
+              items?.find((item) => item.id === id)?.languageSlug
+            // A: exact slug beats the longer tag-only sibling.
+            expect(slugOf(childA.id)).toBe(exactLanguage.slug)
+            // B: nothing matches the tag, so the primary dub beats a longer
+            // unrelated one.
+            expect(slugOf(childB.id)).toBe(primaryLanguage.slug)
+            // C: the tag-only dub still resolves by bcp47 when no exact slug
+            // dub exists, even though an unrelated dub is longer.
+            expect(slugOf(childC.id)).toBe(tagOnlyLanguage.slug)
+            // D: no match and no primary dub -> the longest dub.
+            expect(slugOf(childD.id)).toBe(tagOnlyLanguage2.slug)
+            throw rollback
+          },
+          { timeout: 30_000 },
+        )
+      } catch (error) {
+        if (error !== rollback) throw error
+      }
+    }, 35_000)
+
     it("keeps DEFAULT and MODERN on the same eligible edition and owner", async () => {
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`
       const rollback = new RollbackFixture()

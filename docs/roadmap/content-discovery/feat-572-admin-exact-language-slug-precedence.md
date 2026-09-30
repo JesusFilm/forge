@@ -35,7 +35,7 @@ admin). Web now sends the right slug; admin must honour it.
 
 ## Entry Points — Read These First
 
-1. `apps/admin/src/services/video.service.ts` — `findPreferredPlayableVariantRow` (the Watch route snapshot matcher web hits) and `getPreferredPlayableDub` (scalar sibling, no production caller today). Look for the `ORDER BY CASE … l.slug = requested.audio_language_slug OR l.bcp47 = …` tier.
+1. `apps/admin/src/services/video.service.ts` — `findPreferredPlayableVariantRow` (the Watch route snapshot matcher web hits) and `getPreferredPlayableDub` (scalar sibling, no production caller today). Look for the `ORDER BY CASE … l.slug = requested.audio_language_slug OR l.bcp47 = …` tier. The same file's `getWatchCollectionFeed` has a fourth matcher, the `selected_playback` LATERAL (`playback_language.slug = … OR playback_language.bcp47 = …`), that picks one dub per collection child.
 2. `apps/admin/src/services/preferred-playable-dub.service.ts` — `getPreferredPlayableDubs`, the batched DataLoader matcher behind `Video.preferredDub`. Its `exact` LATERAL orders only by duration.
 3. `apps/admin/src/services/search-watchability.db.test.ts` — the real-PostgreSQL suite (`WATCH_SEARCH_DB_TEST=1`) where dub-selection policy is pinned; mocked SQL-shape tests cannot prove tier order.
 4. `apps/web/src/lib/content.ts` — `contentIdentityForWatchLanguage`, the web half of this contract (what reaches admin as `languageSlug`).
@@ -51,7 +51,8 @@ admin). Web now sends the right slug; admin must honour it.
 ## What To Build
 
 Rank an exact `language.slug` match strictly above a `language.bcp47` match in
-all three matchers, keeping every other tier (primary language, longest
+all four matchers (the three above plus the collection feed's per-child
+`selected_playback` LATERAL), keeping every other tier (primary language, longest
 duration, id tie-break, subtitle-aware ordering) unchanged.
 
 ```sql
@@ -71,6 +72,9 @@ END ASC
 -- getPreferredPlayableDubs "exact" LATERAL
 ORDER BY (l.slug = ${language}) DESC, d.duration DESC, d.id ASC LIMIT 1
 ```
+
+The collection feed's `selected_playback` LATERAL uses the same four-tier CASE
+(`playback_language.slug` 0 / `playback_language.bcp47` 1 / primary 2 / else 3).
 
 The scalar `getPreferredPlayableDub` runs the slug lookup first and only falls
 through to the bcp47 lookup on a miss.

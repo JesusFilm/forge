@@ -2396,14 +2396,16 @@ describe("VideoService", () => {
         sql.indexOf(") selected_playback ON TRUE"),
       )
       const requested = playback.indexOf("WHEN playback_language.slug =")
+      const tag = playback.indexOf("WHEN playback_language.bcp47 =")
       const primary = playback.indexOf(
         "WHEN dub.language_id = bounded_child.primary_language_id",
       )
-      const fallback = playback.indexOf("ELSE 2", primary)
+      const fallback = playback.indexOf("ELSE 3", primary)
       const duration = playback.indexOf("dub.duration DESC NULLS LAST")
       const stableId = playback.indexOf("dub.id ASC")
       expect(requested).toBeGreaterThanOrEqual(0)
-      expect(primary).toBeGreaterThan(requested)
+      expect(tag).toBeGreaterThan(requested)
+      expect(primary).toBeGreaterThan(tag)
       expect(fallback).toBeGreaterThan(primary)
       expect(duration).toBeGreaterThan(fallback)
       expect(stableId).toBeGreaterThan(duration)

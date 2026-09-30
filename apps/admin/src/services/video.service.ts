@@ -2424,10 +2424,11 @@ export class VideoService {
             ORDER BY
               CASE
                 WHEN playback_language.slug = ${normalizedLanguageSlug}
-                  OR playback_language.bcp47 = ${normalizedLanguageSlug}
                   THEN 0
-                WHEN dub.language_id = bounded_child.primary_language_id THEN 1
-                ELSE 2
+                WHEN playback_language.bcp47 = ${normalizedLanguageSlug}
+                  THEN 1
+                WHEN dub.language_id = bounded_child.primary_language_id THEN 2
+                ELSE 3
               END ASC,
               dub.duration DESC NULLS LAST,
               dub.id ASC
