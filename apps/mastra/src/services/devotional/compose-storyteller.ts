@@ -329,9 +329,11 @@ export async function composeStoryteller(
     await codeRound("standing rules after the revision")
   }
   const last = await factCheck()
-  const openFacts = last.issues
-    .filter((i) => FACT_KINDS.has(i.kind))
-    .map(describe)
+  const openFacts = [
+    // A check that did not run has not passed.
+    ...(last.skipped ? ["the final fact check could not run"] : []),
+    ...last.issues.filter((i) => FACT_KINDS.has(i.kind)).map(describe),
+  ]
   note(
     openFacts.length
       ? `⛔ facts still open: ${openFacts.join(" | ")}`

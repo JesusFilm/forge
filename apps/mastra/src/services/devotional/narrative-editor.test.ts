@@ -38,6 +38,22 @@ describe("narrativeParagraphs", () => {
     // A credit with no evidence does not inherit the previous source's.
     expect(ps[3].evidence).toBeUndefined()
   })
+
+  it("checks a returning source against its own evidence, not the last one shown", () => {
+    const classic = { label: "Classic", source: "Ryle", evidence: "RYLE" }
+    const language = { label: "Language", source: "Lexicon", evidence: "LEX" }
+    const ps = narrativeParagraphs([
+      { text: "a", role: "classic", mark: classic },
+      { text: "b", role: "language", mark: language },
+      // Credited once: the second classic paragraph carries no mark.
+      { text: "c", role: "classic" },
+      { text: "d", role: "reflection" },
+    ])
+    expect(ps[2].evidence).toBe("RYLE")
+    expect(ps[2].mark?.source).toBe("Ryle")
+    // A reflection paragraph keeps the old behaviour: the last credit shown.
+    expect(ps[3].evidence).toBe("LEX")
+  })
 })
 
 describe("applyNarrativeFixes", () => {

@@ -238,17 +238,24 @@ export type NarrativeParagraph = {
  * how the screen shows it, one credit per section.
  */
 export function narrativeParagraphs(
-  paragraphs: ReadonlyArray<{ text: string; mark?: SourceMark }>,
+  paragraphs: ReadonlyArray<{ text: string; mark?: SourceMark; role?: string }>,
 ): NarrativeParagraph[] {
   let current: SourceMark | undefined
+  // A source is credited on screen only the first time it is used, so a
+  // later paragraph of the same role carries no mark of its own. Without
+  // this it inherited whatever came last — the second classic paragraph was
+  // checked against the Greek lexicon.
+  const byRole = new Map<string, SourceMark>()
   return paragraphs.map((p) => {
-    if (p.mark) current = p.mark
+    if (p.mark) {
+      current = p.mark
+      if (p.role) byRole.set(p.role, p.mark)
+    }
+    const m = p.mark ?? (p.role ? byRole.get(p.role) : undefined) ?? current
     return {
       text: p.text,
-      ...(current
-        ? { mark: { label: current.label, source: current.source } }
-        : {}),
-      ...(current?.evidence ? { evidence: current.evidence } : {}),
+      ...(m ? { mark: { label: m.label, source: m.source } } : {}),
+      ...(m?.evidence ? { evidence: m.evidence } : {}),
     }
   })
 }

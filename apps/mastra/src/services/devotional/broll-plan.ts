@@ -1,3 +1,5 @@
+import { CARD_TAIL_FRAMES } from "@forge/shorts-compositions/devotional-card-timing"
+
 /**
  * Backdrop relevance (owner, 2026-09-30): while the reflection talks about the
  * older brother, the film behind it should show the older brother; when it
@@ -66,16 +68,16 @@ export function matchCue(
     for (const w of set) df.set(w, (df.get(w) ?? 0) + 1)
   const want = tokens(text)
   let best: { cue: BrollCue; score: number; words: string[] } | null = null
-  cueTokens.forEach((set, i) => {
+  for (let i = 0; i < cues.length; i++) {
+    const set = cueTokens[i]
     const words = [...want].filter((w) => set.has(w))
     const score = words.reduce(
       (s, w) => s + Math.log(cues.length / (df.get(w) ?? 1)),
       0,
     )
     if (!best || score > best.score) best = { cue: cues[i], score, words }
-  })
-  const b = best as { cue: BrollCue; score: number; words: string[] } | null
-  return b && b.score >= minScore ? b : null
+  }
+  return best && best.score >= minScore ? best : null
 }
 
 /**
@@ -96,27 +98,44 @@ export function planBrollSegments(input: {
 }): { startSec: number; lengthSec: number }[] {
   const { windowStart, windowLen, coverSec, speed, dissolveSec } = input
   const windowEnd = windowStart + windowLen
-  const runs = [
+  // A run shorter than this is not worth a cut, and a piece this short
+  // would also shrink every seam: concatWithSeamXfade caps the dissolve at
+  // half the shortest piece.
+  const MIN_PIECE_SEC = 2 * dissolveSec + 0.5
+  const sorted = [
     { atSec: 0, sourceSec: windowStart },
     ...input.anchors.filter((a) => a.atSec > 0.5),
   ].sort((a, b) => a.atSec - b.atSec)
+  const runs = sorted.filter(
+    (run, k) =>
+      k + 1 >= sorted.length ||
+      sorted[k + 1].atSec - run.atSec >= MIN_PIECE_SEC,
+  )
   const pieces: { startSec: number; screenSec: number }[] = []
   runs.forEach((run, k) => {
+    // The tail runs a little past the timeline, so the last card never
+    // reaches the end of the footage.
     const until = k + 1 < runs.length ? runs[k + 1].atSec : coverSec + 2
     let screen = until - run.atSec
     let src = Math.min(Math.max(run.sourceSec, windowStart), windowEnd - 1)
     while (screen > 0.01) {
-      const fits = (windowEnd - src) / speed
+      // Too little film left before the window ends: start over now rather
+      // than cut to a sliver.
+      if ((windowEnd - src) / speed < MIN_PIECE_SEC) src = windowStart
+      // Leave room inside the window for the seam's overlap as well.
+      const fits = (windowEnd - src - dissolveSec) / speed
       const take = Math.min(screen, fits)
       pieces.push({ startSec: src, screenSec: take })
       screen -= take
       src = windowStart
     }
   })
+  // concatWithSeamXfade dissolves the SOURCE pieces and slows the joined
+  // result afterwards, so each seam overlaps `dissolveSec` of source.
   return pieces.map((p, i) => {
     const extra = i + 1 < pieces.length ? dissolveSec : 0
     const lengthSec = Math.min(
-      (p.screenSec + extra) * speed,
+      p.screenSec * speed + extra,
       windowEnd - p.startSec,
     )
     return { startSec: p.startSec, lengthSec }
@@ -129,10 +148,12 @@ type PlanCard = {
   durationSec?: unknown
   holdSec?: unknown
   tailSec?: unknown
+  bgStartSec?: unknown
 }
 
+/** The composition's frame rate; broll-plan.test.ts pins this timeline to
+ *  framesFromDurations so the two cannot drift apart. */
 const FPS = 30
-const TAIL_FRAMES = 24
 
 const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase()
 
@@ -168,20 +189,35 @@ export function planBrollAnchors(input: {
       Math.round((Number(card.holdSec) || 0) * FPS) +
       (card.tailSec != null
         ? Math.round(Number(card.tailSec) * FPS)
-        : TAIL_FRAMES) +
+        : CARD_TAIL_FRAMES) +
       (i === 0 ? Math.round(input.introHoldSec * FPS) : 0)
+    // Neither takes backdrop time in the composition: a video card shows its
+    // own clip, and a quote opening with its own shot picks it out of the
+    // take without advancing it (see bgStartFrames in DevotionalVideo).
     if (card.kind === "video") return
-    const start = at
-    at += frames / FPS
+    if (card.kind === "quote-intro" && card.bgStartSec != null) return
+    // Counted in whole frames, as the composition does, so no float drift.
+    const start = at / FPS
+    at += frames
     if (!String(card.kind).startsWith("reflection")) return
     const head = norm(String(card.text ?? "")).slice(0, 40)
     if (!head) return
-    const para = paraTexts.findIndex((t) => t.includes(head))
+    // Paragraphs come in order: look forward from the last one first, so a
+    // short sentence that also occurs earlier is not sent back there.
+    const ahead = paraTexts.findIndex(
+      (t, k) => k >= Math.max(0, lastPara) && t.includes(head),
+    )
+    const para =
+      ahead >= 0 ? ahead : paraTexts.findIndex((t) => t.includes(head))
     if (para < 0 || para === lastPara) return
     lastPara = para
     const m = matchCue(paragraphs[para].text, inWindow)
     if (!m) return
-    const natural = rolling.sourceSec + (start - rolling.atSec) * speed
+    // Where the rolling footage is by now, wrapping as the segments do.
+    const windowLen = windowEnd - windowStart
+    const ran =
+      rolling.sourceSec - windowStart + (start - rolling.atSec) * speed
+    const natural = windowStart + (ran % windowLen)
     if (Math.abs(m.cue.start - natural) < 6) return
     // Two paragraphs about the same moment: keep rolling rather than replay
     // footage the viewer saw seconds ago.

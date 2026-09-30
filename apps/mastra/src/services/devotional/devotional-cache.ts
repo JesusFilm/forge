@@ -81,6 +81,9 @@ export async function loadCachedAudio(
         /** What the voice ACTUALLY SAYS (may carry a connector the screen never
          *  shows). Absent in caches written before reuse was keyed on it. */
         spoken?: string
+        /** The delivery take it was read with (see `voiceTake`). Absent in
+         *  caches written before takes existed: the default delivery. */
+        take?: string
         file: string
         voiceId: string
         model: string
@@ -112,6 +115,7 @@ export async function loadCachedAudio(
         id: s.id,
         text: s.text,
         ...(s.spoken ? { spoken: s.spoken } : {}),
+        ...(s.take ? { take: s.take } : {}),
         audio: {
           format: "mp3" as const,
           bytes,
@@ -300,6 +304,9 @@ export async function saveCachedAudio(
       id: s.id,
       text: s.text,
       ...(s.spoken ? { spoken: s.spoken } : {}),
+      // Without this the take lived only in memory: the next run read the
+      // F4 reading back as the default delivery and could not reuse it.
+      ...(s.take ? { take: s.take } : {}),
       file,
       voiceId: s.audio.voiceId,
       model: s.audio.model,

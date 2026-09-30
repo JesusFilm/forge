@@ -14,6 +14,8 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { Readable } from "node:stream"
 import { pathToFileURL } from "node:url"
+import { z } from "zod"
+
 import { repoRoot } from "./repo-root"
 
 import {
@@ -21,6 +23,7 @@ import {
   produceDevotionalAudio,
   type DevotionalStructure,
   type ProducedDevotionalAudio,
+  voiceTake,
 } from "./devotional-audio"
 import { joinAudioVarGaps, slowAndPad } from "./audio-concat"
 import { createSilentVoiceover } from "./devotional-silent-voiceover"
@@ -538,6 +541,13 @@ async function levelVoices(
   }
 }
 
+/** The `.verses.json` beside a cue file: the verse each cue starts in. */
+const VERSES_SIDECAR = z.object({
+  book: z.string().min(1),
+  chapter: z.number().int().positive(),
+  cues: z.array(z.number().int().positive()),
+})
+
 /**
  * Word times for a local cue file, from its `.words.json` sibling (see the
  * note inside the file): one array of word starts per cue, in file order. Each
@@ -576,11 +586,33 @@ async function attachWordTimes(
   // The verse each cue starts in, from a `.verses.json` sibling when there
   // is one (LUMO reads Scripture: its captions carry their address).
   const verseByKey = new Map<string, string>()
+  const sidecar = cueFile.replace(/\.vtt$/, ".verses.json")
+  let raw: string | null = null
   try {
-    const v = JSON.parse(
-      await readFile(cueFile.replace(/\.vtt$/, ".verses.json"), "utf8"),
-    ) as { book: string; chapter: number; cues: number[] }
-    if (v.cues.length === fileCues.length) {
+    raw = await readFile(sidecar, "utf8")
+  } catch {
+    // no sidecar: captions without addresses
+  }
+  if (raw != null) {
+    // A broken sidecar must say so: silently dropping it ships a film with
+    // no verse addresses, and a wrong count would pin every address one cue
+    // off.
+    let json: unknown = null
+    try {
+      json = JSON.parse(raw)
+    } catch {
+      // reported below as malformed
+    }
+    const parsed = VERSES_SIDECAR.safeParse(json)
+    if (!parsed.success) {
+      log(`⚠️  ${path.basename(sidecar)} is malformed; no verse addresses`)
+    } else if (parsed.data.cues.length !== fileCues.length) {
+      log(
+        `⚠️  ${path.basename(sidecar)} lists ${parsed.data.cues.length} verse(s) ` +
+          `for ${fileCues.length} cue(s); no verse addresses`,
+      )
+    } else {
+      const v = parsed.data
       fileCues.forEach((c, i) =>
         verseByKey.set(
           `${c.start.toFixed(2)}|${c.text.trim()}`,
@@ -588,8 +620,6 @@ async function attachWordTimes(
         ),
       )
     }
-  } catch {
-    // no sidecar: captions without addresses
   }
   let hits = 0
   const out = cues.map((c) => {
@@ -3142,9 +3172,19 @@ export async function produceNarration(
       // the spoken text was recorded compare as changed, which is the honest
       // reading: what they say is unknown.
       const cachedSpoken = new Map(cached.segments.map((s) => [s.id, s.spoken]))
-      const changed = wanted.filter(
-        (w) => (cachedSpoken.get(w.id) ?? "").trim() !== w.text.trim(),
-      )
+      // ...and HOW it is said: a new voice or delivery take (female-d's F4)
+      // with unchanged words would otherwise return the old reading wholesale,
+      // because the per-segment path that checks the take never runs.
+      const cachedById = new Map(cached.segments.map((s) => [s.id, s]))
+      const changed = wanted.filter((w) => {
+        if ((cachedSpoken.get(w.id) ?? "").trim() !== w.text.trim()) return true
+        const hit = cachedById.get(w.id)
+        const voice = w.voice ?? devo.voice
+        if (!voice) return false
+        if ((hit?.take ?? "") !== voiceTake(w.id, voice)) return true
+        const cachedVoice = hit ? voiceNameForId(hit.audio.voiceId) : undefined
+        return cachedVoice != null && cachedVoice !== voice
+      })
       if (changed.length > 0) {
         log(
           `📝 text changed since the cached narration (${changed

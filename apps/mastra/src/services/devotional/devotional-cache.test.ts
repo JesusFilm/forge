@@ -59,7 +59,7 @@ function segment(
 }
 
 function produced(
-  segments: ReturnType<typeof segment>[],
+  segments: (ReturnType<typeof segment> & { take?: string })[],
   skipped: string[] = [],
 ) {
   return {
@@ -323,5 +323,47 @@ describe("saveCachedAudio / loadCachedAudio round-trip", () => {
     )
     const loaded = await loadCachedAudio(dir, "male-d")
     expect(loaded?.segments[0].audio.voiceId).toBe(RUSSIAN)
+  })
+})
+
+describe("delivery takes", () => {
+  const FEMALE_D = DEVOTIONAL_VOICES["female-d"]
+
+  it("keeps a segment's take across save and load, and keys reuse on it", async () => {
+    await saveCachedAudio(
+      dir,
+      produced([
+        segment("cover", "Cover line."),
+        { ...segment("reflection-1", "His back aches.", FEMALE_D), take: "f4" },
+        segment("reflection-2", "Middle sentence.", FEMALE_D),
+        segment("reflection-3", "Last sentence."),
+      ]),
+    )
+    const loaded = await loadCachedAudio(dir, "male-d")
+    expect(loaded?.segments.find((s) => s.id === "reflection-1")?.take).toBe(
+      "f4",
+    )
+    expect(
+      loaded?.segments.find((s) => s.id === "reflection-2")?.take,
+    ).toBeUndefined()
+
+    const reusable = await loadReusableAudio(dir, "male-d")
+    // The F4 reading is found only under its take...
+    expect(
+      reusable.has(
+        audioReuseKey("reflection-first", "His back aches.", "female-d@f4"),
+      ),
+    ).toBe(true)
+    expect(
+      reusable.has(
+        audioReuseKey("reflection-first", "His back aches.", "female-d"),
+      ),
+    ).toBe(false)
+    // ...and a take-less reading is never replayed where F4 is asked for.
+    expect(
+      reusable.has(
+        audioReuseKey("reflection-mid", "Middle sentence.", "female-d@f4"),
+      ),
+    ).toBe(false)
   })
 })

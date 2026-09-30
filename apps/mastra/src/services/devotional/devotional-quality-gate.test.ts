@@ -500,3 +500,52 @@ describe("reviewDevotionalText — narrative editor", () => {
     )
   })
 })
+
+describe("reviewDevotionalText — storyteller texts", () => {
+  const finding = (kind: string, severity: "high" | "medium" | "low") => ({
+    kind,
+    severity,
+    paragraph: 0,
+    quote: "Swine were the most abhorred of all animals.",
+    fix: "cut" as const,
+    replacement: "",
+    why: "why",
+  })
+  const storyteller = () => devotional({ textPipeline: "storyteller" })
+
+  it("blocks on a MEDIUM fact finding: the fact check is its only guard", async () => {
+    reviewNarrative.mockResolvedValue({
+      throughline: "x",
+      issues: [finding("misquote", "medium")],
+      summary: "s",
+    })
+    const r = await reviewDevotionalText({
+      devotional: storyteller(),
+      checkFidelity: true,
+    })
+    expect(r.blocking.some((b) => b.startsWith("narrative:"))).toBe(true)
+  })
+
+  it("does not block on style advice, however severe", async () => {
+    reviewNarrative.mockResolvedValue({
+      throughline: "x",
+      issues: [finding("tangent", "high"), finding("unsupported-claim", "low")],
+      summary: "s",
+    })
+    const r = await reviewDevotionalText({
+      devotional: storyteller(),
+      checkFidelity: true,
+    })
+    expect(r.blocking).toEqual([])
+  })
+
+  it("skips the coherence, depth and fidelity critics", async () => {
+    await reviewDevotionalText({
+      devotional: storyteller(),
+      checkFidelity: true,
+    })
+    expect(checkDevotionalCoherence).not.toHaveBeenCalled()
+    expect(critiqueReflection).not.toHaveBeenCalled()
+    expect(critiqueReflectionFidelity).not.toHaveBeenCalled()
+  })
+})

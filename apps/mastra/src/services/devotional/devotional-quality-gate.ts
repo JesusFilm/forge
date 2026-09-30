@@ -230,17 +230,18 @@ export async function reviewDevotionalText(
         `      → ${i.fix === "cut" ? "cut" : `“${i.replacement}”`} (${i.why})`,
     )
   }
+  // Storyteller texts drop the other critics, so the fact check is their only
+  // guard: any claim it cannot support blocks, as it does when composing.
+  // Everything else keeps the old rule, high severity of any kind.
+  const blocks = (i: { severity: string; kind: string }) =>
+    storyteller
+      ? FACT_KINDS.has(i.kind) && i.severity !== "low"
+      : i.severity === "high"
   if (narrative.skipped) blocking.push("narrative review could not run")
-  else if (
-    narrative.issues.some(
-      (i) => i.severity === "high" && (!storyteller || FACT_KINDS.has(i.kind)),
-    )
-  ) {
-    const high = narrative.issues.filter(
-      (i) => i.severity === "high" && (!storyteller || FACT_KINDS.has(i.kind)),
-    )
+  else if (narrative.issues.some(blocks)) {
+    const high = narrative.issues.filter(blocks)
     blocking.push(
-      `narrative: ${high.length} high-severity issue(s), first is ${high[0].kind} “${high[0].quote}”`,
+      `narrative: ${high.length} blocking issue(s), first is ${high[0].kind} “${high[0].quote}”`,
     )
   }
 

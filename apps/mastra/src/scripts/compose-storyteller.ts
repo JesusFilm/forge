@@ -233,12 +233,21 @@ async function main() {
         ]
       : []),
     `(The storyteller's own: "${d.question}" / "${d.prayer}")`,
+    ...(result.openFacts.length
+      ? ["", "## Facts still open", ...result.openFacts.map((f) => `- ${f}`)]
+      : []),
   ].join("\n")
   const notesPath = await nextFree(
     path.join(outDir, "work", "storyteller_notes.md"),
   )
   await writeFile(notesPath, notes + "\n")
   log(`\nscript: ${scriptPath}\nnotes:  ${notesPath}`)
+  if (result.openFacts.length) {
+    // Saved so the text can be read and fixed, but the run is not a success:
+    // the render's gate will refuse it until the facts are settled.
+    log(`\n⛔ ${result.openFacts.length} fact(s) still open, see the notes`)
+    process.exitCode = 2
+  }
 }
 
 main().catch((e) => {

@@ -10,7 +10,8 @@
     "./registry": "./src/templates/registry.ts",
     "./entry": "./src/entry.ts",
     "./version": "./src/version.ts",
-    "./devotional-timing": "./src/devotional/quote-timing.ts"
+    "./devotional-timing": "./src/devotional/quote-timing.ts",
+    "./devotional-card-timing": "./src/devotional/timing.ts"
   },
   "scripts": {
     "lint": "eslint .",

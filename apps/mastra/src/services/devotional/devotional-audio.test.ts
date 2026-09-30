@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   buildNarrationSegments,
   produceDevotionalAudio,
+  voiceTake,
 } from "./devotional-audio"
 import type { GeneratedDevotional } from "./generate-devotional"
 
@@ -522,5 +523,16 @@ describe("the running order reaches every narration call site", () => {
       }
     }
     expect(offenders).toEqual([])
+  })
+})
+
+describe("voiceTake", () => {
+  it("tags female-d's reflection reading with its delivery take", () => {
+    expect(voiceTake("reflection-3", "female-d")).toBe("f4")
+  })
+  it("keeps the calm ending and other voices on the default delivery", () => {
+    for (const id of ["cover", "conclusion", "questions"])
+      expect(voiceTake(id, "female-d")).toBe("")
+    expect(voiceTake("reflection-3", "male-e")).toBe("")
   })
 })
