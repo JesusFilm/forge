@@ -9,7 +9,10 @@ import { nominations } from "./composition/test-helpers"
 import { COWATCH_SHADOW_GENERATOR_KEY } from "./cowatch/graph"
 import { COWATCH_MMR_TRIAL_MANIFEST } from "./promotion/manifest"
 import { lockRetentionRoots } from "./retention-locks"
-import { purgeExpiredRecommendationRequests } from "./retention.service"
+import {
+  purgeExpiredRecommendationRequests,
+  RECOMMENDATION_RETENTION_BATCH_SIZE,
+} from "./retention.service"
 
 const day = 86_400_000
 function latch() {
@@ -309,6 +312,160 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await single.$disconnect()
       }
     }, 15_000)
+
+    it("continues a loaded legacy-stage backlog with the default bounded batch", async () => {
+      const now = new Date(),
+        prefix = randomUUID(),
+        createdAt = new Date(now.getTime() - 11 * day),
+        expiresAt = new Date(now.getTime() - 10 * day)
+      const roots = Array.from({ length: 120 }, (_, index) => ({
+        id: `${prefix}-${index}`,
+        runId: `${prefix}-run-${index}`,
+      }))
+      await db.recommendationRequest.createMany({
+        data: roots.map(({ id }) => ({
+          id,
+          contractVersion: "semantic-recommendation-v1",
+          surfaceVersion: "watch-below-player-v1",
+          manifestId: COWATCH_MMR_TRIAL_MANIFEST.id,
+          strategyVersion: COWATCH_MMR_TRIAL_MANIFEST.strategyVersion,
+          classifierVersion: "legacy-position-v0",
+          sessionDigest: compositionDigest(id),
+          locale: "en",
+          seedMediaId: "fixture-seed",
+          expectedItemCount: 0,
+          state: "ISSUED" as const,
+          result: "EMPTY" as const,
+          deliveryJti: randomUUID(),
+          signingKid: "fixture",
+          issuedAt: createdAt,
+          createdAt,
+          expiresAt,
+        })),
+      })
+      await db.recommendationCandidateRun.createMany({
+        data: roots.map(({ id, runId }) => ({
+          id: runId,
+          requestId: id,
+          purpose: "watch",
+          contextVersion: "fixture",
+          generatorVersion: "fixture",
+          unionVersion: "fixture",
+          eligibilityVersion: "fixture",
+          rankerVersion: "fixture",
+          composerVersion: "fixture",
+          candidateEligibilityParity: "not_evaluated",
+          rankerParity: "not_evaluated",
+          nominatedCount: 42,
+          canonicalizedCount: 0,
+          deduplicatedCount: 0,
+          rejectedCount: 0,
+          scoredCount: 0,
+          orderedCount: 0,
+          composedCount: 0,
+          evidenceComplete: false,
+          createdAt,
+          expiresAt,
+        })),
+      })
+      await db.recommendationCandidateStageEvidence.createMany({
+        data: roots.flatMap(({ runId }) =>
+          Array.from({ length: 42 }, (_, ordinal) => ({
+            id: `${runId}-stage-${ordinal}`,
+            runId,
+            stage: "nominated",
+            ordinal,
+            candidateKey: `fixture-${ordinal}`,
+            sourceEvidence: [],
+            reasonCodes: [],
+            createdAt,
+            expiresAt,
+          })),
+        ),
+      })
+      const projectionIds = Array.from(
+        { length: 3_000 },
+        (_, index) => `${prefix}-projection-${index}`,
+      )
+      await db.recommendationProfileProjectionRun.createMany({
+        data: projectionIds.map((id) => ({
+          id,
+          scope: "SESSION" as const,
+          sessionDigest: compositionDigest(id),
+          createdAt,
+          expiresAt,
+        })),
+      })
+      const profileId = `${prefix}-profile`
+      await db.recommendationProfile.create({
+        data: {
+          id: profileId,
+          tokenDigest: compositionDigest(profileId),
+          privacyGeneration: 1,
+          choice: "DURABLE_ALLOWED",
+          expiresAt: new Date(now.getTime() + day),
+        },
+      })
+      const linkIds = Array.from(
+        { length: 3_000 },
+        (_, index) => `${prefix}-link-${index}`,
+      )
+      await db.recommendationProfileSessionLink.createMany({
+        data: linkIds.map((id) => ({
+          id,
+          profileId,
+          privacyGeneration: 1,
+          sessionDigest: compositionDigest(id),
+          linkedAt: createdAt,
+          expiresAt,
+        })),
+      })
+      expect(RECOMMENDATION_RETENTION_BATCH_SIZE).toBe(100)
+      const firstStartedAt = performance.now()
+      const first = await purgeExpiredRecommendationRequests(db, now)
+      const firstElapsedMs = performance.now() - firstStartedAt
+      expect(first).toMatchObject({
+        status: "succeeded",
+        rootsDeleted: 100,
+        batchLimitReached: true,
+        rowCounts: {
+          candidateRuns: 100,
+          candidateStageEvidence: 4_200,
+          expiredProfileProjectionRuns: 3_000,
+          expiredProfileSessionLinks: 3_000,
+        },
+      })
+      const secondStartedAt = performance.now()
+      const second = await purgeExpiredRecommendationRequests(db, now)
+      const secondElapsedMs = performance.now() - secondStartedAt
+      console.info({ firstElapsedMs, secondElapsedMs })
+      expect(second).toMatchObject({
+        status: "succeeded",
+        rootsDeleted: 20,
+        rowCounts: { candidateRuns: 20, candidateStageEvidence: 840 },
+      })
+      expect(
+        await db.recommendationRequest.count({
+          where: { id: { in: roots.map(({ id }) => id) } },
+        }),
+      ).toBe(0)
+      expect(
+        await db.recommendationCandidateStageEvidence.count({
+          where: { runId: { in: roots.map(({ runId }) => runId) } },
+        }),
+      ).toBe(0)
+      expect(
+        await db.recommendationProfileProjectionRun.count({
+          where: { id: { in: projectionIds } },
+        }),
+      ).toBe(0)
+      expect(
+        await db.recommendationProfileSessionLink.count({
+          where: { id: { in: linkIds } },
+        }),
+      ).toBe(0)
+      await db.recommendationProfile.delete({ where: { id: profileId } })
+    }, 30_000)
 
     it("locks sibling graphs reached by private source suppression before deleting a graph", async () => {
       const f = await fixture(false)
