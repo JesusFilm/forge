@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { continueRender, delayRender, Easing, interpolate } from "remotion"
+import { continueRender, delayRender, interpolate } from "remotion"
 
+import { SHORT_FONT_FAMILIES } from "../fonts"
 import { TEASER_FONT_FAMILIES } from "./teaser-fonts"
 
 /**
@@ -19,6 +20,8 @@ import { TEASER_FONT_FAMILIES } from "./teaser-fonts"
 
 const SERIF = `'${TEASER_FONT_FAMILIES.literata}', Georgia, serif`
 const GOLD = "#f2c46b"
+// The chapter heading: PT Serif (owner, 2026-09-30).
+const PT_SERIF = `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`
 
 export type ScriptureCue = {
   text: string
@@ -111,25 +114,33 @@ export function ScrollingScripture({
   }
   const lineH = dp(70)
   const windowH = dp(380)
+  // One continuous, slow drift (owner: "slow and smooth, not in jerks"):
+  // each line reaches the middle halfway through its own reading, and the
+  // text keeps moving between those moments instead of waiting and jumping.
   let y = 0
   if (centres && centres.length === all.length) {
-    const here = centres[Math.max(0, k)]
-    // Glide to the next line over the moment before it is spoken.
-    let j = Math.max(0, k) + 1
-    while (j < all.length && Math.abs(centres[j] - here) < lineH / 2) j++
+    const keys: { at: number; y: number }[] = []
+    let i = 0
+    while (i < all.length) {
+      let j = i
+      while (
+        j + 1 < all.length &&
+        Math.abs(centres[j + 1] - centres[i]) < lineH / 2
+      )
+        j++
+      const end = j + 1 < all.length ? all[j + 1].start : all[j].start + 0.6
+      keys.push({ at: (all[i].start + end) / 2, y: centres[i] })
+      i = j + 1
+    }
     y =
-      j < all.length
+      keys.length > 1
         ? interpolate(
             t,
-            [all[j].start - 0.6, all[j].start],
-            [here, centres[j]],
-            {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-              easing: Easing.inOut(Easing.cubic),
-            },
+            keys.map((k) => k.at),
+            keys.map((k) => k.y),
+            { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
           )
-        : here
+        : (keys[0]?.y ?? 0)
   }
   const first = cues[0]
   const last = cues[cues.length - 1]
@@ -152,18 +163,23 @@ export function ScrollingScripture({
     <div
       style={{ position: "absolute", inset: 0, opacity, pointerEvents: "none" }}
     >
-      {/* A soft dark ground so the verses read over bright film. */}
+      {/* The film behind the verses is blurred and darkened (owner: moving
+          footage made them hard to read), with edges that melt away so the
+          panel never shows as a box. */}
       <div
         style={{
           position: "absolute",
-          left: left - dp(120),
-          top: dp(560),
-          width: dp(1030),
-          height: dp(520),
-          borderRadius: "50%",
-          background:
-            "radial-gradient(closest-side, rgba(0,0,0,0.5), rgba(0,0,0,0))",
-          filter: `blur(${dp(30)}px)`,
+          left: left - dp(230),
+          top: dp(470),
+          width: dp(1250),
+          height: dp(700),
+          backdropFilter: `blur(${dp(18)}px)`,
+          WebkitBackdropFilter: `blur(${dp(18)}px)`,
+          background: "rgba(0,0,0,0.38)",
+          WebkitMaskImage:
+            "radial-gradient(closest-side, #000 55%, transparent 100%)",
+          maskImage:
+            "radial-gradient(closest-side, #000 55%, transparent 100%)",
         }}
       />
       <div
@@ -179,9 +195,7 @@ export function ScrollingScripture({
       >
         <div
           style={{
-            fontFamily: SERIF,
-            fontStyle: "italic",
-            fontWeight: 600,
+            fontFamily: PT_SERIF,
             fontSize: dp(32),
             lineHeight: `${dp(50)}px`,
             color: "rgba(255,255,255,0.92)",
