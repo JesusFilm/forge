@@ -2514,7 +2514,9 @@ async function renderInStage(
   // A teaser runs on its own sounds — the typing and the transitions. The bed
   // underneath them made three seconds of quiet text feel like a trailer
   // (owner: "take the music off the teaser").
-  if (audio.music && !options.introTeaser) {
+  // An explicit `--music-file` still plays under a teaser: the montage teaser
+  // is voiced, not typed, and a chosen bed suits it (owner, 2026-09-30).
+  if (audio.music && (!options.introTeaser || options.musicFile)) {
     musicFile = "music.mp3"
     await writeFile(path.join(stage, musicFile), audio.music.audio.bytes)
   }
@@ -3310,6 +3312,26 @@ export async function produceNarration(
         try {
           assertNarrationComplete(cached)
           log("reusing cached audio")
+          // An explicit `--music-file` still wins over the cached bundle's
+          // bed: returning the bundle wholesale swapped three different
+          // teaser tracks for the long-form's own music (2026-09-30).
+          if (opts.musicFile) {
+            const bytes = await readFile(opts.musicFile)
+            log(`🎵 music from ${path.basename(opts.musicFile)}`)
+            return {
+              ...cached,
+              music: {
+                mood: cached.music?.mood ?? devo.mood,
+                audio: {
+                  format: "mp3",
+                  bytes,
+                  prompt: `file:${opts.musicFile}`,
+                  model: "file",
+                  lengthMs: 0,
+                },
+              },
+            }
+          }
           return cached
         } catch {
           log(
