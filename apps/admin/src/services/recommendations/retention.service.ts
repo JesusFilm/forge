@@ -18,7 +18,7 @@ import { purgeExpiredCowatchTrialAuthorities } from "./cowatch/trial-authority.s
 import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { lockRetentionRoots } from "./retention-locks"
 
-export const RECOMMENDATION_RETENTION_BATCH_SIZE = 500
+export const RECOMMENDATION_RETENTION_BATCH_SIZE = 100
 export const RECOMMENDATION_RETENTION_MAX_BATCH_SIZE = 5_000
 export const RECOMMENDATION_RETENTION_RUN_DAYS = 90
 export const RECOMMENDATION_RETENTION_HEALTH_HOURS = 36
