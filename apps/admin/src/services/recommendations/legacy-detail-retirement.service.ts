@@ -16,13 +16,13 @@ type Database = Pick<PrismaClient, "$transaction" | "$queryRaw">
 type Transaction = Pick<Prisma.TransactionClient, "$queryRaw" | "$executeRaw">
 type Candidate = {
   runId: string
-  action: "convert" | "retire"
+  action: "convert" | "preserve" | "retire"
   fingerprint: string
   rows: number
   bytes: number
 }
 export type LegacyDetailRetirementManifest = {
-  version: 1
+  version: 1 | 2
   targetDatabaseHash: string
   createdBefore: string
   frozenAt: string
@@ -44,11 +44,13 @@ function digest(body: Omit<LegacyDetailRetirementManifest, "digest">): string {
   return createHash("sha256").update(JSON.stringify(body)).digest("hex")
 }
 
-function validate(manifest: LegacyDetailRetirementManifest): void {
+export function validateLegacyDetailRetirementManifest(
+  manifest: LegacyDetailRetirementManifest,
+): void {
   assertOriginalQualityHolds(manifest.holds)
   const { digest: actual, ...body } = manifest
   if (
-    manifest.version !== 1 ||
+    ![1, 2].includes(manifest.version) ||
     !/^[a-f0-9]{64}$/.test(manifest.targetDatabaseHash) ||
     actual !== digest(body) ||
     !Number.isFinite(Date.parse(manifest.createdBefore)) ||
@@ -62,7 +64,11 @@ function validate(manifest: LegacyDetailRetirementManifest): void {
       (c) =>
         !c.runId ||
         c.runId.length > 191 ||
-        !["convert", "retire"].includes(c.action) ||
+        ![
+          "convert",
+          "retire",
+          ...(manifest.version === 2 ? ["preserve"] : []),
+        ].includes(c.action) ||
         !/^[a-f0-9]{32}$/.test(c.fingerprint) ||
         !Number.isInteger(c.rows) ||
         c.rows < (c.action === "retire" ? 1 : 0) ||
@@ -104,17 +110,27 @@ async function linkedProtection(
   return row.protected
 }
 
+async function assessIfEligible(
+  tx: Transaction,
+  runId: string,
+  cutoff: string,
+  policy: "selective" | "protected",
+): Promise<Assessment | undefined> {
+  const [row] = await tx.$queryRaw<Assessment[]>(Prisma.sql`
+    ${traceSql(runId, cutoff, policy)}
+    SELECT fingerprint, rows, bytes, eligible FROM assessment
+  `)
+  return row?.eligible ? row : undefined
+}
+
 async function assess(
   tx: Transaction,
   runId: string,
   cutoff: string,
   policy: "selective" | "protected",
 ): Promise<Assessment> {
-  const [row] = await tx.$queryRaw<Assessment[]>(Prisma.sql`
-    ${traceSql(runId, cutoff, policy)}
-    SELECT fingerprint, rows, bytes, eligible FROM assessment
-  `)
-  if (!row?.eligible)
+  const row = await assessIfEligible(tx, runId, cutoff, policy)
+  if (!row)
     throw new RecommendationInputError(
       "Run changed, is uncertain, or cannot be represented exactly",
     )
@@ -149,16 +165,21 @@ export async function freezeLegacyDetailRetirement(
       ])
       const candidates: Candidate[] = []
       for (const runId of [...input.runIds].sort()) {
-        const action =
+        const protectedRun =
           held.has(runId) || (await linkedProtection(tx, runId))
-            ? "convert"
-            : "retire"
-        const row = await assess(
-          tx,
-          runId,
-          input.createdBefore,
-          action === "convert" ? "protected" : "selective",
-        )
+        const selective = protectedRun
+          ? undefined
+          : await assessIfEligible(tx, runId, input.createdBefore, "selective")
+        // An incomplete or otherwise uncertain unprotected run is never
+        // discarded. Preserve every stored observation if exact parity works.
+        const action = protectedRun
+          ? "convert"
+          : selective
+            ? "retire"
+            : "preserve"
+        const row =
+          selective ??
+          (await assess(tx, runId, input.createdBefore, "protected"))
         candidates.push({
           runId,
           action,
@@ -168,7 +189,7 @@ export async function freezeLegacyDetailRetirement(
         })
       }
       const body = {
-        version: 1 as const,
+        version: 2 as const,
         targetDatabaseHash,
         createdBefore: input.createdBefore,
         frozenAt: new Date().toISOString(),
@@ -176,11 +197,54 @@ export async function freezeLegacyDetailRetirement(
         candidates,
       }
       const manifest = { ...body, digest: digest(body) }
-      validate(manifest)
+      validateLegacyDetailRetirementManifest(manifest)
       return manifest
     },
     { timeout: 30_000 },
   )
+}
+
+/** Reconcile a saved private manifest after a crash without replaying writes. */
+export async function hasCompletedLegacyDetailRetirementReceipt(
+  db: Database,
+  manifest: LegacyDetailRetirementManifest,
+): Promise<boolean> {
+  validateLegacyDetailRetirementManifest(manifest)
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`SET TRANSACTION READ ONLY`
+    await budgets(tx)
+    if ((await conversionDatabaseHash(tx)) !== manifest.targetDatabaseHash)
+      throw new RecommendationInputError("Retirement receipt target mismatch")
+    const [receipt] = await tx.$queryRaw<
+      Array<{
+        converted_runs: number
+        retired_runs: number
+        stage_rows_deleted: number
+        encoded_bytes: number
+      }>
+    >`
+      SELECT converted_runs, retired_runs, stage_rows_deleted, encoded_bytes
+      FROM recommendation_legacy_detail_retirement_run
+      WHERE manifest_digest=${manifest.digest}
+        AND target_database_hash=${manifest.targetDatabaseHash}
+    `
+    if (!receipt) return false
+    const converted = manifest.candidates.filter(
+      (c) => c.action !== "retire",
+    ).length
+    const rows = manifest.candidates.reduce((sum, c) => sum + c.rows, 0)
+    const bytes = manifest.candidates.reduce((sum, c) => sum + c.bytes, 0)
+    if (
+      receipt.converted_runs !== converted ||
+      receipt.retired_runs !== manifest.candidates.length - converted ||
+      receipt.stage_rows_deleted !== rows ||
+      receipt.encoded_bytes !== bytes
+    )
+      throw new RecommendationInternalStateError(
+        "Retirement receipt aggregate does not match saved manifest",
+      )
+    return true
+  })
 }
 
 export async function runLegacyDetailRetirement(
@@ -194,7 +258,7 @@ export async function runLegacyDetailRetirement(
   rows: number
   bytes: number
 }> {
-  validate(manifest)
+  validateLegacyDetailRetirementManifest(manifest)
   return db.$transaction(
     async (tx) => {
       if (!options.execute) await tx.$executeRaw`SET TRANSACTION READ ONLY`
@@ -264,8 +328,7 @@ export async function runLegacyDetailRetirement(
           throw new RecommendationInputError(
             "Protection changed after manifest freeze",
           )
-        const policy =
-          candidate.action === "convert" ? "protected" : "selective"
+        const policy = candidate.action === "retire" ? "selective" : "protected"
         const row = await assess(
           tx,
           candidate.runId,
@@ -286,7 +349,7 @@ export async function runLegacyDetailRetirement(
           throw new RecommendationInputError("Retirement budget exceeded")
         if (!options.execute) continue
         const updated =
-          candidate.action === "convert"
+          candidate.action !== "retire"
             ? await tx.$executeRaw(Prisma.sql`
             ${traceSql(candidate.runId, manifest.createdBefore, "protected")}
             UPDATE recommendation_candidate_run c
@@ -312,7 +375,7 @@ export async function runLegacyDetailRetirement(
           throw new RecommendationInternalStateError(
             "Stage deletion count mismatch",
           )
-        if (candidate.action === "convert") converted++
+        if (candidate.action !== "retire") converted++
         else retired++
       }
       if (options.execute)

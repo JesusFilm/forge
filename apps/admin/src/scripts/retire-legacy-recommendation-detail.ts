@@ -98,7 +98,7 @@ async function main() {
           status: "frozen",
           digest: manifest.digest,
           targetDatabaseHash: manifest.targetDatabaseHash,
-          converted: manifest.candidates.filter((c) => c.action === "convert")
+          converted: manifest.candidates.filter((c) => c.action !== "retire")
             .length,
           retired: manifest.candidates.filter((c) => c.action === "retire")
             .length,
