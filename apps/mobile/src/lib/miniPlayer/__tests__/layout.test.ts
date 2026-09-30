@@ -8,6 +8,7 @@ import {
   WINDOW_EDGE_MARGIN,
   miniPlayerCornerFrame,
   miniPlayerCornerFrames,
+  miniPlayerBottomClearance,
   miniPlayerMinWidth,
   miniPlayerWindowSize,
   readerCornerPolicy,
@@ -445,5 +446,45 @@ describe("the reader corner policy", () => {
       tabBar: 49,
     })
     expect(banded.chrome.bottom - clear.chrome.bottom).toBe(84)
+  })
+})
+
+describe("root screen bottom clearance", () => {
+  // Measured against the frame PlaybackHost snaps to, not a copy of the sum.
+  it.each([
+    ["iPhone", PHONE.screen, PHONE.insets, TAB_BAR_OCCUPIED_HEIGHT],
+    [
+      "Android phone",
+      { width: 412, height: 915 },
+      { top: 24, right: 0, bottom: 48, left: 0 },
+      tabBarOccupiedHeightFor("android"),
+    ],
+  ])(
+    "reaches the top edge of a bottom-corner window (%s)",
+    (_, screen, insets, reserve) => {
+      const config = { screen, insets, chrome: { top: 0, bottom: reserve } }
+      const frame = miniPlayerCornerFrame(config, "bottomRight")
+      expect(
+        miniPlayerBottomClearance({ screen, insets, tabBarReserve: reserve }),
+      ).toBe(screen.height - frame.y)
+    },
+  )
+
+  it("grows with the inset and the reserve", () => {
+    const base = {
+      screen: PHONE.screen,
+      insets: PHONE.insets,
+      tabBarReserve: 49,
+    }
+    const clearance = miniPlayerBottomClearance(base)
+    expect(
+      miniPlayerBottomClearance({
+        ...base,
+        insets: { ...PHONE.insets, bottom: 0 },
+      }),
+    ).toBe(clearance - 34)
+    expect(miniPlayerBottomClearance({ ...base, tabBarReserve: 56 })).toBe(
+      clearance + 7,
+    )
   })
 })

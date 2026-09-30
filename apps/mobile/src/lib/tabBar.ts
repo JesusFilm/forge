@@ -47,7 +47,7 @@ export const TAB_BAR_MATERIAL_TINT = "rgba(0, 0, 0, 0.3)"
  * appends an undeclared `app/(tabs)/*` file as an extra tab, which a scan of the
  * layout alone cannot see. The order is the product's (feat-553 R2, KD18), with
  * Explore second (feat-552). There is no Library tab: the downloads list lives
- * on Profile.
+ * on the root Downloads screen, which My Watch opens.
  */
 export const TAB_ROUTE_NAMES = [
   "index",
@@ -68,7 +68,7 @@ export const TAB_LABEL_KEYS = {
   explore: "explore",
   watch: "search",
   bible: "bible",
-  profile: "profile",
+  profile: "myWatch",
 } as const satisfies Record<TabRouteName, UiMessageKey<"Tabs">>
 
 /** The tab labels in the UI language. Both layouts read them at render, so a
@@ -120,7 +120,7 @@ export function tabBarOccupiedHeightFor(platform: string): number {
 
 export const TAB_BAR_OCCUPIED_HEIGHT = tabBarOccupiedHeightFor(Platform.OS)
 
-/** Android's bar. The downloads list restores exactly this after selection. */
+/** Android's bar, which `app/(tabs)/_layout.tsx` reads through `useTabBarStyle`. */
 export const TAB_BAR_FLAT_STYLE: ViewStyle = {
   backgroundColor: BG_COLOR,
   borderTopColor: "transparent",
@@ -132,11 +132,8 @@ export type TabBarInsets = {
   right: number
 }
 
-/**
- * The navigator's `tabBarStyle`. Android only — iOS is shadowed by
- * `_layout.ios.tsx`, whose UIKit bar takes no style object. Kept as a named
- * export because `LibraryDownloads.tsx` writes it back through `setOptions`.
- */
+/** The navigator's `tabBarStyle`, Android only: `_layout.ios.tsx` shadows iOS
+ *  with a UIKit bar that takes no style. Its one reader is `app/(tabs)/_layout.tsx`. */
 export function useTabBarStyle(): ViewStyle {
   return TAB_BAR_FLAT_STYLE
 }

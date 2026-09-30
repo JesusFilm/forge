@@ -2,7 +2,7 @@
  *  arrow buttons" on phones only, and the credits. The two sliders are native
  *  (owner, 2026-09-28); ReaderStepSlider.test.tsx drives their touches. */
 
-// tsconfig maps `react` to its .d.ts; re-point it (see AccountSection.test.tsx).
+// tsconfig maps `react` to its .d.ts; re-point it (see MyWatchHeader.test.tsx).
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike
   const path = r("path") as NodePath

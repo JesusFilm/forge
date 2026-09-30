@@ -131,7 +131,7 @@ jest.mock("../../src/i18n/catalogs.generated", () =>
             explore: "Explorar",
             search: "Buscar",
             bible: "Biblia",
-            profile: "Perfil",
+            myWatch: "Mi Watch",
           },
         },
       },
@@ -205,8 +205,8 @@ async function renderIos(): Promise<Record<string, unknown>> {
   return mockNativeProps.current!
 }
 
-const SENTINEL_LABELS = ["Inicio", "Explorar", "Buscar", "Biblia", "Perfil"]
-const ENGLISH_LABELS = ["Home", "Explore", "Search", "Bible", "Profile"]
+const SENTINEL_LABELS = ["Inicio", "Explorar", "Buscar", "Biblia", "Mi Watch"]
+const ENGLISH_LABELS = ["Home", "Explore", "Search", "Bible", "My Watch"]
 
 /** The text inside a trigger's Label child. */
 function triggerLabel(trigger: Record<string, unknown>): unknown {
@@ -244,7 +244,7 @@ describe("the shared tab record (R1)", () => {
       explore: "explore",
       watch: "search",
       bible: "bible",
-      profile: "profile",
+      profile: "myWatch",
     })
   })
 
@@ -326,7 +326,7 @@ describe("iOS — the native bar", () => {
     })
     // Anti-vacuous: the neighbours keep theirs.
     expect(triggerParts(mockTriggers[2]!).label).toBe("Buscar")
-    expect(triggerParts(mockTriggers[4]!).label).toBe("Perfil")
+    expect(triggerParts(mockTriggers[4]!).label).toBe("Mi Watch")
   })
 
   it("takes every label from the catalog", async () => {

@@ -1,4 +1,4 @@
-// The downloads list in Profile after a UI language change. Its rows and series
+// The downloads list after a UI language change. Its rows and series
 // cards are memoized, and a change keeps their props, so each must follow the
 // language through its own subscription (KTD2) rather than a parent re-render.
 import { act } from "react"
@@ -104,10 +104,10 @@ jest.mock("../../../i18n/catalogs.generated", () =>
           Library: {
             downloadedStatus: "{size} · Descargado",
             seriesMeta:
-              "{count, plural, one {# video · {size}} other {# videos · {size}}}",
+              "{count, plural, one {# vídeo · {size}} other {# vídeos · {size}}}",
             failedCount: "· {count} con error",
             seriesAriaLabel:
-              "{title}, {count, plural, one {# video} other {# videos}}",
+              "{title}, {count, plural, one {# vídeo} other {# vídeos}}",
             select: "Seleccionar",
             selectDownloadsAriaLabel: "Seleccionar descargas",
           },
@@ -157,7 +157,7 @@ function hasPart(list: TestInstance, part: string): boolean {
 
 async function render(): Promise<TestInstance> {
   await act(async () => {
-    renderer = TestRenderer.create(<LibraryDownloads title="Downloads" />)
+    renderer = TestRenderer.create(<LibraryDownloads />)
   })
   return renderer!
 }
@@ -178,11 +178,11 @@ describe("the downloads list after a UI language change", () => {
   it("relabels rows and cards whose props did not change, and keeps their tap names", async () => {
     const list = await render()
     expect(hasText(list, "74 MB · Downloaded")).toBe(true)
-    expect(hasPart(list, "1 videos · 0 MB")).toBe(true)
+    expect(hasPart(list, "1 video · 0 MB")).toBe(true)
     expect(hasPart(list, "· 1 failed")).toBe(true)
     const english = [
       "The Birth of Jesus, 74 MB · Downloaded",
-      "Lumo, 1 videos",
+      "Lumo, 1 video",
       "Select downloads",
     ].map((label) => tapActionName(pressableByLabel(list, label)))
 
@@ -193,12 +193,12 @@ describe("the downloads list after a UI language change", () => {
 
     expect(hasText(list, "74 MB · Descargado")).toBe(true)
     expect(hasText(list, "74 MB · Downloaded")).toBe(false)
-    expect(hasPart(list, "1 video · 0 MB")).toBe(true)
+    expect(hasPart(list, "1 vídeo · 0 MB")).toBe(true)
     expect(hasPart(list, "· 1 con error")).toBe(true)
     expect(hasText(list, "Seleccionar")).toBe(true)
     const spanish = [
       "The Birth of Jesus, 74 MB · Descargado",
-      "Lumo, 1 video",
+      "Lumo, 1 vídeo",
       "Seleccionar descargas",
     ].map((label) => tapActionName(pressableByLabel(list, label)))
     expect(spanish).toEqual(english)

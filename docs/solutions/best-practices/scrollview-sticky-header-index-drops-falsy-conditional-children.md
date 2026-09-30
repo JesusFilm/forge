@@ -19,7 +19,7 @@ symptoms:
   - "Nothing throws and React Native logs no warning when the index points at the wrong child"
 related_components:
   - "apps/mobile/src/components/library/LibraryDownloads.tsx"
-  - "apps/mobile/app/(tabs)/__tests__/librarySelection.test.tsx"
+  - "apps/mobile/app/__tests__/downloadsScreen.test.tsx"
   - "apps/tv/src/components/ExperienceRenderer.tsx"
   - "apps/tv/app/index.tsx"
 tags:
@@ -143,8 +143,11 @@ it.
 
 A render test cannot see pinning. So resolve the child that the index points
 at with the same `toArray` mapping, and assert that it holds the control that
-must stay on screen. The helpers are in
-`apps/mobile/app/(tabs)/__tests__/librarySelection.test.tsx:314-340`:
+must stay on screen. The helpers are `pinnedChild()` and `elementHasLabel()`
+in `apps/mobile/app/__tests__/downloadsScreen.test.tsx`. (Note, 2026-09-29:
+they moved there from `app/(tabs)/__tests__/librarySelection.test.tsx` when the
+list moved to the root Downloads screen, which renders no header above the
+Select row.)
 
 ```tsx
 import { Children, isValidElement, type ReactNode } from "react"

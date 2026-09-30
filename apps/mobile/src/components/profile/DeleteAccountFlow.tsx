@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useTypography } from "../../hooks/useTypography"
 import { useT } from "../../i18n/useT"
 import { decidePostReauth } from "../../lib/accountDeletion"
 import { deleteAccount, signInWithHostedPage } from "../../lib/authActions"
@@ -44,6 +45,7 @@ function signedInUserId(): string | null {
  */
 export function DeleteAccountFlow() {
   const t = useT("DeleteAccount")
+  const typography = useTypography()
   const [state, setState] = useState<FlowState>({ phase: "idle" })
   // Busy guards as refs: press handlers can fire twice off one stale
   // render, so phase checks alone cannot make the second call a no-op.
@@ -143,7 +145,9 @@ export function DeleteAccountFlow() {
         accessibilityLabel={t("deleteAccount")}
         {...{ "dd-action-name": "delete-account-entry" }}
       >
-        <Text style={styles.entryLabel}>{t("deleteAccount")}</Text>
+        <Text style={[styles.entryLabel, typography.bodySmall]}>
+          {t("deleteAccount")}
+        </Text>
       </Pressable>
     )
   }
@@ -152,8 +156,12 @@ export function DeleteAccountFlow() {
     <View style={styles.panel}>
       {state.phase === "confirm" || state.phase === "busy" ? (
         <>
-          <Text style={styles.panelTitle}>{t("confirmTitle")}</Text>
-          <Text style={styles.panelBody}>{t("confirmBody")}</Text>
+          <Text style={[styles.panelTitle, typography.bodySmall]}>
+            {t("confirmTitle")}
+          </Text>
+          <Text style={[styles.panelBody, typography.caption]}>
+            {t("confirmBody")}
+          </Text>
           <View style={styles.actionRow}>
             <Pressable
               onPress={runDelete}
@@ -166,7 +174,7 @@ export function DeleteAccountFlow() {
               accessibilityLabel={t("deletePermanentlyAriaLabel")}
               {...{ "dd-action-name": "delete-account-confirm" }}
             >
-              <Text style={styles.dangerLabel}>
+              <Text style={[styles.dangerLabel, typography.bodySmall]}>
                 {state.phase === "busy"
                   ? t("deleting")
                   : t("deletePermanently")}
@@ -183,7 +191,9 @@ export function DeleteAccountFlow() {
               accessibilityLabel={t("cancelDeletionAriaLabel")}
               {...{ "dd-action-name": "delete-account-cancel" }}
             >
-              <Text style={styles.cancelLabel}>{t("cancel")}</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                {t("cancel")}
+              </Text>
             </Pressable>
           </View>
         </>
@@ -201,7 +211,7 @@ export function DeleteAccountFlow() {
                 color={TEXT_PRIMARY}
               />
             )}
-            <Text style={styles.panelBody}>
+            <Text style={[styles.panelBody, typography.caption]}>
               {state.phase === "needsReauth" && state.signInFailed
                 ? t("reauthFailedMessage")
                 : t("reauthPromptMessage")}
@@ -219,7 +229,7 @@ export function DeleteAccountFlow() {
               accessibilityLabel={t("signInAgain")}
               {...{ "dd-action-name": "delete-account-reauth" }}
             >
-              <Text style={styles.cancelLabel}>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
                 {state.phase === "sheetOpen"
                   ? t("signingIn")
                   : t("signInAgain")}
@@ -238,7 +248,9 @@ export function DeleteAccountFlow() {
               accessibilityLabel={t("cancelDeletionAriaLabel")}
               {...{ "dd-action-name": "delete-account-cancel" }}
             >
-              <Text style={styles.cancelLabel}>{t("cancel")}</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                {t("cancel")}
+              </Text>
             </Pressable>
           </View>
         </>
@@ -248,7 +260,9 @@ export function DeleteAccountFlow() {
         <>
           <View style={styles.noticeRow}>
             <Ionicons name="warning" size={18} color={WARNING_COLOR} />
-            <Text style={styles.panelBody}>{t("wrongAccountMessage")}</Text>
+            <Text style={[styles.panelBody, typography.caption]}>
+              {t("wrongAccountMessage")}
+            </Text>
           </View>
           <View style={styles.actionRow}>
             <Pressable
@@ -267,7 +281,9 @@ export function DeleteAccountFlow() {
               accessibilityLabel={t("trySigningInAgainAriaLabel")}
               {...{ "dd-action-name": "delete-account-wrong-account-retry" }}
             >
-              <Text style={styles.cancelLabel}>{t("tryAgain")}</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                {t("tryAgain")}
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => setState({ phase: "idle" })}
@@ -279,7 +295,9 @@ export function DeleteAccountFlow() {
               accessibilityLabel={t("cancelDeletionAriaLabel")}
               {...{ "dd-action-name": "delete-account-cancel" }}
             >
-              <Text style={styles.cancelLabel}>{t("cancel")}</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                {t("cancel")}
+              </Text>
             </Pressable>
           </View>
         </>
@@ -289,7 +307,7 @@ export function DeleteAccountFlow() {
         <>
           <View style={styles.noticeRow}>
             <Ionicons name="warning" size={18} color={WARNING_COLOR} />
-            <Text style={styles.panelBody}>
+            <Text style={[styles.panelBody, typography.caption]}>
               {t("failedMessage", { email: SUPPORT_EMAIL })}
             </Text>
           </View>
@@ -304,7 +322,9 @@ export function DeleteAccountFlow() {
               accessibilityLabel={t("tryDeletingAgainAriaLabel")}
               {...{ "dd-action-name": "delete-account-failed-retry" }}
             >
-              <Text style={styles.cancelLabel}>{t("tryAgain")}</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                {t("tryAgain")}
+              </Text>
             </Pressable>
           </View>
         </>
@@ -318,7 +338,9 @@ export function DeleteAccountFlow() {
               size={18}
               color={TEXT_PRIMARY}
             />
-            <Text style={styles.panelBody}>{t("unconfirmedMessage")}</Text>
+            <Text style={[styles.panelBody, typography.caption]}>
+              {t("unconfirmedMessage")}
+            </Text>
           </View>
           <View style={styles.actionRow}>
             <Pressable
@@ -331,7 +353,9 @@ export function DeleteAccountFlow() {
               accessibilityLabel={t("close")}
               {...{ "dd-action-name": "delete-account-unconfirmed-close" }}
             >
-              <Text style={styles.cancelLabel}>{t("close")}</Text>
+              <Text style={[styles.cancelLabel, typography.bodySmall]}>
+                {t("close")}
+              </Text>
             </Pressable>
           </View>
         </>
@@ -349,7 +373,6 @@ const styles = StyleSheet.create({
   entryLabel: {
     color: DANGER,
     fontFamily: "System",
-    fontSize: 14,
   },
   panel: {
     gap: 10,
@@ -358,15 +381,12 @@ const styles = StyleSheet.create({
   panelTitle: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 15,
     fontWeight: "700",
   },
   panelBody: {
     flex: 1,
     color: TEXT_SECONDARY,
     fontFamily: "System",
-    fontSize: 13,
-    lineHeight: 16,
   },
   noticeRow: {
     flexDirection: "row",
@@ -388,7 +408,6 @@ const styles = StyleSheet.create({
   dangerLabel: {
     color: "#ffffff",
     fontFamily: "System",
-    fontSize: 14,
     fontWeight: "700",
   },
   cancelButton: {
@@ -399,7 +418,6 @@ const styles = StyleSheet.create({
   cancelLabel: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 14,
     fontWeight: "600",
   },
 })

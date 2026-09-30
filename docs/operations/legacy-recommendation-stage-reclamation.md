@@ -17,19 +17,34 @@ uses `CASCADE`, drops the reader or retires an old writer.
 
 Keep feat-554 and feat-555 open until their actual production gates pass:
 
-1. Prove sufficient live capacity through the overlap and release, and the first
-   two loaded daily retention cycles, including descendant deletion, actual
+1. Prove sufficient fresh live headroom, WAL margin and healthy retention for
+   the release. The ordinary natural-expiry route also needs the first two
+   loaded daily retention cycles, including descendant deletion, actual
    wrapper elapsed time, throughput, catch-up, failures, WAL and oldest-expired
-   age. A successful zero-root purge is not loaded capacity proof.
+   age. A successful zero-root purge is not loaded capacity proof. On the
+   authorized **early exact-empty route**, independently measure bounded
+   retirement/conversion throughput and WAL, show expired roots cleared by
+   normal bounded retention, and keep the two loaded-cycle verification open
+   in feat-554. Those later cycles are needed to close the retention/capacity
+   ticket; they are not evidence that truncating an already empty stage table
+   would discard data.
 2. Complete authenticated Admin full-detail smoke; database parity is not UI proof.
 3. Verify all active Admin HTTP and worker process revisions, effective compact
    flags, health and old-process drain. Record a rollback image that reads both
    compact and legacy traces. Disabling compact writes must not select a reader
    that cannot read already stored compact traces.
 4. Recompute the last legacy write and greatest original expiry from current
-   data, and prove actual purge has left no retained legacy request/run or stage
-   evidence. The observed October 26, 23:24:43.126 UTC expiry is an earliest
-   horizon, not execution permission. Any resumed legacy writing moves it.
+   data. There are now two routes to exact stage-table emptiness: ordinary
+   29-day request-root expiry and loaded purge, or the separately authorized
+   finite retirement of unprotected detail plus lossless protected/uncertain
+   conversion in `finite-legacy-recommendation-retirement-campaign.md`.
+   The early route retains request/run metadata, including retired markers,
+   until normal expiry; it therefore must **not** require zero legacy-format
+   run rows. Expired roots still need ordinary bounded retention, not the
+   early-retirement operator. Both routes require an exact zero-stage-row
+   result before migration. The observed October 26, 23:24:43.126 UTC
+   expiry is a natural-route horizon, not execution permission. Any resumed
+   legacy writing moves the writer gate.
 5. Re-review the exact relation, triggers, constraints, dependencies, lock plan
    and tested SQL against the then-current schema before promoting the migration.
 
@@ -42,7 +57,11 @@ SET LOCAL lock_timeout = '1s';
 SET LOCAL statement_timeout = '10s';
 SELECT max(c.created_at) AS last_legacy_run_created_at,
        max(r.expires_at) AS latest_legacy_request_expiry,
-       count(*) AS legacy_runs,
+       count(*) AS legacy_format_runs,
+       count(*) FILTER (WHERE c.legacy_detail_retired_at IS NULL)
+         AS unretired_legacy_runs,
+       count(*) FILTER (WHERE c.legacy_detail_retired_at IS NOT NULL)
+         AS retired_detail_runs,
        count(*) FILTER (WHERE r.expires_at > now()) AS unexpired_legacy_runs
 FROM public.recommendation_candidate_run c
 JOIN public.recommendation_request r ON r.id = c.request_id
@@ -63,9 +82,12 @@ COMMIT;
 A last-run timestamp is not a last-stage timestamp. Reconcile saved writer
 history and stage creation/expiry observations from the storage investigation's
 bounded probes; after deletion, current tables cannot reconstruct their prior
-horizon. These aggregate scans can exceed the budget on a large relation: stop
-and investigate the plan rather than remove budgets. A predeployment empty
-result is preliminary; estimates from `pg_stat_*` never replace exact existence.
+horizon. On the early route, retired run metadata legitimately remains after
+stage deletion, while any unretired legacy run requires investigation even if
+it currently has zero stage rows. These aggregate scans can exceed the budget
+on a large relation: stop and investigate the plan rather than remove budgets.
+A predeployment empty result is preliminary; estimates from `pg_stat_*` never
+replace exact existence.
 
 ## Transaction and failure behavior
 
@@ -125,6 +147,7 @@ measured relation reclamation, compact full-reader/outcome/evaluation/expiry
 preservation, compact retention afterward, legacy issuance afterward, rollback
 following truncate, and a new inbound foreign key refusing safely.
 
-No SQL asset is deployed by these tests. Production horizon, loaded retention,
-fleet, capacity, authenticated UI and final filesystem recovery remain separate
-gates in feat-554/555.
+No SQL asset is deployed by these tests. Production early-empty admission,
+fleet, capacity, authenticated UI and final filesystem recovery remain
+separate gates in feat-555. The first two loaded normal retention cycles remain
+required to close feat-554 even if early physical reclamation succeeds first.

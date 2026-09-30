@@ -1,4 +1,7 @@
-// Canonical source: https://www.jesusfilm.org/terms-of-use/
+export const TERMS_OF_USE_CANONICAL_URL =
+  "https://www.jesusfilm.org/terms-of-use/"
+
+// Canonical source: TERMS_OF_USE_CANONICAL_URL.
 // Mirrored from apps/web/src/lib/terms-of-use.ts — keep in sync.
 // KTD17: English only, outside the catalogs, until a human reviews a translation.
 

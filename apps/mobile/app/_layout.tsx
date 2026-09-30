@@ -449,6 +449,20 @@ export default function RootLayout() {
                                 // back button instead.
                                 options={{ headerShown: false }}
                               />
+                              {/* My Watch's three screens cover the tab bar and
+                                draw their own top bar (ScreenTopBar). */}
+                              <Stack.Screen
+                                name="downloads"
+                                options={{ headerShown: false }}
+                              />
+                              <Stack.Screen
+                                name="more"
+                                options={{ headerShown: false }}
+                              />
+                              <Stack.Screen
+                                name="account"
+                                options={{ headerShown: false }}
+                              />
                               {/* Both player stacks confine the back-swipe to the
                                 left edge: iOS 26 defaults it to full-width,
                                 which claims rightward scrubs (src/lib/backSwipe). */}

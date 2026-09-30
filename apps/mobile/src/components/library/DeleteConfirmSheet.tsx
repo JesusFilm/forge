@@ -131,7 +131,9 @@ export function DeleteConfirmSheet({
           accessibilityLabel={t("delete")}
           {...{ "dd-action-name": "library-delete-confirm" }}
         >
-          <Text style={styles.deleteText}>{t("delete")}</Text>
+          <Text style={[styles.deleteText, typography.body]}>
+            {t("delete")}
+          </Text>
         </Pressable>
         <Pressable
           onPress={onCancel}
@@ -143,7 +145,9 @@ export function DeleteConfirmSheet({
           accessibilityLabel={t("cancel")}
           {...{ "dd-action-name": "library-delete-cancel" }}
         >
-          <Text style={styles.cancelText}>{t("cancel")}</Text>
+          <Text style={[styles.cancelText, typography.body]}>
+            {t("cancel")}
+          </Text>
         </Pressable>
       </Animated.View>
     </>
@@ -199,7 +203,6 @@ const styles = StyleSheet.create({
   deleteText: {
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
-    fontSize: 16.5,
     fontWeight: "700",
   },
   cancelButton: {
@@ -213,7 +216,6 @@ const styles = StyleSheet.create({
   cancelText: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 16.5,
     fontWeight: "700",
   },
 })

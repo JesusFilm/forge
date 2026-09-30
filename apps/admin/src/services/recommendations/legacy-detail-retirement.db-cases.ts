@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
@@ -11,6 +11,7 @@ import {
 } from "./delivery.service.test-helpers"
 import {
   freezeLegacyDetailRetirement,
+  hasCompletedLegacyDetailRetirementReceipt,
   runLegacyDetailRetirement,
 } from "./legacy-detail-retirement.service"
 import { freezeConversionManifest } from "./legacy-candidate-trace-conversion.service"
@@ -106,6 +107,23 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         "convert",
         "retire",
       ])
+      const { digest: v2Digest, ...v1Body } = {
+        ...manifest,
+        version: 1 as const,
+      }
+      const v1Manifest = {
+        ...v1Body,
+        digest: createHash("sha256")
+          .update(JSON.stringify(v1Body))
+          .digest("hex"),
+      }
+      expect(v1Manifest.digest).not.toBe(v2Digest)
+      expect(
+        await hasCompletedLegacyDetailRetirementReceipt(db, v1Manifest),
+      ).toBe(false)
+      expect(await runLegacyDetailRetirement(db, v1Manifest)).toMatchObject({
+        status: "dry-run",
+      })
       expect(await runLegacyDetailRetirement(db, manifest)).toMatchObject({
         status: "dry-run",
         rows: expect.any(Number),
@@ -222,6 +240,9 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
           confirmTarget: manifest.targetDatabaseHash,
         }),
       ).toMatchObject({ status: "already-completed" })
+      expect(
+        await hasCompletedLegacyDetailRetirementReceipt(db, manifest),
+      ).toBe(true)
       await db.recommendationRequest.delete({ where: { id: held.requestId } })
       await db.recommendationRequest.delete({
         where: { id: unprotected.requestId },
@@ -231,6 +252,62 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
           where: { id: { in: [held.id, unprotected.id] } },
         }),
       ).toBe(0)
+    })
+
+    it("preserves every stored observation for an incomplete unprotected run", async () => {
+      const run = await fixture()
+      await db.$executeRaw`UPDATE recommendation_candidate_run
+        SET evidence_complete=false WHERE id=${run.id}`
+      const [before] = await db.$queryRaw<
+        Array<{ stage_count: bigint; stage_digest: string }>
+      >`SELECT count(*) AS stage_count,
+          md5(jsonb_agg(to_jsonb(e) ORDER BY e.stage,e.ordinal)::text) AS stage_digest
+        FROM recommendation_candidate_stage_evidence e WHERE e.run_id=${run.id}`
+      const manifest = await freeze([run.id])
+      expect(manifest.version).toBe(2)
+      expect(manifest.candidates[0]?.action).toBe("preserve")
+      expect(
+        await runLegacyDetailRetirement(db, manifest, {
+          execute: true,
+          confirmTarget: manifest.targetDatabaseHash,
+        }),
+      ).toMatchObject({ status: "completed", converted: 1, retired: 0 })
+      const after = await db.recommendationCandidateRun.findUniqueOrThrow({
+        where: { id: run.id },
+      })
+      expect(after.evidenceComplete).toBe(false)
+      expect(after.traceFormatVersion).toBe(1)
+      expect(after.legacyDetailRetiredAt).toBeNull()
+      expect(after.expiresAt).toEqual(run.expiresAt)
+      expect(
+        await db.recommendationCandidateStageEvidence.count({
+          where: { runId: run.id },
+        }),
+      ).toBe(0)
+      const [decoded] = await db.$queryRaw<
+        Array<{ stage_count: bigint; stage_digest: string }>
+      >`SELECT count(*) AS stage_count,
+          md5(jsonb_agg(to_jsonb(e) ORDER BY e.stage,e.ordinal)::text) AS stage_digest
+        FROM recommendation_candidate_run c
+        CROSS JOIN LATERAL jsonb_array_elements(c.trace_payload->'stages') v
+        CROSS JOIN LATERAL jsonb_populate_record(
+          NULL::recommendation_candidate_stage_evidence,
+          jsonb_build_object('id', v->'id', 'run_id', c.id,
+            'stage', v->'stage', 'ordinal', v->'ordinal',
+            'candidate_key', v->'candidateKey',
+            'target_media_id', v->'targetMediaId',
+            'source_generator', v->'sourceGenerator',
+            'source_rank', v->'sourceRank', 'source_score', v->'sourceScore',
+            'normalized_score', v->'normalizedScore',
+            'rrf_score', v->'rrfScore',
+            'deterministic_score', v->'deterministicScore',
+            'final_position', v->'finalPosition',
+            'reason_codes', v->'reasonCodes',
+            'source_evidence', v->'sourceEvidence',
+            'created_at', v->'createdAt',
+            'expires_at', c.expires_at)) AS e
+        WHERE c.id=${run.id}`
+      expect(decoded).toEqual(before)
     })
 
     it("protects a late access link and rejects unrepresentable or changed sources", async () => {

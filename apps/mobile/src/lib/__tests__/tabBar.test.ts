@@ -47,8 +47,7 @@ describe("useTabBarStyle", () => {
 
   it("gives iOS the same object — the UIKit bar takes no style", () => {
     // iOS is shadowed by `_layout.ios.tsx`, whose NativeTabs navigator has no
-    // `tabBarStyle`. The export survives only because `LibraryDownloads.tsx`
-    // writes it back through `setOptions` on Android.
+    // `tabBarStyle`. The one reader left is the Android `app/(tabs)/_layout.tsx`.
     setPlatform("ios")
     expect(useTabBarStyle()).toEqual(TAB_BAR_FLAT_STYLE)
   })

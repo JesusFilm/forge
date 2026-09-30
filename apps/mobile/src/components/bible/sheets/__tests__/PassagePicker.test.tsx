@@ -4,7 +4,7 @@
  * caller in BSB numbering, which the saved position uses (R38).
  */
 
-// tsconfig maps `react` to its .d.ts; re-point it (see AccountSection.test.tsx).
+// tsconfig maps `react` to its .d.ts; re-point it (see MyWatchHeader.test.tsx).
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike
   const path = r("path") as NodePath

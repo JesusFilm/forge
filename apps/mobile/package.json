@@ -39,6 +39,7 @@
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "1.7.1",
     "expo": "~57.0.25",
+    "expo-application": "~57.0.3",
     "expo-asset": "~57.0.18",
     "expo-blur": "~57.0.3",
     "expo-build-properties": "~57.0.22",

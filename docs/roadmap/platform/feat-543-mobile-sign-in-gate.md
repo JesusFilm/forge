@@ -23,6 +23,7 @@ The team wants mobile sign-in hidden until further notice, but every installed T
 1. `docs/plans/2026-09-23-1104-feat-mobile-sign-in-gate-plan.md` — the plan. It carries R1-R11 and AE1-AE10, and it is the authority for every decision below.
 2. `apps/tv/src/lib/auth/profileFlagState.ts` and `apps/tv/src/lib/auth/profileFlag.ts` — the TV rule from feat-322 that this gate copies. The test file beside them holds the truth table.
 3. `apps/mobile/src/components/profile/AccountSection.tsx` — the signed-out Profile card (entry point 1). Line 58 splits signed-in from signed-out.
+   - **Note (2026-09-29):** the Profile tab is now My Watch. This card lives in `apps/mobile/src/components/profile/MyWatchHeader.tsx`, and its gate-closed title reads "Sign in · coming soon". `AccountSection.tsx` is deleted.
 4. `apps/mobile/src/components/watch/SignInPrompt.tsx` and `apps/mobile/src/lib/watchProgress/signInPrompt.ts` — the watch-page nudge (entry point 2).
 5. `apps/mobile/src/components/profile/DeleteAccountFlow.tsx` — "Sign in again" before deletion (entry point 3). It stays ungated.
 6. `apps/mobile/src/env.ts` — the env schema. A new opt-in variable is `.optional()`.
@@ -55,4 +56,5 @@ The team wants mobile sign-in hidden until further notice, but every installed T
 - `pnpm --filter @forge/mobile test` and `pnpm --filter @forge/mobile typecheck` pass.
 - The resolver's truth table matches TV's: `__DEV__` always on; `1` and `true` on; absent, empty, `0`, `false`, and `TRUE` off.
 - On a non-development build of each platform with no value set, the Profile card is disabled and no nudge appears after a pause past 30 seconds (AE1, AE3). A development build always shows sign-in (R3), so it cannot show this state.
+  - **Note (2026-09-29):** check the disabled card in the My Watch tab's header. Sign out and account deletion moved to the Account screen, which a signed-in tester opens from that header.
 - A signed-in tester can still sign out and complete account deletion, including "Sign in again" (AE5).

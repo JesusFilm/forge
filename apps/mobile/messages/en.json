@@ -10,7 +10,7 @@
     "videoThumbnailAriaLabel": "Video thumbnail",
     "playTitleAriaLabel": "Play {title}",
     "searchAriaLabel": "Search",
-    "profileAriaLabel": "Profile",
+    "myWatchAriaLabel": "My Watch",
     "comingSoon": "Coming soon"
   },
   "VideoLabel": {
@@ -33,20 +33,44 @@
     "off": "Off",
     "noSubtitles": "No subtitles"
   },
-  "Profile": {
-    "myDownloadsTitle": "My Downloads",
+  "MyWatch": {
+    "guestName": "Guest",
+    "accountTitle": "Account",
+    "notSignedIn": "You are not signed in",
+    "moreTitle": "More",
+    "seeAll": "See all",
+    "seeAllDownloadsAriaLabel": "See all downloads",
+    "railAriaLabel": "{count, plural, one {# items in Downloads} other {# items in Downloads}}",
+    "tileEpisodes": "{count, plural, one {# episode} other {# episodes}}",
+    "tileDownloaded": "Downloaded",
+    "tileDownloading": "Downloading",
+    "tileInProgress": "In progress",
+    "tilePaused": "Paused",
+    "tileQueued": "Queued",
+    "tileFailed": "Failed",
+    "tileSeriesHint": "Opens this series in Downloads",
+    "tileVideoHint": "Opens this video"
+  },
+  "More": {
+    "linkHint": "Opens in your browser",
+    "supportGroup": "Support",
+    "aboutGroup": "About",
+    "legalGroup": "Legal",
+    "give": "Give",
+    "contactUs": "Contact Us",
+    "aboutJesusFilm": "About Jesus Film",
+    "newsletter": "Newsletter",
     "privacyPolicy": "Privacy Policy",
-    "giveLink": "Give",
-    "aboutLink": "About",
-    "contactLink": "Contact",
-    "newsletterLink": "Sign Up For Our Newsletter",
-    "legalStatementLink": "Legal Statement"
+    "termsOfUse": "Terms of Use",
+    "legalStatement": "Legal Statement",
+    "version": "Version {version}",
+    "versionWithBuild": "Version {version} ({build})"
   },
   "Auth": {
     "signIn": "Sign in",
     "signingIn": "Signing in…",
     "signInSubtitle": "Keep your place across devices",
-    "signInComingSoon": "Sign in (Coming soon)",
+    "signInComingSoon": "Sign in · coming soon",
     "accountsUnavailable": "Accounts are not available yet",
     "signInComingSoonAriaLabel": "Sign in, coming soon, Accounts are not available yet",
     "signInErrorMessage": "Something went wrong finishing sign-in. You are not signed in yet — please try again.",
@@ -77,7 +101,9 @@
     "reauthFailedMessage": "Signing in did not work, so your account was not deleted. Please try again.",
     "reauthPromptMessage": "For security, sign in again first. Deletion then continues automatically.",
     "wrongAccountMessage": "A different account signed in, so nothing was deleted. To delete the original account, sign in with it and try again.",
-    "unconfirmedMessage": "We could not confirm whether your account was deleted. Reopen the app to check. If you are still signed in, nothing changed and you can try again."
+    "unconfirmedMessage": "We could not confirm whether your account was deleted. Reopen the app to check. If you are still signed in, nothing changed and you can try again.",
+    "deletedNotice": "Your account was deleted.",
+    "dismissDeletedNoticeAriaLabel": "Dismiss account deleted notice"
   },
   "BibleReader": {
     "missingVerse": "This translation has no verse {verse}.",
@@ -397,24 +423,25 @@
     "seriesSection": "Series",
     "videosSection": "Videos",
     "downloadCount": "{count, plural, one {# download} other {# downloads}}",
-    "emptyTitle": "No downloads yet",
-    "emptyBody": "Videos you download will appear here so you can watch them anywhere — even offline.",
+    "emptyTitle": "No Downloads Yet",
+    "emptyBody": "Download a video to watch it offline",
     "browseVideos": "Browse videos",
     "retryFailed": "Retry failed",
     "retryFailedAriaLabel": "Retry failed downloads",
     "delete": "Delete",
     "deleteWithSize": "Delete {count} · {size}",
-    "deleteSelectedAriaLabel": "{count, plural, one {Delete # selected videos} other {Delete # selected videos}}",
+    "deleteSelectedAriaLabel": "{count, plural, one {Delete # selected video} other {Delete # selected videos}}",
     "deleteTitle": "{count, plural, one {Delete # video?} other {Delete # videos?}}",
     "deleteBody": "They'll be removed from your downloads and free up {size}. You can download them again anytime.",
     "dismissAriaLabel": "Dismiss",
-    "seriesMeta": "{count, plural, one {# videos · {size}} other {# videos · {size}}}",
+    "seriesMeta": "{count, plural, one {# video · {size}} other {# videos · {size}}}",
     "failedCount": "· {count} failed",
-    "seriesAriaLabel": "{title}, {count, plural, one {# videos} other {# videos}}",
+    "seriesAriaLabel": "{title}, {count, plural, one {# video} other {# videos}}",
     "collapseAriaLabel": "Collapse {title}",
     "expandAriaLabel": "Expand {title}",
     "resumeAriaLabel": "Resume {title}",
-    "retryAriaLabel": "Retry {title}"
+    "retryAriaLabel": "Retry {title}",
+    "downloadsTitle": "Downloads"
   },
   "ExportReport": {
     "savedToFolder": "Saved to {folder}.",
@@ -594,7 +621,7 @@
     "explore": "Explore",
     "search": "Search",
     "bible": "Bible",
-    "profile": "Profile"
+    "myWatch": "My Watch"
   },
   "Home": {
     "loading": "Loading...",

@@ -71,6 +71,7 @@ const COPY_MODULES = {
     "Watch: the progress text in a card's accessibility label",
   "src/hooks/useBibleVerses.ts":
     "BibleQuotes: the citation labels of the Bible quote cards",
+  "src/lib/appVersion.ts": "More: the app version line",
   "src/lib/bible/movement/useReaderMovement.ts":
     "BibleReader: the reader's move announcements",
   "src/lib/bible/reader/labels.ts":
@@ -162,6 +163,12 @@ const ALLOWED = [
     text: "AirPlay",
     reason: "Apple's product name, the same in every language",
   },
+  ...["X", "Facebook", "Instagram", "YouTube"].map((text) => ({
+    file: "src/lib/myWatchLinks.ts",
+    rule: "copy-prop",
+    text,
+    reason: "A social network's brand name, the same in every language",
+  })),
   {
     file: "src/lib/push/deviceEnvironment.ts",
     rule: "intl-default-locale",

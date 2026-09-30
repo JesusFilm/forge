@@ -23,10 +23,13 @@ const ICON_WRAP_SIZE = 84
 
 export type LibraryEmptyStateProps = {
   style?: StyleProp<ViewStyle>
+  /** Replaces the default tab switch. A root-stack host must pop back to the
+   *  tab navigator: navigate("/(tabs)") there pushes a second one. */
+  onBrowse?: () => void
 }
 
 /** R17: only rendered once the persisted manifest has hydrated and holds zero records. */
-export function LibraryEmptyState({ style }: LibraryEmptyStateProps) {
+export function LibraryEmptyState({ style, onBrowse }: LibraryEmptyStateProps) {
   const typography = useTypography()
   const router = useRouter()
   const t = useT("Library")
@@ -40,12 +43,15 @@ export function LibraryEmptyState({ style }: LibraryEmptyStateProps) {
           color={TEXT_SECONDARY}
         />
       </View>
-      <Text style={[styles.heading, typography.titleLarge]}>
+      <Text
+        style={[styles.heading, typography.titleLarge]}
+        accessibilityRole="header"
+      >
         {t("emptyTitle")}
       </Text>
       <Text style={[styles.body, typography.body]}>{t("emptyBody")}</Text>
       <Pressable
-        onPress={() => router.navigate("/(tabs)/watch")}
+        onPress={() => (onBrowse ? onBrowse() : router.navigate("/(tabs)"))}
         style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
         accessibilityRole="button"
         accessibilityLabel={t("browseVideos")}

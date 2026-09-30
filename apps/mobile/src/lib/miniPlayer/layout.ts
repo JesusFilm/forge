@@ -115,6 +115,24 @@ export function miniPlayerWindowSize(config: MiniPlayerLayoutConfig): {
   return { width, height: Math.round(width * PLAYER_HEIGHT_RATIO) }
 }
 
+/** How far a root screen's content must scroll to clear the floating window's
+ *  top edge. PlaybackHost reserves the tab bar under the window on every
+ *  route except the reader, so the reserve applies with no bar on screen. */
+export function miniPlayerBottomClearance(config: {
+  screen: MiniPlayerScreen
+  insets: MiniPlayerInsets
+  tabBarReserve: number
+}): number {
+  const { height } = miniPlayerWindowSize({
+    screen: config.screen,
+    insets: config.insets,
+    chrome: { top: 0, bottom: config.tabBarReserve },
+  })
+  return (
+    config.insets.bottom + config.tabBarReserve + WINDOW_EDGE_MARGIN + height
+  )
+}
+
 type SnapBounds = {
   left: number
   right: number

@@ -34,7 +34,7 @@ const SURFACES = [
   "src/components/home/HomeScreen.tsx",
   "app/(tabs)/watch.tsx",
   "src/components/search/BrowseTopics.tsx",
-  "src/components/library/LibraryDownloads.tsx",
+  "src/components/profile/MyWatchScreen.tsx",
   "src/components/ui/Snackbar.tsx",
   "src/components/ExportReportHost.tsx",
   "src/components/explore/ClipOverlay.tsx",
@@ -81,7 +81,7 @@ const TAB_ROUTES = {
     via: "src/components/explore/ExploreFeed.tsx",
   },
   watch: { surface: "app/(tabs)/watch.tsx" },
-  profile: { surface: "src/components/library/LibraryDownloads.tsx" },
+  profile: { surface: "src/components/profile/MyWatchScreen.tsx" },
   // feat-553: no scroll surface. The reader puts its footer above the bar
   // with readerBottomInset, from the tab screen's own inset (chrome.ts).
   bible: { reader: "app/(tabs)/bible.tsx" },

@@ -62,7 +62,7 @@ export function HomeHeader({
   const profileButton = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t("profileAriaLabel")}
+      accessibilityLabel={t("myWatchAriaLabel")}
       onPress={() => router.navigate("/(tabs)/profile")}
       {...{ "dd-action-name": "header-profile" }}
     >

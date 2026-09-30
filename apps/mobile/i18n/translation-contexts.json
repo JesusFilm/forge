@@ -5,7 +5,8 @@
     "VideoLabel": "A short label that names the kind of video (for example a feature film or an episode). It shows on Home cards, and in capital letters above the title on the watch page.",
     "DownloadQuality": "The video quality choices in the download sheet, where the viewer picks how large an offline copy or a saved file is.",
     "Subtitles": "The subtitle control on the watch page and the subtitle choice in the download sheet.",
-    "Profile": "The Profile tab, which shows the viewer's account, the list of downloaded videos, and a link to the privacy policy. It also holds links to the organization's web pages.",
+    "MyWatch": "The My Watch tab: the viewer's name or Guest, the sign-in card, a row of downloaded videos, and the Account screen that holds Sign out.",
+    "More": "The More screen, opened from the My Watch tab: links to the Jesus Film Project website, grouped as Support, About, and Legal, and the app version.",
     "Auth": "Sign-in and sign-out text in the Profile tab, and the small banner on the watch page that asks a signed-out viewer to sign in so the app keeps their place in a video.",
     "DeleteAccount": "The account deletion steps in the Profile tab: the confirmation, the request to sign in again, and the result messages. The deletion is permanent, so the text must be exact.",
     "BibleReader": "The Bible reader screen, which shows one verse at a time. It has a top bar (back, the passage, the translation, download, settings), a footer with the chapter and a verse counter, swipe hints, a verse selection bar with Copy and Share, and error messages. Book names and Bible text come from each translation, not from these strings.",
@@ -354,19 +355,15 @@
       "role": "tab bar label",
       "composition": "The tab that opens the Bible reader. Use one short word where the language allows: the iOS tab bar cuts off a long label."
     },
-    "Tabs.profile": {
-      "role": "tab bar label",
-      "composition": "The tab that opens the viewer's account and downloaded videos. Use one short word where the language allows: the iOS tab bar cuts off a long label."
-    },
     "Common.searchAriaLabel": {
       "role": "button accessibility label",
       "visibility": "assistive technology only",
       "composition": "A round button in the top bar that opens the search tab."
     },
-    "Common.profileAriaLabel": {
+    "Common.myWatchAriaLabel": {
       "role": "button accessibility label",
       "visibility": "assistive technology only",
-      "composition": "A round button in the top bar that opens the Profile tab."
+      "composition": "A round button in the top bar that opens the My Watch tab."
     },
     "Common.comingSoon": {
       "role": "status line",
@@ -419,6 +416,106 @@
     },
     "Mission.inviteHeadlineAccent": {
       "composition": "Fills {accent} in inviteHeadline, so it must fit that sentence."
+    },
+    "Tabs.myWatch": {
+      "role": "tab label",
+      "composition": "The name of the tab that holds the viewer's account and downloads. Keep it short."
+    },
+    "Library.downloadsTitle": {
+      "role": "screen title and section heading"
+    },
+    "DeleteAccount.deletedNotice": {
+      "role": "notice",
+      "composition": "Shows under the viewer's name after the account was deleted."
+    },
+    "DeleteAccount.dismissDeletedNoticeAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only"
+    },
+    "MyWatch.guestName": {
+      "role": "name shown for a viewer who is not signed in"
+    },
+    "MyWatch.accountTitle": {
+      "role": "screen title and button label",
+      "composition": "Names the screen with the viewer's account details, Sign out, and Delete account."
+    },
+    "MyWatch.moreTitle": {
+      "role": "screen title and button label",
+      "composition": "Names the screen with links to the website. The menu button that opens it has the same label."
+    },
+    "MyWatch.seeAllDownloadsAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only"
+    },
+    "MyWatch.railAriaLabel": {
+      "role": "list accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{count} is the number of cards in the Downloads row."
+    },
+    "MyWatch.tileEpisodes": {
+      "role": "card text",
+      "composition": "The number of downloaded episodes in a series. The count is always 2 or more."
+    },
+    "MyWatch.tileDownloaded": {
+      "role": "status badge on a video card",
+      "composition": "Keep it short."
+    },
+    "MyWatch.tileDownloading": {
+      "role": "status badge on a video card",
+      "composition": "Keep it short."
+    },
+    "MyWatch.tileInProgress": {
+      "role": "status badge on a series card",
+      "composition": "Some episodes are still downloading. Keep it short."
+    },
+    "MyWatch.tilePaused": {
+      "role": "status badge on a video card",
+      "composition": "Keep it short."
+    },
+    "MyWatch.tileQueued": {
+      "role": "status badge on a video card",
+      "composition": "The download waits to start. Keep it short."
+    },
+    "MyWatch.tileFailed": {
+      "role": "status badge on a video card",
+      "composition": "The download failed. Keep it short."
+    },
+    "MyWatch.tileSeriesHint": {
+      "role": "accessibility hint",
+      "visibility": "assistive technology only"
+    },
+    "MyWatch.tileVideoHint": {
+      "role": "accessibility hint",
+      "visibility": "assistive technology only"
+    },
+    "More.linkHint": {
+      "role": "accessibility hint",
+      "visibility": "assistive technology only"
+    },
+    "More.supportGroup": {
+      "role": "section heading"
+    },
+    "More.aboutGroup": {
+      "role": "section heading"
+    },
+    "More.legalGroup": {
+      "role": "section heading"
+    },
+    "More.give": {
+      "role": "link label",
+      "composition": "Opens the page where a viewer can give money to the ministry."
+    },
+    "More.newsletter": {
+      "role": "link label",
+      "composition": "Opens the page where a viewer signs up for the email newsletter."
+    },
+    "More.version": {
+      "role": "footer text",
+      "composition": "{version} is the app version number, such as 1.0.0."
+    },
+    "More.versionWithBuild": {
+      "role": "footer text",
+      "composition": "{version} is the app version number, such as 1.0.0. {build} is the build number, such as 7."
     }
   }
 }

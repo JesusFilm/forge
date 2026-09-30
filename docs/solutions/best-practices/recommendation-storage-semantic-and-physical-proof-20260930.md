@@ -76,6 +76,26 @@ All 64 original holdouts and 8,621 observations remained preserved. Exact retain
 metadata fingerprints matched for 73 runs. Legacy relation allocation stayed
 18,393,112,576 bytes. No immediate filesystem saving was credited.
 
+## Finite campaign recovery
+
+A larger reviewed roster still needs bounded transactions, fresh external capacity
+and investigation receipts, and source/protection checks under the mutation locks.
+Recheck external receipts after freezing a batch: the freeze itself can consume
+their allowed lifetime. An incomplete or otherwise uncertain trace is eligible for
+lossless preservation only after exact typed parity; it does not become disposable
+because it blocks reclamation.
+
+Treat the existing aggregate database ledger as commit authority. After a crash
+between commit and the private progress-file update, validate the saved manifest,
+target and durable aggregate receipt before consulting today's holds. New holds
+must block uncommitted deletion, but must not prevent recording a batch that
+already committed. An expired, uncommitted manifest needs an absence proof and
+fresh source review before the operator quarantines it and freezes a replacement.
+Never infer a failed commit from a missing progress file or silently overwrite an
+uncertain manifest. The native and campaign-loop proof is recorded in
+`docs/validation/recommendation-legacy-campaign-20260930/README.md`; it does not
+admit a production roster or establish filesystem recovery.
+
 ## Related
 
 - `docs/solutions/best-practices/recommendation-trace-capacity-and-retention-proof-20260928.md`
