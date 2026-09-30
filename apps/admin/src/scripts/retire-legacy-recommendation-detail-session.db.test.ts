@@ -14,6 +14,7 @@ import {
 } from "../services/recommendations/legacy-detail-retirement.service"
 import {
   readLegacySessionBaseline,
+  readLegacySessionQuality,
   runLegacyDetailSession,
 } from "./retire-legacy-recommendation-detail-session"
 
@@ -95,6 +96,20 @@ async function fixture(candidateCount: number) {
   await db.$executeRaw`UPDATE recommendation_candidate_run
     SET created_at=clock_timestamp()-interval '2 days' WHERE id=${run.id}`
   return run
+}
+
+async function setFixtureExpiry(
+  runId: string,
+  requestId: string,
+  expiry: Date,
+) {
+  // The production lifecycle is immutable. Only this disposable database
+  // fixture moves its original clock to exercise both sides of the boundary.
+  await db.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe("SET LOCAL session_replication_role=replica")
+    await tx.$executeRaw`UPDATE recommendation_request SET expires_at=${expiry} WHERE id=${requestId}`
+    await tx.$executeRaw`UPDATE recommendation_candidate_run SET expires_at=${expiry} WHERE id=${runId}`
+  })
 }
 
 function source(targetDatabaseHash: string) {
@@ -447,6 +462,245 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         `SELECT count(*) AS n FROM recommendation_legacy_detail_retirement_run`,
       )
       expect(Number(ledger.n)).toBe(Number(initialLedger.n) + 100)
+
+      const rejected = async (
+        changed: typeof cohort,
+        stopBefore = start.stopBefore,
+      ) => {
+        const attempt = new CommandPipe()
+        attempt.send({ ...start, cohort: changed, stopBefore })
+        await expect(
+          runLegacyDetailSession(db, attempt, () => {}, changed.digest, target),
+        ).rejects.toThrow()
+      }
+      const oversizedBatchBody = {
+        ...cohortBody,
+        waves: cohortBody.waves.map((wave, index) =>
+          index === 0
+            ? {
+                ...wave,
+                batches: [
+                  [...wave.batches[0]!, ...wave.batches[1]!.slice(0, 1)].sort(
+                    (a, b) => a.runId.localeCompare(b.runId),
+                  ),
+                  ...wave.batches.slice(1),
+                ],
+              }
+            : wave,
+        ),
+      }
+      await rejected({ ...oversizedBatchBody, digest: sha(oversizedBatchBody) })
+      const overRowsBody = {
+        ...cohortBody,
+        waves: cohortBody.waves.map((wave, index) =>
+          index === 0
+            ? {
+                ...wave,
+                batches: [
+                  wave.batches[0]!.map((row) => ({
+                    ...row,
+                    declaredStageRows: 448,
+                  })),
+                  ...wave.batches.slice(1),
+                ],
+              }
+            : wave,
+        ),
+      }
+      await rejected({ ...overRowsBody, digest: sha(overRowsBody) })
+      await rejected(cohort, iso(31 * 60_000))
+      const replay = new CommandPipe()
+      replay.send(start)
+      await expect(
+        runLegacyDetailSession(
+          db,
+          replay,
+          (frame) => {
+            if ((frame as Record<string, unknown>).kind === "ready")
+              replay.send({
+                kind: "freeze-batch",
+                seq: 1,
+                planDigest: cohort.digest,
+                waveIndex: 14,
+                batchIndex: 0,
+                permit: permit(target, registrySha256),
+              })
+          },
+          cohort.digest,
+          target,
+        ),
+      ).rejects.toThrow("batch-baseline")
+
+      // A later reviewed cohort can stop after partial waves and batches.
+      const smaller: Array<Awaited<ReturnType<typeof fixture>>> = []
+      for (let index = 0; index < 4; index++) smaller.push(await fixture(3))
+      const smallerRows = await baselineFor(smaller.map((run) => run.id))
+      const smallerById = new Map(smallerRows.map((row) => [row.id, row]))
+      const roster = (selected: typeof smaller) =>
+        selected
+          .map((run) => ({
+            runId: run.id,
+            declaredStageRows: smallerById.get(run.id)!.declared_stage_count,
+            expiresAt: new Date(
+              smallerById.get(run.id)!.expires_at,
+            ).toISOString(),
+          }))
+          .sort((a, b) => a.runId.localeCompare(b.runId))
+      const smallBody = {
+        ...cohortBody,
+        waves: [
+          {
+            index: 24,
+            plannedEnd: iso(12 * 60_000),
+            batches: [roster(smaller.slice(0, 1)), roster(smaller.slice(1, 3))],
+          },
+          {
+            index: 25,
+            plannedEnd: iso(12 * 60_000),
+            batches: [roster(smaller.slice(3))],
+          },
+        ],
+      }
+      const smallCohort = { ...smallBody, digest: sha(smallBody) }
+      const smallPipe = new CommandPipe()
+      const smallFrames: Array<Record<string, unknown>> = []
+      let smallSeq = 0
+      const smallNext = (body: Record<string, unknown>) =>
+        smallPipe.send({
+          ...body,
+          seq: ++smallSeq,
+          planDigest: smallCohort.digest,
+        })
+      smallPipe.send({ ...start, cohort: smallCohort })
+      await runLegacyDetailSession(
+        db,
+        smallPipe,
+        (value) => {
+          const frame = value as Record<string, unknown>
+          smallFrames.push(frame)
+          const waveIndex = Number(frame.waveIndex ?? 24)
+          const batchIndex = Number(frame.batchIndex ?? 0)
+          if (frame.kind === "ready" || frame.kind === "wave-acked")
+            smallNext({
+              kind: "freeze-batch",
+              waveIndex: frame.kind === "ready" ? 24 : 25,
+              batchIndex: 0,
+              permit: permit(target, registrySha256),
+            })
+          else if (frame.kind === "frozen-private")
+            smallNext({
+              kind: "ack-manifest",
+              waveIndex,
+              batchIndex,
+              sha256: frame.sha256,
+              manifestDigest: frame.manifestDigest,
+            })
+          else if (frame.kind === "frozen-acked")
+            smallNext({
+              kind: "execute-batch",
+              waveIndex,
+              batchIndex,
+              permit: permit(target, registrySha256),
+              attemptSha256: "a".repeat(64),
+              manifestDigest: frame.manifestDigest,
+            })
+          else if (frame.kind === "batch-verified")
+            smallNext(
+              batchIndex + 1 ===
+                smallBody.waves.find((wave) => wave.index === waveIndex)!
+                  .batches.length
+                ? { kind: "verify-wave", waveIndex }
+                : {
+                    kind: "freeze-batch",
+                    waveIndex,
+                    batchIndex: batchIndex + 1,
+                    permit: permit(target, registrySha256),
+                  },
+            )
+          else if (frame.kind === "wave-verified")
+            smallNext({
+              kind: "ack-wave",
+              waveIndex,
+              receiptSha256: frame.receiptSha256,
+            })
+        },
+        smallCohort.digest,
+        target,
+      )
+      expect(smallFrames.at(-1)).toMatchObject({
+        kind: "session-complete",
+        completedWaves: 2,
+        completedRuns: 4,
+      })
+      expect(
+        smallFrames.filter((frame) => frame.kind === "batch-verified"),
+      ).toHaveLength(3)
+      expect(
+        smallFrames.filter((frame) => frame.kind === "wave-verified"),
+      ).toHaveLength(2)
+      expect(
+        smallFrames
+          .filter((frame) => frame.kind === "wave-verified")
+          .map((frame) => frame.committed),
+      ).toEqual([2, 1])
+
+      const changed = qualityIds[4]!
+      await db.$executeRaw`UPDATE recommendation_candidate_run SET created_at=created_at+interval '1 second' WHERE id=${changed}`
+      await expect(
+        readLegacySessionQuality(db, qualityBaseline, lease),
+      ).rejects.toThrow("quality-parent")
+      await db.$executeRaw`UPDATE recommendation_candidate_run SET created_at=created_at-interval '1 second' WHERE id=${changed}`
+
+      const expiring = qualityIds[5]!
+      const future = new Date(Date.now() + 15_000)
+      await setFixtureExpiry(
+        expiring,
+        qualityBaseline.find((row) => row.id === expiring)!.request_id,
+        future,
+      )
+      const expiringBaseline = (
+        await readLegacySessionBaseline(db, [expiring])
+      )[0]!
+      const expiryBaseline = qualityBaseline.map((row) =>
+        row.id === expiring ? expiringBaseline : row,
+      )
+      await db.recommendationRequest.delete({
+        where: { id: expiringBaseline.request_id },
+      })
+      await expect(
+        readLegacySessionQuality(db, expiryBaseline, lease),
+      ).rejects.toThrow("quality-missing")
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.max(0, future.getTime() - Date.now() + 200)),
+      )
+      const expired = await readLegacySessionQuality(db, expiryBaseline, lease)
+      expect(expired).toMatchObject({
+        live: 63,
+        expiredPurged: 1,
+        liveObservations:
+          8_621 -
+          (expiringBaseline.stage_count + expiringBaseline.compact_count),
+      })
+      expect(expired.expiredObservations + expired.liveObservations).toBe(8_621)
+      expect(expired.partitionSha256).toMatch(/^[a-f0-9]{64}$/)
+
+      const missingRun = qualityIds[6]!
+      const past = new Date(Date.now() - 1000)
+      await setFixtureExpiry(
+        missingRun,
+        qualityBaseline.find((row) => row.id === missingRun)!.request_id,
+        past,
+      )
+      const missingRunBaseline = (
+        await readLegacySessionBaseline(db, [missingRun])
+      )[0]!
+      const twoExpiryBaseline = expiryBaseline.map((row) =>
+        row.id === missingRun ? missingRunBaseline : row,
+      )
+      await db.recommendationCandidateRun.delete({ where: { id: missingRun } })
+      await expect(
+        readLegacySessionQuality(db, twoExpiryBaseline, lease),
+      ).rejects.toThrow("quality-missing")
     }, 1_200_000)
   },
 )

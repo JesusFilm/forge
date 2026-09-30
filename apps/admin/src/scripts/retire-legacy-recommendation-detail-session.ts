@@ -1,7 +1,7 @@
 /**
  * One bounded, root-operated legacy-detail session. The existing v2 wave CLI
  * remains unchanged. Every write still uses runLegacyDetailRetirement's
- * ten-run transaction, row/byte limits, locks, and SQL fingerprints.
+ * one-to-ten-run transaction, row/byte limits, locks, and SQL fingerprints.
  */
 import { createHash } from "node:crypto"
 import { Console } from "node:console"
@@ -25,8 +25,6 @@ const MASTER_DIGEST =
   "fff0103d6966b69fa913fd61eecc0c05c2e10009c4b6206b32fd2000a8fc3d34"
 const QUALITY_SELECTOR =
   "c983ec02830d1b2df637c04e47fd75bdd66c26bd4e0caba0c38ff851561589a1"
-// This first speed pilot must finish before the next ordinary expiry purge.
-const RETENTION_BOUNDARY = Date.parse("2026-09-30T10:25:00.000Z")
 const SOURCE_FILES = [
   "src/scripts/retire-legacy-recommendation-campaign.ts",
   "src/services/recommendations/legacy-detail-retirement-campaign.ts",
@@ -48,14 +46,14 @@ const Row = z.object({
 const Wave = z.object({
   index: z.number().int().nonnegative(),
   plannedEnd: Iso,
-  batches: z.array(z.array(Row).length(10)).length(10),
+  batches: z.array(z.array(Row).min(1).max(10)).min(1).max(10),
 })
 const Cohort = z.object({
   version: z.literal(1),
   masterDigest: Hash,
   createdBefore: Iso,
   selectionReceiptSha256: Hash,
-  waves: z.array(Wave).length(10),
+  waves: z.array(Wave).min(1).max(10),
   digest: Hash,
 })
 const Holds = z.object({
@@ -191,13 +189,17 @@ function assertLease(lease: LeaseInput, now = Date.now()): void {
   )
   assertOriginalQualityHolds(lease.holds)
 }
-function assertCohort(cohort: CohortInput, stopBefore: string): void {
+function assertCohort(
+  cohort: CohortInput,
+  stopBefore: string,
+  lease: LeaseInput,
+): void {
   const { digest, ...body } = cohort
   guard(
     cohort.masterDigest === MASTER_DIGEST &&
       digest === sha(body) &&
       ms(cohort.createdBefore) <= Date.now() &&
-      ms(stopBefore) <= RETENTION_BOUNDARY &&
+      ms(stopBefore) <= ms(lease.expiresAt) &&
       ms(stopBefore) > Date.now() &&
       cohort.waves.every(
         (wave, index) =>
@@ -224,7 +226,7 @@ function assertCohort(cohort: CohortInput, stopBefore: string): void {
       }
       guard(rows <= 4_000, "row-budget")
     }
-  guard(seen.size === 1_000, "cohort-size")
+  guard(seen.size >= 1 && seen.size <= 1_000, "cohort-size")
 }
 
 function assertPermit(
@@ -260,12 +262,7 @@ function assertExecutionHeadroom(
   // begin a write that could commit after any reviewed safety deadline.
   guard(
     Date.now() + 40_000 <
-      Math.min(
-        ms(wave.plannedEnd),
-        ms(lease.expiresAt),
-        ms(stopBefore),
-        RETENTION_BOUNDARY,
-      ),
+      Math.min(ms(wave.plannedEnd), ms(lease.expiresAt), ms(stopBefore)),
     "execution-deadline",
   )
 }
@@ -273,19 +270,48 @@ function assertExecutionHeadroom(
 function assertOriginalQuality(
   original: BaselineRow[],
   current: BaselineRow[],
+  presentParentIds: Set<string>,
   lease: LeaseInput,
-): void {
-  guard(original.length === 64 && current.length === 64, "quality-count")
+  snapshotAt: number,
+): {
+  live: number
+  expiredPurged: number
+  liveObservations: number
+  expiredObservations: number
+  partitionSha256: string
+} {
+  guard(original.length === 64, "quality-count")
   const byId = new Map(current.map((row) => [row.id, row]))
-  guard(byId.size === 64, "quality-membership")
+  guard(byId.size === current.length, "quality-membership")
   guard(
-    JSON.stringify(original.map((row) => row.id).sort()) ===
-      JSON.stringify([...lease.holds.qualityRunIds].sort()),
+    new Set(original.map((row) => row.id)).size === 64 &&
+      [...byId.keys()].every((id) => lease.holds.qualityRunIds.includes(id)) &&
+      JSON.stringify(original.map((row) => row.id).sort()) ===
+        JSON.stringify([...lease.holds.qualityRunIds].sort()),
     "quality-selector",
   )
-  let observations = 0
+  let liveObservations = 0
+  let expiredObservations = 0
+  let expiredPurged = 0
+  const liveIds: string[] = []
+  const expiredIds: string[] = []
   for (const old of original) {
     const row = byId.get(old.id)
+    const oldCount = old.stage_count + old.compact_count
+    if (!row) {
+      guard(
+        Number.isFinite(ms(old.expires_at)) &&
+          Number.isFinite(ms(old.root_expires_at)) &&
+          snapshotAt >= ms(old.expires_at) &&
+          snapshotAt >= ms(old.root_expires_at) &&
+          !presentParentIds.has(old.request_id),
+        "quality-missing",
+      )
+      expiredPurged++
+      expiredObservations += oldCount
+      expiredIds.push(old.id)
+      continue
+    }
     guard(
       row &&
         row.request_id === old.request_id &&
@@ -299,7 +325,6 @@ function assertOriginalQuality(
         row.composed_count === old.composed_count,
       "quality-parent",
     )
-    const oldCount = old.stage_count + old.compact_count
     const oldDigest =
       old.trace_format_version === 1 ? old.compact_digest : old.stages_digest
     const legacy =
@@ -316,9 +341,21 @@ function assertOriginalQuality(
       row.compact_count === oldCount &&
       row.compact_digest === oldDigest
     guard(legacy || compact, "quality-observations")
-    observations += row.stage_count + row.compact_count
+    liveObservations += row.stage_count + row.compact_count
+    liveIds.push(old.id)
   }
-  guard(observations === 8_621, "quality-total")
+  guard(liveIds.length + expiredPurged === 64, "quality-count")
+  guard(liveObservations + expiredObservations === 8_621, "quality-total")
+  return {
+    live: liveIds.length,
+    expiredPurged,
+    liveObservations,
+    expiredObservations,
+    partitionSha256: sha({
+      liveIds: liveIds.sort(),
+      expiredIds: expiredIds.sort(),
+    }),
+  }
 }
 
 function assertAfter(
@@ -433,6 +470,50 @@ async function rows(
 
 export const readLegacySessionBaseline = rows
 
+async function qualitySnapshot(
+  db: PrismaClient,
+  original: BaselineRow[],
+  lease: LeaseInput,
+) {
+  return db.$transaction(
+    async (tx) => {
+      await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY")
+      await tx.$executeRawUnsafe("SET LOCAL lock_timeout='1s'")
+      await tx.$executeRawUnsafe("SET LOCAL statement_timeout='10s'")
+      await tx.$executeRawUnsafe(
+        "SET LOCAL idle_in_transaction_session_timeout='15s'",
+      )
+      const [snapshot] = await tx.$queryRawUnsafe<Array<{ at: Date }>>(
+        "SELECT transaction_timestamp() AS at",
+      )
+      guard(snapshot && Number.isFinite(ms(snapshot.at)), "quality-snapshot")
+      const ids = lease.holds.qualityRunIds
+      const current = JSON.parse(
+        JSON.stringify(
+          await tx.$queryRawUnsafe<BaselineRow[]>(BASELINE_QUERY, ids),
+        ),
+      ) as BaselineRow[]
+      const parents = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+        "SELECT id FROM recommendation_request WHERE id=ANY($1::text[])",
+        original.map((row) => row.request_id),
+      )
+      return assertOriginalQuality(
+        original,
+        current,
+        new Set(parents.map((row) => row.id)),
+        lease,
+        ms(snapshot.at),
+      )
+    },
+    {
+      timeout: 30_000,
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+    },
+  )
+}
+
+export const readLegacySessionQuality = qualitySnapshot
+
 async function actualDatabaseGate(
   db: PrismaClient,
   source: SourceInput,
@@ -466,7 +547,7 @@ function assertBatchBaseline(
   plannedEnd: string,
 ): void {
   const byId = new Map(baseline.map((row) => [row.id, row]))
-  guard(byId.size === 10, "batch-membership")
+  guard(byId.size === batch.length, "batch-membership")
   for (const item of batch) {
     const row = byId.get(item.runId)
     guard(
@@ -506,7 +587,7 @@ function assertManifest(
       digest === sha(body) &&
       manifest.targetDatabaseHash === source.targetDatabaseHash &&
       JSON.stringify(manifest.holds) === JSON.stringify(lease.holds) &&
-      manifest.candidates.length === 10 &&
+      manifest.candidates.length === batch.length &&
       manifest.candidates.every(
         (item, index) =>
           item.runId === batch[index]!.runId &&
@@ -547,7 +628,7 @@ export async function runLegacyDetailSession(
   let batchPosition = 0
   let expectedKind = "start"
   let frozen: FrozenBatch | undefined
-  const completed: FrozenBatch[][] = Array.from({ length: 10 }, () => [])
+  let completed: FrozenBatch[][] = []
   let lastWaveReceiptHash: string | undefined
 
   for await (const line of commands) {
@@ -559,7 +640,8 @@ export async function runLegacyDetailSession(
     )
     if (expectedKind === "start") {
       start = parseStart(command)
-      assertCohort(start.cohort, start.stopBefore)
+      assertCohort(start.cohort, start.stopBefore, start.lease)
+      completed = start.cohort.waves.map(() => [])
       guard(
         start.cohort.digest === expectedCohortDigest &&
           start.source.targetDatabaseHash === expectedTargetHash,
@@ -568,12 +650,20 @@ export async function runLegacyDetailSession(
       assertLease(start.lease)
       guard(fresh(start.source.reviewedAt, 120_000), "source-review")
       await actualDatabaseGate(db, start.source)
-      const quality = await rows(db, start.lease.holds.qualityRunIds)
-      assertOriginalQuality(start.qualityBaseline, quality, start.lease)
+      const quality = await qualitySnapshot(
+        db,
+        start.qualityBaseline,
+        start.lease,
+      )
       emit({
         ...baseResponse("ready", expectedSeq, start.cohort.digest),
         qualityRuns: 64,
         qualityObservations: 8_621,
+        qualityLiveRuns: quality.live,
+        qualityExpiredPurgedRuns: quality.expiredPurged,
+        qualityLiveObservations: quality.liveObservations,
+        qualityExpiredObservations: quality.expiredObservations,
+        qualityPartitionSha256: quality.partitionSha256,
       })
       expectedKind = "freeze-batch"
     } else {
@@ -601,8 +691,7 @@ export async function runLegacyDetailSession(
         )
         await actualDatabaseGate(db, start.source)
         if (batchPosition === 0) {
-          const quality = await rows(db, start.lease.holds.qualityRunIds)
-          assertOriginalQuality(start.qualityBaseline, quality, start.lease)
+          await qualitySnapshot(db, start.qualityBaseline, start.lease)
         }
         const baseline = await rows(
           db,
@@ -711,12 +800,15 @@ export async function runLegacyDetailSession(
           attemptSha256: command.attemptSha256,
         })
         frozen = undefined
-        if (batchPosition < 9) {
+        if (batchPosition < wave.batches.length - 1) {
           batchPosition++
           expectedKind = "freeze-batch"
         } else expectedKind = "verify-wave"
       } else if (expectedKind === "verify-wave") {
-        guard(completed[wavePosition]!.length === 10, "wave-incomplete")
+        guard(
+          completed[wavePosition]!.length === wave.batches.length,
+          "wave-incomplete",
+        )
         await actualDatabaseGate(db, start.source)
         const allIds = wave.batches.flat().map((item) => item.runId)
         const current = await rows(db, allIds)
@@ -746,8 +838,11 @@ export async function runLegacyDetailSession(
               item.action,
             )
         }
-        const quality = await rows(db, start.lease.holds.qualityRunIds)
-        assertOriginalQuality(start.qualityBaseline, quality, start.lease)
+        const quality = await qualitySnapshot(
+          db,
+          start.qualityBaseline,
+          start.lease,
+        )
         const body = {
           ...baseResponse(
             "wave-verified",
@@ -755,7 +850,7 @@ export async function runLegacyDetailSession(
             start.cohort.digest,
             wave.index,
           ),
-          committed: 10,
+          committed: wave.batches.length,
           uncommitted: 0,
           mismatch: 0,
           converted,
@@ -764,13 +859,18 @@ export async function runLegacyDetailSession(
           bytes,
           qualityRuns: 64,
           qualityObservations: 8_621,
+          qualityLiveRuns: quality.live,
+          qualityExpiredPurgedRuns: quality.expiredPurged,
+          qualityLiveObservations: quality.liveObservations,
+          qualityExpiredObservations: quality.expiredObservations,
+          qualityPartitionSha256: quality.partitionSha256,
         }
         lastWaveReceiptHash = sha(body)
         emit({ ...body, receiptSha256: lastWaveReceiptHash })
         expectedKind = "ack-wave"
       } else if (expectedKind === "ack-wave") {
         guard(command.receiptSha256 === lastWaveReceiptHash, "wave-ack")
-        if (wavePosition === 9) {
+        if (wavePosition === start.cohort.waves.length - 1) {
           emit({
             ...baseResponse(
               "session-complete",
@@ -778,8 +878,11 @@ export async function runLegacyDetailSession(
               start.cohort.digest,
               wave.index,
             ),
-            completedWaves: 10,
-            completedRuns: 1_000,
+            completedWaves: start.cohort.waves.length,
+            completedRuns: start.cohort.waves.reduce(
+              (sum, item) => sum + item.batches.flat().length,
+              0,
+            ),
           })
           return
         }
@@ -869,6 +972,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
       "quality-parent",
       "quality-observations",
       "quality-total",
+      "quality-missing",
+      "quality-snapshot",
       "permit",
       "retention-boundary",
       "execution-deadline",
