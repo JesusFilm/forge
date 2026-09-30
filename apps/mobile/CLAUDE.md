@@ -462,6 +462,13 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `ExplorePager` rebases at every settle: layout `top` offsets cancel what its
   two Animated nodes hold, one render moves them with the slots, and neither
   node is written.
+- **Android orders screen-reader focus by position, not by JSX order.** A
+  floating bar at y 0 over a full-screen list that also starts at y 0 comes
+  after the whole list, because the taller view sorts first. Start the list
+  below the bar's top edge (My Watch uses `marginTop: insets.top`).
+  `experimental_accessibilityOrder` does nothing in React Native 0.86: its
+  native flag is off. Check the order with `adb shell uiautomator dump`. See
+  `docs/solutions/ui-bugs/android-talkback-order-overlay-bar-after-full-screen-list.md`.
 - ScrollView gesture preemption: interactive hero elements need `pointerEvents="box-none"` pass-through.
 - Lazy Apollo Client init: never module-scope. Use `getApolloClient()` getter.
 - `contentParagraphs` is `string[]` (JSON field) — validate with `Array.isArray()`.
