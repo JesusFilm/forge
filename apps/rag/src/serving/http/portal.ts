@@ -101,7 +101,11 @@ export function createPortal(deps: PortalDeps): Hono {
   app.get("/login", async (c) => {
     const state = randomToken()
     const browser = getCookie(c, STATE_COOKIE) ?? randomToken()
-    await deps.sessions.createState(state, browser)
+    try {
+      await deps.sessions.createState(state, browser)
+    } catch {
+      return c.redirect("/portal?recovery=unavailable", 303)
+    }
     setCookie(c, STATE_COOKIE, browser, { ...cookie, maxAge: 7 * 24 * 3600 })
     const url = new URL("https://github.com/login/oauth/authorize")
     url.searchParams.set("client_id", deps.clientId)

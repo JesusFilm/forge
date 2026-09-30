@@ -67,6 +67,32 @@ extend another database role. The additive migration retains existing sessions'
 original expiry and gives new OAuth sign-ins the eight-hour idle and 24-hour
 absolute limits.
 
+This grant is a receiver-first deployment dependency. An operator should obtain
+the portal session role from the existing restricted portal database URL, then
+apply the following statement through the database administrator connection,
+substituting that verified role as a quoted SQL identifier:
+
+```sql
+GRANT UPDATE (expires_at) ON portal_private.sessions TO <portal_session_role>;
+```
+
+Connect with the restricted portal URL and check the effective privileges before
+merging the renewal PR. The role name comes from `current_user`; the result must
+be `true, false, false` in the order shown. Do not paste connection URLs into
+logs or evidence.
+
+```sql
+SELECT current_user,
+  has_column_privilege(current_user, 'portal_private.sessions', 'expires_at', 'UPDATE') AS expiry_update,
+  has_table_privilege(current_user, 'portal_private.sessions', 'UPDATE') AS table_update,
+  has_column_privilege(current_user, 'portal_private.sessions', 'github_login', 'UPDATE') AS identity_update;
+```
+
+Run the portal session restricted-role integration check with
+`RAG_PORTAL_SESSION_DATABASE_URL` set to that same URL. Stop the rollout if the
+grant is missing or broader than the expiry column. No production role change
+is performed by this repository migration.
+
 The allowlisted login, protected identity response, sign-out, next-request
 unauthorized response and unlisted-account denial were observed in a real
 browser on 25 September 2026. The

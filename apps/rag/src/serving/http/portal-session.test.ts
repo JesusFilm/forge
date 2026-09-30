@@ -3,6 +3,18 @@ import { describe, expect, it, vi } from "vitest"
 import { fixture } from "./portal-fixture.test-support.js"
 
 describe("portal session recovery", () => {
+  it("returns to the portal with a manual retry when OAuth state storage is unavailable", async () => {
+    const f = fixture()
+    f.deps.sessions.createState = async () => {
+      throw new Error("database unavailable")
+    }
+    const response = await f.app.request("/login")
+    expect(response.status).toBe(303)
+    expect(response.headers.get("location")).toBe(
+      "/portal?recovery=unavailable",
+    )
+    expect(response.headers.get("set-cookie")).toBeNull()
+  })
   it("keeps concurrent tab OAuth states bound to the same browser cookie", async () => {
     const f = fixture()
     const first = await f.start()

@@ -40,6 +40,7 @@ let expiryTimer
 let lastRenewal = 0
 let recovering = false
 let pendingRecovery = false
+let pendingSiblingSignal = null
 let otherTabRecoveringUntil = 0
 const channel =
   typeof BroadcastChannel === "function"
@@ -255,8 +256,10 @@ function clearSecret() {
 }
 function close(resumeRecovery = true) {
   if (busy) return
+  const hadSecret = !!secret
   clearSecret()
   dialog.close()
+  if (hadSecret) applyPendingSiblingSignal()
   if (resumeRecovery && pendingRecovery) void beginRecovery()
 }
 function form(title, description) {
@@ -329,6 +332,7 @@ async function mutate(
         "The change could not be confirmed. Continue with GitHub when ready; review the current state before trying again.",
       )
     }
+    applyPendingSiblingSignal()
     return
   }
   if (onSuccess) onSuccess(result)
@@ -348,6 +352,7 @@ async function mutate(
       "Changes saved. Continue with GitHub when ready to reload the directory.",
     )
   }
+  applyPendingSiblingSignal()
 }
 function issued(result, name, onSaved) {
   const content = form("Save your API key", "Consumer: " + name)
@@ -378,8 +383,9 @@ function issued(result, name, onSaved) {
     button(
       "I’ve saved the key",
       () => {
+        const siblingPending = !!pendingSiblingSignal
         close()
-        notice("")
+        if (!siblingPending) notice("")
         onSaved?.()
       },
       "",
@@ -719,6 +725,26 @@ function denyAccess() {
   signedOut()
   notice(deniedNotice)
 }
+function applyPendingSiblingSignal() {
+  if (busy || secret || !pendingSiblingSignal) return
+  const signal = pendingSiblingSignal
+  pendingSiblingSignal = null
+  if (signal.type === "restored") {
+    pendingRecovery = false
+    void initialize(false)
+    return
+  }
+  setMarker(attemptKey, true)
+  pendingRecovery = false
+  signedOut()
+  notice(
+    signal.reason === "admission_denied"
+      ? deniedNotice
+      : signal.reason === "unavailable"
+        ? "GitHub or the portal is temporarily unavailable. Continue with GitHub to retry."
+        : recoveryNotice,
+  )
+}
 function scheduleExpiry(value) {
   clearTimeout(expiryTimer)
   expiresAt = Date.parse(value)
@@ -801,17 +827,19 @@ async function renewOnActivity() {
       )
   }
 }
-async function initialize() {
+async function initialize(broadcast = true) {
   document.querySelectorAll("button").forEach((node) => {
     node.disabled = false
   })
   try {
     identity = await request("/identity")
+    recovering = false
+    pendingRecovery = false
     lastRenewal = Date.now()
     setMarker(signedInKey, true)
     setMarker(attemptKey, false)
     scheduleExpiry(identity.expiresAt)
-    channel?.postMessage({ type: "restored" })
+    if (broadcast) channel?.postMessage({ type: "restored" })
     byId("signed-out").hidden = true
     const account = byId("account")
     account.replaceChildren(
@@ -829,6 +857,13 @@ async function initialize() {
       }),
     )
     if (!identity.managementAvailable) {
+      rows = []
+      byId("rows").replaceChildren()
+      byId("create").hidden = true
+      byId("refresh").hidden = true
+      byId("directory").hidden = true
+      usageView?.clear()
+      sourcesView?.clear()
       notice("Consumer management is not enabled yet.")
       showSection(section)
       return
@@ -842,6 +877,16 @@ async function initialize() {
     const callbackFailure = new URLSearchParams(window.location.search).get(
       "recovery",
     )
+    if (callbackFailure) {
+      recovering = false
+      pendingRecovery = false
+      setMarker(attemptKey, true)
+      if (broadcast)
+        channel?.postMessage({
+          type: "recovery-failed",
+          reason: callbackFailure,
+        })
+    }
     if (
       callbackFailure === "admission_denied" ||
       error.code === "admission_denied"
@@ -892,7 +937,15 @@ channel?.addEventListener("message", (event) => {
     otherTabRecoveringUntil = event.data.until
   } else if (event.data?.type === "restored") {
     otherTabRecoveringUntil = 0
-    if (!identity) void initialize()
+    pendingSiblingSignal = { type: "restored" }
+    applyPendingSiblingSignal()
+  } else if (event.data?.type === "recovery-failed") {
+    otherTabRecoveringUntil = 0
+    pendingSiblingSignal = {
+      type: "recovery-failed",
+      reason: event.data.reason,
+    }
+    applyPendingSiblingSignal()
   }
 })
 document.addEventListener("visibilitychange", () => {

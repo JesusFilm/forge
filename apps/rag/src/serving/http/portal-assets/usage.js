@@ -26,6 +26,22 @@ const dateTime = (value) =>
       })
     : "—"
 const count = (value) => value.toLocaleString()
+function utcWindow(from, to) {
+  const minute = /^\d{4}-\d\d-\d\dT\d\d:\d\d$/
+  if (!minute.test(from) || !minute.test(to)) return null
+  const start = new Date(from + "Z")
+  const end = new Date(to + "Z")
+  if (
+    !Number.isFinite(start.getTime()) ||
+    !Number.isFinite(end.getTime()) ||
+    start.toISOString().slice(0, 16) !== from ||
+    end.toISOString().slice(0, 16) !== to ||
+    end <= start ||
+    end - start > 31 * 86400000
+  )
+    return null
+  return { from: start.toISOString(), to: end.toISOString() }
+}
 export function createUsageView(
   container,
   { read, onUnauthorized, savedWindow, onWindowChange },
@@ -56,19 +72,7 @@ export function createUsageView(
   const from = field("From (UTC)", start)
   const to = field("To (UTC, exclusive)", end)
   if (savedWindow) {
-    const minute = /^\d{4}-\d\d-\d\dT\d\d:\d\d$/
-    const a = new Date(savedWindow.from + "Z")
-    const b = new Date(savedWindow.to + "Z")
-    if (
-      minute.test(savedWindow.from) &&
-      minute.test(savedWindow.to) &&
-      Number.isFinite(a.getTime()) &&
-      Number.isFinite(b.getTime()) &&
-      a.toISOString().slice(0, 16) === savedWindow.from &&
-      b.toISOString().slice(0, 16) === savedWindow.to &&
-      b > a &&
-      b - a <= 31 * 86400000
-    ) {
+    if (utcWindow(savedWindow.from, savedWindow.to)) {
       from.value = savedWindow.from
       to.value = savedWindow.to
     }
@@ -166,23 +170,15 @@ export function createUsageView(
   details.addEventListener("close", () => details.replaceChildren())
   function windowQuery() {
     if (!controls.reportValidity()) return null
-    const a = new Date(from.value + "Z"),
-      b = new Date(to.value + "Z")
-    if (
-      !Number.isFinite(a.getTime()) ||
-      !Number.isFinite(b.getTime()) ||
-      a.getTime() % 60000 ||
-      b.getTime() % 60000 ||
-      b <= a ||
-      b - a > 31 * 86400000
-    ) {
+    const window = utcWindow(from.value, to.value)
+    if (!window) {
       error.textContent =
         "Choose a UTC window of up to 31 days, ending after its start, with whole minutes."
       return null
     }
     error.textContent = ""
     onWindowChange?.({ from: from.value, to: to.value })
-    return { from: a.toISOString(), to: b.toISOString() }
+    return window
   }
   function fail(failure) {
     if (failure.code === "unauthorized") {
