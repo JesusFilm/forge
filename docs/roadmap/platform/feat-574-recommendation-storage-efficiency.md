@@ -80,3 +80,13 @@ with concurrent traffic. Production sampled hits now use the narrow index. The
 forward-only `0121` reconciliation and its real Prisma/native guard tests are
 included in the current PR. See `docs/reports/2026-09-30-watch-exposure-index-reconciliation.md`.
 Do not credit these bytes to legacy-table reclamation or close this broader ticket.
+
+September 30 local future-write experiment: `WatchSurfaceExposure.id` already has
+a Prisma CUID default, but the three writers supplied a 36-character random UUID.
+On equal 100,000-row same-schema PostgreSQL 18.6 cohorts, using that existing
+default lowered total relation allocation 8.18% with no native correctness or
+material insert-latency regression. The primary key, unique event UUID, all
+indexes, 29-day expiry and existing rows remain unchanged. See
+`docs/validation/recommendation-storage-20260930/watch-exposure-internal-id.md`.
+This is local review evidence, not production filesystem or growth proof; keep
+the ticket in progress.
