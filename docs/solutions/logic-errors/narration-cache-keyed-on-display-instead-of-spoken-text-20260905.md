@@ -1,6 +1,7 @@
 ---
 title: Narration reuse keyed on displayed text, not spoken text
 date: "2026-09-05"
+last_updated: "2026-09-30"
 category: logic-errors
 module: apps/mastra/src/services/devotional
 problem_type: logic_error
@@ -22,6 +23,7 @@ tags:
   - elevenlabs
   - narration
   - silent-failure
+  - voice-take
 ---
 
 # Narration reuse keyed on displayed text, not spoken text
@@ -188,6 +190,50 @@ it is an entry of unknown identity, and the only sound treatment is eviction.
   "compares the DISPLAY text" after the rule inverted re-teaches the wrong rule
   to the next reader.
 
+## Update 2026-09-30: the delivery take (a fourth input)
+
+A voice's delivery became a key input. female-d reads the reflection with its
+own settings (take `f4`: stability 0.18, style 0.8, speed 1.2), so the same
+words in the same voice are now two different recordings. The key took the
+take as part of the voice, `audioReuseKey(role, spoken, "female-d@f4")`, and
+`ProducedSegment` gained `take?: string`. Two claim sites were missed, and the
+code review (not a test) caught both:
+
+1. **The index never persisted `take`.** It lived only in memory:
+   `saveCachedAudio` wrote `spoken` but not `take`, so every F4 reading came
+   back from disk as the default delivery. Rendering from that cache would
+   have missed every female-d segment and re-billed ElevenLabs on each run.
+2. **The whole-bundle shortcut compared only spoken text.** With unchanged
+   words it returned an old (pre-F4) bundle wholesale, and the new pace never
+   applied.
+
+```ts
+// devotional-cache.ts: persist and rehydrate it
+...(s.take ? { take: s.take } : {}),
+
+// devotional-render.ts: the bundle shortcut checks HOW it is said, too
+const hit = cachedById.get(w.id)
+if ((hit?.take ?? "") !== voiceTake(w.id, voice)) return true
+const cachedVoice = hit ? voiceNameForId(hit.audio.voiceId) : undefined
+return cachedVoice != null && cachedVoice !== voice
+```
+
+The one existing F4 cache (the Prodigal Son, 47 segments) was backfilled by
+hand after checking that none of those segments could have come from the old
+key: an F4 lookup could not have matched a take-less entry, so all 47 were
+synthesised under F4 in that run. Backfilling is the exception the rule above
+allows only when provenance is PROVEN; otherwise evict.
+
+Test: `devotional-cache.test.ts` → "delivery takes": a take survives save and
+load, the F4 reading is found only under `female-d@f4`, and a take-less
+reading is never replayed where F4 is asked for.
+
+**Rule it adds:** a new key component must be written by the persistence layer
+in the same commit as the key change. Grep the save function for every field
+the key reads. Delivery settings are not hashed into the key, so a changed
+`VOICE_DELIVERY` entry must also rename its take, or old audio replays under
+the new name.
+
 ## The family rule: three bugs, one shape
 
 1. **Wrong provenance.** A `--silent-preview` run wrote −91 dB audio into the
@@ -228,3 +274,6 @@ successful-looking render that says the wrong thing out loud.
   `artifactExists`".
 - `docs/solutions/design-patterns/devotional-opening-sequence-stepper-contract-20260905.md`
   — the change that exposed this bug (moving a spoken connector onto its own card).
+- `docs/solutions/logic-errors/devotional-derived-timeline-drift-20260930.md`
+  — the same day's sibling: timelines derived from the composition drifting
+  from it.
