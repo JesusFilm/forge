@@ -94,10 +94,13 @@ credentials table and the go-or-no-go checklist.
 
 1. Deploy admin with `PUSH_CAMPAIGNS_ENABLED` unset. Confirm both admin services
    ran migration 0120 and `prisma migrate status` is clean.
-2. Restart the recommendation-retention scheduler run once. The push retention
-   step was added inside that durable loop, so the run alive at deploy time
-   replays an event log without it. Cancel it in the workflows dashboard and
-   confirm a fresh run starts.
+2. Restart the worker once after the deploy. The push retention step was added
+   inside the durable retention loop, so the worker replay of the live
+   scheduler run fails at boot. Run
+   `railway restart -e production -s @forge/admin/worker -y`, then confirm a
+   new `recommendation-retention-scheduler` ledger row is `running`. Done on
+   2026-09-30; see
+   `docs/solutions/workflow-issues/new-step-in-durable-workflow-loop-needs-worker-restart-after-deploy.md`.
 3. Set the worker's queue concurrency to at least 4 and record the value.
 4. Mint the Expo access token under a low-privilege robot user and set it as a
    Railway variable on the worker service only. Admin web refuses to boot with

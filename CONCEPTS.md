@@ -829,7 +829,13 @@ The response-side state that says whether semantic retrieval actually contribute
 
 ### Content Embedding
 
-A vector representation of localized content used for semantic retrieval across videos, scenes, transcripts, and experiences. Content Embeddings are only comparable when the query vector and stored document vectors come from the same provider contract and transform behavior.
+A vector representation of localized content used for semantic retrieval across videos, scenes, transcripts, and experiences. Content Embeddings are only comparable when the query vector and stored document vectors belong to the same Content Embedding Contract.
+
+### Content Embedding Contract
+
+The versioned pairing of a query-side and a storage-side embedding definition (provider, model, native and stored dimensions, and transform) that the project treats as one compatible vector space.
+
+Exactly one contract is active at a time, and a single pointer selects it. Resolving the active contract fails when that pointer is missing, duplicated, or points to no contract. A stored transcript or experience vector counts as current only when its full storage definition matches the active contract, so equal dimensions alone never make a different provider, model, or transform eligible.
 
 ### Semantic-Video Retriever
 

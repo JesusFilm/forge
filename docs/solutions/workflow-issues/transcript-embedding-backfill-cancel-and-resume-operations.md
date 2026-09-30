@@ -1,7 +1,7 @@
 ---
 title: "Transcript embedding backfills need cancellable resume batches"
 date: "2026-06-19"
-last_updated: "2026-06-29"
+last_updated: "2026-09-30"
 category: workflow-issues
 module: apps/admin transcript embedding backfill
 problem_type: workflow_issue
@@ -64,13 +64,19 @@ The safe recovery sequence used in production was:
 
 ```text
 1. Find the active run in workflow.workflow_runs.
-2. Call Workflow's native cancel path for that run id.
-3. Verify the run status is cancelled.
-4. Watch worker logs for continued transcript writes.
-5. If writes continue, restart @forge/admin/worker.
-6. Verify fresh worker and Admin web log windows show no transcript writes.
-7. Resume with scoped language/coreId batches selected from legacy rows.
+2. Read the run status. Cancel only a pending or running run.
+3. Call Workflow's native cancel path for that run id.
+4. Verify the run status is cancelled.
+5. Watch worker logs for continued transcript writes.
+6. If writes continue, restart @forge/admin/worker.
+7. Verify fresh worker and Admin web log windows show no transcript writes.
+8. Resume with scoped language/coreId batches selected from legacy rows.
 ```
+
+A cancel refuses a run whose status is already `failed` or `completed`. The
+`workflow cancel` CLI then exits 1 and prints nothing. Add `--verbose` to see
+`Cannot transition run from terminal state "failed"`. For a terminal run, skip
+steps 3 and 4 and go to step 5 (added 2026-09-30).
 
 ## Why This Matters
 
@@ -397,6 +403,14 @@ railway up \
   --message 'hotfix transcript embedding launch timeout correlation f4b48379'
 ```
 
+> **Superseded 2026-07-09.** The root `CLAUDE.md` now forbids `railway up`
+> and manual Railway redeploys, except in a break-glass emergency that the
+> user declares and names. This block and the "restart or redeploy" advice
+> above record the June 2026 incident. Do not copy them. Merge the fix to
+> `main` and let Railway deploy both admin services. To run the deployed
+> worker image again without a build, get owner approval and use
+> `railway restart -e production -s @forge/admin/worker -y`.
+
 Deployment `46f2c673-f3a3-4af7-b117-1b314989679b` reached `SUCCESS` on
 2026-06-20. Startup logs showed `No pending migrations to apply` followed by
 `[world-postgres] Re-enqueued 3 active run(s) on startup`, which confirmed the
@@ -410,6 +424,12 @@ runtime surfaces before retrying production work:
 - `@forge/admin/worker` for the durable Workflow loop and per-target launch
   logic.
 - `@forge/mastra` for provider chunking, embedding, and Admin callback behavior.
+
+The re-enqueue above was safe because the hotfix changed only step bodies. A
+hotfix that changes the step, `sleep`, or hook order of
+`runTranscriptEmbeddingBackfill` is different: the live run then fails at the
+next worker boot with `corrupted-event-log`. See
+[the new-step learning](new-step-in-durable-workflow-loop-needs-worker-restart-after-deploy.md) (added 2026-09-30).
 
 ### Hotfix checkpoint: target-sharded workflow batches avoid the 300s step ceiling
 
@@ -922,8 +942,8 @@ intended all-language run as complete.
 
 ## When to Apply
 
-- A transcript or scene embedding backfill is large enough to exceed an HTTP
-  request budget.
+- A transcript embedding backfill is large enough to exceed an HTTP request
+  budget.
 - A GraphQL trigger times out but Workflow storage shows the run still pending
   or running.
 - A backfill must continue after an outage without rewriting already-upgraded
@@ -956,6 +976,8 @@ import { getRun } from "workflow/api"
 await getRun(runId).cancel()
 ```
 
+Cancel only a `pending` or `running` run. For a `failed` or `completed` run,
+`cancel()` throws `Cannot transition run from terminal state "<status>"`.
 Then verify storage shows `status = 'cancelled'`. If worker logs still emit
 `transcript_index_complete`, the current step is still running and the worker
 process needs to be restarted.
@@ -1023,6 +1045,15 @@ that included `force` rows. That is useful for storage health, but it is not
 the resume-skip predicate. For resume sizing, use `resume_skip_eligible` above
 so operators and agents do not overestimate how much work will be skipped.
 
+Since 2026-09-03 the code reads the resume-skip tuple from the active Content
+Embedding Contract (`activeTranscriptContentEmbeddingWhere` in
+`apps/admin/src/services/content-embedding-contract.ts`). It compares the
+provider, model, native dimensions, stored dimensions, and transform version.
+The SQL above accepts two legacy model names and does not check
+`embedding_native_dimensions` or `embedding_transform_version`. Thus the SQL
+can count more skips than the code makes. For an exact count, add the contract
+predicate to the SQL (added 2026-09-30).
+
 ## Related
 
 - [Bound durable workflow step payloads before persistence](bound-durable-workflow-step-payloads-before-persistence.md)
@@ -1030,4 +1061,6 @@ so operators and agents do not overestimate how much work will be skipped.
 - [useworkflow group fanout must run inside one durable step](../runtime-errors/useworkflow-nested-group-step-event-log-corruption.md)
 - [Mastra transcript launch network error diagnostics](../runtime-errors/mastra-transcript-launch-network-error-diagnostics.md)
 - [Admin Postgres workflow operations pattern](../best-practices/admin-postgres-workflow-operations-pattern-20260501.md)
+- [A step added to a live durable workflow loop needs one worker restart after deploy](new-step-in-durable-workflow-loop-needs-worker-restart-after-deploy.md):
+  boot-time replay of live runs, and `workflow cancel` on a terminal run.
 - Linear follow-up: AI-67, transcript embedding backfill operator surface with resume, cancel, and progress controls.
