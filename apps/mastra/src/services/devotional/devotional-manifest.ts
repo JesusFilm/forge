@@ -45,6 +45,13 @@ export type DevotionalManifest = {
   intro?: "cover" | "bands" | "hook" | "watch" | "opening" | "montage"
   /** `montage`: captions keyed by 0-based spoken line. */
   introCaptions?: Record<number, string>
+  /** `montage`: kinetic captions per spoken line. */
+  introKinetic?: {
+    line: number
+    hero: string
+    accents: string[]
+    side: "left" | "right"
+  }[]
   /** `montage` teaser: the last line is a call to action. */
   introCta?: boolean
   /** `montage`, vertical: horizontal focus per shot. */
@@ -134,6 +141,13 @@ export type BuildManifestInput = {
   intro?: "cover" | "bands" | "hook" | "watch" | "opening" | "montage"
   /** `montage`: captions keyed by 0-based spoken line. */
   introCaptions?: Record<number, string>
+  /** `montage`: kinetic captions per spoken line. */
+  introKinetic?: {
+    line: number
+    hero: string
+    accents: string[]
+    side: "left" | "right"
+  }[]
   /** `montage` teaser: the last line is a call to action. */
   introCta?: boolean
   /** `montage`, vertical: horizontal focus per shot. */
@@ -326,6 +340,9 @@ function buildClipFirstManifest(
             ...((input.intro === "montage" || input.intro === "opening") &&
             d.passage?.reference
               ? { passageRef: d.passage.reference }
+              : {}),
+            ...(input.intro === "montage" && input.introKinetic?.length
+              ? { introKinetic: input.introKinetic }
               : {}),
             ...(input.intro === "montage" && input.introCaptions
               ? {

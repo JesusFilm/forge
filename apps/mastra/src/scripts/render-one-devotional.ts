@@ -170,6 +170,33 @@ async function main() {
             ),
           }
         : {}),
+      // `--intro-kinetic`: kinetic captions for the montage (the "stack"
+      // layout), per 0-based line: "0=outside/faithful/left;1=the best
+      // robe/squandered/right". Hero phrase, accent words (comma-separated),
+      // the open side of the shot.
+      ...(arg("intro-kinetic")
+        ? {
+            introKinetic: arg("intro-kinetic")!
+              .split(";")
+              .map((kv) => kv.split("="))
+              .filter((kv) => kv.length === 2)
+              .map(([k, v]) => {
+                const [hero = "", accents = "", side = "left"] = v.split("/")
+                return {
+                  line: Number(k),
+                  hero: hero.trim(),
+                  accents: accents
+                    .split(",")
+                    .map((a) => a.trim())
+                    .filter(Boolean),
+                  side:
+                    side.trim() === "right"
+                      ? ("right" as const)
+                      : ("left" as const),
+                }
+              }),
+          }
+        : {}),
       // `--teaser-intro`: render ONLY the opening, ending on `--cta`.
       introTeaser: process.argv.includes("--teaser-intro"),
       // Social opening: `--quote-a/--quote-b` (+ `--quote-a-strong`, etc.).

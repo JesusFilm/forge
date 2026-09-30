@@ -26,6 +26,7 @@ import { SourceMarkOverlay, WIDE_TEXT_BOTTOM } from "./SourceMarkOverlay"
 import { VerseCalloutOverlay } from "./VerseCalloutOverlay"
 import { quoteIntroTimeline } from "./quote-timing"
 import { QuoteIntro } from "./QuoteIntro"
+import { KineticCaption } from "./KineticCaption"
 import { StepProgressLine } from "./StepProgressLine"
 import { StepperStack } from "./Stepper"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
@@ -1713,6 +1714,7 @@ function ClipIntro({
   captions = [],
   passageRef,
   cta = false,
+  kinetic = [],
 }: {
   variant: "cover" | "bands" | "hook" | "watch" | "opening" | "montage"
   leadSec: number
@@ -1748,6 +1750,14 @@ function ClipIntro({
   passageRef?: string
   /** `montage` teaser: the last line is a call to action, not "Let's watch". */
   cta?: boolean
+  /** `montage`: kinetic captions per line, the "stack" layout (owner's pick,
+   *  2026-09-30). When set, they replace the small line + big caption. */
+  kinetic?: ReadonlyArray<{
+    line: number
+    hero: string
+    accents: ReadonlyArray<string>
+    side: "left" | "right"
+  }>
 }) {
   const bleed = {
     position: "absolute" as const,
@@ -1974,10 +1984,21 @@ function ClipIntro({
     // The Jesus Film mark performs at the top as the piece opens, with
     // IN THIS DEVOTIONAL settling under it (owner, 2026-09-30); both leave
     // before WATCH takes the frame.
-    const brandOut = interpolate(t, [watchAt - 0.9, watchAt - 0.2], [1, 0], {
-      ...clampBoth,
-      easing: ease,
-    })
+    // With kinetic captions the spoken preview says "In this devotional"
+    // itself, so the kicker leaves before that line instead of doubling it.
+    const previewAt = kinetic.length
+      ? starts[lines.findIndex((l) => /^\s*in this devotional\b/i.test(l))]
+      : undefined
+    const brandGone = previewAt ?? watchAt
+    const brandOut = interpolate(
+      t,
+      [brandGone - 0.9, brandGone - 0.2],
+      [1, 0],
+      {
+        ...clampBoth,
+        easing: ease,
+      },
+    )
     const kickerIn = interpolate(t, [0.7, 1.6], [0, 1], {
       ...clampBoth,
       easing: ease,
@@ -2029,7 +2050,44 @@ function ClipIntro({
             where a line carries a big caption, only the words before it are
             set small, above it ("The others worked" over ONE HOUR). "Let's
             watch" has WATCH and the passage instead. */}
+        {kinetic.length
+          ? subtitles.map(({ i, line, ws }) => {
+              if (i === lines.length - 1) return null
+              const from = starts[i]
+              const to = lineEnd(i)
+              const spec = kinetic.find((k) => k.line === i)
+              const out = interpolate(t, [to - 0.35, to - 0.02], [1, 0], {
+                ...clampBoth,
+                easing: ease,
+              })
+              if (t < from - 0.1 || out <= 0) return null
+              const side = spec?.side ?? "left"
+              return (
+                <AbsoluteFill key={i} style={{ opacity: out }}>
+                  {/* Darken only the side the words sit on. */}
+                  <AbsoluteFill
+                    style={{
+                      background: `linear-gradient(${side === "left" ? 90 : 270}deg, rgba(0,0,0,0.5), rgba(0,0,0,0.12) 55%, rgba(0,0,0,0) 80%)`,
+                    }}
+                  />
+                  <KineticCaption
+                    line={line}
+                    hero={spec?.hero ?? ""}
+                    accents={spec?.accents ?? []}
+                    starts={ws.map((w) => w - from)}
+                    time={t - from}
+                    layout="stack"
+                    // Same sizes as the approved still (KineticPreview uses a
+                    // 360 unit, the video 390).
+                    px={(n) => px((n * 390) / 360)}
+                    side={side}
+                  />
+                </AbsoluteFill>
+              )
+            })
+          : null}
         {subtitles.map(({ i, line, ws }) => {
+          if (kinetic.length) return null
           if (i === lines.length - 1) return null
           const from = starts[i]
           const to = lineEnd(i)
@@ -5074,6 +5132,7 @@ function CardBody({
             {...(card.words ? { introWords: card.words } : {})}
             framed={card.introFrame === true}
             {...(card.introCaptions ? { captions: card.introCaptions } : {})}
+            {...(card.introKinetic ? { kinetic: card.introKinetic } : {})}
             {...(card.passageRef ? { passageRef: card.passageRef } : {})}
             cta={card.introCta === true}
           />

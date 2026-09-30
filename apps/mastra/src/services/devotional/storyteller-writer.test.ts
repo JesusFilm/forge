@@ -4,11 +4,10 @@ import { openingProblems, type OpeningLine } from "./storyteller-writer"
 
 const o = (line: string): OpeningLine => ({ line, visual: "v", onScreen: "" })
 const good = [
-  o("The son who stayed outside."),
-  o("He worked all day and did everything right."),
-  o("Then he heard music, and it was not for him."),
-  o("In this devotional: one word in the father's last sentence."),
-  o("Jesus told a story about a son like him."),
+  o("He never left. Now he will not go in."),
+  o("His brother wasted everything, and the party is for him."),
+  o("In this devotional: one word in the father's reply, about the feast."),
+  o("It starts with a father and two sons."),
 ]
 
 describe("openingProblems", () => {
@@ -19,8 +18,10 @@ describe("openingProblems", () => {
   it("wants exactly one preview line, not the last one", () => {
     const rules = (lines: OpeningLine[]) =>
       openingProblems(lines).map((p) => p.rule)
-    expect(rules(good.filter((_, i) => i !== 3))).toContain("opening-preview")
-    expect(rules([...good.slice(0, 3), good[4], good[3]])).toContain(
+    expect(
+      rules([...good.slice(0, 2), o("And the father comes out."), good[3]]),
+    ).toContain("opening-preview")
+    expect(rules([good[0], good[1], good[3], good[2]])).toContain(
       "opening-bridge",
     )
   })
@@ -49,6 +50,10 @@ describe("openingProblems", () => {
     expect(openingProblems(good.slice(0, 3)).map((p) => p.rule)).toContain(
       "opening-length",
     )
+    const wordy = good.map((l) => o(`${l.line} And then some more words.`))
+    expect(openingProblems(wordy).map((p) => p.rule)).toContain(
+      "opening-too-long",
+    )
   })
 
   it("does not say watch in the bridge, nor reuse the reflection's words", () => {
@@ -64,7 +69,7 @@ describe("openingProblems", () => {
     ]
     const reused = [
       good[0],
-      o("His brother burned through his share far from home, feeding pigs."),
+      o("His brother burned through his share far from home."),
       ...good.slice(2),
     ]
     expect(openingProblems(reused, reflection).map((p) => p.rule)).toContain(

@@ -1500,6 +1500,13 @@ export type RenderOptions = {
   introShots?: number[]
   /** `intro: "montage"`: on-screen captions keyed by 0-based line number. */
   introCaptions?: Record<number, string>
+  /** `montage`: kinetic captions per line (see render-one-devotional). */
+  introKinetic?: {
+    line: number
+    hero: string
+    accents: string[]
+    side: "left" | "right"
+  }[]
   /** Tighten the silence between the hook's lines to this many seconds, in
    *  the recorded take (no re-narration). A line that starts lower-case (a
    *  continuation, "but the workers themselves") keeps a longer beat,
@@ -2489,6 +2496,7 @@ async function renderInStage(
     ...(filmMark ? { filmMark } : {}),
     ...(options.openingFrame ? { openingFrame: true } : {}),
     ...(options.introCaptions ? { introCaptions: options.introCaptions } : {}),
+    ...(options.introKinetic ? { introKinetic: options.introKinetic } : {}),
     ...(options.introTeaser && options.intro === "montage"
       ? { introCta: true }
       : {}),

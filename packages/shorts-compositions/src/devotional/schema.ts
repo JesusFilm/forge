@@ -125,6 +125,18 @@ export const devotionalCardSchema = z.object({
   /** `montage`, vertical: horizontal focus (0..1) per shot, then one more for
    *  the scene after the last cut. */
   introFocus: z.array(z.number()).optional(),
+  /** `montage`: kinetic captions (the "stack" layout) per spoken line:
+   *  the whole line on screen, its hero phrase large, accents in italic. */
+  introKinetic: z
+    .array(
+      z.object({
+        line: z.number().int(),
+        hero: z.string(),
+        accents: z.array(z.string()),
+        side: z.enum(["left", "right"]),
+      }),
+    )
+    .optional(),
   introCaptions: z
     .array(
       z.object({

@@ -2,6 +2,11 @@ import { Composition } from "remotion"
 
 import { calculateDevotionalMetadata } from "./calculate-metadata"
 import { DevotionalVideo } from "./DevotionalVideo"
+import {
+  KINETIC_PREVIEW_ID,
+  KineticPreview,
+  kineticPreviewSchema,
+} from "./KineticPreview"
 import { STEPS_PREVIEW_ID, StepsPreview } from "./StepsPreview"
 import {
   Teaser,
@@ -64,6 +69,24 @@ export const DevotionalRoot = () => (
       height={DEVOTIONAL_WIDE_HEIGHT}
       fps={DEVOTIONAL_FPS}
       durationInFrames={18 * DEVOTIONAL_FPS}
+    />
+    {/* Review-only: the opening's kinetic captions, one layout per still. */}
+    <Composition
+      id={KINETIC_PREVIEW_ID}
+      component={KineticPreview}
+      schema={kineticPreviewSchema}
+      width={DEVOTIONAL_WIDE_WIDTH}
+      height={DEVOTIONAL_WIDE_HEIGHT}
+      fps={DEVOTIONAL_FPS}
+      durationInFrames={5 * DEVOTIONAL_FPS}
+      defaultProps={{
+        bg: "kinetic-preview-1.jpg",
+        line: "A faithful son stands outside his father's party.",
+        hero: "outside",
+        accents: ["faithful"],
+        layout: "stack",
+        side: "left",
+      }}
     />
     <Composition
       id={DEVOTIONAL_COMPOSITION_ID}

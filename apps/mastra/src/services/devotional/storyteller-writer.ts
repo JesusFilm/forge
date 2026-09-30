@@ -123,7 +123,7 @@ const JSON_SCHEMA = {
  * to the film. Shared by the writer and by writeOpening.
  */
 export const OPENING_RULES = [
-  "THE OPENING: four to six short lines spoken over the film's own shots,",
+  "THE OPENING: four short lines (five at most) spoken over the film's own shots,",
   "before 'Let's watch.' (added for you: do not write it). No greeting, no",
   "channel name, no 'in this video', no 'stay tuned' or 'keep watching'.",
   "Voice and picture are designed together: for each line give the moment",
@@ -131,22 +131,24 @@ export const OPENING_RULES = [
   "passage names) and, when it helps, two to four words set large on screen",
   '(onScreen), else "". Muted, the shots and words alone should tell what',
   "the video is about. On-screen words are claims too: only what the",
-  "passage or the reflection says. At most 60 words in all, 14 per line.",
+  "passage or the reflection says. About 12 to 15 seconds: at most 40",
+  "words in all, 12 per line.",
   "  1. PROMISE, the first line, under ten words: the promise in the scene,",
   "     with a person in it. The viewer knows at once this is the video they",
   "     clicked. Do not quote the title.",
-  "  2. CONTEXT, one or two lines: only what the tension needs to make sense.",
+  "  2. CONTEXT AND GAP, one line: the one fact the tension turns on, set",
+  "     against the promise so it lands as a contradiction the viewer",
+  "     cannot resolve yet.",
   "     Do not retell the plot: the film is about to show it. Name the one",
   "     fact the tension turns on, and leave the rest for the film.",
-  "  3. THE GAP, one line: a contradiction, an unexpected observation or a",
-  "     question the viewer cannot answer yet. Recognition, never shame: the",
-  "     viewer thinks 'I know this', not 'this video is judging me'.",
-  "  4. PREVIEW, one line that starts 'In this devotional': the devotional's",
+  "     Recognition, never shame: the viewer thinks 'I know this', not",
+  "     'this video is judging me'.",
+  "  3. PREVIEW, one line that starts 'In this devotional': the devotional's",
   "     strongest finding (the language or history note), named by WHERE it",
   "     is and WHAT it concerns, never by what it means ('one word in the",
   "     father's last sentence, and what it says about the party'). Promise",
   "     only what the reflection delivers, in the reflection's own terms.",
-  "  5. BRIDGE, the last line: points at the story about to play, so the",
+  "  4. BRIDGE, the last line: points at the story about to play, so the",
   "     film feels like the answer beginning. A statement, not a command,",
   "     and not the word 'watch': 'Let's watch.' follows it.",
   "Do not reuse the reflection's wording: the viewer hears both.",
@@ -312,17 +314,17 @@ export function openingProblems(
   const out: { rule: string; sentence: string; why: string }[] = []
   const lines = opening.map((o) => o.line)
   const words = (t: string) => t.split(/\s+/).filter(Boolean).length
-  // About 25 seconds at the reading pace, and each line short enough to
+  // About 12 to 15 seconds at the reading pace, and each line short enough to
   // hear once: long lines are where the plot retelling crept back in.
   const total = lines.reduce((n, l) => n + words(l), 0)
-  if (total > 60)
+  if (total > 40)
     out.push({
       rule: "opening-too-long",
       sentence: `${total} words`,
-      why: "the whole opening is 60 words or fewer; cut the plot, keep the tension",
+      why: "the whole opening is 40 words or fewer (12 to 15 seconds); cut the plot, keep the tension",
     })
   for (const l of lines) {
-    const max = /^\s*in this devotional\b/i.test(l) ? 16 : 14
+    const max = /^\s*in this devotional\b/i.test(l) ? 14 : 12
     if (words(l) > max)
       out.push({
         rule: "opening-line-too-long",
@@ -361,11 +363,11 @@ export function openingProblems(
         })
     }
   }
-  if (lines.length < 4 || lines.length > 6)
+  if (lines.length < 4 || lines.length > 5)
     out.push({
       rule: "opening-length",
       sentence: `${lines.length} line(s)`,
-      why: "the opening is four to six lines",
+      why: "the opening is four lines, five at most",
     })
   if (lines[0] && words(lines[0]) >= 10)
     out.push({
