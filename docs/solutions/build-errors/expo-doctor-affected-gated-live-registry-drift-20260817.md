@@ -154,16 +154,16 @@ only to the isolated second check; the preceding version check remains enabled.
 Expo publishes SDK 57 patch releases often, so this check goes red about
 every one or two weeks. Each row is one alignment (or one open failure):
 
-| Date (UTC) | Pull request       | What happened                                                                                                                                          |
-| ---------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-08-17 | #1945              | The first recorded case (above). A TV PR woke the check through `packages/admin-graphql`.                                                              |
-| 2026-08-21 | #1986              | A scoped alignment of nine Expo packages, split out of the Better Auth upgrade.                                                                        |
-| 2026-08-28 | #2097              | The check went red on `main`. Railway's wait-for-CI gate then blocked every service's deploy, and a web page stayed a 404 until the bump merged.       |
-| 2026-09-15 | #2312 (`feat-510`) | The September 16 recurrence above.                                                                                                                     |
-| 2026-09-21 | #2355 (`feat-524`) | An alignment to the 57.0.24 patch set.                                                                                                                 |
-| 2026-09-26 | #2427 (open)       | `expo` 57.0.25 and six siblings were published 2026-09-24T10:13Z. As of 2026-09-28, no alignment PR exists, so every PR that wakes the check fails it. |
-| 2026-09-28 | #2432 (`feat-556`) | An alignment of seven packages to the 57.0.25 patch set.                                                                                               |
-| 2026-09-30 | #2509 (`feat-582`) | `expo` 57.0.26 and three siblings were published 2026-09-29T10:57Z. PR #2466 woke the check. An alignment of four packages, split out of that PR.      |
+| Date (UTC) | Pull request       | What happened                                                                                                                                                            |
+| ---------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-08-17 | #1945              | The first recorded case (above). A TV PR woke the check through `packages/admin-graphql`.                                                                                |
+| 2026-08-21 | #1986              | A scoped alignment of nine Expo packages, split out of the Better Auth upgrade.                                                                                          |
+| 2026-08-28 | #2097              | The check went red on `main`. Railway's wait-for-CI gate then blocked every service's deploy, and a web page stayed a 404 until the bump merged.                         |
+| 2026-09-15 | #2312 (`feat-510`) | The September 16 recurrence above.                                                                                                                                       |
+| 2026-09-21 | #2355 (`feat-524`) | An alignment to the 57.0.24 patch set.                                                                                                                                   |
+| 2026-09-26 | #2427 (open)       | `expo` 57.0.25 and six siblings were published 2026-09-24T10:13Z. As of 2026-09-28, no alignment PR exists, so every PR that wakes the check fails it.                   |
+| 2026-09-28 | #2432 (`feat-556`) | An alignment of seven packages to the 57.0.25 patch set.                                                                                                                 |
+| 2026-09-30 | #2509 (`feat-582`) | `expo` 57.0.26 and three siblings were published 2026-09-29T10:57Z. PR #2466 woke the check, then merged with it red, so `main` went red. An alignment of four packages. |
 
 Two things follow for the next agent:
 

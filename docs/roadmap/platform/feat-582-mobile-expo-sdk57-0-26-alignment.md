@@ -21,7 +21,8 @@ request that touches `apps/mobile`. Expo published `expo` 57.0.26,
 2026-09-29 at about 10:57 UTC. The check compares the installed packages with
 the versions that the Expo API expects today, so the same tree that passed
 before that time now fails. The failure is on clean `main` too. PR #2466 was
-the first mobile pull request to show it.
+the first mobile pull request to show it. After #2466 merged on 2026-09-30, the
+`main` push run failed the same job, so `ci-gate` is red on `main`.
 
 ## Entry Points — Read These First
 
