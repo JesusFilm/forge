@@ -39,3 +39,25 @@ and client, prove
 actual Railway stdin/stdout behavior read-only, and admit a new private cohort
 with fresh hold/source/fleet evidence. Native fixture timing is not a
 production throughput forecast.
+
+## CLI stdout protocol isolation follow-up
+
+Two deployed start-only attempts stopped when the local client received an
+unexpected JSON frame before `ready`; neither sent a freeze or execute command.
+The exact historical frame was not retained, so its origin is unclassified. A
+later start-only check at 05:50:24 UTC returned a clean `ready` for the original
+64 holdouts and 8,621 observations, then intentionally ended at EOF. The
+intermittent observation is not proof that the pool logger caused those two
+failures.
+
+A deterministic actual-CLI subprocess regression demonstrates the channel
+hazard: a pool-shaped `console.info` emitted while the CLI is accepting stdin
+previously appeared as an extra stdout JSON frame ahead of the protocol
+response. The CLI now routes `console.info`, `console.log` and `console.debug`
+to stderr, while its protocol emitter alone writes stdout. The regression
+asserts one sanitized protocol frame on stdout and the diagnostic on stderr.
+A separate local held-socket test exercises the real `ObservedPool` rejected
+acquisition path and confirms that it emits its diagnostic through
+`console.info`. The change does not alter the shared pool logger or any
+retirement guard. A fresh deployed start-only handshake remains required
+before production cleanup writes.

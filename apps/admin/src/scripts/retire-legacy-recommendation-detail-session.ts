@@ -4,6 +4,7 @@
  * ten-run transaction, row/byte limits, locks, and SQL fingerprints.
  */
 import { createHash } from "node:crypto"
+import { Console } from "node:console"
 import { readFileSync } from "node:fs"
 import { createInterface } from "node:readline"
 import { pathToFileURL } from "node:url"
@@ -802,6 +803,16 @@ export async function runLegacyDetailSession(
 }
 
 async function main(): Promise<void> {
+  // This CLI reserves stdout for NDJSON protocol frames. The Admin pool and
+  // runtime observers use console.info for diagnostics; keep those visible on
+  // stderr so a slow acquisition cannot be mistaken for a protocol response.
+  const diagnostics = new Console({
+    stdout: process.stderr,
+    stderr: process.stderr,
+  })
+  console.info = diagnostics.info.bind(diagnostics)
+  console.log = diagnostics.log.bind(diagnostics)
+  console.debug = diagnostics.debug.bind(diagnostics)
   guard(
     process.argv.length === 6 &&
       process.argv[2] === "--confirm-cohort" &&

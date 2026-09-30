@@ -114,3 +114,8 @@ the client must stop on any changed file or uncertain response. This local
 preparation is not broad cohort approval and does not change ordinary expiry.
 The disposable-database receipt is in
 `docs/validation/recommendation-storage-20260930/legacy-persistent-session.md`.
+The first deployed start-only handshake exposed intermittent nonprotocol JSON
+on stdout before `ready`; no cleanup command was sent. A CLI-local channel
+isolation fix and actual-subprocess regression are under review. The ticket
+remains in progress until a normal deployed handshake, a fresh finite
+admission, and the intended retirement and physical verification complete.
