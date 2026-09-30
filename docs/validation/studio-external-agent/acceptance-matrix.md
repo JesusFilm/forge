@@ -5,6 +5,10 @@ not mark a roadmap feature complete merely because its implementation exists.
 Detailed observations and redacted identities are in [client-workflow.md](client-workflow.md)
 and [client-proof.json](client-proof.json).
 
+The [September 30 integration refresh](integration-refresh-2026-09-30.md)
+records the current ticket/migration mapping, main reconciliation and renewed
+guarded render/inspection smoke. It does not close the external access gates.
+
 | Feature                         | Implemented and verified                                                                                                                                                                                                                                                                         | Remaining qualification / release boundary                                                                                                                                                                                  |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 542 — connect and discover      | Scoped OAuth/resource checks, discovery/resolution/history; actual Codex editing, same-session resume, expired synthetic bearer rejection and renewal.                                                                                                                                           | Real Claude; authenticated UI history observation; reachable-test OAuth consent/renewal rather than synthetic issuer credentials.                                                                                           |

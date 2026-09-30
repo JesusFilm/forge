@@ -66,7 +66,21 @@ and its suppressions were preserved.
 Independent standards/security and specification reviews found no integration regression: schema fields
 from both parents, patch bytes, migration bytes, roadmap IDs and dependencies
 were checked against the pinned parents. Further build, runtime smoke and final
-CI results are recorded in the PR.
+CI results are recorded in the PR. The merge commit is `9e99a98cd`.
+
+The scripted infrastructure smoke passed against this resolved merge's working
+tree on Next 16.3.6. Actual Next narration lifecycle attached its revision with
+exactly one intercepted fake voice dispatch. Canonical HLS preparation, contained
+rendering, immutable retention and uncached inspection succeeded for project
+`infrastructure-e63496df-af5d-4cf3-ba60-42cb8052ceb8`, revision 2, attempt
+`cmunifly400102c6pw6d8tspj`. Output SHA-256 was
+`e7b294f58fbdcf8445f32371c538ec36a628dcd84a113c9c2ca0e4028162c6ea`.
+Admission to observed render success took 130.169 seconds; inspection returned
+6.213 seconds later, with 5.963 seconds of server evidence preparation and six
+image/seven text blocks. Limits remained 2 GiB memory, zero swap, two CPUs and
+128 tasks. The cgroup recorded 11 memory-max events, zero OOM events and zero
+OOM kills; the service remained healthy. This is scripted infrastructure
+evidence, not a real-client conversation, visual judgment or hosted-image test.
 
 Read-only access checks still found no installed Claude client. Existing Chrome
 automation is available; navigating to Claude redirected to its login page.
