@@ -91,3 +91,19 @@ configuration. Local synthetic browser sign-in remains subject to the user's
 specific authorization after the earlier automatic approval rejection. Real
 Claude, OAuth consent, authenticated exact-render approval and hosted renderer
 qualification remain separate acceptance gates.
+
+## Production release preparation
+
+The owner requested production release through the normal PR-to-main flow.
+Main advanced to `3244d5592`, including its own `0121` watch-exposure index
+reconciliation. Integration preserves that migration and renumbers the four
+unpublished Shorts migrations to `0122` retention, `0123` narration, `0124`
+preparation and `0125` inspection. All four SQL contents remain byte-identical.
+Earlier replay evidence above retains its original migration names.
+
+A new isolated `forge_studio_0125_fresh` database passed the complete migration
+replay, including main's `0121`. Four focused suites passed ten tests covering
+delegation, draft rendering/retention/preparation/inspection, bounded narration
+and portable packaging. The exact test-database allowlist was temporarily pointed
+to that task-owned database and restored byte-for-byte after the tests; existing
+qualification databases and ledgers were preserved. Prisma was regenerated.

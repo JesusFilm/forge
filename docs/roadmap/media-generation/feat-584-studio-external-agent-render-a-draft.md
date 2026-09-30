@@ -64,10 +64,10 @@ See `docs/plans/2026-09-23-studio-external-agent/spec.md` and `code-map.md` for 
 - The existing durable worker scan recovers the admission/enqueue window. Worker
   preparation materializes canonical sources through the trusted broker before
   contained execution; no revision edit or interactive actor is fabricated.
-- Migration `0121_studio_render_retention_profile` corrects the retained-render
+- Migration `0122_studio_render_retention_profile` corrects the retained-render
   trigger's profile identity, restoring trusted-producer and issued-lease checks.
   Historical repair is tracked separately by feat-549.
-- Migration `0123_studio_render_preparation` pins immutable materialized documents
+- Migration `0124_studio_render_preparation` pins immutable materialized documents
   to issued leases and retains referenced assets. Publication/staging select only
   the admitted successful lease; original authored revisions remain unchanged.
 - Guarded PostgreSQL 18: `draft-render.db.test.ts`, `render-jobs.db.test.ts`,

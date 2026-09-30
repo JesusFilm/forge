@@ -29,8 +29,11 @@ replicas.
 
 Confirm the deployment logs show the configured
 `pnpm --filter @forge/rag db:migrate:deploy` pre-deploy command completing before
-the HTTP start command. This verifies existing schema ownership; it does not
-provision or replace the database.
+the HTTP start command. When the portal is configured, also confirm the
+`portal_session_renewal_grant` receipt from the following pre-deploy command;
+it must show expiry update available and every broader update unavailable.
+Record the deployment ID and redacted receipt result in the relevant roadmap
+evidence. These steps do not provision or replace the database.
 
 Run the environment preflight without printing any values:
 

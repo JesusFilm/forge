@@ -4480,7 +4480,7 @@ model WatchSurfaceExposure {
   receivedAt           DateTime @default(now()) @map("received_at")
   expiresAt            DateTime @map("expires_at")
 
-  @@index([windowId, surface, block, presentation, placement, position, itemPath, kind], map: "watch_surface_exposure_window_item_idx")
+  @@index([windowId, surface, block, presentation, placement, position], map: "watch_surface_exposure_window_item_narrow_idx")
   @@index([surface, block, presentation, position, occurredAt], map: "watch_surface_exposure_aggregate_idx")
   @@index([occurredAt, windowId], map: "watch_surface_exposure_window_cohort_idx")
   @@index([expiresAt], map: "watch_surface_exposure_expiry_idx")

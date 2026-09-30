@@ -24,7 +24,7 @@ assert that production has affected rows or authorize production writes.
 ## Entry Points — Read These First
 
 1. `apps/admin/prisma/migrations/0094_shorts/migration.sql` — `short_attach_render_asset`.
-2. `apps/admin/prisma/migrations/0121_studio_render_retention_profile/migration.sql` — corrected trigger.
+2. `apps/admin/prisma/migrations/0122_studio_render_retention_profile/migration.sql` — corrected trigger.
 3. `apps/admin/src/services/studio-authoring/render-jobs.db.test.ts` — exact-lease retention and producer denial tests.
 4. `packages/studio-contracts/src/render.ts` — immutable canonical profile identity.
 

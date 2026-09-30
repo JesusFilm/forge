@@ -8,7 +8,7 @@ speech quality, authenticated browser approval, or an OCI deployment.
 ## Boundaries
 
 - Only `postgresql://tataihono@127.0.0.1:55460/forge_studio_548_qualification`
-  is accepted. Apply the repository's migrations through 0124 first on a fresh
+  is accepted. Apply the repository's migrations through 0125 first on a fresh
   isolated database. The September 23 fixtures used the prior unpublished
   0099–0102 Shorts names; keep those historical databases intact instead of
   applying the renamed migrations over their existing objects.

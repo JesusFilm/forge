@@ -380,6 +380,11 @@ export const env = createEnv({
     DATABASE_URL: z.string().url(),
     // Opt-in disposable Studio integration database; never falls back to DATABASE_URL.
     STUDIO_TEST_DATABASE_URL: z.string().url().optional(),
+    // Opt-in disposable exposure reconciliation database; the test enforces loopback and name guards.
+    WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL: z
+      .string()
+      .url()
+      .optional(),
     ADMIN_SESSION_SECRET: z.string().min(32),
     // Optional admin OAuth cookie prefix. Use a unique value for local
     // worktree previews sharing localhost so branches do not overwrite each
@@ -522,6 +527,10 @@ export const env = createEnv({
     // Both inline and shared readers must remain in every serving/rollback image.
     // Explicit false stops new shared writes without rewriting retained rows.
     RECOMMENDATION_PROFILE_VECTOR_SHARING: z
+      .enum(["true", "false"])
+      .default("true"),
+    // Compatible readers preserve typed empty completion when writes are disabled.
+    RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: z
       .enum(["true", "false"])
       .default("true"),
     // Opt-in real-Redis proof for feat-368 atomic delivery admission.
@@ -902,6 +911,9 @@ export const env = createEnv({
 
     DATABASE_URL: process.env.DATABASE_URL,
     STUDIO_TEST_DATABASE_URL: process.env.STUDIO_TEST_DATABASE_URL,
+    WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL: emptyToUndefined(
+      process.env.WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL,
+    ),
     NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(
       process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
     ),
@@ -1069,6 +1081,10 @@ export const env = createEnv({
     RECOMMENDATION_PROFILE_VECTOR_SHARING:
       emptyToUndefined(process.env.RECOMMENDATION_PROFILE_VECTOR_SHARING) ??
       "true",
+    RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP:
+      emptyToUndefined(
+        process.env.RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP,
+      ) ?? "true",
     RECOMMENDATION_REDIS_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_REDIS_TEST,
     ),

@@ -11,8 +11,8 @@ has not been certified here.
   the client/UI qualification record. Keep unsupported Claude or browser steps
   explicitly open; a local JSON-RPC probe cannot close them.
 - Back up Admin before normal migration deployment. Preserve existing migration
-  bytes and apply in order: 0121 render retention profile, 0122 delegated narration,
-  0123 immutable render preparation, 0124 immutable render inspection. These
+  bytes and apply in order: 0122 render retention profile, 0123 delegated narration,
+  0124 immutable render preparation, 0125 immutable render inspection. These
   extend the prior schema; they are not substitutes for earlier migrations.
   Generate Prisma normally. This workflow adds no Pothos schema fields; if the
   final release includes other Pothos changes, regenerate both Admin SDL and
@@ -37,8 +37,11 @@ has not been certified here.
 ## Runtime and spending controls
 
 - Manager needs actual Next request lifecycle support for narration `after()`.
-  Its configured render service URL and private admission key enable the existing
-  durable dispatcher. Do not substitute the raw local route host for Next.
+  Rendering supports either the configured service URL/private admission key
+  dispatcher or the existing outbound VM pool. Production uses the pool: its
+  gateway prepares immutable inputs, retains verified outputs and completes
+  canonical attempts; a direct render service URL is not required in that mode.
+  Do not substitute the raw local route host for Next.
 - Provision FFmpeg and FFprobe for narration measurement, canonical source
   preparation and lazy rendered inspection. Root Nixpacks supplies the ordinary
   binaries; use the documented explicit `STUDIO_FFMPEG_PATH` and

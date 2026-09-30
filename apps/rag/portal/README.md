@@ -56,8 +56,31 @@ and restricted portal-session database URL were sourced from Doppler; the
 separate CI review token is a GitHub Actions secret. Keep these values out of
 the browser, logs and repository. The session role has only `USAGE` on
 `portal_private` and `SELECT`, `INSERT`, `DELETE` on `oauth_states` and
-`sessions`; its corpus and `consumer_private` reads were denied in the
+`sessions`, plus column-limited `UPDATE (expires_at)` on `sessions` for idle
+renewal; its corpus and `consumer_private` reads were denied in the
 operator permission check.
+
+The Railway pre-deploy command applies the additive migration, then runs
+`db:grant-portal-session-renewal` before the new service starts. The script
+connects with the configured restricted `RAG_PORTAL_DATABASE_URL`, obtains its
+role from PostgreSQL `current_user`, checks its existing portal-only privileges,
+and verifies both connections reach the same PostgreSQL cluster and database.
+It uses the migration administrator connection to grant only
+`UPDATE (expires_at)` on `portal_private.sessions`. It then reconnects as the
+restricted role to verify the expiry update is available while table-wide,
+other session-column, OAuth-state update and non-portal data privileges remain unavailable.
+An unexpected role, database, or privilege stops the deployment. The grant is
+idempotent and the script prints a redacted receipt containing the database and
+role names plus the checked permission booleans; it never prints either URL.
+Portal startup independently verifies the restricted role, so a Railway
+dashboard override that skips pre-deploy cannot silently enable broken renewal.
+The deployment log and reviewed script commit are the audit record. After the
+first production deployment, record the deployment ID and receipt result in
+`docs/roadmap/rag/evidence/feat-575/` without credentials or session values.
+
+The migration retains existing sessions' original expiry and gives new OAuth
+sign-ins the eight-hour idle and 24-hour absolute limits. Environments without
+portal configuration skip the grant.
 
 The allowlisted login, protected identity response, sign-out, next-request
 unauthorized response and unlisted-account denial were observed in a real
@@ -85,7 +108,12 @@ members still checks live eligibility and ownership in the backend transaction.
 
 The UI creates directly from the form, then shows the issued key once with copy/save
 controls, and clears the display on dismissal, sign-out and page navigation.
-It uses no browser storage or telemetry. Key replacement, suspension and terminal
+It stores only the selected section, validated Usage UTC date range and bounded
+recovery markers in per-tab `sessionStorage`. It stores no credentials, issued
+keys, OAuth values, corpus text or management payloads, and uses no telemetry.
+Visible-tab input coalesces idle renewal requests. An expired session starts
+GitHub sign-in once and restores the tab's section. Explicit sign-out, removed
+admission and outages leave a manual sign-in fallback. Key replacement, suspension and terminal
 revocation require an explicit confirmation. Stale changes refresh the directory
 and require another explicit action. Uncertain issuance results direct the user
 to refresh and replace a lost key; mutations never automatically retry.
@@ -110,6 +138,9 @@ Set these variables in your terminal or local secret configuration:
 - `RAG_CONSUMER_AUTH_DATABASE_URL`: restricted credential reader on the dedicated DB.
 - `RAG_PORTAL_SESSION_DATABASE_URL`: restricted session role on the dedicated DB.
 - `RAG_PORTAL_DEV_TLS_KEY` and `RAG_PORTAL_DEV_TLS_CERT`: local certificate files.
+
+Set `RAG_PORTAL_DEV_PORT` to use a different loopback port when 3445 is busy,
+and set `PORTAL_TEST_BASE_URL` to the matching HTTPS origin for Playwright.
 
 Generate a short-lived localhost certificate outside Git, for example:
 
@@ -173,7 +204,7 @@ batch reads at most 20 UUIDs, validates the whole window/page before reading and
 rechecks current portal admission once per request. Per-report snapshots retain
 their own generated time/coverage. The single-consumer `/portal/usage` route stays
 available. All report reads are no-store and excluded from retrieval accounting.
-No browser storage or telemetry is used; leaving the section, session denial or
+No report data beyond the selected UTC range is stored; leaving the section, session denial or
 sign-out clears report data and closes details.
 
 For local real-accounting/report development, optionally configure both
@@ -216,7 +247,8 @@ The public GitHub Pages dashboard and its publication workflow are unchanged.
 
 `sources.js`, `sources.css` and the inventory request are deferred until Sources
 opens. Leaving the view or losing admission clears its data and ignores late
-responses. There is no browser storage, background refresh or new credential.
+responses. Sources stores no data in the browser, starts no background refresh
+and issues no new credential.
 
 Local browser verification requires no database or production access:
 
