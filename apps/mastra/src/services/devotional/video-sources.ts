@@ -40,6 +40,13 @@ export type VideoSource = {
    * LUMO plays at 1.05. `--video-speed` still wins.
    */
   videoSpeed?: number
+  /**
+   * How the film's own captions are shown. LUMO reads the Bible word for word
+   * over its pictures, so its narration is set as scrolling, numbered Scripture
+   * (owner, 2026-09-30). Every other film keeps the typewriter reveal (a
+   * letter lands gold, then turns white). `--film-caption-style` still wins.
+   */
+  filmCaptionStyle?: "scroll"
   /** Mark drawn in the top-left while the clip plays. */
   filmMark: "lumo"
   /** LUMO's own photography needs no grade at all (owner). */
@@ -70,6 +77,7 @@ const SOURCES: VideoSource[] = [
     // (the LUMO speed since 2026-09-30) → ~134s.
     maxVideoCardSec: 145,
     videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
     filmMark: "lumo",
     style: "clean",
     captions: { kind: "file", path: "video-sources/lumo-matt-20.en.vtt" },
@@ -90,6 +98,7 @@ const SOURCES: VideoSource[] = [
     // ×1.05 (not 1.12) keeps the whole parable ~213s on screen plus the tail.
     maxVideoCardSec: 232,
     videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
     filmMark: "lumo",
     style: "clean",
     captions: { kind: "file", path: "video-sources/lumo-luke-15.en.vtt" },

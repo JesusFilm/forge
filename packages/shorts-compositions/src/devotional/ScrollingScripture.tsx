@@ -20,7 +20,7 @@ import { TEASER_FONT_FAMILIES } from "./teaser-fonts"
 
 const SERIF = `'${TEASER_FONT_FAMILIES.literata}', Georgia, serif`
 const GOLD = "#f2c46b"
-// The chapter heading: PT Serif (owner, 2026-09-30).
+// The chapter heading: PT Serif Italic (owner's Figma 380-2266).
 const PT_SERIF = `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`
 
 export type ScriptureCue = {
@@ -201,6 +201,7 @@ export function ScrollingScripture({
         <div
           style={{
             fontFamily: PT_SERIF,
+            fontStyle: "italic",
             fontSize: dp(32),
             lineHeight: `${dp(50)}px`,
             color: "rgba(255,255,255,0.92)",

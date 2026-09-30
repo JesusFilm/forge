@@ -16,7 +16,10 @@ import {
   EB_GARAMOND_LATIN_WOFF2_BASE64,
   EB_GARAMOND_LATIN_ITALIC_WOFF2_BASE64,
 } from "./fonts-ebgaramond-data"
-import { PT_SERIF_LATIN_WOFF2_BASE64 } from "./fonts-ptserif-data"
+import {
+  PT_SERIF_ITALIC_LATIN_WOFF2_BASE64,
+  PT_SERIF_LATIN_WOFF2_BASE64,
+} from "./fonts-ptserif-data"
 import {
   SOURCE_SERIF_4_LATIN_ITALIC_WOFF2_BASE64,
   SOURCE_SERIF_4_LATIN_WOFF2_BASE64,
@@ -105,6 +108,12 @@ export const FONT_SOURCES: ReadonlyArray<{
     style: "italic",
   },
   { family: SHORT_FONT_FAMILIES.ptSerif, base64: PT_SERIF_LATIN_WOFF2_BASE64 },
+  // The real italic: without it the browser slants the upright face.
+  {
+    family: SHORT_FONT_FAMILIES.ptSerif,
+    base64: PT_SERIF_ITALIC_LATIN_WOFF2_BASE64,
+    style: "italic",
+  },
 ]
 
 const registerFont = async (

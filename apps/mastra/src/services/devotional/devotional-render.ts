@@ -2761,8 +2761,11 @@ async function renderInStage(
 
   if (options.structure === "clip-first") {
     if (options.stepRing) manifest.stepRing = true
-    if (options.filmCaptionStyle)
-      manifest.filmCaptionStyle = options.filmCaptionStyle
+    // A source may bring its own caption treatment (LUMO: scrolling
+    // Scripture); every other film gets the typewriter reveal, the owner's
+    // standing choice. --film-caption-style still wins.
+    manifest.filmCaptionStyle =
+      options.filmCaptionStyle ?? registered?.filmCaptionStyle ?? "typewriter"
     if (options.markLayout) manifest.markLayout = options.markLayout
     if (options.stepRing && options.stepProgress)
       manifest.stepProgress = options.stepProgress
