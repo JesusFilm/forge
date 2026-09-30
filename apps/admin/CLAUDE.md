@@ -611,11 +611,12 @@ vars configured; dev/staging should not need those S3 credentials.
 
 ### Search trace retention and sampling
 
-Admin is the live search authority. REST `/api/search`, GraphQL `Query.search`,
+Admin is the live search authority. GraphQL `Query.watchSearch`,
 query embedding generation, pgvector retrieval, production trace storage,
 rollups, and retention all stay inside `apps/admin`. Mastra must not enter the
 live request path and must not import Admin code or read Admin Postgres for eval
-sampling; later eval jobs use Admin's internal HTTP contract only.
+sampling; later eval jobs use Admin's internal HTTP contract only. #1622
+removed REST `/api/search` and GraphQL `Query.search` on 2026-07-20.
 
 Production search tracing writes two records:
 
@@ -632,10 +633,13 @@ Production search tracing writes two records:
   source/version dimensions so future rule changes do not mix incompatible
   cohorts.
 
-Trace writes are bounded best-effort. `recordSearchTraceSafely` is awaited
-behind a short timeout and every write/timeout failure is swallowed from the
-live search caller's perspective. Failures increment safe process-local
-counters and log `[search] event=trace_record_* ...` without raw query text.
+Trace writes are bounded best-effort. `Query.watchSearch` puts each trace on a
+bounded per-process queue (`enqueueWatchSearchTrace`) that runs
+`recordSearchTraceSafely` after the response. A full queue drops the trace and
+logs `[search] event=trace_queue_full`. `recordSearchTraceSafely` runs behind a
+short timeout, and every write or timeout failure is swallowed from the
+caller's perspective. Failures increment safe process-local counters and log
+`[search] event=trace_record_* ...` without raw query text.
 Experience-editor video library server-action searches use
 `recordAdminVideoLibrarySearchTraceSafely`; their raw traces set
 `requestedMode` to a closed client label such as
@@ -707,16 +711,22 @@ Query labeling model:
 
 The optional OpenRouter classifier lives at
 `src/services/search-trace-query-classifier.ts` and is for ambiguous or
-high-impact samples only. REST `/api/search` and GraphQL `Query.search` must
-not call it, must not route through Mastra, and must not use labels to censor
-or alter live results.
+high-impact samples only. The live search path, GraphQL `Query.watchSearch`,
+must not call it, must not route through Mastra, and must not use labels to
+censor or alter live results.
 
 The Admin worker starts `src/workflows/searchTraceRetention.ts` when
 `WORKFLOW_RUNNER_ENABLED=true` and
 `WORKFLOW_TARGET_WORLD=@workflow/world-postgres`. The scheduler runs one purge
 immediately, then daily at 10:00 UTC. `/api/search/health` reports retention
-health and trace capture counters; in production, raw trace capture is disabled
-when the retention scheduler or recent purge heartbeat cannot be confirmed.
+health and trace capture counters. In production, when that health is not
+healthy, the trace writer runs `purgeExpiredSearchTraces` inline, logs
+`[search] event=trace_retention_inline_purge`, and then stores the raw row
+(feat-272). Only an explicit `retentionHealthy: false` input disables raw
+capture. The health reads the scheduler heartbeat and the last successful
+purge, not the runtime status of the scheduler run, so a fresh heartbeat
+does not prove a live run. See
+`docs/solutions/platform/admin-search-trace-retention-pattern.md`.
 The purge also removes trace-derived generated eval candidates whose
 `retentionExpiresAt` has passed while they remain `generated`, keeping
 unpromoted trace candidates inside the raw trace retention window.
@@ -1494,6 +1504,14 @@ AND embedding IS NOT NULL` grows as expected.
 
 ## Hybrid search (R4 of admin migration playbook)
 
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** #1622 removed
+> `HybridSearchService`, REST `GET /api/search`, and GraphQL `Query.search`.
+> The live search surface is `Query.watchSearch`
+> (`src/graphql/queries/watch-search.ts`), and `GET /api/search/health`
+> remains. Some retriever, fusion, and SQL modules named below still serve
+> `src/services/watch-search.service.ts`. Read this section as history, and
+> verify each named file before you act on it.
+
 Admin owns public hybrid search — semantic + keyword retrieval fused via
 Reciprocal Rank Fusion — over the `Video`/`VideoLocale` transcript-backed video
 semantic corpus and `Experience`/`ExperienceLocale` corpora. It originally
@@ -1639,6 +1657,10 @@ recommendations consume one implementation. `deduplicateResults` below
 is a thin `FusedResult`-typed wrapper.
 
 ## Hybrid search keyword-first mode (R4 extension)
+
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** The `mode` argument
+> went away with REST `/api/search` and `Query.search`. See the note at the
+> top of the R4 section.
 
 Opt-in `mode="keyword-first"` argument on the same `HybridSearchService`
 that R4 ships. Adds three lexical retrievers + a post-fusion semantic-
@@ -2312,6 +2334,15 @@ operator instructions.
 
 ## Search API authentication (Plan 002 + Plan 003)
 
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** #1622 removed the
+> two routes this section gates, REST `GET /api/search` and GraphQL
+> `Query.search`, and the bearer composer `isAnyKnownBearer`. The
+> `SEARCH_AUTH_REQUIRED` flag no longer exists, and `Query.watchSearch` is
+> public. The consumer bearer and the fleet-aware rate-limit bucketing below
+> still apply through `src/graphql/context.ts` and
+> `src/graphql/plugins/rate-limit.ts`. Verify each named file before you act
+> on the rest of this section.
+
 Admin's public search surface — `GET /api/search` REST + `Query.search`
 GraphQL twin — is gated by a bearer-key passport. Phase 1 (Plan 002)
 shipped in **dual-accept** mode (anonymous + bearer-auth both
@@ -2514,6 +2545,12 @@ See `docs/plans/2026-07-08-002-feat-admin-fleet-aware-rate-limit-bucketing-plan.
   `docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`
 
 ## Partner API key store
+
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** The routes these keys
+> authenticate, `/api/search` and `Query.search`, no longer exist. The
+> `PartnerApiKey` table, the `partner-keys` CLI, and `/dashboard/partner-keys`
+> remain, but no request path checks a partner key. The search trace and
+> search-eval bearers still reject `jfp_search_*`-shaped tokens.
 
 DB-backed external-partner credentials for `/api/search` + `Query.search`.
 Extends Plan 002's bearer-as-passport composer with a fourth branch
@@ -3107,14 +3144,17 @@ in the build and pre-deploy commands. Budgets: `PUSH_BATCH_PAGE_SIZE` 5000,
 ### Deploy order
 
 1. Merge with `PUSH_CAMPAIGNS_ENABLED` unset. Both admin services run migration 0120. Confirm `prisma migrate status` is clean on both.
-2. **Restart the recommendation-retention scheduler run once.** U1 added
+2. **Restart the worker once after the deploy.** U1 added
    `stepRunPushRetention` inside the durable
-   `runRecommendationRetentionScheduler` loop. The run that is alive at deploy
-   time replays an event log without that step, so the SDK can fail it with
-   `corrupted-event-log`. Cancel that run in the workflows dashboard and confirm
-   `ensureRecommendationRetentionSchedulerStarted` starts a fresh one (or
-   redeploy the worker once more). The 36-hour freshness guard does not do this
-   by itself.
+   `runRecommendationRetentionScheduler` loop. At boot, the worker replays the
+   live scheduler run, and the replay fails with `corrupted-event-log`. The boot
+   check `ensureRecommendationRetentionSchedulerStarted` can read the run before
+   it fails, so no scheduler runs until the next worker boot. After the worker
+   deploy succeeds, run `railway restart -e production -s @forge/admin/worker -y`.
+   Then confirm that a new `recommendation-retention-scheduler` ledger row is
+   `running` with a new `runtime_run_id`. The workflows dashboard has no cancel
+   control, and `workflow cancel` refuses a run that is already `failed`. See
+   `docs/solutions/workflow-issues/new-step-in-durable-workflow-loop-needs-worker-restart-after-deploy.md`.
 3. Set the worker's queue concurrency to at least 4 and record it.
 4. Provision the Expo access token on the worker service, then one batched
    Doppler write of the push vars with the flag on. Schedule must then be
@@ -3128,12 +3168,14 @@ in the build and pre-deploy commands. Budgets: `PUSH_BATCH_PAGE_SIZE` 5000,
 Turn `PUSH_CAMPAIGNS_ENABLED` off first: the next batch step marks the rest of
 the current group missed and ends the run as paused. Cancel scheduled and
 sending campaigns from the dashboard, then roll the worker back. A run left
-asleep on a worker without the workflow fails on wake and the recovery sweep
-pauses its campaign at the next worker start. Registrations survive a rollback;
-migration 0120 alters no existing table, so a code redeploy needs no data
-restore. A rollback also removes `stepRunPushRetention` from the retention
-loop, so cancel the live recommendation-retention scheduler run once after it,
-as deploy step 2 does, or its replay can fail with `corrupted-event-log`.
+asleep on a worker without the workflow fails when the rolled-back worker
+replays it at boot, and the recovery sweep pauses its campaign at the next
+worker start. Registrations survive a rollback; migration 0120 alters no
+existing table, so a code redeploy needs no data restore. A rollback also
+removes `stepRunPushRetention` from the retention loop, so the replay of the
+live scheduler run fails with `corrupted-event-log` at the boot of the
+rolled-back worker. Restart the worker once after the rollback deploy, as
+deploy step 2 does.
 
 A cancel is not instant once a group has gone out. The runtime cancel event
 makes the run terminal and every later step is refused, so the cancel emits it
