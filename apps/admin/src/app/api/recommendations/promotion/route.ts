@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { isTrustedReturnToOrigin } from "@/auth/origins"
 import { hasPermission } from "@/auth/permissions"
 import { resolveAdminSessionFromRequest } from "@/auth/session"
 import { prisma } from "@/db/client"
@@ -9,6 +10,7 @@ import {
 } from "@/services/recommendations/errors"
 import { dispatchRecommendationPromotion } from "@/services/recommendations/promotion/job"
 import { createRecommendationPromotionService } from "@/services/recommendations/promotion/service"
+import { readRecommendationOperatorBody } from "../operator-body"
 
 const RECENT_AUTH_MS = 15 * 60 * 1_000
 const CSRF_HEADER_VALUE = "recommendation-promotion-v1"
@@ -46,13 +48,57 @@ const KillSwitchInput = z
   })
   .strict()
 
-const MutationInput = z.union([ApprovalInput, TransitionInput, KillSwitchInput])
+const OwnerPreparationInput = z
+  .object({
+    action: z.literal("prepare_owner_release"),
+    operationId: z.string().uuid(),
+    expectedPointerGeneration: z.number().int().positive(),
+    graphGenerationId: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict()
+const OwnerActivationInput = OwnerPreparationInput.extend({
+  action: z.literal("activate_owner_release"),
+  bindingDigest: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict()
+const MutationInput = z.union([
+  ApprovalInput,
+  TransitionInput,
+  KillSwitchInput,
+  OwnerPreparationInput,
+  OwnerActivationInput,
+])
 
 export async function GET(request: Request): Promise<Response> {
   const session = await resolveAdminSessionFromRequest(request)
   if (!session) return error(401, "authentication_required")
   if (!hasPermission(session.principal, "operate:recommendation-experiments"))
     return error(403, "permission_denied")
+  const ownerOperationId = new URL(request.url).searchParams.get(
+    "ownerOperationId",
+  )
+  if (ownerOperationId) {
+    if (!z.string().uuid().safeParse(ownerOperationId).success)
+      return error(400, "invalid_operation")
+    try {
+      const ownerRelease = await createRecommendationPromotionService(
+        prisma,
+      ).reconcileOwnerRelease({
+        actor: session.principal,
+        authenticatedAt: session.authenticatedAt,
+        operationId: ownerOperationId,
+      })
+      return Response.json(
+        { ok: true, ownerRelease },
+        { headers: { "cache-control": "no-store" } },
+      )
+    } catch (cause) {
+      if (cause instanceof ForbiddenError)
+        return error(403, "permission_denied")
+      if (cause instanceof RecommendationInputError)
+        return error(400, "invalid_operation")
+      return error(503, "status_unavailable")
+    }
+  }
   const operationId = new URL(request.url).searchParams.get("operationId")
   if (operationId && !z.string().uuid().safeParse(operationId).success)
     return error(400, "invalid_operation")
@@ -93,17 +139,54 @@ export async function POST(request: Request): Promise<Response> {
     return error(403, "permission_denied")
   }
   let input: z.infer<typeof MutationInput>
+  const body = await readRecommendationOperatorBody(request)
+  if (!body.ok) return error(body.status, body.error)
   try {
-    input = MutationInput.parse(await request.json())
+    input = MutationInput.parse(body.value)
   } catch {
     return error(400, "invalid_input")
   }
   const recentAuthentication = isRecentlyAuthenticated(session.authenticatedAt)
-  if (input.action === "confirm_permanent" && !recentAuthentication) {
+  const directOwnerAction =
+    input.action === "prepare_owner_release" ||
+    input.action === "activate_owner_release"
+  if (
+    directOwnerAction &&
+    !hasPermission(session.principal, "approve:recommendation-permanent")
+  )
+    return error(403, "permission_denied")
+  if (
+    (input.action === "confirm_permanent" || directOwnerAction) &&
+    !recentAuthentication
+  ) {
     return error(401, "recent_authentication_required")
   }
 
   try {
+    if (
+      input.action === "prepare_owner_release" ||
+      input.action === "activate_owner_release"
+    ) {
+      const service = createRecommendationPromotionService(prisma)
+      const common = {
+        actor: session.principal,
+        authenticatedAt: session.authenticatedAt,
+        operationId: input.operationId,
+        expectedPointerGeneration: input.expectedPointerGeneration,
+        graphGenerationId: input.graphGenerationId,
+      }
+      const ownerRelease =
+        input.action === "prepare_owner_release"
+          ? await service.prepareOwnerRelease(common)
+          : await service.activateOwnerRelease({
+              ...common,
+              bindingDigest: input.bindingDigest,
+            })
+      return Response.json(
+        { ok: true, ownerRelease },
+        { headers: { "cache-control": "no-store" } },
+      )
+    }
     if (input.action === "approve_bounded") {
       const approval = await createRecommendationPromotionService(
         prisma,
@@ -155,7 +238,7 @@ export async function POST(request: Request): Promise<Response> {
 function hasSameOriginCsrfProof(request: Request) {
   const origin = request.headers.get("origin")
   return (
-    origin === new URL(request.url).origin &&
+    isTrustedReturnToOrigin(origin) &&
     request.headers.get("x-forge-csrf") === CSRF_HEADER_VALUE &&
     request.headers.get("content-type")?.split(";", 1)[0] === "application/json"
   )

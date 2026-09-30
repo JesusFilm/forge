@@ -1,4 +1,5 @@
 import type { SceneRecommendation } from "@/services/scene-recommendations.service"
+import type { CompositionInputDiagnostic } from "./composition/live-structure"
 import { dedupeByVideoIdentity } from "@/services/video-dedup"
 import {
   CANDIDATE_CONTEXT_VERSION,
@@ -244,6 +245,7 @@ export function appendSourceFailureEvidence(
   platform: CandidatePlatformResult,
   reasonCode: string,
   sourceGenerator = "semantic",
+  compositionInputDiagnostic?: CompositionInputDiagnostic,
 ): CandidatePlatformResult {
   const rejection: CandidateStageEvidence = {
     stage: "rejected",
@@ -258,7 +260,29 @@ export function appendSourceFailureEvidence(
     deterministicScore: null,
     finalPosition: null,
     reasonCodes: [reasonCode],
-    sourceEvidence: [],
+    sourceEvidence: compositionInputDiagnostic
+      ? [
+          {
+            // Rejected aggregate observation, never a candidate nomination.
+            generator: "mmr-composition-inputs",
+            generatorVersion: compositionInputDiagnostic.version,
+            rank: 0,
+            score: 0,
+            evidence: {
+              version: compositionInputDiagnostic.version,
+              missingSource: compositionInputDiagnostic.missingSource,
+              missingInterest: compositionInputDiagnostic.missingInterest,
+              missingTheme: compositionInputDiagnostic.missingTheme,
+              missingHistory: compositionInputDiagnostic.missingHistory,
+              candidateCount: compositionInputDiagnostic.candidateCount,
+              selectedCount: compositionInputDiagnostic.selectedCount,
+              themedSelectedCount:
+                compositionInputDiagnostic.themedSelectedCount,
+            },
+            rejectionReason: reasonCode,
+          },
+        ]
+      : [],
   }
   return {
     ...platform,

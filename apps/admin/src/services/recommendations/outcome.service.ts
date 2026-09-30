@@ -217,7 +217,7 @@ export class RecommendationOutcomeService {
             const episode = await tx.recommendationPlaybackEpisode.findUnique({
               where: { id: input.episodeId },
               include: {
-                request: true,
+                request: { select: { generation: true } },
                 facts: { orderBy: { sequence: "asc" } },
               },
             })

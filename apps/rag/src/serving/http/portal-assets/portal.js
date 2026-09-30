@@ -141,12 +141,13 @@ const menuIcons = {
   ],
   Suspend: ["M8 3v18M16 3v18"],
   Resume: ["m8 3 12 9-12 9z"],
-  Revoke: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M5.6 5.6l12.8 12.8"],
+  "Restore with new key": ["M3 12a9 9 0 1 0 9-9M3 3v9h9"],
+  Revoke: ["M3 12h18M12 3v18"],
 }
 const messages = {
   unauthorized: "Your session has ended or access has changed. Sign in again.",
   forbidden:
-    "This action is unavailable. Membership or access may have changed, or this consumer may be revoked.",
+    "This action is unavailable. Membership or access may have changed.",
   conflict:
     "The name is already used or another member changed this consumer. Refresh and review before trying again.",
   invalid: "Check the consumer name and selected member.",
@@ -260,7 +261,7 @@ async function mutate(
       notice("Changes saved. The directory could not refresh; try Refresh.")
     })
 }
-function issued(result, name) {
+function issued(result, name, onSaved) {
   const content = form("Save your API key", "Consumer: " + name)
   secret = result.secret
   const key = element("p", secret, "secret")
@@ -291,6 +292,7 @@ function issued(result, name) {
       () => {
         close()
         notice("")
+        onSaved?.()
       },
       "",
     ),
@@ -390,11 +392,12 @@ async function members(row) {
         ),
       )
       remove.disabled =
-        membership.members.length <= 1 || row.state === "revoked"
+        membership.members.length <= 1 ||
+        (row.state !== "active" && row.state !== "suspended")
       line.append(remove)
       body.append(line)
     }
-    if (row.state !== "revoked") {
+    if (row.state === "active" || row.state === "suspended") {
       const label = element("label", "Add member")
       const select = element("select")
       select.setAttribute("aria-label", "Add member")
@@ -496,7 +499,7 @@ function render() {
         }),
       )
       const path = "/consumers/" + row.consumerId
-      if (row.state !== "revoked") {
+      if (row.state === "active" || row.state === "suspended") {
         actions.append(
           button("Generate new key", () =>
             confirm(
@@ -522,19 +525,45 @@ function render() {
               label + " consumer?",
               "Suspended consumers cannot retrieve content. You can resume them later.",
               label,
-              () => mutate(path + "/state", { state: next }),
+              () =>
+                mutate(path + "/state", {
+                  state: next,
+                  expectedVersion: row.lifecycleVersion,
+                }),
             ),
           ),
         )
+      } else if (row.state === "revoked") {
+        actions.append(
+          button("Restore with new key", () =>
+            mutate(
+              path + "/recover",
+              {
+                expectedVersion: row.credentialVersion,
+                expectedLifecycleVersion: row.lifecycleVersion,
+              },
+              "POST",
+              true,
+              (result) =>
+                issued(result, row.name, () => selectStatus("active")),
+            ),
+          ),
+        )
+      }
+      if (row.state === "active" || row.state === "suspended") {
         actions.append(
           button(
             "Revoke",
             () =>
               confirm(
                 "Revoke consumer?",
-                "This permanently disables the consumer. It cannot be resumed or issued another key.",
+                "This immediately disables the consumer and its current key. Its name stays reserved. You can restore it later only with a new key.",
                 "Revoke consumer",
-                () => mutate(path + "/state", { state: "revoked" }),
+                () =>
+                  mutate(path + "/state", {
+                    state: "revoked",
+                    expectedVersion: row.lifecycleVersion,
+                  }),
                 true,
               ),
             "danger",
@@ -660,18 +689,21 @@ document
   .forEach((node) =>
     node.addEventListener("click", () => showSection(node.dataset.section)),
   )
-document.querySelectorAll("[data-filter]").forEach((node) =>
-  node.addEventListener("click", () => {
-    statusFilter = node.dataset.filter
-    pageIndex = 0
-    document.querySelectorAll("[data-filter]").forEach((item) => {
-      const selected = item.dataset.filter === statusFilter
-      item.classList.toggle("selected", selected)
-      item.setAttribute("aria-pressed", String(selected))
-    })
-    render()
-  }),
-)
+function selectStatus(status) {
+  statusFilter = status
+  pageIndex = 0
+  document.querySelectorAll("[data-filter]").forEach((item) => {
+    const selected = item.dataset.filter === statusFilter
+    item.classList.toggle("selected", selected)
+    item.setAttribute("aria-pressed", String(selected))
+  })
+  render()
+}
+document
+  .querySelectorAll("[data-filter]")
+  .forEach((node) =>
+    node.addEventListener("click", () => selectStatus(node.dataset.filter)),
+  )
 byId("search").addEventListener("input", (event) => {
   searchTerm = event.target.value.trim().toLowerCase()
   pageIndex = 0

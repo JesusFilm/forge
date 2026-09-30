@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
+import { OwnerReleaseControls } from "./OwnerReleaseControls"
+import { readPromotionForbiddenReason } from "./promotion-response"
 
 type Props = Readonly<{
   generation: number
-  stage: "control" | "bounded" | "permanent"
+  stage: "control" | "bounded" | "permanent" | "owner_approved"
   targetManifestId: string | null
   lastKnownGoodManifestId: string
   approvalId: string | null
@@ -13,6 +15,12 @@ type Props = Readonly<{
   proposedExposureCeilingBps: number
   killSwitchEnabled: boolean
   ready: boolean
+  ownerRelease?: {
+    id: string
+    validUntil: string
+    graphGenerationId: string
+    revoked: boolean
+  } | null
 }>
 
 type MutationState =
@@ -25,19 +33,67 @@ type MutationState =
   | "stale-page"
   | "authorization-failure"
 
+type Confirmation = { body: Record<string, unknown>; message: string }
+
 export function PromotionControls(props: Props) {
   const [state, setState] = useState<MutationState>("idle")
   const [message, setMessage] = useState<string | null>(null)
   const [operationId, setOperationId] = useState<string | null>(null)
-  const disabled = [
-    "pending",
-    "queued",
-    "acknowledgement-unknown",
-    "stale-page",
-  ].includes(state)
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
+  const confirmationRef = useRef<Confirmation | null>(null)
+  const operationInFlight = useRef(false)
+  const confirmationId = useId()
+  const cancelButton = useRef<HTMLButtonElement>(null)
+  const returnFocus = useRef<HTMLElement | null>(null)
+  const statusMessage = useRef<HTMLParagraphElement>(null)
+  const disabled =
+    confirmation !== null ||
+    ["pending", "queued", "acknowledgement-unknown", "stale-page"].includes(
+      state,
+    )
 
-  async function mutate(body: Record<string, unknown>, confirmation?: string) {
-    if (confirmation && !window.confirm(confirmation)) return
+  useEffect(() => {
+    if (confirmation) {
+      cancelButton.current?.focus()
+    } else if (returnFocus.current) {
+      if (operationInFlight.current) statusMessage.current?.focus()
+      else returnFocus.current.focus()
+      returnFocus.current = null
+    }
+  }, [confirmation])
+
+  function mutate(body: Record<string, unknown>, message?: string) {
+    if (operationInFlight.current || confirmationRef.current) return
+    if (message) {
+      const next = { body, message }
+      returnFocus.current =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null
+      confirmationRef.current = next
+      setConfirmation(next)
+      return
+    }
+    void submit(body)
+  }
+
+  function cancelConfirmation() {
+    confirmationRef.current = null
+    setConfirmation(null)
+  }
+
+  function confirmMutation() {
+    const pending = confirmationRef.current
+    if (!pending || operationInFlight.current) return
+    // Consume synchronously: two clicks before React renders still submit once.
+    confirmationRef.current = null
+    setConfirmation(null)
+    void submit(pending.body)
+  }
+
+  async function submit(body: Record<string, unknown>) {
+    if (operationInFlight.current) return
+    operationInFlight.current = true
     const transition = [
       "activate_bounded",
       "confirm_permanent",
@@ -62,12 +118,22 @@ export function PromotionControls(props: Props) {
         setMessage("This page is stale. Reload before making another decision.")
         return
       }
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         setState("authorization-failure")
+        setMessage("Sign in again before confirming this decision.")
+        return
+      }
+      if (response.status === 403) {
+        const reason = await readPromotionForbiddenReason(response)
+        setState(
+          reason === "permission_denied" ? "authorization-failure" : "failed",
+        )
         setMessage(
-          response.status === 401
-            ? "Sign in again before confirming this decision."
-            : "Your role is not authorized for this decision.",
+          reason === "csrf_failed"
+            ? "Request security validation failed. Reload the canonical Admin page before trying again."
+            : reason === "permission_denied"
+              ? "Your role is not authorized for this decision."
+              : "The request was refused. Reload current state before trying again.",
         )
         return
       }
@@ -94,6 +160,8 @@ export function PromotionControls(props: Props) {
       setMessage(
         "Acknowledgement unknown. The transition may have been recorded. Refresh status before any retry.",
       )
+    } finally {
+      operationInFlight.current = false
     }
   }
 
@@ -135,8 +203,15 @@ export function PromotionControls(props: Props) {
 
   return (
     <div>
+      <OwnerReleaseControls
+        generation={props.generation}
+        killSwitchEnabled={props.killSwitchEnabled}
+        ownerRelease={props.ownerRelease}
+      />
       <div className="flex flex-wrap gap-2">
-        {!props.approvalId && props.targetManifestId ? (
+        {props.stage !== "owner_approved" &&
+        !props.approvalId &&
+        props.targetManifestId ? (
           <button
             type="button"
             className={buttonClass}
@@ -239,7 +314,7 @@ export function PromotionControls(props: Props) {
         <button
           type="button"
           className={buttonClass}
-          disabled={state === "pending"}
+          disabled={state === "pending" || confirmation !== null}
           onClick={() =>
             mutate(
               {
@@ -251,7 +326,7 @@ export function PromotionControls(props: Props) {
                   : "manual_emergency_stop",
               },
               props.killSwitchEnabled
-                ? "Clear the emergency hold and resume the audited stage?"
+                ? "Clear the emergency hold? Revoked direct releases remain revoked and require a new reviewed graph release."
                 : "Stop challenger influence and fence cached and persisted influence now?",
             )
           }
@@ -259,6 +334,49 @@ export function PromotionControls(props: Props) {
           {props.killSwitchEnabled ? "Clear emergency hold" : "Emergency stop"}
         </button>
       </div>
+      {confirmation ? (
+        <section
+          aria-labelledby={`${confirmationId}-title`}
+          aria-describedby={`${confirmationId}-description`}
+          className="mt-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] p-3"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault()
+              cancelConfirmation()
+            }
+          }}
+        >
+          <h3
+            id={`${confirmationId}-title`}
+            className="text-[12px] font-medium"
+          >
+            Confirm promotion action
+          </h3>
+          <p
+            id={`${confirmationId}-description`}
+            className="mt-2 text-[12px] text-[var(--color-text-muted)]"
+          >
+            {confirmation.message}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              ref={cancelButton}
+              type="button"
+              className={buttonClass}
+              onClick={cancelConfirmation}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={buttonClass}
+              onClick={confirmMutation}
+            >
+              Confirm
+            </button>
+          </div>
+        </section>
+      ) : null}
       {["queued", "acknowledgement-unknown", "stale-page"].includes(state) ? (
         <div className="mt-3 text-[12px]">
           <button
@@ -274,6 +392,8 @@ export function PromotionControls(props: Props) {
         </div>
       ) : null}
       <p
+        ref={statusMessage}
+        tabIndex={-1}
         className="mt-3 min-h-5 text-[12px] text-[var(--color-text-muted)]"
         role="status"
         aria-live="polite"

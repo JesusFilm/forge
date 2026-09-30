@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { readFileSync } from "node:fs"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { createPrismaClient } from "@/db/client"
@@ -8,8 +9,11 @@ import { runSemanticCandidatePlatform } from "./orchestration"
 import {
   makeHarness,
   input,
+  personalizedInput,
   semanticCandidates,
 } from "./delivery.service.test-helpers"
+import { userDeliveryHarness } from "./user-delivery.service.test-helpers"
+import { servedSnapshotValue } from "./served-item-payload"
 
 // Full migrations must be applied to an owned database. Retrieval/token fixtures
 // are synthetic; persistence, constraints, triggers and adapter are real.
@@ -21,6 +25,7 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
       connectionString: process.env.DATABASE_URL,
     })
     const seeds: string[] = []
+    const userRequestIds: string[] = []
     beforeAll(async () => {
       await controller.connect()
     })
@@ -28,8 +33,88 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
       await prisma.recommendationRequest.deleteMany({
         where: { seedMediaId: { in: seeds } },
       })
+      await prisma.recommendationRequest.deleteMany({
+        where: { id: { in: userRequestIds } },
+      })
       await prisma.$disconnect()
       await controller.end()
+    })
+
+    it("preserves exact seeded and For You snapshots through real packed writes", async () => {
+      const snapshots: Array<
+        { presentation: unknown; candidateProvenance: unknown }[]
+      > = []
+      for (const format of ["legacy", "packed"] as const) {
+        const seeded = makeHarness({
+          database: prisma,
+          servedItemFormat: format,
+        })
+        seeded.retrieve.mockResolvedValue(semanticCandidates(6))
+        const seed = `served-format-${format}-${randomUUID()}`
+        seeds.push(seed)
+        const served = await seeded.service.deliver(input(seed))
+        expect(served.result).toBe("served")
+        const request = await prisma.recommendationRequest.findUniqueOrThrow({
+          where: { id: served.requestId! },
+          include: { items: { orderBy: { position: "asc" } } },
+        })
+        expect(request.items).toHaveLength(6)
+        expect(request.servedItemPayload === null).toBe(format === "legacy")
+        snapshots.push(
+          request.items.map((item) => {
+            const restored = servedSnapshotValue(
+              request.servedItemPayload,
+              item,
+            )
+            return {
+              presentation: restored.presentation,
+              candidateProvenance: restored.candidateProvenance,
+            }
+          }),
+        )
+      }
+      expect(snapshots[1]).toEqual(snapshots[0])
+
+      const userSnapshots: typeof snapshots = []
+      for (const format of ["legacy", "packed"] as const) {
+        const user = userDeliveryHarness(2, prisma, format)
+        const served = await user.service.deliver(personalizedInput())
+        expect(served.result).toBe("served")
+        userRequestIds.push(served.requestId!)
+        const request = await prisma.recommendationRequest.findUniqueOrThrow({
+          where: { id: served.requestId! },
+          include: { items: { orderBy: { position: "asc" } } },
+        })
+        expect(request.items).toHaveLength(6)
+        expect(request.servedItemPayload === null).toBe(format === "legacy")
+        userSnapshots.push(
+          request.items.map((item) => {
+            const restored = servedSnapshotValue(
+              request.servedItemPayload,
+              item,
+            )
+            return {
+              presentation: restored.presentation,
+              candidateProvenance: restored.candidateProvenance,
+            }
+          }),
+        )
+      }
+      expect(userSnapshots[1]).toEqual(userSnapshots[0])
+      const outcomeDiagnostic = readFileSync(
+        new URL(
+          "../../../../../docs/operations/user-recommendations-outcomes.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      )
+      const diagnostic = await controller.query(outcomeDiagnostic)
+      expect(diagnostic.rows).toEqual([
+        expect.objectContaining({
+          cohort: "returning",
+          delivered_slates: "2",
+        }),
+      ])
     })
 
     it("returns identical complete Admin stage detail from actual legacy and compact writes", async () => {

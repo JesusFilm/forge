@@ -1,3 +1,12 @@
+import {
+  RecommendationOwnerReleaseOperator,
+  type OwnerReleaseOperatorInput,
+} from "./owner-operator"
+import {
+  lockOwnerReleaseForRevocation,
+  readActiveOwnerRelease,
+} from "./owner-authority"
+import { ownerReleaseInfluenceAllowed } from "./owner-influence"
 import { assertStudyAuthority } from "../experiment/study-authority"
 import { PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION } from "../experiment/assignment"
 import { STUDY_POLICY_VERSION } from "../experiment/study-protocol"
@@ -78,6 +87,33 @@ type ExecutionResult =
 
 export class RecommendationPromotionService {
   constructor(private readonly deps: Dependencies) {}
+
+  prepareOwnerRelease(input: OwnerReleaseOperatorInput) {
+    return this.ownerOperator().prepare(input)
+  }
+
+  activateOwnerRelease(
+    input: OwnerReleaseOperatorInput & { bindingDigest: string },
+  ) {
+    return this.ownerOperator().activate(input)
+  }
+
+  reconcileOwnerRelease(input: {
+    actor: Principal
+    authenticatedAt: Date | null
+    operationId: string
+  }) {
+    return this.ownerOperator().reconcile(input)
+  }
+
+  private ownerOperator() {
+    return new RecommendationOwnerReleaseOperator({
+      prisma: this.deps.prisma,
+      now: this.deps.now,
+      invalidateCaches:
+        this.deps.invalidateCaches ?? invalidateRecommendationCandidatePools,
+    })
+  }
 
   async approveBoundedStage(input: {
     actor: Principal
@@ -410,6 +446,9 @@ export class RecommendationPromotionService {
 
         const action = policyAction(run.action)
         const rollback = isRollback(action)
+        if (rollback && pointer.activeOwnerReleaseId) {
+          await lockOwnerReleaseForRevocation(tx, pointer.activeOwnerReleaseId)
+        }
         if (
           !rollback &&
           run.targetManifestId === HYBRID_PERSONALIZED_MANIFEST_ID
@@ -516,6 +555,12 @@ export class RecommendationPromotionService {
           data: {
             activeManifestId: nextManifestId,
             activeApprovalId: rollback ? null : run.approvalId,
+            ...(rollback
+              ? {
+                  activeOwnerReleaseId: null,
+                  ownerInfluenceFloorGeneration: nextGeneration,
+                }
+              : {}),
             stage: databaseStage(transition.nextStage),
             exposureCeilingBps: transition.nextExposureCeilingBps,
             generation: nextGeneration,
@@ -554,6 +599,7 @@ export class RecommendationPromotionService {
               experimentGeneration:
                 run.evaluation?.experiment.generation ?? null,
               activeManifestId: pointer.activeManifestId,
+              ownerReleaseId: pointer.activeOwnerReleaseId,
               pointerGeneration: nextGeneration,
               now,
             })
@@ -674,11 +720,29 @@ export class RecommendationPromotionService {
             changed: false,
           } as const
         }
+        if (input.enabled && pointer.activeOwnerReleaseId) {
+          await lockOwnerReleaseForRevocation(tx, pointer.activeOwnerReleaseId)
+        }
         const nextGeneration = pointer.generation + 1
+        const stoppedOwner =
+          input.enabled &&
+          pointer.stage === RecommendationPromotionStage.OWNER_APPROVED
         const updated = await tx.recommendationPromotionPointer.updateMany({
           where: { id: pointer.id, generation: pointer.generation },
           data: {
             killSwitchEnabled: input.enabled,
+            ...(input.enabled
+              ? { ownerInfluenceFloorGeneration: nextGeneration }
+              : {}),
+            ...(stoppedOwner
+              ? {
+                  activeOwnerReleaseId: null,
+                  activeApprovalId: null,
+                  activeManifestId: pointer.lastKnownGoodManifestId,
+                  stage: RecommendationPromotionStage.CONTROL,
+                  exposureCeilingBps: 0,
+                }
+              : {}),
             generation: nextGeneration,
             reasonCode: input.enabled ? reason : "kill_switch_cleared",
           },
@@ -691,18 +755,12 @@ export class RecommendationPromotionService {
           ReturnType<typeof applyPromotionRollbackPolicy>
         > | null = null
         if (input.enabled) {
-          const experiment = await tx.recommendationExperiment.findFirst({
-            where: {
-              challengerManifestId: pointer.activeManifestId,
-              state: "ACTIVE",
-            },
-            select: { id: true, generation: true },
-          })
           influenceFence = await applyPromotionRollbackPolicy(tx, {
             runId: `kill-switch:${nextGeneration}`,
-            experimentId: experiment?.id ?? null,
-            experimentGeneration: experiment?.generation ?? null,
+            experimentId: null,
+            experimentGeneration: null,
             activeManifestId: pointer.activeManifestId,
+            ownerReleaseId: pointer.activeOwnerReleaseId,
             pointerGeneration: nextGeneration,
             now,
           })
@@ -715,9 +773,13 @@ export class RecommendationPromotionService {
               ? RecommendationPromotionEventType.KILL_SWITCH_ENABLED
               : RecommendationPromotionEventType.KILL_SWITCH_CLEARED,
             fromManifestId: pointer.activeManifestId,
-            toManifestId: pointer.activeManifestId,
+            toManifestId: stoppedOwner
+              ? pointer.lastKnownGoodManifestId
+              : pointer.activeManifestId,
             fromStage: pointer.stage,
-            toStage: pointer.stage,
+            toStage: stoppedOwner
+              ? RecommendationPromotionStage.CONTROL
+              : pointer.stage,
             pointerGeneration: nextGeneration,
             exposureCeilingBps: pointer.exposureCeilingBps,
             actorClass: "admin",
@@ -823,16 +885,68 @@ export async function recordFirstEligiblePromotionExposure(
     receivedAt: Date
   },
 ) {
-  const pointer = await tx.recommendationPromotionPointer.findUnique({
+  let pointer = await tx.recommendationPromotionPointer.findUnique({
     where: { id: PROMOTION_POINTER_ID },
   })
   if (
     !pointer ||
     pointer.killSwitchEnabled ||
     pointer.stage === RecommendationPromotionStage.CONTROL ||
-    pointer.activeManifestId !== input.effectiveManifestId
+    (pointer.stage !== RecommendationPromotionStage.OWNER_APPROVED &&
+      pointer.activeManifestId !== input.effectiveManifestId)
   ) {
     return false
+  }
+  let ownerReleaseId: string | null = null
+  if (pointer.stage === RecommendationPromotionStage.OWNER_APPROVED) {
+    const request = await tx.recommendationRequest.findUnique({
+      where: { id: input.requestId },
+      select: {
+        id: true,
+        ownerReleaseId: true,
+        ownerReleaseGeneration: true,
+        manifestId: true,
+        personalizationDecision: {
+          select: { effectiveManifestId: true, executionMode: true },
+        },
+      },
+    })
+    if (
+      !request?.ownerReleaseId ||
+      request.ownerReleaseGeneration !== pointer.generation ||
+      request.ownerReleaseId !== pointer.activeOwnerReleaseId ||
+      request.manifestId !== input.effectiveManifestId ||
+      request.personalizationDecision?.effectiveManifestId !==
+        pointer.activeManifestId ||
+      request.personalizationDecision.executionMode !==
+        "cowatch_mmr_personalized"
+    )
+      return false
+    const release = await tx.recommendationOwnerRelease.findUnique({
+      where: { id: request.ownerReleaseId },
+    })
+    if (!release) return false
+    await tx.$queryRaw`SELECT id FROM recommendation_cowatch_generation WHERE id = ${release.graphGenerationId}::char(64) FOR SHARE`
+    await tx.$queryRaw`SELECT id FROM recommendation_owner_release WHERE id = ${release.id}::uuid FOR SHARE`
+    await tx.$queryRaw`SELECT id FROM recommendation_promotion_pointer WHERE id = 'recommendation-promotion-pointer' FOR SHARE`
+    const authority = await readActiveOwnerRelease(tx, input.receivedAt)
+    if (
+      !authority ||
+      authority.releaseId !== request.ownerReleaseId ||
+      authority.pointerGeneration !== request.ownerReleaseGeneration ||
+      !(await ownerReleaseInfluenceAllowed(tx, request))
+    )
+      return false
+    pointer = await tx.recommendationPromotionPointer.findUnique({
+      where: { id: PROMOTION_POINTER_ID },
+    })
+    if (
+      !pointer ||
+      pointer.activeOwnerReleaseId !== authority.releaseId ||
+      pointer.generation !== authority.pointerGeneration
+    )
+      return false
+    ownerReleaseId = release.id
   }
   const created = await tx.recommendationPromotionEvent.createMany({
     data: [
@@ -854,7 +968,12 @@ export async function recordFirstEligiblePromotionExposure(
           itemId: input.itemId,
           occurredAt: input.occurredAt,
         }),
-        details: { receivedAt: input.receivedAt.toISOString() },
+        details: {
+          receivedAt: input.receivedAt.toISOString(),
+          ...(ownerReleaseId
+            ? { ownerReleaseId, ownerReleaseGeneration: pointer.generation }
+            : {}),
+        },
         now: input.receivedAt,
       }),
     ],
@@ -1017,6 +1136,7 @@ function databaseStage(stage: PromotionStage): RecommendationPromotionStage {
     control: RecommendationPromotionStage.CONTROL,
     bounded: RecommendationPromotionStage.BOUNDED,
     permanent: RecommendationPromotionStage.PERMANENT,
+    owner_approved: RecommendationPromotionStage.OWNER_APPROVED,
   }[stage]
 }
 
@@ -1028,6 +1148,8 @@ function policyStage(stage: RecommendationPromotionStage): PromotionStage {
       return "bounded"
     case RecommendationPromotionStage.PERMANENT:
       return "permanent"
+    case RecommendationPromotionStage.OWNER_APPROVED:
+      return "owner_approved"
   }
 }
 

@@ -89,6 +89,8 @@ const COPY_MODULES = {
     "LapseReminder: the reminder body and the Android channel name",
   "src/lib/libraryDownloads.ts": "Library: the downloads list text",
   "src/lib/playbackTarget.ts": "Cast: the Cast button and indicator labels",
+  "src/lib/push/copy.ts":
+    "Push: the announcements channel name, the tap notice, and the test ID alert",
   "src/lib/rawModeLabel.ts": "DownloadSheet: the save-to-folder button label",
   "src/lib/seriesDownloadAggregate.ts":
     "DownloadButton: the series Download button's spoken label",
@@ -159,6 +161,13 @@ const ALLOWED = [
     rule: "copy-prop",
     text: "AirPlay",
     reason: "Apple's product name, the same in every language",
+  },
+  {
+    file: "src/lib/push/deviceEnvironment.ts",
+    rule: "intl-default-locale",
+    text: "Intl.DateTimeFormat()",
+    reason:
+      "Push registration reports the phone's own locale and time zone to admin; it formats no text",
   },
   {
     file: "src/lib/watchHome/fallbackConfig.ts",

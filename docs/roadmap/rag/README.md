@@ -8,12 +8,12 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 29, 2026)
+## Status (September 30, 2026)
 
-- **Total tickets:** 37
+- **Total tickets:** 40
 - **Complete:** 25
 - **In progress:** 3
-- **Not started:** 9
+- **Not started:** 12
 - **Blocked:** 0
 
 ## Feature Index
@@ -53,10 +53,15 @@ database into Admin.
 | [feat-568](feat-568-rag-usage-capacity-review.md)                 | —                                                             | Review usage capacity before volume expansion                      | not-started | —                                                                                                                                                                                                                                                                                 |
 | [feat-529](feat-529-rag-consumer-dogfood-migration.md)            | —                                                             | Dogfood and seven-day migration                                    | in-progress | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2459](https://github.com/JesusFilm/forge/pull/2459), [#2468](https://github.com/JesusFilm/forge/pull/2468), [#2472](https://github.com/JesusFilm/forge/pull/2472)                                                        |
 | [feat-530](feat-530-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                       | in-progress | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2442](https://github.com/JesusFilm/forge/pull/2442), [#2445](https://github.com/JesusFilm/forge/pull/2445)                                                                                                               |
+| [feat-575](feat-575-rag-portal-session-recovery.md)               | —                                                             | Renew portal sessions and restore the active section               | not-started | [#2475](https://github.com/JesusFilm/forge/pull/2475)                                                                                                                                                                                                                             |
+| [feat-580](feat-580-rag-consumer-revocation-restoration.md)       | —                                                             | Revoke and restore RAG portal consumers                            | complete    | [#2496](https://github.com/JesusFilm/forge/pull/2496)                                                                                                                                                                                                                             |
 | [feat-532](feat-532-rag-legacy-service-credential-retirement.md)  | —                                                             | Retire legacy JesusFilm-RAG service and credentials                | not-started | [#2379](https://github.com/JesusFilm/forge/pull/2379)                                                                                                                                                                                                                             |
 | [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                   | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                             |
 | [feat-541](feat-541-rag-database-diagram.md)                      | —                                                             | Document the RAG database schema as a complete ERD                 | complete    | [#2398](https://github.com/JesusFilm/forge/pull/2398)                                                                                                                                                                                                                             |
 | [feat-569](feat-569-rag-portal-sources.md)                        | —                                                             | Production source catalog in the portal                            | complete    | [#2463](https://github.com/JesusFilm/forge/pull/2463)                                                                                                                                                                                                                             |
+
+| [feat-575](feat-575-rag-consumer-manual.md) | [#98](https://github.com/JesusFilm/jesusfilm-rag/issues/98) | Build Consumer Manual, database-backed filters and code samples | not-started | [#2485](https://github.com/JesusFilm/forge/pull/2485) |
+| [feat-576](feat-576-rag-governed-test-bench.md) | — | Enable governed test-bench execution and dedicated usage | not-started | [#2485](https://github.com/JesusFilm/forge/pull/2485) |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
@@ -110,3 +115,15 @@ No consumer-registration PR or Git-backed per-consumer authorization remains.
 Discovery and J021 evidence stay in separate draft
 [PR #2325](https://github.com/JesusFilm/forge/pull/2325); the plan stays in
 [PR #2304](https://github.com/JesusFilm/forge/pull/2304).
+
+## Consumer Manual and test bench
+
+[feat-575](feat-575-rag-consumer-manual.md) specifies the Knowledge page with the
+approved [A/D composition](evidence/feat-575/consumer-manual-combined.png),
+database-derived filter options, generated consumer
+code and a fully disabled sample bench. It blocks
+[feat-576](feat-576-rag-governed-test-bench.md), which separately specifies real
+query execution, sample removal, the Jaco-owned test-bench consumer, server-held
+Railway token, default-off execution flag and hard resource bounds. Both local
+implementation tickets are tagged `ready-for-agent` and remain not started;
+publication of their specs does not enable execution or provision credentials.

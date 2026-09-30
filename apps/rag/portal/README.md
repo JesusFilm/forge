@@ -143,7 +143,7 @@ Consumers, Usage and Knowledge, without Settings. The two unfinished sections sh
 the supplied capybara construction illustration, loaded on demand.
 
 Use semantic rows with name, status, actual member count and owner-only action
-popover. Provide name search, All/Active/Revoked filters, name sorting and real
+popover. Provide name search, All/Active/Suspended/Revoked filters, name sorting and real
 pagination (20 rows). Narrow screens scroll the table within the panel. Popovers
 support keyboard traversal, Escape and outside dismissal.
 

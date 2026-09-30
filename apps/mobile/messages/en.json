@@ -229,6 +229,16 @@
     "day7TitledBody": "{title} is still here whenever you are ready.",
     "channelName": "Reminders"
   },
+  "Push": {
+    "announcementsChannelName": "Announcements",
+    "unresolvableDestination": "We could not open that announcement. Here is the home screen.",
+    "testIdTitle": "Notification test ID",
+    "testIdHelp": "Share this ID with the team to receive test announcements on this phone.",
+    "testIdRegistering": "Registering this phone…",
+    "testIdNotificationsOff": "Notifications are off for this phone. Turn them on in Settings to receive announcements.",
+    "testIdClose": "Close",
+    "testIdCopy": "Copy test ID"
+  },
   "Explore": {
     "mute": "Mute",
     "unmute": "Unmute",

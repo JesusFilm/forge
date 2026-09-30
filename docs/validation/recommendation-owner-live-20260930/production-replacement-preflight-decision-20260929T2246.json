@@ -1,0 +1,10 @@
+{
+  "attemptId": "c806ab0b-dca6-4fcc-bca4-82b6cc4237d2",
+  "reason": "Previous publication refused generation_changed before inserts; one reviewed replacement preflight of the identical complete fixed window is authorized by the parent.",
+  "expectedRuntimeCommit": "4455fa50e18902d326b64ec4abcd8285ab0574de",
+  "helperSha256": "7f6165461163aee44653df22876cbb59611113c5940abe835e0f512eab63edad",
+  "sourceWindowUnchanged": true,
+  "limitsUnchanged": true,
+  "automaticRetryPermitted": false,
+  "recordedAt": "2026-09-29T22:46:25.667989+00:00"
+}

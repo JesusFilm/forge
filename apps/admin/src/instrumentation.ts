@@ -161,6 +161,26 @@ export class WorkflowStartupConfigurationError extends Error {
   }
 }
 
+/**
+ * KTD1 — the Expo access token belongs to the dedicated worker only. Admin web
+ * refuses to boot with it injected, following the Typesense operator recipe, so
+ * a project variable cannot quietly give a traffic replica sending authority.
+ */
+export function assertPushTransportRuntime(): void {
+  const isDedicatedPostgresWorker =
+    env.WORKFLOW_RUNNER_ENABLED === "true" &&
+    env.WORKFLOW_TARGET_WORLD === "@workflow/world-postgres"
+  if (
+    env.NODE_ENV === "production" &&
+    env.EXPO_ACCESS_TOKEN?.trim() &&
+    !isDedicatedPostgresWorker
+  ) {
+    throw new WorkflowStartupConfigurationError(
+      "EXPO_ACCESS_TOKEN is restricted to the dedicated Postgres worker in production",
+    )
+  }
+}
+
 export function assertWatchSearchTranscriptPublicationRuntime(): void {
   const publicationEnabled = resolveWatchSearchTranscriptPublicationEnabled()
   const isDedicatedPostgresWorker =
@@ -227,9 +247,18 @@ async function startWorkflowWorld(): Promise<void> {
   } = await import("@/services/studio-authoring/calendar-scheduler")
   const { ensureWatchSearchTranscriptPublicationWorkerStarted } =
     await import("@/services/typesense-watch-search-transcript-publication")
+  const { ensurePushCampaignRecovery } =
+    await import("@/services/push/recovery")
   const world = getWorld()
   await world.start?.()
   await startWorkflowWorkerHeartbeat()
+  const { prisma, syncPrisma } = await import("@/db/client")
+  const { ensureCoreSyncPhaseWorkerStarted } =
+    await import("@/services/core-sync/phase-execution")
+  ensureCoreSyncPhaseWorkerStarted(syncPrisma)
+  const { ensureWatchCatalogPublicationWorkerStarted } =
+    await import("@/services/watch-catalog-publication-worker")
+  ensureWatchCatalogPublicationWorkerStarted(syncPrisma)
   await ensureStudioCalendarSchedulerStarted()
   await ensureStudioCalendarPublicationSchedulerStarted()
   await ensureCoreSyncSchedulerStarted()
@@ -248,11 +277,13 @@ async function startWorkflowWorld(): Promise<void> {
   scheduleProfileReconciliationRecovery(
     ensureRecommendationProfileReconciliationSchedulerStarted,
   )
-  const { prisma } = await import("@/db/client")
   await ensureWatchSearchTranscriptPublicationWorkerStarted(prisma)
   void ensureRecommendationRecovery(
     ensureRecommendationEpisodeFinalizationRecovery,
   )
+  // KTD2 — a campaign whose run the runtime no longer holds leaves its pending
+  // zones missed. It never throws into boot and never blocks the other workers.
+  void ensurePushCampaignRecovery()
 }
 
 function scheduleProfileReconciliationRecovery(
@@ -357,6 +388,7 @@ async function startWorkflowWorldWithTransientRetry(
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     assertWatchSearchTranscriptPublicationRuntime()
+    assertPushTransportRuntime()
     const { configureDatadog } = await import("@/observability/datadog")
     configureDatadog()
     startWatchSearchPrewarm()

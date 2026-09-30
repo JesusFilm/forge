@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { mapRecommendationRequestDetail } from "./detail.mapper"
 import { shadowSlateProvenanceSql } from "./shadow-slate-provenance"
+import { withRecommendationSerializableRetry } from "../transaction-retry"
 import type {
   DetailAuditRow,
   DetailCandidateRunRow,
@@ -33,8 +34,13 @@ export type {
 } from "./detail.types"
 
 export function usesCompactCandidateTrace(
-  run: Pick<DetailCandidateRunRow, "traceFormatVersion" | "hasTracePayload">,
+  run: Pick<DetailCandidateRunRow, "traceFormatVersion" | "hasTracePayload"> &
+    Partial<Pick<DetailCandidateRunRow, "legacyDetailRetiredAt">>,
 ): boolean {
+  if (run.legacyDetailRetiredAt != null) {
+    if (run.traceFormatVersion == null && !run.hasTracePayload) return false
+    throw new Error("Unsupported recommendation candidate trace format")
+  }
   if (run.traceFormatVersion == null && !run.hasTracePayload) return false
   if (run.traceFormatVersion === 1 && run.hasTracePayload) return true
   throw new Error("Unsupported recommendation candidate trace format")
@@ -56,7 +62,17 @@ export async function loadRecommendationRequestDetail(
     now.getTime() +
       RECOMMENDATION_TRACE_ACCESS_RETENTION_DAYS * RECOMMENDATION_OPS_DAY_MS,
   )
-  const data = await prisma.$transaction(
+  const readConsistently = <T>(
+    read: (tx: Prisma.TransactionClient) => Promise<T>,
+  ) =>
+    withRecommendationSerializableRetry(() =>
+      prisma.$transaction(read, {
+        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      }),
+    )
+  const data = await readConsistently(
+    // A retirement that wins the root lock updates the run. Its second row
+    // lock rejects this stale snapshot, and the whole read and audit retry.
     async (tx) => {
       const roots = await tx.$queryRaw<DetailRootRow[]>(Prisma.sql`
       SELECT
@@ -131,6 +147,7 @@ export async function loadRecommendationRequestDetail(
         run.id,
         run.trace_format_version AS "traceFormatVersion",
         (run.trace_payload IS NOT NULL) AS "hasTracePayload",
+        run.legacy_detail_retired_at AS "legacyDetailRetiredAt",
         run.purpose,
         run.context_version AS "contextVersion",
         run.generator_version AS "generatorVersion",
@@ -155,6 +172,7 @@ export async function loadRecommendationRequestDetail(
       WHERE run.request_id = ${root.id}
         AND run.expires_at > ${now}
       LIMIT 1
+      FOR SHARE OF run
     `,
       )
       const candidateRun = candidateRuns[0] ?? null
@@ -230,8 +248,9 @@ export async function loadRecommendationRequestDetail(
                 AND trace_run.expires_at > ${now}
             ) stage`
         : Prisma.sql`FROM recommendation_candidate_stage_evidence stage`
-      const candidateStages = candidateRun
-        ? await tx.$queryRaw<DetailCandidateStageRow[]>(Prisma.sql`
+      const candidateStages =
+        candidateRun && !candidateRun.legacyDetailRetiredAt
+          ? await tx.$queryRaw<DetailCandidateStageRow[]>(Prisma.sql`
           SELECT
             stage.stage,
             stage.ordinal,
@@ -300,7 +319,7 @@ export async function loadRecommendationRequestDetail(
             stage.id ASC
           LIMIT 448
         `)
-        : []
+          : []
 
       const shadowRuns = await tx.$queryRaw<DetailShadowRunRow[]>(Prisma.sql`
         SELECT
@@ -411,36 +430,36 @@ export async function loadRecommendationRequestDetail(
         item.canonical_href AS "canonicalHref",
         item.candidate_generator AS "candidateGenerator",
         CASE
-          WHEN (item.candidate_provenance ->> 'sceneIndex') ~ '^[0-9]{1,9}$'
-          THEN (item.candidate_provenance ->> 'sceneIndex')::integer
+          WHEN (snapshot.candidate_provenance ->> 'sceneIndex') ~ '^[0-9]{1,9}$'
+          THEN (snapshot.candidate_provenance ->> 'sceneIndex')::integer
         END AS "sceneIndex",
         CASE
-          WHEN length(item.candidate_provenance ->> 'similarity') <= 32
-            AND (item.candidate_provenance ->> 'similarity') ~ '^-?[0-9]+([.][0-9]+)?$'
+          WHEN length(snapshot.candidate_provenance ->> 'similarity') <= 32
+            AND (snapshot.candidate_provenance ->> 'similarity') ~ '^-?[0-9]+([.][0-9]+)?$'
           THEN CASE
-            WHEN (item.candidate_provenance ->> 'similarity')::double precision BETWEEN 0 AND 1
-            THEN (item.candidate_provenance ->> 'similarity')::double precision
+            WHEN (snapshot.candidate_provenance ->> 'similarity')::double precision BETWEEN 0 AND 1
+            THEN (snapshot.candidate_provenance ->> 'similarity')::double precision
           END
         END AS similarity,
-        item.candidate_provenance -> 'viewingMode' AS "viewingMode",
-        CASE WHEN jsonb_typeof(item.presentation -> 'videoTitle') = 'string'
-          THEN left(item.presentation ->> 'videoTitle', 200) END AS "videoTitle",
-        CASE WHEN jsonb_typeof(item.presentation -> 'audioLanguageSlug') = 'string'
-          THEN left(item.presentation ->> 'audioLanguageSlug', 64) END AS "audioLanguageSlug",
+        snapshot.candidate_provenance -> 'viewingMode' AS "viewingMode",
+        CASE WHEN jsonb_typeof(snapshot.presentation -> 'videoTitle') = 'string'
+          THEN left(snapshot.presentation ->> 'videoTitle', 200) END AS "videoTitle",
+        CASE WHEN jsonb_typeof(snapshot.presentation -> 'audioLanguageSlug') = 'string'
+          THEN left(snapshot.presentation ->> 'audioLanguageSlug', 64) END AS "audioLanguageSlug",
         CASE
-          WHEN length(item.presentation ->> 'startSeconds') <= 32
-            AND (item.presentation ->> 'startSeconds') ~ '^[0-9]+([.][0-9]+)?$'
+          WHEN length(snapshot.presentation ->> 'startSeconds') <= 32
+            AND (snapshot.presentation ->> 'startSeconds') ~ '^[0-9]+([.][0-9]+)?$'
           THEN CASE
-            WHEN (item.presentation ->> 'startSeconds')::double precision BETWEEN 0 AND 86400
-            THEN (item.presentation ->> 'startSeconds')::double precision
+            WHEN (snapshot.presentation ->> 'startSeconds')::double precision BETWEEN 0 AND 86400
+            THEN (snapshot.presentation ->> 'startSeconds')::double precision
           END
         END AS "startSeconds",
         CASE
-          WHEN length(item.presentation ->> 'endSeconds') <= 32
-            AND (item.presentation ->> 'endSeconds') ~ '^[0-9]+([.][0-9]+)?$'
+          WHEN length(snapshot.presentation ->> 'endSeconds') <= 32
+            AND (snapshot.presentation ->> 'endSeconds') ~ '^[0-9]+([.][0-9]+)?$'
           THEN CASE
-            WHEN (item.presentation ->> 'endSeconds')::double precision BETWEEN 0 AND 86400
-            THEN (item.presentation ->> 'endSeconds')::double precision
+            WHEN (snapshot.presentation ->> 'endSeconds')::double precision BETWEEN 0 AND 86400
+            THEN (snapshot.presentation ->> 'endSeconds')::double precision
           END
         END AS "endSeconds",
         rendered.id AS "renderedId",
@@ -454,6 +473,13 @@ export async function loadRecommendationRequestDetail(
         selection.occurred_at AS "selectionOccurredAt",
         selection.received_at AS "selectionReceivedAt"
       FROM recommendation_served_item item
+      JOIN recommendation_request request ON request.id = item.request_id
+      CROSS JOIN LATERAL (SELECT
+        CASE WHEN request.served_item_payload IS NULL THEN item.presentation
+          ELSE request.served_item_payload -> 'items' -> item.id -> 'presentation' END AS presentation,
+        CASE WHEN request.served_item_payload IS NULL THEN item.candidate_provenance
+          ELSE request.served_item_payload -> 'items' -> item.id -> 'candidateProvenance' END AS candidate_provenance
+      ) snapshot
       LEFT JOIN recommendation_rendered_fact rendered ON rendered.item_id = item.id
       LEFT JOIN recommendation_impression impression ON impression.item_id = item.id
       LEFT JOIN recommendation_selection selection ON selection.item_id = item.id
@@ -662,9 +688,6 @@ export async function loadRecommendationRequestDetail(
         conflicts,
         controlReadiness: controlReadiness[0] ?? null,
       }
-    },
-    {
-      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
     },
   )
   if (!data) return null

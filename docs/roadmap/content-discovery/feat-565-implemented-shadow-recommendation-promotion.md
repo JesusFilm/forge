@@ -1,18 +1,39 @@
 ---
 id: "feat-565"
-title: "Promote implemented co-watch and MMR policies through controlled evidence"
+title: "Activate implemented co-watch and MMR with owner approval"
 owner: "nisal"
 priority: "P1"
 status: "in-progress"
 start_date: "2026-09-29"
 duration: 8
 depends_on:
-  - "feat-387"
-  - "feat-505"
   - "feat-563"
-blocks: []
+blocks:
+  - "feat-573"
 tags: [admin, recommendations, cowatch, experiments, ranking]
 ---
+
+## Current production disposition
+
+**The G5 replacement is revoked as of September 30 00:22:59.967 UTC; co-watch/MMR
+is not currently eligible to serve.** It activated normally at 00:17:30.177 UTC,
+then lost authority to another `eligibility_changed` invalidation. All 20 immediate
+captured-source successors kept the same positive effective decision and changed
+population measurements. Repair avoidable measurement-only revision churn before
+another publication. Three natural fallback diagnostics before revocation prove
+missing themes only, while other required inputs were available; the conditional
+catalog read then refused revoked authority. Existing cards continued on fallback.
+No direct co-watch execution has been observed. Feat-573 owns automatic refresh for
+expiry and legitimate source changes. Full shadow acceptance, causal usefulness,
+broader ranking inputs and dormant exposure coverage remain separate open work.
+
+This ticket remains in progress: the bounded natural window through 23:10:08 UTC
+contained 38 issued requests but no exact direct owner provenance. Eight shared
+fallback markers comprised seven missing-composition-input reasons and one sparse
+co-watch reason. Investigate the missing input before declaring the rollout
+verified; failed owner composition persists the incumbent platform, so those
+historical rows cannot identify the missing attempted input. Full evidence and its
+attribution limits are in the activation operation record.
 
 ## Problem
 
@@ -25,8 +46,9 @@ promotion of the implemented policies, not a blanket readiness declaration.
 
 ## Entry Points — Read These First
 
-1. `docs/plans/2026-09-29-003-feat-shadow-recommendations-live-plan.md` — bounded
-   population, dispatch, study lifecycle, serving integration and evidence gates.
+1. `docs/plans/2026-09-30-001-feat-owner-approved-cowatch-live-plan.md` — current
+   direct activation contract. The September 29 plan remains historical study
+   implementation context; its trial prerequisites are superseded below.
 2. `apps/admin/src/services/recommendations/delivery.service.ts` and
    `apps/admin/src/services/recommendations/delivery.factory.ts` — existing semantic/profile serving and total deadline.
 3. `apps/admin/src/services/recommendations/promotion/manifest.ts` and
@@ -46,13 +68,11 @@ promotion of the implemented policies, not a blanket readiness declaration.
 
 - Add bounded live co-watch nomination and explicit new manifest/generator-set
   identity without changing the existing hybrid manifest's meaning.
-- Publish a separate exact composition decision and governed live composer for
-  the implemented MMR input contract; missing editorial/series/speaker inputs
-  remain explicit under feat-393.
-- Bind study preparation, assignment, executed policy, mature evaluation,
-  external guardrails, approval and rollback to the same immutable configuration.
-- Advance through actual shadow and controlled evidence; retain terminal
-  inconclusive/data-unhealthy/refusal outcomes honestly.
+- Publish exact owner-approved direct authority for the implemented MMR input
+  contract; missing editorial/series/speaker inputs remain under feat-393.
+- Bind source qualification, approved configuration, execution, refresh, expiry
+  and rollback without creating a study or claiming measured usefulness.
+- Preserve the optional study facility and historical evidence dispositions.
 
 ## Constraints
 
@@ -69,8 +89,8 @@ promotion of the implemented policies, not a blanket readiness declaration.
 - Native database concurrency, lineage, privacy, publication and rollback tests.
 - Exact manifest/runtime/evaluation mismatch and stale authority refusal tests.
 - Actual browser attribution, bounded load comparisons and Admin reconciliation.
-- Fresh scoped storage and operational readiness; naturally mature controlled
-  results and supported recent-auth permanent-default operation.
+- Fresh scoped storage and operational readiness; supported recent-auth direct
+  activation, exact operation reconciliation, graph replacement and stop.
 - Close only when both declared policies have the recorded live disposition and
   rollback evidence; code deployment alone is insufficient.
 
@@ -103,3 +123,99 @@ capacity sections of
 exact observations and remaining gates. Implementation and deployment do not
 complete production shadow acceptance, mature usefulness evidence or live
 promotion. This ticket remains **in progress**.
+
+## September 30 direct activation decision
+
+The owner explicitly approved activating co-watch/MMR without a trial: “I don't
+think we need a trial lets just activate it you have my approval to do so.”
+This supersedes the A/A and controlled-efficacy prerequisite for this deployment.
+It does not create missing graph data or waive privacy, source integrity, access
+control, bounded storage/work, truthful provenance, fallback or rollback.
+Implement an explicit owner-approved direct activation path through the normal
+reviewed PR-to-main flow; do not manufacture a passed study or edit production
+SQL to impersonate existing trial authority. Retain controlled usefulness work
+as follow-up evidence, not a blocker imposed contrary to this decision.
+
+The full feat-387 shadow acceptance and feat-505 controlled usefulness gates no
+longer block this direct release. Their reverse dependency entries are removed;
+real graph source qualification, Admin inspection and supported runtime execution
+remain required within this ticket. Neither upstream ticket is falsely completed.
+
+The current production operator cannot directly activate this bundle: its live
+authority requires a study, a frozen qualified graph and composition authority.
+The fresh production check at September 29 18:35 UTC still found all eight new
+authority tables empty. This ticket remains in progress while the direct path
+and actual graph/runtime readiness are implemented and verified.
+
+The initial direct operator provides explicit graph replacement and honest
+expiry/fallback. Sustainable bounded automatic refresh is tracked by feat-573;
+report the exact initial graph deadline rather than implying perpetual graph
+coverage from a single activation.
+
+Local direct-path implementation and reviewed validation are recorded in
+`docs/operations/recommendation-owner-live-activation-2026-09-30.md`. This does not
+claim production activation or close this ticket.
+
+## September 30 production confirmation blocker
+
+PR #2478 merged as `85656b946c7519cb39d501d44ce6d1d998ec7d9b` through the
+normal release flow. The supported direct operator is implemented, superseding
+the earlier study-only operator limitation above. Activation is not yet recorded.
+
+The production emergency-stop control opened a native `window.confirm` prompt
+that the in-app browser did not expose. A fresh authenticated Admin inspection
+still showed pointer generation 1 at control with no committed stop audit. The
+original user tab recovered after a normal reload; no transition remained pending.
+The user's explicit activation approval remains valid; this is an inaccessible
+product confirmation, not a new authorization requirement.
+
+Replace that native prompt with an accessible in-page confirmation for stop,
+clear, rollback and permanent-default actions. Keep the exact confirmation text,
+explicit Confirm/Cancel, generation and CSRF checks, permission enforcement and
+unknown-acknowledgement handling. Confirm must submit at most once; cancel must
+not issue a mutation. Record the actual deployed operator outcome separately.
+The ticket remains **in progress**, including fresh capacity coordination: the
+September 29 21:25 UTC observation had 8.612 GB free, 1.074 GB resident WAL and one long
+transaction, and did not satisfy the prior seven-day runway projection.
+
+## September 30 canonical-origin blocker
+
+PR #2488 merged as `3abde2aa564e30c16631979b5d9403fc4c265403`; both Admin
+processes and compatible Watch were healthy at September 29 22:02 UTC. Exact
+0116/0117/0118 catalog and deployed publication-source checks passed. The earlier
+21:25 capacity concern is historical: the 21:47 observation restored 10.659 GB
+free and a conservative 7.835-day projection, without credit for future savings.
+Fresh admission remains necessary at actual publication.
+
+The in-page confirmation now works, but the supported POST was rejected by the
+CSRF guard before mutation. A canonical-origin unauthenticated diagnostic confirms
+`csrf_failed`; the client mislabeled this as a role refusal. Repair the exact
+canonical-origin check and error distinction under this ticket, retaining all
+operator authorization. Pointer generation remains 1/control, no graph has been
+published and no owner release is active.
+
+## September 30 successful direct cutover
+
+The normal release chain was #2478 (direct authority), #2488 (accessible controls)
+and #2494 (canonical-origin CSRF repair). Subsequent compatible storage release
+#2495 ran on both healthy Admin roles during cutover; Watch remained healthy at
+`0a707123`. Supported stop/clear retired the empty bootstrap, with immutable
+G2/G3 audits. Two exact-source publication refusals wrote no graphs. A focused
+read-only diagnostic proved clock-dependent discovery-link expiry can change
+identity without counts; a reviewed one-use fresh-preflight/publication handoff
+retained all source, byte, transaction and process bounds and the exact generation
+recheck.
+
+The published graph contains 6,680 qualified sources, 35,632 contributions and
+9,000 edges (613 supported), from the original fixed seven-day window.
+Release `4459344d-202b-4665-aab3-75fa17920c10` selected graph
+`7a0df065a6562c562ea49809e4db4fd68d3a112729368bcfd0033679ea7270fa` through
+recent-authenticated Admin. The active response and reloaded G4 serving pointer
+agree. No study assignment, synthetic viewer evidence or causal PASS was created.
+Native production-shaped fixtures cover direct execution, source/privacy fencing,
+replacement and rollback; production supported stop/clear was observed before
+activation. We did not stop the newly activated release merely to manufacture a
+production rollback sample.
+
+Exact evidence and remaining natural issuance disposition:
+`docs/operations/recommendation-owner-live-activation-2026-09-30.md`.

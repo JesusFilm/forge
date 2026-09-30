@@ -100,8 +100,9 @@ and actual retention purge; feat-555 must re-establish the live horizon.
 
 Keep this ticket in progress until the remaining gates are demonstrated:
 
-- Authenticated Admin detail smoke when an authorized session is available;
-  do not report database checks as UI proof.
+- Authenticated compact detail smoke passed September 28; protected compact and
+  retired-detail smoke passed September 29. Repeat against the eventual
+  reclamation release; these bounded samples do not prove universal quality.
 - Full 29-day capacity margin; the proposed nominal 75 GB buffer is not applied.
 - September 30's first nonempty purge and the following daily cycle, including
   actual deletion throughput, continuation, errors, oldest-expired age, and WAL.
@@ -111,3 +112,11 @@ every six hours and reports meaningful changes or failures. It requires the
 computer to be on and Codex running. Physical empty-table reclamation remains
 feat-555 after the final legacy expiry and proven purge, not part of this
 release's immediate savings.
+
+## September 30 Supplement
+
+`docs/reports/2026-09-30-recommendation-storage-rollout.md` records further index
+work and the first owner-authorized early-retirement pilot. Feat-575 (formerly
+feat-572) permits early retirement of unprotected legacy stage detail only; all
+protected evidence and operational records keep normal expiry. This exception
+does not satisfy the two loaded-retention cycles or capacity gates above.

@@ -90,6 +90,7 @@ function hybridDetail(): RecommendationRequestDetailData {
       },
       evidenceComplete: true,
       fallbackReason: null,
+      legacyDetailRetiredAt: null,
       stages: [
         {
           stage: "ordered",
@@ -222,6 +223,32 @@ describe("RecommendationRequestDetailPanel", () => {
     expect(html).toContain("Fallback: Profile Lineage Ineligible")
     expect(html).not.toMatch(
       /profileId|sessionId|watchHistory|profileVector|cookieValue/i,
+    )
+  })
+
+  it("distinguishes retired detail from missing evidence while preserving the issued slate", () => {
+    const base = hybridDetail()
+    if (!base.candidateExecution) throw new Error("Missing fixture execution")
+    const detail: RecommendationRequestDetailData = {
+      ...base,
+      candidateExecution: {
+        ...base.candidateExecution,
+        legacyDetailRetiredAt: new Date("2026-09-30T00:00:00.000Z"),
+        stages: [],
+        suppressions: [],
+      },
+    }
+    const html = renderToStaticMarkup(
+      <RecommendationRequestDetailPanel detail={detail} />,
+    )
+
+    expect(html).toContain("evidence at issuance complete")
+    expect(html).toContain("Historical candidate stage detail retired on")
+    expect(html).toContain("Stage counts record the original issuance.")
+    expect(html).toContain("Historical stage detail was retired.")
+    expect(html).toContain("6 / 6")
+    expect(html).not.toContain(
+      "No additive candidate-stage evidence was recorded",
     )
   })
 })

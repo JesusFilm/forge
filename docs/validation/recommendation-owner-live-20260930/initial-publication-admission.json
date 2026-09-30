@@ -1,0 +1,32 @@
+{
+  "version": "cowatch-publication-admission-v1",
+  "expectedGeneration": "43e7dddd36592d3882dd38f7edf828c3dd80c040d7995fea06cecebf628a1c4b",
+  "sourceWindow": {
+    "evaluationAsOf": "2026-09-29T19:00:00.000Z",
+    "version": "episode-event-window-v1",
+    "windowEnd": "2026-09-29T19:00:00.000Z",
+    "windowStart": "2026-09-22T19:00:00.000Z"
+  },
+  "limits": {
+    "rawSourceCount": 39551,
+    "sourceCount": 6680,
+    "attemptedPairCount": 49840,
+    "contributionCount": 36220,
+    "edgeCount": 9055,
+    "publicationRowCount": 51956,
+    "graphRowJsonBytes": {
+      "sources": {
+        "total": 6452880,
+        "maximum": 966
+      },
+      "contributions": {
+        "total": 24776000,
+        "maximum": 685
+      },
+      "edges": {
+        "total": 5681715,
+        "maximum": 628
+      }
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import { isPushOperation } from "./push/operationNames"
 import { isRecommendationOperation } from "./recommendations/operationNames"
 
 /**
@@ -20,12 +21,15 @@ export const SEARCH_OPERATION_NAME = "WatchSearch"
  * bucket (`consumer:<key>:v:<viewer_id>`) instead of the coarse, CGNAT-collapsed
  * `public:<ip>` one. On the recommendation operations admin REQUIRES it: a
  * fleet caller is admitted only with the bearer plus a proven viewer handle.
- * On any other public op it would pool the whole fleet into a single bucket.
+ * The two push writes require it the same way, through their own admission
+ * predicate (KTD7). On any other public op it would pool the whole fleet into
+ * a single bucket.
  */
 export function carriesFleetBearer(operationName: string | undefined): boolean {
   return (
     operationName === SEARCH_OPERATION_NAME ||
-    isRecommendationOperation(operationName)
+    isRecommendationOperation(operationName) ||
+    isPushOperation(operationName)
   )
 }
 

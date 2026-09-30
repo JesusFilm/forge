@@ -11,6 +11,7 @@ import type {
   GitHubIdentity,
 } from "./portal-github.js"
 import { admitted } from "./portal-policy.js"
+import { parseVersionRequest } from "./portal-consumer-requests.js"
 
 const SESSION_COOKIE = "__Host-rag_portal"
 
@@ -27,35 +28,6 @@ const status = (error: unknown): number => {
   return { invalid: 400, forbidden: 403, missing: 404, conflict: 409 }[
     error.code
   ]
-}
-
-function parseVersionRequest(
-  value: unknown,
-  allowReason: boolean,
-): { expectedVersion: number; reason?: "routine" | "lost" } | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null
-  const body = value as Record<string, unknown>
-  const keys = Object.keys(body).sort().join(",")
-  if (
-    keys !== "expectedVersion" &&
-    !(allowReason && keys === "expectedVersion,reason")
-  )
-    return null
-  if (
-    !Number.isSafeInteger(body.expectedVersion) ||
-    (body.expectedVersion as number) < 1
-  )
-    return null
-  if (
-    body.reason !== undefined &&
-    body.reason !== "routine" &&
-    body.reason !== "lost"
-  )
-    return null
-  return {
-    expectedVersion: body.expectedVersion as number,
-    reason: body.reason as "routine" | "lost" | undefined,
-  }
 }
 
 export function createConsumerRoutes(deps: Deps) {
@@ -119,9 +91,13 @@ export function createConsumerRoutes(deps: Deps) {
         memberCount: row.memberCount,
         credentialVersion: row.owned ? row.credentialVersion : undefined,
         membershipVersion: row.owned ? row.membershipVersion : undefined,
+        lifecycleVersion: row.owned ? row.lifecycleVersion : undefined,
       })),
     })
   })
+  app.get("/history", async (c) =>
+    c.json({ consumers: await deps.consumers.listForUsage() }),
+  )
   app.post("/", async (c) => {
     const body: unknown = await c.req.json().catch(() => null)
     if (
@@ -236,7 +212,10 @@ export function createConsumerRoutes(deps: Deps) {
       !body ||
       typeof body !== "object" ||
       Array.isArray(body) ||
-      Object.keys(body).join(",") !== "state"
+      Object.keys(body).sort().join(",") !== "expectedVersion,state" ||
+      !Number.isSafeInteger(
+        (body as { expectedVersion?: unknown }).expectedVersion,
+      )
     )
       return c.json({ error: "invalid" }, 400)
     const state = (body as { state?: unknown }).state
@@ -246,10 +225,39 @@ export function createConsumerRoutes(deps: Deps) {
       consumerId: c.req.param("id"),
       actorGithubUserId: String(identity(c).id),
       state,
+      expectedVersion: (body as { expectedVersion: number }).expectedVersion,
       admissionSha: c.get("publication").sha,
       verifyCurrentAdmission: verifyCurrentAdmission(identity(c)),
     })
     return c.json({ state })
+  })
+  app.post("/:id/recover", async (c) => {
+    const body: unknown = await c.req.json().catch(() => null)
+    if (
+      !body ||
+      typeof body !== "object" ||
+      Array.isArray(body) ||
+      Object.keys(body).sort().join(",") !==
+        "expectedLifecycleVersion,expectedVersion" ||
+      !Number.isSafeInteger(
+        (body as { expectedVersion?: unknown }).expectedVersion,
+      ) ||
+      !Number.isSafeInteger(
+        (body as { expectedLifecycleVersion?: unknown })
+          .expectedLifecycleVersion,
+      )
+    )
+      return c.json({ error: "invalid" }, 400)
+    const result = await deps.consumers.recover({
+      consumerId: c.req.param("id"),
+      actorGithubUserId: String(identity(c).id),
+      expectedVersion: (body as { expectedVersion: number }).expectedVersion,
+      expectedLifecycleVersion: (body as { expectedLifecycleVersion: number })
+        .expectedLifecycleVersion,
+      admissionSha: c.get("publication").sha,
+      verifyCurrentAdmission: verifyCurrentAdmission(identity(c)),
+    })
+    return c.json(result, 200, { "Cache-Control": "no-store" })
   })
   return app
 }

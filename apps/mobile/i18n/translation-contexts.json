@@ -14,6 +14,7 @@
     "BibleReaderSettings": "The Bible reader's settings sheet: color mode, text size, typeface, line spacing, verse numbers, and arrow buttons.",
     "BibleDownload": "A system alert that downloads a Bible translation to the device, shows the progress, removes it, or explains why a download stopped.",
     "LapseReminder": "A phone notification that the app sends one day or seven days after the viewer last used it, to invite them back to the last video they watched.",
+    "Push": "A phone notification that the Jesus Film Project team sends to announce a video or other content, and a hidden alert that staff use to test these notifications.",
     "Explore": "The Explore tab: a full-screen vertical feed of short video clips. The viewer swipes up for the next clip. White text and round buttons sit over the playing video.",
     "Series": "The series page: a trailer or a poster, the series title, buttons for language, subtitles, download, and share, and a grid of episode cards. It also holds the menus and alerts that manage the downloads of a series, and the language and subtitle sheets.",
     "SeriesDownload": "A sheet that downloads every episode of a series at once, or saves all of them as files in a folder on the device. It shows the quality and subtitle choices, the progress of the check, and a summary of the result.",
@@ -123,6 +124,29 @@
     "LapseReminder.channelName": {
       "role": "Android notification category name",
       "composition": "Shows in the phone's notification settings for this app. Keep it short."
+    },
+    "Push.announcementsChannelName": {
+      "role": "Android notification category name",
+      "composition": "Shows in the phone's notification settings for this app. Keep it short."
+    },
+    "Push.unresolvableDestination": {
+      "role": "short in-app message",
+      "composition": "Shows for a few seconds after the viewer taps an announcement that the app cannot open. The app then shows the home screen."
+    },
+    "Push.testIdTitle": {
+      "role": "alert title",
+      "composition": "Staff hold a button for five seconds to see this alert. It shows the code that sends test notifications to this phone."
+    },
+    "Push.testIdRegistering": {
+      "role": "alert message",
+      "composition": "Shows while the app has not yet registered this phone for notifications."
+    },
+    "Push.testIdClose": {
+      "role": "alert button"
+    },
+    "Push.testIdCopy": {
+      "role": "alert button",
+      "composition": "Copies the test ID to the clipboard."
     },
     "Auth.signInPromptMessage": {
       "role": "banner message",

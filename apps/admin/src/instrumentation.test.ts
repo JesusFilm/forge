@@ -1,3 +1,9 @@
+vi.mock("@/services/core-sync/phase-execution", () => ({
+  ensureCoreSyncPhaseWorkerStarted: vi.fn(),
+}))
+vi.mock("@/services/watch-catalog-publication-worker", () => ({
+  ensureWatchCatalogPublicationWorkerStarted: vi.fn(),
+}))
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -20,6 +26,7 @@ const mockEnv = vi.hoisted(() => ({
       | undefined,
     TYPESENSE_HOST: undefined as string | undefined,
     TYPESENSE_OPERATOR_API_KEY: undefined as string | undefined,
+    EXPO_ACCESS_TOKEN: undefined as string | undefined,
   },
   resolveWatchSearchTranscriptPublicationEnabled: vi.fn(
     (value?: unknown) =>
@@ -60,6 +67,15 @@ const ensureWatchSearchTranscriptPublicationWorkerStarted = vi.hoisted(() =>
   vi.fn(async () => ({ started: false, reason: "disabled" as const })),
 )
 const prewarmWatchSearchQueryEmbeddings = vi.hoisted(() => vi.fn())
+const ensurePushCampaignRecovery = vi.hoisted(() =>
+  vi.fn(async () => ({
+    campaignsInspected: 0,
+    campaignsSwept: 0,
+    zonesMissed: 0,
+    deliveriesMissed: 0,
+    failures: 0,
+  })),
+)
 const prisma = vi.hoisted(() => ({ id: "mock-prisma" }))
 
 function clearWorkflowStartupState() {
@@ -124,15 +140,17 @@ vi.mock("@/services/recommendations/finalization/job", () => ({
 vi.mock("@/services/typesense-watch-search-transcript-publication", () => ({
   ensureWatchSearchTranscriptPublicationWorkerStarted,
 }))
+vi.mock("@/services/push/recovery", () => ({ ensurePushCampaignRecovery }))
 vi.mock("@/services/watch-search.service", () => ({
   prewarmWatchSearchQueryEmbeddings,
 }))
-vi.mock("@/db/client", () => ({ prisma }))
+vi.mock("@/db/client", () => ({ prisma, syncPrisma: prisma }))
 
 describe("workflow instrumentation", () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.resetModules()
+    ensurePushCampaignRecovery.mockClear()
     ensureStudioCalendarSchedulerStarted.mockReset()
     ensureStudioCalendarPublicationSchedulerStarted.mockReset()
     worldStart.mockReset()
@@ -165,6 +183,7 @@ describe("workflow instrumentation", () => {
     mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "false"
     mockEnv.env.TYPESENSE_HOST = undefined
     mockEnv.env.TYPESENSE_OPERATOR_API_KEY = undefined
+    mockEnv.env.EXPO_ACCESS_TOKEN = undefined
   })
 
   afterEach(() => {
@@ -231,6 +250,39 @@ describe("workflow instrumentation", () => {
     expect(getWorld).not.toHaveBeenCalled()
     expect(worldStart).not.toHaveBeenCalled()
     expect(prewarmWatchSearchQueryEmbeddings).not.toHaveBeenCalled()
+  })
+
+  it("refuses the Expo access token on production web replicas", async () => {
+    mockEnv.env.NODE_ENV = "production"
+    mockEnv.env.EXPO_ACCESS_TOKEN = "expo-access-token"
+    const { register, WorkflowStartupConfigurationError } =
+      await import("./instrumentation")
+
+    await expect(register()).rejects.toThrow(
+      new WorkflowStartupConfigurationError(
+        "EXPO_ACCESS_TOKEN is restricted to the dedicated Postgres worker in production",
+      ),
+    )
+    expect(getWorld).not.toHaveBeenCalled()
+    expect(ensurePushCampaignRecovery).not.toHaveBeenCalled()
+  })
+
+  it("allows the Expo access token on the production worker", async () => {
+    mockEnv.env.NODE_ENV = "production"
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    mockEnv.env.EXPO_ACCESS_TOKEN = "expo-access-token"
+    const { register } = await import("./instrumentation")
+
+    await expect(register()).resolves.toBeUndefined()
+    expect(ensurePushCampaignRecovery).toHaveBeenCalledTimes(1)
+  })
+
+  it("allows the Expo access token outside production", async () => {
+    mockEnv.env.EXPO_ACCESS_TOKEN = "expo-access-token"
+    const { register } = await import("./instrumentation")
+
+    await expect(register()).resolves.toBeUndefined()
   })
 
   it("allows a staged operator credential on the production worker while publication remains disabled", async () => {
@@ -386,6 +438,7 @@ describe("workflow instrumentation", () => {
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,
     ).toHaveBeenCalledTimes(1)
+    expect(ensurePushCampaignRecovery).toHaveBeenCalledTimes(1)
   })
 
   it("keeps other startup work running when playback snapshot bootstrap cannot queue", async () => {
@@ -594,12 +647,23 @@ describe("Admin worker Railway credential isolation", () => {
     }
   })
 
+  it("removes the Expo access token from the build and pre-deploy phases", () => {
+    const commands = workerCommands()
+
+    for (const command of ["buildCommand", "preDeployCommand"]) {
+      expect(commands[command]).toMatch(/^unset [^&]*EXPO_ACCESS_TOKEN[^&]*&& /)
+    }
+    // The runtime command must keep it: the worker is the only service allowed
+    // to send, and the transport reads it there.
+    expect(commands.startCommand).not.toMatch(/^unset [^&]*EXPO_ACCESS_TOKEN/)
+  })
+
   it("exposes the Typesense operator credential only to the runtime publisher", () => {
     const commands = workerCommands()
 
     for (const command of ["buildCommand", "preDeployCommand"]) {
       expect(commands[command]).toMatch(
-        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY[^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED && /,
+        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY[^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED[^&]*WATCH_CATALOG_PUBLICATION_ENABLED && /,
       )
     }
 

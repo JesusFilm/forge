@@ -20,6 +20,10 @@ jest.mock("expo-router", () => ({
 jest.mock("../../src/lib/openExternalUrl", () => ({
   openExternalUrl: () => {},
 }))
+// The hidden test ID reveal reads the push store; this suite checks text only.
+jest.mock("../../src/lib/push/testIdReveal", () => ({
+  revealPushTestId: async () => {},
+}))
 
 const mockGetLocales = jest.fn()
 jest.mock("expo-localization", () => ({

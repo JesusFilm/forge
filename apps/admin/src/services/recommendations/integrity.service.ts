@@ -1,3 +1,4 @@
+import { ownerReleaseInfluenceAllowed } from "./promotion/owner-influence"
 import { createHash, randomUUID } from "node:crypto"
 import {
   Prisma,
@@ -101,6 +102,8 @@ export class RecommendationIntegrityService {
               },
               request: {
                 select: {
+                  id: true,
+                  ownerReleaseId: true,
                   promotionSlateFence: {
                     select: { reasonCode: true, fencedAt: true },
                   },
@@ -135,33 +138,39 @@ export class RecommendationIntegrityService {
             outcome.episode.finalizedAt,
             outcome.request?.promotionSlateFence?.fencedAt,
           ])
-          const decision = outcome.request?.promotionSlateFence
-            ? rollbackFencedDecision()
-            : outcome.classifierVersion !== ACTIVE_WATCH_PROXY_VERSION ||
-                outcome.episode.state !==
-                  RecommendationEpisodeState.FINALIZED ||
-                outcome.episode.finalizedAt == null
-              ? excludedDecision("finalized_active_watch_outcome_required")
-              : legacyReplayRequiresProof && !replayProofComplete
-                ? excludedDecision("legacy_transport_receipt_evidence_missing")
-                : decideRecommendationEligibility({
-                    sourceType: "playback_outcome",
-                    actorClass: "human_anonymous",
-                    qualifiedView: outcome.qualifiedView,
-                    baseWeight: outcome.viewQualityWeight ?? 0,
-                    late: outcome.episode.facts.some((fact) => fact.late),
-                    // Playback exact-payload replays are acknowledgement recovery,
-                    // not evidence tampering. Same-ID/different-payload facts are
-                    // represented by conflictCount and remain fail-closed.
-                    replayCount: outcome.episode.replayCount,
-                    conflictCount: outcome.episode.conflictCount,
-                    contributionOrdinal: measures.contributionOrdinal,
-                    distinctAnonymousSupport: measures.distinctSupport,
-                    identityConcentration: measures.identityConcentration,
-                    superseded: outcome.supersededBy != null,
-                  })
+          const directInfluenceAllowed = outcome.request
+            ? await ownerReleaseInfluenceAllowed(tx, outcome.request)
+            : true
+          const decision =
+            outcome.request?.promotionSlateFence || !directInfluenceAllowed
+              ? rollbackFencedDecision()
+              : outcome.classifierVersion !== ACTIVE_WATCH_PROXY_VERSION ||
+                  outcome.episode.state !==
+                    RecommendationEpisodeState.FINALIZED ||
+                  outcome.episode.finalizedAt == null
+                ? excludedDecision("finalized_active_watch_outcome_required")
+                : legacyReplayRequiresProof && !replayProofComplete
+                  ? excludedDecision(
+                      "legacy_transport_receipt_evidence_missing",
+                    )
+                  : decideRecommendationEligibility({
+                      sourceType: "playback_outcome",
+                      actorClass: "human_anonymous",
+                      qualifiedView: outcome.qualifiedView,
+                      baseWeight: outcome.viewQualityWeight ?? 0,
+                      late: outcome.episode.facts.some((fact) => fact.late),
+                      // Playback exact-payload replays are acknowledgement recovery,
+                      // not evidence tampering. Same-ID/different-payload facts are
+                      // represented by conflictCount and remain fail-closed.
+                      replayCount: outcome.episode.replayCount,
+                      conflictCount: outcome.episode.conflictCount,
+                      contributionOrdinal: measures.contributionOrdinal,
+                      distinctAnonymousSupport: measures.distinctSupport,
+                      identityConcentration: measures.identityConcentration,
+                      superseded: outcome.supersededBy != null,
+                    })
 
-          const inputDigest = eligibilityInputDigest({
+          const classificationInput = {
             sourceType: "playback_outcome",
             outcomeId: outcome.id,
             classifierVersion: outcome.classifierVersion,
@@ -179,9 +188,11 @@ export class RecommendationIntegrityService {
             superseded: outcome.supersededBy != null,
             promotionFence:
               outcome.request?.promotionSlateFence?.reasonCode ?? null,
+            directInfluenceAllowed,
             measures,
             decision,
-          })
+          }
+          const inputDigest = eligibilityInputDigest(classificationInput)
 
           return writeDecision(tx, {
             id: this.deps.newId?.() ?? randomUUID(),
@@ -194,6 +205,11 @@ export class RecommendationIntegrityService {
             measures,
             decision,
             inputDigest,
+            playbackDigestWithMeasures: (storedMeasures) =>
+              eligibilityInputDigest({
+                ...classificationInput,
+                measures: storedMeasures,
+              }),
             evidenceWatermark,
             decidedAt: this.deps.now?.() ?? new Date(),
             expiresAt: outcome.expiresAt,
@@ -217,6 +233,8 @@ export class RecommendationIntegrityService {
             include: {
               request: {
                 select: {
+                  id: true,
+                  ownerReleaseId: true,
                   promotionSlateFence: {
                     select: { reasonCode: true, fencedAt: true },
                   },
@@ -231,22 +249,26 @@ export class RecommendationIntegrityService {
           }
           const measures = await measureActionSource(tx, action)
           const actorClass = enumToken(action.actorClass)
-          const decision = action.request?.promotionSlateFence
-            ? rollbackFencedDecision()
-            : decideRecommendationEligibility({
-                sourceType: "content_action",
-                actorClass,
-                qualifiedView: true,
-                baseWeight: actionWeight(enumToken(action.actionClass)),
-                late: action.late,
-                replayCount: action.replayCount,
-                conflictCount: action.conflictCount,
-                contributionOrdinal: measures.contributionOrdinal,
-                distinctAnonymousSupport: measures.distinctSupport,
-                identityConcentration: measures.identityConcentration,
-                actionClass: enumToken(action.actionClass),
-                actionDetail: action.actionDetail,
-              })
+          const directInfluenceAllowed = action.request
+            ? await ownerReleaseInfluenceAllowed(tx, action.request)
+            : true
+          const decision =
+            action.request?.promotionSlateFence || !directInfluenceAllowed
+              ? rollbackFencedDecision()
+              : decideRecommendationEligibility({
+                  sourceType: "content_action",
+                  actorClass,
+                  qualifiedView: true,
+                  baseWeight: actionWeight(enumToken(action.actionClass)),
+                  late: action.late,
+                  replayCount: action.replayCount,
+                  conflictCount: action.conflictCount,
+                  contributionOrdinal: measures.contributionOrdinal,
+                  distinctAnonymousSupport: measures.distinctSupport,
+                  identityConcentration: measures.identityConcentration,
+                  actionClass: enumToken(action.actionClass),
+                  actionDetail: action.actionDetail,
+                })
           const evidenceWatermark = latestDate([
             action.receivedAt,
             action.request?.promotionSlateFence?.fencedAt,
@@ -262,6 +284,7 @@ export class RecommendationIntegrityService {
             conflictCount: action.conflictCount,
             promotionFence:
               action.request?.promotionSlateFence?.reasonCode ?? null,
+            directInfluenceAllowed,
             measures,
             decision,
           })
@@ -302,6 +325,8 @@ export class RecommendationIntegrityService {
                 select: {
                   sessionDigest: true,
                   surfaceVersion: true,
+                  id: true,
+                  ownerReleaseId: true,
                   promotionSlateFence: {
                     select: { reasonCode: true, fencedAt: true },
                   },
@@ -360,22 +385,26 @@ export class RecommendationIntegrityService {
             selection.attributionEligibleAt != null &&
             impression.expiresAt >= selection.attributionEligibleAt &&
             impression.expiresAt > now
-          const decision = selection.request.promotionSlateFence
-            ? rollbackFencedDecision()
-            : !hasEligibleImpression
-              ? excludedDecision("eligible_impression_required")
-              : decideRecommendationEligibility({
-                  sourceType: "selection",
-                  actorClass: "human_anonymous",
-                  qualifiedView: true,
-                  baseWeight: 1,
-                  late: false,
-                  replayCount: 0,
-                  conflictCount,
-                  contributionOrdinal: measures.contributionOrdinal,
-                  distinctAnonymousSupport: measures.distinctSupport,
-                  identityConcentration: measures.identityConcentration,
-                })
+          const directInfluenceAllowed = selection.request
+            ? await ownerReleaseInfluenceAllowed(tx, selection.request)
+            : true
+          const decision =
+            selection.request.promotionSlateFence || !directInfluenceAllowed
+              ? rollbackFencedDecision()
+              : !hasEligibleImpression
+                ? excludedDecision("eligible_impression_required")
+                : decideRecommendationEligibility({
+                    sourceType: "selection",
+                    actorClass: "human_anonymous",
+                    qualifiedView: true,
+                    baseWeight: 1,
+                    late: false,
+                    replayCount: 0,
+                    conflictCount,
+                    contributionOrdinal: measures.contributionOrdinal,
+                    distinctAnonymousSupport: measures.distinctSupport,
+                    identityConcentration: measures.identityConcentration,
+                  })
           const evidenceWatermark = latestDate([
             selection.receivedAt,
             selection.attributionEligibleAt,
@@ -393,6 +422,7 @@ export class RecommendationIntegrityService {
             conflictCount,
             promotionFence:
               selection.request.promotionSlateFence?.reasonCode ?? null,
+            directInfluenceAllowed,
             measures,
             decision,
           })
@@ -592,6 +622,7 @@ async function writeDecision(
     measures: SourceMeasures
     decision: RecommendationIntegrityDecision
     inputDigest: string
+    playbackDigestWithMeasures?: (measures: SourceMeasures) => string
     evidenceWatermark: Date | null
     decidedAt: Date
     expiresAt: Date
@@ -612,9 +643,56 @@ async function writeDecision(
       eligibleScopes: true,
       contributionWeight: true,
       evidenceWatermark: true,
+      isCurrent: true,
+      sourceKey: true,
+      sourceType: true,
+      outcomeId: true,
+      contentActionId: true,
+      selectionId: true,
+      policyVersion: true,
+      actorClass: true,
+      expiresAt: true,
+      contributionOrdinal: true,
+      distinctSupport: true,
+      identityConcentration: true,
     },
   })
-  if (previous?.inputDigest === input.inputDigest) {
+  // Ambient population measurements can move without changing this playback's
+  // evidence or effective eligibility. Preserve its original receipt only when
+  // the complete current input, with the stored measurements substituted, still
+  // hashes to that receipt. Never rewrite its digest, measurements or lifetime.
+  const unchangedPositivePlayback =
+    previous != null &&
+    input.playbackDigestWithMeasures != null &&
+    input.sourceType === RecommendationEligibilitySourceType.PLAYBACK_OUTCOME &&
+    previous.isCurrent &&
+    previous.sourceKey === input.sourceKey &&
+    previous.sourceType === input.sourceType &&
+    previous.outcomeId === input.outcomeId &&
+    previous.contentActionId === input.contentActionId &&
+    previous.selectionId === input.selectionId &&
+    previous.policyVersion === RECOMMENDATION_INTEGRITY_POLICY_VERSION &&
+    previous.actorClass === input.actorClass &&
+    previous.expiresAt.getTime() === input.expiresAt.getTime() &&
+    previous.expiresAt.getTime() > input.decidedAt.getTime() &&
+    previous.evidenceWatermark?.getTime() ===
+      input.evidenceWatermark?.getTime() &&
+    previous.state === RecommendationEligibilityState.ELIGIBLE &&
+    input.decision.state === "eligible" &&
+    input.decision.contributionWeight > 0 &&
+    previous.contributionWeight === input.decision.contributionWeight &&
+    input.decision.eligibleScopes.includes("aggregate") &&
+    sameTokens(previous.eligibleScopes, input.decision.eligibleScopes) &&
+    sameTokens(previous.reasonCodes, input.decision.reasonCodes) &&
+    input.playbackDigestWithMeasures({
+      contributionOrdinal: previous.contributionOrdinal,
+      distinctSupport: previous.distinctSupport,
+      identityConcentration: previous.identityConcentration,
+    }) === previous.inputDigest
+  if (
+    previous &&
+    (previous.inputDigest === input.inputDigest || unchangedPositivePlayback)
+  ) {
     return {
       id: previous.id,
       sourceKey: input.sourceKey,
@@ -672,6 +750,17 @@ async function writeDecision(
     inputDigest: input.inputDigest,
     evidenceWatermark: input.evidenceWatermark,
   }
+}
+
+function sameTokens(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((value) => right.includes(value)) &&
+    right.every((value) => left.includes(value))
+  )
 }
 
 function sourceKeyFor(
