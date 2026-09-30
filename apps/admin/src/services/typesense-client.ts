@@ -331,6 +331,14 @@ export class TypesenseClient {
     )
   }
 
+  deleteDocument(collection: string, id: string): Promise<void> {
+    return this.request(
+      `/collections/${encodeURIComponent(collection)}/documents/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+      { acceptedStatuses: [404] },
+    )
+  }
+
   async deleteDocumentsByFilter(
     collection: string,
     filterBy: string,
