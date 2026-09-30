@@ -79,3 +79,23 @@ in progress. Feat-555's separately reviewed exact-empty migration requires
 fresh retention health, expired-root cleanup, fleet/rollback and headroom
 proof. Feat-554's first two loaded normal retention cycles remain open
 monitoring/closure work after any earlier physical reclaim.
+
+## Batch-wave throughput preparation
+
+The fixed-master two-phase operator in
+`docs/operations/finite-legacy-recommendation-retirement-campaign.md`
+needs a separately reviewed batch-aware Admin CLI before broad admission.
+`apps/admin/src/scripts/retire-legacy-recommendation-detail-wave.ts` reuses
+the published v2 service functions with one Prisma process for all freezes
+and one for all executions in a wave; each ten-run transaction and its source,
+protection, expiry, lock, row and byte guards remain unchanged. The operator
+must prove the whole wave's typed baseline, privately archive every manifest
+and fsync an exact-set acknowledgement before execution. Any uncertain
+transport result stops until read-only ledger and live parity reconcile it.
+
+Native PostgreSQL proof covers protected conversion, unprotected retirement,
+incomplete lossless preservation, root/item/expiry parity and exact ledgers.
+A same-fixture, two-batch local process measurement compares old and new CLI
+freeze cost; it is not a production throughput estimate. This ticket stays
+in progress until the full finite roster and exact empty-table route are
+verified. Expired members remain under ordinary retention without refill.

@@ -204,3 +204,26 @@ asynchronous feedback cannot strand a newly evidenced profile. This preserves
 the existing reconciliation mechanism without creating a record for every empty
 profile. Native failure/recovery, concurrency and loaded cost checks remain
 activation gates; no retained profile history is rewritten.
+
+## Legacy drain throughput preparation at 03:24 UTC
+
+The first fixed-master calibration wave completed 100 runs and 21,687 stage
+rows on the published per-manifest v2 CLI. All ten manifests had matching
+durable ledgers and live parity; the reviewed operator credited no pending or
+mismatched batch. Freeze plus durable private acknowledgement took 25.633
+seconds, dry-run plus execution 43.206 seconds, and read-only reconciliation
+5.244 seconds. These are production observations for this one wave, not a
+whole-master throughput projection or filesystem saving.
+
+A separate, not-yet-deployed batch-aware CLI preparation reuses the same
+ten-run service calls in one Prisma process per phase and leaves the fsynced
+private acknowledgement and exclusive execution-attempt marker with the
+local operator. On an isolated PostgreSQL 18 fixture containing two batches
+and protected, complete-unprotected and incomplete-unprotected runs, the old
+two-process freeze took 2,828 ms and the new one-process freeze 1,598 ms.
+The new one-process dry-run plus execution took 1,471 ms. The native proof
+checked unchanged request roots and served items, removed stage rows, all
+three v2 actions and two exact durable ledgers. Local process timings do not
+predict production WAL, throughput, serving latency, or the eventual physical
+reclamation date. Broad fixed-master admission and the separate exact-empty
+migration remain open.
