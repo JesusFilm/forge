@@ -5,12 +5,15 @@ import type { GeneratedDevotional } from "./generate-devotional"
 import type { VideoSource } from "./video-sources"
 
 /** The cue texts of a source's checked-in caption file, in order. */
-export async function readSubtitles(source: VideoSource): Promise<string[]> {
+export async function readSubtitles(
+  source: VideoSource,
+  lang: "en" | "ru" | "es" = "en",
+): Promise<string[]> {
   if (source.captions.kind !== "file") return []
-  const vtt = await readFile(
-    path.join(import.meta.dirname, source.captions.path),
-    "utf8",
-  )
+  const file =
+    lang === "en" ? source.captions.path : source.captions.byLang?.[lang]
+  if (!file) return []
+  const vtt = await readFile(path.join(import.meta.dirname, file), "utf8")
   return vtt
     .split(/\n\s*\n/)
     .map((b) => b.split("\n"))
@@ -70,6 +73,12 @@ export function formatDevotionalScript(input: {
   /** The montage opening speaks no welcome (only its lines, then
    *  "Let's watch."). */
   montage?: boolean
+  /** A localized cut: its spoken "Let's watch" and the translation the film
+   *  reads (defaults: English, NIV). */
+  watchLine?: string
+  askLabel?: string
+  prayLabel?: string
+  filmTranslation?: string
 }): string {
   WRAP = input.wrapWidth ?? 80
   const { devo: d, source: s } = input
@@ -87,7 +96,7 @@ export function formatDevotionalScript(input: {
   const winEnd = s.window.startSec + s.window.lengthSec
   return [
     `${s.title.toUpperCase()}  |  Daily Bible Pause  |  clip-first`,
-    `${s.passage.reference}  |  Scripture: Berean Standard Bible`,
+    `${d.passage.reference}  |  Scripture: ${d.scripture.translation === "BSB" ? "Berean Standard Bible" : d.scripture.translation}`,
     `Reflection adapted from ${input.classicCredit}, with the notes credited below`,
     "",
     `Film: LUMO, Arclight id ${s.mediaComponentId}. The scene runs ${mmss(s.window.startSec)} - ${mmss(winEnd)}.`,
@@ -100,13 +109,13 @@ export function formatDevotionalScript(input: {
     ...(d.openingLines?.length
       ? d.openingLines.flatMap((l) => [l, ""])
       : ["(no opening lines yet)", ""]),
-    "[spoken only, as WATCH appears across the frame]  Let's watch.",
+    `[spoken only, as WATCH appears across the frame]  ${input.watchLine ?? "Let's watch."}`,
     "",
     ...section(
       2,
       `VIDEO CLIP  (LUMO ${mmss(s.window.startSec)} - ${mmss(winEnd)}, film sound, subtitles carry the text)`,
     ),
-    `SUBTITLES  (${s.passage.reference}, as the film's narrator reads it: NIV)`,
+    `SUBTITLES  (${d.passage.reference}, as the film's narrator reads it: ${input.filmTranslation ?? "NIV"})`,
     "",
     // One numbered block per cue, exactly as it will be on screen.
     // One numbered block per cue, exactly as it will be on screen, with air
@@ -133,17 +142,17 @@ export function formatDevotionalScript(input: {
     "TAKEAWAY",
     d.conclusion,
     "",
-    `SCRIPTURE  (${d.scripture.reference}, BSB)`,
+    `SCRIPTURE  (${d.scripture.reference}, ${d.scripture.translation === "BSB" ? "BSB" : d.scripture.translation})`,
     wrap(`“${d.scripture.text.replace(/[’”]\s*$/, "")}”`),
     "",
     ...section(5, "STEP  REFLECT -> PRAY"),
     `Voice:  ${input.prayLeadIn}`,
     "",
     ...section(6, "QUESTION AND PRAYER"),
-    "FIRST, ASK YOURSELF",
+    (input.askLabel ?? "First, ask yourself").toUpperCase(),
     wrap(d.question),
     "",
-    "TALK TO GOD ABOUT IT",
+    (input.prayLabel ?? "Talk to God about it").toUpperCase(),
     wrap(d.prayer),
     "",
     ...section(

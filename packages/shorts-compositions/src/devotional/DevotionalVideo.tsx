@@ -1925,6 +1925,80 @@ function ClipIntro({
     // narration set as the compact phrase captions (words of different sizes,
     // the contrast words large and gold), and the last line is a call to watch
     // the full devotional on YouTube instead of "Let's watch".
+    // VERTICAL TEASER with kinetic captions (owner, 2026-09-30): the same
+    // opening as the 16:9 cut, the words in the "stack" arrangement set low
+    // in the 9:16 frame, and the last line a call to watch the full
+    // devotional, which holds to the end.
+    if (cta && !wide && kinetic.length) {
+      const lastLine = lines.length - 1
+      const markOut = interpolate(
+        t,
+        [starts[lastLine] - 0.8, starts[lastLine] - 0.1],
+        [1, 0],
+        { ...clampBoth, easing: ease },
+      )
+      return (
+        <div style={{ ...bleed, pointerEvents: "none" }}>
+          <AbsoluteFill style={{ background: "rgba(0,0,0,0.25)" }} />
+          {markOut > 0 ? (
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: "9%",
+                display: "flex",
+                justifyContent: "center",
+                opacity: markOut,
+              }}
+            >
+              <AnimatedBrandMark
+                px={(n) => px(n * 1.15)}
+                frame={frame}
+                fps={fps}
+                spanSec={3.6}
+              />
+            </div>
+          ) : null}
+          {subtitles.map(({ i, line, ws }) => {
+            const from = starts[i]
+            const isLast = i === lastLine
+            const to = isLast ? L + 600 : lineEnd(i)
+            const spec = kinetic.find((k) => k.line === i)
+            const out = isLast
+              ? 1
+              : interpolate(t, [to - 0.35, to - 0.02], [1, 0], {
+                  ...clampBoth,
+                  easing: ease,
+                })
+            if (t < from - 0.1 || out <= 0) return null
+            const side = spec?.side ?? "left"
+            return (
+              <AbsoluteFill key={i} style={{ opacity: out }}>
+                <AbsoluteFill
+                  style={{
+                    background:
+                      "linear-gradient(0deg, rgba(0,0,0,0.55), rgba(0,0,0,0.12) 45%, rgba(0,0,0,0) 70%)",
+                  }}
+                />
+                <KineticCaption
+                  line={line}
+                  hero={spec?.hero ?? ""}
+                  accents={spec?.accents ?? []}
+                  starts={ws.map((w) => w - from)}
+                  time={t - from}
+                  layout="stack"
+                  px={(n) => px((n * 390) / 360)}
+                  side={side}
+                  portrait
+                  maxWidth={frameWidth * 0.84}
+                />
+              </AbsoluteFill>
+            )
+          })}
+        </div>
+      )
+    }
     if (cta && !wide) {
       const last = lines.length - 1
       return (

@@ -345,6 +345,11 @@ function buildClipFirstManifest(
             d.passage?.reference
               ? { passageRef: d.passage.reference }
               : {}),
+            // The opening draws the first step's name over the film (WATCH,
+            // VER): in the film's language, like the step row itself.
+            ...(input.intro === "montage" || input.intro === "opening"
+              ? { steps: STEPS }
+              : {}),
             ...(input.intro === "montage" && input.introKinetic?.length
               ? { introKinetic: input.introKinetic }
               : {}),

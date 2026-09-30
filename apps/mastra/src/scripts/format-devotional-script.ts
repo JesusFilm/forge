@@ -18,7 +18,7 @@ import {
   loadCachedDevo,
   saveCachedDevo,
 } from "../services/devotional/devotional-cache"
-import { EN_LOCALE } from "../services/devotional/devotional-locale"
+import { localeFor } from "../services/devotional/devotional-locale"
 import { modelFor } from "../services/devotional/devotional-models"
 import {
   formatDevotionalScript,
@@ -40,7 +40,9 @@ async function main() {
   const out = arg("out")
   if (!src || !out)
     throw new Error("--source=<key> and --out=<file> are required")
-  const dir = cacheDirFor(src.index, Number(arg("seq") ?? "0"))
+  const lang = (arg("lang") ?? "en") as "en" | "ru" | "es"
+  const locale = localeFor(lang)
+  const dir = cacheDirFor(src.index, Number(arg("seq") ?? "0"), lang)
   const devo = await loadCachedDevo(dir)
   if (!devo) throw new Error(`no cached devotional in ${dir}`)
 
@@ -69,12 +71,16 @@ async function main() {
       source: src,
       subtitles,
       classicCredit: "J. C. Ryle (Expository Thoughts on Luke, 1858)",
-      reflectLeadIn: EN_LOCALE.connectors.steps.reflectAfterClip(),
-      prayLeadIn: EN_LOCALE.connectors.steps.pray(),
+      reflectLeadIn: locale.connectors.steps.reflectAfterClip(),
+      prayLeadIn: locale.connectors.steps.pray(),
+      watchLine: locale.connectors.steps.watch(),
+      askLabel: locale.labels.askYourself,
+      prayLabel: locale.labels.pray,
+      ...(lang === "es" ? { filmTranslation: "NVI" } : {}),
       wrapWidth,
       montage: process.argv.includes("--montage"),
     }) + "\n"
-  const subtitles = await readSubtitles(src)
+  const subtitles = await readSubtitles(src, lang)
   await writeFile(out, sheet(80))
   console.log(`wrote ${out}`)
   // The same sheet in a large face for reading on screen (owner, 2026-09-29).

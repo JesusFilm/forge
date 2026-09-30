@@ -28,7 +28,16 @@ const STOP = new Set(
     "jesus story look notice picture many much more most own same other such " +
     // Verbs of giving read as a match with the share-of-the-estate scene
     // whenever a reflection says "share his gladness".
-    "share give gave gift"
+    "share give gave gift " +
+    // Spanish function words (the Spanish cut matched its backdrop on "los",
+    // "que" and "también" until these were added, 2026-09-30).
+    "el la los las un una unos unas y o pero si de del al a en con por para sin " +
+    "que qué quien quién cual cuál como cómo cuando cuándo donde dónde " +
+    "es son era eran fue ser estar está están estaba había ha han hay " +
+    "él ella ellos ellas lo le les se su sus mi mis tu tus nos nosotros " +
+    "este esta estos estas ese esa esos esas eso esto aquí allí ahí " +
+    "no ni ya muy más menos también tan solo sólo todo toda todos todas " +
+    "mira fíjate ahora así entonces historia jesús"
   ).split(" "),
 )
 
@@ -36,7 +45,8 @@ function stem(w: string): string {
   let s = w
     .toLowerCase()
     .replace(/[’']s$/, "")
-    .replace(/[^a-z]/g, "")
+    // Keep Spanish letters: stripping them turned "también" into "tambin".
+    .replace(/[^a-záéíóúñü]/g, "")
   if (STOP.has(s)) return ""
   if (s.length > 5 && s.endsWith("ing")) s = s.slice(0, -3)
   else if (s.length > 4 && s.endsWith("ies")) s = `${s.slice(0, -3)}y`
@@ -173,6 +183,9 @@ export function planBrollAnchors(input: {
   speed: number
   windowStart: number
   windowEnd: number
+  /** Choose a paragraph's cue some other way (a localized cut maps the
+   *  English match onto its own dub by verse); null keeps footage rolling. */
+  pick?: (paragraphIndex: number) => { cue: BrollCue; words: string[] } | null
 }): BrollAnchor[] {
   const { cards, paragraphs, cues, speed, windowStart, windowEnd } = input
   const inWindow = cues.filter(
@@ -211,7 +224,9 @@ export function planBrollAnchors(input: {
       ahead >= 0 ? ahead : paraTexts.findIndex((t) => t.includes(head))
     if (para < 0 || para === lastPara) return
     lastPara = para
-    const m = matchCue(paragraphs[para].text, inWindow)
+    const m = input.pick
+      ? input.pick(para)
+      : matchCue(paragraphs[para].text, inWindow)
     if (!m) return
     // Where the rolling footage is by now, wrapping as the segments do.
     const windowLen = windowEnd - windowStart

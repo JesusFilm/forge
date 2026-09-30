@@ -152,6 +152,8 @@ export function KineticCaption({
   layout,
   px,
   side = "left",
+  portrait = false,
+  maxWidth,
 }: {
   line: string
   hero: string
@@ -163,15 +165,27 @@ export function KineticCaption({
   px: (n: number) => number
   /** Which side of the frame is open, for the text to sit on. */
   side?: "left" | "right"
+  /** 9:16 (the vertical teaser): the block sits in the lower half, above the
+   *  app's own UI, and never wider than `maxWidth`. */
+  portrait?: boolean
+  maxWidth?: number
 }) {
   const tokens = kineticTokens(line, hero, accents, starts)
   const phrases = kineticPhrases(tokens)
   const ink = "#f4efe8"
   const gold = "#f2c46b"
+  // A long hero ("THE BEST ROBE") shrinks to fit the frame's width.
+  const heroText = tokens
+    .filter((x) => x.role === "hero")
+    .map((x) => x.word)
+    .join(" ")
+  const heroFit = maxWidth
+    ? Math.min(1, maxWidth / Math.max(1, heroText.length * px(46) * 0.66))
+    : 1
   const style = (t: Token, scale = 1) =>
     t.role === "hero"
       ? {
-          size: px(46) * scale,
+          size: px(46) * scale * heroFit,
           font: SERIF,
           weight: 500,
           caps: true,
@@ -202,8 +216,9 @@ export function KineticCaption({
         style={{
           position: "absolute",
           ...edge,
-          top: "50%",
-          transform: "translateY(-50%)",
+          ...(portrait
+            ? { bottom: "27%", maxWidth }
+            : { top: "50%", transform: "translateY(-50%)" }),
           display: "flex",
           flexDirection: "column",
           alignItems: side === "left" ? "flex-start" : "flex-end",

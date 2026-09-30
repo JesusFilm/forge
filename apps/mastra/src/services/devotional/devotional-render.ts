@@ -81,7 +81,7 @@ import {
 import { type ChapterPassage, passageForChapter } from "./jesus-film-passages"
 import { voiceNameForId } from "./elevenlabs-voiceover"
 import { videoSourceForIndex } from "./video-sources"
-import { planBrollAnchors, planBrollSegments } from "./broll-plan"
+import { matchCue, planBrollAnchors, planBrollSegments } from "./broll-plan"
 import type { DevotionalLlm } from "./llm"
 import { DEFAULT_FILTER } from "./voice-rotation"
 
@@ -283,6 +283,78 @@ function assertPublicHttpsUrl(raw: string): void {
  * shifted past the card's start would otherwise render at a negative time and
  * simply vanish.
  */
+/**
+ * For a localized cut: choose each paragraph's backdrop cue through the
+ * English devotional (same paragraphs, same order) and the English cue file,
+ * then take the dub's cue at the same verse and rank. Undefined when any piece
+ * is missing, so the plain matcher runs instead.
+ */
+async function localizedBrollPick(input: {
+  lang: string
+  devo: GeneratedDevotional
+  registered: ReturnType<typeof videoSourceForIndex>
+  dubCues: ReadonlyArray<SubtitleCue>
+  windowStart: number
+  windowEnd: number
+}): Promise<
+  | ((i: number) => {
+      cue: { start: number; end: number; text: string }
+      words: string[]
+    } | null)
+  | undefined
+> {
+  const { registered } = input
+  if (input.lang === "en" || registered?.captions.kind !== "file") return
+  const en = await loadCachedDevo(
+    cacheDirFor(input.devo.clip.index, input.devo.sequence),
+  )
+  const enParas = en?.reflection.paragraphs
+  const esParas = input.devo.reflection.paragraphs
+  if (!enParas?.length || enParas.length !== esParas?.length) return
+  const base = path.join(repoRoot(), "apps/mastra/src/services/devotional")
+  try {
+    const enCues = parseSubtitles(
+      await readFile(path.join(base, registered.captions.path), "utf8"),
+    )
+    const verses = JSON.parse(
+      await readFile(
+        path.join(
+          base,
+          registered.captions.path.replace(/\.vtt$/, ".verses.json"),
+        ),
+        "utf8",
+      ),
+    ) as { cues: number[] }
+    if (verses.cues.length !== enCues.length) return
+    const enWithVerse = enCues.map((c, i) => ({
+      ...c,
+      verseNo: verses.cues[i],
+    }))
+    const verseNo = (v?: string) => Number(v?.split(":")[1]) || null
+    const inWin = enWithVerse.filter(
+      (c) => c.start >= input.windowStart && c.start < input.windowEnd - 4,
+    )
+    return (i: number) => {
+      const m = matchCue(enParas[i].text, inWin)
+      if (!m) return null
+      const hit = enWithVerse.find((c) => c.start === m.cue.start)
+      if (!hit) return null
+      const sameVerseEn = enWithVerse.filter((c) => c.verseNo === hit.verseNo)
+      const rank = sameVerseEn.indexOf(hit)
+      const dub = input.dubCues.filter((c) => verseNo(c.verse) === hit.verseNo)
+      const cue = dub[Math.min(rank, dub.length - 1)]
+      return cue
+        ? {
+            cue: { start: cue.start, end: cue.end, text: cue.text },
+            words: [...m.words, `v${hit.verseNo}`],
+          }
+        : null
+    }
+  } catch {
+    return
+  }
+}
+
 export function shiftCaptions(
   captions: TimedCaption[],
   offsetSec: number,
@@ -2684,6 +2756,18 @@ async function renderInStage(
         CARD_TAIL_SEC
     }
   }
+  // A localized cut matches its backdrop through the English: the English
+  // paragraph finds its English cue (the matcher is tuned on English), and
+  // that cue's verse and rank within the verse pick the dub's own cue. The
+  // Spanish matcher alone put the pigs paragraph on the father running.
+  const brollPick = await localizedBrollPick({
+    lang: locale.lang,
+    devo,
+    registered,
+    dubCues: brollCues,
+    windowStart: bgStart,
+    windowEnd: bgStart + bgWindowLen,
+  })
   const brollAnchors =
     brollCues.length > 0 && !options.episode
       ? planBrollAnchors({
@@ -2694,6 +2778,7 @@ async function renderInStage(
           speed: bgRate,
           windowStart: bgStart,
           windowEnd: bgStart + bgWindowLen,
+          ...(brollPick ? { pick: brollPick } : {}),
         })
       : []
   for (const a of brollAnchors)
