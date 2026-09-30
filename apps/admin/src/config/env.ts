@@ -524,6 +524,10 @@ export const env = createEnv({
     RECOMMENDATION_PROFILE_VECTOR_SHARING: z
       .enum(["true", "false"])
       .default("true"),
+    // Reader support must reach every worker before enabling empty completion.
+    RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: z
+      .enum(["true", "false"])
+      .default("false"),
     // Opt-in real-Redis proof for feat-368 atomic delivery admission.
     RECOMMENDATION_REDIS_TEST: z.enum(["1"]).optional(),
     // Source-free serving is enabled by default; false remains a kill switch.
@@ -1069,6 +1073,10 @@ export const env = createEnv({
     RECOMMENDATION_PROFILE_VECTOR_SHARING:
       emptyToUndefined(process.env.RECOMMENDATION_PROFILE_VECTOR_SHARING) ??
       "true",
+    RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP:
+      emptyToUndefined(
+        process.env.RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP,
+      ) ?? "false",
     RECOMMENDATION_REDIS_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_REDIS_TEST,
     ),

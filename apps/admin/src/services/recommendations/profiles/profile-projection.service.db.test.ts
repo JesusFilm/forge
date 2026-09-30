@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
-import { Client } from "pg"
+import { Client, Pool } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import { recommendationRuntimeMigrationSql } from "../current-schema.test-fixture"
@@ -28,6 +28,7 @@ import {
 import { getLiveProfileCandidates } from "../candidates/profile-candidate.service"
 import { RecommendationProfileService } from "../profile.service"
 import { createDatabaseRecommendationProfileProjectionService } from "./profile-projection.service"
+import { runRecommendationProfileProjectionJob } from "./job"
 import { seedReconciliationScaleFixture } from "./reconciliation-scale.fixture"
 import { proveProfileVectorSnapshotMigration } from "./profile-vector-snapshot.native-helper"
 import { runRecommendationProfileReconciliationBatch } from "./reconciliation.service"
@@ -238,6 +239,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     const schema = `recommendation_profile_learning_${Date.now()}`
     let admin: Client
     let prisma: PrismaClient
+    let prismaPg: PrismaClient
+    let adapterPool: Pool
 
     beforeAll(async () => {
       admin = new Client({ connectionString: env.DATABASE_URL })
@@ -254,14 +257,253 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       prisma = new PrismaClient({
         datasources: { db: { url: fixtureUrl.toString() } },
       })
+      adapterPool = new Pool({
+        connectionString: env.DATABASE_URL,
+        max: 10,
+        options: `-c search_path=${schema},public`,
+      })
+      prismaPg = new PrismaClient({
+        adapter: new PrismaPg(adapterPool, { schema }),
+      })
     })
 
     afterAll(async () => {
       await prisma?.$disconnect()
+      await prismaPg?.$disconnect()
+      await adapterPool?.end()
       if (!admin) return
       await admin.query("RESET search_path")
       await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
       await admin.end()
+    })
+
+    it("keeps a claimed first empty durable run without materializing a generation or pointer", async () => {
+      const previous = env.RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP
+      Object.assign(env, {
+        RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: "true",
+      })
+      try {
+        const now = new Date()
+        const sessionDigest = "e".repeat(64)
+        const profileService = new RecommendationProfileService({
+          prisma: prismaPg,
+          now: () => now,
+          newId: randomUUID,
+          newAuditId: randomUUID,
+        })
+        const grant = await profileService.transition({
+          caller: webCaller,
+          contractVersion: "recommendation-profile-v1",
+          consentContractVersion: "recommendation-consent-v1",
+          action: "grant",
+          consentChoice: "personalization",
+          sessionDigest,
+          existingConsentReceiptDigest: null,
+          proposedConsentReceiptDigest: "f".repeat(64),
+          existingProfileDigest: "1".repeat(64),
+          proposedProfileDigest: "2".repeat(64),
+        })
+        const claimId = randomUUID()
+        const run = await prismaPg.recommendationProfileProjectionRun.create({
+          data: {
+            scope: "DURABLE",
+            profileId: grant.profileId!,
+            privacyGeneration: grant.privacyGeneration!,
+            sessionDigest,
+            state: "CLAIMED",
+            generation: 1,
+            attemptCount: 1,
+            claimId,
+            claimedAt: now,
+            heartbeatAt: now,
+            leaseExpiresAt: new Date(now.getTime() + 60_000),
+            expiresAt: new Date(now.getTime() + 86_400_000),
+            expectedPointerGeneration: 0,
+          },
+        })
+        const projectionService =
+          createDatabaseRecommendationProfileProjectionService(prismaPg)
+        const projectInput = {
+          sessionDigest,
+          profileId: grant.profileId,
+          privacyGeneration: grant.privacyGeneration,
+          now: new Date(now.getTime() + 1_000),
+          expectedPointer: { generationId: null, pointerGeneration: 0 },
+          runFence: { runId: run.id, claimId, generation: 1 },
+        } as const
+        const receipt = await projectionService.project(projectInput)
+        expect(receipt).toEqual({ status: "empty", replay: false })
+        expect(
+          await prismaPg.recommendationProfileProjectionGeneration.count({
+            where: { profileId: grant.profileId! },
+          }),
+        ).toBe(0)
+        expect(
+          await prismaPg.recommendationProfileProjectionPointer.count({
+            where: { profileId: grant.profileId! },
+          }),
+        ).toBe(0)
+        expect(
+          await prismaPg.recommendationProfileProjectionRun.findUniqueOrThrow({
+            where: { id: run.id },
+          }),
+        ).toMatchObject({ state: "CLAIMED", projectionId: null })
+        // Model a crash between publication and completion, then let the real
+        // PrismaPg job reclaim and commit the typed empty result.
+        await prismaPg.recommendationProfileProjectionRun.update({
+          where: { id: run.id },
+          data: {
+            state: "PENDING",
+            claimId: null,
+            leaseExpiresAt: null,
+          },
+        })
+        await expect(
+          runRecommendationProfileProjectionJob(
+            { runId: run.id, expectedGeneration: 1 },
+            prismaPg,
+          ),
+        ).resolves.toEqual({ status: "empty", replay: false })
+        expect(
+          await prismaPg.recommendationProfileProjectionRun.findUniqueOrThrow({
+            where: { id: run.id },
+          }),
+        ).toMatchObject({
+          state: "COMPLETED",
+          projectionId: null,
+          lastTransitionReason: "first_empty_no_evidence",
+          expiresAt: run.expiresAt,
+        })
+        await expect(
+          runRecommendationProfileProjectionJob(
+            { runId: run.id, expectedGeneration: 1 },
+            prismaPg,
+          ),
+        ).resolves.toEqual({ status: "empty", replay: true })
+        const candidateInput = {
+          sessionDigest,
+          profileTokenDigest: "2".repeat(64),
+          context: {
+            surface: "watch-below-player-v1",
+            purpose: "watch",
+            locale: "en",
+            audioLanguageSlug: "english",
+            seedMediaId: null,
+            manifestId: "semantic-profile-hybrid-v1",
+          },
+          now: new Date(now.getTime() + 1_000),
+        } as const
+        expect(
+          await getLiveProfileCandidates(prismaPg, candidateInput),
+        ).toBeNull()
+        Object.assign(env, {
+          RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: "false",
+        })
+        await expect(
+          projectionService.project({
+            sessionDigest,
+            profileId: grant.profileId,
+            privacyGeneration: grant.privacyGeneration,
+            now: candidateInput.now,
+          }),
+        ).resolves.toMatchObject({ status: "published", generation: 1 })
+        expect(
+          await getLiveProfileCandidates(prismaPg, candidateInput),
+        ).toBeNull()
+        Object.assign(env, {
+          RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: "true",
+        })
+        await profileService.transition({
+          caller: webCaller,
+          contractVersion: "recommendation-profile-v1",
+          action: "reset",
+          sessionDigest,
+          existingProfileDigest: "2".repeat(64),
+          proposedProfileDigest: "3".repeat(64),
+        })
+        await expect(
+          projectionService.project(projectInput),
+        ).rejects.toMatchObject({
+          code: "profile_projection_generation_revoked",
+        })
+      } finally {
+        Object.assign(env, {
+          RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: previous,
+        })
+      }
+    })
+
+    it("publishes an empty generation when a claimed run lacks the virgin pointer fence", async () => {
+      const previous = env.RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP
+      Object.assign(env, {
+        RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: "true",
+      })
+      try {
+        const now = new Date()
+        const sessionDigest = "4".repeat(64)
+        const profileService = new RecommendationProfileService({
+          prisma: prismaPg,
+          now: () => now,
+          newId: randomUUID,
+          newAuditId: randomUUID,
+        })
+        const grant = await profileService.transition({
+          caller: webCaller,
+          contractVersion: "recommendation-profile-v1",
+          consentContractVersion: "recommendation-consent-v1",
+          action: "grant",
+          consentChoice: "personalization",
+          sessionDigest,
+          existingConsentReceiptDigest: null,
+          proposedConsentReceiptDigest: "5".repeat(64),
+          existingProfileDigest: "6".repeat(64),
+          proposedProfileDigest: "7".repeat(64),
+        })
+        const claimId = randomUUID()
+        const run = await prismaPg.recommendationProfileProjectionRun.create({
+          data: {
+            scope: "DURABLE",
+            profileId: grant.profileId!,
+            privacyGeneration: grant.privacyGeneration!,
+            sessionDigest,
+            state: "CLAIMED",
+            generation: 1,
+            attemptCount: 1,
+            claimId,
+            claimedAt: now,
+            heartbeatAt: now,
+            leaseExpiresAt: new Date(now.getTime() + 60_000),
+            expiresAt: new Date(now.getTime() + 86_400_000),
+            expectedGenerationId: null,
+            expectedPointerGeneration: null,
+          },
+        })
+        const receipt =
+          await createDatabaseRecommendationProfileProjectionService(
+            prismaPg,
+          ).project({
+            sessionDigest,
+            profileId: grant.profileId,
+            privacyGeneration: grant.privacyGeneration,
+            now: new Date(now.getTime() + 1_000),
+            runFence: { runId: run.id, claimId, generation: 1 },
+          })
+        expect(receipt).toMatchObject({ status: "published", generation: 1 })
+        expect(
+          await prismaPg.recommendationProfileProjectionGeneration.count({
+            where: { profileId: grant.profileId! },
+          }),
+        ).toBe(1)
+        expect(
+          await prismaPg.recommendationProfileProjectionPointer.count({
+            where: { profileId: grant.profileId! },
+          }),
+        ).toBe(1)
+      } finally {
+        Object.assign(env, {
+          RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: previous,
+        })
+      }
     })
 
     it("projects a qualified consented outcome and uses it in the next profile retrieval", async () => {
@@ -364,6 +606,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         generation: 1,
         replay: false,
       })
+      if (receipt.status !== "published")
+        throw new Error("expected publication")
 
       const [generation, interests, contributions, pointer] = await Promise.all(
         [
@@ -620,6 +864,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         generation: 2,
         replay: false,
       })
+      if (replacement.status !== "published")
+        throw new Error("expected replacement publication")
       await expect(
         prisma.recommendationProfileProjectionContribution.count({
           where: { generationId: replacement.generationId },
@@ -919,6 +1165,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             privacyGeneration: grant.privacyGeneration,
             now: current,
           })
+        if (projection.status !== "published")
+          throw new Error("expected publication from playback evidence")
         expect(
           await prisma.recommendationProfileProjectionGeneration.findUniqueOrThrow(
             { where: { id: projection.generationId } },

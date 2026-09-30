@@ -8,6 +8,46 @@ import {
 const NOW = new Date("2026-08-26T02:00:00.000Z")
 
 describe("recommendation profile projection service", () => {
+  it("keeps a raw eligible source visible to the empty guard when its embedding is missing", async () => {
+    const publish = vi.fn().mockResolvedValue({
+      status: "published",
+      generationId: "generation-1",
+      generation: 1,
+      replay: false,
+    })
+    const service = createRecommendationProfileProjectionService({
+      loadEvidence: vi.fn().mockResolvedValue({
+        durable: [
+          {
+            sourceId: "outcome-without-vector",
+            sourceType: "outcome",
+            targetMediaId: "media-without-vector",
+            weight: 1,
+            occurredAt: NOW,
+            sourceExpiresAt: new Date("2026-09-20T00:00:00.000Z"),
+          },
+        ],
+        session: [],
+        explicitPreferences: [],
+        negativeEvidence: [],
+      }),
+      loadEmbeddings: vi.fn().mockResolvedValue(new Map()),
+      publish,
+    })
+    await service.project({
+      sessionDigest: "a".repeat(64),
+      profileId: "profile-1",
+      privacyGeneration: 1,
+      now: NOW,
+    })
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceEvidenceEmpty: false,
+        durableEvidence: [],
+      }),
+    )
+  })
+
   it("derives no-consent viewers from session selections only", async () => {
     const publish = vi.fn().mockResolvedValue({
       status: "published",

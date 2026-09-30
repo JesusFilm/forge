@@ -82,16 +82,19 @@ type PublishInput = Readonly<{
   durableEvidence: ProfileProjectionEvidence[]
   sessionEvidence: ProfileProjectionEvidence[]
   evidenceSnapshotDigest?: string
+  sourceEvidenceEmpty?: boolean
   expectedPointer?: ProfileProjectionRequest["expectedPointer"]
   runFence?: ProfileProjectionRequest["runFence"]
 }>
 
-export type ProfileProjectionReceipt = Readonly<{
-  status: "published"
-  generationId: string
-  generation: number
-  replay: boolean
-}>
+export type ProfileProjectionReceipt =
+  | Readonly<{
+      status: "published"
+      generationId: string
+      generation: number
+      replay: boolean
+    }>
+  | Readonly<{ status: "empty"; replay: false }>
 
 type ProjectionDependencies = Readonly<{
   loadEvidence: (
@@ -174,6 +177,11 @@ export function createRecommendationProfileProjectionService(
         durableEvidence,
         sessionEvidence,
         evidenceSnapshotDigest,
+        sourceEvidenceEmpty:
+          evidence.durable.length === 0 &&
+          evidence.session.length === 0 &&
+          evidence.explicitPreferences.length === 0 &&
+          evidence.negativeEvidence.length === 0,
         expectedPointer: input.expectedPointer,
         runFence: input.runFence,
       })
@@ -646,6 +654,7 @@ export async function publishDatabaseProfileProjection(
             "profile_projection_pointer_fenced",
           )
         }
+        let currentEvidenceEmpty = false
         if (input.evidenceSnapshotDigest) {
           const currentEvidence = await loadDatabaseProfileProjectionEvidence(
             tx,
@@ -666,6 +675,11 @@ export async function publishDatabaseProfileProjection(
               "profile_projection_input_fenced",
             )
           }
+          currentEvidenceEmpty =
+            currentEvidence.durable.length === 0 &&
+            currentEvidence.session.length === 0 &&
+            currentEvidence.explicitPreferences.length === 0 &&
+            currentEvidence.negativeEvidence.length === 0
         }
         const existing = await tx.$queryRaw<
           Array<{ id: string; generation: number }>
@@ -702,6 +716,26 @@ export async function publishDatabaseProfileProjection(
             generation: existing[0].generation,
             replay: true,
           }
+        }
+        if (
+          env.RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP === "true" &&
+          input.scope === "durable" &&
+          input.runFence &&
+          input.expectedPointer?.generationId === null &&
+          input.expectedPointer.pointerGeneration === 0 &&
+          input.sourceEvidenceEmpty === true &&
+          currentEvidenceEmpty &&
+          current.length === 0
+        ) {
+          const prior = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+            SELECT id
+            FROM recommendation_profile_projection_generation
+            WHERE scope = 'durable'
+              AND profile_id = ${input.profileId}
+              AND privacy_generation = ${input.privacyGeneration}
+            LIMIT 1
+          `)
+          if (prior.length === 0) return { status: "empty", replay: false }
         }
         const allEvidence = [...input.durableEvidence, ...input.sessionEvidence]
         const watermark = latestDate(

@@ -60,8 +60,11 @@ credited as production filesystem savings.
 
 The user's follow-up prioritizes substantial reduction across the whole profile
 family. `docs/reports/2026-09-30-recommendation-profile-footprint.md` separates
-675 MB of interests from 622 MB of generation/lineage/pointer allocation and
-107 MB of core profiles. Complete exact shared-vector activation first. Evaluate
-compact empty-version and repeated-metadata representations with native proofs;
-do not delete history, shorten expiry or treat the 87.22% declared-empty count as
-permission to discard state. This additional design is not yet implemented.
+interests from generation/lineage/pointer allocation and core profiles. A
+default-off future-write branch now keeps a completed first-empty projection run
+but omits its generation and pointer only after claim, privacy, source snapshot,
+and retained-history checks. It has no retained rewrite or shorter expiry.
+`docs/validation/recommendation-storage-20260930/background-empty-profile.md`
+records the native proof and activation gates. Its local bytes are not production
+savings. Keep this ticket in progress through review, reader-first fleet
+convergence, later writer activation, and measured production verification.
