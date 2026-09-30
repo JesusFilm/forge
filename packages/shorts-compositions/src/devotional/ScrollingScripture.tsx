@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { continueRender, delayRender, interpolate } from "remotion"
+import { continueRender, delayRender, Easing, interpolate } from "remotion"
 
 import { SHORT_FONT_FAMILIES } from "../fonts"
 import { TEASER_FONT_FAMILIES } from "./teaser-fonts"
@@ -262,12 +262,45 @@ export function ScrollingScripture({
                 {v.words.map((w, wi) => {
                   const idx = n++
                   const on = idx === k
+                  const next = all[idx + 1]?.start ?? w.start + 0.6
+                  // Words not yet read wait in the background; the word
+                  // being read lifts gently and settles (owner: gold on
+                  // white alone was too quiet to follow).
+                  const read = idx < k
+                  // Knots stay strictly increasing however fast the words
+                  // come: a quick word settles before the next one begins.
+                  const settle = Math.min(0.4, Math.max(0.2, next - w.start))
+                  const release = Math.max(next, w.start + settle + 0.01)
+                  const pump = interpolate(
+                    t,
+                    [
+                      w.start,
+                      w.start + 0.12,
+                      w.start + settle,
+                      release,
+                      release + 0.22,
+                    ],
+                    // 1.1 made a short word touch its neighbours ("giveme").
+                    [1, 1.08, 1.04, 1.04, 1],
+                    {
+                      extrapolateLeft: "clamp",
+                      extrapolateRight: "clamp",
+                      easing: Easing.bezier(0.33, 0, 0.2, 1),
+                    },
+                  )
                   return (
                     <span key={wi}>
                       <span
                         data-w
                         style={{
-                          color: on ? GOLD : undefined,
+                          display: "inline-block",
+                          transformOrigin: "50% 60%",
+                          transform: `scale(${pump.toFixed(4)})`,
+                          color: on
+                            ? GOLD
+                            : read
+                              ? "rgba(255,255,255,0.92)"
+                              : "rgba(255,255,255,0.42)",
                           WebkitTextStroke: on
                             ? `${dp(1.1)}px ${GOLD}`
                             : undefined,
