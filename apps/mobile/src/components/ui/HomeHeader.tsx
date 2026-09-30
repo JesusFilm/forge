@@ -59,7 +59,7 @@ export function HomeHeader({
   const profileButton = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Profile"
+      accessibilityLabel="My Watch"
       onPress={() => router.navigate("/(tabs)/profile")}
     >
       <GlassView

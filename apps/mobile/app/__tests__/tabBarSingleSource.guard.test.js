@@ -13,7 +13,9 @@ const SHARED_MODULE = /lib\/tabBar["']/
 
 const MUST_IMPORT_THE_SHARED_HEIGHT = [
   ["src/components/watch/PlaybackHost.tsx", /TAB_BAR_OCCUPIED_HEIGHT/],
-  ["src/components/library/LibraryDownloads.tsx", /useTabBarStyle/],
+  // Root screens hide no bar, but their bottom pad clears the mini player's
+  // reserve, which is the tab bar's occupied height.
+  ["src/hooks/useMiniPlayerBottomClearance.ts", /tabBarOccupiedHeightFor/],
   ["app/(tabs)/_layout.tsx", /useTabBarStyle/],
   // The iOS navigator takes no style object, but it still must not spell the
   // tab list itself — the guard beside this one pins that order to the FILES.

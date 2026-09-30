@@ -1,4 +1,7 @@
-// Canonical source: https://www.jesusfilm.org/terms-of-use/
+export const TERMS_OF_USE_CANONICAL_URL =
+  "https://www.jesusfilm.org/terms-of-use/"
+
+// Canonical source: TERMS_OF_USE_CANONICAL_URL.
 // Mirrored from apps/web/src/lib/terms-of-use.ts — keep in sync.
 export const TERMS_OF_USE_PARAGRAPHS: readonly string[] = [
   "PLEASE CAREFULLY REVIEW THE TERMS OF USE OF THIS SITE. As your use of the site will indicate your acceptance of these terms, do not use the site if you do not agree to be bound by these terms. We may periodically change the terms, so please check them from time to time as your continued use of the site signifies your acceptance of any changed items.",

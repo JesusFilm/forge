@@ -5,7 +5,7 @@
  * empty continue-watching row and reads as data loss.
  *
  * A blocking interstitial on every first sign-in was rejected as noise
- * (user-directed, 2026-08-04); this is the non-blocking Profile notice
+ * (user-directed, 2026-08-04); this is the non-blocking My Watch header notice
  * instead. It lives in memory only: it explains the state the user is looking
  * at right now, and surviving a relaunch would turn it into nagging.
  */
