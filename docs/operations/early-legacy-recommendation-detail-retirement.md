@@ -37,6 +37,16 @@ legacy rows and therefore block whole-table reclamation.
    reuse; it does not promise filesystem-space recovery and conversion creates
    compact payload and WAL. Set a concrete stop threshold from current capacity.
 
+The ten-run CLI below remains suitable for a reviewed small cohort. A larger
+finite roster uses `finite-legacy-recommendation-retirement-campaign.md` and
+must prove measured transaction throughput and WAL/headroom first. The v2
+manifest preserves an unprotected but uncertain run in compact form when
+strict selective retirement fails and exact typed, bidirectional parity
+succeeds. Incomplete flags, zero composed items and other uncertain detail
+are never made disposable by the campaign. A run that cannot be represented
+exactly remains untouched and stops the roster. Existing v1 pilot manifests
+are historical receipts and must not be replayed.
+
 ## Finite operation
 
 With the reviewed DB environment configured, run from `apps/admin`:
@@ -73,4 +83,12 @@ error, writer revision, headroom breach or retention backlog.
 Physical reclamation is separate. Only after the stage table is **exactly
 empty**, a separately reviewed migration may lock with a short bound, assert
 emptiness in that transaction and restrictively truncate the table without
-`CASCADE`. Do not infer that this operator made the table empty.
+`CASCADE`. The early route leaves request roots, run metadata and retired
+markers alive until their original 29-day expiry. Expired roots are cleared by
+ordinary bounded retention; this operator rejects them. The first two loaded
+normal retention cycles remain open monitoring/closure proof in feat-554 even
+if a separately reviewed exact-empty migration recovers the space earlier.
+Early migration admission still requires current retention health, expired-root
+cleanup, measured campaign throughput/WAL, fresh capacity and fleet/rollback
+proof. Do not infer that this operator made the table empty or that those
+remaining verifications passed.

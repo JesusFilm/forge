@@ -6,8 +6,7 @@ priority: "P1"
 status: "in-progress"
 start_date: "2026-09-29"
 duration: 3
-depends_on:
-  - "feat-554"
+depends_on: []
 blocks: []
 tags:
   - "admin"
@@ -20,9 +19,15 @@ tags:
 ## Problem
 
 Preparation started September 29: review and test the guarded SQL outside the
-automatic migration path. Production execution remains blocked by feat-554,
-the actual legacy expiry and purge, and fresh fleet/emptiness checks. Preparing
-this operation does not complete this ticket or authorize an early deployment.
+automatic migration path. Production execution remains blocked by fresh
+fleet, capacity, source and exact-emptiness checks. Ordinary legacy expiry and
+purge is one route to exact stage-table emptiness; the
+separately authorized feat-575 finite early-retirement campaign is another.
+Preparing this operation does not complete this ticket or authorize an early
+deployment. Feat-554's two loaded normal-retention cycles remain required to
+close retention/capacity verification, but an independently proven early-empty
+relation need not wait for those cycles before a separately reviewed guarded
+migration.
 
 Compact writes reduce new candidate-trace storage, but pre-activation legacy
 stage rows remain until their request roots expire after 29 days. Ordinary
@@ -87,11 +92,15 @@ production reclamation and measured filesystem recovery.
 
 ## What To Build
 
-- Establish the exact last legacy write and demonstrate that every request
-  created under the legacy format has passed the 29-day expiry and was purged.
-  Reconcile active legacy runs, stage rows, the retention ledger, and
-  request-root cascade with bounded read-only probes. Statistics and row-count
-  estimates cannot establish emptiness.
+- Establish the exact last legacy write and reconcile legacy runs, stage rows,
+  the retention ledger, and request-root cascade with bounded read-only probes.
+  Under ordinary expiry, demonstrate every legacy request passed 29 days and
+  was purged. Under the authorized early route, demonstrate every remaining
+  unexpired stage detail was either safely retired or converted losslessly;
+  expired roots still require ordinary bounded retention. Retired run metadata
+  and request roots remain until original expiry, so zero legacy-format runs
+  is not an early-route prerequisite. Statistics and row-count estimates
+  cannot establish stage-table emptiness.
 - Choose the minimum-risk forward migration from then-current measurements.
   Prefer `TRUNCATE recommendation_candidate_stage_evidence` only if the legacy
   stage relation is exactly empty and all active HTTP/workflow writers are
@@ -117,9 +126,17 @@ LIMIT 1)`, raise an error if any row remains, then `TRUNCATE` **only this
 
 ## Constraints
 
-- Depends on feat-554 production verification and a completed 29-day legacy
-  lifetime. Do not infer readiness from the activation date alone if retention
-  is backlogged or a legacy writer remained active afterward.
+- The ordinary route requires a completed 29-day legacy lifetime; the
+  authorized feat-575 early route
+  requires finite, reviewed retirement/conversion receipts and exact empty
+  stage-table proof while preserving original root/item/run expiry. Neither
+  route can infer readiness from the activation date if retention is backlogged
+  or a legacy writer remained active afterward. The early route requires
+  measured batch throughput, WAL and live headroom, normal bounded cleanup of
+  expired roots, converged compact writers, compatible readers and rollback,
+  and the native guarded-migration proof. Feat-554's first two loaded normal
+  retention cycles remain open until measured; they are a closure requirement
+  for that ticket, not an early-empty migration prerequisite.
 - The migration's exact in-transaction emptiness check is the final gate.
   Never substitute an estimated tuple count or a predeploy check for it, and
   never use `TRUNCATE ... CASCADE`.
@@ -135,9 +152,10 @@ LIMIT 1)`, raise an error if any row remains, then `TRUNCATE` **only this
 ## Verification
 
 - Saved aggregate-only, time-bounded production probes establish the last
-  legacy write, no active legacy runs, no remaining stage rows, healthy
-  retention, and adequate headroom before the migration; the migration repeats
-  the exact empty-table assertion while holding its lock.
+  legacy write, no remaining stage rows, healthy retention, and adequate
+  headroom before the migration; the migration repeats the exact empty-table
+  assertion while holding its lock. Under the early route, remaining retired
+  run metadata is expected and must not be mistaken for retained stage rows.
 - Isolated PostgreSQL tests cover compact detail/outcomes/evaluation, expired
   request cascade, a nonempty table causing migration rollback with all rows
   intact, lock-timeout recovery, successful empty-table physical reclamation,
@@ -168,4 +186,7 @@ removed 1,063 stage rows with zero immediate filesystem savings; see
 expiry-only route solely for that explicitly reviewed category. Remaining
 protected/uncertain legacy detail still blocks reclamation until converted under
 separate review or normally expired. All exact-emptiness, fleet, locking,
-loaded-retention, capacity and separately reviewed deployment gates remain.
+current retention health, expired-root cleanup, capacity and separately
+reviewed deployment gates remain. Feat-554's two loaded normal cycles stay
+open as subsequent monitoring/closure proof, even if the early empty-table
+migration succeeds first.

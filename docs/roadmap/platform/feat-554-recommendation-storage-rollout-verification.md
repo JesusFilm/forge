@@ -8,8 +8,7 @@ start_date: "2026-09-28"
 duration: 2
 depends_on:
   - "feat-558"
-blocks:
-  - "feat-555"
+blocks: []
 tags:
   - "admin"
   - "recommendations"
@@ -110,8 +109,10 @@ Keep this ticket in progress until the remaining gates are demonstrated:
 The existing `recommendation-storage-follow-up` local Codex heartbeat checks
 every six hours and reports meaningful changes or failures. It requires the
 computer to be on and Codex running. Physical empty-table reclamation remains
-feat-555 after the final legacy expiry and proven purge, not part of this
-release's immediate savings.
+feat-555: it may follow proven natural expiry/purge or the separately authorized
+finite early retirement and lossless conversion path. Feat-554 still requires
+two loaded normal retention cycles and capacity monitoring before it can be
+marked complete, even if feat-555 reclaims a proven-empty relation first.
 
 ## September 30 Supplement
 
