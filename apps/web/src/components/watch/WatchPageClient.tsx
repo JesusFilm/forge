@@ -41,6 +41,7 @@ const ShareModal = dynamic(
 )
 import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
 import { RecommendationPlaybackRecorder } from "@/components/recommendations/RecommendationPlaybackRecorder"
+import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
 import { WatchEventRecorder } from "@/components/watch/WatchEventRecorder"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
@@ -170,7 +171,10 @@ function isPendingChapterStillRoutable(
   return false
 }
 
+import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+
 type WatchPageClientProps = {
+  surfaceManifests?: readonly (SignedWatchSurfaceManifest | null)[]
   downloadButtonLabel?: string
   downloadSequence?: DownloadSequence | null
   mergedBlocks: MergedWatchBlock[]
@@ -263,6 +267,7 @@ function buildShareFallbackHref({
 }
 
 export function WatchPageClient({
+  surfaceManifests,
   downloadButtonLabel,
   downloadSequence = null,
   mergedBlocks,
@@ -361,6 +366,10 @@ export function WatchPageClient({
 
   const handleChapterNavigateIntent = useCallback(
     (intent: WatchChapterNavigationIntent) => {
+      dispatchPlaybackNavigationIntent({
+        mediaId: video.documentId,
+        action: "manual_skip",
+      })
       pendingChapterHrefRef.current = intent.href
       setPendingChapter(intent)
       const routeWarmPromise = warmChapterRoute(intent.href)
@@ -391,7 +400,7 @@ export function WatchPageClient({
         })
       })
     },
-    [chapterAutoplayEnabled, router, warmChapterRoute],
+    [chapterAutoplayEnabled, router, video.documentId, warmChapterRoute],
   )
 
   const coverBlackoutKey = null
@@ -810,6 +819,7 @@ export function WatchPageClient({
     >
       <WatchSectionRenderer
         blocks={mergedBlocks}
+        surfaceManifests={surfaceManifests}
         downloadButtonLabel={downloadButtonLabel}
         downloadError={downloadError}
         downloadHref={downloadHref}

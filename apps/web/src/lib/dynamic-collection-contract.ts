@@ -1,6 +1,10 @@
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 
 import { hasUiLocale } from "@/i18n/generated-ui-locales"
+import {
+  signedWatchSurfaceManifestSchema,
+  type SignedWatchSurfaceManifest,
+} from "./watch-surface-manifest"
 
 export const WATCH_COLLECTION_FEED_MAX_EXCLUSIONS = 200
 export const WATCH_COLLECTION_FEED_MAX_URL_LENGTH = 8 * 1024
@@ -41,6 +45,7 @@ export type DynamicCollectionFeedSection = {
   title: string
   description: string | null
   items: DynamicCollectionFeedItem[]
+  surfaceManifest?: SignedWatchSurfaceManifest
 }
 
 export type DynamicCollectionFeedPage = {
@@ -280,7 +285,16 @@ function isDynamicCollectionFeedSection(
   value: unknown,
 ): value is DynamicCollectionFeedSection {
   if (!isRecord(value)) return false
-  if (!hasOnlyKeys(value, ["id", "slug", "title", "description", "items"])) {
+  if (
+    !hasOnlyKeys(value, [
+      "id",
+      "slug",
+      "title",
+      "description",
+      "items",
+      "surfaceManifest",
+    ])
+  ) {
     return false
   }
 
@@ -326,7 +340,16 @@ export function parseDynamicCollectionFeedPage(
   }
 
   return {
-    sections: value.sections,
+    sections: value.sections.map((section) => {
+      const { surfaceManifest: raw, ...content } = section
+      const parsed = signedWatchSurfaceManifestSchema.safeParse(raw)
+      return parsed.success &&
+        parsed.data.manifest.surface === "watch-home" &&
+        parsed.data.manifest.block === "authored" &&
+        parsed.data.manifest.presentation === "authored-block"
+        ? { ...content, surfaceManifest: parsed.data }
+        : content
+    }),
     endCursor: value.endCursor,
     hasNextPage: value.hasNextPage,
   }

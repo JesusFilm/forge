@@ -56,9 +56,10 @@ headless feature override or short healthy sample is insufficient for closure.
 Preserve preview timing and telemetry unless a demonstrated cause warrants a
 scoped change. No metric-only removal of native posters, suppressed errors,
 longer request deadlines, account linking, content republishing or Mobile/TV UI
-changes. Keep the authored English Homepage Recommendations Block removed and
-`forge.watch.homepageRecommendations` default off. Use isolated owned worktrees
-and normal PR/main deployment; restore temporary diagnostics.
+changes. Preserve the current owner-authorized homepage recommendation pilot
+gating and published block state; do not remove, republish or widen targeting
+as part of this investigation. Use isolated owned worktrees and normal PR/main
+deployment; restore temporary diagnostics.
 
 ## September 21 field attribution
 
@@ -93,3 +94,23 @@ keep it separate from the two original cases. No application fix is established.
 Continue with a source-mapped field or physical-device reproduction of the
 pre-paint work. [Release evidence](../../operations/watch-closeout-release-2026-09-21.md)
 records the diagnostic boundaries.
+
+## September 24 bounded field continuation
+
+Two current-release, browser-named mobile views give new post-response paint
+examples. The foreground Opera Mobile `/watch/jesus.html` view has 32.9 ms first
+byte and 18.132 s FCP/LCP; one render-blocking stylesheet takes 13.903 s,
+including 11.539 s downloading 303,200 bytes. A 16.273 s long animation frame
+overlaps the pre-paint interval but lists only about 416 ms of scripts. A Chrome
+Mobile `/watch` view has 3.540 s first byte and 13.896 s FCP; two blocking CSS
+requests each take about 8.463 s. These cases do not establish why the
+remaining time before paint elapsed or prove the original two field events
+share a cause. Exact Web revision, queries, resource timing, compression
+comparison and automation limits are in the
+[September 24 browser record](../../operations/watch-browser-investigations-2026-09-24.md).
+
+The next required artifact is one matched headed or physical-device renderer
+capture with effective network conditions, stylesheet completion, all paint
+candidates and pre-paint work, followed by a control before any Web change. An
+owned headed-browser startup timed out before navigation in this continuation;
+no application correction is justified yet.

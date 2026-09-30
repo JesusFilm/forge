@@ -1,0 +1,115 @@
+{
+  "probe": "forge_owner_migrations_0117_0118_verification",
+  "executed": true,
+  "expectedRuntimeCommit": "3abde2aa564e30c16631979b5d9403fc4c265403",
+  "sqlSha256": "4b96cadb62c899924b62704e890c4909b4eab71da39b40b2f6e5c1e80d4e7c89",
+  "specSha256": "44a6dfe3754ad640655595058de7fb597a9dd38e27b82134cef77ef5dcd7ce68",
+  "expectedMigrationChecksums": [
+    {
+      "name": "0117_recommendation_served_item_payload",
+      "checksum": "10a9bb6d08811de1c2f1dd9665e94bd66753a75f0be56f6495cab01a5a11078a"
+    },
+    {
+      "name": "0118_recommendation_candidate_stage_expiry_index_drop",
+      "checksum": "98482c61ac9ec6e9062c22317b93fd37c1f4c49a64b4da6405baef4d6eac2e03"
+    }
+  ],
+  "transport": "RailwaySSHAdmin",
+  "statementTimeoutMs": 3000,
+  "lockTimeoutMs": 1000,
+  "nodeWallTimeoutMs": 15000,
+  "transportWallTimeoutMs": 20000,
+  "activationNotPerformed": true,
+  "environment": "production",
+  "startedAt": "2026-09-29T22:02:38.121511+00:00",
+  "transportExitCode": 0,
+  "unparsedStdoutLinesWithheld": 0,
+  "rawStderrWithheld": true,
+  "stderrLineCount": 1,
+  "status": "metadata_pass",
+  "runtimeCommit": "3abde2aa564e30c16631979b5d9403fc4c265403",
+  "revisionSource": "RailwayAdminEnvironment",
+  "checks": {
+    "noUnfinishedMigrations": true,
+    "migrationChecksumsExact": true,
+    "nullablePayloadColumnExact": true,
+    "legacyStageExpiryIndexAbsent": true,
+    "functionDefinitionsSha256Exact": true,
+    "serverMajorMatchesCanonicalDefinitions": true,
+    "triggerDefinitionsEnabledAndDeferredConstraintsExact": true,
+    "readOnly": true,
+    "expectedRuntimeCommit": true,
+    "statementTimeout": true,
+    "lockTimeout": true
+  },
+  "receipt": {
+    "probe": "forge_owner_live_migrations_0117_0118",
+    "checks": {
+      "noUnfinishedMigrations": true,
+      "migrationChecksumsExact": true,
+      "nullablePayloadColumnExact": true,
+      "legacyStageExpiryIndexAbsent": true,
+      "functionDefinitionsSha256Exact": true,
+      "serverMajorMatchesCanonicalDefinitions": true,
+      "triggerDefinitionsEnabledAndDeferredConstraintsExact": true,
+      "readOnly": true,
+      "expectedRuntimeCommit": true,
+      "statementTimeout": true,
+      "lockTimeout": true
+    },
+    "catalog": {
+      "columns": [
+        {
+          "ok": true,
+          "name": "recommendation_request.served_item_payload"
+        }
+      ],
+      "triggers": [
+        {
+          "ok": true,
+          "name": "recommendation_served_payload_immutable_check"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_served_payload_item_check"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_served_payload_request_check"
+        }
+      ],
+      "functions": [
+        {
+          "ok": true,
+          "name": "recommendation_served_payload_check_request"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_served_payload_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_served_payload_integrity"
+        }
+      ],
+      "migrations": [
+        {
+          "ok": true,
+          "name": "0117_recommendation_served_item_payload"
+        },
+        {
+          "ok": true,
+          "name": "0118_recommendation_candidate_stage_expiry_index_drop"
+        }
+      ]
+    },
+    "lockTimeout": "1s",
+    "serverMajor": 18,
+    "statementTimeout": "3s",
+    "sourceRowsQueried": false,
+    "transactionReadOnly": "on",
+    "activationNotPerformed": true,
+    "servingReadinessNotEvaluated": true
+  },
+  "endedAt": "2026-09-29T22:02:41.246937+00:00"
+}

@@ -11,6 +11,7 @@ import {
 import { isWatchBlock } from "@/lib/watch-blocks"
 import { ExperienceSectionRenderer } from "@/components/sections"
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
@@ -32,7 +33,10 @@ import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 // content (WatchBody, StudyQuestions, BibleQuotes, Share) following it.
 const TOP_ZONE_KINDS: Set<WatchBlock["kind"]> = new Set(["HeroPlayer"])
 
+import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+
 export function WatchSectionRenderer({
+  surfaceManifests,
   blocks,
   downloadButtonLabel,
   downloadError,
@@ -55,6 +59,7 @@ export function WatchSectionRenderer({
   onChapterNavigateIntent,
 }: {
   blocks: MergedWatchBlock[]
+  surfaceManifests?: readonly (SignedWatchSurfaceManifest | null)[]
   downloadButtonLabel?: string
   downloadError?: string | null
   downloadHref?: string
@@ -99,6 +104,7 @@ export function WatchSectionRenderer({
         <WatchBlockEntry
           key={blockKey(block, index)}
           block={block}
+          manifest={surfaceManifests?.[index] ?? undefined}
           index={index}
           downloadButtonLabel={downloadButtonLabel}
           downloadError={downloadError}
@@ -144,6 +150,9 @@ export function WatchSectionRenderer({
                 <WatchBlockEntry
                   key={blockKey(block, index + topBlocks.length)}
                   block={block}
+                  manifest={
+                    surfaceManifests?.[index + topBlocks.length] ?? undefined
+                  }
                   index={index + topBlocks.length}
                   downloadButtonLabel={downloadButtonLabel}
                   downloadError={downloadError}
@@ -175,6 +184,7 @@ export function WatchSectionRenderer({
 }
 
 function WatchBlockEntry({
+  manifest,
   block,
   index,
   downloadButtonLabel,
@@ -199,6 +209,7 @@ function WatchBlockEntry({
   onChapterNavigateIntent,
 }: {
   block: MergedWatchBlock
+  manifest?: SignedWatchSurfaceManifest
   index: number
   downloadButtonLabel?: string
   downloadError?: string | null
@@ -222,6 +233,30 @@ function WatchBlockEntry({
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   if (isWatchBlock(block)) {
+    if (block.kind === "SiblingCarousel") {
+      return (
+        <WatchExposureBoundary
+          manifest={manifest}
+          config={{
+            surface: "watch-video",
+            block: "chapters",
+            presentation: "carousel",
+            placement: `chapters-${index}`,
+          }}
+        >
+          <SyntheticBlock
+            block={block}
+            studyQuestionsBlock={studyQuestionsBlock}
+            languageSlug={languageSlug}
+            locale={locale}
+            hasSubtitleOptions={hasSubtitleOptions}
+            hideBibleQuotes={hideBibleQuotes}
+            pendingChapter={pendingChapter}
+            onChapterNavigateIntent={onChapterNavigateIntent}
+          />
+        </WatchExposureBoundary>
+      )
+    }
     return (
       <SyntheticBlock
         block={block}
@@ -249,11 +284,21 @@ function WatchBlockEntry({
     )
   }
   return (
-    <ExperienceSectionRenderer
-      section={block}
-      key={`strapi-${index}`}
-      languageSlug={languageSlug}
-    />
+    <WatchExposureBoundary
+      manifest={manifest}
+      config={{
+        surface: "watch-video",
+        block: "editorial",
+        presentation: "authored-block",
+        placement: `editorial-${index}`,
+      }}
+    >
+      <ExperienceSectionRenderer
+        section={block}
+        key={`strapi-${index}`}
+        languageSlug={languageSlug}
+      />
+    </WatchExposureBoundary>
   )
 }
 

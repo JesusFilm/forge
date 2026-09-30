@@ -1,7 +1,7 @@
 ---
 title: Next background route loading can outlive readiness
 date: "2026-09-21"
-last_updated: "2026-09-21"
+last_updated: "2026-09-23"
 module: Admin production startup
 problem_type: performance_issue
 component: service_object
@@ -56,6 +56,19 @@ normal single production Next server per process used by Railway `next start`.
 Keep the framework patch and health check together during upgrades; run the
 existing patched-dependency guard and a real production-build startup probe.
 
+The original fix provides module-initialization readiness, not Redis availability.
+The September 23 owned-service experiment found health could still return 200
+while the mandatory GraphQL Redis limiter rejected requests before resolver writes.
+The recovery continuation adds a bounded, shared Redis PING after these startup
+gates; health now returns 503 for a failed or stalled mandatory dependency. Even
+this corrected dependency probe cannot prevent a later Redis restart.
+Keep startup loading, dependency availability and caller recovery as separate
+checks. The merged [Admin admission and readiness fix](../runtime-errors/redis-admission-timeouts-must-bound-late-work-20260923.md)
+tracks unresolved PING work separately from caller timeout; a timed-out probe must
+not let repeated health calls queue unlimited Redis commands. The complementary
+[playback recovery diagnosis](../logic-errors/playback-retries-exhaust-before-dependency-recovery-20260923.md)
+covers retaining idempotent facts and claims across a brief interruption.
+
 The five matched selections improve to 307–402 ms. Readiness takes about
 0.6–0.9 seconds longer, inside the existing 60-second deployment health limit.
 No API deadline, transaction budget, rate limit or acknowledgment semantics change.
@@ -75,9 +88,11 @@ not prove full production recovery or identify every startup-bucket stall.
 
 ## Validation and prevention
 
-Five readiness regressions cover pending completion, missing hook, preload
-failure, GraphQL initialization failure and development behavior. All 7,286
-Admin unit tests pass. The important performance guard is at the deployed layer:
+The original five readiness regressions cover pending completion, missing hook,
+preload failure, GraphQL initialization failure and development behavior; its
+Admin run passed 7,286 tests. The Redis-aware continuation adds failed/stalled
+dependency and recovery coverage, with seven current health tests. These historical
+counts are not interchangeable. The important performance guard is at the deployed layer:
 fresh `next start`, poll health, send a real first selection, inspect the receipt,
 then test a first editor request concurrently with GraphQL. Warm calls and a
 mocked readiness promise cannot establish actual framework scheduling behavior.

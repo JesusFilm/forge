@@ -34,7 +34,7 @@ export interface DeleteConfirmSheetProps {
 
 /**
  * In-screen animated delete confirmation (R13, KTD7) — a scrim + bottom card
- * rendered inline in the Library screen, NOT a formSheet route or Alert.
+ * rendered inline in the downloads list, NOT a formSheet route or Alert.
  * Cancel/scrim-tap/back all resolve to onCancel, returning to selection.
  */
 export function DeleteConfirmSheet({
@@ -127,7 +127,7 @@ export function DeleteConfirmSheet({
           accessibilityRole="button"
           accessibilityLabel="Delete"
         >
-          <Text style={styles.deleteText}>Delete</Text>
+          <Text style={[styles.deleteText, typography.body]}>Delete</Text>
         </Pressable>
         <Pressable
           onPress={onCancel}
@@ -138,7 +138,7 @@ export function DeleteConfirmSheet({
           accessibilityRole="button"
           accessibilityLabel="Cancel"
         >
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={[styles.cancelText, typography.body]}>Cancel</Text>
         </Pressable>
       </Animated.View>
     </>
@@ -194,7 +194,6 @@ const styles = StyleSheet.create({
   deleteText: {
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
-    fontSize: 16.5,
     fontWeight: "700",
   },
   cancelButton: {
@@ -208,7 +207,6 @@ const styles = StyleSheet.create({
   cancelText: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontSize: 16.5,
     fontWeight: "700",
   },
 })

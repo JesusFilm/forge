@@ -13,9 +13,8 @@ export function getRedisClient(): Redis | null {
   }
 
   if (redisClient === undefined) {
-    // No client-wide `commandTimeout`: this singleton also backs the GraphQL
-    // rate-limit store, which re-throws on Redis error in prod — a global
-    // timeout would fail every query. Per-call timeouts live in rate-limit.ts.
+    // Keep shared-client behavior unchanged. Admission and readiness bound their
+    // own waits and outstanding operations via redis-availability.ts.
     redisClient = new Redis({
       host: env.REDIS_HOST,
       port: env.REDIS_PORT,

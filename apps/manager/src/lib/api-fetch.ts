@@ -12,6 +12,8 @@ export class SessionExpiredError extends Error {
 function handleSessionExpiry() {
   // Clear the JWT cookie and redirect to login
   void fetch("/api/auth/logout", { method: "POST" }).finally(() => {
+    // A hard redirect clears client state after the session is invalidated.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = "/login?expired=1"
   })
 }

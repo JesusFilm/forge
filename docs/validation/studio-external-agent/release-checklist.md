@@ -11,8 +11,8 @@ has not been certified here.
   the client/UI qualification record. Keep unsupported Claude or browser steps
   explicitly open; a local JSON-RPC probe cannot close them.
 - Back up Admin before normal migration deployment. Preserve existing migration
-  bytes and apply in order: 0099 render retention profile, 0100 delegated narration,
-  0101 immutable render preparation, 0102 immutable render inspection. These
+  bytes and apply in order: 0121 render retention profile, 0122 delegated narration,
+  0123 immutable render preparation, 0124 immutable render inspection. These
   extend the prior schema; they are not substitutes for earlier migrations.
   Generate Prisma normally. This workflow adds no Pothos schema fields; if the
   final release includes other Pothos changes, regenerate both Admin SDL and

@@ -1,8 +1,11 @@
-import { readFileSync } from "node:fs"
+import { once } from "node:events"
+import { randomBytes } from "node:crypto"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
+import { recommendationRuntimeMigrationSql } from "./current-schema.test-fixture"
+import { getRedisClient } from "@/infra/redis"
 import { VideoNotFoundError } from "@/services/scene-recommendations.service"
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
@@ -34,44 +37,12 @@ import {
 } from "./orchestration"
 import { HYBRID_PERSONALIZED_MANIFEST_ID } from "./promotion/manifest"
 import { getRecommendationRecentContext } from "./recent-context.service"
+import { createRecommendationDeliveryDependencies } from "./delivery.factory"
 import { createRecommendationTokenService } from "./token.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
 const DELIVERY_FIXTURE_MODE = env.RECOMMENDATION_DELIVERY_DB_FIXTURE
-const recommendationMigrationSql = [
-  "0052_production_semantic_recommendation_tracer",
-  "0053_recommendation_active_playback_proxy",
-  "0054_recommendation_mission_value_actions",
-  "0055_recommendation_integrity_eligibility",
-  "0056_consent_aware_recommendation_profile",
-  "0057_semantic_control_readiness",
-  "0058_recommendation_candidate_platform",
-  "0059_recommendation_shadow_candidate_evaluation",
-  "0060_recommendation_experiment_spine",
-  "0061_recommendation_hybrid_promotion",
-  "0062_recommendation_multi_interest_profile_shadow",
-  "0063_recommendation_live_profile_pilot",
-  "0064_recommendation_governance_review_guards",
-  "0065_recommendation_strategy_manifest_immutability",
-  "0066_recommendation_playback_finalization_repair",
-  "0067_recommendation_episode_submission_budget_repair",
-  "0068_recommendation_trace_actor_digest_repair",
-  "0069_recommendation_hybrid_composition",
-  "0070_recommendation_consent_receipts",
-  "0071_recommendation_assignment_generation_key",
-  "0072_recommendation_source_neutral_playback_episodes",
-  "0075_recommendation_selection_attribution_eligibility",
-  "0076_recommendation_profile_eligibility_reconciliation",
-  "0082_user_recommendation_identity",
-].map((migration) =>
-  readFileSync(
-    new URL(
-      `../../../prisma/migrations/${migration}/migration.sql`,
-      import.meta.url,
-    ),
-    "utf8",
-  ),
-)
+const recommendationMigrationSql = recommendationRuntimeMigrationSql
 
 function vectorAt(index: number): string {
   const values = Array.from({ length: 1536 }, () => 0)
@@ -703,11 +674,23 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
   "semantic delivery retriever against the approved snapshot",
   () => {
     let prisma: PrismaClient
+    let drillRedis: ReturnType<typeof getRedisClient> = null
     let fixtureSchema: string | null = null
     let fixtureKind: "production_snapshot" | "deterministic_fixture"
     let databaseUrl: string
 
     beforeAll(async () => {
+      if (process.env.RECOMMENDATION_FALLBACK_DB_TEST === "1") {
+        const host = new URL(env.DATABASE_URL).hostname
+        if (
+          !["127.0.0.1", "localhost"].includes(host) ||
+          !["127.0.0.1", "localhost"].includes(env.REDIS_HOST ?? "")
+        ) {
+          throw new Error(
+            "The fallback drill requires local PostgreSQL and Redis",
+          )
+        }
+      }
       if (!DELIVERY_FIXTURE_MODE) {
         throw new Error(
           "Set RECOMMENDATION_DELIVERY_DB_FIXTURE=production_snapshot for release proof or =deterministic for isolated CI; no implicit fallback is allowed.",
@@ -727,6 +710,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
     afterAll(async () => {
       await prisma?.$disconnect()
+      drillRedis?.disconnect()
       if (fixtureSchema) {
         const client = new Client({
           connectionString: env.DATABASE_URL,
@@ -868,6 +852,121 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       )
     })
 
+    it.skipIf(process.env.RECOMMENDATION_FALLBACK_DB_TEST !== "1")(
+      "persists last-known-good recovery through the real dependency factory",
+      async () => {
+        expect(fixtureKind).toBe("deterministic_fixture")
+        expect(env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED).toBe("true")
+        expect(env.RECOMMENDATION_CAPABILITY_KEYRING).toBeTruthy()
+        const redis = getRedisClient()
+        drillRedis = redis
+        expect(redis).not.toBeNull()
+        if (!redis) return
+        if (redis.status !== "ready") {
+          await once(redis, "ready", { signal: AbortSignal.timeout(3_000) })
+        }
+        await redis.ping()
+
+        await prisma.$executeRaw`
+        UPDATE recommendation_serving_control
+        SET enabled = true,
+            manifest_id = 'semantic-candidate-platform-v1',
+            reason_code = 'isolated_fallback_drill'
+        WHERE id = 'recommendation-serving-control'
+      `
+        await prisma.$executeRaw`
+        INSERT INTO recommendation_retention_run (
+          id, status, batch_size, roots_deleted, row_counts,
+          started_at, completed_at, expires_at
+        ) VALUES (
+          'isolated-fallback-retention',
+          'succeeded'::"RecommendationRetentionRunStatus", 500, 0,
+          '{}'::jsonb, now(), now(), now() + interval '90 days'
+        )
+      `
+
+        const deps = createRecommendationDeliveryDependencies(prisma)
+        expect(deps.tokenService).not.toBeNull()
+        const [seed] = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM video WHERE slug = 'jesus' AND deleted_at IS NULL LIMIT 1
+      `
+        expect(seed).toBeDefined()
+        const deliver = (service: RecommendationDeliveryService) =>
+          service.deliver({
+            caller: {
+              id: null,
+              role: "CONSUMER_BEARER",
+              fleet: false,
+              rateLimitBucketKey: "isolated-fallback-drill",
+            },
+            seedMediaId: seed!.id,
+            locale: "en",
+            audioLanguageSlug: "english",
+            sessionDigest: randomBytes(32).toString("hex"),
+          })
+
+        const control = await deliver(new RecommendationDeliveryService(deps))
+        expect(control).toMatchObject({ result: "served", reason: null })
+        expect(control.items).toHaveLength(6)
+        const controlRun = await prisma.recommendationCandidateRun.findUnique({
+          where: { requestId: control.requestId! },
+        })
+        expect(controlRun).toMatchObject({
+          candidateEligibilityParity: "passed",
+          rankerParity: "passed",
+          evidenceComplete: true,
+        })
+
+        const fallback = await deliver(
+          new RecommendationDeliveryService({
+            ...deps,
+            orchestrate: () => {
+              throw new Error("isolated candidate-platform fault")
+            },
+          }),
+        )
+        expect(fallback).toMatchObject({
+          result: "fallback",
+          reason: "last_known_good_semantic_fallback",
+        })
+        expect(fallback.items).toHaveLength(6)
+        expect(
+          new Set(fallback.items.map((item) => item.targetMediaId)).size,
+        ).toBe(6)
+        expect(
+          fallback.items.every((item) => item.playbackId && item.imageUrl),
+        ).toBe(true)
+
+        const saved = await prisma.recommendationRequest.findUniqueOrThrow({
+          where: { id: fallback.requestId! },
+          include: {
+            items: true,
+            candidateRun: true,
+            personalizationDecision: true,
+          },
+        })
+        expect(saved).toMatchObject({
+          state: "ISSUED",
+          result: "FALLBACK",
+          fallbackReason: "last_known_good_semantic_fallback",
+          manifestId: "semantic-candidate-platform-v1",
+          experimentAssignmentId: null,
+          candidateRun: {
+            fallbackReason: "candidate_platform_unavailable",
+            evidenceComplete: false,
+            composedCount: 6,
+          },
+          personalizationDecision: {
+            effectiveManifestId: "semantic-candidate-platform-v1",
+          },
+        })
+        expect(saved.items).toHaveLength(6)
+        console.info(
+          `[recommendations] event=isolated_last_known_good_drill fixture=${fixtureKind} result=${fallback.result} items=${saved.items.length} candidate_reason=${saved.candidateRun?.fallbackReason}`,
+        )
+      },
+    )
+
     it("keeps complete hybrid retrieval, composition, signing, persistence, and serialization inside 1.5s", async () => {
       expect(fixtureKind).toBe(
         DELIVERY_FIXTURE_MODE === "production_snapshot"
@@ -878,7 +977,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         SELECT id FROM video WHERE slug = 'jesus' AND deleted_at IS NULL LIMIT 1
       `
       expect(seed[0]).toBeDefined()
-      const benchmarkNow = new Date("2026-08-27T00:05:00.000Z")
+      // Persistence uses the database clock for created_at, so keep the service clock aligned.
+      const benchmarkNow = new Date()
       const signingKey = {
         kid: "delivery-benchmark-kid",
         status: "active" as const,

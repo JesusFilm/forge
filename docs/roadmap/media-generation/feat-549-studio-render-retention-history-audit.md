@@ -6,7 +6,7 @@ priority: "P1"
 status: "not-started"
 start_date: "2026-09-23"
 duration: 2
-depends_on: ["feat-543"]
+depends_on: ["feat-584"]
 blocks: []
 tags: ["manager", "ai-pipeline", "security"]
 ---
@@ -17,14 +17,14 @@ The fresh-database render regression exposed an existing profile ID mismatch in
 migration 0094: its output-retention trigger compares `shorts-render-1/...` while
 the canonical renderer emits `studio-render-1/...`. The trigger therefore skips
 retention and trusted-producer/issued-lease checks for that canonical profile.
-Feat-543 corrects future registrations with an additive migration. Existing
+Feat-584 corrects future registrations with an additive migration. Existing
 registrations require a separate evidence-based audit; this ticket does not
 assert that production has affected rows or authorize production writes.
 
 ## Entry Points — Read These First
 
 1. `apps/admin/prisma/migrations/0094_shorts/migration.sql` — `short_attach_render_asset`.
-2. `apps/admin/prisma/migrations/0099_studio_render_retention_profile/migration.sql` — corrected trigger.
+2. `apps/admin/prisma/migrations/0121_studio_render_retention_profile/migration.sql` — corrected trigger.
 3. `apps/admin/src/services/studio-authoring/render-jobs.db.test.ts` — exact-lease retention and producer denial tests.
 4. `packages/studio-contracts/src/render.ts` — immutable canonical profile identity.
 

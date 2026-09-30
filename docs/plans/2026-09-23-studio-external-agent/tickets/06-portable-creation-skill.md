@@ -1,6 +1,6 @@
 # 06: Create and revise from a broad brief using a portable skill
 
-**Parent:** [Specification](../spec.md) · planning tracker feat-541
+**Parent:** [Specification](../spec.md) · planning tracker feat-583
 
 **Status:** approved; published as `feat-547` with `ready-for-agent` readiness.
 

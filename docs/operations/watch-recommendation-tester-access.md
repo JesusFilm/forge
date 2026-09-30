@@ -206,3 +206,66 @@ signed but untargeted tester received availability false and delivery 403
 activation bridge retained its single nonce-authorized script and
 `no-transform`. Browser control was unavailable, so these finite HTTP probes
 do not establish visual rendering or broad runtime reliability.
+
+### Real-browser pilot checks — 2026-09-23 UTC
+
+The latest successful Web production deployment was
+`9448a080-628d-4964-ae79-81c1f920739e` at
+`37e10b622bd66e55647cf561c3896b2d4fbb4dce`. It includes PR #2375's
+30-day activation/session policy. Later Web deployment records for unrelated
+main commits were `SKIPPED`, not newer running revisions. Production Web has
+the dedicated signing secret and Watch Production LaunchDarkly server SDK key.
+The canonical origin and `WATCH_FOR_YOU_ENABLED=true` resolve from production
+code defaults; they are not explicit service variables. The public fallback
+remains false.
+
+In a fresh isolated Chromium session, ordinary `/watch` rendered and a
+same-origin availability request returned HTTP 200, `enabled: false`, with
+`private, no-store` caching. No recommendation row appeared. The public
+activation bridge still returned one script, no Cloudflare beacon, and
+`Cache-Control: ... no-transform`. Public `/watch` returned HTTP 200; one
+finite curl sample was 0.499 seconds to first byte and 0.657 seconds total
+for 867,295 bytes. This is not a population-level loading measurement.
+
+Using the existing production secret privately, Nisal's already-targeted
+identity opened a newly issued 30-day activation link in a separate browser.
+The bridge redirected to `/watch` and cleared the URL fragment. The browser's
+same-origin availability request returned HTTP 200, `enabled: true`. After
+scrolling the published `watch-home-recommendations` row into view, the browser
+rendered six distinct linked cards with real thumbnails, titles, and durations.
+A private visual screenshot confirmed the cards. No link, token, or secret was
+saved in repository evidence or sent to another person. Both browser sessions
+were closed after the checks.
+
+Vlad and Tataihono then activated separately in one browser session, with
+cookies and local/session storage cleared between identities. The cleared
+browser returned availability false before the next activation. Each link
+redirected to `/watch` with its fragment removed. Each identity returned
+availability true and rendered six distinct linked cards with six loaded
+thumbnails and durations. In these two finite headless samples, navigation
+DOMContentLoaded/load timings were 820/828 ms for Vlad and 560/566 ms for
+Tataihono. They do not establish a loading percentile or replace wider Web
+performance monitoring.
+
+The Watch Production flag was read at version 6 before the revocation check:
+on, exactly the three documented `watch-recommendation-tester` true targets,
+no rules, false fallthrough and off variation. A temporary disposable UUID
+`f37c355e-d80b-4a0f-beab-b2a962359ab3` was added as a fourth individual
+true target at version 7. Its signed browser session returned availability
+true and displayed six loaded recommendation cards. Only that UUID was then
+removed. Without clearing its signed cookie, the same browser returned
+availability HTTP 200 with `enabled: false`; delivery POST returned HTTP 403
+`feature_disabled`. Flag readback at version 8 had exactly the original three
+targets and unchanged on/rules/fallthrough/off configuration. All owned
+browser sessions were closed.
+
+Fresh 30-day links for the same three IDs were subsequently issued to
+separate owner-only files under the Git-ignored `.context/private/` directory
+of the feat-525 worktree. That directory has mode `0700` and each file has
+mode `0600`. Their signed claims and HMAC were checked in memory. All three
+expire at 2026-10-23 23:38:31 UTC. The original 24-hour links issued on
+2026-09-21 retain their original expiry. No replacement link was delivered
+to another person by this task. The owner must privately distribute these
+files' links through an approved channel before claiming that the three
+people have personally used the pilot. Do not record the links, tokens, or
+signing secret in repository evidence.

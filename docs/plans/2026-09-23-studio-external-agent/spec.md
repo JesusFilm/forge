@@ -2,7 +2,7 @@
 
 Status: approved by the operator on 2026-09-23, including test boundaries, ticket
 granularity, dependencies, and the project authoring cycle allowance.
-Planning tracker: feat-541. This document does not authorize production operations.
+Planning tracker: feat-583. This document does not authorize production operations.
 
 ## Problem Statement
 

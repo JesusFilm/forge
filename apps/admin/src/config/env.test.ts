@@ -12,6 +12,18 @@ import {
   experienceAiMaxRepairAttemptsEnvSchema,
   fleetSearchCeilingEnforceEnvSchema,
   fleetSearchGlobalCeilingPerMinEnvSchema,
+  pushBatchPageSizeEnvSchema,
+  pushCampaignsEnabledEnvSchema,
+  pushCeilingEnforceEnvSchema,
+  pushChunkDeadlineMsEnvSchema,
+  pushFcmBlockedCountriesEnvSchema,
+  pushMessagesPerSecondEnvSchema,
+  pushOpenCeilingPerMinEnvSchema,
+  pushProviderConcurrencyEnvSchema,
+  pushReceiptPageSizeEnvSchema,
+  pushRegistrationCeilingPerMinEnvSchema,
+  pushStepMaxDurationMsEnvSchema,
+  resolvePushFcmBlockedCountries,
   resolveWatchSearchTranscriptPublicationEnabled,
   searchTraceRawRetentionDaysEnvSchema,
   resolveWatchSearchRuntimeEnv,
@@ -52,6 +64,48 @@ describe("env", () => {
       try {
         const { env: runtimeEnv } = await import("@/config/env")
         expect(runtimeEnv.RECOMMENDATION_USER_SERVING_ENABLED).toBe(expected)
+      } finally {
+        vi.unstubAllEnvs()
+        vi.resetModules()
+      }
+    },
+  )
+
+  it.each([
+    { value: undefined, expected: "true" },
+    { value: "", expected: "true" },
+    { value: "true", expected: "true" },
+    { value: "false", expected: "false" },
+  ])(
+    "resolves profile vector sharing to $expected for $value when CI skips validation",
+    async ({ value, expected }) => {
+      vi.resetModules()
+      vi.stubEnv("CI", "true")
+      vi.stubEnv("RECOMMENDATION_PROFILE_VECTOR_SHARING", value)
+      try {
+        const { env: runtimeEnv } = await import("@/config/env")
+        expect(runtimeEnv.RECOMMENDATION_PROFILE_VECTOR_SHARING).toBe(expected)
+      } finally {
+        vi.unstubAllEnvs()
+        vi.resetModules()
+      }
+    },
+  )
+
+  it.each([
+    { value: undefined, expected: "packed" },
+    { value: "", expected: "packed" },
+    { value: "legacy", expected: "legacy" },
+    { value: "packed", expected: "packed" },
+  ])(
+    "resolves served item format to $expected for $value when CI skips validation",
+    async ({ value, expected }) => {
+      vi.resetModules()
+      vi.stubEnv("CI", "true")
+      vi.stubEnv("RECOMMENDATION_SERVED_ITEM_FORMAT", value)
+      try {
+        const { env: runtimeEnv } = await import("@/config/env")
+        expect(runtimeEnv.RECOMMENDATION_SERVED_ITEM_FORMAT).toBe(expected)
       } finally {
         vi.unstubAllEnvs()
         vi.resetModules()
@@ -232,6 +286,132 @@ describe("env", () => {
     })
     it("rejects any other string", () => {
       expect(() => fleetSearchCeilingEnforceEnvSchema.parse("yes")).toThrow()
+    })
+  })
+
+  describe("push write ceilings", () => {
+    it.each([
+      ["registration", pushRegistrationCeilingPerMinEnvSchema],
+      ["open", pushOpenCeilingPerMinEnvSchema],
+    ])("defaults the %s ceiling to 6000 when unset", (_name, schema) => {
+      expect(schema.parse(undefined)).toBe(6000)
+    })
+
+    it.each([
+      ["registration", pushRegistrationCeilingPerMinEnvSchema],
+      ["open", pushOpenCeilingPerMinEnvSchema],
+    ])("reads 0 on the %s ceiling as the kill switch", (_name, schema) => {
+      expect(schema.parse("0")).toBe(0)
+    })
+
+    it.each([
+      ["registration", pushRegistrationCeilingPerMinEnvSchema],
+      ["open", pushOpenCeilingPerMinEnvSchema],
+    ])("rejects a negative %s ceiling", (_name, schema) => {
+      expect(() => schema.parse("-1")).toThrow()
+    })
+
+    it("holds the two ceilings apart", () => {
+      expect(pushRegistrationCeilingPerMinEnvSchema.parse("11")).toBe(11)
+      expect(pushOpenCeilingPerMinEnvSchema.parse("22")).toBe(22)
+    })
+
+    it("defaults enforcement to false (alert-first)", () => {
+      expect(pushCeilingEnforceEnvSchema.parse(undefined)).toBe("false")
+    })
+
+    it("accepts the two enforcement values and rejects anything else", () => {
+      expect(pushCeilingEnforceEnvSchema.parse("true")).toBe("true")
+      expect(pushCeilingEnforceEnvSchema.parse("false")).toBe("false")
+      expect(() => pushCeilingEnforceEnvSchema.parse("yes")).toThrow()
+    })
+
+    it("imports the env module with all three vars unset", async () => {
+      delete process.env.PUSH_REGISTRATION_CEILING_PER_MIN
+      delete process.env.PUSH_OPEN_CEILING_PER_MIN
+      delete process.env.PUSH_CEILING_ENFORCE
+      vi.resetModules()
+      try {
+        await expect(import("@/config/env")).resolves.toHaveProperty("env")
+      } finally {
+        vi.resetModules()
+      }
+    })
+  })
+
+  describe("push campaign send knobs (U4)", () => {
+    it("keeps the campaign flag off by default", () => {
+      expect(pushCampaignsEnabledEnvSchema.parse(undefined)).toBe("false")
+      expect(pushCampaignsEnabledEnvSchema.parse("true")).toBe("true")
+      expect(() => pushCampaignsEnabledEnvSchema.parse("yes")).toThrow()
+    })
+
+    it.each([
+      ["page size", pushBatchPageSizeEnvSchema, 5_000],
+      ["step budget", pushStepMaxDurationMsEnvSchema, 220_000],
+      ["chunk deadline", pushChunkDeadlineMsEnvSchema, 10_000],
+      ["provider concurrency", pushProviderConcurrencyEnvSchema, 3],
+      ["messages per second", pushMessagesPerSecondEnvSchema, 500],
+      ["receipt page size", pushReceiptPageSizeEnvSchema, 10_000],
+    ])("defaults the %s to its sizing-table value", (_name, schema, value) => {
+      expect(schema.parse(undefined)).toBe(value)
+    })
+
+    it.each([
+      ["page size", pushBatchPageSizeEnvSchema],
+      ["step budget", pushStepMaxDurationMsEnvSchema],
+      ["chunk deadline", pushChunkDeadlineMsEnvSchema],
+      ["provider concurrency", pushProviderConcurrencyEnvSchema],
+      ["messages per second", pushMessagesPerSecondEnvSchema],
+      ["receipt page size", pushReceiptPageSizeEnvSchema],
+    ])(
+      "coerces a numeric string and refuses zero on the %s",
+      (_name, schema) => {
+        expect(schema.parse("7")).toBe(7)
+        expect(() => schema.parse("0")).toThrow()
+        expect(() => schema.parse("-1")).toThrow()
+      },
+    )
+
+    it("keeps the provider concurrency under the project rate ceiling", () => {
+      expect(() => pushProviderConcurrencyEnvSchema.parse("11")).toThrow()
+    })
+
+    it("defaults the blocked-country list to China and parses a CSV", () => {
+      expect(pushFcmBlockedCountriesEnvSchema.parse(undefined)).toBe("CN")
+      expect(resolvePushFcmBlockedCountries("cn, ru ,")).toEqual(["CN", "RU"])
+      expect(resolvePushFcmBlockedCountries(undefined)).toEqual(["CN"])
+      expect(resolvePushFcmBlockedCountries("")).toEqual(["CN"])
+    })
+
+    it("reads an empty blocked-country list as no block", () => {
+      expect(resolvePushFcmBlockedCountries("none")).toEqual([])
+    })
+
+    it("imports the env module with every push send var unset", async () => {
+      for (const name of [
+        "PUSH_CAMPAIGNS_ENABLED",
+        "EXPO_ACCESS_TOKEN",
+        "PUSH_BATCH_PAGE_SIZE",
+        "PUSH_STEP_MAX_DURATION_MS",
+        "PUSH_CHUNK_DEADLINE_MS",
+        "PUSH_PROVIDER_CONCURRENCY",
+        "PUSH_MESSAGES_PER_SECOND",
+        "PUSH_RECEIPT_PAGE_SIZE",
+        "PUSH_FCM_BLOCKED_COUNTRIES",
+      ]) {
+        delete process.env[name]
+      }
+      vi.resetModules()
+      try {
+        // `skipValidation` is on in tests, so Zod defaults do not apply here.
+        // The defaults are proven on the schemas above; this proves boot.
+        const loaded = await import("@/config/env")
+        expect(loaded.env).toBeDefined()
+        expect(loaded.env.EXPO_ACCESS_TOKEN).toBeUndefined()
+      } finally {
+        vi.resetModules()
+      }
     })
   })
 

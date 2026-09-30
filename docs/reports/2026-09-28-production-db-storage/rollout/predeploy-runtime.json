@@ -1,0 +1,67 @@
+{
+  "measured_at": "2026-09-27T21:59:36.982880+00:00",
+  "filesystem": {
+    "total_bytes": 48891670528,
+    "used_bytes": 39881093120,
+    "available_bytes": 8993800192,
+    "displayed_usage": "82%"
+  },
+  "services": [
+    {
+      "name": "@forge/admin",
+      "service_id": "bdb15048-1ca9-4217-ae01-ef7cc19ca6f4",
+      "deployment_id": "28edb6c7-6f6d-42ea-82f9-279d4c609843",
+      "status": "SUCCESS",
+      "commit": "e7630a12629c3f4fa1507658bd5d290837fd7061",
+      "config_file": "/apps/admin/railway.toml",
+      "replicas": {
+        "us-west2": {
+          "numReplicas": 1
+        }
+      },
+      "image_digest": "sha256:adddfd95f14662077a8c162a015f064989fab6edfb15258f7563f0dd6a63d2ea",
+      "active_deployments": [
+        {
+          "id": "28edb6c7-6f6d-42ea-82f9-279d4c609843",
+          "status": "SUCCESS"
+        }
+      ],
+      "runtime": {
+        "RAILWAY_GIT_COMMIT_SHA": "e7630a12629c3f4fa1507658bd5d290837fd7061",
+        "RAILWAY_DEPLOYMENT_ID": "28edb6c7-6f6d-42ea-82f9-279d4c609843",
+        "RAILWAY_REPLICA_ID": "ac2d02c6-f585-4ed7-8aaa-5768f28a0a4d",
+        "WORKFLOW_RUNNER_ENABLED": "false",
+        "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": null,
+        "health_status": 200
+      }
+    },
+    {
+      "name": "@forge/admin/worker",
+      "service_id": "4f805f5d-b98b-4e0d-8a41-194176336d2c",
+      "deployment_id": "53ce8c1a-fa3d-469f-8a3f-00250f1acffd",
+      "status": "SUCCESS",
+      "commit": "e7630a12629c3f4fa1507658bd5d290837fd7061",
+      "config_file": "/apps/admin/railway.worker.toml",
+      "replicas": {
+        "us-west2": {
+          "numReplicas": 1
+        }
+      },
+      "image_digest": "sha256:6ee258ca5b6b63b3cf9abae30a6c59ac9b6307dbfb78bc0fea5881ca83eee13f",
+      "active_deployments": [
+        {
+          "id": "53ce8c1a-fa3d-469f-8a3f-00250f1acffd",
+          "status": "SUCCESS"
+        }
+      ],
+      "runtime": {
+        "RAILWAY_GIT_COMMIT_SHA": "e7630a12629c3f4fa1507658bd5d290837fd7061",
+        "RAILWAY_DEPLOYMENT_ID": "53ce8c1a-fa3d-469f-8a3f-00250f1acffd",
+        "RAILWAY_REPLICA_ID": "39a0214e-f39a-4623-8d48-f7487bb820f1",
+        "WORKFLOW_RUNNER_ENABLED": "true",
+        "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": null,
+        "health_status": 200
+      }
+    }
+  ]
+}

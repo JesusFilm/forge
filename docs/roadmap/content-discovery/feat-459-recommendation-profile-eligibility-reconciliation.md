@@ -3,7 +3,7 @@ id: "feat-459"
 title: "Recommendation profile eligibility reconciliation"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: ""
 duration: 6
 depends_on:
@@ -22,6 +22,18 @@ tags:
   - "integrity"
   - "reliability"
 ---
+
+## September 24 owner-approved closeout
+
+The owner accepted this ticket's completed implementation, authenticated Admin
+matching repair, final canonical audit and durable reconciliation on September 24.
+Feat-464's recovery scope is also closed. Remaining monitoring and telemetry/browser
+coverage are explicitly tracked in [feat-545](feat-545-recommendation-monitoring-and-telemetry-closeout.md),
+which now gates downstream rollout/readiness. Earlier in-progress and dependency
+notes below describe their historical verification dates, not the current status.
+
+See the [acceptance record](../../operations/recommendation-evidence-acceptance-2026-09-23.md)
+for evidence and preserved limitations. No runtime flag or production setting changes.
 
 ## Problem
 
@@ -266,3 +278,15 @@ The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.m
 ## September 22 internal continuation
 
 The internal continuation again verifies zero affected pointers, ineligible contributions and rebuild backlog in authenticated Admin, after 24 successful reconciliation batches. Its own repair and current-pointer proofs retain credit. The feat-464 dependency still prevents completion. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).
+
+## September 23 acceptance continuation
+
+The [feat-464 continuation](../../operations/recommendation-evidence-acceptance-2026-09-23.md)
+credits the existing authorized matching repair, then verifies a fresh complete
+canonical audit of **179,054 pointers with zero ineligible** and a matching clean
+authenticated Admin aggregate. Twenty-three committed reconciliation batches and
+heartbeats complete without recorded failures; 81 finalized cohort outcomes match
+their fact watermarks and generations. Fourteen affected-pointer occurrences and
+queued rebuilds during the window preserve the convergence/continuous-zero
+distinction. The remaining feat-464 monitoring and production coverage gates
+still prevent closure; **status remains in progress**.

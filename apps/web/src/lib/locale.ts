@@ -277,6 +277,16 @@ export function isPublicWatchLanguageSlug(slug: string): boolean {
   return PUBLIC_WATCH_LANGUAGE_SLUGS.has(slug)
 }
 
+/**
+ * Shape-only check: could this string be an admin `Language.slug` at all
+ * (lowercase kebab, e.g. `toba`, `purepecha-western-highland`)? Says nothing
+ * about whether admin actually publishes it — pair with the compiled corpus
+ * or the live route manifest for admission.
+ */
+export function hasPublicWatchLanguageSlugShape(slug: string): boolean {
+  return PUBLIC_LANGUAGE_SLUG_PATTERN.test(slug)
+}
+
 export function isPublicWatchHomeLanguageSlug(slug: string): boolean {
   return isPublicWatchLanguageSlug(slug)
 }

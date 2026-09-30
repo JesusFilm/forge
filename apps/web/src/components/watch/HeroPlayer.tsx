@@ -39,6 +39,7 @@ import {
 } from "@/lib/content-width"
 import { languageCodeFor } from "@/lib/language-code"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
+import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
 import { getViewerId } from "@/lib/viewer-id"
 import {
   ensureWatchProgressAuth,
@@ -388,7 +389,14 @@ export function HeroPlayer({
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
-  usePauseForWatchModal(player, playbackId ?? hlsSrc ?? null)
+  const recordModalPause = useCallback(() => {
+    dispatchPlaybackNavigationIntent({
+      mediaId: video.documentId,
+      action: "pause_intent",
+      cause: "system",
+    })
+  }, [video.documentId])
+  usePauseForWatchModal(player, playbackId ?? hlsSrc ?? null, recordModalPause)
   const [nextPlaybackState, setNextPlaybackState] = useState({
     currentTime: 0,
     duration: 0,
@@ -599,11 +607,19 @@ export function HeroPlayer({
     return watchEpisodePath(parentSlug, slug, lang, { autoplay: true })
   }, [block.nextWatchItem, languageSlug])
 
-  const navigateToNextWatchItem = useCallback(() => {
-    if (nextWatchHref == null || nextNavigationStartedRef.current) return
-    nextNavigationStartedRef.current = true
-    router.push(nextWatchHref)
-  }, [nextWatchHref, router])
+  const navigateToNextWatchItem = useCallback(
+    (automatic = false) => {
+      if (nextWatchHref == null || nextNavigationStartedRef.current) return
+      nextNavigationStartedRef.current = true
+      if (!automatic)
+        dispatchPlaybackNavigationIntent({
+          mediaId: video.documentId,
+          action: "manual_skip",
+        })
+      router.push(nextWatchHref)
+    },
+    [nextWatchHref, router, video.documentId],
+  )
 
   useEffect(() => {
     nextNavigationStartedRef.current = false
@@ -713,7 +729,7 @@ export function HeroPlayer({
         watchNextModeRef.current?.videoId === video.documentId &&
         watchNextModeRef.current.mode === "armed"
       ) {
-        navigateToNextWatchItem()
+        navigateToNextWatchItem(true)
       }
     }
     const handleSeeking = () => {
@@ -1070,6 +1086,11 @@ export function HeroPlayer({
         // flag, so the next scroll-back doesn't override their intent.
         if (player.paused) return
         pausedByScrollRef.current = true
+        dispatchPlaybackNavigationIntent({
+          mediaId: video.documentId,
+          action: "pause_intent",
+          cause: "scroll",
+        })
         player.pause()
         return
       }
@@ -1104,7 +1125,13 @@ export function HeroPlayer({
       if (rafHandle !== 0) cancelAnimationFrame(rafHandle)
       onPlayerViewabilityChange?.(false)
     }
-  }, [chromeRevealed, heroHeight, player, onPlayerViewabilityChange])
+  }, [
+    chromeRevealed,
+    heroHeight,
+    player,
+    onPlayerViewabilityChange,
+    video.documentId,
+  ])
 
   const viewerUserId = useSyncExternalStore(
     subscribeClientSnapshot,
@@ -1845,6 +1872,7 @@ export function HeroPlayer({
 
         {chromeRevealed ? (
           <HeroPlayerControls
+            mediaId={video.documentId}
             player={player}
             playerRef={playerRef}
             wrapperRef={wrapperRef}
@@ -1877,7 +1905,7 @@ export function HeroPlayer({
             data-manual={watchNextManual ? "true" : "false"}
             data-auto-armed={watchNextAutoArmed ? "true" : "false"}
             aria-label={t("nextEpisode")}
-            onClick={navigateToNextWatchItem}
+            onClick={() => navigateToNextWatchItem()}
             className={`animate-overlay-fade-in absolute bottom-24 z-30 isolate flex min-w-40 cursor-pointer items-center gap-3 overflow-hidden rounded-full px-5 py-3 text-left shadow-2xl shadow-black/40 ring-1 backdrop-blur-md transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:bottom-28 ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${
               watchNextManual
                 ? "bg-white text-black ring-white hover:bg-white"

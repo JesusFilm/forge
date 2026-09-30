@@ -1,0 +1,24 @@
+diff --git a/dist/esm/server/next-server.js b/dist/esm/server/next-server.js
+--- a/dist/esm/server/next-server.js
++++ b/dist/esm/server/next-server.js
+@@ -396,7 +396,7 @@
+             this.imageResponseCache = new ResponseCache(this.minimalMode);
+         }
+         if (!options.dev && !this.minimalMode && this.nextConfig.experimental.preloadEntriesOnStart) {
+-            this.unstable_preloadEntries();
++            globalThis[Symbol.for("forge.next.preloadEntries")] = this.unstable_preloadEntries();
+         }
+         if (!options.dev) {
+             const { dynamicRoutes = [] } = this.getRoutesManifest() ?? {};
+diff --git a/dist/server/next-server.js b/dist/server/next-server.js
+--- a/dist/server/next-server.js
++++ b/dist/server/next-server.js
+@@ -465,7 +465,7 @@
+             this.imageResponseCache = new _responsecache.default(this.minimalMode);
+         }
+         if (!options.dev && !this.minimalMode && this.nextConfig.experimental.preloadEntriesOnStart) {
+-            this.unstable_preloadEntries();
++            globalThis[Symbol.for("forge.next.preloadEntries")] = this.unstable_preloadEntries();
+         }
+         if (!options.dev) {
+             const { dynamicRoutes = [] } = this.getRoutesManifest() ?? {};

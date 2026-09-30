@@ -7,7 +7,7 @@ status: "blocked"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
-depends_on: ["feat-543", "feat-545"]
+depends_on: ["feat-584", "feat-586"]
 blocks: ["feat-547"]
 tags: ["manager", "ai-pipeline"]
 ---

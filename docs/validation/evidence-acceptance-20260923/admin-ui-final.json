@@ -1,0 +1,33 @@
+{
+  "databaseProbe": "2026-09-23T06:31:39.762Z",
+  "source": "Authenticated production Admin Recommendations page",
+  "url": "https://admin.jesusfilm.org/dashboard/recommendations",
+  "currentPointerAudit": "clean",
+  "affectedPointers": 0,
+  "ineligibleContributions": 0,
+  "rebuildBacklog": 0,
+  "staleRuns": 0,
+  "reclaimedRuns": 0,
+  "replacementPublications": 207,
+  "terminalRuns": 97,
+  "reconciliationStatus": "degraded",
+  "profileSourceFences": 9,
+  "affectedRequests": 9,
+  "cleanHybridRequests": 1478,
+  "evidenceWindowHours": 24,
+  "evidenceStatus": "loss_suspected",
+  "committedRejections": 144,
+  "writeFailures": 0,
+  "replays": 48,
+  "conflicts": 0,
+  "lateFacts": 0,
+  "classifierLag": 0,
+  "selectionsWithoutImpression": 4,
+  "deliveryWatermark": "2026-09-23T06:30:30.845Z",
+  "evidenceWatermark": "2026-09-23T06:29:02.863Z",
+  "oldestPending": "2026-09-23T03:27:23.230Z",
+  "limitations": [
+    "UI aggregates use their selected rolling window; not the fixed two-hour cohort.",
+    "Clean current pointers do not make broader degraded/loss-suspected labels disappear."
+  ]
+}

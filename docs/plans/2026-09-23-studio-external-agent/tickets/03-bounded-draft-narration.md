@@ -1,8 +1,8 @@
 # 03: Generate draft narration within a durable allowance
 
-**Parent:** [Specification](../spec.md) · planning tracker feat-541
+**Parent:** [Specification](../spec.md) · planning tracker feat-583
 
-**Status:** approved; published as `feat-544` with `ready-for-agent` readiness.
+**Status:** approved; published as `feat-585` with `ready-for-agent` readiness.
 
 **What to build:** The agent uses an approved existing voice to generate and attach draft speech without pausing for preliminary script approval. The human later reviews effective script and voice settings before publication.
 

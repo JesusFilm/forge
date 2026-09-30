@@ -23,11 +23,11 @@ were recreated cleanly as `forge-shorts-agent-547-portable` and
 | Slice                     | Roadmap  | Dependencies       | Branch                                |
 | ------------------------- | -------- | ------------------ | ------------------------------------- |
 | Connection/editing        | feat-542 | none               | codex/shorts-agent-542-connect        |
-| Exact draft render        | feat-543 | feat-542           | codex/shorts-agent-543-render         |
-| Bounded narration         | feat-544 | feat-542           | codex/shorts-agent-544-narration      |
-| Sampled inspection        | feat-545 | feat-543           | codex/shorts-agent-545-inspection     |
-| Human review/revision     | feat-546 | feat-543, feat-545 | codex/shorts-agent-546-review         |
-| Portable skill            | feat-547 | feat-544, feat-546 | codex/shorts-agent-547-portable-skill |
+| Exact draft render        | feat-584 | feat-542           | codex/shorts-agent-543-render         |
+| Bounded narration         | feat-585 | feat-542           | codex/shorts-agent-544-narration      |
+| Sampled inspection        | feat-586 | feat-584           | codex/shorts-agent-545-inspection     |
+| Human review/revision     | feat-546 | feat-584, feat-586 | codex/shorts-agent-546-review         |
+| Portable skill            | feat-547 | feat-585, feat-546 | codex/shorts-agent-547-portable-skill |
 | Real-client qualification | feat-548 | feat-547           | codex/shorts-agent-548-clients        |
 
 Each implementation slice uses its own worktree. The coordinator integrates

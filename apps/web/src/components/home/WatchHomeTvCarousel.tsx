@@ -54,8 +54,17 @@ import {
 import { WATCH_HERO_BODY_OVERLAP_CSS } from "@/lib/watch-hero-preview-overlap"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { getWebVttCueText } from "@/lib/webvtt"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
+
+import { watchSurfaceItemPath } from "@/lib/watch-surface-path"
+import {
+  selectWatchHomeHeroManifest,
+  type WatchHomeHeroManifestCatalog,
+} from "@/lib/watch-home-hero-manifest"
 
 type WatchHomeTvCarouselProps = {
+  heroManifestCatalog?: WatchHomeHeroManifestCatalog
+  exposurePlacement?: string
   slides: WatchHomeHeroSlide[]
   sequence?: WatchHomeCarouselSequenceData | null
   /**
@@ -539,6 +548,8 @@ function WatchHomeTvOverlay({
   playbackTimeSeconds,
   slides,
   ringAnimationKey,
+  exposurePlacement,
+  heroManifestCatalog,
 }: {
   activeIndex: number
   activeSlide: WatchHomeTvCarouselSlide
@@ -552,8 +563,16 @@ function WatchHomeTvOverlay({
   playbackTimeSeconds: number
   ringAnimationKey: string
   slides: readonly WatchHomeTvCarouselSlide[]
+  exposurePlacement: string
+  heroManifestCatalog?: WatchHomeHeroManifestCatalog
 }) {
   const t = useTranslations("WatchHome")
+  const actionsRef = useRef<HTMLDivElement>(null)
+  const activePath = watchSurfaceItemPath(activeSlide.href)
+  const manifest = useMemo(
+    () => selectWatchHomeHeroManifest(heroManifestCatalog, activePath),
+    [heroManifestCatalog, activePath],
+  )
 
   return (
     <div
@@ -579,46 +598,59 @@ function WatchHomeTvOverlay({
             slide={activeSlide}
           />
         </div>
-        <div
-          data-testid="watch-home-tv-actions"
-          className="mt-3 flex flex-nowrap items-center gap-x-3 sm:mt-4 sm:gap-x-5 compact-landscape:mt-1 compact-landscape:gap-x-3"
+        <WatchExposureBoundary
+          rootRef={actionsRef}
+          measurementKey={JSON.stringify([activeSlide.id, activePath])}
+          manifest={manifest}
+          config={{
+            surface: "watch-home",
+            block: "hero",
+            presentation: "hero-card",
+            placement: exposurePlacement,
+          }}
         >
-          <PrimaryAction
-            slide={activeSlide}
-            playbackTimeSeconds={playbackTimeSeconds}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={isMuted ? t("unmutePreview") : t("mutePreview")}
-            onClick={onToggleMuted}
-            className="group/mute relative isolate h-11 w-11 overflow-hidden rounded-full border-0 bg-black/55 text-white shadow-lg shadow-black/30 ring-0 hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:bg-black/70 focus-visible:text-white focus-visible:ring-2 focus-visible:ring-white/80 active:scale-95 md:h-13 md:w-13"
+          <div
+            ref={actionsRef}
+            data-testid="watch-home-tv-actions"
+            className="mt-3 flex flex-nowrap items-center gap-x-3 sm:mt-4 sm:gap-x-5 compact-landscape:mt-1 compact-landscape:gap-x-3"
           >
-            {isMuted ? (
-              <VolumeX className="relative z-10 size-7" aria-hidden />
-            ) : (
-              <Volume2 className="relative z-10 size-7" aria-hidden />
-            )}
-            <span
-              aria-hidden
-              data-testid="watch-home-mute-bevel"
-              className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] mix-blend-overlay shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)] transition-shadow duration-200 group-hover/mute:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.48)]"
+            <PrimaryAction
+              slide={activeSlide}
+              playbackTimeSeconds={playbackTimeSeconds}
             />
-          </Button>
-          <div className="ml-auto flex shrink-0 items-center text-white sm:hidden">
-            <WatchHomeVideoTimeline
-              activeIndex={activeIndex}
-              advanceDurationSeconds={advanceDurationSeconds}
-              animationKey={ringAnimationKey}
-              buffering={isBuffering}
-              onSelectSlide={onSelectSlide}
-              paused={isTurnHeld}
-              size="compact"
-              slides={slides}
-            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={isMuted ? t("unmutePreview") : t("mutePreview")}
+              onClick={onToggleMuted}
+              className="group/mute relative isolate h-11 w-11 overflow-hidden rounded-full border-0 bg-black/55 text-white shadow-lg shadow-black/30 ring-0 hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:bg-black/70 focus-visible:text-white focus-visible:ring-2 focus-visible:ring-white/80 active:scale-95 md:h-13 md:w-13"
+            >
+              {isMuted ? (
+                <VolumeX className="relative z-10 size-7" aria-hidden />
+              ) : (
+                <Volume2 className="relative z-10 size-7" aria-hidden />
+              )}
+              <span
+                aria-hidden
+                data-testid="watch-home-mute-bevel"
+                className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] mix-blend-overlay shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)] transition-shadow duration-200 group-hover/mute:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.48)]"
+              />
+            </Button>
+            <div className="ml-auto flex shrink-0 items-center text-white sm:hidden">
+              <WatchHomeVideoTimeline
+                activeIndex={activeIndex}
+                advanceDurationSeconds={advanceDurationSeconds}
+                animationKey={ringAnimationKey}
+                buffering={isBuffering}
+                onSelectSlide={onSelectSlide}
+                paused={isTurnHeld}
+                size="compact"
+                slides={slides}
+              />
+            </div>
           </div>
-        </div>
+        </WatchExposureBoundary>
       </div>
       <div className="hidden shrink-0 items-center gap-4 text-white sm:flex">
         <WatchHomeVideoTimeline
@@ -1033,6 +1065,8 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
 })
 
 export function WatchHomeTvCarousel({
+  heroManifestCatalog,
+  exposurePlacement,
   pinned = true,
   sequence = null,
   slides,
@@ -1163,6 +1197,10 @@ export function WatchHomeTvCarousel({
           playbackTimeSeconds={playbackTimeSeconds}
           ringAnimationKey={ringAnimationKey}
           slides={timelineSlides}
+          heroManifestCatalog={heroManifestCatalog}
+          exposurePlacement={
+            exposurePlacement ?? (pinned ? "home-hero" : "authored-hero")
+          }
         />
         {subtitleCueText ? (
           <WatchHomeSubtitleOverlay cueText={subtitleCueText} />

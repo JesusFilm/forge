@@ -209,6 +209,8 @@ export function AccountControl() {
               role="menuitem"
               className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-base sm:text-sm text-stone-100 transition-colors hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
               onClick={() => {
+                // Reload the account-backed history after leaving the menu.
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
                 window.location.assign("/watch/history")
               }}
             >

@@ -1,8 +1,8 @@
 # 04: Inspect a rendered draft quickly with attributable evidence
 
-**Parent:** [Specification](../spec.md) · planning tracker feat-541
+**Parent:** [Specification](../spec.md) · planning tracker feat-583
 
-**Status:** approved; published as `feat-545` with `ready-for-agent` readiness.
+**Status:** approved; published as `feat-586` with `ready-for-agent` readiness.
 
 **What to build:** The external agent retrieves a bounded evidence package for the exact rendered draft, performs a quick quality pass, and hands off honest findings and inspection coverage.
 

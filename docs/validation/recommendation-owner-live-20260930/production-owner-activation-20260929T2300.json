@@ -1,0 +1,29 @@
+{
+  "observedVia": "authenticated Admin owner-release control",
+  "recordedAt": "2026-09-29T23:00:44.590595+00:00",
+  "operationId": "4459344d-202b-4665-aab3-75fa17920c10",
+  "graphGeneration": "7a0df065a6562c562ea49809e4db4fd68d3a112729368bcfd0033679ea7270fa",
+  "manifest": "hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1",
+  "bindingDigest": "af6083ffbe53380d5f5cc16cd2d0c7fb117a5f983f4c8755fd43c241289c30a2",
+  "expectedPointerGeneration": 3,
+  "sourceWindow": {
+    "windowStart": "2026-09-22T19:00:00.000Z",
+    "windowEnd": "2026-09-29T19:00:00.000Z",
+    "evaluationAsOf": "2026-09-29T19:00:00.000Z"
+  },
+  "validUntil": "2026-09-30T22:59:20.343Z",
+  "earliestDependencyExpiry": "2026-10-21T19:00:53.714Z",
+  "status": "active",
+  "pointerGeneration": 4,
+  "stage": "OWNER_APPROVED",
+  "activeStrategy": "hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1",
+  "ownerReleaseId": "4459344d-202b-4665-aab3-75fa17920c10",
+  "activatedAt": "2026-09-29T23:00:26.512Z",
+  "acknowledgement": "Recorded release: active",
+  "reloadedServingStateConfirmed": true,
+  "audit": "Activation Effective / Owner Approved Without Trial",
+  "killSwitchEnabled": false,
+  "observedAt": "2026-09-29T23:02:22.422856+00:00",
+  "causalUsefulness": "unmeasured",
+  "naturalIssuance": "First bounded window through23:04:08:16issued,0exactdirect,3unattributedfallbackmarkers; see separate receipt."
+}

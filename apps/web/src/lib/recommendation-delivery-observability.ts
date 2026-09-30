@@ -6,6 +6,8 @@ const RESULTS = new Set(["served", "fallback", "empty", "unavailable"])
 // Never log upstream strings directly: even a new reason must have bounded
 // cardinality and cannot smuggle capabilities or other identifying values.
 const REASONS = new Set([
+  "traffic_contextual",
+  "traffic_deferred",
   "delivery_timeout",
   "retrieval_timeout",
   "delivery_unavailable",
@@ -57,7 +59,24 @@ const REASONS = new Set([
   "invalid_admin_response",
 ])
 
+const TRAFFIC_CATEGORIES = new Set([
+  "declared_crawler",
+  "speculative_prefetch",
+  "speculative_prerender",
+  "ordinary_browser",
+  "unknown",
+])
+const PERSISTENCE_DISPOSITIONS = new Set([
+  "avoided",
+  "committed",
+  "not_committed",
+  "not_observed",
+  "unexpected_commit",
+])
+
 type DeliveryObservation = {
+  trafficCategory?: string
+  persistenceDisposition?: string
   endpoint: "seeded" | "for_you"
   httpStatus: number
   delivery?: {
@@ -84,6 +103,28 @@ export function observeRecommendationDelivery(
     const count = delivery?.items.length ?? 0
     const event = {
       event: "recommendation.delivery",
+      ...(input.trafficCategory == null
+        ? {}
+        : {
+            trafficCategory: TRAFFIC_CATEGORIES.has(input.trafficCategory)
+              ? input.trafficCategory
+              : "unknown",
+            trafficClassifierVersion: "origin-traffic-v1",
+            trustedEdgeSource: false,
+            persistenceDisposition: PERSISTENCE_DISPOSITIONS.has(
+              input.persistenceDisposition ?? "",
+            )
+              ? input.persistenceDisposition
+              : "not_observed",
+            attempted: 1,
+            avoidedPersistence:
+              input.persistenceDisposition === "avoided" ? 1 : 0,
+            committed:
+              input.persistenceDisposition === "committed" ||
+              input.persistenceDisposition === "unexpected_commit"
+                ? 1
+                : 0,
+          }),
       endpoint:
         input.endpoint === "seeded" || input.endpoint === "for_you"
           ? input.endpoint

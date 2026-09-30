@@ -1567,6 +1567,8 @@ export function SeoWorkspace({
       const url = new URL(window.location.href)
       url.searchParams.set("view", nextView)
       url.searchParams.delete("cursor")
+      // Runs are loaded by the server; a full navigation refreshes their cursor.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign(`${url.pathname}?${url.searchParams.toString()}`)
       return
     }

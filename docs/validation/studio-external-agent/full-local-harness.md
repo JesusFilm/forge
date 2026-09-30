@@ -8,7 +8,10 @@ speech quality, authenticated browser approval, or an OCI deployment.
 ## Boundaries
 
 - Only `postgresql://tataihono@127.0.0.1:55460/forge_studio_548_qualification`
-  is accepted. Apply the repository's unchanged migrations through 0102 first.
+  is accepted. Apply the repository's migrations through 0124 first on a fresh
+  isolated database. The September 23 fixtures used the prior unpublished
+  0099–0102 Shorts names; keep those historical databases intact instead of
+  applying the renamed migrations over their existing objects.
   This separate database is necessary because the real render dispatcher scans
   all pending work. Never point this harness at a regression/shared database.
 - Ports 55480, 55482, 55483, 55484 serve the synthetic JWKS issuer, real Admin route

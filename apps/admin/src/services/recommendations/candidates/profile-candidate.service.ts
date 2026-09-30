@@ -187,10 +187,12 @@ export function createDatabaseProfileSourceNominationGenerator(
           generation.cohort_quality AS "cohortQuality",
           interest.interest_ordinal AS ordinal,
           interest.kind,
-          interest.embedding::text AS "vectorText"
+          COALESCE(interest.embedding, vector_snapshot.embedding)::text AS "vectorText"
         FROM recommendation_profile_projection_generation generation
         JOIN recommendation_profile_interest interest
           ON interest.generation_id = generation.id
+        LEFT JOIN recommendation_profile_vector_snapshot vector_snapshot
+          ON vector_snapshot.digest = interest.vector_digest
         LEFT JOIN recommendation_profile profile
           ON profile.id = generation.profile_id
         WHERE generation.id = ${context.contextProjection.ref}
@@ -320,7 +322,7 @@ export async function getLiveProfileCandidates(
       selected.lineage_eligible AS "lineageEligible",
       interest.interest_ordinal AS ordinal,
       interest.kind::text AS kind,
-      interest.embedding::text AS "vectorText"
+      COALESCE(interest.embedding, vector_snapshot.embedding)::text AS "vectorText"
     FROM validated_generation selected
     JOIN recommendation_profile_projection_generation generation
       ON generation.id = selected.id
@@ -328,6 +330,8 @@ export async function getLiveProfileCandidates(
       ON interest.generation_id = generation.id
       AND interest.expires_at > ${input.now}
       AND selected.lineage_eligible = true
+    LEFT JOIN recommendation_profile_vector_snapshot vector_snapshot
+      ON vector_snapshot.digest = interest.vector_digest
     ORDER BY
       CASE interest.kind WHEN 'session' THEN 0 ELSE 1 END,
       interest.interest_ordinal

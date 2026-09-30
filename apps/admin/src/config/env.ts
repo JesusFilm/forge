@@ -164,6 +164,15 @@ export function resolveWatchSearchTranscriptPublicationEnabled(
   )
 }
 
+export function resolveWatchCatalogPublicationEnabled(
+  value: unknown = env.WATCH_CATALOG_PUBLICATION_ENABLED,
+): boolean {
+  return runtimeWatchSearchFlag(
+    value,
+    watchSearchTranscriptPublicationEnabledEnvSchema,
+  )
+}
+
 /**
  * `createEnv` deliberately skips transforms while CI builds. Normalize the
  * search controls again at runtime so Railway's raw strings cannot become
@@ -287,6 +296,68 @@ export const fleetSearchCeilingEnforceEnvSchema = z
   .optional()
   .default("false")
 
+// KTD7 push write ceilings: one global counter per fleet key per operation.
+// Registration and open fire once per launch and once per tap, so 6000/min is
+// a catastrophic backstop, not a working limit. 0 disables that ceiling.
+const pushCeilingPerMinEnvSchema = () =>
+  z.coerce.number().int().min(0).optional().default(6000)
+export const pushRegistrationCeilingPerMinEnvSchema =
+  pushCeilingPerMinEnvSchema()
+export const pushOpenCeilingPerMinEnvSchema = pushCeilingPerMinEnvSchema()
+
+// One flag covers both push ceilings. "false" logs only; "true" refuses.
+export const pushCeilingEnforceEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+
+// KTD12 — the campaign kill switch. Off by default so an unprovisioned
+// environment boots with sending impossible rather than accidentally live.
+export const pushCampaignsEnabledEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+
+// KTD15 — the send budgets. Each default is the sizing table's value, and each
+// is a positive integer so a mistyped 0 refuses instead of stalling a wave.
+const pushPositiveIntEnvSchema = (fallback: number, max?: number) => {
+  const base = z.coerce.number().int().min(1)
+  return (max === undefined ? base : base.max(max)).optional().default(fallback)
+}
+export const pushBatchPageSizeEnvSchema = pushPositiveIntEnvSchema(
+  5_000,
+  20_000,
+)
+export const pushStepMaxDurationMsEnvSchema = pushPositiveIntEnvSchema(220_000)
+export const pushChunkDeadlineMsEnvSchema = pushPositiveIntEnvSchema(10_000)
+// A concurrency above 10 would overrun the project's per-second limit even
+// with the message bucket in place, so the schema caps it.
+export const pushProviderConcurrencyEnvSchema = pushPositiveIntEnvSchema(3, 10)
+export const pushMessagesPerSecondEnvSchema = pushPositiveIntEnvSchema(500)
+export const pushReceiptPageSizeEnvSchema = pushPositiveIntEnvSchema(
+  10_000,
+  50_000,
+)
+
+// R26 — the countries Google's service does not deliver to. A CSV so an
+// operator can add one without a deploy; the literal `none` clears the list.
+export const pushFcmBlockedCountriesEnvSchema = z
+  .string()
+  .optional()
+  .default("CN")
+
+export function resolvePushFcmBlockedCountries(
+  value: string | undefined,
+): string[] {
+  const raw = value?.trim()
+  if (!raw) return ["CN"]
+  if (raw.toLowerCase() === "none") return []
+  return raw
+    .split(",")
+    .map((country) => country.trim().toUpperCase())
+    .filter((country) => country.length > 0)
+}
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -370,6 +441,8 @@ export const env = createEnv({
       watchSearchDefaultShadowEnabledEnvSchema,
     WATCH_SEARCH_FLEET_PRIMARY_ENABLED: watchSearchFleetPrimaryEnabledEnvSchema,
     WATCH_SEARCH_TYPESENSE_PROFILE: watchSearchTypesenseProfileEnvSchema,
+    WATCH_CATALOG_PUBLICATION_ENABLED:
+      watchSearchTranscriptPublicationEnabledEnvSchema,
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       watchSearchCandidateComparisonEnabledEnvSchema,
     WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED:
@@ -434,6 +507,9 @@ export const env = createEnv({
     WATCH_SEARCH_DB_TEST: z.enum(["1"]).optional(),
     // Opt-in isolated-schema migration/constraint proof for feat-368 U1.
     RECOMMENDATION_DB_TEST: z.enum(["1"]).optional(),
+    // Opt-in real-database proof for the push campaign claim indexes and the
+    // push retention purge. Test-only; production never branches on it.
+    PUSH_DB_TEST: z.enum(["1"]).optional(),
     // Required mode selector for the complete delivery database benchmark.
     // Production release proof must say production_snapshot explicitly; CI
     // fixtures cannot silently stand in for restored corpus evidence.
@@ -443,6 +519,11 @@ export const env = createEnv({
     // Deterministic pgvector catalog fixture for recommendation profile CI.
     // Omit to run the same proof against an approved production snapshot.
     RECOMMENDATION_PROFILE_DB_FIXTURE: z.enum(["deterministic"]).optional(),
+    // Both inline and shared readers must remain in every serving/rollback image.
+    // Explicit false stops new shared writes without rewriting retained rows.
+    RECOMMENDATION_PROFILE_VECTOR_SHARING: z
+      .enum(["true", "false"])
+      .default("true"),
     // Opt-in real-Redis proof for feat-368 atomic delivery admission.
     RECOMMENDATION_REDIS_TEST: z.enum(["1"]).optional(),
     // Source-free serving is enabled by default; false remains a kill switch.
@@ -459,6 +540,22 @@ export const env = createEnv({
       .enum(["true", "false"])
       .optional()
       .default("false"),
+    // Activate only after every serving replica and rollback image can read
+    // both legacy stage rows and compact run payloads.
+    RECOMMENDATION_CANDIDATE_TRACE_FORMAT: z
+      .enum(["legacy", "compact"])
+      .default("legacy"),
+    // Mixed readers and the rollback image must continue to understand packed items.
+    // Explicit legacy stops new packed writes without rewriting retained requests.
+    RECOMMENDATION_SERVED_ITEM_FORMAT: z
+      .enum(["legacy", "packed"])
+      .default("packed"),
+    // Isolated, opt-in recommendation storage benchmark settings. The script
+    // validates its own safety guards even when CI skips application validation.
+    RECOMMENDATION_STORAGE_BENCHMARK: z.enum(["1"]).optional(),
+    RECOMMENDATION_STORAGE_BENCHMARK_DATABASE: z.string().min(1).optional(),
+    RECOMMENDATION_STORAGE_BENCHMARK_RUNS: z.string().optional(),
+    RECOMMENDATION_STORAGE_BENCHMARK_OUTPUT: z.string().optional(),
     // JSON HMAC keyring parsed only by recommendation token.service so invalid
     // material disables attributed serving without breaking unrelated Admin
     // routes. Never log this value or surface it in validation errors.
@@ -513,6 +610,23 @@ export const env = createEnv({
     FLEET_SEARCH_GLOBAL_CEILING_PER_MIN:
       fleetSearchGlobalCeilingPerMinEnvSchema,
     FLEET_SEARCH_CEILING_ENFORCE: fleetSearchCeilingEnforceEnvSchema,
+    PUSH_REGISTRATION_CEILING_PER_MIN: pushRegistrationCeilingPerMinEnvSchema,
+    PUSH_OPEN_CEILING_PER_MIN: pushOpenCeilingPerMinEnvSchema,
+    PUSH_CEILING_ENFORCE: pushCeilingEnforceEnvSchema,
+    // U4 campaign send. Every var is optional with its default beside it, so
+    // an environment that has not been provisioned still boots (KTD12, KTD15).
+    PUSH_CAMPAIGNS_ENABLED: pushCampaignsEnabledEnvSchema,
+    // KTD1 — the Expo project access token. Worker-only; admin web refuses to
+    // boot with it injected, and the transport refuses to construct without it
+    // in production.
+    EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
+    PUSH_BATCH_PAGE_SIZE: pushBatchPageSizeEnvSchema,
+    PUSH_STEP_MAX_DURATION_MS: pushStepMaxDurationMsEnvSchema,
+    PUSH_CHUNK_DEADLINE_MS: pushChunkDeadlineMsEnvSchema,
+    PUSH_PROVIDER_CONCURRENCY: pushProviderConcurrencyEnvSchema,
+    PUSH_MESSAGES_PER_SECOND: pushMessagesPerSecondEnvSchema,
+    PUSH_RECEIPT_PAGE_SIZE: pushReceiptPageSizeEnvSchema,
+    PUSH_FCM_BLOCKED_COUNTRIES: pushFcmBlockedCountriesEnvSchema,
     // Admin-owned production search trace sampling. Future Mastra eval jobs
     // call the internal Admin sampling route with a dedicated bearer from
     // this CSV; it must stay disjoint from public search, workflow launch,
@@ -870,6 +984,9 @@ export const env = createEnv({
       "false",
     WATCH_SEARCH_TYPESENSE_PROFILE:
       emptyToUndefined(process.env.WATCH_SEARCH_TYPESENSE_PROFILE) ?? "CURRENT",
+    WATCH_CATALOG_PUBLICATION_ENABLED: emptyToUndefined(
+      process.env.WATCH_CATALOG_PUBLICATION_ENABLED,
+    ),
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       emptyToUndefined(process.env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED) ??
       "false",
@@ -942,12 +1059,16 @@ export const env = createEnv({
     RECOMMENDATION_DB_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_DB_TEST,
     ),
+    PUSH_DB_TEST: emptyToUndefined(process.env.PUSH_DB_TEST),
     RECOMMENDATION_DELIVERY_DB_FIXTURE: emptyToUndefined(
       process.env.RECOMMENDATION_DELIVERY_DB_FIXTURE,
     ),
     RECOMMENDATION_PROFILE_DB_FIXTURE: emptyToUndefined(
       process.env.RECOMMENDATION_PROFILE_DB_FIXTURE,
     ),
+    RECOMMENDATION_PROFILE_VECTOR_SHARING:
+      emptyToUndefined(process.env.RECOMMENDATION_PROFILE_VECTOR_SHARING) ??
+      "true",
     RECOMMENDATION_REDIS_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_REDIS_TEST,
     ),
@@ -957,6 +1078,24 @@ export const env = createEnv({
       "true",
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED,
+    ),
+    RECOMMENDATION_CANDIDATE_TRACE_FORMAT:
+      emptyToUndefined(process.env.RECOMMENDATION_CANDIDATE_TRACE_FORMAT) ??
+      "legacy",
+    RECOMMENDATION_SERVED_ITEM_FORMAT:
+      emptyToUndefined(process.env.RECOMMENDATION_SERVED_ITEM_FORMAT) ??
+      "packed",
+    RECOMMENDATION_STORAGE_BENCHMARK: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK,
+    ),
+    RECOMMENDATION_STORAGE_BENCHMARK_DATABASE: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK_DATABASE,
+    ),
+    RECOMMENDATION_STORAGE_BENCHMARK_RUNS: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK_RUNS,
+    ),
+    RECOMMENDATION_STORAGE_BENCHMARK_OUTPUT: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK_OUTPUT,
     ),
     RECOMMENDATION_VIEWING_MODE_ENABLED:
       emptyToUndefined(process.env.RECOMMENDATION_VIEWING_MODE_ENABLED) ??
@@ -996,6 +1135,36 @@ export const env = createEnv({
     ),
     FLEET_SEARCH_CEILING_ENFORCE: emptyToUndefined(
       process.env.FLEET_SEARCH_CEILING_ENFORCE,
+    ),
+    PUSH_REGISTRATION_CEILING_PER_MIN: emptyToUndefined(
+      process.env.PUSH_REGISTRATION_CEILING_PER_MIN,
+    ),
+    PUSH_OPEN_CEILING_PER_MIN: emptyToUndefined(
+      process.env.PUSH_OPEN_CEILING_PER_MIN,
+    ),
+    PUSH_CEILING_ENFORCE: emptyToUndefined(process.env.PUSH_CEILING_ENFORCE),
+    PUSH_CAMPAIGNS_ENABLED: emptyToUndefined(
+      process.env.PUSH_CAMPAIGNS_ENABLED,
+    ),
+    EXPO_ACCESS_TOKEN: emptyToUndefined(process.env.EXPO_ACCESS_TOKEN),
+    PUSH_BATCH_PAGE_SIZE: emptyToUndefined(process.env.PUSH_BATCH_PAGE_SIZE),
+    PUSH_STEP_MAX_DURATION_MS: emptyToUndefined(
+      process.env.PUSH_STEP_MAX_DURATION_MS,
+    ),
+    PUSH_CHUNK_DEADLINE_MS: emptyToUndefined(
+      process.env.PUSH_CHUNK_DEADLINE_MS,
+    ),
+    PUSH_PROVIDER_CONCURRENCY: emptyToUndefined(
+      process.env.PUSH_PROVIDER_CONCURRENCY,
+    ),
+    PUSH_MESSAGES_PER_SECOND: emptyToUndefined(
+      process.env.PUSH_MESSAGES_PER_SECOND,
+    ),
+    PUSH_RECEIPT_PAGE_SIZE: emptyToUndefined(
+      process.env.PUSH_RECEIPT_PAGE_SIZE,
+    ),
+    PUSH_FCM_BLOCKED_COUNTRIES: emptyToUndefined(
+      process.env.PUSH_FCM_BLOCKED_COUNTRIES,
     ),
     SEARCH_TRACE_SAMPLING_API_KEYS: emptyToUndefined(
       process.env.SEARCH_TRACE_SAMPLING_API_KEYS,

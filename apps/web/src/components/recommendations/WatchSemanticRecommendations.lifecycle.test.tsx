@@ -39,6 +39,7 @@ import {
 } from "@/lib/recommendation-consent-bootstrap"
 import { RECOMMENDATION_TAB_CORRELATION_KEY } from "@/lib/recommendation-contracts"
 import {
+  acceptedEvidenceResponse,
   container,
   delivery,
   deliveryWithTwoItems,
@@ -57,6 +58,68 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     startRecommendationConsentBootstrap()
     completeRecommendationConsentBootstrap()
   })
+
+  it.each([-301, 0, 601])(
+    "characterizes render evidence from a client clock offset by %s seconds without terminal retry amplification",
+    async (clientOffsetSeconds) => {
+      const issuedAt = new Date("2026-09-23T00:00:00.000Z")
+      const expiresAt = new Date(issuedAt.getTime() + 600_000)
+      const clientNow = new Date(
+        issuedAt.getTime() + clientOffsetSeconds * 1_000,
+      )
+      vi.setSystemTime(clientNow)
+      let evidenceAttempts = 0
+      let evidenceOccurredAt: string | undefined
+      const fetchMock = vi.fn(
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = String(input)
+          if (url.endsWith("/api/recommendations")) {
+            return jsonResponse({
+              delivery: { ...delivery, expiresAt: expiresAt.toISOString() },
+            })
+          }
+          if (url.endsWith("/profile")) {
+            return jsonResponse({
+              profile: { state: "session_only", privacyGeneration: null },
+            })
+          }
+          evidenceAttempts += 1
+          const body = JSON.parse(String(init?.body)) as {
+            events: Array<{ occurredAt: string }>
+          }
+          evidenceOccurredAt = body.events[0]?.occurredAt
+          // Admin's separately tested signed-capability timestamp boundary.
+          const eventTime = new Date(evidenceOccurredAt!).getTime()
+          return eventTime < issuedAt.getTime() - 300_000 ||
+            eventTime > expiresAt.getTime()
+            ? jsonResponse({ error: "invalid_request" }, 400)
+            : acceptedEvidenceResponse(init)
+        },
+      )
+      vi.stubGlobal("fetch", fetchMock)
+
+      act(() => {
+        root.render(
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="en"
+            audioLanguageSlug="english"
+          />,
+        )
+      })
+      await flush()
+      await act(async () => vi.advanceTimersByTimeAsync(10_000))
+
+      expect(evidenceOccurredAt).toBe(clientNow.toISOString())
+      expect(evidenceAttempts).toBe(1)
+      expect(container.textContent).toContain("Target video")
+      expect(
+        container.textContent?.includes(
+          "Recommendation activity could not be recorded.",
+        ),
+      ).toBe(clientOffsetSeconds !== 0)
+    },
+  )
 
   it("hides a stale slate while a changed Watch seed loads", async () => {
     let resolveReplacement!: (response: Response) => void

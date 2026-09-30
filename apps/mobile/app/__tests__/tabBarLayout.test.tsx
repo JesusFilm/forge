@@ -1,7 +1,7 @@
 /**
  * Pins BOTH navigators. iOS renders `_layout.ios.tsx` (NativeTabs, a real
  * UITabBarController); every other platform renders `_layout.tsx`, and Android
- * must be byte-identical to what it shipped before feat-500.
+ * keeps the bar options it shipped before feat-500.
  *
  * `NativeTabs` comes from `expo-router/unstable-native-tabs`, NOT the
  * `expo-router` root, so mocking `expo-router` alone would load the real
@@ -10,12 +10,14 @@
 import { act } from "react"
 import type React from "react"
 import { Platform } from "react-native"
+import { NativeTabs } from "expo-router/unstable-native-tabs"
 
 import {
   TestRenderer,
   type TestInstance,
 } from "../../src/test-utils/rnTestRenderer"
-import { TAB_ROUTE_NAMES } from "../../src/lib/tabBar"
+import { READER_COPY } from "../../src/lib/bible/reader/copy"
+import { TAB_LABELS, TAB_ROUTE_NAMES } from "../../src/lib/tabBar"
 import {
   resetTabBarHidden,
   setTabBarHidden,
@@ -36,18 +38,31 @@ const AndroidTabLayout = require("../(tabs)/_layout.tsx")
 const mockScreenOptions: { current: Record<string, unknown> | undefined } = {
   current: undefined,
 }
+const mockScreens: Array<{ name: string; options: Record<string, unknown> }> =
+  []
 const mockNativeProps: { current: Record<string, unknown> | undefined } = {
   current: undefined,
 }
 const mockTriggers: Array<Record<string, unknown>> = []
+// jest-expo sets __DEV__, so the real gate is always open here.
+const mockExploreAvailable = { current: true }
 
 jest.mock("expo-router", () => ({
   Tabs: Object.assign(
-    (props: { screenOptions?: Record<string, unknown> }) => {
+    (props: {
+      screenOptions?: Record<string, unknown>
+      children?: unknown
+    }) => {
       mockScreenOptions.current = props.screenOptions
-      return null
+      // Rendering children is load-bearing, as it is for NativeTabs below.
+      return props.children as never
     },
-    { Screen: () => null },
+    {
+      Screen: (props: { name: string; options: Record<string, unknown> }) => {
+        mockScreens.push(props)
+        return null
+      },
+    },
   ),
 }))
 jest.mock("expo-router/unstable-native-tabs", () => {
@@ -77,6 +92,22 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 59, right: 0, bottom: 34, left: 0 }),
 }))
+jest.mock("../../src/lib/explore/availability", () => ({
+  isExploreAvailable: () => mockExploreAvailable.current,
+}))
+// A sentinel per tab. A layout that spells its own label cannot produce these,
+// so the label cases below prove the record is read, not merely matched.
+jest.mock("../../src/lib/tabBar", () => {
+  const actual = jest.requireActual<typeof import("../../src/lib/tabBar")>(
+    "../../src/lib/tabBar",
+  )
+  return {
+    ...actual,
+    TAB_LABELS: Object.fromEntries(
+      actual.TAB_ROUTE_NAMES.map((name) => [name, `label:${name}`]),
+    ),
+  }
+})
 
 const platformOsDescriptor = Object.getOwnPropertyDescriptor(Platform, "OS")!
 function setPlatform(os: "ios" | "android") {
@@ -85,10 +116,23 @@ function setPlatform(os: "ios" | "android") {
 afterEach(() => {
   Object.defineProperty(Platform, "OS", platformOsDescriptor)
   mockScreenOptions.current = undefined
+  mockScreens.length = 0
   mockNativeProps.current = undefined
   mockTriggers.length = 0
+  mockExploreAvailable.current = true
   resetTabBarHidden()
 })
+
+type ElementLike = { props: Record<string, unknown> }
+
+/** A trigger's Icon and Label, read from the elements it was given. */
+function triggerParts(trigger: Record<string, unknown>) {
+  const children = (
+    Array.isArray(trigger.children) ? trigger.children : [trigger.children]
+  ) as ElementLike[]
+  const [icon, label] = children
+  return { sf: icon?.props.sf, label: label?.props.children }
+}
 
 async function renderAndroid(): Promise<Record<string, unknown>> {
   let renderer!: TestInstance
@@ -108,6 +152,56 @@ async function renderIos(): Promise<Record<string, unknown>> {
   return mockNativeProps.current!
 }
 
+const SENTINEL_LABELS = TAB_ROUTE_NAMES.map((name) => `label:${name}`)
+
+/** The text inside a trigger's Label child. */
+function triggerLabel(trigger: Record<string, unknown>): unknown {
+  const children = trigger.children as Array<{
+    type: unknown
+    props: { children?: unknown }
+  }>
+  return children.find((child) => child.type === NativeTabs.Trigger.Label)
+    ?.props.children
+}
+
+function trigger(name: string): Record<string, unknown> {
+  const found = mockTriggers.find((t) => t.name === name)
+  expect(found).toBeDefined()
+  return found!
+}
+
+function screen(name: string): Record<string, unknown> {
+  const found = mockScreens.find((s) => s.name === name)
+  expect(found).toBeDefined()
+  return found!.options
+}
+
+describe("the shared tab record (R1)", () => {
+  it("names Explore second and Bible fourth, each with its label", () => {
+    const actual = jest.requireActual<typeof import("../../src/lib/tabBar")>(
+      "../../src/lib/tabBar",
+    )
+    expect(actual.TAB_ROUTE_NAMES).toEqual([
+      "index",
+      "explore",
+      "watch",
+      "bible",
+      "profile",
+    ])
+    expect(actual.TAB_LABELS).toEqual({
+      index: "Home",
+      explore: "Explore",
+      watch: "Search",
+      bible: READER_COPY.tabTitle,
+      profile: "My Watch",
+    })
+  })
+
+  it("is replaced by the sentinels in this suite (positive control)", () => {
+    expect(Object.values(TAB_LABELS)).toEqual(SENTINEL_LABELS)
+  })
+})
+
 describe("iOS — the native bar", () => {
   it("declares every tab, in TAB_ROUTE_NAMES order", async () => {
     setPlatform("ios")
@@ -115,17 +209,60 @@ describe("iOS — the native bar", () => {
     expect(mockTriggers.map((t) => t.name)).toEqual([...TAB_ROUTE_NAMES])
   })
 
-  it("opts every tab out of UIKit's automatic content inset", async () => {
-    // The auto-inset only reaches a scroll view first in the subview chain —
-    // on Home that is the horizontal hero pager, not the feed. The screens pad
-    // themselves through `useTabBarClearance()` instead.
+  it.each([true, false])(
+    "opts every tab out of UIKit's automatic content inset (gate open: %p)",
+    async (available) => {
+      // The auto-inset only reaches a scroll view first in the subview chain —
+      // on Home that is the horizontal hero pager, not the feed. The screens
+      // pad themselves through `useTabBarClearance()` instead.
+      setPlatform("ios")
+      mockExploreAvailable.current = available
+      await renderIos()
+      // Anti-vacuous: forEach over an empty array passes.
+      expect(mockTriggers).toHaveLength(TAB_ROUTE_NAMES.length)
+      mockTriggers.forEach((t) =>
+        expect(t.disableAutomaticContentInsets).toBe(true),
+      )
+    },
+  )
+
+  it("puts the Bible trigger after Search, with its own symbol (feat-553 R2)", async () => {
     setPlatform("ios")
     await renderIos()
-    // Anti-vacuous: forEach over an empty array passes.
     expect(mockTriggers).toHaveLength(TAB_ROUTE_NAMES.length)
-    mockTriggers.forEach((t) =>
-      expect(t.disableAutomaticContentInsets).toBe(true),
-    )
+    const bible = mockTriggers[3]!
+    expect(bible.name).toBe("bible")
+    expect(triggerParts(bible)).toEqual({
+      sf: "book.closed.fill",
+      label: "label:bible",
+    })
+    // Anti-vacuous: the neighbours keep theirs.
+    expect(triggerParts(mockTriggers[2]!).label).toBe("label:watch")
+    expect(triggerParts(mockTriggers[4]!).label).toBe("label:profile")
+  })
+
+  it("takes every label from the shared record", async () => {
+    setPlatform("ios")
+    await renderIos()
+    expect(mockTriggers.map(triggerLabel)).toEqual(SENTINEL_LABELS)
+  })
+
+  // KTD16: `hidden`, never an absent trigger. An absent trigger lets expo-router
+  // append the route file as an extra tab.
+  it("hides only the Explore trigger while the gate is closed", async () => {
+    setPlatform("ios")
+    mockExploreAvailable.current = false
+    await renderIos()
+    expect(trigger("explore").hidden).toBe(true)
+    const others = mockTriggers.filter((t) => t.name !== "explore")
+    expect(others).toHaveLength(TAB_ROUTE_NAMES.length - 1)
+    others.forEach((t) => expect(t.hidden).toBeFalsy())
+  })
+
+  it("shows the Explore trigger while the gate is open", async () => {
+    setPlatform("ios")
+    await renderIos()
+    expect(trigger("explore").hidden).toBe(false)
   })
 
   it("keeps the app's ground below iOS 26, where the props still land", async () => {
@@ -138,7 +275,7 @@ describe("iOS — the native bar", () => {
   })
 
   it("hides the bar only while the store says so", async () => {
-    // The Library screen's selection mode is the one writer. NativeTabs has no
+    // The downloads list's selection mode is the one writer. NativeTabs has no
     // per-screen `tabBarStyle`, so the flag has to reach the LAYOUT.
     setPlatform("ios")
     expect((await renderIos()).hidden).toBe(false)
@@ -147,7 +284,37 @@ describe("iOS — the native bar", () => {
   })
 })
 
-describe("Android — unchanged", () => {
+describe("Android — the JS bar", () => {
+  it("declares every tab, in TAB_ROUTE_NAMES order", async () => {
+    setPlatform("android")
+    await renderAndroid()
+    expect(mockScreens.map((s) => s.name)).toEqual([...TAB_ROUTE_NAMES])
+  })
+
+  it("takes every title from the shared record", async () => {
+    setPlatform("android")
+    await renderAndroid()
+    expect(mockScreens.map((s) => s.options.title)).toEqual(SENTINEL_LABELS)
+  })
+
+  // KTD16: the route file stays, so the button hides through `href: null`.
+  it("hides only the Explore button while the gate is closed", async () => {
+    setPlatform("android")
+    mockExploreAvailable.current = false
+    await renderAndroid()
+    expect(screen("explore").href).toBeNull()
+    const others = mockScreens.filter((s) => s.name !== "explore")
+    expect(others).toHaveLength(TAB_ROUTE_NAMES.length - 1)
+    others.forEach((s) => expect(s.options.href).toBeUndefined())
+  })
+
+  it("shows the Explore button while the gate is open", async () => {
+    setPlatform("android")
+    await renderAndroid()
+    // expo-router treats an undefined href as absent; only null hides.
+    expect(screen("explore").href).toBeUndefined()
+  })
+
   it("keeps today's flat opaque bar", async () => {
     setPlatform("android")
     const style = (await renderAndroid()).tabBarStyle as Record<string, unknown>
@@ -168,6 +335,20 @@ describe("Android — unchanged", () => {
   it("leaves tabBarHideOnKeyboard unset, exactly as today", async () => {
     setPlatform("android")
     expect((await renderAndroid()).tabBarHideOnKeyboard).toBeUndefined()
+  })
+
+  it("declares the Bible tab after Search, with its title and icon (feat-553 R2)", async () => {
+    setPlatform("android")
+    await renderAndroid()
+    expect(mockScreens[3]?.name).toBe("bible")
+    const options = screen("bible") as {
+      title: string
+      tabBarIcon: (p: { color: string; size: number }) => ElementLike
+    }
+    expect(options.title).toBe("label:bible")
+    expect(options.tabBarIcon({ color: "#fff", size: 24 }).props.name).toBe(
+      "book",
+    )
   })
 
   it("keeps its own tint colours", async () => {

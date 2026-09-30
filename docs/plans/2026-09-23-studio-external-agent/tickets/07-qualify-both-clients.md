@@ -1,6 +1,6 @@
 # 07: Qualify Claude and Codex through the full review loop
 
-**Parent:** [Specification](../spec.md) · planning tracker feat-541
+**Parent:** [Specification](../spec.md) · planning tracker feat-583
 
 **Status:** approved; published as `feat-548` with `ready-for-agent` readiness.
 

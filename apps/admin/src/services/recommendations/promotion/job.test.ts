@@ -78,6 +78,21 @@ describe("recommendation promotion workflow dispatch", () => {
     ])
   })
 
+  it("reconciles an existing operation without dispatching another workflow", async () => {
+    createRun.mockResolvedValue({
+      id: "run-1",
+      generation: 1,
+      replayed: true,
+      workflowRunId: null,
+    })
+    const { dispatchRecommendationPromotion } = await import("./job")
+    await expect(dispatchRecommendationPromotion(input)).resolves.toMatchObject(
+      { runId: "run-1", queued: false, replayed: true },
+    )
+    expect(start).not.toHaveBeenCalled()
+    expect(createWorkflowRunLog).not.toHaveBeenCalled()
+  })
+
   it("does not fail promotion truth after the workflow has started", async () => {
     attachWorkflowRuntimeRunId.mockRejectedValueOnce(
       new Error("attachment unavailable"),

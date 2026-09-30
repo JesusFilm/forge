@@ -1,0 +1,64 @@
+{
+  "database": "PostgreSQL 18.6, owned disposable fixture",
+  "compression": "pglz",
+  "emptyRelationBytes": 8192,
+  "cases": [
+    {
+      "case": "incumbent",
+      "rows": 100,
+      "serialized_json_bytes": 228894,
+      "jsonb_text_bytes_per_row": 244388,
+      "stored_column_bytes_per_row": 38329,
+      "column_compression": "pglz",
+      "main_heap_bytes": 8192,
+      "main_index_bytes": 0,
+      "toast_relation_bytes_including_index": 4186112,
+      "toast_heap_bytes": 4096000,
+      "toast_index_bytes": 65536,
+      "total_relation_bytes": 4194304
+    },
+    {
+      "case": "trial-unannotated",
+      "rows": 100,
+      "serialized_json_bytes": 317934,
+      "jsonb_text_bytes_per_row": 338340,
+      "stored_column_bytes_per_row": 58029,
+      "column_compression": "pglz",
+      "main_heap_bytes": 8192,
+      "main_index_bytes": 0,
+      "toast_relation_bytes_including_index": 6258688,
+      "toast_heap_bytes": 6144000,
+      "toast_index_bytes": 90112,
+      "total_relation_bytes": 6266880
+    },
+    {
+      "case": "trial-annotated",
+      "rows": 100,
+      "serialized_json_bytes": 523110,
+      "jsonb_text_bytes_per_row": 549516,
+      "stored_column_bytes_per_row": 90077,
+      "column_compression": "pglz",
+      "main_heap_bytes": 8192,
+      "main_index_bytes": 0,
+      "toast_relation_bytes_including_index": 9568256,
+      "toast_heap_bytes": 9420800,
+      "toast_index_bytes": 122880,
+      "total_relation_bytes": 9576448
+    },
+    {
+      "case": "trial-optimized",
+      "rows": 100,
+      "serialized_json_bytes": 318473,
+      "jsonb_text_bytes_per_row": 338895,
+      "stored_column_bytes_per_row": 58530,
+      "column_compression": "pglz",
+      "main_heap_bytes": 8192,
+      "main_index_bytes": 0,
+      "toast_relation_bytes_including_index": 6258688,
+      "toast_heap_bytes": 6144000,
+      "toast_index_bytes": 90112,
+      "total_relation_bytes": 6266880
+    }
+  ],
+  "limitations": "100 synthetic payload-only rows per case. Excludes full request/items, main indexes, telemetry and attributed WAL. Page allocation and fixture-specific compression are not maximum production bounds."
+}

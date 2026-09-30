@@ -7,7 +7,7 @@ status: "complete"
 readiness: "ready-for-agent"
 start_date: "2026-09-23"
 duration: 3
-depends_on: ["feat-544", "feat-546"]
+depends_on: ["feat-585", "feat-546"]
 blocks: ["feat-548"]
 tags: ["manager", "ai-pipeline"]
 ---

@@ -1,6 +1,6 @@
 # 05: Review an exact draft and revise from conversation feedback
 
-**Parent:** [Specification](../spec.md) · planning tracker feat-541
+**Parent:** [Specification](../spec.md) · planning tracker feat-583
 
 **Status:** approved; published as `feat-546` with `ready-for-agent` readiness.
 

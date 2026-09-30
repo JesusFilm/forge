@@ -1,6 +1,7 @@
 ---
 title: "Roadmap frontmatter type drift can crash Next.js static page-data collection"
 date: 2026-07-07
+last_updated: 2026-09-28
 category: build-errors
 module: apps/roadmap
 problem_type: build_error
@@ -121,6 +122,12 @@ before they can reach the timeline and static markdown generators.
 - Add parser-boundary checks for malformed frontmatter when changing roadmap
   schemas. Useful fixtures include YAML dates, numeric durations, scalar
   relationship fields, legacy statuses, and invalid date strings.
+- The boundary normalizes field types, but it does not detect duplicate ids.
+  On `origin/main` (2026-09-28), 188 of 532 ids have more than one ticket
+  file. For a duplicated id, the blocked-status map keeps the last file read
+  (`apps/roadmap/lib/features.ts:239`), and `getFeatureById` returns the first
+  match (`features.ts:260-261`). See
+  [Roadmap feat-NNN ids collide when you allocate from your own tree](../workflow-issues/roadmap-feat-id-collision-across-unmerged-branches.md).
 - Keep deployment smoke tied to the Railway command, not just TypeScript or
   lint:
 
@@ -139,3 +146,5 @@ before they can reach the timeline and static markdown generators.
 ## Related Issues
 
 - [Railway + Next.js monorepo deployment: standalone mode pitfalls and runtime file access](../deployment/nextjs-pnpm-monorepo-railway-standalone.md)
+- [Roadmap feat-NNN ids collide when you allocate from your own tree; scan every branch and worktree](../workflow-issues/roadmap-feat-id-collision-across-unmerged-branches.md)
+  — the duplicate-id gap in the same loader.

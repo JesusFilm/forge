@@ -483,6 +483,22 @@ failures keep their ordinary handling. Missing optional summaries mean missing
 coverage. StrictMode setup replay and ordinary duration updates must not
 manufacture departures.
 
+An attempt count is not a recovery horizon. Playback facts now keep the existing
+three serialized attempts but wait 1-1.25 seconds and 8-10 seconds between them,
+with a 30-second monotonic retry-age bound. Every drain entry respects backoff;
+new player events cannot accelerate it. Cancel retries on unmount while preserving
+the separate terminal keepalive. Do not extend this policy to non-idempotent
+context issuance or persist capabilities in browser storage. See the
+[measured retry-horizon fix](../logic-errors/playback-retries-exhaust-before-dependency-recovery-20260923.md).
+
+Bound shared admission before business execution as well as caller waiting.
+Admin's RedisStore guard keeps unresolved wire operations counted after a timeout,
+and the GraphQL hook checks abort/deadline before allowing a resolver to begin.
+This is not cancellation of an already-started transaction, nor a guarantee that
+a late limiter SET cannot update its bucket. Redis-aware readiness likewise shares
+and bounds outstanding PING work. Keep these guarantees separate from Web's
+Redis-clock Lua admission; see the [Admin late-work learning](../runtime-errors/redis-admission-timeouts-must-bound-late-work-20260923.md).
+
 ### Prove the handoff and the bound with discriminating fixtures
 
 Independent reader and composer tests cannot prove their handoff. The direct and

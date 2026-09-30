@@ -492,6 +492,20 @@ function translatedCatalog(source) {
   }
 }
 
+// Rebuilds the source digest inline, as web's provisional-catalog test does,
+// so a caller policy is held to the same digest shape as web's own policy.
+function inlinePolicyDigest(sourceFlat, policy) {
+  return contentDigest({
+    sourceFlat,
+    translationPolicy: {
+      humanReviewedLocales: [...policy.humanReviewedLocales].sort(
+        (left, right) => left.localeCompare(right),
+      ),
+      intentionallyLocaleNeutral: [...policy.intentionallyLocaleNeutral].sort(),
+    },
+  })
+}
+
 function createBatchFixture({
   source = sourceCatalog(),
   catalogs,
@@ -499,6 +513,8 @@ function createBatchFixture({
   progress,
   selectedLocales = Object.keys(catalogs),
   concurrency = 1,
+  policy,
+  contexts,
 }) {
   const root = mkdtempSync(join(tmpdir(), "watch-ui-translator-"))
   temporaryDirectories.push(root)
@@ -521,11 +537,26 @@ function createBatchFixture({
     })),
   })
   writeJson(manifestPath, manifest)
-  writeJson(progressPath, {
-    ...progress,
-    model: MODEL,
-    sourceDigest: sourceDigestForFlatCatalog(sourceFlat),
-  })
+  if (progress) {
+    writeJson(progressPath, {
+      ...progress,
+      model: MODEL,
+      sourceDigest: policy
+        ? inlinePolicyDigest(sourceFlat, policy)
+        : sourceDigestForFlatCatalog(sourceFlat),
+    })
+  }
+  const callerArgs = []
+  if (policy) {
+    const policyPath = join(root, "caller-policy.json")
+    writeJson(policyPath, policy)
+    callerArgs.push("--policy", policyPath)
+  }
+  if (contexts) {
+    const contextsPath = join(root, "caller-contexts.json")
+    writeJson(contextsPath, contexts)
+    callerArgs.push("--contexts", contextsPath)
+  }
 
   return {
     args: [
@@ -545,6 +576,7 @@ function createBatchFixture({
       selectedLocales.join(","),
       "--concurrency",
       String(concurrency),
+      ...callerArgs,
     ],
     manifestPath,
     messagesDir,
@@ -633,6 +665,7 @@ function withLocales(args, locales, promote = false) {
 }
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   process.exitCode = undefined
@@ -1800,5 +1833,639 @@ describe("translate UI catalogs", () => {
 
     expect(manifest.machineTranslatedLocales).toEqual([])
     expect(manifest.metadata.translation.localeProvenance).toEqual({})
+  })
+})
+
+function authoredManifest(locales) {
+  return {
+    metadata: {},
+    authoredInventoryLocales: locales,
+    machineTranslatedLocales: [],
+    provisionalLocales: [],
+    existingNonInventoryLocales: [],
+    missingCatalogs: [],
+  }
+}
+
+function provisionalManifest(locales) {
+  return {
+    ...authoredManifest([]),
+    provisionalLocales: locales,
+  }
+}
+
+// OpenAI's 429 bodies for a used-up quota and for a transient rate limit.
+function quotaExhaustedResponse(messageSuffix = "") {
+  return new Response(
+    JSON.stringify({
+      error: {
+        message: `You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.${messageSuffix}`,
+        type: "insufficient_quota",
+        param: null,
+        code: "insufficient_quota",
+      },
+    }),
+    { status: 429, headers: { "content-type": "application/json" } },
+  )
+}
+
+function rateLimitedResponse(retryAfterSeconds) {
+  return new Response(
+    JSON.stringify({
+      error: {
+        message:
+          "Rate limit reached for gpt-5.4-mini in organization org-test on tokens per min (TPM): Limit 200000, Used 199000, Requested 4000. Please try again in 1.2s. Visit https://platform.openai.com/account/rate-limits to learn more.",
+        type: "tokens",
+        param: null,
+        code: "rate_limit_exceeded",
+      },
+    }),
+    {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(retryAfterSeconds),
+      },
+    },
+  )
+}
+
+describe("caller translation options", () => {
+  it("keeps web's policy file as the default policy", () => {
+    const webPolicy = JSON.parse(
+      readFileSync(
+        join(process.cwd(), "scripts/ui-translation-policy.json"),
+        "utf-8",
+      ),
+    )
+    const sourceFlat = flattenCatalog(
+      JSON.parse(readFileSync(join(process.cwd(), "messages/en.json"), "utf8")),
+    )
+
+    expect(sourceDigestForFlatCatalog(sourceFlat)).toBe(
+      inlinePolicyDigest(sourceFlat, webPolicy),
+    )
+  })
+
+  it("uses a caller policy for the locale-neutral set and the source digest", async () => {
+    const source = sourceCatalog()
+    source.brand = { name: "Forge" }
+    const catalog = translatedCatalog(source)
+    catalog.brand = { name: "Forge" }
+    catalog.common.message19 = source.common.message19
+    const policy = {
+      humanReviewedLocales: ["en"],
+      pendingTranslationPaths: [],
+      intentionallyLocaleNeutral: ["brand.name"],
+    }
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: catalog },
+      manifest: authoredManifest(["es"]),
+      progress: null,
+      policy,
+    })
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await main({
+      args: fixture.args,
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    expect(process.exitCode).toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      Object.keys(
+        promptFromRequest(fetchMock.mock.calls[0][1]).messagesToTranslate,
+      ),
+    ).toEqual(["common.message19"])
+    expect(
+      JSON.parse(readFileSync(join(fixture.messagesDir, "es.json"), "utf-8"))
+        .brand.name,
+    ).toBe("Forge")
+
+    const sourceFlat = flattenCatalog(source)
+    const progress = JSON.parse(readFileSync(fixture.progressPath, "utf-8"))
+    expect(progress.sourceDigest).toBe(inlinePolicyDigest(sourceFlat, policy))
+    expect(progress.sourceDigest).not.toBe(
+      sourceDigestForFlatCatalog(sourceFlat),
+    )
+  })
+
+  it("keeps a caller's human-reviewed locales out of machine provenance on promotion", async () => {
+    const source = sourceCatalog()
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: structuredClone(source) },
+      manifest: provisionalManifest(["es"]),
+      progress: null,
+      policy: {
+        humanReviewedLocales: ["en", "es"],
+        pendingTranslationPaths: [],
+        intentionallyLocaleNeutral: [],
+      },
+    })
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await main({
+      args: withLocales(fixture.args, ["es"], true),
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    const manifest = JSON.parse(readFileSync(fixture.manifestPath, "utf-8"))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(manifest.provisionalLocales).toEqual([])
+    expect(manifest.machineTranslatedLocales).toEqual([])
+    expect(manifest.metadata.translation.localeProvenance).toEqual({})
+  })
+
+  it("applies a caller policy when it resumes and promotes a completed catalog", async () => {
+    const source = sourceCatalog()
+    source.brand = { name: "Forge" }
+    const catalog = translatedCatalog(source)
+    catalog.brand = { name: "Forge" }
+    const policy = {
+      humanReviewedLocales: ["en"],
+      pendingTranslationPaths: [],
+      intentionallyLocaleNeutral: ["brand.name"],
+    }
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: catalog },
+      manifest: provisionalManifest(["es"]),
+      progress: {
+        completedLocales: ["es"],
+        generatedLocales: ["es"],
+        catalogDigests: { es: contentDigest(flattenCatalog(catalog)) },
+        usage: {},
+      },
+      policy,
+    })
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    await main({
+      args: withLocales(fixture.args, ["es"], true),
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    const manifest = JSON.parse(readFileSync(fixture.manifestPath, "utf-8"))
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(warnings).not.toHaveBeenCalled()
+    expect(manifest.machineTranslatedLocales).toEqual(["es"])
+    expect(manifest.metadata.translation.localeProvenance.es.sourceDigest).toBe(
+      inlinePolicyDigest(flattenCatalog(source), policy),
+    )
+  })
+
+  it("measures scoped promotion drift against a caller policy's baseline digest", async () => {
+    const source = sourceCatalog()
+    source.brand = { name: "Forge" }
+    const sourceFlat = flattenCatalog(source)
+    const catalog = translatedCatalog(source)
+    catalog.brand = { name: "Forge" }
+    const policy = {
+      humanReviewedLocales: ["en"],
+      pendingTranslationPaths: [],
+      intentionallyLocaleNeutral: ["brand.name"],
+    }
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: catalog },
+      manifest: {
+        ...authoredManifest(["es"]),
+        metadata: {
+          translation: {
+            localeProvenance: {
+              es: {
+                model: "gpt-old-primary",
+                sourceDigest: inlinePolicyDigest(
+                  Object.fromEntries(
+                    Object.entries(sourceFlat).filter(
+                      ([key]) => key !== "common.message19",
+                    ),
+                  ),
+                  policy,
+                ),
+                catalogDigest: contentDigest(flattenCatalog(catalog)),
+                generatedOn: "2026-07-01",
+              },
+            },
+          },
+        },
+        machineTranslatedLocales: ["es"],
+      },
+      progress: {
+        completedLocales: [],
+        generatedLocales: [],
+        catalogDigests: {},
+        usage: {},
+      },
+      policy,
+    })
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        chatCompletion([
+          { key: "common.message19", value: "Mensaje diecinueve" },
+        ]),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await main({
+      args: [...fixture.args, "--keys", "common.message19", "--promote"],
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      JSON.parse(readFileSync(fixture.manifestPath, "utf-8")).metadata
+        .translation.localeProvenance.es.sourceDigest,
+    ).toBe(inlinePolicyDigest(sourceFlat, policy))
+  })
+
+  it("replaces web's product, surface, and per-key context with a caller's contexts", async () => {
+    const source = sourceCatalog()
+    source.AccountControl = { accountMenu: "Account menu" }
+    const requestFor = async (contexts) => {
+      const fixture = createBatchFixture({
+        source,
+        catalogs: { es: structuredClone(source) },
+        manifest: provisionalManifest(["es"]),
+        progress: null,
+        contexts,
+      })
+      const fetchMock = vi.fn(async (_url, options) =>
+        translatedPromptResponse(options, "Traducido"),
+      )
+      vi.stubGlobal("fetch", fetchMock)
+      await main({
+        args: fixture.args,
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      })
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+      return {
+        system: body.messages[0].content,
+        prompt: JSON.parse(body.messages[1].content),
+      }
+    }
+    const searchLines = (prompt) =>
+      prompt.contextualInstructions.filter((line) =>
+        line.includes("SearchOverlay"),
+      )
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    const web = await requestFor(undefined)
+    expect(web.system).toContain(
+      "Jesus Film Project, a Christian video-streaming and discipleship website.",
+    )
+    expect(web.prompt.messageContexts["AccountControl.accountMenu"]).toEqual({
+      surface: "the Watch account menu",
+      role: "account-menu accessibility label",
+      visibility: "assistive technology only",
+    })
+    expect(searchLines(web.prompt)).toHaveLength(4)
+
+    const caller = await requestFor({
+      product: "a Christian video-streaming and discipleship mobile app",
+      namespaces: {
+        common: "the mobile settings screen",
+        AccountControl: "the mobile profile tab",
+      },
+      keys: {
+        "common.message0": {
+          role: "tab bar label",
+          visibility: "shown under a tab icon",
+        },
+      },
+    })
+    expect(caller.system).toContain(
+      "Jesus Film Project, a Christian video-streaming and discipleship mobile app.",
+    )
+    expect(caller.system).not.toContain("website")
+    expect(caller.prompt.messageContexts["common.message0"]).toEqual({
+      surface: "the mobile settings screen",
+      role: "tab bar label",
+      visibility: "shown under a tab icon",
+    })
+    expect(caller.prompt.messageContexts["common.message1"]).toEqual({
+      surface: "the mobile settings screen",
+      role: "interface message",
+    })
+    expect(caller.prompt.messageContexts["AccountControl.accountMenu"]).toEqual(
+      {
+        surface: "the mobile profile tab",
+        role: "interface message",
+      },
+    )
+    expect(searchLines(caller.prompt)).toEqual([])
+    expect(caller.prompt.contextualInstructions).toEqual(
+      web.prompt.contextualInstructions.filter(
+        (line) => !line.includes("SearchOverlay"),
+      ),
+    )
+  })
+
+  it("rejects caller contexts that miss a catalog namespace before any request", async () => {
+    const source = sourceCatalog()
+    source.brand = { name: "Forge" }
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: structuredClone(source) },
+      manifest: provisionalManifest(["es"]),
+      progress: null,
+      contexts: {
+        product: "a Christian video-streaming and discipleship mobile app",
+        namespaces: { common: "the mobile settings screen" },
+      },
+    })
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await expect(
+      main({
+        args: fixture.args,
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      }),
+    ).rejects.toMatchObject({
+      code: "MISSING_NAMESPACE_CONTEXT",
+      message: expect.stringContaining("brand"),
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects a caller context override for an unknown message key before any request", async () => {
+    const fixture = createBatchFixture({
+      catalogs: { es: sourceCatalog() },
+      manifest: provisionalManifest(["es"]),
+      progress: null,
+      contexts: {
+        product: "a Christian video-streaming and discipleship mobile app",
+        namespaces: { common: "the mobile settings screen" },
+        keys: { "common.retired": { role: "action label" } },
+      },
+    })
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await expect(
+      main({
+        args: fixture.args,
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      }),
+    ).rejects.toMatchObject({
+      code: "UNKNOWN_CONTEXT_KEY",
+      message: expect.stringContaining("common.retired"),
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects malformed caller policy and contexts files before any request", async () => {
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    // Each case breaks one field and keeps every other field valid, so only
+    // the check under test can reject it.
+    const validPolicy = {
+      humanReviewedLocales: ["en"],
+      pendingTranslationPaths: [],
+      intentionallyLocaleNeutral: [],
+    }
+    const validContexts = {
+      product: "a Christian video-streaming and discipleship mobile app",
+      namespaces: { common: "the mobile settings screen" },
+    }
+    const policyCases = [
+      [
+        "intentionallyLocaleNeutral is not an array",
+        { ...validPolicy, intentionallyLocaleNeutral: "common.message0" },
+        "intentionallyLocaleNeutral must be an array of strings",
+      ],
+      [
+        "humanReviewedLocales is not an array",
+        { ...validPolicy, humanReviewedLocales: "en" },
+        "humanReviewedLocales must be an array of strings",
+      ],
+      [
+        "the root is not an object",
+        ["common.message0"],
+        "must be a JSON object",
+      ],
+    ]
+    const contextsCases = [
+      [
+        "product is missing",
+        { namespaces: validContexts.namespaces },
+        "product must be a non-empty string",
+      ],
+      [
+        "namespaces is an array",
+        { ...validContexts, namespaces: ["common"] },
+        "namespaces must map each namespace",
+      ],
+      [
+        "a namespace sentence is not a string",
+        { ...validContexts, namespaces: { common: 123 } },
+        "namespaces must map each namespace",
+      ],
+      [
+        "an override has an unknown field",
+        {
+          ...validContexts,
+          keys: { "common.message0": { unknownField: "x" } },
+        },
+        "keys must map each message key",
+      ],
+      [
+        "an override value is not a string",
+        { ...validContexts, keys: { "common.message0": { role: 123 } } },
+        "keys must map each message key",
+      ],
+    ]
+    const cases = [
+      ...policyCases.map(([label, policy, detail]) => ({
+        label: `policy: ${label}`,
+        options: { policy },
+        code: "INVALID_TRANSLATION_POLICY",
+        detail,
+      })),
+      ...contextsCases.map(([label, contexts, detail]) => ({
+        label: `contexts: ${label}`,
+        options: { contexts },
+        code: "INVALID_CATALOG_CONTEXTS",
+        detail,
+      })),
+    ]
+
+    for (const { label, options, code, detail } of cases) {
+      const fixture = createBatchFixture({
+        catalogs: { es: sourceCatalog() },
+        manifest: provisionalManifest(["es"]),
+        progress: null,
+        ...options,
+      })
+      // `.rejects` drops the label when main() resolves; this keeps it.
+      const rejection = await main({
+        args: fixture.args,
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      }).then(
+        () => "resolved without an error",
+        (error) => error,
+      )
+      expect(rejection, label).toMatchObject({
+        code,
+        message: expect.stringContaining(detail),
+      })
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("stops the whole run at the first used-up quota only with --stop-on-quota", async () => {
+    const source = sourceCatalog()
+    const runWith = async (extraArgs) => {
+      const fixture = createBatchFixture({
+        source,
+        catalogs: { es: structuredClone(source), fr: structuredClone(source) },
+        manifest: provisionalManifest(["es", "fr"]),
+        progress: null,
+      })
+      const fetchMock = vi.fn(async () => quotaExhaustedResponse())
+      vi.stubGlobal("fetch", fetchMock)
+      process.exitCode = undefined
+      const run = main({
+        args: [...fixture.args, ...extraArgs],
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      })
+      await vi.runAllTimersAsync()
+      await run
+      return fetchMock
+    }
+    // main() uses the real retry wait; fake setTimeout keeps a retry from sleeping.
+    vi.useFakeTimers({ toFake: ["setTimeout"] })
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    const retried = await runWith([])
+    expect(retried).toHaveBeenCalledTimes(8)
+    expect(process.exitCode).toBe(1)
+
+    const stopped = await runWith(["--stop-on-quota"])
+    expect(stopped).toHaveBeenCalledTimes(1)
+    expect(process.exitCode).toBe(1)
+    expect(JSON.parse(errors.mock.calls.at(-1)[0])).toMatchObject({
+      event: "translation_failed",
+      failures: [
+        {
+          locale: "es",
+          message: expect.stringContaining("insufficient_quota"),
+        },
+      ],
+    })
+  })
+
+  it("classifies a used-up quota as permanent with stopOnQuota", async () => {
+    const fetchImpl = vi.fn(async () => quotaExhaustedResponse())
+    const waitForRetry = vi.fn().mockResolvedValue(undefined)
+
+    await expect(
+      requestTranslations({
+        apiKey: "test-api-key",
+        locale: "es",
+        inventoryEntry: { countries: [{ name: "Spain" }] },
+        messages: { "common.greeting": "Hello" },
+        references: {},
+        model: MODEL,
+        maxAttempts: 4,
+        minimumChangeRatio: 1,
+        fetchImpl,
+        waitForRetry,
+        stopOnQuota: true,
+      }),
+    ).rejects.toMatchObject({
+      name: "PermanentApiError",
+      message: expect.stringContaining("insufficient_quota"),
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(waitForRetry).not.toHaveBeenCalled()
+  })
+
+  it("finds the quota code after a long error message with stopOnQuota", async () => {
+    const fetchImpl = vi.fn(async () =>
+      quotaExhaustedResponse(" Contact support.".repeat(60)),
+    )
+    const waitForRetry = vi.fn().mockResolvedValue(undefined)
+
+    await expect(
+      requestTranslations({
+        apiKey: "test-api-key",
+        locale: "es",
+        inventoryEntry: { countries: [{ name: "Spain" }] },
+        messages: { "common.greeting": "Hello" },
+        references: {},
+        model: MODEL,
+        maxAttempts: 4,
+        minimumChangeRatio: 1,
+        fetchImpl,
+        waitForRetry,
+        stopOnQuota: true,
+      }),
+    ).rejects.toMatchObject({
+      name: "PermanentApiError",
+      message: expect.not.stringContaining("insufficient_quota"),
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(waitForRetry).not.toHaveBeenCalled()
+  })
+
+  it("still retries a rate-limit 429 after its Retry-After wait with stopOnQuota", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(rateLimitedResponse(7))
+      .mockResolvedValueOnce(
+        chatCompletion([{ key: "common.greeting", value: "Hola" }]),
+      )
+    const waitForRetry = vi.fn().mockResolvedValue(undefined)
+
+    const result = await requestTranslations({
+      apiKey: "test-api-key",
+      locale: "es",
+      inventoryEntry: { countries: [{ name: "Spain" }] },
+      messages: { "common.greeting": "Hello" },
+      references: {},
+      model: MODEL,
+      maxAttempts: 2,
+      minimumChangeRatio: 1,
+      fetchImpl,
+      waitForRetry,
+      stopOnQuota: true,
+    })
+
+    expect(result.translations).toEqual({ "common.greeting": "Hola" })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(waitForRetry).toHaveBeenCalledTimes(1)
+    expect(waitForRetry.mock.calls[0][0]).toBeGreaterThanOrEqual(7000)
+    expect(waitForRetry.mock.calls[0][0]).toBeLessThan(7500)
   })
 })

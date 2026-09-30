@@ -56,8 +56,11 @@ not completed or cancelled by this migration attestation.
   repository tree for migration/soak/snapshot/consumer receipts. No relevant
   unresolved `todos/` finding or retained final-soak receipt was found. This is
   repository evidence coverage, not a search of private operator records.
-- [PR #2186](https://github.com/JesusFilm/forge/pull/2186) is still open; its
-  September 7 production baseline JSON is not on `main`. Its reported recall@10
+- At this September 22 audit, [PR #2186](https://github.com/JesusFilm/forge/pull/2186)
+  was still open and its September 7 production baseline JSON was not on `main`.
+  The [baseline](production-eval-baseline.json) and preceding
+  [blocked preflight](production-evaluation-baseline.md) were retained later as
+  dated historical receipts. Its reported recall@10
   0.949519 and coverage 0.803193 remain descriptive, without an identity-matched
   historical comparator. The September 8 decision in
   [PR #2189](https://github.com/JesusFilm/forge/pull/2189) accepts that baseline

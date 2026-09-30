@@ -1,0 +1,369 @@
+{
+  "deployment": "9448a080-628d-4964-ae79-81c1f920739e",
+  "start": "2026-09-23T04:30:00Z",
+  "end": "2026-09-23T06:30:00Z",
+  "filter": "(@path:/watch/api/recommendations OR @path:/watch/api/recommendations/playback OR @path:/watch/api/recommendations/select OR @path:/watch/api/recommendations/evidence OR @path:/watch/api/recommendations/profile OR @path:/watch/api/recommendations/for-you OR @path:/watch/api/recommendations/for-you/availability OR @path:/watch/api/recommendations/content-actions OR @path:/watch/api/recommendations/tester)",
+  "requests": 10497,
+  "idsSha256": "42f141ef8ae1407305d3389fbc55cfd1c8ac5798fe1991e845b25c09357859ad",
+  "counts": [
+    {
+      "method": "GET",
+      "path": "/watch/api/recommendations/for-you/availability",
+      "status": 200,
+      "count": 153
+    },
+    {
+      "method": "GET",
+      "path": "/watch/api/recommendations/playback",
+      "status": 405,
+      "count": 8
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations",
+      "status": 200,
+      "count": 490
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations",
+      "status": 403,
+      "count": 603
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations",
+      "status": 499,
+      "count": 20
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/content-actions",
+      "status": 200,
+      "count": 1
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "status": 200,
+      "count": 1436
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "status": 400,
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "status": 401,
+      "count": 6
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "status": 403,
+      "count": 681
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "status": 499,
+      "count": 37
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "status": 200,
+      "count": 4054
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "status": 400,
+      "count": 1
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "status": 401,
+      "count": 3
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "status": 403,
+      "count": 646
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "status": 409,
+      "count": 2
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "status": 499,
+      "count": 10
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/profile",
+      "status": 200,
+      "count": 878
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/profile",
+      "status": 403,
+      "count": 1426
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/profile",
+      "status": 499,
+      "count": 22
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/select",
+      "status": 200,
+      "count": 13
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/select",
+      "status": 400,
+      "count": 1
+    }
+  ],
+  "slices": [
+    {
+      "start": "2026-09-23T04:30:00Z",
+      "end": "2026-09-23T04:32:30Z",
+      "returned": 501,
+      "included": 414,
+      "oldest": "2026-09-23T04:29:38.589317Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T04:32:30Z",
+      "end": "2026-09-23T04:35:00Z",
+      "returned": 501,
+      "included": 309,
+      "oldest": "2026-09-23T04:31:20.660750Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T04:35:00Z",
+      "end": "2026-09-23T04:37:30Z",
+      "returned": 501,
+      "included": 315,
+      "oldest": "2026-09-23T04:33:29.128655Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T04:37:30Z",
+      "end": "2026-09-23T04:40:00Z",
+      "returned": 501,
+      "included": 366,
+      "oldest": "2026-09-23T04:36:25.162691Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T04:40:00Z",
+      "end": "2026-09-23T04:42:30Z",
+      "returned": 501,
+      "included": 249,
+      "oldest": "2026-09-23T04:38:13.481380Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T04:42:30Z",
+      "end": "2026-09-23T04:45:00Z",
+      "returned": 501,
+      "included": 386,
+      "oldest": "2026-09-23T04:41:20.674452Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T04:45:00Z",
+      "end": "2026-09-23T04:50:00Z",
+      "returned": 501,
+      "included": 497,
+      "oldest": "2026-09-23T04:44:55.054894Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T04:50:00Z",
+      "end": "2026-09-23T04:55:00Z",
+      "returned": 501,
+      "included": 407,
+      "oldest": "2026-09-23T04:48:54.815539Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T04:55:00Z",
+      "end": "2026-09-23T05:00:00Z",
+      "returned": 501,
+      "included": 479,
+      "oldest": "2026-09-23T04:54:47.055354Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:00:00Z",
+      "end": "2026-09-23T05:02:30Z",
+      "returned": 501,
+      "included": 250,
+      "oldest": "2026-09-23T04:57:11.916826Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:02:30Z",
+      "end": "2026-09-23T05:05:00Z",
+      "returned": 501,
+      "included": 339,
+      "oldest": "2026-09-23T05:00:42.921523Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:05:00Z",
+      "end": "2026-09-23T05:10:00Z",
+      "returned": 501,
+      "included": 488,
+      "oldest": "2026-09-23T05:04:55.548716Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:10:00Z",
+      "end": "2026-09-23T05:15:00Z",
+      "returned": 501,
+      "included": 413,
+      "oldest": "2026-09-23T05:08:54.833130Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:15:00Z",
+      "end": "2026-09-23T05:20:00Z",
+      "returned": 501,
+      "included": 493,
+      "oldest": "2026-09-23T05:14:55.838711Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:20:00Z",
+      "end": "2026-09-23T05:25:00Z",
+      "returned": 501,
+      "included": 344,
+      "oldest": "2026-09-23T05:18:59.012795Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:25:00Z",
+      "end": "2026-09-23T05:30:00Z",
+      "returned": 501,
+      "included": 270,
+      "oldest": "2026-09-23T05:21:17.088416Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:30:00Z",
+      "end": "2026-09-23T05:35:00Z",
+      "returned": 501,
+      "included": 298,
+      "oldest": "2026-09-23T05:25:45.798588Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:35:00Z",
+      "end": "2026-09-23T05:40:00Z",
+      "returned": 501,
+      "included": 362,
+      "oldest": "2026-09-23T05:33:41.494843Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:40:00Z",
+      "end": "2026-09-23T05:45:00Z",
+      "returned": 501,
+      "included": 380,
+      "oldest": "2026-09-23T05:38:33.607237Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:45:00Z",
+      "end": "2026-09-23T05:50:00Z",
+      "returned": 501,
+      "included": 292,
+      "oldest": "2026-09-23T05:42:47.131142Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:50:00Z",
+      "end": "2026-09-23T05:55:00Z",
+      "returned": 501,
+      "included": 492,
+      "oldest": "2026-09-23T05:49:50.211533Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T05:55:00Z",
+      "end": "2026-09-23T06:00:00Z",
+      "returned": 501,
+      "included": 385,
+      "oldest": "2026-09-23T05:53:47.666704Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T06:00:00Z",
+      "end": "2026-09-23T06:05:00Z",
+      "returned": 501,
+      "included": 386,
+      "oldest": "2026-09-23T05:58:28.158375Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T06:05:00Z",
+      "end": "2026-09-23T06:10:00Z",
+      "returned": 501,
+      "included": 298,
+      "oldest": "2026-09-23T06:02:48.832713Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T06:10:00Z",
+      "end": "2026-09-23T06:15:00Z",
+      "returned": 501,
+      "included": 463,
+      "oldest": "2026-09-23T06:09:47.228617Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T06:15:00Z",
+      "end": "2026-09-23T06:20:00Z",
+      "returned": 501,
+      "included": 325,
+      "oldest": "2026-09-23T06:12:22.896533Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T06:20:00Z",
+      "end": "2026-09-23T06:25:00Z",
+      "returned": 501,
+      "included": 361,
+      "oldest": "2026-09-23T06:18:25.149569Z",
+      "covered": true
+    },
+    {
+      "start": "2026-09-23T06:25:00Z",
+      "end": "2026-09-23T06:30:00Z",
+      "returned": 501,
+      "included": 436,
+      "oldest": "2026-09-23T06:23:59.481292Z",
+      "covered": true
+    }
+  ],
+  "complete": true
+}

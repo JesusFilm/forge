@@ -3,7 +3,7 @@ id: "feat-525"
 title: "Activate and verify the three-person Watch recommendation pilot"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-21"
 duration: 1
 depends_on:
@@ -86,3 +86,25 @@ the normal deployment and live verification.
 Still required: observe real cards in the browser. Successful HTTP delivery
 does not establish browser rendering. See the operations document for release
 IDs, public HTTP measurements, and verification limits.
+
+## Progress — 2026-09-24 NZ
+
+Web production is running `37e10b622bd66e55647cf561c3896b2d4fbb4dce`,
+which includes the 30-day link/session release. An isolated fresh browser
+rendered ordinary Watch with availability false and no recommendation row.
+Each of the three already-targeted identities activated in a real browser,
+redirected with the credential fragment removed, returned availability true,
+and displayed six linked cards with loaded images, titles, and durations in
+the published recommendation row. An authorized disposable fourth target
+proved that removing its individual LaunchDarkly target changes the same
+signed browser session to availability false and delivery 403. The flag was
+restored to exactly the original three targets. See the operations document
+for sanitized evidence and finite loading measurements.
+
+Fresh 30-day links for the three existing targets were issued into separate,
+owner-only, Git-ignored local files, expiring 2026-10-23 23:38:31 UTC. They
+were verified in memory and were not delivered to other people. The old
+24-hour links have expired. The owner still needs to distribute the new links
+through an approved private channel before claiming the three people have
+personally used the pilot. Production activation and browser acceptance for
+all three targets are complete.

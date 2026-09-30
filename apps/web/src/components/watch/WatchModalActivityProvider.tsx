@@ -160,6 +160,7 @@ export function useWatchModalMediaRef<T extends WatchPausableMedia>(
 export function usePauseForWatchModal(
   media: WatchPausableMedia | null,
   playbackIdentity: unknown = media,
+  onSystemPause?: () => void,
 ) {
   const modalActive = useContext(WatchModalActiveContext)
   const registry = useContext(WatchModalRegistryContext)
@@ -195,7 +196,10 @@ export function usePauseForWatchModal(
     if (!initializedRef.current) {
       initializedRef.current = true
       wasActiveRef.current = active
-      if (active && media && !media.paused) media.pause()
+      if (active && media && !media.paused) {
+        onSystemPause?.()
+        media.pause()
+      }
       return
     }
 
@@ -219,7 +223,10 @@ export function usePauseForWatchModal(
         resumeIdentityRef.current = null
         shouldResumeRef.current = false
       }
-      if (media && !media.paused) media.pause()
+      if (media && !media.paused) {
+        onSystemPause?.()
+        media.pause()
+      }
       return
     }
 
@@ -240,16 +247,19 @@ export function usePauseForWatchModal(
     resumeMediaRef.current = null
     resumeIdentityRef.current = null
     shouldResumeRef.current = false
-  }, [active, media, playbackIdentity, registryAvailable])
+  }, [active, media, onSystemPause, playbackIdentity, registryAvailable])
 
   useLayoutEffect(() => {
     if (!active || !media?.addEventListener || !media.removeEventListener) {
       return
     }
     const handlePlay: EventListener = () => {
-      if (!media.paused) media.pause()
+      if (!media.paused) {
+        onSystemPause?.()
+        media.pause()
+      }
     }
     media.addEventListener("play", handlePlay)
     return () => media.removeEventListener?.("play", handlePlay)
-  }, [active, media])
+  }, [active, media, onSystemPause])
 }

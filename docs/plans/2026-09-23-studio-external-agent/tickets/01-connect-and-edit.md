@@ -1,6 +1,6 @@
 # 01: Connect an external agent and edit the correct project
 
-**Parent:** [Specification](../spec.md) · planning tracker feat-541
+**Parent:** [Specification](../spec.md) · planning tracker feat-583
 
 **Status:** approved; published as `feat-542` with `ready-for-agent` readiness.
 

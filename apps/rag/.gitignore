@@ -16,3 +16,5 @@
 /docs/source-status.yaml.lock.guard.stale-*
 /docs/source-status.yaml.lock.stale-*
 /docs/source-status.yaml.*.tmp
+
+/output/

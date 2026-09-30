@@ -1,8 +1,8 @@
 # 02: Request and retrieve an exact draft render
 
-**Parent:** [Specification](../spec.md) · planning tracker feat-541
+**Parent:** [Specification](../spec.md) · planning tracker feat-583
 
-**Status:** approved; published as `feat-543` with `ready-for-agent` readiness.
+**Status:** approved; published as `feat-584` with `ready-for-agent` readiness.
 
 **What to build:** The connected agent requests a render of its current draft, checks progress after reconnecting, and retrieves scoped media access plus a human link to the exact output. Use existing footage without generated narration to prove this independently.
 

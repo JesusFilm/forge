@@ -10,9 +10,15 @@ import { evaluateCandidateEligibility } from "../eligibility"
 import {
   scoreAndOrderCandidates,
   scoreAndOrderHybridCandidates,
+  applyViewingModeAffinity,
 } from "../ranker"
+import type { ViewingModeAffinity } from "../viewing-mode"
 import { composeRecommendationSlate } from "../slate"
 import { unionAndCanonicalizeCandidates } from "../union"
+import {
+  observeComposition,
+  type CompositionObservation,
+} from "../composition/policy"
 import { composeShadowSlate } from "./slate-composer"
 import type { ShadowHistory } from "./history"
 
@@ -49,6 +55,7 @@ export type ShadowProjectionNomination = Readonly<{
 }>
 
 export type ShadowProjectionResult = Readonly<{
+  compositionObservation: CompositionObservation
   liveOrder: string[]
   shadowOrder: string[]
   liveSlateDigest: string
@@ -69,6 +76,7 @@ export function evaluateShadowProjection(input: {
   latencyMs: number
   cohortQuality: number | null
   rankingMode?: "semantic" | "hybrid"
+  viewingMode?: ViewingModeAffinity | null
   currentVideoId?: string | null
   history?: ShadowHistory
 }): ShadowProjectionResult {
@@ -84,7 +92,10 @@ export function evaluateShadowProjection(input: {
   )
   const ordered =
     input.rankingMode === "hybrid"
-      ? scoreAndOrderHybridCandidates(eligibility.eligible)
+      ? applyViewingModeAffinity(
+          scoreAndOrderHybridCandidates(eligibility.eligible),
+          input.viewingMode,
+        )
       : scoreAndOrderCandidates(eligibility.eligible)
   const composed = composeRecommendationSlate(
     ordered,
@@ -150,7 +161,26 @@ export function evaluateShadowProjection(input: {
     )
   }
 
+  const compositionObservation = observeComposition(
+    {
+      ordered,
+      context: input.context,
+      limit: input.limit,
+      composition: {
+        currentVideoId: input.currentVideoId,
+        recentVideos: input.history?.recentVideos,
+      },
+      historyAvailable:
+        input.history?.status === "request_window_reconstruction",
+    },
+    compositionLatencyMs,
+  )
+  const compositionEvidence = new Map(
+    compositionObservation.items.map((entry) => [entry.candidateKey, entry]),
+  )
+
   return {
+    compositionObservation,
     liveOrder: immutableLiveOrder,
     shadowOrder,
     liveSlateDigest: digestIds(immutableLiveOrder),
@@ -211,6 +241,20 @@ export function evaluateShadowProjection(input: {
           ...sanitizeProvenance(nomination.source.evidence),
           // Derived, bounded, request-rooted evidence inherits nomination
           // expiry and profile-generation erasure. No vectors or identity.
+          compositionPosition:
+            compositionEvidence.get(candidateKey)?.composedPosition ?? null,
+          compositionReasons: (
+            compositionEvidence.get(candidateKey)?.reasonCodes ?? [
+              "ineligible_before_composition",
+            ]
+          )
+            .join(",")
+            .slice(0, 128),
+          compositionMissingInput:
+            compositionObservation.metrics.missingHistory ||
+            compositionObservation.metrics.missingInterest ||
+            compositionObservation.metrics.missingTheme ||
+            compositionObservation.metrics.missingSource,
           slatePolicy: slateComparison.policyVersion,
           slateRank: slateEvidence.get(candidateKey)?.orderedPosition ?? null,
           slatePosition:

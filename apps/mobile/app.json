@@ -34,6 +34,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "org.jesusfilm.forgewatch",
+      "googleServicesFile": "./google-services.json",
       "allowBackup": false,
       "blockedPermissions": [
         "android.permission.READ_MEDIA_IMAGES",

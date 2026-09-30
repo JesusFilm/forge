@@ -2,6 +2,8 @@ import { print } from "graphql"
 import type { DocumentNode } from "graphql"
 
 import {
+  EXPLORE_CLIP_CANDIDATES,
+  EXPLORE_INVENTORY,
   GET_SERIES_BY_SLUG,
   GET_VIDEO_BIBLE_PASSAGES,
   GET_VIDEO_BY_SLUG,
@@ -79,6 +81,22 @@ describe("GET_VIDEO_BY_SLUG (watch screen) keeps the full fragment", () => {
 
   // ...and does NOT carry the series-only selections (mirrors the TV
   // "shared fragment stays lean" guard): the watch query must stay focused.
+  // U6: the Bible reader picks its default translation from the audio
+  // language's ISO 639-3 code, and the catalog keys languages by that code.
+  it("SELECTS iso3 on each dub's language", () => {
+    expect(bulkSdl).toMatch(
+      /variants: dubs\s*\{[^}]*language\s*\{[^}]*\biso3\b/,
+    )
+  })
+
+  // feat-553 U12: "Read full passage" opens the native reader at the cited
+  // book, which it keys by USFM code. Admin sends the book as an OSIS id.
+  it("SELECTS osisId and paratextAbbreviation on each citation's book", () => {
+    expect(bulkSdl).toMatch(
+      /bibleCitations\s*\{[^}]*bibleBook\s*\{[^}]*\bosisId\b[^}]*\bparatextAbbreviation\b/,
+    )
+  })
+
   it("EXCLUDES series-only selections (childDubLanguages + top-level children)", () => {
     expect(bulkSdl).not.toContain("childDubLanguages")
     // `children` appears only inside the WatchVideo fragment's parents.parent
@@ -118,5 +136,100 @@ describe("Bible passages stay off the player-gating queries", () => {
       /videoBySlug\(slug: \$slug\)\s*\{\s*documentId: id/,
     )
     expect(passagesSdl).toMatch(/bibleCitations\s*\{\s*documentId: id/)
+  })
+})
+
+// ── Explore clips feed (feat-552 U5, KTD6) ──────────────────────────────────
+
+describe("EXPLORE_INVENTORY (the lean candidate pool)", () => {
+  const sdl = asSdl(EXPLORE_INVENTORY)
+
+  it("reads the language inventory with a limit", () => {
+    expect(sdl).toContain("query ExploreInventory")
+    expect(sdl).toContain(
+      "watchLanguageInventory(languageSlug: $languageSlug, limit: $limit)",
+    )
+  })
+
+  it("selects the three buckets and the lean row fields", () => {
+    for (const bucket of [
+      "audioCollections",
+      "audioVideos",
+      "subtitleOnlyVideos",
+    ]) {
+      expect(sdl).toMatch(new RegExp(`${bucket}\\s*\\{`))
+    }
+    for (const field of [
+      "id",
+      "coreId",
+      "slug",
+      "label",
+      "availability",
+      "durationSeconds",
+      "muxPlaybackId",
+      "watchLanguageSlug",
+      "title",
+      "description",
+    ]) {
+      expect(sdl).toMatch(new RegExp(`\\b${field}\\b`))
+    }
+  })
+
+  // U1 measured English at limit 1,000 as 665 KB decoded with exactly the
+  // fields above. `imageUrl` adds 20%, and the veil takes its authored image
+  // from the hydration instead, so the pool never pays for it.
+  it("stays lean: no image URL, no promoted bucket, no parent fields", () => {
+    expect(sdl).not.toMatch(/\bimageUrl\b/)
+    expect(sdl).not.toMatch(/\bpromoted\b/)
+    expect(sdl).not.toMatch(/\bparent(Slug|Title|Order)\b/)
+  })
+})
+
+describe("EXPLORE_CLIP_CANDIDATES (queued-candidate hydration)", () => {
+  const sdl = asSdl(EXPLORE_CLIP_CANDIDATES)
+
+  // One public root field per request: admin counts 60 accesses per minute
+  // per root field, and each alias costs one (U1).
+  it("hydrates several candidates through one watchHomeVideos access", () => {
+    expect(sdl).toContain("query ExploreClipCandidates")
+    expect(sdl).toContain("watchHomeVideos(coreIds: $coreIds)")
+    expect(sdl.match(/watchHomeVideos\(/g)).toHaveLength(1)
+  })
+
+  it("asks for one preferred dub in the candidates' audio language", () => {
+    expect(sdl).toContain(
+      "preferredPlayableDub(languageSlug: $audioLanguageSlug)",
+    )
+  })
+
+  // U21 keys its stored verdicts on the Video Edition id.
+  it("selects the edition id and its subtitle tracks", () => {
+    expect(sdl).toMatch(/videoEdition\s*\{\s*documentId: id/)
+    expect(sdl).toMatch(/subtitles\s*\{/)
+    for (const field of ["vttSrc", "primary", "aiGenerated"]) {
+      expect(sdl).toMatch(new RegExp(`\\b${field}\\b`))
+    }
+  })
+
+  it("never selects dubs in bulk", () => {
+    expect(sdl).not.toMatch(/\bdubs\b/)
+    expect(sdl).not.toMatch(/\bvariants\b/)
+    expect(sdl).not.toMatch(/\bdownloads\b/)
+  })
+
+  it("selects videoStill beside images, and never the bare url", () => {
+    expect(sdl).toMatch(/images\s*\{[^}]*\bvideoStill\b[^}]*\}/)
+    expect(sdl).not.toMatch(/images\s*\{[^}]*\burl\b[^}]*\}/)
+  })
+})
+
+describe("every Explore operation that selects images selects videoStill", () => {
+  it.each([
+    ["EXPLORE_INVENTORY", EXPLORE_INVENTORY],
+    ["EXPLORE_CLIP_CANDIDATES", EXPLORE_CLIP_CANDIDATES],
+  ])("%s", (_name, doc) => {
+    const sdl = asSdl(doc)
+    const blocks = sdl.match(/images\s*\{[^}]*\}/g) ?? []
+    for (const block of blocks) expect(block).toContain("videoStill")
   })
 })

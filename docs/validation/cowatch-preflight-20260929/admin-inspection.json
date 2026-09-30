@@ -1,0 +1,22 @@
+{
+  "observedDateUtc": "2026-09-28",
+  "observationIntervalUtc": ["20:54:00", "20:57:11"],
+  "environment": "production",
+  "path": "/dashboard/recommendations/cowatch",
+  "method": "Authorized Admin browser, existing ADMIN session, read-only page inspection",
+  "generation": "unavailable",
+  "latestEvaluation": "not_run",
+  "fence": "generation_unavailable",
+  "eligibleOutcomes": 0,
+  "exactContributions": 0,
+  "directionalEdges": 0,
+  "distinctSupportUnits": 0,
+  "anchorsSelected": 0,
+  "supportedShadowCandidates": 0,
+  "liveBehavior": "baseline_fallback",
+  "promotion": "none",
+  "inspectFormSubmitted": false,
+  "generationOperatorExecuted": false,
+  "evaluationOperatorExecuted": false,
+  "interpretation": "The authorized UI reconciles the absence of a generation and evaluation. Zero displayed generation counters are not zero eligible production source rows. Source-bound refusal still prevents graph/evaluation acceptance. Normal access auditing may occur. No identities, credentials or trace payloads retained."
+}

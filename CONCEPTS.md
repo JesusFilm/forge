@@ -16,6 +16,12 @@ A deployment-specific authorization boundary within a Registered Application tha
 
 An explicit, revocable approval that gives a user or service a set of scopes for one Registered Application and Application Environment; an OAuth client's allowed scopes do not constitute an Application Grant.
 
+### Changelog Preapproval
+
+An email-addressed promise of Changelog Contributor access in one Application Environment that can become an Application Grant only after the recipient proves the matching current address and meets the redemption checks.
+
+It grants no access while unredeemed. A pending preapproval can display as expired when its time passes; it can also be renewed or canceled, and successful redemption consumes it.
+
 ### Dynamic MCP Client
 
 A public OAuth client created at runtime by an MCP host so that each host can establish its own callback metadata and client identity without a pre-seeded credential.
@@ -124,6 +130,13 @@ _Avoid:_ variant (the mobile client aliases Dubs as "variants").
 ### Video Edition
 
 A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the Edition, not off individual Dubs — a Dub references the Edition whose subtitles apply, so many Dubs sharing an edition share one set of subtitle tracks.
+
+### Explore Clip
+
+A short window of one Video, played from that Video's own Dub stream in the mobile Explore feed; it is a start point and an end point over the full Video, never a separate media file.
+_Avoid:_ short (the same thing in conversation; tickets and code say clip).
+
+A clip is cut at sentence boundaries, from the subtitle timing of the Dub that plays, or by a fixed fallback rule when no usable timing exists. A clip never writes watch progress. "Keep watching" hands the viewer from a clip to the full Video, at the point the clip reached and in the clip's Dub.
 
 ### Language
 
@@ -805,7 +818,13 @@ The response-side state that says whether semantic retrieval actually contribute
 
 ### Content Embedding
 
-A vector representation of localized content used for semantic retrieval across videos, scenes, transcripts, and experiences. Content Embeddings are only comparable when the query vector and stored document vectors come from the same provider contract and transform behavior.
+A vector representation of localized content used for semantic retrieval across videos, scenes, transcripts, and experiences. Content Embeddings are only comparable when the query vector and stored document vectors belong to the same Content Embedding Contract.
+
+### Content Embedding Contract
+
+The versioned pairing of a query-side and a storage-side embedding definition (provider, model, native and stored dimensions, and transform) that the project treats as one compatible vector space.
+
+Exactly one contract is active at a time, and a single pointer selects it. Resolving the active contract fails when that pointer is missing, duplicated, or points to no contract. A stored transcript or experience vector counts as current only when its full storage definition matches the active contract, so equal dimensions alone never make a different provider, model, or transform eligible.
 
 ### Semantic-Video Retriever
 
@@ -987,12 +1006,34 @@ created by default when personalization is enabled. The client, a browser or an 
 recommendation system retains only its one-way identity and server-owned
 interests; disabling personalization severs relinkable continuity and begins erasure.
 
+### Recommendation Profile Session Link
+
+The time-limited join that lets a Recommendation Profile reach the behavior
+recorded against a viewer's session. Without a live one the profile and that
+behavior cannot be connected at all.
+
+A link is minted when personalization is granted, and is refreshed by two
+different kinds of call: a served recommendation request, and a viewer status
+check that carries no serving precondition. Its lifetime is far shorter than the
+Recommendation Profile it connects, so a profile can be long-lived while every
+link to its behavior has lapsed. Behavior recorded with no live link reaches
+nothing: it is written, it is retained, and it is unreachable. Because a client
+typically sends the status check on an inactivity timer, how much behavior a
+viewer accumulates can depend on how irregularly they use the app rather than
+how much they watch.
+
 ### Recommendation Profile Projection
 
 An immutable, bounded interpretation of eligible recommendation behavior into
 multiple durable interests and current-session intent. Readers use only a
 fully published generation, so an incomplete rebuild cannot become serving
 truth and a privacy-generation change fences stale work.
+
+A generation admits only behavior recorded from the current Recommendation
+Profile Session Link's start, so a newly minted link does not reach behavior
+recorded before it even while those records are still retained. Contributions an
+earlier generation already published survive independently of the current link,
+bounded only by retention.
 
 ### Recommendation Personalization Decision
 
@@ -1111,6 +1152,12 @@ Created from a completed OIDC sign-in; each app chooses its own lifetime, which 
 A single-use, browser-local flag a relying app sets at sign-out so the next sign-in to that app shows the provider's real login page instead of silently reusing the live SSO Session. Per-app: one app's marker does not affect its siblings' sign-ins.
 
 Armed at sign-out; consumed only by a completed sign-in — an abandoned or failed attempt leaves it armed so the retry still forces a login page. Consuming it any earlier (when a sign-in merely starts) silently disarms the protection — a known implementation pitfall. Its lifetime is sized generously relative to the rolling SSO Session, which single-use consumption makes cost-free. It prevents accidental silent re-auth on a shared browser, not a deliberate user who clears the app's cookies, and it leaves the SSO Session itself untouched.
+
+### Sign-In Gate
+
+A per-environment switch that decides whether a native app offers sign-in to a person who is not signed in. While the gate is closed, the app hides or disables every place where a signed-out person could start sign-in, and tells them that accounts are coming. The gate controls only how sign-in starts: it never ends an App-Local Session, and it never hides a re-authentication step that only a signed-in person can reach, such as the step before account deletion.
+
+The gate is closed by default and fails closed: only an explicit opt-in value opens it, and development builds always open it. Each build carries its value, so a change reaches a device only with a new build or update. A build installed before the gate existed gets the gate only from an update that reaches that build. The gate acts on the client only; the auth provider still accepts a sign-in that arrives by another route.
 
 ## Admin schema operations
 
@@ -1271,6 +1318,14 @@ The credited scripture text a Watch surface renders for a Bible Citation, resolv
 
 The split matters because a Citation always exists while a Passage may not. Admin returns none when no provider key is configured, when the citation cannot be mapped, or when the translation supplies no copyright string. Attribution is therefore fail-closed by construction: a surface holding verse text always holds the credit that belongs with it.
 
+### Bible Reader
+
+The mobile app's native reader, which shows one verse at a time from a Bible quote or from the Bible tab. It is not a way to show a Bible Passage. The reader's text comes from a public catalog of free-use translations, and the app carries one English translation (BSB) inside the install. Admin does not resolve, cache, or credit that text.
+
+The two texts can differ for the same reference. A quote card shows the Bible Passage in the translation that Admin resolved. A tap on "Read full passage" opens the reader at the first cited verse, in the viewer's own reader translation. The reader shows the credit line from its catalog, not the Passage's copyright line. One reading position serves both ways into the reader, and it is stored in BSB verse numbers, so a reference names the same verses in every translation.
+
+_Avoid_: calling reader text a "passage", and reading it from Admin's passage fields.
+
 ## Home hero UI
 
 ### Three-Layer Hero
@@ -1349,7 +1404,7 @@ The dimmed cover laid over a video's poster while a video that starts on its own
 
 The veil takes no touches, and while it is up a tap on the video body must not resolve to hiding the Chrome beneath it, or playback begins with no controls at all. It is released by the first frame, by a reported load failure, or by a time limit — whichever comes first. The time limit is not redundant: the other two releases depend on the player reporting something, and the case that strands a viewer is the one where it reports nothing, so a viewer who leaves the app mid-load and returns must also get the veil released. Releasing early only returns the controls sooner, while releasing late leaves the viewer with no way out, so the bound is set to err early.
 
-The veil is rarely the only thing covering the Chrome — the poster it darkens is a layer in its own right. A release rule that frees the veil while the poster stays leaves the viewer exactly as stranded, so every layer that can cover the Chrome must answer to the same release, not merely the topmost one. Whether a residual poster actually strands anyone depends on paint order rather than on the layers themselves: where the Chrome is drawn by the app it can paint over a leftover poster and nothing is lost, but where the player supplies its own controls inside the video surface, any layer laid over that surface hides them. Passing touches through a covering layer does not resolve this — a control that can be pressed but not seen is not a recovery affordance.
+The veil is rarely the only thing covering the Chrome — the poster it darkens is a layer in its own right. A release rule that frees the veil while the poster stays leaves the viewer exactly as stranded, so every layer that can cover the Chrome must answer to the same release, not merely the topmost one. Whether a residual poster actually strands anyone depends on paint order rather than on the layers themselves: where the Chrome is drawn by the app it can paint over a leftover poster and nothing is lost, but where the player supplies its own controls inside the video surface, any layer laid over that surface hides them. Passing touches through a covering layer does not resolve this — a control that can be pressed but not seen is not a recovery affordance. A poster can also stay briefly after the release on purpose, to hide the dark gap before the first frame appears. That is safe only where the app draws the Chrome over the poster, and only for a bounded time. On a failure the poster and the spinner leave with the veil at once, so the viewer never sees a loading sign under a can't-play message.
 
 ### Back-Swipe Strip
 
@@ -1469,6 +1524,20 @@ The space a scrolling surface holds free at its bottom edge so the tab bar canno
 
 What the clearance has to contain depends on who draws the bar, and the wrong answer is silent rather than loud. Where the platform owns the bar, the platform already counts the bar's height inside the safe area it reports, so the clearance adds only a breathing gap above it; adding the bar's height a second time double-counts it and strands content well above the bar. Where the app draws the bar itself and the bar displaces content instead of floating over it, no clearance is needed at all. Ownership is therefore part of the term's meaning, not an implementation detail of it: when a bar changes hands between the app and the platform, every surface that reserves space against it changes meaning too, including the surfaces that read the safe area directly and never ask for the clearance.
 
+### Root Route
+
+A screen that opens over the whole tab group instead of inside one tab, so it covers the tab bar while it is shown.
+_Avoid:_ root screen, root-stack screen
+
+Two rules follow from that position, and a break in either one is silent. First, the safe area that a Root Route reports holds only the device's home indicator, never the tab bar. So a Root Route reserves its bottom space for the floating Mini Player and never takes a Tab Bar Clearance. Second, a return to a tab from a Root Route must go back to the tab group that is already beneath it. A forward move to the tabs from there stacks a second copy of the whole tab group on top, and the back gesture then returns to the screen the viewer just left. A cold open straight into a Root Route usually has the tab group beneath it already, so a back move still has somewhere to go.
+
+### My Watch
+
+The viewer's own tab: what they saved to watch offline, their account, and the app's support, about, and legal information.
+_Avoid:_ Profile tab
+
+The tab is a page, not a list. It previews the most recent downloads and gives every management task (the full list, selection, and deletion) to a separate Root Route. Account actions and app information also move to their own Root Routes. So the tab never hides the tab bar, and the one in-app path to the privacy policy is on the information screen, not on the tab. Sign-in starts from the tab's header only while the Sign-In Gate is open.
+
 ## Offline downloads
 
 ### Download Record
@@ -1548,15 +1617,9 @@ The pane is not the shell. A shell showing a SERVER-DECIDED denial screen is nev
 
 The stable owner identity every Seeker conversation is stored under — a namespaced string distinguishing a signed-in account from an anonymous browser session, with a shared fallback key stamped on internal callers that supply none. The key is treated as opaque past its namespace prefix (matching never splits or parses the remainder), the same value keys the subject's conversations in the persistence store and their traces in observability, and the shared fallback key aggregates many people's turns so nothing keyed to it can be attributed — or erased — per person.
 
-### Chat Deletion Record
-
-The content-free record that keeps a deleted conversation's identity bound to its exact Resource Key and prevents delayed writers from recreating that conversation.
-
-It survives ordinary retention and can exist before any conversation content was saved. Subject Erasure removes it, intentionally ending recreation protection without authorizing access to another owner's conversation.
-
 ### Subject Erasure
 
-The operator-run deletion of one Resource Key's Seeker data from every store that holds it — conversations and their messages, Chat Deletion Records, plus the observability traces keyed to the same value. Erasure matches the full key by exact equality only (never prefix or pattern), previews its blast radius read-only before any destructive run, and refuses outright when what it read cannot prove exactly what it would delete — an unprovable owner or an unaddressable row is an escalation, never a skipped record. Completion is claimed per key erased, never per person: a person's data may span several keys, anonymous keys cannot be discovered from an identity, and data under the shared fallback key is only ever removed by retention aging it out.
+The operator-run deletion of one Resource Key's Seeker data from every store that holds it — conversations and their messages, plus the observability traces keyed to the same value. Erasure matches the full key by exact equality only (never prefix or pattern), previews its blast radius read-only before any destructive run, and refuses outright when what it read cannot prove exactly what it would delete — an unprovable owner or an unaddressable row is an escalation, never a skipped record. Completion is claimed per key erased, never per person: a person's data may span several keys, anonymous keys cannot be discovered from an identity, and data under the shared fallback key is only ever removed by retention aging it out.
 
 ### Featured Video
 
@@ -1657,6 +1720,22 @@ Scheduling replaces only what is still pending, so a reminder that has already b
 One local, slug-keyed record of the last video whose playback started on the watch screen in the mobile app, kept for every user whether signed in or not, and updated by streaming and downloaded playback alike. It is the tap destination of a Lapse Reminder and is distinct from signed-in watch progress, which decides only where playback resumes inside the video. It survives app restarts, counts as absent after 30 days, is cleared on an explicit sign-out or account switch (which also re-derives the reminders), and is not written by the Experience section players, which carry a video id and no slug.
 
 The record also holds the video's title, because a Lapse Reminder names the video it will reopen. Only a title from the resolved Video is kept: the watch screen may paint a title from a Watch Seed, but a seed title is chosen by whoever supplied the opening link, and this record is read back onto a locked device. A record therefore starts untitled whenever playback begins before the Video resolves, which is the ordinary case for a downloaded video, and it takes one later correction when the real title arrives. After that the video is settled for as long as the app keeps running, so a sign-out cannot be undone by playback that is still going.
+
+## Push campaigns
+
+### Announcement Campaign
+
+A server-sent message the ministry writes once, per campaign, in one or more languages with English required, and sends to the mobile app's registered devices. It names one catalog destination (a video, a series, or an experience), an audience of chosen countries or everywhere with an optional language filter, and either a date with a local hour or an immediate send. Each device receives the copy for its resolved language: the app language, then the phone language, then English. A campaign is fixed once sending starts; it can be cancelled but not edited. The app never models a campaign: it receives a destination and an opaque campaign identifier.
+
+_Avoid:_ lapse reminder (a local notification the app schedules for itself), notification (too broad; say which kind).
+
+### Push Registration
+
+The record a device creates with admin when notification permission is granted: its push token, the app install it belongs to, the viewer's app language, the phone language, the device's time zone, the country it registered from, the platform, the app build, and the per-install viewer identity. It is refreshed whenever any of those values changes and retired when delivery reports the token invalid. One registration is one device, which is one app install: a new token on the same install supersedes the older row, while the same viewer's other devices stay active. The set of active registrations is the audience every Announcement Campaign counts against, so a viewer who reads on a phone and on a tablet is reached on both and counts twice.
+
+### Local-Morning Wave
+
+The delivery of one Announcement Campaign across time zones: each device receives it at the campaign's local hour in its own zone, so a single send spreads over about a day and the report is complete only after the last zone. The wave enforces one announcement per device per local day; when two campaigns collide, the earlier scheduled one wins. "Send now everywhere" is the explicit exception that ignores the local hour.
 
 ## Flagged ambiguities
 

@@ -13,6 +13,7 @@ import {
   TEXT_SECONDARY,
   WARNING_COLOR,
 } from "../../lib/color"
+import { isSignInAvailable } from "../../lib/signInGate"
 import {
   SIGN_IN_PROMPT_COPY,
   SIGN_IN_PROMPT_DISMISSED_AT_STORAGE_KEY,
@@ -38,6 +39,14 @@ type PromptPhase = "idle" | "busy" | "error"
  * the cooldown.
  */
 export function SignInPrompt() {
+  // The sign-in gate (feat-543) runs before any hook. A closed gate never
+  // mounts the banner, so the banner reads no cooldown, uses no prompt, and
+  // writes no storage.
+  if (!isSignInAvailable()) return null
+  return <SignInPromptBanner />
+}
+
+function SignInPromptBanner() {
   const session = useSyncExternalStore(
     (onStoreChange) => getAuthSession().subscribe(onStoreChange),
     () => getAuthSession().getSnapshot(),
