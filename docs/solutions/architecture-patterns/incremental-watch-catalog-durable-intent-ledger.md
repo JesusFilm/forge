@@ -31,6 +31,12 @@ relations, languages, and Mux records. Changes propagate to ancestors within the
 same two-level depth used by container availability. Relation removals capture
 both endpoints before the former relationship is lost.
 
+Edition-wide subtitles can have a null `videoId`. Changes to their language
+must resolve videos through the edition's dubs as well as direct subtitle
+ownership. Otherwise a language slug, display name, or soft deletion can leave
+stale subtitle availability indefinitely. The real database regression in
+`apps/admin/src/services/core-watch-delivery.db.test.ts` covers this fan-out.
+
 Core's public Watch query hides unpublished, restricted, and unavailable videos.
 An `updatedAt` query therefore cannot report every disappearance. After a
 successful incremental video phase, `sync-videos.ts` scans public eligible IDs

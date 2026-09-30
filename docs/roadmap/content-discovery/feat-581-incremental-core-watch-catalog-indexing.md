@@ -55,7 +55,7 @@ Focused tests cover no-op imports, one-video updates, localized/availability
 removals, parent propagation, partial-write retries, concurrent requests, and
 Web delivery. Run Admin format, lint, and type checks.
 
-Implementation verification: 235 scoped Admin tests and six real PostgreSQL
+Implementation verification: 235 scoped Admin tests and seven real PostgreSQL
 delivery tests passed after integrating current main. All 121 migrations applied
 to a fresh disposable PostgreSQL 16 database, and rollback-only trigger assertions
 passed. A real Typesense 30.2 smoke verified no-op writes, scoped title updates,

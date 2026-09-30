@@ -76,6 +76,9 @@ BEGIN
       FOR affected IN SELECT video_id FROM video_dub WHERE language_id = old_row->>'id'
         UNION SELECT video_id FROM video_subtitle WHERE language_id = old_row->>'id'
         UNION SELECT video_id FROM video_locale WHERE language_id = old_row->>'id'
+        UNION SELECT dub.video_id FROM video_subtitle subtitle
+          JOIN video_dub dub ON dub.video_edition_id = subtitle.video_edition_id
+          WHERE subtitle.language_id = old_row->>'id' AND subtitle.video_id IS NULL
       LOOP PERFORM watch_catalog_mark_video(affected); END LOOP;
     ELSIF TG_TABLE_NAME = 'mux_video' THEN
       FOR affected IN SELECT video_id FROM video_dub WHERE mux_video_id = old_row->>'id'
