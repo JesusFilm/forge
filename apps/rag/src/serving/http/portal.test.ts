@@ -29,7 +29,9 @@ describe("portal admission", () => {
     const f = fixture()
     const first = await f.start()
     f.setAllowed(false)
-    expect((await f.callback(first.state, first.browser)).status).toBe(403)
+    expect(
+      (await f.callback(first.state, first.browser)).headers.get("location"),
+    ).toBe("/portal?recovery=admission_denied")
     f.setAllowed(true)
     const second = await f.start()
     const callback = await f.callback(second.state, second.browser)
@@ -45,20 +47,22 @@ describe("portal admission", () => {
     expect(
       (await f.app.request("/identity", { headers: { Cookie: session } }))
         .status,
-    ).toBe(401)
+    ).toBe(403)
   })
 
   it("rejects state mismatch, replay, tampering and fixed session cookies", async () => {
     const f = fixture()
     const login = await f.start()
-    expect((await f.callback("different", login.browser)).status).toBe(401)
+    expect(
+      (await f.callback("different", login.browser)).headers.get("location"),
+    ).toBe("/portal?recovery=oauth_invalid")
     expect(
       (await f.callback(login.state, "__Host-rag_oauth=other")).status,
-    ).toBe(401)
+    ).toBe(303)
     expect(
       (await f.callback(login.state, login.browser, "tampered")).status,
-    ).toBe(401)
-    expect((await f.callback(login.state, login.browser)).status).toBe(401)
+    ).toBe(303)
+    expect((await f.callback(login.state, login.browser)).status).toBe(303)
     const next = await f.start()
     f.sessions.set("fixed", { login: "engineer", id: 42 })
     const fixed = await f.app.request(
@@ -72,7 +76,7 @@ describe("portal admission", () => {
     )
   })
 
-  it("rechecks current permission and enforces origin on sign out", async () => {
+  it("rechecks current permission and allows sign out after admission changes", async () => {
     const f = fixture()
     const login = await f.start()
     const response = await f.callback(login.state, login.browser)
@@ -91,8 +95,7 @@ describe("portal admission", () => {
     expect(
       (await f.app.request("/identity", { headers: { Cookie: session } }))
         .status,
-    ).toBe(401)
-    f.setEligible(true)
+    ).toBe(403)
     expect(
       (
         await f.app.request("/sign-out", {
@@ -101,6 +104,7 @@ describe("portal admission", () => {
         })
       ).status,
     ).toBe(200)
+    f.setEligible(true)
     expect(
       (await f.app.request("/identity", { headers: { Cookie: session } }))
         .status,
@@ -111,7 +115,9 @@ describe("portal admission", () => {
     const f = fixture()
     const first = await f.start()
     f.setReassigned(true)
-    expect((await f.callback(first.state, first.browser)).status).toBe(403)
+    expect(
+      (await f.callback(first.state, first.browser)).headers.get("location"),
+    ).toBe("/portal?recovery=admission_denied")
     f.setReassigned(false)
     const next = await f.start()
     const response = await f.callback(next.state, next.browser)
@@ -180,6 +186,8 @@ it("serves a no-store static portal shell with same-origin assets and protected 
     githubId: 42,
     managementAvailable: false,
     usageAvailable: false,
+    expiresAt: expect.any(String),
+    absoluteExpiresAt: expect.any(String),
   })
   expect(await (await f.app.request("/members", { headers })).json()).toEqual({
     users: [{ login: "engineer", id: 42 }],
