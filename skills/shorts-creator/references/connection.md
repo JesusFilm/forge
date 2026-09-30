@@ -12,10 +12,10 @@ For the CLI, replace the URL before running:
 
 ```sh
 codex mcp add forge-shorts --url https://YOUR-MANAGER-HOST/mcp
-codex mcp login forge-shorts --scopes shorts:read,shorts:edit,shorts:render,shorts:narration
+codex mcp login forge-shorts --scopes offline_access,shorts:read,shorts:edit,shorts:render,shorts:narration
 ```
 
-Approve the requested scopes in your browser. Narration is separately consented and may incur provider charges. Omit `shorts:narration` if you want a workflow using existing audio only. The shown flags were checked against Codex CLI 0.150.0-alpha.12.2; use `codex mcp add --help` and `codex mcp login --help` if your version differs. Registration defaults to automatic; ask your operator if the server/client cannot negotiate registration rather than supplying service secrets. A connected tool listing is required before creation; a registered entry alone is not qualification.
+Approve the requested scopes in your browser. `offline_access` allows the client to renew this consented connection; it grants no additional Shorts tools. Reconnect for fresh consent if an older connection lacks renewal. Narration is separately consented and may incur provider charges. Omit `shorts:narration` if you want a workflow using existing audio only. The shown flags were checked against Codex CLI 0.150.0-alpha.12.2; use `codex mcp add --help` and `codex mcp login --help` if your version differs. Registration defaults to automatic; ask your operator if the server/client cannot negotiate registration rather than supplying service secrets. A connected tool listing is required before creation; a registered entry alone is not qualification.
 
 Official references: [Codex skills](https://learn.chatgpt.com/docs/build-skills), [Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
@@ -27,7 +27,7 @@ Extract the folder into `~/.claude/skills/shorts-creator/`. Add the remote serve
 claude mcp add --transport http --scope user forge-shorts https://YOUR-MANAGER-HOST/mcp
 ```
 
-Run `/mcp` in Claude Code to authenticate the server through OAuth and inspect connection status. Invoke `/shorts-creator` in your conversation. Check your version's help if command flags differ. Request read/edit/render consent and separate narration consent only when needed. This is documented setup guidance, not a claim that your client exposes rendered images or audio.
+Run `/mcp` in Claude Code to authenticate the server through OAuth and inspect connection status. Invoke `/shorts-creator` in your conversation. Check your version's help if command flags differ. Request `offline_access` for renewal, read/edit/render consent, and separate narration consent only when needed. This is documented setup guidance, not a claim that your client exposes rendered images or audio.
 
 Official references: [Claude Code MCP](https://code.claude.com/docs/en/mcp), [Claude Code skills](https://code.claude.com/docs/en/skills).
 

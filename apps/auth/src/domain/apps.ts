@@ -662,6 +662,7 @@ export const STUDIO_MCP_APP_SEED: RegisteredAppSeed = {
         "openid",
         "profile:read",
         "email:read",
+        "offline_access",
         "shorts:read",
         "shorts:edit",
         "shorts:render",
