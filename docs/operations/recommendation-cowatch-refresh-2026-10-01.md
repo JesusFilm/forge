@@ -168,3 +168,57 @@ accepts sparse-coverage fallbacks and allows the product to proceed. The initial
 Actual refresh lifecycle/capacity verification under feat-573 remains a separate
 operational task; lack of positive co-watch contribution does not establish a
 delivery incident or reopen the repaired defects.
+
+## October 2 read-only refresh reconciliation
+
+At October 1 22:54 UTC, a bounded read-only production check found the first
+automatic attempt under grant `a593c39d-20c2-42fe-aefc-f6ce92776a4b`
+**succeeded**. Attempt/release `42b1d3e9-38f3-45a4-80a6-8df2983bddb5`
+started at 14:57:11.554 UTC, published graph
+`24ff88dab183ff8513d1ec31d82813b34f8e6719ff3098bc112968a0ad2692b8`
+at 14:57:19.104 UTC, and completed atomic G8 pointer replacement at
+14:57:33.954 UTC. The graph had 6,672 sources, 39,927 contributions and 9,000
+edges. The attempt matches the immutable release, pointer and delegated system
+audit. This is observed lifecycle execution, not merely a ready toggle.
+
+At 18:16:52.477 UTC, the graph and G8 release were invalidated/revoked with
+`eligibility_changed`. Two captured source decisions were superseded by new
+eligible decisions at 18:16:52.471 and 18:16:52.775. Their recorded effective
+state, scopes, weight and reasons stayed equal while identity concentration
+and stored input digest changed. The exact changed producer input was not
+reconstructed from the retained data; the unchanged positive verdict alone
+cannot authorize reuse. The native eligibility trigger and owner-release fence
+therefore correctly withdrew the
+old graph. No revocation was cleared.
+
+The scheduler heartbeat remained running at 23:00 UTC and its last batch was
+idle. The grant was unrevoked and valid through October 30. The fixed minimum
+of 12 hours between attempts/publications makes October 2 02:57:19.104 UTC
+the next eligible attempt, checked at five-minute intervals. The next actual
+result was **not observed** at this closeout. Native PostgreSQL
+`apps/admin/src/services/recommendations/cowatch/refresh.db.test.ts` covers
+the expected sequence: source invalidation, throttled incumbent fallback,
+then a fresh qualified replacement after the interval without changing the
+old revocation. This bounded safety interval is not a continuous co-watch
+influence promise.
+
+At October 1 23:02 UTC, database allocation measured 22,624,786,111 bytes
+against the grant's 44,500,000,000-byte ceiling. Five retained graph
+generations occupied 274,505,728 relation bytes against the 6,300,000,000-byte
+graph ceiling. These point-in-time figures are not filesystem/WAL headroom or
+a guarantee that a future publication will pass admission.
+
+The natural 17:50–18:40 UTC sample surrounding revocation contained 231 issued
+requests and 1,044 cards. It showed zero exact G8 owner executions and zero
+co-watch-contributed cards. Three owner attempts fell back for sparse supported
+edges and one for `composition_required_input_unavailable`; all four returned
+incumbent cards. The latter issued six cards. Its retained structural diagnostic
+reported 51 candidates, six selected, only three with themes, `missingTheme`
+true and source/interest/history availability present. The code returned this
+named structural fallback before its exception handler, so no thrown exception
+is observed. The aggregate does not preserve the attempted selections' theme
+provenance. It cannot distinguish absent published metadata from hydration loss;
+do not classify this one input failure as confirmed healthy coverage or a
+confirmed recurrence of the earlier defect. The existing scheduled monitor
+will track its recurrence. No visible co-watch contribution or measured
+usefulness is claimed.

@@ -3,7 +3,7 @@ id: "feat-565"
 title: "Activate implemented co-watch and MMR with owner approval"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-29"
 duration: 8
 depends_on:
@@ -248,3 +248,22 @@ normal fallback works; positive co-watch contribution is not a gate on proceedin
 Keep provenance observations truthful and operational verification separate from
 delivery defects. This policy clarification does not certify a later refresh
 or change release authority.
+
+## October 2 closeout
+
+The owner-authorized direct co-watch/MMR path is implemented and was activated
+through the supported Admin operator as G7. Its first delegated replacement
+published G8 with a matching immutable release, graph and system audit; the
+subsequent source-eligibility change revoked G8 without reviving G4–G6. The
+approved bundle, rollback controls and ordinary incumbent fallback have a
+recorded live disposition. Feat-573 tracks the separate bounded refresh
+lifecycle. See the dated production observations in
+`docs/operations/recommendation-cowatch-refresh-2026-10-01.md`.
+
+No sampled request has yet proved an exact co-watch-contributed card, and
+usefulness is unmeasured. Both are outside this direct activation gate under
+the October 2 owner policy. One G8 composition fallback reported missing themes
+for three of six selected candidates; the retained aggregate does not identify
+whether this is missing metadata or a hydration defect. The specific cause is
+unresolved, so this closeout does not call that attempt healthy coverage or
+claim the earlier metadata repair covers it.

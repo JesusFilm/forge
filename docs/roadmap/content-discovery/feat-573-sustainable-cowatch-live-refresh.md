@@ -3,7 +3,7 @@ id: "feat-573"
 title: "Sustain live co-watch with bounded graph refresh"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-01"
 duration: 3
 depends_on:
@@ -115,3 +115,28 @@ ticket's in-progress status is not evidence of a delivery bug. The October 2
 owner decision accepts sparse coverage and successful incumbent fallback and
 permits proceeding without a positive co-watch-card gate. Apply
 `docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`.
+
+## October 2 bounded-lifecycle closeout
+
+The first automatic attempt under the existing grant succeeded on October 1
+14:57 UTC. It published a new bounded graph, committed a matching G8 release
+and pointer, and recorded the delegated system audit. At 18:16:52 UTC, two
+captured source eligibility decisions were superseded; the graph and release
+were correctly invalidated/revoked with `eligibility_changed`. The grant remains
+valid, the scheduler heartbeat is running and its last batch was idle while
+the fixed 12-hour minimum publication interval applies. The next attempt is
+eligible at October 2 02:57:19.104 UTC; its real result has not yet been
+observed. Native PostgreSQL `cowatch/refresh.db.test.ts` covers revocation,
+throttled fallback and a subsequent successful replacement with the original
+revocation unchanged.
+
+This is the approved bounded refresh lifecycle: invalid evidence withdraws
+co-watch influence until a fresh qualified publication is permitted. It does
+not promise continuous graph-backed service between checks. At the October 1
+23:02 UTC read, database allocation was 22.625 GB against the grant's 44.5 GB
+ceiling and graph relations allocated 274.5 MB against the 6.3 GB retained
+graph ceiling. Successful first replacement and these observed allocations
+support the current envelope; future attempts still apply admission and may
+refuse. Ordinary recommendation delivery falls back when graph authority is
+unavailable. The next natural attempt and actual co-watch contribution remain
+subjects for the existing scheduled follow-up, not claims of this closeout.
