@@ -17,6 +17,26 @@ tags:
   - "operations"
 ---
 
+## October 2 NZDT status: loaded retention still open
+
+The October 1 22:51 UTC production read confirmed 25,630,932,992 B of direct
+PGDATA availability, 553,648,128 B of WAL files, healthy compact Admin HTTP and
+worker processes, zero recent legacy writes/missing compact payloads, and an
+empty 24,576-B legacy stage relation. Feat-555/575 are complete; U1–U3 storage
+efficiency is complete in feat-574. See
+`docs/reports/2026-10-02-recommendation-storage-efficiency-closeout.md` for exact
+format, capacity and retention evidence.
+
+October 1's scheduled retention eventually committed 7,846 roots and 27,216
+served descendants, but four attempts failed first. That day is **not** a
+qualifying failure-free loaded cycle; neither was September 30. Current count:
+zero. The next normal starts are October 2 and 3 at 10:30 UTC (23:30 NZDT each
+date). Each must remove actual expired roots and descendants without failure,
+with acceptable lock skips, backlog and headroom. Do not substitute a manual or
+zero-deletion run. The daily monitor remains active. No supported monthly growth
+forecast follows from the post-reclamation snapshot. If a new defect is proved,
+repair it and then re-establish two qualifying normal loaded cycles.
+
 ## Problem
 
 The remediation preserves full 29-day trace history and reduces new trace

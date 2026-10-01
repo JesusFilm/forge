@@ -3,7 +3,7 @@ id: "feat-574"
 title: "Reduce recommendation event, served-item and profile storage growth"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-30"
 duration: 3
 depends_on: []
@@ -14,6 +14,24 @@ tags:
   - "database"
   - "capacity"
 ---
+
+## Completed scope: October 2 NZDT
+
+U1–U3 have merged, deployed implementations and native physical measurements.
+The current production sample confirms the narrower exposure index and CUID
+future writes, packed served snapshots, shared full-precision profile vectors,
+and typed first-empty profile completion. See
+`docs/reports/2026-10-02-recommendation-storage-efficiency-closeout.md` for exact
+PRs, samples, native savings and limits. Existing retained rows were not rewritten;
+steady-state monthly whole-database growth remains unmeasured and is not a
+condition invented for this implementation ticket. Feat-554 keeps the genuine
+normal loaded-retention and capacity acceptance gate.
+
+The historical preparation and pending language below records the path to
+activation. It is superseded by the completed production evidence above. A
+further exposure identity-index consolidation was rejected under the current
+uniqueness/retention contracts, and a playback digest rewrite was not supported
+by material near-term savings; neither belongs to the authorized U1–U3 release.
 
 ## Problem
 
