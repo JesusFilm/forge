@@ -1,5 +1,11 @@
 # Why recommendations return empty and partial rows
 
+> Historical pre-repair diagnosis. The demonstrated code defects were fixed and
+> deployed in [PR #2527](https://github.com/JesusFilm/forge/pull/2527). The owner's
+> [October 2 disposition](../2026-10-02-recommendation-coverage-acceptance.md)
+> accepts the remaining coverage limitations and permits proceeding. Empty or
+> partial rows alone are not evidence that these delivery bugs remain open.
+
 The low fill rate combines a reproducible retrieval-order defect, inconsistent language identities, absent display translations and limited fallback inventory. It is not predominantly a timeout problem. This is a read-only diagnosis; no runtime fix or publication was performed.
 
 ## Cohort and verification

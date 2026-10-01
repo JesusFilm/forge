@@ -1,0 +1,42 @@
+{
+  "recordedAt": "2026-10-01T03:03:09.813560+00:00",
+  "originalMergeCommit": "63511a87ff949e36885488346edf7fafb7566c27",
+  "currentRuntimeCommit": "58cf00928a083156414618988f42c02545b4b1e6",
+  "directReleaseId": "be1947f1-3302-4a26-9b40-beb53d06a5f9",
+  "pointerGeneration": 7,
+  "refreshGrantId": "a593c39d-20c2-42fe-aefc-f6ce92776a4b",
+  "qualification": {
+    "bindingDigest": "783d89e51db93651bfb5f9061f4893be4f7b94de71737ef373dfd1d7270bbbdf",
+    "expectedPointerGeneration": 6
+  },
+  "exceptions": [
+    {
+      "stage": "initial publication",
+      "result": "definite admission_refused, no write",
+      "reason": "publication_admission_generation_changed",
+      "followup": "same complete source window and counts; refreshed fingerprint after new read-only preflight; new source JSON total five bytes smaller, exact changed private field not exported or attributed"
+    },
+    {
+      "stage": "second admission-file creation",
+      "result": "guarded remote operation failed before publication was called",
+      "reason": "normal rollout replaced runtime 63511a87f with 58cf00928",
+      "followup": "verified both new deployments and exact runtime manifest/configuration; pinned operation to58cf00928"
+    },
+    {
+      "stage": "initial serving query",
+      "result": "57014 statement timeout at five seconds, no returned proof",
+      "reason": "EXPLAIN showed global scans of candidate, decision and served-item tables from generic root estimate",
+      "followup": "literal time bounds and per-request LATERAL OFFSET0 lookups; retained five-second/one-second limits and same proof predicates"
+    }
+  ],
+  "automaticRefreshProven": false,
+  "naturalServingProofPending": true,
+  "latestServingReceipt": "cowatch-serving-third-20261001.json",
+  "latestCounts": {
+    "issuedRequests": 33,
+    "cards": 163,
+    "exactOwnerExecutions": 0,
+    "cowatchContributedCards": 0,
+    "sparseEdgesFallback": 1
+  }
+}
