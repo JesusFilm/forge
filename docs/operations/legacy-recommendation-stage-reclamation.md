@@ -1,4 +1,11 @@
-# Prepare empty legacy recommendation stage reclamation
+# Legacy recommendation stage reclamation
+
+Production bulk disposal completed October 2 NZDT through PRs 2532/2534 and
+numbered migration 0127. The legacy relation is empty with 24,576 bytes allocated;
+16.431 GB of its files were reclaimed. Both Admin roles are healthy on `755345a92`.
+See `docs/reports/2026-10-02-legacy-stage-reclamation.md` for exact measurements,
+the bounded recovery and remaining daily retention gate. Do not rerun the stopped
+campaign or execute the inactive SQL asset below. Historical preparation follows.
 
 The reviewed SQL asset is
 `apps/admin/src/services/recommendations/sql/reclaim-empty-legacy-stage-relation.sql`.
@@ -30,6 +37,13 @@ audit evidence. Basic target/compact-writer/health checks, tests, normal PR-to-m
 deployment and measured filesystem recovery still apply. A compatible compact image
 can roll back application code, but cannot restore the discarded legacy observations.
 Retention verification in feat-554 remains independent and open.
+
+The first numbered-migration deployment timed out and rolled back. The current
+plan's recovery section prepares immutable retirement markers in autocommitted
+500-parent pages, then replays the unchanged migration only after checksum-bound
+Prisma recovery. Both deployers share a bounded session advisory lock. This
+preparation may persist retired markers while stage rows still exist; only the
+final truncate reclaims files. Do not restart the former finite campaign.
 
 ## Future production entry gates
 

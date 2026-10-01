@@ -1,0 +1,9 @@
+{
+  "reviewedAt": "2026-10-01T02:54:27.143Z",
+  "admissionSha256": "bb0182db01b384ef56dfd8f5017855abbeac5c4764d413f3f014539a364f3352",
+  "capacityReceipt": "cowatch-capacity-before-publication-20261001.json",
+  "singlePublicationAllocatedReserveBytes": 268435456,
+  "additionalTransientReserveBytes": 1073741824,
+  "remainingFreeAfterReservesBytes": 9200062464,
+  "rationale": "56,070 exact reviewed rows, 31,073,430 JSON bytes; historical three graphs allocate 158,179,328 bytes total. One publication reserve is over four times historical mean graph allocation. No credit for purge. Automatic refresh not yet authorized."
+}

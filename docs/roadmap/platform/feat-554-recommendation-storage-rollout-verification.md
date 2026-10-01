@@ -114,6 +114,22 @@ finite early retirement and lossless conversion path. Feat-554 still requires
 two loaded normal retention cycles and capacity monitoring before it can be
 marked complete, even if feat-555 reclaims a proven-empty relation first.
 
+## October 2 Reclamation and Remaining Retention Gate
+
+`docs/reports/2026-10-02-legacy-stage-reclamation.md` records completed owner-authorized
+bulk legacy disposal: 16.431 GB relation recovery and 25.512 GB available filesystem
+space. Feat-555 and feat-575 are complete; this ticket stays in progress.
+September 30 and October 1 normal loaded cycles recovered after failures, so neither
+qualifies as failure-free acceptance. Require two normal loaded cycles with no
+failures, sufficient descendant throughput, acceptable expired backlog/lock skips
+and continued headroom. The next scheduled cycle is October 2 at 10:30 UTC.
+
+The active `recommendation-storage-daily-check` monitor runs every 24 hours and
+supersedes the earlier heartbeat schedule described above. The old finite deletion
+job is permanently stopped. Follow `unattended-latest.json` and its bulk-disposal
+receipt; never restart the expired campaign. No new monthly steady-state forecast
+or universal quality claim follows from the reclamation measurement.
+
 ## September 30 Supplement
 
 `docs/reports/2026-09-30-recommendation-storage-rollout.md` records further index
