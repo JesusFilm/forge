@@ -60,8 +60,8 @@ send people to the full video on YouTube.
     --out="$HOME/Desktop/Devos/Devotionals/teasers"
   ```
 
-  The output file is always named `<slug>-seq<n>-clipfirst.mp4`: rename it
-  (or move the old one to `archive/`) before the next render overwrites it.
+  The output is named `<slug>-seq<n>-clipfirst.mp4`; when that name is taken
+  the render writes `-v2`, `-v3`, so rename the take you keep.
 
 - **The render already knows the structure.** `devotional-render.ts` builds a
   manifest (`packages/shorts-compositions/src/devotional/schema.ts`): cards of
@@ -115,9 +115,17 @@ One command, e.g. `src/scripts/cut-devotional-shorts.ts --from=<manifest>`:
 
 ## Working rules (from memory; they apply here too)
 
-- Only ONE session works in the `devo-lab` worktree at a time. The Prodigal
-  session (epic-bohr) is finished; do not run renders from two sessions at
-  once (they share the audio cache and the output file name).
+- Two sessions may work in `devo-lab` and render at the same time (checked
+  2026-10-01): every render stages into its own temp dirs
+  (`devo-render-*`, `devo-remotion-*`), the output never overwrites (a taken
+  name becomes `-v2`), and the audio cache is per devotional
+  (`devo/cache/ch<chapter>-seq<n>`). Limits: do not render the SAME
+  devotional from two sessions while either one synthesises new audio (both
+  would write that cache); find a render's manifest by its own stage dir from
+  the log, not "the newest manifest"; parallel renders run slower; and a
+  change to the shared composition reaches a render only if it was saved
+  before that render started its bundle, so commit composition changes
+  before starting a render.
 - Keys, caches, corpora and the face venv live outside git: see memory
   `devotional-local-setup-outside-repo.md`. They are already set up in
   `devo-lab`; `apps/mastra/.env.local` holds the keys (never print them).
