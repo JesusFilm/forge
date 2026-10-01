@@ -15,6 +15,17 @@ tags:
   - "capacity"
 ---
 
+## Current scope: October 2 NZDT owner authorization
+
+The owner explicitly requested bulk deletion of all remaining legacy stage detail,
+including former protected samples, without the old per-cohort verification.
+`docs/plans/2026-10-02-001-bulk-legacy-stage-reclamation.md` supersedes the historical
+empty-only and preservation gates below for this operation. Migration 0127 retires
+legacy run detail and restrictively truncates ONLY the stage relation atomically;
+compact traces and operational records retain their normal lifetime. The stopped
+unattended campaign must not restart. Status remains in progress until normal
+PR-to-main release and measured physical reclamation. Feat-554 remains independent.
+
 ## Problem
 
 Implement U4 of the storage-efficiency plan. User authorized early retirement, superseding the prior expiry-only route for unprotected stage details. Preserve all protected observations and ordinary privacy expiry. This ticket does not close retention verification or physical reclamation.
