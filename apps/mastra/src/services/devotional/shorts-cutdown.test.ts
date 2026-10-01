@@ -206,13 +206,28 @@ describe("chooseFilmTurn", () => {
     })
   })
 
-  it("rejects a pick that is too long, backwards or the opening", async () => {
+  it("keeps the model's start and fits a too-long pick to whole lines", async () => {
+    // Haiku's real answer for the Prodigal Son: the older son's refusal,
+    // lines 27-35, 50s long.
+    const w = await chooseFilmTurn(fake({ first: 27, last: 35, why: "x" }), {
+      subtitles,
+      title: "t",
+    })
+    expect(w!.fromSec).toBeCloseTo(subtitles[27].startSec - 0.5)
+    expect(w!.toSec - w!.fromSec).toBeLessThanOrEqual(SHORT_MAX_SEC)
+    expect(w!.toSec - w!.fromSec).toBeGreaterThanOrEqual(SHORT_MIN_SEC)
+    // It ends on a whole line.
+    expect(
+      subtitles.some((s) => Math.abs(s.endSec + 0.5 - w!.toSec) < 1e-9),
+    ).toBe(true)
+  })
+
+  it("rejects a pick that is backwards or the opening", async () => {
     const pick = (first: number, last: number) =>
       chooseFilmTurn(fake({ first, last, why: "x" }), {
         subtitles,
         title: "t",
       })
-    expect(await pick(5, 30)).toBeNull() // minutes long
     expect(await pick(10, 9)).toBeNull() // backwards
     expect(await pick(0, 4)).toBeNull() // the opening lines
   })

@@ -222,6 +222,7 @@ async function main() {
     const picked = await chooseFilmTurn(llm, {
       subtitles: film.subtitles,
       title: String(d.title ?? ""),
+      log: (msg) => console.log(msg),
       ...(typeof d.message === "string"
         ? { message: d.message }
         : d.message && typeof d.message === "object" && "idea" in d.message

@@ -521,7 +521,13 @@ export type TurnPicker = Pick<DevotionalLlm, "complete">
  */
 export async function chooseFilmTurn(
   llm: TurnPicker,
-  input: { subtitles: Subtitle[]; title: string; message?: string },
+  input: {
+    subtitles: Subtitle[]
+    title: string
+    message?: string
+    /** Told why a pick was refused. */
+    log?: (msg: string) => void
+  },
 ): Promise<{ fromSec: number; toSec: number; why: string } | null> {
   const subs = input.subtitles
   if (subs.length < 4) return null
@@ -559,10 +565,26 @@ export async function chooseFilmTurn(
     temperature: 0.2,
   })
   const { first, last } = parsed
-  if (first < 2 || last < first || last >= subs.length) return null
+  const refuse = (why: string) => {
+    input.log?.(`film turn pick ${first}-${last} refused: ${why}`)
+    return null
+  }
+  if (first < 2) return refuse("it is the scene's opening")
+  if (last < first || last >= subs.length) return refuse("not a line range")
   const fromSec = Math.max(0, subs[first].startSec - 0.5)
-  const toSec = subs[last].endSec + 0.5
+  // Models judge WHERE the turn is well and its LENGTH badly (Haiku picked
+  // the same right moment three times running, 50s long each time). Keep the
+  // start, then fit the end to the limits a whole line at a time.
+  const end = (i: number) => subs[i].endSec + 0.5
+  let to = last
+  while (to > first && end(to) - fromSec > SHORT_MAX_SEC) to--
+  while (to + 1 < subs.length && end(to) - fromSec < SHORT_MIN_SEC) to++
+  const toSec = end(to)
   const len = toSec - fromSec
-  if (len < SHORT_MIN_SEC || len > SHORT_MAX_SEC) return null
+  if (len < SHORT_MIN_SEC || len > SHORT_MAX_SEC) {
+    return refuse(`${len.toFixed(1)}s long even after fitting`)
+  }
+  if (to !== last)
+    input.log?.(`film turn: fitted lines ${first}-${last} to ${first}-${to}`)
   return { fromSec, toSec, why: parsed.why }
 }
