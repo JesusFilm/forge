@@ -539,7 +539,8 @@ describe("voiceTake", () => {
   it("reads the opening on Eleven v4, under its own tag", () => {
     expect(segmentModel("hook", "male-e")).toBe("eleven_v4")
     expect(voiceTake("hook", "male-e")).toBe("v4")
-    expect(voiceTake("hook", "female-d")).toBe("f4+v4")
+    // female-d reads the opening with its own delivery (take B, 2026-10-01).
+    expect(voiceTake("hook", "female-d")).toBe("hx+v4")
     expect(segmentModel("hook", "russian")).toBeUndefined()
     expect(segmentModel("reflection-2", "male-e")).toBeUndefined()
   })

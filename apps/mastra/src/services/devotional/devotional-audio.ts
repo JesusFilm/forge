@@ -536,6 +536,28 @@ const VOICE_DELIVERY: Record<
 }
 
 /**
+ * The opening's delivery per voice, on Eleven v4. female-d read it flat with
+ * her reflection settings (speed 1.2 rushes a teaser); the owner picked take
+ * "B" (2026-10-01): stability 0, full style, a calmer 1.05. Tagged `hx` so the
+ * old reading is never replayed for it.
+ */
+const HOOK_DELIVERY: Record<
+  string,
+  { settings: ElevenVoiceSettings; take: string }
+> = {
+  "female-d": {
+    settings: {
+      stability: 0.0,
+      similarity_boost: 0.8,
+      style: 1.0,
+      use_speaker_boost: true,
+      speed: 1.05,
+    },
+    take: "hx",
+  },
+}
+
+/**
  * The opening is read on Eleven v4 (owner's pick "B", 2026-09-30): the story
  * voice on v2 was right for the reflection but flat for the teaser. Plain
  * text, no audio tags: the model's own reading was the most energetic. The
@@ -557,6 +579,7 @@ export function voiceTake(id: string, voice: string): string {
 
 function baseTake(id: string, voice: string): string {
   if (id === "cover" || id === "conclusion" || id === "questions") return ""
+  if (id === "hook" && HOOK_DELIVERY[voice]) return HOOK_DELIVERY[voice].take
   // Scripture is read calmly, like the close (owner, 2026-09-30). Tagged, so
   // a scripture read under this voice's old default is not replayed as calm.
   if (id === "scripture") return VOICE_DELIVERY[voice] ? "calm" : ""
@@ -575,6 +598,8 @@ function voiceSettingsFor(
       : RU_BASE_VOICE_SETTINGS
   }
   if (id === "cover") return COVER_VOICE_SETTINGS
+  if (id === "hook" && HOOK_DELIVERY[voice])
+    return HOOK_DELIVERY[voice].settings
   if (id === "conclusion" || id === "questions") return WEIGHTY_VOICE_SETTINGS
   // Scripture keeps the close's calm pace in a voice with a faster delivery.
   if (id === "scripture" && VOICE_DELIVERY[voice]) return WEIGHTY_VOICE_SETTINGS
