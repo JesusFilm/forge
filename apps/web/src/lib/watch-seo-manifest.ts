@@ -7,7 +7,19 @@ export type WatchSeoManifestAlternate = {
 
 export type WatchSeoManifestVideoRouteGroup = {
   contentSlug: string
+  /**
+   * The hreflang cluster: only languages whose BCP-47 tag normalizes to a
+   * Google-valid hreflang. Sitemap `<xhtml:link>` annotations come from here.
+   */
   alternates: WatchSeoManifestAlternate[]
+  /**
+   * Every playable audio-language slug for this content, hreflang-eligible or
+   * not. Sitemap `<loc>` entries come from here, so the long tail of languages
+   * without an ISO-639-1 code still gets a discoverable URL. Optional because
+   * an admin snapshot generated before this field existed must still parse;
+   * callers fall back to `alternates` when it is absent.
+   */
+  languageSlugs?: string[]
 }
 
 export type WatchSeoManifestEpisodeRouteGroup = {
@@ -61,12 +73,21 @@ function isAlternateArray(
   return Array.isArray(value) && value.every(isAlternate)
 }
 
+function isLanguageSlugList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(isString)
+}
+
 function isVideoRouteGroup(
   value: unknown,
 ): value is WatchSeoManifestVideoRouteGroup {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   const record = value as Record<string, unknown>
-  return isString(record.contentSlug) && isAlternateArray(record.alternates)
+  return (
+    isString(record.contentSlug) &&
+    isAlternateArray(record.alternates) &&
+    (record.languageSlugs === undefined ||
+      isLanguageSlugList(record.languageSlugs))
+  )
 }
 
 function isEpisodeRouteGroup(
