@@ -1,0 +1,157 @@
+{
+  "recordedAt": "2026-09-28T21:44:04.601750+00:00",
+  "phase": "headed-before-verified",
+  "mode": "headed Chromium, no header or identity overrides",
+  "endpointStatuses": {
+    "surface-exposure:200": 26
+  },
+  "deliveryRequests": [],
+  "attemptedFacts": [
+    {
+      "httpStatus": "200",
+      "surface": "watch-home",
+      "block": "hero",
+      "presentation": "hero-card",
+      "placement": "home-hero",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 4
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-home",
+      "block": "authored",
+      "presentation": "authored-block",
+      "placement": "authored-1",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 26
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-home",
+      "block": "authored",
+      "presentation": "authored-block",
+      "placement": "authored-4",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 10
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-home",
+      "block": "authored",
+      "presentation": "authored-block",
+      "placement": "authored-5",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 14
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-home",
+      "block": "authored",
+      "presentation": "authored-block",
+      "placement": "authored-6",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 20
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-home",
+      "block": "authored",
+      "presentation": "authored-block",
+      "placement": "authored-7",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 10
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-home",
+      "block": "authored",
+      "presentation": "authored-block",
+      "placement": "authored-8",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 12
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-home",
+      "block": "authored",
+      "presentation": "authored-block",
+      "placement": "authored-9",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 22
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-home",
+      "block": "authored",
+      "presentation": "authored-block",
+      "placement": "authored-10",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 22
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-home",
+      "block": "authored",
+      "presentation": "authored-block",
+      "placement": "authored-11",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 8
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-home",
+      "block": "authored",
+      "presentation": "authored-block",
+      "placement": "authored-12",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 18
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-video",
+      "block": "chapters",
+      "presentation": "carousel",
+      "placement": "chapters-1",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 124
+    },
+    {
+      "httpStatus": "200",
+      "surface": "watch-series",
+      "block": "episodes",
+      "presentation": "episode-grid",
+      "placement": "series-episodes",
+      "policyVersion": "watch-exposure-v1",
+      "kind": "rendered",
+      "capability": null,
+      "count": 20
+    }
+  ],
+  "repeatedIssuanceNonces": 0,
+  "rawIdentifiersRetained": false,
+  "interpretation": "Observed browser HTTP statuses and attempted request payloads. HTTP200 is not by itself a count of accepted durable facts; Admin reconciliation is separate. Manifest items are requested authority, not inferred server-served counts. V2 fact payloads indicate the browser used a parsed issuance receipt. No credentials, signatures, event/window/attempt IDs or viewer identity exported."
+}

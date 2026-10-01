@@ -727,7 +727,11 @@ async function classifyAuthorizeRequest(
   if (resources.length > 1) return "invalid-target"
   if (resources.length === 1) {
     const target = resolveOAuthResource(oauthResourceCatalog, resources[0])
-    if (target?.resourceClass === "admin-mcp") return "provider"
+    if (
+      target?.resourceClass === "admin-mcp" ||
+      target?.resourceClass === "shorts-mcp"
+    )
+      return "provider"
     if (target?.resourceClass === "changelog-mcp") return "changelog"
     return "invalid-target"
   }
@@ -761,6 +765,21 @@ async function applyChangelogAuthorizePolicy(
     }
   }
   if (classification !== "changelog") return {}
+
+  // Let the provider validate and sign a fresh login request before applying
+  // the old account's grants. The sign-in continuation consumes this prompt
+  // and returns here to check the selected account. Consent must never skip it.
+  // Match Better Auth's space-delimited prompt parsing, including trimming.
+  if (
+    request.method === "GET" &&
+    authorizeUrl.searchParams.getAll("prompt").length === 1 &&
+    authorizeUrl.searchParams
+      .get("prompt")
+      ?.split(" ")
+      .some((prompt) => prompt.trim() === "login")
+  ) {
+    return {}
+  }
 
   const session =
     providedSession ?? (await auth.api.getSession({ headers: request.headers }))

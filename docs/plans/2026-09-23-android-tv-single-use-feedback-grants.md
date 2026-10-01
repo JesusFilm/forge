@@ -1,6 +1,6 @@
 # Android TV verified, daily, single-use feedback QR
 
-Status: the PostgreSQL version was implemented locally in the `codex/tv-beta-feedback` worktree; the replacement design is in the 2026-09-24 Redis plan. Extends feat-551. A native Android build and real verdict test remain open.
+Status: the PostgreSQL version was implemented locally in the `codex/tv-beta-feedback` worktree; the replacement design is in the 2026-09-24 Redis plan. Extends feat-593. A native Android build and real verdict test remain open.
 
 ## Outcome and limits
 

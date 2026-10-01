@@ -1,0 +1,69 @@
+[
+  [
+    {
+      "profile_source": false,
+      "cards": "4853",
+      "requests": "1394",
+      "repeat_learned_video": "203",
+      "repeat_recently_learned_video": "177"
+    },
+    {
+      "profile_source": true,
+      "cards": "4145",
+      "requests": "1335",
+      "repeat_learned_video": "988",
+      "repeat_recently_learned_video": "615"
+    }
+  ],
+  [
+    {
+      "cards": "29048",
+      "missing_playback_id": "0",
+      "missing_image": "0",
+      "missing_title": "0"
+    }
+  ],
+  [
+    {
+      "trace_format_version": 1,
+      "requests": "53"
+    }
+  ],
+  [
+    {
+      "stage": "rejected",
+      "reasons": ["composition_required_input_unavailable"],
+      "evidence": []
+    },
+    {
+      "stage": "rejected",
+      "reasons": ["composition_required_input_unavailable"],
+      "evidence": []
+    }
+  ],
+  [
+    {
+      "shortfall_reason": "insufficient_candidates",
+      "fallback_reason": null,
+      "requests": "380"
+    },
+    {
+      "shortfall_reason": "eligibility_exhausted",
+      "fallback_reason": null,
+      "requests": "12"
+    },
+    {
+      "shortfall_reason": "insufficient_candidates",
+      "fallback_reason": "profile_lineage_ineligible",
+      "requests": "3"
+    }
+  ],
+  [
+    {
+      "requests": "5979",
+      "exact_owner_execution": "0",
+      "earliest": "2026-09-29T18:42:01.326Z",
+      "latest": "2026-09-30T18:41:47.709Z"
+    }
+  ]
+]

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { PrismaClient } from "@prisma/client"
 import type { CoverageAudit } from "@/services/core-sync/coverage-audit"
 import type { SyncResult } from "@/services/core-sync/orchestrator"
-import { runCoreSync } from "@/workflows/coreSync"
+import { runCoreSyncQueued } from "@/workflows/coreSyncQueued"
 
 const syncPrisma = vi.hoisted(() => ({ name: "sync-prisma" }))
 const runSync = vi.hoisted(() => vi.fn())
@@ -172,7 +172,7 @@ describe("core sync job", () => {
       trigger: "manual",
       status: "queued",
     })
-    expect(start).toHaveBeenCalledWith(runCoreSync, [
+    expect(start).toHaveBeenCalledWith(runCoreSyncQueued, [
       {
         scope: ["languages"],
         incremental: true,
@@ -308,7 +308,7 @@ describe("core sync job", () => {
 
     await runCoreSyncSchedulerTick("scheduler-ledger-run-1")
 
-    expect(start).toHaveBeenCalledWith(runCoreSync, [
+    expect(start).toHaveBeenCalledWith(runCoreSyncQueued, [
       {
         scope: [
           "languages",

@@ -1,3 +1,9 @@
+import { StudioRenderJobs } from "./render-jobs"
+import {
+  StudioRenderPreparation,
+  assertStudioCompletedRenderSources,
+} from "./render-preparation"
+import { studioDocumentSchema } from "@forge/studio-contracts"
 import {
   STUDIO_RENDER_TEST_DATABASE_URL,
   SHORTS_MODEL_TEST_DATABASE_URL,
@@ -119,7 +125,7 @@ suite("generated catalog schema and service", () => {
       language,
       startMs: 1000,
       endMs: 5000,
-      retainOriginalBytes: true,
+      retainOriginalBytes: false,
       idempotencyKey: randomUUID(),
     }
     await expect(
@@ -179,17 +185,125 @@ suite("generated catalog schema and service", () => {
       idempotencyKey: randomUUID(),
       document,
     })
-    const requested = await author.request(worker, {
-      projectId,
-      expectedRevision: 1,
-      idempotencyKey: randomUUID(),
-      kind: "RENDER",
-      instructions: [],
-    })
+    const requested = await author.request(
+      worker,
+      {
+        projectId,
+        expectedRevision: 1,
+        idempotencyKey: randomUUID(),
+        kind: "RENDER",
+        instructions: [],
+      },
+      { deferSourceMaterialization: true },
+    )
     const attempt = await db.shortAttempt.findUniqueOrThrow({
       where: { id: requested.attemptId! },
     })
     const assets = new StudioAssetService(db)
+    const jobs = new StudioRenderJobs(db),
+      preparations = new StudioRenderPreparation(db)
+    await jobs.enqueue(worker, attempt.id)
+    const losing = await jobs.claim(worker, attempt.id)
+    const lease = await jobs.claim(
+      worker,
+      attempt.id,
+      1200000,
+      new Date(Date.now() + 1200001),
+    )
+    const media = await assets.register(
+      worker,
+      {
+        idempotencyKey: randomUUID(),
+        filename: "fixture.ts",
+        mimeType: "video/mp2t",
+        role: "source",
+        provenance: { status: "recorded", recorded: {} },
+      },
+      Buffer.from("source transport fixture"),
+      "LOCAL",
+    )
+    const references = []
+    for (const purpose of ["preview", "export"] as const) {
+      const value = await assets.register(
+        worker,
+        {
+          idempotencyKey: randomUUID(),
+          filename: `${purpose}.json`,
+          mimeType: "application/json",
+          role: "manifest",
+          provenance: { status: "recorded", recorded: {} },
+          dependencies: [media.reference],
+        },
+        Buffer.from(
+          JSON.stringify({
+            sourceSnapshotId: source.id,
+            catalogDigest: source.catalogDigest,
+            purpose,
+            height: 1080,
+            ranges: [{ startMs: 1000, endMs: 5000 }],
+            media: [media.reference],
+          }),
+        ),
+        "LOCAL",
+      )
+      references.push(value.reference)
+    }
+    const materialized = await capture.materialize(worker, {
+      sourceSnapshotId: source.id,
+      idempotencyKey: randomUUID(),
+      preview: references[0],
+      export: references[1],
+    })
+    const prepared = studioDocumentSchema.parse({
+      ...document,
+      items: document.items.map((item) => ({
+        ...item,
+        source: materialized.source,
+      })),
+    })
+    await expect(
+      preparations.save(worker, {
+        attemptId: attempt.id,
+        leaseId: losing.leaseId,
+        document: prepared,
+      }),
+    ).rejects.toThrow("CONFLICT")
+    await expect(
+      preparations.save(worker, {
+        attemptId: attempt.id,
+        leaseId: lease.leaseId,
+        document: { ...prepared, title: "Silent edit" },
+      }),
+    ).rejects.toThrow("CONFLICT")
+    await preparations.save(worker, {
+      attemptId: attempt.id,
+      leaseId: lease.leaseId,
+      document: prepared,
+    })
+    await expect(
+      preparations.save(worker, {
+        attemptId: attempt.id,
+        leaseId: lease.leaseId,
+        document: { ...prepared, durationInFrames: 300 },
+      }),
+    ).rejects.toThrow("CONFLICT")
+    await expect(
+      db.shortRenderPreparation.update({
+        where: {
+          attemptId_leaseId: { attemptId: attempt.id, leaseId: lease.leaseId! },
+        },
+        data: { inputHash: "a".repeat(64) },
+      }),
+    ).rejects.toThrow("immutable")
+    await expect(
+      db.$transaction((tx) =>
+        assertStudioCompletedRenderSources(
+          tx,
+          studioDocumentSchema.parse(document),
+          attempt.id,
+        ),
+      ),
+    ).rejects.toThrow()
     const output = await assets.register(
       worker,
       {
@@ -235,19 +349,37 @@ suite("generated catalog schema and service", () => {
       ),
       "LOCAL",
     )
-    await author.complete(worker, {
-      projectId,
-      expectedRevision: 1,
-      idempotencyKey: randomUUID(),
+    await jobs.finish(worker, {
       attemptId: attempt.id,
+      leaseId: lease.leaseId,
       status: "SUCCEEDED",
-      operations: [],
       result: {
         assets: [output.reference],
         manifest: manifest.reference,
         costMicros: 0,
       },
     })
+    expect(
+      await db.$transaction((tx) =>
+        assertStudioCompletedRenderSources(
+          tx,
+          studioDocumentSchema.parse(document),
+          attempt.id,
+        ),
+      ),
+    ).toHaveLength(1)
+    const approved = await author.approve(
+      { ...user, studioAuthority: "interactive" },
+      {
+        projectId,
+        expectedRevision: 1,
+        idempotencyKey: randomUUID(),
+        kind: "PUBLICATION",
+        renderAttemptId: attempt.id,
+      },
+    )
+    expect(approved.approvalId).toBeTruthy()
+    expect((await author.read(user, projectId)).document).toEqual(document)
     const input = {
       projectId,
       expectedRevision: 1,
@@ -338,7 +470,7 @@ suite("generated catalog schema and service", () => {
         restrictions: ["arclight"],
       })
       expect(saved.derivations[0]).toMatchObject({
-        sourceSnapshotId: source.id,
+        sourceSnapshotId: materialized.id,
         startMs: 1000,
         endMs: 5000,
         startFrame: 30,

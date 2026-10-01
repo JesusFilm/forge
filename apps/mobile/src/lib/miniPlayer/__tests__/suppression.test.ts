@@ -1,3 +1,5 @@
+import { miniPlayerPresentation } from "../presentation"
+import { createMiniPlayerStore } from "../store"
 import {
   IN_APP_SHEET_ROUTE_PATTERNS,
   createNonRouteSheetCounter,
@@ -22,16 +24,47 @@ describe("isInAppSheetRoute", () => {
     expect(isInAppSheetRoute(pattern.split("/"))).toBe(true)
   })
 
-  it("covers exactly the six group sheets", () => {
-    expect(IN_APP_SHEET_ROUTE_PATTERNS).toHaveLength(6)
+  it("covers the six group sheets and the three reader sheets", () => {
+    expect(IN_APP_SHEET_ROUTE_PATTERNS).toHaveLength(9)
+  })
+
+  // feat-553 U10: root-stack routes, so each pattern is one bare segment.
+  it.each(["reader-passage", "reader-translation", "reader-settings"])(
+    "treats the reader's %s sheet as a sheet",
+    (name) => {
+      expect(isInAppSheetRoute([name])).toBe(true)
+    },
+  )
+
+  it("hides the mini player while a reader sheet shows", () => {
+    const store = createMiniPlayerStore()
+    store.start({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+      originPattern: "watch/[slug]",
+    })
+    for (const name of [
+      "reader-passage",
+      "reader-translation",
+      "reader-settings",
+    ]) {
+      expect(miniPlayerPresentation(store.getSnapshot(), [name])).toBe("hidden")
+    }
+    // The Bible tab itself keeps the window.
+    expect(
+      miniPlayerPresentation(store.getSnapshot(), ["(tabs)", "bible"]),
+    ).toBe("floating")
   })
 
   it.each([
     [["watch", "[slug]"]],
     [["series", "[slug]"]],
     [["(tabs)", "watch"]],
-    [["(tabs)", "library"]],
+    [["(tabs)", "profile"]],
     [["experience", "[slug]"]],
+    [["reader"]],
+    [["(tabs)", "bible"]],
   ])("does not treat %s as a sheet", (segments) => {
     expect(isInAppSheetRoute(segments)).toBe(false)
   })
@@ -49,13 +82,13 @@ describe("non-route sheet counter", () => {
 
     counter.open("libraryDeleteConfirm")
     expect(counter.count()).toBe(1)
-    expect(isSuppressedBySheet(["(tabs)", "library"], counter.count())).toBe(
+    expect(isSuppressedBySheet(["(tabs)", "profile"], counter.count())).toBe(
       true,
     )
 
     counter.close("libraryDeleteConfirm")
     expect(counter.count()).toBe(0)
-    expect(isSuppressedBySheet(["(tabs)", "library"], counter.count())).toBe(
+    expect(isSuppressedBySheet(["(tabs)", "profile"], counter.count())).toBe(
       false,
     )
 
@@ -134,6 +167,23 @@ describe("non-route sheet counter", () => {
     unsubscribe()
     counter.open("sduiQuiz")
     expect(listener).toHaveBeenCalledTimes(2)
+  })
+
+  // The delete confirm draws inside its route, under the host on every
+  // platform; the other two are Modals, which iOS presents above the host.
+  it("counts only the inline sheets in inlineCount", () => {
+    const counter = createNonRouteSheetCounter()
+    counter.open("sduiQuiz")
+    counter.open("playerSettings")
+    expect(counter.count()).toBe(2)
+    expect(counter.inlineCount()).toBe(0)
+
+    counter.open("libraryDeleteConfirm")
+    expect(counter.count()).toBe(3)
+    expect(counter.inlineCount()).toBe(1)
+
+    counter.close("libraryDeleteConfirm")
+    expect(counter.inlineCount()).toBe(0)
   })
 })
 

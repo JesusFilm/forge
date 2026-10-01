@@ -171,7 +171,10 @@ function isPendingChapterStillRoutable(
   return false
 }
 
+import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+
 type WatchPageClientProps = {
+  surfaceManifests?: readonly (SignedWatchSurfaceManifest | null)[]
   downloadButtonLabel?: string
   downloadSequence?: DownloadSequence | null
   mergedBlocks: MergedWatchBlock[]
@@ -264,6 +267,7 @@ function buildShareFallbackHref({
 }
 
 export function WatchPageClient({
+  surfaceManifests,
   downloadButtonLabel,
   downloadSequence = null,
   mergedBlocks,
@@ -815,6 +819,7 @@ export function WatchPageClient({
     >
       <WatchSectionRenderer
         blocks={mergedBlocks}
+        surfaceManifests={surfaceManifests}
         downloadButtonLabel={downloadButtonLabel}
         downloadError={downloadError}
         downloadHref={downloadHref}

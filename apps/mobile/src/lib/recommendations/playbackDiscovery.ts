@@ -52,12 +52,39 @@ export function discoverySourceFromParam(
   return value === "search" ? "search" : null
 }
 
+/**
+ * Admin's provenance bounds (`PlaybackContextIssueSchema`). A key or value it
+ * refuses answers BAD_USER_INPUT, which loses the whole playback context, so
+ * anything outside them is dropped here rather than sent.
+ */
+const PROVENANCE_KEY = /^[a-z][a-z0-9_]{0,31}$/
+const PROVENANCE_VALUE_MAX_CHARS = 191
+/** The `.refine` key cap in admin's `src/services/recommendations/contracts.ts`. */
+const PROVENANCE_MAX_KEYS = 8
+
+/** What one marking surface knows beyond the source itself, e.g. a nonce. */
+export type PlaybackDiscoveryProvenance = Record<string, string>
+
 export function discoveryFor(
   source: PlaybackDiscoverySource,
+  extra: PlaybackDiscoveryProvenance = {},
 ): PlaybackDiscovery {
-  return source === "direct"
-    ? DIRECT_DISCOVERY
-    : { source, provenance: DISCOVERY_PROVENANCE[source] }
+  if (source === "direct") return DIRECT_DISCOVERY
+  const literals = DISCOVERY_PROVENANCE[source]
+  // The source's own literals win: they are the contract Web shares, and a
+  // marking surface must not be able to restate what the hand-off was.
+  const provenance: Record<string, string> = { ...literals }
+  for (const [key, value] of Object.entries(extra)) {
+    if (key in literals) continue
+    if (!PROVENANCE_KEY.test(key)) continue
+    if (value.length === 0 || value.length > PROVENANCE_VALUE_MAX_CHARS)
+      continue
+    // Admin refuses the WHOLE map over its key cap, which loses the playback
+    // context, so stop admitting keys rather than send a map it rejects.
+    if (Object.keys(provenance).length >= PROVENANCE_MAX_KEYS) break
+    provenance[key] = value
+  }
+  return { source, provenance }
 }
 
 export type PlaybackDiscoveryStore = ReturnType<
@@ -73,12 +100,17 @@ export function createPlaybackDiscoveryStore(now: () => number = Date.now) {
   let mark: {
     key: string
     source: PlaybackDiscoverySource
+    provenance: PlaybackDiscoveryProvenance
     at: number
   } | null = null
   return {
-    mark(key: string, source: PlaybackDiscoverySource): void {
+    mark(
+      key: string,
+      source: PlaybackDiscoverySource,
+      provenance: PlaybackDiscoveryProvenance = {},
+    ): void {
       if (!key) return
-      mark = { key, source, at: now() }
+      mark = { key, source, provenance, at: now() }
     },
     take(keys: ReadonlyArray<string | null | undefined>): PlaybackDiscovery {
       if (!mark) return DIRECT_DISCOVERY
@@ -89,9 +121,9 @@ export function createPlaybackDiscoveryStore(now: () => number = Date.now) {
       if (!keys.some((key) => key != null && key === mark?.key)) {
         return DIRECT_DISCOVERY
       }
-      const source = mark.source
+      const { source, provenance } = mark
       mark = null
-      return discoveryFor(source)
+      return discoveryFor(source, provenance)
     },
     clear(): void {
       mark = null
@@ -110,6 +142,7 @@ export function getPlaybackDiscoveryStore(): PlaybackDiscoveryStore {
 export function markPlaybackDiscovery(
   key: string,
   source: PlaybackDiscoverySource,
+  provenance: PlaybackDiscoveryProvenance = {},
 ): void {
-  getPlaybackDiscoveryStore().mark(key, source)
+  getPlaybackDiscoveryStore().mark(key, source, provenance)
 }

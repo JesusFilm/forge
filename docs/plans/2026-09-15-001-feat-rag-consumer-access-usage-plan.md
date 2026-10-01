@@ -22,18 +22,23 @@ portal-user validation CI, GitHub identity, token verification/rotation, databas
 isolation and usage reports. Discovery evidence belongs in separate draft
 [PR #2325](https://github.com/JesusFilm/forge/pull/2325); this plan is the canonical
 policy record in [PR #2304](https://github.com/JesusFilm/forge/pull/2304).
-Discovery must complete before feat-527 starts; usage, dogfood and portal follow
-in order. J022 reconciles both drafts without moving discovery into this PR.
+Discovery must complete before feat-527 starts. The 2026-09-28 delivery update
+brings local management UI work immediately after the access backend, deferring
+full user-flow verification to that UI. Usage/reporting and operational dogfood
+follow; incomplete live verification does not block the backend merge. J022 reconciles both drafts without moving discovery into this PR.
 
 Implementation is explicitly split:
 
 1. [feat-527: access lifecycle](../roadmap/rag/feat-527-rag-consumer-access-lifecycle.md).
-2. [feat-528: usage collection and read-only reporting](../roadmap/rag/feat-528-rag-consumer-usage-visibility.md),
-   dependent on access identity. Access alone cannot close the programme or permit
-   shared-token cutoff; both deliverables and their release gates must pass.
-3. [feat-529](../roadmap/rag/feat-529-rag-consumer-dogfood-migration.md): actual ops HTTP dogfood and seven-day migration, after usage.
-4. [feat-530](../roadmap/rag/feat-530-rag-consumer-self-service-portal.md): internal self-service portal, after successful dogfood. Its design
-   is captured here now because Bible lookup expansion will increase demand.
+2. [feat-530: internal self-service portal](../roadmap/rag/feat-530-rag-consumer-self-service-portal.md):
+   management UI follows the backend. Verify consumer onboarding through the
+   actual UI, including creation and one-time key handling.
+3. [feat-528: usage collection and read-only reporting](../roadmap/rag/feat-528-rag-consumer-usage-visibility.md):
+   independent backend deliverable; reporting views follow its implementation.
+4. [feat-529: ops HTTP dogfood and seven-day migration](../roadmap/rag/feat-529-rag-consumer-dogfood-migration.md):
+   follows usage and usable management. Create RAGBot through the portal, then
+   use that consumer through the actual ops task. API/SQL setup cannot substitute
+   for onboarding proof. Access alone cannot permit shared-token cutoff.
 
 No product implementation, billing, external consumers, source import, corpus
 change or production operation is included in this PR. External access requires
@@ -113,10 +118,11 @@ Added members become owners with the same management and token-regeneration
 rights. No per-consumer registration or owner-change PR is involved.
 
 One-time display, verifier-only persistence, immediate atomic replacement,
-Jaco/RAGBot-only aggregates, seven-day grace and actual ops HTTP dogfood remain
-accepted. RAGBot is the first ordinary consumer. The full portal follows dogfood;
+seven-day grace and actual ops HTTP dogfood remain accepted. The 2026-09-29
+direction supersedes the earlier human reporting restriction: every admitted
+portal user can view every consumer report using their existing session. RAGBot is the first ordinary consumer. The management portal now precedes dogfood;
 feat-527 supplies the same authenticated creation/membership backend for an
-isolated pre-portal dogfood harness, without a SQL, authorization or PR bypass.
+actual locally developed portal UI, without a SQL, authorization or PR bypass.
 
 Remaining technical details: exact allowlist path/schema, trusted merged-revision
 publication/freshness, stable GitHub identity binding across renames, safely
@@ -133,7 +139,7 @@ grace start and cutoff require separate authorization.
    lowercase letters, numbers and dashes only. Enforce the same rule server-side
    and with database uniqueness, including concurrent submissions.
 4. Show the signed-in engineer's own GitHub handle read-only as initial owner.
-   Preview the consumer name and initial owner before submitting Add.
+   Submit Create directly, then show the one-time API key dialog. No preview step.
 5. Add directly creates the backend record and owner relationship and generates
    a cryptographically random secret in one transaction. It does not stage a PR.
 6. Display plaintext exactly once after successful creation, with a copy action
@@ -197,7 +203,7 @@ the allowlist PR path. The allowlist never stores consumer owner lists or secret
 
 Authenticated users can list all consumers' safe names/status and create directly
 through the backend. Validate the globally unique lowercase/numeric/dash name,
-previewed values and authenticated initial owner; never accept a client-supplied
+submitted values and authenticated initial owner; never accept a client-supplied
 owner identity. Source grants are explicit bounded server-side policy on the
 consumer, not arbitrary grants supplied by the creator; rotation cannot widen them.
 Keep sensitive free text and private contacts out of the directory and git.
@@ -219,7 +225,8 @@ allowlist. Added members have owner-equivalent management/regeneration rights.
 Recheck admission, ownership, target eligibility and lifecycle state inside the
 transaction after locks. Other-consumer ownership grants no rights. Enforce
 last-owner protection under concurrency. Directory access does not expose
-owner-restricted audit, secrets, verifiers or aggregate reports.
+owner-restricted audit, secrets or verifiers. Aggregate reports are available
+to every admitted portal user independently of ownership.
 
 Owner removal denies the next management action, including existing sessions;
 it cannot retract a copied secret, so coordinate rotation/revocation. Removing a
@@ -299,18 +306,22 @@ objects in newly instrumented paths. Do not commit production evidence.
 
 ## C. Separate observable deliverable
 
-Build a repeatable operator-only read-only report command (proposed
-`usage:report --consumer <stable-id> --from <UTC> --to <UTC>`)
-and a documented report schema, not a public dashboard. Initially only Jaco and
-RAGBot may read reports. Give RAGBot a dedicated authenticated, read-only report
-capability through a bounded endpoint/ops task with fixed aggregate fields and
-validated windows, not a general database credential or arbitrary SQL. The
-server-side report role reads aggregate views only. Other engineers
-and consumer owners gain no report access by virtue of ownership. The command is future
-work; it does not exist in this PR. Report rows contain only consumer ID, approved
+Build a read-only **Usage** page within the existing consumer portal. Every
+admitted portal user may view every consumer's aggregate report using their
+GitHub session, with admission rechecked on every read. No additional human
+report credential, consumer membership or report allowlist is required.
+Provide three layout options and implement the selected one after Jaco chooses.
+This 2026-09-29 decision supersedes the earlier Jaco/RAGBot-only human policy.
+
+Retain the bounded operator command
+`usage:report --consumer <stable-id> --from <UTC> --to <UTC>` and optional
+independent Jaco/RAGBot bearer capability for automation. RAGBot must be registered
+before its machine grant. The server-side report role reads aggregate views only;
+no browser or machine receiver receives a general database credential or SQL.
+The HTTP and CLI capabilities are implemented in feat-528 draft PR #2455.
+Report rows contain only consumer ID, approved
 label, `windowStart`, `windowEnd`, `requestCount`,
-`successfulRequestCount`, `lastActivityAt`, `generatedAt`, `completeThrough` and
-`coverageStatus` (`complete | partial | unavailable`). No owner contact in rows.
+`successfulRequestCount`, `lastActivityAt` and `generatedAt`. No owner contact in rows.
 
 Counting contract:
 
@@ -342,16 +353,18 @@ not promise infinite unbounded storage.
 Do not sample counts. Test atomic increments and idempotent completion under
 concurrency, retry, process crash and rotation.
 
-Telemetry failure must not masquerade as zero: report independent collector
-heartbeat/watermark and unresolved pending intervals; window coverage is complete
-only after all participating instances have reconciled and flushed it. Preserve
-gaps durably after recovery. If a write fails, bounded retrieval may continue,
-but the report must mark the affected interval partial/unavailable; if the gap
-cannot be durably recorded, stale heartbeat/watermark must force unavailable.
-Never return a clean zero on DB failure, unavailable historical coverage, delayed flush,
-missing deployment instrumentation or unknown consumer. Unknown consumer is a
-report error; zero is only an existing consumer in a fully covered retained window.
-A report exits nonzero on unavailable coverage and visibly marks partial coverage.
+Reports always return the recorded counts for the consumer and selected date
+range, regardless of tracking interruptions or time before instrumentation.
+Do not change or narrow selected dates to obtain totals. Existing consumers
+with no recorded requests return zero; unknown consumers are errors. A report DB
+read failure is an error, never a successful zero. Accounting-write failures
+must not block retrieval or suppress other recorded counts.
+
+Product correction (2026-09-29): the original coverage status, collector
+heartbeats/watermarks, independent deployment inventory and reconciliation were
+unnecessary for this feature and are removed. Keep only atomic request accounting,
+completion deduplication and read-only aggregates. Applied migration history and
+old metadata remain inert for audit/rolling rollback compatibility.
 
 ## D. Shared-token migration and rollback
 
@@ -366,12 +379,12 @@ After foundation and usage visibility, dogfood/support existing callers for
 seven days to register through the new path. Record a communicated start and
 cutoff timestamp in the separately approved production cutover scope. After the
 seven days, disable the shared legacy bearer path under that approval, with
-owner migration status, successful actual ops dogfood and complete reporting
-coverage as cutover checks. Escalate unmet checks to the cutover owner; this plan
+owner migration status, successful actual ops dogfood and verified consumer
+request/success counts as cutover checks. Escalate unmet checks to the cutover owner; this plan
 authorizes neither automatic production action nor a silent grace extension.
 
 Use additive schema rollout and normal PR-to-main deployments only. Roll back
-reporting independently while marking coverage unavailable. Auth rollback must
+reporting independently; disabled or failed report reads return errors. Auth rollback must
 preserve current deny state and cannot revive revoked credentials or automatically
 reenable shared tokens; prefer disabling retrieval to restoring unauthorized
 access. Rehearse rollback with synthetic metadata before rollout. No destructive
@@ -380,21 +393,24 @@ steps for auth DB failure, telemetry loss, failed handoff and partial cutover.
 
 ## E. Acceptance and release verification
 
-Implementation tests use isolated local/CI databases and synthetic fixtures.
+Implementation tests use isolated local/CI databases and ordinary test fixtures.
+Delivery update (2026-09-28): merge the access backend with incomplete live
+verification recorded, then complete management-flow checks through the local
+feat-530 UI. No temporary CI role provisioning or pre-UI production harness is
+required. These later programme acceptance checks do not block that backend merge.
 Real dogfood is a later approved environment operation, not performed by these documentation jobs, including J014.
 
 1. Apply the approved decisions. Locate the actual `forge-rag-retrieve` task path/revision and
    approved receiver; absent client access blocks release proof.
 2. Register RAGBot first through the authenticated creation backend with an
-   allowlisted initial owner and one-time issuance. Before full portal delivery,
-   use an isolated harness exercising the same authorization. Register a second synthetic
-   integration for isolation. No privileged bypass or special auth path.
-3. Establish a retained, fully covered UTC report window and obtain a baseline
+   allowlisted initial owner and one-time issuance through the delivered portal UI.
+   Use local data for isolation checks during UI development. No privileged
+   bypass or special auth path.
+3. Establish the UTC report window for the intended requests and obtain a baseline
    using the report reader. Existing unused integration reports 0/0/null.
 4. Through the **actual `forge-rag-retrieve` ops task and real `POST /v1/search` endpoint**, send
    three known synthetic successful requests. Disable retries or record actual
-   HTTP attempts. Suppress bodies/headers in all captured output. Wait for the
-   watermark to cover them: report deltas must be requests +3, successes +3,
+   HTTP attempts. Suppress bodies/headers in all captured output. Wait for successful response completion and accounting persistence: report deltas must be requests +3, successes +3,
    last activity inside the stated window.
 5. Send two more: deltas become +5/+5. Send one request with the second integration:
    its delta is +1/+1 and the dogfood consumer stays +5/+5. Repeat the same read-only report and
@@ -405,13 +421,15 @@ Real dogfood is a later approved environment operation, not performed by these d
    Issue its approved replacement and verify identity continuity; revoke the
    consumer and verify new requests reject its credential. Check
    suspension/resumption, source isolation and concurrent revoke.
-8. Interrupt collector/storage and simulate missing instrumentation, delayed flush,
-   crash and unavailable historical coverage. Reports visibly become partial/unavailable, never
-   clean zero. Recover and demonstrate gap handling and exact concurrent counts.
+8. Interrupt accounting/storage and restart serving. Recorded requests remain
+   visible for the same original date range; unfinished attempts are requests
+   without successes. Recover and demonstrate exact concurrent counts and
+   idempotent completion. Real report read failures return errors, not zero.
+
 9. Verify report principal cannot write, read credentials/contacts or read corpus;
    inspect report schema/log sinks using synthetic sentinel values for leakage.
 10. Rehearse shared-token grace/cutoff and rollback. Record only synthetic counts,
-    window, coverage, pass/fail, receiver label and code revision in release
+    window, pass/fail, receiver label and code revision in release
     evidence; no tokens, selectors, IPs, raw queries, corpus or production evidence.
 
 Admission/membership acceptance for feat-527/530: malformed/duplicate handles,
@@ -420,7 +438,7 @@ outcomes. An unmerged allowlist addition denies login; trusted merged publicatio
 admits it; removal denies existing sessions. All admitted users see all consumers,
 but only owners manage a target consumer. Test direct creation, invalid names,
 global duplicate/concurrent-name conflicts, read-only initial owner tampering,
-preview/submit consistency and one-time display. Only owners can Add member;
+direct-create submission and one-time display. Only owners can Add member;
 reject non-allowlisted targets and cross-consumer or concurrent removal/rotation
 races. Prove last-owner protection, stable identity/rename safety, stale allowlist
 denial, restricted audits, atomic rotation, old-key rejection and response-loss
@@ -438,7 +456,7 @@ After successful feat-529 dogfood, deliver the confirmed UX above using the
 feat-527 authenticated backend. GitHub OAuth plus the current merged portal-user
 allowlist controls admission. Show all consumers; runtime membership controls
 management. No environment picker or environment-scoped route is needed. Create directly with a globally unique `^[a-z0-9-]+$` name, read-only
-signed-in initial owner, preview and submit. Return the random secret once with
+signed-in initial owner and a single Create action. Return the random secret once with
 copy/password-manager warning. Only existing owners can Add member from the
 predetermined allowlist; members can manage and regenerate. No consumer PR or
 Git-backed owner projection exists in this model.
@@ -446,7 +464,8 @@ Git-backed owner projection exists in this model.
 Enforce CSRF/session protections, no-store issuance responses and no analytics or
 session replay on secret displays. Warn that rotation immediately invalidates the
 old key. Store only the one-way verifier and never offer reveal-again. Reports
-remain Jaco/RAGBot-only through the separate narrow tool. Validate eventual UI
+are visible to all admitted portal users for all consumers through Usage, while
+the optional machine tool retains its independent bearer authorization. Validate eventual UI
 page-load performance as well as authorization/concurrency and response-loss cases.
 
 J021 proves an isolated OAuth/session skeleton, not production readiness. Its
@@ -454,3 +473,16 @@ pinned evidence and limitations belong to discovery draft #2325. Allowlist
 integration, durable sessions, live OAuth registration and Railway deployment are
 not proven. All production changes still require separate authorization and the
 normal PR-to-main flow. No deployment is authorized by this plan.
+
+### Portal-admission implementation slice
+
+The first admission slice is in `apps/rag/portal/users.json`,
+`apps/rag/scripts/validate-portal-users.ts`, and
+`apps/rag/src/serving/http/portal*.ts`. Its Hono proof route is separate from
+`/v1/search`; it has no registry adapter or consumer management methods.
+Merged-`main` GitHub contents, live identity and live Forge write permission
+are checked on every protected request. Postgres stores hashed OAuth state,
+browser binding and session tokens; the numeric GitHub ID is the session
+identity. This slice intentionally leaves consumer creation, secret issuance,
+membership, reporting and legacy migration for later work. Operator setup and
+unperformed browser checks are documented in `apps/rag/portal/README.md`.

@@ -1,0 +1,23 @@
+{
+  "name": "[forge-admin] push run_not_alive — a live campaign lost its worker",
+  "type": "log alert",
+  "query": "logs(\"service:forge-admin \\\"event=zone_missed\\\" \\\"reason=run_not_alive\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
+  "message": "The recovery sweep found a campaign still scheduled or sending whose durable run the runtime no longer holds, and retired its pending groups. The rest of that wave never sent.\n\nThis is the worker-outage signal: the sweep runs at worker start, so this line means a previous worker went away mid-wave. Read the campaign page for the stale-worker state and the report for the missed count.\n\nKnown limitation, stated on purpose: this fires when the NEXT worker boots, not while the worker is away. The plan's \"heartbeat stale while a campaign is scheduled or sending\" needs a periodic emitter that does not exist yet, because the worker heartbeat writes database rows and logs nothing. Until one exists, watch the workflows dashboard workers section for a heartbeat under 45 seconds during any wave. See infra/datadog-monitors/push/README.md.\n\n@urim.chae@tandem.org.nz",
+  "tags": [
+    "service:forge-admin",
+    "env:prod",
+    "team:forge",
+    "feature:push-campaigns",
+    "area:push"
+  ],
+  "priority": 1,
+  "options": {
+    "thresholds": { "critical": 1 },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "renotify_interval": 60,
+    "enable_logs_sample": true,
+    "include_tags": true,
+    "groupby_simple_monitor": false
+  }
+}

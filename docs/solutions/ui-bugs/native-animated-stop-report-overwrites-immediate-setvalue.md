@@ -1,6 +1,7 @@
 ---
-title: "A native-driven Animated loop's late stop report overwrote an immediate setValue reset"
+title: "A setValue reset on a native-driven Animated value lands late: a stop report overwrote it, and a mount drew the stale value first"
 date: "2026-09-24"
+last_updated: "2026-09-29"
 category: ui-bugs
 module: apps/mobile
 problem_type: ui_bug
@@ -10,6 +11,7 @@ symptoms:
   - "The frozen brightness matched the pulse phase at the moment the loop stopped, not the value the code had just written"
   - "One earlier device run of the same code read the correct (33,29,28), so a single passing run proved nothing"
   - "Every jest suite stayed green, because jest has no native driver and the shelf suite mocks Animated.loop"
+  - "Each Bible verse change began with one black frame where neither verse showed; a useLayoutEffect setValue reset of a shared native value landed one frame after the mount, with no stop before it"
 root_cause: async_timing
 resolution_type: code_fix
 severity: medium
@@ -18,17 +20,20 @@ related_components:
   - apps/mobile/src/hooks/useShimmerOpacity.ts
   - apps/mobile/src/hooks/__tests__/useShimmerOpacity.test.tsx
   - apps/mobile/src/components/home/RecommendationsShelf.tsx
+  - apps/mobile/src/components/bible/VerseSlider.tsx
+  - apps/mobile/src/components/bible/__tests__/VerseSlider.test.tsx
 tags:
   - mobile
   - react-native
   - animated
   - native-driver
+  - setvalue
+  - layout-effect
   - skeleton
-  - race-condition
   - async-timing
 ---
 
-# A native-driven Animated loop's late stop report overwrote an immediate setValue reset
+# A setValue reset on a native-driven Animated value lands late: a stop report overwrote it, and a mount drew the stale value first
 
 ## Problem
 
@@ -73,7 +78,8 @@ The defect was found on a failed slate load, where the first version of the PR
 kept a still skeleton on screen. The final PR hides the whole row on a failed
 load, so a still skeleton now appears only on a blurred Home or for the one
 commit where `served` lands before its slate. The mechanism below applies to
-any native-driven value that is stopped and then reset.
+any native-driven value that is stopped and then reset. "A second case: a
+reset with no stop" under Symptoms shows a late reset with no stop before it.
 
 ## Symptoms
 
@@ -95,6 +101,25 @@ any native-driven value that is stopped and then reset.
 - An earlier single device run of the same code read (33,29,28) after the
   failure. That run was a false pass.
 - Every jest suite stayed green.
+
+### A second case: a reset with no stop
+
+The verse fade in the Bible reader (`VerseSlider`, the follow-up to PR #2427,
+unmerged on 2026-09-29) had a late reset with no stop before it. Each verse
+change mounted a still copy of the old verse on one shared native-driven
+`Animated.Value`. A finished run left that value at 1 (copy opacity 0), and a
+`useLayoutEffect` then called `progress.setValue(0)`. The mount commit carried
+the stale 1. This pre-fix fade code was never committed.
+
+The reset reached the view one frame late, so each change began with one frame
+where neither verse showed. A 60 fps capture on the iPhone 17 Pro Max simulator
+(2026-09-28) read one frame at YAVG about 16 (limited-range black) before each
+fade. The fix gives each run a new `Animated.Value` at its start value
+(`newClock`, `apps/mobile/src/components/bible/VerseSlider.tsx:284-289`).
+Android was not measured. Until the follow-up merges, `main` has the merged
+slide version of `VerseSlider`, with the same shape: one shared value and a
+`useLayoutEffect` reset. Nobody measured whether that slide shows a stale
+frame.
 
 ## What Didn't Work
 
@@ -210,6 +235,18 @@ Native 0.86.3.
    (`src/private/animated/NativeAnimatedHelper.js:125-143`). A `getValue` sent
    after the stop reaches the native side after the stop, so the reset in its
    answer is the last write.
+5. **The second case.** React renders an animated style from the JS value
+   (`src/private/animated/createAnimatedPropsHook.js:219-230`). A layout effect
+   runs after that render, so the mount commit carries the stale value. A
+   native `setValue` does not flush, so it causes no new render
+   (`AnimatedValue.js:202-205`). The reset reaches the view only through the
+   native module. On iOS bridgeless, when `cxxNativeAnimatedEnabled` is false,
+   that module is `NativeAnimatedTurboModule`
+   (`Libraries/Animated/shouldUseTurboAnimatedModule.js:14-20`). Its
+   `setAnimatedNodeValue` goes to the UIManager queue and then to the main
+   queue (`Libraries/NativeAnimation/RCTNativeAnimatedTurboModule.mm:131-136`,
+   `255-264`, `290-309`). A new value for each run has the correct JS value at
+   render, so the mount commit is correct and no native write must follow it.
 
 **Not verified:**
 
@@ -226,20 +263,34 @@ Native 0.86.3.
 - **The order of the two native replies in JS.** It was not traced in native
   code. The device trials (3 of 3 at rest) support that the `getValue` answer
   lands last.
+- **The frame order in the second case.** Source shows the two queue hops. It
+  does not fix their order against the Fabric mount. The one late frame comes
+  from the simulator capture. The runtime value of `cxxNativeAnimatedEnabled`
+  was not read on that build either.
 - **Android.** Neither the defect nor the fix was measured on Android.
 
 ## Prevention
 
-- **Rule.** For a native-driven `Animated.Value`, do not follow a stop with an
-  immediate `setValue`. Reset inside `stopAnimation`'s callback, and guard that
-  reset with a flag the effect cleanup sets, so a late reset cannot stop a
-  restarted animation.
-- **Scope.** The rule applies to any native-driven animation that a prop turns
+- **Rule.** For a native-driven `Animated.Value`, a `setValue` can reach the
+  view after the frame you need it in. Do not use an immediate `setValue` in
+  these two cases:
+  - **(a) A stop, then a reset.** Reset inside `stopAnimation`'s callback.
+    Guard that reset with a flag the effect cleanup sets, so a late reset
+    cannot stop a restarted animation.
+  - **(b) A reset of a shared value in the commit that mounts a view that reads
+    it.** The first frame shows the stale value. Create a new `Animated.Value`
+    for each run, at its start value. Swap to it during render, not in an
+    effect, so the mount commit carries it
+    (`apps/mobile/src/components/bible/VerseSlider.tsx:142-151`, `284-289`).
+- **Scope.** Case (a) applies to any native-driven animation that a prop turns
   on and off: skeleton pulses, spinners, and fades. A stop on unmount alone is
   not at risk, because nothing resets after it. The other `useShimmerOpacity()`
   callers pass no argument and stop only on unmount
   (`SearchResultSkeleton.tsx`, `VideoDetailSkeleton.tsx`, `SheetLoading.tsx`,
-  `BibleQuotesCarouselRenderer.tsx`).
+  `BibleQuotesCarouselRenderer.tsx`). Case (b) applies to any layer that
+  mounts for each run on a value that outlives the run: a still copy, a
+  crossfade, or an entry animation. A `useLayoutEffect` does not prevent it,
+  because the render already read the stale value.
 - **Audit command.** List files that use the native driver and also call
   `setValue`:
 
@@ -248,10 +299,11 @@ Native 0.86.3.
     | xargs grep -ln 'setValue('
   ```
 
-  On 2026-09-24 it listed 9 non-test files and 1 test file
+  On 2026-09-29 it listed 12 non-test files and 1 test file
   (`SplashSequence.test.tsx`) other than `useShimmerOpacity.ts`. They were not
-  audited. A `setValue` there is at risk only when it follows a
-  stop of a native animation on the same value.
+  audited. A `setValue` there is at risk in case (a), when it follows a stop of
+  a native animation on the same value. It is also at risk in case (b), when it
+  resets a value in the commit that mounts a view that reads the value.
 
 - **Device check.** Verify a still animation with pixel samples from live
   frames, and never trust one run.
@@ -268,10 +320,26 @@ Native 0.86.3.
      same as the rest.
   7. Predict the frozen value from the cycle phase at the stop, and treat a
      match as support, not proof.
-- **Test shape.** Jest cannot see the native order. Spy on
-  `Animated.Value.prototype.stopAnimation`, hold its callback to stand in for
-  the native reply, assert that no reset happens before it fires, and falsify
-  the restart guard once.
+- **Test shape.** Jest cannot see the native order.
+  - Case (a): spy on `Animated.Value.prototype.stopAnimation`, hold its
+    callback to stand in for the native reply, assert that no reset happens
+    before it fires, and falsify the restart guard once.
+  - Case (b): spy on `Animated.Value.prototype.setValue`, and assert that no
+    call occurs across two changes in a row. Also assert the style of each
+    newly mounted layer (here, the still copy) at the start of each change.
+    Jest cannot see the dark frame, so this test pins only the mechanism
+    (`apps/mobile/src/components/bible/__tests__/VerseSlider.test.tsx:284-299`).
+- **Frame check for case (b).** A one-frame fault needs a frame capture, not a
+  screenshot.
+  1. Start a recording: `xcrun simctl io <udid> recordVideo --codec h264 --force out.mp4`.
+  2. Make several transitions, then send SIGINT to stop the recording.
+  3. Read the mean brightness of each frame in the region of the layers:
+     `ffmpeg -i out.mp4 -vf "fps=60,crop=W:H:X:Y,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=yavg.txt" -f null -`.
+     The `fps=60` filter gives one sample for each 60 Hz frame.
+  4. Look for one lone dark frame before each transition. Here it read YAVG
+     about 16, limited-range black, between two lit frames.
+  5. Keep the capture from before the fix. It proves that the detector can see
+     the fault. A clean capture after the fix is proof only next to it.
 - **Review.** A ce-code-review adversarial reviewer predicted this defect at
   confidence anchor 50. A low-confidence finding about native animation timing
   costs little to check on a device; check it before you dismiss it.
@@ -281,6 +349,10 @@ Native 0.86.3.
 - `docs/solutions/ui-bugs/animated-sequence-nested-in-parallel-never-runs-on-android-fabric.md`:
   another Fabric `Animated` defect that every jest suite missed, with the same
   lesson to verify an animation with live device frames.
+- `docs/solutions/logic-errors/layout-effect-commit-lag-mini-player-shrink-flash.md`:
+  the same lesson for a `setState`: a layout effect cannot correct the commit
+  it runs in. It also shows that Fabric keeps a native-driven value on a view,
+  and it uses the same frame-capture method as case (b).
 - `docs/solutions/ui-bugs/tv-videoview-steals-dpad-focus-20260413.md`:
   `apps/tv` seeds a mid-glide restart from `stopAnimation`'s callback, not a JS
   mirror. The native side owns a native animation's current value, and that

@@ -9,12 +9,12 @@ import {
 } from "../mux-image-derivative.service"
 
 import { randomUUID } from "node:crypto"
-import { readdirSync, readFileSync } from "node:fs"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import { recommendationRuntimeMigrationSql } from "./current-schema.test-fixture"
 import { createLoaders } from "@/graphql/loaders"
 import { RecommendationEvidenceService } from "./evidence.service"
 import { RecommendationEpisodeService } from "./episode.service"
@@ -37,20 +37,7 @@ import {
 } from "./token.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const migrationRoot = new URL("../../../prisma/migrations/", import.meta.url)
-const recommendationMigrations = readdirSync(migrationRoot)
-  .filter((name) => {
-    const ordinal = Number(name.slice(0, 4))
-    return (
-      (ordinal >= 52 && ordinal <= 82 && name.includes("recommendation")) ||
-      name === "0082_user_recommendation_identity" ||
-      name === "0099_recommendation_playback_signal_readiness"
-    )
-  })
-  .sort()
-  .map((name) =>
-    readFileSync(new URL(`${name}/migration.sql`, migrationRoot), "utf8"),
-  )
+const recommendationMigrations = recommendationRuntimeMigrationSql
 
 const caller = {
   id: "forge-web",

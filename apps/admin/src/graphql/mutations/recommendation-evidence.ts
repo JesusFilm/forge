@@ -1,6 +1,10 @@
 /** @classification public-shape */
 import { builder } from "@/graphql/builder"
-import { resolveRecommendationSessionIdentity } from "@/services/recommendations/viewer-identity.service"
+import {
+  resolveRecommendationIdentity,
+  resolveRecommendationSessionIdentity,
+} from "@/services/recommendations/viewer-identity.service"
+import { attributePushOpenAfterIssuance } from "@/services/push/attribution.service"
 import { prisma } from "@/db/client"
 import {
   createRecommendationEvidenceService,
@@ -18,6 +22,11 @@ import {
   type RecommendationContentActionReceipt,
 } from "@/services/recommendations/content-action.service"
 import { PlaybackContextDiscoverySourceSchema } from "@/services/recommendations/contracts"
+import {
+  issueWatchSurfaceDelivery,
+  recordWatchSurfaceExposureBatch,
+  type WatchSurfaceExposureReceipt,
+} from "@/services/recommendations/watch-surface-exposure.service"
 
 type SelectionReceipt = {
   status: "accepted" | "replay" | "conflict"
@@ -131,6 +140,15 @@ PlaybackContextReceiptRef.implement({
   }),
 })
 
+const WatchSurfaceExposureReceiptRef =
+  builder.objectRef<WatchSurfaceExposureReceipt>("WatchSurfaceExposureReceipt")
+WatchSurfaceExposureReceiptRef.implement({
+  fields: (t) => ({
+    eventId: t.exposeString("eventId", { nullable: false }),
+    status: t.exposeString("status", { nullable: false }),
+  }),
+})
+
 function evidenceKind(kind: string): "render" | "impression" {
   if (kind !== "render" && kind !== "impression") {
     throw new RecommendationInputError(
@@ -154,6 +172,34 @@ function evidencePayload(payload: unknown): Record<string, unknown> {
 }
 
 builder.mutationFields((t) => ({
+  issueWatchSurfaceDelivery: t.field({
+    type: "JSON",
+    nullable: false,
+    authScopes: { public: true },
+    args: {
+      manifest: t.arg({ type: "JSON", required: true }),
+      attemptId: t.arg.string({ required: true }),
+      trafficCategory: t.arg.string({ required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      resolveRecommendationOperation(() =>
+        issueWatchSurfaceDelivery(prisma, ctx.user, {
+          manifest: args.manifest,
+          attemptId: args.attemptId,
+          trafficCategory: args.trafficCategory,
+        }),
+      ),
+  }),
+  recordWatchSurfaceExposure: t.field({
+    type: [WatchSurfaceExposureReceiptRef],
+    nullable: false,
+    authScopes: { public: true },
+    args: { events: t.arg({ type: "JSON", required: true }) },
+    resolve: (_root, args, ctx) =>
+      resolveRecommendationOperation(() =>
+        recordWatchSurfaceExposureBatch(prisma, ctx.user, args.events),
+      ),
+  }),
   issueWatchPlaybackContext: t.field({
     type: PlaybackContextReceiptRef,
     nullable: false,
@@ -167,14 +213,19 @@ builder.mutationFields((t) => ({
       provenance: t.arg({ type: "JSON", required: true }),
     },
     resolve: (_root, args, ctx) =>
-      resolveRecommendationOperation(async () =>
-        createRecommendationEpisodeService(prisma).issueContext({
-          ...(await resolveRecommendationSessionIdentity(
-            prisma,
-            ctx.user,
-            args,
-          )),
-          mediaId: String(args.mediaId),
+      resolveRecommendationOperation(async () => {
+        const identity = await resolveRecommendationIdentity(
+          prisma,
+          ctx.user,
+          args,
+        )
+        const mediaId = String(args.mediaId)
+        const receipt = await createRecommendationEpisodeService(
+          prisma,
+        ).issueContext({
+          caller: identity.caller,
+          sessionDigest: identity.sessionDigest,
+          mediaId,
           discoverySource: PlaybackContextDiscoverySourceSchema.parse(
             args.discoverySource,
           ),
@@ -182,8 +233,25 @@ builder.mutationFields((t) => ({
             string,
             string
           >,
-        }),
-      ),
+        })
+        // KTD8 — only the app can follow a notification tap, so a web caller
+        // never reads the opens. Attribution is a bonus: it runs after the
+        // episode write and its failure never changes this receipt.
+        if (identity.caller.fleet === true) {
+          await attributePushOpenAfterIssuance(prisma, {
+            episodeId: receipt.episodeId,
+            mediaId,
+            viewerDigest:
+              "viewer" in identity ? identity.viewer.tokenDigest : null,
+            sessionDigest: identity.sessionDigest,
+          }).catch(() => undefined)
+        }
+        // Named fields only: the episode id is server-owned and stays here.
+        return {
+          claimNonce: receipt.claimNonce,
+          contextVersion: receipt.contextVersion,
+        }
+      }),
   }),
 
   recordSemanticRecommendationEvidence: t.field({

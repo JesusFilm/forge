@@ -17,6 +17,13 @@ import {
   HYBRID_SLATE_COMPOSER_VERSION,
   SEMANTIC_CANDIDATE_GENERATOR_VERSION,
 } from "../candidate"
+import {
+  VIEWING_MODE_RANKER_VERSION,
+  VIEWING_MODE_VERSION,
+} from "../viewing-mode"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
+import { MMR_SLATE_POLICY_VERSION } from "../composition/mmr"
+import { MMR_CONFIG } from "../composition/policy"
 
 export const MULTI_INTEREST_PROFILE_GENERATOR_VERSION =
   "multi-interest-profile-candidate-v1" as const
@@ -73,6 +80,167 @@ export const HYBRID_PERSONALIZED_MANIFEST = {
   configuration: HYBRID_PERSONALIZED_MANIFEST_CONFIGURATION,
   enabled: true,
 } as const satisfies PromotionManifest
+
+// These static registries describe execution, never grant serving authority.
+// Both incumbent A/A arms preserve profile ranking and current viewing-mode
+// affinity; the older semantic/profile study deliberately excluded the latter.
+export const INCUMBENT_HYBRID_MANIFEST_ID = "hybrid-profile-viewing-mode-v1"
+export const INCUMBENT_HYBRID_AA_MANIFEST_ID =
+  "hybrid-profile-viewing-mode-aa-v1"
+export const COWATCH_MMR_TRIAL_MANIFEST_ID =
+  "hybrid-profile-viewing-mode-cowatch-mmr-v1"
+export const COWATCH_MMR_GENERATOR_SET_VERSION =
+  "semantic-profile-cowatch-generators-v1"
+export const COWATCH_MMR_SHADOW_SAMPLING_VERSION =
+  "stable-durable-en-request-hash-v1"
+
+export const INCUMBENT_HYBRID_MANIFEST_CONFIGURATION = {
+  ...HYBRID_PERSONALIZED_MANIFEST_CONFIGURATION,
+  executionPolicy: "profile-viewing-mode-incumbent-v1",
+  viewingModeProjection: VIEWING_MODE_VERSION,
+  viewingModeRanker: VIEWING_MODE_RANKER_VERSION,
+  viewingModeFallback: "ordinary-relevance-if-unavailable",
+  operationalFallback: {
+    effectiveManifestId: INCUMBENT_HYBRID_MANIFEST_ID,
+    reasonCode: "incumbent_operational_fallback",
+    executionModes: [
+      "hybrid_personalized",
+      "viewing_mode_personalized",
+      "semantic_fallback",
+      "curated_fallback",
+    ],
+    results: ["fallback", "empty"],
+    semanticGenerator: SEMANTIC_CANDIDATE_GENERATOR_VERSION,
+    curatedGenerator: "seeded-curated-empty-fallback-v1",
+    curatedRanker: HYBRID_DETERMINISTIC_RANKER_VERSION,
+    curatedInventory: "approved-locale-audio-pool-only",
+    eligibility: CANDIDATE_ELIGIBILITY_VERSION,
+  },
+  nominationBudgets: {
+    maximum: 64,
+    semantic: 36,
+    profile: "remaining-capacity",
+    interleave: "semantic-profile-v1",
+  },
+} as const
+export const INCUMBENT_HYBRID_MANIFEST = {
+  ...HYBRID_PERSONALIZED_MANIFEST,
+  id: INCUMBENT_HYBRID_MANIFEST_ID,
+  strategyVersion: INCUMBENT_HYBRID_MANIFEST_ID,
+  configuration: INCUMBENT_HYBRID_MANIFEST_CONFIGURATION,
+} as const satisfies PromotionManifest
+export const INCUMBENT_HYBRID_AA_MANIFEST = {
+  ...INCUMBENT_HYBRID_MANIFEST,
+  id: INCUMBENT_HYBRID_AA_MANIFEST_ID,
+  strategyVersion: INCUMBENT_HYBRID_AA_MANIFEST_ID,
+  configuration: {
+    ...INCUMBENT_HYBRID_MANIFEST_CONFIGURATION,
+    behaviorallyEquivalentTo: INCUMBENT_HYBRID_MANIFEST_ID,
+  },
+} as const satisfies PromotionManifest
+export const COWATCH_MMR_TRIAL_MANIFEST = {
+  ...INCUMBENT_HYBRID_MANIFEST,
+  id: COWATCH_MMR_TRIAL_MANIFEST_ID,
+  strategyVersion: COWATCH_MMR_TRIAL_MANIFEST_ID,
+  configuration: {
+    ...INCUMBENT_HYBRID_MANIFEST_CONFIGURATION,
+    executionPolicy: "profile-viewing-mode-cowatch-mmr-trial-v1",
+    generatorSet: COWATCH_MMR_GENERATOR_SET_VERSION,
+    generators: [
+      ...HYBRID_PERSONALIZED_MANIFEST_CONFIGURATION.generators,
+      {
+        generator: "directional-cowatch",
+        version: COWATCH_SHADOW_GENERATOR_KEY,
+      },
+    ],
+    nominationBudgets: {
+      maximum: 64,
+      semantic: 36,
+      cowatch: 12,
+      profile: "remaining-capacity",
+      interleave: "semantic-profile-cowatch-v1",
+    },
+    composer: MMR_SLATE_POLICY_VERSION,
+    composition: MMR_CONFIG,
+    graphPolicy: "frozen-source-controlled-trial-v1",
+    effectAttribution: "combined-cowatch-and-mmr-only",
+    shadowPopulation: {
+      samplingVersion: COWATCH_MMR_SHADOW_SAMPLING_VERSION,
+      requestState: "issued",
+      locale: "en",
+      audioLanguageSlug: "english",
+      profile: "current-active-durable-generation",
+      projection: "published-unexpired-durable-positive-interests",
+      eligibilityTiming: "before-stable-hash-sampling",
+    },
+    operationalFallback: {
+      ...INCUMBENT_HYBRID_MANIFEST_CONFIGURATION.operationalFallback,
+      reasonCode: "cowatch_mmr_incumbent_fallback",
+    },
+    fallbackManifestId: INCUMBENT_HYBRID_MANIFEST_ID,
+  },
+} as const satisfies PromotionManifest
+
+export const OWNER_RELEASE_POLICY_VERSION =
+  "owner-approved-no-study-v1" as const
+export const COWATCH_OWNER_LIVE_MODE = "current-source-owner-live-v1" as const
+export const OWNER_APPROVED_COWATCH_MMR_MANIFEST_ID =
+  "hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1" as const
+
+/** Separate identity preserves all study contracts; this policy makes no efficacy claim. */
+export const OWNER_APPROVED_COWATCH_MMR_MANIFEST = {
+  ...COWATCH_MMR_TRIAL_MANIFEST,
+  id: OWNER_APPROVED_COWATCH_MMR_MANIFEST_ID,
+  strategyVersion: OWNER_APPROVED_COWATCH_MMR_MANIFEST_ID,
+  configuration: {
+    ...COWATCH_MMR_TRIAL_MANIFEST.configuration,
+    executionPolicy: "profile-viewing-mode-cowatch-mmr-owner-live-v1",
+    graphPolicy: COWATCH_OWNER_LIVE_MODE,
+    authorityPolicy: OWNER_RELEASE_POLICY_VERSION,
+    shadowDecisionRequired: null,
+    shadowPopulation: null,
+    effectAttribution: "not-measured-owner-authorized",
+    graphMaximumAgeMs: 86_400_000,
+    refresh: "explicit-new-generation-and-owner-release",
+    usefulness: "not-measured-owner-authorized",
+    population: {
+      locale: "en",
+      audioLanguageSlug: "english",
+      traffic: "eligible-human",
+      profile: "current-active-durable-generation",
+      projection: "published-unexpired-durable-positive-interests",
+      clientDeliveryContract: "cowatch-mmr-v1",
+    },
+  },
+} as const satisfies PromotionManifest
+
+export function isExactOwnerApprovedCowatchMmrManifest(
+  manifest: PromotionManifest,
+) {
+  return (
+    recommendationManifestDigest(manifest) ===
+    recommendationManifestDigest(OWNER_APPROVED_COWATCH_MMR_MANIFEST)
+  )
+}
+
+export function isExactIncumbentHybridManifest(manifest: PromotionManifest) {
+  return (
+    recommendationManifestDigest(manifest) ===
+    recommendationManifestDigest(INCUMBENT_HYBRID_MANIFEST)
+  )
+}
+export function isExactIncumbentHybridAaManifest(manifest: PromotionManifest) {
+  return (
+    recommendationManifestDigest(manifest) ===
+    recommendationManifestDigest(INCUMBENT_HYBRID_AA_MANIFEST)
+  )
+}
+export function isExactCowatchMmrTrialManifest(manifest: PromotionManifest) {
+  return (
+    recommendationManifestDigest(manifest) ===
+    recommendationManifestDigest(COWATCH_MMR_TRIAL_MANIFEST)
+  )
+}
 
 export function recommendationManifestDigest(manifest: PromotionManifest) {
   return digestValue({

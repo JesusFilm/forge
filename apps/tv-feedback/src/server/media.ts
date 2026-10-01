@@ -11,6 +11,7 @@ import sharp from "sharp"
 import { IMAGE_MAX_BYTES, VIDEO_MAX_BYTES } from "@/lib/contracts"
 
 import type { Upload } from "./feedbackState"
+import { readBodyLimited } from "./request"
 
 const exec = promisify(execFile)
 
@@ -35,25 +36,7 @@ export async function readBounded(
   request: Request,
   limit: number,
 ): Promise<Buffer> {
-  if (!request.body) throw new Error("empty_file")
-  const reader = request.body.getReader()
-  const chunks: Buffer[] = []
-  let count = 0
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      count += value.length
-      if (count > limit) throw new Error("file_too_large")
-      chunks.push(Buffer.from(value))
-    }
-  } catch (error) {
-    await reader.cancel().catch(() => undefined)
-    throw error
-  } finally {
-    reader.releaseLock()
-  }
-  return Buffer.concat(chunks, count)
+  return readBodyLimited(request, limit, 120_000)
 }
 
 export async function normalizeMedia(

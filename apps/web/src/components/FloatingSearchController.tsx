@@ -39,6 +39,7 @@ import {
   FloatingSearchContext,
   type FloatingSearchContextValue,
   type FloatingSearchResultAnalyticsContext,
+  type FloatingSearchResultPage,
   useWatchRouteSurface,
 } from "./FloatingSearchContext"
 
@@ -125,6 +126,9 @@ export function FloatingSearchController({
 
   const [results, setResults] = useState<SearchResult[]>([])
   const [displayResults, setDisplayResults] = useState<SearchResult[]>([])
+  const [displayResultPages, setDisplayResultPages] = useState<
+    FloatingSearchResultPage[]
+  >([])
   const [exiting, setExiting] = useState(false)
   const [resultsKey, setResultsKey] = useState(0)
   const [hasMore, setHasMore] = useState(false)
@@ -385,6 +389,7 @@ export function FloatingSearchController({
         if (requestIdRef.current !== thisRequest) return
         setResults([])
         setDisplayResults([])
+        setDisplayResultPages([])
         setHasMore(false)
         setSearched(false)
         setError(null)
@@ -405,6 +410,7 @@ export function FloatingSearchController({
         if (requestIdRef.current !== thisRequest) return
         setExiting(false)
         setDisplayResults([])
+        setDisplayResultPages([])
       }
 
       setLoading(true)
@@ -482,6 +488,14 @@ export function FloatingSearchController({
         const responseSearchRequestId = data.requestId ?? searchRequestId
         setResults(newResults)
         setDisplayResults(newResults)
+        setDisplayResultPages([
+          {
+            key: `${thisRequest}:0`,
+            startIndex: 0,
+            results: newResults,
+            surfaceManifest: data.surfaceManifest ?? null,
+          },
+        ])
         setResultsKey((k) => k + 1)
         setHasMore(data.hasMore)
         setResultSource(WATCH_SEARCH_RESULT_SOURCE)
@@ -598,6 +612,18 @@ export function FloatingSearchController({
       if (requestIdRef.current !== thisRequest) return
       setResults((prev) => [...prev, ...data.results])
       setDisplayResults((prev) => [...prev, ...data.results])
+      setDisplayResultPages((prev) => [
+        ...prev,
+        {
+          key: `${thisRequest}:${thisLoadMoreRun}`,
+          startIndex: prev.reduce(
+            (total, page) => total + page.results.length,
+            0,
+          ),
+          results: data.results,
+          surfaceManifest: data.surfaceManifest ?? null,
+        },
+      ])
       setHasMore(data.hasMore)
       setResultSource(WATCH_SEARCH_RESULT_SOURCE)
       activeSearchSignatureRef.current = {
@@ -727,6 +753,7 @@ export function FloatingSearchController({
       submittedQuery,
       results,
       displayResults,
+      displayResultPages,
       exiting,
       resultsKey,
       hasMore,
@@ -769,6 +796,7 @@ export function FloatingSearchController({
       submittedQuery,
       results,
       displayResults,
+      displayResultPages,
       exiting,
       resultsKey,
       hasMore,

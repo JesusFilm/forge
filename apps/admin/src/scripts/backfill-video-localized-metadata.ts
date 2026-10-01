@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { requestWatchCatalogPublication } from "@/services/watch-catalog-publication"
 
 import { PrismaClient } from "@prisma/client"
 
@@ -370,7 +371,10 @@ export async function runBackfill(
   }
 
   await applyVariantCoverageAudit()
-
+  if (summary.errors === 0 && summary.videosProcessed > 0) {
+    await options.assertLockActive?.()
+    await requestWatchCatalogPublication(prisma)
+  }
   return summary
 }
 

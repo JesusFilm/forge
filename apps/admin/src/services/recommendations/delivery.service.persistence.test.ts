@@ -8,6 +8,62 @@ afterEach(() => {
 })
 
 describe("RecommendationDeliveryService persistence and deadlines", () => {
+  it.each(["legacy", "packed"] as const)(
+    "records audio and unknown stages on an empty %s request",
+    async (servedItemFormat) => {
+      const harness = makeHarness({ servedItemFormat })
+      harness.retrieve.mockResolvedValue([])
+      const response = await harness.service.deliver({
+        ...input(`empty-context-${servedItemFormat}`),
+        audioLanguageSlug: "gbii",
+      })
+      expect(response.items).toHaveLength(0)
+      expect(harness.requests.get(response.requestId!)).toMatchObject({
+        expectedItemCount: 0,
+        deliveryDiagnostics: {
+          version: 1,
+          transcriptLocale: "en",
+          presentationLocale: "en",
+          audioLanguageSlug: "gbii",
+          retrieval: null,
+          curated: null,
+          candidateSource: "fresh",
+          requestedCount: 6,
+          composedCount: 0,
+        },
+      })
+    },
+  )
+  it("writes one complete run payload and no legacy rows in compact mode", async () => {
+    const harness = makeHarness({ candidateTraceFormat: "compact" })
+    const response = await harness.service.deliver(input("compact-stage-seed"))
+    expect(response.result).toBe("served")
+    expect(harness.evidenceWrites).toHaveLength(0)
+    const create =
+      harness.tx.recommendationCandidateRun.create.mock.calls[0]?.[0]
+    expect(create?.data).toMatchObject({
+      requestId: response.requestId,
+      traceFormatVersion: 1,
+      tracePayload: {
+        stages: expect.arrayContaining([
+          expect.objectContaining({
+            stage: "nominated",
+            ordinal: 0,
+            id: expect.any(String),
+            createdAt: expect.any(String),
+            sourceEvidence: expect.any(Array),
+          }),
+          expect.objectContaining({ stage: "composed", ordinal: 0 }),
+        ]),
+      },
+    })
+    const payload = create?.data.tracePayload as {
+      stages: Array<Record<string, unknown>>
+    }
+    expect(payload.stages[0]).not.toHaveProperty("runId")
+    expect(payload.stages[0]).not.toHaveProperty("expiresAt")
+  })
+
   it("signs fresh capabilities before one atomic complete ISSUED commit", async () => {
     const harness = makeHarness()
     const { service, requests, transactions, acquire } = harness
@@ -73,6 +129,7 @@ describe("RecommendationDeliveryService persistence and deadlines", () => {
 
     expect(delivery.result).toBe("served")
     expect(tx.recommendationCandidateRun.create).toHaveBeenCalledWith({
+      select: { id: true },
       data: expect.objectContaining({
         requestId: delivery.requestId,
         purpose: "watch",
@@ -485,6 +542,37 @@ describe("RecommendationDeliveryService persistence and deadlines", () => {
     expect(harness.retrieve).toHaveBeenLastCalledWith(
       expect.objectContaining({ audioLanguageSlug: "spanish-castilian" }),
     )
+  })
+
+  it("normalizes Chinese presentation while isolating cached pools by script", async () => {
+    const harness = makeHarness()
+    const first = await harness.service.deliver({
+      ...input("script-pool-seed"),
+      locale: "zh-Hans",
+      audioLanguageSlug: "mandarin-china",
+    })
+    expect(first.items).toHaveLength(1)
+    expect(
+      harness.requests.get(first.requestId!)?.deliveryDiagnostics,
+    ).toMatchObject({
+      transcriptLocale: "zh",
+      presentationLocale: "zh-hans",
+      audioLanguageSlug: "mandarin-china",
+    })
+    expect(harness.retrieve).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        locale: "zh-hans",
+        audioLanguageSlug: "mandarin-china",
+      }),
+    )
+    harness.retrieve.mockRejectedValueOnce(new Error("retriever unavailable"))
+    const traditional = await harness.service.deliver({
+      ...input("script-pool-seed", "b"),
+      locale: "zh-Hant",
+      audioLanguageSlug: "mandarin-china",
+    })
+    expect(traditional).toMatchObject({ result: "unavailable", items: [] })
+    expect(harness.recheckCached).not.toHaveBeenCalled()
   })
 
   it("marks issuance failures and returns persistence failures without leaking the lease", async () => {

@@ -1,15 +1,12 @@
-import { useCallback, useEffect, useState } from "react"
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type NativeSyntheticEvent,
-  type TextLayoutEventData,
-} from "react-native"
+import { useCallback } from "react"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { animateLayout } from "../ui/AnimatedChevron"
 import { TEXT_BODY } from "../../lib/color"
+import {
+  useTextOverflow,
+  type TextLayoutEvent,
+} from "../../hooks/useTextOverflow"
 import { useTypography } from "../../hooks/useTypography"
 import { layout, text } from "../../styles/shared"
 
@@ -19,34 +16,23 @@ export interface VideoDescriptionProps {
 
 const COLLAPSED_LINES = 3
 
+// Module scope, so the hook's measure handler keeps one identity.
+function overflowsCollapsed(e: TextLayoutEvent): boolean {
+  return e.nativeEvent.lines.length > COLLAPSED_LINES
+}
+
 export function VideoDescription({ description }: VideoDescriptionProps) {
   const typography = useTypography()
-  const [expanded, setExpanded] = useState(false)
 
-  // Tri-state: null until measured, so a short description never flashes a
-  // toggle it does not need. The explicit `=== true` at the render site is for
-  // readability against that tri-state — null and false are both falsy, so it
-  // is not what hides the unmeasured state.
-  const [overflows, setOverflows] = useState<boolean | null>(null)
+  // A mounted instance can go partial -> full under cache-first, so the hook
+  // re-measures when the text changes.
+  const { overflows, expanded, setExpanded, handleMeasureLayout } =
+    useTextOverflow(description, overflowsCollapsed)
 
   const handleToggle = useCallback(() => {
     animateLayout()
     setExpanded((prev) => !prev)
-  }, [])
-
-  // Re-measure when the text changes — a mounted instance can go partial ->
-  // full under cache-first, and a stale `true` would keep a dead toggle up.
-  useEffect(() => {
-    setOverflows(null)
-    setExpanded(false)
-  }, [description])
-
-  const handleMeasureLayout = useCallback(
-    (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-      setOverflows(e.nativeEvent.lines.length > COLLAPSED_LINES)
-    },
-    [],
-  )
+  }, [setExpanded])
 
   // Guard AFTER all hooks — a description that goes null -> non-null on a mounted
   // instance (the series screen republishes partial -> full under cache-first)

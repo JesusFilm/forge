@@ -117,7 +117,7 @@ restart to take effect.
 ## Test builds & distribution
 
 Profile is temporarily hidden on both Apple TV and Android TV by
-`src/lib/auth/profileFlagState.ts` (feat-554), including development builds and
+`src/lib/auth/profileFlagState.ts` (feat-596), including development builds and
 builds with the old `EXPO_PUBLIC_TV_PROFILE_ENABLED` flag. The sign-in code is
 retained but direct `/profile` visits return Home. Do not re-enable Profile by
 changing EAS variables alone.

@@ -1,0 +1,65 @@
+{
+  "scope": "Local production-minified component bundles, common browser/Vite host, 5 alternating warm navigations per arm; not full Admin or production Web Vitals",
+  "samples": [
+    {
+      "arm": "baseline",
+      "requests": 0,
+      "renderMs": 84.89999997615814
+    },
+    {
+      "arm": "current",
+      "requests": 0,
+      "renderMs": 29.599999964237213
+    },
+    {
+      "arm": "current",
+      "requests": 0,
+      "renderMs": 36.09999996423721
+    },
+    {
+      "arm": "baseline",
+      "requests": 0,
+      "renderMs": 17.700000047683716
+    },
+    {
+      "arm": "baseline",
+      "requests": 0,
+      "renderMs": 22.399999976158142
+    },
+    {
+      "arm": "current",
+      "requests": 0,
+      "renderMs": 12.099999964237213
+    },
+    {
+      "arm": "current",
+      "requests": 0,
+      "renderMs": 30.5
+    },
+    {
+      "arm": "baseline",
+      "requests": 0,
+      "renderMs": 11.900000035762787
+    },
+    {
+      "arm": "baseline",
+      "requests": 0,
+      "renderMs": 16.400000035762787
+    },
+    {
+      "arm": "current",
+      "requests": 0,
+      "renderMs": 12.699999988079071
+    }
+  ],
+  "bundles": {
+    "baseline": {
+      "bytes": 200271,
+      "inputs": 12
+    },
+    "current": {
+      "bytes": 206190,
+      "inputs": 13
+    }
+  }
+}

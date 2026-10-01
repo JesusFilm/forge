@@ -15,7 +15,7 @@ watchPatterns = [
 ]
 
 [deploy]
-preDeployCommand = "pnpm --filter @forge/rag db:migrate:deploy"
+preDeployCommand = "pnpm --filter @forge/rag db:migrate:deploy && pnpm --filter @forge/rag db:grant-portal-session-renewal"
 startCommand = "pnpm --filter @forge/rag start"
 healthcheckPath = "/v1/health"
 healthcheckTimeout = 60

@@ -10,10 +10,12 @@ import { runRecommendationExperimentEvaluation } from "@/workflows/recommendatio
 import { runRecommendationPromotion } from "@/workflows/recommendationPromotion"
 import { runRecommendationProfileProjection } from "@/workflows/recommendationProfileProjection"
 import { runRecommendationProfileReconciliationScheduler } from "@/workflows/recommendationProfileReconciliation"
+import { runRecommendationCowatchRefreshScheduler } from "@/workflows/recommendationCowatchRefresh"
 import {
   runRecommendationRetention,
   runRecommendationRetentionScheduler,
 } from "@/workflows/recommendationRetention"
+import { runPushCampaign } from "@/workflows/pushCampaign"
 
 type WorkflowExport = {
   name: string
@@ -37,9 +39,21 @@ export function getKnownRecommendationWorkflowIds(): string[] {
     runRecommendationPromotion,
     runRecommendationProfileProjection,
     runRecommendationProfileReconciliationScheduler,
+    runRecommendationCowatchRefreshScheduler,
     runRecommendationRetention,
     runRecommendationRetentionScheduler,
   ].map((workflow) => {
+    const registered = workflow as WorkflowExport
+    return registered.workflowId ?? registered.name
+  })
+}
+
+/**
+ * The push campaign run. One run per campaign, so the dashboard lists a row per
+ * send rather than one long-lived scheduler.
+ */
+export function getKnownPushWorkflowIds(): string[] {
+  return [runPushCampaign].map((workflow) => {
     const registered = workflow as WorkflowExport
     return registered.workflowId ?? registered.name
   })

@@ -26,6 +26,8 @@ import {
   hexToRgba,
 } from "../src/lib/color"
 import { openExternalUrl } from "../src/lib/openExternalUrl"
+import { PUSH_TEST_ID_REVEAL_HOLD_MS } from "../src/lib/push/constants"
+import { revealPushTestId } from "../src/lib/push/testIdReveal"
 import { FloatingBackButton } from "../src/components/ui/FloatingBackButton"
 import { BACK_BUTTON_PROPS } from "../src/lib/playerLayout"
 import {
@@ -90,6 +92,10 @@ export default function MissionScreen() {
 
   const handleBetaPress = () => {
     openExternalUrl(BETA_SIGNUP_URL)
+  }
+
+  const handleBetaLongPress = () => {
+    void revealPushTestId()
   }
 
   return (
@@ -199,6 +205,10 @@ export default function MissionScreen() {
           </Text>
           <Pressable
             onPress={handleBetaPress}
+            // R31: a hold reveals the push test ID, hidden on purpose. A press
+            // that ends before the hold completes still opens the signup page.
+            onLongPress={handleBetaLongPress}
+            delayLongPress={PUSH_TEST_ID_REVEAL_HOLD_MS}
             style={({ pressed }) => [
               styles.betaButton,
               pressed && Platform.OS === "ios" && feedback.pressed,

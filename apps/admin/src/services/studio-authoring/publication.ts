@@ -6,7 +6,7 @@ import {
 import type { StudioScheduledPublication } from "./scheduled-publication"
 import { canReviewStudio } from "@/auth/permissions"
 import { resolveStudioPackSources } from "./packs"
-import { assertStudioRenderSources } from "./sources"
+import { assertStudioCompletedRenderSources } from "./render-preparation"
 // INTERNAL transaction seam for feat-460. Never export via GraphQL, MCP, or Manager.
 // The required verifier must check/write catalog visibility, source eligibility,
 // schedule, language and Mux readiness in THIS transaction. No network/render work.
@@ -119,7 +119,11 @@ export async function publishStudioProject(
       )
         throw new StudioCommandError("APPROVAL_REQUIRED")
       const packs = await resolveStudioPackSources(tx, document.packRevisionIds)
-      const sources = await assertStudioRenderSources(tx, document)
+      const sources = await assertStudioCompletedRenderSources(
+        tx,
+        document,
+        input.renderAttemptId,
+      )
       const restrictions = [
         ...new Set([
           ...sources.flatMap((source) => source.eligibility.restrictions),

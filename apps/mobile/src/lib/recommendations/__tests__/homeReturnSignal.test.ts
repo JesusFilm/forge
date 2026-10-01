@@ -37,6 +37,31 @@ describe("a return from a watch route (AE7)", () => {
       isReturnToHomeFromWatch(["watch", "[slug]"], ["(tabs)", "watch"]),
     ).toBe(true)
   })
+
+  it.each([
+    ["the Library tab", ["(tabs)", "library"]],
+    ["the Profile tab", ["(tabs)", "profile"]],
+  ])("returns true for a pop back onto %s", (_name, next) => {
+    expect(isReturnToHomeFromWatch(["watch", "[slug]"], next)).toBe(true)
+    expect(isReturnToHomeFromWatch(["series", "[slug]"], next)).toBe(true)
+  })
+})
+
+describe("a return that lands on the Explore tab (feat-552 KTD8)", () => {
+  // Explore hosts its own recommendations, so a return there is not Home's.
+  it.each([
+    ["a watch route", ["watch", "[slug]"]],
+    ["a series route", ["series", "[slug]"]],
+    ["a watch route reached without a slug", ["watch"]],
+  ])("returns false for %s into the Explore tab", (_name, previous) => {
+    expect(isReturnToHomeFromWatch(previous, ["(tabs)", "explore"])).toBe(false)
+  })
+
+  it("returns false for the Explore tab into Home", () => {
+    expect(isReturnToHomeFromWatch(["(tabs)", "explore"], HOME_BARE)).toBe(
+      false,
+    )
+  })
 })
 
 describe("the Discover tab, which is also named watch", () => {
@@ -48,9 +73,7 @@ describe("the Discover tab, which is also named watch", () => {
   })
 
   it("returns false for any other tab", () => {
-    expect(isReturnToHomeFromWatch(["(tabs)", "library"], HOME_INDEX)).toBe(
-      false,
-    )
+    expect(isReturnToHomeFromWatch(["(tabs)", "bible"], HOME_INDEX)).toBe(false)
     expect(isReturnToHomeFromWatch(["(tabs)", "profile"], HOME_BARE)).toBe(
       false,
     )

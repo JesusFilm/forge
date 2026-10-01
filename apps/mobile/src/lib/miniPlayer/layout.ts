@@ -10,6 +10,10 @@
  * reachable and none covers a chrome tap target.
  */
 
+import {
+  READER_CHROME_HEIGHTS,
+  type ReaderLayout,
+} from "../bible/reader/chrome"
 import { PLAYER_HEIGHT_RATIO } from "../playerLayout"
 
 export type MiniPlayerCorner =
@@ -111,6 +115,24 @@ export function miniPlayerWindowSize(config: MiniPlayerLayoutConfig): {
   return { width, height: Math.round(width * PLAYER_HEIGHT_RATIO) }
 }
 
+/** How far a root screen's content must scroll to clear the floating window's
+ *  top edge. PlaybackHost reserves the tab bar under the window on every
+ *  route except the reader, so the reserve applies with no bar on screen. */
+export function miniPlayerBottomClearance(config: {
+  screen: MiniPlayerScreen
+  insets: MiniPlayerInsets
+  tabBarReserve: number
+}): number {
+  const { height } = miniPlayerWindowSize({
+    screen: config.screen,
+    insets: config.insets,
+    chrome: { top: 0, bottom: config.tabBarReserve },
+  })
+  return (
+    config.insets.bottom + config.tabBarReserve + WINDOW_EDGE_MARGIN + height
+  )
+}
+
 type SnapBounds = {
   left: number
   right: number
@@ -179,6 +201,36 @@ export function defaultCornerFrame(
   config: MiniPlayerLayoutConfig,
 ): MiniPlayerFrame {
   return miniPlayerCornerFrame(config, allowedCorners(config)[0])
+}
+
+/** The reader's corner rules: where a new window starts, and the chrome that
+ *  every corner frame must clear. */
+export type ReaderCornerPolicy = {
+  startCorner: MiniPlayerCorner
+  chrome: MiniPlayerChrome
+}
+
+/** feat-553 KTD11, KD9, KD26: a new window starts at the top right on a phone
+ *  and the bottom right on a tablet. It may rest in any corner between the
+ *  reader's top bar and its footer, so no corner is excluded. */
+export function readerCornerPolicy(input: {
+  layout: ReaderLayout
+  host: "tab" | "pushed"
+  /** The reader's live band above the footer: the arrow pair and the hint. */
+  movementBand: number
+  /** The tab bar a root-mounted surface reserves. Only the Bible tab has one. */
+  tabBar: number
+}): ReaderCornerPolicy {
+  return {
+    startCorner: input.layout === "tablet" ? "bottomRight" : "topRight",
+    chrome: {
+      top: READER_CHROME_HEIGHTS.topBar,
+      bottom:
+        READER_CHROME_HEIGHTS.footer +
+        input.movementBand +
+        (input.host === "tab" ? input.tabBar : 0),
+    },
+  }
 }
 
 /**

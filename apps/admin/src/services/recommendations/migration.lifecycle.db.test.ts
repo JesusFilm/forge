@@ -1,48 +1,15 @@
 import { createHash } from "node:crypto"
-import { readFileSync } from "node:fs"
 import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
+import { recommendationRuntimeMigrationSql } from "./current-schema.test-fixture"
 import { RecommendationIntegrityService } from "./integrity.service"
 import { loadDatabaseProfileProjectionEvidence } from "./profiles/profile-projection.service"
 import { purgeExpiredRecommendationRequests } from "./retention.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const migrationSql = [
-  "0052_production_semantic_recommendation_tracer",
-  "0053_recommendation_active_playback_proxy",
-  "0054_recommendation_mission_value_actions",
-  "0055_recommendation_integrity_eligibility",
-  "0056_consent_aware_recommendation_profile",
-  "0057_semantic_control_readiness",
-  "0058_recommendation_candidate_platform",
-  "0059_recommendation_shadow_candidate_evaluation",
-  "0060_recommendation_experiment_spine",
-  "0061_recommendation_hybrid_promotion",
-  "0062_recommendation_multi_interest_profile_shadow",
-  "0063_recommendation_live_profile_pilot",
-  "0064_recommendation_governance_review_guards",
-  "0065_recommendation_strategy_manifest_immutability",
-  "0066_recommendation_playback_finalization_repair",
-  "0067_recommendation_episode_submission_budget_repair",
-  "0068_recommendation_trace_actor_digest_repair",
-  "0069_recommendation_hybrid_composition",
-  "0070_recommendation_consent_receipts",
-  "0071_recommendation_assignment_generation_key",
-  "0072_recommendation_source_neutral_playback_episodes",
-  "0075_recommendation_selection_attribution_eligibility",
-  "0076_recommendation_profile_eligibility_reconciliation",
-  "0082_user_recommendation_identity",
-].map((migration) =>
-  readFileSync(
-    new URL(
-      `../../../prisma/migrations/${migration}/migration.sql`,
-      import.meta.url,
-    ),
-    "utf8",
-  ),
-)
+const migrationSql = recommendationRuntimeMigrationSql
 
 function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex")
@@ -63,6 +30,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       id: string,
       expectedItemCount: number,
       createdAt = "2026-08-19T00:00:00.000Z",
+      requestExpiresAt = expiresAt,
     ) {
       await client.query(
         `INSERT INTO "recommendation_request" (
@@ -72,7 +40,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         ) VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
           'semantic-transcript-pgvector-v1', 'semantic-transcript-pgvector-v1',
           'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4, $5)`,
-        [id, "a".repeat(64), expectedItemCount, expiresAt, createdAt],
+        [id, "a".repeat(64), expectedItemCount, requestExpiresAt, createdAt],
       )
     }
 
@@ -499,6 +467,118 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(remaining.rows).toEqual([{ requests: 0, actions: 0 }])
     })
 
+    it("cascades both legacy stage rows and compact candidate traces through expired roots", async () => {
+      const rootExpiry = "2026-07-01T00:00:00.000Z"
+      const rootCreatedAt = "2026-06-02T00:00:00.000Z"
+      await insertRequest(
+        "retention-legacy-request",
+        0,
+        rootCreatedAt,
+        rootExpiry,
+      )
+      await insertRequest(
+        "retention-compact-request",
+        0,
+        rootCreatedAt,
+        rootExpiry,
+      )
+      const runValues = [
+        ["retention-legacy-run", "retention-legacy-request"],
+        ["retention-compact-run", "retention-compact-request"],
+      ]
+      for (const [runId, requestId] of runValues) {
+        await client.query(
+          `INSERT INTO recommendation_candidate_run (
+            id, request_id, purpose, context_version, generator_version,
+            union_version, eligibility_version, ranker_version,
+            composer_version, candidate_eligibility_parity, ranker_parity,
+            nominated_count, canonicalized_count, deduplicated_count,
+            rejected_count, scored_count, ordered_count, composed_count,
+            evidence_complete, expires_at
+          ) VALUES (
+            $1, $2, 'watch', 'recommendation-context-v1',
+            'semantic-transcript-candidate-v1', 'canonical-video-union-v1',
+            'watch-playable-locale-v1', 'semantic-deterministic-ranker-v1',
+            'minimal-playable-slate-v1', 'passed', 'passed',
+            1, 0, 0, 0, 0, 0, 0, true, $3
+          )`,
+          [runId, requestId, rootExpiry],
+        )
+      }
+      await client.query(
+        `INSERT INTO recommendation_candidate_stage_evidence (
+          id, run_id, stage, ordinal, candidate_key, expires_at
+        ) VALUES (
+          'retention-legacy-stage', 'retention-legacy-run', 'nominated',
+          0, 'video-a', $1
+        )`,
+        [rootExpiry],
+      )
+      const compactStage = {
+        id: "retention-compact-stage",
+        stage: "nominated",
+        ordinal: 0,
+        candidateKey: "video-b",
+        targetMediaId: "video-b",
+        sourceGenerator: "semantic",
+        sourceRank: 1,
+        sourceScore: 0.9,
+        normalizedScore: null,
+        rrfScore: null,
+        deterministicScore: null,
+        finalPosition: null,
+        reasonCodes: [],
+        sourceEvidence: [],
+        createdAt: rootCreatedAt,
+      }
+      await client.query(
+        `UPDATE recommendation_candidate_run
+         SET trace_format_version = 1, trace_payload = $1::jsonb
+         WHERE id = 'retention-compact-run'`,
+        [JSON.stringify({ stages: [compactStage] })],
+      )
+
+      const fixtureUrl = new URL(databaseUrl)
+      fixtureUrl.searchParams.delete("options")
+      fixtureUrl.searchParams.set("schema", schemaName)
+      const prisma = new PrismaClient({
+        datasources: { db: { url: fixtureUrl.toString() } },
+      })
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(
+            prisma,
+            new Date("2026-07-02T00:00:00.000Z"),
+            2,
+          ),
+        ).resolves.toMatchObject({
+          status: "succeeded",
+          rootsDeleted: 2,
+          batchLimitReached: true,
+          rowCounts: {
+            candidateRuns: 2,
+            candidateStageEvidence: 1,
+          },
+        })
+      } finally {
+        await prisma.$disconnect()
+      }
+      const remaining = await client.query(
+        `SELECT
+          (SELECT count(*)::int FROM recommendation_request
+           WHERE id IN ('retention-legacy-request', 'retention-compact-request'))
+            AS requests,
+          (SELECT count(*)::int FROM recommendation_candidate_run
+           WHERE id IN ('retention-legacy-run', 'retention-compact-run'))
+            AS runs,
+          (SELECT count(*)::int FROM recommendation_candidate_stage_evidence
+           WHERE id = 'retention-legacy-stage') AS legacy_stages`,
+      )
+      expect(remaining.rows).toEqual([
+        { requests: 0, runs: 0, legacy_stages: 0 },
+      ])
+    })
+
     it("enforces immutable request lifecycle and one-use handoff claims", async () => {
       await client.query("BEGIN")
       const graph = await insertLifecycleGraph("lifecycle")
@@ -826,6 +906,159 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       await client.query("RESET search_path")
       await client.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
       await client.end()
+    })
+  },
+)
+
+describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
+  "recommendation fact index migration on PostgreSQL",
+  () => {
+    it("preserves identity, lineage, old-reader lookup, and expiry access", async () => {
+      const client = new Client({ connectionString: env.DATABASE_URL })
+      await client.connect()
+      try {
+        await client.query("BEGIN")
+        const id = `fact-index-${Date.now()}`
+        const requestId = `${id}-request`
+        const otherRequestId = `${id}-other-request`
+        const itemId = `${id}-item`
+        const otherItemId = `${id}-other-item`
+        const expiresAt = "2026-10-29T12:00:00.000Z"
+
+        for (const [request, count] of [
+          [requestId, 2],
+          [otherRequestId, 1],
+        ] as const) {
+          await client.query(
+            `INSERT INTO recommendation_request
+              (id, contract_version, surface_version, manifest_id,
+               strategy_version, classifier_version, session_digest,
+               seed_media_id, locale, expected_item_count, result, expires_at)
+             VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
+               'semantic-transcript-pgvector-v1', 'semantic-transcript-pgvector-v1',
+               'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4)`,
+            [request, "a".repeat(64), count, expiresAt],
+          )
+        }
+        for (const [item, position] of [
+          [itemId, 0],
+          [otherItemId, 1],
+        ] as const) {
+          await client.query(
+            `INSERT INTO recommendation_served_item
+              (id, request_id, position, target_media_id, canonical_href,
+               candidate_generator, candidate_provenance, expires_at)
+             VALUES ($1, $2, $3, $4, '/watch/video', 'semantic', '{}'::jsonb, $5)`,
+            [item, requestId, position, `video-${position}`, expiresAt],
+          )
+        }
+
+        const facts = [
+          ["recommendation_rendered_fact", "recommendation_render"],
+          ["recommendation_impression", "recommendation_impression"],
+        ] as const
+        for (const [table, prefix] of facts) {
+          const capability = `${id}-${prefix}-capability`
+          const insert = async (
+            factId: string,
+            request: string,
+            item: string,
+            event: string,
+            jti = capability,
+          ) =>
+            client.query(
+              `INSERT INTO ${table}
+                (id, request_id, item_id, capability_jti, event_id,
+                 payload_digest, occurred_at, expires_at${table === "recommendation_impression" ? ", visibility_policy" : ""})
+               VALUES ($1, $2, $3, $4, $5, $6, now(), $7${table === "recommendation_impression" ? ", 'observer-v1'" : ""})`,
+              [factId, request, item, jti, event, "b".repeat(64), expiresAt],
+            )
+          await insert(`${id}-${prefix}-fact`, requestId, itemId, "event-1")
+
+          const oldReader = await client.query(
+            `SELECT id FROM ${table} WHERE request_id = $1 AND item_id = $2`,
+            [requestId, itemId],
+          )
+          expect(oldReader.rows).toEqual([{ id: `${id}-${prefix}-fact` }])
+          const byItem = await client.query(
+            `SELECT id FROM ${table} WHERE item_id = $1`,
+            [itemId],
+          )
+          expect(byItem.rows).toEqual(oldReader.rows)
+
+          const rejects = async (
+            attempt: () => Promise<unknown>,
+            code: string,
+          ) => {
+            await client.query("SAVEPOINT fact_attempt")
+            try {
+              await expect(attempt()).rejects.toMatchObject({ code })
+            } finally {
+              await client.query("ROLLBACK TO SAVEPOINT fact_attempt")
+              await client.query("RELEASE SAVEPOINT fact_attempt")
+            }
+          }
+          await rejects(
+            () =>
+              insert(
+                `${id}-${prefix}-duplicate-item`,
+                requestId,
+                itemId,
+                "event-2",
+                `${capability}-new`,
+              ),
+            "23505",
+          )
+          await rejects(
+            () =>
+              insert(
+                `${id}-${prefix}-duplicate-capability`,
+                requestId,
+                otherItemId,
+                "event-2",
+              ),
+            "23505",
+          )
+          await rejects(
+            () =>
+              insert(
+                `${id}-${prefix}-wrong-request`,
+                otherRequestId,
+                otherItemId,
+                "event-3",
+                `${capability}-new`,
+              ),
+            "23503",
+          )
+
+          const indexes = await client.query<{ indexname: string }>(
+            `SELECT indexname FROM pg_indexes WHERE tablename = $1`,
+            [table],
+          )
+          const names = indexes.rows.map(({ indexname }) => indexname)
+          expect(names).toContain(`${prefix}_request_idx`)
+          expect(names).toContain(`${table}_expires_at_idx`)
+          expect(names).toContain(`${prefix}_item_key`)
+          expect(names).toContain(`${prefix}_capability_key`)
+          expect(names).not.toContain(`${prefix}_event_key`)
+          expect(names).toContain(`${prefix}_item_request_key`)
+        }
+
+        // A request root still owns fact lifetime through the retained FKs.
+        await client.query("DELETE FROM recommendation_request WHERE id = $1", [
+          requestId,
+        ])
+        for (const [table] of facts) {
+          const result = await client.query(
+            `SELECT id FROM ${table} WHERE request_id = $1`,
+            [requestId],
+          )
+          expect(result.rows).toHaveLength(0)
+        }
+      } finally {
+        await client.query("ROLLBACK")
+        await client.end()
+      }
     })
   },
 )

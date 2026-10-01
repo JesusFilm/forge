@@ -14,6 +14,7 @@ let getApolloClient: typeof import("../src/lib/apolloClient").getApolloClient
 let ACCENT: string
 let BG_COLOR: string
 let BACK_SWIPE_RESPONSE_DISTANCE: typeof import("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
+let READER_SHEET_SCREEN_OPTIONS: typeof import("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
 let ExperienceShell: typeof import("../src/contexts/ExperienceShell").ExperienceShell
 let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
 let WatchPreferencesProvider: typeof import("../src/contexts/WatchPreferencesProvider").WatchPreferencesProvider
@@ -31,6 +32,7 @@ let DevEndpointNotice:
   | undefined
 let PlaybackHost: typeof import("../src/components/watch/PlaybackHost").PlaybackHost
 let ExportReportHost: typeof import("../src/components/ExportReportHost").ExportReportHost
+let PushNoticeHost: typeof import("../src/components/PushNoticeHost").PushNoticeHost
 let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
 // `| undefined`: this one is read at module scope after the try/catch, where a
@@ -72,6 +74,8 @@ try {
   BG_COLOR = color.BG_COLOR
   BACK_SWIPE_RESPONSE_DISTANCE =
     require("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
+  READER_SHEET_SCREEN_OPTIONS =
+    require("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
   ExperienceShell = require("../src/contexts/ExperienceShell").ExperienceShell
   ExperienceSelectionProvider =
     require("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
@@ -94,6 +98,7 @@ try {
   PlaybackHost = require("../src/components/watch/PlaybackHost").PlaybackHost
   ExportReportHost =
     require("../src/components/ExportReportHost").ExportReportHost
+  PushNoticeHost = require("../src/components/PushNoticeHost").PushNoticeHost
   if (__DEV__) {
     DevEndpointNotice =
       require("../src/components/DevEndpointNotice").DevEndpointNotice
@@ -440,6 +445,20 @@ export default function RootLayout() {
                                 // back button instead.
                                 options={{ headerShown: false }}
                               />
+                              {/* My Watch's three screens cover the tab bar and
+                                draw their own top bar (ScreenTopBar). */}
+                              <Stack.Screen
+                                name="downloads"
+                                options={{ headerShown: false }}
+                              />
+                              <Stack.Screen
+                                name="more"
+                                options={{ headerShown: false }}
+                              />
+                              <Stack.Screen
+                                name="account"
+                                options={{ headerShown: false }}
+                              />
                               {/* Both player stacks confine the back-swipe to the
                                 left edge: iOS 26 defaults it to full-width,
                                 which claims rightward scrubs (src/lib/backSwipe). */}
@@ -459,6 +478,30 @@ export default function RootLayout() {
                                     BACK_SWIPE_RESPONSE_DISTANCE,
                                 }}
                               />
+                              {/* feat-553 R6: the pushed Bible reader has a verse
+                                scrubber and chapter swipes, so it gets the same strip. */}
+                              <Stack.Screen
+                                name="reader"
+                                options={{
+                                  headerShown: false,
+                                  gestureResponseDistance:
+                                    BACK_SWIPE_RESPONSE_DISTANCE,
+                                }}
+                              />
+                              {/* feat-553 KTD9: root sheets, so they present
+                                over the Bible tab and the pushed reader. */}
+                              <Stack.Screen
+                                name="reader-passage"
+                                options={READER_SHEET_SCREEN_OPTIONS}
+                              />
+                              <Stack.Screen
+                                name="reader-translation"
+                                options={READER_SHEET_SCREEN_OPTIONS}
+                              />
+                              <Stack.Screen
+                                name="reader-settings"
+                                options={READER_SHEET_SCREEN_OPTIONS}
+                              />
                             </Stack>
                           </ExperienceShell>
                           {/* KTD1: a sibling of ExperienceShell, never inside it —
@@ -468,6 +511,10 @@ export default function RootLayout() {
                           {/* R29: a raw export outlives the sheet that started it,
                               so its report is hosted here rather than in a route. */}
                           <ExportReportHost />
+                          {/* R21: a notification tap is routed from a timer or a
+                              native listener, so its message needs a host that
+                              belongs to no route. */}
+                          <PushNoticeHost />
                         </SplashCoveredTree>
                         {/* Last child, and a sibling for the same KTD1 reason: the
                             cover must paint above the player and must not restart

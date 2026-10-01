@@ -34,6 +34,14 @@ import {
   ProfileEligibilityReconciliation,
   PromotionDecision,
 } from "./recommendation-evaluation-sections"
+import {
+  WatchExposureInspection,
+  resolveWatchExposureInspectionFilter,
+} from "./watch-exposure-inspection"
+import {
+  loadWatchExposureBreakdown,
+  loadAnonymousWatchExposureBreakdown,
+} from "@/services/recommendations/admin-ops/watch-exposure.service"
 
 type RecommendationsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -104,12 +112,17 @@ export default async function RecommendationsPage({
     redirect("/dashboard")
   }
   const params = (await searchParams) ?? {}
+  const exposureSelection = resolveWatchExposureInspectionFilter(
+    params.exposure,
+    params.exposurePlacement,
+    params.exposurePolicy,
+  )
   const canReadTraces = hasPermission(principal, "read:recommendation-traces")
   const canOperatePromotion = hasPermission(
     principal,
     "operate:recommendation-experiments",
   )
-  const [overview, traces, playback] = await Promise.all([
+  const [overview, traces, playback, watchExposures] = await Promise.all([
     loadRecommendationOverview(prisma, {
       window: params.window,
     }),
@@ -127,6 +140,25 @@ export default async function RecommendationsPage({
           () => null,
         )
       : null,
+    exposureSelection.invalid
+      ? null
+      : Promise.all([
+          loadWatchExposureBreakdown(
+            prisma,
+            params.window,
+            exposureSelection.filter,
+          ),
+          loadAnonymousWatchExposureBreakdown(
+            prisma,
+            params.window,
+            exposureSelection.filter,
+          ),
+        ])
+          .then(([signed, anonymous]) => ({
+            rows: [...signed, ...anonymous.rows],
+            truncated: anonymous.truncated,
+          }))
+          .catch(() => null),
   ])
 
   return (
@@ -138,6 +170,21 @@ export default async function RecommendationsPage({
         action={<WindowPicker selected={overview.window.preset} />}
       />
 
+      <PageSection
+        title="Directional co-watch"
+        meta="SHADOW ONLY / NO PROMOTION"
+      >
+        <div className="p-4 text-[13px] text-[var(--color-text-secondary)]">
+          Inspect directional population edges, profile-selected anchors, source
+          health, and the terminal no-promotion decision.{" "}
+          <Link
+            href="/dashboard/recommendations/cowatch"
+            className="underline underline-offset-4"
+          >
+            Open co-watch evidence
+          </Link>
+        </div>
+      </PageSection>
       <HealthSummary overview={overview} />
       <PromotionDecision overview={overview} canOperate={canOperatePromotion} />
       <ControlReadiness overview={overview} canReadTraces={canReadTraces} />
@@ -146,6 +193,13 @@ export default async function RecommendationsPage({
       <ProfileEligibilityReconciliation overview={overview} />
       <PlaybackEvidence playback={playback} canReadTraces={canReadTraces} />
       <Funnel overview={overview} />
+      <WatchExposureInspection
+        rows={watchExposures?.rows ?? null}
+        truncated={watchExposures?.truncated ?? false}
+        replays={overview.counts?.replays ?? null}
+        window={overview.window.preset}
+        selection={exposureSelection}
+      />
       <OperationalTruth overview={overview} />
       <EligibilityTruth overview={overview} />
       <PrivacyTruth overview={overview} />

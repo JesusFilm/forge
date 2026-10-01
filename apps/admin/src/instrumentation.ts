@@ -39,15 +39,22 @@ function workflowStartupGlobal() {
     __forgeAdminWatchSearchPrewarm?: WatchSearchPrewarmState
     __forgeAdminRecommendationRecovery?: RecommendationRecoveryState
     __forgeAdminProfileReconciliationRecovery?: ProfileReconciliationRecoveryState
+    __forgeAdminCowatchRefreshRecovery?: ProfileReconciliationRecoveryState
   }
 }
 
-function profileReconciliationRecoveryState() {
+function profileReconciliationRecoveryState(
+  kind: "profile" | "cowatch" = "profile",
+) {
   const global = workflowStartupGlobal()
-  const current = global.__forgeAdminProfileReconciliationRecovery
+  const key =
+    kind === "profile"
+      ? "__forgeAdminProfileReconciliationRecovery"
+      : "__forgeAdminCowatchRefreshRecovery"
+  const current = global[key]
   if (current) return current
   const state: ProfileReconciliationRecoveryState = { checking: false }
-  global.__forgeAdminProfileReconciliationRecovery = state
+  global[key] = state
   return state
 }
 
@@ -161,6 +168,26 @@ export class WorkflowStartupConfigurationError extends Error {
   }
 }
 
+/**
+ * KTD1 — the Expo access token belongs to the dedicated worker only. Admin web
+ * refuses to boot with it injected, following the Typesense operator recipe, so
+ * a project variable cannot quietly give a traffic replica sending authority.
+ */
+export function assertPushTransportRuntime(): void {
+  const isDedicatedPostgresWorker =
+    env.WORKFLOW_RUNNER_ENABLED === "true" &&
+    env.WORKFLOW_TARGET_WORLD === "@workflow/world-postgres"
+  if (
+    env.NODE_ENV === "production" &&
+    env.EXPO_ACCESS_TOKEN?.trim() &&
+    !isDedicatedPostgresWorker
+  ) {
+    throw new WorkflowStartupConfigurationError(
+      "EXPO_ACCESS_TOKEN is restricted to the dedicated Postgres worker in production",
+    )
+  }
+}
+
 export function assertWatchSearchTranscriptPublicationRuntime(): void {
   const publicationEnabled = resolveWatchSearchTranscriptPublicationEnabled()
   const isDedicatedPostgresWorker =
@@ -219,6 +246,8 @@ async function startWorkflowWorld(): Promise<void> {
     await import("@/services/recommendations/playback-observation-snapshot.job")
   const { ensureRecommendationProfileReconciliationSchedulerStarted } =
     await import("@/services/recommendations/profiles/reconciliation.job")
+  const { ensureRecommendationCowatchRefreshSchedulerStarted } =
+    await import("@/services/recommendations/cowatch/refresh.job")
   const { ensureRecommendationEpisodeFinalizationRecovery } =
     await import("@/services/recommendations/finalization/job")
   const {
@@ -227,9 +256,18 @@ async function startWorkflowWorld(): Promise<void> {
   } = await import("@/services/studio-authoring/calendar-scheduler")
   const { ensureWatchSearchTranscriptPublicationWorkerStarted } =
     await import("@/services/typesense-watch-search-transcript-publication")
+  const { ensurePushCampaignRecovery } =
+    await import("@/services/push/recovery")
   const world = getWorld()
   await world.start?.()
   await startWorkflowWorkerHeartbeat()
+  const { prisma, syncPrisma } = await import("@/db/client")
+  const { ensureCoreSyncPhaseWorkerStarted } =
+    await import("@/services/core-sync/phase-execution")
+  ensureCoreSyncPhaseWorkerStarted(syncPrisma)
+  const { ensureWatchCatalogPublicationWorkerStarted } =
+    await import("@/services/watch-catalog-publication-worker")
+  ensureWatchCatalogPublicationWorkerStarted(syncPrisma)
   await ensureStudioCalendarSchedulerStarted()
   await ensureStudioCalendarPublicationSchedulerStarted()
   await ensureCoreSyncSchedulerStarted()
@@ -245,43 +283,52 @@ async function startWorkflowWorld(): Promise<void> {
     })
   }
   await ensureRecommendationProfileReconciliationSchedulerStarted()
+  await ensureRecommendationCowatchRefreshSchedulerStarted()
+  scheduleProfileReconciliationRecovery(
+    ensureRecommendationCowatchRefreshSchedulerStarted,
+    "cowatch",
+  )
   scheduleProfileReconciliationRecovery(
     ensureRecommendationProfileReconciliationSchedulerStarted,
   )
-  const { prisma } = await import("@/db/client")
   await ensureWatchSearchTranscriptPublicationWorkerStarted(prisma)
   void ensureRecommendationRecovery(
     ensureRecommendationEpisodeFinalizationRecovery,
   )
+  // KTD2 — a campaign whose run the runtime no longer holds leaves its pending
+  // zones missed. It never throws into boot and never blocks the other workers.
+  void ensurePushCampaignRecovery()
 }
 
 function scheduleProfileReconciliationRecovery(
   ensure: () => Promise<unknown> | unknown,
+  kind: "profile" | "cowatch" = "profile",
 ): void {
-  const state = profileReconciliationRecoveryState()
+  const state = profileReconciliationRecoveryState(kind)
   if (state.retryTimer || state.checking) return
   state.retryTimer = setTimeout(() => {
     state.retryTimer = undefined
-    void runProfileReconciliationRecovery(ensure)
+    void runProfileReconciliationRecovery(ensure, kind)
   }, PROFILE_RECONCILIATION_RECOVERY_INTERVAL_MS)
   state.retryTimer.unref?.()
 }
 
 async function runProfileReconciliationRecovery(
   ensure: () => Promise<unknown> | unknown,
+  kind: "profile" | "cowatch" = "profile",
 ): Promise<void> {
-  const state = profileReconciliationRecoveryState()
+  const state = profileReconciliationRecoveryState(kind)
   if (state.checking) return
   state.checking = true
   try {
     await ensure()
   } catch (error) {
     console.warn(
-      `[recommendation-profile-reconciliation] event=scheduler_recovery_failure error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
+      `[recommendation-${kind === "profile" ? "profile-reconciliation" : "cowatch-refresh"}] event=scheduler_recovery_failure error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
     )
   } finally {
     state.checking = false
-    scheduleProfileReconciliationRecovery(ensure)
+    scheduleProfileReconciliationRecovery(ensure, kind)
   }
 }
 
@@ -357,6 +404,7 @@ async function startWorkflowWorldWithTransientRetry(
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     assertWatchSearchTranscriptPublicationRuntime()
+    assertPushTransportRuntime()
     const { configureDatadog } = await import("@/observability/datadog")
     configureDatadog()
     startWatchSearchPrewarm()

@@ -137,6 +137,7 @@ import {
   Animated,
   BackHandler,
   Dimensions,
+  Platform,
   StyleSheet,
   type GestureResponderEvent,
 } from "react-native"
@@ -144,9 +145,12 @@ import {
 import {
   EXIT_DURATION_MS,
   PlaybackHostView,
+  REPOSITION_DURATION_MS,
   SHRINK_DURATION_MS,
   TAB_BAR_CONTENT_HEIGHT,
 } from "../PlaybackHost"
+import { isTabletLayout } from "../../../hooks/useIsTabletLayout"
+import { readerMovementBandHeight } from "../../../lib/bible/reader/chrome"
 import {
   ENDED_FADE_DURATION_MS,
   MINI_PLAYER_DISMISS_LABEL,
@@ -156,6 +160,7 @@ import {
   ACCESSIBILITY_MIN_TARGET,
   defaultCornerFrame,
   miniPlayerCornerFrame,
+  readerCornerPolicy,
   type MiniPlayerLayoutConfig,
 } from "../../../lib/miniPlayer/layout"
 import {
@@ -368,16 +373,22 @@ function attachSlot(
   return id
 }
 
-async function renderHost(): Promise<TestInstance> {
+function hostAt(segments: readonly string[]) {
+  return (
+    <PlaybackHostView
+      segments={segments}
+      canGoBack={() => canGoBackAnswer}
+      onExpand={onExpand}
+    />
+  )
+}
+
+async function renderHost(
+  segments: readonly string[] = [],
+): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
-    renderer = TestRenderer.create(
-      <PlaybackHostView
-        segments={[]}
-        canGoBack={() => canGoBackAnswer}
-        onExpand={onExpand}
-      />,
-    )
+    renderer = TestRenderer.create(hostAt(segments))
   })
   mounted = renderer
   return renderer
@@ -397,9 +408,10 @@ async function settle() {
 /** Play, then back out: the state every window scenario starts from. */
 async function floatWindow(
   overrides: Partial<PlaybackRequest> = {},
+  segments: readonly string[] = [],
 ): Promise<TestInstance> {
   const id = attachSlot(overrides)
-  const renderer = await renderHost()
+  const renderer = await renderHost(segments)
   await act(async () => {
     video.__player.play()
   })
@@ -711,6 +723,60 @@ describe("drag (R2, KTD5)", () => {
     })
   })
 
+  // feat-553 AE18, KTD11: on a reader route the drag snaps in the reader's
+  // layout, and it writes the reader's corner, never the app's.
+  it("settles a drag on the Bible tab into the reader's own corner frame", async () => {
+    const BIBLE_TAB = ["(tabs)", "bible"]
+    const renderer = await floatWindow({}, BIBLE_TAB)
+    await settle()
+    const { width, height } = Dimensions.get("window")
+    const tablet = isTabletLayout(width, height)
+    const reader: MiniPlayerLayoutConfig = {
+      ...layoutConfig(),
+      chrome: readerCornerPolicy({
+        layout: tablet ? "tablet" : "phone",
+        host: "tab",
+        movementBand: readerMovementBandHeight({ arrows: tablet, hint: false }),
+        tabBar: TAB_BAR_CONTENT_HEIGHT,
+      }).chrome,
+    }
+    const base = defaultCornerFrame(reader)
+    const start = miniPlayerCornerFrame(
+      reader,
+      tablet ? "bottomRight" : "topRight",
+    )
+    const target = miniPlayerCornerFrame(reader, "bottomLeft")
+    // Anti-vacuous: the window opened at the reader's start corner.
+    expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual({
+      translateX: start.x - base.x,
+      translateY: start.y - base.y,
+    })
+
+    const handlers = panHandlers(renderer)
+    const move = { x: target.x - start.x, y: target.y - start.y }
+    await act(async () => {
+      handlers.onResponderGrant(touchAt(0, 0))
+      handlers.onResponderMove(touchAt(move.x, move.y))
+      handlers.onResponderRelease(touchAt(move.x, move.y))
+    })
+    await advance(400)
+
+    expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual({
+      translateX: target.x - base.x,
+      translateY: target.y - base.y,
+    })
+
+    // Off the reader, the window rests in the app's own corner again.
+    await act(async () => {
+      mounted?.update(hostAt([]))
+    })
+    await finishNative(REPOSITION_DURATION_MS)
+    expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual({
+      translateX: 0,
+      translateY: 0,
+    })
+  })
+
   it("runs the shrink natively on a wrapper the drag never writes", async () => {
     const id = attachSlot()
     const renderer = await renderHost()
@@ -780,7 +846,17 @@ describe("drag (R2, KTD5)", () => {
 })
 
 describe("presentation (R3, R4, R11)", () => {
-  it("renders no window while a sheet is presented, and returns to the same corner", async () => {
+  const platformOs = Object.getOwnPropertyDescriptor(Platform, "OS")!
+  afterEach(() => {
+    Object.defineProperty(Platform, "OS", platformOs)
+  })
+
+  // Android draws the host over a sheet, so R11 still hides the window there.
+  it("on Android, renders no window while a sheet is presented, and returns to the same corner", async () => {
+    Object.defineProperty(Platform, "OS", {
+      value: "android",
+      configurable: true,
+    })
     const renderer = await floatWindow()
     await settle()
     expect(windowRoots(renderer)).toHaveLength(1)
@@ -822,6 +898,58 @@ describe("presentation (R3, R4, R11)", () => {
       translateX: target.x - base.x,
       translateY: target.y - base.y,
     })
+  })
+
+  // The owner (2026-09-30): iOS presents the sheet as a native modal over the
+  // host, so the window stays in its corner and the sheet's dimming darkens it.
+  it("on iOS, keeps the window in its corner while a sheet is presented", async () => {
+    expect(Platform.OS).toBe("ios")
+    const renderer = await floatWindow()
+    await settle()
+    const config = layoutConfig()
+    const target = miniPlayerCornerFrame(config, "topLeft")
+    const base = defaultCornerFrame(config)
+    const handlers = panHandlers(renderer)
+    await act(async () => {
+      handlers.onResponderGrant(touchAt(0, 0))
+      handlers.onResponderMove(touchAt(target.x - base.x, target.y - base.y))
+      handlers.onResponderRelease(touchAt(target.x - base.x, target.y - base.y))
+    })
+    await advance(400)
+    const corner = transformOf(byTestId(renderer, "playback-frame")[0])
+
+    await act(async () => {
+      sheetCounter.open("sduiQuiz")
+    })
+    expect(windowRoots(renderer)).toHaveLength(1)
+    expect(styleOf(byTestId(renderer, "playback-frame")[0]).opacity).not.toBe(0)
+    expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual(corner)
+
+    await act(async () => {
+      sheetCounter.close("sduiQuiz")
+    })
+    expect(windowRoots(renderer)).toHaveLength(1)
+    expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual(corner)
+  })
+
+  // The delete confirm is not a Modal: it draws inside the Downloads route, so
+  // the window would cover its buttons on iOS too (code review, 2026-10-01).
+  it("on iOS, hides the window while the inline delete confirm shows", async () => {
+    expect(Platform.OS).toBe("ios")
+    const renderer = await floatWindow()
+    await settle()
+
+    await act(async () => {
+      sheetCounter.open("libraryDeleteConfirm")
+    })
+    expect(windowRoots(renderer)).toHaveLength(0)
+    expect(videoViews(renderer)).toHaveLength(1)
+    expect(styleOf(byTestId(renderer, "playback-frame")[0]).opacity).toBe(0)
+
+    await act(async () => {
+      sheetCounter.close("libraryDeleteConfirm")
+    })
+    expect(windowRoots(renderer)).toHaveLength(1)
   })
 
   it("picks a drag up from the corner it returned to, not from the base frame", async () => {

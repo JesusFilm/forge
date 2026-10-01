@@ -1,7 +1,4 @@
-import {
-  RecommendationShadowEvaluationState,
-  WorkflowRunStatus,
-} from "@prisma/client"
+import { RecommendationShadowEvaluationState } from "@prisma/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   CANDIDATE_CONTEXT_VERSION,
@@ -20,20 +17,22 @@ vi.mock("./job", async (importOriginal) => {
   return { ...original, dispatchRecommendationShadowEvaluation }
 })
 
-import { startExactHybridShadowEvaluation } from "./operator"
+import {
+  startExactCowatchShadowEvaluation,
+  startExactHybridShadowEvaluation,
+} from "./operator"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 
 const NOW = new Date("2026-08-30T12:00:00.000Z")
 const WINDOW_START = new Date("2026-08-29T00:00:00.000Z")
 const WINDOW_END = new Date("2026-08-30T00:00:00.000Z")
 const EVALUATION_ID = "11111111-1111-4111-8111-111111111111"
+const GENERATION_ID = "a".repeat(64)
 
-function prisma(existing: unknown = null, workflow: unknown = null) {
+function prisma(existing: unknown = null) {
   return {
     recommendationShadowEvaluation: {
       findUnique: vi.fn().mockResolvedValue(existing),
-    },
-    workflowRun: {
-      findFirst: vi.fn().mockResolvedValue(workflow),
     },
   }
 }
@@ -73,6 +72,8 @@ describe("exact hybrid shadow evaluation operator", () => {
     createShadowEvaluation.mockResolvedValue(exactEvaluation())
     dispatchRecommendationShadowEvaluation.mockResolvedValue({
       queued: true,
+      state: "attached",
+      reused: false,
       ledgerRunId: "ledger-1",
       runId: "runtime-1",
     })
@@ -113,48 +114,68 @@ describe("exact hybrid shadow evaluation operator", () => {
         generatorKey: HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY,
         minimumRuns: 200,
       },
-      { actorId: "admin-1" },
+      { actorId: "admin-1", client, now: NOW },
     )
   })
 
-  it("returns the durable workflow on an idempotent operator retry", async () => {
-    const client = prisma(exactEvaluation(), {
-      id: "ledger-1",
-      runtimeRunId: "runtime-1",
-      status: WorkflowRunStatus.RUNNING,
-      details: { minimumRuns: 200 },
-    })
-
-    await expect(
-      startExactHybridShadowEvaluation(client as never, input()),
-    ).resolves.toEqual({
-      status: "already_dispatched",
-      evaluationId: EVALUATION_ID,
-      generation: 1,
-      created: false,
-      dispatch: {
-        queued: true,
+  it.each([
+    ["uncertain", true, "dispatch_uncertain"],
+    ["terminal", true, "terminal"],
+    ["running", true, "already_dispatched"],
+  ])(
+    "exposes a %s dispatch receipt without reinterpreting it",
+    async (state, reused, status) => {
+      const client = prisma(
+        exactEvaluation({
+          generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+          cowatchGenerationId: GENERATION_ID,
+        }),
+      )
+      dispatchRecommendationShadowEvaluation.mockResolvedValueOnce({
+        state,
+        reused,
+        queued: state === "running",
         ledgerRunId: "ledger-1",
-        runId: "runtime-1",
-      },
-    })
+        runId: null,
+      })
+      await expect(
+        startExactCowatchShadowEvaluation(client as never, {
+          ...input(),
+          cowatchGenerationId: GENERATION_ID,
+        }),
+      ).resolves.toMatchObject({ status, created: false, dispatch: { state } })
+      expect(createShadowEvaluation).not.toHaveBeenCalled()
+    },
+  )
+
+  it("refuses a changed graph or a legacy unpinned evaluation without dispatch", async () => {
+    for (const cowatchGenerationId of [null, "b".repeat(64)]) {
+      const client = prisma(
+        exactEvaluation({
+          generatorVersion: COWATCH_SHADOW_GENERATOR_KEY,
+          cowatchGenerationId,
+        }),
+      )
+      await expect(
+        startExactCowatchShadowEvaluation(client as never, {
+          ...input(),
+          cowatchGenerationId: GENERATION_ID,
+        }),
+      ).rejects.toThrow("does not match")
+    }
     expect(createShadowEvaluation).not.toHaveBeenCalled()
     expect(dispatchRecommendationShadowEvaluation).not.toHaveBeenCalled()
   })
 
-  it("retries a failed dispatch without creating another evaluation", async () => {
-    const client = prisma(exactEvaluation(), {
-      id: "ledger-failed",
-      runtimeRunId: null,
-      status: WorkflowRunStatus.FAILED,
-      details: { minimumRuns: 200 },
-    })
-
+  it("requires an explicit graph identity before creating a co-watch evaluation", async () => {
     await expect(
-      startExactHybridShadowEvaluation(client as never, input()),
-    ).resolves.toMatchObject({ status: "queued", created: false })
+      startExactCowatchShadowEvaluation(prisma() as never, {
+        ...input(),
+        cowatchGenerationId: "latest",
+      }),
+    ).rejects.toThrow("exact graph")
     expect(createShadowEvaluation).not.toHaveBeenCalled()
-    expect(dispatchRecommendationShadowEvaluation).toHaveBeenCalledOnce()
+    expect(dispatchRecommendationShadowEvaluation).not.toHaveBeenCalled()
   })
 
   it("rejects retries whose immutable evaluation parameters do not match", async () => {

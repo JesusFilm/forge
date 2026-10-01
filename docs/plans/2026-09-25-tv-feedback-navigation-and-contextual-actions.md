@@ -3,7 +3,7 @@
 Status: implementation in progress. The entries and native bridges compile
 locally; physical TV and phone acceptance is pending.
 
-Roadmap: `docs/roadmap/platform/feat-551-tv-beta-qr-feedback-linear.md`.
+Roadmap: `docs/roadmap/platform/feat-593-tv-beta-qr-feedback-linear.md`.
 Extends `docs/plans/2026-09-24-tv-feedback-railway-redis-linear.md`.
 
 ## Selected design

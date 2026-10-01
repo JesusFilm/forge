@@ -1,6 +1,6 @@
 # Watch beta feedback — Photo, Draw, Send
 
-Status: implemented locally. Part of feat-551. This document supersedes the earlier default four-step UI; the existing form remains available as Advanced report. Physical iPhone and delivery verification remain open.
+Status: implemented locally. Part of feat-593. This document supersedes the earlier default four-step UI; the existing form remains available as Advanced report. Physical iPhone and delivery verification remain open.
 
 ## Reference mapping
 

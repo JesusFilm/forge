@@ -1,0 +1,62 @@
+{
+  "source": "Authorized Admin Recommendations DOM in the existing authenticated browser",
+  "runtimeReceipt": "deployment-final.json",
+  "window": "rolling 24h; server request cutoff precedes capture and is shared by this loaded page",
+  "hero": {
+    "capturedAt": "2026-09-29T00:37:26.590Z",
+    "entry": "watch-home:hero:hero-card",
+    "placementFilter": "",
+    "policy": "watch-exposure-v2",
+    "rows": [
+      {
+        "placement": "home-hero",
+        "position": 0,
+        "served": 15,
+        "rendered": 15,
+        "eligible": 2,
+        "selected": 1,
+        "eligibleSelections": 0,
+        "ctr": "0.0%",
+        "earlySelections": 1,
+        "repeats": 0,
+        "replayRateToDate": "0.0%",
+        "nativeVisibilityV2": 0,
+        "unknownVisibility": 2
+      }
+    ],
+    "registryCompleteness": "2/10",
+    "signedReplayCountAllPositions": 44,
+    "signedReplayRate": "unavailable"
+  },
+  "ingestion": {
+    "capturedAt": "2026-09-29T00:37:38.274Z",
+    "scope": "Shared evidence/retention panel, not exposure-only",
+    "state": "Loss suspected",
+    "lossSuspected": 195,
+    "committedRejections": 195,
+    "writeFailures": 0,
+    "replay": 44,
+    "conflict": 0,
+    "lateEvidence": 0,
+    "classifierLag": 0,
+    "selectionWithoutImpression": 72,
+    "retrievalP50Ms": 142,
+    "retrievalP95Ms": 524,
+    "deliveryWatermark": "2026-09-29T00:36:11.712Z",
+    "evidenceWatermark": "2026-09-29T00:36:12.289Z",
+    "databaseProbe": "2026-09-29T00:36:19.841Z",
+    "oldestPending": "2026-09-28T20:45:06.135Z",
+    "lastPurge": "2026-09-28T10:30:01.202Z",
+    "retentionLabel": "Healthy",
+    "effectiveManifest": "semantic-transcript-pgvector-v1 \u00b7 watch-below-player-v1 \u00b7 enabled (production_activation)"
+  },
+  "interpretation": [
+    "Hero V2 persisted rows establish deployed served/rendered/impression/selection reporting at position0; the rolling cohort includes concurrent production traffic, not solely this browser.",
+    "One selected event is early, not an eligible selection. CTR remains0/2=0.0%; unknown capability2 matches eligible2 and does not imply native occlusion support.",
+    "Anonymous replay rates are cumulative to date for the window; signed replay has no position-matched denominator.",
+    "Registry completeness is conservative acceptance metadata, not observed V2 cohort count.",
+    "Shared loss/rejection counts are not attributed to this browser or the exposure release; newer successful samples do not resolve D1-D9.",
+    "Retention Healthy and the purge timestamp do not prove a first nonempty purge or loaded throughput; storage ownership is unchanged."
+  ],
+  "rawIdentitiesRetained": false
+}

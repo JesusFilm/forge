@@ -281,6 +281,10 @@ is redundant and loses the plugin's column-pruning.
 ## Conventions (Unit 1 baseline — expands with each unit)
 
 - Env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
+  Standalone migration deploy/recovery scripts may read required database and
+  retry settings before application auth configuration exists; validate the
+  inputs and never print connection strings. This exception does not apply to
+  application services or other operator scripts.
 - Env vars managed by Doppler (project: `forge-admin`). Use `pnpm fetch-secrets` for local dev.
 - Tests colocated as `*.test.ts` / `*.test.tsx` beside source files.
 - Next production builds use `tsconfig.build.json` to exclude colocated tests
@@ -607,11 +611,12 @@ vars configured; dev/staging should not need those S3 credentials.
 
 ### Search trace retention and sampling
 
-Admin is the live search authority. REST `/api/search`, GraphQL `Query.search`,
+Admin is the live search authority. GraphQL `Query.watchSearch`,
 query embedding generation, pgvector retrieval, production trace storage,
 rollups, and retention all stay inside `apps/admin`. Mastra must not enter the
 live request path and must not import Admin code or read Admin Postgres for eval
-sampling; later eval jobs use Admin's internal HTTP contract only.
+sampling; later eval jobs use Admin's internal HTTP contract only. #1622
+removed REST `/api/search` and GraphQL `Query.search` on 2026-07-20.
 
 Production search tracing writes two records:
 
@@ -628,10 +633,13 @@ Production search tracing writes two records:
   source/version dimensions so future rule changes do not mix incompatible
   cohorts.
 
-Trace writes are bounded best-effort. `recordSearchTraceSafely` is awaited
-behind a short timeout and every write/timeout failure is swallowed from the
-live search caller's perspective. Failures increment safe process-local
-counters and log `[search] event=trace_record_* ...` without raw query text.
+Trace writes are bounded best-effort. `Query.watchSearch` puts each trace on a
+bounded per-process queue (`enqueueWatchSearchTrace`) that runs
+`recordSearchTraceSafely` after the response. A full queue drops the trace and
+logs `[search] event=trace_queue_full`. `recordSearchTraceSafely` runs behind a
+short timeout, and every write or timeout failure is swallowed from the
+caller's perspective. Failures increment safe process-local counters and log
+`[search] event=trace_record_* ...` without raw query text.
 Experience-editor video library server-action searches use
 `recordAdminVideoLibrarySearchTraceSafely`; their raw traces set
 `requestedMode` to a closed client label such as
@@ -703,16 +711,22 @@ Query labeling model:
 
 The optional OpenRouter classifier lives at
 `src/services/search-trace-query-classifier.ts` and is for ambiguous or
-high-impact samples only. REST `/api/search` and GraphQL `Query.search` must
-not call it, must not route through Mastra, and must not use labels to censor
-or alter live results.
+high-impact samples only. The live search path, GraphQL `Query.watchSearch`,
+must not call it, must not route through Mastra, and must not use labels to
+censor or alter live results.
 
 The Admin worker starts `src/workflows/searchTraceRetention.ts` when
 `WORKFLOW_RUNNER_ENABLED=true` and
 `WORKFLOW_TARGET_WORLD=@workflow/world-postgres`. The scheduler runs one purge
 immediately, then daily at 10:00 UTC. `/api/search/health` reports retention
-health and trace capture counters; in production, raw trace capture is disabled
-when the retention scheduler or recent purge heartbeat cannot be confirmed.
+health and trace capture counters. In production, when that health is not
+healthy, the trace writer runs `purgeExpiredSearchTraces` inline, logs
+`[search] event=trace_retention_inline_purge`, and then stores the raw row
+(feat-272). Only an explicit `retentionHealthy: false` input disables raw
+capture. The health reads the scheduler heartbeat and the last successful
+purge, not the runtime status of the scheduler run, so a fresh heartbeat
+does not prove a live run. See
+`docs/solutions/platform/admin-search-trace-retention-pattern.md`.
 The purge also removes trace-derived generated eval candidates whose
 `retentionExpiresAt` has passed while they remain `generated`, keeping
 unpromoted trace candidates inside the raw trace retention window.
@@ -1490,6 +1504,14 @@ AND embedding IS NOT NULL` grows as expected.
 
 ## Hybrid search (R4 of admin migration playbook)
 
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** #1622 removed
+> `HybridSearchService`, REST `GET /api/search`, and GraphQL `Query.search`.
+> The live search surface is `Query.watchSearch`
+> (`src/graphql/queries/watch-search.ts`), and `GET /api/search/health`
+> remains. Some retriever, fusion, and SQL modules named below still serve
+> `src/services/watch-search.service.ts`. Read this section as history, and
+> verify each named file before you act on it.
+
 Admin owns public hybrid search — semantic + keyword retrieval fused via
 Reciprocal Rank Fusion — over the `Video`/`VideoLocale` transcript-backed video
 semantic corpus and `Experience`/`ExperienceLocale` corpora. It originally
@@ -1635,6 +1657,10 @@ recommendations consume one implementation. `deduplicateResults` below
 is a thin `FusedResult`-typed wrapper.
 
 ## Hybrid search keyword-first mode (R4 extension)
+
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** The `mode` argument
+> went away with REST `/api/search` and `Query.search`. See the note at the
+> top of the R4 section.
 
 Opt-in `mode="keyword-first"` argument on the same `HybridSearchService`
 that R4 ships. Adds three lexical retrievers + a post-fusion semantic-
@@ -2308,6 +2334,15 @@ operator instructions.
 
 ## Search API authentication (Plan 002 + Plan 003)
 
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** #1622 removed the
+> two routes this section gates, REST `GET /api/search` and GraphQL
+> `Query.search`, and the bearer composer `isAnyKnownBearer`. The
+> `SEARCH_AUTH_REQUIRED` flag no longer exists, and `Query.watchSearch` is
+> public. The consumer bearer and the fleet-aware rate-limit bucketing below
+> still apply through `src/graphql/context.ts` and
+> `src/graphql/plugins/rate-limit.ts`. Verify each named file before you act
+> on the rest of this section.
+
 Admin's public search surface — `GET /api/search` REST + `Query.search`
 GraphQL twin — is gated by a bearer-key passport. Phase 1 (Plan 002)
 shipped in **dual-accept** mode (anonymous + bearer-auth both
@@ -2510,6 +2545,12 @@ See `docs/plans/2026-07-08-002-feat-admin-fleet-aware-rate-limit-bucketing-plan.
   `docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`
 
 ## Partner API key store
+
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** The routes these keys
+> authenticate, `/api/search` and `Query.search`, no longer exist. The
+> `PartnerApiKey` table, the `partner-keys` CLI, and `/dashboard/partner-keys`
+> remain, but no request path checks a partner key. The search trace and
+> search-eval bearers still reject `jfp_search_*`-shaped tokens.
 
 DB-backed external-partner credentials for `/api/search` + `Query.search`.
 Extends Plan 002's bearer-as-passport composer with a fourth branch
@@ -3025,3 +3066,122 @@ old processes; process environment is not an instantaneous fleet barrier. See
 operation map, rollout order and external acceptance gates. Local DB fixtures that
 exercise enabled production/publication must explicitly set both flags to `true`;
 do not change default-off production behavior to accommodate tests.
+
+## Localized push campaigns (feat-524)
+
+Admin owns announcement campaigns end to end: copy per language, audience,
+local-hour wave, sending through Expo's push service, and the report. The
+mobile app only registers a token and opens a destination. The plan is
+`docs/plans/2026-09-18-1540-feat-localized-push-campaigns-plan.md`; the ticket
+is `docs/roadmap/platform/feat-524-localized-push-campaigns.md`.
+
+### Seam
+
+- Tables: `push_registration`, `push_test_device`, `push_campaign`,
+  `push_campaign_copy`, `push_campaign_zone`, `push_delivery`, `push_open`,
+  `push_attribution` (migration `0120_push_campaigns`). The recommendation
+  tables do not change. The partial unique index `push_delivery_daily_claim_key`
+  is the "one announcement per device per local day" rule; the claim is one
+  multi-row `INSERT ... ON CONFLICT DO NOTHING` with no conflict target.
+- One registration row is one device, which is one app install. The app mints
+  an install id once and keeps it, and the registration input requires it, so
+  supersession is keyed on that install id and the platform: a token rotation on
+  the same install retires the older row, and another device of the same viewer
+  stays active. A superseded token that
+  registers again with permission granted becomes active. A viewer who has a phone
+  and a tablet receives the announcement on both, and every count the report
+  and the dashboard show is a count of devices, never of viewers.
+- The supersede pass carries an ownership term, because an install id can be
+  restored from a backup or copied between devices. A request retires another
+  row of its install only when there is no definite identity conflict: it
+  retires a candidate whose stored viewer digest is null or equal to the
+  request's verified digest, and a request that carries no digest retires every
+  candidate, because an anonymous install has no evidence of a conflict (KTD7
+  allows an absent handle). A request that carries a digest also counts the
+  candidates it skipped and logs `supersede_skipped=<n>` on the register line,
+  a count only, so a cloned install id is visible to an operator.
+  Two residuals follow. Two anonymous devices that share a restored install id
+  flip each other at each launch, and each recovers at its own next launch. An
+  anonymous caller who knows another device's install id can retire that
+  device's row until that device registers again. A phone whose viewer handle
+  admin refuses retries without one, so it also takes this anonymous path.
+- Services: `src/services/push/`. Public mutations `registerPushDevice` and
+  `reportPushOpen` (`src/graphql/mutations/push-device.ts`) sit behind the push
+  admission predicate (`admission.ts`) and a per-operation ceiling
+  (`ceiling.ts`). The send path is `dispatch.ts` → workflow
+  `src/workflows/pushCampaign.ts` → `batch.ts` / `receipts.ts` → `transport.ts`.
+  Attribution runs in both directions (`attribution.service.ts`); the report is
+  `report.service.ts`. The dashboard is `src/app/dashboard/push-campaigns/`
+  behind the `write:push-campaigns` key (VIEWER tier).
+- Admission refuses a viewer handle that does not verify with its own push
+  code, `viewer_handle_rejected`, under GraphQL `UNAUTHENTICATED`. A missing or
+  unknown bearer and a handle with a missing half keep `admission_denied`. The
+  app answers only `viewer_handle_rejected` by re-checking its handle and
+  retrying without it, so keep the two codes apart. A database fault during
+  the handle check is rethrown as an internal error, not as a refused handle.
+- Never log or persist a push token, a viewer digest, or the provider's message
+  string (it embeds the token). Log lines use the plain-string form
+  `[push] event=name key=value`.
+- Real-database tests gate on `PUSH_DB_TEST=1` and read `DATABASE_URL`:
+  `PUSH_DB_TEST=1 DATABASE_URL=postgresql://forge@localhost:5432/forge_admin_push_test pnpm --filter @forge/admin exec vitest run src/services/push`.
+- Load proof before a first campaign:
+  `CI=1 pnpm --filter @forge/admin exec tsx src/scripts/push-campaign-dry-run.ts --registrations=100000 --groups=40`.
+
+### Flags and env
+
+Every push var is optional and boots unset. `PUSH_CAMPAIGNS_ENABLED` (default
+off) gates schedule, send now, and the test send, and every batch step re-reads
+it. `EXPO_ACCESS_TOKEN` is a Railway variable on the worker service only, never
+in the shared Doppler config: admin web refuses to boot with it injected in
+production (`assertPushTransportRuntime`), and `railway.worker.toml` unsets it
+in the build and pre-deploy commands. Budgets: `PUSH_BATCH_PAGE_SIZE` 5000,
+`PUSH_STEP_MAX_DURATION_MS` 220000, `PUSH_CHUNK_DEADLINE_MS` 10000,
+`PUSH_PROVIDER_CONCURRENCY` 3, `PUSH_MESSAGES_PER_SECOND` 500,
+`PUSH_RECEIPT_PAGE_SIZE` 10000, `PUSH_FCM_BLOCKED_COUNTRIES` `CN`. Ceilings:
+`PUSH_REGISTRATION_CEILING_PER_MIN` and `PUSH_OPEN_CEILING_PER_MIN` (default
+6000, 0 disables) with `PUSH_CEILING_ENFORCE` (alert-first until `true`).
+
+### Deploy order
+
+1. Merge with `PUSH_CAMPAIGNS_ENABLED` unset. Both admin services run migration 0120. Confirm `prisma migrate status` is clean on both.
+2. **Restart the worker once after the deploy.** U1 added
+   `stepRunPushRetention` inside the durable
+   `runRecommendationRetentionScheduler` loop. At boot, the worker replays the
+   live scheduler run, and the replay fails with `corrupted-event-log`. The boot
+   check `ensureRecommendationRetentionSchedulerStarted` can read the run before
+   it fails, so no scheduler runs until the next worker boot. After the worker
+   deploy succeeds, run `railway restart -e production -s @forge/admin/worker -y`.
+   Then confirm that a new `recommendation-retention-scheduler` ledger row is
+   `running` with a new `runtime_run_id`. The workflows dashboard has no cancel
+   control, and `workflow cancel` refuses a run that is already `failed`. See
+   `docs/solutions/workflow-issues/new-step-in-durable-workflow-loop-needs-worker-restart-after-deploy.md`.
+3. Set the worker's queue concurrency to at least 4 and record it.
+4. Provision the Expo access token on the worker service, then one batched
+   Doppler write of the push vars with the flag on. Schedule must then be
+   refused only by the missing-test-send reason.
+5. Apply the four monitors in `infra/datadog-monitors/push/` after confirming
+   admin logs reach Datadog. The heartbeat monitor is a proxy on
+   `event=zone_missed reason=run_not_alive`.
+
+### Rollback
+
+Turn `PUSH_CAMPAIGNS_ENABLED` off first: the next batch step marks the rest of
+the current group missed and ends the run as paused. Cancel scheduled and
+sending campaigns from the dashboard, then roll the worker back. A run left
+asleep on a worker without the workflow fails when the rolled-back worker
+replays it at boot, and the recovery sweep pauses its campaign at the next
+worker start. Registrations survive a rollback; migration 0120 alters no
+existing table, so a code redeploy needs no data restore. A rollback also
+removes `stepRunPushRetention` from the retention loop, so the replay of the
+live scheduler run fails with `corrupted-event-log` at the boot of the
+rolled-back worker. Restart the worker once after the rollback deploy, as
+deploy step 2 does.
+
+A cancel is not instant once a group has gone out. The runtime cancel event
+makes the run terminal and every later step is refused, so the cancel emits it
+only while no zone is dispatching or dispatched (and closes the ledger row as
+cancelled). After a group is out, the campaign status is the cancel: the run
+wakes at its next zone instant, sends nothing, collects the receipts it owes,
+and finishes with its ledger row cancelled. Until then the campaign page shows
+that run as running. A cancel also retires every reserved row as missed, so no
+device's local day stays held.

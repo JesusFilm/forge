@@ -19,6 +19,23 @@ export default defineConfig(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ["apps/manager/**/*.{ts,tsx}", "apps/web/**/*.{ts,tsx}"],
+    // Match the apps' Next lint passes so their intentional full-navigation
+    // directives also work when lint-staged runs from the repository root.
+    languageOptions: {
+      globals: {
+        window: "readonly",
+        location: "readonly",
+        document: "readonly",
+        self: "readonly",
+      },
+    },
+    plugins: { "@next/next": nextPlugin },
+    rules: {
+      "@next/next/no-location-assign-relative-destination": "warn",
+    },
+  },
+  {
     files: ["apps/manager/**/*.tsx", "apps/manager/**/*.ts"],
     plugins: {
       "react-hooks": reactHooksPlugin,

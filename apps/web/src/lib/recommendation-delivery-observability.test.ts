@@ -128,3 +128,37 @@ describe("delivery operational observations", () => {
     ).not.toThrow()
   })
 })
+
+it("reports unexpected excluded commits independently of HTTP success without identifying values", () => {
+  const log = vi.fn()
+  observeRecommendationDelivery(
+    {
+      endpoint: "seeded",
+      httpStatus: 200,
+      trafficCategory: "declared_crawler",
+      persistenceDisposition: "unexpected_commit",
+      delivery: { result: "fallback", items: [] },
+    },
+    log,
+  )
+  expect(log.mock.calls[0][0]).toContain(
+    "persistenceDisposition=unexpected_commit attempted=1 avoidedPersistence=0 committed=1",
+  )
+  expect(log.mock.calls[0][0]).toContain("trustedEdgeSource=false")
+})
+it("bounds untrusted classification and persistence values", () => {
+  const log = vi.fn()
+  observeRecommendationDelivery(
+    {
+      endpoint: "for_you",
+      httpStatus: 200,
+      trafficCategory: "private-UA",
+      persistenceDisposition: "token-secret",
+      delivery: { result: "served", items: [] },
+    },
+    log,
+  )
+  expect(log.mock.calls[0][0]).not.toMatch(/private-UA|token-secret/)
+  expect(log.mock.calls[0][0]).toContain("trafficCategory=unknown")
+  expect(log.mock.calls[0][0]).toContain("persistenceDisposition=not_observed")
+})

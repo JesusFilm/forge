@@ -1,5 +1,7 @@
+import { ownerReleaseInfluenceAllowedSql } from "../promotion/owner-influence"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { env } from "@/config/env"
 import {
   ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
   activeTranscriptContentEmbeddingWhere,
@@ -80,16 +82,19 @@ type PublishInput = Readonly<{
   durableEvidence: ProfileProjectionEvidence[]
   sessionEvidence: ProfileProjectionEvidence[]
   evidenceSnapshotDigest?: string
+  sourceEvidenceEmpty?: boolean
   expectedPointer?: ProfileProjectionRequest["expectedPointer"]
   runFence?: ProfileProjectionRequest["runFence"]
 }>
 
-export type ProfileProjectionReceipt = Readonly<{
-  status: "published"
-  generationId: string
-  generation: number
-  replay: boolean
-}>
+export type ProfileProjectionReceipt =
+  | Readonly<{
+      status: "published"
+      generationId: string
+      generation: number
+      replay: boolean
+    }>
+  | Readonly<{ status: "empty"; replay: false }>
 
 type ProjectionDependencies = Readonly<{
   loadEvidence: (
@@ -172,6 +177,11 @@ export function createRecommendationProfileProjectionService(
         durableEvidence,
         sessionEvidence,
         evidenceSnapshotDigest,
+        sourceEvidenceEmpty:
+          evidence.durable.length === 0 &&
+          evidence.session.length === 0 &&
+          evidence.explicitPreferences.length === 0 &&
+          evidence.negativeEvidence.length === 0,
         expectedPointer: input.expectedPointer,
         runFence: input.runFence,
       })
@@ -404,6 +414,7 @@ export async function loadDatabaseProfileProjectionEvidence(
             SELECT 1 FROM recommendation_promotion_slate_fence fence
             WHERE fence.request_id = outcome.request_id
           )
+          AND ${ownerReleaseInfluenceAllowedSql(Prisma.sql`outcome.request_id`)}
         ORDER BY outcome.created_at DESC, outcome.id
         LIMIT 64
       `)
@@ -475,6 +486,7 @@ export async function loadDatabaseProfileProjectionEvidence(
             SELECT 1 FROM recommendation_promotion_slate_fence fence
             WHERE fence.request_id = episode.request_id
           )
+          AND ${ownerReleaseInfluenceAllowedSql(Prisma.sql`outcome.request_id`)}
         ORDER BY outcome.created_at DESC, outcome.id
         LIMIT 64
       `)
@@ -563,6 +575,13 @@ export async function publishDatabaseProfileProjection(
           hashtextextended(${`profile-projection:${scopeDigest}`}, 386)
         )
       `)
+        if (env.RECOMMENDATION_PROFILE_VECTOR_SHARING === "true") {
+          // Independent publishers may share this lock. The orphan sweep
+          // takes its exclusive form only for its short deletion phase.
+          await tx.$executeRaw(
+            Prisma.sql`SELECT pg_advisory_xact_lock_shared(368000002)`,
+          )
+        }
         let profileExpiresAt: Date | null = null
         if (input.scope === "durable") {
           const profiles = await tx.$queryRaw<Array<{ expiresAt: Date }>>(
@@ -635,6 +654,7 @@ export async function publishDatabaseProfileProjection(
             "profile_projection_pointer_fenced",
           )
         }
+        let currentEvidenceEmpty = false
         if (input.evidenceSnapshotDigest) {
           const currentEvidence = await loadDatabaseProfileProjectionEvidence(
             tx,
@@ -655,6 +675,11 @@ export async function publishDatabaseProfileProjection(
               "profile_projection_input_fenced",
             )
           }
+          currentEvidenceEmpty =
+            currentEvidence.durable.length === 0 &&
+            currentEvidence.session.length === 0 &&
+            currentEvidence.explicitPreferences.length === 0 &&
+            currentEvidence.negativeEvidence.length === 0
         }
         const existing = await tx.$queryRaw<
           Array<{ id: string; generation: number }>
@@ -691,6 +716,26 @@ export async function publishDatabaseProfileProjection(
             generation: existing[0].generation,
             replay: true,
           }
+        }
+        if (
+          env.RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP === "true" &&
+          input.scope === "durable" &&
+          input.runFence &&
+          input.expectedPointer?.generationId === null &&
+          input.expectedPointer.pointerGeneration === 0 &&
+          input.sourceEvidenceEmpty === true &&
+          currentEvidenceEmpty &&
+          current.length === 0
+        ) {
+          const prior = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+            SELECT id
+            FROM recommendation_profile_projection_generation
+            WHERE scope = 'durable'
+              AND profile_id = ${input.profileId}
+              AND privacy_generation = ${input.privacyGeneration}
+            LIMIT 1
+          `)
+          if (prior.length === 0) return { status: "empty", replay: false }
         }
         const allEvidence = [...input.durableEvidence, ...input.sessionEvidence]
         const watermark = latestDate(
@@ -915,6 +960,43 @@ async function insertInterest(
       "profile_projection_embedding_dimension_invalid",
     )
   }
+  const vectorText = toPgVector(input.vector)
+  if (env.RECOMMENDATION_PROFILE_VECTOR_SHARING === "true") {
+    // Hash PostgreSQL's stored float32 representation, not the JS float64
+    // input. Equality is checked below even if a digest ever collides.
+    await tx.$executeRaw(Prisma.sql`
+      INSERT INTO recommendation_profile_vector_snapshot (digest, embedding)
+      VALUES (
+        encode(sha256(convert_to((${vectorText}::public.vector(1536))::text, 'UTF8')), 'hex'),
+        ${vectorText}::public.vector(1536)
+      )
+      ON CONFLICT (digest) DO NOTHING
+    `)
+    const inserted = await tx.$executeRaw(Prisma.sql`
+      INSERT INTO recommendation_profile_interest (
+        id, generation_id, kind, interest_ordinal, medoid_media_id,
+        medoid_source_digest, vector_digest, weight, support_count, stability,
+        expires_at
+      )
+      SELECT
+        ${randomUUID()}, ${input.generationId},
+        ${input.kind}::"RecommendationProfileInterestKind", ${input.ordinal},
+        ${input.medoidMediaId.slice(0, 191)}, ${digestText(input.medoidSourceId)},
+        snapshot.digest, ${input.weight}, ${input.supportCount},
+        ${input.stability}, ${input.expiresAt}
+      FROM recommendation_profile_vector_snapshot snapshot
+      WHERE snapshot.digest =
+        encode(sha256(convert_to((${vectorText}::public.vector(1536))::text, 'UTF8')), 'hex')
+        AND public.vector_send(snapshot.embedding) =
+          public.vector_send(${vectorText}::public.vector(1536))
+    `)
+    if (inserted !== 1) {
+      throw new RecommendationInternalStateError(
+        "profile_projection_vector_snapshot_collision",
+      )
+    }
+    return
+  }
   await tx.$executeRaw(Prisma.sql`
     INSERT INTO recommendation_profile_interest (
       id, generation_id, kind, interest_ordinal, medoid_media_id,
@@ -924,7 +1006,7 @@ async function insertInterest(
       ${randomUUID()}, ${input.generationId},
       ${input.kind}::"RecommendationProfileInterestKind", ${input.ordinal},
       ${input.medoidMediaId.slice(0, 191)}, ${digestText(input.medoidSourceId)},
-      ${toPgVector(input.vector)}::public.vector(1536), ${input.weight},
+      ${vectorText}::public.vector(1536), ${input.weight},
       ${input.supportCount}, ${input.stability}, ${input.expiresAt}
     )
   `)

@@ -1,0 +1,240 @@
+{
+  "syntheticLocalCatalog": true,
+  "productionExecuted": false,
+  "sourceHead": "bb6d8548f1b995d6be5b92aa8dd5cc73ac1b0bb5",
+  "realHydrationSql": true,
+  "realProfileQueryAndAdapter": true,
+  "realUnionAndMmr": true,
+  "schemaScope": "Minimal synthetic catalog; not full production constraints or current authority/issuance test",
+  "unrelatedStub": "VideoNotFoundError export only; never exercised",
+  "firstChunkThemes": [],
+  "laterChunkThemes": ["hope"],
+  "profileActualRows": [
+    {
+      "sceneIndex": 1,
+      "themes": ["hope"],
+      "interestKind": "durable",
+      "interestOrdinal": 0
+    }
+  ],
+  "maskedPresentation": {
+    "status": "fallback",
+    "reason": "composition_required_input_unavailable",
+    "availability": {
+      "missingSource": false,
+      "missingInterest": false,
+      "missingTheme": true,
+      "missingHistory": false
+    },
+    "coverage": {
+      "sources": 3,
+      "availableSources": 3,
+      "interests": 1,
+      "availableInterests": 1,
+      "recentItems": 0,
+      "itemsWithThemes": 0
+    },
+    "candidates": [
+      {
+        "selectedGenerator": "semantic",
+        "selectedThemes": [],
+        "nominationThemes": [
+          {
+            "generator": "semantic",
+            "themes": []
+          },
+          {
+            "generator": "multi-interest-profile",
+            "themes": ["hope"]
+          },
+          {
+            "generator": "directional-cowatch",
+            "themes": []
+          }
+        ],
+        "sourceInterest": [
+          {
+            "generator": "semantic",
+            "ordinal": null,
+            "kind": null
+          },
+          {
+            "generator": "multi-interest-profile",
+            "ordinal": 0,
+            "kind": "durable"
+          },
+          {
+            "generator": "directional-cowatch",
+            "ordinal": null,
+            "kind": null
+          }
+        ]
+      }
+    ]
+  },
+  "themePresentationControl": {
+    "status": "composed",
+    "reason": null,
+    "availability": {
+      "missingSource": false,
+      "missingInterest": false,
+      "missingTheme": false,
+      "missingHistory": false
+    },
+    "coverage": {
+      "sources": 3,
+      "availableSources": 3,
+      "interests": 1,
+      "availableInterests": 1,
+      "recentItems": 0,
+      "itemsWithThemes": 1
+    },
+    "candidates": [
+      {
+        "selectedGenerator": "semantic",
+        "selectedThemes": ["hope"],
+        "nominationThemes": [
+          {
+            "generator": "semantic",
+            "themes": ["hope"]
+          },
+          {
+            "generator": "multi-interest-profile",
+            "themes": ["hope"]
+          },
+          {
+            "generator": "directional-cowatch",
+            "themes": []
+          }
+        ],
+        "sourceInterest": [
+          {
+            "generator": "semantic",
+            "ordinal": null,
+            "kind": null
+          },
+          {
+            "generator": "multi-interest-profile",
+            "ordinal": 0,
+            "kind": "durable"
+          },
+          {
+            "generator": "directional-cowatch",
+            "ordinal": null,
+            "kind": null
+          }
+        ]
+      }
+    ]
+  },
+  "firstChunkFailure": {
+    "status": "fallback",
+    "reason": "composition_required_input_unavailable",
+    "availability": {
+      "missingSource": false,
+      "missingInterest": false,
+      "missingTheme": true,
+      "missingHistory": false
+    },
+    "coverage": {
+      "sources": 2,
+      "availableSources": 2,
+      "interests": 1,
+      "availableInterests": 1,
+      "recentItems": 0,
+      "itemsWithThemes": 1
+    },
+    "candidates": [
+      {
+        "selectedGenerator": "multi-interest-profile",
+        "selectedThemes": ["hope"],
+        "nominationThemes": [
+          {
+            "generator": "multi-interest-profile",
+            "themes": ["hope"]
+          }
+        ],
+        "sourceInterest": [
+          {
+            "generator": "multi-interest-profile",
+            "ordinal": 0,
+            "kind": "durable"
+          }
+        ]
+      },
+      {
+        "selectedGenerator": "directional-cowatch",
+        "selectedThemes": [],
+        "nominationThemes": [
+          {
+            "generator": "directional-cowatch",
+            "themes": []
+          }
+        ],
+        "sourceInterest": [
+          {
+            "generator": "directional-cowatch",
+            "ordinal": null,
+            "kind": null
+          }
+        ]
+      }
+    ]
+  },
+  "firstChunkControl": {
+    "status": "composed",
+    "reason": null,
+    "availability": {
+      "missingSource": false,
+      "missingInterest": false,
+      "missingTheme": false,
+      "missingHistory": false
+    },
+    "coverage": {
+      "sources": 2,
+      "availableSources": 2,
+      "interests": 1,
+      "availableInterests": 1,
+      "recentItems": 0,
+      "itemsWithThemes": 2
+    },
+    "candidates": [
+      {
+        "selectedGenerator": "multi-interest-profile",
+        "selectedThemes": ["hope"],
+        "nominationThemes": [
+          {
+            "generator": "multi-interest-profile",
+            "themes": ["hope"]
+          }
+        ],
+        "sourceInterest": [
+          {
+            "generator": "multi-interest-profile",
+            "ordinal": 0,
+            "kind": "durable"
+          }
+        ]
+      },
+      {
+        "selectedGenerator": "directional-cowatch",
+        "selectedThemes": ["hope"],
+        "nominationThemes": [
+          {
+            "generator": "directional-cowatch",
+            "themes": ["hope"]
+          }
+        ],
+        "sourceInterest": [
+          {
+            "generator": "directional-cowatch",
+            "ordinal": null,
+            "kind": null
+          }
+        ]
+      }
+    ]
+  },
+  "afterFirstChunkThemes": ["hope"],
+  "cleanup": "owned temporary database dropped in finally"
+}

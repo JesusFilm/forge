@@ -78,6 +78,7 @@ flowchart TB
 - R9. Home's hero and the series-detail trailer each show their poster and stay silent while the window holds live playback, and resume their normal behaviour once the window stops holding a video surface or is dismissed.
 - R10. Exactly one video decoder is live at any moment, where live means a mounted video view rather than an unpaused player.
 - R11. The floating window hides while an in-app sheet is presented, and returns to the corner it occupied when that sheet closes. Suppression never applies to the full-screen view.
+  - **Superseded on iOS 2026-09-30 (owner):** on iOS the window stays under a sheet, darkened by the sheet's dimming. It still hides on Android, where the host draws over a sheet. See `apps/mobile/CLAUDE.md`, "Sheet suppression applies on Android only".
 - R12. Starting a different video replaces what the window is playing.
 
 **Native picture-in-picture**

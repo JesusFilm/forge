@@ -49,7 +49,7 @@ export async function PUT(request: Request, context: Context) {
     return NextResponse.json({ error: "not_reserved" }, { status: 409 })
   const concurrent = await redis().eval(
     `local count = redis.call('INCR', KEYS[1])
-     redis.call('EXPIRE', KEYS[1], 300)
+     redis.call('EXPIRE', KEYS[1], 600)
      if count > 2 then redis.call('DECR', KEYS[1]); return 0 end
      return 1`,
     1,

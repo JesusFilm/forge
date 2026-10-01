@@ -12,7 +12,7 @@ Base: `codex/tv-beta-feedback` at `6791acac5`. Work branch: `codex/tv-feedback-a
 
 - Unfinished Resume-to-first-frame loader handoff (`feat-511` in the source worktree), track-choice dialogs, audio/subtitle changes, and broad native-player replacements.
 - The source worktree's QA package identity, old Android version code, and older `withTVHardwareFeatures` implementation. The current branch's Play manifest must continue to require Leanback while making touchscreen, faketouch, portrait and microphone optional.
-- The source worktree's colliding roadmap IDs `feat-508` through `feat-511`; record the selected integration under `feat-553` instead.
+- The source worktree's colliding roadmap IDs `feat-508` through `feat-511`; record the selected integration under `feat-595` instead.
 
 ## Verify
 

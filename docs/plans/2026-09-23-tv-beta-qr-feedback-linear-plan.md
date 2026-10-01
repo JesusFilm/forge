@@ -3,7 +3,7 @@ title: "Watch TV beta feedback through QR, mobile evidence, and Linear"
 type: feat
 status: proposed
 date: 2026-09-23
-roadmap: feat-551
+roadmap: feat-593
 scope: "New standalone feedback app and a small apps/tv QR entry point"
 ---
 

@@ -38,6 +38,7 @@ import {
 } from "./FloatingSearchField"
 import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { reportDatadogRumAction } from "@/components/DatadogRum"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import {
@@ -224,8 +225,8 @@ export function SearchOverlay() {
     query,
     submittedQuery,
     displayResults,
+    displayResultPages,
     exiting,
-    resultsKey,
     hasMore,
     loading,
     showSkeleton,
@@ -1523,58 +1524,78 @@ export function SearchOverlay() {
           {displayResults.length > 0 && (
             <>
               <div
-                key={resultsKey}
                 className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4${exiting ? " animate-card-exit" : ""}`}
               >
-                {displayResults.map((result, index) => (
-                  <VideoCard
-                    key={`${result.id}-${index}`}
-                    result={result}
-                    index={exiting ? 0 : index}
-                    requestedLanguageSlug={completedSearchLanguageSlug}
-                    requestedLanguageName={completedSearchLanguageName}
-                    onResultClick={
-                      searchResultAnalytics
-                        ? (clickedResult) => {
-                            closeAfterResultNavigation()
-                            const clickKey = [
-                              searchResultAnalytics.searchRequestId,
-                              clickedResult.id,
-                              index + 1,
-                            ].join(":")
-                            if (
-                              recordedResultClickKeysRef.current.has(clickKey)
-                            ) {
-                              return
-                            }
-                            recordedResultClickKeysRef.current.add(clickKey)
-                            reportDatadogRumAction(
-                              WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
-                              buildWatchSearchResultClickRumContext(
-                                clickedResult,
-                                {
-                                  ...searchResultAnalytics,
-                                  position: index + 1,
-                                },
-                              ),
-                            )
-                            void recordWatchSearchResultClick({
-                              requestId: searchResultAnalytics.searchRequestId,
-                              resultId: clickedResult.id,
-                              resultType: clickedResult.type,
-                              position: index + 1,
-                              visibleResultIds,
-                              routeLanguageSlug:
-                                searchResultAnalytics.routeLanguageSlug,
-                              searchLanguageSlug:
-                                searchResultAnalytics.searchLanguageSlug,
-                            })
+                {displayResultPages.map((page) => (
+                  <WatchExposureBoundary
+                    key={page.key}
+                    config={{
+                      surface: "watch-search",
+                      block: "results",
+                      presentation: "result-list",
+                      placement: "search-results",
+                    }}
+                    manifest={page.surfaceManifest}
+                  >
+                    {page.results.map((result, pageIndex) => {
+                      const index = page.startIndex + pageIndex
+                      return (
+                        <VideoCard
+                          key={`${result.id}-${index}`}
+                          result={result}
+                          index={exiting ? 0 : index}
+                          requestedLanguageSlug={completedSearchLanguageSlug}
+                          requestedLanguageName={completedSearchLanguageName}
+                          onResultClick={
+                            searchResultAnalytics
+                              ? (clickedResult) => {
+                                  closeAfterResultNavigation()
+                                  const clickKey = [
+                                    searchResultAnalytics.searchRequestId,
+                                    clickedResult.id,
+                                    index + 1,
+                                  ].join(":")
+                                  if (
+                                    recordedResultClickKeysRef.current.has(
+                                      clickKey,
+                                    )
+                                  ) {
+                                    return
+                                  }
+                                  recordedResultClickKeysRef.current.add(
+                                    clickKey,
+                                  )
+                                  reportDatadogRumAction(
+                                    WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
+                                    buildWatchSearchResultClickRumContext(
+                                      clickedResult,
+                                      {
+                                        ...searchResultAnalytics,
+                                        position: index + 1,
+                                      },
+                                    ),
+                                  )
+                                  void recordWatchSearchResultClick({
+                                    requestId:
+                                      searchResultAnalytics.searchRequestId,
+                                    resultId: clickedResult.id,
+                                    resultType: clickedResult.type,
+                                    position: index + 1,
+                                    visibleResultIds,
+                                    routeLanguageSlug:
+                                      searchResultAnalytics.routeLanguageSlug,
+                                    searchLanguageSlug:
+                                      searchResultAnalytics.searchLanguageSlug,
+                                  })
+                                }
+                              : () => {
+                                  closeAfterResultNavigation()
+                                }
                           }
-                        : () => {
-                            closeAfterResultNavigation()
-                          }
-                    }
-                  />
+                        />
+                      )
+                    })}
+                  </WatchExposureBoundary>
                 ))}
               </div>
 

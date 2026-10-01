@@ -1972,6 +1972,7 @@ type Mutation {
   issueShortsAssetRead(reference: JSON!): ShortsAssetTransfer
   issueShortsAssetUpload(input: JSON!): ShortsAssetTransfer
   issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String, sessionToken: String, viewerToken: String): WatchPlaybackContextReceipt!
+  issueWatchSurfaceDelivery(attemptId: String!, manifest: JSON!, trafficCategory: String!): JSON!
   materializeShortsSource(input: JSON!): ShortsSourceSnapshot
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
@@ -1984,13 +1985,16 @@ type Mutation {
   recordSemanticRecommendationPlayback(capability: String!, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): [RecommendationPlaybackReceipt!]!
   recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
+  recordWatchSurfaceExposure(events: JSON!): [WatchSurfaceExposureReceipt!]!
   recoverManagerSubtitleEvalMachineRun(input: ManagerSubtitleEvalMachineRecoverRunInput!): ManagerSubtitleEvalOperationResult
   recoverManagerSubtitleEvalRun(input: ManagerSubtitleEvalRecoverRunInput!): ManagerSubtitleEvalOperationResult
   """
   Register an uploaded file in the media library after its bytes are stored.
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
+  registerPushDevice(input: RegisterPushDeviceInput!): PushDeviceRegistrationReceipt!
   rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
+  reportPushOpen(input: ReportPushOpenInput!): PushOpenReceipt!
   requestShortsAttempt(input: ShortsRequestInput!): ShortsCommandResult
   requestShortsExperiment(input: JSON!): JSON
   """
@@ -2163,6 +2167,43 @@ type PromoBannerBlock {
   widthPercent: Int
 }
 
+enum PushDevicePlatform {
+  ANDROID
+  IOS
+}
+
+"""
+What one registration answers. The test ID is the identifier the app reveals on its mission screen; it is never the push token.
+"""
+type PushDeviceRegistrationReceipt {
+  status: PushRegistrationState!
+  testDeviceId: String!
+}
+
+enum PushOpenOutcome {
+  DUPLICATE
+  STORED
+  UNKNOWN
+}
+
+"""
+What one open report answers. A duplicate and an unknown nonce are both normal outcomes, never errors.
+"""
+type PushOpenReceipt {
+  outcome: PushOpenOutcome!
+}
+
+enum PushPermissionState {
+  denied
+  granted
+}
+
+enum PushRegistrationState {
+  ACTIVE
+  INACTIVE
+  SUPERSEDED
+}
+
 type Query {
   """List active (non-soft-deleted) countries."""
   countries(limit: Int = 250, offset: Int = 0): [Country!]
@@ -2233,7 +2274,7 @@ type Query {
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
-  semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
+  semanticRecommendationDelivery(audioLanguageSlug: String!, clientDeliveryContract: String, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String): SemanticRecommendationDelivery!
   shortsApprovals(cursor: ID, limit: Int, projectId: ID!): [ShortsApproval!]
   shortsAsset(reference: JSON!): ShortsAssetVersion
   shortsAssets(input: JSON): [ShortsAssetVersion!]
@@ -2254,7 +2295,7 @@ type Query {
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
   systemStatus: JSON
-  userRecommendations(audioLanguageSlug: String!, consentReceiptDigest: String, count: Int, locale: String!, profileTokenDigest: String, sessionDigest: String, sessionToken: String, viewerToken: String): UserRecommendationDelivery!
+  userRecommendations(audioLanguageSlug: String!, consentReceiptDigest: String, count: Int, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, sessionDigest: String, sessionToken: String, trafficCategory: String, viewerToken: String): UserRecommendationDelivery!
   """Fetch a single Video by id."""
   video(id: ID!): Video
   """Fetch a single Video by slug."""
@@ -2413,6 +2454,19 @@ type RecommendationViewerStatus {
   state: String!
 }
 
+input RegisterPushDeviceInput {
+  appBuild: String!
+  appLanguageSlug: String!
+  expoPushToken: String!
+  installId: String!
+  permission: PushPermissionState!
+  phoneLocale: String!
+  platform: PushDevicePlatform!
+  sessionToken: String
+  timeZone: String!
+  viewerToken: String
+}
+
 """Single entry in RelatedQuestionsBlock.questions."""
 type RelatedQuestionItem {
   answer: String
@@ -2431,6 +2485,12 @@ type RelatedQuestionsBlock {
   questions: [RelatedQuestionItem!]!
   sectionKey: String
   t: String
+}
+
+input ReportPushOpenInput {
+  nonce: String!
+  sessionToken: String
+  viewerToken: String
 }
 
 """
@@ -3797,6 +3857,7 @@ type WatchSearchResponse {
   requestId: String
   results: [WatchSearchResult!]
   searchMode: String
+  surfaceManifest: JSON
 }
 
 type WatchSearchResult {
@@ -3868,6 +3929,11 @@ type WatchSetting {
   Published ExperienceLocale flagged isHomepage for the requested locale.
   """
   homepageExperience: ExperienceLocale
+}
+
+type WatchSurfaceExposureReceipt {
+  eventId: String!
+  status: String!
 }
 
 enum WhatsNewFeatureVoteRefusal {

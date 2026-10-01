@@ -19,6 +19,14 @@ import {
 } from "./delivery-runtime"
 import type { DeliveryDependencies } from "./delivery.types"
 import { RecommendationDeliveryService } from "./delivery.service"
+import {
+  composeDeliveryCowatchTrial,
+  resolveDeliveryStudyAuthority,
+} from "./delivery-trial.service"
+import {
+  composeDeliveryOwnerCowatch,
+  resolveDeliveryOwnerAuthority,
+} from "./delivery-owner.service"
 import { getRecommendationServingState } from "./manifest.service"
 import { getRecommendationRecentContext } from "./recent-context.service"
 import { readRecommendationRetentionHealth } from "./retention.service"
@@ -50,6 +58,18 @@ export function createRecommendationDeliveryDependencies(
     tokenService: token,
     assignProfileExperiment: timed("assignProfileExperiment", (input) =>
       assignProfileUsefulnessExperiment(prisma, input),
+    ),
+    resolveStudyAuthority: timed("resolveStudyAuthority", (input) =>
+      resolveDeliveryStudyAuthority(prisma, input),
+    ),
+    composeCowatchTrial: timed("composeCowatchTrial", (input) =>
+      composeDeliveryCowatchTrial(prisma, input),
+    ),
+    resolveOwnerAuthority: timed("resolveOwnerAuthority", (input) =>
+      resolveDeliveryOwnerAuthority(prisma, input),
+    ),
+    composeOwnerCowatch: timed("composeOwnerCowatch", (input) =>
+      composeDeliveryOwnerCowatch(prisma, input),
     ),
     retrieveCuratedFallback: timed("retrieveCuratedFallback", (input) =>
       retrieveCuratedFallback(prisma, input),
@@ -85,13 +105,21 @@ export function createRecommendationDeliveryDependencies(
     ),
     retrieve: timed(
       "retrieve",
-      ({ seedMediaId, locale, audioLanguageSlug, limit, deadlineAt }) =>
+      ({
+        seedMediaId,
+        locale,
+        audioLanguageSlug,
+        limit,
+        deadlineAt,
+        onDiagnostics,
+      }) =>
         runRecommendationRetrievalQuery(prisma, deadlineAt, (scopedPrisma) =>
           getSemanticDeliveryCandidatePool(scopedPrisma, {
             seedMediaId,
             locale,
             audioLanguageSlug,
             limit,
+            onDiagnostics,
           }),
         ),
     ),

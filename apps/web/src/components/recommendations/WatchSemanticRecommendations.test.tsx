@@ -91,12 +91,64 @@ describe("WatchSemanticRecommendations", () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           "x-forge-recommendation-client": "viewing-mode-v1",
+          "x-forge-recommendation-delivery-contract": "cowatch-mmr-v1",
         }),
       }),
     )
     expect(container.textContent).toContain("Target video")
   })
 
+  it("renders the governed co-watch/MMR response without exposing trial internals", async () => {
+    startRecommendationConsentBootstrap()
+    completeRecommendationConsentBootstrap()
+    const trial = {
+      ...sixItemDelivery,
+      personalization: {
+        ...sixItemDelivery.personalization,
+        lane: "profile_challenger",
+        executionMode: "cowatch_mmr_personalized",
+        effectiveManifestId: "hybrid-profile-viewing-mode-cowatch-mmr-v1",
+      },
+      items: sixItemDelivery.items.map((item) => ({
+        ...item,
+        candidateGenerator: "directional-cowatch",
+        contributors: [
+          ...item.contributors,
+          {
+            generator: "directional-cowatch",
+            generatorVersion: "frozen-source-controlled-trial-v1",
+            rank: 1,
+          },
+        ],
+      })),
+    }
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input).endsWith("/api/recommendations")
+          ? jsonResponse({ delivery: trial })
+          : acceptedEvidenceResponse(init),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    act(() =>
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      ),
+    )
+    await flush()
+    expect(
+      container.querySelectorAll("a[data-recommendation-key]"),
+    ).toHaveLength(6)
+    expect(container.textContent).toContain(
+      "Recommended from this video and your interests.",
+    )
+    expect(container.innerHTML).not.toMatch(
+      /graphGeneration|compositionProtocol|evidenceDigest/,
+    )
+  })
   it("renders the compatible profile lane with a privacy-safe explanation", async () => {
     const profileDelivery = {
       ...delivery,
@@ -880,49 +932,63 @@ describe("WatchSemanticRecommendations", () => {
     )
   })
 
-  it("renders the environment fallback without attribution calls or navigation delay", async () => {
-    const contextualFallback = {
-      ...fallbackDelivery,
-      requestId: null,
-      reason: "delivery_timeout",
-      items: fallbackDelivery.items.map((item) => ({
-        ...item,
-        capability: "contextual-fallback-unattributed-v1",
-      })),
-    }
-    const navigate = vi.fn()
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      if (String(input).endsWith("/api/recommendations")) {
-        return jsonResponse({ delivery: contextualFallback })
+  it.each([1, 5, 6])(
+    "renders a %i-card contextual slate without attribution calls or navigation delay",
+    async (count) => {
+      const contextualFallback = {
+        ...fallbackDelivery,
+        requestId: null,
+        reason: "delivery_timeout",
+        requestedCount: 6,
+        composedCount: count,
+        shortfallReason: count < 6 ? "insufficient_candidates" : null,
+        items: Array.from({ length: count }, (_, index) => ({
+          ...fallbackDelivery.items[0],
+          id: `contextual:${index + 1}`,
+          position: index,
+          targetMediaId: `target-${index}`,
+          canonicalHref:
+            index === 0 ? "/watch/target.html" : `/watch/target-${index}.html`,
+          capability: "contextual-fallback-unattributed-v1",
+        })),
       }
-      return jsonResponse({ error: "unexpected attribution" }, 500)
-    })
-    vi.stubGlobal("fetch", fetchMock)
+      const navigate = vi.fn()
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith("/api/recommendations")) {
+          return jsonResponse({ delivery: contextualFallback })
+        }
+        return jsonResponse({ error: "unexpected attribution" }, 500)
+      })
+      vi.stubGlobal("fetch", fetchMock)
 
-    act(() => {
-      root.render(
-        <WatchSemanticRecommendations
-          seedMediaId="seed-1"
-          locale="en"
-          audioLanguageSlug="english"
-          navigate={navigate}
-        />,
-      )
-    })
-    await flush()
-
-    expect(container.textContent).toContain("Target video")
-    expect(fetchMock).toHaveBeenCalledOnce()
-    act(() => {
-      container
-        .querySelector("a[data-recommendation-key]")
-        ?.dispatchEvent(
-          new MouseEvent("click", { bubbles: true, cancelable: true }),
+      act(() => {
+        root.render(
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="en"
+            audioLanguageSlug="english"
+            navigate={navigate}
+          />,
         )
-    })
-    expect(navigate).toHaveBeenCalledWith("/watch/target.html")
-    expect(fetchMock).toHaveBeenCalledOnce()
-  })
+      })
+      await flush()
+
+      expect(container.textContent).toContain("Target video")
+      expect(
+        container.querySelectorAll("a[data-recommendation-key]"),
+      ).toHaveLength(count)
+      expect(fetchMock).toHaveBeenCalledOnce()
+      act(() => {
+        container
+          .querySelector("a[data-recommendation-key]")
+          ?.dispatchEvent(
+            new MouseEvent("click", { bubbles: true, cancelable: true }),
+          )
+      })
+      expect(navigate).toHaveBeenCalledWith("/watch/target.html")
+      expect(fetchMock).toHaveBeenCalledOnce()
+    },
+  )
 
   it("keeps trusted links usable when lifecycle instrumentation is degraded", async () => {
     let evidenceAttempts = 0
@@ -1132,4 +1198,153 @@ describe("WatchSemanticRecommendations", () => {
       "Recommendation activity could not be recorded",
     )
   })
+})
+
+it("activates once, replaces reused speculative data, and attributes only the fresh envelope", async () => {
+  Object.defineProperty(document, "prerendering", {
+    configurable: true,
+    writable: true,
+    value: true,
+  })
+  completeRecommendationConsentBootstrap()
+  const navigate = vi.fn()
+  let attempts = 0
+  const fetchMock = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/api/recommendations")) {
+        attempts += 1
+        return attempts === 1
+          ? jsonResponse({
+              deliveryDisposition: "deferred",
+              delivery: { ...emptyDelivery, reason: "traffic_deferred" },
+            })
+          : jsonResponse({ deliveryDisposition: "measured", delivery })
+      }
+      if (String(input).endsWith("/select")) {
+        const body = JSON.parse(String(init?.body))
+        return jsonResponse({
+          claimNonce: body.claimNonce,
+          canonicalHref: delivery.items[0].canonicalHref,
+          targetMediaId: delivery.items[0].targetMediaId,
+        })
+      }
+      return acceptedEvidenceResponse(init)
+    },
+  )
+  vi.stubGlobal("fetch", fetchMock)
+  try {
+    act(() =>
+      root.render(
+        <StrictMode>
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="en"
+            audioLanguageSlug="english"
+            navigate={navigate}
+          />
+        </StrictMode>,
+      ),
+    )
+    await flush()
+    await flush()
+    expect(fetchMock).not.toHaveBeenCalled()
+    Object.defineProperty(document, "prerendering", { value: false })
+    act(() => {
+      document.dispatchEvent(new Event("prerenderingchange"))
+      document.dispatchEvent(new Event("prerenderingchange"))
+    })
+    for (let index = 0; index < 8; index += 1) await flush()
+    expect(attempts).toBe(2)
+    const rendered = requestBodies(fetchMock).filter(
+      (body) =>
+        (body.events as { kind: string }[] | undefined)?.[0]?.kind === "render",
+    )
+    expect(rendered).toHaveLength(1)
+    expect(rendered[0]).toMatchObject({
+      requestId: "request-1",
+      capability: "delivery-capability-secret",
+      events: [{ kind: "render" }],
+    })
+    const card = container.querySelector("a")!
+    observerCallback(
+      [
+        {
+          target: card,
+          isIntersecting: true,
+          intersectionRatio: 1,
+          boundingClientRect: card.getBoundingClientRect(),
+          intersectionRect: card.getBoundingClientRect(),
+          rootBounds: null,
+          time: performance.now(),
+        },
+      ],
+      {} as IntersectionObserver,
+    )
+    await act(async () => vi.advanceTimersByTime(1000))
+    await flush()
+    expect(
+      requestBodies(fetchMock).filter(
+        (body) =>
+          (body.events as { kind: string }[] | undefined)?.[0]?.kind ===
+          "impression",
+      ),
+    ).toHaveLength(1)
+    act(() =>
+      card.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }),
+      ),
+    )
+    for (let index = 0; index < 4; index += 1) await flush()
+    expect(navigate).toHaveBeenCalledTimes(1)
+    const selection = requestBodies(fetchMock).find(
+      (body) => body.itemId === "item-1" && !body.events,
+    )
+    expect(selection).toMatchObject({
+      requestId: "request-1",
+      capability: "delivery-capability-secret",
+    })
+    expect(attempts).toBe(2)
+    expect(container.innerHTML).not.toContain("delivery-capability-secret")
+  } finally {
+    delete (document as Document & { prerendering?: boolean }).prerendering
+  }
+})
+
+it("refreshes a seeded envelope on BFCache restoration without visibility-triggered duplicate delivery", async () => {
+  completeRecommendationConsentBootstrap()
+  const fetchMock = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).endsWith("/api/recommendations")
+        ? jsonResponse({ delivery })
+        : acceptedEvidenceResponse(init),
+  )
+  vi.stubGlobal("fetch", fetchMock)
+  act(() =>
+    root.render(
+      <WatchSemanticRecommendations
+        seedMediaId="seed-1"
+        locale="en"
+        audioLanguageSlug="english"
+      />,
+    ),
+  )
+  for (let index = 0; index < 4; index += 1) await flush()
+  act(() => document.dispatchEvent(new Event("visibilitychange")))
+  await flush()
+  expect(
+    fetchMock.mock.calls.filter(([input]) =>
+      String(input).endsWith("/api/recommendations"),
+    ),
+  ).toHaveLength(1)
+  act(() =>
+    window.dispatchEvent(
+      new PageTransitionEvent("pageshow", { persisted: true }),
+    ),
+  )
+  for (let index = 0; index < 4; index += 1) await flush()
+  expect(
+    fetchMock.mock.calls.filter(([input]) =>
+      String(input).endsWith("/api/recommendations"),
+    ),
+  ).toHaveLength(2)
 })
