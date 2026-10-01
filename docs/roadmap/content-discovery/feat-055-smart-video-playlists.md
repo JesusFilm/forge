@@ -3,7 +3,7 @@ id: "feat-055"
 title: "Smart Video Playlists"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-05-31"
 duration: 31
 depends_on:
@@ -15,7 +15,18 @@ tags:
   - "ai-pipeline"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+Prompt/vector-generated playlists are a separate product expansion, outside the selected bounded recommendation delivery scope. The ticket also assumes the retired Strapi/CMS architecture. No smart-playlist implementation or playlist quality benefit is claimed; existing authored collections and playlist behavior remain.
+
+Audit anchors: `apps/web/src/components/home/WatchHomeExperiencePage.tsx`, `apps/admin/src/domain/blocks.ts`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Playlists are currently manual, which makes it hard to turn a new prompt, topic description, or embedding vector into a usable viewing journey. We need a smart playlist system that can generate and rank a playlist from text or vector input and then hand that playlist to downstream product surfaces.
 

@@ -3,7 +3,7 @@ id: "feat-377"
 title: "Authenticated machine recommendation parity"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 5
 depends_on:
@@ -20,7 +20,18 @@ tags:
   - "authentication"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+A separate recommendation machine-adapter product with artifact-use receipts, purpose quotas and machine-utility dashboards is not part of the chosen viewer recommendation scope. It is not necessary for the deployed Watch and mobile recommendation paths. No machine parity or new authentication surface is claimed; existing machine exclusion, API access controls and unrelated automation remain.
+
+Audit anchors: `apps/admin/src/services/recommendations/candidate.ts`, `apps/admin/src/services/recommendations/integrity.service.ts`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Forge automation needs the same semantic recommendation core and provenance as Watch without impersonating viewers or changing human learning.
 

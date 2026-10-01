@@ -3,7 +3,7 @@ id: "feat-395"
 title: "Learned multi-outcome re-ranker"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 10
 depends_on:
@@ -22,7 +22,18 @@ tags:
   - "evaluation"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+The learned challenger, training snapshots and model registry are retired. The selected product keeps its deterministic ranking/composition and approved co-watch path. Existing experimental infrastructure is preserved but does not authorize new model training or promotion. Learned ranking benefit remains unmeasured.
+
+Audit anchors: `apps/admin/src/services/recommendations/ranker.ts`, `apps/admin/src/services/recommendations/delivery-owner.service.ts`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 After trustworthy exposure and outcome evidence exists, Forge can evaluate an interpretable learned challenger without replacing the deterministic control or collapsing outcomes.
 

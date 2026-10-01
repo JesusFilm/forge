@@ -3,7 +3,7 @@ id: "feat-390"
 title: "Continuation recommendation candidates"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 4
 depends_on:
@@ -21,7 +21,18 @@ tags:
   - "candidates"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+The proposed recommendation-generator integration for resume, course progression and authored next steps is retired as additional product scope. Existing playback, sequence navigation and continuation behavior remain; they are not proof of a provenance-rich shadow continuation generator.
+
+Audit anchors: `apps/admin/src/services/recommendations/candidate.ts`, `apps/web/src/components/watch/`, `apps/web/src/lib/playback-navigation-intent.ts`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Resume, next episode, course progression, and authored sequence are continuation intents, not ordinary fresh discovery.
 

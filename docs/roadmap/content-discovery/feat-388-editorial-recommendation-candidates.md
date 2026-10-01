@@ -3,7 +3,7 @@ id: "feat-388"
 title: "Editorial recommendation candidates"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 4
 depends_on:
@@ -21,7 +21,18 @@ tags:
   - "candidates"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+The shadow editorial-candidate adapter and counterfactual experiment programme are retired. Existing authored collections and approved curated fallback pools already serve their respective product roles; neither is being relabelled as the proposed generator. Keep authored order/publication authority, and keep seeded curated fallback empty-only.
+
+Audit anchors: `apps/admin/src/domain/blocks.ts`, `apps/admin/src/services/recommendations/curated-pools.service.ts`, `apps/web/src/components/home/WatchHomeExperiencePage.tsx`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Existing published editorial collections should participate in recommendation architecture without losing authored order, pins, or approved-pool intent.
 

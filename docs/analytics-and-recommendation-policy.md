@@ -50,6 +50,17 @@ The owner accepted the post-repair observations in the
 The exact-audio and Chinese identity defects were repaired and deployed in
 [PR #2527](https://github.com/JesusFilm/forge/pull/2527).
 
+## Roadmap scope after October 2 closeout
+
+The owner's final closeout request authorizes retiring obsolete or optional
+recommendation programme work. The path-specific authority and evidence live in
+the [closeout record](reports/2026-10-02-recommendation-roadmap-closeout.md).
+Apply that record before historical implementation plans. Preserve existing
+semantic/profile/co-watch delivery, controls, analytics and operational
+contracts. A cancelled study leaves usefulness unmeasured; a cancelled generator
+does not remove existing product behavior. Capacity and refresh lifecycle gates
+remain separate from accepted coverage limitations.
+
 ## Enablement
 
 Recommendations, anonymous recommendation profiles, profile learning, and

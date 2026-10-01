@@ -3,7 +3,7 @@ id: "feat-379"
 title: "Recommendation intent and profile controls"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 4
 depends_on:
@@ -23,7 +23,18 @@ tags:
   - "profiles"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+The proposed purpose prompts and five title-level feedback actions are additional product scope and are retired. Existing personalization disable/reset/delete controls and distinct durable/session projection fields remain mandatory; their presence does not mean the proposed explicit title actions were implemented. No transient search intent becomes durable preference by this cancellation.
+
+Audit anchors: `apps/web/src/components/recommendations/RecommendationConsentShell.tsx`, `apps/admin/src/services/recommendations/profiles/projection.ts`, `apps/admin/src/services/recommendations/profiles/privacy.ts`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Viewer purpose, short-term session intent, long-term interests, and negative evidence must remain distinct and controllable.
 

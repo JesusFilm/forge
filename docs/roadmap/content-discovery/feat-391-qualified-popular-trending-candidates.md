@@ -3,7 +3,7 @@ id: "feat-391"
 title: "Qualified popular and trending candidates"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 5
 depends_on:
@@ -24,7 +24,18 @@ tags:
   - "candidates"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+Quality-weighted popular/rising/trending projections and their shadow programme are retired. Current deterministic recommendations do not need a new aggregation/training product to deliver safely. Existing authored popular content remains unchanged, and raw plays are not newly treated as satisfaction.
+
+Audit anchors: `apps/admin/src/services/recommendations/ranker.ts`, `apps/admin/src/services/recommendations/candidate.ts`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Popularity must be based on integrity-eligible, quality-weighted outcomes rather than raw play counts.
 

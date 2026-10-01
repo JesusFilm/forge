@@ -3,7 +3,7 @@ id: "feat-394"
 title: "Bounded recommendation exploration"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 6
 depends_on:
@@ -22,7 +22,18 @@ tags:
   - "experiments"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+Randomized exploration and propensity-based learning are retired from this roadmap. Direct co-watch/MMR activation is owner-authorized without this experiment programme. Existing eligibility, bounded execution and rollback safeguards remain; no randomized exposure or bias-corrected evaluation is claimed.
+
+Audit anchors: `apps/admin/src/services/recommendations/delivery-owner.service.ts`, `apps/admin/src/services/recommendations/promotion/owner-authority.ts`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Eligible underexposed candidates need limited randomized exposure so Forge can learn without escaping integrity, product, or editorial guardrails.
 
