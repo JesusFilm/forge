@@ -3,17 +3,11 @@ id: "feat-449"
 title: "Personalized Watch row and page orchestration"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 8
-depends_on:
-  - "feat-373"
-  - "feat-388"
-  - "feat-390"
-  - "feat-391"
-  - "feat-393"
-blocks:
-  - "feat-396"
+depends_on: []
+blocks: []
 tags:
   - "admin"
   - "web"
@@ -24,7 +18,18 @@ tags:
   - "composition"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+A new personalized row-selection/page-ordering layer is retired. Existing authored home sections and recommendation shelves remain; the single-slate composer retains its bounded role. No cross-row personalization, page-level ranking benefit or complete page-exposure coverage is claimed.
+
+Audit anchors: `apps/web/src/components/home/WatchHomeExperiencePage.tsx`, `apps/web/src/components/recommendations/WatchForYouRecommendations.tsx`, `apps/admin/src/services/recommendations/candidate.ts`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 A high-quality recommendation slate does not define a complete video homepage. Watch needs a separate, explainable orchestration layer that chooses useful row types, ranks titles inside each row, orders rows for the current viewer and device, and removes repetition across the page without making one model own every decision.
 

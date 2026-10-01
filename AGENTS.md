@@ -34,6 +34,7 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - Keep roadmap files in `docs/roadmap/` with YAML frontmatter.
 - Keep dependencies bidirectional: if a feature `depends_on` another feature, add the reverse entry to `blocks`.
 - Keep feature bodies agent-optimized: exact file paths, grep patterns, types, constraints, and verification.
+- For recommendation scope, read `docs/reports/2026-10-02-recommendation-roadmap-closeout.md` before reviving historical requirements. `cancelled` retires scope with a reason; it does not establish implementation or authorize removing working behavior.
 
 ## Boundaries
 
