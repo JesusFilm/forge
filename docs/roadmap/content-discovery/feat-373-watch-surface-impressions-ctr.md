@@ -3,7 +3,7 @@ id: "feat-373"
 title: "Watch surface impressions and CTR"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: ""
 duration: 5
 depends_on:
@@ -51,9 +51,47 @@ Clicks cannot be interpreted without eligible impressions across every Watch blo
 - Show served, rendered, eligible-impression, and selection counts with CTR by surface, block, presentation, and position.
 - Show registry completeness, duplicate rate, visibility capability, and instrumentation gaps so partial migration cannot look complete.
 
-The ticket is not complete until this result is visible and reconcilable in the authorized Admin Recommendations area.
+The authorized Admin Recommendations area provides these inspection fields for
+measured entries. This was the original evidence gate; the October 2 owner
+decision below retires exhaustive registry coverage as a completion condition.
 
-## Remaining evidence gate
+## October 2, 2026 disposition
+
+**Complete for the delivered, supported Watch measurement contract.** Origin-
+issued V2 manifests bind persisted served positions to rendered, eligible and
+selection facts. The authorized Admin view filters by registry entry, placement
+and policy before its 128-group cap, and distinguishes V2 served counts from V1
+unknown denominators. The [September 29 deployed release record](../../operations/recommendation-batch-acceptance-2026-09-29.md#final-deployed-browser-and-admin-observation)
+contains ordinary-browser navigation and playback, matching hero issuance and
+selection, and a persisted 15-served/15-rendered hero cohort. Those rolling
+Admin counts include other production traffic and are not isolated to that
+browser. The same record reports a 2/10 registry completeness label; this
+disposition does **not** claim complete surface coverage or a measured global
+Watch CTR.
+
+The October 2 owner decision retires the exhaustive source-coverage gate.
+Fallback home carousel/grid and video editorial currently have no producing
+public route, while generic relative authored links on cached aliases may lack
+an exact origin-known public navigation base. The compiler withholds those
+sources instead of inventing served positions; their denominators remain
+unknown. [Feat-564](feat-564-cached-watch-public-navigation-authority.md) is
+cancelled as optional expansion, not treated as a repaired runtime defect.
+The [delivery policy](../../analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage)
+permits proceeding with accepted coverage limits but does not excuse errors.
+
+The final deployed Admin sample also reported shared `Loss suspected` with 195
+committed rejections and zero write failures. Its cause was not attributed to
+Watch exposure; the historical count is neither a healthy-exposure claim nor a
+fresh exposure-specific failure. Future evidence of failed issuance/persistence,
+wrong attribution, or a reproduced correctness defect requires investigation.
+The [evidence remediation ticket](feat-566-recommendation-evidence-gap-remediation.md)
+owns broader reconciliation. No new runtime deployment or fresh production
+health observation is asserted by this documentation closeout.
+
+## Historical remaining evidence gate (September 29)
+
+The following records the September 29 acceptance position before the October 2
+scope decision; its open gates are not current completion conditions.
 
 The signed below-player and For You surfaces have request-owned served facts.
 Origin-issued anonymous V2 evidence is deployed through PR #2450. Authorized
@@ -75,8 +113,8 @@ The batch's release and evidence boundaries are recorded in
 The owner explicitly retained fallback home carousel, fallback home grid and
 video editorial as unresolved coverage gaps for this batch. They currently
 have no producing public route; missing rows are unknown coverage, not measured
-zeros. This scope decision preserves their registry entries and does not
-complete this ticket. For You also had no measured rows in the inspected
+zeros. That September 29 scope decision preserved their registry entries and
+left this ticket open at the time. For You also had no measured rows in the inspected
 rolling window. The full coverage and ingestion-health gate remains open:
 shared health still reports loss suspected. Comparative page-loading evidence
 is retained with small-sample limits: home LCP rose 164 ms while its
