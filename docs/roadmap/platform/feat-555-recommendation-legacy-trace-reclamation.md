@@ -1,9 +1,9 @@
 ---
 id: "feat-555"
-title: "Reclaim legacy recommendation trace storage after expiry"
+title: "Reclaim legacy recommendation trace storage"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-29"
 duration: 3
 depends_on: []
@@ -16,7 +16,19 @@ tags:
   - "operations"
 ---
 
-## Current scope: October 2 NZDT owner authorization
+## Completed October 2 NZDT
+
+PRs 2532 and 2534 completed the owner-authorized bulk disposal through normal
+PR-to-main deployment. Migration 0127 finished October 1 at 22:25:50 UTC; the
+relation is empty and allocated 24,576 bytes afterward, reclaiming
+16,431,235,072 bytes. Direct filesystem availability increased by
+16,144,224,256 bytes to 25,511,591,936 bytes. Both Admin roles are healthy compact
+writers on `755345a92`. See
+`docs/reports/2026-10-02-legacy-stage-reclamation.md` for before/after measurements,
+the initial failed deployment and bounded recovery. Feat-554 remains open for
+two failure-free loaded retention cycles and continued capacity observation.
+
+## Final scope: October 2 NZDT owner authorization
 
 The owner explicitly requested bulk deletion of all remaining legacy stage detail,
 including former protected samples, without the old per-cohort verification.
@@ -24,8 +36,9 @@ including former protected samples, without the old per-cohort verification.
 empty-only and preservation gates below for this operation. Migration 0127 retires
 legacy run detail and restrictively truncates ONLY the stage relation atomically;
 compact traces and operational records retain their normal lifetime. The stopped
-unattended campaign must not restart. Status remains in progress until normal
-PR-to-main release and measured physical reclamation. Feat-554 remains independent.
+unattended campaign must not restart. Normal release and measured physical
+reclamation are complete. Feat-554 remains independent. The sections below are
+the historical expiry/finite-campaign plan, superseded by this final authorization.
 
 ## Problem
 
