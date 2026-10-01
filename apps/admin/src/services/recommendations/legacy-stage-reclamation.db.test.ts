@@ -16,6 +16,13 @@ const sql = readFileSync(
   new URL("./sql/reclaim-empty-legacy-stage-relation.sql", import.meta.url),
   "utf8",
 )
+const bulkRetirementSql = readFileSync(
+  new URL(
+    "../../../prisma/migrations/0127_recommendation_legacy_stage_bulk_retirement/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+)
 const lockEnd = sql.indexOf("DO $reclamation$")
 const beforeAssertion = sql.slice(0, lockEnd)
 const afterLock = sql.slice(lockEnd)
@@ -168,6 +175,95 @@ describe.skipIf(!enabled)(
       }
       throw new Error("Expected a blocked relation-lock request")
     }
+
+    it("discards all legacy detail, reports retirement, and preserves compact and operational data", async () => {
+      const legacy = await fixture("legacy", 64)
+      const incomplete = await fixture("legacy")
+      await db.recommendationCandidateRun.update({
+        where: { id: incomplete.id },
+        data: { evidenceComplete: false },
+      })
+      const compact = await fixture("compact")
+      const compactBefore = await snapshot(compact.requestId)
+      const legacyBefore = JSON.parse((await snapshot(legacy.requestId)).stored)
+      const { rows } = await controller.query<{ row: object }>(
+        "SELECT to_jsonb(e) AS row FROM recommendation_candidate_stage_evidence e WHERE run_id=$1 LIMIT 1",
+        [legacy.id],
+      )
+      const before = await allocation()
+      await controller.query(bulkRetirementSql)
+      expect(await db.recommendationCandidateStageEvidence.count()).toBe(0)
+      expect((await allocation()).bytes).toBeLessThan(before.bytes)
+      expect(await snapshot(compact.requestId)).toEqual(compactBefore)
+      const legacyAfter = await snapshot(legacy.requestId)
+      const storedAfter = JSON.parse(legacyAfter.stored)
+      const retiredAt = storedAfter.runs[0].legacy_detail_retired_at
+      expect(retiredAt).toBeTruthy()
+      storedAfter.runs[0].legacy_detail_retired_at = null
+      legacyBefore.stages = null
+      expect(storedAfter).toEqual(legacyBefore)
+      expect(
+        legacyAfter.detail?.candidateExecution?.legacyDetailRetiredAt,
+      ).toBeInstanceOf(Date)
+      expect(legacyAfter.detail?.candidateExecution?.stages).toEqual([])
+      const incompleteDetail = await snapshot(incomplete.requestId)
+      expect(
+        incompleteDetail.detail?.candidateExecution?.legacyDetailRetiredAt,
+      ).toBeInstanceOf(Date)
+      expect(
+        incompleteDetail.detail?.candidateExecution?.evidenceComplete,
+      ).toBe(false)
+      await expect(
+        controller.query(
+          "INSERT INTO recommendation_candidate_stage_evidence SELECT * FROM jsonb_populate_record(NULL::recommendation_candidate_stage_evidence,$1::jsonb)",
+          [JSON.stringify(rows[0].row)],
+        ),
+      ).rejects.toThrow("legacy candidate detail has been retired")
+      // A second application cannot reset the existing retirement timestamp.
+      await controller.query(bulkRetirementSql)
+      expect(
+        JSON.parse((await snapshot(legacy.requestId)).stored).runs[0]
+          .legacy_detail_retired_at,
+      ).toBe(retiredAt)
+    })
+
+    it("rolls back bulk retirement when an unexpected foreign-key dependant prevents restrictive truncate", async () => {
+      const legacy = await fixture("legacy")
+      const before = await snapshot(legacy.requestId)
+      await controller.query(
+        "CREATE TABLE reclamation_test_reference (stage_id text REFERENCES recommendation_candidate_stage_evidence(id))",
+      )
+      try {
+        await expect(controller.query(bulkRetirementSql)).rejects.toMatchObject(
+          { code: "0A000" },
+        )
+        await controller.query("ROLLBACK")
+        expect(await snapshot(legacy.requestId)).toEqual(before)
+      } finally {
+        await controller.query("ROLLBACK")
+        await controller.query("DROP TABLE reclamation_test_reference")
+      }
+    })
+
+    it("bounds bulk lock waiting and leaves legacy markers and rows unchanged", async () => {
+      const legacy = await fixture("legacy")
+      const before = await snapshot(legacy.requestId)
+      const blocker = await connection()
+      try {
+        await blocker.query("BEGIN")
+        await blocker.query(
+          "SELECT 1 FROM recommendation_candidate_stage_evidence LIMIT 1",
+        )
+        await expect(controller.query(bulkRetirementSql)).rejects.toMatchObject(
+          { code: "55P03" },
+        )
+        await controller.query("ROLLBACK")
+        expect(await snapshot(legacy.requestId)).toEqual(before)
+      } finally {
+        await blocker.query("ROLLBACK")
+        await blocker.end()
+      }
+    })
 
     it("refuses nonempty evidence with every stage and parent unchanged", async () => {
       const run = await fixture("legacy")

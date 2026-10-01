@@ -13,6 +13,24 @@ index, Prisma model, mixed-format reader and legacy/compact writer compatibility
 It changes no ranking, evidence lifetime or privacy deletion policy. It never
 uses `CASCADE`, drops the reader or retires an old writer.
 
+## October 2 NZDT owner override: bulk disposal
+
+The owner now authorizes discarding **all remaining legacy stage detail**, including
+former quality/investigation holds and incomplete observations, without the former
+per-cohort preservation checks. Follow
+`docs/plans/2026-10-02-001-bulk-legacy-stage-reclamation.md` and numbered migration
+`0127_recommendation_legacy_stage_bulk_retirement`. This supersedes the empty-only
+and preservation entry gates below for this single disposal. The inactive SQL asset
+remains historical preparation and must not be executed directly.
+
+The migration atomically marks legacy runs retired and uses bounded, restrictive
+`TRUNCATE TABLE ONLY` on the stage relation. Compact payloads and operational data
+remain. Stop the old unattended campaign permanently; its receipts remain historical
+audit evidence. Basic target/compact-writer/health checks, tests, normal PR-to-main
+deployment and measured filesystem recovery still apply. A compatible compact image
+can roll back application code, but cannot restore the discarded legacy observations.
+Retention verification in feat-554 remains independent and open.
+
 ## Future production entry gates
 
 Keep feat-554 and feat-555 open until their actual production gates pass:
