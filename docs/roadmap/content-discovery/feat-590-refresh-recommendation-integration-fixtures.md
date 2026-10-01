@@ -3,7 +3,7 @@ id: "feat-590"
 title: "Refresh stale recommendation integration test fixtures"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-10-01"
 duration: 1
 depends_on: []
@@ -34,3 +34,9 @@ The feat-589 broader PostgreSQL check exposed two pre-existing fixture failures 
 ## Verification
 
 Run both named test files against an owned loopback PostgreSQL/pgvector database with `RECOMMENDATION_DB_TEST=1`; exercise dates beyond September 17. Confirm production expiry checks and owner-release filters remain unchanged. Run Admin typecheck and scoped lint/format.
+
+## Closeout — October 2, 2026
+
+- The historical playback-upgrade test sets request and item creation timestamps before its fixed September 17 expiry. Its original migration chain and the production expiry constraint are unchanged.
+- The viewing-mode runtime test loads the current recommendation schema, including owner-release authority. The shared schema fixture executes migration 0127's lock, run update and truncation against its isolated schema; it does not skip the migration or alter production SQL. This also restores the current deterministic delivery/fallback fixture.
+- PostgreSQL 18/pgvector: four tests in the two named suites passed after the historical expiry date. The current last-known-good fallback drill passed against PostgreSQL and Redis with a freshly generated Prisma client. Admin typecheck, scoped ESLint and Prettier passed.
