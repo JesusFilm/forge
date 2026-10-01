@@ -161,6 +161,9 @@ export const SYSTEM_PROMPT = [
   "the Gospel passage word for word, and then hears you. Your text is spoken",
   "by a synthetic voice and heard once, never read: write for the ear. Short",
   "sentences, one thought each, plain words, concrete pictures from the story.",
+  "Talk the way a thoughtful friend explains a passage over coffee: warm,",
+  "direct, plain. No pulpit phrases ('dear friends', 'beloved', 'let us",
+  "consider').",
   "",
   "You write from the RESEARCH BRIEF and nothing else. It holds the message,",
   "the commentator's points and a few facts, each checked against its source.",
@@ -177,9 +180,15 @@ export const SYSTEM_PROMPT = [
   "- opening: see THE OPENING below.",
   "- paragraphs: the reflection, heard after 'Let's look more closely at what",
   "  this story means.' 350 to 500 words in 10 to 16 short paragraphs.",
-  "- takeaway: the one sentence the viewer carries away, under 20 words.",
-  "- question: spoken after 'First, ask yourself:'. One personal question for",
-  "  this week, built from the reflection's own images.",
+  "- takeaway: one sentence under 20 words that the viewer can DO and",
+  "  remember all week: one small, concrete step that lives out the message,",
+  "  beginning 'This week,'. Not a summary of the message. Example: 'This",
+  "  week, when God blesses someone else, thank him before you count what",
+  "  you got.'",
+  "- question: spoken after 'First, ask yourself:'. ONE clear question about",
+  "  the viewer's OWN life right now, in the second person, that only their",
+  "  life can answer: never one a retelling of the story would answer. One",
+  "  question, not two joined by 'and'.",
   "- prayer: spoken after 'Talk to God about it:'. One or two short sentences",
   "  telling the viewer what to bring to God, in the second person.",
   "The takeaway, question and prayer each say something the reflection has",
@@ -188,8 +197,12 @@ export const SYSTEM_PROMPT = [
   ...OPENING_RULES,
   "",
   "HOW THE REFLECTION MOVES:",
-  "- Open on the people: the human tension of the scene (who is hungry,",
-  "  ashamed, angry, and why it does not sit right). Never open on a fact.",
+  "- Open with a hook. In the first two or three sentences give the most",
+  "  surprising thing in the brief (a detail, a word's meaning, the sharpest",
+  "  human tension), told through the people of the scene, so the first ten",
+  "  seconds make the viewer want to stay. Never save the most interesting",
+  "  fact for the end: the strongest fact comes early and the turn and its",
+  "  meaning build from it. Never open on a dry fact with no person in it.",
   "- Weave the facts into ONE or TWO developed blocks. Each block starts from",
   "  a moment in the scene, gives the context that explains it, and at once",
   "  says what it means for the message. Facts that serve one idea sit",
@@ -218,7 +231,8 @@ export const SYSTEM_PROMPT = [
   "- What a character CLAIMS is his claim, not the narrator's fact: say who",
   "  says what.",
   "- Describe, don't command: no imperatives, no 'we must', 'let us', 'you",
-  "  should'. A gentle 'notice' or 'look at' is fine.",
+  "  should'. A gentle 'notice' or 'look at' is fine. The one exception is",
+  "  the takeaway's 'This week,' step.",
   "- The audience already follows Jesus: deepen, never evangelize or question",
   "  whether they are saved.",
   "- No denominational polemic, no predestination, no judgement of Judaism or",
@@ -404,6 +418,59 @@ export function openingProblems(
   return out
 }
 
+/**
+ * The takeaway is something to DO this week and the question is about the
+ * viewer's own life (colleagues' feedback on the Prodigal blind test,
+ * 2026-10-01): a takeaway that only restates the message is forgotten by the
+ * evening, and a question the story can answer reflects on the story, not on
+ * the viewer.
+ */
+export function takeawayQuestionProblems(
+  s: Pick<StoryScript, "takeaway" | "question">,
+): { rule: string; sentence: string; why: string }[] {
+  const out: { rule: string; sentence: string; why: string }[] = []
+  if (!/^this week\b/i.test(s.takeaway.trim()))
+    out.push({
+      rule: "takeaway-action",
+      sentence: s.takeaway,
+      why: "the takeaway is one small step for the week, beginning 'This week,'",
+    })
+  if (s.takeaway.split(/\s+/).filter(Boolean).length > 20)
+    out.push({
+      rule: "takeaway-length",
+      sentence: s.takeaway,
+      why: "the takeaway runs over 20 words; it must be easy to remember",
+    })
+  if (!/\b(you|your|yourself)\b/i.test(s.question))
+    out.push({
+      rule: "question-personal",
+      sentence: s.question,
+      why: "the question asks about the story, not the viewer: put it in the second person, about their own life",
+    })
+  if ((s.question.match(/\?/g) ?? []).length > 1)
+    out.push({
+      rule: "question-one",
+      sentence: s.question,
+      why: "ask one question, not several",
+    })
+  return out
+}
+
+/** The command and appeal checks on the takeaway. Its "This week," step is
+ *  the one sanctioned imperative; a collective command ("we must", "let us")
+ *  is still caught. */
+export function takeawayVoiceProblems(takeaway: string) {
+  return checkReflectionVoice(takeaway, { lang: "en" }).filter(
+    (f) =>
+      (f.rule === "command" || f.rule === "appeal") &&
+      !(
+        f.rule === "command" &&
+        /^this week,/i.test(f.sentence.trim()) &&
+        !/\b(we must|let us|let's)\b/i.test(f.sentence)
+      ),
+  )
+}
+
 export function scriptProblems(s: StoryScript, brief: ResearchBrief) {
   const reflection = s.paragraphs.map((p) => p.text).join("\n\n")
   const opening = s.opening.map((o) => o.line).join("\n")
@@ -411,7 +478,9 @@ export function scriptProblems(s: StoryScript, brief: ResearchBrief) {
     ...openingProblems(s.opening, s.paragraphs),
     ...foreignWords(opening, brief.language),
     ...namedSources(opening),
-    ...checkReflectionVoice(reflection, { lang: "en", conclusion: s.takeaway }),
+    ...checkReflectionVoice(reflection, { lang: "en" }),
+    ...takeawayVoiceProblems(s.takeaway),
+    ...takeawayQuestionProblems(s),
     ...foreignWords(
       [reflection, s.takeaway, s.question, s.prayer].join("\n"),
       brief.language,
