@@ -374,7 +374,6 @@ packages, exact Remotion version lockstep and React-free server imports intact.
 | MANAGER_BACKEND_MODE                              | Optional override for data/job backend mode (`admin` or `mock`)                                                              |
 | MANAGER_MOCK_SESSION_SECRET                       | Required in `mock` mode to sign Manager-issued mock sessions                                                                 |
 | MANAGER_MOCK_DATA_PATH                            | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)                                                        |
-| WORKFLOW_API_KEY                                  | workflow API key; optional locally, required for durable production Lab execution                                            |
 | MANAGER_API_KEY                                   | API key for external clients and the service-bearer-only Lab recovery endpoint (optional in dev)                             |
 | MANAGER_BASE_URL                                  | Canonical Manager origin used for same-origin Lab mutations; required in production                                          |
 | MANAGER_SESSION_SECRET                            | Secret for Auth-backed `manager-session` cookies                                                                             |
@@ -431,7 +430,7 @@ placing any secret in git, logs, browser bundles, prompts, or documentation:
    a paid smoke until the owner authorizes cost.
 3. Manager: configure the matching Admin OAuth service client,
    `ADMIN_GRAPHQL_URL`, the same review environment, the Ed25519 signing key,
-   `MASTRA_BASE_URL`/`MASTRA_SERVICE_API_KEY`, `WORKFLOW_API_KEY`,
+   `MASTRA_BASE_URL`/`MASTRA_SERVICE_API_KEY`,
    `MANAGER_BASE_URL`, `MANAGER_API_KEY`, Mux credentials, and the complete
    Railway S3 tuple. Production cloud launches also require Railway's
    `RAILWAY_GIT_COMMIT_SHA` (or an explicit `GIT_COMMIT_SHA`) and reject a
