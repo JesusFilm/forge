@@ -105,13 +105,19 @@ One command, e.g. `src/scripts/cut-devotional-shorts.ts --from=<manifest>`:
    loudness about -20 LUFS, no black frames, stills of each, word captions in
    sync. Do not say it is done before checking the frames.
 
-## Open questions for the owner
+## Owner answers to the open questions (2026-10-01)
 
-- Film moment (#2): with or without the scrolling Scripture captions? Which
-  moment: the turn of the scene, or the verse the reflection is about?
-- Music under shorts 2 to 6, or only the intro teaser?
-- Spanish / Russian shorts from localized devotionals: same set?
-- Output folder: `~/Desktop/Social Media/<Story>/shorts/`?
+- Film moment (#2): cut BOTH, as an A/B pair: `film-turn` (the turn of the
+  scene, chosen by a model) and `film-verse` (the passage the reflection is
+  about). The owner picks which one to post.
+- Film shorts keep the scrolling Scripture captions (LUMO style), for
+  sound-off viewers.
+- Music: only under the intro teaser. Shorts 2 to 6 keep the long-form's own
+  audio (voice, film sound), no added bed.
+- Languages: English only for now. Spanish / Russian come later as a
+  separate step.
+- Output folder: `~/Desktop/Social Media/<Story>/shorts/` (default, not
+  objected to).
 
 ## Working rules (from memory; they apply here too)
 

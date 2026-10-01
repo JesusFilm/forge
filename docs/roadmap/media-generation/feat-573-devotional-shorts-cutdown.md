@@ -49,7 +49,8 @@ call to action (owner, 2026-10-01); only the intro teaser keeps its CTA.
 ```ts
 type ShortKind =
   | "intro"
-  | "film"
+  | "film-turn"
+  | "film-verse"
   | "history"
   | "language"
   | "reflection"
@@ -64,10 +65,19 @@ type ShortPlan = {
 }
 ```
 
-Deterministic for history / language / question (role + timing). A model
-call only to choose the reflection run that stands alone and the film window. 4. Each short is rendered as its own portrait manifest through
-`DevotionalVideo` (not a crop of the 16:9 file), re-using cached audio. 5. Output `~/Desktop/Social Media/<Story>/shorts/<kind>.mp4` plus a `shorts.md`
-listing each short, its length and the text it says.
+Deterministic for history / language / question / film-verse (role, timing,
+the passage the reflection is about). A model call only to choose the
+reflection run that stands alone and the `film-turn` window (the turn of the
+scene). Both film shorts are cut as an A/B pair and keep the scrolling
+Scripture captions.
+
+4. Each short is rendered as its own portrait manifest through
+   `DevotionalVideo` (not a crop of the 16:9 file), re-using cached audio.
+   Only the intro teaser gets a music bed; shorts 2 to 6 keep the long-form's
+   own audio.
+5. Output `~/Desktop/Social Media/<Story>/shorts/<kind>.mp4` plus a `shorts.md`
+   listing each short, its length and the text it says. English only for now;
+   localized shorts are a later step.
 
 ## Constraints
 
