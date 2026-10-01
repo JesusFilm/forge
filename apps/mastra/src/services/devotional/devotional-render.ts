@@ -1866,7 +1866,9 @@ async function renderInStage(
   await download(clipInfo.downloadUrl, full)
   const fullDur = await probeDuration(full)
   // Every JESUS-film chapter ends with ~8s of QR code + titles — never show it.
-  const TRAILER = 8
+  // A LUMO segment ends on picture (checked on Luke 10, 2026-10-01): the 8s
+  // cut the last line of Martha and Mary, which closes its segment.
+  const TRAILER = registered?.film === "lumo" ? 0.3 : 8
   const usableDur = Math.max(1, fullDur - TRAILER)
   /**
    * Extra footage past the card's on-screen time so the picture keeps moving
@@ -3030,6 +3032,14 @@ async function renderInStage(
       ...(options.blurScale ? { blurScale: options.blurScale } : {}),
     },
   )
+  // Keep the manifest beside the video: the stage dir is deleted after a
+  // successful render, and the QA checks and the shorts cut-down (feat-573)
+  // both need the card timings and word times of THIS render.
+  if (!stillsOnly)
+    await copyFile(
+      path.join(stage, "manifest.json"),
+      videoPath.replace(/\.mp4$/, ".manifest.json"),
+    )
   return videoPath
 }
 

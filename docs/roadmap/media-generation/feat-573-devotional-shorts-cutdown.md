@@ -42,7 +42,7 @@ call to action (owner, 2026-10-01); only the intro teaser keeps its CTA.
 
 ## What To Build
 
-1. Persist the manifest next to the output video: `<out>/<name>.manifest.json`.
+1. ~~Persist the manifest next to the output video~~ done 2026-10-01: `<video>.manifest.json`.
 2. `src/scripts/cut-devotional-shorts.ts --from=<manifest> [--only=history,question]`.
 3. A planner that picks candidates from the manifest + `devo.json`:
 

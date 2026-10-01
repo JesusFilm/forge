@@ -79,13 +79,15 @@ send people to the full video on YouTube.
   zero ElevenLabs credits. Run with `ELEVENLABS_API_KEY=` and require the log
   line "reusing cached audio".
 
-## Gap found while writing this
+## Manifest is now kept (done 2026-10-01)
 
-The manifest is written only to a temp stage dir
-(`$TMPDIR/devo-render-*/manifest.json`) and is lost after the render. Step 1
-of the work is to persist it (and the staged audio list) next to the output
-video, e.g. `<out>/<name>.manifest.json`, so a cut-down can run later from the
-finished devotional alone.
+The stage dir (`$TMPDIR/devo-render-*`) is deleted after a successful render,
+so the manifest used to be lost. Since commit "keep the manifest beside the
+video", `devotional-render.ts` copies it to `<video>.manifest.json` next to
+every rendered MP4. Martha and Mary has one
+(`~/Desktop/Social Media/Martha/work/devo_h_martha.manifest.json`); Prodigal
+predates it: re-run its render with `--stop-before-render` and
+`ELEVENLABS_API_KEY=` to get one at zero cost.
 
 ## Suggested shape (not decided; brainstorm against the ticket first)
 
