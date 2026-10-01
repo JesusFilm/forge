@@ -1021,6 +1021,27 @@ describe("a move the feed asks for (clip end)", () => {
     await landSettle()
     expect(harness.moves).toEqual([])
     expectRolesOnScreen(harness)
+    // The release ends the hold: the next clip end moves the feed.
+    expect(await requestMove(harness, "next")).toBe(true)
+  })
+
+  // Code review (2026-10-01): a pan that a child takes back must end the hold
+  // too, or clip ends and screen-reader moves stop after one pan.
+  it("moves again after the pager loses a pan to another view", async () => {
+    const harness = await renderPager()
+    await act(async () => {
+      grantAndMove(handlers(harness.renderer), -SHORT, SLOW_MS)
+    })
+    await act(async () => {
+      handlers(harness.renderer).onResponderTerminate(touch(0, 0, 0, 0, 16))
+    })
+    await landSettle()
+
+    const before = springs().length
+    await accessibilityAction(harness, "next")
+    expect(springs()).toHaveLength(before + 1)
+    await landSettle()
+    expect(await requestMove(harness, "next")).toBe(true)
   })
 
   it("refuses while a settle runs, so one end moves one page", async () => {

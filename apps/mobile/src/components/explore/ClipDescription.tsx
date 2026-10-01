@@ -132,6 +132,16 @@ export function ClipDescription({
   )
 }
 
+type Finger = { identifier: string | number }
+
+/** The fingers on this view. iOS sends a finger's events only to the view it
+ *  started on and names them in `targetTouches`; Android sends no such list,
+ *  but routes every finger of a gesture to the view its first finger hit. */
+function ownFingers(e: GestureResponderEvent): readonly Finger[] {
+  const native = e.nativeEvent as { targetTouches?: readonly Finger[] }
+  return native.targetTouches ?? e.nativeEvent.changedTouches
+}
+
 type OpenDescriptionProps = {
   description: string
   maxHeight: number
@@ -154,8 +164,10 @@ function OpenDescription({
   const [content, setContent] = useState(0)
   const scrolls = viewport > 0 && content - viewport > 1
 
+  const fingers = useRef(new Set<string>())
   const release = useRef<(() => void) | null>(null)
   const releasePager = useCallback(() => {
+    fingers.current.clear()
     release.current?.()
     release.current = null
   }, [])
@@ -166,13 +178,26 @@ function OpenDescription({
 
   // Touch events reach this view whoever holds the responder: a scroll view
   // that coasts takes the touch start itself, ahead of every child.
-  const handleTouchStart = useCallback(() => {
-    if (!scrolls || release.current != null || holdPager == null) return
-    release.current = holdPager("drag")
-  }, [holdPager, scrolls])
+  const handleTouchStart = useCallback(
+    (e: GestureResponderEvent) => {
+      if (!scrolls || holdPager == null) return
+      for (const finger of ownFingers(e)) {
+        fingers.current.add(String(finger.identifier))
+      }
+      if (fingers.current.size > 0) release.current ??= holdPager("drag")
+    },
+    [holdPager, scrolls],
+  )
+  // The surface's `touches` may never empty here: a finger elsewhere keeps it
+  // full, and that finger's end never reaches this view (code review).
   const handleTouchEnd = useCallback(
     (e: GestureResponderEvent) => {
-      if (e.nativeEvent.touches.length === 0) releasePager()
+      for (const finger of e.nativeEvent.changedTouches) {
+        fingers.current.delete(String(finger.identifier))
+      }
+      if (fingers.current.size === 0 || e.nativeEvent.touches.length === 0) {
+        releasePager()
+      }
     },
     [releasePager],
   )

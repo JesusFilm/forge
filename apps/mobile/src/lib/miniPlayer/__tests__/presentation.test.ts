@@ -193,6 +193,18 @@ describe("sheets that draw over the host (iOS)", () => {
     ).toBe("floating")
   })
 
+  // An inline sheet (the Downloads delete confirm) draws inside its route, so
+  // the host would cover it on iOS too.
+  it("still hides for an inline sheet", () => {
+    const store = storeWithSession()
+    expect(
+      miniPlayerPresentation(store.getSnapshot(), ["downloads"], 1, true, 1),
+    ).toBe("hidden")
+    expect(
+      miniPlayerPresentation(store.getSnapshot(), ["downloads"], 1, true, 0),
+    ).toBe("floating")
+  })
+
   it("still hides for the picture-in-picture hold, and keeps the full view", () => {
     const store = storeWithSession()
     expect(

@@ -1,7 +1,6 @@
 // The reader controls that open a sheet (feat-553 U10, U11). Both reader hosts
-// pass these to BibleReader, so the Bible tab and the pushed reader open the
-// same sheets with the same params. The download prompt opens from the
-// translation sheet's Current card (owner, 2026-10-01).
+// pass these to BibleReader, so both open the same sheets with the same params.
+// The download prompt opens from the translation sheet's Current card.
 import type { Href } from "expo-router"
 
 import type { CatalogTranslation } from "../data/catalog"

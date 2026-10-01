@@ -1,8 +1,7 @@
 /**
- * The reader controls that open a sheet (feat-553 U10, U11). Both hosts pass
- * `readerSheetCallbacks(router)` to BibleReader, so each control pushes the
+ * The reader controls that open a sheet (feat-553 U10, U11): each pushes the
  * U10 href for its sheet. The download button is on the translation sheet's
- * Current card (owner, 2026-10-01), and opens U10's prompt.
+ * Current card (owner, 2026-10-01) and opens U10's prompt.
  */
 import { parseCatalog, type Catalog } from "../../data/catalog"
 import { readerSheetHref } from "../../sheets/routes"

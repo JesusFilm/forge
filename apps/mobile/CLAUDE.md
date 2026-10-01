@@ -1040,27 +1040,36 @@ No-op on iOS. The guard is an ENUMERATION, not a sweep: the two SDUI routes
 predated it by four months and shipped without the prop because nobody added
 them to the list. Add a case whenever you add a `<VideoView>`.
 
-**Sheet suppression applies on Android only (owner, 2026-09-30).** On iOS
-every in-app sheet is a native modal presented above `PlaybackHost`: the nine
-routes are `formSheet`s, and the three component-state sheets are React
-Native `Modal`s. So on iOS the window stays in its corner under a sheet, and
-the sheet's dimming darkens it with the rest of the screen. Measured on the
-iPhone 17 simulator: the window's white close icon dropped from peak 235 to 191
-under the reader sheets, the same share as the reader's own text. The dimming
+**Sheet suppression depends on where a sheet draws (owner, 2026-09-30).** On
+iOS, a route sheet or a React Native `Modal` is a native modal above
+`PlaybackHost`. The window stays in its corner under it, and the sheet's
+dimming darkens the window with the rest of the screen. On the iPhone 17
+simulator, the window's white close icon dropped from peak 235 to 191 under the
+reader sheets. That is the same share as the reader's own text. The dimming
 also takes every touch, so a tap on the dimmed window closes the sheet.
 `PlaybackHost` passes `Platform.OS === "ios"` as `sheetsDrawOverHost` to
-`miniPlayerPresentation`. Android draws the host over a sheet, so there the
-window hides while a sheet is presented and returns to its corner when the
-sheet closes. Two mechanisms, because the app presents sheets two ways —
-nine real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
-`src/lib/miniPlayer/suppression.ts`: six read from `app/watch/_layout.tsx` and
-`app/series/_layout.tsx`, and the three Bible reader sheets read from the root
-`app/_layout.tsx`) and three sheets that are component state, counted by
-`getNonRouteSheetCounter()` and keyed by id so an unbalanced call is
-attributable. Keep both in step with those layouts. A new iOS sheet that is
-NOT a native modal (a JS overlay inside a route) would draw under the window;
-give it a route or a `Modal`. Suppression hides by opacity and drops pointer
-events — it never unmounts the view.
+`miniPlayerPresentation`. Android draws the host over every sheet. There the
+window hides while a sheet is presented, and returns to its corner when the
+sheet closes.
+
+- **An inline sheet hides the window on both platforms (code review,
+  2026-10-01).** The Downloads delete confirm (`DeleteConfirmSheet`,
+  `libraryDeleteConfirm`) is not a `Modal`. It draws inside its route, so the
+  host would cover its buttons on iOS too. `INLINE_SHEET_IDS` in
+  `src/lib/miniPlayer/suppression.ts` names it. The counter's `inlineCount`
+  feeds `miniPlayerPresentation`'s `openInlineSheetCount`. The other two
+  component-state sheets, the quiz and the player settings, are `Modal`s.
+- **Two mechanisms count the sheets, because the app presents them two
+  ways.** The first is the nine sheet ROUTES in `IN_APP_SHEET_ROUTE_PATTERNS`
+  (`src/lib/miniPlayer/suppression.ts`). Six come from `app/watch/_layout.tsx`
+  and `app/series/_layout.tsx`. The three Bible reader sheets come from the
+  root `app/_layout.tsx`. The second is the three sheets that are component
+  state. `getNonRouteSheetCounter()` counts them by id, so an unbalanced call
+  is attributable. Keep both in step with those layouts.
+- **Give a new sheet a route or a `Modal`.** A sheet drawn inside a route must
+  be in `INLINE_SHEET_IDS`, or iOS draws the window over it.
+- Suppression hides by opacity and drops pointer events. It never unmounts the
+  view.
 
 **The Bible reader routes change how the window starts and where it rests,
 and only on those routes (feat-553 KTD10, KTD11).** Outside the reader
@@ -1206,27 +1215,40 @@ and `useExploreTakeover` hooks.
   `ExploreFeed` asks `ExplorePager`'s `requestMove("next")`. That move uses the
   settle spring of a swipe release, and it jumps with Reduce Motion on. The
   player holds the clip's last frame until the move lands. The clip loops only
-  when the pager refuses the move: no next clip yet, a settle running, a
-  finger on the pager or on a child that holds it, or an open description
-  (owner, 2026-10-01: the reader keeps the text). A loop is a seek at the
-  window end; native `loop` stays off. `explore.swipe` carries
-  `explore_swipe_trigger` (`viewer` or `clipEnd`), so the swipe series counts
-  only the viewer's moves.
+  when the pager refuses the move. The pager refuses in these cases:
+  - No next clip is ready, or a settle runs.
+  - A finger is on the pager, or on a child that holds it.
+  - The description is open, so the reader keeps the text (owner,
+    2026-10-01).
+  - A finger scrubs the progress bar, so the release seek lands on this clip
+    (code review, 2026-10-01).
+
+  A loop is a seek at the window end; native `loop` stays off. `explore.swipe`
+  carries `explore_swipe_trigger` (`viewer` or `clipEnd`). Filter on `viewer`
+  to count only the viewer's swipes.
+
 - **A child that scrolls on the pager's axis must hold the pager (owner,
   2026-10-01).** On Fabric iOS, a pager that takes the JS responder stops every
-  nested scroll view from starting a drag:
-  `RCTScrollViewComponentView`'s `touchesShouldCancelInContentView` returns NO
-  while an ANCESTOR holds the responder. A slow drag on an open description
-  therefore moved the feed to the next clip, and a fast one scrolled the text.
-  `useExplorePagerHold()` gives a child two scopes:
+  nested scroll view from starting a drag. `RCTScrollViewComponentView`'s
+  `touchesShouldCancelInContentView` returns NO while an ANCESTOR holds the
+  responder. So a slow drag on an open description moved the feed to the next
+  clip, and a fast one scrolled the text. `useExplorePagerHold()` gives a child
+  two scopes:
   - `drag`: the pager claims no drag and refuses `requestMove`. The open
-    description (`ClipDescription.tsx`) takes it in `onTouchStart` and releases
-    it on the last finger up, on a cancel, or on unmount. It holds only while
-    its text scrolls; text that fits leaves the drag to the pager.
+    description (`ClipDescription.tsx`) takes it in `onTouchStart`. It holds
+    only while its text scrolls; text that fits leaves the drag to the pager.
+  - **The `drag` hold counts the description's own fingers, not the
+    surface's.** iOS sends a finger's events only to the view it started on.
+    So a finger on the video keeps the surface's `touches` full, and its end
+    never reaches the description. The hold reads `targetTouches` on iOS. On
+    Android, which sends no `targetTouches`, it reads `changedTouches`:
+    Android routes every finger of a gesture to the view its first finger hit.
+    It releases when its own fingers are up, on a cancel, or on unmount.
   - `feedMove`: only `requestMove` (the feed's own move) waits, so a clip end
-    loops. The open description holds it for as long as it is mounted. A
-    swipe and the screen reader's next/previous actions still move the feed;
-    the engine passes `"viewer"` for those, and the handle passes `"feed"`.
+    loops. The open description holds it while it is mounted, and
+    `ClipProgressBar` holds it from a scrub's grant to its release. A swipe and
+    the screen reader's next/previous actions still move the feed. The engine
+    passes `"viewer"` for those, and the handle passes `"feed"`.
   - **Use touch events, not a nested responder.** A child that claims the
     responder fails in one case: while the text coasts after a fling, the
     `ScrollView` takes the touch start in the capture phase, ahead of every
@@ -2108,9 +2130,9 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   package root, never `/legacy`.
   - **The download button is on the translation sheet's Current card, not
     the top bar (owner, 2026-10-01).** It moved so long book names fit the
-    top bar. There is one button, on the card only: every row already says
-    "On this device", and a button per row would add a second tap target to
-    each row. `TranslationDownloadButton` fills the Current row's
+    top bar. There is one button, on the card only. Every row already says
+    "On this device". A button per row would add a second tap target to each
+    row. `TranslationDownloadButton` fills the Current row's
     `renderActiveAccessory` slot in `SearchableListSheet`, beside the row's
     accessible label, so VoiceOver reaches the button as its own element. A
     tap opens the same prompt (`openTranslationDownload` →

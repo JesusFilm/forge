@@ -321,15 +321,27 @@ describe("a finger on the open description", () => {
   }
 
   /** A touch event on the scroll view, with the fingers still down after it. */
+  /** Finger ids: the fingers this event changed, every finger still down on
+   *  the surface after it, and (iOS only) the fingers on the event's view. */
+  type Fingers = { changed: string[]; down: string[]; target?: string[] }
+  const ONE_DOWN: Fingers = { changed: ["1"], down: ["1"], target: ["1"] }
+  const ONE_UP: Fingers = { changed: ["1"], down: [], target: ["1"] }
+
   function fire(
     renderer: TestInstance,
     name: "onTouchStart" | "onTouchEnd" | "onTouchCancel",
-    fingersDown: number,
+    fingers: Fingers = name === "onTouchStart" ? ONE_DOWN : ONE_UP,
   ) {
     const handler = scrollBox(renderer).props[name] as (e: unknown) => void
-    const touches = Array.from({ length: fingersDown }, () => ({}))
+    const touch = (identifier: string) => ({ identifier })
     act(() => {
-      handler({ nativeEvent: { touches, changedTouches: [{}] } })
+      handler({
+        nativeEvent: {
+          touches: fingers.down.map(touch),
+          changedTouches: fingers.changed.map(touch),
+          ...(fingers.target && { targetTouches: fingers.target.map(touch) }),
+        },
+      })
     })
   }
 
@@ -340,22 +352,70 @@ describe("a finger on the open description", () => {
     expect(pagerClaims(renderer)).toBe(true)
     open(renderer, 200, 480)
 
-    fire(renderer, "onTouchStart", 1)
+    fire(renderer, "onTouchStart")
     expect(pagerClaims(renderer)).toBe(false)
-    fire(renderer, "onTouchEnd", 0)
+    fire(renderer, "onTouchEnd")
     expect(pagerClaims(renderer)).toBe(true)
   })
 
-  it("keeps the hold while another finger stays down", () => {
+  it("keeps the hold while a second finger on the text stays down", () => {
     const renderer = renderInPager(LONG)
     open(renderer, 200, 480)
 
-    fire(renderer, "onTouchStart", 1)
-    fire(renderer, "onTouchStart", 2)
-    fire(renderer, "onTouchEnd", 1)
+    fire(renderer, "onTouchStart")
+    fire(renderer, "onTouchStart", {
+      changed: ["2"],
+      down: ["1", "2"],
+      target: ["1", "2"],
+    })
+    fire(renderer, "onTouchEnd", {
+      changed: ["1"],
+      down: ["2"],
+      target: ["1", "2"],
+    })
     expect(pagerClaims(renderer)).toBe(false)
-    // One hold per touch run: the last finger up releases it.
-    fire(renderer, "onTouchEnd", 0)
+    fire(renderer, "onTouchEnd", { changed: ["2"], down: [], target: ["2"] })
+    expect(pagerClaims(renderer)).toBe(true)
+  })
+
+  // Code review (2026-10-01): iOS sends a finger's events only to the view it
+  // started on, so the surface's `touches` never empties for this view.
+  it("lets go when its own finger lifts, while a finger elsewhere stays down", () => {
+    const renderer = renderInPager(LONG)
+    open(renderer, 200, 480)
+
+    fire(renderer, "onTouchStart")
+    // Finger 2 lands on the video; that start never reaches this view.
+    fire(renderer, "onTouchEnd", { changed: ["1"], down: ["2"], target: ["1"] })
+    expect(pagerClaims(renderer)).toBe(true)
+  })
+
+  // iOS names every finger that changed in the batch, on any view.
+  it("takes only its own fingers from a start that changed several", () => {
+    const renderer = renderInPager(LONG)
+    open(renderer, 200, 480)
+
+    fire(renderer, "onTouchStart", {
+      changed: ["1", "2"],
+      down: ["1", "2"],
+      target: ["1"],
+    })
+    expect(pagerClaims(renderer)).toBe(false)
+    fire(renderer, "onTouchEnd", { changed: ["1"], down: ["2"], target: ["1"] })
+    expect(pagerClaims(renderer)).toBe(true)
+  })
+
+  // Android sends no `targetTouches`: every finger of a gesture goes to the
+  // view its first finger started on.
+  it("counts every finger a gesture sends here, with no targetTouches", () => {
+    const renderer = renderInPager(LONG)
+    open(renderer, 200, 480)
+
+    fire(renderer, "onTouchStart", { changed: ["1"], down: ["1"] })
+    fire(renderer, "onTouchStart", { changed: ["2"], down: ["1", "2"] })
+    fire(renderer, "onTouchEnd", { changed: ["1"], down: ["2"] })
+    expect(pagerClaims(renderer)).toBe(false)
+    fire(renderer, "onTouchEnd", { changed: ["2"], down: [] })
     expect(pagerClaims(renderer)).toBe(true)
   })
 
@@ -363,8 +423,8 @@ describe("a finger on the open description", () => {
     const renderer = renderInPager(LONG)
     open(renderer, 200, 480)
 
-    fire(renderer, "onTouchStart", 1)
-    fire(renderer, "onTouchCancel", 0)
+    fire(renderer, "onTouchStart")
+    fire(renderer, "onTouchCancel")
     expect(pagerClaims(renderer)).toBe(true)
   })
 
@@ -372,7 +432,7 @@ describe("a finger on the open description", () => {
     const renderer = renderInPager(LONG)
     open(renderer, 200, 480)
 
-    fire(renderer, "onTouchStart", 1)
+    fire(renderer, "onTouchStart")
     press(renderer, EXPLORE_COPY.descriptionLessLabel)
     expect(pagerClaims(renderer)).toBe(true)
   })
@@ -381,7 +441,7 @@ describe("a finger on the open description", () => {
     const renderer = renderInPager(LONG)
     open(renderer, 180, 180)
 
-    fire(renderer, "onTouchStart", 1)
+    fire(renderer, "onTouchStart")
     expect(pagerClaims(renderer)).toBe(true)
   })
 
@@ -390,7 +450,7 @@ describe("a finger on the open description", () => {
     measure(renderer, 3)
     press(renderer, EXPLORE_COPY.descriptionMoreLabel)
 
-    fire(renderer, "onTouchStart", 1)
+    fire(renderer, "onTouchStart")
     expect(pagerClaims(renderer)).toBe(true)
   })
 
@@ -415,8 +475,8 @@ describe("a finger on the open description", () => {
   it("holds nothing, and does not throw, with no pager above it", () => {
     const { renderer } = render(LONG)
     open(renderer, 200, 480)
-    fire(renderer, "onTouchStart", 1)
-    fire(renderer, "onTouchEnd", 0)
+    fire(renderer, "onTouchStart")
+    fire(renderer, "onTouchEnd")
     expect(toggle(renderer, EXPLORE_COPY.descriptionLessLabel)).toHaveLength(1)
   })
 })

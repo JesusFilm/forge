@@ -932,6 +932,26 @@ describe("presentation (R3, R4, R11)", () => {
     expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual(corner)
   })
 
+  // The delete confirm is not a Modal: it draws inside the Downloads route, so
+  // the window would cover its buttons on iOS too (code review, 2026-10-01).
+  it("on iOS, hides the window while the inline delete confirm shows", async () => {
+    expect(Platform.OS).toBe("ios")
+    const renderer = await floatWindow()
+    await settle()
+
+    await act(async () => {
+      sheetCounter.open("libraryDeleteConfirm")
+    })
+    expect(windowRoots(renderer)).toHaveLength(0)
+    expect(videoViews(renderer)).toHaveLength(1)
+    expect(styleOf(byTestId(renderer, "playback-frame")[0]).opacity).toBe(0)
+
+    await act(async () => {
+      sheetCounter.close("libraryDeleteConfirm")
+    })
+    expect(windowRoots(renderer)).toHaveLength(1)
+  })
+
   it("picks a drag up from the corner it returned to, not from the base frame", async () => {
     const renderer = await floatWindow()
     await settle()

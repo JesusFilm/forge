@@ -3,7 +3,7 @@
  * progress bar (R12, R35), share (R44), and "Keep watching" (R16). No feed runs.
  */
 
-import { act } from "react"
+import { act, createRef } from "react"
 import type React from "react"
 import { Share, type GestureResponderEvent } from "react-native"
 import type { VideoPlayer } from "expo-video"
@@ -61,6 +61,7 @@ jest.mock("../ClipDescription", () => {
 })
 
 import { ClipOverlay, type ClipOverlayProps } from "../ClipOverlay"
+import { ExplorePager, type ExplorePagerHandle } from "../ExplorePager"
 import { clipPosterUri } from "../../../hooks/useClipAutostart"
 import { EXPLORE_COPY } from "../../../lib/explore/copy"
 import {
@@ -967,5 +968,86 @@ describe("ClipOverlay — share (R18, R44)", () => {
       expect(state.phase).toBe(expected)
       jest.restoreAllMocks()
     }
+  })
+})
+
+// Code review (2026-10-01): a clip that ended under a scrubbing finger moved
+// the feed, and the release seek was lost. The scrub holds the pager instead.
+describe("ClipOverlay — a scrub holds the clip end", () => {
+  /** The real pager, with the overlay on its current page while `shown`. */
+  function renderInPager(shown = true) {
+    const handle = createRef<ExplorePagerHandle>()
+    const element = (overlay: boolean) => (
+      <ExplorePager
+        ref={handle}
+        canSwipeNext
+        canSwipePrevious
+        onMove={() => {}}
+        onRest={() => {}}
+        onGestureLatchChange={() => {}}
+        renderSlot={(slot) =>
+          overlay && slot.role === "current" ? (
+            <ClipOverlay {...props()} />
+          ) : null
+        }
+      />
+    )
+    let renderer!: TestInstance
+    act(() => {
+      renderer = TestRenderer.create(element(shown))
+    })
+    mounted.push(renderer)
+    const requestNext = () => {
+      let moved = false
+      act(() => {
+        moved = handle.current!.requestMove("next")
+      })
+      return moved
+    }
+    const hideOverlay = () => {
+      act(() => {
+        renderer.update(element(false))
+      })
+    }
+    return { renderer, requestNext, hideOverlay }
+  }
+
+  function grab(renderer: TestInstance): Handlers {
+    const handlers = progressBar(renderer).props as unknown as Handlers
+    act(() => {
+      handlers.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 44 } },
+      })
+      handlers.onResponderGrant(touchAt(0))
+      handlers.onResponderMove(touchAt(150))
+    })
+    return handlers
+  }
+
+  it("loops a clip that ends during a scrub, and moves on after the release", () => {
+    const { renderer, requestNext } = renderInPager()
+    const handlers = grab(renderer)
+    expect(requestNext()).toBe(false)
+
+    act(() => {
+      handlers.onResponderRelease(touchAt(150))
+    })
+    expect(requestNext()).toBe(true)
+  })
+
+  it("lets go when the pager takes the drag", () => {
+    const { renderer, requestNext } = renderInPager()
+    const handlers = grab(renderer)
+    act(() => {
+      handlers.onResponderTerminate(touchAt(150))
+    })
+    expect(requestNext()).toBe(true)
+  })
+
+  it("lets go when the overlay leaves mid-scrub", () => {
+    const { renderer, requestNext, hideOverlay } = renderInPager()
+    grab(renderer)
+    hideOverlay()
+    expect(requestNext()).toBe(true)
   })
 })

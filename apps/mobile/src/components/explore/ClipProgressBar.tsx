@@ -17,6 +17,7 @@ import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { readOr } from "../../lib/explore/playerRead"
 import type { ClipWindow } from "../../lib/explore/types"
+import { useExplorePagerHold } from "./ExplorePager"
 import {
   clamp,
   fractionToTime,
@@ -98,6 +99,17 @@ export function ClipProgressBar({
   windowRef.current = clipWindow
   const onSeekRef = useRef(onSeek)
   onSeekRef.current = onSeek
+  const holdPager = useExplorePagerHold()
+  const holdPagerRef = useRef(holdPager)
+  holdPagerRef.current = holdPager
+  // A clip that ends under a scrubbing finger loops, so the release seek lands
+  // on this clip (code review, 2026-10-01).
+  const scrubHold = useRef<(() => void) | null>(null)
+  const endScrubHold = useCallback(() => {
+    scrubHold.current?.()
+    scrubHold.current = null
+  }, [])
+  useEffect(() => endScrubHold, [endScrubHold])
   const widthRef = useRef(0)
   const grantXRef = useRef(0)
   const fractionRef = useRef(0)
@@ -158,6 +170,7 @@ export function ClipProgressBar({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: (e: GestureResponderEvent) => {
+        scrubHold.current ??= holdPagerRef.current?.("feedMove") ?? null
         draggingRef.current = true
         setDragging(true)
         lockedRef.current = false
@@ -179,8 +192,10 @@ export function ClipProgressBar({
         draggingRef.current = false
         setDragging(false)
         seekTo(clipTimeAt(fractionRef.current, windowRef.current))
+        endScrubHold()
       },
       onPanResponderTerminate: () => {
+        endScrubHold()
         draggingRef.current = false
         setDragging(false)
         show(readTime(playerRef.current))

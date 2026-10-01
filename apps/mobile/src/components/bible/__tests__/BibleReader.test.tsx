@@ -870,10 +870,9 @@ describe("BibleReader — the chrome", () => {
     ).toHaveLength(0)
   })
 
-  // The owner (2026-10-01): the translation pill shows a ring while the
-  // shown translation downloads. Synthetic: BSB is "bundled" in the app and
-  // never downloads; this store says it does only to prove the state reaches
-  // the pill.
+  // The owner (2026-10-01): the pill shows a ring while the shown translation
+  // downloads. Synthetic: BSB is "bundled" and never downloads; this store
+  // says it does only to prove the state reaches the pill.
   it("shows the shown translation's running download in the translation pill", async () => {
     const { services } = makeServices()
     const downloading: TranslationDownloadState = {

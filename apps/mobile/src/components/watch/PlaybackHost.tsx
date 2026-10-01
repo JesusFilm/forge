@@ -844,13 +844,18 @@ function ActivePlaybackHost({
     sheetCounter.subscribe,
     sheetCounter.count,
   )
-  // iOS presents every in-app sheet as a native modal above this host, so the
-  // sheet and its dimming cover the window. Android draws this host over one.
+  const openInlineSheetCount = useSyncExternalStore(
+    sheetCounter.subscribe,
+    sheetCounter.inlineCount,
+  )
+  // iOS presents route and Modal sheets above this host, so they dim the
+  // window. Android draws this host over them, and over inline sheets anywhere.
   const presentation = miniPlayerPresentation(
     sessionSnapshot,
     segments,
     openSheetCount,
     Platform.OS === "ios",
+    openInlineSheetCount,
   )
   const session = sessionSnapshot.session
   const hasSession = session != null

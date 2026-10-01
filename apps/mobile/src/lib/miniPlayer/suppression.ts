@@ -52,9 +52,17 @@ export type NonRouteSheetId =
   | "sduiQuiz"
   | "playerSettings"
 
+/** Drawn inside a route, so the host covers it on every platform. The other
+ *  ids are React Native `Modal`s, which iOS presents above the host. */
+const INLINE_SHEET_IDS: ReadonlySet<NonRouteSheetId> = new Set([
+  "libraryDeleteConfirm",
+])
+
 export type NonRouteSheetCounter = {
   /** Presented count — zero means nothing is suppressing the window. */
   count: () => number
+  /** The presented sheets that draw under the host (`INLINE_SHEET_IDS`). */
+  inlineCount: () => number
   isPresented: () => boolean
   open: (id: NonRouteSheetId) => void
   close: (id: NonRouteSheetId) => void
@@ -76,6 +84,11 @@ export function createNonRouteSheetCounter(): NonRouteSheetCounter {
 
   return {
     count: () => open.size,
+    inlineCount: () => {
+      let inline = 0
+      for (const id of open) if (INLINE_SHEET_IDS.has(id)) inline += 1
+      return inline
+    },
     isPresented: () => open.size > 0,
     open(id) {
       if (open.has(id)) return
