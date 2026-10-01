@@ -106,6 +106,7 @@ export function SourceMarkOverlay({
   px,
   textFamily,
   textWidth,
+  fixedBottomPx,
 }: {
   cards: ReadonlyArray<DevotionalCard>
   frames: ReadonlyArray<CardFrames>
@@ -116,6 +117,10 @@ export function SourceMarkOverlay({
   textFamily: string
   /** The reflection column's measure in px. */
   textWidth: number
+  /** 9:16 shorts: the text hangs from a fixed line and grows DOWN, so the
+   *  credit sits at a fixed distance above it instead of above the tallest
+   *  bottom-anchored sentence. */
+  fixedBottomPx?: number
 }) {
   const fontPx = px(22)
   const lineH = fontPx * 1.46
@@ -176,7 +181,7 @@ export function SourceMarkOverlay({
           right: 0,
           display: "flex",
           justifyContent: "center",
-          bottom: bottomPad + maxLines * lineH,
+          bottom: fixedBottomPx ?? bottomPad + maxLines * lineH,
           pointerEvents: "none",
         }}
       >

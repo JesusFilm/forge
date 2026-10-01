@@ -416,6 +416,11 @@ export const devotionalInputPropsSchema = z.object({
    * ring the closing card carries above its question.
    */
   stepRing: z.boolean().optional(),
+  /** 9:16 only: draw the source credits and the original-language verse
+   *  callout, which are otherwise 16:9-only layers. Set by the shorts cut
+   *  from a devotional (feat-573), where a fact without its credit would be
+   *  an unsourced claim. Portrait devotionals leave it off and are unchanged. */
+  portraitMarks: z.boolean().optional(),
   /** 16:9 film captions with word times: `karaoke` (default) lights the word
    *  being said; `typewriter` types each word letter by letter as it is said,
    *  every letter gold then white; `ghost` shows the whole line faint and each

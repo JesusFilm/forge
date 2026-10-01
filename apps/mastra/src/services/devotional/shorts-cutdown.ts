@@ -487,6 +487,8 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
     // The step clock and the stepper are the long form's map: in a short
     // there is nowhere to navigate.
     stepRing: false,
+    // A fact short without its credit would be an unsourced claim.
+    portraitMarks: true,
     ...(firstText != null ? { bgStartOffsetSec: bg[firstText] } : {}),
   }
 }

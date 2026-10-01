@@ -7248,7 +7248,7 @@ export function DevotionalVideo(props: DevotionalInputProps) {
       })}
       {/* Source credits (16:9): their own layer, so a credit can outlast
           the one-sentence card it opens. See SourceMarkOverlay. */}
-      {isLandscape ? (
+      {isLandscape || props.portraitMarks ? (
         <VerseCalloutOverlay
           cards={props.cards}
           frames={frames}
@@ -7276,6 +7276,19 @@ export function DevotionalVideo(props: DevotionalInputProps) {
           px={px}
           textFamily={SANS}
           textWidth={columnWidth}
+        />
+      ) : !isLandscape && props.portraitMarks ? (
+        // Just above the line the portrait sentence hangs from (the stable
+        // top anchor, px(320)).
+        <SourceMarkOverlay
+          cards={props.cards}
+          frames={frames}
+          frame={frame}
+          fps={fps}
+          px={px}
+          textFamily={SANS}
+          textWidth={columnWidth}
+          fixedBottomPx={height - px(320) + px(6)}
         />
       ) : null}
       {props.stepRing ? (
