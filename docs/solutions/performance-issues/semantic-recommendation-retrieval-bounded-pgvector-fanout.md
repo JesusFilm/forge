@@ -113,6 +113,14 @@ See the [verification report](../../reports/2026-09-09-recommendation-retrieval-
 
 ## Prevention
 
+Apply the October 2 owner
+[delivery-health policy](../../analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage)
+when interpreting results: insufficient eligible supply, missing content and
+sparse co-watch fallback are accepted coverage outcomes. Reopen retrieval work
+for measured failures or reproduced contract defects, not empty/partial rows
+alone. The [post-repair disposition](../../reports/2026-10-02-recommendation-coverage-acceptance.md)
+records the production evidence and permits proceeding.
+
 - Keep the single `DELIVERY_RETRIEVAL_BUDGET_MS` contract in `apps/admin/src/services/recommendations/contracts.ts`; do not duplicate or widen it.
 - Run `delivery-retriever.db.test.ts` in both explicit modes: `RECOMMENDATION_DELIVERY_DB_FIXTURE=deterministic` for CI and `=production_snapshot` for representative catalog verification, with `RECOMMENDATION_DB_TEST=1` and a disposable local database.
 - Protect eligibility and fill together. More than 48 nearer incompatible parent/chunk embeddings must not crowd out valid targets. Require actual HNSW access in the indexed fixture, an eligible six-card slate, family exclusions, exact transform matching, and connection-setting cleanup after commit and rollback.

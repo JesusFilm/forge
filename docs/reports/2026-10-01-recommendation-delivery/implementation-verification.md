@@ -2,6 +2,17 @@
 
 Date: 2026-10-01 NZDT. Work starts from main `3748973331e8ab78187de3c67bfbaf890bae37a4`; the older investigation checkout and original evidence are preserved. This report qualifies the implementation; the adjacent `report.md` describes the earlier production diagnosis.
 
+## Post-deployment disposition — October 2
+
+[PR #2527](https://github.com/JesusFilm/forge/pull/2527) merged and deployed on
+October 1; [production verification](https://github.com/JesusFilm/forge/pull/2527#issuecomment-5923920742)
+confirmed both services, migrations, live cards and player availability. The
+owner accepted the remaining [coverage limitations](../2026-10-02-recommendation-coverage-acceptance.md)
+as intended behavior and approved proceeding. Server failures and timeouts
+remain actionable; row shortfalls or absent co-watch contribution alone do not
+reopen this repair. The implementation-time measurements and rollout procedure
+below are retained as historical evidence.
+
 ## Behavior and decisions
 
 - Exact playable audio is eligible before each 48-neighbor limit. A materialized set of playable dubs for the requested audio is built once, used for ANN membership and final playback selection. Eight probes, custom planning, strict iterative scan, 20,000 approximate tuple cap and the immutable 1,500 ms complete-service budget remain unchanged.

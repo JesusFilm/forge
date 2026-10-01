@@ -23,6 +23,12 @@ The owner explicitly accepted partial coverage. A broader production audit of
 connection after more than 600 queries; it produced no completed report.
 Continue coverage work without disabling available contexts or reopening launch.
 
+The October 2 owner decision confirms this is optional coverage expansion,
+not repair of an unhealthy delivery service. Apply
+`docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`:
+valid empty/partial results do not block proceeding or automatically trigger
+inventory work. Server failures and reproduced correctness defects stay separate.
+
 ## Entry Points — Read These First
 
 1. `docs/operations/user-recommendations-activation-2026-09-14.md` and its JSON

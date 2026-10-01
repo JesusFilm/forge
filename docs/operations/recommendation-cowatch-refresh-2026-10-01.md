@@ -71,6 +71,15 @@ receipts live in `docs/validation/cowatch-restoration-20261001/`.
 
 ## Serving and rollback proof
 
+Apply the October 2 owner
+[delivery-health policy](../analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage).
+Sparse graph coverage with a successful incumbent fallback is expected behavior.
+Report zero observed co-watch cards honestly; that alone is not a delivery bug,
+an unhealthy-service finding or a blocker on proceeding. Positive contributed
+cards are required only to claim that co-watch actually supplied cards in a
+sample, not to accept ordinary recommendation delivery. Investigate recorded
+server errors, timeouts or reproduced contract failures separately.
+
 Count real requests only after deployment/activation, with the exact owner release
 ID, pointer generation, manifest/configuration, graph ID and actual executed
 generators. Count co-watch-contributed cards separately from requests that merely
@@ -86,9 +95,17 @@ the current release retains its original deadline. The existing emergency stop
 is independent and fences serving immediately. Re-enabling the emergency switch
 does not silently revive an old refresh grant.
 
-## Current execution status
+## Recorded execution and disposition
 
-Implementation is under validation. No replacement or production refresh grant
-has been created by this restoration run yet. Release IDs, final revisions,
-capacity admission and real serving/refresh evidence must be appended here before
-feat-565/feat-573 can be called complete.
+The implementation shipped in PR #2529. The October 1 restoration task recorded
+G7 activation and an authorized refresh grant; its detailed execution receipts
+are in [PR #2530](https://github.com/JesusFilm/forge/pull/2530). These are dated
+receipts, not a claim about the currently active generation. Consult the supported
+status path for present authority and refresh state.
+
+The [October 2 disposition](../reports/2026-10-02-recommendation-coverage-acceptance.md)
+accepts sparse-coverage fallbacks and allows the product to proceed. The initial
+55-request sample's four sparse co-watch attempts all returned ordinary cards.
+Actual refresh lifecycle/capacity verification under feat-573 remains a separate
+operational task; lack of positive co-watch contribution does not establish a
+delivery incident or reopen the repaired defects.
