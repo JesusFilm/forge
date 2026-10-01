@@ -3,7 +3,7 @@ id: "feat-564"
 title: "Public navigation authority for cached Watch relative links"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 3
 depends_on: []
@@ -23,9 +23,31 @@ different destinations on those public pages even though the server source
 adapter receives identical internal route parameters. Origin-only resolution
 can invent a served target or omit a real card and shift later positions.
 Feat-373 must withhold the affected source's served denominator when its exact
-public navigation base is unavailable. This follow-up addresses that explicit
-coverage gap; it does not establish a deployed defect in a particular authored
-production block or waive feat-373's Admin evidence gate.
+public navigation base is unavailable. This follow-up was proposed to address
+that explicit coverage gap; it did not establish a deployed defect in a
+particular authored production block. Its original Admin evidence gate is
+superseded by the October 2 disposition below.
+
+## October 2, 2026 disposition
+
+**Cancelled as optional source-coverage expansion.** Existing renderer parity
+fixtures demonstrate that relative raw and Markdown anchors can resolve to
+different destinations on admitted public aliases sharing an internal ISR key.
+The source compiler already withholds the entire ambiguous manifest and its
+served denominator, while the browser follows its actual anchor. No deployed
+authored block with incorrect measured attribution or failed navigation is
+established by those fixtures. Unknown denominator is the accepted limit;
+there is no fabricated served count or claim of complete coverage.
+
+The owner retired feat-373's exhaustive source-coverage gate while preserving
+the deployed supported-surface evidence and normal Watch analytics. The
+[October 2 feat-373 disposition](feat-373-watch-surface-impressions-ctr.md#october-2-2026-disposition)
+records the distinction. A future product choice to measure these aliases
+would need an origin-owned public path before signing, with ISR, exact DOM
+position/path matching, and privacy preserved. A reproduced incorrect
+attribution, failed issuance or broken navigation would instead be a defect
+requiring investigation. This cancellation implements no routing or player
+change and asserts no new deployment.
 
 ## Entry Points — Read These First
 
