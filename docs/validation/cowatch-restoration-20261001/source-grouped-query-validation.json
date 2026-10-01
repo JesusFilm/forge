@@ -1,0 +1,20 @@
+{
+  "nativeDatabase": "owned loopback forge_cowatch_query_test, PostgreSQL18 migrated through0126",
+  "privateProductionMaterialCopied": false,
+  "reference": "apps/admin/src/services/recommendations/cowatch/projection-source-reference.sql",
+  "comparison": "All raw fields, ordering and full graph match the frozen original source SQL in each phase",
+  "additionalCases": [
+    "60 retained generations",
+    "foreign-session exact-episode identity wins session identity",
+    "foreign-session exact-episode invalid ownership fences only matching episode",
+    "invalid shared-session ownership fences every matching episode",
+    "legacy-only retained ownership with NULL captured generation cannot fall through to anonymous",
+    "valid current link can recover legacy-only retained ownership"
+  ],
+  "focusedTestsPassed": 59,
+  "scopedLint": "passed",
+  "format": "passed",
+  "diffCheck": "passed",
+  "independentScaleProof": "retained-overlap-proof.json",
+  "sourceSQL": "preflight-source-grouped-explain.sql"
+}

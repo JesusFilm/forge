@@ -39,15 +39,22 @@ function workflowStartupGlobal() {
     __forgeAdminWatchSearchPrewarm?: WatchSearchPrewarmState
     __forgeAdminRecommendationRecovery?: RecommendationRecoveryState
     __forgeAdminProfileReconciliationRecovery?: ProfileReconciliationRecoveryState
+    __forgeAdminCowatchRefreshRecovery?: ProfileReconciliationRecoveryState
   }
 }
 
-function profileReconciliationRecoveryState() {
+function profileReconciliationRecoveryState(
+  kind: "profile" | "cowatch" = "profile",
+) {
   const global = workflowStartupGlobal()
-  const current = global.__forgeAdminProfileReconciliationRecovery
+  const key =
+    kind === "profile"
+      ? "__forgeAdminProfileReconciliationRecovery"
+      : "__forgeAdminCowatchRefreshRecovery"
+  const current = global[key]
   if (current) return current
   const state: ProfileReconciliationRecoveryState = { checking: false }
-  global.__forgeAdminProfileReconciliationRecovery = state
+  global[key] = state
   return state
 }
 
@@ -239,6 +246,8 @@ async function startWorkflowWorld(): Promise<void> {
     await import("@/services/recommendations/playback-observation-snapshot.job")
   const { ensureRecommendationProfileReconciliationSchedulerStarted } =
     await import("@/services/recommendations/profiles/reconciliation.job")
+  const { ensureRecommendationCowatchRefreshSchedulerStarted } =
+    await import("@/services/recommendations/cowatch/refresh.job")
   const { ensureRecommendationEpisodeFinalizationRecovery } =
     await import("@/services/recommendations/finalization/job")
   const {
@@ -274,6 +283,11 @@ async function startWorkflowWorld(): Promise<void> {
     })
   }
   await ensureRecommendationProfileReconciliationSchedulerStarted()
+  await ensureRecommendationCowatchRefreshSchedulerStarted()
+  scheduleProfileReconciliationRecovery(
+    ensureRecommendationCowatchRefreshSchedulerStarted,
+    "cowatch",
+  )
   scheduleProfileReconciliationRecovery(
     ensureRecommendationProfileReconciliationSchedulerStarted,
   )
@@ -288,31 +302,33 @@ async function startWorkflowWorld(): Promise<void> {
 
 function scheduleProfileReconciliationRecovery(
   ensure: () => Promise<unknown> | unknown,
+  kind: "profile" | "cowatch" = "profile",
 ): void {
-  const state = profileReconciliationRecoveryState()
+  const state = profileReconciliationRecoveryState(kind)
   if (state.retryTimer || state.checking) return
   state.retryTimer = setTimeout(() => {
     state.retryTimer = undefined
-    void runProfileReconciliationRecovery(ensure)
+    void runProfileReconciliationRecovery(ensure, kind)
   }, PROFILE_RECONCILIATION_RECOVERY_INTERVAL_MS)
   state.retryTimer.unref?.()
 }
 
 async function runProfileReconciliationRecovery(
   ensure: () => Promise<unknown> | unknown,
+  kind: "profile" | "cowatch" = "profile",
 ): Promise<void> {
-  const state = profileReconciliationRecoveryState()
+  const state = profileReconciliationRecoveryState(kind)
   if (state.checking) return
   state.checking = true
   try {
     await ensure()
   } catch (error) {
     console.warn(
-      `[recommendation-profile-reconciliation] event=scheduler_recovery_failure error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
+      `[recommendation-${kind === "profile" ? "profile-reconciliation" : "cowatch-refresh"}] event=scheduler_recovery_failure error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
     )
   } finally {
     state.checking = false
-    scheduleProfileReconciliationRecovery(ensure)
+    scheduleProfileReconciliationRecovery(ensure, kind)
   }
 }
 

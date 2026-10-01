@@ -1,0 +1,172 @@
+[
+  [
+    {
+      "observed_at": "2026-09-30T19:32:26.028Z",
+      "read_only": "on"
+    }
+  ],
+  [
+    {
+      "observed_request_rows": "5938",
+      "request_bound_exceeded": false,
+      "requests": "5938",
+      "exact_owner_execution": "0",
+      "requests_with_cards": "4993",
+      "missing_input_fallbacks": "53",
+      "cards": "28696",
+      "cowatch_contributed_cards": "0",
+      "requests_with_cowatch_contribution": "0",
+      "first_request_at": "2026-09-29T19:30:00.600Z",
+      "last_request_at": "2026-09-30T19:29:55.233Z"
+    }
+  ],
+  [
+    {
+      "owner_release_generation": null,
+      "result": "served",
+      "fallback_reason": null,
+      "execution_mode": "semantic_contextual",
+      "reason_code": "profile_cold_start",
+      "requests": "2860"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "served",
+      "fallback_reason": null,
+      "execution_mode": "hybrid_personalized",
+      "reason_code": null,
+      "requests": "1406"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "empty",
+      "fallback_reason": "no_candidates",
+      "execution_mode": "semantic_contextual",
+      "reason_code": "profile_cold_start",
+      "requests": "802"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "fallback",
+      "fallback_reason": "seed_embedding_unavailable",
+      "execution_mode": "curated_fallback",
+      "reason_code": "seed_embedding_unavailable",
+      "requests": "515"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "empty",
+      "fallback_reason": "seed_embedding_unavailable",
+      "execution_mode": "semantic_contextual",
+      "reason_code": "profile_cold_start",
+      "requests": "118"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "served",
+      "fallback_reason": null,
+      "execution_mode": "semantic_contextual",
+      "reason_code": null,
+      "requests": "106"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "fallback",
+      "fallback_reason": "composition_required_input_unavailable",
+      "execution_mode": "hybrid_personalized",
+      "reason_code": "cowatch_mmr_incumbent_fallback",
+      "requests": "53"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "served",
+      "fallback_reason": null,
+      "execution_mode": null,
+      "reason_code": null,
+      "requests": "23"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "empty",
+      "fallback_reason": "no_candidates",
+      "execution_mode": "semantic_contextual",
+      "reason_code": null,
+      "requests": "14"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "served",
+      "fallback_reason": null,
+      "execution_mode": "viewing_mode_personalized",
+      "reason_code": "viewing_mode_preference",
+      "requests": "12"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "fallback",
+      "fallback_reason": "profile_lineage_ineligible",
+      "execution_mode": "semantic_fallback",
+      "reason_code": "profile_lineage_ineligible",
+      "requests": "10"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "empty",
+      "fallback_reason": "no_candidates",
+      "execution_mode": "semantic_fallback",
+      "reason_code": "semantic_candidates_unavailable",
+      "requests": "7"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "fallback",
+      "fallback_reason": "cowatch_supported_edges_sparse",
+      "execution_mode": "hybrid_personalized",
+      "reason_code": "cowatch_mmr_incumbent_fallback",
+      "requests": "6"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "fallback",
+      "fallback_reason": "no_candidates",
+      "execution_mode": "curated_fallback",
+      "reason_code": "no_candidates",
+      "requests": "2"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "empty",
+      "fallback_reason": "seed_embedding_unavailable",
+      "execution_mode": "semantic_fallback",
+      "reason_code": "semantic_candidates_unavailable",
+      "requests": "2"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "empty",
+      "fallback_reason": "no_candidates",
+      "execution_mode": "semantic_fallback",
+      "reason_code": "profile_lineage_ineligible",
+      "requests": "1"
+    },
+    {
+      "owner_release_generation": null,
+      "result": "unavailable",
+      "fallback_reason": "retrieval_timeout",
+      "execution_mode": "semantic_contextual",
+      "reason_code": "profile_cold_start",
+      "requests": "1"
+    }
+  ],
+  [
+    {
+      "bound_exceeded": false,
+      "missing_input_fallbacks": "53",
+      "with_diagnostics": "37",
+      "missing_theme": "37",
+      "missing_source": "0",
+      "missing_interest": "0",
+      "missing_history": "0"
+    }
+  ]
+]

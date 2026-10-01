@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { CowatchRefreshControls } from "./CowatchRefreshControls"
 import { readPromotionForbiddenReason } from "./promotion-response"
 type PreparedRelease = {
   operationId: string
@@ -200,8 +201,8 @@ export function OwnerReleaseControls(props: {
       <h3 className="font-medium">Owner-approved co-watch and MMR</h3>
       <p className="mt-2 text-[var(--color-text-muted)]">
         Direct activation uses the reviewed policy. Causal usefulness remains
-        unmeasured. Graph refresh is manual; expiry serves the incumbent
-        fallback.
+        unmeasured. Graph refresh is manual until bounded refresh is separately
+        authorized; expiry serves the incumbent fallback.
       </p>
       {props.ownerRelease ? (
         <p className="mt-2">
@@ -286,6 +287,10 @@ export function OwnerReleaseControls(props: {
       <p role="status" aria-live="polite" className="mt-2 min-h-5">
         {message}
       </p>
+      <CowatchRefreshControls
+        generation={props.generation}
+        killSwitchEnabled={props.killSwitchEnabled}
+      />
     </section>
   )
 }
