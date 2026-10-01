@@ -1,0 +1,115 @@
+[
+  [],
+  [],
+  [],
+  [
+    {
+      "locale": "en",
+      "requested_audio": null,
+      "execution_mode": "semantic_contextual",
+      "projection_scope": null,
+      "reason_code": "profile_cold_start",
+      "experiment_bypass_reason": null,
+      "requests": "5"
+    },
+    {
+      "locale": "ru",
+      "requested_audio": null,
+      "execution_mode": "hybrid_personalized",
+      "projection_scope": "durable",
+      "reason_code": null,
+      "experiment_bypass_reason": null,
+      "requests": "3"
+    },
+    {
+      "locale": "en",
+      "requested_audio": null,
+      "execution_mode": "curated_fallback",
+      "projection_scope": null,
+      "reason_code": "seed_embedding_unavailable",
+      "experiment_bypass_reason": "no_active_experiment",
+      "requests": "2"
+    },
+    {
+      "locale": "es",
+      "requested_audio": null,
+      "execution_mode": "semantic_contextual",
+      "projection_scope": null,
+      "reason_code": "profile_cold_start",
+      "experiment_bypass_reason": null,
+      "requests": "2"
+    },
+    {
+      "locale": "af",
+      "requested_audio": null,
+      "execution_mode": "semantic_contextual",
+      "projection_scope": null,
+      "reason_code": "profile_cold_start",
+      "experiment_bypass_reason": null,
+      "requests": "1"
+    },
+    {
+      "locale": "es",
+      "requested_audio": null,
+      "execution_mode": "viewing_mode_personalized",
+      "projection_scope": "durable",
+      "reason_code": "viewing_mode_preference",
+      "experiment_bypass_reason": null,
+      "requests": "1"
+    },
+    {
+      "locale": "ne",
+      "requested_audio": null,
+      "execution_mode": "semantic_contextual",
+      "projection_scope": null,
+      "reason_code": "profile_cold_start",
+      "experiment_bypass_reason": null,
+      "requests": "1"
+    },
+    {
+      "locale": "pt",
+      "requested_audio": null,
+      "execution_mode": "curated_fallback",
+      "projection_scope": null,
+      "reason_code": "seed_embedding_unavailable",
+      "experiment_bypass_reason": null,
+      "requests": "1"
+    },
+    {
+      "locale": "es",
+      "requested_audio": null,
+      "execution_mode": "hybrid_personalized",
+      "projection_scope": "durable",
+      "reason_code": null,
+      "experiment_bypass_reason": null,
+      "requests": "1"
+    },
+    {
+      "locale": "en",
+      "requested_audio": null,
+      "execution_mode": "hybrid_personalized",
+      "projection_scope": "durable",
+      "reason_code": "cowatch_mmr_incumbent_fallback",
+      "experiment_bypass_reason": null,
+      "requests": "1"
+    },
+    {
+      "locale": "en",
+      "requested_audio": null,
+      "execution_mode": "semantic_contextual",
+      "projection_scope": null,
+      "reason_code": "profile_cold_start",
+      "experiment_bypass_reason": "no_active_experiment",
+      "requests": "1"
+    },
+    {
+      "locale": "en",
+      "requested_audio": null,
+      "execution_mode": "viewing_mode_personalized",
+      "projection_scope": "durable",
+      "reason_code": "viewing_mode_preference",
+      "experiment_bypass_reason": "no_active_experiment",
+      "requests": "1"
+    }
+  ]
+]

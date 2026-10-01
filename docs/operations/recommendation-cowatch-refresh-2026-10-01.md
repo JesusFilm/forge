@@ -97,11 +97,70 @@ does not silently revive an old refresh grant.
 
 ## Recorded execution and disposition
 
-The implementation shipped in PR #2529. The October 1 restoration task recorded
-G7 activation and an authorized refresh grant; its detailed execution receipts
-are in [PR #2530](https://github.com/JesusFilm/forge/pull/2530). These are dated
-receipts, not a claim about the currently active generation. Consult the supported
-status path for present authority and refresh state.
+The following October 1 receipts describe that observation time, not the
+currently active generation or runtime. Consult the supported status path for
+present authority and refresh state.
+
+PR #2529 merged as `63511a87ff949e36885488346edf7fafb7566c27` after all checks
+passed. The existing CI workflow was unchanged at the owner's request; feat-591
+tracks adding the locally passing PostgreSQL suites. Both Admin and its worker
+autodeployed successfully, then normally advanced to
+`58cf00928a083156414618988f42c02545b4b1e6` (PR #2527). Deployed manifest and
+configuration digests match the reviewed release. Migration 0126 applied and
+the refresh scheduler recorded a running heartbeat.
+
+The complete source window is September 23 19:00 through September 30 19:00 UTC,
+with October 1 02:00 UTC evaluation cutoff. Preflight found 40,490 raw rows,
+6,768 eligible sources, 46,737 attempted pairs, 40,295 contributions and 9,006
+edges (834 supported). Initial admission refused a changed fingerprint without
+writing. A fresh preflight retained the same complete window and counts. The
+runtime guard also stopped before publication during the deployment switchover.
+The deployed CLI subsequently published graph
+`b5a47a2824cdf8adb9af02ec4c128ad80f430336199871313cfb1461afc89a8f`
+at October 1 02:56:54.108 UTC.
+
+After normal SSO reauthentication, the supported owner UI activated release
+`be1947f1-3302-4a26-9b40-beb53d06a5f9` as **G7** at 02:57:35.266 UTC.
+Its policy deadline is October 2 02:56:54.108 UTC; earliest dependency expiry
+is October 22 19:00:18.809 UTC. G4/G5/G6 remain revoked. G6's original
+`eligibility_changed` revocation and graph invalidation remain September 30
+03:07:39.005 UTC.
+
+Publication grew graph allocation by 57,769,984 bytes. Afterwards, filesystem
+free space was 10,398,728,192 bytes and database allocation 38,220,142,271 bytes.
+Grant `a593c39d-20c2-42fe-aefc-f6ce92776a4b`, recorded at 02:59:47.524 UTC,
+expires October 30 02:59:47.524 UTC and anchors G7. Its reviewed budget reserves
+96 MiB per publication, caps retained graphs at 6,300,000,000 bytes and 64
+generations, and caps database bytes at 44,500,000,000. Full 29-day retained
+overlap fits without crediting purge, with over 4.1 GB of presently observed
+filesystem headroom outside the database ceiling. Explicit row/JSON-width
+ceilings and calculations are in the capacity receipts. Other database growth
+can make refresh refuse sooner; this is not continuous filesystem monitoring
+or guaranteed availability.
+
+The first automatic attempt was scheduled to become eligible at October 1 14:56:54.108 UTC
+(October 2 03:56:54 NZDT), checked every five minutes. A ready grant is not
+automatic refresh proof. The scheduled 24-hour follow-up will inspect the first
+replacement, then switch to weekly review. Verify completed publication and
+atomic replacement, retained capacity and truthful served provenance or expected
+fallback before closing feat-573. Positive co-watch contribution is not a gate.
+
+The initial natural window, October 1 02:58:00–03:06:14.516 UTC, contains 33
+issued requests, 28 with cards and 163 cards. Exact owner execution and co-watch
+contribution remain zero. One owner attempt correctly fell back for
+`cowatch_supported_edges_sparse`; no missing-input fallback was observed.
+This records valid activation and honest fallback without claiming positive
+co-watch contribution or usefulness. The October 2 owner disposition accepts
+this coverage; the separate refresh lifecycle verification remains open.
+
+Sanitized receipts are under `docs/validation/cowatch-restoration-20261001/`.
+Use `cowatch-serving-proof-indexed.sql` for later proof. Literal time bounds and
+bounded per-request index lookups avoid global scans while preserving all exact
+provenance predicates and five-second statement/one-second lock limits. The
+original query timed out and returned no proof.
+
+These detailed execution receipts are preserved in
+[PR #2530](https://github.com/JesusFilm/forge/pull/2530).
 
 The [October 2 disposition](../reports/2026-10-02-recommendation-coverage-acceptance.md)
 accepts sparse-coverage fallbacks and allows the product to proceed. The initial
