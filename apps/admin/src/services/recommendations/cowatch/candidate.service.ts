@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { activeTranscriptContentEmbeddingWhere } from "@/services/content-embedding-contract"
 import { buildSemanticCandidateMuxThumbnailUrl } from "../delivery-retriever"
+import { recommendationTranscriptLocale } from "../locale-identity"
 import {
   boundedScore,
   type CandidateNomination,
@@ -210,6 +211,7 @@ export async function loadCowatchPlayableRows(
   context: Pick<ShadowGeneratorContext, "locale" | "audioLanguageSlug">,
 ): Promise<CowatchPlayableRow[]> {
   if (targetMediaIds.length === 0) return []
+  const transcriptLocale = recommendationTranscriptLocale(context.locale)
   return prisma.$queryRaw<CowatchPlayableRow[]>(Prisma.sql`
     SELECT video.id AS "videoId",
       video.core_id AS "videoCoreId",
@@ -250,10 +252,10 @@ export async function loadCowatchPlayableRows(
       FROM video_transcript transcript
       JOIN video_edition edition ON edition.id = transcript.video_edition_id AND edition.deleted_at IS NULL
       JOIN video_transcript_chunk chunk ON chunk.transcript_id = transcript.id
-        AND chunk.language = ${context.locale}
+        AND chunk.language = ${transcriptLocale}
       WHERE transcript.video_id = video.id
         AND transcript.video_edition_id = playable.video_edition_id
-        AND transcript.language = ${context.locale}
+        AND transcript.language = ${transcriptLocale}
         ${activeTranscriptContentEmbeddingWhere({ transcriptAlias: "transcript", chunkAlias: "chunk" })}
         -- Empty opening chunks must not hide later real theme metadata. Keep
         -- the same bounded labels consumed by composition; absent labels stay

@@ -15,6 +15,7 @@
 
 import type { PrismaClient } from "@prisma/client"
 import { activeTranscriptContentEmbeddingWhere } from "./content-embedding-contract"
+import { recommendationTranscriptLocale } from "./recommendations/locale-identity"
 
 type SceneRecommendationQueryClient = Pick<PrismaClient, "$queryRaw">
 
@@ -89,6 +90,7 @@ export async function getEligibleRecommendationVideoIds(
   audioLanguageSlug: string = locale,
 ): Promise<Set<string>> {
   if (videoIds.length === 0) return new Set()
+  const transcriptLocale = recommendationTranscriptLocale(locale)
   const rows = await prisma.$queryRaw<{ id: string }[]>`
     SELECT DISTINCT v.id
     FROM video v
@@ -99,7 +101,7 @@ export async function getEligibleRecommendationVideoIds(
       AND vl.deleted_at IS NULL
     JOIN video_transcript vt
       ON vt.video_id = v.id
-      AND vt.language = ${locale}
+      AND vt.language = ${transcriptLocale}
     JOIN video_dub vd
       ON vd.video_edition_id = vt.video_edition_id
       AND vd.deleted_at IS NULL

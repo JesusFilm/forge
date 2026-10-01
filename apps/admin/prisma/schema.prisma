@@ -3751,6 +3751,8 @@ model RecommendationRequest {
   seedMediaId            String?                             @map("seed_media_id") @db.VarChar(191)
   locale                 String                              @db.VarChar(32)
   purpose                String                              @default("seeded") @db.VarChar(32)
+  /// Bounded language identities and observed retrieval stages; expires with this request.
+  deliveryDiagnostics    Json?                               @map("delivery_diagnostics") @db.JsonB
   expectedItemCount      Int                                 @map("expected_item_count")
   /// Versioned immutable presentation and provenance snapshots keyed by served item id.
   servedItemPayload      Json?                               @map("served_item_payload") @db.JsonB

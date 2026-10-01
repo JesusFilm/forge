@@ -43,6 +43,7 @@ import {
   container,
   delivery,
   deliveryWithTwoItems,
+  deferred,
   flush,
   jsonResponse,
   observerCallback,
@@ -177,6 +178,95 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     await flush()
     expect(container.textContent).toContain("Second target video")
     expect(container.textContent).not.toContain("Target video")
+  })
+
+  it("ignores a pending Simplified delivery after the same Mandarin page switches to Traditional", async () => {
+    const simplified = deferred<Response>()
+    const traditional = deferred<Response>()
+    const deliveryRequests: Array<{
+      locale: string
+      signal: AbortSignal | null | undefined
+    }> = []
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (!String(input).endsWith("/api/recommendations")) {
+        return Promise.resolve(acceptedEvidenceResponse(init))
+      }
+      const body = JSON.parse(String(init?.body)) as {
+        locale: string
+        audioLanguageSlug: string
+      }
+      expect(body.audioLanguageSlug).toBe("mandarin-china")
+      deliveryRequests.push({ locale: body.locale, signal: init?.signal })
+      // Deliberately ignore abort so a late response exercises the stale-result fence.
+      return body.locale === "zh-Hans"
+        ? simplified.promise
+        : traditional.promise
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="zh-Hans"
+          audioLanguageSlug="mandarin-china"
+        />,
+      )
+    })
+    await flush()
+    expect(deliveryRequests.map(({ locale }) => locale)).toEqual(["zh-Hans"])
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="zh-Hant"
+          audioLanguageSlug="mandarin-china"
+        />,
+      )
+    })
+    await flush()
+    expect(deliveryRequests[0]?.signal?.aborted).toBe(true)
+    expect(container.querySelector("a")).toBeNull()
+
+    // Delivery shares the consent lock: settle the cancelled request before
+    // the new script can acquire it. Its late cards must never become visible.
+    simplified.resolve(
+      jsonResponse({
+        delivery: {
+          ...delivery,
+          requestId: "simplified-request",
+          items: [{ ...delivery.items[0], videoTitle: "Simplified title" }],
+        },
+      }),
+    )
+    await flush()
+    expect(container.textContent).not.toContain("Simplified title")
+    expect(deliveryRequests.map(({ locale }) => locale)).toEqual([
+      "zh-Hans",
+      "zh-Hant",
+    ])
+    expect(deliveryRequests[1]?.signal?.aborted).toBe(false)
+    expect(container.querySelector("a")).toBeNull()
+
+    traditional.resolve(
+      jsonResponse({
+        delivery: {
+          ...delivery,
+          requestId: "traditional-request",
+          items: [{ ...delivery.items[0], videoTitle: "Traditional title" }],
+        },
+      }),
+    )
+    await flush()
+    expect(container.textContent).toContain("Traditional title")
+
+    expect(container.textContent).not.toContain("Simplified title")
+    expect(
+      requestBodies(fetchMock).filter(
+        (body) => body.requestId === "simplified-request",
+      ),
+    ).toEqual([])
   })
 
   it("leaves loading when delivery headers arrive but the JSON body exceeds the deadline", async () => {
