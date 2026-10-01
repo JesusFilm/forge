@@ -26,6 +26,10 @@ function standalone(v: string) {
   let out = v.trim()
   for (let k = closes - opens; k > 0; k--)
     out = out.replace(/[’”](?=[^’”]*$)/, "")
+  // A verse that already opens and closes on its own quotes ("“Martha,
+  // Martha,” the Lord replied, “you are…”") would come out doubled inside
+  // the callout's own pair.
+  if (/^[“‘]/.test(out) && /[”’]$/.test(out)) out = out.slice(1, -1)
   return out
 }
 

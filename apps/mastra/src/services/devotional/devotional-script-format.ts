@@ -143,7 +143,9 @@ export function formatDevotionalScript(input: {
     d.conclusion,
     "",
     `SCRIPTURE  (${d.scripture.reference}, ${d.scripture.translation === "BSB" ? "BSB" : d.scripture.translation})`,
-    wrap(`“${d.scripture.text.replace(/[’”]\s*$/, "")}”`),
+    wrap(
+      `“${d.scripture.text.replace(/^\s*[“‘]/, "").replace(/[’”]\s*$/, "")}”`,
+    ),
     "",
     ...section(5, "STEP  REFLECT -> PRAY"),
     `Voice:  ${input.prayLeadIn}`,

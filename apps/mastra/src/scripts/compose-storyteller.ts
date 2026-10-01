@@ -77,6 +77,24 @@ const STORIES: Record<
     ancient: ["Sir.33.19-Sir.33.23"],
     out: "Prodigal",
   },
+  "lumo-luke-10": {
+    // The film runs it straight after the Good Samaritan's "Go and do
+    // likewise"; the setting lets the writer use that turn from doing to
+    // sitting and listening.
+    setting: { reference: "Luke 10:36-37", osis: ["Luke.10", 36, 37] },
+    terms: [
+      "Martha",
+      "Mary, Sister Of Lazarus",
+      "Bethany",
+      "Hospitality",
+      "Guest",
+      "Meals",
+      "Disciple",
+      "Rabbi",
+      "Entertain",
+    ],
+    out: "Martha",
+  },
 }
 
 async function nextFree(p: string): Promise<string> {

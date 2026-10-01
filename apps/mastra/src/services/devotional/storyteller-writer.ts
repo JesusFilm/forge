@@ -520,7 +520,9 @@ export async function writeStory(input: {
     jsonSchema: JSON_SCHEMA,
     schema: Schema,
     temperature: input.revise ? 0.3 : 0.7,
-    maxTokens: 5000,
+    // 5000 cut a script off after the paragraphs once (Martha, 2026-10-01):
+    // the JSON closed without its takeaway, question and prayer.
+    maxTokens: 9000,
   })
 }
 

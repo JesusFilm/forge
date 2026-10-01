@@ -117,6 +117,26 @@ const SOURCES: VideoSource[] = [
       byLang: { es: "video-sources/lumo-luke-15.es.vtt" },
     },
   },
+  {
+    // Martha and Mary. The scene follows the Good Samaritan in the same
+    // segment: "Go and do likewise" ends, the music runs, and 10:38 starts
+    // speaking at 419.1s; the last line ends at 467.3s and the segment (and
+    // Luke 10) ends at 471.3s (whisper transcript, 2026-10-01).
+    key: "lumo-luke-10",
+    index: 1003,
+    mediaComponentId: "6_GOLuke2611",
+    title: "Martha and Mary",
+    film: "lumo",
+    passage: { reference: "Luke 10:38-42", osisRef: "Luke.10.38-Luke.10.42" },
+    window: { startSec: 418.4, lengthSec: 50.4 },
+    // ~49s of speech ×1.05 → ~47s on screen, plus the closing hold.
+    maxVideoCardSec: 52,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: { kind: "file", path: "video-sources/lumo-luke-10.en.vtt" },
+  },
 ]
 
 const BY_KEY = new Map(SOURCES.map((s) => [s.key, s]))
