@@ -36,9 +36,33 @@ send people to the full video on YouTube.
   `devotional-vertical-intro-teaser.md`: large kinetic captions that may
   overlap the picture, calm centred CTA (default; `--cta-style=kinetic` for
   the other look), no LUMO mark, optional `--music-file` bed (Prodigal used
-  a ney bed; next teaser tries duduk, kept out of minor). Working command:
-  `~/Desktop/Social Media/Prodigal/README.txt` lists the result; the exact
-  flags are in the memory file.
+  a ney bed; next teaser tries duduk, kept out of minor). The Prodigal
+  teaser (`~/Desktop/Social Media/Prodigal/teaser_prodigal_vertical.mp4`)
+  was rendered from `apps/mastra` with:
+
+  ```bash
+  HOOK="A faithful son stands outside his father's party.
+
+  His brother squandered it all and wears the best robe.
+
+  In this devotional, one word in the father's reply about the feast.
+
+  The father steps out to him.
+
+  Watch the full devotional on our YouTube channel."
+  ELEVENLABS_API_KEY= pnpm exec tsx --env-file=.env.local src/scripts/render-one-devotional.ts \
+    --source=lumo-luke-15 --seq=0 --aspect=portrait --structure=clip-first \
+    --intro=montage --teaser-intro --no-step-ring --hook="$HOOK" \
+    --intro-shots=172.4,194.9,199.3,181.6 --intro-focus=0.5,0.34,0.16,0.62,0.55 \
+    "--intro-kinetic=0=outside/faithful/left;1=the best robe/squandered/right;2=one word/feast/right;3=steps out/father/left;4=full devotional/YouTube/left" \
+    --hook-gap=0.15 --steps --text-font=serif --word-timings --approve \
+    --music-file="$HOME/Desktop/Social Media/Prodigal/work/music-east/2-ney.mp3" \
+    --out="$HOME/Desktop/Devos/Devotionals/teasers"
+  ```
+
+  The output file is always named `<slug>-seq<n>-clipfirst.mp4`: rename it
+  (or move the old one to `archive/`) before the next render overwrites it.
+
 - **The render already knows the structure.** `devotional-render.ts` builds a
   manifest (`packages/shorts-compositions/src/devotional/schema.ts`): cards of
   kind `video`, `step`, `reflection-full` / `reflection-focus`, `conclusion`,
@@ -90,6 +114,13 @@ One command, e.g. `src/scripts/cut-devotional-shorts.ts --from=<manifest>`:
 - Output folder: `~/Desktop/Social Media/<Story>/shorts/`?
 
 ## Working rules (from memory; they apply here too)
+
+- Only ONE session works in the `devo-lab` worktree at a time. The Prodigal
+  session (epic-bohr) is finished; do not run renders from two sessions at
+  once (they share the audio cache and the output file name).
+- Keys, caches, corpora and the face venv live outside git: see memory
+  `devotional-local-setup-outside-repo.md`. They are already set up in
+  `devo-lab`; `apps/mastra/.env.local` holds the keys (never print them).
 
 - Talk to Lyuba in Russian; code, commits, docs in English.
 - Work in the `devo-lab` worktree (branch `feat/devotional-video-pipeline-handoff`).
