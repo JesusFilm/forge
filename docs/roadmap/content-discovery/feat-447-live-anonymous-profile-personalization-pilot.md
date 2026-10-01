@@ -54,7 +54,8 @@ retired under the October 2 owner direction. On October 2, the current runtime
 source passed the opt-in
 [real-dependency fallback test](../../../apps/admin/src/services/recommendations/delivery-retriever.db.test.ts)
 with isolated PostgreSQL 18 and Redis, a current private Prisma client, and
-the fixture-only schema repair from commit `b2f21e39e` applied for the run.
+the fixture-only schema repair from [PR #2544](https://github.com/JesusFilm/forge/pull/2544)
+applied for the run.
 The normal control issued six cards in 158 ms. A locally forced
 candidate-platform exception then issued six unique playable semantic cards in
 78 ms and persisted an `ISSUED` / `FALLBACK` request with the semantic manifest,
