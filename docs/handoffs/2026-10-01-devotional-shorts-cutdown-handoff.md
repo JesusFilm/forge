@@ -89,6 +89,24 @@ every rendered MP4. Martha and Mary has one
 predates it: re-run its render with `--stop-before-render` and
 `ELEVENLABS_API_KEY=` to get one at zero cost.
 
+The manifest alone is not enough to cut from: it points at staged files
+(`clip.mp4`, `bg.mp4`, per-segment audio, music) that die with the stage. So
+every complete render (not stills, `--frame-range` or `--draft`) also writes a
+**source pack**, `<video>.source/` (`source-pack.ts`): `manifest.json`, every
+file the manifest references, `devotional.json` (the text with paragraph
+roles) and `render.json` (comp, style, layout, levels, render options). The
+render script resolves files next to the manifest, so
+`render-devotional-video.mjs --manifest=<video>.source/manifest.json` renders
+straight from it (checked 2026-10-01 on the Prodigal teaser stage). Videos are
+re-encoded (film CRF 20, background CRF 23); measured saving is about 25% /
+44%, so a pack is roughly 180 to 280 MB, not small. Packing adds about 50 s
+to a render; a failure only logs a warning, the MP4 is kept. An existing pack
+of the same name moves to `archive/`.
+
+Before rendering portrait shorts, rebuild the OpenCV venv and pass
+`DEVO_FACE_PYTHON` (memory `devotional-local-setup-outside-repo.md`): on
+2026-10-01 the stage logged `opencv_missing` and centre-cropped.
+
 ## Suggested shape (not decided; brainstorm against the ticket first)
 
 One command, e.g. `src/scripts/cut-devotional-shorts.ts --from=<manifest>`:

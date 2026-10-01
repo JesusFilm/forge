@@ -28,6 +28,7 @@ import {
 import { joinAudioVarGaps, slowAndPad } from "./audio-concat"
 import { createSilentVoiceover } from "./devotional-silent-voiceover"
 import { planFaceCropAnchors } from "./face-crop-anchors"
+import { writeSourcePack } from "./source-pack"
 import { planClipFocus } from "./clip-focus"
 import { matchClipDialogueLevel } from "./dialogue-level"
 import {
@@ -3020,40 +3021,43 @@ async function renderInStage(
       )
     }
   }
+  const renderOpts: Parameters<typeof runRender>[8] = {
+    // Owner rules for the devotional cover: never a date, and nothing in
+    // the date's slot either — the "Today's Devotional" label that used to
+    // fill it wiped open after the mark had already settled, which is the
+    // beat she asked to end the opening on. Logo, title, credit, nothing
+    // else. An explicit label still overrides.
+    ...(options.coverDateLabel
+      ? { coverDateLabel: options.coverDateLabel }
+      : { hideCoverDate: true }),
+    coverTitleFirst: options.coverTitleFirst ?? false,
+    ...(options.coverSecondaryLine
+      ? { coverSecondaryLine: options.coverSecondaryLine }
+      : {}),
+    ...(options.coverBgSharp ? { coverBgSharp: true } : {}),
+    ...(options.textFont ? { textFont: options.textFont } : {}),
+    ...(options.videoFilter ? { videoFilter: options.videoFilter } : {}),
+    ...(options.stills ? { stills: options.stills } : {}),
+    ...(options.stillsFrames ? { stillsFrames: options.stillsFrames } : {}),
+    ...(options.frameRange ? { frameRange: options.frameRange } : {}),
+    ...(options.draft ? { draftScale: 0.25 } : {}),
+    ...(options.grainSizePx ? { grainSizePx: options.grainSizePx } : {}),
+    ...(options.grainFilter ? { grainFilter: options.grainFilter } : {}),
+    ...(options.grainBlend ? { grainBlend: options.grainBlend } : {}),
+    ...(options.blurScale ? { blurScale: options.blurScale } : {}),
+  }
+  const musicVolume = options.musicVolume ?? MUSIC_VOLUME_DEFAULT
+  const xfadeSec = options.cardXfadeSec ?? options.xfadeSec ?? 1.2
   await runRender(
     path.join(stage, "manifest.json"),
     videoPath,
     comp,
     style,
     layout,
-    options.musicVolume ?? MUSIC_VOLUME_DEFAULT,
-    options.cardXfadeSec ?? options.xfadeSec ?? 1.2,
+    musicVolume,
+    xfadeSec,
     videoAudioLevel,
-    {
-      // Owner rules for the devotional cover: never a date, and nothing in
-      // the date's slot either — the "Today's Devotional" label that used to
-      // fill it wiped open after the mark had already settled, which is the
-      // beat she asked to end the opening on. Logo, title, credit, nothing
-      // else. An explicit label still overrides.
-      ...(options.coverDateLabel
-        ? { coverDateLabel: options.coverDateLabel }
-        : { hideCoverDate: true }),
-      coverTitleFirst: options.coverTitleFirst ?? false,
-      ...(options.coverSecondaryLine
-        ? { coverSecondaryLine: options.coverSecondaryLine }
-        : {}),
-      ...(options.coverBgSharp ? { coverBgSharp: true } : {}),
-      ...(options.textFont ? { textFont: options.textFont } : {}),
-      ...(options.videoFilter ? { videoFilter: options.videoFilter } : {}),
-      ...(options.stills ? { stills: options.stills } : {}),
-      ...(options.stillsFrames ? { stillsFrames: options.stillsFrames } : {}),
-      ...(options.frameRange ? { frameRange: options.frameRange } : {}),
-      ...(options.draft ? { draftScale: 0.25 } : {}),
-      ...(options.grainSizePx ? { grainSizePx: options.grainSizePx } : {}),
-      ...(options.grainFilter ? { grainFilter: options.grainFilter } : {}),
-      ...(options.grainBlend ? { grainBlend: options.grainBlend } : {}),
-      ...(options.blurScale ? { blurScale: options.blurScale } : {}),
-    },
+    renderOpts,
   )
   // Keep the manifest beside the video: the stage dir is deleted after a
   // successful render, and the QA checks and the shorts cut-down (feat-573)
@@ -3063,6 +3067,37 @@ async function renderInStage(
       path.join(stage, "manifest.json"),
       videoPath.replace(/\.mp4$/, ".manifest.json"),
     )
+  // The manifest alone points at staged files that are about to be deleted.
+  // The source pack keeps them too, so shorts can be re-rendered from this
+  // take later at zero TTS cost (feat-573). Only for a complete video: stills,
+  // a frame range or a draft are not something to cut from.
+  if (!stillsOnly && !options.frameRange && !options.draft) {
+    try {
+      await writeSourcePack({
+        stage,
+        manifest,
+        videoPath,
+        devotional: devo,
+        render: {
+          comp,
+          style,
+          layout,
+          musicVolume,
+          xfadeSec,
+          videoAudioLevel,
+          options: renderOpts,
+        },
+        log,
+      })
+    } catch (e) {
+      // The video itself is done and fine; losing the pack only costs a
+      // re-run later. Say so loudly instead of failing a finished render.
+      log(
+        `⚠️ source pack NOT written (shorts cannot be cut from this take ` +
+          `without a re-render): ${e instanceof Error ? e.message : String(e)}`,
+      )
+    }
+  }
   return videoPath
 }
 
