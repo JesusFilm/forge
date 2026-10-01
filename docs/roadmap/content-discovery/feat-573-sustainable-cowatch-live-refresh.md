@@ -91,5 +91,17 @@ The operator and release procedure are documented in
 Native lifecycle, integrity-reuse and serving metadata regressions passed locally.
 The owner requested keeping the existing CI workflow unchanged for this release;
 feat-591 tracks adding these PostgreSQL suites to CI separately.
-Production admission and actual refresh/serving evidence are still required;
-this ticket remains in progress until that verification is recorded.
+PR #2529 is merged. Admin and worker normally autodeployed the code, then advanced
+to `58cf00928a083156414618988f42c02545b4b1e6`. The supported CLI published a
+complete seven-day graph; the owner UI activated G7 on October 1 02:57:35.266 UTC.
+Measured graph allocation grew 57,769,984 bytes, informing the 96 MiB publication
+reserve and full 29-day retained-overlap budget. Grant
+`a593c39d-20c2-42fe-aefc-f6ce92776a4b` lasts through October 30 02:59:47.524 UTC;
+first eligibility is October 1 14:56:54.108 UTC. The scheduler is running.
+Exact receipts and the budget are in the operations record above.
+
+Actual automatic replacement and served provenance remain unverified. The first
+33 natural requests yielded no exact co-watch execution; one owner attempt
+correctly fell back for sparse supported edges. This ticket remains in progress
+until refresh and real contribution are observed. The requested 24-hour follow-up
+will check that evidence before switching to weekly reviews.

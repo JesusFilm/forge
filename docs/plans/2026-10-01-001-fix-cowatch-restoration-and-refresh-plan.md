@@ -106,6 +106,21 @@ fences. A pointer, build or HTTP success is not release evidence. Update feat-56
 and feat-573 according to demonstrated outcomes; record durable learnings and any
 remaining explicit blockers without claiming unobserved success.
 
+## Production execution, October 1
+
+PR #2529 is merged with the CI workflow unchanged as requested. Both Admin and
+worker normally autodeployed and subsequently advanced to `58cf00928` including
+PR #2527. The supported deployed CLI published the full admitted seven-day graph;
+normal SSO and the owner UI activated G7 and recorded the reviewed 29-day refresh
+grant. Exact identifiers, physical overlap budget and receipts are in
+`docs/operations/recommendation-cowatch-refresh-2026-10-01.md`.
+
+Real co-watch contribution and first automatic replacement remain under
+verification. Initial natural traffic shows honest sparse-edge fallback, with no
+missing-input fallback or exact owner execution yet. Keep both roadmap tickets
+in progress. The requested 24-hour check will inspect the first due refresh and
+then switch to weekly reviews; do not report usefulness from operational counts.
+
 ## References
 
 - `docs/roadmap/content-discovery/feat-565-implemented-shadow-recommendation-promotion.md`

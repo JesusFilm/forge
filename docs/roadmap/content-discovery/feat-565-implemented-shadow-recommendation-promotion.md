@@ -15,25 +15,25 @@ tags: [admin, recommendations, cowatch, experiments, ranking]
 
 ## Current production disposition
 
-**The G5 replacement is revoked as of September 30 00:22:59.967 UTC; co-watch/MMR
-is not currently eligible to serve.** It activated normally at 00:17:30.177 UTC,
-then lost authority to another `eligibility_changed` invalidation. All 20 immediate
-captured-source successors kept the same positive effective decision and changed
-population measurements. Repair avoidable measurement-only revision churn before
-another publication. Three natural fallback diagnostics before revocation prove
-missing themes only, while other required inputs were available; the conditional
-catalog read then refused revoked authority. Existing cards continued on fallback.
-No direct co-watch execution has been observed. Feat-573 owns automatic refresh for
-expiry and legitimate source changes. Full shadow acceptance, causal usefulness,
-broader ranking inputs and dormant exposure coverage remain separate open work.
+**G7 activated on October 1 at 02:57:35.266 UTC and is valid; actual co-watch
+serving remains under verification.** PR #2529 fixes exact legacy receipt-digest
+reuse and usable theme hydration, and implements the separate bounded refresh
+scope in feat-573. Admin and worker normally autodeployed the code and now run
+`58cf00928a083156414618988f42c02545b4b1e6` including the later delivery fix.
+The supported owner UI activated release `be1947f1-3302-4a26-9b40-beb53d06a5f9`
+against graph `b5a47a2824cdf8adb9af02ec4c128ad80f430336199871313cfb1461afc89a8f`.
+G4/G5/G6 remain revoked; no audit history was cleared. The existing explicit
+direct no-study authorization is unchanged.
 
-This ticket remains in progress: the bounded natural window through 23:10:08 UTC
-contained 38 issued requests but no exact direct owner provenance. Eight shared
-fallback markers comprised seven missing-composition-input reasons and one sparse
-co-watch reason. Investigate the missing input before declaring the rollout
-verified; failed owner composition persists the incumbent platform, so those
-historical rows cannot identify the missing attempted input. Full evidence and its
-attribution limits are in the activation operation record.
+The natural 02:58:00–03:06:14.516 UTC window contains 33 issued requests and 163
+cards, with no exact owner execution or co-watch contribution yet. One owner
+attempt correctly fell back for sparse supported edges; no missing-input fallback
+was observed. This ticket remains in progress until real served provenance is
+recorded. A 29-day bounded refresh grant is ready, first eligible October 1
+14:56:54.108 UTC. Exact capacity, publication, activation and follow-up receipts
+are in `docs/operations/recommendation-cowatch-refresh-2026-10-01.md` and
+`docs/validation/cowatch-restoration-20261001/`. Full shadow acceptance, causal
+usefulness, broader ranking inputs and dormant exposure coverage remain separate.
 
 ## Problem
 

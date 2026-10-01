@@ -133,6 +133,21 @@ query proofs, not evidence of future production disk headroom. Keep measured
 physical reserve, temporary-space caps, statement limits and grant refusal
 separate. See `docs/validation/cowatch-restoration-20261001/retained-overlap-proof.json`.
 
+## Small audit windows still need bounded joins
+
+The first postrelease serving audit selected only a few minutes of requests but
+timed out at five seconds. Its materialized parameter CTE hid the literal time
+range from the planner, which estimated tens of thousands of roots and chose
+global scans of candidate runs, personalization decisions and served items.
+Keep explicit literal time bounds on the indexed request scan, preserve the
+20,001-root overflow sentinel, and use per-request lateral lookups with `OFFSET 0`
+where necessary to keep those dependent reads indexed. This preserves exact
+provenance predicates without raising timeouts or exporting raw request data.
+The revised production query returned bounded aggregate evidence within the same
+five-second limit. See `cowatch-serving-proof-indexed.sql` in the restoration
+validation directory. A successful audit with zero contributed cards is still
+zero serving proof.
+
 ## Related
 
 - `docs/solutions/best-practices/recommendation-trace-capacity-and-retention-proof-20260928.md`
