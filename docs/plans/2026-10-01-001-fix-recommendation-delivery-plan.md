@@ -21,6 +21,7 @@ The October 1 delivery report reconciles 5,958 requests, including 930 empty and
 - R3. Retain bounded context and honest stage shortfalls even for empty requests, without viewer history, credentials, vectors, a new telemetry store, or longer retention.
 - R4. Preserve the complete-service deadline and independent player availability. Exercise cold/warm and concurrent real PostgreSQL delivery, not just isolated diagnostic SQL.
 - R5. Preserve later owner decisions and accepted coverage limitations. Regenerate public GraphQL artifacts if the contract changes; validate and open a focused PR with rollout evidence.
+- R6. Fill partial rows with additional eligible semantic candidates from the existing bounded pool where possible. Preserve existing cards and order; when supply is exhausted, serve the partial row unchanged.
 
 ## Scope and decisions
 
@@ -28,7 +29,7 @@ Use the existing scalar parent lookup to retain ordered ANN access. Keep transac
 
 Chinese `zh-hans`/`zh-hant` presentation uses `zh` transcript retrieval. Reuse the existing public `locale` as the requested presentation identity; derive transcript identity internally and include both in candidate cache keys. No independent non-Chinese transcript choice is required, so no GraphQL contract or generated-client change is needed. On 2026-10-01 the owner chose “Default generic zh to Simplified”: generic `zh` resolves to `zh-hans`. Explicit Traditional requests stay `zh-hant`; missing requested translations cannot fall through to another script or audio.
 
-The owner is also being asked whether to include partial-row curated top-up. Pending that answer, retain the current empty-only rule. No inventory is published or expanded here. Feat-497 owns curated context expansion, feat-199 transcript-source operations, and feat-573 co-watch continuity. Feat-545/566 historical-evidence dispositions and feat-565 direct owner activation remain intact.
+On 2026-10-01 the owner chose “top it up with a semantic result if possible, if none exist then serve the cards as is”. Use eligible semantic reserves from the existing bounded pool without replacing existing cards, expanding retrieval or extending the deadline. Curated fallback retains the empty-only rule; this decision does not authorize curated partial-row top-up. No inventory is published or expanded here. Feat-497 owns curated context expansion, feat-199 transcript-source operations, and feat-573 co-watch continuity. Feat-545/566 historical-evidence dispositions and feat-565 direct owner activation remain intact.
 
 ## Implementation units
 
@@ -64,13 +65,23 @@ The owner is also being asked whether to include partial-row curated top-up. Pen
 
 ### U4. Verification and delivery
 
-**Requirements:** R1–R5. **Dependencies:** U1–U3 and any approved top-up scope.
+**Requirements:** R1–R6. **Dependencies:** U1–U3 and U5.
 
 **Files:** A focused verification report under `docs/reports/`, the feat-589 ticket, and a durable learning under `docs/solutions/`.
 
 **Approach:** Use owned disposable PostgreSQL databases and available approved content-only snapshots. Measure representative short/long multilingual sources with exact minority audio, Chinese scripts, and sparse supply; cold application pools, repeated warm requests, and concurrent requests. Record final served counts, candidate counts, timeouts and elapsed service times separately. Label snapshot age and cold-cache limitations. No production writes or direct deploys.
 
 **Verification:** Affected Admin/Web/shared-client tests, real PostgreSQL regressions, lint, typecheck, formatting, required schema/client generation, browser behavior and page-load evidence for touched Web initialization, code review, and PR CI. Regressions must fail against pre-fix behavior. A timing failure is investigated rather than hidden by widening the deadline.
+
+### U5. Bounded semantic partial-row completion
+
+**Requirements:** R1, R2, R4, R6. **Dependencies:** U1–U3.
+
+**Files:** Admin recommendation orchestration, composition and delivery service with colocated tests.
+
+**Approach:** Verify existing bounded semantic reserve behavior before adding code. Any required fill preserves the selected prefix and all live eligibility, exact language, family-exclusion and canonical-deduplication rules. Keep composition and served-item provenance consistent. Do not retrieve another unbounded pool or invoke curated fallback for a nonempty row.
+
+**Test scenarios:** A partial row with eligible semantic reserves fills available slots; exhausted supply leaves the existing cards unchanged; duplicate or ineligible reserves cannot fill slots; full rows remain unchanged; all work uses the existing complete-service deadline.
 
 ## Risks and rollout
 
@@ -88,4 +99,4 @@ The PR follows the normal PR-to-main deployment path. Document current deploymen
 
 ## Completion
 
-Implemented and verified in the isolated feat-589 branch. See `docs/reports/2026-10-01-recommendation-delivery/implementation-verification.md` for timings, commands, browser evidence and rollout limits. The partial-row curated policy remains unchanged pending the separate owner decision. Stale unrelated PostgreSQL test fixtures discovered during the broader run are tracked by feat-590.
+Implemented and verified in the isolated feat-589 branch. See `docs/reports/2026-10-01-recommendation-delivery/implementation-verification.md` for timings, commands, browser evidence and rollout limits. Focused regressions and independent review confirm that the existing bounded composer already satisfies the owner-approved semantic partial-row policy; curated fallback remains empty-only. Stale unrelated PostgreSQL test fixtures discovered during the broader run are tracked by feat-590.

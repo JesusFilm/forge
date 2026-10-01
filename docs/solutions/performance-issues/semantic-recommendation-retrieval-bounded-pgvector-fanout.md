@@ -133,6 +133,8 @@ The new `delivery-multilingual.db.test.ts` runs 11 contexts with cold applicatio
 
 Prevention: require both actual index access and measured work/loops; an HNSW plan alone does not prove the filter is cheap. Keep exact-audio fixtures, explicit Chinese scripts, missing translation, incompatible/absent embeddings and sparse supply in regression coverage. Ledger diagnostics must call missing compatible seed vectors `compatible_embedding_unavailable`, leave interrupted stages unknown, and never claim exhaustive absence from a bounded ANN result.
 
+The October 1 owner decision also permits semantic partial-row completion from the existing bounded pool. Check composition before adding another fallback: semantic, hybrid and MMR already consume their eligible ordered candidates until the row is full or the pool is exhausted. `delivery.service.test.ts` now pins five-card exhaustion and six-card reserve fill while rejecting duplicate, wrong-audio and unplayable nominations, preserving the fresh prefix and matching composed evidence to served positions. An exhausted nonempty row stays intact; curated fallback remains empty-only. Do not add a second retrieval or relax eligibility merely because a row is short.
+
 ## Related Issues
 
 - [feat-470 repair plan](../../plans/2026-09-09-fix-recommendation-retrieval-plan.md) and [verification evidence](../../reports/2026-09-09-recommendation-retrieval-verification.md).

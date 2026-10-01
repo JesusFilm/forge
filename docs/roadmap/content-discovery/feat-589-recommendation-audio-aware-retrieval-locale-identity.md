@@ -32,7 +32,7 @@ The October 1 read-only diagnosis reproduces two delivery failures against deplo
 - Make bounded candidate selection aware of exact playable audio before exhausting its neighbor budget. Preserve current source/parent/child exclusions, active embedding contract and immutable final eligibility checks.
 - Resolve transcript and display locale identities explicitly, including Chinese script selection. Establish the presentation fallback policy before changing publication semantics; preserve exact requested audio, consistent cache keys and public contracts.
 - Retain bounded requested audio and stage-specific shortfall evidence for empty results; the current request ledger cannot distinguish the 246 English-locale empties by audio.
-- Keep curated language expansion with main's feat-497 and transcript-source operations with feat-199. A partial-row curated top-up is a separate policy decision; this ticket does not implicitly authorize inventory publication or broader rollout.
+- Apply the October 1 owner decision: top up partial rows with eligible semantic reserves from the existing bounded pool, preserving existing cards and serving them unchanged when no additions exist. Curated fallback remains empty-only. Keep curated language expansion with main's feat-497 and transcript-source operations with feat-199; no inventory publication or broader rollout is implied.
 
 ## Constraints
 
@@ -43,6 +43,7 @@ No production mutation, generated embeddings, new model spend, silent audio subs
 - Real PostgreSQL fixture: nearest neighbors lack the requested audio, while at least six farther exact-audio eligible videos exist. Verify full distinct delivery without wrong-audio cards and preserve zero/partial results when catalog supply is genuinely insufficient.
 - Locale fixtures: `zh` transcript with `zh-hans`/`zh-hant` display, explicit script choice, unavailable translation, inactive contract, source/parent/child exclusion and unpublished/unplayable dub.
 - Verify empty-request context and diagnostic reconciliation without viewer identifiers; handle packed and legacy item snapshots.
+- Verify partial-row semantic fill, exhausted supply with the original row unchanged, and rejection of duplicate/ineligible reserves without additional unbounded retrieval.
 - Measure full-service cold/warm and concurrent retrieval, hydration, deduplication, signing and persistence on representative multilingual data within the existing deadline. Count candidate improvement separately from final served cards.
 - Run affected Admin/Web tests, lint, typecheck, format and appropriate browser/page-load checks. Regenerate Admin SDL and typed client only if the GraphQL contract changes. Use normal PR-to-main deployment and a bounded natural production recheck.
 
@@ -50,4 +51,4 @@ No production mutation, generated embeddings, new model spend, silent audio subs
 
 Exact playable audio is materialized once and checked before ANN limiting; published text uses the resolved presentation identity while Chinese transcripts remain `zh`. The owner approved Simplified for generic `zh`; explicit Traditional remains exact. Empty requests retain bounded context and stage evidence, and Web no longer replaces Admin receipts with ineligible legacy recovery. The 1,500 ms deadline is unchanged.
 
-All 55 service deliveries across 11 historical snapshot contexts passed in 210–1,183 ms; full JESUS/Gbii remains two cards. Scoped Admin PostgreSQL/unit suites, Web tests, typechecks and browser checks are documented in `docs/reports/2026-10-01-recommendation-delivery/implementation-verification.md`. No production deployment or inventory expansion occurred. Partial-row top-up remains a separate unanswered decision. Feat-590 records stale unrelated integration fixtures discovered during validation.
+All 55 service deliveries across 11 historical snapshot contexts passed in 210–1,183 ms; full JESUS/Gbii remains two cards. Scoped Admin PostgreSQL/unit suites, Web tests, typechecks and browser checks are documented in `docs/reports/2026-10-01-recommendation-delivery/implementation-verification.md`. No production deployment or inventory expansion occurred during implementation. Focused regressions and independent review confirm the existing bounded composer satisfies the owner-approved semantic partial-row policy; all 77 tests across delivery, owner/trial composition, composition policy and curated fallback pass. Feat-590 records stale unrelated integration fixtures discovered during validation.
