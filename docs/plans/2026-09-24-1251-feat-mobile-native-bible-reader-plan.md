@@ -103,6 +103,7 @@ Datadog has recorded taps on the button since 2026-08-28, because production RUM
 
 - R7. The reader shows exactly one verse, centered horizontally and vertically on the screen, in a large reading typeface.
 - R8. The top bar holds the pill and the translation pill at the left, and the download button and the settings button at the right. The back button, both pills, and both buttons use the app's glass button style (KD28).
+  - **Superseded 2026-10-01 (owner):** the download button is on the translation sheet's Current card, not the top bar, so long book names fit the top bar. The translation pill shows a progress ring while a download runs. See `apps/mobile/CLAUDE.md`, "Bible reader (feat-553)".
 - R9. The footer shows the book and chapter, a "verse / total" counter whose total is the chapter's last verse number, a progress bar for the position in the chapter, and "Powered by StillBibleApp.com". The translation pill moved to the top bar (KD28).
 - R10. In the reader, the mini player starts in the top-right corner under the top-bar buttons on phone-sized screens, and in the bottom-right corner just above the footer on iPad-sized screens. The viewer can drag it to any of the four corners on both devices. A top corner sits just under the top bar, and a bottom corner sits just above the footer. In no corner does it cover the verse, the pill, the top-bar buttons, or the footer.
 - R11. iPad-sized screens show a centered pair of up/down buttons above the progress bar, with the down button filled. Phones show the pair only while a screen reader is on, or while the "Show arrow buttons" setting is on.
@@ -866,6 +867,7 @@ flowchart TB
 
 - The translation picker lists the viewer's language first, then the rest, with search, completeness, credit, download state, and an offline filter that lists only BSB and downloaded translations.
 - The download button in the top bar opens the size confirmation and shows progress (R29, R30).
+  - **Superseded 2026-10-01 (owner):** the button is on the translation sheet's Current card, and the pill shows the progress ring (see R8).
 - The settings sheet carries the seven settings and an "About the text" line with the BSB, catalog, and Copenhagen Alliance credits.
 
 **Patterns to follow:** `apps/mobile/app/watch/language.tsx` (thin sheet route); `apps/mobile/src/components/watch/DownloadSheet.tsx`.

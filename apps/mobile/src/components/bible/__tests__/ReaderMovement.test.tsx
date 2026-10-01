@@ -360,7 +360,6 @@ async function render(
     onOpenPassagePicker: jest.fn(),
     onOpenTranslationPicker: jest.fn(),
     onOpenSettings: jest.fn(),
-    onOpenDownload: jest.fn(),
     services,
     onboardingStore: options.onboarding ?? onboardingStore(AFTER_DEMO),
     ...options.extra,
@@ -1887,7 +1886,6 @@ describe("a passage-picker jump pulses the pill (R39)", () => {
       onOpenPassagePicker,
       onOpenTranslationPicker: jest.fn(),
       onOpenSettings: jest.fn(),
-      onOpenDownload: jest.fn(),
       services,
       onboardingStore: onboardingStore(SETTLED),
     } as BibleReaderProps

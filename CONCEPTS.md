@@ -136,7 +136,7 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 A short window of one Video, played from that Video's own Dub stream in the mobile Explore feed; it is a start point and an end point over the full Video, never a separate media file.
 _Avoid:_ short (the same thing in conversation; tickets and code say clip).
 
-A clip is cut at sentence boundaries, from the subtitle timing of the Dub that plays, or by a fixed fallback rule when no usable timing exists. A clip never writes watch progress. "Keep watching" hands the viewer from a clip to the full Video, at the point the clip reached and in the clip's Dub.
+A clip is cut at sentence boundaries, from the subtitle timing of the Dub that plays, or by a fixed fallback rule when no usable timing exists. A clip never writes watch progress. "Keep watching" hands the viewer from a clip to the full Video, at the point the clip reached and in the clip's Dub. When a clip ends, the feed moves on to the next clip; it plays the clip again instead while the viewer reads its open description or drags its progress bar.
 
 ### Language
 

@@ -270,8 +270,8 @@ export function VideoPlayer({
   const controls = useControlsVisibility(player)
 
   // Settings sheet (U4): component state, never a route — a routed form sheet
-  // cannot present over the fullscreen player (KTD5). The floating window
-  // hides beneath it like every other in-app sheet (R11).
+  // cannot present over the fullscreen player (KTD5). On Android the floating
+  // window hides beneath it (R11); on iOS the Modal draws over the window.
   const [settingsOpen, setSettingsOpen] = useState(false)
   useNonRouteSheetSuppression(settingsOpen, "playerSettings")
 
