@@ -6,8 +6,7 @@ priority: "P2"
 status: "cancelled"
 start_date: "2026-09-14"
 duration: 3
-depends_on:
-  - "feat-487"
+depends_on: []
 blocks: []
 tags:
   - "recommendations"

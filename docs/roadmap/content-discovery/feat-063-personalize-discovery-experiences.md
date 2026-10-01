@@ -6,11 +6,8 @@ priority: "P2"
 status: "cancelled"
 start_date: "2026-10-01"
 duration: 45
-depends_on:
-  - "feat-058"
-  - "feat-090"
-blocks:
-  - "feat-064"
+depends_on: []
+blocks: []
 tags:
   - "search"
   - "personalization"

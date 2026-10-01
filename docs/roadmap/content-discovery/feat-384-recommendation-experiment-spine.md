@@ -8,14 +8,10 @@ start_date: ""
 duration: 7
 depends_on:
   - "feat-376"
-  - "feat-381"
   - "feat-383"
 blocks:
-  - "feat-505"
   - "feat-385"
   - "feat-447"
-  - "feat-394"
-  - "feat-395"
 tags:
   - "admin"
   - "web"

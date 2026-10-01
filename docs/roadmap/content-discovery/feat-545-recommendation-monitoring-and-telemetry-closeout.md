@@ -8,8 +8,6 @@ start_date: ""
 duration: 2
 depends_on: []
 blocks:
-  - "feat-372"
-  - "feat-381"
   - "feat-447"
 tags:
   - "admin"

@@ -6,13 +6,8 @@ priority: "P1"
 status: "cancelled"
 start_date: ""
 duration: 4
-depends_on:
-  - "feat-373"
-  - "feat-382"
-  - "feat-383"
-blocks:
-  - "feat-393"
-  - "feat-449"
+depends_on: []
+blocks: []
 tags:
   - "admin"
   - "watch"

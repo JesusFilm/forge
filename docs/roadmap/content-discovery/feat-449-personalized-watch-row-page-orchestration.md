@@ -6,14 +6,8 @@ priority: "P1"
 status: "cancelled"
 start_date: ""
 duration: 8
-depends_on:
-  - "feat-373"
-  - "feat-388"
-  - "feat-390"
-  - "feat-391"
-  - "feat-393"
-blocks:
-  - "feat-396"
+depends_on: []
+blocks: []
 tags:
   - "admin"
   - "web"

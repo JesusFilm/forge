@@ -6,8 +6,7 @@ priority: "P1"
 status: "cancelled"
 start_date: "2026-05-31"
 duration: 31
-depends_on:
-  - "feat-044"
+depends_on: []
 blocks: []
 tags:
   - "search"
