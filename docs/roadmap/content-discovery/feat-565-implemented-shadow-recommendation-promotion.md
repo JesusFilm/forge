@@ -232,5 +232,17 @@ See `docs/validation/cowatch-restoration-20261001/production-investigation.md`
 for bounded evidence and its limits, and
 `docs/operations/recommendation-cowatch-refresh-2026-10-01.md` for the normal
 PR/autodeploy and owner activation sequence. Feat-573 owns bounded refresh.
-The no-study authorization above remains applicable; completion still requires
-a valid replacement and exact real co-watch serving evidence.
+The no-study authorization above remains applicable. Record supported activation
+and exact observed serving provenance, distinguishing actual contribution from
+successful incumbent fallback.
+
+## October 2 owner disposition
+
+The restoration task recorded G7 activation and refresh authorization in
+[PR #2530](https://github.com/JesusFilm/forge/pull/2530). For delivery readiness,
+apply `docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`.
+Sparse coverage and zero observed co-watch cards are accepted outcomes when the
+normal fallback works; positive co-watch contribution is not a gate on proceeding.
+Keep provenance observations truthful and operational verification separate from
+delivery defects. This policy clarification does not certify a later refresh
+or change release authority.

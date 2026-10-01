@@ -91,5 +91,10 @@ The operator and release procedure are documented in
 Native lifecycle, integrity-reuse and serving metadata regressions passed locally.
 The owner requested keeping the existing CI workflow unchanged for this release;
 feat-591 tracks adding these PostgreSQL suites to CI separately.
-Production admission and actual refresh/serving evidence are still required;
-this ticket remains in progress until that verification is recorded.
+The restoration task recorded production admission, G7 activation and a refresh
+grant in [PR #2530](https://github.com/JesusFilm/forge/pull/2530). Keep actual
+refresh lifecycle/capacity verification separate from delivery health; this
+ticket's in-progress status is not evidence of a delivery bug. The October 2
+owner decision accepts sparse coverage and successful incumbent fallback and
+permits proceeding without a positive co-watch-card gate. Apply
+`docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`.

@@ -1,5 +1,13 @@
 # Production recommendation health — October 1, 2026
 
+> Historical assessment of the window and deployment below. Subsequent repairs
+> landed in [PR #2527](https://github.com/JesusFilm/forge/pull/2527) and
+> [PR #2529](https://github.com/JesusFilm/forge/pull/2529). Apply the owner's
+> [October 2 coverage disposition](../2026-10-02-recommendation-coverage-acceptance.md)
+> when assessing readiness: accepted empty/partial rows and sparse co-watch
+> fallback are not delivery bugs or blockers. Check fresh authority/error
+> evidence before treating the historical findings below as current incidents.
+
 Core semantic/profile recommendations and source-neutral learning are functioning. Co-watch is not currently serving, and the available evidence does not support an all-standards sign-off. Delivery coverage and attribution remain concerns; latency and the inspected structural safeguards look healthy.
 
 ## Scope and provenance

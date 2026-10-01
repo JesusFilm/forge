@@ -107,6 +107,12 @@ Datadog RUM. Follow `docs/analytics-and-recommendation-policy.md` when planning,
 implementing, or reviewing recommendation or analytics work; it supersedes
 older consent requirements while retaining explicit personalization controls.
 
+For recommendation health, empty/partial rows or sparse co-watch coverage, apply
+the October 2 owner decision in
+`docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`.
+Accepted coverage limitations do not block proceeding; classify server failures
+separately.
+
 ### Error Handling
 
 - Use typed error classes, not raw `throw new Error()`.
