@@ -84,9 +84,10 @@ committed rejections and zero write failures. Its cause was not attributed to
 Watch exposure; the historical count is neither a healthy-exposure claim nor a
 fresh exposure-specific failure. Future evidence of failed issuance/persistence,
 wrong attribution, or a reproduced correctness defect requires investigation.
-The [evidence remediation ticket](feat-566-recommendation-evidence-gap-remediation.md)
-owns broader reconciliation. No new runtime deployment or fresh production
-health observation is asserted by this documentation closeout.
+The [dated evidence decision record](../../operations/recommendation-evidence-closeout-decisions-2026-09-29.md)
+retains separate historical telemetry gaps without proving current delivery
+health. No new runtime deployment or fresh production health observation is
+asserted by this documentation closeout.
 
 ## Historical remaining evidence gate (September 29)
 
