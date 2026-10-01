@@ -92,3 +92,20 @@ graphs or provide automatic refresh for legitimate source changes and expiry.
 Feat-573 owns continuity. Missing theme metadata is a separate composition
 fallback. A configured owner pointer or an HTTP 200 response proves neither
 co-watch execution nor useful recommendations; inspect actual served provenance.
+
+## Bounded refresh after later invalidation
+
+The first automatic delegated refresh published G8 on October 1 2026. Two
+captured eligibility revisions were superseded about three hours later, and
+the graph/release correctly revoked. Both successors remained eligible, but
+their stored input digests and identity concentrations differed. Do not broaden
+receipt reuse based only on unchanged verdicts or clear the revocation. The
+exact changed input was not reconstructed from retained aggregates.
+
+The fixed 12-hour attempt/publication interval intentionally leaves an
+incumbent-fallback period after early source invalidation. A running scheduler
+and the due timestamp do not prove that the next attempt succeeded. Native
+PostgreSQL coverage exercises revocation, throttled fallback and subsequent
+qualified replacement; production must still be checked after the next due
+time. Keep this lifecycle observation separate from sparse graph coverage,
+actual contributed cards and measured usefulness.
