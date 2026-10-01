@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   LayoutAnimation,
   Pressable,
@@ -7,6 +7,10 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
+  type StyleProp,
+  type TextStyle,
 } from "react-native"
 
 import { TEXT_ON_OVERLAY } from "../../lib/color"
@@ -17,6 +21,7 @@ import {
   type TextLayoutEvent,
 } from "../../hooks/useTextOverflow"
 import { useTypography } from "../../hooks/useTypography"
+import { useExplorePagerHold } from "./ExplorePager"
 
 export type ClipDescriptionProps = {
   description: string | null
@@ -83,21 +88,13 @@ export function ClipDescription({
   return (
     <View>
       {expanded ? (
-        <ScrollView
-          style={{ maxHeight: Math.round(height * EXPANDED_MAX_SCREEN_SHARE) }}
-          nestedScrollEnabled
-        >
-          <Text style={bodyStyle}>{description}</Text>
-          <Pressable
-            onPress={handleCollapse}
-            hitSlop={TOGGLE_HIT_SLOP}
-            style={styles.less}
-            accessibilityRole="button"
-            accessibilityLabel={EXPLORE_COPY.descriptionLessLabel}
-          >
-            <Text style={toggleStyle}>{EXPLORE_COPY.descriptionLess}</Text>
-          </Pressable>
-        </ScrollView>
+        <OpenDescription
+          description={description}
+          maxHeight={Math.round(height * EXPANDED_MAX_SCREEN_SHARE)}
+          bodyStyle={bodyStyle}
+          toggleStyle={toggleStyle}
+          onCollapse={handleCollapse}
+        />
       ) : (
         <View style={styles.row}>
           <Text
@@ -132,6 +129,82 @@ export function ClipDescription({
         </Text>
       </View>
     </View>
+  )
+}
+
+type OpenDescriptionProps = {
+  description: string
+  maxHeight: number
+  bodyStyle: StyleProp<TextStyle>
+  toggleStyle: StyleProp<TextStyle>
+  onCollapse: () => void
+}
+
+/** The open description. While its text scrolls, a finger on it holds the
+ *  pager, so a drag scrolls the text and never moves the feed (2026-10-01). */
+function OpenDescription({
+  description,
+  maxHeight,
+  bodyStyle,
+  toggleStyle,
+  onCollapse,
+}: OpenDescriptionProps) {
+  const holdPager = useExplorePagerHold()
+  const [viewport, setViewport] = useState(0)
+  const [content, setContent] = useState(0)
+  const scrolls = viewport > 0 && content - viewport > 1
+
+  const release = useRef<(() => void) | null>(null)
+  const releasePager = useCallback(() => {
+    release.current?.()
+    release.current = null
+  }, [])
+  // "less" unmounts this view under the finger, before its touch end lands.
+  useEffect(() => releasePager, [releasePager])
+  // A clip that ends while the text is open loops (owner, 2026-10-01).
+  useEffect(() => holdPager?.("feedMove"), [holdPager])
+
+  // Touch events reach this view whoever holds the responder: a scroll view
+  // that coasts takes the touch start itself, ahead of every child.
+  const handleTouchStart = useCallback(() => {
+    if (!scrolls || release.current != null || holdPager == null) return
+    release.current = holdPager("drag")
+  }, [holdPager, scrolls])
+  const handleTouchEnd = useCallback(
+    (e: GestureResponderEvent) => {
+      if (e.nativeEvent.touches.length === 0) releasePager()
+    },
+    [releasePager],
+  )
+
+  const handleLayout = useCallback((e: LayoutChangeEvent) => {
+    setViewport(e.nativeEvent.layout.height)
+  }, [])
+  const handleContentSize = useCallback((_width: number, h: number) => {
+    setContent(h)
+  }, [])
+
+  return (
+    <ScrollView
+      style={{ maxHeight }}
+      nestedScrollEnabled
+      onLayout={handleLayout}
+      onContentSizeChange={handleContentSize}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={releasePager}
+    >
+      <Text style={bodyStyle}>{description}</Text>
+      <Pressable
+        onPress={onCollapse}
+        hitSlop={TOGGLE_HIT_SLOP}
+        style={styles.less}
+        accessibilityRole="button"
+        accessibilityLabel={EXPLORE_COPY.descriptionLessLabel}
+      >
+        <Text style={toggleStyle}>{EXPLORE_COPY.descriptionLess}</Text>
+      </Pressable>
+    </ScrollView>
   )
 }
 

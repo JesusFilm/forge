@@ -504,7 +504,11 @@ describe("playback health", () => {
 
     const swiped = makeHarness()
     swiped.instance.focus("two")
-    swiped.instance.swipe({ preloadHit: false, direction: "forward" })
+    swiped.instance.swipe({
+      preloadHit: false,
+      direction: "forward",
+      trigger: "viewer",
+    })
     expect(swiped.logged("explore.first_motion")[0].context).toMatchObject({
       explore_first_motion_outcome: "swiped",
       explore_first_motion_ms: null,
@@ -516,13 +520,25 @@ describe("playback health", () => {
     h.instance.focus("two")
     h.instance.motionConfirmed()
 
-    h.instance.swipe({ preloadHit: true, direction: "forward" })
+    h.instance.swipe({
+      preloadHit: true,
+      direction: "forward",
+      trigger: "viewer",
+    })
     jest.advanceTimersByTime(120)
     h.instance.motionConfirmed()
     // A fast streak: this swipe never reaches motion.
-    h.instance.swipe({ preloadHit: false, direction: "forward" })
+    h.instance.swipe({
+      preloadHit: false,
+      direction: "forward",
+      trigger: "viewer",
+    })
     jest.advanceTimersByTime(80)
-    h.instance.swipe({ preloadHit: false, direction: "backward" })
+    h.instance.swipe({
+      preloadHit: false,
+      direction: "backward",
+      trigger: "viewer",
+    })
     h.instance.blur()
 
     expect(h.logged("explore.swipe").map((l) => l.context)).toEqual([
@@ -532,6 +548,7 @@ describe("playback health", () => {
         explore_swipe_direction: "forward",
         explore_swipe_outcome: "motion",
         explore_swipe_to_motion_ms: 120,
+        explore_swipe_trigger: "viewer",
         explore_player_mode: "two",
       },
       {
@@ -540,6 +557,7 @@ describe("playback health", () => {
         explore_swipe_direction: "forward",
         explore_swipe_outcome: "superseded",
         explore_swipe_to_motion_ms: null,
+        explore_swipe_trigger: "viewer",
         explore_player_mode: "two",
       },
       {
@@ -548,6 +566,35 @@ describe("playback health", () => {
         explore_swipe_direction: "backward",
         explore_swipe_outcome: "left",
         explore_swipe_to_motion_ms: null,
+        explore_swipe_trigger: "viewer",
+        explore_player_mode: "two",
+      },
+    ])
+  })
+
+  // The owner (2026-09-30): a clip that ends moves the feed on by itself. That
+  // move is not a swipe the viewer made, so the swipe series keeps them apart.
+  it("reports a move at a clip's end apart from the viewer's swipes", () => {
+    const h = makeHarness()
+    h.instance.focus("two")
+    h.instance.motionConfirmed()
+
+    h.instance.swipe({
+      preloadHit: true,
+      direction: "forward",
+      trigger: "clipEnd",
+    })
+    jest.advanceTimersByTime(90)
+    h.instance.motionConfirmed()
+
+    expect(h.logged("explore.swipe").map((l) => l.context)).toEqual([
+      {
+        explore_visit_id: "visit-1",
+        explore_preload_hit: true,
+        explore_swipe_direction: "forward",
+        explore_swipe_outcome: "motion",
+        explore_swipe_to_motion_ms: 90,
+        explore_swipe_trigger: "clipEnd",
         explore_player_mode: "two",
       },
     ])
@@ -572,7 +619,11 @@ describe("playback health", () => {
       feedLanguageSlug: "swahili",
       releasedEntries: 0,
     })
-    h.instance.swipe({ preloadHit: false, direction: "forward" })
+    h.instance.swipe({
+      preloadHit: false,
+      direction: "forward",
+      trigger: "viewer",
+    })
     h.instance.blur()
 
     expect(h.logged("explore.rebuffer").map((l) => l.context)).toEqual([
@@ -639,7 +690,11 @@ describe("attribute names", () => {
     h.instance.firstMotionStage("sourceLoaded")
     h.instance.motionConfirmed()
     h.instance.clipProgress("0", 3)
-    h.instance.swipe({ preloadHit: true, direction: "forward" })
+    h.instance.swipe({
+      preloadHit: true,
+      direction: "forward",
+      trigger: "viewer",
+    })
     h.instance.motionConfirmed()
     h.instance.rebuffer()
     h.instance.clipFailed({

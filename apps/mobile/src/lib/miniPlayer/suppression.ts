@@ -1,9 +1,10 @@
 /**
- * R11 suppression: the floating window hides while an in-app sheet is
- * presented, and returns to its corner when that sheet closes. Two mechanisms
- * live here because the app presents sheets two ways — nine real sheet ROUTES
- * (six in the watch and series groups, three reader sheets on the root
- * stack), and the sheets that are component state.
+ * R11 suppression: on Android the floating window hides while an in-app sheet
+ * is presented, and returns to its corner when that sheet closes. iOS draws
+ * every sheet over the window instead (see `miniPlayerPresentation`). Two
+ * mechanisms live here because the app presents sheets two ways — nine real
+ * sheet ROUTES (six in the watch and series groups, three reader sheets on
+ * the root stack), and the sheets that are component state.
  *
  * React-native-free by construction: routes arrive as expo-router segments and
  * the non-route sheets arrive as a count.

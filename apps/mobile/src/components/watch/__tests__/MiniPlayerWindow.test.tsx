@@ -137,6 +137,7 @@ import {
   Animated,
   BackHandler,
   Dimensions,
+  Platform,
   StyleSheet,
   type GestureResponderEvent,
 } from "react-native"
@@ -845,7 +846,17 @@ describe("drag (R2, KTD5)", () => {
 })
 
 describe("presentation (R3, R4, R11)", () => {
-  it("renders no window while a sheet is presented, and returns to the same corner", async () => {
+  const platformOs = Object.getOwnPropertyDescriptor(Platform, "OS")!
+  afterEach(() => {
+    Object.defineProperty(Platform, "OS", platformOs)
+  })
+
+  // Android draws the host over a sheet, so R11 still hides the window there.
+  it("on Android, renders no window while a sheet is presented, and returns to the same corner", async () => {
+    Object.defineProperty(Platform, "OS", {
+      value: "android",
+      configurable: true,
+    })
     const renderer = await floatWindow()
     await settle()
     expect(windowRoots(renderer)).toHaveLength(1)
@@ -887,6 +898,38 @@ describe("presentation (R3, R4, R11)", () => {
       translateX: target.x - base.x,
       translateY: target.y - base.y,
     })
+  })
+
+  // The owner (2026-09-30): iOS presents the sheet as a native modal over the
+  // host, so the window stays in its corner and the sheet's dimming darkens it.
+  it("on iOS, keeps the window in its corner while a sheet is presented", async () => {
+    expect(Platform.OS).toBe("ios")
+    const renderer = await floatWindow()
+    await settle()
+    const config = layoutConfig()
+    const target = miniPlayerCornerFrame(config, "topLeft")
+    const base = defaultCornerFrame(config)
+    const handlers = panHandlers(renderer)
+    await act(async () => {
+      handlers.onResponderGrant(touchAt(0, 0))
+      handlers.onResponderMove(touchAt(target.x - base.x, target.y - base.y))
+      handlers.onResponderRelease(touchAt(target.x - base.x, target.y - base.y))
+    })
+    await advance(400)
+    const corner = transformOf(byTestId(renderer, "playback-frame")[0])
+
+    await act(async () => {
+      sheetCounter.open("sduiQuiz")
+    })
+    expect(windowRoots(renderer)).toHaveLength(1)
+    expect(styleOf(byTestId(renderer, "playback-frame")[0]).opacity).not.toBe(0)
+    expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual(corner)
+
+    await act(async () => {
+      sheetCounter.close("sduiQuiz")
+    })
+    expect(windowRoots(renderer)).toHaveLength(1)
+    expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual(corner)
   })
 
   it("picks a drag up from the corner it returned to, not from the base frame", async () => {

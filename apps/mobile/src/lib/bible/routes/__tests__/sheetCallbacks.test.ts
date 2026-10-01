@@ -1,12 +1,14 @@
 /**
  * The reader controls that open a sheet (feat-553 U10, U11). Both hosts pass
  * `readerSheetCallbacks(router)` to BibleReader, so each control pushes the
- * U10 href for its sheet, and the download button opens U10's prompt.
+ * U10 href for its sheet. The download button is on the translation sheet's
+ * Current card (owner, 2026-10-01), and opens U10's prompt.
  */
 import { parseCatalog, type Catalog } from "../../data/catalog"
 import { readerSheetHref } from "../../sheets/routes"
 import type { VerseRef } from "../../versification/convert"
 import {
+  openTranslationDownload,
   readerSheetCallbacks,
   type ReaderControlContext,
 } from "../sheetCallbacks"
@@ -44,9 +46,8 @@ const CONTEXT: ReaderControlContext = {
 
 function setup() {
   const push = jest.fn()
-  const presentDownload = jest.fn(async () => {})
-  const callbacks = readerSheetCallbacks({ push }, { presentDownload })
-  return { push, presentDownload, callbacks }
+  const callbacks = readerSheetCallbacks({ push })
+  return { push, callbacks }
 }
 
 describe("readerSheetCallbacks", () => {
@@ -55,30 +56,36 @@ describe("readerSheetCallbacks", () => {
     ["onOpenTranslationPicker", "translation"],
     ["onOpenSettings", "settings"],
   ] as const)("%s pushes the %s sheet's href", (name, kind) => {
-    const { push, presentDownload, callbacks } = setup()
+    const { push, callbacks } = setup()
     callbacks[name](CONTEXT)
     expect(push).toHaveBeenCalledTimes(1)
     expect(push).toHaveBeenCalledWith(readerSheetHref(kind, CONTEXT))
-    expect(presentDownload).not.toHaveBeenCalled()
   })
 
-  it("opens the download prompt for the shown translation, with no push", () => {
-    const { push, presentDownload, callbacks } = setup()
-    callbacks.onOpenDownload(CONTEXT)
+  it("has no download control: the button is on the translation sheet", () => {
+    const { callbacks } = setup()
+    expect(Object.keys(callbacks).sort()).toEqual([
+      "onOpenPassagePicker",
+      "onOpenSettings",
+      "onOpenTranslationPicker",
+    ])
+  })
+})
+
+describe("openTranslationDownload", () => {
+  it("opens the download prompt for the Current card's translation", () => {
+    const presentDownload = jest.fn(async () => {})
+    openTranslationDownload(SYNODAL, { presentDownload })
     expect(presentDownload).toHaveBeenCalledTimes(1)
-    expect(presentDownload).toHaveBeenCalledWith(CONTEXT)
-    expect(push).not.toHaveBeenCalled()
+    expect(presentDownload).toHaveBeenCalledWith({ translation: SYNODAL })
   })
 
   it("keeps a rejected prompt from escaping as an unhandled rejection", async () => {
-    const push = jest.fn()
     const presentDownload = jest.fn(() => Promise.reject(new Error("alert")))
     const unhandled = jest.fn()
     process.on("unhandledRejection", unhandled)
     try {
-      readerSheetCallbacks({ push }, { presentDownload }).onOpenDownload(
-        CONTEXT,
-      )
+      openTranslationDownload(SYNODAL, { presentDownload })
       await new Promise((resolve) => setTimeout(resolve, 0))
       expect(presentDownload).toHaveBeenCalledTimes(1)
       expect(unhandled).not.toHaveBeenCalled()

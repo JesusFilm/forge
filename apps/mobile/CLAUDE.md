@@ -1040,18 +1040,27 @@ No-op on iOS. The guard is an ENUMERATION, not a sweep: the two SDUI routes
 predated it by four months and shipped without the prop because nobody added
 them to the list. Add a case whenever you add a `<VideoView>`.
 
-**Sheet suppression is cross-platform; the hazard it prevents is Android-only.**
-The window hides while an in-app sheet is presented and returns to its corner
-when the sheet closes. Two mechanisms, because the app presents sheets two
-ways — nine real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
+**Sheet suppression applies on Android only (owner, 2026-09-30).** On iOS
+every in-app sheet is a native modal presented above `PlaybackHost`: the nine
+routes are `formSheet`s, and the three component-state sheets are React
+Native `Modal`s. So on iOS the window stays in its corner under a sheet, and
+the sheet's dimming darkens it with the rest of the screen. Measured on the
+iPhone 17 simulator: the window's white close icon dropped from peak 235 to 191
+under the reader sheets, the same share as the reader's own text. The dimming
+also takes every touch, so a tap on the dimmed window closes the sheet.
+`PlaybackHost` passes `Platform.OS === "ios"` as `sheetsDrawOverHost` to
+`miniPlayerPresentation`. Android draws the host over a sheet, so there the
+window hides while a sheet is presented and returns to its corner when the
+sheet closes. Two mechanisms, because the app presents sheets two ways —
+nine real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
 `src/lib/miniPlayer/suppression.ts`: six read from `app/watch/_layout.tsx` and
 `app/series/_layout.tsx`, and the three Bible reader sheets read from the root
 `app/_layout.tsx`) and three sheets that are component state, counted by
 `getNonRouteSheetCounter()` and keyed by id so an unbalanced call is
-attributable. Keep both in step with those layouts. The rule runs on both
-platforms even though only Android paints through a sheet, so behaviour does
-not fork per platform. Suppression hides by opacity and drops pointer events —
-it never unmounts the view.
+attributable. Keep both in step with those layouts. A new iOS sheet that is
+NOT a native modal (a JS overlay inside a route) would draw under the window;
+give it a route or a `Modal`. Suppression hides by opacity and drops pointer
+events — it never unmounts the view.
 
 **The Bible reader routes change how the window starts and where it rests,
 and only on those routes (feat-553 KTD10, KTD11).** Outside the reader
@@ -1190,9 +1199,44 @@ and `useExploreTakeover` hooks.
   swipe history, and the pause flags, so both players derive from one state per
   commit. At most one player in the app has sound: a swipe mutes and pauses the
   outgoing player, reveals the incoming one muted on confirmed motion, then
-  unmutes it (expo/expo#30271). A loop is a seek at the window end; native
-  `loop` stays off. Loads start only while the pager rests, and every load
-  carries a token so a late `sourceLoad` never seeks the wrong clip.
+  unmutes it (expo/expo#30271). Loads start only while the pager rests, and
+  every load carries a token so a late `sourceLoad` never seeks the wrong clip.
+- **A clip that ends moves the feed to the next clip (owner, 2026-09-30,
+  changing R8).** At the window end, `useFeedPlayers` calls `onClipEnd`, and
+  `ExploreFeed` asks `ExplorePager`'s `requestMove("next")`. That move uses the
+  settle spring of a swipe release, and it jumps with Reduce Motion on. The
+  player holds the clip's last frame until the move lands. The clip loops only
+  when the pager refuses the move: no next clip yet, a settle running, a
+  finger on the pager or on a child that holds it, or an open description
+  (owner, 2026-10-01: the reader keeps the text). A loop is a seek at the
+  window end; native `loop` stays off. `explore.swipe` carries
+  `explore_swipe_trigger` (`viewer` or `clipEnd`), so the swipe series counts
+  only the viewer's moves.
+- **A child that scrolls on the pager's axis must hold the pager (owner,
+  2026-10-01).** On Fabric iOS, a pager that takes the JS responder stops every
+  nested scroll view from starting a drag:
+  `RCTScrollViewComponentView`'s `touchesShouldCancelInContentView` returns NO
+  while an ANCESTOR holds the responder. A slow drag on an open description
+  therefore moved the feed to the next clip, and a fast one scrolled the text.
+  `useExplorePagerHold()` gives a child two scopes:
+  - `drag`: the pager claims no drag and refuses `requestMove`. The open
+    description (`ClipDescription.tsx`) takes it in `onTouchStart` and releases
+    it on the last finger up, on a cancel, or on unmount. It holds only while
+    its text scrolls; text that fits leaves the drag to the pager.
+  - `feedMove`: only `requestMove` (the feed's own move) waits, so a clip end
+    loops. The open description holds it for as long as it is mounted. A
+    swipe and the screen reader's next/previous actions still move the feed;
+    the engine passes `"viewer"` for those, and the handle passes `"feed"`.
+  - **Use touch events, not a nested responder.** A child that claims the
+    responder fails in one case: while the text coasts after a fling, the
+    `ScrollView` takes the touch start in the capture phase, ahead of every
+    child. It then gives the drag to the pager, because no scroll event has
+    arrived yet. Touch events reach the child in every case.
+  - Jest cannot show the coast case. Verified on the iPhone SE simulator
+    (2026-10-01): 12 slow drags during a coast moved no clip. A temporary
+    `console.log` of the move trigger in `ExploreFeed`'s `handleMove` tells a
+    leaked swipe from a clip-end move. Fast Refresh keeps the old pager
+    engine in its ref, so a pager change needs a cold relaunch to show.
 - **The pager rebases at every settle, or iOS hides the clip from VoiceOver.**
   See the Common Pitfalls entry on frames that miss their parent's bounds.
   `ExplorePager.test.tsx` "accessibility tree geometry (R35)" pins it.
@@ -2062,15 +2106,34 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   records. The download button reads its state from the manifest and the
   files, never from a flag. The reader uses only the `expo-file-system`
   package root, never `/legacy`.
+  - **The download button is on the translation sheet's Current card, not
+    the top bar (owner, 2026-10-01).** It moved so long book names fit the
+    top bar. There is one button, on the card only: every row already says
+    "On this device", and a button per row would add a second tap target to
+    each row. `TranslationDownloadButton` fills the Current row's
+    `renderActiveAccessory` slot in `SearchableListSheet`, beside the row's
+    accessible label, so VoiceOver reaches the button as its own element. A
+    tap opens the same prompt (`openTranslationDownload` →
+    `presentReaderDownloadPrompt`). BSB is inside the app, so its card has no
+    button. The size shows under the button until a download starts.
+  - **The translation pill shows a ring while the shown translation
+    downloads (owner, 2026-10-01).** A download keeps running after the sheet
+    closes, and the ring is its only sign then (`pillDownloadStatus` in
+    `src/lib/bible/reader/labels.ts`). The pill's label adds the percent
+    ("Translation: World English Bible, downloading, 40 percent. Change
+    translation"). A finished download shows nothing in the pill: the owner
+    tried a gray cloud-check there and dropped it the same day. The card in
+    the sheet still says "On this device".
   - **A running download shows a ring, not a percent (owner, 2026-09-28).**
-    `ReaderProgressRing` matches the watch page's ring (26 pt, 2.5 pt line).
-    Its center is an X, not the watch page's pause: a Bible download only
-    cancels, and a tap offers "Keep downloading" or "Cancel download". Do
-    not reuse `DownloadProgressRing`
-    there: it punches its center with an opaque disc, and the glass button
-    has no opaque color to match. This ring draws only its line: two half
-    rings (a circle with two colored border sides) turn inside half-width
-    clips. The button's label still says the percent.
+    `ReaderProgressRing` matches the watch page's ring (26 pt, 2.5 pt line)
+    on the card's button; the pill uses a 16 pt ring with no center.
+    The button's center is an X, not the watch page's pause: a Bible download
+    only cancels, and a tap offers "Keep downloading" or "Cancel download".
+    Do not reuse `DownloadProgressRing` there: it punches its center with an
+    opaque disc, and the glass button has no opaque color to match. This ring
+    draws only its line: two half rings (a circle with two colored border
+    sides) turn inside half-width clips. The button's label still says the
+    percent.
 - **Every chapter read from `bible.helloao.org` has a time limit and a byte
   limit (KTD3).** The limits are 8 seconds and 512 KB, and each failure is a
   typed reason in `src/lib/bible/repository/errors.ts`. A whole-translation
@@ -2213,7 +2276,8 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
     rule, so the mark and the pick agree with the pill (review #9, owner,
     2026-09-28).
 - **The translation pill is in the top bar (KD28, owner, 2026-09-27).** It
-  sits right of the passage pill and shows the short name only. A stand-in
+  sits right of the passage pill and shows the short name, plus a ring while
+  a download runs (see the downloads above). A stand-in
   (R25, R41) adds a red info button right of the pill, not inside it (owner,
   2026-09-28). A tap shows a note under it ("Η Καινή Διαθήκη does not
   include Genesis. The reader shows it in Berean Standard Bible."), and says

@@ -119,7 +119,12 @@ type Box = {
 
 type ProbeProps = Pick<
   FeedPlayersInput,
-  "onLoop" | "onSourceSet" | "onSourceLoaded" | "onRebuffer" | "onClipFailed"
+  | "onLoop"
+  | "onClipEnd"
+  | "onSourceSet"
+  | "onSourceLoaded"
+  | "onRebuffer"
+  | "onClipFailed"
 > & {
   muted?: boolean
   yieldsToRoot?: boolean
@@ -967,5 +972,87 @@ describe("useFeedPlayers — Mux in-manifest subtitles", () => {
       A.__emit("subtitleTrackChange", {})
     })
     expect(A.subtitleTrack).toBeNull()
+  })
+})
+
+// The owner (2026-09-30), changing R8: a clip that ends moves the feed on. It
+// loops only when the feed cannot move, such as with no next clip yet.
+describe("useFeedPlayers — the move at a clip's end", () => {
+  it("asks the feed to move on at the window end, and holds the clip's last frame", async () => {
+    const onClipEnd = jest.fn(() => true)
+    const onLoop = jest.fn()
+    const h = await startedHarness({ onClipEnd, onLoop })
+    const token = h.token("a")
+
+    await tick(A, { currentTime: END - 1 })
+    expect(onClipEnd).not.toHaveBeenCalled()
+
+    await tick(A, { currentTime: END + 0.1 })
+    expect(onClipEnd).toHaveBeenCalledWith(token)
+    expect(A.currentTime).toBe(END + 0.1)
+    expect(A.playing).toBe(false)
+    expect(onLoop).not.toHaveBeenCalled()
+
+    // A later tick asks nothing again, and a reconcile pass does not play on.
+    expect(await tick(A, { currentTime: END + 0.2 })).toBe(true)
+    await h.rerender({ onClipEnd, onLoop })
+    expect(onClipEnd).toHaveBeenCalledTimes(1)
+    expect(A.playing).toBe(false)
+  })
+
+  it("loops as before when the feed cannot move on", async () => {
+    const onClipEnd = jest.fn(() => false)
+    const onLoop = jest.fn()
+    const h = await startedHarness({ onClipEnd, onLoop })
+
+    await tick(A, { currentTime: END + 0.1 })
+    expect(onClipEnd).toHaveBeenCalledWith(h.token("a"))
+    expect(A.currentTime).toBe(START)
+    expect(onLoop).toHaveBeenCalledTimes(1)
+    expect(A.playing).toBe(true)
+  })
+
+  it("asks the feed when the asset itself ends inside the window", async () => {
+    const onClipEnd = jest.fn(() => true)
+    const onLoop = jest.fn()
+    const h = await startedHarness({ onClipEnd, onLoop })
+    // The asset ends 5 s before the window does.
+    await tick(A, { currentTime: END - 5 })
+    await act(async () => {
+      A.pause()
+      A.__emit("playToEnd")
+    })
+    expect(onClipEnd).toHaveBeenCalledWith(h.token("a"))
+    expect(onLoop).not.toHaveBeenCalled()
+    expect(A.currentTime).toBe(END - 5)
+    expect(A.playing).toBe(false)
+  })
+
+  it("plays the next clip on the held player after the move in one-player mode", async () => {
+    const onClipEnd = jest.fn(() => true)
+    const h = await mount({ onClipEnd })
+    await h.send(focus("one"), queued(1))
+    await settle(A)
+    await h.send(queued(2))
+    await tick(A, { currentTime: END + 0.1 })
+    expect(A.playing).toBe(false)
+
+    await h.send(SWIPE, REST)
+    expect(loads(A)).toEqual([feedUrl(1), feedUrl(2)])
+    await settle(A)
+    expect(A.playing).toBe(true)
+  })
+
+  it("plays a held clip again when the feed leaves and returns before the move lands", async () => {
+    const onClipEnd = jest.fn(() => true)
+    const h = await startedHarness({ onClipEnd })
+    await tick(A, { currentTime: END + 0.1 })
+    expect(A.playing).toBe(false)
+
+    // A tab switch while the page moved: the pager's move never reached the feed.
+    await h.send({ type: "blur", positionSeconds: END }, focus())
+    expect(A.playing).toBe(true)
+    await tick(A, { currentTime: END + 0.3 })
+    expect(onClipEnd).toHaveBeenCalledTimes(2)
   })
 })

@@ -844,10 +844,13 @@ function ActivePlaybackHost({
     sheetCounter.subscribe,
     sheetCounter.count,
   )
+  // iOS presents every in-app sheet as a native modal above this host, so the
+  // sheet and its dimming cover the window. Android draws this host over one.
   const presentation = miniPlayerPresentation(
     sessionSnapshot,
     segments,
     openSheetCount,
+    Platform.OS === "ios",
   )
   const session = sessionSnapshot.session
   const hasSession = session != null
@@ -1817,7 +1820,8 @@ function ActivePlaybackHost({
   }, [store])
 
   // feat-553 R10: the reader keeps its verse clear of the resting window. It
-  // stays published while a sheet hides the window, so the verse holds still.
+  // stays published while a sheet covers or hides the window, so the verse
+  // holds still.
   const onReaderRoute = readerPolicy != null
   const restingWindow = useMemo(
     () =>

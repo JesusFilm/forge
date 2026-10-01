@@ -33,6 +33,9 @@ import {
 import {
   EXPLORE_PAGER_REST_DWELL_MS,
   ExplorePager,
+  useExplorePagerHold,
+  type ExplorePagerHandle,
+  type ExplorePagerHold,
   type ExplorePagerMove,
   type ExplorePagerSlot,
   type ExplorePagerUnderlay,
@@ -112,22 +115,30 @@ afterEach(() => {
 
 type Harness = {
   renderer: TestInstance
+  /** The feed's handle: a move that no gesture started. */
+  handle: { current: ExplorePagerHandle | null }
   moves: ExplorePagerMove[]
   rests: number
   latch: boolean[]
   mounts: number
   roles: Map<number, string>
   slots: Map<number, ExplorePagerSlot>
+  /** What `useExplorePagerHold` gives a child of the pager. */
+  hold: ExplorePagerHold | null
 }
 
 function SlotProbe({
   slot,
   onMount,
+  onHold,
 }: {
   slot: ExplorePagerSlot
   onMount: () => void
+  onHold: (hold: ExplorePagerHold | null) => void
 }) {
   useEffect(onMount, [onMount])
+  const hold = useExplorePagerHold()
+  useEffect(() => onHold(hold), [hold, onHold])
   return (
     <View testID={`clip-${slot.key}`} {...(slot.accessibility ?? {})}>
       <Text>{slot.role}</Text>
@@ -144,19 +155,25 @@ async function renderPager(
   } = {},
 ): Promise<Harness> {
   const harness = {
+    handle: { current: null },
     moves: [],
     rests: 0,
     latch: [],
     mounts: 0,
     roles: new Map(),
     slots: new Map(),
+    hold: null,
   } as unknown as Harness
   const onMount = () => {
     harness.mounts += 1
   }
+  const onHold = (hold: ExplorePagerHold | null) => {
+    harness.hold = hold
+  }
   const element = (canNext: boolean, canPrevious: boolean): ReactElement => {
     const pager = (
       <ExplorePager
+        ref={harness.handle}
         canSwipeNext={canNext}
         canSwipePrevious={canPrevious}
         onMove={(move) => harness.moves.push(move)}
@@ -172,7 +189,7 @@ async function renderPager(
         renderSlot={(slot) => {
           harness.roles.set(slot.key, slot.role)
           harness.slots.set(slot.key, slot)
-          return <SlotProbe slot={slot} onMount={onMount} />
+          return <SlotProbe slot={slot} onMount={onMount} onHold={onHold} />
         }}
       />
     )
@@ -943,6 +960,154 @@ describe("accessibility (R35)", () => {
   })
 })
 
+/** The feed's own move, as at a clip's end. Returns whether it started. */
+async function requestMove(
+  harness: Harness,
+  move: ExplorePagerMove,
+): Promise<boolean> {
+  let started = false
+  await act(async () => {
+    started = harness.handle.current!.requestMove(move)
+  })
+  return started
+}
+
+// The owner (2026-09-30): a clip that ends moves the feed on, animated as if
+// the viewer had swiped.
+describe("a move the feed asks for (clip end)", () => {
+  it("settles to the next page on the swipe's own native spring, and reports it", async () => {
+    const harness = await renderPager()
+
+    expect(await requestMove(harness, "next")).toBe(true)
+    expect(harness.latch).toEqual([true])
+    const settle = springs().at(-1)!
+    expect(settle.config).toMatchObject({
+      toValue: -PAGE,
+      velocity: 0,
+      useNativeDriver: true,
+    })
+    // Nothing moves on until the spring lands, as for a swipe.
+    expect(harness.moves).toEqual([])
+
+    await landSettle()
+    await advance(EXPLORE_PAGER_REST_DWELL_MS)
+    expect(harness.moves).toEqual(["next"])
+    expect(harness.rests).toBe(1)
+    expect(harness.latch).toEqual([true, false])
+    expectRolesOnScreen(harness)
+  })
+
+  it("refuses a move the feed does not allow", async () => {
+    const harness = await renderPager({ canSwipeNext: false })
+
+    expect(await requestMove(harness, "next")).toBe(false)
+    expect(animations).toEqual([])
+    expect(harness.latch).toEqual([])
+  })
+
+  it("refuses while a finger holds the pager, and leaves the drag to it", async () => {
+    const harness = await renderPager()
+    let endY = 0
+    await act(async () => {
+      endY = grantAndMove(handlers(harness.renderer), -SHORT, SLOW_MS)
+    })
+
+    expect(await requestMove(harness, "next")).toBe(false)
+    expect(springs()).toEqual([])
+
+    await act(async () => {
+      handlers(harness.renderer).onResponderRelease(touch(0, endY, 0, endY, 16))
+    })
+    await landSettle()
+    expect(harness.moves).toEqual([])
+    expectRolesOnScreen(harness)
+  })
+
+  it("refuses while a settle runs, so one end moves one page", async () => {
+    const harness = await renderPager()
+
+    expect(await requestMove(harness, "next")).toBe(true)
+    expect(await requestMove(harness, "next")).toBe(false)
+    expect(springs()).toHaveLength(1)
+    await landSettle()
+    expect(harness.moves).toEqual(["next"])
+  })
+})
+
+// The owner (2026-10-01): a drag on an open description that scrolls moved
+// the pager, and a clip end took the open text away. A child holds the pager.
+describe("a child that holds the pager", () => {
+  /** Whether a new, clearly vertical drag is claimed. */
+  function claimsDrag(harness: Harness): boolean {
+    const pan = handlers(harness.renderer)
+    pan.onStartShouldSetResponderCapture(touch(0, 0, 0, 0, 16))
+    return offerMove(pan, touch(0, -40, 0, 0, 16)).claimed
+  }
+
+  it("claims no drag while held, and claims again after the release", async () => {
+    const harness = await renderPager()
+    expect(harness.hold).not.toBeNull()
+
+    const release = harness.hold!("drag")
+    expect(claimsDrag(harness)).toBe(false)
+    release()
+    expect(claimsDrag(harness)).toBe(true)
+  })
+
+  it("refuses a move the feed asks for while held", async () => {
+    const harness = await renderPager()
+
+    const release = harness.hold!("drag")
+    expect(await requestMove(harness, "next")).toBe(false)
+    expect(animations).toEqual([])
+    expect(harness.latch).toEqual([])
+    release()
+    expect(await requestMove(harness, "next")).toBe(true)
+  })
+
+  it("lets each release go once: a repeated call frees no other hold", async () => {
+    const harness = await renderPager()
+
+    const first = harness.hold!("drag")
+    const second = harness.hold!("drag")
+    first()
+    first()
+    expect(claimsDrag(harness)).toBe(false)
+    second()
+    expect(claimsDrag(harness)).toBe(true)
+  })
+
+  it("makes only the feed's own move wait for a feed-move hold", async () => {
+    const harness = await renderPager()
+
+    const release = harness.hold!("feedMove")
+    expect(await requestMove(harness, "next")).toBe(false)
+    expect(animations).toEqual([])
+    // The viewer still moves: a swipe, and the screen reader's action.
+    expect(claimsDrag(harness)).toBe(true)
+    await accessibilityAction(harness, "next")
+    expect(springs()).toHaveLength(1)
+    await landSettle()
+    await advance(EXPLORE_PAGER_REST_DWELL_MS)
+    expect(harness.moves).toEqual(["next"])
+
+    release()
+    expect(await requestMove(harness, "next")).toBe(true)
+  })
+
+  it("keeps a drag hold and a feed-move hold apart", async () => {
+    const harness = await renderPager()
+
+    const feedMove = harness.hold!("feedMove")
+    const drag = harness.hold!("drag")
+    drag()
+    expect(claimsDrag(harness)).toBe(true)
+    expect(await requestMove(harness, "next")).toBe(false)
+    feedMove()
+    expect(await requestMove(harness, "next")).toBe(true)
+  })
+})
+
 describe("accessibility tree geometry (R35)", () => {
   function expectFramesInsideParents(harness: Harness) {
     for (const offset of frameOffsets(harness)) {
@@ -1057,6 +1222,16 @@ describe("reduced motion (R35)", () => {
     const harness = await renderPager()
 
     await accessibilityAction(harness, "next")
+
+    expect(harness.moves).toEqual(["next"])
+    expect(animations).toEqual([])
+    expectRolesOnScreen(harness)
+  })
+
+  it("changes the clip at a clip's end with no animation", async () => {
+    const harness = await renderPager()
+
+    expect(await requestMove(harness, "next")).toBe(true)
 
     expect(harness.moves).toEqual(["next"])
     expect(animations).toEqual([])

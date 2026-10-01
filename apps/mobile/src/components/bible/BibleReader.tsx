@@ -68,8 +68,8 @@ import {
   chapterProgress,
   counterAccessibilityLabel,
   counterLabel,
-  downloadLabel,
   passageLabel,
+  pillDownloadStatus,
   stopIndexForVerse,
   stopRange,
   translationLabel,
@@ -154,8 +154,6 @@ type BibleReaderSharedProps = {
   /** The footer's translation label (R23, R25, U10's translation picker). */
   onOpenTranslationPicker: (context: ReaderRouteContext) => void
   onOpenSettings: (context: ReaderRouteContext) => void
-  /** The top bar's download button (R29, R30, U10). */
-  onOpenDownload: (context: ReaderRouteContext) => void
   /** The space under the footer; the default follows the host (chrome.ts). */
   bottomInset?: number
   /** U13: frames floating over the reader, such as the mini player window. */
@@ -563,7 +561,12 @@ export function BibleReader(props: BibleReaderProps) {
         reduceMotion={reduceMotion}
         translation={
           shown && place
-            ? translationLabel(shown, viewerTranslation, place.bookName)
+            ? translationLabel(
+                shown,
+                viewerTranslation,
+                place.bookName,
+                downloadState,
+              )
             : null
         }
         onPressTranslation={() => {
@@ -571,19 +574,7 @@ export function BibleReader(props: BibleReaderProps) {
           visit.markSheetOpen()
           props.onOpenTranslationPicker(context)
         }}
-        download={{
-          state: downloadState,
-          accessibilityLabel: shownTranslation
-            ? downloadLabel(
-                downloadState ?? { kind: "checking" },
-                shownTranslation,
-              )
-            : READER_COPY.download.waiting,
-        }}
-        onPressDownload={() => {
-          picker.disarm()
-          props.onOpenDownload(context)
-        }}
+        translationStatus={pillDownloadStatus(downloadState)}
         onPressSettings={() => {
           picker.disarm()
           visit.markSheetOpen()

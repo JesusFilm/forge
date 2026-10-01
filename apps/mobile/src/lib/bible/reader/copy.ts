@@ -14,7 +14,14 @@ export const READER_COPY = {
   settings: "Reader settings",
   choosePassage: (passage: string) => `${passage}. Choose a passage`,
   choosePassageWaiting: "Choose a passage",
-  translation: (name: string) => `Translation: ${name}. Change translation`,
+  translation: (name: string, status?: string) =>
+    status
+      ? `Translation: ${name}, ${status}. Change translation`
+      : `Translation: ${name}. Change translation`,
+  /** The translation pill's download status (owner, 2026-10-01). */
+  pillStatus: {
+    downloading: (percent: number) => `downloading, ${percent} percent`,
+  },
   chooseTranslationWaiting: "Change translation",
   /** R25: the book is not in the viewer's translation. The info button beside
    *  the translation pill shows it (owner, 2026-09-28). */
@@ -87,7 +94,6 @@ export const READER_COPY = {
     running: (name: string, percent: number) =>
       `Downloading ${name}, ${percent} percent`,
     failed: (name: string) => `The download of ${name} stopped. Try again`,
-    waiting: "Download translation",
   },
   failure: {
     offlineTitle: "This chapter is not on this device",

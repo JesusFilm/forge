@@ -162,6 +162,8 @@ export function miniPlayerPresentation(
   snapshot: MiniPlayerStoreSnapshot,
   segments: readonly string[],
   openNonRouteSheetCount = 0,
+  /** Every in-app sheet draws over the host: true on iOS, false on Android. */
+  sheetsDrawOverHost = false,
 ): MiniPlayerPresentation {
   if (!snapshot.session) return "none"
   if (snapshot.dismissal === "exiting") return "exiting"
@@ -169,6 +171,13 @@ export function miniPlayerPresentation(
   // KTD16 rides the same branch as R11 by RESULT only: the window stops drawing
   // its chrome. The mechanisms differ, and U7/U9 own that difference.
   if (snapshot.pipHold) return "hidden"
-  if (isSuppressedBySheet(segments, openNonRouteSheetCount)) return "hidden"
+  // The owner (2026-09-30): a sheet that draws over the window, and dims it,
+  // leaves it in place. R11 hides it only where it would draw over the sheet.
+  if (
+    !sheetsDrawOverHost &&
+    isSuppressedBySheet(segments, openNonRouteSheetCount)
+  ) {
+    return "hidden"
+  }
   return "floating"
 }

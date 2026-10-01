@@ -62,6 +62,7 @@ The app has four tabs today: Home, Search, Library, and Profile. Each one asks a
 - **Recommendations first, random fill.** (session-settled: user-directed — chosen over pure random and weighted random.) Governs R25.
 - **A clip ends at the first natural pause.** (session-settled: user-directed — chosen over a ~30 s target and a random end: each clip feels like a complete moment.) Governs R27.
 - **A clip loops until the viewer swipes.** (session-settled: user-directed — chosen over auto-advance and an end card.) Governs R8.
+  - **Superseded 2026-09-30 (owner):** a clip that ends moves the feed to the next clip, animated like a swipe. It loops only when the feed cannot move. See `apps/mobile/CLAUDE.md`, "Explore clips feed". Since 2026-10-01 (owner), a clip whose description is open also loops, so the reader keeps the text.
 - **Tap to pause, with a draggable progress bar.** (session-settled: user-directed — chosen over tap-to-show-controls and a progress line that cannot be dragged.) Governs R10, R12.
 - **Sound on, and the mute choice is saved across launches.** (session-settled: user-directed — chosen over muted-first and a mute that lasts one session.) Governs R11.
 - **Captions show on dubbed clips only while muted.** (session-settled: user-directed — chosen over the global subtitle setting, always on, and never on: the common short-form pattern for silent viewing.) Governs R13.
@@ -93,6 +94,7 @@ The app has four tabs today: Home, Search, Library, and Profile. Each one asks a
 - R6. While a clip plays, the next clip loads in advance in a second player that only the feed uses, so a swipe starts motion and sound with no load wait. The feed loads at most one clip ahead. After a swipe down, the clip before the current one loads in advance instead.
 - R7. On a device that cannot run the second player, Explore uses one player, and a still of the clip's first frame shows until playback starts.
 - R8. A clip loops until the viewer swipes.
+  - **Superseded 2026-09-30 (owner):** at its end a clip moves the feed to the next clip, animated like a swipe. It loops only when no next clip is ready or the viewer holds the pager. Since 2026-10-01 (owner), it also loops while its description is open.
 - R41. A swipe down returns through the clips seen in this app session, and each clip restarts at its own start. The history clears on relaunch. After a swipe back, a swipe up replays the seen clips in order, and new clips start after the last clip seen.
 
 **Playback controls and framing**

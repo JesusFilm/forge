@@ -16,13 +16,15 @@ import {
   READER_TOP_BAR_OFFSET,
 } from "../../lib/bible/reader/chrome"
 import { READER_COPY } from "../../lib/bible/reader/copy"
-import type { TranslationLabel } from "../../lib/bible/reader/labels"
-import type { TranslationDownloadState } from "../../lib/bible/repository/translationDownloads"
+import type {
+  PillDownloadStatus,
+  TranslationLabel,
+} from "../../lib/bible/reader/labels"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 import { ChapterPill } from "./ChapterPill"
 import { ReaderGlassButton } from "./ReaderGlassButton"
-import { ReaderDownloadGlyph } from "./sheets/ReaderDownloadGlyph"
+import { ReaderProgressRing } from "./ReaderProgressRing"
 
 export type ReaderTopBarProps = {
   tokens: ReaderTokens
@@ -38,16 +40,14 @@ export type ReaderTopBarProps = {
   /** R23: the shown translation, or null while waiting. */
   translation: TranslationLabel | null
   onPressTranslation: () => void
-  download: {
-    state: TranslationDownloadState | null
-    accessibilityLabel: string
-  }
-  onPressDownload: () => void
+  /** A running download of the shown translation, as a ring in the pill. */
+  translationStatus: PillDownloadStatus | null
   onPressSettings: () => void
 }
 
 /** R8: back, the pill, and the translation pill at the left (owner,
- *  2026-09-27); download and settings at the right. */
+ *  2026-09-27); settings at the right. The download button is on the
+ *  translation sheet's Current card (owner, 2026-10-01). */
 export function ReaderTopBar({
   tokens,
   safeAreaTop,
@@ -58,8 +58,7 @@ export function ReaderTopBar({
   reduceMotion,
   translation,
   onPressTranslation,
-  download,
-  onPressDownload,
+  translationStatus,
   onPressSettings,
 }: ReaderTopBarProps) {
   const note = translation?.note ?? null
@@ -150,6 +149,9 @@ export function ReaderTopBar({
           >
             {translation?.text ?? " "}
           </Text>
+          {translationStatus && (
+            <PillStatus status={translationStatus} tokens={tokens} />
+          )}
         </ReaderGlassButton>
         {note !== null && (
           <Pressable
@@ -175,14 +177,6 @@ export function ReaderTopBar({
       <View style={styles.trailing} pointerEvents="box-none">
         <ReaderGlassButton
           tokens={tokens}
-          accessibilityLabel={download.accessibilityLabel}
-          onPress={onPressDownload}
-          disabled={download.state === null}
-        >
-          <ReaderDownloadGlyph state={download.state} tokens={tokens} />
-        </ReaderGlassButton>
-        <ReaderGlassButton
-          tokens={tokens}
           accessibilityLabel={READER_COPY.settings}
           onPress={onPressSettings}
         >
@@ -199,6 +193,36 @@ export function ReaderTopBar({
           onPress={() => setTip(null)}
         />
       )}
+    </View>
+  )
+}
+
+/** The pill's ring, beside the short name. */
+const PILL_RING_SIZE = 16
+
+// The owner (2026-10-01): a small ring while a download runs, so the download
+// stays visible once the sheet closes. The pill's label says the percent.
+function PillStatus({
+  status,
+  tokens,
+}: {
+  status: PillDownloadStatus
+  tokens: ReaderTokens
+}) {
+  return (
+    <View
+      testID="reader-pill-download-ring"
+      style={styles.pillStatus}
+      accessible={false}
+      importantForAccessibility="no-hide-descendants"
+    >
+      <ReaderProgressRing
+        size={PILL_RING_SIZE}
+        strokeWidth={2}
+        progress={status.progress}
+        color={tokens.icon}
+        trackColor={tokens.progressTrack}
+      />
     </View>
   )
 }
@@ -306,6 +330,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: "600",
     fontFamily: "System",
+  },
+  pillStatus: {
+    marginLeft: 6,
   },
   // A full touch target; the negative margin keeps the icon near the pill.
   info: {

@@ -3,8 +3,8 @@
  * MEASURES an overflow. The toggles animate and report, and never pause.
  */
 
-import { act } from "react"
-import { LayoutAnimation } from "react-native"
+import { act, createRef } from "react"
+import { LayoutAnimation, type GestureResponderEvent } from "react-native"
 
 const mockReduceMotion = jest.fn(() => false)
 jest.mock("../../../hooks/useReduceMotion", () => ({
@@ -15,6 +15,7 @@ import {
   ClipDescription,
   DESCRIPTION_TOGGLE_ANIMATION,
 } from "../ClipDescription"
+import { ExplorePager, type ExplorePagerHandle } from "../ExplorePager"
 import { EXPLORE_COPY } from "../../../lib/explore/copy"
 import {
   TestRenderer,
@@ -209,6 +210,214 @@ describe("ClipDescription", () => {
   it("renders nothing for a missing or empty description", () => {
     expect(render(null).renderer.toJSON()).toBeNull()
     expect(render("").renderer.toJSON()).toBeNull()
+  })
+})
+
+// The owner (2026-10-01): a drag on an open description that scrolls moved
+// the pager to the next clip. A finger on the text now holds the pager.
+describe("a finger on the open description", () => {
+  type PagerPan = {
+    onStartShouldSetResponderCapture: (e: GestureResponderEvent) => boolean
+    onMoveShouldSetResponderCapture: (e: GestureResponderEvent) => boolean
+    onMoveShouldSetResponder: (e: GestureResponderEvent) => boolean
+  }
+
+  let clock = 1000
+  /** One finger at (0, y) from (0, 0), as PanResponder reads it. */
+  function touch(y: number): GestureResponderEvent {
+    clock += 16
+    return {
+      nativeEvent: { touches: [{}], changedTouches: [], pageX: 0, pageY: y },
+      touchHistory: {
+        numberActiveTouches: 1,
+        indexOfSingleActiveTouch: 0,
+        mostRecentTimeStamp: clock,
+        touchBank: [
+          {
+            touchActive: true,
+            startPageX: 0,
+            startPageY: 0,
+            startTimeStamp: clock - 16,
+            currentPageX: 0,
+            currentPageY: y,
+            currentTimeStamp: clock,
+            previousPageX: 0,
+            previousPageY: 0,
+            previousTimeStamp: clock - 16,
+          },
+        ],
+      },
+    } as unknown as GestureResponderEvent
+  }
+
+  /** The real pager, with the description on its current page. */
+  function renderInPager(
+    description: string,
+    handle = createRef<ExplorePagerHandle>(),
+  ): TestInstance {
+    let renderer!: TestInstance
+    act(() => {
+      renderer = TestRenderer.create(
+        <ExplorePager
+          ref={handle}
+          canSwipeNext
+          canSwipePrevious
+          onMove={() => {}}
+          onRest={() => {}}
+          onGestureLatchChange={() => {}}
+          renderSlot={(slot) =>
+            slot.role === "current" ? (
+              <ClipDescription
+                description={description}
+                onExpand={() => {}}
+                onCollapse={() => {}}
+              />
+            ) : null
+          }
+        />,
+      )
+    })
+    mounted.push(renderer)
+    return renderer
+  }
+
+  /** Whether the pager takes a new 40 pt vertical drag. */
+  function pagerClaims(renderer: TestInstance): boolean {
+    const [root] = renderer.root.findAll(
+      (n) =>
+        typeof n.type === "string" &&
+        typeof n.props.onMoveShouldSetResponder === "function",
+    )
+    const pan = root.props as unknown as PagerPan
+    pan.onStartShouldSetResponderCapture(touch(0))
+    const move = touch(-40)
+    pan.onMoveShouldSetResponderCapture(move)
+    return pan.onMoveShouldSetResponder(move)
+  }
+
+  function scrollBox(renderer: TestInstance): RenderedNode {
+    const [node] = renderer.root.findAll(
+      (n) =>
+        n.props.nestedScrollEnabled === true &&
+        typeof n.props.onContentSizeChange === "function",
+    )
+    expect(node).toBeDefined()
+    return node
+  }
+
+  function open(renderer: TestInstance, viewport: number, content: number) {
+    measure(renderer, 3)
+    press(renderer, EXPLORE_COPY.descriptionMoreLabel)
+    const box = scrollBox(renderer)
+    act(() => {
+      ;(box.props.onLayout as (e: unknown) => void)({
+        nativeEvent: { layout: { x: 0, y: 0, width: 300, height: viewport } },
+      })
+      ;(box.props.onContentSizeChange as (w: number, h: number) => void)(
+        300,
+        content,
+      )
+    })
+  }
+
+  /** A touch event on the scroll view, with the fingers still down after it. */
+  function fire(
+    renderer: TestInstance,
+    name: "onTouchStart" | "onTouchEnd" | "onTouchCancel",
+    fingersDown: number,
+  ) {
+    const handler = scrollBox(renderer).props[name] as (e: unknown) => void
+    const touches = Array.from({ length: fingersDown }, () => ({}))
+    act(() => {
+      handler({ nativeEvent: { touches, changedTouches: [{}] } })
+    })
+  }
+
+  // Touch events, not the responder: while the text coasts, the scroll view
+  // takes the touch start before any child. Only a device shows that case.
+  it("holds the pager while a finger is on text that scrolls", () => {
+    const renderer = renderInPager(LONG)
+    expect(pagerClaims(renderer)).toBe(true)
+    open(renderer, 200, 480)
+
+    fire(renderer, "onTouchStart", 1)
+    expect(pagerClaims(renderer)).toBe(false)
+    fire(renderer, "onTouchEnd", 0)
+    expect(pagerClaims(renderer)).toBe(true)
+  })
+
+  it("keeps the hold while another finger stays down", () => {
+    const renderer = renderInPager(LONG)
+    open(renderer, 200, 480)
+
+    fire(renderer, "onTouchStart", 1)
+    fire(renderer, "onTouchStart", 2)
+    fire(renderer, "onTouchEnd", 1)
+    expect(pagerClaims(renderer)).toBe(false)
+    // One hold per touch run: the last finger up releases it.
+    fire(renderer, "onTouchEnd", 0)
+    expect(pagerClaims(renderer)).toBe(true)
+  })
+
+  it("lets go on a cancelled touch", () => {
+    const renderer = renderInPager(LONG)
+    open(renderer, 200, 480)
+
+    fire(renderer, "onTouchStart", 1)
+    fire(renderer, "onTouchCancel", 0)
+    expect(pagerClaims(renderer)).toBe(true)
+  })
+
+  it("lets go when 'less' closes the text under the finger", () => {
+    const renderer = renderInPager(LONG)
+    open(renderer, 200, 480)
+
+    fire(renderer, "onTouchStart", 1)
+    press(renderer, EXPLORE_COPY.descriptionLessLabel)
+    expect(pagerClaims(renderer)).toBe(true)
+  })
+
+  it("leaves the drag to the pager while the open text fits", () => {
+    const renderer = renderInPager(LONG)
+    open(renderer, 180, 180)
+
+    fire(renderer, "onTouchStart", 1)
+    expect(pagerClaims(renderer)).toBe(true)
+  })
+
+  it("leaves the drag to the pager before the scroll view measures", () => {
+    const renderer = renderInPager(LONG)
+    measure(renderer, 3)
+    press(renderer, EXPLORE_COPY.descriptionMoreLabel)
+
+    fire(renderer, "onTouchStart", 1)
+    expect(pagerClaims(renderer)).toBe(true)
+  })
+
+  // The owner (2026-10-01): the clip loops, so the reader keeps the text.
+  it("makes a clip end wait while the text is open, whatever its length", () => {
+    const handle = createRef<ExplorePagerHandle>()
+    const renderer = renderInPager(LONG, handle)
+    open(renderer, 180, 180)
+
+    let moved = true
+    act(() => {
+      moved = handle.current!.requestMove("next")
+    })
+    expect(moved).toBe(false)
+    press(renderer, EXPLORE_COPY.descriptionLessLabel)
+    act(() => {
+      moved = handle.current!.requestMove("next")
+    })
+    expect(moved).toBe(true)
+  })
+
+  it("holds nothing, and does not throw, with no pager above it", () => {
+    const { renderer } = render(LONG)
+    open(renderer, 200, 480)
+    fire(renderer, "onTouchStart", 1)
+    fire(renderer, "onTouchEnd", 0)
+    expect(toggle(renderer, EXPLORE_COPY.descriptionLessLabel)).toHaveLength(1)
   })
 })
 
