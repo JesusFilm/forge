@@ -4799,7 +4799,9 @@ function CardBody({
     // A short sentence ("He stayed." "He pleads.") has its own weight: in the
     // wide cut it is set larger and arrives like the opening's big captions,
     // out of a slight blur, letters drawing in from wider tracking, with a
-    // gentle zoom (owner, 2026-09-30).
+    // gentle zoom (owner, 2026-09-30). Same face as the reflection body, in
+    // capitals: the serif here looked like a different text (owner,
+    // 2026-10-01).
     const shortLine =
       isLandscape &&
       (card.text ?? "").trim().split(/\s+/).filter(Boolean).length <= 4
@@ -4815,11 +4817,12 @@ function CardBody({
             margin: 0,
             width: "100%",
             textAlign: card.markColumn ? "left" : "center",
-            fontFamily: SERIF,
+            fontFamily: SANS,
             fontWeight: 600,
-            fontSize: px(30),
+            fontSize: px(27),
             lineHeight: 1.2,
-            letterSpacing: px(0.4 + 2.6 * (1 - inP)),
+            textTransform: "uppercase",
+            letterSpacing: px(1.4 + 2.6 * (1 - inP)),
             color: "#ffffff",
             opacity: inP,
             transform: `scale(${(0.96 + 0.04 * inP).toFixed(4)})`,

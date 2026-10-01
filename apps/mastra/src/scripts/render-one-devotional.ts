@@ -264,6 +264,9 @@ async function main() {
       // table — the two read the same scene differently often enough to be worth
       // comparing before committing a choice to the data.
       bgExtendPastEpisode: process.argv.includes("--bg-extend"),
+      ...(arg("bg-rate") ? { backdropRate: Number(arg("bg-rate")) } : {}),
+      ...(arg("bg-from") ? { backdropFromSec: Number(arg("bg-from")) } : {}),
+      ...(arg("bg-seam") ? { backdropSeamSec: Number(arg("bg-seam")) } : {}),
       coverOnly: process.argv.includes("--cover-only"),
       ...(arg("music-file") ? { musicFile: arg("music-file") } : {}),
       ...(arg("settle-line") ? { settleLine: arg("settle-line") } : {}),

@@ -221,12 +221,13 @@ const REFLECTION_BG_MAX_RATE = 0.85
  * How long each backdrop seam dissolves.
  *
  * The pieces used to be hard-concatenated, so every repeat cut from the end of
- * the scene straight back to its start — visible as the picture starting over,
- * which is exactly what the owner reported. Dissolving the seam is what makes a
- * repeat read as ambient motion instead. Slow on purpose: a fast crossfade
- * still registers as an edit.
+ * the scene straight back to its start, which the owner saw as the picture
+ * starting over; a 1.2s dissolve made a repeat read as ambient motion. Since
+ * 2026-10-01 the default is an instant cut again (owner: two shots dissolving
+ * into each other read as half-transparent), now that the backdrop follows the
+ * reflection's own shots; `backdropSeamSec` brings the dissolve back.
  */
-const BG_SEAM_XFADE_SEC = 1.2
+const BG_SEAM_DEFAULT_SEC = 0
 
 /**
  * Music bed level against the narration.
@@ -1025,9 +1026,10 @@ async function buildBackground(
   segments: { startSec: number; lengthSec: number }[],
   coverSec: number,
   speed: number,
+  seamSec: number,
 ): Promise<void> {
-  if (segments.length > 1) {
-    await concatWithSeamXfade(src, dest, segments, speed, BG_SEAM_XFADE_SEC)
+  if (segments.length > 1 && seamSec > 0) {
+    await concatWithSeamXfade(src, dest, segments, speed, seamSec)
   } else {
     await trimClipSegments(src, dest, segments, false, speed)
   }
@@ -1458,6 +1460,14 @@ export type RenderOptions = {
    *  repeats drop to one or none. The clip card is unaffected — it always
    *  shows only the episode. */
   bgExtendPastEpisode?: boolean
+  /** Backdrop speed behind the reflection, overriding the 0.85 default
+   *  (owner, 2026-10-01: slower, so a short scene repeats less). */
+  backdropRate?: number
+  /** Start the backdrop's footage here (source seconds) instead of at the
+   *  clip window, e.g. to take in a scene's establishing shots. */
+  backdropFromSec?: number
+  /** Seam between backdrop pieces: 0 (default) cuts, > 0 dissolves. */
+  backdropSeamSec?: number
   /** Shift every caption later by this many seconds (negative = earlier).
    *
    *  The film's SRT can lead its own audio. Our trim is frame-accurate — 30.000s
@@ -2700,11 +2710,18 @@ async function renderInStage(
   // vineyard runs on to the road to Jerusalem, the blind men and the entry),
   // and the reflection on the workers must not play over a donkey.
   const scoped = Boolean(options.episode) || Boolean(registered)
-  const bgStart = scoped ? (window?.clipStartSec ?? 0) : 0
+  const clipBgStart = scoped ? (window?.clipStartSec ?? 0) : 0
+  const bgStart =
+    options.backdropFromSec != null
+      ? Math.min(clipBgStart, Math.max(0, options.backdropFromSec))
+      : clipBgStart
   const bgAvailable = Math.max(1, usableDur - bgStart)
   const bgWindowLen =
     scoped && !options.bgExtendPastEpisode
-      ? Math.min(window?.clipLengthSec ?? bgAvailable, bgAvailable)
+      ? Math.min(
+          (window?.clipLengthSec ?? bgAvailable) + (clipBgStart - bgStart),
+          bgAvailable,
+        )
       : bgAvailable
   const bgLen = Math.min(bgTimelineSec, bgWindowLen)
   manifest.bgFile = "bg.mp4"
@@ -2732,12 +2749,14 @@ async function renderInStage(
   // Behind the reflection the film is always a touch slow (owner,
   // 2026-09-30): at full speed its action pulls the eye from the words.
   const bgRate =
-    bgTimelineSec > bgLen
-      ? Math.max(
-          BG_LOOPED_MIN_RATE,
-          Math.min(REFLECTION_BG_MAX_RATE, bgLen / bgTimelineSec),
-        )
-      : REFLECTION_BG_MAX_RATE
+    options.backdropRate != null
+      ? Math.min(1, Math.max(0.4, options.backdropRate))
+      : bgTimelineSec > bgLen
+        ? Math.max(
+            BG_LOOPED_MIN_RATE,
+            Math.min(REFLECTION_BG_MAX_RATE, bgLen / bgTimelineSec),
+          )
+        : REFLECTION_BG_MAX_RATE
   // Where the backdrop should visibly start over: the moment the reflection
   // opens. Video cards are excluded from this timeline (the clip itself is on
   // screen then), so this is the intro hold plus the cards before the first
@@ -2770,6 +2789,7 @@ async function renderInStage(
   // paragraph finds its English cue (the matcher is tuned on English), and
   // that cue's verse and rank within the verse pick the dub's own cue. The
   // Spanish matcher alone put the pigs paragraph on the father running.
+  const bgSeamSec = options.backdropSeamSec ?? BG_SEAM_DEFAULT_SEC
   const brollPick = await localizedBrollPick({
     lang: locale.lang,
     devo,
@@ -2803,7 +2823,7 @@ async function renderInStage(
           windowLen: bgWindowLen,
           coverSec: bgTimelineSec,
           speed: bgRate,
-          dissolveSec: BG_SEAM_XFADE_SEC,
+          dissolveSec: bgSeamSec,
         })
       : planBackgroundSegments({
           startSec: bgStart,
@@ -2813,7 +2833,7 @@ async function renderInStage(
           restartAtSec: bgRestartAtSec,
           // Generous: a few seams cost a few seconds, and running long is
           // harmless while running short freezes the picture.
-          extraSourceSec: BG_SEAM_XFADE_SEC * 4,
+          extraSourceSec: Math.max(2, bgSeamSec * 4),
         })
   await buildBackground(
     full,
@@ -2821,6 +2841,7 @@ async function renderInStage(
     bgSegments,
     bgTimelineSec,
     bgRate,
+    bgSeamSec,
   )
   // bg.mp4 is now built to cover the timeline (slowed AND repeated), so the
   // composition must play it straight — re-applying the rate would stretch it
@@ -2845,7 +2866,9 @@ async function renderInStage(
       `${bgSegments.length} pass(es), ` +
       (bgRestartAtSec > 0
         ? `restarts at ${bgRestartAtSec.toFixed(0)}s (reflection) `
-        : `${BG_SEAM_XFADE_SEC}s seam dissolves `) +
+        : bgSeamSec > 0
+          ? `${bgSeamSec}s seam dissolves `
+          : "cut seams ") +
       `→ covers ${bgTimelineSec.toFixed(0)}s`,
   )
   if (bgCoverageSec < bgTimelineSec - 0.5) {
