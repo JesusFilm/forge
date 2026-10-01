@@ -3,7 +3,7 @@ id: "feat-447"
 title: "Live anonymous-profile hybrid personalization rollout"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: ""
 duration: 8
 depends_on:
@@ -23,6 +23,64 @@ tags:
   - "experiments"
   - "personalization"
 ---
+
+## October 2 rollout closeout
+
+**Status: complete for live anonymous-profile personalization.** The dated
+[September 21 release canaries](../../operations/watch-closeout-release-2026-09-21.md)
+showed qualified playback learning, later six-card hybrid delivery, withdrawal,
+reset and completed erasure without a fabricated experiment assignment. The
+[September 22 authenticated Admin trace](../../operations/watch-contextual-distance-release-2026-09-22.md#authenticated-continuation-and-homepage-decision)
+reconciled the selected item, qualified outcome, published generation, later
+hybrid request and privacy-safe execution evidence. Feat-459 and
+feat-545 are now complete; their dated in-progress references below are
+historical. Feat-545's accepted telemetry limitations remain recorded there
+and in feat-566, rather than being represented as recovered data.
+
+Production's bounded September 30–October 1
+[health audit](../../reports/2026-10-01-recommendation-health/report.md#profile-learning-and-recommendation-influence)
+recorded 1,509 hybrid requests across 262 anonymous profiles; 1,335 contained
+an actual profile-contributed card. This proves use in that window, not causal
+benefit or every current viewer's configuration. The exact-audio and Chinese
+identity repair in [PR #2527](https://github.com/JesusFilm/forge/pull/2527)
+subsequently deployed as `58cf00928`; the
+[October 2 coverage disposition](../../reports/2026-10-02-recommendation-coverage-acceptance.md)
+records six visible cards and ordinary playback after that deploy, with no
+configuration change during its audit. No fresh production flag read or new
+production write is claimed here.
+
+The September 24 request for a **natural** last-known-good fallback receipt is
+retired under the October 2 owner direction. On October 2, the current runtime
+source passed the opt-in
+[real-dependency fallback test](../../../apps/admin/src/services/recommendations/delivery-retriever.db.test.ts)
+with isolated PostgreSQL 18 and Redis, a current private Prisma client, and
+the fixture-only schema repair from commit `b2f21e39e` applied for the run.
+The normal control issued six cards in 158 ms. A locally forced
+candidate-platform exception then issued six unique playable semantic cards in
+78 ms and persisted an `ISSUED` / `FALLBACK` request with the semantic manifest,
+no experiment assignment, `candidate_platform_unavailable` in the candidate
+run and `evidenceComplete=false`. One targeted test passed; 15 unrelated cases
+were skipped by the name filter. The test changes no production state and
+proves that this source handles and records that failure path. The fixture
+repair must merge before this check is reproducible on main. The September 24
+read-only production inventory still observed zero natural matching fallbacks;
+this closeout claims no natural production failure or matching Admin trace.
+
+Current Web source automatically grants an undecided first visit without a
+banner, retains disable/reset/delete controls and fails ambiguous withdrawal
+closed. Five focused October 2 Web suites passed 55 tests across the shell,
+profile API, session and For-you route. Earlier production privacy canaries
+remain the end-to-end evidence; these current tests are seam evidence. Cold
+start and optional-profile degradation retain semantic contextual delivery.
+Exact audio, eligible playback, deduplication, privacy-generation fencing and
+the 1.5-second bound remain requirements. Valid empty/partial rows caused
+by insufficient supply and supported no-edge fallback are accepted coverage
+outcomes; a recorded server error or timeout remains a reliability issue even
+if HTTP 200 or fallback follows.
+Personalization usefulness has not been established by a controlled study.
+
+The dated status instructions below preserve their original evidence windows;
+this section is the current disposition.
 
 ## Problem
 
