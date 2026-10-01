@@ -8,11 +8,11 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 30, 2026)
+## Status (October 2, 2026)
 
-- **Total tickets:** 40
+- **Total tickets:** 41
 - **Complete:** 29
-- **In progress:** 0
+- **In progress:** 1
 - **Not started:** 11
 - **Blocked:** 0
 
@@ -20,6 +20,7 @@ database into Admin.
 
 | Forge ID                                                          | Historical issue                                              | Feature                                                            | Status      | Forge PR                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [feat-593](feat-593-seeker-consumer-credentials.md)               | —                                                             | Migrate Seeker to registered RAG consumer credentials              | in-progress | —                                                                                                                                                                                                                                                                                                                                        |
 | [feat-423](feat-423-rag-scaffold-and-roadmap.md)                  | [#156](https://github.com/JesusFilm/jesusfilm-rag/issues/156) | Scaffold RAG space and durable roadmap                             | complete    | [#2033](https://github.com/JesusFilm/forge/pull/2033)                                                                                                                                                                                                                                                                                    |
 | [feat-424](feat-424-rag-environment-contracts.md)                 | [#157](https://github.com/JesusFilm/jesusfilm-rag/issues/157) | Port environment contracts and secrets procedure                   | complete    | [#2061](https://github.com/JesusFilm/forge/pull/2061)                                                                                                                                                                                                                                                                                    |
 | [feat-425](feat-425-rag-schema-empty-postgres.md)                 | [#158](https://github.com/JesusFilm/jesusfilm-rag/issues/158) | Port schema and empty Railway Postgres                             | complete    | [#2064](https://github.com/JesusFilm/forge/pull/2064)                                                                                                                                                                                                                                                                                    |
