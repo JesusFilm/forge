@@ -34,8 +34,8 @@ zero. The next normal starts are October 2 and 3 at 10:30 UTC (23:30 NZDT each
 date). Each must remove actual expired roots and descendants without failure,
 with acceptable lock skips, backlog and headroom. Do not substitute a manual or
 zero-deletion run. The daily monitor remains active. No supported monthly growth
-forecast follows from the post-reclamation snapshot; preserve this gate until
-two real normal loaded cycles pass or a proved defect is repaired and retested.
+forecast follows from the post-reclamation snapshot. If a new defect is proved,
+repair it and then re-establish two qualifying normal loaded cycles.
 
 ## Problem
 
