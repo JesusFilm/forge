@@ -44,3 +44,35 @@ fresh predeploy/postdeploy pair, not a claim of release or reclamation.
 ESLint and whitespace checks passed. Required PR CI and actual production release
 must still complete before closing feat-555/575; feat-554 retains its separate
 normal loaded-cycle acceptance criteria.
+
+## First deployment failure and bounded recovery proof
+
+PR 2532 merged normally at October 1 21:39:31 UTC. Its first migration attempt
+started at 21:47:37.461515 UTC and PostgreSQL logged a statement timeout at 21:48:11.
+The HTTP predeploy reported an aborted transaction; worker predeploy reported
+Prisma advisory-lock timeout P1002. Both releases failed before serving traffic.
+The failed `_prisma_migrations` entry has no error text, so it is not itself the
+source of the timeout classification. The same-backend PostgreSQL log context
+contains the exact bulk SQL. At 21:50, aggregate checks found no committed bulk
+markers and no inbound stage foreign keys. Prior Admin HTTP/worker remained
+healthy on `1fde61c3a`; stage allocation did not fall. No production savings.
+
+The follow-up keeps migration 0127 byte-identical and adds checksum-bound recovery
+in the existing predeploy wrapper. Sequential safety review covered partial durable
+marker commits, precise cursor ordering, existing marker immutability, bounded row
+locks/statements/total work, and concurrent deployer serialization. Unknown failed
+migrations or checksum changes refuse recovery before any marker updates.
+
+All 33 tests across the reclamation, recovery identity and deploy-wrapper suites
+pass, including 12 dedicated PostgreSQL cases and the connection guard. Added
+native cases prove bounded-page preparation leaves stage rows intact, preserves
+compact detail, resumes without resetting earlier markers after a blocked page,
+and serializes two actual recovery connections until migration completion. The
+wrapper tests refuse resolution after preparation failure and avoid re-resolving
+an already completed concurrent attempt.
+
+A separate current-shape fixture prepared 226,669 synthetic legacy parents in 454
+pages in 15.756 seconds. The original public parent table was temporarily renamed
+only in this dedicated local database and restored afterward. This fixture proves
+bounded progress locally, not production timing. Per-page and total caps remain
+unchanged for release; no production retry was performed during these tests.
