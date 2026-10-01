@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   LayoutAnimation,
   Pressable,
@@ -7,6 +7,10 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
+  type StyleProp,
+  type TextStyle,
 } from "react-native"
 
 import { TEXT_ON_OVERLAY } from "../../lib/color"
@@ -17,6 +21,7 @@ import {
   type TextLayoutEvent,
 } from "../../hooks/useTextOverflow"
 import { useTypography } from "../../hooks/useTypography"
+import { useExplorePagerHold } from "./ExplorePager"
 
 export type ClipDescriptionProps = {
   description: string | null
@@ -83,21 +88,13 @@ export function ClipDescription({
   return (
     <View>
       {expanded ? (
-        <ScrollView
-          style={{ maxHeight: Math.round(height * EXPANDED_MAX_SCREEN_SHARE) }}
-          nestedScrollEnabled
-        >
-          <Text style={bodyStyle}>{description}</Text>
-          <Pressable
-            onPress={handleCollapse}
-            hitSlop={TOGGLE_HIT_SLOP}
-            style={styles.less}
-            accessibilityRole="button"
-            accessibilityLabel={EXPLORE_COPY.descriptionLessLabel}
-          >
-            <Text style={toggleStyle}>{EXPLORE_COPY.descriptionLess}</Text>
-          </Pressable>
-        </ScrollView>
+        <OpenDescription
+          description={description}
+          maxHeight={Math.round(height * EXPANDED_MAX_SCREEN_SHARE)}
+          bodyStyle={bodyStyle}
+          toggleStyle={toggleStyle}
+          onCollapse={handleCollapse}
+        />
       ) : (
         <View style={styles.row}>
           <Text
@@ -132,6 +129,107 @@ export function ClipDescription({
         </Text>
       </View>
     </View>
+  )
+}
+
+type Finger = { identifier: string | number }
+
+/** The fingers on this view. iOS sends a finger's events only to the view it
+ *  started on and names them in `targetTouches`; Android sends no such list,
+ *  but routes every finger of a gesture to the view its first finger hit. */
+function ownFingers(e: GestureResponderEvent): readonly Finger[] {
+  const native = e.nativeEvent as { targetTouches?: readonly Finger[] }
+  return native.targetTouches ?? e.nativeEvent.changedTouches
+}
+
+type OpenDescriptionProps = {
+  description: string
+  maxHeight: number
+  bodyStyle: StyleProp<TextStyle>
+  toggleStyle: StyleProp<TextStyle>
+  onCollapse: () => void
+}
+
+/** The open description. While its text scrolls, a finger on it holds the
+ *  pager, so a drag scrolls the text and never moves the feed (2026-10-01). */
+function OpenDescription({
+  description,
+  maxHeight,
+  bodyStyle,
+  toggleStyle,
+  onCollapse,
+}: OpenDescriptionProps) {
+  const holdPager = useExplorePagerHold()
+  const [viewport, setViewport] = useState(0)
+  const [content, setContent] = useState(0)
+  const scrolls = viewport > 0 && content - viewport > 1
+
+  const fingers = useRef(new Set<string>())
+  const release = useRef<(() => void) | null>(null)
+  const releasePager = useCallback(() => {
+    fingers.current.clear()
+    release.current?.()
+    release.current = null
+  }, [])
+  // "less" unmounts this view under the finger, before its touch end lands.
+  useEffect(() => releasePager, [releasePager])
+  // A clip that ends while the text is open loops (owner, 2026-10-01).
+  useEffect(() => holdPager?.("feedMove"), [holdPager])
+
+  // Touch events reach this view whoever holds the responder: a scroll view
+  // that coasts takes the touch start itself, ahead of every child.
+  const handleTouchStart = useCallback(
+    (e: GestureResponderEvent) => {
+      if (!scrolls || holdPager == null) return
+      for (const finger of ownFingers(e)) {
+        fingers.current.add(String(finger.identifier))
+      }
+      if (fingers.current.size > 0) release.current ??= holdPager("drag")
+    },
+    [holdPager, scrolls],
+  )
+  // The surface's `touches` may never empty here: a finger elsewhere keeps it
+  // full, and that finger's end never reaches this view (code review).
+  const handleTouchEnd = useCallback(
+    (e: GestureResponderEvent) => {
+      for (const finger of e.nativeEvent.changedTouches) {
+        fingers.current.delete(String(finger.identifier))
+      }
+      if (fingers.current.size === 0 || e.nativeEvent.touches.length === 0) {
+        releasePager()
+      }
+    },
+    [releasePager],
+  )
+
+  const handleLayout = useCallback((e: LayoutChangeEvent) => {
+    setViewport(e.nativeEvent.layout.height)
+  }, [])
+  const handleContentSize = useCallback((_width: number, h: number) => {
+    setContent(h)
+  }, [])
+
+  return (
+    <ScrollView
+      style={{ maxHeight }}
+      nestedScrollEnabled
+      onLayout={handleLayout}
+      onContentSizeChange={handleContentSize}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={releasePager}
+    >
+      <Text style={bodyStyle}>{description}</Text>
+      <Pressable
+        onPress={onCollapse}
+        hitSlop={TOGGLE_HIT_SLOP}
+        style={styles.less}
+        accessibilityRole="button"
+        accessibilityLabel={EXPLORE_COPY.descriptionLessLabel}
+      >
+        <Text style={toggleStyle}>{EXPLORE_COPY.descriptionLess}</Text>
+      </Pressable>
+    </ScrollView>
   )
 }
 

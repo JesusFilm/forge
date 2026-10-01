@@ -97,11 +97,21 @@ complete seven-day graph; the owner UI activated G7 on October 1 02:57:35.266 UT
 Measured graph allocation grew 57,769,984 bytes, informing the 96 MiB publication
 reserve and full 29-day retained-overlap budget. Grant
 `a593c39d-20c2-42fe-aefc-f6ce92776a4b` lasts through October 30 02:59:47.524 UTC;
-first eligibility is October 1 14:56:54.108 UTC. The scheduler is running.
-Exact receipts and the budget are in the operations record above.
+first eligibility was scheduled for October 1 14:56:54.108 UTC. The scheduler
+was running at the recorded October 1 check. Exact dated receipts and the budget
+are in the operations record above; they do not certify the current state.
 
-Actual automatic replacement and served provenance remain unverified. The first
+At that check automatic replacement was not yet due. The first
 33 natural requests yielded no exact co-watch execution; one owner attempt
 correctly fell back for sparse supported edges. This ticket remains in progress
-until refresh and real contribution are observed. The requested 24-hour follow-up
-will check that evidence before switching to weekly reviews.
+for the separate refresh lifecycle/capacity verification. The requested 24-hour
+follow-up will inspect replacement and record contribution or expected fallback
+before switching to weekly reviews. Positive contribution is not a completion gate.
+
+The restoration task recorded production admission, G7 activation and a refresh
+grant in [PR #2530](https://github.com/JesusFilm/forge/pull/2530). Keep actual
+refresh lifecycle/capacity verification separate from delivery health; this
+ticket's in-progress status is not evidence of a delivery bug. The October 2
+owner decision accepts sparse coverage and successful incumbent fallback and
+permits proceeding without a positive co-watch-card gate. Apply
+`docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`.

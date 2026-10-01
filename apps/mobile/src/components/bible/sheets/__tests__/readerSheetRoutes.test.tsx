@@ -72,6 +72,13 @@ jest.mock("../../../../hooks/useIsTabletLayout", () => ({
 }))
 // FlashList virtualizes against a layout jest never measures, so render the
 // header and every row inline instead.
+const mockPresentDownload = jest.fn((_context: unknown) => Promise.resolve())
+jest.mock("../../../../lib/bible/sheets/downloadPrompt", () => ({
+  ...jest.requireActual("../../../../lib/bible/sheets/downloadPrompt"),
+  presentReaderDownloadPrompt: (context: unknown) =>
+    mockPresentDownload(context),
+}))
+
 jest.mock("@shopify/flash-list", () => {
   const r = require as unknown as NodeRequireLike
   const path = r("path") as NodePath
@@ -455,6 +462,44 @@ describe("reader-translation route", () => {
     expect(snapshot.sessionTranslationId).toBeNull()
     expect(snapshot.ref).toEqual(JOHN_3_16)
     expect(mockRoute.back).toHaveBeenCalledTimes(1)
+  })
+
+  // Code review (2026-10-01): the Current card is the only place to start a
+  // download, so pin the route's wiring from the button to the prompt.
+  describe("the Current card's download button", () => {
+    function downloadButtons(renderer: TestInstance): RenderedNode[] {
+      return renderer.root.findAll(
+        (node) =>
+          node.props.testID === "translation-download-button" &&
+          node.props.accessibilityRole === "button" &&
+          typeof node.props.onPress === "function",
+      )
+    }
+
+    it("opens the download prompt for the current translation", async () => {
+      install()
+      mockPresentDownload.mockClear()
+      mockRoute.params = readerSheetHref("translation", SYNODAL_CONTEXT).params
+      const renderer = await renderRoute(ReaderTranslationRoute)
+
+      const [button] = downloadButtons(renderer)
+      expect(button).toBeDefined()
+      await act(async () => {
+        button.props.onPress?.()
+      })
+      expect(mockPresentDownload).toHaveBeenCalledTimes(1)
+      expect(mockPresentDownload).toHaveBeenCalledWith({ translation: SYNODAL })
+    })
+
+    it("has no download button while BSB is current", async () => {
+      install()
+      mockRoute.params = readerSheetHref("translation", {
+        ...SYNODAL_CONTEXT,
+        translation: CATALOG.byId.get("BSB")!,
+      }).params
+      const renderer = await renderRoute(ReaderTranslationRoute)
+      expect(downloadButtons(renderer)).toHaveLength(0)
+    })
   })
 
   // The owner (2026-09-28): a partial Bible that lacks the current book warns,

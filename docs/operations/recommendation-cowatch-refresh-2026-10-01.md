@@ -71,6 +71,15 @@ receipts live in `docs/validation/cowatch-restoration-20261001/`.
 
 ## Serving and rollback proof
 
+Apply the October 2 owner
+[delivery-health policy](../analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage).
+Sparse graph coverage with a successful incumbent fallback is expected behavior.
+Report zero observed co-watch cards honestly; that alone is not a delivery bug,
+an unhealthy-service finding or a blocker on proceeding. Positive contributed
+cards are required only to claim that co-watch actually supplied cards in a
+sample, not to accept ordinary recommendation delivery. Investigate recorded
+server errors, timeouts or reproduced contract failures separately.
+
 Count real requests only after deployment/activation, with the exact owner release
 ID, pointer generation, manifest/configuration, graph ID and actual executed
 generators. Count co-watch-contributed cards separately from requests that merely
@@ -86,7 +95,11 @@ the current release retains its original deadline. The existing emergency stop
 is independent and fences serving immediately. Re-enabling the emergency switch
 does not silently revive an old refresh grant.
 
-## Current execution status
+## Recorded execution and disposition
+
+The following October 1 receipts describe that observation time, not the
+currently active generation or runtime. Consult the supported status path for
+present authority and refresh state.
 
 PR #2529 merged as `63511a87ff949e36885488346edf7fafb7566c27` after all checks
 passed. The existing CI workflow was unchanged at the owner's request; feat-591
@@ -125,21 +138,33 @@ ceilings and calculations are in the capacity receipts. Other database growth
 can make refresh refuse sooner; this is not continuous filesystem monitoring
 or guaranteed availability.
 
-The first automatic attempt is eligible at October 1 14:56:54.108 UTC
+The first automatic attempt was scheduled to become eligible at October 1 14:56:54.108 UTC
 (October 2 03:56:54 NZDT), checked every five minutes. A ready grant is not
 automatic refresh proof. The scheduled 24-hour follow-up will inspect the first
-replacement, then switch to weekly review. Verify a completed attempt and real
-contributed cards from its new release before closing feat-573.
+replacement, then switch to weekly review. Verify completed publication and
+atomic replacement, retained capacity and truthful served provenance or expected
+fallback before closing feat-573. Positive co-watch contribution is not a gate.
 
 The initial natural window, October 1 02:58:00–03:06:14.516 UTC, contains 33
 issued requests, 28 with cards and 163 cards. Exact owner execution and co-watch
 contribution remain zero. One owner attempt correctly fell back for
 `cowatch_supported_edges_sparse`; no missing-input fallback was observed.
-This proves valid activation and honest fallback, not restored serving or
-usefulness. Feat-565 and feat-573 remain in progress pending real provenance.
+This records valid activation and honest fallback without claiming positive
+co-watch contribution or usefulness. The October 2 owner disposition accepts
+this coverage; the separate refresh lifecycle verification remains open.
 
 Sanitized receipts are under `docs/validation/cowatch-restoration-20261001/`.
 Use `cowatch-serving-proof-indexed.sql` for later proof. Literal time bounds and
 bounded per-request index lookups avoid global scans while preserving all exact
 provenance predicates and five-second statement/one-second lock limits. The
 original query timed out and returned no proof.
+
+These detailed execution receipts are preserved in
+[PR #2530](https://github.com/JesusFilm/forge/pull/2530).
+
+The [October 2 disposition](../reports/2026-10-02-recommendation-coverage-acceptance.md)
+accepts sparse-coverage fallbacks and allows the product to proceed. The initial
+55-request sample's four sparse co-watch attempts all returned ordinary cards.
+Actual refresh lifecycle/capacity verification under feat-573 remains a separate
+operational task; lack of positive co-watch contribution does not establish a
+delivery incident or reopen the repaired defects.

@@ -21,6 +21,7 @@ import {
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
 import { SearchableListSheet } from "../../sheets/SearchableListSheet"
 import { ReaderSheetHeader } from "./ReaderSheetHeader"
+import { TranslationDownloadButton } from "./TranslationDownloadButton"
 import { useDownloadsVersion } from "./useDownloadsVersion"
 
 const COPY = READER_SHEET_COPY.translation
@@ -39,6 +40,9 @@ export type TranslationPickerProps = {
   /** Can ask before a pick; `proceed` makes it. With none, a tap picks. A
    *  cancelled pick is not a change, so it is not reported (R37). */
   confirmPick?: (translation: CatalogTranslation, proceed: () => void) => void
+  /** The Current card's download button (owner, 2026-10-01). With none, the
+   *  card has no button. */
+  onPressDownload?: (translation: CatalogTranslation) => void
   onClose: () => void
 }
 
@@ -57,6 +61,7 @@ export function TranslationPicker({
   downloads,
   onPick,
   confirmPick,
+  onPressDownload,
   onClose,
 }: TranslationPickerProps) {
   const [onDeviceOnly, setOnDeviceOnly] = useState(offline)
@@ -94,6 +99,20 @@ export function TranslationPicker({
       else proceed()
     },
     [activeId, onPick, confirmPick],
+  )
+
+  // `version` makes the button read the store again after a change.
+  const renderDownload = useCallback(
+    (translation: CatalogTranslation) =>
+      onPressDownload ? (
+        <TranslationDownloadButton
+          tokens={tokens}
+          translation={translation}
+          state={downloads.getState(translation.id)}
+          onPress={() => onPressDownload(translation)}
+        />
+      ) : null,
+    [tokens, downloads, onPressDownload, version],
   )
 
   const colors = readerSheetColors(tokens)
@@ -142,6 +161,7 @@ export function TranslationPicker({
         searchAccessibilityLabel={COPY.searchLabel}
         emptySearchMessage={COPY.noMatch}
         headerTop={headerTop}
+        renderActiveAccessory={renderDownload}
         colors={colors}
       />
     </View>

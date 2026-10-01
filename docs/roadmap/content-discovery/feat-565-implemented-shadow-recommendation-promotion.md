@@ -13,23 +13,25 @@ blocks:
 tags: [admin, recommendations, cowatch, experiments, ranking]
 ---
 
-## Current production disposition
+## Recorded production disposition
 
-**G7 activated on October 1 at 02:57:35.266 UTC and is valid; actual co-watch
-serving remains under verification.** PR #2529 fixes exact legacy receipt-digest
+**G7 activated on October 1 at 02:57:35.266 UTC and was valid at the recorded
+check.** PR #2529 fixes exact legacy receipt-digest
 reuse and usable theme hydration, and implements the separate bounded refresh
-scope in feat-573. Admin and worker normally autodeployed the code and now run
+scope in feat-573. Admin and worker normally autodeployed the code and then ran
 `58cf00928a083156414618988f42c02545b4b1e6` including the later delivery fix.
 The supported owner UI activated release `be1947f1-3302-4a26-9b40-beb53d06a5f9`
 against graph `b5a47a2824cdf8adb9af02ec4c128ad80f430336199871313cfb1461afc89a8f`.
-G4/G5/G6 remain revoked; no audit history was cleared. The existing explicit
+G4/G5/G6 remained revoked; no audit history was cleared. The existing explicit
 direct no-study authorization is unchanged.
 
 The natural 02:58:00–03:06:14.516 UTC window contains 33 issued requests and 163
 cards, with no exact owner execution or co-watch contribution yet. One owner
 attempt correctly fell back for sparse supported edges; no missing-input fallback
-was observed. This ticket remains in progress until real served provenance is
-recorded. A 29-day bounded refresh grant is ready, first eligible October 1
+was observed. The October 2 owner decision accepts sparse coverage and successful
+fallback; zero contribution does not block proceeding or delivery-health sign-off.
+Refresh lifecycle verification remains separate under feat-573. At the check,
+a 29-day bounded refresh grant was ready, first eligible October 1
 14:56:54.108 UTC. Exact capacity, publication, activation and follow-up receipts
 are in `docs/operations/recommendation-cowatch-refresh-2026-10-01.md` and
 `docs/validation/cowatch-restoration-20261001/`. Full shadow acceptance, causal
@@ -232,5 +234,17 @@ See `docs/validation/cowatch-restoration-20261001/production-investigation.md`
 for bounded evidence and its limits, and
 `docs/operations/recommendation-cowatch-refresh-2026-10-01.md` for the normal
 PR/autodeploy and owner activation sequence. Feat-573 owns bounded refresh.
-The no-study authorization above remains applicable; completion still requires
-a valid replacement and exact real co-watch serving evidence.
+The no-study authorization above remains applicable. Record supported activation
+and exact observed serving provenance, distinguishing actual contribution from
+successful incumbent fallback.
+
+## October 2 owner disposition
+
+The restoration task recorded G7 activation and refresh authorization in
+[PR #2530](https://github.com/JesusFilm/forge/pull/2530). For delivery readiness,
+apply `docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`.
+Sparse coverage and zero observed co-watch cards are accepted outcomes when the
+normal fallback works; positive co-watch contribution is not a gate on proceeding.
+Keep provenance observations truthful and operational verification separate from
+delivery defects. This policy clarification does not certify a later refresh
+or change release authority.

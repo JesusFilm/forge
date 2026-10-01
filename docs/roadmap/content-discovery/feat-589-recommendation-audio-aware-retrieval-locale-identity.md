@@ -13,6 +13,12 @@ tags: [admin, web, recommendations, i18n, pgvector, reliability]
 
 ## Problem
 
+Resolved and deployed in [PR #2527](https://github.com/JesusFilm/forge/pull/2527).
+The following describes the original defect. The October 2 owner decision
+accepts remaining coverage limitations and permits proceeding; use the
+[delivery-health policy](../../analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage)
+before proposing to reopen this ticket.
+
 The October 1 read-only diagnosis reproduces two delivery failures against deployed source and production catalog data. Exact-audio eligibility runs after the 48-neighbor-per-seed limit: Birth of Jesus/Gbii returns one candidate, versus 36 when the same audio requirement is applied before the limit. The Beginning/Kwanyama reproduces two versus 36. Separately, Mandarin retrieval uses `zh` for both transcripts and presentation, while published text is under `zh-hans`/`zh-hant`; resolving only the display identity yields zero versus 36 candidates. These are candidate counts, not full-service performance or final-card acceptance.
 
 ## Entry Points — Read These First
@@ -52,3 +58,9 @@ No production mutation, generated embeddings, new model spend, silent audio subs
 Exact playable audio is materialized once and checked before ANN limiting; published text uses the resolved presentation identity while Chinese transcripts remain `zh`. The owner approved Simplified for generic `zh`; explicit Traditional remains exact. Empty requests retain bounded context and stage evidence, and Web no longer replaces Admin receipts with ineligible legacy recovery. The 1,500 ms deadline is unchanged.
 
 All 55 service deliveries across 11 historical snapshot contexts passed in 210–1,183 ms; full JESUS/Gbii remains two cards. Scoped Admin PostgreSQL/unit suites, Web tests, typechecks and browser checks are documented in `docs/reports/2026-10-01-recommendation-delivery/implementation-verification.md`. No production deployment or inventory expansion occurred during implementation. Focused regressions and independent review confirm the existing bounded composer satisfies the owner-approved semantic partial-row policy; all 77 tests across delivery, owner/trial composition, composition policy and curated fallback pass. Feat-590 records stale unrelated integration fixtures discovered during validation.
+
+Subsequent normal deployment and the October 2 production recheck are recorded
+in `docs/reports/2026-10-02-recommendation-coverage-acceptance.md`. The 55-request
+audit's nine empty results were accepted content/eligibility shortfalls, with no
+recorded server failures or timeouts. This repair is complete; expanding coverage
+remains optional product work under existing tickets.

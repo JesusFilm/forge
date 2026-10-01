@@ -7,7 +7,7 @@ date: 2026-10-01
 
 ## Scope and decisions
 
-Restore actual co-watch contribution under the owner's existing direct no-study
+Restore valid co-watch operation under the owner's existing direct no-study
 authorization in feat-565. Feat-573 owns sustainable refresh. Preserve immutable
 revocation, privacy/deletion fences, expiry, source integrity, exact population,
 single publication, atomic replacement, truthful provenance and incumbent fallback.
@@ -19,6 +19,14 @@ composition failure. Measurement-only eligibility reuse is already on current ma
 its presence does not establish the cause of generation 6's revocation. Retained
 successors may identify a transition but cannot recreate an unrecorded transaction.
 No experiment, usefulness PASS, or synthetic human evidence is required or created.
+
+The October 2 owner decision supersedes a positive-card completion gate in this
+plan. Apply `docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`:
+unavailable eligible content and sparse co-watch with successful fallback are
+accepted coverage limitations and do not block proceeding or delivery-health
+sign-off. Record actual contribution only when supported by exact provenance.
+Server errors, timeouts and reproduced contract failures remain actionable;
+automatic refresh lifecycle verification stays separate.
 
 ## Implementation units
 
@@ -100,9 +108,10 @@ performance as well as behavior. Regenerate GraphQL artifacts only if schema cha
 
 After normal autodeploy, use supported owner-authenticated prepare/activate with
 fresh exact graph/capacity qualification. Preserve old revoked audit history.
-Verify real eligible issuance with exact owner release/generation and actual
-co-watch contributed cards, plus truthful fallback elsewhere and replacement/stop
-fences. A pointer, build or HTTP success is not release evidence. Update feat-565
+Verify real issuance and truthful fallback, and attribute any co-watch cards to
+their exact owner release/generation. Verify replacement/stop fences separately.
+A pointer, build or HTTP success alone cannot establish card contribution or
+error-free delivery. Accepted sparse coverage does not block sign-off. Update feat-565
 and feat-573 according to demonstrated outcomes; record durable learnings and any
 remaining explicit blockers without claiming unobserved success.
 
@@ -115,11 +124,13 @@ normal SSO and the owner UI activated G7 and recorded the reviewed 29-day refres
 grant. Exact identifiers, physical overlap budget and receipts are in
 `docs/operations/recommendation-cowatch-refresh-2026-10-01.md`.
 
-Real co-watch contribution and first automatic replacement remain under
-verification. Initial natural traffic shows honest sparse-edge fallback, with no
-missing-input fallback or exact owner execution yet. Keep both roadmap tickets
-in progress. The requested 24-hour check will inspect the first due refresh and
-then switch to weekly reviews; do not report usefulness from operational counts.
+At the recorded October 1 check, first automatic replacement was not yet due.
+Initial natural traffic showed honest sparse-edge fallback, with no missing-input
+fallback or exact owner execution. The October 2 owner disposition accepts this
+coverage and permits proceeding; zero contribution is not a delivery blocker.
+The requested 24-hour check will verify refresh lifecycle and report actual
+contribution separately, then switch to weekly reviews. Do not infer usefulness
+from operational counts or report these dated receipts as current authority.
 
 ## References
 

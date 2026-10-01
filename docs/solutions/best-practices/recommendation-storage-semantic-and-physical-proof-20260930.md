@@ -145,8 +145,11 @@ where necessary to keep those dependent reads indexed. This preserves exact
 provenance predicates without raising timeouts or exporting raw request data.
 The revised production query returned bounded aggregate evidence within the same
 five-second limit. See `cowatch-serving-proof-indexed.sql` in the restoration
-validation directory. A successful audit with zero contributed cards is still
-zero serving proof.
+validation directory. An audit with zero contributed cards cannot prove positive
+co-watch contribution. Under the October 2 owner policy, that observation alone
+does not establish a delivery defect or block proceeding when sparse coverage
+produces the expected fallback. Keep contribution, delivery reliability and
+refresh lifecycle verification separate.
 
 ## Related
 
