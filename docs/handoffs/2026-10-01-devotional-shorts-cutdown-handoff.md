@@ -1,5 +1,9 @@
 # Handoff: devotional shorts cut-down (feat-573)
 
+> **Done 2026-10-01.** The tool exists and the Prodigal set is cut; see
+> "Built" in the ticket for the commands. The rest of this file is the
+> original handoff, kept for its reasoning.
+
 Written 2026-10-01 at the end of the Prodigal Son session, for a fresh session
 that has none of that conversation. Read this, then `docs/roadmap/media-generation/feat-573-devotional-shorts-cutdown.md`.
 

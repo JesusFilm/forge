@@ -300,7 +300,7 @@ async function main() {
       )
       report.push(
         `## ${path.basename(target)}\n\n` +
-          `- Kind: ${short.kind}. ${short.why}.\n` +
+          `- Kind: ${short.kind}. ${short.why.replace(/\.$/, "")}.\n` +
           `- Length ${q.durationSec.toFixed(1)} s, loudness ${q.lufs?.toFixed(1)} LUFS` +
           `${flags.length ? `, check: ${flags.join(", ")}` : ""}.\n\n` +
           `> ${spokenText(manifest, short)}\n`,

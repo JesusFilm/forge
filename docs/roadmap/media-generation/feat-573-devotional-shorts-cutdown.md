@@ -3,7 +3,7 @@ id: "feat-573"
 title: "Cut a finished devotional into up to six vertical shorts"
 owner: "vlad"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-10-02"
 duration: 7
 depends_on: []
@@ -94,3 +94,23 @@ Scripture captions.
 - Loudness about -20 LUFS (`ffmpeg -af ebur128`), no black frames (`blackdetect`).
 - The render log shows "reusing cached audio" and "synthesised 0".
 - Stills of every short checked by eye: captions in frame, credit mark on the history short, nothing clipped.
+
+## Built (2026-10-01)
+
+- Every complete render writes `<video>.source/` (`source-pack.ts`); older
+  devotionals get one with `render-one-devotional.ts ... --pack-only` (zero
+  TTS, no encode).
+- `apps/mastra/src/scripts/cut-devotional-shorts.ts --from=<pack> --out=<dir>`
+  plans with `shorts-cutdown.ts` and renders each short in 9:16 through
+  `DevotionalVideo` with the manifest flag `portraitMarks` (credits and the
+  verse callout in portrait) and the new portrait scrolling Scripture.
+  `--stills` previews, `--only=`, `--film-turn=a-b`, `--reflection=a-b`,
+  `--no-model`.
+- The film turn is picked by `DEVOTIONAL_MODEL`; code keeps its start and fits
+  the end to whole caption lines (Haiku judges where, not how long).
+- Prodigal: six shorts in `~/Desktop/Social Media/Prodigal/shorts/`, 20 to 42 s,
+  -19.8 to -22.3 LUFS, no black frames, stills checked.
+
+Follow-ups, not done: localized (ES/RU) shorts; a model pick for the
+reflection run (today: the first run that stands alone); face-aware background
+crop needs the OpenCV venv rebuilt (`DEVO_FACE_PYTHON`).
