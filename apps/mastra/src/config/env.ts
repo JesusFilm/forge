@@ -213,6 +213,11 @@ const envSchema = z.object({
   // optional: unset → the tool degrades to an empty result, never a boot fail.
   ADMIN_AGENT_TOOLS_URL: z.string().url().optional(),
   ADMIN_AGENT_TOOLS_API_KEY: z.string().min(1).optional(),
+  // Subtitle Quality Lab recovery sweep. Both optional: unconfigured is the
+  // normal state until the Lab is turned on, and the scheduled workflow skips
+  // rather than failing every tick.
+  MANAGER_SUBTITLE_EVAL_RECOVERY_URL: z.string().url().optional(),
+  MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY: z.string().min(1).optional(),
   // Single-attempt per-tool timeout. Must fit the 90s chatTurn budget with
   // maxSteps:8 — keep it small so several tool round-trips can complete in one
   // turn. Capped at 30s; default 10s.
