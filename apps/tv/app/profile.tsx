@@ -13,7 +13,7 @@
 // Kept deliberately thin and re-readable for exactly that reason.
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { router } from "expo-router"
+import { Redirect, router } from "expo-router"
 
 import { ProfileScreen } from "../src/components/profile/ProfileScreen"
 import {
@@ -57,6 +57,11 @@ import { getDeviceGrantConfig } from "../src/lib/auth/deviceGrantClient"
 type Identity = { name: string; email: string; userId: string }
 
 export default function ProfileRoute() {
+  if (!isProfileSurfaceEnabled()) return <Redirect href="/" />
+  return <ProfileRouteContent />
+}
+
+function ProfileRouteContent() {
   const enabled = isProfileSurfaceEnabled()
   const [session, setSession] = useState<SessionState | null>(null)
   const [identity, setIdentity] = useState<Identity | null>(null)
@@ -318,6 +323,15 @@ export default function ProfileRoute() {
       phase={toAuthPhase(grantState.phase, session, identity)}
       onRequestNewCode={start}
       onSignOut={handleSignOut}
+      onFeedback={
+        process.env.EXPO_PUBLIC_TV_FEEDBACK_URL
+          ? () =>
+              router.push({
+                pathname: "/feedback",
+                params: { screen: "profile" },
+              })
+          : undefined
+      }
     />
   )
 }

@@ -30,6 +30,7 @@ import { navigateBackFromSearch } from "../src/components/search/searchBack"
 import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
 import { SearchKeyboardLinear } from "../src/components/search/SearchKeyboardLinear"
 import { SearchResultsGrid } from "../src/components/search/SearchResultsGrid"
+import { FeedbackUtilityHeader } from "../src/components/feedback/FeedbackUtilityHeader"
 import {
   SEARCH_PAGE_GUTTER,
   SEARCH_THEME,
@@ -68,9 +69,14 @@ export default function SearchScreen() {
 
   // Sanitize at the write site so downstream consumers never see raw input.
   // No-op for the on-screen keyboard today; defense-in-depth for future sources.
-  const setSanitizedQuery = useCallback((next: string) => {
-    setQuery(sanitizeQuery(next))
-  }, [])
+  const setSanitizedQuery = useCallback(
+    (next: string | ((current: string) => string)) => {
+      setQuery((current) =>
+        sanitizeQuery(typeof next === "function" ? next(current) : next),
+      )
+    },
+    [],
+  )
 
   // Record a successful non-empty search in recents once, on first 'ready' with
   // results. Keying on lastSubmittedQuery (not live `query`) matches what the user
@@ -224,33 +230,20 @@ export default function SearchScreen() {
   // keyboard if the native module is unavailable.
   if (Platform.OS === "ios" && isNativeSearchAvailable()) {
     return (
-      <SearchBodyNativeTvos
-        state={state}
-        results={results}
-        onChangeQuery={setSanitizedQuery}
-      />
-    )
-  }
-
-  // Apple TV: native SwiftUI .searchable surface (expo-tvos-search) — the ONLY
-  // path that receives Siri Remote system dictation ("Hold 🎤 to dictate").
-  // tvOS gives third-party apps no mic access; dictation writes exclusively
-  // into Apple's own text primitive, so the input+results presentation is
-  // native while ALL data plumbing (sanitizer → debounce → watchSearch →
-  // telemetry → recents) stays this screen's. Falls back to the custom
-  // keyboard if the native module is unavailable.
-  if (Platform.OS === "ios" && isNativeSearchAvailable()) {
-    return (
-      <SearchBodyNativeTvos
-        state={state}
-        results={results}
-        onChangeQuery={setSanitizedQuery}
-      />
+      <View style={styles.nativeScreen}>
+        <FeedbackUtilityHeader screen="search" />
+        <SearchBodyNativeTvos
+          state={state}
+          results={results}
+          onChangeQuery={setSanitizedQuery}
+        />
+      </View>
     )
   }
 
   return (
     <View style={styles.screen}>
+      <FeedbackUtilityHeader screen="search" />
       <View style={styles.queryLine}>
         {voice.available ? (
           <VoiceSearchButton
@@ -291,7 +284,7 @@ function SearchBodyNativeTvos({
 }: {
   state: SearchState
   results: SearchResult[]
-  onChangeQuery: (next: string) => void
+  onChangeQuery: (next: string | ((current: string) => string)) => void
 }) {
   const router = useRouter()
 
@@ -349,7 +342,7 @@ type SearchBodyProps = {
   searchRequestId: string
   meta: string
   hasQuery: boolean
-  onChangeQuery: (next: string) => void
+  onChangeQuery: (next: string | ((current: string) => string)) => void
   onSubmit: () => void
   onRunQuery: (next: string) => void
   onClearHistory: () => void
@@ -431,7 +424,6 @@ function SearchBodyTwoPane(props: SearchBodyProps) {
           tvOS focus engine then hops through a fallback. Keep it mounted. */}
       <View style={styles.keyboardPane}>
         <SearchKeyboard
-          value={props.query}
           onChange={props.onChangeQuery}
           onSubmit={props.onSubmit}
           onKeyFocus={props.onKeyFocus}

@@ -1,4 +1,11 @@
-# Prepare empty legacy recommendation stage reclamation
+# Legacy recommendation stage reclamation
+
+Production bulk disposal completed October 2 NZDT through PRs 2532/2534 and
+numbered migration 0127. The legacy relation is empty with 24,576 bytes allocated;
+16.431 GB of its files were reclaimed. Both Admin roles are healthy on `755345a92`.
+See `docs/reports/2026-10-02-legacy-stage-reclamation.md` for exact measurements,
+the bounded recovery and remaining daily retention gate. Do not rerun the stopped
+campaign or execute the inactive SQL asset below. Historical preparation follows.
 
 The reviewed SQL asset is
 `apps/admin/src/services/recommendations/sql/reclaim-empty-legacy-stage-relation.sql`.

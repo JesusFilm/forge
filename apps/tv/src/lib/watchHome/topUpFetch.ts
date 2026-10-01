@@ -6,7 +6,15 @@ import { ENGLISH_LANGUAGE_SLUG, HOME_LOCALE } from "./config"
 import { GET_WATCH_HOME_VIDEOS } from "./homeQueries"
 import type { WatchHomeVideoInput } from "./model"
 
-export type FetchPolicy = "cache-first" | "network-only"
+export type FetchPolicy = "cache-first" | "network-only" | "no-cache"
+
+export function homeFetchPolicy(
+  platform: string,
+  mode: "initial" | "refresh",
+): FetchPolicy {
+  if (platform === "android") return "no-cache"
+  return mode === "initial" ? "cache-first" : "network-only"
+}
 
 // Type-only reference to the app's Apollo client — erased at runtime, so this
 // module stays free of the client's (native-adjacent) import graph.

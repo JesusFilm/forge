@@ -3,7 +3,7 @@ id: "feat-381"
 title: "Semantic recommendation control readiness"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 4
 depends_on:
@@ -25,6 +25,17 @@ tags:
   - "evaluation"
   - "readiness"
 ---
+
+## October 2, 2026 scope decision
+
+Cancelled semantic-control readiness as a required experiment gate. Admin already
+has a versioned `control-readiness` policy, evaluation service/job, tests and a
+readiness panel; that implementation is retained, but this ticket does not claim
+a current production `ready` evaluation or a causal benefit result. The selected
+co-watch/MMR activation no longer depends on a controlled usefulness study, so
+forcing a semantic-only control evaluation is obsolete. Delivery reliability,
+eligibility, privacy and refresh authority remain independently required under
+the [delivery policy](../../analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage).
 
 ## Problem
 
