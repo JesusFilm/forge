@@ -1,9 +1,9 @@
 ---
 id: "feat-575"
-title: "Retire unprotected legacy recommendation trace detail early"
+title: "Retire legacy recommendation trace detail early"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-30"
 duration: 3
 depends_on: []
@@ -15,7 +15,17 @@ tags:
   - "capacity"
 ---
 
-## Current scope: October 2 NZDT owner authorization
+## Completed October 2 NZDT
+
+The owner broadened disposal to all remaining legacy stage detail. PRs 2532/2534
+completed that disposal and physical reclamation through normal deployment.
+The stage relation is empty, compact payloads and operational records remain,
+and both actual Admin roles are healthy on `755345a92`. The old unattended job is
+permanently stopped; this is not completion or renewal of its immutable roster.
+See `docs/reports/2026-10-02-legacy-stage-reclamation.md`: 16.431 GB relation
+recovery, 16.144 GB net additional filesystem availability. Feat-554 remains open.
+
+## Final scope: October 2 NZDT owner authorization
 
 The owner explicitly requested bulk deletion of all remaining legacy stage detail,
 including former protected samples, without the old per-cohort verification.
@@ -23,8 +33,9 @@ including former protected samples, without the old per-cohort verification.
 empty-only and preservation gates below for this operation. Migration 0127 retires
 legacy run detail and restrictively truncates ONLY the stage relation atomically;
 compact traces and operational records retain their normal lifetime. The stopped
-unattended campaign must not restart. Status remains in progress until normal
-PR-to-main release and measured physical reclamation. Feat-554 remains independent.
+unattended campaign must not restart. Normal release and measured physical
+reclamation are complete. Feat-554 remains independent. The sections below are
+historical preparation and campaign constraints, superseded for this final disposal.
 
 ## Problem
 
