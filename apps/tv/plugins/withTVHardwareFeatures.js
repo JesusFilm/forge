@@ -10,6 +10,8 @@ module.exports = function withTVHardwareFeatures(config) {
     for (const name of [
       "android.hardware.screen.portrait",
       "android.hardware.microphone",
+      "android.hardware.touchscreen",
+      "android.hardware.faketouch",
     ]) {
       const feature = manifest["uses-feature"].find(
         (entry) => entry.$["android:name"] === name,
@@ -21,6 +23,19 @@ module.exports = function withTVHardwareFeatures(config) {
           $: { "android:name": name, "android:required": "false" },
         })
       }
+    }
+    const leanback = manifest["uses-feature"].find(
+      (entry) => entry.$["android:name"] === "android.software.leanback",
+    )
+    if (leanback) {
+      leanback.$["android:required"] = "true"
+    } else {
+      manifest["uses-feature"].push({
+        $: {
+          "android:name": "android.software.leanback",
+          "android:required": "true",
+        },
+      })
     }
     return mod
   })

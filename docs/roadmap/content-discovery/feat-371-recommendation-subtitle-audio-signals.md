@@ -3,7 +3,7 @@ id: "feat-371"
 title: "Recommendation subtitle and audio signals"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 3
 depends_on:
@@ -17,6 +17,19 @@ tags:
   - "subtitles"
   - "audio"
 ---
+
+## October 2, 2026 scope decision
+
+Cancelled as an optional recommendation-signal expansion. Track availability,
+explicit subtitle/audio interaction receipts, derived projections and Admin
+readiness gates in this ticket were not built or validated, and no claim about
+viewer preference or satisfaction follows from language controls. The selected
+bounded recommendation product uses exact requested language/audio eligibility;
+missing track or dub inventory is accepted coverage under the
+[delivery policy](../../analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage).
+The existing Watch language controls and configured product analytics remain in
+place. Reopen a playback or language correctness defect on a reproduced case,
+not because this optional ranking signal was never collected.
 
 ## Problem
 

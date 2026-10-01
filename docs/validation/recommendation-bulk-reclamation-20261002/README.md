@@ -1,7 +1,12 @@
-# Bulk legacy stage disposal preparation
+# Bulk legacy stage disposal validation
 
 Owner scope: `docs/plans/2026-10-02-001-bulk-legacy-stage-reclamation.md`.
-Production deployment and physical savings remain pending at this preparation.
+Production disposal completed October 1 at 22:25:50 UTC (October 2 NZDT).
+See `docs/reports/2026-10-02-legacy-stage-reclamation.md`: 16,431,235,072 relation
+bytes reclaimed, 16,144,224,256 more filesystem bytes available, exact stage
+emptiness and both Admin roles healthy on `755345a92`. Feat-555/575 are complete;
+feat-554's two failure-free loaded retention cycles remain open. The sections below
+retain the preparation and first-deployment failure evidence.
 
 ## Native PostgreSQL results
 

@@ -384,6 +384,18 @@ export default function SeriesScreen() {
               languageName={languageName}
               onLanguagePress={openLanguagePanel}
               refocusKey={actionRowRefocusKey}
+              onFeedbackPress={
+                process.env.EXPO_PUBLIC_TV_FEEDBACK_URL
+                  ? () =>
+                      router.push({
+                        pathname: "/feedback",
+                        params: {
+                          screen: "series",
+                          filmTitle: displayTitle ?? "",
+                        },
+                      })
+                  : undefined
+              }
             />
           </View>
         </View>
