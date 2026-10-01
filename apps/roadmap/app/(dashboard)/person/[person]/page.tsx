@@ -34,6 +34,7 @@ const STATUS_COLUMNS: { status: FeatureStatus; accent: string }[] = [
   { status: "not-started", accent: "border-stone-500/50" },
   { status: "in-progress", accent: "border-blue-500/50" },
   { status: "complete", accent: "border-green-500/50" },
+  { status: "cancelled", accent: "border-slate-500/50" },
 ]
 
 const LANE_COLORS: Record<Lane, string> = {
@@ -77,9 +78,9 @@ export default async function PersonPage({
       </div>
 
       <div className="overflow-x-auto">
-        <div className="min-w-[600px]">
+        <div className="min-w-[750px]">
           {/* Column headers */}
-          <div className="mb-2 grid grid-cols-4 gap-4">
+          <div className="mb-2 grid grid-cols-5 gap-4">
             {STATUS_COLUMNS.map(({ status, accent }) => {
               const count = features.filter((f) => f.status === status).length
               return (
@@ -109,7 +110,7 @@ export default async function PersonPage({
                       {laneFeatures.length}
                     </span>
                   </Link>
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-5 gap-4">
                     {STATUS_COLUMNS.map(({ status }) => {
                       const items = sortByPriority(
                         laneFeatures.filter((f) => f.status === status),

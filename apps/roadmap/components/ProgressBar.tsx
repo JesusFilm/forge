@@ -11,6 +11,7 @@ const STATUS_BG: Record<FeatureStatus, string> = {
   "not-started": "bg-stone-700 border-stone-600",
   "in-progress": "bg-blue-900/60 border-blue-500/50",
   complete: "bg-green-900/60 border-green-500/50",
+  cancelled: "bg-slate-800/60 border-slate-500/50",
   blocked: "bg-red-900/60 border-red-500/50",
 }
 
@@ -18,6 +19,7 @@ const STATUS_DOT: Record<FeatureStatus, string> = {
   "not-started": "bg-stone-400",
   "in-progress": "bg-blue-400",
   complete: "bg-green-400",
+  cancelled: "bg-slate-400",
   blocked: "bg-red-400",
 }
 
@@ -33,7 +35,9 @@ export default function ProgressBar({ label, href, features }: Props) {
   const complete = features.filter((f) => f.status === "complete").length
   const inProgress = features.filter((f) => f.status === "in-progress").length
   const blocked = features.filter((f) => f.status === "blocked").length
-  const pct = Math.round((complete / features.length) * 100)
+  const cancelled = features.filter((f) => f.status === "cancelled").length
+  const planned = features.length - cancelled
+  const pct = planned > 0 ? Math.round((complete / planned) * 100) : 0
 
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-4">
@@ -48,8 +52,11 @@ export default function ProgressBar({ label, href, features }: Props) {
           {inProgress > 0 && (
             <span className="text-blue-400">{inProgress} active</span>
           )}
+          {cancelled > 0 && (
+            <span className="text-slate-400">{cancelled} cancelled</span>
+          )}
           <span>
-            {complete}/{features.length}{" "}
+            {complete}/{planned}{" "}
             <span className="text-stone-500">({pct}%)</span>
           </span>
         </div>
