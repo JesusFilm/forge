@@ -105,13 +105,21 @@ export function createRecommendationDeliveryDependencies(
     ),
     retrieve: timed(
       "retrieve",
-      ({ seedMediaId, locale, audioLanguageSlug, limit, deadlineAt }) =>
+      ({
+        seedMediaId,
+        locale,
+        audioLanguageSlug,
+        limit,
+        deadlineAt,
+        onDiagnostics,
+      }) =>
         runRecommendationRetrievalQuery(prisma, deadlineAt, (scopedPrisma) =>
           getSemanticDeliveryCandidatePool(scopedPrisma, {
             seedMediaId,
             locale,
             audioLanguageSlug,
             limit,
+            onDiagnostics,
           }),
         ),
     ),

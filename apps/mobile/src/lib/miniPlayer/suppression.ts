@@ -1,9 +1,10 @@
 /**
- * R11 suppression: the floating window hides while an in-app sheet is
- * presented, and returns to its corner when that sheet closes. Two mechanisms
- * live here because the app presents sheets two ways — nine real sheet ROUTES
- * (six in the watch and series groups, three reader sheets on the root
- * stack), and the sheets that are component state.
+ * R11 suppression: on Android the floating window hides while an in-app sheet
+ * is presented, and returns to its corner when that sheet closes. iOS draws
+ * every sheet over the window instead (see `miniPlayerPresentation`). Two
+ * mechanisms live here because the app presents sheets two ways — nine real
+ * sheet ROUTES (six in the watch and series groups, three reader sheets on
+ * the root stack), and the sheets that are component state.
  *
  * React-native-free by construction: routes arrive as expo-router segments and
  * the non-route sheets arrive as a count.
@@ -51,9 +52,17 @@ export type NonRouteSheetId =
   | "sduiQuiz"
   | "playerSettings"
 
+/** Drawn inside a route, so the host covers it on every platform. The other
+ *  ids are React Native `Modal`s, which iOS presents above the host. */
+const INLINE_SHEET_IDS: ReadonlySet<NonRouteSheetId> = new Set([
+  "libraryDeleteConfirm",
+])
+
 export type NonRouteSheetCounter = {
   /** Presented count — zero means nothing is suppressing the window. */
   count: () => number
+  /** The presented sheets that draw under the host (`INLINE_SHEET_IDS`). */
+  inlineCount: () => number
   isPresented: () => boolean
   open: (id: NonRouteSheetId) => void
   close: (id: NonRouteSheetId) => void
@@ -75,6 +84,11 @@ export function createNonRouteSheetCounter(): NonRouteSheetCounter {
 
   return {
     count: () => open.size,
+    inlineCount: () => {
+      let inline = 0
+      for (const id of open) if (INLINE_SHEET_IDS.has(id)) inline += 1
+      return inline
+    },
     isPresented: () => open.size > 0,
     open(id) {
       if (open.has(id)) return

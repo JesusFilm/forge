@@ -562,6 +562,51 @@ describe("Auth route wrapper", () => {
   })
 
   it.each([
+    "http://localhost:3002/mcp",
+    "https://manager-preview.jesusfilm.org/mcp",
+    "https://manager-stage.jesusfilm.org/mcp",
+    "https://manager.jesusfilm.org/mcp",
+  ])(
+    "forwards a registered Shorts resource to the OAuth provider (%s)",
+    async (resource) => {
+      const { GET } = await import("./route")
+      const url = new URL("http://localhost:3004/api/auth/oauth2/authorize")
+      url.search = new URLSearchParams({
+        client_id: "chatgpt_dynamic",
+        redirect_uri: "https://chatgpt.com/connector_platform/oauth/callback",
+        response_type: "code",
+        scope: "shorts:read shorts:edit shorts:render",
+        resource,
+        state: "opaque-state",
+        code_challenge: "pkce-challenge",
+        code_challenge_method: "S256",
+      }).toString()
+
+      const response = await GET(new Request(url), {
+        params: Promise.resolve({ all: ["oauth2", "authorize"] }),
+      })
+
+      expect(response.status).toBe(200)
+      expect(authGet).toHaveBeenCalledOnce()
+      const forwarded = authGet.mock.calls[0]?.[0]
+      if (!(forwarded instanceof Request)) throw new Error("Expected a request")
+      expect(forwarded.url).toBe(url.toString())
+      expect(decideChangelogGrant).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    {
+      name: "a Shorts resource with an unregistered path",
+      query: "resource=https%3A%2F%2Fmanager.jesusfilm.org%2Fmcp%2Fother",
+      dynamic: false,
+    },
+    {
+      name: "a Shorts resource with another resource",
+      query:
+        "resource=http%3A%2F%2Flocalhost%3A3002%2Fmcp&resource=https%3A%2F%2Fadmin.jesusfilm.org%2Fmcp",
+      dynamic: false,
+    },
     {
       name: "no resource with global scopes",
       query:

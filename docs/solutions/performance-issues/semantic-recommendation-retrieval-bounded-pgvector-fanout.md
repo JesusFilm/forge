@@ -1,7 +1,7 @@
 ---
 title: "Keep semantic recommendation retrieval within the immutable 1.5-second budget"
 date: "2026-08-20"
-last_updated: "2026-09-09"
+last_updated: "2026-10-01"
 category: "performance-issues"
 module: "apps/admin semantic recommendation delivery"
 problem_type: "performance_issue"
@@ -65,7 +65,7 @@ The current implementation remains in `apps/admin/src/services/recommendations/d
 2. Sample at most eight seed chunks evenly with `ntile`.
 3. Materialize only the seed and direct parent/child **video IDs**.
 4. For each probe, scan candidate chunks ordered by cosine distance. Use a correlated scalar parent lookup by primary key for exact provenance and video-family exclusion. Keep these checks before `LIMIT 48`.
-5. Apply the existing publication, platform, exact audio-language, and playable-dub checks; retain the best chunk per video and overfetch six times the requested slate size for composition and identity deduplication.
+5. Materialize the requested exact-audio playable dubs once and require edition membership inside the scalar parent filter before `LIMIT 48`. Reuse that set for final playback selection, preserving dub ordering. Apply the existing publication and platform checks; retain the best chunk per video and overfetch six times the requested slate size for composition and identity deduplication.
 
 The parent lookup deliberately remains a scalar boolean subquery rather than a top-level join:
 
@@ -117,9 +117,23 @@ See the [verification report](../../reports/2026-09-09-recommendation-retrieval-
 - Run `delivery-retriever.db.test.ts` in both explicit modes: `RECOMMENDATION_DELIVERY_DB_FIXTURE=deterministic` for CI and `=production_snapshot` for representative catalog verification, with `RECOMMENDATION_DB_TEST=1` and a disposable local database.
 - Protect eligibility and fill together. More than 48 nearer incompatible parent/chunk embeddings must not crowd out valid targets. Require actual HNSW access in the indexed fixture, an eligible six-card slate, family exclusions, exact transform matching, and connection-setting cleanup after commit and rollback.
 - Recheck prepared-query reuse, long hierarchies, real audio-language slugs, and contract-skewed vectors when changing filters. Use production-shaped `EXPLAIN (ANALYZE, BUFFERS)`; planner estimates alone are not timings.
-- Changing probes, neighbor caps, or downstream eligibility needs separate relevance/diversity and fill evidence. Publication/playability remain downstream of the ANN cap, so dense ineligible content can still reduce slate fill.
+- Changing probes, neighbor caps, or downstream eligibility needs separate relevance/diversity and fill evidence. Publication and platform visibility remain downstream of the ANN cap, so dense ineligible content can still reduce slate fill. Exact-audio playability now participates before the cap.
 - Measure service and browser boundaries after SQL checks. A warm candidate pool can mask a broken live query; distinguish `served`, `fallback`, empty results, and `retrieval_timeout`.
 - After normal PR-to-main deployment, compare timeout and served/fill rates by seed, locale/audio, strategy, and traffic mix. Monitor Portuguese and larger profile-interest workloads: their measured bitmap/sort samples do not establish scalability.
+
+## October 2026: exact audio without repeated catalog work
+
+Moving exact audio before `LIMIT 48` fixes wrong-audio neighbors consuming the allowance, but a correlated dub/mux join inside the scalar parent filter is too expensive. A real Birth/Gbii execution retained HNSW yet scanned dubs 4,477 times and mux rows 340,307 times, taking 1,519 ms for SQL alone. Small fixtures missed this failure; most initial content-snapshot service contexts timed out.
+
+`playable_dubs AS MATERIALIZED` now loads only the requested audio's playable dubs once. `candidate_transcript.video_edition_id IN (SELECT video_edition_id FROM playable_dubs)` filters the ordered scan; the final lateral lookup reuses the same rows and original published/updated/id ordering. The same sample took 195 ms with one dub scan and 79 mux lookups. No probe, tuple or deadline limit increased.
+
+Separate transcript and presentation identities at the delivery boundary: Chinese transcripts use `zh`, published text uses `zh-hans`/`zh-hant`. The October 1 owner decision maps generic `zh` to Simplified; explicit scripts remain exact. Cache keys and transcript consumers must use the correct identity independently of the exact requested audio.
+
+The new `delivery-multilingual.db.test.ts` runs 11 contexts with cold application pools, repeated warm calls and three concurrent deliveries each. All 55 samples on the historical content-only snapshot returned within 210–1,183 ms. Full JESUS/Gbii correctly stayed at two cards. These are local service measurements with fixture admission/manifest authority, not live HTTP percentiles or global fill improvement. See the [October verification report](../../reports/2026-10-01-recommendation-delivery/implementation-verification.md).
+
+Prevention: require both actual index access and measured work/loops; an HNSW plan alone does not prove the filter is cheap. Keep exact-audio fixtures, explicit Chinese scripts, missing translation, incompatible/absent embeddings and sparse supply in regression coverage. Ledger diagnostics must call missing compatible seed vectors `compatible_embedding_unavailable`, leave interrupted stages unknown, and never claim exhaustive absence from a bounded ANN result.
+
+The October 1 owner decision also permits semantic partial-row completion from the existing bounded pool. Check composition before adding another fallback: semantic, hybrid and MMR already consume their eligible ordered candidates until the row is full or the pool is exhausted. `delivery.service.test.ts` now pins five-card exhaustion and six-card reserve fill while rejecting duplicate, wrong-audio and unplayable nominations, preserving the fresh prefix and matching composed evidence to served positions. An exhausted nonempty row stays intact; curated fallback remains empty-only. Do not add a second retrieval or relax eligibility merely because a row is short.
 
 ## Related Issues
 

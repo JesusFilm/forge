@@ -1198,6 +1198,39 @@ describe("a swipe (AE8, R6, R7)", () => {
   })
 })
 
+// The owner (2026-09-30), changing R8: a clip that ends moves the feed on, as
+// a swipe would. It loops only when the feed has no next clip to move to.
+describe("the end of a clip", () => {
+  it("moves to the next clip, and logs the move apart from the viewer's swipes", async () => {
+    await startWithStandby()
+
+    await tick(A, END + 0.1)
+    expect(overlay().props.clip).toMatchObject({ videoId: "video-2" })
+    expect(B.playing).toBe(true)
+    expect(A.playing).toBe(false)
+    expect(loads(B)).toEqual([feedUrl(2)])
+    await advance(REST)
+
+    expect(
+      logged("explore.swipe").map(({ context }) => [
+        context.explore_preload_hit,
+        context.explore_swipe_direction,
+        context.explore_swipe_trigger,
+      ]),
+    ).toEqual([[true, "forward", "clipEnd"]])
+  })
+
+  it("loops when no next clip is ready", async () => {
+    await startFirstClip()
+
+    await tick(A, END + 0.1)
+    expect(overlay().props.clip).toMatchObject({ videoId: "video-1" })
+    expect(A.currentTime).toBe(START)
+    expect(A.playing).toBe(true)
+    expect(logged("explore.swipe")).toEqual([])
+  })
+})
+
 // ── KTD13, R45: blur and return ─────────────────────────────────────
 
 describe("a blur and a return (KTD13, R45)", () => {
@@ -1861,11 +1894,12 @@ describe("telemetry (U13, KTD17, R34)", () => {
         context.explore_preload_hit,
         context.explore_swipe_direction,
         context.explore_swipe_outcome,
+        context.explore_swipe_trigger,
       ]),
     ).toEqual([
-      [true, "forward", "motion"],
-      [false, "forward", "motion"],
-      [false, "backward", "motion"],
+      [true, "forward", "motion", "viewer"],
+      [false, "forward", "motion", "viewer"],
+      [false, "backward", "motion", "viewer"],
     ])
   })
 

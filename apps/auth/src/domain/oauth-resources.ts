@@ -1,5 +1,6 @@
 import {
   STUDIO_MCP_APP_SEED,
+  STUDIO_MCP_RESOURCE_SCOPES,
   ADMIN_MCP_APP_KEY,
   ADMIN_MCP_APP_SEED,
   ADMIN_MCP_DEFAULT_SCOPES,
@@ -118,7 +119,7 @@ export function createOAuthResourceCatalog({
       trustedProduct: "manager",
       trustedApp: "shorts-mcp",
       trustedEnvironment: e.kind,
-      allowedScopes: e.defaultScopes,
+      allowedScopes: STUDIO_MCP_RESOURCE_SCOPES,
       dcrExposure: "public",
     }),
   )

@@ -1,6 +1,14 @@
 # Watch exposure window index online replacement
 
-This is a two-operation, normal-release operator for `watch_surface_exposure`. It changes only the nonunique window lookup index. It keeps every exposure row, `event_id` and primary-key uniqueness, the served partial unique index, cohort/aggregate indexes, and 29-day expiry. The CLI ships **without automatic execution**; Prisma schema and migrations remain unchanged until a later reconciliation PR.
+Production completed the separately reviewed create/observe/drop sequence on
+September 30, 2026 at 04:47:40 UTC. Do not replay either production attempt.
+See `docs/reports/2026-09-30-watch-exposure-index-reconciliation.md` for measured
+bytes, sampled query evidence and limitations. This PR adds forward-only
+migration `0121` to reconcile the verified physical state through the normal
+release flow; other populated environments must complete their own online
+replacement first.
+
+The completed physical replacement used a two-operation, normal-release operator for `watch_surface_exposure`. It changed only the nonunique window lookup index. It kept every exposure row, `event_id` and primary-key uniqueness, the served partial unique index, cohort/aggregate indexes, and 29-day expiry. The CLI shipped **without automatic execution**; its operator PR left Prisma schema and migrations unchanged. This reconciliation PR updates the Prisma model and adds migration `0121`.
 
 Use only the CLI from a deployed, reviewed Admin image after root-owned target, reader/writer fleet, health, capacity/WAL, lock-waiter and query admission. Never run a local worktree build against production. One operator invocation performs at most one concurrent DDL statement. The code uses one `pg` connection in autocommit, not Prisma `$transaction` or a migration. Its fixed SQL names cannot be supplied as arguments.
 
@@ -23,9 +31,9 @@ After create, require both old and new indexes valid/ready/live with exact defin
 
 After fresh independent health, target, source, space, WAL and catalog admission, and only when the candidate has been accepted, invoke the same deployed CLI with `drop-wide` and a different unused private receipt path. The command requires both exact valid index shapes and issues only `DROP INDEX CONCURRENTLY public.watch_surface_exposure_window_item_idx`, with no `IF EXISTS` or `CASCADE`. The six-key index remains. A failed or ambiguous drop is inspected, never resumed automatically. If reads regress, keep the old index and stop before the drop. After dropping it, restoring the wide index requires another reviewed concurrent build; changing code flags cannot restore it instantly. Record `pg_relation_size`, `pg_total_relation_size`, filesystem free bytes after WAL settles, WAL interval, event UUID/row counts, 29-day expiry, read plans and serving/writer metrics. Relation-byte change is not automatically filesystem recovery.
 
-## Later Prisma reconciliation, separate PR
+## Forward-only Prisma reconciliation in this PR
 
-Only after the physical production state is verified, change Prisma's model to the six-column index and append a **forward-only** migration. Do not edit migration 0103. The migration should have two fail-closed branches under bounded timeouts: (1) on a populated database, verify the candidate is already valid with the reviewed six-key definition and the old index absent, then do no DDL; otherwise fail; (2) on a genuinely empty new database, acquire a bounded table lock, recheck emptiness under it, then create the narrow index ordinarily and remove the old one transactionally. A partial online state (both indexes, invalid candidate, old-only populated, or neither) must fail rather than block live writers. Test actual `prisma migrate deploy` from zero and against an already-online populated fixture. This operator PR intentionally contains no schema or migration change.
+After verification of the production physical state, this PR changes Prisma's model to the six-column index and appends **forward-only** migration `0121`; migration 0103 stays intact. The migration has two fail-closed branches under bounded timeouts: (1) on a populated database, verify the candidate is already valid with the reviewed six-key definition and the old index absent, then do no DDL; otherwise fail; (2) on a genuinely empty new database, acquire a bounded table lock, recheck emptiness under it, then create the narrow index ordinarily and remove the old one transactionally. A partial online state (both indexes, invalid candidate, old-only populated, or neither) fails rather than blocking live writers. Native tests run actual `prisma migrate deploy` from zero and against an already-online populated fixture.
 
 ## Local proof boundary
 

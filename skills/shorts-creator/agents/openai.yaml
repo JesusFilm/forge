@@ -1,0 +1,6 @@
+interface:
+  display_name: "Shorts creator"
+  short_description: "Create and revise rendered Shorts through MCP"
+  default_prompt: "Use $shorts-creator to make a rendered Shorts draft from our brief."
+policy:
+  allow_implicit_invocation: true

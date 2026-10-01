@@ -155,6 +155,73 @@ describe("R19 origination exclusion", () => {
   })
 })
 
+// The owner (2026-09-30): iOS presents every in-app sheet as a native modal
+// over the host, so the window stays under the sheet and its dimming darkens
+// it. Android draws the host over a sheet, so there the window still hides.
+describe("sheets that draw over the host (iOS)", () => {
+  const SHEET_ROWS = ROUTE_TABLE.filter(
+    ([, , expected]) => expected === "hidden",
+  )
+
+  it("covers every sheet route the table hides without the flag", () => {
+    expect(SHEET_ROWS.map(([pattern]) => pattern)).toEqual([
+      "series/language",
+      "series/subtitle",
+      "series/download",
+      "reader-passage",
+      "reader-translation",
+      "reader-settings",
+    ])
+  })
+
+  it.each(SHEET_ROWS)("%s → floating", (_pattern, segments) => {
+    const store = storeWithSession()
+    expect(miniPlayerPresentation(store.getSnapshot(), segments, 0, true)).toBe(
+      "floating",
+    )
+  })
+
+  it("keeps the window floating under a non-route sheet", () => {
+    const store = storeWithSession()
+    expect(
+      miniPlayerPresentation(
+        store.getSnapshot(),
+        ["(tabs)", "profile"],
+        1,
+        true,
+      ),
+    ).toBe("floating")
+  })
+
+  // An inline sheet (the Downloads delete confirm) draws inside its route, so
+  // the host would cover it on iOS too.
+  it("still hides for an inline sheet", () => {
+    const store = storeWithSession()
+    expect(
+      miniPlayerPresentation(store.getSnapshot(), ["downloads"], 1, true, 1),
+    ).toBe("hidden")
+    expect(
+      miniPlayerPresentation(store.getSnapshot(), ["downloads"], 1, true, 0),
+    ).toBe("floating")
+  })
+
+  it("still hides for the picture-in-picture hold, and keeps the full view", () => {
+    const store = storeWithSession()
+    expect(
+      miniPlayerPresentation(
+        store.getSnapshot(),
+        ["watch", "language"],
+        0,
+        true,
+      ),
+    ).toBe("full")
+    store.setPipHold(true)
+    expect(
+      miniPlayerPresentation(store.getSnapshot(), ["reader-settings"], 0, true),
+    ).toBe("hidden")
+  })
+})
+
 describe("suppression and phases", () => {
   it("hides for a non-route sheet and restores when the count returns to zero", () => {
     const store = storeWithSession()

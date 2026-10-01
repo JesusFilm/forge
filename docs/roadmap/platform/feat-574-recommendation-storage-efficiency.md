@@ -71,4 +71,22 @@ still false; a separate normal PR enables new writes by default. Local bytes
 are not production savings. Keep this ticket in progress through activation,
 rollback readiness, and measured production verification.
 
-The exposure window-index follow-up has a local 1.5-million-row online-DDL proof and a dry-run-first Admin operator in a separate proposed PR. It has not run against production; the old eight-key index and Prisma history remain authoritative until root-owned create/observe/drop gates and a later forward-only schema reconciliation. See `docs/operations/watch-exposure-online-index.md` and `docs/reports/2026-09-30-watch-exposure-index-feasibility.md`. Keep this ticket in progress.
+Historical pre-operation state: the exposure window-index follow-up had a local 1.5-million-row online-DDL proof and a dry-run-first Admin operator in a separate proposed PR. At that point it had not run against production; the old eight-key index and Prisma history remained authoritative pending root-owned create/observe/drop gates and forward-only schema reconciliation. See `docs/operations/watch-exposure-online-index.md` and `docs/reports/2026-09-30-watch-exposure-index-feasibility.md`. Keep this ticket in progress.
+
+September 30 update: the reviewed operator completed production create/observe/drop
+at 04:47:40 UTC. The replacement was 64.8% smaller (118,685,696 fewer index bytes);
+filesystem availability increased 106,725,376 bytes across the operation interval
+with concurrent traffic. Production sampled hits now use the narrow index. The
+forward-only `0121` reconciliation and its real Prisma/native guard tests are
+included in the current PR. See `docs/reports/2026-09-30-watch-exposure-index-reconciliation.md`.
+Do not credit these bytes to legacy-table reclamation or close this broader ticket.
+
+September 30 local future-write experiment: `WatchSurfaceExposure.id` already has
+a Prisma CUID default, but the three writers supplied a 36-character random UUID.
+On equal 100,000-row same-schema PostgreSQL 18.6 cohorts, using that existing
+default lowered total relation allocation 8.18% with no native correctness or
+material insert-latency regression. The primary key, unique event UUID, all
+indexes, 29-day expiry and existing rows remain unchanged. See
+`docs/validation/recommendation-storage-20260930/watch-exposure-internal-id.md`.
+This is local review evidence, not production filesystem or growth proof; keep
+the ticket in progress.

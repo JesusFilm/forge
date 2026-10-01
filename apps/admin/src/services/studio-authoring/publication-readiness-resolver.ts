@@ -18,7 +18,7 @@ import {
 } from "./state"
 import { StudioCommandError } from "./errors"
 import { resolveStudioPackSources } from "./packs"
-import { assertStudioRenderSources } from "./sources"
+import { assertStudioCompletedRenderSources } from "./render-preparation"
 import { stagedStudioReleaseSchema } from "./catalog-readiness"
 
 /** Canonical, transaction-compatible eligibility. No provider I/O, replacement
@@ -83,7 +83,11 @@ export async function assertStudioPublicationEligibility(
     >`SELECT u.id FROM "user" u JOIN manager_membership m ON m.user_id=u.id WHERE u.id=${id} AND m.role='OPERATOR' AND m.revoked_at IS NULL FOR SHARE OF u,m`
     if (rows.length !== 1) throw new StudioCommandError("AUTHORIZATION_REVOKED")
   }
-  const sources = await assertStudioRenderSources(tx, document),
+  const sources = await assertStudioCompletedRenderSources(
+      tx,
+      document,
+      input.renderAttemptId,
+    ),
     packs = await resolveStudioPackSources(tx, document.packRevisionIds)
   const restrictions = [
     ...new Set([

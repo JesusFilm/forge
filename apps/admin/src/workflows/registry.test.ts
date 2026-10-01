@@ -9,10 +9,18 @@ import {
   runRecommendationRetentionScheduler,
 } from "./recommendationRetention"
 import { runRecommendationProfileReconciliationScheduler } from "./recommendationProfileReconciliation"
+import { runRecommendationCowatchRefreshScheduler } from "./recommendationCowatchRefresh"
 
 describe("recommendation workflow registry", () => {
   it("keeps both retention workflows in the deployment discovery graph", () => {
     const workflowIds = getKnownRecommendationWorkflowIds()
+    expect(workflowIds).toContain(
+      (
+        runRecommendationCowatchRefreshScheduler as typeof runRecommendationCowatchRefreshScheduler & {
+          workflowId?: string
+        }
+      ).workflowId ?? runRecommendationCowatchRefreshScheduler.name,
+    )
 
     const retentionWorkflowId = (
       runRecommendationRetention as typeof runRecommendationRetention & {

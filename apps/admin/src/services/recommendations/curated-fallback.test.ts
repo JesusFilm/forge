@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { PrismaClient } from "@prisma/client"
 import { VideoNotFoundError } from "@/services/scene-recommendations.service"
-import { curatedFallbackNominations } from "./curated-fallback"
+import {
+  curatedFallbackNominations,
+  retrieveCuratedFallback,
+} from "./curated-fallback"
+import { CuratedPoolsService } from "./curated-pools.service"
+import * as deliveryRuntime from "./delivery-runtime"
 import type { CuratedRecommendationCandidate } from "./curated-pools.types"
 import { input, makeHarness, candidate } from "./delivery.service.test-helpers"
 
@@ -24,6 +30,54 @@ function curated(
     ...overrides,
   }
 }
+
+describe("curated fallback context diagnostics", () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it.each([
+    { version: null, contextAvailable: false, state: "missing_generation" },
+    {
+      version: "approved-v1",
+      contextAvailable: false,
+      state: "missing_context",
+    },
+    { version: "approved-v1", contextAvailable: true, state: "available" },
+  ])(
+    "reports $state when no eligible items survive",
+    async ({ version, contextAvailable, state }) => {
+      const prisma = new PrismaClient()
+      vi.spyOn(
+        CuratedPoolsService.prototype,
+        "getCandidates",
+      ).mockResolvedValue({
+        version,
+        contextAvailable,
+        poolKeys: [],
+        items: [],
+      })
+      vi.spyOn(
+        deliveryRuntime,
+        "runRecommendationRetrievalQuery",
+      ).mockResolvedValue([{ videoId: "seed-video" }])
+      const onDiagnostics = vi.fn()
+
+      await expect(
+        retrieveCuratedFallback(prisma, {
+          seedMediaId: "seed-video",
+          locale: "en",
+          audioLanguageSlug: "english",
+          excludedMediaIds: [],
+          deadlineAt: Date.now() + 1500,
+          onDiagnostics,
+        }),
+      ).resolves.toEqual([])
+      expect(onDiagnostics).toHaveBeenCalledExactlyOnceWith({
+        state,
+        nominatedCount: 0,
+      })
+    },
+  )
+})
 
 describe("approved empty-row fallback", () => {
   it("retains current/recent and canonical-alias rejections with honest provenance", () => {

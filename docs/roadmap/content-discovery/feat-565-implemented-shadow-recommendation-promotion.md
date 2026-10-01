@@ -219,3 +219,18 @@ production rollback sample.
 
 Exact evidence and remaining natural issuance disposition:
 `docs/operations/recommendation-owner-live-activation-2026-09-30.md`.
+
+## October 1 restoration
+
+The exact first retained G6 successor reproduces the historic eligibility digest
+format without `directInfluenceAllowed`; it precedes invalidation by 11 ms. The
+compatibility repair retains full source/actor/policy/expiry/watermark/decision
+guards, and unmatched changes continue to revoke. Missing theme input is a
+separate metadata/composition defect. Revoked G4/G5/G6 audit history is preserved.
+
+See `docs/validation/cowatch-restoration-20261001/production-investigation.md`
+for bounded evidence and its limits, and
+`docs/operations/recommendation-cowatch-refresh-2026-10-01.md` for the normal
+PR/autodeploy and owner activation sequence. Feat-573 owns bounded refresh.
+The no-study authorization above remains applicable; completion still requires
+a valid replacement and exact real co-watch serving evidence.

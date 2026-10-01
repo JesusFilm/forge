@@ -12,13 +12,14 @@ import {
 import { unlinkPushViewerIdentities } from "@/services/push/identity-unlink.service"
 import { RECOMMENDATION_RETENTION_PROPAGATION_HOURS } from "./contracts"
 import { suppressCowatchForProfiles } from "./cowatch/privacy"
+import { purgeExpiredCowatchRefreshMetadata } from "./cowatch/refresh-retention"
 import { purgeExpiredCompositionEvidence } from "./composition/service"
 import { purgeExpiredOwnerReleases } from "./promotion/owner-authority"
 import { purgeExpiredCowatchTrialAuthorities } from "./cowatch/trial-authority.service"
 import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { lockRetentionRoots } from "./retention-locks"
 
-export const RECOMMENDATION_RETENTION_BATCH_SIZE = 500
+export const RECOMMENDATION_RETENTION_BATCH_SIZE = 100
 export const RECOMMENDATION_RETENTION_MAX_BATCH_SIZE = 5_000
 export const RECOMMENDATION_RETENTION_RUN_DAYS = 90
 export const RECOMMENDATION_RETENTION_HEALTH_HOURS = 36
@@ -285,6 +286,11 @@ export async function purgeExpiredRecommendationRequests(
     })
     await phase(async (tx) => {
       rowCounts.expiredOwnerReleases = await purgeExpiredOwnerReleases(tx, now)
+    })
+    await phase(async (tx) => {
+      const removed = await purgeExpiredCowatchRefreshMetadata(tx, now)
+      rowCounts.expiredCowatchRefreshAttempts = removed.attempts
+      rowCounts.expiredCowatchRefreshGrants = removed.grants
     })
     const expiredWatchExposures = await phase((tx) =>
       tx.watchSurfaceExposure.findMany({

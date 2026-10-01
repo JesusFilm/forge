@@ -27,6 +27,7 @@ export type RecommendationCandidatePurpose =
 export type RecommendationCandidateContext = Readonly<{
   surface: "watch-below-player-v1"
   purpose: RecommendationCandidatePurpose
+  /** Exact published presentation locale; transcript retrieval has its own identity. */
   locale: string
   audioLanguageSlug: string
 }>

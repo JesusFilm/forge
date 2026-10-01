@@ -11,6 +11,7 @@ import {
 import { useWatchPreferences } from "../src/contexts/WatchPreferencesProvider"
 import type { CatalogTranslation } from "../src/lib/bible/data/catalog"
 import { READER_COPY } from "../src/lib/bible/reader/copy"
+import { openTranslationDownload } from "../src/lib/bible/routes/sheetCallbacks"
 import { getReaderServices } from "../src/lib/bible/reader/services"
 import { READER_SHEET_COPY } from "../src/lib/bible/sheets/copy"
 import { partialSwitch } from "../src/lib/bible/sheets/partialSwitch"
@@ -87,6 +88,7 @@ export default function ReaderTranslationRoute() {
         downloads={services.downloads}
         onPick={onPick}
         confirmPick={confirmPick}
+        onPressDownload={openTranslationDownload}
         onClose={close}
       />
     )

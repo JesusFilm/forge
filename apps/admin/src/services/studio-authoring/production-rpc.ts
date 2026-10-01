@@ -1,3 +1,4 @@
+import { readDelegatedNarrationPlan } from "./delegated-narration"
 import { z } from "zod"
 import type { PrismaClient } from "@prisma/client"
 import { StudioBoundaryError, type StudioCaller } from "@forge/studio-server"
@@ -22,6 +23,7 @@ export const studioProductionRpcSchema = z
       "experiment-candidate",
       "fail",
       "preflight-error",
+      "reconciliation-note",
     ]),
     input: z.unknown(),
   })
@@ -44,18 +46,79 @@ export async function executeStudioProduction(
     where: { id: request.runId },
   })
   const actor = studioActorSchema.parse(run.actor)
+  const delegatedPlan = await readDelegatedNarrationPlan(db, run.id)
   if (
     actor.kind !== "human" ||
     actor.id !== caller.sub ||
-    actor.authority !== "interactive"
+    (actor.authority !== "interactive" &&
+      !(actor.authority === "delegated" && delegatedPlan))
   )
     throw new StudioBoundaryError("Production admission owner mismatch")
   const worker = { id: null, role: "MANAGER_BACKEND" as const },
     execution = new StudioExecutionService(db)
   const input = z.record(z.string(), z.unknown()).parse(request.input)
+  async function recordReconciliationNote(diagnostic: string) {
+    const inputDigest = studioHash({ phase: "runner-observation", diagnostic })
+    const key = `observation-${inputDigest}`
+    const recorded = await db.$transaction(async (tx) => {
+      // Serialize diagnostic admission only. Never infer execution ownership
+      // from a read, and never update a shared run, attempt or paid claim.
+      await tx.$queryRaw`SELECT id FROM short_production_run WHERE id=${run.id} FOR UPDATE`
+      if (
+        await tx.shortProductionCall.findUnique({
+          where: { runId_key: { runId: run.id, key } },
+        })
+      )
+        return true
+      if (
+        (await tx.shortProductionCall.count({
+          where: { runId: run.id, key: { startsWith: "observation-" } },
+        })) >= 8
+      )
+        return false
+      await tx.shortProductionCall.create({
+        data: {
+          runId: run.id,
+          key,
+          inputDigest,
+          reserveMicros: 0n,
+          state: "COMPLETED",
+          result: {
+            assets: [],
+            actualCostMicros: 0,
+            credits: null,
+            requestId: null,
+            elapsedMs: 0,
+            diagnostic,
+            providerMetadata: {
+              diagnosticOnly: true,
+              phase: "runner-observation",
+              providerDispatched: false,
+              recovery:
+                "Resume the original narration idempotency key. Inspect existing speech claims; RUNNING or AMBIGUOUS calls must not be redispatched.",
+            },
+          },
+        },
+      })
+      return true
+    })
+    return {
+      recorded,
+      outcome: "RECONCILIATION_REQUIRED",
+      run: await execution.read(worker, run.id),
+    }
+  }
   switch (request.command) {
+    case "reconciliation-note": {
+      if (!delegatedPlan)
+        throw new StudioBoundaryError("Delegated narration admission required")
+      return recordReconciliationNote(
+        z.string().min(1).max(2000).parse(input.diagnostic),
+      )
+    }
     case "preflight-error": {
       const diagnostic = z.string().min(1).max(2000).parse(input.diagnostic)
+      if (delegatedPlan) return recordReconciliationNote(diagnostic)
       const inputDigest = studioHash({ phase: "preflight", diagnostic }),
         key = `preflight-${inputDigest}`
       const claim = await execution.claim(worker, {
@@ -108,6 +171,7 @@ export async function executeStudioProduction(
         : null
       return {
         run: await execution.read(worker, run.id),
+        narrationPlan: delegatedPlan,
         attempt,
         project: attempt
           ? await new StudioAuthoringService(db).readRevision(

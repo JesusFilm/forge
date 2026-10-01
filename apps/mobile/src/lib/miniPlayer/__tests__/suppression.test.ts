@@ -168,6 +168,23 @@ describe("non-route sheet counter", () => {
     counter.open("sduiQuiz")
     expect(listener).toHaveBeenCalledTimes(2)
   })
+
+  // The delete confirm draws inside its route, under the host on every
+  // platform; the other two are Modals, which iOS presents above the host.
+  it("counts only the inline sheets in inlineCount", () => {
+    const counter = createNonRouteSheetCounter()
+    counter.open("sduiQuiz")
+    counter.open("playerSettings")
+    expect(counter.count()).toBe(2)
+    expect(counter.inlineCount()).toBe(0)
+
+    counter.open("libraryDeleteConfirm")
+    expect(counter.count()).toBe(3)
+    expect(counter.inlineCount()).toBe(1)
+
+    counter.close("libraryDeleteConfirm")
+    expect(counter.inlineCount()).toBe(0)
+  })
 })
 
 describe("isSuppressedBySheet", () => {

@@ -99,3 +99,54 @@ A same-fixture, two-batch local process measurement compares old and new CLI
 freeze cost; it is not a production throughput estimate. This ticket stays
 in progress until the full finite roster and exact empty-table route are
 verified. Expired members remain under ordinary retention without refill.
+
+## Bounded persistent-session preparation
+
+`docs/plans/2026-09-30-003-legacy-detail-persistent-session.md` defines a
+separately reviewed 1,000-run speed pilot. The new Admin session CLI keeps one
+bidirectional process for ten fixed 100-run waves while the unchanged v2
+service performs only ten-run transactions. Each freeze requires a private
+archived manifest ACK; each execute requires a fresh operator permit and an
+exclusive durable attempt marker. The server checks current target, source,
+WAL, locks, typed baseline, durable ledger and original quality parity. A real
+30-minute manual hold-review lease and canonical registry digest are required;
+the client must stop on any changed file or uncertain response. This local
+preparation is not broad cohort approval and does not change ordinary expiry.
+The disposable-database receipt is in
+`docs/validation/recommendation-storage-20260930/legacy-persistent-session.md`.
+The first deployed start-only handshake exposed intermittent nonprotocol JSON
+on stdout before `ready`; no cleanup command was sent. A CLI-local channel
+isolation fix and actual-subprocess regression are under review. The ticket
+remains in progress until a normal deployed handshake, a fresh finite
+admission, and the intended retirement and physical verification complete.
+
+## Expiry-aware finite-session continuation preparation
+
+The later-session contract in
+`docs/plans/2026-09-30-003-legacy-detail-persistent-session.md` keeps the
+original pinned 64-run, 8,621-observation inventory while allowing ordinary
+retention to purge expired roots. The Admin session accepts only a fresh fixed
+cohort of at most 1,000 runs in bounded partial waves and batches. It checks
+present original rows for exact parity and recognizes a missing original only
+after both recorded expiries and exact parent absence in one read-only
+snapshot. The root-supplied finite stop time cannot exceed the manual
+30-minute lease. This is local code preparation; later cohort admission,
+client compatibility, deployment, and production cleanup require separate
+review. The ticket remains in progress.
+
+The local-only bounded lock-admission follow-up is specified in
+`docs/plans/2026-09-30-003-legacy-detail-persistent-session.md` and validated in
+`docs/validation/recommendation-storage-20260930/legacy-lock-admission-grace.md`.
+The observed `database-capacity` stop did not distinguish WAL from lock
+waiters; this preparation does not change ticket status or authorize deployment.
+
+## Owner-authorized unattended finite job
+
+The owner requested automatic progress without per-cohort AI turns, with a quiet
+24-hour monitor. `docs/plans/2026-10-01-001-unattended-legacy-detail-drain.md`
+defines an explicit finite campaign authorization and additive lease variant.
+Existing manual-session constraints remain unchanged. Do not restamp approvals or
+replay old proposals. The job must preserve the existing transaction limits,
+protected parity, automatic live measurements and fail-stop reconciliation.
+Implementation, review, normal deployment and a fresh exact launch remain required;
+this ticket stays in progress until the production result is verified.
