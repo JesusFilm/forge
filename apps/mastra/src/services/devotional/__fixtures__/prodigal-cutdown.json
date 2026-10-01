@@ -1,0 +1,4095 @@
+{
+  "manifest": {
+    "schemaVersion": "2",
+    "headerDate": "Thursday \u00b7 October 1",
+    "bgStartOffsetSec": 0.75,
+    "musicFile": "music.mp3",
+    "cards": [
+      {
+        "kind": "video",
+        "videoFile": "clip.mp4",
+        "durationSec": 215.47142857142856,
+        "videoFill": "full",
+        "subtitles": [
+          {
+            "text": "Jesus continued. There was a man who had two sons.",
+            "startSec": 0.49523809523809526,
+            "endSec": 4.409523809523809,
+            "words": [
+              0.49523809523809526, 1.180952380952381, 2.7047619047619045,
+              2.819047619047619, 2.914285714285714, 3.1428571428571423,
+              3.3714285714285714, 3.5047619047619047, 3.695238095238095,
+              3.9809523809523806
+            ],
+            "verse": "Luke 15:11"
+          },
+          {
+            "text": "The younger one said to his father, Father, give me my share of the estate.",
+            "startSec": 5.0285714285714285,
+            "endSec": 10.619047619047619,
+            "words": [
+              5.0285714285714285, 5.219047619047619, 5.542857142857143,
+              5.752380952380952, 5.904761904761905, 6.038095238095238,
+              6.304761904761905, 7.123809523809524, 8.342857142857142,
+              8.495238095238095, 8.685714285714285, 8.971428571428572,
+              9.161904761904761, 9.676190476190476, 10.19047619047619
+            ],
+            "verse": "Luke 15:12"
+          },
+          {
+            "text": "So he divided his property between them.",
+            "startSec": 10.704761904761904,
+            "endSec": 12.809523809523808,
+            "words": [
+              10.704761904761904, 10.819047619047618, 11.085714285714285,
+              11.447619047619046, 11.714285714285715, 12.152380952380952,
+              12.38095238095238
+            ],
+            "verse": "Luke 15:12"
+          },
+          {
+            "text": "Not long after that, the younger son got together all he had, set off for a distant country",
+            "startSec": 14.36190476190476,
+            "endSec": 20.39047619047619,
+            "words": [
+              14.36190476190476, 14.59047619047619, 14.933333333333332,
+              15.314285714285711, 16, 16.19047619047619, 16.514285714285712,
+              16.72380952380952, 17.238095238095237, 17.523809523809522,
+              17.714285714285715, 17.961904761904762, 18.704761904761906,
+              18.97142857142857, 19.142857142857142, 19.21904761904762,
+              19.44761904761905, 19.961904761904762
+            ],
+            "verse": "Luke 15:13"
+          },
+          {
+            "text": "and there squandered his wealth in wild living.",
+            "startSec": 21.295238095238094,
+            "endSec": 23.74285714285714,
+            "words": [
+              21.295238095238094, 21.523809523809526, 21.904761904761905,
+              22.304761904761904, 22.495238095238093, 22.81904761904762,
+              23.00952380952381, 23.314285714285713
+            ],
+            "verse": "Luke 15:13"
+          },
+          {
+            "text": "After he had spent everything, there was a severe famine in that whole country, and he began to be in need.",
+            "startSec": 26.74285714285714,
+            "endSec": 32.40952380952381,
+            "words": [
+              26.74285714285714, 26.933333333333334, 27.085714285714285,
+              27.314285714285713, 27.695238095238093, 28.419047619047618,
+              28.53333333333333, 28.609523809523807, 28.876190476190477,
+              29.276190476190475, 29.504761904761903, 29.61904761904762,
+              29.80952380952381, 30.228571428571424, 30.952380952380953,
+              31.066666666666663, 31.295238095238094, 31.523809523809526,
+              31.65714285714286, 31.82857142857143, 31.980952380952377
+            ],
+            "verse": "Luke 15:14"
+          },
+          {
+            "text": "So he went and hired himself out to a citizen of that country, who sent him to his fields to feed pigs.",
+            "startSec": 33.80952380952381,
+            "endSec": 40.961904761904755,
+            "words": [
+              33.80952380952381, 33.92380952380952, 34.076190476190476,
+              34.24761904761905, 34.49523809523809, 34.838095238095235,
+              35.12380952380953, 35.390476190476186, 35.46666666666667,
+              35.77142857142857, 36.095238095238095, 36.20952380952381,
+              36.60952380952381, 38.59047619047619, 38.74285714285714,
+              38.93333333333334, 39.08571428571428, 39.27619047619048,
+              39.5047619047619, 39.885714285714286, 40.13333333333333,
+              40.53333333333333
+            ],
+            "verse": "Luke 15:15"
+          },
+          {
+            "text": "He longed to fill his stomach with the pods that the pigs were eating, but no one gave him anything.",
+            "startSec": 42.51428571428571,
+            "endSec": 49.34285714285714,
+            "words": [
+              42.51428571428571, 42.68571428571428, 42.93333333333333,
+              43.1047619047619, 43.25714285714286, 43.6, 43.94285714285714,
+              44.03809523809524, 44.285714285714285, 44.628571428571426,
+              44.72380952380952, 44.99047619047619, 45.238095238095234,
+              45.50476190476191, 47.714285714285715, 47.94285714285714,
+              48.095238095238095, 48.304761904761904, 48.55238095238095,
+              48.91428571428571
+            ],
+            "verse": "Luke 15:16"
+          },
+          {
+            "text": "When he came to his senses, he said, How many of my father's hired servants have food to spare,",
+            "startSec": 52.59047619047619,
+            "endSec": 60.14285714285714,
+            "words": [
+              52.59047619047619, 52.7047619047619, 52.89523809523809,
+              53.08571428571428, 53.238095238095234, 53.46666666666666,
+              54.20952380952381, 54.4, 56.4, 57.18095238095238,
+              57.40952380952381, 57.58095238095238, 57.96190476190476,
+              58.304761904761904, 58.72380952380952, 58.95238095238095,
+              59.199999999999996, 59.44761904761905, 59.714285714285715
+            ],
+            "verse": "Luke 15:17"
+          },
+          {
+            "text": "and here I am starving to death!",
+            "startSec": 60.55238095238095,
+            "endSec": 62.69523809523809,
+            "words": [
+              60.55238095238095, 60.74285714285714, 60.95238095238095,
+              61.219047619047615, 61.61904761904762, 62.03809523809524,
+              62.26666666666666
+            ],
+            "verse": "Luke 15:17"
+          },
+          {
+            "text": "I will set out and go back to my father and say to him: Father, I have sinned against heaven and against you.",
+            "startSec": 63.771428571428565,
+            "endSec": 70.52380952380952,
+            "words": [
+              63.771428571428565, 63.88571428571428, 64.06666666666666,
+              64.24761904761904, 64.43809523809523, 64.57142857142857, 64.8,
+              65.00952380952381, 65.14285714285714, 65.46666666666665, 65.6,
+              65.79047619047618, 66.01904761904761, 66.17142857142858,
+              66.99047619047619, 67.88571428571429, 68.01904761904761,
+              68.24761904761904, 68.57142857142857, 68.91428571428571,
+              69.46666666666667, 69.77142857142857, 70.09523809523809
+            ],
+            "verse": "Luke 15:18"
+          },
+          {
+            "text": "I am no longer worthy to be called your son; make me like one of your hired servants.",
+            "startSec": 71.4095238095238,
+            "endSec": 76.37142857142857,
+            "words": [
+              71.4095238095238, 71.52380952380952, 71.6952380952381,
+              71.99999999999999, 72.28571428571429, 72.57142857142857,
+              72.66666666666666, 72.87619047619047, 73.12380952380953,
+              73.37142857142858, 74.43809523809523, 74.59047619047618,
+              74.76190476190476, 74.93333333333334, 75.06666666666666,
+              75.18095238095238, 75.46666666666665, 75.94285714285714
+            ],
+            "verse": "Luke 15:19"
+          },
+          {
+            "text": "So he got up and went to his father.",
+            "startSec": 78.19047619047618,
+            "endSec": 80.37142857142857,
+            "words": [
+              78.19047619047618, 78.3047619047619, 78.43809523809523,
+              78.64761904761905, 79.16190476190476, 79.33333333333333,
+              79.56190476190477, 79.71428571428571, 79.94285714285714
+            ],
+            "verse": "Luke 15:20"
+          },
+          {
+            "text": "But while he was still a long way off, his father saw him and was filled with compassion for him;",
+            "startSec": 83.73333333333333,
+            "endSec": 90.40952380952382,
+            "words": [
+              83.73333333333333, 83.92380952380952, 84.07619047619048,
+              84.19047619047619, 84.43809523809523, 84.5142857142857,
+              84.68571428571428, 84.87619047619047, 85.12380952380951,
+              85.75238095238096, 86.03809523809524, 86.32380952380952,
+              86.60952380952381, 88.26666666666667, 88.41904761904762,
+              88.68571428571428, 88.99047619047619, 89.39047619047619,
+              89.82857142857142, 89.98095238095237
+            ],
+            "verse": "Luke 15:20"
+          },
+          {
+            "text": "he ran to his son, threw his arms around him and kissed him.",
+            "startSec": 91.23809523809523,
+            "endSec": 95.53333333333333,
+            "words": [
+              91.23809523809523, 91.42857142857143, 91.65714285714284,
+              91.82857142857142, 92.05714285714285, 92.99047619047619,
+              93.21904761904761, 93.54285714285714, 93.82857142857142,
+              94.1142857142857, 94.59047619047618, 94.81904761904762,
+              95.1047619047619
+            ],
+            "verse": "Luke 15:20"
+          },
+          {
+            "text": "The son said to him, Father, I have sinned against heaven and against you.",
+            "startSec": 97.1047619047619,
+            "endSec": 102.42857142857142,
+            "words": [
+              97.1047619047619, 97.25714285714285, 97.52380952380952,
+              97.71428571428571, 97.88571428571429, 98.7047619047619,
+              99.98095238095237, 100.11428571428571, 100.34285714285714,
+              100.68571428571428, 101.02857142857142, 101.35238095238095,
+              101.73333333333332, 101.99999999999999
+            ],
+            "verse": "Luke 15:21"
+          },
+          {
+            "text": "I am no longer worthy to be called your son.",
+            "startSec": 103.73333333333333,
+            "endSec": 106.06666666666666,
+            "words": [
+              103.73333333333333, 103.82857142857142, 104, 104.28571428571428,
+              104.4952380952381, 104.8, 104.93333333333334, 105.14285714285714,
+              105.37142857142857, 105.63809523809523
+            ],
+            "verse": "Luke 15:21"
+          },
+          {
+            "text": "But the father said to his servants, Quick! Bring the best robe and put it on him.",
+            "startSec": 108.81904761904762,
+            "endSec": 113.83809523809524,
+            "words": [
+              108.81904761904762, 108.91428571428571, 109.12380952380951,
+              109.42857142857143, 109.6190476190476, 109.73333333333333,
+              109.92380952380952, 110.81904761904761, 111.84761904761903,
+              111.98095238095237, 112.19047619047619, 112.53333333333333,
+              112.78095238095237, 112.93333333333332, 113.06666666666666,
+              113.23809523809524, 113.4095238095238
+            ],
+            "verse": "Luke 15:22"
+          },
+          {
+            "text": "Put a ring on his finger and sandals on his feet.",
+            "startSec": 114.1142857142857,
+            "endSec": 116.56190476190476,
+            "words": [
+              114.1142857142857, 114.22857142857143, 114.38095238095237,
+              114.5142857142857, 114.64761904761905, 114.95238095238095,
+              115.12380952380951, 115.39047619047618, 115.77142857142857,
+              115.92380952380952, 116.13333333333333
+            ],
+            "verse": "Luke 15:22"
+          },
+          {
+            "text": "Bring the fattened calf and kill it. Let's have a feast and celebrate.",
+            "startSec": 117.1047619047619,
+            "endSec": 122.92380952380951,
+            "words": [
+              117.1047619047619, 117.27619047619048, 117.4095238095238,
+              117.84761904761903, 118.1142857142857, 118.36190476190475,
+              118.53333333333332, 120.93333333333334, 121.12380952380953,
+              121.21904761904761, 121.44761904761904, 122.09523809523807,
+              122.4952380952381
+            ],
+            "verse": "Luke 15:23"
+          },
+          {
+            "text": "For this son of mine was dead and is alive again; he was lost and is found.",
+            "startSec": 124.62857142857143,
+            "endSec": 130.8857142857143,
+            "words": [
+              124.62857142857143, 124.74285714285713, 124.97142857142856,
+              125.12380952380951, 125.27619047619046, 125.52380952380953,
+              125.73333333333333, 126.26666666666668, 126.39999999999999,
+              126.66666666666666, 126.99047619047619, 128.66666666666666,
+              128.78095238095239, 128.9904761904762, 130.01904761904763,
+              130.15238095238095, 130.45714285714286
+            ],
+            "verse": "Luke 15:24"
+          },
+          {
+            "text": "So they began to celebrate.",
+            "startSec": 133.42857142857142,
+            "endSec": 134.80952380952382,
+            "words": [
+              133.42857142857142, 133.56190476190477, 133.84761904761905,
+              134.0952380952381, 134.38095238095238
+            ],
+            "verse": "Luke 15:24"
+          },
+          {
+            "text": "Meanwhile, the older son was in the field.",
+            "startSec": 139.63809523809525,
+            "endSec": 142.10476190476192,
+            "words": [
+              139.63809523809525, 140.4190476190476, 140.59047619047618,
+              140.9142857142857, 141.16190476190476, 141.2952380952381,
+              141.3904761904762, 141.67619047619047
+            ],
+            "verse": "Luke 15:25"
+          },
+          {
+            "text": "When he came near the house, he heard music and dancing.",
+            "startSec": 142.6095238095238,
+            "endSec": 145.59047619047618,
+            "words": [
+              142.6095238095238, 142.74285714285713, 142.93333333333334,
+              143.14285714285714, 143.3142857142857, 143.54285714285714,
+              144.05714285714285, 144.22857142857143, 144.64761904761903,
+              144.83809523809524, 145.16190476190474
+            ],
+            "verse": "Luke 15:25"
+          },
+          {
+            "text": "So he called one of the servants and asked him what was going on.",
+            "startSec": 149.18095238095236,
+            "endSec": 152.44761904761904,
+            "words": [
+              149.18095238095236, 149.31428571428572, 149.52380952380952,
+              149.7904761904762, 149.88571428571427, 150, 150.2095238095238,
+              150.81904761904764, 151.1238095238095, 151.33333333333334,
+              151.4857142857143, 151.63809523809522, 151.77142857142857,
+              152.01904761904763
+            ],
+            "verse": "Luke 15:26"
+          },
+          {
+            "text": "Your brother has come, he replied, and your father has killed the fattened calf",
+            "startSec": 154.17142857142855,
+            "endSec": 161.3238095238095,
+            "words": [
+              154.17142857142855, 154.49523809523808, 154.7047619047619,
+              154.95238095238093, 155.16190476190474, 155.42857142857142,
+              159.21904761904761, 159.33333333333334, 159.61904761904762,
+              159.80952380952382, 160.07619047619048, 160.28571428571428,
+              160.4190476190476, 160.89523809523808
+            ],
+            "verse": "Luke 15:27"
+          },
+          {
+            "text": "because he has him back safe and sound.",
+            "startSec": 161.77142857142857,
+            "endSec": 163.78095238095239,
+            "words": [
+              161.77142857142857, 161.94285714285712, 162.07619047619048,
+              162.28571428571428, 162.47619047619045, 162.85714285714286,
+              163.1238095238095, 163.35238095238097
+            ],
+            "verse": "Luke 15:27"
+          },
+          {
+            "text": "The older brother became angry and refused to go in.",
+            "startSec": 164.85714285714283,
+            "endSec": 167.83809523809524,
+            "words": [
+              164.85714285714283, 164.97142857142856, 165.23809523809524,
+              165.56190476190477, 166.03809523809522, 166.43809523809523,
+              166.68571428571428, 167.06666666666663, 167.21904761904761,
+              167.4095238095238
+            ],
+            "verse": "Luke 15:28"
+          },
+          {
+            "text": "So his father went out and pleaded with him.",
+            "startSec": 169.4095238095238,
+            "endSec": 172.14285714285714,
+            "words": [
+              169.4095238095238, 169.54285714285714, 169.7904761904762,
+              170.01904761904763, 170.3047619047619, 170.97142857142856,
+              171.23809523809524, 171.56190476190474, 171.71428571428572
+            ],
+            "verse": "Luke 15:28"
+          },
+          {
+            "text": "But he answered his father, Look! All these years I've been slaving for you and never disobeyed your orders.",
+            "startSec": 172.79999999999998,
+            "endSec": 179.89523809523808,
+            "words": [
+              172.79999999999998, 172.9142857142857, 173.14285714285714,
+              173.42857142857142, 173.63809523809522, 174.8190476190476,
+              176.0952380952381, 176.26666666666668, 176.5142857142857,
+              176.6952380952381, 176.87619047619046, 177.0857142857143,
+              177.54285714285712, 177.6952380952381, 178.2095238095238,
+              178.39999999999998, 178.6095238095238, 179.12380952380954,
+              179.46666666666667
+            ],
+            "verse": "Luke 15:29"
+          },
+          {
+            "text": "Yet you never gave me even a young goat so I could celebrate with my friends.",
+            "startSec": 181.46666666666664,
+            "endSec": 185.24761904761903,
+            "words": [
+              181.46666666666664, 181.56190476190474, 181.6952380952381, 182,
+              182.22857142857143, 182.6285714285714, 182.76190476190476,
+              183.00952380952378, 183.25714285714284, 183.48571428571427,
+              183.61904761904762, 183.75238095238095, 184.05714285714285,
+              184.38095238095238, 184.5333333333333, 184.8190476190476
+            ],
+            "verse": "Luke 15:29"
+          },
+          {
+            "text": "But when this son of yours who has squandered your property with prostitutes comes home,",
+            "startSec": 186.53333333333333,
+            "endSec": 191,
+            "words": [
+              186.53333333333333, 186.66666666666666, 186.87619047619046,
+              187.14285714285714, 187.27619047619046, 187.44761904761904,
+              187.96190476190478, 188.09523809523807, 188.39999999999998,
+              188.76190476190473, 189.12380952380954, 189.447619047619,
+              189.82857142857142, 190.28571428571428, 190.57142857142856
+            ],
+            "verse": "Luke 15:30"
+          },
+          {
+            "text": "you kill the fattened calf for him!",
+            "startSec": 191.37142857142857,
+            "endSec": 193.36190476190475,
+            "words": [
+              191.37142857142857, 191.6, 191.84761904761905, 192.09523809523807,
+              192.55238095238096, 192.78095238095236, 192.93333333333334
+            ],
+            "verse": "Luke 15:30"
+          },
+          {
+            "text": "My son, the father said, you are always with me, and everything I have is yours.",
+            "startSec": 193.75238095238095,
+            "endSec": 203.24761904761903,
+            "words": [
+              193.75238095238095, 196.76190476190476, 197.5047619047619,
+              197.67619047619047, 197.98095238095237, 199.96190476190475,
+              200.3047619047619, 200.6285714285714, 200.87619047619046,
+              201.06666666666666, 201.56190476190474, 201.84761904761905,
+              202.13333333333333, 202.36190476190475, 202.6095238095238,
+              202.8190476190476
+            ],
+            "verse": "Luke 15:31"
+          },
+          {
+            "text": "But we had to celebrate and be glad, because this brother of yours",
+            "startSec": 205.61904761904762,
+            "endSec": 209.03809523809522,
+            "words": [
+              205.61904761904762, 205.77142857142857, 205.94285714285715,
+              206.19047619047618, 206.49523809523808, 206.87619047619046,
+              206.9904761904762, 207.25714285714287, 207.96190476190478,
+              208.20000000000002, 208.43809523809523, 208.70476190476188,
+              208.89523809523808
+            ],
+            "verse": "Luke 15:32"
+          },
+          {
+            "text": "was dead and is alive again; he was lost and is found.",
+            "startSec": 209.08571428571426,
+            "endSec": 213.97142857142856,
+            "words": [
+              209.08571428571426, 209.35238095238094, 210.4190476190476,
+              210.5142857142857, 210.74285714285713, 211.1047619047619,
+              211.84761904761905, 211.96190476190475, 212.22857142857143,
+              213.1238095238095, 213.25714285714284, 213.54285714285714
+            ],
+            "verse": "Luke 15:32"
+          }
+        ],
+        "mutedLeadSec": 3,
+        "filmMark": "lumo",
+        "intro": "montage",
+        "introParts": [
+          "A faithful son stands outside his father's party.",
+          "His brother squandered it all and wears the best robe.",
+          "In this devotional, one word in the father's reply about the feast.",
+          "The father steps out to him.",
+          "Let's watch."
+        ],
+        "passageRef": "Luke 15:11-32",
+        "steps": ["WATCH", "REFLECT", "PRAY"],
+        "introKinetic": [
+          {
+            "line": 0,
+            "hero": "outside",
+            "accents": ["faithful"],
+            "side": "left"
+          },
+          {
+            "line": 1,
+            "hero": "the best robe",
+            "accents": ["squandered"],
+            "side": "right"
+          },
+          {
+            "line": 2,
+            "hero": "one word",
+            "accents": ["feast"],
+            "side": "right"
+          },
+          {
+            "line": 3,
+            "hero": "steps out",
+            "accents": ["father"],
+            "side": "left"
+          }
+        ],
+        "hookText": "A faithful son stands outside his father's party.\n\nHis brother squandered it all and wears the best robe.\n\nIn this devotional, one word in the father's reply about the feast.\n\nThe father steps out to him.\n\nLet's watch.",
+        "captionStyle": "words-lift"
+      },
+      {
+        "kind": "step",
+        "stepIndex": 1,
+        "stepLeadSec": 0.9,
+        "steps": ["WATCH", "REFLECT", "PRAY"],
+        "audioFile": "01-step-reflect.mp3",
+        "durationSec": 3.403424,
+        "words": [
+          {
+            "word": "Let's",
+            "startSec": 0,
+            "endSec": 0.209
+          },
+          {
+            "word": "look",
+            "startSec": 0.232,
+            "endSec": 0.348
+          },
+          {
+            "word": "more",
+            "startSec": 0.406,
+            "endSec": 0.534
+          },
+          {
+            "word": "closely",
+            "startSec": 0.58,
+            "endSec": 0.998
+          },
+          {
+            "word": "at",
+            "startSec": 1.045,
+            "endSec": 1.103
+          },
+          {
+            "word": "what",
+            "startSec": 1.138,
+            "endSec": 1.265
+          },
+          {
+            "word": "this",
+            "startSec": 1.3,
+            "endSec": 1.405
+          },
+          {
+            "word": "story",
+            "startSec": 1.451,
+            "endSec": 1.73
+          },
+          {
+            "word": "means.",
+            "startSec": 1.823,
+            "endSec": 2.508
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Picture the older son coming in from the field.",
+        "tailSec": 0.35,
+        "audioFile": "02-reflection-1.mp3",
+        "durationSec": 2.461315,
+        "words": [
+          {
+            "word": "Picture",
+            "startSec": 0,
+            "endSec": 0.36
+          },
+          {
+            "word": "the",
+            "startSec": 0.383,
+            "endSec": 0.453
+          },
+          {
+            "word": "older",
+            "startSec": 0.522,
+            "endSec": 0.789
+          },
+          {
+            "word": "son",
+            "startSec": 0.859,
+            "endSec": 1.057
+          },
+          {
+            "word": "coming",
+            "startSec": 1.149,
+            "endSec": 1.44
+          },
+          {
+            "word": "in",
+            "startSec": 1.498,
+            "endSec": 1.567
+          },
+          {
+            "word": "from",
+            "startSec": 1.637,
+            "endSec": 1.741
+          },
+          {
+            "word": "the",
+            "startSec": 1.788,
+            "endSec": 1.858
+          },
+          {
+            "word": "field.",
+            "startSec": 1.904,
+            "endSec": 2.461
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "His back aches.",
+        "highlight": "His back aches.",
+        "tailSec": 0.35,
+        "audioFile": "03-reflection-2.mp3",
+        "durationSec": 1.346757,
+        "words": [
+          {
+            "word": "His",
+            "startSec": 0,
+            "endSec": 0.163
+          },
+          {
+            "word": "back",
+            "startSec": 0.255,
+            "endSec": 0.557
+          },
+          {
+            "word": "aches.",
+            "startSec": 0.65,
+            "endSec": 1.347
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "His hands are dirty.",
+        "tailSec": 0.35,
+        "audioFile": "04-reflection-3.mp3",
+        "durationSec": 1.068118,
+        "words": [
+          {
+            "word": "His",
+            "startSec": 0,
+            "endSec": 0.128
+          },
+          {
+            "word": "hands",
+            "startSec": 0.186,
+            "endSec": 0.395
+          },
+          {
+            "word": "are",
+            "startSec": 0.418,
+            "endSec": 0.511
+          },
+          {
+            "word": "dirty.",
+            "startSec": 0.546,
+            "endSec": 1.068
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "And the house is full of music and dancing.",
+        "tailSec": 0.35,
+        "audioFile": "05-reflection-4.mp3",
+        "durationSec": 2.182676,
+        "words": [
+          {
+            "word": "And",
+            "startSec": 0,
+            "endSec": 0.104
+          },
+          {
+            "word": "the",
+            "startSec": 0.139,
+            "endSec": 0.209
+          },
+          {
+            "word": "house",
+            "startSec": 0.29,
+            "endSec": 0.569
+          },
+          {
+            "word": "is",
+            "startSec": 0.592,
+            "endSec": 0.65
+          },
+          {
+            "word": "full",
+            "startSec": 0.697,
+            "endSec": 0.848
+          },
+          {
+            "word": "of",
+            "startSec": 0.882,
+            "endSec": 0.929
+          },
+          {
+            "word": "music",
+            "startSec": 1.01,
+            "endSec": 1.324
+          },
+          {
+            "word": "and",
+            "startSec": 1.358,
+            "endSec": 1.428
+          },
+          {
+            "word": "dancing.",
+            "startSec": 1.486,
+            "endSec": 2.183
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Nobody came to tell him.",
+        "tailSec": 0.35,
+        "audioFile": "06-reflection-5.mp3",
+        "durationSec": 1.346757,
+        "words": [
+          {
+            "word": "Nobody",
+            "startSec": 0,
+            "endSec": 0.43
+          },
+          {
+            "word": "came",
+            "startSec": 0.488,
+            "endSec": 0.662
+          },
+          {
+            "word": "to",
+            "startSec": 0.685,
+            "endSec": 0.731
+          },
+          {
+            "word": "tell",
+            "startSec": 0.789,
+            "endSec": 0.952
+          },
+          {
+            "word": "him.",
+            "startSec": 1.01,
+            "endSec": 1.347
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He has to ask a servant what is going on.",
+        "highlight": "He has to ask a servant what is going on.",
+        "tailSec": 0.35,
+        "audioFile": "07-reflection-6.mp3",
+        "durationSec": 2.275556,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.116
+          },
+          {
+            "word": "has",
+            "startSec": 0.174,
+            "endSec": 0.325
+          },
+          {
+            "word": "to",
+            "startSec": 0.383,
+            "endSec": 0.43
+          },
+          {
+            "word": "ask",
+            "startSec": 0.499,
+            "endSec": 0.743
+          },
+          {
+            "word": "a",
+            "startSec": 0.789,
+            "endSec": 0.813
+          },
+          {
+            "word": "servant",
+            "startSec": 0.894,
+            "endSec": 1.207
+          },
+          {
+            "word": "what",
+            "startSec": 1.265,
+            "endSec": 1.428
+          },
+          {
+            "word": "is",
+            "startSec": 1.474,
+            "endSec": 1.544
+          },
+          {
+            "word": "going",
+            "startSec": 1.591,
+            "endSec": 1.8
+          },
+          {
+            "word": "on.",
+            "startSec": 1.858,
+            "endSec": 2.276
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He stops at the door.",
+        "tailSec": 0.35,
+        "audioFile": "08-reflection-7.mp3",
+        "durationSec": 1.253878,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.128
+          },
+          {
+            "word": "stops",
+            "startSec": 0.209,
+            "endSec": 0.557
+          },
+          {
+            "word": "at",
+            "startSec": 0.592,
+            "endSec": 0.662
+          },
+          {
+            "word": "the",
+            "startSec": 0.685,
+            "endSec": 0.755
+          },
+          {
+            "word": "door.",
+            "startSec": 0.778,
+            "endSec": 1.254
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Many of us who have served a long time know exactly where he is standing.",
+        "tailSec": 0.35,
+        "audioFile": "09-reflection-8.mp3",
+        "durationSec": 4.87619,
+        "words": [
+          {
+            "word": "Many",
+            "startSec": 0,
+            "endSec": 0.255
+          },
+          {
+            "word": "of",
+            "startSec": 0.313,
+            "endSec": 0.36
+          },
+          {
+            "word": "us",
+            "startSec": 0.418,
+            "endSec": 0.511
+          },
+          {
+            "word": "who",
+            "startSec": 0.546,
+            "endSec": 0.662
+          },
+          {
+            "word": "have",
+            "startSec": 0.708,
+            "endSec": 0.813
+          },
+          {
+            "word": "served",
+            "startSec": 0.859,
+            "endSec": 1.184
+          },
+          {
+            "word": "a",
+            "startSec": 1.254,
+            "endSec": 1.3
+          },
+          {
+            "word": "long",
+            "startSec": 1.405,
+            "endSec": 1.672
+          },
+          {
+            "word": "time",
+            "startSec": 1.753,
+            "endSec": 2.241
+          },
+          {
+            "word": "know",
+            "startSec": 2.415,
+            "endSec": 2.682
+          },
+          {
+            "word": "exactly",
+            "startSec": 2.763,
+            "endSec": 3.367
+          },
+          {
+            "word": "where",
+            "startSec": 3.437,
+            "endSec": 3.808
+          },
+          {
+            "word": "he",
+            "startSec": 3.866,
+            "endSec": 3.994
+          },
+          {
+            "word": "is",
+            "startSec": 4.052,
+            "endSec": 4.133
+          },
+          {
+            "word": "standing.",
+            "startSec": 4.18,
+            "endSec": 4.876
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "His case is real.",
+        "tailSec": 0.35,
+        "audioFile": "10-reflection-9.mp3",
+        "durationSec": 1.207438,
+        "words": [
+          {
+            "word": "His",
+            "startSec": 0,
+            "endSec": 0.221
+          },
+          {
+            "word": "case",
+            "startSec": 0.267,
+            "endSec": 0.476
+          },
+          {
+            "word": "is",
+            "startSec": 0.511,
+            "endSec": 0.569
+          },
+          {
+            "word": "real.",
+            "startSec": 0.662,
+            "endSec": 1.207
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He stayed.",
+        "tailSec": 0.35,
+        "audioFile": "11-reflection-10.mp3",
+        "durationSec": 0.928798,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.221
+          },
+          {
+            "word": "stayed.",
+            "startSec": 0.279,
+            "endSec": 0.929
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He obeyed.",
+        "tailSec": 0.35,
+        "audioFile": "12-reflection-11.mp3",
+        "durationSec": 0.835918,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.221
+          },
+          {
+            "word": "obeyed.",
+            "startSec": 0.29,
+            "endSec": 0.836
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "His brother took his share of everything the family owned and burned through it far from home.",
+        "tailSec": 0.35,
+        "audioFile": "13-reflection-12.mp3",
+        "durationSec": 5.758549,
+        "words": [
+          {
+            "word": "His",
+            "startSec": 0,
+            "endSec": 0.174
+          },
+          {
+            "word": "brother",
+            "startSec": 0.244,
+            "endSec": 0.592
+          },
+          {
+            "word": "took",
+            "startSec": 0.662,
+            "endSec": 0.906
+          },
+          {
+            "word": "his",
+            "startSec": 0.998,
+            "endSec": 1.138
+          },
+          {
+            "word": "share",
+            "startSec": 1.184,
+            "endSec": 1.405
+          },
+          {
+            "word": "of",
+            "startSec": 1.428,
+            "endSec": 1.486
+          },
+          {
+            "word": "everything",
+            "startSec": 1.591,
+            "endSec": 2.101
+          },
+          {
+            "word": "the",
+            "startSec": 2.159,
+            "endSec": 2.229
+          },
+          {
+            "word": "family",
+            "startSec": 2.299,
+            "endSec": 2.624
+          },
+          {
+            "word": "owned",
+            "startSec": 2.717,
+            "endSec": 3.077
+          },
+          {
+            "word": "and",
+            "startSec": 3.402,
+            "endSec": 3.541
+          },
+          {
+            "word": "burned",
+            "startSec": 3.622,
+            "endSec": 3.971
+          },
+          {
+            "word": "through",
+            "startSec": 4.029,
+            "endSec": 4.284
+          },
+          {
+            "word": "it",
+            "startSec": 4.331,
+            "endSec": 4.423
+          },
+          {
+            "word": "far",
+            "startSec": 4.516,
+            "endSec": 4.818
+          },
+          {
+            "word": "from",
+            "startSec": 4.946,
+            "endSec": 5.12
+          },
+          {
+            "word": "home.",
+            "startSec": 5.201,
+            "endSec": 5.759
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Now the one who wasted it all gets the party.",
+        "audioFile": "14-reflection-13.mp3",
+        "durationSec": 2.554195,
+        "words": [
+          {
+            "word": "Now",
+            "startSec": 0,
+            "endSec": 0.151
+          },
+          {
+            "word": "the",
+            "startSec": 0.186,
+            "endSec": 0.267
+          },
+          {
+            "word": "one",
+            "startSec": 0.36,
+            "endSec": 0.639
+          },
+          {
+            "word": "who",
+            "startSec": 0.662,
+            "endSec": 0.789
+          },
+          {
+            "word": "wasted",
+            "startSec": 0.836,
+            "endSec": 1.231
+          },
+          {
+            "word": "it",
+            "startSec": 1.277,
+            "endSec": 1.324
+          },
+          {
+            "word": "all",
+            "startSec": 1.37,
+            "endSec": 1.521
+          },
+          {
+            "word": "gets",
+            "startSec": 1.591,
+            "endSec": 1.765
+          },
+          {
+            "word": "the",
+            "startSec": 1.811,
+            "endSec": 1.881
+          },
+          {
+            "word": "party.",
+            "startSec": 1.927,
+            "endSec": 2.554
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Look at where the younger son had ended up.",
+        "sourceMark": {
+          "label": "Historical context",
+          "source": "Easton's & Smith's Bible Dictionaries",
+          "portrait": "book"
+        },
+        "tailSec": 0.35,
+        "audioFile": "15-reflection-14.mp3",
+        "durationSec": 2.182676,
+        "words": [
+          {
+            "word": "Look",
+            "startSec": 0,
+            "endSec": 0.232
+          },
+          {
+            "word": "at",
+            "startSec": 0.279,
+            "endSec": 0.325
+          },
+          {
+            "word": "where",
+            "startSec": 0.36,
+            "endSec": 0.534
+          },
+          {
+            "word": "the",
+            "startSec": 0.557,
+            "endSec": 0.627
+          },
+          {
+            "word": "younger",
+            "startSec": 0.685,
+            "endSec": 0.94
+          },
+          {
+            "word": "son",
+            "startSec": 0.998,
+            "endSec": 1.184
+          },
+          {
+            "word": "had",
+            "startSec": 1.242,
+            "endSec": 1.358
+          },
+          {
+            "word": "ended",
+            "startSec": 1.416,
+            "endSec": 1.637
+          },
+          {
+            "word": "up.",
+            "startSec": 1.695,
+            "endSec": 2.183
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Feeding pigs.",
+        "tailSec": 0.35,
+        "audioFile": "16-reflection-15.mp3",
+        "durationSec": 1.068118,
+        "words": [
+          {
+            "word": "Feeding",
+            "startSec": 0,
+            "endSec": 0.372
+          },
+          {
+            "word": "pigs.",
+            "startSec": 0.441,
+            "endSec": 1.068
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "For a Jewish listener, swine were regarded as the most unclean and the most abhorred of all animals.",
+        "tailSec": 0.35,
+        "audioFile": "17-reflection-16.mp3",
+        "durationSec": 5.526349,
+        "words": [
+          {
+            "word": "For",
+            "startSec": 0,
+            "endSec": 0.186
+          },
+          {
+            "word": "a",
+            "startSec": 0.232,
+            "endSec": 0.255
+          },
+          {
+            "word": "Jewish",
+            "startSec": 0.313,
+            "endSec": 0.58
+          },
+          {
+            "word": "listener,",
+            "startSec": 0.639,
+            "endSec": 1.045
+          },
+          {
+            "word": "swine",
+            "startSec": 1.149,
+            "endSec": 1.486
+          },
+          {
+            "word": "were",
+            "startSec": 1.509,
+            "endSec": 1.637
+          },
+          {
+            "word": "regarded",
+            "startSec": 1.683,
+            "endSec": 2.09
+          },
+          {
+            "word": "as",
+            "startSec": 2.159,
+            "endSec": 2.252
+          },
+          {
+            "word": "the",
+            "startSec": 2.31,
+            "endSec": 2.38
+          },
+          {
+            "word": "most",
+            "startSec": 2.438,
+            "endSec": 2.659
+          },
+          {
+            "word": "unclean",
+            "startSec": 2.717,
+            "endSec": 3.146
+          },
+          {
+            "word": "and",
+            "startSec": 3.216,
+            "endSec": 3.332
+          },
+          {
+            "word": "the",
+            "startSec": 3.379,
+            "endSec": 3.448
+          },
+          {
+            "word": "most",
+            "startSec": 3.495,
+            "endSec": 3.692
+          },
+          {
+            "word": "abhorred",
+            "startSec": 3.738,
+            "endSec": 4.238
+          },
+          {
+            "word": "of",
+            "startSec": 4.319,
+            "endSec": 4.423
+          },
+          {
+            "word": "all",
+            "startSec": 4.528,
+            "endSec": 4.714
+          },
+          {
+            "word": "animals.",
+            "startSec": 4.772,
+            "endSec": 5.526
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "This boy had fallen about as far from his father's house as a son could fall.",
+        "audioFile": "18-reflection-17.mp3",
+        "durationSec": 3.808073,
+        "words": [
+          {
+            "word": "This",
+            "startSec": 0,
+            "endSec": 0.221
+          },
+          {
+            "word": "boy",
+            "startSec": 0.279,
+            "endSec": 0.453
+          },
+          {
+            "word": "had",
+            "startSec": 0.488,
+            "endSec": 0.58
+          },
+          {
+            "word": "fallen",
+            "startSec": 0.615,
+            "endSec": 0.882
+          },
+          {
+            "word": "about",
+            "startSec": 0.917,
+            "endSec": 1.184
+          },
+          {
+            "word": "as",
+            "startSec": 1.231,
+            "endSec": 1.312
+          },
+          {
+            "word": "far",
+            "startSec": 1.37,
+            "endSec": 1.567
+          },
+          {
+            "word": "from",
+            "startSec": 1.625,
+            "endSec": 1.765
+          },
+          {
+            "word": "his",
+            "startSec": 1.811,
+            "endSec": 1.904
+          },
+          {
+            "word": "father's",
+            "startSec": 1.95,
+            "endSec": 2.264
+          },
+          {
+            "word": "house",
+            "startSec": 2.287,
+            "endSec": 2.519
+          },
+          {
+            "word": "as",
+            "startSec": 2.554,
+            "endSec": 2.647
+          },
+          {
+            "word": "a",
+            "startSec": 2.705,
+            "endSec": 2.74
+          },
+          {
+            "word": "son",
+            "startSec": 2.798,
+            "endSec": 2.972
+          },
+          {
+            "word": "could",
+            "startSec": 3.03,
+            "endSec": 3.17
+          },
+          {
+            "word": "fall.",
+            "startSec": 3.216,
+            "endSec": 3.808
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "So the older brother is not angry over nothing.",
+        "tailSec": 0.35,
+        "audioFile": "19-reflection-18.mp3",
+        "durationSec": 3.018594,
+        "words": [
+          {
+            "word": "So",
+            "startSec": 0,
+            "endSec": 0.139
+          },
+          {
+            "word": "the",
+            "startSec": 0.186,
+            "endSec": 0.255
+          },
+          {
+            "word": "older",
+            "startSec": 0.337,
+            "endSec": 0.615
+          },
+          {
+            "word": "brother",
+            "startSec": 0.662,
+            "endSec": 0.94
+          },
+          {
+            "word": "is",
+            "startSec": 1.022,
+            "endSec": 1.138
+          },
+          {
+            "word": "not",
+            "startSec": 1.231,
+            "endSec": 1.451
+          },
+          {
+            "word": "angry",
+            "startSec": 1.533,
+            "endSec": 1.904
+          },
+          {
+            "word": "over",
+            "startSec": 2.043,
+            "endSec": 2.299
+          },
+          {
+            "word": "nothing.",
+            "startSec": 2.38,
+            "endSec": 3.019
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "That is the son being welcomed.",
+        "tailSec": 0.35,
+        "audioFile": "20-reflection-19.mp3",
+        "durationSec": 1.950476,
+        "words": [
+          {
+            "word": "That",
+            "startSec": 0,
+            "endSec": 0.348
+          },
+          {
+            "word": "is",
+            "startSec": 0.418,
+            "endSec": 0.511
+          },
+          {
+            "word": "the",
+            "startSec": 0.569,
+            "endSec": 0.639
+          },
+          {
+            "word": "son",
+            "startSec": 0.697,
+            "endSec": 0.894
+          },
+          {
+            "word": "being",
+            "startSec": 0.964,
+            "endSec": 1.138
+          },
+          {
+            "word": "welcomed.",
+            "startSec": 1.196,
+            "endSec": 1.95
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The one who longed to eat what the pigs were eating.",
+        "audioFile": "21-reflection-20.mp3",
+        "durationSec": 2.368435,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.128
+          },
+          {
+            "word": "one",
+            "startSec": 0.209,
+            "endSec": 0.36
+          },
+          {
+            "word": "who",
+            "startSec": 0.383,
+            "endSec": 0.488
+          },
+          {
+            "word": "longed",
+            "startSec": 0.58,
+            "endSec": 0.836
+          },
+          {
+            "word": "to",
+            "startSec": 0.859,
+            "endSec": 0.906
+          },
+          {
+            "word": "eat",
+            "startSec": 0.975,
+            "endSec": 1.115
+          },
+          {
+            "word": "what",
+            "startSec": 1.149,
+            "endSec": 1.254
+          },
+          {
+            "word": "the",
+            "startSec": 1.289,
+            "endSec": 1.358
+          },
+          {
+            "word": "pigs",
+            "startSec": 1.405,
+            "endSec": 1.649
+          },
+          {
+            "word": "were",
+            "startSec": 1.672,
+            "endSec": 1.776
+          },
+          {
+            "word": "eating.",
+            "startSec": 1.823,
+            "endSec": 2.368
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Now look at how he was welcomed.",
+        "tailSec": 0.35,
+        "audioFile": "22-reflection-21.mp3",
+        "durationSec": 1.950476,
+        "words": [
+          {
+            "word": "Now",
+            "startSec": 0,
+            "endSec": 0.197
+          },
+          {
+            "word": "look",
+            "startSec": 0.255,
+            "endSec": 0.43
+          },
+          {
+            "word": "at",
+            "startSec": 0.476,
+            "endSec": 0.557
+          },
+          {
+            "word": "how",
+            "startSec": 0.627,
+            "endSec": 0.801
+          },
+          {
+            "word": "he",
+            "startSec": 0.871,
+            "endSec": 0.94
+          },
+          {
+            "word": "was",
+            "startSec": 0.998,
+            "endSec": 1.138
+          },
+          {
+            "word": "welcomed.",
+            "startSec": 1.207,
+            "endSec": 1.95
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The best robe is brought out.",
+        "highlight": "The best robe is brought out.",
+        "tailSec": 0.35,
+        "audioFile": "23-reflection-22.mp3",
+        "durationSec": 1.718277,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.151
+          },
+          {
+            "word": "best",
+            "startSec": 0.197,
+            "endSec": 0.406
+          },
+          {
+            "word": "robe",
+            "startSec": 0.476,
+            "endSec": 0.697
+          },
+          {
+            "word": "is",
+            "startSec": 0.731,
+            "endSec": 0.801
+          },
+          {
+            "word": "brought",
+            "startSec": 0.848,
+            "endSec": 1.115
+          },
+          {
+            "word": "out.",
+            "startSec": 1.161,
+            "endSec": 1.718
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "In a household, producing the best robe was a mark of special honor.",
+        "tailSec": 0.35,
+        "audioFile": "24-reflection-23.mp3",
+        "durationSec": 3.668753,
+        "words": [
+          {
+            "word": "In",
+            "startSec": 0,
+            "endSec": 0.151
+          },
+          {
+            "word": "a",
+            "startSec": 0.197,
+            "endSec": 0.232
+          },
+          {
+            "word": "household,",
+            "startSec": 0.29,
+            "endSec": 0.789
+          },
+          {
+            "word": "producing",
+            "startSec": 0.836,
+            "endSec": 1.242
+          },
+          {
+            "word": "the",
+            "startSec": 1.289,
+            "endSec": 1.358
+          },
+          {
+            "word": "best",
+            "startSec": 1.416,
+            "endSec": 1.637
+          },
+          {
+            "word": "robe",
+            "startSec": 1.707,
+            "endSec": 1.95
+          },
+          {
+            "word": "was",
+            "startSec": 1.985,
+            "endSec": 2.113
+          },
+          {
+            "word": "a",
+            "startSec": 2.159,
+            "endSec": 2.194
+          },
+          {
+            "word": "mark",
+            "startSec": 2.252,
+            "endSec": 2.473
+          },
+          {
+            "word": "of",
+            "startSec": 2.531,
+            "endSec": 2.601
+          },
+          {
+            "word": "special",
+            "startSec": 2.659,
+            "endSec": 3.007
+          },
+          {
+            "word": "honor.",
+            "startSec": 3.065,
+            "endSec": 3.669
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Then the fattened calf.",
+        "tailSec": 0.35,
+        "audioFile": "25-reflection-24.mp3",
+        "durationSec": 1.346757,
+        "words": [
+          {
+            "word": "Then",
+            "startSec": 0,
+            "endSec": 0.209
+          },
+          {
+            "word": "the",
+            "startSec": 0.255,
+            "endSec": 0.325
+          },
+          {
+            "word": "fattened",
+            "startSec": 0.36,
+            "endSec": 0.685
+          },
+          {
+            "word": "calf.",
+            "startSec": 0.731,
+            "endSec": 1.347
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Animals were rarely slaughtered except for a guest or a feast.",
+        "audioFile": "26-reflection-25.mp3",
+        "durationSec": 3.436553,
+        "words": [
+          {
+            "word": "Animals",
+            "startSec": 0,
+            "endSec": 0.395
+          },
+          {
+            "word": "were",
+            "startSec": 0.441,
+            "endSec": 0.58
+          },
+          {
+            "word": "rarely",
+            "startSec": 0.615,
+            "endSec": 0.871
+          },
+          {
+            "word": "slaughtered",
+            "startSec": 0.917,
+            "endSec": 1.347
+          },
+          {
+            "word": "except",
+            "startSec": 1.509,
+            "endSec": 1.916
+          },
+          {
+            "word": "for",
+            "startSec": 1.95,
+            "endSec": 2.067
+          },
+          {
+            "word": "a",
+            "startSec": 2.101,
+            "endSec": 2.136
+          },
+          {
+            "word": "guest",
+            "startSec": 2.194,
+            "endSec": 2.473
+          },
+          {
+            "word": "or",
+            "startSec": 2.531,
+            "endSec": 2.647
+          },
+          {
+            "word": "a",
+            "startSec": 2.694,
+            "endSec": 2.717
+          },
+          {
+            "word": "feast.",
+            "startSec": 2.775,
+            "endSec": 3.437
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The father did not quietly slip his son back in as a hired hand.",
+        "tailSec": 0.35,
+        "audioFile": "27-reflection-26.mp3",
+        "durationSec": 4.736871,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.186
+          },
+          {
+            "word": "father",
+            "startSec": 0.267,
+            "endSec": 0.65
+          },
+          {
+            "word": "did",
+            "startSec": 0.789,
+            "endSec": 0.929
+          },
+          {
+            "word": "not",
+            "startSec": 0.964,
+            "endSec": 1.115
+          },
+          {
+            "word": "quietly",
+            "startSec": 1.184,
+            "endSec": 1.765
+          },
+          {
+            "word": "slip",
+            "startSec": 1.846,
+            "endSec": 2.125
+          },
+          {
+            "word": "his",
+            "startSec": 2.206,
+            "endSec": 2.334
+          },
+          {
+            "word": "son",
+            "startSec": 2.392,
+            "endSec": 2.635
+          },
+          {
+            "word": "back",
+            "startSec": 2.74,
+            "endSec": 3.007
+          },
+          {
+            "word": "in",
+            "startSec": 3.1,
+            "endSec": 3.274
+          },
+          {
+            "word": "as",
+            "startSec": 3.448,
+            "endSec": 3.587
+          },
+          {
+            "word": "a",
+            "startSec": 3.634,
+            "endSec": 3.657
+          },
+          {
+            "word": "hired",
+            "startSec": 3.75,
+            "endSec": 4.098
+          },
+          {
+            "word": "hand.",
+            "startSec": 4.168,
+            "endSec": 4.737
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He honored him in front of the whole household.",
+        "highlight": "He honored him in front of the whole household.",
+        "tailSec": 0.35,
+        "audioFile": "28-reflection-27.mp3",
+        "durationSec": 2.507755,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.186
+          },
+          {
+            "word": "honored",
+            "startSec": 0.267,
+            "endSec": 0.604
+          },
+          {
+            "word": "him",
+            "startSec": 0.65,
+            "endSec": 0.789
+          },
+          {
+            "word": "in",
+            "startSec": 0.848,
+            "endSec": 0.929
+          },
+          {
+            "word": "front",
+            "startSec": 0.987,
+            "endSec": 1.115
+          },
+          {
+            "word": "of",
+            "startSec": 1.138,
+            "endSec": 1.184
+          },
+          {
+            "word": "the",
+            "startSec": 1.242,
+            "endSec": 1.312
+          },
+          {
+            "word": "whole",
+            "startSec": 1.37,
+            "endSec": 1.649
+          },
+          {
+            "word": "household.",
+            "startSec": 1.695,
+            "endSec": 2.508
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "And that is the very thing the older son cannot bear.",
+        "tailSec": 0.35,
+        "audioFile": "29-reflection-28.mp3",
+        "durationSec": 3.157914,
+        "words": [
+          {
+            "word": "And",
+            "startSec": 0,
+            "endSec": 0.128
+          },
+          {
+            "word": "that",
+            "startSec": 0.197,
+            "endSec": 0.476
+          },
+          {
+            "word": "is",
+            "startSec": 0.534,
+            "endSec": 0.639
+          },
+          {
+            "word": "the",
+            "startSec": 0.697,
+            "endSec": 0.766
+          },
+          {
+            "word": "very",
+            "startSec": 0.848,
+            "endSec": 1.138
+          },
+          {
+            "word": "thing",
+            "startSec": 1.207,
+            "endSec": 1.428
+          },
+          {
+            "word": "the",
+            "startSec": 1.521,
+            "endSec": 1.602
+          },
+          {
+            "word": "older",
+            "startSec": 1.683,
+            "endSec": 1.939
+          },
+          {
+            "word": "son",
+            "startSec": 1.997,
+            "endSec": 2.194
+          },
+          {
+            "word": "cannot",
+            "startSec": 2.287,
+            "endSec": 2.67
+          },
+          {
+            "word": "bear.",
+            "startSec": 2.728,
+            "endSec": 3.158
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Jesus tells this story to Pharisees and scribes who were grumbling because he ate with sinners.",
+        "sourceMark": {
+          "label": "Commentary",
+          "source": "J. C. Ryle (1816\u20131900)",
+          "portrait": "ryle"
+        },
+        "tailSec": 0.35,
+        "audioFile": "30-reflection-29.mp3",
+        "durationSec": 5.804989,
+        "words": [
+          {
+            "word": "Jesus",
+            "startSec": 0,
+            "endSec": 0.43
+          },
+          {
+            "word": "tells",
+            "startSec": 0.488,
+            "endSec": 0.789
+          },
+          {
+            "word": "this",
+            "startSec": 0.848,
+            "endSec": 0.964
+          },
+          {
+            "word": "story",
+            "startSec": 0.998,
+            "endSec": 1.335
+          },
+          {
+            "word": "to",
+            "startSec": 1.416,
+            "endSec": 1.509
+          },
+          {
+            "word": "Pharisees",
+            "startSec": 1.602,
+            "endSec": 2.194
+          },
+          {
+            "word": "and",
+            "startSec": 2.252,
+            "endSec": 2.357
+          },
+          {
+            "word": "scribes",
+            "startSec": 2.438,
+            "endSec": 2.972
+          },
+          {
+            "word": "who",
+            "startSec": 3.204,
+            "endSec": 3.367
+          },
+          {
+            "word": "were",
+            "startSec": 3.39,
+            "endSec": 3.495
+          },
+          {
+            "word": "grumbling",
+            "startSec": 3.541,
+            "endSec": 3.982
+          },
+          {
+            "word": "because",
+            "startSec": 4.052,
+            "endSec": 4.342
+          },
+          {
+            "word": "he",
+            "startSec": 4.412,
+            "endSec": 4.609
+          },
+          {
+            "word": "ate",
+            "startSec": 4.69,
+            "endSec": 4.899
+          },
+          {
+            "word": "with",
+            "startSec": 4.923,
+            "endSec": 5.039
+          },
+          {
+            "word": "sinners.",
+            "startSec": 5.108,
+            "endSec": 5.805
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The older brother is their portrait.",
+        "tailSec": 0.35,
+        "audioFile": "31-reflection-30.mp3",
+        "durationSec": 2.089796,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.116
+          },
+          {
+            "word": "older",
+            "startSec": 0.209,
+            "endSec": 0.488
+          },
+          {
+            "word": "brother",
+            "startSec": 0.534,
+            "endSec": 0.848
+          },
+          {
+            "word": "is",
+            "startSec": 0.975,
+            "endSec": 1.103
+          },
+          {
+            "word": "their",
+            "startSec": 1.149,
+            "endSec": 1.277
+          },
+          {
+            "word": "portrait.",
+            "startSec": 1.335,
+            "endSec": 2.09
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "But he is also a portrait of people in the church in every age, who worry that the door of grace is open too wide.",
+        "tailSec": 0.35,
+        "audioFile": "32-reflection-31.mp3",
+        "durationSec": 6.455147,
+        "words": [
+          {
+            "word": "But",
+            "startSec": 0,
+            "endSec": 0.221
+          },
+          {
+            "word": "he",
+            "startSec": 0.279,
+            "endSec": 0.348
+          },
+          {
+            "word": "is",
+            "startSec": 0.406,
+            "endSec": 0.499
+          },
+          {
+            "word": "also",
+            "startSec": 0.557,
+            "endSec": 0.848
+          },
+          {
+            "word": "a",
+            "startSec": 0.917,
+            "endSec": 0.94
+          },
+          {
+            "word": "portrait",
+            "startSec": 1.022,
+            "endSec": 1.405
+          },
+          {
+            "word": "of",
+            "startSec": 1.428,
+            "endSec": 1.474
+          },
+          {
+            "word": "people",
+            "startSec": 1.567,
+            "endSec": 1.881
+          },
+          {
+            "word": "in",
+            "startSec": 1.904,
+            "endSec": 1.95
+          },
+          {
+            "word": "the",
+            "startSec": 1.985,
+            "endSec": 2.055
+          },
+          {
+            "word": "church",
+            "startSec": 2.09,
+            "endSec": 2.357
+          },
+          {
+            "word": "in",
+            "startSec": 2.392,
+            "endSec": 2.45
+          },
+          {
+            "word": "every",
+            "startSec": 2.589,
+            "endSec": 2.902
+          },
+          {
+            "word": "age,",
+            "startSec": 2.961,
+            "endSec": 3.437
+          },
+          {
+            "word": "who",
+            "startSec": 3.611,
+            "endSec": 3.773
+          },
+          {
+            "word": "worry",
+            "startSec": 3.843,
+            "endSec": 4.122
+          },
+          {
+            "word": "that",
+            "startSec": 4.168,
+            "endSec": 4.261
+          },
+          {
+            "word": "the",
+            "startSec": 4.296,
+            "endSec": 4.365
+          },
+          {
+            "word": "door",
+            "startSec": 4.423,
+            "endSec": 4.632
+          },
+          {
+            "word": "of",
+            "startSec": 4.679,
+            "endSec": 4.725
+          },
+          {
+            "word": "grace",
+            "startSec": 4.783,
+            "endSec": 5.027
+          },
+          {
+            "word": "is",
+            "startSec": 5.05,
+            "endSec": 5.12
+          },
+          {
+            "word": "open",
+            "startSec": 5.201,
+            "endSec": 5.55
+          },
+          {
+            "word": "too",
+            "startSec": 5.642,
+            "endSec": 5.863
+          },
+          {
+            "word": "wide.",
+            "startSec": 5.933,
+            "endSec": 6.455
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "That spirit grows from forgetting how much we ourselves have been given.",
+        "tailSec": 0.35,
+        "audioFile": "33-reflection-32.mp3",
+        "durationSec": 4.690431,
+        "words": [
+          {
+            "word": "That",
+            "startSec": 0,
+            "endSec": 0.29
+          },
+          {
+            "word": "spirit",
+            "startSec": 0.372,
+            "endSec": 0.824
+          },
+          {
+            "word": "grows",
+            "startSec": 0.917,
+            "endSec": 1.324
+          },
+          {
+            "word": "from",
+            "startSec": 1.382,
+            "endSec": 1.509
+          },
+          {
+            "word": "forgetting",
+            "startSec": 1.602,
+            "endSec": 2.09
+          },
+          {
+            "word": "how",
+            "startSec": 2.357,
+            "endSec": 2.531
+          },
+          {
+            "word": "much",
+            "startSec": 2.612,
+            "endSec": 2.879
+          },
+          {
+            "word": "we",
+            "startSec": 2.961,
+            "endSec": 3.111
+          },
+          {
+            "word": "ourselves",
+            "startSec": 3.181,
+            "endSec": 3.622
+          },
+          {
+            "word": "have",
+            "startSec": 3.68,
+            "endSec": 3.878
+          },
+          {
+            "word": "been",
+            "startSec": 3.913,
+            "endSec": 4.052
+          },
+          {
+            "word": "given.",
+            "startSec": 4.11,
+            "endSec": 4.69
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Someone who knows he stands only by grace does not talk like the older brother.",
+        "tailSec": 0.35,
+        "audioFile": "34-reflection-33.mp3",
+        "durationSec": 5.15483,
+        "words": [
+          {
+            "word": "Someone",
+            "startSec": 0,
+            "endSec": 0.337
+          },
+          {
+            "word": "who",
+            "startSec": 0.36,
+            "endSec": 0.476
+          },
+          {
+            "word": "knows",
+            "startSec": 0.557,
+            "endSec": 0.859
+          },
+          {
+            "word": "he",
+            "startSec": 0.94,
+            "endSec": 1.01
+          },
+          {
+            "word": "stands",
+            "startSec": 1.103,
+            "endSec": 1.474
+          },
+          {
+            "word": "only",
+            "startSec": 1.533,
+            "endSec": 1.718
+          },
+          {
+            "word": "by",
+            "startSec": 1.776,
+            "endSec": 1.916
+          },
+          {
+            "word": "grace",
+            "startSec": 1.985,
+            "endSec": 2.589
+          },
+          {
+            "word": "does",
+            "startSec": 2.856,
+            "endSec": 3.007
+          },
+          {
+            "word": "not",
+            "startSec": 3.1,
+            "endSec": 3.367
+          },
+          {
+            "word": "talk",
+            "startSec": 3.413,
+            "endSec": 3.75
+          },
+          {
+            "word": "like",
+            "startSec": 3.82,
+            "endSec": 3.959
+          },
+          {
+            "word": "the",
+            "startSec": 3.982,
+            "endSec": 4.063
+          },
+          {
+            "word": "older",
+            "startSec": 4.191,
+            "endSec": 4.54
+          },
+          {
+            "word": "brother.",
+            "startSec": 4.598,
+            "endSec": 5.155
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Now notice the father.",
+        "tailSec": 0.35,
+        "audioFile": "35-reflection-34.mp3",
+        "durationSec": 1.253878,
+        "words": [
+          {
+            "word": "Now",
+            "startSec": 0,
+            "endSec": 0.139
+          },
+          {
+            "word": "notice",
+            "startSec": 0.209,
+            "endSec": 0.499
+          },
+          {
+            "word": "the",
+            "startSec": 0.522,
+            "endSec": 0.592
+          },
+          {
+            "word": "father.",
+            "startSec": 0.662,
+            "endSec": 1.254
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Earlier he ran to the son who came home.",
+        "tailSec": 0.35,
+        "audioFile": "36-reflection-35.mp3",
+        "durationSec": 1.996916,
+        "words": [
+          {
+            "word": "Earlier",
+            "startSec": 0,
+            "endSec": 0.348
+          },
+          {
+            "word": "he",
+            "startSec": 0.418,
+            "endSec": 0.476
+          },
+          {
+            "word": "ran",
+            "startSec": 0.546,
+            "endSec": 0.72
+          },
+          {
+            "word": "to",
+            "startSec": 0.766,
+            "endSec": 0.813
+          },
+          {
+            "word": "the",
+            "startSec": 0.871,
+            "endSec": 0.94
+          },
+          {
+            "word": "son",
+            "startSec": 0.975,
+            "endSec": 1.138
+          },
+          {
+            "word": "who",
+            "startSec": 1.184,
+            "endSec": 1.265
+          },
+          {
+            "word": "came",
+            "startSec": 1.324,
+            "endSec": 1.521
+          },
+          {
+            "word": "home.",
+            "startSec": 1.567,
+            "endSec": 1.997
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Here he walks out to the son who never left.",
+        "tailSec": 0.35,
+        "audioFile": "37-reflection-36.mp3",
+        "durationSec": 2.043356,
+        "words": [
+          {
+            "word": "Here",
+            "startSec": 0,
+            "endSec": 0.197
+          },
+          {
+            "word": "he",
+            "startSec": 0.244,
+            "endSec": 0.302
+          },
+          {
+            "word": "walks",
+            "startSec": 0.36,
+            "endSec": 0.58
+          },
+          {
+            "word": "out",
+            "startSec": 0.615,
+            "endSec": 0.766
+          },
+          {
+            "word": "to",
+            "startSec": 0.801,
+            "endSec": 0.848
+          },
+          {
+            "word": "the",
+            "startSec": 0.906,
+            "endSec": 0.975
+          },
+          {
+            "word": "son",
+            "startSec": 1.01,
+            "endSec": 1.173
+          },
+          {
+            "word": "who",
+            "startSec": 1.219,
+            "endSec": 1.289
+          },
+          {
+            "word": "never",
+            "startSec": 1.324,
+            "endSec": 1.486
+          },
+          {
+            "word": "left.",
+            "startSec": 1.544,
+            "endSec": 2.043
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He does not scold.",
+        "tailSec": 0.35,
+        "audioFile": "38-reflection-37.mp3",
+        "durationSec": 1.207438,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.116
+          },
+          {
+            "word": "does",
+            "startSec": 0.186,
+            "endSec": 0.337
+          },
+          {
+            "word": "not",
+            "startSec": 0.395,
+            "endSec": 0.546
+          },
+          {
+            "word": "scold.",
+            "startSec": 0.604,
+            "endSec": 1.207
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He pleads.",
+        "tailSec": 0.35,
+        "audioFile": "39-reflection-38.mp3",
+        "durationSec": 0.835918,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.116
+          },
+          {
+            "word": "pleads.",
+            "startSec": 0.174,
+            "endSec": 0.836
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Son, you are always with me.",
+        "tailSec": 0.35,
+        "audioFile": "40-reflection-39.mp3",
+        "durationSec": 1.578957,
+        "words": [
+          {
+            "word": "Son,",
+            "startSec": 0,
+            "endSec": 0.453
+          },
+          {
+            "word": "you",
+            "startSec": 0.488,
+            "endSec": 0.557
+          },
+          {
+            "word": "are",
+            "startSec": 0.592,
+            "endSec": 0.697
+          },
+          {
+            "word": "always",
+            "startSec": 0.731,
+            "endSec": 1.022
+          },
+          {
+            "word": "with",
+            "startSec": 1.068,
+            "endSec": 1.196
+          },
+          {
+            "word": "me.",
+            "startSec": 1.242,
+            "endSec": 1.579
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "All that is mine is yours.",
+        "audioFile": "41-reflection-40.mp3",
+        "durationSec": 1.532517,
+        "words": [
+          {
+            "word": "All",
+            "startSec": 0,
+            "endSec": 0.163
+          },
+          {
+            "word": "that",
+            "startSec": 0.232,
+            "endSec": 0.348
+          },
+          {
+            "word": "is",
+            "startSec": 0.406,
+            "endSec": 0.476
+          },
+          {
+            "word": "mine",
+            "startSec": 0.557,
+            "endSec": 0.836
+          },
+          {
+            "word": "is",
+            "startSec": 0.859,
+            "endSec": 0.929
+          },
+          {
+            "word": "yours.",
+            "startSec": 0.998,
+            "endSec": 1.533
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "In verse 32 the father says it was fitting to celebrate.",
+        "sourceMark": {
+          "label": "Original language",
+          "source": "Abbott-Smith's Greek Lexicon",
+          "portrait": "scroll"
+        },
+        "verseCallout": {
+          "text": "But it was fitting to celebrate and be glad, because this brother of yours was dead and is alive again; he was lost and is found.\u2019\u201d",
+          "highlight": "fitting",
+          "reference": "Luke 15:32"
+        },
+        "tailSec": 0.35,
+        "audioFile": "42-reflection-41.mp3",
+        "durationSec": 3.018594,
+        "words": [
+          {
+            "word": "In",
+            "startSec": 0,
+            "endSec": 0.139
+          },
+          {
+            "word": "verse",
+            "startSec": 0.186,
+            "endSec": 0.383
+          },
+          {
+            "word": "32",
+            "startSec": 0.418,
+            "endSec": 0.778
+          },
+          {
+            "word": "the",
+            "startSec": 0.882,
+            "endSec": 0.964
+          },
+          {
+            "word": "father",
+            "startSec": 1.01,
+            "endSec": 1.254
+          },
+          {
+            "word": "says",
+            "startSec": 1.289,
+            "endSec": 1.463
+          },
+          {
+            "word": "it",
+            "startSec": 1.509,
+            "endSec": 1.567
+          },
+          {
+            "word": "was",
+            "startSec": 1.602,
+            "endSec": 1.707
+          },
+          {
+            "word": "fitting",
+            "startSec": 1.765,
+            "endSec": 2.043
+          },
+          {
+            "word": "to",
+            "startSec": 2.101,
+            "endSec": 2.171
+          },
+          {
+            "word": "celebrate.",
+            "startSec": 2.229,
+            "endSec": 3.019
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The word Luke uses there carries necessity.",
+        "verseCallout": {
+          "text": "But it was fitting to celebrate and be glad, because this brother of yours was dead and is alive again; he was lost and is found.\u2019\u201d",
+          "highlight": "fitting",
+          "reference": "Luke 15:32"
+        },
+        "tailSec": 0.35,
+        "audioFile": "43-reflection-42.mp3",
+        "durationSec": 2.461315,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.163
+          },
+          {
+            "word": "word",
+            "startSec": 0.209,
+            "endSec": 0.372
+          },
+          {
+            "word": "Luke",
+            "startSec": 0.418,
+            "endSec": 0.615
+          },
+          {
+            "word": "uses",
+            "startSec": 0.673,
+            "endSec": 0.94
+          },
+          {
+            "word": "there",
+            "startSec": 0.998,
+            "endSec": 1.207
+          },
+          {
+            "word": "carries",
+            "startSec": 1.254,
+            "endSec": 1.567
+          },
+          {
+            "word": "necessity.",
+            "startSec": 1.625,
+            "endSec": 2.461
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "It means one must.",
+        "verseCallout": {
+          "text": "But it was fitting to celebrate and be glad, because this brother of yours was dead and is alive again; he was lost and is found.\u2019\u201d",
+          "highlight": "fitting",
+          "reference": "Luke 15:32"
+        },
+        "tailSec": 0.35,
+        "audioFile": "44-reflection-43.mp3",
+        "durationSec": 1.300317,
+        "words": [
+          {
+            "word": "It",
+            "startSec": 0,
+            "endSec": 0.151
+          },
+          {
+            "word": "means",
+            "startSec": 0.209,
+            "endSec": 0.476
+          },
+          {
+            "word": "one",
+            "startSec": 0.534,
+            "endSec": 0.685
+          },
+          {
+            "word": "must.",
+            "startSec": 0.731,
+            "endSec": 1.3
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "This had to happen.",
+        "verseCallout": {
+          "text": "But it was fitting to celebrate and be glad, because this brother of yours was dead and is alive again; he was lost and is found.\u2019\u201d",
+          "highlight": "fitting",
+          "reference": "Luke 15:32"
+        },
+        "audioFile": "45-reflection-44.mp3",
+        "durationSec": 1.207438,
+        "words": [
+          {
+            "word": "This",
+            "startSec": 0,
+            "endSec": 0.221
+          },
+          {
+            "word": "had",
+            "startSec": 0.279,
+            "endSec": 0.418
+          },
+          {
+            "word": "to",
+            "startSec": 0.453,
+            "endSec": 0.511
+          },
+          {
+            "word": "happen.",
+            "startSec": 0.569,
+            "endSec": 1.207
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The father is not saying the feast was a nice touch.",
+        "tailSec": 0.35,
+        "audioFile": "46-reflection-45.mp3",
+        "durationSec": 3.529433,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.116
+          },
+          {
+            "word": "father",
+            "startSec": 0.209,
+            "endSec": 0.615
+          },
+          {
+            "word": "is",
+            "startSec": 0.708,
+            "endSec": 0.836
+          },
+          {
+            "word": "not",
+            "startSec": 0.929,
+            "endSec": 1.207
+          },
+          {
+            "word": "saying",
+            "startSec": 1.265,
+            "endSec": 1.521
+          },
+          {
+            "word": "the",
+            "startSec": 1.567,
+            "endSec": 1.637
+          },
+          {
+            "word": "feast",
+            "startSec": 1.718,
+            "endSec": 2.067
+          },
+          {
+            "word": "was",
+            "startSec": 2.136,
+            "endSec": 2.264
+          },
+          {
+            "word": "a",
+            "startSec": 2.31,
+            "endSec": 2.334
+          },
+          {
+            "word": "nice",
+            "startSec": 2.415,
+            "endSec": 2.728
+          },
+          {
+            "word": "touch.",
+            "startSec": 2.786,
+            "endSec": 3.529
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He is saying that when a dead son comes alive, celebration is not optional.",
+        "tailSec": 0.35,
+        "audioFile": "47-reflection-46.mp3",
+        "durationSec": 4.411791,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.163
+          },
+          {
+            "word": "is",
+            "startSec": 0.232,
+            "endSec": 0.313
+          },
+          {
+            "word": "saying",
+            "startSec": 0.372,
+            "endSec": 0.731
+          },
+          {
+            "word": "that",
+            "startSec": 0.789,
+            "endSec": 0.917
+          },
+          {
+            "word": "when",
+            "startSec": 0.94,
+            "endSec": 1.045
+          },
+          {
+            "word": "a",
+            "startSec": 1.08,
+            "endSec": 1.103
+          },
+          {
+            "word": "dead",
+            "startSec": 1.196,
+            "endSec": 1.393
+          },
+          {
+            "word": "son",
+            "startSec": 1.463,
+            "endSec": 1.683
+          },
+          {
+            "word": "comes",
+            "startSec": 1.753,
+            "endSec": 2.009
+          },
+          {
+            "word": "alive,",
+            "startSec": 2.043,
+            "endSec": 2.461
+          },
+          {
+            "word": "celebration",
+            "startSec": 2.554,
+            "endSec": 3.111
+          },
+          {
+            "word": "is",
+            "startSec": 3.158,
+            "endSec": 3.228
+          },
+          {
+            "word": "not",
+            "startSec": 3.32,
+            "endSec": 3.587
+          },
+          {
+            "word": "optional.",
+            "startSec": 3.68,
+            "endSec": 4.412
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The return of any soul ought to bring joy to everyone who sees it.",
+        "highlight": "The return of any soul ought to bring joy",
+        "tailSec": 0.35,
+        "audioFile": "48-reflection-47.mp3",
+        "durationSec": 3.808073,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.104
+          },
+          {
+            "word": "return",
+            "startSec": 0.163,
+            "endSec": 0.499
+          },
+          {
+            "word": "of",
+            "startSec": 0.546,
+            "endSec": 0.592
+          },
+          {
+            "word": "any",
+            "startSec": 0.685,
+            "endSec": 0.94
+          },
+          {
+            "word": "soul",
+            "startSec": 1.033,
+            "endSec": 1.347
+          },
+          {
+            "word": "ought",
+            "startSec": 1.474,
+            "endSec": 1.672
+          },
+          {
+            "word": "to",
+            "startSec": 1.695,
+            "endSec": 1.741
+          },
+          {
+            "word": "bring",
+            "startSec": 1.8,
+            "endSec": 1.95
+          },
+          {
+            "word": "joy",
+            "startSec": 2.043,
+            "endSec": 2.276
+          },
+          {
+            "word": "to",
+            "startSec": 2.334,
+            "endSec": 2.403
+          },
+          {
+            "word": "everyone",
+            "startSec": 2.485,
+            "endSec": 2.891
+          },
+          {
+            "word": "who",
+            "startSec": 2.914,
+            "endSec": 3.03
+          },
+          {
+            "word": "sees",
+            "startSec": 3.1,
+            "endSec": 3.344
+          },
+          {
+            "word": "it.",
+            "startSec": 3.413,
+            "endSec": 3.808
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The only questions worth asking are these.",
+        "tailSec": 0.35,
+        "audioFile": "49-reflection-48.mp3",
+        "durationSec": 1.996916,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.116
+          },
+          {
+            "word": "only",
+            "startSec": 0.174,
+            "endSec": 0.348
+          },
+          {
+            "word": "questions",
+            "startSec": 0.383,
+            "endSec": 0.697
+          },
+          {
+            "word": "worth",
+            "startSec": 0.731,
+            "endSec": 0.894
+          },
+          {
+            "word": "asking",
+            "startSec": 0.952,
+            "endSec": 1.289
+          },
+          {
+            "word": "are",
+            "startSec": 1.324,
+            "endSec": 1.405
+          },
+          {
+            "word": "these.",
+            "startSec": 1.451,
+            "endSec": 1.997
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Is he home?",
+        "tailSec": 0.35,
+        "audioFile": "50-reflection-49.mp3",
+        "durationSec": 0.835918,
+        "words": [
+          {
+            "word": "Is",
+            "startSec": 0,
+            "endSec": 0.244
+          },
+          {
+            "word": "he",
+            "startSec": 0.279,
+            "endSec": 0.337
+          },
+          {
+            "word": "home?",
+            "startSec": 0.395,
+            "endSec": 0.836
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Was the dead one made alive?",
+        "tailSec": 0.35,
+        "audioFile": "51-reflection-50.mp3",
+        "durationSec": 1.625397,
+        "words": [
+          {
+            "word": "Was",
+            "startSec": 0,
+            "endSec": 0.174
+          },
+          {
+            "word": "the",
+            "startSec": 0.232,
+            "endSec": 0.302
+          },
+          {
+            "word": "dead",
+            "startSec": 0.372,
+            "endSec": 0.58
+          },
+          {
+            "word": "one",
+            "startSec": 0.673,
+            "endSec": 0.836
+          },
+          {
+            "word": "made",
+            "startSec": 0.871,
+            "endSec": 0.998
+          },
+          {
+            "word": "alive?",
+            "startSec": 1.022,
+            "endSec": 1.625
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "If so, gladness is the right answer.",
+        "tailSec": 0.35,
+        "audioFile": "52-reflection-51.mp3",
+        "durationSec": 2.507755,
+        "words": [
+          {
+            "word": "If",
+            "startSec": 0,
+            "endSec": 0.128
+          },
+          {
+            "word": "so,",
+            "startSec": 0.197,
+            "endSec": 0.627
+          },
+          {
+            "word": "gladness",
+            "startSec": 0.952,
+            "endSec": 1.451
+          },
+          {
+            "word": "is",
+            "startSec": 1.486,
+            "endSec": 1.556
+          },
+          {
+            "word": "the",
+            "startSec": 1.614,
+            "endSec": 1.683
+          },
+          {
+            "word": "right",
+            "startSec": 1.741,
+            "endSec": 1.892
+          },
+          {
+            "word": "answer.",
+            "startSec": 1.927,
+            "endSec": 2.508
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Then the story simply stops.",
+        "tailSec": 0.35,
+        "audioFile": "53-reflection-52.mp3",
+        "durationSec": 1.439637,
+        "words": [
+          {
+            "word": "Then",
+            "startSec": 0,
+            "endSec": 0.197
+          },
+          {
+            "word": "the",
+            "startSec": 0.244,
+            "endSec": 0.313
+          },
+          {
+            "word": "story",
+            "startSec": 0.348,
+            "endSec": 0.592
+          },
+          {
+            "word": "simply",
+            "startSec": 0.639,
+            "endSec": 0.882
+          },
+          {
+            "word": "stops.",
+            "startSec": 0.929,
+            "endSec": 1.44
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "We never hear whether the older son went in.",
+        "tailSec": 0.35,
+        "audioFile": "54-reflection-53.mp3",
+        "durationSec": 2.275556,
+        "words": [
+          {
+            "word": "We",
+            "startSec": 0,
+            "endSec": 0.116
+          },
+          {
+            "word": "never",
+            "startSec": 0.163,
+            "endSec": 0.337
+          },
+          {
+            "word": "hear",
+            "startSec": 0.43,
+            "endSec": 0.673
+          },
+          {
+            "word": "whether",
+            "startSec": 0.743,
+            "endSec": 0.964
+          },
+          {
+            "word": "the",
+            "startSec": 1.022,
+            "endSec": 1.091
+          },
+          {
+            "word": "older",
+            "startSec": 1.149,
+            "endSec": 1.382
+          },
+          {
+            "word": "son",
+            "startSec": 1.44,
+            "endSec": 1.614
+          },
+          {
+            "word": "went",
+            "startSec": 1.672,
+            "endSec": 1.8
+          },
+          {
+            "word": "in.",
+            "startSec": 1.846,
+            "endSec": 2.276
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Jesus leaves the door open, and the Pharisees standing in it.",
+        "tailSec": 0.35,
+        "audioFile": "55-reflection-54.mp3",
+        "durationSec": 3.018594,
+        "words": [
+          {
+            "word": "Jesus",
+            "startSec": 0,
+            "endSec": 0.325
+          },
+          {
+            "word": "leaves",
+            "startSec": 0.372,
+            "endSec": 0.569
+          },
+          {
+            "word": "the",
+            "startSec": 0.615,
+            "endSec": 0.685
+          },
+          {
+            "word": "door",
+            "startSec": 0.731,
+            "endSec": 0.917
+          },
+          {
+            "word": "open,",
+            "startSec": 0.998,
+            "endSec": 1.347
+          },
+          {
+            "word": "and",
+            "startSec": 1.37,
+            "endSec": 1.463
+          },
+          {
+            "word": "the",
+            "startSec": 1.509,
+            "endSec": 1.579
+          },
+          {
+            "word": "Pharisees",
+            "startSec": 1.637,
+            "endSec": 2.101
+          },
+          {
+            "word": "standing",
+            "startSec": 2.136,
+            "endSec": 2.473
+          },
+          {
+            "word": "in",
+            "startSec": 2.519,
+            "endSec": 2.566
+          },
+          {
+            "word": "it.",
+            "startSec": 2.635,
+            "endSec": 3.019
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He leaves us standing there too.",
+        "tailSec": 0.35,
+        "audioFile": "56-reflection-55.mp3",
+        "durationSec": 1.671837,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.174
+          },
+          {
+            "word": "leaves",
+            "startSec": 0.244,
+            "endSec": 0.418
+          },
+          {
+            "word": "us",
+            "startSec": 0.464,
+            "endSec": 0.522
+          },
+          {
+            "word": "standing",
+            "startSec": 0.557,
+            "endSec": 0.894
+          },
+          {
+            "word": "there",
+            "startSec": 0.94,
+            "endSec": 1.103
+          },
+          {
+            "word": "too.",
+            "startSec": 1.149,
+            "endSec": 1.672
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Inside, Christ is at the table with sinners.",
+        "tailSec": 0.35,
+        "audioFile": "57-reflection-56.mp3",
+        "durationSec": 2.554195,
+        "words": [
+          {
+            "word": "Inside,",
+            "startSec": 0,
+            "endSec": 0.557
+          },
+          {
+            "word": "Christ",
+            "startSec": 0.615,
+            "endSec": 0.964
+          },
+          {
+            "word": "is",
+            "startSec": 0.998,
+            "endSec": 1.08
+          },
+          {
+            "word": "at",
+            "startSec": 1.138,
+            "endSec": 1.219
+          },
+          {
+            "word": "the",
+            "startSec": 1.265,
+            "endSec": 1.335
+          },
+          {
+            "word": "table",
+            "startSec": 1.37,
+            "endSec": 1.672
+          },
+          {
+            "word": "with",
+            "startSec": 1.695,
+            "endSec": 1.8
+          },
+          {
+            "word": "sinners.",
+            "startSec": 1.846,
+            "endSec": 2.554
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The music is already playing.",
+        "tailSec": 0.35,
+        "audioFile": "58-reflection-57.mp3",
+        "durationSec": 1.439637,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.104
+          },
+          {
+            "word": "music",
+            "startSec": 0.151,
+            "endSec": 0.406
+          },
+          {
+            "word": "is",
+            "startSec": 0.453,
+            "endSec": 0.499
+          },
+          {
+            "word": "already",
+            "startSec": 0.546,
+            "endSec": 0.801
+          },
+          {
+            "word": "playing.",
+            "startSec": 0.859,
+            "endSec": 1.44
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "And the Father's plea to his faithful children is the same gift he gave the wanderer: his own gladness, waiting for them to share it.",
+        "audioFile": "59-reflection-58.mp3",
+        "durationSec": 8.563515,
+        "words": [
+          {
+            "word": "And",
+            "startSec": 0,
+            "endSec": 0.24021739130434783
+          },
+          {
+            "word": "the",
+            "startSec": 0.2902173913043478,
+            "endSec": 0.36630434782608695
+          },
+          {
+            "word": "Father's",
+            "startSec": 0.46739130434782605,
+            "endSec": 0.9336956521739129
+          },
+          {
+            "word": "plea",
+            "startSec": 1.0217391304347825,
+            "endSec": 1.4130434782608696
+          },
+          {
+            "word": "to",
+            "startSec": 1.4760869565217392,
+            "endSec": 1.6021739130434782
+          },
+          {
+            "word": "his",
+            "startSec": 1.691304347826087,
+            "endSec": 1.8043478260869563
+          },
+          {
+            "word": "faithful",
+            "startSec": 1.8804347826086956,
+            "endSec": 2.246739130434783
+          },
+          {
+            "word": "children",
+            "startSec": 2.309782608695652,
+            "endSec": 2.801086956521739
+          },
+          {
+            "word": "is",
+            "startSec": 2.9402173913043477,
+            "endSec": 3.0913043478260867
+          },
+          {
+            "word": "the",
+            "startSec": 3.142391304347826,
+            "endSec": 3.218478260869565
+          },
+          {
+            "word": "same",
+            "startSec": 3.318478260869565,
+            "endSec": 3.583695652173913
+          },
+          {
+            "word": "gift",
+            "startSec": 3.6217391304347823,
+            "endSec": 3.8619565217391303
+          },
+          {
+            "word": "he",
+            "startSec": 3.925,
+            "endSec": 4
+          },
+          {
+            "word": "gave",
+            "startSec": 4.076086956521739,
+            "endSec": 4.379347826086956
+          },
+          {
+            "word": "the",
+            "startSec": 4.429347826086956,
+            "endSec": 4.505434782608695
+          },
+          {
+            "word": "wanderer:",
+            "startSec": 4.555434782608695,
+            "endSec": 5.236956521739129
+          },
+          {
+            "word": "his",
+            "startSec": 5.527173913043478,
+            "endSec": 5.691304347826087
+          },
+          {
+            "word": "own",
+            "startSec": 5.7923913043478255,
+            "endSec": 6.0956521739130425
+          },
+          {
+            "word": "gladness,",
+            "startSec": 6.158695652173913,
+            "endSec": 6.877173913043478
+          },
+          {
+            "word": "waiting",
+            "startSec": 6.978260869565217,
+            "endSec": 7.357608695652174
+          },
+          {
+            "word": "for",
+            "startSec": 7.432608695652173,
+            "endSec": 7.533695652173913
+          },
+          {
+            "word": "them",
+            "startSec": 7.584782608695652,
+            "endSec": 7.735869565217391
+          },
+          {
+            "word": "to",
+            "startSec": 7.79891304347826,
+            "endSec": 7.861956521739129
+          },
+          {
+            "word": "share",
+            "startSec": 7.938043478260869,
+            "endSec": 8.177173913043477
+          },
+          {
+            "word": "it.",
+            "startSec": 8.215217391304348,
+            "endSec": 8.581521739130434
+          }
+        ]
+      },
+      {
+        "kind": "conclusion",
+        "text": "The Father who runs to the wanderer also comes out to plead with the worker.",
+        "highlight": "The Father who runs to the wanderer also comes out to plead with the worker.",
+        "holdSec": 2,
+        "audioFile": "60-conclusion.mp3",
+        "durationSec": 4.133152,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.221
+          },
+          {
+            "word": "Father",
+            "startSec": 0.29,
+            "endSec": 0.604
+          },
+          {
+            "word": "who",
+            "startSec": 0.65,
+            "endSec": 0.766
+          },
+          {
+            "word": "runs",
+            "startSec": 0.824,
+            "endSec": 1.045
+          },
+          {
+            "word": "to",
+            "startSec": 1.103,
+            "endSec": 1.173
+          },
+          {
+            "word": "the",
+            "startSec": 1.231,
+            "endSec": 1.3
+          },
+          {
+            "word": "wanderer",
+            "startSec": 1.358,
+            "endSec": 1.811
+          },
+          {
+            "word": "also",
+            "startSec": 1.881,
+            "endSec": 2.206
+          },
+          {
+            "word": "comes",
+            "startSec": 2.276,
+            "endSec": 2.519
+          },
+          {
+            "word": "out",
+            "startSec": 2.566,
+            "endSec": 2.728
+          },
+          {
+            "word": "to",
+            "startSec": 2.775,
+            "endSec": 2.844
+          },
+          {
+            "word": "plead",
+            "startSec": 2.926,
+            "endSec": 3.181
+          },
+          {
+            "word": "with",
+            "startSec": 3.228,
+            "endSec": 3.367
+          },
+          {
+            "word": "the",
+            "startSec": 3.413,
+            "endSec": 3.483
+          },
+          {
+            "word": "worker.",
+            "startSec": 3.541,
+            "endSec": 4.133
+          }
+        ]
+      },
+      {
+        "kind": "scripture",
+        "verse": "For this son of mine was dead and is alive again! He was lost and is found!\u2019 So they began to celebrate.",
+        "citation": "Luke 15:24",
+        "holdSec": 1,
+        "translation": "BSB",
+        "audioFile": "61-scripture.mp3",
+        "durationSec": 8.245329,
+        "words": [
+          {
+            "word": "Luke",
+            "startSec": 0,
+            "endSec": 0.372
+          },
+          {
+            "word": "15:24.",
+            "startSec": 0.395,
+            "endSec": 1.44
+          },
+          {
+            "word": "For",
+            "startSec": 1.72,
+            "endSec": 1.941
+          },
+          {
+            "word": "this",
+            "startSec": 1.987,
+            "endSec": 2.126
+          },
+          {
+            "word": "son",
+            "startSec": 2.173,
+            "endSec": 2.347
+          },
+          {
+            "word": "of",
+            "startSec": 2.393,
+            "endSec": 2.451
+          },
+          {
+            "word": "mine",
+            "startSec": 2.509,
+            "endSec": 2.718
+          },
+          {
+            "word": "was",
+            "startSec": 2.753,
+            "endSec": 2.8810000000000002
+          },
+          {
+            "word": "dead",
+            "startSec": 2.951,
+            "endSec": 3.206
+          },
+          {
+            "word": "and",
+            "startSec": 3.2640000000000002,
+            "endSec": 3.3689999999999998
+          },
+          {
+            "word": "is",
+            "startSec": 3.427,
+            "endSec": 3.508
+          },
+          {
+            "word": "alive",
+            "startSec": 3.566,
+            "endSec": 3.891
+          },
+          {
+            "word": "again!",
+            "startSec": 3.926,
+            "endSec": 4.46
+          },
+          {
+            "word": "He",
+            "startSec": 4.74,
+            "endSec": 4.949
+          },
+          {
+            "word": "was",
+            "startSec": 4.995,
+            "endSec": 5.1000000000000005
+          },
+          {
+            "word": "lost",
+            "startSec": 5.158,
+            "endSec": 5.413
+          },
+          {
+            "word": "and",
+            "startSec": 5.46,
+            "endSec": 5.541
+          },
+          {
+            "word": "is",
+            "startSec": 5.588,
+            "endSec": 5.6690000000000005
+          },
+          {
+            "word": "found!\u2019",
+            "startSec": 5.727,
+            "endSec": 6.319
+          },
+          {
+            "word": "So",
+            "startSec": 6.599,
+            "endSec": 6.839217391304348
+          },
+          {
+            "word": "they",
+            "startSec": 6.889217391304348,
+            "endSec": 7.0153043478260875
+          },
+          {
+            "word": "began",
+            "startSec": 7.066391304347826,
+            "endSec": 7.330521739130435
+          },
+          {
+            "word": "to",
+            "startSec": 7.381608695652174,
+            "endSec": 7.444652173913044
+          },
+          {
+            "word": "celebrate.",
+            "startSec": 7.507695652173913,
+            "endSec": 8.265304347826087
+          }
+        ]
+      },
+      {
+        "kind": "step",
+        "stepIndex": 2,
+        "stepLeadSec": 0.9,
+        "steps": ["WATCH", "REFLECT", "PRAY"],
+        "audioFile": "62-step-pray.mp3",
+        "durationSec": 2.285556,
+        "words": [
+          {
+            "word": "Let's",
+            "startSec": 0,
+            "endSec": 0.255
+          },
+          {
+            "word": "bring",
+            "startSec": 0.313,
+            "endSec": 0.476
+          },
+          {
+            "word": "this",
+            "startSec": 0.534,
+            "endSec": 0.673
+          },
+          {
+            "word": "to",
+            "startSec": 0.72,
+            "endSec": 0.801
+          },
+          {
+            "word": "God.",
+            "startSec": 0.859,
+            "endSec": 1.393
+          }
+        ]
+      },
+      {
+        "kind": "questions",
+        "questions": [
+          "Whose homecoming to God would you find hardest to celebrate, and where are you standing while the music plays?"
+        ],
+        "prayer": "Tell God about the person whose forgiveness you have quietly resented. Ask him for his own gladness over them.",
+        "askLabel": "First, ask yourself",
+        "prayLabel": "Talk to God about it",
+        "questionAtSec": 1.974,
+        "prayerAtSec": 9.616,
+        "prayerTextAtSec": 11.195,
+        "audioFile": "63-questions.mp3",
+        "durationSec": 21.354467,
+        "holdSec": 10
+      }
+    ],
+    "bgFile": "bg.mp4",
+    "introHoldSec": 0,
+    "outroHoldSec": 8,
+    "bgPlaybackRate": 1,
+    "bgDurationSec": 269.67424100000034,
+    "stepRing": true,
+    "filmCaptionStyle": "scroll",
+    "markLayout": "side"
+  },
+  "devotional": {
+    "reflection": {
+      "paragraphs": [
+        {
+          "text": "Picture the older son coming in from the field. His back aches. His hands are dirty. And the house is full of music and dancing. Nobody came to tell him. He has to ask a servant what is going on. He stops at the door. Many of us who have served a long time know exactly where he is standing.",
+          "role": "reflection"
+        },
+        {
+          "text": "His case is real. He stayed. He obeyed. His brother took his share of everything the family owned and burned through it far from home. Now the one who wasted it all gets the party.",
+          "role": "reflection"
+        },
+        {
+          "text": "Look at where the younger son had ended up. Feeding pigs. For a Jewish listener, swine were regarded as the most unclean and the most abhorred of all animals. This boy had fallen about as far from his father's house as a son could fall.",
+          "role": "history",
+          "mark": {
+            "label": "Historical context",
+            "source": "Easton's & Smith's Bible Dictionaries"
+          }
+        },
+        {
+          "text": "So the older brother is not angry over nothing. That is the son being welcomed. The one who longed to eat what the pigs were eating.",
+          "role": "reflection"
+        },
+        {
+          "text": "Now look at how he was welcomed. The best robe is brought out. In a household, producing the best robe was a mark of special honor. Then the fattened calf. Animals were rarely slaughtered except for a guest or a feast.",
+          "role": "history"
+        },
+        {
+          "text": "The father did not quietly slip his son back in as a hired hand. He honored him in front of the whole household. And that is the very thing the older son cannot bear.",
+          "role": "reflection"
+        },
+        {
+          "text": "Jesus tells this story to Pharisees and scribes who were grumbling because he ate with sinners. The older brother is their portrait. But he is also a portrait of people in the church in every age, who worry that the door of grace is open too wide. That spirit grows from forgetting how much we ourselves have been given. Someone who knows he stands only by grace does not talk like the older brother.",
+          "role": "classic",
+          "mark": {
+            "label": "Commentary",
+            "source": "J. C. Ryle (1816\u20131900)"
+          }
+        },
+        {
+          "text": "Now notice the father. Earlier he ran to the son who came home. Here he walks out to the son who never left. He does not scold. He pleads. Son, you are always with me. All that is mine is yours.",
+          "role": "reflection"
+        },
+        {
+          "text": "In verse 32 the father says it was fitting to celebrate. The word Luke uses there carries necessity. It means one must. This had to happen.",
+          "role": "language",
+          "mark": {
+            "label": "Original language",
+            "source": "Abbott-Smith's Greek Lexicon"
+          }
+        },
+        {
+          "text": "The father is not saying the feast was a nice touch. He is saying that when a dead son comes alive, celebration is not optional.",
+          "role": "reflection"
+        },
+        {
+          "text": "The return of any soul ought to bring joy to everyone who sees it. The only questions worth asking are these. Is he home? Was the dead one made alive? If so, gladness is the right answer.",
+          "role": "classic"
+        },
+        {
+          "text": "Then the story simply stops. We never hear whether the older son went in. Jesus leaves the door open, and the Pharisees standing in it. He leaves us standing there too.",
+          "role": "reflection"
+        },
+        {
+          "text": "Inside, Christ is at the table with sinners. The music is already playing. And the Father's plea to his faithful children is the same gift he gave the wanderer: his own gladness, waiting for them to share it.",
+          "role": "reflection"
+        }
+      ]
+    }
+  }
+}

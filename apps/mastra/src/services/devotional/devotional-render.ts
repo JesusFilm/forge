@@ -1271,7 +1271,7 @@ function renderGl(): string | undefined {
   return process.platform === "darwin" ? "angle" : undefined
 }
 
-function runRender(
+export function runRender(
   manifest: string,
   out: string,
   comp: string,
@@ -1559,6 +1559,11 @@ export type RenderOptions = {
    *  build a fast still-frame preview or just play the trimmed clip directly,
    *  instead of waiting on a full render to see the same thing. */
   stopBeforeRender?: boolean
+  /** Stage everything, write the source pack (`<name>.source/`, see
+   *  source-pack.ts) and skip the encode. Makes a pack for a devotional that
+   *  was rendered before packs existed, at zero TTS cost and without a second
+   *  multi-minute render. Returns the pack dir in place of a video path. */
+  packOnly?: boolean
   /** Crop the background toward the faces in it instead of blind-centring it.
    *  Best-effort: without a face detector the render is unchanged. */
   faceCrop?: boolean
@@ -2982,9 +2987,12 @@ async function renderInStage(
   // preview must NOT burn the next free version number — it would leave a gap
   // and name the stills after a video that does not exist.
   const stillsOnly = Boolean(options.stills || options.stillsFrames)
-  const videoPath = stillsOnly
-    ? path.join(options.outDir, filename)
-    : await nextFreePath(options.outDir, filename)
+  // A pack-only run names its pack after the video it describes, without
+  // burning a version number for an MP4 it never writes.
+  const videoPath =
+    stillsOnly || options.packOnly
+      ? path.join(options.outDir, filename)
+      : await nextFreePath(options.outDir, filename)
   log(
     stillsOnly
       ? `stills (${aspect}) → ${videoPath.replace(/\.mp4$/, "")}-still-NN.png`
@@ -3048,6 +3056,26 @@ async function renderInStage(
   }
   const musicVolume = options.musicVolume ?? MUSIC_VOLUME_DEFAULT
   const xfadeSec = options.cardXfadeSec ?? options.xfadeSec ?? 1.2
+  const packRender = {
+    comp,
+    style,
+    layout,
+    musicVolume,
+    xfadeSec,
+    videoAudioLevel,
+    options: renderOpts,
+  }
+  if (options.packOnly) {
+    // Here the pack IS the product, so a failure fails the run.
+    return writeSourcePack({
+      stage,
+      manifest,
+      videoPath,
+      devotional: devo,
+      render: packRender,
+      log,
+    })
+  }
   await runRender(
     path.join(stage, "manifest.json"),
     videoPath,
@@ -3078,15 +3106,7 @@ async function renderInStage(
         manifest,
         videoPath,
         devotional: devo,
-        render: {
-          comp,
-          style,
-          layout,
-          musicVolume,
-          xfadeSec,
-          videoAudioLevel,
-          options: renderOpts,
-        },
+        render: packRender,
         log,
       })
     } catch (e) {

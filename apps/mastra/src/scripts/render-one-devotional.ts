@@ -74,6 +74,8 @@ async function main() {
       // the only honest way to answer "how long does the music play alone at the
       // end" — the constants in timing.ts are only part of the sum.
       stopBeforeRender: process.argv.includes("--stop-before-render"),
+      // Writes only the source pack (what shorts are cut from), no MP4.
+      packOnly: process.argv.includes("--pack-only"),
       // THE SERIES LOOK IS THE DEFAULT. Every one of these used to be opt-in
       // and each fails silently when forgotten: the three YouTube cuts of
       // 2026-09-15 went out with a five-second empty cover and no voice-synced

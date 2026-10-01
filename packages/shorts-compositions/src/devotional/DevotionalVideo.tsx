@@ -945,6 +945,23 @@ function VideoSubtitles({
       />
     )
   }
+  // 9:16 (the film short cut from a LUMO devotional, feat-573): the same
+  // scrolling verses, sized to the frame's width and hung in the blurred
+  // band under the film window, where portrait captions already sit.
+  if (karaokeMode === "scroll" && !isLandscape && !fullBleed) {
+    const w = frameWidth ?? 1080
+    const h = frameHeight ?? 1920
+    return (
+      <ScrollingScripture
+        cues={cues}
+        t={t}
+        frameWidth={w}
+        frameHeight={h}
+        unit={w / 1080}
+        topPx={(h * VIDEO_WINDOW_BOTTOM_PCT) / 100 + px(40)}
+      />
+    )
+  }
   const withVerse =
     isLandscape && !fullBleed && cues.some((c) => c.verse != null)
   const first = cues[0]

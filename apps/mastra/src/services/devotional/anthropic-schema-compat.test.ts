@@ -31,6 +31,7 @@ import {
 import { _internal as mfWriterInternal } from "./message-first-writer"
 import { _internal as researchInternal } from "./research-brief"
 import { _internal as storytellerInternal } from "./storyteller-writer"
+import { _internal as shortsInternal } from "./shorts-cutdown"
 
 /**
  * Regression guard for the real OpenRouter→Anthropic structured-output contract.
@@ -118,6 +119,8 @@ describe("Anthropic structured-output schema compatibility", () => {
     // Storyteller path.
     "research-brief": researchInternal.JSON_SCHEMA,
     "storyteller-writer": storytellerInternal.JSON_SCHEMA,
+    // Shorts cut-down (feat-573).
+    "shorts-cutdown": shortsInternal.JSON_SCHEMA,
   }
 
   /** Modules covered above, by filename — `hook-picker` contributes two. */

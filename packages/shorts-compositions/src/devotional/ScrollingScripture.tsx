@@ -108,6 +108,8 @@ export function ScrollingScripture({
   frameWidth,
   frameHeight,
   bleedX = 0,
+  unit,
+  topPx,
 }: {
   cues: ReadonlyArray<ScriptureCue>
   t: number
@@ -115,9 +117,16 @@ export function ScrollingScripture({
   frameHeight: number
   /** Landscape: the inset of the centred column this layer renders in. */
   bleedX?: number
+  /** Pixels per design unit. Defaults to the 16:9 frame (height / 1080);
+   *  a 9:16 short passes width / 1080 so the 839-wide block still fits. */
+  unit?: number
+  /** Top of the chapter line, px. Defaults to the 16:9 spot (657 units);
+   *  a 9:16 short sets it below the film window. */
+  topPx?: number
 }) {
   // Design units: the Figma frame is 1920 × 1080.
-  const dp = (n: number) => (n * frameHeight) / 1080
+  const dp = (n: number) => n * (unit ?? frameHeight / 1080)
+  const top0 = topPx ?? dp(657)
   const verses = scriptureVerses(cues)
   const all = verses.flatMap((v) => v.words)
   const listRef = useRef<HTMLDivElement>(null)
@@ -204,7 +213,7 @@ export function ScrollingScripture({
         style={{
           position: "absolute",
           left: left - dp(140),
-          top: dp(640),
+          top: top0 - dp(17),
           width: blockW + dp(280),
           height: dp(420),
           backdropFilter: `blur(${dp(12)}px)`,
@@ -220,7 +229,7 @@ export function ScrollingScripture({
         style={{
           position: "absolute",
           left,
-          top: dp(657),
+          top: top0,
           width: blockW,
           display: "flex",
           flexDirection: "column",
@@ -251,7 +260,7 @@ export function ScrollingScripture({
         style={{
           position: "absolute",
           left,
-          top: dp(657 + 50 + 20 + 24),
+          top: top0 + dp(50 + 20 + 24),
           width: blockW,
           height: windowH,
           overflow: "hidden",
