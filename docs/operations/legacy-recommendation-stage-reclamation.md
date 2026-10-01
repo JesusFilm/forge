@@ -31,6 +31,13 @@ deployment and measured filesystem recovery still apply. A compatible compact im
 can roll back application code, but cannot restore the discarded legacy observations.
 Retention verification in feat-554 remains independent and open.
 
+The first numbered-migration deployment timed out and rolled back. The current
+plan's recovery section prepares immutable retirement markers in autocommitted
+500-parent pages, then replays the unchanged migration only after checksum-bound
+Prisma recovery. Both deployers share a bounded session advisory lock. This
+preparation may persist retired markers while stage rows still exist; only the
+final truncate reclaims files. Do not restart the former finite campaign.
+
 ## Future production entry gates
 
 Keep feat-554 and feat-555 open until their actual production gates pass:

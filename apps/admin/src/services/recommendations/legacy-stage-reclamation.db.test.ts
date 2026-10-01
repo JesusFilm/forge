@@ -1,9 +1,22 @@
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { Client } from "pg"
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 import type { PrismaClient } from "@prisma/client"
 import { env } from "@/config/env"
+import {
+  prepareLegacyStageMarkers,
+  withLegacyStageRecovery,
+  LEGACY_STAGE_MIGRATION,
+} from "@/scripts/legacy-stage-migration-recovery"
 import { loadRecommendationRequestDetail } from "./admin-ops/detail.service"
 import { purgeExpiredRecommendationRequests } from "./retention.service"
 import {
@@ -262,6 +275,129 @@ describe.skipIf(!enabled)(
       } finally {
         await blocker.query("ROLLBACK")
         await blocker.end()
+      }
+    })
+
+    it("prepares retirement in separate bounded pages without deleting evidence, then completes the unchanged migration", async () => {
+      const first = await fixture("legacy")
+      const second = await fixture("legacy")
+      const compact = await fixture("compact")
+      const compactBefore = await snapshot(compact.requestId)
+      const stages = await db.recommendationCandidateStageEvidence.count()
+      const result = await prepareLegacyStageMarkers(controller, 1)
+      expect(result).toEqual({ scanned: 3, retired: 2, pages: 3 })
+      expect(await db.recommendationCandidateStageEvidence.count()).toBe(stages)
+      const a = await db.recommendationCandidateRun.findUniqueOrThrow({
+        where: { id: first.id },
+      })
+      const b = await db.recommendationCandidateRun.findUniqueOrThrow({
+        where: { id: second.id },
+      })
+      expect(a.legacyDetailRetiredAt).toBeInstanceOf(Date)
+      expect(b.legacyDetailRetiredAt).toBeInstanceOf(Date)
+      expect(await prepareLegacyStageMarkers(controller, 1)).toEqual({
+        scanned: 3,
+        retired: 0,
+        pages: 3,
+      })
+      expect(
+        await db.recommendationCandidateRun.findUniqueOrThrow({
+          where: { id: first.id },
+        }),
+      ).toEqual(a)
+      await controller.query(bulkRetirementSql)
+      expect(await db.recommendationCandidateStageEvidence.count()).toBe(0)
+      expect(await snapshot(compact.requestId)).toEqual(compactBefore)
+    })
+
+    it("keeps committed marker pages and all evidence when a later page is blocked, then resumes idempotently", async () => {
+      const first = await fixture("legacy")
+      const second = await fixture("legacy")
+      const stageCount = await db.recommendationCandidateStageEvidence.count()
+      const blocker = await connection()
+      try {
+        await blocker.query("BEGIN")
+        await blocker.query(
+          "SELECT id FROM recommendation_candidate_run WHERE id=$1 FOR UPDATE",
+          [second.id],
+        )
+        await expect(
+          prepareLegacyStageMarkers(controller, 1),
+        ).rejects.toMatchObject({ code: "55P03" })
+        expect(await db.recommendationCandidateStageEvidence.count()).toBe(
+          stageCount,
+        )
+        const firstAfter =
+          await db.recommendationCandidateRun.findUniqueOrThrow({
+            where: { id: first.id },
+          })
+        expect(firstAfter.legacyDetailRetiredAt).toBeInstanceOf(Date)
+        await blocker.query("ROLLBACK")
+        expect(await prepareLegacyStageMarkers(controller, 1)).toEqual({
+          scanned: 2,
+          retired: 1,
+          pages: 2,
+        })
+        expect(
+          await db.recommendationCandidateRun.findUniqueOrThrow({
+            where: { id: first.id },
+          }),
+        ).toEqual(firstAfter)
+      } finally {
+        await blocker.query("ROLLBACK")
+        await blocker.end()
+      }
+    })
+
+    it("serializes concurrent HTTP and worker recovery until migration completion", async () => {
+      await fixture("legacy")
+      const recordId = randomUUID()
+      const calls: boolean[] = []
+      vi.stubEnv("RECOMMENDATION_CANDIDATE_TRACE_FORMAT", "compact")
+      await controller.query(
+        "INSERT INTO _prisma_migrations (id,checksum,migration_name,started_at,applied_steps_count) VALUES ($1,$2,$3,now(),0)",
+        [
+          recordId,
+          createHash("sha256").update(bulkRetirementSql).digest("hex"),
+          LEGACY_STAGE_MIGRATION,
+        ],
+      )
+      const apply = async (alreadyApplied: boolean) => {
+        calls.push(alreadyApplied)
+        if (alreadyApplied) return
+        const deadline = performance.now() + 1000
+        let waiting = false
+        while (performance.now() < deadline) {
+          const result = await controller.query<{ waiting: boolean }>(
+            "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='forge-legacy-stage-migration-recovery' AND wait_event='advisory') AS waiting",
+          )
+          waiting = result.rows[0].waiting
+          if (waiting) break
+          await new Promise((resolve) => setTimeout(resolve, 10))
+        }
+        expect(waiting).toBe(true)
+        await controller.query(bulkRetirementSql)
+        await controller.query(
+          "UPDATE _prisma_migrations SET finished_at=now(),applied_steps_count=1 WHERE id=$1",
+          [recordId],
+        )
+      }
+      try {
+        const results = await Promise.allSettled([
+          withLegacyStageRecovery(apply),
+          withLegacyStageRecovery(apply),
+        ])
+        expect(results.map((result) => result.status)).toEqual([
+          "fulfilled",
+          "fulfilled",
+        ])
+        expect(calls).toEqual([false, true])
+        expect(await db.recommendationCandidateStageEvidence.count()).toBe(0)
+      } finally {
+        await controller.query("DELETE FROM _prisma_migrations WHERE id=$1", [
+          recordId,
+        ])
+        vi.unstubAllEnvs()
       }
     })
 

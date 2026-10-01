@@ -6,12 +6,19 @@ import {
   verifyLivePolicyMigrationRecovery,
 } from "./live-policy-migration-recovery"
 
+import {
+  LEGACY_STAGE_MIGRATION,
+  withLegacyStageRecovery,
+  type LegacyStageRecovery,
+} from "./legacy-stage-migration-recovery"
+
 export const RECOVERABLE_MIGRATIONS = [
   "0027_video_localized_language_slug_identity",
   "0032_video_embedding_qwen",
   "0047_video_locale_search_social_metadata",
   "0073_watch_search_candidate_exact_compatibility_identities",
   LIVE_POLICY_MIGRATION,
+  LEGACY_STAGE_MIGRATION,
 ] as const
 
 export const RECOVERABLE_MIGRATION = RECOVERABLE_MIGRATIONS[0]
@@ -28,6 +35,7 @@ type DeployRecoveryOptions = {
   transientDeployDelayMs?: number
   sleep?: (ms: number) => Promise<void>
   verifyLivePolicyRecovery?: () => Promise<void>
+  legacyStageRecovery?: LegacyStageRecovery
 }
 
 const TRANSIENT_DEPLOY_FAILURE_PATTERNS = [
@@ -142,6 +150,31 @@ export async function deployWithKnownRecovery(
 
   if (!recoverableMigration) {
     throw new Error("prisma migrate deploy failed without known P3009 recovery")
+  }
+  if (recoverableMigration === LEGACY_STAGE_MIGRATION) {
+    await (options.legacyStageRecovery ?? withLegacyStageRecovery)(
+      async (alreadyApplied) => {
+        if (!alreadyApplied) {
+          const resolve = await runner([
+            "migrate",
+            "resolve",
+            "--rolled-back",
+            LEGACY_STAGE_MIGRATION,
+          ])
+          if (resolve.code !== 0)
+            throw new Error("Legacy stage migration resolution failed")
+        }
+        const deployed = await runMigrateDeployWithTransientRetry(
+          runner,
+          options,
+        )
+        if (deployed.code !== 0)
+          throw new Error(
+            "Legacy stage migration failed after bounded preparation",
+          )
+      },
+    )
+    return
   }
   if (recoverableMigration === LIVE_POLICY_MIGRATION)
     await (
