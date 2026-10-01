@@ -78,3 +78,17 @@ or exhaustive catalogue absence. HTTP 200 does not excuse internal errors.
   separate, with observed, inferred and unmeasured claims labelled.
 - Original working-tree changes are preserved; no direct production deployment
   or fault injection is used.
+
+## Execution state
+
+The implementation and scope decisions are integrated through PRs 2538, 2539,
+2540, 2543, 2544, 2545 and 2546. Root PR 2541 reconciles the dated ledger,
+bidirectional dependencies, generated index and guidance. Independent reviews
+and required checks cover each scoped PR; normal Roadmap deployment is verified
+separately from local behavior and page-load checks.
+
+This plan stays active solely for platform feat-554: two normal failure-free
+loaded daily retention cycles must be observed. Existing daily monitoring sends
+new proof to the coordinating owner, who completes the scoped evidence PR,
+review/merge, final merged-main inventory and index update. Do not mark the plan
+complete or disable that monitor before the required closure merges.

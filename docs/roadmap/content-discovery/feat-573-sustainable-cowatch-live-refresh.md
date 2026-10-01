@@ -28,7 +28,7 @@ enabled pointer must not be reported as continuously executing co-watch.
    `owner-operator.ts` — exact immutable release, qualification, CAS and replay.
 3. `apps/admin/src/services/recommendations/cowatch/projection.service.ts` and
    `source-window.ts` — complete finite population, single publisher and bounds.
-4. `apps/admin/src/services/recommendations/retention.ts` and
+4. `apps/admin/src/services/recommendations/retention.service.ts` and
    `retention-locks.ts` — retained graph dependencies, closure and lock order.
 5. `docs/solutions/database-issues/recommendation-retention-cascade-lock-order-20260929.md`.
 
