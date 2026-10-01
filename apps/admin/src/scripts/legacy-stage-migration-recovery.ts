@@ -6,6 +6,12 @@ export const LEGACY_STAGE_MIGRATION =
   "0127_recommendation_legacy_stage_bulk_retirement"
 
 type MigrationIdentity = { migration_name: string; checksum: string }
+type MarkerPage = {
+  scanned: number
+  retired: number
+  cursor_time: string | null
+  cursor_id: string | null
+}
 export type LegacyStageRecovery = (
   apply: (alreadyApplied: boolean) => Promise<void>,
 ) => Promise<void>
@@ -38,12 +44,7 @@ export async function prepareLegacyStageMarkers(
   for (let page = 0; page < 1000; page++) {
     if (performance.now() >= deadline)
       throw new Error("Legacy marker preparation deadline exceeded")
-    const { rows } = await client.query<{
-      scanned: number
-      retired: number
-      cursor_time: string | null
-      cursor_id: string | null
-    }>(
+    const { rows }: { rows: MarkerPage[] } = await client.query<MarkerPage>(
       `WITH page AS MATERIALIZED (
         SELECT id, created_at FROM public.recommendation_candidate_run
         WHERE ($1::timestamptz IS NULL OR (created_at,id)>($1::timestamptz,$2::text))
@@ -60,7 +61,7 @@ export async function prepareLegacyStageMarkers(
         (SELECT id FROM page ORDER BY created_at DESC,id DESC LIMIT 1) AS cursor_id`,
       [cursorTime, cursorId, pageSize],
     )
-    const row = rows[0]
+    const row: MarkerPage = rows[0]
     scanned += row.scanned
     retired += row.retired
     if (row.scanned === 0) return { scanned, retired, pages: page }
