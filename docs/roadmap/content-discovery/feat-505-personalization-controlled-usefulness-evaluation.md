@@ -3,7 +3,7 @@ id: "feat-505"
 title: "Evaluate personalization usefulness with a controlled comparison"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "cancelled"
 start_date: "2026-09-15"
 duration: 5
 depends_on:
@@ -125,3 +125,14 @@ therefore no longer an activation dependency of feat-565. Its study machinery an
 scientific evidence requirements remain available for later causal measurement;
 none of the missing calibration, assignments or mature outcomes is marked passed
 or complete by the direct activation decision. Usefulness remains unmeasured.
+
+## October 2, 2026 scope decision
+
+Cancelled the controlled personalization usefulness study as an obsolete
+activation requirement. The versioned assignment, routing, extractor and study
+service code remain available, but no randomized production comparison, mature
+qualified-view effect, A/A calibration or external guardrail result is claimed.
+The September 30 direct activation decision removed this study from the
+co-watch/MMR path; cancellation does not turn the older observational CTR
+difference into causal value. Viewer benefit remains **unmeasured**. Existing
+delivery, integrity, privacy and operational health gates remain independent.

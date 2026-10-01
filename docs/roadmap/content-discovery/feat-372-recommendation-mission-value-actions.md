@@ -3,7 +3,7 @@ id: "feat-372"
 title: "Recommendation mission-value actions"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 4
 depends_on:
@@ -29,6 +29,20 @@ tags:
   - "sharing"
   - "courses"
 ---
+
+## October 2, 2026 scope decision
+
+Cancelled the remaining multi-action learning programme, not the existing Share
+behavior. `apps/web/src/lib/recommendation-content-actions.ts` emits bounded Share
+receipts from `WatchPageClient`; Admin's
+`apps/admin/src/services/recommendations/content-action.service.ts` deduplicates
+and optionally links them to a real playback episode, and the authorized request
+detail shows linked actions. Those implemented primitives do not establish the
+ticket's save/course/continuation coverage, per-action readiness or complete
+mission funnels. They are not claimed complete. Building those additional
+measurements and ranking inputs is optional for the bounded recommendation
+product. Existing Share, GA/RUM and playback signals remain active; a fresh
+failure in those paths is a separate reliability or correctness defect.
 
 ## Problem
 

@@ -3,7 +3,7 @@ id: "feat-380"
 title: "Reported-value surveys"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 5
 depends_on:
@@ -23,6 +23,15 @@ tags:
   - "surveys"
   - "privacy"
 ---
+
+## October 2, 2026 scope decision
+
+Cancelled the optional Watch survey and proxy-calibration programme. No survey
+assignment, response, propensity adjustment or reported-value comparison is
+claimed. Existing `reported_value` content-action enum and integrity handling are
+foundations, not evidence that viewers were surveyed. The current bounded
+recommendation product can proceed without a prompt or subjective-value model;
+its viewer benefit remains unmeasured. Existing playback and analytics continue.
 
 ## Problem
 
