@@ -1,5 +1,9 @@
+import { createHash } from "node:crypto"
 import { describe, expect, it, vi } from "vitest"
-import { RecommendationIntegrityService } from "./integrity.service"
+import {
+  RecommendationIntegrityService,
+  type RecommendationEligibilityReceipt,
+} from "./integrity.service"
 
 const NOW = new Date("2026-08-25T12:00:00.000Z")
 const EXPIRES = new Date("2026-09-23T12:00:00.000Z")
@@ -7,6 +11,7 @@ const EXPIRES = new Date("2026-09-23T12:00:00.000Z")
 function fixture() {
   const tx = {
     $executeRaw: vi.fn(async () => 1),
+    $queryRaw: vi.fn(async () => [{ eligible: true }]),
     recommendationOutcomeRevision: {
       findUnique: vi.fn(),
     },
@@ -57,7 +62,11 @@ function playbackReuseFixture(initialPopulation = 5) {
     createdAt: NOW,
     expiresAt: EXPIRES,
     supersededBy: null,
-    request: null,
+    request: null as {
+      id: string
+      ownerReleaseId: string | null
+      promotionSlateFence: { reasonCode: string; fencedAt: Date } | null
+    } | null,
     episode: {
       id: "episode-reuse",
       sessionDigest: "a".repeat(64),
@@ -114,10 +123,119 @@ function playbackReuseFixture(initialPopulation = 5) {
     changePrevious: (data: Record<string, unknown>) => {
       previous = { ...previous, ...data }
     },
+    // Pin the actual pre-owner-authority serialized input. This intentionally
+    // does not call a production compatibility helper to construct its oracle.
+    legacyReceipt: (
+      receipt: RecommendationEligibilityReceipt,
+      recordedInfluence?: false,
+    ) => {
+      const inputDigest = createHash("sha256")
+        .update(
+          JSON.stringify({
+            sourceType: "playback_outcome",
+            outcomeId: outcome.id,
+            classifierVersion: outcome.classifierVersion,
+            outcomeRevision: outcome.revision,
+            outcomeInputDigest: outcome.inputDigest,
+            qualifiedView: outcome.qualifiedView,
+            baseWeight: outcome.viewQualityWeight,
+            finalizedAt: outcome.episode.finalizedAt,
+            late: false,
+            replayCount: 0,
+            transportReplayCount: 0,
+            transportReplayReceiptCount: 0,
+            conflictCount: 0,
+            superseded: false,
+            promotionFence: null,
+            ...(recordedInfluence === false
+              ? { directInfluenceAllowed: false }
+              : {}),
+            measures: {
+              contributionOrdinal: 1,
+              distinctSupport: initialPopulation,
+              identityConcentration: 1 / initialPopulation,
+            },
+            decision: {
+              state: receipt.state,
+              reasonCodes: receipt.reasonCodes,
+              eligibleScopes: receipt.eligibleScopes,
+              contributionWeight: receipt.contributionWeight,
+            },
+          }),
+        )
+        .digest("hex")
+      previous = { ...previous, inputDigest }
+      return { ...receipt, inputDigest }
+    },
   }
 }
 
 describe("RecommendationIntegrityService", () => {
+  it.each([false, true])(
+    "preserves the exact legacy receipt with ambient drift=%s",
+    async (drift) => {
+      const source = playbackReuseFixture()
+      const original = await source.classify()
+      const legacy = source.legacyReceipt(original)
+      expect(legacy.inputDigest).not.toBe(original.inputDigest)
+      if (drift) source.drift()
+      expect(await source.classify()).toEqual(legacy)
+      expect(
+        source.tx.recommendationEligibilityDecision.create,
+      ).toHaveBeenCalledOnce()
+      expect(
+        source.tx.recommendationEligibilityDecision.updateMany,
+      ).toHaveBeenCalledOnce()
+    },
+  )
+
+  it.each([
+    "replay-receipt",
+    "owner-influence-denied",
+    "promotion-fence",
+    "previous-influence-false",
+  ])(
+    "does not treat legacy serialization as permission to reuse %s",
+    async (change) => {
+      const source = playbackReuseFixture()
+      const original = await source.classify()
+      source.legacyReceipt(
+        original,
+        change === "previous-influence-false" ? false : undefined,
+      )
+      source.drift()
+      if (change === "replay-receipt") {
+        source.outcome.episode.transportReplayCount = 1
+        source.outcome.episode.transportReplayReceipts.push({ id: "new-proof" })
+      }
+      if (change === "owner-influence-denied") {
+        source.outcome.request = {
+          id: "owner-request",
+          ownerReleaseId: "revoked-release",
+          promotionSlateFence: null,
+        }
+        source.tx.$queryRaw.mockResolvedValue([{ eligible: false }])
+      }
+      if (change === "promotion-fence")
+        source.outcome.request = {
+          id: "fenced-request",
+          ownerReleaseId: null,
+          promotionSlateFence: {
+            reasonCode: "promotion_rollback",
+            fencedAt: NOW,
+          },
+        }
+      const next = await source.classify()
+      expect(next.revision).toBe(2)
+      if (change === "owner-influence-denied" || change === "promotion-fence") {
+        expect(next).toMatchObject({
+          state: "excluded",
+          reasonCodes: ["promotion_rollback"],
+          eligibleScopes: [],
+        })
+      }
+    },
+  )
   it("retains the untouched positive playback receipt when only ambient measurements change", async () => {
     const source = playbackReuseFixture()
     const first = await source.classify()
@@ -183,6 +301,7 @@ describe("RecommendationIntegrityService", () => {
   it.each([
     ["not current", { isCurrent: false }],
     ["wrong source", { outcomeId: "other-outcome" }],
+    ["wrong source type", { sourceType: "CONTENT_ACTION" }],
     ["wrong policy", { policyVersion: "other-policy" }],
     ["wrong actor", { actorClass: "INTERNAL" }],
     ["changed expiry", { expiresAt: new Date(EXPIRES.getTime() - 1) }],
@@ -194,11 +313,14 @@ describe("RecommendationIntegrityService", () => {
     ["changed reason", { reasonCodes: ["aggregate_distinct_support_pending"] }],
     ["changed weight", { contributionWeight: 0.5 }],
   ])("does not reuse a playback receipt with %s", async (_label, change) => {
-    const source = playbackReuseFixture()
-    await source.classify()
-    source.drift()
-    source.changePrevious(change)
-    expect(await source.classify()).toMatchObject({ revision: 2 })
+    for (const legacy of [false, true]) {
+      const source = playbackReuseFixture()
+      const first = await source.classify()
+      if (legacy) source.legacyReceipt(first)
+      source.drift()
+      source.changePrevious(change)
+      expect(await source.classify()).toMatchObject({ revision: 2 })
+    }
   })
 
   it("classifies an immutable playback outcome through the current eligibility decision", async () => {
@@ -469,7 +591,7 @@ describe("RecommendationIntegrityService", () => {
     })
   })
 
-  it("replays an identical immutable classification digest without appending", async () => {
+  it("keeps current content-action replay idempotent without legacy compatibility", async () => {
     const { prisma, tx } = fixture()
     tx.recommendationContentAction.findUnique.mockResolvedValue({
       id: "action-replay",
@@ -511,6 +633,41 @@ describe("RecommendationIntegrityService", () => {
     expect(
       tx.recommendationEligibilityDecision.updateMany,
     ).toHaveBeenCalledOnce()
+    const legacyDigest = createHash("sha256")
+      .update(
+        JSON.stringify({
+          sourceType: "content_action",
+          actionId: "action-replay",
+          actionClass: "human_action",
+          actionDetail: null,
+          actorClass: "human_anonymous",
+          late: false,
+          replayCount: 0,
+          conflictCount: 0,
+          promotionFence: null,
+          measures: {
+            contributionOrdinal: 1,
+            distinctSupport: 1,
+            identityConcentration: 1,
+          },
+          decision: {
+            state: first.state,
+            reasonCodes: first.reasonCodes,
+            eligibleScopes: first.eligibleScopes,
+            contributionWeight: first.contributionWeight,
+          },
+        }),
+      )
+      .digest("hex")
+    expect(legacyDigest).not.toBe(first.inputDigest)
+    tx.recommendationEligibilityDecision.findFirst.mockResolvedValue({
+      ...tx.recommendationEligibilityDecision.create.mock.calls[0]![0].data,
+      inputDigest: legacyDigest,
+    })
+    expect(await service.classifyContentAction("action-replay")).toMatchObject({
+      revision: 2,
+    })
+    expect(tx.recommendationEligibilityDecision.create).toHaveBeenCalledTimes(2)
   })
 
   it("keeps a navigation-only selection excluded until an impression commits", async () => {

@@ -3,8 +3,8 @@ id: "feat-573"
 title: "Sustain live co-watch with bounded graph refresh"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
-start_date: ""
+status: "in-progress"
+start_date: "2026-10-01"
 duration: 3
 depends_on:
   - "feat-565"
@@ -71,3 +71,25 @@ production refresh is created merely by filing this ticket.
   with truthful incumbent fallback during a natural refresh failure or expiry.
 
 Complete only when refresh sustains the approved live policy within its bounds.
+
+## Implementation and release tracking
+
+The October 1 restoration implements an explicit default-off, 29-day owner grant
+with a complete seven-day source window, seven-hour maturation, five-minute
+checks and at least 12 hours between new attempts/publications. Exact grant,
+lease, pointer and influence-floor checks fence publication and activation.
+Unknown acknowledgements preserve the original attempt; capacity/eligibility
+refusals retain honest fallback.
+
+Entry points are `cowatch/refresh-policy.ts`, `refresh.service.ts`,
+`refresh.job.ts`, `refresh-retention.ts`,
+`apps/admin/src/workflows/recommendationCowatchRefresh.ts`, migration 0126 and
+`apps/admin/src/app/api/recommendations/cowatch-refresh/route.ts`.
+The operator and release procedure are documented in
+`docs/operations/recommendation-cowatch-refresh-2026-10-01.md`.
+
+Native lifecycle, integrity-reuse and serving metadata regressions passed locally.
+The owner requested keeping the existing CI workflow unchanged for this release;
+feat-591 tracks adding these PostgreSQL suites to CI separately.
+Production admission and actual refresh/serving evidence are still required;
+this ticket remains in progress until that verification is recorded.

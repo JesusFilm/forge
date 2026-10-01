@@ -4,6 +4,7 @@ import type {
   RecommendationRequestDetailData,
 } from "./detail.types"
 import { ViewingModeDecisionSchema } from "../viewing-mode"
+import { readDeliveryDiagnostics } from "../delivery-diagnostics"
 
 export function mapRecommendationRequestDetail(
   data: RecommendationDetailQueryData,
@@ -96,6 +97,7 @@ export function mapRecommendationRequestDetail(
     classifierVersion: root.classifierVersion,
     seedMediaId: root.seedMediaId,
     locale: root.locale,
+    deliveryDiagnostics: readDeliveryDiagnostics(root.deliveryDiagnostics),
     expectedItemCount: root.expectedItemCount,
     state: root.state.toLowerCase() as RecommendationRequestDetailData["state"],
     result:

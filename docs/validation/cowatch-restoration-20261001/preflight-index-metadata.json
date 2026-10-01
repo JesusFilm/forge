@@ -1,0 +1,157 @@
+[
+  [
+    {
+      "observed_at": "2026-09-30T19:40:50.713Z",
+      "read_only": "on"
+    }
+  ],
+  [
+    {
+      "relname": "recommendation_cowatch_source_contribution",
+      "estimated_rows": "20040",
+      "heap_bytes": "12632064",
+      "index_bytes": "8192000",
+      "n_live_tup": "20040",
+      "n_dead_tup": "0",
+      "last_analyze": null,
+      "last_autoanalyze": "2026-09-30T00:56:19.595Z"
+    },
+    {
+      "relname": "recommendation_eligibility_decision",
+      "estimated_rows": "193871",
+      "heap_bytes": "90210304",
+      "index_bytes": "120635392",
+      "n_live_tup": "208331",
+      "n_dead_tup": "9861",
+      "last_analyze": null,
+      "last_autoanalyze": "2026-09-29T02:09:00.110Z"
+    },
+    {
+      "relname": "recommendation_outcome_revision",
+      "estimated_rows": "298378",
+      "heap_bytes": "160169984",
+      "index_bytes": "289808384",
+      "n_live_tup": "305468",
+      "n_dead_tup": "34",
+      "last_analyze": null,
+      "last_autoanalyze": "2026-09-29T11:57:34.838Z"
+    },
+    {
+      "relname": "recommendation_playback_episode",
+      "estimated_rows": "194416",
+      "heap_bytes": "84811776",
+      "index_bytes": "218537984",
+      "n_live_tup": "195914",
+      "n_dead_tup": "11090",
+      "last_analyze": null,
+      "last_autoanalyze": "2026-09-30T14:10:03.717Z"
+    },
+    {
+      "relname": "recommendation_playback_fact",
+      "estimated_rows": "1773702",
+      "heap_bytes": "906625024",
+      "index_bytes": "729047040",
+      "n_live_tup": "1916346",
+      "n_dead_tup": "850",
+      "last_analyze": null,
+      "last_autoanalyze": "2026-09-29T11:07:31.537Z"
+    }
+  ],
+  [
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_capability_key",
+      "indexdef": "CREATE UNIQUE INDEX recommendation_episode_capability_key ON public.recommendation_playback_episode USING btree (capability_jti)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_claim_nonce_key",
+      "indexdef": "CREATE UNIQUE INDEX recommendation_episode_claim_nonce_key ON public.recommendation_playback_episode USING btree (claim_nonce_digest)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_created_idx",
+      "indexdef": "CREATE INDEX recommendation_episode_created_idx ON public.recommendation_playback_episode USING btree (created_at, id)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_finalization_due_idx",
+      "indexdef": "CREATE INDEX recommendation_episode_finalization_due_idx ON public.recommendation_playback_episode USING btree (finalization_due_at, id) INCLUDE (generation, active_until, expires_at) WHERE (finalization_due_at IS NOT NULL)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_finalized_idx",
+      "indexdef": "CREATE INDEX recommendation_episode_finalized_idx ON public.recommendation_playback_episode USING btree (finalized_at, id)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_request_idx",
+      "indexdef": "CREATE INDEX recommendation_episode_request_idx ON public.recommendation_playback_episode USING btree (request_id)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_request_item_id_key",
+      "indexdef": "CREATE UNIQUE INDEX recommendation_episode_request_item_id_key ON public.recommendation_playback_episode USING btree (request_id, item_id, id)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_selection_key",
+      "indexdef": "CREATE UNIQUE INDEX recommendation_episode_selection_key ON public.recommendation_playback_episode USING btree (selection_id)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_selection_lineage_key",
+      "indexdef": "CREATE UNIQUE INDEX recommendation_episode_selection_lineage_key ON public.recommendation_playback_episode USING btree (request_id, item_id, selection_id)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_session_created_idx",
+      "indexdef": "CREATE INDEX recommendation_episode_session_created_idx ON public.recommendation_playback_episode USING btree (session_digest, created_at DESC, id DESC)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_source_created_idx",
+      "indexdef": "CREATE INDEX recommendation_episode_source_created_idx ON public.recommendation_playback_episode USING btree (discovery_source, created_at, id)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_episode_state_deadline_idx",
+      "indexdef": "CREATE INDEX recommendation_episode_state_deadline_idx ON public.recommendation_playback_episode USING btree (state, active_until)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_playback_episode_expires_at_idx",
+      "indexdef": "CREATE INDEX recommendation_playback_episode_expires_at_idx ON public.recommendation_playback_episode USING btree (expires_at)"
+    },
+    {
+      "tablename": "recommendation_playback_episode",
+      "indexname": "recommendation_playback_episode_pkey",
+      "indexdef": "CREATE UNIQUE INDEX recommendation_playback_episode_pkey ON public.recommendation_playback_episode USING btree (id)"
+    },
+    {
+      "tablename": "recommendation_playback_fact",
+      "indexname": "recommendation_fact_episode_event_key",
+      "indexdef": "CREATE UNIQUE INDEX recommendation_fact_episode_event_key ON public.recommendation_playback_fact USING btree (episode_id, event_id)"
+    },
+    {
+      "tablename": "recommendation_playback_fact",
+      "indexname": "recommendation_fact_episode_sequence_key",
+      "indexdef": "CREATE UNIQUE INDEX recommendation_fact_episode_sequence_key ON public.recommendation_playback_fact USING btree (episode_id, sequence)"
+    },
+    {
+      "tablename": "recommendation_playback_fact",
+      "indexname": "recommendation_fact_request_received_idx",
+      "indexdef": "CREATE INDEX recommendation_fact_request_received_idx ON public.recommendation_playback_fact USING btree (request_id, received_at)"
+    },
+    {
+      "tablename": "recommendation_playback_fact",
+      "indexname": "recommendation_playback_fact_expires_at_idx",
+      "indexdef": "CREATE INDEX recommendation_playback_fact_expires_at_idx ON public.recommendation_playback_fact USING btree (expires_at)"
+    },
+    {
+      "tablename": "recommendation_playback_fact",
+      "indexname": "recommendation_playback_fact_pkey",
+      "indexdef": "CREATE UNIQUE INDEX recommendation_playback_fact_pkey ON public.recommendation_playback_fact USING btree (id)"
+    }
+  ]
+]

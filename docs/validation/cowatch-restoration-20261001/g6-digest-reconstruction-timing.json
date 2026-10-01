@@ -1,0 +1,41 @@
+{
+  "sqlSha256": "d5e9b6ea9ed8d1625cf0250a645376dd85953b20ca04a6f8a16c743d86e41bd4",
+  "transportExitCode": 0,
+  "rawOutputRetained": false,
+  "records": [
+    {
+      "probe": "cowatch_digest_aggregate",
+      "readOnly": true,
+      "runtimeCommit": "99554c8b0759ca4d88d02a0d63bf518e0a89b4cf",
+      "observedAt": "2026-09-30T19:37:09.533Z",
+      "observedSources": "6680",
+      "observedSuccessors": "23",
+      "groups": {
+        "within_60s_at_or_before_invalidation": {
+          "compared": 1,
+          "currentFormatMatchesSuccessor": 1,
+          "currentFormatWithOldMeasuresMatchesCaptured": 0,
+          "legacyWithoutDirectInfluenceMatchesCaptured": 1,
+          "legacyWithoutDirectInfluenceMatchesSuccessor": 0,
+          "neitherCapturedFormatMatches": 0
+        },
+        "within_60s_after_invalidation": {
+          "compared": 11,
+          "currentFormatMatchesSuccessor": 11,
+          "currentFormatWithOldMeasuresMatchesCaptured": 0,
+          "legacyWithoutDirectInfluenceMatchesCaptured": 7,
+          "legacyWithoutDirectInfluenceMatchesSuccessor": 0,
+          "neitherCapturedFormatMatches": 4
+        },
+        "later": {
+          "compared": 11,
+          "currentFormatMatchesSuccessor": 9,
+          "currentFormatWithOldMeasuresMatchesCaptured": 0,
+          "legacyWithoutDirectInfluenceMatchesCaptured": 8,
+          "legacyWithoutDirectInfluenceMatchesSuccessor": 0,
+          "neitherCapturedFormatMatches": 3
+        }
+      }
+    }
+  ]
+}

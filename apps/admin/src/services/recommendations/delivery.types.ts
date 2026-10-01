@@ -18,6 +18,10 @@ import type { ExperimentAssignmentResolution } from "./experiment/assignment"
 import type { RecommendationServingState } from "./manifest.service"
 import type { RecommendationRecentContext } from "./recent-context.service"
 import type { DeliveryCapabilityBinding } from "./token.service"
+import type {
+  CuratedDeliveryDiagnostics,
+  SemanticRetrievalDiagnostics,
+} from "./delivery-diagnostics"
 
 export type DeliveryTokenService = {
   activeKid: string
@@ -81,6 +85,7 @@ export type DeliveryDependencies = {
     audioLanguageSlug: string
     limit: number
     deadlineAt: number
+    onDiagnostics?: (diagnostics: SemanticRetrievalDiagnostics) => void
   }): Promise<SemanticCandidatePoolItem[]>
   retrieveCuratedFallback?: (input: {
     seedMediaId: string
@@ -88,6 +93,7 @@ export type DeliveryDependencies = {
     audioLanguageSlug: string
     excludedMediaIds: readonly string[]
     deadlineAt: number
+    onDiagnostics?: (diagnostics: CuratedDeliveryDiagnostics) => void
   }) => Promise<CandidateNomination[]>
   recheckCached(
     items: SemanticCandidatePoolItem[],
@@ -179,6 +185,7 @@ export type DeliveryDependencies = {
 export type DeliveryInput = {
   caller: Principal | null
   seedMediaId: string
+  /** Requested presentation locale. Chinese script variants retrieve zh transcripts. */
   locale: string
   audioLanguageSlug: string
   sessionDigest: string
