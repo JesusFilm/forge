@@ -38,6 +38,7 @@ type DetailsActionRowProps = {
   title: string | null
   onOpenLanguage: () => void
   onOpenSubtitles: () => void
+  onOpenFeedback: () => void
   metadataReady?: boolean
   // Pill-identified so the consumer can tell "focus left the row" from a
   // within-row hop: tvOS delivers the NEW pill's focus BEFORE the old pill's
@@ -52,6 +53,7 @@ export function DetailsActionRow({
   title,
   onOpenLanguage,
   onOpenSubtitles,
+  onOpenFeedback,
   onRowFocus,
   onRowBlur,
   metadataReady = true,
@@ -253,6 +255,15 @@ export function DetailsActionRow({
             onPress={() => openModal(shareUrl, "Scan to share on your phone")}
             onFocus={() => onRowFocus?.("share")}
             onBlur={() => onRowBlur?.("share")}
+          />
+        ) : null}
+        {process.env.EXPO_PUBLIC_TV_FEEDBACK_URL ? (
+          <SecondaryPill
+            icon="chatbox-ellipses-outline"
+            label="Send feedback"
+            onPress={onOpenFeedback}
+            onFocus={() => onRowFocus?.("feedback")}
+            onBlur={() => onRowBlur?.("feedback")}
           />
         ) : null}
       </TVFocusGuideView>

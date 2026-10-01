@@ -107,6 +107,19 @@ export function SettingsScreen() {
         />
       </View>
 
+      {process.env.EXPO_PUBLIC_TV_FEEDBACK_URL ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Help</Text>
+          <SettingsRow
+            testID="settings-send-feedback-row"
+            icon="chatbox-ellipses-outline"
+            label="Send feedback"
+            onPress={() => router.push("/feedback")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      ) : null}
+
       {Platform.OS === "android" ? (
         <View style={styles.section}>
           <Text style={styles.sectionHeading}>Video player</Text>
@@ -131,10 +144,11 @@ export function SettingsScreen() {
       ) : null}
       {Platform.OS === "ios" ? (
         <View style={styles.section}>
-          <Text style={styles.sectionHeading}>Player Experiment</Text>
+          <Text style={styles.sectionHeading}>Video player</Text>
           <Text style={styles.sectionNote}>
-            Native A keeps Apple’s AVKit controls. Native B uses our UIKit
-            controls and Mux thumbnails while keeping AVPlayer underneath.
+            Native A is the default and keeps Apple’s AVKit controls. Native B
+            uses our UIKit controls and Mux thumbnails while keeping AVPlayer
+            underneath.
           </Text>
           <SettingsRow
             testID="settings-existing-player-row"
