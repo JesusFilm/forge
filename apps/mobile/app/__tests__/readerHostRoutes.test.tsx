@@ -537,18 +537,17 @@ describe.each([
     )
   })
 
-  it("opens the download prompt for the shown translation, with no push", async () => {
+  // The owner (2026-10-01): the button is on the translation sheet's card.
+  it("has no download control on the reader", async () => {
     const renderer = await open()
-    await press(
-      renderer,
-      (label) =>
-        label === readerT("downloadOnDeviceAriaLabel", { name: BSB.name }),
+    const controls = renderer.root.findAll(
+      (node) =>
+        typeof node.props.onPress === "function" &&
+        node.props.accessibilityLabel ===
+          readerT("downloadOnDeviceAriaLabel", { name: BSB.name }),
     )
-    expect(presentReaderDownloadPrompt).toHaveBeenCalledTimes(1)
-    expect(
-      jest.mocked(presentReaderDownloadPrompt).mock.calls[0]?.[0],
-    ).toMatchObject({ translation: { id: "BSB" }, ref: JOHN_3_16 })
-    expect(mockRoute.push).not.toHaveBeenCalled()
+    expect(controls).toHaveLength(0)
+    expect(presentReaderDownloadPrompt).not.toHaveBeenCalled()
   })
 })
 

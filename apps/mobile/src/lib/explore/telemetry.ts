@@ -30,6 +30,9 @@ export type ExploreFirstMotionStage =
 
 export type ExploreClipFailure = "sourceError" | "missedSeek" | "timeout"
 
+/** What moved the feed: the viewer (a swipe or an action), or a clip's end. */
+export type ExploreMoveTrigger = "viewer" | "clipEnd"
+
 /** The watch intent fields a full play needs. The `origin` type makes a caller
  *  filter out other origins if `WatchIntentOrigin` ever widens. */
 export type ExploreFullPlayIntent = Pick<
@@ -82,8 +85,12 @@ export type ExploreTelemetry = {
   firstMotionStage: (stage: ExploreFirstMotionStage) => void
   /** Motion is confirmed on a new source in the active player (KTD2). */
   motionConfirmed: () => void
-  /** A committed swipe. `preloadHit`: the destination clip was already loaded. */
-  swipe: (input: { preloadHit: boolean; direction: TravelDirection }) => void
+  /** A committed move. `preloadHit`: the destination clip was already loaded. */
+  swipe: (input: {
+    preloadHit: boolean
+    direction: TravelDirection
+    trigger: ExploreMoveTrigger
+  }) => void
   rebuffer: () => void
   clipFailed: (input: {
     failure: ExploreClipFailure
@@ -128,6 +135,7 @@ type PendingSwipe = {
   at: number
   preloadHit: boolean
   direction: TravelDirection
+  trigger: ExploreMoveTrigger
   playerMode: PlayerMode
 }
 
@@ -233,6 +241,7 @@ export function createExploreTelemetry(
       explore_swipe_outcome: outcome,
       explore_swipe_to_motion_ms:
         outcome === "motion" ? now() - pending.at : null,
+      explore_swipe_trigger: pending.trigger,
       explore_player_mode: pending.playerMode,
     })
   }
@@ -332,10 +341,10 @@ export function createExploreTelemetry(
       closeSwipe("motion")
     },
 
-    swipe({ preloadHit, direction }) {
+    swipe({ preloadHit, direction, trigger }) {
       closeFirstMotion("swiped")
       closeSwipe("superseded")
-      pendingSwipe = { at: now(), preloadHit, direction, playerMode }
+      pendingSwipe = { at: now(), preloadHit, direction, trigger, playerMode }
     },
 
     rebuffer() {

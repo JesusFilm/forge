@@ -98,6 +98,44 @@ absent, reconcile current source/holds/capacity, quarantine the old private
 file, and freeze a new batch under review. Never automatically overwrite an
 uncertain or committed manifest, and never reuse the September 29 pilot files.
 
+## Batch-aware two-phase CLI preparation
+
+`apps/admin/src/scripts/retire-legacy-recommendation-detail-wave.ts` is a
+prepared speedup for a separately reviewed operator release. It calls the
+existing v2 freeze and execute service functions with **one Prisma process per
+wave phase**. It does not change the ten-run, 4,000-row, 16 MiB or transaction
+budgets, decide which IDs enter the fixed master, or retry a stopped wave.
+The existing one-manifest CLI remains available.
+
+The local operator must first prove the exact fixed-master membership and a
+fresh, typed source baseline for the complete wave. Its frozen private input
+pins the master and wave digests, target database, cutoff, deployed revision,
+six source-file hashes, this CLI's own source hash, current hold-source review,
+capacity/serving receipt, and a wave deadline shorter than 15 minutes. Every
+run and root must expire more than five minutes after that deadline. The CLI
+rechecks these gates before each freeze, dry run and ten-run execution. A
+revision change requires a fresh explicit source review; neither the CLI nor
+the operator silently accepts a new image.
+
+The freeze phase writes one mode-0600, fsynced v2 manifest per batch without
+database writes. The local operator must archive **every** manifest privately
+and fsync an acknowledgement binding their ordered digests and file hashes
+before invoking the execute phase. Execution requires that complete
+acknowledgement, dry-runs every manifest first, then calls the existing
+service once per ten-run transaction. The local operator creates an exclusive,
+fsynced execution-attempt marker before spawning the remote process. Direct
+CLI invocation or a transport retry after an uncertain result is not an
+admitted production path. A transport failure requires read-only durable-ledger
+and live typed-parity reconciliation before a new root-reviewed plan; expired
+or uncommitted manifests are quarantined, never replayed automatically.
+
+The final CLI receipt means only that its ten-run calls returned completed;
+the independent read-only ledger/live proof remains required before crediting
+progress. Expired members of the fixed master remain pending ordinary
+retention, with no replacement IDs. An exact empty stage relation and a
+separately reviewed restrictive reclamation migration are still required to
+return the remaining allocation.
+
 ## Physical reclaim remains separate
 
 Completing the roster proves only that its listed runs were processed. Reprobe

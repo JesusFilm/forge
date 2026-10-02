@@ -7,6 +7,7 @@ import { env } from "@/config/env"
 import { RECOMMENDATION_INTEGRITY_POLICY_VERSION } from "../integrity-policy"
 import { recommendationManifestDigest } from "../promotion/manifest"
 import { COWATCH_SHADOW_GENERATOR_KEY } from "./graph"
+import { loadCowatchPlayableRows } from "./candidate.service"
 import { loadCowatchInspection } from "./inspection.service"
 import {
   createDatabaseCowatchLiveSource,
@@ -1032,6 +1033,115 @@ describe.skipIf(!enabled)(
         })
       },
     )
+    it("hydrates later usable themes without crossing current content provenance or playable edition", async () => {
+      const f = await fixture()
+      await playable(f)
+      const first = await prisma.videoTranscriptChunk.update({
+        where: { id: `${f.id}-chunk` },
+        data: {
+          feltNeeds: ["", " \t\n", " ".repeat(64) + "outside-label-bound"],
+        },
+      })
+      const laterThemes = [
+        "hope",
+        ...Array.from({ length: 18 }, (_, index) => `later-${index}`),
+      ]
+      await prisma.videoTranscriptChunk.create({
+        data: {
+          id: `${f.id}-later-chunk`,
+          transcriptId: `${f.id}-transcript`,
+          language: "en",
+          chunkIndex: 1,
+          chunkId: "later",
+          text: "Later labeled transcript chunk",
+          tokenCount: 10,
+          model: first.model,
+          dimensions: first.dimensions,
+          feltNeeds: laterThemes,
+        },
+      })
+      const hydrate = async () =>
+        (
+          await loadCowatchPlayableRows(prisma, [f.mediaB], {
+            locale: "en",
+            audioLanguageSlug: f.context.audioLanguageSlug,
+          })
+        )[0]!
+      expect((await hydrate()).themes).toEqual(laterThemes.slice(0, 16))
+
+      const transcript = await prisma.videoTranscript.findUniqueOrThrow({
+        where: { id: `${f.id}-transcript` },
+      })
+      await prisma.videoTranscript.update({
+        where: { id: transcript.id },
+        data: { embeddingProvider: "inactive-provider" },
+      })
+      expect((await hydrate()).themes).toBeNull()
+      await prisma.videoTranscript.update({
+        where: { id: transcript.id },
+        data: {
+          embeddingProvider: transcript.embeddingProvider,
+          language: "es",
+        },
+      })
+      expect((await hydrate()).themes).toBeNull()
+      await prisma.videoTranscript.update({
+        where: { id: transcript.id },
+        data: { language: "en" },
+      })
+      await prisma.videoTranscriptChunk.update({
+        where: { id: `${f.id}-later-chunk` },
+        data: { language: "es" },
+      })
+      expect((await hydrate()).themes).toBeNull()
+      await prisma.videoTranscriptChunk.update({
+        where: { id: `${f.id}-later-chunk` },
+        data: { language: "en", model: "inactive-model" },
+      })
+      expect((await hydrate()).themes).toBeNull()
+      await prisma.videoTranscriptChunk.update({
+        where: { id: `${f.id}-later-chunk` },
+        data: { model: first.model },
+      })
+      await prisma.videoEdition.create({
+        data: {
+          id: `${f.id}-other-edition`,
+          coreId: `${f.id}-other-edition`,
+          name: "Other fixture edition",
+        },
+      })
+      await prisma.videoDub.update({
+        where: { id: `${f.id}-dub` },
+        data: { videoEditionId: `${f.id}-other-edition` },
+      })
+      expect((await hydrate()).themes).toBeNull()
+      await prisma.videoDub.update({
+        where: { id: `${f.id}-dub` },
+        data: { videoEditionId: `${f.id}-edition` },
+      })
+      await prisma.videoEdition.update({
+        where: { id: `${f.id}-edition` },
+        data: { deletedAt: f.now },
+      })
+      expect((await hydrate()).themes).toBeNull()
+      await prisma.videoEdition.update({
+        where: { id: `${f.id}-edition` },
+        data: { deletedAt: null },
+      })
+      expect((await hydrate()).themes).toEqual(laterThemes.slice(0, 16))
+      await prisma.videoTranscriptChunk.update({
+        where: { id: `${f.id}-later-chunk` },
+        data: {
+          feltNeeds: [...Array<string>(16).fill(""), "outside-array-bound"],
+        },
+      })
+      expect((await hydrate()).themes).toBeNull()
+      await prisma.videoTranscriptChunk.update({
+        where: { id: `${f.id}-later-chunk` },
+        data: { feltNeeds: [] },
+      })
+      expect((await hydrate()).themes).toBeNull()
+    })
     it("hydrates current content, returns exact provenance, and bounds slow authority resolution", async () => {
       const f = await fixture()
       await qualify(f)

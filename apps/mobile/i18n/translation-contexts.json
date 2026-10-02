@@ -87,6 +87,15 @@
       "visibility": "assistive technology only",
       "composition": "One stop covers a range of verses. {text} is their Bible text."
     },
+    "BibleReader.translationWithStatusAriaLabel": {
+      "role": "accessibility label of the translation pill while its translation downloads",
+      "composition": "{status} is the short phrase from BibleReader.translationDownloadingAriaStatus, such as \"downloading, 40 percent\"."
+    },
+    "BibleReader.translationDownloadingAriaStatus": {
+      "role": "spoken download status of the shown translation",
+      "visibility": "assistive technology only",
+      "composition": "Inserted as {status} into BibleReader.translationWithStatusAriaLabel, after the translation name and a comma. Start lowercase, with no final period."
+    },
     "BiblePassagePicker.bookWithNoteAriaLabel": {
       "role": "list row accessibility label",
       "visibility": "assistive technology only",

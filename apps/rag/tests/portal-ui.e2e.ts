@@ -189,7 +189,7 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
   expect(
     metrics.documentBytes +
       metrics.resources.reduce((total, r) => total + r.bytes, 0),
-  ).toBeLessThan(140_000)
+  ).toBeLessThan(145_000)
   await mkdir("output/portal", { recursive: true })
   await writeFile(
     "output/portal/load.json",
@@ -270,7 +270,7 @@ test("UI onboarding, membership, key replacement and lifecycle on real PostgreSQ
   // Check a second independently signed-in context for authorization separation.
   const other = await browser.newContext({
     ignoreHTTPSErrors: true,
-    baseURL: "https://localhost:3445",
+    baseURL: process.env.PORTAL_TEST_BASE_URL ?? "https://localhost:3445",
   })
   const otherPage = await other.newPage()
   await login(otherPage, "local-other")

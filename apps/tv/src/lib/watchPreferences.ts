@@ -11,18 +11,19 @@ export type WatchPreferences = {
   audioLanguageSlug: string | null
   /** Native Android playback by default, with an explicit React Native fallback. */
   androidPlayerVariant: "existing" | "native"
-  /** The existing player remains default; Native A and B are explicit experiments. */
+  /** Native A is the Apple TV default; Existing and Native B remain selectable. */
   nativePlayerVariant: "existing" | "native-a" | "native-b"
 }
 
 /** Versioned key so a future schema change (subtitles, wifi-only) is a migration,
  *  not a breaking read. */
 export const WATCH_PREFERENCES_STORAGE_KEY = "tv.watchPreferences.v1"
+const NATIVE_PLAYER_DEFAULT_VERSION = 2
 
 export const DEFAULT_WATCH_PREFERENCES: WatchPreferences = {
   audioLanguageSlug: null,
   androidPlayerVariant: "native",
-  nativePlayerVariant: "existing",
+  nativePlayerVariant: "native-a",
 } as const
 
 /**
@@ -56,13 +57,12 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
   }
   if (!isRecord(parsed)) return { ...DEFAULT_WATCH_PREFERENCES }
   const nativePlayerVariant =
-    parsed.nativePlayerVariant === "native-a" ||
-    parsed.nativePlayerVariant === "native-b" ||
-    parsed.nativePlayerVariant === "existing"
-      ? parsed.nativePlayerVariant
-      : parsed.nativeSwiftPlayerEnabled === true
-        ? "native-a"
-        : "existing"
+    parsed.nativePlayerVariant === "native-b"
+      ? "native-b"
+      : parsed.nativePlayerVariant === "existing" &&
+          parsed.nativePlayerDefaultVersion === NATIVE_PLAYER_DEFAULT_VERSION
+        ? "existing"
+        : "native-a"
   return {
     audioLanguageSlug: normalizeNonEmptyString(parsed.audioLanguageSlug),
     androidPlayerVariant:
@@ -84,7 +84,10 @@ export function mergeWatchPreferences(
 }
 
 export function serializeWatchPreferences(prefs: WatchPreferences): string {
-  return JSON.stringify(prefs)
+  return JSON.stringify({
+    ...prefs,
+    nativePlayerDefaultVersion: NATIVE_PLAYER_DEFAULT_VERSION,
+  })
 }
 
 /** Defaults on any read or parse failure. A swallowed read silently resets the

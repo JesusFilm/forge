@@ -12,7 +12,7 @@ export default defineConfig({
   outputDir: "./output/portal-tests",
   use: {
     launchOptions: { executablePath: process.env.PORTAL_TEST_CHROMIUM },
-    baseURL: "https://localhost:3445",
+    baseURL: process.env.PORTAL_TEST_BASE_URL ?? "https://localhost:3445",
     ignoreHTTPSErrors: true,
     viewport: { width: 1280, height: 900 },
     // Issuance responses must never enter trace, screenshot or video artifacts.

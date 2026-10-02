@@ -92,6 +92,30 @@ export type TranslationLabel = {
   noteKey: string | null
 }
 
+/** The translation pill's ring while a download runs (owner, 2026-10-01). */
+export type PillDownloadStatus = { kind: "downloading"; progress: number }
+
+// Only a running download shows. The owner dropped a cloud-check for a
+// finished one (2026-10-01); the translation sheet's card still shows it.
+export function pillDownloadStatus(
+  state: TranslationDownloadState | null,
+): PillDownloadStatus | null {
+  if (state?.kind !== "downloading") return null
+  return { kind: "downloading", progress: clamp(state.percent / 100, 0, 1) }
+}
+
+function pillStatusWords(
+  t: ReaderT,
+  state: TranslationDownloadState | null,
+): string | undefined {
+  const status = pillDownloadStatus(state)
+  return status
+    ? t("translationDownloadingAriaStatus", {
+        percent: Math.round(status.progress * 100),
+      })
+    : undefined
+}
+
 // The top bar's translation pill. It has room for the short name only, so the
 // reason for a stand-in is a note. `viewerTranslation` is the rules' choice
 // before the book check; `bookName` is the book as the shown text names it.
@@ -100,11 +124,16 @@ export function translationLabel(
   shown: ShownTranslation,
   viewerTranslation: CatalogTranslation | null,
   bookName: string,
+  /** The shown translation's download, which the pill shows. */
+  download: TranslationDownloadState | null = null,
 ): TranslationLabel {
   const { name, shortName } = shown.translation
+  const status = pillStatusWords(t, download)
   const label = {
     text: shortName,
-    accessibilityLabel: t("translationAriaLabel", { name }),
+    accessibilityLabel: status
+      ? t("translationWithStatusAriaLabel", { name, status })
+      : t("translationAriaLabel", { name }),
   }
   const noteKey = `${shown.reason}:${shown.translation.id}`
   switch (shown.reason) {
@@ -131,7 +160,7 @@ export function translationLabel(
   }
 }
 
-/** The download button's label for the shown translation (R29, R30). */
+/** The download button's label (R29, R30), on the translation sheet's card. */
 export function downloadLabel(
   t: ReaderT,
   state: TranslationDownloadState,

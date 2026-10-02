@@ -11,12 +11,12 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (September 28, 2026)
+## Status (October 2, 2026)
 
-- **Total tickets:** 65
+- **Total tickets:** 67
 - ✅ **Complete:** 57
-- 🟡 **In progress:** 1
-- 🔵 **Not started:** 7
+- 🟡 **In progress:** 2
+- 🔵 **Not started:** 8
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -88,3 +88,5 @@ from the main DS Year 1 roadmap.
 | [feat-440](feat-440-gateway-chat-base-url-host-allowlist.md)                  | Host allowlist for the gateway chat base URL                                 | jian wei | P2       | 2026-09-15 | 1    | ✅ complete    | [#2115](https://github.com/JesusFilm/forge/pull/2115)                                                        |
 | [feat-450](feat-450-chat-conversation-rename.md)                              | Chat conversation rename                                                     | jian wei | P2       | 2026-09-08 | 2    | ✅ complete    | [#2179](https://github.com/JesusFilm/forge/pull/2179), [#2181](https://github.com/JesusFilm/forge/pull/2181) |
 | [feat-464](feat-464-retire-ai-chat-memory-override.md)                        | Retire the AI-chat memory override                                           | jian wei | P2       | 2026-09-08 | 2    | ✅ complete    | [#2203](https://github.com/JesusFilm/forge/pull/2203)                                                        |
+| [feat-601](feat-601-apologist-chat-comparison.md)                             | Temporary Apologist comparison in Forge Chat                                 | jian wei | P2       | 2026-09-24 | 3    | 🟡 in-progress | [#2548](https://github.com/JesusFilm/forge/pull/2548)                                                        |
+| [feat-602](feat-602-remove-apologist-comparison.md)                           | Remove temporary Apologist comparison before public Chat release             | jian wei | P1       | 2026-10-02 | 1    | 🔵 not-started | —                                                                                                            |

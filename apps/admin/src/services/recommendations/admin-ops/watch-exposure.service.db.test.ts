@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import {
   issueWatchSurfaceDelivery,
+  recordWatchSurfaceExposure,
   recordWatchSurfaceExposureBatch,
 } from "../watch-surface-exposure.service"
 import {
@@ -58,9 +59,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         CHECK (kind IN ('rendered', 'eligible', 'selected') OR
           (kind = 'served' AND policy_version = 'watch-exposure-v2' AND visibility_capability IS NULL))`)
       await admin.query(`
-      CREATE INDEX watch_surface_exposure_window_item_idx
+      CREATE INDEX watch_surface_exposure_window_item_narrow_idx
       ON watch_surface_exposure
-      (window_id, surface, block, presentation, placement, position, item_path, kind)
+      (window_id, surface, block, presentation, placement, position)
     `)
       await admin.query(`CREATE INDEX watch_surface_exposure_aggregate_idx
         ON watch_surface_exposure (surface, block, presentation, position, occurred_at)`)
@@ -857,6 +858,203 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           ),
         ).toBe(false)
       }
+    })
+
+    it("uses distinct compact internal IDs across issued, batch and single writes without changing attribution or expiry", async () => {
+      await prisma.watchSurfaceExposure.deleteMany()
+      const caller = {
+        id: "forge-web",
+        role: "CONSUMER_BEARER" as const,
+        rateLimitBucketKey: "forge-web",
+      }
+      const now = new Date()
+      const manifest = {
+        surface: "watch-home",
+        block: "hero",
+        presentation: "hero-card",
+        placement: "hero-primary",
+        policyVersion: "watch-exposure-v2" as const,
+        sourceVersion: "c".repeat(64),
+        expiresAt: new Date(now.getTime() + 86_400_000).toISOString(),
+        items: [
+          { position: 0, itemPath: "/watch/id-zero.html" },
+          { position: 1, itemPath: "/watch/id-one.html" },
+        ],
+      }
+      const issued = await issueWatchSurfaceDelivery(
+        prisma,
+        caller,
+        {
+          manifest,
+          attemptId: randomUUID(),
+          trafficCategory: "ordinary_browser",
+        },
+        now,
+      )
+      expect(issued).toMatchObject({ status: "accepted" })
+      const base = {
+        windowId: issued.windowId!,
+        surface: manifest.surface,
+        block: manifest.block,
+        presentation: manifest.presentation,
+        placement: manifest.placement,
+        policyVersion: manifest.policyVersion,
+        position: 0,
+        itemPath: manifest.items[0].itemPath,
+        occurredAt: now.toISOString(),
+      }
+      const rendered = {
+        ...base,
+        eventId: randomUUID(),
+        kind: "rendered" as const,
+        visibilityCapability: null,
+      }
+      const eligible = {
+        ...base,
+        eventId: randomUUID(),
+        kind: "eligible" as const,
+        visibilityCapability: "unknown" as const,
+      }
+      const selected = {
+        ...base,
+        eventId: randomUUID(),
+        kind: "selected" as const,
+        visibilityCapability: null,
+      }
+      expect(
+        await recordWatchSurfaceExposureBatch(
+          prisma,
+          caller,
+          [rendered, eligible, selected],
+          now,
+        ),
+      ).toMatchObject([
+        { status: "accepted" },
+        { status: "accepted" },
+        { status: "accepted" },
+      ])
+      const repeated = { ...rendered, eventId: randomUUID() }
+      expect(
+        await recordWatchSurfaceExposure(prisma, caller, repeated, now),
+      ).toMatchObject({ status: "repeat" })
+      expect(
+        await recordWatchSurfaceExposure(prisma, caller, repeated, now),
+      ).toMatchObject({ status: "replay" })
+      expect(
+        await recordWatchSurfaceExposureBatch(
+          prisma,
+          caller,
+          [
+            {
+              ...rendered,
+              occurredAt: new Date(now.getTime() - 1000).toISOString(),
+            },
+          ],
+          now,
+        ),
+      ).toMatchObject([{ status: "conflict" }])
+
+      const rows = await prisma.watchSurfaceExposure.findMany({
+        where: { windowId: issued.windowId! },
+      })
+      expect(rows).toHaveLength(6)
+      expect(new Set(rows.map((row) => row.id)).size).toBe(rows.length)
+      expect(new Set(rows.map((row) => row.eventId)).size).toBe(rows.length)
+      expect(rows.every((row) => row.id.length === 25)).toBe(true)
+      expect(
+        rows.every(
+          (row) => row.expiresAt.getTime() === now.getTime() + 29 * 86_400_000,
+        ),
+      ).toBe(true)
+      expect(
+        rows.find((row) => row.eventId === repeated.eventId)?.duplicateCount,
+      ).toBe(1)
+      await prisma.watchSurfaceExposure.updateMany({
+        where: { windowId: issued.windowId! },
+        data: { receivedAt: now },
+      })
+      const tied = () => prisma.$queryRaw<{ eventId: string }[]>`
+        SELECT event_id AS "eventId"
+        FROM watch_surface_exposure
+        WHERE window_id = ${issued.windowId!}::uuid
+          AND kind = 'rendered' AND position = 0
+        ORDER BY occurred_at, received_at, id
+      `
+      expect(await tied()).toHaveLength(2)
+      expect(await tied()).toEqual(await tied())
+      const report = await loadAnonymousWatchExposureBreakdown(prisma, "24h", {
+        surface: manifest.surface,
+        block: manifest.block,
+        presentation: manifest.presentation,
+        placement: manifest.placement,
+        policyVersion: manifest.policyVersion,
+      })
+      expect(
+        await loadAnonymousWatchExposureBreakdown(prisma, "24h", {
+          surface: manifest.surface,
+          block: manifest.block,
+          presentation: manifest.presentation,
+          placement: manifest.placement,
+          policyVersion: manifest.policyVersion,
+        }),
+      ).toEqual(report)
+      expect(report.rows.find((row) => row.position === 0)).toMatchObject({
+        served: 1,
+        rendered: 1,
+        eligible: 1,
+        selected: 1,
+        eligibleSelected: 1,
+        repeats: 1,
+        duplicateRate: 0.2,
+      })
+      const legacyId = randomUUID()
+      await prisma.watchSurfaceExposure.create({
+        data: {
+          id: legacyId,
+          ...rendered,
+          eventId: randomUUID(),
+          occurredAt: now,
+          receivedAt: now,
+          expiresAt: new Date(now.getTime() + 29 * 86_400_000),
+        },
+      })
+      expect(
+        (
+          await prisma.watchSurfaceExposure.findUniqueOrThrow({
+            where: { id: legacyId },
+          })
+        ).id,
+      ).toBe(legacyId)
+      expect(
+        (
+          await loadAnonymousWatchExposureBreakdown(prisma, "24h", {
+            surface: manifest.surface,
+            block: manifest.block,
+            presentation: manifest.presentation,
+            placement: manifest.placement,
+            policyVersion: manifest.policyVersion,
+          })
+        ).rows.find((row) => row.position === 0),
+      ).toMatchObject({ rendered: 1, repeats: 2 })
+      const expiring = await prisma.watchSurfaceExposure.findMany({
+        where: {
+          windowId: issued.windowId!,
+          expiresAt: { lte: new Date(now.getTime() + 29 * 86_400_000 + 1) },
+        },
+        orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+        select: { id: true },
+      })
+      expect(expiring).toHaveLength(7)
+      expect(
+        await prisma.watchSurfaceExposure.deleteMany({
+          where: { id: { in: expiring.map(({ id }) => id) } },
+        }),
+      ).toMatchObject({ count: 7 })
+      expect(
+        await prisma.watchSurfaceExposure.count({
+          where: { windowId: issued.windowId! },
+        }),
+      ).toBe(0)
     })
   },
 )

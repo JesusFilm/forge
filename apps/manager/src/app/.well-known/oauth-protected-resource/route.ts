@@ -5,7 +5,7 @@ export function GET() {
   return Response.json({
     resource: studioMcpAudience(),
     authorization_servers: [env.AUTH_ISSUER_URL],
-    scopes_supported: studioOAuthScopes,
+    scopes_supported: ["offline_access", ...studioOAuthScopes],
     bearer_methods_supported: ["header"],
     resource_name: "Forge Studio",
   })

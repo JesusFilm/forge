@@ -30,6 +30,7 @@ type ReaderGlassButtonProps = {
   shape?: "circle" | "pill"
   disabled?: boolean
   style?: StyleProp<ViewStyle>
+  testID?: string
   children: ReactNode
 }
 
@@ -43,10 +44,12 @@ export function ReaderGlassButton({
   shape = "circle",
   disabled = false,
   style,
+  testID,
   children,
 }: ReaderGlassButtonProps) {
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"

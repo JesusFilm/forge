@@ -150,6 +150,12 @@ export function VerseSlider({
     setClock(next)
   }
 
+  // iOS ignores React's opacity and transform on a view that native Animated
+  // has driven, so the layer shows a new verse at rest until its change starts.
+  // A plain view hides the verse until the change's first native frame.
+  const [drawn, setDrawn] = useState<number | null>(null)
+  const gated = changeId !== null && drawn !== changeId
+
   // JS cannot read a native-driven value at once, so the progress of the
   // running change comes from its start time; the animation is linear.
   const started = useRef<{ id: number; at: number } | null>(null)
@@ -184,12 +190,25 @@ export function VerseSlider({
       useNativeDriver: true,
     })
     started.current = { id: changeId, at: performance.now() }
+    // Native sends this value only after it has drawn the frame.
+    let listening = true
+    const stopListening = () => {
+      if (listening) progress.removeListener(firstFrame)
+      listening = false
+    }
+    const firstFrame = progress.addListener(() => {
+      stopListening()
+      setDrawn(changeId)
+    })
     // A stopped change reports `finished: false`, and a late report from an
     // old change does not match the running id.
     animation.start(({ finished }) => {
       if (finished) setStage((current) => endChange(current, changeId))
     })
-    return () => animation.stop()
+    return () => {
+      stopListening()
+      animation.stop()
+    }
   }, [changeId, ready, progress, timing.duration])
 
   const direction = change?.direction ?? "forward"
@@ -236,11 +255,18 @@ export function VerseSlider({
             pointerEvents="box-none"
             style={[StyleSheet.absoluteFill, layers.incoming]}
           >
-            <VerseView
-              {...view}
-              onShown={onShown}
-              onScrollOffset={onScrollOffset}
-            />
+            <View
+              testID="bible-verse-gate"
+              collapsable={false}
+              pointerEvents="box-none"
+              style={[StyleSheet.absoluteFill, gated && styles.gated]}
+            >
+              <VerseView
+                {...view}
+                onShown={onShown}
+                onScrollOffset={onScrollOffset}
+              />
+            </View>
           </Animated.View>
         )}
         {still && (
@@ -317,5 +343,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
+  },
+  gated: {
+    opacity: 0,
   },
 })

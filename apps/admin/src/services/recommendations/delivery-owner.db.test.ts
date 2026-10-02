@@ -514,7 +514,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const operator = new RecommendationOwnerReleaseOperator({ prisma: db })
       const promotion = createRecommendationPromotionService(db)
       const actor = { id: "native-owner-operator", role: "ADMIN" as const }
-      const { items, servedItemPayload, ...template } =
+      const { items, servedItemPayload, deliveryDiagnostics, ...template } =
         await db.recommendationRequest.findFirstOrThrow({
           include: { items: true },
         })
@@ -545,6 +545,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         const request = await db.recommendationRequest.create({
           data: {
             ...template,
+            deliveryDiagnostics: deliveryDiagnostics ?? Prisma.DbNull,
             id: randomUUID(),
             deliveryJti: randomUUID(),
             ownerReleaseId: operation.operationId,

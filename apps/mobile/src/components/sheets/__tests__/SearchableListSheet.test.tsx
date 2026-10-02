@@ -152,6 +152,15 @@ function styleOf(node: RenderedNode | undefined): Record<string, unknown> {
   >
 }
 
+/** The nearest background at or above a node: the row that holds it. */
+function surfaceOf(node: RenderedNode | undefined): unknown {
+  for (let at = node ?? null; at; at = at.parent ?? null) {
+    const background = styleOf(at).backgroundColor
+    if (background !== undefined) return background
+  }
+  return undefined
+}
+
 function textNode(renderer: TestInstance, text: string): RenderedNode {
   const [node] = hosts(
     renderer,
@@ -237,7 +246,8 @@ describe("SearchableListSheet colors", () => {
         node.props.accessible === true &&
         node.props.accessibilityLabel === "Bravo",
     )
-    expect(styleOf(activeRow).backgroundColor).toBe(TODAY_SURFACE)
+    // The label sits on the row's inner part, beside any accessory.
+    expect(surfaceOf(activeRow)).toBe(TODAY_SURFACE)
   })
 
   it("draws every part in the color set a caller passes", async () => {
@@ -262,7 +272,7 @@ describe("SearchableListSheet colors", () => {
         node.props.accessible === true &&
         node.props.accessibilityLabel === "Bravo",
     )
-    expect(styleOf(activeRow).backgroundColor).toBe(READER_COLORS.surface)
+    expect(surfaceOf(activeRow)).toBe(READER_COLORS.surface)
   })
 
   it("colors the empty-search message too", async () => {

@@ -17,6 +17,26 @@ tags:
   - "operations"
 ---
 
+## October 2 NZDT status: loaded retention still open
+
+The October 1 22:51 UTC production read confirmed 25,630,932,992 B of direct
+PGDATA availability, 553,648,128 B of WAL files, healthy compact Admin HTTP and
+worker processes, zero recent legacy writes/missing compact payloads, and an
+empty 24,576-B legacy stage relation. Feat-555/575 are complete; U1–U3 storage
+efficiency is complete in feat-574. See
+`docs/reports/2026-10-02-recommendation-storage-efficiency-closeout.md` for exact
+format, capacity and retention evidence.
+
+October 1's scheduled retention eventually committed 7,846 roots and 27,216
+served descendants, but four attempts failed first. That day is **not** a
+qualifying failure-free loaded cycle; neither was September 30. Current count:
+zero. The next normal starts are October 2 and 3 at 10:30 UTC (23:30 NZDT each
+date). Each must remove actual expired roots and descendants without failure,
+with acceptable lock skips, backlog and headroom. Do not substitute a manual or
+zero-deletion run. The daily monitor remains active. No supported monthly growth
+forecast follows from the post-reclamation snapshot. If a new defect is proved,
+repair it and then re-establish two qualifying normal loaded cycles.
+
 ## Problem
 
 The remediation preserves full 29-day trace history and reduces new trace
@@ -113,6 +133,22 @@ feat-555: it may follow proven natural expiry/purge or the separately authorized
 finite early retirement and lossless conversion path. Feat-554 still requires
 two loaded normal retention cycles and capacity monitoring before it can be
 marked complete, even if feat-555 reclaims a proven-empty relation first.
+
+## October 2 Reclamation and Remaining Retention Gate
+
+`docs/reports/2026-10-02-legacy-stage-reclamation.md` records completed owner-authorized
+bulk legacy disposal: 16.431 GB relation recovery and 25.512 GB available filesystem
+space. Feat-555 and feat-575 are complete; this ticket stays in progress.
+September 30 and October 1 normal loaded cycles recovered after failures, so neither
+qualifies as failure-free acceptance. Require two normal loaded cycles with no
+failures, sufficient descendant throughput, acceptable expired backlog/lock skips
+and continued headroom. The next scheduled cycle is October 2 at 10:30 UTC.
+
+The active `recommendation-storage-daily-check` monitor runs every 24 hours and
+supersedes the earlier heartbeat schedule described above. The old finite deletion
+job is permanently stopped. Follow `unattended-latest.json` and its bulk-disposal
+receipt; never restart the expired campaign. No new monthly steady-state forecast
+or universal quality claim follows from the reclamation measurement.
 
 ## September 30 Supplement
 

@@ -67,6 +67,10 @@ export type SearchableListSheetProps<T> = {
   headerTop?: ReactNode
   // Keep `rows` in the caller's order instead of sorting them by name.
   keepRowOrder?: boolean
+  // A control at the end of the "Current" row (e.g. the Bible reader's
+  // download button). It sits beside the row's label, so a screen reader
+  // reaches it as its own element.
+  renderActiveAccessory?: (item: T) => ReactNode
   colors?: SearchableListSheetColors
   // The RUM prefix for the row and clear-search taps. The row label carries
   // translated text, so Datadog must not name the tap from it (KTD15).
@@ -104,6 +108,7 @@ export function SearchableListSheet<T>({
   emptySearchMessage,
   headerTop,
   keepRowOrder = false,
+  renderActiveAccessory,
   colors = DEFAULT_LIST_SHEET_COLORS,
   actionName = "list-sheet",
 }: SearchableListSheetProps<T>) {
@@ -309,74 +314,78 @@ export function SearchableListSheet<T>({
           >
             {t("current")}
           </Text>
-          <View
-            style={[styles.listRow, { backgroundColor: colors.surface }]}
-            // A plain View is not an accessibility element; without this the
-            // label never reaches the native tree and VoiceOver reads the
-            // child texts one by one.
-            accessible
-            accessibilityLabel={accessibleName(
-              t,
-              getPrimaryLabel(active),
-              activeStatus,
-            )}
-            accessibilityLanguage={
-              activeStatus ? undefined : activeDirection.accessibilityLanguage
-            }
-          >
-            <Ionicons name="checkmark" size={18} color={colors.accent} />
-            <View style={styles.nameColumn}>
-              <Text
-                style={[
-                  styles.listRowText,
-                  typography.body,
-                  styles.listRowTextActive,
-                  primaryText,
-                  activeDirection.style,
-                ]}
-                numberOfLines={1}
-                accessibilityLanguage={activeDirection.accessibilityLanguage}
-              >
-                {getPrimaryLabel(active)}
-              </Text>
-              {activeSecondary ? (
+          <View style={[styles.listRow, { backgroundColor: colors.surface }]}>
+            <View
+              style={styles.activeLabel}
+              // A plain View is not an accessibility element; without this the
+              // label never reaches the native tree and VoiceOver reads the
+              // child texts one by one.
+              accessible
+              accessibilityLabel={accessibleName(
+                t,
+                getPrimaryLabel(active),
+                activeStatus,
+              )}
+              accessibilityLanguage={
+                activeStatus ? undefined : activeDirection.accessibilityLanguage
+              }
+            >
+              <Ionicons name="checkmark" size={18} color={colors.accent} />
+              <View style={styles.nameColumn}>
                 <Text
                   style={[
-                    styles.nativeText,
-                    typography.bodySmall,
-                    secondaryText,
+                    styles.listRowText,
+                    typography.body,
+                    styles.listRowTextActive,
+                    primaryText,
+                    activeDirection.style,
                   ]}
-                  numberOfLines={1}
+                  // An accessory takes width, so a long name gets a second line.
+                  numberOfLines={renderActiveAccessory ? 2 : 1}
+                  accessibilityLanguage={activeDirection.accessibilityLanguage}
                 >
-                  {activeSecondary}
+                  {getPrimaryLabel(active)}
                 </Text>
-              ) : null}
-              {activeStatus ? (
-                <Text
-                  style={[
-                    styles.nativeText,
-                    typography.bodySmall,
-                    secondaryText,
-                    direction.ui,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {activeStatus}
-                </Text>
-              ) : null}
-              {activeDetail ? (
-                <Text
-                  style={[
-                    styles.nativeText,
-                    typography.bodySmall,
-                    secondaryText,
-                  ]}
-                  numberOfLines={2}
-                >
-                  {activeDetail}
-                </Text>
-              ) : null}
+                {activeSecondary ? (
+                  <Text
+                    style={[
+                      styles.nativeText,
+                      typography.bodySmall,
+                      secondaryText,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {activeSecondary}
+                  </Text>
+                ) : null}
+                {activeStatus ? (
+                  <Text
+                    style={[
+                      styles.nativeText,
+                      typography.bodySmall,
+                      secondaryText,
+                      direction.ui,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {activeStatus}
+                  </Text>
+                ) : null}
+                {activeDetail ? (
+                  <Text
+                    style={[
+                      styles.nativeText,
+                      typography.bodySmall,
+                      secondaryText,
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {activeDetail}
+                  </Text>
+                ) : null}
+              </View>
             </View>
+            {renderActiveAccessory?.(active)}
           </View>
         </View>
       )}
@@ -459,6 +468,13 @@ const styles = StyleSheet.create({
   nameColumn: {
     flex: 1,
     minWidth: 0,
+  },
+  activeLabel: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   listRowText: {
     fontFamily: "System",

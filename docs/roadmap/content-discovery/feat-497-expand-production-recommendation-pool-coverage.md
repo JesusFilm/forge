@@ -3,11 +3,10 @@ id: "feat-497"
 title: "Expand production recommendation pools beyond the initial languages"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-09-14"
 duration: 3
-depends_on:
-  - "feat-487"
+depends_on: []
 blocks: []
 tags:
   - "recommendations"
@@ -15,13 +14,30 @@ tags:
   - "admin"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+Broader curated-pool expansion is optional and is not selected for this closeout. Preserve all currently active contexts and validated immutable pools. Accepted translation/transcript/exact-audio/fallback inventory gaps do not justify language relaxation, pool mutation or reopening healthy delivery. The interrupted broader catalogue audit is not a completed audit and does not prove exhaustion.
+
+Audit anchors: `docs/operations/user-recommendations-activation-2026-09-14.md`, `apps/admin/src/services/recommendations/curated-pools.service.ts`, `docs/reports/2026-10-02-recommendation-coverage-acceptance.md`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 The source-free API and Web row are live with 51 validated locale/audio contexts.
 The owner explicitly accepted partial coverage. A broader production audit of
 2,081 contexts that passed the local snapshot lost its public PostgreSQL
 connection after more than 600 queries; it produced no completed report.
 Continue coverage work without disabling available contexts or reopening launch.
+
+The October 2 owner decision confirms this is optional coverage expansion,
+not repair of an unhealthy delivery service. Apply
+`docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`:
+valid empty/partial results do not block proceeding or automatically trigger
+inventory work. Server failures and reproduced correctness defects stay separate.
 
 ## Entry Points — Read These First
 

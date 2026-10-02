@@ -16,6 +16,7 @@ import { extractMuxPlaybackId } from "../lib/muxUrl"
 import { buildMuxStoryboardUrl } from "../lib/tvScrubPreview"
 import type { UpNextTarget } from "../contexts/VideoPlayerContext"
 import { inPlayerMenuVisible } from "./watch/playerSwitch"
+import { useFeedbackQr } from "./feedback/useFeedbackQr"
 import type {
   NativePlayerMoment,
   NativePlayerOption,
@@ -69,6 +70,16 @@ export function NativeSwiftPlayer({
   const session = useWatchSession()
   const baselineRef = useRef(startAtSeconds ?? 0)
   const lastPositionRef = useRef<PlaybackSnapshot | null>(null)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackTimestamp, setFeedbackTimestamp] = useState<
+    string | undefined
+  >()
+  const feedback = useFeedbackQr(feedbackOpen, {
+    screen: "player",
+    player: playerVariant,
+    filmTitle: title,
+    timestamp: feedbackTimestamp,
+  })
   const meaningfulStateRef = useRef(initialMeaningfulState)
   const onMeaningfulPlaybackRef = useRef(onMeaningfulPlayback)
   const onPlaybackPositionRef = useRef(onPlaybackPosition)
@@ -195,6 +206,22 @@ export function NativeSwiftPlayer({
       playerVariant={playerVariant}
       storyboardUrl={storyboardUrl ?? undefined}
       title={title}
+      feedbackAvailable={Boolean(process.env.EXPO_PUBLIC_TV_FEEDBACK_URL)}
+      feedbackVisible={feedbackOpen}
+      feedbackRows={feedback.qr?.rows.map((row) =>
+        row.map((cell) => (cell ? "1" : "0")).join(""),
+      )}
+      feedbackReference={feedback.verified?.referenceCode}
+      feedbackLoading={feedback.loading}
+      feedbackError={feedback.error}
+      onFeedbackOpen={() => {
+        setFeedbackTimestamp(
+          formatClock(lastPositionRef.current?.positionSeconds ?? 0),
+        )
+        setFeedbackOpen(true)
+      }}
+      onFeedbackClose={() => setFeedbackOpen(false)}
+      onFeedbackRetry={feedback.retry}
       startAtSeconds={startAtSeconds ?? undefined}
       audioOptions={audioOptions}
       selectedAudioId={session.activeVariant?.documentId ?? undefined}

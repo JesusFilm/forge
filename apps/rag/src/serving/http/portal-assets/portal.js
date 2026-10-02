@@ -1,5 +1,5 @@
-/* global document, window, navigator, fetch */
-/* Browser-only portal client. No storage, telemetry or automatic mutation retries. */
+/* global document, window, navigator, fetch, sessionStorage, BroadcastChannel, setTimeout, clearTimeout, URLSearchParams */
+/* Browser-only portal client. Storage contains only nonsecret per-tab view state. */
 const byId = (id) => document.getElementById(id)
 const dialog = byId("workflow")
 let identity = null
@@ -8,7 +8,69 @@ let busy = false
 let secret = null
 let revision = 0
 let lifecycle = 0
-let section = "consumers"
+const sections = new Set(["consumers", "usage", "sources", "rag", "knowledge"])
+const viewKey = "rag.portal.view"
+const signedInKey = "rag.portal.signed-in"
+const attemptKey = "rag.portal.recovery-attempt"
+const deniedNotice =
+  "Portal access has changed. Contact an administrator if you need access."
+const recoveryNotice =
+  "The session could not be restored. Continue with GitHub to try again."
+const unavailableNotice = "The portal is unavailable. Refresh to try again."
+const storedView = (() => {
+  try {
+    return JSON.parse(sessionStorage.getItem(viewKey) || "null")
+  } catch {
+    return null
+  }
+})()
+let section = sections.has(storedView?.section)
+  ? storedView.section
+  : "consumers"
+const candidateWindow = storedView?.usageWindow
+let savedUsageWindow =
+  typeof candidateWindow?.from === "string" &&
+  typeof candidateWindow?.to === "string" &&
+  candidateWindow.from.length === 16 &&
+  candidateWindow.to.length === 16
+    ? { from: candidateWindow.from, to: candidateWindow.to }
+    : null
+let expiresAt = 0
+let expiryTimer
+let lastRenewal = 0
+let recovering = false
+let pendingRecovery = false
+let pendingSiblingSignal = null
+let otherTabRecoveringUntil = 0
+const channel =
+  typeof BroadcastChannel === "function"
+    ? new BroadcastChannel("rag.portal.session")
+    : null
+function rememberView() {
+  try {
+    sessionStorage.setItem(
+      viewKey,
+      JSON.stringify({ section, usageWindow: savedUsageWindow }),
+    )
+  } catch {
+    /* Storage may be disabled. */
+  }
+}
+function marker(key) {
+  try {
+    return sessionStorage.getItem(key) === "1"
+  } catch {
+    return false
+  }
+}
+function setMarker(key, value) {
+  try {
+    if (value) sessionStorage.setItem(key, "1")
+    else sessionStorage.removeItem(key)
+  } catch {
+    /* Storage may be disabled. */
+  }
+}
 let usageView = null
 let usageModule = null
 let sourcesView = null
@@ -24,11 +86,13 @@ function dismissRowMenu() {
   rowMenu.replaceChildren()
 }
 function showSection(next) {
+  if (!sections.has(next)) return
   if (busy) return
   close()
   dismissRowMenu()
   if (next !== section) notice("")
   section = next
+  rememberView()
   document.querySelectorAll("[data-section]").forEach((node) => {
     const selected = node.dataset.section === next
     node.classList.toggle("selected", selected)
@@ -49,8 +113,7 @@ function showSection(next) {
       : "Manage API consumers, their members and access keys."
   byId("directory").hidden =
     next !== "consumers" || !identity?.managementAvailable
-  byId("signed-out").hidden =
-    !["consumers", "usage", "sources"].includes(next) || Boolean(identity)
+  byId("signed-out").hidden = Boolean(identity)
   byId("construction").hidden = ["consumers", "usage", "sources"].includes(next)
   byId("sources").hidden = next !== "sources" || !identity
   if (next !== "sources") sourcesView?.clear()
@@ -69,8 +132,7 @@ async function showSources() {
     sourcesView ??= module.createSourcesView(byId("sources"), {
       read: request,
       onUnauthorized: () => {
-        signedOut()
-        notice(messages.unauthorized)
+        void handleUnauthorized()
       },
     })
     await sourcesView.load()
@@ -92,9 +154,13 @@ async function showUsage() {
     if (!identity || section !== "usage") return
     usageView ??= module.createUsageView(byId("usage"), {
       read: request,
+      savedWindow: savedUsageWindow,
+      onWindowChange: (value) => {
+        savedUsageWindow = value
+        rememberView()
+      },
       onUnauthorized: () => {
-        signedOut()
-        notice(messages.unauthorized)
+        void handleUnauthorized()
       },
     })
     await usageView.load()
@@ -188,10 +254,13 @@ function clearSecret() {
   secret = null
   byId("dialog-content").replaceChildren()
 }
-function close() {
+function close(resumeRecovery = true) {
   if (busy) return
+  const hadSecret = !!secret
   clearSecret()
   dialog.close()
+  if (hadSecret) applyPendingSiblingSignal()
+  if (resumeRecovery && pendingRecovery) void beginRecovery()
 }
 function form(title, description) {
   clearSecret()
@@ -207,9 +276,9 @@ function form(title, description) {
   if (!dialog.open) dialog.showModal()
   return content
 }
-function showError(error, issuance) {
+function showError(error, issuance, mutation = false) {
   const message =
-    messages[error.code] ||
+    (mutation && error.code === "unauthorized" ? null : messages[error.code]) ||
     (issuance
       ? "The result could not be confirmed. Refresh the directory. If creation succeeded or the key was replaced, generate a new key; the previous response cannot be recovered."
       : "The result could not be confirmed. Refresh and review the current state before trying again.")
@@ -217,7 +286,12 @@ function showError(error, issuance) {
   if (error.code === "unauthorized") {
     clearSecret()
     dialog.close()
-    signedOut()
+    if (mutation) {
+      pendingRecovery = false
+      setMarker(attemptKey, true)
+      signedOut()
+      notice(message + " Continue with GitHub when ready.")
+    } else void handleUnauthorized()
   } else {
     close()
   }
@@ -248,18 +322,37 @@ async function mutate(
   })
   if (failure) {
     if (failure.code !== "unauthorized") await refresh().catch(() => {})
-    showError(failure, issuance)
+    const recoveryWasPending = pendingRecovery
+    pendingRecovery = false
+    showError(failure, issuance, true)
+    if (recoveryWasPending && failure.code !== "unauthorized") {
+      setMarker(attemptKey, true)
+      signedOut()
+      notice(
+        "The change could not be confirmed. Continue with GitHub when ready; review the current state before trying again.",
+      )
+    }
+    applyPendingSiblingSignal()
     return
   }
   if (onSuccess) onSuccess(result)
   else {
-    close()
+    close(false)
     notice("Changes saved.")
   }
   if (identity?.managementAvailable)
     await refresh().catch(() => {
       notice("Changes saved. The directory could not refresh; try Refresh.")
     })
+  if (pendingRecovery && !secret) {
+    pendingRecovery = false
+    setMarker(attemptKey, true)
+    signedOut()
+    notice(
+      "Changes saved. Continue with GitHub when ready to reload the directory.",
+    )
+  }
+  applyPendingSiblingSignal()
 }
 function issued(result, name, onSaved) {
   const content = form("Save your API key", "Consumer: " + name)
@@ -290,8 +383,9 @@ function issued(result, name, onSaved) {
     button(
       "I’ve saved the key",
       () => {
+        const siblingPending = !!pendingSiblingSignal
         close()
-        notice("")
+        if (!siblingPending) notice("")
         onSaved?.()
       },
       "",
@@ -627,18 +721,135 @@ function signedOut() {
   dismissRowMenu()
   showSection(section)
 }
-async function initialize() {
+function denyAccess() {
+  signedOut()
+  notice(deniedNotice)
+}
+function applyPendingSiblingSignal() {
+  if (busy || secret || !pendingSiblingSignal) return
+  const signal = pendingSiblingSignal
+  pendingSiblingSignal = null
+  if (signal.type === "restored") {
+    pendingRecovery = false
+    void initialize(false)
+    return
+  }
+  setMarker(attemptKey, true)
+  pendingRecovery = false
+  signedOut()
+  notice(
+    signal.reason === "admission_denied"
+      ? deniedNotice
+      : signal.reason === "unavailable"
+        ? "GitHub or the portal is temporarily unavailable. Continue with GitHub to retry."
+        : recoveryNotice,
+  )
+}
+function scheduleExpiry(value) {
+  clearTimeout(expiryTimer)
+  expiresAt = Date.parse(value)
+  if (Number.isFinite(expiresAt))
+    expiryTimer = setTimeout(
+      () => {
+        if (document.visibilityState === "visible") void checkSession()
+      },
+      Math.max(1000, expiresAt - Date.now() + 1000),
+    )
+}
+async function checkSession() {
+  if (
+    !marker(signedInKey) ||
+    recovering ||
+    document.visibilityState !== "visible"
+  )
+    return
+  try {
+    const result = await request("/identity")
+    scheduleExpiry(result.expiresAt)
+  } catch (error) {
+    if (["session_expired", "unauthorized"].includes(error.code))
+      void beginRecovery()
+    else if (error.code === "admission_denied") denyAccess()
+    else notice(unavailableNotice)
+  }
+}
+async function handleUnauthorized() {
+  if (!marker(signedInKey)) {
+    signedOut()
+    return
+  }
+  await checkSession()
+}
+function beginRecovery() {
+  if (recovering || !marker(signedInKey)) return
+  if (busy || secret) {
+    pendingRecovery = true
+    return
+  }
+  if (marker(attemptKey)) {
+    signedOut()
+    notice(recoveryNotice)
+    return
+  }
+  if (otherTabRecoveringUntil > Date.now()) {
+    notice("Restoring your session in another tab…")
+    setTimeout(
+      () => void checkSession(),
+      Math.max(1000, otherTabRecoveringUntil - Date.now()),
+    )
+    return
+  }
+  recovering = true
+  pendingRecovery = false
+  setMarker(attemptKey, true)
+  channel?.postMessage({ type: "recovering", until: Date.now() + 30000 })
+  notice("Restoring your session…")
+  window.location.assign("/portal/login")
+}
+async function renewOnActivity() {
+  if (
+    !identity ||
+    recovering ||
+    document.visibilityState !== "visible" ||
+    Date.now() - lastRenewal < 15 * 60000
+  )
+    return
+  lastRenewal = Date.now()
+  try {
+    const renewed = await request("/session/renew", {}, "POST")
+    scheduleExpiry(renewed.expiresAt)
+  } catch (error) {
+    if (error.code === "session_expired") void beginRecovery()
+    else if (error.code === "admission_denied") denyAccess()
+    else
+      notice(
+        "Session renewal is unavailable. Your session may expire; refresh to retry.",
+      )
+  }
+}
+async function initialize(broadcast = true) {
   document.querySelectorAll("button").forEach((node) => {
     node.disabled = false
   })
   try {
     identity = await request("/identity")
+    recovering = false
+    pendingRecovery = false
+    lastRenewal = Date.now()
+    setMarker(signedInKey, true)
+    setMarker(attemptKey, false)
+    scheduleExpiry(identity.expiresAt)
+    if (broadcast) channel?.postMessage({ type: "restored" })
     byId("signed-out").hidden = true
     const account = byId("account")
     account.replaceChildren(
       element("span", "@" + identity.login, "subtle"),
       button("Sign out", () => {
-        close()
+        pendingRecovery = false
+        close(false)
+        setMarker(signedInKey, false)
+        setMarker(attemptKey, false)
+        channel?.postMessage({ type: "signed-out" })
         void mutate("/sign-out", {}, "POST", false, () => {
           signedOut()
           notice("")
@@ -646,6 +857,13 @@ async function initialize() {
       }),
     )
     if (!identity.managementAvailable) {
+      rows = []
+      byId("rows").replaceChildren()
+      byId("create").hidden = true
+      byId("refresh").hidden = true
+      byId("directory").hidden = true
+      usageView?.clear()
+      sourcesView?.clear()
       notice("Consumer management is not enabled yet.")
       showSection(section)
       return
@@ -656,8 +874,35 @@ async function initialize() {
     showSection(section)
   } catch (error) {
     signedOut()
-    if (error.code !== "unauthorized")
-      notice("The portal is unavailable. Refresh to try again.")
+    const callbackFailure = new URLSearchParams(window.location.search).get(
+      "recovery",
+    )
+    if (callbackFailure) {
+      recovering = false
+      pendingRecovery = false
+      setMarker(attemptKey, true)
+      if (broadcast)
+        channel?.postMessage({
+          type: "recovery-failed",
+          reason: callbackFailure,
+        })
+    }
+    if (
+      callbackFailure === "admission_denied" ||
+      error.code === "admission_denied"
+    )
+      notice(deniedNotice)
+    else if (callbackFailure === "unavailable")
+      notice(
+        "GitHub or the portal is temporarily unavailable. Continue with GitHub to retry.",
+      )
+    else if (callbackFailure) notice(recoveryNotice)
+    else if (error.code === "session_expired" && marker(signedInKey))
+      void beginRecovery()
+    else if (error.code === "unauthorized" && marker(signedInKey))
+      void handleUnauthorized()
+    else if (error.code !== "session_expired" && error.code !== "unauthorized")
+      notice(unavailableNotice)
   }
 }
 byId("create").addEventListener("click", () => create())
@@ -675,11 +920,46 @@ dialog.addEventListener("close", () => {
   clearSecret()
 })
 window.addEventListener("pagehide", () => {
+  clearTimeout(expiryTimer)
+  pendingRecovery = false
   ++lifecycle
   busy = false
   close()
   signedOut()
 })
+channel?.addEventListener("message", (event) => {
+  if (event.data?.type === "signed-out") {
+    setMarker(signedInKey, false)
+    setMarker(attemptKey, false)
+    signedOut()
+    notice("You signed out in another tab.")
+  } else if (event.data?.type === "recovering") {
+    otherTabRecoveringUntil = event.data.until
+  } else if (event.data?.type === "restored") {
+    otherTabRecoveringUntil = 0
+    pendingSiblingSignal = { type: "restored" }
+    applyPendingSiblingSignal()
+  } else if (event.data?.type === "recovery-failed") {
+    otherTabRecoveringUntil = 0
+    pendingSiblingSignal = {
+      type: "recovery-failed",
+      reason: event.data.reason,
+    }
+    applyPendingSiblingSignal()
+  }
+})
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && Date.now() >= expiresAt)
+    void checkSession()
+})
+for (const event of ["pointerdown", "keydown", "touchstart", "wheel"])
+  window.addEventListener(
+    event,
+    () => {
+      void renewOnActivity()
+    },
+    { passive: true },
+  )
 window.addEventListener("pageshow", (event) => {
   if (event.persisted) void initialize()
 })

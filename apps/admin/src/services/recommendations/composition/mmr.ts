@@ -134,6 +134,12 @@ export function composeMmrSlate(input: {
   const candidateById = new Map(
     candidates.map((candidate) => [candidate.targetMediaId, candidate]),
   )
+  const themesByCandidate = new Map(
+    candidates.map((candidate) => [
+      candidate.candidateKey,
+      compositionThemes(candidate, input.context),
+    ]),
+  )
   const composed: ComposedCandidate[] = []
   const usedSources = new Set<string>()
   const usedInterests = new Set<string>()
@@ -226,8 +232,8 @@ export function composeMmrSlate(input: {
         Math.max(
           maximum,
           similarity(
-            candidate.presentation.themes,
-            selected.presentation.themes,
+            themesByCandidate.get(candidate.candidateKey)!,
+            themesByCandidate.get(selected.candidateKey)!,
           ),
         ),
       0,
@@ -297,7 +303,8 @@ export function composeMmrSlate(input: {
           recent.has(candidate.targetMediaId),
         ).length,
         itemsWithThemes: composed.filter(
-          (candidate) => themeSet(candidate.presentation.themes).size > 0,
+          (candidate) =>
+            themesByCandidate.get(candidate.candidateKey)!.size > 0,
         ).length,
       },
     }
@@ -376,9 +383,39 @@ function themeSet(themes: readonly string[]): Set<string> {
   )
 }
 
-function similarity(left: readonly string[], right: readonly string[]): number {
-  const a = themeSet(left)
-  const b = themeSet(right)
+/** Theme evidence belongs to this playable video; selecting a different scene
+ * must not discard labels already supplied by another eligible nomination.
+ * Canonical dedup can also group different videos, whose labels cannot cross.
+ */
+function compositionThemes(
+  candidate: OrderedCandidate,
+  context: RecommendationCandidateContext,
+): Set<string> {
+  const selected = themeSet(candidate.presentation.themes)
+  if (selected.size > 0) return selected
+  const alternatives = candidate.nominations
+    .slice(0, MAX_CANDIDATE_NOMINATIONS)
+    .filter(
+      (nomination) =>
+        nomination !== candidate.selectedNomination &&
+        nomination.targetMediaId === candidate.targetMediaId &&
+        nomination.presentation.playbackId ===
+          candidate.presentation.playbackId &&
+        nominationEligibilityReasons(nomination, context).length === 0,
+    )
+    .sort(
+      (left, right) =>
+        left.source.rank - right.source.rank ||
+        left.nominationKey.localeCompare(right.nominationKey),
+    )
+  for (const nomination of alternatives) {
+    const themes = themeSet(nomination.presentation.themes)
+    if (themes.size > 0) return themes
+  }
+  return selected
+}
+
+function similarity(a: ReadonlySet<string>, b: ReadonlySet<string>): number {
   const union = new Set([...a, ...b])
   return union.size === 0
     ? 0

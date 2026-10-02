@@ -634,6 +634,86 @@ describe("RecommendationDeliveryService", () => {
     })
   })
 
+  it.each([8, 9])(
+    "fills from eligible semantic reserves with %i bounded nominations",
+    async (poolCount) => {
+      const harness = makeHarness({ curatedFallback: true })
+      const pool = semanticCandidates(poolCount)
+      pool[1] = { ...pool[1]!, videoCoreId: pool[0]!.videoCoreId }
+      pool[2] = { ...pool[2]!, audioLanguageSlug: "spanish" }
+      pool[3] = { ...pool[3]!, playbackId: "" }
+      harness.retrieve.mockResolvedValue(pool)
+      harness.resolveRecentContext.mockResolvedValue({
+        videos: [
+          {
+            targetMediaId: pool[0]!.videoId,
+            reasonCodes: ["recently_tried"],
+          },
+        ],
+      })
+
+      const response = await harness.service.deliver(input("partial-reserve"))
+
+      const expectedIds = [
+        ...pool.slice(4).map((item) => item.videoId),
+        pool[0]!.videoId,
+      ]
+      expect(response).toMatchObject({
+        result: "served",
+        requestedCount: 6,
+        composedCount: expectedIds.length,
+        shortfallReason:
+          expectedIds.length === 6 ? null : "eligibility_exhausted",
+      })
+      expect(response.items.map((item) => item.targetMediaId)).toEqual(
+        expectedIds,
+      )
+      expect(
+        response.items.map((item) => item.targetMediaId).slice(0, 4),
+      ).toEqual(pool.slice(4, 8).map((item) => item.videoId))
+      expect(
+        response.items.every((item) => item.candidateGenerator === "semantic"),
+      ).toBe(true)
+      expect(harness.retrieve).toHaveBeenCalledOnce()
+      expect(harness.retrieveCuratedFallback).not.toHaveBeenCalled()
+      const evidence = harness.evidenceWrites[0] as Array<{
+        stage: string
+        targetMediaId: string | null
+        finalPosition: number | null
+        reasonCodes: string[]
+        sourceEvidence: Array<{
+          generator: string
+          rejectionReason: string | null
+        }>
+      }>
+      const composed = evidence.filter((row) => row.stage === "composed")
+      expect(
+        composed.map((row) => [row.targetMediaId, row.finalPosition]),
+      ).toEqual(
+        response.items.map((item) => [item.targetMediaId, item.position]),
+      )
+      expect(
+        composed.every(
+          (row) =>
+            row.sourceEvidence.length > 0 &&
+            row.sourceEvidence.every(
+              (source) =>
+                source.generator === "semantic" &&
+                source.rejectionReason == null,
+            ),
+        ),
+      ).toBe(true)
+      expect(evidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            targetMediaId: "semantic-video-1",
+            reasonCodes: expect.arrayContaining(["refill_after_suppression"]),
+          }),
+        ]),
+      )
+    },
+  )
+
   it("distinguishes unavailable seed material from eligibility exhaustion", async () => {
     const missingSeed = makeHarness()
     missingSeed.retrieve.mockRejectedValue(

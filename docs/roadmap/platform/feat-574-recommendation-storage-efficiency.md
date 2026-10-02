@@ -3,7 +3,7 @@ id: "feat-574"
 title: "Reduce recommendation event, served-item and profile storage growth"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-30"
 duration: 3
 depends_on: []
@@ -14,6 +14,24 @@ tags:
   - "database"
   - "capacity"
 ---
+
+## Completed scope: October 2 NZDT
+
+U1–U3 have merged, deployed implementations and native physical measurements.
+The current production sample confirms the narrower exposure index and CUID
+future writes, packed served snapshots, shared full-precision profile vectors,
+and typed first-empty profile completion. See
+`docs/reports/2026-10-02-recommendation-storage-efficiency-closeout.md` for exact
+PRs, samples, native savings and limits. Existing retained rows were not rewritten;
+steady-state monthly whole-database growth remains unmeasured and is not a
+condition invented for this implementation ticket. Feat-554 keeps the genuine
+normal loaded-retention and capacity acceptance gate.
+
+The historical preparation and pending language below records the path to
+activation. It is superseded by the completed production evidence above. A
+further exposure identity-index consolidation was rejected under the current
+uniqueness/retention contracts, and a playback digest rewrite was not supported
+by material near-term savings; neither belongs to the authorized U1–U3 release.
 
 ## Problem
 
@@ -60,8 +78,33 @@ credited as production filesystem savings.
 
 The user's follow-up prioritizes substantial reduction across the whole profile
 family. `docs/reports/2026-09-30-recommendation-profile-footprint.md` separates
-675 MB of interests from 622 MB of generation/lineage/pointer allocation and
-107 MB of core profiles. Complete exact shared-vector activation first. Evaluate
-compact empty-version and repeated-metadata representations with native proofs;
-do not delete history, shorten expiry or treat the 87.22% declared-empty count as
-permission to discard state. This additional design is not yet implemented.
+interests from generation/lineage/pointer allocation and core profiles. A
+reader-first future-write release now keeps a completed first-empty projection run
+but omits its generation and pointer only after claim, privacy, source snapshot,
+and retained-history checks. It has no retained rewrite or shorter expiry.
+`docs/validation/recommendation-storage-20260930/background-empty-profile.md`
+records native proof and activation gates. The actual HTTP and worker fleet
+converged on the compatible `a549b86a4` reader with the effective writer flag
+still false; a separate normal PR enables new writes by default. Local bytes
+are not production savings. Keep this ticket in progress through activation,
+rollback readiness, and measured production verification.
+
+Historical pre-operation state: the exposure window-index follow-up had a local 1.5-million-row online-DDL proof and a dry-run-first Admin operator in a separate proposed PR. At that point it had not run against production; the old eight-key index and Prisma history remained authoritative pending root-owned create/observe/drop gates and forward-only schema reconciliation. See `docs/operations/watch-exposure-online-index.md` and `docs/reports/2026-09-30-watch-exposure-index-feasibility.md`. Keep this ticket in progress.
+
+September 30 update: the reviewed operator completed production create/observe/drop
+at 04:47:40 UTC. The replacement was 64.8% smaller (118,685,696 fewer index bytes);
+filesystem availability increased 106,725,376 bytes across the operation interval
+with concurrent traffic. Production sampled hits now use the narrow index. The
+forward-only `0121` reconciliation and its real Prisma/native guard tests are
+included in the current PR. See `docs/reports/2026-09-30-watch-exposure-index-reconciliation.md`.
+Do not credit these bytes to legacy-table reclamation or close this broader ticket.
+
+September 30 local future-write experiment: `WatchSurfaceExposure.id` already has
+a Prisma CUID default, but the three writers supplied a 36-character random UUID.
+On equal 100,000-row same-schema PostgreSQL 18.6 cohorts, using that existing
+default lowered total relation allocation 8.18% with no native correctness or
+material insert-latency regression. The primary key, unique event UUID, all
+indexes, 29-day expiry and existing rows remain unchanged. See
+`docs/validation/recommendation-storage-20260930/watch-exposure-internal-id.md`.
+This is local review evidence, not production filesystem or growth proof; keep
+the ticket in progress.

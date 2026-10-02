@@ -8,6 +8,7 @@ import {
 } from "../candidate"
 import { buildSemanticCandidateMuxThumbnailUrl } from "../delivery-retriever"
 import { RecommendationInternalStateError } from "../errors"
+import { recommendationTranscriptLocale } from "../locale-identity"
 import {
   PROFILE_CLUSTERING_VERSION,
   PROFILE_PROJECTION_VERSION,
@@ -409,6 +410,7 @@ export async function queryProfileCandidates(
 ): Promise<ProfileCandidateRow[]> {
   const interests = input.projection.interests.slice(0, MAX_PROFILE_INTERESTS)
   if (interests.length === 0) return []
+  const transcriptLocale = recommendationTranscriptLocale(input.context.locale)
   const values = Prisma.join(
     interests.map(
       (interest) =>
@@ -450,8 +452,8 @@ export async function queryProfileCandidates(
         FROM video_transcript_chunk candidate
         JOIN video_transcript transcript ON transcript.id = candidate.transcript_id
         WHERE candidate.embedding IS NOT NULL
-          AND candidate.language = ${input.context.locale}
-          AND transcript.language = ${input.context.locale}
+          AND candidate.language = ${transcriptLocale}
+          AND transcript.language = ${transcriptLocale}
           ${activeTranscriptContentEmbeddingWhere({
             transcriptAlias: "transcript",
             chunkAlias: "candidate",

@@ -21,15 +21,45 @@ export function createPostgresSessionStore(databaseUrl: string): SessionStore {
     },
     async createSession(token, identity) {
       await db.$executeRaw`DELETE FROM portal_private.sessions WHERE expires_at <= now()`
-      await db.$executeRaw`INSERT INTO portal_private.sessions (token_hash, github_user_id, github_login, expires_at) VALUES (${tokenHash(token)}, ${BigInt(identity.id)}, ${identity.login}, now() + interval '2 hours')`
+      const [row] = await db.$queryRaw<
+        { expires_at: Date; absolute_expires_at: Date }[]
+      >`INSERT INTO portal_private.sessions (token_hash, github_user_id, github_login, expires_at, absolute_expires_at) VALUES (${tokenHash(token)}, ${BigInt(identity.id)}, ${identity.login}, now() + interval '8 hours', now() + interval '24 hours') RETURNING expires_at, absolute_expires_at`
+      return {
+        expiresAt: row.expires_at.toISOString(),
+        absoluteExpiresAt: row.absolute_expires_at.toISOString(),
+      }
     },
     async getSession(token) {
       const rows = await db.$queryRaw<
         { github_user_id: bigint; github_login: string }[]
-      >`SELECT github_user_id, github_login FROM portal_private.sessions WHERE token_hash = ${tokenHash(token)} AND expires_at > now() LIMIT 1`
+      >`SELECT github_user_id, github_login FROM portal_private.sessions WHERE token_hash = ${tokenHash(token)} AND expires_at > now() AND absolute_expires_at > now() LIMIT 1`
       const row = rows[0]
       return row
         ? { id: Number(row.github_user_id), login: row.github_login }
+        : null
+    },
+    async getExpiry(token) {
+      const rows = await db.$queryRaw<
+        { expires_at: Date; absolute_expires_at: Date }[]
+      >`SELECT expires_at, absolute_expires_at FROM portal_private.sessions WHERE token_hash = ${tokenHash(token)} AND expires_at > now() AND absolute_expires_at > now() LIMIT 1`
+      const row = rows[0]
+      return row
+        ? {
+            expiresAt: row.expires_at.toISOString(),
+            absoluteExpiresAt: row.absolute_expires_at.toISOString(),
+          }
+        : null
+    },
+    async renewSession(token) {
+      const rows = await db.$queryRaw<
+        { expires_at: Date; absolute_expires_at: Date }[]
+      >`UPDATE portal_private.sessions SET expires_at = LEAST(now() + interval '8 hours', absolute_expires_at) WHERE token_hash = ${tokenHash(token)} AND expires_at > now() AND absolute_expires_at > now() RETURNING expires_at, absolute_expires_at`
+      const row = rows[0]
+      return row
+        ? {
+            expiresAt: row.expires_at.toISOString(),
+            absoluteExpiresAt: row.absolute_expires_at.toISOString(),
+          }
         : null
     },
     async revokeSession(token) {

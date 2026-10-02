@@ -1,0 +1,1153 @@
+[
+  [
+    {
+      "QUERY PLAN": [
+        {
+          "Plan": {
+            "Node Type": "Limit",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 194490.59,
+            "Total Cost": 402922.34,
+            "Plan Rows": 756,
+            "Plan Width": 921,
+            "Disabled": false,
+            "Plans": [
+              {
+                "Node Type": "Unique",
+                "Parent Relationship": "InitPlan",
+                "Subplan Name": "CTE latest",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 15801.26,
+                "Total Cost": 15891.2,
+                "Plan Rows": 756,
+                "Plan Width": 256,
+                "Disabled": false,
+                "Plans": [
+                  {
+                    "Node Type": "Gather Merge",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Startup Cost": 15801.26,
+                    "Total Cost": 15889.31,
+                    "Plan Rows": 756,
+                    "Plan Width": 256,
+                    "Disabled": false,
+                    "Workers Planned": 2,
+                    "Plans": [
+                      {
+                        "Node Type": "Sort",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Startup Cost": 14801.23,
+                        "Total Cost": 14802.02,
+                        "Plan Rows": 315,
+                        "Plan Width": 256,
+                        "Disabled": false,
+                        "Sort Key": [
+                          "episode.id",
+                          "outcome_4.revision DESC",
+                          "outcome_4.id DESC"
+                        ],
+                        "Plans": [
+                          {
+                            "Node Type": "Nested Loop",
+                            "Parent Relationship": "Outer",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Join Type": "Inner",
+                            "Startup Cost": 0.42,
+                            "Total Cost": 14788.16,
+                            "Plan Rows": 315,
+                            "Plan Width": 256,
+                            "Disabled": false,
+                            "Inner Unique": false,
+                            "Plans": [
+                              {
+                                "Node Type": "Seq Scan",
+                                "Parent Relationship": "Outer",
+                                "Parallel Aware": true,
+                                "Async Capable": false,
+                                "Relation Name": "recommendation_playback_episode",
+                                "Alias": "episode",
+                                "Startup Cost": 0,
+                                "Total Cost": 11568.1,
+                                "Plan Rows": 405,
+                                "Plan Width": 176,
+                                "Disabled": false,
+                                "Filter": "((COALESCE(claimed_at, created_at) >= '2026-09-23 12:00:00'::timestamp without time zone) AND (COALESCE(claimed_at, created_at) < '2026-09-30 12:00:00'::timestamp without time zone))"
+                              },
+                              {
+                                "Node Type": "Index Scan",
+                                "Parent Relationship": "Inner",
+                                "Parallel Aware": false,
+                                "Async Capable": false,
+                                "Scan Direction": "Forward",
+                                "Index Name": "recommendation_outcome_episode_classifier_revision_key",
+                                "Relation Name": "recommendation_outcome_revision",
+                                "Alias": "outcome_4",
+                                "Startup Cost": 0.42,
+                                "Total Cost": 7.94,
+                                "Plan Rows": 1,
+                                "Plan Width": 136,
+                                "Disabled": false,
+                                "Index Cond": "((episode_id = episode.id) AND ((classifier_version)::text = 'active-watch-proxy-v1'::text))",
+                                "Filter": "(created_at <= '2026-09-30 19:00:00'::timestamp without time zone)"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "Node Type": "Result",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 178599.39,
+                "Total Cost": 387031.15,
+                "Plan Rows": 756,
+                "Plan Width": 921,
+                "Disabled": false,
+                "Plans": [
+                  {
+                    "Node Type": "Sort",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Startup Cost": 178599.39,
+                    "Total Cost": 178601.28,
+                    "Plan Rows": 756,
+                    "Plan Width": 954,
+                    "Disabled": false,
+                    "Sort Key": [
+                      "latest.\"occurredAt\"",
+                      "latest.\"episodeId\""
+                    ],
+                    "Plans": [
+                      {
+                        "Node Type": "Merge Join",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Join Type": "Left",
+                        "Startup Cost": 236.18,
+                        "Total Cost": 178563.24,
+                        "Plan Rows": 756,
+                        "Plan Width": 954,
+                        "Disabled": false,
+                        "Inner Unique": true,
+                        "Merge Cond": "(latest.\"episodeId\" = suppression.episode_id)",
+                        "Plans": [
+                          {
+                            "Node Type": "Nested Loop",
+                            "Parent Relationship": "Outer",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Join Type": "Left",
+                            "Startup Cost": 236.04,
+                            "Total Cost": 178511.01,
+                            "Plan Rows": 756,
+                            "Plan Width": 922,
+                            "Disabled": false,
+                            "Inner Unique": false,
+                            "Plans": [
+                              {
+                                "Node Type": "Nested Loop",
+                                "Parent Relationship": "Outer",
+                                "Parallel Aware": false,
+                                "Async Capable": false,
+                                "Join Type": "Left",
+                                "Startup Cost": 227.57,
+                                "Total Cost": 172102.97,
+                                "Plan Rows": 756,
+                                "Plan Width": 853,
+                                "Disabled": false,
+                                "Inner Unique": false,
+                                "Plans": [
+                                  {
+                                    "Node Type": "Nested Loop",
+                                    "Parent Relationship": "Outer",
+                                    "Parallel Aware": false,
+                                    "Async Capable": false,
+                                    "Join Type": "Left",
+                                    "Startup Cost": 120.79,
+                                    "Total Cost": 91351.41,
+                                    "Plan Rows": 756,
+                                    "Plan Width": 851,
+                                    "Disabled": false,
+                                    "Inner Unique": false,
+                                    "Plans": [
+                                      {
+                                        "Node Type": "CTE Scan",
+                                        "Parent Relationship": "Outer",
+                                        "Parallel Aware": false,
+                                        "Async Capable": false,
+                                        "CTE Name": "latest",
+                                        "Alias": "latest",
+                                        "Startup Cost": 0,
+                                        "Total Cost": 15.12,
+                                        "Plan Rows": 756,
+                                        "Plan Width": 810,
+                                        "Disabled": false
+                                      },
+                                      {
+                                        "Node Type": "Limit",
+                                        "Parent Relationship": "Inner",
+                                        "Parallel Aware": false,
+                                        "Async Capable": false,
+                                        "Startup Cost": 120.79,
+                                        "Total Cost": 120.8,
+                                        "Plan Rows": 1,
+                                        "Plan Width": 86,
+                                        "Disabled": false,
+                                        "Plans": [
+                                          {
+                                            "Node Type": "Sort",
+                                            "Parent Relationship": "Outer",
+                                            "Parallel Aware": false,
+                                            "Async Capable": false,
+                                            "Startup Cost": 120.79,
+                                            "Total Cost": 120.8,
+                                            "Plan Rows": 3,
+                                            "Plan Width": 86,
+                                            "Disabled": false,
+                                            "Sort Key": [
+                                              "(0)",
+                                              "link.linked_at DESC",
+                                              "link.id DESC"
+                                            ],
+                                            "Plans": [
+                                              {
+                                                "Node Type": "Append",
+                                                "Parent Relationship": "Outer",
+                                                "Parallel Aware": false,
+                                                "Async Capable": false,
+                                                "Startup Cost": 0.83,
+                                                "Total Cost": 120.78,
+                                                "Plan Rows": 3,
+                                                "Plan Width": 86,
+                                                "Disabled": false,
+                                                "Subplans Removed": 0,
+                                                "Plans": [
+                                                  {
+                                                    "Node Type": "Nested Loop",
+                                                    "Parent Relationship": "Member",
+                                                    "Parallel Aware": false,
+                                                    "Async Capable": false,
+                                                    "Join Type": "Inner",
+                                                    "Startup Cost": 0.83,
+                                                    "Total Cost": 16.89,
+                                                    "Plan Rows": 1,
+                                                    "Plan Width": 79,
+                                                    "Disabled": false,
+                                                    "Inner Unique": true,
+                                                    "Plans": [
+                                                      {
+                                                        "Node Type": "Index Scan",
+                                                        "Parent Relationship": "Outer",
+                                                        "Parallel Aware": false,
+                                                        "Async Capable": false,
+                                                        "Scan Direction": "Forward",
+                                                        "Index Name": "recommendation_profile_session_digest_idx",
+                                                        "Relation Name": "recommendation_profile_session_link",
+                                                        "Alias": "link",
+                                                        "Startup Cost": 0.41,
+                                                        "Total Cost": 8.43,
+                                                        "Plan Rows": 1,
+                                                        "Plan Width": 75,
+                                                        "Disabled": false,
+                                                        "Index Cond": "((session_digest = latest.\"sessionDigest\") AND (expires_at > '2026-09-30 19:38:04'::timestamp without time zone))"
+                                                      },
+                                                      {
+                                                        "Node Type": "Index Scan",
+                                                        "Parent Relationship": "Inner",
+                                                        "Parallel Aware": false,
+                                                        "Async Capable": false,
+                                                        "Scan Direction": "Forward",
+                                                        "Index Name": "recommendation_profile_pkey",
+                                                        "Relation Name": "recommendation_profile",
+                                                        "Alias": "linked_profile",
+                                                        "Startup Cost": 0.42,
+                                                        "Total Cost": 8.45,
+                                                        "Plan Rows": 1,
+                                                        "Plan Width": 41,
+                                                        "Disabled": false,
+                                                        "Index Cond": "(id = link.profile_id)",
+                                                        "Filter": "((expires_at > '2026-09-30 19:38:04'::timestamp without time zone) AND (state = 'active'::\"RecommendationProfileState\") AND (link.privacy_generation = privacy_generation))"
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "Node Type": "Result",
+                                                    "Parent Relationship": "Member",
+                                                    "Parallel Aware": false,
+                                                    "Async Capable": false,
+                                                    "Startup Cost": 5.19,
+                                                    "Total Cost": 103.88,
+                                                    "Plan Rows": 2,
+                                                    "Plan Width": 90,
+                                                    "Disabled": false,
+                                                    "Plans": [
+                                                      {
+                                                        "Node Type": "Append",
+                                                        "Parent Relationship": "Outer",
+                                                        "Parallel Aware": false,
+                                                        "Async Capable": false,
+                                                        "Startup Cost": 5.19,
+                                                        "Total Cost": 103.85,
+                                                        "Plan Rows": 2,
+                                                        "Plan Width": 123,
+                                                        "Disabled": false,
+                                                        "Subplans Removed": 0,
+                                                        "Plans": [
+                                                          {
+                                                            "Node Type": "Subquery Scan",
+                                                            "Parent Relationship": "Member",
+                                                            "Parallel Aware": false,
+                                                            "Async Capable": false,
+                                                            "Alias": "*SELECT* 1",
+                                                            "Startup Cost": 5.19,
+                                                            "Total Cost": 62.11,
+                                                            "Plan Rows": 1,
+                                                            "Plan Width": 123,
+                                                            "Disabled": false,
+                                                            "Plans": [
+                                                              {
+                                                                "Node Type": "Nested Loop",
+                                                                "Parent Relationship": "Subquery",
+                                                                "Parallel Aware": false,
+                                                                "Async Capable": false,
+                                                                "Join Type": "Inner",
+                                                                "Startup Cost": 5.19,
+                                                                "Total Cost": 62.1,
+                                                                "Plan Rows": 1,
+                                                                "Plan Width": 301,
+                                                                "Disabled": false,
+                                                                "Inner Unique": true,
+                                                                "Plans": [
+                                                                  {
+                                                                    "Node Type": "Nested Loop",
+                                                                    "Parent Relationship": "Outer",
+                                                                    "Parallel Aware": false,
+                                                                    "Async Capable": false,
+                                                                    "Join Type": "Inner",
+                                                                    "Startup Cost": 4.77,
+                                                                    "Total Cost": 53.64,
+                                                                    "Plan Rows": 1,
+                                                                    "Plan Width": 123,
+                                                                    "Disabled": false,
+                                                                    "Inner Unique": true,
+                                                                    "Join Filter": "(source.generation_id = generation.id)",
+                                                                    "Plans": [
+                                                                      {
+                                                                        "Node Type": "Nested Loop",
+                                                                        "Parent Relationship": "Outer",
+                                                                        "Parallel Aware": false,
+                                                                        "Async Capable": false,
+                                                                        "Join Type": "Inner",
+                                                                        "Startup Cost": 4.77,
+                                                                        "Total Cost": 43.18,
+                                                                        "Plan Rows": 1,
+                                                                        "Plan Width": 188,
+                                                                        "Disabled": false,
+                                                                        "Inner Unique": true,
+                                                                        "Plans": [
+                                                                          {
+                                                                            "Node Type": "Bitmap Heap Scan",
+                                                                            "Parent Relationship": "Outer",
+                                                                            "Parallel Aware": false,
+                                                                            "Async Capable": false,
+                                                                            "Relation Name": "recommendation_cowatch_source_contribution",
+                                                                            "Alias": "source",
+                                                                            "Startup Cost": 4.35,
+                                                                            "Total Cost": 34.74,
+                                                                            "Plan Rows": 1,
+                                                                            "Plan Width": 188,
+                                                                            "Disabled": false,
+                                                                            "Recheck Cond": "(session_digest = latest.\"sessionDigest\")",
+                                                                            "Filter": "((viewer_profile_id IS NOT NULL) AND (expires_at > '2026-09-30 19:38:04'::timestamp without time zone))",
+                                                                            "Plans": [
+                                                                              {
+                                                                                "Node Type": "Bitmap Index Scan",
+                                                                                "Parent Relationship": "Outer",
+                                                                                "Parallel Aware": false,
+                                                                                "Async Capable": false,
+                                                                                "Index Name": "recommendation_cowatch_source_session_idx",
+                                                                                "Startup Cost": 0,
+                                                                                "Total Cost": 4.35,
+                                                                                "Plan Rows": 8,
+                                                                                "Plan Width": 0,
+                                                                                "Disabled": false,
+                                                                                "Index Cond": "(session_digest = latest.\"sessionDigest\")"
+                                                                              }
+                                                                            ]
+                                                                          },
+                                                                          {
+                                                                            "Node Type": "Index Scan",
+                                                                            "Parent Relationship": "Inner",
+                                                                            "Parallel Aware": false,
+                                                                            "Async Capable": false,
+                                                                            "Scan Direction": "Forward",
+                                                                            "Index Name": "recommendation_outcome_revision_pkey",
+                                                                            "Relation Name": "recommendation_outcome_revision",
+                                                                            "Alias": "outcome",
+                                                                            "Startup Cost": 0.42,
+                                                                            "Total Cost": 8.44,
+                                                                            "Plan Rows": 1,
+                                                                            "Plan Width": 74,
+                                                                            "Disabled": false,
+                                                                            "Index Cond": "(id = source.outcome_id)"
+                                                                          }
+                                                                        ]
+                                                                      },
+                                                                      {
+                                                                        "Node Type": "Seq Scan",
+                                                                        "Parent Relationship": "Inner",
+                                                                        "Parallel Aware": false,
+                                                                        "Async Capable": false,
+                                                                        "Relation Name": "recommendation_cowatch_generation",
+                                                                        "Alias": "generation",
+                                                                        "Startup Cost": 0,
+                                                                        "Total Cost": 10.45,
+                                                                        "Plan Rows": 1,
+                                                                        "Plan Width": 260,
+                                                                        "Disabled": false,
+                                                                        "Filter": "((expires_at > '2026-09-30 19:38:04'::timestamp without time zone) AND ((lineage_version)::text = 'durable-privacy-generation-v2'::text))"
+                                                                      }
+                                                                    ]
+                                                                  },
+                                                                  {
+                                                                    "Node Type": "Index Scan",
+                                                                    "Parent Relationship": "Inner",
+                                                                    "Parallel Aware": false,
+                                                                    "Async Capable": false,
+                                                                    "Scan Direction": "Forward",
+                                                                    "Index Name": "recommendation_profile_pkey",
+                                                                    "Relation Name": "recommendation_profile",
+                                                                    "Alias": "profile",
+                                                                    "Startup Cost": 0.42,
+                                                                    "Total Cost": 8.45,
+                                                                    "Plan Rows": 1,
+                                                                    "Plan Width": 41,
+                                                                    "Disabled": false,
+                                                                    "Index Cond": "(id = source.viewer_profile_id)",
+                                                                    "Filter": "((expires_at > '2026-09-30 19:38:04'::timestamp without time zone) AND (state = 'active'::\"RecommendationProfileState\") AND (privacy_generation = source.viewer_privacy_generation))"
+                                                                  }
+                                                                ]
+                                                              }
+                                                            ]
+                                                          },
+                                                          {
+                                                            "Node Type": "Subquery Scan",
+                                                            "Parent Relationship": "Member",
+                                                            "Parallel Aware": false,
+                                                            "Async Capable": false,
+                                                            "Alias": "*SELECT* 2",
+                                                            "Startup Cost": 1.25,
+                                                            "Total Cost": 41.74,
+                                                            "Plan Rows": 1,
+                                                            "Plan Width": 123,
+                                                            "Disabled": false,
+                                                            "Plans": [
+                                                              {
+                                                                "Node Type": "Nested Loop",
+                                                                "Parent Relationship": "Subquery",
+                                                                "Parallel Aware": false,
+                                                                "Async Capable": false,
+                                                                "Join Type": "Inner",
+                                                                "Startup Cost": 1.25,
+                                                                "Total Cost": 41.73,
+                                                                "Plan Rows": 1,
+                                                                "Plan Width": 301,
+                                                                "Disabled": false,
+                                                                "Inner Unique": true,
+                                                                "Plans": [
+                                                                  {
+                                                                    "Node Type": "Nested Loop",
+                                                                    "Parent Relationship": "Outer",
+                                                                    "Parallel Aware": false,
+                                                                    "Async Capable": false,
+                                                                    "Join Type": "Inner",
+                                                                    "Startup Cost": 0.83,
+                                                                    "Total Cost": 35.81,
+                                                                    "Plan Rows": 1,
+                                                                    "Plan Width": 123,
+                                                                    "Disabled": false,
+                                                                    "Inner Unique": false,
+                                                                    "Plans": [
+                                                                      {
+                                                                        "Node Type": "Seq Scan",
+                                                                        "Parent Relationship": "Outer",
+                                                                        "Parallel Aware": false,
+                                                                        "Async Capable": false,
+                                                                        "Relation Name": "recommendation_cowatch_generation",
+                                                                        "Alias": "generation_1",
+                                                                        "Startup Cost": 0,
+                                                                        "Total Cost": 10.45,
+                                                                        "Plan Rows": 1,
+                                                                        "Plan Width": 260,
+                                                                        "Disabled": false,
+                                                                        "Filter": "((expires_at > '2026-09-30 19:38:04'::timestamp without time zone) AND ((lineage_version)::text = 'durable-privacy-generation-v2'::text))"
+                                                                      },
+                                                                      {
+                                                                        "Node Type": "Nested Loop",
+                                                                        "Parent Relationship": "Inner",
+                                                                        "Parallel Aware": false,
+                                                                        "Async Capable": false,
+                                                                        "Join Type": "Inner",
+                                                                        "Startup Cost": 0.83,
+                                                                        "Total Cost": 25.35,
+                                                                        "Plan Rows": 1,
+                                                                        "Plan Width": 188,
+                                                                        "Disabled": false,
+                                                                        "Inner Unique": false,
+                                                                        "Plans": [
+                                                                          {
+                                                                            "Node Type": "Index Only Scan",
+                                                                            "Parent Relationship": "Outer",
+                                                                            "Parallel Aware": false,
+                                                                            "Async Capable": false,
+                                                                            "Scan Direction": "Forward",
+                                                                            "Index Name": "recommendation_outcome_episode_id_key",
+                                                                            "Relation Name": "recommendation_outcome_revision",
+                                                                            "Alias": "outcome_1",
+                                                                            "Startup Cost": 0.42,
+                                                                            "Total Cost": 8.46,
+                                                                            "Plan Rows": 2,
+                                                                            "Plan Width": 74,
+                                                                            "Disabled": false,
+                                                                            "Index Cond": "(episode_id = latest.\"episodeId\")"
+                                                                          },
+                                                                          {
+                                                                            "Node Type": "Index Scan",
+                                                                            "Parent Relationship": "Inner",
+                                                                            "Parallel Aware": false,
+                                                                            "Async Capable": false,
+                                                                            "Scan Direction": "Forward",
+                                                                            "Index Name": "recommendation_cowatch_source_generation_outcome_key",
+                                                                            "Relation Name": "recommendation_cowatch_source_contribution",
+                                                                            "Alias": "source_1",
+                                                                            "Startup Cost": 0.41,
+                                                                            "Total Cost": 8.43,
+                                                                            "Plan Rows": 1,
+                                                                            "Plan Width": 188,
+                                                                            "Disabled": false,
+                                                                            "Index Cond": "((generation_id = generation_1.id) AND (outcome_id = outcome_1.id))",
+                                                                            "Filter": "((viewer_profile_id IS NOT NULL) AND (expires_at > '2026-09-30 19:38:04'::timestamp without time zone))"
+                                                                          }
+                                                                        ]
+                                                                      }
+                                                                    ]
+                                                                  },
+                                                                  {
+                                                                    "Node Type": "Index Scan",
+                                                                    "Parent Relationship": "Inner",
+                                                                    "Parallel Aware": false,
+                                                                    "Async Capable": false,
+                                                                    "Scan Direction": "Forward",
+                                                                    "Index Name": "recommendation_profile_pkey",
+                                                                    "Relation Name": "recommendation_profile",
+                                                                    "Alias": "profile_1",
+                                                                    "Startup Cost": 0.42,
+                                                                    "Total Cost": 5.91,
+                                                                    "Plan Rows": 1,
+                                                                    "Plan Width": 41,
+                                                                    "Disabled": false,
+                                                                    "Index Cond": "(id = source_1.viewer_profile_id)",
+                                                                    "Filter": "((expires_at > '2026-09-30 19:38:04'::timestamp without time zone) AND (state = 'active'::\"RecommendationProfileState\") AND (privacy_generation = source_1.viewer_privacy_generation))"
+                                                                  }
+                                                                ]
+                                                              }
+                                                            ]
+                                                          }
+                                                        ]
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "Node Type": "Aggregate",
+                                    "Strategy": "Plain",
+                                    "Partial Mode": "Simple",
+                                    "Parent Relationship": "Inner",
+                                    "Parallel Aware": false,
+                                    "Async Capable": false,
+                                    "Startup Cost": 106.78,
+                                    "Total Cost": 106.79,
+                                    "Plan Rows": 1,
+                                    "Plan Width": 2,
+                                    "Disabled": false,
+                                    "Plans": [
+                                      {
+                                        "Node Type": "Append",
+                                        "Parent Relationship": "Outer",
+                                        "Parallel Aware": false,
+                                        "Async Capable": false,
+                                        "Startup Cost": 5.33,
+                                        "Total Cost": 106.75,
+                                        "Plan Rows": 2,
+                                        "Plan Width": 166,
+                                        "Disabled": false,
+                                        "Subplans Removed": 0,
+                                        "Plans": [
+                                          {
+                                            "Node Type": "Subquery Scan",
+                                            "Parent Relationship": "Member",
+                                            "Parallel Aware": false,
+                                            "Async Capable": false,
+                                            "Alias": "*SELECT* 1_1",
+                                            "Startup Cost": 5.33,
+                                            "Total Cost": 60.28,
+                                            "Plan Rows": 1,
+                                            "Plan Width": 166,
+                                            "Disabled": false,
+                                            "Plans": [
+                                              {
+                                                "Node Type": "Nested Loop",
+                                                "Parent Relationship": "Subquery",
+                                                "Parallel Aware": false,
+                                                "Async Capable": false,
+                                                "Join Type": "Left",
+                                                "Startup Cost": 5.33,
+                                                "Total Cost": 60.27,
+                                                "Plan Rows": 1,
+                                                "Plan Width": 286,
+                                                "Disabled": false,
+                                                "Inner Unique": true,
+                                                "Plans": [
+                                                  {
+                                                    "Node Type": "Nested Loop",
+                                                    "Parent Relationship": "Outer",
+                                                    "Parallel Aware": false,
+                                                    "Async Capable": false,
+                                                    "Join Type": "Inner",
+                                                    "Startup Cost": 4.91,
+                                                    "Total Cost": 51.83,
+                                                    "Plan Rows": 1,
+                                                    "Plan Width": 187,
+                                                    "Disabled": false,
+                                                    "Inner Unique": true,
+                                                    "Plans": [
+                                                      {
+                                                        "Node Type": "Nested Loop",
+                                                        "Parent Relationship": "Outer",
+                                                        "Parallel Aware": false,
+                                                        "Async Capable": false,
+                                                        "Join Type": "Inner",
+                                                        "Startup Cost": 4.77,
+                                                        "Total Cost": 43.16,
+                                                        "Plan Rows": 1,
+                                                        "Plan Width": 106,
+                                                        "Disabled": false,
+                                                        "Inner Unique": true,
+                                                        "Plans": [
+                                                          {
+                                                            "Node Type": "Bitmap Heap Scan",
+                                                            "Parent Relationship": "Outer",
+                                                            "Parallel Aware": false,
+                                                            "Async Capable": false,
+                                                            "Relation Name": "recommendation_cowatch_source_contribution",
+                                                            "Alias": "source_2",
+                                                            "Startup Cost": 4.35,
+                                                            "Total Cost": 34.72,
+                                                            "Plan Rows": 1,
+                                                            "Plan Width": 143,
+                                                            "Disabled": false,
+                                                            "Recheck Cond": "(session_digest = latest.\"sessionDigest\")",
+                                                            "Filter": "(viewer_profile_id IS NOT NULL)",
+                                                            "Plans": [
+                                                              {
+                                                                "Node Type": "Bitmap Index Scan",
+                                                                "Parent Relationship": "Outer",
+                                                                "Parallel Aware": false,
+                                                                "Async Capable": false,
+                                                                "Index Name": "recommendation_cowatch_source_session_idx",
+                                                                "Startup Cost": 0,
+                                                                "Total Cost": 4.35,
+                                                                "Plan Rows": 8,
+                                                                "Plan Width": 0,
+                                                                "Disabled": false,
+                                                                "Index Cond": "(session_digest = latest.\"sessionDigest\")"
+                                                              }
+                                                            ]
+                                                          },
+                                                          {
+                                                            "Node Type": "Index Only Scan",
+                                                            "Parent Relationship": "Inner",
+                                                            "Parallel Aware": false,
+                                                            "Async Capable": false,
+                                                            "Scan Direction": "Forward",
+                                                            "Index Name": "recommendation_outcome_revision_pkey",
+                                                            "Relation Name": "recommendation_outcome_revision",
+                                                            "Alias": "outcome_2",
+                                                            "Startup Cost": 0.42,
+                                                            "Total Cost": 8.44,
+                                                            "Plan Rows": 1,
+                                                            "Plan Width": 37,
+                                                            "Disabled": false,
+                                                            "Index Cond": "(id = source_2.outcome_id)"
+                                                          }
+                                                        ]
+                                                      },
+                                                      {
+                                                        "Node Type": "Index Scan",
+                                                        "Parent Relationship": "Inner",
+                                                        "Parallel Aware": false,
+                                                        "Async Capable": false,
+                                                        "Scan Direction": "Forward",
+                                                        "Index Name": "recommendation_cowatch_generation_pkey",
+                                                        "Relation Name": "recommendation_cowatch_generation",
+                                                        "Alias": "generation_2",
+                                                        "Startup Cost": 0.14,
+                                                        "Total Cost": 8.15,
+                                                        "Plan Rows": 1,
+                                                        "Plan Width": 406,
+                                                        "Disabled": false,
+                                                        "Index Cond": "(id = source_2.generation_id)"
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "Node Type": "Index Scan",
+                                                    "Parent Relationship": "Inner",
+                                                    "Parallel Aware": false,
+                                                    "Async Capable": false,
+                                                    "Scan Direction": "Forward",
+                                                    "Index Name": "recommendation_profile_pkey",
+                                                    "Relation Name": "recommendation_profile",
+                                                    "Alias": "profile_2",
+                                                    "Startup Cost": 0.42,
+                                                    "Total Cost": 8.44,
+                                                    "Plan Rows": 1,
+                                                    "Plan Width": 53,
+                                                    "Disabled": false,
+                                                    "Index Cond": "(id = source_2.viewer_profile_id)"
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "Node Type": "Subquery Scan",
+                                            "Parent Relationship": "Member",
+                                            "Parallel Aware": false,
+                                            "Async Capable": false,
+                                            "Alias": "*SELECT* 2_1",
+                                            "Startup Cost": 5.29,
+                                            "Total Cost": 46.46,
+                                            "Plan Rows": 1,
+                                            "Plan Width": 166,
+                                            "Disabled": false,
+                                            "Plans": [
+                                              {
+                                                "Node Type": "Nested Loop",
+                                                "Parent Relationship": "Subquery",
+                                                "Parallel Aware": false,
+                                                "Async Capable": false,
+                                                "Join Type": "Left",
+                                                "Startup Cost": 5.29,
+                                                "Total Cost": 46.45,
+                                                "Plan Rows": 1,
+                                                "Plan Width": 286,
+                                                "Disabled": false,
+                                                "Inner Unique": true,
+                                                "Plans": [
+                                                  {
+                                                    "Node Type": "Nested Loop",
+                                                    "Parent Relationship": "Outer",
+                                                    "Parallel Aware": false,
+                                                    "Async Capable": false,
+                                                    "Join Type": "Inner",
+                                                    "Startup Cost": 4.87,
+                                                    "Total Cost": 40.55,
+                                                    "Plan Rows": 1,
+                                                    "Plan Width": 187,
+                                                    "Disabled": false,
+                                                    "Inner Unique": true,
+                                                    "Plans": [
+                                                      {
+                                                        "Node Type": "Nested Loop",
+                                                        "Parent Relationship": "Outer",
+                                                        "Parallel Aware": false,
+                                                        "Async Capable": false,
+                                                        "Join Type": "Inner",
+                                                        "Startup Cost": 4.73,
+                                                        "Total Cost": 40.38,
+                                                        "Plan Rows": 1,
+                                                        "Plan Width": 106,
+                                                        "Disabled": false,
+                                                        "Inner Unique": false,
+                                                        "Plans": [
+                                                          {
+                                                            "Node Type": "Index Only Scan",
+                                                            "Parent Relationship": "Outer",
+                                                            "Parallel Aware": false,
+                                                            "Async Capable": false,
+                                                            "Scan Direction": "Forward",
+                                                            "Index Name": "recommendation_outcome_episode_id_key",
+                                                            "Relation Name": "recommendation_outcome_revision",
+                                                            "Alias": "outcome_3",
+                                                            "Startup Cost": 0.42,
+                                                            "Total Cost": 8.46,
+                                                            "Plan Rows": 2,
+                                                            "Plan Width": 37,
+                                                            "Disabled": false,
+                                                            "Index Cond": "(episode_id = latest.\"episodeId\")"
+                                                          },
+                                                          {
+                                                            "Node Type": "Bitmap Heap Scan",
+                                                            "Parent Relationship": "Inner",
+                                                            "Parallel Aware": false,
+                                                            "Async Capable": false,
+                                                            "Relation Name": "recommendation_cowatch_source_contribution",
+                                                            "Alias": "source_3",
+                                                            "Startup Cost": 4.31,
+                                                            "Total Cost": 15.95,
+                                                            "Plan Rows": 1,
+                                                            "Plan Width": 143,
+                                                            "Disabled": false,
+                                                            "Recheck Cond": "(outcome_3.id = outcome_id)",
+                                                            "Filter": "(viewer_profile_id IS NOT NULL)",
+                                                            "Plans": [
+                                                              {
+                                                                "Node Type": "Bitmap Index Scan",
+                                                                "Parent Relationship": "Outer",
+                                                                "Parallel Aware": false,
+                                                                "Async Capable": false,
+                                                                "Index Name": "recommendation_cowatch_source_outcome_idx",
+                                                                "Startup Cost": 0,
+                                                                "Total Cost": 4.31,
+                                                                "Plan Rows": 3,
+                                                                "Plan Width": 0,
+                                                                "Disabled": false,
+                                                                "Index Cond": "(outcome_id = outcome_3.id)"
+                                                              }
+                                                            ]
+                                                          }
+                                                        ]
+                                                      },
+                                                      {
+                                                        "Node Type": "Index Scan",
+                                                        "Parent Relationship": "Inner",
+                                                        "Parallel Aware": false,
+                                                        "Async Capable": false,
+                                                        "Scan Direction": "Forward",
+                                                        "Index Name": "recommendation_cowatch_generation_pkey",
+                                                        "Relation Name": "recommendation_cowatch_generation",
+                                                        "Alias": "generation_3",
+                                                        "Startup Cost": 0.14,
+                                                        "Total Cost": 0.17,
+                                                        "Plan Rows": 1,
+                                                        "Plan Width": 406,
+                                                        "Disabled": false,
+                                                        "Index Cond": "(id = source_3.generation_id)"
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "Node Type": "Index Scan",
+                                                    "Parent Relationship": "Inner",
+                                                    "Parallel Aware": false,
+                                                    "Async Capable": false,
+                                                    "Scan Direction": "Forward",
+                                                    "Index Name": "recommendation_profile_pkey",
+                                                    "Relation Name": "recommendation_profile",
+                                                    "Alias": "profile_3",
+                                                    "Startup Cost": 0.42,
+                                                    "Total Cost": 5.9,
+                                                    "Plan Rows": 1,
+                                                    "Plan Width": 53,
+                                                    "Disabled": false,
+                                                    "Index Cond": "(id = source_3.viewer_profile_id)"
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "Node Type": "Limit",
+                                "Parent Relationship": "Inner",
+                                "Parallel Aware": false,
+                                "Async Capable": false,
+                                "Startup Cost": 8.46,
+                                "Total Cost": 8.47,
+                                "Plan Rows": 1,
+                                "Plan Width": 69,
+                                "Disabled": false,
+                                "Plans": [
+                                  {
+                                    "Node Type": "Sort",
+                                    "Parent Relationship": "Outer",
+                                    "Parallel Aware": false,
+                                    "Async Capable": false,
+                                    "Startup Cost": 8.46,
+                                    "Total Cost": 8.47,
+                                    "Plan Rows": 1,
+                                    "Plan Width": 69,
+                                    "Disabled": false,
+                                    "Sort Key": ["eligible.revision DESC"],
+                                    "Plans": [
+                                      {
+                                        "Node Type": "Index Scan",
+                                        "Parent Relationship": "Outer",
+                                        "Parallel Aware": false,
+                                        "Async Capable": false,
+                                        "Scan Direction": "Forward",
+                                        "Index Name": "recommendation_eligibility_outcome_current_idx",
+                                        "Relation Name": "recommendation_eligibility_decision",
+                                        "Alias": "eligible",
+                                        "Startup Cost": 0.42,
+                                        "Total Cost": 8.45,
+                                        "Plan Rows": 1,
+                                        "Plan Width": 69,
+                                        "Disabled": false,
+                                        "Index Cond": "((outcome_id = latest.\"outcomeId\") AND (is_current = true) AND (state = 'eligible'::\"RecommendationEligibilityState\"))",
+                                        "Filter": "(('aggregate'::text = ANY (eligible_scopes)) AND (expires_at > '2026-09-30 19:38:04'::timestamp without time zone) AND ((policy_version)::text = 'recommendation-integrity-v1'::text) AND (source_type = 'playback_outcome'::\"RecommendationEligibilitySourceType\"))"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "Node Type": "Index Only Scan",
+                            "Parent Relationship": "Inner",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Scan Direction": "Forward",
+                            "Index Name": "recommendation_cowatch_suppression_pkey",
+                            "Relation Name": "recommendation_cowatch_suppression",
+                            "Alias": "suppression",
+                            "Startup Cost": 0.14,
+                            "Total Cost": 49.34,
+                            "Plan Rows": 80,
+                            "Plan Width": 32,
+                            "Disabled": false
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "Node Type": "Gather",
+                    "Parent Relationship": "SubPlan",
+                    "Subplan Name": "SubPlan 3",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Startup Cost": 1000,
+                    "Total Cost": 119673.72,
+                    "Plan Rows": 64,
+                    "Plan Width": 37,
+                    "Disabled": false,
+                    "Workers Planned": 2,
+                    "Single Copy": false,
+                    "Plans": [
+                      {
+                        "Node Type": "Seq Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": true,
+                        "Async Capable": false,
+                        "Relation Name": "recommendation_playback_fact",
+                        "Alias": "fact",
+                        "Startup Cost": 0,
+                        "Total Cost": 118667.32,
+                        "Plan Rows": 27,
+                        "Plan Width": 37,
+                        "Disabled": false,
+                        "Filter": "late"
+                      }
+                    ]
+                  },
+                  {
+                    "Node Type": "Bitmap Heap Scan",
+                    "Parent Relationship": "SubPlan",
+                    "Subplan Name": "SubPlan 4",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Relation Name": "recommendation_outcome_revision",
+                    "Alias": "newer",
+                    "Startup Cost": 8.86,
+                    "Total Cost": 16.84,
+                    "Plan Rows": 1,
+                    "Plan Width": 0,
+                    "Disabled": false,
+                    "Recheck Cond": "((supersedes_id = latest.\"outcomeId\") OR ((episode_id = latest.\"episodeId\") AND ((classifier_version)::text = 'active-watch-proxy-v1'::text)))",
+                    "Filter": "((supersedes_id = latest.\"outcomeId\") OR ((episode_id = latest.\"episodeId\") AND ((classifier_version)::text = 'active-watch-proxy-v1'::text) AND (revision > latest.revision)))",
+                    "Plans": [
+                      {
+                        "Node Type": "BitmapOr",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Startup Cost": 8.86,
+                        "Total Cost": 8.86,
+                        "Plan Rows": 2,
+                        "Plan Width": 0,
+                        "Disabled": false,
+                        "Plans": [
+                          {
+                            "Node Type": "Bitmap Index Scan",
+                            "Parent Relationship": "Member",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Index Name": "recommendation_outcome_supersedes_key",
+                            "Startup Cost": 0,
+                            "Total Cost": 4.43,
+                            "Plan Rows": 1,
+                            "Plan Width": 0,
+                            "Disabled": false,
+                            "Index Cond": "(supersedes_id = latest.\"outcomeId\")"
+                          },
+                          {
+                            "Node Type": "Bitmap Index Scan",
+                            "Parent Relationship": "Member",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Index Name": "recommendation_outcome_input_key",
+                            "Startup Cost": 0,
+                            "Total Cost": 4.43,
+                            "Plan Rows": 1,
+                            "Plan Width": 0,
+                            "Disabled": false,
+                            "Index Cond": "((episode_id = latest.\"episodeId\") AND ((classifier_version)::text = 'active-watch-proxy-v1'::text))"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "Node Type": "Seq Scan",
+                    "Parent Relationship": "SubPlan",
+                    "Subplan Name": "SubPlan 6",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Relation Name": "recommendation_promotion_slate_fence",
+                    "Alias": "fence",
+                    "Startup Cost": 0,
+                    "Total Cost": 10.7,
+                    "Plan Rows": 70,
+                    "Plan Width": 32,
+                    "Disabled": false
+                  },
+                  {
+                    "Node Type": "Nested Loop",
+                    "Parent Relationship": "SubPlan",
+                    "Subplan Name": "SubPlan 7",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Join Type": "Anti",
+                    "Startup Cost": 0.7,
+                    "Total Cost": 24.78,
+                    "Plan Rows": 1,
+                    "Plan Width": 0,
+                    "Disabled": false,
+                    "Inner Unique": false,
+                    "Plans": [
+                      {
+                        "Node Type": "Index Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Scan Direction": "Forward",
+                        "Index Name": "recommendation_request_pkey",
+                        "Relation Name": "recommendation_request",
+                        "Alias": "owner_request",
+                        "Startup Cost": 0.42,
+                        "Total Cost": 8.44,
+                        "Plan Rows": 1,
+                        "Plan Width": 28,
+                        "Disabled": false,
+                        "Index Cond": "(id = latest.\"requestId\")",
+                        "Filter": "(owner_release_id IS NOT NULL)"
+                      },
+                      {
+                        "Node Type": "Nested Loop",
+                        "Parent Relationship": "Inner",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Join Type": "Inner",
+                        "Startup Cost": 0.28,
+                        "Total Cost": 16.33,
+                        "Plan Rows": 1,
+                        "Plan Width": 40,
+                        "Disabled": false,
+                        "Inner Unique": false,
+                        "Join Filter": "(owner_request.owner_release_generation >= owner_pointer.owner_influence_floor_generation)",
+                        "Plans": [
+                          {
+                            "Node Type": "Index Scan",
+                            "Parent Relationship": "Outer",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Scan Direction": "Forward",
+                            "Index Name": "recommendation_owner_release_pkey",
+                            "Relation Name": "recommendation_owner_release",
+                            "Alias": "owner_release",
+                            "Startup Cost": 0.14,
+                            "Total Cost": 8.17,
+                            "Plan Rows": 1,
+                            "Plan Width": 36,
+                            "Disabled": false,
+                            "Index Cond": "(id = owner_request.owner_release_id)",
+                            "Filter": "((revoked_at IS NULL) AND (owner_request.created_at >= approved_at) AND (owner_request.created_at < valid_until) AND (pointer_generation = owner_request.owner_release_generation))"
+                          },
+                          {
+                            "Node Type": "Index Scan",
+                            "Parent Relationship": "Inner",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Scan Direction": "Forward",
+                            "Index Name": "recommendation_promotion_pointer_pkey",
+                            "Relation Name": "recommendation_promotion_pointer",
+                            "Alias": "owner_pointer",
+                            "Startup Cost": 0.14,
+                            "Total Cost": 8.15,
+                            "Plan Rows": 1,
+                            "Plan Width": 4,
+                            "Disabled": false,
+                            "Index Cond": "((id)::text = 'recommendation-promotion-pointer'::text)"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "Settings": {},
+          "JIT": {
+            "Functions": 163,
+            "Options": {
+              "Inlining": false,
+              "Optimization": false,
+              "Expressions": true,
+              "Deforming": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+]

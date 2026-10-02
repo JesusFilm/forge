@@ -1,0 +1,51 @@
+{
+  "declaredAt": "2026-09-30T20:01:44.131Z",
+  "scope": {
+    "version": "episode-event-window-v1",
+    "windowStart": "2026-09-23T12:00:00.000Z",
+    "windowEnd": "2026-09-30T12:00:00.000Z",
+    "evaluationAsOf": "2026-09-30T19:00:00.000Z"
+  },
+  "readOnly": true,
+  "isolation": "repeatable read",
+  "statementTimeoutMs": 5000,
+  "lockTimeoutMs": 1000,
+  "jit": false,
+  "sourceSqlSha256": [
+    "f3c54205e8e0d64f8722f9db8cdaaee957687608ac14294a8bc8a9e5ec82d7dd",
+    "16d5b9ce78bc5327ebdc6409941c212ab4901368ed55630eec08d4ec6f3bf3f5"
+  ],
+  "publicationPerformed": false,
+  "transportExitCode": 0,
+  "records": [
+    {
+      "status": "compared",
+      "readOnly": true,
+      "sourceMs": [4922.512475, 2290.5353729999997],
+      "rawRowCounts": [40605, 40605],
+      "changedRows": 0,
+      "changedFieldCounts": {},
+      "orderEqual": true,
+      "graphGenerations": [
+        "60d5a5502cafce2e094dc496ab17ac571ed8b1ce3e42ae48d09a09e6652256b3",
+        "60d5a5502cafce2e094dc496ab17ac571ed8b1ce3e42ae48d09a09e6652256b3"
+      ],
+      "graphCounts": [
+        {
+          "sourceCount": 6841,
+          "attemptedPairCount": 46663,
+          "contributionCount": 39961,
+          "edgeCount": 9123
+        },
+        {
+          "sourceCount": 6841,
+          "attemptedPairCount": 46663,
+          "contributionCount": 39961,
+          "edgeCount": 9123
+        }
+      ],
+      "runtimeCommit": "99554c8b0759ca4d88d02a0d63bf518e0a89b4cf"
+    }
+  ],
+  "rawTransportOutputRetained": false
+}

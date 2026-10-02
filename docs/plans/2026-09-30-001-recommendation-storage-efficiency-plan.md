@@ -41,6 +41,19 @@ path; do not add CONCURRENTLY to Prisma's unsupported transactional migration fl
 If a larger exposure normalization is needed, first prove lossless storage/latency
 benefit with exact per-event identities, timing, visibility, reporting and expiry.
 
+After the narrow window index was deployed and reconciled, a separate local U1
+future-write experiment retained the existing exposure schema and all indexes.
+The three writers can omit their explicit internal UUID `id` and use the model's
+existing Prisma CUID default; `event_id` remains the separate unique UUID. Equal
+100,000-row native PostgreSQL 18 cohorts measured 8.18% less total relation
+allocation with exact report counts, replay, uniqueness and expiry semantics and
+no material write-latency regression. See
+`docs/validation/recommendation-storage-20260930/watch-exposure-internal-id.md`.
+Keep this scoped to future inserts: mixed existing UUID/new CUID text IDs are
+valid, and no primary-key/index change, retained rewrite or expiry change is
+authorized by the local result. Production impact requires the usual reviewed
+release and separate fleet/physical measurement.
+
 ### U2 — Lossless served-item physical compaction (feat-574)
 
 Before introducing new application storage formats, benchmark PostgreSQL TOAST

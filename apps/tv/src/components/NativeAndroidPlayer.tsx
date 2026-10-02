@@ -28,6 +28,7 @@ import {
 import { formatCitationReference } from "./watch/detailsAdapters"
 import { deriveSubtitlePanelState } from "./watch/panelState"
 import { nativeAndroidSessionOwnsPlayback } from "./watch/nativeAndroidSession"
+import { useFeedbackQr } from "./feedback/useFeedbackQr"
 
 type NativeViewComponent = React.ComponentType<NativeAndroidPlayerViewProps>
 
@@ -54,7 +55,12 @@ type NativeAndroidPlayerProps = {
 
 function formatClock(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds))
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const remainder = String(total % 60).padStart(2, "0")
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${remainder}`
+    : `${minutes}:${remainder}`
 }
 
 export function NativeAndroidPlayer({
@@ -73,6 +79,16 @@ export function NativeAndroidPlayer({
   const session = useWatchSession()
   const baselineRef = useRef(startAtSeconds ?? 0)
   const lastPositionRef = useRef<PlaybackSnapshot | null>(null)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackTimestamp, setFeedbackTimestamp] = useState<
+    string | undefined
+  >()
+  const feedback = useFeedbackQr(feedbackOpen, {
+    screen: "player",
+    player: "native-android",
+    filmTitle: title,
+    timestamp: feedbackTimestamp,
+  })
   const meaningfulStateRef = useRef(initialMeaningfulState)
   const onMeaningfulPlaybackRef = useRef(onMeaningfulPlayback)
   const onPlaybackPositionRef = useRef(onPlaybackPosition)
@@ -303,6 +319,22 @@ export function NativeAndroidPlayer({
       sourceUrl={desiredSource}
       storyboardUrl={storyboardUrl}
       title={title}
+      feedbackAvailable={Boolean(process.env.EXPO_PUBLIC_TV_FEEDBACK_URL)}
+      feedbackVisible={feedbackOpen}
+      feedbackRows={feedback.qr?.rows.map((row) =>
+        row.map((cell) => (cell ? "1" : "0")).join(""),
+      )}
+      feedbackReference={feedback.verified?.referenceCode}
+      feedbackLoading={feedback.loading}
+      feedbackError={feedback.error}
+      onFeedbackOpen={() => {
+        setFeedbackTimestamp(
+          formatClock(lastPositionRef.current?.positionSeconds ?? 0),
+        )
+        setFeedbackOpen(true)
+      }}
+      onFeedbackClose={() => setFeedbackOpen(false)}
+      onFeedbackRetry={feedback.retry}
       subtitle={subtitle}
       startAtSeconds={startAtSeconds ?? undefined}
       foreground={foreground}

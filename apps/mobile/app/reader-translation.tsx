@@ -12,6 +12,7 @@ import { useWatchPreferences } from "../src/contexts/WatchPreferencesProvider"
 import { useT } from "../src/i18n/useT"
 import type { CatalogTranslation } from "../src/lib/bible/data/catalog"
 import { getReaderServices } from "../src/lib/bible/reader/services"
+import { openTranslationDownload } from "../src/lib/bible/routes/sheetCallbacks"
 import { partialSwitch } from "../src/lib/bible/sheets/partialSwitch"
 import { parseReaderSheetParams } from "../src/lib/bible/sheets/routes"
 import { viewerLanguageCodes } from "../src/lib/bible/sheets/translationList"
@@ -88,6 +89,7 @@ export default function ReaderTranslationRoute() {
         downloads={services.downloads}
         onPick={onPick}
         confirmPick={confirmPick}
+        onPressDownload={openTranslationDownload}
         onClose={close}
       />
     )

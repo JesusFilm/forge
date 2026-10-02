@@ -844,10 +844,18 @@ function ActivePlaybackHost({
     sheetCounter.subscribe,
     sheetCounter.count,
   )
+  const openInlineSheetCount = useSyncExternalStore(
+    sheetCounter.subscribe,
+    sheetCounter.inlineCount,
+  )
+  // iOS presents route and Modal sheets above this host, so they dim the
+  // window. Android draws this host over them, and over inline sheets anywhere.
   const presentation = miniPlayerPresentation(
     sessionSnapshot,
     segments,
     openSheetCount,
+    Platform.OS === "ios",
+    openInlineSheetCount,
   )
   const session = sessionSnapshot.session
   const hasSession = session != null
@@ -1817,7 +1825,8 @@ function ActivePlaybackHost({
   }, [store])
 
   // feat-553 R10: the reader keeps its verse clear of the resting window. It
-  // stays published while a sheet hides the window, so the verse holds still.
+  // stays published while a sheet covers or hides the window, so the verse
+  // holds still.
   const onReaderRoute = readerPolicy != null
   const restingWindow = useMemo(
     () =>

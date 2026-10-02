@@ -190,7 +190,13 @@ jest.mock("../../../lib/authSession", () => {
 })
 
 import { StrictMode, act, useEffect, type ReactElement } from "react"
-import { Animated, AppState, Dimensions, StyleSheet } from "react-native"
+import {
+  Animated,
+  AppState,
+  Dimensions,
+  Platform,
+  StyleSheet,
+} from "react-native"
 
 import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
 import {
@@ -4561,6 +4567,51 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
       expect(video.__player.play).not.toHaveBeenCalled()
       expect(video.__player.playing).toBe(false)
       expect(video.__player.currentTime).toBe(42)
+    })
+  })
+
+  // The owner (2026-09-30): the window stays under a reader sheet, and the
+  // sheet's dimming darkens it. iOS presents the sheet as a native modal over
+  // this host; Android draws this host over a sheet, so the window hides there.
+  describe("a reader sheet over the window", () => {
+    const platformOs = Object.getOwnPropertyDescriptor(Platform, "OS")!
+    afterEach(() => {
+      Object.defineProperty(Platform, "OS", platformOs)
+    })
+
+    it("keeps the window drawn, in its corner, under the sheet on iOS", async () => {
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      const resting = frameVisual(renderer)
+      expect(Platform.OS).toBe("ios")
+
+      await setRoute(renderer, ["reader-settings"])
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(frameStyle(renderer).opacity).not.toBe(0)
+      expect(frameVisual(renderer)).toEqual(resting)
+      expect(video.__player.playing).toBe(true)
+
+      await setRoute(renderer, READER_ROUTE)
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(frameVisual(renderer)).toEqual(resting)
+    })
+
+    it("hides the window under the sheet on Android, and brings it back after", async () => {
+      Object.defineProperty(Platform, "OS", {
+        value: "android",
+        configurable: true,
+      })
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+
+      await setRoute(renderer, ["reader-settings"])
+      expect(hasWindowChrome(renderer)).toBe(false)
+      expect(frameStyle(renderer).opacity).toBe(0)
+      expect(frames(renderer)[0].props.pointerEvents).toBe("none")
+
+      await setRoute(renderer, READER_ROUTE)
+      expect(hasWindowChrome(renderer)).toBe(true)
     })
   })
 

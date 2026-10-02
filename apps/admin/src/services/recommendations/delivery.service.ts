@@ -98,6 +98,13 @@ import {
 } from "./promotion/owner-authority"
 import { nominationEligibilityReasons } from "./eligibility"
 import { servedSnapshotCreate } from "./served-item-payload"
+import {
+  readDeliveryDiagnostics,
+  type SemanticRetrievalDiagnostics,
+  type CuratedDeliveryDiagnostics,
+  type DeliveryDiagnostics,
+} from "./delivery-diagnostics"
+import { resolveRecommendationLocaleIdentity } from "./locale-identity"
 
 export type {
   RecommendationPersonalizationDelivery,
@@ -139,9 +146,9 @@ export class RecommendationDeliveryService {
         ? "traffic_deferred"
         : "traffic_contextual",
     )
-    const seedMediaId = input.seedMediaId.trim(),
-      locale = input.locale.trim(),
-      audioLanguageSlug = input.audioLanguageSlug.trim()
+    const seedMediaId = input.seedMediaId.trim()
+    const { presentationLocale: locale, audioLanguageSlug } =
+      resolveRecommendationLocaleIdentity(input.locale, input.audioLanguageSlug)
     if (
       !seedMediaId ||
       seedMediaId.length > 191 ||
@@ -237,8 +244,14 @@ export class RecommendationDeliveryService {
       return unavailable("invalid_session")
     }
     const seedMediaId = input.seedMediaId.trim()
-    const locale = input.locale.trim()
-    const audioLanguageSlug = input.audioLanguageSlug.trim()
+    const {
+      transcriptLocale,
+      presentationLocale: locale,
+      audioLanguageSlug,
+    } = resolveRecommendationLocaleIdentity(
+      input.locale,
+      input.audioLanguageSlug,
+    )
     if (
       !seedMediaId ||
       seedMediaId.length > 191 ||
@@ -282,11 +295,15 @@ export class RecommendationDeliveryService {
       }
       const manifest = state.manifest
 
-      const poolKey = `${manifest.id}\0${seedMediaId}\0${locale}\0${audioLanguageSlug}`
+      const poolKey = `${manifest.id}\0${seedMediaId}\0${transcriptLocale}\0${locale}\0${audioLanguageSlug}`
       let result: "served" | "fallback" | "empty" | "unavailable" = "served"
       let reason: string | null = null
       let candidates: SemanticCandidatePoolItem[]
       let retrievalFailureReason: string | null = null
+      let retrievalDiagnostics: SemanticRetrievalDiagnostics | null = null
+      let curatedDiagnostics: CuratedDeliveryDiagnostics | null = null
+      let candidateSource: DeliveryDiagnostics["candidateSource"] =
+        "unavailable"
       const retrievalStartedAt = nowMilliseconds()
       const now = this.deps.now?.() ?? new Date()
       const profileTokenDigestPromise = (async (): Promise<string | null> => {
@@ -431,11 +448,15 @@ export class RecommendationDeliveryService {
               audioLanguageSlug,
               limit: manifest.maxItems,
               deadlineAt: freshRetrievalDeadlineAt,
+              onDiagnostics: (diagnostics) => {
+                retrievalDiagnostics = diagnostics
+              },
             }),
           freshRetrievalDeadlineAt,
           nowMilliseconds,
         )
         setCandidatePool(poolKey, candidates, nowMilliseconds())
+        candidateSource = "fresh"
       } catch (error) {
         if (error instanceof VideoNotFoundError) {
           candidates = []
@@ -471,6 +492,7 @@ export class RecommendationDeliveryService {
               const eligibleIds = new Set(
                 rechecked.map((candidate) => candidate.videoId),
               )
+              candidateSource = "cached"
               candidates = cached.items.map((candidate) =>
                 eligibleIds.has(candidate.videoId)
                   ? candidate
@@ -1034,6 +1056,9 @@ export class RecommendationDeliveryService {
                 audioLanguageSlug,
                 excludedMediaIds: [],
                 deadlineAt: candidateDeadlineAt,
+                onDiagnostics: (diagnostics) => {
+                  curatedDiagnostics = diagnostics
+                },
               }),
             candidateDeadlineAt,
             nowMilliseconds,
@@ -1224,6 +1249,18 @@ export class RecommendationDeliveryService {
                 seedMediaId,
                 locale,
                 expectedItemCount: prepared.length,
+                deliveryDiagnostics:
+                  readDeliveryDiagnostics({
+                    version: 1,
+                    transcriptLocale,
+                    presentationLocale: locale,
+                    audioLanguageSlug,
+                    retrieval: retrievalDiagnostics,
+                    curated: curatedDiagnostics,
+                    candidateSource,
+                    requestedCount: manifest.maxItems,
+                    composedCount: prepared.length,
+                  }) ?? undefined,
                 state: requestState,
                 result: dbResult,
                 fallbackReason: reason,

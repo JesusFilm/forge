@@ -15,6 +15,7 @@ import {
   counterAccessibilityLabel,
   counterLabel,
   passageLabel,
+  pillDownloadStatus,
   stopIndexForVerse,
   translationLabel,
   verseAtProgress,
@@ -226,6 +227,66 @@ describe("translationLabel", () => {
       "You are offline. The reader shows this chapter in Berean Standard Bible.",
     )
     expect(label.noteKey).toBe(`offline-stand-in:${shown.translation.id}`)
+  })
+})
+
+// The owner (2026-10-01): the download button left the top bar, so the
+// translation pill shows a ring while a download runs. The owner dropped a
+// cloud-check for a finished download the same day.
+describe("the translation pill's download status", () => {
+  const WEB = translation({
+    id: "eng_web",
+    name: "World English Bible",
+    shortName: "WEB",
+  })
+  const shown: ShownTranslation = {
+    translation: WEB,
+    reason: "viewer",
+    viewer: { translationId: "eng_web", source: "explicit" },
+  }
+  const downloading = {
+    kind: "downloading" as const,
+    phase: "transfer" as const,
+    percent: 44.6,
+    bytesWritten: 446,
+    totalBytes: 1000,
+  }
+  const downloaded = {
+    kind: "downloaded" as const,
+    sha256: WEB.sha256,
+    books: WEB.books,
+    bytes: 1000,
+  }
+
+  it("is a ring while a download runs, and the label says the percent", () => {
+    expect(pillDownloadStatus(downloading)).toEqual({
+      kind: "downloading",
+      progress: 0.446,
+    })
+    expect(
+      translationLabel(T, shown, null, "John", downloading).accessibilityLabel,
+    ).toBe(
+      T("translationWithStatusAriaLabel", {
+        name: "World English Bible",
+        status: T("translationDownloadingAriaStatus", { percent: 45 }),
+      }),
+    )
+  })
+
+  it("is nothing once no download runs: on the device, not downloaded, or failed", () => {
+    for (const state of [
+      downloaded,
+      { kind: "bundled" as const },
+      { kind: "checking" as const },
+      { kind: "not-downloaded" as const },
+      { kind: "failed" as const, reason: "network" as const },
+      null,
+    ]) {
+      expect(pillDownloadStatus(state)).toBeNull()
+      expect(
+        translationLabel(T, shown, null, "John", state).accessibilityLabel,
+      ).toBe(T("translationAriaLabel", { name: "World English Bible" }))
+    }
   })
 })
 

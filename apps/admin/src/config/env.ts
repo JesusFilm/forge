@@ -380,6 +380,11 @@ export const env = createEnv({
     DATABASE_URL: z.string().url(),
     // Opt-in disposable Studio integration database; never falls back to DATABASE_URL.
     STUDIO_TEST_DATABASE_URL: z.string().url().optional(),
+    // Opt-in disposable exposure reconciliation database; the test enforces loopback and name guards.
+    WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL: z
+      .string()
+      .url()
+      .optional(),
     ADMIN_SESSION_SECRET: z.string().min(32),
     // Optional admin OAuth cookie prefix. Use a unique value for local
     // worktree previews sharing localhost so branches do not overwrite each
@@ -522,6 +527,10 @@ export const env = createEnv({
     // Both inline and shared readers must remain in every serving/rollback image.
     // Explicit false stops new shared writes without rewriting retained rows.
     RECOMMENDATION_PROFILE_VECTOR_SHARING: z
+      .enum(["true", "false"])
+      .default("true"),
+    // Compatible readers preserve typed empty completion when writes are disabled.
+    RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: z
       .enum(["true", "false"])
       .default("true"),
     // Opt-in real-Redis proof for feat-368 atomic delivery admission.
@@ -728,6 +737,22 @@ export const env = createEnv({
     // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md.
     WEB_REVALIDATE_URL: z.string().url().optional(),
     WEB_REVALIDATE_TOKEN: z.string().min(1).optional(),
+
+    // Mobile feedback -> Linear (KTD12). All five optional: a required var with
+    // no default bricks unprovisioned Railway deploys (see docs/solutions/
+    // runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md).
+    ADMIN_FEEDBACK_LINEAR_API_KEY: z.string().min(1).optional(),
+    ADMIN_FEEDBACK_LINEAR_TEAM_ID: z.string().min(1).optional(),
+    ADMIN_FEEDBACK_LINEAR_PROJECT_ID: z.string().min(1).optional(),
+    ADMIN_FEEDBACK_LINEAR_LABEL_ID: z.string().min(1).optional(),
+    // Fleet-wide submissions per UTC day. `0` refuses every submission and is
+    // the operator's kill switch; it never means unlimited.
+    ADMIN_FEEDBACK_DAILY_CAP: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .default(200),
     NEXT_RUNTIME: z.enum(["nodejs", "edge"]).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
     // Optional OpenRouter model override used by the production search trace
@@ -902,6 +927,9 @@ export const env = createEnv({
 
     DATABASE_URL: process.env.DATABASE_URL,
     STUDIO_TEST_DATABASE_URL: process.env.STUDIO_TEST_DATABASE_URL,
+    WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL: emptyToUndefined(
+      process.env.WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL,
+    ),
     NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(
       process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
     ),
@@ -1069,6 +1097,10 @@ export const env = createEnv({
     RECOMMENDATION_PROFILE_VECTOR_SHARING:
       emptyToUndefined(process.env.RECOMMENDATION_PROFILE_VECTOR_SHARING) ??
       "true",
+    RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP:
+      emptyToUndefined(
+        process.env.RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP,
+      ) ?? "true",
     RECOMMENDATION_REDIS_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_REDIS_TEST,
     ),
@@ -1254,6 +1286,21 @@ export const env = createEnv({
     ),
     WEB_REVALIDATE_URL: emptyToUndefined(process.env.WEB_REVALIDATE_URL),
     WEB_REVALIDATE_TOKEN: emptyToUndefined(process.env.WEB_REVALIDATE_TOKEN),
+    ADMIN_FEEDBACK_LINEAR_API_KEY: emptyToUndefined(
+      process.env.ADMIN_FEEDBACK_LINEAR_API_KEY,
+    ),
+    ADMIN_FEEDBACK_LINEAR_TEAM_ID: emptyToUndefined(
+      process.env.ADMIN_FEEDBACK_LINEAR_TEAM_ID,
+    ),
+    ADMIN_FEEDBACK_LINEAR_PROJECT_ID: emptyToUndefined(
+      process.env.ADMIN_FEEDBACK_LINEAR_PROJECT_ID,
+    ),
+    ADMIN_FEEDBACK_LINEAR_LABEL_ID: emptyToUndefined(
+      process.env.ADMIN_FEEDBACK_LINEAR_LABEL_ID,
+    ),
+    ADMIN_FEEDBACK_DAILY_CAP: emptyToUndefined(
+      process.env.ADMIN_FEEDBACK_DAILY_CAP,
+    ),
     NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
     OPENROUTER_QUERY_CLASSIFIER_MODEL: emptyToUndefined(
       process.env.OPENROUTER_QUERY_CLASSIFIER_MODEL,

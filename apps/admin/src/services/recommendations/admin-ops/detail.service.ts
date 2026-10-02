@@ -83,6 +83,7 @@ export async function loadRecommendationRequestDetail(
         root.classifier_version AS "classifierVersion",
         root.seed_media_id AS "seedMediaId",
         root.locale,
+        root.delivery_diagnostics AS "deliveryDiagnostics",
         root.expected_item_count AS "expectedItemCount",
         root.state,
         root.result,

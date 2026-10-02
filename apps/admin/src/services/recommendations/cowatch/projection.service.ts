@@ -76,6 +76,54 @@ const publicationAdmissionSchema = z
   })
   .strict()
 
+export const CowatchPublicationLimitsSchema =
+  publicationAdmissionSchema.shape.limits
+
+export type CowatchPublicationCapacity = {
+  publicationReserveBytes: number
+  maxRetainedGraphBytes: number
+  maxRetainedGenerations: number
+  maxDatabaseBytes: number
+}
+
+/** Physical allocation includes indexes, TOAST and reusable space; no future purge credit. */
+export async function readCowatchPublicationCapacity(
+  tx: Pick<PrismaClient, "$queryRaw">,
+) {
+  const [row] = await tx.$queryRaw<
+    Array<{ graphBytes: bigint; databaseBytes: bigint; graphCount: bigint }>
+  >`
+    SELECT (SELECT SUM(pg_total_relation_size(relation::regclass)) FROM unnest(ARRAY[
+      'recommendation_cowatch_generation', 'recommendation_cowatch_source_contribution',
+      'recommendation_cowatch_contribution', 'recommendation_cowatch_edge'
+    ]) relation)::bigint AS "graphBytes", pg_database_size(current_database())::bigint AS "databaseBytes",
+    (SELECT COUNT(*) FROM recommendation_cowatch_generation)::bigint AS "graphCount"
+  `
+  if (!row)
+    throw new RecommendationConflictError("refresh_capacity_unavailable")
+  return {
+    graphBytes: Number(row.graphBytes),
+    databaseBytes: Number(row.databaseBytes),
+    graphCount: Number(row.graphCount),
+  }
+}
+
+export async function assertCowatchPublicationCapacity(
+  tx: Pick<PrismaClient, "$queryRaw">,
+  capacity: CowatchPublicationCapacity,
+) {
+  const actual = await readCowatchPublicationCapacity(tx)
+  if (
+    actual.graphCount + 1 > capacity.maxRetainedGenerations ||
+    actual.graphBytes + capacity.publicationReserveBytes >
+      capacity.maxRetainedGraphBytes ||
+    actual.databaseBytes + capacity.publicationReserveBytes >
+      capacity.maxDatabaseBytes
+  )
+    throw new RecommendationConflictError("refresh_capacity_exceeded")
+  return actual
+}
+
 /** A reviewed capacity ceiling, not permission to publish or a database byte estimate. */
 export type CowatchPublicationAdmission = z.infer<
   typeof publicationAdmissionSchema
@@ -136,7 +184,7 @@ export async function loadCowatchSourceRows(
 ): Promise<SourceRow[]> {
   if (sourceWindow) assertCowatchSourceWindow(sourceWindow, now)
   return db.$queryRaw<SourceRow[]>(Prisma.sql`
-    WITH latest AS MATERIALIZED (
+    WITH canonical AS MATERIALIZED (
       SELECT DISTINCT ON (episode.id)
         outcome.id AS "outcomeId",
         episode.id AS "episodeId",
@@ -165,10 +213,73 @@ export async function loadCowatchSourceRows(
         }
         AND outcome.created_at <= ${sourceWindow?.evaluationAsOf ?? now}
       ORDER BY episode.id, outcome.revision DESC, outcome.id DESC
+    ), latest AS MATERIALIZED (
+      -- Keep the complete raw population/overflow sentinel before hydration.
+      SELECT * FROM canonical
+      ORDER BY "occurredAt", "episodeId"
+      LIMIT ${MAX_SOURCE_ROWS + 1}
+    ), retained AS MATERIALIZED (
+      -- Resolve each retained receipt once, rather than twice per raw episode.
+      SELECT source.id, source.session_digest,
+        source.viewer_profile_id AS profile_id,
+        source.viewer_privacy_generation AS captured_generation,
+        source.occurred_at, source.expires_at AS source_expires_at,
+        generation.lineage_version,
+        generation.expires_at AS generation_expires_at,
+        outcome.episode_id, profile.privacy_generation, profile.state,
+        profile.expires_at AS profile_expires_at
+      FROM recommendation_cowatch_source_contribution source
+      JOIN recommendation_outcome_revision outcome ON outcome.id = source.outcome_id
+      JOIN recommendation_cowatch_generation generation ON generation.id = source.generation_id
+      LEFT JOIN recommendation_profile profile ON profile.id = source.viewer_profile_id
+      WHERE ${sourceWindow != null} AND source.viewer_profile_id IS NOT NULL
+        AND (source.session_digest IN (SELECT "sessionDigest" FROM latest)
+          OR outcome.episode_id IN (SELECT "episodeId" FROM latest))
+    ), session_ownership AS MATERIALIZED (
+      -- Reduce retained generations before joining raw episodes: a busy session
+      -- must not multiply all of its raw episodes by every retained receipt.
+      SELECT session_digest,
+        BOOL_OR(state IS DISTINCT FROM 'active' OR profile_expires_at <= ${now}
+          OR (lineage_version = ${COWATCH_DURABLE_LINEAGE_VERSION}
+            AND captured_generation IS DISTINCT FROM privacy_generation)) AS invalid
+      FROM retained
+      GROUP BY session_digest
+    ), episode_ownership AS MATERIALIZED (
+      SELECT episode_id,
+        BOOL_OR(state IS DISTINCT FROM 'active' OR profile_expires_at <= ${now}
+          OR (lineage_version = ${COWATCH_DURABLE_LINEAGE_VERSION}
+            AND captured_generation IS DISTINCT FROM privacy_generation)) AS invalid
+      FROM retained
+      GROUP BY episode_id
+    ), valid_retained AS MATERIALIZED (
+      SELECT id, session_digest, episode_id, profile_id, privacy_generation, occurred_at
+      FROM retained
+      WHERE lineage_version = ${COWATCH_DURABLE_LINEAGE_VERSION}
+        AND generation_expires_at > ${now} AND source_expires_at > ${now}
+        AND state = 'active' AND profile_expires_at > ${now}
+        AND privacy_generation = captured_generation
+    ), retained_session_identity AS MATERIALIZED (
+      SELECT DISTINCT ON (session_digest) session_digest, profile_id, privacy_generation
+      FROM valid_retained
+      ORDER BY session_digest, occurred_at DESC, id DESC
+    ), retained_episode_identity AS MATERIALIZED (
+      SELECT DISTINCT ON (episode_id) episode_id, profile_id, privacy_generation
+      FROM valid_retained
+      ORDER BY episode_id, occurred_at DESC, id DESC
+    ), linked_identity AS MATERIALIZED (
+      SELECT DISTINCT ON (link.session_digest) link.session_digest,
+        profile.id, profile.privacy_generation
+      FROM recommendation_profile_session_link link
+      JOIN recommendation_profile profile ON profile.id = link.profile_id
+        AND profile.privacy_generation = link.privacy_generation
+        AND profile.state = 'active' AND profile.expires_at > ${now}
+      WHERE link.expires_at > ${now}
+        AND link.session_digest IN (SELECT "sessionDigest" FROM latest)
+      ORDER BY link.session_digest, link.linked_at DESC, link.id DESC
     )
     SELECT latest.*,
-      profile.id AS "profileId",
-      profile.privacy_generation AS "privacyGeneration",
+      COALESCE(linked.id, retained_episode.profile_id, retained_session.profile_id) AS "profileId",
+      COALESCE(linked.privacy_generation, retained_episode.privacy_generation, retained_session.privacy_generation) AS "privacyGeneration",
       decision.id AS "eligibilityDecisionId",
       decision.revision AS "eligibilityRevision",
       decision.policy_version AS "eligibilityPolicyVersion",
@@ -176,15 +287,16 @@ export async function loadCowatchSourceRows(
         decision.id IS NOT NULL
         AND suppression.episode_id IS NULL
         AND (${sourceWindow == null} OR (
-          ownership.invalid IS NOT TRUE
-          AND (profile.id IS NOT NULL OR ownership.known = false)
+          session_ownership.invalid IS NOT TRUE AND episode_ownership.invalid IS NOT TRUE
+          AND (COALESCE(linked.id, retained_episode.profile_id, retained_session.profile_id) IS NOT NULL
+            OR (session_ownership.session_digest IS NULL AND episode_ownership.episode_id IS NULL))
         ))
         AND latest."factWatermark" = latest."nextFactSequence" - 1
         AND latest."episodeExpiresAt" > ${now}
         AND latest."conflictCount" = 0
         AND latest."replayCount" < ${RECOMMENDATION_REPLAY_QUARANTINE_THRESHOLD}
         AND NOT EXISTS (SELECT 1 FROM recommendation_playback_fact fact
-          WHERE fact.episode_id = latest."episodeId" AND fact.late = true)
+          WHERE fact.episode_id = latest."episodeId" AND fact.late = true OFFSET 0)
         AND NOT EXISTS (SELECT 1 FROM recommendation_outcome_revision newer
           WHERE newer.supersedes_id = latest."outcomeId"
             OR (newer.episode_id = latest."episodeId" AND newer.classifier_version = ${CLASSIFIER_VERSION} AND newer.revision > latest.revision))
@@ -193,40 +305,11 @@ export async function loadCowatchSourceRows(
         AND ${ownerReleaseInfluenceAllowedSql(Prisma.sql`latest."requestId"`)}
       ) AS "integrityEligible"
     FROM latest
-    LEFT JOIN LATERAL (
-      SELECT identity.id, identity.privacy_generation
-      FROM (
-      SELECT linked_profile.id, linked_profile.privacy_generation, 0 AS priority, link.linked_at AS identified_at, link.id AS identity_id
-      FROM recommendation_profile_session_link link
-      JOIN recommendation_profile linked_profile
-        ON linked_profile.id = link.profile_id
-        AND linked_profile.privacy_generation = link.privacy_generation
-        AND linked_profile.state = 'active'
-        AND linked_profile.expires_at > ${now}
-      WHERE link.session_digest = latest."sessionDigest"
-        AND link.expires_at > ${now}
-      UNION ALL
-      SELECT retained.profile_id, retained.privacy_generation,
-        CASE WHEN retained.episode_id = latest."episodeId" THEN 1 ELSE 2 END AS priority,
-        retained.occurred_at AS identified_at, retained.id AS identity_id
-      FROM (${retainedCowatchOwnersSql()}) retained
-      WHERE ${sourceWindow != null}
-        AND retained.lineage_version = ${COWATCH_DURABLE_LINEAGE_VERSION}
-        AND retained.generation_expires_at > ${now} AND retained.source_expires_at > ${now}
-        AND retained.state = 'active' AND retained.profile_expires_at > ${now}
-        AND retained.privacy_generation = retained.captured_generation
-      ) identity
-      ORDER BY identity.priority, identity.identified_at DESC, identity.identity_id DESC
-      LIMIT 1
-    ) profile ON true
-    LEFT JOIN LATERAL (
-      SELECT COUNT(*) > 0 AS known,
-        BOOL_OR(retained.state IS DISTINCT FROM 'active' OR retained.profile_expires_at <= ${now}
-          OR (retained.lineage_version = ${COWATCH_DURABLE_LINEAGE_VERSION}
-            AND retained.captured_generation IS DISTINCT FROM retained.privacy_generation)) AS invalid
-      FROM (${retainedCowatchOwnersSql()}) retained
-      WHERE ${sourceWindow != null}
-    ) ownership ON true
+    LEFT JOIN linked_identity linked ON linked.session_digest = latest."sessionDigest"
+    LEFT JOIN retained_episode_identity retained_episode ON retained_episode.episode_id = latest."episodeId"
+    LEFT JOIN retained_session_identity retained_session ON retained_session.session_digest = latest."sessionDigest"
+    LEFT JOIN session_ownership ON session_ownership.session_digest = latest."sessionDigest"
+    LEFT JOIN episode_ownership ON episode_ownership.episode_id = latest."episodeId"
     LEFT JOIN LATERAL (
       SELECT eligible.id, eligible.revision, eligible.policy_version
       FROM recommendation_eligibility_decision eligible
@@ -243,39 +326,7 @@ export async function loadCowatchSourceRows(
     LEFT JOIN recommendation_cowatch_suppression suppression
       ON suppression.episode_id = latest."episodeId"
     ORDER BY latest."occurredAt", latest."episodeId"
-    LIMIT ${MAX_SOURCE_ROWS + 1}
   `)
-}
-
-/** Two indexed reverse lookups retain ownership across revisions and an
- * existing episode becoming eligible later in the same private session.
- * UNION ALL duplicates are harmless; recovery prefers the exact episode.
- * Invalid/expired known ownership may never fall through to anonymous.
- */
-function retainedCowatchOwnersSql(): Prisma.Sql {
-  return Prisma.sql`
-    SELECT source.id, source.viewer_profile_id AS profile_id,
-      source.viewer_privacy_generation AS captured_generation, source.occurred_at,
-      source.expires_at AS source_expires_at, generation.lineage_version,
-      generation.expires_at AS generation_expires_at, outcome.episode_id,
-      profile.privacy_generation, profile.state, profile.expires_at AS profile_expires_at
-    FROM recommendation_cowatch_source_contribution source
-    JOIN recommendation_outcome_revision outcome ON outcome.id = source.outcome_id
-    JOIN recommendation_cowatch_generation generation ON generation.id = source.generation_id
-    LEFT JOIN recommendation_profile profile ON profile.id = source.viewer_profile_id
-    WHERE source.session_digest = latest."sessionDigest" AND source.viewer_profile_id IS NOT NULL
-    UNION ALL
-    SELECT source.id, source.viewer_profile_id AS profile_id,
-      source.viewer_privacy_generation AS captured_generation, source.occurred_at,
-      source.expires_at AS source_expires_at, generation.lineage_version,
-      generation.expires_at AS generation_expires_at, outcome.episode_id,
-      profile.privacy_generation, profile.state, profile.expires_at AS profile_expires_at
-    FROM recommendation_outcome_revision outcome
-    JOIN recommendation_cowatch_source_contribution source ON source.outcome_id = outcome.id
-    JOIN recommendation_cowatch_generation generation ON generation.id = source.generation_id
-    LEFT JOIN recommendation_profile profile ON profile.id = source.viewer_profile_id
-    WHERE outcome.episode_id = latest."episodeId" AND source.viewer_profile_id IS NOT NULL
-  `
 }
 
 export type CowatchPublication = Readonly<{
@@ -317,6 +368,8 @@ export async function preflightCowatchShadowGeneration(
       await tx.$executeRaw`SET TRANSACTION READ ONLY`
       await tx.$executeRaw`SET LOCAL statement_timeout = '5000ms'`
       await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`
+      // Compilation must not consume the bounded source read's five-second budget.
+      await tx.$executeRaw`SET LOCAL jit = off`
       const prepared = await prepareCowatchGeneration(tx, now, sourceWindow)
       return {
         ...populationReceipt(prepared, now, sourceWindow),
@@ -398,6 +451,8 @@ export async function publishCowatchShadowGeneration(
   now: Date = new Date(),
   sourceWindow?: CowatchSourceWindow,
   admission?: CowatchPublicationAdmission,
+  capacity?: CowatchPublicationCapacity,
+  publicationFence?: (tx: Prisma.TransactionClient) => Promise<void>,
 ): Promise<CowatchPublication> {
   const validatedAdmission =
     admission === undefined
@@ -407,6 +462,7 @@ export async function publishCowatchShadowGeneration(
     async (tx) => {
       await tx.$executeRaw(Prisma.sql`SET LOCAL statement_timeout = '5000ms'`)
       await tx.$executeRaw(Prisma.sql`SET LOCAL lock_timeout = '1000ms'`)
+      await tx.$executeRaw(Prisma.sql`SET LOCAL jit = off`)
       // One publisher across all scopes bounds concurrent write amplification.
       // Refuse before source work rather than queueing behind another rebuild.
       const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>`
@@ -417,6 +473,7 @@ export async function publishCowatchShadowGeneration(
           "A co-watch publication is already running; retry the same source scope after it completes",
         )
       }
+      if (publicationFence) await publicationFence(tx)
       const prepared = await prepareCowatchGeneration(tx, now, sourceWindow)
       const receipt = populationReceipt(prepared, now, sourceWindow)
       // Same repeatable-read snapshot and global publication lock as the writes.
@@ -458,6 +515,7 @@ export async function publishCowatchShadowGeneration(
           decisionReason,
         }
       }
+      if (capacity) await assertCowatchPublicationCapacity(tx, capacity)
       const publishedAt = new Date()
       const expiresAt = new Date(
         publishedAt.getTime() + GENERATION_RETENTION_DAYS * 86_400_000,

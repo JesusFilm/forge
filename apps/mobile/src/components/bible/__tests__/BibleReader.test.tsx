@@ -120,6 +120,7 @@ import {
   READER_LOADING_DELAY_MS,
   type BibleReaderProps,
 } from "../BibleReader"
+import { ReaderTopBar } from "../ReaderTopBar"
 import { VERSE_SLIDE_HOLD_MS } from "../VerseSlider"
 import { getT } from "../../../i18n/useT"
 import { BIBLE_NOTICES } from "../../../lib/bible/sheets/copy"
@@ -335,10 +336,7 @@ const mounted: TestInstance[] = []
 
 type Callbacks = Pick<
   BibleReaderProps,
-  | "onOpenPassagePicker"
-  | "onOpenTranslationPicker"
-  | "onOpenSettings"
-  | "onOpenDownload"
+  "onOpenPassagePicker" | "onOpenTranslationPicker" | "onOpenSettings"
 >
 
 function callbacks(): Callbacks & { [K in keyof Callbacks]: jest.Mock } {
@@ -346,7 +344,6 @@ function callbacks(): Callbacks & { [K in keyof Callbacks]: jest.Mock } {
     onOpenPassagePicker: jest.fn(),
     onOpenTranslationPicker: jest.fn(),
     onOpenSettings: jest.fn(),
-    onOpenDownload: jest.fn(),
   }
 }
 
@@ -842,8 +839,9 @@ describe("BibleReader — the chrome", () => {
     await settleFit(renderer, () => 200)
 
     const controls = controlHosts(renderer)
-    // Back, pill, download, settings, translation label.
-    expect(controls).toHaveLength(5)
+    // Back, pill, translation label, settings. The download button moved
+    // into the translation sheet (owner, 2026-10-01).
+    expect(controls).toHaveLength(4)
     for (const control of controls) {
       expect(
         String(control.props.accessibilityLabel ?? "").length,
@@ -858,7 +856,7 @@ describe("BibleReader — the chrome", () => {
     }
   })
 
-  it("wires the pill, the settings, and the download buttons", async () => {
+  it("wires the pill and the settings buttons", async () => {
     const { services } = makeServices()
     await openAt(services, { book: "JHN", chapter: 3, verse: 16 })
     const handlers = callbacks()
@@ -867,14 +865,50 @@ describe("BibleReader — the chrome", () => {
       pressControl(renderer, (item) => item === label)
     await press(readerT("choosePassageAriaLabel", { passage: "John 3:16" }))
     await press(readerT("settingsAriaLabel"))
-    await press(
-      readerT("downloadOnDeviceAriaLabel", { name: "Berean Standard Bible" }),
-    )
     expect(handlers.onOpenPassagePicker).toHaveBeenCalledTimes(1)
     expect(handlers.onOpenSettings).toHaveBeenCalledTimes(1)
-    expect(handlers.onOpenDownload).toHaveBeenCalledTimes(1)
-    expect(handlers.onOpenDownload.mock.calls[0]?.[0]).toMatchObject({
-      translation: { id: "BSB" },
+    expect(
+      controlHostsLabelled(renderer, (label) => label.startsWith("Download")),
+    ).toHaveLength(0)
+  })
+
+  // The owner (2026-10-01): the pill shows a ring while the shown translation
+  // downloads. Synthetic: BSB is "bundled" and never downloads; this store
+  // says it does only to prove the state reaches the pill.
+  it("shows the shown translation's running download in the translation pill", async () => {
+    const { services } = makeServices()
+    const downloading: TranslationDownloadState = {
+      kind: "downloading",
+      phase: "transfer",
+      percent: 40,
+      bytesWritten: 40,
+      totalBytes: 100,
+    }
+    const withDownload: ReaderServices = {
+      ...services,
+      downloads: { ...services.downloads, getState: () => downloading },
+    }
+    await openAt(withDownload, { book: "JHN", chapter: 3, verse: 16 })
+    const renderer = await render(withDownload)
+    expect(
+      controlHostsLabelled(
+        renderer,
+        (label) =>
+          label ===
+          readerT("translationWithStatusAriaLabel", {
+            name: "Berean Standard Bible",
+            status: readerT("translationDownloadingAriaStatus", {
+              percent: 40,
+            }),
+          }),
+      ),
+    ).toHaveLength(1)
+    // GlassView renders nothing in this suite, so the pill's ring never draws
+    // here; ReaderTopBar.test.tsx pins the ring. This pins what reaches it.
+    const [bar] = renderer.root.findAll((node) => node.type === ReaderTopBar)
+    expect(bar?.props.translationStatus).toEqual({
+      kind: "downloading",
+      progress: 0.4,
     })
   })
 
@@ -1138,21 +1172,6 @@ describe("BibleReader — reader visits (U14, KTD18)", () => {
     expect(sent("bible_reader.visit_ended")).toEqual([
       { reader_source: "quote", reader_verse_count: 1 },
     ])
-  })
-
-  it("ends the visit at a blur after the download prompt, which is no sheet", async () => {
-    const { services } = makeServices()
-    await openAt(services, JOHN_3_16)
-    const props = tabProps(services)
-    const renderer = await render(services, props)
-    await pressControl(
-      renderer,
-      (label) =>
-        label ===
-        readerT("downloadOnDeviceAriaLabel", { name: "Berean Standard Bible" }),
-    )
-    await focus(renderer, props, false)
-    expect(sent("bible_reader.visit_ended")).toHaveLength(1)
   })
 
   it("ends the visit once when a pushed link reader unmounts", async () => {

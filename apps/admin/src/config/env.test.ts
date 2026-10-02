@@ -93,6 +93,29 @@ describe("env", () => {
   )
 
   it.each([
+    { value: undefined, expected: "true" },
+    { value: "", expected: "true" },
+    { value: "true", expected: "true" },
+    { value: "false", expected: "false" },
+  ])(
+    "resolves empty profile completion skip to $expected for $value",
+    async ({ value, expected }) => {
+      vi.resetModules()
+      vi.stubEnv("CI", "true")
+      vi.stubEnv("RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP", value)
+      try {
+        const { env: runtimeEnv } = await import("@/config/env")
+        expect(runtimeEnv.RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP).toBe(
+          expected,
+        )
+      } finally {
+        vi.unstubAllEnvs()
+        vi.resetModules()
+      }
+    },
+  )
+
+  it.each([
     { value: undefined, expected: "packed" },
     { value: "", expected: "packed" },
     { value: "legacy", expected: "legacy" },

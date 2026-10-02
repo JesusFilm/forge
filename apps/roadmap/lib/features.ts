@@ -6,6 +6,7 @@ export type FeatureStatus =
   | "not-started"
   | "in-progress"
   | "complete"
+  | "cancelled"
   | "blocked"
 export type Priority = "P0" | "P1" | "P2"
 export type Lane =
@@ -44,8 +45,7 @@ const LEGACY_PRIORITY_MAP: Partial<Record<string, Priority>> = {
   low: "P2",
 }
 const LEGACY_STATUS_MAP: Partial<Record<string, FeatureStatus>> = {
-  canceled: "blocked",
-  cancelled: "blocked",
+  canceled: "cancelled",
   completed: "complete",
   implemented: "complete",
   planned: "not-started",
@@ -54,6 +54,7 @@ const VALID_STATUSES = new Set<FeatureStatus>([
   "not-started",
   "in-progress",
   "complete",
+  "cancelled",
   "blocked",
 ])
 const DAY_MS = 86400000
@@ -235,13 +236,22 @@ export function getAllFeatures(): Feature[] {
     }
   }
 
-  // Compute effective status: blocked if any dependency is incomplete
-  const statusById = new Map(features.map((f) => [f.id, f.status]))
+  // A cancelled ticket is terminal, but it does not satisfy a dependency.
+  // Compute effective status: blocked if any dependency is incomplete.
+  // Historical tickets reuse IDs across lanes. An ambiguous ID is satisfied
+  // only when every matching ticket is complete; cancellation never completes it.
+  const completedById = new Map<string, boolean>()
+  for (const feature of features) {
+    completedById.set(
+      feature.id,
+      (completedById.get(feature.id) ?? true) && feature.status === "complete",
+    )
+  }
   for (const f of features) {
-    if (f.status === "complete") continue
+    if (f.status === "complete" || f.status === "cancelled") continue
     if (f.depends_on.length === 0) continue
     const hasIncompleteDep = f.depends_on.some(
-      (depId) => statusById.get(depId) !== "complete",
+      (depId) => completedById.get(depId) !== true,
     )
     if (hasIncompleteDep) {
       f.status = "blocked"
@@ -336,6 +346,7 @@ export function getStatusCounts(
     "not-started": 0,
     "in-progress": 0,
     complete: 0,
+    cancelled: 0,
     blocked: 0,
   }
   for (const f of features) {

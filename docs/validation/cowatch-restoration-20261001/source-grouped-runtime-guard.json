@@ -1,0 +1,11 @@
+{
+  "priorPinnedRuntime": "99554c8b0759ca4d88d02a0d63bf518e0a89b4cf",
+  "observedRuntimeCommit": "3748973331e8ab78187de3c67bfbaf890bae37a4",
+  "node": "v24.21.0",
+  "graphImport": "function",
+  "graphSha256": "8404fb554edfa2fdfb56798b29b5c354af57b7af79f6159f0315c7290cd8fab2",
+  "priorRuntimeGraphSha256": "8404fb554edfa2fdfb56798b29b5c354af57b7af79f6159f0315c7290cd8fab2",
+  "failedComparison": "source-grouped-same-snapshot-comparison.json",
+  "failureExplanation": "Runtime pin differed; helper checks it before creating database client. No source SQL executed. New comparison pins observed runtime and exact unchanged graph file hash.",
+  "productionMutationPerformed": false
+}

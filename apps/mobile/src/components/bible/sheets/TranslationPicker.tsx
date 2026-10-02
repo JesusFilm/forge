@@ -22,6 +22,7 @@ import { useUiTag } from "../../../hooks/useUiTag"
 import { useT } from "../../../i18n/useT"
 import { SearchableListSheet } from "../../sheets/SearchableListSheet"
 import { ReaderSheetHeader } from "./ReaderSheetHeader"
+import { TranslationDownloadButton } from "./TranslationDownloadButton"
 import { useDownloadsVersion } from "./useDownloadsVersion"
 
 export type TranslationPickerProps = {
@@ -38,6 +39,9 @@ export type TranslationPickerProps = {
   /** Can ask before a pick; `proceed` makes it. With none, a tap picks. A
    *  cancelled pick is not a change, so it is not reported (R37). */
   confirmPick?: (translation: CatalogTranslation, proceed: () => void) => void
+  /** The Current card's download button (owner, 2026-10-01). With none, the
+   *  card has no button. */
+  onPressDownload?: (translation: CatalogTranslation) => void
   onClose: () => void
 }
 
@@ -56,6 +60,7 @@ export function TranslationPicker({
   downloads,
   onPick,
   confirmPick,
+  onPressDownload,
   onClose,
 }: TranslationPickerProps) {
   const t = useT("BibleTranslationPicker")
@@ -112,6 +117,20 @@ export function TranslationPicker({
     [activeId, onPick, confirmPick],
   )
 
+  // `version` makes the button read the store again after a change.
+  const renderDownload = useCallback(
+    (translation: CatalogTranslation) =>
+      onPressDownload ? (
+        <TranslationDownloadButton
+          tokens={tokens}
+          translation={translation}
+          state={downloads.getState(translation.id)}
+          onPress={() => onPressDownload(translation)}
+        />
+      ) : null,
+    [tokens, downloads, onPressDownload, version],
+  )
+
   const colors = readerSheetColors(tokens)
   const controls = readerSheetControlColors(tokens)
 
@@ -159,6 +178,7 @@ export function TranslationPicker({
         searchAccessibilityLabel={t("searchAriaLabel")}
         emptySearchMessage={t("noMatch")}
         headerTop={headerTop}
+        renderActiveAccessory={renderDownload}
         colors={colors}
         actionName="bible-translation-sheet"
       />

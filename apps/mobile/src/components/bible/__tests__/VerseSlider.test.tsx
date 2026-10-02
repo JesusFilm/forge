@@ -229,15 +229,20 @@ describe("VerseSlider's verse label", () => {
 })
 
 describe("VerseSlider during a scrub", () => {
-  type Timing = { duration: number; finish: () => void }
+  type Timing = {
+    duration: number
+    value: Animated.Value
+    finish: () => void
+  }
   let timings: Timing[] = []
 
   beforeEach(() => {
     timings = []
-    jest.spyOn(Animated, "timing").mockImplementation((_value, config) => {
+    jest.spyOn(Animated, "timing").mockImplementation((value, config) => {
       let callback: Animated.EndCallback | undefined
       timings.push({
         duration: config.duration ?? 0,
+        value: value as Animated.Value,
         finish: () => callback?.({ finished: true }),
       })
       return {
@@ -286,6 +291,29 @@ describe("VerseSlider during a scrub", () => {
     await settle()
   }
 
+  /** The plain view between the animated layer and the live verse. */
+  function gate(): ViewStyle {
+    const [node] = hosts((host) => host.props.testID === "bible-verse-gate")
+    expect(node).toBeDefined()
+    return StyleSheet.flatten(node!.props.style as StyleProp<ViewStyle>) ?? {}
+  }
+  const gateOpacity = () => Number(gate().opacity ?? 1)
+  const columnOpacity = () => {
+    const [column] = hosts((node) => node.props.testID === "bible-verse")
+    const style = StyleSheet.flatten(
+      column!.props.style as StyleProp<ViewStyle>,
+    )
+    return Number(style?.opacity ?? 1)
+  }
+
+  /** The event native Animated sends after it draws a frame of the change. */
+  async function nativeFrame(timing: Timing, progress: number) {
+    const value = timing.value as unknown as {
+      __onAnimatedValueUpdateReceived: (next: number) => void
+    }
+    await act(async () => value.__onAnimatedValueUpdateReceived(progress))
+  }
+
   it("fades each new verse in at the scrub pace, a few points from below", async () => {
     await render(props({ live: live("JHN.1:5", V5) }))
     await settle()
@@ -321,6 +349,71 @@ describe("VerseSlider during a scrub", () => {
     await settle()
     expect(copyLayer()).toEqual({ opacity: 1, y: 0 })
     expect(setValue).not.toHaveBeenCalled()
+  })
+
+  // iOS ignores React's opacity and transform on a view that native Animated
+  // has driven. A verse seen again has a cached fit and showed at rest over
+  // the old verse for a frame (iPhone 17 simulator, 2026-09-30).
+  it("hides a verse seen again behind a gate React owns until its first native frame", async () => {
+    await render(props({ live: live("JHN.1:5", V5) }))
+    await settle()
+    expect(gateOpacity()).toBe(1)
+    await render(props({ live: live("JHN.1:6", V6), slide: FORWARD }))
+    await settle()
+    await nativeFrame(timings[0]!, 0.1)
+    await finishLast()
+    expect(gateOpacity()).toBe(1)
+
+    // Back to verse 5: its fit is cached, so its column shows at once.
+    await render(
+      props({
+        live: live("JHN.1:5", V5),
+        slide: { id: 2, direction: "back" },
+      }),
+    )
+    expect(liveText()).toContain("the Word")
+    expect(columnOpacity()).toBe(1)
+    expect(copyText()).toContain("sent from God")
+    expect(gateOpacity()).toBe(0)
+    // The gate is not animated, so iOS applies what React commits.
+    expect(gate().transform).toBeUndefined()
+
+    await settle()
+    expect(timings).toHaveLength(2)
+    expect(gateOpacity()).toBe(0)
+    await nativeFrame(timings[1]!, 0.05)
+    expect(gateOpacity()).toBe(1)
+  })
+
+  it("closes the gate again for a newer verse that interrupts the change", async () => {
+    jest.useFakeTimers()
+    await render(props({ live: live("JHN.1:5", V5) }))
+    await settle()
+    await render(props({ live: live("JHN.1:6", V6), scrubbing: true }))
+    await settle()
+    await nativeFrame(timings[0]!, 0.1)
+    expect(gateOpacity()).toBe(1)
+    await act(async () => {
+      jest.advanceTimersByTime(VERSE_SCRUB_SLIDE_MS * 0.8)
+    })
+
+    await render(props({ live: live("JHN.1:7", V7), scrubbing: true }))
+    await settle()
+    expect(liveText()).toContain("witness to testify")
+    expect(timings).toHaveLength(2)
+    expect(gateOpacity()).toBe(0)
+    await nativeFrame(timings[1]!, 0.1)
+    expect(gateOpacity()).toBe(1)
+  })
+
+  it("opens the gate when a change ends, even with no frame event", async () => {
+    await render(props({ live: live("JHN.1:5", V5) }))
+    await settle()
+    await render(props({ live: live("JHN.1:6", V6), slide: FORWARD }))
+    await settle()
+    expect(gateOpacity()).toBe(0)
+    await finishLast()
+    expect(gateOpacity()).toBe(1)
   })
 
   // The owner (2026-09-28): a fast scrub must not finish a verse the thumb
@@ -383,6 +476,7 @@ describe("VerseSlider during a scrub", () => {
     expect(copies()).toHaveLength(0)
     expect(timings).toHaveLength(0)
     expect(liveText()).toContain("sent from God")
+    expect(gateOpacity()).toBe(1)
   })
 })
 

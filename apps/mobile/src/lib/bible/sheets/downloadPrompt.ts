@@ -1,6 +1,6 @@
-// The top bar's download button (feat-553 U10, R29, R30). A native alert
-// shows the catalog size before a download starts; the same alert cancels,
-// retries, updates, and removes. The top bar shows the progress.
+// The download button on the translation sheet's Current card (feat-553 U10,
+// R29, R30; owner, 2026-10-01). A native alert shows the size before a
+// download starts; the same alert cancels, retries, updates, and removes.
 import { Alert } from "react-native"
 
 import { getT, type UiT } from "../../../i18n/useT"
@@ -192,8 +192,8 @@ export function runDownloadAction(
 ): void {
   switch (action) {
     case "start":
-      // The state store reports the result; the top bar shows it. R37 logs
-      // the outcome once, when the download ends.
+      // The state store reports the result; the card and the translation
+      // pill show it. R37 logs the outcome once, when the download ends.
       void downloads
         .start(translation)
         .then((outcome) => reportTranslationDownload(translation, outcome))
@@ -210,8 +210,8 @@ export function runDownloadAction(
   }
 }
 
-// U11 wires the reader's `onOpenDownload` here. It reads the manifests first,
-// so a download the device already holds never shows as not downloaded.
+// The Current card's button opens this. It reads the manifests first, so a
+// download the device already holds never shows as not downloaded.
 export async function presentReaderDownloadPrompt(
   context: { translation: CatalogTranslation | null },
   deps: DownloadPromptDeps = {},

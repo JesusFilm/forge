@@ -1,7 +1,7 @@
 ---
 title: Verifying mobile (Expo) worktree changes in the iOS simulator
 date: 2026-06-08
-last_updated: 2026-09-30
+last_updated: 2026-10-01
 category: developer-experience
 module: apps/mobile
 problem_type: developer_experience
@@ -266,6 +266,22 @@ curl -s "http://localhost:8090/.expo/.virtual-metro-entry.bundle?platform=ios&de
 curl -s -X POST http://localhost:8090/reload
 ```
 
+**Confirm that the reload landed (added 2026-10-01).** A 200 from `/reload`
+does not prove a reload. In one session the call returned 200, Metro logged no
+new `Bundled` line, and the dev client kept its old code. The cause was not
+established. If no new `Bundled` line appears, relaunch the app cold: run
+`xcrun simctl terminate <iphone-udid> org.jesusfilm.forgewatch`, then re-send
+the deep link from section 2. Tap **Open** if iOS asks. Without a Metro
+restart, the new line can read `(1 module)` and still carry the current code.
+The new line is the proof, not its module count.
+
+**Fast Refresh keeps refs and module state.** A component that builds an object
+once into a ref (an engine, a controller, a store) keeps the old object after a
+Fast Refresh. A method that you add to that object stays undefined until a cold
+relaunch. On 2026-10-01 this made a working fix to the Explore pager's engine
+look broken. See
+`docs/solutions/ui-bugs/nested-scrollview-in-panresponder-pager-slow-drag-moves-feed.md`.
+
 When you need a cold start instead, restart Metro with `--clear` and re-send
 the deep link:
 
@@ -276,7 +292,8 @@ xcrun simctl openurl <iphone-udid> \
 ```
 
 Wait for a full rebundle in the Metro log, not `(1 module)`, before you trust
-the screen.
+the screen. This rule is for a `--clear` restart. A client relaunch alone can
+log `(1 module)` and still load the current code.
 
 ### 5. Drive and measure with idb
 
@@ -363,6 +380,7 @@ xcrun simctl openurl <iphone-udid> \
 curl -s "http://localhost:8090/.expo/.virtual-metro-entry.bundle?platform=ios&dev=true&minify=false" \
   | grep -c "<a literal your edit introduced>"
 curl -s -X POST http://localhost:8090/reload
+#    no new Bundled line in Metro's log? terminate the app, re-send step 3
 # 5. drive and verify
 idb ui describe-all --udid <iphone-udid> | grep -i <label>
 idb ui tap --udid <iphone-udid> <x> <y>     # retry until describe-all confirms
@@ -386,6 +404,9 @@ without a running local admin.
 - `docs/solutions/developer-experience/deleted-worktree-under-live-metro-unresolve-error.md`
   — a live Metro whose backing worktree was pruned, plus a worked deep-link
   re-point.
+- `docs/solutions/ui-bugs/nested-scrollview-in-panresponder-pager-slow-drag-moves-feed.md`
+  — the session where `/reload` returned 200 without a reload, and Fast Refresh
+  kept a stale ref-held engine.
 - `docs/solutions/runtime-errors/metro-node-crawler-rangerror-missing-watchman-20260622.md`
   — the missing-watchman crash, the tunnel-versus-localhost split, and another
   worked deep-link re-point.
