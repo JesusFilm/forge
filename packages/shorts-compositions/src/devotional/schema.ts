@@ -431,7 +431,9 @@ export const devotionalInputPropsSchema = z.object({
    *  the narration one word at a time. */
   shortFact: z
     .object({
-      layout: z.enum(["history", "language"]),
+      layout: z.enum(["history", "language", "reflection"]),
+      /** Reflection: the credit's round portrait (source-portraits id). */
+      portrait: z.string().optional(),
       label: z.string().optional(),
       source: z.string().optional(),
       emblem: z.enum(["book", "scroll"]).optional(),

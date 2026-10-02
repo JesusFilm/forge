@@ -455,6 +455,23 @@ function factLayout(m: Manifest, plan: ShortPlan): Partial<Manifest> {
       },
     }
   }
+  if (plan.kind === "reflection") {
+    // Plain reflection carries no credit; a run that quotes a credited
+    // source (a commentary paragraph) shows it under the text.
+    const mark = cards.find((c) => c.sourceMark)?.sourceMark as Mark | undefined
+    return {
+      shortFact: {
+        layout: "reflection",
+        ...(mark
+          ? {
+              label: mark.label ?? "Commentary",
+              source: mark.source ?? "",
+              ...(mark.portrait ? { portrait: mark.portrait } : {}),
+            }
+          : {}),
+      },
+    }
+  }
   if (plan.kind === "language") {
     const callout = cards.find((c) => c.verseCallout)?.verseCallout as
       | Callout

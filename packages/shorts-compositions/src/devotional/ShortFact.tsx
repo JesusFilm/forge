@@ -3,6 +3,7 @@ import {
   AbsoluteFill,
   Audio,
   Easing,
+  Img,
   interpolate,
   interpolateColors,
   OffthreadVideo,
@@ -15,6 +16,7 @@ import {
 import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
 import { AnimatedBook, AnimatedScroll } from "./SourceEmblems"
+import { SOURCE_PORTRAIT_URIS, type SourcePortraitId } from "./source-portraits"
 import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
 import { CARD_TAIL_FRAMES, framesFromDurations } from "./timing"
 
@@ -97,6 +99,7 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
     clamp,
   )
   const language = fact?.layout === "language"
+  const reflection = fact?.layout === "reflection"
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
@@ -121,7 +124,7 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
         style={{
           position: "absolute",
           left: width / 2 - f(450),
-          top: height / 2 + f(language ? -92.5 : 19.5) - f(379.5),
+          top: height / 2 + f(language || reflection ? -92.5 : 19.5) - f(379.5),
           width: f(900),
           height: f(759),
           borderRadius: f(100),
@@ -140,7 +143,23 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           </Sequence>
         ) : null,
       )}
-      {language ? (
+      {reflection ? (
+        <ReflectionLayout
+          f={f}
+          t={t}
+          total={total}
+          words={words}
+          credit={
+            fact?.source
+              ? {
+                  label: fact.label,
+                  source: fact.source,
+                  portrait: fact.portrait,
+                }
+              : undefined
+          }
+        />
+      ) : language ? (
         <LanguageLayout
           f={f}
           t={t}
@@ -227,20 +246,6 @@ function HistoryLayout({
   source: string
   emblem: "book" | "scroll"
 }) {
-  const phrases = kineticPhrases(words)
-  const at = phrases.findIndex((p, i) => {
-    const next = phrases[i + 1]
-    return t >= p[0].startSec - 0.05 && (!next || t < next[0].startSec - 0.05)
-  })
-  const phrase = at >= 0 ? phrases[at] : null
-  const nextStart = at >= 0 ? (phrases[at + 1]?.[0].startSec ?? total + 1) : 0
-  // The outgoing phrase clears just before the next one arrives.
-  const out = interpolate(
-    t,
-    [nextStart - 0.16, nextStart - 0.04],
-    [1, 0],
-    clamp,
-  )
   const head = interpolate(t, [0.1, 0.8], [0, 1], {
     ...clamp,
     easing: EASE_OUT,
@@ -325,21 +330,109 @@ function HistoryLayout({
           background: "rgba(255,255,255,0.35)",
         }}
       />
-      <div
+      <KineticText f={f} t={t} total={total} words={words} />
+    </div>
+  )
+}
+
+/** Up to this many words, a sentence is a short line: stamped in large caps
+ *  (the long form's short-line treatment, owner 2026-09-30 / 10-01). */
+const STAMP_WORDS = 4
+
+/**
+ * The narration as centred captions. A long sentence arrives word by word,
+ * each word rising out of a blur with the voice; only the words already
+ * heard are laid out, so every line stays centred as it grows (owner,
+ * 2026-10-02: the invisible words used to push the line off-centre). A short
+ * sentence lands whole, larger, in capitals, out of a blur and wide tracking.
+ */
+function KineticText({
+  f,
+  t,
+  total,
+  words,
+  minLines = 3,
+}: {
+  f: (n: number) => number
+  t: number
+  total: number
+  words: TimedWord[]
+  minLines?: number
+}) {
+  const phrases = kineticPhrases(words)
+  const at = phrases.findIndex((p, i) => {
+    const next = phrases[i + 1]
+    return t >= p[0].startSec - 0.05 && (!next || t < next[0].startSec - 0.05)
+  })
+  const phrase = at >= 0 ? phrases[at] : null
+  const nextStart = at >= 0 ? (phrases[at + 1]?.[0].startSec ?? total + 1) : 0
+  const out = interpolate(
+    t,
+    [nextStart - 0.16, nextStart - 0.04],
+    [1, 0],
+    clamp,
+  )
+  const sentence = phrase ? words.filter((w) => w.card === phrase[0].card) : []
+  const stamp = phrase != null && sentence.length <= STAMP_WORDS
+  const box = {
+    minHeight: f(89) * minLines,
+    width: "100%",
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    opacity: out,
+  } as const
+  if (!phrase) return <div style={box} />
+  if (stamp) {
+    const p = interpolate(
+      t,
+      [phrase[0].startSec - 0.02, phrase[0].startSec + 0.78],
+      [0, 1],
+      {
+        ...clamp,
+        easing: Easing.bezier(0.4, 0, 0.2, 1),
+      },
+    )
+    return (
+      <div style={box}>
+        <p
+          style={{
+            margin: 0,
+            fontFamily: SANS,
+            fontWeight: 600,
+            fontSize: f(76),
+            lineHeight: 1.2,
+            textAlign: "center",
+            textTransform: "uppercase",
+            letterSpacing: f(3.2 + 7 * (1 - p)),
+            color: "#ffffff",
+            opacity: p,
+            transform: `scale(${(0.96 + 0.04 * p).toFixed(4)})`,
+            filter:
+              p < 0.99 ? `blur(${(f(7) * (1 - p)).toFixed(2)}px)` : undefined,
+            textShadow: `0 ${f(2)}px ${f(22)}px rgba(0,0,0,0.6)`,
+          }}
+        >
+          {sentence.map((w) => w.word).join(" ")}
+        </p>
+      </div>
+    )
+  }
+  const heard = phrase.filter((w) => t >= w.startSec - 0.04)
+  return (
+    <div style={box}>
+      <p
         style={{
-          minHeight: f(89) * 3,
-          width: "100%",
+          margin: 0,
           fontFamily: SANS,
           fontSize: f(61),
           lineHeight: `${f(89)}px`,
           color: "#eae6df",
           textAlign: "center",
-          opacity: out,
           textShadow: `0 ${f(2)}px ${f(18)}px rgba(0,0,0,0.5)`,
         }}
       >
-        {phrase?.map((w, i) => {
-          // Kinetic: each word lands with the voice, rising out of a blur.
+        {heard.map((w, i) => {
           const p = interpolate(
             t,
             [w.startSec - 0.04, w.startSec + 0.26],
@@ -350,22 +443,128 @@ function HistoryLayout({
             },
           )
           return (
-            <span
-              key={i}
-              style={{
-                display: "inline-block",
-                marginRight: "0.26em",
-                opacity: p,
-                filter: `blur(${((1 - p) * f(10)).toFixed(2)}px)`,
-                transform: `translateY(${((1 - p) * f(22)).toFixed(2)}px) scale(${(1.08 - 0.08 * p).toFixed(4)})`,
-              }}
-            >
-              {w.word}
+            <span key={i}>
+              {i > 0 ? " " : null}
+              <span
+                style={{
+                  display: "inline-block",
+                  opacity: p,
+                  filter: `blur(${((1 - p) * f(10)).toFixed(2)}px)`,
+                  transform: `translateY(${((1 - p) * f(22)).toFixed(2)}px) scale(${(1.08 - 0.08 * p).toFixed(4)})`,
+                }}
+              >
+                {w.word}
+              </span>
             </span>
           )
         })}
-      </div>
+      </p>
     </div>
+  )
+}
+
+// --- reflection ------------------------------------------------------------
+
+/**
+ * Figma 415-2610: the narration centred, and, only when the run quotes a
+ * credited source, the credit beneath it (round portrait, label, name with
+ * life dates).
+ */
+function ReflectionLayout({
+  f,
+  t,
+  total,
+  words,
+  credit,
+}: {
+  f: (n: number) => number
+  t: number
+  total: number
+  words: TimedWord[]
+  credit?: { label?: string; source?: string; portrait?: string } | undefined
+}) {
+  const uri =
+    credit?.portrait && credit.portrait in SOURCE_PORTRAIT_URIS
+      ? SOURCE_PORTRAIT_URIS[credit.portrait as SourcePortraitId]
+      : null
+  const head = interpolate(t, [0.2, 0.9], [0, 1], {
+    ...clamp,
+    easing: EASE_OUT,
+  })
+  return (
+    <>
+      <div
+        style={{
+          position: "absolute",
+          top: f(614),
+          left: "50%",
+          width: f(705),
+          transform: "translateX(-50%)",
+        }}
+      >
+        <KineticText f={f} t={t} total={total} words={words} />
+      </div>
+      {credit?.source ? (
+        <div
+          style={{
+            position: "absolute",
+            top: f(614 + 89 * 3 + 145),
+            left: "50%",
+            width: f(705),
+            transform: `translateX(-50%) translateY(${(1 - head) * f(10)}px)`,
+            display: "flex",
+            gap: f(20),
+            alignItems: "center",
+            opacity: head,
+          }}
+        >
+          {uri ? (
+            <Img
+              src={uri}
+              style={{
+                width: f(124),
+                height: f(124),
+                borderRadius: "50%",
+                objectFit: "cover",
+                opacity: 0.85,
+              }}
+            />
+          ) : null}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: f(4),
+              width: f(320),
+            }}
+          >
+            <div
+              style={{
+                fontFamily: SANS,
+                fontWeight: 500,
+                fontSize: f(18),
+                letterSpacing: f(3.5),
+                color: "rgba(255,255,255,0.46)",
+                textTransform: "uppercase",
+              }}
+            >
+              {credit.label ?? "Commentary"}
+            </div>
+            <div
+              style={{
+                fontFamily: LITERATA,
+                fontSize: f(36),
+                lineHeight: `${f(50)}px`,
+                color: "rgba(255,255,255,0.92)",
+                opacity: 0.85,
+              }}
+            >
+              {credit.source}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   )
 }
 

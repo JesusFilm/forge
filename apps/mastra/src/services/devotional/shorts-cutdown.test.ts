@@ -271,3 +271,13 @@ describe("fact shorts are one thought with their own layout", () => {
     )
   })
 })
+
+describe("reflection short layout", () => {
+  it("renders through the short composition, with no credit for plain reflection", () => {
+    const plan = planCutdown(manifest, devotional)
+    const r = plan.shorts.find((s) => s.kind === "reflection")!
+    const m = buildShortManifest(manifest, r)
+    expect(m.shortFact).toEqual({ layout: "reflection" })
+    expect(shortComposition(m)).toBe("devotional-short")
+  })
+})
