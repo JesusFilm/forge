@@ -210,11 +210,13 @@ describe("non-route sheet counter", () => {
     const counter = createNonRouteSheetCounter()
     counter.open("sduiQuiz")
     counter.open("playerSettings")
-    expect(counter.count()).toBe(2)
+    // An RN Modal, so iOS draws it over the host: it must never count inline.
+    counter.open("feedbackModal")
+    expect(counter.count()).toBe(3)
     expect(counter.inlineCount()).toBe(0)
 
     counter.open("libraryDeleteConfirm")
-    expect(counter.count()).toBe(3)
+    expect(counter.count()).toBe(4)
     expect(counter.inlineCount()).toBe(1)
 
     counter.close("libraryDeleteConfirm")

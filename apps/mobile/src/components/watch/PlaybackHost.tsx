@@ -491,9 +491,12 @@ function ActivePlaybackHost({
   )
     knownIdentityRef.current = { videoKey, identity: progressIdentity }
 
-  // KD8: what a player-door report names. From the surface's DESCRIPTOR, not
-  // the window session, which exists only once a video has earned a window.
-  const sessionTitle = request.session?.title ?? null
+  // KD8: a player-door report names the surface's DESCRIPTOR (the window session
+  // may not exist yet). Only a record title may reach a ticket: a seed title is
+  // deep-link input, so a seed-only page reports with no video tag.
+  const sessionTitle = request.session?.titleFromRecord
+    ? request.session.title || null
+    : null
   const sessionSlug = request.session?.videoSlug ?? null
   const sessionLanguageSlug = request.session?.languageSlug ?? null
   const feedbackContext = useMemo<PlayerFeedbackVideo | null>(

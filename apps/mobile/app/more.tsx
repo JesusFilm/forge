@@ -117,8 +117,8 @@ function LinkRow({
   )
 }
 
-// Stays in the app, so it reads as a button with a chevron, the same as the
-// My Watch header rows, and not as a link that opens the browser.
+// Stays in the app, so it reads as a button with a chevron like the My Watch
+// rows. It navigates, as they do: a double tap must not push a second sheet.
 function RouteRow({
   link,
   separated,
@@ -131,7 +131,7 @@ function RouteRow({
 
   return (
     <Pressable
-      onPress={() => router.push(link.route)}
+      onPress={() => router.navigate(link.route)}
       style={({ pressed }) => [
         styles.row,
         separated && styles.rowSeparator,

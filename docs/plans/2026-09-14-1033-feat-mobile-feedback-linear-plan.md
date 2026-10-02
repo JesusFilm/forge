@@ -20,6 +20,8 @@ execution: code
 - **Open blockers:** none.
 - **Update 2026-10-02:** two facts changed after `main` moved on.
   - The Profile door is now the "Send Feedback" row, first in the Support group of the More screen (`app/more.tsx`). #2466 removed the Profile links section, so the door moved with them. Where the rest of this plan says "Profile door", read "More door".
+  - By the owner's decision, the same change renamed the "Contact Us" row to "Contact Jesus Film Project" and moved "Give" from Support to the end of About. The contact row keeps its RUM action name `more-contact-us`.
+  - The player door now names a video only when its title came from the resolved video record (`titleFromRecord`). A page that plays from a deep-link seed alone sends its report with no video tag, because a seed title is untrusted link input (R6, KD5).
   - The mobile PR no longer adds a native module. `main` already carries `expo-application` (#2466) and `expo-device` (#2451), so KTD6's native-build step does not apply to this PR.
 
 ---

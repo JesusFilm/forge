@@ -241,7 +241,7 @@ import {
 import type { ExpoVideoMock } from "../../../test-utils/expoVideoMock"
 import { FloatingBackButton } from "../../ui/FloatingBackButton"
 import { PlayerSlot } from "../PlayerSlot"
-import type { VideoPlayerCast } from "../VideoPlayer"
+import { VideoPlayer, type VideoPlayerCast } from "../VideoPlayer"
 import {
   useFloatingWindowFrame,
   usePlaybackFrameVisible,
@@ -705,6 +705,41 @@ describe("the hoisted player drives the full view", () => {
     // The frame is only the clip that HAS bitten. Anything between it and the
     // bar eats the thumb just as well, so the whole path is what gets pinned.
     expect(clippersAboveScrubber(renderer)).toEqual([])
+  })
+})
+
+// KD8: the host hands the player door the video a report names. The prop is
+// optional and defaults to null, so a dropped wire compiles and every report
+// silently loses its video; these read the prop the real host passes.
+describe("the player-door feedback context (KD8)", () => {
+  function feedbackContextOf(renderer: TestInstance) {
+    const players = renderer.root.findAll(
+      (node) => (node as { type?: unknown }).type === VideoPlayer,
+    )
+    expect(players).toHaveLength(1)
+    return players[0].props.feedbackContext
+  }
+
+  it("names the video when the title came from the resolved record", async () => {
+    attachSlot()
+    const renderer = await renderHost()
+
+    expect(feedbackContextOf(renderer)).toEqual({
+      title: "Video A",
+      slug: "video-a-slug",
+      languageSlug: "english",
+    })
+  })
+
+  // A seed title is deep-link input: a crafted link can play a seed-only page
+  // whose title no record ever replaces, so it must not reach a staff ticket.
+  it("names no video when the title came only from a deep-link seed", async () => {
+    attachSlot({
+      session: { ...SESSION_A, title: "Seeded text", titleFromRecord: false },
+    })
+    const renderer = await renderHost()
+
+    expect(feedbackContextOf(renderer)).toBeNull()
   })
 })
 
