@@ -516,7 +516,7 @@ export function backgroundStarts(m: Manifest): number[] {
 }
 
 type Mark = { label?: string; source?: string; portrait?: string }
-type Callout = { text?: string; highlight?: string }
+type Callout = { text?: string; highlight?: string; reference?: string }
 
 /**
  * The fact shorts' own layout (rendered by the `devotional-short`
@@ -569,6 +569,7 @@ function factLayout(m: Manifest, plan: ShortPlan): Partial<Manifest> {
         layout: "language",
         verse: callout?.text ?? "",
         highlight: callout?.highlight ?? "",
+        ...(callout?.reference ? { reference: callout.reference } : {}),
       },
     }
   }

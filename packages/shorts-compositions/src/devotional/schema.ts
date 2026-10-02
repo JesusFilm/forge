@@ -470,6 +470,8 @@ export const devotionalInputPropsSchema = z.object({
       emblem: z.enum(["book", "scroll"]).optional(),
       verse: z.string().optional(),
       highlight: z.string().optional(),
+      /** Language: the verse's address ("Luke 15:32"). */
+      reference: z.string().optional(),
     })
     .optional(),
   /** 16:9 film captions with word times: `karaoke` (default) lights the word

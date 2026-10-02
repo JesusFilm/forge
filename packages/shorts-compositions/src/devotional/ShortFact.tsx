@@ -176,6 +176,7 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           words={words}
           verse={fact?.verse ?? ""}
           highlight={fact?.highlight ?? ""}
+          reference={fact?.reference ?? ""}
         />
       ) : (
         <HistoryLayout
@@ -873,12 +874,15 @@ function LanguageLayout({
   words,
   verse,
   highlight,
+  reference,
 }: {
   f: (n: number) => number
   t: number
   words: TimedWord[]
   verse: string
   highlight: string
+  /** "Luke 15:32": says plainly that this is the Bible (Figma 422-2664). */
+  reference: string
 }) {
   const text = standalone(verse)
   const at = highlight
@@ -998,6 +1002,29 @@ function LanguageLayout({
         >
           “
         </div>
+        {reference ? (
+          // The verse address between the opening mark and the verse:
+          // Inter Medium 25 caps, tracked 5, at 75% (Figma 422-2664).
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: f(-58),
+              textAlign: "center",
+              fontFamily: SANS,
+              fontWeight: 500,
+              fontSize: f(25),
+              letterSpacing: f(5),
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.75)",
+              whiteSpace: "nowrap",
+              textShadow: `0 ${f(2)}px ${f(12)}px rgba(0,0,0,0.5)`,
+            }}
+          >
+            {reference}
+          </div>
+        ) : null}
         <p
           style={{
             margin: 0,
