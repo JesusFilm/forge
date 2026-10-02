@@ -273,11 +273,16 @@ describe("fact shorts are one thought with their own layout", () => {
 })
 
 describe("reflection short layout", () => {
-  it("renders through the short composition, with no credit for plain reflection", () => {
+  it("renders through the short composition, credited to the devotional's commentary", () => {
     const plan = planCutdown(manifest, devotional)
     const r = plan.shorts.find((s) => s.kind === "reflection")!
     const m = buildShortManifest(manifest, r)
-    expect(m.shortFact).toEqual({ layout: "reflection" })
+    expect(m.shortFact).toEqual({
+      layout: "reflection",
+      label: "Commentary",
+      source: "J. C. Ryle (1816–1900)",
+      portrait: "ryle",
+    })
     expect(shortComposition(m)).toBe("devotional-short")
   })
 })

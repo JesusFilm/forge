@@ -43,6 +43,9 @@ const SANS = `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-ser
 const LITERATA = `'${TEASER_FONT_FAMILIES.literata}', Georgia, serif`
 const PT_SERIF = `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`
 const GOLD = "#f2c46b"
+/** Text column width in Figma px (of 900): keeps ~156px of a 1080 frame
+ *  clear on each side, outside Reels / Shorts / TikTok's right-hand rail. */
+const SAFE_COLUMN = 640
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 const EASE_OUT = Easing.bezier(0.2, 0.7, 0.2, 1)
 
@@ -256,7 +259,9 @@ function HistoryLayout({
         position: "absolute",
         top: f(353),
         left: "50%",
-        width: f(747),
+        // 640 of 900 (owner, 2026-10-02): side margins wide enough that no
+        // phone UI (the right-hand action rail) covers a word.
+        width: f(SAFE_COLUMN),
         transform: "translateX(-50%)",
         display: "flex",
         flexDirection: "column",
@@ -612,7 +617,7 @@ function ReflectionLayout({
           position: "absolute",
           top: f(614),
           left: "50%",
-          width: f(705),
+          width: f(SAFE_COLUMN),
           transform: "translateX(-50%)",
         }}
       >
@@ -624,7 +629,7 @@ function ReflectionLayout({
             position: "absolute",
             top: f(614 + 89 * 3 + 145),
             left: "50%",
-            width: f(705),
+            width: f(SAFE_COLUMN),
             transform: `translateX(-50%) translateY(${(1 - head) * f(10)}px)`,
             display: "flex",
             gap: f(20),
@@ -673,7 +678,13 @@ function ReflectionLayout({
                 opacity: 0.85,
               }}
             >
-              {credit.source}
+              {/* Name, then life dates on their own line (Figma 415-2634):
+                  "J. C. Ryle" / "(1816–1900)", never split mid-date. */}
+              {credit.source.split(/\s(?=\()/).map((line, i) => (
+                <div key={i} style={{ whiteSpace: "nowrap" }}>
+                  {line}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -859,8 +870,10 @@ function LanguageLayout({
           position: "absolute",
           left: "50%",
           top: f(470),
-          width: f(651),
-          transform: `translateX(calc(-50% + ${f(20.5)}px))`,
+          width: f(620),
+          // Centred (the Figma's +20.5 offset pushed the right edge into
+          // the action rail).
+          transform: "translateX(-50%)",
           opacity: verseIn,
         }}
       >
@@ -917,7 +930,7 @@ function LanguageLayout({
         <div
           style={{
             ...quote,
-            right: f(-24),
+            right: f(0),
             bottom: f(-150),
             transform: `rotate(${(180 + swayQuote(Math.PI * 0.8)).toFixed(3)}deg)`,
           }}

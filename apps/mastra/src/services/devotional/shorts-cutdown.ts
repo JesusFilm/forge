@@ -466,9 +466,16 @@ function factLayout(m: Manifest, plan: ShortPlan): Partial<Manifest> {
     }
   }
   if (plan.kind === "reflection") {
-    // Plain reflection carries no credit; a run that quotes a credited
-    // source (a commentary paragraph) shows it under the text.
-    const mark = cards.find((c) => c.sourceMark)?.sourceMark as Mark | undefined
+    // The reflection as a whole is adapted from its commentary (the long
+    // form says "Adapted from a trusted classic"), so the short credits that
+    // commentary even when the run itself holds no credited sentence: a mark
+    // in the run first, else the devotional's commentary credit (owner,
+    // 2026-10-02, Figma 415-2610). A history or language note is never used
+    // here: it credits one fact, not the reflection.
+    const mark = (cards.find((c) => c.sourceMark)?.sourceMark ??
+      m.cards.find(
+        (c) => (c.sourceMark as Mark | undefined)?.label === "Commentary",
+      )?.sourceMark) as Mark | undefined
     return {
       shortFact: {
         layout: "reflection",
