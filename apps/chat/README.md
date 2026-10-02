@@ -72,4 +72,4 @@ Apologist answers disappear on refresh, navigation or exit.
 See [operations and configuration](../../docs/operations/apologist-comparison.md)
 for server-only settings, outstanding production-enablement prerequisites and
 rollback. Removal before public release is tracked by
-[feat-593](../../docs/roadmap/ai-chat/feat-593-remove-apologist-comparison.md).
+[feat-602](../../docs/roadmap/ai-chat/feat-602-remove-apologist-comparison.md).

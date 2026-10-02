@@ -1,5 +1,5 @@
 ---
-id: "feat-551"
+id: "feat-601"
 title: "Temporary Apologist comparison in Forge Chat"
 owner: "jian wei"
 priority: "P2"
@@ -8,7 +8,7 @@ start_date: "2026-09-24"
 duration: 3
 depends_on: []
 blocks:
-  - "feat-593"
+  - "feat-602"
 tags:
   - ai-chat
   - prototype
@@ -25,7 +25,7 @@ enablement, and deployed smoke/disablement checks remain outstanding under U6.
 A brief PR browser-testing note is sufficient, without committed one-off
 verification artifacts.
 [Operations](../../operations/apologist-comparison.md) defines enablement and rollback;
-[feat-593](feat-593-remove-apologist-comparison.md) tracks removal before public release.
+[feat-602](feat-602-remove-apologist-comparison.md) tracks removal before public release.
 Keep this ticket in progress until external enablement evidence is handled.
 
 ### Accepted model difference
@@ -41,7 +41,7 @@ and version. Whether Core's model ID remains supported is tracked by [NES-1895](
 Internal testers need to ask Forge's Seeker agent and Core's Apologist integration the same questions for informal testing and demonstrations.
 The comparison is temporary and must be removable before public release.
 Implementation is ready for the normal code-PR flow; production enablement remains outstanding.
-Removal is tracked by feat-593; production enablement remains gated on U6 evidence.
+Removal is tracked by feat-602; production enablement remains gated on U6 evidence.
 Owner and duration are provisional, following the existing lane assignment.
 
 ## Entry Points — Read These First

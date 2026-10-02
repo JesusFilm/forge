@@ -1,5 +1,5 @@
 ---
-id: "feat-593"
+id: "feat-602"
 title: "Remove temporary Apologist comparison before public Chat release"
 owner: "jian wei"
 priority: "P1"
@@ -7,7 +7,7 @@ status: "not-started"
 start_date: "2026-10-02"
 duration: 1
 depends_on:
-  - "feat-551"
+  - "feat-601"
 blocks: []
 tags:
   - ai-chat
@@ -19,7 +19,7 @@ tags:
 
 The comparison is an internal temporary experiment. Complete removal before the
 public-release register feat-339 can close; disabling the switch is only rollback.
-If feat-551 is canceled instead of shipping, record that disposition here and in
+If feat-601 is canceled instead of shipping, record that disposition here and in
 feat-339 before closing the removal requirement.
 
 ## Entry Points — Read These First
@@ -71,7 +71,7 @@ all Seeker settings. Confirm no retired route remains deployed.
 
 Do not claim removal complete from a false switch alone. Do not delete shared
 provider credentials. Do not deploy local worktrees directly to production.
-Link this ticket in feat-339 and keep its dependency on feat-551 bidirectional.
+Link this ticket in feat-339 and keep its dependency on feat-601 bidirectional.
 
 ## Verification
 

@@ -16,10 +16,10 @@ Scope: `apps/chat`.
 - Run lint, typecheck, and test before pushing.
 
 - Preserve the existing auth, Seeker, history and ownership boundaries. New
-  integrations require a roadmap ticket. feat-551 authorizes only the gated,
+  integrations require a roadmap ticket. feat-601 authorizes only the gated,
   temporary Apologist comparison; its transcript stays in memory.
 - When changing comparison, read `docs/operations/apologist-comparison.md` and
-  update feat-593 if its removal paths or symbols move.
+  update feat-602 if its removal paths or symbols move.
 
 ## Do not
 

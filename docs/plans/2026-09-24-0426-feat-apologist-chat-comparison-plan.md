@@ -17,7 +17,7 @@ deepened: 2026-09-24
 - **Authority:** Product requirements below carry the user-confirmed interview decisions. Technical decisions govern implementation within those requirements. The supplied screenshot illustrates the two-pane idea; it does not fix the layout.
 - **Execution:** Planning only in this change. A later implementation follows U1–U6, the Verification Contract, and normal PR-to-main deployment. No direct production deployment.
 - **Stop conditions:** Do not enable comparison without verified Apologist configuration and production prompt access. Stop if matching Core requires a materially different product scope or weakening the existing identity boundary.
-- **Ownership:** Feature tracked by `docs/roadmap/ai-chat/feat-551-apologist-chat-comparison.md`. The implementation PR creates the removal follow-up once the shipped code is known. Implementation can start with mocks; an authorized configuration owner must supply the enablement evidence in U6.
+- **Ownership:** Feature tracked by `docs/roadmap/ai-chat/feat-601-apologist-chat-comparison.md`. The implementation PR creates the removal follow-up once the shipped code is known. Implementation can start with mocks; an authorized configuration owner must supply the enablement evidence in U6.
 
 ---
 
@@ -336,7 +336,7 @@ The work remains one feature scope; no shared provider framework or database wor
 
 **Goal:** Establish R11, R12 and make R14 operationally concrete.
 **Dependencies:** U1–U5; authorized Core production configuration and Langfuse access.
-**Files:** New `docs/operations/apologist-comparison.md` and a removal ticket under `docs/roadmap/ai-chat/` with the next global `feat-NNN` ID; update `apps/chat/README.md`, relevant canonical package guidance, `docs/roadmap/ai-chat/feat-551-apologist-chat-comparison.md`, and the lane README.
+**Files:** New `docs/operations/apologist-comparison.md` and a removal ticket under `docs/roadmap/ai-chat/` with the next global `feat-NNN` ID; update `apps/chat/README.md`, relevant canonical package guidance, `docs/roadmap/ai-chat/feat-601-apologist-chat-comparison.md`, and the lane README.
 **Approach:**
 
 1. Retain the operator's gateway URL/key and production prompt project/version confirmations and the accepted model difference in operations documentation. Source comparison confirms 512 output tokens and no explicit temperature, top-p, or penalties in either implementation. Supply the approved settings to Forge production through the normal secret store; retain only nonsecret evidence.

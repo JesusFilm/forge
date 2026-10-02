@@ -893,7 +893,7 @@ DNS, WAF, Authenticated Origin Pulls, DNSSEC). Railway env sets
 OAuth seed live in
 `docs/solutions/auth/public-repo-oauth-seed-railway-domain-exposure-calculus.md`.
 
-## Temporary Apologist comparison (feat-551)
+## Temporary Apologist comparison (feat-601)
 
 `src/features/apologist/` owns the removable comparison controller, lazy view,
 protocol and server adapter. Both dynamic pages resolve `comparisonAllowed`
@@ -911,6 +911,6 @@ tracks stopped status locally rather than inferring it from persisted messages.
 
 When changing the integration or rollout, read
 `docs/operations/apologist-comparison.md`. When moving symbols, update
-`docs/roadmap/ai-chat/feat-593-remove-apologist-comparison.md`, which requires
-removal before public release. feat-551 authorizes this narrow additional
+`docs/roadmap/ai-chat/feat-602-remove-apologist-comparison.md`, which requires
+removal before public release. feat-601 authorizes this narrow additional
 verified-email allowlist; it does not widen Seeker access.

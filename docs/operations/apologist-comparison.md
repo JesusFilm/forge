@@ -1,8 +1,8 @@
 # Temporary Apologist comparison
 
-The feature belongs to feat-551 and is restricted to selected internal testers.
+The feature belongs to feat-601 and is restricted to selected internal testers.
 It is default-off and must be removed before public Chat release; follow
-[feat-593](../roadmap/ai-chat/feat-593-remove-apologist-comparison.md).
+[feat-602](../roadmap/ai-chat/feat-602-remove-apologist-comparison.md).
 
 ## Configuration and enablement
 
@@ -93,7 +93,7 @@ Disabling is rollback; it does not satisfy the public-release removal requiremen
 
 ## Removal
 
-Use feat-593's explicit deletion boundary and keep-list. Remove feature code,
+Use feat-602's explicit deletion boundary and keep-list. Remove feature code,
 route, page capability wiring, shell entry, dedicated tests and now-unused SDK
 dependencies, then regenerate the lockfile. Remove the read-only snapshot
 exposure if no other caller uses it. Delete deployment settings in a separate
