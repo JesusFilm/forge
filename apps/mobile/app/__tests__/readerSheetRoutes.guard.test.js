@@ -24,6 +24,12 @@ const ROOT_LAYOUT = fs.readFileSync(path.join(APP_DIR, "_layout.tsx"), "utf8")
 const ROOT_SHEETS = IN_APP_SHEET_ROUTE_PATTERNS.filter(
   (pattern) => !pattern.includes("/"),
 )
+// Root sheets that are not the reader's, named one by one, so a new root sheet
+// is a deliberate edit here and never passes as a reader sheet.
+const NON_READER_ROOT_SHEETS = ["feedback"]
+const READER_ROOT_SHEETS = ROOT_SHEETS.filter(
+  (name) => !NON_READER_ROOT_SHEETS.includes(name),
+)
 
 // Pure detector, so a fixture can prove it flags a real omission.
 function screensMissingSheetOptions(content, names) {
@@ -43,11 +49,17 @@ function screensMissingSheetOptions(content, names) {
 
 describe("the reader's root sheet routes", () => {
   it("are the three sheets U11 pushes", () => {
-    expect(ROOT_SHEETS).toEqual(
+    expect(READER_ROOT_SHEETS).toEqual(
       Object.values(READER_SHEET_PATHNAMES).map((pathname) =>
         pathname.slice(1),
       ),
     )
+  })
+
+  it("names every other root sheet on purpose", () => {
+    expect(
+      ROOT_SHEETS.filter((name) => NON_READER_ROOT_SHEETS.includes(name)),
+    ).toEqual(NON_READER_ROOT_SHEETS)
   })
 
   it.each(ROOT_SHEETS)("has a route file for %s", (name) => {
@@ -69,7 +81,9 @@ describe("the reader's root sheet routes", () => {
   })
 
   it("declares each one as a sheet in the root layout", () => {
-    expect(screensMissingSheetOptions(ROOT_LAYOUT, ROOT_SHEETS)).toEqual([])
+    expect(screensMissingSheetOptions(ROOT_LAYOUT, READER_ROOT_SHEETS)).toEqual(
+      [],
+    )
   })
 
   it("presents them as form sheets sized by the shared list detents", () => {
