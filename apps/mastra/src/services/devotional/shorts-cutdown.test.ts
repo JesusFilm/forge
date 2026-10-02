@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest"
 import {
   FACT_MIN_SEC,
   SHORT_MAX_SEC,
+  SHORT_OUTRO_SEC,
   SHORT_MIN_SEC,
   backgroundStarts,
   buildShortManifest,
@@ -354,5 +355,37 @@ describe("intro teaser", () => {
     const hook = args.find((a) => a.startsWith("--hook="))!
     expect(hook.endsWith(`\n\n${INTRO_CTA}`)).toBe(true)
     expect(hook).not.toMatch(/Let's watch/)
+  })
+})
+
+describe("film-verse question cards", () => {
+  const cards = {
+    open: "Is this worth celebrating?",
+    close: "But someone had a good reason to stay outside.",
+  }
+  const plan = planCutdown(manifest, devotional, { filmVerseCards: cards })
+  const film = plan.shorts.find((s) => s.kind === "film-verse")!
+  const m = buildShortManifest(manifest, film)
+  const subs = m.cards[0].subtitles!
+
+  it("gives the opening question room before the first line, never cutting into one", () => {
+    const open = (m.shortCards as { open: { fromSec: number; toSec: number } })
+      .open
+    expect(open.toSec - open.fromSec).toBeGreaterThanOrEqual(2.5)
+    expect(open.toSec).toBeLessThan(subs[0].startSec)
+    // The window opens after the previous line has finished.
+    const before = manifest.cards[0].subtitles!.filter(
+      (s) => s.endSec <= film.film!.fromSec + 0.01,
+    )
+    expect(before.at(-1)!.endSec).toBeLessThanOrEqual(film.film!.fromSec)
+  })
+
+  it("puts the closing turn after the last line and stops before the next one", () => {
+    const close = (m.shortCards as { close: { fromSec: number } }).close
+    expect(close.fromSec).toBeGreaterThan(subs.at(-1)!.endSec)
+    const next = manifest.cards[0].subtitles!.find(
+      (s) => s.startSec > film.film!.toSec - 0.5,
+    )!
+    expect(film.film!.toSec + SHORT_OUTRO_SEC).toBeLessThan(next.startSec)
   })
 })

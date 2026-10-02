@@ -425,6 +425,17 @@ export const devotionalInputPropsSchema = z.object({
    *  name at the top for the whole piece, and the film's sound carried to the
    *  last frames instead of fading on the closing words. */
   shortForm: z.boolean().optional(),
+  /** Film short (feat-573): silent question cards stamped over the film, one
+   *  before the scene speaks and one after it ends (owner, 2026-10-02).
+   *  Seconds on the short's own clock. */
+  shortCards: z
+    .object({
+      open: z
+        .object({ text: z.string(), fromSec: z.number(), toSec: z.number() })
+        .optional(),
+      close: z.object({ text: z.string(), fromSec: z.number() }).optional(),
+    })
+    .optional(),
   /** The fact shorts' layout (feat-573), read only by the devotional-short
    *  composition (ShortFact.tsx): `history` puts the credit on screen over
    *  kinetic captions; `language` shows the verse with `highlight` ringed and

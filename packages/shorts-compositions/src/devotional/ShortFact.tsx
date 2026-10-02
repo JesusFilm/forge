@@ -17,6 +17,7 @@ import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
 import { KineticCaption } from "./KineticCaption"
 import { AnimatedBook, AnimatedScroll } from "./SourceEmblems"
+import { StampLine } from "./StampLine"
 import { SOURCE_PORTRAIT_URIS, type SourcePortraitId } from "./source-portraits"
 import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
 import { CARD_TAIL_FRAMES, framesFromDurations } from "./timing"
@@ -491,41 +492,13 @@ function KineticText({
   } as const
   if (!phrase) return <div style={box} />
   if (stamp) {
-    const p = interpolate(
-      t,
-      [phrase[0].startSec - 0.02, phrase[0].startSec + 0.78],
-      [0, 1],
-      {
-        ...clamp,
-        easing: Easing.bezier(0.4, 0, 0.2, 1),
-      },
-    )
     return (
       <div style={box}>
-        <p
-          style={{
-            margin: 0,
-            fontFamily: SANS,
-            fontWeight: 600,
-            fontSize: f(76),
-            lineHeight: 1.2,
-            textAlign: "center",
-            textTransform: "uppercase",
-            // Fixed tracking: animating it re-wrapped the line mid-stamp
-            // ("HIS HANDS / ARE DIRTY." then "HIS HANDS ARE / DIRTY.", owner
-            // 2026-10-02). The spread is a horizontal scale instead, which
-            // never changes where the line breaks.
-            letterSpacing: f(3.2),
-            color: "#ffffff",
-            opacity: p,
-            transform: `scale(${(0.96 + 0.04 * p + 0.1 * (1 - p)).toFixed(4)}, ${(0.96 + 0.04 * p).toFixed(4)})`,
-            filter:
-              p < 0.99 ? `blur(${(f(7) * (1 - p)).toFixed(2)}px)` : undefined,
-            textShadow: `0 ${f(2)}px ${f(22)}px rgba(0,0,0,0.6)`,
-          }}
-        >
-          {sentence.map((w) => w.word).join(" ")}
-        </p>
+        <StampLine
+          text={sentence.map((w) => w.word).join(" ")}
+          t={t - phrase[0].startSec}
+          f={f}
+        />
       </div>
     )
   }

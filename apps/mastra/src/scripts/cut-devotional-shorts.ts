@@ -5,6 +5,7 @@
  *     --from="<video>.source" --out="$HOME/Desktop/Social Media/Prodigal/shorts" \
  *     [--only=language,history] [--stills] \
  *     [--film-turn=139.1-172.6] [--reflection=0-1] [--no-model]
+ *     [--film-open="Is this worth celebrating?"] [--film-close="..."]
  *
  * The turn of the film scene is chosen by a model (one small OpenRouter call,
  * needs `--env-file=.env.local`) unless `--film-turn` names it or
@@ -98,7 +99,10 @@ async function trimFilm(
   dest: string,
   fromSec: number,
   toSec: number,
+  /** Hold the first frame this long (silent) before the scene plays. */
+  leadSec = 0,
 ) {
+  const lead = leadSec > 0.01
   await run("ffmpeg", [
     "-y",
     "-ss",
@@ -107,6 +111,14 @@ async function trimFilm(
     src,
     "-t",
     (toSec - fromSec).toFixed(3),
+    ...(lead
+      ? [
+          "-vf",
+          `tpad=start_duration=${leadSec.toFixed(3)}:start_mode=clone`,
+          "-af",
+          `adelay=${Math.round(leadSec * 1000)}:all=1`,
+        ]
+      : []),
     "-c:v",
     "libx264",
     "-crf",
@@ -328,6 +340,15 @@ async function main() {
   const overrides: CutdownOverrides = {
     ...(turn ? { filmTurn: { fromSec: turn.a, toSec: turn.b } } : {}),
     ...(refl ? { reflection: { from: refl.a, to: refl.b } } : {}),
+    // Silent question cards on the film-verse short.
+    ...(arg("film-open") || arg("film-close")
+      ? {
+          filmVerseCards: {
+            ...(arg("film-open") ? { open: arg("film-open")! } : {}),
+            ...(arg("film-close") ? { close: arg("film-close")! } : {}),
+          },
+        }
+      : {}),
   }
   const film = manifest.cards.find((c) => c.kind === "video")
   const wantTurn = !only || only.includes("film-turn")
@@ -401,6 +422,7 @@ async function main() {
             dest,
             short.film.fromSec,
             short.film.toSec + SHORT_OUTRO_SEC,
+            short.film.leadSec ?? 0,
           )
         } else {
           await symlink(path.resolve(from, f), dest)

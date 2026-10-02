@@ -28,6 +28,7 @@ import { quoteIntroTimeline } from "./quote-timing"
 import { QuoteIntro } from "./QuoteIntro"
 import { CalmCallToAction, KineticCaption } from "./KineticCaption"
 import { ScrollingScripture } from "./ScrollingScripture"
+import { StampLine } from "./StampLine"
 import { StepProgressLine } from "./StepProgressLine"
 import { StepperStack } from "./Stepper"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
@@ -1521,6 +1522,65 @@ function WordReveal({
           </span>
         )
       })}
+    </>
+  )
+}
+
+/**
+ * The film short's silent question cards (owner, 2026-10-02): a question
+ * before the scene speaks ("Is this worth celebrating?") and a turn after it
+ * ends ("But someone had a good reason to stay outside."), stamped like the
+ * reflection's short lines, centred in the safe column over a dimmed film.
+ */
+function ShortQuestionCards({
+  cards,
+  t,
+  frameWidth,
+}: {
+  cards: NonNullable<DevotionalInputProps["shortCards"]>
+  t: number
+  frameWidth: number
+}) {
+  const f = (n: number) => (n * frameWidth) / 900
+  const card = (
+    text: string,
+    fromSec: number,
+    toSec: number | null,
+    key: string,
+  ) => {
+    if (t < fromSec - 0.05 || (toSec != null && t > toSec + 0.05)) return null
+    const fade =
+      toSec == null
+        ? 1
+        : interpolate(t, [toSec - 0.3, toSec], [1, 0], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          })
+    const dim = interpolate(t, [fromSec - 0.05, fromSec + 0.4], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    })
+    return (
+      <AbsoluteFill key={key} style={{ opacity: fade, pointerEvents: "none" }}>
+        <AbsoluteFill style={{ background: `rgba(0,0,0,${0.4 * dim})` }} />
+        <AbsoluteFill
+          style={{ justifyContent: "center", alignItems: "center" }}
+        >
+          <div style={{ width: f(640) }}>
+            <StampLine text={text} t={t - fromSec} f={f} />
+          </div>
+        </AbsoluteFill>
+      </AbsoluteFill>
+    )
+  }
+  return (
+    <>
+      {cards.open
+        ? card(cards.open.text, cards.open.fromSec, cards.open.toSec, "open")
+        : null}
+      {cards.close
+        ? card(cards.close.text, cards.close.fromSec, null, "close")
+        : null}
     </>
   )
 }
@@ -7350,6 +7410,13 @@ export function DevotionalVideo(props: DevotionalInputProps) {
         />
       ) : null}
       {props.shortForm && !isLandscape ? <ShortBrand px={px} /> : null}
+      {props.shortCards && !isLandscape ? (
+        <ShortQuestionCards
+          cards={props.shortCards}
+          t={frame / fps}
+          frameWidth={width}
+        />
+      ) : null}
       {props.stepRing ? (
         props.stepProgress === "ring" || props.stepProgress === "bar" ? (
           <StepRingOverlay

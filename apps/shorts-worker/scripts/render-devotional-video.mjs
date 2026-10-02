@@ -544,6 +544,7 @@ async function main() {
       ...(manifest.portraitMarks ? { portraitMarks: true } : {}),
       ...(manifest.shortForm ? { shortForm: true } : {}),
       ...(manifest.shortFact ? { shortFact: manifest.shortFact } : {}),
+      ...(manifest.shortCards ? { shortCards: manifest.shortCards } : {}),
       ...(manifest.stepProgress ? { stepProgress: manifest.stepProgress } : {}),
       ...(manifest.bgStartOffsetSec != null
         ? { bgStartOffsetSec: manifest.bgStartOffsetSec }

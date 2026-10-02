@@ -102,7 +102,9 @@ export type ShortPlan = {
   /** Long-form card indices the short is built from, in order. */
   cards: number[]
   /** Film shorts: the window of the long-form clip, seconds. */
-  film?: { fromSec: number; toSec: number }
+  film?: { fromSec: number; toSec: number; leadSec?: number }
+  /** Film short: the silent question cards (texts). */
+  questionCards?: { open?: string; close?: string }
   durationSec: number
   /** One line on why this stretch, for shorts.md. */
   why: string
@@ -118,6 +120,9 @@ export type CutdownOverrides = {
   reflection?: { from: number; to: number }
   /** The turn of the scene, seconds into the long-form clip. */
   filmTurn?: { fromSec: number; toSec: number; why?: string }
+  /** Film-verse short: a silent question before the scene speaks and a
+   *  turn after it ends (owner, 2026-10-02). */
+  filmVerseCards?: { open?: string; close?: string }
 }
 
 const norm = (s: string) =>
@@ -305,11 +310,55 @@ export function planCutdown(
         ? verseWindow(film.subtitles, scripture.verse)
         : null
     if (w) {
+      const cards = overrides.filmVerseCards
+      let win = w
+      if (cards && film.subtitles) {
+        // Room for the cards: the quiet before the first line and the scene
+        // running on after the last, never into a neighbouring line (and
+        // leaving the outro's extra footage clear of it too).
+        const subs = film.subtitles
+        const prevEnd = Math.max(
+          0,
+          ...subs
+            .filter((x) => x.endSec <= w.fromSec + 0.5)
+            .map((x) => x.endSec),
+        )
+        const nextStart = Math.min(
+          ...subs
+            .filter((x) => x.startSec >= w.toSec - 0.5)
+            .map((x) => x.startSec),
+          Infinity,
+        )
+        win = {
+          fromSec: cards.open
+            ? Math.max(prevEnd + 0.3, w.fromSec - 2.4)
+            : w.fromSec,
+          toSec: cards.close
+            ? Math.min(nextStart - SHORT_OUTRO_SEC - 0.3, w.toSec + 2.8)
+            : w.toSec,
+        }
+      }
       filmShort(
         "film-verse",
-        w,
+        win,
         `the film up to the verse the devotional quotes (${scripture?.citation})`,
       )
+      if (cards) {
+        const made = shorts.find((x) => x.kind === "film-verse")
+        if (made) {
+          made.questionCards = cards
+          // The scene speaks ~2.4s in; the question needs ~3s on screen. Hold
+          // the first frame for the difference (a still, the clip's own
+          // slow push over it) rather than cut into a line already started.
+          const first = film.subtitles?.find((x) => x.startSec >= win.fromSec)
+          const quiet = first ? first.startSec - win.fromSec : 0
+          const lead = cards.open ? Math.max(0, OPEN_CARD_NEEDS_SEC - quiet) : 0
+          if (lead > 0 && made.film) {
+            made.film = { ...made.film, leadSec: Number(lead.toFixed(2)) }
+            made.durationSec += lead
+          }
+        }
+      }
     } else {
       skipped.push({
         kind: "film-verse",
@@ -516,6 +565,9 @@ export function shortComposition(m: Manifest): string {
  *  short trims this much extra footage so the film keeps playing (and
  *  sounding) through it rather than freezing. */
 export const SHORT_OUTRO_SEC = 1.5
+/** Seconds of quiet the film short's opening question needs before the
+ *  scene's first line (0.25 in, ~2.6 on screen, 0.55 clear of the voice). */
+const OPEN_CARD_NEEDS_SEC = 3.4
 
 /**
  * The portrait manifest for one short. Same composition, same files, so the
@@ -533,6 +585,7 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
     const c = { ...m.cards[i] }
     if (c.kind === "video" && plan.film) {
       const { fromSec, toSec } = plan.film
+      const lead = plan.film.leadSec ?? 0
       const shifted = (c.subtitles ?? [])
         .map((s) => ({
           ...s,
@@ -541,7 +594,12 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
           ...(s.words ? { words: s.words.map((w) => w - fromSec) } : {}),
         }))
         .filter((s) => s.endSec > 0 && s.startSec < toSec - fromSec)
-        .map((s) => ({ ...s, startSec: Math.max(0, s.startSec) }))
+        .map((s) => ({
+          ...s,
+          startSec: Math.max(0, s.startSec) + lead,
+          endSec: s.endSec + lead,
+          ...(s.words ? { words: s.words.map((w) => w + lead) } : {}),
+        }))
       // The long-form opening lives on this card (montage, spoken lines,
       // step labels); a short is the scene alone.
       for (const k of [
@@ -562,8 +620,9 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
       return {
         ...c,
         videoFile: "clip.mp4",
-        durationSec: toSec - fromSec,
+        durationSec: toSec - fromSec + lead,
         subtitles: shifted,
+        ...(plan.questionCards ? { __cards: plan.questionCards } : {}),
         // Full frame, the verses scrolling over a dark pool in the middle
         // (owner's Figma "Video clip · Scrolling (vert)", 2026-10-02; the
         // square window with the verses under it was the first try).
@@ -573,6 +632,31 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
     if (c.kind === "step") delete c.steps
     return c
   })
+  // Film short question cards, timed from the lines inside the window.
+  let shortCards: Record<string, unknown> | undefined
+  const filmCard = cards.find((c) => c.kind === "video") as
+    | (Card & { __cards?: { open?: string; close?: string } })
+    | undefined
+  if (filmCard?.__cards) {
+    const subs = filmCard.subtitles ?? []
+    const first = subs[0]?.startSec ?? 2
+    const last = subs.at(-1)?.endSec ?? (filmCard.durationSec ?? 10) - 2
+    shortCards = {
+      ...(filmCard.__cards.open
+        ? {
+            open: {
+              text: filmCard.__cards.open,
+              fromSec: 0.25,
+              toSec: Math.max(1.2, first - 0.55),
+            },
+          }
+        : {}),
+      ...(filmCard.__cards.close
+        ? { close: { text: filmCard.__cards.close, fromSec: last + 0.6 } }
+        : {}),
+    }
+    delete filmCard.__cards
+  }
   // The last sentence would otherwise cut to black on its final word.
   const last = cards[cards.length - 1]
   if (last && last.kind === "reflection-focus") delete last.tailSec
@@ -586,6 +670,7 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
     stepRing: false,
     // A fact short without its credit would be an unsourced claim.
     portraitMarks: true,
+    ...(shortCards ? { shortCards } : {}),
     // Film shorts: the series mark on top, the film's sound to the end.
     ...(plan.film ? { shortForm: true } : {}),
     ...factLayout(m, plan),
