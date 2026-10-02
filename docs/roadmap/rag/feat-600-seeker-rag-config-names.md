@@ -73,5 +73,6 @@ old variable names.
 - Mastra TypeScript check and ESLint for changed TypeScript files passed.
 - Old runtime/capture names are rejected; CLI overrides and existing runtime
   defaults, caps and production host restrictions remain covered.
-- Owner approved PR publication. Production/local configuration rollout remains
-  pending; no production settings have been changed.
+- Implementation PR: [#2549](https://github.com/JesusFilm/forge/pull/2549).
+- Production/local configuration rollout remains pending; no production settings
+  have been changed.
