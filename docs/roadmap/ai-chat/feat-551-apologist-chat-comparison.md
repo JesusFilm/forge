@@ -15,7 +15,9 @@ tags:
   - apologist
 ---
 
-## Implementation status
+## Resolution — implementation complete; enablement pending
+
+**Code PR:** [#2548](https://github.com/JesusFilm/forge/pull/2548) (`feat(chat): add temporary Apologist answer comparison`).
 
 Implementation and local browser/performance verification are complete. The
 comparison remains disabled by default; production configuration, selected-tester
@@ -26,14 +28,13 @@ verification artifacts.
 [feat-593](feat-593-remove-apologist-comparison.md) tracks removal before public release.
 Keep this ticket in progress until external enablement evidence is handled.
 
-### Note for the final resolution
+### Accepted model difference
 
 This comparison uses Core's Apologist integration and production prompt, with
 `openai/gpt/4o-mini` intentionally selected instead of Core's operator-reported
 `google/gemini/3-flash`. It does not reproduce Core's exact model configuration.
 The operator confirmed the same gateway URL/key and the intended prompt project
-and version. Whether Core's model ID remains supported is tracked by [NES-1895](https://linear.app/jesus-film-project/issue/NES-1895/update-production-apologist-model-id-before-the-christmas-campaign), not a blocker for this temporary comparison. Retain this accepted
-deviation in the final Resolution when the code PR is completed.
+and version. Whether Core's model ID remains supported is tracked by [NES-1895](https://linear.app/jesus-film-project/issue/NES-1895/update-production-apologist-model-id-before-the-christmas-campaign), not a blocker for this temporary comparison.
 
 ## Problem
 
