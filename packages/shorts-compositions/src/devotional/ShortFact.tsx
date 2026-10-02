@@ -296,9 +296,18 @@ function HistoryLayout({
   lines?: KineticLine[] | undefined
 }) {
   const { width } = useVideoConfig()
-  const head = interpolate(t, [0.1, 0.8], [0, 1], {
+  // The credit arrives in a short cascade rather than all at once (owner,
+  // 2026-10-02: "not just static"): the emblem, then the label closing in
+  // from wide tracking, then the source a word at a time, then the divider
+  // growing out of its gold dot.
+  const ease = (a: number, b: number) =>
+    interpolate(t, [a, b], [0, 1], { ...clamp, easing: EASE_OUT })
+  const emblemIn = ease(0.1, 0.7)
+  const labelIn = ease(0.35, 1.05)
+  const sourceWords = source.split(/\s+/).filter(Boolean)
+  const dividerIn = interpolate(t, [0.95, 1.75], [0, 1], {
     ...clamp,
-    easing: EASE_OUT,
+    easing: Easing.bezier(0.65, 0, 0.35, 1),
   })
   // The teaser's px unit (short side / 390, times 390/360 as the teaser sets
   // it), so the captions are the approved teaser size.
@@ -311,20 +320,19 @@ function HistoryLayout({
           position: "absolute",
           top: f(240),
           left: "50%",
-          transform: `translateX(-50%) translateY(${(1 - head) * f(12)}px)`,
+          transform: "translateX(-50%)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           gap: f(20),
-          opacity: head,
         }}
       >
         <div
           style={{
             width: f(96),
             height: f(63) * 1.1,
-            transform: "rotate(-10.15deg)",
-            opacity: 0.85,
+            transform: `rotate(-10.15deg) translateY(${((1 - emblemIn) * f(10)).toFixed(2)}px) scale(${(0.88 + 0.12 * emblemIn).toFixed(4)})`,
+            opacity: 0.85 * emblemIn,
           }}
         >
           {emblem === "scroll" ? (
@@ -346,10 +354,11 @@ function HistoryLayout({
               fontFamily: SANS,
               fontWeight: 500,
               fontSize: f(18),
-              letterSpacing: f(2),
+              letterSpacing: f(2 + 6 * (1 - labelIn)),
               color: "rgba(255,255,255,0.5)",
               textTransform: "uppercase",
               whiteSpace: "nowrap",
+              opacity: labelIn,
             }}
           >
             {label}
@@ -365,10 +374,30 @@ function HistoryLayout({
               whiteSpace: "nowrap",
             }}
           >
-            {source}
+            {sourceWords.map((w, i) => {
+              const p = ease(0.55 + i * 0.09, 0.95 + i * 0.09)
+              return (
+                <span key={i}>
+                  {i > 0 ? " " : null}
+                  <span
+                    style={{
+                      display: "inline-block",
+                      opacity: p,
+                      transform: `translateY(${((1 - p) * f(10)).toFixed(2)}px)`,
+                      filter:
+                        p < 0.99
+                          ? `blur(${((1 - p) * f(3)).toFixed(2)}px)`
+                          : undefined,
+                    }}
+                  >
+                    {w}
+                  </span>
+                </span>
+              )
+            })}
           </div>
         </div>
-        <Divider f={f} grow={head} />
+        <Divider f={f} grow={dividerIn} />
       </div>
       {lines?.length ? (
         <TeaserCaptions
