@@ -420,8 +420,10 @@ export function backgroundStarts(m: Manifest): number[] {
   })
 }
 
-/** Seconds of quiet picture after the last word, before the fade to black. */
-const SHORT_OUTRO_SEC = 1.5
+/** Seconds of picture after the last word, before the fade to black. A film
+ *  short trims this much extra footage so the film keeps playing (and
+ *  sounding) through it rather than freezing. */
+export const SHORT_OUTRO_SEC = 1.5
 
 /**
  * The portrait manifest for one short. Same composition, same files, so the
@@ -459,6 +461,9 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
         "hookText",
         "mutedLeadSec",
         "steps",
+        // The series mark sits at the top instead (owner's Figma 411-2366);
+        // the film is credited in the post caption.
+        "filmMark",
       ]) {
         delete c[k]
       }
@@ -467,10 +472,10 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
         videoFile: "clip.mp4",
         durationSec: toSec - fromSec,
         subtitles: shifted,
-        // The portrait film window, not full bleed: full bleed crops the
-        // 16:9 scene to a sliver and has no room for the scrolling verses,
-        // which hang in the band under the window.
-        videoFill: "window",
+        // Full frame, the verses scrolling over a dark pool in the middle
+        // (owner's Figma "Video clip · Scrolling (vert)", 2026-10-02; the
+        // square window with the verses under it was the first try).
+        videoFill: "full",
       }
     }
     if (c.kind === "step") delete c.steps
@@ -489,6 +494,8 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
     stepRing: false,
     // A fact short without its credit would be an unsourced claim.
     portraitMarks: true,
+    // Film shorts: the series mark on top, the film's sound to the end.
+    ...(plan.film ? { shortForm: true } : {}),
     ...(firstText != null ? { bgStartOffsetSec: bg[firstText] } : {}),
   }
 }

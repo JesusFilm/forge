@@ -421,6 +421,10 @@ export const devotionalInputPropsSchema = z.object({
    *  from a devotional (feat-573), where a fact without its credit would be
    *  an unsourced claim. Portrait devotionals leave it off and are unchanged. */
   portraitMarks: z.boolean().optional(),
+  /** A short cut from a devotional (feat-573): the Daily Bible Pause mark and
+   *  name at the top for the whole piece, and the film's sound carried to the
+   *  last frames instead of fading on the closing words. */
+  shortForm: z.boolean().optional(),
   /** 16:9 film captions with word times: `karaoke` (default) lights the word
    *  being said; `typewriter` types each word letter by letter as it is said,
    *  every letter gold then white; `ghost` shows the whole line faint and each

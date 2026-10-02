@@ -542,6 +542,7 @@ async function main() {
       ...(manifest.markLayout ? { markLayout: manifest.markLayout } : {}),
       // Shorts (feat-573): credits and verse callout in 9:16.
       ...(manifest.portraitMarks ? { portraitMarks: true } : {}),
+      ...(manifest.shortForm ? { shortForm: true } : {}),
       ...(manifest.stepProgress ? { stepProgress: manifest.stepProgress } : {}),
       ...(manifest.bgStartOffsetSec != null
         ? { bgStartOffsetSec: manifest.bgStartOffsetSec }

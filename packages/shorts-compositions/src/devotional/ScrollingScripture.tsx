@@ -20,6 +20,13 @@ import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
 
 const SERIF = `'${TEASER_FONT_FAMILIES.literata}', Georgia, serif`
 const GOLD = "#f2c46b"
+/** Darkness at the centre of the vertical layout's pool: the Figma's 0.6,
+ *  raised a step so the verses hold over a bright frame (owner, 2026-10-02:
+ *  "darken behind the verse so it reads"). */
+const SCRIM_PEAK = 0.8
+/** Plus an even dim over the whole film while the verses are up, so the
+ *  waiting (grey) lines still read over a bright frame. */
+const FRAME_DIM = 0.32
 // The chapter heading: PT Serif Italic (owner's Figma 380-2266).
 const PT_SERIF = `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`
 
@@ -110,6 +117,7 @@ export function ScrollingScripture({
   bleedX = 0,
   unit,
   topPx,
+  layout = "wide",
 }: {
   cues: ReadonlyArray<ScriptureCue>
   t: number
@@ -123,10 +131,21 @@ export function ScrollingScripture({
   /** Top of the chapter line, px. Defaults to the 16:9 spot (657 units);
    *  a 9:16 short sets it below the film window. */
   topPx?: number
+  /** `vertical`: the 9:16 film short over full-frame film (owner's Figma
+   *  "Video clip · Scrolling (vert)", 411-2366, a 900 x 1600 frame): a
+   *  660-wide block centred on the frame, five lines visible, a soft dark
+   *  pool behind it, and the verse range ("Luke 15:22-24") as its heading. */
+  layout?: "wide" | "vertical"
 }) {
-  // Design units: the Figma frame is 1920 × 1080.
-  const dp = (n: number) => n * (unit ?? frameHeight / 1080)
-  const top0 = topPx ?? dp(657)
+  const vertical = layout === "vertical"
+  // Design units: the Figma frame is 1920 x 1080 (vertical: 900 x 1600).
+  const dp = (n: number) =>
+    n * (vertical ? frameWidth / 900 : (unit ?? frameHeight / 1080))
+  // Vertical: the whole block (heading 50, gap 20, rule 2, gap 24, window
+  // 383) is centred on the frame, as drawn.
+  const top0 = vertical
+    ? frameHeight / 2 - dp(50 + 20 + 2 + 24 + 383) / 2 + dp(0.5)
+    : (topPx ?? dp(657))
   const verses = scriptureVerses(cues)
   const all = verses.flatMap((v) => v.words)
   const listRef = useRef<HTMLDivElement>(null)
@@ -159,7 +178,7 @@ export function ScrollingScripture({
 
   const lineH = dp(70)
   // Three lines on screen (owner's Figma 380-2266): a 224px window.
-  const windowH = dp(224)
+  const windowH = vertical ? dp(383) : dp(224)
 
   // Positions are read from the laid-out page on EVERY frame, never cached:
   // nothing measured under another font or width can steer the scroll.
@@ -196,9 +215,15 @@ export function ScrollingScripture({
   )
   if (opacity <= 0 && ready) return null
   const chapter = first.verse?.split(":")[0] ?? ""
-  // The block is centred on the frame, 839 wide; nothing crosses the
-  // hairline's ends, verse numbers included.
-  const blockW = dp(839)
+  // Vertical: the verses actually on screen, "Luke 15:22-24".
+  const nums = verses.flatMap((v) => (v.num != null ? [v.num] : []))
+  const heading =
+    vertical && chapter && nums.length
+      ? `${chapter}:${nums[0]}${nums.length > 1 ? `-${nums[nums.length - 1]}` : ""}`
+      : chapter
+  // The block is centred on the frame, 839 wide (vertical: 660); nothing
+  // crosses the hairline's ends, verse numbers included.
+  const blockW = vertical ? dp(660) : dp(839)
   const numW = dp(118)
   const left = frameWidth / 2 - blockW / 2 - bleedX
   let n = 0
@@ -208,8 +233,32 @@ export function ScrollingScripture({
     >
       {/* The film behind the verses is softly blurred and darkened, only
           as far as the three lines reach, so it reads as depth rather than
-          a smudge. */}
+          a smudge. Vertical: the Figma's soft dark pool instead. */}
+      {vertical ? (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: `rgba(0,0,0,${FRAME_DIM})`,
+          }}
+        />
+      ) : null}
+      {vertical ? (
+        <div
+          style={{
+            position: "absolute",
+            left: frameWidth / 2 - dp(450),
+            top: frameHeight / 2 + dp(19.5) - dp(379.5),
+            width: dp(900),
+            height: dp(759),
+            borderRadius: dp(100),
+            filter: `blur(${dp(36.65)}px)`,
+            background: `radial-gradient(${dp(490.7)}px ${dp(413.8)}px at 50% 50%, rgba(0,0,0,${SCRIM_PEAK}) 0%, rgba(0,0,0,0) 100%)`,
+          }}
+        />
+      ) : null}
       <div
+        hidden={vertical}
         style={{
           position: "absolute",
           left: left - dp(140),
@@ -246,7 +295,7 @@ export function ScrollingScripture({
             opacity: 0.85,
           }}
         >
-          {chapter}
+          {heading}
         </div>
         <div
           style={{

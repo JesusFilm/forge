@@ -948,6 +948,18 @@ function VideoSubtitles({
   // 9:16 (the film short cut from a LUMO devotional, feat-573): the same
   // scrolling verses, sized to the frame's width and hung in the blurred
   // band under the film window, where portrait captions already sit.
+  // 9:16 short over full-frame film (owner's Figma 411-2366).
+  if (karaokeMode === "scroll" && !isLandscape && fullBleed) {
+    return (
+      <ScrollingScripture
+        cues={cues}
+        t={t}
+        frameWidth={frameWidth ?? 1080}
+        frameHeight={frameHeight ?? 1920}
+        layout="vertical"
+      />
+    )
+  }
   if (karaokeMode === "scroll" && !isLandscape && !fullBleed) {
     const w = frameWidth ?? 1080
     const h = frameHeight ?? 1920
@@ -1510,6 +1522,46 @@ function WordReveal({
         )
       })}
     </>
+  )
+}
+
+/**
+ * The series mark over a short (owner's Figma 411-2366, a 900 x 1600 frame):
+ * the book mark, 24 below it the name in Inter Medium 25 tracked 5, the pair
+ * centred with its top at 230. Figma px are converted through px(), whose
+ * unit is the short side / 390 (so 900 Figma px = 390 units).
+ */
+function ShortBrand({ px }: { px: (n: number) => number }) {
+  const f = (n: number) => px((n * 390) / 900)
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        top: f(230),
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: f(24),
+        pointerEvents: "none",
+      }}
+    >
+      <PauseMark size={f(49.338)} />
+      <div
+        style={{
+          fontFamily: SANS,
+          fontWeight: 500,
+          fontSize: f(25),
+          letterSpacing: f(5),
+          color: "#fff",
+          whiteSpace: "nowrap",
+          textShadow: "0 1px 10px rgba(0,0,0,0.45)",
+        }}
+      >
+        DAILY BIBLE PAUSE
+      </div>
+    </div>
   )
 }
 
@@ -5960,11 +6012,16 @@ function Background({
           // card's breath tail up to the cut, instead of fading half a second
           // before the tail begins — that left 1.7s of near-silence between
           // the last line and the stepper's music.
-          const clipEnd = Math.round(
-            ((card.durationSec ?? 1) +
-              (fullBleedVideo ? CARD_TAIL_FRAMES / fps : 0)) *
-              fps,
-          )
+          // A short (feat-573) ends on the film itself: its sound runs to
+          // the last frames, past the closing words (owner, 2026-10-02: the
+          // fade took the important last words down with it).
+          const clipEnd = props.shortForm
+            ? durationInFrames
+            : Math.round(
+                ((card.durationSec ?? 1) +
+                  (fullBleedVideo ? CARD_TAIL_FRAMES / fps : 0)) *
+                  fps,
+              )
           // Owner rule: open the clip SILENT while "Let's watch" is on screen,
           // then ease its sound in — so the cut into the film lands as a beat
           // rather than a jump in volume.
@@ -6002,7 +6059,8 @@ function Background({
           // Full-frame film: 0.25s still took the tail of the closing word
           // when the scene ends on it, which is exactly what chapter 7 does.
           const fout = Math.round(
-            (slow ? 2 : fullBleedVideo ? 0.12 : 0.5) * fps,
+            (props.shortForm ? 0.5 : slow ? 2 : fullBleedVideo ? 0.12 : 0.5) *
+              fps,
           )
           const rise = interpolate(f, [lead, lead + fin], [0, 1], {
             extrapolateLeft: "clamp",
@@ -7291,6 +7349,7 @@ export function DevotionalVideo(props: DevotionalInputProps) {
           fixedBottomPx={height - px(320) + px(6)}
         />
       ) : null}
+      {props.shortForm && !isLandscape ? <ShortBrand px={px} /> : null}
       {props.stepRing ? (
         props.stepProgress === "ring" || props.stepProgress === "bar" ? (
           <StepRingOverlay

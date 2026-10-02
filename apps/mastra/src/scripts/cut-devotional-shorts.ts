@@ -39,6 +39,7 @@ import { getDevotionalModel } from "../config/env"
 import { createDevotionalLlm } from "../services/devotional/llm"
 import {
   SHORT_KINDS,
+  SHORT_OUTRO_SEC,
   buildShortManifest,
   chooseFilmTurn,
   planCutdown,
@@ -257,7 +258,7 @@ async function main() {
             path.join(from, f),
             dest,
             short.film.fromSec,
-            short.film.toSec,
+            short.film.toSec + SHORT_OUTRO_SEC,
           )
         } else {
           await symlink(path.resolve(from, f), dest)

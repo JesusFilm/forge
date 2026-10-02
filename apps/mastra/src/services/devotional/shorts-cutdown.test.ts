@@ -179,7 +179,9 @@ describe("buildShortManifest", () => {
     expect(card.subtitles![0].startSec).toBeLessThan(1)
     expect(card.intro).toBeUndefined()
     expect(card.introParts).toBeUndefined()
-    expect(card.videoFill).toBe("window")
+    expect(card.videoFill).toBe("full")
+    expect(card.filmMark).toBeUndefined()
+    expect(m.shortForm).toBe(true)
   })
 })
 
