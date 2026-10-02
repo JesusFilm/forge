@@ -6,6 +6,7 @@ import { AppShell } from "@/components/shell/app-shell"
 import { chatAuthConfigured } from "@/config/env"
 import { toConversationId } from "@/lib/conversation-id"
 import { deepLinkShell, resolveDeepLinkEntry } from "@/lib/deep-link-entry"
+import { comparisonAllowed } from "@/features/apologist/server/gate"
 import { resolveSeekerGate } from "@/lib/seeker-gate"
 
 /**
@@ -67,6 +68,7 @@ export default async function ConversationPage({
   return (
     <AppShell
       seekerEnabled={shell.seekerEnabled}
+      comparisonEnabled={comparisonAllowed(identity, gate.seekerEnabled)}
       authConfigured={authConfigured}
       identity={identity}
       signInError={signInError}

@@ -3,7 +3,7 @@ id: "feat-593"
 title: "Migrate Seeker to registered RAG consumer credentials"
 owner: "jian wei"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-02"
 duration: 4
 depends_on: []
@@ -58,3 +58,15 @@ production and local development/evaluations without changing the retrieval cont
 - Verify grounded retrieval and citations locally and in production, then confirm
   usage is attributed to `seeker`. Record counts/statuses only, never keys or
   retrieved content.
+
+## Resolution — October 2, 2026
+
+Portal admission merged in [PR #2535](https://github.com/JesusFilm/forge/pull/2535).
+Jian Wei confirmed that Seeker works with RAG and returns citations in both
+local development and production after the credential update. Requests appear
+under `seeker` in portal Usage, and Jaco is configured as backup owner.
+The migration uses one consumer key across both environments; the existing
+`JESUSFILM_RAG_API_KEY` variable name and retrieval integration remain unchanged.
+
+These operational checks are owner-reported verification. No credentials or
+env files were inspected.

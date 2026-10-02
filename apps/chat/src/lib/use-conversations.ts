@@ -16,6 +16,8 @@ import {
 } from "./history-client"
 
 export type UseConversations = {
+  /** Read the synchronous send receipt without waiting for a React render. */
+  getSnapshot: () => ConversationSessionSnapshot
   /** The FULL conversation list — the sidebar applies its own visible-row
    * projection (`components/shell/sidebar-projection.ts`, Ruling 4b). */
   conversations: Conversation[]
@@ -97,6 +99,7 @@ export function useConversations(
     renamingIds: snapshot.renamingIds,
     streamingMessageId: snapshot.streamingMessageId,
     history: snapshot.history,
+    getSnapshot: session.getSnapshot,
     setDraft: session.setDraft,
     send: session.send,
     stopReply: session.stopReply,
