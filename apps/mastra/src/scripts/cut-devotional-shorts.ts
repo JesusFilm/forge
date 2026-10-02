@@ -372,7 +372,10 @@ async function main() {
   const overrides: CutdownOverrides = {
     ...(turn ? { filmTurn: { fromSec: turn.a, toSec: turn.b } } : {}),
     ...(refl ? { reflection: { from: refl.a, to: refl.b } } : {}),
-    ...(process.argv.includes("--history-hook") ? { historyHook: true } : {}),
+    // Hook-first is the default; --history-no-hook keeps the lead-in.
+    ...(process.argv.includes("--history-no-hook")
+      ? { historyHook: false }
+      : {}),
     // Silent question cards on the film-verse short.
     ...(arg("film-open") || arg("film-close")
       ? {

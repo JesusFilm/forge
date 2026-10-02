@@ -114,3 +114,9 @@ Scripture captions.
 Follow-ups, not done: localized (ES/RU) shorts; a model pick for the
 reflection run (today: the first run that stands alone); face-aware background
 crop needs the OpenCV venv rebuilt (`DEVO_FACE_PYTHON`).
+
+## Playbook (2026-10-02)
+
+The approved rules, layouts, animation timings, texts, captions format and
+step-by-step workflow for every future devotional are in
+`docs/devotional-shorts-playbook.md`. Read it before cutting shorts.

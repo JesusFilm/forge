@@ -131,8 +131,9 @@ export type CutdownOverrides = {
   /** Film-verse short: a silent question before the scene speaks and a
    *  turn after it ends (owner, 2026-10-02). */
   filmVerseCards?: { open?: string; close?: string; closeSub?: string }
-  /** History, second version (owner, 2026-10-02): open on the paragraph's
-   *  first short line ("Feeding pigs.") instead of its lead-in. */
+  /** History opens on the paragraph's first short line ("Feeding pigs.")
+   *  instead of its lead-in: the owner's pick (2026-10-02), so the DEFAULT.
+   *  `false` keeps the lead-in. */
   historyHook?: boolean
 }
 
@@ -408,7 +409,7 @@ export function planCutdown(
       FACT_MIN_SEC,
     )
     let c = runCards(run.from, run.to)
-    if (kind === "history" && overrides.historyHook) {
+    if (kind === "history" && overrides.historyHook !== false) {
       // Start on the hook: the first sentence of four words or fewer among
       // the paragraph's first three, dropping the lead-in before it.
       const hook = c

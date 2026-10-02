@@ -67,7 +67,8 @@ describe("mapCardsToParagraphs", () => {
 })
 
 describe("planCutdown on the Prodigal Son", () => {
-  const plan = planCutdown(manifest, devotional)
+  // The lead-in version, so the credited sentence opens the history short.
+  const plan = planCutdown(manifest, devotional, { historyHook: false })
   const byKind = Object.fromEntries(plan.shorts.map((s) => [s.kind, s]))
 
   it("keeps every short within its limits (a fact may be one 10s thought)", () => {
@@ -392,8 +393,8 @@ describe("film-verse question cards", () => {
   })
 })
 
-describe("history, hook-first version", () => {
-  const plan = planCutdown(manifest, devotional, { historyHook: true })
+describe("history, hook-first (the default)", () => {
+  const plan = planCutdown(manifest, devotional)
   const h = plan.shorts.find((s) => s.kind === "history")!
 
   it("opens on the short line and keeps the paragraph's credit", () => {
