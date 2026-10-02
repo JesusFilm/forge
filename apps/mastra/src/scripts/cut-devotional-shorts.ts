@@ -46,6 +46,7 @@ import {
   DEFAULT_SHORT_KINDS,
   SHORT_KINDS,
   SHORT_OUTRO_SEC,
+  CARD_TAIL_SEC,
   buildShortManifest,
   chooseFilmTurn,
   chooseKineticRoles,
@@ -99,9 +100,48 @@ async function trimFilm(
   dest: string,
   fromSec: number,
   toSec: number,
-  /** Hold the first frame this long (silent) before the scene plays. */
+  /** Seconds put in front: played from `preroll` when given (live footage
+   *  from a quiet moment of the scene), else the first frame held. */
   leadSec = 0,
+  preroll?: { fromSec: number; toSec: number },
 ) {
+  const enc = [
+    "-c:v",
+    "libx264",
+    "-crf",
+    "18",
+    "-preset",
+    "medium",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "192k",
+  ]
+  if (preroll) {
+    // Two live pieces of the same clip, joined: the quiet moment, then the
+    // window. Accurate seeks on one input.
+    const f = (n: number) => n.toFixed(3)
+    await run("ffmpeg", [
+      "-y",
+      "-i",
+      src,
+      "-filter_complex",
+      `[0:v]trim=start=${f(preroll.fromSec)}:end=${f(preroll.toSec)},setpts=PTS-STARTPTS[v0];` +
+        `[0:a]atrim=start=${f(preroll.fromSec)}:end=${f(preroll.toSec)},asetpts=PTS-STARTPTS[a0];` +
+        `[0:v]trim=start=${f(fromSec)}:end=${f(toSec)},setpts=PTS-STARTPTS[v1];` +
+        `[0:a]atrim=start=${f(fromSec)}:end=${f(toSec)},asetpts=PTS-STARTPTS[a1];` +
+        `[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]`,
+      "-map",
+      "[v]",
+      "-map",
+      "[a]",
+      ...enc,
+      dest,
+    ])
+    return
+  }
   const lead = leadSec > 0.01
   await run("ffmpeg", [
     "-y",
@@ -119,18 +159,7 @@ async function trimFilm(
           `adelay=${Math.round(leadSec * 1000)}:all=1`,
         ]
       : []),
-    "-c:v",
-    "libx264",
-    "-crf",
-    "18",
-    "-preset",
-    "medium",
-    "-pix_fmt",
-    "yuv420p",
-    "-c:a",
-    "aac",
-    "-b:a",
-    "192k",
+    ...enc,
     dest,
   ])
 }
@@ -421,8 +450,11 @@ async function main() {
             path.join(from, f),
             dest,
             short.film.fromSec,
-            short.film.toSec + SHORT_OUTRO_SEC,
+            // Footage to the very last frame: the outro and the card's own
+            // breath after it (a short clip froze for its last 0.8s).
+            short.film.toSec + SHORT_OUTRO_SEC + CARD_TAIL_SEC + 0.2,
             short.film.leadSec ?? 0,
+            short.film.preroll,
           )
         } else {
           await symlink(path.resolve(from, f), dest)

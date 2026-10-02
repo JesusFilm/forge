@@ -102,7 +102,15 @@ export type ShortPlan = {
   /** Long-form card indices the short is built from, in order. */
   cards: number[]
   /** Film shorts: the window of the long-form clip, seconds. */
-  film?: { fromSec: number; toSec: number; leadSec?: number }
+  film?: {
+    fromSec: number
+    toSec: number
+    /** Seconds put in front of the window for the opening question. */
+    leadSec?: number
+    /** Where that lead comes from: a quiet stretch of the same scene (no
+     *  line spoken), played live. Absent: the first frame is held. */
+    preroll?: { fromSec: number; toSec: number }
+  }
   /** Film short: the silent question cards (texts). */
   questionCards?: { open?: string; close?: string }
   durationSec: number
@@ -334,7 +342,10 @@ export function planCutdown(
             ? Math.max(prevEnd + 0.3, w.fromSec - 2.4)
             : w.fromSec,
           toSec: cards.close
-            ? Math.min(nextStart - SHORT_OUTRO_SEC - 0.3, w.toSec + 2.8)
+            ? Math.min(
+                nextStart - SHORT_OUTRO_SEC - CARD_TAIL_SEC - 0.3,
+                w.toSec + 2.8,
+              )
             : w.toSec,
         }
       }
@@ -347,14 +358,22 @@ export function planCutdown(
         const made = shorts.find((x) => x.kind === "film-verse")
         if (made) {
           made.questionCards = cards
-          // The scene speaks ~2.4s in; the question needs ~3s on screen. Hold
-          // the first frame for the difference (a still, the clip's own
-          // slow push over it) rather than cut into a line already started.
-          const first = film.subtitles?.find((x) => x.startSec >= win.fromSec)
+          // The scene speaks ~2.4s in; the question needs ~3s on screen. Put
+          // the difference in front from the nearest earlier stretch of the
+          // scene where nobody speaks, played live (owner, 2026-10-02: a
+          // held frame read as the video getting stuck). No such stretch:
+          // hold the first frame.
+          const subs = film.subtitles ?? []
+          const first = subs.find((x) => x.startSec >= win.fromSec)
           const quiet = first ? first.startSec - win.fromSec : 0
           const lead = cards.open ? Math.max(0, OPEN_CARD_NEEDS_SEC - quiet) : 0
           if (lead > 0 && made.film) {
-            made.film = { ...made.film, leadSec: Number(lead.toFixed(2)) }
+            const preroll = quietStretchBefore(subs, win.fromSec, lead)
+            made.film = {
+              ...made.film,
+              leadSec: Number(lead.toFixed(2)),
+              ...(preroll ? { preroll } : {}),
+            }
             made.durationSec += lead
           }
         }
@@ -568,6 +587,33 @@ export const SHORT_OUTRO_SEC = 1.5
 /** Seconds of quiet the film short's opening question needs before the
  *  scene's first line (0.25 in, ~2.6 on screen, 0.55 clear of the voice). */
 const OPEN_CARD_NEEDS_SEC = 3.4
+/** The composition's breath after a card (CARD_TAIL_FRAMES at 30 fps): the
+ *  last card runs this much past its duration, so the clip must too. */
+export const CARD_TAIL_SEC = CARD_TAIL_FRAMES / FPS
+
+/**
+ * The latest stretch before `beforeSec` where no caption line is spoken and
+ * that holds `lengthSec` with 0.2s clear of the lines either side. Returns
+ * the window to play, from the start of that quiet.
+ */
+export function quietStretchBefore(
+  subs: ReadonlyArray<Subtitle>,
+  beforeSec: number,
+  lengthSec: number,
+): { fromSec: number; toSec: number } | null {
+  const lines = subs.filter((x) => x.startSec < beforeSec)
+  for (let i = lines.length - 1; i >= 1; i--) {
+    const gapStart = lines[i - 1].endSec + 0.2
+    const gapEnd = lines[i].startSec - 0.2
+    if (gapEnd - gapStart >= lengthSec) {
+      return {
+        fromSec: Number(gapStart.toFixed(3)),
+        toSec: Number((gapStart + lengthSec).toFixed(3)),
+      }
+    }
+  }
+  return null
+}
 
 /**
  * The portrait manifest for one short. Same composition, same files, so the
