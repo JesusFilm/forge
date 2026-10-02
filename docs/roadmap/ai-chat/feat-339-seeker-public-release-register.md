@@ -172,6 +172,7 @@ with no release-level view.
 - feat-236 is the mechanical removal recipe for the dogfood allowlist gate
   (keep-list, grep patterns, teardown). It is the LAST step, executed only
   once the register above is cleared.
+- **Temporary Apologist comparison (STATUS: open; recorded 2026-09-25 from feat-551's user-directed temporary scope):** feat-593 tracks removal of feat-551 based on its implementation boundary. Complete feat-593 before public Forge Chat release. Turning off the switch is rollback, not removal; the follow-up also removes comparison code and Forge Chat deployment settings. If feat-551 is canceled, record that outcome before closing this item.
 
 ## Constraints
 

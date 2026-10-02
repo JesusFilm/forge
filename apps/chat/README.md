@@ -61,3 +61,15 @@ persistence, no real agent connection. Optional OAuth sign-in against `apps/auth
 the app boots and is fully usable with no env vars set. See `CLAUDE.md` for the
 full list, the auth env vars + out-of-codebase client-registration prerequisite,
 and the eventual `apps/mastra` connection plan.
+
+## Temporary Apologist comparison
+
+Selected signed-in Seeker testers can compare answers from a fresh conversation
+when the separate comparison switch and email allowlist grant access. A shared
+composer addresses both providers; Forge retains its normal history, while
+Apologist answers disappear on refresh, navigation or exit.
+
+See [operations and configuration](../../docs/operations/apologist-comparison.md)
+for server-only settings, outstanding production-enablement prerequisites and
+rollback. Removal before public release is tracked by
+[feat-593](../../docs/roadmap/ai-chat/feat-593-remove-apologist-comparison.md).

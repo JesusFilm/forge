@@ -2,6 +2,7 @@ import { getChatIdentity } from "@/auth/identity"
 import { isSignInError, SIGN_IN_ERROR_PARAM } from "@/auth/sign-in-notice"
 import { AppShell } from "@/components/shell/app-shell"
 import { chatAuthConfigured } from "@/config/env"
+import { comparisonAllowed } from "@/features/apologist/server/gate"
 import { resolveSeekerGate } from "@/lib/seeker-gate"
 
 /**
@@ -35,6 +36,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   return (
     <AppShell
       seekerEnabled={gate.seekerEnabled}
+      comparisonEnabled={comparisonAllowed(identity, gate.seekerEnabled)}
       authConfigured={authConfigured}
       identity={identity}
       signInError={signInError}
