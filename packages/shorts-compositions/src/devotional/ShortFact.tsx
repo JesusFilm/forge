@@ -1114,11 +1114,11 @@ function LanguageLayout({
             background: GOLD,
             borderRadius: f(16),
             padding: `0 ${f(12)}px`,
-            // Inter Bold in normal case with no tracking (owner, 2026-10-02:
-            // the tracked caps were hard to read; Impact was a slip).
+            // Inter Bold 56 in normal case with no tracking (owner,
+            // 2026-10-02: the tracked caps were hard to read; 48 too small).
             fontFamily: SANS,
             fontWeight: 700,
-            fontSize: f(48),
+            fontSize: f(56),
             lineHeight: `${f(89)}px`,
             letterSpacing: 0,
             color: "#140b05",
