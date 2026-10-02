@@ -1004,9 +1004,10 @@ function LanguageLayout({
         style={{
           position: "absolute",
           left: "50%",
-          // 20 above the Figma's 470 (owner, 2026-10-02, twice 10): a clearer
-          // gap between the verse and the caption tab, which stays put.
-          top: f(450),
+          // Well above the Figma's 470 (owner, 2026-10-02: matched to her
+          // screenshot, first line at ~522 of 1920): a clear gap between the
+          // verse and the caption tab, which stays put.
+          top: f(393),
           width: f(620),
           // Centred (the Figma's +20.5 offset pushed the right edge into
           // the action rail).
