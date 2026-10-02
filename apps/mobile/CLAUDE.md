@@ -1066,8 +1066,9 @@ sheet closes.
   (`src/lib/miniPlayer/suppression.ts`). Six come from `app/watch/_layout.tsx`
   and `app/series/_layout.tsx`. The three Bible reader sheets and the
   `feedback` sheet come from the root `app/_layout.tsx`. The second is the four
-  sheets that are component state. `getNonRouteSheetCounter()` counts them by id, so an unbalanced call
-  is attributable. Keep both in step with those layouts.
+  sheets that are component state. `getNonRouteSheetCounter()` counts them by
+  id, so an unbalanced call is attributable. Keep both in step with those
+  layouts.
 - **Give a new sheet a route or a `Modal`.** A sheet drawn inside a route must
   be in `INLINE_SHEET_IDS`, or iOS draws the window over it.
 - Suppression hides by opacity and drops pointer events. It never unmounts the

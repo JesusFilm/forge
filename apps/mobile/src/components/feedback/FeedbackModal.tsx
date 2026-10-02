@@ -25,8 +25,8 @@ export type FeedbackModalProps = {
 }
 
 /** Player door host for the feedback form (KTD4): a component-state Modal,
- * since a routed sheet can't cover the fullscreen player. Shares the form body
- * with the Profile route; owns only presentation, the R19 lock, R11 suppression. */
+ * since a routed sheet can't cover the fullscreen player. Shares the form with
+ * the More door; owns only presentation, the R19 lock, R11 suppression. */
 export function FeedbackModal({ context, onClose }: FeedbackModalProps) {
   const insets = useSafeAreaInsets()
   const reduceMotion = useReduceMotion()

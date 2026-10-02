@@ -146,7 +146,7 @@ export type FeedbackFlowState = FeedbackFormFields &
     | { phase: Exclude<FeedbackPhase, "pickKind">; kind: FeedbackKind }
   )
 
-/** What a host knows when it opens the sheet. The Profile door passes none. */
+/** What a host knows when it opens the sheet. The More door passes none. */
 export type FeedbackSheetContext = {
   kind?: FeedbackKind
   video?: FeedbackVideoContext | null

@@ -147,7 +147,7 @@ describe("non-route sheet counter", () => {
   })
 
   it("suppresses while the player-door feedback sheet is open", () => {
-    // The Profile door is the ROUTE above; this id covers the modal the player
+    // The More door is the ROUTE above; this id covers the modal the player
     // door mounts, which cannot be a route (KTD4).
     const counter = createNonRouteSheetCounter()
     counter.open("feedbackModal")

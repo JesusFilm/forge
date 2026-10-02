@@ -1,5 +1,5 @@
 /**
- * The Profile door's route (U5): it opens the sheet on step one, and it refuses
+ * The More door's route (U5): it opens the sheet on step one, and it refuses
  * every dismissal it can reach while a submission is in flight (R19).
  *
  * The sheet body is stubbed so the route's OWN wiring is what is measured: the
