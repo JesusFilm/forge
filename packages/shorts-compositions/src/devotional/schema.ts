@@ -425,6 +425,20 @@ export const devotionalInputPropsSchema = z.object({
    *  name at the top for the whole piece, and the film's sound carried to the
    *  last frames instead of fading on the closing words. */
   shortForm: z.boolean().optional(),
+  /** The fact shorts' layout (feat-573), read only by the devotional-short
+   *  composition (ShortFact.tsx): `history` puts the credit on screen over
+   *  kinetic captions; `language` shows the verse with `highlight` ringed and
+   *  the narration one word at a time. */
+  shortFact: z
+    .object({
+      layout: z.enum(["history", "language"]),
+      label: z.string().optional(),
+      source: z.string().optional(),
+      emblem: z.enum(["book", "scroll"]).optional(),
+      verse: z.string().optional(),
+      highlight: z.string().optional(),
+    })
+    .optional(),
   /** 16:9 film captions with word times: `karaoke` (default) lights the word
    *  being said; `typewriter` types each word letter by letter as it is said,
    *  every letter gold then white; `ghost` shows the whole line faint and each

@@ -3,6 +3,10 @@ import { Composition } from "remotion"
 import { calculateDevotionalMetadata } from "./calculate-metadata"
 import { DevotionalVideo } from "./DevotionalVideo"
 import {
+  DEVOTIONAL_SHORT_COMPOSITION_ID,
+  DevotionalShortFact,
+} from "./ShortFact"
+import {
   KINETIC_PREVIEW_ID,
   KineticPreview,
   kineticPreviewSchema,
@@ -91,6 +95,18 @@ export const DevotionalRoot = () => (
     <Composition
       id={DEVOTIONAL_COMPOSITION_ID}
       component={DevotionalVideo}
+      schema={devotionalInputPropsSchema}
+      calculateMetadata={calculateDevotionalMetadata}
+      width={DEVOTIONAL_WIDTH}
+      height={DEVOTIONAL_HEIGHT}
+      fps={DEVOTIONAL_FPS}
+      durationInFrames={900}
+      defaultProps={defaultProps}
+    />
+    {/* Fact shorts cut from a devotional (feat-573): 9:16, own layouts. */}
+    <Composition
+      id={DEVOTIONAL_SHORT_COMPOSITION_ID}
+      component={DevotionalShortFact}
       schema={devotionalInputPropsSchema}
       calculateMetadata={calculateDevotionalMetadata}
       width={DEVOTIONAL_WIDTH}

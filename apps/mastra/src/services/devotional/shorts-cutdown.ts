@@ -22,6 +22,10 @@ import type { DevotionalLlm } from "./llm"
  */
 
 export const SHORT_MIN_SEC = 15
+/** A fact short is ONE thought (owner, 2026-10-02: "fifteen seconds is
+ *  enough, one short thought that still sounds finished"): the credited
+ *  paragraph alone, extended only when it is shorter than this. */
+export const FACT_MIN_SEC = 10
 export const SHORT_MAX_SEC = 45
 const FPS = 30
 
@@ -164,9 +168,10 @@ function growRun(
   to: number,
   paraSec: number[],
   blocked: (p: number) => boolean,
+  minSec = SHORT_MIN_SEC,
 ): { from: number; to: number } {
   const len = (a: number, b: number) => sum(paraSec.slice(a, b + 1))
-  while (len(from, to) < SHORT_MIN_SEC) {
+  while (len(from, to) < minSec) {
     const next = to + 1
     if (next < paraSec.length && !blocked(next)) {
       if (len(from, next) > SHORT_MAX_SEC) break
@@ -311,10 +316,16 @@ export function planCutdown(
       return
     }
     // One fact per short: never run into another credited paragraph.
-    const run = growRun(at, at, paraSec, (p) => p !== at && isFact(p))
+    const run = growRun(
+      at,
+      at,
+      paraSec,
+      (p) => p !== at && isFact(p),
+      FACT_MIN_SEC,
+    )
     const c = runCards(run.from, run.to)
     const len = sum(c.map((i) => secs[i]))
-    if (len < SHORT_MIN_SEC || len > SHORT_MAX_SEC) {
+    if (len < FACT_MIN_SEC || len > SHORT_MAX_SEC) {
       skipped.push({ kind, reason: `run is ${len.toFixed(1)}s` })
       return
     }
@@ -322,7 +333,10 @@ export function planCutdown(
       kind,
       cards: c,
       durationSec: len,
-      why: `${role} paragraph ${at} with its credit, carried to where it lands (paragraphs ${run.from}-${run.to})`,
+      why:
+        run.from === run.to
+          ? `${role} paragraph ${at}, one thought with its credit`
+          : `${role} paragraph ${at} with its credit, carried to where it lands (paragraphs ${run.from}-${run.to})`,
     })
   }
   factShort("history")
@@ -420,6 +434,47 @@ export function backgroundStarts(m: Manifest): number[] {
   })
 }
 
+type Mark = { label?: string; source?: string; portrait?: string }
+type Callout = { text?: string; highlight?: string }
+
+/**
+ * The fact shorts' own layout (rendered by the `devotional-short`
+ * composition): history carries its credit on screen; language carries the
+ * verse and the word to ring, and its credit goes in the post caption only.
+ */
+function factLayout(m: Manifest, plan: ShortPlan): Partial<Manifest> {
+  const cards = plan.cards.map((i) => m.cards[i])
+  if (plan.kind === "history") {
+    const mark = cards.find((c) => c.sourceMark)?.sourceMark as Mark | undefined
+    return {
+      shortFact: {
+        layout: "history",
+        label: mark?.label ?? "Historical context",
+        source: mark?.source ?? "",
+        emblem: mark?.portrait === "scroll" ? "scroll" : "book",
+      },
+    }
+  }
+  if (plan.kind === "language") {
+    const callout = cards.find((c) => c.verseCallout)?.verseCallout as
+      | Callout
+      | undefined
+    return {
+      shortFact: {
+        layout: "language",
+        verse: callout?.text ?? "",
+        highlight: callout?.highlight ?? "",
+      },
+    }
+  }
+  return {}
+}
+
+/** The composition a short renders through. */
+export function shortComposition(m: Manifest): string {
+  return m.shortFact ? "devotional-short" : "devotional"
+}
+
 /** Seconds of picture after the last word, before the fade to black. A film
  *  short trims this much extra footage so the film keeps playing (and
  *  sounding) through it rather than freezing. */
@@ -496,6 +551,7 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
     portraitMarks: true,
     // Film shorts: the series mark on top, the film's sound to the end.
     ...(plan.film ? { shortForm: true } : {}),
+    ...factLayout(m, plan),
     ...(firstText != null ? { bgStartOffsetSec: bg[firstText] } : {}),
   }
 }

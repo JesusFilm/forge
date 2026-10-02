@@ -3,11 +3,13 @@ import path from "node:path"
 import { describe, expect, it } from "vitest"
 
 import {
+  FACT_MIN_SEC,
   SHORT_MAX_SEC,
   SHORT_MIN_SEC,
   backgroundStarts,
   buildShortManifest,
   chooseFilmTurn,
+  shortComposition,
   mapCardsToParagraphs,
   planCutdown,
   verseWindow,
@@ -60,9 +62,13 @@ describe("planCutdown on the Prodigal Son", () => {
   const plan = planCutdown(manifest, devotional)
   const byKind = Object.fromEntries(plan.shorts.map((s) => [s.kind, s]))
 
-  it("keeps every short between 15 and 45 seconds", () => {
+  it("keeps every short within its limits (a fact may be one 10s thought)", () => {
     for (const s of plan.shorts) {
-      expect(s.durationSec).toBeGreaterThanOrEqual(SHORT_MIN_SEC)
+      const min =
+        s.kind === "history" || s.kind === "language"
+          ? FACT_MIN_SEC
+          : SHORT_MIN_SEC
+      expect(s.durationSec).toBeGreaterThanOrEqual(min)
       expect(s.durationSec).toBeLessThanOrEqual(SHORT_MAX_SEC)
     }
   })
@@ -232,5 +238,36 @@ describe("chooseFilmTurn", () => {
       })
     expect(await pick(10, 9)).toBeNull() // backwards
     expect(await pick(0, 4)).toBeNull() // the opening lines
+  })
+})
+
+describe("fact shorts are one thought with their own layout", () => {
+  const plan = planCutdown(manifest, devotional)
+  const history = plan.shorts.find((s) => s.kind === "history")!
+  const language = plan.shorts.find((s) => s.kind === "language")!
+
+  it("cuts the history short to the credited paragraph alone", () => {
+    expect(history.cards.map(text).at(-1)).toMatch(/as a son could fall\.$/)
+    expect(history.durationSec).toBeLessThan(SHORT_MIN_SEC)
+  })
+
+  it("puts the credit on the history layout and the ringed word on the language one", () => {
+    expect(buildShortManifest(manifest, history).shortFact).toEqual({
+      layout: "history",
+      label: "Historical context",
+      source: "Easton's & Smith's Bible Dictionaries",
+      emblem: "book",
+    })
+    const l = buildShortManifest(manifest, language).shortFact as {
+      layout: string
+      verse: string
+      highlight: string
+    }
+    expect(l.layout).toBe("language")
+    expect(l.highlight).toBe("fitting")
+    expect(l.verse).toMatch(/^But it was fitting to celebrate/)
+    expect(shortComposition(buildShortManifest(manifest, language))).toBe(
+      "devotional-short",
+    )
   })
 })
