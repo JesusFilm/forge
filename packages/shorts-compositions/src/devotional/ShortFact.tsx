@@ -713,17 +713,23 @@ function LanguageLayout({
       })
     : 0
 
+  // Half the Figma's 300 (owner, 2026-10-02: the marks were too big), and
+  // never quite still: each sways slowly, the pair out of phase.
   const quote = {
     fontFamily: LITERATA,
     fontStyle: "italic" as const,
-    fontSize: f(300),
+    fontSize: f(150),
     lineHeight: 1,
     color: GOLD,
     opacity: 0.85,
     position: "absolute" as const,
-    height: f(130),
+    height: f(70),
     overflow: "visible" as const,
+    transformOrigin: "50% 50%",
   }
+  const swayQuote = (phase: number) => Math.sin(t * 0.9 + phase) * 4
+  // The rest of the verse sits back at 85% (Figma 414-2550).
+  const rest = { opacity: 0.85 }
   return (
     <>
       <div
@@ -737,7 +743,16 @@ function LanguageLayout({
           opacity: verseIn,
         }}
       >
-        <div style={{ ...quote, left: f(-20), top: f(-150) }}>“</div>
+        <div
+          style={{
+            ...quote,
+            left: f(-10),
+            top: f(-80),
+            transform: `rotate(${swayQuote(0).toFixed(3)}deg)`,
+          }}
+        >
+          “
+        </div>
         <p
           style={{
             margin: 0,
@@ -746,14 +761,14 @@ function LanguageLayout({
             fontSize: f(54),
             lineHeight: 1.45,
             textAlign: "center",
-            color: "rgba(255,255,255,0.92)",
+            color: "rgba(255,255,255,0.85)",
             textShadow: `0 ${f(2)}px ${f(16)}px rgba(0,0,0,0.55)`,
           }}
         >
-          {"“"}
+          <span style={rest}>{"“"}</span>
           {at >= 0 ? (
             <>
-              {text.slice(0, at)}
+              <span style={rest}>{text.slice(0, at)}</span>
               <span
                 ref={wordRef}
                 style={{
@@ -762,26 +777,31 @@ function LanguageLayout({
                     [0, 1],
                     ["rgba(255,255,255,0.92)", GOLD],
                   ),
+                  // Dimmed with the rest until the voice reaches it.
+                  opacity: 0.85 + 0.15 * lit,
                   WebkitTextStroke: `${(f(1.4) * lit).toFixed(2)}px ${GOLD}`,
+                  // Full strength and a soft gold glow, so the word holds
+                  // the eye over the dimmed verse.
+                  textShadow: `0 0 ${f(14) * lit}px rgba(242,196,107,${(0.75 * lit).toFixed(3)}), 0 0 ${f(4) * lit}px rgba(242,196,107,${(0.6 * lit).toFixed(3)}), 0 ${f(2)}px ${f(16)}px rgba(0,0,0,0.55)`,
                 }}
               >
                 {word}
               </span>
-              {text.slice(at + word.length)}
+              <span style={rest}>{text.slice(at + word.length)}</span>
             </>
           ) : (
-            text
+            <span style={rest}>{text}</span>
           )}
-          {"”"}
+          <span style={rest}>{"”"}</span>
         </p>
         {/* The closing mark is the opening one turned over, at the block's
             lower right (Figma 414-2603). */}
         <div
           style={{
             ...quote,
-            right: f(-24),
-            bottom: f(-150),
-            transform: "rotate(180deg)",
+            right: f(-10),
+            bottom: f(-70),
+            transform: `rotate(${(180 + swayQuote(Math.PI * 0.8)).toFixed(3)}deg)`,
           }}
         >
           “
@@ -815,27 +835,32 @@ function LanguageLayout({
           </svg>
         ) : null}
       </div>
-      <div
-        style={{
-          position: "absolute",
-          top: f(1087),
-          left: "50%",
-          width: f(747),
-          transform: `translateX(-50%) scale(${(0.94 + 0.06 * pop).toFixed(4)})`,
-          textAlign: "center",
-          fontFamily: SANS,
-          fontWeight: 700,
-          fontSize: f(48),
-          lineHeight: `${f(89)}px`,
-          letterSpacing: f(1.44),
-          textTransform: "uppercase",
-          color: GOLD,
-          opacity: pop,
-          textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
-        }}
-      >
-        {tok ? tok.word.replace(/[,;:.!?”"]+$/, "") : ""}
-      </div>
+      {/* The spoken word on a gold tab (Figma 415-2640). */}
+      {tok ? (
+        <div
+          style={{
+            position: "absolute",
+            top: f(1077),
+            left: "50%",
+            transform: `translateX(-50%) scale(${(0.9 + 0.1 * pop).toFixed(4)})`,
+            opacity: pop,
+            background: GOLD,
+            borderRadius: f(16),
+            padding: `0 ${f(12)}px`,
+            fontFamily: SANS,
+            fontWeight: 700,
+            fontSize: f(48),
+            lineHeight: `${f(89)}px`,
+            letterSpacing: f(1.44),
+            textTransform: "uppercase",
+            color: "#140b05",
+            whiteSpace: "nowrap",
+            boxShadow: `0 ${f(4)}px ${f(18)}px rgba(0,0,0,0.35)`,
+          }}
+        >
+          {tok.word.replace(/[,;:.!?”"]+$/, "")}
+        </div>
+      ) : null}
     </>
   )
 }
