@@ -745,8 +745,8 @@ export function kineticLines(
         // Break after word k.
         const left = text(0, k).length
         let score = Math.abs(left - target)
-        if (/[,;:]$/.test(ws[k])) score -= 12
-        if (CONNECTORS.has(bare(ws[k + 1]))) score -= 8
+        if (/[,;:]$/.test(ws[k])) score -= 14
+        if (CONNECTORS.has(bare(ws[k + 1]))) score -= 12
         if (FUNCTION_WORDS.has(bare(ws[k]))) score += 10
         else score -= 3
         if (score < bestScore) {
