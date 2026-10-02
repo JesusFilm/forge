@@ -9,6 +9,9 @@ import {
   backgroundStarts,
   buildShortManifest,
   chooseFilmTurn,
+  chooseKineticRoles,
+  heuristicRoles,
+  kineticLines,
   shortComposition,
   mapCardsToParagraphs,
   planCutdown,
@@ -284,5 +287,43 @@ describe("reflection short layout", () => {
       portrait: "ryle",
     })
     expect(shortComposition(m)).toBe("devotional-short")
+  })
+})
+
+describe("history kinetic lines", () => {
+  const plan = planCutdown(manifest, devotional)
+  const history = plan.shorts.find((s) => s.kind === "history")!
+  const cards = buildShortManifest(manifest, history).cards
+  const lines = kineticLines(cards)
+
+  it("keeps short sentences whole and splits a long one before a connector", () => {
+    expect(lines.map((l) => l.text)).toContain("Feeding pigs.")
+    expect(lines.map((l) => l.text)).toContain(
+      "and the most abhorred of all animals.",
+    )
+    // Indices cover every spoken word once, in order.
+    const total = cards.reduce(
+      (n, c) => n + ((c.words as unknown[]) ?? []).length,
+      0,
+    )
+    expect(lines[0].from).toBe(0)
+    expect(lines.at(-1)!.to).toBe(total - 1)
+    lines.slice(1).forEach((l, i) => expect(l.from).toBe(lines[i].to + 1))
+  })
+
+  it("checks the model's picks against each line and falls back when wrong", async () => {
+    const llm = {
+      complete: async <T>(input: { schema: { parse: (v: unknown) => T } }) =>
+        input.schema.parse({
+          lines: lines.map((l, i) =>
+            i === 0
+              ? { hero: "a word not in the line", accents: [] }
+              : { hero: l.text.split(" ")[0], accents: ["nonsense"] },
+          ),
+        }),
+    }
+    const roles = await chooseKineticRoles(llm as never, lines)
+    expect(roles[0].hero).toBe(heuristicRoles(lines[0].text).hero)
+    expect(roles[1].accents).toEqual([])
   })
 })

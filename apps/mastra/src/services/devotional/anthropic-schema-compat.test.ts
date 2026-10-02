@@ -121,6 +121,7 @@ describe("Anthropic structured-output schema compatibility", () => {
     "storyteller-writer": storytellerInternal.JSON_SCHEMA,
     // Shorts cut-down (feat-573).
     "shorts-cutdown": shortsInternal.JSON_SCHEMA,
+    "shorts-cutdown/kinetic": shortsInternal.KINETIC_JSON_SCHEMA,
   }
 
   /** Modules covered above, by filename — `hook-picker` contributes two. */

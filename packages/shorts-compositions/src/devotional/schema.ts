@@ -432,6 +432,19 @@ export const devotionalInputPropsSchema = z.object({
   shortFact: z
     .object({
       layout: z.enum(["history", "language", "reflection"]),
+      /** History: the narration as teaser-style kinetic lines, word ranges
+       *  into the short's spoken words (`from`..`to` inclusive), each with
+       *  its hero phrase and accent words. */
+      lines: z
+        .array(
+          z.object({
+            from: z.number().int(),
+            to: z.number().int(),
+            hero: z.string(),
+            accents: z.array(z.string()),
+          }),
+        )
+        .optional(),
       /** Reflection: the credit's round portrait (source-portraits id). */
       portrait: z.string().optional(),
       label: z.string().optional(),

@@ -43,6 +43,8 @@ import {
   SHORT_OUTRO_SEC,
   buildShortManifest,
   chooseFilmTurn,
+  chooseKineticRoles,
+  kineticLines,
   shortComposition,
   planCutdown,
   type CutdownOverrides,
@@ -256,6 +258,25 @@ async function main() {
     )
     try {
       const m = buildShortManifest(manifest, short)
+      if (short.kind === "history" && m.shortFact) {
+        // Teaser-style kinetic captions: the model picks each line's hero and
+        // accents (the owner's hand picks on the Prodigal teaser are the
+        // model), checked in code; --no-model uses the fallback rule.
+        const lines = kineticLines(m.cards)
+        const llm = process.argv.includes("--no-model")
+          ? null
+          : createDevotionalLlm({ model: getDevotionalModel() })
+        const roles = await chooseKineticRoles(llm, lines, (msg) =>
+          console.log(msg),
+        )
+        for (const r of roles) {
+          const text = lines.find((l) => l.from === r.from)?.text
+          console.log(
+            `  line "${text}" hero="${r.hero}" accents=${JSON.stringify(r.accents)}`,
+          )
+        }
+        ;(m.shortFact as { lines?: unknown }).lines = roles
+      }
       for (const f of collectManifestFiles(m)) {
         const dest = path.join(stage, f)
         if (f === "clip.mp4" && short.film) {

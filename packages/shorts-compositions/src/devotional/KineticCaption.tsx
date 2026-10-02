@@ -192,6 +192,7 @@ export function KineticCaption({
   portrait = false,
   maxWidth,
   sizes = {},
+  accentColor,
 }: {
   line: string
   hero: string
@@ -210,6 +211,9 @@ export function KineticCaption({
   /** Per-role size multipliers (the vertical teaser sets the type larger and
    *  lets it overlap the picture: owner, 2026-09-30). */
   sizes?: { hero?: number; accent?: number; plain?: number }
+  /** Accent word colour. Default gold (the teaser); the history short sets
+   *  it white (owner, 2026-10-02: the teaser's style "without the yellow"). */
+  accentColor?: string
 }) {
   const kHero = sizes.hero ?? 1
   const kAccent = sizes.accent ?? 1
@@ -217,7 +221,7 @@ export function KineticCaption({
   const tokens = kineticTokens(line, hero, accents, starts)
   const phrases = kineticPhrases(tokens)
   const ink = "#f4efe8"
-  const gold = "#f2c46b"
+  const gold = accentColor ?? "#f2c46b"
   // A long hero ("THE BEST ROBE") shrinks to fit the frame's width.
   const heroText = tokens
     .filter((x) => x.role === "hero")

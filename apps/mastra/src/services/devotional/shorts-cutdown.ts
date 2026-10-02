@@ -604,7 +604,12 @@ const FILM_TURN_JSON_SCHEMA = {
   },
 }
 
-export const _internal = { JSON_SCHEMA: FILM_TURN_JSON_SCHEMA }
+export const _internal = {
+  JSON_SCHEMA: FILM_TURN_JSON_SCHEMA,
+  get KINETIC_JSON_SCHEMA() {
+    return KINETIC_JSON_SCHEMA
+  },
+}
 
 /** The slice of `DevotionalLlm` this module needs (injected; faked in tests). */
 export type TurnPicker = Pick<DevotionalLlm, "complete">
@@ -684,4 +689,189 @@ export async function chooseFilmTurn(
   if (to !== last)
     input.log?.(`film turn: fitted lines ${first}-${last} to ${first}-${to}`)
   return { fromSec, toSec, why: parsed.why }
+}
+
+// --- history: teaser-style kinetic lines ---------------------------------
+
+export type KineticLine = {
+  from: number
+  to: number
+  hero: string
+  accents: string[]
+}
+
+type SpokenWord = { word: string; startSec: number; endSec: number }
+
+const CONNECTORS = new Set(
+  // Not "as"/"that": a break before them left "as the most unclean" hanging.
+  "and but so because who which while when".split(" "),
+)
+const FUNCTION_WORDS = new Set(
+  "a an the and or but of to in on at by for with from his her their its it is was were he she they we you i my your our all this that as had has have be".split(
+    " ",
+  ),
+)
+const bare = (w: string) => w.toLowerCase().replace(/[^a-z']/g, "")
+
+/**
+ * The short's spoken words cut into teaser lines: one sentence per line, a
+ * sentence longer than `maxChars` split once where it reads best (after a
+ * comma, before a connector like "and", never after a function word, near
+ * the middle). Indices are into the short's words in card order, the same
+ * order the composition reads them.
+ */
+export function kineticLines(
+  cards: ReadonlyArray<{ words?: unknown; [k: string]: unknown }>,
+  maxChars = 52,
+): { from: number; to: number; text: string }[] {
+  const out: { from: number; to: number; text: string }[] = []
+  let base = 0
+  for (const c of cards) {
+    const ws = ((c.words ?? []) as SpokenWord[]).map((w) => w.word)
+    const text = (a: number, b: number) => ws.slice(a, b + 1).join(" ")
+    if (ws.length === 0) continue
+    const total = text(0, ws.length - 1).length
+    if (total <= maxChars || ws.length < 6) {
+      out.push({
+        from: base,
+        to: base + ws.length - 1,
+        text: text(0, ws.length - 1),
+      })
+    } else {
+      const target = total / 2
+      let best = -1
+      let bestScore = Infinity
+      for (let k = 2; k <= ws.length - 3; k++) {
+        // Break after word k.
+        const left = text(0, k).length
+        let score = Math.abs(left - target)
+        if (/[,;:]$/.test(ws[k])) score -= 12
+        if (CONNECTORS.has(bare(ws[k + 1]))) score -= 8
+        if (FUNCTION_WORDS.has(bare(ws[k]))) score += 10
+        else score -= 3
+        if (score < bestScore) {
+          bestScore = score
+          best = k
+        }
+      }
+      out.push({ from: base, to: base + best, text: text(0, best) })
+      out.push({
+        from: base + best + 1,
+        to: base + ws.length - 1,
+        text: text(best + 1, ws.length - 1),
+      })
+    }
+    base += ws.length
+  }
+  return out
+}
+
+/** Without a model: the longest content word is the hero, the next the accent. */
+export function heuristicRoles(text: string): {
+  hero: string
+  accents: string[]
+} {
+  const content = text
+    .split(/\s+/)
+    .map((w) => w.replace(/[^A-Za-z'-]/g, ""))
+    .filter((w) => w && !FUNCTION_WORDS.has(w.toLowerCase()))
+    .sort((a, b) => b.length - a.length)
+  return { hero: content[0] ?? "", accents: content[1] ? [content[1]] : [] }
+}
+
+const KINETIC_JSON_SCHEMA = {
+  name: "kinetic_roles",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["lines"],
+    properties: {
+      lines: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["hero", "accents"],
+          properties: {
+            hero: { type: "string" },
+            accents: { type: "array", items: { type: "string" } },
+          },
+        },
+      },
+    },
+  },
+}
+
+/** True when `phrase` is a run of whole words of `text` (case-insensitive). */
+function isRunOf(phrase: string, text: string): boolean {
+  const p = phrase.split(/\s+/).map(bare).filter(Boolean)
+  const t = text.split(/\s+/).map(bare)
+  if (p.length === 0 || p.length > 3) return false
+  for (let i = 0; i + p.length <= t.length; i++) {
+    if (p.every((w, k) => t[i + k] === w)) return true
+  }
+  return false
+}
+
+/**
+ * Pick each line's hero phrase (set large) and accent words (italic), as the
+ * owner picked them by hand for the Prodigal teaser: the hero carries the
+ * line's image, the accent its feeling. One model call for the whole short;
+ * every pick is checked against its line, and a line whose pick fails (or a
+ * failed call) falls back to `heuristicRoles`, so a bad answer never renders.
+ */
+export async function chooseKineticRoles(
+  llm: TurnPicker | null,
+  lines: ReadonlyArray<{ from: number; to: number; text: string }>,
+  log?: (msg: string) => void,
+): Promise<KineticLine[]> {
+  let picks: { hero: string; accents: string[] }[] = []
+  if (llm) {
+    try {
+      const res = await llm.complete<{
+        lines: { hero: string; accents: string[] }[]
+      }>({
+        system:
+          "You design kinetic captions for short Bible videos. For each line, " +
+          "choose the HERO: 1 to 3 consecutive words that carry the line's " +
+          "image, shown very large; prefer a whole noun phrase (\"father's " +
+          'house", not "father\'s"). Then 0 to 2 ACCENT words that carry its ' +
+          "feeling, shown in italic. Never a function word (the, of, as). " +
+          "Copy words exactly as they appear in the line.",
+        user: lines.map((l, i) => `${i + 1}. ${l.text}`).join("\n"),
+        jsonSchema: KINETIC_JSON_SCHEMA,
+        schema: z.object({
+          lines: z.array(
+            z.object({ hero: z.string(), accents: z.array(z.string()) }),
+          ),
+        }),
+        maxTokens: 600,
+        temperature: 0.2,
+      })
+      picks = res.lines
+    } catch (e) {
+      log?.(
+        `kinetic roles: model failed (${e instanceof Error ? e.message : String(e)}); using the fallback`,
+      )
+    }
+  }
+  return lines.map((l, i) => {
+    const p = picks[i]
+    const heroOk = p && isRunOf(p.hero, l.text)
+    const roles = heroOk
+      ? {
+          hero: p.hero,
+          accents: p.accents
+            .filter((a) => isRunOf(a, l.text) && a.split(/\s+/).length === 1)
+            .filter(
+              (a) =>
+                !p.hero.toLowerCase().split(/\s+/).includes(a.toLowerCase()),
+            )
+            .slice(0, 2),
+        }
+      : heuristicRoles(l.text)
+    if (p && !heroOk)
+      log?.(`kinetic roles: line ${i + 1} pick "${p.hero}" refused; fallback`)
+    return { from: l.from, to: l.to, ...roles }
+  })
 }

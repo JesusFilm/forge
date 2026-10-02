@@ -15,6 +15,7 @@ import {
 
 import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
+import { KineticCaption } from "./KineticCaption"
 import { AnimatedBook, AnimatedScroll } from "./SourceEmblems"
 import { SOURCE_PORTRAIT_URIS, type SourcePortraitId } from "./source-portraits"
 import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
@@ -179,6 +180,7 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           label={fact?.label ?? "Historical context"}
           source={fact?.source ?? ""}
           emblem={fact?.emblem ?? "book"}
+          lines={fact?.lines}
         />
       )}
       <AbsoluteFill
@@ -232,6 +234,8 @@ export function kineticPhrases(
   return out
 }
 
+type KineticLine = { from: number; to: number; hero: string; accents: string[] }
+
 function HistoryLayout({
   f,
   t,
@@ -240,6 +244,7 @@ function HistoryLayout({
   label,
   source,
   emblem,
+  lines,
 }: {
   f: (n: number) => number
   t: number
@@ -248,41 +253,36 @@ function HistoryLayout({
   label: string
   source: string
   emblem: "book" | "scroll"
+  lines?: KineticLine[] | undefined
 }) {
+  const { width } = useVideoConfig()
   const head = interpolate(t, [0.1, 0.8], [0, 1], {
     ...clamp,
     easing: EASE_OUT,
   })
+  // The teaser's px unit (short side / 390, times 390/360 as the teaser sets
+  // it), so the captions are the approved teaser size.
+  const tpx = (n: number) => ((n * 390) / 360) * (width / 390)
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: f(353),
-        left: "50%",
-        // 640 of 900 (owner, 2026-10-02): side margins wide enough that no
-        // phone UI (the right-hand action rail) covers a word.
-        width: f(SAFE_COLUMN),
-        transform: "translateX(-50%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: f(56),
-      }}
-    >
+    <>
+      {/* The credit at the top (Figma 413-2445, revised 2026-10-02). */}
       <div
         style={{
+          position: "absolute",
+          top: f(240),
+          left: "50%",
+          transform: `translateX(-50%) translateY(${(1 - head) * f(12)}px)`,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: f(36),
+          gap: f(20),
           opacity: head,
-          transform: `translateY(${(1 - head) * f(12)}px)`,
         }}
       >
         <div
           style={{
-            width: f(101.6),
-            height: f(66.7) * 1.1,
+            width: f(96),
+            height: f(63) * 1.1,
             transform: "rotate(-10.15deg)",
             opacity: 0.85,
           }}
@@ -309,6 +309,7 @@ function HistoryLayout({
               letterSpacing: f(2),
               color: "rgba(255,255,255,0.5)",
               textTransform: "uppercase",
+              whiteSpace: "nowrap",
             }}
           >
             {label}
@@ -316,27 +317,132 @@ function HistoryLayout({
           <div
             style={{
               fontFamily: LITERATA,
-              fontSize: f(36),
+              fontSize: f(34),
               lineHeight: `${f(50)}px`,
               color: "rgba(255,255,255,0.92)",
               opacity: 0.85,
               textAlign: "center",
-              width: f(520),
+              whiteSpace: "nowrap",
             }}
           >
             {source}
           </div>
         </div>
+        {/* Two tapering strokes and a small gold dot (Figma 413-2480). */}
+        <svg
+          width={f(323) * head}
+          height={f(4)}
+          viewBox="0 0 323 4"
+          preserveAspectRatio="none"
+          style={{ opacity: 0.85 }}
+        >
+          <path
+            d="M0 2L150.347 0C150.981 0 151.5 0.515 151.5 1.16V2.84C151.5 3.49 150.981 4.01 150.347 4L0 2Z"
+            fill="#D9D9D9"
+          />
+          <rect x="159.5" width="4" height="4" rx="2" fill={GOLD} />
+          <path
+            d="M323 2L172.42 0C171.913 0 171.5 0.515 171.5 1.16V2.84C171.5 3.48 171.913 4.01 172.42 4L323 2Z"
+            fill="#D9D9D9"
+          />
+        </svg>
       </div>
-      <div
-        style={{
-          width: f(499) * head,
-          height: Math.max(1, f(2)),
-          background: "rgba(255,255,255,0.35)",
-        }}
-      />
-      <KineticText f={f} t={t} total={total} words={words} />
-    </div>
+      {lines?.length ? (
+        <TeaserCaptions
+          t={t}
+          total={total}
+          words={words}
+          lines={lines}
+          px={tpx}
+          frameWidth={width}
+        />
+      ) : (
+        <div
+          style={{
+            position: "absolute",
+            top: f(640),
+            left: "50%",
+            width: f(SAFE_COLUMN),
+            transform: "translateX(-50%)",
+          }}
+        >
+          <KineticText f={f} t={t} total={total} words={words} />
+        </div>
+      )}
+    </>
+  )
+}
+
+/**
+ * The narration in the approved teaser style (docs/handoffs/
+ * 2026-10-02-vertical-intro-design.md): each line a poster block of words of
+ * three sizes, low in the frame, every word rising out of a blur with the
+ * voice; a line fades over its last 0.35s as the next arrives. Without the
+ * teaser's gold (owner, 2026-10-02): the accent is white italic. Always on
+ * the left, and never wider than the frame minus the right-hand action rail.
+ */
+function TeaserCaptions({
+  t,
+  total,
+  words,
+  lines,
+  px,
+  frameWidth,
+}: {
+  t: number
+  total: number
+  words: TimedWord[]
+  lines: KineticLine[]
+  px: (n: number) => number
+  frameWidth: number
+}) {
+  const inset = px(28)
+  // Clear of the rail on the right (x > 940 of 1080).
+  const maxWidth = frameWidth * (920 / 1080) - inset
+  return (
+    <>
+      {lines.map((ln, i) => {
+        const ws = words.slice(ln.from, ln.to + 1)
+        if (!ws.length) return null
+        const from = ws[0].startSec
+        const next = lines[i + 1]
+          ? words[lines[i + 1].from]?.startSec
+          : undefined
+        const to = next ?? total + 10
+        const out =
+          next == null
+            ? 1
+            : interpolate(t, [to - 0.35, to - 0.02], [1, 0], {
+                ...clamp,
+                easing: EASE_OUT,
+              })
+        if (t < from - 0.1 || out <= 0) return null
+        return (
+          <AbsoluteFill key={i} style={{ opacity: out }}>
+            <AbsoluteFill
+              style={{
+                background:
+                  "linear-gradient(0deg, rgba(0,0,0,0.55), rgba(0,0,0,0.12) 45%, rgba(0,0,0,0) 70%)",
+              }}
+            />
+            <KineticCaption
+              line={ws.map((w) => w.word).join(" ")}
+              hero={ln.hero}
+              accents={ln.accents}
+              starts={ws.map((w) => w.startSec - from)}
+              time={t - from}
+              layout="stack"
+              px={px}
+              side="left"
+              portrait
+              maxWidth={maxWidth}
+              sizes={{ hero: 1.3, accent: 1.4, plain: 1.6 }}
+              accentColor="#f4efe8"
+            />
+          </AbsoluteFill>
+        )
+      })}
+    </>
   )
 }
 
