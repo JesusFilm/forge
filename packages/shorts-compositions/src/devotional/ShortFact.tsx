@@ -352,13 +352,23 @@ function KineticText({
   total,
   words,
   minLines = 3,
+  mode = "kinetic",
 }: {
   f: (n: number) => number
   t: number
   total: number
   words: TimedWord[]
   minLines?: number
+  /** `reveal`: the long form's reflection reveal for long sentences (the
+   *  whole sentence laid out, each word fading in as it is said, landing in
+   *  gold and cooling to the body colour); short lines still stamp. */
+  mode?: "kinetic" | "reveal"
 }) {
+  if (mode === "reveal") {
+    return (
+      <RevealText f={f} t={t} total={total} words={words} minLines={minLines} />
+    )
+  }
   const phrases = kineticPhrases(words)
   const at = phrases.findIndex((p, i) => {
     const next = phrases[i + 1]
@@ -463,6 +473,110 @@ function KineticText({
   )
 }
 
+/** As in the long form (DevotionalVideo WordReveal): a spoken word lands in
+ *  the accent and cools to the body colour over this long. */
+const ACCENT_SETTLE_SEC = 0.42
+
+function RevealText({
+  f,
+  t,
+  total,
+  words,
+  minLines,
+}: {
+  f: (n: number) => number
+  t: number
+  total: number
+  words: TimedWord[]
+  minLines: number
+}) {
+  // One sentence (card) at a time, as the long form shows it.
+  const cards = [...new Set(words.map((w) => w.card))]
+  const starts = cards.map((c) => words.find((w) => w.card === c)!.startSec)
+  const idx = starts.findIndex(
+    (s0, i) =>
+      t >= s0 - 0.05 && (i + 1 >= starts.length || t < starts[i + 1] - 0.05),
+  )
+  const box = {
+    minHeight: f(89) * minLines,
+    width: "100%",
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "center",
+  } as const
+  if (idx < 0) return <div style={box} />
+  const sentence = words.filter((w) => w.card === cards[idx])
+  if (sentence.length <= STAMP_WORDS) {
+    return (
+      <KineticText
+        f={f}
+        t={t}
+        total={total}
+        words={words}
+        minLines={minLines}
+      />
+    )
+  }
+  const nextStart = starts[idx + 1] ?? total + 1
+  const out = interpolate(
+    t,
+    [nextStart - 0.16, nextStart - 0.04],
+    [1, 0],
+    clamp,
+  )
+  return (
+    <div style={{ ...box, opacity: out }}>
+      <p
+        style={{
+          margin: 0,
+          fontFamily: SANS,
+          fontSize: f(61),
+          lineHeight: `${f(89)}px`,
+          color: "#eae6df",
+          textAlign: "center",
+          textShadow: `0 ${f(2)}px ${f(18)}px rgba(0,0,0,0.5)`,
+        }}
+      >
+        {sentence.map((w, i) => {
+          const opacity = interpolate(
+            t,
+            [w.startSec - 0.06, w.startSec + 0.12],
+            [0, 1],
+            clamp,
+          )
+          const warm = Math.min(
+            interpolate(
+              t,
+              [w.startSec - 0.06, w.startSec + 0.06],
+              [0, 1],
+              clamp,
+            ),
+            interpolate(
+              t,
+              [w.startSec + 0.06, w.startSec + 0.06 + ACCENT_SETTLE_SEC],
+              [1, 0],
+              clamp,
+            ),
+          )
+          return (
+            <span key={i}>
+              <span
+                style={{
+                  opacity,
+                  color: interpolateColors(warm, [0, 1], ["#eae6df", GOLD]),
+                }}
+              >
+                {w.word}
+              </span>
+              {i < sentence.length - 1 ? " " : ""}
+            </span>
+          )
+        })}
+      </p>
+    </div>
+  )
+}
+
 // --- reflection ------------------------------------------------------------
 
 /**
@@ -502,7 +616,7 @@ function ReflectionLayout({
           transform: "translateX(-50%)",
         }}
       >
-        <KineticText f={f} t={t} total={total} words={words} />
+        <KineticText f={f} t={t} total={total} words={words} mode="reveal" />
       </div>
       {credit?.source ? (
         <div
@@ -658,16 +772,16 @@ function LanguageLayout({
       w.word.toLowerCase().replace(/[^a-z']/g, "") === highlight.toLowerCase(),
   )
   const ringAt = said ? said.startSec : 1.2
-  const draw = interpolate(t, [ringAt, ringAt + 0.75], [0, 1], {
+  const draw = interpolate(t, [ringAt, ringAt + 0.9], [0, 1], {
     ...clamp,
     easing: Easing.bezier(0.5, 0, 0.3, 1),
   })
   const lit = interpolate(t, [ringAt, ringAt + 0.4], [0, 1], clamp)
   // Once drawn, the ring "boils" like hand-drawn animation (owner,
-  // 2026-10-02): three near-identical redraws swapped about six times a
-  // second. Calm, not jumpy.
-  const life = Math.max(0, t - ringAt - 0.75)
-  const ringSeed = draw < 1 ? 0 : Math.floor(life * 6) % 3
+  // 2026-10-02): three near-identical redraws swapped four times a second
+  // (six read a touch fast). Calm, not jumpy.
+  const life = Math.max(0, t - ringAt - 0.9)
+  const ringSeed = draw < 1 ? 0 : Math.floor(life * 4) % 3
   const verseIn = interpolate(t, [0.05, 0.6], [0, 1], {
     ...clamp,
     easing: EASE_OUT,
@@ -851,13 +965,11 @@ function LanguageLayout({
             background: GOLD,
             borderRadius: f(16),
             padding: `0 ${f(12)}px`,
-            // Impact in normal case (owner, 2026-10-02: the tracked caps
-            // were hard to read). A system font, not bundled; Anton-like
-            // fallbacks keep the shape if a machine lacks it.
-            fontFamily:
-              "Impact, 'Haettenschweiler', 'Arial Narrow Bold', sans-serif",
-            fontWeight: 400,
-            fontSize: f(56),
+            // Inter Bold in normal case with no tracking (owner, 2026-10-02:
+            // the tracked caps were hard to read; Impact was a slip).
+            fontFamily: SANS,
+            fontWeight: 700,
+            fontSize: f(48),
             lineHeight: `${f(89)}px`,
             letterSpacing: 0,
             color: "#140b05",
