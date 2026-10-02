@@ -111,6 +111,23 @@ Before rendering portrait shorts, rebuild the OpenCV venv and pass
 `DEVO_FACE_PYTHON` (memory `devotional-local-setup-outside-repo.md`): on
 2026-10-01 the stage logged `opencv_missing` and centre-cropped.
 
+## Intro settings per story (not stored in the manifest)
+
+The montage opening's shots, crops and kinetic specs are passed to the render
+on the command line and baked into `clip.mp4`; the manifest does not record
+them, and the opening voice lives in the audio cache
+(`devo/cache/ch<chapter>-seq<n>/audio/hook.mp3`), not in the shorts source.
+Until the render saves them, take them from here (and from each story's
+`README.txt`):
+
+| Story           | source / cache            | --intro-shots           | --intro-focus (9:16)                                 | --intro-kinetic                                                                                                                          |
+| --------------- | ------------------------- | ----------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Prodigal        | lumo-luke-15, ch1002-seq0 | 172.4,194.9,199.3,181.6 | 0.5,0.34,0.16,0.62,0.55                              | `0=outside/faithful/left;1=the best robe/squandered/right;2=one word/feast/right;3=steps out/father/left;4=full devotional/YouTube/left` |
+| Martha and Mary | lumo-luke-10, ch1003-seq0 | 433.4,426.3,438.4,447.7 | not chosen yet (start at 0.5 each, check the frames) | `0=everything right/lost/left;1=at his feet/worked/left;2=distracted/Luke/left;3=still answers/fair/right`                               |
+
+Martha's opening is read by female-d (take `hx+v4`, expressive); music
+`~/Desktop/Social Media/Martha/work/music-duduk/3-duduk-oud.mp3`.
+
 ## Suggested shape (not decided; brainstorm against the ticket first)
 
 One command, e.g. `src/scripts/cut-devotional-shorts.ts --from=<manifest>`:
