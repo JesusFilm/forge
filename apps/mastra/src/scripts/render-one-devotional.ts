@@ -209,6 +209,9 @@ async function main() {
         arg("cta-style") === "kinetic"
           ? ("kinetic" as const)
           : ("calm" as const),
+      // `--cta-text=...`: keep the long form's opening voice and show this
+      // call to action silently in place of its last line.
+      ...(arg("cta-text") ? { introCtaText: arg("cta-text")! } : {}),
       // Social opening: `--quote-a/--quote-b` (+ `--quote-a-strong`, etc.).
       ...(arg("quote-a") && arg("quote-b")
         ? {

@@ -1158,7 +1158,7 @@ export function kineticLines(
         // Break after word k.
         const left = text(0, k).length
         let score = Math.abs(left - target)
-        if (/[,;:]$/.test(ws[k])) score -= 14
+        if (/[,;:]$/.test(ws[k])) score -= 20
         if (CONNECTORS.has(bare(ws[k + 1]))) score -= 12
         if (FUNCTION_WORDS.has(bare(ws[k]))) score += 10
         else score -= 3
@@ -1305,6 +1305,12 @@ export type IntroTeaserInput = {
   hookGapSec?: number
   musicFile?: string
   outDir: string
+  /** The long form's exact opening text (its "Let's watch." included): with
+   *  `voicedCta` false (the default) this is what is narrated, so the cached
+   *  take is reused, and the CTA is shown silently instead of its last line. */
+  hookText?: string
+  /** Narrate the CTA as the last line (needs that take cached or a key). */
+  voicedCta?: boolean
 }
 
 /**
@@ -1315,7 +1321,12 @@ export type IntroTeaserInput = {
  * design.md), filled in from the devotional instead of typed by hand.
  */
 export function introTeaserArgs(input: IntroTeaserInput): string[] {
-  const hook = [...input.lines, INTRO_CTA].join("\n\n")
+  // Default (owner, 2026-10-02): the long form's own opening voice, the CTA
+  // written on screen, so a teaser never needs new narration.
+  const silent = !input.voicedCta
+  const hook = silent
+    ? (input.hookText ?? [...input.lines, "Let's watch."].join("\n\n"))
+    : [...input.lines, INTRO_CTA].join("\n\n")
   const kinetic = (input.kinetic ?? [])
     .filter((k) => k.line < input.lines.length)
     .map((k) => `${k.line}=${k.hero}/${k.accents.join(",")}/${k.side}`)
@@ -1329,6 +1340,7 @@ export function introTeaserArgs(input: IntroTeaserInput): string[] {
     "--teaser-intro",
     "--no-step-ring",
     `--hook=${hook}`,
+    ...(silent ? [`--cta-text=${INTRO_CTA}`] : []),
     `--intro-shots=${input.shots.join(",")}`,
     ...(input.focus?.length ? [`--intro-focus=${input.focus.join(",")}`] : []),
     ...(kinetic ? [`--intro-kinetic=${kinetic}`] : []),

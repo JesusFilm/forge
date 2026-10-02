@@ -357,9 +357,23 @@ describe("intro teaser", () => {
     expect(args).toContain(
       "--intro-kinetic=0=outside/faithful/left;1=the best robe/squandered/right;2=one word/feast/right;3=steps out/father/left",
     )
+    // Default: the long form's own voice (its hand-off line kept in the
+    // narrated text so the cached take is reused), the CTA written silently.
     const hook = args.find((a) => a.startsWith("--hook="))!
-    expect(hook.endsWith(`\n\n${INTRO_CTA}`)).toBe(true)
-    expect(hook).not.toMatch(/Let's watch/)
+    expect(hook.endsWith("Let's watch.")).toBe(true)
+    expect(args).toContain(`--cta-text=${INTRO_CTA}`)
+    const voiced = introTeaserArgs({
+      sourceKey: "lumo-luke-15",
+      sequence: 0,
+      lines,
+      shots: [1, 2, 3, 4],
+      outDir: "/tmp/x",
+      voicedCta: true,
+    })
+    expect(
+      voiced.find((a) => a.startsWith("--hook="))!.endsWith(INTRO_CTA),
+    ).toBe(true)
+    expect(voiced.some((a) => a.startsWith("--cta-text="))).toBe(false)
   })
 })
 

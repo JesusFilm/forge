@@ -190,6 +190,8 @@ const FRAMED_OPENING_CAP_SEC = 18
 const MONTAGE_CAP_SEC = 24
 /** Montage teaser: how long the call to action holds after the voice ends. */
 const TEASER_CTA_HOLD_SEC = 1.6
+/** Montage teaser with a silent written CTA: how long it is on screen. */
+const SILENT_CTA_SEC = 3.4
 /** `intro: "hook"`: silence after the spoken question — a breath, plus the
  *  time the title takes to leave. The film's first line lands after it. */
 const HOOK_TAIL_SEC = 1.8
@@ -1634,6 +1636,11 @@ export type RenderOptions = {
   introTeaser?: boolean
   /** Teaser: how the closing call to action looks (default `kinetic`). */
   introCtaStyle?: "kinetic" | "calm"
+  /** Montage teaser with the long form's own opening voice (owner,
+   *  2026-10-02): `hookLine` stays the long form's text (a cache hit, no new
+   *  narration), its last spoken line ("Let's watch.") is cut from the audio,
+   *  and this line is shown in its place, silent. */
+  introCtaText?: string
   /** `intro: "hook"` only: what is DRAWN, when the voice says more than the
    *  screen should show (a welcome before the question). Defaults to
    *  `hookLine`. Never reaches the narration, so it is free to change. */
@@ -1841,6 +1848,37 @@ async function renderInStage(
             : Math.min(cap, Math.max(last + MONTAGE_WATCH_SEC, spokenSec + 0.4))
         else
           log(`⚠️  montage: no word times for the hook, cutting shots evenly`)
+        if (options.introTeaser && options.introCtaText && last != null) {
+          // Silent CTA: cut the long form's hand-off line out of the take and
+          // hold the written call to action where it would have been spoken.
+          const cut = Math.max(0.5, last - 0.05)
+          const src = path.join(stage, "hook-full.mp3")
+          const dst = path.join(stage, "hook-cut.mp3")
+          await writeFile(src, seg.audio.bytes)
+          await runFfmpeg([
+            "-y",
+            "-i",
+            src,
+            "-t",
+            cut.toFixed(3),
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
+            dst,
+          ])
+          seg.audio = {
+            ...seg.audio,
+            bytes: await readFile(dst),
+            words: (seg.audio.words ?? []).filter((w) => w.endSec <= cut),
+          }
+          // The film card runs to the CTA plus TEASER_CTA_HOLD_SEC after the
+          // "voice"; a silent line needs longer to be read.
+          hookSpokenSec = cut + SILENT_CTA_SEC - TEASER_CTA_HOLD_SEC
+          log(
+            `silent CTA: voice cut at ${cut.toFixed(2)}s, "${options.introCtaText}" shown instead`,
+          )
+        }
       }
       log(
         `hook: "${(options.hookLine ?? seg.text).trim()}" (${spokenSec.toFixed(1)}s) → ` +
@@ -2603,10 +2641,16 @@ async function renderInStage(
     ...(options.introFocus ? { introFocus: options.introFocus } : {}),
     ...(options.hookLine
       ? {
-          hookParts: options.hookLine
-            .split(/\n\s*\n/)
-            .map((part) => part.trim())
-            .filter(Boolean),
+          hookParts: ((parts) =>
+            // Silent CTA: show the call to action in place of the last line.
+            options.introTeaser && options.introCtaText
+              ? [...parts.slice(0, -1), options.introCtaText]
+              : parts)(
+            options.hookLine
+              .split(/\n\s*\n/)
+              .map((part) => part.trim())
+              .filter(Boolean),
+          ),
         }
       : {}),
     // Social opening card, ahead of the film (see BuildManifestInput).

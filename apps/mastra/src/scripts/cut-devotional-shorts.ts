@@ -307,6 +307,12 @@ async function cutIntroTeaser(input: {
         : {}),
       ...(music ? { musicFile: music } : {}),
       outDir: tmp,
+      ...(typeof film?.hookText === "string"
+        ? { hookText: film.hookText }
+        : {}),
+      ...(process.argv.includes("--intro-voiced-cta")
+        ? { voicedCta: true }
+        : {}),
     })
     console.log(`\n▶ intro → render-one-devotional.ts --teaser-intro`)
     await new Promise<void>((resolve, reject) => {
