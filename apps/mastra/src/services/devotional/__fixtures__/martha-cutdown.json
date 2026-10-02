@@ -1,0 +1,3596 @@
+{
+  "manifest": {
+    "schemaVersion": "2",
+    "headerDate": "Thursday \u00b7 October 1",
+    "bgStartOffsetSec": 0.75,
+    "musicFile": "music.mp3",
+    "cards": [
+      {
+        "kind": "video",
+        "videoFile": "clip.mp4",
+        "durationSec": 69.31095238095239,
+        "videoFill": "full",
+        "audioFile": "01-hook.mp3",
+        "subtitles": [
+          {
+            "text": "As Jesus and his disciples were on their way, he came to a village",
+            "startSec": 21.030000000000005,
+            "endSec": 25.029999999999994,
+            "words": [
+              21.030000000000005, 21.487142857142878, 21.86809523809524,
+              21.982380952380957, 22.306190476190512, 22.72523809523813,
+              22.839523809523847, 22.99190476190477, 23.220476190476205,
+              24.096666666666696, 24.30619047619048, 24.496666666666712,
+              24.591904761904775, 24.80142857142861
+            ],
+            "verse": "Luke 10:38"
+          },
+          {
+            "text": "where a woman named Martha opened her home to him.",
+            "startSec": 25.12523809523811,
+            "endSec": 28.66809523809528,
+            "words": [
+              25.12523809523811, 25.23952380952383, 25.487142857142867,
+              25.734761904761907, 26.11571428571432, 26.66809523809526,
+              26.915714285714298, 27.12523809523813, 27.334761904761912,
+              27.525238095238095
+            ],
+            "verse": "Luke 10:38"
+          },
+          {
+            "text": "She had a sister called Mary,",
+            "startSec": 28.87761904761906,
+            "endSec": 30.82047619047622,
+            "words": [
+              28.87761904761906, 29.010952380952382, 29.1252380952381,
+              29.391904761904794, 29.75380952380955, 30.020476190476195
+            ],
+            "verse": "Luke 10:39"
+          },
+          {
+            "text": "who sat at the Lord's feet listening to what he said.",
+            "startSec": 30.915714285714287,
+            "endSec": 34.55380952380952,
+            "words": [
+              30.915714285714287, 31.049047619047663, 31.220476190476184,
+              31.3157142857143, 31.487142857142878, 31.830000000000034,
+              32.57285714285715, 32.85857142857145, 33.010952380952425,
+              33.16333333333335, 33.41095238095238
+            ],
+            "verse": "Luke 10:39"
+          },
+          {
+            "text": "But Martha was distracted by all the preparations that had to be made.",
+            "startSec": 34.76333333333335,
+            "endSec": 39.04904761904764,
+            "words": [
+              34.76333333333335, 34.97285714285719, 35.25857142857143,
+              35.639523809523844, 36.40142857142862, 36.6109523809524,
+              36.744285714285716, 37.25857142857146, 37.58238095238095,
+              37.71571428571433, 37.86809523809525, 37.982380952380964,
+              38.210952380952406
+            ],
+            "verse": "Luke 10:40"
+          },
+          {
+            "text": "She came to him and asked,",
+            "startSec": 39.14428571428576,
+            "endSec": 40.93476190476194,
+            "words": [
+              39.14428571428576, 39.33476190476193, 39.525238095238116,
+              39.658571428571435, 39.75380952380955, 40.00142857142859
+            ],
+            "verse": "Luke 10:40"
+          },
+          {
+            "text": "Lord, don't you care that my sister has left me to do the work by myself?",
+            "startSec": 41.03,
+            "endSec": 45.33476190476195,
+            "words": [
+              41.03, 41.791904761904775, 41.98238095238096, 42.21095238095239,
+              42.42047619047623, 42.57285714285715, 42.83952380952385,
+              43.06809523809528, 43.2395238095238, 43.353809523809524,
+              43.4871428571429, 43.65857142857142, 43.7919047619048,
+              43.98238095238098, 44.172857142857154, 44.45857142857145
+            ],
+            "verse": "Luke 10:40"
+          },
+          {
+            "text": "Tell her to help me.",
+            "startSec": 45.54428571428573,
+            "endSec": 47.46809523809523,
+            "words": [
+              45.54428571428573, 45.753809523809565, 45.887142857142884,
+              46.05857142857146, 46.325238095238106
+            ],
+            "verse": "Luke 10:40"
+          },
+          {
+            "text": "Martha, Martha, the Lord answered,",
+            "startSec": 47.849047619047646,
+            "endSec": 50.344285714285746,
+            "words": [
+              47.849047619047646, 48.28714285714287, 49.23952380952382,
+              49.3919047619048, 49.73476190476195
+            ],
+            "verse": "Luke 10:41"
+          },
+          {
+            "text": "you are worried and upset about many things,",
+            "startSec": 50.439523809523806,
+            "endSec": 53.925238095238115,
+            "words": [
+              50.439523809523806, 50.801428571428566, 51.14428571428572,
+              51.334761904761905, 51.6204761904762, 51.98238095238096,
+              52.287142857142854, 52.78238095238099
+            ],
+            "verse": "Luke 10:41"
+          },
+          {
+            "text": "but few things are needed, or indeed only one.",
+            "startSec": 54.572857142857174,
+            "endSec": 59.46809523809526,
+            "words": [
+              54.572857142857174, 54.801428571428616, 55.27761904761908,
+              55.3919047619048, 55.67761904761905, 56.68714285714286,
+              56.97285714285715, 58.09666666666668, 58.32523809523812
+            ],
+            "verse": "Luke 10:42"
+          },
+          {
+            "text": "Mary has chosen what is better,",
+            "startSec": 60.344285714285746,
+            "endSec": 62.972857142857166,
+            "words": [
+              60.344285714285746, 60.63000000000004, 60.91571428571429,
+              61.239523809523845, 61.44904761904762, 61.83000000000003
+            ],
+            "verse": "Luke 10:42"
+          },
+          {
+            "text": "and it will not be taken away from her.",
+            "startSec": 65.20142857142856,
+            "endSec": 67.81095238095239,
+            "words": [
+              65.20142857142856, 65.33476190476195, 65.44904761904766,
+              65.62047619047618, 65.84904761904762, 66.11571428571432,
+              66.40142857142861, 66.70619047619051, 66.95380952380955
+            ],
+            "verse": "Luke 10:42"
+          }
+        ],
+        "mutedLeadSec": 21.030000000000005,
+        "filmMark": "lumo",
+        "intro": "montage",
+        "introParts": [
+          "Martha did everything right, and still lost something.",
+          "She worked for Jesus while her sister sat at his feet.",
+          "In this devotional, what Luke really means by \u201cdistracted.\u201d",
+          "Her complaint is fair. Jesus still answers it.",
+          "Let's watch."
+        ],
+        "passageRef": "Luke 10:38-42",
+        "steps": ["WATCH", "REFLECT", "PRAY"],
+        "introKinetic": [
+          {
+            "line": 0,
+            "hero": "everything right",
+            "accents": ["lost"],
+            "side": "left"
+          },
+          {
+            "line": 1,
+            "hero": "at his feet",
+            "accents": ["worked"],
+            "side": "left"
+          },
+          {
+            "line": 2,
+            "hero": "distracted",
+            "accents": ["Luke"],
+            "side": "left"
+          },
+          {
+            "line": 3,
+            "hero": "still answers",
+            "accents": ["fair"],
+            "side": "right"
+          }
+        ],
+        "words": [
+          {
+            "word": "Martha",
+            "startSec": 0,
+            "endSec": 0.4
+          },
+          {
+            "word": "did",
+            "startSec": 0.48,
+            "endSec": 0.8
+          },
+          {
+            "word": "everything",
+            "startSec": 0.88,
+            "endSec": 1.44
+          },
+          {
+            "word": "right,",
+            "startSec": 1.52,
+            "endSec": 2.24
+          },
+          {
+            "word": "and",
+            "startSec": 2.36,
+            "endSec": 2.48
+          },
+          {
+            "word": "still",
+            "startSec": 2.64,
+            "endSec": 2.96
+          },
+          {
+            "word": "lost",
+            "startSec": 3.04,
+            "endSec": 3.36
+          },
+          {
+            "word": "something.",
+            "startSec": 3.52,
+            "endSec": 4.32
+          },
+          {
+            "word": "She",
+            "startSec": 4.470000000000001,
+            "endSec": 4.710000000000001
+          },
+          {
+            "word": "worked",
+            "startSec": 4.790000000000001,
+            "endSec": 5.030000000000001
+          },
+          {
+            "word": "for",
+            "startSec": 5.11,
+            "endSec": 5.19
+          },
+          {
+            "word": "Jesus",
+            "startSec": 5.3500000000000005,
+            "endSec": 5.830000000000001
+          },
+          {
+            "word": "while",
+            "startSec": 5.91,
+            "endSec": 6.07
+          },
+          {
+            "word": "her",
+            "startSec": 6.19,
+            "endSec": 6.3100000000000005
+          },
+          {
+            "word": "sister",
+            "startSec": 6.390000000000001,
+            "endSec": 6.790000000000001
+          },
+          {
+            "word": "sat",
+            "startSec": 6.870000000000001,
+            "endSec": 7.110000000000001
+          },
+          {
+            "word": "at",
+            "startSec": 7.190000000000001,
+            "endSec": 7.2700000000000005
+          },
+          {
+            "word": "his",
+            "startSec": 7.3500000000000005,
+            "endSec": 7.510000000000001
+          },
+          {
+            "word": "feet.",
+            "startSec": 7.59,
+            "endSec": 8.23
+          },
+          {
+            "word": "In",
+            "startSec": 8.38,
+            "endSec": 8.540000000000001
+          },
+          {
+            "word": "this",
+            "startSec": 8.620000000000001,
+            "endSec": 8.780000000000001
+          },
+          {
+            "word": "devotional,",
+            "startSec": 8.860000000000001,
+            "endSec": 9.9
+          },
+          {
+            "word": "what",
+            "startSec": 9.98,
+            "endSec": 10.06
+          },
+          {
+            "word": "Luke",
+            "startSec": 10.22,
+            "endSec": 10.46
+          },
+          {
+            "word": "really",
+            "startSec": 10.620000000000001,
+            "endSec": 10.940000000000001
+          },
+          {
+            "word": "means",
+            "startSec": 11.020000000000001,
+            "endSec": 11.34
+          },
+          {
+            "word": "by",
+            "startSec": 11.420000000000002,
+            "endSec": 11.74
+          },
+          {
+            "word": "\u201cdistracted.\u201d",
+            "startSec": 11.9,
+            "endSec": 13.18
+          },
+          {
+            "word": "Her",
+            "startSec": 13.329999999999998,
+            "endSec": 13.57
+          },
+          {
+            "word": "complaint",
+            "startSec": 13.649999999999999,
+            "endSec": 14.129999999999999
+          },
+          {
+            "word": "is",
+            "startSec": 14.25,
+            "endSec": 14.369999999999997
+          },
+          {
+            "word": "fair.",
+            "startSec": 14.45,
+            "endSec": 15.169999999999998
+          },
+          {
+            "word": "Jesus",
+            "startSec": 15.45,
+            "endSec": 15.93
+          },
+          {
+            "word": "still",
+            "startSec": 16.09,
+            "endSec": 16.41
+          },
+          {
+            "word": "answers",
+            "startSec": 16.49,
+            "endSec": 16.89
+          },
+          {
+            "word": "it.",
+            "startSec": 16.97,
+            "endSec": 17.53
+          },
+          {
+            "word": "Let's",
+            "startSec": 18.430000000000003,
+            "endSec": 18.750000000000004
+          },
+          {
+            "word": "watch.",
+            "startSec": 18.830000000000002,
+            "endSec": 19.550000000000004
+          }
+        ],
+        "hookText": "Martha did everything right, and still lost something.\n\nShe worked for Jesus while her sister sat at his feet.\n\nIn this devotional, what Luke really means by \u201cdistracted.\u201d\n\nHer complaint is fair. Jesus still answers it.\n\nLet's watch.",
+        "captionStyle": "words-lift"
+      },
+      {
+        "kind": "step",
+        "stepIndex": 1,
+        "stepLeadSec": 0.9,
+        "steps": ["WATCH", "REFLECT", "PRAY"],
+        "audioFile": "02-step-reflect.mp3",
+        "durationSec": 3.353673,
+        "words": [
+          {
+            "word": "Let's",
+            "startSec": 0,
+            "endSec": 0.232
+          },
+          {
+            "word": "look",
+            "startSec": 0.267,
+            "endSec": 0.406
+          },
+          {
+            "word": "more",
+            "startSec": 0.453,
+            "endSec": 0.592
+          },
+          {
+            "word": "closely",
+            "startSec": 0.627,
+            "endSec": 0.987
+          },
+          {
+            "word": "at",
+            "startSec": 1.045,
+            "endSec": 1.138
+          },
+          {
+            "word": "what",
+            "startSec": 1.173,
+            "endSec": 1.3
+          },
+          {
+            "word": "this",
+            "startSec": 1.335,
+            "endSec": 1.463
+          },
+          {
+            "word": "story",
+            "startSec": 1.509,
+            "endSec": 1.776
+          },
+          {
+            "word": "means.",
+            "startSec": 1.834,
+            "endSec": 2.461
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Most of us would side with Martha.",
+        "tailSec": 0.35,
+        "audioFile": "03-reflection-1.mp3",
+        "durationSec": 1.811156,
+        "words": [
+          {
+            "word": "Most",
+            "startSec": 0,
+            "endSec": 0.255
+          },
+          {
+            "word": "of",
+            "startSec": 0.29,
+            "endSec": 0.348
+          },
+          {
+            "word": "us",
+            "startSec": 0.406,
+            "endSec": 0.476
+          },
+          {
+            "word": "would",
+            "startSec": 0.522,
+            "endSec": 0.662
+          },
+          {
+            "word": "side",
+            "startSec": 0.697,
+            "endSec": 0.929
+          },
+          {
+            "word": "with",
+            "startSec": 0.952,
+            "endSec": 1.068
+          },
+          {
+            "word": "Martha.",
+            "startSec": 1.126,
+            "endSec": 1.811
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "There is a guest in her house, and someone has to feed him.",
+        "tailSec": 0.35,
+        "audioFile": "04-reflection-2.mp3",
+        "durationSec": 2.786395,
+        "words": [
+          {
+            "word": "There",
+            "startSec": 0,
+            "endSec": 0.232
+          },
+          {
+            "word": "is",
+            "startSec": 0.267,
+            "endSec": 0.337
+          },
+          {
+            "word": "a",
+            "startSec": 0.36,
+            "endSec": 0.395
+          },
+          {
+            "word": "guest",
+            "startSec": 0.43,
+            "endSec": 0.65
+          },
+          {
+            "word": "in",
+            "startSec": 0.697,
+            "endSec": 0.766
+          },
+          {
+            "word": "her",
+            "startSec": 0.824,
+            "endSec": 0.906
+          },
+          {
+            "word": "house,",
+            "startSec": 0.964,
+            "endSec": 1.265
+          },
+          {
+            "word": "and",
+            "startSec": 1.324,
+            "endSec": 1.463
+          },
+          {
+            "word": "someone",
+            "startSec": 1.521,
+            "endSec": 1.8
+          },
+          {
+            "word": "has",
+            "startSec": 1.846,
+            "endSec": 1.985
+          },
+          {
+            "word": "to",
+            "startSec": 2.043,
+            "endSec": 2.101
+          },
+          {
+            "word": "feed",
+            "startSec": 2.159,
+            "endSec": 2.334
+          },
+          {
+            "word": "him.",
+            "startSec": 2.38,
+            "endSec": 2.786
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Her sister is on the floor, listening.",
+        "tailSec": 0.35,
+        "audioFile": "05-reflection-3.mp3",
+        "durationSec": 1.857596,
+        "words": [
+          {
+            "word": "Her",
+            "startSec": 0,
+            "endSec": 0.163
+          },
+          {
+            "word": "sister",
+            "startSec": 0.209,
+            "endSec": 0.476
+          },
+          {
+            "word": "is",
+            "startSec": 0.534,
+            "endSec": 0.604
+          },
+          {
+            "word": "on",
+            "startSec": 0.65,
+            "endSec": 0.72
+          },
+          {
+            "word": "the",
+            "startSec": 0.755,
+            "endSec": 0.824
+          },
+          {
+            "word": "floor,",
+            "startSec": 0.859,
+            "endSec": 1.126
+          },
+          {
+            "word": "listening.",
+            "startSec": 1.161,
+            "endSec": 1.858
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Martha is on her feet, working.",
+        "audioFile": "06-reflection-4.mp3",
+        "durationSec": 1.811156,
+        "words": [
+          {
+            "word": "Martha",
+            "startSec": 0,
+            "endSec": 0.36
+          },
+          {
+            "word": "is",
+            "startSec": 0.418,
+            "endSec": 0.511
+          },
+          {
+            "word": "on",
+            "startSec": 0.569,
+            "endSec": 0.662
+          },
+          {
+            "word": "her",
+            "startSec": 0.708,
+            "endSec": 0.789
+          },
+          {
+            "word": "feet,",
+            "startSec": 0.836,
+            "endSec": 1.068
+          },
+          {
+            "word": "working.",
+            "startSec": 1.103,
+            "endSec": 1.811
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "In the ancient world, hospitality was counted among the chief virtues.",
+        "sourceMark": {
+          "label": "Historical context",
+          "source": "Smith's Bible Dictionary",
+          "portrait": "book"
+        },
+        "tailSec": 0.35,
+        "audioFile": "07-reflection-5.mp3",
+        "durationSec": 4.551111,
+        "words": [
+          {
+            "word": "In",
+            "startSec": 0,
+            "endSec": 0.104
+          },
+          {
+            "word": "the",
+            "startSec": 0.151,
+            "endSec": 0.232
+          },
+          {
+            "word": "ancient",
+            "startSec": 0.36,
+            "endSec": 0.766
+          },
+          {
+            "word": "world,",
+            "startSec": 0.813,
+            "endSec": 1.207
+          },
+          {
+            "word": "hospitality",
+            "startSec": 1.44,
+            "endSec": 2.31
+          },
+          {
+            "word": "was",
+            "startSec": 2.392,
+            "endSec": 2.519
+          },
+          {
+            "word": "counted",
+            "startSec": 2.601,
+            "endSec": 3.03
+          },
+          {
+            "word": "among",
+            "startSec": 3.1,
+            "endSec": 3.344
+          },
+          {
+            "word": "the",
+            "startSec": 3.39,
+            "endSec": 3.46
+          },
+          {
+            "word": "chief",
+            "startSec": 3.506,
+            "endSec": 3.704
+          },
+          {
+            "word": "virtues.",
+            "startSec": 3.75,
+            "endSec": 4.551
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "A host who fed a traveler well was doing something honored, not something small.",
+        "tailSec": 0.35,
+        "audioFile": "08-reflection-6.mp3",
+        "durationSec": 4.597551,
+        "words": [
+          {
+            "word": "A",
+            "startSec": 0,
+            "endSec": 0.058
+          },
+          {
+            "word": "host",
+            "startSec": 0.151,
+            "endSec": 0.43
+          },
+          {
+            "word": "who",
+            "startSec": 0.464,
+            "endSec": 0.592
+          },
+          {
+            "word": "fed",
+            "startSec": 0.662,
+            "endSec": 0.848
+          },
+          {
+            "word": "a",
+            "startSec": 0.882,
+            "endSec": 0.906
+          },
+          {
+            "word": "traveler",
+            "startSec": 0.94,
+            "endSec": 1.358
+          },
+          {
+            "word": "well",
+            "startSec": 1.416,
+            "endSec": 1.66
+          },
+          {
+            "word": "was",
+            "startSec": 1.753,
+            "endSec": 1.904
+          },
+          {
+            "word": "doing",
+            "startSec": 1.985,
+            "endSec": 2.218
+          },
+          {
+            "word": "something",
+            "startSec": 2.276,
+            "endSec": 2.543
+          },
+          {
+            "word": "honored,",
+            "startSec": 2.647,
+            "endSec": 3.135
+          },
+          {
+            "word": "not",
+            "startSec": 3.367,
+            "endSec": 3.564
+          },
+          {
+            "word": "something",
+            "startSec": 3.611,
+            "endSec": 3.878
+          },
+          {
+            "word": "small.",
+            "startSec": 3.971,
+            "endSec": 4.598
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "And Martha is the elder sister, the one who runs this house.",
+        "tailSec": 0.35,
+        "audioFile": "09-reflection-7.mp3",
+        "durationSec": 3.436553,
+        "words": [
+          {
+            "word": "And",
+            "startSec": 0,
+            "endSec": 0.104
+          },
+          {
+            "word": "Martha",
+            "startSec": 0.197,
+            "endSec": 0.58
+          },
+          {
+            "word": "is",
+            "startSec": 0.662,
+            "endSec": 0.766
+          },
+          {
+            "word": "the",
+            "startSec": 0.824,
+            "endSec": 0.894
+          },
+          {
+            "word": "elder",
+            "startSec": 0.975,
+            "endSec": 1.254
+          },
+          {
+            "word": "sister,",
+            "startSec": 1.335,
+            "endSec": 1.788
+          },
+          {
+            "word": "the",
+            "startSec": 1.823,
+            "endSec": 1.927
+          },
+          {
+            "word": "one",
+            "startSec": 1.997,
+            "endSec": 2.125
+          },
+          {
+            "word": "who",
+            "startSec": 2.148,
+            "endSec": 2.241
+          },
+          {
+            "word": "runs",
+            "startSec": 2.299,
+            "endSec": 2.519
+          },
+          {
+            "word": "this",
+            "startSec": 2.577,
+            "endSec": 2.717
+          },
+          {
+            "word": "house.",
+            "startSec": 2.786,
+            "endSec": 3.437
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The welcome is hers to give.",
+        "tailSec": 0.35,
+        "audioFile": "10-reflection-8.mp3",
+        "durationSec": 1.532517,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.116
+          },
+          {
+            "word": "welcome",
+            "startSec": 0.163,
+            "endSec": 0.488
+          },
+          {
+            "word": "is",
+            "startSec": 0.511,
+            "endSec": 0.58
+          },
+          {
+            "word": "hers",
+            "startSec": 0.639,
+            "endSec": 0.859
+          },
+          {
+            "word": "to",
+            "startSec": 0.906,
+            "endSec": 0.975
+          },
+          {
+            "word": "give.",
+            "startSec": 1.045,
+            "endSec": 1.533
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "When she is left alone with it, the sting is real.",
+        "audioFile": "11-reflection-9.mp3",
+        "durationSec": 2.507755,
+        "words": [
+          {
+            "word": "When",
+            "startSec": 0,
+            "endSec": 0.151
+          },
+          {
+            "word": "she",
+            "startSec": 0.209,
+            "endSec": 0.313
+          },
+          {
+            "word": "is",
+            "startSec": 0.372,
+            "endSec": 0.441
+          },
+          {
+            "word": "left",
+            "startSec": 0.499,
+            "endSec": 0.72
+          },
+          {
+            "word": "alone",
+            "startSec": 0.766,
+            "endSec": 0.975
+          },
+          {
+            "word": "with",
+            "startSec": 0.998,
+            "endSec": 1.103
+          },
+          {
+            "word": "it,",
+            "startSec": 1.149,
+            "endSec": 1.265
+          },
+          {
+            "word": "the",
+            "startSec": 1.289,
+            "endSec": 1.37
+          },
+          {
+            "word": "sting",
+            "startSec": 1.428,
+            "endSec": 1.73
+          },
+          {
+            "word": "is",
+            "startSec": 1.8,
+            "endSec": 1.904
+          },
+          {
+            "word": "real.",
+            "startSec": 1.997,
+            "endSec": 2.508
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "So her complaint is not petty.",
+        "tailSec": 0.35,
+        "audioFile": "12-reflection-10.mp3",
+        "durationSec": 1.718277,
+        "words": [
+          {
+            "word": "So",
+            "startSec": 0,
+            "endSec": 0.174
+          },
+          {
+            "word": "her",
+            "startSec": 0.232,
+            "endSec": 0.325
+          },
+          {
+            "word": "complaint",
+            "startSec": 0.383,
+            "endSec": 0.755
+          },
+          {
+            "word": "is",
+            "startSec": 0.813,
+            "endSec": 0.894
+          },
+          {
+            "word": "not",
+            "startSec": 0.952,
+            "endSec": 1.091
+          },
+          {
+            "word": "petty.",
+            "startSec": 1.138,
+            "endSec": 1.718
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "It is the complaint of a responsible woman doing a good thing by herself.",
+        "tailSec": 0.35,
+        "audioFile": "13-reflection-11.mp3",
+        "durationSec": 3.761633,
+        "words": [
+          {
+            "word": "It",
+            "startSec": 0,
+            "endSec": 0.139
+          },
+          {
+            "word": "is",
+            "startSec": 0.186,
+            "endSec": 0.267
+          },
+          {
+            "word": "the",
+            "startSec": 0.302,
+            "endSec": 0.372
+          },
+          {
+            "word": "complaint",
+            "startSec": 0.418,
+            "endSec": 0.813
+          },
+          {
+            "word": "of",
+            "startSec": 0.871,
+            "endSec": 0.929
+          },
+          {
+            "word": "a",
+            "startSec": 0.975,
+            "endSec": 0.998
+          },
+          {
+            "word": "responsible",
+            "startSec": 1.057,
+            "endSec": 1.625
+          },
+          {
+            "word": "woman",
+            "startSec": 1.66,
+            "endSec": 1.916
+          },
+          {
+            "word": "doing",
+            "startSec": 2.055,
+            "endSec": 2.299
+          },
+          {
+            "word": "a",
+            "startSec": 2.345,
+            "endSec": 2.38
+          },
+          {
+            "word": "good",
+            "startSec": 2.438,
+            "endSec": 2.624
+          },
+          {
+            "word": "thing",
+            "startSec": 2.659,
+            "endSec": 2.856
+          },
+          {
+            "word": "by",
+            "startSec": 2.914,
+            "endSec": 3.019
+          },
+          {
+            "word": "herself.",
+            "startSec": 3.077,
+            "endSec": 3.762
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Jesus had just told a lawyer that mercy means going and doing.",
+        "tailSec": 0.35,
+        "audioFile": "14-reflection-12.mp3",
+        "durationSec": 3.436553,
+        "words": [
+          {
+            "word": "Jesus",
+            "startSec": 0,
+            "endSec": 0.395
+          },
+          {
+            "word": "had",
+            "startSec": 0.441,
+            "endSec": 0.557
+          },
+          {
+            "word": "just",
+            "startSec": 0.604,
+            "endSec": 0.778
+          },
+          {
+            "word": "told",
+            "startSec": 0.836,
+            "endSec": 1.08
+          },
+          {
+            "word": "a",
+            "startSec": 1.126,
+            "endSec": 1.161
+          },
+          {
+            "word": "lawyer",
+            "startSec": 1.219,
+            "endSec": 1.474
+          },
+          {
+            "word": "that",
+            "startSec": 1.521,
+            "endSec": 1.637
+          },
+          {
+            "word": "mercy",
+            "startSec": 1.695,
+            "endSec": 1.974
+          },
+          {
+            "word": "means",
+            "startSec": 2.032,
+            "endSec": 2.252
+          },
+          {
+            "word": "going",
+            "startSec": 2.322,
+            "endSec": 2.624
+          },
+          {
+            "word": "and",
+            "startSec": 2.682,
+            "endSec": 2.798
+          },
+          {
+            "word": "doing.",
+            "startSec": 2.856,
+            "endSec": 3.437
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Martha is going and doing.",
+        "audioFile": "15-reflection-13.mp3",
+        "durationSec": 1.718277,
+        "words": [
+          {
+            "word": "Martha",
+            "startSec": 0,
+            "endSec": 0.372
+          },
+          {
+            "word": "is",
+            "startSec": 0.43,
+            "endSec": 0.511
+          },
+          {
+            "word": "going",
+            "startSec": 0.569,
+            "endSec": 0.836
+          },
+          {
+            "word": "and",
+            "startSec": 0.894,
+            "endSec": 1.01
+          },
+          {
+            "word": "doing.",
+            "startSec": 1.068,
+            "endSec": 1.718
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "But look at verse forty.",
+        "sourceMark": {
+          "label": "Original language",
+          "source": "Abbott-Smith's Greek Lexicon",
+          "portrait": "scroll"
+        },
+        "verseCallout": {
+          "text": "But Martha was distracted by all the preparations to be made.",
+          "highlight": "distracted",
+          "reference": "Luke 10:40"
+        },
+        "tailSec": 0.35,
+        "audioFile": "16-reflection-14.mp3",
+        "durationSec": 1.253878,
+        "words": [
+          {
+            "word": "But",
+            "startSec": 0,
+            "endSec": 0.186
+          },
+          {
+            "word": "look",
+            "startSec": 0.221,
+            "endSec": 0.337
+          },
+          {
+            "word": "at",
+            "startSec": 0.372,
+            "endSec": 0.418
+          },
+          {
+            "word": "verse",
+            "startSec": 0.464,
+            "endSec": 0.685
+          },
+          {
+            "word": "forty.",
+            "startSec": 0.731,
+            "endSec": 1.254
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Luke says Martha was distracted by all the preparations.",
+        "highlight": "Martha was distracted by all the preparations.",
+        "verseCallout": {
+          "text": "But Martha was distracted by all the preparations to be made.",
+          "highlight": "distracted",
+          "reference": "Luke 10:40"
+        },
+        "tailSec": 0.35,
+        "audioFile": "17-reflection-15.mp3",
+        "durationSec": 3.204354,
+        "words": [
+          {
+            "word": "Luke",
+            "startSec": 0,
+            "endSec": 0.244
+          },
+          {
+            "word": "says",
+            "startSec": 0.267,
+            "endSec": 0.441
+          },
+          {
+            "word": "Martha",
+            "startSec": 0.534,
+            "endSec": 0.871
+          },
+          {
+            "word": "was",
+            "startSec": 0.929,
+            "endSec": 1.022
+          },
+          {
+            "word": "distracted",
+            "startSec": 1.08,
+            "endSec": 1.672
+          },
+          {
+            "word": "by",
+            "startSec": 1.718,
+            "endSec": 1.823
+          },
+          {
+            "word": "all",
+            "startSec": 1.881,
+            "endSec": 1.997
+          },
+          {
+            "word": "the",
+            "startSec": 2.043,
+            "endSec": 2.113
+          },
+          {
+            "word": "preparations.",
+            "startSec": 2.159,
+            "endSec": 3.204
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The word he uses there means to be drawn off, pulled away.",
+        "verseCallout": {
+          "text": "But Martha was distracted by all the preparations to be made.",
+          "highlight": "distracted",
+          "reference": "Luke 10:40"
+        },
+        "audioFile": "18-reflection-16.mp3",
+        "durationSec": 4.365351,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.116
+          },
+          {
+            "word": "word",
+            "startSec": 0.174,
+            "endSec": 0.43
+          },
+          {
+            "word": "he",
+            "startSec": 0.488,
+            "endSec": 0.604
+          },
+          {
+            "word": "uses",
+            "startSec": 0.685,
+            "endSec": 1.091
+          },
+          {
+            "word": "there",
+            "startSec": 1.161,
+            "endSec": 1.37
+          },
+          {
+            "word": "means",
+            "startSec": 1.405,
+            "endSec": 1.637
+          },
+          {
+            "word": "to",
+            "startSec": 1.695,
+            "endSec": 1.741
+          },
+          {
+            "word": "be",
+            "startSec": 1.8,
+            "endSec": 1.892
+          },
+          {
+            "word": "drawn",
+            "startSec": 1.974,
+            "endSec": 2.38
+          },
+          {
+            "word": "off,",
+            "startSec": 2.473,
+            "endSec": 2.972
+          },
+          {
+            "word": "pulled",
+            "startSec": 3.239,
+            "endSec": 3.611
+          },
+          {
+            "word": "away.",
+            "startSec": 3.704,
+            "endSec": 4.365
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "That is the picture.",
+        "tailSec": 0.35,
+        "audioFile": "19-reflection-17.mp3",
+        "durationSec": 1.300317,
+        "words": [
+          {
+            "word": "That",
+            "startSec": 0,
+            "endSec": 0.325
+          },
+          {
+            "word": "is",
+            "startSec": 0.383,
+            "endSec": 0.476
+          },
+          {
+            "word": "the",
+            "startSec": 0.534,
+            "endSec": 0.604
+          },
+          {
+            "word": "picture.",
+            "startSec": 0.662,
+            "endSec": 1.3
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Not a woman who refused Jesus, but a woman pulled away from him by the very thing she was doing for him.",
+        "highlight": "Not a woman who refused Jesus, but a woman pulled away",
+        "tailSec": 0.35,
+        "audioFile": "20-reflection-18.mp3",
+        "durationSec": 5.387029,
+        "words": [
+          {
+            "word": "Not",
+            "startSec": 0,
+            "endSec": 0.209
+          },
+          {
+            "word": "a",
+            "startSec": 0.244,
+            "endSec": 0.267
+          },
+          {
+            "word": "woman",
+            "startSec": 0.313,
+            "endSec": 0.522
+          },
+          {
+            "word": "who",
+            "startSec": 0.557,
+            "endSec": 0.662
+          },
+          {
+            "word": "refused",
+            "startSec": 0.72,
+            "endSec": 1.057
+          },
+          {
+            "word": "Jesus,",
+            "startSec": 1.103,
+            "endSec": 1.625
+          },
+          {
+            "word": "but",
+            "startSec": 1.765,
+            "endSec": 1.904
+          },
+          {
+            "word": "a",
+            "startSec": 1.939,
+            "endSec": 1.962
+          },
+          {
+            "word": "woman",
+            "startSec": 2.009,
+            "endSec": 2.241
+          },
+          {
+            "word": "pulled",
+            "startSec": 2.299,
+            "endSec": 2.566
+          },
+          {
+            "word": "away",
+            "startSec": 2.601,
+            "endSec": 2.775
+          },
+          {
+            "word": "from",
+            "startSec": 2.81,
+            "endSec": 2.961
+          },
+          {
+            "word": "him",
+            "startSec": 3.007,
+            "endSec": 3.158
+          },
+          {
+            "word": "by",
+            "startSec": 3.344,
+            "endSec": 3.46
+          },
+          {
+            "word": "the",
+            "startSec": 3.506,
+            "endSec": 3.576
+          },
+          {
+            "word": "very",
+            "startSec": 3.622,
+            "endSec": 3.831
+          },
+          {
+            "word": "thing",
+            "startSec": 3.889,
+            "endSec": 4.075
+          },
+          {
+            "word": "she",
+            "startSec": 4.133,
+            "endSec": 4.226
+          },
+          {
+            "word": "was",
+            "startSec": 4.272,
+            "endSec": 4.389
+          },
+          {
+            "word": "doing",
+            "startSec": 4.447,
+            "endSec": 4.667
+          },
+          {
+            "word": "for",
+            "startSec": 4.725,
+            "endSec": 4.865
+          },
+          {
+            "word": "him.",
+            "startSec": 4.923,
+            "endSec": 5.387
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Notice how the trouble grows.",
+        "sourceMark": {
+          "label": "Commentary",
+          "source": "J. C. Ryle (1816\u20131900)",
+          "portrait": "ryle"
+        },
+        "tailSec": 0.35,
+        "audioFile": "21-reflection-19.mp3",
+        "durationSec": 1.625397,
+        "words": [
+          {
+            "word": "Notice",
+            "startSec": 0,
+            "endSec": 0.337
+          },
+          {
+            "word": "how",
+            "startSec": 0.36,
+            "endSec": 0.464
+          },
+          {
+            "word": "the",
+            "startSec": 0.522,
+            "endSec": 0.604
+          },
+          {
+            "word": "trouble",
+            "startSec": 0.639,
+            "endSec": 0.929
+          },
+          {
+            "word": "grows.",
+            "startSec": 0.964,
+            "endSec": 1.625
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "It starts as ordinary care about a meal.",
+        "tailSec": 0.35,
+        "audioFile": "22-reflection-20.mp3",
+        "durationSec": 2.275556,
+        "words": [
+          {
+            "word": "It",
+            "startSec": 0,
+            "endSec": 0.139
+          },
+          {
+            "word": "starts",
+            "startSec": 0.174,
+            "endSec": 0.453
+          },
+          {
+            "word": "as",
+            "startSec": 0.488,
+            "endSec": 0.569
+          },
+          {
+            "word": "ordinary",
+            "startSec": 0.627,
+            "endSec": 1.045
+          },
+          {
+            "word": "care",
+            "startSec": 1.103,
+            "endSec": 1.347
+          },
+          {
+            "word": "about",
+            "startSec": 1.393,
+            "endSec": 1.625
+          },
+          {
+            "word": "a",
+            "startSec": 1.66,
+            "endSec": 1.683
+          },
+          {
+            "word": "meal.",
+            "startSec": 1.741,
+            "endSec": 2.276
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Then she looks up, sees her sister sitting still, and her conscience pinches.",
+        "tailSec": 0.35,
+        "audioFile": "23-reflection-21.mp3",
+        "durationSec": 4.133152,
+        "words": [
+          {
+            "word": "Then",
+            "startSec": 0,
+            "endSec": 0.186
+          },
+          {
+            "word": "she",
+            "startSec": 0.232,
+            "endSec": 0.313
+          },
+          {
+            "word": "looks",
+            "startSec": 0.36,
+            "endSec": 0.58
+          },
+          {
+            "word": "up,",
+            "startSec": 0.639,
+            "endSec": 0.917
+          },
+          {
+            "word": "sees",
+            "startSec": 1.08,
+            "endSec": 1.289
+          },
+          {
+            "word": "her",
+            "startSec": 1.324,
+            "endSec": 1.405
+          },
+          {
+            "word": "sister",
+            "startSec": 1.451,
+            "endSec": 1.741
+          },
+          {
+            "word": "sitting",
+            "startSec": 1.8,
+            "endSec": 2.043
+          },
+          {
+            "word": "still,",
+            "startSec": 2.101,
+            "endSec": 2.508
+          },
+          {
+            "word": "and",
+            "startSec": 2.647,
+            "endSec": 2.786
+          },
+          {
+            "word": "her",
+            "startSec": 2.833,
+            "endSec": 2.902
+          },
+          {
+            "word": "conscience",
+            "startSec": 2.961,
+            "endSec": 3.39
+          },
+          {
+            "word": "pinches.",
+            "startSec": 3.437,
+            "endSec": 4.133
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The pinch turns to temper, and the temper comes out as a complaint to Jesus himself: do you not care?",
+        "tailSec": 0.35,
+        "audioFile": "24-reflection-22.mp3",
+        "durationSec": 6.315828,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.151
+          },
+          {
+            "word": "pinch",
+            "startSec": 0.209,
+            "endSec": 0.441
+          },
+          {
+            "word": "turns",
+            "startSec": 0.488,
+            "endSec": 0.731
+          },
+          {
+            "word": "to",
+            "startSec": 0.778,
+            "endSec": 0.848
+          },
+          {
+            "word": "temper,",
+            "startSec": 0.906,
+            "endSec": 1.347
+          },
+          {
+            "word": "and",
+            "startSec": 1.509,
+            "endSec": 1.637
+          },
+          {
+            "word": "the",
+            "startSec": 1.683,
+            "endSec": 1.753
+          },
+          {
+            "word": "temper",
+            "startSec": 1.8,
+            "endSec": 2.067
+          },
+          {
+            "word": "comes",
+            "startSec": 2.125,
+            "endSec": 2.345
+          },
+          {
+            "word": "out",
+            "startSec": 2.403,
+            "endSec": 2.612
+          },
+          {
+            "word": "as",
+            "startSec": 2.67,
+            "endSec": 2.763
+          },
+          {
+            "word": "a",
+            "startSec": 2.81,
+            "endSec": 2.844
+          },
+          {
+            "word": "complaint",
+            "startSec": 2.891,
+            "endSec": 3.286
+          },
+          {
+            "word": "to",
+            "startSec": 3.32,
+            "endSec": 3.39
+          },
+          {
+            "word": "Jesus",
+            "startSec": 3.471,
+            "endSec": 3.796
+          },
+          {
+            "word": "himself:",
+            "startSec": 3.855,
+            "endSec": 4.481
+          },
+          {
+            "word": "do",
+            "startSec": 5.12,
+            "endSec": 5.224
+          },
+          {
+            "word": "you",
+            "startSec": 5.306,
+            "endSec": 5.399
+          },
+          {
+            "word": "not",
+            "startSec": 5.468,
+            "endSec": 5.642
+          },
+          {
+            "word": "care?",
+            "startSec": 5.7,
+            "endSec": 6.316
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "The danger is not open sin.",
+        "highlight": "The danger is not open sin.",
+        "tailSec": 0.35,
+        "audioFile": "25-reflection-23.mp3",
+        "durationSec": 1.718277,
+        "words": [
+          {
+            "word": "The",
+            "startSec": 0,
+            "endSec": 0.174
+          },
+          {
+            "word": "danger",
+            "startSec": 0.221,
+            "endSec": 0.488
+          },
+          {
+            "word": "is",
+            "startSec": 0.534,
+            "endSec": 0.604
+          },
+          {
+            "word": "not",
+            "startSec": 0.65,
+            "endSec": 0.801
+          },
+          {
+            "word": "open",
+            "startSec": 0.859,
+            "endSec": 1.08
+          },
+          {
+            "word": "sin.",
+            "startSec": 1.138,
+            "endSec": 1.718
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "It is a good thing allowed too much room.",
+        "tailSec": 0.35,
+        "audioFile": "26-reflection-24.mp3",
+        "durationSec": 2.182676,
+        "words": [
+          {
+            "word": "It",
+            "startSec": 0,
+            "endSec": 0.151
+          },
+          {
+            "word": "is",
+            "startSec": 0.209,
+            "endSec": 0.29
+          },
+          {
+            "word": "a",
+            "startSec": 0.325,
+            "endSec": 0.36
+          },
+          {
+            "word": "good",
+            "startSec": 0.395,
+            "endSec": 0.546
+          },
+          {
+            "word": "thing",
+            "startSec": 0.58,
+            "endSec": 0.778
+          },
+          {
+            "word": "allowed",
+            "startSec": 0.836,
+            "endSec": 1.138
+          },
+          {
+            "word": "too",
+            "startSec": 1.184,
+            "endSec": 1.324
+          },
+          {
+            "word": "much",
+            "startSec": 1.382,
+            "endSec": 1.567
+          },
+          {
+            "word": "room.",
+            "startSec": 1.625,
+            "endSec": 2.183
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "A home, a job, a ministry, a family: all worth doing, and any of them can quietly eat the life out of a soul when it takes the first place.",
+        "tailSec": 0.35,
+        "audioFile": "27-reflection-25.mp3",
+        "durationSec": 8.777143,
+        "words": [
+          {
+            "word": "A",
+            "startSec": 0,
+            "endSec": 0.093
+          },
+          {
+            "word": "home,",
+            "startSec": 0.174,
+            "endSec": 0.615
+          },
+          {
+            "word": "a",
+            "startSec": 0.731,
+            "endSec": 0.813
+          },
+          {
+            "word": "job,",
+            "startSec": 0.894,
+            "endSec": 1.347
+          },
+          {
+            "word": "a",
+            "startSec": 1.486,
+            "endSec": 1.544
+          },
+          {
+            "word": "ministry,",
+            "startSec": 1.625,
+            "endSec": 2.218
+          },
+          {
+            "word": "a",
+            "startSec": 2.357,
+            "endSec": 2.426
+          },
+          {
+            "word": "family:",
+            "startSec": 2.531,
+            "endSec": 3.1
+          },
+          {
+            "word": "all",
+            "startSec": 3.32,
+            "endSec": 3.518
+          },
+          {
+            "word": "worth",
+            "startSec": 3.576,
+            "endSec": 3.796
+          },
+          {
+            "word": "doing,",
+            "startSec": 3.855,
+            "endSec": 4.319
+          },
+          {
+            "word": "and",
+            "startSec": 4.54,
+            "endSec": 4.702
+          },
+          {
+            "word": "any",
+            "startSec": 4.76,
+            "endSec": 4.934
+          },
+          {
+            "word": "of",
+            "startSec": 4.992,
+            "endSec": 5.05
+          },
+          {
+            "word": "them",
+            "startSec": 5.097,
+            "endSec": 5.248
+          },
+          {
+            "word": "can",
+            "startSec": 5.306,
+            "endSec": 5.433
+          },
+          {
+            "word": "quietly",
+            "startSec": 5.492,
+            "endSec": 5.863
+          },
+          {
+            "word": "eat",
+            "startSec": 5.921,
+            "endSec": 6.072
+          },
+          {
+            "word": "the",
+            "startSec": 6.107,
+            "endSec": 6.177
+          },
+          {
+            "word": "life",
+            "startSec": 6.235,
+            "endSec": 6.455
+          },
+          {
+            "word": "out",
+            "startSec": 6.502,
+            "endSec": 6.629
+          },
+          {
+            "word": "of",
+            "startSec": 6.653,
+            "endSec": 6.711
+          },
+          {
+            "word": "a",
+            "startSec": 6.745,
+            "endSec": 6.769
+          },
+          {
+            "word": "soul",
+            "startSec": 6.827,
+            "endSec": 7.059
+          },
+          {
+            "word": "when",
+            "startSec": 7.198,
+            "endSec": 7.372
+          },
+          {
+            "word": "it",
+            "startSec": 7.419,
+            "endSec": 7.488
+          },
+          {
+            "word": "takes",
+            "startSec": 7.523,
+            "endSec": 7.744
+          },
+          {
+            "word": "the",
+            "startSec": 7.79,
+            "endSec": 7.86
+          },
+          {
+            "word": "first",
+            "startSec": 7.918,
+            "endSec": 8.139
+          },
+          {
+            "word": "place.",
+            "startSec": 8.173,
+            "endSec": 8.777
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Look at how Jesus answers.",
+        "tailSec": 0.35,
+        "audioFile": "28-reflection-26.mp3",
+        "durationSec": 1.578957,
+        "words": [
+          {
+            "word": "Look",
+            "startSec": 0,
+            "endSec": 0.232
+          },
+          {
+            "word": "at",
+            "startSec": 0.279,
+            "endSec": 0.348
+          },
+          {
+            "word": "how",
+            "startSec": 0.383,
+            "endSec": 0.511
+          },
+          {
+            "word": "Jesus",
+            "startSec": 0.58,
+            "endSec": 0.859
+          },
+          {
+            "word": "answers.",
+            "startSec": 0.917,
+            "endSec": 1.579
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He does not say stop serving.",
+        "tailSec": 0.35,
+        "audioFile": "29-reflection-27.mp3",
+        "durationSec": 1.718277,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.139
+          },
+          {
+            "word": "does",
+            "startSec": 0.197,
+            "endSec": 0.36
+          },
+          {
+            "word": "not",
+            "startSec": 0.406,
+            "endSec": 0.546
+          },
+          {
+            "word": "say",
+            "startSec": 0.592,
+            "endSec": 0.766
+          },
+          {
+            "word": "stop",
+            "startSec": 0.813,
+            "endSec": 1.033
+          },
+          {
+            "word": "serving.",
+            "startSec": 1.091,
+            "endSec": 1.718
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He says her name twice, the way you speak to someone you love.",
+        "tailSec": 0.35,
+        "audioFile": "30-reflection-28.mp3",
+        "durationSec": 3.250794,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.139
+          },
+          {
+            "word": "says",
+            "startSec": 0.186,
+            "endSec": 0.348
+          },
+          {
+            "word": "her",
+            "startSec": 0.395,
+            "endSec": 0.476
+          },
+          {
+            "word": "name",
+            "startSec": 0.522,
+            "endSec": 0.685
+          },
+          {
+            "word": "twice,",
+            "startSec": 0.708,
+            "endSec": 1.184
+          },
+          {
+            "word": "the",
+            "startSec": 1.44,
+            "endSec": 1.556
+          },
+          {
+            "word": "way",
+            "startSec": 1.602,
+            "endSec": 1.707
+          },
+          {
+            "word": "you",
+            "startSec": 1.753,
+            "endSec": 1.834
+          },
+          {
+            "word": "speak",
+            "startSec": 1.892,
+            "endSec": 2.125
+          },
+          {
+            "word": "to",
+            "startSec": 2.171,
+            "endSec": 2.229
+          },
+          {
+            "word": "someone",
+            "startSec": 2.287,
+            "endSec": 2.554
+          },
+          {
+            "word": "you",
+            "startSec": 2.577,
+            "endSec": 2.659
+          },
+          {
+            "word": "love.",
+            "startSec": 2.717,
+            "endSec": 3.251
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Then he names what he sees: a heart full of worry, pulled in too many directions.",
+        "tailSec": 0.35,
+        "audioFile": "31-reflection-29.mp3",
+        "durationSec": 5.06195,
+        "words": [
+          {
+            "word": "Then",
+            "startSec": 0,
+            "endSec": 0.197
+          },
+          {
+            "word": "he",
+            "startSec": 0.232,
+            "endSec": 0.29
+          },
+          {
+            "word": "names",
+            "startSec": 0.36,
+            "endSec": 0.615
+          },
+          {
+            "word": "what",
+            "startSec": 0.662,
+            "endSec": 0.778
+          },
+          {
+            "word": "he",
+            "startSec": 0.801,
+            "endSec": 0.859
+          },
+          {
+            "word": "sees:",
+            "startSec": 0.917,
+            "endSec": 1.451
+          },
+          {
+            "word": "a",
+            "startSec": 1.741,
+            "endSec": 1.8
+          },
+          {
+            "word": "heart",
+            "startSec": 1.904,
+            "endSec": 2.113
+          },
+          {
+            "word": "full",
+            "startSec": 2.183,
+            "endSec": 2.392
+          },
+          {
+            "word": "of",
+            "startSec": 2.438,
+            "endSec": 2.485
+          },
+          {
+            "word": "worry,",
+            "startSec": 2.543,
+            "endSec": 2.995
+          },
+          {
+            "word": "pulled",
+            "startSec": 3.344,
+            "endSec": 3.622
+          },
+          {
+            "word": "in",
+            "startSec": 3.657,
+            "endSec": 3.727
+          },
+          {
+            "word": "too",
+            "startSec": 3.785,
+            "endSec": 3.924
+          },
+          {
+            "word": "many",
+            "startSec": 3.982,
+            "endSec": 4.156
+          },
+          {
+            "word": "directions.",
+            "startSec": 4.214,
+            "endSec": 5.062
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He is like a physician who has found the disease.",
+        "tailSec": 0.35,
+        "audioFile": "32-reflection-30.mp3",
+        "durationSec": 2.647075,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.163
+          },
+          {
+            "word": "is",
+            "startSec": 0.221,
+            "endSec": 0.325
+          },
+          {
+            "word": "like",
+            "startSec": 0.395,
+            "endSec": 0.604
+          },
+          {
+            "word": "a",
+            "startSec": 0.65,
+            "endSec": 0.673
+          },
+          {
+            "word": "physician",
+            "startSec": 0.731,
+            "endSec": 1.161
+          },
+          {
+            "word": "who",
+            "startSec": 1.219,
+            "endSec": 1.347
+          },
+          {
+            "word": "has",
+            "startSec": 1.393,
+            "endSec": 1.498
+          },
+          {
+            "word": "found",
+            "startSec": 1.556,
+            "endSec": 1.765
+          },
+          {
+            "word": "the",
+            "startSec": 1.8,
+            "endSec": 1.869
+          },
+          {
+            "word": "disease.",
+            "startSec": 1.916,
+            "endSec": 2.647
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Many things are pulling at her.",
+        "tailSec": 0.35,
+        "audioFile": "33-reflection-31.mp3",
+        "durationSec": 1.718277,
+        "words": [
+          {
+            "word": "Many",
+            "startSec": 0,
+            "endSec": 0.255
+          },
+          {
+            "word": "things",
+            "startSec": 0.313,
+            "endSec": 0.592
+          },
+          {
+            "word": "are",
+            "startSec": 0.627,
+            "endSec": 0.743
+          },
+          {
+            "word": "pulling",
+            "startSec": 0.778,
+            "endSec": 1.08
+          },
+          {
+            "word": "at",
+            "startSec": 1.138,
+            "endSec": 1.242
+          },
+          {
+            "word": "her.",
+            "startSec": 1.3,
+            "endSec": 1.718
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Only one is necessary.",
+        "highlight": "Only one is necessary.",
+        "tailSec": 0.35,
+        "audioFile": "34-reflection-32.mp3",
+        "durationSec": 1.393197,
+        "words": [
+          {
+            "word": "Only",
+            "startSec": 0,
+            "endSec": 0.244
+          },
+          {
+            "word": "one",
+            "startSec": 0.302,
+            "endSec": 0.43
+          },
+          {
+            "word": "is",
+            "startSec": 0.464,
+            "endSec": 0.546
+          },
+          {
+            "word": "necessary.",
+            "startSec": 0.604,
+            "endSec": 1.393
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Not the meal, not the house.",
+        "tailSec": 0.35,
+        "audioFile": "35-reflection-33.mp3",
+        "durationSec": 1.625397,
+        "words": [
+          {
+            "word": "Not",
+            "startSec": 0,
+            "endSec": 0.221
+          },
+          {
+            "word": "the",
+            "startSec": 0.255,
+            "endSec": 0.325
+          },
+          {
+            "word": "meal,",
+            "startSec": 0.383,
+            "endSec": 0.662
+          },
+          {
+            "word": "not",
+            "startSec": 0.743,
+            "endSec": 0.882
+          },
+          {
+            "word": "the",
+            "startSec": 0.917,
+            "endSec": 0.998
+          },
+          {
+            "word": "house.",
+            "startSec": 1.045,
+            "endSec": 1.625
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Being with him and hearing him.",
+        "highlight": "Being with him and hearing him.",
+        "tailSec": 0.35,
+        "audioFile": "36-reflection-34.mp3",
+        "durationSec": 1.904036,
+        "words": [
+          {
+            "word": "Being",
+            "startSec": 0,
+            "endSec": 0.302
+          },
+          {
+            "word": "with",
+            "startSec": 0.36,
+            "endSec": 0.522
+          },
+          {
+            "word": "him",
+            "startSec": 0.569,
+            "endSec": 0.697
+          },
+          {
+            "word": "and",
+            "startSec": 0.859,
+            "endSec": 1.068
+          },
+          {
+            "word": "hearing",
+            "startSec": 1.126,
+            "endSec": 1.405
+          },
+          {
+            "word": "him.",
+            "startSec": 1.463,
+            "endSec": 1.904
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Then he says something about Mary that reaches past that room.",
+        "tailSec": 0.35,
+        "audioFile": "37-reflection-35.mp3",
+        "durationSec": 3.204354,
+        "words": [
+          {
+            "word": "Then",
+            "startSec": 0,
+            "endSec": 0.209
+          },
+          {
+            "word": "he",
+            "startSec": 0.255,
+            "endSec": 0.313
+          },
+          {
+            "word": "says",
+            "startSec": 0.372,
+            "endSec": 0.58
+          },
+          {
+            "word": "something",
+            "startSec": 0.615,
+            "endSec": 0.906
+          },
+          {
+            "word": "about",
+            "startSec": 0.94,
+            "endSec": 1.161
+          },
+          {
+            "word": "Mary",
+            "startSec": 1.207,
+            "endSec": 1.428
+          },
+          {
+            "word": "that",
+            "startSec": 1.486,
+            "endSec": 1.625
+          },
+          {
+            "word": "reaches",
+            "startSec": 1.683,
+            "endSec": 1.974
+          },
+          {
+            "word": "past",
+            "startSec": 2.055,
+            "endSec": 2.334
+          },
+          {
+            "word": "that",
+            "startSec": 2.392,
+            "endSec": 2.543
+          },
+          {
+            "word": "room.",
+            "startSec": 2.601,
+            "endSec": 3.204
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "What she chose is hers to keep.",
+        "tailSec": 0.35,
+        "audioFile": "38-reflection-36.mp3",
+        "durationSec": 1.996916,
+        "words": [
+          {
+            "word": "What",
+            "startSec": 0,
+            "endSec": 0.244
+          },
+          {
+            "word": "she",
+            "startSec": 0.302,
+            "endSec": 0.453
+          },
+          {
+            "word": "chose",
+            "startSec": 0.522,
+            "endSec": 0.894
+          },
+          {
+            "word": "is",
+            "startSec": 0.952,
+            "endSec": 1.057
+          },
+          {
+            "word": "hers",
+            "startSec": 1.115,
+            "endSec": 1.289
+          },
+          {
+            "word": "to",
+            "startSec": 1.335,
+            "endSec": 1.393
+          },
+          {
+            "word": "keep.",
+            "startSec": 1.451,
+            "endSec": 1.997
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Food gets eaten.",
+        "tailSec": 0.35,
+        "audioFile": "39-reflection-37.mp3",
+        "durationSec": 1.160998,
+        "words": [
+          {
+            "word": "Food",
+            "startSec": 0,
+            "endSec": 0.267
+          },
+          {
+            "word": "gets",
+            "startSec": 0.313,
+            "endSec": 0.522
+          },
+          {
+            "word": "eaten.",
+            "startSec": 0.58,
+            "endSec": 1.161
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Houses change hands.",
+        "tailSec": 0.35,
+        "audioFile": "40-reflection-38.mp3",
+        "durationSec": 1.439637,
+        "words": [
+          {
+            "word": "Houses",
+            "startSec": 0,
+            "endSec": 0.383
+          },
+          {
+            "word": "change",
+            "startSec": 0.441,
+            "endSec": 0.743
+          },
+          {
+            "word": "hands.",
+            "startSec": 0.789,
+            "endSec": 1.44
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "What a person receives at the feet of Jesus stays, in life and in death.",
+        "tailSec": 0.35,
+        "audioFile": "41-reflection-39.mp3",
+        "durationSec": 3.947392,
+        "words": [
+          {
+            "word": "What",
+            "startSec": 0,
+            "endSec": 0.197
+          },
+          {
+            "word": "a",
+            "startSec": 0.232,
+            "endSec": 0.255
+          },
+          {
+            "word": "person",
+            "startSec": 0.313,
+            "endSec": 0.58
+          },
+          {
+            "word": "receives",
+            "startSec": 0.639,
+            "endSec": 1.057
+          },
+          {
+            "word": "at",
+            "startSec": 1.115,
+            "endSec": 1.207
+          },
+          {
+            "word": "the",
+            "startSec": 1.242,
+            "endSec": 1.312
+          },
+          {
+            "word": "feet",
+            "startSec": 1.37,
+            "endSec": 1.556
+          },
+          {
+            "word": "of",
+            "startSec": 1.579,
+            "endSec": 1.637
+          },
+          {
+            "word": "Jesus",
+            "startSec": 1.707,
+            "endSec": 2.009
+          },
+          {
+            "word": "stays,",
+            "startSec": 2.055,
+            "endSec": 2.554
+          },
+          {
+            "word": "in",
+            "startSec": 2.74,
+            "endSec": 2.856
+          },
+          {
+            "word": "life",
+            "startSec": 2.937,
+            "endSec": 3.239
+          },
+          {
+            "word": "and",
+            "startSec": 3.262,
+            "endSec": 3.402
+          },
+          {
+            "word": "in",
+            "startSec": 3.46,
+            "endSec": 3.529
+          },
+          {
+            "word": "death.",
+            "startSec": 3.587,
+            "endSec": 3.947
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Martha was right that someone had to do the work.",
+        "tailSec": 0.35,
+        "audioFile": "42-reflection-40.mp3",
+        "durationSec": 2.554195,
+        "words": [
+          {
+            "word": "Martha",
+            "startSec": 0,
+            "endSec": 0.337
+          },
+          {
+            "word": "was",
+            "startSec": 0.395,
+            "endSec": 0.499
+          },
+          {
+            "word": "right",
+            "startSec": 0.557,
+            "endSec": 0.766
+          },
+          {
+            "word": "that",
+            "startSec": 0.813,
+            "endSec": 0.964
+          },
+          {
+            "word": "someone",
+            "startSec": 1.022,
+            "endSec": 1.324
+          },
+          {
+            "word": "had",
+            "startSec": 1.37,
+            "endSec": 1.533
+          },
+          {
+            "word": "to",
+            "startSec": 1.579,
+            "endSec": 1.637
+          },
+          {
+            "word": "do",
+            "startSec": 1.695,
+            "endSec": 1.8
+          },
+          {
+            "word": "the",
+            "startSec": 1.858,
+            "endSec": 1.927
+          },
+          {
+            "word": "work.",
+            "startSec": 1.985,
+            "endSec": 2.554
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Jesus never denies it.",
+        "tailSec": 0.35,
+        "audioFile": "43-reflection-41.mp3",
+        "durationSec": 1.393197,
+        "words": [
+          {
+            "word": "Jesus",
+            "startSec": 0,
+            "endSec": 0.337
+          },
+          {
+            "word": "never",
+            "startSec": 0.395,
+            "endSec": 0.592
+          },
+          {
+            "word": "denies",
+            "startSec": 0.65,
+            "endSec": 0.964
+          },
+          {
+            "word": "it.",
+            "startSec": 1.022,
+            "endSec": 1.393
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "He only shows her what the work had done to her, and where the better thing was all along: right there in the room, close to him.",
+        "tailSec": 0.35,
+        "audioFile": "44-reflection-42.mp3",
+        "durationSec": 7.012426,
+        "words": [
+          {
+            "word": "He",
+            "startSec": 0,
+            "endSec": 0.139
+          },
+          {
+            "word": "only",
+            "startSec": 0.209,
+            "endSec": 0.395
+          },
+          {
+            "word": "shows",
+            "startSec": 0.453,
+            "endSec": 0.708
+          },
+          {
+            "word": "her",
+            "startSec": 0.766,
+            "endSec": 0.859
+          },
+          {
+            "word": "what",
+            "startSec": 0.917,
+            "endSec": 1.08
+          },
+          {
+            "word": "the",
+            "startSec": 1.115,
+            "endSec": 1.184
+          },
+          {
+            "word": "work",
+            "startSec": 1.242,
+            "endSec": 1.451
+          },
+          {
+            "word": "had",
+            "startSec": 1.498,
+            "endSec": 1.602
+          },
+          {
+            "word": "done",
+            "startSec": 1.649,
+            "endSec": 1.811
+          },
+          {
+            "word": "to",
+            "startSec": 1.834,
+            "endSec": 1.892
+          },
+          {
+            "word": "her,",
+            "startSec": 1.962,
+            "endSec": 2.241
+          },
+          {
+            "word": "and",
+            "startSec": 2.461,
+            "endSec": 2.601
+          },
+          {
+            "word": "where",
+            "startSec": 2.659,
+            "endSec": 2.821
+          },
+          {
+            "word": "the",
+            "startSec": 2.856,
+            "endSec": 2.926
+          },
+          {
+            "word": "better",
+            "startSec": 2.984,
+            "endSec": 3.216
+          },
+          {
+            "word": "thing",
+            "startSec": 3.274,
+            "endSec": 3.448
+          },
+          {
+            "word": "was",
+            "startSec": 3.518,
+            "endSec": 3.738
+          },
+          {
+            "word": "all",
+            "startSec": 3.796,
+            "endSec": 3.959
+          },
+          {
+            "word": "along:",
+            "startSec": 4.017,
+            "endSec": 4.481
+          },
+          {
+            "word": "right",
+            "startSec": 4.772,
+            "endSec": 4.992
+          },
+          {
+            "word": "there",
+            "startSec": 5.039,
+            "endSec": 5.248
+          },
+          {
+            "word": "in",
+            "startSec": 5.294,
+            "endSec": 5.352
+          },
+          {
+            "word": "the",
+            "startSec": 5.399,
+            "endSec": 5.468
+          },
+          {
+            "word": "room,",
+            "startSec": 5.515,
+            "endSec": 5.875
+          },
+          {
+            "word": "close",
+            "startSec": 6.06,
+            "endSec": 6.327
+          },
+          {
+            "word": "to",
+            "startSec": 6.362,
+            "endSec": 6.42
+          },
+          {
+            "word": "him.",
+            "startSec": 6.49,
+            "endSec": 7.012
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "Most of what pulls us from Christ is not open sin.",
+        "tailSec": 0.35,
+        "audioFile": "45-reflection-43.mp3",
+        "durationSec": 2.786395,
+        "words": [
+          {
+            "word": "Most",
+            "startSec": 0,
+            "endSec": 0.267
+          },
+          {
+            "word": "of",
+            "startSec": 0.302,
+            "endSec": 0.348
+          },
+          {
+            "word": "what",
+            "startSec": 0.383,
+            "endSec": 0.511
+          },
+          {
+            "word": "pulls",
+            "startSec": 0.557,
+            "endSec": 0.801
+          },
+          {
+            "word": "us",
+            "startSec": 0.859,
+            "endSec": 0.94
+          },
+          {
+            "word": "from",
+            "startSec": 0.998,
+            "endSec": 1.161
+          },
+          {
+            "word": "Christ",
+            "startSec": 1.219,
+            "endSec": 1.533
+          },
+          {
+            "word": "is",
+            "startSec": 1.591,
+            "endSec": 1.672
+          },
+          {
+            "word": "not",
+            "startSec": 1.73,
+            "endSec": 1.892
+          },
+          {
+            "word": "open",
+            "startSec": 1.95,
+            "endSec": 2.171
+          },
+          {
+            "word": "sin.",
+            "startSec": 2.229,
+            "endSec": 2.786
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "It is service.",
+        "tailSec": 0.35,
+        "audioFile": "46-reflection-44.mp3",
+        "durationSec": 1.068118,
+        "words": [
+          {
+            "word": "It",
+            "startSec": 0,
+            "endSec": 0.163
+          },
+          {
+            "word": "is",
+            "startSec": 0.209,
+            "endSec": 0.29
+          },
+          {
+            "word": "service.",
+            "startSec": 0.337,
+            "endSec": 1.068
+          }
+        ]
+      },
+      {
+        "kind": "reflection-focus",
+        "sectionLabel": "",
+        "text": "And he still says our name, gently, and points to the portion no one can take.",
+        "audioFile": "47-reflection-45.mp3",
+        "durationSec": 4.586871,
+        "words": [
+          {
+            "word": "And",
+            "startSec": 0,
+            "endSec": 0.1641304347826087
+          },
+          {
+            "word": "he",
+            "startSec": 0.20217391304347826,
+            "endSec": 0.2652173913043478
+          },
+          {
+            "word": "still",
+            "startSec": 0.3152173913043478,
+            "endSec": 0.5804347826086956
+          },
+          {
+            "word": "says",
+            "startSec": 0.6304347826086956,
+            "endSec": 0.8456521739130435
+          },
+          {
+            "word": "our",
+            "startSec": 0.9086956521739129,
+            "endSec": 1.034782608695652
+          },
+          {
+            "word": "name,",
+            "startSec": 1.0978260869565217,
+            "endSec": 1.401086956521739
+          },
+          {
+            "word": "gently,",
+            "startSec": 1.5521739130434782,
+            "endSec": 2.069565217391304
+          },
+          {
+            "word": "and",
+            "startSec": 2.246739130434783,
+            "endSec": 2.3978260869565218
+          },
+          {
+            "word": "points",
+            "startSec": 2.4739130434782606,
+            "endSec": 2.7380434782608694
+          },
+          {
+            "word": "to",
+            "startSec": 2.764130434782609,
+            "endSec": 2.827173913043478
+          },
+          {
+            "word": "the",
+            "startSec": 2.8902173913043474,
+            "endSec": 2.965217391304348
+          },
+          {
+            "word": "portion",
+            "startSec": 3.016304347826087,
+            "endSec": 3.369565217391304
+          },
+          {
+            "word": "no",
+            "startSec": 3.445652173913043,
+            "endSec": 3.558695652173913
+          },
+          {
+            "word": "one",
+            "startSec": 3.6217391304347823,
+            "endSec": 3.760869565217391
+          },
+          {
+            "word": "can",
+            "startSec": 3.810869565217391,
+            "endSec": 3.9499999999999997
+          },
+          {
+            "word": "take.",
+            "startSec": 4.01304347826087,
+            "endSec": 4.593478260869565
+          }
+        ]
+      },
+      {
+        "kind": "conclusion",
+        "text": "This week, before you begin the work you do for Jesus, sit down and read his words first.",
+        "highlight": "This week, before you begin the work you do for Jesus, sit down and read his words first.",
+        "holdSec": 2,
+        "audioFile": "48-conclusion.mp3",
+        "durationSec": 5.20127,
+        "words": [
+          {
+            "word": "This",
+            "startSec": 0,
+            "endSec": 0.221
+          },
+          {
+            "word": "week,",
+            "startSec": 0.279,
+            "endSec": 0.639
+          },
+          {
+            "word": "before",
+            "startSec": 0.987,
+            "endSec": 1.277
+          },
+          {
+            "word": "you",
+            "startSec": 1.312,
+            "endSec": 1.382
+          },
+          {
+            "word": "begin",
+            "startSec": 1.44,
+            "endSec": 1.695
+          },
+          {
+            "word": "the",
+            "startSec": 1.741,
+            "endSec": 1.811
+          },
+          {
+            "word": "work",
+            "startSec": 1.858,
+            "endSec": 2.043
+          },
+          {
+            "word": "you",
+            "startSec": 2.09,
+            "endSec": 2.171
+          },
+          {
+            "word": "do",
+            "startSec": 2.229,
+            "endSec": 2.322
+          },
+          {
+            "word": "for",
+            "startSec": 2.38,
+            "endSec": 2.485
+          },
+          {
+            "word": "Jesus,",
+            "startSec": 2.543,
+            "endSec": 3.007
+          },
+          {
+            "word": "sit",
+            "startSec": 3.228,
+            "endSec": 3.413
+          },
+          {
+            "word": "down",
+            "startSec": 3.46,
+            "endSec": 3.68
+          },
+          {
+            "word": "and",
+            "startSec": 3.738,
+            "endSec": 3.843
+          },
+          {
+            "word": "read",
+            "startSec": 3.901,
+            "endSec": 4.063
+          },
+          {
+            "word": "his",
+            "startSec": 4.11,
+            "endSec": 4.214
+          },
+          {
+            "word": "words",
+            "startSec": 4.272,
+            "endSec": 4.516
+          },
+          {
+            "word": "first.",
+            "startSec": 4.574,
+            "endSec": 5.201
+          }
+        ]
+      },
+      {
+        "kind": "scripture",
+        "verse": "\u201cMartha, Martha,\u201d the Lord replied, \u201cyou are worried and upset about many things. But only one thing is necessary. Mary has chosen the good portion, and it will not be taken away from her.\u201d",
+        "citation": "Luke 10:41-42",
+        "holdSec": 1,
+        "translation": "BSB",
+        "audioFile": "49-scripture.mp3",
+        "durationSec": 13.516848,
+        "words": [
+          {
+            "word": "Luke",
+            "startSec": 0,
+            "endSec": 0.313
+          },
+          {
+            "word": "10:41-42.",
+            "startSec": 0.36,
+            "endSec": 1.718
+          },
+          {
+            "word": "\u201cMartha,",
+            "startSec": 1.998,
+            "endSec": 2.497
+          },
+          {
+            "word": "Martha,\u201d",
+            "startSec": 2.567,
+            "endSec": 3.113
+          },
+          {
+            "word": "the",
+            "startSec": 3.403,
+            "endSec": 3.5069999999999997
+          },
+          {
+            "word": "Lord",
+            "startSec": 3.565,
+            "endSec": 3.763
+          },
+          {
+            "word": "replied,",
+            "startSec": 3.809,
+            "endSec": 4.355
+          },
+          {
+            "word": "\u201cyou",
+            "startSec": 4.494,
+            "endSec": 4.715
+          },
+          {
+            "word": "are",
+            "startSec": 4.75,
+            "endSec": 4.831
+          },
+          {
+            "word": "worried",
+            "startSec": 4.866,
+            "endSec": 5.156
+          },
+          {
+            "word": "and",
+            "startSec": 5.191,
+            "endSec": 5.272
+          },
+          {
+            "word": "upset",
+            "startSec": 5.318,
+            "endSec": 5.585
+          },
+          {
+            "word": "about",
+            "startSec": 5.632,
+            "endSec": 5.853
+          },
+          {
+            "word": "many",
+            "startSec": 5.899,
+            "endSec": 6.096
+          },
+          {
+            "word": "things.",
+            "startSec": 6.154,
+            "endSec": 6.828
+          },
+          {
+            "word": "But",
+            "startSec": 7.1080000000000005,
+            "endSec": 7.305000000000001
+          },
+          {
+            "word": "only",
+            "startSec": 7.363,
+            "endSec": 7.5840000000000005
+          },
+          {
+            "word": "one",
+            "startSec": 7.642,
+            "endSec": 7.793000000000001
+          },
+          {
+            "word": "thing",
+            "startSec": 7.839,
+            "endSec": 8.048
+          },
+          {
+            "word": "is",
+            "startSec": 8.106,
+            "endSec": 8.199
+          },
+          {
+            "word": "necessary.",
+            "startSec": 8.257000000000001,
+            "endSec": 9.105
+          },
+          {
+            "word": "Mary",
+            "startSec": 9.385000000000002,
+            "endSec": 9.675217391304349
+          },
+          {
+            "word": "has",
+            "startSec": 9.738260869565218,
+            "endSec": 9.839347826086957
+          },
+          {
+            "word": "chosen",
+            "startSec": 9.889347826086958,
+            "endSec": 10.217608695652176
+          },
+          {
+            "word": "the",
+            "startSec": 10.255652173913045,
+            "endSec": 10.331739130434784
+          },
+          {
+            "word": "good",
+            "startSec": 10.381739130434784,
+            "endSec": 10.533913043478263
+          },
+          {
+            "word": "portion,",
+            "startSec": 10.583913043478262,
+            "endSec": 11.151304347826088
+          },
+          {
+            "word": "and",
+            "startSec": 11.240434782608697,
+            "endSec": 11.404565217391305
+          },
+          {
+            "word": "it",
+            "startSec": 11.467608695652174,
+            "endSec": 11.530652173913044
+          },
+          {
+            "word": "will",
+            "startSec": 11.555652173913046,
+            "endSec": 11.694782608695654
+          },
+          {
+            "word": "not",
+            "startSec": 11.744782608695653,
+            "endSec": 11.895869565217392
+          },
+          {
+            "word": "be",
+            "startSec": 11.958913043478262,
+            "endSec": 12.060000000000002
+          },
+          {
+            "word": "taken",
+            "startSec": 12.123043478260872,
+            "endSec": 12.451304347826088
+          },
+          {
+            "word": "away",
+            "startSec": 12.514347826086958,
+            "endSec": 12.729565217391306
+          },
+          {
+            "word": "from",
+            "startSec": 12.779565217391307,
+            "endSec": 12.918695652173914
+          },
+          {
+            "word": "her.\u201d",
+            "startSec": 12.993695652173914,
+            "endSec": 13.52413043478261
+          }
+        ]
+      },
+      {
+        "kind": "step",
+        "stepIndex": 2,
+        "stepLeadSec": 0.9,
+        "steps": ["WATCH", "REFLECT", "PRAY"],
+        "audioFile": "50-step-pray.mp3",
+        "durationSec": 2.196168,
+        "words": [
+          {
+            "word": "Let's",
+            "startSec": 0,
+            "endSec": 0.29
+          },
+          {
+            "word": "bring",
+            "startSec": 0.337,
+            "endSec": 0.464
+          },
+          {
+            "word": "this",
+            "startSec": 0.511,
+            "endSec": 0.639
+          },
+          {
+            "word": "to",
+            "startSec": 0.685,
+            "endSec": 0.731
+          },
+          {
+            "word": "God.",
+            "startSec": 0.778,
+            "endSec": 1.3
+          }
+        ]
+      },
+      {
+        "kind": "questions",
+        "questions": [
+          "What good work for Jesus has, without your noticing, become the reason you no longer sit with him?"
+        ],
+        "prayer": "Tell God, by name, about the many things tugging at you right now. Ask him to have your attention before the work does.",
+        "askLabel": "First, ask yourself",
+        "prayLabel": "Talk to God about it",
+        "questionAtSec": 1.498,
+        "prayerAtSec": 8.687000000000001,
+        "prayerTextAtSec": 9.929,
+        "audioFile": "51-questions.mp3",
+        "durationSec": 18.341746,
+        "holdSec": 10
+      }
+    ],
+    "bgFile": "bg.mp4",
+    "introHoldSec": 0,
+    "outroHoldSec": 8,
+    "bgPlaybackRate": 1,
+    "bgDurationSec": 239.72365200000016,
+    "stepRing": true,
+    "filmCaptionStyle": "scroll",
+    "markLayout": "side"
+  },
+  "devotional": {
+    "reflection": {
+      "paragraphs": [
+        {
+          "text": "Most of us would side with Martha. There is a guest in her house, and someone has to feed him. Her sister is on the floor, listening. Martha is on her feet, working.",
+          "role": "reflection"
+        },
+        {
+          "text": "In the ancient world, hospitality was counted among the chief virtues. A host who fed a traveler well was doing something honored, not something small.",
+          "role": "history",
+          "mark": {
+            "label": "Historical context",
+            "source": "Smith's Bible Dictionary"
+          }
+        },
+        {
+          "text": "And Martha is the elder sister, the one who runs this house. The welcome is hers to give. When she is left alone with it, the sting is real.",
+          "role": "history"
+        },
+        {
+          "text": "So her complaint is not petty. It is the complaint of a responsible woman doing a good thing by herself. Jesus had just told a lawyer that mercy means going and doing. Martha is going and doing.",
+          "role": "reflection"
+        },
+        {
+          "text": "But look at verse forty. Luke says Martha was distracted by all the preparations. The word he uses there means to be drawn off, pulled away.",
+          "role": "language",
+          "mark": {
+            "label": "Original language",
+            "source": "Abbott-Smith's Greek Lexicon"
+          }
+        },
+        {
+          "text": "That is the picture. Not a woman who refused Jesus, but a woman pulled away from him by the very thing she was doing for him.",
+          "role": "reflection"
+        },
+        {
+          "text": "Notice how the trouble grows. It starts as ordinary care about a meal. Then she looks up, sees her sister sitting still, and her conscience pinches. The pinch turns to temper, and the temper comes out as a complaint to Jesus himself: do you not care?",
+          "role": "classic",
+          "mark": {
+            "label": "Commentary",
+            "source": "J. C. Ryle (1816\u20131900)"
+          }
+        },
+        {
+          "text": "The danger is not open sin. It is a good thing allowed too much room. A home, a job, a ministry, a family: all worth doing, and any of them can quietly eat the life out of a soul when it takes the first place.",
+          "role": "classic"
+        },
+        {
+          "text": "Look at how Jesus answers. He does not say stop serving. He says her name twice, the way you speak to someone you love. Then he names what he sees: a heart full of worry, pulled in too many directions.",
+          "role": "reflection"
+        },
+        {
+          "text": "He is like a physician who has found the disease. Many things are pulling at her. Only one is necessary. Not the meal, not the house. Being with him and hearing him.",
+          "role": "classic"
+        },
+        {
+          "text": "Then he says something about Mary that reaches past that room. What she chose is hers to keep. Food gets eaten. Houses change hands. What a person receives at the feet of Jesus stays, in life and in death.",
+          "role": "classic"
+        },
+        {
+          "text": "Martha was right that someone had to do the work. Jesus never denies it. He only shows her what the work had done to her, and where the better thing was all along: right there in the room, close to him.",
+          "role": "reflection"
+        },
+        {
+          "text": "Most of what pulls us from Christ is not open sin. It is service. And he still says our name, gently, and points to the portion no one can take.",
+          "role": "reflection"
+        }
+      ]
+    }
+  }
+}

@@ -122,6 +122,7 @@ describe("Anthropic structured-output schema compatibility", () => {
     // Shorts cut-down (feat-573).
     "shorts-cutdown": shortsInternal.JSON_SCHEMA,
     "shorts-cutdown/kinetic": shortsInternal.KINETIC_JSON_SCHEMA,
+    "shorts-cutdown/reflection": shortsInternal.REFLECTION_PICK_SCHEMA,
   }
 
   /** Modules covered above, by filename — `hook-picker` contributes two. */

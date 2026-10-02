@@ -26,6 +26,9 @@ export const SHORT_MIN_SEC = 15
  *  enough, one short thought that still sounds finished"): the credited
  *  paragraph alone, extended only when it is shorter than this. */
 export const FACT_MIN_SEC = 10
+/** A word study needs its landing too: "The word he uses means to be pulled
+ *  away" is not yet the point without the sentence that applies it. */
+export const LANGUAGE_MIN_SEC = 14
 export const SHORT_MAX_SEC = 45
 const FPS = 30
 
@@ -110,6 +113,11 @@ export type ShortPlan = {
     /** Where that lead comes from: a quiet stretch of the same scene (no
      *  line spoken), played live. Absent: the first frame is held. */
     preroll?: { fromSec: number; toSec: number }
+    /** Quiet footage played after the window (outro and card breath) when
+     *  the scene ends too soon after its last line for the closing turn. */
+    postroll?: { fromSec: number; toSec: number }
+    /** The outro hold for this short, when longer than the default. */
+    outroSec?: number
   }
   /** Film short: the silent question cards (texts). */
   questionCards?: { open?: string; close?: string; closeSub?: string }
@@ -237,6 +245,83 @@ const words = (s: string) =>
  * the most words with it, then whole cues before it until the window is long
  * enough to stand alone, ending half a second after the verse's last cue.
  */
+/**
+ * The film window around the quoted passage found by verse ADDRESS: every
+ * caption line tagged with a verse in the citation's range ("Luke 10:41-42"),
+ * then whole lines before it up to `targetSec`. Word matching alone failed
+ * when the devotional quotes one translation (BSB) and the film reads another
+ * (NIV): Martha's answer was cut mid-sentence (2026-10-02). Null when the
+ * captions carry no addresses for that range.
+ */
+export function verseWindowByAddress(
+  subtitles: Subtitle[],
+  citation: string,
+  targetSec = 30,
+): { fromSec: number; toSec: number } | null {
+  const m = /(\d+):(\d+)(?:\s*[-–]\s*(\d+))?/.exec(citation)
+  if (!m) return null
+  const chapter = Number(m[1])
+  const v1 = Number(m[2])
+  const v2 = m[3] ? Number(m[3]) : v1
+  const inRange = (s: Subtitle) => {
+    const a = /(\d+):(\d+)/.exec(String(s.verse ?? ""))
+    return (
+      !!a &&
+      Number(a[1]) === chapter &&
+      Number(a[2]) >= v1 &&
+      Number(a[2]) <= v2
+    )
+  }
+  const first = subtitles.findIndex(inRange)
+  if (first < 0) return null
+  let last = first
+  for (let i = first; i < subtitles.length; i++)
+    if (inRange(subtitles[i])) last = i
+  const toSec = subtitles[last].endSec + 0.5
+  let start = first
+  while (start > 0 && toSec - subtitles[start - 1].startSec <= targetSec)
+    start--
+  // Half a second of lead, but never into the line before.
+  const prevEnd = start > 0 ? subtitles[start - 1].endSec + 0.05 : 0
+  return {
+    fromSec: Math.max(prevEnd, subtitles[start].startSec - 0.5),
+    toSec,
+  }
+}
+
+/**
+ * The longest stretch of the scene with no line spoken that holds
+ * `lengthSec` (0.2s clear of lines), including before the first line and
+ * after the last up to `footageEnd`. Taken from its middle.
+ */
+export function longestQuietStretch(
+  subs: ReadonlyArray<Subtitle>,
+  lengthSec: number,
+  footageEnd: number,
+  /** Footage already in the short: never replay it. */
+  avoid?: { fromSec: number; toSec: number },
+): { fromSec: number; toSec: number } | null {
+  const edges = [0, ...subs.flatMap((x) => [x.startSec, x.endSec]), footageEnd]
+  let best: { a: number; b: number } | null = null
+  for (let i = 0; i + 1 < edges.length; i += 2) {
+    let a = edges[i] + (i === 0 ? 0 : 0.2)
+    let b = edges[i + 1] - 0.2
+    if (avoid && a < avoid.toSec && b > avoid.fromSec) {
+      // Keep the larger side of the gap that lies outside the window.
+      if (avoid.fromSec - a >= b - avoid.toSec) b = avoid.fromSec - 0.2
+      else a = avoid.toSec + 0.2
+    }
+    if (b - a >= lengthSec && (!best || b - a > best.b - best.a))
+      best = { a, b }
+  }
+  if (!best) return null
+  const from = best.a + (best.b - best.a - lengthSec) / 2
+  return {
+    fromSec: Number(from.toFixed(3)),
+    toSec: Number((from + lengthSec).toFixed(3)),
+  }
+}
+
 export function verseWindow(
   subtitles: Subtitle[],
   verse: string,
@@ -318,9 +403,12 @@ export function planCutdown(
       })
     }
     const w =
-      scripture?.verse && film.subtitles
+      (scripture?.citation && film.subtitles
+        ? verseWindowByAddress(film.subtitles, scripture.citation)
+        : null) ??
+      (scripture?.verse && film.subtitles
         ? verseWindow(film.subtitles, scripture.verse)
-        : null
+        : null)
     if (w) {
       const cards = overrides.filmVerseCards
       let win = w
@@ -342,8 +430,10 @@ export function planCutdown(
           Infinity,
         )
         win = {
+          // Widen into the quiet before, never later than the window's own
+          // start (that cut into its first line).
           fromSec: cards.open
-            ? Math.max(prevEnd + 0.3, w.fromSec - 2.4)
+            ? Math.min(w.fromSec, Math.max(prevEnd + 0.3, w.fromSec - 2.4))
             : w.fromSec,
           toSec: cards.close
             ? Math.min(
@@ -380,6 +470,43 @@ export function planCutdown(
             }
             made.durationSec += lead
           }
+          // The closing turn needs ~4.7s of picture after the last line. A
+          // scene that ends on its last word (Martha: 1.5s of film left)
+          // borrows a quiet stretch of the same scene for the rest, played
+          // live, rather than freezing (owner, 2026-10-02).
+          if (cards.close && made.film) {
+            const lastEnd = w.toSec - 0.5
+            const footageEnd = film.durationSec ?? Infinity
+            const nextStart = Math.min(
+              ...subs
+                .filter((x) => x.startSec >= lastEnd + 0.1)
+                .map((x) => x.startSec),
+              Infinity,
+            )
+            const room = Math.min(nextStart - 0.3, footageEnd - 0.2) - lastEnd
+            if (room < CLOSE_CARD_NEEDS_SEC) {
+              const toSec = lastEnd + Math.min(0.5, Math.max(0, room - 0.1))
+              const outroSec = Math.max(
+                SHORT_OUTRO_SEC,
+                CLOSE_CARD_NEEDS_SEC - (toSec - lastEnd) - CARD_TAIL_SEC,
+              )
+              const postroll = longestQuietStretch(
+                subs,
+                outroSec + CARD_TAIL_SEC + 0.2,
+                footageEnd,
+                { fromSec: made.film.fromSec, toSec },
+              )
+              if (postroll) {
+                made.durationSec -= made.film.toSec - toSec
+                made.film = {
+                  ...made.film,
+                  toSec: Number(toSec.toFixed(3)),
+                  postroll,
+                  outroSec: Number(outroSec.toFixed(2)),
+                }
+              }
+            }
+          }
         }
       }
     } else {
@@ -400,13 +527,19 @@ export function planCutdown(
       skipped.push({ kind, reason: `the devotional has no ${role} paragraph` })
       return
     }
-    // One fact per short: never run into another credited paragraph.
+    // One fact per short: never run into another credited fact, but an
+    // uncredited paragraph of the same role continues this one (Martha's
+    // hospitality note runs over two paragraphs, 2026-10-02).
+    const minSec = kind === "language" ? LANGUAGE_MIN_SEC : FACT_MIN_SEC
     const run = growRun(
       at,
       at,
       paraSec,
-      (p) => p !== at && isFact(p),
-      FACT_MIN_SEC,
+      (p) =>
+        p !== at &&
+        isFact(p) &&
+        !(paragraphs[p].role === role && !paragraphs[p].mark),
+      minSec,
     )
     let c = runCards(run.from, run.to)
     if (kind === "history" && overrides.historyHook !== false) {
@@ -440,22 +573,11 @@ export function planCutdown(
     let run = overrides.reflection
     let why = "chosen reflection run"
     if (!run) {
-      // Default: the first run of plain reflection that stands between 15
-      // and 45 seconds. The opening picture of a devotional is written to
+      // Default: the first run of plain reflection that stands alone (see
+      // reflectionRuns). The opening picture of a devotional is written to
       // pull a listener in, which is what a short has to do.
-      for (let p = 0; p < paragraphs.length && !run; p++) {
-        if (isFact(p)) continue
-        let to = p
-        while (
-          sum(paraSec.slice(p, to + 1)) < SHORT_MIN_SEC &&
-          to + 1 < paragraphs.length &&
-          !isFact(to + 1)
-        ) {
-          to++
-        }
-        const len = sum(paraSec.slice(p, to + 1))
-        if (len >= SHORT_MIN_SEC && len <= SHORT_MAX_SEC) run = { from: p, to }
-      }
+      const runs = runsOfReflection(paragraphs, paraSec, isFact)
+      if (runs[0]) run = runs[0]
       why = "the first stretch of reflection that stands alone"
     }
     if (!run) {
@@ -506,6 +628,111 @@ export function planCutdown(
   const order = (k: ShortKind) => SHORT_KINDS.indexOf(k)
   shorts.sort((a, b) => order(a.kind) - order(b.kind))
   return { shorts, skipped }
+}
+
+/** A paragraph that opens by pointing back ("That is the picture.", "So
+ *  her complaint...") cannot open a short: there is nothing before it. */
+const BACK_REFERENCE =
+  /^(that|this|these|those|so|and|but|then|it|he|she|they|here)\b/i
+
+function runsOfReflection(
+  paragraphs: Paragraph[],
+  paraSec: number[],
+  isFact: (p: number) => boolean,
+): { from: number; to: number }[] {
+  const out: { from: number; to: number }[] = []
+  for (let p = 0; p < paragraphs.length; p++) {
+    if (isFact(p) || BACK_REFERENCE.test(paragraphs[p].text.trim())) continue
+    let to = p
+    while (
+      sum(paraSec.slice(p, to + 1)) < SHORT_MIN_SEC &&
+      to + 1 < paragraphs.length &&
+      !isFact(to + 1)
+    ) {
+      to++
+    }
+    const len = sum(paraSec.slice(p, to + 1))
+    if (len >= SHORT_MIN_SEC && len <= SHORT_MAX_SEC) out.push({ from: p, to })
+  }
+  return out
+}
+
+/**
+ * Every run of plain reflection (reflection / classic paragraphs, no credited
+ * fact) that could be the reflection short: 15 to 45 s, not opening on a
+ * back-reference. For a model (or a person) to choose the one that stands
+ * alone best; the planner's default is the first.
+ */
+export function reflectionRuns(
+  manifest: Manifest,
+  devo: DevotionalText,
+): { from: number; to: number; text: string; durationSec: number }[] {
+  const paragraphs = devo.reflection?.paragraphs ?? []
+  const secs = cardSeconds(manifest)
+  const cardPara = mapCardsToParagraphs(manifest.cards, paragraphs)
+  const paraSec = paragraphs.map((_, p) =>
+    sum(
+      [...cardPara.entries()].filter(([, q]) => q === p).map(([c]) => secs[c]),
+    ),
+  )
+  const isFact = (p: number) =>
+    paragraphs[p].role === "history" || paragraphs[p].role === "language"
+  return runsOfReflection(paragraphs, paraSec, isFact).map((r) => ({
+    ...r,
+    text: paragraphs
+      .slice(r.from, r.to + 1)
+      .map((p) => p.text)
+      .join(" "),
+    durationSec: sum(paraSec.slice(r.from, r.to + 1)),
+  }))
+}
+
+const REFLECTION_PICK_SCHEMA = {
+  name: "reflection_pick",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["choice", "why"],
+    properties: { choice: { type: "integer" }, why: { type: "string" } },
+  },
+}
+
+/**
+ * Ask a model which reflection run makes the best short on its own: one a
+ * viewer recognises themselves in and would send to a friend (owner,
+ * 2026-10-02: reflection and language are the "share" shorts). Returns an
+ * index into `runs`, or 0 when the call fails or the answer is out of range.
+ */
+export async function chooseReflectionRun(
+  llm: TurnPicker | null,
+  runs: ReadonlyArray<{ text: string }>,
+  log?: (msg: string) => void,
+): Promise<number> {
+  if (!llm || runs.length < 2) return 0
+  try {
+    const res = await llm.complete<{ choice: number; why: string }>({
+      system:
+        "You pick the passage of a short Bible devotional that makes the " +
+        "best 20-second vertical video on its own. It must make sense with " +
+        "nothing before it, show a picture or a turn a viewer recognises in " +
+        "their own life, and be something they would send to a friend.",
+      user: runs.map((r, i) => `${i + 1}. ${r.text}`).join("\n\n"),
+      jsonSchema: REFLECTION_PICK_SCHEMA,
+      schema: z.object({ choice: z.number().int(), why: z.string() }),
+      maxTokens: 300,
+      temperature: 0.2,
+    })
+    const i = res.choice - 1
+    if (i >= 0 && i < runs.length) {
+      log?.(`reflection pick ${res.choice}: ${res.why}`)
+      return i
+    }
+  } catch (e) {
+    log?.(
+      `reflection pick failed (${e instanceof Error ? e.message : String(e)}); the first run`,
+    )
+  }
+  return 0
 }
 
 /** Where the shared background stood when each long-form card began. */
@@ -616,6 +843,9 @@ export const MUSIC_START_SHARE: Partial<Record<ShortKind, number>> = {
  *  scene's first line (in after the 0.6s fade from black so the stamp hits
  *  at full strength, ~2.6 on screen, 0.55 clear of the voice). */
 const OPEN_CARD_NEEDS_SEC = 3.75
+/** Picture the closing turn needs after the scene's last line: 0.6 to
+ *  arrive, ~2.9 on screen, the 0.9 fade to black. */
+const CLOSE_CARD_NEEDS_SEC = 4.4
 /** The composition's breath after a card (CARD_TAIL_FRAMES at 30 fps): the
  *  last card runs this much past its duration, so the clip must too. */
 export const CARD_TAIL_SEC = CARD_TAIL_FRAMES / FPS
@@ -631,8 +861,10 @@ export function quietStretchBefore(
   lengthSec: number,
 ): { fromSec: number; toSec: number } | null {
   const lines = subs.filter((x) => x.startSec < beforeSec)
-  for (let i = lines.length - 1; i >= 1; i--) {
-    const gapStart = lines[i - 1].endSec + 0.2
+  // Down to i = 0: the quiet before the scene's first line counts too (a
+  // scene often opens on seconds of establishing shots).
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const gapStart = i > 0 ? lines[i - 1].endSec + 0.2 : 0.2
     const gapEnd = lines[i].startSec - 0.2
     if (gapEnd - gapStart >= lengthSec) {
       return {
@@ -754,7 +986,7 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
     ...top,
     cards,
     introHoldSec: 0,
-    outroHoldSec: SHORT_OUTRO_SEC,
+    outroHoldSec: plan.film?.outroSec ?? SHORT_OUTRO_SEC,
     // The step clock and the stepper are the long form's map: in a short
     // there is nowhere to navigate.
     stepRing: false,
@@ -786,6 +1018,9 @@ export const _internal = {
   JSON_SCHEMA: FILM_TURN_JSON_SCHEMA,
   get KINETIC_JSON_SCHEMA() {
     return KINETIC_JSON_SCHEMA
+  },
+  get REFLECTION_PICK_SCHEMA() {
+    return REFLECTION_PICK_SCHEMA
   },
 }
 

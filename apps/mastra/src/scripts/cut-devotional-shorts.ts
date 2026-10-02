@@ -51,6 +51,8 @@ import {
   buildShortManifest,
   chooseFilmTurn,
   chooseKineticRoles,
+  chooseReflectionRun,
+  reflectionRuns,
   MUSIC_START_SHARE,
   questionClip,
   introTeaserArgs,
@@ -107,6 +109,8 @@ async function trimFilm(
    *  from a quiet moment of the scene), else the first frame held. */
   leadSec = 0,
   preroll?: { fromSec: number; toSec: number },
+  /** Quiet footage played after the window (the closing card's picture). */
+  postroll?: { fromSec: number; toSec: number },
 ) {
   const enc = [
     "-c:v",
@@ -122,20 +126,29 @@ async function trimFilm(
     "-b:a",
     "192k",
   ]
-  if (preroll) {
-    // Two live pieces of the same clip, joined: the quiet moment, then the
-    // window. Accurate seeks on one input.
+  if (preroll || postroll) {
+    // Live pieces of the same clip, joined: the quiet lead, the window, the
+    // quiet tail. Accurate seeks on one input.
     const f = (n: number) => n.toFixed(3)
+    const pieces = [
+      ...(preroll ? [preroll] : []),
+      { fromSec, toSec },
+      ...(postroll ? [postroll] : []),
+    ]
+    const graph = pieces
+      .map(
+        (p, i) =>
+          `[0:v]trim=start=${f(p.fromSec)}:end=${f(p.toSec)},setpts=PTS-STARTPTS[v${i}];` +
+          `[0:a]atrim=start=${f(p.fromSec)}:end=${f(p.toSec)},asetpts=PTS-STARTPTS[a${i}];`,
+      )
+      .join("")
+    const ins = pieces.map((_, i) => `[v${i}][a${i}]`).join("")
     await run("ffmpeg", [
       "-y",
       "-i",
       src,
       "-filter_complex",
-      `[0:v]trim=start=${f(preroll.fromSec)}:end=${f(preroll.toSec)},setpts=PTS-STARTPTS[v0];` +
-        `[0:a]atrim=start=${f(preroll.fromSec)}:end=${f(preroll.toSec)},asetpts=PTS-STARTPTS[a0];` +
-        `[0:v]trim=start=${f(fromSec)}:end=${f(toSec)},setpts=PTS-STARTPTS[v1];` +
-        `[0:a]atrim=start=${f(fromSec)}:end=${f(toSec)},asetpts=PTS-STARTPTS[a1];` +
-        `[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]`,
+      `${graph}${ins}concat=n=${pieces.length}:v=1:a=1[v][a]`,
       "-map",
       "[v]",
       "-map",
@@ -418,6 +431,19 @@ async function main() {
       console.log("film turn: the model's pick broke a rule; skipped")
     }
   }
+  if (
+    !refl &&
+    only.includes("reflection") &&
+    !process.argv.includes("--no-model")
+  ) {
+    // Taste: which reflection run stands alone best (a "share" short).
+    const runs = reflectionRuns(manifest, devo)
+    if (runs.length > 1) {
+      const llm = createDevotionalLlm({ model: getDevotionalModel() })
+      const i = await chooseReflectionRun(llm, runs, (msg) => console.log(msg))
+      overrides.reflection = { from: runs[i].from, to: runs[i].to }
+    }
+  }
   const plan = planCutdown(manifest, devo, overrides)
   const shorts = plan.shorts.filter((s) => !only || only.includes(s.kind))
   for (const s of plan.skipped) console.log(`skip ${s.kind}: ${s.reason}`)
@@ -566,10 +592,15 @@ async function main() {
             dest,
             short.film.fromSec,
             // Footage to the very last frame: the outro and the card's own
-            // breath after it (a short clip froze for its last 0.8s).
-            short.film.toSec + SHORT_OUTRO_SEC + CARD_TAIL_SEC + 0.2,
+            // breath after it (a short clip froze for its last 0.8s), from
+            // the window itself or, when the scene ends too soon, a quiet
+            // stretch played after it.
+            short.film.postroll
+              ? short.film.toSec
+              : short.film.toSec + SHORT_OUTRO_SEC + CARD_TAIL_SEC + 0.2,
             short.film.leadSec ?? 0,
             short.film.preroll,
+            short.film.postroll,
           )
         } else {
           await symlink(path.resolve(from, f), dest)

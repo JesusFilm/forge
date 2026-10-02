@@ -11,6 +11,7 @@ import {
   buildShortManifest,
   INTRO_CTA,
   chooseFilmTurn,
+  reflectionRuns,
   questionClip,
   introTeaserArgs,
   openingLinesOf,
@@ -23,6 +24,7 @@ import {
   verseWindow,
   type DevotionalText,
   type Manifest,
+  type ShortPlan,
 } from "./shorts-cutdown"
 
 // The real Prodigal Son long form (lumo-luke-15 seq 0, rendered 2026-10-01):
@@ -418,5 +420,59 @@ describe("history, hook-first (the default)", () => {
     expect(q.toSec).toBeCloseTo(3.15)
     expect(q.words[0]).toEqual({ word: "Whose", startSec: 0.08, endSec: 0.35 })
     expect(questionClip(words, "Not there")).toBeNull()
+  })
+})
+
+describe("a second devotional: Martha and Mary", () => {
+  const martha = JSON.parse(
+    readFileSync(
+      path.join(__dirname, "__fixtures__", "martha-cutdown.json"),
+      "utf8",
+    ),
+  ) as { manifest: Manifest; devotional: DevotionalText }
+  const m = martha.manifest
+  const plan = planCutdown(m, martha.devotional, {
+    filmVerseCards: { open: "Q?", close: "Turn." },
+  })
+  const kind = (k: string) => plan.shorts.find((s) => s.kind === k)!
+  const said = (s: ShortPlan) =>
+    s.cards.map((i) => m.cards[i].text ?? "").join(" ")
+
+  it("finds the quoted passage by verse address even when translations differ", () => {
+    const f = kind("film-verse")
+    const subs = m.cards[0].subtitles!.filter(
+      (x) => x.startSec >= f.film!.fromSec && x.endSec <= f.film!.toSec + 0.01,
+    )
+    expect(subs.at(-1)!.text).toMatch(/will not be taken away from her/)
+    expect(subs[0].text).toMatch(/^She came to him/)
+  })
+
+  it("borrows quiet footage for the cards when the scene has none to spare", () => {
+    const f = kind("film-verse").film!
+    expect(f.preroll).toBeDefined()
+    expect(f.postroll).toBeDefined()
+    // Neither replays footage already in the window.
+    for (const r of [f.preroll!, f.postroll!]) {
+      expect(r.toSec <= f.fromSec || r.fromSec >= f.toSec).toBe(true)
+    }
+  })
+
+  it("carries a history note across its uncredited continuation, not into reflection", () => {
+    const h = said(kind("history"))
+    expect(h).toMatch(/^In the ancient world/)
+    expect(h).toMatch(/the sting is real\.$/)
+    expect(h).not.toMatch(/Most of us would side with Martha/)
+  })
+
+  it("lets the language note land on the sentence that applies it", () => {
+    expect(said(kind("language"))).toMatch(
+      /pulled away from him by the very thing/,
+    )
+  })
+
+  it("never opens the reflection on a back-reference", () => {
+    for (const r of reflectionRuns(m, martha.devotional)) {
+      expect(r.text).not.toMatch(/^(That|So|And|But)\b/)
+    }
   })
 })
