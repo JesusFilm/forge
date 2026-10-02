@@ -327,7 +327,7 @@ describe("history kinetic lines", () => {
           lines: lines.map((l, i) =>
             i === 0
               ? { hero: "a word not in the line", accents: [] }
-              : { hero: l.text.split(" ")[0], accents: ["nonsense"] },
+              : { hero: heuristicRoles(l.text).hero, accents: ["nonsense"] },
           ),
         }),
     }
@@ -488,5 +488,30 @@ describe("a second devotional: Martha and Mary", () => {
     for (const r of reflectionRuns(m, martha.devotional)) {
       expect(r.text).not.toMatch(/^(That|So|And|But)\b/)
     }
+  })
+})
+
+describe("kinetic hero salvage", () => {
+  it("keeps the weightiest word of a too-long pick and never sets an empty word huge", async () => {
+    const lines = [
+      {
+        from: 0,
+        to: 9,
+        text: "A host who fed a traveler well was doing something honored,",
+      },
+      { from: 10, to: 12, text: "not something small." },
+    ]
+    const llm = {
+      complete: async <T>(input: { schema: { parse: (v: unknown) => T } }) =>
+        input.schema.parse({
+          lines: [
+            { hero: "host who fed a traveler", accents: [] },
+            { hero: "something", accents: [] },
+          ],
+        }),
+    }
+    const roles = await chooseKineticRoles(llm as never, lines)
+    expect(roles[0].hero).toBe("traveler")
+    expect(roles[1].hero).toBe("small")
   })
 })

@@ -1179,6 +1179,13 @@ export function kineticLines(
   return out
 }
 
+/** Words too empty to carry a line set huge ("something", "thing"). */
+const EMPTY_WORDS = new Set(
+  "something nothing anything everything thing things someone anyone everyone one very really just also even still well".split(
+    " ",
+  ),
+)
+
 /** Without a model: the longest content word is the hero, the next the accent. */
 export function heuristicRoles(text: string): {
   hero: string
@@ -1187,7 +1194,12 @@ export function heuristicRoles(text: string): {
   const content = text
     .split(/\s+/)
     .map((w) => w.replace(/[^A-Za-z'-]/g, ""))
-    .filter((w) => w && !FUNCTION_WORDS.has(w.toLowerCase()))
+    .filter(
+      (w) =>
+        w &&
+        !FUNCTION_WORDS.has(w.toLowerCase()) &&
+        !EMPTY_WORDS.has(w.toLowerCase()),
+    )
     .sort((a, b) => b.length - a.length)
   return { hero: content[0] ?? "", accents: content[1] ? [content[1]] : [] }
 }
@@ -1269,8 +1281,26 @@ export async function chooseKineticRoles(
     }
   }
   return lines.map((l, i) => {
-    const p = picks[i]
-    const heroOk = p && isRunOf(p.hero, l.text)
+    let p = picks[i]
+    // A phrase too long to set huge ("host who fed a traveler") keeps its
+    // weightiest word rather than being thrown away.
+    if (p && !isRunOf(p.hero, l.text) && p.hero.split(/\s+/).length > 3) {
+      const t = l.text.split(/\s+/).map(bare)
+      if (p.hero.split(/\s+/).every((w) => t.includes(bare(w)))) {
+        const best = heuristicRoles(p.hero).hero
+        if (best) p = { ...p, hero: best }
+      }
+    }
+    // A hero made only of empty or function words is no hero.
+    if (
+      p &&
+      p.hero
+        .split(/\s+/)
+        .every((w) => EMPTY_WORDS.has(bare(w)) || FUNCTION_WORDS.has(bare(w)))
+    ) {
+      p = { ...p, hero: "" }
+    }
+    const heroOk = p && p.hero !== "" && isRunOf(p.hero, l.text)
     const roles = heroOk
       ? {
           hero: p.hero,
