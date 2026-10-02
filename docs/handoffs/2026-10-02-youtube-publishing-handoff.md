@@ -75,3 +75,60 @@ A YouTube Data API upload (OAuth client + refresh token for the channel)
 would allow fully automatic, scheduled publishing. It needs Google Cloud
 credentials and channel access set up by Vlad, so it is not part of this
 first step.
+
+## What the first YouTube runs settled (2026-10-02)
+
+The owner's confirmed YouTube flow (Martha long form, five Prodigal Shorts)
+lives in the agent memory `youtube-publishing-checklist`. The points a new
+session must not miss:
+
+- Video files are 15 to 600 MB; the Chrome extension uploads at most 10 MB, so
+  the agent opens the Upload dialog and reveals the file in Finder, and the
+  owner drags it in (several Shorts can go in one drag; they land as Drafts).
+- Long form: set the **Title and thumbnail** A/B test _before_ pasting the
+  description. Card at 0:00 to the channel, end screen imported from the latest
+  video, playlist Daily Devotionals, not for kids, AI question "No" (synthetic
+  voices and music are disclosed in the description), Public.
+- Shorts: `#Shorts` first in the hashtag line, then set **Related video** to
+  the story's long form.
+- After the first run the owner asked the agent to publish without a final
+  "yes" each time; it still reports every link afterwards.
+
+## Meta (Instagram + Facebook), added 2026-10-02
+
+Same method as YouTube: the owner's Chrome, Claude in Chrome tools, Meta
+Business Suite at `business.facebook.com`. Long horizontal videos are not
+posted to Meta; it gets the vertical teaser, the Shorts, later a carousel.
+
+Rules on top of the ones above:
+
+- Sign-in, passwords, 2FA and any "not a robot" check are the owner's. Never
+  accept new terms, never change Page, Instagram or account settings.
+- Files over 10 MB: the owner drags them into the composer, as on YouTube.
+
+Check once before the first post:
+
+1. The owner is signed in to Business Suite.
+2. The Instagram account is professional (Business or Creator) and connected to
+   the Facebook Page in Business Suite (both appear as posting destinations).
+
+Reel, step by step (ask on the first run where marked):
+
+1. Business Suite → Create reel. Destinations: Instagram, Facebook or both
+   (**ask**).
+2. Upload the vertical `.mp4` (owner drags it in).
+3. Caption: from the `daily-bible-pause-captions` skill. Instagram is the
+   default; Facebook gets the same voice with 0 to 3 hashtags and a plainer
+   call to action ("Follow the page for more"). If Business Suite allows a
+   different caption per platform, use both; otherwise **ask** which one.
+   No em or en dashes in captions. Credits block under the caption.
+4. Cover: frame from the video or an uploaded image (**ask**).
+5. AI label ("Made with AI" / AI info toggle): voices and music are synthetic
+   (**ask** how she answers; record it).
+6. Collaborators, location, audience, Facebook share-to-feed: **ask** once.
+7. Timing: publish now, schedule, or save as draft (**ask**; first run is a
+   draft or a schedule so she can look).
+8. **Stop. Summarise** (destinations, caption, cover, AI label, time). Wait
+   for her "yes", press Publish or Schedule.
+9. Write the post links into the story's `README.txt`, and the confirmed
+   choices into the memory checklist (Meta section).
