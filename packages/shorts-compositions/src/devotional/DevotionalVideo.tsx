@@ -1548,6 +1548,7 @@ function ShortQuestionCards({
     toSec: number | null,
     key: string,
     sharp = false,
+    sub?: string,
   ) => {
     if (t < fromSec - 0.05 || (toSec != null && t > toSec + 0.05)) return null
     const fade =
@@ -1569,6 +1570,31 @@ function ShortQuestionCards({
         >
           <div style={{ width: f(640) }}>
             <StampLine text={text} t={t - fromSec} f={f} sharp={sharp} />
+            {sub ? (
+              // Set like the scrolling verses' address ("Luke 15:22-24"):
+              // PT Serif italic 32, at 85%; it eases in a beat after the
+              // turn so the two never arrive together.
+              <p
+                style={{
+                  margin: `${f(28)}px 0 0`,
+                  fontFamily: `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`,
+                  fontStyle: "italic",
+                  fontSize: f(32),
+                  lineHeight: `${f(50)}px`,
+                  textAlign: "center",
+                  color: "rgba(255,255,255,0.92)",
+                  opacity:
+                    0.85 *
+                    interpolate(t - fromSec, [1.0, 1.8], [0, 1], {
+                      extrapolateLeft: "clamp",
+                      extrapolateRight: "clamp",
+                    }),
+                  textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
+                }}
+              >
+                {sub}
+              </p>
+            ) : null}
           </div>
         </AbsoluteFill>
       </AbsoluteFill>
@@ -1587,7 +1613,14 @@ function ShortQuestionCards({
           )
         : null}
       {cards.close
-        ? card(cards.close.text, cards.close.fromSec, null, "close")
+        ? card(
+            cards.close.text,
+            cards.close.fromSec,
+            null,
+            "close",
+            false,
+            cards.close.sub,
+          )
         : null}
     </>
   )

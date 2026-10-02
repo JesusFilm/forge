@@ -433,7 +433,14 @@ export const devotionalInputPropsSchema = z.object({
       open: z
         .object({ text: z.string(), fromSec: z.number(), toSec: z.number() })
         .optional(),
-      close: z.object({ text: z.string(), fromSec: z.number() }).optional(),
+      close: z
+        .object({
+          text: z.string(),
+          fromSec: z.number(),
+          /** A small line under the turn, set like the verse address. */
+          sub: z.string().optional(),
+        })
+        .optional(),
     })
     .optional(),
   /** The fact shorts' layout (feat-573), read only by the devotional-short

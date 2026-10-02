@@ -112,7 +112,7 @@ export type ShortPlan = {
     preroll?: { fromSec: number; toSec: number }
   }
   /** Film short: the silent question cards (texts). */
-  questionCards?: { open?: string; close?: string }
+  questionCards?: { open?: string; close?: string; closeSub?: string }
   durationSec: number
   /** One line on why this stretch, for shorts.md. */
   why: string
@@ -130,7 +130,7 @@ export type CutdownOverrides = {
   filmTurn?: { fromSec: number; toSec: number; why?: string }
   /** Film-verse short: a silent question before the scene speaks and a
    *  turn after it ends (owner, 2026-10-02). */
-  filmVerseCards?: { open?: string; close?: string }
+  filmVerseCards?: { open?: string; close?: string; closeSub?: string }
 }
 
 const norm = (s: string) =>
@@ -682,7 +682,9 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
   // Film short question cards, timed from the lines inside the window.
   let shortCards: Record<string, unknown> | undefined
   const filmCard = cards.find((c) => c.kind === "video") as
-    | (Card & { __cards?: { open?: string; close?: string } })
+    | (Card & {
+        __cards?: { open?: string; close?: string; closeSub?: string }
+      })
     | undefined
   if (filmCard?.__cards) {
     const subs = filmCard.subtitles ?? []
@@ -701,7 +703,15 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
           }
         : {}),
       ...(filmCard.__cards.close
-        ? { close: { text: filmCard.__cards.close, fromSec: last + 0.6 } }
+        ? {
+            close: {
+              text: filmCard.__cards.close,
+              fromSec: last + 0.6,
+              ...(filmCard.__cards.closeSub
+                ? { sub: filmCard.__cards.closeSub }
+                : {}),
+            },
+          }
         : {}),
     }
     delete filmCard.__cards

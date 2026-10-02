@@ -375,6 +375,9 @@ async function main() {
           filmVerseCards: {
             ...(arg("film-open") ? { open: arg("film-open")! } : {}),
             ...(arg("film-close") ? { close: arg("film-close")! } : {}),
+            ...(arg("film-close-sub")
+              ? { closeSub: arg("film-close-sub")! }
+              : {}),
           },
         }
       : {}),
