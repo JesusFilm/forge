@@ -41,6 +41,7 @@ import {
 } from "../services/devotional/devotional-render"
 import { getDevotionalModel } from "../config/env"
 import { createDevotionalLlm } from "../services/devotional/llm"
+import { cacheDirFor } from "../services/devotional/devotional-cache"
 import { videoSourceForIndex } from "../services/devotional/video-sources"
 import {
   DEFAULT_SHORT_KINDS,
@@ -50,6 +51,7 @@ import {
   buildShortManifest,
   chooseFilmTurn,
   chooseKineticRoles,
+  questionClip,
   introTeaserArgs,
   kineticLines,
   openingLinesOf,
@@ -369,6 +371,7 @@ async function main() {
   const overrides: CutdownOverrides = {
     ...(turn ? { filmTurn: { fromSec: turn.a, toSec: turn.b } } : {}),
     ...(refl ? { reflection: { from: refl.a, to: refl.b } } : {}),
+    ...(process.argv.includes("--history-hook") ? { historyHook: true } : {}),
     // Silent question cards on the film-verse short.
     ...(arg("film-open") || arg("film-close")
       ? {
@@ -427,6 +430,67 @@ async function main() {
     )
     try {
       const m = buildShortManifest(manifest, short)
+      if (
+        short.kind === "history" &&
+        m.shortFact &&
+        process.argv.includes("--history-question")
+      ) {
+        // Second version (owner, 2026-10-02): close on the devotional's own
+        // personal question, cut from its recorded questions segment, so
+        // the fact turns to the viewer. Word times come from the narration
+        // cache (the manifest's questions card carries none).
+        const qCard = manifest.cards.find((c) => c.kind === "questions")
+        const question = (qCard?.questions as string[] | undefined)?.[0]
+        const d = devo as DevotionalText & {
+          clip?: { index?: number }
+          sequence?: number
+        }
+        const idx = JSON.parse(
+          await readFile(
+            path.join(
+              cacheDirFor(d.clip?.index ?? 0, d.sequence ?? 0),
+              "audio",
+              "index.json",
+            ),
+            "utf8",
+          ),
+        ) as { segments: { id: string; words?: unknown }[] }
+        const qWords = (idx.segments.find((x) => x.id === "questions")?.words ??
+          []) as { word: string; startSec: number; endSec: number }[]
+        const clip = question ? questionClip(qWords, question) : null
+        if (!clip || !qCard?.audioFile) {
+          console.log("  history question: not found in the cache; left out")
+        } else {
+          await run("ffmpeg", [
+            "-y",
+            "-ss",
+            clip.fromSec.toFixed(3),
+            "-i",
+            path.join(from, qCard.audioFile),
+            "-t",
+            (clip.toSec - clip.fromSec).toFixed(3),
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
+            path.join(stage, "history-question.mp3"),
+          ])
+          // The fact's last sentence would otherwise run straight into it.
+          const last = m.cards[m.cards.length - 1]
+          last.tailSec = 0.6
+          m.cards.push({
+            kind: "reflection-focus",
+            text: question,
+            audioFile: "history-question.mp3",
+            durationSec: Number((clip.toSec - clip.fromSec).toFixed(3)),
+            words: clip.words,
+          })
+          console.log(`  history question: "${question}"`)
+        }
+      }
+      if (short.kind === "history" && arg("history-sub") && m.shortFact) {
+        ;(m.shortFact as { closeSub?: string }).closeSub = arg("history-sub")
+      }
       if (short.kind === "history" && m.shortFact) {
         // Teaser-style kinetic captions: the model picks each line's hero and
         // accents (the owner's hand picks on the Prodigal teaser are the
@@ -448,6 +512,8 @@ async function main() {
       }
       for (const f of collectManifestFiles(m)) {
         const dest = path.join(stage, f)
+        // Made for this short already (the history question clip).
+        if (await stat(dest).catch(() => null)) continue
         if (f === "clip.mp4" && short.film) {
           await trimFilm(
             path.join(from, f),

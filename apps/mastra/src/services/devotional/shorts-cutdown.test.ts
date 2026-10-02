@@ -11,6 +11,7 @@ import {
   buildShortManifest,
   INTRO_CTA,
   chooseFilmTurn,
+  questionClip,
   introTeaserArgs,
   openingLinesOf,
   chooseKineticRoles,
@@ -387,5 +388,33 @@ describe("film-verse question cards", () => {
       (s) => s.startSec > film.film!.toSec - 0.5,
     )!
     expect(film.film!.toSec + SHORT_OUTRO_SEC).toBeLessThan(next.startSec)
+  })
+})
+
+describe("history, hook-first version", () => {
+  const plan = planCutdown(manifest, devotional, { historyHook: true })
+  const h = plan.shorts.find((s) => s.kind === "history")!
+
+  it("opens on the short line and keeps the paragraph's credit", () => {
+    expect(text(h.cards[0])).toBe("Feeding pigs.")
+    expect(buildShortManifest(manifest, h).shortFact).toMatchObject({
+      layout: "history",
+      source: "Easton's & Smith's Bible Dictionaries",
+    })
+  })
+
+  it("cuts the personal question out of its recorded segment", () => {
+    const words = [
+      { word: "First,", startSec: 0, endSec: 0.4 },
+      { word: "ask", startSec: 0.5, endSec: 0.7 },
+      { word: "Whose", startSec: 1.97, endSec: 2.24 },
+      { word: "turn?", startSec: 2.3, endSec: 2.9 },
+      { word: "Talk", startSec: 4.0, endSec: 4.3 },
+    ]
+    const q = questionClip(words, "Whose turn?")!
+    expect(q.fromSec).toBeCloseTo(1.89)
+    expect(q.toSec).toBeCloseTo(3.15)
+    expect(q.words[0]).toEqual({ word: "Whose", startSec: 0.08, endSec: 0.35 })
+    expect(questionClip(words, "Not there")).toBeNull()
   })
 })

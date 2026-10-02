@@ -470,6 +470,9 @@ export const devotionalInputPropsSchema = z.object({
       emblem: z.enum(["book", "scroll"]).optional(),
       verse: z.string().optional(),
       highlight: z.string().optional(),
+      /** History: a quiet line under the captions once the voice ends,
+       *  set like the verse address ("The full story is on our channel."). */
+      closeSub: z.string().optional(),
       /** Language: the verse's address ("Luke 15:32"). */
       reference: z.string().optional(),
     })

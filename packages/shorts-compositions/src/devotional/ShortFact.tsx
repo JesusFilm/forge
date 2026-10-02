@@ -190,6 +190,39 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           lines={fact?.lines}
         />
       )}
+      {fact?.closeSub && words.length ? (
+        // A quiet last line once the voice has finished (owner, 2026-10-02),
+        // set like the verse address: PT Serif italic 32 at 85%, just under
+        // the caption block and well inside the safe zone.
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: "64%",
+            textAlign: "center",
+            fontFamily: PT_SERIF,
+            fontStyle: "italic",
+            fontSize: f(32),
+            lineHeight: `${f(50)}px`,
+            color: "rgba(255,255,255,0.92)",
+            opacity:
+              0.85 *
+              interpolate(
+                t,
+                [
+                  words[words.length - 1].endSec + 0.5,
+                  words[words.length - 1].endSec + 1.2,
+                ],
+                [0, 1],
+                clamp,
+              ),
+            textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
+          }}
+        >
+          {fact.closeSub}
+        </div>
+      ) : null}
       <AbsoluteFill
         style={{ background: "#000", opacity: blackout, pointerEvents: "none" }}
       />

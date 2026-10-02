@@ -131,6 +131,9 @@ export type CutdownOverrides = {
   /** Film-verse short: a silent question before the scene speaks and a
    *  turn after it ends (owner, 2026-10-02). */
   filmVerseCards?: { open?: string; close?: string; closeSub?: string }
+  /** History, second version (owner, 2026-10-02): open on the paragraph's
+   *  first short line ("Feeding pigs.") instead of its lead-in. */
+  historyHook?: boolean
 }
 
 const norm = (s: string) =>
@@ -404,7 +407,15 @@ export function planCutdown(
       (p) => p !== at && isFact(p),
       FACT_MIN_SEC,
     )
-    const c = runCards(run.from, run.to)
+    let c = runCards(run.from, run.to)
+    if (kind === "history" && overrides.historyHook) {
+      // Start on the hook: the first sentence of four words or fewer among
+      // the paragraph's first three, dropping the lead-in before it.
+      const hook = c
+        .slice(0, 3)
+        .findIndex((i) => (cards[i].text ?? "").trim().split(/\s+/).length <= 4)
+      if (hook > 0) c = c.slice(hook)
+    }
     const len = sum(c.map((i) => secs[i]))
     if (len < FACT_MIN_SEC || len > SHORT_MAX_SEC) {
       skipped.push({ kind, reason: `run is ${len.toFixed(1)}s` })
@@ -526,7 +537,13 @@ type Callout = { text?: string; highlight?: string; reference?: string }
 function factLayout(m: Manifest, plan: ShortPlan): Partial<Manifest> {
   const cards = plan.cards.map((i) => m.cards[i])
   if (plan.kind === "history") {
-    const mark = cards.find((c) => c.sourceMark)?.sourceMark as Mark | undefined
+    // The credit opens its paragraph; a hook-first cut can start a sentence
+    // or two later, so look back up to three cards for it.
+    const before = m.cards
+      .slice(Math.max(0, plan.cards[0] - 3), plan.cards[0])
+      .reverse()
+    const mark = (cards.find((c) => c.sourceMark)?.sourceMark ??
+      before.find((c) => c.sourceMark)?.sourceMark) as Mark | undefined
     return {
       shortFact: {
         layout: "history",
@@ -1091,4 +1108,40 @@ export function openingLinesOf(
         : []
   ) as string[]
   return raw.filter((l) => !/^let'?s watch\.?$/i.test(l.trim()))
+}
+
+/**
+ * The devotional's personal question, cut out of its recorded questions
+ * segment (the prayer that follows is left out), as a closing line for a
+ * fact short: the turn from "then" to "you" (owner, 2026-10-02). `words` are
+ * the segment's recorded word times; returns the window to cut and the
+ * question's words re-timed to it, or null when the question is not found.
+ */
+export function questionClip(
+  words: ReadonlyArray<{ word: string; startSec: number; endSec: number }>,
+  question: string,
+): {
+  fromSec: number
+  toSec: number
+  words: { word: string; startSec: number; endSec: number }[]
+} | null {
+  const q = question.split(/\s+/).filter(Boolean)
+  const key = (w: string) => w.toLowerCase().replace(/[^a-z0-9']/g, "")
+  for (let i = 0; i + q.length <= words.length; i++) {
+    if (q.every((w, k) => key(words[i + k].word) === key(w))) {
+      const run = words.slice(i, i + q.length)
+      const fromSec = Math.max(0, run[0].startSec - 0.08)
+      const toSec = run[run.length - 1].endSec + 0.25
+      return {
+        fromSec,
+        toSec,
+        words: run.map((w) => ({
+          word: w.word,
+          startSec: Number((w.startSec - fromSec).toFixed(3)),
+          endSec: Number((w.endSec - fromSec).toFixed(3)),
+        })),
+      }
+    }
+  }
+  return null
 }
