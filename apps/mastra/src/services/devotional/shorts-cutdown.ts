@@ -602,6 +602,15 @@ export function shortComposition(m: Manifest): string {
  *  short trims this much extra footage so the film keeps playing (and
  *  sounding) through it rather than freezing. */
 export const SHORT_OUTRO_SEC = 1.5
+
+/** Where in the bed each short starts, as a share of its length, so shorts
+ *  posted side by side never open on the same bars (owner, 2026-10-02:
+ *  "different parts, not the same composition every time"). */
+export const MUSIC_START_SHARE: Partial<Record<ShortKind, number>> = {
+  reflection: 0,
+  history: 1 / 3,
+  language: 2 / 3,
+}
 /** Seconds of quiet the film short's opening question needs before the
  *  scene's first line (in after the 0.6s fade from black so the stamp hits
  *  at full strength, ~2.6 on screen, 0.55 clear of the voice). */
@@ -643,7 +652,10 @@ export function quietStretchBefore(
 export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
   const top: Partial<Manifest> = { ...m }
   delete top.cards
-  delete top.musicFile
+  // Music under every short except the film one, which plays the film's own
+  // sound (owner, 2026-10-02; the 2026-10-01 "no bed" rule is retired). The
+  // long form's own bed, the one under these very lines.
+  if (plan.film) delete top.musicFile
   const bg = backgroundStarts(m)
   const firstText = plan.cards.find((i) => m.cards[i].kind !== "video")
   const cards = plan.cards.map((i) => {

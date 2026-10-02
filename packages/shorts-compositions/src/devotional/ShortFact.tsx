@@ -142,6 +142,28 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           background: `radial-gradient(${f(490.7)}px ${f(413.8)}px at 50% 50%, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 100%)`,
         }}
       />
+      {props.musicFile ? (
+        // The devotional's bed under the voice (owner, 2026-10-02), easing in
+        // and out with the picture.
+        <Audio
+          src={staticFile(props.musicFile)}
+          loop
+          volume={(fr) =>
+            (props.musicVolume ?? 0.2) *
+            interpolate(
+              fr,
+              [
+                0,
+                Math.round(0.8 * fps),
+                durationInFrames - Math.round(1.2 * fps),
+                durationInFrames,
+              ],
+              [0, 1, 1, 0],
+              clamp,
+            )
+          }
+        />
+      ) : null}
       {props.cards.map((c, i) =>
         c.audioFile ? (
           <Sequence

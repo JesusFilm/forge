@@ -51,6 +51,7 @@ import {
   buildShortManifest,
   chooseFilmTurn,
   chooseKineticRoles,
+  MUSIC_START_SHARE,
   questionClip,
   introTeaserArgs,
   kineticLines,
@@ -430,6 +431,41 @@ async function main() {
     )
     try {
       const m = buildShortManifest(manifest, short)
+      if (m.musicFile) {
+        // Each short opens on its own part of the bed, looping from there.
+        const src = path.join(from, m.musicFile)
+        const bedSec = Number(
+          (
+            await run("ffprobe", [
+              "-v",
+              "error",
+              "-show_entries",
+              "format=duration",
+              "-of",
+              "csv=p=0",
+              src,
+            ])
+          ).trim(),
+        )
+        const offset = bedSec * (MUSIC_START_SHARE[short.kind] ?? 0)
+        await run("ffmpeg", [
+          "-y",
+          "-stream_loop",
+          "-1",
+          "-ss",
+          offset.toFixed(3),
+          "-i",
+          src,
+          "-t",
+          (short.durationSec + 12).toFixed(3),
+          "-c:a",
+          "libmp3lame",
+          "-b:a",
+          "192k",
+          path.join(stage, m.musicFile),
+        ])
+        console.log(`  music: the bed from ${offset.toFixed(1)}s`)
+      }
       if (
         short.kind === "history" &&
         m.shortFact &&
@@ -556,7 +592,9 @@ async function main() {
         shortComposition(m),
         render.style,
         render.layout,
-        0,
+        // The long form's bed level for the shorts that carry music; the
+        // film short has none (its manifest drops the bed).
+        m.musicFile ? render.musicVolume : 0,
         render.xfadeSec,
         render.videoAudioLevel,
         {

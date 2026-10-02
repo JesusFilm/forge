@@ -168,9 +168,10 @@ describe("buildShortManifest", () => {
   const history = plan.shorts.find((s) => s.kind === "history")!
   const film = plan.shorts.find((s) => s.kind === "film-verse")!
 
-  it("drops the music bed and the step clock, and opens with no cover", () => {
+  it("keeps the music bed (not on the film short), drops the step clock, opens with no cover", () => {
     const m = buildShortManifest(manifest, history)
-    expect(m.musicFile).toBeUndefined()
+    expect(m.musicFile).toBe(manifest.musicFile)
+    expect(buildShortManifest(manifest, film).musicFile).toBeUndefined()
     expect(m.stepRing).toBe(false)
     expect(m.introHoldSec).toBe(0)
     expect(m.cards).toHaveLength(history.cards.length)
