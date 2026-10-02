@@ -34,6 +34,11 @@ class NativeAndroidPlayerModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("NativeAndroidPlayer")
+    Events("onPlaybackLoadingCancelled")
+
+    AsyncFunction("hidePlaybackLoading") {
+      PlaybackLoadingCover.hide()
+    }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("hideStartupLoading") {
       appContext.currentActivity?.let { StartupLoadingOverlay.hide(it) }
@@ -43,14 +48,9 @@ class NativeAndroidPlayerModule : Module() {
       loadingDialog?.dismiss()
       val activity = requireNotNull(appContext.currentActivity) { "Activity unavailable" }
       loadingRequestId = requestId
-      loadingDialog = showNativeChoiceDialog(
+      loadingDialog = showBrandedLoadingDialog(
         context = activity,
-        title = message,
-        labels = listOf("Back"),
-        selected = -1,
-        showClose = false,
-        loading = true,
-        onChoice = {},
+        label = message,
         onDismiss = {
           if (loadingRequestId == requestId) {
             loadingDialog = null
@@ -76,7 +76,12 @@ class NativeAndroidPlayerModule : Module() {
         labels = listOf(resumeLabel, "Start over", "Cancel"),
         selected = 0,
         showClose = false,
-        onChoice = { index -> choice = when (index) { 0 -> "resume"; 1 -> "start-over"; else -> "cancel" } },
+        onChoice = { index ->
+          choice = when (index) { 0 -> "resume"; 1 -> "start-over"; else -> "cancel" }
+          if (choice != "cancel") {
+            PlaybackLoadingCover.show(activity) { sendEvent("onPlaybackLoadingCancelled") }
+          }
+        },
         onDismiss = {
           if (resumeRequestId == requestId) {
             resumeDialog = null
@@ -92,6 +97,7 @@ class NativeAndroidPlayerModule : Module() {
     }.runOnQueue(Queues.MAIN)
 
     OnDestroy {
+      Handler(Looper.getMainLooper()).post { PlaybackLoadingCover.hide() }
       Handler(Looper.getMainLooper()).post { resumeDialog?.dismiss(); resumeDialog = null; resumeRequestId = null }
       Handler(Looper.getMainLooper()).post { loadingDialog?.dismiss(); loadingDialog = null; loadingRequestId = null }
     }
@@ -105,6 +111,9 @@ class NativeAndroidPlayerModule : Module() {
         "onError",
         "onAudioChange",
         "onSubtitleChange",
+        "onFeedbackOpen",
+        "onFeedbackClose",
+        "onFeedbackRetry",
         "onMenuChange",
         "onFirstFrame",
         "onRebuffer"
@@ -150,6 +159,12 @@ class NativeAndroidPlayerModule : Module() {
       Prop("questions") { view: NativeAndroidPlayerView, value: List<String> ->
         view.questions = value
       }
+      Prop("feedbackAvailable") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackAvailable = value ?: false }
+      Prop("feedbackVisible") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackVisible = value ?: false }
+      Prop("feedbackRows") { view: NativeAndroidPlayerView, value: List<String>? -> view.feedbackRows = value ?: emptyList() }
+      Prop("feedbackReference") { view: NativeAndroidPlayerView, value: String? -> view.feedbackReference = value }
+      Prop("feedbackLoading") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackLoading = value ?: false }
+      Prop("feedbackError") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackError = value ?: false }
       Prop("upNextSlug") { view: NativeAndroidPlayerView, value: String? ->
         view.upNextSlug = value
       }

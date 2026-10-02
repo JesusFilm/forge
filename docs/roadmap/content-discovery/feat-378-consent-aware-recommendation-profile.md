@@ -11,11 +11,7 @@ depends_on:
   - "feat-369"
   - "feat-376"
 blocks:
-  - "feat-379"
-  - "feat-380"
   - "feat-386"
-  - "feat-392"
-  - "feat-448"
   - "feat-512"
 tags:
   - "admin"

@@ -8,19 +8,11 @@ start_date: ""
 duration: 5
 depends_on:
   - "feat-376"
-  - "feat-381"
   - "feat-382"
 blocks:
   - "feat-384"
   - "feat-386"
   - "feat-387"
-  - "feat-388"
-  - "feat-389"
-  - "feat-390"
-  - "feat-391"
-  - "feat-392"
-  - "feat-393"
-  - "feat-448"
 tags:
   - "admin"
   - "recommendations"

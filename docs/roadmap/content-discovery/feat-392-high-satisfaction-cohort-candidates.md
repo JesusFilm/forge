@@ -3,19 +3,10 @@ id: "feat-392"
 title: "High-satisfaction cohort candidates"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 7
-depends_on:
-  - "feat-369"
-  - "feat-372"
-  - "feat-376"
-  - "feat-378"
-  - "feat-380"
-  - "feat-382"
-  - "feat-383"
-  - "feat-386"
-  - "feat-391"
+depends_on: []
 blocks: []
 tags:
   - "admin"
@@ -25,7 +16,18 @@ tags:
   - "candidates"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+The satisfaction-cohort generator depends on the retired survey/popularity programme and is outside the chosen scope. No cohort quality, survey calibration or causal satisfaction result is claimed. Existing support thresholds, privacy suppression, erasure and machine exclusion remain binding for working generators.
+
+Audit anchors: `apps/admin/src/services/recommendations/cowatch/graph.ts`, `apps/admin/src/services/recommendations/profiles/privacy.ts`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Similar-interest cohorts can surface valuable videos only when support, privacy, outcome quality, and popularity correction are explicit.
 
