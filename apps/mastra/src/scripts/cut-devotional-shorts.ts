@@ -491,6 +491,13 @@ async function main() {
       if (short.kind === "history" && arg("history-sub") && m.shortFact) {
         ;(m.shortFact as { closeSub?: string }).closeSub = arg("history-sub")
       }
+      if (short.kind === "history" && arg("history-close") && m.shortFact) {
+        // A silent stamped turn after the voice; the outro holds long enough
+        // to read it (owner, 2026-10-02).
+        ;(m.shortFact as { closeCard?: string }).closeCard =
+          arg("history-close")
+        m.outroHoldSec = 3.8
+      }
       if (short.kind === "history" && m.shortFact) {
         // Teaser-style kinetic captions: the model picks each line's hero and
         // accents (the owner's hand picks on the Prodigal teaser are the

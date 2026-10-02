@@ -473,6 +473,9 @@ export const devotionalInputPropsSchema = z.object({
       /** History: a quiet line under the captions once the voice ends,
        *  set like the verse address ("The full story is on our channel."). */
       closeSub: z.string().optional(),
+      /** History: a silent turn stamped once the voice ends ("And this is
+       *  the son who got the party."), with `closeSub` under it. */
+      closeCard: z.string().optional(),
       /** Language: the verse's address ("Luke 15:32"). */
       reference: z.string().optional(),
     })

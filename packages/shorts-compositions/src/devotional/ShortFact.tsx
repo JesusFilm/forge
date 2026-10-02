@@ -188,9 +188,23 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           source={fact?.source ?? ""}
           emblem={fact?.emblem ?? "book"}
           lines={fact?.lines}
+          {...(fact?.closeCard && words.length
+            ? { captionsEndBy: words[words.length - 1].endSec + 0.5 }
+            : {})}
         />
       )}
-      {fact?.closeSub && words.length ? (
+      {fact?.closeCard && words.length ? (
+        // The silent turn after the fact (owner, 2026-10-02), stamped like
+        // the film short's closing line, the quiet sub line beneath it.
+        <CloseCard
+          f={f}
+          t={t}
+          at={words[words.length - 1].endSec + 0.5}
+          text={fact.closeCard}
+          {...(fact.closeSub ? { sub: fact.closeSub } : {})}
+        />
+      ) : null}
+      {!fact?.closeCard && fact?.closeSub && words.length ? (
         // A quiet last line once the voice has finished (owner, 2026-10-02),
         // set like the verse address: PT Serif italic 32 at 85%, just under
         // the caption block and well inside the safe zone.
@@ -285,6 +299,7 @@ function HistoryLayout({
   source,
   emblem,
   lines,
+  captionsEndBy,
 }: {
   f: (n: number) => number
   t: number
@@ -294,6 +309,8 @@ function HistoryLayout({
   source: string
   emblem: "book" | "scroll"
   lines?: KineticLine[] | undefined
+  /** Clear the captions by this time (a closing card follows). */
+  captionsEndBy?: number
 }) {
   const { width } = useVideoConfig()
   // The credit arrives in a short cascade rather than all at once (owner,
@@ -407,6 +424,7 @@ function HistoryLayout({
           lines={lines}
           px={tpx}
           frameWidth={width}
+          {...(captionsEndBy != null ? { endBy: captionsEndBy } : {})}
         />
       ) : (
         <div
@@ -440,6 +458,7 @@ function TeaserCaptions({
   lines,
   px,
   frameWidth,
+  endBy,
 }: {
   t: number
   total: number
@@ -447,6 +466,7 @@ function TeaserCaptions({
   lines: KineticLine[]
   px: (n: number) => number
   frameWidth: number
+  endBy?: number
 }) {
   const inset = px(28)
   // Clear of the rail on the right (x > 940 of 1080).
@@ -460,9 +480,9 @@ function TeaserCaptions({
         const next = lines[i + 1]
           ? words[lines[i + 1].from]?.startSec
           : undefined
-        const to = next ?? total + 10
+        const to = next ?? endBy ?? total + 10
         const out =
-          next == null
+          next == null && endBy == null
             ? 1
             : interpolate(t, [to - 0.35, to - 0.02], [1, 0], {
                 ...clamp,
@@ -861,6 +881,51 @@ function Divider({ f, grow }: { f: (n: number) => number; grow: number }) {
         fill="#D9D9D9"
       />
     </svg>
+  )
+}
+
+function CloseCard({
+  f,
+  t,
+  at,
+  text,
+  sub,
+}: {
+  f: (n: number) => number
+  t: number
+  at: number
+  text: string
+  sub?: string
+}) {
+  if (t < at - 0.05) return null
+  const dim = interpolate(t, [at - 0.05, at + 0.4], [0, 1], clamp)
+  const subIn = interpolate(t, [at + 1.0, at + 1.8], [0, 1], clamp)
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      <AbsoluteFill style={{ background: `rgba(0,0,0,${0.35 * dim})` }} />
+      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
+        <div style={{ width: f(SAFE_COLUMN) }}>
+          <StampLine text={text} t={t - at} f={f} />
+          {sub ? (
+            <p
+              style={{
+                margin: `${f(28)}px 0 0`,
+                fontFamily: PT_SERIF,
+                fontStyle: "italic",
+                fontSize: f(32),
+                lineHeight: `${f(50)}px`,
+                textAlign: "center",
+                color: "rgba(255,255,255,0.92)",
+                opacity: 0.85 * subIn,
+                textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
+              }}
+            >
+              {sub}
+            </p>
+          ) : null}
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
   )
 }
 
