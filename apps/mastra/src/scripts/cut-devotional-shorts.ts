@@ -38,6 +38,7 @@ import {
 import { getDevotionalModel } from "../config/env"
 import { createDevotionalLlm } from "../services/devotional/llm"
 import {
+  DEFAULT_SHORT_KINDS,
   SHORT_KINDS,
   SHORT_OUTRO_SEC,
   buildShortManifest,
@@ -190,7 +191,9 @@ async function main() {
     throw new Error("--from=<video>.source and --out=<dir> are required")
   // `--frames=30,120` renders exactly those frames as stills.
   const stills = process.argv.includes("--stills") || Boolean(arg("frames"))
-  const only = arg("only")?.split(",") as ShortKind[] | undefined
+  const only = (arg("only")?.split(",") ?? [
+    ...DEFAULT_SHORT_KINDS,
+  ]) as ShortKind[]
   for (const k of only ?? []) {
     if (!SHORT_KINDS.includes(k))
       throw new Error(`unknown kind ${k}; known: ${SHORT_KINDS.join(", ")}`)

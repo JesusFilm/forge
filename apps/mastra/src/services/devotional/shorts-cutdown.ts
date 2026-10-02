@@ -37,6 +37,16 @@ export type ShortKind =
   | "reflection"
   | "question"
 
+/** What a cut makes unless `--only` asks for more. The owner dropped the
+ *  film-turn and question shorts on 2026-10-02 ("I don't see the point");
+ *  they stay available by name. */
+export const DEFAULT_SHORT_KINDS: readonly ShortKind[] = [
+  "film-verse",
+  "history",
+  "language",
+  "reflection",
+]
+
 export const SHORT_KINDS: readonly ShortKind[] = [
   "film-turn",
   "film-verse",
