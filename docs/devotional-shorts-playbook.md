@@ -20,6 +20,14 @@ viewer, an open door.** The reflection short worked first because it has
 all four ("Picture the older son...", "Many of us... know exactly where he is
 standing", and we leave him at the door).
 
+What each short is for (owner, 2026-10-02):
+
+- **intro** and **film-verse** sell the full devotional: they intrigue and
+  send the viewer to the channel;
+- **language** and **reflection** are the ones people share: a thought worth
+  sending to a friend;
+- **history** is an interesting fact that wakes curiosity.
+
 Standing rules:
 
 - No spoken hook or call to action added to shorts 2 to 5. The intro teaser is
@@ -76,7 +84,13 @@ carry the opening's shots, focus, kinetic picks and bed in `render.json`.
 
 3. The intro is cut through `render-one-devotional.ts --teaser-intro` (the
    approved teaser recipe, `docs/handoffs/2026-10-02-vertical-intro-design.md`).
-   Its voice must be in the narration cache (`devo/cache/ch<N>-seq<M>/audio`).
+   By default it reuses the LONG FORM's opening voice from the narration cache
+   (`devo/cache/ch<N>-seq<M>/audio`): the narrated text stays the long form's
+   (its "Let's watch." included, so the cached take matches), the audio is cut
+   before "Let's watch.", and the CTA is written on screen, silent, for 3.4 s
+   (`--cta-text`). No new narration is ever needed. `--intro-voiced-cta`
+   narrates the CTA instead (needs that take cached or a key). Intro shots and
+   bed for older packs are in the story folder's README ("INTRO SETTINGS").
 4. Outputs never overwrite: a taken name becomes `-v2`; move old takes to
    `archive/` (never hard-delete).
 
@@ -165,10 +179,14 @@ channel."), and the story's eastern bed. Full spec:
 
 ### 6.2 film-verse
 
-Content: the window of the film from the start of the line before the quoted
-verse's speech, up to 0.5 s after the verse's last line (verse matched to
-captions by content words, never "the/was/in"; target ~30 s), widened into
-the quiet around it for the cards, never into a neighbouring line.
+Content: the quoted passage found by verse ADDRESS (every caption line tagged
+with a verse in the scripture card's range, e.g. Luke 10:41-42), then whole
+lines before it up to ~30 s, ending 0.5 s after the passage's last line.
+Word matching (content words only) is the fallback when captions carry no
+addresses; it failed on Martha because the devotional quotes BSB and the film
+reads NIV. The window never starts inside its first line or takes the tail of
+the line before, and widens into the quiet around it for the cards, never into
+a neighbouring line.
 
 Look (Figma 411-2366): film full frame; the film's narration as numbered
 scrolling verses centred in a 660 wide block, five lines visible
@@ -184,15 +202,21 @@ Cards: opening question stamped SHARP from 0.62 s until 0.55 s before the
 scene's first line; it needs 3.75 s of quiet, and when the scene has less the
 lead is filled with live footage from the nearest earlier quiet stretch of the
 same scene (no line spoken, 0.2 s clear each side), else the first frame is
-held (last resort). Closing turn stamped SOFT 0.6 s after the last line, over
-the scene still playing with sound; the small line under it (PT Serif italic
+held (last resort); the quiet before the scene's first line (establishing
+shots) counts. Closing turn stamped SOFT 0.6 s after the last line, over the
+scene still playing with sound; when the scene ends within ~4.4 s of its last
+line (Martha: 1.5 s), the rest of the card's picture is a quiet stretch of the
+same scene played live after the window (never footage already in it), and the
+outro is lengthened to fit; the small line under it (PT Serif italic
 32, 85%) eases in 1.0 to 1.8 s after. On-screen text credit is the film's
 translation (LUMO reads NIV).
 
 ### 6.3 history
 
-Content: the credited history paragraph alone (one thought, about 12 to 16 s;
-extended by the next paragraph only below 10 s, never into another fact),
+Content: the credited history paragraph alone (one thought, about 12 to 20 s;
+extended by the next paragraph only below 10 s, never into another credited
+fact; an uncredited paragraph of the SAME role is its continuation and may
+join, as Martha's hospitality note runs over two paragraphs),
 opening on its first short line (four words or fewer, within its first three
 sentences: "Feeding pigs."), the lead-in dropped. Credit kept even when its
 sentence is dropped.
@@ -217,8 +241,11 @@ blur 8%). A line fades over its last 0.35 s. Blocks sit left, bottom at 38%
 of the frame, never wider than the frame minus the rail, with their own dark
 pool behind them (radial 0.62 / 0.38, inset 34 x 40 units, blur 14). A model
 picks each line's hero (1 to 3 words, prefer a whole noun phrase) and accents
-(0 to 2 words), checked against the line; the fallback rule takes the longest
-content words.
+(0 to 2 words), checked against the line: a pick longer than three words keeps
+its weightiest word, and empty words ("something", "thing") or function words
+are never the hero; the fallback rule takes the longest content words. Long
+sentences break after a comma first (strong preference), then before a
+connector.
 
 Ending: captions clear 0.5 s after the last word; the closing turn is
 stamped soft over a 35% dim; the outro holds 3.8 s so it can be read. No
@@ -226,8 +253,9 @@ small line.
 
 ### 6.4 language
 
-Content: the language paragraph and, when it is under 10 s, the next
-paragraph so the thought lands ("...celebration is not optional").
+Content: the language paragraph and, when it is under 14 s, the next
+paragraph so the thought lands ("...celebration is not optional"; Martha:
+"Not a woman who refused Jesus, but a woman pulled away from him...").
 
 Look (Figma 414-2523): the callout verse on screen from the first frame,
 centred, 620 wide, top 393 (raised by the owner from the Figma's 470), PT Serif
@@ -251,8 +279,12 @@ screen: the lexicon goes in the caption credits.
 
 ### 6.5 reflection
 
-Content: the first run of plain reflection paragraphs (no credited facts)
-that lasts 15 to 45 s, the devotional's opening picture.
+Content: a run of plain reflection paragraphs (reflection / classic, no
+credited fact) of 15 to 45 s that never opens on a back-reference ("That is
+the picture.", "So her complaint..."). All such runs are candidates and a
+model picks the one that stands alone best and would be shared (Martha: "Look
+at how Jesus answers... He says her name twice"); `--no-model` takes the first
+(usually the opening picture, as on the Prodigal Son).
 
 Look (Figma 415-2610, revised): text centred, top 560 (raised from 614 for
 the bottom zone), 640 wide, Inter 61 / 89, #eae6df. One sentence at a time.
@@ -310,6 +342,9 @@ AI help and chosen by the team).
 - Prettier in the commit hook reformats files: re-read before scripted edits.
 - `rm -rf` with a relative glob after `cd` is blocked by the safety check; use
   absolute paths.
+
+Second devotional (Martha and Mary, 2026-10-02) confirmed the rules above;
+its set is in `~/Desktop/Social Media/Martha/shorts/`.
 
 ## 10. Rendering one story, step by step
 
