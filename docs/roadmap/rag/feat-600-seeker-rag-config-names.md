@@ -62,7 +62,8 @@ old variable names.
 - Run configuration, RAG-client, retrieve-answer and Seeker capture/evaluation tests.
 - Check formatting and TypeScript for the touched package.
 - After rollout, verify grounded retrieval and citations locally and in production.
-- Work remains local for owner review; do not open a PR yet.
+- Publish the reviewed implementation as a PR; keep this ticket in progress until
+  the production/local configuration rollout is verified.
 
 ## Local Verification — October 2, 2026
 
@@ -72,5 +73,5 @@ old variable names.
 - Mastra TypeScript check and ESLint for changed TypeScript files passed.
 - Old runtime/capture names are rejected; CLI overrides and existing runtime
   defaults, caps and production host restrictions remain covered.
-- Owner review, PR publication and the production/local configuration rollout
-  remain pending. No production settings have been changed.
+- Owner approved PR publication. Production/local configuration rollout remains
+  pending; no production settings have been changed.
