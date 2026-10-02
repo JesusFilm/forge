@@ -11,7 +11,7 @@
  * The fixture file carries a `corpusSha256` over every passage returned. Two
  * runs with different fingerprints are not comparable.
  *
- *   RAG_BASE_URL=http://localhost:8080 RAG_API_KEY=... \
+ *   SEEKER_RAG_BASE_URL=http://localhost:8080 SEEKER_RAG_API_KEY=... \
  *     pnpm --filter @forge/mastra eval:seeker:capture-rag
  */
 import { createHash } from "node:crypto"
@@ -81,19 +81,16 @@ async function main(): Promise<void> {
 
   const baseUrl =
     flag(argv, "base-url") ??
-    process.env.RAG_BASE_URL ??
+    process.env.SEEKER_RAG_BASE_URL ??
     "http://localhost:8080"
-  const apiKey = flag(argv, "api-key") ?? process.env.RAG_API_KEY
+  const apiKey = flag(argv, "api-key") ?? process.env.SEEKER_RAG_API_KEY
   if (!apiKey) {
     throw new Error(
       [
-        "RAG_API_KEY is not set. The local RAG requires a bearer token.",
+        "SEEKER_RAG_API_KEY is not set. The local RAG requires a bearer token.",
         "",
-        "For the docker-compose stack, the serve container holds it:",
-        "  export RAG_API_KEY=$(docker inspect jesusfilm-rag-serve \\",
-        "    --format '{{range .Config.Env}}{{println .}}{{end}}' \\",
-        "    | grep '^SERVE_BEARER_TOKENS=' | cut -d= -f2- \\",
-        "    | python3 -c 'import json,sys; print(list(json.load(sys.stdin))[0])')",
+        "Set SEEKER_RAG_API_KEY to the registered Seeker consumer key.",
+        "Set SEEKER_RAG_BASE_URL to the intended RAG service endpoint.",
       ].join("\n"),
     )
   }

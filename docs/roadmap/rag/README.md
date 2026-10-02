@@ -10,9 +10,9 @@ database into Admin.
 
 ## Status (October 2, 2026)
 
-- **Total tickets:** 41
+- **Total tickets:** 42
 - **Complete:** 30
-- **In progress:** 0
+- **In progress:** 1
 - **Not started:** 11
 - **Blocked:** 0
 
@@ -20,6 +20,7 @@ database into Admin.
 
 | Forge ID                                                          | Historical issue                                              | Feature                                                            | Status      | Forge PR                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [feat-600](feat-600-seeker-rag-config-names.md)                   | —                                                             | Name Seeker RAG configuration after its consumer                   | in-progress | —                                                                                                                                                                                                                                                                                                                                        |
 | [feat-593](feat-593-seeker-consumer-credentials.md)               | —                                                             | Migrate Seeker to registered RAG consumer credentials              | complete    | [#2535](https://github.com/JesusFilm/forge/pull/2535)                                                                                                                                                                                                                                                                                    |
 | [feat-423](feat-423-rag-scaffold-and-roadmap.md)                  | [#156](https://github.com/JesusFilm/jesusfilm-rag/issues/156) | Scaffold RAG space and durable roadmap                             | complete    | [#2033](https://github.com/JesusFilm/forge/pull/2033)                                                                                                                                                                                                                                                                                    |
 | [feat-424](feat-424-rag-environment-contracts.md)                 | [#157](https://github.com/JesusFilm/jesusfilm-rag/issues/157) | Port environment contracts and secrets procedure                   | complete    | [#2061](https://github.com/JesusFilm/forge/pull/2061)                                                                                                                                                                                                                                                                                    |
