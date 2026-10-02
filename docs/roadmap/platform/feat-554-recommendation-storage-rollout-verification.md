@@ -17,6 +17,19 @@ tags:
   - "operations"
 ---
 
+## October 3 repair in progress
+
+The October 2 scheduled run again recovered only after an initial transaction
+deadline failure. The failed wrapper committed 100 expired request roots, 371
+served descendants and 8,265 expired projection runs, then exhausted the fixed
+five-second whole-run budget before the next phase could commit. A scoped repair
+pages the four previously unbounded projection-tail deletes and live generation
+reference detachments under the existing batch size. Native PostgreSQL fixtures
+cover root-free continuation, contributions, interests, live run and decision
+references, and eventual generation expiry. This local repair is not production
+acceptance. Feat-554 remains in progress until two subsequent normal,
+failure-free, loaded cycles meet the existing backlog and headroom criteria.
+
 ## October 2 NZDT status: loaded retention still open
 
 The October 1 22:51 UTC production read confirmed 25,630,932,992 B of direct

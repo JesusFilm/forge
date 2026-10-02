@@ -431,7 +431,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         rowCounts: {
           candidateRuns: 100,
           candidateStageEvidence: 4_200,
-          expiredProfileProjectionRuns: 3_000,
+          expiredProfileProjectionRuns: 100,
           expiredProfileSessionLinks: 3_000,
         },
       })
@@ -442,7 +442,26 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(second).toMatchObject({
         status: "succeeded",
         rootsDeleted: 20,
-        rowCounts: { candidateRuns: 20, candidateStageEvidence: 840 },
+        rowCounts: {
+          candidateRuns: 20,
+          candidateStageEvidence: 840,
+          expiredProfileProjectionRuns: 100,
+        },
+      })
+      for (let page = 0; page < 28; page++) {
+        const tail = await purgeExpiredRecommendationRequests(db, now)
+        expect(tail).toMatchObject({
+          status: "succeeded",
+          rootsDeleted: 0,
+          rowCounts: { expiredProfileProjectionRuns: 100 },
+          batchLimitReached: true,
+        })
+      }
+      expect(await purgeExpiredRecommendationRequests(db, now)).toMatchObject({
+        status: "succeeded",
+        rootsDeleted: 0,
+        rowCounts: { expiredProfileProjectionRuns: 0 },
+        batchLimitReached: false,
       })
       expect(
         await db.recommendationRequest.count({
