@@ -1897,6 +1897,7 @@ function ClipIntro({
   framed = false,
   captions = [],
   passageRef,
+  ctaText,
   cta = false,
   ctaCalm = false,
   kinetic = [],
@@ -1935,6 +1936,8 @@ function ClipIntro({
   /** The passage the scene reads, drawn over WATCH. */
   passageRef?: string
   /** `montage` teaser: the last line is a call to action, not "Let's watch". */
+  /** The call to action shown in place of the last line (silent CTA). */
+  ctaText?: string
   cta?: boolean
   /** Teaser: close on one quiet centred line (see CalmCallToAction). */
   ctaCalm?: boolean
@@ -2156,7 +2159,7 @@ function ClipIntro({
                     }}
                   />
                   <CalmCallToAction
-                    line={line}
+                    line={ctaText ?? line}
                     time={t - from}
                     px={px}
                     maxWidth={frameWidth * 0.8}
@@ -5443,6 +5446,7 @@ function CardBody({
             {...(card.passageRef ? { passageRef: card.passageRef } : {})}
             cta={card.introCta === true}
             ctaCalm={card.introCtaStyle === "calm"}
+            {...(card.introCtaText ? { ctaText: card.introCtaText } : {})}
           />
         </>
       )

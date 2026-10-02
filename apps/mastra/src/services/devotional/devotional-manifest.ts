@@ -59,6 +59,9 @@ export type DevotionalManifest = {
   /** Teaser CTA look: `calm` sets the last line as one quiet centred line
    *  instead of another kinetic stack. */
   introCtaStyle?: "kinetic" | "calm"
+  /** Teaser with the long form's voice: the CTA shown in place of the last
+   *  spoken line (see RenderOptions.introCtaText). */
+  introCtaText?: string
   /** `montage`, vertical: horizontal focus per shot. */
   introFocus?: number[]
   /** Mark of the film the clip comes from (top-left while it plays). */
@@ -160,6 +163,9 @@ export type BuildManifestInput = {
   /** Teaser CTA look: `calm` sets the last line as one quiet centred line
    *  instead of another kinetic stack. */
   introCtaStyle?: "kinetic" | "calm"
+  /** Teaser with the long form's voice: the CTA shown in place of the last
+   *  spoken line (see RenderOptions.introCtaText). */
+  introCtaText?: string
   /** `montage`, vertical: horizontal focus per shot. */
   introFocus?: number[]
   /** Mark of the film the clip comes from (top-left while it plays). */
@@ -339,6 +345,11 @@ function buildClipFirstManifest(
               input.intro === "montage") &&
             input.hookParts?.length
               ? { introParts: input.hookParts }
+              : {}),
+            ...(input.intro === "montage" &&
+            input.introCta &&
+            input.introCtaText
+              ? { introCtaText: input.introCtaText }
               : {}),
             ...(input.intro === "montage" && input.introCta
               ? { introCta: true }

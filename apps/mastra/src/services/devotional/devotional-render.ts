@@ -1867,11 +1867,9 @@ async function renderInStage(
             "192k",
             dst,
           ])
-          seg.audio = {
-            ...seg.audio,
-            bytes: await readFile(dst),
-            words: (seg.audio.words ?? []).filter((w) => w.endSec <= cut),
-          }
+          // Word times stay whole: the composition times its lines from
+          // them, the cut line included (that is when the CTA appears).
+          seg.audio = { ...seg.audio, bytes: await readFile(dst) }
           // The film card runs to the CTA plus TEASER_CTA_HOLD_SEC after the
           // "voice"; a silent line needs longer to be read.
           hookSpokenSec = cut + SILENT_CTA_SEC - TEASER_CTA_HOLD_SEC
@@ -2632,6 +2630,11 @@ async function renderInStage(
     ...(options.introCaptions ? { introCaptions: options.introCaptions } : {}),
     ...(options.introKinetic ? { introKinetic: options.introKinetic } : {}),
     ...(locale.introKicker ? { introKicker: locale.introKicker } : {}),
+    ...(options.introTeaser &&
+    options.intro === "montage" &&
+    options.introCtaText
+      ? { introCtaText: options.introCtaText }
+      : {}),
     ...(options.introTeaser && options.intro === "montage"
       ? { introCta: true }
       : {}),
@@ -2641,16 +2644,10 @@ async function renderInStage(
     ...(options.introFocus ? { introFocus: options.introFocus } : {}),
     ...(options.hookLine
       ? {
-          hookParts: ((parts) =>
-            // Silent CTA: show the call to action in place of the last line.
-            options.introTeaser && options.introCtaText
-              ? [...parts.slice(0, -1), options.introCtaText]
-              : parts)(
-            options.hookLine
-              .split(/\n\s*\n/)
-              .map((part) => part.trim())
-              .filter(Boolean),
-          ),
+          hookParts: options.hookLine
+            .split(/\n\s*\n/)
+            .map((part) => part.trim())
+            .filter(Boolean),
         }
       : {}),
     // Social opening card, ahead of the film (see BuildManifestInput).
