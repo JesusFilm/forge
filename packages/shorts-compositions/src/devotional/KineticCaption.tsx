@@ -193,6 +193,8 @@ export function KineticCaption({
   maxWidth,
   sizes = {},
   accentColor,
+  bottom = "27%",
+  backdrop = false,
 }: {
   line: string
   hero: string
@@ -214,6 +216,12 @@ export function KineticCaption({
   /** Accent word colour. Default gold (the teaser); the history short sets
    *  it white (owner, 2026-10-02: the teaser's style "without the yellow"). */
   accentColor?: string
+  /** Portrait: the block's bottom edge. The teaser's 27%; the history short
+   *  sits higher, out of the bottom UI zone. */
+  bottom?: string
+  /** A soft dark pool behind the block itself, sized to it, so the darkening
+   *  is where the words are (owner, 2026-10-02) rather than a fixed band. */
+  backdrop?: boolean
 }) {
   const kHero = sizes.hero ?? 1
   const kAccent = sizes.accent ?? 1
@@ -270,14 +278,30 @@ export function KineticCaption({
           position: "absolute",
           ...edge,
           ...(portrait
-            ? { bottom: "27%", maxWidth }
+            ? { bottom, maxWidth }
             : { top: "50%", transform: "translateY(-50%)" }),
           display: "flex",
           flexDirection: "column",
           alignItems: side === "left" ? "flex-start" : "flex-end",
           gap: px(7),
+          // Its own stacking context, so the backdrop (z -1) sits behind
+          // the words but never behind the film.
+          isolation: "isolate",
         }}
       >
+        {backdrop ? (
+          <div
+            style={{
+              position: "absolute",
+              inset: `${-px(34)}px ${-px(40)}px`,
+              zIndex: -1,
+              borderRadius: px(60),
+              background:
+                "radial-gradient(closest-side, rgba(0,0,0,0.62), rgba(0,0,0,0.38) 55%, rgba(0,0,0,0) 100%)",
+              filter: `blur(${px(14)}px)`,
+            }}
+          />
+        ) : null}
         {phrases.map((ph, i) => (
           <div key={i} style={{ display: "flex", alignItems: "baseline" }}>
             {ph.map((t, k) => (

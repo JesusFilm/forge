@@ -23,8 +23,11 @@ import { spawn } from "node:child_process"
 import {
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
+  rename,
   rm,
+  stat,
   symlink,
   writeFile,
 } from "node:fs/promises"
@@ -37,6 +40,7 @@ import {
 } from "../services/devotional/devotional-render"
 import { getDevotionalModel } from "../config/env"
 import { createDevotionalLlm } from "../services/devotional/llm"
+import { videoSourceForIndex } from "../services/devotional/video-sources"
 import {
   DEFAULT_SHORT_KINDS,
   SHORT_KINDS,
@@ -44,7 +48,9 @@ import {
   buildShortManifest,
   chooseFilmTurn,
   chooseKineticRoles,
+  introTeaserArgs,
   kineticLines,
+  openingLinesOf,
   shortComposition,
   planCutdown,
   type CutdownOverrides,
@@ -186,6 +192,112 @@ function spokenText(m: Manifest, plan: ShortPlan): string {
     .join(" ")
 }
 
+/**
+ * The vertical intro teaser: the long form's own opening (shots, voice,
+ * kinetic captions) set in 9:16 with the calm CTA, through the approved
+ * `render-one-devotional.ts --teaser-intro` path. Shots and framing come from
+ * the pack's `render.json` (`intro`), or `--intro-shots` / `--intro-focus`
+ * for a pack made before that was recorded; the music bed from
+ * `--intro-music`, else the pack's, else the long form's bed. Runs with no
+ * ElevenLabs key unless `--allow-tts`: the opening is already recorded.
+ */
+async function cutIntroTeaser(input: {
+  from: string
+  outDir: string
+  manifest: Manifest
+  devo: DevotionalText
+  render: SourcePackRender
+}): Promise<string | null> {
+  const d = input.devo as DevotionalText & {
+    clip?: { index?: number }
+    sequence?: number
+    openingLines?: unknown
+  }
+  const film = input.manifest.cards.find((c) => c.kind === "video")
+  const source =
+    d.clip?.index != null ? videoSourceForIndex(d.clip.index) : undefined
+  const lines = openingLinesOf(d, film)
+  const shotsArg = arg("intro-shots")?.split(",").map(Number)
+  const shots = shotsArg ?? input.render.intro?.shots
+  if (!source || !lines.length || !shots?.length) {
+    console.log(
+      `skip intro: ${!source ? "unknown film source" : !lines.length ? "no opening lines" : "no intro shots (pass --intro-shots)"}`,
+    )
+    return null
+  }
+  const focus =
+    arg("intro-focus")?.split(",").map(Number) ?? input.render.intro?.focus
+  const packMusic = path.join(input.from, "music.mp3")
+  const music =
+    arg("intro-music") ??
+    input.render.intro?.musicFile ??
+    ((await stat(packMusic).catch(() => null)) ? packMusic : undefined)
+  const kinetic = (input.render.intro?.kinetic ??
+    (film?.introKinetic as never)) as
+    | { line: number; hero: string; accents: string[]; side: string }[]
+    | undefined
+  const tmp = await mkdtemp(path.join(tmpdir(), "devo-intro-"))
+  try {
+    const args = introTeaserArgs({
+      sourceKey: source.key,
+      sequence: d.sequence ?? 0,
+      lines,
+      shots,
+      ...(focus ? { focus } : {}),
+      ...(kinetic ? { kinetic } : {}),
+      ...(input.render.intro?.hookGapSec != null
+        ? { hookGapSec: input.render.intro.hookGapSec }
+        : {}),
+      ...(music ? { musicFile: music } : {}),
+      outDir: tmp,
+    })
+    console.log(`\n▶ intro → render-one-devotional.ts --teaser-intro`)
+    await new Promise<void>((resolve, reject) => {
+      const c = spawn(
+        "pnpm",
+        [
+          "exec",
+          "tsx",
+          "--env-file=.env.local",
+          "src/scripts/render-one-devotional.ts",
+          ...args,
+        ],
+        {
+          stdio: "inherit",
+          env: {
+            ...process.env,
+            ...(process.argv.includes("--allow-tts")
+              ? {}
+              : { ELEVENLABS_API_KEY: "" }),
+          },
+        },
+      )
+      c.on("error", reject)
+      c.on("close", (code) =>
+        code === 0
+          ? resolve()
+          : reject(new Error(`teaser render exited ${code}`)),
+      )
+    })
+    const mp4 = (await readdir(tmp)).find((f) => f.endsWith(".mp4"))
+    if (!mp4) throw new Error("teaser render produced no MP4")
+    const target = await nextFreePath(input.outDir, "intro.mp4")
+    await rename(path.join(tmp, mp4), target)
+    const q = await qa(target)
+    console.log(
+      `  ${q.durationSec.toFixed(1)}s, ${q.lufs?.toFixed(1)} LUFS, black ${q.blackSec.toFixed(1)}s`,
+    )
+    return (
+      `## ${path.basename(target)}\n\n` +
+      `- Kind: intro. The long form's opening in 9:16, ending on the calm call to action.\n` +
+      `- Length ${q.durationSec.toFixed(1)} s, loudness ${q.lufs?.toFixed(1)} LUFS.\n\n` +
+      `> ${[...lines, "Watch the full devotional on our YouTube channel."].join(" ")}\n`
+    )
+  } finally {
+    await rm(tmp, { recursive: true, force: true }).catch(() => {})
+  }
+}
+
 async function main() {
   const from = arg("from")
   const outDir = arg("out")
@@ -252,6 +364,10 @@ async function main() {
 
   await mkdir(outDir, { recursive: true })
   const report: string[] = []
+  if (only.includes("intro")) {
+    const done = await cutIntroTeaser({ from, outDir, manifest, devo, render })
+    if (done) report.push(done)
+  }
   for (const short of shorts) {
     const stage = await mkdtemp(
       path.join(tmpdir(), `devo-short-${short.kind}-`),

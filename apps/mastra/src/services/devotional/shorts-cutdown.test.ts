@@ -8,7 +8,10 @@ import {
   SHORT_MIN_SEC,
   backgroundStarts,
   buildShortManifest,
+  INTRO_CTA,
   chooseFilmTurn,
+  introTeaserArgs,
+  openingLinesOf,
   chooseKineticRoles,
   heuristicRoles,
   kineticLines,
@@ -325,5 +328,31 @@ describe("history kinetic lines", () => {
     const roles = await chooseKineticRoles(llm as never, lines)
     expect(roles[0].hero).toBe(heuristicRoles(lines[0].text).hero)
     expect(roles[1].accents).toEqual([])
+  })
+})
+
+describe("intro teaser", () => {
+  it("rebuilds the approved Prodigal teaser command from the devotional", () => {
+    const film = manifest.cards[0]
+    const lines = openingLinesOf({}, film)
+    expect(lines).toHaveLength(4)
+    expect(lines.at(-1)).toBe("The father steps out to him.")
+    const args = introTeaserArgs({
+      sourceKey: "lumo-luke-15",
+      sequence: 0,
+      lines,
+      shots: [172.4, 194.9, 199.3, 181.6],
+      focus: [0.5, 0.34, 0.16, 0.62, 0.55],
+      kinetic: film.introKinetic as never,
+      outDir: "/tmp/x",
+    })
+    expect(args).toContain("--teaser-intro")
+    expect(args).toContain("--aspect=portrait")
+    expect(args).toContain(
+      "--intro-kinetic=0=outside/faithful/left;1=the best robe/squandered/right;2=one word/feast/right;3=steps out/father/left",
+    )
+    const hook = args.find((a) => a.startsWith("--hook="))!
+    expect(hook.endsWith(`\n\n${INTRO_CTA}`)).toBe(true)
+    expect(hook).not.toMatch(/Let's watch/)
   })
 })

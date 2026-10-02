@@ -141,6 +141,14 @@ export type SourcePackRender = {
   videoAudioLevel: number
   /** The options bag passed to the Remotion render script. */
   options: Record<string, unknown>
+  /** The montage opening, for cutting the vertical intro teaser. */
+  intro?: {
+    shots: number[]
+    focus?: number[]
+    hookGapSec?: number
+    kinetic?: { line: number; hero: string; accents: string[]; side: string }[]
+    musicFile?: string
+  }
 }
 
 export type SourcePackInput = {

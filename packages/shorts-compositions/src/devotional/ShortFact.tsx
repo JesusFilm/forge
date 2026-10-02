@@ -47,6 +47,9 @@ const GOLD = "#f2c46b"
 /** Text column width in Figma px (of 900): keeps ~156px of a 1080 frame
  *  clear on each side, outside Reels / Shorts / TikTok's right-hand rail. */
 const SAFE_COLUMN = 640
+/** Reflection text top, Figma px: the design's 614 raised 54 so text plus
+ *  credit end above the bottom ~30% that Reels / Facebook cover. */
+const REFLECTION_TOP = 560
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 const EASE_OUT = Easing.bezier(0.2, 0.7, 0.2, 1)
 
@@ -126,6 +129,8 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
       <AbsoluteFill style={{ background: "rgba(0,0,0,0.28)" }} />
       <div
         style={{
+          // History darkens behind its captions instead (TeaserCaptions).
+          display: fact?.layout === "history" ? "none" : undefined,
           position: "absolute",
           left: width / 2 - f(450),
           top: height / 2 + f(language || reflection ? -92.5 : 19.5) - f(379.5),
@@ -328,24 +333,7 @@ function HistoryLayout({
             {source}
           </div>
         </div>
-        {/* Two tapering strokes and a small gold dot (Figma 413-2480). */}
-        <svg
-          width={f(323) * head}
-          height={f(4)}
-          viewBox="0 0 323 4"
-          preserveAspectRatio="none"
-          style={{ opacity: 0.85 }}
-        >
-          <path
-            d="M0 2L150.347 0C150.981 0 151.5 0.515 151.5 1.16V2.84C151.5 3.49 150.981 4.01 150.347 4L0 2Z"
-            fill="#D9D9D9"
-          />
-          <rect x="159.5" width="4" height="4" rx="2" fill={GOLD} />
-          <path
-            d="M323 2L172.42 0C171.913 0 171.5 0.515 171.5 1.16V2.84C171.5 3.48 171.913 4.01 172.42 4L323 2Z"
-            fill="#D9D9D9"
-          />
-        </svg>
+        <Divider f={f} grow={head} />
       </div>
       {lines?.length ? (
         <TeaserCaptions
@@ -419,12 +407,6 @@ function TeaserCaptions({
         if (t < from - 0.1 || out <= 0) return null
         return (
           <AbsoluteFill key={i} style={{ opacity: out }}>
-            <AbsoluteFill
-              style={{
-                background:
-                  "linear-gradient(0deg, rgba(0,0,0,0.55), rgba(0,0,0,0.12) 45%, rgba(0,0,0,0) 70%)",
-              }}
-            />
             <KineticCaption
               line={ws.map((w) => w.word).join(" ")}
               hero={ln.hero}
@@ -438,6 +420,10 @@ function TeaserCaptions({
               maxWidth={maxWidth}
               sizes={{ hero: 1.3, accent: 1.4, plain: 1.6 }}
               accentColor="#f4efe8"
+              // Out of the bottom UI zone (Meta: keep the lower ~35% clear);
+              // its own dark pool, instead of a band across the frame.
+              bottom="38%"
+              backdrop
             />
           </AbsoluteFill>
         )
@@ -525,10 +511,14 @@ function KineticText({
             lineHeight: 1.2,
             textAlign: "center",
             textTransform: "uppercase",
-            letterSpacing: f(3.2 + 7 * (1 - p)),
+            // Fixed tracking: animating it re-wrapped the line mid-stamp
+            // ("HIS HANDS / ARE DIRTY." then "HIS HANDS ARE / DIRTY.", owner
+            // 2026-10-02). The spread is a horizontal scale instead, which
+            // never changes where the line breaks.
+            letterSpacing: f(3.2),
             color: "#ffffff",
             opacity: p,
-            transform: `scale(${(0.96 + 0.04 * p).toFixed(4)})`,
+            transform: `scale(${(0.96 + 0.04 * p + 0.1 * (1 - p)).toFixed(4)}, ${(0.96 + 0.04 * p).toFixed(4)})`,
             filter:
               p < 0.99 ? `blur(${(f(7) * (1 - p)).toFixed(2)}px)` : undefined,
             textShadow: `0 ${f(2)}px ${f(22)}px rgba(0,0,0,0.6)`,
@@ -721,7 +711,9 @@ function ReflectionLayout({
       <div
         style={{
           position: "absolute",
-          top: f(614),
+          // Figma 614, raised so the credit below stays out of the bottom
+          // UI zone of Reels / Facebook (owner, 2026-10-02: always safe).
+          top: f(REFLECTION_TOP),
           left: "50%",
           width: f(SAFE_COLUMN),
           transform: "translateX(-50%)",
@@ -733,69 +725,105 @@ function ReflectionLayout({
         <div
           style={{
             position: "absolute",
-            top: f(614 + 89 * 3 + 145),
+            // Same gap below four lines of text as the Figma keeps below
+            // three (1068 - 614 - 89*3 = 187, less the fourth line).
+            top: f(REFLECTION_TOP + 89 * 4 + 30),
             left: "50%",
             width: f(SAFE_COLUMN),
             transform: `translateX(-50%) translateY(${(1 - head) * f(10)}px)`,
             display: "flex",
-            gap: f(20),
+            flexDirection: "column",
             alignItems: "center",
+            gap: f(30),
             opacity: head,
           }}
         >
-          {uri ? (
-            <Img
-              src={uri}
-              style={{
-                width: f(124),
-                height: f(124),
-                borderRadius: "50%",
-                objectFit: "cover",
-                opacity: 0.85,
-              }}
-            />
-          ) : null}
+          <Divider f={f} grow={head} />
           <div
             style={{
               display: "flex",
-              flexDirection: "column",
-              gap: f(4),
-              width: f(320),
+              gap: f(20),
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
+            {uri ? (
+              <Img
+                src={uri}
+                style={{
+                  width: f(124),
+                  height: f(124),
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  opacity: 0.85,
+                }}
+              />
+            ) : null}
             <div
               style={{
-                fontFamily: SANS,
-                fontWeight: 500,
-                fontSize: f(18),
-                letterSpacing: f(3.5),
-                color: "rgba(255,255,255,0.46)",
-                textTransform: "uppercase",
+                display: "flex",
+                flexDirection: "column",
+                gap: f(4),
               }}
             >
-              {credit.label ?? "Commentary"}
-            </div>
-            <div
-              style={{
-                fontFamily: LITERATA,
-                fontSize: f(36),
-                lineHeight: `${f(50)}px`,
-                color: "rgba(255,255,255,0.92)",
-                opacity: 0.85,
-              }}
-            >
-              {/* Name, then life dates on their own line (Figma 415-2634):
+              <div
+                style={{
+                  fontFamily: SANS,
+                  fontWeight: 500,
+                  fontSize: f(18),
+                  letterSpacing: f(3.5),
+                  color: "rgba(255,255,255,0.46)",
+                  textTransform: "uppercase",
+                }}
+              >
+                {credit.label ?? "Commentary"}
+              </div>
+              <div
+                style={{
+                  fontFamily: LITERATA,
+                  fontSize: f(36),
+                  lineHeight: `${f(50)}px`,
+                  color: "rgba(255,255,255,0.92)",
+                  opacity: 0.85,
+                }}
+              >
+                {/* Name, then life dates on their own line (Figma 415-2634):
                   "J. C. Ryle" / "(1816–1900)", never split mid-date. */}
-              {credit.source.split(/\s(?=\()/).map((line, i) => (
-                <div key={i} style={{ whiteSpace: "nowrap" }}>
-                  {line}
-                </div>
-              ))}
+                {credit.source.split(/\s(?=\()/).map((line, i) => (
+                  <div key={i} style={{ whiteSpace: "nowrap" }}>
+                    {line}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       ) : null}
     </>
+  )
+}
+
+/** Two tapering strokes and a small gold dot (Figma 413-2480), growing
+ *  out from the dot as `grow` goes 0 to 1. */
+function Divider({ f, grow }: { f: (n: number) => number; grow: number }) {
+  return (
+    <svg
+      width={f(323) * grow}
+      height={f(4)}
+      viewBox="0 0 323 4"
+      preserveAspectRatio="none"
+      style={{ opacity: 0.85, display: "block" }}
+    >
+      <path
+        d="M0 2L150.347 0C150.981 0 151.5 0.515 151.5 1.16V2.84C151.5 3.49 150.981 4.01 150.347 4L0 2Z"
+        fill="#D9D9D9"
+      />
+      <rect x="159.5" width="4" height="4" rx="2" fill={GOLD} />
+      <path
+        d="M323 2L172.42 0C171.913 0 171.5 0.515 171.5 1.16V2.84C171.5 3.48 171.913 4.01 172.42 4L323 2Z"
+        fill="#D9D9D9"
+      />
+    </svg>
   )
 }
 
@@ -975,7 +1003,9 @@ function LanguageLayout({
         style={{
           position: "absolute",
           left: "50%",
-          top: f(470),
+          // 10 above the first cut (owner, 2026-10-02): a clearer gap between
+          // the verse and the caption tab, which stays where it was.
+          top: f(460),
           width: f(620),
           // Centred (the Figma's +20.5 offset pushed the right edge into
           // the action rail).

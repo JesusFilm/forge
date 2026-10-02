@@ -3064,6 +3064,22 @@ async function renderInStage(
     xfadeSec,
     videoAudioLevel,
     options: renderOpts,
+    // What the vertical intro teaser is cut from (feat-573): the opening's
+    // shots, framing, lines and kinetic picks, which the manifest alone
+    // does not keep.
+    ...(options.intro === "montage" && options.introShots?.length
+      ? {
+          intro: {
+            shots: options.introShots,
+            ...(options.introFocus ? { focus: options.introFocus } : {}),
+            ...(options.hookGapSec != null
+              ? { hookGapSec: options.hookGapSec }
+              : {}),
+            ...(options.introKinetic ? { kinetic: options.introKinetic } : {}),
+            ...(options.musicFile ? { musicFile: options.musicFile } : {}),
+          },
+        }
+      : {}),
   }
   if (options.packOnly) {
     // Here the pack IS the product, so a failure fails the run.

@@ -30,6 +30,7 @@ export const SHORT_MAX_SEC = 45
 const FPS = 30
 
 export type ShortKind =
+  | "intro"
   | "film-turn"
   | "film-verse"
   | "history"
@@ -41,6 +42,7 @@ export type ShortKind =
  *  film-turn and question shorts on 2026-10-02 ("I don't see the point");
  *  they stay available by name. */
 export const DEFAULT_SHORT_KINDS: readonly ShortKind[] = [
+  "intro",
   "film-verse",
   "history",
   "language",
@@ -48,6 +50,7 @@ export const DEFAULT_SHORT_KINDS: readonly ShortKind[] = [
 ]
 
 export const SHORT_KINDS: readonly ShortKind[] = [
+  "intro",
   "film-turn",
   "film-verse",
   "history",
@@ -874,4 +877,73 @@ export async function chooseKineticRoles(
       log?.(`kinetic roles: line ${i + 1} pick "${p.hero}" refused; fallback`)
     return { from: l.from, to: l.to, ...roles }
   })
+}
+
+// --- intro: the vertical teaser -------------------------------------------
+
+/** The teaser's calm close (the approved default, 2026-10-01). */
+export const INTRO_CTA = "Watch the full devotional on our YouTube channel."
+
+export type IntroTeaserInput = {
+  sourceKey: string
+  sequence: number
+  /** The opening's spoken lines, without the long form's "Let's watch.". */
+  lines: string[]
+  shots: number[]
+  focus?: number[]
+  kinetic?: { line: number; hero: string; accents: string[]; side: string }[]
+  hookGapSec?: number
+  musicFile?: string
+  outDir: string
+}
+
+/**
+ * The `render-one-devotional.ts` arguments for the vertical intro teaser:
+ * the long form's own opening (shots, voice, kinetic captions) set in 9:16,
+ * ending on the calm call to action instead of "Let's watch." This is the
+ * approved Prodigal teaser recipe (docs/handoffs/2026-10-02-vertical-intro-
+ * design.md), filled in from the devotional instead of typed by hand.
+ */
+export function introTeaserArgs(input: IntroTeaserInput): string[] {
+  const hook = [...input.lines, INTRO_CTA].join("\n\n")
+  const kinetic = (input.kinetic ?? [])
+    .filter((k) => k.line < input.lines.length)
+    .map((k) => `${k.line}=${k.hero}/${k.accents.join(",")}/${k.side}`)
+    .join(";")
+  return [
+    `--source=${input.sourceKey}`,
+    `--seq=${input.sequence}`,
+    "--aspect=portrait",
+    "--structure=clip-first",
+    "--intro=montage",
+    "--teaser-intro",
+    "--no-step-ring",
+    `--hook=${hook}`,
+    `--intro-shots=${input.shots.join(",")}`,
+    ...(input.focus?.length ? [`--intro-focus=${input.focus.join(",")}`] : []),
+    ...(kinetic ? [`--intro-kinetic=${kinetic}`] : []),
+    `--hook-gap=${input.hookGapSec ?? 0.15}`,
+    "--steps",
+    "--text-font=serif",
+    "--word-timings",
+    "--approve",
+    ...(input.musicFile ? [`--music-file=${input.musicFile}`] : []),
+    `--out=${input.outDir}`,
+  ]
+}
+
+/** The opening's lines from the devotional, dropping the long form's hand-off
+ *  to the film ("Let's watch.") which the teaser replaces with its CTA. */
+export function openingLinesOf(
+  devo: { openingLines?: unknown },
+  filmCard?: { introParts?: unknown; [k: string]: unknown },
+): string[] {
+  const raw = (
+    Array.isArray(devo.openingLines)
+      ? devo.openingLines
+      : Array.isArray(filmCard?.introParts)
+        ? filmCard.introParts
+        : []
+  ) as string[]
+  return raw.filter((l) => !/^let'?s watch\.?$/i.test(l.trim()))
 }
