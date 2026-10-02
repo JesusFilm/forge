@@ -20,6 +20,7 @@ export type CatalogProblem = {
 export type Catalogs = Record<string, FlatCatalog>
 
 export const API_MODEL_ID: RegExp
+export const LOCAL_TRANSLATOR_ID: RegExp
 export const REAL_PATHS: {
   messagesDir: string
   policy: string

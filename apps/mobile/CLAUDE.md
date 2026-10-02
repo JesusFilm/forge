@@ -2364,15 +2364,18 @@ the KD, KTD, R, and U numbers that the source cites.
    `{name}, {status}`) goes on `intentionallyLocaleNeutral` in
    `i18n/translation-policy.json`: web's copy check rejects a translation
    that equals English, so the command and CI refuse such a key otherwise.
-2. In `apps/mobile`, run `node scripts/i18n/translate-catalogs.mjs`. It is not
-   a `package.json` script, because a new script entry moves the fingerprint
-   runtime version.
+2. In `apps/mobile`, translate the change. Use the local mode first (see
+   "Translate with Claude"): it costs nothing extra. The paid mode is
+   `node scripts/i18n/translate-catalogs.mjs` with no mode flag. The command is
+   not a `package.json` script, because a new script entry moves the
+   fingerprint runtime version.
 3. Commit `en.json`, the changed catalogs, and `i18n/*.json` in the same PR as
    the code (KD6).
 
 **Until the first full translation run (U16), no locale catalog exists.** Use
 `--restamp` after an `en.json` change. A plain run then creates all 224
-catalogs and translates all of them.
+catalogs and translates all of them. So does `--local-export` without
+`--locales`.
 
 A full run follows KTD6. It creates `{}` for each web catalog that mobile
 lacks. It removes deleted keys from every catalog, the source record, the
@@ -2393,15 +2396,20 @@ English-only catalogs.
 | `--prune-only`          | no        | Removes deleted keys.                                                                                         |
 | `--restamp`             | no        | Records the hash of each key that no catalog holds an older translation of. Refuses a key that still has one. |
 | `--mark-pending <keys>` | no        | Puts comma-separated keys on the pending list. A changed key takes its new English in every catalog.          |
+| `--local-export <dir>`  | no        | Does the local steps of a full run, then writes one request file per locale into `<dir>`.                     |
+| `--local-import <dir>`  | no        | Checks the answer files in `<dir>`, then writes them through web's script. Needs `--translator <id>`.         |
 
 Options: `--locales <tags>` limits the seeding and the translation.
 `--max-attempts <n>` and `--concurrency <n>` go to web's script (default 4
 each). `--yes` skips the prompt, for non-interactive use only.
+`--translator <id>` names the Claude model that wrote the answers of a local
+import, and the provenance records it.
 
-- **Budget rule.** A full run costs money. An agent asks the owner for an
-  OpenAI key and a budget before any full run. The command prints the request
+- **Budget rule.** A paid run costs money. An agent asks the owner for an
+  OpenAI key and a budget before any paid run. The command prints the request
   estimate first and waits for "yes". Without a terminal, it refuses unless
-  `--yes` is set.
+  `--yes` is set. The local modes cost nothing extra: a Claude session on the
+  owner's subscription writes the translations (owner decision, 2026-10-02).
 - **Pending list.** `pendingKeys` in `i18n/translation-policy.json` maps a key
   to the date it went pending. A pending key shows English in the other
   locales until a later run translates it. Use `--mark-pending <key>` when a
@@ -2416,7 +2424,10 @@ each). `--yes` skips the prompt, for non-interactive use only.
   Web recorded `codex-local-agent` for `zh`, `zh-Hans`, and `zh-Hant`, which
   is not an API model, so those tags use `gpt-5.6`, the model web used for
   `ru`. A locale that fails on the 20,000-token output limit takes a `-pro` or
-  `gpt-5.6-` model, which uses the Responses API with 40,000 tokens.
+  `gpt-5.6-` model, which uses the Responses API with 40,000 tokens. The table
+  governs the paid mode only. The provenance accepts an API model ID or a
+  Claude model ID (`claude-…`), never a label such as `codex-local-agent`. A
+  Claude model ID has a version number, so a label such as `claude-code` fails.
 - **Web's script (R19, R20).** The command passes mobile's `--messages-dir`,
   `--manifest`, `--progress`, `--policy`, `--contexts`, `--stop-on-quota`,
   `--locales`, `--model`, `--concurrency`, and `--max-attempts`, and web's
@@ -2431,8 +2442,8 @@ each). `--yes` skips the prompt, for non-interactive use only.
   directions, placeholders and plurals, that every message formats, the source
   record, the pending list, the context sentences, the model table, the stub
   manifest, and that each message with no words is locale-neutral.
-  `scripts/i18n/__tests__/` covers the command, the gate, and
-  the report. A change to web's two script files or to
+  `scripts/i18n/__tests__/` covers the command (with the local modes), the
+  gate, and the report. A change to web's two script files or to
   `docs/i18n/watch-ui-official-language-inventory.json` also runs the mobile
   jobs. The mobile test job writes `scripts/i18n/pending-report.mjs` to the
   job summary: the pending count, the oldest pending key, and each web
@@ -2453,6 +2464,76 @@ each). `--yes` skips the prompt, for non-interactive use only.
   `*Lang` field; UI text uses the catalog tag. English fallback text also gets
   `accessibilityLanguage="en"` on iOS. It never applies to containers or to
   centered text, and the layout never mirrors (KTD4).
+
+### Translate with Claude (local mode)
+
+The local mode runs the same pipeline as a paid run. Only the translator is
+different: a Claude session writes the answers instead of the OpenAI API. Web's
+real script still checks every answer and writes every catalog. The code is
+`scripts/i18n/local-modes.mjs` and `scripts/i18n/lib/localTranslation.js`.
+
+1. Export: `node scripts/i18n/translate-catalogs.mjs --local-export <dir>`.
+   Use a new folder outside every git repository, for example under
+   `$TMPDIR`. The command does the local steps of a full run and writes them.
+   Then it runs web's script against its own server on 127.0.0.1. The server
+   records each request in `<locale>.request.json`. That file holds `system`
+   and `prompt`: the exact instructions that the paid model gets. The prompt
+   also holds the existing translations of that locale as references.
+   `index.json` lists the keys for each locale.
+2. Translate: for each request file, write `<locale>.answer.json`. It is a
+   JSON object that maps each key in `prompt.messagesToTranslate` to its
+   translation. Follow `system` and `prompt`.
+3. Import: run the command with `--local-import <dir> --translator <id>`.
+   `<id>` is the Claude model that wrote the answers, for example
+   `claude-opus-5-5`. The command checks every answer first. It runs web's
+   contract, copy, and script checks, and mobile's plural, select, and ICU
+   syntax checks. A locale with a problem gets nothing. Then web's script
+   takes the answers from the command's server. It checks them again and
+   writes the catalogs. The provenance records the translator.
+4. Read `<dir>/import-report.json`. It gives the status of each locale and
+   every problem. The terminal shows at most 30 problems for each locale. Fix
+   the answer files and run the import again until every locale finishes. The
+   command exits 1 while a locale is not finished.
+5. When the export made a new catalog file, run
+   `node scripts/i18n/generate-catalog-index.mjs`. Then run the CI suites.
+
+**Large runs.** A request file for a full catalog is about 280 KB, which is
+more than one file read shows. Read it in parts with `jq`:
+
+```bash
+jq -r '.system' es.request.json
+jq '.prompt | del(.messageContexts, .messagesToTranslate, .existingReferenceTranslations)' es.request.json
+jq '.prompt.messagesToTranslate | to_entries[0:100] | from_entries' es.request.json
+jq '.prompt.messageContexts | to_entries[0:100] | from_entries' es.request.json
+```
+
+- The `system` text is the same in every file, so read it once.
+- Give each subagent a batch of locales. A subagent writes only the answer
+  files of its own locales.
+- Run one import at a time, after the subagents finish. Two imports at the
+  same time overwrite each other's changes to the record and the provenance.
+
+**Rules.**
+
+- **No request leaves the computer.** Both modes point `OPENAI_BASE_URL` at
+  the command's own server. Web's script sends a token for that run in place
+  of a key. The server refuses a request without that token, and a request
+  from a browser.
+- **The import covers the exported locales.** Without `--locales`, it seeds no
+  other catalog. A locale with no answer file yet keeps its catalog.
+- **A key fails when its English or its context changed after the export.**
+  A change to the system prompt also counts. Export again into a new folder.
+- **The work folder stays outside every git repository.** A file there is
+  untracked, and an untracked file stops `eas update` (`cli.requireCommit`).
+  The command resolves symlinks and asks git. It also refuses to export into a
+  folder that is not empty.
+- **An export that leaves out a locale prints the reason.** Translate the
+  request files that it wrote. Export the missing locales into a second folder
+  with `--locales`. Then import each folder.
+- **To abandon an export, restore the catalogs.** The export clears each
+  changed key from every catalog before any translation exists. Run
+  `git restore apps/mobile/messages apps/mobile/i18n`. Then delete each new
+  catalog file that the export seeded.
 
 ### Merge two catalog PRs
 

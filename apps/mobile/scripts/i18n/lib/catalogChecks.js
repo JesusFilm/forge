@@ -28,6 +28,10 @@ const REAL_PATHS = {
 
 const API_MODEL_ID =
   /^(?:gpt-\d+(?:\.\d+)*(?:-[a-z0-9]+)*|o\d+(?:-[a-z0-9]+)*)$/
+// The Claude model that wrote a local translation (--local-import --translator).
+// A real model ID has a version digit, so a tool label like claude-code fails.
+const LOCAL_TRANSLATOR_ID =
+  /^claude-(?=[a-z0-9.-]*\d)[a-z0-9]+(?:[.-][a-z0-9]+)*$/
 const CONTEXT_FIELDS = new Set(["product", "namespaces", "keys"])
 const CONTEXT_OVERRIDE_FIELDS = new Set(["role", "visibility", "composition"])
 const MODEL_TABLE_FIELDS = new Set(["defaultModel", "locales"])
@@ -476,9 +480,11 @@ function provenanceProblems(raw, policy) {
     if (
       !isPlainObject(entry) ||
       typeof entry.model !== "string" ||
-      !API_MODEL_ID.test(entry.model)
+      !(API_MODEL_ID.test(entry.model) || LOCAL_TRANSLATOR_ID.test(entry.model))
     ) {
-      problems.push(`${locale}.model must be an OpenAI API model ID`)
+      problems.push(
+        `${locale}.model must be an OpenAI API model ID or a Claude model ID`,
+      )
     }
     if (
       !isPlainObject(entry) ||
@@ -516,6 +522,7 @@ function pendingSummary(source, catalogs, policy) {
 
 module.exports = {
   API_MODEL_ID,
+  LOCAL_TRANSLATOR_ID,
   REAL_PATHS,
   catalogTagsIn,
   contextProblems,

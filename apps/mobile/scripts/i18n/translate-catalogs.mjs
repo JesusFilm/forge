@@ -11,9 +11,12 @@ import path from "node:path"
 import readline from "node:readline/promises"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
+import { createLocalModes } from "./local-modes.mjs"
+
 const require = createRequire(import.meta.url)
 const ops = require("./lib/catalogOps.js")
 const checks = require("./lib/catalogChecks.js")
+const local = require("./lib/localTranslation.js")
 const { formatWithPrettier, list, plural } = require("./lib/scriptFormat.js")
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -22,6 +25,7 @@ const REPO = path.resolve(MOBILE, "../..")
 const DEFAULT_ATTEMPTS = 4
 const DEFAULT_CONCURRENCY = 4
 const OPENAI_BASE_URL = "https://api.openai.com/v1"
+const MAX_DETAILS = 30
 // Every flag the command passes. The script ignores an unknown flag, so a
 // missing option would silently fall back to web's own files (R19, R20).
 const WEB_FLAGS = [
@@ -54,9 +58,18 @@ Modes (choose one; the default is a full run):
   --mark-pending <keys>  Put comma-separated keys on the pending list; a
                          changed key takes its new English in every locale.
                          No network.
+  --local-export <dir>   Seed, prune, and clear changed keys as a full run
+                         does, then write one request file per locale into
+                         <dir>, a new folder outside the repository. A Claude
+                         session writes the answers. No cost.
+  --local-import <dir>   Check the answer files in <dir>, then write them
+                         through web's script, which checks them again. Needs
+                         --translator. No cost.
 
 Options:
   --locales <tags>       Seed and translate only these catalogs.
+  --translator <id>      The Claude model that wrote the answers, such as
+                         claude-opus-5-5. The provenance records it.
   --yes                  Skip the confirmation prompt (non-interactive use,
                          only after the owner approves the budget).
   --max-attempts <n>     Attempts per locale (default ${DEFAULT_ATTEMPTS}).
@@ -81,6 +94,9 @@ const VALUE_OPTIONS = {
   "--web-dir": "webDir",
   "--inventory": "inventory",
   "--progress-dir": "progressDir",
+  "--local-export": "localExport",
+  "--local-import": "localImport",
+  "--translator": "translator",
 }
 
 class CommandError extends Error {
@@ -114,13 +130,33 @@ function parseArgs(argv) {
       )
     }
   }
-  const modes = ["dryRun", "pruneOnly", "restamp", "markPending"].filter(
-    (mode) => options[mode] !== undefined,
-  )
+  const modes = [
+    "dryRun",
+    "pruneOnly",
+    "restamp",
+    "markPending",
+    "localExport",
+    "localImport",
+  ].filter((mode) => options[mode] !== undefined)
   if (modes.length > 1) {
     throw new CommandError(
       "TOO_MANY_MODES",
-      "Choose one mode: --dry-run, --prune-only, --restamp, or --mark-pending",
+      "Choose one mode: --dry-run, --prune-only, --restamp, --mark-pending, --local-export, or --local-import",
+    )
+  }
+  if (options.translator !== undefined && !options.localImport) {
+    throw new CommandError(
+      "TRANSLATOR_NEEDS_LOCAL_IMPORT",
+      "--translator works only with --local-import",
+    )
+  }
+  if (
+    options.localImport &&
+    !checks.LOCAL_TRANSLATOR_ID.test(options.translator ?? "")
+  ) {
+    throw new CommandError(
+      "INVALID_TRANSLATOR",
+      "--local-import needs --translator <id>: the Claude model that wrote the answers, such as claude-opus-5-5. Use lowercase letters, digits, dots, and hyphens, with a version number and no brackets. The provenance records it.",
     )
   }
   if (options.json && !options.dryRun) {
@@ -192,6 +228,8 @@ function readJsonFile(file, label) {
 function withCode(error, code) {
   if (error instanceof ops.CatalogOpsError)
     return new CommandError(error.code, `${error.code}: ${error.message}`)
+  if (error instanceof local.LocalTranslationError)
+    return new CommandError(error.code, error.message)
   if (error instanceof CommandError) return error
   return new CommandError(code, error.message)
 }
@@ -393,11 +431,13 @@ function hasApiKey(env) {
   )
 }
 
-async function buildPlan(options, paths) {
+// A local run puts every locale in one group, named by `localModel`.
+async function buildPlan(options, paths, localModel) {
   const webTags = readWebTags(paths)
   const state = loadState(paths)
   const contexts = loadContexts(paths)
-  const modelFor = loadModelTable(paths, webTags, state.policy)
+  const tableModelFor = loadModelTable(paths, webTags, state.policy)
+  const modelFor = localModel ? () => localModel : tableModelFor
   const englishOnly = new Set(state.policy.englishOnlyLocales)
   const targets = webTags.filter(
     (tag) => tag !== ops.SOURCE_LOCALE && !englishOnly.has(tag),
@@ -481,21 +521,29 @@ function estimate(plan, options) {
   return { requests, characters, maxRequests: requests * options.maxAttempts }
 }
 
-function printPlan(plan, options) {
+function printPlan(plan, options, { local: isLocal = false } = {}) {
   printLocalChanges(plan)
   const { requests, characters, maxRequests } = estimate(plan, options)
-  const lines = ["Translation plan (no request is sent yet):"]
+  const lines = [
+    isLocal
+      ? "Local translation plan (no paid request):"
+      : "Translation plan (no request is sent yet):",
+  ]
   for (const group of plan.groups) {
     const locales = Object.keys(group.keysByLocale)
     const keys = Object.values(group.keysByLocale).flat().length
     lines.push(
-      `  ${group.model}: ${plural(locales.length, "locale")}, ${plural(keys, "key")}, ${plural(locales.length, "request")}`,
+      isLocal
+        ? `  ${plural(locales.length, "locale")}, ${plural(keys, "key")}`
+        : `  ${group.model}: ${plural(locales.length, "locale")}, ${plural(keys, "key")}, ${plural(locales.length, "request")}`,
     )
     lines.push(`    locales: ${list(locales, 20)}`)
-    lines.push(`    progress: ${group.progress}`)
+    if (!isLocal) lines.push(`    progress: ${group.progress}`)
   }
   lines.push(
-    `  Total: ${plural(requests, "request")} with about ${characters.toLocaleString("en")} English characters; at most ${maxRequests} requests if every attempt fails (--max-attempts ${options.maxAttempts}).`,
+    isLocal
+      ? `  Total: about ${characters.toLocaleString("en")} English characters.`
+      : `  Total: ${plural(requests, "request")} with about ${characters.toLocaleString("en")} English characters; at most ${maxRequests} requests if every attempt fails (--max-attempts ${options.maxAttempts}).`,
   )
   console.log(lines.join("\n"))
 }
@@ -520,7 +568,14 @@ async function confirm(options, requests) {
   return /^y(es)?$/i.test(answer.trim())
 }
 
-function runWebScript(paths, group, options) {
+// `quiet` keeps the script's lines off the terminal; the export expects every
+// locale to fail, because its server answers with no translation.
+function runWebScript(
+  paths,
+  group,
+  options,
+  { env = process.env, quiet } = {},
+) {
   const args = [
     "--messages-dir",
     paths.messagesDir,
@@ -547,10 +602,11 @@ function runWebScript(paths, group, options) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [paths.webScript, ...args], {
       cwd: REPO,
-      env: process.env,
+      env,
       stdio: ["ignore", "pipe", "pipe"],
     })
     const failures = new Map()
+    const errorLines = []
     const forward = (stream, sink) => {
       let buffer = ""
       stream.setEncoding("utf8")
@@ -563,19 +619,20 @@ function runWebScript(paths, group, options) {
       stream.on("end", () => buffer && handle(buffer, sink))
     }
     const handle = (line, sink) => {
-      sink.write(`[web] ${line}\n`)
+      if (!quiet) sink.write(`[web] ${line}\n`)
       try {
         const event = JSON.parse(line)
         if (event?.event === "locale_failed")
           failures.set(event.locale, String(event.message))
       } catch {
         // Only JSON event lines carry a status.
+        if (sink === process.stderr) errorLines.push(line)
       }
     }
     forward(child.stdout, process.stdout)
     forward(child.stderr, process.stderr)
     child.on("error", reject)
-    child.on("close", (status) => resolve({ status, failures }))
+    child.on("close", (status) => resolve({ status, failures, errorLines }))
   })
 }
 
@@ -619,8 +676,17 @@ function printSummary(results, pendingLeft) {
   ]
   if (failed.length) {
     lines.push(`Failed ${plural(failed.length, "locale")}:`)
-    for (const r of failed)
-      lines.push(`  ${r.locale}: ${r.message.slice(0, 300)}`)
+    for (const r of failed) {
+      if (!r.details?.length) {
+        lines.push(`  ${r.locale}: ${r.message.slice(0, 300)}`)
+        continue
+      }
+      lines.push(`  ${r.locale}:`)
+      for (const detail of r.details.slice(0, MAX_DETAILS))
+        lines.push(`    ${detail}`)
+      if (r.details.length > MAX_DETAILS)
+        lines.push(`    and ${r.details.length - MAX_DETAILS} more`)
+    }
   }
   if (notStarted.length) {
     lines.push(
@@ -630,12 +696,21 @@ function printSummary(results, pendingLeft) {
       )}`,
     )
   }
+  const noAnswer = byStatus("noAnswer")
+  if (noAnswer.length) {
+    lines.push(
+      `No answer file yet for ${plural(noAnswer.length, "locale")}: ${list(
+        noAnswer.map((r) => r.locale),
+        40,
+      )}`,
+    )
+  }
   if (failed.some((r) => r.message.includes("insufficient_quota"))) {
     lines.push(
       "The OpenAI quota is used up, so the run stopped at the first quota error.",
     )
   }
-  if (failed.length || notStarted.length) {
+  if (failed.length || notStarted.length || noAnswer.length) {
     lines.push(
       "Those locales keep their old catalogs and provenance, so CI names them. Run the command again to finish them.",
     )
@@ -701,22 +776,10 @@ async function runFull(options, paths) {
     return 0
   }
 
-  if (requests === 0) {
-    printLocalChanges(plan)
-    ops.settlePendingKeys(plan.state, plan.messageContractError)
-    await writeState(paths, plan.state, plan.contexts)
-    console.log("No locale needs a translation.")
-    remindCatalogIndex(plan)
-    return 0
-  }
+  if (requests === 0) return finishUpToDate(paths, plan)
 
   printPlan(plan, options)
-  if (webFlagsMissing.length) {
-    throw new CommandError(
-      "WEB_SCRIPT_LACKS_CALLER_OPTIONS",
-      `No file changed. ${path.relative(REPO, paths.webScript)} does not support ${webFlagsMissing.join(", ")}. It ignores an unknown option, so it would translate with web's own policy and contexts. Merge web's caller options first (plan U1, R19).`,
-    )
-  }
+  assertWebFlags(paths, webFlagsMissing)
   if (!hasApiKey(process.env)) {
     throw new CommandError(
       "MISSING_OPENAI_API_KEY",
@@ -755,6 +818,11 @@ async function runFull(options, paths) {
       status !== 0 && groupResults.some((r) => r.status === "notStarted")
   }
 
+  return finishRun(paths, plan, results)
+}
+
+// The last steps of a run that sent requests, paid or local.
+async function finishRun(paths, plan, results) {
   ops.settlePendingKeys(plan.state, plan.messageContractError)
   await writeState(paths, plan.state, plan.contexts)
   await updateProvenance(paths, plan, results)
@@ -762,6 +830,23 @@ async function runFull(options, paths) {
   printSummary(results, Object.keys(plan.state.policy.pendingKeys).length)
   remindCatalogIndex(plan)
   return results.every((r) => r.status === "finished") ? 0 : 1
+}
+
+function assertWebFlags(paths, missing = missingWebFlags(paths)) {
+  if (missing.length === 0) return
+  throw new CommandError(
+    "WEB_SCRIPT_LACKS_CALLER_OPTIONS",
+    `No file changed. ${path.relative(REPO, paths.webScript)} does not support ${missing.join(", ")}. It ignores an unknown option, so it would translate with web's own policy and contexts. Merge web's caller options first (plan U1, R19).`,
+  )
+}
+
+async function finishUpToDate(paths, plan) {
+  printLocalChanges(plan)
+  ops.settlePendingKeys(plan.state, plan.messageContractError)
+  await writeState(paths, plan.state, plan.contexts)
+  console.log("No locale needs a translation.")
+  remindCatalogIndex(plan)
+  return 0
 }
 
 // The app bundles only the catalogs in the generated index (KTD5).
@@ -829,6 +914,27 @@ async function main(argv) {
   const paths = resolvePaths(options)
   if (options.pruneOnly || options.restamp || options.markPending)
     return runNoNetwork(options, paths)
+  if (options.localExport || options.localImport) {
+    const localModes = createLocalModes({
+      REPO,
+      CommandError,
+      withCode,
+      today,
+      buildPlan,
+      estimate,
+      finishUpToDate,
+      finishRun,
+      printPlan,
+      assertWebFlags,
+      writeState,
+      runWebScript,
+      localeStatus,
+      remindCatalogIndex,
+    })
+    return options.localExport
+      ? localModes.runLocalExport(options, paths)
+      : localModes.runLocalImport(options, paths)
+  }
   return runFull(options, paths)
 }
 

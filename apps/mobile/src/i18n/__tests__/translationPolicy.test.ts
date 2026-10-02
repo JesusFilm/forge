@@ -206,6 +206,27 @@ describe("script-manifest.json", () => {
 
 describe("translation-provenance.json", () => {
   const provenance = readJson(REAL_PATHS.provenance) as Provenance
+  const policy = {
+    humanReviewedLocales: ["en"],
+    intentionallyLocaleNeutral: [],
+    englishOnlyLocales: ["crk"],
+    pendingKeys: {},
+  }
+
+  it("accepts the Claude model that wrote a local translation", () => {
+    expect(
+      provenanceProblems(
+        {
+          reviewStatus: "machine-translated",
+          machineTranslatedLocales: {
+            es: { model: "claude-opus-5-5", generatedOn: "2026-10-02" },
+            fr: { model: "gpt-5.6", generatedOn: "2026-10-02" },
+          },
+        },
+        policy,
+      ),
+    ).toEqual([])
+  })
 
   it("records only machine-translated locales that have a catalog", () => {
     expect(provenanceProblems(provenance, realPolicy)).toEqual([])
@@ -223,9 +244,13 @@ describe("translation-provenance.json", () => {
     [
       { es: { model: "codex-local-agent" } },
       [
-        "es.model must be an OpenAI API model ID",
+        "es.model must be an OpenAI API model ID or a Claude model ID",
         "es.generatedOn must be a YYYY-MM-DD date",
       ],
+    ],
+    [
+      { es: { ...valid, model: "claude-code" } },
+      ["es.model must be an OpenAI API model ID or a Claude model ID"],
     ],
     [
       { crk: valid, en: valid },
@@ -238,12 +263,7 @@ describe("translation-provenance.json", () => {
     expect(
       provenanceProblems(
         { reviewStatus: "machine-translated", machineTranslatedLocales },
-        {
-          humanReviewedLocales: ["en"],
-          intentionallyLocaleNeutral: [],
-          englishOnlyLocales: ["crk"],
-          pendingKeys: {},
-        },
+        policy,
       ),
     ).toEqual(problems)
   })
