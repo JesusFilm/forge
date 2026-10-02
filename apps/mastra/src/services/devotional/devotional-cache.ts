@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { getDevotionalCacheDir } from "../../config/env"
@@ -270,8 +271,84 @@ export async function loadReusableAudio(
   voice: GeneratedDevotional["voice"],
 ): Promise<Map<string, ProducedDevotionalAudio["segments"][number]>> {
   const cached = await loadCachedAudio(dir, voice)
-  if (!cached) return new Map()
-  return reuseMapFromSegments(cached.segments, voice)
+  const out = cached ? reuseMapFromSegments(cached.segments, voice) : new Map()
+  // Earlier takes kept by `saveCachedAudio` (the long-form opening beside the
+  // teaser's, a hook a keyless run could not read): reusable by their words,
+  // but never ahead of the current bundle's own entry for the same key.
+  for (const [key, seg] of reuseMapFromSegments(
+    await loadArchivedSegments(dir),
+    voice,
+  ))
+    if (!out.has(key)) out.set(key, seg)
+  return out
+}
+
+/** One archived take in `audio/index.json`. */
+type ArchivedEntry = {
+  id: string
+  text: string
+  spoken?: string
+  take?: string
+  file: string
+  voiceId: string
+  model: string
+  characterCount: number
+  words?: { word: string; startSec: number; endSec: number }[]
+}
+
+/** Segment ids whose takes are archived: everything but the reflection, whose
+ *  ids renumber and whose role (first/mid/last) an old take cannot carry. */
+const ARCHIVABLE = (id: string) => !/^reflection-\d+$/.test(id)
+/** Takes kept per segment id: enough for a long form, a teaser and a retry. */
+const ARCHIVE_PER_ID = 4
+
+function takeKey(e: {
+  id: string
+  spoken?: string
+  text: string
+  voiceId: string
+  take?: string
+}) {
+  return [e.id, (e.spoken ?? e.text).trim(), e.voiceId, e.take ?? ""].join(
+    "\u0000",
+  )
+}
+
+async function loadArchivedSegments(
+  dir: string,
+): Promise<ProducedDevotionalAudio["segments"]> {
+  try {
+    const index = JSON.parse(
+      await readFile(path.join(dir, "audio", "index.json"), "utf8"),
+    ) as { archive?: ArchivedEntry[] }
+    const out: ProducedDevotionalAudio["segments"] = []
+    for (const a of index.archive ?? []) {
+      try {
+        const bytes = new Uint8Array(
+          await readFile(path.join(dir, "audio", a.file)),
+        )
+        out.push({
+          id: a.id,
+          text: a.text,
+          ...(a.spoken ? { spoken: a.spoken } : {}),
+          ...(a.take ? { take: a.take } : {}),
+          audio: {
+            format: "mp3",
+            bytes,
+            voiceId: a.voiceId,
+            model: a.model,
+            characterCount: a.characterCount,
+            ...(a.words && a.words.length ? { words: a.words } : {}),
+          },
+        })
+      } catch {
+        // A missing archive file is a lost take, not a broken cache.
+      }
+    }
+    return out
+  } catch {
+    return []
+  }
 }
 
 export async function saveCachedAudio(
@@ -296,6 +373,13 @@ export async function saveCachedAudio(
     )
   }
   await mkdir(path.join(dir, "audio"), { recursive: true })
+  // KEEP EARLIER TAKES. This used to rewrite the index from the current run
+  // alone, so anything the run did not produce was dropped: the Prodigal's
+  // approved opening vanished when the teaser re-read the hook with a new
+  // last line, and again when a keyless render saved a bundle with the hook
+  // skipped (2026-10-02). Takes that the new bundle does not carry move to
+  // `archive` under their own file name and stay reusable by their words.
+  const archive = await archiveEarlierTakes(dir, audio)
   const segs = []
   for (const s of audio.segments) {
     const file = `${s.id}.mp3`
@@ -332,7 +416,67 @@ export async function saveCachedAudio(
   }
   await writeFile(
     path.join(dir, "audio", "index.json"),
-    JSON.stringify({ segments: segs, music, skipped: audio.skipped }, null, 2) +
-      "\n",
+    JSON.stringify(
+      { segments: segs, music, skipped: audio.skipped, archive },
+      null,
+      2,
+    ) + "\n",
   )
+}
+
+/**
+ * The takes of the previous index (current bundle + archive) that the new
+ * bundle does not carry, copied to their own `archive-*.mp3` files BEFORE the
+ * new bundle overwrites `<id>.mp3`. Reflection segments are not archived (see
+ * ARCHIVABLE); per id the newest ARCHIVE_PER_ID takes are kept.
+ */
+async function archiveEarlierTakes(
+  dir: string,
+  audio: ProducedDevotionalAudio,
+): Promise<ArchivedEntry[]> {
+  let prev: { segments?: ArchivedEntry[]; archive?: ArchivedEntry[] }
+  try {
+    prev = JSON.parse(
+      await readFile(path.join(dir, "audio", "index.json"), "utf8"),
+    )
+  } catch {
+    return []
+  }
+  const current = new Set(
+    audio.segments.map((s) =>
+      takeKey({
+        id: s.id,
+        text: s.text,
+        voiceId: s.audio.voiceId,
+        ...(s.spoken ? { spoken: s.spoken } : {}),
+        ...(s.take ? { take: s.take } : {}),
+      }),
+    ),
+  )
+  // Newest first: the previous bundle, then the previous archive.
+  const candidates = [...(prev.segments ?? []), ...(prev.archive ?? [])]
+  const seen = new Set<string>()
+  const perId = new Map<string, number>()
+  const out: ArchivedEntry[] = []
+  for (const e of candidates) {
+    if (!ARCHIVABLE(e.id)) continue
+    const key = takeKey(e)
+    if (current.has(key) || seen.has(key)) continue
+    seen.add(key)
+    const n = perId.get(e.id) ?? 0
+    if (n >= ARCHIVE_PER_ID) continue
+    let bytes: Buffer
+    try {
+      bytes = await readFile(path.join(dir, "audio", e.file))
+    } catch {
+      continue
+    }
+    const file = e.file.startsWith("archive-")
+      ? e.file
+      : `archive-${e.id}-${createHash("sha1").update(key).digest("hex").slice(0, 10)}.mp3`
+    if (file !== e.file) await writeFile(path.join(dir, "audio", file), bytes)
+    perId.set(e.id, n + 1)
+    out.push({ ...e, file })
+  }
+  return out
 }

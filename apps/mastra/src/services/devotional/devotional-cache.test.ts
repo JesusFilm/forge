@@ -367,3 +367,60 @@ describe("delivery takes", () => {
     ).toBe(false)
   })
 })
+
+describe("earlier takes survive a new bundle", () => {
+  const LONG = "A faithful son stands outside. Let's watch."
+  const TEASER = "A faithful son stands outside. Watch the full devotional."
+
+  it("keeps the long-form opening when a teaser re-reads the hook", async () => {
+    await saveCachedAudio(
+      dir,
+      produced([segment("hook", LONG), segment("scripture", "Verse.")]),
+    )
+    await saveCachedAudio(dir, produced([segment("hook", TEASER)]))
+    const reuse = await loadReusableAudio(dir, "male-d")
+    expect(reuse.has(audioReuseKey("hook", LONG, "male-d"))).toBe(true)
+    expect(reuse.has(audioReuseKey("hook", TEASER, "male-d"))).toBe(true)
+    expect(reuse.has(audioReuseKey("scripture", "Verse.", "male-d"))).toBe(true)
+    // The bundle itself is still only what the last run produced.
+    const loaded = await loadCachedAudio(dir, "male-d")
+    expect(loaded?.segments.map((s) => s.id)).toEqual(["hook"])
+  })
+
+  it("keeps a hook that a keyless run skipped", async () => {
+    await saveCachedAudio(dir, produced([segment("hook", LONG)]))
+    // The Prodigal case: a render with no ElevenLabs key could not read the
+    // hook and saved a bundle without it.
+    await saveCachedAudio(
+      dir,
+      produced([segment("scripture", "Verse.")], ["hook"]),
+    )
+    const reuse = await loadReusableAudio(dir, "male-d")
+    expect(reuse.has(audioReuseKey("hook", LONG, "male-d"))).toBe(true)
+  })
+
+  it("keeps the archived bytes when the hook file is overwritten", async () => {
+    await saveCachedAudio(dir, produced([segment("hook", LONG)]))
+    const teaser = segment("hook", TEASER)
+    teaser.audio.bytes = new Uint8Array([9, 9, 9])
+    await saveCachedAudio(dir, produced([teaser]))
+    const reuse = await loadReusableAudio(dir, "male-d")
+    expect(
+      Array.from(reuse.get(audioReuseKey("hook", LONG, "male-d"))!.audio.bytes),
+    ).toEqual([1, 2, 3])
+    expect(
+      Array.from(
+        reuse.get(audioReuseKey("hook", TEASER, "male-d"))!.audio.bytes,
+      ),
+    ).toEqual([9, 9, 9])
+  })
+
+  it("does not archive reflection takes", async () => {
+    await saveCachedAudio(dir, produced([segment("reflection-1", "Old.")]))
+    await saveCachedAudio(dir, produced([segment("reflection-1", "New.")]))
+    const index = JSON.parse(
+      await readFile(path.join(dir, "audio", "index.json"), "utf8"),
+    )
+    expect(index.archive).toEqual([])
+  })
+})
