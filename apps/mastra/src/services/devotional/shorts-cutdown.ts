@@ -585,8 +585,9 @@ export function shortComposition(m: Manifest): string {
  *  sounding) through it rather than freezing. */
 export const SHORT_OUTRO_SEC = 1.5
 /** Seconds of quiet the film short's opening question needs before the
- *  scene's first line (0.25 in, ~2.6 on screen, 0.55 clear of the voice). */
-const OPEN_CARD_NEEDS_SEC = 3.4
+ *  scene's first line (in after the 0.6s fade from black so the stamp hits
+ *  at full strength, ~2.6 on screen, 0.55 clear of the voice). */
+const OPEN_CARD_NEEDS_SEC = 3.75
 /** The composition's breath after a card (CARD_TAIL_FRAMES at 30 fps): the
  *  last card runs this much past its duration, so the clip must too. */
 export const CARD_TAIL_SEC = CARD_TAIL_FRAMES / FPS
@@ -692,7 +693,9 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
         ? {
             open: {
               text: filmCard.__cards.open,
-              fromSec: 0.25,
+              // After the composition's 0.6s fade from black: a stamp that
+              // lands during the fade reads grey and soft.
+              fromSec: 0.62,
               toSec: Math.max(1.2, first - 0.55),
             },
           }

@@ -1547,6 +1547,7 @@ function ShortQuestionCards({
     fromSec: number,
     toSec: number | null,
     key: string,
+    sharp = false,
   ) => {
     if (t < fromSec - 0.05 || (toSec != null && t > toSec + 0.05)) return null
     const fade =
@@ -1567,7 +1568,7 @@ function ShortQuestionCards({
           style={{ justifyContent: "center", alignItems: "center" }}
         >
           <div style={{ width: f(640) }}>
-            <StampLine text={text} t={t - fromSec} f={f} />
+            <StampLine text={text} t={t - fromSec} f={f} sharp={sharp} />
           </div>
         </AbsoluteFill>
       </AbsoluteFill>
@@ -1576,7 +1577,14 @@ function ShortQuestionCards({
   return (
     <>
       {cards.open
-        ? card(cards.open.text, cards.open.fromSec, cards.open.toSec, "open")
+        ? card(
+            cards.open.text,
+            cards.open.fromSec,
+            cards.open.toSec,
+            "open",
+            // The question hits; the closing turn eases in.
+            true,
+          )
         : null}
       {cards.close
         ? card(cards.close.text, cards.close.fromSec, null, "close")

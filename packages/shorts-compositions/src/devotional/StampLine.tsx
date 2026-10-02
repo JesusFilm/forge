@@ -18,11 +18,50 @@ export function StampLine({
   text,
   t,
   f,
+  sharp = false,
 }: {
   text: string
   t: number
   f: (n: number) => number
+  /** A harder hit (owner, 2026-10-02, the film short's opening question):
+   *  lands in ~0.35s from a larger size and overshoots slightly before it
+   *  settles, instead of easing in over 0.8s. */
+  sharp?: boolean
 }) {
+  if (sharp) {
+    const p = interpolate(t, [-0.02, 0.3], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: Easing.bezier(0.2, 0.9, 0.3, 1),
+    })
+    // 1.16 -> 0.985 at the hit -> 1, the small bounce of a stamp.
+    const scale = interpolate(t, [-0.02, 0.3, 0.45], [1.16, 0.985, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    })
+    return (
+      <p
+        style={{
+          margin: 0,
+          fontFamily: SANS,
+          fontWeight: 600,
+          fontSize: f(76),
+          lineHeight: 1.2,
+          textAlign: "center",
+          textTransform: "uppercase",
+          letterSpacing: f(3.2),
+          color: "#ffffff",
+          opacity: p,
+          transform: `scale(${scale.toFixed(4)})`,
+          filter:
+            p < 0.99 ? `blur(${(f(4) * (1 - p)).toFixed(2)}px)` : undefined,
+          textShadow: `0 ${f(2)}px ${f(22)}px rgba(0,0,0,0.6)`,
+        }}
+      >
+        {text}
+      </p>
+    )
+  }
   const p = interpolate(t, [-0.02, 0.78], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
