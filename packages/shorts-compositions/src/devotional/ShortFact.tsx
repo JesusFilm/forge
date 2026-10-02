@@ -739,31 +739,25 @@ function ReflectionLayout({
           }}
         >
           <Divider f={f} grow={head} />
+          {/* Figma 415-2618 (revised 2026-10-02): label, the name with life
+              dates on one line in PT Serif italic, then a small round
+              portrait, all centred. */}
           <div
             style={{
               display: "flex",
-              gap: f(20),
+              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
+              gap: f(20),
             }}
           >
-            {uri ? (
-              <Img
-                src={uri}
-                style={{
-                  width: f(124),
-                  height: f(124),
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  opacity: 0.85,
-                }}
-              />
-            ) : null}
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
+                alignItems: "center",
                 gap: f(4),
+                textAlign: "center",
+                whiteSpace: "nowrap",
               }}
             >
               <div
@@ -780,22 +774,29 @@ function ReflectionLayout({
               </div>
               <div
                 style={{
-                  fontFamily: LITERATA,
+                  fontFamily: PT_SERIF,
+                  fontStyle: "italic",
                   fontSize: f(36),
                   lineHeight: `${f(50)}px`,
                   color: "rgba(255,255,255,0.92)",
                   opacity: 0.85,
                 }}
               >
-                {/* Name, then life dates on their own line (Figma 415-2634):
-                  "J. C. Ryle" / "(1816–1900)", never split mid-date. */}
-                {credit.source.split(/\s(?=\()/).map((line, i) => (
-                  <div key={i} style={{ whiteSpace: "nowrap" }}>
-                    {line}
-                  </div>
-                ))}
+                {credit.source}
               </div>
             </div>
+            {uri ? (
+              <Img
+                src={uri}
+                style={{
+                  width: f(89),
+                  height: f(90),
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  opacity: 0.85,
+                }}
+              />
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -1003,9 +1004,9 @@ function LanguageLayout({
         style={{
           position: "absolute",
           left: "50%",
-          // 10 above the first cut (owner, 2026-10-02): a clearer gap between
-          // the verse and the caption tab, which stays where it was.
-          top: f(460),
+          // 20 above the Figma's 470 (owner, 2026-10-02, twice 10): a clearer
+          // gap between the verse and the caption tab, which stays put.
+          top: f(450),
           width: f(620),
           // Centred (the Figma's +20.5 offset pushed the right edge into
           // the action rail).
