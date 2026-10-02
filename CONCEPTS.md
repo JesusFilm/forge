@@ -1743,7 +1743,7 @@ The delivery of one Announcement Campaign across time zones: each device receive
 
 A message a person sends from inside an app — the Watch feedback form on web, the feedback sheet on mobile — that the receiving server files as one Linear issue under a Feedback label, quoting the message verbatim.
 
-It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue.
+It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue. A submission sent from inside the mobile player also names the Video in view, but only a title that came from the resolved Video: the ticket is read where the reporter's context is absent, so a screen that has only a Watch Seed sends no video at all.
 
 ## Flagged ambiguities
 
