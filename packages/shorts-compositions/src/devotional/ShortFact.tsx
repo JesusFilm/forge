@@ -602,7 +602,7 @@ export function captionTokens(words: ReadonlyArray<TimedWord>): TimedWord[] {
 
 /** A loose hand-drawn ring round a w x h box: an ellipse that overshoots its
  *  start, wobbling a little in radius like a pen stroke. */
-function ringPath(w: number, h: number): string {
+function ringPath(w: number, h: number, seed = 0): string {
   const cx = w / 2
   const cy = h / 2
   const rx = w / 2 + h * 0.42
@@ -612,7 +612,13 @@ function ringPath(w: number, h: number): string {
   const n = 64
   for (let i = 0; i <= n; i++) {
     const a = -Math.PI * 0.62 + (i / n) * Math.PI * 2 * turns
-    const wob = 1 + 0.035 * Math.sin(a * 3 + 0.7) + 0.02 * Math.sin(a * 5)
+    // Each seed is the same ring drawn again by hand: the wobble lands a
+    // little differently, never far enough to read as a different shape.
+    const wob =
+      1 +
+      0.035 * Math.sin(a * 3 + 0.7 + seed * 2.1) +
+      0.02 * Math.sin(a * 5 + seed * 1.3) +
+      0.012 * seed * Math.sin(a * 2 + seed)
     // The overshoot drifts inward a touch, as a quick hand does.
     const drift = 1 - 0.05 * (i / n)
     const x = cx + Math.cos(a) * rx * wob * drift
@@ -657,10 +663,11 @@ function LanguageLayout({
     easing: Easing.bezier(0.5, 0, 0.3, 1),
   })
   const lit = interpolate(t, [ringAt, ringAt + 0.4], [0, 1], clamp)
-  // After it is drawn the ring breathes: a slow small sway, never still.
+  // Once drawn, the ring "boils" like hand-drawn animation (owner,
+  // 2026-10-02): three near-identical redraws swapped about six times a
+  // second. Calm, not jumpy.
   const life = Math.max(0, t - ringAt - 0.75)
-  const sway = Math.sin(life * 2.2) * 1.4
-  const breathe = 1 + Math.sin(life * 1.6 + 1) * 0.018
+  const ringSeed = draw < 1 ? 0 : Math.floor(life * 6) % 3
   const verseIn = interpolate(t, [0.05, 0.6], [0, 1], {
     ...clamp,
     easing: EASE_OUT,
@@ -713,17 +720,17 @@ function LanguageLayout({
       })
     : 0
 
-  // Half the Figma's 300 (owner, 2026-10-02: the marks were too big), and
-  // never quite still: each sways slowly, the pair out of phase.
+  // The Figma's 300 less two (owner, 2026-10-02; half size was far too
+  // small), and never quite still: each sways slowly, out of phase.
   const quote = {
     fontFamily: LITERATA,
     fontStyle: "italic" as const,
-    fontSize: f(150),
+    fontSize: f(298),
     lineHeight: 1,
     color: GOLD,
     opacity: 0.85,
     position: "absolute" as const,
-    height: f(70),
+    height: f(130),
     overflow: "visible" as const,
     transformOrigin: "50% 50%",
   }
@@ -746,8 +753,8 @@ function LanguageLayout({
         <div
           style={{
             ...quote,
-            left: f(-10),
-            top: f(-80),
+            left: f(-20),
+            top: f(-150),
             transform: `rotate(${swayQuote(0).toFixed(3)}deg)`,
           }}
         >
@@ -780,9 +787,6 @@ function LanguageLayout({
                   // Dimmed with the rest until the voice reaches it.
                   opacity: 0.85 + 0.15 * lit,
                   WebkitTextStroke: `${(f(1.4) * lit).toFixed(2)}px ${GOLD}`,
-                  // Full strength and a soft gold glow, so the word holds
-                  // the eye over the dimmed verse.
-                  textShadow: `0 0 ${f(14) * lit}px rgba(242,196,107,${(0.75 * lit).toFixed(3)}), 0 0 ${f(4) * lit}px rgba(242,196,107,${(0.6 * lit).toFixed(3)}), 0 ${f(2)}px ${f(16)}px rgba(0,0,0,0.55)`,
                 }}
               >
                 {word}
@@ -799,8 +803,8 @@ function LanguageLayout({
         <div
           style={{
             ...quote,
-            right: f(-10),
-            bottom: f(-70),
+            right: f(-24),
+            bottom: f(-150),
             transform: `rotate(${(180 + swayQuote(Math.PI * 0.8)).toFixed(3)}deg)`,
           }}
         >
@@ -816,15 +820,15 @@ function LanguageLayout({
               left: box.x - box.h * 0.6,
               top: box.y - box.h * 0.3,
               overflow: "visible",
-              transform: `rotate(${(-3 + sway).toFixed(3)}deg) scale(${breathe.toFixed(4)})`,
+              transform: "rotate(-3deg)",
               transformOrigin: "50% 50%",
             }}
           >
             <path
-              d={ringPath(box.w, box.h)}
+              d={ringPath(box.w, box.h, ringSeed)}
               fill="none"
               stroke={GOLD}
-              strokeWidth={f(3.2)}
+              strokeWidth={f(4.6)}
               strokeLinecap="round"
               strokeLinejoin="round"
               pathLength={1}
@@ -847,12 +851,15 @@ function LanguageLayout({
             background: GOLD,
             borderRadius: f(16),
             padding: `0 ${f(12)}px`,
-            fontFamily: SANS,
-            fontWeight: 700,
-            fontSize: f(48),
+            // Impact in normal case (owner, 2026-10-02: the tracked caps
+            // were hard to read). A system font, not bundled; Anton-like
+            // fallbacks keep the shape if a machine lacks it.
+            fontFamily:
+              "Impact, 'Haettenschweiler', 'Arial Narrow Bold', sans-serif",
+            fontWeight: 400,
+            fontSize: f(56),
             lineHeight: `${f(89)}px`,
-            letterSpacing: f(1.44),
-            textTransform: "uppercase",
+            letterSpacing: 0,
             color: "#140b05",
             whiteSpace: "nowrap",
             boxShadow: `0 ${f(4)}px ${f(18)}px rgba(0,0,0,0.35)`,
