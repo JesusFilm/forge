@@ -892,3 +892,25 @@ DNS, WAF, Authenticated Origin Pulls, DNSSEC). Railway env sets
 `CHAT_BASE_URL=https://chat.jesusfilm.ai`; domain-lifecycle rules for the
 OAuth seed live in
 `docs/solutions/auth/public-repo-oauth-seed-railway-domain-exposure-calculus.md`.
+
+## Temporary Apologist comparison (feat-601)
+
+`src/features/apologist/` owns the removable comparison controller, lazy view,
+protocol and server adapter. Both dynamic pages resolve `comparisonAllowed`
+from signed identity and the existing Seeker decision. `/api/apologist` repeats
+both gates per request. Only an eligible fresh local conversation can enter.
+The shell keeps its single Forge session above the lazy boundary;
+`UseConversations.getSnapshot` supplies synchronous send receipts.
+
+New, history navigation, exit and unmount dispose comparison state. The first
+shallow saved-thread URL replacement does not. Apologist history is never
+written to Forge messages or storage. Its failures use a separate vocabulary.
+Keep SDK imports server-only and optional config outside global startup checks.
+Forge user stops intentionally finalize without an error marker; comparison
+tracks stopped status locally rather than inferring it from persisted messages.
+
+When changing the integration or rollout, read
+`docs/operations/apologist-comparison.md`. When moving symbols, update
+`docs/roadmap/ai-chat/feat-602-remove-apologist-comparison.md`, which requires
+removal before public release. feat-601 authorizes this narrow additional
+verified-email allowlist; it does not widen Seeker access.
