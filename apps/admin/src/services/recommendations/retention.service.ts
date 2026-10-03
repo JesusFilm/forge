@@ -27,6 +27,7 @@ const RECOMMENDATION_PROFILE_AUDIT_DAYS = 365
 const RECOMMENDATION_RETENTION_LOCK_ID = 368_000_001
 const RECOMMENDATION_RETENTION_TIMEOUT_MS = 5_000
 const RECOMMENDATION_RETENTION_ROOT_CHUNK_SIZE = 50
+const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE = 10
 class RetentionPhaseBusy extends RecommendationConflictError {}
 
 type RetiringProfile = Readonly<{ id: string; privacyGeneration: number }>
@@ -314,11 +315,18 @@ export async function purgeExpiredRecommendationRequests(
       }),
     )
     const directActionIds = directActions.map((action) => action.id)
+    // Preserve per-episode dependency admission and atomic deletion, but cap
+    // this pre-root phase independently so a playback backlog cannot consume
+    // the whole run before expired requests are reached.
+    const standaloneEpisodePageSize = Math.min(
+      batchSize,
+      RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE,
+    )
     const standaloneEpisodes = await phase((tx) =>
       tx.recommendationPlaybackEpisode.findMany({
         where: { requestId: null, expiresAt: { lte: now } },
         orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
-        take: batchSize,
+        take: standaloneEpisodePageSize,
         select: { id: true },
       }),
     )
@@ -1108,7 +1116,7 @@ export async function purgeExpiredRecommendationRequests(
       requestIds.length === batchSize ||
       expiredWatchExposures.length === batchSize ||
       directActionIds.length === batchSize ||
-      standaloneEpisodeIds.length === batchSize ||
+      standaloneEpisodeIds.length === standaloneEpisodePageSize ||
       expiredProjectionRunPage === batchSize ||
       expiredContributionPage === batchSize ||
       expiredInterestPage === batchSize ||

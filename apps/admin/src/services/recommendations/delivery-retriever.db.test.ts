@@ -1733,12 +1733,100 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         try {
           await client.query(`SET search_path TO "${fixtureSchema}", public`)
           await installIndexedContractSkew(client)
+          let annDiagnostics: SemanticRetrievalDiagnostics | undefined
           const candidates = await runRecommendationRetrievalQuery(
             instrumented,
             Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
             (transaction) =>
-              getSemanticDeliveryCandidatePool(transaction, deterministicInput),
+              getSemanticDeliveryCandidatePool(transaction, {
+                ...deterministicInput,
+                onDiagnostics: (diagnostics) => {
+                  annDiagnostics = diagnostics
+                },
+              }),
           )
+          if (candidates.length < 6) {
+            const annStatement = retrievalQuery
+            const diagnostic: Record<string, unknown> = {
+              ann: annDiagnostics,
+              annCandidateCount: candidates.length,
+            }
+            console.error(
+              "[recommendations] event=hnsw_fixture_failure_initial",
+              JSON.stringify(diagnostic),
+            )
+            try {
+              let exactDiagnostics: SemanticRetrievalDiagnostics | undefined
+              const exactCandidates = await runRecommendationRetrievalQuery(
+                instrumented,
+                Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
+                async (transaction) => {
+                  await transaction.$queryRaw`
+                    SELECT set_config('enable_indexscan', 'off', true),
+                      set_config('enable_bitmapscan', 'off', true)
+                  `
+                  return getSemanticDeliveryCandidatePool(transaction, {
+                    ...deterministicInput,
+                    onDiagnostics: (diagnostics) => {
+                      exactDiagnostics = diagnostics
+                    },
+                  })
+                },
+              )
+              diagnostic.exact = exactDiagnostics
+              diagnostic.exactCandidateCount = exactCandidates.length
+              if (annStatement) {
+                const parameters: unknown[] = JSON.parse(annStatement.params)
+                const query = Prisma.sql(
+                  annStatement.query.split(/\$\d+\b/),
+                  ...parameters,
+                )
+                const planner = await runRecommendationRetrievalQuery(
+                  instrumented,
+                  Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
+                  async (transaction) => ({
+                    settings: await transaction.$queryRaw<
+                      Array<{
+                        plan: string
+                        iteration: string
+                        maxScan: string
+                      }>
+                    >`
+                      SELECT current_setting('plan_cache_mode') AS plan,
+                        current_setting('hnsw.iterative_scan') AS iteration,
+                        current_setting('hnsw.max_scan_tuples') AS "maxScan"
+                    `,
+                    explanation: await transaction.$queryRaw<
+                      Array<{
+                        "QUERY PLAN": Array<{ Plan: RetrievalPlan }>
+                      }>
+                    >(Prisma.sql`EXPLAIN (FORMAT JSON) ${query}`),
+                  }),
+                )
+                const indexNames: string[] = []
+                const collectIndexNames = (plan: RetrievalPlan): void => {
+                  if (plan["Index Name"]) indexNames.push(plan["Index Name"])
+                  plan.Plans?.forEach(collectIndexNames)
+                }
+                collectIndexNames(
+                  planner.explanation[0]!["QUERY PLAN"][0]!.Plan,
+                )
+                diagnostic.parameterCount = parameters.length
+                diagnostic.settings = planner.settings[0]
+                diagnostic.indexNames = [...new Set(indexNames)].sort()
+              }
+            } catch (error) {
+              diagnostic.probeError =
+                error instanceof Error
+                  ? { name: error.name, message: error.message.slice(0, 200) }
+                  : { name: "unknown" }
+            }
+            // Aggregate synthetic-fixture facts only; never replace the gate.
+            console.error(
+              "[recommendations] event=hnsw_fixture_failure_diagnostic",
+              JSON.stringify(diagnostic),
+            )
+          }
           expect(candidates.length).toBeGreaterThanOrEqual(6)
           expect(
             candidates.every(
