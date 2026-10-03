@@ -17,7 +17,61 @@ tags:
   - "operations"
 ---
 
-## October 4 follow-up: deployed episode cap did not restore root progress
+## October 4 query release: natural catch-up snapshot
+
+[PR #2553](https://github.com/JesusFilm/forge/pull/2553) merged normally as
+`e8e7fb3475af975835856a9f9380805f83d2f3b1` after independent exact-head review
+and green required CI. Both actual Admin HTTP and worker processes converged
+at October 3 22:05:59 UTC, healthy and compact, with HTTP runner disabled and
+worker runner enabled. Post-merge CI passed too. The change affects only the
+eligibility child-count query; expiry, deletion order and execution limits remain.
+
+Natural attempts at 22:06:07 and 22:07:40 failed after committing work, with four
+successful attempts between them. The first failure committed 12,746 expired
+profile-session links; that is not proof that their deletion was the failing
+statement. A durable-ledger receipt collected around 22:17:02 counted 28
+successful and two failed attempts, with 2,800 roots committed by successes
+and another 200 by failures. No new failure had occurred since 22:07:40.
+A separate 22:17:23 backlog read found overdue request roots and projection
+runs clear, but 1,387 standalone episodes and 961 eligibility decisions kept
+the full serving gate overdue. At that snapshot, further natural catch-up
+was required; do not infer full recovery from root progress or HTTP health.
+
+At **22:47:11 UTC**, the full 21-type retention-health read found zero rows
+beyond the 24-hour propagation limit, with latest success watermark
+22:47:06. The accompanying ledger receipt had 204 scheduled successes and the
+same two earlier failures, with 10,080 roots committed by successes and 200 by
+failures. A separate 22:49:11 read again found zero overdue rows; the later
+ledger had 212 successes and no additional failures. Serving-health recovery
+is now observed on `e8e7fb3`.
+
+The 22:47 receipt still had 18,169 younger expired standalone episodes, 12,046
+eligibility decisions and one projection run inside the propagation window.
+Their normal catch-up continued; the scheduler is a persistent loop, so its
+running status does not mean an incomplete purge attempt or resumed daily-only
+cadence. Direct PGDATA measurement at 22:47:59 found 24,396,324,864 free bytes on
+a 48,891,670,528-byte filesystem, 100,663,296 WAL bytes, and no lock waiters or
+long transactions. The legacy stage relation stayed empty at 24,576 bytes.
+
+At 22:51:26, a bounded post-clearance read found ten naturally created requests,
+all issued: nine served and one fallback, with zero unavailable/issuance-failed
+results and the cap not reached. This is a small observed sample, not universal
+serving proof. A separate 22:51:49 ledger snapshot counted 228 scheduled
+successes and the same two earlier failures, no scheduler error and three
+freshly expired request roots inside the propagation window. No synthetic
+writes or production mutations were used for verification.
+
+This is not a qualifying clean daily cycle. Keep the ticket in progress until
+two later ordinary, failure-free, loaded daily cycles
+provide descendant, throughput, lock, backlog/oldest-age and headroom evidence.
+No manual purge or production fault injection may manufacture acceptance.
+See the timestamped receipts on #2553 and the consolidated closeout report.
+
+## October 4 pre-release follow-up: deployed episode cap did not restore root progress
+
+Historical snapshot before PR #2553 merged. Pending-release statements in this
+section describe that earlier state; use the release receipts above for current
+deployment evidence.
 
 Both Admin HTTP and worker were verified on PR #2551's merge revision before
 the October 3 21:02 UTC natural scheduled attempt. That attempt failed at the
@@ -39,7 +93,10 @@ in-progress: verify natural root/descendant progress and backlog recovery
 after actual release, then require two later ordinary failure-free loaded daily
 cycles with lock, backlog and headroom evidence before closure.
 
-## October 4 standalone-episode incident and scoped repair
+## October 4 pre-release standalone-episode incident and scoped repair
+
+Historical snapshot before PR #2551 merged. The local repair and future release
+steps below describe what was known before its observed production attempt.
 
 The October 3 normal scheduled cycle failed on every observed attempt before
 deleting expired request roots. A bounded read of the durable and workflow

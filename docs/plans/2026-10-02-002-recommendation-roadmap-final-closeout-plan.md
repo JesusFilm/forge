@@ -89,11 +89,14 @@ separately from local behavior and page-load checks.
 
 This plan stays active solely for platform feat-554: two normal failure-free
 loaded daily retention cycles must be observed. October 2 and 3 both failed and
-do not qualify. Runtime repairs #2550 and #2551 merged normally; verify actual
-Admin HTTP and worker deployment of `e6097773` or a verified descendant and
-natural recovery of the overdue backlog/serving gate. Both roles converged on
-`e6097773`, but its first natural attempt failed with zero request-root progress;
-the remaining bottleneck must still be resolved. Eventual recovery does not
+do not qualify. Runtime repairs #2550, #2551 and #2553 merged normally. Both
+Admin roles were verified on `e8e7fb3` at October 3 22:05:59 UTC. Natural catch-up
+then produced successful batches as well as two failed attempts; at 22:17:23,
+overdue requests and projection runs were clear, but standalone episodes and
+eligibility decisions still kept the serving gate overdue. At 22:47:11, all
+21 overdue categories were clear with a current success watermark; a separate
+22:49:11 check confirmed that recovery. Normal catch-up of younger expired
+records continued in the persistent scheduler. This recovered cycle does not
 replace the two later ordinary loaded daily cycles. Existing daily monitoring sends
 new proof to the coordinating owner, who completes the scoped evidence PR,
 review/merge, final merged-main inventory and index update. Do not mark the plan
