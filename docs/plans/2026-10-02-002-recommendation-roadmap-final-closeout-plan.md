@@ -88,7 +88,13 @@ and required checks cover each scoped PR; normal Roadmap deployment is verified
 separately from local behavior and page-load checks.
 
 This plan stays active solely for platform feat-554: two normal failure-free
-loaded daily retention cycles must be observed. Existing daily monitoring sends
+loaded daily retention cycles must be observed. October 2 and 3 both failed and
+do not qualify. Runtime repairs #2550 and #2551 merged normally; verify actual
+Admin HTTP and worker deployment of `e6097773` or a verified descendant and
+natural recovery of the overdue backlog/serving gate. Both roles converged on
+`e6097773`, but its first natural attempt failed with zero request-root progress;
+the remaining bottleneck must still be resolved. Eventual recovery does not
+replace the two later ordinary loaded daily cycles. Existing daily monitoring sends
 new proof to the coordinating owner, who completes the scoped evidence PR,
 review/merge, final merged-main inventory and index update. Do not mark the plan
 complete or disable that monitor before the required closure merges.

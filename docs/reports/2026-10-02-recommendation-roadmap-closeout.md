@@ -162,17 +162,67 @@ growth claim.
 
 **Platform feat-554 stays in-progress.** September 30 and October 1 recovered
 after failures, so neither counts as one of the two required normal failure-free
-loaded daily cycles. The latest audit had zero qualifying cycles; October 1
+loaded daily cycles. The October 1 audit had zero qualifying cycles and
 included 78 successful and four failed wrappers, 7,846 committed roots and
 27,216 served descendants. Two failures were timeout/closed and two remained
 unclassified; no speculative production change was made. The 3,337 newly expired
 roots in the snapshot were within the 24-hour acceptance threshold, which does
 not establish sustained retention success.
 
-Next normal opportunities are **October 2 and 3 at 10:30 UTC (23:30 NZDT)**.
-Both must produce actual loaded, failure-free evidence with throughput, lock
-skips, backlog, oldest expired age and headroom. Manual, recovered or empty runs
-cannot manufacture this proof. No replacement ticket hides the unfinished work.
+The October 2 cycle also failed before recovering: one timeout followed by 74
+successful attempts removed 7,435 request roots and 25,182 served descendants.
+[2550](https://github.com/JesusFilm/forge/pull/2550) bounded the profile tail and
+generation-reference detachment without widening the five-second deadline.
+Both actual Admin roles were verified on its merge `b34844d7` at October 2
+20:50 UTC. Recovery still did not qualify that cycle.
+
+The October 3 cycle then failed repeatedly during pre-root standalone playback
+episode work. At 19:44 UTC, 124 scheduled wrappers had failed; the later 19:46 UTC
+durable-ledger slice still showed zero request-root deletions. At 20:07 UTC,
+aggregate probes found 2,179 roots and 687
+standalone episodes overdue by more than 24 hours. Overdue retention makes the
+serving gate unhealthy by the current code path; no synthetic delivery request
+was used to claim an observed client response. Healthy HTTP endpoints did not
+establish recommendation availability. The phase diagnosis follows code order,
+durable counters and native reproduction; it does not identify one exact failing
+SQL statement for every production attempt.
+
+[2551](https://github.com/JesusFilm/forge/pull/2551) caps the pre-root standalone
+episode page at ten while preserving each episode's dependency locks, recheck,
+atomic deletion and committed counters. The dependency guard, expiry, scheduler
+and run deadline remain unchanged. The native loaded fixture reproduced zero
+root progress on the old implementation at 5.22 seconds; the fix deleted ten
+episodes and twelve expired roots in 1.09 seconds, then drained the remaining
+episodes through continuation. A separate native case verifies partial progress
+and retry accounting after an individual deletion fails. These are isolated
+fixture results, not production throughput estimates.
+
+Independent review approved exact head `842a2c03`, and all required checks passed
+in [run 37152721294](https://github.com/JesusFilm/forge/actions/runs/37152721294)
+before the normal October 3 20:52 UTC squash merge `e6097773`. Two earlier CI
+attempts failed an existing six-card HNSW assertion with zero candidates. The
+test-only diagnostic head passed at 437 ms without entering the failure probe;
+the earlier cause remains unresolved, not declared fixed. Assertions, eligibility
+and retrieval budgets were preserved. Consult the timestamped actual-deployment
+and natural-recovery receipts on #2551; its merge alone is not production proof.
+
+Both actual Admin roles converged on `e6097773` at October 3 21:01:55 UTC with
+healthy HTTP endpoints, compact traces and the expected runner roles. However,
+the first natural attempt at 21:02:12 failed after about 5.05 seconds, deleting
+ten standalone episodes and zero request roots. The expired-root backlog rose
+from 10,823 at 21:02:14 to 10,829 at 21:02:56; the serving gate remained overdue.
+The deployed repair therefore has not restored retention. The storage owner
+continues bounded diagnosis and the normal tested/reviewed release workflow;
+no manual run or production fault injection can substitute for recovery.
+
+There are **zero qualifying cycles** through the failed October 3 cycle. Both
+Admin roles must run `e6097773` or a verified descendant containing the repair.
+Natural catch-up must demonstrate request-root deletion, declining overdue
+backlog and restoration of the serving gate; recovery cannot qualify the already
+failed cycle. Two later ordinary loaded, failure-free daily cycles at the normal
+10:30 UTC schedule must provide descendants, throughput, lock skips, backlog,
+oldest expired age and headroom evidence. Manual, recovered or empty runs cannot
+manufacture this proof. No replacement ticket hides the unfinished work.
 
 The existing `recommendation-storage-daily-check` heartbeat remains with the
 storage owner, updated to send meaningful results to the coordinating chat and
@@ -224,8 +274,10 @@ merged-main confirmation are recorded on #2541. The final normal Roadmap
 deployment receipt on #2541 identifies the actual Railway revision, deployment
 ID/time and bounded public endpoint/browser observations; consult it before
 claiming the new status model is live.
-The closeout changes no recommendation production runtime or production SQL;
-test/CI and the roadmap status viewer are the only new executable changes.
+The initial October 2 closeout changed test/CI and the roadmap status viewer,
+without recommendation runtime or production SQL changes. Subsequent retention
+repairs #2550 and #2551 are runtime changes; their separate release and recovery
+evidence is required as described above.
 
 The PostgreSQL CI job passed all 56 relevant native tests: one historical
 playback-upgrade, three viewing-mode, 13 refresh, six measurement-reuse,
@@ -243,10 +295,10 @@ production latency estimates. Raw samples and the measurement script are retaine
 under `/home/nisal/Documents/Codex/2026-10-02/recommendation-roadmap-cancelled-status/work/`
 and summarized in #2545. Normal deployed verification is recorded separately.
 
-The direct path/frontmatter audit of this integration tree found **12 complete,
+The direct path/frontmatter audit of merged main `e6097773` found **12 complete,
 25 cancelled and one open (feat-554)** across 38 paths, including the new viewer
-ticket. The same audit must pass directly against merged main before final
-reporting, with the merge SHA and result retained on #2541. The dependency audit
+ticket. Final closure must repeat this audit on merged main, with the merge SHA
+and result retained on #2541. The dependency audit
 checked all 25 retired IDs and 43 affected ticket paths, finding no residual
 retired edge or missing reverse edge; ambiguous legacy IDs resolve by their
 intended same-lane paths for this audit. A title/tag audit found no additional open recommendation scope:
