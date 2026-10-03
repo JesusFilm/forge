@@ -18,6 +18,7 @@ import {
   verifyDevotionalWorkerArtifacts,
 } from "../../services/devotional/devotional-worker-client"
 import {
+  chaptersWithReflectionSource,
   composeDevotionalContent,
   GeneratedDevotionalSchema,
   sourceClipAndScripture,
@@ -336,11 +337,29 @@ const sourceStep = createStep({
     let reservedChapterId: string
     if (chapterIndex == null) {
       // Only chapters with a curated passage mapping are in the pool.
-      const pool = mappedChapterIndices(authored.passages)
+      const mapped = mappedChapterIndices(authored.passages)
         .map((index) =>
           chapterWithPassage(index, authored.passages, authored.chapters),
         )
         .filter((chapter) => chapter !== null)
+      // ...and only chapters whose reflection the corpus can actually serve.
+      // Reserving one it cannot would wedge every automatic run on the same
+      // chapter — see `chaptersWithReflectionSource` for why a failure repeats.
+      const pool = chaptersWithReflectionSource(
+        mapped,
+        authored.corpora,
+        sequence,
+      )
+      if (pool.length === 0) {
+        throw new Error(
+          "no catalogued chapter has a reflection source in the Workspace corpus",
+        )
+      }
+      if (pool.length !== mapped.length) {
+        console.log(
+          `[devotional] event=chapter_pool_filtered mapped=${mapped.length} eligible=${pool.length} without_reflection=${mapped.length - pool.length}`,
+        )
+      }
       const picked = await store.pick(pool)
       chapterIndex = picked.chapter.index
       reservationId = picked.reservationId

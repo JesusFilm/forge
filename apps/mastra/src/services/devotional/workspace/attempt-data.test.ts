@@ -22,7 +22,7 @@ function fixture(workspacePath: string): string {
   )
 }
 
-function harness() {
+function harness(extra: Record<string, string> = {}) {
   const values = new Map<string, Buffer>()
   for (const workspacePath of Object.values(DEVOTIONAL_AUTHORED_PATHS)) {
     values.set(workspacePath.slice(1), Buffer.from(fixture(workspacePath)))
@@ -31,6 +31,9 @@ function harness() {
     "inputs/reflections/new-source.md",
     Buffer.from("Grace meets a fearful heart with steady hope."),
   )
+  for (const [nativePath, content] of Object.entries(extra)) {
+    values.set(nativePath, Buffer.from(content))
+  }
   const sources: DevotionalSourceRef[] = [...values.entries()].map(
     ([nativePath, content]) => {
       const workspacePath = `/${nativePath}`
@@ -62,6 +65,42 @@ function harness() {
 }
 
 describe("attempt-scoped authored data", () => {
+  it("keeps a theme-keyed source out of the passage-matched pool", async () => {
+    // Spurgeon's entries are anchored to their OWN verse, so pooling them with
+    // commentary would make a Morning-and-Evening meditation selectable as a
+    // commentary on whatever passage that verse belongs to — and presented as
+    // `flavor: "commentary"`. Routing must key on the source, not on the mere
+    // presence of an osisRef.
+    const { filesystem, sources } = harness({
+      "inputs/reflections/spurgeon-morning-evening.json": JSON.stringify({
+        entries: [
+          {
+            source: "Charles Spurgeon, Morning and Evening",
+            reference: "Luke 19:10",
+            osisRef: "Luke.19.10",
+            verse: "For the Son of man is come to seek and to save",
+            text: "A thematic meditation on seeking and being sought.",
+          },
+        ],
+      }),
+    })
+
+    const loaded = await loadDevotionalAttemptAuthoredData({
+      filesystem,
+      sources,
+    })
+
+    const inCommentary = loaded.corpora.commentary.filter((entry) =>
+      entry.source.includes("Spurgeon"),
+    )
+    expect(inCommentary).toEqual([])
+    expect(
+      loaded.corpora.spurgeon.some((entry) =>
+        entry.source.includes("Spurgeon"),
+      ),
+    ).toBe(true)
+  })
+
   it("loads fixed policy plus newly dropped corpus files from selected refs", async () => {
     const { filesystem, sources } = harness()
     const loaded = await loadDevotionalAttemptAuthoredData({

@@ -133,19 +133,19 @@ function addReflection(
   sourcePath: string,
   entry: ReflectionEntry,
 ): void {
+  // Thematic sources are keyed to their OWN verse, not to the passage a
+  // devotional is about, so they must stay out of the passage-matched pool:
+  // pooled there, a Morning-and-Evening entry on Luke 19:10 would be selectable
+  // as commentary on Luke 19 and presented as one. Content-only files carry no
+  // passage key at all and are thematic by construction. Any other source is
+  // commentary, whatever its author — `matchReflection` ranks by how tightly an
+  // entry covers the passage, so a new volume needs no routing rule here.
   const identity = `${sourcePath}\n${entry.source}`.toLowerCase()
-  if (identity.includes("ryle") || entry.osisRef?.startsWith("Matt.")) {
-    corpora.ryleMatthew.push(entry)
-  } else if (
-    identity.includes("henry") ||
-    /^(?:Mark|Luke|John)\./u.test(entry.osisRef ?? "")
-  ) {
-    corpora.matthewHenry.push(entry)
-  } else {
-    // Content-only files have no passage metadata. They remain usable as
-    // thematic sources through the existing scored rotation.
+  if (identity.includes("spurgeon") || entry.osisRef == null) {
     corpora.spurgeon.push(entry)
+    return
   }
+  corpora.commentary.push(entry)
 }
 
 async function loadScripture(options: {
@@ -188,11 +188,7 @@ async function loadCorpora(options: {
   filesystem: WorkspaceFilesystem
   sources: readonly DevotionalSourceRef[]
 }): Promise<ReflectionCorpora> {
-  const corpora: ReflectionCorpora = {
-    ryleMatthew: [],
-    matthewHenry: [],
-    spurgeon: [],
-  }
+  const corpora: ReflectionCorpora = { commentary: [], spurgeon: [] }
   for (const source of options.sources) {
     if (source.category !== "reflections" || isDocumentation(source)) continue
     const entries = parseReflectionDocument({
@@ -201,11 +197,7 @@ async function loadCorpora(options: {
     })
     for (const entry of entries) addReflection(corpora, source.path, entry)
   }
-  if (
-    corpora.ryleMatthew.length === 0 &&
-    corpora.matthewHenry.length === 0 &&
-    corpora.spurgeon.length === 0
-  ) {
+  if (corpora.commentary.length === 0 && corpora.spurgeon.length === 0) {
     throw new DevotionalAuthoredDataError(
       "invalid",
       "/inputs/reflections",
