@@ -211,15 +211,65 @@ healthy HTTP endpoints, compact traces and the expected runner roles. However,
 the first natural attempt at 21:02:12 failed after about 5.05 seconds, deleting
 ten standalone episodes and zero request roots. The expired-root backlog rose
 from 10,823 at 21:02:14 to 10,829 at 21:02:56; the serving gate remained overdue.
-The deployed repair therefore has not restored retention. The storage owner
-continues bounded diagnosis and the normal tested/reviewed release workflow;
-no manual run or production fault injection can substitute for recovery.
+At that snapshot, #2551 had not restored retention. Later old-worker attempts
+committed some roots while their wrappers still failed; those deletions are not
+attributed to the next release.
+
+[2553](https://github.com/JesusFilm/forge/pull/2553) changes only the request-root
+eligibility count to a parameterized, deduplicated query from request parents.
+An equivalent old join shape took 329.175 ms in a bounded production read plan,
+versus 2.548 ms for the new query on the same cohort. Native tests verify both
+decision link types, exact deletion counts and live exclusions. These read-plan
+and fixture results do not themselves establish whole-run production recovery.
+Independent review and required CI passed before the normal 21:58 UTC merge
+`e8e7fb3`; post-merge CI also passed.
+
+Both actual Admin roles converged on `e8e7fb3` at **22:05:59 UTC**, healthy and
+compact with the expected runner roles. The natural 22:06:07 attempt failed
+after committing 100 roots and 12,746 profile-session links. Four attempts then
+succeeded; another failed at 22:07:40 after committing 100 roots and later tail
+work. The large link deletion itself committed; exact timed-out SQL is unknown.
+A durable-ledger receipt collected around 22:17:02 counted **28 successful and
+two failed attempts**: successful entries committed 2,800 roots and failed
+entries another 200. No new failure had occurred since 22:07:40. A separate
+22:17:23 backlog read found overdue request roots and projection runs clear;
+the full serving gate remained overdue on 1,387 standalone episodes and 961
+eligibility decisions. At that snapshot, further natural catch-up was required;
+partial progress is not a healthy-gate claim. Timestamped deployment and
+recovery-attempt receipts are retained on #2553.
+
+**Serving-health recovery was observed at 22:47:11 UTC.** All 21 retained entity
+types had zero rows beyond the 24-hour propagation limit, and the latest
+success watermark was 22:47:06. The accompanying ledger receipt contained
+204 scheduled successes and the same two earlier failures: successful entries
+committed 10,080 request roots and failed entries another 200. A separate
+22:49:11 health read again found zero overdue rows; the later ledger had 212
+successes and no additional failures. This is recovered operational health,
+not a failure-free October 3 cycle.
+
+Within-window catch-up continued: the 22:47 health receipt still had 18,169
+expired standalone episodes, 12,046 eligibility decisions and one projection
+run, none overdue. The persistent scheduler remained running as designed; this
+does not mean a purge attempt was incomplete or the daily-only cadence had
+resumed. At 22:47:59, direct PGDATA measurement found 24,396,324,864 free bytes on
+a 48,891,670,528-byte filesystem, 100,663,296 WAL bytes and no lock waiters or long
+transactions. The legacy stage relation remained empty at 24,576 allocated bytes.
+These are timestamped capacity observations, not a growth forecast.
+
+By 22:51:26, a bounded read found ten naturally created requests since gate
+clearance, all issued: nine served and one fallback, with no unavailable or
+issuance-failed result. The cap was not reached. This small observed sample
+supports resumed issuance; it is not universal serving proof. A separate
+22:51:49 ledger snapshot contained 228 scheduled successes and the same two
+earlier failures, with no scheduler error. Three freshly expired request roots
+were present inside the propagation window. No synthetic writes or production
+mutations were used for this verification.
 
 There are **zero qualifying cycles** through the failed October 3 cycle. Both
-Admin roles must run `e6097773` or a verified descendant containing the repair.
-Natural catch-up must demonstrate request-root deletion, declining overdue
-backlog and restoration of the serving gate; recovery cannot qualify the already
-failed cycle. Two later ordinary loaded, failure-free daily cycles at the normal
+Admin roles must run `e8e7fb3` or a verified descendant containing the repairs.
+Natural catch-up demonstrated request-root deletion, declining overdue backlog
+and restoration of the serving-health criteria; recovery cannot qualify the
+already failed cycle. Two later ordinary loaded, failure-free daily cycles at the normal
 10:30 UTC schedule must provide descendants, throughput, lock skips, backlog,
 oldest expired age and headroom evidence. Manual, recovered or empty runs cannot
 manufacture this proof. No replacement ticket hides the unfinished work.
@@ -276,7 +326,7 @@ ID/time and bounded public endpoint/browser observations; consult it before
 claiming the new status model is live.
 The initial October 2 closeout changed test/CI and the roadmap status viewer,
 without recommendation runtime or production SQL changes. Subsequent retention
-repairs #2550 and #2551 are runtime changes; their separate release and recovery
+repairs #2550, #2551 and #2553 are runtime changes; their separate release and recovery
 evidence is required as described above.
 
 The PostgreSQL CI job passed all 56 relevant native tests: one historical
@@ -295,7 +345,7 @@ production latency estimates. Raw samples and the measurement script are retaine
 under `/home/nisal/Documents/Codex/2026-10-02/recommendation-roadmap-cancelled-status/work/`
 and summarized in #2545. Normal deployed verification is recorded separately.
 
-The direct path/frontmatter audit of merged main `e6097773` found **12 complete,
+The direct path/frontmatter audit of merged main `e8e7fb3` found **12 complete,
 25 cancelled and one open (feat-554)** across 38 paths, including the new viewer
 ticket. Final closure must repeat this audit on merged main, with the merge SHA
 and result retained on #2541. The dependency audit
