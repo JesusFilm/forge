@@ -74,7 +74,7 @@ jest.mock("@shopify/flash-list", () => {
 import { act } from "react"
 import { Text } from "react-native"
 
-import { DOWNLOADED_DUB_LABEL, LanguageSheetContent } from "../LanguageSheet"
+import { LanguageSheetContent } from "../LanguageSheet"
 import type { WatchVariant } from "../../../lib/normalizeVideo"
 import {
   TestRenderer,
@@ -83,6 +83,8 @@ import {
   type NodeRequireLike,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+
+const DOWNLOADED_DUB_LABEL = "Downloaded"
 
 function variant(
   languageSlug: string,

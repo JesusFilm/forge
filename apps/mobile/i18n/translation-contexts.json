@@ -1,0 +1,530 @@
+{
+  "product": "a Christian video-streaming and discipleship app for iPhone and Android phones",
+  "namespaces": {
+    "Common": "Shared controls that many screens of the mobile app use, such as the back button in the top bar.",
+    "VideoLabel": "A short label that names the kind of video (for example a feature film or an episode). It shows on Home cards, and in capital letters above the title on the watch page.",
+    "DownloadQuality": "The video quality choices in the download sheet, where the viewer picks how large an offline copy or a saved file is.",
+    "Subtitles": "The subtitle control on the watch page and the subtitle choice in the download sheet.",
+    "MyWatch": "The My Watch tab: the viewer's name or Guest, the sign-in card, a row of downloaded videos, and the Account screen that holds Sign out.",
+    "More": "The More screen, opened from the My Watch tab: links to the Jesus Film Project website, grouped as Support, About, and Legal, and the app version.",
+    "Auth": "Sign-in and sign-out text: the sign-in card on the My Watch tab, the Account screen, and the small banner on the watch page that asks a signed-out viewer to sign in so the app keeps their place in a video.",
+    "DeleteAccount": "The account deletion steps on the Account screen, which opens from the My Watch tab: the confirmation, the request to sign in again, and the result messages. The deletion is permanent, so the text must be exact.",
+    "BibleReader": "The Bible reader screen, which shows one verse at a time. It has a top bar (back, the passage, the translation, download, settings), a footer with the chapter and a verse counter, swipe hints, a verse selection bar with Copy and Share, and error messages. Book names and Bible text come from each translation, not from these strings.",
+    "BiblePassagePicker": "A sheet over the Bible reader where the viewer chooses a book, then a chapter, then a verse.",
+    "BibleTranslationPicker": "A sheet over the Bible reader where the viewer chooses a Bible translation. Each row shows which books the translation has and whether it is on the device.",
+    "BibleReaderSettings": "The Bible reader's settings sheet: color mode, text size, typeface, line spacing, verse numbers, and arrow buttons.",
+    "BibleDownload": "A system alert that downloads a Bible translation to the device, shows the progress, removes it, or explains why a download stopped.",
+    "LapseReminder": "A phone notification that the app sends one day or seven days after the viewer last used it, to invite them back to the last video they watched.",
+    "Push": "A phone notification that the Jesus Film Project team sends to announce a video or other content, and a hidden alert that staff use to test these notifications.",
+    "Explore": "The Explore tab: a full-screen vertical feed of short video clips. The viewer swipes up for the next clip. White text and round buttons sit over the playing video.",
+    "Series": "The series page: a trailer or a poster, the series title, buttons for language, subtitles, download, and share, and a grid of episode cards. It also holds the menus and alerts that manage the downloads of a series, and the language and subtitle sheets.",
+    "SeriesDownload": "A sheet that downloads every episode of a series at once, or saves all of them as files in a folder on the device. It shows the quality and subtitle choices, the progress of the check, and a summary of the result.",
+    "DownloadSheet": "The download sheet of one video, and the parts that the series download sheet also uses: the choice between an offline copy in the app and a file saved on the device, the quality and subtitle lists, the terms-of-use checkbox, and the terms window. The terms themselves stay in English.",
+    "DownloadButton": "The spoken label of the round download button on a video page and on a series page. It names the state of the download and what a tap does. Only a screen reader reads it.",
+    "Library": "The Downloads screen, which opens from the My Watch tab: the list of downloaded videos. Each row shows the size and the state of one download. The viewer can select videos and delete them.",
+    "ExportReport": "A small card at the bottom of the screen that reports the result after the app saves a video file, or every episode of a series, in a folder on the device.",
+    "Watch": "The watch page of one video: the title, the language and subtitle buttons, the download and share buttons, the description, the Up Next row, and the messages and alerts about offline downloads. It also holds the language and subtitle sheets, which the series page uses too.",
+    "Player": "The video player's controls over the playing video: play, pause, skip, the seek bar, full screen, and a settings sheet for the playback speed and the video quality. Most of these strings are spoken labels for a screen reader.",
+    "MiniPlayer": "A small floating video window that keeps a video playing while the viewer uses other screens. It has a play or pause button and a close button, and a screen reader reads its state.",
+    "Cast": "Sending the video to a TV with Google Cast or AirPlay: the Cast button, the text that names the TV that plays the video, and the message when casting fails. A TV name comes from the TV, not from these strings.",
+    "Sections": "Content blocks that editors arrange on a story page: video cards, video rows, a row of story links, a faith quiz button, and a muted video at the top. It also holds the video and collection pages that open from those blocks, and their error messages.",
+    "BibleQuotes": "A row of cards on the watch page, each with a Bible verse that the video cites. The last card invites the viewer to a free Bible study. Book names and Bible text come from each translation, not from these strings.",
+    "StudyQuestions": "A list of study questions about the video on the watch page. The viewer opens a question to read its answer. When a question has no answer, the app offers a chat with a person or a way to send a Bible question.",
+    "ListSheet": "A sheet with a search field and a list of choices, such as languages, subtitles, or Bible translations. The current choice shows at the top. It also holds the loading and error states of a sheet.",
+    "Tabs": "The labels of the five tabs in the bar at the bottom of every main screen. The iOS tab bar cuts off a long label and no setting can widen it, so each label must be one short word where the language allows.",
+    "Home": "The Home tab: a large hero video at the top with a Watch Now button and a sound button, a row of small hero cards under it, rows of video cards, and the loading, error, and empty states. The episode count also shows on the video cards in search results.",
+    "HomeHero": "The promotional slides in the Home hero, between the video slides. Each slide has a short label that shows in capital letters above the title, a title, a description, and sometimes a button that opens a web page. Some titles greet the viewer by the time of day.",
+    "HomeShelves": "The titles of the built-in rows of videos that Home shows when it cannot load its curated page.",
+    "Discover": "The search tab: a search field, a grid of video results, a button that loads more results, and the messages for no results and for a failed search.",
+    "BrowseTopics": "The topic cards that the search tab shows before the viewer types. Each card names a topic of Christian videos, and a tap searches that topic.",
+    "Mission": "The mission page and the three mission cards at the bottom of Home. The page describes the ministry's video library, the tools it builds next, and an invitation to test new tools early. An eyebrow is a short line in capital letters above a heading."
+  },
+  "keys": {
+    "Common.goBackAriaLabel": {
+      "role": "back-navigation accessibility label",
+      "visibility": "assistive technology only"
+    },
+    "Subtitles.off": {
+      "role": "subtitle state label",
+      "composition": "Shows in the subtitle control when no subtitle track plays. Keep it as short as the language allows."
+    },
+    "Subtitles.noSubtitles": {
+      "role": "unavailable-state label",
+      "composition": "Shows in place of the subtitle choice when the video has no subtitle track."
+    },
+    "Auth.signInComingSoonAriaLabel": {
+      "role": "disabled-button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader reads the button name, the state, and the reason as one label."
+    },
+    "BibleReader.chapterOpenedAriaAnnouncement": {
+      "role": "screen reader announcement",
+      "visibility": "assistive technology only",
+      "composition": "{chapter} is a book name and a chapter number, for example John 4."
+    },
+    "BibleReader.choosePassageAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{passage} is a Bible reference, for example John 3:16. The screen reader reads the reference, then what the button does."
+    },
+    "BibleReader.verseAriaValue": {
+      "role": "slider accessibility value",
+      "visibility": "assistive technology only",
+      "composition": "{chapter} is a book name and a chapter number, for example John 3."
+    },
+    "BibleReader.versesAriaValue": {
+      "role": "slider accessibility value",
+      "visibility": "assistive technology only",
+      "composition": "One stop covers a range of verses. {chapter} is a book name and a chapter number."
+    },
+    "BibleReader.verseAriaLabel": {
+      "role": "verse accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{text} is the Bible text of the verse."
+    },
+    "BibleReader.versesAriaLabel": {
+      "role": "verse accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "One stop covers a range of verses. {text} is their Bible text."
+    },
+    "BibleReader.translationWithStatusAriaLabel": {
+      "role": "accessibility label of the translation pill while its translation downloads",
+      "composition": "{status} is the short phrase from BibleReader.translationDownloadingAriaStatus, such as \"downloading, 40 percent\"."
+    },
+    "BibleReader.translationDownloadingAriaStatus": {
+      "role": "spoken download status of the shown translation",
+      "visibility": "assistive technology only",
+      "composition": "Inserted as {status} into BibleReader.translationWithStatusAriaLabel, after the translation name and a comma. Start lowercase, with no final period."
+    },
+    "BiblePassagePicker.bookWithNoteAriaLabel": {
+      "role": "list row accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{name} is a book name and {note} is a short note about it. Keep only the separator that the language uses between two phrases."
+    },
+    "BibleTranslationPicker.twoNames": {
+      "role": "list of two names",
+      "composition": "Joins two Bible book names, for example Ruth and Luke."
+    },
+    "BibleTranslationPicker.threeNames": {
+      "role": "list of three names",
+      "composition": "Joins three Bible book names, for example Ruth, Luke, and John."
+    },
+    "BibleReaderSettings.textSizeAriaUnit": {
+      "role": "slider unit",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader says a number, then this unit, for example 30 points. A point is a unit of text size."
+    },
+    "BibleReaderSettings.lineSpacingAriaUnit": {
+      "role": "slider unit",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader says a number, then this unit, for example 140 percent."
+    },
+    "BibleReaderSettings.typefaceSerif": {
+      "role": "typeface option",
+      "composition": "A typeface with serifs. The option shows in that typeface."
+    },
+    "BibleReaderSettings.typefaceSans": {
+      "role": "typeface option",
+      "composition": "A sans-serif typeface. The option shows in that typeface. Keep it short."
+    },
+    "BibleReaderSettings.modeTrueDark": {
+      "role": "color mode option",
+      "composition": "A dark mode with a pure black background, darker than the Dark mode."
+    },
+    "LapseReminder.channelName": {
+      "role": "Android notification category name",
+      "composition": "Shows in the phone's notification settings for this app. Keep it short."
+    },
+    "Push.announcementsChannelName": {
+      "role": "Android notification category name",
+      "composition": "Shows in the phone's notification settings for this app. Keep it short."
+    },
+    "Push.unresolvableDestination": {
+      "role": "short in-app message",
+      "composition": "Shows for a few seconds after the viewer taps an announcement that the app cannot open. The app then shows the home screen."
+    },
+    "Push.testIdTitle": {
+      "role": "alert title",
+      "composition": "Staff hold a button for five seconds to see this alert. It shows the code that sends test notifications to this phone."
+    },
+    "Push.testIdRegistering": {
+      "role": "alert message",
+      "composition": "Shows while the app has not yet registered this phone for notifications."
+    },
+    "Push.testIdClose": {
+      "role": "alert button"
+    },
+    "Push.testIdCopy": {
+      "role": "alert button",
+      "composition": "Copies the test ID to the clipboard."
+    },
+    "Auth.signInPromptMessage": {
+      "role": "banner message",
+      "composition": "Promise only that the app keeps the viewer's place from now on. Never say that it keeps the place in the video they just watched: that place is not saved."
+    },
+    "DeleteAccount.failedMessage": {
+      "role": "error message",
+      "composition": "The deletion stops at the first failed step, so nothing was changed. {email} is a support email address."
+    },
+    "DeleteAccount.reauthFailedMessage": {
+      "role": "error message",
+      "composition": "The deletion did not start. Keep it clearly different from the message for a failed deletion."
+    },
+    "DeleteAccount.wrongAccountMessage": {
+      "role": "notice",
+      "composition": "A different account signed in, so the app deleted nothing. The original account still exists."
+    },
+    "DeleteAccount.unconfirmedMessage": {
+      "role": "notice",
+      "composition": "The app cannot tell whether the server finished the deletion. Do not say that it did or that it did not."
+    },
+    "Explore.mute": {
+      "role": "button caption",
+      "composition": "A caption under a round sound button. The button turns the clip's sound off. At most two short lines."
+    },
+    "Explore.unmute": {
+      "role": "button caption",
+      "composition": "A caption under a round sound button. The button turns the clip's sound back on. At most two short lines."
+    },
+    "Explore.share": {
+      "composition": "A caption under a round share button. At most two short lines."
+    },
+    "Explore.nextClipAriaLabel": {
+      "role": "screen reader action name",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader offers it on the clip. It moves to the next clip, like a swipe up."
+    },
+    "Explore.previousClipAriaLabel": {
+      "role": "screen reader action name",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader offers it on the clip. It moves back to the previous clip, like a swipe down."
+    },
+    "Explore.descriptionMore": {
+      "role": "inline text button",
+      "composition": "Shows after the one visible line of a cut clip description, and opens the full description. Lower case in English. Keep it one short word."
+    },
+    "Explore.descriptionLess": {
+      "role": "inline text button",
+      "composition": "Shows under an open clip description, and closes it to one line. Lower case in English. Keep it one short word."
+    },
+    "Explore.progressAriaValue": {
+      "role": "progress bar spoken value",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader reads it as the value of the clip progress bar. {elapsed} and {length} are whole seconds, for example 6 of 27 seconds."
+    },
+    "Explore.emptyTitle": {
+      "composition": "{languageName} is the name of the viewer's feed language, for example Swahili. It can arrive in English, so never inflect it."
+    },
+    "Series.thisSeries": {
+      "composition": "Takes the place of the series title in removeDownloadsMessage and as a menu title when the series has no title. Lower case in English."
+    },
+    "Series.savedOfflineAriaLabel": {
+      "role": "episode state for a screen reader",
+      "visibility": "assistive technology only",
+      "composition": "Follows the episode title after a comma, so it starts in lower case in English."
+    },
+    "SeriesDownload.episodesInLanguage": {
+      "composition": "{language} is the name of a language, for example Swahili. It can arrive in English, so never inflect it."
+    },
+    "SeriesDownload.startedCount": {
+      "composition": "One part of a summary line. The app joins the parts with a middle dot, for example: 12 started · 1 switched · 3 already downloaded."
+    },
+    "DownloadSheet.agreeToTerms": {
+      "composition": "{terms} is a link with the text of termsLink (Terms of Use). Put {terms} where the link belongs in the sentence."
+    },
+    "DownloadSheet.optionsAriaLabel": {
+      "role": "list accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{section} is a list heading, for example Quality."
+    },
+    "DownloadSheet.saveToFiles": {
+      "composition": "Files is the name of Apple's Files app."
+    },
+    "DownloadSheet.unknownSize": {
+      "composition": "Shows in place of a file size, such as 1.5 GB, when the size is not known."
+    },
+    "DownloadButton.downloadingAtAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{percent} is a whole number from 1 to 100."
+    },
+    "Library.downloadedStatus": {
+      "composition": "{size} is a file size, for example 74 MB."
+    },
+    "Library.failedCount": {
+      "composition": "Follows the size of a series in a gray line, for example: 3 videos · 1.5 GB · 2 failed. Keep the middle dot at the start."
+    },
+    "ExportReport.savedToFolder": {
+      "composition": "{folder} is the name of the folder that the viewer picked, for example Downloads."
+    },
+    "Common.untitled": {
+      "role": "fallback title",
+      "composition": "Shows in place of a video title when the video has none."
+    },
+    "Common.playTitleAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{title} is the title of a video. A tap plays that video."
+    },
+    "Watch.language": {
+      "role": "button label",
+      "composition": "Shows on the language button when the name of the audio language is not known yet."
+    },
+    "Watch.subtitles": {
+      "role": "button label and switch label",
+      "composition": "Shows on the subtitle button when no subtitle name is known, and next to the switch that turns subtitles on."
+    },
+    "Watch.watchedAriaLabel": {
+      "role": "progress accessibility text",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader reads it after a video title and a comma, for a video that the viewer finished."
+    },
+    "Watch.percentWatchedAriaLabel": {
+      "role": "progress accessibility text",
+      "visibility": "assistive technology only",
+      "composition": "The screen reader reads it after a video title and a comma. {percent} is a whole number from 1 to 99."
+    },
+    "Watch.unknownLanguage": {
+      "role": "fallback language name",
+      "composition": "Shows in the language list when a language has no name."
+    },
+    "Player.seekSeconds": {
+      "role": "short time label",
+      "composition": "Shows for a moment after a double tap that skips the video forward or back. {seconds} is a number, for example 10s. Use the shortest symbol for seconds that the language uses."
+    },
+    "Player.elapsedAriaLabel": {
+      "role": "time accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{elapsed} and {duration} are times such as 1:05, the played time and the length of the video."
+    },
+    "Player.speedNormal": {
+      "role": "playback speed option",
+      "composition": "The name of the speed 1×, the usual speed of a video."
+    },
+    "Cast.castingToAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{device} is the name of a TV, for example Living Room TV."
+    },
+    "Cast.castingTo": {
+      "role": "status text",
+      "composition": "{device} is the name of a TV, for example Living Room TV."
+    },
+    "Cast.connectingTo": {
+      "role": "status text",
+      "composition": "{device} is the name of a TV, for example Living Room TV."
+    },
+    "Sections.quizBadge": {
+      "role": "badge label",
+      "composition": "A short label on the quiz button. The app shows it in capital letters where the script has them."
+    },
+    "Sections.sectionNotFound": {
+      "role": "error message",
+      "composition": "{key} is an internal name of a page section."
+    },
+    "Sections.collectionNotFound": {
+      "role": "error message",
+      "composition": "{key} is an internal name of a page section."
+    },
+    "BibleQuotes.promoEyebrow": {
+      "role": "card heading",
+      "composition": "A short heading in capital letters above the invitation."
+    },
+    "BibleQuotes.loadingCardAriaLabel": {
+      "role": "card accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{reference} is a Bible reference, for example John 3:16, whose text is still loading."
+    },
+    "BibleQuotes.shareMessage": {
+      "role": "share message",
+      "composition": "The text that the viewer shares from the app. {url} is a web address; keep it on its own line."
+    },
+    "BibleQuotes.unknownBook": {
+      "role": "fallback book name",
+      "composition": "Shows in place of a Bible book name when the name is not known, before the chapter and verse numbers."
+    },
+    "ListSheet.rowWithStatusAriaLabel": {
+      "role": "list row accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{name} is the name of a choice, such as a language, and {status} is a short state, such as Downloaded. Keep only the separator that the language uses between two phrases."
+    },
+    "Tabs.home": {
+      "role": "tab bar label",
+      "composition": "The tab that opens the Home screen. Use one short word where the language allows: the iOS tab bar cuts off a long label."
+    },
+    "Tabs.explore": {
+      "role": "tab bar label",
+      "composition": "The tab that opens a feed of short video clips to explore, one after another. Use one short word where the language allows: the iOS tab bar cuts off a long label."
+    },
+    "Tabs.search": {
+      "role": "tab bar label",
+      "composition": "The tab that opens the search screen. Use one short word where the language allows: the iOS tab bar cuts off a long label."
+    },
+    "Tabs.bible": {
+      "role": "tab bar label",
+      "composition": "The tab that opens the Bible reader. Use one short word where the language allows: the iOS tab bar cuts off a long label."
+    },
+    "Common.searchAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "A round button in the top bar that opens the search tab."
+    },
+    "Common.myWatchAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "A round button in the top bar that opens the My Watch tab."
+    },
+    "Common.comingSoon": {
+      "role": "status line",
+      "composition": "Shows under the title of a screen that is not ready yet."
+    },
+    "Home.watchNowAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{title} is the title of the video in the hero."
+    },
+    "Home.slidePositionAriaLabel": {
+      "role": "page indicator accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "Tells which hero slide shows, for example Slide 2 of 7."
+    },
+    "Home.featuredFallbackTitle": {
+      "composition": "Shows under a small hero card when its slide has no title. Keep it short."
+    },
+    "Home.episodeCount": {
+      "role": "badge on a video card",
+      "composition": "The number of episodes in a series. Keep it short."
+    },
+    "Home.shelfAriaLabel": {
+      "role": "list accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{shelf} is the title of a row of videos or cards."
+    },
+    "HomeHero.joinUsAction": {
+      "role": "button caption",
+      "composition": "Opens a web page where the viewer can join the mission."
+    },
+    "HomeHero.togetherAction": {
+      "role": "button caption",
+      "composition": "Opens a web page about partnering with the ministry."
+    },
+    "Discover.noResultsTitle": {
+      "composition": "{query} is the text that the viewer typed. Put it in the quotation marks of the language. In this message format, two apostrophes ('') print one apostrophe."
+    },
+    "Discover.loadingMore": {
+      "role": "button caption",
+      "composition": "Takes the place of loadMore on the same button while more results load."
+    },
+    "BrowseTopics.searchTopicAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{topic} is one of the topic names in this list, for example Parables. A tap searches that topic."
+    },
+    "Mission.inviteHeadline": {
+      "composition": "{accent} is inviteHeadlineAccent (the next generation), which shows in color. Put {accent} where it belongs in the sentence."
+    },
+    "Mission.inviteHeadlineAccent": {
+      "composition": "Fills {accent} in inviteHeadline, so it must fit that sentence."
+    },
+    "Tabs.myWatch": {
+      "role": "tab label",
+      "composition": "The name of the tab that holds the viewer's account and downloads. Keep it short."
+    },
+    "Library.downloadsTitle": {
+      "role": "screen title and section heading"
+    },
+    "DeleteAccount.deletedNotice": {
+      "role": "notice",
+      "composition": "Shows under the viewer's name after the account was deleted."
+    },
+    "DeleteAccount.dismissDeletedNoticeAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only"
+    },
+    "MyWatch.guestName": {
+      "role": "name shown for a viewer who is not signed in"
+    },
+    "MyWatch.accountTitle": {
+      "role": "screen title and button label",
+      "composition": "Names the screen with the viewer's account details, Sign out, and Delete account."
+    },
+    "MyWatch.moreTitle": {
+      "role": "screen title and button label",
+      "composition": "Names the screen with links to the website. The menu button that opens it has the same label."
+    },
+    "MyWatch.seeAllDownloadsAriaLabel": {
+      "role": "button accessibility label",
+      "visibility": "assistive technology only"
+    },
+    "MyWatch.railAriaLabel": {
+      "role": "list accessibility label",
+      "visibility": "assistive technology only",
+      "composition": "{count} is the number of cards in the Downloads row."
+    },
+    "MyWatch.tileEpisodes": {
+      "role": "card text",
+      "composition": "The number of downloaded episodes in a series. The count is always 2 or more."
+    },
+    "MyWatch.tileDownloaded": {
+      "role": "status badge on a video card",
+      "composition": "Keep it short."
+    },
+    "MyWatch.tileDownloading": {
+      "role": "status badge on a video card",
+      "composition": "Keep it short."
+    },
+    "MyWatch.tileInProgress": {
+      "role": "status badge on a series card",
+      "composition": "Some episodes are still downloading. Keep it short."
+    },
+    "MyWatch.tilePaused": {
+      "role": "status badge on a video card",
+      "composition": "Keep it short."
+    },
+    "MyWatch.tileQueued": {
+      "role": "status badge on a video card",
+      "composition": "The download waits to start. Keep it short."
+    },
+    "MyWatch.tileFailed": {
+      "role": "status badge on a video card",
+      "composition": "The download failed. Keep it short."
+    },
+    "MyWatch.tileSeriesHint": {
+      "role": "accessibility hint",
+      "visibility": "assistive technology only"
+    },
+    "MyWatch.tileVideoHint": {
+      "role": "accessibility hint",
+      "visibility": "assistive technology only"
+    },
+    "More.linkHint": {
+      "role": "accessibility hint",
+      "visibility": "assistive technology only"
+    },
+    "More.supportGroup": {
+      "role": "section heading"
+    },
+    "More.aboutGroup": {
+      "role": "section heading"
+    },
+    "More.legalGroup": {
+      "role": "section heading"
+    },
+    "More.give": {
+      "role": "link label",
+      "composition": "Opens the page where a viewer can give money to the ministry."
+    },
+    "More.newsletter": {
+      "role": "link label",
+      "composition": "Opens the page where a viewer signs up for the email newsletter."
+    },
+    "More.version": {
+      "role": "footer text",
+      "composition": "{version} is the app version number, such as 1.0.0."
+    },
+    "More.versionWithBuild": {
+      "role": "footer text",
+      "composition": "{version} is the app version number, such as 1.0.0. {build} is the build number, such as 7."
+    }
+  }
+}

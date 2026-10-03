@@ -48,6 +48,11 @@ import { AppState } from "react-native"
 
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import {
+  ENGLISH_ADMIN_FORMS,
+  adminFormsFor,
+  type AdminLanguageForms,
+} from "../../i18n/adminLanguage"
+import {
   CLIP_RECORD_STORAGE_KEY,
   createClipRecordStore,
   serializeClipRecord,
@@ -125,12 +130,17 @@ function row(id: string, languageSlug: string) {
   }
 }
 
-function inventory(ids: readonly string[], languageSlug: string) {
+function inventory(
+  ids: readonly string[],
+  languageSlug: string,
+  name: Record<string, string> | null = null,
+) {
   return {
     __typename: "WatchLanguageInventory",
     language: {
       __typename: "WatchLanguageInventoryLanguage",
       slug: languageSlug,
+      name,
     },
     audioCollections: [],
     audioVideos: ids.map((id) => row(id, languageSlug)),
@@ -150,13 +160,32 @@ function storedPool(
   )
 }
 
+function textRow(id: string, slug: string) {
+  return {
+    __typename: "VideoLocale",
+    documentId: `loc-${id}-${slug}`,
+    languageSlug: slug,
+    title: `Title ${id} in ${slug}`,
+    description: null,
+    snippet: null,
+    imageAlt: null,
+  }
+}
+
 /** The production hydration shape, trailing `hls` newline included. */
-function hydrated(coreId: string, audioSlug: string, tracks: boolean) {
+function hydrated(
+  coreId: string,
+  audioSlug: string,
+  tracks: boolean,
+  text: { slug: string; rows: boolean } = { slug: EN, rows: false },
+) {
   const id = coreId.replace("core-", "")
   return {
     __typename: "Video",
     documentId: `video-${id}`,
     coreId,
+    locales: text.rows ? [textRow(id, text.slug)] : [],
+    englishLocales: text.rows ? [textRow(id, EN)] : [],
     images: [],
     preferredPlayableDub: {
       __typename: "VideoDub",
@@ -207,6 +236,8 @@ function readyClip(id: string, overrides: Partial<ReadyClip> = {}): ReadyClip {
     subtitleOnly: false,
     window: { startSeconds: 12, endSeconds: 42 },
     cut: "fallback",
+    // U7: stored under the English UI text slug, as the default forms read.
+    textSlug: EN,
     ...overrides,
   }
 }
@@ -260,6 +291,10 @@ type QueryOptions = {
 
 type AdminOptions = {
   inventories?: Record<string, readonly string[]>
+  /** Admin's `Language.name` map per inventory language. */
+  languageNames?: Record<string, Record<string, string>>
+  /** Hydrations answer with a text row in the asked slug and in English. */
+  textRows?: boolean
   inventoryFailures?: unknown[]
   hydrationFailures?: unknown[]
   tracks?: boolean
@@ -283,6 +318,7 @@ function fakeAdmin(options: AdminOptions) {
     hydrationCalls: [] as {
       coreIds: string[]
       audioLanguageSlug: string
+      textSlug?: unknown
       fetchPolicy: unknown
     }[],
     releaseInventory: () => heldInventory.splice(0).forEach((go) => go()),
@@ -306,6 +342,7 @@ function fakeAdmin(options: AdminOptions) {
               watchLanguageInventory: inventory(
                 options.inventories?.[slug] ?? [],
                 slug,
+                options.languageNames?.[slug] ?? null,
               ),
             },
           }
@@ -313,9 +350,11 @@ function fakeAdmin(options: AdminOptions) {
         if (opts.query === EXPLORE_CLIP_CANDIDATES) {
           const coreIds = [...(opts.variables.coreIds as string[])]
           const audio = String(opts.variables.audioLanguageSlug)
+          const textSlug = opts.variables.textSlug
           admin.hydrationCalls.push({
             coreIds,
             audioLanguageSlug: audio,
+            textSlug,
             fetchPolicy: opts.fetchPolicy,
           })
           admin.inFlight += 1
@@ -329,7 +368,10 @@ function fakeAdmin(options: AdminOptions) {
             return {
               data: {
                 watchHomeVideos: coreIds.map((id) =>
-                  hydrated(id, audio, options.tracks ?? false),
+                  hydrated(id, audio, options.tracks ?? false, {
+                    slug: String(textSlug),
+                    rows: options.textRows ?? false,
+                  }),
                 ),
               },
             }
@@ -414,6 +456,9 @@ type WorldOptions = AdminOptions & {
   budget?: ExploreDeliveryBudget
   client?: ExploreClipQueueDeps["getClient"]
   prefetch?: (uri: string) => Promise<boolean>
+  /** The phone's first language tag and the UI's Admin forms, read live. */
+  deviceLocale?: () => string | null
+  adminForms?: () => AdminLanguageForms
 }
 
 function world(options: WorldOptions = {}) {
@@ -471,7 +516,8 @@ function world(options: WorldOptions = {}) {
     prefetchImage: prefetch,
     random: () => 0,
     now: () => Date.now(),
-    deviceLocale: () => "en-US",
+    deviceLocale: options.deviceLocale ?? (() => "en-US"),
+    adminForms: options.adminForms ?? (() => ENGLISH_ADMIN_FORMS),
   }
   return { deps, admin, store, timing, record, recordGetItem, recs, prefetch }
 }
@@ -713,6 +759,12 @@ describe("a warm open (KTD6)", () => {
       readyClip("c", { feedLanguageSlug: EN }),
       undefined,
     ],
+    [
+      "read in another UI language",
+      { storedAt: T0 - 30_000 },
+      readyClip("c", { textSlug: "russian" }),
+      undefined,
+    ],
   ])(
     "drops a stored clip %s and computes a new one",
     async (_case, stamp, clip, recordEntries) => {
@@ -802,6 +854,7 @@ describe("a cold open (KTD6)", () => {
     expect(w.admin.hydrationCalls[0]).toEqual({
       coreIds: ["core-a", "core-b", "core-c"],
       audioLanguageSlug: SW,
+      textSlug: EN,
       fetchPolicy: "no-cache",
     })
     expect(ids(view.history())).toEqual(["video-a"])
@@ -952,6 +1005,205 @@ describe("Explore's recommendations (R25, KTD8)", () => {
   })
 })
 
+// ── U7: the UI language (R9, KTD11, KTD16) ─────────────────────────
+
+describe("the UI language (U7)", () => {
+  const RU = adminFormsFor("ru")
+  const RUSSIAN = "russian"
+
+  // KTD11: never `en` for a non-English UI.
+  it("asks for the slate in the table's For You locale, and hydrates in the UI text slug", async () => {
+    const w = world({
+      inventories: { [SW]: ["a", "b", "c"] },
+      adminForms: () => RU,
+      textRows: true,
+    })
+    const view = render(w.deps, FOCUSED)
+    await flush()
+    expect(w.recs.client.fetch.mock.calls).toEqual([
+      [{ locale: "ru", audioLanguageSlug: SW, count: 6, attempt: 1 }],
+    ])
+    expect(w.admin.hydrationCalls[0]?.textSlug).toBe(RUSSIAN)
+    expect(view.history()[0]).toMatchObject({
+      title: "Title a in russian",
+      titleLang: "ru",
+    })
+  })
+
+  // KTD16: a live change never resets the queue mid-clip. The next focus
+  // takes the new phone language and the new text forms.
+  it("keeps the clip and queue through a live change, and uses the new languages at the next focus", async () => {
+    mockPreferences.mockReturnValue({ audioLanguageSlug: null })
+    let device = "en-US"
+    let forms: AdminLanguageForms = ENGLISH_ADMIN_FORMS
+    const w = world({
+      inventories: { [EN]: ["a", "b", "c"], [RUSSIAN]: ["x", "y", "z"] },
+      deliver: async () => SERVED([]),
+      deviceLocale: () => device,
+      adminForms: () => forms,
+    })
+    const view = render(w.deps, FOCUSED, { strict: true })
+    await flush(EXPLORE_DELIVERY_SPACING_MS)
+    expect(view.latest().queue.feedLanguageSlug).toBe(EN)
+    const shown = view.history()[0]
+    const queued = view.latest().feed.queued
+    const inventories = w.admin.inventoryCalls.length
+    const hydrations = w.admin.hydrationCalls.length
+    w.recs.client.fetch.mockClear()
+
+    device = "ru-RU"
+    forms = RU
+    view.rerender({})
+    await flush()
+    expect(view.latest().queue.feedLanguageSlug).toBe(EN)
+    expect(view.history()[0]).toBe(shown)
+    expect(view.latest().feed.queued).toBe(queued)
+    expect(w.admin.inventoryCalls).toHaveLength(inventories)
+    expect(w.admin.hydrationCalls).toHaveLength(hydrations)
+    expect(w.recs.client.fetch).not.toHaveBeenCalled()
+
+    view.rerender({ focused: false })
+    await flush()
+    view.rerender({ focused: true })
+    await flush(EXPLORE_DELIVERY_SPACING_MS)
+    expect(view.latest().queue.feedLanguageSlug).toBe(RUSSIAN)
+    expect(w.admin.inventoryCalls.at(-1)?.languageSlug).toBe(RUSSIAN)
+    const asked = w.recs.client.fetch.mock.calls.map(
+      ([input]) => input as { locale: string; audioLanguageSlug: string },
+    )
+    expect(asked.at(-1)).toMatchObject({
+      locale: "ru",
+      audioLanguageSlug: RUSSIAN,
+    })
+    view.dispatch({ type: "swipeNext" })
+    await flush()
+    expect(w.admin.hydrationCalls.at(-1)?.textSlug).toBe(RUSSIAN)
+  })
+
+  it("drops a hydration read in the old language, and asks again in the new one", async () => {
+    let forms: AdminLanguageForms = ENGLISH_ADMIN_FORMS
+    const w = world({
+      inventories: { [SW]: ["a", "b", "c"] },
+      adminForms: () => forms,
+      textRows: true,
+    })
+    w.admin.holdHydrations = true
+    const view = render(w.deps, FOCUSED)
+    await flush()
+    expect(w.admin.hydrationCalls.map((call) => call.textSlug)).toEqual([EN])
+
+    forms = RU
+    view.rerender({ focused: false })
+    await flush()
+    view.rerender({ focused: true })
+    await flush()
+    w.admin.holdHydrations = false
+    w.admin.releaseHydrations()
+    // The late answer settles first; its retry timer arms on that render.
+    await flush()
+    await flush(QUEUE_RETRY_DELAYS_MS[0])
+    expect(w.admin.hydrationCalls.map((call) => call.textSlug)).toEqual([
+      EN,
+      RUSSIAN,
+    ])
+    expect(view.history()[0]).toMatchObject({
+      title: "Title a in russian",
+      titleLang: "ru",
+    })
+  })
+
+  it("drops a hydration no clip holds at a focus with new forms, and reads it again", async () => {
+    let forms: AdminLanguageForms = ENGLISH_ADMIN_FORMS
+    const w = world({
+      inventories: { [SW]: ["a", "b", "c"] },
+      adminForms: () => forms,
+      textRows: true,
+    })
+    // The hold leaves b and c hydrated in English, with no clip made yet.
+    const view = render(w.deps, { ...FOCUSED, holdLookahead: true })
+    await flush()
+    expect(ids(view.history())).toEqual(["video-a"])
+
+    forms = RU
+    view.rerender({ focused: false })
+    await flush()
+    view.rerender({ focused: true })
+    await flush()
+    view.rerender({ holdLookahead: false })
+    await flush()
+    expect(w.admin.hydrationCalls.at(-1)).toMatchObject({
+      coreIds: ["core-b", "core-c"],
+      textSlug: RUSSIAN,
+    })
+    expect(view.latest().feed.queued).toMatchObject({
+      videoId: "video-b",
+      title: "Title b in russian",
+    })
+  })
+
+  it("asks for the slate again in the new For You locale when the feed keeps its slug", async () => {
+    let forms: AdminLanguageForms = ENGLISH_ADMIN_FORMS
+    const w = world({
+      inventories: { [SW]: ["a", "b", "c"] },
+      deliver: async () => SERVED([]),
+      adminForms: () => forms,
+    })
+    const view = render(w.deps, FOCUSED)
+    await flush(EXPLORE_DELIVERY_SPACING_MS)
+    w.recs.client.fetch.mockClear()
+
+    forms = RU
+    view.rerender({ focused: false })
+    await flush()
+    view.rerender({ focused: true })
+    await flush()
+    expect(w.recs.client.fetch.mock.calls).toEqual([
+      [{ locale: "ru", audioLanguageSlug: SW, count: 6, attempt: 1 }],
+    ])
+  })
+
+  // R21: `ha` and `yo` have no UI catalog, so only the phone tag changes.
+  it("moves the feed at the next focus after a phone change that keeps the UI catalog", async () => {
+    mockPreferences.mockReturnValue({ audioLanguageSlug: null })
+    let device = "ha-NG"
+    const w = world({
+      inventories: { hausa: ["a"], yoruba: ["x"] },
+      deviceLocale: () => device,
+    })
+    const view = render(w.deps, FOCUSED)
+    await flush()
+    expect(view.latest().queue.feedLanguageSlug).toBe("hausa")
+
+    device = "yo-NG"
+    view.rerender({ focused: false })
+    await flush()
+    view.rerender({ focused: true })
+    await flush()
+    expect(view.latest().queue.feedLanguageSlug).toBe("yoruba")
+  })
+
+  // R9: the empty state names the feed language in the UI locale.
+  it.each<[string, AdminLanguageForms, boolean, string]>([
+    ["in Russian from Admin's name map", RU, true, "суахили"],
+    [
+      "in English from Admin's name map",
+      ENGLISH_ADMIN_FORMS,
+      true,
+      "Kiswahili",
+    ],
+    ["as the title-cased slug when Admin sends no name", RU, false, "Swahili"],
+  ])("names the feed language %s", async (_name, forms, named, expected) => {
+    const w = world({
+      inventories: { [SW]: [] },
+      languageNames: named ? { [SW]: { en: "Kiswahili", ru: "суахили" } } : {},
+      adminForms: () => forms,
+    })
+    const view = render(w.deps, FOCUSED)
+    await flush()
+    expect(view.latest().queue.feedLanguageName).toBe(expected)
+  })
+})
+
 // ── R24: a language change ─────────────────────────────────────────
 
 describe("a language change (R24)", () => {
@@ -991,6 +1243,22 @@ describe("a language change (R24)", () => {
     view.dispatch({ type: "swipeNext" })
     await flush()
     expect(view.latest().feed.queued?.feedLanguageSlug).toBe(EN)
+  })
+
+  it("never names the old feed language while the new pool loads (R9)", async () => {
+    const w = world({
+      inventories: { [SW]: ["a"], [EN]: ["x"] },
+      languageNames: { [SW]: { en: "Kiswahili" } },
+    })
+    const view = render(w.deps, FOCUSED)
+    await flush()
+    expect(view.latest().queue.feedLanguageName).toBe("Kiswahili")
+
+    w.admin.holdInventory = true
+    mockPreferences.mockReturnValue({ audioLanguageSlug: EN })
+    view.rerender({})
+    await flush()
+    expect(view.latest().queue.feedLanguageName).toBe("English")
   })
 
   it("holds the slate request of an early change until the spacing mark", async () => {

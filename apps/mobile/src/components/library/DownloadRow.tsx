@@ -4,6 +4,8 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import {
   ACCENT,
@@ -57,9 +59,12 @@ export const DownloadRow = memo(function DownloadRow({
   onLongPress,
 }: DownloadRowProps) {
   const typography = useTypography()
+  // Its own subscription, so a memoized row takes a new UI language too.
+  const t = useT("Library")
+  const uiDirection = useTextDirection().ui
   const title = recordTitle(record)
   const duration = formatLibraryDuration(record.durationSeconds)
-  const rowState = useMemo(() => libraryRowState(record), [record])
+  const rowState = useMemo(() => libraryRowState(record, t), [record, t])
   const failed = rowState.affordance === "retry"
 
   return (
@@ -74,6 +79,7 @@ export const DownloadRow = memo(function DownloadRow({
       accessibilityRole="button"
       accessibilityLabel={`${title}, ${rowState.subtitle}`}
       accessibilityState={selecting ? { selected } : undefined}
+      {...{ "dd-action-name": "library-download-row" }}
     >
       {selecting && <SelectionCheckbox state={selected} />}
       <View style={styles.thumb}>
@@ -103,6 +109,7 @@ export const DownloadRow = memo(function DownloadRow({
             styles.subtitle,
             typography.caption,
             failed && styles.subtitleFailed,
+            uiDirection,
           ]}
           numberOfLines={1}
         >
@@ -135,7 +142,8 @@ export const DownloadRow = memo(function DownloadRow({
               onPress={() => onResume(record.videoSlug)}
               style={styles.affordanceButton}
               accessibilityRole="button"
-              accessibilityLabel={`Resume ${title}`}
+              accessibilityLabel={t("resumeAriaLabel", { title })}
+              {...{ "dd-action-name": "library-row-resume" }}
             >
               <Ionicons name="play" size={18} color={ACCENT} />
             </Pressable>
@@ -146,7 +154,8 @@ export const DownloadRow = memo(function DownloadRow({
               onPress={() => onRetry(record.videoSlug)}
               style={styles.affordanceButton}
               accessibilityRole="button"
-              accessibilityLabel={`Retry ${title}`}
+              accessibilityLabel={t("retryAriaLabel", { title })}
+              {...{ "dd-action-name": "library-row-retry" }}
             >
               <Ionicons name="refresh" size={18} color={ACCENT} />
             </Pressable>

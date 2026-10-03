@@ -24,6 +24,7 @@ import { attachLastWatchedWriter } from "../lib/lastWatched/lifecycle"
 import { getLastWatchedStore } from "../lib/lastWatched/store"
 import { getPlaybackRequestStore } from "../lib/miniPlayer/playbackRequest"
 import { publishPushAppLanguageSlug } from "../lib/push/appLanguage"
+import { pushAnnouncementsChannelName } from "../lib/push/copy"
 import { publishPushNotice } from "../lib/push/notice"
 import { reportPushOpenInBackground } from "../lib/push/openReportHost"
 import { getPushRegistration } from "../lib/push/registrationHost"
@@ -66,9 +67,11 @@ export function LapseReminderProvider({ children }: { children: ReactNode }) {
     // both exist before the permission request and on every later pass.
     const notifications = {
       ...lapseReminderNotifications,
-      ensureChannel: async () => {
-        await lapseReminderNotifications.ensureChannel()
-        await lapseReminderNotifications.ensureAnnouncementsChannel()
+      ensureChannel: async (name: string) => {
+        await lapseReminderNotifications.ensureChannel(name)
+        await lapseReminderNotifications.ensureAnnouncementsChannel(
+          pushAnnouncementsChannelName(),
+        )
       },
     }
     // KTD8 reaches the COLLECTION too: a disabled feature stores no new

@@ -11,7 +11,24 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 )
 
+// The phone's languages reach the reader through the real locale store (KTD12).
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+
 import { Directory, Paths } from "expo-file-system"
+
+import {
+  defaultAudioLanguage,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import { phoneLocales } from "../../../test-utils/uiLocaleFixture"
+import { resolveDefaultSlug } from "../../resolveDefaultLanguage"
 
 import { parseCatalog, type Catalog } from "../data/catalog"
 import { LANGUAGE_DEFAULT_TRANSLATIONS } from "../data/languageDefaults.generated"
@@ -627,20 +644,69 @@ describe("KTD8: the phone language table", () => {
     )
     expect(unreachable).toEqual(UNREACHABLE)
   })
+})
 
-  it("reads the phone's language subtag from Intl", () => {
-    const spy = jest.spyOn(Intl, "DateTimeFormat")
-    spy.mockImplementation(
+// KD11, R22: the reader's default follows the same phone language as the
+// default audio, before any catalog fallback.
+describe("the phone language", () => {
+  function setPhone(...tags: string[]) {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReturnValue(tags.flatMap((tag) => phoneLocales(tag)))
+    startLocaleSync()
+  }
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+    resetLocaleStoreForTests()
+  })
+
+  it("reads the language subtag of the phone's first language", () => {
+    setPhone("zh-Hant-TW", "en-US")
+    expect(readPhoneLanguageCode()).toBe("zh")
+    setPhone("ha-NG", "en-US")
+    expect(readPhoneLanguageCode()).toBe("ha")
+    setPhone("fil-PH", "en-US")
+    expect(readPhoneLanguageCode()).toBe("fil")
+  })
+
+  it("is null for a failed read or an empty phone list, never the Intl default", () => {
+    mockGetLocales.mockImplementation(() => {
+      throw new Error("Cannot find native module 'ExpoLocalization'")
+    })
+    startLocaleSync()
+    expect(readPhoneLanguageCode()).toBeNull()
+    setPhone()
+    jest.spyOn(Intl, "DateTimeFormat").mockImplementation(
       () =>
         ({
-          resolvedOptions: () => ({ locale: "zh-Hant-TW" }),
+          resolvedOptions: () => ({ locale: "ko-KR" }),
         }) as unknown as Intl.DateTimeFormat,
     )
-    expect(readPhoneLanguageCode()).toBe("zh")
-    spy.mockImplementation(() => {
-      throw new Error("no Intl")
-    })
     expect(readPhoneLanguageCode()).toBeNull()
-    spy.mockRestore()
+  })
+
+  it("gives a Russian phone the Russian default, the Russian dub, and Russian subtitles", () => {
+    setPhone("ru-RU")
+    const viewer = chooseViewerTranslation({
+      catalog: CATALOG,
+      sessionTranslationId: null,
+      explicitTranslationId: null,
+      audioLanguage: null,
+      phoneLanguage: readPhoneLanguageCode(),
+    })
+    expect(viewer).toEqual({
+      translationId: languageDefaultTranslationId("rus", CATALOG),
+      source: "phone",
+    })
+    expect(viewer.translationId).not.toBe(
+      languageDefaultTranslationId("eng", CATALOG),
+    )
+    // The default audio and the default subtitles read the same language.
+    expect(defaultAudioLanguage()?.slug).toBe("russian")
+    const subtitles = [
+      { slug: "english", bcp47: "en", languageSlug: "english" },
+      { slug: "russian", bcp47: "ru", languageSlug: "russian" },
+    ]
+    expect(resolveDefaultSlug(subtitles, "en")).toBe("russian")
   })
 })

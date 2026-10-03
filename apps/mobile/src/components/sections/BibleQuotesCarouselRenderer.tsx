@@ -42,6 +42,8 @@ import {
 } from "../../lib/bibleCardTreatment"
 import type { VerseRef } from "../../lib/bible/versification/convert"
 import { datadogLog } from "../../lib/datadog"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
@@ -76,6 +78,7 @@ type QuoteItem = {
     BibleQuoteBlock,
     | "translation"
     | "copyright"
+    | "textLang"
     | "citationStart"
     | "loading"
     | "artCandidates"
@@ -101,6 +104,9 @@ export interface BibleQuotesCarouselRendererProps {
   videoSlug?: string
   /** The header's share button. The video details page turns it off. */
   showShareButton?: boolean
+  /** The language of the heading (KTD13). Absent on the Experience and SDUI
+   *  paths, whose text language is not known. */
+  headingLang?: string | null
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -108,9 +114,10 @@ export interface BibleQuotesCarouselRendererProps {
 const HORIZONTAL_PADDING = 16
 const CARD_GAP = 12
 const FALLBACK_BG = "#292524"
-// R37: Datadog RUM names the tap from this label. A new label starts a new
-// tap series and breaks the before-and-after count (KD17).
-const READ_PASSAGE_LABEL = "Read full passage"
+// R37: RUM keeps the tap name the label gave before it moved to the catalog. A
+// new name starts a new tap series and breaks the before-and-after count (KD17).
+const READ_PASSAGE_ACTION_NAME = "Read full passage"
+const SHARE_URL = "https://www.jesusfilm.org/watch"
 
 // A second tap while the first push animates would stack two readers.
 export const READER_OPEN_DEBOUNCE_MS = 1000
@@ -220,6 +227,7 @@ function QuoteCard({
   // validated, and the ONLY URL check the Experience and SDUI paths get.
   const imageUrl = resolveImageUrl(quote.imageUrl ?? null)
   const loading = quote.loading === true
+  const t = useT("BibleQuotes")
 
   const artCandidates = quote.artCandidates ?? []
   const artIndex = quote.artIndex ?? 0
@@ -243,6 +251,11 @@ function QuoteCard({
   const verseText = typeof quote.text === "string" ? quote.text : ""
 
   const showVerse = !loading && verseText.length > 0
+
+  // R10: an English passage keeps its language mark. KTD13: the passage takes
+  // its direction from its own language.
+  const englishPassage = quote.textLang === "en"
+  const passageDirection = useTextDirection().text(quote.textLang).style
 
   // The card is a fixed square and its content is bottom-aligned, so the drop
   // order has to be decided here rather than left to overflow.
@@ -301,9 +314,10 @@ function QuoteCard({
       accessible
       accessibilityLabel={
         loading
-          ? `${quote.reference}, loading`
+          ? t("loadingCardAriaLabel", { reference: quote.reference })
           : composeCardLabel(quote.reference, verseText)
       }
+      accessibilityLanguage={englishPassage ? "en" : undefined}
     >
       {imageUrl != null && (
         <Image
@@ -402,6 +416,7 @@ function QuoteCard({
               isWatchCard
                 ? [styles.passageVerse, verseTypography(typography)]
                 : [styles.authoredVerse, typography.body],
+              passageDirection,
             ]}
             numberOfLines={isWatchCard ? regions.verseLines : undefined}
           >
@@ -410,7 +425,7 @@ function QuoteCard({
         )}
         {regions.translation && quote.translation != null && (
           <Text
-            style={[styles.translation, typography.caption]}
+            style={[styles.translation, typography.caption, passageDirection]}
             numberOfLines={TRANSLATION_MAX_LINES}
           >
             {quote.translation}
@@ -418,7 +433,7 @@ function QuoteCard({
         )}
         {regions.copyright && quote.copyright != null && (
           <Text
-            style={[styles.copyright, typography.caption]}
+            style={[styles.copyright, typography.caption, passageDirection]}
             numberOfLines={COPYRIGHT_MAX_LINES}
           >
             {quote.copyright}
@@ -436,10 +451,11 @@ function QuoteCard({
             disabled={onOpenReader == null}
             onPress={() => onOpenReader?.(citationStart)}
             accessibilityRole="link"
-            accessibilityLabel={READ_PASSAGE_LABEL}
+            accessibilityLabel={t("readFullPassage")}
+            {...{ "dd-action-name": READ_PASSAGE_ACTION_NAME }}
           >
             <Text style={[styles.passageLinkText, typography.bodySmall]}>
-              {READ_PASSAGE_LABEL}
+              {t("readFullPassage")}
             </Text>
           </Pressable>
         )}
@@ -507,9 +523,14 @@ export function BibleQuotesCarouselRenderer({
   onArtworkFailed,
   videoSlug,
   showShareButton = true,
+  headingLang,
 }: BibleQuotesCarouselRendererProps) {
   const typography = useTypography()
+  const headingDirection = useTextDirection().text(headingLang)
   const reduceMotion = useReduceMotion()
+  const t = useT("BibleQuotes")
+  const tCommon = useT("Common")
+  const epoch = useLocaleEpoch()
   const { width: screenWidth, fontScale } = useWindowDimensions()
   const flatListRef = useRef<FlatList<QuoteItem>>(null)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -640,14 +661,11 @@ export function BibleQuotesCarouselRenderer({
 
   const handleShare = useCallback(async () => {
     try {
-      await Share.share({
-        message:
-          "Check out the JesusFilm app!\nhttps://www.jesusfilm.org/watch",
-      })
+      await Share.share({ message: t("shareMessage", { url: SHARE_URL }) })
     } catch {
       // User dismissed or share unavailable
     }
-  }, [])
+  }, [t])
 
   if (quotes.length === 0) return null
 
@@ -660,8 +678,10 @@ export function BibleQuotesCarouselRenderer({
               text.sectionHeading,
               styles.localHeading,
               typography.titleLarge,
+              headingDirection.style,
             ]}
             accessibilityRole="header"
+            accessibilityLanguage={headingDirection.accessibilityLanguage}
           >
             {heading}
           </Text>
@@ -671,7 +691,8 @@ export function BibleQuotesCarouselRenderer({
             onPress={handleShare}
             style={[button.iconButton44, styles.localShareButton]}
             accessibilityRole="button"
-            accessibilityLabel="Share"
+            accessibilityLabel={tCommon("shareAriaLabel")}
+            {...{ "dd-action-name": "bible-quotes-share" }}
           >
             <Ionicons name="share-outline" size={22} color={ACCENT} />
           </Pressable>
@@ -681,6 +702,7 @@ export function BibleQuotesCarouselRenderer({
         ref={flatListRef}
         data={quotes}
         renderItem={renderQuoteItem}
+        extraData={epoch}
         keyExtractor={keyExtractor}
         horizontal
         pagingEnabled
@@ -697,13 +719,16 @@ export function BibleQuotesCarouselRenderer({
         onMomentumScrollEnd={handleMomentumScrollEnd}
         accessible
         accessibilityRole="adjustable"
-        accessibilityLabel={`${quotes.length} Bible quotes`}
+        accessibilityLabel={t("quotesAriaLabel", { count: quotes.length })}
         accessibilityValue={{
-          text: `Item ${activeIndex + 1} of ${quotes.length}`,
+          text: t("itemAriaValue", {
+            index: activeIndex + 1,
+            count: quotes.length,
+          }),
         }}
         accessibilityActions={[
-          { name: "increment", label: "Next quote" },
-          { name: "decrement", label: "Previous quote" },
+          { name: "increment", label: t("nextQuoteAriaAction") },
+          { name: "decrement", label: t("previousQuoteAriaAction") },
         ]}
         onAccessibilityAction={(event) => {
           switch (event.nativeEvent.actionName) {

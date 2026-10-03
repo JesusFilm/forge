@@ -16,6 +16,7 @@ import {
   DEFAULT_WATCH_PREFERENCES,
   parseStoredPreferences,
   serializeWatchPreferences,
+  subtitleNamePatch,
   WATCH_PREFERENCES_STORAGE_KEY,
   type WatchPreferences,
 } from "../lib/watchPreferences"
@@ -31,7 +32,9 @@ type WatchPreferencesContextValue = WatchPreferences & {
   /** Fills a missing code; ignored unless `slug` is still the stored slug. */
   backfillAudioLanguageIso3: (slug: string, iso3: string) => void
   setPreferredSubtitleLanguage: (slug: string | null) => void
-  setPreferredSubtitleName: (name: string | null) => void
+  /** `locale` is the UI tag the name is in; the current tag when absent. A
+   *  screen that kept its captured language passes that tag (KTD16). */
+  setPreferredSubtitleName: (name: string | null, locale?: string) => void
   setSubtitlesEnabled: (enabled: boolean) => void
   setLongPressHintSeen: (seen: boolean) => void
   /** Explore's saved mute choice (R11). The watch page never reads it. */
@@ -117,7 +120,8 @@ export function WatchPreferencesProvider({
     [persist],
   )
   const setPreferredSubtitleName = useCallback(
-    (name: string | null) => persist({ subtitleLanguageName: name }),
+    (name: string | null, locale?: string) =>
+      persist(subtitleNamePatch(name, locale)),
     [persist],
   )
   const setSubtitlesEnabled = useCallback(
@@ -133,6 +137,8 @@ export function WatchPreferencesProvider({
     [persist],
   )
 
+  // The name stays raw: each screen gates it on the tag it captured (KTD16),
+  // because a live Android change leaves an open screen in its old language.
   return (
     <WatchPreferencesContext.Provider
       value={{

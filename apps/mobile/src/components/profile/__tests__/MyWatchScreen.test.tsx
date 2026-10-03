@@ -72,6 +72,11 @@ const mockSignInGate = { open: false }
 jest.mock("../../../lib/signInGate", () => ({
   isSignInAvailable: () => mockSignInGate.open,
 }))
+// The UI tag alone moves the direction style; the catalog stays English.
+let mockUiTag = "en"
+jest.mock("../../../hooks/useUiTag", () => ({
+  useUiTag: () => mockUiTag,
+}))
 const mockDownloads: {
   offlineRecords: OfflineDownloadRecord[]
   isReady: boolean
@@ -196,6 +201,7 @@ beforeEach(() => {
   mockSignInGate.open = false
   mockDownloads.offlineRecords = []
   mockDownloads.isReady = true
+  mockUiTag = "en"
 })
 
 describe("MyWatchScreen with no downloads (R1, R2, R9)", () => {
@@ -412,6 +418,52 @@ describe("MyWatchScreen exits (KTD12)", () => {
       expect(call).toEqual(["/downloads"])
     }
     expect(mockRouter.push).toHaveBeenCalledTimes(0)
+    await unmount(renderer)
+  })
+})
+
+describe("MyWatchScreen in a right-to-left UI (KTD13)", () => {
+  function headingDirection(renderer: TestInstance) {
+    const [heading] = renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.accessibilityRole === "header" &&
+        node.props.children === "Downloads",
+    )
+    expect(heading).toBeDefined()
+    const flat = StyleSheet.flatten(heading!.props.style as never) as {
+      direction?: unknown
+      writingDirection?: unknown
+    }
+    return {
+      direction: flat.direction,
+      writingDirection: flat.writingDirection,
+    }
+  }
+
+  it("gives the Downloads heading the UI direction, and none in English", async () => {
+    mockDownloads.offlineRecords = [record("v-1", "downloaded")]
+    const english = await renderScreen()
+    expect(headingDirection(english)).toEqual({
+      direction: undefined,
+      writingDirection: undefined,
+    })
+    await unmount(english)
+
+    mockUiTag = "ar"
+    const arabic = await renderScreen()
+    expect(headingDirection(arabic)).toEqual({
+      direction: "rtl",
+      writingDirection: "rtl",
+    })
+    await unmount(arabic)
+  })
+
+  it("keeps the menu control's tap name whatever its label reads", async () => {
+    const renderer = await renderScreen()
+    expect(pressableByLabel(renderer, "More").props["dd-action-name"]).toBe(
+      "my-watch-more",
+    )
     await unmount(renderer)
   })
 })

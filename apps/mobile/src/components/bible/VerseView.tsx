@@ -21,6 +21,7 @@ import {
   type ViewStyle,
 } from "react-native"
 
+import { useT, type UiMessageKey } from "../../i18n/useT"
 import {
   fitCandidates,
   planPlacedFit,
@@ -33,8 +34,11 @@ import {
   type VerseBoxes,
 } from "../../lib/bible/fit/verseBox"
 import type { ScrollEdges } from "../../lib/bible/movement/gesture"
-import { READER_COPY } from "../../lib/bible/reader/copy"
-import { stopRange, verseRangeLabel } from "../../lib/bible/reader/labels"
+import {
+  stopRange,
+  verseRangeLabel,
+  type ReaderT,
+} from "../../lib/bible/reader/labels"
 import type { ReaderTypeface } from "../../lib/bible/settings/snapshot"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 import {
@@ -58,12 +62,15 @@ export type VerseAppearance = {
   verseNumbers: boolean
 }
 
+const VERSE_ACTION_NAMES = [
+  "increment",
+  "decrement",
+  "nextChapter",
+  "previousChapter",
+] as const
+
 /** The screen reader's verse moves (KTD14). */
-export type VerseAction =
-  | "increment"
-  | "decrement"
-  | "nextChapter"
-  | "previousChapter"
+export type VerseAction = (typeof VERSE_ACTION_NAMES)[number]
 
 export type VerseAccessibilityMove = {
   /** Reads the verse, the total, and the chapter. */
@@ -99,25 +106,33 @@ export type VerseViewProps = {
 /** What the viewer sees of a verse, so a still copy can match it. */
 export type ShownVerse = { box: VerseBox; size: number; scroll: boolean }
 
-const VERSE_ACTIONS: { name: VerseAction; label: string }[] = [
-  { name: "increment", label: READER_COPY.movement.nextVerse },
-  { name: "decrement", label: READER_COPY.movement.previousVerse },
-  { name: "nextChapter", label: READER_COPY.movement.nextChapter },
-  { name: "previousChapter", label: READER_COPY.movement.previousChapter },
-]
+// The names stay raw in every language; only the labels are translated.
+const VERSE_ACTION_LABEL_KEYS = {
+  increment: "nextVerseAriaLabel",
+  decrement: "previousVerseAriaLabel",
+  nextChapter: "nextChapterAriaLabel",
+  previousChapter: "previousChapterAriaLabel",
+} as const satisfies Record<VerseAction, UiMessageKey<"BibleReader">>
+
+function verseActions(t: ReaderT): { name: VerseAction; label: string }[] {
+  return VERSE_ACTION_NAMES.map((name) => ({
+    name,
+    label: t(VERSE_ACTION_LABEL_KEYS[name]),
+  }))
+}
 
 function isVerseAction(name: string): name is VerseAction {
-  return VERSE_ACTIONS.some((action) => action.name === name)
+  return (VERSE_ACTION_NAMES as readonly string[]).includes(name)
 }
 
 /** The adjustable role and actions, for the verse and for the gap note. */
-function adjustableProps(move: VerseAccessibilityMove | undefined) {
+function adjustableProps(t: ReaderT, move: VerseAccessibilityMove | undefined) {
   if (!move) return {}
   return {
     accessibilityRole: "adjustable" as const,
     accessibilityValue: { text: move.value },
     // TalkBack registers only declared actions; iOS also infers the first two.
-    accessibilityActions: VERSE_ACTIONS,
+    accessibilityActions: verseActions(t),
     onAccessibilityAction: (event: AccessibilityActionEvent) => {
       const { actionName } = event.nativeEvent
       if (isVerseAction(actionName)) move.onAction(actionName)
@@ -151,6 +166,7 @@ export function VerseAreaBox({
 // The centered verse (R7, R20, R21, R32). It draws and fits the verse; U8's
 // ReaderGestures wraps the verse area and moves the reader.
 export function VerseView(props: VerseViewProps) {
+  const t = useT("BibleReader")
   const { stop, tokens, onScrollEdges, onShown } = props
   const isGap = stop.kind === "gap"
   const noteBox = unmeasuredBox(props.boxes)
@@ -173,9 +189,9 @@ export function VerseView(props: VerseViewProps) {
           testID="bible-missing-verse"
           accessible
           style={[styles.note, { color: tokens.secondaryText }]}
-          {...adjustableProps(props.accessibilityMove)}
+          {...adjustableProps(t, props.accessibilityMove)}
         >
-          {READER_COPY.missingVerse(stop.number)}
+          {t("missingVerse", { verse: stop.number })}
         </Text>
       </VerseAreaBox>
     )
@@ -224,6 +240,7 @@ function FittedVerse({
   selected = false,
   onShown,
 }: VerseViewProps & { verse: Verse }) {
+  const t = useT("BibleReader")
   const { chosenSize, osFontScale } = appearance
   const plainText = useMemo(
     () => verse.lines.map((line) => line.text).join(" "),
@@ -331,7 +348,10 @@ function FittedVerse({
   const shownSize =
     fit?.size ?? fitCandidates(chosenSize, osFontScale)[0] ?? chosenSize
   const { first, last } = stopRange(stop)
-  const accessibilityLabel = READER_COPY.verse(first, last, plainText)
+  const accessibilityLabel =
+    first === last
+      ? t("verseAriaLabel", { verse: first, text: plainText })
+      : t("versesAriaLabel", { first, last, text: plainText })
 
   return (
     <VerseAreaBox box={box}>
@@ -416,10 +436,9 @@ function VerseColumn({
   selected,
   children,
 }: VerseColumnProps) {
+  const t = useT("BibleReader")
   const style: StyleProp<ViewStyle> = { width, opacity: visible ? 1 : 0 }
-  const hint = selected
-    ? READER_COPY.selection.removeHint
-    : READER_COPY.selection.selectHint
+  const hint = selected ? t("removeVerseAriaHint") : t("selectVerseAriaHint")
   return (
     <Pressable
       testID="bible-verse"
@@ -431,7 +450,8 @@ function VerseColumn({
       accessibilityState={onPress ? { selected } : undefined}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? "auto" : "no-hide-descendants"}
-      {...adjustableProps(accessibilityMove)}
+      {...adjustableProps(t, accessibilityMove)}
+      {...{ "dd-action-name": "bible-verse" }}
     >
       {children}
     </Pressable>
@@ -525,6 +545,7 @@ export function VerseSnapshot({
   selected,
   scrollY = 0,
 }: VerseSnapshotProps) {
+  const t = useT("BibleReader")
   const plainText =
     stop.kind === "verse"
       ? stop.verse.lines.map((line) => line.text).join(" ")
@@ -538,7 +559,7 @@ export function VerseSnapshot({
     <VerseAreaBox box={shown.box} testID="bible-verse-outgoing">
       {stop.kind === "gap" ? (
         <Text style={[styles.note, { color: tokens.secondaryText }]}>
-          {READER_COPY.missingVerse(stop.number)}
+          {t("missingVerse", { verse: stop.number })}
         </Text>
       ) : (
         <View

@@ -41,19 +41,23 @@ describe("GET_WATCH_HOME_VIDEOS — lean payload guard", () => {
     expect(printed).not.toMatch(/\bsubtitles\b/)
   })
 
-  it("selects watchHomeVideos and declares $coreIds/$locale/$languageSlug", () => {
+  // KTD10: the text slug is required, because a null slug returns every
+  // language's row; and the old locale pair is gone.
+  it("selects watchHomeVideos and declares $coreIds/$textSlug", () => {
     expect(printed).toContain("query GetWatchHomeVideos")
     expect(printed).toContain("watchHomeVideos(coreIds: $coreIds)")
     expect(printed).toContain("$coreIds: [String!]!")
-    expect(printed).toContain("$locale: String!")
-    expect(printed).toMatch(/\$languageSlug: String(?!!)/)
+    expect(printed).toContain("$textSlug: String!")
+    expect(printed).not.toMatch(/\$locale\b/)
+    expect(printed).not.toMatch(/\$languageSlug\b/)
   })
 
-  it("narrows locales by the locale pair on parents and children", () => {
-    const localeSelections = printed.match(
-      /locales\(locale: \$locale, languageSlug: \$languageSlug\)/g,
+  it("reads the shared UI-language and English rows on parents and children", () => {
+    expect(printed.match(/\.\.\.VideoText\b/g)).toHaveLength(2)
+    expect(printed).toContain("locales(languageSlug: $textSlug)")
+    expect(printed).toContain(
+      'englishLocales: locales(languageSlug: "english")',
     )
-    expect(localeSelections).toHaveLength(2)
   })
 })
 

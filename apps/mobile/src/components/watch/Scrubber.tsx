@@ -9,6 +9,7 @@ import {
   type PanResponderGestureState,
 } from "react-native"
 
+import { useT } from "../../i18n/useT"
 import { ACCENT, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import {
   applySkip,
@@ -60,6 +61,7 @@ export function Scrubber({
   flush = false,
   edgeGuardWidth = 0,
 }: ScrubberProps) {
+  const t = useT("Player")
   const containerRef = useRef<View>(null)
   const trackRef = useRef({ x: 0, width: 0 })
   // Last fraction from grant/move. Release seeks to THIS, not a fresh read of
@@ -209,7 +211,7 @@ export function Scrubber({
       // + actions never reach VoiceOver/Switch Control — bar silently unreachable.
       accessible
       accessibilityRole="adjustable"
-      accessibilityLabel="Seek bar"
+      accessibilityLabel={t("seekBarAriaLabel")}
       // Drag-only by touch; expose increment/decrement (swipe up/down → ±10s,
       // matching skip buttons) so VoiceOver/Switch Control/idb can operate it.
       // `now` reads playback position (props), what a screen-reader user tracks.

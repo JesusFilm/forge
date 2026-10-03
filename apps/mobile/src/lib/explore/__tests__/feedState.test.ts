@@ -636,7 +636,10 @@ describe("the session history", () => {
       coreId: "core-1",
       slug: "slug-1",
       title: "Title 1",
+      // U7: the text's language rides with it, so a replay keeps the mark.
+      titleLang: null,
       description: "Description 1",
+      descriptionLang: null,
       imageUrl: "https://images.example/1.jpg",
       muxPlaybackId: "mux-1",
       streamUrl: "https://stream.mux.com/mux-1.m3u8",

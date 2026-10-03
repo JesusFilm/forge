@@ -10,6 +10,7 @@
 
 import { telemetryErrorMessage } from "../downloadErrors"
 import type { LapseReminderPermission } from "./constants"
+import { lapseReminderChannelName } from "./copy"
 import type { LapseReminderTelemetry } from "./lifecycle"
 
 /** The value the latch stores. Only its presence is read (R9). */
@@ -41,7 +42,7 @@ export type LapseReminderPromptStep =
 /** The slice of the notifications adapter the prompt needs. The pass owns its
  *  own narrower slice, so neither one carries calls it never makes. */
 export type LapseReminderPermissionPort = {
-  ensureChannel: () => Promise<void>
+  ensureChannel: (name: string) => Promise<void>
   getPermission: () => Promise<LapseReminderPermission>
   requestPermission: () => Promise<LapseReminderPermission>
 }
@@ -180,7 +181,7 @@ export function attachLapseReminderPermissionPrompt(
     // KTD6: Android 13 shows no prompt until a channel exists. Before the READ
     // as well as the request, so the automatic-grant path creates it too.
     try {
-      await deps.adapter.ensureChannel()
+      await deps.adapter.ensureChannel(lapseReminderChannelName())
     } catch (error) {
       logFailure("channel", error)
     }

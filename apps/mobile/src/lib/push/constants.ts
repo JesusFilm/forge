@@ -24,9 +24,6 @@ export type PushPermissionState = "granted" | "denied"
  */
 export const PUSH_ANNOUNCEMENTS_CHANNEL_ID = "announcements"
 
-/** Viewer-visible in the Android notification settings, so it reads plainly. */
-export const PUSH_ANNOUNCEMENTS_CHANNEL_NAME = "Announcements"
-
 /** The stored registration record, beside the last-watched one. */
 export const PUSH_REGISTRATION_STORAGE_KEY = "push-registration"
 
@@ -120,15 +117,6 @@ export const PUSH_TIME_ZONE_MAX_CHARS = 64
 
 /**
  * R31's hidden reveal: holding the mission screen's beta button for this long
- * shows the notification test ID. One named constant per string, so copy edits
- * sit here.
+ * shows the notification test ID. The alert text is in `copy.ts`.
  */
 export const PUSH_TEST_ID_REVEAL_HOLD_MS = 5_000
-export const PUSH_TEST_ID_ALERT_TITLE = "Notification test ID"
-export const PUSH_TEST_ID_HELP =
-  "Share this ID with the team to receive test announcements on this phone."
-export const PUSH_TEST_ID_REGISTERING = "Registering this phone…"
-export const PUSH_TEST_ID_NOTIFICATIONS_OFF =
-  "Notifications are off for this phone. Turn them on in Settings to receive announcements."
-export const PUSH_TEST_ID_CLOSE_ACTION = "Close"
-export const PUSH_TEST_ID_COPY_ACTION = "Copy test ID"

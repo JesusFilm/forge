@@ -29,6 +29,7 @@ import { validateStreamingUrl } from "../../lib/validateUrl"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import type { AdminBlock } from "../../lib/queries"
 import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
 import { blockStreamingUrl } from "../../lib/blockVideoDub"
@@ -73,6 +74,8 @@ export function VideoHeroRenderer({
 
   const { width: screenWidth } = useWindowDimensions()
   const typography = useTypography()
+  const t = useT("Sections")
+  const tCommon = useT("Common")
   const router = useRouter()
   const appActiveRef = useRef(true)
   // R19 keeps this hero out of the mini player, but it still competes for the
@@ -194,7 +197,7 @@ export function VideoHeroRenderer({
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               recyclingKey="hero-thumb"
-              accessibilityLabel={heading ?? "Video thumbnail"}
+              accessibilityLabel={heading ?? tCommon("videoThumbnailAriaLabel")}
             />
           )}
         </>
@@ -204,7 +207,7 @@ export function VideoHeroRenderer({
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           recyclingKey="hero-img"
-          accessibilityLabel={heading ?? "Hero image"}
+          accessibilityLabel={heading ?? t("heroImageAriaLabel")}
         />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.fallback]} />

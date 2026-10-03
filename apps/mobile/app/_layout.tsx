@@ -55,6 +55,8 @@ let hideNativeSplashOnce:
 let getSplashSession:
   | typeof import("../src/lib/splash/splashSession").getSplashSession
   | undefined
+let useLocaleResolutionLog: typeof import("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
+let useT: typeof import("../src/i18n/useT").useT
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -124,6 +126,13 @@ try {
   // the layout returns a bare view and the host does not mount at all.
   nativeSplash.preventNativeSplashAutoHide()
   getSplashSession?.().start()
+  // KTD3: module scope, so the first frame and the first request use the
+  // phone's language. A failed phone read keeps English and does not throw.
+  const localeStore = require("../src/i18n/localeStore")
+  localeStore.startLocaleSync()
+  useLocaleResolutionLog =
+    require("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
+  useT = require("../src/i18n/useT").useT
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
   moduleError = `${err.message}\n\n${err.stack ?? ""}`
@@ -257,6 +266,24 @@ export const unstable_settings = {
   initialRouteName: "(tabs)",
 }
 
+// The label is read here, not in RootLayout, so a language change
+// re-renders this button and not the whole root.
+function HeaderBackButton() {
+  const router = useRouter()
+  const t = useT("Common")
+  return (
+    <Pressable
+      onPress={() => router.back()}
+      accessibilityRole="button"
+      accessibilityLabel={t("goBackAriaLabel")}
+      {...{ "dd-action-name": "header-back" }}
+      hitSlop={12}
+    >
+      <Ionicons name="chevron-back" size={28} color={ACCENT} />
+    </Pressable>
+  )
+}
+
 export default function RootLayout() {
   if (moduleError) {
     // Both, like the App Error path. Nothing reaches the session on this
@@ -300,7 +327,6 @@ export default function RootLayout() {
   }
 
   const clientRef = useRef(getApolloClient())
-  const router = useRouter()
 
   // Lock the whole app to portrait; only the fullscreen video player rotates
   // (it relaxes the lock on entry and re-asserts it on exit). Fired as early as
@@ -349,6 +375,10 @@ export default function RootLayout() {
     addDatadogTiming("js_tti")
   }, [hydrated])
 
+  // After hydration, so MobileDatadogProvider has mounted; the SDK buffers
+  // logs until its init completes. Once per process, like js_tti.
+  useLocaleResolutionLog(hydrated)
+
   if (!hydrated) {
     return <View style={{ flex: 1, backgroundColor: BG_COLOR }} />
   }
@@ -390,20 +420,7 @@ export default function RootLayout() {
                                   headerStyle: { backgroundColor: BG_COLOR },
                                   headerShadowVisible: false,
                                   headerTitleAlign: "center",
-                                  headerLeft: () => (
-                                    <Pressable
-                                      onPress={() => router.back()}
-                                      accessibilityRole="button"
-                                      accessibilityLabel="Go back"
-                                      hitSlop={12}
-                                    >
-                                      <Ionicons
-                                        name="chevron-back"
-                                        size={28}
-                                        color={ACCENT}
-                                      />
-                                    </Pressable>
-                                  ),
+                                  headerLeft: () => <HeaderBackButton />,
                                 }}
                               />
                               <Stack.Screen
@@ -415,20 +432,7 @@ export default function RootLayout() {
                                   headerStyle: { backgroundColor: BG_COLOR },
                                   headerShadowVisible: false,
                                   headerTitleAlign: "center",
-                                  headerLeft: () => (
-                                    <Pressable
-                                      onPress={() => router.back()}
-                                      accessibilityRole="button"
-                                      accessibilityLabel="Go back"
-                                      hitSlop={12}
-                                    >
-                                      <Ionicons
-                                        name="chevron-back"
-                                        size={28}
-                                        color={ACCENT}
-                                      />
-                                    </Pressable>
-                                  ),
+                                  headerLeft: () => <HeaderBackButton />,
                                 }}
                               />
                               <Stack.Screen

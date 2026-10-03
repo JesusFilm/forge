@@ -20,7 +20,7 @@ import {
   partTravelKeyframes,
   type SwipeDemoPart,
 } from "../../lib/bible/onboarding/swipeDemoTimeline"
-import { READER_COPY } from "../../lib/bible/reader/copy"
+import { useT } from "../../i18n/useT"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 
 /** The reader's accessibility reads land first, so a screen reader skips it. */
@@ -55,6 +55,7 @@ export type SwipeDemoProps = {
 // R16's first-run demonstration. One value drives every part, because a
 // sequence inside a parallel can fail to run on Fabric.
 export function SwipeDemo({ tokens, onDone }: SwipeDemoProps) {
+  const t = useT("BibleReader")
   const [armed, setArmed] = useState(false)
   const [progress] = useState(() => new Animated.Value(0))
   const [parts] = useState(() => ({
@@ -103,7 +104,8 @@ export function SwipeDemo({ tokens, onDone }: SwipeDemoProps) {
         testID="bible-swipe-demo"
         onPress={() => done.current()}
         accessibilityRole="button"
-        accessibilityLabel={READER_COPY.movement.demoSkipLabel}
+        accessibilityLabel={t("demoSkipAriaLabel")}
+        {...{ "dd-action-name": "bible-swipe-demo-skip" }}
         style={[
           StyleSheet.absoluteFill,
           styles.scrim,
@@ -134,14 +136,15 @@ export function SwipeDemo({ tokens, onDone }: SwipeDemoProps) {
         </View>
         <View style={styles.captions} pointerEvents="none">
           {[
-            { text: READER_COPY.movement.demoVerse, opacity: verse.opacity },
+            { key: "verse", text: t("demoVerse"), opacity: verse.opacity },
             {
-              text: READER_COPY.movement.demoChapter,
+              key: "chapter",
+              text: t("demoChapter"),
               opacity: chapter.opacity,
             },
           ].map((caption) => (
             <Animated.Text
-              key={caption.text}
+              key={caption.key}
               style={[
                 styles.caption,
                 { color: tokens.text, opacity: caption.opacity },
@@ -156,7 +159,7 @@ export function SwipeDemo({ tokens, onDone }: SwipeDemoProps) {
           style={[styles.skip, { color: tokens.secondaryText }]}
           maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
         >
-          {READER_COPY.movement.demoSkip}
+          {t("demoSkip")}
         </Text>
       </Pressable>
     </Animated.View>

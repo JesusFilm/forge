@@ -6,6 +6,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import type { BrowseTopic } from "../../lib/browseTopics"
 import { hexToRgba, TEXT_ON_OVERLAY } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { feedback } from "../../styles/shared"
 
 // Cinematic top + bottom darkening — fixed across all cards, so compute once.
@@ -38,6 +39,8 @@ export function TopicCard({
   cardWidth,
 }: TopicCardProps) {
   const typography = useTypography()
+  const t = useT("BrowseTopics")
+  const label = t(topic.labelKey)
 
   return (
     <Pressable
@@ -46,9 +49,11 @@ export function TopicCard({
         { width: cardWidth },
         pressed && feedback.pressed,
       ]}
+      // The English term, in every UI language: U7 searches it in English.
       onPress={() => onSelect(topic.searchTerm)}
       accessibilityRole="button"
-      accessibilityLabel={`Search ${topic.label}`}
+      accessibilityLabel={t("searchTopicAriaLabel", { topic: label })}
+      {...{ "dd-action-name": "browse-topic" }}
     >
       <LinearGradient
         colors={[...topic.gradient]}
@@ -82,7 +87,7 @@ export function TopicCard({
         <Ionicons name={topic.glyph} size={26} color={TEXT_ON_OVERLAY} />
       </View>
       <Text style={[styles.label, typography.titleSmall]} numberOfLines={1}>
-        {topic.label}
+        {label}
       </Text>
     </Pressable>
   )

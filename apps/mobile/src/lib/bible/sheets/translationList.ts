@@ -1,12 +1,16 @@
 // The translation picker's list (feat-553 U10, R23, R30, R41): the viewer's
 // languages first, then every other catalog language by its English name.
 // Pure; the picker passes the download states in.
+import type { UiT } from "../../../i18n/useT"
+import { compareIds, nameComparator } from "../../collation"
 import type { Catalog, CatalogTranslation } from "../data/catalog"
 import { LANGUAGE_DEFAULT_TRANSLATIONS } from "../data/languageDefaults.generated"
 import { catalogLanguageCode } from "../language/phoneLanguage"
 import type { TranslationDownloadState } from "../repository/translationDownloads"
 import { BIBLE_BOOKS, type UsfmBookId } from "../text/books"
-import { READER_SHEET_COPY } from "./copy"
+
+/** The picker's words (KTD2): helpers take the caller's `t`. */
+export type TranslationPickerT = UiT<"BibleTranslationPicker">
 
 type LanguageDefaults = Readonly<Record<string, string>>
 
@@ -46,16 +50,15 @@ export type TranslationListInput = {
   onDeviceOnly: boolean
   getState: (translationId: string) => TranslationDownloadState
   languageDefaults?: LanguageDefaults
-}
-
-function byText(a: string, b: string): number {
-  return a.toLowerCase().localeCompare(b.toLowerCase())
+  /** The UI language tag the names collate in (KTD15). */
+  uiTag: string
 }
 
 export function buildTranslationList(
   input: TranslationListInput,
 ): CatalogTranslation[] {
   const defaults = input.languageDefaults ?? LANGUAGE_DEFAULT_TRANSLATIONS
+  const byText = nameComparator(input.uiTag)
   const viewerRank = new Map(
     input.viewerLanguages.map((language, index) => [language, index]),
   )
@@ -80,7 +83,7 @@ export function buildTranslationList(
     if (aRank !== bRank) return aRank < bRank ? -1 : 1
     if (a.language !== b.language) {
       const byName = byText(a.languageEnglishName, b.languageEnglishName)
-      return byName !== 0 ? byName : byText(a.language, b.language)
+      return byName !== 0 ? byName : compareIds(a.language, b.language)
     }
     return withinLanguage(a, b)
   })
@@ -110,44 +113,48 @@ export function translationLanguageLabel(
 }
 
 function downloadStatus(
+  t: TranslationPickerT,
   translation: CatalogTranslation,
   state: TranslationDownloadState,
 ): string[] {
-  const copy = READER_SHEET_COPY.translation
   switch (state.kind) {
     case "bundled":
-      return [copy.onDevice]
+      return [t("onDevice")]
     case "downloaded":
       return isUpdateAvailable(translation, state)
-        ? [copy.onDevice, copy.updateAvailable]
-        : [copy.onDevice]
+        ? [t("onDevice"), t("updateAvailable")]
+        : [t("onDevice")]
     case "downloading":
-      return [copy.downloading(Math.round(state.percent))]
+      return [t("downloading", { percent: Math.round(state.percent) })]
     case "failed":
-      return [copy.downloadStopped]
+      return [t("downloadStopped")]
     case "checking":
     case "not-downloaded":
       return []
   }
 }
 
-/** A few names as one phrase: "Ruth", "Ruth and Luke", "Ruth, Luke, and John". */
-function joinNames(names: readonly string[]): string {
-  if (names.length <= 2) return names.join(" and ")
-  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`
-}
-
 /** Named in full up to this many books; more are a count. */
 const NAMED_BOOKS_MAX = 3
+
+/** Up to NAMED_BOOKS_MAX names as one phrase: "Ruth", "Ruth and Luke". */
+function joinNames(t: TranslationPickerT, names: readonly string[]): string {
+  const [first = "", second, third] = names
+  if (second === undefined) return first
+  if (third === undefined) return t("twoNames", { first, second })
+  return t("threeNames", { first, second, third })
+}
 
 // Which books a partial Bible has (owner, 2026-09-28): "Partial Bible" did not
 // say that a New Testament has no Genesis. Most partial Bibles are a New
 // Testament (705 of 1,053 on 2026-09-28), so a whole testament reads as a unit.
-export function coverageLabel(books: ReadonlySet<UsfmBookId>): string {
-  const copy = READER_SHEET_COPY.translation.coverage
+export function coverageLabel(
+  t: TranslationPickerT,
+  books: ReadonlySet<UsfmBookId>,
+): string {
   const testaments = [
-    { name: READER_SHEET_COPY.passage.newTestament, key: "new" },
-    { name: READER_SHEET_COPY.passage.oldTestament, key: "old" },
+    { name: t("newTestament"), key: "new" },
+    { name: t("oldTestament"), key: "old" },
   ] as const
   for (const { name, key } of testaments) {
     const whole = BIBLE_BOOKS.filter((book) => book.testament === key)
@@ -156,28 +163,30 @@ export function coverageLabel(books: ReadonlySet<UsfmBookId>): string {
       (book) => book.testament !== key && books.has(book.usfm),
     ).map((book) => book.name)
     if (extra.length === 0) {
-      return key === "new" ? copy.newTestament : copy.oldTestament
+      return key === "new" ? t("newTestamentOnly") : t("oldTestamentOnly")
     }
     return extra.length < NAMED_BOOKS_MAX
-      ? joinNames([name, ...extra])
-      : copy.testamentAndOthers(name, extra.length)
+      ? joinNames(t, [name, ...extra])
+      : t("testamentAndOtherBooks", { testament: name, count: extra.length })
   }
   const names = BIBLE_BOOKS.filter((book) => books.has(book.usfm)).map(
     (book) => book.name,
   )
   return names.length <= NAMED_BOOKS_MAX
-    ? copy.only(joinNames(names))
-    : copy.someBooks(names.length, BIBLE_BOOKS.length)
+    ? t("onlyBooks", { names: joinNames(t, names) })
+    : t("someBooks", { count: names.length, total: BIBLE_BOOKS.length })
 }
 
 /** R23: the books it has, then the download state. A screen reader reads it. */
 export function translationStatusLabel(
+  t: TranslationPickerT,
   translation: CatalogTranslation,
   state: TranslationDownloadState,
 ): string {
-  const copy = READER_SHEET_COPY.translation
   return [
-    translation.complete ? copy.complete : coverageLabel(translation.books),
-    ...downloadStatus(translation, state),
+    translation.complete
+      ? t("completeBible")
+      : coverageLabel(t, translation.books),
+    ...downloadStatus(t, translation, state),
   ].join(", ")
 }

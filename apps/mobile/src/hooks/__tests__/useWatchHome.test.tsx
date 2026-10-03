@@ -45,12 +45,47 @@ jest.mock("../../lib/queries", () => ({
   GET_WATCH_SETTING: { name: "setting" },
 }))
 
-import { act, createElement } from "react"
+// U6: the phone's languages reach the hook through the real locale store.
+// `es` and `ru` are fixture catalogs, so a phone change moves the epoch; a
+// suite that never starts the store stays on English.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(jest.requireActual("../../i18n/catalogs.generated"), {
+      es: {},
+      ru: {},
+    }),
+)
+jest.mock("../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../i18n/pluralData.generated"),
+      ["es", "ru"],
+    ),
+)
+
+import { StrictMode, act, createElement } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../i18n/localeStore"
+import { datadogLog } from "../../lib/datadog"
+import { phoneLocales } from "../../test-utils/uiLocaleFixture"
 import { useWatchHome } from "../useWatchHome"
 import { getApolloClient } from "../../lib/apolloClient"
-import { GET_WATCH_HOME_VIDEOS } from "../../lib/queries"
+import { GET_WATCH_HOME_VIDEOS, GET_WATCH_SETTING } from "../../lib/queries"
+import { adminFormsFor } from "../../i18n/adminLanguage"
 import type {
   WatchHomeModel,
   WatchHomeVideoInput,
@@ -114,13 +149,18 @@ const blocks = [
   collection("second"),
 ]
 
-type Frame = { model: WatchHomeModel | null; index: number | null }
+type Frame = {
+  model: WatchHomeModel | null
+  index: number | null
+  loading: boolean
+  error: string | null
+}
 
 let frames: Frame[] = []
 
 function Probe(): null {
-  const { model, recommendationsInsertIndex } = useWatchHome()
-  frames.push({ model, index: recommendationsInsertIndex })
+  const { model, recommendationsInsertIndex, loading, error } = useWatchHome()
+  frames.push({ model, index: recommendationsInsertIndex, loading, error })
   return null
 }
 
@@ -281,5 +321,350 @@ describe("useWatchHome — the model and the insert index land in one state writ
     expect(frame.model?.sections).toHaveLength(2)
     expect(frame.index).toBeNull()
     await unmount(renderer)
+  })
+})
+
+// ── U6. Home in the UI locale, and a live language change (KTD10, KTD16) ────
+
+const settingDocument = GET_WATCH_SETTING as unknown
+
+const TITLES: Record<string, string> = {
+  english: "JESUS",
+  "spanish-latin-american": "JESÚS",
+  russian: "ИИСУС",
+}
+
+/** The JESUS film as the Home query answers it for one text slug. */
+function jesusIn(textSlug: string): WatchHomeVideoInput {
+  return {
+    documentId: "d-jesus",
+    coreId: "1_jf-0-0",
+    slug: "jesus",
+    label: "FEATURE_FILM",
+    images: [{ mobileCinematicHigh: "https://cdn/jesus.jpg" }],
+    locales: [{ languageSlug: textSlug, title: TITLES[textSlug] }],
+    englishLocales: [{ languageSlug: "english", title: "JESUS" }],
+  }
+}
+
+const JESUS_ITEM = {
+  videoId: "v-jesus",
+  coreId: "1_jf-0-0",
+  videoSlug: "jesus",
+}
+// No Home video covers this item, so the hook tops it up.
+const ACTS_ITEM = { videoId: "v-acts", coreId: "6_Acts0401", videoSlug: "acts" }
+const ACTS: WatchHomeVideoInput = {
+  documentId: "d-acts",
+  coreId: "6_Acts0401",
+  slug: "acts",
+  label: "SEGMENT",
+  images: [],
+  locales: [{ languageSlug: "english", title: "Peter and John" }],
+}
+
+/** A homepage whose one card links the item, by default the JESUS film. */
+function homepage(
+  sectionKey: string,
+  titleOverride: string | null,
+  item = JESUS_ITEM,
+) {
+  return {
+    homepageExperience: {
+      blocks: [
+        {
+          __typename: "MediaCollectionBlock",
+          sectionKey,
+          title: sectionKey,
+          mediaCollectionVariant: "carousel",
+          items: [{ ...item, titleOverride }],
+        },
+      ],
+    },
+  }
+}
+
+type PendingCall = {
+  query: unknown
+  variables: Record<string, unknown>
+  resolve: (value: unknown) => void
+  reject: (reason: unknown) => void
+}
+
+let calls: PendingCall[] = []
+
+/** Every query waits until the test answers it. */
+function useDeferredClient() {
+  mockGetApolloClient.mockReturnValue({
+    query: jest.fn(
+      (args: { query: unknown; variables: Record<string, unknown> }) =>
+        new Promise((resolve, reject) => {
+          calls.push({ ...args, resolve, reject })
+        }),
+    ),
+  })
+}
+
+function pending(document: unknown, locale: string): PendingCall[] {
+  return calls.filter((call) => {
+    if (call.query !== document) return false
+    if (document === videosDocument) {
+      return call.variables.textSlug === adminFormsFor(locale).textSlug
+    }
+    return call.variables.locale === locale
+  })
+}
+
+async function settle(settleCalls: () => void) {
+  await act(async () => {
+    settleCalls()
+  })
+  await step()
+}
+
+/** Answers every open videos call for the locale, the top-up included. */
+async function answerVideos(
+  locale: string,
+  answer?: WatchHomeVideoInput[] | Error,
+) {
+  const slug = adminFormsFor(locale).textSlug
+  await settle(() => {
+    for (const call of pending(videosDocument, locale)) {
+      if (answer instanceof Error) {
+        call.reject(answer)
+      } else {
+        call.resolve({ data: { watchHomeVideos: answer ?? [jesusIn(slug)] } })
+      }
+    }
+  })
+}
+
+async function answerSetting(locale: string, data: unknown) {
+  await settle(() => {
+    for (const call of pending(settingDocument, locale)) {
+      if (data instanceof Error) call.reject(data)
+      else call.resolve({ data })
+    }
+  })
+}
+
+async function changePhone(tag: string) {
+  mockGetLocales.mockReturnValue(phoneLocales(tag))
+  await act(async () => {
+    refreshLocale()
+  })
+  await step()
+}
+
+function cardTitles(frame: Frame): string[] {
+  return (frame.model?.sections ?? []).flatMap((section) =>
+    section.cards.map((card) => card.title),
+  )
+}
+
+function sectionIds(frame: Frame): string[] {
+  return (frame.model?.sections ?? []).map((section) => section.id)
+}
+
+describe("useWatchHome in the UI locale (U6)", () => {
+  let probe: TestInstance | undefined
+
+  /** Starts the phone on `tag`, then mounts the probe under StrictMode. */
+  async function renderStrictProbe(tag: string): Promise<void> {
+    mockGetLocales.mockReturnValue(phoneLocales(tag))
+    startLocaleSync()
+    await act(() => {
+      probe = TestRenderer.create(
+        createElement(StrictMode, null, createElement(Probe)),
+      )
+    })
+    await step()
+  }
+
+  /** A cold launch with no network: only the stored snapshot can paint. */
+  async function renderOffline(snapshot: string, tag: string): Promise<void> {
+    storage.getItem.mockResolvedValue(snapshot)
+    mockGetApolloClient.mockReturnValue({
+      query: jest.fn(() => Promise.reject(new Error("offline"))),
+    })
+    await renderStrictProbe(tag)
+  }
+
+  beforeEach(() => {
+    calls = []
+    resetLocaleStoreForTests()
+    useDeferredClient()
+  })
+
+  afterEach(async () => {
+    if (probe) await unmount(probe)
+    probe = undefined
+    resetLocaleStoreForTests()
+  })
+
+  it("asks for the catalog tag's homepage, the en one, and the text slug", async () => {
+    await renderStrictProbe("es-MX")
+
+    expect(pending(settingDocument, "es")[0]?.variables).toEqual({
+      locale: "es",
+      isEnglish: false,
+    })
+    expect(pending(videosDocument, "es")[0]?.variables).toMatchObject({
+      textSlug: "spanish-latin-american",
+    })
+  })
+
+  it("renders the es homepage with its authored Spanish card text (AE1)", async () => {
+    await renderStrictProbe("es-MX")
+
+    await answerVideos("es")
+    await answerSetting("es", {
+      watchSetting: homepage("ver", "Ver JESÚS"),
+      englishWatchSetting: homepage("films", "JESUS"),
+    })
+
+    expect(sectionIds(frames[frames.length - 1])).toEqual(["ver"])
+    expect(cardTitles(frames[frames.length - 1])).toEqual(["Ver JESÚS"])
+  })
+
+  // The video's Russian title beats the en homepage's English authored text.
+  it("falls back to the en homepage with Russian video titles (AE2)", async () => {
+    await renderStrictProbe("ru-RU")
+
+    await answerVideos("ru")
+    await answerSetting("ru", {
+      watchSetting: null,
+      englishWatchSetting: homepage("films", "JESUS"),
+    })
+
+    expect(sectionIds(frames[frames.length - 1])).toEqual(["films"])
+    expect(cardTitles(frames[frames.length - 1])).toEqual(["ИИСУС"])
+    // The snapshot records the locale and the fallback it was built under.
+    const blob = storage.setItem.mock.calls.at(-1)?.[1] as string
+    expect(blob).toContain('"locale":"ru"')
+    expect(blob).toContain('"homepageSource":"en-fallback"')
+  })
+
+  // No English frame may paint before the Spanish one.
+  it("drops a response for the old epoch after a language change (AE6)", async () => {
+    await renderStrictProbe("en-US")
+    expect(pending(videosDocument, "en").length).toBeGreaterThan(0)
+
+    await changePhone("es-MX")
+    await answerVideos("en")
+    await answerSetting("en", { watchSetting: homepage("old", "JESUS") })
+
+    expect(frames.every((frame) => frame.model == null)).toBe(true)
+
+    await answerVideos("es")
+    await answerSetting("es", {
+      watchSetting: homepage("ver", "Ver JESÚS"),
+      englishWatchSetting: homepage("films", "JESUS"),
+    })
+
+    expect(cardTitles(frames[frames.length - 1])).toEqual(["Ver JESÚS"])
+    expect(frames.some((frame) => sectionIds(frame).includes("old"))).toBe(
+      false,
+    )
+  })
+
+  it("clears the old body at once and never reuses its last-good blocks (AE6)", async () => {
+    await renderStrictProbe("en-US")
+    await answerVideos("en")
+    await answerSetting("en", { watchSetting: homepage("first", "JESUS") })
+    expect(sectionIds(frames[frames.length - 1])).toEqual(["first"])
+
+    const beforeChange = frames.length
+    await changePhone("es-MX")
+    expect(frames[beforeChange]?.model).toBeNull()
+    ;(datadogLog.warn as jest.Mock).mockClear()
+    await answerVideos("es")
+    await answerSetting("es", new Error("offline"))
+
+    expect(frames[frames.length - 1].model).not.toBeNull()
+    expect(
+      frames.slice(beforeChange).some((f) => sectionIds(f).includes("first")),
+    ).toBe(false)
+    expect(datadogLog.warn).toHaveBeenCalledWith("watch_home_fallback", {
+      reason: "error",
+      body_source: "config",
+    })
+  })
+
+  it("shows the retry message, not a spinner, when the new locale fails", async () => {
+    await renderStrictProbe("en-US")
+    await answerVideos("en")
+    await answerSetting("en", { watchSetting: homepage("first", "JESUS") })
+
+    await changePhone("es-MX")
+    await answerVideos("es", new Error("offline"))
+    await answerSetting("es", new Error("offline"))
+
+    expect(frames[frames.length - 1]).toMatchObject({
+      model: null,
+      loading: false,
+      error: "Couldn't load videos. Please try again.",
+    })
+  })
+
+  it("never reuses the old locale's top-up records after a failed top-up", async () => {
+    const acts = homepage("acts", null, ACTS_ITEM)
+    await renderStrictProbe("en-US")
+    await answerVideos("en")
+    await answerSetting("en", { watchSetting: acts })
+    await answerVideos("en", [ACTS])
+    expect(cardTitles(frames[frames.length - 1])).toEqual(["Peter and John"])
+
+    await changePhone("es-MX")
+    await answerVideos("es")
+    await answerSetting("es", { watchSetting: acts, englishWatchSetting: acts })
+    await answerVideos("es", new Error("offline"))
+
+    // With no records the card falls back to its slug.
+    expect(cardTitles(frames[frames.length - 1])).toEqual(["acts"])
+  })
+
+  it("never paints an en snapshot under es", async () => {
+    await renderOffline(
+      serializeHomeSnapshotFromVideosJson(
+        JSON.stringify([jesusIn("english")]),
+        new Date(),
+        JSON.stringify(homepage("first", "JESUS").homepageExperience.blocks),
+        "[]",
+      ),
+      "es-MX",
+    )
+
+    expect(frames.every((frame) => frame.model == null)).toBe(true)
+  })
+
+  it("paints a snapshot with no locale field under en", async () => {
+    await renderOffline(
+      JSON.stringify({
+        version: 3,
+        persistedAt: Date.now(),
+        videos: [jesusIn("english")],
+        blocks: homepage("first", "JESUS").homepageExperience.blocks,
+        hydrationVideos: [],
+      }),
+      "en-US",
+    )
+
+    expect(sectionIds(firstPaint().frame)).toEqual(["first"])
+  })
+
+  it("repaints a snapshot saved under the en fallback with its precedence", async () => {
+    await renderOffline(
+      serializeHomeSnapshotFromVideosJson(
+        JSON.stringify([jesusIn("russian")]),
+        new Date(),
+        JSON.stringify(homepage("films", "JESUS").homepageExperience.blocks),
+        "[]",
+        { locale: "ru", homepageSource: "en-fallback" },
+      ),
+      "ru-RU",
+    )
+
+    expect(cardTitles(firstPaint().frame)).toEqual(["ИИСУС"])
   })
 })

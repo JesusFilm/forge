@@ -184,6 +184,17 @@ content, translated content, and translation model that produced it. It covers
 the translated portion of a catalog, so Pending Translation Paths do not claim
 completed-translation provenance.
 
+### UI Locale
+
+The locale of the Watch UI Catalog that a client renders its interface copy
+in. It is always a shipped catalog, or English when no shipped catalog fits.
+It is distinct from the audio Language, even where one choice sets both: Web
+derives the UI Locale from the public language slug, so Arabic Najdi renders
+English interface copy. Admin content requests derive three language forms
+from it: the catalog tag for homepage Experiences and recommendations, the
+Language slug for video text rows, search, and Bible passages, and Admin's own
+BCP-47 tag for language-name and Bible-book-name maps.
+
 ### Contextual Watch Route
 
 A public Watch URL that identifies a parent collection, child Video, and

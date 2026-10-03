@@ -1,0 +1,9 @@
+{
+  "humanReviewedLocales": ["en"],
+  "intentionallyLocaleNeutral": [
+    "BiblePassagePicker.bookWithNoteAriaLabel",
+    "ListSheet.rowWithStatusAriaLabel"
+  ],
+  "englishOnlyLocales": ["crk", "mey-Latn"],
+  "pendingKeys": {}
+}

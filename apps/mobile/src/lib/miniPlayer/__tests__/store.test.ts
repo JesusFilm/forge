@@ -1,8 +1,10 @@
 import type { AuthSessionSnapshot } from "../../authSession"
+import { adminFormsFor } from "../../../i18n/adminLanguage"
 import {
   createMiniPlayerStore,
   getMiniPlayerStore,
   sameSessionContent,
+  screenAdminForms,
   type MiniPlayerEndEvent,
   type MiniPlayerAuthSource,
 } from "../store"
@@ -601,5 +603,60 @@ describe("an ending with no report (the reader cover)", () => {
     store.requestDismiss()
 
     expect(ends.map((event) => event.reason)).toEqual(["dismissed"])
+  })
+})
+
+// ── U6. The session keeps the language its screen read with (KTD16) ─────────
+
+describe("the session's Admin language forms", () => {
+  const EN = adminFormsFor("en")
+  const RU = adminFormsFor("ru")
+
+  // AE11: the phone moves to Russian while the window plays; the expand
+  // remounts a screen that must read the session's English forms back.
+  it("keeps the forms its screen noted through an expand after a language change", () => {
+    const store = createMiniPlayerStore()
+    store.noteScreenAdminForms("birth-of-jesus", EN)
+    store.start({ videoId: "v1", videoSlug: "birth-of-jesus", title: "T" })
+    expect(store.getSnapshot().session?.adminForms).toBe(EN)
+    // A screen that ignored the session would note Russian here.
+    store.noteScreenAdminForms("birth-of-jesus", RU)
+    store.start({ videoId: null, videoSlug: "birth-of-jesus", title: "T" })
+    expect(store.getSnapshot().session?.adminForms).toBe(EN)
+  })
+
+  it("keeps the notes of a stack of open screens, so each video starts with its own", () => {
+    const store = createMiniPlayerStore()
+    store.noteScreenAdminForms("birth-of-jesus", EN)
+    store.noteScreenAdminForms("the-baptism", RU)
+    store.start({ videoId: "v1", videoSlug: "birth-of-jesus", title: "T" })
+    expect(store.getSnapshot().session?.adminForms).toBe(EN)
+    store.start({ videoId: "v2", videoSlug: "the-baptism", title: "B" })
+    expect(store.getSnapshot().session?.adminForms).toBe(RU)
+  })
+
+  it("has no forms when no screen noted any", () => {
+    const { store } = startedStore()
+    expect(store.getSnapshot().session?.adminForms).toBeNull()
+  })
+
+  describe("screenAdminForms (what a media screen reads at mount)", () => {
+    const session = { videoSlug: "birth-of-jesus", adminForms: EN }
+
+    it("reads the session's forms for the video the session plays", () => {
+      expect(screenAdminForms(session, "birth-of-jesus", RU)).toBe(EN)
+    })
+
+    it("reads the current forms for another video, or a session with none", () => {
+      expect(screenAdminForms(session, "the-baptism", RU)).toBe(RU)
+      expect(screenAdminForms(null, "birth-of-jesus", RU)).toBe(RU)
+      expect(
+        screenAdminForms(
+          { videoSlug: "birth-of-jesus", adminForms: null },
+          "birth-of-jesus",
+          RU,
+        ),
+      ).toBe(RU)
+    })
   })
 })

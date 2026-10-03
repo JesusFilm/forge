@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useT } from "../../../i18n/useT"
 import { READER_TOUCH_TARGET } from "../../../lib/bible/reader/chrome"
-import { READER_SHEET_COPY } from "../../../lib/bible/sheets/copy"
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
 import { feedback } from "../../../styles/shared"
 
@@ -22,14 +22,16 @@ export function ReaderSheetHeader({
   onClose,
   back,
 }: ReaderSheetHeaderProps) {
+  const t = useT("BibleReader")
   return (
     <View style={styles.row}>
       {back && (
         <Pressable
           onPress={back.onPress}
           accessibilityRole="button"
-          accessibilityLabel={READER_SHEET_COPY.passage.goBackTo(back.label)}
+          accessibilityLabel={t("sheetBackAriaLabel", { label: back.label })}
           style={({ pressed }) => [styles.back, pressed && feedback.pressed]}
+          {...{ "dd-action-name": "bible-sheet-back" }}
         >
           <Ionicons name="chevron-back" size={22} color={tokens.icon} />
           <Text
@@ -50,9 +52,10 @@ export function ReaderSheetHeader({
       <Pressable
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel={READER_SHEET_COPY.close}
+        accessibilityLabel={t("sheetCloseAriaLabel")}
         hitSlop={4}
         style={({ pressed }) => [styles.close, pressed && feedback.pressed]}
+        {...{ "dd-action-name": "bible-sheet-close" }}
       >
         <Ionicons name="close" size={24} color={tokens.secondaryText} />
       </Pressable>

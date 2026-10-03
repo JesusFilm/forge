@@ -42,10 +42,13 @@ jest.mock("../WatchPreferencesProvider", () => {
     audio: "english" as string | null,
     audioIso3: null as string | null,
     subtitle: null as string | null,
+    subtitleName: null as string | null,
+    subtitleNameLocale: null as string | null,
     subtitlesEnabled: false,
     setAudio: jest.fn(),
     backfillAudioIso3: jest.fn(),
     setPreferredSubtitleLanguage: jest.fn(),
+    setPreferredSubtitleName: jest.fn(),
     setSubtitlesEnabled: jest.fn(),
   }
   return {
@@ -53,13 +56,14 @@ jest.mock("../WatchPreferencesProvider", () => {
       audioLanguageSlug: state.audio,
       audioLanguageIso3: state.audioIso3,
       subtitleLanguageSlug: state.subtitle,
-      subtitleLanguageName: null,
+      subtitleLanguageName: state.subtitleName,
+      subtitleLanguageNameLocale: state.subtitleNameLocale,
       subtitlesEnabled: state.subtitlesEnabled,
       isReady: state.ready,
       setPreferredAudioLanguage: state.setAudio,
       backfillAudioLanguageIso3: state.backfillAudioIso3,
       setPreferredSubtitleLanguage: state.setPreferredSubtitleLanguage,
-      setPreferredSubtitleName: jest.fn(),
+      setPreferredSubtitleName: state.setPreferredSubtitleName,
       setSubtitlesEnabled: state.setSubtitlesEnabled,
     }),
     __prefState: state,
@@ -99,6 +103,8 @@ jest.mock("../../lib/miniPlayer/store", () => {
 import { act } from "react"
 
 import { WatchSessionProvider, useWatchSession } from "../WatchSessionProvider"
+import { adminFormsFor } from "../../i18n/adminLanguage"
+import { getCatalogTag } from "../../i18n/localeStore"
 import type { WatchVariant, WatchVideoRecord } from "../../lib/normalizeVideo"
 import {
   TestRenderer,
@@ -113,10 +119,13 @@ const prefs = jest.requireMock("../WatchPreferencesProvider") as {
     audio: string | null
     audioIso3: string | null
     subtitle: string | null
+    subtitleName: string | null
+    subtitleNameLocale: string | null
     subtitlesEnabled: boolean
     setAudio: jest.Mock
     backfillAudioIso3: jest.Mock
     setPreferredSubtitleLanguage: jest.Mock
+    setPreferredSubtitleName: jest.Mock
     setSubtitlesEnabled: jest.Mock
   }
 }
@@ -225,10 +234,13 @@ afterEach(async () => {
   prefs.__prefState.audio = "english"
   prefs.__prefState.audioIso3 = null
   prefs.__prefState.subtitle = null
+  prefs.__prefState.subtitleName = null
+  prefs.__prefState.subtitleNameLocale = null
   prefs.__prefState.subtitlesEnabled = false
   prefs.__prefState.setAudio.mockClear()
   prefs.__prefState.backfillAudioIso3.mockClear()
   prefs.__prefState.setPreferredSubtitleLanguage.mockClear()
+  prefs.__prefState.setPreferredSubtitleName.mockClear()
   prefs.__prefState.setSubtitlesEnabled.mockClear()
   apollo.__client.query.mockReset()
   downloads.__downloadsState.ready = true
@@ -665,5 +677,91 @@ describe("the audio language code (U6)", () => {
     })
 
     expect(prefs.__prefState.backfillAudioIso3).toHaveBeenCalledTimes(0)
+  })
+})
+
+// KTD16: an open watch screen keeps the language it captured through a live
+// Android change. The store here stays on English, so this is the screen
+// opened in Spanish after the phone moved back to English.
+describe("the screen's captured language (U6)", () => {
+  function answerFrenchTrack() {
+    apollo.__client.query.mockResolvedValue({
+      data: {
+        videoDub: {
+          downloads: [],
+          videoEdition: {
+            subtitles: [
+              {
+                documentId: "sub-fr",
+                vttSrc: "https://cdn.example/fr.vtt",
+                primary: false,
+                aiGenerated: false,
+                language: {
+                  slug: "french",
+                  name: { en: "French", es: "Francés" },
+                  bcp47: "fr",
+                },
+              },
+            ],
+          },
+        },
+      },
+    })
+  }
+
+  async function openSpanishScreen() {
+    expect(getCatalogTag()).toBe("en")
+    await renderProvider()
+    await act(async () => {
+      session.setVideo({
+        ...record("video-cc", MULTI_DUB),
+        adminForms: adminFormsFor("es"),
+      })
+    })
+  }
+
+  async function loadMedia() {
+    await act(async () => {
+      session.ensureActiveVariantMedia()
+    })
+  }
+
+  it("names the subtitle languages in the screen's forms, and caches the name under the screen's tag", async () => {
+    prefs.__prefState.subtitle = "french"
+    answerFrenchTrack()
+    await openSpanishScreen()
+    await loadMedia()
+
+    expect(session.activeVariantMedia?.subtitles[0]?.languageName).toBe(
+      "Francés",
+    )
+    expect(prefs.__prefState.setPreferredSubtitleName).toHaveBeenCalledWith(
+      "Francés",
+      "es",
+    )
+  })
+
+  // KTD16: the reader gates the cached name on the screen's tag, never the
+  // live one, so the pill keeps its name and nothing writes it again.
+  it("reads a name cached in the screen's tag while the UI tag differs", async () => {
+    prefs.__prefState.subtitle = "french"
+    prefs.__prefState.subtitleName = "Francés"
+    prefs.__prefState.subtitleNameLocale = "es"
+    answerFrenchTrack()
+    await openSpanishScreen()
+    expect(session.preferredSubtitleName).toBe("Francés")
+
+    await loadMedia()
+
+    expect(session.activeVariantMedia?.subtitles).toHaveLength(1)
+    expect(prefs.__prefState.setPreferredSubtitleName).not.toHaveBeenCalled()
+  })
+
+  it("hides a name cached in another tag, even the live UI tag", async () => {
+    prefs.__prefState.subtitleName = "French"
+    prefs.__prefState.subtitleNameLocale = "en"
+    await openSpanishScreen()
+
+    expect(session.preferredSubtitleName).toBeNull()
   })
 })

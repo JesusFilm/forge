@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from "react-native"
 
+import { useT } from "../../../i18n/useT"
 import type { CatalogTranslation } from "../../../lib/bible/data/catalog"
 import { READER_CHROME_MAX_FONT_SCALE } from "../../../lib/bible/reader/chrome"
 import { downloadLabel } from "../../../lib/bible/reader/labels"
@@ -26,6 +27,7 @@ export function TranslationDownloadButton({
   state,
   onPress,
 }: TranslationDownloadButtonProps) {
+  const t = useT("BibleReader")
   if (translation.id === BSB_TRANSLATION_ID || state.kind === "bundled") {
     return null
   }
@@ -36,7 +38,9 @@ export function TranslationDownloadButton({
       <ReaderGlassButton
         testID="translation-download-button"
         tokens={tokens}
-        accessibilityLabel={downloadLabel(state, translation)}
+        accessibilityLabel={downloadLabel(t, state, translation)}
+        // The old top bar button's tap name, so the Datadog series continues.
+        actionName="bible-reader-download"
         onPress={onPress}
       >
         <ReaderDownloadGlyph state={state} tokens={tokens} />

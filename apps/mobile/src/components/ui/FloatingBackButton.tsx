@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 
+import { useT } from "../../i18n/useT"
 import { ACCENT, SURFACE_COLOR, hexToRgba } from "../../lib/color"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 
@@ -28,6 +29,7 @@ export function FloatingBackButton({
 }: FloatingBackButtonProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const t = useT("Common")
 
   const handleBack = () => {
     // A cold deep link / cold launch lands here with an empty history stack,
@@ -48,7 +50,8 @@ export function FloatingBackButton({
       <Pressable
         onPress={handleBack}
         accessibilityRole="button"
-        accessibilityLabel="Go back"
+        accessibilityLabel={t("goBackAriaLabel")}
+        {...{ "dd-action-name": "floating-back" }}
         hitSlop={12}
         style={({ pressed }) => pressed && styles.pressed}
       >

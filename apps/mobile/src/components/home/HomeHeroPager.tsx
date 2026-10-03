@@ -36,6 +36,9 @@ import {
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
+import { useUiTag } from "../../hooks/useUiTag"
+import { textDirectionProps } from "../../i18n/textDirection"
+import { useLocaleEpoch } from "../../i18n/useT"
 import { datadogLog } from "../../lib/datadog"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -122,6 +125,7 @@ export function HomeHeroPager({
   // R9/R10. Read here rather than taken as a prop: the hero must yield the
   // decoder on every route that mounts it, with no wiring to forget.
   const windowHoldsVideo = useMiniPlayerHoldsVideo()
+  const epoch = useLocaleEpoch()
 
   const pageHeight = heroHeight ?? Math.round(screenWidth * 1.2)
 
@@ -615,7 +619,7 @@ export function HomeHeroPager({
         data={state.slides}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}|${windowHoldsVideo}`}
+        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}|${windowHoldsVideo}|${epoch}`}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -708,14 +712,23 @@ const HeroPage = memo(function HeroPage({
   // Mux overlay copy is time-of-day sensitive — resolve at DISPLAY time
   // (Eastern-hour rule), not at queue-build time. Memoized per slide entry
   // (the intended display-time semantics; per-render recompute is wasteful).
+  const uiTag = useUiTag()
   const muxCopy = useMemo(
     () =>
-      slide.kind === "mux" ? muxSlideDisplayCopy(slide, new Date()) : null,
-    [slide],
+      slide.kind === "mux"
+        ? muxSlideDisplayCopy(slide, new Date(), uiTag)
+        : null,
+    [slide, uiTag],
   )
   const eyebrow = muxCopy?.label ?? slide.label
   const title = muxCopy?.title ?? slide.title
   const insertAction = muxCopy?.action ?? null
+  // A video slide's label is UI text; the Mux copy's language is not known.
+  const eyebrowDirection = textDirectionProps(muxCopy ? null : uiTag, uiTag)
+  const titleDirection = textDirectionProps(
+    slide.kind === "video" ? slide.titleLang : null,
+    uiTag,
+  )
 
   // Pages host DISPLAY content only — interactive chrome lives in HomeScreen's
   // zIndex-2 overlay, since the FlashList over the hero swallows taps here. The
@@ -780,12 +793,19 @@ const HeroPage = memo(function HeroPage({
             JESUS FILM PROJECT
           </Text>
         )}
-        <Text style={[styles.eyebrow, typography.caption]}>
-          {eyebrow.toUpperCase()}
+        <Text
+          style={[styles.eyebrow, typography.caption, eyebrowDirection.style]}
+        >
+          {eyebrow.toLocaleUpperCase(uiTag)}
         </Text>
         <Text
-          style={[styles.title, typography.headingScale.h2]}
+          style={[
+            styles.title,
+            typography.headingScale.h2,
+            titleDirection.style,
+          ]}
           accessibilityRole="header"
+          accessibilityLanguage={titleDirection.accessibilityLanguage}
           numberOfLines={3}
         >
           {title}

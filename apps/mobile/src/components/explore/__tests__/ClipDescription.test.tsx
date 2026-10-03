@@ -16,13 +16,13 @@ import {
   DESCRIPTION_TOGGLE_ANIMATION,
 } from "../ClipDescription"
 import { ExplorePager, type ExplorePagerHandle } from "../ExplorePager"
-import { EXPLORE_COPY } from "../../../lib/explore/copy"
 import {
   TestRenderer,
   hasText,
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { tapActionName } from "../../../test-utils/uiLocaleFixture"
 
 const LONG =
   "Jesus teaches his followers to love their enemies, to pray for those who hurt them, and to trust God for what they need each day."
@@ -114,18 +114,16 @@ describe("ClipDescription", () => {
 
   it("shows no 'more' before the measure, and none for a short description", () => {
     const { renderer } = render(SHORT)
-    expect(toggle(renderer, EXPLORE_COPY.descriptionMoreLabel)).toHaveLength(0)
+    expect(toggle(renderer, "Show the full description")).toHaveLength(0)
     measure(renderer, 1)
-    expect(toggle(renderer, EXPLORE_COPY.descriptionMoreLabel)).toHaveLength(0)
+    expect(toggle(renderer, "Show the full description")).toHaveLength(0)
   })
 
   it("shows 'more' at the end of the first line when the text overflows", () => {
     const { renderer } = render(LONG)
     measure(renderer, 3)
-    expect(
-      toggle(renderer, EXPLORE_COPY.descriptionMoreLabel),
-    ).not.toHaveLength(0)
-    expect(hasText(renderer, EXPLORE_COPY.descriptionMore)).toBe(true)
+    expect(toggle(renderer, "Show the full description")).not.toHaveLength(0)
+    expect(hasText(renderer, "more")).toBe(true)
 
     // "At the end of the line": the toggle is the one-line copy's next sibling
     // in a row, not a control on a line of its own.
@@ -142,9 +140,7 @@ describe("ClipDescription", () => {
     )
     expect(kids).toHaveLength(2)
     expect(kids[0].props.numberOfLines).toBe(1)
-    expect(kids[1].props.accessibilityLabel).toBe(
-      EXPLORE_COPY.descriptionMoreLabel,
-    )
+    expect(kids[1].props.accessibilityLabel).toBe("Show the full description")
   })
 
   it("animates the open and the close, and skips the animation under reduced motion", () => {
@@ -154,19 +150,19 @@ describe("ClipDescription", () => {
     try {
       const { renderer } = render(LONG)
       measure(renderer, 3)
-      press(renderer, EXPLORE_COPY.descriptionMoreLabel)
+      press(renderer, "Show the full description")
       expect(configureNext).toHaveBeenCalledTimes(1)
       expect(configureNext).toHaveBeenLastCalledWith(
         DESCRIPTION_TOGGLE_ANIMATION,
       )
-      press(renderer, EXPLORE_COPY.descriptionLessLabel)
+      press(renderer, "Show less of the description")
       expect(configureNext).toHaveBeenCalledTimes(2)
 
       mockReduceMotion.mockReturnValue(true)
       const still = render(LONG)
       measure(still.renderer, 3)
-      press(still.renderer, EXPLORE_COPY.descriptionMoreLabel)
-      press(still.renderer, EXPLORE_COPY.descriptionLessLabel)
+      press(still.renderer, "Show the full description")
+      press(still.renderer, "Show less of the description")
       expect(configureNext).toHaveBeenCalledTimes(2)
     } finally {
       mockReduceMotion.mockReturnValue(false)
@@ -178,13 +174,13 @@ describe("ClipDescription", () => {
     const { renderer, onExpand, onCollapse } = render(LONG)
     measure(renderer, 3)
 
-    press(renderer, EXPLORE_COPY.descriptionMoreLabel)
+    press(renderer, "Show the full description")
     expect(onExpand).toHaveBeenCalledTimes(1)
     expect(onCollapse).not.toHaveBeenCalled()
     expect(visibleCopy(renderer, LONG).props.numberOfLines).toBeUndefined()
-    expect(toggle(renderer, EXPLORE_COPY.descriptionMoreLabel)).toHaveLength(0)
+    expect(toggle(renderer, "Show the full description")).toHaveLength(0)
 
-    press(renderer, EXPLORE_COPY.descriptionLessLabel)
+    press(renderer, "Show less of the description")
     expect(onCollapse).toHaveBeenCalledTimes(1)
     expect(onExpand).toHaveBeenCalledTimes(1)
     expect(visibleCopy(renderer, LONG).props.numberOfLines).toBe(1)
@@ -196,13 +192,13 @@ describe("ClipDescription", () => {
     const handlers = { onExpand: jest.fn(), onCollapse: jest.fn() }
     const { renderer } = render(LONG, handlers)
     measure(renderer, 3)
-    press(renderer, EXPLORE_COPY.descriptionMoreLabel)
+    press(renderer, "Show the full description")
 
     act(() => {
       renderer.update(<ClipDescription description={SHORT} {...handlers} />)
     })
-    expect(toggle(renderer, EXPLORE_COPY.descriptionMoreLabel)).toHaveLength(0)
-    expect(toggle(renderer, EXPLORE_COPY.descriptionLessLabel)).toHaveLength(0)
+    expect(toggle(renderer, "Show the full description")).toHaveLength(0)
+    expect(toggle(renderer, "Show less of the description")).toHaveLength(0)
     expect(visibleCopy(renderer, SHORT).props.numberOfLines).toBe(1)
     expect(handlers.onCollapse).not.toHaveBeenCalled()
   })
@@ -210,6 +206,18 @@ describe("ClipDescription", () => {
   it("renders nothing for a missing or empty description", () => {
     expect(render(null).renderer.toJSON()).toBeNull()
     expect(render("").renderer.toJSON()).toBeNull()
+  })
+
+  // KTD15: the labels come from the catalog, so the RUM names are fixed.
+  it("gives each toggle a tap name that no language changes", () => {
+    const { renderer } = render(LONG)
+    measure(renderer, 3)
+    const [more] = toggle(renderer, "Show the full description")
+    expect(tapActionName(more)).toBe("explore-description-more")
+
+    press(renderer, "Show the full description")
+    const [less] = toggle(renderer, "Show less of the description")
+    expect(tapActionName(less)).toBe("explore-description-less")
   })
 })
 
@@ -307,7 +315,7 @@ describe("a finger on the open description", () => {
 
   function open(renderer: TestInstance, viewport: number, content: number) {
     measure(renderer, 3)
-    press(renderer, EXPLORE_COPY.descriptionMoreLabel)
+    press(renderer, "Show the full description")
     const box = scrollBox(renderer)
     act(() => {
       ;(box.props.onLayout as (e: unknown) => void)({
@@ -433,7 +441,7 @@ describe("a finger on the open description", () => {
     open(renderer, 200, 480)
 
     fire(renderer, "onTouchStart")
-    press(renderer, EXPLORE_COPY.descriptionLessLabel)
+    press(renderer, "Show less of the description")
     expect(pagerClaims(renderer)).toBe(true)
   })
 
@@ -448,7 +456,7 @@ describe("a finger on the open description", () => {
   it("leaves the drag to the pager before the scroll view measures", () => {
     const renderer = renderInPager(LONG)
     measure(renderer, 3)
-    press(renderer, EXPLORE_COPY.descriptionMoreLabel)
+    press(renderer, "Show the full description")
 
     fire(renderer, "onTouchStart")
     expect(pagerClaims(renderer)).toBe(true)
@@ -465,7 +473,7 @@ describe("a finger on the open description", () => {
       moved = handle.current!.requestMove("next")
     })
     expect(moved).toBe(false)
-    press(renderer, EXPLORE_COPY.descriptionLessLabel)
+    press(renderer, "Show less of the description")
     act(() => {
       moved = handle.current!.requestMove("next")
     })
@@ -477,7 +485,7 @@ describe("a finger on the open description", () => {
     open(renderer, 200, 480)
     fire(renderer, "onTouchStart")
     fire(renderer, "onTouchEnd")
-    expect(toggle(renderer, EXPLORE_COPY.descriptionLessLabel)).toHaveLength(1)
+    expect(toggle(renderer, "Show less of the description")).toHaveLength(1)
   })
 })
 

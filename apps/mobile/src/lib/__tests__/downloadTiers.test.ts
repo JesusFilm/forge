@@ -1,5 +1,23 @@
-import { formatFileSize, formatTierSize, tierDownloads } from "../downloadTiers"
+import english from "../../../messages/en.json"
+import {
+  QUALITY_TIERS,
+  formatFileSize,
+  formatTierSize,
+  tierDownloads,
+} from "../downloadTiers"
 import type { WatchDownload } from "../normalizeVideo"
+
+// KTD15: a tier is an identifier. Its text lives in the catalog, keyed by the
+// same identifier, so every tier has text and no text is logic.
+describe("QUALITY_TIERS", () => {
+  it("lists identifiers in quality order", () => {
+    expect(QUALITY_TIERS).toEqual(["highest", "high", "low"])
+  })
+
+  it("has exactly one English catalog message per tier", () => {
+    expect(Object.keys(english.DownloadQuality)).toEqual([...QUALITY_TIERS])
+  })
+})
 
 const dl = (size: string): WatchDownload => ({
   documentId: `d-${size}`,
@@ -48,18 +66,18 @@ describe("tierDownloads", () => {
   })
 
   it("labels a single rendition Highest", () => {
-    expect(tierDownloads([dl("1000")]).map((t) => t.tier)).toEqual(["Highest"])
+    expect(tierDownloads([dl("1000")]).map((t) => t.tier)).toEqual(["highest"])
   })
 
   it("labels two renditions Highest and Low by descending size", () => {
     const tiers = tierDownloads([dl("1000"), dl("3000")])
-    expect(tiers.map((t) => t.tier)).toEqual(["Highest", "Low"])
+    expect(tiers.map((t) => t.tier)).toEqual(["highest", "low"])
     expect(tiers[0].size).toBe("3000")
   })
 
   it("labels three-plus renditions Highest, High, Low", () => {
     const tiers = tierDownloads([dl("1000"), dl("3000"), dl("2000")])
-    expect(tiers.map((t) => t.tier)).toEqual(["Highest", "High", "Low"])
+    expect(tiers.map((t) => t.tier)).toEqual(["highest", "high", "low"])
   })
 
   it("does not mutate the input array (copy-before-sort)", () => {

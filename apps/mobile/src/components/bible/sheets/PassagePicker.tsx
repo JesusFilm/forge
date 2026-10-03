@@ -11,8 +11,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useSheetListHeight } from "../../../hooks/useSheetListHeight"
+import { useT, type UiT } from "../../../i18n/useT"
 import { READER_TOUCH_TARGET } from "../../../lib/bible/reader/chrome"
-import { READER_SHEET_COPY } from "../../../lib/bible/sheets/copy"
+import { chapterLabel } from "../../../lib/bible/reader/labels"
 import {
   chapterNumbers,
   numberingFor,
@@ -32,7 +33,7 @@ import { acceptSheetTap } from "../../../lib/sheetListLogic"
 import { feedback, HORIZONTAL_PADDING } from "../../../styles/shared"
 import { ReaderSheetHeader } from "./ReaderSheetHeader"
 
-const COPY = READER_SHEET_COPY.passage
+type PassageT = UiT<"BiblePassagePicker">
 
 export type PassagePickerProps = {
   tokens: ReaderTokens
@@ -66,6 +67,7 @@ export function PassagePicker({
   onPick,
   onClose,
 }: PassagePickerProps) {
+  const t = useT("BiblePassagePicker")
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
   const height = useSheetListHeight(windowHeight)
@@ -73,18 +75,19 @@ export function PassagePicker({
   // A fast double tap must not pick twice and pop the reader under the sheet.
   const lastPickRef = useRef(0)
 
+  // The chapter title is a reference, as in the reader's footer.
   const title =
     step.kind === "book"
-      ? COPY.chooseBook
+      ? t("chooseBook")
       : step.kind === "chapter"
         ? bookNameIn(bookNames, step.book.usfm)
-        : COPY.chapterTitle(bookNameIn(bookNames, step.book.usfm), step.chapter)
+        : chapterLabel(bookNameIn(bookNames, step.book.usfm), step.chapter)
   const back =
     step.kind === "chapter"
-      ? { label: COPY.backToBooks, onPress: () => setStep({ kind: "book" }) }
+      ? { label: t("books"), onPress: () => setStep({ kind: "book" }) }
       : step.kind === "verse"
         ? {
-            label: COPY.backToChapters,
+            label: t("chapters"),
             onPress: () => setStep({ kind: "chapter", book: step.book }),
           }
         : undefined
@@ -101,6 +104,7 @@ export function PassagePicker({
   if (step.kind === "book") {
     body = (
       <BookList
+        t={t}
         tokens={tokens}
         books={passageBooks(translation)}
         currentBook={current?.book ?? null}
@@ -118,7 +122,8 @@ export function PassagePicker({
           tokens={tokens}
           numbers={chapterNumbers(numbering, step.book.usfm)}
           selected={inCurrentBook ? (current?.chapter ?? null) : null}
-          label={COPY.chapter}
+          label={(chapter) => t("chapterAriaLabel", { chapter })}
+          actionName="bible-passage-chapter"
           onPress={(chapter) =>
             setStep({ kind: "verse", book: step.book, chapter })
           }
@@ -132,7 +137,8 @@ export function PassagePicker({
               ? current.verse
               : null
           }
-          label={COPY.verse}
+          label={(verse) => t("verseAriaLabel", { verse })}
+          actionName="bible-passage-verse"
           onPress={(verse) => pickVerse(step.book, step.chapter, verse)}
         />
       )
@@ -174,6 +180,7 @@ export function PassagePicker({
 }
 
 type BookListProps = {
+  t: PassageT
   tokens: ReaderTokens
   books: PassageBook[]
   currentBook: string | null
@@ -183,6 +190,7 @@ type BookListProps = {
 }
 
 function BookList({
+  t,
   tokens,
   books,
   currentBook,
@@ -192,18 +200,20 @@ function BookList({
 }: BookListProps) {
   const sections = [
     {
-      title: COPY.oldTestament,
+      key: "old",
+      title: t("oldTestament"),
       books: books.filter((entry) => entry.book.testament === "old"),
     },
     {
-      title: COPY.newTestament,
+      key: "new",
+      title: t("newTestament"),
       books: books.filter((entry) => entry.book.testament === "new"),
     },
   ]
   return (
     <>
       {sections.map((section) => (
-        <View key={section.title} style={styles.section}>
+        <View key={section.key} style={styles.section}>
           <Text
             accessibilityRole="header"
             style={[styles.sectionTitle, { color: tokens.secondaryText }]}
@@ -215,7 +225,7 @@ function BookList({
             const selected = book.usfm === currentBook
             const note =
               !inTranslation && shortName
-                ? COPY.notInTranslation(shortName)
+                ? t("notInTranslation", { shortName })
                 : null
             return (
               <Pressable
@@ -223,7 +233,10 @@ function BookList({
                 onPress={() => onPress(book)}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
-                accessibilityLabel={note ? `${name}, ${note}` : name}
+                accessibilityLabel={
+                  note ? t("bookWithNoteAriaLabel", { name, note }) : name
+                }
+                {...{ "dd-action-name": "bible-passage-book" }}
                 style={({ pressed }) => [
                   styles.bookRow,
                   selected && { backgroundColor: tokens.buttonSurface },
@@ -267,6 +280,8 @@ type NumberGridProps = {
   numbers: number[]
   selected: number | null
   label: (value: number) => string
+  /** The Datadog tap name; it never names the number or the language. */
+  actionName: string
   onPress: (value: number) => void
 }
 
@@ -275,6 +290,7 @@ function NumberGrid({
   numbers,
   selected,
   label,
+  actionName,
   onPress,
 }: NumberGridProps) {
   const controls = readerSheetControlColors(tokens)
@@ -289,6 +305,7 @@ function NumberGrid({
             accessibilityRole="button"
             accessibilityState={{ selected: isSelected }}
             accessibilityLabel={label(value)}
+            {...{ "dd-action-name": actionName }}
             style={({ pressed }) => [
               styles.cell,
               {
