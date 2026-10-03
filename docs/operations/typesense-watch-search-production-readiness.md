@@ -296,22 +296,33 @@ a reconciliation after 24 hours without an import request. Publication time is
 poll delay plus the catalog build and manifest generation; public profile caching
 adds at most 30 seconds. This is separate from the daily Core import at 07:00 UTC.
 
-The publisher uses the existing repeatable-read projection and validates all
-JSONL rows, collection counts, and an exact-title read. It atomically activates
-an immutable `core-catalog-*` tuple under the existing publication lock. Search,
-suggestions, and private Serving evaluation resolve this tuple only after the
-selected baseline's existing qualification passes. SERVING/EVALUATION pointers
-and qualification evidence remain unchanged. Ordinary catalog refresh is not
-new ranking/embedding qualification. Upstream removals appear after the importer
-has applied them; full-import absent-record deletion guards are unchanged.
+The first publication builds and validates separately owned `core-live-*`
+catalog, availability, and lexical collections under the publication lock.
+Later successful imports queue affected video IDs in Postgres. The worker
+reprojects at most 100 videos at a time, compares compact document digests,
+and writes only changed or removed documents. Child dub, subtitle, language,
+and relation changes also queue affected parent containers. An incremental
+Core run scans public Watch-eligible IDs and a matching count to detect videos
+that disappeared from Core's filtered payload; incomplete or empty scans do
+not soft-delete local rows.
+
+Search and suggestions resolve the live collections against the selected
+qualified Candidate baseline. The private Serving probe holds the publication
+lock during its live search. SERVING/EVALUATION pointers and qualification
+evidence remain unchanged. An ordinary content refresh is not new ranking or
+embedding qualification. Live updates are eventually consistent across the
+three collections during a write; a durable intent ledger replays partial
+writes and deletions from current source rows on retry. Bootstrap and lexical
+schema expansion are the bounded full-build exceptions.
 
 Search and route/SEO manifest plus Web-cache acknowledgments have separate
 version counters. A failed delivery retries with backoff up to 15 minutes;
 a successful side is not repeated. Missing webhook configuration remains a
-failure. Failed Core phases and active imports block catalog snapshots. Cleanup
-protects the active generation, retains one recent inactive generation, and
-waits five minutes before retiring older owned collections; shared transcripts
-are never deleted by catalog cleanup.
+failure. Failed Core phases and active imports block catalog publication.
+Cleanup waits five minutes for readers before retiring superseded live or
+automatic content collections. Candidate pointer and lease guards protect
+qualified generations, and shared transcripts are never deleted by catalog
+cleanup.
 
 Runtime configuration:
 
@@ -332,54 +343,29 @@ Runtime configuration:
 Inspect lag and retry state without reading credentials:
 
 ```sql
-SELECT requested_version, search_version, web_version, generation_id,
-       last_requested_at, last_published_at, attempts, retry_at, last_error
+SELECT requested_version, search_version, web_version, live_collection_id,
+       live_updating, live_curation_in_flight, last_requested_at,
+       last_published_at, attempts, retry_at, last_error
 FROM watch_catalog_publication WHERE id = 'core';
+SELECT count(*) AS pending_videos FROM watch_catalog_dirty_video;
 ```
 
-### Future per-video change capture
+### Per-video catalog capture and future transcript work
 
-The following per-video trigger/outbox design remains future work for mutation
-paths beyond Core imports/backfills. The implemented Core path coalesces whole
-catalog snapshots and performs a daily reconciliation instead.
+The Core-to-Watch publisher now uses `watch_catalog_dirty_video` for catalog,
+availability, and localized lexical changes. Triggers record affected video IDs
+and ancestors up to two relation levels; a revision index supports bounded
+batches. The 30-second worker re-reads current source rows, stores possible
+child IDs before external writes, and clears the exact dirty revision only
+after all documents converge. A newer revision remains queued. Successful
+imports and executed backfills still advance coalesced publication requests;
+source-table triggers also let the worker discover committed dirty rows when
+version counters are already equal.
 
-Add a durable PostgreSQL outbox keyed by affected `videoId`. Because catalog
-and transcript state are written through several sync, workflow, and mutation
-paths, database triggers on the relevant source tables are safer than relying
-on each caller to remember an application event. The trigger stores only the
-video ID, monotonic source revision, event kind, and timestamps; it does not
-copy embeddings or document payloads.
-
-A dedicated Admin worker claims rows with `FOR UPDATE SKIP LOCKED`, coalesces
-repeated video IDs, and flushes Typesense imports every 5–10 seconds. Every
-JSONL import response line must be checked even when the HTTP status is 200.
-Workers use idempotent whole-document upserts, bounded retries, exponential
-backoff, and a dead-letter state with safe error summaries.
-
-For each video, the worker reads the current PostgreSQL projection using the
-same provenance and visibility predicates as the full indexer:
-
-- If a viewer-visible catalog document exists, upsert its display document and
-  replace its complete set of localized lexical documents keyed by
-  `videoId:language-identity`. Use the unique Forge language slug as identity;
-  use normalized locale only for legacy rows without a slug. BCP-47 controls
-  tokenization and negotiation, not language identity.
-- If it does not exist, delete that catalog ID with `ignore_not_found=true`.
-- Replace the video's availability records as one idempotent set: upsert the
-  current per-language records first, then delete indexed video/language IDs
-  absent from PostgreSQL. Audio and subtitle state for the same language is
-  merged into one record.
-- Load the complete accepted native transcript chunk set for the video. Upsert
-  new or changed chunks first, including the recomputed `publiclyVisible`
-  value, then delete previously indexed IDs absent from the PostgreSQL set.
-  This retains the broad semantic corpus while keeping frontend visibility an
-  explicit serving filter.
-- Delete transcript documents only when the authoritative chunk is hard-deleted
-  or replaced. Soft deletion, `noIndex`, and publication changes update
-  `publiclyVisible`; they do not silently discard the semantic corpus.
-- Record the highest source revision only after all catalog, availability, and
-  transcript operations for the video succeed. An older retry must never
-  overwrite a newer projection.
+Transcript chunk and vector synchronization remains a separate future scope.
+The catalog worker does not generate embeddings or mutate transcript documents.
+The table below records the desired combined behavior; its Transcript action
+column is not a claim that the catalog worker implements those actions.
 
 ### Required event behavior
 
@@ -415,45 +401,31 @@ cannot maintain this field, which converts today's bounded staleness into
 permanent drift — so treat this as a **blocking requirement** on the
 incremental-sync work, not a refinement.
 
-**Until that worker exists**, no incremental path maintains this field at all:
-the only refresh is the operator-run full rebuild
-(`pnpm --filter @forge/admin index:typesense-watch-search`), and that rebuild is
-therefore also the only lever for an urgent descendant visibility change. The
-staleness window is bounded by the interval between rebuilds and nothing
-narrower. Nothing restricted is served through it — a hidden descendant is
-gated out of the series page independently — so the exposure is a stale
-availability claim on a card, not restricted content.
+The catalog worker now refreshes these parent documents after child dub,
+relation, or visibility changes. Existing transcript/vector publication and
+operator rebuild procedures remain separate.
 
 ### Reconciliation and generation publication
 
-Incremental synchronization is not the only correctness mechanism:
+The worker requests reconciliation after 24 hours without an import request.
+That request drains durable dirty rows and refreshes changed curation pins;
+identical projections produce no Typesense document writes. The public Core
+ID/count scan is the ordinary deletion reconciliation for a successful
+incremental Videos phase. An operator can use a full rebuild when a broader
+source/index audit finds drift that per-video replay cannot repair.
 
-- Run a full count/checksum reconciliation at least daily. Alert on catalog,
-  availability, or transcript cardinality drift and enqueue affected video IDs.
-- Build fresh versioned catalog, availability, and localized lexical
-  collections during routine release refreshes. Reuse the active transcript
-  collection so an unrelated application PR does not duplicate and re-import
-  280,107 vectors. Do not mutate transcript documents during this path.
-- Serialize the production entrypoint with its dedicated-session PostgreSQL
-  advisory lock. Hold it through build, publication, and retirement; fail fast
-  when another release owns it.
-- Start a transcript rebuild explicitly after transcript schema/model changes,
-  a deliberate corpus-wide vector replacement, or reconciliation evidence that
-  cannot be repaired safely with per-video synchronization. Do not couple this
-  expensive operation to every application deployment.
-- Validate import results, expected counts, viewer-safety samples, embedding
-  dimensions, fixed relevance queries, and a read smoke test before publishing.
-- Publish catalog, availability, and lexical physical collection names through
-  one Admin-owned metadata generation record. Keep the independently reusable
-  transcript collection name in the same manifest. A single PostgreSQL
-  transaction changes only the members rebuilt by that operation after they
-  are ready. Aliases remain useful for operator inspection and manual recovery.
-- On the capacity-constrained single-node experiment, retire prior physical
-  collections immediately after the new aliases publish successfully. Keep
-  only the active catalog, availability, and transcript collections; retaining
-  a second 280,107-vector generation exhausts the 16 GiB memory limit. Use the
-  unchanged `DEFAULT` PostgreSQL backend as the immediate rollback while a
-  deliberate Typesense rebuild restores any retired generation if needed.
+A missing live binding, changed baseline, or lexical schema expansion builds a new physical
+catalog, availability, and lexical tuple. The build is recorded before
+external collection creation, validates import rows and counts, and activates
+only after completion. Fresh IDs prevent reuse while old readers may still
+hold a binding. The qualified Candidate remains the engine baseline; no Core
+sync changes SERVING, EVALUATION, or qualification evidence. Separate transcript
+publication owns the reusable shared transcript collection.
+
+The production publisher and private live Serving probe share the PostgreSQL
+publication lock. Superseded content collections drain for five minutes before
+retirement. The qualified Candidate's pointer and lease guards remain in force;
+shared transcript collections are not owned by catalog cleanup.
 
 ## Topology and Capacity
 

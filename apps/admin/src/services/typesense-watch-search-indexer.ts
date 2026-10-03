@@ -380,12 +380,14 @@ type ContainerLanguageRow = {
  */
 async function loadContainerLanguageRows(
   prisma: PrismaClient,
+  videoIds?: readonly string[],
 ): Promise<ContainerLanguageRow[]> {
   return prisma.$queryRaw<ContainerLanguageRow[]>(Prisma.sql`
     WITH RECURSIVE root AS (
       SELECT container.id
       FROM video container
       WHERE container.deleted_at IS NULL
+        ${videoIds ? Prisma.sql`AND container.id IN (${Prisma.join(videoIds)})` : Prisma.empty}
         AND container.no_index = FALSE
         AND container.label::text = ANY(${[...SERIES_SHAPED_LABELS]}::text[])
         AND container.slug ~ ${PUBLIC_CONTENT_SLUG_SQL_PATTERN}
@@ -452,6 +454,7 @@ function containerLanguagesByVideo(
 
 async function loadSubtitleRows(
   prisma: PrismaClient,
+  videoIds?: readonly string[],
 ): Promise<SubtitleIndexRow[]> {
   return prisma.$queryRaw<SubtitleIndexRow[]>(Prisma.sql`
     WITH preferred_dub AS (
@@ -488,6 +491,7 @@ async function loadSubtitleRows(
         ON mux_video.id = video_dub.mux_video_id
        AND mux_video.deleted_at IS NULL
       WHERE video_dub.deleted_at IS NULL
+        ${videoIds ? Prisma.sql`AND video_dub.video_id IN (${Prisma.join(videoIds)})` : Prisma.empty}
         AND video_dub.published = TRUE
         AND NULLIF(BTRIM(video_dub.hls), '') IS NOT NULL
       ORDER BY
@@ -530,6 +534,7 @@ async function loadSubtitleRows(
      AND target_language.slug IS NOT NULL
      AND target_language.slug ~ ${PUBLIC_LANGUAGE_SLUG_SQL_PATTERN}
     WHERE vs.deleted_at IS NULL
+      ${videoIds ? Prisma.sql`AND preferred_dub.video_id IN (${Prisma.join(videoIds)})` : Prisma.empty}
       AND (vs.video_id IS NULL OR vs.video_id = preferred_dub.video_id)
       AND NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL
     ORDER BY
@@ -543,10 +548,13 @@ async function loadSubtitleRows(
 
 export async function buildCatalogDocuments(
   prisma: PrismaClient,
+  videoIds?: readonly string[],
 ): Promise<TypesenseWatchCatalogDocument[]> {
+  if (videoIds?.length === 0) return []
   const [videos, subtitleRows, containerLanguageRows] = await Promise.all([
     prisma.video.findMany({
       where: {
+        ...(videoIds ? { id: { in: [...videoIds] } } : {}),
         deletedAt: null,
         noIndex: false,
         locales: { some: { status: "PUBLISHED", deletedAt: null } },
@@ -611,8 +619,8 @@ export async function buildCatalogDocuments(
         },
       },
     }),
-    loadSubtitleRows(prisma),
-    loadContainerLanguageRows(prisma),
+    loadSubtitleRows(prisma, videoIds),
+    loadContainerLanguageRows(prisma, videoIds),
   ])
   const subtitlesByVideo = subtitleOptionsByVideo(subtitleRows)
   const containerLanguagesByVideoId = containerLanguagesByVideo(

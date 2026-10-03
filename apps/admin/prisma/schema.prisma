@@ -1139,6 +1139,14 @@ model WatchCatalogPublication {
   generation       WatchSearchCandidateGeneration? @relation(fields: [generationId], references: [id], onDelete: Restrict)
   rankingRevision  String?                         @map("ranking_revision")
   sourceDigest     String?                         @map("source_digest")
+  /// Separately owned mutable content collections; never a qualified Candidate.
+  liveCollectionId String?                         @map("live_collection_id")
+  liveUpdating     Boolean                         @default(false) @map("live_updating")
+  liveLexicalFields Json?                           @map("live_lexical_fields")
+  retiredLive     Json                            @default("[]") @map("retired_live")
+  buildingLiveCollectionId String?                 @map("building_live_collection_id")
+  liveCurationDigest String?                       @map("live_curation_digest")
+  liveCurationInFlight Boolean                     @default(false) @map("live_curation_in_flight")
   lastRequestedAt  DateTime                        @default(now()) @map("last_requested_at")
   lastPublishedAt  DateTime?                       @map("last_published_at")
   retryAt          DateTime                        @default(now()) @map("retry_at")
@@ -1147,6 +1155,31 @@ model WatchCatalogPublication {
   updatedAt        DateTime                        @updatedAt @map("updated_at")
 
   @@map("watch_catalog_publication")
+}
+
+/// Replayed from current source rows. Revision survives coalesced requests and
+/// prevents an older worker acknowledgment from dropping a newer change.
+model WatchCatalogDirtyVideo {
+  videoId  String @id @map("video_id")
+  revision BigInt @default(autoincrement())
+
+  @@index([revision])
+  @@map("watch_catalog_dirty_video")
+}
+
+/// Compact document fingerprints and child IDs; never stores catalog payloads.
+model WatchCatalogVideoState {
+  videoId            String @id @map("video_id")
+  catalogDigest      String? @map("catalog_digest")
+  availabilityDigest String  @map("availability_digest")
+  availabilityIds    Json    @map("availability_ids")
+  lexicalDigest      String  @map("lexical_digest")
+  lexicalIds         Json    @map("lexical_ids")
+  inFlight           Boolean @default(false) @map("in_flight")
+  possibleAvailabilityIds Json @default("[]") @map("possible_availability_ids")
+  possibleLexicalIds      Json @default("[]") @map("possible_lexical_ids")
+
+  @@map("watch_catalog_video_state")
 }
 
 /// Admin-owned product ledger for workflow runs. Postgres World remains the
