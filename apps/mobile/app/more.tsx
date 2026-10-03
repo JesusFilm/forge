@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import { useRouter } from "expo-router"
 
 import { ScreenTopBar } from "../src/components/ui/ScreenTopBar"
 import { useMiniPlayerBottomClearance } from "../src/hooks/useMiniPlayerBottomClearance"
@@ -16,6 +17,7 @@ import { WINDOW_EDGE_MARGIN } from "../src/lib/miniPlayer/layout"
 import {
   MY_WATCH_LINK_GROUPS,
   type MyWatchLink,
+  type MyWatchRouteLink,
   type MyWatchSocialLink,
 } from "../src/lib/myWatchLinks"
 import { openExternalUrl } from "../src/lib/openExternalUrl"
@@ -54,9 +56,17 @@ export default function MoreScreen() {
               {group.title}
             </Text>
             <View style={styles.card}>
-              {group.links.map((link, index) => (
-                <LinkRow key={link.label} link={link} separated={index > 0} />
-              ))}
+              {group.links.map((link, index) =>
+                "route" in link ? (
+                  <RouteRow
+                    key={link.label}
+                    link={link}
+                    separated={index > 0}
+                  />
+                ) : (
+                  <LinkRow key={link.label} link={link} separated={index > 0} />
+                ),
+              )}
             </View>
             {group.socials != null && (
               <View style={styles.socialRow}>
@@ -103,6 +113,39 @@ function LinkRow({
         {link.label}
       </Text>
       <Ionicons name="open-outline" size={18} color={TEXT_SECONDARY} />
+    </Pressable>
+  )
+}
+
+// Stays in the app, so it reads as a button with a chevron like the My Watch
+// rows. It navigates, as they do: a double tap must not push a second sheet.
+function RouteRow({
+  link,
+  separated,
+}: {
+  link: MyWatchRouteLink
+  separated: boolean
+}) {
+  const typography = useTypography()
+  const router = useRouter()
+
+  return (
+    <Pressable
+      onPress={() => router.navigate(link.route)}
+      style={({ pressed }) => [
+        styles.row,
+        separated && styles.rowSeparator,
+        pressed && feedback.pressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={link.label}
+      accessibilityHint={link.hint}
+      {...{ "dd-action-name": link.actionName }}
+    >
+      <Text style={[styles.rowLabel, typography.body]} numberOfLines={1}>
+        {link.label}
+      </Text>
+      <Ionicons name="chevron-forward" size={18} color={TEXT_SECONDARY} />
     </Pressable>
   )
 }

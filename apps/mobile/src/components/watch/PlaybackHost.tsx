@@ -127,7 +127,7 @@ import {
 } from "../../lib/playbackInterruption"
 import { FloatingBackButton } from "../ui/FloatingBackButton"
 import { MiniPlayerWindow } from "./MiniPlayerWindow"
-import { VideoPlayer } from "./VideoPlayer"
+import { VideoPlayer, type PlayerFeedbackVideo } from "./VideoPlayer"
 
 /** KTD17's shrink: fixed duration, started when the pop commits. Distinct from
  *  every other duration here (and from ENDED_FADE_DURATION_MS, 320) so a timing
@@ -490,6 +490,26 @@ function ActivePlaybackHost({
     videoKey !== ""
   )
     knownIdentityRef.current = { videoKey, identity: progressIdentity }
+
+  // KD8: a player-door report names the surface's DESCRIPTOR (the window session
+  // may not exist yet). Only a record title may reach a ticket: a seed title is
+  // deep-link input, so a seed-only page reports with no video tag.
+  const sessionTitle = request.session?.titleFromRecord
+    ? request.session.title || null
+    : null
+  const sessionSlug = request.session?.videoSlug ?? null
+  const sessionLanguageSlug = request.session?.languageSlug ?? null
+  const feedbackContext = useMemo<PlayerFeedbackVideo | null>(
+    () =>
+      sessionTitle == null || sessionSlug == null
+        ? null
+        : {
+            title: sessionTitle,
+            slug: sessionSlug,
+            languageSlug: sessionLanguageSlug,
+          },
+    [sessionTitle, sessionSlug, sessionLanguageSlug],
+  )
 
   const settingsStore = getPlayerSettingsStore()
   const settingsSnapshot = useSyncExternalStore(
@@ -1959,6 +1979,7 @@ function ActivePlaybackHost({
                   coverStartKeyRef.current === videoKey && startedRef.current
                 }
                 cast={slotOwned ? (request.cast ?? null) : null}
+                feedbackContext={feedbackContext}
               />
             )}
 
