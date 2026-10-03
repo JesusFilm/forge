@@ -17,6 +17,28 @@ tags:
   - "operations"
 ---
 
+## October 4 follow-up: deployed episode cap did not restore root progress
+
+Both Admin HTTP and worker were verified on PR #2551's merge revision before
+the October 3 21:02 UTC natural scheduled attempt. That attempt failed at the
+unchanged five-second deadline after durably deleting ten request-free episodes
+and nineteen direct actions, with **zero expired request roots** deleted. The
+older October 4 incident section below describes the pre-#2551 backlog and
+local episode-cap proof; that proof did not establish production recovery.
+
+The next scoped repair changes only the request-root eligibility child count.
+The emitted Prisma `LEFT JOIN ... OR` SQL was captured on a local fixture with
+dummy IDs. Bounded read-only production plans for the equivalent shape and a
+request-parent-driven `UNION` count took 329.175 ms and 2.548 ms respectively
+on the same oldest-fifty-root cohort. These are read-plan measurements, not
+delete timings or proof that the complete retention run will pass. An owned
+PostgreSQL fixture deleted twelve expired roots in 1,138 ms while its first page
+also deleted ten standalone episodes; the fixture is not production recovery.
+The query-only PR is pending review and normal release. Feat-554 remains
+in-progress: verify natural root/descendant progress and backlog recovery
+after actual release, then require two later ordinary failure-free loaded daily
+cycles with lock, backlog and headroom evidence before closure.
+
 ## October 4 standalone-episode incident and scoped repair
 
 The October 3 normal scheduled cycle failed on every observed attempt before
