@@ -17,6 +17,35 @@ tags:
   - "operations"
 ---
 
+## October 4 standalone-episode incident and scoped repair
+
+The October 3 normal scheduled cycle failed on every observed attempt before
+deleting expired request roots. A bounded read of the durable and workflow
+ledgers found 125 failed wrappers at roughly the fixed five-second deadline;
+each attempt committed 24–56 request-free playback episode deletions but no
+request roots. The oldest expired request exceeded the 24-hour propagation
+limit, so the retention serving gate is unhealthy. At 20:07 UTC, no new
+recommendation request row had been recorded in either of the prior two hours;
+that is a bounded serving-impact signal, not a synthetic delivery test.
+
+The new scoped repair caps the pre-root standalone episode selection at ten
+while preserving each episode's existing full dependency lock/recheck and
+atomic transaction, the 50,000-dependency guard, five-second deadline and
+29-day expiry. A full page requests normal catch-up. An owned native PostgreSQL
+test reproduces the deadline failure under controlled per-row latency and
+verifies first-pass request-root progress, descendants, graph invalidation,
+live lineage, continuation and failure accounting. The prior October 3
+profile-tail release was deployed on both Admin roles, but this earlier phase
+prevented that repair from being reached.
+
+This local repair is not production recovery or ticket completion. After a
+reviewed PR-to-main release, verify actual Admin HTTP/worker revisions and a
+natural catch-up attempt that deletes request roots, reduces the backlog and
+restores the serving retention gate. Then require two later ordinary,
+failure-free, loaded daily cycles with descendants, lock/backlog and headroom
+proof. Keep this ticket in progress until the separately reviewed evidence
+closeout merges.
+
 ## October 3 repair in progress
 
 The October 2 scheduled run again recovered only after an initial transaction
