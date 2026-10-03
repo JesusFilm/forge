@@ -142,14 +142,21 @@ async function countRequestChildren(
     tx.recommendationPlaybackFact.count({ where }),
     tx.recommendationOutcomeRevision.count({ where }),
     tx.recommendationContentAction.count({ where }),
-    tx.recommendationEligibilityDecision.count({
-      where: {
-        OR: [
-          { outcome: { is: { requestId: { in: requestIds } } } },
-          { contentAction: { is: { requestId: { in: requestIds } } } },
-        ],
-      },
-    }),
+    // Split the relation OR into request-led branches to give PostgreSQL a
+    // bounded count path. UNION keeps once-per-decision accounting.
+    tx.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+      SELECT count(*) AS count FROM (
+        SELECT decision.id FROM recommendation_outcome_revision outcome
+        JOIN recommendation_eligibility_decision decision
+          ON decision.outcome_id = outcome.id
+        WHERE outcome.request_id = ANY(${requestIds}::text[])
+        UNION
+        SELECT decision.id FROM recommendation_content_action action
+        JOIN recommendation_eligibility_decision decision
+          ON decision.content_action_id = action.id
+        WHERE action.request_id = ANY(${requestIds}::text[])
+      ) counted
+    `),
     tx.recommendationEvidenceAudit.count({ where }),
     tx.recommendationConflict.count({ where }),
     tx.recommendationCapabilitySubmissionBudget.count({ where }),
@@ -170,7 +177,7 @@ async function countRequestChildren(
     playbackFacts,
     outcomes,
     contentActions,
-    eligibilityDecisions,
+    eligibilityDecisions: Number(eligibilityDecisions[0]?.count ?? 0),
     audits,
     conflicts,
     submissionBudgets,

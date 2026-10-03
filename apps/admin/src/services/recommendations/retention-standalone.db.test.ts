@@ -79,7 +79,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       )
       const liveRequestId = `${prefix}-live-request`
       await db.recommendationRequest.createMany({
-        data: expiredRequestIds.map((id) => ({
+        data: expiredRequestIds.slice(1).map((id) => ({
           id,
           contractVersion: "semantic-recommendation-v1",
           surfaceVersion: "watch-below-player-v1",
@@ -253,6 +253,191 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         }),
       ).toEqual({ invalidatedAt: null })
 
+      const requestEpisodeId = `${prefix}-request-expired-episode`
+      const requestOutcomeId = `${prefix}-request-outcome`
+      const { requestItem, requestSelection } = await db.$transaction(
+        async (tx) => {
+          await tx.recommendationRequest.create({
+            data: {
+              id: expiredRequestIds[0]!,
+              contractVersion: "semantic-recommendation-v1",
+              surfaceVersion: "watch-below-player-v1",
+              manifestId: COWATCH_MMR_TRIAL_MANIFEST.id,
+              strategyVersion: COWATCH_MMR_TRIAL_MANIFEST.strategyVersion,
+              classifierVersion: "legacy-position-v0",
+              sessionDigest: compositionDigest(expiredRequestIds[0]!),
+              locale: "en",
+              seedMediaId: "fixture-seed",
+              expectedItemCount: 1,
+              state: "ISSUED",
+              result: "SERVED",
+              deliveryJti: randomUUID(),
+              signingKid: "fixture",
+              issuedAt: createdAt,
+              createdAt,
+              expiresAt: expiredAt,
+            },
+          })
+          const requestItem = await tx.recommendationServedItem.create({
+            data: {
+              requestId: expiredRequestIds[0]!,
+              position: 0,
+              targetMediaId: "fixture-media",
+              canonicalHref: "/watch/fixture.html",
+              candidateGenerator: "semantic",
+              candidateProvenance: {},
+              capabilityJti: randomUUID(),
+              signingKid: "fixture",
+              presentation: {},
+              createdAt,
+              expiresAt: expiredAt,
+            },
+          })
+          const requestSelection = await tx.recommendationSelection.create({
+            data: {
+              requestId: expiredRequestIds[0]!,
+              itemId: requestItem.id,
+              capabilityJti: randomUUID(),
+              eventId: randomUUID(),
+              payloadDigest: compositionDigest(`${requestEpisodeId}-payload`),
+              claimNonceDigest: compositionDigest(`${requestEpisodeId}-claim`),
+              handoffExpiresAt: expiredAt,
+              occurredAt: createdAt,
+              receivedAt: createdAt,
+              expiresAt: expiredAt,
+            },
+          })
+          return { requestItem, requestSelection }
+        },
+      )
+      await db.recommendationPlaybackEpisode.create({
+        data: {
+          id: requestEpisodeId,
+          requestId: expiredRequestIds[0],
+          itemId: requestItem.id,
+          selectionId: requestSelection.id,
+          mediaId: "fixture-media",
+          sessionDigest: compositionDigest(requestEpisodeId),
+          state: "FINALIZED",
+          activeUntil: new Date(createdAt.getTime() + day),
+          hardUntil: new Date(createdAt.getTime() + 2 * day),
+          createdAt,
+          expiresAt: expiredAt,
+        },
+      })
+      await db.recommendationOutcomeRevision.create({
+        data: {
+          id: requestOutcomeId,
+          requestId: expiredRequestIds[0],
+          itemId: requestItem.id,
+          episodeId: requestEpisodeId,
+          classifierVersion: "active-watch-proxy-v1",
+          factWatermark: 1,
+          inputDigest: compositionDigest(requestOutcomeId),
+          revision: 1,
+          qualifiedView: true,
+          viewQualityWeight: 1,
+          viewQualityWeightReason: "active_fraction_of_duration",
+          activePlaybackMilliseconds: 30_000,
+          durationSeconds: 30,
+          durationCohort: "short",
+          activeCoverage: "complete",
+          generation: 1,
+          expiresAt: expiredAt,
+        },
+      })
+      const liveOutcomeId = `${prefix}-live-outcome`
+      await db.recommendationOutcomeRevision.create({
+        data: {
+          id: liveOutcomeId,
+          requestId: liveRequestId,
+          itemId: liveLineage.item.id,
+          episodeId: requestOwnedEpisodeId,
+          classifierVersion: "active-watch-proxy-v1",
+          factWatermark: 1,
+          inputDigest: compositionDigest(liveOutcomeId),
+          revision: 1,
+          qualifiedView: true,
+          viewQualityWeight: 1,
+          viewQualityWeightReason: "active_fraction_of_duration",
+          activePlaybackMilliseconds: 30_000,
+          durationSeconds: 30,
+          durationCohort: "short",
+          activeCoverage: "complete",
+          generation: 1,
+          expiresAt: liveUntil,
+        },
+      })
+      const actionId = `${prefix}-request-action`
+      await db.recommendationContentAction.create({
+        data: {
+          id: actionId,
+          contractVersion: "content-action-v1",
+          sessionDigest: compositionDigest(actionId),
+          eventId: randomUUID(),
+          payloadDigest: compositionDigest(`${actionId}-payload`),
+          actionClass: "HUMAN_ACTION",
+          actionKind: "SHARE",
+          actorClass: "HUMAN_SIGNED_IN",
+          purpose: "WATCH",
+          targetMediaId: "fixture-media",
+          requestId: expiredRequestIds[1],
+          occurredAt: createdAt,
+          receivedAt: createdAt,
+          expiresAt: expiredAt,
+        },
+      })
+      const liveActionId = `${prefix}-live-action`
+      await db.recommendationContentAction.create({
+        data: {
+          id: liveActionId,
+          contractVersion: "content-action-v1",
+          sessionDigest: compositionDigest(liveActionId),
+          eventId: randomUUID(),
+          payloadDigest: compositionDigest(`${liveActionId}-payload`),
+          actionClass: "HUMAN_ACTION",
+          actionKind: "SHARE",
+          actorClass: "HUMAN_SIGNED_IN",
+          purpose: "WATCH",
+          targetMediaId: "fixture-media",
+          requestId: liveRequestId,
+          itemId: liveLineage.item.id,
+          occurredAt: createdAt,
+          receivedAt: createdAt,
+          expiresAt: liveUntil,
+        },
+      })
+      const eligibilityDecisionIds = new Map<string, string>()
+      for (const [key, sourceType, linked] of [
+        ["outcome", "PLAYBACK_OUTCOME", { outcomeId: requestOutcomeId }],
+        ["action", "CONTENT_ACTION", { contentActionId: actionId }],
+        ["live-outcome", "PLAYBACK_OUTCOME", { outcomeId: liveOutcomeId }],
+        ["live-action", "CONTENT_ACTION", { contentActionId: liveActionId }],
+        ["unrelated", "SELECTION", { selectionId: liveLineage.selection.id }],
+      ] as const) {
+        const decision = await db.recommendationEligibilityDecision.create({
+          data: {
+            sourceType,
+            sourceKey: `${prefix}-${key}`,
+            ...linked,
+            policyVersion: RECOMMENDATION_INTEGRITY_POLICY_VERSION,
+            revision: 1,
+            actorClass: "HUMAN_SIGNED_IN",
+            state: "ELIGIBLE",
+            contributionWeight: 1,
+            contributionOrdinal: 1,
+            distinctSupport: 1,
+            identityConcentration: 0,
+            inputDigest: compositionDigest(`${prefix}-${key}-eligible`),
+            expiresAt:
+              key === "unrelated" || key.startsWith("live-")
+                ? liveUntil
+                : expiredAt,
+          },
+        })
+        eligibilityDecisionIds.set(key, decision.id)
+      }
+
       const startedAt = performance.now()
       const first = await purgeExpiredRecommendationRequests(db, now)
       const firstElapsedMs = performance.now() - startedAt
@@ -261,6 +446,37 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         Math.round(firstElapsedMs),
       )
       expect(firstElapsedMs).toBeLessThan(5000)
+      expect(first.rowCounts).toMatchObject({
+        episodes: 1,
+        outcomes: 1,
+        contentActions: 1,
+        eligibilityDecisions: 2,
+      })
+      expect(
+        await db.recommendationEligibilityDecision.count({
+          where: {
+            id: {
+              in: [
+                eligibilityDecisionIds.get("outcome")!,
+                eligibilityDecisionIds.get("action")!,
+              ],
+            },
+          },
+        }),
+      ).toBe(0)
+      expect(
+        await db.recommendationEligibilityDecision.count({
+          where: {
+            id: {
+              in: [
+                eligibilityDecisionIds.get("live-outcome")!,
+                eligibilityDecisionIds.get("live-action")!,
+                eligibilityDecisionIds.get("unrelated")!,
+              ],
+            },
+          },
+        }),
+      ).toBe(3)
       expect(first).toMatchObject({
         status: "succeeded",
         rootsDeleted: 12,

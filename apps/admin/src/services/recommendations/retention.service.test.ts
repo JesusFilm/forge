@@ -26,6 +26,8 @@ function retentionQuery(
     if (query.sql.includes("UPDATE recommendation_profile")) return profiles
     if (query.sql.includes("SELECT id FROM recommendation_content_action"))
       return (query.values[0] as string[]).map((id) => ({ id }))
+    if (query.sql.includes("JOIN recommendation_eligibility_decision decision"))
+      return [{ count: 0n }]
     if (query.sql.includes("seed_sources AS MATERIALIZED"))
       return [
         {
@@ -437,6 +439,16 @@ describe("recommendation retention service", () => {
     ).toHaveBeenCalledWith({
       where: { contentActionId: { in: ["direct-action-1"] } },
     })
+    const eligibilityQuery = transaction.$queryRaw.mock.calls
+      .map(([query]) => query as Prisma.Sql)
+      .find((query) =>
+        query.sql.includes("JOIN recommendation_eligibility_decision decision"),
+      )
+    expect(eligibilityQuery?.sql).toContain("UNION")
+    expect(eligibilityQuery?.values).toEqual([
+      ["request-1", "request-2"],
+      ["request-1", "request-2"],
+    ])
     expect(
       transaction.recommendationPlaybackEpisode.findFirst,
     ).toHaveBeenCalledWith({
