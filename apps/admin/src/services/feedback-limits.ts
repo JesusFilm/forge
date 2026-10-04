@@ -24,14 +24,14 @@ export const FEEDBACK_ADDRESS_WINDOW_MS = 60 * 60_000
 /** The key carries the UTC date, so the counter resets at midnight UTC. */
 export const FEEDBACK_DAILY_WINDOW_MS = 24 * 60 * 60_000
 
-/** Mirrors the zod default on `ADMIN_FEEDBACK_DAILY_CAP`. */
+/** Mirrors the zod default on `ADMIN_MOBILE_FEEDBACK_DAILY_CAP`. */
 export const FEEDBACK_DAILY_CAP_DEFAULT = 200
 
 /** `env` skips zod validation, and so zod DEFAULTS, whenever `CI` is set: the
  * declared 200 is absent exactly where the type says it is a number. Read the
  * cap through here, never straight off `env`. */
 export function feedbackDailyCap(): number {
-  const raw = Number(env.ADMIN_FEEDBACK_DAILY_CAP)
+  const raw = Number(env.ADMIN_MOBILE_FEEDBACK_DAILY_CAP)
   return Number.isInteger(raw) && raw >= 0 ? raw : FEEDBACK_DAILY_CAP_DEFAULT
 }
 

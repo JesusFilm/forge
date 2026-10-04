@@ -2799,11 +2799,11 @@ through `src/services/feedback-linear.ts` and then answers. The plan is
 Every one is optional, so admin boots in an environment with no Linear
 configuration and nothing else about admin changes.
 
-- `ADMIN_FEEDBACK_LINEAR_API_KEY` and `ADMIN_FEEDBACK_LINEAR_TEAM_ID` — a
+- `ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY` and `ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID` — a
   missing value answers `NOT_CONFIGURED` for every submission.
-- `ADMIN_FEEDBACK_LINEAR_PROJECT_ID` and `ADMIN_FEEDBACK_LINEAR_LABEL_ID` —
+- `ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID` and `ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID` —
   optional placement of the ticket.
-- `ADMIN_FEEDBACK_DAILY_CAP` — submissions per UTC day, default 200. **A `0`
+- `ADMIN_MOBILE_FEEDBACK_DAILY_CAP` — submissions per UTC day, default 200. **A `0`
   refuses every submission with `DAILY_CAP` and is the operator's kill switch.
   It never means unlimited** — the opposite of the fleet search ceiling. A
   change to it needs a redeploy.
