@@ -5,9 +5,9 @@
 const fs = require("fs")
 const path = require("path")
 
-// Raw file export saves into a folder the viewer picks, so the app needs NO
-// photo-library access at all. Nothing at runtime can check that: the OS reads
-// the manifest and the Info.plist, both generated from app.json.
+// Raw file export saves into a folder the viewer picks, so the app never reads
+// the photo library. Nothing at runtime can check that: the OS reads the
+// manifest and the Info.plist, both generated from app.json.
 const FORBIDDEN_PLUGIN = "expo-media-library"
 
 // Absence from app.json removes nothing. Expo's base manifest template declares
@@ -23,10 +23,11 @@ const FORBIDDEN_ANDROID_PERMISSIONS = [
   "android.permission.ACCESS_MEDIA_LOCATION",
 ]
 
-const FORBIDDEN_INFO_PLIST_KEYS = [
-  "NSPhotoLibraryUsageDescription",
-  "NSPhotoLibraryAddUsageDescription",
-]
+const FORBIDDEN_INFO_PLIST_KEYS = ["NSPhotoLibraryUsageDescription"]
+
+// The Daily Bible Pause share sheet offers "Save Video" (KTD15). Without this
+// add-only usage string, iOS ends the app when the viewer taps it.
+const REQUIRED_ADD_ONLY_KEY = "NSPhotoLibraryAddUsageDescription"
 
 // The export stages into `Documents/`, so either key would expose a half-written
 // file and let a viewer delete one mid-transfer. The saved copy reaches the
@@ -58,11 +59,15 @@ function infoPlistKeys(config) {
   return Object.keys(config.expo.ios?.infoPlist ?? {})
 }
 
+function infoPlistValue(config, key) {
+  return config.expo.ios?.infoPlist?.[key]
+}
+
 function dependencyNames(manifest) {
   return Object.keys({ ...manifest.dependencies, ...manifest.devDependencies })
 }
 
-describe("the app declares no photo-library access", () => {
+describe("the app declares no photo-library read access", () => {
   const appJson = readJson("app.json")
   const packageJson = readJson("package.json")
 
@@ -81,11 +86,17 @@ describe("the app declares no photo-library access", () => {
     }
   })
 
-  it("declares no photo usage string on iOS", () => {
+  it("declares no photo-library read string on iOS", () => {
     const keys = infoPlistKeys(appJson)
     for (const key of FORBIDDEN_INFO_PLIST_KEYS) {
       expect(keys).not.toContain(key)
     }
+  })
+
+  it("explains add-only photo access on iOS, for Save Video in the share sheet", () => {
+    const text = infoPlistValue(appJson, REQUIRED_ADD_ONLY_KEY)
+    expect(typeof text).toBe("string")
+    expect(text.trim()).not.toBe("")
   })
 
   it("keeps the staging root out of the Files app", () => {
@@ -133,18 +144,39 @@ describe("the app declares no photo-library access", () => {
           expo: {
             ios: {
               infoPlist: {
-                NSPhotoLibraryAddUsageDescription: "This saves your video.",
+                NSPhotoLibraryUsageDescription: "This reads your videos.",
               },
             },
           },
         }),
-      ).toEqual(["NSPhotoLibraryAddUsageDescription"])
+      ).toEqual(["NSPhotoLibraryUsageDescription"])
       expect(
         infoPlistKeys({
           expo: { ios: { infoPlist: { UIFileSharingEnabled: true } } },
         }),
       ).toEqual(["UIFileSharingEnabled"])
       expect(infoPlistKeys({ expo: {} })).toEqual([])
+    })
+
+    it("reads a usage string's text, and nothing for an absent key", () => {
+      expect(
+        infoPlistValue(
+          {
+            expo: {
+              ios: {
+                infoPlist: { [REQUIRED_ADD_ONLY_KEY]: "This saves a video." },
+              },
+            },
+          },
+          REQUIRED_ADD_ONLY_KEY,
+        ),
+      ).toBe("This saves a video.")
+      expect(
+        infoPlistValue({ expo: { ios: {} } }, REQUIRED_ADD_ONLY_KEY),
+      ).toBeUndefined()
+      expect(
+        infoPlistValue({ expo: {} }, REQUIRED_ADD_ONLY_KEY),
+      ).toBeUndefined()
     })
   })
 })

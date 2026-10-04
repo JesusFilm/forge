@@ -15,6 +15,7 @@
         "CFBundleDisplayName": "Jesus Film Watch",
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocalNetworkUsageDescription": "The app uses your local network to find Cast devices, so you can play videos on your TV.",
+        "NSPhotoLibraryAddUsageDescription": "The app saves the devotional video to your photo library when you choose Save Video.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         },
