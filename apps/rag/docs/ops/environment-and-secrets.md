@@ -17,15 +17,15 @@ or create a database.
 
 ## Contract by operation
 
-| Target                               | Required names                                                                            | Notes                                                                                                                             |
-| ------------------------------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| local / CI                           | `DATABASE_URL`, `OPENROUTER_API_KEY`                                                      | CI uses non-secret placeholders and no network.                                                                                   |
-| Railway service                      | local/CI names plus `SERVE_BEARER_TOKENS`; Railway injects `PORT`                         | Bearer JSON maps one token per consumer to source keys; `["*"]` means all.                                                        |
-| gateway-primary embedding            | `EMBED_BASE_URL`, `EMBED_API_KEY`; optional `EMBED_WIRE_MODEL_ID`                         | `EMBED_MODEL_ID` remains the canonical row identity.                                                                              |
-| Firecrawl source                     | `FIRECRAWL_API_KEY`                                                                       | Required only when that source selects Firecrawl.                                                                                 |
-| smoke                                | `SMOKE_BASE_URL`, `SMOKE_TOKEN`; optional `SMOKE_MAX_MS`                                  | The token goes only in the Authorization header.                                                                                  |
-| dashboard/evaluation production read | `JFRAG_POSTGRESQL_READONLY_DB_URL`, `JFRAG_OPENROUTER_API_KEY`, optional namespaced model | The database URL must authenticate as the provisioned least-privilege reader. Generic and owner URLs are rejected.                |
-| other production maintenance/write   | `JFRAG_POSTGRESQL_DB_URL`, `JFRAG_OPENROUTER_API_KEY`, optional namespaced model          | A write also requires exact `JFRAG_ALLOW_PROD_WRITE=1` and `JFRAG_EXPECTED_POSTGRES_HOST` matching the database hostname exactly. |
+| Target                               | Required names                                                                          | Notes                                                                                                                                     |
+| ------------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| local / CI                           | `DATABASE_URL`, `OPENROUTER_API_KEY`                                                    | CI uses non-secret placeholders and no network.                                                                                           |
+| Railway service                      | local/CI names plus `SERVE_BEARER_TOKENS`; Railway injects `PORT`                       | Bearer JSON maps one token per consumer to source keys; `["*"]` means all.                                                                |
+| gateway-primary embedding            | `EMBED_BASE_URL`, `EMBED_API_KEY`; optional `EMBED_WIRE_MODEL_ID`                       | `EMBED_MODEL_ID` remains the canonical row identity.                                                                                      |
+| Firecrawl source                     | `FIRECRAWL_API_KEY`                                                                     | Required only when that source selects Firecrawl.                                                                                         |
+| smoke                                | `SMOKE_BASE_URL`, `SMOKE_TOKEN`; optional `SMOKE_MAX_MS`                                | The token goes only in the Authorization header.                                                                                          |
+| dashboard/evaluation production read | `FORGE_RAG_POSTGRESQL_READONLY_DB_URL`, `OPENROUTER_API_KEY`, optional namespaced model | The database URL must authenticate as the provisioned least-privilege reader. Generic and owner URLs are rejected.                        |
+| other production maintenance/write   | `FORGE_RAG_POSTGRESQL_DB_URL`, `OPENROUTER_API_KEY`, optional namespaced model          | A write also requires exact `FORGE_RAG_ALLOW_PROD_WRITE=1` and `FORGE_RAG_EXPECTED_POSTGRES_HOST` matching the database hostname exactly. |
 
 ### Direct production acquisition and indexing
 
@@ -39,23 +39,13 @@ are `FORGE_RAG_READONLY_ROLE_NAME` (default `forge_rag_evaluator`) and
 gateway settings remain environment-agnostic. No JFRAG database/host/model/write
 fallback is accepted by these two entrypoints.
 
-Before adopting these commands, the vault administrator must store the verified
-Forge reader URL under the Forge reader name and add the independently checked
-Forge host pin. Do not rename/delete existing JFRAG values: other maintenance
-commands and the legacy receiver still consume them. Confirm the reader and
-writer point to the same intended database and verify the reader's grants using
-[readonly-database.md](readonly-database.md). That provisioning tool retains its
-JFRAG-named input contract; explicitly map the intended Forge values in the
-operator process when using it, never assume the vault's JFRAG writer is Forge.
+The reader and writer must point to the independently verified Forge database.
+Verify the reader identity and grants using [readonly-database.md](readonly-database.md).
+All production maintenance, dashboard, evaluation, promotion, and reader administration
+use the Forge names in this contract. Provider keys and gateway settings remain plain.
+Production database, host, model, and write settings must never fall back to generic
+local names. A vault project name alone does not establish the database target.
 
-Use the [scoped acquisition/indexing previews](corpus-maintenance.md#run-directly-from-the-repository)
-as their preflight. The `env:check` production targets in the table above still
-validate the other commands' JFRAG contract.
-
-The only automatic namespaced fallback is
-`JFRAG_OPENROUTER_API_KEY` → `OPENROUTER_API_KEY`. Do not add automatic
-fallbacks for the production database, model, or bearer registry: that boundary
-prevents a vault-wrapped local command from silently targeting production.
 Empty or whitespace optional values are treated as unset.
 
 Validate without printing values:
@@ -85,7 +75,7 @@ preflight. A valid check prints only target and status.
 3. Add namespaced values to Doppler `forge-rag/prd`. Provision the production
    read-only database login through
    [`readonly-database.md`](./readonly-database.md), then store its URL as
-   `JFRAG_POSTGRESQL_READONLY_DB_URL`. Keep gateway values under their plain
+   `FORGE_RAG_POSTGRESQL_READONLY_DB_URL`. Keep gateway values under their plain
    names because they are environment-agnostic. Never add plain `DATABASE_URL`
    or `EMBED_MODEL_ID` to this Doppler config.
 4. Provision Railway `forge/production/@forge/rag` as the receiver with its
@@ -110,15 +100,27 @@ must retain a tested rollback credential until the migration soak expires.
 Evidence must contain names and outcomes only—never values, connection strings,
 Authorization headers, corpus text, or raw exception objects.
 
-## Temporary dual-target names
+## Service callers
 
-Feat-433 will implement explicit `:jfrag` and `:forge` VM/NanoClaw tasks. Its
-secret stores should use `JFRAG_RAG_BASE_URL` / `JFRAG_RAG_BEARER_TOKEN` for the
-legacy receiver and `FORGE_RAG_BASE_URL` / `FORGE_RAG_BEARER_TOKEN` for the new
-receiver. Any task dispatcher must require `RAG_OPS_TARGET=jfrag|forge`; the
-unqualified/default task stays on `jfrag` until cutover approval. Writable tasks
-must never infer a target.
+The repository smoke script consumes `SMOKE_BASE_URL` and `SMOKE_TOKEN`.
+Seeker retains its independently owned caller contract. Consult its current
+configuration rather than deriving caller names from the production database prefix.
 
-Seeker keeps its existing caller contract and switches these atomically in
-feat-434: `JESUSFILM_RAG_BASE_URL`, `JESUSFILM_RAG_ALLOWED_HOSTS`, and the
-matching API key. Preserve the old values out of band for rollback.
+## Environment-name migration gates
+
+Under feat-532, deploy additive compatibility through PR-to-main first. Verify
+HTTP smoke and retrieval before migrating configuration in small groups.
+Check the actual database target and reader identity independently; matching names
+alone do not prove equivalent targets. Select the verified Forge writer rather than
+copying a legacy writer value under a new name. Keep old names until canonical-name
+consumers pass the agreed checks. Then merge removal of compatibility, verify again,
+and remove only secrets confirmed unused. This migration does not authorize role
+provisioning, acquisition, ingestion, reembedding, corpus writes, or evaluation.
+
+For each gate, retain a redacted receipt containing the decision/time, PR and main
+revision, deployment identity, variable names present, target/reader checks,
+validation and smoke/retrieval outcomes, and retained or removed names. If a gate
+fails, stop; restore the preceding approved configuration or revert through the normal
+PR-to-main path as applicable. Record the rollback attempt, result, failure cause,
+remaining system state, and recommended next action. Never restore a writer credential
+to the reader variable. Private target details and secret values stay outside Forge.
