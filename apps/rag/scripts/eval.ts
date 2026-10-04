@@ -1,4 +1,3 @@
-import { migrationEnvironmentValue } from "../src/config/migration-environment.js"
 import { readFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
@@ -163,13 +162,11 @@ export async function runEvaluation(
     return { goldenCase, language }
   })
   const runtime = parseRuntimeEnv(options.environment)
-  const corpusRevision = migrationEnvironmentValue(
-    options.environment,
-    "JFRAG_EVAL_CORPUS_REVISION",
-  )?.trim()
+  const corpusRevision =
+    options.environment.FORGE_RAG_EVAL_CORPUS_REVISION?.trim()
   if (!corpusRevision)
     throw new Error(
-      "evaluation refused: JFRAG_EVAL_CORPUS_REVISION is required",
+      "evaluation refused: FORGE_RAG_EVAL_CORPUS_REVISION is required",
     )
 
   const wiring = (options.createWiring ?? wire)(options.environment)
