@@ -7,7 +7,10 @@ import { compositionGraphFixture } from "./composition/graph.test-fixture"
 import { compositionDigest } from "./composition/policy"
 import { RECOMMENDATION_INTEGRITY_POLICY_VERSION } from "./integrity-policy"
 import { COWATCH_MMR_TRIAL_MANIFEST } from "./promotion/manifest"
-import { purgeExpiredRecommendationRequests } from "./retention.service"
+import {
+  purgeExpiredRecommendationRequests,
+  readRecommendationRetentionHealth,
+} from "./retention.service"
 
 const day = 86_400_000
 
@@ -68,6 +71,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     })
 
     it("reaches expired request roots while a loaded standalone backlog continues", async () => {
+      const pageSize = 5
       const now = new Date()
       const createdAt = new Date(now.getTime() - 30 * day)
       const expiredAt = new Date(now.getTime() - day)
@@ -438,6 +442,22 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         eligibilityDecisionIds.set(key, decision.id)
       }
 
+      const projectionRunIds = Array.from(
+        { length: 100 },
+        (_, index) => `${prefix}-projection-${index}`,
+      )
+      await db.recommendationProfileProjectionRun.createMany({
+        data: projectionRunIds.map((id) => ({
+          id,
+          scope: "SESSION" as const,
+          sessionDigest: compositionDigest(id),
+          state: "COMPLETED" as const,
+          completedAt: createdAt,
+          createdAt,
+          expiresAt: expiredAt,
+        })),
+      })
+
       const startedAt = performance.now()
       const first = await purgeExpiredRecommendationRequests(db, now)
       const firstElapsedMs = performance.now() - startedAt
@@ -451,6 +471,22 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         outcomes: 1,
         contentActions: 1,
         eligibilityDecisions: 2,
+        expiredProfileProjectionRuns: 100,
+      })
+      expect(
+        await db.recommendationProfileProjectionRun.count({
+          where: { id: { in: projectionRunIds } },
+        }),
+      ).toBe(0)
+      expect(
+        await db.recommendationRetentionRun.findUniqueOrThrow({
+          where: { id: first.runId },
+          select: { status: true, rootsDeleted: true, rowCounts: true },
+        }),
+      ).toMatchObject({
+        status: "SUCCEEDED",
+        rootsDeleted: 12,
+        rowCounts: { expiredProfileProjectionRuns: 100 },
       })
       expect(
         await db.recommendationEligibilityDecision.count({
@@ -482,34 +518,47 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         rootsDeleted: 12,
         batchLimitReached: true,
         rowCounts: {
-          expiredStandaloneEpisodes: 10,
-          expiredStandalonePlaybackFacts: 10,
-          expiredStandaloneOutcomes: 10,
+          expiredStandaloneEpisodes: pageSize,
+          expiredStandalonePlaybackFacts: pageSize,
+          expiredStandaloneOutcomes: pageSize,
         },
       })
       expect(
         await db.recommendationPlaybackEpisode.count({
           where: { id: { in: expiredEpisodeIds } },
         }),
-      ).toBe(90)
-      for (let page = 0; page < 9; page++) {
+      ).toBe(100 - pageSize)
+      for (let page = 0; page < 100 / pageSize - 1; page++) {
         const next = await purgeExpiredRecommendationRequests(db, now)
         expect(next).toMatchObject({
           status: "succeeded",
           rootsDeleted: 0,
           batchLimitReached: true,
           rowCounts: {
-            expiredStandaloneEpisodes: 10,
-            expiredStandalonePlaybackFacts: 10,
-            expiredStandaloneOutcomes: 10,
+            expiredStandaloneEpisodes: pageSize,
+            expiredStandalonePlaybackFacts: pageSize,
+            expiredStandaloneOutcomes: pageSize,
           },
         })
       }
-      expect(await purgeExpiredRecommendationRequests(db, now)).toMatchObject({
+      const completed = await purgeExpiredRecommendationRequests(db, now)
+      expect(completed).toMatchObject({
         status: "succeeded",
         rootsDeleted: 0,
         batchLimitReached: false,
         rowCounts: { expiredStandaloneEpisodes: 0 },
+      })
+      expect(
+        await db.recommendationRetentionRun.findUniqueOrThrow({
+          where: { id: completed.runId },
+          select: { status: true, oldestExpiredAtAfter: true },
+        }),
+      ).toMatchObject({ status: "SUCCEEDED", oldestExpiredAtAfter: null })
+      expect(await readRecommendationRetentionHealth(db, now)).toMatchObject({
+        healthy: true,
+        reason: "healthy",
+        latestSuccessAt: now,
+        oldestOverdueAt: null,
       })
       expect(
         await db.recommendationPlaybackEpisode.count({
@@ -630,13 +679,118 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const retry = await purgeExpiredRecommendationRequests(db, now)
       expect(retry).toMatchObject({
         status: "succeeded",
-        rowCounts: { expiredStandaloneEpisodes: 6 },
+        batchLimitReached: true,
+        rowCounts: { expiredStandaloneEpisodes: 5 },
+      })
+      expect(await purgeExpiredRecommendationRequests(db, now)).toMatchObject({
+        status: "succeeded",
+        batchLimitReached: false,
+        rowCounts: { expiredStandaloneEpisodes: 1 },
       })
       expect(
         await db.recommendationPlaybackEpisode.count({
           where: { id: { in: episodeIds } },
         }),
       ).toBe(0)
+    }, 30_000)
+
+    it("keeps a slow projection-tail timeout failed after committing a request root", async () => {
+      const now = new Date()
+      const createdAt = new Date(now.getTime() - 30 * day)
+      const expiredAt = new Date(now.getTime() - day)
+      const requestId = randomUUID()
+      const projectionRunIds = Array.from({ length: 100 }, () => randomUUID())
+      await db.recommendationRequest.create({
+        data: {
+          id: requestId,
+          contractVersion: "semantic-recommendation-v1",
+          surfaceVersion: "watch-below-player-v1",
+          manifestId: COWATCH_MMR_TRIAL_MANIFEST.id,
+          strategyVersion: COWATCH_MMR_TRIAL_MANIFEST.strategyVersion,
+          classifierVersion: "legacy-position-v0",
+          sessionDigest: compositionDigest(requestId),
+          locale: "en",
+          seedMediaId: "fixture-seed",
+          expectedItemCount: 0,
+          state: "ISSUED",
+          result: "EMPTY",
+          deliveryJti: randomUUID(),
+          signingKid: "fixture",
+          issuedAt: createdAt,
+          createdAt,
+          expiresAt: expiredAt,
+        },
+      })
+      await db.recommendationProfileProjectionRun.createMany({
+        data: projectionRunIds.map((id) => ({
+          id,
+          scope: "SESSION" as const,
+          sessionDigest: compositionDigest(id),
+          state: "COMPLETED" as const,
+          completedAt: createdAt,
+          createdAt,
+          expiresAt: expiredAt,
+        })),
+      })
+      const before = await readRecommendationRetentionHealth(db, now)
+      const successfulRunsBefore = await db.recommendationRetentionRun.count({
+        where: { status: "SUCCEEDED" },
+      })
+      // Slow only this owned database. The existing five-second whole-run
+      // deadline must still fail the attempt after the earlier root commits.
+      await db.$executeRawUnsafe(`
+        CREATE FUNCTION owned_retention_slow_projection() RETURNS trigger
+        LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.08); RETURN OLD; END $$
+      `)
+      await db.$executeRawUnsafe(`
+        CREATE TRIGGER owned_retention_slow_projection
+        BEFORE DELETE ON recommendation_profile_projection_run
+        FOR EACH ROW EXECUTE FUNCTION owned_retention_slow_projection()
+      `)
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(db, now),
+        ).rejects.toThrow(/transaction|deadline|timeout/i)
+        const failed = await db.recommendationRetentionRun.findFirstOrThrow({
+          orderBy: { startedAt: "desc" },
+        })
+        expect(failed).toMatchObject({
+          status: "FAILED",
+          rootsDeleted: 1,
+          rowCounts: { requests: 1 },
+          oldestExpiredAtAfter: null,
+        })
+        expect(failed.rowCounts).not.toHaveProperty(
+          "expiredProfileProjectionRuns",
+        )
+        expect(
+          await db.recommendationRequest.count({ where: { id: requestId } }),
+        ).toBe(0)
+        expect(
+          await db.recommendationProfileProjectionRun.count({
+            where: { id: { in: projectionRunIds } },
+          }),
+        ).toBe(100)
+        expect(
+          await db.recommendationRetentionRun.count({
+            where: { status: "SUCCEEDED" },
+          }),
+        ).toBe(successfulRunsBefore)
+        expect(
+          (await readRecommendationRetentionHealth(db, now)).latestSuccessAt,
+        ).toEqual(before.latestSuccessAt)
+      } finally {
+        await db.$executeRawUnsafe(`
+          DROP TRIGGER IF EXISTS owned_retention_slow_projection
+          ON recommendation_profile_projection_run
+        `)
+        await db.$executeRawUnsafe(
+          `DROP FUNCTION IF EXISTS owned_retention_slow_projection()`,
+        )
+        await db.recommendationProfileProjectionRun.deleteMany({
+          where: { id: { in: projectionRunIds } },
+        })
+      }
     }, 30_000)
   },
 )
