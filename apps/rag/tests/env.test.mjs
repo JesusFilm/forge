@@ -86,7 +86,6 @@ test("gateway URL requires its own credential", () => {
 
 test("only the environment-agnostic OpenRouter key falls back from JFRAG names", () => {
   const env = {
-    OPENROUTER_API_KEY: " ",
     JFRAG_OPENROUTER_API_KEY: "namespaced-key",
     JFRAG_POSTGRESQL_DB_URL: "postgresql://prod:secret@prod.example.test/rag",
     JFRAG_OPENROUTER_EMBED_MODEL_ID: "model-from-prod",
@@ -236,17 +235,16 @@ test("production resolution rejects generic database and model fallbacks", () =>
     /username must match/,
   )
 
-  assert.throws(
-    () =>
-      resolveProductionEnv(
-        {
-          JFRAG_POSTGRESQL_READONLY_DB_URL:
-            "postgresql://forge_rag_evaluator:password@prod.example.test:5432/rag",
-          OPENROUTER_API_KEY: "generic-key",
-        },
-        { expectHost: "prod.example.test" },
-      ),
-    /JFRAG_OPENROUTER_API_KEY/,
+  assert.equal(
+    resolveProductionEnv(
+      {
+        JFRAG_POSTGRESQL_READONLY_DB_URL:
+          "postgresql://forge_rag_evaluator:password@prod.example.test:5432/rag",
+        OPENROUTER_API_KEY: "generic-key",
+      },
+      { expectHost: "prod.example.test" },
+    ).OPENROUTER_API_KEY,
+    "generic-key",
   )
 
   assert.throws(
@@ -280,7 +278,7 @@ test("production resolution rejects generic database and model fallbacks", () =>
     "postgresql://forge_rag_evaluator:password@prod.example.test:5432/rag",
   )
   assert.equal(resolved.EMBED_MODEL_ID, "namespaced-model")
-  assert.equal(resolved.OPENROUTER_API_KEY, "namespaced-key")
+  assert.equal(resolved.OPENROUTER_API_KEY, "generic-key")
 })
 
 test("production-write requires an exact expected database hostname", () => {

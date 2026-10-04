@@ -1,3 +1,4 @@
+import { migrationEnvironmentValue } from "../src/config/migration-environment.js"
 import { PrismaClient } from "../src/generated/prisma/index.js"
 import { requireReadonlyDatabaseUrl } from "../src/config/database-url.js"
 import {
@@ -106,19 +107,27 @@ async function main(): Promise<void> {
     throw new Error(
       "read-only verification refused: use --local or --production",
     )
-  const databaseUrl = process.env.JFRAG_POSTGRESQL_READONLY_DB_URL?.trim()
+  const databaseUrl = migrationEnvironmentValue(
+    process.env,
+    "JFRAG_POSTGRESQL_READONLY_DB_URL",
+  )?.trim()
   if (!databaseUrl)
     throw new Error(
       "read-only verification refused: JFRAG_POSTGRESQL_READONLY_DB_URL is required",
     )
   if (target === "--production") {
-    const expectedHost = process.env.JFRAG_EXPECTED_POSTGRES_HOST?.trim()
+    const expectedHost = migrationEnvironmentValue(
+      process.env,
+      "JFRAG_EXPECTED_POSTGRES_HOST",
+    )?.trim()
     if (!expectedHost || new URL(databaseUrl).hostname !== expectedHost)
       throw new Error(
         "read-only verification refused: database target does not match the approved host",
       )
   }
-  const role = requireRoleName(process.env.JFRAG_READONLY_ROLE_NAME)
+  const role = requireRoleName(
+    migrationEnvironmentValue(process.env, "JFRAG_READONLY_ROLE_NAME"),
+  )
   await verifyReadonlyRole(databaseUrl, role)
   console.log(
     "read-only database verification passed: SELECT allowed; DDL, DML, and large-object writes denied",

@@ -1,3 +1,4 @@
+import { migrationEnvironmentValue } from "../src/config/migration-environment.js"
 import { PrismaClient } from "../src/generated/prisma/index.js"
 import {
   databaseUrlForRole,
@@ -25,12 +26,17 @@ function administratorUrl(args: string[], env: NodeJS.ProcessEnv): string {
   }
   if (target !== "--production")
     throw new Error("usage: pnpm db:provision-readonly <--local|--production>")
-  if (env.JFRAG_ALLOW_PROD_ROLE_PROVISION !== "1")
+  if (migrationEnvironmentValue(env, "JFRAG_ALLOW_PROD_ROLE_PROVISION") !== "1")
     throw new Error(
       "production role provisioning refused: set JFRAG_ALLOW_PROD_ROLE_PROVISION=1",
     )
-  const url = env.JFRAG_POSTGRESQL_DB_URL?.trim()
-  const expectedHost = env.JFRAG_EXPECTED_POSTGRES_HOST?.trim().toLowerCase()
+  const url = migrationEnvironmentValue(env, "JFRAG_POSTGRESQL_DB_URL")?.trim()
+  const expectedHost = migrationEnvironmentValue(
+    env,
+    "JFRAG_EXPECTED_POSTGRES_HOST",
+  )
+    ?.trim()
+    .toLowerCase()
   if (!url || !expectedHost)
     throw new Error(
       "production role provisioning refused: administrator URL and expected host are required",
@@ -186,8 +192,12 @@ export async function provisionReadonlyRole(
 
 async function main(): Promise<void> {
   const url = administratorUrl(process.argv.slice(2), process.env)
-  const role = requireRoleName(process.env.JFRAG_READONLY_ROLE_NAME)
-  const password = requireGeneratedPassword(process.env.JFRAG_READONLY_PASSWORD)
+  const role = requireRoleName(
+    migrationEnvironmentValue(process.env, "JFRAG_READONLY_ROLE_NAME"),
+  )
+  const password = requireGeneratedPassword(
+    migrationEnvironmentValue(process.env, "JFRAG_READONLY_PASSWORD"),
+  )
   await provisionReadonlyRole(url, role, password)
   console.log(
     `read-only database login provisioned: role=${role}; credential value not printed`,
