@@ -6,7 +6,6 @@ import {
   type TestInstance,
 } from "../../test-utils/rnTestRenderer"
 import {
-  localDay,
   markAnnouncementRead,
   markTodaysDevotionalRead,
   useAnnouncements,
@@ -36,14 +35,6 @@ function setToday(year: number, monthIndex: number, day: number) {
 afterEach(() => {
   seen.length = 0
   jest.useRealTimers()
-})
-
-describe("localDay", () => {
-  it("names the phone's own calendar day, padded", () => {
-    expect(localDay(new Date(2026, 0, 5, 9, 0))).toBe("2026-01-05")
-    // Late evening stays on the same local day, whatever UTC says.
-    expect(localDay(new Date(2026, 9, 1, 23, 30))).toBe("2026-10-01")
-  })
 })
 
 describe("the mock announcements", () => {

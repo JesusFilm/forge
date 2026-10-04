@@ -20,7 +20,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import {
   type AnnouncementItem,
-  localDay,
   markAnnouncementRead,
   useAnnouncements,
 } from "../../lib/announcements"
@@ -33,6 +32,7 @@ import {
   TEXT_SECONDARY,
   hexToRgba,
 } from "../../lib/color"
+import { localDay } from "../../lib/dailyPause/today"
 import { requestPause } from "../../lib/pauseCurtain"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 import {

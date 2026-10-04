@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react"
 
+import { localDay, useToday } from "./dailyPause/today"
+
 export type Announcement = {
   id: string
   kind: "daily-devotional"
@@ -10,16 +12,9 @@ export type Announcement = {
 
 export type AnnouncementItem = Announcement & { unread: boolean }
 
-export function localDay(now: Date): string {
-  const month = String(now.getMonth() + 1).padStart(2, "0")
-  const day = String(now.getDate()).padStart(2, "0")
-  return `${now.getFullYear()}-${month}-${day}`
-}
-
 /** Mockup source: today's devotional only. Admin's announcements query will
  *  replace this; the read state below stays in memory until then. */
-function mockAnnouncements(now: Date): Announcement[] {
-  const today = localDay(now)
+function mockAnnouncements(today: string): Announcement[] {
   return [
     {
       id: `daily-devotional-${today}`,
@@ -44,7 +39,7 @@ export function markAnnouncementRead(id: string): void {
 /** Opening today's pause from anywhere reads its announcement too. */
 export function markTodaysDevotionalRead(now: Date = new Date()): void {
   const today = localDay(now)
-  for (const announcement of mockAnnouncements(now)) {
+  for (const announcement of mockAnnouncements(today)) {
     if (
       announcement.kind === "daily-devotional" &&
       announcement.publishedOn === today
@@ -69,7 +64,8 @@ export function useAnnouncements(): {
   unreadCount: number
 } {
   useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
-  const items = mockAnnouncements(new Date()).map((announcement) => ({
+  const { dayKey } = useToday()
+  const items = mockAnnouncements(dayKey).map((announcement) => ({
     ...announcement,
     unread: !readIds.has(announcement.id),
   }))
