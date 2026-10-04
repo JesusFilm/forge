@@ -449,3 +449,11 @@ Production-read commands must use the approved Doppler/Railway target procedures
 - `feat-432` and its lane index are complete with Resolution/PR/evidence links; downstream dependency metadata remains bidirectional and the RAG lane remains hidden.
 - Production deployment followed the normal PR-to-main path; no local `railway up`, direct redeploy, secret disclosure, autonomous merge, or standalone issue creation occurred.
 - Abandoned porting experiments, obsolete standalone path assumptions, duplicate dependencies, temporary snapshots, detailed eval outputs, and other dead-end artifacts are absent from the final diff.
+
+## Current environment contract
+
+This implemented plan records its original contract. Feat-532 supersedes legacy
+production input names; use [the current environment runbook](../../apps/rag/docs/ops/environment-and-secrets.md)
+for operator commands. Dashboard and evaluation require the separate Forge reader
+URL and never accept the writer URL. Historical requirements and receipts above
+are retained as implementation history.
