@@ -4,8 +4,8 @@
 import { useEffect, useState } from "react"
 import { AccessibilityInfo } from "react-native"
 
-import { READER_COPY } from "../reader/copy"
-import { chapterLabel } from "../reader/labels"
+import { useT } from "../../../i18n/useT"
+import { chapterLabel, type ReaderT } from "../reader/labels"
 import type { BookNames } from "../repository/bookNames"
 import { bookByUsfm, type UsfmBookId } from "../text/books"
 import type { ChapterPosition } from "../text/types"
@@ -77,16 +77,20 @@ function nameOf(place: MovePlace, book: UsfmBookId, chapter: number): string {
   return chapterLabel(name, chapter)
 }
 
-function endText(axis: "verse" | "chapter", edge: "start" | "end"): string {
-  const copy = READER_COPY.movement
+function endText(
+  t: ReaderT,
+  axis: "verse" | "chapter",
+  edge: "start" | "end",
+): string {
   if (axis === "verse") {
-    return edge === "start" ? copy.noVerseBefore : copy.noVerseAfter
+    return edge === "start" ? t("noVerseBefore") : t("noVerseAfter")
   }
-  return edge === "start" ? copy.noChapterBefore : copy.noChapterAfter
+  return edge === "start" ? t("noChapterBefore") : t("noChapterAfter")
 }
 
 export function useReaderMovement(input: ReaderMovementInput): ReaderMovement {
   const { place, goTo, onVerseMove } = input
+  const t = useT("BibleReader")
   const [pulse, setPulse] = useState(0)
   const [slide, setSlide] = useState<VerseSlide | null>(null)
   const [notice, setNotice] = useState<ReaderNotice | null>(null)
@@ -114,14 +118,14 @@ export function useReaderMovement(input: ReaderMovementInput): ReaderMovement {
         )
         setPulse((count) => count + 1)
         AccessibilityInfo.announceForAccessibility(
-          READER_COPY.movement.chapterOpened(
-            nameOf(from, ref.book, ref.chapter),
-          ),
+          t("chapterOpenedAriaAnnouncement", {
+            chapter: nameOf(from, ref.book, ref.chapter),
+          }),
         )
         return
       }
       case "stop": {
-        const text = endText(axis, result.edge)
+        const text = endText(t, axis, result.edge)
         setNotice((previous) => ({ id: (previous?.id ?? 0) + 1, text }))
         AccessibilityInfo.announceForAccessibility(text)
       }
@@ -175,7 +179,7 @@ export function useReaderMovement(input: ReaderMovementInput): ReaderMovement {
         translationNumbering(place.translationId),
       )
       if (!next)
-        return endText("chapter", direction === "forward" ? "end" : "start")
+        return endText(t, "chapter", direction === "forward" ? "end" : "start")
       return nameOf(place, next.book, next.chapter)
     },
     pulse,

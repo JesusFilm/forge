@@ -10,6 +10,7 @@
  * slug, which admin resolves server-side (KTD8).
  */
 
+import { compareIds } from "../collation"
 import { progressIntentKey, type ProgressWriteIntent } from "./store"
 
 export const WATCH_PROGRESS_QUEUE_STORAGE_KEY = "watch-progress-queue"
@@ -52,7 +53,7 @@ export function enqueueProgressWrite(
   ]
   // Over the ceiling, drop the OLDEST-recorded writes first.
   if (writes.length > WATCH_PROGRESS_QUEUE_MAX_WRITES) {
-    writes.sort((a, b) => a.recordedAt.localeCompare(b.recordedAt))
+    writes.sort((a, b) => compareIds(a.recordedAt, b.recordedAt))
     writes.splice(0, writes.length - WATCH_PROGRESS_QUEUE_MAX_WRITES)
   }
   return { accountId, writes }

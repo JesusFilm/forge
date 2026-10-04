@@ -11,14 +11,10 @@
 import * as Notifications from "expo-notifications"
 import Constants from "expo-constants"
 
-import {
-  PUSH_ANNOUNCEMENTS_CHANNEL_ID,
-  PUSH_ANNOUNCEMENTS_CHANNEL_NAME,
-} from "../push/constants"
+import { PUSH_ANNOUNCEMENTS_CHANNEL_ID } from "../push/constants"
 import { presentationForTrigger } from "../push/foreground"
 import {
   LAPSE_REMINDER_CHANNEL_ID,
-  LAPSE_REMINDER_CHANNEL_NAME,
   type LapseReminderPermission,
 } from "./constants"
 import type { LapseReminderPayload } from "./payload"
@@ -44,14 +40,14 @@ export type LapseReminderScheduleInput = {
  * module consumes only this.
  */
 export type PushNotificationsPort = {
-  ensureAnnouncementsChannel: () => Promise<void>
+  ensureAnnouncementsChannel: (name: string) => Promise<void>
   /** Null when the project id is missing; throws when the read itself fails. */
   getPushToken: () => Promise<string | null>
   subscribeToTokenRotation: (listener: (token: string) => void) => () => void
 }
 
 export type LapseReminderNotificationsAdapter = PushNotificationsPort & {
-  ensureChannel: () => Promise<void>
+  ensureChannel: (name: string) => Promise<void>
   getPermission: () => Promise<LapseReminderPermission>
   requestPermission: () => Promise<LapseReminderPermission>
   schedule: (input: LapseReminderScheduleInput) => Promise<void>
@@ -97,10 +93,11 @@ function toPermission(status: {
 
 export const lapseReminderNotifications: LapseReminderNotificationsAdapter = {
   /** KTD6: Android 13 shows no permission prompt until a channel exists. The
-   *  plugin's `defaultChannel` option creates none, so the app creates this. */
-  async ensureChannel() {
+   *  plugin's `defaultChannel` option creates none, so the app creates this.
+   *  A call with the same id and a new name renames the existing channel. */
+  async ensureChannel(name) {
     await Notifications.setNotificationChannelAsync(LAPSE_REMINDER_CHANNEL_ID, {
-      name: LAPSE_REMINDER_CHANNEL_NAME,
+      name,
       importance: Notifications.AndroidImportance.DEFAULT,
     })
   },
@@ -108,13 +105,10 @@ export const lapseReminderNotifications: LapseReminderNotificationsAdapter = {
   /** KTD9: the announcements channel, created in the same pass as the reminder
    *  one. Android shows a remote notification with no channel in a default
    *  bucket the viewer cannot name. */
-  async ensureAnnouncementsChannel() {
+  async ensureAnnouncementsChannel(name) {
     await Notifications.setNotificationChannelAsync(
       PUSH_ANNOUNCEMENTS_CHANNEL_ID,
-      {
-        name: PUSH_ANNOUNCEMENTS_CHANNEL_NAME,
-        importance: Notifications.AndroidImportance.DEFAULT,
-      },
+      { name, importance: Notifications.AndroidImportance.DEFAULT },
     )
   },
 

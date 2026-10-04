@@ -39,15 +39,13 @@ import { AccessibilityInfo, Animated } from "react-native"
 
 import { FeedbackSheetContent } from "../FeedbackSheetContent"
 import {
-  FEEDBACK_COMPOSE_HEADING,
-  FEEDBACK_PICK_KIND_HEADING,
   FEEDBACK_STEP_FADE_MS,
   FEEDBACK_SUCCESS_CLOSE_MS,
-  FEEDBACK_SUCCESS_MESSAGE,
   type FeedbackSheetContext,
 } from "../feedbackFlow"
+import { getT } from "../../../i18n/useT"
 import { getApolloClient } from "../../../lib/apolloClient"
-import { FEEDBACK_FAILURE_MESSAGE } from "../../../lib/feedbackCopy"
+import { feedbackFailureMessage } from "../../../lib/feedbackCopy"
 import { FEEDBACK_PLATFORM_LABEL } from "../../../lib/feedbackDeviceDetails"
 import type {
   FeedbackRefusal,
@@ -67,6 +65,12 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+
+const t = getT("Feedback")
+const FEEDBACK_PICK_KIND_HEADING = t("pickKindHeading")
+const FEEDBACK_COMPOSE_HEADING = t("composeHeading")
+const FEEDBACK_SUCCESS_MESSAGE = t("successMessage")
+const FEEDBACK_FAILURE_MESSAGE = feedbackFailureMessage()
 
 const VALID_MESSAGE = "The audio stops after the first minute."
 const PLAYER_CONTEXT: FeedbackSheetContext = {

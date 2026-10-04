@@ -3,7 +3,12 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 import { READER_TOUCH_TARGET } from "../../lib/bible/reader/chrome"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 
-export type ReaderMessageAction = { label: string; onPress: () => void }
+export type ReaderMessageAction = {
+  label: string
+  /** The Datadog tap name. The label is translated; this stays the same. */
+  actionName: string
+  onPress: () => void
+}
 
 type ReaderMessageProps = {
   tokens: ReaderTokens
@@ -35,10 +40,11 @@ export function ReaderMessage({
       <View style={styles.actions}>
         {actions.map((action) => (
           <Pressable
-            key={action.label}
+            key={action.actionName}
             onPress={action.onPress}
             accessibilityRole="button"
             accessibilityLabel={action.label}
+            {...{ "dd-action-name": action.actionName }}
             style={[styles.action, { backgroundColor: tokens.buttonSurface }]}
           >
             <Text style={[styles.actionText, { color: tokens.text }]}>

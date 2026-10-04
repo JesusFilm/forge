@@ -1,12 +1,8 @@
-/**
- * The one failure message (KD10/R13). Every refusal — rate limit, the
- * fleet-wide daily cap, a missing Linear key — and every thrown error render
- * this sentence. Admin's refusal log is where an operator tells them apart, so
- * nothing on the phone needs a second string.
- *
- * The apostrophe is a straight ASCII U+0027, matching SheetError.tsx. Only
- * `__tests__/feedbackSubmission.test.ts` pins the wording; everything else
- * compares against this constant.
- */
-export const FEEDBACK_FAILURE_MESSAGE =
-  "Couldn't send that. Try again in a few minutes."
+import { getT } from "../i18n/useT"
+
+// The one failure message for every refusal and every thrown error (KD10,
+// R13); admin's log tells them apart. Read at call time, so it follows the UI
+// language. The English keeps a straight U+0027 apostrophe, as SheetError does.
+export function feedbackFailureMessage(): string {
+  return getT("Feedback")("failureMessage")
+}

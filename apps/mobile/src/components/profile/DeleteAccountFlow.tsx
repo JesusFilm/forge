@@ -2,33 +2,17 @@ import { useEffect, useRef, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { decidePostReauth } from "../../lib/accountDeletion"
 import { deleteAccount, signInWithHostedPage } from "../../lib/authActions"
 import { getAuthSession } from "../../lib/authSession"
 import { TEXT_PRIMARY, TEXT_SECONDARY, WARNING_COLOR } from "../../lib/color"
-import { useTypography } from "../../hooks/useTypography"
 import { feedback } from "../../styles/shared"
 
 const DANGER = "#ef4444"
 /** Placeholder until the team names a deletion-support address. */
 const SUPPORT_EMAIL = "help@jesusfilm.org"
-
-/** Strict deletion aborts on any failed side effect, so "nothing was
- *  changed" is literal — and a retry may not clear it, hence support. */
-export const DELETE_FAILED_MESSAGE = `Deleting your account failed — nothing was changed. Please try again. If it keeps failing, contact ${SUPPORT_EMAIL}.`
-/** R2: the deletion never ran on this branch, so the copy must stay
- *  distinct from DELETE_FAILED_MESSAGE. */
-export const REAUTH_FAILED_MESSAGE =
-  "Signing in did not work, so your account was not deleted. Please try again."
-export const REAUTH_PROMPT_MESSAGE =
-  "For security, sign in again first. Deletion then continues automatically."
-/** AE7: non-destructive — a different subject signed in, nothing ran. */
-export const WRONG_ACCOUNT_MESSAGE =
-  "A different account signed in, so nothing was deleted. To delete the original account, sign in with it and try again."
-/** A client abort cannot tell whether the server finished the delete, so the
- *  copy must not claim either outcome — a reopen reveals the true state. */
-export const DELETE_UNCONFIRMED_MESSAGE =
-  "We could not confirm whether your account was deleted. Reopen the app to check. If you are still signed in, nothing changed and you can try again."
 
 /** KTD5 machine: confirm → busy → (idle | needsReauth | error);
  *  needsReauth → sheetOpen → (busy retry | wrongAccount | needsReauth). */
@@ -60,6 +44,7 @@ function signedInUserId(): string | null {
  * the signed-out transition clears everything.
  */
 export function DeleteAccountFlow() {
+  const t = useT("DeleteAccount")
   const typography = useTypography()
   const [state, setState] = useState<FlowState>({ phase: "idle" })
   // Busy guards as refs: press handlers can fire twice off one stale
@@ -157,11 +142,11 @@ export function DeleteAccountFlow() {
         onPress={() => setState({ phase: "confirm" })}
         style={({ pressed }) => [styles.entryRow, pressed && feedback.pressed]}
         accessibilityRole="button"
-        accessibilityLabel="Delete account"
+        accessibilityLabel={t("deleteAccount")}
         {...{ "dd-action-name": "delete-account-entry" }}
       >
         <Text style={[styles.entryLabel, typography.bodySmall]}>
-          Delete account
+          {t("deleteAccount")}
         </Text>
       </Pressable>
     )
@@ -172,12 +157,10 @@ export function DeleteAccountFlow() {
       {state.phase === "confirm" || state.phase === "busy" ? (
         <>
           <Text style={[styles.panelTitle, typography.bodySmall]}>
-            Delete this account?
+            {t("confirmTitle")}
           </Text>
           <Text style={[styles.panelBody, typography.caption]}>
-            This permanently deletes your Jesus Film account everywhere —
-            including your watch history and saved progress. This cannot be
-            undone.
+            {t("confirmBody")}
           </Text>
           <View style={styles.actionRow}>
             <Pressable
@@ -188,11 +171,13 @@ export function DeleteAccountFlow() {
                 pressed && { opacity: 0.8 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Permanently delete account"
+              accessibilityLabel={t("deletePermanentlyAriaLabel")}
               {...{ "dd-action-name": "delete-account-confirm" }}
             >
               <Text style={[styles.dangerLabel, typography.bodySmall]}>
-                {state.phase === "busy" ? "Deleting…" : "Delete permanently"}
+                {state.phase === "busy"
+                  ? t("deleting")
+                  : t("deletePermanently")}
               </Text>
             </Pressable>
             <Pressable
@@ -203,10 +188,11 @@ export function DeleteAccountFlow() {
                 pressed && feedback.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Cancel deletion"
+              accessibilityLabel={t("cancelDeletionAriaLabel")}
+              {...{ "dd-action-name": "delete-account-cancel" }}
             >
               <Text style={[styles.cancelLabel, typography.bodySmall]}>
-                Cancel
+                {t("cancel")}
               </Text>
             </Pressable>
           </View>
@@ -227,8 +213,8 @@ export function DeleteAccountFlow() {
             )}
             <Text style={[styles.panelBody, typography.caption]}>
               {state.phase === "needsReauth" && state.signInFailed
-                ? REAUTH_FAILED_MESSAGE
-                : REAUTH_PROMPT_MESSAGE}
+                ? t("reauthFailedMessage")
+                : t("reauthPromptMessage")}
             </Text>
           </View>
           <View style={styles.actionRow}>
@@ -240,10 +226,13 @@ export function DeleteAccountFlow() {
                 pressed && feedback.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Sign in again"
+              accessibilityLabel={t("signInAgain")}
+              {...{ "dd-action-name": "delete-account-reauth" }}
             >
               <Text style={[styles.cancelLabel, typography.bodySmall]}>
-                {state.phase === "sheetOpen" ? "Signing in…" : "Sign in again"}
+                {state.phase === "sheetOpen"
+                  ? t("signingIn")
+                  : t("signInAgain")}
               </Text>
             </Pressable>
             {/* A non-destructive exit: without it the only control auto-fires
@@ -256,10 +245,11 @@ export function DeleteAccountFlow() {
                 pressed && feedback.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Cancel deletion"
+              accessibilityLabel={t("cancelDeletionAriaLabel")}
+              {...{ "dd-action-name": "delete-account-cancel" }}
             >
               <Text style={[styles.cancelLabel, typography.bodySmall]}>
-                Cancel
+                {t("cancel")}
               </Text>
             </Pressable>
           </View>
@@ -271,7 +261,7 @@ export function DeleteAccountFlow() {
           <View style={styles.noticeRow}>
             <Ionicons name="warning" size={18} color={WARNING_COLOR} />
             <Text style={[styles.panelBody, typography.caption]}>
-              {WRONG_ACCOUNT_MESSAGE}
+              {t("wrongAccountMessage")}
             </Text>
           </View>
           <View style={styles.actionRow}>
@@ -288,10 +278,11 @@ export function DeleteAccountFlow() {
                 pressed && feedback.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Try signing in again"
+              accessibilityLabel={t("trySigningInAgainAriaLabel")}
+              {...{ "dd-action-name": "delete-account-wrong-account-retry" }}
             >
               <Text style={[styles.cancelLabel, typography.bodySmall]}>
-                Try again
+                {t("tryAgain")}
               </Text>
             </Pressable>
             <Pressable
@@ -301,10 +292,11 @@ export function DeleteAccountFlow() {
                 pressed && feedback.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Cancel deletion"
+              accessibilityLabel={t("cancelDeletionAriaLabel")}
+              {...{ "dd-action-name": "delete-account-cancel" }}
             >
               <Text style={[styles.cancelLabel, typography.bodySmall]}>
-                Cancel
+                {t("cancel")}
               </Text>
             </Pressable>
           </View>
@@ -316,7 +308,7 @@ export function DeleteAccountFlow() {
           <View style={styles.noticeRow}>
             <Ionicons name="warning" size={18} color={WARNING_COLOR} />
             <Text style={[styles.panelBody, typography.caption]}>
-              {DELETE_FAILED_MESSAGE}
+              {t("failedMessage", { email: SUPPORT_EMAIL })}
             </Text>
           </View>
           <View style={styles.actionRow}>
@@ -327,10 +319,11 @@ export function DeleteAccountFlow() {
                 pressed && feedback.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Try deleting again"
+              accessibilityLabel={t("tryDeletingAgainAriaLabel")}
+              {...{ "dd-action-name": "delete-account-failed-retry" }}
             >
               <Text style={[styles.cancelLabel, typography.bodySmall]}>
-                Try again
+                {t("tryAgain")}
               </Text>
             </Pressable>
           </View>
@@ -346,7 +339,7 @@ export function DeleteAccountFlow() {
               color={TEXT_PRIMARY}
             />
             <Text style={[styles.panelBody, typography.caption]}>
-              {DELETE_UNCONFIRMED_MESSAGE}
+              {t("unconfirmedMessage")}
             </Text>
           </View>
           <View style={styles.actionRow}>
@@ -357,10 +350,11 @@ export function DeleteAccountFlow() {
                 pressed && feedback.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel={t("close")}
+              {...{ "dd-action-name": "delete-account-unconfirmed-close" }}
             >
               <Text style={[styles.cancelLabel, typography.bodySmall]}>
-                Close
+                {t("close")}
               </Text>
             </Pressable>
           </View>

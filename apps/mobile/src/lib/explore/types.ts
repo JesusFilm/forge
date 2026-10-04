@@ -43,6 +43,13 @@ export type ClipCandidate = {
  * plays, which can differ from the inventory row's best dub.
  */
 export type ReadyClip = ClipCandidate & {
+  /** The language of `title`: the UI's, `en` for a fallback, or null when the
+   *  inventory's own text stayed (R10). Absent on a clip stored before U7. */
+  titleLang?: string | null
+  descriptionLang?: string | null
+  /** The `$textSlug` the text was read with. A stored clip read under another
+   *  one is in another language (R4). */
+  textSlug?: string | null
   feedLanguageSlug: string
   streamUrl: string
   audioLanguageSlug: string
@@ -64,7 +71,9 @@ export type FeedClip = Pick<
   | "coreId"
   | "slug"
   | "title"
+  | "titleLang"
   | "description"
+  | "descriptionLang"
   | "imageUrl"
   | "muxPlaybackId"
   | "streamUrl"

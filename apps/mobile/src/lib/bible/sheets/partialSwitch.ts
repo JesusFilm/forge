@@ -1,12 +1,12 @@
 // A switch to a partial Bible that lacks the current book (owner, 2026-09-28).
 // The reader warns first, then opens the translation at its start. Your place
 // in the book does not carry over, because the translation has no such book.
+import type { UiT } from "../../../i18n/useT"
 import type { CatalogTranslation } from "../data/catalog"
 import { isBsbVerseRef } from "../position/snapshot"
 import { toBsbRef } from "../repository/resolveChapter"
 import { BIBLE_BOOKS, bookByUsfm, type UsfmBookId } from "../text/books"
 import type { VerseRef } from "../versification/convert"
-import { READER_SHEET_COPY } from "./copy"
 
 export type HasBook = (
   translation: CatalogTranslation,
@@ -54,21 +54,26 @@ function placeLabel(ref: VerseRef): string {
 }
 
 /** Null when the pick keeps the place: the translation has the book. */
-export function partialSwitch(input: PartialSwitchInput): PartialSwitch | null {
+export function partialSwitch(
+  t: UiT<"BibleTranslationPicker">,
+  input: PartialSwitchInput,
+): PartialSwitch | null {
   const { translation, ref, hasBook } = input
   if (!ref || hasBook(translation, ref.book)) return null
   const start = translationStart(translation, hasBook)
   if (!start) return null
-  const copy = READER_SHEET_COPY.translation.partialSwitch
   return {
     start,
-    title: copy.title(translation.shortName, bookByUsfm(ref.book).name),
-    message: copy.message(
-      translation.name,
-      placeLabel(start.shown),
-      placeLabel(input.shownRef ?? ref),
-    ),
-    cancelLabel: copy.cancel,
-    confirmLabel: copy.confirm,
+    title: t("partialSwitchTitle", {
+      shortName: translation.shortName,
+      bookName: bookByUsfm(ref.book).name,
+    }),
+    message: t("partialSwitchMessage", {
+      name: translation.name,
+      start: placeLabel(start.shown),
+      place: placeLabel(input.shownRef ?? ref),
+    }),
+    cancelLabel: t("cancel"),
+    confirmLabel: t("switch"),
   }
 }

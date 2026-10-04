@@ -13,6 +13,7 @@ import { TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveMediaCollectionThumbnailOrientation } from "../../lib/mediaCollectionThumbnailOrientation"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import {
   card,
   carousel,
@@ -55,6 +56,8 @@ export function MediaCollectionRenderer({
 }: MediaCollectionRendererProps) {
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("Sections")
+  const epoch = useLocaleEpoch()
   const { width: screenWidth } = useWindowDimensions()
   const { getVideoThumbnail, getVideoTitle } = useExperienceContext()
 
@@ -104,7 +107,7 @@ export function MediaCollectionRenderer({
       <PressableCard
         onPress={handlePress}
         accessibilityLabel={`${label ?? ""} ${title}`.trim()}
-        accessibilityHint="Opens this video"
+        accessibilityHint={t("opensVideoAriaHint")}
         style={[card.surface, { width: cardWidth }]}
         surfaceStyle={[styles.cardInner, { aspectRatio: cardAspect }]}
         background={
@@ -180,6 +183,7 @@ export function MediaCollectionRenderer({
       <FlatList
         data={items}
         renderItem={renderItem}
+        extraData={epoch}
         keyExtractor={(_item, index) => `mc-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -187,7 +191,7 @@ export function MediaCollectionRenderer({
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
-        accessibilityLabel={`${items.length} media items`}
+        accessibilityLabel={t("mediaItemsAriaLabel", { count: items.length })}
       />
     </View>
   )

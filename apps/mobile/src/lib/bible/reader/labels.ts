@@ -1,13 +1,16 @@
 // The reader's labels (feat-553 R9, R21, R25, R41, R42, KTD19). Each number is
 // the SHOWN translation's own verse number, and the counter keys by verse
 // number, not list index: T4T John 4 has 50 stops but 54 verses.
+import type { UiT } from "../../../i18n/useT"
 import { clamp } from "../../scrubber"
 import type { CatalogTranslation } from "../data/catalog"
 import type { ShownTranslation } from "../language/defaultTranslation"
 import type { TranslationDownloadState } from "../repository/translationDownloads"
 import { verseThrough } from "../text/positions"
 import type { ChapterPosition } from "../text/types"
-import { READER_COPY } from "./copy"
+
+/** The reader's words (KTD2): helpers take the caller's `t`. */
+export type ReaderT = UiT<"BibleReader">
 
 /** The first and last verse numbers that a stop covers. */
 export function stopRange(stop: ChapterPosition): {
@@ -39,11 +42,14 @@ export function counterLabel(stop: ChapterPosition, lastVerse: number): string {
 }
 
 export function counterAccessibilityLabel(
+  t: ReaderT,
   stop: ChapterPosition,
   lastVerse: number,
 ): string {
   const { first, last } = stopRange(stop)
-  return READER_COPY.counter(first, last, lastVerse)
+  return first === last
+    ? t("verseCounterAriaLabel", { verse: first, total: lastVerse })
+    : t("versesCounterAriaLabel", { first, last, total: lastVerse })
 }
 
 /** The position in the chapter, from 0 to 1, by the last verse covered. */
@@ -99,11 +105,14 @@ export function pillDownloadStatus(
 }
 
 function pillStatusWords(
+  t: ReaderT,
   state: TranslationDownloadState | null,
 ): string | undefined {
   const status = pillDownloadStatus(state)
   return status
-    ? READER_COPY.pillStatus.downloading(Math.round(status.progress * 100))
+    ? t("translationDownloadingAriaStatus", {
+        percent: Math.round(status.progress * 100),
+      })
     : undefined
 }
 
@@ -111,6 +120,7 @@ function pillStatusWords(
 // reason for a stand-in is a note. `viewerTranslation` is the rules' choice
 // before the book check; `bookName` is the book as the shown text names it.
 export function translationLabel(
+  t: ReaderT,
   shown: ShownTranslation,
   viewerTranslation: CatalogTranslation | null,
   bookName: string,
@@ -118,12 +128,12 @@ export function translationLabel(
   download: TranslationDownloadState | null = null,
 ): TranslationLabel {
   const { name, shortName } = shown.translation
+  const status = pillStatusWords(t, download)
   const label = {
     text: shortName,
-    accessibilityLabel: READER_COPY.translation(
-      name,
-      pillStatusWords(download),
-    ),
+    accessibilityLabel: status
+      ? t("translationWithStatusAriaLabel", { name, status })
+      : t("translationAriaLabel", { name }),
   }
   const noteKey = `${shown.reason}:${shown.translation.id}`
   switch (shown.reason) {
@@ -132,20 +142,27 @@ export function translationLabel(
     case "book-fallback":
       return {
         ...label,
-        note: READER_COPY.bookFallbackNote(
-          viewerTranslation?.name ?? null,
-          bookName,
-          name,
-        ),
+        note: viewerTranslation
+          ? t("bookFallbackNote", {
+              viewerName: viewerTranslation.name,
+              bookName,
+              shownName: name,
+            })
+          : t("bookFallbackNoteUnnamed", { bookName, shownName: name }),
         noteKey,
       }
     case "offline-stand-in":
-      return { ...label, note: READER_COPY.offlineStandInNote(name), noteKey }
+      return {
+        ...label,
+        note: t("offlineStandInNote", { shownName: name }),
+        noteKey,
+      }
   }
 }
 
 /** The download button's label (R29, R30), on the translation sheet's card. */
 export function downloadLabel(
+  t: ReaderT,
   state: TranslationDownloadState,
   translation: CatalogTranslation,
 ): string {
@@ -153,13 +170,16 @@ export function downloadLabel(
   switch (state.kind) {
     case "bundled":
     case "downloaded":
-      return READER_COPY.download.onDevice(name)
+      return t("downloadOnDeviceAriaLabel", { name })
     case "downloading":
-      return READER_COPY.download.running(name, Math.round(state.percent))
+      return t("downloadRunningAriaLabel", {
+        name,
+        percent: Math.round(state.percent),
+      })
     case "failed":
-      return READER_COPY.download.failed(name)
+      return t("downloadFailedAriaLabel", { name })
     case "checking":
     case "not-downloaded":
-      return READER_COPY.download.start(name)
+      return t("downloadAriaLabel", { name })
   }
 }

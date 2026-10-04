@@ -33,6 +33,46 @@ jest.mock("expo-linear-gradient", () => ({
     return null
   },
 }))
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+// A distinct text per key, so a swapped key fails. English cases never start
+// the store, so they read the real English catalog.
+jest.mock("../../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(
+      jest.requireActual("../../../i18n/catalogs.generated"),
+      {
+        es: {
+          MyWatch: {
+            tileEpisodes:
+              "{count, plural, one {# episodio} other {# episodios}}",
+            tileDownloaded: "Descargado",
+            tileDownloading: "Descargando",
+            tileInProgress: "En curso",
+            tilePaused: "En pausa",
+            tileQueued: "En cola",
+            tileFailed: "Con error",
+            tileSeriesHint: "Abre esta serie en Descargas",
+            tileVideoHint: "Abre este video",
+          },
+        },
+      },
+    ),
+)
+jest.mock("../../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../../i18n/pluralData.generated"),
+      ["es"],
+    ),
+)
 jest.mock("../../watch/DownloadProgressRing", () => ({
   DownloadProgressRing: function MockRing() {
     return null
@@ -50,6 +90,12 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { DownloadTile } from "../DownloadTile"
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import { phoneLocales } from "../../../test-utils/uiLocaleFixture"
 import { DownloadProgressRing } from "../../watch/DownloadProgressRing"
 import { computeTypographyScale } from "../../../hooks/useTypography"
 import { formatLibraryDuration } from "../../../lib/libraryDownloads"
@@ -390,6 +436,64 @@ describe("DownloadTile type matches the Home cards", () => {
     const duration = hostText(renderer, formatLibraryDuration(478)!)
     expect(duration.fontWeight).toBe(card.badgeText.fontWeight)
     expect(duration.fontSize).toBe(caption)
+    await unmount(renderer)
+  })
+})
+
+describe("DownloadTile after a UI language change", () => {
+  afterEach(() => resetLocaleStoreForTests())
+
+  it("relabels a memoized tile whose props did not change", async () => {
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+    const tile = onlyTile([episode(1, "downloaded"), episode(2, "failed")])
+    const renderer = await renderTile(tile)
+    expect(tileLabel(renderer)).toBe("Birth of Jesus, 2 episodes, Failed")
+
+    mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
+    await act(async () => {
+      refreshLocale()
+    })
+
+    expect(tileLabel(renderer)).toBe("Birth of Jesus, 2 episodios, Con error")
+    expect(hasText(renderer, "2 episodios")).toBe(true)
+    expect(pressables(renderer)[0]!.props.accessibilityHint).toBe(
+      "Abre esta serie en Descargas",
+    )
+    await unmount(renderer)
+  })
+
+  it.each([
+    ["downloaded", "Descargado"],
+    ["downloading", "Descargando, 0%"],
+    ["paused", "En pausa"],
+    ["queued", "En cola"],
+    ["failed", "Con error"],
+  ] as const)("names a %s video in the UI language", async (state, text) => {
+    mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
+    startLocaleSync()
+    const renderer = await renderTile(onlyTile([record("birth", state)]))
+
+    expect(tileLabel(renderer)).toBe(`The Birth of Jesus, ${text}`)
+    expect(pressables(renderer)[0]!.props.accessibilityHint).toBe(
+      "Abre este video",
+    )
+    await unmount(renderer)
+  })
+
+  it("names an in-progress series in the UI language", async () => {
+    mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
+    startLocaleSync()
+    const renderer = await renderTile(
+      onlyTile([
+        episode(1, "downloaded"),
+        episode(2, "downloading", { bytesWritten: 5 * MB }),
+      ]),
+    )
+
+    expect(tileLabel(renderer)).toBe(
+      "Birth of Jesus, 2 episodios, En curso, 75%",
+    )
     await unmount(renderer)
   })
 })

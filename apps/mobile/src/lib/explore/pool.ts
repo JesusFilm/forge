@@ -47,6 +47,9 @@ export type ExplorePool = {
   dubbed: PoolCandidate[]
   /** Each row names its fallback audio language in `watchLanguageSlug`. */
   subtitleOnly: PoolCandidate[]
+  /** Admin's `Language.name` map for the feed language, keyed by Admin's raw
+   *  tags; null when Admin sent none (R9). */
+  languageName: Readonly<Record<string, string>> | null
 }
 
 export type ExploreInventory = ExploreInventoryData["watchLanguageInventory"]
@@ -58,6 +61,18 @@ export function nonBlank(value: unknown): value is string {
 
 function isLanguageSlug(value: unknown): value is string {
   return typeof value === "string" && AUDIO_LANGUAGE_SLUG_PATTERN.test(value)
+}
+
+/** A name map with its non-blank string values only; null when none is left. */
+function nameMap(value: unknown): Record<string, string> | null {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return null
+  }
+  const out: Record<string, string> = {}
+  for (const [key, text] of Object.entries(value as Record<string, unknown>)) {
+    if (nonBlank(text)) out[key] = text
+  }
+  return Object.keys(out).length > 0 ? out : null
 }
 
 function positiveSeconds(value: unknown): number | null {
@@ -121,7 +136,13 @@ export function projectInventory(
     ),
   ]
   const subtitleOnly = take(inventory?.subtitleOnlyVideos, "SUBTITLE_ONLY")
-  return { languageSlug: feedLanguageSlug, fetchedAt, dubbed, subtitleOnly }
+  return {
+    languageSlug: feedLanguageSlug,
+    fetchedAt,
+    dubbed,
+    subtitleOnly,
+    languageName: nameMap(inventory?.language?.name),
+  }
 }
 
 /** R37: a successful fetch with no row means no eligible video exists. */
@@ -171,6 +192,8 @@ type StoredPool = {
   at: number
   d: StoredRow[]
   s: StoredRow[]
+  /** The language's name map. Absent in a pool stored before U7. */
+  n?: Record<string, string> | null
 }
 
 function toStoredRow(candidate: PoolCandidate): StoredRow {
@@ -237,6 +260,7 @@ export function serializePool(pool: ExplorePool): string {
     at: pool.fetchedAt,
     d: pool.dubbed.map(toStoredRow),
     s: pool.subtitleOnly.map(toStoredRow),
+    n: pool.languageName == null ? null : { ...pool.languageName },
   }
   return JSON.stringify(stored)
 }
@@ -260,6 +284,7 @@ export function parseStoredPool(
     fetchedAt: stored.at as number,
     dubbed: fromStoredRows(stored.d, "AUDIO"),
     subtitleOnly: fromStoredRows(stored.s, "SUBTITLE_ONLY"),
+    languageName: nameMap(stored.n),
   }
 }
 
@@ -309,6 +334,9 @@ function isReadyClip(value: unknown): value is ReadyClip {
     return false
   }
   if (typeof clip.title !== "string") return false
+  // Optional since U7: a clip stored before then has none of them.
+  const optional = [clip.titleLang, clip.descriptionLang, clip.textSlug]
+  if (!optional.every((v) => v === undefined || nullableString(v))) return false
   if (clip.availability !== "AUDIO" && clip.availability !== "SUBTITLE_ONLY") {
     return false
   }
@@ -338,13 +366,15 @@ export function parseStoredReadyClip(
 
 /**
  * The stored clip a warm open may start with, or null. It is dropped when it
- * is older than the pool, when the record holds its window, or when the feed
- * language changed.
+ * is older than the pool, when the record holds its window, when the feed
+ * language changed, or when its text was read in another UI language (R4).
  */
 export function usableStoredClip(
   stored: StoredReadyClip | null,
   context: {
     feedLanguageSlug: string
+    /** The `$textSlug` the feed reads its text with now. */
+    textSlug: string
     poolFetchedAt: number
     recordedWindows: (videoId: string) => readonly ClipWindow[]
   },
@@ -352,6 +382,7 @@ export function usableStoredClip(
   if (stored == null) return null
   const { clip } = stored
   if (clip.feedLanguageSlug !== context.feedLanguageSlug) return null
+  if (clip.textSlug !== context.textSlug) return null
   if (stored.storedAt < context.poolFetchedAt) return null
   const held = context
     .recordedWindows(clip.videoId)

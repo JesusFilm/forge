@@ -101,7 +101,6 @@ import {
 } from "../../../lib/bible/text/normalize"
 import type { BookText } from "../../../lib/bible/text/types"
 import type { VerseRef } from "../../../lib/bible/versification/convert"
-import { READER_COPY } from "../../../lib/bible/reader/copy"
 import {
   READER_TOP_BAR_HEIGHT,
   READER_TOUCH_TARGET,
@@ -118,6 +117,9 @@ import {
   VERSE_SLIDE_MS,
   VERSE_SLIDE_START_LIMIT_MS,
 } from "../VerseSlider"
+import { getT } from "../../../i18n/useT"
+
+const readerT = getT("BibleReader")
 
 declare const __dirname: string
 const fs = jest.requireActual<{
@@ -786,7 +788,7 @@ describe("swipes (R12, R14, KTD13)", () => {
       timingsWith({ duration: CHAPTER_PULSE_MS, useNativeDriver: true }),
     ).toHaveLength(1)
     expect(announcements).toContain(
-      READER_COPY.movement.chapterOpened("John 4"),
+      readerT("chapterOpenedAriaAnnouncement", { chapter: "John 4" }),
     )
   })
 
@@ -801,10 +803,8 @@ describe("swipes (R12, R14, KTD13)", () => {
 
     expect(pillPassage(renderer)).toBe("Revelation 22:21")
     expect(moveTo).not.toHaveBeenCalled()
-    expect(textNodes(renderer, READER_COPY.movement.noVerseAfter)).toHaveLength(
-      1,
-    )
-    expect(announcements).toContain(READER_COPY.movement.noVerseAfter)
+    expect(textNodes(renderer, readerT("noVerseAfter"))).toHaveLength(1)
+    expect(announcements).toContain(readerT("noVerseAfter"))
     expect(timingsWith({ duration: CHAPTER_PULSE_MS })).toHaveLength(0)
   })
 
@@ -812,9 +812,7 @@ describe("swipes (R12, R14, KTD13)", () => {
     const { renderer } = await openAt({ book: "GEN", chapter: 1, verse: 1 })
     await swipeDown(renderer)
     expect(pillPassage(renderer)).toBe("Genesis 1:1")
-    expect(
-      textNodes(renderer, READER_COPY.movement.noVerseBefore),
-    ).toHaveLength(1)
+    expect(textNodes(renderer, readerT("noVerseBefore"))).toHaveLength(1)
   })
 
   it("moves back from John 4:1 to John 3:36", async () => {
@@ -917,16 +915,14 @@ describe("swipes (R12, R14, KTD13)", () => {
 
     await drag!.release()
     expect(announcements).toContain(
-      READER_COPY.movement.chapterOpened("Hechos 1"),
+      readerT("chapterOpenedAriaAnnouncement", { chapter: "Hechos 1" }),
     )
   })
 
   it("says no chapter comes before during a swipe right at Genesis 1 (R13)", async () => {
     const { renderer } = await openAt({ book: "GEN", chapter: 1, verse: 5 })
     const drag = await beginSwipe(renderer, RIGHT.from, RIGHT.to)
-    expect(
-      textNodes(renderer, READER_COPY.movement.noChapterBefore),
-    ).toHaveLength(1)
+    expect(textNodes(renderer, readerT("noChapterBefore"))).toHaveLength(1)
     await drag!.release()
     expect(pillPassage(renderer)).toBe("Genesis 1:5")
   })
@@ -1024,7 +1020,11 @@ describe("the screen reader's verse control (KTD14, R36)", () => {
     const control = verseControl(renderer)
     expect(control.props.testID).toBe("bible-verse")
     expect(control.props.accessibilityValue).toEqual({
-      text: READER_COPY.movement.verseValue(16, 16, 36, "John 3"),
+      text: readerT("verseAriaValue", {
+        verse: 16,
+        total: 36,
+        chapter: "John 3",
+      }),
     })
     const names = (
       control.props.accessibilityActions as { name: string; label?: string }[]
@@ -1044,7 +1044,7 @@ describe("the screen reader's verse control (KTD14, R36)", () => {
     await act11y(renderer, "increment")
     expect(pillPassage(renderer)).toBe("John 4:1")
     expect(announcements).toContain(
-      READER_COPY.movement.chapterOpened("John 4"),
+      readerT("chapterOpenedAriaAnnouncement", { chapter: "John 4" }),
     )
     await act11y(renderer, "decrement")
     expect(pillPassage(renderer)).toBe("John 3:36")
@@ -1108,8 +1108,8 @@ describe("the arrow pair (R11, AE6)", () => {
       { services },
     )
     const labels = [
-      READER_COPY.movement.previousVerse,
-      READER_COPY.movement.nextVerse,
+      readerT("previousVerseAriaLabel"),
+      readerT("nextVerseAriaLabel"),
     ]
     for (const label of labels) {
       const [target] = hosts(
@@ -1137,9 +1137,9 @@ describe("the arrow pair (R11, AE6)", () => {
       await flush()
       await settleFit(renderer)
     }
-    await press(READER_COPY.movement.nextVerse)
+    await press(readerT("nextVerseAriaLabel"))
     expect(pillPassage(renderer)).toBe("John 4:1")
-    await press(READER_COPY.movement.previousVerse)
+    await press(readerT("previousVerseAriaLabel"))
     expect(pillPassage(renderer)).toBe("John 3:36")
   })
 
@@ -1211,7 +1211,7 @@ describe("the swipe hint (R15, AE10, KD18)", () => {
   it("fades in and bounces on the native driver", async () => {
     const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
     expect(hint(renderer)).toHaveLength(1)
-    expect(textNodes(renderer, READER_COPY.movement.hint)).toHaveLength(1)
+    expect(textNodes(renderer, readerT("swipeHint"))).toHaveLength(1)
     expect(
       timingsWith({ duration: SWIPE_HINT_MS, useNativeDriver: true }),
     ).toHaveLength(1)
@@ -1328,7 +1328,7 @@ describe("the first-run swipe demo (R16)", () => {
     const [skip] = renderer.root.findAll(
       (node) =>
         typeof node.props.onPress === "function" &&
-        node.props.accessibilityLabel === READER_COPY.movement.demoSkipLabel,
+        node.props.accessibilityLabel === readerT("demoSkipAriaLabel"),
     )
     expect(skip).toBeDefined()
     await act(async () => skip!.props.onPress?.())
@@ -1597,7 +1597,7 @@ async function tapVerse(renderer: TestInstance) {
 
 /** The selection bar's reference, or null when the footer shows. */
 function selected(renderer: TestInstance): string | null {
-  const prefix = READER_COPY.selection.selected("")
+  const prefix = readerT("selectedAriaLabel", { reference: "" })
   const [reference] = hosts(
     renderer,
     (node) =>
@@ -1792,7 +1792,7 @@ describe("verse selection (R19)", () => {
   it("clears with the Clear button, and the footer and scrubber come back", async () => {
     const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
     await tapVerse(renderer)
-    await pressLabel(renderer, READER_COPY.selection.clearLabel)
+    await pressLabel(renderer, readerT("clearAriaLabel"))
     expect(selected(renderer)).toBeNull()
     expect(byTestId(renderer, "bible-reader-footer")).toHaveLength(1)
     // A scrub works again, and the next tap starts a new selection there.
@@ -1810,8 +1810,14 @@ describe("verse selection (R19)", () => {
     await tapVerse(renderer)
     await swipeUp(renderer)
     await tapVerse(renderer)
-    await pressLabel(renderer, READER_COPY.selection.copyLabel("John 3:16-17"))
-    await pressLabel(renderer, READER_COPY.selection.shareLabel("John 3:16-17"))
+    await pressLabel(
+      renderer,
+      readerT("copyAriaLabel", { reference: "John 3:16-17" }),
+    )
+    await pressLabel(
+      renderer,
+      readerT("shareAriaLabel", { reference: "John 3:16-17" }),
+    )
     const text =
       "16 For God so loved the world that He gave His one and only Son, that everyone who believes in Him shall not perish but have eternal life. " +
       "17 For God did not send His Son into the world to condemn the world, but to save the world through Him." +
@@ -1842,7 +1848,7 @@ describe("verse selection (R19)", () => {
     await tapVerse(renderer)
     const reference = `${psalm.bookName} 50:1-2`
     expect(selected(renderer)).toBe(reference)
-    await pressLabel(renderer, READER_COPY.selection.shareLabel(reference))
+    await pressLabel(renderer, readerT("shareAriaLabel", { reference }))
     const message = String(
       (share.mock.calls[0]?.[0] as { message?: string }).message,
     )
@@ -1854,14 +1860,10 @@ describe("verse selection (R19)", () => {
   it("tells a screen reader how to select, and that the verse is selected", async () => {
     const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
     const [verse] = byTestId(renderer, "bible-verse")
-    expect(verse!.props.accessibilityHint).toBe(
-      READER_COPY.selection.selectHint,
-    )
+    expect(verse!.props.accessibilityHint).toBe(readerT("selectVerseAriaHint"))
     await tapVerse(renderer)
     const [after] = byTestId(renderer, "bible-verse")
-    expect(after!.props.accessibilityHint).toBe(
-      READER_COPY.selection.removeHint,
-    )
+    expect(after!.props.accessibilityHint).toBe(readerT("removeVerseAriaHint"))
     expect(after!.props.accessibilityRole).toBe("adjustable")
   })
 })
@@ -1913,7 +1915,10 @@ describe("a passage-picker jump pulses the pill (R39)", () => {
   const pulses = () => timingsWith({ duration: CHAPTER_PULSE_MS }).length
 
   async function openPicker(opened: Opened, passage: string) {
-    await pressLabel(opened.renderer, READER_COPY.choosePassage(passage))
+    await pressLabel(
+      opened.renderer,
+      readerT("choosePassageAriaLabel", { passage }),
+    )
     expect(opened.onOpenPassagePicker).toHaveBeenCalledTimes(1)
     await opened.setFocus(false)
   }

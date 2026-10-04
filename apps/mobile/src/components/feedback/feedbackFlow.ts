@@ -7,6 +7,7 @@
  * U3 owns the bounds and the wire shape. This module never re-states a bound —
  * it imports each one, so a change on admin's side reaches the inline copy.
  */
+import type { UiMessageKey, UiT } from "../../i18n/useT"
 import {
   FEEDBACK_EMAIL_MAX_LENGTH,
   FEEDBACK_MESSAGE_MAX_LENGTH,
@@ -26,17 +27,22 @@ import type {
   FeedbackVideoContext,
 } from "../../lib/feedbackQueries"
 
-/** R4, verbatim. Straight ASCII apostrophe, matching FEEDBACK_FAILURE_MESSAGE. */
-export const FEEDBACK_KIND_LABEL: Record<FeedbackKind, string> = {
-  BROKEN: "Something's broken",
-  IDEA: "I have an idea",
-  OTHER: "Something else",
+/** The form's words (KTD2 of the localization plan): helpers take `t`. */
+export type FeedbackT = UiT<"Feedback">
+
+/** R4. The English keeps a straight ASCII apostrophe, as the failure does. */
+export const FEEDBACK_KIND_LABEL_KEY: Record<
+  FeedbackKind,
+  UiMessageKey<"Feedback">
+> = {
+  BROKEN: "kindBroken",
+  IDEA: "kindIdea",
+  OTHER: "kindOther",
 }
 
-export const FEEDBACK_PICK_KIND_HEADING = "What would you like to tell us?"
-export const FEEDBACK_COMPOSE_HEADING = "Tell us more"
-/** R12: a short confirmation, with no ticket id and no link. */
-export const FEEDBACK_SUCCESS_MESSAGE = "Thank you. We got your feedback."
+export function feedbackKindLabel(t: FeedbackT, kind: FeedbackKind): string {
+  return t(FEEDBACK_KIND_LABEL_KEY[kind])
+}
 
 /** R12: the sheet closes on its own after this, or sooner on a tap. */
 export const FEEDBACK_SUCCESS_CLOSE_MS = 1500
@@ -70,31 +76,35 @@ export function feedbackPositionLabel(
   return formatFeedbackPosition(positionSeconds)
 }
 
-export function feedbackTagText(video: FeedbackVideoContext): string {
+export function feedbackTagText(
+  t: FeedbackT,
+  video: FeedbackVideoContext,
+): string {
   const position = feedbackPositionLabel(video.positionSeconds)
   return position
-    ? `About: ${video.title} at ${position}`
-    : `About: ${video.title}`
+    ? t("videoTagWithPosition", { title: video.title, position })
+    : t("videoTag", { title: video.title })
 }
 
 export type FeedbackProblemField = "message" | "name" | "email"
 
 /** Each sentence carries the bound it enforces, read from U3's constants. */
 export function feedbackProblemText(
+  t: FeedbackT,
   field: FeedbackProblemField,
   problem: FeedbackProblem,
 ): string {
   if (field === "message") {
     return problem === "too_short"
-      ? `Please write at least ${FEEDBACK_MESSAGE_MIN_LENGTH} characters.`
-      : `Please use ${FEEDBACK_MESSAGE_MAX_LENGTH} characters or fewer.`
+      ? t("messageTooShort", { min: FEEDBACK_MESSAGE_MIN_LENGTH })
+      : t("tooLong", { max: FEEDBACK_MESSAGE_MAX_LENGTH })
   }
   if (field === "name") {
-    return `Please use ${FEEDBACK_NAME_MAX_LENGTH} characters or fewer.`
+    return t("tooLong", { max: FEEDBACK_NAME_MAX_LENGTH })
   }
   return problem === "too_long"
-    ? `Please use ${FEEDBACK_EMAIL_MAX_LENGTH} characters or fewer.`
-    : "Please check this email address."
+    ? t("tooLong", { max: FEEDBACK_EMAIL_MAX_LENGTH })
+    : t("emailInvalid")
 }
 
 export type FeedbackDisclosureRow = { label: string; value: string }
@@ -103,22 +113,26 @@ export type FeedbackDisclosureRow = { label: string; value: string }
  * one read (AE4). The platform leads: it rides along whatever the switch says;
  * every other row depends on the switch. */
 export function feedbackDisclosureRows(
+  t: FeedbackT,
   platform: FeedbackPlatform,
   details: FeedbackDeviceDetails,
 ): FeedbackDisclosureRow[] {
   return [
-    { label: "Platform", value: FEEDBACK_PLATFORM_LABEL[platform] },
-    { label: "App version", value: details.appVersion },
-    { label: "App build", value: details.appBuild },
-    { label: "OS version", value: details.osVersion },
-    { label: "Device model", value: details.deviceModel },
+    { label: t("platformLabel"), value: FEEDBACK_PLATFORM_LABEL[platform] },
+    { label: t("appVersionLabel"), value: details.appVersion },
+    { label: t("appBuildLabel"), value: details.appBuild },
+    { label: t("osVersionLabel"), value: details.osVersion },
+    { label: t("deviceModelLabel"), value: details.deviceModel },
   ]
 }
 
 export function feedbackDisclosureHint(
+  t: FeedbackT,
   rows: readonly FeedbackDisclosureRow[],
 ): string {
-  return `This sends ${rows.map((row) => row.label).join(", ")}.`
+  return t("disclosureAriaHint", {
+    fields: rows.map((row) => row.label).join(", "),
+  })
 }
 
 export type FeedbackPhase =
@@ -285,8 +299,11 @@ export function decideFeedbackSend(
 
 /** KTD11: the heading a step transition announces. Null where the step is
  *  unchanged, so sending and failure announce nothing. */
-export function feedbackStepHeading(phase: FeedbackPhase): string | null {
-  if (phase === "pickKind") return FEEDBACK_PICK_KIND_HEADING
-  if (phase === "compose") return FEEDBACK_COMPOSE_HEADING
+export function feedbackStepHeading(
+  t: FeedbackT,
+  phase: FeedbackPhase,
+): string | null {
+  if (phase === "pickKind") return t("pickKindHeading")
+  if (phase === "compose") return t("composeHeading")
   return null
 }

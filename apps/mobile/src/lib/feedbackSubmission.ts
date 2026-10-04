@@ -10,7 +10,7 @@
 import { z } from "zod"
 
 import { getApolloClient } from "./apolloClient"
-import { FEEDBACK_FAILURE_MESSAGE } from "./feedbackCopy"
+import { feedbackFailureMessage } from "./feedbackCopy"
 import {
   SUBMIT_FEEDBACK,
   type FeedbackDeviceDetails,
@@ -173,7 +173,7 @@ export type FeedbackOutcome =
     }
 
 function failed(refusal: FeedbackRefusal | null): FeedbackOutcome {
-  return { status: "failed", refusal, message: FEEDBACK_FAILURE_MESSAGE }
+  return { status: "failed", refusal, message: feedbackFailureMessage() }
 }
 
 export function classifyFeedbackResult(

@@ -1,9 +1,9 @@
 import {
   buildLibraryViewModel,
   compareByTime,
-  libraryRowState,
+  libraryRowAffordance,
   newestEnqueuedAt,
-  type LibraryRowState,
+  type LibraryRowAffordanceState,
   type LibrarySeriesGroup,
 } from "./libraryDownloads"
 import type { OfflineDownloadRecord } from "./offlineManifest"
@@ -22,7 +22,7 @@ export type MyWatchRailVideoTile = {
   kind: "video"
   key: string
   record: OfflineDownloadRecord
-  rowState: LibraryRowState
+  rowState: LibraryRowAffordanceState
 }
 
 export type MyWatchRailSeriesTile = {
@@ -47,7 +47,7 @@ function videoTile(record: OfflineDownloadRecord): RankedTile {
       kind: "video",
       key: `video:${record.videoSlug}`,
       record,
-      rowState: libraryRowState(record),
+      rowState: libraryRowAffordance(record),
     },
     time: record.enqueuedAt,
     slug: record.videoSlug,
@@ -63,7 +63,7 @@ function seriesState(
   let unfinished = false
   let units = 0
   for (const episode of episodes) {
-    const { affordance } = libraryRowState(episode)
+    const { affordance } = libraryRowAffordance(episode)
     if (affordance === "check") {
       units += 1
     } else if (affordance === "retry") {

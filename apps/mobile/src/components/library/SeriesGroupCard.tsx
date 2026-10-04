@@ -4,6 +4,8 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import {
   STATUS_FAILED_COLOR,
@@ -80,13 +82,15 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
   onCardLayout,
 }: SeriesGroupCardProps) {
   const typography = useTypography()
+  // Its own subscription, so the memoized card takes a new UI language too.
+  const t = useT("Library")
+  const uiDirection = useTextDirection().ui
   const [expanded, setExpanded] = useState(initiallyExpanded)
   // A reused Downloads screen can name this series after the card mounted.
   useEffect(() => {
     if (initiallyExpanded) setExpanded(true)
   }, [initiallyExpanded])
   const posterPath = group.episodes[0]?.posterPath ?? null
-  const videoCount = `${group.episodeCount} video${group.episodeCount === 1 ? "" : "s"}`
   const episodeSlugs = group.episodes.map((episode) => episode.videoSlug)
   const seriesState: SeriesSelectionState = selecting
     ? seriesSelectionState(episodeSlugs, selected)
@@ -127,7 +131,11 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
         onLongPress={() => onLongPress?.(episodeSlugs)}
         style={({ pressed }) => [styles.header, pressed && feedback.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`${group.seriesTitle}, ${videoCount}`}
+        accessibilityLabel={t("seriesAriaLabel", {
+          title: group.seriesTitle,
+          count: group.episodeCount,
+        })}
+        {...{ "dd-action-name": "library-series-card" }}
         accessibilityState={
           // R11: expose the tri-state header checkbox ("mixed" for partial)
           // the same way DownloadRow exposes per-row selection.
@@ -164,12 +172,18 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
           <Text style={[styles.title, typography.body]} numberOfLines={1}>
             {group.seriesTitle}
           </Text>
-          <Text style={[styles.meta, typography.caption]} numberOfLines={1}>
-            {videoCount} · {formatLibraryBytes(group.combinedBytes)}
+          <Text
+            style={[styles.meta, typography.caption, uiDirection]}
+            numberOfLines={1}
+          >
+            {t("seriesMeta", {
+              count: group.episodeCount,
+              size: formatLibraryBytes(group.combinedBytes),
+            })}
             {group.failedEpisodeCount > 0 && (
               <Text style={styles.metaFailed}>
                 {" "}
-                · {group.failedEpisodeCount} failed
+                {t("failedCount", { count: group.failedEpisodeCount })}
               </Text>
             )}
           </Text>
@@ -179,8 +193,12 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
           onPress={handleExpandToggle}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel={`${expanded ? "Collapse" : "Expand"} ${group.seriesTitle}`}
+          accessibilityLabel={t(
+            expanded ? "collapseAriaLabel" : "expandAriaLabel",
+            { title: group.seriesTitle },
+          )}
           accessibilityState={{ expanded }}
+          {...{ "dd-action-name": "library-series-expand" }}
           style={({ pressed }) => [
             styles.chevronButton,
             pressed && feedback.pressed,

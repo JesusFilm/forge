@@ -21,6 +21,8 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useTypography } from "../../hooks/useTypography"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
 import {
   ACCENT,
   STATUS_DONE_COLOR,
@@ -30,7 +32,6 @@ import {
   TEXT_SECONDARY,
   WARNING_COLOR,
 } from "../../lib/color"
-import { FEEDBACK_FAILURE_MESSAGE } from "../../lib/feedbackCopy"
 import {
   getFeedbackPlatform,
   readFeedbackDeviceDetails,
@@ -50,15 +51,12 @@ import {
   feedbackDisclosureHint,
   feedbackDisclosureRows,
   feedbackFlowReducer,
+  feedbackKindLabel,
   feedbackProblemText,
   feedbackStepHeading,
   feedbackTagText,
-  FEEDBACK_COMPOSE_HEADING,
-  FEEDBACK_KIND_LABEL,
-  FEEDBACK_PICK_KIND_HEADING,
   FEEDBACK_STEP_FADE_MS,
   FEEDBACK_SUCCESS_CLOSE_MS,
-  FEEDBACK_SUCCESS_MESSAGE,
   type FeedbackSheetContext,
 } from "./feedbackFlow"
 
@@ -72,8 +70,8 @@ export type FeedbackSheetContentProps = {
 }
 
 /** Two-step feedback form (KTD4): one body serves both doors — no Modal, no
- * route, no navigation import; the host supplies presentation. R10: English
- * only, not localized today. */
+ * route, no navigation import; the host supplies presentation. The text reads
+ * the catalog: the UI localization plan supersedes R10's English-only rule. */
 export function FeedbackSheetContent({
   context,
   onClose,
@@ -81,6 +79,8 @@ export function FeedbackSheetContent({
 }: FeedbackSheetContentProps) {
   const typography = useTypography()
   const reduceMotion = useReduceMotion()
+  const t = useT("Feedback")
+  const uiDirection = useTextDirection().ui
   const [state, dispatch] = useReducer(
     feedbackFlowReducer,
     context,
@@ -97,8 +97,8 @@ export function FeedbackSheetContent({
   // describe values other than the ones sent (AE4).
   const deviceDetails = useMemo(() => readFeedbackDeviceDetails(), [])
   const disclosureRows = useMemo(
-    () => feedbackDisclosureRows(platform, deviceDetails),
-    [platform, deviceDetails],
+    () => feedbackDisclosureRows(t, platform, deviceDetails),
+    [t, platform, deviceDetails],
   )
 
   const inFlight = useRef(false)
@@ -120,26 +120,27 @@ export function FeedbackSheetContent({
     return () => onDismissLockedChange?.(false)
   }, [dismissLocked, onDismissLockedChange])
 
-  const heading = feedbackStepHeading(state.phase)
-  const announcedHeading = useRef<string | null>(null)
+  const heading = feedbackStepHeading(t, state.phase)
+  // Keyed on the step, not the text, so a language change announces nothing.
+  const announcedStep = useRef<string | null>(null)
   useEffect(() => {
     if (heading === null) return
     // KTD11: announce the step the person MOVED to, in either direction. The
     // step they opened on is read out by the screen reader already.
-    const previous = announcedHeading.current
-    announcedHeading.current = heading
-    if (previous !== null && previous !== heading) {
+    const previous = announcedStep.current
+    announcedStep.current = state.phase
+    if (previous !== null && previous !== state.phase) {
       AccessibilityInfo.announceForAccessibility(heading)
     }
-  }, [heading])
+  }, [heading, state.phase])
 
   useEffect(() => {
     if (state.phase !== "success") return
-    AccessibilityInfo.announceForAccessibility(FEEDBACK_SUCCESS_MESSAGE)
+    AccessibilityInfo.announceForAccessibility(t("successMessage"))
     // Reading time, not motion, so reduce-motion leaves this dwell alone.
     const timer = setTimeout(onClose, FEEDBACK_SUCCESS_CLOSE_MS)
     return () => clearTimeout(timer)
-  }, [state.phase, onClose])
+  }, [state.phase, onClose, t])
 
   const step = state.phase === "pickKind" ? "pickKind" : "compose"
   const stepOpacity = useRef(new Animated.Value(1)).current
@@ -198,11 +199,12 @@ export function FeedbackSheetContent({
         style={styles.successPanel}
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel="Close"
+        accessibilityLabel={t("closeAriaLabel")}
+        {...{ "dd-action-name": "feedback-success-close" }}
       >
         <Ionicons name="checkmark-circle" size={44} color={STATUS_DONE_COLOR} />
         <Text style={[styles.successText, typography.titleSmall]}>
-          {FEEDBACK_SUCCESS_MESSAGE}
+          {t("successMessage")}
         </Text>
       </Pressable>
     )
@@ -218,7 +220,8 @@ export function FeedbackSheetContent({
             disabled={dismissLocked}
             style={styles.headerSlot}
             accessibilityRole="button"
-            accessibilityLabel="Back"
+            accessibilityLabel={t("backAriaLabel")}
+            {...{ "dd-action-name": "feedback-back" }}
           >
             <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
           </Pressable>
@@ -226,14 +229,15 @@ export function FeedbackSheetContent({
           <View style={styles.headerSlot} />
         )}
         <Text style={[styles.headerTitle, typography.titleSmall]}>
-          Send feedback
+          {t("title")}
         </Text>
         <Pressable
           onPress={handleClose}
           disabled={dismissLocked}
           style={styles.headerSlot}
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={t("closeAriaLabel")}
+          {...{ "dd-action-name": "feedback-close" }}
         >
           <Ionicons name="close" size={22} color={TEXT_PRIMARY} />
         </Pressable>
@@ -247,8 +251,8 @@ export function FeedbackSheetContent({
   if (state.phase === "pickKind") {
     return shell(
       <View style={styles.body}>
-        <Text style={[styles.heading, typography.titleLarge]}>
-          {FEEDBACK_PICK_KIND_HEADING}
+        <Text style={[styles.heading, typography.titleLarge, uiDirection]}>
+          {t("pickKindHeading")}
         </Text>
         {FEEDBACK_KINDS.map((kind) => (
           <Pressable
@@ -256,11 +260,12 @@ export function FeedbackSheetContent({
             onPress={() => dispatch({ type: "chooseKind", kind })}
             style={({ pressed }) => [styles.tile, pressed && feedback.pressed]}
             accessibilityRole="button"
-            accessibilityLabel={FEEDBACK_KIND_LABEL[kind]}
+            accessibilityLabel={feedbackKindLabel(t, kind)}
             accessibilityState={{ selected: state.kind === kind }}
+            {...{ "dd-action-name": `feedback-kind-${kind.toLowerCase()}` }}
           >
-            <Text style={[styles.tileLabel, typography.body]}>
-              {FEEDBACK_KIND_LABEL[kind]}
+            <Text style={[styles.tileLabel, typography.body, uiDirection]}>
+              {feedbackKindLabel(t, kind)}
             </Text>
             <Ionicons name="chevron-forward" size={18} color={TEXT_SECONDARY} />
           </Pressable>
@@ -275,8 +280,8 @@ export function FeedbackSheetContent({
         <View style={styles.noticeRow}>
           <Ionicons name="warning" size={20} color={WARNING_COLOR} />
           {/* R13/KD10: the one message, whatever the refusal was. */}
-          <Text style={[styles.noticeText, typography.body]}>
-            {FEEDBACK_FAILURE_MESSAGE}
+          <Text style={[styles.noticeText, typography.body, uiDirection]}>
+            {t("failureMessage")}
           </Text>
         </View>
         <Pressable
@@ -286,9 +291,10 @@ export function FeedbackSheetContent({
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Try again"
+          accessibilityLabel={t("retry")}
+          {...{ "dd-action-name": "feedback-retry" }}
         >
-          <Text style={styles.sendLabel}>Try again</Text>
+          <Text style={styles.sendLabel}>{t("retry")}</Text>
         </Pressable>
         <Pressable
           onPress={() => dispatch({ type: "edit" })}
@@ -297,9 +303,10 @@ export function FeedbackSheetContent({
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Edit your feedback"
+          accessibilityLabel={t("editAriaLabel")}
+          {...{ "dd-action-name": "feedback-edit" }}
         >
-          <Text style={styles.quietLabel}>Edit</Text>
+          <Text style={styles.quietLabel}>{t("edit")}</Text>
         </Pressable>
       </View>,
     )
@@ -314,7 +321,9 @@ export function FeedbackSheetContent({
     maxLength: number,
   ) => (
     <View style={styles.field}>
-      <Text style={[styles.fieldLabel, typography.bodySmall]}>{label}</Text>
+      <Text style={[styles.fieldLabel, typography.bodySmall, uiDirection]}>
+        {label}
+      </Text>
       <TextInput
         style={[styles.input, typography.body]}
         value={state[field]}
@@ -332,8 +341,8 @@ export function FeedbackSheetContent({
         accessibilityLabel={label}
       />
       {state.problems[field] ? (
-        <Text style={[styles.problemText, typography.caption]}>
-          {feedbackProblemText(field, state.problems[field])}
+        <Text style={[styles.problemText, typography.caption, uiDirection]}>
+          {feedbackProblemText(t, field, state.problems[field])}
         </Text>
       ) : null}
     </View>
@@ -345,27 +354,28 @@ export function FeedbackSheetContent({
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.heading, typography.titleLarge]}>
-        {FEEDBACK_COMPOSE_HEADING}
+      <Text style={[styles.heading, typography.titleLarge, uiDirection]}>
+        {t("composeHeading")}
       </Text>
-      <Text style={[styles.kindLine, typography.bodySmall]}>
-        {FEEDBACK_KIND_LABEL[state.kind]}
+      <Text style={[styles.kindLine, typography.bodySmall, uiDirection]}>
+        {feedbackKindLabel(t, state.kind)}
       </Text>
 
       {state.video ? (
         <View style={styles.tagRow}>
           <Text
-            style={[styles.tagText, typography.bodySmall]}
+            style={[styles.tagText, typography.bodySmall, uiDirection]}
             numberOfLines={2}
           >
-            {feedbackTagText(state.video)}
+            {feedbackTagText(t, state.video)}
           </Text>
           <Pressable
             onPress={() => dispatch({ type: "removeVideo" })}
             disabled={dismissLocked}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Remove the video from this report"
+            accessibilityLabel={t("removeVideoAriaLabel")}
+            {...{ "dd-action-name": "feedback-remove-video" }}
           >
             <Ionicons name="close-circle" size={20} color={TEXT_SECONDARY} />
           </Pressable>
@@ -382,21 +392,24 @@ export function FeedbackSheetContent({
           editable={!dismissLocked}
           multiline
           textAlignVertical="top"
-          placeholder="Tell us what you noticed."
+          placeholder={t("messagePlaceholder")}
           placeholderTextColor={TEXT_SECONDARY}
-          accessibilityLabel="Your message"
+          accessibilityLabel={t("messageAriaLabel")}
         />
         <View style={styles.countRow}>
           {state.problems.message ? (
-            <Text style={[styles.problemText, typography.caption]}>
-              {feedbackProblemText("message", state.problems.message)}
+            <Text style={[styles.problemText, typography.caption, uiDirection]}>
+              {feedbackProblemText(t, "message", state.problems.message)}
             </Text>
           ) : (
             <View style={styles.countSpacer} />
           )}
           <Text
             style={[styles.countText, typography.caption]}
-            accessibilityLabel={`${messageLength} of ${FEEDBACK_MESSAGE_MAX_LENGTH} characters`}
+            accessibilityLabel={t("characterCountAriaLabel", {
+              count: messageLength,
+              max: FEEDBACK_MESSAGE_MAX_LENGTH,
+            })}
           >
             {`${messageLength}/${FEEDBACK_MESSAGE_MAX_LENGTH}`}
           </Text>
@@ -406,20 +419,20 @@ export function FeedbackSheetContent({
       {/* R7/KD4: the person types these. Nothing is read from the account. */}
       {contactField(
         "name",
-        "Your name (optional)",
-        "Name",
+        t("nameLabel"),
+        t("namePlaceholder"),
         FEEDBACK_NAME_MAX_LENGTH,
       )}
       {contactField(
         "email",
-        "Your email (optional)",
-        "Email address",
+        t("emailLabel"),
+        t("emailPlaceholder"),
         FEEDBACK_EMAIL_MAX_LENGTH,
       )}
 
       <View style={styles.switchRow}>
-        <Text style={[styles.switchLabel, typography.body]}>
-          Include device details
+        <Text style={[styles.switchLabel, typography.body, uiDirection]}>
+          {t("includeDeviceDetails")}
         </Text>
         <Switch
           value={state.includeDeviceDetails}
@@ -430,18 +443,18 @@ export function FeedbackSheetContent({
           trackColor={{ false: SURFACE_COLOR, true: ACCENT }}
           thumbColor="#ffffff"
           accessibilityRole="switch"
-          accessibilityLabel="Include device details"
-          accessibilityHint={feedbackDisclosureHint(disclosureRows)}
+          accessibilityLabel={t("includeDeviceDetails")}
+          accessibilityHint={feedbackDisclosureHint(t, disclosureRows)}
         />
       </View>
       <View style={styles.disclosure}>
-        <Text style={[styles.disclosureTitle, typography.caption]}>
-          What this sends
+        <Text style={[styles.disclosureTitle, typography.caption, uiDirection]}>
+          {t("disclosureTitle")}
         </Text>
         {disclosureRows.map((row) => (
           <Text
             key={row.label}
-            style={[styles.disclosureRow, typography.caption]}
+            style={[styles.disclosureRow, typography.caption, uiDirection]}
           >
             {`${row.label}: ${row.value}`}
           </Text>
@@ -456,11 +469,12 @@ export function FeedbackSheetContent({
           pressed && feedback.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Send feedback"
+        accessibilityLabel={t("sendAriaLabel")}
         accessibilityState={{ disabled: dismissLocked, busy: dismissLocked }}
+        {...{ "dd-action-name": "feedback-send" }}
       >
         <Text style={styles.sendLabel}>
-          {dismissLocked ? "Sending…" : "Send"}
+          {dismissLocked ? t("sending") : t("send")}
         </Text>
       </Pressable>
     </ScrollView>,

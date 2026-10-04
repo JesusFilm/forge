@@ -20,6 +20,7 @@ const HIGHLIGHT_OPACITY = 0.3
 export type ChapterPillProps = {
   tokens: ReaderTokens
   accessibilityLabel: string
+  actionName: string
   onPress: () => void
   disabled: boolean
   /** A new value plays the animation; the first value plays nothing. */
@@ -33,6 +34,7 @@ export type ChapterPillProps = {
 export function ChapterPill({
   tokens,
   accessibilityLabel,
+  actionName,
   onPress,
   disabled,
   pulse,
@@ -96,6 +98,7 @@ export function ChapterPill({
         tokens={tokens}
         shape="pill"
         accessibilityLabel={accessibilityLabel}
+        actionName={actionName}
         onPress={onPress}
         disabled={disabled}
         style={styles.button}

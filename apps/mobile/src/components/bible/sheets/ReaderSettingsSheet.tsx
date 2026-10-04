@@ -12,18 +12,24 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useSheetListHeight } from "../../../hooks/useSheetListHeight"
+import { useT, type UiMessageKey } from "../../../i18n/useT"
 import {
   READER_TOUCH_TARGET,
   type ReaderLayout,
 } from "../../../lib/bible/reader/chrome"
-import { READER_SHEET_COPY } from "../../../lib/bible/sheets/copy"
+import {
+  BIBLE_NOTICES,
+  BIBLE_NOTICE_LANGUAGE,
+} from "../../../lib/bible/sheets/copy"
 import { readerSheetControlColors } from "../../../lib/bible/sheets/theme"
 import {
   READER_LINE_SPACING_STEPS,
   READER_MODES,
   READER_TEXT_SIZE_STEPS,
   READER_TYPEFACES,
+  type ReaderMode,
   type ReaderSettings,
+  type ReaderTypeface,
 } from "../../../lib/bible/settings/snapshot"
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
 import { readingFontFamily } from "../../../lib/bible/theme/typography"
@@ -36,7 +42,19 @@ import {
   type ReaderStepSliderProps,
 } from "./ReaderStepSlider"
 
-const COPY = READER_SHEET_COPY.settings
+type SettingsKey = UiMessageKey<"BibleReaderSettings">
+
+const MODE_KEYS: Record<ReaderMode, SettingsKey> = {
+  system: "modeSystem",
+  light: "modeLight",
+  dark: "modeDark",
+  trueDark: "modeTrueDark",
+}
+
+const TYPEFACE_KEYS: Record<ReaderTypeface, SettingsKey> = {
+  serif: "typefaceSerif",
+  sans: "typefaceSans",
+}
 
 // The screen reader says each spacing as a percent of the text size.
 const LINE_SPACING_PERCENTS = READER_LINE_SPACING_STEPS.map((factor) =>
@@ -67,6 +85,7 @@ export function ReaderSettingsSheet({
   onChange,
   onClose,
 }: ReaderSettingsSheetProps) {
+  const t = useT("BibleReaderSettings")
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
   const height = useSheetListHeight(windowHeight)
@@ -81,7 +100,7 @@ export function ReaderSettingsSheet({
       <View style={styles.header}>
         <ReaderSheetHeader
           tokens={tokens}
-          title={COPY.title}
+          title={t("title")}
           onClose={onClose}
         />
       </View>
@@ -94,20 +113,21 @@ export function ReaderSettingsSheet({
       >
         <OptionGroup
           tokens={tokens}
-          label={COPY.mode}
+          label={t("mode")}
+          actionName="bible-settings-mode"
           value={settings.mode}
           options={READER_MODES.map((mode) => ({
             value: mode,
-            label: COPY.modes[mode],
+            label: t(MODE_KEYS[mode]),
           }))}
           onSelect={(mode) => onChange({ mode })}
         />
         <SliderGroup
           testID="reader-text-size-slider"
           tokens={tokens}
-          label={COPY.textSize}
+          label={t("textSize")}
           spokenValues={READER_TEXT_SIZE_STEPS}
-          unit={COPY.textSizeUnit}
+          unit={t("textSizeAriaUnit")}
           value={settings.textSizeStep}
           onChange={(textSizeStep) => onChange({ textSizeStep })}
           start={<SizeGlyph size={13} color={glyph} />}
@@ -116,9 +136,9 @@ export function ReaderSettingsSheet({
         <SliderGroup
           testID="reader-line-spacing-slider"
           tokens={tokens}
-          label={COPY.lineSpacing}
+          label={t("lineSpacing")}
           spokenValues={LINE_SPACING_PERCENTS}
-          unit={COPY.lineSpacingUnit}
+          unit={t("lineSpacingAriaUnit")}
           value={settings.lineSpacingStep}
           onChange={(lineSpacingStep) => onChange({ lineSpacingStep })}
           start={<SpacingGlyph gap={2} color={glyph} />}
@@ -126,16 +146,17 @@ export function ReaderSettingsSheet({
         />
         <OptionGroup
           tokens={tokens}
-          label={COPY.typeface}
+          label={t("typeface")}
+          actionName="bible-settings-typeface"
           value={settings.typeface}
           options={READER_TYPEFACES.map((typeface) => ({
             value: typeface,
-            label: COPY.typefaces[typeface],
+            label: t(TYPEFACE_KEYS[typeface]),
             // Each option shows in its own face.
             textStyle: {
               fontFamily: readingFontFamily(
                 typeface,
-                COPY.typefaces[typeface],
+                t(TYPEFACE_KEYS[typeface]),
                 Platform.OS,
               ),
             },
@@ -144,15 +165,17 @@ export function ReaderSettingsSheet({
         />
         <SwitchRow
           tokens={tokens}
-          label={COPY.verseNumbers}
+          label={t("verseNumbers")}
+          actionName="bible-settings-verse-numbers"
           value={settings.verseNumbers}
           onChange={(verseNumbers) => onChange({ verseNumbers })}
         />
         {layout === "phone" && (
           <SwitchRow
             tokens={tokens}
-            label={COPY.showArrows}
-            hint={COPY.showArrowsHint}
+            label={t("showArrows")}
+            actionName="bible-settings-show-arrows"
+            hint={t("showArrowsHint")}
             value={settings.showArrows}
             onChange={(showArrows) => onChange({ showArrows })}
           />
@@ -162,18 +185,33 @@ export function ReaderSettingsSheet({
             accessibilityRole="header"
             style={[styles.groupLabel, secondary]}
           >
-            {COPY.aboutTitle}
+            {t("aboutTitle")}
           </Text>
+          {/* KTD17: the notices stay English, marked for a screen reader. */}
           {currentCredit && (
-            <Text style={[styles.credit, { color: tokens.text }]}>
-              {COPY.currentCredit(currentCredit.name, currentCredit.credit)}
+            <Text
+              style={[styles.credit, { color: tokens.text }]}
+              accessibilityLanguage={BIBLE_NOTICE_LANGUAGE}
+            >
+              {BIBLE_NOTICES.currentCredit(
+                currentCredit.name,
+                currentCredit.credit,
+              )}
             </Text>
           )}
-          <Text style={[styles.credit, secondary]}>{COPY.bsbCredit}</Text>
-          <Text style={[styles.credit, secondary]}>{COPY.catalogCredit}</Text>
-          <Text style={[styles.credit, secondary]}>
-            {COPY.versificationCredit}
-          </Text>
+          {[
+            BIBLE_NOTICES.bsbCredit,
+            BIBLE_NOTICES.catalogCredit,
+            BIBLE_NOTICES.versificationCredit,
+          ].map((notice) => (
+            <Text
+              key={notice}
+              style={[styles.credit, secondary]}
+              accessibilityLanguage={BIBLE_NOTICE_LANGUAGE}
+            >
+              {notice}
+            </Text>
+          ))}
         </View>
       </ScrollView>
     </View>
@@ -189,6 +227,8 @@ type Option<T> = {
 type OptionGroupProps<T> = {
   tokens: ReaderTokens
   label: string
+  /** The Datadog tap name for every option; the labels are translated. */
+  actionName: string
   value: T
   options: Option<T>[]
   onSelect: (value: T) => void
@@ -197,6 +237,7 @@ type OptionGroupProps<T> = {
 function OptionGroup<T extends string>({
   tokens,
   label,
+  actionName,
   value,
   options,
   onSelect,
@@ -223,6 +264,7 @@ function OptionGroup<T extends string>({
               accessibilityRole="radio"
               accessibilityState={{ selected }}
               accessibilityLabel={option.label}
+              {...{ "dd-action-name": `${actionName}-${option.value}` }}
               style={({ pressed }) => [
                 styles.option,
                 {
@@ -273,12 +315,20 @@ function SliderGroup(props: ReaderStepSliderProps) {
 type SwitchRowProps = {
   tokens: ReaderTokens
   label: string
+  actionName: string
   hint?: string
   value: boolean
   onChange: (value: boolean) => void
 }
 
-function SwitchRow({ tokens, label, hint, value, onChange }: SwitchRowProps) {
+function SwitchRow({
+  tokens,
+  label,
+  actionName,
+  hint,
+  value,
+  onChange,
+}: SwitchRowProps) {
   const controls = readerSheetControlColors(tokens)
   return (
     <View style={styles.switchRow}>
@@ -301,6 +351,7 @@ function SwitchRow({ tokens, label, hint, value, onChange }: SwitchRowProps) {
         accessibilityRole="switch"
         accessibilityLabel={label}
         accessibilityHint={hint}
+        {...{ "dd-action-name": actionName }}
       />
     </View>
   )
@@ -371,5 +422,6 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: 14,
     lineHeight: 20,
+    writingDirection: "ltr",
   },
 })

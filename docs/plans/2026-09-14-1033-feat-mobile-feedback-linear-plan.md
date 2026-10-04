@@ -80,7 +80,7 @@ Web solved the same problem for Watch with feat-399: a native form that files st
 - R7. Step two offers an optional name field, at most 100 characters, and an optional email field, at most 254 characters in a valid address shape. The person types them; the app never prefills them from the account.
 - R8. The ticket carries no account identifier, no session data, no location, and no screenshot.
 - R9. Step two offers an opt-in switch, off by default, that adds device details: app version and build, OS name and version, and device model. A disclosure lists exactly what would be sent, and shows "Unknown" for any value the phone cannot read. The platform name, iOS or Android, is always sent and is named in the disclosure.
-- R10. The sheet is in English. The app is not localized today.
+- R10. The sheet is in English. The app is not localized today. (Superseded 2026-10-05 by the mobile UI localization plan: the sheet's text reads the `Feedback` catalog namespace.)
 
 **Sending and outcome**
 

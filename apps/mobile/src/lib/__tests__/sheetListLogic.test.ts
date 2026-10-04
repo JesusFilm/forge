@@ -10,13 +10,19 @@ type Row = {
   native?: string | null
 }
 
-const params = (rows: Row[], activeId: string | null, query: string) => ({
+const params = (
+  rows: Row[],
+  activeId: string | null,
+  query: string,
+  uiTag = "en",
+) => ({
   rows,
   activeId,
   query,
   getSelectionId: (r: Row) => r.slug,
   getPrimaryLabel: (r: Row) => r.name ?? r.slug,
   getSearchValues: (r: Row) => [r.name ?? r.slug, r.native],
+  uiTag,
 })
 
 describe("acceptSheetTap", () => {
@@ -44,6 +50,22 @@ describe("assembleSheetList", () => {
   it("sorts by primary label (case-insensitive)", () => {
     const { filtered } = assembleSheetList(params(rows, null, ""))
     expect(filtered.map((r) => r.slug)).toEqual(["en", "fr", "es"])
+  })
+
+  // KTD15: the UI tag sets the order, so it is the same on iOS and Android
+  // for one tag. Russian collation puts Cyrillic first; English puts it last.
+  it("sorts by the collation of the UI tag it gets", () => {
+    const mixed: Row[] = [
+      { slug: "en", name: "English" },
+      { slug: "ru", name: "Русский" },
+      { slug: "de", name: "Deutsch" },
+    ]
+    const order = (uiTag: string) =>
+      assembleSheetList(params(mixed, null, "", uiTag)).filtered.map(
+        (r) => r.slug,
+      )
+    expect(order("ru")).toEqual(["ru", "de", "en"])
+    expect(order("en")).toEqual(["de", "en", "ru"])
   })
 
   it("hoists the active row out of the list and into `active`", () => {

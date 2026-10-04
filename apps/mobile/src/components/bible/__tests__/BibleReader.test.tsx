@@ -106,7 +106,6 @@ import { fitFloor } from "../../../lib/bible/fit/fitVerse"
 import { VERSE_BOX_GAP } from "../../../lib/bible/fit/verseBox"
 import { contrastRatio } from "../../../lib/bible/theme/contrast"
 import { readerTokens } from "../../../lib/bible/theme/palettes"
-import { READER_COPY } from "../../../lib/bible/reader/copy"
 import {
   READER_TOP_BAR_HEIGHT,
   READER_TOUCH_TARGET,
@@ -123,6 +122,11 @@ import {
 } from "../BibleReader"
 import { ReaderTopBar } from "../ReaderTopBar"
 import { VERSE_SLIDE_HOLD_MS } from "../VerseSlider"
+import { getT } from "../../../i18n/useT"
+import { BIBLE_NOTICES } from "../../../lib/bible/sheets/copy"
+
+const readerT = getT("BibleReader")
+const commonT = getT("Common")
 
 declare const __dirname: string
 const fs = jest.requireActual<{
@@ -412,7 +416,7 @@ describe("BibleReader — the verse", () => {
 
     const note = byTestId(renderer, "bible-missing-verse")
     expect(note).toHaveLength(1)
-    expect(textOf(note[0]!)).toBe(READER_COPY.missingVerse(11))
+    expect(textOf(note[0]!)).toBe(readerT("missingVerse", { verse: 11 }))
     expect(textNodes(renderer, "11 / 35")).toHaveLength(1)
     // Never a blank screen: no verse, no loading, only the note.
     expect(byTestId(renderer, "bible-verse")).toHaveLength(0)
@@ -510,7 +514,7 @@ describe("BibleReader — the verse", () => {
         renderer,
         (node) =>
           node.props.accessibilityLabel ===
-          READER_COPY.choosePassage("John 4:6-8"),
+          readerT("choosePassageAriaLabel", { passage: "John 4:6-8" }),
       ),
     ).not.toHaveLength(0)
     const numbers = hosts(
@@ -731,7 +735,7 @@ describe("BibleReader — loading and failure", () => {
     expect(
       hosts(
         renderer,
-        (node) => node.props.accessibilityLabel === READER_COPY.loading,
+        (node) => node.props.accessibilityLabel === readerT("loadingAriaLabel"),
       ).length,
     ).toBeGreaterThan(0)
   })
@@ -743,12 +747,10 @@ describe("BibleReader — loading and failure", () => {
     const renderer = await render(services)
 
     expect(byTestId(renderer, "bible-reader-message")).toHaveLength(1)
-    expect(textNodes(renderer, READER_COPY.failure.offlineTitle)).toHaveLength(
-      1,
-    )
-    const isRetry = (label: string) => label === READER_COPY.failure.retry
+    expect(textNodes(renderer, readerT("offlineTitle"))).toHaveLength(1)
+    const isRetry = (label: string) => label === readerT("retry")
     const isSwitch = (label: string) =>
-      label === READER_COPY.failure.switchTo("BSB")
+      label === readerT("readIn", { shortName: "BSB" })
     expect(controlHostsLabelled(renderer, isRetry)).toHaveLength(1)
     expect(controlHostsLabelled(renderer, isSwitch)).toHaveLength(1)
 
@@ -811,7 +813,7 @@ describe("BibleReader — the chrome", () => {
     expect(
       hosts(
         tabReader,
-        (node) => node.props.accessibilityLabel === READER_COPY.back,
+        (node) => node.props.accessibilityLabel === commonT("goBackAriaLabel"),
       ),
     ).toHaveLength(0)
 
@@ -821,7 +823,7 @@ describe("BibleReader — the chrome", () => {
       host: "pushed",
       onBack,
     } as Partial<BibleReaderProps>)
-    const isBack = (label: string) => label === READER_COPY.back
+    const isBack = (label: string) => label === commonT("goBackAriaLabel")
     expect(controlHostsLabelled(pushedReader, isBack)).toHaveLength(1)
     await pressControl(pushedReader, isBack)
     expect(onBack).toHaveBeenCalledTimes(1)
@@ -861,8 +863,8 @@ describe("BibleReader — the chrome", () => {
     const renderer = await render(services, handlers)
     const press = (label: string) =>
       pressControl(renderer, (item) => item === label)
-    await press(READER_COPY.choosePassage("John 3:16"))
-    await press(READER_COPY.settings)
+    await press(readerT("choosePassageAriaLabel", { passage: "John 3:16" }))
+    await press(readerT("settingsAriaLabel"))
     expect(handlers.onOpenPassagePicker).toHaveBeenCalledTimes(1)
     expect(handlers.onOpenSettings).toHaveBeenCalledTimes(1)
     expect(
@@ -893,10 +895,12 @@ describe("BibleReader — the chrome", () => {
         renderer,
         (label) =>
           label ===
-          READER_COPY.translation(
-            "Berean Standard Bible",
-            READER_COPY.pillStatus.downloading(40),
-          ),
+          readerT("translationWithStatusAriaLabel", {
+            name: "Berean Standard Bible",
+            status: readerT("translationDownloadingAriaStatus", {
+              percent: 40,
+            }),
+          }),
       ),
     ).toHaveLength(1)
     // GlassView renders nothing in this suite, so the pill's ring never draws
@@ -911,7 +915,11 @@ describe("BibleReader — the chrome", () => {
   it("credits Still in the footer", async () => {
     const { services } = makeServices()
     const renderer = await render(services)
-    expect(textNodes(renderer, READER_COPY.stillCredit)).toHaveLength(1)
+    const credit = textNodes(renderer, BIBLE_NOTICES.stillCredit)
+    expect(credit).toHaveLength(1)
+    // KTD17: the credit stays English, so a screen reader reads it as English.
+    expect(BIBLE_NOTICES.stillCredit).toBe("Powered by StillBibleApp.com")
+    expect(credit[0]?.props.accessibilityLanguage).toBe("en")
   })
 
   it("renders the status bar override only while the screen has focus", async () => {
@@ -946,7 +954,7 @@ describe("BibleReader — the pushed reader's start (U11, AE15)", () => {
   const pills = (renderer: TestInstance, passage: string) =>
     controlHostsLabelled(
       renderer,
-      (label) => label === READER_COPY.choosePassage(passage),
+      (label) => label === readerT("choosePassageAriaLabel", { passage }),
     )
 
   const saved = (ref: VerseRef) =>
@@ -1152,7 +1160,8 @@ describe("BibleReader — reader visits (U14, KTD18)", () => {
 
     await pressControl(
       renderer,
-      (label) => label === READER_COPY.choosePassage("John 3:16"),
+      (label) =>
+        label === readerT("choosePassageAriaLabel", { passage: "John 3:16" }),
     )
     await focus(renderer, props, false)
     await focus(renderer, props, true)
@@ -1212,7 +1221,7 @@ describe("BibleReader — theme read from the rendered tree", () => {
       const page = String(flat(root!).backgroundColor)
       const [verse] = textNodes(renderer, "For God so loved")
       const [counter] = textNodes(renderer, "16 / 36")
-      const [credit] = textNodes(renderer, READER_COPY.stillCredit)
+      const [credit] = textNodes(renderer, BIBLE_NOTICES.stillCredit)
       // The property, not one variant's node: every text is judged on the page.
       for (const node of [verse, counter, credit]) {
         expect(node).toBeDefined()

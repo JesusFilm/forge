@@ -4,7 +4,12 @@ import {
   isSeriesRecord,
   isSeriesSearchResult,
 } from "../isSeriesRecord"
-import { labelText } from "../videoLabel"
+import { getT } from "../../i18n/useT"
+import { labelText as labelTextIn } from "../videoLabel"
+
+// The English catalog; no locale is started, so the store keeps its default.
+const labelText = (label: string | null) =>
+  labelTextIn(label, getT("VideoLabel"))
 
 describe("isSeriesLabel", () => {
   it("matches SERIES and COLLECTION case-insensitively", () => {

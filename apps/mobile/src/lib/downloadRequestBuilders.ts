@@ -15,6 +15,8 @@ export type StartDownloadRequest = {
   videoSlug: string
   /** Human title stored on the record for the offline library. */
   title: string
+  /** The UI catalog tag the titles are in: the screen's captured forms (U7). */
+  titleLocale?: string
   dubDocumentId: string
   /** The chosen rendition (documentId/quality/size/url) to download. */
   rendition: WatchDownload
@@ -80,6 +82,7 @@ export function buildRequestRecord(
     renditionDocumentId: request.rendition.documentId,
     qualityLabel: request.rendition.quality,
     title: request.title,
+    titleLocale: request.titleLocale,
     subtitleLanguageSlug: request.subtitleLanguageSlug,
     state,
     committedPath: null,
@@ -107,6 +110,7 @@ export function buildReattachRequest(
   return {
     videoSlug: record.videoSlug,
     title: record.title,
+    titleLocale: record.titleLocale,
     dubDocumentId: record.dubDocumentId,
     rendition: {
       documentId: record.renditionDocumentId,

@@ -3,13 +3,15 @@
 // a merged range (T4T JHN 4:6-8), and Synodal numbers (SYN PSA 50).
 import synodalPsalm50 from "../../text/__tests__/fixtures/rus_syn-psa-50.json"
 import t4tJohn4 from "../../text/__tests__/fixtures/eng_t4t-jhn-4.json"
-import { READER_COPY } from "../../reader/copy"
 import { normalizeChapterFile, parseBookText } from "../../text/normalize"
 import { chapterPositions } from "../../text/positions"
 import type { UsfmBookId } from "../../text/books"
 import type { ChapterPosition, ChapterText } from "../../text/types"
 import { selectionChapterKey, tapStop, type VerseSelection } from "../selection"
 import { shareText } from "../shareText"
+import { getT } from "../../../../i18n/useT"
+
+const readerT = getT("BibleReader")
 
 declare const __dirname: string
 const fs = jest.requireActual<{
@@ -87,7 +89,7 @@ describe("shareText (R19, R42)", () => {
 
   it("leaves out the Matthew 18:11 note but keeps the reference whole (R21)", () => {
     const text = share(bsb("MAT", 18), [10, 12], "BSB")
-    expect(text).not.toContain(READER_COPY.missingVerse(11))
+    expect(text).not.toContain(readerT("missingVerse", { verse: 11 }))
     expect(text).not.toMatch(/(^|\s)11 /)
     expect(text.startsWith("10 See that you do not look down")).toBe(true)
     expect(text).toContain(" 12 What do you think?")

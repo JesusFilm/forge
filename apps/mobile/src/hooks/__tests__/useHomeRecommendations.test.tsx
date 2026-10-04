@@ -32,6 +32,31 @@ jest.mock("../../contexts/WatchPreferencesProvider", () => ({
   useWatchPreferences: jest.fn(() => ({ audioLanguageSlug: null })),
 }))
 
+// U7: the phone's languages reach the controller through the real locale
+// store. `ru` is a fixture catalog, so a phone change moves the epoch.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(jest.requireActual("../../i18n/catalogs.generated"), {
+      ru: {},
+    }),
+)
+jest.mock("../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../i18n/pluralData.generated"),
+      ["ru"],
+    ),
+)
+
 import { StrictMode, act, createElement } from "react"
 import type React from "react"
 import { AppState } from "react-native"
@@ -42,13 +67,25 @@ import {
   type UseHomeRecommendationsOptions,
 } from "../useHomeRecommendations"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../i18n/localeStore"
 import { datadogLog } from "../../lib/datadog"
-import type { UserRecommendationsClient } from "../useUserRecommendations"
+import * as delivery from "../../lib/recommendations/delivery"
 import type {
+  DeliveryDeps,
   DeliveryResult,
+  RawUserRecommendationDelivery,
   UserRecommendationItem,
   UserRecommendationSlate,
 } from "../../lib/recommendations/delivery"
+import { phoneLocales } from "../../test-utils/uiLocaleFixture"
+import {
+  getUserRecommendationsClient,
+  type UserRecommendationsClient,
+} from "../useUserRecommendations"
 import {
   TestRenderer,
   type NodePath,
@@ -154,6 +191,7 @@ function renderController(
   mounted.push(renderer)
   return {
     latest: () => seen[seen.length - 1]!,
+    all: () => seen,
     rerender: (next: UseHomeRecommendationsOptions) =>
       act(() => {
         renderer.update(wrap(next))
@@ -203,7 +241,20 @@ afterEach(() => {
   })
   jest.useRealTimers()
   jest.clearAllMocks()
+  resetLocaleStoreForTests()
 })
+
+function startPhone(tag: string): void {
+  mockGetLocales.mockReturnValue(phoneLocales(tag))
+  startLocaleSync()
+}
+
+async function changePhone(tag: string): Promise<void> {
+  mockGetLocales.mockReturnValue(phoneLocales(tag))
+  await act(async () => {
+    refreshLocale()
+  })
+}
 
 describe("the deferred first fetch", () => {
   it("sends nothing until the shelf reports its first mount (R7)", async () => {
@@ -255,6 +306,229 @@ describe("the deferred first fetch", () => {
     hook.rerender(OPEN)
     await flush()
     expect(c.fetch).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ── U7: the UI language (KTD11, KTD16) ──────────────────────────────────────
+
+async function mountShelf(
+  c: TestClient,
+  initial: UseHomeRecommendationsOptions = OPEN,
+  options: { strict?: boolean } = {},
+) {
+  const hook = renderController(initial, c, options)
+  act(() => hook.latest().reportShelfMounted())
+  await flush()
+  return hook
+}
+
+type FetchInput = { locale: string; audioLanguageSlug: string }
+
+function askedSince(c: TestClient, before: number): FetchInput[] {
+  return c.fetch.mock.calls.slice(before).map(([input]: [FetchInput]) => input)
+}
+
+describe("the request's languages (KTD11)", () => {
+  // KTD12: with no pick, the phone's language picks the audio, as the player
+  // does. `ha` has no UI catalog, so the metadata stays English.
+  it.each<[string, string, string | null, string, string]>([
+    [
+      "the table's For You locale with the saved pick",
+      "ru-RU",
+      "english",
+      "ru",
+      "english",
+    ],
+    [
+      "Hausa audio for a Hausa phone with no pick",
+      "ha-NG",
+      null,
+      "en",
+      "hausa",
+    ],
+  ])("asks for %s", async (_name, phone, pick, locale, audio) => {
+    startPhone(phone)
+    mockPreferences.mockReturnValue({ audioLanguageSlug: pick })
+    const c = client()
+    await mountShelf(c)
+    expect(c.fetch).toHaveBeenCalledWith({
+      locale,
+      audioLanguageSlug: audio,
+      count: 6,
+      attempt: 1,
+    })
+  })
+
+  // AE9 through the app's client and its coverage retry: Admin has no
+  // (ru, english) pool, so the shelf shows the (en, english) slate.
+  it("shows the English-metadata slate when the Russian pair has no pool (AE9)", async () => {
+    startPhone("ru-RU")
+    mockPreferences.mockReturnValue({ audioLanguageSlug: "english" })
+    const asked: string[] = []
+    const englishSlate = slate("req-en")
+    const deps: DeliveryDeps = {
+      getIdentity: async () => ({
+        kind: "ready",
+        identity: { viewerToken: "v".repeat(43), sessionToken: "s".repeat(43) },
+        personalization: true,
+      }),
+      query: async (variables) => {
+        asked.push(`${variables.locale}:${variables.audioLanguageSlug}`)
+        if (variables.locale === "ru") {
+          return {
+            contractVersion: "user-recommendation-v1",
+            surfaceVersion: "watch-for-you-v1",
+            requestId: null,
+            result: "unavailable",
+            reason: "coverage_unavailable",
+            items: [],
+          } as unknown as RawUserRecommendationDelivery
+        }
+        return {
+          contractVersion: "user-recommendation-v1",
+          surfaceVersion: "watch-for-you-v1",
+          requestId: englishSlate.requestId,
+          result: "served",
+          reason: null,
+          expiresAt: null,
+          requestedCount: 6,
+          profileCount: 0,
+          curatedCount: 6,
+          cohort: "cold_start",
+          poolVersion: null,
+          items: englishSlate.items,
+        } as unknown as RawUserRecommendationDelivery
+      },
+      invalidateIdentity: async () => undefined,
+      touch: () => undefined,
+      report: () => undefined,
+    }
+    const spy = jest.spyOn(delivery, "getDeliveryDeps").mockReturnValue(deps)
+    const hook = await mountShelf(
+      client({ fetch: jest.fn(getUserRecommendationsClient().fetch) }),
+    )
+    spy.mockRestore()
+    expect(asked).toEqual(["ru:english", "en:english"])
+    expect(hook.latest().status).toBe("served")
+    expect(hook.latest().slate?.items.map((entry) => entry.videoTitle)).toEqual(
+      englishSlate.items.map((entry) => entry.videoTitle),
+    )
+  })
+})
+
+describe("a UI language change (KTD16)", () => {
+  it("clears the shelf to its skeleton at once and refetches in the new locale", async () => {
+    startPhone("en-US")
+    const c = client()
+    const hook = await mountShelf(c, OPEN, { strict: true })
+    const oldSlate = hook.latest().slate
+    expect(oldSlate).not.toBeNull()
+    const before = c.fetch.mock.calls.length
+    const rendersBefore = hook.all().length
+
+    await changePhone("ru-RU")
+    await flush()
+    // No render after the change carries the old slate, not even for one commit.
+    const after = hook.all().slice(rendersBefore)
+    expect(after.filter((seen) => seen.slate === oldSlate)).toHaveLength(0)
+    const localesAsked = askedSince(c, before).map((input) => input.locale)
+    expect(localesAsked.length).toBeGreaterThan(0)
+    expect(new Set(localesAsked)).toEqual(new Set(["ru"]))
+    expect(hook.latest().status).toBe("served")
+  })
+
+  it("clears the shelf in the commit after the change, and holds the new locale's fetch until Home has focus", async () => {
+    startPhone("en-US")
+    const c = client()
+    const hook = await mountShelf(c, OPEN, { strict: true })
+    hook.rerender({ gateOpen: true, focused: false })
+    await flush()
+    const oldSlate = hook.latest().slate
+    expect(oldSlate).not.toBeNull()
+    const before = c.fetch.mock.calls.length
+    const rendersBefore = hook.all().length
+
+    await changePhone("ru-RU")
+    await flush()
+    const after = hook.all().slice(rendersBefore)
+    expect(after.length).toBeGreaterThan(0)
+    expect(after.filter((seen) => seen.slate === oldSlate)).toHaveLength(0)
+    expect(hook.latest().slate).toBeNull()
+    expect(hook.latest().status).toBe("idle")
+    expect(c.fetch).toHaveBeenCalledTimes(before)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(askedSince(c, before).map((input) => input.locale)).toEqual(["ru"])
+    expect(hook.latest().slate).not.toBeNull()
+  })
+})
+
+// R21: `ha` and `yo` have no UI catalog, so the change keeps the epoch and
+// moves only the default audio, which only a viewer with no pick hears.
+describe("a phone change that keeps the catalog (R21)", () => {
+  it("asks for the new default audio once Home has focus, and keeps the slate on show", async () => {
+    startPhone("ha-NG")
+    const c = client()
+    const hook = await mountShelf(c)
+    hook.rerender({ gateOpen: true, focused: false })
+    await flush()
+    const before = c.fetch.mock.calls.length
+    const rendersBefore = hook.all().length
+
+    await changePhone("yo-NG")
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(before)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(askedSince(c, before)).toEqual([
+      { locale: "en", audioLanguageSlug: "yoruba", count: 6, attempt: 1 },
+    ])
+    const after = hook.all().slice(rendersBefore)
+    expect(after.filter((seen) => seen.slate === null)).toHaveLength(0)
+    expect(hook.latest().slate?.requestId).toBe("req-2")
+  })
+
+  it("asks for the new default audio at once while Home has focus", async () => {
+    startPhone("ha-NG")
+    const c = client()
+    await mountShelf(c)
+    const before = c.fetch.mock.calls.length
+
+    await changePhone("yo-NG")
+    await flush()
+    expect(
+      askedSince(c, before).map((input) => input.audioLanguageSlug),
+    ).toEqual(["yoruba"])
+  })
+
+  it("changes nothing for a viewer with an audio pick", async () => {
+    startPhone("ha-NG")
+    mockPreferences.mockReturnValue({ audioLanguageSlug: "french" })
+    const c = client()
+    const hook = await mountShelf(c)
+    const shown = hook.latest().slate
+    expect(shown).not.toBeNull()
+    const rendersBefore = hook.all().length
+
+    await changePhone("yo-NG")
+    await flush()
+    hook.rerender({ gateOpen: true, focused: false })
+    await flush()
+    hook.rerender(OPEN)
+    await flush()
+
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+    expect(c.fetch).toHaveBeenCalledWith({
+      locale: "en",
+      audioLanguageSlug: "french",
+      count: 6,
+      attempt: 1,
+    })
+    const after = hook.all().slice(rendersBefore)
+    expect(after.length).toBeGreaterThan(0)
+    expect(after.filter((seen) => seen.slate !== shown)).toHaveLength(0)
   })
 })
 

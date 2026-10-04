@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useSlideUpSheet } from "../../hooks/useSlideUpSheet"
+import { useT } from "../../i18n/useT"
 import { BG_COLOR, BLACK, hexToRgba } from "../../lib/color"
 import { FeedbackSheetContent } from "./FeedbackSheetContent"
 import type { FeedbackSheetContext } from "./feedbackFlow"
@@ -29,6 +30,7 @@ export type FeedbackModalProps = {
  * the More door; owns only presentation, the R19 lock, R11 suppression. */
 export function FeedbackModal({ context, onClose }: FeedbackModalProps) {
   const insets = useSafeAreaInsets()
+  const t = useT("Feedback")
   const reduceMotion = useReduceMotion()
   // This component exists only while presented, so the flag is constant.
   useNonRouteSheetSuppression(true, "feedbackModal")
@@ -74,7 +76,8 @@ export function FeedbackModal({ context, onClose }: FeedbackModalProps) {
           style={styles.backdrop}
           onPress={close}
           accessibilityRole="button"
-          accessibilityLabel="Dismiss feedback"
+          accessibilityLabel={t("dismissAriaLabel")}
+          {...{ "dd-action-name": "feedback-dismiss" }}
         />
         {/* AE13: the keyboard shrinks this box, the panel takes a share of what
             is left, and the form's own ScrollView scrolls inside that share —

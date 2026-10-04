@@ -9,6 +9,7 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import {
   ACCENT,
@@ -46,6 +47,7 @@ export function DeleteConfirmSheet({
 }: DeleteConfirmSheetProps) {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
+  const t = useT("Library")
   const [mounted, setMounted] = useState(visible)
   const translateY = useRef(
     new Animated.Value(visible ? 0 : SHEET_OFFSCREEN),
@@ -101,7 +103,8 @@ export function DeleteConfirmSheet({
           style={StyleSheet.absoluteFill}
           onPress={onCancel}
           accessibilityRole="button"
-          accessibilityLabel="Dismiss"
+          accessibilityLabel={t("dismissAriaLabel")}
+          {...{ "dd-action-name": "library-delete-dismiss" }}
         />
       </Animated.View>
       <Animated.View
@@ -113,10 +116,10 @@ export function DeleteConfirmSheet({
       >
         <View style={styles.grabber} />
         <Text style={[styles.title, typography.titleSmall]}>
-          {`Delete ${count} video${count === 1 ? "" : "s"}?`}
+          {t("deleteTitle", { count })}
         </Text>
         <Text style={[styles.body, typography.body]}>
-          {`They'll be removed from your downloads and free up ${formatLibraryBytes(combinedBytes)}. You can download them again anytime.`}
+          {t("deleteBody", { size: formatLibraryBytes(combinedBytes) })}
         </Text>
         <Pressable
           onPress={onConfirm}
@@ -125,9 +128,12 @@ export function DeleteConfirmSheet({
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Delete"
+          accessibilityLabel={t("delete")}
+          {...{ "dd-action-name": "library-delete-confirm" }}
         >
-          <Text style={[styles.deleteText, typography.body]}>Delete</Text>
+          <Text style={[styles.deleteText, typography.body]}>
+            {t("delete")}
+          </Text>
         </Pressable>
         <Pressable
           onPress={onCancel}
@@ -136,9 +142,12 @@ export function DeleteConfirmSheet({
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Cancel"
+          accessibilityLabel={t("cancel")}
+          {...{ "dd-action-name": "library-delete-cancel" }}
         >
-          <Text style={[styles.cancelText, typography.body]}>Cancel</Text>
+          <Text style={[styles.cancelText, typography.body]}>
+            {t("cancel")}
+          </Text>
         </Pressable>
       </Animated.View>
     </>

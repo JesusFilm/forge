@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
 import { BG_COLOR, TEXT_PRIMARY } from "../../lib/color"
 import { HORIZONTAL_PADDING, button, feedback } from "../../styles/shared"
 import { HOME_HEADER_ROW_TOP } from "./homeHeaderLayout"
@@ -13,10 +15,13 @@ export type ScreenTopBarAction = {
   icon: ComponentProps<typeof Ionicons>["name"]
   accessibilityLabel: string
   onPress: () => void
+  /** The RUM tap name, so a translated label does not split the series. */
+  actionName?: string
 }
 
 export type ScreenTopBarProps = {
-  /** Omitted on the My Watch tab, whose tab bar item already names it. */
+  /** UI catalog text. Omitted on the My Watch tab, whose tab bar item already
+   *  names it. */
   title?: string
   /** Adds a leading back control, for a screen pushed over My Watch. */
   showBack?: boolean
@@ -51,6 +56,8 @@ export function ScreenTopBar({
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("Common")
+  const uiDirection = useTextDirection().ui
 
   const handleBack = () => leaveToMyWatch(router)
   // Overlaid, only the controls take touches, so a drag beside them scrolls.
@@ -75,7 +82,8 @@ export function ScreenTopBar({
           <Pressable
             onPress={handleBack}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t("goBackAriaLabel")}
+            {...{ "dd-action-name": "screen-top-bar-back" }}
             style={({ pressed }) => [
               button.iconButton44,
               styles.leading,
@@ -92,6 +100,7 @@ export function ScreenTopBar({
             style={[
               styles.title,
               showBack ? typography.titleLarge : typography.headingScale.h2,
+              uiDirection,
             ]}
           >
             {title}
@@ -104,6 +113,9 @@ export function ScreenTopBar({
             onPress={trailingAction.onPress}
             accessibilityRole="button"
             accessibilityLabel={trailingAction.accessibilityLabel}
+            {...(trailingAction.actionName != null && {
+              "dd-action-name": trailingAction.actionName,
+            })}
             style={({ pressed }) => [
               button.iconButton44,
               styles.trailing,

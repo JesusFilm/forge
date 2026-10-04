@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { ACCENT, TEXT_ON_OVERLAY, TEXT_PRIMARY } from "../../lib/color"
 import { formatLibraryBytes } from "../../lib/libraryDownloads"
 import { feedback } from "../../styles/shared"
@@ -34,6 +35,7 @@ export function SelectionActionBar({
   onDeletePress,
 }: SelectionActionBarProps) {
   const insets = useSafeAreaInsets()
+  const t = useT("Library")
   const typography = useTypography()
 
   // On iOS the bar takes a UIKit tab bar's box: flush, full width, its own
@@ -70,14 +72,15 @@ export function SelectionActionBar({
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Retry failed downloads"
+          accessibilityLabel={t("retryFailedAriaLabel")}
+          {...{ "dd-action-name": "library-retry-failed" }}
         >
           <Ionicons name="refresh" size={17} color={TEXT_PRIMARY} />
           <Text
             maxFontSizeMultiplier={ACTION_LABEL_MAX_FONT_SCALE}
             style={[styles.ghostText, typography.bodySmall]}
           >
-            Retry failed
+            {t("retryFailed")}
           </Text>
         </Pressable>
       )}
@@ -93,10 +96,9 @@ export function SelectionActionBar({
         ]}
         accessibilityRole="button"
         accessibilityLabel={
-          count > 0
-            ? `Delete ${count} selected video${count === 1 ? "" : "s"}`
-            : "Delete"
+          count > 0 ? t("deleteSelectedAriaLabel", { count }) : t("delete")
         }
+        {...{ "dd-action-name": "library-delete-selected" }}
       >
         <Ionicons name="trash-outline" size={17} color={TEXT_ON_OVERLAY} />
         <Text
@@ -104,8 +106,11 @@ export function SelectionActionBar({
           style={[styles.dangerText, typography.bodySmall]}
         >
           {count > 0
-            ? `Delete ${count} · ${formatLibraryBytes(combinedBytes)}`
-            : "Delete"}
+            ? t("deleteWithSize", {
+                count,
+                size: formatLibraryBytes(combinedBytes),
+              })
+            : t("delete")}
         </Text>
       </Pressable>
     </View>

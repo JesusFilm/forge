@@ -2,24 +2,31 @@ import type { ComponentProps } from "react"
 import type Ionicons from "@expo/vector-icons/Ionicons"
 import type { Href } from "expo-router"
 
+import type { UiMessageKey } from "../i18n/useT"
 import { TERMS_OF_USE_CANONICAL_URL } from "./terms-of-use"
 
+type MoreKey = UiMessageKey<"More">
+
 export type MyWatchLink = {
-  label: string
+  labelKey: MoreKey
   url: string
   /** The RUM tap name, so a label change does not split the series. */
   actionName: string
 }
 
-export type MyWatchSocialLink = MyWatchLink & {
+export type MyWatchSocialLink = {
+  /** A brand name, the same in every language. */
+  label: string
+  url: string
+  actionName: string
   icon: ComponentProps<typeof Ionicons>["name"]
 }
 
 /** A row that opens a screen inside the app instead of the browser. */
 export type MyWatchRouteLink = {
-  label: string
+  labelKey: MoreKey
   route: Href
-  hint: string
+  hintKey: MoreKey
   actionName: string
 }
 
@@ -27,7 +34,7 @@ export type MyWatchGroupRow = MyWatchLink | MyWatchRouteLink
 
 export type MyWatchLinkGroup = {
   id: "support" | "about" | "legal"
-  title: string
+  titleKey: MoreKey
   links: readonly MyWatchGroupRow[]
   socials?: readonly MyWatchSocialLink[]
 }
@@ -65,16 +72,16 @@ export const SOCIAL_LINKS: readonly MyWatchSocialLink[] = [
 export const MY_WATCH_LINK_GROUPS: readonly MyWatchLinkGroup[] = [
   {
     id: "support",
-    title: "Support",
+    titleKey: "supportGroup",
     links: [
       {
-        label: "Send Feedback",
+        labelKey: "sendFeedback",
         route: "/feedback",
-        hint: "Opens the feedback form",
+        hintKey: "sendFeedbackAriaHint",
         actionName: "more-send-feedback",
       },
       {
-        label: "Contact Jesus Film Project",
+        labelKey: "contactUs",
         url: "https://www.jesusfilm.org/contact/",
         actionName: "more-contact-us",
       },
@@ -82,20 +89,20 @@ export const MY_WATCH_LINK_GROUPS: readonly MyWatchLinkGroup[] = [
   },
   {
     id: "about",
-    title: "About",
+    titleKey: "aboutGroup",
     links: [
       {
-        label: "About Jesus Film",
+        labelKey: "aboutJesusFilm",
         url: "https://www.jesusfilm.org/about/",
         actionName: "more-about-jesus-film",
       },
       {
-        label: "Newsletter",
+        labelKey: "newsletter",
         url: "https://www.jesusfilm.org/email/",
         actionName: "more-newsletter",
       },
       {
-        label: "Give",
+        labelKey: "give",
         url: "https://www.jesusfilm.org/give/",
         actionName: "more-give",
       },
@@ -104,20 +111,20 @@ export const MY_WATCH_LINK_GROUPS: readonly MyWatchLinkGroup[] = [
   },
   {
     id: "legal",
-    title: "Legal",
+    titleKey: "legalGroup",
     links: [
       {
-        label: "Privacy Policy",
+        labelKey: "privacyPolicy",
         url: PRIVACY_POLICY_URL,
         actionName: "more-privacy-policy",
       },
       {
-        label: "Terms of Use",
+        labelKey: "termsOfUse",
         url: TERMS_OF_USE_CANONICAL_URL,
         actionName: "more-terms-of-use",
       },
       {
-        label: "Legal Statement",
+        labelKey: "legalStatement",
         url: "https://www.jesusfilm.org/legal/",
         actionName: "more-legal-statement",
       },

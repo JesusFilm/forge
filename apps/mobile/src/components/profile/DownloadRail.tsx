@@ -1,6 +1,7 @@
 import { useCallback } from "react"
 import { FlatList, useWindowDimensions } from "react-native"
 
+import { useT } from "../../i18n/useT"
 import type { MyWatchRailTile } from "../../lib/myWatchRail"
 import { CARD_GAP, carousel } from "../../styles/shared"
 import { homeCardWidth } from "../home/HomeCard"
@@ -14,6 +15,7 @@ export type DownloadRailProps = {
 /** The My Watch Downloads rail: Home's landscape card size and snap. */
 export function DownloadRail({ tiles, onPressTile }: DownloadRailProps) {
   const { width: screenWidth } = useWindowDimensions()
+  const t = useT("MyWatch")
   const tileWidth = homeCardWidth("landscape", screenWidth)
 
   const renderItem = useCallback(
@@ -34,7 +36,7 @@ export function DownloadRail({ tiles, onPressTile }: DownloadRailProps) {
       snapToInterval={tileWidth + CARD_GAP}
       snapToAlignment="start"
       decelerationRate="fast"
-      accessibilityLabel={`${tiles.length} items in Downloads`}
+      accessibilityLabel={t("railAriaLabel", { count: tiles.length })}
     />
   )
 }

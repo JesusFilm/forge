@@ -188,6 +188,19 @@ function makeHarness(options: HarnessOptions = {}) {
   }
 }
 
+// U7 (R4): the offline title refresh writes through the lifecycle. The field
+// merge over the current record is pinned in offlineTitleRefresh.test.ts.
+describe("patchTitles", () => {
+  it("writes nothing for a record that is gone", async () => {
+    const h = makeHarness()
+    await h.lifecycle.patchTitles("washi-gospel-1", {
+      title: "Новое",
+      titleLocale: "ru",
+    })
+    expect(h.writes).toHaveLength(0)
+  })
+})
+
 describe("start", () => {
   it("refuses a live non-placeholder record with `exists`", async () => {
     const h = makeHarness({ records: [makeRecord()] })
@@ -359,6 +372,29 @@ describe("swap", () => {
     const midSwap = h.writes[0]
     expect(midSwap.dubDocumentId).toBe("dub-2")
     expect(midSwap.swapFrom?.dubDocumentId).toBe("dub-1")
+  })
+
+  // U7: a title and its locale are one pair, so a swap writes both or neither.
+  it.each([
+    [
+      "with a new title stores that title's locale",
+      { title: "English title", titleLocale: "en" },
+      { title: "Русское название", titleLocale: "ru" },
+    ],
+    [
+      "without a title keeps the old title and its locale",
+      { title: "Русское название", titleLocale: "ru" },
+      { title: "", titleLocale: "en" },
+    ],
+  ])("a swap %s", async (_case, stored, requested) => {
+    const h = makeHarness({ records: [makeRecord(stored)] })
+    const request = makeRequest(requested)
+    request.rendition = { ...request.rendition, documentId: "rend-2" }
+    expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
+    expect(h.writes[0]).toMatchObject({
+      title: "Русское название",
+      titleLocale: "ru",
+    })
   })
 
   // U1 regression: swap() spreads `...existing`, so it must preserve the five

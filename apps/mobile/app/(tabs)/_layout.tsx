@@ -3,7 +3,7 @@ import { Platform } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { isExploreAvailable } from "../../src/lib/explore/availability"
-import { TAB_LABELS, useTabBarStyle } from "../../src/lib/tabBar"
+import { useTabBarStyle, useTabLabels } from "../../src/lib/tabBar"
 
 const ACCENT = "#CB333B"
 const MUTED = "#a8a29e"
@@ -15,6 +15,7 @@ const MUTED = "#a8a29e"
  */
 export default function TabLayout() {
   const tabBarStyle = useTabBarStyle()
+  const labels = useTabLabels()
 
   return (
     <Tabs
@@ -34,7 +35,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: TAB_LABELS.index,
+          title: labels.index,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color as string} />
           ),
@@ -43,7 +44,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: TAB_LABELS.explore,
+          title: labels.explore,
           // KTD16: `null` hides the button. The route stays reachable by URL,
           // so explore.tsx checks the gate as well.
           href: isExploreAvailable() ? undefined : null,
@@ -55,7 +56,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="watch"
         options={{
-          title: TAB_LABELS.watch,
+          title: labels.watch,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search" size={size} color={color as string} />
           ),
@@ -64,7 +65,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="bible"
         options={{
-          title: TAB_LABELS.bible,
+          title: labels.bible,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="book" size={size} color={color as string} />
           ),
@@ -73,7 +74,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: TAB_LABELS.profile,
+          title: labels.profile,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color as string} />
           ),

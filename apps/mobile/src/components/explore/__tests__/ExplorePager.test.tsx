@@ -40,7 +40,6 @@ import {
   type ExplorePagerSlot,
   type ExplorePagerUnderlay,
 } from "../ExplorePager"
-import { EXPLORE_COPY } from "../../../lib/explore/copy"
 
 const { useReduceMotion } = jest.requireMock(
   "../../../hooks/useReduceMotion",
@@ -907,8 +906,8 @@ describe("accessibility (R35)", () => {
 
     const actions = clipElement(harness, current).props.accessibilityActions
     expect(actions).toEqual([
-      { name: "next", label: EXPLORE_COPY.pagerActions.next },
-      { name: "previous", label: EXPLORE_COPY.pagerActions.previous },
+      { name: "next", label: "Next clip" },
+      { name: "previous", label: "Previous clip" },
     ])
     for (const [key, slot] of harness.slots) {
       if (key === current) continue
@@ -929,7 +928,7 @@ describe("accessibility (R35)", () => {
 
     const element = clipElement(harness, keyWithRole(harness, "current"))
     expect(element.props.accessibilityActions).toEqual([
-      { name: "next", label: EXPLORE_COPY.pagerActions.next },
+      { name: "next", label: "Next clip" },
     ])
 
     await accessibilityAction(harness, "previous")

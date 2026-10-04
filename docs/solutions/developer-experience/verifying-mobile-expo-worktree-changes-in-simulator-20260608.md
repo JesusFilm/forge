@@ -143,7 +143,8 @@ into the worktree. They are harmless: `apps/mobile/src/env.ts` reads neither.
 Do not treat `…:1337/graphql` as the endpoint under test, and do not add it.
 
 Symptom of an unreachable backend: **"Search failed. Please try again."** from
-`apps/mobile/src/lib/watchSearch.ts`, plus an
+`apps/mobile/src/lib/watchSearch.ts` (the `Discover.failedError` catalog
+message), plus an
 `[admin-endpoint] admin_endpoint.unreachable=true` console line, plus a Home
 screen that shows its frozen fallback. Many other reads are anonymous and
 public, so they can still render and mask the problem.
@@ -151,11 +152,11 @@ public, so they can still render and mask the problem.
 ### 2. Re-point the dev client at the worktree's Metro
 
 `apps/mobile` cannot run in Expo Go. Its manifest declares
-`expo-dev-client@~57.0.18`, `react-native-google-cast@4.9.1`,
+`expo-dev-client@~57.0.19`, `react-native-google-cast@4.9.1`,
 `@kesha-antonov/react-native-background-downloader@^4.5.5`,
 `@datadog/mobile-react-native@3.5.4`,
 `@datadog/mobile-react-native-session-replay@3.5.4`,
-`expo-glass-effect@~57.0.2`, and `react-native-webview@13.16.1`. Expo Go ships
+`expo-glass-effect@~57.0.4`, and `react-native-webview@13.16.1`. Expo Go ships
 none of them. `apps/tv/CLAUDE.md` states the same rule for TV: "Dev-client
 builds only (no Expo Go on TV)."
 
@@ -185,6 +186,14 @@ for TV.
 This leaves the main checkout's Metro and the TV Metro alive. When you finish,
 send the same deep link with `%3A8081` to return the dev client to the main
 checkout.
+
+**`openurl` re-points the running process; it does not start a new one.** A
+process launched earlier with `-AppleLanguages "(ar)"` keeps that language
+after the re-point, so a check meant to be English shows right-to-left
+behavior. Before a check that depends on the app language, run
+`xcrun simctl terminate <udid> org.jesusfilm.forgewatch`, launch the app
+again, and then send the deep link. See
+`docs/solutions/ui-bugs/ios-natural-text-alignment-follows-native-localization.md`.
 
 `apps/tv` works the same way with its own identity. `apps/tv/app.json` sets
 `"slug": "jesus-film-forge-tv"`, `"scheme": "org.jesusfilm.forgetv"`, and
@@ -225,18 +234,17 @@ and a wedged dev client plus a stale Metro cache keeps it there. The fix there
 is to restart admin, restart Metro with `--clear`, and reload. See
 `docs/solutions/runtime-errors/tv-rctfatal-network-request-failed-admin-down-20260626.md`.
 
-Two ways out, in preferred order:
+**Install in the worktree.** Run `pnpm install` there. The worktree then has
+isolated `node_modules` and its own watch scope. Run its Metro on a free port,
+per section 2.
 
-1. **Install in the worktree.** Run `pnpm install` there. The worktree then has
-   isolated `node_modules` and its own watch scope. Run its Metro on a free
-   port, per section 2. This is the heaviest option and the clean one.
-2. **Mirror to the primary checkout**, which suits a JS-only or style-only
-   change. Keep the canonical work on the worktree **branch**, apply the same
-   changed files in the primary checkout, and verify against the Metro that
-   already runs there. No new Metro starts, and no watch contention happens.
-   Revert the mirror only after review.
+Do not copy the changed files into the main checkout to verify them there. The
+copy dirties the main checkout, and a Metro that already runs there can then
+show the main checkout's edit while the worktree file is unchanged. The
+`gql.tada` resolution errors that once made the copy look necessary came from
+an incomplete worktree install (auto memory [claude]).
 
-**Lifecycle-end gotcha for option 1.** If somebody prunes the worktree while a
+**Lifecycle-end gotcha.** If somebody prunes the worktree while a
 dev client still points at its Metro, the next lazily-required module throws a
 misleading `UnableToResolveError` that names an arbitrary transitive
 dependency. The whole `node_modules` tree under the deleted worktree is gone,
@@ -301,6 +309,11 @@ idb ui describe-all --udid <udid>   # AXLabel + frame for each element
 # confirm a font-size change by comparing frame heights:
 #   "Videos" h=17 (body) -> h=32 (titleLarge), matching the page title
 ```
+
+On a right-to-left simulator, a dev build shows a gear near the top-left. It
+is Expo's floating dev-menu button (a native `gearshape.fill` image in its own
+window), not app UI. `describe-all` lists it as a separate `gearshape.fill`
+element.
 
 ### 6. For `apps/tv`, the Apple TV simulator is one of two targets
 
@@ -415,3 +428,6 @@ without a running local admin.
   persisted state.
 - `docs/solutions/design-patterns/mirror-ui-derive-geometry-from-shared-constants.md`
   — the structural fix for the section 6 platform-branch trap.
+- `docs/solutions/ui-bugs/ios-natural-text-alignment-follows-native-localization.md`
+  — language-dependent checks: the `openurl` process-reuse trap and the
+  dev-menu gear on a right-to-left simulator.

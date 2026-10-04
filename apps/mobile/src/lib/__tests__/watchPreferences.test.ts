@@ -1,12 +1,160 @@
+// `es` is a fixture catalog, so a case can run the store on a Spanish UI.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(jest.requireActual("../../i18n/catalogs.generated"), {
+      es: {},
+    }),
+)
+jest.mock("../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../i18n/pluralData.generated"),
+      ["es"],
+    ),
+)
+
+import {
+  getCatalogTag,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../i18n/localeStore"
+import { phoneLocales } from "../../test-utils/uiLocaleFixture"
 import {
   audioIso3BackfillPatch,
   audioLanguagePatch,
+  cachedSubtitleName,
   DEFAULT_WATCH_PREFERENCES,
   languageIso3ForSlug,
   parseStoredPreferences,
   serializeWatchPreferences,
+  subtitleNamePatch,
   type WatchPreferences,
 } from "../watchPreferences"
+
+// KTD16: the cached subtitle name is display text in one UI language.
+describe("the stored subtitle name and its locale", () => {
+  const stored = (fields: Record<string, unknown>) => JSON.stringify(fields)
+
+  afterEach(() => resetLocaleStoreForTests())
+
+  it("does not paint a name from en when the UI tag is es", () => {
+    const raw = stored({
+      subtitleLanguageSlug: "french",
+      subtitleLanguageName: "French",
+      subtitleLanguageNameLocale: "en",
+    })
+    expect(parseStoredPreferences(raw, "es")).toMatchObject({
+      subtitleLanguageSlug: "french",
+      subtitleLanguageName: null,
+      subtitleLanguageNameLocale: null,
+    })
+    expect(parseStoredPreferences(raw, "en")).toMatchObject({
+      subtitleLanguageName: "French",
+      subtitleLanguageNameLocale: "en",
+    })
+  })
+
+  it("reads the UI tag from the store by default", () => {
+    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
+    startLocaleSync()
+    expect(getCatalogTag()).toBe("es")
+    const raw = stored({
+      subtitleLanguageName: "French",
+      subtitleLanguageNameLocale: "en",
+    })
+    expect(parseStoredPreferences(raw).subtitleLanguageName).toBeNull()
+  })
+
+  it("reads a name stored before the locale existed as English", () => {
+    // The app showed Admin's English names before it had any UI catalog.
+    const legacy = stored({ subtitleLanguageName: "French" })
+    expect(parseStoredPreferences(legacy, "en")).toMatchObject({
+      subtitleLanguageName: "French",
+      subtitleLanguageNameLocale: "en",
+    })
+    expect(parseStoredPreferences(legacy, "es").subtitleLanguageName).toBeNull()
+  })
+
+  it.each([null, "", 42])(
+    "drops a name whose stored locale is %j",
+    (subtitleLanguageNameLocale) => {
+      const raw = stored({
+        subtitleLanguageName: "French",
+        subtitleLanguageNameLocale,
+      })
+      expect(parseStoredPreferences(raw, "en")).toMatchObject({
+        subtitleLanguageName: null,
+        subtitleLanguageNameLocale: null,
+      })
+    },
+  )
+
+  it("writes a new name with the UI tag it was read in", () => {
+    expect(subtitleNamePatch("Francés", "es")).toEqual({
+      subtitleLanguageName: "Francés",
+      subtitleLanguageNameLocale: "es",
+    })
+    expect(subtitleNamePatch(null, "es")).toEqual({
+      subtitleLanguageName: null,
+      subtitleLanguageNameLocale: null,
+    })
+  })
+
+  it("stamps a name that has no locale when it is saved", () => {
+    const prefs: WatchPreferences = {
+      ...DEFAULT_WATCH_PREFERENCES,
+      subtitleLanguageName: "Francés",
+    }
+    const raw = serializeWatchPreferences(prefs, "es")
+    expect(JSON.parse(raw).subtitleLanguageNameLocale).toBe("es")
+    expect(parseStoredPreferences(raw, "es").subtitleLanguageName).toBe(
+      "Francés",
+    )
+  })
+
+  it("keeps the locale a name already has when it is saved", () => {
+    const prefs: WatchPreferences = {
+      ...DEFAULT_WATCH_PREFERENCES,
+      ...subtitleNamePatch("French", "en"),
+    }
+    // A later save under another UI tag must not relabel the old name.
+    const raw = serializeWatchPreferences(prefs, "es")
+    expect(parseStoredPreferences(raw, "es").subtitleLanguageName).toBeNull()
+  })
+})
+
+// KTD16: a screen reads the name in the tag it captured, not the live UI tag.
+describe("cachedSubtitleName", () => {
+  // Cached in English; the live UI tag is Spanish after a live change.
+  const englishName = subtitleNamePatch("French", "en")
+
+  afterEach(() => resetLocaleStoreForTests())
+
+  it("gives the name to a screen that captured the name's tag", () => {
+    mockGetLocales.mockReturnValue(phoneLocales("es-MX"))
+    startLocaleSync()
+    expect(getCatalogTag()).toBe("es")
+
+    expect(cachedSubtitleName(englishName, "en")).toBe("French")
+  })
+
+  it("hides the name from a screen that captured another tag", () => {
+    expect(cachedSubtitleName(englishName, "es")).toBeNull()
+  })
+
+  it("hides the name while the screen has no captured tag", () => {
+    expect(cachedSubtitleName(englishName, undefined)).toBeNull()
+  })
+})
 
 describe("parseStoredPreferences", () => {
   it("returns defaults for a null (never-written) blob", () => {
@@ -39,6 +187,7 @@ describe("parseStoredPreferences", () => {
       audioLanguageIso3: "spa",
       subtitleLanguageSlug: "english",
       subtitleLanguageName: "English",
+      subtitleLanguageNameLocale: "en",
       subtitlesEnabled: true,
       wifiOnly: true,
       longPressHintSeen: false,
@@ -54,6 +203,7 @@ describe("parseStoredPreferences", () => {
       audioLanguageIso3: null,
       subtitleLanguageSlug: null,
       subtitleLanguageName: null,
+      subtitleLanguageNameLocale: null,
       subtitlesEnabled: false,
       wifiOnly: false,
       longPressHintSeen: false,
@@ -74,6 +224,7 @@ describe("parseStoredPreferences", () => {
       audioLanguageIso3: null,
       subtitleLanguageSlug: null,
       subtitleLanguageName: null,
+      subtitleLanguageNameLocale: null,
       subtitlesEnabled: true,
       wifiOnly: false,
       longPressHintSeen: false,
@@ -112,6 +263,7 @@ describe("parseStoredPreferences", () => {
       audioLanguageIso3: "por",
       subtitleLanguageSlug: "spanish",
       subtitleLanguageName: "Spanish",
+      subtitleLanguageNameLocale: "en",
       subtitlesEnabled: true,
       wifiOnly: true,
       longPressHintSeen: true,

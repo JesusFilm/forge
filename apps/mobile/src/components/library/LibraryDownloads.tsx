@@ -21,6 +21,7 @@ import { Snackbar } from "../ui/Snackbar"
 import { useDownloads } from "../../contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import {
   BG_COLOR,
   SURFACE_COLOR,
@@ -58,6 +59,13 @@ export type LibraryDownloadsProps = {
   focusSeriesSlug?: string
 }
 
+/** Kept as data, so the toast takes the UI language at render. */
+type DeleteResult = {
+  deletedCount: number
+  freedBytes: number
+  failedCount: number
+}
+
 type FocusLayout = {
   headHeight: number | null
   listY: number | null
@@ -69,6 +77,7 @@ type FocusLayout = {
  *  Its one host is the root `app/downloads.tsx` route. */
 export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
   const typography = useTypography()
+  const t = useT("Library")
   const router = useRouter()
   const navigation = useNavigation()
   const isFocused = useIsFocused()
@@ -94,7 +103,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
   const bottomPad = useMiniPlayerBottomClearance() + LIST_END_GAP
   const [hintVisible, setHintVisible] = useState(false)
   const [confirmVisible, setConfirmVisible] = useState(false)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [deleteResult, setDeleteResult] = useState<DeleteResult | null>(null)
 
   // Gated on prefsReady because longPressHintSeen reads false before the
   // persisted blob hydrates. Gated on focus so the timer does not run out
@@ -246,14 +255,26 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
       failed: result.failedCount,
     })
     setSelectionState(exitSelection())
-    setToastMessage(
-      `${result.deletedCount} video${result.deletedCount === 1 ? "" : "s"} deleted · ${formatLibraryBytes(result.freedBytes)} freed${
-        result.failedCount > 0
-          ? ` · ${result.failedCount} couldn't be deleted`
-          : ""
-      }`,
-    )
+    setDeleteResult({
+      deletedCount: result.deletedCount,
+      freedBytes: result.freedBytes,
+      failedCount: result.failedCount,
+    })
   }, [selected, offlineRecords, deleteDownload])
+
+  const toastMessage =
+    deleteResult == null
+      ? null
+      : t(
+          deleteResult.failedCount > 0
+            ? "deletedWithFailuresToast"
+            : "deletedToast",
+          {
+            count: deleteResult.deletedCount,
+            size: formatLibraryBytes(deleteResult.freedBytes),
+            failed: deleteResult.failedCount,
+          },
+        )
 
   const handleRetryFailed = useCallback(async () => {
     const slugs = Array.from(selected)
@@ -346,7 +367,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
   return (
     <View style={layout.screenContainer}>
       {/* Inside this root so the delete sheet's scrim dims it too. */}
-      <ScreenTopBar title="Downloads" showBack />
+      <ScreenTopBar title={t("downloadsTitle")} showBack />
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: bottomPad }}
@@ -369,15 +390,18 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
                     ]}
                     accessibilityRole="button"
                     accessibilityLabel={
-                      allSelected ? "Deselect all" : "Select all"
+                      allSelected
+                        ? t("deselectAllAriaLabel")
+                        : t("selectAllAriaLabel")
                     }
+                    {...{ "dd-action-name": "library-select-all" }}
                   >
                     <Text style={[styles.textPillLabel, typography.bodySmall]}>
-                      {allSelected ? "Deselect All" : "Select All"}
+                      {allSelected ? t("deselectAll") : t("selectAll")}
                     </Text>
                   </Pressable>
                   <Text style={[styles.selectionCount, typography.body]}>
-                    {selection.count} selected
+                    {t("selectedCount", { count: selection.count })}
                   </Text>
                   <Pressable
                     onPress={() => setSelectionState(exitSelection())}
@@ -386,10 +410,11 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
                       pressed && feedback.pressed,
                     ]}
                     accessibilityRole="button"
-                    accessibilityLabel="Cancel selection"
+                    accessibilityLabel={t("cancelSelectionAriaLabel")}
+                    {...{ "dd-action-name": "library-cancel-selection" }}
                   >
                     <Text style={[styles.textPillLabel, typography.bodySmall]}>
-                      Cancel
+                      {t("cancel")}
                     </Text>
                   </Pressable>
                 </>
@@ -401,10 +426,11 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
                     pressed && feedback.pressed,
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel="Select downloads"
+                  accessibilityLabel={t("selectDownloadsAriaLabel")}
+                  {...{ "dd-action-name": "library-select" }}
                 >
                   <Text style={[styles.selectPillText, typography.bodySmall]}>
-                    Select
+                    {t("select")}
                   </Text>
                 </Pressable>
               )}
@@ -412,7 +438,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
             <DownloadsSummary count={offlineRecords.length} />
             {hintVisible && (
               <Text style={[styles.hint, typography.caption]}>
-                Touch and hold a video to select
+                {t("longPressHint")}
               </Text>
             )}
           </View>
@@ -431,7 +457,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
                       typography.caption,
                     ]}
                   >
-                    Series
+                    {t("seriesSection")}
                   </Text>
                   {seriesGroups.map((group) => (
                     <SeriesGroupCard
@@ -459,7 +485,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
                       typography.caption,
                     ]}
                   >
-                    Videos
+                    {t("videosSection")}
                   </Text>
                   {standaloneRecords.map((record) => (
                     <DownloadRow
@@ -503,7 +529,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
       <Snackbar
         message={toastMessage ?? ""}
         visible={toastMessage != null}
-        onDismiss={() => setToastMessage(null)}
+        onDismiss={() => setDeleteResult(null)}
       />
     </View>
   )

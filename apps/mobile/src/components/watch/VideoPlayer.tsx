@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useNetworkState } from "expo-network"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useT } from "../../i18n/useT"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { datadogLog, reportDatadogAction } from "../../lib/datadog"
@@ -153,6 +154,9 @@ export function VideoPlayer({
   cast = null,
   feedbackContext = null,
 }: VideoPlayerProps) {
+  const t = useT("Player")
+  const tCast = useT("Cast")
+  const tCommon = useT("Common")
   const castPlayback = cast?.playback ?? null
   const onCastPress = cast?.onCastPress ?? null
   const resolveCastMediaAt = cast?.resolveMediaAt ?? null
@@ -612,7 +616,7 @@ export function VideoPlayer({
       ? {
           available: castPlayback.devicesAvailable,
           connected: castRemoteActive,
-          label: castButtonLabel(castPhase, castPlayback.deviceName),
+          label: castButtonLabel(castPhase, castPlayback.deviceName, tCast),
           onPress: onCastPress,
         }
       : null
@@ -775,7 +779,7 @@ export function VideoPlayer({
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             recyclingKey="watch-poster"
-            accessibilityLabel="Video thumbnail"
+            accessibilityLabel={tCommon("videoThumbnailAriaLabel")}
           />
         </Animated.View>
       )}
@@ -797,7 +801,8 @@ export function VideoPlayer({
         onPressIn={handleTapPressIn}
         onPress={handleTapPress}
         accessibilityRole="button"
-        accessibilityLabel="Toggle player controls"
+        accessibilityLabel={t("toggleControlsAriaLabel")}
+        {...{ "dd-action-name": "player-toggle-controls" }}
       />
 
       {seekFlash != null && (
@@ -815,7 +820,9 @@ export function VideoPlayer({
             size={22}
             color={TEXT_ON_OVERLAY}
           />
-          <Text style={styles.seekFlashText}>{Math.abs(seekFlash.delta)}s</Text>
+          <Text style={styles.seekFlashText}>
+            {t("seekSeconds", { seconds: Math.abs(seekFlash.delta) })}
+          </Text>
         </View>
       )}
 
@@ -838,8 +845,12 @@ export function VideoPlayer({
           <Ionicons name="tv-outline" size={28} color={TEXT_ON_OVERLAY} />
           <Text style={styles.externalRouteText}>
             {castRemoteActive
-              ? castIndicatorLabel(castPhase, castPlayback?.deviceName ?? null)
-              : "Playing on AirPlay"}
+              ? castIndicatorLabel(
+                  castPhase,
+                  castPlayback?.deviceName ?? null,
+                  tCast,
+                )
+              : tCast("playingOnAirPlay")}
           </Text>
         </View>
       )}

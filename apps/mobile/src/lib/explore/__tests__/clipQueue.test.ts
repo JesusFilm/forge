@@ -4,6 +4,11 @@
  * follow the production shape (checked 2026-09-25), trailing `hls` newline too.
  */
 
+import {
+  ENGLISH_ADMIN_FORMS,
+  adminFormsFor,
+  type AdminLanguageForms,
+} from "../../../i18n/adminLanguage"
 import type { ExploreClipCandidatesData } from "../../queries"
 import type { ClipRecordStore } from "../clipRecord"
 import type {
@@ -105,7 +110,13 @@ function poolOf(
   subtitleOnly: PoolCandidate[] = [],
   languageSlug = SW,
 ): ExplorePool {
-  return { languageSlug, fetchedAt: T0, dubbed, subtitleOnly }
+  return {
+    languageSlug,
+    fetchedAt: T0,
+    dubbed,
+    subtitleOnly,
+    languageName: null,
+  }
 }
 
 /**
@@ -137,6 +148,8 @@ type VideoSpec = {
   seconds?: number
   tracks?: Track[]
   hls?: string | null
+  /** Text rows by language slug, as `locales(languageSlug:)` returns them. */
+  rows?: Record<string, { title: string; description?: string | null }>
   /** Omit the video from the response, as an unknown core id is. */
   missing?: boolean
 }
@@ -145,16 +158,34 @@ function vtt(id: string, slug: string): string {
   return `https://api-media-core.jesusfilm.org/${id}/editions/base/${slug}.vtt`
 }
 
+function textRows(id: string, spec: VideoSpec, slug: string) {
+  const row = spec.rows?.[slug]
+  if (row == null) return []
+  return [
+    {
+      documentId: `loc-${id}-${slug}`,
+      languageSlug: slug,
+      title: row.title,
+      description: row.description ?? null,
+      snippet: null,
+      imageAlt: null,
+    },
+  ]
+}
+
 function hydrated(
   c: PoolCandidate,
   spec: VideoSpec,
   audioSlug: string,
+  textSlug = "english",
 ): CandidateVideo {
   const id = c.videoId.replace("video-", "")
   const seconds = spec.seconds ?? 300
   return {
     documentId: c.videoId,
     coreId: c.coreId,
+    locales: textRows(id, spec, textSlug),
+    englishLocales: textRows(id, spec, "english"),
     images: [
       {
         documentId: `image-${id}`,
@@ -240,6 +271,8 @@ type World = {
   slots: Map<string, EligibleStartsMemo>
   hydrations: { audioLanguageSlug: string; coreIds: string[] }[]
   acquisitions: string[]
+  /** The text forms the hook hydrates with. */
+  forms: AdminLanguageForms
 }
 
 function world(pool: ExplorePool, videos: Record<string, VideoSpec> = {}) {
@@ -253,6 +286,7 @@ function world(pool: ExplorePool, videos: Record<string, VideoSpec> = {}) {
     slots: new Map(),
     hydrations: [],
     acquisitions: [],
+    forms: ENGLISH_ADMIN_FORMS,
   }
   return w
 }
@@ -305,9 +339,11 @@ function fulfil(
         const c = all.find((x) => x.coreId === coreId)
         const spec = c && w.videos.get(c.videoId.replace("video-", ""))
         if (c == null || spec?.missing) return []
-        return [hydrated(c, spec ?? {}, effect.audioLanguageSlug)]
+        return [
+          hydrated(c, spec ?? {}, effect.audioLanguageSlug, w.forms.textSlug),
+        ]
       })
-      return applyHydration(state, effect.token, videos)
+      return applyHydration(state, effect.token, videos, w.forms)
     }
     case "acquire": {
       w.acquisitions.push(effect.videoId)
@@ -500,10 +536,70 @@ describe("hydration", () => {
     const w = world(poolOf([candidate("a")]))
     const first = advance(started(w), context(w))
     if (first.effect?.kind !== "hydrate") throw new Error("expected hydrate")
-    const stale = applyHydration(first.state, first.effect.token + 1, [
-      hydrated(candidate("a"), {}, SW),
-    ])
+    const stale = applyHydration(
+      first.state,
+      first.effect.token + 1,
+      [hydrated(candidate("a"), {}, SW)],
+      w.forms,
+    )
     expect(stale).toBe(first.state)
+  })
+
+  // R9, R10 (U7): the hydration carries the UI-language and English rows, so a
+  // clip's text follows the UI language with no extra request.
+  it("gives a clip its title in the UI language, else in English with lang en", () => {
+    const w = world(poolOf([candidate("a"), candidate("b"), candidate("c")]), {
+      a: {
+        rows: {
+          russian: { title: "Рождение", description: "О рождении" },
+          english: { title: "The Birth", description: "About the birth" },
+        },
+      },
+      b: { rows: { english: { title: "The Parable", description: null } } },
+      c: {},
+    })
+    w.forms = adminFormsFor("ru")
+    const run = drive(w, started(w), 3)
+    const byId = new Map(run.clips.map((clip) => [clip.videoId, clip]))
+    expect(byId.get("video-a")).toMatchObject({
+      title: "Рождение",
+      titleLang: "ru",
+      description: "О рождении",
+      descriptionLang: "ru",
+      textSlug: "russian",
+    })
+    expect(byId.get("video-b")).toMatchObject({
+      title: "The Parable",
+      titleLang: "en",
+      description: "About b",
+      descriptionLang: null,
+    })
+    // No row at all: the inventory's own title stays, with no language mark.
+    expect(byId.get("video-c")).toMatchObject({
+      title: "Title c",
+      titleLang: null,
+      description: "About c",
+      descriptionLang: null,
+    })
+  })
+
+  it("reads English rows under an English UI", () => {
+    const w = world(poolOf([candidate("a")]), {
+      a: {
+        rows: {
+          russian: { title: "Рождение" },
+          english: { title: "The Birth", description: "About the birth" },
+        },
+      },
+    })
+    const run = drive(w, started(w), 1)
+    expect(run.clips[0]).toMatchObject({
+      title: "The Birth",
+      titleLang: "en",
+      description: "About the birth",
+      descriptionLang: "en",
+      textSlug: "english",
+    })
   })
 })
 

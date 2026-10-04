@@ -56,6 +56,7 @@ import {
   nextBatchAction,
   shouldReleaseBatchScope,
 } from "../lib/batchDownloadQueue"
+import { currentAdminForms } from "../i18n/adminLanguage"
 import { normalizeDubMedia } from "../lib/normalizeVideo"
 import {
   buildReattachRequest,
@@ -76,6 +77,7 @@ import { getApolloClient } from "../lib/apolloClient"
 import { datadogLog } from "../lib/datadog"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
 import { GET_VIDEO_DUB } from "../lib/queries"
+import { useOfflineTitleRefresh } from "../hooks/useOfflineTitleRefresh"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
@@ -183,7 +185,11 @@ async function reresolveMediaUrl(args: {
       fetchPolicy: "network-only",
       context: { fetchOptions: { signal: controller.signal } },
     })
-    const media = normalizeDubMedia(res.data?.videoDub ?? null)
+    // The forms name the subtitle tracks; the pick below reads only ids.
+    const media = normalizeDubMedia(
+      res.data?.videoDub ?? null,
+      currentAdminForms(),
+    )
     if (!media) {
       // R28: a null re-resolution is the pre-transfer step that leaves a download
       // "stuck queued / never starts" — surface each null branch distinctly.
@@ -407,6 +413,13 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     })
   }
   const lifecycle = lifecycleRef.current
+
+  // U7 (R4): the one provider-wide refresh; it waits for the stored records.
+  useOfflineTitleRefresh({
+    ready: isReady,
+    records: Object.values(records),
+    patchTitles: lifecycle.patchTitles,
+  })
 
   const queueBatchRecords = useCallback(
     async (requests: StartDownloadRequest[]) => {

@@ -25,6 +25,7 @@ import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { useIsTabletLayout } from "../../hooks/useIsTabletLayout"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useScreenReaderEnabled } from "../../hooks/useScreenReaderEnabled"
+import { useT } from "../../i18n/useT"
 import { BACK_SWIPE_EDGE_WIDTH } from "../../lib/backSwipe"
 import type { CatalogTranslation } from "../../lib/bible/data/catalog"
 import {
@@ -62,7 +63,6 @@ import {
   type ReaderHost,
   type ReaderLayout,
 } from "../../lib/bible/reader/chrome"
-import { READER_COPY } from "../../lib/bible/reader/copy"
 import {
   chapterLabel,
   chapterProgress,
@@ -74,6 +74,7 @@ import {
   stopRange,
   translationLabel,
   verseRangeLabel,
+  type ReaderT,
 } from "../../lib/bible/reader/labels"
 import {
   getReaderServices,
@@ -243,6 +244,7 @@ function usePickerPulse(focused: boolean, shownChapter: string | null) {
 // a top bar, and a footer. Swipes, the arrow pair, and the screen reader move
 // the verse. The Bible tab and the pushed reader render it.
 export function BibleReader(props: BibleReaderProps) {
+  const t = useT("BibleReader")
   const services = props.services ?? getReaderServices()
   const settings = useReaderSettings(services.settingsStore)
   const onboardingStore = props.onboardingStore ?? getReaderOnboardingStore()
@@ -346,6 +348,7 @@ export function BibleReader(props: BibleReaderProps) {
   } | null>(null)
   const scrubbing = scrub !== null && scrub.chapterKey === chapterKey
   const model = useReaderModel(
+    t,
     chapter.state,
     scrubbing ? scrub.verse : null,
     bookNames,
@@ -471,12 +474,7 @@ export function BibleReader(props: BibleReaderProps) {
   const accessibilityMove: VerseAccessibilityMove | undefined =
     model.stop && model.total !== null && model.heading
       ? {
-          value: READER_COPY.movement.verseValue(
-            stopRange(model.stop).first,
-            stopRange(model.stop).last,
-            model.total,
-            model.heading,
-          ),
+          value: verseValue(t, model.stop, model.total, model.heading),
           onAction: (action) => {
             if (action === "increment") movement.moveVerse("forward")
             else if (action === "decrement") movement.moveVerse("back")
@@ -562,6 +560,7 @@ export function BibleReader(props: BibleReaderProps) {
         translation={
           shown && place
             ? translationLabel(
+                t,
                 shown,
                 viewerTranslation,
                 place.bookName,
@@ -720,9 +719,23 @@ export type ReaderModel = {
 
 const NO_STOPS: readonly ChapterPosition[] = []
 
+/** The verse control's value: the verse, the total, and the chapter (KTD14). */
+function verseValue(
+  t: ReaderT,
+  stop: ChapterPosition,
+  total: number,
+  chapter: string,
+): string {
+  const { first, last } = stopRange(stop)
+  return first === last
+    ? t("verseAriaValue", { verse: first, total, chapter })
+    : t("versesAriaValue", { first, last, total, chapter })
+}
+
 /** The labels for the current stop, in the shown translation's numbers. A
  *  scrub's verse (U9) shows in place of the saved one until the release. */
 function useReaderModel(
+  t: ReaderT,
   state: ReaderChapterState,
   scrubVerse: number | null,
   bookNames: BookNames | null,
@@ -782,6 +795,7 @@ function useReaderModel(
       ? {
           text: counterLabel(stop, chapter.lastVerse),
           accessibilityLabel: counterAccessibilityLabel(
+            t,
             stop,
             chapter.lastVerse,
           ),
@@ -893,8 +907,10 @@ function ReaderNotice({
   onRetry,
   onSwitch,
 }: VerseAreaProps) {
+  const t = useT("BibleReader")
   const retry: ReaderMessageAction = {
-    label: READER_COPY.failure.retry,
+    label: t("retry"),
+    actionName: "bible-reader-retry",
     onPress: onRetry,
   }
   switch (state.status) {
@@ -905,8 +921,8 @@ function ReaderNotice({
       return (
         <ReaderMessage
           tokens={tokens}
-          title={READER_COPY.failure.catalogTitle}
-          body={READER_COPY.failure.catalogBody}
+          title={t("catalogTitle")}
+          body={t("catalogBody")}
           actions={[retry]}
         />
       )
@@ -916,7 +932,10 @@ function ReaderNotice({
         ? [
             retry,
             {
-              label: READER_COPY.failure.switchTo(state.switchTarget.shortName),
+              label: t("readIn", {
+                shortName: state.switchTarget.shortName,
+              }),
+              actionName: "bible-reader-read-in-on-device",
               onPress: onSwitch,
             },
           ]
@@ -924,16 +943,8 @@ function ReaderNotice({
       return (
         <ReaderMessage
           tokens={tokens}
-          title={
-            offline
-              ? READER_COPY.failure.offlineTitle
-              : READER_COPY.failure.failedTitle
-          }
-          body={
-            offline
-              ? READER_COPY.failure.offlineBody
-              : READER_COPY.failure.failedBody
-          }
+          title={offline ? t("offlineTitle") : t("failedTitle")}
+          body={offline ? t("offlineBody") : t("failedBody")}
           actions={actions}
         />
       )

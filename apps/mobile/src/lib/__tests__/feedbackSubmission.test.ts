@@ -47,7 +47,7 @@ import {
   getApolloClient,
   reportGraphqlOperationError,
 } from "../apolloClient"
-import { FEEDBACK_FAILURE_MESSAGE } from "../feedbackCopy"
+import { feedbackFailureMessage } from "../feedbackCopy"
 import {
   SUBMIT_FEEDBACK,
   SUBMIT_FEEDBACK_OPERATION_NAME,
@@ -65,6 +65,9 @@ import {
   sendFeedback,
   validateFeedbackDraft,
 } from "../feedbackSubmission"
+
+// The English catalog value; the codepoint pin below reads it.
+const FEEDBACK_FAILURE_MESSAGE = feedbackFailureMessage()
 
 const mockAddError = DdRum.addError as jest.Mock
 const mockGetApolloClient = getApolloClient as jest.Mock

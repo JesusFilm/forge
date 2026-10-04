@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useDownloads } from "../../contexts/DownloadsProvider"
 import { useTypography } from "../../hooks/useTypography"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
 import { TEXT_SECONDARY } from "../../lib/color"
 import { buildMyWatchRail, type MyWatchRailTile } from "../../lib/myWatchRail"
 import { useTabBarClearance } from "../../lib/tabBar"
@@ -26,6 +28,9 @@ const CONTENT_TOP_GAP = 16
 export function MyWatchScreen() {
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("MyWatch")
+  const tLibrary = useT("Library")
+  const uiDirection = useTextDirection().ui
   const tabBarClearance = useTabBarClearance()
   const insets = useSafeAreaInsets()
   const { offlineRecords, isReady } = useDownloads()
@@ -38,10 +43,11 @@ export function MyWatchScreen() {
   const menuAction = useMemo<ScreenTopBarAction>(
     () => ({
       icon: "menu",
-      accessibilityLabel: "More",
+      accessibilityLabel: t("moreTitle"),
       onPress: () => router.navigate("/more"),
+      actionName: "my-watch-more",
     }),
-    [router],
+    [router, t],
   )
 
   const openDownloads = useCallback(
@@ -88,15 +94,19 @@ export function MyWatchScreen() {
             <View>
               <View style={styles.headingRow}>
                 <Text
-                  style={[text.sectionHeading, typography.titleSmall]}
+                  style={[
+                    text.sectionHeading,
+                    typography.titleSmall,
+                    uiDirection,
+                  ]}
                   accessibilityRole="header"
                 >
-                  Downloads
+                  {tLibrary("downloadsTitle")}
                 </Text>
                 <Pressable
                   onPress={openDownloads}
                   accessibilityRole="button"
-                  accessibilityLabel="See all downloads"
+                  accessibilityLabel={t("seeAllDownloadsAriaLabel")}
                   {...{ "dd-action-name": "my-watch-see-all-downloads" }}
                   style={({ pressed }) => [
                     styles.seeAll,
@@ -104,7 +114,7 @@ export function MyWatchScreen() {
                   ]}
                 >
                   <Text style={[styles.seeAllText, typography.bodySmall]}>
-                    See all
+                    {t("seeAll")}
                   </Text>
                   <Ionicons
                     name="chevron-forward"

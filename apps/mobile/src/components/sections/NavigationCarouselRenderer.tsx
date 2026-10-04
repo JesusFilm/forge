@@ -4,6 +4,7 @@ import { Image } from "expo-image"
 import { TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { card, carousel, layout, text } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 import { PressableCard } from "../ui/PressableCard"
@@ -33,8 +34,9 @@ export function NavigationCarouselRenderer({
   section,
 }: NavigationCarouselRendererProps) {
   const typography = useTypography()
+  const t = useT("Sections")
   const s = section as Record<string, unknown>
-  const heading = "Stories"
+  const heading = t("storiesHeading")
   const items = (s.items as NavItem[] | undefined) ?? []
 
   if (items.length === 0) return null
@@ -53,7 +55,9 @@ export function NavigationCarouselRenderer({
         contentContainerStyle={carousel.listContent}
         decelerationRate="fast"
         accessibilityRole="adjustable"
-        accessibilityLabel={`${items.length} navigation items`}
+        accessibilityLabel={t("navigationItemsAriaLabel", {
+          count: items.length,
+        })}
       >
         {items.map((item, index) => {
           const imageUrl = resolveThumbnailUrl(item.imageUrl)
@@ -71,7 +75,7 @@ export function NavigationCarouselRenderer({
                 }
               }}
               accessibilityLabel={`${item.category ?? ""} ${item.title}`.trim()}
-              accessibilityHint="Scrolls to this section"
+              accessibilityHint={t("scrollsToSectionAriaHint")}
               style={[
                 card.base,
                 styles.localCard,

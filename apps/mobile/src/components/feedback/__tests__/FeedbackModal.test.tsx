@@ -40,11 +40,8 @@ import { act } from "react"
 import { AccessibilityInfo } from "react-native"
 
 import { FeedbackModal } from "../FeedbackModal"
-import {
-  FEEDBACK_COMPOSE_HEADING,
-  FEEDBACK_PICK_KIND_HEADING,
-  type FeedbackSheetContext,
-} from "../feedbackFlow"
+import { type FeedbackSheetContext } from "../feedbackFlow"
+import { getT } from "../../../i18n/useT"
 import { getApolloClient } from "../../../lib/apolloClient"
 import { getNonRouteSheetCounter } from "../../../lib/miniPlayer/suppression"
 import {
@@ -56,6 +53,10 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+
+const t = getT("Feedback")
+const FEEDBACK_PICK_KIND_HEADING = t("pickKindHeading")
+const FEEDBACK_COMPOSE_HEADING = t("composeHeading")
 
 const PLAYER_CONTEXT: FeedbackSheetContext = {
   kind: "BROKEN",

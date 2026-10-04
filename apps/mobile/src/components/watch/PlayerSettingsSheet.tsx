@@ -19,6 +19,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { setCastPlaybackRateLogged } from "../../lib/cast/castAdapter"
+import { useT, type UiT } from "../../i18n/useT"
 import {
   PLAYBACK_SPEEDS,
   getPlayerSettingsStore,
@@ -31,25 +32,37 @@ import {
 } from "../../lib/streamQuality"
 import { feedback } from "../../styles/shared"
 
-function speedLabel(speed: PlaybackSpeed): string {
-  return speed === 1 ? "Normal" : `${speed}×`
+type PlayerT = UiT<"Player">
+
+// Only "Normal" is a word; a value such as 1.5× reads the same everywhere.
+function speedLabel(speed: PlaybackSpeed, t: PlayerT): string {
+  return speed === 1 ? t("speedNormal") : `${speed}×`
 }
 
-const QUALITY_LABELS: Record<QualityTier, string> = {
-  auto: "Auto",
-  low: "Low (480p)",
-  high: "High (720p)",
-  highest: "Highest (1080p)",
+function qualityLabel(tier: QualityTier, t: PlayerT): string {
+  switch (tier) {
+    case "auto":
+      return t("qualityAuto")
+    case "low":
+      return t("qualityLow")
+    case "high":
+      return t("qualityHigh")
+    case "highest":
+      return t("qualityHighest")
+  }
 }
 
 type SheetBody = "root" | "speed" | "quality"
 
-const REPORT_PROBLEM_LABEL = "Report a problem with this video"
-
-const BODY_TITLES: Record<SheetBody, string> = {
-  root: "Settings",
-  speed: "Playback speed",
-  quality: "Quality",
+function bodyTitle(body: SheetBody, t: PlayerT): string {
+  switch (body) {
+    case "root":
+      return t("settingsTitle")
+    case "speed":
+      return t("playbackSpeed")
+    case "quality":
+      return t("quality")
+  }
 }
 
 export type PlayerSettingsSheetProps = {
@@ -76,6 +89,8 @@ export function PlayerSettingsSheet({
   const store = getPlayerSettingsStore()
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const insets = useSafeAreaInsets()
+  const t = useT("Player")
+  const tCommon = useT("Common")
   const [body, setBody] = useState<SheetBody>("root")
   const { progress, panelHeight, onPanelLayout, close } =
     useSlideUpSheet(onClose)
@@ -92,12 +107,18 @@ export function PlayerSettingsSheet({
   }
   if (body === "quality" && !qualityAvailable) setBody("root")
 
-  const rootRow = (title: string, value: string, onPress: () => void) => (
+  const rootRow = (
+    key: string,
+    title: string,
+    value: string,
+    onPress: () => void,
+  ) => (
     <Pressable
       style={({ pressed }) => [styles.row, pressed && feedback.pressed]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={title}
+      {...{ "dd-action-name": `player-settings-${key}` }}
     >
       <Text style={styles.rowTitle}>{title}</Text>
       <View style={styles.rowValue}>
@@ -120,6 +141,7 @@ export function PlayerSettingsSheet({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected }}
+      {...{ "dd-action-name": `player-settings-${key}` }}
     >
       <View style={styles.checkSlot}>
         {selected && (
@@ -135,7 +157,7 @@ export function PlayerSettingsSheet({
     listRows = PLAYBACK_SPEEDS.map((speed) =>
       optionRow(
         `speed-${speed}`,
-        speedLabel(speed),
+        speedLabel(speed, t),
         snapshot.speed === speed,
         () => {
           // AE4: the store stays the single truth; while casting the pick ALSO
@@ -149,7 +171,7 @@ export function PlayerSettingsSheet({
     listRows = QUALITY_TIERS.map((tier) =>
       optionRow(
         `quality-${tier}`,
-        QUALITY_LABELS[tier],
+        qualityLabel(tier, t),
         snapshot.qualityTier === tier,
         () => store.setQualityTier(tier),
       ),
@@ -157,12 +179,18 @@ export function PlayerSettingsSheet({
   } else {
     listRows = (
       <>
-        {rootRow("Playback speed", speedLabel(snapshot.speed), () =>
-          setBody("speed"),
+        {rootRow(
+          "speed",
+          t("playbackSpeed"),
+          speedLabel(snapshot.speed, t),
+          () => setBody("speed"),
         )}
         {qualityAvailable &&
-          rootRow("Quality", QUALITY_LABELS[snapshot.qualityTier], () =>
-            setBody("quality"),
+          rootRow(
+            "quality",
+            t("quality"),
+            qualityLabel(snapshot.qualityTier, t),
+            () => setBody("quality"),
           )}
         {/* R2: offered while casting too — the quality row above is the one
             a session hides. The host opens the feedback sheet from onClose,
@@ -178,9 +206,10 @@ export function PlayerSettingsSheet({
             close()
           }}
           accessibilityRole="button"
-          accessibilityLabel={REPORT_PROBLEM_LABEL}
+          accessibilityLabel={t("reportProblem")}
+          {...{ "dd-action-name": "player-settings-report-problem" }}
         >
-          <Text style={styles.rowTitle}>{REPORT_PROBLEM_LABEL}</Text>
+          <Text style={styles.rowTitle}>{t("reportProblem")}</Text>
           <Ionicons name="chevron-forward" size={16} color={TEXT_SECONDARY} />
         </Pressable>
       </>
@@ -208,7 +237,8 @@ export function PlayerSettingsSheet({
           style={styles.backdrop}
           onPress={close}
           accessibilityRole="button"
-          accessibilityLabel="Dismiss settings"
+          accessibilityLabel={t("dismissSettingsAriaLabel")}
+          {...{ "dd-action-name": "player-settings-dismiss" }}
         />
         <Animated.View
           onLayout={onPanelLayout}
@@ -236,20 +266,22 @@ export function PlayerSettingsSheet({
                 onPress={() => setBody("root")}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Back"
+                accessibilityLabel={t("backAriaLabel")}
+                {...{ "dd-action-name": "player-settings-back" }}
               >
                 <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
               </Pressable>
             ) : (
               <View style={styles.headerButton} />
             )}
-            <Text style={styles.headerTitle}>{BODY_TITLES[body]}</Text>
+            <Text style={styles.headerTitle}>{bodyTitle(body, t)}</Text>
             <Pressable
               style={styles.headerButton}
               onPress={close}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel={tCommon("closeAriaLabel")}
+              {...{ "dd-action-name": "player-settings-close" }}
             >
               <Ionicons name="close" size={22} color={TEXT_PRIMARY} />
             </Pressable>

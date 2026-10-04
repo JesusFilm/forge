@@ -1,3 +1,5 @@
+import { getCatalogTag } from "../i18n/localeStore"
+
 /**
  * App-wide watch preferences (dub/subtitle language + subtitles on/off),
  * persisted across videos and restarts. Stored by unique language SLUG, not
@@ -20,6 +22,10 @@ export type WatchPreferences = {
    * media fetched lazily, so the slug alone can't be mapped without a fetch.
    */
   subtitleLanguageName: string | null
+  /** The UI catalog tag that `subtitleLanguageName` is written in (KTD16), or
+   *  null with no name. A reader shows the name only in this tag
+   *  ({@link cachedSubtitleName}). */
+  subtitleLanguageNameLocale: string | null
   /** Whether subtitles are turned on app-wide. */
   subtitlesEnabled: boolean
   /**
@@ -44,11 +50,20 @@ export const DEFAULT_WATCH_PREFERENCES: WatchPreferences = {
   audioLanguageIso3: null,
   subtitleLanguageSlug: null,
   subtitleLanguageName: null,
+  subtitleLanguageNameLocale: null,
   subtitlesEnabled: false,
   wifiOnly: false,
   longPressHintSeen: false,
   exploreMuted: false,
 }
+
+// The app showed Admin's English names before it had any UI catalog.
+const LEGACY_SUBTITLE_NAME_LOCALE = "en"
+
+type SubtitleName = Pick<
+  WatchPreferences,
+  "subtitleLanguageName" | "subtitleLanguageNameLocale"
+>
 
 /**
  * A blank or non-string code is unknown. A real code stays exactly as sent:
@@ -65,12 +80,31 @@ function normalizeNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null
 }
 
+/** The cached subtitle name only when it is in `uiTag`, so the pill never paints
+ *  another language's text; the watch page then reads the name again. */
+function subtitleNameFor(
+  obj: Record<string, unknown>,
+  uiTag: string,
+): SubtitleName {
+  const name = normalizeNonEmptyString(obj.subtitleLanguageName)
+  const locale =
+    "subtitleLanguageNameLocale" in obj
+      ? normalizeNonEmptyString(obj.subtitleLanguageNameLocale)
+      : LEGACY_SUBTITLE_NAME_LOCALE
+  return name != null && locale === uiTag
+    ? { subtitleLanguageName: name, subtitleLanguageNameLocale: locale }
+    : { subtitleLanguageName: null, subtitleLanguageNameLocale: null }
+}
+
 /**
  * Parse a persisted preferences blob into a type-safe object. Tolerant: any
  * null/malformed/partial payload yields defaults so a bad write or schema change
  * never throws. An older bcp47-keyed blob reads back as defaults; user re-picks once.
  */
-export function parseStoredPreferences(raw: string | null): WatchPreferences {
+export function parseStoredPreferences(
+  raw: string | null,
+  uiTag: string = getCatalogTag(),
+): WatchPreferences {
   if (!raw) return { ...DEFAULT_WATCH_PREFERENCES }
   let parsed: unknown
   try {
@@ -91,7 +125,7 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
         ? null
         : normalizeLanguageIso3(obj.audioLanguageIso3),
     subtitleLanguageSlug: normalizeNonEmptyString(obj.subtitleLanguageSlug),
-    subtitleLanguageName: normalizeNonEmptyString(obj.subtitleLanguageName),
+    ...subtitleNameFor(obj, uiTag),
     subtitlesEnabled: obj.subtitlesEnabled === true,
     wifiOnly: obj.wifiOnly === true,
     longPressHintSeen: obj.longPressHintSeen === true,
@@ -99,8 +133,40 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
   }
 }
 
-export function serializeWatchPreferences(prefs: WatchPreferences): string {
-  return JSON.stringify(prefs)
+/** A name with no locale was written in this session, so it takes `uiTag`. */
+export function serializeWatchPreferences(
+  prefs: WatchPreferences,
+  uiTag: string = getCatalogTag(),
+): string {
+  const name = prefs.subtitleLanguageName
+  return JSON.stringify({
+    ...prefs,
+    subtitleLanguageNameLocale:
+      name == null ? null : (prefs.subtitleLanguageNameLocale ?? uiTag),
+  })
+}
+
+/** The cached subtitle name for a screen that reads in `catalogTag`, the tag it
+ *  captured at mount (KTD16), not the live UI tag. Null for a name in another
+ *  tag, so the pill never paints another language's text. */
+export function cachedSubtitleName(
+  prefs: SubtitleName,
+  catalogTag: string | null | undefined,
+): string | null {
+  return catalogTag != null && prefs.subtitleLanguageNameLocale === catalogTag
+    ? prefs.subtitleLanguageName
+    : null
+}
+
+/** The write for a cached subtitle name: the name and the UI tag it is in. */
+export function subtitleNamePatch(
+  name: string | null,
+  uiTag: string = getCatalogTag(),
+): SubtitleName {
+  return {
+    subtitleLanguageName: name,
+    subtitleLanguageNameLocale: name == null ? null : uiTag,
+  }
 }
 
 type AudioLanguage = Pick<

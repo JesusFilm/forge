@@ -203,6 +203,31 @@ describe("VerseSlider across a chapter load", () => {
   })
 })
 
+describe("VerseSlider's verse label", () => {
+  const MERGED: ChapterPosition = {
+    kind: "verse",
+    verse: {
+      number: 6,
+      through: 8,
+      lines: [{ text: "Jesus sat by the well." }],
+    },
+  }
+
+  it.each<[string, ChapterPosition, string]>([
+    [
+      "one verse",
+      LAST,
+      "Verse 36. Whoever believes in the Son has eternal life.",
+    ],
+    ["a merged range", MERGED, "Verses 6 to 8. Jesus sat by the well."],
+  ])("names %s by its numbers", async (_case, stop, label) => {
+    await render(props({ live: live("JHN.4:0", stop) }))
+    await settle()
+    const [shown] = hosts((node) => node.props.testID === "bible-verse")
+    expect(shown!.props.accessibilityLabel).toBe(label)
+  })
+})
+
 describe("VerseSlider during a scrub", () => {
   type Timing = {
     duration: number

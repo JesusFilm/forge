@@ -9,11 +9,10 @@ import {
   useSheetCatalog,
 } from "../src/components/bible/sheets/useReaderSheetData"
 import { useWatchPreferences } from "../src/contexts/WatchPreferencesProvider"
+import { useT } from "../src/i18n/useT"
 import type { CatalogTranslation } from "../src/lib/bible/data/catalog"
-import { READER_COPY } from "../src/lib/bible/reader/copy"
-import { openTranslationDownload } from "../src/lib/bible/routes/sheetCallbacks"
 import { getReaderServices } from "../src/lib/bible/reader/services"
-import { READER_SHEET_COPY } from "../src/lib/bible/sheets/copy"
+import { openTranslationDownload } from "../src/lib/bible/routes/sheetCallbacks"
 import { partialSwitch } from "../src/lib/bible/sheets/partialSwitch"
 import { parseReaderSheetParams } from "../src/lib/bible/sheets/routes"
 import { viewerLanguageCodes } from "../src/lib/bible/sheets/translationList"
@@ -22,6 +21,8 @@ import { viewerLanguageCodes } from "../src/lib/bible/sheets/translationList"
 // pick is the viewer's explicit choice (R41). The passage stays (R24, R38),
 // unless a partial Bible lacks its book; see `partialSwitch`.
 export default function ReaderTranslationRoute() {
+  const t = useT("BibleTranslationPicker")
+  const reader = useT("BibleReader")
   const router = useRouter()
   const request = parseReaderSheetParams(useLocalSearchParams())
   const services = getReaderServices()
@@ -40,13 +41,13 @@ export default function ReaderTranslationRoute() {
   // at its own start, after a warning. Any other pick keeps the passage.
   const switchFor = useCallback(
     (translation: CatalogTranslation) =>
-      partialSwitch({
+      partialSwitch(t, {
         translation,
         ref,
         shownRef: translationRef,
         hasBook: repository.translationHasBook,
       }),
-    [ref, translationRef, repository],
+    [t, ref, translationRef, repository],
   )
   const confirmPick = useCallback(
     (translation: CatalogTranslation, proceed: () => void) => {
@@ -96,10 +97,14 @@ export default function ReaderTranslationRoute() {
     body = (
       <ReaderSheetMessage
         tokens={tokens}
-        sheetTitle={READER_SHEET_COPY.translation.title}
-        title={READER_COPY.failure.catalogTitle}
-        body={READER_COPY.failure.catalogBody}
-        action={{ label: READER_COPY.failure.retry, onPress: retry }}
+        sheetTitle={t("title")}
+        title={reader("catalogTitle")}
+        body={reader("catalogBody")}
+        action={{
+          label: reader("retry"),
+          actionName: "bible-translation-catalog-retry",
+          onPress: retry,
+        }}
         onClose={close}
       />
     )

@@ -3,6 +3,7 @@
  * Local mode is null — the controls keep the live expo-video player. Pure:
  * no react-native or SDK imports, so it tests without the RN runtime.
  */
+import type { UiT } from "../i18n/useT"
 import type { CastPhase } from "./cast/castSessionReducer"
 import { isSameMuxAsset } from "./muxThumbnail"
 
@@ -78,9 +79,12 @@ export function castDevicesAvailable(castState: string | null): boolean {
 export function castButtonLabel(
   phase: CastPhase,
   deviceName: string | null,
+  t: UiT<"Cast">,
 ): string {
-  if (!isRemoteCastPhase(phase)) return "Cast"
-  return deviceName != null ? `Casting to ${deviceName}` : "Casting"
+  if (!isRemoteCastPhase(phase)) return t("castAriaLabel")
+  return deviceName != null
+    ? t("castingToAriaLabel", { device: deviceName })
+    : t("castingAriaLabel")
 }
 
 /** Player-area indicator label — distinct while connecting (R16), named
@@ -88,11 +92,16 @@ export function castButtonLabel(
 export function castIndicatorLabel(
   phase: CastPhase,
   deviceName: string | null,
+  t: UiT<"Cast">,
 ): string {
   if (phase === "connecting") {
-    return deviceName != null ? `Connecting to ${deviceName}…` : "Connecting…"
+    return deviceName != null
+      ? t("connectingTo", { device: deviceName })
+      : t("connecting")
   }
-  return deviceName != null ? `Casting to ${deviceName}` : "Casting"
+  return deviceName != null
+    ? t("castingTo", { device: deviceName })
+    : t("casting")
 }
 
 /** The screen's instruction to the player after a terminal session state:

@@ -1,3 +1,5 @@
+import type { UiT } from "../i18n/useT"
+
 export type AppVersionParts = {
   version: string | null
   build: string | null
@@ -11,11 +13,16 @@ function present(value: unknown): string | null {
 
 /** "Version 1.0.0 (7)", or "Version 1.0.0" with no build number. With no
  *  version the line has nothing to say, so it is null. */
-export function formatAppVersion(parts: AppVersionParts): string | null {
+export function formatAppVersion(
+  parts: AppVersionParts,
+  t: UiT<"More">,
+): string | null {
   const version = present(parts.version)
   if (version == null) return null
   const build = present(parts.build)
-  return build == null ? `Version ${version}` : `Version ${version} (${build})`
+  return build == null
+    ? t("version", { version })
+    : t("versionWithBuild", { version, build })
 }
 
 /* eslint-disable @typescript-eslint/no-require-imports */

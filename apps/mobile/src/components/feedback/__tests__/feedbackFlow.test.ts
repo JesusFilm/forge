@@ -14,12 +14,10 @@ import {
   feedbackStepHeading,
   feedbackTagText,
   formatFeedbackPosition,
-  FEEDBACK_COMPOSE_HEADING,
-  FEEDBACK_KIND_LABEL,
-  FEEDBACK_PICK_KIND_HEADING,
   type FeedbackFlowAction,
   type FeedbackFlowState,
 } from "../feedbackFlow"
+import { getT } from "../../../i18n/useT"
 import {
   FEEDBACK_EMAIL_MAX_LENGTH,
   FEEDBACK_MESSAGE_MAX_LENGTH,
@@ -28,6 +26,15 @@ import {
   FEEDBACK_POSITION_MAX_SECONDS,
 } from "../../../lib/feedbackSubmission"
 import { FEEDBACK_KINDS } from "../../../lib/feedbackQueries"
+
+const t = getT("Feedback")
+const FEEDBACK_KIND_LABEL = {
+  BROKEN: t("kindBroken"),
+  IDEA: t("kindIdea"),
+  OTHER: t("kindOther"),
+}
+const FEEDBACK_PICK_KIND_HEADING = t("pickKindHeading")
+const FEEDBACK_COMPOSE_HEADING = t("composeHeading")
 
 const VALID_MESSAGE = "The audio stops after the first minute."
 
@@ -88,12 +95,12 @@ describe("step transitions (R5, KTD11)", () => {
   })
 
   it("announces each step's own heading and nothing for the other phases", () => {
-    expect(feedbackStepHeading("pickKind")).toBe(FEEDBACK_PICK_KIND_HEADING)
-    expect(feedbackStepHeading("compose")).toBe(FEEDBACK_COMPOSE_HEADING)
+    expect(feedbackStepHeading(t, "pickKind")).toBe(FEEDBACK_PICK_KIND_HEADING)
+    expect(feedbackStepHeading(t, "compose")).toBe(FEEDBACK_COMPOSE_HEADING)
     expect(FEEDBACK_PICK_KIND_HEADING).not.toBe(FEEDBACK_COMPOSE_HEADING)
-    expect(feedbackStepHeading("sending")).toBeNull()
-    expect(feedbackStepHeading("success")).toBeNull()
-    expect(feedbackStepHeading("failed")).toBeNull()
+    expect(feedbackStepHeading(t, "sending")).toBeNull()
+    expect(feedbackStepHeading(t, "success")).toBeNull()
+    expect(feedbackStepHeading(t, "failed")).toBeNull()
   })
 
   it("labels every kind the schema allows (R4)", () => {
@@ -140,13 +147,13 @@ describe("the video tag (R6, KD5)", () => {
   })
 
   it("builds the tag text with and without a position", () => {
-    expect(feedbackTagText({ title: "JESUS", positionSeconds: 4324 })).toBe(
+    expect(feedbackTagText(t, { title: "JESUS", positionSeconds: 4324 })).toBe(
       "About: JESUS at 1:12:04",
     )
-    expect(feedbackTagText({ title: "JESUS", positionSeconds: 43 })).toBe(
+    expect(feedbackTagText(t, { title: "JESUS", positionSeconds: 43 })).toBe(
       "About: JESUS at 0:43",
     )
-    expect(feedbackTagText({ title: "JESUS" })).toBe("About: JESUS")
+    expect(feedbackTagText(t, { title: "JESUS" })).toBe("About: JESUS")
   })
 
   it("drops a position the submission would drop, rather than promising it", () => {
@@ -157,7 +164,7 @@ describe("the video tag (R6, KD5)", () => {
     expect(feedbackPositionLabel(FEEDBACK_POSITION_MAX_SECONDS + 1)).toBeNull()
     expect(feedbackPositionLabel(FEEDBACK_POSITION_MAX_SECONDS)).not.toBeNull()
     expect(
-      feedbackTagText({
+      feedbackTagText(t, {
         title: "JESUS",
         positionSeconds: FEEDBACK_POSITION_MAX_SECONDS + 1,
       }),
@@ -260,19 +267,19 @@ describe("the pre-Send check (R18, KTD7)", () => {
   })
 
   it("states each bound in its own inline sentence", () => {
-    expect(feedbackProblemText("message", "too_short")).toContain(
+    expect(feedbackProblemText(t, "message", "too_short")).toContain(
       String(FEEDBACK_MESSAGE_MIN_LENGTH),
     )
-    expect(feedbackProblemText("message", "too_long")).toContain(
+    expect(feedbackProblemText(t, "message", "too_long")).toContain(
       String(FEEDBACK_MESSAGE_MAX_LENGTH),
     )
-    expect(feedbackProblemText("name", "too_long")).toContain(
+    expect(feedbackProblemText(t, "name", "too_long")).toContain(
       String(FEEDBACK_NAME_MAX_LENGTH),
     )
-    expect(feedbackProblemText("email", "too_long")).toContain(
+    expect(feedbackProblemText(t, "email", "too_long")).toContain(
       String(FEEDBACK_EMAIL_MAX_LENGTH),
     )
-    expect(feedbackProblemText("email", "invalid_email")).toBe(
+    expect(feedbackProblemText(t, "email", "invalid_email")).toBe(
       "Please check this email address.",
     )
   })
@@ -351,21 +358,21 @@ describe("the device-details disclosure (R9, AE4)", () => {
   }
 
   it("names the platform first and then every field the switch adds", () => {
-    expect(feedbackDisclosureRows("IOS", details)).toEqual([
+    expect(feedbackDisclosureRows(t, "IOS", details)).toEqual([
       { label: "Platform", value: "iOS" },
       { label: "App version", value: "1.0.0" },
       { label: "App build", value: "7" },
       { label: "OS version", value: "26.0" },
       { label: "Device model", value: "iPhone17,2" },
     ])
-    expect(feedbackDisclosureRows("ANDROID", details)[0]).toEqual({
+    expect(feedbackDisclosureRows(t, "ANDROID", details)[0]).toEqual({
       label: "Platform",
       value: "Android",
     })
   })
 
   it("shows Unknown for a value the phone cannot read", () => {
-    const rows = feedbackDisclosureRows("IOS", {
+    const rows = feedbackDisclosureRows(t, "IOS", {
       ...details,
       deviceModel: "Unknown",
     })
@@ -373,8 +380,8 @@ describe("the device-details disclosure (R9, AE4)", () => {
   })
 
   it("hints with the same list the disclosure renders", () => {
-    const rows = feedbackDisclosureRows("IOS", details)
-    expect(feedbackDisclosureHint(rows)).toBe(
+    const rows = feedbackDisclosureRows(t, "IOS", details)
+    expect(feedbackDisclosureHint(t, rows)).toBe(
       "This sends Platform, App version, App build, OS version, Device model.",
     )
   })
