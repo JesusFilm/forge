@@ -1,4 +1,3 @@
-import { migrationEnvironmentValue } from "../../src/config/migration-environment.js"
 /* eslint-disable max-lines -- keeps the promotion transaction and its reconciliation contract auditable together */
 import { Prisma, type PrismaClient } from "../../src/generated/prisma/index.js"
 
@@ -208,10 +207,7 @@ export function resolveRawDocumentPromotionEnvironment(
     throw invalidArgument(
       "local source and production target are the same database",
     )
-  if (
-    apply &&
-    migrationEnvironmentValue(input, "JFRAG_ALLOW_PROD_WRITE") !== "1"
-  )
+  if (apply && input.JFRAG_ALLOW_PROD_WRITE !== "1")
     throw invalidArgument(
       "production write refused: set JFRAG_ALLOW_PROD_WRITE=1 as the second deliberate signal",
     )
@@ -227,14 +223,9 @@ export function resolveRawDocumentVerificationEnvironment(
 const resolveProductionTarget = (input: NodeJS.ProcessEnv): URL => {
   const target = postgresUrl(
     "JFRAG_POSTGRESQL_DB_URL",
-    migrationEnvironmentValue(input, "JFRAG_POSTGRESQL_DB_URL"),
+    input.JFRAG_POSTGRESQL_DB_URL,
   )
-  const expectedHost = migrationEnvironmentValue(
-    input,
-    "JFRAG_EXPECTED_POSTGRES_HOST",
-  )
-    ?.trim()
-    .toLowerCase()
+  const expectedHost = input.JFRAG_EXPECTED_POSTGRES_HOST?.trim().toLowerCase()
   if (!expectedHost)
     throw invalidArgument(
       "JFRAG_EXPECTED_POSTGRES_HOST is required before connecting to production",

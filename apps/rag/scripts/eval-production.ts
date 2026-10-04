@@ -1,4 +1,3 @@
-import { migrationEnvironmentValue } from "../src/config/migration-environment.js"
 import { fileURLToPath } from "node:url"
 
 import { resolveProductionEnv } from "../src/config/env.js"
@@ -16,10 +15,7 @@ export function installProductionReadEnvironment(
     throw new EvaluationInputError(
       "production evaluation refused: --target production-read is required",
     )
-  const expectedHost = migrationEnvironmentValue(
-    input,
-    "JFRAG_EXPECTED_POSTGRES_HOST",
-  )?.trim()
+  const expectedHost = input.JFRAG_EXPECTED_POSTGRES_HOST?.trim()
   if (!expectedHost)
     throw new EvaluationInputError(
       "production evaluation refused: JFRAG_EXPECTED_POSTGRES_HOST is required",

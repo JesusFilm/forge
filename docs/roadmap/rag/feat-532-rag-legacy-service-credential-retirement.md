@@ -3,7 +3,7 @@ id: "feat-532"
 title: "Retire legacy JesusFilm-RAG service and credentials"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "not-started"
 start_date: "2026-09-22"
 duration: 1
 depends_on: ["feat-435"]
@@ -76,27 +76,4 @@ that the deployment is stopped or that legacy credentials are retired.
   link, status-count, and reciprocal dependency checks.
 
 Created by [draft PR #2379](https://github.com/JesusFilm/forge/pull/2379). This
-ticket is in progress and does not block the completed feat-435 documentation.
-
-## Environment-name migration in progress
-
-The approved receiver-first sequence starts with additive code compatibility,
-then verifies normal deployment and read-only retrieval/HTTP smoke before
-migrating operator configuration. Later PRs update active documentation and
-remove aliases only after all callers migrate. Private target configuration,
-rollout receipts, and secret retirement remain in the owner's operations system.
-
-Canonical production variables use `FORGE_RAG_`; the shared provider key is
-`OPENROUTER_API_KEY`, the production model is `FORGE_RAG_EMBED_MODEL_ID`, and
-copy tooling uses the generic `CORPUS_SOURCE_DATABASE_URL`. Railway runtime
-`DATABASE_URL`, `EMBED_MODEL_ID`, and `SERVE_BEARER_TOKENS` are unchanged.
-Legacy-only environments remain accepted during this first stage. Present
-canonical values win, including blanks; a canonical database or host selects
-the entire Forge target family to prevent mixed legacy/Forge targets.
-Exact host, reader identity, write and role-provision acknowledgements remain
-mandatory. Evaluation inputs are unit-tested without running evaluation.
-Acquisition, ingestion, reembedding and corpus writes are excluded from this
-migration's validation and deferred for a separate verification follow-up.
-
-The pre-existing platform ticket also numbered feat-532 is outside this scope;
-this work retains the existing RAG ticket rather than renumbering unrelated work.
+ticket is not started and does not block the completed feat-435 documentation.

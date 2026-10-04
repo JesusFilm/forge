@@ -1,4 +1,3 @@
-import { migrationEnvironmentValue } from "../../src/config/migration-environment.js"
 import {
   resolveProductionEnv,
   type ProductionEnv,
@@ -25,10 +24,8 @@ export function installForgeProductionEnvironment(
     JFRAG_ALLOW_PROD_WRITE: input.FORGE_RAG_ALLOW_PROD_WRITE,
     JFRAG_READONLY_ROLE_NAME: input.FORGE_RAG_READONLY_ROLE_NAME,
     JFRAG_OPENROUTER_EMBED_MODEL_ID: input.FORGE_RAG_EMBED_MODEL_ID,
-    JFRAG_OPENROUTER_API_KEY: migrationEnvironmentValue(
-      input,
-      "JFRAG_OPENROUTER_API_KEY",
-    ),
+    JFRAG_OPENROUTER_API_KEY:
+      input.OPENROUTER_API_KEY?.trim() || input.JFRAG_OPENROUTER_API_KEY,
   }
   let env: ProductionEnv
   try {
@@ -75,16 +72,13 @@ export function installProductionEnvironment(
   input: NodeJS.ProcessEnv,
   write: boolean,
 ): void {
-  if (!migrationEnvironmentValue(input, "JFRAG_EXPECTED_POSTGRES_HOST")?.trim())
+  if (!input.JFRAG_EXPECTED_POSTGRES_HOST?.trim())
     throw new Error(
       "production command refused: JFRAG_EXPECTED_POSTGRES_HOST is required before connection",
     )
   const env = resolveProductionEnv(input, {
     write,
-    expectHost: migrationEnvironmentValue(
-      input,
-      "JFRAG_EXPECTED_POSTGRES_HOST",
-    ),
+    expectHost: input.JFRAG_EXPECTED_POSTGRES_HOST,
   })
   input.DATABASE_URL = env.DATABASE_URL
   input.OPENROUTER_API_KEY = env.OPENROUTER_API_KEY

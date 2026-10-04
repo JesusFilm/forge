@@ -15,7 +15,7 @@ describe("corpus copy CLI contract", () => {
       dryRun: true,
       verifyOnly: false,
       resume: false,
-      sourceEnv: "CORPUS_SOURCE_DATABASE_URL",
+      sourceEnv: "JFRAG_SOURCE_DATABASE_URL",
       targetEnv: "DATABASE_URL",
       batchSize: 250,
     })
