@@ -59,19 +59,19 @@ function successResponse(issueId = "issue-1"): Response {
 }
 
 beforeEach(() => {
-  envMutable.ADMIN_FEEDBACK_LINEAR_API_KEY = "lin_api_test"
-  envMutable.ADMIN_FEEDBACK_LINEAR_TEAM_ID = "team-1"
-  envMutable.ADMIN_FEEDBACK_LINEAR_PROJECT_ID = "project-1"
-  envMutable.ADMIN_FEEDBACK_LINEAR_LABEL_ID = "label-1"
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY = "lin_api_test"
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID = "team-1"
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID = "project-1"
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID = "label-1"
   vi.spyOn(console, "log").mockImplementation(() => {})
   vi.spyOn(console, "warn").mockImplementation(() => {})
 })
 
 afterEach(() => {
-  envMutable.ADMIN_FEEDBACK_LINEAR_API_KEY = undefined
-  envMutable.ADMIN_FEEDBACK_LINEAR_TEAM_ID = undefined
-  envMutable.ADMIN_FEEDBACK_LINEAR_PROJECT_ID = undefined
-  envMutable.ADMIN_FEEDBACK_LINEAR_LABEL_ID = undefined
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY = undefined
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID = undefined
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID = undefined
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID = undefined
   vi.restoreAllMocks()
 })
 
@@ -225,7 +225,7 @@ describe("buildFeedbackIssueDescription", () => {
 
 describe("createLinearFeedbackIssue", () => {
   it("refuses without a network call when the API key is missing (AE8)", async () => {
-    envMutable.ADMIN_FEEDBACK_LINEAR_API_KEY = undefined
+    envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY = undefined
     const fetchMock = vi.fn<typeof fetch>()
 
     await expect(
@@ -239,7 +239,7 @@ describe("createLinearFeedbackIssue", () => {
   })
 
   it("refuses without a network call when the team id is missing (AE8)", async () => {
-    envMutable.ADMIN_FEEDBACK_LINEAR_TEAM_ID = undefined
+    envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID = undefined
     const fetchMock = vi.fn<typeof fetch>()
 
     await expect(
@@ -285,8 +285,8 @@ describe("createLinearFeedbackIssue", () => {
   })
 
   it("omits the project and the label when neither is configured", async () => {
-    envMutable.ADMIN_FEEDBACK_LINEAR_PROJECT_ID = undefined
-    envMutable.ADMIN_FEEDBACK_LINEAR_LABEL_ID = undefined
+    envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID = undefined
+    envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID = undefined
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(successResponse())
 
     await createLinearFeedbackIssue(fullSubmission, fetchMock)
@@ -479,7 +479,7 @@ describe("createLinearFeedbackIssue logging", () => {
   })
 
   it("logs config_missing with no status", async () => {
-    envMutable.ADMIN_FEEDBACK_LINEAR_API_KEY = undefined
+    envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY = undefined
 
     await createLinearFeedbackIssue(fullSubmission, vi.fn<typeof fetch>())
 
