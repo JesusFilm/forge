@@ -17,7 +17,9 @@ import { CloseButton } from "./CloseButton"
 import { useCloseDailyPause } from "./DailyPauseHost"
 import { OpeningScreen } from "./OpeningScreen"
 import { PartPlayer } from "./PartPlayer"
-import { StepStandIn } from "./StepStandIn"
+import { PrayScreen } from "./PrayScreen"
+import { ReflectScreen } from "./ReflectScreen"
+import { ShareScreen } from "./ShareScreen"
 import { WatchScreen } from "./WatchScreen"
 
 const KEEP_AWAKE_TAG = "daily-pause-run"
@@ -88,15 +90,26 @@ export function RunScreen() {
         onContinue={run.advance}
       />
     )
-  } else if (!isVideoPart(state.step)) {
+  } else if (state.step === "reflectScreen") {
     content = (
-      <StepStandIn
-        key={state.step}
-        step={state.step}
+      <ReflectScreen
+        devotional={state.pin.devotional}
+        meditationLength={settings.meditationLength}
         font={font}
         onContinue={run.advance}
       />
     )
+  } else if (state.step === "prayScreen") {
+    content = (
+      <PrayScreen
+        devotional={state.pin.devotional}
+        meditationLength={settings.meditationLength}
+        font={font}
+        onContinue={run.advance}
+      />
+    )
+  } else if (state.step === "share") {
+    content = <ShareScreen pin={state.pin} font={font} />
   }
 
   const part = loaded && state.pin != null ? partForStep(state.step) : null

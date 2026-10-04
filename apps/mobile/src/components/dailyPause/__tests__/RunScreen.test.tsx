@@ -22,6 +22,7 @@ import {
   type PauseStep,
 } from "../../../lib/dailyPause/progress"
 import {
+  PAUSE_TIMERS,
   getPauseSettingsStore,
   resetPauseSettingsStoreForTests,
 } from "../../../lib/dailyPause/settings"
@@ -231,11 +232,29 @@ async function playToStop(range: PartRange) {
   await frames(1)
 }
 
-/** Moves the run on: Continue on a screen, the part's end on a video part. */
+/** Lets the default pause run out (Reflect 0:45, then Pray 0:30). The
+ *  countdown re-arms between commits, so the clock moves in small steps. */
+async function waitOutPause() {
+  const steps = (PAUSE_TIMERS[3].reflectSec * 1000) / 250 + 4
+  for (let i = 0; i < steps; i += 1) {
+    await act(async () => {
+      jest.advanceTimersByTime(250)
+    })
+  }
+}
+
+/** Moves the run on: the part's end on a video part, the button at zero on a
+ *  pause screen, and Continue on the Watch screen. */
 async function next() {
   const step = savedDay().step
   if (step === "film" || step === "teaching" || step === "prayer") {
     await playToStop(PARTS[step])
+  } else if (step === "reflectScreen") {
+    await waitOutPause()
+    await tap("Continue")
+  } else if (step === "prayScreen") {
+    await waitOutPause()
+    await tap("Amen")
   } else {
     await tap("Continue")
   }
@@ -302,10 +321,10 @@ const WALK: readonly [PauseStep, string | null, string[]][] = [
   ["watchScreen", "DAILY BIBLE PAUSE", WATCH],
   ["film", null, []],
   ["teaching", null, []],
-  ["reflectScreen", "Reflect", REFLECT],
+  ["reflectScreen", DEVOTIONALS.pharisee.verseLabel, REFLECT],
   ["prayer", null, []],
-  ["prayScreen", "Pray", PRAY],
-  ["share", "Share", []],
+  ["prayScreen", DEVOTIONALS.pharisee.attribution, PRAY],
+  ["share", "SHARE", []],
 ]
 
 it("walks from Begin through the R10 steps to Share, with the stepper only on the three screens", async () => {
@@ -322,6 +341,8 @@ it("walks from Begin through the R10 steps to Share, with the stepper only on th
     expect(pills()).toEqual(stepper)
     expect(savedDay().step).toBe(step)
   }
+  // R7: reaching Share marks the day done.
+  expect(savedDay().done).toBe(true)
 })
 
 it("keeps one part player mounted from the film part to the prayer part (KTD7)", async () => {
@@ -342,7 +363,7 @@ it("offers only the close and Share this video on Share (R22)", async () => {
   await seedDay("prayScreen")
   await open()
   await tap("Resume")
-  await tap("Continue")
+  await next()
   expect(buttons()).toEqual(["Share this video", "Close"])
 })
 
@@ -354,9 +375,9 @@ it("keeps the screen awake from the Opening through Pray, under StrictMode with 
     expect(mockAwakeTags.size).toBe(1)
     await next()
   }
-  expect(hasText(renderer!, "Pray")).toBe(true)
+  expect(savedDay().step).toBe("prayScreen")
   expect(mockAwakeTags.size).toBe(1)
-  await tap("Continue")
+  await next()
   expect(hasText(renderer!, "Share this video")).toBe(true)
   expect(mockAwakeTags.size).toBe(0)
 })
