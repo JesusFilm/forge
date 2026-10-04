@@ -1,0 +1,25 @@
+{
+  "pharisee": {
+    "parts": {
+      "film": { "startSec": 12.2, "endSec": 58.4 },
+      "teaching": { "startSec": 62.2, "endSec": 182.5 },
+      "prayer": { "startSec": 185.6, "endSec": 195.5 }
+    },
+    "skipped": [
+      { "startSec": 0, "endSec": 12.2 },
+      { "startSec": 58.4, "endSec": 62.2 },
+      { "startSec": 182.5, "endSec": 185.6 }
+    ]
+  },
+  "lamp": {
+    "parts": {
+      "film": { "startSec": 0, "endSec": 25.9 },
+      "teaching": { "startSec": 29.3, "endSec": 128.1 },
+      "prayer": { "startSec": 131.2, "endSec": 141.7 }
+    },
+    "skipped": [
+      { "startSec": 26.2, "endSec": 29.3 },
+      { "startSec": 128.1, "endSec": 131.2 }
+    ]
+  }
+}

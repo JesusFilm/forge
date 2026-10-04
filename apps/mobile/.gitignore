@@ -31,3 +31,7 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# Encoded devotional videos from scripts/encode-devotionals.sh. They reach EAS
+# through the root .easignore, never through git.
+/assets/devotionals/*

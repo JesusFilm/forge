@@ -1,0 +1,153 @@
+# Branch-only EAS upload rules for the pause-preview build (KTD3).
+# This file never merges to main.
+
+# The build runs with EAS_NO_VCS=1, so eas-cli copies the working tree through
+# these rules. While this file exists, eas-cli reads no .gitignore file.
+
+# So this file restates every .gitignore rule with its folder prefix. It drops
+# each "!" rule, so no .env file reaches the upload (the mobile build reads none).
+
+# The only "!" rules are the two encoded videos at the end of this file.
+# Restate each later .gitignore change here. A mobile guard test checks this
+# file: apps/mobile/src/lib/dailyPause/__tests__/devotionalAssets.guard.test.js
+
+# A folder rule with a trailing "/" leaves the folder in the upload, empty.
+# apps/mobile/ios and apps/mobile/android have no "/", so eas-cli drops them.
+
+# .gitignore
+node_modules/
+.pnpm-store/
+.turbo/
+.expo/
+.swc/
+.next/
+**/.mastra/
+next-env.d.ts
+dist/
+build/
+/coverage/
+.DS_Store
+.env
+.env.*
+terraform.tfstate
+terraform.tfstate.*
+.terraform/
+*.tfplan
+**/.build/
+.gradle/
+local.properties
+**/tsconfig.tsbuildinfo
+.tmp/
+**/.tmp/
+test-results/
+**/test-results/
+*.tgz
+**/xcuserdata/
+**/*.xcuserstate
+.claude/settings.local.json
+.claude/cache/
+.claude/debug/
+.claude/telemetry/
+.claude/worktrees/
+.claude/secrets.local.md
+.claude/**/*.dev.md
+.context/
+todos/*.md
+output/
+forge.code-workspace
+.worktrees
+*.explainer.html
+.superpowers/
+apps/mobile/design-mockups/
+.impeccable/
+.cache/
+devo/
+/local/
+apps/mastra/eval-runs/
+eval-runs/
+apps/rag/eval/attempts/
+apps/mastra/.seeker-eval-debug/
+
+# apps/auth/.gitignore
+apps/auth/.next/
+apps/auth/next-env.d.ts
+apps/auth/node_modules/
+apps/auth/src/generated/
+apps/auth/tsconfig.tsbuildinfo
+
+# apps/manager/.gitignore
+apps/manager/**/.data/
+apps/manager/**/.tmp/
+apps/manager/**/.env
+apps/manager/**/.env.local
+apps/manager/**/.next/
+apps/manager/**/node_modules/
+
+# apps/mastra-gateway/.gitignore
+apps/mastra-gateway/src/generated/
+
+# apps/mobile/.gitignore
+apps/mobile/**/node_modules/
+apps/mobile/**/.expo/
+apps/mobile/**/dist/
+apps/mobile/**/web-build/
+apps/mobile/**/expo-env.d.ts
+apps/mobile/ios
+apps/mobile/android
+apps/mobile/**/.kotlin/
+apps/mobile/**/.metro-health-check*
+apps/mobile/**/npm-debug.*
+apps/mobile/**/yarn-debug.*
+apps/mobile/**/yarn-error.*
+apps/mobile/**/.DS_Store
+apps/mobile/**/.env
+apps/mobile/**/.env.*
+apps/mobile/**/*.tsbuildinfo
+apps/mobile/assets/devotionals/*
+
+# apps/rag/.gitignore
+apps/rag/src/generated/
+apps/rag/dashboard/prod-status-data.json
+apps/rag/dashboard/prod-status-data.json.tmp-*
+apps/rag/dashboard/.compiled-data.json.*.tmp
+apps/rag/dashboard/compiled-data.json.*.bak
+apps/rag/dashboard/site/rag-status/.index.html.*.tmp
+apps/rag/dashboard/site/rag-status/index.html.*.bak
+apps/rag/dashboard/site/rag-status/..dashboard-commit.json.*.tmp
+apps/rag/dashboard/site/rag-status/.dashboard-commit.json.*.bak
+apps/rag/dashboard/site/rag-status/.dashboard-commit.json.lock
+apps/rag/dashboard/site/rag-status/.dashboard-commit.json.lock.guard/
+apps/rag/dashboard/site/rag-status/.dashboard-commit.json.lock.guard.stale-*
+apps/rag/dashboard/site/rag-status/.dashboard-commit.json.lock.stale-*
+apps/rag/docs/source-status.yaml.lock
+apps/rag/docs/source-status.yaml.lock.guard/
+apps/rag/docs/source-status.yaml.lock.guard.stale-*
+apps/rag/docs/source-status.yaml.lock.stale-*
+apps/rag/docs/source-status.yaml.*.tmp
+apps/rag/output/
+
+# apps/tv/.gitignore
+apps/tv/**/.expo/
+apps/tv/ios/
+apps/tv/android/
+apps/tv/**/.env.local
+apps/tv/**/node_modules/
+apps/tv/**/*.apk
+apps/tv/**/*.aab
+
+# apps/yt-video-mapper-backend/.gitignore
+apps/yt-video-mapper-backend/**/.env
+apps/yt-video-mapper-backend/**/.env.*
+apps/yt-video-mapper-backend/**/node_modules/
+apps/yt-video-mapper-backend/**/dist/
+apps/yt-video-mapper-backend/**/build/
+apps/yt-video-mapper-backend/**/.DS_Store
+apps/yt-video-mapper-backend/**/*.log
+apps/yt-video-mapper-backend/**/tmp/
+apps/yt-video-mapper-backend/**/uploads/
+apps/yt-video-mapper-backend/**/artifacts/
+apps/yt-video-mapper-backend/src/generated/
+
+# The two encoded devotional videos (apps/mobile/scripts/encode-devotionals.sh)
+!apps/mobile/assets/devotionals/pharisee.mp4
+!apps/mobile/assets/devotionals/lamp.mp4
