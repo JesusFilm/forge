@@ -13,6 +13,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
+import { AnnouncementsButton } from "../home/AnnouncementsButton"
 import { HOME_HEADER_ROW_HEIGHT, HOME_HEADER_ROW_TOP } from "./homeHeaderLayout"
 
 type HomeHeaderProps = {
@@ -105,7 +106,12 @@ export function HomeHeader({
         </GlassView>
       )}
 
-      {hideActions ? slot : trailing}
+      {/* Home hides its other actions but keeps the announcements bell. */}
+      {hideActions ? (
+        <AnnouncementsButton glassStyle={styles.glassButton} />
+      ) : (
+        trailing
+      )}
     </View>
   )
 }

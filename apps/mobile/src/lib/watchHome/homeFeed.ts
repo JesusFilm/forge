@@ -10,6 +10,7 @@ export type HomeFeedItem =
   | { kind: "selector" }
   | { kind: "section"; section: WatchHomeSection }
   | { kind: "recommendations" }
+  | { kind: "dailyPause" }
   | { kind: "mission" }
 
 export type RecommendationsGateInput = {

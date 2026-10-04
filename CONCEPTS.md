@@ -98,6 +98,17 @@ The workflow re-reads each selected file and compares its integrity metadata
 before external or irreversible boundaries. A mismatch fails the attempt
 rather than generating or publishing from mixed source versions.
 
+### Daily Bible Pause
+
+The mobile app's daily devotional ritual: each local day, the viewer moves
+through one devotional in its Watch, Reflect, and Pray sections, then Share.
+_Avoid:_ devo (conversation shorthand).
+
+Each section pairs a part of the devotional's video with an app screen that
+gives the viewer time to respond, such as the verse held on screen with a
+timer. A day's Daily Bible Pause is done when the viewer reaches Share, and
+the done state ends at local midnight.
+
 ## Video & media
 
 ### Smart Crop

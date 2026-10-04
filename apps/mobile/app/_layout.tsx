@@ -33,6 +33,7 @@ let DevEndpointNotice:
 let PlaybackHost: typeof import("../src/components/watch/PlaybackHost").PlaybackHost
 let ExportReportHost: typeof import("../src/components/ExportReportHost").ExportReportHost
 let PushNoticeHost: typeof import("../src/components/PushNoticeHost").PushNoticeHost
+let PauseStage: typeof import("../src/components/PauseStage").PauseStage
 let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
 // `| undefined`: this one is read at module scope after the try/catch, where a
@@ -99,6 +100,7 @@ try {
   ExportReportHost =
     require("../src/components/ExportReportHost").ExportReportHost
   PushNoticeHost = require("../src/components/PushNoticeHost").PushNoticeHost
+  PauseStage = require("../src/components/PauseStage").PauseStage
   if (__DEV__) {
     DevEndpointNotice =
       require("../src/components/DevEndpointNotice").DevEndpointNotice
@@ -354,7 +356,8 @@ export default function RootLayout() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    // The cinematic curtain must cover the native tab bar, so it sits at root.
+    <PauseStage>
       <ErrorBoundary>
         <MobileDatadogProvider>
           <ApolloProvider client={clientRef.current}>
@@ -530,6 +533,6 @@ export default function RootLayout() {
         </MobileDatadogProvider>
       </ErrorBoundary>
       {DevEndpointNotice ? <DevEndpointNotice /> : null}
-    </View>
+    </PauseStage>
   )
 }

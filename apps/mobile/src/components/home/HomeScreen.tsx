@@ -59,10 +59,12 @@ import {
   type HomeFeedItem,
   type RecommendationsGateInput,
 } from "../../lib/watchHome/homeFeed"
+import { withDailyPauseCard } from "../../lib/watchHome/dailyPauseCard"
 import { slideRouteArgs } from "../../lib/watchHome/slideRouteArgs"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 import { feedback, layout, text } from "../../styles/shared"
 import { HomeHeader } from "../ui/HomeHeader"
+import { DailyPauseCard } from "./DailyPauseCard"
 import { HomeHeroSelectorRail } from "./HomeHeroSelectorRail"
 import {
   HERO_CHROME_BOTTOM,
@@ -425,12 +427,15 @@ export function HomeScreen() {
 
   const feedItems = useMemo<HomeFeedItem[]>(
     () =>
-      buildHomeFeed({
-        model,
-        // Selector rail mirrors the pager-chrome rule: multi-slide queues only (AE2).
-        showSelector: heroSlides.length > 1,
-        recommendations: recommendationsGate,
-      }),
+      withDailyPauseCard(
+        buildHomeFeed({
+          model,
+          // Selector rail mirrors the pager-chrome rule: multi-slide queues only (AE2).
+          showSelector: heroSlides.length > 1,
+          recommendations: recommendationsGate,
+        }),
+        recommendationsGate.insertIndex,
+      ),
     [model, heroSlides.length, recommendationsGate],
   )
 
@@ -469,6 +474,8 @@ export function HomeScreen() {
             onSelect={recommendations.select}
             onRefresh={refreshSlate}
           />
+        ) : item.kind === "dailyPause" ? (
+          <DailyPauseCard />
         ) : (
           <HomeMissionSection />
         )
