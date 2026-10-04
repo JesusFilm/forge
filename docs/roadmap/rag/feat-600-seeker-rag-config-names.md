@@ -3,7 +3,7 @@ id: "feat-600"
 title: "Name Seeker RAG configuration after its consumer"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-02"
 duration: 1
 depends_on: []
@@ -21,10 +21,10 @@ and fixture capture use `SEEKER_RAG_*` without old-name aliases. Explicit captur
 flags, existing defaults, internal function names and production host guards are
 preserved. Missing-key guidance now applies to both local and remote capture.
 
-The implementation is ready for the agreed direct cutover. This ticket remains
-in progress until the owner renames the configured local and Railway Mastra
-variables, restarts/redeploys with those settings, and confirms retrieval,
-citations and usage under the `seeker` consumer. Keep the credential value; apply
+The implementation is complete. The owner will finish the agreed direct cutover
+by renaming the configured local and Railway Mastra variables, restarting or
+redeploying with those settings, and confirming retrieval, citations and usage
+under the `seeker` consumer. Keep the credential value; apply
 the base URL and allowed hosts together. No production settings were changed
 by this PR.
 
@@ -76,8 +76,8 @@ old variable names.
 - Run configuration, RAG-client, retrieve-answer and Seeker capture/evaluation tests.
 - Check formatting and TypeScript for the touched package.
 - After rollout, verify grounded retrieval and citations locally and in production.
-- Publish the reviewed implementation as a PR; keep this ticket in progress until
-  the production/local configuration rollout is verified.
+- Publish the reviewed implementation as a PR. The owner performs and verifies
+  the production/local configuration rollout after merge.
 
 ## Local Verification — October 2, 2026
 
