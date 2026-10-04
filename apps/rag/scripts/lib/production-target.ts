@@ -1,4 +1,3 @@
-import { migrationEnvironmentValue } from "../../src/config/migration-environment.js"
 import {
   resolveProductionEnv,
   type ProductionEnv,
@@ -19,16 +18,13 @@ export function installForgeProductionEnvironment(
   write: boolean,
 ): ForgeProductionTarget {
   const mapped = {
-    JFRAG_POSTGRESQL_READONLY_DB_URL:
+    FORGE_RAG_POSTGRESQL_READONLY_DB_URL:
       input.FORGE_RAG_POSTGRESQL_READONLY_DB_URL,
-    JFRAG_POSTGRESQL_DB_URL: input.FORGE_RAG_POSTGRESQL_DB_URL,
-    JFRAG_ALLOW_PROD_WRITE: input.FORGE_RAG_ALLOW_PROD_WRITE,
-    JFRAG_READONLY_ROLE_NAME: input.FORGE_RAG_READONLY_ROLE_NAME,
-    JFRAG_OPENROUTER_EMBED_MODEL_ID: input.FORGE_RAG_EMBED_MODEL_ID,
-    JFRAG_OPENROUTER_API_KEY: migrationEnvironmentValue(
-      input,
-      "JFRAG_OPENROUTER_API_KEY",
-    ),
+    FORGE_RAG_POSTGRESQL_DB_URL: input.FORGE_RAG_POSTGRESQL_DB_URL,
+    FORGE_RAG_ALLOW_PROD_WRITE: input.FORGE_RAG_ALLOW_PROD_WRITE,
+    FORGE_RAG_READONLY_ROLE_NAME: input.FORGE_RAG_READONLY_ROLE_NAME,
+    FORGE_RAG_EMBED_MODEL_ID: input.FORGE_RAG_EMBED_MODEL_ID,
+    OPENROUTER_API_KEY: input.OPENROUTER_API_KEY,
   }
   let env: ProductionEnv
   try {
@@ -37,20 +33,7 @@ export function installForgeProductionEnvironment(
       expectHost: input.FORGE_RAG_EXPECTED_POSTGRES_HOST,
     })
   } catch (error) {
-    if (error instanceof EnvironmentConfigurationError)
-      throw new EnvironmentConfigurationError(
-        error.code,
-        error.message
-          .replaceAll(
-            "JFRAG_OPENROUTER_API_KEY",
-            "OPENROUTER_API_KEY (or JFRAG_OPENROUTER_API_KEY)",
-          )
-          .replace(
-            /JFRAG_(POSTGRESQL_DB_URL|POSTGRESQL_READONLY_DB_URL|ALLOW_PROD_WRITE|EXPECTED_POSTGRES_HOST)/g,
-            "FORGE_RAG_$1",
-          ),
-        error.target,
-      )
+    if (error instanceof EnvironmentConfigurationError) throw error
     // URL/schema errors must not print the credential or a legacy variable name.
     throw new RagOperationalError(
       "argument_invalid",
@@ -75,16 +58,13 @@ export function installProductionEnvironment(
   input: NodeJS.ProcessEnv,
   write: boolean,
 ): void {
-  if (!migrationEnvironmentValue(input, "JFRAG_EXPECTED_POSTGRES_HOST")?.trim())
+  if (!input.FORGE_RAG_EXPECTED_POSTGRES_HOST?.trim())
     throw new Error(
-      "production command refused: JFRAG_EXPECTED_POSTGRES_HOST is required before connection",
+      "production command refused: FORGE_RAG_EXPECTED_POSTGRES_HOST is required before connection",
     )
   const env = resolveProductionEnv(input, {
     write,
-    expectHost: migrationEnvironmentValue(
-      input,
-      "JFRAG_EXPECTED_POSTGRES_HOST",
-    ),
+    expectHost: input.FORGE_RAG_EXPECTED_POSTGRES_HOST,
   })
   input.DATABASE_URL = env.DATABASE_URL
   input.OPENROUTER_API_KEY = env.OPENROUTER_API_KEY

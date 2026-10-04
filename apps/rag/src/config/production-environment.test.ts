@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { assertEnvironmentForTarget, resolveProductionEnv } from "./env.js"
 import { resolveDashboardDatabase } from "./database-url.js"
-import { migrationEnvironmentValue } from "./migration-environment.js"
 
 const legacy = {
   JFRAG_POSTGRESQL_READONLY_DB_URL:
@@ -20,11 +19,17 @@ const canonical = {
   FORGE_RAG_EMBED_MODEL_ID: "forge/model",
   FORGE_RAG_ALLOW_PROD_WRITE: "1",
 }
-describe("receiver-first production environment", () => {
-  it("accepts legacy and canonical-only reads", () => {
-    expect(assertEnvironmentForTarget(legacy, "production-read")).toMatchObject(
-      { OPENROUTER_API_KEY: "legacy-key" },
-    )
+describe("canonical-only production environment", () => {
+  it("refuses legacy-only production and dashboard inputs", () => {
+    expect(() =>
+      assertEnvironmentForTarget(legacy, "production-read"),
+    ).toThrow()
+    expect(() =>
+      assertEnvironmentForTarget(legacy, "production-write"),
+    ).toThrow()
+    expect(() => resolveDashboardDatabase(legacy)).toThrow()
+  })
+  it("accepts canonical-only reads", () => {
     expect(
       assertEnvironmentForTarget(canonical, "production-read"),
     ).toMatchObject({
@@ -112,21 +117,12 @@ describe("receiver-first production environment", () => {
       ),
     ).toThrow()
   })
-  it("uses generic corpus source and canonical admin acknowledgements", () => {
-    expect(
-      migrationEnvironmentValue(
-        { CORPUS_SOURCE_DATABASE_URL: "new", JFRAG_SOURCE_DATABASE_URL: "old" },
-        "JFRAG_SOURCE_DATABASE_URL",
+  it("refuses legacy provider credentials with canonical target values", () => {
+    expect(() =>
+      assertEnvironmentForTarget(
+        { ...legacy, ...canonical, OPENROUTER_API_KEY: undefined },
+        "production-read",
       ),
-    ).toBe("new")
-    expect(
-      migrationEnvironmentValue(
-        {
-          FORGE_RAG_ALLOW_PROD_ROLE_PROVISION: "",
-          JFRAG_ALLOW_PROD_ROLE_PROVISION: "1",
-        },
-        "JFRAG_ALLOW_PROD_ROLE_PROVISION",
-      ),
-    ).toBe("")
+    ).toThrow()
   })
 })

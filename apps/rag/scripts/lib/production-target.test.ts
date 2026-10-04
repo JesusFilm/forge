@@ -116,18 +116,17 @@ describe("Forge production maintenance target", () => {
     },
   )
 
-  it("uses the explicit Forge role/model and environment-neutral provider fallback", () => {
+  it("uses the explicit Forge role/model and canonical provider credential", () => {
     const input = forgeEnvironment()
     input.FORGE_RAG_POSTGRESQL_READONLY_DB_URL =
       "postgresql://forge_reader:p@forge.example/rag"
     input.FORGE_RAG_READONLY_ROLE_NAME = "forge_reader"
     input.FORGE_RAG_EMBED_MODEL_ID = "forge/model"
-    delete input.OPENROUTER_API_KEY
-    input.JFRAG_OPENROUTER_API_KEY = "fallback-key"
+    input.OPENROUTER_API_KEY = "canonical-key"
     installForgeProductionEnvironment(input, false)
     expect(input).toMatchObject({
       EMBED_MODEL_ID: "forge/model",
-      OPENROUTER_API_KEY: "fallback-key",
+      OPENROUTER_API_KEY: "canonical-key",
     })
   })
 
@@ -147,9 +146,9 @@ describe("production maintenance target", () => {
     expect(() =>
       installProductionEnvironment(
         {
-          JFRAG_POSTGRESQL_READONLY_DB_URL:
+          FORGE_RAG_POSTGRESQL_READONLY_DB_URL:
             "postgresql://forge_rag_evaluator:p@prod.example/rag",
-          JFRAG_OPENROUTER_API_KEY: "key",
+          OPENROUTER_API_KEY: "key",
         },
         false,
       ),
@@ -158,10 +157,10 @@ describe("production maintenance target", () => {
 
   it("rejects host mismatch before installing DATABASE_URL", () => {
     const env = {
-      JFRAG_POSTGRESQL_READONLY_DB_URL:
+      FORGE_RAG_POSTGRESQL_READONLY_DB_URL:
         "postgresql://forge_rag_evaluator:p@wrong.example/rag",
-      JFRAG_OPENROUTER_API_KEY: "key",
-      JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+      OPENROUTER_API_KEY: "key",
+      FORGE_RAG_EXPECTED_POSTGRES_HOST: "prod.example",
     }
     expect(() => installProductionEnvironment(env, false)).toThrow(/host/i)
     expect(env).not.toHaveProperty("DATABASE_URL")
@@ -169,9 +168,9 @@ describe("production maintenance target", () => {
 
   it("requires the explicit production write signal", () => {
     const env = {
-      JFRAG_POSTGRESQL_DB_URL: "postgresql://owner:p@prod.example/rag",
-      JFRAG_OPENROUTER_API_KEY: "key",
-      JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+      FORGE_RAG_POSTGRESQL_DB_URL: "postgresql://owner:p@prod.example/rag",
+      OPENROUTER_API_KEY: "key",
+      FORGE_RAG_EXPECTED_POSTGRES_HOST: "prod.example",
     }
     expect(() => installProductionEnvironment(env, true)).toThrow(
       /ALLOW_PROD_WRITE/,
@@ -181,10 +180,10 @@ describe("production maintenance target", () => {
 
   it("installs production values only when both write guards match", () => {
     const env = {
-      JFRAG_POSTGRESQL_DB_URL: "postgresql://owner:p@prod.example/rag",
-      JFRAG_OPENROUTER_API_KEY: "key",
-      JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
-      JFRAG_ALLOW_PROD_WRITE: "1",
+      FORGE_RAG_POSTGRESQL_DB_URL: "postgresql://owner:p@prod.example/rag",
+      OPENROUTER_API_KEY: "key",
+      FORGE_RAG_EXPECTED_POSTGRES_HOST: "prod.example",
+      FORGE_RAG_ALLOW_PROD_WRITE: "1",
     }
     installProductionEnvironment(env, true)
     expect(env).toMatchObject({
