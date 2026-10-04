@@ -28,6 +28,12 @@
       "extends": "preview",
       "ios": { "simulator": true }
     },
+    "pause-preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "channel": "pause-preview",
+      "environment": "preview"
+    },
     "production": {
       "extends": "base",
       "autoIncrement": true,
