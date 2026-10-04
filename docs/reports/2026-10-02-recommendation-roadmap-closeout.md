@@ -265,7 +265,28 @@ earlier failures, with no scheduler error. Three freshly expired request roots
 were present inside the propagation window. No synthetic writes or production
 mutations were used for this verification.
 
-There are **zero qualifying cycles** through the failed October 3 cycle. Both
+The October 4 ordinary cycle also failed. The 19:39 UTC audit found six failed
+scheduled attempts between 10:30:01 and 11:42:12, interleaved with 438 successful
+attempts through 12:12:38. Successes committed 1,672 request roots, 5,390 served
+items, 4,090 rendered facts and 4,373 standalone episodes; failed attempts
+separately committed 23 roots and other descendants. Three wrapper failures
+were classified as transaction-timeout/closed and three as deadline/statement
+timeout, all around the unchanged five-second limit. Four committed nine or ten
+standalone episodes without roots; two later failures committed roots and
+projection cleanup. These counters do not identify the exact failed SQL.
+
+At 19:39:29, all 21 types still had zero overdue rows and the latest success
+watermark was 12:12:37. A separate 19:39:30 snapshot found 2,174 newly expired
+request roots, with oldest expiry 12:12:41, inside the propagation window.
+Both actual Admin roles were observed healthy and compact on `e8e7fb3` at
+19:38:53. At 19:38:48, direct PGDATA free space was 23,857,287,168 bytes and WAL
+was 134,217,728 bytes. The separate 19:39:30 read found the legacy stage empty
+at 24,576 allocated bytes. The storage owner is classifying the new failures with
+bounded read-only evidence and isolated tests; current healthy serving criteria
+do not turn this into a qualifying clean cycle. Sanitized receipts are retained
+under `outputs/heartbeats/20261004T1938-daily/` in the storage evidence directory.
+
+There are **zero qualifying cycles** through the failed October 4 cycle. Both
 Admin roles must run `e8e7fb3` or a verified descendant containing the repairs.
 Natural catch-up demonstrated request-root deletion, declining overdue backlog
 and restoration of the serving-health criteria; recovery cannot qualify the
