@@ -88,7 +88,7 @@ and required checks cover each scoped PR; normal Roadmap deployment is verified
 separately from local behavior and page-load checks.
 
 This plan stays active solely for platform feat-554: two normal failure-free
-loaded daily retention cycles must be observed. October 2 and 3 both failed and
+loaded daily retention cycles must be observed. October 2, 3 and 4 failed and
 do not qualify. Runtime repairs #2550, #2551 and #2553 merged normally. Both
 Admin roles were verified on `e8e7fb3` at October 3 22:05:59 UTC. Natural catch-up
 then produced successful batches as well as two failed attempts; at 22:17:23,
@@ -96,8 +96,12 @@ overdue requests and projection runs were clear, but standalone episodes and
 eligibility decisions still kept the serving gate overdue. At 22:47:11, all
 21 overdue categories were clear with a current success watermark; a separate
 22:49:11 check confirmed that recovery. Normal catch-up of younger expired
-records continued in the persistent scheduler. This recovered cycle does not
-replace the two later ordinary loaded daily cycles. Existing daily monitoring sends
+records continued in the persistent scheduler. The October 4 ordinary cycle
+then recorded six failures and 438 successes. Its 19:39 UTC health audit still
+found zero overdue rows, but it supplies no clean-cycle credit. The storage
+owner is classifying those fresh failures and owns any evidenced repair through
+the normal tested/reviewed release process. Recovery does not replace the two
+later ordinary loaded daily cycles. Existing daily monitoring sends
 new proof to the coordinating owner, who completes the scoped evidence PR,
 review/merge, final merged-main inventory and index update. Do not mark the plan
 complete or disable that monitor before the required closure merges.
