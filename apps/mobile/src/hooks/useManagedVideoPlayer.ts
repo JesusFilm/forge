@@ -158,6 +158,12 @@ export function useManagedVideoPlayer(
      */
     armsPictureInPicture?: boolean
     /**
+     * True keeps a video that the background paused paused when the app
+     * returns, so only the viewer starts it again (the daily pause, KTD9).
+     * Absent or false: the return resumes it, as before.
+     */
+    holdOnReturn?: boolean
+    /**
      * The route slug of the media, for the recommendation recorder's
      * discovery lookup (feat-516): a search result marks its slug before it
      * navigates, and the recorder only ever learns the Admin id otherwise.
@@ -204,6 +210,10 @@ export function useManagedVideoPlayer(
   // per player, so a plain option in its closure would be stale.
   const armsPipRef = useRef(options?.armsPictureInPicture === true)
   armsPipRef.current = options?.armsPictureInPicture === true
+
+  // Ref-mirrored for the same reason as castActive.
+  const holdOnReturnRef = useRef(options?.holdOnReturn === true)
+  holdOnReturnRef.current = options?.holdOnReturn === true
 
   // Whether the app is foregrounded right now. A swap's replaceAsync can outlive
   // a background transition; resume() reads this so it never force-plays into
@@ -558,8 +568,12 @@ export function useManagedVideoPlayer(
         }
         if (expandedBack) shouldResume = true
         // A session on the TV owns playback: neither resume source may start
-        // local audio over it (KTD4).
-        if (shouldResume && !castActiveRef.current) {
+        // local audio over it (KTD4). A held player waits for the viewer.
+        if (
+          shouldResume &&
+          !castActiveRef.current &&
+          !holdOnReturnRef.current
+        ) {
           try {
             player.play()
           } catch {

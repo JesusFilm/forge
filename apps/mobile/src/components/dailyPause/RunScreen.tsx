@@ -6,8 +6,9 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
 import { useEffect, type ReactNode } from "react"
 import { StyleSheet, View } from "react-native"
 
+import type { DevotionalPart } from "../../lib/dailyPause/devotionals"
 import { usePauseFonts } from "../../lib/dailyPause/fonts"
-import { usePauseDay } from "../../lib/dailyPause/progress"
+import { usePauseDay, type PauseStep } from "../../lib/dailyPause/progress"
 import { isVideoPart, useDailyPauseRun } from "../../lib/dailyPause/run"
 import { usePauseSettings } from "../../lib/dailyPause/settings"
 import { pauseColors } from "../../lib/dailyPause/theme"
@@ -15,6 +16,7 @@ import { useToday } from "../../lib/dailyPause/today"
 import { CloseButton } from "./CloseButton"
 import { useCloseDailyPause } from "./DailyPauseHost"
 import { OpeningScreen } from "./OpeningScreen"
+import { PartPlayer } from "./PartPlayer"
 import { StepStandIn } from "./StepStandIn"
 import { WatchScreen } from "./WatchScreen"
 
@@ -23,6 +25,20 @@ const CUSTOMIZE_HREF = "/pause/customize"
 
 /** A keep-awake failure leaves the phone's own sleep timer; nothing to undo. */
 function ignore() {}
+
+/** The part a step plays. Behind Reflect, the prayer part waits at its start. */
+function partForStep(step: PauseStep): DevotionalPart | null {
+  switch (step) {
+    case "film":
+    case "teaching":
+      return step
+    case "reflectScreen":
+    case "prayer":
+      return "prayer"
+    default:
+      return null
+  }
+}
 
 export function RunScreen() {
   const router = useRouter()
@@ -72,7 +88,7 @@ export function RunScreen() {
         onContinue={run.advance}
       />
     )
-  } else {
+  } else if (!isVideoPart(state.step)) {
     content = (
       <StepStandIn
         key={state.step}
@@ -83,8 +99,21 @@ export function RunScreen() {
     )
   }
 
+  const part = loaded && state.pin != null ? partForStep(state.step) : null
+
   return (
     <View style={styles.screen}>
+      {/* One player from the film part to the prayer part (KTD7). It keeps
+          this first place, so a step change never mounts it again. */}
+      {part != null && state.pin != null ? (
+        <PartPlayer
+          devotional={state.pin.devotional}
+          part={part}
+          active={isVideoPart(state.step)}
+          font={font}
+          onEnded={run.advance}
+        />
+      ) : null}
       {content}
       <CloseButton
         onPress={close}

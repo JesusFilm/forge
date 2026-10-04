@@ -107,6 +107,14 @@ describe("Android VideoViews opt into textureView", () => {
     expect(videoViewElement(source)).toContain(SURFACE_TYPE)
     expect(source.split("<VideoView")).toHaveLength(2)
   })
+
+  // Daily pause KTD7: the devotional's one view, under the opaque cover that
+  // hides each skipped range, the paused cue, and the progress bar.
+  it("the devotional part player's single VideoView carries the platform-conditional surfaceType", () => {
+    const source = readSource("..", "..", "dailyPause", "PartPlayer.tsx")
+    expect(videoViewElement(source)).toContain(SURFACE_TYPE)
+    expect(source.split("<VideoView")).toHaveLength(2)
+  })
 })
 
 describe("Home RefreshControl stays transparent over the z-0 hero layer", () => {

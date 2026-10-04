@@ -1194,6 +1194,49 @@ describe("useManagedVideoPlayer — healthy position for error recovery", () => 
   })
 })
 
+// Daily pause KTD9: the devotional player holds through an interruption, and
+// only the viewer's tap starts it again. The default keeps today's resume.
+describe("useManagedVideoPlayer — the return from the background", () => {
+  function renderProbe(options?: { holdOnReturn?: boolean }) {
+    function Probe() {
+      useManagedVideoPlayer(URL_A, undefined, options)
+      return null
+    }
+    act(() => {
+      mounted = TestRenderer.create(<Probe />)
+    })
+  }
+
+  async function playThenLeave() {
+    await act(async () => {
+      video.__player.play()
+    })
+    await emitAppState("background")
+    expect(video.__player.playing).toBe(false)
+    video.__player.play.mockClear()
+  }
+
+  it("resumes a video that the background paused, by default", async () => {
+    renderProbe()
+    await playThenLeave()
+
+    await emitAppState("active")
+
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(video.__player.playing).toBe(true)
+  })
+
+  it("keeps the video paused on return when the caller holds it", async () => {
+    renderProbe({ holdOnReturn: true })
+    await playThenLeave()
+
+    await emitAppState("active")
+
+    expect(video.__player.play).not.toHaveBeenCalled()
+    expect(video.__player.playing).toBe(false)
+  })
+})
+
 /**
  * Audio pitch must not ride the playback rate. expo-video's TS types document
  * `preservesPitch` as `@default true`, but the ANDROID native default is

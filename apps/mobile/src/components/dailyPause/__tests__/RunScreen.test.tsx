@@ -1,10 +1,18 @@
 // The run screen against the REAL day record, settings, and day clock (U8).
-// Only the router, AsyncStorage, the fonts, and the keep-awake native module
-// are modelled. Every render is wrapped in StrictMode.
+// Only the router, AsyncStorage, the fonts, the keep-awake native module, and
+// the video player (U9) are modelled. Every render is wrapped in StrictMode.
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { StrictMode, act } from "react"
 import { Dimensions, StyleSheet, type ViewStyle } from "react-native"
 
+import {
+  DEVOTIONALS,
+  type PartRange,
+} from "../../../lib/dailyPause/devotionals"
+import {
+  PART_START_BACKSTOP_MS,
+  partStopAt,
+} from "../../../lib/dailyPause/partClock"
 import {
   PAUSE_DAY_STORAGE_KEY,
   PAUSE_DAY_VERSION,
@@ -17,6 +25,7 @@ import {
   getPauseSettingsStore,
   resetPauseSettingsStoreForTests,
 } from "../../../lib/dailyPause/settings"
+import type { ExpoVideoMock } from "../../../test-utils/expoVideoMock"
 import {
   TestRenderer,
   hasText,
@@ -34,7 +43,64 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
   __esModule: true,
   default: require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 }))
+jest.mock("expo-video", () =>
+  require("../../../test-utils/expoVideoMock").createExpoVideoMock(),
+)
 /* eslint-enable @typescript-eslint/no-require-imports */
+
+// The part player's adapter reads the play state through `useEvent`.
+jest.mock("expo", () => {
+  const actual = jest.requireActual("expo")
+  const react = jest.requireActual("react")
+  return {
+    ...actual,
+    useEvent: (
+      player: {
+        addListener: (
+          n: string,
+          f: (p?: unknown) => void,
+        ) => { remove: () => void }
+      },
+      event: string,
+      initial: unknown,
+    ) => {
+      const [value, setValue] = react.useState(initial)
+      react.useEffect(() => {
+        const sub = player.addListener(event, (payload) => setValue(payload))
+        return () => sub.remove()
+      }, [player, event])
+      return value
+    },
+  }
+})
+/** One call per mount of the part player, which resolves the file. */
+const mockDownloadAsync = jest.fn(async () => ({
+  localUri: "file:///bundle/pharisee.mp4",
+}))
+jest.mock("expo-asset", () => ({
+  Asset: { fromModule: () => ({ downloadAsync: () => mockDownloadAsync() }) },
+}))
+// The glyph loads its font through expo-asset, which is modelled above.
+jest.mock("@expo/vector-icons/Ionicons", () => ({
+  __esModule: true,
+  default: () => null,
+}))
+jest.mock("../../../lib/datadog", () => ({
+  datadogLog: { debug: jest.fn(), info: jest.fn(), warn: jest.fn() },
+  reportDatadogAction: jest.fn(),
+  reportDatadogError: jest.fn(),
+}))
+jest.mock("../../../lib/watchProgress/store", () => ({
+  applyLocalProgress: jest.fn(),
+  bufferProgressIntent: jest.fn(),
+}))
+jest.mock("../../../lib/watchProgress/signInPrompt", () => ({
+  noteSignedOutPlaybackStop: jest.fn(),
+}))
+jest.mock("../../../lib/watchProgress/syncClient", () => ({
+  getProgressSync: () => ({ drainIntents: jest.fn() }),
+  getSignedInAccountId: () => null,
+}))
 
 const mockRouter = {
   push: jest.fn(),
@@ -69,8 +135,15 @@ jest.mock("expo-keep-awake", () => ({
 }))
 
 const MONDAY_KEY = "2026-10-05"
+/** Monday's devotional. */
+const PARTS = DEVOTIONALS.pharisee.parts
 /** iPhone 17 Pro, in points. */
 const WINDOW = { width: 402, height: 874, scale: 3, fontScale: 1 }
+/** One display frame. A test's animation frame is a zero-delay timer. */
+const FRAME_MS = 16
+
+const video = jest.requireMock("expo-video") as ExpoVideoMock
+const player = video.__player
 
 let renderer: TestInstance | null = null
 
@@ -80,6 +153,8 @@ beforeEach(async () => {
   await AsyncStorage.clear()
   resetPauseProgressStoreForTests()
   resetPauseSettingsStoreForTests()
+  video.__reset()
+  mockDownloadAsync.mockClear()
   mockAwakeTags.clear()
   Object.values(mockRouter).forEach((fn) => fn.mockReset())
 })
@@ -125,6 +200,62 @@ async function tap(label: string) {
   await act(async () => {})
 }
 
+async function frames(count = 1) {
+  await act(async () => {
+    jest.advanceTimersByTime(FRAME_MS * count)
+  })
+}
+
+/** The video file has loaded, and the part's seek goes out behind the cover. */
+async function videoReady() {
+  player.status = "readyToPlay"
+  await act(async () => {
+    player.__emit("statusChange", { status: "readyToPlay" })
+  })
+  await frames(1)
+}
+
+async function tickTo(seconds: number) {
+  await act(async () => {
+    player.__tick({ currentTime: seconds })
+  })
+}
+
+/** A video part plays from its start to its stop, as on a device. */
+async function playToStop(range: PartRange) {
+  await videoReady()
+  await frames(1)
+  await tickTo(range.startSec + 0.2)
+  await frames(1)
+  await tickTo(partStopAt(range))
+  await frames(1)
+}
+
+/** Moves the run on: Continue on a screen, the part's end on a video part. */
+async function next() {
+  const step = savedDay().step
+  if (step === "film" || step === "teaching" || step === "prayer") {
+    await playToStop(PARTS[step])
+  } else {
+    await tap("Continue")
+  }
+}
+
+/** The step's own sign: a text on a screen, the part's start on a video. */
+async function expectShows(step: PauseStep, marker: string | null) {
+  if (marker != null) {
+    expect(hasText(renderer!, marker)).toBe(true)
+    return
+  }
+  if (step !== "film" && step !== "teaching" && step !== "prayer") {
+    throw new Error(`${step} needs a marker`)
+  }
+  await videoReady()
+  expect(player.currentTime).toBe(PARTS[step].startSec)
+  // R14: the only control on a video part is the tap on the video.
+  expect(buttons()).not.toContain("Continue")
+}
+
 /** The labels of every host button, in render order. */
 function buttons(): string[] {
   return renderer!.root
@@ -165,13 +296,14 @@ const WATCH = ["Watch, current step", "Reflect, upcoming", "Pray, upcoming"]
 const REFLECT = ["Watch, done", "Reflect, current step", "Pray, upcoming"]
 const PRAY = ["Watch, done", "Reflect, done", "Pray, current step"]
 
-/** Each step after Begin: a text only it shows, and its stepper. */
-const WALK: readonly [PauseStep, string, string[]][] = [
+/** Each step after Begin: a text only it shows (none on a video part, which
+ *  shows its part instead), and its stepper. */
+const WALK: readonly [PauseStep, string | null, string[]][] = [
   ["watchScreen", "DAILY BIBLE PAUSE", WATCH],
-  ["film", "Film part", []],
-  ["teaching", "Teaching part", []],
+  ["film", null, []],
+  ["teaching", null, []],
   ["reflectScreen", "Reflect", REFLECT],
-  ["prayer", "Prayer part", []],
+  ["prayer", null, []],
   ["prayScreen", "Pray", PRAY],
   ["share", "Share", []],
 ]
@@ -185,11 +317,25 @@ it("walks from Begin through the R10 steps to Share, with the stepper only on th
   ])
   await tap("Begin Devotional")
   for (const [index, [step, marker, stepper]] of WALK.entries()) {
-    if (index > 0) await tap("Continue")
-    expect(hasText(renderer!, marker)).toBe(true)
+    if (index > 0) await next()
+    await expectShows(step, marker)
     expect(pills()).toEqual(stepper)
     expect(savedDay().step).toBe(step)
   }
+})
+
+it("keeps one part player mounted from the film part to the prayer part (KTD7)", async () => {
+  await open()
+  await tap("Begin Devotional")
+  await tap("Continue")
+  const mounts = mockDownloadAsync.mock.calls.length
+  expect(mounts).toBeGreaterThan(0)
+
+  for (const step of ["teaching", "reflectScreen", "prayer"] as const) {
+    await next()
+    expect(savedDay().step).toBe(step)
+  }
+  expect(mockDownloadAsync.mock.calls.length).toBe(mounts)
 })
 
 it("offers only the close and Share this video on Share (R22)", async () => {
@@ -206,7 +352,7 @@ it("keeps the screen awake from the Opening through Pray, under StrictMode with 
   await tap("Begin Devotional")
   for (let i = 1; i < WALK.length - 1; i += 1) {
     expect(mockAwakeTags.size).toBe(1)
-    await tap("Continue")
+    await next()
   }
   expect(hasText(renderer!, "Pray")).toBe(true)
   expect(mockAwakeTags.size).toBe(1)
@@ -232,7 +378,7 @@ it.each(WALK.filter(([step]) => step !== "share"))(
     await open()
     await tap("Begin Devotional")
     const target = WALK.findIndex(([one]) => one === step)
-    for (let i = 0; i < target; i += 1) await tap("Continue")
+    for (let i = 0; i < target; i += 1) await next()
     await closeRoute()
 
     await open()
@@ -243,7 +389,7 @@ it.each(WALK.filter(([step]) => step !== "share"))(
       "Close",
     ])
     await tap("Resume")
-    expect(hasText(renderer!, marker)).toBe(true)
+    await expectShows(step, marker)
     expect(pills()).toEqual(stepper)
   },
 )
@@ -295,4 +441,17 @@ it("puts the close in the safe area on screens and in the top letterbox on video
   await tap("Continue")
   expect(closeTop()).toBeGreaterThanOrEqual(0)
   expect(closeTop() + 44).toBeLessThanOrEqual(videoTop)
+})
+
+it("offers Try again when a part never starts, and the close stays reachable", async () => {
+  await open()
+  await tap("Begin Devotional")
+  await tap("Continue")
+  // The file never becomes ready.
+  await act(async () => {
+    jest.advanceTimersByTime(PART_START_BACKSTOP_MS + FRAME_MS)
+  })
+  expect(buttons()).toEqual(["Try again", "Close"])
+  await tap("Close")
+  expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
 })

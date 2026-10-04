@@ -42,6 +42,10 @@ const SCREENS_WITHOUT_A_PLAYER = [
 // dismisses a floating session, and the feed hook gates play on that yield.
 const FEED_VIDEO_SURFACES = ["src/components/explore/FeedVideoView.tsx"]
 const FEED_PLAYERS = "src/hooks/useFeedPlayers.ts"
+
+// Daily pause KTD7: the devotional's own player and view, a named exception to
+// the one-player rule. It owns no session and enters no picture-in-picture.
+const DEVOTIONAL_VIDEO_SURFACES = ["src/components/dailyPause/PartPlayer.tsx"]
 // A read of the input (`.yieldsToRoot`), not the type's field of that name.
 const TAKEOVER_YIELD = /\.yieldsToRoot\b/
 // R3: a clip never enters picture-in-picture.
@@ -172,7 +176,7 @@ describe("the screens borrow the root player", () => {
 describe("the heroes yield the decoder to a live window", () => {
   // Read off the tree rather than asserted from a list, so a NEW video surface
   // fails here and has to be classified instead of quietly holding a decoder.
-  it("the app's video views are the host, the two heroes, the two SDUI players, and the feed", () => {
+  it("the app's video views are the host, the two heroes, the two SDUI players, the feed, and the devotional", () => {
     const surfaces = readTree()
       .filter((entry) => VIDEO_VIEW.test(entry.content))
       .map((entry) => entry.relative)
@@ -183,6 +187,7 @@ describe("the heroes yield the decoder to a live window", () => {
         ...HERO_VIDEO_SURFACES,
         ...VIEWER_INITIATED_PLAYERS,
         ...FEED_VIDEO_SURFACES,
+        ...DEVOTIONAL_VIDEO_SURFACES,
       ].sort(),
     )
   })
