@@ -32,7 +32,7 @@ import {
   TEXT_SECONDARY,
   hexToRgba,
 } from "../../lib/color"
-import { localDay } from "../../lib/dailyPause/today"
+import { useToday } from "../../lib/dailyPause/today"
 import { requestPause } from "../../lib/pauseCurtain"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 import {
@@ -129,7 +129,7 @@ function AnnouncementsPanel({
     }).start()
   }, [scale])
 
-  const today = localDay(new Date())
+  const { dayKey: today } = useToday()
 
   return (
     <View style={styles.fill}>

@@ -165,7 +165,7 @@ describe("AnnouncementsButton", () => {
     await unmount(renderer)
   })
 
-  it("reads the devotional, closes the list and starts the curtain", async () => {
+  it("clears the dot, closes the list, and sends one curtain request on a row tap", async () => {
     const renderer = await render()
     await press(pressableByLabel(renderer, "Announcements, 1 new"))
     await press(
@@ -175,6 +175,29 @@ describe("AnnouncementsButton", () => {
     expect(listOpen(renderer)).toBe(false)
     expect(bellLabel(renderer)).toBe("Announcements")
     expect(badges(renderer)).toBe(0)
+    await unmount(renderer)
+  })
+
+  it("brings the next day's devotional at midnight while the app stays open", async () => {
+    jest.setSystemTime(new Date(2026, 11, 20, 23, 59))
+    const renderer = await render()
+    await press(pressableByLabel(renderer, "Announcements, 1 new"))
+    await press(
+      pressableByLabel(renderer, `${TITLE} Daily devotional, Today, new`),
+    )
+    expect(bellLabel(renderer)).toBe("Announcements")
+    await act(async () => {
+      jest.advanceTimersByTime(2 * 60 * 1000)
+    })
+    expect(bellLabel(renderer)).toBe("Announcements, 1 new")
+    expect(badges(renderer)).toBe(1)
+    await press(pressableByLabel(renderer, "Announcements, 1 new"))
+    expect(shows(renderer, "Daily devotional · Today")).toBe(true)
+    await press(
+      pressableByLabel(renderer, `${TITLE} Daily devotional, Today, new`),
+    )
+    expect(mockRequestPause).toHaveBeenCalledTimes(2)
+    expect(bellLabel(renderer)).toBe("Announcements")
     await unmount(renderer)
   })
 

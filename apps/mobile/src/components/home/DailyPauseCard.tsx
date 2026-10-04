@@ -1,22 +1,35 @@
-import { Pressable, StyleSheet, Text, View } from "react-native"
-import { LinearGradient } from "expo-linear-gradient"
-import Ionicons from "@expo/vector-icons/Ionicons"
-
 import {
-  ACCENT,
-  BG_COLOR,
-  QUIZ_GRADIENT,
-  TEXT_BODY,
-  TEXT_PRIMARY,
-  hexToRgba,
-} from "../../lib/color"
-import { markTodaysDevotionalRead } from "../../lib/announcements"
-import { requestPause } from "../../lib/pauseCurtain"
-import { HORIZONTAL_PADDING } from "../../styles/shared"
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native"
 
-/** Home's entry to the Daily Bible Pause: a full-width 16:9 invitation that
- *  opens the curtain and reads today's announcement. A mockup, lightly styled. */
+import { markTodaysDevotionalRead } from "../../lib/announcements"
+import { usePauseFonts } from "../../lib/dailyPause/fonts"
+import { usePauseDay } from "../../lib/dailyPause/progress"
+import {
+  pauseColors,
+  pauseRadii,
+  pauseSpacing,
+} from "../../lib/dailyPause/theme"
+import { useToday } from "../../lib/dailyPause/today"
+import { requestPause } from "../../lib/pauseCurtain"
+
+const EYEBROW = "DAILY BIBLE PAUSE"
+const BEGIN = "Begin today's pause"
+/** R8. */
+const DONE = "You paused today · Watch again"
+
+/** Home's entry to the Daily Bible Pause: today's question, or the quiet done
+ *  state (R8). A tap reads the bell's announcement and opens the curtain. */
 export function DailyPauseCard() {
+  const { dayKey, devotional } = useToday()
+  const { done } = usePauseDay(dayKey)
+  const { ready, font } = usePauseFonts()
+  const { width } = useWindowDimensions()
+
   return (
     <Pressable
       onPress={() => {
@@ -24,31 +37,45 @@ export function DailyPauseCard() {
         requestPause()
       }}
       accessibilityRole="button"
-      accessibilityLabel="Begin today's Daily Bible Pause"
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      accessibilityLabel={
+        done
+          ? "Daily Bible Pause. You paused today. Watch again"
+          : `Daily Bible Pause. ${devotional.question} ${BEGIN}`
+      }
+      // 16:9 at the default text size; a larger text size makes it taller.
+      style={({ pressed }) => [
+        styles.card,
+        { minHeight: (width * 9) / 16 },
+        pressed && styles.pressed,
+      ]}
     >
-      <LinearGradient
-        colors={[
-          hexToRgba(QUIZ_GRADIENT[0], 0.55),
-          hexToRgba(ACCENT, 0.3),
-          hexToRgba(BG_COLOR, 1),
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <Text style={styles.eyebrow}>DAILY BIBLE PAUSE</Text>
-      <View style={styles.body}>
-        <Text style={styles.title}>Take a quiet minute with God</Text>
-        <Text style={styles.copy}>
-          Today&apos;s devotional is ready for you. Breathe, listen, and
-          reflect.
-        </Text>
-        <View style={styles.cta}>
-          <Ionicons name="play" size={14} color={BG_COLOR} />
-          <Text style={styles.ctaLabel}>Begin today&apos;s pause</Text>
-        </View>
-      </View>
+      {ready ? (
+        <>
+          <Text style={[styles.eyebrow, font("sansMedium")]}>{EYEBROW}</Text>
+          {done ? (
+            <View style={styles.doneRow}>
+              <Text style={[styles.check, font("sansBold")]}>✓</Text>
+              <Text style={[styles.headline, styles.doneCopy, font("display")]}>
+                {DONE}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.body}>
+              <Text
+                style={[styles.headline, font("display")]}
+                numberOfLines={3}
+              >
+                {devotional.question}
+              </Text>
+              <View style={styles.button}>
+                <Text style={[styles.buttonLabel, font("sansSemiBold")]}>
+                  {BEGIN}
+                </Text>
+              </View>
+            </View>
+          )}
+        </>
+      ) : null}
     </Pressable>
   )
 }
@@ -56,48 +83,35 @@ export function DailyPauseCard() {
 const styles = StyleSheet.create({
   card: {
     width: "100%",
-    aspectRatio: 16 / 9,
-    padding: HORIZONTAL_PADDING + 4,
+    paddingHorizontal: pauseSpacing.screenSide,
+    paddingVertical: 20,
+    gap: pauseSpacing.screenGap,
     justifyContent: "space-between",
-    overflow: "hidden",
-    backgroundColor: BG_COLOR,
+    backgroundColor: pauseColors.background,
   },
   pressed: { opacity: 0.85 },
   eyebrow: {
-    color: TEXT_BODY,
-    fontFamily: "System",
+    color: pauseColors.ink,
     fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 3,
+    letterSpacing: 2.6,
   },
-  body: { gap: 8 },
-  title: {
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-    fontSize: 24,
-    fontWeight: "700",
+  body: { gap: pauseSpacing.screenGap, alignItems: "flex-start" },
+  headline: {
+    color: pauseColors.ink,
+    fontSize: 28,
+    lineHeight: 30,
   },
-  copy: {
-    color: TEXT_BODY,
-    fontFamily: "System",
-    fontSize: 15,
-    lineHeight: 20,
+  doneRow: { flexDirection: "row", alignItems: "baseline", gap: 10 },
+  check: { color: pauseColors.accent, fontSize: 20 },
+  doneCopy: { flexShrink: 1 },
+  button: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: pauseRadii.button,
+    backgroundColor: pauseColors.ink,
   },
-  cta: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-    backgroundColor: TEXT_PRIMARY,
-  },
-  ctaLabel: {
-    color: BG_COLOR,
-    fontFamily: "System",
-    fontSize: 14,
-    fontWeight: "600",
+  buttonLabel: {
+    color: pauseColors.background,
+    fontSize: 16,
   },
 })
