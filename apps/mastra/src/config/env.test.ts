@@ -880,7 +880,7 @@ describe("Mastra env", () => {
     })
   })
 
-  // --- feat-199: JESUSFILM_RAG_* optional config + production host guard ---
+  // --- feat-199: SEEKER_RAG_* optional config + production host guard ---
 
   // Stub the full required production set so RAG-guard tests isolate the RAG
   // var behavior (a missing unrelated required var would otherwise mask it).
@@ -1010,9 +1010,9 @@ describe("Mastra env", () => {
     const { env, getJesusfilmRagConfig } = await import("./env")
 
     // The Railway-brick regression gate: a fresh deploy with no RAG vars boots.
-    expect(env.JESUSFILM_RAG_BASE_URL).toBeUndefined()
-    expect(env.JESUSFILM_RAG_API_KEY).toBeUndefined()
-    expect(env.JESUSFILM_RAG_ALLOWED_HOSTS).toBeUndefined()
+    expect(env.SEEKER_RAG_BASE_URL).toBeUndefined()
+    expect(env.SEEKER_RAG_API_KEY).toBeUndefined()
+    expect(env.SEEKER_RAG_ALLOWED_HOSTS).toBeUndefined()
     expect(getJesusfilmRagConfig()).toEqual({
       baseUrl: undefined,
       apiKey: undefined,
@@ -1024,15 +1024,35 @@ describe("Mastra env", () => {
     })
   })
 
+  it("does not fall back to retired JESUSFILM_RAG variables", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://retired.example")
+    vi.stubEnv("JESUSFILM_RAG_API_KEY", "retired-key")
+    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "retired.example")
+    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "1234")
+    vi.stubEnv("JESUSFILM_RAG_MAX_RESPONSE_BYTES", "1024")
+    vi.stubEnv("JESUSFILM_RAG_USER_AGENT", "retired-client")
+
+    const { getJesusfilmRagConfig } = await import("./env")
+
+    expect(getJesusfilmRagConfig()).toEqual({
+      baseUrl: undefined,
+      apiKey: undefined,
+      timeoutMs: 5_000,
+      userAgent: "forge-mastra-jesusfilm-rag/1.0",
+      maxResponseBytes: 2_097_152,
+    })
+  })
+
   it("treats an empty-string RAG base URL as unset (no url() boot failure)", async () => {
     vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "")
-    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "")
-    vi.stubEnv("JESUSFILM_RAG_USER_AGENT", "")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "")
+    vi.stubEnv("SEEKER_RAG_TIMEOUT_MS", "")
+    vi.stubEnv("SEEKER_RAG_USER_AGENT", "")
 
     const { env, getJesusfilmRagConfig } = await import("./env")
 
-    expect(env.JESUSFILM_RAG_BASE_URL).toBeUndefined()
+    expect(env.SEEKER_RAG_BASE_URL).toBeUndefined()
     // Defaults apply when unset.
     expect(getJesusfilmRagConfig().timeoutMs).toBe(5_000)
     expect(getJesusfilmRagConfig().userAgent).toBe(
@@ -1042,14 +1062,14 @@ describe("Mastra env", () => {
 
   it("projects all RAG fields through getJesusfilmRagConfig when set", async () => {
     vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
-    vi.stubEnv("JESUSFILM_RAG_API_KEY", "rag-key")
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
-    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "2500")
-    vi.stubEnv("JESUSFILM_RAG_USER_AGENT", "forge-test-rag/9.9")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("SEEKER_RAG_API_KEY", "rag-key")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
+    vi.stubEnv("SEEKER_RAG_TIMEOUT_MS", "2500")
+    vi.stubEnv("SEEKER_RAG_USER_AGENT", "forge-test-rag/9.9")
     // feat-202: prove the optional byte-cap override projects through (coerced
     // from string), not just the accessor default.
-    vi.stubEnv("JESUSFILM_RAG_MAX_RESPONSE_BYTES", "1048576")
+    vi.stubEnv("SEEKER_RAG_MAX_RESPONSE_BYTES", "1048576")
 
     const { getJesusfilmRagConfig } = await import("./env")
 
@@ -1064,7 +1084,7 @@ describe("Mastra env", () => {
 
   it("skips the RAG host guard in production when the base URL is unset", async () => {
     stubProductionBaseline()
-    // No JESUSFILM_RAG_* vars set at all.
+    // No SEEKER_RAG_* vars set at all.
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
@@ -1073,23 +1093,20 @@ describe("Mastra env", () => {
 
   it("rejects an http RAG base URL in production", async () => {
     stubProductionBaseline()
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "http://rag.internal")
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://rag.internal")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
   it("accepts an allowlisted Railway-private http RAG base URL in production", async () => {
     stubProductionBaseline()
-    vi.stubEnv(
-      "JESUSFILM_RAG_BASE_URL",
-      "http://forge-rag.railway.internal:8080",
-    )
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "forge-rag.railway.internal")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://forge-rag.railway.internal:8080")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "forge-rag.railway.internal")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
@@ -1098,31 +1115,25 @@ describe("Mastra env", () => {
 
   it("rejects a Railway-private http RAG host absent from the allowlist in production", async () => {
     stubProductionBaseline()
-    vi.stubEnv(
-      "JESUSFILM_RAG_BASE_URL",
-      "http://forge-rag.railway.internal:8080",
-    )
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "other-service.railway.internal")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://forge-rag.railway.internal:8080")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "other-service.railway.internal")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
   it("rejects a Railway-private http RAG base URL with no allowlist in production", async () => {
     stubProductionBaseline()
-    vi.stubEnv(
-      "JESUSFILM_RAG_BASE_URL",
-      "http://forge-rag.railway.internal:8080",
-    )
-    // JESUSFILM_RAG_ALLOWED_HOSTS deliberately unset.
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://forge-rag.railway.internal:8080")
+    // SEEKER_RAG_ALLOWED_HOSTS deliberately unset.
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
@@ -1135,47 +1146,47 @@ describe("Mastra env", () => {
     "http://forge-rag.railway.internal.:8080",
   ])("rejects Railway-private http lookalike %s", async (baseUrl) => {
     stubProductionBaseline()
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", baseUrl)
+    vi.stubEnv("SEEKER_RAG_BASE_URL", baseUrl)
     vi.stubEnv(
-      "JESUSFILM_RAG_ALLOWED_HOSTS",
+      "SEEKER_RAG_ALLOWED_HOSTS",
       new URL(baseUrl).hostname.toLowerCase(),
     )
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
   it("rejects a RAG host absent from the allowlist in production", async () => {
     stubProductionBaseline()
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://other.test")
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://other.test")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
   it("rejects a set RAG base URL with no allowlist in production (fail-closed)", async () => {
     stubProductionBaseline()
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
-    // JESUSFILM_RAG_ALLOWED_HOSTS deliberately unset.
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    // SEEKER_RAG_ALLOWED_HOSTS deliberately unset.
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
   it("accepts an https RAG base URL whose host is allowlisted in production", async () => {
     stubProductionBaseline()
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
@@ -1184,7 +1195,7 @@ describe("Mastra env", () => {
 
   it("does not throw on an unsafe RAG base URL outside production", async () => {
     vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "http://rag.internal")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://rag.internal")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
@@ -1196,9 +1207,9 @@ describe("Mastra env", () => {
     // independent: a valid allowlisted base URL with no key boots fine; the
     // client returns config_missing at runtime (covered in U2).
     stubProductionBaseline()
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
-    // JESUSFILM_RAG_API_KEY deliberately unset.
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
+    // SEEKER_RAG_API_KEY deliberately unset.
 
     const { assertMastraRuntimeEnv, getJesusfilmRagConfig } =
       await import("./env")
@@ -1209,7 +1220,7 @@ describe("Mastra env", () => {
 
   it("rejects a RAG timeout above the schema cap at parse", async () => {
     vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "30001")
+    vi.stubEnv("SEEKER_RAG_TIMEOUT_MS", "30001")
 
     await expect(import("./env")).rejects.toThrow()
   })
@@ -1218,7 +1229,7 @@ describe("Mastra env", () => {
     // Fail LOUD on an over-range operator typo rather than silently widening the
     // OOM guard. 16_777_217 is one byte over the 16 MiB ceiling.
     vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("JESUSFILM_RAG_MAX_RESPONSE_BYTES", "16777217")
+    vi.stubEnv("SEEKER_RAG_MAX_RESPONSE_BYTES", "16777217")
 
     await expect(import("./env")).rejects.toThrow()
   })
