@@ -60,6 +60,8 @@ const ROUTE_TABLE: ReadonlyArray<
   ["reader-passage", ["reader-passage"], "hidden"],
   ["reader-translation", ["reader-translation"], "hidden"],
   ["reader-settings", ["reader-settings"], "hidden"],
+  ["pause — the Daily Bible Pause run", ["pause"], "hidden"],
+  ["pause/customize", ["pause", "customize"], "hidden"],
 ]
 
 describe("miniPlayerPresentation over the real route table", () => {
@@ -109,6 +111,19 @@ describe("miniPlayerPresentation over the real route table", () => {
       "floating",
     )
     expect(isFullScreenRoute(["watch", "tips"])).toBe(false)
+  })
+})
+
+// Daily Bible Pause KTD6: the run takes over the player, so no window floats
+// over it. The entry's dismissal must still animate away there, because only
+// the end of that exit clears the store.
+describe("the Daily Bible Pause run", () => {
+  it("presents a dismissed window as exiting on the run", () => {
+    const store = storeWithSession()
+    store.requestDismiss()
+    expect(miniPlayerPresentation(store.getSnapshot(), ["pause"])).toBe(
+      "exiting",
+    )
   })
 })
 

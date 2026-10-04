@@ -68,8 +68,15 @@ export const SESSION_ORIGIN_EXCLUDED_ROUTE_PATTERNS = [
   "collection/[sectionKey]",
 ] as const
 
+/** The Daily Bible Pause run and its sheet. Entry takes over the player, so
+ *  no window floats over the run (Daily Bible Pause KTD6). */
+export const DAILY_PAUSE_ROUTE_PATTERNS = ["pause", "pause/customize"] as const
+
 const FULL_SCREEN_ROUTES: ReadonlySet<string> = new Set(
   FULL_SCREEN_ROUTE_PATTERNS,
+)
+const DAILY_PAUSE_ROUTES: ReadonlySet<string> = new Set(
+  DAILY_PAUSE_ROUTE_PATTERNS,
 )
 const TAB_ROOT_ROUTES: ReadonlySet<string> = new Set(TAB_ROOT_ROUTE_PATTERNS)
 const EXCLUDED_ORIGIN_ROUTES: ReadonlySet<string> = new Set(
@@ -153,8 +160,9 @@ export function expandAction(input: {
  * Presentation from the session and the current route.
  *
  * `floating` is the default for every route the tables do not name, because R3
- * promises the window persists across tab changes and further pushes. The one
- * exception is Explore, whose takeover ends the window (feat-552 KTD10). `exiting`
+ * promises the window persists across tab changes and further pushes. The
+ * exceptions are Explore, whose takeover ends the window (feat-552 KTD10), and
+ * the Daily Bible Pause run, which hides it. `exiting`
  * outranks the route tables: a dismissed window animates away wherever the
  * viewer is, and only `exiting` may clear the store.
  */
@@ -170,5 +178,6 @@ export function miniPlayerPresentation(
   // its chrome. The mechanisms differ, and U7/U9 own that difference.
   if (snapshot.pipHold) return "hidden"
   if (isSuppressedBySheet(segments, openNonRouteSheetCount)) return "hidden"
+  if (DAILY_PAUSE_ROUTES.has(routePattern(segments))) return "hidden"
   return "floating"
 }

@@ -34,6 +34,7 @@ let PlaybackHost: typeof import("../src/components/watch/PlaybackHost").Playback
 let ExportReportHost: typeof import("../src/components/ExportReportHost").ExportReportHost
 let PushNoticeHost: typeof import("../src/components/PushNoticeHost").PushNoticeHost
 let PauseStage: typeof import("../src/components/PauseStage").PauseStage
+let DailyPauseHost: typeof import("../src/components/dailyPause/DailyPauseHost").DailyPauseHost
 let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
 // `| undefined`: this one is read at module scope after the try/catch, where a
@@ -106,6 +107,8 @@ try {
     require("../src/components/ExportReportHost").ExportReportHost
   PushNoticeHost = require("../src/components/PushNoticeHost").PushNoticeHost
   PauseStage = require("../src/components/PauseStage").PauseStage
+  DailyPauseHost =
+    require("../src/components/dailyPause/DailyPauseHost").DailyPauseHost
   if (__DEV__) {
     DevEndpointNotice =
       require("../src/components/DevEndpointNotice").DevEndpointNotice
@@ -510,6 +513,16 @@ export default function RootLayout() {
                                 name="reader-settings"
                                 options={READER_SHEET_SCREEN_OPTIONS}
                               />
+                              {/* Daily Bible Pause KTD4, KTD5: the push happens
+                                under a black curtain, and only the close leaves. */}
+                              <Stack.Screen
+                                name="pause"
+                                options={{
+                                  headerShown: false,
+                                  animation: "none",
+                                  gestureEnabled: false,
+                                }}
+                              />
                             </Stack>
                           </ExperienceShell>
                           {/* KTD1: a sibling of ExperienceShell, never inside it —
@@ -523,6 +536,10 @@ export default function RootLayout() {
                               native listener, so its message needs a host that
                               belongs to no route. */}
                           <PushNoticeHost />
+                          {/* Daily Bible Pause KTD5: hands the root curtain to
+                              the run route. A sibling of the shell, as for
+                              PlaybackHost: the shell remounts its subtree. */}
+                          <DailyPauseHost />
                         </SplashCoveredTree>
                         {/* Last child, and a sibling for the same KTD1 reason: the
                             cover must paint above the player and must not restart

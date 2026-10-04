@@ -11,7 +11,12 @@ import {
 import { LinearGradient } from "expo-linear-gradient"
 import { setStatusBarHidden } from "expo-status-bar"
 
-import { endPause, usePauseRequested } from "../lib/pauseCurtain"
+import {
+  endPause,
+  liftPause,
+  reportLogoDrawn,
+  usePausePhase,
+} from "../lib/pauseCurtain"
 import { DailyBiblePauseLogo, LOGO_DURATION_MS } from "./DailyBiblePauseLogo"
 
 /** The whole fade, from the first bar movement to a black screen. */
@@ -27,6 +32,8 @@ const BAR_CLOSE_AT = 0.85
 const LOGO_LEAD_MS = 500
 const LOGO_START_MS = BAR_CLOSE_AT * PAUSE_FADE_IN_MS - LOGO_LEAD_MS
 const LOGO_START_AT = LOGO_START_MS / PAUSE_FADE_IN_MS
+/** The pen ends this long after the curtain mounts. */
+export const PAUSE_LOGO_DRAWN_MS = LOGO_START_MS + LOGO_DURATION_MS
 const BAR_SAMPLES = 24
 const barEase = Easing.bezier(0.42, 0, 0.58, 1)
 
@@ -48,7 +55,8 @@ export function pauseProgressAt(run: PauseRun, now: number): number {
  *  One native value runs 0 to 1, and each layer reads it through keyframes, so
  *  no nested Animated sequence can stall on Fabric. */
 export function PauseStage({ children }: { children: ReactNode }) {
-  const paused = usePauseRequested()
+  const phase = usePausePhase()
+  const paused = phase !== "idle"
   const progress = useRef(new Animated.Value(0)).current
   const runRef = useRef<PauseRun>({ from: 0, to: 0, startedAt: 0, duration: 1 })
 
@@ -76,23 +84,25 @@ export function PauseStage({ children }: { children: ReactNode }) {
     runTo(1, PAUSE_FADE_IN_MS)
   }, [paused, runTo])
 
-  const resume = useCallback(() => {
+  // One lift serves a tap, Android back, and the bridge's reveal of the run.
+  useEffect(() => {
+    if (phase !== "lifting") return
     const at = pauseProgressAt(runRef.current, performance.now())
     setStatusBarHidden(false, "fade")
     runTo(0, Math.max(300, at * PAUSE_FADE_OUT_MS), endPause)
-  }, [runTo])
+  }, [phase, runTo])
 
   useEffect(() => {
     if (!paused) return
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
-        resume()
+        liftPause()
         return true
       },
     )
     return () => subscription.remove()
-  }, [paused, resume])
+  }, [paused])
 
   // A slow push-in with a small upward drift, like a camera dolly.
   const scale = progress.interpolate({
@@ -113,7 +123,9 @@ export function PauseStage({ children }: { children: ReactNode }) {
       >
         {children}
       </Animated.View>
-      {paused ? <PauseCurtain progress={progress} onResume={resume} /> : null}
+      {paused ? (
+        <PauseCurtain progress={progress} onResume={liftPause} />
+      ) : null}
     </View>
   )
 }
@@ -138,7 +150,12 @@ function PauseCurtain({
       useNativeDriver: true,
     })
     pen.start()
-    return () => pen.stop()
+    // The native pen's callback is unreliable here, so a JS clock reports it.
+    const drawn = setTimeout(reportLogoDrawn, PAUSE_LOGO_DRAWN_MS)
+    return () => {
+      pen.stop()
+      clearTimeout(drawn)
+    }
   }, [draw])
 
   const layers = useMemo(() => {

@@ -1,0 +1,427 @@
+/**
+ * The curtain handover against the REAL curtain store, stage, mini player
+ * store, and day record. Only the router, the experience selection, and the
+ * native animation driver are modelled.
+ */
+
+import { StrictMode, act, type ReactElement } from "react"
+import { Animated, BackHandler, Pressable, Text } from "react-native"
+
+import {
+  dayFromRecord,
+  getPauseProgressStore,
+  resetPauseProgressStoreForTests,
+} from "../../../lib/dailyPause/progress"
+import { localDay } from "../../../lib/dailyPause/today"
+import {
+  getMiniPlayerStore,
+  type MiniPlayerEndEvent,
+} from "../../../lib/miniPlayer/store"
+import {
+  endPause,
+  getPausePhase,
+  requestPause,
+  setPauseRunOnTop,
+} from "../../../lib/pauseCurtain"
+import {
+  resetPlaybackTransportForTests,
+  setPlaybackTransport,
+} from "../../../lib/playbackInterruption"
+import {
+  TestRenderer,
+  press,
+  pressableByLabel,
+  unmount,
+  type NodePath,
+  type NodeRequireLike,
+  type TestInstance,
+} from "../../../test-utils/rnTestRenderer"
+import { PAUSE_LOGO_DRAWN_MS, PauseStage } from "../../PauseStage"
+import {
+  DailyPauseHost,
+  PAUSE_HANDOVER_DEADLINE_MS,
+  useCloseDailyPause,
+} from "../DailyPauseHost"
+
+/* eslint-disable @typescript-eslint/no-require-imports */
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
+)
+/* eslint-enable @typescript-eslint/no-require-imports */
+
+const mockRouter = {
+  push: jest.fn(),
+  replace: jest.fn(),
+  navigate: jest.fn(),
+  dismissTo: jest.fn(),
+}
+let mockSegments: string[] = ["(tabs)"]
+jest.mock("expo-router", () => ({
+  useRouter: () => mockRouter,
+  useSegments: () => mockSegments,
+}))
+
+let mockSelection: { isReady: boolean; currentSlug: string | null } = {
+  isReady: true,
+  currentSlug: "jesus-film",
+}
+jest.mock("../../../contexts/ExperienceSelectionProvider", () => ({
+  useExperienceSelection: () => mockSelection,
+}))
+jest.mock("expo-status-bar", () => ({ setStatusBarHidden: () => {} }))
+jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
+
+const CURTAIN_LABEL = "Daily Bible Pause. Tap to return."
+const READY = { isReady: true, currentSlug: "jesus-film" }
+
+// ── The native animation driver and Android back, modelled ─────────
+
+type Timing = { toValue: number; finish: () => void }
+let timings: Timing[] = []
+let backHandlers: Array<() => boolean> = []
+/** What the viewer would see, in order: the route push and the lift. */
+let events: string[] = []
+
+const lift = () => timings.find((t) => t.toValue === 0)!
+
+// ── The root player and the mini player ─────────────────────────────
+
+const sessions = getMiniPlayerStore()
+let rootPlaying = false
+const transport = {
+  isPlaying: () => rootPlaying,
+  pause: () => {
+    rootPlaying = false
+  },
+  play: () => {
+    rootPlaying = true
+  },
+}
+const mounted: TestInstance[] = []
+let ends: MiniPlayerEndEvent[] = []
+let stopEnds: () => void = () => {}
+
+function floatingWindow() {
+  sessions.start({
+    videoId: "video-1",
+    videoSlug: "birth-of-jesus",
+    title: "Birth of Jesus",
+    originPattern: "watch/[slug]",
+  })
+  rootPlaying = true
+}
+
+beforeEach(() => {
+  jest.useFakeTimers()
+  timings = []
+  backHandlers = []
+  events = []
+  mockSegments = ["(tabs)"]
+  mockSelection = READY
+  Object.values(mockRouter).forEach((fn) => fn.mockReset())
+  mockRouter.push.mockImplementation(() => events.push("push"))
+  jest.spyOn(Animated, "timing").mockImplementation((_value, config) => {
+    let callback: Animated.EndCallback | undefined
+    const toValue = config.toValue as number
+    const timing = { toValue, finish: () => callback?.({ finished: true }) }
+    timings.push(timing)
+    return {
+      start: (cb?: Animated.EndCallback) => {
+        callback = cb
+        if (toValue === 0) events.push("lift")
+      },
+      stop: () => {},
+      reset: () => {},
+    } as unknown as Animated.CompositeAnimation
+  })
+  jest
+    .spyOn(BackHandler, "addEventListener")
+    .mockImplementation((_, handler) => {
+      const fn = handler as unknown as () => boolean
+      backHandlers.push(fn)
+      return {
+        remove: () => {
+          backHandlers = backHandlers.filter((other) => other !== fn)
+        },
+      }
+    })
+
+  sessions.setPipHold(false)
+  sessions.end("abandoned")
+  ends = []
+  stopEnds = sessions.onEnd((event) => ends.push(event))
+  rootPlaying = false
+  resetPlaybackTransportForTests()
+  setPlaybackTransport(transport)
+  resetPauseProgressStoreForTests()
+})
+
+afterEach(() => {
+  // A failed test skips its own unmount, and a live host would act in the next.
+  mounted.splice(0).forEach((renderer) => act(() => renderer.unmount()))
+  act(() => endPause())
+  setPauseRunOnTop(false)
+  stopEnds()
+  jest.restoreAllMocks()
+  jest.useRealTimers()
+})
+
+function tree(strict = false): ReactElement {
+  const app = (
+    <PauseStage>
+      <Text>Home</Text>
+      <DailyPauseHost />
+    </PauseStage>
+  )
+  return (strict ? <StrictMode>{app}</StrictMode> : app) as ReactElement
+}
+
+async function render(strict = false): Promise<TestInstance> {
+  let renderer!: TestInstance
+  await act(async () => {
+    renderer = TestRenderer.create(tree(strict))
+  })
+  mounted.push(renderer)
+  return renderer
+}
+
+async function advance(ms: number) {
+  await act(async () => {
+    jest.advanceTimersByTime(ms)
+  })
+}
+
+async function enter() {
+  await act(async () => requestPause())
+}
+
+function curtainCount(renderer: TestInstance): number {
+  return renderer.root.findAll(
+    (node) =>
+      node.props.accessibilityLabel === CURTAIN_LABEL &&
+      typeof node.props.onPress === "function",
+  ).length
+}
+
+describe("the curtain handover (KTD5)", () => {
+  it("pushes the run once when the pen ends with the selection ready, then lifts", async () => {
+    const renderer = await render()
+    await enter()
+    await advance(PAUSE_LOGO_DRAWN_MS - 1)
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    await advance(1)
+    expect(mockRouter.push).toHaveBeenCalledTimes(1)
+    expect(mockRouter.push).toHaveBeenCalledWith("/pause")
+    expect(events).toEqual(["push", "lift"])
+    await act(async () => lift().finish())
+    expect(curtainCount(renderer)).toBe(0)
+    await unmount(renderer)
+  })
+
+  it("waits for the selection, and pushes when the deadline passes", async () => {
+    mockSelection = { isReady: false, currentSlug: null }
+    const renderer = await render()
+    await enter()
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    await advance(PAUSE_HANDOVER_DEADLINE_MS - 1)
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    expect(getPausePhase()).toBe("drawn")
+    await advance(1)
+    expect(mockRouter.push).toHaveBeenCalledTimes(1)
+    expect(events).toEqual(["push", "lift"])
+    await unmount(renderer)
+  })
+
+  // A ready selection with no slug still waits: the shell resolves the
+  // homepage next, and that swap remounts the stack.
+  it("pushes as soon as the selection has its slug", async () => {
+    mockSelection = { isReady: true, currentSlug: null }
+    const renderer = await render()
+    await enter()
+    await advance(PAUSE_LOGO_DRAWN_MS + 500)
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    mockSelection = READY
+    await act(async () => renderer.update(tree()))
+    expect(mockRouter.push).toHaveBeenCalledTimes(1)
+    await advance(PAUSE_HANDOVER_DEADLINE_MS)
+    expect(mockRouter.push).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("pushes nothing after a curtain tap before the pen ends, and lifts back", async () => {
+    const renderer = await render()
+    await enter()
+    await advance(1000)
+    await press(pressableByLabel(renderer, CURTAIN_LABEL))
+    expect(events).toEqual(["lift"])
+    await advance(PAUSE_LOGO_DRAWN_MS + PAUSE_HANDOVER_DEADLINE_MS)
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    await act(async () => lift().finish())
+    expect(curtainCount(renderer)).toBe(0)
+    expect(getPausePhase()).toBe("idle")
+    await unmount(renderer)
+  })
+
+  it.each([[["pause"]], [["pause", "customize"]]])(
+    "does nothing for a new request while %j is on top",
+    async (segments) => {
+      mockSegments = segments
+      const renderer = await render()
+      await enter()
+      expect(curtainCount(renderer)).toBe(0)
+      expect(timings).toHaveLength(0)
+      await advance(PAUSE_LOGO_DRAWN_MS + PAUSE_HANDOVER_DEADLINE_MS)
+      expect(mockRouter.push).not.toHaveBeenCalled()
+      await unmount(renderer)
+    },
+  )
+
+  it("pushes once for one entry under StrictMode", async () => {
+    const renderer = await render(true)
+    await enter()
+    await advance(PAUSE_LOGO_DRAWN_MS + PAUSE_HANDOVER_DEADLINE_MS)
+    expect(mockRouter.push).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("marks today's devotional opened, which clears the bell's dot (R2)", async () => {
+    const renderer = await render()
+    await enter()
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    await act(async () => {
+      await getPauseProgressStore().hydrate()
+    })
+    const today = localDay(new Date())
+    expect(
+      dayFromRecord(getPauseProgressStore().getSnapshot(), today).bellRead,
+    ).toBe(true)
+    await unmount(renderer)
+  })
+})
+
+describe("the takeover at entry (KTD6, R46)", () => {
+  it("ends a floating mini player session as dismissed", async () => {
+    floatingWindow()
+    const renderer = await render()
+    await enter()
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    expect(sessions.getSnapshot().dismissal).toBe("exiting")
+    expect(ends.map((event) => event.reason)).toEqual(["dismissed"])
+    await unmount(renderer)
+  })
+
+  it("pauses the root player under a picture-in-picture hold", async () => {
+    floatingWindow()
+    sessions.setPipHold(true)
+    const renderer = await render()
+    await enter()
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    expect(rootPlaying).toBe(false)
+    expect(sessions.getSnapshot().dismissal).toBe("none")
+    expect(ends).toEqual([])
+    await unmount(renderer)
+  })
+
+  it("leaves the video alone when a curtain tap cancels the entry", async () => {
+    floatingWindow()
+    const renderer = await render()
+    await enter()
+    await advance(1000)
+    await press(pressableByLabel(renderer, CURTAIN_LABEL))
+    await advance(PAUSE_LOGO_DRAWN_MS + PAUSE_HANDOVER_DEADLINE_MS)
+    expect(sessions.getSnapshot().dismissal).toBe("none")
+    expect(rootPlaying).toBe(true)
+    await unmount(renderer)
+  })
+})
+
+describe("the close (R21, R22)", () => {
+  function CloseButton() {
+    const close = useCloseDailyPause()
+    return <Pressable accessibilityLabel="Close" onPress={close} />
+  }
+
+  it("pops to the tab navigator and selects Home", async () => {
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(<CloseButton />)
+    })
+    await press(pressableByLabel(renderer, "Close"))
+    expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1)
+    expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    expect(mockRouter.replace).not.toHaveBeenCalled()
+    expect(mockRouter.navigate).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  it("closes the run on Android back from the run screen", async () => {
+    mockSegments = ["pause"]
+    const renderer = await render()
+    expect(backHandlers).toHaveLength(1)
+    let consumed = false
+    await act(async () => {
+      consumed = backHandlers[0]!()
+    })
+    expect(consumed).toBe(true)
+    expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
+    await unmount(renderer)
+  })
+
+  // The customize sheet's own back closes the sheet, not the run.
+  it.each([[["(tabs)"]], [["pause", "customize"]]])(
+    "leaves Android back to the navigator on %j",
+    async (segments) => {
+      mockSegments = segments
+      const renderer = await render()
+      expect(backHandlers).toHaveLength(0)
+      await unmount(renderer)
+    },
+  )
+})
+
+describe("the root layout", () => {
+  const nodeRequire = require as unknown as NodeRequireLike
+  const fs = nodeRequire("fs") as {
+    readFileSync: (file: string, encoding: string) => string
+  }
+  const nodePath = nodeRequire("path") as NodePath & {
+    resolve: (...parts: string[]) => string
+  }
+  const source = fs.readFileSync(
+    nodePath.resolve(__dirname, "../../../../app/_layout.tsx"),
+    "utf8",
+  )
+
+  it("requires the host inside the guarded try block, never as an import", () => {
+    const required = source.indexOf(
+      'require("../src/components/dailyPause/DailyPauseHost")',
+    )
+    expect(required).toBeGreaterThan(source.indexOf("try {"))
+    expect(required).toBeLessThan(source.indexOf("} catch (e: unknown) {"))
+    expect(source).not.toContain(
+      'from "../src/components/dailyPause/DailyPauseHost"',
+    )
+  })
+
+  // Inside the providers it reads, and outside the shell whose swap remounts.
+  it("mounts the host beside the playback host, outside the experience shell", () => {
+    const host = source.indexOf("<DailyPauseHost />")
+    expect(host).toBeGreaterThan(source.indexOf("</ExperienceShell>"))
+    expect(host).toBeGreaterThan(source.indexOf("<PlaybackHost />"))
+    expect(host).toBeLessThan(source.indexOf("</SplashCoveredTree>"))
+  })
+
+  it("registers the run with no push animation and no back swipe", () => {
+    const screen = source
+      .split("<Stack.Screen")
+      .slice(1)
+      .map((segment) => segment.split("/>")[0])
+      .find((segment) => segment.includes('name="pause"'))
+    expect(screen).toBeDefined()
+    expect(screen).toMatch(/animation:\s*"none"/)
+    expect(screen).toMatch(/gestureEnabled:\s*false/)
+  })
+})
+
+declare const __dirname: string

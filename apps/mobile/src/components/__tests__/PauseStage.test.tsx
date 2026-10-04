@@ -8,11 +8,17 @@ import {
   unmount,
   type TestInstance,
 } from "../../test-utils/rnTestRenderer"
-import { endPause, requestPause } from "../../lib/pauseCurtain"
+import {
+  endPause,
+  getPausePhase,
+  liftPause,
+  requestPause,
+} from "../../lib/pauseCurtain"
 import { LOGO_DURATION_MS } from "../DailyBiblePauseLogo"
 import {
   PAUSE_FADE_IN_MS,
   PAUSE_FADE_OUT_MS,
+  PAUSE_LOGO_DRAWN_MS,
   PauseStage,
   pauseProgressAt,
 } from "../PauseStage"
@@ -151,6 +157,43 @@ describe("PauseStage", () => {
         duration: LOGO_DURATION_MS,
       }),
     )
+    await unmount(renderer)
+  })
+
+  // The pen's native callback is unreliable on this app, and the timing mock
+  // never calls it, so only the stage's own clock can report the end.
+  it("reports the logo drawn from its own clock when the pen ends", async () => {
+    const renderer = await render()
+    await pause()
+    expect(PAUSE_LOGO_DRAWN_MS).toBe(1200 + LOGO_DURATION_MS)
+    await advance(PAUSE_LOGO_DRAWN_MS - 1)
+    expect(getPausePhase()).toBe("closing")
+    await advance(1)
+    expect(getPausePhase()).toBe("drawn")
+    await unmount(renderer)
+  })
+
+  it("never reports the logo drawn after a tap lifts the curtain", async () => {
+    const renderer = await render()
+    await pause()
+    await advance(1000)
+    await press(pressableByLabel(renderer, CURTAIN_LABEL))
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    expect(getPausePhase()).toBe("lifting")
+    await unmount(renderer)
+  })
+
+  it("lifts when the store asks, as the bridge does after its push", async () => {
+    const renderer = await render()
+    await pause()
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    await act(async () => liftPause())
+    expect(lift().duration).toBe(PAUSE_FADE_OUT_MS)
+    expect(mockSetStatusBarHidden).toHaveBeenLastCalledWith(false, "fade")
+    expect(curtainCount(renderer)).toBe(1)
+    await act(async () => lift().finish())
+    expect(curtainCount(renderer)).toBe(0)
+    expect(getPausePhase()).toBe("idle")
     await unmount(renderer)
   })
 
