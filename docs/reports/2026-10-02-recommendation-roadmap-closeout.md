@@ -304,9 +304,10 @@ found a minimum conditional margin of 1,377 rows at half the observed October 4
 episode deletion cadence; it does not prove future throughput or scheduler
 continuity. Created-at counts are not expiry inflow. The scoped
 [plan](../plans/2026-10-05-recommendation-retention-episode-margin.md) records
-the assumptions and receipts. Actual process deployment and subsequent natural
-behavior are recorded separately on #2556; merging code alone is not deployment
-or clean-cycle evidence.
+the assumptions and receipts. Actual process deployment and the absence of
+post-merge retention attempts are recorded separately on #2556; future loaded
+behavior remains to be measured. Merging code alone is not deployment or
+clean-cycle evidence.
 
 There are **zero qualifying cycles** through the failed October 4 cycle. Both
 Admin roles must run `66eccae12` or a verified descendant containing the repairs.
