@@ -87,7 +87,7 @@ async function main(): Promise<void> {
   if (!apiKey) {
     throw new Error(
       [
-        "SEEKER_RAG_API_KEY is not set. The local RAG requires a bearer token.",
+        "SEEKER_RAG_API_KEY is not set. RAG fixture capture requires a bearer token.",
         "",
         "Set SEEKER_RAG_API_KEY to the registered Seeker consumer key.",
         "Set SEEKER_RAG_BASE_URL to the intended RAG service endpoint.",
