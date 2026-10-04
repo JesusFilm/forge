@@ -1,3 +1,4 @@
+import { migrationEnvironmentValue } from "./migration-environment.js"
 import { environmentConfigurationError } from "./environment-error.js"
 
 export const READONLY_GROUP_ROLE = "forge_rag_readonly"
@@ -36,21 +37,30 @@ export function requireReadonlyDatabaseUrl(
 
 export type DashboardDatabase = {
   url: string
-  source: "JFRAG_POSTGRESQL_READONLY_DB_URL" | "DATABASE_URL"
+  source:
+    | "FORGE_RAG_POSTGRESQL_READONLY_DB_URL"
+    | "JFRAG_POSTGRESQL_READONLY_DB_URL"
+    | "DATABASE_URL"
 }
 
 export function resolveDashboardDatabase(
   input: Record<string, string | undefined>,
   options: { allowDev?: boolean } = {},
 ): DashboardDatabase {
-  const namespaced = input.JFRAG_POSTGRESQL_READONLY_DB_URL?.trim()
+  const namespaced = migrationEnvironmentValue(
+    input,
+    "JFRAG_POSTGRESQL_READONLY_DB_URL",
+  )?.trim()
   if (namespaced) {
     return {
       url: requireReadonlyDatabaseUrl(
         namespaced,
-        input.JFRAG_READONLY_ROLE_NAME,
+        migrationEnvironmentValue(input, "JFRAG_READONLY_ROLE_NAME"),
       ),
-      source: "JFRAG_POSTGRESQL_READONLY_DB_URL",
+      source:
+        input.FORGE_RAG_POSTGRESQL_READONLY_DB_URL !== undefined
+          ? "FORGE_RAG_POSTGRESQL_READONLY_DB_URL"
+          : "JFRAG_POSTGRESQL_READONLY_DB_URL",
     }
   }
 
