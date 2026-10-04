@@ -42,3 +42,26 @@ episode counts do not measure how many records are becoming expired. Verify
 natural post-release backlog and serving recovery from comparable readings.
 Two subsequent normal failure-free loaded cycles remain the feat-554
 acceptance gate; local fixtures and recovered cycles do not satisfy it.
+
+## October 5 margin follow-up
+
+The October 4 ordinary cycle still recorded six failed attempts while later
+catch-up succeeded. Their committed counters identify progress before failure,
+not the exact failing SQL statement. A paired owned PostgreSQL mixed fixture
+measured a 4,467 ms first attempt at ten episodes and 2,767 ms at five; the
+smaller page took 8,871 ms across five attempts versus 8,366 ms across three
+for all fixture work. Thus smaller pages buy first-attempt deadline margin at
+a synthetic total-time cost. A deliberately slow projection tail still failed
+the unchanged five-second deadline with the smaller page. Preserve that failed
+ledger and rolled-back phase; do not relabel a timeout as a successful yield.
+
+For capacity admission, use the episodes' **expiry timestamps**, not recent
+creation counts. A bounded read of surviving episode expiry buckets and a
+full-window observed deletion denominator (including failed attempts and
+backoff) can check cumulative work against each bucket's 24-hour deadline.
+The October 4 hourly prefix check had no conditional deficit at half the
+observed ten-episode deletion rate, but half-rate page-five throughput is an
+assumption, not a measured production result. One oldest expiry timestamp is
+not the deadline for every expired row. Future writes, variable row cost and
+scheduler state still require live monitoring after release. The ordinary
+failure-free loaded-cycle gate remains unchanged.

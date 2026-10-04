@@ -17,6 +17,27 @@ tags:
   - "operations"
 ---
 
+## October 5 deadline-margin mitigation pending release
+
+The October 4 ordinary loaded cycle had six failed attempts amid 438
+successful attempts; a later read found zero overdue rows. It is not a
+qualifying failure-free cycle;
+the count remains zero. A scoped change reduces only the pre-root standalone
+episode page from ten to five under the existing five-second whole-run budget.
+An owned mixed PostgreSQL fixture measured 4,467 ms versus 2,767 ms on its
+first attempt, while total fixture time rose about 6.0%; a separate slow-tail
+fixture still failed at the deadline, preserving earlier committed root work
+and rolling back the tail transaction. Neither fixture proves the production
+failure's exact statement or a complete cure.
+
+The bounded October 4 expiry histogram counted 26,071 surviving standalone
+episodes through October 6 10:30 UTC without reaching its 50,001-row cap.
+A conservative conditional half-rate prefix calculation found no observed
+24-hour-deadline shortfall for those surviving cohorts. Created-at counts are
+not expiry inflow. Verify actual Admin HTTP/worker deployment, live deletion
+throughput, oldest-age/backlog and headroom after a reviewed release. Keep this
+ticket in progress until two later ordinary failure-free loaded cycles pass.
+
 ## October 4 query release: natural catch-up snapshot
 
 [PR #2553](https://github.com/JesusFilm/forge/pull/2553) merged normally as
