@@ -99,9 +99,15 @@ eligibility decisions still kept the serving gate overdue. At 22:47:11, all
 records continued in the persistent scheduler. The October 4 ordinary cycle
 then recorded six failures and 438 successes. Its 19:39 UTC health audit still
 found zero overdue rows, but it supplies no clean-cycle credit. The storage
-owner is classifying those fresh failures and owns any evidenced repair through
-the normal tested/reviewed release process. Recovery does not replace the two
-later ordinary loaded daily cycles. Existing daily monitoring sends
+owner investigated those fresh failures with bounded reads and isolated tests.
+PR #2556 merged as `66eccae12` at October 4 20:29:08 UTC after independent review
+and green CI, reducing only the episode page from ten to five. Paired native
+tests measured more first-attempt deadline headroom at about 6.0% greater total
+fixture drain time; a negative slow-tail test preserves real failure accounting.
+The expiry-prefix capacity calculation is conditional, not observed future
+throughput. Actual Admin HTTP/worker deployment receipts belong on #2556.
+Recovery and local mitigation evidence do not replace the two later ordinary
+loaded daily cycles. Existing daily monitoring sends
 new proof to the coordinating owner, who completes the scoped evidence PR,
 review/merge, final merged-main inventory and index update. Do not mark the plan
 complete or disable that monitor before the required closure merges.

@@ -281,13 +281,35 @@ request roots, with oldest expiry 12:12:41, inside the propagation window.
 Both actual Admin roles were observed healthy and compact on `e8e7fb3` at
 19:38:53. At 19:38:48, direct PGDATA free space was 23,857,287,168 bytes and WAL
 was 134,217,728 bytes. The separate 19:39:30 read found the legacy stage empty
-at 24,576 allocated bytes. The storage owner is classifying the new failures with
-bounded read-only evidence and isolated tests; current healthy serving criteria
-do not turn this into a qualifying clean cycle. Sanitized receipts are retained
+at 24,576 allocated bytes. Bounded read-only evidence and isolated tests informed
+the mitigation below; current healthy serving criteria do not turn this into a
+qualifying clean cycle. Sanitized receipts are retained
 under `outputs/heartbeats/20261004T1938-daily/` in the storage evidence directory.
 
+[PR #2556](https://github.com/JesusFilm/forge/pull/2556) merged normally as
+`66eccae12b841be7ea373aefae3b402126a02733` at October 4 20:29:08 UTC after
+independent review and all 26 checks passed or were appropriately skipped. Its
+only runtime change reduces the standalone episode page from ten to five,
+preserving the five-second deadline, expiry, root cap, locks, deletion order,
+scheduler and failure accounting. Three owned PostgreSQL tests and 58 focused
+tests passed locally; CI also exercised the native retention tests. The negative
+slow-tail test proves a real timeout remains failed, earlier committed root work
+is retained, and the last successful watermark does not advance.
+
+The paired mixed-work fixture passed at both page sizes: the first attempt fell
+from 4,467 to 2,767 ms, while total drain time rose from 8,366 to 8,871 ms (about
+6.0%). This is measured deadline headroom, not proof of the exact production
+timeout cause or a general cure. A bounded 47-hour-bucket expiry-prefix model
+found a minimum conditional margin of 1,377 rows at half the observed October 4
+episode deletion cadence; it does not prove future throughput or scheduler
+continuity. Created-at counts are not expiry inflow. The scoped
+[plan](../plans/2026-10-05-recommendation-retention-episode-margin.md) records
+the assumptions and receipts. Actual process deployment and subsequent natural
+behavior are recorded separately on #2556; merging code alone is not deployment
+or clean-cycle evidence.
+
 There are **zero qualifying cycles** through the failed October 4 cycle. Both
-Admin roles must run `e8e7fb3` or a verified descendant containing the repairs.
+Admin roles must run `66eccae12` or a verified descendant containing the repairs.
 Natural catch-up demonstrated request-root deletion, declining overdue backlog
 and restoration of the serving-health criteria; recovery cannot qualify the
 already failed cycle. Two later ordinary loaded, failure-free daily cycles at the normal
@@ -347,7 +369,7 @@ ID/time and bounded public endpoint/browser observations; consult it before
 claiming the new status model is live.
 The initial October 2 closeout changed test/CI and the roadmap status viewer,
 without recommendation runtime or production SQL changes. Subsequent retention
-repairs #2550, #2551 and #2553 are runtime changes; their separate release and recovery
+repairs #2550, #2551, #2553 and #2556 are runtime changes; their separate release and recovery
 evidence is required as described above.
 
 The PostgreSQL CI job passed all 56 relevant native tests: one historical
@@ -366,7 +388,7 @@ production latency estimates. Raw samples and the measurement script are retaine
 under `/home/nisal/Documents/Codex/2026-10-02/recommendation-roadmap-cancelled-status/work/`
 and summarized in #2545. Normal deployed verification is recorded separately.
 
-The direct path/frontmatter audit of merged main `e8e7fb3` found **12 complete,
+The direct path/frontmatter audit of merged main `66eccae12` found **12 complete,
 25 cancelled and one open (feat-554)** across 38 paths, including the new viewer
 ticket. Final closure must repeat this audit on merged main, with the merge SHA
 and result retained on #2541. The dependency audit
