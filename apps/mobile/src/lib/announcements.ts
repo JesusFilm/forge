@@ -1,5 +1,4 @@
-import { useSyncExternalStore } from "react"
-
+import { getPauseProgressStore, usePauseDay } from "./dailyPause/progress"
 import { localDay, useToday } from "./dailyPause/today"
 
 export type Announcement = {
@@ -13,7 +12,7 @@ export type Announcement = {
 export type AnnouncementItem = Announcement & { unread: boolean }
 
 /** Mockup source: today's devotional only. Admin's announcements query will
- *  replace this; the read state below stays in memory until then. */
+ *  replace this. The read state is the day record's bell flag (R2). */
 function mockAnnouncements(today: string): Announcement[] {
   return [
     {
@@ -25,49 +24,30 @@ function mockAnnouncements(today: string): Announcement[] {
   ]
 }
 
-const readIds = new Set<string>()
-let revision = 0
-const listeners = new Set<() => void>()
-
 export function markAnnouncementRead(id: string): void {
-  if (readIds.has(id)) return
-  readIds.add(id)
-  revision += 1
-  listeners.forEach((listener) => listener())
+  const announcement = mockAnnouncements(localDay(new Date())).find(
+    (one) => one.id === id,
+  )
+  if (announcement)
+    getPauseProgressStore().markBellRead(announcement.publishedOn)
 }
 
 /** Opening today's pause from anywhere reads its announcement too. */
 export function markTodaysDevotionalRead(now: Date = new Date()): void {
-  const today = localDay(now)
-  for (const announcement of mockAnnouncements(today)) {
-    if (
-      announcement.kind === "daily-devotional" &&
-      announcement.publishedOn === today
-    )
-      markAnnouncementRead(announcement.id)
-  }
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener)
-  return () => {
-    listeners.delete(listener)
-  }
-}
-
-function getSnapshot(): number {
-  return revision
+  getPauseProgressStore().markBellRead(localDay(now))
 }
 
 export function useAnnouncements(): {
   items: AnnouncementItem[]
   unreadCount: number
 } {
-  useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
   const { dayKey } = useToday()
+  const day = usePauseDay(dayKey)
+  // Until the record is read the dot stays off, so a read day never flashes it.
+  const read = day.status !== "ready" || day.bellRead
   const items = mockAnnouncements(dayKey).map((announcement) => ({
     ...announcement,
-    unread: !readIds.has(announcement.id),
+    unread: !read,
   }))
   return { items, unreadCount: items.filter((item) => item.unread).length }
 }

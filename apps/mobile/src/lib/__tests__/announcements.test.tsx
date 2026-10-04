@@ -1,4 +1,13 @@
-import { act } from "react"
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+// The shape of the real ES module: the day record loads its `default` export.
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  __esModule: true,
+  default: require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
+}))
+
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { StrictMode, act } from "react"
 
 import {
   TestRenderer,
@@ -10,6 +19,11 @@ import {
   markTodaysDevotionalRead,
   useAnnouncements,
 } from "../announcements"
+import {
+  createPauseProgressStore,
+  dayFromRecord,
+  resetPauseProgressStoreForTests,
+} from "../dailyPause/progress"
 
 type Snapshot = ReturnType<typeof useAnnouncements>
 const seen: Snapshot[] = []
@@ -22,12 +36,16 @@ function Probe() {
 async function mount(): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
-    renderer = TestRenderer.create(<Probe />)
+    renderer = TestRenderer.create(
+      <StrictMode>
+        <Probe />
+      </StrictMode>,
+    )
   })
   return renderer
 }
 
-// The read state is module-wide and keyed by day, so each case uses its own day.
+// The day record holds one day, so each case uses its own day.
 function setToday(year: number, monthIndex: number, day: number) {
   jest.useFakeTimers({ now: new Date(year, monthIndex, day, 9, 0) })
 }
@@ -88,6 +106,36 @@ describe("the mock announcements", () => {
     expect(seen.at(-1)!.unreadCount).toBe(1)
     act(() => markTodaysDevotionalRead())
     expect(seen.at(-1)!.unreadCount).toBe(0)
+    await unmount(renderer)
+  })
+
+  it("keeps the dot clear after a relaunch that day, and brings it back the next day", async () => {
+    setToday(2026, 9, 6)
+    let renderer = await mount()
+    act(() => markTodaysDevotionalRead())
+    expect(seen.at(-1)!.unreadCount).toBe(0)
+    await unmount(renderer)
+    // The read reached the device storage, not only this module's memory.
+    const stored = createPauseProgressStore(AsyncStorage)
+    await stored.hydrate()
+    expect(dayFromRecord(stored.getSnapshot(), "2026-10-06").bellRead).toBe(
+      true,
+    )
+
+    // A relaunch: the memory is gone, and the device storage stays.
+    resetPauseProgressStoreForTests()
+    seen.length = 0
+    renderer = await mount()
+    expect(seen.length).toBeGreaterThan(0)
+    // Not one render shows the dot, not even before the record is read.
+    expect(seen.filter((snapshot) => snapshot.unreadCount > 0)).toEqual([])
+
+    // The day clock's midnight brings the next day's devotional, unread.
+    await act(async () => {
+      jest.advanceTimersByTime(15 * 60 * 60 * 1000)
+    })
+    expect(seen.at(-1)!.items[0]!.id).toBe("daily-devotional-2026-10-07")
+    expect(seen.at(-1)!.unreadCount).toBe(1)
     await unmount(renderer)
   })
 })
