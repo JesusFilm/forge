@@ -76,3 +76,17 @@ old variable names.
 - Implementation PR: [#2549](https://github.com/JesusFilm/forge/pull/2549).
 - Production/local configuration rollout remains pending; no production settings
   have been changed.
+
+## Resolution
+
+Implemented in [#2549](https://github.com/JesusFilm/forge/pull/2549). Runtime
+and fixture capture use `SEEKER_RAG_*` without old-name aliases. Explicit capture
+flags, existing defaults, internal function names and production host guards are
+preserved. Missing-key guidance now applies to both local and remote capture.
+
+The implementation is ready for the agreed direct cutover. This ticket remains
+in progress until the owner renames the configured local and Railway Mastra
+variables, restarts/redeploys with those settings, and confirms retrieval,
+citations and usage under the `seeker` consumer. Keep the credential value; apply
+the base URL and allowed hosts together. No production settings were changed
+by this PR.
