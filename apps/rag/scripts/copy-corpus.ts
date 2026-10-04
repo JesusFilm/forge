@@ -1,3 +1,4 @@
+import { migrationEnvironmentValue } from "../src/config/migration-environment.js"
 /* eslint-disable max-lines -- keeps the copy transaction and its reconciliation contract auditable in one operator script */
 import { createHash } from "node:crypto"
 import { mkdir, writeFile } from "node:fs/promises"
@@ -237,7 +238,7 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     dryRun: true,
     verifyOnly: false,
     resume: false,
-    sourceEnv: "JFRAG_SOURCE_DATABASE_URL",
+    sourceEnv: "CORPUS_SOURCE_DATABASE_URL",
     targetEnv: "DATABASE_URL",
     batchSize: 250,
     maxBatches: null,
@@ -613,7 +614,10 @@ function reportStatus(
 }
 
 async function run(options: CopyOptions): Promise<SafeReport> {
-  const sourceUrl = process.env[options.sourceEnv]
+  const sourceUrl =
+    options.sourceEnv === "CORPUS_SOURCE_DATABASE_URL"
+      ? migrationEnvironmentValue(process.env, "JFRAG_SOURCE_DATABASE_URL")
+      : process.env[options.sourceEnv]
   const targetUrl = process.env[options.targetEnv]
   if (!sourceUrl || !targetUrl)
     throw new MigrationUsageError(

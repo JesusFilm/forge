@@ -1748,6 +1748,14 @@ The record a device creates with admin when notification permission is granted: 
 
 The delivery of one Announcement Campaign across time zones: each device receives it at the campaign's local hour in its own zone, so a single send spreads over about a day and the report is complete only after the last zone. The wave enforces one announcement per device per local day; when two campaigns collide, the earlier scheduled one wins. "Send now everywhere" is the explicit exception that ignores the local hour.
 
+## Product feedback
+
+### Feedback Submission
+
+A message a person sends from inside an app — the Watch feedback form on web, the feedback sheet on mobile — that the receiving server files as one Linear issue under a Feedback label, quoting the message verbatim.
+
+It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue. A submission sent from inside the mobile player also names the Video in view, but only a title that came from the resolved Video: the ticket is read where the reporter's context is absent, so a screen that has only a Watch Seed sends no video at all.
+
 ## Flagged ambiguities
 
 - "Contextual Watch Route" and "canonical Watch URL" are not synonyms: the contextual route preserves collection navigation, while the Standalone Watch Route owns discovery, social, and sharing identity.

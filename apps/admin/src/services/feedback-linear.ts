@@ -229,8 +229,8 @@ export async function createLinearFeedbackIssue(
   fetchImpl: typeof fetch = fetch,
 ): Promise<FeedbackLinearOutcome> {
   const startedAt = Date.now()
-  const apiKey = env.ADMIN_FEEDBACK_LINEAR_API_KEY
-  const teamId = env.ADMIN_FEEDBACK_LINEAR_TEAM_ID
+  const apiKey = env.ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY
+  const teamId = env.ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID
   if (!apiKey || !teamId) {
     return settle(
       submission,
@@ -247,11 +247,11 @@ export async function createLinearFeedbackIssue(
       teamId,
       title: buildFeedbackIssueTitle(submission),
       description: buildFeedbackIssueDescription(submission),
-      ...(env.ADMIN_FEEDBACK_LINEAR_PROJECT_ID
-        ? { projectId: env.ADMIN_FEEDBACK_LINEAR_PROJECT_ID }
+      ...(env.ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID
+        ? { projectId: env.ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID }
         : {}),
-      ...(env.ADMIN_FEEDBACK_LINEAR_LABEL_ID
-        ? { labelIds: [env.ADMIN_FEEDBACK_LINEAR_LABEL_ID] }
+      ...(env.ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID
+        ? { labelIds: [env.ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID] }
         : {}),
     }
 

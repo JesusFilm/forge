@@ -1,3 +1,4 @@
+import { migrationEnvironmentValue } from "./migration-environment.js"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
@@ -154,8 +155,14 @@ export type RuntimeEnv = z.infer<typeof runtimeEnvSchema>
 
 /** Only the environment-agnostic OpenRouter key may use a namespaced fallback. */
 export function applyNamespacedEnvFallbacks(env: EnvironmentInput): void {
-  if (!env.OPENROUTER_API_KEY?.trim() && env.JFRAG_OPENROUTER_API_KEY?.trim()) {
-    env.OPENROUTER_API_KEY = env.JFRAG_OPENROUTER_API_KEY
+  if (
+    !env.OPENROUTER_API_KEY?.trim() &&
+    migrationEnvironmentValue(env, "JFRAG_OPENROUTER_API_KEY")?.trim()
+  ) {
+    env.OPENROUTER_API_KEY = migrationEnvironmentValue(
+      env,
+      "JFRAG_OPENROUTER_API_KEY",
+    )
   }
 }
 
@@ -185,13 +192,19 @@ export function assertEnvironmentForTarget(
   if (target === "dashboard") return resolveDashboardDatabase(input)
   if (target === "production-read" || target === "eval") {
     return resolveProductionEnv(input, {
-      expectHost: input.JFRAG_EXPECTED_POSTGRES_HOST,
+      expectHost: migrationEnvironmentValue(
+        input,
+        "JFRAG_EXPECTED_POSTGRES_HOST",
+      ),
     })
   }
   if (target === "production-write") {
     return resolveProductionEnv(input, {
       write: true,
-      expectHost: input.JFRAG_EXPECTED_POSTGRES_HOST,
+      expectHost: migrationEnvironmentValue(
+        input,
+        "JFRAG_EXPECTED_POSTGRES_HOST",
+      ),
     })
   }
 
@@ -236,7 +249,10 @@ export function resolveProductionEnv(
       "production read refused: JFRAG_EXPECTED_POSTGRES_HOST is required as the target-host guard",
       "production-read",
     )
-  if (options.write && input.JFRAG_ALLOW_PROD_WRITE !== "1") {
+  if (
+    options.write &&
+    migrationEnvironmentValue(input, "JFRAG_ALLOW_PROD_WRITE") !== "1"
+  ) {
     throw environmentConfigurationError(
       "production_write_opt_in_required",
       "production write refused: set JFRAG_ALLOW_PROD_WRITE=1 as the second deliberate signal",
@@ -254,10 +270,16 @@ export function resolveProductionEnv(
   const databaseVariable = options.write
     ? "JFRAG_POSTGRESQL_DB_URL"
     : "JFRAG_POSTGRESQL_READONLY_DB_URL"
-  const databaseUrl = input[databaseVariable]?.trim()
-  const openrouterKey = input.JFRAG_OPENROUTER_API_KEY?.trim()
+  const databaseUrl = migrationEnvironmentValue(input, databaseVariable)?.trim()
+  const openrouterKey = migrationEnvironmentValue(
+    input,
+    "JFRAG_OPENROUTER_API_KEY",
+  )?.trim()
   const embedModel =
-    input.JFRAG_OPENROUTER_EMBED_MODEL_ID?.trim() || DEFAULT_EMBED_MODEL_ID
+    migrationEnvironmentValue(
+      input,
+      "JFRAG_OPENROUTER_EMBED_MODEL_ID",
+    )?.trim() || DEFAULT_EMBED_MODEL_ID
 
   if (!databaseUrl) {
     throw environmentConfigurationError(
@@ -270,7 +292,7 @@ export function resolveProductionEnv(
   if (!options.write)
     requireReadonlyDatabaseUrl(
       parsedDatabaseUrl,
-      input.JFRAG_READONLY_ROLE_NAME,
+      migrationEnvironmentValue(input, "JFRAG_READONLY_ROLE_NAME"),
     )
   if (!openrouterKey) {
     throw environmentConfigurationError(

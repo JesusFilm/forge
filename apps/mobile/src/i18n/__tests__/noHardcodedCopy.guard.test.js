@@ -67,6 +67,8 @@ const TO_LOCALE_METHODS = new Set([
 // Modules that build user text through `t` or `getT`. Each must still read
 // the catalog, and must not return English as a literal.
 const COPY_MODULES = {
+  "src/components/feedback/feedbackFlow.ts":
+    "Feedback: the form's headings, kinds, video tag, problems, and disclosure",
   "src/components/watch/progressAccessibilityText.ts":
     "Watch: the progress text in a card's accessibility label",
   "src/hooks/useBibleVerses.ts":
@@ -86,6 +88,7 @@ const COPY_MODULES = {
   "src/lib/downloadGlyph.ts": "DownloadButton: the download control labels",
   "src/lib/downloadTiers.ts": "DownloadSheet: the file size text",
   "src/lib/exportReport.ts": "ExportReport: the export report text",
+  "src/lib/feedbackCopy.ts": "Feedback: the one failure message",
   "src/lib/lapseReminders/copy.ts":
     "LapseReminder: the reminder body and the Android channel name",
   "src/lib/libraryDownloads.ts": "Library: the downloads list text",

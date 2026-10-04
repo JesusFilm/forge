@@ -6,7 +6,7 @@
     "DownloadQuality": "The video quality choices in the download sheet, where the viewer picks how large an offline copy or a saved file is.",
     "Subtitles": "The subtitle control on the watch page and the subtitle choice in the download sheet.",
     "MyWatch": "The My Watch tab: the viewer's name or Guest, the sign-in card, a row of downloaded videos, and the Account screen that holds Sign out.",
-    "More": "The More screen, opened from the My Watch tab: links to the Jesus Film Project website, grouped as Support, About, and Legal, and the app version.",
+    "More": "The More screen, opened from the My Watch tab: a button that opens the in-app feedback form, links to the Jesus Film Project website grouped as Support, About, and Legal, and the app version.",
     "Auth": "Sign-in and sign-out text: the sign-in card on the My Watch tab, the Account screen, and the small banner on the watch page that asks a signed-out viewer to sign in so the app keeps their place in a video.",
     "DeleteAccount": "The account deletion steps on the Account screen, which opens from the My Watch tab: the confirmation, the request to sign in again, and the result messages. The deletion is permanent, so the text must be exact.",
     "BibleReader": "The Bible reader screen, which shows one verse at a time. It has a top bar (back, the passage, the translation, download, settings), a footer with the chapter and a verse counter, swipe hints, a verse selection bar with Copy and Share, and error messages. Book names and Bible text come from each translation, not from these strings.",
@@ -37,7 +37,8 @@
     "HomeShelves": "The titles of the built-in rows of videos that Home shows when it cannot load its curated page.",
     "Discover": "The search tab: a search field, a grid of video results, a button that loads more results, and the messages for no results and for a failed search.",
     "BrowseTopics": "The topic cards that the search tab shows before the viewer types. Each card names a topic of Christian videos, and a tap searches that topic.",
-    "Mission": "The mission page and the three mission cards at the bottom of Home. The page describes the ministry's video library, the tools it builds next, and an invitation to test new tools early. An eyebrow is a short line in capital letters above a heading."
+    "Mission": "The mission page and the three mission cards at the bottom of Home. The page describes the ministry's video library, the tools it builds next, and an invitation to test new tools early. An eyebrow is a short line in capital letters above a heading.",
+    "Feedback": "The feedback form. A viewer opens it from the More screen, or from the player's settings to report a problem with the video. Step one picks the kind of feedback; step two takes the message, an optional name and email, and an opt-in switch for device details. The Jesus Film Project team reads what the viewer sends."
   },
   "keys": {
     "Common.goBackAriaLabel": {
@@ -525,6 +526,73 @@
     "More.versionWithBuild": {
       "role": "footer text",
       "composition": "{version} is the app version number, such as 1.0.0. {build} is the build number, such as 7."
+    },
+    "More.sendFeedback": {
+      "role": "button label",
+      "composition": "Opens the in-app form where a viewer sends feedback to the Jesus Film Project team."
+    },
+    "More.sendFeedbackAriaHint": {
+      "role": "accessibility hint",
+      "visibility": "assistive technology only"
+    },
+    "Player.reportProblem": {
+      "role": "button label in the player's settings sheet",
+      "composition": "Opens the feedback form about the video that plays now."
+    },
+    "Feedback.title": {
+      "role": "sheet title"
+    },
+    "Feedback.kindBroken": {
+      "role": "choice button",
+      "composition": "One of three kinds of feedback: something in the app does not work."
+    },
+    "Feedback.kindIdea": {
+      "role": "choice button",
+      "composition": "One of three kinds of feedback: a suggestion."
+    },
+    "Feedback.kindOther": {
+      "role": "choice button",
+      "composition": "One of three kinds of feedback: anything else."
+    },
+    "Feedback.failureMessage": {
+      "role": "error message",
+      "composition": "Shows for every failure to send, including a daily limit."
+    },
+    "Feedback.retry": {
+      "role": "button label",
+      "composition": "Sends the same feedback again after a failure."
+    },
+    "Feedback.videoTag": {
+      "role": "removable tag",
+      "composition": "{title} is the video's title."
+    },
+    "Feedback.videoTagWithPosition": {
+      "role": "removable tag",
+      "composition": "{title} is the video's title. {position} is the playback time, such as 4:05 or 1:12:04."
+    },
+    "Feedback.characterCountAriaLabel": {
+      "role": "accessibility label of a character counter",
+      "visibility": "assistive technology only",
+      "composition": "{count} is how many characters the viewer typed; {max} is the limit. Keep the number form \"{x, number, ::group-off}\": it prints the limit with no thousands separator."
+    },
+    "Feedback.disclosureAriaHint": {
+      "role": "accessibility hint of the device details switch",
+      "visibility": "assistive technology only",
+      "composition": "{fields} is a comma-separated list of the item labels, such as \"Platform, App version, App build, OS version, Device model\"."
+    },
+    "Feedback.disclosureTitle": {
+      "role": "heading of the list of device details that the form sends"
+    },
+    "Feedback.sending": {
+      "role": "button label while the feedback sends"
+    },
+    "Feedback.messageTooShort": {
+      "role": "inline error under the message field",
+      "composition": "{min} is the fewest characters a message may have. Keep the number form \"{x, number, ::group-off}\": it prints the limit with no thousands separator."
+    },
+    "Feedback.tooLong": {
+      "role": "inline error under a form field",
+      "composition": "{max} is the most characters the field accepts. Keep the number form \"{x, number, ::group-off}\": it prints the limit with no thousands separator."
     }
   }
 }

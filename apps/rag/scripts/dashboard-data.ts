@@ -1,3 +1,4 @@
+import { migrationEnvironmentValue } from "../src/config/migration-environment.js"
 import { createHash } from "node:crypto"
 import { readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
@@ -21,15 +22,18 @@ export function requireProductionDashboardTarget(
     throw new Error(
       "dashboard snapshot refused: --target production-read is required",
     )
-  const raw = env.JFRAG_POSTGRESQL_READONLY_DB_URL
-  const expected = env.JFRAG_EXPECTED_POSTGRES_HOST?.trim()
+  const raw = migrationEnvironmentValue(env, "JFRAG_POSTGRESQL_READONLY_DB_URL")
+  const expected = migrationEnvironmentValue(
+    env,
+    "JFRAG_EXPECTED_POSTGRES_HOST",
+  )?.trim()
   if (!raw || !expected)
     throw new Error(
       "dashboard snapshot refused: namespaced production-read environment is incomplete",
     )
   const validated = requireReadonlyDatabaseUrl(
     raw,
-    env.JFRAG_READONLY_ROLE_NAME,
+    migrationEnvironmentValue(env, "JFRAG_READONLY_ROLE_NAME"),
   )
   const url = new URL(validated)
   if (

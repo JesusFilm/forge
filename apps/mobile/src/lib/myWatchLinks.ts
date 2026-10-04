@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react"
 import type Ionicons from "@expo/vector-icons/Ionicons"
+import type { Href } from "expo-router"
 
 import type { UiMessageKey } from "../i18n/useT"
 import { TERMS_OF_USE_CANONICAL_URL } from "./terms-of-use"
@@ -21,10 +22,20 @@ export type MyWatchSocialLink = {
   icon: ComponentProps<typeof Ionicons>["name"]
 }
 
+/** A row that opens a screen inside the app instead of the browser. */
+export type MyWatchRouteLink = {
+  labelKey: MoreKey
+  route: Href
+  hintKey: MoreKey
+  actionName: string
+}
+
+export type MyWatchGroupRow = MyWatchLink | MyWatchRouteLink
+
 export type MyWatchLinkGroup = {
   id: "support" | "about" | "legal"
   titleKey: MoreKey
-  links: readonly MyWatchLink[]
+  links: readonly MyWatchGroupRow[]
   socials?: readonly MyWatchSocialLink[]
 }
 
@@ -64,9 +75,10 @@ export const MY_WATCH_LINK_GROUPS: readonly MyWatchLinkGroup[] = [
     titleKey: "supportGroup",
     links: [
       {
-        labelKey: "give",
-        url: "https://www.jesusfilm.org/give/",
-        actionName: "more-give",
+        labelKey: "sendFeedback",
+        route: "/feedback",
+        hintKey: "sendFeedbackAriaHint",
+        actionName: "more-send-feedback",
       },
       {
         labelKey: "contactUs",
@@ -88,6 +100,11 @@ export const MY_WATCH_LINK_GROUPS: readonly MyWatchLinkGroup[] = [
         labelKey: "newsletter",
         url: "https://www.jesusfilm.org/email/",
         actionName: "more-newsletter",
+      },
+      {
+        labelKey: "give",
+        url: "https://www.jesusfilm.org/give/",
+        actionName: "more-give",
       },
     ],
     socials: SOCIAL_LINKS,

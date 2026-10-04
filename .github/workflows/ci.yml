@@ -205,6 +205,27 @@ jobs:
         run: |
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_test'
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_feat565_test'
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_retention_standalone_test'
+      - name: Apply owned retention fixture migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
+      - name: Exercise bounded recommendation retention tail against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
+          RECOMMENDATION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/retention-profile-tail.db.test.ts
+          src/services/recommendations/retention-composition.db.test.ts
+          --no-file-parallelism --testTimeout=60000
+      - name: Exercise loaded standalone retention against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_retention_standalone_test
+          RECOMMENDATION_DB_TEST: "1"
+        run: |
+          pnpm --filter @forge/admin exec prisma migrate deploy
+          pnpm --filter @forge/admin test -- src/services/recommendations/retention-standalone.db.test.ts --no-file-parallelism --testTimeout=60000
       - name: Exercise Co-watch refresh and measurement reuse against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
