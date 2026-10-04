@@ -146,7 +146,7 @@
               "displayName": "Daily Bible Pause",
               "description": "Shows the question for today from the Daily Bible Pause.",
               "ios": {
-                "supportedFamilies": ["systemSmall"]
+                "supportedFamilies": ["systemSmall", "systemMedium"]
               }
             }
           ]

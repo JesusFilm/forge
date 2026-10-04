@@ -35,6 +35,11 @@ let ExportReportHost: typeof import("../src/components/ExportReportHost").Export
 let PushNoticeHost: typeof import("../src/components/PushNoticeHost").PushNoticeHost
 let PauseStage: typeof import("../src/components/PauseStage").PauseStage
 let DailyPauseHost: typeof import("../src/components/dailyPause/DailyPauseHost").DailyPauseHost
+let DailyPauseWidgetTimeline: typeof import("../src/lib/dailyPause/widgetTimeline").DailyPauseWidgetTimeline
+// iOS only: Android has no widget.
+let dailyPauseWidget:
+  | typeof import("../src/widgets/DailyPauseWidget").dailyPauseWidget
+  | undefined
 let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
 // `| undefined`: this one is read at module scope after the try/catch, where a
@@ -95,7 +100,8 @@ try {
   // The widget extension cannot run app code. This require writes the widget
   // layout to the App Group, and the extension reads it from there.
   if (Platform.OS === "ios") {
-    require("../src/widgets/DailyPauseWidget")
+    dailyPauseWidget =
+      require("../src/widgets/DailyPauseWidget").dailyPauseWidget
   }
   const cachePersistence = require("../src/lib/cachePersistence")
   isCachePersistenceEnabled = cachePersistence.isCachePersistenceEnabled
@@ -109,6 +115,8 @@ try {
   PauseStage = require("../src/components/PauseStage").PauseStage
   DailyPauseHost =
     require("../src/components/dailyPause/DailyPauseHost").DailyPauseHost
+  DailyPauseWidgetTimeline =
+    require("../src/lib/dailyPause/widgetTimeline").DailyPauseWidgetTimeline
   if (__DEV__) {
     DevEndpointNotice =
       require("../src/components/DevEndpointNotice").DevEndpointNotice
@@ -540,6 +548,13 @@ export default function RootLayout() {
                               the run route. A sibling of the shell, as for
                               PlaybackHost: the shell remounts its subtree. */}
                           <DailyPauseHost />
+                          {/* Daily Bible Pause KTD14: writes the iOS widget's
+                              timeline. A sibling of the shell, for the same reason. */}
+                          {dailyPauseWidget ? (
+                            <DailyPauseWidgetTimeline
+                              widget={dailyPauseWidget}
+                            />
+                          ) : null}
                         </SplashCoveredTree>
                         {/* Last child, and a sibling for the same KTD1 reason: the
                             cover must paint above the player and must not restart
