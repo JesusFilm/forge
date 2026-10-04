@@ -132,7 +132,25 @@
           "enableFullScreenImage_legacy": true
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      "./plugins/withWidgetVersionSync",
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "org.jesusfilm.forgewatch.ExpoWidgetsTarget",
+          "groupIdentifier": "group.org.jesusfilm.forgewatch",
+          "widgets": [
+            {
+              "name": "DailyPauseWidget",
+              "displayName": "Daily Bible Pause",
+              "description": "Shows the question for today from the Daily Bible Pause.",
+              "ios": {
+                "supportedFamilies": ["systemSmall"]
+              }
+            }
+          ]
+        }
+      ]
     ],
     "extra": {
       "router": {

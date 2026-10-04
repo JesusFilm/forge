@@ -1,5 +1,5 @@
 import { Component, useEffect, useRef, useState } from "react"
-import { Pressable, Text, View, ScrollView } from "react-native"
+import { Platform, Pressable, Text, View, ScrollView } from "react-native"
 import type { ErrorInfo, ReactNode } from "react"
 
 let moduleError: string | null = null
@@ -91,6 +91,11 @@ try {
   // adapter's module scope. Named here, not left to the provider's import
   // graph, so a throwing notifications module lands on the Startup Error panel.
   require("../src/lib/lapseReminders/notificationsAdapter")
+  // The widget extension cannot run app code. This require writes the widget
+  // layout to the App Group, and the extension reads it from there.
+  if (Platform.OS === "ios") {
+    require("../src/widgets/DailyPauseWidget")
+  }
   const cachePersistence = require("../src/lib/cachePersistence")
   isCachePersistenceEnabled = cachePersistence.isCachePersistenceEnabled
   restoreApolloCache = cachePersistence.restoreApolloCache
