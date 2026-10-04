@@ -1,9 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useEffect, useRef } from "react"
-import { AppState } from "react-native"
+import { AppState, Platform } from "react-native"
 import { router } from "expo-router"
 import type { ReactNode } from "react"
 
+import { createDailyPauseReminderLifecycle } from "../lib/dailyPause/reminders"
+import { getPauseSettingsStore } from "../lib/dailyPause/settings"
 import { datadogLog } from "../lib/datadog"
 import { registerDeepLinkSlug } from "../lib/deepLinkOrigin"
 import {
@@ -23,6 +25,7 @@ import {
 import { attachLastWatchedWriter } from "../lib/lastWatched/lifecycle"
 import { getLastWatchedStore } from "../lib/lastWatched/store"
 import { getPlaybackRequestStore } from "../lib/miniPlayer/playbackRequest"
+import { requestPause } from "../lib/pauseCurtain"
 import { publishPushAppLanguageSlug } from "../lib/push/appLanguage"
 import { publishPushNotice } from "../lib/push/notice"
 import { reportPushOpenInBackground } from "../lib/push/openReportHost"
@@ -98,6 +101,17 @@ export function LapseReminderProvider({ children }: { children: ReactNode }) {
       telemetry: datadogLog,
     })
     const detachLifecycle = lifecycle.attach()
+    // U12/KTD13: the daily reminders do not read the lapse gate.
+    const detachDailyPause = createDailyPauseReminderLifecycle({
+      adapter: lapseReminderNotifications,
+      settings: getPauseSettingsStore(),
+      subscribeToAppState: (listener) => {
+        const subscription = AppState.addEventListener("change", listener)
+        return () => subscription.remove()
+      },
+      now: () => Date.now(),
+      platform: Platform.OS,
+    }).attach()
     // R3: a rotated token is a new registration. Owned by this provider's
     // lifetime, never by module scope.
     const detachTokenRotation = notifications.subscribeToTokenRotation(
@@ -128,7 +142,10 @@ export function LapseReminderProvider({ children }: { children: ReactNode }) {
       adapter: notifications,
       enabled: LAPSE_REMINDERS_ENABLED,
       navigate: (target) => {
-        if (target.screen === "home") {
+        if (target.screen === "pause") {
+          // The curtain bridge pushes the run route once the logo ends (KTD5).
+          requestPause()
+        } else if (target.screen === "home") {
           router.replace("/(tabs)")
         } else if (target.screen === "series") {
           router.push(`/series/${encodeURIComponent(target.slug)}`)
@@ -159,6 +176,7 @@ export function LapseReminderProvider({ children }: { children: ReactNode }) {
       detachPrompt()
       detachViewerIdentity()
       detachTokenRotation()
+      detachDailyPause()
       detachLifecycle()
       detachWriter()
     }

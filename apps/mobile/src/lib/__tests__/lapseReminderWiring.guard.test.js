@@ -92,6 +92,13 @@ const PROVIDER_WIRING = [
   // The preference the payload carries (R2). Without it the language is read
   // from storage alone, which can lag a pick by a whole write.
   "useWatchPreferences()",
+  // U12/KTD13. The daily reminders' own pass, on the settings store, with the
+  // platform that picks the trigger. Each one is silent when it goes.
+  "createDailyPauseReminderLifecycle(",
+  "getPauseSettingsStore()",
+  "platform: Platform.OS",
+  // A daily-pause tap reaches the curtain only through this call.
+  "requestPause()",
 ]
 
 /**

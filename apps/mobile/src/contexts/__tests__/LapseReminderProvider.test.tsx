@@ -30,6 +30,8 @@ jest.mock("../../lib/lapseReminders/notificationsAdapter", () => {
       ensureChannel: jest.fn(async () => {}),
       // U7's push port on the same adapter (KTD9).
       ensureAnnouncementsChannel: jest.fn(async () => {}),
+      // U12's daily reminders, on the same adapter (KTD13).
+      ensureDailyPauseChannel: jest.fn(async () => {}),
       getPushToken: jest.fn(async () => "ExponentPushToken[abc]"),
       subscribeToTokenRotation: jest.fn(() => unsubscribeTokenRotation),
       getPermission: jest.fn(async () => ({
@@ -88,6 +90,8 @@ jest.mock("../../lib/recommendations/viewerIdentityClient", () => {
 })
 // The imperative router: the provider navigates from a timer and from a native
 // listener, neither of which is inside a render.
+// U12: the curtain store belongs to another unit; only the request matters here.
+jest.mock("../../lib/pauseCurtain", () => ({ requestPause: jest.fn() }))
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), replace: jest.fn() },
 }))
@@ -204,6 +208,13 @@ import {
 } from "../../lib/lapseReminders/constants"
 import { LAPSE_REMINDER_PERMISSION_ASKED_VALUE } from "../../lib/lapseReminders/permissionPrompt"
 import { lapseReminderNotifications } from "../../lib/lapseReminders/notificationsAdapter"
+import { buildDailyPauseReminderPayload } from "../../lib/dailyPause/reminderPayload"
+import { DAILY_PAUSE_REMINDER_IDENTIFIER_PREFIX } from "../../lib/dailyPause/reminders"
+import {
+  getPauseSettingsStore,
+  resetPauseSettingsStoreForTests,
+} from "../../lib/dailyPause/settings"
+import { requestPause } from "../../lib/pauseCurtain"
 import { datadogLog } from "../../lib/datadog"
 import { getLastWatchedStore } from "../../lib/lastWatched/store"
 import {
@@ -255,6 +266,7 @@ const lapseConstants = jest.requireMock(
 const adapter = lapseReminderNotifications as unknown as {
   ensureChannel: jest.Mock
   ensureAnnouncementsChannel: jest.Mock
+  ensureDailyPauseChannel: jest.Mock
   getPushToken: jest.Mock
   subscribeToTokenRotation: jest.Mock
   getPermission: jest.Mock
@@ -349,6 +361,8 @@ beforeEach(async () => {
   // The notice channel is a module singleton too: a leaked message would make
   // the "shows no message" cases pass for the wrong reason.
   resetPushNoticesForTests()
+  // The settings store is a module singleton too; each test reads its own.
+  resetPauseSettingsStoreForTests()
   // The ON value, not the file's: flipping the real switch is an OTA-speed
   // emergency lever, and it must not turn this suite red.
   lapseConstants.LAPSE_REMINDERS_ENABLED = true
@@ -517,7 +531,8 @@ describe("LapseReminderProvider wiring", () => {
 
     await emitAppState("active")
 
-    expect(appStateListeners.size).toBe(1)
+    // One listener for each lifecycle: the lapse pass and the daily pass.
+    expect(appStateListeners.size).toBe(2)
     expect(scheduledIdentifiers()).toEqual([
       LAPSE_REMINDER_IDENTIFIERS.day1,
       LAPSE_REMINDER_IDENTIFIERS.day7,
@@ -1001,7 +1016,12 @@ describe("the build-time gate (KTD8)", () => {
 
     // KTD8's off path is load-bearing: the OS keeps the reminders scheduled
     // before the flip, so the pass that schedules nothing still clears them.
-    expect(adapter.cancel.mock.calls.map((call) => call[0])).toEqual([
+    // The daily pass cancels its own identifiers too (U12), on its own gate.
+    expect(
+      adapter.cancel.mock.calls
+        .map((call) => call[0] as string)
+        .filter((id) => !id.startsWith(DAILY_PAUSE_REMINDER_IDENTIFIER_PREFIX)),
+    ).toEqual([
       LAPSE_REMINDER_IDENTIFIERS.day1,
       LAPSE_REMINDER_IDENTIFIERS.day7,
     ])
@@ -1144,6 +1164,69 @@ describe("an announcement tap (U8)", () => {
     })
     expect(reportPushOpen).not.toHaveBeenCalled()
     expect(getPushNoticeSnapshot().message).toBeNull()
+    await act(async () => renderer.unmount())
+  })
+})
+
+// U12. The daily reminders ride the same provider: the router-free tap handler
+// asks for the curtain, and a second lifecycle schedules from the settings.
+describe("the Daily Bible Pause (U12)", () => {
+  function dailyPending(): string[] {
+    return scheduledIdentifiers().filter((id) =>
+      id.startsWith(DAILY_PAUSE_REMINDER_IDENTIFIER_PREFIX),
+    )
+  }
+
+  it("asks for the curtain on a cold daily-pause tap, with lapse reminders off", async () => {
+    lapseConstants.LAPSE_REMINDERS_ENABLED = false
+    adapter.getLastResponseData.mockReturnValue(
+      buildDailyPauseReminderPayload(),
+    )
+    const renderer = await render()
+
+    expect(requestPause).toHaveBeenCalledTimes(1)
+    expect(fakeRouter.push).not.toHaveBeenCalled()
+    expect(fakeRouter.replace).not.toHaveBeenCalled()
+    expect(adapter.clearLastResponse).toHaveBeenCalledTimes(1)
+    await act(async () => renderer.unmount())
+  })
+
+  it("asks for the curtain on a warm daily-pause tap", async () => {
+    const renderer = await render()
+    expect(requestPause).not.toHaveBeenCalled()
+
+    await act(async () => {
+      emitResponse(buildDailyPauseReminderPayload())
+    })
+
+    expect(requestPause).toHaveBeenCalledTimes(1)
+    expect(fakeRouter.push).not.toHaveBeenCalled()
+    await act(async () => renderer.unmount())
+  })
+
+  it("schedules the 14 daily reminders from the settings store (R32)", async () => {
+    // Through the app's own store singleton. Its storage read fails here (the
+    // vendor mock has no `default`), so the store keeps the value in memory.
+    getPauseSettingsStore().update({ reminderOn: true })
+    const renderer = await render()
+    await flush()
+
+    expect(new Set(dailyPending()).size).toBe(14)
+    expect(adapter.ensureDailyPauseChannel).toHaveBeenCalled()
+    await act(async () => renderer.unmount())
+  })
+
+  it("schedules no daily reminder while Notifications are off (R47)", async () => {
+    const renderer = await render()
+    await flush()
+
+    expect(dailyPending()).toEqual([])
+    // Anti-vacuous: the daily pass ran, and it cancelled its own identifiers.
+    expect(
+      adapter.cancel.mock.calls.some(([id]) =>
+        String(id).startsWith(DAILY_PAUSE_REMINDER_IDENTIFIER_PREFIX),
+      ),
+    ).toBe(true)
     await act(async () => renderer.unmount())
   })
 })

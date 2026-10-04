@@ -13,6 +13,7 @@ import {
   type DeepLinkEntry,
   type DeepLinkOrigin,
 } from "../../deepLinkOrigin"
+import { buildDailyPauseReminderPayload } from "../../dailyPause/reminderPayload"
 import {
   PUSH_ANNOUNCEMENT_FAMILY,
   PUSH_ANNOUNCEMENT_MAX_PAYLOAD_BYTES,
@@ -1057,5 +1058,96 @@ describe("an announcement through the real deep-link registry", () => {
       origin: "campaign",
       campaign: NONCE,
     })
+  })
+})
+
+// U12/KTD13. The third family: a daily-pause reminder asks for the curtain,
+// before the lapse branch and free of the lapse gate.
+describe("a daily-pause reminder tap", () => {
+  /** A daily-pause reminder as the app schedules it. */
+  function dailyPause(overrides: Record<string, unknown> = {}) {
+    return { ...buildDailyPauseReminderPayload(), ...overrides } as unknown
+  }
+
+  it.each([true, false])(
+    "asks for the curtain with the lapse gate set to %s",
+    (enabled) => {
+      expect(decideLapseReminderTap(dailyPause(), enabled)).toEqual({
+        target: { screen: "pause" },
+        outcome: "pause",
+        family: "daily-pause",
+        reminderKind: null,
+        destinationKind: null,
+        slug: null,
+        reason: null,
+        nonce: null,
+        notice: false,
+      })
+    },
+  )
+
+  it("sends a malformed payload to Home, naming the reason", () => {
+    expect(decideLapseReminderTap(dailyPause({ version: 99 }), false)).toEqual({
+      target: { screen: "home" },
+      outcome: "rejected",
+      family: "daily-pause",
+      reminderKind: null,
+      destinationKind: null,
+      slug: null,
+      reason: "version_mismatch",
+      nonce: null,
+      notice: false,
+    })
+  })
+
+  it("asks for the curtain at once on a cold start, with the lapse gate off", () => {
+    const h = harness(dailyPause(), { enabled: false })
+    createLapseReminderTapHandler(h.deps).attach()
+
+    // No wait for the selection: a curtain request pushes no route itself.
+    expect(h.navigate).toHaveBeenCalledTimes(1)
+    expect(h.navigate).toHaveBeenCalledWith({ screen: "pause" })
+    expect(h.registerArrival).not.toHaveBeenCalled()
+    expect(h.reportOpen).not.toHaveBeenCalled()
+    expect(h.clearLastResponse).toHaveBeenCalledTimes(1)
+    expect(tapEvents(h.telemetry)).toEqual([
+      [
+        "lapse_reminder.tap",
+        {
+          outcome: "pause",
+          arrival: "cold",
+          family: "daily-pause",
+          reminder_kind: null,
+          destination_kind: null,
+          content_id: null,
+          parse_reason: null,
+        },
+      ],
+    ])
+  })
+
+  it("asks for the curtain on a warm tap, with the lapse gate off", () => {
+    const h = harness(null, { enabled: false })
+    createLapseReminderTapHandler(h.deps).attach()
+
+    h.emitResponse(dailyPause())
+
+    expect(h.navigate).toHaveBeenCalledTimes(1)
+    expect(h.navigate).toHaveBeenCalledWith({ screen: "pause" })
+    expect(h.clearLastResponse).toHaveBeenCalledTimes(1)
+  })
+
+  it("opens Home for a malformed cold tap once the selection settles", () => {
+    const h = harness(dailyPause({ family: "daily-pause", version: 99 }), {
+      enabled: false,
+    })
+    const handler = createLapseReminderTapHandler(h.deps)
+    handler.attach()
+    expect(h.navigate).not.toHaveBeenCalled()
+
+    handler.selectionChanged(READY)
+
+    expect(h.navigate).toHaveBeenCalledTimes(1)
+    expect(h.navigate).toHaveBeenCalledWith({ screen: "home" })
   })
 })

@@ -169,12 +169,21 @@ describe("the notifications adapter imports a module that supplies its calls", (
     }
   })
 
-  it("supplies a DATE trigger, which is the only kind reminders use", () => {
-    // R6 snaps to an absolute local instant. An interval trigger would drift
-    // across a daylight-saving change and a calendar trigger would repeat.
+  it("supplies the DATE and CALENDAR triggers, the two kinds reminders use", () => {
+    // R6 snaps to an absolute local instant; an interval trigger would drift
+    // across a daylight-saving change. U12's daily reminders take a one-shot
+    // CALENDAR trigger on iOS (KTD13), so they keep their wall-clock time.
     const notifications = require(SPECIFIER)
 
     expect(notifications.SchedulableTriggerInputTypes?.DATE).toBe("date")
+    expect(notifications.SchedulableTriggerInputTypes?.CALENDAR).toBe(
+      "calendar",
+    )
+    const source = readAdapterSource()
+    expect(source).toContain("SchedulableTriggerInputTypes.DATE")
+    expect(source).toContain("SchedulableTriggerInputTypes.CALENDAR")
+    // One-shot: a repeating calendar trigger would fire every year.
+    expect(source).toContain("repeats: false")
   })
 
   it("is installed at or above the version the plan pins", () => {

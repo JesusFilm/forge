@@ -13,6 +13,10 @@
  * the player host uses: the provider bridges the router and the selection.
  */
 
+import {
+  parseDailyPauseReminderPayload,
+  type DailyPauseReminderParseReason,
+} from "../dailyPause/reminderPayload"
 import type { DeepLinkEntry, DeepLinkOrigin } from "../deepLinkOrigin"
 import { telemetryErrorMessage } from "../downloadErrors"
 import {
@@ -37,12 +41,14 @@ import {
  */
 export const LAPSE_REMINDER_TAP_DEADLINE_MS = 3_000
 
-/** Where a tap sends the viewer. The three slug routes plus Home. */
+/** Where a tap sends the viewer: the three slug routes, Home, or the
+ *  curtain that opens today's devotional (U12). */
 export type LapseReminderTapTarget =
   | { screen: "watch"; slug: string }
   | { screen: "series"; slug: string }
   | { screen: "experience"; slug: string }
   | { screen: "home" }
+  | { screen: "pause" }
 
 /** What a tap did. A fixed set, because KTD9 facets on it. */
 export type LapseReminderTapOutcome =
@@ -54,6 +60,8 @@ export type LapseReminderTapOutcome =
   | "gate_off"
   /** An announcement whose destination this build cannot read (R21). */
   | "unresolvable"
+  /** A daily-pause reminder asked for the curtain (U12). */
+  | "pause"
 
 /** The dependency that failed, for the failure event. Mirrors the pass's own. */
 export type LapseReminderTapStep =
@@ -76,7 +84,11 @@ export type LapseReminderTapDecision = {
   /** The announcement destination kind; null on the reminder family. */
   destinationKind: PushAnnouncementKind | null
   slug: string | null
-  reason: LapseReminderParseReason | PushAnnouncementParseReason | null
+  reason:
+    | LapseReminderParseReason
+    | PushAnnouncementParseReason
+    | DailyPauseReminderParseReason
+    | null
   /** The opaque campaign identifier, for the open report (KTD14). */
   nonce: string | null
   /** True when the viewer must be told the destination could not be opened. */
@@ -178,6 +190,23 @@ function decideAnnouncementTap(data: unknown): LapseReminderTapDecision {
   }
 }
 
+/** U12/KTD13: a daily-pause reminder opens today's devotional through the
+ *  curtain, and a payload this build cannot read opens Home. */
+function decideDailyPauseTap(data: unknown): LapseReminderTapDecision {
+  const parsed = parseDailyPauseReminderPayload(data)
+  return {
+    target: parsed.ok ? { screen: "pause" } : { screen: "home" },
+    outcome: parsed.ok ? "pause" : "rejected",
+    family: "daily-pause",
+    reminderKind: null,
+    destinationKind: null,
+    slug: null,
+    reason: parsed.ok ? null : parsed.reason,
+    nonce: null,
+    notice: false,
+  }
+}
+
 /**
  * Validates one arriving payload and decides where it sends the viewer. Pure,
  * and it returns nothing the payload carried beyond the validated slug and the
@@ -195,9 +224,11 @@ export function decideLapseReminderTap(
   // `enabled` is the LOCAL reminders' gate, so an announcement ignores it: the
   // push service already delivered that notification, and KTD12 keeps an
   // already-delivered notification's open working whatever a switch says.
-  if (notificationFamily(data) === "announcement") {
-    return decideAnnouncementTap(data)
-  }
+  const family = notificationFamily(data)
+  if (family === "announcement") return decideAnnouncementTap(data)
+  // KTD13: before the lapse branch, because the lapse gate does not govern the
+  // daily reminders.
+  if (family === "daily-pause") return decideDailyPauseTap(data)
 
   const parsed = parseLapseReminderPayload(data)
   const reminderKind = parsed.ok ? parsed.kind : null
@@ -343,12 +374,10 @@ export function createLapseReminderTapHandler(
       logFailure("read", error)
     }
     if (last != null) {
-      // With the gate off there is no navigation, so there is nothing to wait
-      // for: consume it now and leave nothing pending. An announcement still
-      // navigates with that gate off, so it still waits for the selection.
-      const navigates =
-        deps.enabled || notificationFamily(last) === "announcement"
-      if (!navigates) consume(last, "cold")
+      // Only a pushed route needs the wait. With no target nothing navigates,
+      // and a curtain request pushes nothing: the curtain bridge waits itself.
+      const target = decideLapseReminderTap(last, deps.enabled).target
+      if (target == null || target.screen === "pause") consume(last, "cold")
       else {
         pending = { data: last }
         timer = setTimeout(settleCold, LAPSE_REMINDER_TAP_DEADLINE_MS)

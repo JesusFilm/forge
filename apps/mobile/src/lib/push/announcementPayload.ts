@@ -9,6 +9,7 @@
  * untrusted on the way in, whatever wrote it.
  */
 
+import { DAILY_PAUSE_REMINDER_FAMILY } from "../dailyPause/reminderPayload"
 import { utf8ByteLength } from "../utf8ByteLength"
 
 /** The discriminator admin stamps on an announcement (KTD9). */
@@ -60,8 +61,8 @@ export type PushAnnouncementParseResult =
     }
   | { ok: false; reason: PushAnnouncementParseReason }
 
-/** Which contract an arriving payload belongs to (KTD9). */
-export type NotificationFamily = "announcement" | "reminder"
+/** Which contract an arriving payload belongs to (KTD9, and U12's KTD13). */
+export type NotificationFamily = "announcement" | "daily-pause" | "reminder"
 
 // RFC 3986's unreserved set, as the reminder contract uses: everything else is
 // either a delimiter a route would read as structure or a character no slug
@@ -80,9 +81,10 @@ export function notificationFamily(data: unknown): NotificationFamily {
   if (typeof data !== "object" || data === null || Array.isArray(data)) {
     return "reminder"
   }
-  return (data as Record<string, unknown>).family === PUSH_ANNOUNCEMENT_FAMILY
-    ? "announcement"
-    : "reminder"
+  const family = (data as Record<string, unknown>).family
+  if (family === PUSH_ANNOUNCEMENT_FAMILY) return "announcement"
+  if (family === DAILY_PAUSE_REMINDER_FAMILY) return "daily-pause"
+  return "reminder"
 }
 
 function isValidSlug(slug: unknown): slug is string {

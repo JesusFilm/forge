@@ -3,14 +3,19 @@
  * `expo-notifications`, so the whole feature's mocked-versus-real seam is a
  * single file that the entry-point guard and the device pass both cover.
  *
- * Every reminder uses an absolute-date trigger. The module falls back to
- * inexact alarms on Android by itself, which R6 tolerates, so the app never
+ * Every reminder on Android uses an absolute-date trigger. The module falls
+ * back to inexact alarms there by itself, which R6 tolerates, so the app never
  * declares `SCHEDULE_EXACT_ALARM` or `USE_EXACT_ALARM`.
  */
 
 import * as Notifications from "expo-notifications"
 import Constants from "expo-constants"
 
+import {
+  DAILY_PAUSE_REMINDER_CHANNEL_ID,
+  DAILY_PAUSE_REMINDER_CHANNEL_NAME,
+  type DailyPauseReminderPayload,
+} from "../dailyPause/reminderPayload"
 import {
   PUSH_ANNOUNCEMENTS_CHANNEL_ID,
   PUSH_ANNOUNCEMENTS_CHANNEL_NAME,
@@ -31,12 +36,25 @@ Notifications.setNotificationHandler({
     presentationForTrigger(notification.request.trigger),
 })
 
-export type LapseReminderScheduleInput = {
-  identifier: string
-  body: string
-  data: LapseReminderPayload
-  date: Date
+/** KTD13: a local wall-clock time. iOS evaluates it in the current zone, so a
+ *  daily reminder keeps its hour. The month runs 1 to 12, because the module
+ *  passes these values to the iOS date components unchanged. */
+export type ReminderCalendarDate = {
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute: number
 }
+
+export type ReminderScheduleInput = {
+  identifier: string
+  title?: string
+  body: string
+  data: LapseReminderPayload | DailyPauseReminderPayload
+  /** The lapse channel when absent. */
+  channelId?: string
+} & ({ date: Date } | { calendar: ReminderCalendarDate })
 
 /**
  * KTD9's fourth port: everything push registration needs of the notifications
@@ -52,9 +70,10 @@ export type PushNotificationsPort = {
 
 export type LapseReminderNotificationsAdapter = PushNotificationsPort & {
   ensureChannel: () => Promise<void>
+  ensureDailyPauseChannel: () => Promise<void>
   getPermission: () => Promise<LapseReminderPermission>
   requestPermission: () => Promise<LapseReminderPermission>
-  schedule: (input: LapseReminderScheduleInput) => Promise<void>
+  schedule: (input: ReminderScheduleInput) => Promise<void>
   cancel: (identifier: string) => Promise<void>
   dismiss: (identifier: string) => Promise<void>
   getPendingIdentifiers: () => Promise<string[]>
@@ -118,6 +137,18 @@ export const lapseReminderNotifications: LapseReminderNotificationsAdapter = {
     )
   },
 
+  /** U12: the daily reminders' own channel, so that Android lets a viewer turn
+   *  them off apart from the lapse reminders. */
+  async ensureDailyPauseChannel() {
+    await Notifications.setNotificationChannelAsync(
+      DAILY_PAUSE_REMINDER_CHANNEL_ID,
+      {
+        name: DAILY_PAUSE_REMINDER_CHANNEL_NAME,
+        importance: Notifications.AndroidImportance.DEFAULT,
+      },
+    )
+  },
+
   /** R1's token. It posts to Expo's own service, so the caller bounds it. */
   async getPushToken() {
     return readExpoPushToken()
@@ -152,14 +183,27 @@ export const lapseReminderNotifications: LapseReminderNotificationsAdapter = {
   /** Scheduling under an identifier that is already pending REPLACES it, which
    *  is how R5's two-at-most bound holds without a cancel-then-schedule gap. */
   async schedule(input) {
+    const channelId = input.channelId ?? LAPSE_REMINDER_CHANNEL_ID
     await Notifications.scheduleNotificationAsync({
       identifier: input.identifier,
-      content: { body: input.body, data: input.data },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: input.date,
-        channelId: LAPSE_REMINDER_CHANNEL_ID,
+      content: {
+        ...(input.title == null ? {} : { title: input.title }),
+        body: input.body,
+        data: input.data,
       },
+      trigger:
+        "calendar" in input
+          ? {
+              type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+              ...input.calendar,
+              repeats: false,
+              channelId,
+            }
+          : {
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
+              date: input.date,
+              channelId,
+            },
     })
   },
 
