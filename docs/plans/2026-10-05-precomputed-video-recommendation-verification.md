@@ -101,7 +101,7 @@ its captured `0128` baseline while `0129` is pending.
 Current main already contained a completed fixture-maintenance ticket named
 `feat-590`. To preserve the explicitly requested experiment identity and pass
 the new-ID collision guard, that completed record was renumbered to the next
-unused ID, `feat-607`, with its existing plan/report/index references updated.
+unused ID, `feat-609`, with its existing plan/report/index references updated.
 Its completed implementation and evidence are unchanged. No experiment IDs or
 GitHub issue identities changed.
 
@@ -748,3 +748,21 @@ and wrapped, document widths did not overflow (375px mobile, 1425px desktop),
 and browser error logs were empty. Viewport overrides were reset and root's
 temporary tab closed. The detailed worker report is
 `/tmp/forge-feat-590-orchestration/2568-scope-loading-report.md`.
+
+### Roadmap advisory collision repair
+
+CI run `37377134105` for `454482d0f` found that current main had allocated
+`feat-607` to a media-generation feature. This branch had used that ID to move
+the older completed fixture ticket away from the experiment's approved `feat-590`.
+Main `10461fdd8`, the integration branch and visible pending task roadmap files
+were checked; `feat-609` was the next unused ID. Only the historical fixture
+ticket and its plan/report/index references were renamed. The experiment remains
+`feat-590`; media-generation `feat-607` and `feat-608` are untouched. Application
+code and completed fixture acceptance evidence are unchanged.
+
+That run finished with 51 successful jobs, three skipped and only the advisory
+failure. The current-main collision check's three tests passed locally, and its
+exported collision logic found no newly introduced collisions in the projected
+roadmap inventory after applying this branch's staged changes to main `10461fdd8`.
+The advisory remains enabled; no workflow or application change was made to
+resolve it.
