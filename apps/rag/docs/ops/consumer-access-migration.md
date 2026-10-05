@@ -35,7 +35,7 @@ as the transaction commits, so coordinate installation with every caller.
 5. During the historical registration period, the shared token path was
    `legacy-unattributed`; do not infer consumer identity from IP, user agent or
    caller headers. Feat-529 records Jaco's October 6 confirmation that the
-   seven-day period and team communication occurred. Feat-607 removes that path
+   seven-day period and team communication occurred. Feat-609 removes that path
    after registered consumer operation was confirmed.
 
 ## Production activation ownership (feat-530)
@@ -142,13 +142,13 @@ work rather than prerequisites for merging this backend slice. Standard producti
 role separation and source configuration remain necessary to enable access.
 
 Feat-528 added usage visibility. Feat-529 recorded the historical dogfood and
-registration period; feat-607 owns the subsequent static-token cutoff.
+registration period; feat-609 owns the subsequent static-token cutoff.
 
 ## Static token retirement — October 6, 2026
 
 Jaco reports that the registration period is complete, the team has the new
 consumer instructions, and active consumers show separately increasing usage and
-confirm working retrieval. Feat-607 removes the `SERVE_BEARER_TOKENS` lookup and
+confirm working retrieval. Feat-609 removes the `SERVE_BEARER_TOKENS` lookup and
 startup requirement. The `/v1/search` Authorization header still carries each
 registered consumer's own Bearer credential; current source grants and usage
 identity remain unchanged.
@@ -163,7 +163,7 @@ caller-side copies. A removed variable on the pre-cutoff build prevents startup.
 Removing the value after the new build is healthy also prevents an accidental
 return of the old map during rollback.
 Keep the registered consumer database roles, credentials and source grants.
-Record a redacted deployment/verification receipt in feat-607; do not claim
+Record a redacted deployment/verification receipt in feat-609; do not claim
 production revocation from this code PR alone. Rollback must preserve revoked
 credential denials and must not restore static-token access.
 

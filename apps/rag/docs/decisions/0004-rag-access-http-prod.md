@@ -2,7 +2,7 @@
 
 - Status: Forge-amended — scoped, read-only `/v1` access remains accepted, but
   production is no longer the exclusive network route and registered consumer
-  credentials replace the static Railway token map (feat-607).
+  credentials replace the static Railway token map (feat-609).
 - Date: 2026-06-15
 - Issue/PR: #36 (consumer token allocation)
 - Related: ADR-0001 (ports & the import law), ADR-0002 (embeddings)

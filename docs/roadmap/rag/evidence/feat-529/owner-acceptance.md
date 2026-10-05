@@ -45,5 +45,5 @@ consumer approach, and October 6 was announced as the old bearer-token
 decommission date. Active consumers independently confirmed working retrieval
 and their portal request counts increased separately. This later attestation
 does not retroactively turn the scripted September 30 checks into measured
-results. [Feat-607](../../feat-607-rag-static-bearer-retirement.md) tracks the
+results. [Feat-609](../../feat-609-rag-static-bearer-retirement.md) tracks the
 Forge static-token code and Railway variable cutoff.

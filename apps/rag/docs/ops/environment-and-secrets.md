@@ -20,7 +20,7 @@ or create a database.
 | Target                               | Required names                                                                                                        | Notes                                                                                                                                     |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | local / CI                           | `DATABASE_URL`, `OPENROUTER_API_KEY`                                                                                  | CI uses non-secret placeholders and no network.                                                                                           |
-| Railway service                      | local/CI names plus restricted consumer writer/auth-reader URLs and portal admission settings; Railway injects `PORT` | Registered consumer credentials are verified from current database state; the static bearer map is retired under feat-607.                |
+| Railway service                      | local/CI names plus restricted consumer writer/auth-reader URLs and portal admission settings; Railway injects `PORT` | Registered consumer credentials are verified from current database state; the static bearer map is retired under feat-609.                |
 | gateway-primary embedding            | `EMBED_BASE_URL`, `EMBED_API_KEY`; optional `EMBED_WIRE_MODEL_ID`                                                     | `EMBED_MODEL_ID` remains the canonical row identity.                                                                                      |
 | Firecrawl source                     | `FIRECRAWL_API_KEY`                                                                                                   | Required only when that source selects Firecrawl.                                                                                         |
 | smoke                                | `SMOKE_BASE_URL`, `SMOKE_TOKEN`; optional `SMOKE_MAX_MS`                                                              | The token goes only in the Authorization header.                                                                                          |
@@ -104,11 +104,11 @@ Authorization headers, corpus text, or raw exception objects.
 ## Service callers
 
 The repository smoke script consumes `SMOKE_BASE_URL` and `SMOKE_TOKEN`.
-`SMOKE_TOKEN` must be a registered consumer credential after feat-607.
+`SMOKE_TOKEN` must be a registered consumer credential after feat-609.
 Seeker retains its independently owned caller contract. Consult its current
 configuration rather than deriving caller names from the production database prefix.
 
-## Static bearer map revocation (feat-607)
+## Static bearer map revocation (feat-609)
 
 Jaco reports that the seven-day registration period and team notification are
 complete. The registered-only build removes the static-map lookup and no longer

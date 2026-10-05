@@ -95,7 +95,7 @@ timestamps are untouched. Old coverage tables/views and already-applied migratio
 files are retained as inert historical data for audit and rollback, not used by
 new serving/reporting code. No table/record deletion or retention policy is added.
 
-Feat-529 records the completed owner-reported registration period; feat-607
+Feat-529 records the completed owner-reported registration period; feat-609
 owns static-token removal. Feat-568 reviews count-row growth,
 pending backlog, write/report latency and backup costs before volume expansion.
 Historical provisioning writes remain recorded in

@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-16"
 duration: 7
 depends_on: ["feat-528", "feat-530"]
-blocks: ["feat-607"]
+blocks: ["feat-609"]
 tags: ["rag", "auth", "observability"]
 ---
 
@@ -106,5 +106,5 @@ was announced as the old bearer-token decommission date. Active consumers have
 reported working retrieval directly to Jaco and their distinct portal request
 counts have increased. This update records owner attestation; it does not claim
 that this documentation PR re-ran the original scripted +3/+2 proof or changed
-production settings. [Feat-607](feat-607-rag-static-bearer-retirement.md) owns
+production settings. [Feat-609](feat-609-rag-static-bearer-retirement.md) owns
 the still-required Forge static-token code and Railway variable cutoff.
