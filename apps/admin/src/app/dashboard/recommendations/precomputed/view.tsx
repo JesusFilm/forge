@@ -188,17 +188,24 @@ export function PrecomputedComparisonView({
               </p>
               <p>
                 Sanitized result hash{" "}
-                <code>{comparison.history.resultDigest}</code> · usage hash{" "}
-                <code>{comparison.history.queryUsageDigest}</code> · cutoff{" "}
-                {comparison.history.cutoff} · processed bytes{" "}
+                <code className="break-all">
+                  {comparison.history.resultDigest}
+                </code>{" "}
+                · usage hash{" "}
+                <code className="break-all">
+                  {comparison.history.queryUsageDigest}
+                </code>{" "}
+                · cutoff {comparison.history.cutoff} · processed bytes{" "}
                 {comparison.history.bytesProcessed ?? "unavailable"} · cost{" "}
                 {comparison.history.costQualification}.
               </p>
               {comparison.history.unmappedDigest ? (
                 <p>
                   Unmapped aggregate hash{" "}
-                  <code>{comparison.history.unmappedDigest}</code>. No
-                  viewer-level rows stored.
+                  <code className="break-all">
+                    {comparison.history.unmappedDigest}
+                  </code>
+                  . No viewer-level rows stored.
                 </p>
               ) : null}
             </div>
