@@ -23,6 +23,42 @@ import type { StructuredModel } from "../../apps/mastra/src/services/precomputed
 
 const bearer = "Bearer preview-test-key"
 const reviewer = { id: "preview-operator", role: "ADMIN" } as const
+const qualifiedWatchFixture = {
+  sourceTable: "fixture.events.watch",
+  observedStart: "2020-01-01",
+  observedEnd: "2026-10-04",
+  watchScope: {
+    version: "jesusfilm-watch-v1",
+    hosts: ["jesusfilm.org", "www.jesusfilm.org"],
+    pathRule: "watch-route-and-children",
+    totalEvents: 12,
+    includedEvents: 7,
+    missingUrlEvents: 1,
+    malformedUrlEvents: 1,
+    excludedHostEvents: 1,
+    excludedPathEvents: 2,
+  },
+  videoIdCoverage: {
+    eventName: "videostarts",
+    inScopeEvents: 4,
+    withIdEvents: 3,
+    mappedEvents: null,
+  },
+  engagement: {
+    definitionVersion: "watch-videostarts-v1",
+    botBasis: "unverified",
+    overlapIdentity: "unknown",
+  },
+  transitions: {
+    status: "available",
+    definitionVersion: "consecutive-videostarts-v1",
+    continuity: "all_video_starts",
+    sessionIdentity: "verified",
+    ordering: "timestamp_and_sequence",
+    botBasis: "unverified",
+    overlapIdentity: "unknown",
+  },
+} as const
 
 describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
   "controlled Astra output through native Admin persistence",
@@ -368,6 +404,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             botFiltering: "unknown" as const,
             measurement: "observed_events" as const,
             overlap: "unknown" as const,
+            qualification: qualifiedWatchFixture,
           }
         },
         async readPage(input: {
@@ -544,6 +581,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           bytesProcessed: 4096,
           queryExecutionCount: 3,
           overlap: "unknown",
+          qualification: qualifiedWatchFixture,
         },
       })
       if (comparison.state !== "ready")
@@ -594,6 +632,65 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       ).toMatchObject({ state: "failed", failureCode: "analytics_unavailable" })
     })
 
+    it("does not treat totals-only aggregates as complete historical transitions", async () => {
+      const generationId = `historical-totals-only-${suffix}`
+      const controlled = model()
+      const result = await runPrecomputedSource(
+        {
+          generationId,
+          sourceVideoId: sourceId,
+          inputCutoff: cutoff,
+          historyRequired: true,
+        },
+        {
+          catalog,
+          ingest,
+          model: controlled,
+          history: {
+            async describe() {
+              return {
+                provider: "fixture",
+                queryId: "totals-only-fixture",
+                rangeStart: "2020-01-01",
+                rangeEnd: "2026-10-04",
+                identity: "core_id",
+                botFiltering: "unknown",
+                measurement: "observed_events",
+                overlap: "unknown",
+                qualification: {
+                  ...qualifiedWatchFixture,
+                  transitions: {
+                    status: "unavailable",
+                    reason: "totals_only",
+                  },
+                },
+              } as const
+            },
+            async readPage() {
+              throw new Error("totals-only source must not be queried")
+            },
+          },
+        },
+      )
+      expect(result).toMatchObject({
+        state: "failed",
+        failureCode: "analytics_transition_totals_only",
+      })
+      expect(controlled.generate).not.toHaveBeenCalled()
+      expect(
+        await loadPrecomputedRecommendationComparison(prisma, {
+          generationId,
+          sourceVideoId: sourceId,
+          audioLanguageSlug: "english",
+          reviewer,
+        }),
+      ).toMatchObject({
+        state: "failed",
+        failureCode: "analytics_transition_totals_only",
+        history: null,
+      })
+    })
+
     it("marks missing pages as failed instead of claiming complete historical coverage", async () => {
       const generationId = `historical-page-gap-${suffix}`
       const controlled = model()
@@ -619,6 +716,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
                 botFiltering: "unknown",
                 measurement: "observed_events",
                 overlap: "unknown",
+                qualification: qualifiedWatchFixture,
               } as const
             },
             async readPage() {
@@ -684,6 +782,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
                 botFiltering: "unknown",
                 measurement: "observed_events",
                 overlap: "unknown",
+                qualification: qualifiedWatchFixture,
               } as const
             },
             async readPage(input) {
@@ -737,6 +836,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
                 botFiltering: "unknown",
                 measurement: "observed_events",
                 overlap: "unknown",
+                qualification: qualifiedWatchFixture,
               } as const
             },
             async readPage() {
@@ -783,6 +883,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         botFiltering: "unknown" as const,
         measurement: "observed_events" as const,
         overlap: "unknown" as const,
+        qualification: qualifiedWatchFixture,
       }
       const noSchema = await runPrecomputedSource(
         {
@@ -874,6 +975,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
                 botFiltering: "unknown",
                 measurement: "observed_events",
                 overlap: "unknown",
+                qualification: qualifiedWatchFixture,
               } as const
             },
             async readPage() {

@@ -17,12 +17,12 @@ describes the private reporting contract and limits.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
 - Branch: `codex/precomputed-video-recommendations`.
 - Checkout: `/home/nisal/.codex/worktrees/precomputed-video-recommendations/forge`.
-- Latest integrated source commits: `acbb33fe45e6bf213df33878340d4fb32ae455e3`
-  and `302dffe31ee140022ff8a416087043b1cdbc5425` for #2573. Application/package
-  files match those reviewed worker bytes; root also clarified the operations
-  note and consolidated this ledger.
+- Latest source commit: `c9b9d6fd6fc283dc810769a1f8baca03113b4a1d` for the
+  #2568 qualification continuation. Root verified its tree matches independent
+  review and that integrated application/package/test files match exactly.
+  Earlier #2573 sources are `acbb33fe4` and `302dffe31`.
 - The PR records the current published integration SHA and [CI checks](https://github.com/JesusFilm/forge/pull/2578/checks).
-  Published head `9e0cd06c2` passed 44 checks with six skipped; its main CI
+  Previous published head `9e0cd06c2` passed 44 checks with six skipped; its main CI
   workflow passed 37 jobs with three skipped.
 - The original dirty `/home/nisal/forge` checkout is preserved.
 - Development chats use exactly `gpt-6-sol`; the application model remains
@@ -34,29 +34,35 @@ describes the private reporting contract and limits.
 All issues remain open until merge. Dependencies advance on verified acceptance,
 not issue closure. Implemented, integrated, merged, and live are distinct.
 
-| Issue | Immediate blockers | State                                       | Integrated work                                            |
-| ----- | ------------------ | ------------------------------------------- | ---------------------------------------------------------- |
-| #2566 | None               | Integrated-and-verified                     | `9a984c544`; saved Admin comparison                        |
-| #2567 | #2566              | Integrated-and-verified                     | `c89db0e4e`; bounded Astra producer; no live model smoke   |
-| #2568 | #2567              | Fixture integrated; live blocked            | `b1703cd8c`, `acbe43fc7`; source qualification in progress |
-| #2569 | #2568              | Waiting for prerequisites                   | Unassigned                                                 |
-| #2570 | #2566              | Integrated-and-verified                     | `0a93244a3`; private Watch serving                         |
-| #2571 | #2570              | Integrated-and-verified                     | `267a65281`, `b69592b6c`, corrections in `a7f36d778`       |
-| #2572 | #2571              | Integrated-and-verified                     | Core `a7f36d778`, UI `af8eba415`                           |
-| #2573 | #2572              | Private reporting verified; live incomplete | Sources `acbb33fe4`, `302dffe31`; migration `0134`         |
-| #2574 | #2569, #2573       | Waiting for prerequisites                   | Unassigned                                                 |
-| #2575 | #2574              | Waiting for prerequisites                   | Unassigned                                                 |
+| Issue | Immediate blockers | State                                            | Integrated work                                          |
+| ----- | ------------------ | ------------------------------------------------ | -------------------------------------------------------- |
+| #2566 | None               | Integrated-and-verified                          | `9a984c544`; saved Admin comparison                      |
+| #2567 | #2566              | Integrated-and-verified                          | `c89db0e4e`; bounded Astra producer; no live model smoke |
+| #2568 | #2567              | Fixture and qualification verified; live blocked | `b1703cd8c`, `acbe43fc7`, source `c9b9d6fd6`             |
+| #2569 | #2568              | Waiting for prerequisites                        | Unassigned                                               |
+| #2570 | #2566              | Integrated-and-verified                          | `0a93244a3`; private Watch serving                       |
+| #2571 | #2570              | Integrated-and-verified                          | `267a65281`, `b69592b6c`, corrections in `a7f36d778`     |
+| #2572 | #2571              | Integrated-and-verified                          | Core `a7f36d778`, UI `af8eba415`                         |
+| #2573 | #2572              | Private reporting verified; live incomplete      | Sources `acbb33fe4`, `302dffe31`; migration `0134`       |
+| #2574 | #2569, #2573       | Waiting for prerequisites                        | Unassigned                                               |
+| #2575 | #2574              | Waiting for prerequisites                        | Unassigned                                               |
 
 ## Ownership and continuation
 
-Worker B owns #2573 fixes: `01a10a28-aa8e-7080-b3d1-c59293f8f4dd`, titled
-`#2573 Publish durable CTR results without activating a winner`.
+Worker B is reusable for #2573 fixes and #2568 mapping/review:
+`01a10a28-aa8e-7080-b3d1-c59293f8f4dd`, currently titled
+`#2568 Verify Admin loading impact`.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
-branch: `codex/feat-590-2573`. Its two source commits are integrated; preserve
-this checkout for any CI correction. Earlier branches are preserved.
+preserved branch: `codex/feat-590-2573`. Its two source commits are integrated;
+preserve this checkout for any CI correction. Its read-only mapping investigation confirmed
+Core GraphQL IDs are preserved as Admin `Video.coreId`, but found no proven
+warehouse-to-Core bridge. Earlier branches are preserved.
+Its temporary loading verification uses `codex/feat-590-2568-loading` from
+`c9b9d6fd6`, without changing committed application code.
 
 Worker A, `01a109e1-47c8-7043-bfd4-a85592cfafc5`, owns the independent #2568
-Watch-scope/source-qualification continuation, based on `9e0cd06c2`. Its title is
+Watch-scope/source-qualification continuation, based on `9e0cd06c2`, now committed
+as `c9b9d6fd6` and verified in combination. Its title is
 `#2568 Enforce Watch scope and source qualification`. Current-source discovery
 and server API authentication remain with the orchestrator.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2566/forge`;
@@ -109,6 +115,16 @@ The GitHub credential cannot change workflow files. Retention regressions run
 through the existing CI entry point; no workflow edit remains. Published history
 was preserved when the earlier unpublished workflow revision was rejected.
 
+The #2568 qualification continuation passed independent Standards/Spec review,
+with its single source-identifier length/wrapping finding fixed. Combined checks
+passed 70 Admin/native, 15 source-build-through-review, 59 default-off and nine
+Mastra cases. Both affected package typechecks passed. Full worker suites passed
+8,987 Admin and 3,223 Mastra cases before the final bounded cap/wrap fix; focused
+checks covered that fix. No migration or GraphQL change was introduced.
+Ten alternating synthetic Next samples measured median total response times
+130.6ms without qualification and 136.9ms with it, adding 2,189 HTML bytes with
+the same 19 static assets. This remains local development evidence.
+
 ## External inputs and boundaries
 
 The user signed into GA4 property `320198532` and the Cloud console. Browser
@@ -128,7 +144,9 @@ current event source or a verified aggregate transition source, canonical Video
 mapping, and local/server API authentication remain unresolved. Browser login
 does not establish API authentication. No new export/link or warehouse write is
 authorized. #2568 live acceptance and #2569 remain blocked; its independent
-Watch-scope and qualification implementation is underway.
+qualification boundary is verified. A real source reader must still implement
+and prove URL filtering and transition ordering; validating declarations does
+not execute either operation.
 
 #2573 live winner certification remains incomplete: the measured human baseline,
 agreed numeric stopping settings, trusted bot qualification, and tracking-loss

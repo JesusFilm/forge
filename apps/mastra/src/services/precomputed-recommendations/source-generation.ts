@@ -15,6 +15,7 @@ import {
   readHistoricalDefinition,
   readHistoricalSnapshot,
   type HistoricalAnalyticsReader,
+  type HistoricalAnalyticsFailureCode,
   type HistoricalProvenancePart,
 } from "./historical-analytics"
 
@@ -153,9 +154,7 @@ type SafeFailureCode =
   | "provider_access_unavailable"
   | "input_stale"
   | "catalog_unavailable"
-  | "analytics_unavailable"
-  | "analytics_incomplete"
-  | "analytics_mapping_unverified"
+  | HistoricalAnalyticsFailureCode
   | "contract_rejected"
   | "internal_failure"
 

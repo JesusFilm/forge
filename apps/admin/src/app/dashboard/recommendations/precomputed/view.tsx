@@ -5,6 +5,50 @@ type ExperimentalCard = Extract<
   PrecomputedComparison,
   { state: "ready" }
 >["experimental"][number]
+type HistoricalQualification = NonNullable<
+  NonNullable<
+    Extract<PrecomputedComparison, { state: "ready" }>["history"]
+  >["qualification"]
+>
+
+function HistoricalQualificationDetails({
+  quality,
+}: {
+  quality: HistoricalQualification
+}) {
+  const { watchScope, videoIdCoverage, engagement, transitions } = quality
+  return (
+    <>
+      <p>
+        Source <code className="break-all">{quality.sourceTable}</code>;
+        observed data {quality.observedStart} to {quality.observedEnd}. Declared
+        Watch scope {watchScope.version}: hosts {watchScope.hosts.join(", ")};
+        path /watch or /watch/...; query and fragment ignored.
+      </p>
+      <p>
+        {watchScope.includedEvents}/{watchScope.totalEvents} events in scope;
+        missing URL {watchScope.missingUrlEvents}, malformed URL{" "}
+        {watchScope.malformedUrlEvents}, unverified host/origin{" "}
+        {watchScope.excludedHostEvents}, other path{" "}
+        {watchScope.excludedPathEvents}.
+      </p>
+      <p>
+        {videoIdCoverage.withIdEvents}/{videoIdCoverage.inScopeEvents} Watch
+        videostarts with video ID;{" "}
+        {videoIdCoverage.mappedEvents === null
+          ? "mapped event coverage unknown"
+          : `${videoIdCoverage.mappedEvents} mapped events`}
+        . Engagement {engagement.definitionVersion}: bot basis{" "}
+        {engagement.botBasis}; overlap {engagement.overlapIdentity}.
+      </p>
+      <p>
+        Transitions {transitions.definitionVersion}; all video starts preserve
+        adjacency; verified session identity and timestamp/sequence order; bot
+        basis {transitions.botBasis}; overlap {transitions.overlapIdentity}.
+      </p>
+    </>
+  )
+}
 
 function ExperimentalCards({ cards }: { cards: ExperimentalCard[] }) {
   if (cards.length === 0) {
@@ -74,6 +118,13 @@ export function PrecomputedComparisonView({
   comparison: PrecomputedComparison
 }) {
   if (comparison.state !== "ready") {
+    const transitionReason =
+      comparison.state === "failed" &&
+      comparison.failureCode?.startsWith("analytics_transition_")
+        ? comparison.failureCode
+            .slice("analytics_transition_".length)
+            .replaceAll("_", " ")
+        : null
     return (
       <PageSection title="Saved generation" meta="PRIVATE / READ ONLY">
         <p className="p-4 text-[13px] text-[var(--color-text-secondary)]">
@@ -111,8 +162,15 @@ export function PrecomputedComparisonView({
         {comparison.state === "failed" &&
         comparison.failureCode === "analytics_incomplete" ? (
           <p className="px-4 pb-4 text-[13px] text-[var(--color-text-secondary)]">
-            Historical query coverage was incomplete. No history-backed result
-            was published.
+            Historical input remains unqualified: Watch scope, event coverage,
+            ordered transitions, or bounded query coverage could not be
+            established. No history-backed result was published.
+          </p>
+        ) : null}
+        {transitionReason ? (
+          <p className="px-4 pb-4 text-[13px] text-[var(--color-text-secondary)]">
+            Ordered transitions unavailable: {transitionReason}. No
+            history-backed result was published.
           </p>
         ) : null}
         {comparison.state === "failed" &&
@@ -186,6 +244,17 @@ export function PrecomputedComparisonView({
                 {comparison.history.unmappedCandidates} lacked a verified legacy
                 mapping.
               </p>
+              {comparison.history.qualification ? (
+                <HistoricalQualificationDetails
+                  quality={comparison.history.qualification}
+                />
+              ) : (
+                <p>
+                  Watch scope and transition capability unknown for this legacy
+                  historical record; it is unqualified for a new
+                  history-required build.
+                </p>
+              )}
               <p>
                 Sanitized result hash{" "}
                 <code className="break-all">

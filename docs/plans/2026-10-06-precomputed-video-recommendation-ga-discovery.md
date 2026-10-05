@@ -73,9 +73,18 @@ evidence. Missing transitions are unavailable, not zero. Time proximity and
 page referrer are not replacements for verified sequence identity.
 
 Admin's canonical catalog exposes `Video.id`, unique `Video.coreId`, and `slug`.
-The repository contains no proven bridge from historical `mediacomponentid` to
-those identities. The Core-to-CMS transcript helper is not that bridge. Unknown
-or ambiguous IDs must remain unmapped rather than joined by guessed equality.
+Repository tracing confirms that Core GraphQL `Video.id` is preserved verbatim
+as Admin `Video.coreId`: `apps/admin/src/services/core-sync/phases/sync-videos.ts`
+fetches it, validates it through `schemas/video.ts`, and upserts by `coreId`.
+Admin's own `Video.id` is a separate generated identity. Existing Manager-owned
+rows with the same core ID are skipped, and successful full syncs soft-delete
+missing Core rows; those cases must be handled by a live mapping check.
+
+There is still no proven bridge from the warehouse's historical
+`mediacomponentid` or `nextsteps.public_Video.id` to that Core GraphQL source.
+The Core-to-CMS transcript helper is not that bridge. `VideoOrigin` identifies
+an origin shared by multiple videos, not a unique video. Unknown or ambiguous
+IDs must remain unmapped rather than joined by guessed equality.
 
 ## Read-only query evidence
 
@@ -130,6 +139,15 @@ These definitions are useful leads, not proof of a temporally valid mapping to
 current Admin Videos. Neither table names nor similar-looking IDs establish that
 bridge.
 
+A further schema read found `prod.stg_ga4_events` has separate
+`media_component_id`, `wess_media_component_id`, `session_id`, timestamps and URL
+columns. Its `video_activity_key` links to an activity-shaped dimension containing
+`activity_exit_code`, `activity_id` and `api_session_id`; a populated activity key
+alone does not establish canonical video mapping. `nextsteps.public_Video` is a
+Datastream-shaped copy with an unenforced primary key and a 24-hour maximum
+staleness setting. Those declarations do not prove freshness or source lineage.
+No additional viewer rows or transition aggregates were read.
+
 Additional successful jobs (same query project and US location):
 
 | Job                                | Purpose                                   | Rows | Dry-run estimate |
@@ -137,6 +155,7 @@ Additional successful jobs (same query project and US location):
 | `job_mteNo4rV2waFsyhtQDYJFHgJT8iR` | Combined-event and mapping-view metadata  |    4 | 10 MB            |
 | `job_gjSjGoA6iCyBMsWct-r5nLpmN6Ns` | Watch-only combined-event coverage        |   30 | 15.71 GB         |
 | `job_1WgaL645HvZiOjJdgWGO5lZZDpJg` | Watch-start aggregate key quality by year |    3 | 17.17 GB         |
+| `job_F49pTGG8mpTqSC8jVqkQzh3ZpWRt` | Staging, activity and Video schemas       |    6 | 10 MB            |
 
 The two combined-table reads used a maximum-billed-bytes cap of `20000000000`
 and a 60-second timeout after inspecting each dry run. No sampled viewer rows

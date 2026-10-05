@@ -4,6 +4,92 @@ import { z } from "zod"
 
 const key = z.string().trim().min(1).max(500)
 const count = z.number().int().nonnegative().safe()
+const HISTORICAL_WATCH_SCOPE_VERSION = "jesusfilm-watch-v1" as const
+const transitionFailureCodes = {
+  totals_only: "analytics_transition_totals_only",
+  missing_session_identity: "analytics_transition_missing_session_identity",
+  missing_event_order: "analytics_transition_missing_event_order",
+  missing_video_identity: "analytics_transition_missing_video_identity",
+  unverified_definition: "analytics_transition_unverified_definition",
+} as const
+export type HistoricalAnalyticsFailureCode =
+  | "analytics_unavailable"
+  | "analytics_incomplete"
+  | "analytics_mapping_unverified"
+  | (typeof transitionFailureCodes)[keyof typeof transitionFailureCodes]
+const signalQuality = z
+  .object({
+    botBasis: z.enum([
+      "unverified",
+      "verified_export_filter",
+      "verified_query_filter",
+    ]),
+    overlapIdentity: z.enum([
+      "unknown",
+      "event_id",
+      "verified_disjoint_export",
+    ]),
+  })
+  .strict()
+const qualification = z
+  .object({
+    sourceTable: z
+      .string()
+      .max(191)
+      .regex(/^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+){2}$/),
+    observedStart: z.iso.date(),
+    observedEnd: z.iso.date(),
+    watchScope: z
+      .object({
+        version: z.literal(HISTORICAL_WATCH_SCOPE_VERSION),
+        hosts: z.tuple([
+          z.literal("jesusfilm.org"),
+          z.literal("www.jesusfilm.org"),
+        ]),
+        pathRule: z.literal("watch-route-and-children"),
+        totalEvents: count,
+        includedEvents: count,
+        missingUrlEvents: count,
+        malformedUrlEvents: count,
+        excludedHostEvents: count,
+        excludedPathEvents: count,
+      })
+      .strict(),
+    videoIdCoverage: z
+      .object({
+        eventName: z.literal("videostarts"),
+        inScopeEvents: count,
+        withIdEvents: count,
+        mappedEvents: count.nullable(),
+      })
+      .strict(),
+    engagement: signalQuality.extend({
+      definitionVersion: z.literal("watch-videostarts-v1"),
+    }),
+    transitions: z.discriminatedUnion("status", [
+      signalQuality.extend({
+        status: z.literal("available"),
+        definitionVersion: z.literal("consecutive-videostarts-v1"),
+        /** Includes non-Watch starts as barriers; only endpoints are Watch videos. */
+        continuity: z.literal("all_video_starts"),
+        sessionIdentity: z.literal("verified"),
+        ordering: z.literal("timestamp_and_sequence"),
+      }),
+      z
+        .object({
+          status: z.literal("unavailable"),
+          reason: z.enum([
+            "totals_only",
+            "missing_session_identity",
+            "missing_event_order",
+            "missing_video_identity",
+            "unverified_definition",
+          ]),
+        })
+        .strict(),
+    ]),
+  })
+  .strict()
 const definitionSchema = z
   .object({
     provider: z.enum(["bigquery", "fixture"]),
@@ -15,6 +101,7 @@ const definitionSchema = z
     botFiltering: z.enum(["unknown", "verified_excluded"]),
     measurement: z.enum(["observed_events", "qualified_engagement"]),
     overlap: z.enum(["unknown", "verified_disjoint"]),
+    qualification,
   })
   .strict()
 const engagement = z
@@ -35,7 +122,12 @@ const transition = z
 const MAX_PAGE_ROWS = 100
 
 export type HistoricalAnalyticsReader = {
-  /** Server-side aggregate definitions only. No SQL or credential tool is exposed to the model. */
+  /**
+   * Server-side aggregate definitions only. A future warehouse reader must
+   * establish Watch URL scope and ordered-transition provenance from event
+   * rows before claiming this qualification; this contract is not a filter.
+   * No SQL or credential tool is exposed to the model.
+   */
   describe(): Promise<z.input<typeof definitionSchema>>
   /** Read-only, bounded aggregate pages. No individual-level records are admitted. */
   readPage(input: {
@@ -61,12 +153,7 @@ export type HistoricalAnalyticsReader = {
 }
 
 export class HistoricalAnalyticsError extends Error {
-  constructor(
-    readonly code:
-      | "analytics_unavailable"
-      | "analytics_incomplete"
-      | "analytics_mapping_unverified",
-  ) {
+  constructor(readonly code: HistoricalAnalyticsFailureCode) {
     super(code)
   }
 }
@@ -92,6 +179,7 @@ export type HistoricalProvenance = {
   botFiltering: "unknown" | "verified_excluded"
   measurement: "observed_events" | "qualified_engagement"
   overlap: "unknown" | "verified_disjoint"
+  qualification: z.output<typeof qualification>
   rowCount: number
   catalogCandidates: number
   inspectedCandidates: number
@@ -121,6 +209,7 @@ export type HistoricalSnapshot = {
     | "botFiltering"
     | "measurement"
     | "overlap"
+    | "qualification"
   > & {
     engagement: string
     transitions: string
@@ -149,6 +238,38 @@ export async function readHistoricalDefinition(
     (definition.identity === "verified_alias" && !definition.aliases)
   )
     throw new HistoricalAnalyticsError("analytics_unavailable")
+  const quality = definition.qualification
+  if (
+    quality.observedStart > definition.rangeStart ||
+    quality.observedEnd < definition.rangeEnd ||
+    quality.observedStart > quality.observedEnd ||
+    quality.watchScope.totalEvents !==
+      quality.watchScope.includedEvents +
+        quality.watchScope.missingUrlEvents +
+        quality.watchScope.malformedUrlEvents +
+        quality.watchScope.excludedHostEvents +
+        quality.watchScope.excludedPathEvents ||
+    quality.videoIdCoverage.inScopeEvents > quality.watchScope.includedEvents ||
+    quality.videoIdCoverage.withIdEvents >
+      quality.videoIdCoverage.inScopeEvents ||
+    (quality.videoIdCoverage.mappedEvents !== null &&
+      quality.videoIdCoverage.mappedEvents >
+        quality.videoIdCoverage.withIdEvents)
+  )
+    throw new HistoricalAnalyticsError("analytics_incomplete")
+  if (quality.transitions.status === "unavailable")
+    throw new HistoricalAnalyticsError(
+      transitionFailureCodes[quality.transitions.reason],
+    )
+  if (
+    (definition.botFiltering === "verified_excluded" &&
+      (quality.engagement.botBasis === "unverified" ||
+        quality.transitions.botBasis === "unverified")) ||
+    (definition.overlap === "verified_disjoint" &&
+      (quality.engagement.overlapIdentity === "unknown" ||
+        quality.transitions.overlapIdentity === "unknown"))
+  )
+    throw new HistoricalAnalyticsError("analytics_incomplete")
   return definition
 }
 
@@ -166,7 +287,9 @@ export function mergeHistoricalProvenance(
         part.rangeStart !== first.rangeStart ||
         part.rangeEnd !== first.rangeEnd ||
         part.cutoff !== first.cutoff ||
-        part.provider !== first.provider,
+        part.provider !== first.provider ||
+        JSON.stringify(part.qualification) !==
+          JSON.stringify(first.qualification),
     )
   )
     throw new HistoricalAnalyticsError("analytics_incomplete")
@@ -479,6 +602,7 @@ export async function readHistoricalSnapshot(input: {
     botFiltering: definition.botFiltering,
     measurement: definition.measurement,
     overlap: definition.overlap,
+    qualification: definition.qualification,
     rowCount,
     catalogCandidates: input.includeSourceEngagement
       ? 0
@@ -511,6 +635,7 @@ export async function readHistoricalSnapshot(input: {
       botFiltering: provenance.botFiltering,
       measurement: provenance.measurement,
       overlap: provenance.overlap,
+      qualification: provenance.qualification,
       engagement:
         "Per-video views, engaged views, and nullable exposures aggregated across the full declared date range.",
       transitions:

@@ -679,8 +679,72 @@ of these observations completes the live warehouse adapter or unblocks #2569.
 The user explicitly requires verified JesusFilm.org `/watch` and descendant
 paths; other site pages cannot contribute to recommendation history.
 
-Sol worker A is implementing the independent Watch-scope and source-quality
+Sol worker A completed the independent Watch-scope and source-quality
 contract/display slice from `9e0cd06c2`, preserving legacy-read compatibility.
 No new production export, warehouse write, deployment, public experiment,
 promotion, or refresh schedule has occurred. Local Google ADC authorization is
 prepared and awaiting the user's consent action.
+
+### #2568 qualification boundary verification
+
+Source commit `c9b9d6fd6fc283dc810769a1f8baca03113b4a1d` has tree
+`a87ad567d689214c858d418142d7a4176deebec8`, exactly matching the independently
+reviewed staged tree. Root integrated the source unchanged and confirmed no
+application/package/test difference from that commit.
+
+New builds require a declared versioned Watch host/path policy, reconciled
+event-weighted scope counts, bounded source identity, observed dates, video-ID
+coverage, per-signal bot/overlap basis and usable ordered-transition provenance.
+Unavailable transitions fail before model generation and persist a specific
+failure reason for Admin. Admin independently rejects incomplete qualification
+at history ingestion and completion. Older completed records remain readable
+with explicit unknown scope/capability; they are not upgraded to qualified data.
+These guards validate source declarations. They do not implement or prove the
+future warehouse reader's URL filtering or sequence construction.
+
+Independent Matt Pocock Standards then Spec review against `9e0cd06c2` found one
+low-severity defect: unbounded source identifiers could be clipped in Admin.
+Both services now cap them at 191 characters, the display wraps them, and tests
+cover the 191/192 boundary. The focused recheck found no remaining confirmed
+defect or completion bypass. No Compound Engineering skills/agents were used.
+
+Root combination checks on the owned PostgreSQL 18 database passed:
+
+- `2568-scope-integration-native.log`: 10 files, 70 Admin/native cases.
+- `2568-scope-integration-producer.log`: 15 source-build-through-Admin cases,
+  including an unavailable-transition failure without model generation.
+- `2568-scope-integration-contract-regression.log`: 59 default-off cases.
+- `2568-scope-integration-mastra.log`: nine workflow/producer/history cases.
+
+Logs are in `/tmp/forge-feat-590-orchestration/`. The worker's native suite had
+skipped its 15 cases because no database was configured; root's executed native
+run closes that fixture-validation gap. It does not establish live ingestion.
+Worker full suites before the final cap/wrap fix passed 8,987 Admin cases
+(774 skipped, one todo) and 3,223 Mastra cases (37 skipped). After that fix,
+the affected tests, both package typechecks, scoped lint/format and normal
+commit hooks passed. No migration or GraphQL schema change was introduced.
+
+Worker A's final CUA mobile check used a synthetic rendered comparison with a
+191-character table name: at a 390×844 viewport, document client/scroll width
+were both 375px and the identifier used `word-break: break-all`. Its single
+static HTTP timing is not a comparative Admin loading benchmark. Earlier
+headless screenshots are not final browser proof.
+
+Worker B then compared the actual saved-history comparison through a synthetic
+Next development route with qualification absent/present. Ten alternating warm
+samples per mode returned HTTP 200 throughout. Median TTFB/total were
+129.8/130.6ms without qualification and 136.2/136.9ms with it. HTML grew from
+65,544 to 67,733 bytes (+2,189); both modes referenced the same 19 static assets.
+Raw evidence is `/tmp/forge-feat590-2568-loading.json` with
+`/tmp/forge-feat590-2568-legacy.html` and
+`/tmp/forge-feat590-2568-qualified.html`. These bounded local measurements do
+not establish FCP, production authentication/database performance, or capacity.
+
+Eight alternating CUA full navigations per variant had median navigation plus
+accessibility-observation wall times of 532.5ms/501.5ms; automation overhead is
+included, so these are not Web Vitals. Root directly inspected final full-page
+CUA screenshots at 390×844 and 1440×900. The long source identifier was readable
+and wrapped, document widths did not overflow (375px mobile, 1425px desktop),
+and browser error logs were empty. Viewport overrides were reset and root's
+temporary tab closed. The detailed worker report is
+`/tmp/forge-feat-590-orchestration/2568-scope-loading-report.md`.

@@ -172,62 +172,85 @@ describe("private recommendation comparison", () => {
     expect(html).not.toContain("Experimental saved choices")
   })
 
-  it("labels fixture history, unknown bot filtering, mapping gaps and query usage", () => {
+  it("flags a historical qualification gap in the failed Admin comparison", () => {
     const html = renderToStaticMarkup(
       <PrecomputedComparisonView
         comparison={{
-          state: "ready",
-          generation: {
-            id: "history-fixture",
-            modelId: "gpt-6-astra",
-            promptVersion: "v1",
-            inputCutoff: new Date("2026-10-05T00:00:00Z"),
-            inputMode: "historical_fixture",
-            inputSnapshotMode: "observed_fenced",
-            acceptedCount: 0,
-          },
-          history: {
-            provider: "fixture",
-            status: "complete",
-            queryId: "test-query-v1",
-            rangeStart: "2020-01-01",
-            rangeEnd: "2026-10-04",
-            cutoff: "2026-10-05T00:00:00.000Z",
-            identity: "core_id",
-            botFiltering: "unknown",
-            measurement: "observed_events",
-            overlap: "unknown",
-            rowCount: 4,
-            mappedRows: 3,
-            unmappedRows: 1,
-            catalogCandidates: 2,
-            inspectedCandidates: 1,
-            unmappedCandidates: 1,
-            pageCount: 3,
-            queryExecutionCount: 2,
-            queryUsageDigest: "a".repeat(64),
-            resultDigest: "b".repeat(64),
-            unmappedDigest: "c".repeat(64),
-            bytesProcessed: 4096,
-            costQualification: "usage_only",
-          },
+          state: "failed",
+          failureCode: "analytics_transition_missing_session_identity",
+          history: null,
+          experimental: [],
+          semanticBaseline: [],
+          coverageGap: null,
           usage: {
-            callCount: 1,
+            callCount: 0,
             unknownUsageCallCount: 0,
-            inputTokens: 20,
-            outputTokens: 10,
+            inputTokens: 0,
+            outputTokens: 0,
             cachedInputTokens: 0,
           },
-          experimental: [],
-          allAcceptedCount: 0,
-          coverageGap: "no_connections",
-          gaps: [],
-          semanticBaseline: [],
-          semanticBaselineState: "unavailable",
-          anonymousBaseline: [],
-          anonymousBaselineState: "missing_generation",
         }}
       />,
+    )
+    expect(html).toContain("Ordered transitions unavailable")
+    expect(html).toContain("missing session identity")
+  })
+
+  it("labels fixture history, unknown bot filtering, mapping gaps and query usage", () => {
+    const comparison = {
+      state: "ready",
+      generation: {
+        id: "history-fixture",
+        modelId: "gpt-6-astra",
+        promptVersion: "v1",
+        inputCutoff: new Date("2026-10-05T00:00:00Z"),
+        inputMode: "historical_fixture",
+        inputSnapshotMode: "observed_fenced",
+        acceptedCount: 0,
+      },
+      history: {
+        provider: "fixture",
+        status: "complete",
+        queryId: "test-query-v1",
+        rangeStart: "2020-01-01",
+        rangeEnd: "2026-10-04",
+        cutoff: "2026-10-05T00:00:00.000Z",
+        identity: "core_id",
+        botFiltering: "unknown",
+        measurement: "observed_events",
+        overlap: "unknown",
+        rowCount: 4,
+        mappedRows: 3,
+        unmappedRows: 1,
+        catalogCandidates: 2,
+        inspectedCandidates: 1,
+        unmappedCandidates: 1,
+        pageCount: 3,
+        queryExecutionCount: 2,
+        queryUsageDigest: "a".repeat(64),
+        resultDigest: "b".repeat(64),
+        unmappedDigest: "c".repeat(64),
+        bytesProcessed: 4096,
+        costQualification: "usage_only",
+      },
+      usage: {
+        callCount: 1,
+        unknownUsageCallCount: 0,
+        inputTokens: 20,
+        outputTokens: 10,
+        cachedInputTokens: 0,
+      },
+      experimental: [],
+      allAcceptedCount: 0,
+      coverageGap: "no_connections",
+      gaps: [],
+      semanticBaseline: [],
+      semanticBaselineState: "unavailable",
+      anonymousBaseline: [],
+      anonymousBaselineState: "missing_generation",
+    } satisfies Parameters<typeof PrecomputedComparisonView>[0]["comparison"]
+    const html = renderToStaticMarkup(
+      <PrecomputedComparisonView comparison={comparison} />,
     )
     expect(html).toContain("controlled fixture")
     expect(html).toContain("Bot filtering unknown")
@@ -236,5 +259,62 @@ describe("private recommendation comparison", () => {
     expect(html).toContain(
       "warehouse aggregates were observed during this build",
     )
+    expect(html).toContain("Watch scope and transition capability unknown")
+
+    const qualifiedHtml = renderToStaticMarkup(
+      <PrecomputedComparisonView
+        comparison={{
+          ...comparison,
+          history: {
+            ...comparison.history,
+            qualification: {
+              sourceTable: "fixture.events.watch",
+              observedStart: "2020-01-01",
+              observedEnd: "2026-10-04",
+              watchScope: {
+                version: "jesusfilm-watch-v1",
+                hosts: ["jesusfilm.org", "www.jesusfilm.org"],
+                pathRule: "watch-route-and-children",
+                totalEvents: 12,
+                includedEvents: 7,
+                missingUrlEvents: 1,
+                malformedUrlEvents: 1,
+                excludedHostEvents: 1,
+                excludedPathEvents: 2,
+              },
+              videoIdCoverage: {
+                eventName: "videostarts",
+                inScopeEvents: 4,
+                withIdEvents: 3,
+                mappedEvents: null,
+              },
+              engagement: {
+                definitionVersion: "watch-videostarts-v1",
+                botBasis: "unverified",
+                overlapIdentity: "unknown",
+              },
+              transitions: {
+                status: "available",
+                definitionVersion: "consecutive-videostarts-v1",
+                continuity: "all_video_starts",
+                sessionIdentity: "verified",
+                ordering: "timestamp_and_sequence",
+                botBasis: "unverified",
+                overlapIdentity: "unknown",
+              },
+            },
+          },
+        }}
+      />,
+    )
+    expect(qualifiedHtml).toContain("fixture.events.watch")
+    expect(qualifiedHtml).toContain(
+      'Source <code class="break-all">fixture.events.watch</code>',
+    )
+    expect(qualifiedHtml).toContain("jesusfilm-watch-v1")
+    expect(qualifiedHtml).toContain("7/12 events in scope")
+    expect(qualifiedHtml).toContain("3/4 Watch videostarts with video ID")
+    expect(qualifiedHtml).toContain("mapped event coverage unknown")
+    expect(qualifiedHtml).toContain("consecutive-videostarts-v1")
   })
 })

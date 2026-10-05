@@ -31,9 +31,72 @@ const failureCode = z.enum([
   "analytics_unavailable",
   "analytics_incomplete",
   "analytics_mapping_unverified",
+  "analytics_transition_totals_only",
+  "analytics_transition_missing_session_identity",
+  "analytics_transition_missing_event_order",
+  "analytics_transition_missing_video_identity",
+  "analytics_transition_unverified_definition",
   "contract_rejected",
   "internal_failure",
 ])
+const historicalSignalQuality = z
+  .object({
+    botBasis: z.enum([
+      "unverified",
+      "verified_export_filter",
+      "verified_query_filter",
+    ]),
+    overlapIdentity: z.enum([
+      "unknown",
+      "event_id",
+      "verified_disjoint_export",
+    ]),
+  })
+  .strict()
+const historicalQualification = z
+  .object({
+    sourceTable: z
+      .string()
+      .max(191)
+      .regex(/^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+){2}$/),
+    observedStart: z.iso.date(),
+    observedEnd: z.iso.date(),
+    watchScope: z
+      .object({
+        version: z.literal("jesusfilm-watch-v1"),
+        hosts: z.tuple([
+          z.literal("jesusfilm.org"),
+          z.literal("www.jesusfilm.org"),
+        ]),
+        pathRule: z.literal("watch-route-and-children"),
+        totalEvents: z.number().int().nonnegative().safe(),
+        includedEvents: z.number().int().nonnegative().safe(),
+        missingUrlEvents: z.number().int().nonnegative().safe(),
+        malformedUrlEvents: z.number().int().nonnegative().safe(),
+        excludedHostEvents: z.number().int().nonnegative().safe(),
+        excludedPathEvents: z.number().int().nonnegative().safe(),
+      })
+      .strict(),
+    videoIdCoverage: z
+      .object({
+        eventName: z.literal("videostarts"),
+        inScopeEvents: z.number().int().nonnegative().safe(),
+        withIdEvents: z.number().int().nonnegative().safe(),
+        mappedEvents: z.number().int().nonnegative().safe().nullable(),
+      })
+      .strict(),
+    engagement: historicalSignalQuality.extend({
+      definitionVersion: z.literal("watch-videostarts-v1"),
+    }),
+    transitions: historicalSignalQuality.extend({
+      status: z.literal("available"),
+      definitionVersion: z.literal("consecutive-videostarts-v1"),
+      continuity: z.literal("all_video_starts"),
+      sessionIdentity: z.literal("verified"),
+      ordering: z.literal("timestamp_and_sequence"),
+    }),
+  })
+  .strict()
 const historicalProvenance = z
   .object({
     provider: z.enum(["bigquery", "fixture"]),
@@ -46,6 +109,8 @@ const historicalProvenance = z
     botFiltering: z.enum(["unknown", "verified_excluded"]),
     measurement: z.enum(["observed_events", "qualified_engagement"]),
     overlap: z.enum(["unknown", "verified_disjoint"]),
+    // Older saved generations remain readable, but their scope is unknown.
+    qualification: historicalQualification.optional(),
     rowCount: z.number().int().nonnegative(),
     catalogCandidates: z.number().int().nonnegative(),
     inspectedCandidates: z.number().int().nonnegative(),
@@ -64,6 +129,34 @@ const historicalProvenance = z
     costQualification: z.enum(["usage_only", "unavailable"]),
   })
   .strict()
+function qualifiedHistoryIsConsistent(
+  history: z.output<typeof historicalProvenance>,
+): boolean {
+  const quality = history.qualification
+  if (!quality) return false
+  const scope = quality.watchScope
+  const ids = quality.videoIdCoverage
+  return (
+    quality.observedStart <= history.rangeStart &&
+    quality.observedEnd >= history.rangeEnd &&
+    quality.observedStart <= quality.observedEnd &&
+    scope.totalEvents ===
+      scope.includedEvents +
+        scope.missingUrlEvents +
+        scope.malformedUrlEvents +
+        scope.excludedHostEvents +
+        scope.excludedPathEvents &&
+    ids.inScopeEvents <= scope.includedEvents &&
+    ids.withIdEvents <= ids.inScopeEvents &&
+    (ids.mappedEvents === null || ids.mappedEvents <= ids.withIdEvents) &&
+    (history.botFiltering !== "verified_excluded" ||
+      (quality.engagement.botBasis !== "unverified" &&
+        quality.transitions.botBasis !== "unverified")) &&
+    (history.overlap !== "verified_disjoint" ||
+      (quality.engagement.overlapIdentity !== "unknown" &&
+        quality.transitions.overlapIdentity !== "unknown"))
+  )
+}
 const choice = z.object({
   targetVideoId: id,
   kind: z.enum(["direct", "alternative"]),
@@ -609,7 +702,8 @@ export async function submitPrecomputedRecommendation(
         input.history.mappedRows + input.history.unmappedRows !==
           input.history.rowCount ||
         input.history.inspectedCandidates + input.history.unmappedCandidates >
-          input.history.catalogCandidates
+          input.history.catalogCandidates ||
+        !qualifiedHistoryIsConsistent(input.history)
       )
         throw new PrecomputedRecommendationError(
           "invalid",
@@ -866,11 +960,15 @@ export async function submitPrecomputedRecommendation(
         "conflict",
         "Generation is closed",
       )
+    const historyForCompletion = historicalProvenance.safeParse(
+      generation.historical_provenance,
+    )
     if (
       ["historical_analytics", "historical_fixture"].includes(
         generation.input_mode,
       ) &&
-      generation.historical_provenance === null
+      (!historyForCompletion.success ||
+        !qualifiedHistoryIsConsistent(historyForCompletion.data))
     )
       throw new PrecomputedRecommendationError(
         "conflict",
