@@ -275,6 +275,9 @@ async function main() {
       ...(arg("bg-seam") ? { backdropSeamSec: Number(arg("bg-seam")) } : {}),
       coverOnly: process.argv.includes("--cover-only"),
       ...(arg("music-file") ? { musicFile: arg("music-file") } : {}),
+      // `--voice-v4`: the narration read on Eleven v4 in continuous runs, with
+      // the devotional's own `direction` tags (owner, 2026-10-05).
+      ...(process.argv.includes("--voice-v4") ? { continuousVoice: true } : {}),
       ...(arg("settle-line") ? { settleLine: arg("settle-line") } : {}),
       // Title leads the cover, the mark follows two seconds later (owner rule).
       coverTitleFirst: !process.argv.includes("--no-cover-title-first"),

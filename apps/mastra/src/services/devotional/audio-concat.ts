@@ -260,3 +260,40 @@ export async function joinAudioWithGaps(
     await rm(tmp, { recursive: true, force: true }).catch(() => {})
   }
 }
+
+/**
+ * Cut [fromSec, toSec) out of an MP3 (sample-accurate: decoded and trimmed,
+ * then re-encoded). Used to split one continuous Eleven v4 read back into the
+ * per-card segments the render times its cards by.
+ */
+export async function sliceAudio(
+  bytes: Uint8Array,
+  fromSec: number,
+  toSec: number,
+): Promise<Uint8Array> {
+  const tmp = await mkdtemp(path.join(tmpdir(), "devo-slice-"))
+  try {
+    const inp = path.join(tmp, "in.mp3")
+    const out = path.join(tmp, "out.mp3")
+    await writeFile(inp, bytes)
+    await run("ffmpeg", [
+      "-y",
+      "-i",
+      inp,
+      "-af",
+      `atrim=start=${Math.max(0, fromSec).toFixed(3)}:end=${toSec.toFixed(3)},asetpts=PTS-STARTPTS`,
+      "-ar",
+      "44100",
+      "-ac",
+      "2",
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      "192k",
+      out,
+    ])
+    return new Uint8Array(await readFile(out))
+  } finally {
+    await rm(tmp, { recursive: true, force: true })
+  }
+}

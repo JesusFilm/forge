@@ -112,6 +112,8 @@ export type StagedSegment = {
   words?: { word: string; startSec: number; endSec: number }[]
   /** Which voice read it (ElevenLabs id), for the pauses between cards. */
   voiceId?: string
+  /** The delivery take; cards cut from one continuous read share it. */
+  take?: string
 }
 
 export type BuildManifestInput = {
@@ -437,6 +439,13 @@ function buildClipFirstManifest(
     const b = reflectionSegments[i + 1]
     return !!(a?.voiceId && b?.voiceId && a.voiceId === b.voiceId)
   }
+  // Cards cut from ONE continuous v4 read already carry the voice's own pause
+  // at their edges (continuous-voice.ts), so they join with no added gap.
+  const sameRunNext = (i: number) => {
+    const a = reflectionSegments[i]
+    const b = reflectionSegments[i + 1]
+    return !!(a?.take?.startsWith("v4c-") && a.take === b?.take)
+  }
   reflectionSegments.forEach((seg, segIndex) => {
     const cardText = seg.text ?? ""
     const highlightIndex = (d.reflectionHighlights ?? []).findIndex(
@@ -454,7 +463,11 @@ function buildClipFirstManifest(
       ...(highlight ? { highlight } : {}),
       ...(mark ? { sourceMark: mark } : {}),
       ...(callout ? { verseCallout: callout } : {}),
-      ...(sameVoiceNext(segIndex) ? { tailSec: SAME_VOICE_TAIL_SEC } : {}),
+      ...(sameRunNext(segIndex)
+        ? { tailSec: 0 }
+        : sameVoiceNext(segIndex)
+          ? { tailSec: SAME_VOICE_TAIL_SEC }
+          : {}),
       audioFile: seg.file,
       durationSec: seg.durationSec,
       bgFile: clip,

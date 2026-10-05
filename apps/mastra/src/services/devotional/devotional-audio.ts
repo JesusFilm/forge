@@ -14,6 +14,14 @@ import {
 import { EN_LOCALE, type DevotionalLocale } from "./devotional-locale"
 import { occasionFor } from "./devotional-occasions"
 import { audioReuseKey } from "./devotional-cache"
+import {
+  CONTINUOUS_MODEL,
+  continuousSettings,
+  planRuns,
+  runTake,
+  sliceRun,
+  type VoiceRun,
+} from "./continuous-voice"
 import type {
   GeneratedDevotional,
   SourceMark,
@@ -46,6 +54,8 @@ export type NarrationSegment = {
   mark?: SourceMark
   /** The verse shown while this segment plays (every chunk of its paragraph). */
   callout?: VerseCallout
+  /** v4 audio tag(s) for a continuous read; never shown. */
+  direction?: string
 }
 
 export { splitReflection } from "./reflection-split"
@@ -226,13 +236,19 @@ function buildClipFirstSegments(
       // voice only.
       display: hookLine.trim(),
       ...(hookVoice ? { voice: hookVoice } : {}),
+      ...(d.voiceDirections?.hook ? { direction: d.voiceDirections.hook } : {}),
     })
   }
   // A role's voice, for authored devotionals; undefined = the devotional's own.
   const roleVoice = (role: VoicedRole) => d.voices?.[role]
   const withVoice = (seg: NarrationSegment, role: VoicedRole) => {
     const v = roleVoice(role)
-    return v ? { ...seg, voice: v } : seg
+    const direction = d.voiceDirections?.[role]
+    return {
+      ...seg,
+      ...(v ? { voice: v } : {}),
+      ...(direction ? { direction } : {}),
+    }
   }
   // Authored paragraphs: each is split on its own, so a voice change or a
   // source mark always falls on a paragraph boundary. The mark rides on the
@@ -242,6 +258,7 @@ function buildClipFirstSegments(
     voice?: DevotionalVoiceName
     mark?: SourceMark
     callout?: VerseCallout
+    direction?: string
   }
   const chunks: Chunk[] = d.reflection.paragraphs?.length
     ? d.reflection.paragraphs.flatMap((p) =>
@@ -250,6 +267,7 @@ function buildClipFirstSegments(
           ...(p.voice ? { voice: p.voice } : {}),
           ...(p.mark && j === 0 ? { mark: p.mark } : {}),
           ...(p.callout ? { callout: p.callout } : {}),
+          ...(p.direction && j === 0 ? { direction: p.direction } : {}),
         })),
       )
     : splitReflection(d.reflection.text.trim()).map((text) => ({ text }))
@@ -273,6 +291,7 @@ function buildClipFirstSegments(
       ...(chunk.voice ? { voice: chunk.voice } : {}),
       ...(chunk.mark ? { mark: chunk.mark } : {}),
       ...(chunk.callout ? { callout: chunk.callout } : {}),
+      ...(chunk.direction ? { direction: chunk.direction } : {}),
     })
   })
   if (d.conclusion.trim()) {
@@ -577,6 +596,42 @@ export function voiceTake(id: string, voice: string): string {
   return [delivery, model].filter(Boolean).join("+")
 }
 
+/**
+ * The take of every segment: `voiceTake` per segment, or, for a continuous v4
+ * read, its run's own take (see continuous-voice.ts). Shared by the producer
+ * and the render's stale-cache check, which must agree.
+ */
+export function segmentTakes(
+  segs: readonly NarrationSegment[],
+  devoVoice: string,
+  continuous: boolean,
+): Map<string, string> {
+  if (!continuous)
+    return new Map(
+      segs.map((s) => [s.id, voiceTake(s.id, s.voice ?? devoVoice)]),
+    )
+  const out = new Map<string, string>()
+  for (const run of continuousRuns(segs, devoVoice)) {
+    const take = runTake(run)
+    for (const s of run.segments) out.set(s.id, take)
+  }
+  return out
+}
+
+function continuousRuns(
+  segs: readonly NarrationSegment[],
+  devoVoice: string,
+): VoiceRun[] {
+  return planRuns(
+    segs.map((s) => ({
+      id: s.id,
+      voice: s.voice ?? devoVoice,
+      text: flattenSpokenText(s.text),
+      ...(s.direction ? { direction: s.direction } : {}),
+    })),
+  )
+}
+
 function baseTake(id: string, voice: string): string {
   if (id === "cover" || id === "conclusion" || id === "questions") return ""
   if (id === "hook" && HOOK_DELIVERY[voice]) return HOOK_DELIVERY[voice].take
@@ -708,6 +763,18 @@ export type ProduceDevotionalAudioDeps = {
     /** Silence prepended before the audio (step cards). */
     leadSec?: number,
   ) => Promise<Uint8Array>
+  /**
+   * CONTINUOUS READ (owner, 2026-10-05): read each run of same-voice
+   * reflection cards in ONE Eleven v4 call (and every other segment whole),
+   * then cut it back into cards by the word times. Needs `slice`; see
+   * continuous-voice.ts.
+   */
+  continuous?: boolean
+  slice?: (
+    bytes: Uint8Array,
+    fromSec: number,
+    toSec: number,
+  ) => Promise<Uint8Array>
 }
 
 /**
@@ -717,6 +784,17 @@ export type ProduceDevotionalAudioDeps = {
  */
 const TTS_MAX_RETRIES = 3
 const TTS_BACKOFF_MS = 1_500
+
+/** The reuse-cache role of a segment: reflection cards by position. */
+function reuseRole(segs: readonly NarrationSegment[], id: string): string {
+  if (!/^reflection-\d+$/.test(id)) return id
+  const reflIds = segs.filter((x) => /^reflection-\d+$/.test(x.id))
+  return id === reflIds[0]?.id
+    ? "reflection-first"
+    : id === reflIds[reflIds.length - 1]?.id
+      ? "reflection-last"
+      : "reflection-mid"
+}
 
 export async function produceDevotionalAudio(
   devotional: GeneratedDevotional,
@@ -750,6 +828,58 @@ export async function produceDevotionalAudio(
     .reverse()
     .find((s) => /^reflection-\d+$/.test(s.id))?.id
   const LAST_REFLECTION_TEMPO = 0.92
+  const continuous = !!(deps.continuous && deps.slice)
+  const takes = segmentTakes(segs, devotional.voice, continuous)
+  // Continuous read: synthesise each run that is not fully cached, cut it
+  // into its cards, and hand those to the loop below as ready-made audio.
+  const fromRun = new Map<string, VoiceoverAudio>()
+  if (continuous) {
+    for (const run of continuousRuns(segs, devotional.voice)) {
+      const allCached = run.segments.every((rs) => {
+        const seg = segs.find((x) => x.id === rs.id)!
+        return !!deps.reusable?.has(
+          audioReuseKey(
+            reuseRole(segs, seg.id),
+            seg.text,
+            `${rs.voice}@${takes.get(rs.id) ?? ""}`,
+          ),
+        )
+      })
+      if (allCached) continue
+      const text = run.segments
+        .map((rs) =>
+          rs.direction ? `${rs.direction.trim()} ${rs.text}` : rs.text,
+        )
+        .join(" ")
+      const speak = () =>
+        voiceover({
+          text,
+          voice: run.voice,
+          voiceSettings: continuousSettings(run.segments[0]!.id),
+          model: CONTINUOUS_MODEL,
+          withTimestamps: true,
+          timeoutMs: 240_000,
+        })
+      let r = await speak()
+      for (let t = 0; !r.ok && r.retryable && t < TTS_MAX_RETRIES; t++) {
+        await new Promise((res) => setTimeout(res, TTS_BACKOFF_MS * 2 ** t))
+        r = await speak()
+      }
+      // A failed or misaligned run falls back to the per-segment path below,
+      // which records any failure the usual way.
+      if (!r.ok) continue
+      const cuts = r.audio.words ? sliceRun(run, r.audio.words) : undefined
+      if (!cuts) continue
+      for (const [k, rs] of run.segments.entries()) {
+        const c = cuts[k]!
+        fromRun.set(rs.id, {
+          ...r.audio,
+          bytes: await deps.slice!(r.audio.bytes, c.fromSec, c.toSec),
+          words: c.words,
+        })
+      }
+    }
+  }
 
   for (const seg of segs) {
     // An authored segment may carry its own voice; everything else reads in
@@ -773,18 +903,11 @@ export async function produceDevotionalAudio(
     // REUSE cached narration whose words are identical. Without this, editing
     // one sentence re-synthesised every segment and exhausted the TTS quota.
     if (deps.reusable) {
-      const reflIds = segs.filter((x) => /^reflection-\d+$/.test(x.id))
-      const role = /^reflection-\d+$/.test(seg.id)
-        ? seg.id === reflIds[0]?.id
-          ? "reflection-first"
-          : seg.id === reflIds[reflIds.length - 1]?.id
-            ? "reflection-last"
-            : "reflection-mid"
-        : seg.id
+      const role = reuseRole(segs, seg.id)
       // Keyed on the SPOKEN text, not the displayed one: the two diverge
       // exactly where a connector moves, and matching on the display replays
       // audio that says something the current script doesn't.
-      const take = voiceTake(seg.id, segVoice)
+      const take = takes.get(seg.id) ?? ""
       const hit = deps.reusable.get(
         audioReuseKey(role, seg.text, take ? `${segVoice}@${take}` : segVoice),
       )
@@ -800,9 +923,7 @@ export async function produceDevotionalAudio(
           id: seg.id,
           text: seg.display ?? seg.text,
           spoken: seg.text,
-          ...(voiceTake(seg.id, segVoice)
-            ? { take: voiceTake(seg.id, segVoice) }
-            : {}),
+          ...(take ? { take } : {}),
           audio: hit.audio,
         })
         reused.push(seg.id)
@@ -819,7 +940,12 @@ export async function produceDevotionalAudio(
     // timeline. A caption revealed against stale timings is worse than one
     // revealed at a steady pace, so anything unaccounted for drops the words.
     const unitTempos: number[] = []
-    for (let ui = 0; ui < units.length; ui++) {
+    const ready = fromRun.get(seg.id)
+    if (ready) {
+      audios.push(ready)
+      unitTempos.push(1)
+    }
+    for (let ui = 0; !ready && ui < units.length; ui++) {
       const segModel = segmentModel(seg.id, segVoice)
       const speak = () =>
         voiceover({
@@ -883,7 +1009,7 @@ export async function produceDevotionalAudio(
       continue
     }
     const audio: VoiceoverAudio =
-      audios.length === 1 || !deps.joinVarGaps
+      ready || audios.length === 1 || !deps.joinVarGaps
         ? audios[0]
         : {
             format: "mp3",
@@ -913,11 +1039,12 @@ export async function produceDevotionalAudio(
     if (deps.pace && seg.id.startsWith("step-")) {
       bytes = await deps.pace(bytes, 1, 0, STEP_LEAD_SEC)
     }
-    if (deps.pace && seg.id === lastReflectionId) {
+    // A continuous v4 read lands its own ending; no slowdown on top.
+    if (deps.pace && seg.id === lastReflectionId && !ready) {
       bytes = await deps.pace(bytes, LAST_REFLECTION_TEMPO, 0)
       segmentStretch = 1 / LAST_REFLECTION_TEMPO
     }
-    const merged = mergeUnitWords(audios, gaps, unitTempos)
+    const merged = mergeUnitWords(audios, ready ? [] : gaps, unitTempos)
     const words =
       merged && segmentStretch !== 1
         ? merged.map((w) => ({
@@ -931,9 +1058,7 @@ export async function produceDevotionalAudio(
       id: seg.id,
       text: seg.display ?? seg.text,
       spoken: seg.text,
-      ...(voiceTake(seg.id, segVoice)
-        ? { take: voiceTake(seg.id, segVoice) }
-        : {}),
+      ...(takes.get(seg.id) ? { take: takes.get(seg.id) } : {}),
       audio: {
         ...audio,
         bytes,

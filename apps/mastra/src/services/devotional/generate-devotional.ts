@@ -85,6 +85,9 @@ export type ReflectionParagraph = {
   /** A verse shown at the top of the frame while this paragraph plays, one
    *  word lit (the original-language note: owner's Figma, 2026-09-30). */
   callout?: VerseCallout
+  /** Eleven v4 audio tag(s) that open this paragraph in a continuous read
+   *  ("[thoughtful]"): how it is said, never shown (owner, 2026-10-05). */
+  direction?: string
 }
 
 export type VerseCallout = {
@@ -168,6 +171,9 @@ export type GeneratedDevotional = {
    * Anything unset reads in `voice`.
    */
   voices?: Partial<Record<VoicedRole, DevotionalVoiceName>>
+  /** Eleven v4 audio tags per non-reflection segment, for a continuous read
+   *  (see ReflectionParagraph.direction). */
+  voiceDirections?: Partial<Record<VoicedRole, string>>
   /** One phrase to accent per reflection chunk (verbatim substring, or ""),
    *  aligned with splitReflection(reflection.text). */
   reflectionHighlights: string[]
@@ -252,6 +258,7 @@ export const GeneratedDevotionalSchema = z.object({
               reference: z.string(),
             })
             .optional(),
+          direction: z.string().optional(),
         }),
       )
       .optional(),
@@ -267,6 +274,19 @@ export const GeneratedDevotionalSchema = z.object({
         "questions",
       ]),
       VOICE_ENUM,
+    )
+    .optional(),
+  voiceDirections: z
+    .partialRecord(
+      z.enum([
+        "hook",
+        "step-reflect",
+        "conclusion",
+        "scripture",
+        "step-pray",
+        "questions",
+      ]),
+      z.string(),
     )
     .optional(),
   reflectionHighlights: z.array(z.string()),

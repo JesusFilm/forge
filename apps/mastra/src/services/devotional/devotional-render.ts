@@ -1,7 +1,7 @@
 import { smartCropIntroFocus } from "./intro-smart-crop"
 import { spawn } from "node:child_process"
 import { once } from "node:events"
-import { createWriteStream, readFileSync } from "node:fs"
+import { createWriteStream, existsSync, readFileSync } from "node:fs"
 import {
   copyFile,
   mkdir,
@@ -24,9 +24,9 @@ import {
   produceDevotionalAudio,
   type DevotionalStructure,
   type ProducedDevotionalAudio,
-  voiceTake,
+  segmentTakes,
 } from "./devotional-audio"
-import { joinAudioVarGaps, slowAndPad } from "./audio-concat"
+import { joinAudioVarGaps, sliceAudio, slowAndPad } from "./audio-concat"
 import { createSilentVoiceover } from "./devotional-silent-voiceover"
 import { planFaceCropAnchors } from "./face-crop-anchors"
 import { writeSourcePack } from "./source-pack"
@@ -2229,12 +2229,27 @@ async function renderInStage(
     // A registered source may bring its own cue file (LUMO has no subtitle
     // track in Arclight): read from disk through the SAME alignment and
     // gap-removal path, so its dead air is cut exactly as a JESUS chapter's is.
+    // A JESUS chapter may carry a local copy of its Arclight cues with a
+    // `.words.json` sibling (whisper word times), so the spoken word lights up
+    // as it is said (owner, 2026-10-05); the Arclight track has line timing
+    // only, which left the film captions plain white.
+    const jesusCues = `video-sources/jesus-ch${String(devo.clip.index).padStart(2, "0")}.${locale.lang}.vtt`
     const cueFile =
       registered?.captions.kind === "file"
         ? locale.lang === "en"
           ? registered.captions.path
           : registered.captions.byLang?.[locale.lang as "ru" | "es"]
-        : undefined
+        : !registered &&
+            !clipOverride &&
+            existsSync(
+              path.join(
+                repoRoot(),
+                "apps/mastra/src/services/devotional",
+                jesusCues,
+              ),
+            )
+          ? jesusCues
+          : undefined
     const localCues = cueFile
       ? // repoRoot, not import.meta.url: the Mastra bundle moves this file
         // and every url-relative path with it (see repo-root.ts).
@@ -2752,6 +2767,7 @@ async function renderInStage(
       durationSec: await probeDuration(path.join(stage, file)),
       text: s.text,
       voiceId: s.audio.voiceId,
+      ...(s.take ? { take: s.take } : {}),
       ...(words && words.length > 0 ? { words } : {}),
     })
     n++
@@ -3470,6 +3486,9 @@ export type PrepareAndRenderInput = RenderOptions & {
    *  instead of at a guessed pace. Cards whose audio gets re-timed after
    *  synthesis keep the old reveal. */
   wordTimings?: boolean
+  /** Read the narration on Eleven v4 in continuous runs (owner, 2026-10-05):
+   *  see continuous-voice.ts. Implies word timings. */
+  continuousVoice?: boolean
 }
 
 export type RenderedDevotional = {
@@ -3617,6 +3636,8 @@ export async function produceNarration(
     structure?: DevotionalStructure
     /** Spoken opening question (`intro: "hook"`); see RenderOptions.hookLine. */
     hookLine?: string
+    /** Continuous Eleven v4 read; see continuous-voice.ts. */
+    continuous?: boolean
   },
 ): Promise<ProducedDevotionalAudio> {
   const log = opts.log ?? (() => {})
@@ -3658,12 +3679,13 @@ export async function produceNarration(
       // with unchanged words would otherwise return the old reading wholesale,
       // because the per-segment path that checks the take never runs.
       const cachedById = new Map(cached.segments.map((s) => [s.id, s]))
+      const takes = segmentTakes(wanted, devo.voice, !!opts.continuous)
       const changed = wanted.filter((w) => {
         if ((cachedSpoken.get(w.id) ?? "").trim() !== w.text.trim()) return true
         const hit = cachedById.get(w.id)
         const voice = w.voice ?? devo.voice
         if (!voice) return false
-        if ((hit?.take ?? "") !== voiceTake(w.id, voice)) return true
+        if ((hit?.take ?? "") !== (takes.get(w.id) ?? "")) return true
         const cachedVoice = hit ? voiceNameForId(hit.audio.voiceId) : undefined
         return cachedVoice != null && cachedVoice !== voice
       })
@@ -3757,6 +3779,7 @@ export async function produceNarration(
       ...(opts.withTimestamps ? { withTimestamps: true } : {}),
       ...(opts.steps ? { steps: true } : {}),
       ...(opts.structure ? { structure: opts.structure } : {}),
+      ...(opts.continuous ? { continuous: true, slice: sliceAudio } : {}),
     },
     locale,
   )
@@ -4059,8 +4082,11 @@ export async function prepareAndRenderDevotional(
       : {}),
     // Silent previews have no real speech to align to, so never ask for
     // timestamps there.
-    ...(input.wordTimings && !input.silentPreview
+    ...((input.wordTimings || input.continuousVoice) && !input.silentPreview
       ? { withTimestamps: true }
+      : {}),
+    ...(input.continuousVoice && !input.silentPreview
+      ? { continuous: true }
       : {}),
     log,
   })

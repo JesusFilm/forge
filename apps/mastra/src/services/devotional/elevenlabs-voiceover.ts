@@ -198,8 +198,17 @@ export function wordsFromAlignment(alignment: {
   let prevEnd = 0
   const { characters, character_start_times_seconds: starts } = alignment
   const ends = alignment.character_end_times_seconds
+  // Eleven v4 audio tags ("[thoughtful]") direct the delivery and are never
+  // spoken or shown: their characters are dropped, so a tagged read yields
+  // the same words as the plain text.
+  let inTag = false
   for (let i = 0; i < characters.length; i++) {
     const ch = characters[i]
+    if (ch === "[") inTag = true
+    if (inTag) {
+      if (ch === "]") inTag = false
+      continue
+    }
     if (ch.trim() === "") {
       if (word) words.push({ word, startSec, endSec: prevEnd })
       word = ""
