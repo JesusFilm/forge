@@ -132,6 +132,11 @@ const STORIES: Record<
       "Faith",
       "Highway",
       "Cloak",
+      // Edersheim's chapters on Bartimaeus and on the cry "Son of David":
+      // the dictionaries alone gave one lexicon line for the title, too
+      // thin to explain (owner, 2026-10-05).
+      "IN JERICHO AND AT BETHANY - JERICHO - A GUEST WITH ZACCHÆUS - THE HEALING OF BLIND BARTIMÆUS - THE PLOT AT JERUSALEM - AT BETHANY, AND IN THE HOUSE OF SIMON THE LEPER",
+      "A GROUP OF MIRACLES AMONG A SEMI-HEATHEN POPULATION",
     ],
     out: "Bartimaeus",
   },
