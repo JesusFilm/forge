@@ -17,6 +17,168 @@ tags:
   - "operations"
 ---
 
+## October 5 deadline-margin mitigation pending release
+
+The October 4 ordinary loaded cycle had six failed attempts amid 438
+successful attempts; a later read found zero overdue rows. It is not a
+qualifying failure-free cycle;
+the count remains zero. A scoped change reduces only the pre-root standalone
+episode page from ten to five under the existing five-second whole-run budget.
+An owned mixed PostgreSQL fixture measured 4,467 ms versus 2,767 ms on its
+first attempt, while total fixture time rose about 6.0%; a separate slow-tail
+fixture still failed at the deadline, preserving earlier committed root work
+and rolling back the tail transaction. Neither fixture proves the production
+failure's exact statement or a complete cure.
+
+The bounded October 4 expiry histogram counted 26,071 surviving standalone
+episodes through October 6 10:30 UTC without reaching its 50,001-row cap.
+A conservative conditional half-rate prefix calculation found no observed
+24-hour-deadline shortfall for those surviving cohorts. Created-at counts are
+not expiry inflow. Verify actual Admin HTTP/worker deployment, live deletion
+throughput, oldest-age/backlog and headroom after a reviewed release. Keep this
+ticket in progress until two later ordinary failure-free loaded cycles pass.
+
+## October 4 query release: natural catch-up snapshot
+
+[PR #2553](https://github.com/JesusFilm/forge/pull/2553) merged normally as
+`e8e7fb3475af975835856a9f9380805f83d2f3b1` after independent exact-head review
+and green required CI. Both actual Admin HTTP and worker processes converged
+at October 3 22:05:59 UTC, healthy and compact, with HTTP runner disabled and
+worker runner enabled. Post-merge CI passed too. The change affects only the
+eligibility child-count query; expiry, deletion order and execution limits remain.
+
+Natural attempts at 22:06:07 and 22:07:40 failed after committing work, with four
+successful attempts between them. The first failure committed 12,746 expired
+profile-session links; that is not proof that their deletion was the failing
+statement. A durable-ledger receipt collected around 22:17:02 counted 28
+successful and two failed attempts, with 2,800 roots committed by successes
+and another 200 by failures. No new failure had occurred since 22:07:40.
+A separate 22:17:23 backlog read found overdue request roots and projection
+runs clear, but 1,387 standalone episodes and 961 eligibility decisions kept
+the full serving gate overdue. At that snapshot, further natural catch-up
+was required; do not infer full recovery from root progress or HTTP health.
+
+At **22:47:11 UTC**, the full 21-type retention-health read found zero rows
+beyond the 24-hour propagation limit, with latest success watermark
+22:47:06. The accompanying ledger receipt had 204 scheduled successes and the
+same two earlier failures, with 10,080 roots committed by successes and 200 by
+failures. A separate 22:49:11 read again found zero overdue rows; the later
+ledger had 212 successes and no additional failures. Serving-health recovery
+is now observed on `e8e7fb3`.
+
+The 22:47 receipt still had 18,169 younger expired standalone episodes, 12,046
+eligibility decisions and one projection run inside the propagation window.
+Their normal catch-up continued; the scheduler is a persistent loop, so its
+running status does not mean an incomplete purge attempt or resumed daily-only
+cadence. Direct PGDATA measurement at 22:47:59 found 24,396,324,864 free bytes on
+a 48,891,670,528-byte filesystem, 100,663,296 WAL bytes, and no lock waiters or
+long transactions. The legacy stage relation stayed empty at 24,576 bytes.
+
+At 22:51:26, a bounded post-clearance read found ten naturally created requests,
+all issued: nine served and one fallback, with zero unavailable/issuance-failed
+results and the cap not reached. This is a small observed sample, not universal
+serving proof. A separate 22:51:49 ledger snapshot counted 228 scheduled
+successes and the same two earlier failures, no scheduler error and three
+freshly expired request roots inside the propagation window. No synthetic
+writes or production mutations were used for verification.
+
+This is not a qualifying clean daily cycle. Keep the ticket in progress until
+two later ordinary, failure-free, loaded daily cycles
+provide descendant, throughput, lock, backlog/oldest-age and headroom evidence.
+No manual purge or production fault injection may manufacture acceptance.
+See the timestamped receipts on #2553 and the consolidated closeout report.
+
+## October 4 pre-release follow-up: deployed episode cap did not restore root progress
+
+Historical snapshot before PR #2553 merged. Pending-release statements in this
+section describe that earlier state; use the release receipts above for current
+deployment evidence.
+
+Both Admin HTTP and worker were verified on PR #2551's merge revision before
+the October 3 21:02 UTC natural scheduled attempt. That attempt failed at the
+unchanged five-second deadline after durably deleting ten request-free episodes
+and nineteen direct actions, with **zero expired request roots** deleted. The
+older October 4 incident section below describes the pre-#2551 backlog and
+local episode-cap proof; that proof did not establish production recovery.
+
+The next scoped repair changes only the request-root eligibility child count.
+The emitted Prisma `LEFT JOIN ... OR` SQL was captured on a local fixture with
+dummy IDs. Bounded read-only production plans for the equivalent shape and a
+request-parent-driven `UNION` count took 329.175 ms and 2.548 ms respectively
+on the same oldest-fifty-root cohort. These are read-plan measurements, not
+delete timings or proof that the complete retention run will pass. An owned
+PostgreSQL fixture deleted twelve expired roots in 1,138 ms while its first page
+also deleted ten standalone episodes; the fixture is not production recovery.
+The query-only PR is pending review and normal release. Feat-554 remains
+in-progress: verify natural root/descendant progress and backlog recovery
+after actual release, then require two later ordinary failure-free loaded daily
+cycles with lock, backlog and headroom evidence before closure.
+
+## October 4 pre-release standalone-episode incident and scoped repair
+
+Historical snapshot before PR #2551 merged. The local repair and future release
+steps below describe what was known before its observed production attempt.
+
+The October 3 normal scheduled cycle failed on every observed attempt before
+deleting expired request roots. A bounded read of the durable and workflow
+ledgers found 125 failed wrappers at roughly the fixed five-second deadline;
+each attempt committed 24–56 request-free playback episode deletions but no
+request roots. The oldest expired request exceeded the 24-hour propagation
+limit, so the retention serving gate is unhealthy. At 20:07 UTC, no new
+recommendation request row had been recorded in either of the prior two hours;
+that is a bounded serving-impact signal, not a synthetic delivery test.
+
+The new scoped repair caps the pre-root standalone episode selection at ten
+while preserving each episode's existing full dependency lock/recheck and
+atomic transaction, the 50,000-dependency guard, five-second deadline and
+29-day expiry. A full page requests normal catch-up. An owned native PostgreSQL
+test reproduces the deadline failure under controlled per-row latency and
+verifies first-pass request-root progress, descendants, graph invalidation,
+live lineage, continuation and failure accounting. The prior October 3
+profile-tail release was deployed on both Admin roles, but this earlier phase
+prevented that repair from being reached.
+
+This local repair is not production recovery or ticket completion. After a
+reviewed PR-to-main release, verify actual Admin HTTP/worker revisions and a
+natural catch-up attempt that deletes request roots, reduces the backlog and
+restores the serving retention gate. Then require two later ordinary,
+failure-free, loaded daily cycles with descendants, lock/backlog and headroom
+proof. Keep this ticket in progress until the separately reviewed evidence
+closeout merges.
+
+## October 3 repair in progress
+
+The October 2 scheduled run again recovered only after an initial transaction
+deadline failure. The failed wrapper committed 100 expired request roots, 371
+served descendants and 8,265 expired projection runs, then exhausted the fixed
+five-second whole-run budget before the next phase could commit. A scoped repair
+pages the four previously unbounded projection-tail deletes and live generation
+reference detachments under the existing batch size. Native PostgreSQL fixtures
+cover root-free continuation, contributions, interests, live run and decision
+references, and eventual generation expiry. This local repair is not production
+acceptance. Feat-554 remains in progress until two subsequent normal,
+failure-free, loaded cycles meet the existing backlog and headroom criteria.
+
+## October 2 NZDT status: loaded retention still open
+
+The October 1 22:51 UTC production read confirmed 25,630,932,992 B of direct
+PGDATA availability, 553,648,128 B of WAL files, healthy compact Admin HTTP and
+worker processes, zero recent legacy writes/missing compact payloads, and an
+empty 24,576-B legacy stage relation. Feat-555/575 are complete; U1–U3 storage
+efficiency is complete in feat-574. See
+`docs/reports/2026-10-02-recommendation-storage-efficiency-closeout.md` for exact
+format, capacity and retention evidence.
+
+October 1's scheduled retention eventually committed 7,846 roots and 27,216
+served descendants, but four attempts failed first. That day is **not** a
+qualifying failure-free loaded cycle; neither was September 30. Current count:
+zero. The next normal starts are October 2 and 3 at 10:30 UTC (23:30 NZDT each
+date). Each must remove actual expired roots and descendants without failure,
+with acceptable lock skips, backlog and headroom. Do not substitute a manual or
+zero-deletion run. The daily monitor remains active. No supported monthly growth
+forecast follows from the post-reclamation snapshot. If a new defect is proved,
+repair it and then re-establish two qualifying normal loaded cycles.
+
 ## Problem
 
 The remediation preserves full 29-day trace history and reduces new trace
@@ -113,6 +275,22 @@ feat-555: it may follow proven natural expiry/purge or the separately authorized
 finite early retirement and lossless conversion path. Feat-554 still requires
 two loaded normal retention cycles and capacity monitoring before it can be
 marked complete, even if feat-555 reclaims a proven-empty relation first.
+
+## October 2 Reclamation and Remaining Retention Gate
+
+`docs/reports/2026-10-02-legacy-stage-reclamation.md` records completed owner-authorized
+bulk legacy disposal: 16.431 GB relation recovery and 25.512 GB available filesystem
+space. Feat-555 and feat-575 are complete; this ticket stays in progress.
+September 30 and October 1 normal loaded cycles recovered after failures, so neither
+qualifies as failure-free acceptance. Require two normal loaded cycles with no
+failures, sufficient descendant throughput, acceptable expired backlog/lock skips
+and continued headroom. The next scheduled cycle is October 2 at 10:30 UTC.
+
+The active `recommendation-storage-daily-check` monitor runs every 24 hours and
+supersedes the earlier heartbeat schedule described above. The old finite deletion
+job is permanently stopped. Follow `unattended-latest.json` and its bulk-disposal
+receipt; never restart the expired campaign. No new monthly steady-state forecast
+or universal quality claim follows from the reclamation measurement.
 
 ## September 30 Supplement
 

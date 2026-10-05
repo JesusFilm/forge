@@ -6,6 +6,7 @@ import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { RecommendationIntegrityService } from "./integrity.service"
+import { RECOMMENDATION_INTEGRITY_POLICY_VERSION } from "./integrity-policy"
 import { publishCowatchShadowGeneration } from "./cowatch/projection.service"
 import { RecommendationOwnerReleaseOperator } from "./promotion/owner-operator"
 import { readActiveOwnerRelease } from "./promotion/owner-authority"
@@ -80,7 +81,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
     })
 
-    async function sourceFixture() {
+    async function sourceFixture(
+      inputFormat: "current" | "legacy" = "current",
+    ) {
       const id = randomUUID()
       const now = new Date()
       const start = new Date(now.getTime() - 10 * day + ordinal++ * 3_600_000)
@@ -163,7 +166,66 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         }
       }
       const service = new RecommendationIntegrityService({ prisma: db })
-      for (const outcomeId of outcomes) {
+      for (const [index, outcomeId] of outcomes.entries()) {
+        if (inputFormat === "legacy" && index === 0) {
+          const outcome =
+            await db.recommendationOutcomeRevision.findUniqueOrThrow({
+              where: { id: outcomeId },
+            })
+          const decision = {
+            state: "eligible",
+            reasonCodes: [],
+            eligibleScopes: ["profile", "aggregate"],
+            contributionWeight: 1,
+          }
+          const measures = {
+            contributionOrdinal: 1,
+            distinctSupport: 5,
+            identityConcentration: 0.2,
+          }
+          // Seed the exact historical producer format before graph publication.
+          // Never update an existing receipt or suppress its invalidation trigger.
+          await db.recommendationEligibilityDecision.create({
+            data: {
+              id: `${outcomeId}-legacy-eligibility`,
+              sourceKey: `playback_outcome:${outcomeId}`,
+              sourceType: "PLAYBACK_OUTCOME",
+              outcomeId,
+              policyVersion: RECOMMENDATION_INTEGRITY_POLICY_VERSION,
+              revision: 1,
+              isCurrent: true,
+              actorClass: "HUMAN_ANONYMOUS",
+              ...decision,
+              state: "ELIGIBLE",
+              ...measures,
+              inputDigest: digest(
+                JSON.stringify({
+                  sourceType: "playback_outcome",
+                  outcomeId,
+                  classifierVersion: outcome.classifierVersion,
+                  outcomeRevision: outcome.revision,
+                  outcomeInputDigest: outcome.inputDigest,
+                  qualifiedView: true,
+                  baseWeight: 1,
+                  finalizedAt: outcome.createdAt,
+                  late: false,
+                  replayCount: 0,
+                  transportReplayCount: 0,
+                  transportReplayReceiptCount: 0,
+                  conflictCount: 0,
+                  superseded: false,
+                  promotionFence: null,
+                  measures,
+                  decision,
+                }),
+              ),
+              evidenceWatermark: outcome.createdAt,
+              decidedAt: new Date(),
+              expiresAt,
+            },
+          })
+          continue
+        }
         const receipt = await service.classifyPlaybackOutcome(outcomeId)
         expect(receipt.eligibleScopes).toContain("aggregate")
       }
@@ -278,91 +340,103 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     }
 
-    it("keeps one untouched positive receipt and graph authority through ambient drift and concurrent classifiers", async () => {
-      const fixture = await sourceFixture()
-      await fixture.addAmbientViewer()
-      await expectCurrent(fixture)
-      const receipts = await Promise.all([
-        fixture.classify(),
-        fixture.classify(),
-        fixture.classify(),
-      ])
-      expect(receipts.map((receipt) => receipt.id)).toEqual(
-        Array(3).fill(fixture.original.id),
-      )
-      expect(
-        await db.recommendationEligibilityDecision.findUniqueOrThrow({
-          where: { id: fixture.original.id },
-        }),
-      ).toEqual(fixture.original)
-      expect(
-        await db.recommendationEligibilityDecision.count({
-          where: { outcomeId: fixture.outcomeId },
-        }),
-      ).toBe(1)
-      expect(
-        await db.recommendationEligibilityDecision.count({
-          where: { outcomeId: fixture.outcomeId, isCurrent: true },
-        }),
-      ).toBe(1)
-      await expectCurrent(fixture)
-    }, 30_000)
+    it.each(["current", "legacy"] as const)(
+      "keeps one untouched %s receipt and graph authority through ambient drift and concurrent classifiers",
+      async (inputFormat) => {
+        const fixture = await sourceFixture(inputFormat)
+        await fixture.addAmbientViewer()
+        await expectCurrent(fixture)
+        const receipts = await Promise.all([
+          fixture.classify(),
+          fixture.classify(),
+          fixture.classify(),
+        ])
+        expect(receipts.map((receipt) => receipt.id)).toEqual(
+          Array(3).fill(fixture.original.id),
+        )
+        expect(
+          await db.recommendationEligibilityDecision.findUniqueOrThrow({
+            where: { id: fixture.original.id },
+          }),
+        ).toEqual(fixture.original)
+        expect(
+          await db.recommendationEligibilityDecision.count({
+            where: { outcomeId: fixture.outcomeId },
+          }),
+        ).toBe(1)
+        expect(
+          await db.recommendationEligibilityDecision.count({
+            where: { outcomeId: fixture.outcomeId, isCurrent: true },
+          }),
+        ).toBe(1)
+        await expectCurrent(fixture)
+      },
+      30_000,
+    )
 
-    it("still appends and revokes when changed measurements cross a policy threshold", async () => {
-      const fixture = await sourceFixture()
-      await fixture.exceedContributionCap()
-      await expectCurrent(fixture)
-      const receipts = await Promise.all([
-        fixture.classify(),
-        fixture.classify(),
-        fixture.classify(),
-      ])
-      expect(receipts[0]).toMatchObject({
-        revision: 2,
-        state: "excluded",
-        reasonCodes: ["identity_content_contribution_cap"],
-      })
-      expect(new Set(receipts.map((receipt) => receipt.id)).size).toBe(1)
-      expect(
-        await db.recommendationEligibilityDecision.count({
-          where: { outcomeId: fixture.outcomeId, isCurrent: true },
-        }),
-      ).toBe(1)
-      expect(
-        await db.recommendationEligibilityDecision.count({
-          where: { outcomeId: fixture.outcomeId },
-        }),
-      ).toBe(2)
-      await expectRevoked(fixture)
-    }, 30_000)
+    it.each(["current", "legacy"] as const)(
+      "still appends and revokes a %s receipt when changed measurements cross a policy threshold",
+      async (inputFormat) => {
+        const fixture = await sourceFixture(inputFormat)
+        await fixture.exceedContributionCap()
+        await expectCurrent(fixture)
+        const receipts = await Promise.all([
+          fixture.classify(),
+          fixture.classify(),
+          fixture.classify(),
+        ])
+        expect(receipts[0]).toMatchObject({
+          revision: 2,
+          state: "excluded",
+          reasonCodes: ["identity_content_contribution_cap"],
+        })
+        expect(new Set(receipts.map((receipt) => receipt.id)).size).toBe(1)
+        expect(
+          await db.recommendationEligibilityDecision.count({
+            where: { outcomeId: fixture.outcomeId, isCurrent: true },
+          }),
+        ).toBe(1)
+        expect(
+          await db.recommendationEligibilityDecision.count({
+            where: { outcomeId: fixture.outcomeId },
+          }),
+        ).toBe(2)
+        await expectRevoked(fixture)
+      },
+      30_000,
+    )
 
-    it("still appends and revokes for changed non-measure evidence with an identical positive verdict", async () => {
-      const fixture = await sourceFixture()
-      await db.$transaction(async (tx) => {
-        await tx.recommendationPlaybackEpisode.update({
-          where: { id: fixture.episodeId },
-          data: { transportReplayCount: 1 },
+    it.each(["current", "legacy"] as const)(
+      "still appends and revokes a %s receipt for changed non-measure evidence with an identical positive verdict",
+      async (inputFormat) => {
+        const fixture = await sourceFixture(inputFormat)
+        await db.$transaction(async (tx) => {
+          await tx.recommendationPlaybackEpisode.update({
+            where: { id: fixture.episodeId },
+            data: { transportReplayCount: 1 },
+          })
+          await tx.recommendationPlaybackTransportReplayReceipt.create({
+            data: {
+              episodeId: fixture.episodeId,
+              capabilityJti: `${fixture.episodeId}-capability`,
+              eventId: `${fixture.episodeId}-event`,
+              payloadDigest: digest("exact-replay"),
+              replayOrdinal: 1,
+              expiresAt: fixture.expiresAt,
+            },
+          })
         })
-        await tx.recommendationPlaybackTransportReplayReceipt.create({
-          data: {
-            episodeId: fixture.episodeId,
-            capabilityJti: `${fixture.episodeId}-capability`,
-            eventId: `${fixture.episodeId}-event`,
-            payloadDigest: digest("exact-replay"),
-            replayOrdinal: 1,
-            expiresAt: fixture.expiresAt,
-          },
+        await expectCurrent(fixture)
+        expect(await fixture.classify()).toMatchObject({
+          revision: 2,
+          state: "eligible",
+          reasonCodes: [],
+          eligibleScopes: ["profile", "aggregate"],
+          contributionWeight: fixture.original.contributionWeight,
         })
-      })
-      await expectCurrent(fixture)
-      expect(await fixture.classify()).toMatchObject({
-        revision: 2,
-        state: "eligible",
-        reasonCodes: [],
-        eligibleScopes: ["profile", "aggregate"],
-        contributionWeight: fixture.original.contributionWeight,
-      })
-      await expectRevoked(fixture)
-    }, 30_000)
+        await expectRevoked(fixture)
+      },
+      30_000,
+    )
   },
 )

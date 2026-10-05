@@ -147,7 +147,7 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 A short window of one Video, played from that Video's own Dub stream in the mobile Explore feed; it is a start point and an end point over the full Video, never a separate media file.
 _Avoid:_ short (the same thing in conversation; tickets and code say clip).
 
-A clip is cut at sentence boundaries, from the subtitle timing of the Dub that plays, or by a fixed fallback rule when no usable timing exists. A clip never writes watch progress. "Keep watching" hands the viewer from a clip to the full Video, at the point the clip reached and in the clip's Dub.
+A clip is cut at sentence boundaries, from the subtitle timing of the Dub that plays, or by a fixed fallback rule when no usable timing exists. A clip never writes watch progress. "Keep watching" hands the viewer from a clip to the full Video, at the point the clip reached and in the clip's Dub. When a clip ends, the feed moves on to the next clip; it plays the clip again instead while the viewer reads its open description or drags its progress bar.
 
 ### Language
 
@@ -194,6 +194,17 @@ The generated evidence tying each translated Watch UI Catalog to the source
 content, translated content, and translation model that produced it. It covers
 the translated portion of a catalog, so Pending Translation Paths do not claim
 completed-translation provenance.
+
+### UI Locale
+
+The locale of the Watch UI Catalog that a client renders its interface copy
+in. It is always a shipped catalog, or English when no shipped catalog fits.
+It is distinct from the audio Language, even where one choice sets both: Web
+derives the UI Locale from the public language slug, so Arabic Najdi renders
+English interface copy. Admin content requests derive three language forms
+from it: the catalog tag for homepage Experiences and recommendations, the
+Language slug for video text rows, search, and Bible passages, and Admin's own
+BCP-47 tag for language-name and Bible-book-name maps.
 
 ### Contextual Watch Route
 
@@ -1747,6 +1758,14 @@ The record a device creates with admin when notification permission is granted: 
 ### Local-Morning Wave
 
 The delivery of one Announcement Campaign across time zones: each device receives it at the campaign's local hour in its own zone, so a single send spreads over about a day and the report is complete only after the last zone. The wave enforces one announcement per device per local day; when two campaigns collide, the earlier scheduled one wins. "Send now everywhere" is the explicit exception that ignores the local hour.
+
+## Product feedback
+
+### Feedback Submission
+
+A message a person sends from inside an app — the Watch feedback form on web, the feedback sheet on mobile — that the receiving server files as one Linear issue under a Feedback label, quoting the message verbatim.
+
+It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue. A submission sent from inside the mobile player also names the Video in view, but only a title that came from the resolved Video: the ticket is read where the reporter's context is absent, so a screen that has only a Watch Seed sends no video at all.
 
 ## Flagged ambiguities
 

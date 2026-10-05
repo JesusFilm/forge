@@ -1,3 +1,5 @@
+import { defaultAudioLanguage } from "../i18n/localeStore"
+
 type LanguageOption = {
   slug: string
   bcp47: string | null
@@ -9,36 +11,29 @@ type LanguageOption = {
   languageSlug: string | null
 }
 
-export function getDeviceLanguageCode(): string | null {
-  try {
-    const locale = Intl.DateTimeFormat().resolvedOptions().locale
-    return locale.split("-")[0].toLowerCase()
-  } catch {
-    return null
-  }
-}
-
-// Exact tag first: "en" and "en-nai" share a prefix, so a pure prefix scan lets
-// ARRAY ORDER pick the winner — which handed JESUS "English, North American
-// Indigenous" (index 266) over plain English (index 614) across its 2281 dubs.
+// Exact tags first, from the whole tag down to the language: "en" and "en-nai"
+// share a prefix, so a prefix scan lets ARRAY ORDER pick the winner — it gave
+// JESUS "English, North American Indigenous" (266) over plain English (614).
 function matchByBcp47(
   options: LanguageOption[],
   targetBcp47: string,
 ): LanguageOption | undefined {
-  const full = targetBcp47.toLowerCase()
-  const base = full.split("-")[0]
+  const parts = targetBcp47.toLowerCase().replace(/_/g, "-").split("-")
+  const base = parts[0]
   const tag = (o: LanguageOption) => o.bcp47?.toLowerCase() ?? null
-  return (
-    options.find((o) => tag(o) === full) ??
-    options.find((o) => tag(o) === base) ??
-    options.find((o) => tag(o)?.split("-")[0] === base)
-  )
+  for (let length = parts.length; length > 0; length -= 1) {
+    const exact = parts.slice(0, length).join("-")
+    const match = options.find((o) => tag(o) === exact)
+    if (match) return match
+  }
+  return options.find((o) => tag(o)?.split("-")[0] === base)
 }
 
 /**
  * Resolve the best default language: preference (persisted in {@link WatchPreferencesProvider})
- * → device locale → video primary → English → first option. `preferredLanguageSlug` matches
- * EXACTLY on `languageSlug`, never bcp47 prefix (ko/ko-kmr, en/en-nai collide); soft.
+ * → the phone's first language ({@link defaultAudioLanguage}) → video primary →
+ * English → first option. `preferredLanguageSlug` matches EXACTLY on
+ * `languageSlug`, never bcp47 prefix (ko/ko-kmr, en/en-nai collide); soft.
  */
 export function resolveDefaultSlug(
   options: LanguageOption[],
@@ -52,9 +47,15 @@ export function resolveDefaultSlug(
     if (match) return match.slug
   }
 
-  const deviceLang = getDeviceLanguageCode()
-  if (deviceLang) {
-    const match = matchByBcp47(options, deviceLang)
+  // An empty phone list (a dev client built before expo-localization) skips
+  // this step, so the primary language, then English, decides.
+  const phone = defaultAudioLanguage()
+  if (phone) {
+    const match =
+      (phone.slug == null
+        ? undefined
+        : options.find((o) => o.languageSlug === phone.slug)) ??
+      matchByBcp47(options, phone.tag)
     if (match) return match.slug
   }
 

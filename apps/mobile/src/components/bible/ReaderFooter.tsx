@@ -6,7 +6,10 @@ import {
   READER_FOOTER_ROWS,
   readerFooterHeight,
 } from "../../lib/bible/reader/chrome"
-import { READER_COPY } from "../../lib/bible/reader/copy"
+import {
+  BIBLE_NOTICES,
+  BIBLE_NOTICE_LANGUAGE,
+} from "../../lib/bible/sheets/copy"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 
 export type ReaderFooterProps = {
@@ -64,12 +67,15 @@ export function ReaderFooter({
         <View style={styles.progressRow} />
         {/* The credit centers in the room kept for the selection bar. */}
         <View style={styles.creditRow}>
+          {/* KTD17: the credit stays English, so it is read as English. */}
           <Text
+            testID="bible-reader-credit"
             style={[styles.credit, secondary]}
             numberOfLines={1}
             maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
+            accessibilityLanguage={BIBLE_NOTICE_LANGUAGE}
           >
-            {READER_COPY.stillCredit}
+            {BIBLE_NOTICES.stillCredit}
           </Text>
         </View>
       </View>

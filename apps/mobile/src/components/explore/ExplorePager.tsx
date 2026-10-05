@@ -4,7 +4,17 @@
  * the underlay: a view inside a slot would change slots and remount.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from "react"
 import {
   Animated,
   Dimensions,
@@ -18,7 +28,7 @@ import {
 } from "react-native"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
-import { EXPLORE_COPY } from "../../lib/explore/copy"
+import { useT } from "../../i18n/useT"
 
 /** KTD25: the pager rests this long with no new pan before loads may start. */
 export const EXPLORE_PAGER_REST_DWELL_MS = 200
@@ -69,7 +79,13 @@ export type ExplorePagerUnderlay = {
   pageStyle: (role: ExplorePagerRole) => StyleProp<ViewStyle>
 }
 
+/** The feed's own move, as at a clip's end. False when the pager cannot move now. */
+export type ExplorePagerHandle = {
+  requestMove: (move: ExplorePagerMove) => boolean
+}
+
 export type ExplorePagerProps = {
+  ref?: Ref<ExplorePagerHandle>
   renderSlot: (slot: ExplorePagerSlot) => ReactNode
   /**
    * A layer under the slots that stays mounted, so a child keeps one position
@@ -140,13 +156,17 @@ function releaseStep(
   return 0
 }
 
-type LiveProps = Omit<ExplorePagerProps, "renderSlot" | "renderUnderlay"> & {
+type LiveProps = Omit<
+  ExplorePagerProps,
+  "ref" | "renderSlot" | "renderUnderlay"
+> & {
   reduceMotion: boolean
 }
 
 type PagerEngine = {
   panHandlers: GestureResponderHandlers
-  requestMove: (move: ExplorePagerMove) => void
+  requestMove: (move: ExplorePagerMove, by: "feed" | "viewer") => boolean
+  hold: ExplorePagerHold
   layout: (height: number) => void
   dispose: () => void
 }
@@ -182,6 +202,13 @@ function createPagerEngine({
   } | null = null
   let restTimer: ReturnType<typeof setTimeout> | null = null
   let latched = false
+  /** A finger holds the pager: from the pan grant to its release. */
+  let panning = false
+  /** What children hold, by scope (`useExplorePagerHold`). */
+  const holds: Record<ExplorePagerHoldScope, Set<object>> = {
+    drag: new Set(),
+    feedMove: new Set(),
+  }
 
   const setLatch = (next: boolean) => {
     if (latched === next) return
@@ -293,9 +320,11 @@ function createPagerEngine({
     onStartShouldSetPanResponderCapture: () => false,
     onMoveShouldSetPanResponderCapture: () => false,
     onMoveShouldSetPanResponder: (_event, gesture) =>
+      holds.drag.size === 0 &&
       Math.abs(gesture.dy) > PAN_SLOP_PX &&
       Math.abs(gesture.dy) > Math.abs(gesture.dx),
     onPanResponderGrant: () => {
+      panning = true
       cancelRest()
       setLatch(true)
       finishSettle()
@@ -305,6 +334,7 @@ function createPagerEngine({
       writeDrag(grab + resisted(gesture.dy))
     },
     onPanResponderRelease: (_event, gesture) => {
+      panning = false
       const { canSwipeNext, canSwipePrevious } = live.current
       const step = releaseStep(
         gesture.dy,
@@ -317,20 +347,24 @@ function createPagerEngine({
       settleTo(placement.current + step, gesture.vy * 1000)
     },
     onPanResponderTerminate: () => {
+      panning = false
       settleTo(placement.current, 0)
     },
   })
 
   return {
     panHandlers: responder.panHandlers,
-    requestMove: (move) => {
-      // The props still describe the page a running settle leaves.
-      if (settling != null) return
+    requestMove: (move, by) => {
+      // The props still describe the page a running settle leaves, and a
+      // finger on the pager, or on a child that holds it, owns the next move.
+      if (settling != null || panning || holds.drag.size > 0) return false
+      if (by === "feed" && holds.feedMove.size > 0) return false
       const { canSwipeNext, canSwipePrevious } = live.current
-      if (move === "next" ? !canSwipeNext : !canSwipePrevious) return
+      if (move === "next" ? !canSwipeNext : !canSwipePrevious) return false
       cancelRest()
       setLatch(true)
       settleTo(placement.current + (move === "next" ? 1 : -1), 0)
+      return true
     },
     layout: (next) => {
       if (!(next > 0) || next === height) return
@@ -350,17 +384,45 @@ function createPagerEngine({
       showHeight(next)
       if (wasSettling) armRest()
     },
+    hold: (scope) => {
+      const token = {}
+      holds[scope].add(token)
+      return () => {
+        holds[scope].delete(token)
+      }
+    },
     dispose: () => {
       cancelRest()
       const run = settling
       settling = null
+      panning = false
+      holds.drag.clear()
+      holds.feedMove.clear()
       run?.animation.stop()
       setLatch(false)
     },
   }
 }
 
+/**
+ * `drag`: the child keeps every drag, and the feed's own moves wait.
+ * `feedMove`: only the feed's own moves wait, so a clip end loops.
+ */
+export type ExplorePagerHoldScope = "drag" | "feedMove"
+
+/** Holds the pager, and returns the one release; a second call does nothing. */
+export type ExplorePagerHold = (scope: ExplorePagerHoldScope) => () => void
+
+const ExplorePagerHoldContext = createContext<ExplorePagerHold | null>(null)
+
+/** For a child that scrolls on the pager's axis: on Fabric iOS, a pager that
+ *  takes the drag stops a nested scroll view. Null outside a pager. */
+export function useExplorePagerHold(): ExplorePagerHold | null {
+  return useContext(ExplorePagerHoldContext)
+}
+
 export function ExplorePager({
+  ref,
   renderSlot,
   renderUnderlay,
   canSwipeNext,
@@ -370,6 +432,7 @@ export function ExplorePager({
   onGestureLatchChange,
 }: ExplorePagerProps) {
   const reduceMotion = useReduceMotion()
+  const t = useT("Explore")
   const [placement, setPlacement] = useState(INITIAL_PLACEMENT)
   const [height, setHeight] = useState(() => Dimensions.get("window").height)
 
@@ -403,26 +466,30 @@ export function ExplorePager({
   // Dispose leaves only valid idle state, so StrictMode's remount needs no
   // restore step.
   useEffect(() => () => engine.dispose(), [engine])
+  useImperativeHandle(
+    ref,
+    () => ({ requestMove: (move) => engine.requestMove(move, "feed") }),
+    [engine],
+  )
 
   const accessibility = useMemo<ExplorePagerAccessibility>(() => {
     const actions: ExplorePagerAccessibility["accessibilityActions"] = []
     if (canSwipeNext) {
-      actions.push({ name: "next", label: EXPLORE_COPY.pagerActions.next })
+      actions.push({ name: "next", label: t("nextClipAriaLabel") })
     }
     if (canSwipePrevious) {
-      actions.push({
-        name: "previous",
-        label: EXPLORE_COPY.pagerActions.previous,
-      })
+      actions.push({ name: "previous", label: t("previousClipAriaLabel") })
     }
     return {
       accessibilityActions: actions,
       onAccessibilityAction: (event) => {
         const name = event.nativeEvent.actionName
-        if (name === "next" || name === "previous") engine.requestMove(name)
+        if (name === "next" || name === "previous") {
+          engine.requestMove(name, "viewer")
+        }
       },
     }
-  }, [canSwipeNext, canSwipePrevious, engine])
+  }, [canSwipeNext, canSwipePrevious, engine, t])
 
   const underlay = useMemo<ExplorePagerUnderlay>(
     () => ({
@@ -443,54 +510,56 @@ export function ExplorePager({
       onLayout={(event) => engine.layout(event.nativeEvent.layout.height)}
       {...engine.panHandlers}
     >
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          { top: placement.settleTop, bottom: -placement.settleTop },
-          { transform: [{ translateY: settle }] },
-        ]}
-      >
+      <ExplorePagerHoldContext.Provider value={engine.hold}>
         <Animated.View
           style={[
             StyleSheet.absoluteFill,
-            { top: placement.dragTop, bottom: -placement.dragTop },
-            { transform: [{ translateY: drag }] },
+            { top: placement.settleTop, bottom: -placement.settleTop },
+            { transform: [{ translateY: settle }] },
           ]}
         >
-          {renderUnderlay != null && (
-            <View
-              testID="explore-pager-underlay"
-              style={StyleSheet.absoluteFill}
-              pointerEvents="none"
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-            >
-              {renderUnderlay(underlay)}
-            </View>
-          )}
-          {EXPLORE_PAGER_SLOT_KEYS.map((key) => {
-            const role = roleOf(placement, key)
-            const isCurrent = role === "current"
-            return (
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFill,
+              { top: placement.dragTop, bottom: -placement.dragTop },
+              { transform: [{ translateY: drag }] },
+            ]}
+          >
+            {renderUnderlay != null && (
               <View
-                key={key}
-                pointerEvents={isCurrent ? "auto" : "none"}
-                accessibilityElementsHidden={!isCurrent}
-                importantForAccessibility={
-                  isCurrent ? "auto" : "no-hide-descendants"
-                }
-                style={underlay.pageStyle(role)}
+                testID="explore-pager-underlay"
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
               >
-                {renderSlot({
-                  key,
-                  role,
-                  accessibility: isCurrent ? accessibility : null,
-                })}
+                {renderUnderlay(underlay)}
               </View>
-            )
-          })}
+            )}
+            {EXPLORE_PAGER_SLOT_KEYS.map((key) => {
+              const role = roleOf(placement, key)
+              const isCurrent = role === "current"
+              return (
+                <View
+                  key={key}
+                  pointerEvents={isCurrent ? "auto" : "none"}
+                  accessibilityElementsHidden={!isCurrent}
+                  importantForAccessibility={
+                    isCurrent ? "auto" : "no-hide-descendants"
+                  }
+                  style={underlay.pageStyle(role)}
+                >
+                  {renderSlot({
+                    key,
+                    role,
+                    accessibility: isCurrent ? accessibility : null,
+                  })}
+                </View>
+              )
+            })}
+          </Animated.View>
         </Animated.View>
-      </Animated.View>
+      </ExplorePagerHoldContext.Provider>
     </View>
   )
 }

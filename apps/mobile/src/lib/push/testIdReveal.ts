@@ -10,14 +10,7 @@
  */
 import { Alert, type AlertButton } from "react-native"
 
-import {
-  PUSH_TEST_ID_ALERT_TITLE,
-  PUSH_TEST_ID_CLOSE_ACTION,
-  PUSH_TEST_ID_COPY_ACTION,
-  PUSH_TEST_ID_HELP,
-  PUSH_TEST_ID_NOTIFICATIONS_OFF,
-  PUSH_TEST_ID_REGISTERING,
-} from "./constants"
+import { pushTestIdCopy } from "./copy"
 import {
   getPushRegistrationStore,
   type PushRegistrationSnapshot,
@@ -36,29 +29,24 @@ export function pushTestIdAlert(
   copy: (testDeviceId: string) => void = copyPushTestId,
 ): PushTestIdAlert {
   const { testDeviceId, permission } = snapshot
+  const text = pushTestIdCopy()
   const close: AlertButton = {
-    text: PUSH_TEST_ID_CLOSE_ACTION,
+    text: text.close,
     style: "cancel",
   }
   if (testDeviceId == null || testDeviceId.length === 0) {
     return {
-      title: PUSH_TEST_ID_ALERT_TITLE,
+      title: text.title,
       message:
-        permission === "denied"
-          ? PUSH_TEST_ID_NOTIFICATIONS_OFF
-          : PUSH_TEST_ID_REGISTERING,
+        permission === "denied" ? text.notificationsOff : text.registering,
       buttons: [close],
     }
   }
-  const note =
-    permission === "denied" ? PUSH_TEST_ID_NOTIFICATIONS_OFF : PUSH_TEST_ID_HELP
+  const note = permission === "denied" ? text.notificationsOff : text.help
   return {
-    title: PUSH_TEST_ID_ALERT_TITLE,
+    title: text.title,
     message: `${testDeviceId}\n\n${note}`,
-    buttons: [
-      close,
-      { text: PUSH_TEST_ID_COPY_ACTION, onPress: () => copy(testDeviceId) },
-    ],
+    buttons: [close, { text: text.copy, onPress: () => copy(testDeviceId) }],
   }
 }
 

@@ -106,7 +106,6 @@ import {
   createReadingPositionStore,
   type ReadingPositionStore,
 } from "../../src/lib/bible/position/store"
-import { READER_COPY } from "../../src/lib/bible/reader/copy"
 import type { ReaderServices } from "../../src/lib/bible/reader/services"
 import type { ChapterCache } from "../../src/lib/bible/repository/chapterCache"
 import { createChapterRepository } from "../../src/lib/bible/repository/resolveChapter"
@@ -133,6 +132,10 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../src/test-utils/rnTestRenderer"
+import { getT } from "../../src/i18n/useT"
+
+const readerT = getT("BibleReader")
+const commonT = getT("Common")
 
 declare const __dirname: string
 const fs = jest.requireActual<{
@@ -275,7 +278,7 @@ function controls(renderer: TestInstance, matches: (label: string) => boolean) {
 function pills(renderer: TestInstance, passage: string) {
   return controls(
     renderer,
-    (label) => label === READER_COPY.choosePassage(passage),
+    (label) => label === readerT("choosePassageAriaLabel", { passage }),
   )
 }
 
@@ -362,7 +365,7 @@ describe("the pushed reader route (app/reader.tsx)", () => {
     install()
     mockRoute.params = readerHref(JOHN_3_16, "quote").params
     const renderer = await renderRoute(ReaderRoute)
-    const isBack = (label: string) => label === READER_COPY.back
+    const isBack = (label: string) => label === commonT("goBackAriaLabel")
     expect(controls(renderer, isBack)).toHaveLength(1)
     await press(renderer, isBack)
     expect(mockRoute.back).toHaveBeenCalledTimes(1)
@@ -376,7 +379,7 @@ describe("the Bible tab route (app/(tabs)/bible.tsx)", () => {
     const renderer = await renderRoute(BibleTabRoute)
     expect(pills(renderer, "Genesis 1:1")).toHaveLength(1)
     expect(
-      controls(renderer, (label) => label === READER_COPY.back),
+      controls(renderer, (label) => label === commonT("goBackAriaLabel")),
     ).toHaveLength(0)
   })
 
@@ -506,7 +509,8 @@ describe.each([
     const renderer = await open()
     await press(
       renderer,
-      (label) => label === READER_COPY.choosePassage("John 3:16"),
+      (label) =>
+        label === readerT("choosePassageAriaLabel", { passage: "John 3:16" }),
     )
     expect(mockRoute.push).toHaveBeenCalledTimes(1)
     expect(mockRoute.push).toHaveBeenCalledWith(
@@ -518,7 +522,7 @@ describe.each([
     const renderer = await open()
     await press(
       renderer,
-      (label) => label === READER_COPY.translation(BSB.name),
+      (label) => label === readerT("translationAriaLabel", { name: BSB.name }),
     )
     expect(mockRoute.push).toHaveBeenCalledWith(
       readerSheetHref("translation", CONTEXT),
@@ -527,23 +531,23 @@ describe.each([
 
   it("pushes the settings sheet's href", async () => {
     const renderer = await open()
-    await press(renderer, (label) => label === READER_COPY.settings)
+    await press(renderer, (label) => label === readerT("settingsAriaLabel"))
     expect(mockRoute.push).toHaveBeenCalledWith(
       readerSheetHref("settings", CONTEXT),
     )
   })
 
-  it("opens the download prompt for the shown translation, with no push", async () => {
+  // The owner (2026-10-01): the button is on the translation sheet's card.
+  it("has no download control on the reader", async () => {
     const renderer = await open()
-    await press(
-      renderer,
-      (label) => label === READER_COPY.download.onDevice(BSB.name),
+    const controls = renderer.root.findAll(
+      (node) =>
+        typeof node.props.onPress === "function" &&
+        node.props.accessibilityLabel ===
+          readerT("downloadOnDeviceAriaLabel", { name: BSB.name }),
     )
-    expect(presentReaderDownloadPrompt).toHaveBeenCalledTimes(1)
-    expect(
-      jest.mocked(presentReaderDownloadPrompt).mock.calls[0]?.[0],
-    ).toMatchObject({ translation: { id: "BSB" }, ref: JOHN_3_16 })
-    expect(mockRoute.push).not.toHaveBeenCalled()
+    expect(controls).toHaveLength(0)
+    expect(presentReaderDownloadPrompt).not.toHaveBeenCalled()
   })
 })
 

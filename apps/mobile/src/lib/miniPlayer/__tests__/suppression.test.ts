@@ -24,8 +24,8 @@ describe("isInAppSheetRoute", () => {
     expect(isInAppSheetRoute(pattern.split("/"))).toBe(true)
   })
 
-  it("covers the six group sheets and the three reader sheets", () => {
-    expect(IN_APP_SHEET_ROUTE_PATTERNS).toHaveLength(9)
+  it("covers the six group sheets, the three reader sheets, and feedback", () => {
+    expect(IN_APP_SHEET_ROUTE_PATTERNS).toHaveLength(10)
   })
 
   // feat-553 U10: root-stack routes, so each pattern is one bare segment.
@@ -55,6 +55,13 @@ describe("isInAppSheetRoute", () => {
     expect(
       miniPlayerPresentation(store.getSnapshot(), ["(tabs)", "bible"]),
     ).toBe("floating")
+  })
+
+  // A ROOT route, so its pattern is one bare segment — the list is not
+  // "everything under watch/ and series/".
+  it("treats the root feedback sheet as a sheet", () => {
+    expect(isInAppSheetRoute(["feedback"])).toBe(true)
+    expect(isSuppressedBySheet(["feedback"], 0)).toBe(true)
   })
 
   it.each([
@@ -139,6 +146,34 @@ describe("non-route sheet counter", () => {
     )
   })
 
+  it("suppresses while the player-door feedback sheet is open", () => {
+    // The More door is the ROUTE above; this id covers the modal the player
+    // door mounts, which cannot be a route (KTD4).
+    const counter = createNonRouteSheetCounter()
+    counter.open("feedbackModal")
+    expect(counter.count()).toBe(1)
+    expect(isSuppressedBySheet(["watch", "[slug]"], counter.count())).toBe(true)
+
+    counter.close("feedbackModal")
+    expect(counter.count()).toBe(0)
+    expect(isSuppressedBySheet(["watch", "[slug]"], counter.count())).toBe(
+      false,
+    )
+  })
+
+  it("counts the settings sheet and the feedback sheet apart", () => {
+    // The player door opens the second from inside the first, so one id
+    // releasing must not uncover the window while the other is still up.
+    const counter = createNonRouteSheetCounter()
+    counter.open("playerSettings")
+    counter.open("feedbackModal")
+    expect(counter.count()).toBe(2)
+    counter.close("playerSettings")
+    expect(counter.isPresented()).toBe(true)
+    counter.close("feedbackModal")
+    expect(counter.isPresented()).toBe(false)
+  })
+
   it("cannot underflow on a double close of the settings sheet", () => {
     const counter = createNonRouteSheetCounter()
     counter.open("playerSettings")
@@ -167,6 +202,25 @@ describe("non-route sheet counter", () => {
     unsubscribe()
     counter.open("sduiQuiz")
     expect(listener).toHaveBeenCalledTimes(2)
+  })
+
+  // The delete confirm draws inside its route, under the host on every
+  // platform; the other two are Modals, which iOS presents above the host.
+  it("counts only the inline sheets in inlineCount", () => {
+    const counter = createNonRouteSheetCounter()
+    counter.open("sduiQuiz")
+    counter.open("playerSettings")
+    // An RN Modal, so iOS draws it over the host: it must never count inline.
+    counter.open("feedbackModal")
+    expect(counter.count()).toBe(3)
+    expect(counter.inlineCount()).toBe(0)
+
+    counter.open("libraryDeleteConfirm")
+    expect(counter.count()).toBe(4)
+    expect(counter.inlineCount()).toBe(1)
+
+    counter.close("libraryDeleteConfirm")
+    expect(counter.inlineCount()).toBe(0)
   })
 })
 

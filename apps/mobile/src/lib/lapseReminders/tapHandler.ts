@@ -27,7 +27,7 @@ import {
   type PushAnnouncementKind,
   type PushAnnouncementParseReason,
 } from "../push/announcementPayload"
-import { PUSH_UNRESOLVABLE_DESTINATION_MESSAGE } from "../push/copy"
+import { pushUnresolvableDestinationMessage } from "../push/copy"
 import type { LapseReminderKind } from "./constants"
 import type { LapseReminderTelemetry } from "./lifecycle"
 import {
@@ -315,7 +315,7 @@ export function createLapseReminderTapHandler(
     }
     if (decision.notice) {
       try {
-        deps.showNotice(PUSH_UNRESOLVABLE_DESTINATION_MESSAGE)
+        deps.showNotice(pushUnresolvableDestinationMessage())
       } catch (error) {
         logFailure("notice", error)
       }

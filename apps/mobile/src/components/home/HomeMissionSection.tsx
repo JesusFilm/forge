@@ -19,6 +19,8 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useUiTag } from "../../hooks/useUiTag"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import {
   BG_COLOR,
   BLACK,
@@ -36,54 +38,49 @@ import {
 } from "../../styles/shared"
 import { homeCardWidth } from "./HomeCard"
 import {
-  BETA_CTA_LABEL,
   BETA_SIGNUP_URL,
-  HIGHLIGHTS_LABEL,
-  INVITE_EYEBROW,
-  MISSION_EYEBROW,
-  MISSION_HEADLINE,
   MISSION_WASH,
+  type MissionKey,
 } from "./missionContent"
 
 type MissionCardSpec = {
   key: string
-  eyebrow: string
-  title: string
+  eyebrowKey: MissionKey
+  titleKey: MissionKey
   icon: React.ComponentProps<typeof Ionicons>["name"]
   /** Gradient pair behind the card content. */
   wash: [string, string]
   action: "mission" | "roadmap" | "beta"
-  accessibilityHint: string
+  hintKey: MissionKey
 }
 
 const CARDS: readonly MissionCardSpec[] = [
   {
     key: "mission",
-    eyebrow: "Our mission",
-    title: MISSION_HEADLINE,
+    eyebrowKey: "missionCardEyebrow",
+    titleKey: "headline",
     icon: "globe-outline",
     wash: [MISSION_WASH.burgundy, MISSION_WASH.purple],
     action: "mission",
-    accessibilityHint: "Opens the Jesus Film mission page",
+    hintKey: "missionCardAriaHint",
   },
   {
     key: "building-next",
-    eyebrow: "Roadmap",
-    title: HIGHLIGHTS_LABEL,
+    eyebrowKey: "roadmapCardEyebrow",
+    titleKey: "highlightsHeading",
     icon: "construct-outline",
     wash: [MISSION_WASH.purple, MISSION_WASH.burgundy],
     action: "roadmap",
-    accessibilityHint:
-      "Opens the Jesus Film mission page at the roadmap section",
+    hintKey: "roadmapCardAriaHint",
   },
   {
     key: "beta",
-    eyebrow: INVITE_EYEBROW,
-    title: BETA_CTA_LABEL,
+    eyebrowKey: "inviteEyebrow",
+    titleKey: "betaCta",
     icon: "person-add-outline",
     wash: [MISSION_WASH.ember, MISSION_WASH.burgundy],
     action: "beta",
-    accessibilityHint: "Opens the beta signup in your browser",
+    hintKey: "betaCardAriaHint",
   },
 ] as const
 
@@ -93,6 +90,10 @@ const CARD_RIPPLE = { color: "rgba(255, 255, 255, 0.08)" }
 
 export const HomeMissionSection = memo(function HomeMissionSection() {
   const typography = useTypography()
+  const t = useT("Mission")
+  const tHome = useT("Home")
+  const epoch = useLocaleEpoch()
+  const uiTag = useUiTag()
   const router = useRouter()
   const { width: screenWidth } = useWindowDimensions()
   const cardWidth = homeCardWidth("landscape", screenWidth)
@@ -123,8 +124,9 @@ export const HomeMissionSection = memo(function HomeMissionSection() {
         ]}
         android_ripple={CARD_RIPPLE}
         accessibilityRole="button"
-        accessibilityLabel={spec.title}
-        accessibilityHint={spec.accessibilityHint}
+        accessibilityLabel={t(spec.titleKey)}
+        accessibilityHint={t(spec.hintKey)}
+        {...{ "dd-action-name": `home-mission-${spec.key}` }}
       >
         <LinearGradient
           colors={[
@@ -147,24 +149,24 @@ export const HomeMissionSection = memo(function HomeMissionSection() {
         />
         <View style={styles.cardFooter}>
           <Text style={[styles.cardEyebrow, typography.caption]}>
-            {spec.eyebrow.toUpperCase()}
+            {t(spec.eyebrowKey).toLocaleUpperCase(uiTag)}
           </Text>
           <Text
             style={[styles.cardTitle, typography.titleSmall]}
             numberOfLines={2}
           >
-            {spec.title}
+            {t(spec.titleKey)}
           </Text>
         </View>
       </Pressable>
     ),
-    [typography, cardWidth, handlePress],
+    [typography, cardWidth, handlePress, t, uiTag],
   )
 
   return (
     <View style={styles.container}>
       <Text style={[text.eyebrow, styles.headerEyebrow, typography.caption]}>
-        {MISSION_EYEBROW}
+        {t("eyebrow")}
       </Text>
 
       <FlatList
@@ -172,12 +174,16 @@ export const HomeMissionSection = memo(function HomeMissionSection() {
         data={CARDS}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
+        extraData={epoch}
         showsHorizontalScrollIndicator={false}
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
         contentContainerStyle={styles.railContent}
-        accessibilityLabel={`${CARDS.length} items in ${MISSION_EYEBROW}`}
+        accessibilityLabel={tHome("shelfAriaLabel", {
+          count: CARDS.length,
+          shelf: t("eyebrow"),
+        })}
       />
     </View>
   )

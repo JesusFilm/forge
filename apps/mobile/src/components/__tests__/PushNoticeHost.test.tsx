@@ -37,12 +37,12 @@ jest.mock("expo-router", () => ({
 
 import { act } from "react"
 
-import { PUSH_UNRESOLVABLE_DESTINATION_MESSAGE } from "../../lib/push/copy"
 import {
   clearPushNotice,
   publishPushNotice,
   resetPushNoticesForTests,
 } from "../../lib/push/notice"
+
 import {
   TestRenderer,
   hasText,
@@ -51,6 +51,10 @@ import {
   type TestInstance,
 } from "../../test-utils/rnTestRenderer"
 import { PushNoticeHost } from "../PushNoticeHost"
+
+// The English catalog text, written out so a broken key cannot pass.
+const UNRESOLVABLE_MESSAGE =
+  "We could not open that announcement. Here is the home screen."
 
 /** Every renderer this file made, so each one is unmounted before teardown. */
 const mounted: TestInstance[] = []
@@ -89,24 +93,24 @@ describe("the push notice host", () => {
     const renderer = await renderHost()
 
     await act(async () => {
-      publishPushNotice(PUSH_UNRESOLVABLE_DESTINATION_MESSAGE)
+      publishPushNotice(UNRESOLVABLE_MESSAGE)
     })
 
-    expect(hasText(renderer, PUSH_UNRESOLVABLE_DESTINATION_MESSAGE)).toBe(true)
+    expect(hasText(renderer, UNRESOLVABLE_MESSAGE)).toBe(true)
   })
 
   it("shows a notice published BEFORE it mounted (the cold tap)", async () => {
     // The tap handler runs from the last-response read, which can settle before
     // this host's first render. A channel with no buffer loses that notice.
-    publishPushNotice(PUSH_UNRESOLVABLE_DESTINATION_MESSAGE)
+    publishPushNotice(UNRESOLVABLE_MESSAGE)
 
     const renderer = await renderHost()
 
-    expect(hasText(renderer, PUSH_UNRESOLVABLE_DESTINATION_MESSAGE)).toBe(true)
+    expect(hasText(renderer, UNRESOLVABLE_MESSAGE)).toBe(true)
   })
 
   it("stops rendering once the notice is cleared", async () => {
-    publishPushNotice(PUSH_UNRESOLVABLE_DESTINATION_MESSAGE)
+    publishPushNotice(UNRESOLVABLE_MESSAGE)
     const renderer = await renderHost()
 
     await act(async () => {

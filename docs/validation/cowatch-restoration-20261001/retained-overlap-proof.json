@@ -1,0 +1,396 @@
+{
+  "observedAt": "2026-09-30T20:08:46.228Z",
+  "synthetic": true,
+  "productionAccess": false,
+  "sourceSqlSha256": "8ea1b92eb07fb56fd560c6c2bb90eb294c2e057c806983c93482259964b00f1c",
+  "serviceSha256": "5a3e6df9ad6134900df40f5ea50be730f99fe9ec54d014e6008da90c3f17666d",
+  "migrations": 126,
+  "environment": {
+    "postgres": "18",
+    "containerCpuLimit": 2,
+    "containerMemoryMiB": 1024,
+    "nodeMaxOldSpaceMiB": 256,
+    "statementTimeoutMs": 5000,
+    "lockTimeoutMs": 1000,
+    "jit": false,
+    "workMem": "4MB",
+    "tempFileLimit": "256MB",
+    "maxParallelWorkersPerGather": 0
+  },
+  "fixture": {
+    "rawEpisodes": 40605,
+    "qualifiedEpisodes": 6841,
+    "unqualifiedEpisodes": 33764,
+    "retainedProfileSessions": 60,
+    "rawRowsPerRetainedSession": 49,
+    "capturedProfileSourcesPerGeneration": 1034,
+    "liveLinkedSessions": 1298,
+    "matchedEpisodes": 2940,
+    "expectedMatchesPerRetainedReceipt": 50,
+    "omitted": "anonymous retained source records, playback fact payloads, edges and contributions; no serving/release authority",
+    "scope": "Identical profile-backed receipts copied across retained generations to isolate worst-case overlap fanout; not a real rolling calendar distribution"
+  },
+  "samples": [
+    {
+      "generations": 3,
+      "retainedProfileReceipts": 3102,
+      "expectedRetainedMatches": 155100,
+      "footprintBefore": {
+        "bytes": "129898175",
+        "temp_bytes": "0"
+      },
+      "queryMs": 2054.317405,
+      "rows": 40605,
+      "fields": [
+        "outcomeId",
+        "episodeId",
+        "revision",
+        "mediaId",
+        "sessionDigest",
+        "occurredAt",
+        "qualityWeight",
+        "factWatermark",
+        "nextFactSequence",
+        "conflictCount",
+        "replayCount",
+        "requestId",
+        "qualified",
+        "finalized",
+        "expiresAt",
+        "episodeExpiresAt",
+        "profileId",
+        "privacyGeneration",
+        "eligibilityDecisionId",
+        "eligibilityRevision",
+        "eligibilityPolicyVersion",
+        "integrityEligible"
+      ],
+      "qualified": 6841,
+      "integrityEligible": 6841,
+      "profileIdentified": 4238,
+      "rowOrderAndFieldDigest": "6dea06c17a7b6ff63f8e69dc190422fa588227616982e5648be546ae3bf83ecc",
+      "status": "passed",
+      "explain": {
+        "planningMs": 2.705,
+        "executionMs": 1748.192,
+        "tempReadBlocks": 11765,
+        "tempWrittenBlocks": 10031,
+        "sharedHitBlocks": 308212,
+        "sharedReadBlocks": 0
+      },
+      "footprintAfter": {
+        "bytes": "129898175",
+        "temp_bytes": "163074904"
+      }
+    },
+    {
+      "generations": 60,
+      "retainedProfileReceipts": 62040,
+      "expectedRetainedMatches": 3102000,
+      "footprintBefore": {
+        "bytes": "186226367",
+        "temp_bytes": "163074904"
+      },
+      "status": "refused",
+      "elapsedMs": 5022.125284000002,
+      "sqlstate": "57014",
+      "reason": "canceling statement due to statement timeout",
+      "footprintAfter": {
+        "bytes": "186226367",
+        "temp_bytes": "340890162"
+      }
+    }
+  ],
+  "initialFootprint": {
+    "bytes": "126719679",
+    "temp_bytes": "0"
+  },
+  "exactRowsAndOrderEqual": null,
+  "completedAt": "2026-09-30T20:09:16.447Z",
+  "comparisonStatus": "unavailable_at_60_generations_due_to_statement_timeout",
+  "productionPublicationPerformed": false,
+  "applicationPublisherInvoked": false,
+  "fixtureGraphMetadataSeeded": true,
+  "resourceBound": {
+    "maxObservedDatabaseBytes": 186226367,
+    "perQueryTempLimitBytes": 268435456,
+    "parallelWorkers": 0,
+    "maxDatabasePlusCappedQueryTempBytes": 454661823,
+    "budgetBytes": 1073741824,
+    "notes": "Single query connection; no edge/contribution payloads. PostgreSQL temp_bytes is cumulative bytes written, not peak disk occupancy. Existing shared container WAL is not attributed to this child database.",
+    "combinedPreservedDatabaseBytes": 352415102,
+    "combinedPreservedDatabasesPlusCappedQueryTempBytes": 620850558
+  },
+  "method": {
+    "query": "Exact literal candidate finite-source SQL used in same-snapshot production comparison, copied without EXPLAIN wrapper; unchanged fixed source cutoff and now between cases.",
+    "mutation": "Synthetic inserts only in new owned loopback child DB; all126migrations; only retained graph/source metadata grew between measured cases.",
+    "statistics": "ANALYZE after raw seeding and at3/60generations; normal4MiBwork_mem and JIToff; localserialworker adds a documented fixturelimit.",
+    "checks": "All40,605ordered raw rows and fields SHA256 at3generations.60case timedoutbefore results; no equivalenceclaim.",
+    "baselinePlan": "EXPLAIN ANALYZE verified155,100actual retained_matches rows at3generations.60predicted3,102,000fromidentical repeated1034source groups; noEXPLAIN ANALYZE retried after60refusal."
+  },
+  "limits": [
+    "Synthetic distribution matches observed fanout approximately, not a replay of private data.",
+    "Identical retained identity sets copied60times stress maximum overlap; real rolling seven-day windows may retain fewer matching generations.",
+    "No anonymous retainedsource heap, production fact payloads, edges/contributions, server traffic, or publication writes modeled.",
+    "Two-CPU1GiB local PostgreSQL while applicationbuild runs; timings do not certify production latency.",
+    "The60-generation statement timed out; exactrows/order comparison is unavailable, not a failed equality assertion."
+  ],
+  "cleanupStatus": "Both owned child databases preserved for orchestrator cleanup; shared container released to final validation worker. No other database changed.",
+  "reproduction": {
+    "directory": "/tmp/cowatch-overlap-proof",
+    "seedSqlSha256": "66e45954e4f52dc71f8c0128f40082196bb4a119e4d14ef19643644e8cebcca1",
+    "runnerSha256": "2c0edc5f64c296a5bd173dd26cd7aeaf4239eff2bf6ed01204c56979af288d5f",
+    "originalRunnerSha256": "2c0edc5f64c296a5bd173dd26cd7aeaf4239eff2bf6ed01204c56979af288d5f"
+  },
+  "initialFinding": "Current materialized raw-episode×retained-receipt expansion fails the unchanged5-second query bound at representative/conservative60-generation overlap. Preaggregateownershipandpreferredidentitybysession/episode beforejoiningthe raw population.",
+  "initialFindingStatus": "resolved by grouped retained-ownership source-query rewrite; five-second and temporary-file limits unchanged",
+  "fixedCandidate": {
+    "observedAt": "2026-09-30T20:13:30.357Z",
+    "synthetic": true,
+    "productionAccess": false,
+    "sourceSqlSha256": "9544c57b335b053d1734b00db8087ad336ca4c5bb15e40ba2a9c90faa9e7a111",
+    "serviceSha256": "5f20d1bb46c2042326f6c01ae516bc04f31a4a75b9d1452ba5574f9dffb2388b",
+    "migrations": 126,
+    "environment": {
+      "postgres": "18",
+      "containerCpuLimit": 2,
+      "containerMemoryMiB": 1024,
+      "nodeMaxOldSpaceMiB": 256,
+      "statementTimeoutMs": 5000,
+      "lockTimeoutMs": 1000,
+      "jit": false,
+      "workMem": "4MB",
+      "tempFileLimit": "256MB",
+      "maxParallelWorkersPerGather": 0
+    },
+    "fixture": {
+      "rawEpisodes": 40605,
+      "qualifiedEpisodes": 6841,
+      "unqualifiedEpisodes": 33764,
+      "retainedProfileSessions": 60,
+      "rawRowsPerRetainedSession": 49,
+      "capturedProfileSourcesPerGeneration": 1034,
+      "liveLinkedSessions": 1298,
+      "matchedEpisodes": 2940,
+      "expectedMatchesPerRetainedReceipt": 50,
+      "omitted": "anonymous retained source records, playback fact payloads, edges and contributions; no serving/release authority",
+      "scope": "Identical profile-backed receipts copied across retained generations to isolate worst-case overlap fanout; not a real rolling calendar distribution",
+      "actualIntermediateShape": "At 60 generations: 62,040 retained receipts reduce to 60 session keys and 1,034 episode keys, without a 3,102,000-row match materialization."
+    },
+    "samples": [
+      {
+        "generations": 3,
+        "retainedProfileReceipts": 3102,
+        "expectedRetainedMatches": 155100,
+        "footprintBefore": {
+          "bytes": "109868735",
+          "temp_bytes": "0"
+        },
+        "queryMs": 2053.923262000002,
+        "rows": 40605,
+        "fields": [
+          "outcomeId",
+          "episodeId",
+          "revision",
+          "mediaId",
+          "sessionDigest",
+          "occurredAt",
+          "qualityWeight",
+          "factWatermark",
+          "nextFactSequence",
+          "conflictCount",
+          "replayCount",
+          "requestId",
+          "qualified",
+          "finalized",
+          "expiresAt",
+          "episodeExpiresAt",
+          "profileId",
+          "privacyGeneration",
+          "eligibilityDecisionId",
+          "eligibilityRevision",
+          "eligibilityPolicyVersion",
+          "integrityEligible"
+        ],
+        "qualified": 6841,
+        "integrityEligible": 6841,
+        "profileIdentified": 4238,
+        "rowOrderAndFieldDigest": "6dea06c17a7b6ff63f8e69dc190422fa588227616982e5648be546ae3bf83ecc",
+        "status": "passed",
+        "explain": {
+          "planningMs": 5.273,
+          "executionMs": 1303.636,
+          "tempReadBlocks": 5257,
+          "tempWrittenBlocks": 5362,
+          "sharedHitBlocks": 308212,
+          "sharedReadBlocks": 0,
+          "ctes": {
+            "canonical": {
+              "actualRows": 40605,
+              "actualLoops": 1
+            },
+            "latest": {
+              "actualRows": 40605,
+              "actualLoops": 1
+            },
+            "retained": {
+              "actualRows": 3102,
+              "actualLoops": 1
+            },
+            "session_ownership": {
+              "actualRows": 60,
+              "actualLoops": 1
+            },
+            "episode_ownership": {
+              "actualRows": 1034,
+              "actualLoops": 1
+            },
+            "valid_retained": {
+              "actualRows": 3102,
+              "actualLoops": 1
+            },
+            "retained_session_identity": {
+              "actualRows": 60,
+              "actualLoops": 1
+            },
+            "retained_episode_identity": {
+              "actualRows": 1034,
+              "actualLoops": 1
+            },
+            "linked_identity": {
+              "actualRows": 1298,
+              "actualLoops": 1
+            }
+          },
+          "planSha256": "36deaf774c4f4b7acff66a9a4ee206a33a116179eb0437a48c294bda046fc86c"
+        },
+        "footprintAfter": {
+          "bytes": "109868735",
+          "temp_bytes": "86608774"
+        },
+        "expectedRetainedMatchesMeaning": "Counterfactual expanded-row count in the first candidate; grouped candidate does not materialize these matches"
+      },
+      {
+        "generations": 60,
+        "retainedProfileReceipts": 62040,
+        "expectedRetainedMatches": 3102000,
+        "footprintBefore": {
+          "bytes": "166188735",
+          "temp_bytes": "86608774"
+        },
+        "queryMs": 2330.947054,
+        "rows": 40605,
+        "fields": [
+          "outcomeId",
+          "episodeId",
+          "revision",
+          "mediaId",
+          "sessionDigest",
+          "occurredAt",
+          "qualityWeight",
+          "factWatermark",
+          "nextFactSequence",
+          "conflictCount",
+          "replayCount",
+          "requestId",
+          "qualified",
+          "finalized",
+          "expiresAt",
+          "episodeExpiresAt",
+          "profileId",
+          "privacyGeneration",
+          "eligibilityDecisionId",
+          "eligibilityRevision",
+          "eligibilityPolicyVersion",
+          "integrityEligible"
+        ],
+        "qualified": 6841,
+        "integrityEligible": 6841,
+        "profileIdentified": 4238,
+        "rowOrderAndFieldDigest": "6dea06c17a7b6ff63f8e69dc190422fa588227616982e5648be546ae3bf83ecc",
+        "status": "passed",
+        "explain": {
+          "planningMs": 6.754,
+          "executionMs": 2303.104,
+          "tempReadBlocks": 11511,
+          "tempWrittenBlocks": 10152,
+          "sharedHitBlocks": 311750,
+          "sharedReadBlocks": 0,
+          "ctes": {
+            "canonical": {
+              "actualRows": 40605,
+              "actualLoops": 1
+            },
+            "latest": {
+              "actualRows": 40605,
+              "actualLoops": 1
+            },
+            "retained": {
+              "actualRows": 62040,
+              "actualLoops": 1
+            },
+            "session_ownership": {
+              "actualRows": 60,
+              "actualLoops": 1
+            },
+            "episode_ownership": {
+              "actualRows": 1034,
+              "actualLoops": 1
+            },
+            "valid_retained": {
+              "actualRows": 62040,
+              "actualLoops": 1
+            },
+            "retained_session_identity": {
+              "actualRows": 60,
+              "actualLoops": 1
+            },
+            "retained_episode_identity": {
+              "actualRows": 1034,
+              "actualLoops": 1
+            },
+            "linked_identity": {
+              "actualRows": 1298,
+              "actualLoops": 1
+            }
+          },
+          "planSha256": "9b7638904f076b83de3ab0f3f30545a9c229b4d338c07d7cea4e12a27a1cf87a"
+        },
+        "footprintAfter": {
+          "bytes": "166188735",
+          "temp_bytes": "251606654"
+        },
+        "expectedRetainedMatchesMeaning": "Counterfactual expanded-row count in the first candidate; grouped candidate does not materialize these matches"
+      }
+    ],
+    "initialFootprint": {
+      "bytes": "106673855",
+      "temp_bytes": "0"
+    },
+    "exactRowsAndOrderEqual": true,
+    "completedAt": "2026-09-30T20:14:02.327Z",
+    "productionPublicationPerformed": false,
+    "applicationPublisherInvoked": false,
+    "fixtureGraphMetadataSeeded": true,
+    "algorithm": "Retained ownership flags and preferred identities are reduced separately by session and episode before joining raw rows; live-link > exact-episode > session precedence remains unchanged.",
+    "originalThreeGenerationDigestEqual": true,
+    "reproduction": {
+      "directory": "/tmp/cowatch-overlap-proof/fixed",
+      "seedSqlSha256": "66e45954e4f52dc71f8c0128f40082196bb4a119e4d14ef19643644e8cebcca1",
+      "runnerSha256": "29cd8e12e604b0b4834796486addfc4051adbf263a939cb54c14229b09dad9cd"
+    }
+  },
+  "fixedCandidateReview": {
+    "status": "no actionable semantic issue found",
+    "reviewed": [
+      "Raw newest-outcome selection and 50,001 sentinel preserved",
+      "Known invalid ownership from either session or exact episode still rejects influence",
+      "Known ownership without a valid current identity cannot fall back to anonymous",
+      "Live link wins exact-episode retained identity, which wins session retained identity",
+      "Identity tie ordering remains occurred_at DESC, id DESC",
+      "Foreign-session exact-episode identity and invalid-owner fencing covered by frozen-reference native test"
+    ],
+    "nativeResultReportedBySourceOwner": "Frozen-original source rows and complete graph equivalence passed after adding 60 retained generations and both ownership fences."
+  },
+  "finalConclusion": "Grouped query passes the representative/conservative 60-generation synthetic workload at 2,331 ms within the unchanged 5-second statement bound; complete ordered row digests match original 3-generation and grouped 3-generation results. This is synthetic source-read evidence, not production publication or serving proof."
+}

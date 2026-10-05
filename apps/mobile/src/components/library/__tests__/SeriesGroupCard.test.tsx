@@ -107,12 +107,16 @@ afterEach(() => {
 
 describe("SeriesGroupCard video count", () => {
   /** The meta line interpolates the count, so its children are an array. */
+  /** The meta line leads with the count, then " · " and the size. */
   function metaHas(renderer: TestInstance, text: string): boolean {
     return (
       renderer.root.findAll(
         (node) =>
           Array.isArray(node.props.children) &&
-          (node.props.children as unknown[]).includes(text),
+          (node.props.children as unknown[]).some(
+            (child) =>
+              typeof child === "string" && child.startsWith(`${text} · `),
+          ),
       ).length > 0
     )
   }

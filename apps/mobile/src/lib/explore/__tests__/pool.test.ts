@@ -135,7 +135,7 @@ const ULTIMATE_COACH_SUBTITLED: Row = {
 
 function inventory(overrides: Partial<NonNullable<Inventory>> = {}): Inventory {
   return {
-    language: { slug: "english" },
+    language: { slug: "english", name: null },
     audioCollections: [],
     audioVideos: [],
     subtitleOnlyVideos: [],
@@ -180,6 +180,7 @@ function readyClip(overrides: Partial<ReadyClip> = {}): ReadyClip {
     subtitleOnly: false,
     window: { startSeconds: 42.5, endSeconds: 71.25 },
     cut: "sentence",
+    textSlug: "english",
     ...overrides,
   }
 }
@@ -190,7 +191,7 @@ describe("projectInventory", () => {
   it("keeps videos and playable films, drops containers, and keeps each subtitle-only fallback slug", () => {
     const projected = projectInventory(
       inventory({
-        language: { slug: "chinese-simplified" },
+        language: { slug: "chinese-simplified", name: null },
         audioCollections: [
           JESUS,
           IMPULSES_SERIES,
@@ -397,6 +398,34 @@ describe("parseStoredPool / serializePool", () => {
     )
   })
 
+  // R9 (U7): the empty state names the feed language in the UI locale, so the
+  // pool keeps Admin's name map beside its rows.
+  it("keeps the language's name map, string values only, through a round trip", () => {
+    const projected = projectInventory(
+      inventory({
+        language: {
+          slug: "russian",
+          name: { en: "Russian", ru: "Русский", fr: 7, de: "" },
+        },
+        audioVideos: [SERMON],
+      }),
+      "russian",
+      T0,
+    )
+    expect(projected.languageName).toEqual({ en: "Russian", ru: "Русский" })
+    expect(parseStoredPool(serializePool(projected), "russian")).toEqual(
+      projected,
+    )
+  })
+
+  it("reads a pool stored before the name map as one with no name", () => {
+    const stored = JSON.parse(serializePool(pool())) as Record<string, unknown>
+    delete stored.n
+    expect(
+      parseStoredPool(JSON.stringify(stored), "english")?.languageName,
+    ).toBeNull()
+  })
+
   it.each([
     ["null", null],
     ["bad JSON", "{not json"],
@@ -461,11 +490,40 @@ describe("the stored ready clip", () => {
     expect(parseStoredReadyClip(raw)).toBeNull()
   })
 
+  it("round-trips the text's language and its text slug (U7)", () => {
+    const clip = readyClip({
+      title: "Нагорная проповедь",
+      titleLang: "ru",
+      descriptionLang: "en",
+      textSlug: "russian",
+    })
+    expect(parseStoredReadyClip(serializeReadyClip(clip, T0))?.clip).toEqual(
+      clip,
+    )
+  })
+
   const context = {
     feedLanguageSlug: "english",
+    textSlug: "english",
     poolFetchedAt: T0,
     recordedWindows: () => [],
   }
+
+  // R4: the stored clip's text is in the language it was read with.
+  it("is dropped when the UI text language changed since it was stored", () => {
+    const stored = { storedAt: T0 + 1, clip: readyClip() }
+    expect(
+      usableStoredClip(stored, { ...context, textSlug: "russian" }),
+    ).toBeNull()
+  })
+
+  it("is dropped when it was stored before its text language was kept", () => {
+    const stored = {
+      storedAt: T0 + 1,
+      clip: readyClip({ textSlug: undefined }),
+    }
+    expect(usableStoredClip(stored, context)).toBeNull()
+  })
 
   it("is used when it is newer than the pool, unrecorded, and in the feed language", () => {
     const stored = { storedAt: T0 + 1, clip: readyClip() }

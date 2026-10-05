@@ -31,6 +31,7 @@ function hybridDetail(): RecommendationRequestDetailData {
     classifierVersion: "active-watch-proxy-v1",
     seedMediaId: "seed-video",
     locale: "en",
+    deliveryDiagnostics: null,
     expectedItemCount: 6,
     state: "issued",
     result: "served",

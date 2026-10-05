@@ -1,3 +1,4 @@
+import { SUBMIT_FEEDBACK_OPERATION_NAME } from "./feedbackQueries"
 import { isPushOperation } from "./push/operationNames"
 import { isRecommendationOperation } from "./recommendations/operationNames"
 
@@ -16,10 +17,10 @@ export function buildAuthHeaders(
 export const SEARCH_OPERATION_NAME = "WatchSearch"
 
 /**
- * The operations that carry the fleet bearer. On `WatchSearch` (a PUBLIC
- * resolver) it is not an auth requirement — it buys the per-device rate-limit
- * bucket (`consumer:<key>:v:<viewer_id>`) instead of the coarse, CGNAT-collapsed
- * `public:<ip>` one. On the recommendation operations admin REQUIRES it: a
+ * The operations that carry the fleet bearer. On `WatchSearch` and
+ * `SubmitFeedback` (PUBLIC resolvers) it is not an auth requirement — it buys
+ * the per-device rate-limit bucket (`consumer:<key>:v:<viewer_id>`) instead of
+ * the coarse, CGNAT-collapsed `public:<ip>` one. On the recommendation operations admin REQUIRES it: a
  * fleet caller is admitted only with the bearer plus a proven viewer handle.
  * The two push writes require it the same way, through their own admission
  * predicate (KTD7). On any other public op it would pool the whole fleet into
@@ -28,6 +29,7 @@ export const SEARCH_OPERATION_NAME = "WatchSearch"
 export function carriesFleetBearer(operationName: string | undefined): boolean {
   return (
     operationName === SEARCH_OPERATION_NAME ||
+    operationName === SUBMIT_FEEDBACK_OPERATION_NAME ||
     isRecommendationOperation(operationName) ||
     isPushOperation(operationName)
   )

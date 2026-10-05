@@ -70,6 +70,39 @@ jest.mock("../../../lib/explore/telemetry", () => ({
   ...jest.requireActual("../../../lib/explore/telemetry"),
   getExploreTelemetry: () => mockTelemetry.instance,
 }))
+// A fixture `ru` catalog joins the real set. The store stays English until a
+// case starts the locale sync.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(
+      jest.requireActual("../../../i18n/catalogs.generated"),
+      {
+        ru: {
+          Explore: {
+            clipSurfaceAriaHint: "Запускает клип или ставит его на паузу",
+            nextClipAriaLabel: "Следующий клип",
+            previousClipAriaLabel: "Предыдущий клип",
+          },
+        },
+      },
+    ),
+)
+jest.mock("../../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../../i18n/pluralData.generated"),
+      ["ru"],
+    ),
+)
 
 type Listener = () => void
 
@@ -168,10 +201,14 @@ import {
   STANDBY_LOAD_AFTER_BUFFERED_SECONDS,
 } from "../../../hooks/useFeedPlayers"
 import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import {
   CLIP_EPISODE_START_MS,
   resetClipEvidenceBudgetForTests,
 } from "../../../lib/explore/clipEvidence"
-import { EXPLORE_COPY } from "../../../lib/explore/copy"
 import {
   DEMOTION_STORAGE_KEY,
   parseStoredDemotion,
@@ -212,6 +249,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { phoneLocales } from "../../../test-utils/uiLocaleFixture"
 
 const video = jest.requireMock("expo-video") as ExpoVideoMock
 const [A, B] = video.__players
@@ -263,6 +301,7 @@ const recordEntry = (n: number) => ({
 function queueResult(): ExploreClipQueue {
   return {
     feedLanguageSlug: "english",
+    feedLanguageName: "English",
     signal: null,
     retry: jest.fn(),
     poolState: null,
@@ -1198,6 +1237,39 @@ describe("a swipe (AE8, R6, R7)", () => {
   })
 })
 
+// The owner (2026-09-30), changing R8: a clip that ends moves the feed on, as
+// a swipe would. It loops only when the feed has no next clip to move to.
+describe("the end of a clip", () => {
+  it("moves to the next clip, and logs the move apart from the viewer's swipes", async () => {
+    await startWithStandby()
+
+    await tick(A, END + 0.1)
+    expect(overlay().props.clip).toMatchObject({ videoId: "video-2" })
+    expect(B.playing).toBe(true)
+    expect(A.playing).toBe(false)
+    expect(loads(B)).toEqual([feedUrl(2)])
+    await advance(REST)
+
+    expect(
+      logged("explore.swipe").map(({ context }) => [
+        context.explore_preload_hit,
+        context.explore_swipe_direction,
+        context.explore_swipe_trigger,
+      ]),
+    ).toEqual([[true, "forward", "clipEnd"]])
+  })
+
+  it("loops when no next clip is ready", async () => {
+    await startFirstClip()
+
+    await tick(A, END + 0.1)
+    expect(overlay().props.clip).toMatchObject({ videoId: "video-1" })
+    expect(A.currentTime).toBe(START)
+    expect(A.playing).toBe(true)
+    expect(logged("explore.swipe")).toEqual([])
+  })
+})
+
 // ── KTD13, R45: blur and return ─────────────────────────────────────
 
 describe("a blur and a return (KTD13, R45)", () => {
@@ -1319,7 +1391,7 @@ describe("the screen reader (R35)", () => {
       { name: "next", label: "Next clip" },
     ])
     expect(surface().props.accessibilityLabel).toBe("Clip 1")
-    expect(surface().props.accessibilityHint).toBe(EXPLORE_COPY.clipSurfaceHint)
+    expect(surface().props.accessibilityHint).toBe("Plays or pauses the clip")
     sendEvent.mockClear()
 
     await swipeNext()
@@ -1491,6 +1563,56 @@ describe("a demotion (KTD3)", () => {
   })
 })
 
+// ── R7, KTD5: a UI language change ──────────────────────────────────
+
+describe("a UI language change (R7, KTD5)", () => {
+  beforeEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+  })
+  afterEach(() => resetLocaleStoreForTests())
+
+  it("re-renders the pager's text in the new language without resetting the clip queue", async () => {
+    await startWithStandby()
+    const mounts = viewLife.mounts
+    expect(surface().props.accessibilityHint).toBe("Plays or pauses the clip")
+
+    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
+    await act(async () => {
+      refreshLocale()
+    })
+
+    expect(surface().props.accessibilityHint).toBe(
+      "Запускает клип или ставит его на паузу",
+    )
+    expect(surface().props.accessibilityActions).toEqual([
+      { name: "next", label: "Следующий клип" },
+    ])
+    // The same clip plays on: no reload, no remount, no new queue state.
+    expect(surface().props.accessibilityLabel).toBe("Clip 1")
+    expect(loads(A)).toEqual([feedUrl(1)])
+    expect(loads(B)).toEqual([feedUrl(2)])
+    expect(A.playing).toBe(true)
+    expect(veilShown()).toBe(false)
+    expect(viewLife.mounts).toBe(mounts)
+    expect(liveViews()).toBe(2)
+    expect(latestInput().currentClip?.videoId).toBe("video-1")
+    expect(latestInput().nextClip?.videoId).toBe("video-2")
+    expect(mockQueue.result.retry).not.toHaveBeenCalled()
+
+    // A move after the change still works, and its actions read Russian.
+    await swipeNext()
+    expect(surface().props.accessibilityLabel).toBe("Clip 2")
+    expect(B.playing).toBe(true)
+    expect(surface().props.accessibilityActions).toContainEqual({
+      name: "previous",
+      label: "Предыдущий клип",
+    })
+  })
+})
+
 // ── R36, R47: the offline state ─────────────────────────────────────
 
 describe("the offline state (R36)", () => {
@@ -1500,7 +1622,7 @@ describe("the offline state (R36)", () => {
     await feed.setFocused(true)
     const retry = (renderer!.root as Node).findAll(
       (node) =>
-        node.props.accessibilityLabel === EXPLORE_COPY.retry &&
+        node.props.accessibilityLabel === "Try again" &&
         typeof node.props.onPress === "function",
     )[0]
     expect(retry).toBeDefined()
@@ -1512,7 +1634,7 @@ describe("the offline state (R36)", () => {
     expect(mockQueue.result.retry).toHaveBeenCalledTimes(1)
     expect(
       (renderer!.root as Node).findAll(
-        (node) => node.props.accessibilityLabel === EXPLORE_COPY.retry,
+        (node) => node.props.accessibilityLabel === "Try again",
       ),
     ).toHaveLength(0)
   })
@@ -1861,11 +1983,12 @@ describe("telemetry (U13, KTD17, R34)", () => {
         context.explore_preload_hit,
         context.explore_swipe_direction,
         context.explore_swipe_outcome,
+        context.explore_swipe_trigger,
       ]),
     ).toEqual([
-      [true, "forward", "motion"],
-      [false, "forward", "motion"],
-      [false, "backward", "motion"],
+      [true, "forward", "motion", "viewer"],
+      [false, "forward", "motion", "viewer"],
+      [false, "backward", "motion", "viewer"],
     ])
   })
 

@@ -5,6 +5,7 @@ import type {
   RecommendationExperimentEvaluationState,
   RecommendationRequestState,
 } from "@prisma/client"
+import type { DeliveryDiagnostics } from "../delivery-diagnostics"
 
 export type RecommendationFactMetrics = Readonly<{
   initiation?: "manual" | "automatic"
@@ -78,6 +79,7 @@ export type RecommendationRequestDetailData = Readonly<{
   classifierVersion: string
   seedMediaId: string | null
   locale: string
+  deliveryDiagnostics: DeliveryDiagnostics | null
   expectedItemCount: number
   state: "prepared" | "issued" | "issuance_failed"
   result: "served" | "fallback" | "empty" | "unavailable"
@@ -381,6 +383,7 @@ export type DetailRootRow = Readonly<{
   classifierVersion: string
   seedMediaId: string | null
   locale: string
+  deliveryDiagnostics?: unknown
   expectedItemCount: number
   state: RecommendationRequestState
   result: RecommendationDeliveryResult

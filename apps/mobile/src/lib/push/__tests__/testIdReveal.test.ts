@@ -16,12 +16,6 @@ import { Alert, type AlertButton } from "react-native"
 import {
   PUSH_REGISTRATION_RECORD_VERSION,
   PUSH_REGISTRATION_STORAGE_KEY,
-  PUSH_TEST_ID_ALERT_TITLE,
-  PUSH_TEST_ID_CLOSE_ACTION,
-  PUSH_TEST_ID_COPY_ACTION,
-  PUSH_TEST_ID_HELP,
-  PUSH_TEST_ID_NOTIFICATIONS_OFF,
-  PUSH_TEST_ID_REGISTERING,
 } from "../constants"
 import {
   createPushRegistrationStore,
@@ -37,6 +31,16 @@ import {
 
 const TEST_ID = "k3v9x2m7q4"
 
+// The English catalog text, written out so a broken key cannot pass.
+const ALERT_TITLE = "Notification test ID"
+const HELP =
+  "Share this ID with the team to receive test announcements on this phone."
+const REGISTERING = "Registering this phone…"
+const NOTIFICATIONS_OFF =
+  "Notifications are off for this phone. Turn them on in Settings to receive announcements."
+const CLOSE_ACTION = "Close"
+const COPY_ACTION = "Copy test ID"
+
 function snapshot(
   overrides: Partial<PushRegistrationSnapshot> = {},
 ): PushRegistrationSnapshot {
@@ -51,12 +55,9 @@ describe("pushTestIdAlert", () => {
   it("shows the ID with the help line, and offers Close and Copy", () => {
     const alert = pushTestIdAlert(snapshot())
 
-    expect(alert.title).toBe(PUSH_TEST_ID_ALERT_TITLE)
-    expect(alert.message).toBe(`${TEST_ID}\n\n${PUSH_TEST_ID_HELP}`)
-    expect(labels(alert.buttons)).toEqual([
-      PUSH_TEST_ID_CLOSE_ACTION,
-      PUSH_TEST_ID_COPY_ACTION,
-    ])
+    expect(alert.title).toBe(ALERT_TITLE)
+    expect(alert.message).toBe(`${TEST_ID}\n\n${HELP}`)
+    expect(labels(alert.buttons)).toEqual([CLOSE_ACTION, COPY_ACTION])
     expect(alert.buttons[0].style).toBe("cancel")
   })
 
@@ -82,13 +83,8 @@ describe("pushTestIdAlert", () => {
   it("still shows a stored ID while permission is denied, with the denial note", () => {
     const alert = pushTestIdAlert(snapshot({ permission: "denied" }))
 
-    expect(alert.message).toBe(
-      `${TEST_ID}\n\n${PUSH_TEST_ID_NOTIFICATIONS_OFF}`,
-    )
-    expect(labels(alert.buttons)).toEqual([
-      PUSH_TEST_ID_CLOSE_ACTION,
-      PUSH_TEST_ID_COPY_ACTION,
-    ])
+    expect(alert.message).toBe(`${TEST_ID}\n\n${NOTIFICATIONS_OFF}`)
+    expect(labels(alert.buttons)).toEqual([CLOSE_ACTION, COPY_ACTION])
   })
 
   it.each([
@@ -99,8 +95,8 @@ describe("pushTestIdAlert", () => {
       snapshot({ testDeviceId, permission: "unknown" }),
     )
 
-    expect(alert.message).toBe(PUSH_TEST_ID_REGISTERING)
-    expect(labels(alert.buttons)).toEqual([PUSH_TEST_ID_CLOSE_ACTION])
+    expect(alert.message).toBe(REGISTERING)
+    expect(labels(alert.buttons)).toEqual([CLOSE_ACTION])
   })
 
   it("says notifications are off, with only Close, when denied and no ID", () => {
@@ -108,8 +104,8 @@ describe("pushTestIdAlert", () => {
       snapshot({ testDeviceId: null, permission: "denied" }),
     )
 
-    expect(alert.message).toBe(PUSH_TEST_ID_NOTIFICATIONS_OFF)
-    expect(labels(alert.buttons)).toEqual([PUSH_TEST_ID_CLOSE_ACTION])
+    expect(alert.message).toBe(NOTIFICATIONS_OFF)
+    expect(labels(alert.buttons)).toEqual([CLOSE_ACTION])
   })
 })
 
@@ -144,12 +140,9 @@ describe("revealPushTestId", () => {
 
     expect(alert).toHaveBeenCalledTimes(1)
     const [title, message, buttons, options] = alert.mock.calls[0]
-    expect(title).toBe(PUSH_TEST_ID_ALERT_TITLE)
-    expect(message).toBe(`${TEST_ID}\n\n${PUSH_TEST_ID_HELP}`)
-    expect(labels(buttons ?? [])).toEqual([
-      PUSH_TEST_ID_CLOSE_ACTION,
-      PUSH_TEST_ID_COPY_ACTION,
-    ])
+    expect(title).toBe(ALERT_TITLE)
+    expect(message).toBe(`${TEST_ID}\n\n${HELP}`)
+    expect(labels(buttons ?? [])).toEqual([CLOSE_ACTION, COPY_ACTION])
     expect(options).toEqual({ cancelable: true })
   })
 
@@ -163,7 +156,7 @@ describe("revealPushTestId", () => {
       await revealPushTestId()
 
       expect(alert).toHaveBeenCalledTimes(1)
-      expect(alert.mock.calls[0][1]).toBe(PUSH_TEST_ID_NOTIFICATIONS_OFF)
+      expect(alert.mock.calls[0][1]).toBe(NOTIFICATIONS_OFF)
     } finally {
       alert.mockRestore()
       resetPushRegistrationStoreForTests()
@@ -184,6 +177,6 @@ describe("revealPushTestId", () => {
     await revealPushTestId({ store, alert })
 
     expect(alert).toHaveBeenCalledTimes(1)
-    expect(alert.mock.calls[0][1]).toBe(PUSH_TEST_ID_REGISTERING)
+    expect(alert.mock.calls[0][1]).toBe(REGISTERING)
   })
 })

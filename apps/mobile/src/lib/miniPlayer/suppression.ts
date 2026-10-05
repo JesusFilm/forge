@@ -1,9 +1,10 @@
 /**
- * R11 suppression: the floating window hides while an in-app sheet is
- * presented, and returns to its corner when that sheet closes. Two mechanisms
- * live here because the app presents sheets two ways — nine real sheet ROUTES
- * (six in the watch and series groups, three reader sheets on the root
- * stack), and the sheets that are component state.
+ * R11 suppression: on Android the floating window hides while an in-app sheet
+ * is presented, and returns to its corner when that sheet closes. iOS draws
+ * every sheet over the window instead (see `miniPlayerPresentation`). Two
+ * mechanisms live here because the app presents sheets two ways — ten real
+ * sheet ROUTES (six in the watch and series groups, four on the root stack),
+ * and the sheets that are component state.
  *
  * React-native-free by construction: routes arrive as expo-router segments and
  * the non-route sheets arrive as a count.
@@ -20,8 +21,8 @@ export function routePattern(segments: readonly string[]): string {
 
 /**
  * Every screen declared with `presentation: "formSheet"`: six in
- * `app/watch/_layout.tsx` and `app/series/_layout.tsx`, and the Bible
- * reader's three in `app/_layout.tsx` (feat-553 KTD9).
+ * `app/watch/_layout.tsx` and `app/series/_layout.tsx`, and four in
+ * `app/_layout.tsx` — the Bible reader's three (feat-553 KTD9) and `feedback`.
  */
 export const IN_APP_SHEET_ROUTE_PATTERNS = [
   "watch/language",
@@ -33,6 +34,7 @@ export const IN_APP_SHEET_ROUTE_PATTERNS = [
   "reader-passage",
   "reader-translation",
   "reader-settings",
+  "feedback",
 ] as const
 
 const SHEET_ROUTE_SET: ReadonlySet<string> = new Set(
@@ -43,17 +45,26 @@ export function isInAppSheetRoute(segments: readonly string[]): boolean {
   return SHEET_ROUTE_SET.has(routePattern(segments))
 }
 
-/** Sheets held as component state, not routes: `DeleteConfirmSheet.tsx` in
- *  `LibraryDownloads.tsx` (the Downloads screen), the SDUI quiz modal, and
- *  `PlayerSettingsSheet.tsx`, since a routed sheet cannot cover fullscreen. */
+/** Sheets held as component state, not routes: `DeleteConfirmSheet.tsx` (the
+ *  Downloads screen), the SDUI quiz modal, and `VideoPlayer.tsx`'s settings and
+ *  feedback sheets, since a routed sheet cannot cover fullscreen. */
 export type NonRouteSheetId =
   | "libraryDeleteConfirm"
   | "sduiQuiz"
   | "playerSettings"
+  | "feedbackModal"
+
+/** Drawn inside a route, so the host covers it on every platform. The other
+ *  ids are React Native `Modal`s, which iOS presents above the host. */
+const INLINE_SHEET_IDS: ReadonlySet<NonRouteSheetId> = new Set([
+  "libraryDeleteConfirm",
+])
 
 export type NonRouteSheetCounter = {
   /** Presented count — zero means nothing is suppressing the window. */
   count: () => number
+  /** The presented sheets that draw under the host (`INLINE_SHEET_IDS`). */
+  inlineCount: () => number
   isPresented: () => boolean
   open: (id: NonRouteSheetId) => void
   close: (id: NonRouteSheetId) => void
@@ -75,6 +86,11 @@ export function createNonRouteSheetCounter(): NonRouteSheetCounter {
 
   return {
     count: () => open.size,
+    inlineCount: () => {
+      let inline = 0
+      for (const id of open) if (INLINE_SHEET_IDS.has(id)) inline += 1
+      return inline
+    },
     isPresented: () => open.size > 0,
     open(id) {
       if (open.has(id)) return

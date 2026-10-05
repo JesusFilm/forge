@@ -3,13 +3,13 @@ import { AccessibilityInfo, Share, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import * as Clipboard from "expo-clipboard"
 
+import { useT } from "../../i18n/useT"
 import {
   READER_CHROME_MAX_FONT_SCALE,
   READER_FOOTER_ROWS,
   READER_SELECTION_GAP,
   readerFooterHeight,
 } from "../../lib/bible/reader/chrome"
-import { READER_COPY } from "../../lib/bible/reader/copy"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 import { ReaderGlassButton } from "./ReaderGlassButton"
 
@@ -35,6 +35,7 @@ export function SelectionBar({
   text,
   onClear,
 }: SelectionBarProps) {
+  const t = useT("BibleReader")
   // Keyed by the text, so a changed selection never reads as copied.
   const [copied, setCopied] = useState<{ text: string } | null>(null)
   useEffect(() => {
@@ -49,7 +50,7 @@ export function SelectionBar({
       (done) => {
         if (!done) return
         setCopied({ text })
-        AccessibilityInfo.announceForAccessibility(READER_COPY.selection.copied)
+        AccessibilityInfo.announceForAccessibility(t("copied"))
       },
       () => {},
     )
@@ -59,7 +60,6 @@ export function SelectionBar({
     void Share.share({ message: text, title: reference }).catch(() => {})
   }
 
-  const words = READER_COPY.selection
   return (
     <View
       testID="bible-selection-bar"
@@ -74,7 +74,7 @@ export function SelectionBar({
       <View style={styles.column}>
         <Text
           style={[styles.reference, { color: tokens.text }]}
-          accessibilityLabel={words.selected(reference)}
+          accessibilityLabel={t("selectedAriaLabel", { reference })}
           numberOfLines={1}
           maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
         >
@@ -84,22 +84,25 @@ export function SelectionBar({
           <BarButton
             tokens={tokens}
             icon={showCopied ? "checkmark" : "copy-outline"}
-            label={showCopied ? words.copied : words.copy}
-            accessibilityLabel={words.copyLabel(reference)}
+            label={showCopied ? t("copied") : t("copy")}
+            accessibilityLabel={t("copyAriaLabel", { reference })}
+            actionName="bible-selection-copy"
             onPress={copy}
           />
           <BarButton
             tokens={tokens}
             icon="share-outline"
-            label={words.share}
-            accessibilityLabel={words.shareLabel(reference)}
+            label={t("share")}
+            accessibilityLabel={t("shareAriaLabel", { reference })}
+            actionName="bible-selection-share"
             onPress={share}
           />
           <BarButton
             tokens={tokens}
             icon="close"
-            label={words.clear}
-            accessibilityLabel={words.clearLabel}
+            label={t("clear")}
+            accessibilityLabel={t("clearAriaLabel")}
+            actionName="bible-selection-clear"
             onPress={onClear}
           />
         </View>
@@ -113,6 +116,7 @@ type BarButtonProps = {
   icon: ComponentProps<typeof Ionicons>["name"]
   label: string
   accessibilityLabel: string
+  actionName: string
   onPress: () => void
 }
 
@@ -121,6 +125,7 @@ function BarButton({
   icon,
   label,
   accessibilityLabel,
+  actionName,
   onPress,
 }: BarButtonProps) {
   return (
@@ -128,6 +133,7 @@ function BarButton({
       tokens={tokens}
       shape="pill"
       accessibilityLabel={accessibilityLabel}
+      actionName={actionName}
       onPress={onPress}
       style={styles.action}
     >

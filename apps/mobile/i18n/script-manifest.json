@@ -1,0 +1,9 @@
+{
+  "metadata": {
+    "purpose": "The manifest that apps/web/scripts/translate-ui-catalogs.mjs reads when scripts/i18n/translate-catalogs.mjs runs it on the mobile catalogs. It lists no provisional and no machine-translated locale, so the script never translates a whole catalog again. The script never writes this file, because the mobile command never passes --promote. The mobile machine-translation record is translation-provenance.json."
+  },
+  "authoredInventoryLocales": [],
+  "provisionalLocales": [],
+  "existingNonInventoryLocales": [],
+  "missingCatalogs": []
+}

@@ -237,7 +237,7 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     dryRun: true,
     verifyOnly: false,
     resume: false,
-    sourceEnv: "JFRAG_SOURCE_DATABASE_URL",
+    sourceEnv: "CORPUS_SOURCE_DATABASE_URL",
     targetEnv: "DATABASE_URL",
     batchSize: 250,
     maxBatches: null,

@@ -32,6 +32,7 @@ import { ClipOverlay, type ExploreVideoRegion } from "./ClipOverlay"
 import {
   ExplorePager,
   type ExplorePagerAccessibility,
+  type ExplorePagerHandle,
   type ExplorePagerMove,
   type ExplorePagerRole,
   type ExplorePagerSlot,
@@ -41,6 +42,7 @@ import { ClipFailed, ExploreStates } from "./ExploreStates"
 import { FeedVideoView } from "./FeedVideoView"
 import { PlayerLoadingVeil } from "../watch/PlayerLoadingVeil"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
+import { useT } from "../../i18n/useT"
 import { clipPosterUri, useClipAutostart } from "../../hooks/useClipAutostart"
 import { usePlayingSize } from "../../hooks/usePlayingSize"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
@@ -60,7 +62,6 @@ import {
   getClipRecordStore,
   type ClipRecordInput,
 } from "../../lib/explore/clipRecord"
-import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { getDemotionStore } from "../../lib/explore/demotionStore"
 import { readDeviceTier } from "../../lib/explore/deviceTier"
 import {
@@ -91,10 +92,12 @@ import {
   type PlayerMode,
 } from "../../lib/explore/playerMode"
 import { readSeconds, safely } from "../../lib/explore/playerRead"
-import { getExploreTelemetry } from "../../lib/explore/telemetry"
+import {
+  getExploreTelemetry,
+  type ExploreMoveTrigger,
+} from "../../lib/explore/telemetry"
 import type { ReadyClip, FeedClip } from "../../lib/explore/types"
 import { openKeepWatching } from "../../lib/explore/watchIntent"
-import { deriveLanguageDisplay } from "../../lib/language-display"
 
 const BOTH_PLAYERS: readonly PlayerId[] = ["a", "b"]
 
@@ -257,12 +260,25 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     )
   }, [])
 
+  const pager = useRef<ExplorePagerHandle>(null)
+  // Read by the move's commit, which lands after the settle, or at once
+  // with Reduce Motion on.
+  const moveTrigger = useRef<ExploreMoveTrigger>("viewer")
+
   const { players, activePlayer, seekActive } = useFeedPlayers({
     state,
     dispatch,
     muted: exploreMuted,
     yieldsToRoot,
     onLoop: (token) => evidence.current?.onLoop(token),
+    // The owner (2026-09-30), changing R8: an ended clip moves the feed on
+    // with the swipe's own settle. It loops when the pager cannot move.
+    onClipEnd: () => {
+      moveTrigger.current = "clipEnd"
+      const moved = pager.current?.requestMove("next") ?? false
+      if (!moved) moveTrigger.current = "viewer"
+      return moved
+    },
     onSourceSet: (_token, player) => {
       // Only the first clip's stages count, and the standby loads after it moves.
       telemetry.firstMotionStage("sourceSet")
@@ -466,9 +482,12 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       const last = live.current.state
       const target = move === "next" ? nextClip(last) : previousClip(last)
       const standby = standbySlot(last)
+      const trigger = moveTrigger.current
+      moveTrigger.current = "viewer"
       telemetry.swipe({
         preloadHit: standby?.clip === target && standby.status === "ready",
         direction: move === "next" ? "forward" : "backward",
+        trigger,
       })
       dispatch({ type: move === "next" ? "swipeNext" : "swipePrevious" })
     },
@@ -597,6 +616,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
   return (
     <View style={styles.root}>
       <ExplorePager
+        ref={pager}
         renderSlot={renderSlot}
         renderUnderlay={renderUnderlay}
         canSwipeNext={canSwipeNext(state)}
@@ -609,9 +629,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       {stateScreen != null && (
         <ExploreStates
           phase={stateScreen}
-          languageName={
-            deriveLanguageDisplay(queue.feedLanguageSlug, null).name
-          }
+          languageName={queue.feedLanguageName}
           onRetry={handleRetry}
         />
       )}
@@ -647,6 +665,7 @@ function ClipPage({
   posterShapes,
   children,
 }: ClipPageProps) {
+  const t = useT("Explore")
   const surface = useRef<View>(null)
   const wasCurrent = useRef(role === "current")
   useEffect(() => {
@@ -687,7 +706,7 @@ function ClipPage({
         onPress={onTap}
         accessibilityRole="button"
         accessibilityLabel={clip.title}
-        accessibilityHint={EXPLORE_COPY.clipSurfaceHint}
+        accessibilityHint={t("clipSurfaceAriaHint")}
         {...accessibility}
       />
       {children}

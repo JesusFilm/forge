@@ -443,232 +443,126 @@ describe("POST /watch/api/recommendations", () => {
     )
   })
 
-  it("serves non-attributed contextual cards when semantic delivery is unavailable", async () => {
-    query
-      .mockResolvedValueOnce({
-        data: {
-          semanticRecommendationDelivery: {
-            ...delivery,
-            requestId: null,
-            result: "unavailable",
-            reason: "delivery_timeout",
-            expiresAt: null,
-            items: [],
-          },
-        },
+  it.each([
+    {
+      locale: "en",
+      audioLanguageSlug: "english",
+      result: "unavailable",
+      reason: "delivery_timeout",
+    },
+    {
+      locale: "en",
+      audioLanguageSlug: "english",
+      result: "empty",
+      reason: "seed_embedding_unavailable",
+    },
+    {
+      locale: "zh-Hans",
+      audioLanguageSlug: "mandarin-china",
+      result: "empty",
+      reason: "no_candidates",
+    },
+    {
+      locale: "zh-Hant",
+      audioLanguageSlug: "mandarin-china",
+      result: "empty",
+      reason: "no_candidates",
+    },
+    {
+      locale: "en",
+      audioLanguageSlug: "gbii",
+      result: "empty",
+      reason: "no_candidates",
+    },
+    {
+      locale: "en",
+      audioLanguageSlug: "kwanyama",
+      result: "unavailable",
+      reason: "environment_disabled",
+    },
+  ])(
+    "preserves the Admin $result receipt for $locale/$audioLanguageSlug without unverified recovery",
+    async ({ locale, audioLanguageSlug, result, reason }) => {
+      const receipt = {
+        ...delivery,
+        requestId: result === "empty" ? "empty-request" : null,
+        result,
+        reason,
+        expiresAt: null,
+        requestedCount: 6,
+        composedCount: 0,
+        shortfallReason: "insufficient_candidates",
+        personalization: null,
+        items: [],
+      }
+      // Legacy APIs cannot attest exact playback and presentation identity.
+      query
+        .mockResolvedValue({
+          data: { sceneRecommendations: [contextualRecommendation] },
+        })
+        .mockResolvedValueOnce({
+          data: { semanticRecommendationDelivery: receipt },
+        })
+      const response = await POST(
+        request(
+          JSON.stringify({
+            seedMediaId: "seed-1",
+            seedMediaSlug: "seed-video",
+            locale,
+            audioLanguageSlug,
+          }),
+        ),
+      )
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({
+        delivery: receipt,
+        deliveryDisposition: "measured",
       })
-      .mockResolvedValueOnce({
-        data: {
-          sceneRecommendations: [contextualRecommendation],
-        },
-      })
+      expect(response.headers.get("cache-control")).toContain("no-store")
+      expect(response.headers.get("set-cookie")).toContain("HttpOnly")
+      expect(query).toHaveBeenCalledOnce()
+      expect(query.mock.calls[0]?.[0]?.query).toBe(
+        adminSemanticRecommendationDeliveryOperation,
+      )
+      expect(query.mock.calls[0]?.[0]?.variables).not.toHaveProperty(
+        "seedMediaSlug",
+      )
+      expect(deliveryLogs()).toEqual([
+        `event=recommendation.delivery endpoint=seeded httpStatus=200 result=${result} reason=${reason} itemCount=0 upstreamResult=${result}`,
+      ])
+    },
+  )
 
+  it("returns an unavailable receipt for a GraphQL error without legacy recovery", async () => {
+    query
+      .mockResolvedValue({
+        data: { sceneRecommendations: [contextualRecommendation] },
+      })
+      .mockResolvedValueOnce({
+        data: null,
+        error: new Error("GraphQL resolver server-secret"),
+      })
     const response = await POST(
       request(
         JSON.stringify({
           seedMediaId: "seed-1",
-          locale: "en",
-          audioLanguageSlug: "english",
+          seedMediaSlug: "seed-video",
+          locale: "zh-Hant",
+          audioLanguageSlug: "mandarin-china",
         }),
       ),
     )
-
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({
-      delivery: {
-        result: "fallback",
-        reason: "delivery_timeout",
-        items: [
-          {
-            targetMediaId: "target-1",
-            canonicalHref: "/watch/target.html",
-            videoTitle: "Target",
-            imageUrl: muxThumbnail,
-          },
-        ],
-      },
-    })
-    expect(deliveryLogs()).toEqual([
-      "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=delivery_timeout itemCount=1 upstreamResult=unavailable",
-    ])
-    expect(query.mock.calls[1]?.[0]?.variables).toEqual({
-      videoId: "seed-1",
-      locale: "en",
-      limit: 6,
-    })
-  })
-
-  it("serves contextual cards when the semantic seed has no embedding", async () => {
-    query
-      .mockResolvedValueOnce({
-        data: {
-          semanticRecommendationDelivery: {
-            ...delivery,
-            result: "empty",
-            reason: "seed_embedding_unavailable",
-            items: [],
-          },
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          sceneRecommendations: [contextualRecommendation],
-        },
-      })
-
-    const response = await POST(
-      request(
-        JSON.stringify({
-          seedMediaId: "seed-without-embedding",
-          locale: "en",
-          audioLanguageSlug: "english",
-        }),
-      ),
-    )
-
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({
-      delivery: {
-        result: "fallback",
-        reason: "seed_embedding_unavailable",
-        items: [{ targetMediaId: "target-1" }],
-      },
-    })
-  })
-
-  it("preserves the semantic unavailable receipt when contextual recovery also fails", async () => {
-    query
-      .mockResolvedValueOnce({
-        data: {
-          semanticRecommendationDelivery: {
-            ...delivery,
-            requestId: null,
-            result: "unavailable",
-            reason: "environment_disabled",
-            expiresAt: null,
-            items: [],
-          },
-        },
-      })
-      .mockRejectedValueOnce(new Error("contextual retrieval unavailable"))
-
-    const response = await POST(
-      request(
-        JSON.stringify({
-          seedMediaId: "uncached-seed",
-          locale: "en",
-          audioLanguageSlug: "english",
-        }),
-      ),
-    )
-
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({
+    const body = await response.text()
+    expect(body).not.toContain("server-secret")
+    expect(JSON.parse(body)).toMatchObject({
       delivery: {
         result: "unavailable",
-        reason: "environment_disabled",
+        reason: "delivery_unavailable",
         items: [],
       },
     })
-  })
-
-  it("falls back to playable collection siblings when LUMO has no scene candidates", async () => {
-    query
-      .mockResolvedValueOnce({
-        data: {
-          semanticRecommendationDelivery: {
-            ...delivery,
-            requestId: null,
-            result: "unavailable",
-            reason: "environment_disabled",
-            expiresAt: null,
-            items: [],
-          },
-        },
-      })
-      .mockResolvedValueOnce({ data: { sceneRecommendations: [] } })
-      .mockResolvedValueOnce({
-        data: {
-          watchVideoRouteSnapshotBySlug: {
-            documentId: "lumo-current",
-            slug: "lumo-matthew-5-1-48",
-            children: [],
-            parents: [
-              {
-                parent: {
-                  slug: "lumo-the-gospel-of-matthew",
-                  children: [
-                    {
-                      order: 3,
-                      child: {
-                        documentId: "lumo-current",
-                        slug: "lumo-matthew-5-1-48",
-                        muxPlaybackId: "current-playback",
-                        durationSeconds: 2_400,
-                        images: [],
-                        exactLocales: [{ title: "Current" }],
-                        broadLocales: [],
-                        englishLocales: [],
-                      },
-                    },
-                    {
-                      order: 4,
-                      child: {
-                        documentId: "lumo-next",
-                        slug: "lumo-matthew-6-1-7-23",
-                        muxPlaybackId: "lumo-next-playback",
-                        durationSeconds: 2_500,
-                        images: [{ url: "https://images.example/raw.jpg" }],
-                        exactLocales: [{ title: "LUMO - Matthew 6:1-7:23" }],
-                        broadLocales: [],
-                        englishLocales: [],
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      })
-
-    const response = await POST(
-      request(
-        JSON.stringify({
-          seedMediaId: "lumo-current",
-          seedMediaSlug: "lumo-matthew-5-1-48",
-          locale: "en",
-          audioLanguageSlug: "english",
-        }),
-      ),
-    )
-
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({
-      delivery: {
-        result: "fallback",
-        reason: "environment_disabled",
-        strategyVersion: "collection-siblings-contextual-v1",
-        items: [
-          {
-            targetMediaId: "lumo-next",
-            canonicalHref:
-              "/watch/lumo-the-gospel-of-matthew.html/lumo-matthew-6-1-7-23.html",
-            videoTitle: "LUMO - Matthew 6:1-7:23",
-            imageUrl:
-              "https://image.mux.com/lumo-next-playback/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
-          },
-        ],
-      },
-    })
-    expect(query.mock.calls[0]?.[0]?.variables).not.toHaveProperty(
-      "seedMediaSlug",
-    )
-    expect(query.mock.calls[2]?.[0]?.variables).toEqual({
-      videoSlug: "lumo-matthew-5-1-48",
-      locale: "en",
-      languageSlug: "english",
-    })
+    expect(query).toHaveBeenCalledOnce()
   })
 
   it("keeps delivery contextual while a client-visible withdrawal is pending", async () => {
@@ -748,16 +642,10 @@ describe("POST /watch/api/recommendations", () => {
     expect(query).toHaveBeenCalledTimes(RECOMMENDATION_MUTATION_CLIENT_LIMIT)
   })
 
-  it("recovers Admin delivery failures without exposing credentials or capabilities", async () => {
-    query
-      .mockRejectedValueOnce(
-        new Error("Bearer server-secret delivery-capability-secret"),
-      )
-      .mockResolvedValueOnce({
-        data: {
-          sceneRecommendations: [contextualRecommendation],
-        },
-      })
+  it("contains Admin delivery failures without exposing credentials or capabilities", async () => {
+    query.mockRejectedValueOnce(
+      new Error("Bearer server-secret delivery-capability-secret"),
+    )
 
     const response = await POST(
       request(
@@ -770,20 +658,21 @@ describe("POST /watch/api/recommendations", () => {
     )
     expect(response.status).toBe(200)
     const text = await response.text()
+    expect(query).toHaveBeenCalledOnce()
     expect(text).not.toMatch(/Bearer|server-secret|delivery-capability-secret/)
     expect(JSON.parse(text)).toMatchObject({
       delivery: {
-        result: "fallback",
+        result: "unavailable",
         reason: "delivery_unavailable",
-        items: [{ targetMediaId: "target-1" }],
+        items: [],
       },
     })
   })
 
-  it("returns an unavailable envelope when semantic and contextual delivery both fail", async () => {
-    query
-      .mockRejectedValueOnce(new Error("semantic server-secret"))
-      .mockRejectedValueOnce(new Error("contextual server-secret"))
+  it("returns an unavailable envelope when the Admin transport times out", async () => {
+    query.mockRejectedValueOnce(
+      new DOMException("server-secret", "TimeoutError"),
+    )
 
     const response = await POST(
       request(
@@ -797,6 +686,7 @@ describe("POST /watch/api/recommendations", () => {
 
     expect(response.status).toBe(200)
     const text = await response.text()
+    expect(query).toHaveBeenCalledOnce()
     expect(text).not.toContain("server-secret")
     expect(JSON.parse(text)).toMatchObject({
       delivery: {

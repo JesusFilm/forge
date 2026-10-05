@@ -3,21 +3,29 @@ id: "feat-063"
 title: "Personalize Discovery Experiences"
 owner: "tataihono"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-10-01"
 duration: 45
-depends_on:
-  - "feat-058"
-  - "feat-090"
-blocks:
-  - "feat-064"
+depends_on: []
+blocks: []
 tags:
   - "search"
   - "personalization"
   - "discovery"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+This broad umbrella is superseded by the implemented, individually audited anonymous-profile, candidate and client-delivery work (feat-378, feat-386, feat-447, feat-487 and feat-517). Cancel the redundant umbrella instead of claiming every historical search/homepage adaptation was built. Additional personalized page orchestration is retired under feat-449; measured causal benefit remains unestablished.
+
+Audit anchors: `apps/admin/src/services/recommendations/profiles/projection.ts`, `apps/admin/src/services/recommendations/candidates/profile-candidate.service.ts`, `apps/web/src/components/recommendations/WatchForYouRecommendations.tsx`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Once semantic search is deployed, the next step is making discovery feel personal instead of generic. Search, recommendations, and landing experiences should adapt to a user's context, history, or intent so the platform highlights the most relevant content instead of the same ranking for everyone.
 

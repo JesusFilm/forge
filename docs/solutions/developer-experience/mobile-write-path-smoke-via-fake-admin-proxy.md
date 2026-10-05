@@ -1,7 +1,7 @@
 ---
 title: Smoke a mobile write path on the simulator through a throwaway fake-admin proxy
 date: 2026-09-17
-last_updated: 2026-09-22
+last_updated: 2026-10-02
 category: developer-experience
 module: apps/mobile
 problem_type: developer_experience
@@ -697,6 +697,27 @@ overwritten by the second issuance, a stub episode that opens and closes at
 schema mirror alone would have called this run healthy. The count of
 issuances per open is the signal, and only a log that records every request
 can show it.
+
+## Closeout evidence boundaries (2026-10-02)
+
+Keep four claims separate when closing a mobile write surface:
+
+1. A merged source commit proves the implementation is in the repository.
+2. A device run through this proxy proves the app's request order, payload and
+   local navigation on that installed development build. It cannot prove Admin
+   accepted or persisted a write.
+3. A production Admin ledger with the same surface proves serving occurred,
+   but without client attribution it cannot identify a mobile installation.
+4. A build/channel receipt plus an installed-device observation is needed to
+   claim a shipped mobile audience. Expo's inlined `EXPO_PUBLIC_*` values make
+   source configuration an insufficient substitute.
+
+The `feat-517` shelf was accepted as an implemented feature after the
+provisioned-Admin smoke was explicitly deferred. Its ticket preserves the
+unobserved Admin acceptance and binary reach; neither is converted into a
+passing test by the proxy or the production For-you aggregate. Use the same
+boundary for later mobile closeouts, and run a safe provisioned integration
+check when the claim being made requires it.
 
 ## Related
 

@@ -19,7 +19,6 @@ import {
   PUSH_ANNOUNCEMENT_MAX_PAYLOAD_BYTES,
   PUSH_ANNOUNCEMENT_PAYLOAD_VERSION,
 } from "../../push/announcementPayload"
-import { PUSH_UNRESOLVABLE_DESTINATION_MESSAGE } from "../../push/copy"
 import { LAPSE_REMINDER_PAYLOAD_VERSION } from "../constants"
 import {
   LAPSE_REMINDER_HOME_TARGET,
@@ -33,6 +32,10 @@ import {
   type LapseReminderTapDeps,
   type LapseReminderTapTarget,
 } from "../tapHandler"
+
+// The English catalog text, written out so a broken key cannot pass.
+const UNRESOLVABLE_MESSAGE =
+  "We could not open that announcement. Here is the home screen."
 
 const SLUG = "the-birth-of-jesus"
 
@@ -901,15 +904,13 @@ describe("an announcement tap", () => {
     expect(h.clearLastResponse).toHaveBeenCalled()
   })
 
-  it("shows the copy constant on an unresolvable destination (AE14)", () => {
+  it("shows the catalog message on an unresolvable destination (AE14)", () => {
     const h = harness(announcement({ kind: "collection" }))
     createLapseReminderTapHandler(h.deps).attach()
 
     jest.advanceTimersByTime(LAPSE_REMINDER_TAP_DEADLINE_MS)
 
-    expect(h.showNotice).toHaveBeenCalledWith(
-      PUSH_UNRESOLVABLE_DESTINATION_MESSAGE,
-    )
+    expect(h.showNotice).toHaveBeenCalledWith(UNRESOLVABLE_MESSAGE)
     expect(h.navigate).toHaveBeenCalledWith({ screen: "home" })
   })
 

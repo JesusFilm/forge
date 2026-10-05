@@ -12,6 +12,7 @@ import {
   TEXT_PRIMARY,
   hexToRgba,
 } from "../../lib/color"
+import { useT } from "../../i18n/useT"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 import { AnnouncementsButton } from "../home/AnnouncementsButton"
 import { HOME_HEADER_ROW_HEIGHT, HOME_HEADER_ROW_TOP } from "./homeHeaderLayout"
@@ -40,12 +41,14 @@ export function HomeHeader({
 }: HomeHeaderProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const t = useT("Common")
 
   const searchButton = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Search"
+      accessibilityLabel={t("searchAriaLabel")}
       onPress={() => router.navigate("/(tabs)/watch")}
+      {...{ "dd-action-name": "header-search" }}
     >
       <GlassView
         style={styles.glassButton}
@@ -60,8 +63,9 @@ export function HomeHeader({
   const profileButton = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="My Watch"
+      accessibilityLabel={t("myWatchAriaLabel")}
       onPress={() => router.navigate("/(tabs)/profile")}
+      {...{ "dd-action-name": "header-profile" }}
     >
       <GlassView
         style={styles.glassButton}

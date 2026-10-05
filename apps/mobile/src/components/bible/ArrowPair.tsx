@@ -1,12 +1,12 @@
 import { Pressable, StyleSheet, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useT } from "../../i18n/useT"
 import {
   READER_ARROW_ROW_HEIGHT,
   READER_GLASS_SIZE,
   READER_TOUCH_TARGET,
 } from "../../lib/bible/reader/chrome"
-import { READER_COPY } from "../../lib/bible/reader/copy"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 import { ReaderGlassButton } from "./ReaderGlassButton"
 
@@ -19,11 +19,13 @@ export type ArrowPairProps = {
 // R11: the up/down pair above the footer, for viewers who do not swipe. The
 // down button is the filled one, because the next verse is the usual move.
 export function ArrowPair({ tokens, onPrevious, onNext }: ArrowPairProps) {
+  const t = useT("BibleReader")
   return (
     <View testID="bible-arrow-pair" style={styles.row}>
       <ReaderGlassButton
         tokens={tokens}
-        accessibilityLabel={READER_COPY.movement.previousVerse}
+        accessibilityLabel={t("previousVerseAriaLabel")}
+        actionName="bible-reader-previous-verse"
         onPress={onPrevious}
       >
         <Ionicons name="chevron-up" size={24} color={tokens.icon} />
@@ -31,8 +33,9 @@ export function ArrowPair({ tokens, onPrevious, onNext }: ArrowPairProps) {
       <Pressable
         onPress={onNext}
         accessibilityRole="button"
-        accessibilityLabel={READER_COPY.movement.nextVerse}
+        accessibilityLabel={t("nextVerseAriaLabel")}
         style={styles.target}
+        {...{ "dd-action-name": "bible-reader-next-verse" }}
       >
         {({ pressed }) => (
           <View

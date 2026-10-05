@@ -1,3 +1,4 @@
+import { LEGACY_STAGE_MIGRATION } from "./legacy-stage-migration-recovery"
 import { describe, expect, it, vi } from "vitest"
 import { LIVE_POLICY_MIGRATION } from "./live-policy-migration-recovery"
 
@@ -70,6 +71,52 @@ describe("isTransientPrismaDeployFailure", () => {
       ),
     ).toBe(true)
     expect(isTransientPrismaDeployFailure("Error code: P3018")).toBe(false)
+  })
+})
+
+describe("legacy stage deployment recovery", () => {
+  it.each([false, true])(
+    "resolves only after preparation and handles a completed concurrent recovery (%s)",
+    async (alreadyApplied) => {
+      const runner = vi
+        .fn()
+        .mockResolvedValueOnce({
+          code: 1,
+          output: `P3009 ${LEGACY_STAGE_MIGRATION}`,
+        })
+        .mockResolvedValue({ code: 0, output: "" })
+      await deployWithKnownRecovery(runner, {
+        legacyStageRecovery: async (apply) => {
+          expect(runner).toHaveBeenCalledTimes(1)
+          await apply(alreadyApplied)
+        },
+      })
+      expect(runner.mock.calls.map((call) => call[0])).toEqual(
+        alreadyApplied
+          ? [
+              ["migrate", "deploy"],
+              ["migrate", "deploy"],
+            ]
+          : [
+              ["migrate", "deploy"],
+              ["migrate", "resolve", "--rolled-back", LEGACY_STAGE_MIGRATION],
+              ["migrate", "deploy"],
+            ],
+      )
+    },
+  )
+  it("does not resolve or deploy after a failed marker preparation", async () => {
+    const runner = vi
+      .fn()
+      .mockResolvedValue({ code: 1, output: `P3009 ${LEGACY_STAGE_MIGRATION}` })
+    await expect(
+      deployWithKnownRecovery(runner, {
+        legacyStageRecovery: async () => {
+          throw new Error("preparation stopped")
+        },
+      }),
+    ).rejects.toThrow("preparation stopped")
+    expect(runner).toHaveBeenCalledTimes(1)
   })
 })
 

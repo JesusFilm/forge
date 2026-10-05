@@ -3,7 +3,7 @@ id: "feat-517"
 title: "Mobile Recommended for You Home shelf"
 owner: "urim"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-18"
 duration: 5
 depends_on:
@@ -14,6 +14,47 @@ tags:
   - "recommendations"
   - "personalization"
 ---
+
+## October 2 implementation closeout
+
+**Status: complete for the Home shelf implementation.** The source merged in
+[PR #2367](https://github.com/JesusFilm/forge/pull/2367) as `3494f42ee`;
+the recorder remount/selection-nonce fix merged in
+[PR #2376](https://github.com/JesusFilm/forge/pull/2376) as `badb8cc2c`.
+Current source still gates the shelf on the authored block, enabled client and
+fleet bearer; requests the saved audio slug; renders only a complete, distinct
+source-free slate; records one render and visibility-qualified impressions; and
+selects before opening the chosen video. For measured viewer delivery,
+Admin requires the full requested count before `served`; insufficient supply
+reports `coverage_unavailable`, while errors retain distinct reasons. The
+published Home Experience was
+observed carrying the block on September 23. The mobile UI remains English;
+its fixed "Recommended for You" heading is accepted for that current UI.
+This supersedes the original block-title fallback requirement for this
+English-only surface. The legacy fragment intentionally reads no block title.
+
+**Observed verification:** the September 21 simulator/proxy exercise recorded
+six ordered cards, per-card render and impression facts, one selection and one
+nonce-linked claim; the September 23 post-merge proxy check found one claim
+through the mini-player remount. The six-sample per-arm Home first-paint
+comparison measured equal 96 ms medians with the slate held for two seconds
+versus the client disabled. The merged mobile Jest, typecheck and lint results
+are recorded below. On October 2, five focused current-source Jest suites
+passed 158 tests (delivery, playback recorder, shelf, Home feed and context),
+using an existing dependency tree with the Jest cache disabled. The production
+Admin For-you ledger reported successful slates in the dated
+[October 1 health report](../../reports/2026-10-01-recommendation-health/report.md),
+but it does not identify a mobile installation.
+
+**Limits:** no retained proof shows one mobile episode accepted and persisted by
+a real Admin, or identifies a shipped TestFlight/store binary and its inlined
+recommendation configuration. The September 23 owner decision explicitly
+deferred the provisioned-local-Admin U6 smoke when PR #2367 shipped; this
+closeout accepts that deferred integration check as a documented verification
+limit of the implemented shelf, not as a passing result. A release claim for an
+installed mobile audience still requires a build/channel receipt and a safe
+end-to-end observation. Do not infer mobile activation from Web's published
+block or from source merge alone. Causal usefulness is unmeasured.
 
 ## Problem
 

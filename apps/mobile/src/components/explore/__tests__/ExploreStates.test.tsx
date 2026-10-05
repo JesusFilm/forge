@@ -10,13 +10,55 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
 }))
+// A fixture `es` catalog joins the real set, so the UI language can change
+// while a state is on screen.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(
+      jest.requireActual("../../../i18n/catalogs.generated"),
+      {
+        es: {
+          Explore: {
+            retry: "Reintentar",
+            emptyTitle: "Aún no hay clips en {languageName}",
+            emptyBody:
+              "Elige otro idioma en la página de un video para ver más clips.",
+          },
+        },
+      },
+    ),
+)
+jest.mock("../../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../../i18n/pluralData.generated"),
+      ["es"],
+    ),
+)
 
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import {
+  phoneLocales,
+  tapActionName,
+} from "../../../test-utils/uiLocaleFixture"
 import {
   ClipFailed,
   ExploreStates,
   type ExploreStatesProps,
 } from "../ExploreStates"
-import { EXPLORE_COPY } from "../../../lib/explore/copy"
 import {
   INITIAL_FEED_STATE,
   canSwipeNext,
@@ -80,9 +122,11 @@ describe("ExploreStates", () => {
   it("shows the offline message with a retry", () => {
     const onRetry = jest.fn()
     const renderer = render("offline", onRetry)
-    expect(hasText(renderer, EXPLORE_COPY.offlineTitle)).toBe(true)
-    expect(hasText(renderer, EXPLORE_COPY.offlineBody)).toBe(true)
-    const retry = pressableByLabel(renderer, EXPLORE_COPY.retry)
+    expect(hasText(renderer, "You're offline")).toBe(true)
+    expect(hasText(renderer, "Check your connection, then try again.")).toBe(
+      true,
+    )
+    const retry = pressableByLabel(renderer, "Try again")
     expect(retry.props.accessibilityRole).toBe("button")
     act(() => {
       retry.props.onPress?.()
@@ -92,12 +136,10 @@ describe("ExploreStates", () => {
 
   it("names the feed language in the empty state, with no retry", () => {
     const renderer = render("empty")
-    expect(hasText(renderer, EXPLORE_COPY.emptyTitle("Swahili"))).toBe(true)
+    expect(hasText(renderer, "No clips in Swahili yet")).toBe(true)
     expect(hasText(renderer, "Swahili")).toBe(true)
     expect(
-      renderer.root.findAll(
-        (n) => n.props.accessibilityLabel === EXPLORE_COPY.retry,
-      ),
+      renderer.root.findAll((n) => n.props.accessibilityLabel === "Try again"),
     ).toHaveLength(0)
   })
 
@@ -112,14 +154,16 @@ describe("ExploreStates", () => {
       throw new Error(`expected a full-screen phase, got ${phase}`)
     }
     const renderer = render(phase)
-    expect(hasText(renderer, EXPLORE_COPY.offlineTitle)).toBe(true)
-    expect(hasText(renderer, EXPLORE_COPY.emptyTitle("Swahili"))).toBe(false)
+    expect(hasText(renderer, "You're offline")).toBe(true)
+    expect(hasText(renderer, "No clips in Swahili yet")).toBe(false)
   })
 
   it("shows a failed clip's message without taking the swipe or advancing", () => {
     jest.useFakeTimers()
     const renderer = mount(<ClipFailed />)
-    expect(hasText(renderer, EXPLORE_COPY.clipFailed)).toBe(true)
+    expect(
+      hasText(renderer, "This clip can't play. Swipe for the next one."),
+    ).toBe(true)
 
     // Swipeable: nothing in the view claims a touch or offers an action.
     const [root] = renderer.root.findAll(
@@ -148,6 +192,65 @@ describe("ExploreStates", () => {
     act(() => {
       jest.advanceTimersByTime(60_000)
     })
-    expect(hasText(renderer, EXPLORE_COPY.clipFailed)).toBe(true)
+    expect(
+      hasText(renderer, "This clip can't play. Swipe for the next one."),
+    ).toBe(true)
+  })
+})
+
+// R7: the empty state reads the catalog, and the catalog names the feed
+// language through a placeholder, so a translation keeps the name in place.
+describe("ExploreStates in another UI language", () => {
+  beforeEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+  })
+  afterAll(() => resetLocaleStoreForTests())
+
+  it("names the feed language through the catalog placeholder", () => {
+    const renderer = render("empty")
+    expect(hasText(renderer, "No clips in Swahili yet")).toBe(true)
+
+    mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
+    act(() => {
+      refreshLocale()
+    })
+
+    expect(hasText(renderer, "Aún no hay clips en Swahili")).toBe(true)
+    expect(hasText(renderer, "No clips in Swahili yet")).toBe(false)
+    expect(
+      hasText(
+        renderer,
+        "Elige otro idioma en la página de un video para ver más clips.",
+      ),
+    ).toBe(true)
+
+    act(() => {
+      renderer.update(
+        <ExploreStates
+          phase="empty"
+          languageName="Tagalog"
+          onRetry={jest.fn()}
+        />,
+      )
+    })
+    expect(hasText(renderer, "Aún no hay clips en Tagalog")).toBe(true)
+  })
+
+  it("keeps the retry tap name when its label changes language", () => {
+    const renderer = render("offline")
+    const english = tapActionName(pressableByLabel(renderer, "Try again"))
+
+    mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
+    act(() => {
+      refreshLocale()
+    })
+
+    const spanish = pressableByLabel(renderer, "Reintentar")
+    expect(hasText(renderer, "Reintentar")).toBe(true)
+    expect(tapActionName(spanish)).toBe(english)
+    expect(english).toBe("explore-retry")
   })
 })

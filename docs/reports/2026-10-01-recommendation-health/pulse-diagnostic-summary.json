@@ -1,0 +1,30 @@
+[
+  [
+    {
+      "missing_input_fallbacks": "53",
+      "with_diagnostics": "37",
+      "missing_theme": "37",
+      "missing_source": "0",
+      "missing_interest": "0",
+      "missing_history": "0"
+    }
+  ],
+  [
+    {
+      "minimum_support": 1,
+      "maximum_support": 64,
+      "edges": "9000",
+      "supported_edges": "613"
+    }
+  ],
+  [
+    {
+      "column_name": "approved_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    }
+  ]
+]

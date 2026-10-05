@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef } from "react"
 import {
   FlatList,
   Pressable,
@@ -11,6 +11,7 @@ import { Image } from "expo-image"
 
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import type { WatchHomeSlide } from "../../lib/watchHome/carouselSequence"
 import { HORIZONTAL_PADDING, feedback } from "../../styles/shared"
@@ -34,6 +35,8 @@ export const HomeHeroSelectorRail = memo(function HomeHeroSelectorRail({
   onSelectSlide,
 }: HomeHeroSelectorRailProps) {
   const typography = useTypography()
+  const t = useT("Home")
+  const epoch = useLocaleEpoch()
   const { width: screenWidth } = useWindowDimensions()
   const listRef = useRef<FlatList<WatchHomeSlide>>(null)
 
@@ -66,6 +69,7 @@ export const HomeHeroSelectorRail = memo(function HomeHeroSelectorRail({
     ({ item, index }: { item: WatchHomeSlide; index: number }) => {
       const selected = index === activeIndex
       const thumbnailUrl = resolveImageUrl(item.thumbnailUrl ?? item.posterUrl)
+      const label = cardLabel(item, t("featuredFallbackTitle"))
       return (
         <Pressable
           onPress={() => onSelectSlide(index)}
@@ -75,10 +79,11 @@ export const HomeHeroSelectorRail = memo(function HomeHeroSelectorRail({
           ]}
           accessibilityRole="button"
           accessibilityState={{ selected }}
-          accessibilityLabel={cardLabel(item)}
+          accessibilityLabel={label}
           accessibilityHint={
-            selected ? undefined : "Shows this video in the spotlight above"
+            selected ? undefined : t("featuredSelectorCardAriaHint")
           }
+          {...{ "dd-action-name": "hero-selector-card" }}
         >
           <View
             style={[styles.thumbFrame, selected && styles.thumbFrameActive]}
@@ -105,15 +110,20 @@ export const HomeHeroSelectorRail = memo(function HomeHeroSelectorRail({
             ]}
             numberOfLines={2}
           >
-            {cardLabel(item)}
+            {label}
           </Text>
         </Pressable>
       )
     },
-    [activeIndex, onSelectSlide, cardWidth, titleMinHeight, typography],
+    [activeIndex, onSelectSlide, cardWidth, titleMinHeight, typography, t],
   )
 
   const keyExtractor = useCallback((item: WatchHomeSlide) => item.id, [])
+  // Recycled cards take the new language on a catalog change (KTD5).
+  const extraData = useMemo(
+    () => ({ activeIndex, epoch }),
+    [activeIndex, epoch],
+  )
 
   if (slides.length <= 1) return null
 
@@ -124,12 +134,12 @@ export const HomeHeroSelectorRail = memo(function HomeHeroSelectorRail({
         data={slides}
         renderItem={renderCard}
         keyExtractor={keyExtractor}
-        extraData={activeIndex}
+        extraData={extraData}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         getItemLayout={getItemLayout}
-        accessibilityLabel="Featured video selector"
+        accessibilityLabel={t("featuredSelectorAriaLabel")}
       />
     </View>
   )
@@ -143,12 +153,12 @@ const CARD_GAP = 10
 
 /**
  * Mux insert cards show the insert's CONFIGURED title (not the overlay/display
- * title), falling back to "Featured"; video cards show the video title.
+ * title), falling back to `fallback`; video cards show the video title.
  */
-function cardLabel(slide: WatchHomeSlide): string {
+function cardLabel(slide: WatchHomeSlide, fallback: string): string {
   if (slide.kind === "mux") {
     const title = slide.insert.title.trim()
-    return title !== "" ? title : "Featured"
+    return title !== "" ? title : fallback
   }
   return slide.title
 }

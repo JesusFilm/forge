@@ -21,6 +21,15 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
 }))
+jest.mock("expo-glass-effect", () => ({
+  GlassView: () => null,
+  isLiquidGlassAvailable: () => false,
+  isGlassEffectAPIAvailable: () => false,
+}))
+// Liquid Glass is off above, so the button's content renders inside this.
+jest.mock("../../../ui/PlatformBlur", () => ({
+  PlatformBlur: ({ children }: { children: unknown }) => children,
+}))
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }))
@@ -78,7 +87,8 @@ import {
   type CatalogTranslation,
 } from "../../../../lib/bible/data/catalog"
 import type { TranslationDownloadState } from "../../../../lib/bible/repository/translationDownloads"
-import { READER_SHEET_COPY } from "../../../../lib/bible/sheets/copy"
+import { getT } from "../../../../i18n/useT"
+import { formatDownloadSize } from "../../../../lib/bible/sheets/downloadPrompt"
 import { translationStatusLabel } from "../../../../lib/bible/sheets/translationList"
 import { readerTokens } from "../../../../lib/bible/theme/palettes"
 import { datadogLog } from "../../../../lib/datadog"
@@ -113,7 +123,16 @@ function loadCatalog(): Catalog {
 }
 
 const CATALOG = loadCatalog()
-const COPY = READER_SHEET_COPY.translation
+const pickerT = getT("BibleTranslationPicker")
+const readerT = getT("BibleReader")
+const COPY = {
+  searchLabel: pickerT("searchAriaLabel"),
+  onDeviceOnly: pickerT("onDeviceOnly"),
+  complete: pickerT("completeBible"),
+  downloadStopped: pickerT("downloadStopped"),
+  downloading: (percent: number) => pickerT("downloading", { percent }),
+}
+const CLOSE = getT("BibleReader")("sheetCloseAriaLabel")
 const TOKENS = readerTokens("light")
 const SPANISH = CATALOG.translations.filter((t) => t.language === "spa")
 const SYNODAL = CATALOG.byId.get("rus_syn")!
@@ -205,7 +224,7 @@ function rowLabel(
   translation: CatalogTranslation,
   state: TranslationDownloadState,
 ): string {
-  return `${translation.name}, ${translationStatusLabel(translation, state)}`
+  return `${translation.name}, ${translationStatusLabel(pickerT, translation, state)}`
 }
 
 function rowFor(renderer: TestInstance, label: string): RenderedNode {
@@ -437,13 +456,132 @@ describe("TranslationPicker", () => {
     const [close] = renderer.root.findAll(
       (node) =>
         typeof node.type !== "string" &&
-        node.props.accessibilityLabel === READER_SHEET_COPY.close &&
+        node.props.accessibilityLabel === CLOSE &&
         typeof node.props.onPress === "function",
     )
     await act(async () => {
       close?.props.onPress?.()
     })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
+// The owner (2026-10-01): the download button moved from the top bar onto the
+// Current card, so long book names fit the top bar. One button, not one a row.
+describe("TranslationPicker download button", () => {
+  const downloadButtons = (renderer: TestInstance) =>
+    renderer.root.findAll(
+      (node) =>
+        typeof node.type !== "string" &&
+        node.props.testID === "translation-download-button" &&
+        node.props.accessibilityRole === "button" &&
+        typeof node.props.onPress === "function",
+    )
+  const texts = (renderer: TestInstance, text: string) =>
+    renderer.root.findAll(
+      (node) => typeof node.type === "string" && node.props.children === text,
+    )
+
+  it("offers the download on the Current card only, with its size", async () => {
+    const onPressDownload = jest.fn()
+    const { renderer } = await render({ activeId: "rus_syn", onPressDownload })
+    const buttons = downloadButtons(renderer)
+    expect(buttons).toHaveLength(1)
+    expect(buttons[0]!.props.accessibilityLabel).toBe(
+      readerT("downloadAriaLabel", { name: SYNODAL.name }),
+    )
+    expect(
+      texts(renderer, formatDownloadSize(SYNODAL.downloadBytes)),
+    ).toHaveLength(1)
+
+    await act(async () => (buttons[0]!.props.onPress as () => void)())
+    expect(onPressDownload).toHaveBeenCalledTimes(1)
+    expect(onPressDownload).toHaveBeenCalledWith(SYNODAL)
+  })
+
+  // The card is one accessibility element; a button inside it would be
+  // unreachable, so it sits beside the labelled part.
+  it("keeps the button out of the card's own label, so a screen reader reaches both", async () => {
+    const { renderer } = await render({
+      activeId: "rus_syn",
+      onPressDownload: jest.fn(),
+    })
+    const [button] = downloadButtons(renderer)
+    expect(button).toBeDefined()
+    for (let at = button?.parent ?? null; at; at = at.parent ?? null) {
+      expect(at.props.accessible).not.toBe(true)
+    }
+    const labelled = renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.accessible === true &&
+        String(node.props.accessibilityLabel ?? "").startsWith(SYNODAL.name),
+    )
+    expect(labelled).toHaveLength(1)
+  })
+
+  it("follows the store: a ring while it downloads, then on the device", async () => {
+    const { renderer, downloads } = await render({
+      activeId: "rus_syn",
+      onPressDownload: jest.fn(),
+    })
+    await act(async () => {
+      downloads.set("rus_syn", {
+        kind: "downloading",
+        phase: "transfer",
+        percent: 45,
+        bytesWritten: 45,
+        totalBytes: 100,
+      })
+    })
+    expect(downloadButtons(renderer)[0]!.props.accessibilityLabel).toBe(
+      readerT("downloadRunningAriaLabel", { name: SYNODAL.name, percent: 45 }),
+    )
+    expect(
+      renderer.root.findAll(
+        (node) =>
+          typeof node.type === "string" &&
+          node.props.testID === "reader-download-ring",
+      ),
+    ).toHaveLength(1)
+
+    await act(async () => {
+      downloads.set("rus_syn", downloadedState(SYNODAL))
+    })
+    expect(downloadButtons(renderer)[0]!.props.accessibilityLabel).toBe(
+      readerT("downloadOnDeviceAriaLabel", { name: SYNODAL.name }),
+    )
+    // The size says what a download costs; once on the device it goes.
+    expect(
+      texts(renderer, formatDownloadSize(SYNODAL.downloadBytes)),
+    ).toHaveLength(0)
+  })
+
+  // The button takes width, so the card's name may use a second line.
+  it("gives the card's name two lines beside the button", async () => {
+    const { renderer } = await render({
+      activeId: "rus_syn",
+      onPressDownload: jest.fn(),
+    })
+    const names = renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" && node.props.children === SYNODAL.name,
+    )
+    expect(names).toHaveLength(1)
+    expect(names[0]!.props.numberOfLines).toBe(2)
+  })
+
+  it("has no button for BSB, which is inside the app", async () => {
+    const { renderer } = await render({
+      activeId: "BSB",
+      onPressDownload: jest.fn(),
+    })
+    expect(downloadButtons(renderer)).toHaveLength(0)
+  })
+
+  it("has no button with no Current row", async () => {
+    const { renderer } = await render({ onPressDownload: jest.fn() })
+    expect(downloadButtons(renderer)).toHaveLength(0)
   })
 })
 

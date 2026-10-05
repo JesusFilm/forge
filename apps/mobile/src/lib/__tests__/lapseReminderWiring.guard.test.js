@@ -78,8 +78,11 @@ const PROVIDER_WIRING = [
   "subscribeToTokenRotation(",
   "getRecommendationViewerStore().subscribe(",
   "publishPushAppLanguageSlug(",
-  // KTD9's announcements channel, on the same upsert as the reminder one.
-  "ensureAnnouncementsChannel()",
+  // KTD9's announcements channel, on the same upsert as the reminder one, and
+  // renamed with it when the UI language changes.
+  "ensureChannel(name)",
+  "ensureAnnouncementsChannel(",
+  "pushAnnouncementsChannelName()",
   // U8. Each one is silent when it goes: an announcement tap still navigates,
   // so no suite outside the tap handler's own would notice.
   "reportOpen:",

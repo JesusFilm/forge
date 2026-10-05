@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { activeTranscriptContentEmbeddingWhere } from "@/services/content-embedding-contract"
 import { PUBLIC_CONTENT_SLUG_SQL_PATTERN } from "@/services/search-watchability"
+import { recommendationTranscriptLocale } from "./locale-identity"
 import type {
   CuratedHydratedVideo,
   CuratedPoolContext,
@@ -25,6 +26,7 @@ export async function hydrateCuratedVideos(
   context: CuratedPoolContext,
 ): Promise<CuratedHydratedVideo[]> {
   if (videoIds.length === 0) return []
+  const transcriptLocale = recommendationTranscriptLocale(context.locale)
   const rows = await prisma.$queryRaw<CatalogRow[]>(Prisma.sql`
     SELECT video.id AS "videoId", video.core_id AS "videoCoreId",
       video.slug AS "videoSlug", display.title AS "videoTitle",
@@ -79,8 +81,8 @@ export async function hydrateCuratedVideos(
       SELECT chunk.embedding::text AS embedding
       FROM video_transcript transcript
       JOIN video_transcript_chunk chunk ON chunk.transcript_id = transcript.id
-      WHERE transcript.video_id = video.id AND transcript.language = ${context.locale}
-        AND chunk.language = ${context.locale} AND chunk.embedding IS NOT NULL
+      WHERE transcript.video_id = video.id AND transcript.language = ${transcriptLocale}
+        AND chunk.language = ${transcriptLocale} AND chunk.embedding IS NOT NULL
         ${activeTranscriptContentEmbeddingWhere({ transcriptAlias: "transcript", chunkAlias: "chunk" })}
       ORDER BY chunk.chunk_index, transcript.generated_at DESC, chunk.id
       LIMIT 1

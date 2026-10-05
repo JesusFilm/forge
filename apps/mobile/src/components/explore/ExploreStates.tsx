@@ -12,7 +12,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import type { FeedPhase } from "../../lib/explore/feedState"
-import { EXPLORE_COPY } from "../../lib/explore/copy"
+import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import { feedback } from "../../styles/shared"
 
@@ -40,6 +40,7 @@ export function ExploreStates({
 /** No network, or no admin: a message and a retry (R36, R47). */
 function ExploreOffline({ onRetry }: { onRetry: () => void }) {
   const typography = useTypography()
+  const t = useT("Explore")
   return (
     <View style={styles.screen} accessibilityLiveRegion="polite">
       <Ionicons name="cloud-offline-outline" size={40} color={TEXT_SECONDARY} />
@@ -47,20 +48,19 @@ function ExploreOffline({ onRetry }: { onRetry: () => void }) {
         style={[styles.title, typography.titleSmall]}
         accessibilityRole="header"
       >
-        {EXPLORE_COPY.offlineTitle}
+        {t("offlineTitle")}
       </Text>
       <Text style={[styles.body, typography.bodySmall]}>
-        {EXPLORE_COPY.offlineBody}
+        {t("offlineBody")}
       </Text>
       <Pressable
         onPress={onRetry}
         style={({ pressed }) => [styles.retry, pressed && feedback.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={EXPLORE_COPY.retry}
+        accessibilityLabel={t("retry")}
+        {...{ "dd-action-name": "explore-retry" }}
       >
-        <Text style={[styles.retryText, typography.body]}>
-          {EXPLORE_COPY.retry}
-        </Text>
+        <Text style={[styles.retryText, typography.body]}>{t("retry")}</Text>
       </Pressable>
     </View>
   )
@@ -69,6 +69,7 @@ function ExploreOffline({ onRetry }: { onRetry: () => void }) {
 /** No eligible video in the feed language (R37). */
 function ExploreEmpty({ languageName }: { languageName: string }) {
   const typography = useTypography()
+  const t = useT("Explore")
   return (
     <View style={styles.screen}>
       <Ionicons name="film-outline" size={40} color={TEXT_SECONDARY} />
@@ -76,11 +77,9 @@ function ExploreEmpty({ languageName }: { languageName: string }) {
         style={[styles.title, typography.titleSmall]}
         accessibilityRole="header"
       >
-        {EXPLORE_COPY.emptyTitle(languageName)}
+        {t("emptyTitle", { languageName })}
       </Text>
-      <Text style={[styles.body, typography.bodySmall]}>
-        {EXPLORE_COPY.emptyBody}
-      </Text>
+      <Text style={[styles.body, typography.bodySmall]}>{t("emptyBody")}</Text>
     </View>
   )
 }
@@ -91,13 +90,14 @@ function ExploreEmpty({ languageName }: { languageName: string }) {
  */
 export function ClipFailed() {
   const typography = useTypography()
+  const t = useT("Explore")
   return (
     <View testID="clip-failed" style={styles.failedLayer} pointerEvents="none">
       <Text
         style={[styles.failedText, typography.bodySmall]}
         accessibilityLiveRegion="polite"
       >
-        {EXPLORE_COPY.clipFailed}
+        {t("clipFailed")}
       </Text>
     </View>
   )

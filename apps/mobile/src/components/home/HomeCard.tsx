@@ -29,6 +29,8 @@ import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { prefetchHeroStream } from "../../hooks/useHeroStream"
 import { useTypography } from "../../hooks/useTypography"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
 import { card as cardStyle, feedback } from "../../styles/shared"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -110,6 +112,8 @@ export const HomeCard = memo(function HomeCard({
 }: HomeCardProps) {
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("Home")
+  const tWatch = useT("Watch")
   const { width: screenWidth } = useWindowDimensions()
 
   const width = homeCardWidth(variant, screenWidth)
@@ -136,6 +140,8 @@ export const HomeCard = memo(function HomeCard({
   // never matches a store entry, which would silently drop progress from the
   // accessibility label while the visible bar rendered correctly.
   const progressEntry = useWatchProgressEntry(card.videoId)
+  const progressText = progressAccessibilityText(progressEntry, tWatch)
+  const titleDirection = useTextDirection().text(card.titleLang)
 
   const handlePress = () => {
     if (!card.slug) return
@@ -169,17 +175,19 @@ export const HomeCard = memo(function HomeCard({
       onPressIn={interactive ? handlePressIn : undefined}
       onPress={interactive ? handlePress : undefined}
       accessibilityRole={interactive ? "button" : "image"}
-      accessibilityLabel={[card.title, progressAccessibilityText(progressEntry)]
-        .filter(Boolean)
-        .join(", ")}
+      accessibilityLabel={[card.title, progressText].filter(Boolean).join(", ")}
+      // The mark fits only a label that is the title alone (R10).
+      accessibilityLanguage={
+        progressText ? undefined : titleDirection.accessibilityLanguage
+      }
       // Stable, low-cardinality RUM action name (auto-tracker would leak the
       // title from accessibilityLabel) — KTD10. Spread: Pressable omits the type.
       {...{ "dd-action-name": actionName }}
       accessibilityHint={
         interactive
           ? isSeries
-            ? "Opens this series"
-            : "Opens this video"
+            ? t("opensSeriesAriaHint")
+            : t("opensVideoAriaHint")
           : undefined
       }
     >
@@ -213,8 +221,9 @@ export const HomeCard = memo(function HomeCard({
       )}
       <View style={styles.textContent} pointerEvents="none">
         <Text
-          style={[styles.cardTitle, typography.bodySmall]}
+          style={[styles.cardTitle, typography.bodySmall, titleDirection.style]}
           numberOfLines={2}
+          accessibilityLanguage={titleDirection.accessibilityLanguage}
         >
           {card.title}
         </Text>

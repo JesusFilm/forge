@@ -91,7 +91,7 @@ export function SeriesSessionProvider({ children }: { children: ReactNode }) {
 
   // Default the language once per series, as soon as the language union is
   // available, unless the user already chose. Resolution order (resolveDefaultSlug):
-  // persisted preference → device locale → series primary → English → first.
+  // persisted preference → defaultAudioLanguage() → series primary → English → first.
   useEffect(() => {
     const options =
       series?.languages.map((l) => ({

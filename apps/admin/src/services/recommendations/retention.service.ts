@@ -12,6 +12,7 @@ import {
 import { unlinkPushViewerIdentities } from "@/services/push/identity-unlink.service"
 import { RECOMMENDATION_RETENTION_PROPAGATION_HOURS } from "./contracts"
 import { suppressCowatchForProfiles } from "./cowatch/privacy"
+import { purgeExpiredCowatchRefreshMetadata } from "./cowatch/refresh-retention"
 import { purgeExpiredCompositionEvidence } from "./composition/service"
 import { purgeExpiredOwnerReleases } from "./promotion/owner-authority"
 import { purgeExpiredCowatchTrialAuthorities } from "./cowatch/trial-authority.service"
@@ -26,6 +27,7 @@ const RECOMMENDATION_PROFILE_AUDIT_DAYS = 365
 const RECOMMENDATION_RETENTION_LOCK_ID = 368_000_001
 const RECOMMENDATION_RETENTION_TIMEOUT_MS = 5_000
 const RECOMMENDATION_RETENTION_ROOT_CHUNK_SIZE = 50
+const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE = 5
 class RetentionPhaseBusy extends RecommendationConflictError {}
 
 type RetiringProfile = Readonly<{ id: string; privacyGeneration: number }>
@@ -140,14 +142,21 @@ async function countRequestChildren(
     tx.recommendationPlaybackFact.count({ where }),
     tx.recommendationOutcomeRevision.count({ where }),
     tx.recommendationContentAction.count({ where }),
-    tx.recommendationEligibilityDecision.count({
-      where: {
-        OR: [
-          { outcome: { is: { requestId: { in: requestIds } } } },
-          { contentAction: { is: { requestId: { in: requestIds } } } },
-        ],
-      },
-    }),
+    // Split the relation OR into request-led branches to give PostgreSQL a
+    // bounded count path. UNION keeps once-per-decision accounting.
+    tx.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+      SELECT count(*) AS count FROM (
+        SELECT decision.id FROM recommendation_outcome_revision outcome
+        JOIN recommendation_eligibility_decision decision
+          ON decision.outcome_id = outcome.id
+        WHERE outcome.request_id = ANY(${requestIds}::text[])
+        UNION
+        SELECT decision.id FROM recommendation_content_action action
+        JOIN recommendation_eligibility_decision decision
+          ON decision.content_action_id = action.id
+        WHERE action.request_id = ANY(${requestIds}::text[])
+      ) counted
+    `),
     tx.recommendationEvidenceAudit.count({ where }),
     tx.recommendationConflict.count({ where }),
     tx.recommendationCapabilitySubmissionBudget.count({ where }),
@@ -168,7 +177,7 @@ async function countRequestChildren(
     playbackFacts,
     outcomes,
     contentActions,
-    eligibilityDecisions,
+    eligibilityDecisions: Number(eligibilityDecisions[0]?.count ?? 0),
     audits,
     conflicts,
     submissionBudgets,
@@ -286,6 +295,11 @@ export async function purgeExpiredRecommendationRequests(
     await phase(async (tx) => {
       rowCounts.expiredOwnerReleases = await purgeExpiredOwnerReleases(tx, now)
     })
+    await phase(async (tx) => {
+      const removed = await purgeExpiredCowatchRefreshMetadata(tx, now)
+      rowCounts.expiredCowatchRefreshAttempts = removed.attempts
+      rowCounts.expiredCowatchRefreshGrants = removed.grants
+    })
     const expiredWatchExposures = await phase((tx) =>
       tx.watchSurfaceExposure.findMany({
         where: { expiresAt: { lte: now } },
@@ -308,11 +322,18 @@ export async function purgeExpiredRecommendationRequests(
       }),
     )
     const directActionIds = directActions.map((action) => action.id)
+    // Preserve per-episode dependency admission and atomic deletion, but cap
+    // this pre-root phase independently so a playback backlog cannot consume
+    // the whole run before expired requests are reached.
+    const standaloneEpisodePageSize = Math.min(
+      batchSize,
+      RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE,
+    )
     const standaloneEpisodes = await phase((tx) =>
       tx.recommendationPlaybackEpisode.findMany({
         where: { requestId: null, expiresAt: { lte: now } },
         orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
-        take: batchSize,
+        take: standaloneEpisodePageSize,
         select: { id: true },
       }),
     )
@@ -391,26 +412,118 @@ export async function purgeExpiredRecommendationRequests(
         where: { expiresAt: { lte: now } },
       }),
     )
-    await countPhase("expiredProfileProjectionRuns", (tx) =>
-      tx.recommendationProfileProjectionRun.deleteMany({
+    const expiredProjectionRunPage = await phase(async (tx) => {
+      const rows = await tx.recommendationProfileProjectionRun.findMany({
         where: { expiresAt: { lte: now } },
-      }),
-    )
-    await countPhase("expiredProfileProjectionContributions", (tx) =>
-      tx.recommendationProfileProjectionContribution.deleteMany({
+        orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+        take: batchSize,
+        select: { id: true },
+      })
+      rowCounts.expiredProfileProjectionRuns = rows.length
+        ? (
+            await tx.recommendationProfileProjectionRun.deleteMany({
+              where: { id: { in: rows.map(({ id }) => id) } },
+            })
+          ).count
+        : 0
+      return rows.length
+    })
+    const expiredContributionPage = await phase(async (tx) => {
+      const rows =
+        await tx.recommendationProfileProjectionContribution.findMany({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          take: batchSize,
+          select: { id: true },
+        })
+      rowCounts.expiredProfileProjectionContributions = rows.length
+        ? (
+            await tx.recommendationProfileProjectionContribution.deleteMany({
+              where: { id: { in: rows.map(({ id }) => id) } },
+            })
+          ).count
+        : 0
+      return rows.length
+    })
+    const expiredInterestPage = await phase(async (tx) => {
+      const rows = await tx.recommendationProfileInterest.findMany({
         where: { expiresAt: { lte: now } },
-      }),
-    )
-    await countPhase("expiredProfileInterests", (tx) =>
-      tx.recommendationProfileInterest.deleteMany({
-        where: { expiresAt: { lte: now } },
-      }),
-    )
-    await countPhase("expiredProfileProjectionGenerations", (tx) =>
-      tx.recommendationProfileProjectionGeneration.deleteMany({
-        where: { expiresAt: { lte: now } },
-      }),
-    )
+        orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+        take: batchSize,
+        select: { id: true },
+      })
+      rowCounts.expiredProfileInterests = rows.length
+        ? (
+            await tx.recommendationProfileInterest.deleteMany({
+              where: { id: { in: rows.map(({ id }) => id) } },
+            })
+          ).count
+        : 0
+      return rows.length
+    })
+    // A generation may still be referenced by a live run or served decision.
+    // Its old cascade would unlink every reference in one unbounded DELETE.
+    const expiredRunLinkPage = await phase(async (tx) => {
+      const rows = await tx.recommendationProfileProjectionRun.findMany({
+        where: { projection: { is: { expiresAt: { lte: now } } } },
+        orderBy: { id: "asc" },
+        take: batchSize,
+        select: { id: true },
+      })
+      rowCounts.expiredProjectionRunLinksUnlinked = rows.length
+        ? (
+            await tx.recommendationProfileProjectionRun.updateMany({
+              where: { id: { in: rows.map(({ id }) => id) } },
+              data: { projectionId: null },
+            })
+          ).count
+        : 0
+      return rows.length
+    })
+    const expiredDecisionLinkPage = await phase(async (tx) => {
+      const rows = await tx.recommendationPersonalizationDecision.findMany({
+        where: {
+          projectionGeneration: { is: { expiresAt: { lte: now } } },
+        },
+        orderBy: { requestId: "asc" },
+        take: batchSize,
+        select: { requestId: true },
+      })
+      rowCounts.expiredProjectionDecisionLinksUnlinked = rows.length
+        ? (
+            await tx.recommendationPersonalizationDecision.updateMany({
+              where: {
+                requestId: { in: rows.map(({ requestId }) => requestId) },
+              },
+              data: { projectionGenerationId: null },
+            })
+          ).count
+        : 0
+      return rows.length
+    })
+    const expiredGenerationPage = await phase(async (tx) => {
+      const where = {
+        expiresAt: { lte: now },
+        contributions: { none: {} },
+        interests: { none: {} },
+        workflowRuns: { none: {} },
+        servingDecisions: { none: {} },
+      }
+      const rows = await tx.recommendationProfileProjectionGeneration.findMany({
+        where,
+        orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+        take: batchSize,
+        select: { id: true },
+      })
+      rowCounts.expiredProfileProjectionGenerations = rows.length
+        ? (
+            await tx.recommendationProfileProjectionGeneration.deleteMany({
+              where: { ...where, id: { in: rows.map(({ id }) => id) } },
+            })
+          ).count
+        : 0
+      return rows.length
+    })
     await phase(async (tx) => {
       // Publisher transactions hold this dedicated key in shared mode from
       // before their profile row locks until commit. Do not block other
@@ -1003,10 +1116,20 @@ export async function purgeExpiredRecommendationRequests(
       oldestExpiredCompositionProtocol != null ||
       oldestExpiredCowatchTrialAuthority != null ||
       oldestExpiredOwnerRelease != null ||
+      oldestExpiredProfileProjectionRun != null ||
+      oldestExpiredProfileProjectionContribution != null ||
+      oldestExpiredProfileInterest != null ||
+      oldestExpiredProfileProjectionGeneration != null ||
       requestIds.length === batchSize ||
       expiredWatchExposures.length === batchSize ||
       directActionIds.length === batchSize ||
-      standaloneEpisodeIds.length === batchSize ||
+      standaloneEpisodeIds.length === standaloneEpisodePageSize ||
+      expiredProjectionRunPage === batchSize ||
+      expiredContributionPage === batchSize ||
+      expiredInterestPage === batchSize ||
+      expiredRunLinkPage === batchSize ||
+      expiredDecisionLinkPage === batchSize ||
+      expiredGenerationPage === batchSize ||
       expiredViewers.length === batchSize ||
       expiredProfiles.length === batchSize ||
       (remainingErasureCapacity > 0 &&

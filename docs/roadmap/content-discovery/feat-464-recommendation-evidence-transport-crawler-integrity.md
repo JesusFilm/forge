@@ -10,7 +10,6 @@ depends_on:
   - "feat-369"
 blocks:
   - "feat-459"
-  - "feat-372"
 tags:
   - "admin"
   - "web"

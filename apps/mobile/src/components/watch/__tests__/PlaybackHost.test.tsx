@@ -190,7 +190,13 @@ jest.mock("../../../lib/authSession", () => {
 })
 
 import { StrictMode, act, useEffect, type ReactElement } from "react"
-import { Animated, AppState, Dimensions, StyleSheet } from "react-native"
+import {
+  Animated,
+  AppState,
+  Dimensions,
+  Platform,
+  StyleSheet,
+} from "react-native"
 
 import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
 import {
@@ -235,7 +241,7 @@ import {
 import type { ExpoVideoMock } from "../../../test-utils/expoVideoMock"
 import { FloatingBackButton } from "../../ui/FloatingBackButton"
 import { PlayerSlot } from "../PlayerSlot"
-import type { VideoPlayerCast } from "../VideoPlayer"
+import { VideoPlayer, type VideoPlayerCast } from "../VideoPlayer"
 import {
   useFloatingWindowFrame,
   usePlaybackFrameVisible,
@@ -699,6 +705,41 @@ describe("the hoisted player drives the full view", () => {
     // The frame is only the clip that HAS bitten. Anything between it and the
     // bar eats the thumb just as well, so the whole path is what gets pinned.
     expect(clippersAboveScrubber(renderer)).toEqual([])
+  })
+})
+
+// KD8: the host hands the player door the video a report names. The prop is
+// optional and defaults to null, so a dropped wire compiles and every report
+// silently loses its video; these read the prop the real host passes.
+describe("the player-door feedback context (KD8)", () => {
+  function feedbackContextOf(renderer: TestInstance) {
+    const players = renderer.root.findAll(
+      (node) => (node as { type?: unknown }).type === VideoPlayer,
+    )
+    expect(players).toHaveLength(1)
+    return players[0].props.feedbackContext
+  }
+
+  it("names the video when the title came from the resolved record", async () => {
+    attachSlot()
+    const renderer = await renderHost()
+
+    expect(feedbackContextOf(renderer)).toEqual({
+      title: "Video A",
+      slug: "video-a-slug",
+      languageSlug: "english",
+    })
+  })
+
+  // A seed title is deep-link input: a crafted link can play a seed-only page
+  // whose title no record ever replaces, so it must not reach a staff ticket.
+  it("names no video when the title came only from a deep-link seed", async () => {
+    attachSlot({
+      session: { ...SESSION_A, title: "Seeded text", titleFromRecord: false },
+    })
+    const renderer = await renderHost()
+
+    expect(feedbackContextOf(renderer)).toBeNull()
   })
 })
 
@@ -4561,6 +4602,51 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
       expect(video.__player.play).not.toHaveBeenCalled()
       expect(video.__player.playing).toBe(false)
       expect(video.__player.currentTime).toBe(42)
+    })
+  })
+
+  // The owner (2026-09-30): the window stays under a reader sheet, and the
+  // sheet's dimming darkens it. iOS presents the sheet as a native modal over
+  // this host; Android draws this host over a sheet, so the window hides there.
+  describe("a reader sheet over the window", () => {
+    const platformOs = Object.getOwnPropertyDescriptor(Platform, "OS")!
+    afterEach(() => {
+      Object.defineProperty(Platform, "OS", platformOs)
+    })
+
+    it("keeps the window drawn, in its corner, under the sheet on iOS", async () => {
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      const resting = frameVisual(renderer)
+      expect(Platform.OS).toBe("ios")
+
+      await setRoute(renderer, ["reader-settings"])
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(frameStyle(renderer).opacity).not.toBe(0)
+      expect(frameVisual(renderer)).toEqual(resting)
+      expect(video.__player.playing).toBe(true)
+
+      await setRoute(renderer, READER_ROUTE)
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(frameVisual(renderer)).toEqual(resting)
+    })
+
+    it("hides the window under the sheet on Android, and brings it back after", async () => {
+      Object.defineProperty(Platform, "OS", {
+        value: "android",
+        configurable: true,
+      })
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+
+      await setRoute(renderer, ["reader-settings"])
+      expect(hasWindowChrome(renderer)).toBe(false)
+      expect(frameStyle(renderer).opacity).toBe(0)
+      expect(frames(renderer)[0].props.pointerEvents).toBe("none")
+
+      await setRoute(renderer, READER_ROUTE)
+      expect(hasWindowChrome(renderer)).toBe(true)
     })
   })
 

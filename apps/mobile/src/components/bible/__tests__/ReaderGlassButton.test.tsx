@@ -53,6 +53,7 @@ async function render(): Promise<TestInstance> {
       <ReaderGlassButton
         tokens={LIGHT}
         accessibilityLabel="Reader settings"
+        actionName="bible-reader-settings"
         onPress={() => {}}
       >
         <Text>icon</Text>

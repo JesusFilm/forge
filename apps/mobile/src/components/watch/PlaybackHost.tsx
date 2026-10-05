@@ -127,7 +127,7 @@ import {
 } from "../../lib/playbackInterruption"
 import { FloatingBackButton } from "../ui/FloatingBackButton"
 import { MiniPlayerWindow } from "./MiniPlayerWindow"
-import { VideoPlayer } from "./VideoPlayer"
+import { VideoPlayer, type PlayerFeedbackVideo } from "./VideoPlayer"
 
 /** KTD17's shrink: fixed duration, started when the pop commits. Distinct from
  *  every other duration here (and from ENDED_FADE_DURATION_MS, 320) so a timing
@@ -491,6 +491,26 @@ function ActivePlaybackHost({
   )
     knownIdentityRef.current = { videoKey, identity: progressIdentity }
 
+  // KD8: a player-door report names the surface's DESCRIPTOR (the window session
+  // may not exist yet). Only a record title may reach a ticket: a seed title is
+  // deep-link input, so a seed-only page reports with no video tag.
+  const sessionTitle = request.session?.titleFromRecord
+    ? request.session.title || null
+    : null
+  const sessionSlug = request.session?.videoSlug ?? null
+  const sessionLanguageSlug = request.session?.languageSlug ?? null
+  const feedbackContext = useMemo<PlayerFeedbackVideo | null>(
+    () =>
+      sessionTitle == null || sessionSlug == null
+        ? null
+        : {
+            title: sessionTitle,
+            slug: sessionSlug,
+            languageSlug: sessionLanguageSlug,
+          },
+    [sessionTitle, sessionSlug, sessionLanguageSlug],
+  )
+
   const settingsStore = getPlayerSettingsStore()
   const settingsSnapshot = useSyncExternalStore(
     settingsStore.subscribe,
@@ -844,10 +864,18 @@ function ActivePlaybackHost({
     sheetCounter.subscribe,
     sheetCounter.count,
   )
+  const openInlineSheetCount = useSyncExternalStore(
+    sheetCounter.subscribe,
+    sheetCounter.inlineCount,
+  )
+  // iOS presents route and Modal sheets above this host, so they dim the
+  // window. Android draws this host over them, and over inline sheets anywhere.
   const presentation = miniPlayerPresentation(
     sessionSnapshot,
     segments,
     openSheetCount,
+    Platform.OS === "ios",
+    openInlineSheetCount,
   )
   const session = sessionSnapshot.session
   const hasSession = session != null
@@ -1817,7 +1845,8 @@ function ActivePlaybackHost({
   }, [store])
 
   // feat-553 R10: the reader keeps its verse clear of the resting window. It
-  // stays published while a sheet hides the window, so the verse holds still.
+  // stays published while a sheet covers or hides the window, so the verse
+  // holds still.
   const onReaderRoute = readerPolicy != null
   const restingWindow = useMemo(
     () =>
@@ -1950,6 +1979,7 @@ function ActivePlaybackHost({
                   coverStartKeyRef.current === videoKey && startedRef.current
                 }
                 cast={slotOwned ? (request.cast ?? null) : null}
+                feedbackContext={feedbackContext}
               />
             )}
 

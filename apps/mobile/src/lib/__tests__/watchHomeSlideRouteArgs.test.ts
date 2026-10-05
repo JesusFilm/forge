@@ -41,6 +41,15 @@ describe("slideRouteArgs", () => {
     ).toBeNull()
   })
 
+  // KTD15: Watch Now routes on the raw kind; the label is catalog text.
+  it("passes the raw label kind through for routing, absent as null", () => {
+    expect(
+      slideRouteArgs(videoSlide({ label: "Serie", rawLabel: "SERIES" }))
+        .rawLabel,
+    ).toBe("SERIES")
+    expect(slideRouteArgs(videoSlide()).rawLabel).toBeNull()
+  })
+
   it("passes slug, title, label, and playbackId through unchanged", () => {
     const args = slideRouteArgs(videoSlide())
     expect(args.slug).toBe("jesus")

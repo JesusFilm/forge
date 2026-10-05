@@ -85,6 +85,11 @@ export type FeedPlayersInput = {
   yieldsToRoot: boolean
   /** A loop restarts the clip. The evidence recorder rebases on it (KTD9). */
   onLoop?: (token: number) => void
+  /**
+   * The active clip reached its end. True: the feed moves on, and the player
+   * holds the clip's last frame. False, or no callback: the clip loops.
+   */
+  onClipEnd?: (token: number) => boolean
   /** KTD17's stages that only this hook sees. None of them steers playback. */
   onSourceSet?: (token: number, player: PlayerId) => void
   onSourceLoaded?: (token: number) => void
@@ -142,6 +147,8 @@ type Track = {
   startCheck: StartCheck
   reseekAtMs: number
   loopSeekAtMs: number
+  /** The clip ended and the feed is moving on, so the player stays paused. */
+  heldAtEnd: boolean
   /** Any seek on this player: the start, a re-seek, a loop, or a scrub. */
   seekAtMs: number
   playRequested: boolean
@@ -163,6 +170,7 @@ function newTrack(): Track {
     startCheck: "done",
     reseekAtMs: 0,
     loopSeekAtMs: Number.NEGATIVE_INFINITY,
+    heldAtEnd: false,
     seekAtMs: Number.NEGATIVE_INFINITY,
     playRequested: false,
     interval: 0,
@@ -415,6 +423,7 @@ function createFeedPlayerEngine() {
     track.startCheck = "armed"
     track.reseekAtMs = 0
     track.loopSeekAtMs = Number.NEGATIVE_INFINITY
+    track.heldAtEnd = false
   }
 
   function syncSource(id: PlayerId, state: FeedState) {
@@ -453,6 +462,7 @@ function createFeedPlayerEngine() {
     const plays =
       id === state.active &&
       bound &&
+      !track.heldAtEnd &&
       activeWantsPlay(state) &&
       !input.yieldsToRoot &&
       AppState.currentState !== "background"
@@ -464,6 +474,11 @@ function createFeedPlayerEngine() {
     const input = inputs
     if (input == null || players == null) return
     const { state } = input
+    // A move that lands while the feed is away never reaches the reducer, so
+    // a clip held at its end must play again when the feed returns.
+    if (state.phase === "blurred") {
+      for (const id of PLAYER_IDS) tracks[id].heldAtEnd = false
+    }
     // KTD2: silence first, so two players never have sound at the same time.
     for (const id of PLAYER_IDS) {
       const { plays, sounds } = decide(id, state, input)
@@ -504,6 +519,18 @@ function createFeedPlayerEngine() {
     track.loopSeekAtMs = Date.now()
     seek(id, track.window.startSeconds)
     inputs?.onLoop?.(track.token)
+  }
+
+  /** The owner (2026-09-30): at its end a clip moves the feed on, else loops. */
+  function finish(id: PlayerId) {
+    const track = tracks[id]
+    if (track.window == null || track.token == null || track.heldAtEnd) return
+    if (inputs?.onClipEnd?.(track.token) === true) {
+      track.heldAtEnd = true
+      pause(id)
+      return
+    }
+    loop(id)
   }
 
   /** KTD4: one re-seek for a missed start, and a second miss fails the clip. */
@@ -565,7 +592,7 @@ function createFeedPlayerEngine() {
     if (!track.ready || track.startCheck === "reseeked") return
 
     if (currentTime >= track.window.endSeconds) {
-      if (Date.now() - track.loopSeekAtMs >= LOOP_SEEK_SETTLE_MS) loop(id)
+      if (Date.now() - track.loopSeekAtMs >= LOOP_SEEK_SETTLE_MS) finish(id)
       return
     }
     setForwardBuffer(id, activeForwardBufferSeconds(currentTime, track.window))
@@ -581,7 +608,7 @@ function createFeedPlayerEngine() {
   function onPlayToEnd(id: PlayerId) {
     const state = inputs?.state
     if (state == null || id !== state.active || !tracks[id].ready) return
-    loop(id)
+    finish(id)
     reconcile()
   }
 

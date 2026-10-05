@@ -3751,6 +3751,8 @@ model RecommendationRequest {
   seedMediaId            String?                             @map("seed_media_id") @db.VarChar(191)
   locale                 String                              @db.VarChar(32)
   purpose                String                              @default("seeded") @db.VarChar(32)
+  /// Bounded language identities and observed retrieval stages; expires with this request.
+  deliveryDiagnostics    Json?                               @map("delivery_diagnostics") @db.JsonB
   expectedItemCount      Int                                 @map("expected_item_count")
   /// Versioned immutable presentation and provenance snapshots keyed by served item id.
   servedItemPayload      Json?                               @map("served_item_payload") @db.JsonB
@@ -6663,4 +6665,49 @@ model RecommendationOwnerRelease {
 
   @@index([expiresAt], map: "recommendation_owner_release_expiry_idx")
   @@map("recommendation_owner_release")
+}
+
+/// Narrow owner delegation for the fixed bounded co-watch refresh policy.
+/// Source and release identities are audit values, never retention-extending FKs.
+model RecommendationCowatchRefreshGrant {
+  id String @id @db.Uuid
+  anchorReleaseId String @map("anchor_release_id") @db.Uuid
+  anchorPointerGeneration Int @map("anchor_pointer_generation")
+  influenceFloorGeneration Int @map("influence_floor_generation")
+  manifestDigest String @map("manifest_digest") @db.Char(64)
+  configurationDigest String @map("configuration_digest") @db.Char(64)
+  policyVersion String @map("policy_version") @db.VarChar(64)
+  budget Json
+  approvedById String @map("approved_by_id") @db.VarChar(191)
+  approvedAt DateTime @map("approved_at")
+  validUntil DateTime @map("valid_until")
+  revokedAt DateTime? @map("revoked_at")
+  revocationReason String? @map("revocation_reason") @db.VarChar(64)
+  attempts RecommendationCowatchRefreshAttempt[]
+
+  @@index([approvedAt(sort: Desc)], map: "recommendation_cowatch_refresh_grant_time_idx")
+  @@map("recommendation_cowatch_refresh_grant")
+}
+
+/// One durable operation identity fixes the complete source scope before work.
+model RecommendationCowatchRefreshAttempt {
+  id String @id @db.Uuid
+  grantId String @map("grant_id") @db.Uuid
+  grant RecommendationCowatchRefreshGrant @relation(fields: [grantId], references: [id], onDelete: Restrict)
+  expectedPointerGeneration Int @map("expected_pointer_generation")
+  windowStart DateTime @map("window_start")
+  windowEnd DateTime @map("window_end")
+  evaluationAsOf DateTime @map("evaluation_as_of")
+  startedAt DateTime @map("started_at")
+  leaseUntil DateTime @map("lease_until")
+  status String @db.VarChar(32)
+  expectedGraphGenerationId String? @map("expected_graph_generation_id") @db.Char(64)
+  publishedAt DateTime? @map("published_at")
+  completedAt DateTime? @map("completed_at")
+  reason String? @db.VarChar(64)
+  pointerGeneration Int? @map("pointer_generation")
+
+  @@index([grantId, startedAt(sort: Desc)], map: "recommendation_cowatch_refresh_attempt_grant_idx")
+  @@index([publishedAt(sort: Desc)], map: "recommendation_cowatch_refresh_attempt_publication_idx")
+  @@map("recommendation_cowatch_refresh_attempt")
 }

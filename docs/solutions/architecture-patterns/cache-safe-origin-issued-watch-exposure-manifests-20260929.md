@@ -61,7 +61,11 @@ episode routes cannot. Rootless same-scheme HTTPS forms are also document-relati
 under WHATWG parsing despite their scheme prefix. A canonical path or an
 internal ISR rewrite path is not automatically the browser's navigation base.
 Withhold the whole ambiguous source rather than dropping links and shifting
-positions. Follow-up feat-564 owns the remaining cached navigation authority.
+positions. The October 2 owner closeout accepted that unknown denominator and
+cancelled feat-564 as optional source-coverage expansion. A future request for
+complete alias measurement would still need an origin-owned public navigation
+base before signing; accepting incomplete coverage does not establish a
+measured zero, excuse failed issuance, or permit browser-authored served slates.
 
 Reserve bounded cross-service clock skew inside the lifetime ceiling: both
 signers mint 47h55m descriptors, while verifier and issuer reject expiry beyond
@@ -129,7 +133,7 @@ request-owned recommendation deliveries on their existing evidence contract.
 - `apps/web/src/lib/watch-surface-manifest.sources.ts` mirrors source renderers and owns bounded Markdown compilation.
 - `apps/admin/src/services/recommendations/watch-surface-exposure.service.ts` issues immutable windows and binds ingestion.
 - `apps/admin/src/services/recommendations/watch-surface-migration.db.test.ts` exercises actual SQL contention and retry.
-- `docs/validation/2026-09-29-feat-373-browser-local.md` records local browser reconciliation and its limits. Native BFCache was not observed; hidden/prerender visibility checks were simulations. Deployed authorized Admin reconciliation remains necessary before completing feat-373.
+- `docs/validation/2026-09-29-feat-373-browser-local.md` records local browser reconciliation and its limits. Native BFCache was not observed; hidden/prerender visibility checks were simulations. The later deployed Admin and browser observations support the bounded feat-373 closeout; they do not establish complete registry coverage.
 
 ## Related
 

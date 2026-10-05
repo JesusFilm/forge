@@ -7,6 +7,7 @@ import { useEffect, useRef, type ReactNode } from "react"
 import { useQuery } from "@apollo/client/react"
 import { useExperience } from "../hooks/useExperience"
 import { GET_WATCH_SETTING } from "../lib/queries"
+import { localeQueryVariables } from "../lib/videoText"
 import { ExperienceProvider } from "./ExperienceProvider"
 import { useExperienceSelection } from "./ExperienceSelectionProvider"
 
@@ -16,8 +17,10 @@ export function ExperienceShell({ children }: { children: ReactNode }) {
   const { currentSlug, selectExperience, isReady } = useExperienceSelection()
 
   const needsDefault = isReady && currentSlug === null
+  // KTD16: the selection stays on `en`. A slug that followed the UI language
+  // would reset the selection, and that remounts the Stack under a live change.
   const { data: settingData } = useQuery(GET_WATCH_SETTING, {
-    variables: { locale: "en" },
+    variables: localeQueryVariables("en"),
     skip: !needsDefault,
     fetchPolicy: "cache-and-network",
   })

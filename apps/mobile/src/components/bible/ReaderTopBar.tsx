@@ -9,20 +9,22 @@ import {
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useT } from "../../i18n/useT"
 import {
   READER_CHROME_MAX_FONT_SCALE,
   READER_TOUCH_TARGET,
   READER_TOP_BAR_HEIGHT,
   READER_TOP_BAR_OFFSET,
 } from "../../lib/bible/reader/chrome"
-import { READER_COPY } from "../../lib/bible/reader/copy"
-import type { TranslationLabel } from "../../lib/bible/reader/labels"
-import type { TranslationDownloadState } from "../../lib/bible/repository/translationDownloads"
+import type {
+  PillDownloadStatus,
+  TranslationLabel,
+} from "../../lib/bible/reader/labels"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 import { ChapterPill } from "./ChapterPill"
 import { ReaderGlassButton } from "./ReaderGlassButton"
-import { ReaderDownloadGlyph } from "./sheets/ReaderDownloadGlyph"
+import { ReaderProgressRing } from "./ReaderProgressRing"
 
 export type ReaderTopBarProps = {
   tokens: ReaderTokens
@@ -38,16 +40,14 @@ export type ReaderTopBarProps = {
   /** R23: the shown translation, or null while waiting. */
   translation: TranslationLabel | null
   onPressTranslation: () => void
-  download: {
-    state: TranslationDownloadState | null
-    accessibilityLabel: string
-  }
-  onPressDownload: () => void
+  /** A running download of the shown translation, as a ring in the pill. */
+  translationStatus: PillDownloadStatus | null
   onPressSettings: () => void
 }
 
 /** R8: back, the pill, and the translation pill at the left (owner,
- *  2026-09-27); download and settings at the right. */
+ *  2026-09-27); settings at the right. The download button is on the
+ *  translation sheet's Current card (owner, 2026-10-01). */
 export function ReaderTopBar({
   tokens,
   safeAreaTop,
@@ -58,10 +58,11 @@ export function ReaderTopBar({
   reduceMotion,
   translation,
   onPressTranslation,
-  download,
-  onPressDownload,
+  translationStatus,
   onPressSettings,
 }: ReaderTopBarProps) {
+  const t = useT("BibleReader")
+  const common = useT("Common")
   const note = translation?.note ?? null
   const noteKey = translation?.noteKey ?? null
   // The stand-in the open tip is for. Its text can change while a book name
@@ -104,7 +105,8 @@ export function ReaderTopBar({
         {onBack && (
           <ReaderGlassButton
             tokens={tokens}
-            accessibilityLabel={READER_COPY.back}
+            accessibilityLabel={common("goBackAriaLabel")}
+            actionName="bible-reader-back"
             onPress={onBack}
           >
             <Ionicons name="chevron-back" size={24} color={tokens.icon} />
@@ -114,9 +116,10 @@ export function ReaderTopBar({
           tokens={tokens}
           accessibilityLabel={
             passage
-              ? READER_COPY.choosePassage(passage)
-              : READER_COPY.choosePassageWaiting
+              ? t("choosePassageAriaLabel", { passage })
+              : t("choosePassageWaitingAriaLabel")
           }
+          actionName="bible-reader-passage"
           onPress={onPressPassage}
           disabled={passage === null}
           pulse={pulse}
@@ -137,8 +140,9 @@ export function ReaderTopBar({
           shape="pill"
           accessibilityLabel={
             translation?.accessibilityLabel ??
-            READER_COPY.chooseTranslationWaiting
+            t("chooseTranslationWaitingAriaLabel")
           }
+          actionName="bible-reader-translation"
           onPress={onPressTranslation}
           disabled={translation === null}
           style={styles.translation}
@@ -150,6 +154,9 @@ export function ReaderTopBar({
           >
             {translation?.text ?? " "}
           </Text>
+          {translationStatus && (
+            <PillStatus status={translationStatus} tokens={tokens} />
+          )}
         </ReaderGlassButton>
         {note !== null && (
           <Pressable
@@ -163,6 +170,7 @@ export function ReaderTopBar({
             accessibilityLabel={note}
             accessibilityState={{ expanded: tipOpen }}
             style={({ pressed }) => [styles.info, pressed && styles.pressed]}
+            {...{ "dd-action-name": "bible-reader-stand-in-info" }}
           >
             <Ionicons
               name="information-circle-outline"
@@ -175,15 +183,8 @@ export function ReaderTopBar({
       <View style={styles.trailing} pointerEvents="box-none">
         <ReaderGlassButton
           tokens={tokens}
-          accessibilityLabel={download.accessibilityLabel}
-          onPress={onPressDownload}
-          disabled={download.state === null}
-        >
-          <ReaderDownloadGlyph state={download.state} tokens={tokens} />
-        </ReaderGlassButton>
-        <ReaderGlassButton
-          tokens={tokens}
-          accessibilityLabel={READER_COPY.settings}
+          accessibilityLabel={t("settingsAriaLabel")}
+          actionName="bible-reader-settings"
           onPress={onPressSettings}
         >
           <Ionicons name="settings-outline" size={22} color={tokens.icon} />
@@ -199,6 +200,36 @@ export function ReaderTopBar({
           onPress={() => setTip(null)}
         />
       )}
+    </View>
+  )
+}
+
+/** The pill's ring, beside the short name. */
+const PILL_RING_SIZE = 16
+
+// The owner (2026-10-01): a small ring while a download runs, so the download
+// stays visible once the sheet closes. The pill's label says the percent.
+function PillStatus({
+  status,
+  tokens,
+}: {
+  status: PillDownloadStatus
+  tokens: ReaderTokens
+}) {
+  return (
+    <View
+      testID="reader-pill-download-ring"
+      style={styles.pillStatus}
+      accessible={false}
+      importantForAccessibility="no-hide-descendants"
+    >
+      <ReaderProgressRing
+        size={PILL_RING_SIZE}
+        strokeWidth={2}
+        progress={status.progress}
+        color={tokens.icon}
+        trackColor={tokens.progressTrack}
+      />
     </View>
   )
 }
@@ -242,6 +273,7 @@ function StandInTip({ tokens, note, top, arrowX, onPress }: StandInTipProps) {
         accessibilityRole="text"
         accessibilityLabel={note}
         style={styles.tip}
+        {...{ "dd-action-name": "bible-reader-stand-in-tip" }}
       >
         <View
           style={[styles.tipArrow, { left: arrowLeft }]}
@@ -306,6 +338,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: "600",
     fontFamily: "System",
+  },
+  pillStatus: {
+    marginLeft: 6,
   },
   // A full touch target; the negative margin keeps the icon near the pill.
   info: {

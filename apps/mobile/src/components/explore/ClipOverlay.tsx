@@ -24,9 +24,10 @@ import { ClipDescription } from "./ClipDescription"
 import { ClipProgressBar } from "./ClipProgressBar"
 import { SubtitleOverlay } from "../watch/SubtitleOverlay"
 import { clipPosterUri } from "../../hooks/useClipAutostart"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
 import type { CaptionBox } from "../../lib/captionBox"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
-import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { readSeconds } from "../../lib/explore/playerRead"
 import { bandAspect, clipFraming } from "../../lib/explore/framing"
 import { usePlayingSize } from "../../hooks/usePlayingSize"
@@ -103,6 +104,8 @@ export function ClipOverlay({
   veiled,
 }: ClipOverlayProps) {
   const typography = useTypography()
+  const t = useT("Explore")
+  const titleDirection = useTextDirection().text(clip.titleLang)
   const tabBarClearance = useTabBarClearance()
   const safeTop = useSafeAreaInsets().top
   const [bottomHeight, setBottomHeight] = useState(0)
@@ -318,14 +321,20 @@ export function ClipOverlay({
             onLayout={handleInfoLayout}
           >
             <Text
-              style={[styles.title, typography.titleSmall]}
+              style={[
+                styles.title,
+                typography.titleSmall,
+                titleDirection.style,
+              ]}
               numberOfLines={2}
               accessibilityRole="header"
+              accessibilityLanguage={titleDirection.accessibilityLanguage}
             >
               {clip.title}
             </Text>
             <ClipDescription
               description={clip.description}
+              descriptionLang={clip.descriptionLang}
               onExpand={handleExpand}
               onCollapse={handleCollapse}
             />
@@ -339,14 +348,16 @@ export function ClipOverlay({
             <RailButton
               testID="clip-rail-mute"
               icon={muted ? "volume-mute" : "volume-high"}
-              label={muted ? EXPLORE_COPY.unmute : EXPLORE_COPY.mute}
+              label={muted ? t("unmute") : t("mute")}
+              actionName={muted ? "explore-unmute" : "explore-mute"}
               onPress={onToggleMute}
               onLayout={handleMuteLayout}
             />
             <RailButton
               testID="clip-rail-share"
               icon="share-outline"
-              label={EXPLORE_COPY.share}
+              label={t("share")}
+              actionName="explore-share"
               onPress={handleShare}
               onLayout={handleShareLayout}
             />
@@ -385,6 +396,8 @@ type RailButtonProps = {
   testID: string
   icon: ComponentProps<typeof Ionicons>["name"]
   label: string
+  /** The RUM tap name, fixed in every language (KTD15). */
+  actionName: string
   onPress: () => void
   onLayout: (e: LayoutChangeEvent) => void
 }
@@ -394,6 +407,7 @@ function RailButton({
   testID,
   icon,
   label,
+  actionName,
   onPress,
   onLayout,
 }: RailButtonProps) {
@@ -406,6 +420,7 @@ function RailButton({
       style={({ pressed }) => [styles.railButton, pressed && feedback.pressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...{ "dd-action-name": actionName }}
     >
       <View style={styles.railCircle}>
         <Ionicons name={icon} size={24} color={TEXT_ON_OVERLAY} />
@@ -428,14 +443,16 @@ function KeepWatchingButton({
   posterUri: string | null
   onPress: () => void
 }) {
+  const t = useT("Explore")
   return (
     <Pressable
       testID="clip-rail-keep-watching"
       onPress={onPress}
       style={({ pressed }) => [styles.railButton, pressed && feedback.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={EXPLORE_COPY.keepWatching}
-      accessibilityHint={EXPLORE_COPY.keepWatchingHint}
+      accessibilityLabel={t("keepWatchingAriaLabel")}
+      accessibilityHint={t("keepWatchingAriaHint")}
+      {...{ "dd-action-name": "explore-keep-watching" }}
     >
       <View testID="clip-keep-watching-circle" style={styles.thumbCircle}>
         {posterUri != null && (

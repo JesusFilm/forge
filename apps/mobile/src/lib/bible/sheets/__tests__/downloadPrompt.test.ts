@@ -1,5 +1,5 @@
 /**
- * The top bar's download button (feat-553 U10, R29, R30): a confirmation
+ * The Current card's download button (feat-553 U10, R29, R30): a confirmation
  * that shows the catalog size before anything starts, then cancel, retry,
  * update, and remove. BSB never offers a download.
  */
@@ -13,7 +13,6 @@ import type {
   DownloadOutcome,
   TranslationDownloadState,
 } from "../../repository/translationDownloads"
-import { READER_SHEET_COPY } from "../copy"
 import {
   downloadPrompt,
   formatDownloadSize,
@@ -42,7 +41,23 @@ function loadCatalog(): Catalog {
 const CATALOG = loadCatalog()
 const SYNODAL = CATALOG.byId.get("rus_syn")!
 const BSB = CATALOG.byId.get("BSB")!
-const COPY = READER_SHEET_COPY.download
+// The prompt's English, pinned as the catalog must render it.
+const COPY = {
+  ok: "OK",
+  cancel: "Cancel",
+  close: "Close",
+  start: "Download",
+  keepGoing: "Keep downloading",
+  stop: "Cancel download",
+  remove: "Remove",
+  update: "Update",
+  retry: "Try again",
+  busyTitle: "Another download is running",
+  startTitle: (name: string) => `Download ${name}?`,
+  failedTitle: (name: string) => `The download of ${name} stopped`,
+  updateTitle: (name: string) => `An update for ${name}`,
+  bundledTitle: (name: string) => `${name} is on this device`,
+}
 
 type AlertCall = {
   title: string
@@ -180,7 +195,7 @@ describe("presentReaderDownloadPrompt", () => {
       { downloads, alert },
     )
     expect(calls[0]?.message).toContain("7.0 MB")
-    expect(labels(calls[0])).toEqual([READER_SHEET_COPY.close, COPY.remove])
+    expect(labels(calls[0])).toEqual([COPY.close, COPY.remove])
     press(calls[0], COPY.remove)
     expect(downloads.remove).toHaveBeenCalledWith("rus_syn")
     expect(downloads.start).not.toHaveBeenCalled()
@@ -198,11 +213,7 @@ describe("presentReaderDownloadPrompt", () => {
       { downloads, alert },
     )
     expect(calls[0]?.title).toBe(COPY.updateTitle(SYNODAL.name))
-    expect(labels(calls[0])).toEqual([
-      READER_SHEET_COPY.close,
-      COPY.remove,
-      COPY.update,
-    ])
+    expect(labels(calls[0])).toEqual([COPY.close, COPY.remove, COPY.update])
     press(calls[0], COPY.update)
     expect(downloads.start).toHaveBeenCalledWith(SYNODAL)
   })

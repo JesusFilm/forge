@@ -3,7 +3,7 @@ id: "feat-387"
 title: "Profile-conditioned directional co-watch"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: ""
 duration: 8
 depends_on:
@@ -12,8 +12,7 @@ depends_on:
   - "feat-382"
   - "feat-383"
   - "feat-386"
-blocks:
-  - "feat-448"
+blocks: []
 tags:
   - "admin"
   - "recommendations"
@@ -143,3 +142,21 @@ bounded graph publication and runtime checks without requiring or fabricating a
 shadow promotion decision or controlled result. This removes this ticket's full
 shadow-acceptance gate as a dependency of feat-565; it does not complete the
 unobserved shadow evidence listed above or establish causal usefulness.
+
+## October 2 closeout
+
+The directional graph, versioned edge features, profile-conditioned anchor
+selection, exact source lineage, privacy fencing and authorized Admin inspection
+are implemented. A bounded production graph was published and the owner used
+the direct path to activate G7; automatic refresh published G8 and replaced the
+pointer. G8's later eligibility-revision change invalidated the graph and
+revoked its release, preserving the required lineage fence. The direct path
+uses the implemented graph when valid and falls back after revocation. These receipts are in
+`docs/operations/recommendation-cowatch-refresh-2026-10-01.md`.
+
+The original terminal shadow decision and controlled-usefulness gate were
+superseded for this limited direct release by the owner's explicit no-study
+authorization. Their historical absence remains recorded above; it is not a
+claim of shadow acceptance or measured benefit. Sparse supported edges and
+zero observed co-watch-contributed cards remain coverage observations under
+the October 2 delivery-health policy, not unfinished graph implementation.

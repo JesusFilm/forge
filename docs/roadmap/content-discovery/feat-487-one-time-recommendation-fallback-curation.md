@@ -9,7 +9,6 @@ duration: 1
 depends_on: []
 blocks:
   - "feat-488"
-  - "feat-497"
   - "feat-511"
 tags:
   - "recommendations"

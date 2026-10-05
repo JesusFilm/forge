@@ -60,6 +60,9 @@ export type OfflineDownloadRecord = {
   qualityLabel: string
   /** Human title for the offline library; an empty value falls back to slug. */
   title: string
+  /** The UI catalog tag `title` and `seriesTitle` are in (U7). Absent on a
+   *  record from before U7, which the title refresh reads as `en`. */
+  titleLocale?: string
   /** Chosen subtitle language slug, or null for "No subtitles". */
   subtitleLanguageSlug: string | null
   state: OfflineDownloadState
@@ -160,6 +163,7 @@ export function parseOfflineRecord(
     renditionDocumentId,
     qualityLabel: asString(obj.qualityLabel) ?? "",
     title: asString(obj.title) ?? "",
+    titleLocale: asOptionalString(obj.titleLocale),
     subtitleLanguageSlug: asString(obj.subtitleLanguageSlug),
     state: state as OfflineDownloadState,
     committedPath: asString(obj.committedPath),

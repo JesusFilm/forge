@@ -72,6 +72,13 @@ jest.mock("../../../../hooks/useIsTabletLayout", () => ({
 }))
 // FlashList virtualizes against a layout jest never measures, so render the
 // header and every row inline instead.
+const mockPresentDownload = jest.fn((_context: unknown) => Promise.resolve())
+jest.mock("../../../../lib/bible/sheets/downloadPrompt", () => ({
+  ...jest.requireActual("../../../../lib/bible/sheets/downloadPrompt"),
+  presentReaderDownloadPrompt: (context: unknown) =>
+    mockPresentDownload(context),
+}))
+
 jest.mock("@shopify/flash-list", () => {
   const r = require as unknown as NodeRequireLike
   const path = r("path") as NodePath
@@ -122,7 +129,6 @@ import {
   createReadingPositionStore,
   type ReadingPositionStore,
 } from "../../../../lib/bible/position/store"
-import { READER_COPY } from "../../../../lib/bible/reader/copy"
 import { datadogLog } from "../../../../lib/datadog"
 import type { ReaderServices } from "../../../../lib/bible/reader/services"
 import { catalogHasBook } from "../../../../lib/bible/repository/resolveChapter"
@@ -132,7 +138,8 @@ import {
   DEFAULT_TEXT_SIZE_STEP,
 } from "../../../../lib/bible/settings/snapshot"
 import { createReaderSettingsStore } from "../../../../lib/bible/settings/store"
-import { READER_SHEET_COPY } from "../../../../lib/bible/sheets/copy"
+import { getT } from "../../../../i18n/useT"
+import { BIBLE_NOTICES } from "../../../../lib/bible/sheets/copy"
 import { readerSheetHref } from "../../../../lib/bible/sheets/routes"
 import { translationStatusLabel } from "../../../../lib/bible/sheets/translationList"
 import { readerTokens } from "../../../../lib/bible/theme/palettes"
@@ -168,9 +175,30 @@ const CATALOG = loadCatalog()
 const SYNODAL = CATALOG.byId.get("rus_syn")!
 const JOHN_3_16: VerseRef = { book: "JHN", chapter: 3, verse: 16 }
 const PSALM_23_1: VerseRef = { book: "PSA", chapter: 23, verse: 1 }
-const PASSAGE = READER_SHEET_COPY.passage
-const TRANSLATION = READER_SHEET_COPY.translation
-const SETTINGS = READER_SHEET_COPY.settings
+const readerT = getT("BibleReader")
+const passageT = getT("BiblePassagePicker")
+const pickerT = getT("BibleTranslationPicker")
+const settingsT = getT("BibleReaderSettings")
+const PASSAGE = {
+  chapter: (chapter: number) => passageT("chapterAriaLabel", { chapter }),
+  verse: (verse: number) => passageT("verseAriaLabel", { verse }),
+  notInTranslation: (shortName: string) =>
+    passageT("notInTranslation", { shortName }),
+}
+const TRANSLATION = { onDeviceOnly: pickerT("onDeviceOnly") }
+const SETTINGS = {
+  modes: {
+    light: settingsT("modeLight"),
+    trueDark: settingsT("modeTrueDark"),
+  },
+  typefaces: { sans: settingsT("typefaceSans") },
+  lineSpacing: settingsT("lineSpacing"),
+  textSize: settingsT("textSize"),
+  verseNumbers: settingsT("verseNumbers"),
+  showArrows: settingsT("showArrows"),
+  aboutTitle: settingsT("aboutTitle"),
+  currentCredit: BIBLE_NOTICES.currentCredit,
+}
 
 type Harness = {
   position: ReadingPositionStore
@@ -445,7 +473,7 @@ describe("reader-translation route", () => {
     }).params
     const renderer = await renderRoute(ReaderTranslationRoute)
 
-    const label = `${SYNODAL.name}, ${translationStatusLabel(SYNODAL, {
+    const label = `${SYNODAL.name}, ${translationStatusLabel(pickerT, SYNODAL, {
       kind: "not-downloaded",
     })}`
     await press(renderer, label)
@@ -457,13 +485,51 @@ describe("reader-translation route", () => {
     expect(mockRoute.back).toHaveBeenCalledTimes(1)
   })
 
+  // Code review (2026-10-01): the Current card is the only place to start a
+  // download, so pin the route's wiring from the button to the prompt.
+  describe("the Current card's download button", () => {
+    function downloadButtons(renderer: TestInstance): RenderedNode[] {
+      return renderer.root.findAll(
+        (node) =>
+          node.props.testID === "translation-download-button" &&
+          node.props.accessibilityRole === "button" &&
+          typeof node.props.onPress === "function",
+      )
+    }
+
+    it("opens the download prompt for the current translation", async () => {
+      install()
+      mockPresentDownload.mockClear()
+      mockRoute.params = readerSheetHref("translation", SYNODAL_CONTEXT).params
+      const renderer = await renderRoute(ReaderTranslationRoute)
+
+      const [button] = downloadButtons(renderer)
+      expect(button).toBeDefined()
+      await act(async () => {
+        button.props.onPress?.()
+      })
+      expect(mockPresentDownload).toHaveBeenCalledTimes(1)
+      expect(mockPresentDownload).toHaveBeenCalledWith({ translation: SYNODAL })
+    })
+
+    it("has no download button while BSB is current", async () => {
+      install()
+      mockRoute.params = readerSheetHref("translation", {
+        ...SYNODAL_CONTEXT,
+        translation: CATALOG.byId.get("BSB")!,
+      }).params
+      const renderer = await renderRoute(ReaderTranslationRoute)
+      expect(downloadButtons(renderer)).toHaveLength(0)
+    })
+  })
+
   // The owner (2026-09-28): a partial Bible that lacks the current book warns,
   // then opens at its own start. cpc_wbt is a New Testament only.
   describe("a switch to a partial Bible", () => {
     const BSB = CATALOG.byId.get("BSB")!
     const WBT = CATALOG.byId.get("cpc_wbt")!
     const DEUTERONOMY_2_4: VerseRef = { book: "DEU", chapter: 2, verse: 4 }
-    const WBT_ROW = `${WBT.name}, ${translationStatusLabel(WBT, {
+    const WBT_ROW = `${WBT.name}, ${translationStatusLabel(pickerT, WBT, {
       kind: "not-downloaded",
     })}`
     type Button = { text: string; style?: string; onPress?: () => void }
@@ -584,7 +650,7 @@ describe("reader-translation route", () => {
     const { position } = install()
     mockRoute.params = { translation: ["BSB"], ref: "nonsense", offline: 1 }
     const renderer = await renderRoute(ReaderTranslationRoute)
-    const label = `${SYNODAL.name}, ${translationStatusLabel(SYNODAL, {
+    const label = `${SYNODAL.name}, ${translationStatusLabel(pickerT, SYNODAL, {
       kind: "not-downloaded",
     })}`
     await press(renderer, label)
@@ -599,12 +665,12 @@ describe("reader-translation route", () => {
       Promise.resolve({ status: "failed", reason: "read-failed" }),
     )
     const renderer = await renderRoute(ReaderTranslationRoute)
-    expect(hasText(renderer, READER_COPY.failure.catalogTitle)).toBe(true)
+    expect(hasText(renderer, readerT("catalogTitle"))).toBe(true)
     loadCatalog.mockImplementation(() =>
       Promise.resolve({ status: "ok", value: CATALOG }),
     )
-    await press(renderer, READER_COPY.failure.retry)
-    expect(hasText(renderer, READER_COPY.failure.catalogTitle)).toBe(false)
+    await press(renderer, readerT("retry"))
+    expect(hasText(renderer, readerT("catalogTitle"))).toBe(false)
     expect(controls(renderer, TRANSLATION.onDeviceOnly)).toHaveLength(1)
   })
 })

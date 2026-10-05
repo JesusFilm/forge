@@ -1,5 +1,6 @@
 import { StyleSheet, View } from "react-native"
 
+import { useT } from "../../i18n/useT"
 import { BLACK, hexToRgba } from "../../lib/color"
 import { CircularSpinner } from "../ui/CircularSpinner"
 
@@ -9,12 +10,13 @@ import { CircularSpinner } from "../ui/CircularSpinner"
  * (VideoPlayer) read as one continuous load rather than two different screens.
  */
 export function PlayerLoadingVeil() {
+  const t = useT("Player")
   return (
     <View
       pointerEvents="none"
       style={styles.veil}
       accessibilityRole="progressbar"
-      accessibilityLabel="Loading video"
+      accessibilityLabel={t("loadingVideoAriaLabel")}
     >
       <CircularSpinner />
     </View>

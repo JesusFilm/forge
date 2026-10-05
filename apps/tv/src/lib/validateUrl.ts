@@ -28,6 +28,9 @@ export function cleanStreamUrl(url: string | null | undefined): string | null {
  */
 export function validateStreamingUrl(url: string | null | undefined): boolean {
   if (!url) return false
+  // TV-only fast path: thousands of canonical Mux variants otherwise invoke Hermes URL parsing.
+  if (/^https:\/\/stream\.mux\.com\/[A-Za-z0-9_-]+\.m3u8$/.test(url))
+    return true
   try {
     const parsed = new URL(url)
     return ALLOWED_STREAMING_HOSTS.has(parsed.hostname)

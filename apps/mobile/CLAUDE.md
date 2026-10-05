@@ -16,8 +16,9 @@ This is a Server-Driven UI (SDUI) app. Admin controls the content
 blocks and their order via the Experience content type. The app renders them.
 
 **Home tab — Experience-driven body, client-owned hero.** The Home body renders
-from the prod `watch-home` homepage Experience (`watchSetting.homepageExperience`,
-locale `en` — the same Experience web renders), adapted into the existing
+from the prod `watch-home` homepage Experience (`watchSetting.homepageExperience`
+in the UI catalog tag, with the `en` homepage as the fallback; see
+"Localization"), adapted into the existing
 `WatchHomeModel`/`HomeShelf` shape by `src/lib/watchHome/experienceAdapter.ts`
 (lean cards from flat `MediaCollectionBlock` items; NOT the SDUI
 `/experience/[slug]` renderers). Under-curated items (null authored
@@ -90,7 +91,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
-- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
+- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`, asking `passage(languageSlug:)` with the screen's captured text slug plus an `englishPassage`; with no passage in the UI language the card shows the English one with an English language mark), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
 
 ## Admin endpoint resolution (feat-339)
 
@@ -481,11 +482,12 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - **Do not gate the back-swipe on chrome visibility.** An earlier fix held `gestureEnabled` false while the player chrome was mounted. `shouldArmHideTimer` never arms while paused or ended, so the chrome never auto-hides in those states and the hold never released: pausing a video killed the edge back-swipe for the screen's whole life. Only fullscreen may disable the gesture. Every `gestureEnabled` write must still land on BOTH the screen and its parent stack — the pop that dismisses a nested route belongs to the ROOT stack, which consults only its own top screen. `app/__tests__/backSwipeGesture.guard.test.js` pins the layout options AND the edge width; `useFullscreenPresentation.test.tsx` pins that the gesture stays enabled outside fullscreen.
 - **Never set a react-native-screens `orientation` screen option.** `expo-screen-orientation`'s `ScreenOrientationViewController` answers UIKit from its OWN registry mask — what `lockAsync` writes — only while no screen carries an orientation. The moment one does, it defers to the react-native-screens view-controller chain instead, and a **dev client** has `expo-dev-launcher`'s `DevLauncherViewController` sitting in that chain: the resolved mask loses landscape, UIKit refuses the geometry request (`UIWindowScene.interfaceOrientationsNotSupported`, readable via `xcrun simctl spawn <udid> log stream`), fullscreen stays portrait, and leaving fullscreen strands the details page in landscape until the route pops. The option was always redundant — `src/lib/orientation.ts`'s lock already names the orientation on both platforms — so `useFullscreenPresentation` sets only the lock, and the dev client now rotates exactly like a Release build. Verified 2026-08-26 on the iPhone 17 Pro Max simulator in BOTH build types. `app/__tests__/screenOrientationOption.guard.test.js` blocks the one-line revert across every `.ts`/`.tsx` file under `app/` and `src/`, with a >100-file floor so the scan cannot silently go empty. It has TWO rules, and both are live: Rule 1 matches the key next to a quoted orientation value anywhere in the file (this catches the ternary across line breaks); Rule 2 matches a bare `orientation` KEY of any value shape — named constant, shorthand property — but only inside a brace-matched `screenOptions`/`options` object, so `src/lib/watchHome/`'s unrelated `orientation` key does not trip it. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 - **`PlayerSlot` must never depend on getting exactly one good `onLayout`.** `measureInWindow` SILENTLY drops its callback when the native node is not attached yet, and the host (`PlaybackHost`) returns null while the slot's rect is null — so one unlucky cold open leaves an opaque black box with no poster, no chrome, and no recovery except leaving the screen. Measured on the iPhone 17 Pro Max simulator over 10 cold deep-link opens: 2/10 on unmodified main, 0/10 after the bounded `requestAnimationFrame` re-measure. Three parts, and all three matter: retry until a rect lands, refuse a zero-size measure, and gate `isDrawn` on the RECT rather than on the attachment so the slot keeps its own poster while the host has nothing to draw. `src/components/watch/__tests__/PlayerSlot.test.tsx` drives a real `measureInWindow` callback and pins all three parts: a zero-size measure publishes nothing, a valid one publishes exactly the measured rect, and the pump stops asking once a rect lands. Exhaustion logs `player_slot.measure_exhausted` once, so an unmeasurable slot is visible in production instead of silent. The instrumentation that separates the cases is a `console.log` in `measureIntoStore` plus one inside the `measureInWindow` callback — `onLayout` fires in BOTH the good and the black run; only the callback differs. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
+- **Two RN Modals from one player: close the first, then mount the second in a LATER commit.** The settings sheet and the player-door feedback sheet (`src/components/feedback/FeedbackModal.tsx`) are both component-state `<Modal>`s hosted by `VideoPlayer.tsx`. The report row calls `onReportProblem` first (the host reads the playback position and freezes the video context AT THE TAP), then runs the settings sheet's own exit; the host mounts `FeedbackModal` from an effect keyed on `settingsOpen`, so its first render lands in a React commit AFTER the one that removed the settings sheet. Why: RN presents every `<Modal>` with `presentViewController:` on the react view controller and removes it with `dismissViewControllerAnimated:` (`react-native/React/Fabric/Mounting/ComponentViews/Modal/RCTModalHostViewComponentView.mm`, `ensurePresentedOnlyIfNeeded`), and nothing in that file queues a present behind a dismissal still in flight. `videoPlayerFeedbackDoor.test.tsx` pins the commit order by logging the modal stub's RENDER, not its mount effect — inside ONE commit React renders the new child before it runs the old child's cleanup, so a mount-order assertion alone stays green for a same-commit swap (falsified 2026-09-14). What jest cannot see is the native half: the second sheet appearing over the fullscreen player in landscape, and the keyboard leaving the message field and Send reachable there (AE13) — both are simulator checks. Every Modal over the player also sets `supportedOrientations={["portrait", "landscape"]}`; see `docs/solutions/runtime-errors/player-settings-sheet-fullscreen-orientation-sigabrt-crash.md`.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
   - **Superseded 2026-09-21:** the bearer also rides the eight recommendation
-    operations and the two push writes (`RegisterPushDevice`,
-    `ReportPushOpen`). `carriesFleetBearer` in `src/lib/authHeaders.ts` is the
-    allowlist, and `src/lib/__tests__/authHeaders.test.ts` pins it.
+    operations, the two push writes (`RegisterPushDevice`, `ReportPushOpen`),
+    and `SubmitFeedback`. `carriesFleetBearer` in `src/lib/authHeaders.ts` is
+    the allowlist, and `src/lib/__tests__/authHeaders.test.ts` pins it.
 
 ## Auth + watch progress (feat: mobile login & continue watching)
 
@@ -739,8 +741,11 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
   response's `expiresAt` is the authority on the item capabilities (ten
   minutes today): past it the hook sends no evidence and returns null from
   `select`; the UI refreshes instead.
-  `resolveRecommendationContext` maps the watch preference to
-  `{ locale: "en", audioLanguageSlug: prefs.audioLanguageSlug ?? "english" }`.
+  `resolveRecommendationContext` takes the locale from the UI catalog's
+  `forYouLocale` (`tl` sends `fil`) and the audio from the saved pick, else
+  `defaultAudioLanguage()`, else `english`. Only `coverage_unavailable`
+  starts one retry with `en` metadata and the SAME audio (KD14), and a pair
+  with no pool is not asked again in the session.
 - **Evidence and selection mirror Web's literals.** `render` carries
   `{ surfacePolicy: "watch-for-you-v1" }`, `impression`
   `{ visibilityPolicy: "watch-for-you-v1" }`, both under
@@ -1040,18 +1045,38 @@ No-op on iOS. The guard is an ENUMERATION, not a sweep: the two SDUI routes
 predated it by four months and shipped without the prop because nobody added
 them to the list. Add a case whenever you add a `<VideoView>`.
 
-**Sheet suppression is cross-platform; the hazard it prevents is Android-only.**
-The window hides while an in-app sheet is presented and returns to its corner
-when the sheet closes. Two mechanisms, because the app presents sheets two
-ways — nine real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
-`src/lib/miniPlayer/suppression.ts`: six read from `app/watch/_layout.tsx` and
-`app/series/_layout.tsx`, and the three Bible reader sheets read from the root
-`app/_layout.tsx`) and three sheets that are component state, counted by
-`getNonRouteSheetCounter()` and keyed by id so an unbalanced call is
-attributable. Keep both in step with those layouts. The rule runs on both
-platforms even though only Android paints through a sheet, so behaviour does
-not fork per platform. Suppression hides by opacity and drops pointer events —
-it never unmounts the view.
+**Sheet suppression depends on where a sheet draws (owner, 2026-09-30).** On
+iOS, a route sheet or a React Native `Modal` is a native modal above
+`PlaybackHost`. The window stays in its corner under it, and the sheet's
+dimming darkens the window with the rest of the screen. On the iPhone 17
+simulator, the window's white close icon dropped from peak 235 to 191 under the
+reader sheets. That is the same share as the reader's own text. The dimming
+also takes every touch, so a tap on the dimmed window closes the sheet.
+`PlaybackHost` passes `Platform.OS === "ios"` as `sheetsDrawOverHost` to
+`miniPlayerPresentation`. Android draws the host over every sheet. There the
+window hides while a sheet is presented, and returns to its corner when the
+sheet closes.
+
+- **An inline sheet hides the window on both platforms (code review,
+  2026-10-01).** The Downloads delete confirm (`DeleteConfirmSheet`,
+  `libraryDeleteConfirm`) is not a `Modal`. It draws inside its route, so the
+  host would cover its buttons on iOS too. `INLINE_SHEET_IDS` in
+  `src/lib/miniPlayer/suppression.ts` names it. The counter's `inlineCount`
+  feeds `miniPlayerPresentation`'s `openInlineSheetCount`. The other three
+  component-state sheets, the quiz, the player settings, and the player-door
+  feedback sheet, are `Modal`s.
+- **Two mechanisms count the sheets, because the app presents them two
+  ways.** The first is the ten sheet ROUTES in `IN_APP_SHEET_ROUTE_PATTERNS`
+  (`src/lib/miniPlayer/suppression.ts`). Six come from `app/watch/_layout.tsx`
+  and `app/series/_layout.tsx`. The three Bible reader sheets and the
+  `feedback` sheet come from the root `app/_layout.tsx`. The second is the four
+  sheets that are component state. `getNonRouteSheetCounter()` counts them by
+  id, so an unbalanced call is attributable. Keep both in step with those
+  layouts.
+- **Give a new sheet a route or a `Modal`.** A sheet drawn inside a route must
+  be in `INLINE_SHEET_IDS`, or iOS draws the window over it.
+- Suppression hides by opacity and drops pointer events. It never unmounts the
+  view.
 
 **The Bible reader routes change how the window starts and where it rests,
 and only on those routes (feat-553 KTD10, KTD11).** Outside the reader
@@ -1190,9 +1215,57 @@ and `useExploreTakeover` hooks.
   swipe history, and the pause flags, so both players derive from one state per
   commit. At most one player in the app has sound: a swipe mutes and pauses the
   outgoing player, reveals the incoming one muted on confirmed motion, then
-  unmutes it (expo/expo#30271). A loop is a seek at the window end; native
-  `loop` stays off. Loads start only while the pager rests, and every load
-  carries a token so a late `sourceLoad` never seeks the wrong clip.
+  unmutes it (expo/expo#30271). Loads start only while the pager rests, and
+  every load carries a token so a late `sourceLoad` never seeks the wrong clip.
+- **A clip that ends moves the feed to the next clip (owner, 2026-09-30,
+  changing R8).** At the window end, `useFeedPlayers` calls `onClipEnd`, and
+  `ExploreFeed` asks `ExplorePager`'s `requestMove("next")`. That move uses the
+  settle spring of a swipe release, and it jumps with Reduce Motion on. The
+  player holds the clip's last frame until the move lands. The clip loops only
+  when the pager refuses the move. The pager refuses in these cases:
+  - No next clip is ready, or a settle runs.
+  - A finger is on the pager, or on a child that holds it.
+  - The description is open, so the reader keeps the text (owner,
+    2026-10-01).
+  - A finger scrubs the progress bar, so the release seek lands on this clip
+    (code review, 2026-10-01).
+
+  A loop is a seek at the window end; native `loop` stays off. `explore.swipe`
+  carries `explore_swipe_trigger` (`viewer` or `clipEnd`). Filter on `viewer`
+  to count only the viewer's swipes.
+
+- **A child that scrolls on the pager's axis must hold the pager (owner,
+  2026-10-01).** On Fabric iOS, a pager that takes the JS responder stops every
+  nested scroll view from starting a drag. `RCTScrollViewComponentView`'s
+  `touchesShouldCancelInContentView` returns NO while an ANCESTOR holds the
+  responder. So a slow drag on an open description moved the feed to the next
+  clip, and a fast one scrolled the text. `useExplorePagerHold()` gives a child
+  two scopes:
+  - `drag`: the pager claims no drag and refuses `requestMove`. The open
+    description (`ClipDescription.tsx`) takes it in `onTouchStart`. It holds
+    only while its text scrolls; text that fits leaves the drag to the pager.
+  - **The `drag` hold counts the description's own fingers, not the
+    surface's.** iOS sends a finger's events only to the view it started on.
+    So a finger on the video keeps the surface's `touches` full, and its end
+    never reaches the description. The hold reads `targetTouches` on iOS. On
+    Android, which sends no `targetTouches`, it reads `changedTouches`:
+    Android routes every finger of a gesture to the view its first finger hit.
+    It releases when its own fingers are up, on a cancel, or on unmount.
+  - `feedMove`: only `requestMove` (the feed's own move) waits, so a clip end
+    loops. The open description holds it while it is mounted, and
+    `ClipProgressBar` holds it from a scrub's grant to its release. A swipe and
+    the screen reader's next/previous actions still move the feed. The engine
+    passes `"viewer"` for those, and the handle passes `"feed"`.
+  - **Use touch events, not a nested responder.** A child that claims the
+    responder fails in one case: while the text coasts after a fling, the
+    `ScrollView` takes the touch start in the capture phase, ahead of every
+    child. It then gives the drag to the pager, because no scroll event has
+    arrived yet. Touch events reach the child in every case.
+  - Jest cannot show the coast case. Verified on the iPhone SE simulator
+    (2026-10-01): 12 slow drags during a coast moved no clip. A temporary
+    `console.log` of the move trigger in `ExploreFeed`'s `handleMove` tells a
+    leaked swipe from a clip-end move. Fast Refresh keeps the old pager
+    engine in its ref, so a pager change needs a cold relaunch to show.
 - **The pager rebases at every settle, or iOS hides the clip from VoiceOver.**
   See the Common Pitfalls entry on frames that miss their parent's bounds.
   `ExplorePager.test.tsx` "accessibility tree geometry (R35)" pins it.
@@ -1309,10 +1382,12 @@ the KTD, R and AE numbers the source comments cite.
   pair by identifier.
 - **The reminder body NAMES the video, and the title travels in the record, not
   in the payload.** `src/lib/lapseReminders/copy.ts` is the only place a body is
-  built: `LAPSE_REMINDER_COPY_TITLED` when the record carries a title,
-  `LAPSE_REMINDER_COPY` when it does not. Both sets must stay — a record written
-  before titles, or one whose title failed the sanitizer, still has to read as a
-  finished sentence. The title is baked into the body AT SCHEDULE TIME, so a
+  built, from the `LapseReminder` catalog namespace through `getT`: the
+  `*TitledBody` messages when the record carries a title, the `*Body` messages
+  when it does not. Both sets must stay — a record written before titles, one
+  whose title failed the sanitizer, or one whose title locale differs from the
+  UI locale still has to read as a finished sentence in the UI language. The
+  title is baked into the body AT SCHEDULE TIME, so a
   pending reminder keeps the title it was scheduled with. It never enters the
   notification payload: the tap still reads the slug alone, so a CMS title can
   never steer navigation.
@@ -1489,8 +1564,8 @@ design record is
   reminder, so a reminder pending from an older build still routes. A slug is
   1 to 200 RFC 3986 unreserved characters, never `.` or `..`; the nonce is
   base64url, carried opaque and never logged. Any other shape opens Home and
-  shows `PUSH_UNRESOLVABLE_DESTINATION_MESSAGE` (`src/lib/push/copy.ts`)
-  through `PushNoticeHost`, which the root layout mounts beside
+  shows `pushUnresolvableDestinationMessage()` (`src/lib/push/copy.ts`, the
+  `Push` catalog namespace) through `PushNoticeHost`, which the root layout mounts beside
   `ExportReportHost` so the message has a host that belongs to no route.
 - **Routes:** video → `/watch/<slug>`, series → `/series/<slug>`, experience →
   select that experience (this changes the saved home experience, by decision)
@@ -1990,7 +2065,9 @@ from there, so no two files can disagree about the bar's size.
   and it compares the assigned token rather than using a lookahead, whose
   `\s*` can match zero characters and slip past the value it was told to
   reject. It also fails when either layout spells a tab label: both layouts
-  read `TAB_LABELS` in `src/lib/tabBar.ts`, so a rename is a one-line change.
+  read `useTabLabels()` in `src/lib/tabBar.ts`, which maps each tab through
+  `TAB_LABEL_KEYS` to the `Tabs` catalog namespace, so a rename is a one-line
+  change and a language change relabels the bar without a remount.
 - **A fade is not available on the material.** `GlassView` renders nothing
   inside a layer whose opacity an ancestor animates, so any fade of
   `TabBarBackground` forces `PlatformBlur` on every iOS version and changes the
@@ -2062,15 +2139,34 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   records. The download button reads its state from the manifest and the
   files, never from a flag. The reader uses only the `expo-file-system`
   package root, never `/legacy`.
+  - **The download button is on the translation sheet's Current card, not
+    the top bar (owner, 2026-10-01).** It moved so long book names fit the
+    top bar. There is one button, on the card only. Every row already says
+    "On this device". A button per row would add a second tap target to each
+    row. `TranslationDownloadButton` fills the Current row's
+    `renderActiveAccessory` slot in `SearchableListSheet`, beside the row's
+    accessible label, so VoiceOver reaches the button as its own element. A
+    tap opens the same prompt (`openTranslationDownload` →
+    `presentReaderDownloadPrompt`). BSB is inside the app, so its card has no
+    button. The size shows under the button until a download starts.
+  - **The translation pill shows a ring while the shown translation
+    downloads (owner, 2026-10-01).** A download keeps running after the sheet
+    closes, and the ring is its only sign then (`pillDownloadStatus` in
+    `src/lib/bible/reader/labels.ts`). The pill's label adds the percent
+    ("Translation: World English Bible, downloading, 40 percent. Change
+    translation"). A finished download shows nothing in the pill: the owner
+    tried a gray cloud-check there and dropped it the same day. The card in
+    the sheet still says "On this device".
   - **A running download shows a ring, not a percent (owner, 2026-09-28).**
-    `ReaderProgressRing` matches the watch page's ring (26 pt, 2.5 pt line).
-    Its center is an X, not the watch page's pause: a Bible download only
-    cancels, and a tap offers "Keep downloading" or "Cancel download". Do
-    not reuse `DownloadProgressRing`
-    there: it punches its center with an opaque disc, and the glass button
-    has no opaque color to match. This ring draws only its line: two half
-    rings (a circle with two colored border sides) turn inside half-width
-    clips. The button's label still says the percent.
+    `ReaderProgressRing` matches the watch page's ring (26 pt, 2.5 pt line)
+    on the card's button; the pill uses a 16 pt ring with no center.
+    The button's center is an X, not the watch page's pause: a Bible download
+    only cancels, and a tap offers "Keep downloading" or "Cancel download".
+    Do not reuse `DownloadProgressRing` there: it punches its center with an
+    opaque disc, and the glass button has no opaque color to match. This ring
+    draws only its line: two half rings (a circle with two colored border
+    sides) turn inside half-width clips. The button's label still says the
+    percent.
 - **Every chapter read from `bible.helloao.org` has a time limit and a byte
   limit (KTD3).** The limits are 8 seconds and 512 KB, and each failure is a
   typed reason in `src/lib/bible/repository/errors.ts`. A whole-translation
@@ -2213,7 +2309,8 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
     rule, so the mark and the pick agree with the pill (review #9, owner,
     2026-09-28).
 - **The translation pill is in the top bar (KD28, owner, 2026-09-27).** It
-  sits right of the passage pill and shows the short name only. A stand-in
+  sits right of the passage pill and shows the short name, plus a ring while
+  a download runs (see the downloads above). A stand-in
   (R25, R41) adds a red info button right of the pill, not inside it (owner,
   2026-09-28). A tap shows a note under it ("Η Καινή Διαθήκη does not
   include Genesis. The reader shows it in Berean Standard Bible."), and says
@@ -2302,6 +2399,289 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
 - **In a worktree under `.claude/worktrees/`, run jest with
   `--no-watchman`.** Watchman roots its watch at the main checkout there, and
   its crawl covers every worktree.
+
+## Localization
+
+The app shows its UI text in the phone's language when web has a catalog for
+that language. The design record is
+`docs/plans/2026-09-28-1016-feat-mobile-ui-localization-plan.md`; it defines
+the KD, KTD, R, and U numbers that the source cites.
+
+- **Catalogs.** `messages/<tag>.json` has one file per web catalog, with the
+  same tags as `apps/web/messages/`. `en.json` is the source. Namespaces are
+  PascalCase and keys are camelCase. A key for an accessibility label or hint
+  contains `Aria` (`goBackAriaLabel`), so the translator writes spoken text.
+  Read text with `useT("<Namespace>")`, or `getT` outside React. After a
+  catalog file is added or removed, run
+  `node scripts/i18n/generate-catalog-index.mjs`; its `--check` guard fails on
+  drift. `crk` and `mey-Latn` are English-only, as on web: their catalogs are
+  copies of `en.json`, and they never go to the translator.
+- **Start-up.** `startLocaleSync()` runs at module scope in the guarded
+  `require` block of `app/_layout.tsx`, next to
+  `preventNativeSplashAutoHide()`. So the first frame and the first Admin
+  request use the phone's language. Only `src/i18n/localeStore.ts` loads
+  `expo-localization`, lazily inside its `try` blocks, so a dev client built
+  before the module stays on English. No file reads the `Intl` default locale.
+- **Three Admin language forms (KTD9).** Admin's tags differ from the catalog
+  tags for about 54 locales, so `currentAdminForms()` in
+  `src/i18n/adminLanguage.ts` gives each catalog three forms. The catalog tag
+  is for `watchSetting`, `experienceBySlug`, and For You (`forYouLocale`). The
+  language slug (`textSlug`, the identity) is for video text rows, study
+  questions, search, and Bible passages. Admin's raw tag (`rawTag`) is for the
+  `Language.name` and `BibleBook.name` maps. The table is generated by
+  `node scripts/i18n/generate-admin-languages.mjs [--check]`, with overrides in
+  `i18n/admin-language-overrides.json`. A `text` slug must be where Admin
+  stores the text rows: `es` reads `spanish-latin-american` and `id` reads
+  `indonesian-yesus` (production, 2026-09-29), not web's audio table.
+- **Captured forms (KTD16).** A watch or series screen captures its forms at
+  mount with `useScreenAdminForms(slug)`, and the playback session keeps them,
+  so an open screen keeps its text after an Android language change (KD12).
+  Code under those routes passes the forms to every reader and never reads
+  the store for Admin content.
+- **Default audio (KTD12).** `defaultAudioLanguage()` in the store takes the
+  phone's first language before any catalog fallback, so a Hausa phone gets
+  the Hausa dub with English UI. It feeds the audio, subtitle, Bible, For You,
+  and Explore defaults. A reviewed `audio` override wins over an unreviewed
+  exact-tag match, so `bn-BD` keeps `bangla-2`.
+
+### Add, change, or remove a string
+
+1. Edit `messages/en.json`. A new namespace needs a sentence in
+   `i18n/translation-contexts.json` (`namespaces.<Namespace>`). Add a `keys`
+   override when the key name does not tell the translator the role. A
+   message with no words (only placeholders and punctuation, such as
+   `{name}, {status}`) goes on `intentionallyLocaleNeutral` in
+   `i18n/translation-policy.json`: web's copy check rejects a translation
+   that equals English, so the command and CI refuse such a key otherwise.
+2. In `apps/mobile`, translate the change. Use the local mode first (see
+   "Translate with Claude"): it costs nothing extra. The paid mode is
+   `node scripts/i18n/translate-catalogs.mjs` with no mode flag. The command is
+   not a `package.json` script, because a new script entry moves the
+   fingerprint runtime version.
+3. Commit `en.json`, the changed catalogs, and `i18n/*.json` in the same PR as
+   the code (KD6).
+
+**Until the first full translation run (U16), no locale catalog exists.** Use
+`--restamp` after an `en.json` change. A plain run then creates all 224
+catalogs and translates all of them. So does `--local-export` without
+`--locales`.
+
+A full run follows KTD6. It creates `{}` for each web catalog that mobile
+lacks. It removes deleted keys from every catalog, the source record, the
+pending list, and the context overrides. It deletes the translations of each
+key whose English no longer matches `i18n/source-record.json`. It predicts the
+keys that web's script will translate, prints the estimate, and asks. Then it
+runs `apps/web/scripts/translate-ui-catalogs.mjs` once per model group. Last,
+it removes finished keys from the pending list and records each translated
+locale in `i18n/translation-provenance.json`.
+
+Every mode first removes deleted keys and copies English into the
+English-only catalogs.
+
+| Mode                    | Network   | What it does                                                                                                  |
+| ----------------------- | --------- | ------------------------------------------------------------------------------------------------------------- |
+| (none)                  | yes, paid | The full run above.                                                                                           |
+| `--dry-run [--json]`    | no        | Prints the plan and the estimate. Writes nothing.                                                             |
+| `--prune-only`          | no        | Removes deleted keys.                                                                                         |
+| `--restamp`             | no        | Records the hash of each key that no catalog holds an older translation of. Refuses a key that still has one. |
+| `--mark-pending <keys>` | no        | Puts comma-separated keys on the pending list. A changed key takes its new English in every catalog.          |
+| `--local-export <dir>`  | no        | Does the local steps of a full run, then writes one request file per locale into `<dir>`.                     |
+| `--local-import <dir>`  | no        | Checks the answer files in `<dir>`, then writes them through web's script. Needs `--translator <id>`.         |
+
+Options: `--locales <tags>` limits the seeding and the translation.
+`--max-attempts <n>` and `--concurrency <n>` go to web's script (default 4
+each). `--yes` skips the prompt, for non-interactive use only.
+`--translator <id>` names the Claude model that wrote the answers of a local
+import, and the provenance records it.
+
+- **Budget rule.** A paid run costs money. An agent asks the owner for an
+  OpenAI key and a budget before any paid run. The command prints the request
+  estimate first and waits for "yes". Without a terminal, it refuses unless
+  `--yes` is set. The local modes cost nothing extra: a Claude session on the
+  owner's subscription writes the translations (owner decision, 2026-10-02).
+- **Pending list.** `pendingKeys` in `i18n/translation-policy.json` maps a key
+  to the date it went pending. A pending key shows English in the other
+  locales until a later run translates it. Use `--mark-pending <key>` when a
+  run cannot happen now.
+- **A failed or quota-stopped run.** The run stops at the first used-up quota
+  (`--stop-on-quota`). The summary names the finished, failed, and not-started
+  locales. An unfinished locale keeps its old catalog and provenance: it still
+  lacks the new key, or shows English for it, so a CI suite names it. Run the
+  command again to finish it.
+- **Models.** `i18n/model-table.json` pins the model for each locale.
+  `defaultModel` is web's default, and every entry is an OpenAI API model ID.
+  Web recorded `codex-local-agent` for `zh`, `zh-Hans`, and `zh-Hant`, which
+  is not an API model, so those tags use `gpt-5.6`, the model web used for
+  `ru`. A locale that fails on the 20,000-token output limit takes a `-pro` or
+  `gpt-5.6-` model, which uses the Responses API with 40,000 tokens. The table
+  governs the paid mode only. The provenance accepts an API model ID or a
+  Claude model ID (`claude-…`), never a label such as `codex-local-agent`. A
+  Claude model ID has a version number, so a label such as `claude-code` fails.
+- **Web's script (R19, R20).** The command passes mobile's `--messages-dir`,
+  `--manifest`, `--progress`, `--policy`, `--contexts`, `--stop-on-quota`,
+  `--locales`, `--model`, `--concurrency`, and `--max-attempts`, and web's
+  `--inventory`. It never passes `--keys` or `--promote`.
+  `i18n/script-manifest.json` is a stub that the script reads and never
+  writes. Each model group has its own progress file in the temp directory;
+  the name holds the English digest, the policy digest, and the model. The
+  command refuses to run when the script's source lacks any of these flags,
+  because the script ignores an unknown flag and would use web's own policy.
+- **CI.** `src/i18n/__tests__/` has `catalogParity`, `catalogFormat`,
+  `sourceRecord`, and `translationPolicy`. They check key parity in both
+  directions, placeholders and plurals, that every message formats, the source
+  record, the pending list, the context sentences, the model table, the stub
+  manifest, and that each message with no words is locale-neutral.
+  `scripts/i18n/__tests__/` covers the command (with the local modes), the
+  gate, and the report. A change to web's two script files or to
+  `docs/i18n/watch-ui-official-language-inventory.json` also runs the mobile
+  jobs. The mobile test job writes `scripts/i18n/pending-report.mjs` to the
+  job summary: the pending count, the oldest pending key, and each web
+  catalog that mobile lacks or has not declared natively.
+- **No hard-coded English (KTD14).** `src/i18n/__tests__/noHardcodedCopy.guard.test.js`
+  parses `app/` and `src/` with the TypeScript compiler. It fails on JSX text,
+  a literal in a copy prop, `Alert.alert` text, a registered copy module that
+  stops reading the catalog, `getT(` in a `.tsx` file, a store read at module
+  scope, a second `expo-localization` importer, and any read of the `Intl`
+  default locale. Brands, legal modules, and dev-only files sit on an exact
+  allowlist, each with a reason; an unused entry fails too. Text that a
+  variable carries is invisible to it, so error screens show catalog text,
+  never `error.message` (`app/__tests__/errorScreenCopy.guard.test.js`).
+- **Text direction (KTD13).** `useTextDirection()` in
+  `src/i18n/textDirection.ts` gives the direction style for left-aligned text:
+  `rtl` for a right-to-left language, `ltr` for English fallback text in a
+  right-to-left UI, and nothing in an English UI. Admin text passes its own
+  `*Lang` field; UI text uses the catalog tag. English fallback text also gets
+  `accessibilityLanguage="en"` on iOS. It never applies to containers or to
+  centered text, and the layout never mirrors (KTD4).
+
+### Translate with Claude (local mode)
+
+The local mode runs the same pipeline as a paid run. Only the translator is
+different: a Claude session writes the answers instead of the OpenAI API. Web's
+real script still checks every answer and writes every catalog. The code is
+`scripts/i18n/local-modes.mjs` and `scripts/i18n/lib/localTranslation.js`.
+
+1. Export: `node scripts/i18n/translate-catalogs.mjs --local-export <dir>`.
+   Use a new folder outside every git repository, for example under
+   `$TMPDIR`. The command does the local steps of a full run and writes them.
+   Then it runs web's script against its own server on 127.0.0.1. The server
+   records each request in `<locale>.request.json`. That file holds `system`
+   and `prompt`: the exact instructions that the paid model gets. The prompt
+   also holds the existing translations of that locale as references.
+   `index.json` lists the keys for each locale.
+2. Translate: for each request file, write `<locale>.answer.json`. It is a
+   JSON object that maps each key in `prompt.messagesToTranslate` to its
+   translation. Follow `system` and `prompt`.
+3. Import: run the command with `--local-import <dir> --translator <id>`.
+   `<id>` is the Claude model that wrote the answers, for example
+   `claude-opus-5-5`. The command checks every answer first. It runs web's
+   contract, copy, and script checks, and mobile's plural, select, and ICU
+   syntax checks. A locale with a problem gets nothing. Then web's script
+   takes the answers from the command's server. It checks them again and
+   writes the catalogs. The provenance records the translator.
+4. Read `<dir>/import-report.json`. It gives the status of each locale and
+   every problem. The terminal shows at most 30 problems for each locale. Fix
+   the answer files and run the import again until every locale finishes. The
+   command exits 1 while a locale is not finished.
+5. When the export made a new catalog file, run
+   `node scripts/i18n/generate-catalog-index.mjs`. Then run the CI suites.
+
+**Large runs.** A request file for a full catalog is about 280 KB, which is
+more than one file read shows. Read it in parts with `jq`:
+
+```bash
+jq -r '.system' es.request.json
+jq '.prompt | del(.messageContexts, .messagesToTranslate, .existingReferenceTranslations)' es.request.json
+jq '.prompt.messagesToTranslate | to_entries[0:100] | from_entries' es.request.json
+jq '.prompt.messageContexts | to_entries[0:100] | from_entries' es.request.json
+```
+
+- The `system` text is the same in every file, so read it once.
+- Give each subagent a batch of locales. A subagent writes only the answer
+  files of its own locales.
+- Run one import at a time, after the subagents finish. Two imports at the
+  same time overwrite each other's changes to the record and the provenance.
+
+**Rules.**
+
+- **No request leaves the computer.** Both modes point `OPENAI_BASE_URL` at
+  the command's own server. Web's script sends a token for that run in place
+  of a key. The server refuses a request without that token, and a request
+  from a browser.
+- **The import covers the exported locales.** Without `--locales`, it seeds no
+  other catalog. A locale with no answer file yet keeps its catalog.
+- **A key fails when its English or its context changed after the export.**
+  A change to the system prompt also counts. Export again into a new folder.
+- **The work folder stays outside every git repository.** A file there is
+  untracked, and an untracked file stops `eas update` (`cli.requireCommit`).
+  The command resolves symlinks and asks git. It also refuses to export into a
+  folder that is not empty.
+- **An export that leaves out a locale prints the reason.** Translate the
+  request files that it wrote. Export the missing locales into a second folder
+  with `--locales`. Then import each folder.
+- **To abandon an export, restore the catalogs.** The export clears each
+  changed key from every catalog before any translation exists. Run
+  `git restore apps/mobile/messages apps/mobile/i18n`. Then delete each new
+  catalog file that the export seeded.
+
+### Merge two catalog PRs
+
+Never merge `i18n/source-record.json` by hand. When a catalog or the record
+conflicts, take `main`'s catalogs and `main`'s `source-record.json`, and merge
+`en.json` by hand. Run the command again: it translates only your own new and
+changed keys, because their hashes do not match `main`'s record. Then run
+`--restamp`, which changes nothing when the record is correct. Before U16,
+`--restamp` alone is enough.
+
+### Release gates
+
+`scripts/i18n/check-pending-gate.mjs` stops a production release while the
+pending list is not empty (KD13). It uses only Node built-ins, because EAS
+runs the pre-install hook before `pnpm install`.
+
+- **EAS production build.** `scripts/eas-build-pre-install.sh` runs the gate
+  when `EAS_BUILD_PROFILE=production`. The gate is the hook's only fatal step;
+  the Datadog version stamp stays non-fatal.
+- **`update:production`.** The script runs the gate first.
+- **Override: `I18N_ALLOW_PENDING=1`, for an emergency only.** The gate
+  prints a `WARNING:` line whenever it honors the override. For
+  `update:production`, set it in the shell:
+  `I18N_ALLOW_PENDING=1 pnpm --filter @forge/mobile update:production`. EAS
+  build workers do not see local variables. For a native build, the owner
+  creates a plain-text variable in the EAS `production` environment with
+  `eas env:create`, runs the one build, and deletes the variable. Never put it
+  in `eas.json`, because an `eas.json` edit moves the runtime version.
+
+### Native configuration and the native-build window
+
+- `app.json` carries the `expo-localization` config plugin with 225 locales.
+  `app/__tests__/localizationConfig.guard.test.js` pins that list to
+  `i18n/native-locales.json`. `app.json` also carries
+  `./plugins/withIosLeftToRightAppearance`, a plugin that removes the Android
+  `resourceConfigurations` filter, and
+  `ios.infoPlist.UIPrefersShowingLanguageSettings: true`. The filter would
+  drop library translations in region folders, such as the Cast framework's
+  `values-zh-rCN`. The Info.plist key makes iOS always show the per-app
+  language row.
+- **Never add a `forcesRTL` key to the plugin options, not even `false`.** The
+  plugin writes the key for any non-null value, and iOS then forces
+  right-to-left on an Arabic, Farsi, or Urdu phone. The guard rejects it. With
+  `supportsRTL: false`, iOS resets `allowRTL(false)` and `forceRTL(false)` at
+  every launch before React loads; Android calls only `allowRTL(false)`.
+- The iOS `NativeTabs` bar gets `unstable_nativeProps={{ direction: "ltr" }}`,
+  because UIKit tabs ignore `allowRTL`.
+- **These changes move the fingerprint runtime version:** the
+  `expo-localization` native module (U2), the `app.json` plugins and the
+  Info.plist key (U3), and the `update:production` edit (U4). A native build
+  must ship before the next `eas update` reaches anyone. Publish no production
+  over-the-air update between the merge and that build.
+- **The production native build that carries U3 waits for the first full
+  translation run (U16).** Without the catalogs, iOS shows a per-app language
+  row with 225 entries that all show English. The pending gate cannot stop
+  that build, because the pending list is empty before U16.
+- **A locale that web adds later** ships its mobile catalog at once by
+  over-the-air update: run the command, then the catalog index generator. It
+  joins `native-locales.json` and `app.json` at the next native build.
 
 ## Component render tests
 

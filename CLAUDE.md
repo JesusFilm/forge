@@ -107,6 +107,17 @@ Datadog RUM. Follow `docs/analytics-and-recommendation-policy.md` when planning,
 implementing, or reviewing recommendation or analytics work; it supersedes
 older consent requirements while retaining explicit personalization controls.
 
+For recommendation health, empty/partial rows or sparse co-watch coverage, apply
+the October 2 owner decision in
+`docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`.
+Accepted coverage limitations do not block proceeding; classify server failures
+separately.
+
+For recommendation roadmap work, apply the path-specific dispositions in
+`docs/reports/2026-10-02-recommendation-roadmap-closeout.md` before historical
+plans. Cancelled programme requirements require a new product decision to
+resume; current privacy, eligibility and operational obligations remain binding.
+
 ### Error Handling
 
 - Use typed error classes, not raw `throw new Error()`.
@@ -164,7 +175,7 @@ id: "feat-NNN"                # Globally unique, sequential
 title: "Short feature title"
 owner: "person-name"          # tataihono, vlad, ekkasit, nisal, urim, jian wei, jaco
 priority: "P0"                # P0, P1, P2
-status: "not-started"         # not-started, in-progress, complete, blocked
+status: "not-started"         # not-started, in-progress, complete, blocked, cancelled
 start_date: "2026-04-01"     # Expected start date (YYYY-MM-DD)
 duration: 14                  # Expected number of days to implement
 depends_on:                   # Feature IDs this depends on
@@ -208,6 +219,7 @@ tags:                         # Searchable: cms, manager, web, mobile, tv, graph
 
 - **Starting work on a feature**: set `status: "in-progress"`
 - **Completing a feature**: set `status: "complete"`
+- **Retiring authorized scope**: set `status: "cancelled"`, preserve the historical requirements below a dated reason, and reconcile both sides of obsolete dependencies. Cancellation is terminal but does not satisfy an implementation dependency.
 - **New work identified during a feature**: create a new `feat-NNN` file in the appropriate lane directory
 - **After `ce:brainstorm`**: if brainstorm identifies new features, add them to the roadmap
 - **After `ce:compound`**: if the learning reveals follow-up work, create a ticket for it
