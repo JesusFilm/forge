@@ -906,6 +906,47 @@ A Video Database Snapshot reuses stored vectors; it does not generate Content Em
 
 ## Recommendations
 
+### Video Connection
+
+A meaningful relationship between Videos based on similarity, useful viewing
+progression, or unexpected relevance. The appropriate relationship and number
+of connections depend on the Video.
+
+### Precomputed Video Recommendation
+
+A suggested next Video for a source Video, prepared before a viewer requests
+recommendations. It is a reusable recommendation candidate, distinct from the
+Recommendation Served Item that records what a particular viewer was offered.
+
+### Shared Video Recommendations
+
+Recommendations associated with a source Video rather than an individual
+viewer's interests or history. Collective viewing behavior can inform shared
+recommendations without making them personalized to the current viewer.
+
+### Model-Chosen Alternative
+
+A Video suggested through a broader recommendation rationale when direct Video
+Connections are insufficient. It remains an explainable recommendation, without
+claiming a stronger content relationship than the available evidence supports.
+
+### Eligible Recommendation Visit
+
+A Watch visit admitted to a recommendation experiment independently of whether
+the assigned strategy produces recommendation cards. Bot visits are excluded.
+
+### Recommendation Visit CTR
+
+The fraction of Eligible Recommendation Visits with at least one recommendation
+click. Each visit contributes at most one clicked visit, and eligible visits
+with no recommendation cards remain in the denominator.
+
+### Recommendation Experiment Result
+
+A recorded comparison of the recommendation strategies tested for a declared
+cohort and period, with its measurement evidence and winner or inconclusive
+conclusion. A result describes the comparison; it does not activate a strategy.
+
 ### Recommendation Request
 
 The immutable root of one versioned, admitted recommendation delivery attempt
