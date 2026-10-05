@@ -144,7 +144,7 @@ suite("generated catalog schema and service", () => {
             label: "Actual passage",
             excerpt: "Source words",
             sourceSnapshotId: source.id,
-            asset: source.source.subtitle.asset,
+            asset: source.source.subtitle!.asset,
           },
         ],
       },

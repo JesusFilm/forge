@@ -130,7 +130,7 @@ suite("retained source and pack revision INSERT", () => {
               label: "Actual passage",
               excerpt: "Source words",
               sourceSnapshotId: source.id,
-              asset: source.source.subtitle.asset,
+              asset: source.source.subtitle!.asset,
             },
           ],
         },
@@ -176,10 +176,10 @@ suite("retained source and pack revision INSERT", () => {
       expect(saved.document.packRevisionIds).toEqual([pack.id])
       const canonicalBytes = await new StudioAssetService(db).readBytes(
         user,
-        source.source.subtitle.asset,
+        source.source.subtitle!.asset,
       )
       expect(byteDigest(canonicalBytes)).toBe(
-        source.source.subtitle.asset.digest,
+        source.source.subtitle!.asset.digest,
       )
       expect(new TextDecoder().decode(canonicalBytes)).toContain(
         "<script>Distant words</script>",

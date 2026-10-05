@@ -94,12 +94,16 @@ export const studioSourceSchema = z
         language: studioIdSchema,
         asset: studioAssetReferenceSchema,
       })
-      .strict(),
+      .strict()
+      .nullable(),
     preview: studioAssetReferenceSchema,
     export: studioAssetReferenceSchema,
     startMs: z.number().int().nonnegative().max(86_400_000),
     endMs: z.number().int().positive().max(86_400_000),
   })
+  .strict()
+export const studioFocusSchema = z
+  .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
   .strict()
 export const studioTransformSchema = z
   .object({
@@ -189,6 +193,7 @@ export const studioTimelineItemSchema = z.discriminatedUnion("kind", [
     .object({
       ...itemBase,
       kind: z.literal("video"),
+      focus: studioFocusSchema.optional(),
       source: studioSourceSchema,
       transition: z
         .object({
@@ -326,8 +331,9 @@ export const studioDocumentSchema = z
         const s = item.source
         if (
           s.language !== doc.language ||
-          s.subtitle.language !== doc.language ||
-          s.subtitle.editionId !== s.editionId
+          (s.subtitle !== null &&
+            (s.subtitle.language !== doc.language ||
+              s.subtitle.editionId !== s.editionId))
         )
           fail("Exact source language and subtitle edition required")
         if (
@@ -383,6 +389,13 @@ export const studioOperationSchema = z.discriminatedUnion("kind", [
       kind: z.literal("set-transform"),
       itemId: studioIdSchema,
       transform: studioTransformSchema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("set-source-focus"),
+      itemId: studioIdSchema,
+      focus: studioFocusSchema,
     })
     .strict(),
   z

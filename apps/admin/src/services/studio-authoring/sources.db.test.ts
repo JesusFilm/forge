@@ -145,6 +145,151 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
     await db?.$disconnect()
     await new Promise<void>((r) => server?.close(() => r()))
   })
+  it("finds, captures, previews and trims LUMO-shaped footage with no subtitle track", async () => {
+    const videoId = prefix + "lumo",
+      dubId = prefix + "lumo-dub",
+      editionId = prefix + "lumo-edition",
+      downloadId = prefix + "lumo-download"
+    await db.video.create({
+      data: {
+        id: videoId,
+        coreId: videoId,
+        slug: videoId,
+        locales: {
+          create: {
+            locale: "en",
+            title: "LUMO - Luke 10:1-42",
+            status: "PUBLISHED",
+          },
+        },
+      },
+    })
+    await db.videoEdition.create({
+      data: { id: editionId, coreId: editionId, name: "LUMO" },
+    })
+    await db.videoDub.create({
+      data: {
+        id: dubId,
+        coreId: dubId,
+        videoId,
+        videoEditionId: editionId,
+        languageId: prefix + "language",
+        published: true,
+        downloadable: true,
+        hls: origin + "/stream.m3u8",
+        lengthInMilliseconds: 6000,
+        downloads: {
+          create: { id: downloadId, url: origin + "/source.mp4", height: 1080 },
+        },
+      },
+    })
+    const { executeStudioRpc } = await import("./interactive")
+    const results = await executeStudioRpc(db, user, {
+      action: "search",
+      input: { search: "LUMO - Luke 10:1-42", language: selection.language },
+    })
+    expect(results).toMatchObject([{ videoId, dubId, tracks: [] }])
+    const input = {
+      ...selection,
+      videoId,
+      dubId,
+      editionId,
+      downloadId,
+      trackId: null,
+      idempotencyKey: randomUUID(),
+    }
+    const snapshot = await service.capture(user, input)
+    await expect(
+      service.capture(user, {
+        ...input,
+        trackId: "missing-track",
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toThrow("Eligible exact Studio source")
+    expect(snapshot.source.subtitle).toBeNull()
+    expect(snapshot.subtitleUrl).toBeNull()
+    expect((await service.capture(user, input)).id).toBe(snapshot.id)
+    expect(await service.read(user, snapshot.id)).toEqual(snapshot)
+    const preview = await service.preview(user, {
+      sourceSnapshotId: snapshot.id,
+      language: selection.language,
+      startMs: 1000,
+      endMs: 5000,
+    })
+    await expect(
+      service.preview(user, {
+        sourceSnapshotId: snapshot.id,
+        language: "different-language",
+        startMs: 1000,
+        endMs: 5000,
+      }),
+    ).rejects.toThrow("INVALID")
+    await expect(
+      service.preview(user, {
+        sourceSnapshotId: snapshot.id,
+        language: selection.language,
+        startMs: 0,
+        endMs: 5000,
+      }),
+    ).rejects.toThrow("INVALID")
+    expect(preview).toMatchObject({
+      subtitle: null,
+      cues: [],
+      totalCues: 0,
+      nextOffset: null,
+      evidenceKind: "no-subtitle",
+    })
+    const { studioDocumentSchema } = await import("@forge/studio-contracts")
+    const document = studioDocumentSchema.parse({
+      version: 1,
+      title: "LUMO",
+      language: selection.language,
+      runtimeVersion: "runtime",
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      durationInFrames: 60,
+      tracks: [{ id: "video", kind: "visual" }],
+      components: [],
+      packRevisionIds: [],
+      items: [
+        {
+          id: "clip",
+          trackId: "video",
+          kind: "video",
+          startFrame: 0,
+          durationInFrames: 60,
+          source: { ...snapshot.source, startMs: 2000, endMs: 4000 },
+          focus: { x: 0, y: 0.5 },
+          volume: 1,
+        },
+      ],
+    })
+    expect(
+      await db.$transaction((tx) => assertStudioRenderSources(tx, document)),
+    ).toHaveLength(1)
+    const { StudioAuthoringService } = await import("./index")
+    const commands = new StudioAuthoringService(db)
+    const project = await commands.create(user, {
+      projectId: randomUUID(),
+      expectedRevision: 0,
+      idempotencyKey: randomUUID(),
+      document,
+    })
+    expect(
+      (await commands.read(user, project.projectId)).document.items[0],
+    ).toMatchObject({ source: { subtitle: null } })
+    await expect(
+      db.shortSourceSnapshot.delete({ where: { id: snapshot.id } }),
+    ).rejects.toThrow()
+    await db.video.update({
+      where: { id: videoId },
+      data: { restrictViewPlatforms: ["studio"] },
+    })
+    await expect(service.eligibility(user, snapshot.id)).rejects.toThrow(
+      "Eligible exact Studio source",
+    )
+  })
   it("pins exact source and subtitle bytes, maps multiple cuts and rechecks restrictions for operators", async () => {
     const descriptor = await service.capture(user, {
       ...selection,
@@ -331,7 +476,7 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
     expect(eligible[0]?.snapshot.id).toBe(staged.id)
     const bytes = await new StudioAssetService(db).readBytes(
       user,
-      snapshot.source.subtitle.asset,
+      snapshot.source.subtitle!.asset,
     )
     expect(Buffer.from(bytes).toString()).toBe(vtt)
     expect(snapshot.hlsUrl).toBe(origin + "/stream.m3u8")
