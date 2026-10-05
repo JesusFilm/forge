@@ -15,6 +15,7 @@ import { pauseColors } from "../../lib/dailyPause/theme"
 import { useToday } from "../../lib/dailyPause/today"
 import { CloseButton } from "./CloseButton"
 import { useCloseDailyPause } from "./DailyPauseHost"
+import { DevSkipButton } from "./DevSkipButton"
 import { OpeningScreen } from "./OpeningScreen"
 import { PartPlayer } from "./PartPlayer"
 import { PrayScreen } from "./PrayScreen"
@@ -24,6 +25,14 @@ import { WatchScreen } from "./WatchScreen"
 
 const KEEP_AWAKE_TAG = "daily-pause-run"
 const CUSTOMIZE_HREF = "/pause/customize"
+/** The steps that hold the run for a time, which the developer Skip ends. */
+const TIMED_STEPS: ReadonlySet<PauseStep> = new Set([
+  "film",
+  "teaching",
+  "reflectScreen",
+  "prayer",
+  "prayScreen",
+])
 
 /** A keep-awake failure leaves the phone's own sleep timer; nothing to undo. */
 function ignore() {}
@@ -132,6 +141,13 @@ export function RunScreen() {
         onPress={close}
         placement={isVideoPart(state.step) ? "letterbox" : "screen"}
       />
+      {__DEV__ && loaded && TIMED_STEPS.has(state.step) ? (
+        <DevSkipButton
+          onPress={run.advance}
+          placement={isVideoPart(state.step) ? "letterbox" : "screen"}
+          font={font}
+        />
+      ) : null}
     </View>
   )
 }

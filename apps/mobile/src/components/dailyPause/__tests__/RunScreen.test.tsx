@@ -316,6 +316,8 @@ function savedDay() {
   return dayFromRecord(getPauseProgressStore().getSnapshot(), MONDAY_KEY)
 }
 
+const DEV_SKIP = "Skip this step (developer)"
+
 const WATCH = ["Watch, current step", "Reflect, upcoming", "Pray, upcoming"]
 const REFLECT = ["Watch, done", "Reflect, current step", "Pray, upcoming"]
 const PRAY = ["Watch, done", "Reflect, done", "Pray, current step"]
@@ -477,7 +479,60 @@ it("offers Try again when a part never starts, and the close stays reachable", a
   await act(async () => {
     jest.advanceTimersByTime(PART_START_BACKSTOP_MS + FRAME_MS)
   })
-  expect(buttons()).toEqual(["Try again", "Close"])
+  // The developer Skip shows because jest runs as a development bundle.
+  expect(buttons()).toEqual(["Try again", "Close", DEV_SKIP])
   await tap("Close")
   expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
+})
+
+describe("the developer Skip", () => {
+  it("shows only on the timed steps, and each tap moves the run on", async () => {
+    await open()
+    expect(buttons()).not.toContain(DEV_SKIP)
+    await tap("Begin Devotional")
+    expect(buttons()).not.toContain(DEV_SKIP)
+    await tap("Continue")
+    for (const step of [
+      "film",
+      "teaching",
+      "reflectScreen",
+      "prayer",
+      "prayScreen",
+    ] as const) {
+      expect(savedDay().step).toBe(step)
+      expect(buttons()).toContain(DEV_SKIP)
+      await tap(DEV_SKIP)
+    }
+    expect(savedDay()).toMatchObject({ step: "share", done: true })
+    expect(buttons()).toEqual(["Share this video", "Close"])
+  })
+
+  it("silences a part that it ends in the middle of playback", async () => {
+    await open()
+    await tap("Begin Devotional")
+    await tap("Continue")
+    await videoReady()
+    await frames(1)
+    await tickTo(PARTS.film.startSec + 0.2)
+    await frames(1)
+    expect(player.muted).toBe(false)
+
+    await tap(DEV_SKIP)
+    expect(savedDay().step).toBe("teaching")
+    expect(player.muted).toBe(true)
+  })
+
+  it("is absent from a release bundle", async () => {
+    const globals = globalThis as unknown as { __DEV__: boolean }
+    globals.__DEV__ = false
+    try {
+      await open()
+      await tap("Begin Devotional")
+      await tap("Continue")
+      expect(savedDay().step).toBe("film")
+      expect(buttons()).not.toContain(DEV_SKIP)
+    } finally {
+      globals.__DEV__ = true
+    }
+  })
 })

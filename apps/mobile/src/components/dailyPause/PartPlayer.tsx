@@ -320,6 +320,14 @@ function PartVideo({
       stopFrames()
       for (const subscription of subscriptions) subscription.remove()
       toggleRef.current = null
+      // A part can end before its stop (the developer Skip), so its sound
+      // must end here too. The next part unmutes when it plays.
+      try {
+        player.muted = true
+      } catch {
+        // Already released, so nothing sounds.
+      }
+      pause()
     }
   }, [player, startSec, endSec, active, key, progress])
 

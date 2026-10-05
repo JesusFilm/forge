@@ -446,6 +446,29 @@ describe("an interruption (R26, KTD9)", () => {
   })
 })
 
+describe("a part change in the middle of playback", () => {
+  // Only the developer Skip changes the part before its end; the old part's
+  // sound must not run on under the next step.
+  it.each<[DevotionalPart, boolean]>([
+    ["teaching", true],
+    ["prayer", false],
+  ])(
+    "mutes and pauses the player at once (to %s, active %s)",
+    async (next, active) => {
+      await mount("film")
+      await playPast("film")
+      expect(player.muted).toBe(false)
+      player.pause.mockClear()
+
+      await rerender(next, active)
+
+      expect(player.muted).toBe(true)
+      expect(player.pause).toHaveBeenCalled()
+      expect(covered()).toBe(true)
+    },
+  )
+})
+
 describe("between parts", () => {
   it("holds the next part paused and covered, then plays it when the run reaches it", async () => {
     await mount("prayer", false)

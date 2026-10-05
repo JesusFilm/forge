@@ -113,6 +113,8 @@ const COPY_MODULES = {
 const COPY_EXEMPT_FILES = {
   "src/components/DevEndpointNotice.tsx":
     "Development only: app/_layout.tsx requires it under __DEV__",
+  "src/components/dailyPause/DevSkipButton.tsx":
+    "Development only: RunScreen renders it under __DEV__",
   "src/lib/terms-of-use.ts":
     "Legal: English until a human reviews a translation (KD10, KTD17)",
   "src/lib/bible/sheets/copy.ts":
