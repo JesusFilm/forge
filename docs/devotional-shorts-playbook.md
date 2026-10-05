@@ -410,3 +410,31 @@ its set is in `~/Desktop/Social Media/Martha/shorts/`.
 4. Preview with `--frames` and the safe-zone overlay; fix, then cut for real.
 5. Write the caption files (section 7) for every short that was cut.
 6. Update `shorts.md` in the output folder (file, length, what it is).
+
+## Revisions 2026-10-05 (owner)
+
+- Intro captions: every kinetic block ends by x = 920 of 1080 (the action
+  rail starts at 940); a right-hand block is anchored there
+  (`rightInset`), not at the frame edge, and no block is wider than
+  920 minus the left inset.
+- Film-verse opening: the question is TYPED letter by letter (28 letters a
+  second, each fading in over 0.06 s) in Inter 600 caps 56, tracked 2.4, a
+  size down from the stamp; the line is laid out whole from the start so it
+  never re-centres. Closing: no question any more, only the small line
+  ("The full story is on our channel.", PT Serif italic 32 at 85%) over a 25%
+  dim, easing in 0.1 to 0.9 s after the last line; it needs 3.2 s of picture.
+  Command: `--film-open="..." --film-close-sub="The full story is on our
+channel."` with no `--film-close`.
+- History (Figma 432-2781: 427-2744 / 428-2762): the credit sits top left
+  (left 96, top 251, gap 16): the emblem tilted -17.26 deg (83 x 54 at 85%),
+  then "Historical Context" in Literata 32/50 at 85% over "SOURCE: <name>"
+  in Inter 500 20 caps tracked 1.5 at 60% ("Source" semibold); cascade:
+  emblem 0.1 to 0.7 s, title 0.35 to 1.05 s, source 0.6 to 1.3 s, each
+  rising 8. "From Full Devotional" (PT Serif italic 32/50 at 85%) sits left
+  under the captions at top 1100 (raised from the Figma's 1206 to end above
+  the bottom UI zone), in from 1.2 s, out with the captions. The pool behind
+  is 951 high, centred 156.5 above the middle. The closing card: the question
+  in Inter SemiBold 36 caps tracked 1.5, 492 wide, centred at top 675, then
+  "Watch the Full Devotional" (PT Serif italic 32 at 85%) 37 below; the
+  question fades and rises over 0.6 s, the line 0.7 to 1.4 s; the credit
+  stays.

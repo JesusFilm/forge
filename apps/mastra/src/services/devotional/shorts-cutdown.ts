@@ -435,7 +435,7 @@ export function planCutdown(
           fromSec: cards.open
             ? Math.min(w.fromSec, Math.max(prevEnd + 0.3, w.fromSec - 2.4))
             : w.fromSec,
-          toSec: cards.close
+          toSec: hasClose(cards)
             ? Math.min(
                 nextStart - SHORT_OUTRO_SEC - CARD_TAIL_SEC - 0.3,
                 w.toSec + 2.8,
@@ -474,7 +474,10 @@ export function planCutdown(
           // scene that ends on its last word (Martha: 1.5s of film left)
           // borrows a quiet stretch of the same scene for the rest, played
           // live, rather than freezing (owner, 2026-10-02).
-          if (cards.close && made.film) {
+          if (hasClose(cards) && made.film) {
+            const needs = cards.close
+              ? CLOSE_CARD_NEEDS_SEC
+              : SUB_ONLY_NEEDS_SEC
             const lastEnd = w.toSec - 0.5
             const footageEnd = film.durationSec ?? Infinity
             const nextStart = Math.min(
@@ -484,11 +487,11 @@ export function planCutdown(
               Infinity,
             )
             const room = Math.min(nextStart - 0.3, footageEnd - 0.2) - lastEnd
-            if (room < CLOSE_CARD_NEEDS_SEC) {
+            if (room < needs) {
               const toSec = lastEnd + Math.min(0.5, Math.max(0, room - 0.1))
               const outroSec = Math.max(
                 SHORT_OUTRO_SEC,
-                CLOSE_CARD_NEEDS_SEC - (toSec - lastEnd) - CARD_TAIL_SEC,
+                needs - (toSec - lastEnd) - CARD_TAIL_SEC,
               )
               const postroll = longestQuietStretch(
                 subs,
@@ -876,6 +879,12 @@ const OPEN_CARD_NEEDS_SEC = 3.75
 /** Picture the closing turn needs after the scene's last line: 0.6 to
  *  arrive, ~2.9 on screen, the 0.9 fade to black. */
 const CLOSE_CARD_NEEDS_SEC = 4.4
+/** The same for a close with only the small line and no question. */
+const SUB_ONLY_NEEDS_SEC = 3.2
+/** A film short closes on a card when it has a question or a small line. */
+function hasClose(c: { close?: string; closeSub?: string }): boolean {
+  return Boolean(c.close || c.closeSub)
+}
 /** The composition's breath after a card (CARD_TAIL_FRAMES at 30 fps): the
  *  last card runs this much past its duration, so the clip must too. */
 export const CARD_TAIL_SEC = CARD_TAIL_FRAMES / FPS
@@ -1000,10 +1009,12 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
             },
           }
         : {}),
-      ...(filmCard.__cards.close
+      ...(hasClose(filmCard.__cards)
         ? {
             close: {
-              text: filmCard.__cards.close,
+              // Empty: no closing question, only the small line (owner,
+              // 2026-10-05).
+              text: filmCard.__cards.close ?? "",
               fromSec: last + 0.6,
               ...(filmCard.__cards.closeSub
                 ? { sub: filmCard.__cards.closeSub }

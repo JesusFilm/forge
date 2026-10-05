@@ -1529,6 +1529,9 @@ function WordReveal({
   )
 }
 
+/** The film short's opening question types in at this pace (quick). */
+const TYPE_CHARS_PER_SEC = 28
+
 /**
  * The film short's silent question cards (owner, 2026-10-02): a question
  * before the scene speaks ("Is this worth celebrating?") and a turn after it
@@ -1567,19 +1570,58 @@ function ShortQuestionCards({
     })
     return (
       <AbsoluteFill key={key} style={{ opacity: fade, pointerEvents: "none" }}>
-        <AbsoluteFill style={{ background: `rgba(0,0,0,${0.4 * dim})` }} />
+        <AbsoluteFill
+          style={{ background: `rgba(0,0,0,${(text ? 0.4 : 0.25) * dim})` }}
+        />
         <AbsoluteFill
           style={{ justifyContent: "center", alignItems: "center" }}
         >
           <div style={{ width: f(640) }}>
-            <StampLine text={text} t={t - fromSec} f={f} sharp={sharp} />
+            {!text ? null : sharp ? (
+              // Typed in, letter by letter, quickly (owner, 2026-10-05), and
+              // a size down from the stamp so it sits with the verses. The
+              // whole line is laid out from the start (unshown letters are
+              // transparent), so it never re-centres or re-wraps as it types.
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-serif`,
+                  fontWeight: 600,
+                  fontSize: f(56),
+                  lineHeight: 1.25,
+                  letterSpacing: f(2.4),
+                  textTransform: "uppercase",
+                  textAlign: "center",
+                  color: "#fff",
+                  textShadow: `0 ${f(2)}px ${f(16)}px rgba(0,0,0,0.55)`,
+                }}
+              >
+                {[...text].map((ch, i) => (
+                  <span
+                    key={i}
+                    style={{
+                      opacity: interpolate(
+                        t - fromSec,
+                        [i / TYPE_CHARS_PER_SEC, i / TYPE_CHARS_PER_SEC + 0.06],
+                        [0, 1],
+                        { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                      ),
+                    }}
+                  >
+                    {ch}
+                  </span>
+                ))}
+              </p>
+            ) : (
+              <StampLine text={text} t={t - fromSec} f={f} sharp={false} />
+            )}
             {sub ? (
               // Set like the scrolling verses' address ("Luke 15:22-24"):
               // PT Serif italic 32, at 85%; it eases in a beat after the
               // turn so the two never arrive together.
               <p
                 style={{
-                  margin: `${f(28)}px 0 0`,
+                  margin: text ? `${f(28)}px 0 0` : 0,
                   fontFamily: `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`,
                   fontStyle: "italic",
                   fontSize: f(32),
@@ -1588,10 +1630,15 @@ function ShortQuestionCards({
                   color: "rgba(255,255,255,0.92)",
                   opacity:
                     0.85 *
-                    interpolate(t - fromSec, [1.0, 1.8], [0, 1], {
-                      extrapolateLeft: "clamp",
-                      extrapolateRight: "clamp",
-                    }),
+                    interpolate(
+                      t - fromSec,
+                      text ? [1.0, 1.8] : [0.1, 0.9],
+                      [0, 1],
+                      {
+                        extrapolateLeft: "clamp",
+                        extrapolateRight: "clamp",
+                      },
+                    ),
                   textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
                 }}
               >
@@ -2242,7 +2289,11 @@ function ClipIntro({
                   px={(n) => px((n * 390) / 360)}
                   side={side}
                   portrait
-                  maxWidth={frameWidth - 2 * px((28 * 390) / 360)}
+                  // Inside the platforms' safe area (owner, 2026-10-05: right
+                  // blocks ran under the action rail, x > 940 of 1080): every
+                  // block ends by x = 920, a right-hand one anchored there.
+                  maxWidth={frameWidth * (920 / 1080) - px((28 * 390) / 360)}
+                  rightInset={frameWidth * (160 / 1080)}
                   sizes={{ hero: 1.3, accent: 1.4, plain: 1.6 }}
                 />
               </AbsoluteFill>

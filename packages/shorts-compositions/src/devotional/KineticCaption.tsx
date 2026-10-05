@@ -195,6 +195,7 @@ export function KineticCaption({
   accentColor,
   bottom = "27%",
   backdrop = false,
+  rightInset,
 }: {
   line: string
   hero: string
@@ -222,6 +223,9 @@ export function KineticCaption({
   /** A soft dark pool behind the block itself, sized to it, so the darkening
    *  is where the words are (owner, 2026-10-02) rather than a fixed band. */
   backdrop?: boolean
+  /** Portrait, right side: the block's right edge, clear of the platform's
+   *  action rail (likes, comments, share) rather than at the frame edge. */
+  rightInset?: number
 }) {
   const kHero = sizes.hero ?? 1
   const kAccent = sizes.accent ?? 1
@@ -270,7 +274,8 @@ export function KineticCaption({
           }
 
   const inset = portrait ? px(28) : px(46)
-  const edge = side === "left" ? { left: inset } : { right: inset }
+  const edge =
+    side === "left" ? { left: inset } : { right: rightInset ?? inset }
   if (layout === "stack") {
     return (
       <div

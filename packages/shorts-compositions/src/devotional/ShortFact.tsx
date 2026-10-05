@@ -131,13 +131,18 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
       <AbsoluteFill style={{ background: "rgba(0,0,0,0.28)" }} />
       <div
         style={{
-          // History darkens behind its captions instead (TeaserCaptions).
-          display: fact?.layout === "history" ? "none" : undefined,
+          // History: the taller pool of Figma 427-2745 (951 high, centred
+          // 156.5 above the middle), under the credit and the captions.
           position: "absolute",
           left: width / 2 - f(450),
-          top: height / 2 + f(language || reflection ? -92.5 : 19.5) - f(379.5),
+          top:
+            fact?.layout === "history"
+              ? height / 2 - f(156.5) - f(475.5)
+              : height / 2 +
+                f(language || reflection ? -92.5 : 19.5) -
+                f(379.5),
           width: f(900),
-          height: f(759),
+          height: f(fact?.layout === "history" ? 951 : 759),
           borderRadius: f(100),
           filter: `blur(${f(36.65)}px)`,
           background: `radial-gradient(${f(490.7)}px ${f(413.8)}px at 50% 50%, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 100%)`,
@@ -311,6 +316,11 @@ export function kineticPhrases(
   return out
 }
 
+/** "historical context" → "Historical Context" (Figma 427-2756). */
+function titleCase(v: string): string {
+  return v.toLowerCase().replace(/\b\p{L}/gu, (c) => c.toUpperCase())
+}
+
 type KineticLine = { from: number; to: number; hero: string; accents: string[] }
 
 function HistoryLayout({
@@ -344,101 +354,114 @@ function HistoryLayout({
     interpolate(t, [a, b], [0, 1], { ...clamp, easing: EASE_OUT })
   const emblemIn = ease(0.1, 0.7)
   const labelIn = ease(0.35, 1.05)
-  const sourceWords = source.split(/\s+/).filter(Boolean)
-  const dividerIn = interpolate(t, [0.95, 1.75], [0, 1], {
-    ...clamp,
-    easing: Easing.bezier(0.65, 0, 0.35, 1),
-  })
+  const sourceIn = ease(0.6, 1.3)
+  const fromLabelIn = ease(1.2, 1.9)
+  const fromLabelOut =
+    captionsEndBy != null
+      ? interpolate(t, [captionsEndBy - 0.35, captionsEndBy], [1, 0], clamp)
+      : 1
   // The teaser's px unit (short side / 390, times 390/360 as the teaser sets
   // it), so the captions are the approved teaser size.
   const tpx = (n: number) => ((n * 390) / 360) * (width / 390)
   return (
     <>
-      {/* The credit at the top (Figma 413-2445, revised 2026-10-02). */}
+      {/* The credit at the top left (Figma 427-2744, revised 2026-10-05):
+          the emblem tilted, then "Historical Context" over the source. */}
       <div
         style={{
           position: "absolute",
-          top: f(240),
-          left: "50%",
-          transform: "translateX(-50%)",
+          top: f(251),
+          left: f(96),
           display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: f(20),
+          alignItems: "flex-start",
+          gap: f(16),
         }}
       >
         <div
           style={{
-            width: f(96),
-            height: f(63) * 1.1,
-            transform: `rotate(-10.15deg) translateY(${((1 - emblemIn) * f(10)).toFixed(2)}px) scale(${(0.88 + 0.12 * emblemIn).toFixed(4)})`,
-            opacity: 0.85 * emblemIn,
+            width: f(95),
+            height: f(77),
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
           }}
         >
-          {emblem === "scroll" ? (
-            <AnimatedScroll t={t} />
-          ) : (
-            <AnimatedBook t={t} />
-          )}
+          <div
+            style={{
+              width: f(83),
+              height: f(54),
+              transform: `rotate(-17.26deg) translateY(${((1 - emblemIn) * f(10)).toFixed(2)}px) scale(${(0.88 + 0.12 * emblemIn).toFixed(4)})`,
+              opacity: 0.85 * emblemIn,
+            }}
+          >
+            {emblem === "scroll" ? (
+              <AnimatedScroll t={t} />
+            ) : (
+              <AnimatedBook t={t} />
+            )}
+          </div>
         </div>
         <div
           style={{
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
             gap: f(4),
+            // Clear of the action rail (x 920 of 1080).
+            maxWidth: f(767 - 96 - 111),
           }}
         >
           <div
             style={{
-              fontFamily: SANS,
-              fontWeight: 500,
-              fontSize: f(18),
-              letterSpacing: f(2 + 6 * (1 - labelIn)),
-              color: "rgba(255,255,255,0.5)",
-              textTransform: "uppercase",
+              fontFamily: LITERATA,
+              fontSize: f(32),
+              lineHeight: `${f(50)}px`,
+              color: "rgba(255,255,255,0.92)",
+              opacity: 0.85 * labelIn,
+              transform: `translateY(${((1 - labelIn) * f(8)).toFixed(2)}px)`,
               whiteSpace: "nowrap",
-              opacity: labelIn,
             }}
           >
-            {label}
+            {titleCase(label)}
           </div>
           <div
             style={{
-              fontFamily: LITERATA,
-              fontSize: f(34),
-              lineHeight: `${f(50)}px`,
-              color: "rgba(255,255,255,0.92)",
-              opacity: 0.85,
-              textAlign: "center",
-              whiteSpace: "nowrap",
+              fontFamily: SANS,
+              fontWeight: 500,
+              fontSize: f(20),
+              letterSpacing: f(1.5),
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.6)",
+              opacity: sourceIn,
+              transform: `translateY(${((1 - sourceIn) * f(8)).toFixed(2)}px)`,
             }}
           >
-            {sourceWords.map((w, i) => {
-              const p = ease(0.55 + i * 0.09, 0.95 + i * 0.09)
-              return (
-                <span key={i}>
-                  {i > 0 ? " " : null}
-                  <span
-                    style={{
-                      display: "inline-block",
-                      opacity: p,
-                      transform: `translateY(${((1 - p) * f(10)).toFixed(2)}px)`,
-                      filter:
-                        p < 0.99
-                          ? `blur(${((1 - p) * f(3)).toFixed(2)}px)`
-                          : undefined,
-                    }}
-                  >
-                    {w}
-                  </span>
-                </span>
-              )
-            })}
+            <span style={{ fontWeight: 600 }}>Source</span>: {source}
           </div>
         </div>
-        <Divider f={f} grow={dividerIn} />
       </div>
+      {/* "From Full Devotional" under the captions (Figma 427-2761), raised
+          from the Figma's 1206 so it ends above the bottom UI zone (1208);
+          it leaves when the closing card arrives. */}
+      {fromLabelOut > 0 ? (
+        <div
+          style={{
+            position: "absolute",
+            top: f(1100),
+            left: f(96),
+            fontFamily: PT_SERIF,
+            fontStyle: "italic",
+            fontSize: f(32),
+            lineHeight: `${f(50)}px`,
+            color: "rgba(255,255,255,0.92)",
+            opacity: 0.85 * fromLabelIn * fromLabelOut,
+            whiteSpace: "nowrap",
+            textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
+          }}
+        >
+          From Full Devotional
+        </div>
+      ) : null}
       {lines?.length ? (
         <TeaserCaptions
           t={t}
@@ -958,32 +981,64 @@ function CloseCard({
 }) {
   if (t < at - 0.05) return null
   const dim = interpolate(t, [at - 0.05, at + 0.4], [0, 1], clamp)
-  const subIn = interpolate(t, [at + 1.0, at + 1.8], [0, 1], clamp)
+  const ease = (a: number, b: number) =>
+    interpolate(t - at, [a, b], [0, 1], { ...clamp, easing: EASE_OUT })
+  const textIn = ease(0, 0.6)
+  const subIn = ease(0.7, 1.4)
+  // Figma 428-2762 (owner, 2026-10-05): the question in Inter SemiBold 36
+  // caps, 492 wide, centred at 675; "Watch the Full Devotional" under it in
+  // PT Serif italic 32 at 85%. The credit stays at the top.
   return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
       <AbsoluteFill style={{ background: `rgba(0,0,0,${0.35 * dim})` }} />
-      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
-        <div style={{ width: f(SAFE_COLUMN) }}>
-          <StampLine text={text} t={t - at} f={f} />
-          {sub ? (
-            <p
-              style={{
-                margin: `${f(28)}px 0 0`,
-                fontFamily: PT_SERIF,
-                fontStyle: "italic",
-                fontSize: f(32),
-                lineHeight: `${f(50)}px`,
-                textAlign: "center",
-                color: "rgba(255,255,255,0.92)",
-                opacity: 0.85 * subIn,
-                textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
-              }}
-            >
-              {sub}
-            </p>
-          ) : null}
-        </div>
-      </AbsoluteFill>
+      <div
+        style={{
+          position: "absolute",
+          top: f(675),
+          left: "50%",
+          width: f(492),
+          transform: "translateX(-50%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: f(37),
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            fontFamily: SANS,
+            fontWeight: 600,
+            fontSize: f(36),
+            lineHeight: 1.22,
+            letterSpacing: f(1.5),
+            textTransform: "uppercase",
+            textAlign: "center",
+            color: "#fff",
+            opacity: textIn,
+            transform: `translateY(${((1 - textIn) * f(10)).toFixed(2)}px)`,
+            textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
+          }}
+        >
+          {text}
+        </p>
+        <p
+          style={{
+            margin: 0,
+            fontFamily: PT_SERIF,
+            fontStyle: "italic",
+            fontSize: f(32),
+            lineHeight: `${f(50)}px`,
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            color: "rgba(255,255,255,0.92)",
+            opacity: 0.85 * subIn,
+            textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
+          }}
+        >
+          {sub ?? "Watch the Full Devotional"}
+        </p>
+      </div>
     </AbsoluteFill>
   )
 }

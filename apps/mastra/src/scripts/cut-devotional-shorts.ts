@@ -398,7 +398,7 @@ async function main() {
       ? { historyHook: false }
       : {}),
     // Silent question cards on the film-verse short.
-    ...(arg("film-open") || arg("film-close")
+    ...(arg("film-open") || arg("film-close") || arg("film-close-sub")
       ? {
           filmVerseCards: {
             ...(arg("film-open") ? { open: arg("film-open")! } : {}),
