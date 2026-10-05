@@ -1,3 +1,4 @@
+import { smartCropIntroFocus } from "./intro-smart-crop"
 import { spawn } from "node:child_process"
 import { once } from "node:events"
 import { createWriteStream, readFileSync } from "node:fs"
@@ -991,6 +992,32 @@ function audioSilences(
   })
 }
 
+/** A video's pixel size, or null when ffprobe cannot read it. */
+function probeVideoSize(
+  file: string,
+): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const c = spawn("ffprobe", [
+      "-v",
+      "error",
+      "-select_streams",
+      "v:0",
+      "-show_entries",
+      "stream=width,height",
+      "-of",
+      "csv=p=0",
+      file,
+    ])
+    let out = ""
+    c.stdout.on("data", (d) => (out += String(d)))
+    c.on("error", () => resolve(null))
+    c.on("close", () => {
+      const [w, h] = out.trim().split(",").map(Number)
+      resolve(w && h ? { width: w, height: h } : null)
+    })
+  })
+}
+
 function runFfmpeg(args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const c = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] })
@@ -1705,6 +1732,9 @@ export type RenderOptions = {
   /** `montage`, vertical: horizontal focus (0..1) per shot, plus one for the
    *  scene after the last cut. */
   introFocus?: number[]
+  /** 9:16 teaser: frame the shots with Smart Crop when no focus is given
+   *  (default on; false keeps the centre crop). */
+  smartCrop?: boolean
   /** `intro: "hook"` only: the question the voice asks over the film's first
    *  seconds. Its recorded length sets the lead, so nothing has to be timed by
    *  hand. Must reach every `buildNarrationSegments` call in a run. */
@@ -1872,6 +1902,7 @@ async function renderInStage(
   let hookLeadSec = 0
   /** `montage`: when each spoken line of the hook begins (s from card start). */
   let montageStarts: number[] | null = null
+  let introFocus = options.introFocus
   /** Length of the spoken hook as staged (after any pause tightening). */
   let hookSpokenSec = 0
   /** Silent-CTA teaser: when the written call to action appears. */
@@ -2392,6 +2423,34 @@ async function renderInStage(
       }
     }
     if (hookLead) mutedLeadForManifest = hookLeadSec
+    // 9:16 teaser: frame each shot (and the scene after them) with Smart
+    // Crop when no focus was chosen by hand (owner, 2026-10-05).
+    if (
+      options.introTeaser &&
+      options.intro === "montage" &&
+      (options.aspect ?? "portrait") === "portrait" &&
+      !introFocus &&
+      options.smartCrop !== false &&
+      hookLead &&
+      clipSegments.length > 0
+    ) {
+      const dims = await probeVideoSize(full)
+      if (dims) {
+        introFocus =
+          (await smartCropIntroFocus({
+            downloadUrl: clipInfo.downloadUrl,
+            shots: [
+              ...hookLead.map((sg) => ({
+                startSec: sg.startSec,
+                lengthSec: sg.lengthSec,
+              })),
+              { startSec: clipSegments[0].startSec, lengthSec: 4 },
+            ],
+            source: { ...dims, durationSec: fullDur },
+            log,
+          })) ?? undefined
+      }
+    }
     const withLead =
       mutedLead > 0 && !hookLead && clipSegments.length > 0
         ? (() => {
@@ -2803,7 +2862,7 @@ async function renderInStage(
     ...(options.introTeaser && options.introCtaStyle
       ? { introCtaStyle: options.introCtaStyle }
       : {}),
-    ...(options.introFocus ? { introFocus: options.introFocus } : {}),
+    ...(introFocus ? { introFocus } : {}),
     ...(options.hookLine
       ? {
           hookParts: options.hookLine
@@ -3284,7 +3343,7 @@ async function renderInStage(
       ? {
           intro: {
             shots: options.introShots,
-            ...(options.introFocus ? { focus: options.introFocus } : {}),
+            ...(introFocus ? { focus: introFocus } : {}),
             ...(options.hookGapSec != null
               ? { hookGapSec: options.hookGapSec }
               : {}),

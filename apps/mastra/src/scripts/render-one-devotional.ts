@@ -159,6 +159,7 @@ async function main() {
       ...(arg("intro-focus")
         ? { introFocus: arg("intro-focus")!.split(",").map(Number) }
         : {}),
+      ...(process.argv.includes("--no-smart-crop") ? { smartCrop: false } : {}),
       ...(arg("intro-shots")
         ? { introShots: arg("intro-shots")!.split(",").map(Number) }
         : {}),

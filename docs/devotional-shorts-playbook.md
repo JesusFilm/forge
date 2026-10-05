@@ -195,12 +195,18 @@ and the bed rises to twice its level to carry the close, leaving only in the
 last 0.9 s (manifest `ctaMusicAtSec`; owner, 2026-10-05: the scene's voices
 under the CTA distracted).
 
-Crop: the face detector (OpenCV venv, `DEVO_FACE_PYTHON`) is often missing,
-and then every shot is centre-cropped, losing faces placed off-centre (Martha:
-Mary at the right edge). Always check a contact sheet of every shot and pass
-`--intro-focus` (one value per shot, then one for the scene). Values move the
-crop, not the face: raise one to bring a face that sits at the right edge
-inward; check again after each change, since moving shots drift. Full spec:
+Crop: Smart Crop frames the shots by default (2026-10-05). With no
+`--intro-focus`, the render sends each shot and the scene after them to the
+`smart-crop-plan` workflow (the same contract manager uses remotely: Mux
+thumbnails of the film's asset, three per shot), with Gemini 2.5 Flash
+(`INTRO_SMART_CROP_MODEL`); the centre of each planned 9:16 window becomes the
+shot's focus, and the log prints what the model saw ("woman's face", "man and
+woman talking"). On Martha it centred every face and matched or beat the hand
+framing on four of five shots (Qwen, the service default, did not). Still
+check a contact sheet: `--intro-focus` (one value per shot, then one for the
+scene) overrides it, and `--no-smart-crop` falls back to the centre. A focus
+value is where the subject sits across the source (0..1). Not a Mux film, no
+OpenRouter key or a failed plan: the intro stays centred and says so. Full spec:
 `docs/handoffs/2026-10-02-vertical-intro-design.md`. About 20 s.
 
 ### 6.2 film-verse
