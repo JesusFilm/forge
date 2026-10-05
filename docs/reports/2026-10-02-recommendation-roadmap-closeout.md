@@ -309,7 +309,35 @@ post-merge retention attempts are recorded separately on #2556; future loaded
 behavior remains to be measured. Merging code alone is not deployment or
 clean-cycle evidence.
 
-There are **zero qualifying cycles** through the failed October 4 cycle. Both
+The October 5 ordinary cycle also failed after #2556. Both actual Admin roles
+were observed healthy and compact on `904647329`, a verified descendant of the
+repair, with the correct HTTP/worker runner roles. The bounded ledger audit
+found four failed scheduled attempts between 10:30 and 12:01 UTC and 3,498
+successes through 19:40. Successful attempts committed 9,505 request roots,
+33,123 served items and 17,490 request-free episodes; failed attempts separately
+committed 100 roots, 390 items and 20 episodes. Both ledgers agree on the
+same-window totals, but they have no direct batch reference, so this does not
+establish per-attempt linkage. Their read caps were not reached.
+
+All four errors report expired or closed transactions. The reported operations
+include request deletion, a raw query and ledger update; these identify where
+failure surfaced, not the statement that consumed the budget. At 19:41:50 UTC,
+all 21 retained types had zero rows beyond the 24-hour propagation limit and the
+latest success watermark was 19:40:56. Newly expired records remained
+inside the window, and the scheduler continued bounded catch-up. At the separate
+19:41:56 capacity read, PGDATA had 23,093,526,528 bytes available of 48,891,670,528,
+WAL was 134,217,728 bytes, the legacy stage was empty at 24,576 allocated bytes,
+and no lock waiters were observed. No capacity threshold crossed or new physical
+reclamation is claimed. Saved aggregate receipts are under
+`outputs/heartbeats/20261005T1937-daily/` in the storage evidence directory.
+
+The repeated failures mean the page-five mitigation has not established a clean
+cycle. The storage owner is tracing phase admission and finalization against the
+shared deadline with bounded reads and isolated real-dependency tests. Actual
+timeouts remain failures; no further cap reduction, deadline relaxation or
+production intervention is assumed to be a fix without evidence.
+
+There are **zero qualifying cycles** through the failed October 5 cycle. Both
 Admin roles must run `66eccae12` or a verified descendant containing the repairs.
 Natural catch-up demonstrated request-root deletion, declining overdue backlog
 and restoration of the serving-health criteria; recovery cannot qualify the
@@ -389,7 +417,7 @@ production latency estimates. Raw samples and the measurement script are retaine
 under `/home/nisal/Documents/Codex/2026-10-02/recommendation-roadmap-cancelled-status/work/`
 and summarized in #2545. Normal deployed verification is recorded separately.
 
-The direct path/frontmatter audit of merged main `66eccae12` found **12 complete,
+The direct path/frontmatter audit of merged main `2e914c52a` found **12 complete,
 25 cancelled and one open (feat-554)** across 38 paths, including the new viewer
 ticket. Final closure must repeat this audit on merged main, with the merge SHA
 and result retained on #2541. The dependency audit

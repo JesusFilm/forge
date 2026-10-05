@@ -88,7 +88,7 @@ and required checks cover each scoped PR; normal Roadmap deployment is verified
 separately from local behavior and page-load checks.
 
 This plan stays active solely for platform feat-554: two normal failure-free
-loaded daily retention cycles must be observed. October 2, 3 and 4 failed and
+loaded daily retention cycles must be observed. October 2, 3, 4 and 5 failed and
 do not qualify. Runtime repairs #2550, #2551 and #2553 merged normally. Both
 Admin roles were verified on `e8e7fb3` at October 3 22:05:59 UTC. Natural catch-up
 then produced successful batches as well as two failed attempts; at 22:17:23,
@@ -106,7 +106,13 @@ tests measured more first-attempt deadline headroom at about 6.0% greater total
 fixture drain time; a negative slow-tail test preserves real failure accounting.
 The expiry-prefix capacity calculation is conditional, not observed future
 throughput. Actual Admin HTTP/worker deployment receipts belong on #2556.
-Recovery and local mitigation evidence do not replace the two later ordinary
+The October 5 ordinary cycle on descendant `904647329` then recorded four
+transaction-expiry failures amid 3,498 successes through 19:40 UTC. Its 19:41
+audit found all 21 overdue types clear and 23,093,526,528 bytes free, but it
+does not qualify. The storage owner is investigating phase admission and
+finalization within the shared deadline before any further evidenced repair;
+the exact production budget-consuming SQL remains unproved. Recovery and local
+mitigation evidence do not replace the two later ordinary
 loaded daily cycles. Existing daily monitoring sends
 new proof to the coordinating owner, who completes the scoped evidence PR,
 review/merge, final merged-main inventory and index update. Do not mark the plan
