@@ -87,8 +87,8 @@ bidirectional dependencies, generated index and guidance. Independent reviews
 and required checks cover each scoped PR; normal Roadmap deployment is verified
 separately from local behavior and page-load checks.
 
-This plan stays active solely for platform feat-554: two normal failure-free
-loaded daily retention cycles must be observed. October 2, 3 and 4 failed and
+The retention track stays active for platform feat-554: two normal failure-free
+loaded daily retention cycles must be observed. October 2, 3, 4 and 5 failed and
 do not qualify. Runtime repairs #2550, #2551 and #2553 merged normally. Both
 Admin roles were verified on `e8e7fb3` at October 3 22:05:59 UTC. Natural catch-up
 then produced successful batches as well as two failed attempts; at 22:17:23,
@@ -106,8 +106,43 @@ tests measured more first-attempt deadline headroom at about 6.0% greater total
 fixture drain time; a negative slow-tail test preserves real failure accounting.
 The expiry-prefix capacity calculation is conditional, not observed future
 throughput. Actual Admin HTTP/worker deployment receipts belong on #2556.
+The October 5 ordinary cycle on descendant `904647329` then recorded four
+transaction-expiry failures amid 3,498 successes through 19:40 UTC. Its 19:41
+audit found all 21 overdue types clear and 23,093,526,528 bytes free, but it
+does not qualify. PR #2580 adds a minimum remaining-time admission guard after
+an owned PostgreSQL fixture reproduced an avoidable late-phase timeout. A
+pre-work yield preserves exact committed counters as `SKIPPED` / `budget_yield`,
+leaves backlog unknown, does not advance the full-completion watermark and
+requires bounded continuation. Real failures remain failures. Four native
+PostgreSQL 18 tests passed, including two yields with slow triggers retained
+before deferred work completed. After GitHub runner recovery, independent review
+reconfirmed the unchanged source tree at final head `5d590566c`; all 39 executed
+PR checks passed with six expected scope skips. Parent checked every underlying
+job rather than relying on the aggregate gate. Normal squash merge
+`0cb08416ce3e9a1278997d061fc2f8e12e6b2b66` completed October 5 at 23:11:49 UTC.
+Both actual Admin roles matched that merge at 23:27:53 UTC: successful
+deployments, healthy compact traces and correct runner roles. Both ledgers had
+zero natural attempts since merge at the 23:28 read, so loaded behavior remains
+unobserved. All 21 health types were within the 24-hour window; the successful
+expiry cutoff remained 22:04:29.558, before release. Separate capacity evidence
+found 22,988,713,984 bytes free, 117,440,512 WAL bytes, an empty legacy stage and
+no lock waiters. The next ordinary start is October 6 at 10:30 UTC. Full
+[release evidence](https://github.com/JesusFilm/forge/pull/2580#issuecomment-6005424722)
+preserves the timestamps and deployment IDs. The exact production
+budget-consuming SQL remains unproved. Repeated yields do not prove eventual completion under
+sustained arrivals, so oldest-age and success-watermark checks remain necessary.
 Recovery and local mitigation evidence do not replace the two later ordinary
 loaded daily cycles. Existing daily monitoring sends
 new proof to the coordinating owner, who completes the scoped evidence PR,
 review/merge, final merged-main inventory and index update. Do not mark the plan
 complete or disable that monitor before the required closure merges.
+
+The post-merge HNSW six-card CI assertion failed once and passed the single
+bounded retry; all required post-merge jobs then passed or were expected skipped.
+This pre-existing retrieval fixture failure is separate from retention and the
+resolved runner outage. Eight isolated runs passed but did not explain the CI
+failure. Newly discovered follow-up feat-609 retains the missing failed actual
+plan/settings and correction proof; no assertion, timeout or production behavior
+was weakened. The original 38 paths remain 12 complete / 25 cancelled / one open;
+including feat-609, 39 tracked paths contain two open tickets. Do not claim the
+HNSW issue fixed by a passing retry or transfer feat-554's two-cycle gate to it.
