@@ -83,7 +83,7 @@ export async function deliverPrivatePrecomputedWatchVisit(
       consentReceiptDigest: input.consentReceiptDigest,
       profileTokenDigest: input.profileTokenDigest,
       eligibleHuman: true,
-      // Preserve ordinary consented personalization and owner routing while
+      // Preserve optional profile personalization and owner routing while
       // preventing a second, unrelated experiment from assigning this visit.
       suppressExperimentEnrollment: true,
       trafficCategory: input.trafficCategory,
@@ -135,8 +135,6 @@ export async function deliverPrivatePrecomputedWatchVisit(
     {
       visitId: input.visitId,
       browserDigest: input.browserDigest,
-      consentReceiptDigest: input.consentReceiptDigest,
-      profileTokenDigest: input.profileTokenDigest,
       result: delivery.result,
       actualStrategy:
         delivery.result === "unavailable" ? null : delivery.strategyVersion,

@@ -28,6 +28,10 @@ import {
 import { WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
 import { clearRecommendationExperimentBrowser } from "@/lib/recommendation-experiment-browser"
 import {
+  RECOMMENDATION_EXPERIMENT_TESTER_COOKIE,
+  RECOMMENDATION_TESTER_COOKIE_PATH,
+} from "@/lib/recommendation-tester-token"
+import {
   RECOMMENDATION_CONSENT_CONTRACT,
   attachRecommendationConsent,
   bindRecommendationConsentProfile,
@@ -241,14 +245,15 @@ export async function POST(request: Request) {
     ) {
       clearRecommendationConsent(response)
     }
-    if (
-      parsed.data.action === "grant" ||
-      parsed.data.action === "withdraw" ||
-      parsed.data.action === "delete" ||
-      parsed.data.action === "reset" ||
-      profile.consentCookieDisposition === "clear"
-    ) {
+    if (parsed.data.action === "delete" || parsed.data.action === "reset") {
       clearRecommendationExperimentBrowser(response)
+      response.cookies.set(RECOMMENDATION_EXPERIMENT_TESTER_COOKIE, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: RECOMMENDATION_TESTER_COOKIE_PATH,
+        maxAge: 0,
+      })
     }
     return response
   } catch (error) {

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { SignJWT } from "jose"
 import {
   adminPrivatePrecomputedWatchVisitDeliveryOperation,
   adminPrivateSemanticRecommendationFallbackOperation,
@@ -6,6 +7,7 @@ import {
 import {
   createRecommendationExperimentTesterLink,
   exchangeRecommendationExperimentTesterLink,
+  readRecommendationExperimentTesterCookie,
   RECOMMENDATION_EXPERIMENT_TESTER_COOKIE,
 } from "@/lib/recommendation-tester-token"
 import {
@@ -83,7 +85,7 @@ const privateResult = (status: "eligible" | "excluded" | "unavailable") => ({
   experimentId: "private-test-1",
   generationId: "generation-1",
   arm: status === "eligible" ? "challenger" : null,
-  reason: status === "eligible" ? null : "consent_unverified",
+  reason: status === "eligible" ? null : "outside_frozen_cohort",
   qualification: "unverified_browser",
   measurementStatus: status === "eligible" ? "recorded" : "not_applicable",
   delivery: status === "eligible" ? delivery : null,
@@ -95,7 +97,7 @@ function request(
     browser?: boolean
     bot?: boolean
     visit?: boolean
-    consented?: boolean
+    essentialOnly?: boolean
     visitId?: string
   } = {},
 ) {
@@ -105,8 +107,8 @@ function request(
     ...(options.browser === false
       ? []
       : [`${RECOMMENDATION_EXPERIMENT_BROWSER_COOKIE}=${browser.value}`]),
-    ...(options.consented
-      ? [`forge_recommendation_consent=v1.${"a".repeat(43)}.${"b".repeat(43)}`]
+    ...(options.essentialOnly
+      ? [`forge_recommendation_consent=v1.${"a".repeat(43)}.-`]
       : []),
   ].join("; ")
   return new Request("https://watch.example/watch/api/recommendations", {
@@ -158,6 +160,54 @@ describe("private A/B Watch route", () => {
     expect(query.mock.calls[0]?.[0]?.query).toBe(
       adminPrivatePrecomputedWatchVisitDeliveryOperation,
     )
+    expect(query.mock.calls[0]?.[0]?.variables).toMatchObject({
+      consentReceiptDigest: null,
+      profileTokenDigest: null,
+    })
+  })
+
+  it("preserves a personalization-disabled viewer in the served and empty private arms", async () => {
+    const disabledRequest = request({ essentialOnly: true })
+    query.mockResolvedValueOnce({
+      data: { privatePrecomputedWatchVisitDelivery: privateResult("eligible") },
+    })
+    const served = await POST(disabledRequest)
+    expect((await served.json()).delivery.result).toBe("served")
+    expect(query.mock.calls[0]?.[0]?.variables).toMatchObject({
+      profileTokenDigest: null,
+    })
+
+    query.mockResolvedValueOnce({
+      data: {
+        privatePrecomputedWatchVisitDelivery: {
+          ...privateResult("eligible"),
+          delivery: { ...delivery, result: "empty", items: [] },
+        },
+      },
+    })
+    const empty = await POST(request({ essentialOnly: true }))
+    expect((await empty.json()).delivery).toMatchObject({
+      result: "empty",
+      experimentAttribution: { status: "eligible" },
+    })
+
+    query.mockResolvedValueOnce({
+      data: {
+        privatePrecomputedWatchVisitDelivery: {
+          ...privateResult("eligible"),
+          delivery: { ...delivery, result: "empty", items: [] },
+        },
+      },
+    })
+    const noReceiptEmpty = await POST(request())
+    expect((await noReceiptEmpty.json()).delivery).toMatchObject({
+      result: "empty",
+      experimentAttribution: { status: "eligible" },
+    })
+    expect(query.mock.calls[2]?.[0]?.variables).toMatchObject({
+      consentReceiptDigest: null,
+      profileTokenDigest: null,
+    })
   })
 
   it("recovers an excluded visit through the private control without public enrollment", async () => {
@@ -170,7 +220,7 @@ describe("private A/B Watch route", () => {
       .mockResolvedValueOnce({
         data: { semanticRecommendationDelivery: delivery },
       })
-    const response = await POST(request({ browser: false }))
+    const response = await POST(request())
     expect((await response.json()).delivery.experimentAttribution.status).toBe(
       "excluded",
     )
@@ -233,8 +283,8 @@ describe("private A/B Watch route", () => {
       },
     }))
     const [first, retry] = await Promise.all([
-      POST(request({ browser: false, consented: true })),
-      POST(request({ browser: false, consented: true })),
+      POST(request({ browser: false })),
+      POST(request({ browser: false })),
     ])
     expect(first.status).toBe(200)
     expect(retry.status).toBe(200)
@@ -242,14 +292,12 @@ describe("private A/B Watch route", () => {
       POST(
         request({
           browser: false,
-          consented: true,
           visitId: "33333333-3333-4333-8333-333333333333",
         }),
       ),
       POST(
         request({
           browser: false,
-          consented: true,
           visitId: "44444444-4444-4444-8444-444444444444",
         }),
       ),
@@ -274,6 +322,65 @@ describe("private A/B Watch route", () => {
     expect(first.headers.get("set-cookie") ?? "").toContain(
       RECOMMENDATION_EXPERIMENT_BROWSER_COOKIE,
     )
+  })
+
+  it("separates same-second invitation exchanges while keeping each browser stable", async () => {
+    const fixedNow = Date.now()
+    vi.spyOn(Date, "now").mockReturnValue(fixedNow)
+    const link = await createRecommendationExperimentTesterLink(
+      config,
+      testerId,
+    )
+    const activation = new URL(link).hash.slice(1)
+    const first = await exchangeRecommendationExperimentTesterLink(
+      activation,
+      config,
+    )
+    const second = await exchangeRecommendationExperimentTesterLink(
+      activation,
+      config,
+    )
+    expect(first?.cookie).toBeTruthy()
+    expect(second?.cookie).toBeTruthy()
+    expect(first?.cookie).not.toBe(second?.cookie)
+    query.mockImplementation(async ({ variables }) => ({
+      data: {
+        privatePrecomputedWatchVisitDelivery: {
+          ...privateResult("eligible"),
+          visitId: variables.visitId,
+        },
+      },
+    }))
+    testerCookie = first!.cookie
+    await POST(request({ browser: false }))
+    await POST(request({ browser: false }))
+    testerCookie = second!.cookie
+    await POST(request({ browser: false }))
+    const units = query.mock.calls.map(
+      ([operation]) => operation.variables.browserDigest,
+    )
+    expect(units[0]).toBe(units[1])
+    expect(units[2]).not.toBe(units[0])
+  })
+
+  it("rejects a legacy private tester session without an individual nonce", async () => {
+    const issuedAt = Math.floor(Date.now() / 1000)
+    const legacy = await new SignJWT({
+      scope: "forge.watch.precomputedExperiment",
+    })
+      .setProtectedHeader({
+        alg: "HS256",
+        typ: "watch-precomputed-experiment-tester+jwt",
+      })
+      .setIssuer(config.origin)
+      .setAudience("watch-precomputed-experiment-tester:session")
+      .setSubject(testerId)
+      .setIssuedAt(issuedAt)
+      .setExpirationTime(issuedAt + 30 * 86_400)
+      .sign(new TextEncoder().encode(secret))
+    expect(
+      await readRecommendationExperimentTesterCookie(legacy, config),
+    ).toBeNull()
   })
 
   it("does not issue a durable browser cookie when a tester link is exchanged", async () => {

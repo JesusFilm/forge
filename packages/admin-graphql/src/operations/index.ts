@@ -24,6 +24,8 @@ export {
   adminIssueWatchSurfaceDeliveryOperation,
   adminSelectSemanticRecommendationMutation,
   adminSelectSemanticRecommendationOperation,
+  adminSelectPrivatePrecomputedRecommendationMutation,
+  adminSelectPrivatePrecomputedRecommendationOperation,
   adminSemanticRecommendationDeliveryOperation,
   adminSemanticRecommendationDeliveryQuery,
   adminPrivateSemanticRecommendationFallbackOperation,

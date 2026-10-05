@@ -31,18 +31,18 @@ All issues, comments, readiness labels, native parents, blockers, and reverse
 blocking relationships were fetched and verified on 2026-10-05. All ten issues
 are open, labelled `ready-for-agent`, and have no comments at kickoff.
 
-| Issue | Blockers     | State                            | Worker / branch                                                | Integrated commits / evidence            |
-| ----- | ------------ | -------------------------------- | -------------------------------------------------------------- | ---------------------------------------- |
-| #2566 | None         | Integrated-and-verified          | `01a109e1-47c8-7043-bfd4-a85592cfafc5` / `codex/feat-590-2566` | `9a984c544`; evidence below              |
-| #2567 | #2566        | Integrated-and-verified          | Same Sol chat / `codex/feat-590-2567`                          | `c89db0e4e`; evidence below              |
-| #2568 | #2567        | Fixture integrated; live blocked | Same Sol chat / `codex/feat-590-2568`                          | `b1703cd8c`; partial evidence below      |
-| #2569 | #2568        | Waiting for prerequisites        | Unassigned                                                     | None                                     |
-| #2570 | #2566        | Integrated-and-verified          | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | `0a93244a3`; evidence below              |
-| #2571 | #2570        | Integrated-and-verified          | Same Sol chat / `codex/feat-590-2571`                          | `267a65281`, `b69592b6c`; evidence below |
-| #2572 | #2571        | Implementing                     | Same Sol chat / `codex/feat-590-2572`                          | Starting at `b69592b6c`                  |
-| #2573 | #2572        | Waiting for prerequisites        | Unassigned                                                     | None                                     |
-| #2574 | #2569, #2573 | Waiting for prerequisites        | Unassigned                                                     | None                                     |
-| #2575 | #2574        | Waiting for prerequisites        | Unassigned                                                     | None                                     |
+| Issue | Blockers     | State                               | Worker / branch                                                | Integrated commits / evidence                  |
+| ----- | ------------ | ----------------------------------- | -------------------------------------------------------------- | ---------------------------------------------- |
+| #2566 | None         | Integrated-and-verified             | `01a109e1-47c8-7043-bfd4-a85592cfafc5` / `codex/feat-590-2566` | `9a984c544`; evidence below                    |
+| #2567 | #2566        | Integrated-and-verified             | Same Sol chat / `codex/feat-590-2567`                          | `c89db0e4e`; evidence below                    |
+| #2568 | #2567        | Fixture integrated; live blocked    | Same Sol chat / `codex/feat-590-2568`                          | `b1703cd8c`; partial evidence below            |
+| #2569 | #2568        | Waiting for prerequisites           | Unassigned                                                     | None                                           |
+| #2570 | #2566        | Integrated-and-verified             | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | `0a93244a3`; evidence below                    |
+| #2571 | #2570        | Integrated; corrections in progress | Both Sol chats; scoped fixes below                             | `267a65281`, `b69592b6c`; prior evidence below |
+| #2572 | #2571        | Implementing                        | Same Sol chat / `codex/feat-590-2572`                          | Starting at `b69592b6c`                        |
+| #2573 | #2572        | Waiting for prerequisites           | Unassigned                                                     | None                                           |
+| #2574 | #2569, #2573 | Waiting for prerequisites           | Unassigned                                                     | None                                           |
+| #2575 | #2574        | Waiting for prerequisites           | Unassigned                                                     | None                                           |
 
 Advance dependencies only on **integrated-and-verified** acceptance evidence.
 Implemented, integrated, merged, and live are separate states. GitHub issues
@@ -306,7 +306,7 @@ with five non-applicable checks skipped. This includes #2568's fixture-only
 implementation and browser layout repair; it does not certify live warehouse
 access and does not cover #2571.
 
-### #2571 integrated acceptance
+### #2571 initial integration (acceptance reopened)
 
 Worker commit `6b4268d20f0afefbc0926d7dea1ed5b10a57d8d0` is integrated as
 `267a6528170d56b1be0a36cbd18d2359d5c7acae`. Follow-up worker commit
@@ -320,7 +320,7 @@ were not applied again. Both corrections and combined checks passed before
   suppressing nested experiment enrollment. Retries bind their issued requests
   to the same visit. Failed saved output, empty results, and fallback stay in the
   assigned denominator.
-- A signed browser identity derives deterministically from consent credentials
+- The initial signed browser identity derives deterministically from consent credentials
   for concurrent first requests and lost-response retries. A durable cookie is
   issued only after Admin verifies active consent; withdrawal fences subsequent
   recording. The visit UUID travels in a header, preserving the ordinary body
@@ -359,6 +359,114 @@ Public flags remain off. Trusted edge bot qualification and production cookie
 forwarding remain unverified launch gates; Admin labels the counts as private
 observations. Durable CTR and loaded storage proof belong to #2573 and #2574.
 
+CI at published head `a242ecc44` found one more partial fixture in the
+deterministic profile-candidate retention test; the other 41 checks passed.
+The owner audited every native purge caller and found no further partial
+runtime fixture needing repair. Worker commit
+`5fce61dbdc01e3ca3d05fe3a18f5a1ca23c4b75d` is integrated as
+`ab45ef328f241ce84229f3422ebf76426d9dc5d7`: it installs the actual precomputed
+migrations after the fixture's catalog is available, preserving foreign keys.
+Production cleanup and authorization are unchanged. Normal worker hooks and
+root scoped formatting passed; independent execution of the exact CI
+profile-candidate/profile-projection pair passed all 20 native tests. Published
+head `ab45ef328` then passed all 43 applicable CI checks, with three skipped.
+The same worker is now implementing #2572;
+this repair is an already-integrated dependency, not a second click change.
+
+### Cross-ticket review corrections
+
+A second sequential Standards/Spec review at `ab45ef328` reopened #2571
+acceptance before #2572 completion. Prior passing test results remain valid
+for their stated code revision, but two requirements need correction:
+
+- The active personalization-receipt gate excludes no-receipt and
+  personalization-disabled viewers from private experimental analytics. That
+  conflicts with the current analytics policy: profile use and learning must
+  respect viewer controls, while contextual recommendations and product
+  analytics require no prior consent. Worker B owns the admission, identity,
+  and click correction on its current #2572 branch. The orchestrator's earlier
+  blanket private-selection consent-fence guidance was withdrawn.
+- The live retention-health query omits overdue precomputed visit and
+  configuration roots even though the purge runner detects them. Worker A
+  owns the health query and native regression on
+  `codex/feat-590-2571-retention-health`, starting from `ab45ef328`, preserving
+  its held #2568 branch. This is not #2574 physical-capacity work.
+
+Both corrections must be integrated and verified before advancing #2573.
+The separate #2572 trace-permission finding is corrected in the worker tree:
+aggregate-only editors must not receive individual card/visit traces.
+GA access remains pending; neither review nor these fixes advance #2569.
+
+Worker A's retention correction `c85dd42c17fe5729426d7454e78779437b194a67`
+and follow-up `f37bdc4ec97ebaa41ad5ceb6f32ed8c0e584e9ce` are integrated in
+this revision. The health query includes overdue visits and expired
+configurations with no remaining visits, matching the purge rules. Both native
+regressions failed before the fix and passed afterward; each also verifies
+recovery to healthy after draining the remaining row.
+
+GitHub rejected the first local integration commit because the OAuth credential
+lacks workflow scope; no new commit reached the remote. The follow-up moves
+both regressions into the existing CI-run `retention-standalone.db.test.ts`.
+The net workflow diff is empty. Only the unpublished local integration commit
+is replaced; published history is preserved. Independent verification on a
+fresh owned PostgreSQL 18 database, fully migrated through `0133`, passed all
+five standalone cases and 22 retention unit tests. Logs use the
+`2571-retention-existing-ci-` prefix under `/tmp/forge-feat-590-orchestration/`;
+the disposable database was removed after the successful run.
+
+Worker A also passed existing native profile-tail (2), composition (14), trial
+(1), standalone (3), and profile-candidate (4) cases, Admin typecheck, scoped
+lint/format, CI YAML parsing, normal hooks, and separate Standards/Spec review
+with no findings. Two historical non-CI study fixtures fail in setup on stale
+promotion-pointer columns before reaching the modified query; they are not
+counted as passing native evidence. The worker is held for the pending GA
+handoff.
+
+Worker B's correction removes the receipt prerequisite while retaining profile
+learning controls. It uses a signed anonymous browser unit, adds a random
+per-session nonce to separate invitation exchanges, and rejects older private
+sessions without that nonce. Existing frozen eligibility v1 configurations
+must be recreated under v2; earlier excluded rows are not reinterpreted.
+Migration `0133` relaxes only the eligible-visit receipt CHECK and preserves
+the legacy nullable column; new visits leave it empty. The combined native
+tests verify no-receipt and personalization-disabled admission without profile
+learning, wrong-browser rejection, old-policy rejection, and stable assignment.
+Grant/withdraw preserve the anonymous unit; reset/delete clear both the browser
+and private tester cookies.
+
+### #2572 combined verification
+
+Worker commit `2c3e26e086b1c8c67bb6901fac66114ba753a9d7` is integrated in
+this revision. Its previously integrated `5fce61dbd` dependency is excluded.
+The existing accepted selection is the authority: request/item/visit bindings
+produce distinct clicked-visit counts without adding another event stream.
+Multiple card clicks and replay contribute one clicked visit. Missing
+impressions do not exclude legitimate clicks; impression-based card CTR remains
+separate. Actual request strategy and matched fallback lineage drive card
+diagnostics. Aggregate-only editors cannot read individual card traces.
+
+- Worker evidence: 29 native delivery/click cases, 18 native playback cases,
+  8,974 full Admin tests, 4,766 full Web tests, 40 targeted private/select/profile
+  Web cases, all three typechecks, generated contracts, scoped lint, normal
+  hooks, and separate Standards/Spec review passed. Fixed-clock tests separate
+  same-second invitation exchanges and reject legacy/tampered private sessions.
+- Independent integration: 70 native/Admin cases, the exact 20-case
+  deterministic profile-candidate/profile-projection CI pair, 89 default-off
+  contract/episode regressions, 109 Web cases, Admin/Web/admin-graphql typechecks,
+  and regenerated SDL/consumer drift checks passed. Logs use the
+  `2572-integration-` prefix under `/tmp/forge-feat-590-orchestration/`.
+- Event-write evidence: two accepted rows for two cards, no additional replay
+  row, no selection POST on initial render, and one keepalive POST for a
+  supported modified activation. Auxiliary-tab playback claims and lost
+  browser events are explicitly unobserved rather than fabricated.
+- Watch browser timing is at
+  `/home/nisal/.codex/worktrees/feat-590-2570/forge/apps/web/test-results/precomputed-watch-preview--64513--shell-with-timing-evidence/precomputed-watch-timing.json`.
+  One-card cold FCP was 2,624ms, with the recommendation request at
+  3,244–3,251ms; six-card warm FCP was 348ms, with the request at 931–937ms.
+  These are synthetic local development fixtures, not production capacity.
+- Browser/loading verification for the newly added Admin click tables remains
+  pending. #2573 has not been dispatched.
+
 An isolated PostgreSQL 18 integration database is running in
 `forge_feat590_integration_db` on loopback port `32810`. It is reserved for
 independent combined checks after worker commits are integrated. The #2566
@@ -380,3 +488,12 @@ pnpm metadata/unused packages and unused Docker builder cache restored about
 5GB of free space. No images, containers, database volumes, checkouts, or source
 were removed by the orchestrator. Keep heavyweight builds serialized if space
 becomes constrained again.
+
+During #2572 validation, the worker's independent profile-scale fixture reached
+the local disk limit. The orchestrator dumped and recreated only its idle,
+disposable integration PostgreSQL container, then restored both databases and
+verified all 133 migrations through `0132`. This recovered approximately 1GB
+of preallocated WAL space; the replacement uses a smaller local WAL reserve.
+No worker database, source, evidence artifact, or production data was removed.
+The deferred scale run subsequently passed all 20 cases on the combined branch
+after the identity and migration corrections, as recorded above.

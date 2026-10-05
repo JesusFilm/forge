@@ -24,17 +24,12 @@ function digest(raw: string): string {
 
 export function createRecommendationExperimentBrowser(
   secret: string,
-  credential?: {
-    consentReceiptDigest: string
-    profileTokenDigest: string
-  },
+  verifiedTesterSession?: string,
 ) {
   if (secret.length < 32) return null
-  const raw = credential
+  const raw = verifiedTesterSession
     ? createHmac("sha256", secret)
-        .update(
-          `precomputed-browser-from-consent-v1\0${credential.consentReceiptDigest}\0${credential.profileTokenDigest}`,
-        )
+        .update(`precomputed-browser-from-tester-v1\0${verifiedTesterSession}`)
         .digest("base64url")
     : randomBytes(32).toString("base64url")
   return { value: `v1.${raw}.${signature(raw, secret)}`, digest: digest(raw) }

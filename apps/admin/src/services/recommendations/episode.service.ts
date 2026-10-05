@@ -42,6 +42,7 @@ import {
   type RecommendationFinalizationWake,
 } from "./finalization/job"
 import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
+import { matchesPrivateVisitBrowser } from "./precomputed/visit-selection"
 import type {
   DeliveryCapabilityBinding,
   EpisodeCapabilityBinding,
@@ -163,6 +164,7 @@ export class RecommendationEpisodeService {
     occurredAt: string
     tabDigest?: string | null
     claimNonce: string
+    browserDigest?: string | null
   }) {
     assertWebRecommendationCaller(input.caller)
     if (input.contractVersion !== RECOMMENDATION_CONTRACTS.evidence) {
@@ -210,6 +212,7 @@ export class RecommendationEpisodeService {
             sessionDigest: true,
             surfaceVersion: true,
             manifestId: true,
+            precomputedVisitLink: { select: { requestId: true } },
             experimentAssignment: {
               include: { experiment: true, profile: true },
             },
@@ -320,6 +323,17 @@ export class RecommendationEpisodeService {
           "Recommendation selection binding is invalid",
         )
       }
+      if (
+        item.request.precomputedVisitLink &&
+        !(await matchesPrivateVisitBrowser(tx, {
+          requestId: item.requestId,
+          browserDigest: input.browserDigest,
+          now,
+        }))
+      )
+        throw new RecommendationBindingError(
+          "Recommendation private browser binding is invalid",
+        )
       await lockRecommendationItemEvidence(tx, item.id)
       const impression = await tx.recommendationImpression.findUnique({
         where: { itemId: item.id },

@@ -14,6 +14,53 @@ import {
 
 const day = 86_400_000
 
+async function createFixtureGeneration(db: PrismaClient, now: Date) {
+  const id = `retention-generation-${randomUUID()}`
+  await db.recommendationPrecomputedGeneration.create({
+    data: {
+      id,
+      modelId: "fixture-astra",
+      promptVersion: "fixture-v1",
+      inputDigest: "a".repeat(64),
+      sourceSetDigest: "b".repeat(64),
+      inputCutoff: now,
+      expectedSourceCount: 0,
+      status: "complete",
+      completedAt: now,
+    },
+  })
+  return id
+}
+
+async function createClosedFixtureExperiment(
+  db: PrismaClient,
+  generationId: string,
+  now: Date,
+  expiresAt: Date,
+) {
+  const id = `retention-experiment-${randomUUID()}`
+  await db.recommendationPrecomputedExperiment.create({
+    data: {
+      id,
+      generationId,
+      controlManifestId: "semantic-transcript-pgvector-v1",
+      challengerManifestId: "precomputed-watch-preview-v1",
+      controlManifestDigest: "c".repeat(64),
+      controlRoutingDigest: "d".repeat(64),
+      sourceSetDigest: "b".repeat(64),
+      assignmentPolicyVersion: "fixture-v1",
+      eligibilityPolicyVersion: "fixture-v1",
+      deliveryPolicyVersion: "fixture-v1",
+      configurationDigest: "e".repeat(64),
+      state: "closed",
+      startsAt: new Date(now.getTime() - 400 * day),
+      endsAt: new Date(now.getTime() - 399 * day),
+      expiresAt,
+    },
+  })
+  return id
+}
+
 describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
   "standalone episode retention on PostgreSQL",
   () => {
@@ -789,6 +836,159 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         )
         await db.recommendationProfileProjectionRun.deleteMany({
           where: { id: { in: projectionRunIds } },
+        })
+      }
+    }, 30_000)
+
+    it("reports the remaining expired precomputed visit after a capped successful cleanup", async () => {
+      const now = new Date()
+      const olderExpiry = new Date(now.getTime() - 3 * day)
+      const remainingExpiry = new Date(now.getTime() - 2 * day)
+      const generationId = await createFixtureGeneration(db, now)
+      try {
+        const experimentId = await createClosedFixtureExperiment(
+          db,
+          generationId,
+          now,
+          new Date(now.getTime() + day),
+        )
+        try {
+          await db.recommendationPrecomputedVisit.createMany({
+            data: [
+              {
+                id: randomUUID(),
+                experimentId,
+                sourceVideoId: "fixture-video",
+                locale: "en",
+                audioLanguageSlug: "english",
+                eligibility: "excluded",
+                qualification: "unknown_signal",
+                exclusionReason: "traffic_unqualified",
+                createdAt: new Date(now.getTime() - 30 * day),
+                expiresAt: olderExpiry,
+              },
+              {
+                id: randomUUID(),
+                experimentId,
+                sourceVideoId: "fixture-video",
+                locale: "en",
+                audioLanguageSlug: "english",
+                eligibility: "excluded",
+                qualification: "unknown_signal",
+                exclusionReason: "traffic_unqualified",
+                createdAt: new Date(now.getTime() - 29 * day),
+                expiresAt: remainingExpiry,
+              },
+            ],
+          })
+
+          const cleanup = await purgeExpiredRecommendationRequests(db, now, 1)
+          expect(cleanup).toMatchObject({
+            status: "succeeded",
+            rowCounts: { expiredPrecomputedVisits: 1 },
+            batchLimitReached: true,
+            overdueAfterRun: true,
+            oldestExpiredAtAfter: remainingExpiry.toISOString(),
+          })
+          expect(
+            await readRecommendationRetentionHealth(db, now),
+          ).toMatchObject({
+            healthy: false,
+            reason: "retention_overdue",
+            oldestOverdueAt: remainingExpiry,
+          })
+          const drained = await purgeExpiredRecommendationRequests(
+            db,
+            new Date(now.getTime() + 1),
+            1,
+          )
+          expect(drained).toMatchObject({
+            status: "succeeded",
+            rowCounts: { expiredPrecomputedVisits: 1 },
+            overdueAfterRun: false,
+            oldestExpiredAtAfter: null,
+          })
+          expect(
+            await readRecommendationRetentionHealth(db, now),
+          ).toMatchObject({
+            healthy: true,
+            reason: "healthy",
+            oldestOverdueAt: null,
+          })
+        } finally {
+          await db.recommendationPrecomputedVisit.deleteMany({
+            where: { experimentId },
+          })
+          await db.recommendationPrecomputedExperiment.deleteMany({
+            where: { id: experimentId },
+          })
+        }
+      } finally {
+        await db.recommendationPrecomputedGeneration.delete({
+          where: { id: generationId },
+        })
+      }
+    }, 30_000)
+
+    it("reports the remaining expired precomputed configuration after a capped successful cleanup", async () => {
+      const now = new Date()
+      const olderExpiry = new Date(now.getTime() - 3 * day)
+      const remainingExpiry = new Date(now.getTime() - 2 * day)
+      const generationId = await createFixtureGeneration(db, now)
+      const experimentIds: string[] = []
+      try {
+        experimentIds.push(
+          await createClosedFixtureExperiment(
+            db,
+            generationId,
+            now,
+            olderExpiry,
+          ),
+        )
+        experimentIds.push(
+          await createClosedFixtureExperiment(
+            db,
+            generationId,
+            now,
+            remainingExpiry,
+          ),
+        )
+
+        const cleanup = await purgeExpiredRecommendationRequests(db, now, 1)
+        expect(cleanup).toMatchObject({
+          status: "succeeded",
+          rowCounts: { expiredPrecomputedExperiments: 1 },
+          batchLimitReached: true,
+          overdueAfterRun: true,
+          oldestExpiredAtAfter: remainingExpiry.toISOString(),
+        })
+        expect(await readRecommendationRetentionHealth(db, now)).toMatchObject({
+          healthy: false,
+          reason: "retention_overdue",
+          oldestOverdueAt: remainingExpiry,
+        })
+        const drained = await purgeExpiredRecommendationRequests(
+          db,
+          new Date(now.getTime() + 1),
+          1,
+        )
+        expect(drained).toMatchObject({
+          status: "succeeded",
+          rowCounts: { expiredPrecomputedExperiments: 1 },
+          overdueAfterRun: false,
+          oldestExpiredAtAfter: null,
+        })
+        expect(await readRecommendationRetentionHealth(db, now)).toMatchObject({
+          healthy: true,
+          reason: "healthy",
+          oldestOverdueAt: null,
+        })
+      } finally {
+        await db.recommendationPrecomputedExperiment.deleteMany({
+          where: { id: { in: experimentIds } },
+        })
+        await db.recommendationPrecomputedGeneration.delete({
+          where: { id: generationId },
         })
       }
     }, 30_000)

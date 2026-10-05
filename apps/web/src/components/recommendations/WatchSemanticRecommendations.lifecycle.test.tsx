@@ -369,6 +369,9 @@ describe("WatchSemanticRecommendations lifecycle", () => {
       )
     })
     await flush()
+    expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/select")),
+    ).toHaveLength(0)
     const card = container.querySelector("a")!
     act(() => {
       card.dispatchEvent(
@@ -412,6 +415,72 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     )
     expect(container.innerHTML).not.toContain("capability-secret")
   })
+
+  it.each([
+    { name: "control-click", type: "click", button: 0, ctrlKey: true },
+    { name: "middle-click", type: "auxclick", button: 1, ctrlKey: false },
+  ])(
+    "records $name without delaying native new-tab navigation",
+    async (activation) => {
+      const fetchMock = vi.fn(
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          if (String(input).endsWith("/api/recommendations"))
+            return jsonResponse({ delivery })
+          if (String(input).endsWith("/select"))
+            return jsonResponse({
+              claimNonce: JSON.parse(String(init?.body)).claimNonce,
+              canonicalHref: "/watch/target.html",
+              targetMediaId: "target-1",
+            })
+          return jsonResponse({ receipts: [] })
+        },
+      )
+      vi.stubGlobal("fetch", fetchMock)
+      const navigate = vi.fn()
+      act(() => {
+        root.render(
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="en"
+            audioLanguageSlug="english"
+            navigate={navigate}
+          />,
+        )
+      })
+      await flush()
+      const card = container.querySelector("a")!
+      const event = new MouseEvent(activation.type, {
+        bubbles: true,
+        cancelable: true,
+        button: activation.button,
+        ctrlKey: activation.ctrlKey,
+      })
+      act(() => card.dispatchEvent(event))
+      await flush()
+      expect(event.defaultPrevented).toBe(false)
+      expect(navigate).not.toHaveBeenCalled()
+      expect(card.getAttribute("href")).toBe("/target.html")
+      expect(card.innerHTML).not.toContain("capability-secret")
+      const selections = requestBodies(fetchMock).filter(
+        (body) => body.itemId && body.claimNonce,
+      )
+      expect(selections).toHaveLength(1)
+      expect(selections[0]).toMatchObject({
+        requestId: "request-1",
+        itemId: "item-1",
+        capability: "delivery-capability-secret",
+      })
+      expect(
+        sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY),
+      ).not.toBe(selections[0]?.claimNonce)
+      expect(JSON.stringify(sessionStorage)).not.toContain("capability-secret")
+      expect(
+        fetchMock.mock.calls.find(([url]) =>
+          String(url).endsWith("/select"),
+        )?.[1]?.keepalive,
+      ).toBe(true)
+    },
+  )
 
   it("allows only one component-wide selection attempt across different cards", async () => {
     let resolveSelection!: (response: Response) => void

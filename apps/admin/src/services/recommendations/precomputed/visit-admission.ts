@@ -16,10 +16,11 @@ import { recommendationManifestDigest } from "../promotion/manifest"
 import { RECOMMENDATION_SERVING_CONTROL_ID } from "../manifest.service"
 import { verifyPrecomputedSourceEligibility } from "./watch-reader"
 import { PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID } from "./watch-delivery"
+import { precomputedBrowserUnitDigest } from "./visit-identity"
 
 export const PRECOMPUTED_VISIT_ASSIGNMENT_POLICY = "browser-sha256-50-v1"
 export const PRECOMPUTED_VISIT_ELIGIBILITY_POLICY =
-  "private-watch-visit-unverified-bot-v1"
+  "private-watch-visit-unverified-bot-v2"
 export const PRECOMPUTED_VISIT_DELIVERY_POLICY = "saved-or-control-v1"
 const RAW_VISIT_MS = 29 * 86_400_000
 const CONFIG_RETENTION_MS = 365 * 86_400_000
@@ -45,35 +46,6 @@ export type PrivateVisitAdmission = {
 
 function digest(parts: readonly string[]): string {
   return createHash("sha256").update(parts.join("\0")).digest("hex")
-}
-
-async function activePersonalizationReceipt(
-  prisma: Prisma.TransactionClient,
-  consentReceiptDigest: string | null,
-  profileTokenDigest: string | null,
-  now: Date,
-): Promise<boolean> {
-  if (
-    !consentReceiptDigest ||
-    !profileTokenDigest ||
-    !HEX_DIGEST.test(consentReceiptDigest) ||
-    !HEX_DIGEST.test(profileTokenDigest)
-  )
-    return false
-  const receipt = await prisma.recommendationConsentReceipt.findUnique({
-    where: { tokenDigest: consentReceiptDigest },
-    include: { profile: true },
-  })
-  return Boolean(
-    receipt?.state === "ACTIVE" &&
-    receipt.contractVersion === "recommendation-consent-v1" &&
-    receipt.choice === "PERSONALIZATION" &&
-    receipt.expiresAt > now &&
-    receipt.profile?.state === "ACTIVE" &&
-    receipt.profile.tokenDigest === profileTokenDigest &&
-    receipt.profile.privacyGeneration === receipt.privacyGeneration &&
-    receipt.profile.expiresAt > now,
-  )
 }
 
 /** The incumbent is the live serving route, including any promotion authority. */
@@ -336,15 +308,6 @@ export async function admitPrivatePrecomputedVisit(
           exclusionReason = "traffic_unqualified"
         } else if (!input.browserDigest) {
           exclusionReason = "browser_identity_unavailable"
-        } else if (
-          !(await activePersonalizationReceipt(
-            tx,
-            input.consentReceiptDigest,
-            input.profileTokenDigest,
-            now,
-          ))
-        ) {
-          exclusionReason = "consent_unverified"
         }
         if (!exclusionReason) {
           const source = await tx.recommendationPrecomputedSource.findUnique({
@@ -362,11 +325,7 @@ export async function admitPrivatePrecomputedVisit(
         }
         const browserUnitDigest =
           exclusionReason == null
-            ? digest([
-                "precomputed-browser-unit-v1",
-                experiment.id,
-                input.browserDigest!,
-              ])
+            ? precomputedBrowserUnitDigest(experiment.id, input.browserDigest!)
             : null
         const arm =
           browserUnitDigest == null
@@ -380,14 +339,7 @@ export async function admitPrivatePrecomputedVisit(
           id: input.visitId,
           experimentId: experiment.id,
           browserUnitDigest,
-          consentBindingDigest:
-            exclusionReason == null
-              ? digest([
-                  "precomputed-consent-binding-v1",
-                  experiment.id,
-                  input.consentReceiptDigest!,
-                ])
-              : null,
+          consentBindingDigest: null,
           sourceVideoId: input.seedMediaId,
           locale: input.locale,
           audioLanguageSlug: input.audioLanguageSlug,
@@ -413,8 +365,7 @@ export async function admitPrivatePrecomputedVisit(
           visit.sourceVideoId !== input.seedMediaId ||
           visit.locale !== input.locale ||
           visit.audioLanguageSlug !== input.audioLanguageSlug ||
-          visit.browserUnitDigest !== browserUnitDigest ||
-          visit.consentBindingDigest !== data.consentBindingDigest
+          visit.browserUnitDigest !== browserUnitDigest
         )
           return result(input, "unavailable", "visit_identity_conflict")
         return result(
@@ -443,8 +394,6 @@ export async function recordPrivatePrecomputedVisitDelivery(
   input: {
     visitId: string
     browserDigest: string
-    consentReceiptDigest: string | null
-    profileTokenDigest: string | null
     result: "served" | "fallback" | "empty" | "unavailable"
     actualStrategy: string | null
     requestId: string | null
@@ -491,23 +440,10 @@ export async function recordPrivatePrecomputedVisitDelivery(
               })
             )?.controlRoutingDigest ||
           visit.browserUnitDigest !==
-            digest([
-              "precomputed-browser-unit-v1",
+            precomputedBrowserUnitDigest(
               visit.experiment.id,
               input.browserDigest,
-            ]) ||
-          visit.consentBindingDigest !==
-            digest([
-              "precomputed-consent-binding-v1",
-              visit.experiment.id,
-              input.consentReceiptDigest ?? "",
-            ]) ||
-          !(await activePersonalizationReceipt(
-            tx,
-            input.consentReceiptDigest,
-            input.profileTokenDigest,
-            now,
-          ))
+            )
         )
           return "unavailable"
         if (input.requestId) {

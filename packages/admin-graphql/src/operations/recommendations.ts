@@ -371,6 +371,48 @@ export const adminSelectSemanticRecommendationOperation = adminGraphql(
   adminSelectSemanticRecommendationMutation,
 )
 
+// Keep the public operation unchanged for flag-off and older Admin servers.
+// Only the gated private Watch test sends its signed browser-cookie digest.
+export const adminSelectPrivatePrecomputedRecommendationMutation = `
+  mutation SelectPrivatePrecomputedRecommendation(
+    $contractVersion: String!
+    $capability: String!
+    $requestId: ID!
+    $itemId: ID!
+    $sessionDigest: String
+    $viewerToken: String
+    $sessionToken: String
+    $eventId: String!
+    $occurredAt: String!
+    $tabDigest: String
+    $claimNonce: String!
+    $browserDigest: String
+  ) {
+    selectSemanticRecommendation(
+      contractVersion: $contractVersion
+      capability: $capability
+      requestId: $requestId
+      itemId: $itemId
+      sessionDigest: $sessionDigest
+      viewerToken: $viewerToken
+      sessionToken: $sessionToken
+      eventId: $eventId
+      occurredAt: $occurredAt
+      tabDigest: $tabDigest
+      claimNonce: $claimNonce
+      browserDigest: $browserDigest
+    ) {
+      status
+      claimNonce
+      canonicalHref
+      targetMediaId
+    }
+  }
+` as const
+
+export const adminSelectPrivatePrecomputedRecommendationOperation =
+  adminGraphql(adminSelectPrivatePrecomputedRecommendationMutation)
+
 export const adminClaimSemanticRecommendationEpisodeMutation = `
   mutation ClaimSemanticRecommendationEpisode(
     $sessionDigest: String

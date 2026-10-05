@@ -1269,6 +1269,13 @@ export async function readRecommendationRetentionHealth(
       LEAST(
         (SELECT min(expires_at) FROM recommendation_viewer WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_request WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_precomputed_visit WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_precomputed_experiment AS experiment
+          WHERE expires_at <= ${propagationCutoff}
+            AND NOT EXISTS (
+              SELECT 1 FROM recommendation_precomputed_visit AS visit
+              WHERE visit.experiment_id = experiment.id
+            )),
         (SELECT min(expires_at) FROM recommendation_content_action WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_eligibility_decision WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_control_evaluation WHERE expires_at <= ${propagationCutoff}),

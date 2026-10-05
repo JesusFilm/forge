@@ -1,11 +1,21 @@
 import { observeEvidenceResponse } from "@/lib/recommendation-evidence-response"
 import { assertRecommendationHumanAdmission } from "@/lib/recommendation-human-admission"
+import { NextRequest } from "next/server"
+import { env } from "@/env"
 import { z } from "zod"
 import {
   isCanonicalWatchRecommendationHref,
   WATCH_CANONICAL_ORIGIN,
 } from "@/lib/routes"
-import { selectSemanticRecommendation } from "@/lib/recommendations"
+import {
+  selectPrivatePrecomputedRecommendation,
+  selectSemanticRecommendation,
+} from "@/lib/recommendations"
+import { readRecommendationExperimentBrowser } from "@/lib/recommendation-experiment-browser"
+import {
+  readRecommendationExperimentTesterCookie,
+  RECOMMENDATION_EXPERIMENT_TESTER_COOKIE,
+} from "@/lib/recommendation-tester-token"
 import {
   RECOMMENDATION_EVIDENCE_BODY_BYTES,
   RecommendationRouteError,
@@ -52,7 +62,7 @@ export async function POST(request: Request) {
     if (!session) {
       throw new RecommendationRouteError(401, "recommendation_session_required")
     }
-    const selection = await selectSemanticRecommendation({
+    const selectionInput = {
       contractVersion: parsed.data.contractVersion,
       capability: parsed.data.capability,
       requestId: parsed.data.requestId,
@@ -62,7 +72,28 @@ export async function POST(request: Request) {
       sessionDigest: session.digest,
       tabDigest: digestRecommendationValue(parsed.data.tabNonce),
       claimNonce: parsed.data.claimNonce,
-    })
+    }
+    const privateTesterCookie = new NextRequest(request.url, {
+      headers: request.headers,
+    }).cookies.get(RECOMMENDATION_EXPERIMENT_TESTER_COOKIE)?.value
+    const privateTester =
+      env.WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED === "true" &&
+      (await readRecommendationExperimentTesterCookie(privateTesterCookie, {
+        secret: env.WATCH_RECOMMENDATION_TESTER_SECRET,
+        origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
+      }))
+    const privateBrowser = privateTester
+      ? readRecommendationExperimentBrowser(
+          request,
+          env.WATCH_RECOMMENDATION_TESTER_SECRET,
+        )
+      : null
+    const selection = privateTester
+      ? await selectPrivatePrecomputedRecommendation({
+          ...selectionInput,
+          browserDigest: privateBrowser?.digest ?? null,
+        })
+      : await selectSemanticRecommendation(selectionInput)
     if (
       (selection.status !== "accepted" && selection.status !== "replay") ||
       !selection.claimNonce

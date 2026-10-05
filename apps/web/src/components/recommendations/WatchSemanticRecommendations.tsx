@@ -892,15 +892,47 @@ export function WatchSemanticRecommendations({
       item: SemanticRecommendationItem,
       event: MouseEvent<HTMLAnchorElement>,
     ) => {
-      if (
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        event.shiftKey
-      ) {
+      const selectionBody = (claimNonce: string) =>
+        JSON.stringify({
+          contractVersion: RECOMMENDATION_EVIDENCE_CONTRACT,
+          requestId,
+          itemId: item.id,
+          capability: item.capability,
+          eventId: eventId("selection", item.id),
+          occurredAt: new Date().toISOString(),
+          tabNonce: tabNonce(),
+          claimNonce,
+        })
+      const auxiliary =
+        (event.type === "auxclick" && event.button === 1) ||
+        (event.button === 0 &&
+          (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey))
+      if (auxiliary) {
+        // Let the browser open the trusted link immediately. The signed card
+        // capability remains in this request body, never in a URL or storage.
+        if (
+          requestId &&
+          item.capability !== CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY
+        ) {
+          const claimNonce = randomRecommendationNonce()
+          void recommendationJsonWithRetry(
+            SELECTION_ENDPOINT,
+            {
+              method: "POST",
+              cache: "no-store",
+              credentials: "same-origin",
+              keepalive: true,
+              headers: { "content-type": "application/json" },
+              body: selectionBody(claimNonce),
+            },
+            SELECTION_DEADLINE_MS,
+          ).catch(() => {
+            // Navigation is intentionally independent of telemetry.
+          })
+        }
         return
       }
+      if (event.button !== 0) return
       event.preventDefault()
       if (selectionAttemptRef.current || navigationStartedRef.current) return
       if (item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY) {
@@ -916,7 +948,6 @@ export function WatchSemanticRecommendations({
         controller,
       }
       setBusyState({ requestKey, itemId: item.id })
-      const correlation = tabNonce()
       const claimNonce = randomRecommendationNonce()
       // Persist before the fail-open navigation. If the selection commits but
       // its response is lost, Watch can still claim the exact server binding.
@@ -934,16 +965,7 @@ export function WatchSemanticRecommendations({
           keepalive: true,
           headers: { "content-type": "application/json" },
           signal: controller.signal,
-          body: JSON.stringify({
-            contractVersion: RECOMMENDATION_EVIDENCE_CONTRACT,
-            requestId,
-            itemId: item.id,
-            capability: item.capability,
-            eventId: eventId("selection", item.id),
-            occurredAt: new Date().toISOString(),
-            tabNonce: correlation,
-            claimNonce,
-          }),
+          body: selectionBody(claimNonce),
         },
         SELECTION_DEADLINE_MS,
         {

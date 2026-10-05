@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto"
 import { SignJWT, jwtVerify } from "jose"
 
 export const RECOMMENDATION_TESTER_COOKIE = "forge_recommendation_tester"
@@ -62,7 +63,7 @@ async function sign(
   if (!resolved || !TESTER_ID.test(testerId)) {
     throw new RecommendationTesterConfigurationError()
   }
-  return new SignJWT({
+  const jwt = new SignJWT({
     scope: mode === "preview" ? SCOPE : "forge.watch.precomputedExperiment",
   })
     .setProtectedHeader({
@@ -79,7 +80,11 @@ async function sign(
     .setSubject(testerId)
     .setIssuedAt(issuedAt)
     .setExpirationTime(expiresAt)
-    .sign(resolved.key)
+  // A shared invitation can be exchanged by multiple browsers in the same
+  // second. Every private session needs its own random browser-unit seed.
+  if (mode === "private_experiment" && purpose === "session")
+    jwt.setJti(randomBytes(16).toString("base64url"))
+  return jwt.sign(resolved.key)
 }
 
 async function verify(
@@ -118,7 +123,11 @@ async function verify(
       !Number.isSafeInteger(payload.exp) ||
       payload.iat > now ||
       payload.exp <= payload.iat ||
-      payload.exp - payload.iat > lifetime
+      payload.exp - payload.iat > lifetime ||
+      (mode === "private_experiment" &&
+        purpose === "session" &&
+        (typeof payload.jti !== "string" ||
+          !/^[A-Za-z0-9_-]{22}$/.test(payload.jti)))
     )
       return null
     return { testerId: payload.sub, issuedAt: payload.iat }

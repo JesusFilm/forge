@@ -155,12 +155,7 @@ export async function POST(request: Request) {
         ) ??
         createRecommendationExperimentBrowser(
           env.WATCH_RECOMMENDATION_TESTER_SECRET ?? "",
-          consentReceiptDigest && profile?.kind === "valid"
-            ? {
-                consentReceiptDigest,
-                profileTokenDigest: profile.digest,
-              }
-            : undefined,
+          privateTesterCookie,
         ))
       : null
     let privateVisit: Awaited<

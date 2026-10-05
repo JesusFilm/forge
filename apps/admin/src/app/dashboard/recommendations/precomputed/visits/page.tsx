@@ -9,6 +9,7 @@ import {
   listPrivatePrecomputedExperiments,
   loadPrivatePrecomputedVisitDiagnostics,
 } from "@/services/recommendations/precomputed/visit-admission"
+import { loadPrivatePrecomputedClickDiagnostics } from "@/services/recommendations/precomputed/visit-clicks"
 import { createPrivatePrecomputedTest } from "./actions"
 import { PrivateVisitDiagnosticsView } from "./view"
 
@@ -29,6 +30,12 @@ export default async function PrecomputedVisitDiagnosticsPage({
   const id = requested || experiments[0]?.id
   const report = id
     ? await loadPrivatePrecomputedVisitDiagnostics(prisma, {
+        experimentId: id,
+        reviewer: principal,
+      })
+    : null
+  const clicks = id
+    ? await loadPrivatePrecomputedClickDiagnostics(prisma, {
         experimentId: id,
         reviewer: principal,
       })
@@ -129,7 +136,7 @@ export default async function PrecomputedVisitDiagnosticsPage({
           ) : null}
         </div>
       </PageSection>
-      <PrivateVisitDiagnosticsView report={report} />
+      <PrivateVisitDiagnosticsView report={report} clicks={clicks} />
     </div>
   )
 }

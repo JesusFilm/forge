@@ -6781,6 +6781,8 @@ model RecommendationPrecomputedVisit {
   experimentId String @map("experiment_id") @db.VarChar(191)
   experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Restrict)
   browserUnitDigest String? @map("browser_unit_digest") @db.Char(64)
+  /// Legacy receipt binding retained for old private visits. New visits use
+  /// browserUnitDigest and leave this nullable field empty.
   consentBindingDigest String? @map("consent_binding_digest") @db.Char(64)
   sourceVideoId String @map("source_video_id") @db.VarChar(191)
   locale String @db.VarChar(32)

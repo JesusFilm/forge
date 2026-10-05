@@ -2067,7 +2067,7 @@ type Mutation {
   """
   retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
-  selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
+  selectSemanticRecommendation(browserDigest: String, capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
   stageShortsCatalog(input: JSON!): ShortsCatalogRelease
   startShortsAttempt(input: ShortsStartInput!): ShortsCommandResult
   """

@@ -1,11 +1,28 @@
 import { createHash } from "node:crypto"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { adminSelectSemanticRecommendationOperation } from "@forge/admin-graphql/operations"
+import {
+  adminSelectPrivatePrecomputedRecommendationOperation,
+  adminSelectSemanticRecommendationOperation,
+} from "@forge/admin-graphql/operations"
+import {
+  createRecommendationExperimentTesterLink,
+  exchangeRecommendationExperimentTesterLink,
+  RECOMMENDATION_EXPERIMENT_TESTER_COOKIE,
+} from "@/lib/recommendation-tester-token"
+import {
+  createRecommendationExperimentBrowser,
+  RECOMMENDATION_EXPERIMENT_BROWSER_COOKIE,
+} from "@/lib/recommendation-experiment-browser"
 
 const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }))
 
 vi.mock("@/env", () => ({
-  env: { NEXT_PUBLIC_CANONICAL_ORIGIN: "https://watch.example" },
+  env: {
+    NEXT_PUBLIC_CANONICAL_ORIGIN: "https://watch.example",
+    WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED: "true",
+    WATCH_RECOMMENDATION_TESTER_SECRET:
+      "test-private-secret-strong-enough-1234567890",
+  },
 }))
 vi.mock("@/lib/admin-client", () => ({ default: { mutate } }))
 
@@ -15,14 +32,14 @@ const session = "b".repeat(43)
 const tabNonce = "tab_correlation_nonce_123"
 const claimNonce = "client_handoff_nonce_1234567890"
 
-function request(body: string) {
+function request(body: string, extraCookies = "") {
   return new Request("https://watch.example/watch/api/recommendations/select", {
     method: "POST",
     headers: {
       origin: "https://watch.example",
       "sec-fetch-site": "same-origin",
       "content-type": "application/json",
-      cookie: `forge_recommendation_session=${session}`,
+      cookie: `forge_recommendation_session=${session}${extraCookies}`,
     },
     body,
   })
@@ -100,6 +117,68 @@ describe("POST /watch/api/recommendations/select", () => {
     expect(JSON.stringify(variables)).not.toContain(session)
     expect(JSON.stringify(variables)).not.toContain(tabNonce)
     expect(JSON.stringify(responseBody)).not.toContain("capability-secret")
+  })
+
+  it("uses the gated private operation with the signed HttpOnly browser unit without consent", async () => {
+    const config = {
+      secret: "test-private-secret-strong-enough-1234567890",
+      origin: "https://watch.example",
+    }
+    const link = await createRecommendationExperimentTesterLink(
+      config,
+      "00000000-0000-4000-8000-000000000001",
+    )
+    const exchanged = await exchangeRecommendationExperimentTesterLink(
+      new URL(link).hash.slice(1),
+      config,
+    )
+    expect(exchanged).not.toBeNull()
+    const browser = createRecommendationExperimentBrowser(
+      config.secret,
+      exchanged!.cookie,
+    )!
+    const cookies = `; ${RECOMMENDATION_EXPERIMENT_TESTER_COOKIE}=${exchanged!.cookie}; ${RECOMMENDATION_EXPERIMENT_BROWSER_COOKIE}=${browser.value}`
+    const response = await POST(request(JSON.stringify(body), cookies))
+    expect(response.status).toBe(200)
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mutation: adminSelectPrivatePrecomputedRecommendationOperation,
+      }),
+    )
+    const variables = mutate.mock.calls[0]?.[0]?.variables
+    expect(variables.browserDigest).toBe(browser.digest)
+    expect(JSON.stringify(variables)).not.toContain(browser.value)
+    expect(await response.text()).not.toContain("capability-secret")
+
+    mutate.mockClear()
+    await POST(
+      request(
+        JSON.stringify(body),
+        `${cookies}; forge_recommendation_withdrawal_pending=1`,
+      ),
+    )
+    expect(mutate.mock.calls[0]?.[0]?.variables.browserDigest).toBe(
+      browser.digest,
+    )
+
+    mutate.mockClear()
+    await POST(
+      request(
+        JSON.stringify(body),
+        `; ${RECOMMENDATION_EXPERIMENT_TESTER_COOKIE}=${exchanged!.cookie}`,
+      ),
+    )
+    expect(mutate.mock.calls[0]?.[0]?.variables.browserDigest).toBeNull()
+
+    mutate.mockClear()
+    const altered = `${browser.value.slice(0, -1)}${browser.value.endsWith("a") ? "b" : "a"}`
+    await POST(
+      request(
+        JSON.stringify(body),
+        `; ${RECOMMENDATION_EXPERIMENT_TESTER_COOKIE}=${exchanged!.cookie}; ${RECOMMENDATION_EXPERIMENT_BROWSER_COOKIE}=${altered}`,
+      ),
+    )
+    expect(mutate.mock.calls[0]?.[0]?.variables.browserDigest).toBeNull()
   })
 
   it("accepts an exact replay but refuses null handoffs and non-canonical Admin targets", async () => {

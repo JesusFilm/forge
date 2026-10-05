@@ -444,8 +444,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const first = await admitPrivatePrecomputedVisit(prisma, {
         visitId: randomUUID(),
         browserDigest,
-        consentReceiptDigest,
-        profileTokenDigest,
+        consentReceiptDigest: null,
+        profileTokenDigest: null,
         seedMediaId: sourceVideoId,
         locale: "en",
         audioLanguageSlug: "english",
@@ -463,8 +463,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const nextSession = await admitPrivatePrecomputedVisit(prisma, {
         visitId: randomUUID(),
         browserDigest,
-        consentReceiptDigest,
-        profileTokenDigest,
+        consentReceiptDigest: null,
+        profileTokenDigest: null,
         seedMediaId: sourceVideoId,
         locale: "en",
         audioLanguageSlug: "english",
@@ -481,8 +481,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const admission = {
         visitId,
         browserDigest: "d".repeat(64),
-        consentReceiptDigest,
-        profileTokenDigest,
+        consentReceiptDigest: null,
+        profileTokenDigest: null,
         seedMediaId: sourceVideoId,
         locale: "en",
         audioLanguageSlug: "english",
@@ -498,8 +498,6 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await recordPrivatePrecomputedVisitDelivery(prisma, {
           visitId,
           browserDigest: admission.browserDigest,
-          consentReceiptDigest,
-          profileTokenDigest,
           result: "empty",
           actualStrategy:
             first.arm === "challenger"
@@ -591,8 +589,6 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           await recordPrivatePrecomputedVisitDelivery(prisma, {
             visitId: challenger!.visitId,
             browserDigest: challenger!.browserDigest,
-            consentReceiptDigest,
-            profileTokenDigest,
             result: "empty",
             actualStrategy: "precomputed-watch-preview-v1",
             requestId,
@@ -724,8 +720,6 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           await recordPrivatePrecomputedVisitDelivery(prisma, {
             visitId,
             browserDigest,
-            consentReceiptDigest,
-            profileTokenDigest,
             result,
             actualStrategy:
               result === "empty" ? "semantic-transcript-pgvector-v1" : null,
@@ -746,6 +740,80 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(end.eligible.unavailable - start.eligible.unavailable).toBe(1)
       expect(end.eligible.fallback - start.eligible.fallback).toBe(1)
       expect(end.eligible.served - start.eligible.served).toBe(0)
+    })
+
+    it("admits no-receipt and personalization-disabled control visits without profile learning", async () => {
+      const disabledReceiptDigest = createHash("sha256")
+        .update(`essential-only-${suffix}`)
+        .digest("hex")
+      await prisma.recommendationConsentReceipt.create({
+        data: {
+          tokenDigest: disabledReceiptDigest,
+          contractVersion: "recommendation-consent-v1",
+          choice: "ESSENTIAL_ONLY",
+          state: "ACTIVE",
+          privacyGeneration: 0,
+          expiresAt: new Date(Date.now() + 35 * 86_400_000),
+        },
+      })
+      for (const [caseName, receiptDigest] of [
+        ["no_receipt", null],
+        ["disabled", disabledReceiptDigest],
+      ] as const) {
+        let control: { visitId: string; browserDigest: string } | undefined
+        for (let index = 0; index < 20 && !control; index += 1) {
+          const candidate = {
+            visitId: randomUUID(),
+            browserDigest: createHash("sha256")
+              .update(`${caseName}-control-${index}`)
+              .digest("hex"),
+          }
+          const admission = await admitPrivatePrecomputedVisit(prisma, {
+            ...candidate,
+            consentReceiptDigest: receiptDigest,
+            profileTokenDigest: null,
+            seedMediaId: sourceVideoId,
+            locale: "en",
+            audioLanguageSlug: "english",
+            trafficCategory: "ordinary_browser",
+            enrollmentMode: "private_test",
+            caller,
+          })
+          if (admission.arm === "control") control = candidate
+        }
+        expect(control).toBeDefined()
+        const sessionDigest = createHash("sha256")
+          .update(`${caseName}-session-${suffix}`)
+          .digest("hex")
+        const delivered = await deliverPrivatePrecomputedWatchVisit(
+          prisma,
+          {
+            ...control!,
+            consentReceiptDigest: receiptDigest,
+            profileTokenDigest: null,
+            seedMediaId: sourceVideoId,
+            locale: "en",
+            audioLanguageSlug: "english",
+            sessionDigest,
+            trafficCategory: "ordinary_browser",
+            clientDeliveryContract: null,
+            enrollmentMode: "private_test",
+            caller,
+          },
+          tokenService,
+        )
+        expect(delivered).toMatchObject({
+          status: "eligible",
+          arm: "control",
+          measurementStatus: "recorded",
+        })
+        expect(delivered.delivery?.personalization ?? null).toBeNull()
+        expect(
+          await prisma.recommendationProfileSessionLink.count({
+            where: { sessionDigest },
+          }),
+        ).toBe(0)
+      }
     })
 
     it("bounds admission blocked by PostgreSQL without issuing a delivery", async () => {
@@ -786,7 +854,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       ).toBe(before)
     }, 10_000)
 
-    it("excludes automation, unknown traffic, forged receipts, and later catalog sources", async () => {
+    it("excludes automation, unknown traffic, and later catalog sources", async () => {
       const newVideoId = `later-source-${suffix}`
       await makeVideo(newVideoId)
       const base = {
@@ -804,13 +872,6 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         [{ trafficCategory: "speculative_prefetch" }, "automation_excluded"],
         [{ trafficCategory: "speculative_prerender" }, "automation_excluded"],
         [{ trafficCategory: "unknown" }, "traffic_unqualified"],
-        [
-          {
-            trafficCategory: "ordinary_browser",
-            consentReceiptDigest: "a".repeat(64),
-          },
-          "consent_unverified",
-        ],
         [
           { trafficCategory: "ordinary_browser", seedMediaId: newVideoId },
           "outside_frozen_cohort",
@@ -833,7 +894,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
     })
 
-    it("rejects expired consent and fences in-flight delivery after withdrawal", async () => {
+    it("keeps contextual visits and delivery eligible after receipt expiry or withdrawal", async () => {
       const visitId = randomUUID()
       const admitted = await admitPrivatePrecomputedVisit(prisma, {
         visitId,
@@ -856,20 +917,22 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         where: { id: receipt.id },
         data: { expiresAt: new Date(Date.now() - 1000) },
       })
-      expect(
-        await admitPrivatePrecomputedVisit(prisma, {
-          visitId: randomUUID(),
-          browserDigest: "8".repeat(64),
-          consentReceiptDigest,
-          profileTokenDigest,
-          seedMediaId: sourceVideoId,
-          locale: "en",
-          audioLanguageSlug: "english",
-          trafficCategory: "ordinary_browser",
-          enrollmentMode: "private_test",
-          caller,
-        }),
-      ).toMatchObject({ status: "excluded", reason: "consent_unverified" })
+      const afterExpiry = await admitPrivatePrecomputedVisit(prisma, {
+        visitId: randomUUID(),
+        browserDigest: "8".repeat(64),
+        consentReceiptDigest,
+        profileTokenDigest,
+        seedMediaId: sourceVideoId,
+        locale: "en",
+        audioLanguageSlug: "english",
+        trafficCategory: "ordinary_browser",
+        enrollmentMode: "private_test",
+        caller,
+      })
+      expect(afterExpiry).toMatchObject({
+        status: "eligible",
+        arm: admitted.arm,
+      })
       await prisma.recommendationConsentReceipt.update({
         where: { id: receipt.id },
         data: { expiresAt: receipt.expiresAt },
@@ -889,21 +952,19 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await recordPrivatePrecomputedVisitDelivery(prisma, {
           visitId,
           browserDigest: "8".repeat(64),
-          consentReceiptDigest,
-          profileTokenDigest,
-          result: "unavailable",
-          actualStrategy: null,
+          result: "empty",
+          actualStrategy: "precomputed-watch-preview-v1",
           requestId: null,
           fallbackReason: null,
           caller,
         }),
-      ).toBe("unavailable")
+      ).toBe("recorded")
       expect(
         await admitPrivatePrecomputedVisit(prisma, {
           visitId: randomUUID(),
           browserDigest: "8".repeat(64),
-          consentReceiptDigest,
-          profileTokenDigest,
+          consentReceiptDigest: null,
+          profileTokenDigest: null,
           seedMediaId: sourceVideoId,
           locale: "en",
           audioLanguageSlug: "english",
@@ -911,10 +972,25 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           enrollmentMode: "private_test",
           caller,
         }),
-      ).toMatchObject({ status: "excluded", reason: "consent_unverified" })
+      ).toMatchObject({ status: "eligible", arm: admitted.arm })
+      expect(
+        await recordPrivatePrecomputedVisitDelivery(prisma, {
+          visitId: afterExpiry.visitId,
+          browserDigest: "7".repeat(64),
+          result: "empty",
+          actualStrategy: "precomputed-watch-preview-v1",
+          requestId: null,
+          fallbackReason: null,
+          caller,
+        }),
+      ).toBe("unavailable")
     })
 
     it("halts new admission if the frozen control routing changes", async () => {
+      const priorControl =
+        await prisma.recommendationServingControl.findUniqueOrThrow({
+          where: { id: "recommendation-serving-control" },
+        })
       await prisma.recommendationServingControl.update({
         where: { id: "recommendation-serving-control" },
         data: { reasonCode: "changed_control_route" },
@@ -942,6 +1018,10 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           data: { controlRoutingDigest: "0".repeat(64) },
         }),
       ).rejects.toThrow()
+      await prisma.recommendationServingControl.update({
+        where: { id: "recommendation-serving-control" },
+        data: { reasonCode: priorControl.reasonCode },
+      })
     })
 
     it("purges expired visit roots and their retired configuration in bounded batches", async () => {
@@ -1025,6 +1105,53 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           where: { id: expiredId },
         }),
       ).toBeNull()
+    })
+
+    it("rejects a frozen private configuration with the old receipt-gated policy", async () => {
+      const current =
+        await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
+          where: { id: privateExperimentId },
+        })
+      await prisma.recommendationPrecomputedExperiment.update({
+        where: { id: current.id },
+        data: { state: "closed" },
+      })
+      await prisma.recommendationPrecomputedExperiment.create({
+        data: {
+          id: `old-policy-${suffix}`,
+          generationId: current.generationId,
+          controlManifestId: current.controlManifestId,
+          challengerManifestId: current.challengerManifestId,
+          controlManifestDigest: current.controlManifestDigest,
+          controlRoutingDigest: current.controlRoutingDigest,
+          sourceSetDigest: current.sourceSetDigest,
+          assignmentPolicyVersion: current.assignmentPolicyVersion,
+          eligibilityPolicyVersion: "private-watch-visit-unverified-bot-v1",
+          deliveryPolicyVersion: current.deliveryPolicyVersion,
+          configurationDigest: current.configurationDigest,
+          state: "private_test",
+          startsAt: current.startsAt,
+          endsAt: current.endsAt,
+          expiresAt: current.expiresAt,
+        },
+      })
+      expect(
+        await admitPrivatePrecomputedVisit(prisma, {
+          visitId: randomUUID(),
+          browserDigest: "7".repeat(64),
+          consentReceiptDigest: null,
+          profileTokenDigest: null,
+          seedMediaId: sourceVideoId,
+          locale: "en",
+          audioLanguageSlug: "english",
+          trafficCategory: "ordinary_browser",
+          enrollmentMode: "private_test",
+          caller,
+        }),
+      ).toMatchObject({
+        status: "unavailable",
+        reason: "frozen_configuration_unavailable",
+      })
     })
   },
 )

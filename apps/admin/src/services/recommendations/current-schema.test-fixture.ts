@@ -61,6 +61,6 @@ export const recommendationRuntimeMigrationSql = readdirSync(migrationRoot)
  * the catalog-free runtime chain above. Retention tests must install these
  * real roots before calling the current purge. */
 export const recommendationPrecomputedMigrationSql = readdirSync(migrationRoot)
-  .filter((name) => /^01(28|29|30|31|32)_/.test(name))
+  .filter((name) => /^01(28|29|30|31|32|33)_/.test(name))
   .sort()
   .map(scopedMigrationSql)
