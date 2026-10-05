@@ -8,8 +8,7 @@ const llm: DevotionalLlm = { model: "fake", complete: vi.fn() }
 
 // Stub corpora: Henry has Luke 8; Spurgeon has a peace/trust entry.
 const corpora: ReflectionCorpora = {
-  ryleMatthew: [],
-  matthewHenry: [
+  commentary: [
     {
       source: "Matthew Henry, Commentary on the Whole Bible",
       reference: "Luke 8",

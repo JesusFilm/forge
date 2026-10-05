@@ -2,16 +2,36 @@
 /* global fetch */
 /**
  * Ingest Charles Spurgeon's "Morning and Evening" (public domain) from CCEL's
- * ThML source into a clean JSON corpus the devotional pipeline reads for
- * license-free, trustworthy reflection content.
+ * ThML source into a clean JSON corpus of license-free reflection content.
  *
  * Source: https://ccel.org/ccel/spurgeon/morneve.xml (CCEL ThML). Spurgeon died
  * 1892 — the work is public domain. CCEL's digital text is likewise free.
  *
  * Output: devo/corpus/spurgeon-morning-evening.json — 732 entries (366 days ×
  * Morning + Evening), each: { id, month, day, session, reference, osisRef,
- * verse, text, source }. Committed to the repo so it ships wherever the app
- * runs (Railway included) — never fetched at devotional-run time.
+ * verse, text, source }.
+ *
+ * NOT WORKSPACE-ELIGIBLE AS WRITTEN, and its output path is gitignored, so
+ * nothing here reaches a deployed run today. Unlike its Ryle / Matthew Henry /
+ * WEB siblings this script was deliberately left on the old shape when the
+ * corpus moved into the Workspace seed (`devotional-workspace/inputs/`),
+ * because reaching that shape means discarding the calendar keys
+ * (`month`/`day`/`session`) that `ReflectionEntriesSchema` has nowhere to put —
+ * a design question, not a mechanical port. ONE thing is required before a
+ * Spurgeon file can be added, and it is open: emit the contract shape —
+ * top-level `{ entries }` only, per-entry keys only from { source, reference,
+ * osisRef, text, verse, book, chapter }. Both schemas are `.strict()` and the
+ * Workspace validates reflections on reconcile, so today's envelope is silently
+ * EXCLUDED as invalid-content (reported, not fatal) and the file simply never
+ * becomes eligible.
+ *
+ * Routing is no longer a blocker. `addReflection` (`workspace/attempt-data.ts`)
+ * keeps a source thematic when its filename or `source` label contains
+ * "spurgeon", or when it carries no `osisRef`, so these entries stay out of the
+ * passage-matched commentary pool. Before that fix, 123 of these 732 entries
+ * (31 `Matt.*`, 92 `Mark|Luke|John.*`) were routed by osisRef book prefix into
+ * the commentary corpora, where a verse-keyed meditation could be selected and
+ * presented as `flavor: "commentary"`.
  *
  *   node apps/mastra/src/scripts/ingest-spurgeon-morning-evening.mjs
  */

@@ -123,10 +123,7 @@ describe("JESUS_FILM_PASSAGES", () => {
       (entry) => entry.index > 1,
     )) {
       expect(
-        matchReflection(passage.osisRef, {
-          ryleMatthew: [],
-          matthewHenry,
-        }),
+        matchReflection(passage.osisRef, { commentary: matthewHenry }),
         passage.reference,
       ).not.toBeNull()
     }
