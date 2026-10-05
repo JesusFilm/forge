@@ -37,6 +37,9 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "sceneRecommendations",
   // feat-368 U2/U4. Public-shaped; resolver-body authenticated for Web only.
   "semanticRecommendationDelivery",
+  // feat-590 / #2570. Public-shaped for the Web consumer; the resolver and
+  // service require its bearer and the default-off private preview flag.
+  "precomputedWatchPreviewDelivery",
   "recordSemanticRecommendationEvidence",
   // feat-373. Public-shaped mutation; service body admits the Web bearer only.
   "recordWatchSurfaceExposure",

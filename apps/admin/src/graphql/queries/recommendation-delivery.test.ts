@@ -38,6 +38,23 @@ beforeEach(() => {
 })
 
 describe("semanticRecommendationDelivery resolver", () => {
+  it("rejects anonymous callers before private saved-result preview work", async () => {
+    const preview = schema.getQueryType()!.getFields()
+      .precomputedWatchPreviewDelivery!.resolve!
+    await expect(
+      preview(null, args, { user: null }, {} as never),
+    ).rejects.toThrow("Web consumer authentication required")
+    await expect(
+      preview(
+        null,
+        args,
+        { user: { role: "WORKFLOW_TRIGGER", id: null } },
+        {} as never,
+      ),
+    ).rejects.toThrow("Web consumer authentication required")
+    expect(deliverMock).not.toHaveBeenCalled()
+  })
+
   it.skipIf(process.env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED === "1")(
     "keeps the separate private saved-result query disabled by default",
     async () => {
