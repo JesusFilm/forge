@@ -31,18 +31,18 @@ All issues, comments, readiness labels, native parents, blockers, and reverse
 blocking relationships were fetched and verified on 2026-10-05. All ten issues
 are open, labelled `ready-for-agent`, and have no comments at kickoff.
 
-| Issue | Blockers     | State                     | Worker / branch                                                | Integrated commits / evidence |
-| ----- | ------------ | ------------------------- | -------------------------------------------------------------- | ----------------------------- |
-| #2566 | None         | Integrated-and-verified   | `01a109e1-47c8-7043-bfd4-a85592cfafc5` / `codex/feat-590-2566` | `9a984c544`; evidence below   |
-| #2567 | #2566        | Implementing              | Same Sol chat / `codex/feat-590-2567`                          | Starting at `9a984c544`       |
-| #2568 | #2567        | Waiting for prerequisites | Unassigned                                                     | None                          |
-| #2569 | #2568        | Waiting for prerequisites | Unassigned                                                     | None                          |
-| #2570 | #2566        | Implementing              | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | Starting at `9a984c544`       |
-| #2571 | #2570        | Waiting for prerequisites | Unassigned                                                     | None                          |
-| #2572 | #2571        | Waiting for prerequisites | Unassigned                                                     | None                          |
-| #2573 | #2572        | Waiting for prerequisites | Unassigned                                                     | None                          |
-| #2574 | #2569, #2573 | Waiting for prerequisites | Unassigned                                                     | None                          |
-| #2575 | #2574        | Waiting for prerequisites | Unassigned                                                     | None                          |
+| Issue | Blockers     | State                        | Worker / branch                                                | Integrated commits / evidence |
+| ----- | ------------ | ---------------------------- | -------------------------------------------------------------- | ----------------------------- |
+| #2566 | None         | Integrated-and-verified      | `01a109e1-47c8-7043-bfd4-a85592cfafc5` / `codex/feat-590-2566` | `9a984c544`; evidence below   |
+| #2567 | #2566        | Integrated-and-verified      | Same Sol chat / `codex/feat-590-2567`                          | `c89db0e4e`; evidence below   |
+| #2568 | #2567        | Implementing; access pending | Same Sol chat / `codex/feat-590-2568`                          | Starting at `c89db0e4e`       |
+| #2569 | #2568        | Waiting for prerequisites    | Unassigned                                                     | None                          |
+| #2570 | #2566        | Implementing                 | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | Starting at `9a984c544`       |
+| #2571 | #2570        | Waiting for prerequisites    | Unassigned                                                     | None                          |
+| #2572 | #2571        | Waiting for prerequisites    | Unassigned                                                     | None                          |
+| #2573 | #2572        | Waiting for prerequisites    | Unassigned                                                     | None                          |
+| #2574 | #2569, #2573 | Waiting for prerequisites    | Unassigned                                                     | None                          |
+| #2575 | #2574        | Waiting for prerequisites    | Unassigned                                                     | None                          |
 
 Advance dependencies only on **integrated-and-verified** acceptance evidence.
 Implemented, integrated, merged, and live are separate states. GitHub issues
@@ -154,27 +154,59 @@ Public Watch selection is unchanged. No GraphQL contract changed.
   applicable checks, including `ci-gate`, Admin build/test/lint, schema drift,
   formatting, commit lint, roadmap guards, and CodeQL.
 
-### Parallel implementation review checkpoints
+### #2567 integrated acceptance
 
-#2567 now has the bounded source producer, pinned Astra Responses provider,
-authenticated catalog boundary, and native build-to-Admin-review integration
-harness outside the app contexts. Controlled tests cover multilingual and
-metadata-only choices, sparse output, invalid evidence/output, missing model
-access, and replay. Provider retries are disabled so attempts can be accounted
-for; available usage survives output validation failure. These are fixture
-claims only. Final review includes rejecting generation-ID reuse with a
-different source or cutoff before any provider spend.
+Worker commit `be9df0c959a5674d32e74052cd1f748ce53b1f07` was integrated as
+`c89db0e4e1352435d29573d81cfa584eb52556e9`. It adds the bounded Mastra source
+producer, pinned Astra Responses provider, authenticated catalog boundary,
+and native build-to-Admin-review harness outside the app contexts.
+
+- Worker: 3,218 full Mastra tests passed (37 skipped); 890 Admin recommendation
+  scope tests passed (374 DB-gated tests skipped and affected native suites run
+  separately); 16 final native contract/catalog and seven native build-to-review
+  tests passed. Fresh migration reset applied all 130 migrations. Mastra build,
+  Admin/Mastra typechecks, scoped lint, and normal commit hooks passed.
+- Independent integration: migration `0129` on PostgreSQL 18, 23 Admin
+  native/route/view tests, seven native build-to-review tests, three Mastra tests,
+  and both Admin/Mastra typechecks passed. Logs use the `2567-integration-`
+  prefix under `/tmp/forge-feat-590-orchestration/`.
+- Standards review: test harness moved outside app contexts; authenticated
+  bounded routes, safe errors, compact provenance, and explicit source failure
+  are verified. No public Watch or GraphQL contract changed.
+- Spec review: multilingual evidence, metadata field availability, sparse
+  results, invented evidence, wrong-source/cutoff replay, failed-call usage,
+  and a selected-input change after model judgment have native regressions.
+  Final ingest repeats the observed-version fence. SDK retries are disabled.
+- No live Astra call, warehouse history, actual cost, or production capacity
+  claim. Current-row cutoff fences cannot reconstruct overwritten/deleted
+  historical content. CI on this new head is pending publication.
+
+The same clean Sol chat was explicitly dispatched with `model: "gpt-6-sol"`
+for #2568 on `codex/feat-590-2568`, captured base `c89db0e4e`. It owns analytics
+adapters/tools/provenance and reserves migration `0131`; the later #2571
+assignment work reserves `0132`. At 05:05 UTC the user was notified that GA
+access setup had been reached and asked to inspect the existing Watch GA
+property's BigQuery link and provide non-secret project/property IDs. That
+answer is pending. Fixture work can proceed; live-dependent acceptance remains
+unverified until access and source discovery succeed.
+
+### #2570 implementation review checkpoint
 
 #2570 has native delivery and browser checks for saved choices and private
 fallback. Review fixes distinguish absent source data from a valid empty set,
 keep reasoning out of per-visit snapshots, enforce service authorization, and
 classify both returned and thrown authorization failures without fallback.
 Preview and incumbent share the existing 3.5-second upstream budget; Admin
-reads now use its bounded transaction helper. Browser tests are being tightened
-to await actual empty responses and navigate with an old request in flight.
+reads now use its bounded transaction helper. Browser tests await actual empty
+responses and navigate with an old request in flight. Private incumbent recovery
+now repeats source publication/Watch/exact-audio authorization in Admin, even
+after preview transport failure. Its separate private typed operation preserves
+the existing public query document for Web-first rolling-deploy compatibility.
 Its demo shell timing is local fixture evidence, not real playback or production
-performance proof. Neither ticket is integrated until final checks and commits
-are verified.
+performance proof. Final commit and combined schema verification remain pending.
+After committing its baseline, this worker will incorporate #2567 and add a
+separate reader guard/native regression requiring complete source status under
+`0129`, then report only its own #2570 commits for serial integration.
 
 An isolated PostgreSQL 18 integration database is running in
 `forge_feat590_integration_db` on loopback port `32810`. It is reserved for
