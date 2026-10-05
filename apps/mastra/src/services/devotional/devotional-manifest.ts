@@ -30,6 +30,8 @@ export type DevotionalManifest = {
   /** Source credit for the reflection, e.g. "Adapted from Matthew Henry". */
   attribution?: string
   musicFile?: string
+  /** Narration level (default 1); the 9:16 intro teaser sets it lower. */
+  voiceVolume?: number
   /** One continuous background clip shared by every non-video card (each card
    *  windows into it via trimBefore for a seamless walk). Set by the renderer. */
   bgFile?: string

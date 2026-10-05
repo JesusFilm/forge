@@ -365,6 +365,9 @@ export const devotionalInputPropsSchema = z.object({
   musicFile: z.string().optional(),
   /** Music bed level (0–1), low so narration stays on top. */
   musicVolume: z.number().min(0).max(1).default(0.28),
+  /** Narration level (default 1). The 9:16 intro teaser sets it lower: its
+   *  voice read loud against the film and the bed (owner, 2026-10-05). */
+  voiceVolume: z.number().min(0).max(2).optional(),
   /** Optional CSS filter to grade the background footage (overrides the style's
    *  own tint) — used for previewing color-grade options. */
   mediaFilterOverride: z.string().optional(),

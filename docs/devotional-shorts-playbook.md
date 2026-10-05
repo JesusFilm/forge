@@ -182,7 +182,14 @@ centred CTA as the last line ("Watch the full devotional on our YouTube
 channel."), and the story's eastern bed. The silent CTA cuts the long form's
 take in the real pause before "Let's watch." (the longest silence in the 1.6 s
 before the line's word time, 0.15 s in, 60 ms fade): word times can run 0.3 s
-late, and cutting by them left "Let's" audible (`ctaCutSec`). Full spec:
+late, and cutting by them left "Let's" audible (`ctaCutSec`).
+Pace and level (owner, 2026-10-05): the kept take is made brisker by
+shortening its pauses on the audio (a line break keeps 0.22 s, a comma or
+breath 0.08 s; `teaserPauseCuts`), the CTA lands 0.3 s after the voice stops
+and holds 3.4 s, and the narration plays at 0.7 (about 3 dB under the long
+form; manifest `voiceVolume`). "DAILY BIBLE PAUSE" (Inter 500 11 tracked 2.2,
+80%) settles under the mark once the lockup has shrunk (3.1 to 3.7 s), over a
+soft dark ellipse; the mark and the name come back, settled, over the CTA. Full spec:
 `docs/handoffs/2026-10-02-vertical-intro-design.md`. About 20 s.
 
 ### 6.2 film-verse

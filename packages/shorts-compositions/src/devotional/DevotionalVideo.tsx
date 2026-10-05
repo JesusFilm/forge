@@ -2113,10 +2113,28 @@ function ClipIntro({
         [1, 0],
         { ...clampBoth, easing: ease },
       )
+      // The mark comes back, settled, over the call to action, so the
+      // channel it names is on screen (owner, 2026-10-05).
+      const markBack = interpolate(
+        t,
+        [starts[lastLine] + 0.2, starts[lastLine] + 0.9],
+        [0, 1],
+        { ...clampBoth, easing: ease },
+      )
+      const markOn = Math.max(markOut, markBack)
+      // "DAILY BIBLE PAUSE" settles under the mark once the long lockup has
+      // shrunk into the small symbol (the morph ends at 0.82 of its span).
+      const seriesIn =
+        markBack > 0
+          ? 1
+          : interpolate(t, [3.6 * 0.82 + 0.15, 3.6 * 0.82 + 0.75], [0, 1], {
+              ...clampBoth,
+              easing: ease,
+            })
       return (
         <div style={{ ...bleed, pointerEvents: "none" }}>
           <AbsoluteFill style={{ background: "rgba(0,0,0,0.25)" }} />
-          {markOut > 0 ? (
+          {markOn > 0 ? (
             <div
               style={{
                 position: "absolute",
@@ -2124,16 +2142,52 @@ function ClipIntro({
                 right: 0,
                 top: "9%",
                 display: "flex",
-                justifyContent: "center",
-                opacity: markOut,
+                flexDirection: "column",
+                alignItems: "center",
+                gap: px(8),
+                opacity: markOn,
               }}
             >
+              {/* A soft dark ellipse so the small mark and its name hold
+                  over bright film. */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: px(-8),
+                  width: px(240),
+                  height: px(80),
+                  transform: "translateX(-50%)",
+                  borderRadius: "50%",
+                  background:
+                    "radial-gradient(closest-side, rgba(0,0,0,0.5), rgba(0,0,0,0))",
+                  filter: `blur(${px(7)}px)`,
+                }}
+              />
               <AnimatedBrandMark
                 px={(n) => px(n * 1.15)}
-                frame={frame}
+                frame={
+                  markBack > 0 ? Math.max(frame, Math.round(3.6 * fps)) : frame
+                }
                 fps={fps}
                 spanSec={3.6}
               />
+              <div
+                style={{
+                  fontFamily: SANS,
+                  fontWeight: 500,
+                  fontSize: px(11),
+                  letterSpacing: px(2.2 + 1.2 * (1 - seriesIn)),
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.8)",
+                  whiteSpace: "nowrap",
+                  opacity: seriesIn,
+                  transform: `translateY(${(-px(5) * (1 - seriesIn)).toFixed(1)}px)`,
+                  textShadow: `0 ${px(1)}px ${px(10)}px rgba(0,0,0,0.5)`,
+                }}
+              >
+                Daily Bible Pause
+              </div>
             </div>
           ) : null}
           {subtitles.map(({ i, line, ws }) => {
@@ -7403,7 +7457,10 @@ export function DevotionalVideo(props: DevotionalInputProps) {
             </CardFade>
             {card.audioFile ? (
               <Sequence from={audioDelay}>
-                <Audio src={staticFile(card.audioFile)} />
+                <Audio
+                  src={staticFile(card.audioFile)}
+                  volume={props.voiceVolume ?? 1}
+                />
               </Sequence>
             ) : null}
           </Sequence>

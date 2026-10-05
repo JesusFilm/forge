@@ -190,6 +190,8 @@ const FRAMED_OPENING_CAP_SEC = 18
 const MONTAGE_CAP_SEC = 24
 /** Montage teaser: how long the call to action holds after the voice ends. */
 const TEASER_CTA_HOLD_SEC = 1.6
+/** Montage teaser narration level: about 3 dB under the long form's. */
+const TEASER_VOICE_VOLUME = 0.7
 /** Montage teaser with a silent written CTA: how long it is on screen. */
 const SILENT_CTA_SEC = 3.4
 /** `intro: "hook"`: silence after the spoken question — a breath, plus the
@@ -889,6 +891,40 @@ async function widenPauseAfterWords(
     `question → prayer pause widened to ${gapSec.toFixed(1)}s (+${extra.toFixed(2)}s)`,
   )
   return out
+}
+
+/**
+ * Pauses to shorten in a teaser take so it reads brisker (owner, 2026-10-05:
+ * "more dynamic, fewer pauses between words"). Measured on the audio, not the
+ * word times (they can run ~0.3s late): a pause of 0.35s or more (a line or
+ * sentence break) keeps `lineGapSec`, a shorter one (a comma, a breath) keeps
+ * `wordGapSec`; the middle of each pause is dropped, so no word is clipped.
+ */
+export function teaserPauseCuts(
+  silences: ReadonlyArray<{ startSec: number; endSec: number }>,
+  { lineGapSec = 0.22, wordGapSec = 0.08 } = {},
+): Array<{ at: number; drop: number }> {
+  return silences
+    .map((x) => {
+      const len = x.endSec - x.startSec
+      const keep = len >= 0.35 ? lineGapSec : wordGapSec
+      return { at: (x.startSec + x.endSec) / 2, drop: len - keep }
+    })
+    .filter((c) => c.drop > 0.04)
+}
+
+/** Word times after `cuts` are dropped from the take. */
+export function shiftForCuts<T extends { startSec: number; endSec: number }>(
+  words: ReadonlyArray<T>,
+  cuts: ReadonlyArray<{ at: number; drop: number }>,
+): T[] {
+  const shift = (t: number) =>
+    t - cuts.filter((c) => c.at < t).reduce((n, c) => n + c.drop, 0)
+  return words.map((w) => ({
+    ...w,
+    startSec: shift(w.startSec),
+    endSec: Math.max(shift(w.startSec), shift(w.endSec)),
+  }))
 }
 
 /**
@@ -1933,12 +1969,69 @@ async function renderInStage(
             "192k",
             dst,
           ])
-          // Word times stay whole: the composition times its lines from
-          // them, the cut line included (that is when the CTA appears).
-          seg.audio = { ...seg.audio, bytes: await readFile(dst) }
+          let bytes: Uint8Array = await readFile(dst)
+          let words = seg.audio.words ?? []
+          let voiceEnd = cut
+          // Brisker: the pauses inside the kept take shortened.
+          const cuts = teaserPauseCuts(
+            (await audioSilences(dst)).filter((x) => x.endSec < cut - 0.02),
+          )
+          if (cuts.length) {
+            const brisk = path.join(stage, "hook-brisk.mp3")
+            let from = 0
+            const parts: string[] = []
+            for (const c of cuts) {
+              parts.push(
+                `[0]atrim=start=${from.toFixed(3)}:end=${(c.at - c.drop / 2).toFixed(3)},asetpts=PTS-STARTPTS[k${parts.length}]`,
+              )
+              from = c.at + c.drop / 2
+            }
+            parts.push(
+              `[0]atrim=start=${from.toFixed(3)},asetpts=PTS-STARTPTS[k${parts.length}]`,
+            )
+            await runFfmpeg([
+              "-y",
+              "-i",
+              dst,
+              "-filter_complex",
+              parts.join(";") +
+                `;${parts.map((_, i) => `[k${i}]`).join("")}concat=n=${parts.length}:v=0:a=1`,
+              "-c:a",
+              "libmp3lame",
+              "-b:a",
+              "192k",
+              brisk,
+            ])
+            bytes = await readFile(brisk)
+            words = shiftForCuts(words, cuts)
+            const removed = cuts.reduce((n, c) => n + c.drop, 0)
+            voiceEnd = cut - removed
+            log(`teaser pauses shortened: −${removed.toFixed(1)}s`)
+          }
+          // The written CTA lands a beat after the voice stops: the cut
+          // line's word times move there (they still time the CTA).
+          const hookLines = (options.hookLine ?? "")
+            .split(/\n\s*\n/)
+            .filter((p) => p.trim())
+          const lastAt = hookLines
+            .slice(0, -1)
+            .reduce((n, l) => n + l.split(/\s+/).filter(Boolean).length, 0)
+          const lastWord = words[lastAt]
+          if (lastWord) {
+            const move = voiceEnd + 0.3 - lastWord.startSec
+            words = words.map((w, i) =>
+              i >= lastAt
+                ? { ...w, startSec: w.startSec + move, endSec: w.endSec + move }
+                : w,
+            )
+          }
+          seg.audio = { ...seg.audio, bytes, words }
+          montageStarts = montageLineStarts(hookLines, words)
+          const ctaAt = montageStarts?.[montageStarts.length - 1] ?? voiceEnd
+          hookLeadSec = Math.min(cap, ctaAt + 0.1)
           // The film card runs to the CTA plus TEASER_CTA_HOLD_SEC after the
           // "voice"; a silent line needs longer to be read.
-          hookSpokenSec = cut + SILENT_CTA_SEC - TEASER_CTA_HOLD_SEC
+          hookSpokenSec = ctaAt + SILENT_CTA_SEC - TEASER_CTA_HOLD_SEC
           log(
             `silent CTA: voice cut at ${cut.toFixed(2)}s, "${options.introCtaText}" shown instead`,
           )
@@ -2765,6 +2858,8 @@ async function renderInStage(
     film.durationSec = hookSpokenSec + TEASER_CTA_HOLD_SEC
     delete film.subtitles
     manifest.cards = [film]
+    // The voice sat loud over the film and the bed (owner, 2026-10-05).
+    manifest.voiceVolume = TEASER_VOICE_VOLUME
   } else if (options.introTeaser) {
     manifest.cards = manifest.cards.filter((c) => c.kind === "quote-intro")
     if (manifest.cards.length === 0) {
