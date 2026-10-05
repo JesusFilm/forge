@@ -6728,6 +6728,8 @@ model RecommendationPrecomputedGeneration {
   /// preflight_failed means that input discovery failed before a full digest.
   /// Overwritten/deleted historic content cannot be reconstructed.
   inputSnapshotMode String @default("fixture") @map("input_snapshot_mode")
+  /// Compact aggregate provenance only; no warehouse rows, viewer IDs, or credentials.
+  historicalProvenance Json? @map("historical_provenance") @db.JsonB
   status String @default("incomplete")
   createdAt DateTime @default(now()) @map("created_at")
   completedAt DateTime? @map("completed_at")

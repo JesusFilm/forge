@@ -100,6 +100,28 @@ export function PrecomputedComparisonView({
             available.
           </p>
         ) : null}
+        {comparison.history ? (
+          <p className="px-4 pb-4 text-[13px] text-[var(--color-text-secondary)]">
+            Historical input: {comparison.history.provider};{" "}
+            {comparison.history.rowCount} aggregate rows,{" "}
+            {comparison.history.unmappedRows} unmapped. Bot filtering:{" "}
+            {comparison.history.botFiltering}.
+          </p>
+        ) : null}
+        {comparison.state === "failed" &&
+        comparison.failureCode === "analytics_incomplete" ? (
+          <p className="px-4 pb-4 text-[13px] text-[var(--color-text-secondary)]">
+            Historical query coverage was incomplete. No history-backed result
+            was published.
+          </p>
+        ) : null}
+        {comparison.state === "failed" &&
+        comparison.failureCode === "analytics_mapping_unverified" ? (
+          <p className="px-4 pb-4 text-[13px] text-[var(--color-text-secondary)]">
+            Historical source identity mapping is unverified or ambiguous. Alias
+            totals were not combined.
+          </p>
+        ) : null}
       </PageSection>
     )
   }
@@ -120,7 +142,9 @@ export function PrecomputedComparisonView({
           <p>
             Input {comparison.generation.inputMode.replaceAll("_", " ")} ·{" "}
             {comparison.generation.inputSnapshotMode === "observed_fenced"
-              ? "Observed current rows checked against cutoff; overwritten or deleted historical versions cannot be reconstructed."
+              ? comparison.history
+                ? "Catalog rows checked against cutoff; warehouse aggregates were observed during this build and may change on a later run."
+                : "Observed current rows checked against cutoff; overwritten or deleted historical versions cannot be reconstructed."
               : "Fixture input"}
           </p>
           <p>
@@ -136,6 +160,51 @@ export function PrecomputedComparisonView({
             {comparison.allAcceptedCount} accepted choices stored; up to six
             shown after current audio-language checks.
           </p>
+          {comparison.history ? (
+            <div className="space-y-1 border-t border-[var(--color-hairline)] pt-2">
+              <p>
+                Historical analytics (
+                {comparison.history.provider === "fixture"
+                  ? "controlled fixture"
+                  : comparison.history.provider}
+                ): {comparison.history.rangeStart} to{" "}
+                {comparison.history.rangeEnd}; query{" "}
+                {comparison.history.queryId}.
+              </p>
+              <p>
+                {comparison.history.mappedRows}/{comparison.history.rowCount}{" "}
+                aggregate rows mapped; {comparison.history.unmappedRows} unknown
+                mappings; {comparison.history.pageCount} pages across{" "}
+                {comparison.history.queryExecutionCount} query jobs. Bot
+                filtering {comparison.history.botFiltering}; native overlap{" "}
+                {comparison.history.overlap}.
+              </p>
+              <p>
+                {comparison.history.inspectedCandidates}/
+                {comparison.history.catalogCandidates} catalog candidates
+                inspected through bounded historical queries;{" "}
+                {comparison.history.unmappedCandidates} lacked a verified legacy
+                mapping.
+              </p>
+              <p>
+                Sanitized result hash{" "}
+                <code>{comparison.history.resultDigest}</code> · usage hash{" "}
+                <code>{comparison.history.queryUsageDigest}</code> · cutoff{" "}
+                {comparison.history.cutoff} · processed bytes{" "}
+                {comparison.history.bytesProcessed ?? "unavailable"} · cost{" "}
+                {comparison.history.costQualification}.
+              </p>
+              {comparison.history.unmappedDigest ? (
+                <p>
+                  Unmapped aggregate hash{" "}
+                  <code>{comparison.history.unmappedDigest}</code>. No
+                  viewer-level rows stored.
+                </p>
+              ) : null}
+            </div>
+          ) : comparison.generation.inputMode === "content_only" ? (
+            <p>Historical analytics unavailable in this content-only build.</p>
+          ) : null}
           {comparison.coverageGap === "no_connections" ? (
             <p>No accepted connections for this source.</p>
           ) : null}

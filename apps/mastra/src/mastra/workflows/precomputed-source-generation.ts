@@ -20,7 +20,7 @@ const resultSchema = z.object({
 const step = createStep({
   id: "generate-precomputed-source",
   description:
-    "Build one private Astra recommendation source from canonical Admin content.",
+    "Build one private Astra recommendation source from canonical Admin content and optional required history.",
   inputSchema: SourceGenerationInputSchema,
   outputSchema: resultSchema,
   execute: async ({ inputData }) => {
@@ -33,7 +33,8 @@ const step = createStep({
 
 export const precomputedSourceGenerationWorkflow = createWorkflow({
   id: "precomputed-source-generation",
-  description: "Private, content-only GPT-6 Astra source recommendation build.",
+  description:
+    "Private GPT-6 Astra source recommendation build; required history fails closed when unavailable.",
   inputSchema: SourceGenerationInputSchema,
   outputSchema: resultSchema,
 })

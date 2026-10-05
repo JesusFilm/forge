@@ -36,6 +36,19 @@ describe("private Astra source route", () => {
       await handlePrecomputedSourceRouteRequest({
         authHeader: "Bearer secret",
         serviceKeys: ["secret"],
+        request: request({
+          ...body,
+          historyRequired: true,
+          sql: "CREATE TABLE exported AS SELECT * FROM events",
+        }),
+        launch,
+      }),
+    ).toMatchObject({ status: 400 })
+    expect(launch).not.toHaveBeenCalled()
+    expect(
+      await handlePrecomputedSourceRouteRequest({
+        authHeader: "Bearer secret",
+        serviceKeys: ["secret"],
         request: request({ ...body, sourceVideoId: "" }),
         launch,
       }),

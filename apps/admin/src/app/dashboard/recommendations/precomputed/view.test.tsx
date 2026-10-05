@@ -8,6 +8,7 @@ describe("private recommendation comparison", () => {
       <PrecomputedComparisonView
         comparison={{
           state: "ready",
+          history: null,
           experimental: [],
           semanticBaseline: [],
           semanticBaselineState: "unavailable",
@@ -45,6 +46,7 @@ describe("private recommendation comparison", () => {
       <PrecomputedComparisonView
         comparison={{
           state: "ready",
+          history: null,
           generation: {
             id: "fixture-two",
             modelId: "fixture",
@@ -168,5 +170,71 @@ describe("private recommendation comparison", () => {
     expect(html).toContain("provider_invalid_output")
     expect(html).toContain("unreported usage")
     expect(html).not.toContain("Experimental saved choices")
+  })
+
+  it("labels fixture history, unknown bot filtering, mapping gaps and query usage", () => {
+    const html = renderToStaticMarkup(
+      <PrecomputedComparisonView
+        comparison={{
+          state: "ready",
+          generation: {
+            id: "history-fixture",
+            modelId: "gpt-6-astra",
+            promptVersion: "v1",
+            inputCutoff: new Date("2026-10-05T00:00:00Z"),
+            inputMode: "historical_fixture",
+            inputSnapshotMode: "observed_fenced",
+            acceptedCount: 0,
+          },
+          history: {
+            provider: "fixture",
+            status: "complete",
+            queryId: "test-query-v1",
+            rangeStart: "2020-01-01",
+            rangeEnd: "2026-10-04",
+            cutoff: "2026-10-05T00:00:00.000Z",
+            identity: "core_id",
+            botFiltering: "unknown",
+            measurement: "observed_events",
+            overlap: "unknown",
+            rowCount: 4,
+            mappedRows: 3,
+            unmappedRows: 1,
+            catalogCandidates: 2,
+            inspectedCandidates: 1,
+            unmappedCandidates: 1,
+            pageCount: 3,
+            queryExecutionCount: 2,
+            queryUsageDigest: "a".repeat(64),
+            resultDigest: "b".repeat(64),
+            unmappedDigest: "c".repeat(64),
+            bytesProcessed: 4096,
+            costQualification: "usage_only",
+          },
+          usage: {
+            callCount: 1,
+            unknownUsageCallCount: 0,
+            inputTokens: 20,
+            outputTokens: 10,
+            cachedInputTokens: 0,
+          },
+          experimental: [],
+          allAcceptedCount: 0,
+          coverageGap: "no_connections",
+          gaps: [],
+          semanticBaseline: [],
+          semanticBaselineState: "unavailable",
+          anonymousBaseline: [],
+          anonymousBaselineState: "missing_generation",
+        }}
+      />,
+    )
+    expect(html).toContain("controlled fixture")
+    expect(html).toContain("Bot filtering unknown")
+    expect(html).toContain("1 lacked a verified legacy mapping")
+    expect(html).toContain("processed bytes 4096")
+    expect(html).toContain(
+      "warehouse aggregates were observed during this build",
+    )
   })
 })

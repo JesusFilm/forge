@@ -28,9 +28,42 @@ const failureCode = z.enum([
   "provider_access_unavailable",
   "input_stale",
   "catalog_unavailable",
+  "analytics_unavailable",
+  "analytics_incomplete",
+  "analytics_mapping_unverified",
   "contract_rejected",
   "internal_failure",
 ])
+const historicalProvenance = z
+  .object({
+    provider: z.enum(["bigquery", "fixture"]),
+    status: z.literal("complete"),
+    queryId: z.string().regex(/^[a-zA-Z0-9_.:-]{1,100}$/),
+    rangeStart: z.iso.date(),
+    rangeEnd: z.iso.date(),
+    cutoff: z.string().datetime(),
+    identity: z.enum(["canonical_id", "core_id", "slug", "verified_alias"]),
+    botFiltering: z.enum(["unknown", "verified_excluded"]),
+    measurement: z.enum(["observed_events", "qualified_engagement"]),
+    overlap: z.enum(["unknown", "verified_disjoint"]),
+    rowCount: z.number().int().nonnegative(),
+    catalogCandidates: z.number().int().nonnegative(),
+    inspectedCandidates: z.number().int().nonnegative(),
+    unmappedCandidates: z.number().int().nonnegative(),
+    mappedRows: z.number().int().nonnegative(),
+    unmappedRows: z.number().int().nonnegative(),
+    pageCount: z.number().int().nonnegative(),
+    queryExecutionCount: z.number().int().nonnegative(),
+    queryUsageDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    resultDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    unmappedDigest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable(),
+    bytesProcessed: z.number().int().nonnegative().nullable(),
+    costQualification: z.enum(["usage_only", "unavailable"]),
+  })
+  .strict()
 const choice = z.object({
   targetVideoId: id,
   kind: z.enum(["direct", "alternative"]),
@@ -70,10 +103,22 @@ const submission = z.discriminatedUnion("action", [
     sourceSetDigest: z.string().regex(/^[a-f0-9]{64}$/),
     inputCutoff: z.string().datetime(),
     expectedSourceCount: z.number().int().nonnegative(),
-    inputMode: z.enum(["fixture", "content_only"]).default("fixture"),
+    inputMode: z
+      .enum([
+        "fixture",
+        "content_only",
+        "historical_fixture",
+        "historical_analytics",
+      ])
+      .default("fixture"),
     inputSnapshotMode: z
       .enum(["fixture", "observed_fenced", "preflight_failed"])
       .optional(),
+  }),
+  z.object({
+    action: z.literal("history"),
+    generationId: id,
+    history: historicalProvenance,
   }),
   z.object({
     action: z.literal("source"),
@@ -89,6 +134,7 @@ const submission = z.discriminatedUnion("action", [
     callId: id,
     stage: z.enum([
       "source_summary",
+      "analytics_query_plan",
       "catalog_discovery",
       "candidate_judgment",
     ]),
@@ -142,6 +188,7 @@ export type PrecomputedComparison =
       coverageGap: null
       failureCode?: string | null
       inputSnapshotMode?: string
+      history?: z.output<typeof historicalProvenance> | null
       usage?: ModelUsage
     }
   | {
@@ -156,6 +203,7 @@ export type PrecomputedComparison =
         acceptedCount: number
       }
       usage: ModelUsage
+      history: z.output<typeof historicalProvenance> | null
       experimental: Array<
         SavedChoice & {
           videoSlug: string
@@ -263,10 +311,11 @@ async function lockGeneration(
       input_mode: string
       input_snapshot_mode: string
       input_cutoff: Date
+      historical_provenance: unknown
     }>
   >`
     SELECT id, status, expected_source_count, source_set_digest,
-           input_mode, input_snapshot_mode, input_cutoff
+           input_mode, input_snapshot_mode, input_cutoff, historical_provenance
     FROM recommendation_precomputed_generation
     WHERE id = ${generationId}
     FOR UPDATE
@@ -442,15 +491,20 @@ export async function submitPrecomputedRecommendation(
     const cutoff = new Date(input.inputCutoff)
     const snapshotMode =
       input.inputSnapshotMode ??
-      (input.inputMode === "content_only" ? "observed_fenced" : "fixture")
+      (input.inputMode === "fixture" ? "fixture" : "observed_fenced")
     if (
-      input.inputMode === "content_only" &&
+      input.inputMode !== "fixture" &&
       snapshotMode !== "observed_fenced" &&
       snapshotMode !== "preflight_failed"
     )
       throw new PrecomputedRecommendationError(
         "invalid",
         "Invalid cutoff provenance",
+      )
+    if (input.inputMode === "fixture" && snapshotMode !== "fixture")
+      throw new PrecomputedRecommendationError(
+        "invalid",
+        "Invalid historical provenance",
       )
     const inserted =
       await prisma.recommendationPrecomputedGeneration.createMany({
@@ -465,6 +519,7 @@ export async function submitPrecomputedRecommendation(
             expectedSourceCount: input.expectedSourceCount,
             inputMode: input.inputMode,
             inputSnapshotMode: snapshotMode,
+            historicalProvenance: Prisma.DbNull,
           },
         ],
         skipDuplicates: true,
@@ -525,6 +580,9 @@ export async function submitPrecomputedRecommendation(
       expectedSourceCount: generation.expectedSourceCount,
       inputMode: generation.inputMode,
       inputSnapshotMode: generation.inputSnapshotMode,
+      history: historicalProvenance
+        .nullable()
+        .parse(generation.historicalProvenance),
       source: source
         ? {
             status: source.status,
@@ -537,6 +595,57 @@ export async function submitPrecomputedRecommendation(
   }
   return prisma.$transaction(async (tx) => {
     const generation = await lockGeneration(tx, input.generationId)
+    if (input.action === "history") {
+      if (
+        !["historical_analytics", "historical_fixture"].includes(
+          generation.input_mode,
+        ) ||
+        generation.input_snapshot_mode !== "observed_fenced" ||
+        (generation.input_mode === "historical_analytics" &&
+          input.history.provider !== "bigquery") ||
+        (generation.input_mode === "historical_fixture" &&
+          input.history.provider !== "fixture") ||
+        input.history.cutoff !== generation.input_cutoff.toISOString() ||
+        input.history.mappedRows + input.history.unmappedRows !==
+          input.history.rowCount ||
+        input.history.inspectedCandidates + input.history.unmappedCandidates >
+          input.history.catalogCandidates
+      )
+        throw new PrecomputedRecommendationError(
+          "invalid",
+          "Invalid historical result",
+        )
+      if (generation.historical_provenance !== null) {
+        if (
+          digest(
+            historicalProvenance.parse(generation.historical_provenance),
+          ) !== digest(input.history)
+        )
+          throw new PrecomputedRecommendationError(
+            "conflict",
+            "Historical result differs",
+          )
+        return {
+          generationId: input.generationId,
+          state: generation.status,
+          replay: true,
+        }
+      }
+      if (generation.status !== "incomplete")
+        throw new PrecomputedRecommendationError(
+          "conflict",
+          "Generation is closed",
+        )
+      await tx.recommendationPrecomputedGeneration.update({
+        where: { id: input.generationId },
+        data: { historicalProvenance: input.history as Prisma.InputJsonValue },
+      })
+      return {
+        generationId: input.generationId,
+        state: generation.status,
+        replay: false,
+      }
+    }
     if (input.action === "model_call") {
       if (
         (input.status === "succeeded" &&
@@ -639,7 +748,7 @@ export async function submitPrecomputedRecommendation(
           "Generation is closed",
         )
       if (
-        generation.input_mode === "content_only" &&
+        generation.input_mode !== "fixture" &&
         generation.input_snapshot_mode === "observed_fenced"
       ) {
         try {
@@ -757,6 +866,16 @@ export async function submitPrecomputedRecommendation(
         "conflict",
         "Generation is closed",
       )
+    if (
+      ["historical_analytics", "historical_fixture"].includes(
+        generation.input_mode,
+      ) &&
+      generation.historical_provenance === null
+    )
+      throw new PrecomputedRecommendationError(
+        "conflict",
+        "Historical input incomplete",
+      )
     const sourceRows = await tx.recommendationPrecomputedSource.findMany({
       where: { generationId: input.generationId },
       select: { sourceVideoId: true, status: true },
@@ -824,6 +943,9 @@ export async function loadPrecomputedRecommendationComparison(
       coverageGap: null,
       failureCode: failedSource?.failureCode ?? generation.failureCode,
       inputSnapshotMode: generation.inputSnapshotMode,
+      history: historicalProvenance
+        .nullable()
+        .parse(generation.historicalProvenance),
       usage:
         generation.status === "failed"
           ? await modelUsage(prisma, generation.id)
@@ -995,6 +1117,9 @@ export async function loadPrecomputedRecommendationComparison(
       acceptedCount: source.acceptedCount,
     },
     usage: await modelUsage(prisma, generation.id),
+    history: historicalProvenance
+      .nullable()
+      .parse(generation.historicalProvenance),
     experimental: accepted.slice(0, 6),
     allAcceptedCount: source.acceptedCount,
     coverageGap:

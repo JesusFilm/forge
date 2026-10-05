@@ -216,6 +216,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
                   ? []
                   : [targetId, metadataId],
             }
+          else if (data.task === "analytics_query_plan")
+            output = { candidateVideoIds: [targetId, metadataId] }
           else if (data.untrustedCatalogData.candidate?.id === targetId)
             output = {
               connections: [
@@ -340,6 +342,560 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       ).toMatchObject({
         state: "complete",
         source: { status: "complete", acceptedCount: 2 },
+      })
+    })
+
+    it("shows qualified aggregate provenance beside a history-informed saved source", async () => {
+      const generationId = `historical-${suffix}`
+      const observedPrompts: string[] = []
+      const observedQueries: Array<{
+        kind: string
+        rangeStart: string
+        rangeEnd: string
+        sourceKey: string
+        targetKeys: string[]
+        limit: number
+      }> = []
+      const controlled = model()
+      const history = {
+        async describe() {
+          return {
+            provider: "fixture" as const,
+            queryId: "verified-ga-history-fixture-v1",
+            rangeStart: "2023-01-01",
+            rangeEnd: "2026-10-04",
+            identity: "core_id" as const,
+            botFiltering: "unknown" as const,
+            measurement: "observed_events" as const,
+            overlap: "unknown" as const,
+          }
+        },
+        async readPage(input: {
+          kind: "engagement" | "transitions"
+          after?: string
+          videoKeys: string[]
+          targetKeys: string[]
+          rangeStart: string
+          rangeEnd: string
+          sourceKey: string
+          limit: number
+        }) {
+          observedQueries.push(input)
+          if (
+            input.kind === "engagement" &&
+            input.videoKeys.includes(`core-${sourceId}`)
+          )
+            return {
+              rows: [
+                {
+                  videoKey: `core-${sourceId}`,
+                  views: 100,
+                  engagedViews: 60,
+                  exposures: null,
+                },
+              ],
+              nextCursor: null,
+              totalRows: 1,
+              queryExecutionId: "source-engagement-job",
+              jobComplete: true,
+              bytesProcessed: 1024,
+            }
+          if (input.kind === "engagement" && !input.after)
+            return {
+              rows: [
+                {
+                  videoKey: `core-${targetId}`,
+                  views: 0,
+                  engagedViews: 0,
+                  exposures: 0,
+                },
+              ],
+              nextCursor: "page-2",
+              totalRows: 2,
+              queryExecutionId: "candidate-engagement-job",
+              jobComplete: true,
+              bytesProcessed: 1024,
+            }
+          if (input.kind === "engagement")
+            return {
+              rows: [
+                {
+                  videoKey: "unknown-legacy-video",
+                  views: 3,
+                  engagedViews: 2,
+                  exposures: null,
+                },
+              ],
+              nextCursor: null,
+              totalRows: 2,
+              queryExecutionId: "candidate-engagement-job",
+              jobComplete: true,
+              bytesProcessed: 1024,
+            }
+          if (input.targetKeys.length === 0)
+            return {
+              rows: [],
+              nextCursor: null,
+              totalRows: 0,
+              queryExecutionId: "source-transition-job",
+              jobComplete: true,
+              bytesProcessed: 0,
+            }
+          return {
+            rows: [
+              {
+                sourceKey: `core-${sourceId}`,
+                targetKey: `core-${targetId}`,
+                transitions: 7,
+              },
+            ],
+            nextCursor: null,
+            totalRows: 1,
+            queryExecutionId: "candidate-transition-job",
+            jobComplete: true,
+            bytesProcessed: 2048,
+          }
+        },
+      }
+      const observingModel: StructuredModel = {
+        generate: async (input) => {
+          observedPrompts.push(input.prompt)
+          const generated = await controlled.generate(input)
+          const prompt = JSON.parse(input.prompt) as {
+            task: string
+            untrustedCatalogData: { historicalTransitions?: number }
+          }
+          if (
+            prompt.task === "candidate_judgment" &&
+            prompt.untrustedCatalogData.historicalTransitions === 7
+          ) {
+            return {
+              ...generated,
+              output: input.schema.parse({
+                connections: [
+                  {
+                    kind: "direct",
+                    relationship: "useful_next_watch",
+                    strength: 95,
+                    reasonEnglish:
+                      "The matching story of hope has transcript support and an observed historical next-watch transition.",
+                    evidence: {
+                      basis: "transcript",
+                      passages: [{ chunkId: targetChunkId, excerpt }],
+                    },
+                  },
+                ],
+              }),
+            }
+          }
+          return generated
+        },
+      }
+      const result = await runPrecomputedSource(
+        {
+          generationId,
+          sourceVideoId: sourceId,
+          inputCutoff: cutoff,
+          historyRequired: true,
+        },
+        { catalog, ingest, model: observingModel, history },
+      )
+      expect(result).toMatchObject({ state: "complete", acceptedCount: 2 })
+      expect(observedPrompts.join(" ")).toContain('"historicalTransitions":7')
+      expect(observedPrompts.join(" ")).not.toContain("unknown-legacy-video")
+      expect(
+        observedQueries.every(
+          (query) =>
+            query.rangeStart === "2023-01-01" &&
+            query.rangeEnd === "2026-10-04" &&
+            query.sourceKey === `core-${sourceId}` &&
+            query.limit === 100,
+        ),
+      ).toBe(true)
+      expect(
+        observedQueries.some(
+          (query) =>
+            query.kind === "transitions" &&
+            query.targetKeys.includes(`core-${targetId}`),
+        ),
+      ).toBe(true)
+      const comparison = await loadPrecomputedRecommendationComparison(prisma, {
+        generationId,
+        sourceVideoId: sourceId,
+        audioLanguageSlug: "english",
+        reviewer,
+      })
+      expect(comparison).toMatchObject({
+        state: "ready",
+        generation: {
+          inputMode: "historical_fixture",
+          promptVersion: "astra-source-history-v1",
+        },
+        history: {
+          provider: "fixture",
+          status: "complete",
+          botFiltering: "unknown",
+          mappedRows: 3,
+          unmappedRows: 1,
+          rowCount: 4,
+          catalogCandidates: 2,
+          inspectedCandidates: 2,
+          unmappedCandidates: 0,
+          bytesProcessed: 4096,
+          queryExecutionCount: 3,
+          overlap: "unknown",
+        },
+      })
+      if (comparison.state !== "ready")
+        throw new Error("History build not ready")
+      expect(comparison.experimental[0]).toMatchObject({
+        targetVideoId: targetId,
+        reasonEnglish:
+          "The matching story of hope has transcript support and an observed historical next-watch transition.",
+        evidence: { basis: "transcript" },
+      })
+      const status = (await submitPrecomputedRecommendation(
+        prisma,
+        { action: "status", generationId, sourceVideoId: sourceId },
+        bearer,
+      )) as { history: unknown }
+      expect(JSON.stringify(status)).not.toContain("candidate-engagement-job")
+      expect(
+        await submitPrecomputedRecommendation(
+          prisma,
+          { action: "history", generationId, history: status.history },
+          bearer,
+        ),
+      ).toMatchObject({ replay: true })
+    })
+
+    it("fails a history-required build when no warehouse reader is configured", async () => {
+      const generationId = `historical-unavailable-${suffix}`
+      const result = await runPrecomputedSource(
+        {
+          generationId,
+          sourceVideoId: sourceId,
+          inputCutoff: cutoff,
+          historyRequired: true,
+        },
+        { catalog, ingest, model: model() },
+      )
+      expect(result).toMatchObject({
+        state: "failed",
+        failureCode: "analytics_unavailable",
+      })
+      expect(
+        await loadPrecomputedRecommendationComparison(prisma, {
+          generationId,
+          sourceVideoId: sourceId,
+          audioLanguageSlug: "english",
+          reviewer,
+        }),
+      ).toMatchObject({ state: "failed", failureCode: "analytics_unavailable" })
+    })
+
+    it("marks missing pages as failed instead of claiming complete historical coverage", async () => {
+      const generationId = `historical-page-gap-${suffix}`
+      const controlled = model()
+      const result = await runPrecomputedSource(
+        {
+          generationId,
+          sourceVideoId: sourceId,
+          inputCutoff: cutoff,
+          historyRequired: true,
+        },
+        {
+          catalog,
+          ingest,
+          model: controlled,
+          history: {
+            async describe() {
+              return {
+                provider: "fixture",
+                queryId: "broken-paging-fixture",
+                rangeStart: "2020-01-01",
+                rangeEnd: "2026-10-04",
+                identity: "core_id",
+                botFiltering: "unknown",
+                measurement: "observed_events",
+                overlap: "unknown",
+              } as const
+            },
+            async readPage() {
+              return {
+                rows: [
+                  {
+                    videoKey: `core-${sourceId}`,
+                    views: 4,
+                    engagedViews: 2,
+                    exposures: null,
+                  },
+                ],
+                nextCursor: null,
+                totalRows: 2,
+                queryExecutionId: "missing-page-job",
+                jobComplete: true,
+                bytesProcessed: null,
+              }
+            },
+          },
+        },
+      )
+      expect(result).toMatchObject({
+        state: "failed",
+        failureCode: "analytics_incomplete",
+      })
+      expect(controlled.generate).not.toHaveBeenCalled()
+      expect(
+        await loadPrecomputedRecommendationComparison(prisma, {
+          generationId,
+          sourceVideoId: sourceId,
+          audioLanguageSlug: "english",
+          reviewer,
+        }),
+      ).toMatchObject({
+        state: "failed",
+        failureCode: "analytics_incomplete",
+        history: null,
+      })
+    })
+
+    it("rejects continuation pages from a different warehouse job", async () => {
+      const generationId = `historical-job-drift-${suffix}`
+      const result = await runPrecomputedSource(
+        {
+          generationId,
+          sourceVideoId: sourceId,
+          inputCutoff: cutoff,
+          historyRequired: true,
+        },
+        {
+          catalog,
+          ingest,
+          model: model(),
+          history: {
+            async describe() {
+              return {
+                provider: "fixture",
+                queryId: "job-drift-fixture",
+                rangeStart: "2020-01-01",
+                rangeEnd: "2026-10-04",
+                identity: "core_id",
+                botFiltering: "unknown",
+                measurement: "observed_events",
+                overlap: "unknown",
+              } as const
+            },
+            async readPage(input) {
+              return {
+                rows: [
+                  {
+                    videoKey: `core-${sourceId}`,
+                    views: 4,
+                    engagedViews: 2,
+                    exposures: null,
+                  },
+                ],
+                nextCursor: input.after ? null : "next-page",
+                totalRows: 2,
+                queryExecutionId: input.after ? "different-job" : "first-job",
+                jobComplete: true,
+                bytesProcessed: 1024,
+              }
+            },
+          },
+        },
+      )
+      expect(result).toMatchObject({
+        state: "failed",
+        failureCode: "analytics_incomplete",
+      })
+    })
+
+    it("rejects an individual viewer field in aggregate rows before model input", async () => {
+      const generationId = `historical-raw-row-${suffix}`
+      const controlled = model()
+      const result = await runPrecomputedSource(
+        {
+          generationId,
+          sourceVideoId: sourceId,
+          inputCutoff: cutoff,
+          historyRequired: true,
+        },
+        {
+          catalog,
+          ingest,
+          model: controlled,
+          history: {
+            async describe() {
+              return {
+                provider: "fixture",
+                queryId: "raw-row-fixture",
+                rangeStart: "2020-01-01",
+                rangeEnd: "2026-10-04",
+                identity: "core_id",
+                botFiltering: "unknown",
+                measurement: "observed_events",
+                overlap: "unknown",
+              } as const
+            },
+            async readPage() {
+              return {
+                rows: [
+                  {
+                    videoKey: `core-${sourceId}`,
+                    views: 4,
+                    engagedViews: 2,
+                    exposures: null,
+                    viewerId: "private-viewer",
+                  },
+                ],
+                nextCursor: null,
+                totalRows: 1,
+                queryExecutionId: "raw-row-job",
+                jobComplete: true,
+                bytesProcessed: 1,
+              }
+            },
+          },
+        },
+      )
+      expect(result).toMatchObject({
+        state: "failed",
+        failureCode: "analytics_incomplete",
+      })
+      expect(controlled.generate).not.toHaveBeenCalled()
+      const status = await submitPrecomputedRecommendation(
+        prisma,
+        { action: "status", generationId, sourceVideoId: sourceId },
+        bearer,
+      )
+      expect(JSON.stringify(status)).not.toContain("private-viewer")
+    })
+
+    it("does not accept a schema claim or unfinished query job as historical coverage", async () => {
+      const definition = {
+        provider: "fixture" as const,
+        queryId: "schema-check-fixture",
+        rangeStart: "2020-01-01",
+        rangeEnd: "2026-10-04",
+        identity: "core_id" as const,
+        botFiltering: "unknown" as const,
+        measurement: "observed_events" as const,
+        overlap: "unknown" as const,
+      }
+      const noSchema = await runPrecomputedSource(
+        {
+          generationId: `historical-schema-gap-${suffix}`,
+          sourceVideoId: sourceId,
+          inputCutoff: cutoff,
+          historyRequired: true,
+        },
+        {
+          catalog,
+          ingest,
+          model: model(),
+          history: {
+            async describe() {
+              return {
+                ...definition,
+                identity: "unverified_event_url" as never,
+              }
+            },
+            async readPage() {
+              throw new Error("should not query an unverified schema")
+            },
+          },
+        },
+      )
+      expect(noSchema).toMatchObject({
+        state: "failed",
+        failureCode: "analytics_unavailable",
+      })
+      const unfinished = await runPrecomputedSource(
+        {
+          generationId: `historical-unfinished-job-${suffix}`,
+          sourceVideoId: sourceId,
+          inputCutoff: cutoff,
+          historyRequired: true,
+        },
+        {
+          catalog,
+          ingest,
+          model: model(),
+          history: {
+            async describe() {
+              return definition
+            },
+            async readPage() {
+              return {
+                rows: [],
+                nextCursor: null,
+                totalRows: 0,
+                queryExecutionId: "pending-query-job",
+                jobComplete: false,
+                bytesProcessed: null,
+              }
+            },
+          },
+        },
+      )
+      expect(unfinished).toMatchObject({
+        state: "failed",
+        failureCode: "analytics_incomplete",
+      })
+    })
+
+    it("does not sum multiple legacy aliases for one source without proven disjointness", async () => {
+      const generationId = `historical-alias-overlap-${suffix}`
+      const result = await runPrecomputedSource(
+        {
+          generationId,
+          sourceVideoId: sourceId,
+          inputCutoff: cutoff,
+          historyRequired: true,
+        },
+        {
+          catalog,
+          ingest,
+          model: model(),
+          history: {
+            async describe() {
+              return {
+                provider: "fixture",
+                queryId: "alias-overlap-fixture",
+                rangeStart: "2020-01-01",
+                rangeEnd: "2026-10-04",
+                identity: "verified_alias",
+                aliases: {
+                  "https://watch.example/legacy-one": sourceId,
+                  "https://watch.example/legacy-two": sourceId,
+                },
+                botFiltering: "unknown",
+                measurement: "observed_events",
+                overlap: "unknown",
+              } as const
+            },
+            async readPage() {
+              throw new Error("ambiguous source must not be queried")
+            },
+          },
+        },
+      )
+      expect(result).toMatchObject({
+        state: "failed",
+        failureCode: "analytics_mapping_unverified",
+      })
+      expect(
+        await loadPrecomputedRecommendationComparison(prisma, {
+          generationId,
+          sourceVideoId: sourceId,
+          audioLanguageSlug: "english",
+          reviewer,
+        }),
+      ).toMatchObject({
+        state: "failed",
+        failureCode: "analytics_mapping_unverified",
       })
     })
 
