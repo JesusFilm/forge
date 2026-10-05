@@ -662,3 +662,25 @@ Current integration SHA and CI status are recorded by PR #2578 and its checks;
 prior published AF8 CI passed 42 checks with 6 skipped. Publication of this local
 verification follows normal hooks and the existing draft-PR workflow, with no
 merge, production deployment, public test, promotion, or refresh schedule.
+
+### October 6 GA source qualification and Watch-only scope
+
+The user has now supplied the GA property and completed browser sign-in,
+superseding the earlier pending-response notes. See the
+[GA discovery record](2026-10-06-precomputed-video-recommendation-ga-discovery.md)
+for exact sources, schemas, date ranges, aggregate findings and query-job IDs.
+Browser reads succeed; source completeness, canonical mapping, transition
+semantics and local/server API authentication remain distinct unfinished checks.
+
+The exact-property copies contain only March–July 2023 totals without usable
+video-start session keys. A combined-event table is a qualified-discovery
+candidate, with mostly 2021–2022 Watch video starts and unverified lineage. None
+of these observations completes the live warehouse adapter or unblocks #2569.
+The user explicitly requires verified JesusFilm.org `/watch` and descendant
+paths; other site pages cannot contribute to recommendation history.
+
+Sol worker A is implementing the independent Watch-scope and source-quality
+contract/display slice from `9e0cd06c2`, preserving legacy-read compatibility.
+No new production export, warehouse write, deployment, public experiment,
+promotion, or refresh schedule has occurred. Local Google ADC authorization is
+prepared and awaiting the user's consent action.

@@ -22,7 +22,8 @@ describes the private reporting contract and limits.
   files match those reviewed worker bytes; root also clarified the operations
   note and consolidated this ledger.
 - The PR records the current published integration SHA and [CI checks](https://github.com/JesusFilm/forge/pull/2578/checks).
-  The preceding published head `af8eba415` passed 42 checks with six skipped.
+  Published head `9e0cd06c2` passed 44 checks with six skipped; its main CI
+  workflow passed 37 jobs with three skipped.
 - The original dirty `/home/nisal/forge` checkout is preserved.
 - Development chats use exactly `gpt-6-sol`; the application model remains
   `gpt-6-astra`. Matt Pocock implement/TDD/code-review workflow only; no
@@ -33,18 +34,18 @@ describes the private reporting contract and limits.
 All issues remain open until merge. Dependencies advance on verified acceptance,
 not issue closure. Implemented, integrated, merged, and live are distinct.
 
-| Issue | Immediate blockers | State                                       | Integrated work                                          |
-| ----- | ------------------ | ------------------------------------------- | -------------------------------------------------------- |
-| #2566 | None               | Integrated-and-verified                     | `9a984c544`; saved Admin comparison                      |
-| #2567 | #2566              | Integrated-and-verified                     | `c89db0e4e`; bounded Astra producer; no live model smoke |
-| #2568 | #2567              | Fixture integrated; live blocked            | `b1703cd8c`, `acbe43fc7`; GA access pending              |
-| #2569 | #2568              | Waiting for prerequisites                   | Unassigned                                               |
-| #2570 | #2566              | Integrated-and-verified                     | `0a93244a3`; private Watch serving                       |
-| #2571 | #2570              | Integrated-and-verified                     | `267a65281`, `b69592b6c`, corrections in `a7f36d778`     |
-| #2572 | #2571              | Integrated-and-verified                     | Core `a7f36d778`, UI `af8eba415`                         |
-| #2573 | #2572              | Private reporting verified; live incomplete | Sources `acbb33fe4`, `302dffe31`; migration `0134`       |
-| #2574 | #2569, #2573       | Waiting for prerequisites                   | Unassigned                                               |
-| #2575 | #2574              | Waiting for prerequisites                   | Unassigned                                               |
+| Issue | Immediate blockers | State                                       | Integrated work                                            |
+| ----- | ------------------ | ------------------------------------------- | ---------------------------------------------------------- |
+| #2566 | None               | Integrated-and-verified                     | `9a984c544`; saved Admin comparison                        |
+| #2567 | #2566              | Integrated-and-verified                     | `c89db0e4e`; bounded Astra producer; no live model smoke   |
+| #2568 | #2567              | Fixture integrated; live blocked            | `b1703cd8c`, `acbe43fc7`; source qualification in progress |
+| #2569 | #2568              | Waiting for prerequisites                   | Unassigned                                                 |
+| #2570 | #2566              | Integrated-and-verified                     | `0a93244a3`; private Watch serving                         |
+| #2571 | #2570              | Integrated-and-verified                     | `267a65281`, `b69592b6c`, corrections in `a7f36d778`       |
+| #2572 | #2571              | Integrated-and-verified                     | Core `a7f36d778`, UI `af8eba415`                           |
+| #2573 | #2572              | Private reporting verified; live incomplete | Sources `acbb33fe4`, `302dffe31`; migration `0134`         |
+| #2574 | #2569, #2573       | Waiting for prerequisites                   | Unassigned                                                 |
+| #2575 | #2574              | Waiting for prerequisites                   | Unassigned                                                 |
 
 ## Ownership and continuation
 
@@ -54,10 +55,12 @@ Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
 branch: `codex/feat-590-2573`. Its two source commits are integrated; preserve
 this checkout for any CI correction. Earlier branches are preserved.
 
-Worker A, `01a109e1-47c8-7043-bfd4-a85592cfafc5`, completed the final whole-spec
-review and remains available for the GA handoff. Its current title is
-`#2565 Review integrated precomputed recommendations`.
+Worker A, `01a109e1-47c8-7043-bfd4-a85592cfafc5`, owns the independent #2568
+Watch-scope/source-qualification continuation, based on `9e0cd06c2`. Its title is
+`#2568 Enforce Watch scope and source qualification`. Current-source discovery
+and server API authentication remain with the orchestrator.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2566/forge`;
+current branch: `codex/feat-590-2568-watch-scope`. Earlier
 `codex/feat-590-2571-retention-health` and `codex/feat-590-2568` are preserved.
 At most two implementation chats may run. The orchestrator owns integration,
 roadmap/ledger updates, and the single PR. Serialize heavy validation with
@@ -108,12 +111,24 @@ was preserved when the earlier unpublished workflow revision was rejected.
 
 ## External inputs and boundaries
 
-At 05:05 UTC, the user was notified that GA access setup had been reached and
-asked to inspect the Watch property's existing **Admin → Product Links → BigQuery
-Links** entry and provide non-secret project/property IDs. No human answer has
-arrived. Provider, dataset/location, history, schema, canonical Video mapping,
-and read authorization remain unverified. No new export/link or warehouse write
-is authorized. #2568 live acceptance and #2569 remain blocked.
+The user signed into GA4 property `320198532` and the Cloud console. Browser
+inspection confirmed its existing daily BigQuery link to `cru-ga4-prod-1` and
+successful metadata/aggregate reads in `jfp-data-warehouse`. The candidate
+`cru-ga4-prod-1.analytics_320198532` remains denied-or-nonexistent, not a verified
+source path. Two readable exact-property copies cover only March–July 2023 and
+have no viewer/session keys for video starts. They cannot establish transitions.
+A combined-event candidate has nonplaceholder keys for mostly 2021–2022 Watch
+starts; its lineage, sequence semantics and canonical mapping remain unverified.
+See the [GA discovery record](2026-10-06-precomputed-video-recommendation-ga-discovery.md).
+
+The user explicitly restricted historical evidence to verified JesusFilm.org
+hosts and exact `/watch` or `/watch/` descendants. Query strings/fragments do not
+change scope; unrelated hosts, `/watching`, and other pages are excluded. The
+current event source or a verified aggregate transition source, canonical Video
+mapping, and local/server API authentication remain unresolved. Browser login
+does not establish API authentication. No new export/link or warehouse write is
+authorized. #2568 live acceptance and #2569 remain blocked; its independent
+Watch-scope and qualification implementation is underway.
 
 #2573 live winner certification remains incomplete: the measured human baseline,
 agreed numeric stopping settings, trusted bot qualification, and tracking-loss

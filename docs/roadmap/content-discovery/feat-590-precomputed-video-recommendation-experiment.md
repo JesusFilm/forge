@@ -120,8 +120,12 @@ inconclusive result that keeps the incumbent.
 The first build has no user-imposed spend or runtime ceiling; report actual
 cost and elapsed time so the user can then choose recurring frequency.
 Include the user's historical GA warehouse, not just Admin's retained logs.
-The user believes it is BigQuery; its identifiers, schema, and access remain
-to be supplied/verified.
+GA4 property `320198532` has an existing BigQuery link. Browser reads work in
+`jfp-data-warehouse`, but verified copies contain only March–July 2023 totals
+without usable video-start session keys. The current event source, canonical
+Video mapping, and server authentication remain to be verified. Historical
+recommendation evidence is limited to verified JesusFilm.org hosts and exact
+`/watch` or `/watch/` descendant paths, as clarified on October 6, 2026.
 The proposed design lets the model explore through authenticated read-only
 tools; credentials remain in server configuration. Include warehouse-query
 cost in the first-build report.
