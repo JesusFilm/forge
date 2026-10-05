@@ -12,8 +12,9 @@ stable consumer's request count once. HTTP retries are separate attempts;
 post-auth validation and retrieval errors count as requests. Only Node's completed
 `ServerResponse.finish` with a 2xx status increments success. A disconnect before
 finish does not. Empty retrieval is a successful 200. Rotation preserves identity.
-Revoked/unknown auth, auth outages, pre-auth body-limit rejections and legacy
-shared tokens go into service counters without consumer attribution. Health,
+Revoked/unknown auth, auth outages and pre-auth body-limit rejections go into
+service counters without consumer attribution. Historical legacy-token counts
+remain in the existing records. Health,
 portal and report reads are excluded. Success describes server completion.
 
 Counts are durable, unsampled minute aggregates in `usage_private`. Random pending
@@ -94,8 +95,8 @@ timestamps are untouched. Old coverage tables/views and already-applied migratio
 files are retained as inert historical data for audit and rollback, not used by
 new serving/reporting code. No table/record deletion or retention policy is added.
 
-Feat-529 owns actual ops dogfood, consumer isolation/lifecycle proofs and the
-separately approved seven-day migration/cutoff. Feat-568 reviews count-row growth,
+Feat-529 records the completed owner-reported registration period; feat-607
+owns static-token removal. Feat-568 reviews count-row growth,
 pending backlog, write/report latency and backup costs before volume expansion.
 Historical provisioning writes remain recorded in
 [the production audit](../../../../docs/roadmap/rag/evidence/feat-529/production-usage-role-provisioning.md).

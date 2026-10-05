@@ -1,7 +1,8 @@
 # ADR-0004 — RAG access is via the production `/v1` HTTP API
 
 - Status: Forge-amended — scoped, read-only `/v1` access remains accepted, but
-  production is no longer the exclusive network route.
+  production is no longer the exclusive network route and registered consumer
+  credentials replace the static Railway token map (feat-607).
 - Date: 2026-06-15
 - Issue/PR: #36 (consumer token allocation)
 - Related: ADR-0001 (ports & the import law), ADR-0002 (embeddings)
@@ -34,9 +35,9 @@ content** (no write surface — see `AGENTS.md`): a leaked or misused bearer tok
 can only run searches, never mutate or drop anything.
 
 - **Consumers** authenticate with a **scoped, read-only, revocable** bearer
-  token — a per-consumer source-key allowlist via `SERVE_BEARER_TOKENS`
-  (`src/serving/http/auth.ts`). The _process_ for allocating these tokens is
-  tracked in #36.
+  token. The original decision used a static Railway map; Forge now verifies
+  registered consumer credentials against current consumer state and source
+  grants. See `../ops/consumer-access-migration.md` for the current process.
 - **RAG Engine Devs** reach the running RAG the same way — over `/v1` against
   production — for development and integration. (Work that changes the engine
   _itself_ still runs the local stack: `docker compose up` + `pnpm acquire` /

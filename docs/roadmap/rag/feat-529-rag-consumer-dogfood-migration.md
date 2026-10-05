@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-16"
 duration: 7
 depends_on: ["feat-528", "feat-530"]
-blocks: []
+blocks: ["feat-607"]
 tags: ["rag", "auth", "observability"]
 ---
 
@@ -96,3 +96,15 @@ shared-bearer cutoff were not executed; the owner waived them as closure gates.
 Legacy bearer access remains until a separately authorized production change.
 No credential, configuration or production data is changed by this ticket
 closure.
+
+## Owner update — October 6, 2026
+
+The September 30 waiver describes the state at that closure. Jaco now reports
+that the seven-day registration period was subsequently completed, the team was
+notified with instructions for the registered-consumer approach, and October 6
+was announced as the old bearer-token decommission date. Active consumers have
+reported working retrieval directly to Jaco and their distinct portal request
+counts have increased. This update records owner attestation; it does not claim
+that this documentation PR re-ran the original scripted +3/+2 proof or changed
+production settings. [Feat-607](feat-607-rag-static-bearer-retirement.md) owns
+the still-required Forge static-token code and Railway variable cutoff.

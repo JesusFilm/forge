@@ -8,7 +8,6 @@ import {
   ENVIRONMENT_TARGETS,
   type EnvironmentTarget,
 } from "./environment-error.js"
-import { bearerTokenConfigSchema } from "../contracts/index.js"
 import {
   requireReadonlyDatabaseUrl,
   resolveDashboardDatabase,
@@ -92,14 +91,6 @@ const postgresUrl = z
     { message: "must be a Postgres URL" },
   )
 
-function validBearerTokenConfig(value: string): boolean {
-  try {
-    return bearerTokenConfigSchema.safeParse(JSON.parse(value)).success
-  } catch {
-    return false
-  }
-}
-
 const runtimeEnvSchema = z
   .object({
     DATABASE_URL: postgresUrl,
@@ -126,7 +117,6 @@ const runtimeEnvSchema = z
     LANGUAGE_SWEEP_OUT_DIR: emptyAsUnset(z.string().trim().min(1).optional()),
     FIRECRAWL_API_KEY: emptyAsUnset(z.string().trim().min(1).optional()),
     PORT: positiveInteger("PORT", 8080),
-    SERVE_BEARER_TOKENS: emptyAsUnset(z.string().trim().min(1).optional()),
   })
   .superRefine((value, context) => {
     if (value.EMBED_BASE_URL && !value.EMBED_API_KEY) {
@@ -135,17 +125,6 @@ const runtimeEnvSchema = z
         path: ["EMBED_API_KEY"],
         message:
           "required when EMBED_BASE_URL is set; OPENROUTER_API_KEY only covers the fallback provider",
-      })
-    }
-    if (
-      value.SERVE_BEARER_TOKENS &&
-      !validBearerTokenConfig(value.SERVE_BEARER_TOKENS)
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["SERVE_BEARER_TOKENS"],
-        message:
-          'must be a JSON object mapping each token to a non-empty source-key array; ["*"] grants all sources',
       })
     }
   })
@@ -187,10 +166,14 @@ export function assertEnvironmentForTarget(
   }
 
   const env = parseRuntimeEnv(input)
-  if (target === "railway" && !env.SERVE_BEARER_TOKENS) {
+  if (
+    target === "railway" &&
+    (!input.RAG_CONSUMER_WRITER_DATABASE_URL ||
+      !input.RAG_CONSUMER_AUTH_DATABASE_URL)
+  ) {
     throw environmentConfigurationError(
-      "railway_bearer_tokens_required",
-      "SERVE_BEARER_TOKENS is required for the Railway service",
+      "consumer_access_configuration_incomplete",
+      "Railway serving requires both consumer access database URLs",
       target,
     )
   }

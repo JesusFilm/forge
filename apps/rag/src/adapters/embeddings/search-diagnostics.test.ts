@@ -1,10 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { createApp } from "../../serving/http/app.js"
-import { parseTokenRegistry } from "../../serving/http/auth.js"
 import { createRetriever } from "../../retrieval/index.js"
 import { OpenAICompatibleEmbedder } from "../../adapters/embeddings/index.js"
 const secret = "injected-private-query-bearer-url-sql"
-const tokens = parseTokenRegistry(JSON.stringify({ "fixture-token": ["*"] }))
 afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
@@ -40,10 +38,18 @@ function search(storeFailure?: "model_check" | "vector_search") {
   })
 }
 async function request(retriever: ReturnType<typeof search>) {
-  return createApp({ retriever, tokens }).request("/v1/search", {
+  return createApp({
+    retriever,
+    consumerAuth: {
+      authenticate: async (token) =>
+        token === "rag_fixture"
+          ? { consumerId: "fixture", allowedSourceKeys: ["fixture-source"] }
+          : null,
+    },
+  }).request("/v1/search", {
     method: "POST",
     headers: {
-      authorization: "Bearer fixture-token",
+      authorization: "Bearer rag_fixture",
       "content-type": "application/json",
       "x-rag-request-id": secret,
     },

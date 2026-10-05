@@ -54,7 +54,6 @@ describe("consumer HTTP lifecycle backed by PostgreSQL", () => {
       const search = vi.fn(async () => [])
       const app = createApp({
         retriever: { search },
-        tokens: new Map(),
         consumerAuth: new PostgresConsumerAuthenticator(reader),
       })
       app.route(
