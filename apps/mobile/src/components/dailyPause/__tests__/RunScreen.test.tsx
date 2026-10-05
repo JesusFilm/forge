@@ -36,6 +36,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { PAUSE_INTRO_MS } from "../PauseIntro"
 import { RunScreen } from "../RunScreen"
 
 // The stores read the module's `default`, so the mock must carry one.
@@ -232,10 +233,11 @@ async function playToStop(range: PartRange) {
   await frames(1)
 }
 
-/** Lets the default pause run out (Reflect 0:45, then Pray 0:30). The
- *  countdown re-arms between commits, so the clock moves in small steps. */
+/** Lets the intro and the default pause run out (Reflect 0:45, then Pray
+ *  0:30). The countdown re-arms between commits, so the clock moves in small
+ *  steps. */
 async function waitOutPause() {
-  const steps = (PAUSE_TIMERS[3].reflectSec * 1000) / 250 + 4
+  const steps = (PAUSE_INTRO_MS + PAUSE_TIMERS[3].reflectSec * 1000) / 250 + 4
   for (let i = 0; i < steps; i += 1) {
     await act(async () => {
       jest.advanceTimersByTime(250)

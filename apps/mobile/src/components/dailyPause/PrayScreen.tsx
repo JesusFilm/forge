@@ -1,5 +1,6 @@
 // The Figma "Transition · Pray" screen (R11, R16, R17, R19, R30). The ring
-// counts the pause down, and Amen takes no tap before zero.
+// counts the pause down, and Amen takes no tap before zero. The screen opens
+// with the intro in PauseIntro, and the pause starts after.
 import { ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { useCountdown } from "../../lib/dailyPause/countdown"
@@ -14,6 +15,7 @@ import {
   pauseSpacing,
 } from "../../lib/dailyPause/theme"
 import { CountdownRing } from "./CountdownRing"
+import { IntroContent, IntroStepper, usePauseIntro } from "./PauseIntro"
 import { HeldPauseButton } from "./ReflectScreen"
 import { StepperPills } from "./StepperPills"
 import { PauseBody, PauseButton, type PauseFont } from "./WatchScreen"
@@ -32,32 +34,43 @@ export function PrayScreen({
   font,
   onContinue,
 }: PrayScreenProps) {
-  const countdown = useCountdown(PAUSE_TIMERS[meditationLength].praySec)
+  const intro = usePauseIntro("pray")
+  const countdown = useCountdown(
+    PAUSE_TIMERS[meditationLength].praySec,
+    intro.shown,
+  )
 
   return (
     <PauseBody>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
+        onLayout={intro.onScrollLayout}
       >
-        <StepperPills arrival="pray" font={font} />
+        <IntroStepper intro={intro}>
+          <StepperPills arrival="pray" font={font} />
+        </IntroStepper>
         <View style={styles.ringGap} />
-        <View style={styles.ringBox}>
-          <CountdownRing countdown={countdown} font={font} />
-        </View>
-        <Text style={[styles.prompt, font("bodyLightItalic")]}>
-          {devotional.prayerPrompt}
-        </Text>
-        <Text style={[styles.attribution, font("bodyItalic")]}>
-          {devotional.attribution}
-        </Text>
+        <IntroContent intro={intro} style={styles.content}>
+          <View style={styles.ringBox}>
+            <CountdownRing countdown={countdown} font={font} />
+          </View>
+          <Text style={[styles.prompt, font("bodyLightItalic")]}>
+            {devotional.prayerPrompt}
+          </Text>
+          <Text style={[styles.attribution, font("bodyItalic")]}>
+            {devotional.attribution}
+          </Text>
+        </IntroContent>
         <View style={styles.buttonGap} />
       </ScrollView>
-      {countdown.done ? (
-        <PauseButton label="Amen" onPress={onContinue} font={font} />
-      ) : (
-        <HeldPauseButton label="Amen" spokenLabel="Amen" font={font} />
-      )}
+      <IntroContent intro={intro} style={styles.buttonRow}>
+        {countdown.done ? (
+          <PauseButton label="Amen" onPress={onContinue} font={font} />
+        ) : (
+          <HeldPauseButton label="Amen" spokenLabel="Amen" font={font} />
+        )}
+      </IntroContent>
     </PauseBody>
   )
 }
@@ -70,6 +83,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: pauseSpacing.screenGap,
   },
+  content: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    gap: pauseSpacing.screenGap,
+  },
+  buttonRow: { alignSelf: "stretch", alignItems: "center" },
   ringGap: { height: pauseSpacing.prayRingGap },
   ringBox: {
     alignSelf: "stretch",

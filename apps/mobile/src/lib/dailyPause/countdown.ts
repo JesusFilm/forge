@@ -68,29 +68,40 @@ export function spokenTimeLeft(seconds: number): string {
   return `${parts.join(" ")} left`
 }
 
-/** A pause timer of `totalSec` that starts at mount. */
-export function useCountdown(totalSec: number): Countdown {
+/** A pause timer of `totalSec`. It holds at the full time until `started`
+ *  is true, so a screen can start it after its intro. */
+export function useCountdown(totalSec: number, started = true): Countdown {
   const [clock, setClock] = useState<Clock>(() => {
-    const now = Date.now()
-    const started: Clock = {
+    const full: Clock = {
       totalMs: totalSec * SECOND_MS,
       leftMs: totalSec * SECOND_MS,
-      since: now,
+      since: null,
     }
-    return isAway(AppState.currentState) ? hold(started, now) : started
+    return started && !isAway(AppState.currentState)
+      ? proceed(full, Date.now())
+      : full
   })
   const [now, setNow] = useState(() => Date.now())
 
+  // A start while the app is away waits for the return.
   useEffect(() => {
+    if (!started) return
+    const at = Date.now()
+    if (!isAway(AppState.currentState)) {
+      setClock((current) => proceed(current, at))
+    }
+    setNow(at)
     const subscription = AppState.addEventListener("change", (state) => {
-      const at = Date.now()
+      const changedAt = Date.now()
       setClock((current) =>
-        state === "active" ? proceed(current, at) : hold(current, at),
+        state === "active"
+          ? proceed(current, changedAt)
+          : hold(current, changedAt),
       )
-      setNow(at)
+      setNow(changedAt)
     })
     return () => subscription.remove()
-  }, [])
+  }, [started])
 
   const msLeft = leftAt(clock, now)
   const running = clock.since !== null && msLeft > 0

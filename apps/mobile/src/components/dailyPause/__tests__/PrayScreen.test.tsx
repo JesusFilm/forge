@@ -20,6 +20,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { PAUSE_INTRO_MS } from "../PauseIntro"
 import { PrayScreen } from "../PrayScreen"
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -176,6 +177,7 @@ it.each<[MeditationLength, string, string]>([
 
 it("counts the seconds down in the ring", async () => {
   const root = await render(3)
+  advance(PAUSE_INTRO_MS)
   advance(12_000)
   expect(hasExactText(root, "18")).toBe(true)
   expect(ringLabel(root)).toBe("18 seconds left")
@@ -183,6 +185,7 @@ it("counts the seconds down in the ring", async () => {
 
 it("lets no control skip the ring before zero (R16)", async () => {
   const root = await render(3)
+  advance(PAUSE_INTRO_MS)
   advance(29_000)
   expect(ringLabel(root)).toBe("1 second left")
   const pressables = root.root.findAll(
@@ -195,6 +198,7 @@ it("lets no control skip the ring before zero (R16)", async () => {
 
 it("makes Amen active at zero and moves on only at the tap (R17)", async () => {
   const root = await render(3)
+  advance(PAUSE_INTRO_MS)
   advance(30_000)
   expect(hasExactText(root, "0")).toBe(true)
   expect(hostsWithLabel(root, "Amen").some(isDisabled)).toBe(false)
@@ -206,6 +210,7 @@ it("makes Amen active at zero and moves on only at the tap (R17)", async () => {
 
 it("holds the ring while the app is away and continues on return (R26)", async () => {
   const root = await render(3)
+  advance(PAUSE_INTRO_MS)
   advance(10_000)
   appState("inactive")
   advance(45_000)

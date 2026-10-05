@@ -45,16 +45,34 @@ describe("useCountdown", () => {
   let handlers: ((state: AppStateStatus) => void)[] = []
   let renderer: TestInstance | null = null
 
-  function Probe({ totalSec }: { totalSec: number }) {
-    seen.push(useCountdown(totalSec))
+  function Probe({
+    totalSec,
+    started,
+  }: {
+    totalSec: number
+    started?: boolean
+  }) {
+    seen.push(useCountdown(totalSec, started))
     return null
   }
 
-  async function mount(totalSec: number) {
+  function probe(totalSec: number, started?: boolean) {
+    return createElement(
+      StrictMode,
+      null,
+      createElement(Probe, { totalSec, started }),
+    )
+  }
+
+  async function mount(totalSec: number, started?: boolean) {
     await act(async () => {
-      renderer = TestRenderer.create(
-        createElement(StrictMode, null, createElement(Probe, { totalSec })),
-      )
+      renderer = TestRenderer.create(probe(totalSec, started))
+    })
+  }
+
+  async function start(totalSec: number) {
+    await act(async () => {
+      renderer!.update(probe(totalSec, true))
     })
   }
 
@@ -192,6 +210,50 @@ describe("useCountdown", () => {
       expect(latest()).toMatchObject({ msLeft: 45_000, running: true })
       advance(1_000)
       expect(latest().secondsLeft).toBe(44)
+    } finally {
+      AppState.currentState = before
+    }
+  })
+
+  // The Reflect and Pray screens start their timer after the intro (the
+  // owner, 2026-10-06), so the intro takes no time from the pause.
+  it("holds at the full time until it starts, then counts from the full time", async () => {
+    await mount(45, false)
+    expect(latest()).toMatchObject({
+      msLeft: 45_000,
+      running: false,
+      runFromMs: null,
+      done: false,
+    })
+    advance(5_000)
+    expect(latest().msLeft).toBe(45_000)
+    // A return from the background before the start does not start it.
+    appState("background")
+    appState("active")
+    advance(1_000)
+    expect(latest()).toMatchObject({ msLeft: 45_000, running: false })
+
+    await start(45)
+    expect(latest()).toMatchObject({
+      msLeft: 45_000,
+      running: true,
+      runFromMs: 45_000,
+    })
+    advance(1_000)
+    expect(latest().secondsLeft).toBe(44)
+  })
+
+  it("waits for the return when it starts while the app is away", async () => {
+    await mount(45, false)
+    appState("background")
+    const before = AppState.currentState
+    AppState.currentState = "background"
+    try {
+      await start(45)
+      advance(10_000)
+      expect(latest()).toMatchObject({ msLeft: 45_000, running: false })
+      appState("active")
+      expect(latest()).toMatchObject({ msLeft: 45_000, running: true })
     } finally {
       AppState.currentState = before
     }

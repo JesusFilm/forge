@@ -3,7 +3,10 @@
 // primary pill button.
 import type { ReactNode } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import {
+  useSafeAreaInsets,
+  type EdgeInsets,
+} from "react-native-safe-area-context"
 
 import type { PauseFace, PauseFontStyle } from "../../lib/dailyPause/fonts"
 import type { MeditationLength } from "../../lib/dailyPause/settings"
@@ -18,18 +21,26 @@ export type PauseFont = (face: PauseFace) => PauseFontStyle
 
 const PRESSED_OPACITY = 0.6
 
-/** The frame's body column. The frame draws no status bar, so its top and
- *  bottom padding stay outside the safe area. */
+/** The body column's top and bottom padding. The frame draws no status bar,
+ *  so the padding stays outside the safe area. */
+export function pauseBodyPadding(insets: EdgeInsets): {
+  top: number
+  bottom: number
+} {
+  return {
+    top: Math.max(pauseSpacing.screenTop, insets.top),
+    bottom: Math.max(pauseSpacing.screenBottom, insets.bottom),
+  }
+}
+
+/** The frame's body column. */
 export function PauseBody({ children }: { children: ReactNode }) {
-  const insets = useSafeAreaInsets()
+  const padding = pauseBodyPadding(useSafeAreaInsets())
   return (
     <View
       style={[
         styles.body,
-        {
-          paddingTop: Math.max(pauseSpacing.screenTop, insets.top),
-          paddingBottom: Math.max(pauseSpacing.screenBottom, insets.bottom),
-        },
+        { paddingTop: padding.top, paddingBottom: padding.bottom },
       ]}
     >
       {children}

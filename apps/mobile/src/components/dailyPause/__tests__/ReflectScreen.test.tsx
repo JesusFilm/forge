@@ -15,6 +15,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { PAUSE_INTRO_MS } from "../PauseIntro"
 import { ReflectScreen } from "../ReflectScreen"
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -140,6 +141,7 @@ it.each<[MeditationLength, string]>([
 
 it("counts down in the button and VoiceOver reads the time left", async () => {
   const root = await render(3)
+  advance(PAUSE_INTRO_MS)
   expect(findHeld(root)?.props.accessibilityLabel).toBe(
     "Continue, 45 seconds left",
   )
@@ -152,6 +154,7 @@ it("counts down in the button and VoiceOver reads the time left", async () => {
 
 it("lets no control skip the countdown before zero (R16)", async () => {
   const root = await render(3)
+  advance(PAUSE_INTRO_MS)
   advance(44_000)
   expect(hasText(root, "0:01")).toBe(true)
   for (const node of pressables(root)) await press(node)
@@ -167,6 +170,7 @@ it("lets no control skip the countdown before zero (R16)", async () => {
 
 it("shows Continue at 0:00 and moves on only at the tap (R17, AE1)", async () => {
   const root = await render(3)
+  advance(PAUSE_INTRO_MS)
   advance(45_000)
   expect(hasText(root, "Continue")).toBe(true)
   expect(findHeld(root)).toBeUndefined()
@@ -178,6 +182,7 @@ it("shows Continue at 0:00 and moves on only at the tap (R17, AE1)", async () =>
 
 it("holds the timer while the app is away and continues on return (R26)", async () => {
   const root = await render(3)
+  advance(PAUSE_INTRO_MS)
   advance(15_000)
   appState("background")
   advance(90_000)

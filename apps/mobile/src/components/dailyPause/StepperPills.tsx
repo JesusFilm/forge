@@ -1,16 +1,15 @@
 // The WATCH, REFLECT, and PRAY stepper (R11) as a path down from a top node
 // (the owner, 2026-10-06). Each screen plays one arrival step: a line draws to
 // the next pill, which lights up. Reduce Motion shows the end.
-import { useEffect, useState } from "react"
 import { Animated, Easing, StyleSheet, Text, View } from "react-native"
 
-import { useReduceMotion } from "../../hooks/useReduceMotion"
 import type { PauseFace, PauseFontStyle } from "../../lib/dailyPause/fonts"
 import {
   pauseColors,
   pauseRadii,
   pauseSpacing,
 } from "../../lib/dailyPause/theme"
+import { usePauseClock } from "./usePauseClock"
 
 export type StepperStage = "watch" | "reflect" | "pray"
 
@@ -43,6 +42,12 @@ const PILL_LINE_LENGTH = 18
 /** The current pill's frame height. Every pill sits in a slot this tall, so a
  *  change of look never moves the column. */
 const PILL_SLOT_HEIGHT = 46
+/** Every part has a fixed height, so the stepper's height never changes. */
+export const STEPPER_HEIGHT =
+  NODE_SIZE +
+  NODE_LINE_LENGTH +
+  STAGES.length * PILL_SLOT_HEIGHT +
+  (STAGES.length - 1) * PILL_LINE_LENGTH
 
 type Phase = { from: number; to: number }
 type Plan = {
@@ -63,6 +68,11 @@ function planFor(arrival: StepperStage): Plan {
     line: { from: lineFrom, to: lightFrom },
     light: { from: lightFrom, to: lightFrom + LIGHT_MS },
   }
+}
+
+/** How long the arrival step plays, in ms. */
+export function stepperArrivalMs(arrival: StepperStage): number {
+  return planFor(arrival).totalMs
 }
 
 type Level = number | Animated.AnimatedInterpolation<number>
@@ -98,26 +108,12 @@ type StepperPillsProps = {
 }
 
 export function StepperPills({ arrival, font }: StepperPillsProps) {
-  const reduceMotion = useReduceMotion()
-  const [progress] = useState(() => new Animated.Value(0))
   const plan = planFor(arrival)
+  const { progress } = usePauseClock(plan.totalMs)
   const index = STAGES.findIndex(({ stage }) => stage === arrival)
 
-  useEffect(() => {
-    if (reduceMotion) return
-    const animation = Animated.timing(progress, {
-      toValue: 1,
-      duration: plan.totalMs,
-      easing: Easing.linear,
-      useNativeDriver: true,
-    })
-    animation.start()
-    return () => animation.stop()
-  }, [progress, reduceMotion, plan.totalMs])
-
-  // Under Reduce Motion every phase has played: plain values, no animation.
   const step = (phase: Phase): Level =>
-    reduceMotion ? 1 : phaseLevel(progress, phase, plan.totalMs)
+    phaseLevel(progress, phase, plan.totalMs)
   const light = step(plan.light)
   const lineLevel = (line: number): Level =>
     line < index ? 1 : line === index ? step(plan.line) : 0

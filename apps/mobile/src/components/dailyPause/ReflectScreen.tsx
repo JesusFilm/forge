@@ -1,6 +1,7 @@
 // The Figma "Transition · Reflect" screen (R11, R16-R18, R30). The button
 // counts the pause down, takes no tap before 0:00, and then reads Continue.
 // The verse scrolls at large text sizes, and the button stays on screen.
+// The screen opens with the intro in PauseIntro, and the pause starts after.
 import {
   ScrollView,
   StyleSheet,
@@ -20,6 +21,7 @@ import {
   type MeditationLength,
 } from "../../lib/dailyPause/settings"
 import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
+import { IntroContent, IntroStepper, usePauseIntro } from "./PauseIntro"
 import { StepperPills } from "./StepperPills"
 import { PauseBody, PauseButton, type PauseFont } from "./WatchScreen"
 
@@ -72,7 +74,11 @@ export function ReflectScreen({
   onContinue,
 }: ReflectScreenProps) {
   const { fontScale } = useWindowDimensions()
-  const countdown = useCountdown(PAUSE_TIMERS[meditationLength].reflectSec)
+  const intro = usePauseIntro("reflect")
+  const countdown = useCountdown(
+    PAUSE_TIMERS[meditationLength].reflectSec,
+    intro.shown,
+  )
   // iOS clips a glyph above a line box shorter than the face, so the mark
   // keeps the face's box. Equal negative margins give it the frame's 36 pt.
   const quoteTrim =
@@ -83,37 +89,44 @@ export function ReflectScreen({
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
+        onLayout={intro.onScrollLayout}
       >
-        <StepperPills arrival="reflect" font={font} />
+        <IntroStepper intro={intro}>
+          <StepperPills arrival="reflect" font={font} />
+        </IntroStepper>
         <View style={styles.spacer} />
-        <Text
-          style={[
-            styles.quote,
-            { marginVertical: -quoteTrim },
-            font("bodyLight"),
-          ]}
-        >
-          “
-        </Text>
-        <Text style={[styles.verse, font("bodyLightItalic")]}>
-          {devotional.verse}
-        </Text>
-        <Text style={[styles.label, font("sansSemiBold")]}>
-          {devotional.verseLabel}
-        </Text>
-        <Text style={[styles.waiting, font("bodyItalic")]}>
-          We’ll give you some time.
-        </Text>
+        <IntroContent intro={intro} style={styles.content}>
+          <Text
+            style={[
+              styles.quote,
+              { marginVertical: -quoteTrim },
+              font("bodyLight"),
+            ]}
+          >
+            “
+          </Text>
+          <Text style={[styles.verse, font("bodyLightItalic")]}>
+            {devotional.verse}
+          </Text>
+          <Text style={[styles.label, font("sansSemiBold")]}>
+            {devotional.verseLabel}
+          </Text>
+          <Text style={[styles.waiting, font("bodyItalic")]}>
+            We’ll give you some time.
+          </Text>
+        </IntroContent>
       </ScrollView>
-      {countdown.done ? (
-        <PauseButton label="Continue" onPress={onContinue} font={font} />
-      ) : (
-        <HeldPauseButton
-          label={formatClock(countdown.secondsLeft)}
-          spokenLabel={`Continue, ${spokenTimeLeft(countdown.secondsLeft)}`}
-          font={font}
-        />
-      )}
+      <IntroContent intro={intro} style={styles.buttonRow}>
+        {countdown.done ? (
+          <PauseButton label="Continue" onPress={onContinue} font={font} />
+        ) : (
+          <HeldPauseButton
+            label={formatClock(countdown.secondsLeft)}
+            spokenLabel={`Continue, ${spokenTimeLeft(countdown.secondsLeft)}`}
+            font={font}
+          />
+        )}
+      </IntroContent>
     </PauseBody>
   )
 }
@@ -127,6 +140,12 @@ const styles = StyleSheet.create({
     gap: pauseSpacing.screenGap,
   },
   spacer: { flex: 1 },
+  content: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    gap: pauseSpacing.screenGap,
+  },
+  buttonRow: { alignSelf: "stretch", alignItems: "center" },
   quote: {
     color: pauseColors.accent,
     fontSize: QUOTE_SIZE,
