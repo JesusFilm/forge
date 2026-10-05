@@ -54,6 +54,7 @@ import {
   chooseReflectionRun,
   reflectionRuns,
   MUSIC_START_SHARE,
+  musicStartSec,
   questionClip,
   introTeaserArgs,
   kineticLines,
@@ -482,7 +483,30 @@ async function main() {
             ])
           ).trim(),
         )
-        const offset = bedSec * (MUSIC_START_SHARE[short.kind] ?? 0)
+        // Loudness per second, so no short opens on the bed's fade-in.
+        const rms = (
+          await run("ffmpeg", [
+            "-nostats",
+            "-i",
+            src,
+            "-af",
+            "aresample=8000,asetnsamples=8000,astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level:file=-",
+            "-f",
+            "null",
+            "-",
+          ])
+        )
+          .split("\n")
+          .map((l) => /RMS_level=(\S+)/.exec(l)?.[1])
+          .filter((v): v is string => v !== undefined)
+          .map(Number)
+        const offset = rms.length
+          ? musicStartSec(
+              rms,
+              MUSIC_START_SHARE[short.kind] ?? 0,
+              short.durationSec,
+            )
+          : bedSec * (MUSIC_START_SHARE[short.kind] ?? 0)
         await run("ffmpeg", [
           "-y",
           "-stream_loop",

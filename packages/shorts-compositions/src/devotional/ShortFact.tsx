@@ -29,8 +29,9 @@ import { CARD_TAIL_FRAMES, framesFromDurations } from "./timing"
  *
  * `history` (413-2407): the credit at the top (emblem, label, source), a
  *   hairline, then the narration as kinetic captions in Inter 61.
- * `language` (414-2523): the verse on screen from the first frame between
- *   large gold quote marks; when the voice reaches the word, it turns gold
+ * `language` (414-2523, revised 425-2722): "A Moment from the Full
+ *   Devotional:" on top, then the address, a divider and the verse on screen
+ *   from the first frame; when the voice reaches the word, it turns gold
  *   and a hand-drawn ring draws round it, then breathes. The narration runs
  *   underneath one word at a time in gold Inter Bold caps, short words
  *   riding with the next one. No source on screen: it goes in the caption.
@@ -143,8 +144,8 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
         }}
       />
       {props.musicFile ? (
-        // The devotional's bed under the voice (owner, 2026-10-02), easing in
-        // and out with the picture.
+        // The devotional's bed under the voice (owner, 2026-10-02): in at
+        // once (a quick 0.25s ease, no slow swell), out with the picture.
         <Audio
           src={staticFile(props.musicFile)}
           loop
@@ -154,7 +155,7 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
               fr,
               [
                 0,
-                Math.round(0.8 * fps),
+                Math.round(0.25 * fps),
                 durationInFrames - Math.round(1.2 * fps),
                 durationInFrames,
               ],
@@ -786,6 +787,7 @@ function ReflectionLayout({
   })
   return (
     <>
+      <FullDevotionalLabel f={f} t={t} text="From the Full Devotional:" />
       <div
         style={{
           position: "absolute",
@@ -879,6 +881,41 @@ function ReflectionLayout({
         </div>
       ) : null}
     </>
+  )
+}
+
+/** "From the Full Devotional:" over a short (Figma 415-2610, 425-2722):
+ *  PT Serif italic 36 at 85%, centred at the top of the safe area, so the
+ *  viewer knows this is one piece of a longer video. */
+function FullDevotionalLabel({
+  f,
+  t,
+  text,
+}: {
+  f: (n: number) => number
+  t: number
+  text: string
+}) {
+  const a = interpolate(t, [0.1, 0.8], [0, 1], { ...clamp, easing: EASE_OUT })
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: f(254),
+        left: "50%",
+        transform: `translateX(-50%) translateY(${((1 - a) * f(8)).toFixed(2)}px)`,
+        opacity: 0.85 * a,
+        fontFamily: PT_SERIF,
+        fontStyle: "italic",
+        fontSize: f(36),
+        lineHeight: `${f(50)}px`,
+        color: "rgba(255,255,255,0.92)",
+        whiteSpace: "nowrap",
+        textShadow: `0 ${f(2)}px ${f(12)}px rgba(0,0,0,0.5)`,
+      }}
+    >
+      {text}
+    </div>
   )
 }
 
@@ -1106,60 +1143,36 @@ function LanguageLayout({
       })
     : 0
 
-  // The Figma's 300 less two (owner, 2026-10-02; half size was far too
-  // small), and never quite still: each sways slowly, out of phase.
-  const quote = {
-    fontFamily: LITERATA,
-    fontStyle: "italic" as const,
-    fontSize: f(298),
-    lineHeight: 1,
-    color: GOLD,
-    opacity: 0.85,
-    position: "absolute" as const,
-    height: f(130),
-    overflow: "visible" as const,
-    transformOrigin: "50% 50%",
-  }
-  const swayQuote = (phase: number) => Math.sin(t * 0.9 + phase) * 4
   // The rest of the verse sits back at 85% (Figma 414-2550).
   const rest = { opacity: 0.85 }
   return (
     <>
+      <FullDevotionalLabel
+        f={f}
+        t={t}
+        text="A Moment from the Full Devotional:"
+      />
       <div
         ref={boxRef}
         style={{
           position: "absolute",
           left: "50%",
-          // Well above the Figma's 470 (owner, 2026-10-02: matched to her
-          // screenshot, first line at ~522 of 1920): a clear gap between the
-          // verse and the caption tab, which stays put.
-          top: f(393),
-          width: f(620),
-          // Centred (the Figma's +20.5 offset pushed the right edge into
-          // the action rail).
+          // Figma 425-2722 (owner, 2026-10-05): no big gold quote marks;
+          // the address, a divider, then the verse, stacked and centred.
+          top: f(424),
+          width: f(SAFE_COLUMN),
           transform: "translateX(-50%)",
           opacity: verseIn,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: f(28),
         }}
       >
-        <div
-          style={{
-            ...quote,
-            left: f(-20),
-            top: f(-150),
-            transform: `rotate(${swayQuote(0).toFixed(3)}deg)`,
-          }}
-        >
-          “
-        </div>
         {reference ? (
-          // The verse address between the opening mark and the verse:
-          // Inter Medium 25 caps, tracked 5, at 75% (Figma 422-2664).
+          // Inter Medium 25 caps, tracked 5, at 75% (Figma 425-2730).
           <div
             style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: f(-58),
               textAlign: "center",
               fontFamily: SANS,
               fontWeight: 500,
@@ -1174,12 +1187,13 @@ function LanguageLayout({
             {reference}
           </div>
         ) : null}
+        <Divider f={f} grow={verseIn} />
         <p
           style={{
             margin: 0,
             fontFamily: PT_SERIF,
             fontStyle: "italic",
-            fontSize: f(54),
+            fontSize: f(56),
             lineHeight: 1.45,
             textAlign: "center",
             color: "rgba(255,255,255,0.85)",
@@ -1212,18 +1226,6 @@ function LanguageLayout({
           )}
           <span style={rest}>{"”"}</span>
         </p>
-        {/* The closing mark is the opening one turned over, at the block's
-            lower right (Figma 414-2603). */}
-        <div
-          style={{
-            ...quote,
-            right: f(0),
-            bottom: f(-150),
-            transform: `rotate(${(180 + swayQuote(Math.PI * 0.8)).toFixed(3)}deg)`,
-          }}
-        >
-          “
-        </div>
         {box && draw > 0 ? (
           <svg
             width={box.w + box.h * 1.2}

@@ -156,10 +156,15 @@ the centre.
 scroll rolls once, ~1 s after appearing).
 
 **Music.** Every short except film-verse carries the long form's own bed at
-its level (`render.json` `musicVolume`, about 13 dB under the voice), easing
-in over 0.8 s and out over the last 1.2 s. Each short opens on a different part
-of the bed so they never sound the same: reflection at 0, history at 1/3,
-language at 2/3 of its length, looping (`MUSIC_START_SHARE`). The intro keeps
+its level (`render.json` `musicVolume`, about 13 dB under the voice), in at
+once (0.25 s ease) and out over the last 1.2 s. A bed opens with a fade-in and
+a soft lead-in (Martha: full only from 16 s of 75), so a short started at 0
+heard the music only in its last seconds (owner, 2026-10-05). The cutter reads
+the bed's loudness per second and starts every short inside the stretch where
+it is fully playing (within 8 dB of its typical loud level), spread across it
+so they never sound the same: reflection at its start, history at 1/3,
+language at 2/3 of the room left, the short staying inside the stretch when it
+fits (`musicStartSec`, `MUSIC_START_SHARE`). The intro keeps
 its own bed (Prodigal: ney). Film-verse: the film's sound only.
 
 **Audio ends.** Never fade a voice or the film on its last words. The film
@@ -174,7 +179,10 @@ The long form's montage opening in 9:16: same shots (one per line), same
 voice, the approved kinetic "stack" captions (hero Literata caps, accent gold
 italic, plain Inter caps), the Jesus Film mark animating at the top, a calm
 centred CTA as the last line ("Watch the full devotional on our YouTube
-channel."), and the story's eastern bed. Full spec:
+channel."), and the story's eastern bed. The silent CTA cuts the long form's
+take in the real pause before "Let's watch." (the longest silence in the 1.6 s
+before the line's word time, 0.15 s in, 60 ms fade): word times can run 0.3 s
+late, and cutting by them left "Let's" audible (`ctaCutSec`). Full spec:
 `docs/handoffs/2026-10-02-vertical-intro-design.md`. About 20 s.
 
 ### 6.2 film-verse
@@ -187,6 +195,10 @@ addresses; it failed on Martha because the devotional quotes BSB and the film
 reads NIV. The window never starts inside its first line or takes the tail of
 the line before, and widens into the quiet around it for the cards, never into
 a neighbouring line.
+
+Sound: the film's own sound only. A clip-first long form speaks its opening
+over the film card; that narration is dropped from the short (Martha's first
+cut had both voices at once).
 
 Look (Figma 411-2366): film full frame; the film's narration as numbered
 scrolling verses centred in a 660 wide block, five lines visible
@@ -257,12 +269,12 @@ Content: the language paragraph and, when it is under 14 s, the next
 paragraph so the thought lands ("...celebration is not optional"; Martha:
 "Not a woman who refused Jesus, but a woman pulled away from him...").
 
-Look (Figma 414-2523): the callout verse on screen from the first frame,
-centred, 620 wide, top 393 (raised by the owner from the Figma's 470), PT Serif
-italic 54 / 1.45 at 85% (colour and opacity); its address above it ("LUKE
-15:32", Inter 500 25 caps tracked 5 at 75%, 58 above the verse); large gold
-quote marks (Literata italic 298, 85%) at the upper left and, turned 180 deg,
-the lower right, each swaying slowly (4 deg, sin t\*0.9, out of phase).
+Look (Figma 425-2722, revised 2026-10-05; no big gold quote marks any more):
+"A Moment from the Full Devotional:" on top (the shared full-devotional label,
+below); then a centred column at top 424, 640 wide, gap 28: the address
+("LUKE 15:32", Inter 500 25 caps tracked 5 at 75%), the divider (grows with
+the verse), the verse in PT Serif italic 56 / 1.45 at 85% (colour and
+opacity), on screen from the first frame (fade 0.05 to 0.6 s).
 
 The word: dimmed with the verse until the voice says it, then gold at full
 strength (0.4 s) with a 1.4 gold stroke, no glow; a hand-drawn ring (an
@@ -293,12 +305,21 @@ each word fading in over 0.18 s as it is said, landing gold and cooling to
 the body colour over 0.42 s; no rise or blur: the kinetic rise read as
 jittery here). Sentences of four words or fewer: StampLine soft.
 
+Label: "From the Full Devotional:" on top (below).
+
 Credit: the devotional's commentary (the long form attributes the whole
 reflection to it), even when the run itself holds no credited sentence:
 divider, then centred: label (Inter 500 18 tracked 3.5 at 46%), name with life
 dates on one line (PT Serif italic 36 / 50 at 85%, "J. C. Ryle (1816–1900)"),
 round portrait 89 x 90 at 85%; gaps 30 / 4 / 20; at top 560 + 4 lines + 30,
 fading up 0.2 to 0.9 s.
+
+### Full-devotional label (language, reflection)
+
+Says the short is a piece of a longer video (owner, 2026-10-05). PT Serif
+italic 36 / 50, white 92% at 85%, centred, top 254 (Figma 249 to 259), soft
+shadow; fades up and rises 8 from 0.1 to 0.8 s. Text: language "A Moment from
+the Full Devotional:", reflection "From the Full Devotional:".
 
 ## 7. Captions (post text)
 

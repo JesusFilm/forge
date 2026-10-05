@@ -839,6 +839,36 @@ export const MUSIC_START_SHARE: Partial<Record<ShortKind, number>> = {
   history: 1 / 3,
   language: 2 / 3,
 }
+/** dB under the bed's typical full level that still counts as "playing". */
+const MUSIC_FULL_WITHIN_DB = 8
+
+/**
+ * Where a short starts in the bed, given its loudness per second (RMS dB).
+ * A bed opens with a fade-in and a soft lead-in and ends with a fade-out, so
+ * a 20 s short started at 0 heard the music only in its last seconds (owner,
+ * 2026-10-05). Starts are spread by `share` across the stretch where the bed
+ * is fully playing (within 8 dB of its typical loud level), and the short
+ * stays inside that stretch when it fits.
+ */
+export function musicStartSec(
+  rmsDb: ReadonlyArray<number>,
+  share: number,
+  durationSec: number,
+): number {
+  const levels = rmsDb.filter((v) => Number.isFinite(v)).sort((a, b) => a - b)
+  if (levels.length === 0) return 0
+  const loud = levels[Math.floor((levels.length - 1) * 0.9)] ?? 0
+  const full = (v: number | undefined) =>
+    v !== undefined && Number.isFinite(v) && v >= loud - MUSIC_FULL_WITHIN_DB
+  const first = rmsDb.findIndex((v) => full(v))
+  let last = rmsDb.length - 1
+  while (last > first && !full(rmsDb[last])) last--
+  if (first < 0) return 0
+  // `last` is the last full second, so the stretch runs to its end.
+  const room = last + 1 - first - durationSec
+  return room > 0 ? first + room * share : first
+}
+
 /** Seconds of quiet the film short's opening question needs before the
  *  scene's first line (in after the 0.6s fade from black so the stamp hits
  *  at full strength, ~2.6 on screen, 0.55 clear of the voice). */
@@ -921,6 +951,11 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
         "hookText",
         "mutedLeadSec",
         "steps",
+        // A clip-first long form speaks its opening over the film; the
+        // short is the film's own sound alone (owner, 2026-10-05: two
+        // voices on top of each other in Martha's film-verse).
+        "audioFile",
+        "words",
         // The series mark sits at the top instead (owner's Figma 411-2366);
         // the film is credited in the post caption.
         "filmMark",

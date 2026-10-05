@@ -891,6 +891,70 @@ async function widenPauseAfterWords(
   return out
 }
 
+/**
+ * Where to cut a teaser take before its hand-off line ("Let's watch.") so
+ * none of it is heard. Word times can run ~0.3s late against the audio
+ * (Martha 2026-10-05: cutting 0.05s before the "Let's" word time left
+ * "Let's" audible), so the cut goes into the real silence before the line:
+ * the longest pause that starts in the 1.6s before the line's word time
+ * (the deliberate beat before the last line), 0.15s into it. Falls back to
+ * 0.35s before the word time when the take has no such pause.
+ */
+export function ctaCutSec(
+  silences: ReadonlyArray<{ startSec: number; endSec: number }>,
+  lineStartSec: number,
+): number {
+  const gap = silences
+    .filter(
+      (x) =>
+        x.startSec >= lineStartSec - 1.6 && x.startSec <= lineStartSec + 0.1,
+    )
+    .sort((a, b) => b.endSec - b.startSec - (a.endSec - a.startSec))[0]
+  if (!gap) return Math.max(0.5, lineStartSec - 0.35)
+  return Math.max(
+    0.5,
+    gap.startSec + Math.min(0.15, (gap.endSec - gap.startSec) / 2),
+  )
+}
+
+/** Pauses in an audio file (below -40 dB for at least 0.1s). */
+function audioSilences(
+  file: string,
+): Promise<Array<{ startSec: number; endSec: number }>> {
+  return new Promise((resolve, reject) => {
+    const c = spawn(
+      "ffmpeg",
+      [
+        "-nostats",
+        "-i",
+        file,
+        "-af",
+        "silencedetect=n=-40dB:d=0.1",
+        "-f",
+        "null",
+        "-",
+      ],
+      { stdio: ["ignore", "ignore", "pipe"] },
+    )
+    let err = ""
+    c.stderr.on("data", (d) => (err += d.toString()))
+    c.on("error", reject)
+    c.on("close", () => {
+      const out: Array<{ startSec: number; endSec: number }> = []
+      let start: number | null = null
+      for (const m of err.matchAll(/silence_(start|end): ([\d.]+)/g)) {
+        const v = Number(m[2])
+        if (m[1] === "start") start = v
+        else if (start != null) {
+          out.push({ startSec: start, endSec: v })
+          start = null
+        }
+      }
+      resolve(out)
+    })
+  })
+}
+
 function runFfmpeg(args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const c = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] })
@@ -1851,16 +1915,18 @@ async function renderInStage(
         if (options.introTeaser && options.introCtaText && last != null) {
           // Silent CTA: cut the long form's hand-off line out of the take and
           // hold the written call to action where it would have been spoken.
-          const cut = Math.max(0.5, last - 0.05)
           const src = path.join(stage, "hook-full.mp3")
           const dst = path.join(stage, "hook-cut.mp3")
           await writeFile(src, seg.audio.bytes)
+          const cut = ctaCutSec(await audioSilences(src), last)
           await runFfmpeg([
             "-y",
             "-i",
             src,
             "-t",
             cut.toFixed(3),
+            "-af",
+            `afade=t=out:st=${Math.max(0, cut - 0.06).toFixed(3)}:d=0.06`,
             "-c:a",
             "libmp3lame",
             "-b:a",

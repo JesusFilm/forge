@@ -22,6 +22,7 @@ import {
   mapCardsToParagraphs,
   planCutdown,
   verseWindow,
+  musicStartSec,
   type DevotionalText,
   type Manifest,
   type ShortPlan,
@@ -461,6 +462,15 @@ describe("a second devotional: Martha and Mary", () => {
     expect(subs[0].text).toMatch(/^She came to him/)
   })
 
+  it("plays the film's own sound alone, not the clip-first opening voice over it", () => {
+    expect(m.cards[0].audioFile).toBeDefined()
+    const film = buildShortManifest(m, kind("film-verse")).cards.find(
+      (c) => c.kind === "video",
+    )!
+    expect(film.audioFile).toBeUndefined()
+    expect(film.words).toBeUndefined()
+  })
+
   it("borrows quiet footage for the cards when the scene has none to spare", () => {
     const f = kind("film-verse").film!
     expect(f.preroll).toBeDefined()
@@ -513,5 +523,30 @@ describe("kinetic hero salvage", () => {
     const roles = await chooseKineticRoles(llm as never, lines)
     expect(roles[0].hero).toBe("traveler")
     expect(roles[1].hero).toBe("small")
+  })
+})
+
+describe("musicStartSec", () => {
+  // The Martha bed: fade-in 0-4, soft lead-in to 15, full 16-63, fade-out.
+  const bed = [
+    -63, -46, -36, -30, -27, -24, -24, -24, -23, -24, -25, -24, -24, -23, -23,
+    -24, -18, -15, -12, -13, -13, -15, -15, -15, -20, -22, -12, -12, -14, -14,
+    -14, -20, -13, -13, -13, -14, -13, -14, -17, -21, -17, -12, -12, -15, -15,
+    -13, -14, -14, -18, -18, -20, -23, -23, -17, -13, -12, -13, -14, -16, -19,
+    -15, -15, -16, -18, -23, -26, -30, -33, -37, -41, -46, -50, -55, -63, -79,
+    -104,
+  ]
+  it("never opens a short on the fade-in or the soft lead-in", () => {
+    expect(musicStartSec(bed, 0, 26)).toBe(16)
+  })
+  it("spreads the other shorts across the full stretch and keeps them in it", () => {
+    const history = musicStartSec(bed, 1 / 3, 23)
+    const language = musicStartSec(bed, 2 / 3, 20)
+    expect(history).toBeGreaterThan(16)
+    expect(language).toBeGreaterThan(history)
+    expect(language + 20).toBeLessThanOrEqual(64)
+  })
+  it("starts at the full stretch when the short is longer than it", () => {
+    expect(musicStartSec(bed, 2 / 3, 60)).toBe(16)
   })
 })
