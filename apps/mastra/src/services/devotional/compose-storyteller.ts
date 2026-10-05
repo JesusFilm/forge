@@ -237,7 +237,7 @@ export async function composeStoryteller(
   note(`💡 ${brief.message.idea}`)
   note(`   tension: ${brief.message.tension}`)
   note(
-    `📚 ${brief.history.length} history fact(s), ${brief.language ? 1 : 0} language fact, ${brief.dropped.length} dropped`,
+    `📚 insight: ${brief.insight ?? "none"} (${brief.history.length} history fact(s), ${brief.language ? 1 + (brief.language.more?.length ?? 0) : 0} language fact(s), ${brief.dropped.length} dropped)`,
   )
 
   const passage = {

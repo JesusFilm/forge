@@ -403,6 +403,7 @@ async function main() {
     `- Tension: ${b.message.tension}`,
     `- Question points toward: ${b.message.askDirection}`,
     `- Grounding: ${b.message.grounding}`,
+    `- Insight: ${b.insight ?? "none"}`,
     `- Commentator's points used: ${b.message.classicPoints?.join(", ") || "1"}`,
     ...b.history.map(
       (f) =>
@@ -411,6 +412,9 @@ async function main() {
     ...(b.language
       ? [
           `- LANGUAGE (${b.language.verseRef}, "${b.language.englishPhrase}"): ${b.language.meaning}\n  Lexicon: "${b.language.quote}" (verified)`,
+          ...(b.language.more ?? []).map(
+            (m) => `  also: ${m.meaning}\n  Lexicon: "${m.quote}" (verified)`,
+          ),
         ]
       : []),
     "",

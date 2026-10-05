@@ -32,6 +32,13 @@ import {
 
 export type ResearchBrief = {
   message: DevotionalMessage
+  /**
+   * The ONE insight the facts explain (owner, 2026-10-05: "take one point,
+   * language or history, and explain it better, rather than a little of
+   * each and in the end empty words"). All facts are of one kind and serve
+   * this one sentence; absent when the researcher found none worth it.
+   */
+  insight?: string
   history: ContextFact[]
   language?: LanguageNote
   /** The classic's points the message rests on (text). */
@@ -68,6 +75,7 @@ const Schema = z
     tension: z.string(),
     askDirection: z.string(),
     grounding: z.string(),
+    insight: z.string(),
     classicPoints: z.array(z.number().int()),
     facts: z.array(FactSchema),
   })
@@ -86,6 +94,7 @@ const JSON_SCHEMA = {
       tension: str,
       askDirection: str,
       grounding: str,
+      insight: str,
       classicPoints: { type: "array", items: { type: "integer" } },
       facts: {
         type: "array",
@@ -122,6 +131,7 @@ const JSON_SCHEMA = {
       "tension",
       "askDirection",
       "grounding",
+      "insight",
       "classicPoints",
       "facts",
     ],
@@ -145,17 +155,27 @@ export const SYSTEM_PROMPT = [
   "- grounding: which verses carry the idea.",
   "- classicPoints: the numbers of the one or two commentator points that",
   "  carry the idea (the reflection is two minutes long).",
-  "- facts: two to four facts, and only ones that change how a moment in the",
-  "  story lands for the idea. For each, meaning = what it shows in THIS",
-  "  story, one sentence, following from the source itself.",
+  "- insight: ONE thing a modern reader would miss in this story that makes",
+  "  the idea land harder: EITHER the meaning of one word (language) OR one",
+  "  piece of background (history), never both. One sentence: what it is and",
+  "  which moment of the story it changes. The writer will explain it in",
+  "  full (what it is, how we know, what it changes), so it must be one",
+  "  point with enough behind it to explain, not a passing remark. Leave it",
+  "  empty, with no facts, when nothing in the sources is worth that time.",
+  "- facts: two to four facts that all explain THAT insight, all of one",
+  "  kind, together enough to explain it properly: what it was, where it",
+  "  comes from, why it matters at this moment. For each, meaning = what it",
+  "  shows in THIS story, one sentence, following from the source itself.",
   "  kind 'history': from the SOURCES given (law, custom, economy, religious",
   "  boundaries, sayings of the time). sourceId exactly as listed; quote",
   "  copied WORD FOR WORD from that source, at least six words.",
-  "  kind 'language': at most one Greek word from the GREEK list whose",
+  "  kind 'language': ONE Greek word from the GREEK list whose",
   "  meaning an English reader would miss; strong and osis exactly as listed;",
   "  englishPhrase = the English words of that verse in the passage that",
   "  translate it, copied exactly; quote from ITS lexicon entry; the meaning",
   "  is what the lexicon says the word means, never its root's etymology.",
+  "  Several language facts may quote different parts of that ONE word's",
+  "  entry (same strong and osis).",
   "  Leave strong, osis and englishPhrase empty for history facts.",
   "",
   "Everything is checked in code: a quote not in its source, a Greek word not",
@@ -163,8 +183,8 @@ export const SYSTEM_PROMPT = [
   "not look for proof of the idea; look for what helps the viewer read the",
   "text accurately. Old dictionaries carry dated guesses: take only what they",
   "state as plain fact. Rabbinic texts were written down after Jesus: they",
-  "show what rabbis said, not what Jesus' hearers knew. Two strong facts are",
-  "better than four weak ones; none at all is an honest answer.",
+  "show what rabbis said, not what Jesus' hearers knew. One insight well",
+  "supported is better than two thin ones; none at all is an honest answer.",
   "If the passage does not support a clear message, status = conflict.",
   "No em dashes or en dashes. Return JSON only.",
 ].join("\n")
@@ -253,7 +273,15 @@ export async function researchBrief(input: {
   const historyRaw: ContextFact[] = []
   let language: LanguageNote | undefined
   const words = greekWords(input.corpora, input.passage.osisRef)
+  // One insight, one kind: the first fact decides, the other kind is cut.
+  const kind = out.facts[0]?.kind
   for (const f of out.facts) {
+    if (f.kind !== kind) {
+      dropped.push(
+        `${f.kind}, a second kind of insight beside the ${kind} one: ${f.claim}`,
+      )
+      continue
+    }
     if (f.kind === "history") {
       const hit = shown.get(f.sourceId)
       if (!hit || !verifyQuote(f.quote, hit.entry.text)) {
@@ -271,9 +299,23 @@ export async function researchBrief(input: {
       continue
     }
     if (language) {
-      dropped.push(
-        `language, a second word (${f.strong}) beyond the one allowed`,
-      )
+      // More of the SAME word's entry deepens the one insight.
+      const same =
+        language.osis === f.osis &&
+        language.strong.replace(/[A-Z]$/, "") === f.strong.replace(/[A-Z]$/, "")
+      if (!same)
+        dropped.push(
+          `language, a second word (${f.strong}) beyond the one allowed`,
+        )
+      else if (!verifyQuote(f.quote, language.lexiconText))
+        dropped.push(
+          `language, quote not in the ${language.lemma} entry: “${f.quote}”`,
+        )
+      else
+        language.more = [
+          ...(language.more ?? []),
+          { meaning: f.claim, quote: f.quote, why: f.meaning },
+        ]
       continue
     }
     const base = (s: string) => s.replace(/[A-Z]$/, "")
@@ -333,6 +375,9 @@ export async function researchBrief(input: {
     (n) => input.classic.points[n - 1],
   )
   return {
+    ...(out.insight.trim() && (history.length || language)
+      ? { insight: out.insight.trim() }
+      : {}),
     message: {
       idea: out.idea,
       tension: out.tension,

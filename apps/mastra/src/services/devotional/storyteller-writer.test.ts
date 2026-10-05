@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  insightProblems,
   openingProblems,
   takeawayQuestionProblems,
   takeawayVoiceProblems,
@@ -137,5 +138,51 @@ describe("takeawayVoiceProblems", () => {
     expect(
       takeawayVoiceProblems("In every storm, remember that Jesus is with you."),
     ).not.toEqual([])
+  })
+})
+
+describe("insightProblems", () => {
+  const words = (n: number) => Array.from({ length: n }, () => "word").join(" ")
+  const p = (role: string, n: number) => ({ role, text: words(n) })
+
+  it("passes one explained block, or no insight at all", () => {
+    expect(
+      insightProblems([
+        p("reflection", 20),
+        p("history", 40),
+        p("history", 30),
+        p("reflection", 20),
+      ]),
+    ).toEqual([])
+    expect(insightProblems([p("reflection", 20), p("classic", 30)])).toEqual([])
+  })
+
+  it("flags a two-sentence note left unexplained (Bartimaeus draft, 24 words)", () => {
+    expect(
+      insightProblems([p("reflection", 20), p("history", 24)]).map(
+        (x) => x.rule,
+      ),
+    ).toEqual(["insight-thin"])
+  })
+
+  it("flags an insight split over two places", () => {
+    expect(
+      insightProblems([
+        p("language", 40),
+        p("reflection", 20),
+        p("reflection", 20),
+        p("language", 40),
+      ]).map((x) => x.rule),
+    ).toEqual(["insight-scattered"])
+  })
+
+  it("allows one paragraph of the writer's own inside the block", () => {
+    expect(
+      insightProblems([
+        p("history", 35),
+        p("reflection", 20),
+        p("history", 35),
+      ]),
+    ).toEqual([])
   })
 })

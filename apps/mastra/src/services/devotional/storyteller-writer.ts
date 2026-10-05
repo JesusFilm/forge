@@ -144,7 +144,7 @@ export const OPENING_RULES = [
   "     Recognition, never shame: the viewer thinks 'I know this', not",
   "     'this video is judging me'.",
   "  3. PREVIEW, one line that starts 'In this devotional': the devotional's",
-  "     strongest finding (the language or history note), named by WHERE it",
+  "     strongest finding (the insight), named by WHERE it",
   "     is and WHAT it concerns, never by what it means ('one word in the",
   "     father's last sentence, and what it says about the party'). Promise",
   "     only what the reflection delivers, in the reflection's own terms.",
@@ -203,11 +203,14 @@ export const SYSTEM_PROMPT = [
   "  seconds make the viewer want to stay. Never save the most interesting",
   "  fact for the end: the strongest fact comes early and the turn and its",
   "  meaning build from it. Never open on a dry fact with no person in it.",
-  "- Weave the facts into ONE or TWO developed blocks. Each block starts from",
-  "  a moment in the scene, gives the context that explains it, and at once",
-  "  says what it means for the message. Facts that serve one idea sit",
-  "  together. Never set facts side by side and leave the listener to",
-  "  connect them.",
+  "- THE INSIGHT (when the brief has one): explain it fully, in ONE block of",
+  "  two or three paragraphs in a row, 70 to 140 words of its own: the",
+  "  moment in the scene, what a modern listener would miss there and how",
+  "  we know it (from the facts, nothing beyond them), then what it changes",
+  "  for the message. Explain, do not assert: a bare claim ('that title",
+  "  means X') with nothing behind it is empty words. Never a one or two",
+  "  sentence aside dropped in and left unexplained. Use every fact or",
+  "  leave one out, but never mention the insight a second time elsewhere.",
   "- Do not retell the film: point to a detail and say what it means. At most",
   "  one sentence of plain retelling in a row.",
   "- The commentator's insight gives the turn, retold as your own thought.",
@@ -215,10 +218,11 @@ export const SYSTEM_PROMPT = [
   "  two or three times; move the thought forward instead.",
   "- End on the viewer and on Christ, with a statement, never a command.",
   "",
-  "ROLES: tag each paragraph with what it draws on: 'history' (a history fact),",
-  "'language' (the Greek fact), 'classic' (the commentator's points),",
-  "'reflection' (your own voice). One role per paragraph: a fact sits in its",
-  "own paragraph (credited on screen), your meaning in the next.",
+  "ROLES: tag each paragraph with what it draws on: 'history' or",
+  "'language' (the insight's facts, whichever kind the brief gives),",
+  "'classic' (the commentator's points), 'reflection' (your own voice). One",
+  "role per paragraph: the insight's facts sit in their own paragraphs",
+  "(credited on screen), your meaning in the next.",
   "",
   "THE OWNER'S STANDING RULES:",
   "- Never name a source aloud: no commentator, book, dictionary, lexicon.",
@@ -263,17 +267,25 @@ export function briefBlock(
     "Commentator's points (retell, do not name him):",
     ...brief.classicPoints.map((p, i) => `(${i + 1}) ${p}`),
     "",
-    "History facts (checked):",
+    `INSIGHT: ${brief.insight ?? "none: write the reflection without one"}`,
     ...(brief.history.length
-      ? brief.history.map(
-          (f) =>
-            `- ${f.claim} Source words: "${f.quote}". What it shows: ${f.why}`,
-        )
-      : ["- none"]),
-    "Language fact (checked):",
-    brief.language
-      ? `- ${brief.language.verseRef}, the words "${brief.language.englishPhrase}": ${brief.language.meaning} Source words: "${brief.language.quote}". What it shows: ${brief.language.why}`
-      : "- none",
+      ? [
+          "Its history facts (checked):",
+          ...brief.history.map(
+            (f) =>
+              `- ${f.claim} Source words: "${f.quote}". What it shows: ${f.why}`,
+          ),
+        ]
+      : []),
+    ...(brief.language
+      ? [
+          `Its language facts (checked), ${brief.language.verseRef}, the words "${brief.language.englishPhrase}":`,
+          ...[brief.language, ...(brief.language.more ?? [])].map(
+            (f) =>
+              `- ${f.meaning} Source words: "${f.quote}". What it shows: ${f.why}`,
+          ),
+        ]
+      : []),
   ].join("\n")
 }
 
@@ -471,6 +483,42 @@ export function takeawayVoiceProblems(takeaway: string) {
   )
 }
 
+/**
+ * The insight is one block, explained (owner, 2026-10-05: two thin notes of
+ * two sentences each read as "empty words"). Its fact paragraphs sit
+ * together, at most one paragraph of the writer's own between them, and
+ * carry enough words to explain rather than assert.
+ */
+export const INSIGHT_MIN_WORDS = 60
+
+export function insightProblems(
+  paragraphs: ReadonlyArray<{ role: string; text: string }>,
+): { rule: string; sentence: string; why: string }[] {
+  const at = paragraphs
+    .map((p, i) => (p.role === "history" || p.role === "language" ? i : -1))
+    .filter((i) => i >= 0)
+  if (!at.length) return []
+  const first = paragraphs[at[0]!]!.text.split(/(?<=[.!?])\s/)[0] ?? ""
+  const out: { rule: string; sentence: string; why: string }[] = []
+  if (at.some((i, k) => k > 0 && i - at[k - 1]! > 2))
+    out.push({
+      rule: "insight-scattered",
+      sentence: first,
+      why: "the insight is split over separate places; tell it in one block of paragraphs in a row",
+    })
+  const words = at.reduce(
+    (n, i) => n + paragraphs[i]!.text.split(/\s+/).filter(Boolean).length,
+    0,
+  )
+  if (words < INSIGHT_MIN_WORDS)
+    out.push({
+      rule: "insight-thin",
+      sentence: first,
+      why: `the insight has ${words} words; explain it (what it is, how we know, what it changes) in ${INSIGHT_MIN_WORDS} or more, or leave it out`,
+    })
+  return out
+}
+
 export function scriptProblems(s: StoryScript, brief: ResearchBrief) {
   const reflection = s.paragraphs.map((p) => p.text).join("\n\n")
   const opening = s.opening.map((o) => o.line).join("\n")
@@ -487,6 +535,7 @@ export function scriptProblems(s: StoryScript, brief: ResearchBrief) {
     ),
     ...namedSources([reflection, s.takeaway, s.question, s.prayer].join("\n")),
     ...shapeProblems(s.paragraphs),
+    ...insightProblems(s.paragraphs),
     ...repeatedPhrases(s),
   ]
 }

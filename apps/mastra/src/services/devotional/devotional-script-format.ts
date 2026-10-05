@@ -90,9 +90,9 @@ export function formatDevotionalScript(input: {
   const voiceTag = (v?: string) => (v === d.voice ? "voice A" : "voice B")
   const kind = (r?: string) =>
     r === "history"
-      ? "HISTORY"
+      ? "INSIGHT · HISTORY"
       : r === "language"
-        ? "LANGUAGE"
+        ? "INSIGHT · LANGUAGE"
         : r === "classic"
           ? "COMMENTARY"
           : "REFLECTION"
@@ -135,7 +135,7 @@ export function formatDevotionalScript(input: {
     "",
     ...section(4, "REFLECTION"),
     "  voice A = female (the reflection's own voice)",
-    "  voice B = male (history and language)",
+    "  voice B = male (the insight)",
     "A `mark:` tag means the source strip appears on THAT paragraph.",
     "",
     ...paragraphs.flatMap((p) => [

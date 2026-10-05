@@ -58,6 +58,9 @@ export type LanguageNote = {
   /** What it changes in the reading. */
   why: string
   lexiconText: string
+  /** Further points from the SAME entry, when the word is the devotional's
+   *  one insight and needs more than one line to explain (2026-10-05). */
+  more?: { meaning: string; quote: string; why: string }[]
 }
 
 export class DepthConflictError extends Error {
