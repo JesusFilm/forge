@@ -652,6 +652,15 @@ async function main() {
       }
       const manifestPath = path.join(stage, "manifest.json")
       await writeFile(manifestPath, JSON.stringify(m, null, 2) + "\n")
+      // --stage-out=<dir>: keep the short's staged manifest and files (the
+      // Shorts Studio export reads them) instead of rendering.
+      if (arg("stage-out")) {
+        const keep = path.join(arg("stage-out")!, short.kind)
+        await mkdir(keep, { recursive: true })
+        await run("cp", ["-RL", `${stage}/.`, keep])
+        console.log(`  staged → ${keep}`)
+        continue
+      }
       const target = stills
         ? path.join(outDir, `${short.kind}.mp4`)
         : await nextFreePath(outDir, `${short.kind}.mp4`)
