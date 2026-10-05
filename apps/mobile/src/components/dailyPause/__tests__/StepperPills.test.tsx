@@ -158,6 +158,25 @@ describe("the end state of each arrival step (Reduce Motion)", () => {
     })
   })
 
+  // The owner (2026-10-06) saw a seam between the fill and the outline. The
+  // lit disc now has the outline's own outer edge, so no inner edge is left.
+  it("draws a lit node as one disc over the outline, edge to edge", async () => {
+    await reduceMotion()
+    await render("end")
+    for (const node of ["stepper-node-top", "stepper-node-bottom"]) {
+      expect(style(node).borderWidth ?? 0).toBe(0)
+      expect(style(`${node}-fill`)).toMatchObject({
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: Number(style(node).width) / 2,
+        backgroundColor: pauseColors.ink,
+      })
+    }
+  })
+
   it("hides the nodes and the lines from VoiceOver", async () => {
     await reduceMotion()
     await render("watch")

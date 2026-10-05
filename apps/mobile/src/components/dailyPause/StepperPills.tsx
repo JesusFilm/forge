@@ -227,7 +227,8 @@ export function StepperPills({ arrival, font, onArrived }: StepperPillsProps) {
   )
 }
 
-/** The top or bottom node: an outline that fills as it lights. */
+/** The top or bottom node: an outline ring, and a disc that fades in over it.
+ *  The disc has the ring's own outer edge, so a lit node shows no seam. */
 function Node({ testID, lit }: { testID: string; lit: Level }) {
   return (
     <View
@@ -236,6 +237,7 @@ function Node({ testID, lit }: { testID: string; lit: Level }) {
       importantForAccessibility="no-hide-descendants"
       style={styles.node}
     >
+      <View style={styles.nodeRing} />
       <Animated.View
         testID={`${testID}-fill`}
         style={[styles.nodeFill, { opacity: lit }]}
@@ -304,15 +306,26 @@ const styles = StyleSheet.create({
     color: pauseColors.accent,
     fontSize: 14,
   },
-  node: {
-    width: NODE_SIZE,
-    height: NODE_SIZE,
+  node: { width: NODE_SIZE, height: NODE_SIZE },
+  nodeRing: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     borderRadius: NODE_SIZE / 2,
     borderWidth: 2.5,
     borderColor: pauseColors.ink,
-    overflow: "hidden",
   },
-  nodeFill: { flex: 1, backgroundColor: pauseColors.ink },
+  nodeFill: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: NODE_SIZE / 2,
+    backgroundColor: pauseColors.ink,
+  },
   line: { width: LINE_WIDTH },
   lineFill: {
     flex: 1,
