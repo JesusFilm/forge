@@ -31,18 +31,18 @@ All issues, comments, readiness labels, native parents, blockers, and reverse
 blocking relationships were fetched and verified on 2026-10-05. All ten issues
 are open, labelled `ready-for-agent`, and have no comments at kickoff.
 
-| Issue | Blockers     | State                               | Worker / branch                                                | Integrated commits / evidence                  |
-| ----- | ------------ | ----------------------------------- | -------------------------------------------------------------- | ---------------------------------------------- |
-| #2566 | None         | Integrated-and-verified             | `01a109e1-47c8-7043-bfd4-a85592cfafc5` / `codex/feat-590-2566` | `9a984c544`; evidence below                    |
-| #2567 | #2566        | Integrated-and-verified             | Same Sol chat / `codex/feat-590-2567`                          | `c89db0e4e`; evidence below                    |
-| #2568 | #2567        | Fixture integrated; live blocked    | Same Sol chat / `codex/feat-590-2568`                          | `b1703cd8c`; partial evidence below            |
-| #2569 | #2568        | Waiting for prerequisites           | Unassigned                                                     | None                                           |
-| #2570 | #2566        | Integrated-and-verified             | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | `0a93244a3`; evidence below                    |
-| #2571 | #2570        | Integrated; corrections in progress | Both Sol chats; scoped fixes below                             | `267a65281`, `b69592b6c`; prior evidence below |
-| #2572 | #2571        | Implementing                        | Same Sol chat / `codex/feat-590-2572`                          | Starting at `b69592b6c`                        |
-| #2573 | #2572        | Waiting for prerequisites           | Unassigned                                                     | None                                           |
-| #2574 | #2569, #2573 | Waiting for prerequisites           | Unassigned                                                     | None                                           |
-| #2575 | #2574        | Waiting for prerequisites           | Unassigned                                                     | None                                           |
+| Issue | Blockers     | State                            | Worker / branch                                                | Integrated commits / evidence                  |
+| ----- | ------------ | -------------------------------- | -------------------------------------------------------------- | ---------------------------------------------- |
+| #2566 | None         | Integrated-and-verified          | `01a109e1-47c8-7043-bfd4-a85592cfafc5` / `codex/feat-590-2566` | `9a984c544`; evidence below                    |
+| #2567 | #2566        | Integrated-and-verified          | Same Sol chat / `codex/feat-590-2567`                          | `c89db0e4e`; evidence below                    |
+| #2568 | #2567        | Fixture integrated; live blocked | Same Sol chat / `codex/feat-590-2568`                          | `b1703cd8c`; partial evidence below            |
+| #2569 | #2568        | Waiting for prerequisites        | Unassigned                                                     | None                                           |
+| #2570 | #2566        | Integrated-and-verified          | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | `0a93244a3`; evidence below                    |
+| #2571 | #2570        | Integrated-and-verified          | Both Sol chats; scoped fixes below                             | Corrections in `a7f36d778`; evidence below     |
+| #2572 | #2571        | Integrated-and-verified          | Same Sol chat / `codex/feat-590-2572`                          | `a7f36d778` plus UI follow-up in this revision |
+| #2573 | #2572        | Ready for dispatch               | Unassigned                                                     | None                                           |
+| #2574 | #2569, #2573 | Waiting for prerequisites        | Unassigned                                                     | None                                           |
+| #2575 | #2574        | Waiting for prerequisites        | Unassigned                                                     | None                                           |
 
 Advance dependencies only on **integrated-and-verified** acceptance evidence.
 Implemented, integrated, merged, and live are separate states. GitHub issues
@@ -392,8 +392,8 @@ for their stated code revision, but two requirements need correction:
   `codex/feat-590-2571-retention-health`, starting from `ab45ef328`, preserving
   its held #2568 branch. This is not #2574 physical-capacity work.
 
-Both corrections must be integrated and verified before advancing #2573.
-The separate #2572 trace-permission finding is corrected in the worker tree:
+Both corrections are integrated and verified before advancing #2573.
+The separate #2572 trace-permission finding is also corrected:
 aggregate-only editors must not receive individual card/visit traces.
 GA access remains pending; neither review nor these fixes advance #2569.
 
@@ -464,8 +464,37 @@ diagnostics. Aggregate-only editors cannot read individual card traces.
   One-card cold FCP was 2,624ms, with the recommendation request at
   3,244–3,251ms; six-card warm FCP was 348ms, with the request at 931–937ms.
   These are synthetic local development fixtures, not production capacity.
-- Browser/loading verification for the newly added Admin click tables remains
-  pending. #2573 has not been dispatched.
+- UI follow-up `9f62f1f3ac6ded192558a1419e35f9af80382758` fixes missing prose
+  whitespace and table cell spacing. Baseline, populated, and aggregate-only
+  synthetic Admin states returned HTTP 200 at 1440px and 390px. All tables
+  scroll inside their cards with no document overflow; the aggregate-only view
+  hides card traces. The orchestrator inspected the wide/narrow screenshots,
+  scroll records, and loading measurements. Artifacts are under
+  `/tmp/forge-2572-admin-browser/`, including `summary-final.json`.
+- Comparable warm local fixture runs measured median baseline/populated FCP of
+  168/208ms initially and 148/180ms after the final spacing correction. Both
+  used 23 same-origin resources and 6,000 resource-transfer bytes; populated
+  diagnostics added approximately 1.9KB of document transfer. Eleven localhost
+  Next HMR WebSocket handshake failures were logged; no other page, console,
+  or request failures were recorded. This is rendering/loading evidence, not
+  authenticated-flow or production-capacity proof. Temporary preview source
+  and generated guide changes were removed. Scoped lint/format, Admin typecheck,
+  and normal worker hooks passed after the view-only correction.
+
+The combined code was published as `a7f36d7787db5bdd89b999fc33315a577a025d33`
+without any workflow-file change; the earlier rejected local revision never
+reached the remote. CI is tracked per published head and remains separate from
+the local acceptance evidence above. The view-only follow-up and this ledger
+complete #2572's scoped acceptance; #2573 is ready for dispatch after this
+integration commit.
+
+A separate Sol chat reviewed the pinned `a7f36d778` snapshot against initial
+base `d661b99939e24ba41834adce53c6bad9262bcee9`, with sequential Standards and
+Spec axes. Both returned zero confirmed findings. This preliminary whole-branch
+review excludes the already owned spacing fix and the explicitly unfinished
+live inputs and later tickets. It is not final acceptance of the full parent
+spec. Delivery-link failures still cannot quantify lost click attribution;
+the private report labels measurement loss unobservable.
 
 An isolated PostgreSQL 18 integration database is running in
 `forge_feat590_integration_db` on loopback port `32810`. It is reserved for

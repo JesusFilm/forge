@@ -61,7 +61,7 @@ export function PrivateVisitDiagnosticsView({
         meta="DENOMINATOR INCLUDES ZERO CARDS"
       >
         <div className="overflow-x-auto p-4 text-[13px]">
-          <table className="w-full text-left">
+          <table className="w-full min-w-max text-left [&_td]:pr-4 [&_th]:pr-4 [&_th]:whitespace-nowrap">
             <thead>
               <tr>
                 <th>Arm</th>
@@ -124,7 +124,7 @@ export function PrivateVisitDiagnosticsView({
               <p>
                 Clicked visits include accepted selections without a qualified
                 impression. Card CTR uses qualified impressions only. Lost
-                browser events are {clicks.measurementLoss.replaceAll("_", " ")}
+                browser events are {clicks.measurementLoss.replaceAll("_", " ")}{" "}
                 and cannot be measured as zero engagement; bot qualification
                 remains unverified. Disabling personalization does not remove
                 contextual clicks from these counts. Reset or deletion clears
@@ -133,7 +133,7 @@ export function PrivateVisitDiagnosticsView({
               {clicks.status === "incomplete_raw_window" ? (
                 <p>The 29-day raw evidence window is incomplete.</p>
               ) : null}
-              <table className="w-full text-left">
+              <table className="w-full min-w-max text-left [&_td]:pr-4 [&_th]:pr-4 [&_th]:whitespace-nowrap">
                 <thead>
                   <tr>
                     <th>Arm</th>
@@ -182,7 +182,7 @@ export function PrivateVisitDiagnosticsView({
           {clicks.recentCards ? (
             <PageSection title="Recent accepted cards" meta="LAST 25 / PRIVATE">
               <div className="overflow-x-auto p-4 text-[13px]">
-                <table className="w-full text-left">
+                <table className="w-full min-w-max text-left [&_td]:pr-4 [&_th]:pr-4 [&_th]:whitespace-nowrap">
                   <thead>
                     <tr>
                       <th>Received</th>
