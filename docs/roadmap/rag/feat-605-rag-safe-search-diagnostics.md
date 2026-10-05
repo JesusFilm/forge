@@ -3,7 +3,7 @@ id: "feat-605"
 title: "Classify intermittent RAG search failures safely"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-05"
 duration: 1
 depends_on: []
@@ -57,3 +57,20 @@ must yield a fixed unknown classification.
 - Run package typecheck, lint, import boundaries and formatting.
 - After approved deployment, correlate a failed request by opaque ID and safe
   phase/category; until then live diagnosis remains unverified.
+
+## Resolution
+
+Implemented in [PR #2564](https://github.com/JesusFilm/forge/pull/2564), merged at
+`b23a445ab08f08294baa2f3675ed8ea7c19884d0` and verified through the normal deployment.
+Search failures now emit an allowlisted stage/category/detail and opaque server
+request ID; arbitrary provider status text and raw exceptions are omitted.
+HTTP bodies/statuses, authentication and embedding retry budgets are preserved.
+
+Local verification passed 935 RAG tests with eight integration tests skipped;
+normal hooks and applicable CI, including PostgreSQL integration, passed.
+Post-deployment health returned HTTP 200; bounded smoke returned five results;
+an authenticated consumer retrieval returned HTTP 200 with three results and a
+validated server-generated UUID header. No failure occurred in that check, so
+production failure classification was not observed. Classification and redaction
+were exercised by local tests. The underlying intermittent failure cause and fix
+remain unresolved; this closes instrumentation only.
