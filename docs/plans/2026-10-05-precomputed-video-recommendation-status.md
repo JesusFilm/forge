@@ -33,11 +33,11 @@ are open, labelled `ready-for-agent`, and have no comments at kickoff.
 
 | Issue | Blockers     | State                     | Worker / branch                                                | Integrated commits / evidence |
 | ----- | ------------ | ------------------------- | -------------------------------------------------------------- | ----------------------------- |
-| #2566 | None         | Implementing              | `01a109e1-47c8-7043-bfd4-a85592cfafc5` / `codex/feat-590-2566` | None                          |
-| #2567 | #2566        | Waiting for prerequisites | Unassigned                                                     | None                          |
+| #2566 | None         | Integrated-and-verified   | `01a109e1-47c8-7043-bfd4-a85592cfafc5` / `codex/feat-590-2566` | `9a984c544`; evidence below   |
+| #2567 | #2566        | Implementing              | Same Sol chat / `codex/feat-590-2567`                          | Starting at `9a984c544`       |
 | #2568 | #2567        | Waiting for prerequisites | Unassigned                                                     | None                          |
 | #2569 | #2568        | Waiting for prerequisites | Unassigned                                                     | None                          |
-| #2570 | #2566        | Waiting for prerequisites | Unassigned                                                     | None                          |
+| #2570 | #2566        | Implementing              | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | Starting at `9a984c544`       |
 | #2571 | #2570        | Waiting for prerequisites | Unassigned                                                     | None                          |
 | #2572 | #2571        | Waiting for prerequisites | Unassigned                                                     | None                          |
 | #2573 | #2572        | Waiting for prerequisites | Unassigned                                                     | None                          |
@@ -66,6 +66,21 @@ The worker created its own isolated checkout at
 `/home/nisal/.codex/worktrees/feat-590-2566/forge` from the integration branch.
 Its verified starting SHA is `c0cf907a2a4089019e92c831b41b495acf93eae3`.
 This is an app-routing workaround, not an internal subagent or model substitution.
+
+After #2566 verification, the same Sol chat was renamed
+`#2567 Generate explainable source recommendations with Astra` and reused its
+clean worktree on the new `codex/feat-590-2567` branch at `9a984c544`.
+The prior branch/commit is preserved. A second fork of the same idle planning
+chat created `#2570 Serve saved recommendations on private Watch previews`
+(`01a10a28-aa8e-7080-b3d1-c59293f8f4dd`), again explicitly dispatched with
+`model: "gpt-6-sol"` and instructions to create its own isolated checkout.
+
+#2567 owns generation/producer contracts and reserves migration `0129`;
+#2570 owns private Watch/Web/GraphQL/readers and reserves `0130` if needed.
+#2567 exclusively owns `precomputed/contract.ts` while these tickets run.
+Workers coordinate shared Prisma/environment hunks through the orchestrator
+and serialize heavy Admin validation with
+`flock /tmp/forge-feat590-heavy-validation.lock`.
 
 ### Roadmap identity reconciliation
 
@@ -97,7 +112,53 @@ GitHub issue identities changed.
 Initial preparation contains documentation only. Explicit touched-document
 `npx --no-install prettier --check`, `git diff --check`, and the normal
 commit hooks (including full-repository `pnpm run format:check`) passed.
-The first PR revision passed `ci-gate`, format, commit lint, CodeQL and other
-applicable checks. The advisory roadmap ID collision is corrected locally and
-its guard now passes; the correction still needs publishing.
-No implementation acceptance is verified.
+The documentation revision `4c1f27269dfb32e2fdaf389bec7d3e8abe90a52a` passed
+`ci-gate`, format, commit lint, CodeQL, the roadmap ID collision guard, and other
+applicable checks after publishing the identity correction.
+
+### #2566 integrated acceptance
+
+Worker commit `497289c762f5a25291b67c8e96108d486565cfe2` was integrated as
+`9a984c544f3f2a612a7e21c17e94db702a944b25`. It adds authenticated idempotent
+generation ingest, compact saved source sets, and the private Admin comparison.
+Public Watch selection is unchanged. No GraphQL contract changed.
+
+- Worker: 16 focused tests; 8,951 full Admin tests; TypeScript, scoped lint,
+  Prettier, Prisma validation, and normal commit hooks passed.
+- Browser: authenticated selector/one/zero states and unauthenticated redirect
+  passed with canonical `english` audio; warm one-card development load ~456ms.
+  Screenshots: `/tmp/forge-feat590-2566-browser/one-english.png` and
+  `/tmp/forge-feat590-2566-browser/zero-english.png`. These are local fixture
+  timings, not production performance estimates.
+- Independent integration: Prisma generation, migration `0128` on PostgreSQL
+  18, all 27 selected native/route/view/profile/lifecycle tests, and Admin
+  TypeScript passed. Logs are under `/tmp/forge-feat-590-orchestration/` with
+  the `2566-integration-` prefix.
+- Standards review: service authorization/layering and real migration-backed
+  fixture issues were corrected; no remaining scoped findings.
+- Spec review: retry identity, incumbent labels, canonical audio selection,
+  and source-cohort hash ordering were corrected; no remaining #2566 blockers.
+  Source-set hashing explicitly uses JavaScript ordering, independent of DB
+  collation. Every accepted edge persists; the display limit is six.
+
+An isolated PostgreSQL 18 integration database is running in
+`forge_feat590_integration_db` on loopback port `32810`. It is reserved for
+independent combined checks after worker commits are integrated. The #2566
+worker moved from PostgreSQL 16 to PostgreSQL 18 for its final validation and
+removed its disposable databases after completion.
+
+The unchanged integration baseline successfully applied all Admin migrations
+through `0127` to its separate `forge_preview` database on PostgreSQL 18.
+Baseline native profile/lifecycle verification on the blank `forge_test`
+database passed 10/11 tests. The final historical fact-index fixture fails at
+`migration.lifecycle.db.test.ts:932` because `recommendation_request` is missing;
+this predates the implementation: that standalone test assumes an already
+migrated public schema. All eight lifecycle tests pass on the fully migrated
+integration database. No production lifecycle regression was found. Baseline log:
+`/tmp/forge-feat-590-orchestration/baseline-lifecycle-tests.log`.
+
+The host briefly reached 321MB free during validation. Pruning regenerable
+pnpm metadata/unused packages and unused Docker builder cache restored about
+5GB of free space. No images, containers, database volumes, checkouts, or source
+were removed by the orchestrator. Keep heavyweight builds serialized if space
+becomes constrained again.
