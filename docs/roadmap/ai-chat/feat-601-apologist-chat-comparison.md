@@ -19,6 +19,8 @@ tags:
 
 **Shipped:** 2026-10-02 via [PR #2548](https://github.com/JesusFilm/forge/pull/2548) (`feat(chat): add temporary Apologist answer comparison`). Production enablement and verification were confirmed by the operator on 2026-10-05.
 
+**Validation recording:** [PR #2577](https://github.com/JesusFilm/forge/pull/2577) (`docs(chat): close production comparison validation`) records the operator-confirmed production checks and closes this ticket.
+
 **What landed.** A temporary, separately allowlisted comparison sends a shared question to Forge and Apologist, with independent responses and fixed provider headings. Forge history persists; Apologist history is temporary. The comparison is disabled by default in code and is now enabled in production for the configured internal testers.
 
 **Production verification (operator-confirmed).** The operator confirmed these checks in the deployed browser; this closeout records their results rather than a new agent-run verification:
