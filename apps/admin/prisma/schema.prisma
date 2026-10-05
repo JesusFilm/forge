@@ -5604,8 +5604,8 @@ model ShortSourceSnapshot {
   dub         VideoDub         @relation(fields: [dubId], references: [id], onDelete: Restrict)
   editionId   String           @map("edition_id")
   edition     VideoEdition     @relation(fields: [editionId], references: [id], onDelete: Restrict)
-  trackId     String           @map("track_id")
-  track       VideoSubtitle    @relation(fields: [trackId], references: [id], onDelete: Restrict)
+  trackId     String?          @map("track_id")
+  track       VideoSubtitle?   @relation(fields: [trackId], references: [id], onDelete: Restrict)
   downloadId  String           @map("download_id")
   download    VideoDubDownload @relation(fields: [downloadId], references: [id], onDelete: Restrict)
   snapshot    Json

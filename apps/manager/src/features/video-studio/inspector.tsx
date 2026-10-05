@@ -448,6 +448,38 @@ export function Inspector({
             )}
           </>
         )}
+        {item.kind === "video" && (
+          <>
+            <h3>Source focus</h3>
+            <p className="nle-muted">
+              Choose which part of the source fills the frame.
+            </p>
+            {(["x", "y"] as const).map((axis) => (
+              <NumberField
+                key={axis}
+                label={`Focus ${axis === "x" ? "horizontal" : "vertical"} (%)`}
+                value={(item.focus?.[axis] ?? 0.5) * 100}
+                min={0}
+                max={100}
+                step={1}
+                onChange={(value) =>
+                  patch((i) =>
+                    i.kind === "video"
+                      ? {
+                          ...i,
+                          focus: {
+                            x: i.focus?.x ?? 0.5,
+                            y: i.focus?.y ?? 0.5,
+                            [axis]: value / 100,
+                          },
+                        }
+                      : i,
+                  )
+                }
+              />
+            ))}
+          </>
+        )}
         <h3>Transform</h3>
         <div className="nle-row">
           <NumberField

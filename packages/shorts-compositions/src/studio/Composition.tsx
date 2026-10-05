@@ -46,8 +46,10 @@ function HlsVideo({
   start,
   volume,
   holdIfUnready,
+  focus,
   onError,
 }: {
+  focus?: { x: number; y: number }
   url: string
   start: number
   volume: number
@@ -111,7 +113,12 @@ function HlsVideo({
       trimBefore={start}
       volume={volume}
       pauseWhenBuffering={false}
-      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        objectPosition: `${(focus?.x ?? 0.5) * 100}% ${(focus?.y ?? 0.5) * 100}%`,
+      }}
     />
   )
 }
@@ -186,10 +193,16 @@ function Layer({
               presentation.preRoll
             }
             volume={globalFrame < item.startFrame ? 0 : item.volume}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: `${(item.focus?.x ?? 0.5) * 100}% ${(item.focus?.y ?? 0.5) * 100}%`,
+            }}
           />
         ) : (
           <HlsVideo
+            focus={item.focus}
             url={url}
             holdIfUnready={holdIfUnready}
             start={

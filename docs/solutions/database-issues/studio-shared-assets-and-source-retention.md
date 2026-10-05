@@ -62,8 +62,9 @@ provenance remains unknown; importing historic approval files grants no approval
 ## Canonical source and downstream handoff
 
 `StudioSourceService.capture` requires exact Video/Dub/Edition/language slug,
-subtitle track and download IDs plus bounded source times. It never chooses another
-language, edition, caption track, or transcription. Canonical VTT bytes are retained
+download ID and bounded source times, with either an exact subtitle track ID or
+explicit `trackId: null` for subtitle-free footage. It never chooses another
+language, edition, caption track, or transcription. When a track is selected, canonical VTT bytes are retained
 with their digest, track flags and selected URLs. `mapStudioSourceCues` maps separate
 source intervals to composition frames without filling gaps or rounding away timing.
 
@@ -92,7 +93,10 @@ Catalog feat-459 and publication feat-460 use transaction-compatible exports fro
 `eligibility`. Current eligibility locks catalog rows before checking availability,
 exact identity, URLs/duration and platform restrictions even for operators.
 Consumers must use the returned current restrictions, not just pinned old evidence.
-Source snapshots have restrictive FKs to Video, Dub, Edition, Subtitle and Download.
+Source snapshots have restrictive FKs to Video, Dub, Edition and Download; the
+Subtitle FK is nullable for explicitly subtitle-free footage. Missing captions
+remain `null` in the snapshot and source preview reports `no-subtitle` evidence
+with no cues. No VTT or dialogue is synthesized.
 They are the canonical registry; downstream work must not introduce another one.
 
 ## Transactional retention
