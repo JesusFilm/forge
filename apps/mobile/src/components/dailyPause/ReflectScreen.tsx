@@ -84,7 +84,7 @@ export function ReflectScreen({
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
       >
-        <StepperPills active="reflect" font={font} />
+        <StepperPills arrival="reflect" font={font} />
         <View style={styles.spacer} />
         <Text
           style={[

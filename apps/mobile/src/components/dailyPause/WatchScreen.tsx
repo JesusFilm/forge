@@ -112,7 +112,7 @@ export function WatchScreen({
     <PauseBody>
       <PauseMasthead meditationLength={meditationLength} font={font} />
       <View style={styles.spacer} />
-      <StepperPills active="watch" font={font} />
+      <StepperPills arrival="watch" font={font} />
       <View style={styles.spacer} />
       <PauseButton label="Continue" onPress={onContinue} font={font} />
     </PauseBody>

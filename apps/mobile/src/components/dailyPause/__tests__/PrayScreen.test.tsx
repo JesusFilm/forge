@@ -21,6 +21,7 @@ import {
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 import { PrayScreen } from "../PrayScreen"
+import { STEPPER_END_MS } from "../StepperPills"
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 62, bottom: 34, left: 0, right: 0 }),
@@ -201,6 +202,23 @@ it("makes Amen active at zero and moves on only at the tap (R17)", async () => {
   advance(60_000)
   expect(onContinue).not.toHaveBeenCalled()
   await press(pressableByLabel(root, "Amen"))
+  advance(STEPPER_END_MS)
+  expect(onContinue).toHaveBeenCalledTimes(1)
+})
+
+// The owner (2026-10-06): after Amen the path runs to its bottom node, then
+// the run moves on to Share.
+it("plays the end step after Amen, then moves on once", async () => {
+  const root = await render(3)
+  advance(30_000)
+
+  await press(pressableByLabel(root, "Amen"))
+  expect(hostsWithLabel(root, "Pray, done")).toHaveLength(1)
+  advance(STEPPER_END_MS - 250)
+  expect(onContinue).not.toHaveBeenCalled()
+
+  await press(pressableByLabel(root, "Amen"))
+  advance(STEPPER_END_MS)
   expect(onContinue).toHaveBeenCalledTimes(1)
 })
 

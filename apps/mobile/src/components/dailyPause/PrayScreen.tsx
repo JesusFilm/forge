@@ -1,6 +1,7 @@
 // The Figma "Transition · Pray" screen (R11, R16, R17, R19, R30). The ring
-// counts the pause down, and Amen takes no tap before zero. The content stacks
-// from the top; it scrolls at large text sizes, and Amen stays on screen.
+// counts the pause down, and Amen takes no tap before zero. After Amen the path
+// runs to its end, then the run moves on (the owner, 2026-10-06).
+import { useState } from "react"
 import { ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { useCountdown } from "../../lib/dailyPause/countdown"
@@ -34,6 +35,7 @@ export function PrayScreen({
   onContinue,
 }: PrayScreenProps) {
   const countdown = useCountdown(PAUSE_TIMERS[meditationLength].praySec)
+  const [ending, setEnding] = useState(false)
 
   return (
     <PauseBody>
@@ -41,7 +43,13 @@ export function PrayScreen({
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
       >
-        <StepperPills active="pray" font={font} />
+        {/* A new key mounts the end step, which starts where Pray's ended. */}
+        <StepperPills
+          key={ending ? "end" : "pray"}
+          arrival={ending ? "end" : "pray"}
+          font={font}
+          onArrived={onContinue}
+        />
         <View style={styles.ringGap} />
         <View style={styles.ringBox}>
           <CountdownRing countdown={countdown} font={font} />
@@ -55,7 +63,7 @@ export function PrayScreen({
         <View style={styles.buttonGap} />
       </ScrollView>
       {countdown.done ? (
-        <PauseButton label="Amen" onPress={onContinue} font={font} />
+        <PauseButton label="Amen" onPress={() => setEnding(true)} font={font} />
       ) : (
         <HeldPauseButton label="Amen" spokenLabel="Amen" font={font} />
       )}

@@ -37,6 +37,7 @@ import {
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 import { RunScreen } from "../RunScreen"
+import { STEPPER_END_MS } from "../StepperPills"
 
 // The stores read the module's `default`, so the mock must carry one.
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -255,6 +256,10 @@ async function next() {
   } else if (step === "prayScreen") {
     await waitOutPause()
     await tap("Amen")
+    // The path runs to its end before Share.
+    await act(async () => {
+      jest.advanceTimersByTime(STEPPER_END_MS)
+    })
   } else {
     await tap("Continue")
   }

@@ -1,7 +1,10 @@
-// The Figma pill stepper (R11): WATCH, REFLECT, and PRAY in a centered column.
-// A pill before the active one is done, and a pill after it is upcoming.
-import { StyleSheet, Text, View } from "react-native"
+// The WATCH, REFLECT, and PRAY stepper (R11) as a path from a top node to a
+// bottom node (the owner, 2026-10-06). Each screen plays one arrival step: a
+// line draws to the next pill, which lights up. Reduce Motion shows the end.
+import { useEffect, useRef, useState } from "react"
+import { Animated, Easing, StyleSheet, Text, View } from "react-native"
 
+import { useReduceMotion } from "../../hooks/useReduceMotion"
 import type { PauseFace, PauseFontStyle } from "../../lib/dailyPause/fonts"
 import {
   pauseColors,
@@ -10,8 +13,10 @@ import {
 } from "../../lib/dailyPause/theme"
 
 export type StepperStage = "watch" | "reflect" | "pray"
+/** The step the path arrives at. "end" plays on the Pray screen after Amen. */
+export type StepperArrival = StepperStage | "end"
 
-type PillState = "active" | "done" | "upcoming"
+type PillLook = "active" | "done" | "upcoming"
 
 const STAGES: readonly { stage: StepperStage; label: string; name: string }[] =
   [
@@ -20,61 +25,261 @@ const STAGES: readonly { stage: StepperStage; label: string; name: string }[] =
     { stage: "pray", label: "PRAY", name: "Pray" },
   ]
 
+const ARRIVALS: readonly StepperArrival[] = ["watch", "reflect", "pray", "end"]
+
 /** VoiceOver cannot see the fill, so the label says the state. */
-const STATE_WORDS: Readonly<Record<PillState, string>> = {
+const STATE_WORDS: Readonly<Record<PillLook, string>> = {
   active: "current step",
   done: "done",
   upcoming: "upcoming",
 }
 
-type StepperPillsProps = {
-  active: StepperStage
-  font: (face: PauseFace) => PauseFontStyle
+/** A pause so the viewer sees the start, then the phases of one step, in ms. */
+const LEAD_MS = 250
+const NODE_MS = 250
+const LINE_MS = 400
+const LIGHT_MS = 250
+/** The end step holds the lit bottom node before the run moves on. */
+const END_HOLD_MS = 400
+/** The end step's length: the line, the node, and the hold. */
+export const STEPPER_END_MS = LINE_MS + NODE_MS + END_HOLD_MS
+
+const NODE_SIZE = 18
+const LINE_WIDTH = 3
+const NODE_LINE_LENGTH = 28
+const PILL_LINE_LENGTH = 18
+/** The current pill's frame height. Every pill sits in a slot this tall, so a
+ *  change of look never moves the column. */
+const PILL_SLOT_HEIGHT = 46
+
+type Phase = { from: number; to: number }
+type Plan = {
+  totalMs: number
+  node?: Phase
+  line: Phase
+  light: Phase
 }
 
-export function StepperPills({ active, font }: StepperPillsProps) {
-  const activeIndex = STAGES.findIndex((entry) => entry.stage === active)
+/** Where each phase sits in one step, in ms from its start. */
+function planFor(arrival: StepperArrival): Plan {
+  if (arrival === "end") {
+    const node = { from: LINE_MS, to: LINE_MS + NODE_MS }
+    return {
+      totalMs: STEPPER_END_MS,
+      line: { from: 0, to: LINE_MS },
+      node,
+      light: node,
+    }
+  }
+  const nodeMs = arrival === "watch" ? NODE_MS : 0
+  const lineFrom = LEAD_MS + nodeMs
+  const lightFrom = lineFrom + LINE_MS
+  return {
+    totalMs: lightFrom + LIGHT_MS,
+    node: arrival === "watch" ? { from: LEAD_MS, to: lineFrom } : undefined,
+    line: { from: lineFrom, to: lightFrom },
+    light: { from: lightFrom, to: lightFrom + LIGHT_MS },
+  }
+}
+
+type Level = number | Animated.AnimatedInterpolation<number>
+
+/** Points on an ease-out curve. The native driver rejects an `easing` key in
+ *  an interpolation, so the curve rides in the ranges instead. */
+const EASE_POINTS = [0, 0.25, 0.5, 0.75, 1]
+const easeOut = Easing.out(Easing.cubic)
+
+function phaseLevel(
+  progress: Animated.Value,
+  phase: Phase,
+  totalMs: number,
+): Level {
+  const span = phase.to - phase.from
+  return progress.interpolate({
+    inputRange: EASE_POINTS.map((t) => (phase.from + t * span) / totalMs),
+    outputRange: EASE_POINTS.map((t) => easeOut(t)),
+    extrapolate: "clamp",
+  })
+}
+
+function inverse(level: Level): Level {
+  return typeof level === "number"
+    ? 1 - level
+    : level.interpolate({ inputRange: [0, 1], outputRange: [1, 0] })
+}
+
+type StepperPillsProps = {
+  arrival: StepperArrival
+  font: (face: PauseFace) => PauseFontStyle
+  /** The end step only: called once, when its step has played. */
+  onArrived?: () => void
+}
+
+export function StepperPills({ arrival, font, onArrived }: StepperPillsProps) {
+  const reduceMotion = useReduceMotion()
+  const [progress] = useState(() => new Animated.Value(0))
+  const plan = planFor(arrival)
+  const index = ARRIVALS.indexOf(arrival)
+
+  useEffect(() => {
+    if (reduceMotion) return
+    const animation = Animated.timing(progress, {
+      toValue: 1,
+      duration: plan.totalMs,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    })
+    animation.start()
+    return () => animation.stop()
+  }, [progress, reduceMotion, plan.totalMs])
+
+  // A native completion callback is unreliable on this app, so the end step
+  // reports from its own clock, as the curtain does.
+  const onArrivedRef = useRef(onArrived)
+  useEffect(() => {
+    onArrivedRef.current = onArrived
+  })
+  useEffect(() => {
+    if (arrival !== "end") return
+    const timer = setTimeout(
+      () => onArrivedRef.current?.(),
+      reduceMotion ? 0 : plan.totalMs,
+    )
+    return () => clearTimeout(timer)
+  }, [arrival, reduceMotion, plan.totalMs])
+
+  // Under Reduce Motion every phase has played: plain values, no animation.
+  const step = (phase: Phase): Level =>
+    reduceMotion ? 1 : phaseLevel(progress, phase, plan.totalMs)
+  const light = step(plan.light)
+  const lineLevel = (line: number): Level =>
+    line < index ? 1 : line === index ? step(plan.line) : 0
+  const topNode: Level = arrival === "watch" && plan.node ? step(plan.node) : 1
+  const bottomNode: Level = arrival === "end" && plan.node ? step(plan.node) : 0
+
+  /** The level of each look of one pill, from 0 (hidden) to 1 (shown). */
+  function looks(pill: number): Record<PillLook, Level> {
+    if (pill === index)
+      return { upcoming: inverse(light), active: light, done: 0 }
+    if (pill === index - 1)
+      return { upcoming: 0, active: inverse(light), done: light }
+    if (pill < index) return { upcoming: 0, active: 0, done: 1 }
+    return { upcoming: 1, active: 0, done: 0 }
+  }
+
+  function endLook(pill: number): PillLook {
+    return pill < index ? "done" : pill === index ? "active" : "upcoming"
+  }
 
   return (
     <View style={styles.stepper}>
-      {STAGES.map(({ stage, label, name }, index) => {
-        const state: PillState =
-          index < activeIndex
-            ? "done"
-            : index === activeIndex
-              ? "active"
-              : "upcoming"
+      <Node testID="stepper-node-top" lit={topNode} />
+      <Line
+        testID="stepper-line-0"
+        length={NODE_LINE_LENGTH}
+        level={lineLevel(0)}
+      />
+      {STAGES.map(({ stage, label, name }, pill) => {
+        const levels = looks(pill)
         return (
-          <View
-            key={stage}
-            accessible
-            accessibilityLabel={`${name}, ${STATE_WORDS[state]}`}
-            style={[styles.pill, pillStyles[state]]}
-          >
-            {state === "done" ? (
-              <Text style={[styles.check, font("sansBold")]}>✓</Text>
-            ) : null}
-            <Text
-              style={[
-                state === "active" ? styles.activeLabel : styles.label,
-                font("sansBold"),
-              ]}
+          <View key={stage} style={styles.slotGroup}>
+            <View
+              accessible
+              accessibilityLabel={`${name}, ${STATE_WORDS[endLook(pill)]}`}
+              style={styles.slot}
             >
-              {label}
-            </Text>
+              {(["upcoming", "done", "active"] as const).map((one) => (
+                <Animated.View
+                  key={one}
+                  testID={`stepper-${stage}-${one}`}
+                  style={[
+                    styles.pill,
+                    pillStyles[one],
+                    { opacity: levels[one] },
+                  ]}
+                >
+                  {one === "done" ? (
+                    <Text style={[styles.check, font("sansBold")]}>✓</Text>
+                  ) : null}
+                  <Text
+                    style={[
+                      one === "active" ? styles.activeLabel : styles.label,
+                      font("sansBold"),
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                </Animated.View>
+              ))}
+            </View>
+            <Line
+              testID={`stepper-line-${pill + 1}`}
+              length={
+                pill === STAGES.length - 1 ? NODE_LINE_LENGTH : PILL_LINE_LENGTH
+              }
+              level={lineLevel(pill + 1)}
+            />
           </View>
         )
       })}
+      <Node testID="stepper-node-bottom" lit={bottomNode} />
+    </View>
+  )
+}
+
+/** The top or bottom node: an outline that fills as it lights. */
+function Node({ testID, lit }: { testID: string; lit: Level }) {
+  return (
+    <View
+      testID={testID}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.node}
+    >
+      <Animated.View
+        testID={`${testID}-fill`}
+        style={[styles.nodeFill, { opacity: lit }]}
+      />
+    </View>
+  )
+}
+
+/** One segment of the path. It draws downward from its top as it lights. */
+function Line({
+  testID,
+  length,
+  level,
+}: {
+  testID: string
+  length: number
+  level: Level
+}) {
+  return (
+    <View
+      testID={testID}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.line, { height: length }]}
+    >
+      <Animated.View
+        testID={`${testID}-fill`}
+        style={[styles.lineFill, { transform: [{ scaleY: level }] }]}
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  stepper: {
+  stepper: { alignItems: "center", alignSelf: "stretch" },
+  slotGroup: { alignItems: "center", alignSelf: "stretch" },
+  slot: {
+    alignSelf: "stretch",
     alignItems: "center",
-    gap: pauseSpacing.stepperGap,
+    justifyContent: "center",
+    height: PILL_SLOT_HEIGHT,
   },
   pill: {
+    position: "absolute",
     flexDirection: "row",
     alignItems: "center",
     maxWidth: "100%",
@@ -98,6 +303,21 @@ const styles = StyleSheet.create({
     marginRight: pauseSpacing.pillCheckGap,
     color: pauseColors.accent,
     fontSize: 14,
+  },
+  node: {
+    width: NODE_SIZE,
+    height: NODE_SIZE,
+    borderRadius: NODE_SIZE / 2,
+    borderWidth: 2.5,
+    borderColor: pauseColors.ink,
+    overflow: "hidden",
+  },
+  nodeFill: { flex: 1, backgroundColor: pauseColors.ink },
+  line: { width: LINE_WIDTH },
+  lineFill: {
+    flex: 1,
+    backgroundColor: pauseColors.ink,
+    transformOrigin: "top",
   },
 })
 
