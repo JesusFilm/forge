@@ -74,6 +74,7 @@ The prior branch/commit is preserved. A second fork of the same idle planning
 chat created `#2570 Serve saved recommendations on private Watch previews`
 (`01a10a28-aa8e-7080-b3d1-c59293f8f4dd`), again explicitly dispatched with
 `model: "gpt-6-sol"` and instructions to create its own isolated checkout.
+Its verified checkout is `/home/nisal/.codex/worktrees/feat-590-2570/forge`.
 
 #2567 owns generation/producer contracts and reserves migration `0129`;
 #2570 owns private Watch/Web/GraphQL/readers and reserves `0130` if needed.
@@ -81,6 +82,15 @@ chat created `#2570 Serve saved recommendations on private Watch previews`
 Workers coordinate shared Prisma/environment hunks through the orchestrator
 and serialize heavy Admin validation with
 `flock /tmp/forge-feat590-heavy-validation.lock`.
+
+#2570 subsequently confirmed it needs no Prisma model edits: it reuses the
+existing compact request/snapshot/item lineage. It owns Admin
+`RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED` and Web
+`WATCH_PRECOMPUTED_RECOMMENDATIONS_PREVIEW_ENABLED`, both optional/default-off.
+#2567 owns generation input mode, source status/failure, and model-call usage
+rows. After both are integrated, verify the reader requires complete generation
+and complete source under the evolved schema; #2570 must remain buildable on
+its captured `0128` baseline while `0129` is pending.
 
 ### Roadmap identity reconciliation
 
@@ -140,6 +150,31 @@ Public Watch selection is unchanged. No GraphQL contract changed.
   and source-cohort hash ordering were corrected; no remaining #2566 blockers.
   Source-set hashing explicitly uses JavaScript ordering, independent of DB
   collation. Every accepted edge persists; the display limit is six.
+- CI on published head `3b2ea631a942c83d9bb4ad00491fcaf4f2e0ce4e` passed all
+  applicable checks, including `ci-gate`, Admin build/test/lint, schema drift,
+  formatting, commit lint, roadmap guards, and CodeQL.
+
+### Parallel implementation review checkpoints
+
+#2567 now has the bounded source producer, pinned Astra Responses provider,
+authenticated catalog boundary, and native build-to-Admin-review integration
+harness outside the app contexts. Controlled tests cover multilingual and
+metadata-only choices, sparse output, invalid evidence/output, missing model
+access, and replay. Provider retries are disabled so attempts can be accounted
+for; available usage survives output validation failure. These are fixture
+claims only. Final review includes rejecting generation-ID reuse with a
+different source or cutoff before any provider spend.
+
+#2570 has native delivery and browser checks for saved choices and private
+fallback. Review fixes distinguish absent source data from a valid empty set,
+keep reasoning out of per-visit snapshots, enforce service authorization, and
+classify both returned and thrown authorization failures without fallback.
+Preview and incumbent share the existing 3.5-second upstream budget; Admin
+reads now use its bounded transaction helper. Browser tests are being tightened
+to await actual empty responses and navigate with an old request in flight.
+Its demo shell timing is local fixture evidence, not real playback or production
+performance proof. Neither ticket is integrated until final checks and commits
+are verified.
 
 An isolated PostgreSQL 18 integration database is running in
 `forge_feat590_integration_db` on loopback port `32810`. It is reserved for
