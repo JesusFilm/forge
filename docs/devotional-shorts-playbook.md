@@ -363,6 +363,12 @@ one marked "(recommended)", one hashtag set for all platforms, two or three
 YouTube titles in the format "<title> | <passage>", and the credits once. No
 per-platform variants, no test labels, no cover text (owner, 2026-10-02).
 
+Viewers see one or two lines before "more" (owner, 2026-10-05). In every
+short whose video does not say "Watch the full devotional" (history,
+language, reflection, film-verse), each option names the full devotional in
+its first or second line, e.g. "A moment from our full Daily Bible Pause on
+Martha and Mary." The intro says it on screen and is exempt.
+
 Content rules: build the caption on what THAT short shows; only the last line
 turns toward the full devotional, as a hint or a question, never an ad. Do
 not repeat a line the video already shows on screen. Credits name the film,
