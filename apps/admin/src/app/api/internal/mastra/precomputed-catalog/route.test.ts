@@ -1,5 +1,26 @@
-import { describe, expect, it } from "vitest"
-import { POST } from "./route"
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
+
+const dbRead = vi.hoisted(() => vi.fn())
+vi.mock("@/db/client", () => ({ prisma: { $transaction: dbRead } }))
+
+let POST: (typeof import("./route"))["POST"]
+
+beforeAll(async () => {
+  vi.stubEnv("MASTRA_RECOMMENDATION_INGEST_API_KEYS", "preview-test-key")
+  vi.resetModules()
+  POST = (await import("./route")).POST
+})
+
+beforeEach(() => dbRead.mockClear())
+afterAll(() => vi.unstubAllEnvs())
 
 describe("private precomputed catalog", () => {
   it("rejects unauthenticated reads before querying catalog content", async () => {
@@ -14,6 +35,7 @@ describe("private precomputed catalog", () => {
       }),
     )
     expect(response.status).toBe(401)
+    expect(dbRead).not.toHaveBeenCalled()
   })
 
   it("rejects malformed authenticated requests without a database read", async () => {
@@ -28,5 +50,6 @@ describe("private precomputed catalog", () => {
       }),
     )
     expect(response.status).toBe(400)
+    expect(dbRead).not.toHaveBeenCalled()
   })
 })
