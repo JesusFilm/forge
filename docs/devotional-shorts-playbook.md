@@ -436,5 +436,6 @@ channel."` with no `--film-close`.
   is 951 high, centred 156.5 above the middle. The closing card: the question
   in Inter SemiBold 36 caps tracked 1.5, 492 wide, centred at top 675, then
   "Watch the Full Devotional" (PT Serif italic 32 at 85%) 37 below; the
-  question fades and rises over 0.6 s, the line 0.7 to 1.4 s; the credit
-  stays.
+  question fades and rises over 0.6 s. Revised the same day: the question
+  stands ALONE, the credit fades out with the captions and the "Watch the
+  Full Devotional" line is not shown.

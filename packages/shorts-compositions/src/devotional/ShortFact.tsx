@@ -375,6 +375,8 @@ function HistoryLayout({
           display: "flex",
           alignItems: "flex-start",
           gap: f(16),
+          // The closing question stands alone (owner, 2026-10-05).
+          opacity: fromLabelOut,
         }}
       >
         <div
@@ -986,8 +988,8 @@ function CloseCard({
   const textIn = ease(0, 0.6)
   const subIn = ease(0.7, 1.4)
   // Figma 428-2762 (owner, 2026-10-05): the question in Inter SemiBold 36
-  // caps, 492 wide, centred at 675; "Watch the Full Devotional" under it in
-  // PT Serif italic 32 at 85%. The credit stays at the top.
+  // caps, 492 wide, centred at 675, alone: the credit and the Figma's
+  // "Watch the Full Devotional" line were taken off (owner, same day).
   return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
       <AbsoluteFill style={{ background: `rgba(0,0,0,${0.35 * dim})` }} />
@@ -1022,22 +1024,24 @@ function CloseCard({
         >
           {text}
         </p>
-        <p
-          style={{
-            margin: 0,
-            fontFamily: PT_SERIF,
-            fontStyle: "italic",
-            fontSize: f(32),
-            lineHeight: `${f(50)}px`,
-            textAlign: "center",
-            whiteSpace: "nowrap",
-            color: "rgba(255,255,255,0.92)",
-            opacity: 0.85 * subIn,
-            textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
-          }}
-        >
-          {sub ?? "Watch the Full Devotional"}
-        </p>
+        {sub ? (
+          <p
+            style={{
+              margin: 0,
+              fontFamily: PT_SERIF,
+              fontStyle: "italic",
+              fontSize: f(32),
+              lineHeight: `${f(50)}px`,
+              textAlign: "center",
+              whiteSpace: "nowrap",
+              color: "rgba(255,255,255,0.92)",
+              opacity: 0.85 * subIn,
+              textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
+            }}
+          >
+            {sub}
+          </p>
+        ) : null}
       </div>
     </AbsoluteFill>
   )
