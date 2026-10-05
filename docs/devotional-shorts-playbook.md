@@ -220,6 +220,16 @@ reads NIV. The window never starts inside its first line or takes the tail of
 the line before, and widens into the quiet around it for the cards, never into
 a neighbouring line.
 
+Framing: Smart Crop follows the subject shot by shot (2026-10-05). The
+trimmed clip is cut into shots (ffmpeg scene metric, slivers under 0.6 s
+folded in), three frames per shot go inline to the smart-crop vision call
+(Gemini 2.5 Flash), and `smart-crop-planner-v1` turns each answer into a 9:16
+window that may pan slowly; the window centres become the card's `clipFocus`,
+jumping on the cuts (`clip-smart-crop.ts`). On Martha it found Martha and Mary
+in four moments the centre crop left empty. `--no-smart-crop` keeps the
+centre. The other shorts show the film as a dimmed background under text and
+are not reframed yet.
+
 Sound: the film's own sound only. A clip-first long form speaks its opening
 over the film card; that narration is dropped from the short (Martha's first
 cut had both voices at once).

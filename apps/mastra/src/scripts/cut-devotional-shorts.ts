@@ -20,6 +20,7 @@
  * look before the full encode. The intro teaser is not cut here; it has its
  * own command (`render-one-devotional.ts --teaser-intro`).
  */
+import { smartCropClipPath } from "../services/devotional/clip-smart-crop"
 import { spawn } from "node:child_process"
 import {
   mkdir,
@@ -632,6 +633,19 @@ async function main() {
             short.film.preroll,
             short.film.postroll,
           )
+          // Frame the film on its subject, shot by shot (owner, 2026-10-05:
+          // the centre crop left faces at the edge). A path already carried
+          // over from the long form is in its own time base, so it is
+          // replaced; --no-smart-crop keeps the centre.
+          const card = m.cards.find((c) => c.kind === "video")
+          if (card && !process.argv.includes("--no-smart-crop")) {
+            delete card.clipFocus
+            const path = await smartCropClipPath({
+              clipFile: dest,
+              log: (msg) => console.log(`  ${msg}`),
+            })
+            if (path) card.clipFocus = path
+          }
         } else {
           await symlink(path.resolve(from, f), dest)
         }
