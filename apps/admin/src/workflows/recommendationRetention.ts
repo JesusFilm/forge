@@ -8,7 +8,7 @@ export const PUSH_RETENTION_CATCH_UP_WINDOW_MS = 30_000
 
 type RecommendationRetentionCatchUpResult = Readonly<{
   batchesProcessed: number
-  overdueAfterRun: boolean
+  overdueAfterRun: boolean | null
   catchUpNeeded?: boolean
 }>
 
@@ -114,7 +114,7 @@ export async function stepRunScheduledRecommendationRetention(): Promise<Recomme
     await import("@/services/recommendations/retention/job")
   const startedAt = Date.now()
   let batchesProcessed = 0
-  let overdueAfterRun = false
+  let overdueAfterRun: boolean | null = false
   let catchUpNeeded = false
   do {
     const attempt = await runRecommendationRetentionFromScheduler()
@@ -134,7 +134,10 @@ export async function stepRunScheduledRecommendationRetention(): Promise<Recomme
     batchesProcessed += 1
     overdueAfterRun = attempt.result.overdueAfterRun
     catchUpNeeded =
-      attempt.result.batchLimitReached ?? attempt.result.overdueAfterRun
+      attempt.result.continuationRequired ??
+      attempt.result.batchLimitReached ??
+      attempt.result.overdueAfterRun ??
+      false
   } while (
     catchUpNeeded &&
     batchesProcessed < RECOMMENDATION_RETENTION_CATCH_UP_BATCH_LIMIT &&

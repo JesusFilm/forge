@@ -46,6 +46,7 @@ vi.mock("@/services/recommendations/retention.service", async (original) => {
 import {
   ensureRecommendationRetentionSchedulerStarted,
   markRecommendationRetentionSchedulerRuntimeStarted,
+  nextRecommendationRetentionCatchUpRunAt,
   recordRecommendationRetentionSchedulerHeartbeat,
   runRecommendationRetentionFromScheduler,
   runRecommendationRetentionJob,
@@ -80,6 +81,14 @@ beforeEach(() => {
 })
 
 describe("recommendation retention job", () => {
+  it("schedules a bounded continuation one minute later", () => {
+    expect(
+      nextRecommendationRetentionCatchUpRunAt(
+        new Date("2026-10-06T10:30:00.000Z"),
+      ).toISOString(),
+    ).toBe("2026-10-06T10:31:00.000Z")
+  })
+
   it("runs the purge and records the purge ledger lifecycle", async () => {
     await expect(
       runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
@@ -147,6 +156,33 @@ describe("recommendation retention job", () => {
         summary:
           "Recommendation retention purge skipped because its lock was held.",
         details: expect.objectContaining({ purgeStatus: "skipped" }),
+      }),
+    })
+  })
+
+  it("records a budget yield with unknown backlog and a continuation signal", async () => {
+    purgeExpiredRecommendationRequests.mockResolvedValueOnce({
+      ...purgeResult,
+      status: "yielded",
+      oldestExpiredAtAfter: null,
+      overdueAfterRun: null,
+      continuationRequired: true,
+      batchLimitReached: true,
+    })
+
+    await expect(
+      runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
+    ).resolves.toMatchObject({ status: "yielded", continuationRequired: true })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        status: "SUCCEEDED",
+        summary: expect.stringContaining("yielded after purging 2"),
+        details: expect.objectContaining({
+          purgeStatus: "yielded",
+          overdueAfterRun: null,
+          continuationRequired: true,
+        }),
       }),
     })
   })

@@ -17,13 +17,38 @@ tags:
   - "operations"
 ---
 
-## October 5 deadline-margin mitigation pending release
+## October 6 phase-budget repair in progress
+
+The October 5 ordinary scheduled cycle still had four failed attempts amid
+3,498 successful attempts on the deployed descendant of the five-episode-page
+repair. Successful attempts committed 9,505 request roots and 33,123 served
+items; failed attempts separately committed 100 roots and 390 served items.
+The later full health read found zero rows beyond the 24-hour propagation
+limit, but the cycle is not failure-free. No normal daily cycle yet qualifies.
+The reported expired-transaction operations vary, so the exact production
+slow statement remains unproved.
+
+An owned PostgreSQL fixture demonstrated a separate avoidable failure: a new
+phase was admitted with 287 ms left before a 500 ms deletion and then timed
+out. The scoped repair requires minimum remaining time before another phase,
+including after a delayed lock acquisition. A safe pre-work yield records exact
+committed counters as `SKIPPED` / `budget_yield`, leaves the oldest-expired
+state unknown, and asks the existing bounded scheduler to continue. Actual
+transaction and terminal failures stay FAILED. Local proof is complete; a
+reviewed release remains pending. Neither replaces the required two later
+ordinary failure-free loaded cycles with descendants, backlog, lock and
+headroom evidence. Repeated yields under sustained load remain possible, so
+the oldest-expired age and successful-completion watermark remain live gates.
+
+## October 5 follow-up after the episode-page release
 
 The October 4 ordinary loaded cycle had six failed attempts amid 438
 successful attempts; a later read found zero overdue rows. It is not a
-qualifying failure-free cycle;
-the count remains zero. A scoped change reduces only the pre-root standalone
-episode page from ten to five under the existing five-second whole-run budget.
+qualifying failure-free cycle; the count remains zero. PR #2556 reduced only
+the pre-root standalone episode page from ten to five under the existing
+five-second whole-run budget. It deployed to both Admin roles on October 4 at
+20:38:17 UTC. The October 5 loaded cycle still had four failed attempts, as
+recorded above; the page change was not a complete cure.
 An owned mixed PostgreSQL fixture measured 4,467 ms versus 2,767 ms on its
 first attempt, while total fixture time rose about 6.0%; a separate slow-tail
 fixture still failed at the deadline, preserving earlier committed root work
@@ -32,11 +57,12 @@ failure's exact statement or a complete cure.
 
 The bounded October 4 expiry histogram counted 26,071 surviving standalone
 episodes through October 6 10:30 UTC without reaching its 50,001-row cap.
-A conservative conditional half-rate prefix calculation found no observed
+A conservative conditional half-rate prefix calculation found no modeled
 24-hour-deadline shortfall for those surviving cohorts. Created-at counts are
-not expiry inflow. Verify actual Admin HTTP/worker deployment, live deletion
-throughput, oldest-age/backlog and headroom after a reviewed release. Keep this
-ticket in progress until two later ordinary failure-free loaded cycles pass.
+not expiry inflow. Continue to measure live deletion throughput,
+oldest-age/backlog and headroom. Keep this ticket in progress until two later
+ordinary failure-free loaded cycles pass. See the
+[normal release receipt](https://github.com/JesusFilm/forge/pull/2556#issuecomment-5984170981).
 
 ## October 4 query release: natural catch-up snapshot
 

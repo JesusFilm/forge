@@ -328,6 +328,99 @@ describe("recommendation retention workflow", () => {
     )
   })
 
+  it("continues a budget yield without treating unknown backlog as a drained cycle", async () => {
+    retention.runRecommendationRetentionFromScheduler
+      .mockResolvedValueOnce({
+        ok: true,
+        ledgerRunId: "yielded-ledger",
+        result: {
+          status: "yielded",
+          rootsDeleted: 1,
+          overdueAfterRun: null,
+          batchLimitReached: false,
+          continuationRequired: true,
+          oldestExpiredAtAfter: null,
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        ledgerRunId: "completed-ledger",
+        result: {
+          status: "succeeded",
+          rootsDeleted: 0,
+          overdueAfterRun: false,
+          batchLimitReached: false,
+          oldestExpiredAtAfter: null,
+        },
+      })
+
+    await expect(stepRunScheduledRecommendationRetention()).resolves.toEqual({
+      batchesProcessed: 2,
+      overdueAfterRun: false,
+      catchUpNeeded: false,
+    })
+    expect(
+      retention.runRecommendationRetentionFromScheduler,
+    ).toHaveBeenCalledTimes(2)
+  })
+
+  it("bounds repeated no-progress budget yields to eight batches", async () => {
+    retention.runRecommendationRetentionFromScheduler.mockResolvedValue({
+      ok: true,
+      ledgerRunId: "yielded-ledger",
+      result: {
+        status: "yielded",
+        rootsDeleted: 0,
+        rowCounts: {},
+        overdueAfterRun: null,
+        batchLimitReached: true,
+        continuationRequired: true,
+        oldestExpiredAtAfter: null,
+      },
+    })
+
+    await expect(stepRunScheduledRecommendationRetention()).resolves.toEqual({
+      batchesProcessed: RECOMMENDATION_RETENTION_CATCH_UP_BATCH_LIMIT,
+      overdueAfterRun: null,
+      catchUpNeeded: true,
+    })
+    expect(
+      retention.runRecommendationRetentionFromScheduler,
+    ).toHaveBeenCalledTimes(RECOMMENDATION_RETENTION_CATCH_UP_BATCH_LIMIT)
+  })
+
+  it("ends a no-progress yield pass at the existing thirty-second window", async () => {
+    const now = vi
+      .spyOn(Date, "now")
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(RECOMMENDATION_RETENTION_CATCH_UP_WINDOW_MS + 1)
+    retention.runRecommendationRetentionFromScheduler.mockResolvedValueOnce({
+      ok: true,
+      ledgerRunId: "yielded-ledger",
+      result: {
+        status: "yielded",
+        rootsDeleted: 0,
+        rowCounts: {},
+        overdueAfterRun: null,
+        batchLimitReached: true,
+        continuationRequired: true,
+        oldestExpiredAtAfter: null,
+      },
+    })
+    try {
+      await expect(stepRunScheduledRecommendationRetention()).resolves.toEqual({
+        batchesProcessed: 1,
+        overdueAfterRun: null,
+        catchUpNeeded: true,
+      })
+      expect(
+        retention.runRecommendationRetentionFromScheduler,
+      ).toHaveBeenCalledOnce()
+    } finally {
+      now.mockRestore()
+    }
+  })
+
   it("returns the catch-up state after a scheduled purge succeeds", async () => {
     await expect(stepRunScheduledRecommendationRetention()).resolves.toEqual({
       batchesProcessed: 1,
