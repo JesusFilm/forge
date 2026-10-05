@@ -12,12 +12,20 @@ import {
   getSemanticRecommendationDelivery,
   getPrivateSemanticRecommendationFallback,
   getPrecomputedWatchPreviewDelivery,
+  getPrivatePrecomputedWatchVisitDelivery,
   RecommendationPreviewAuthorizationError,
 } from "@/lib/recommendations"
 import {
   readRecommendationTesterCookie,
   RECOMMENDATION_TESTER_COOKIE,
+  RECOMMENDATION_EXPERIMENT_TESTER_COOKIE,
+  readRecommendationExperimentTesterCookie,
 } from "@/lib/recommendation-tester-token"
+import {
+  attachRecommendationExperimentBrowser,
+  createRecommendationExperimentBrowser,
+  readRecommendationExperimentBrowser,
+} from "@/lib/recommendation-experiment-browser"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
   RECOMMENDATION_DELIVERY_CLIENT_VERSION,
@@ -111,13 +119,80 @@ export async function POST(request: Request) {
     const previewCookie = new NextRequest(request.url, {
       headers: request.headers,
     }).cookies.get(RECOMMENDATION_TESTER_COOKIE)?.value
+    const previewCredential = await readRecommendationTesterCookie(
+      previewCookie,
+      {
+        secret: env.WATCH_RECOMMENDATION_TESTER_SECRET,
+        origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
+      },
+    )
     const previewTester =
       env.WATCH_PRECOMPUTED_RECOMMENDATIONS_PREVIEW_ENABLED === "true" &&
       !excluded &&
-      (await readRecommendationTesterCookie(previewCookie, {
+      previewCredential
+    const privateVisitHeader = request.headers.get(
+      "x-forge-recommendation-visit-id",
+    )
+    const privateVisitId =
+      privateVisitHeader &&
+      z.string().uuid().safeParse(privateVisitHeader).success
+        ? privateVisitHeader
+        : null
+    const privateTesterCookie = new NextRequest(request.url, {
+      headers: request.headers,
+    }).cookies.get(RECOMMENDATION_EXPERIMENT_TESTER_COOKIE)?.value
+    const privateTester =
+      env.WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED === "true" &&
+      !previewCredential &&
+      (await readRecommendationExperimentTesterCookie(privateTesterCookie, {
         secret: env.WATCH_RECOMMENDATION_TESTER_SECRET,
         origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
       }))
+    const privateBrowser = privateTester
+      ? (readRecommendationExperimentBrowser(
+          request,
+          env.WATCH_RECOMMENDATION_TESTER_SECRET,
+        ) ??
+        createRecommendationExperimentBrowser(
+          env.WATCH_RECOMMENDATION_TESTER_SECRET ?? "",
+          consentReceiptDigest && profile?.kind === "valid"
+            ? {
+                consentReceiptDigest,
+                profileTokenDigest: profile.digest,
+              }
+            : undefined,
+        ))
+      : null
+    let privateVisit: Awaited<
+      ReturnType<typeof getPrivatePrecomputedWatchVisitDelivery>
+    > | null = null
+    if (privateTester && privateBrowser && privateVisitId) {
+      try {
+        privateVisit = await getPrivatePrecomputedWatchVisitDelivery(
+          {
+            visitId: privateVisitId,
+            browserDigest: privateBrowser.digest,
+            consentReceiptDigest,
+            profileTokenDigest:
+              consentReceiptDigest != null && profile?.kind === "valid"
+                ? profile.digest
+                : null,
+            ...semanticInput,
+            sessionDigest: session?.digest ?? "0".repeat(64),
+            trafficCategory,
+            clientDeliveryContract:
+              request.headers.get(
+                "x-forge-recommendation-delivery-contract",
+              ) === COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
+                ? COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
+                : null,
+          },
+          Math.max(1, upstreamDeadlineAt - Date.now()),
+        )
+      } catch {
+        upstreamAcknowledged = false
+      }
+    }
     let previewDelivery: Awaited<
       ReturnType<typeof getPrecomputedWatchPreviewDelivery>
     > | null = null
@@ -152,22 +227,24 @@ export async function POST(request: Request) {
     const sourceDenied =
       previewDelivery?.reason === "source_unavailable" ||
       previewDelivery?.reason === "source_eligibility_unavailable"
+    const privateEligible = privateVisit?.status === "eligible"
     const mayUseIncumbent =
-      !previewTester ||
-      (!previewDenied &&
-        !sourceDenied &&
-        previewDelivery?.result === "unavailable") ||
-      (!previewDenied && !sourceDenied && !previewDelivery)
+      !privateEligible &&
+      (!previewTester ||
+        (!previewDenied &&
+          !sourceDenied &&
+          previewDelivery?.result === "unavailable") ||
+        (!previewDenied && !sourceDenied && !previewDelivery))
     const incumbentAttempted =
       mayUseIncumbent && Date.now() < upstreamDeadlineAt
     if (mayUseIncumbent && !incumbentAttempted) upstreamAcknowledged = false
     const semanticDelivery = incumbentAttempted
       ? await (
-          previewTester
+          previewCredential || privateTester
             ? getPrivateSemanticRecommendationFallback(
                 {
                   ...semanticInput,
-                  sessionDigest: session!.digest,
+                  sessionDigest: session?.digest ?? "0".repeat(64),
                 },
                 Math.max(1, upstreamDeadlineAt - Date.now()),
               )
@@ -195,9 +272,11 @@ export async function POST(request: Request) {
           upstreamAcknowledged = false
           return unavailableSemanticDelivery()
         })
-      : previewDelivery
-        ? { ...previewDelivery, personalization: null }
-        : { ...unavailableSemanticDelivery(), reason: previewFailureReason }
+      : privateEligible
+        ? (privateVisit!.delivery ?? unavailableSemanticDelivery())
+        : previewDelivery
+          ? { ...previewDelivery, personalization: null }
+          : { ...unavailableSemanticDelivery(), reason: previewFailureReason }
     // Admin owns exact-audio and published-presentation eligibility. Legacy
     // scene and collection APIs cannot attest those facts, so their cards
     // must not replace an empty or unavailable delivery.
@@ -227,6 +306,20 @@ export async function POST(request: Request) {
                 : admittedDelivery.reason,
               assignedReason: previewFailureReason,
               actualReason: admittedDelivery.reason,
+            },
+          }
+        : {}),
+      ...(privateVisit
+        ? {
+            experimentAttribution: {
+              visitId: privateVisit.visitId,
+              experimentId: privateVisit.experimentId,
+              generationId: privateVisit.generationId,
+              assignedArm: privateVisit.arm,
+              status: privateVisit.status,
+              measurementStatus: privateVisit.measurementStatus,
+              reason: privateVisit.reason,
+              qualification: privateVisit.qualification,
             },
           }
         : {}),
@@ -261,6 +354,17 @@ export async function POST(request: Request) {
     }
     const response = recommendationSerializedJson(serialized)
     if (session) attachRecommendationSession(response, session)
+    if (
+      privateTester &&
+      privateBrowser &&
+      privateVisit?.status === "eligible" &&
+      !readRecommendationExperimentBrowser(
+        request,
+        env.WATCH_RECOMMENDATION_TESTER_SECRET,
+      )
+    ) {
+      attachRecommendationExperimentBrowser(response, privateBrowser)
+    }
     observeRecommendationDelivery({
       endpoint: "seeded",
       trafficCategory,

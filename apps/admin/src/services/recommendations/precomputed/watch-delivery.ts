@@ -65,14 +65,21 @@ export async function deliverPrecomputedWatchPreview(
     audioLanguageSlug: string
     sessionDigest: string
     caller: Principal | null
+    /** Only the private experiment may select a fixed saved generation. */
+    generationId?: string
+    deadlineAt?: number
   },
   tokenService: DeliveryTokenService | null,
 ): Promise<PreviewDelivery> {
   assertWebRecommendationCaller(input.caller)
-  if (env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED !== "1")
+  if (
+    input.generationId
+      ? env.RECOMMENDATION_PRECOMPUTED_TEST_ENABLED !== "1"
+      : env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED !== "1"
+  )
     throw new RecommendationAuthenticationError()
   if (!tokenService) return unavailable("signing_unavailable")
-  const deadlineAt = Date.now() + 1_500
+  const deadlineAt = Math.min(Date.now() + 1_500, input.deadlineAt ?? Infinity)
   let read: Awaited<ReturnType<typeof readPrecomputedWatchChoices>>
   try {
     read = await runRecommendationDeliveryTransaction(

@@ -3718,6 +3718,8 @@ model RecommendationStrategyManifest {
   personalizationDecisions     RecommendationPersonalizationDecision[]
   activePromotionPointers      RecommendationPromotionPointer[]            @relation("RecommendationPromotionPointerActive")
   fallbackPromotionPointers    RecommendationPromotionPointer[]            @relation("RecommendationPromotionPointerFallback")
+  privatePrecomputedControls    RecommendationPrecomputedExperiment[]       @relation("PrecomputedExperimentControl")
+  privatePrecomputedChallengers RecommendationPrecomputedExperiment[]       @relation("PrecomputedExperimentChallenger")
 
   @@unique([strategyVersion, contractVersion, surfaceVersion], map: "recommendation_manifest_contract_key")
   @@map("recommendation_strategy_manifest")
@@ -3791,6 +3793,7 @@ model RecommendationRequest {
   experimentExposures     RecommendationExperimentExposure[]
   promotionSlateFence     RecommendationPromotionSlateFence?
   personalizationDecision RecommendationPersonalizationDecision?
+  precomputedVisitLink    RecommendationPrecomputedVisitRequest?
 
   @@index([expiresAt, id], map: "recommendation_request_expiry_idx")
   @@index([createdAt, id], map: "recommendation_request_created_idx")
@@ -6737,9 +6740,80 @@ model RecommendationPrecomputedGeneration {
   failureCode String? @map("failure_code")
   sources RecommendationPrecomputedSource[]
   modelCalls RecommendationPrecomputedModelCall[]
+  privateExperiments RecommendationPrecomputedExperiment[]
 
   @@index([createdAt(sort: Desc)], map: "recommendation_precomputed_generation_created_at_idx")
   @@map("recommendation_precomputed_generation")
+}
+
+/// Frozen configuration for a private Watch test; no public pointer references it.
+model RecommendationPrecomputedExperiment {
+  id String @id @db.VarChar(191)
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Restrict)
+  controlManifestId String @map("control_manifest_id") @db.VarChar(191)
+  controlManifest RecommendationStrategyManifest @relation("PrecomputedExperimentControl", fields: [controlManifestId], references: [id], onDelete: Restrict)
+  challengerManifestId String @map("challenger_manifest_id") @db.VarChar(191)
+  challengerManifest RecommendationStrategyManifest @relation("PrecomputedExperimentChallenger", fields: [challengerManifestId], references: [id], onDelete: Restrict)
+  controlManifestDigest String @map("control_manifest_digest") @db.Char(64)
+  controlRoutingDigest String @map("control_routing_digest") @db.Char(64)
+  sourceSetDigest String @map("source_set_digest") @db.Char(64)
+  assignmentPolicyVersion String @map("assignment_policy_version") @db.VarChar(64)
+  eligibilityPolicyVersion String @map("eligibility_policy_version") @db.VarChar(64)
+  deliveryPolicyVersion String @map("delivery_policy_version") @db.VarChar(64)
+  configurationDigest String @map("configuration_digest") @db.Char(64)
+  state String @default("private_test") @db.VarChar(32)
+  startsAt DateTime @map("starts_at")
+  endsAt DateTime @map("ends_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  visits RecommendationPrecomputedVisit[]
+
+  @@index([state, startsAt, endsAt], map: "recommendation_precomputed_experiment_window_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_experiment_expiry_idx")
+  @@map("recommendation_precomputed_experiment")
+}
+
+/// Minimal 29-day admission root, including visits without any delivery request.
+/// The browser unit is a per-experiment digest; raw cookies are never stored.
+model RecommendationPrecomputedVisit {
+  id String @id @db.Uuid
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+  browserUnitDigest String? @map("browser_unit_digest") @db.Char(64)
+  consentBindingDigest String? @map("consent_binding_digest") @db.Char(64)
+  sourceVideoId String @map("source_video_id") @db.VarChar(191)
+  locale String @db.VarChar(32)
+  audioLanguageSlug String @map("audio_language_slug") @db.VarChar(64)
+  eligibility String @db.VarChar(24)
+  qualification String @db.VarChar(40)
+  exclusionReason String? @map("exclusion_reason") @db.VarChar(64)
+  arm RecommendationExperimentArm?
+  deliveryResult String @default("not_attempted") @map("delivery_result") @db.VarChar(32)
+  actualStrategy String? @map("actual_strategy") @db.VarChar(64)
+  deliveryRequestId String? @map("delivery_request_id") @db.VarChar(191)
+  fallbackReason String? @map("fallback_reason") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  requests RecommendationPrecomputedVisitRequest[]
+
+  @@index([experimentId, eligibility, arm, createdAt], map: "recommendation_precomputed_visit_report_idx")
+  @@index([expiresAt, id], map: "recommendation_precomputed_visit_expiry_idx")
+  @@map("recommendation_precomputed_visit")
+}
+
+/// A thin request-to-visit lineage for retries and later click attribution.
+model RecommendationPrecomputedVisitRequest {
+  requestId String @id @map("request_id") @db.VarChar(191)
+  request RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  visitId String @map("visit_id") @db.Uuid
+  visit RecommendationPrecomputedVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  @@index([visitId, createdAt], map: "recommendation_precomputed_visit_request_visit_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_visit_request_expiry_idx")
+  @@map("recommendation_precomputed_visit_request")
 }
 
 /// One compact choice set per source Video per generation. Reasons and evidence

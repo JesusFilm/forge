@@ -61,6 +61,12 @@ export default async function PrecomputedRecommendationsPage({
           </Link>
         }
       />
+      <Link
+        href="/dashboard/recommendations/precomputed/visits"
+        className="text-[13px] underline underline-offset-4"
+      >
+        Private A/B visit diagnostics
+      </Link>
       <PageSection title="Choose a source and generation" meta="READ ONLY">
         <form
           action="/dashboard/recommendations/precomputed"

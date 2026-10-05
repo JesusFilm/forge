@@ -561,6 +561,7 @@ export const env = createEnv({
       .default("packed"),
     // Private saved-result Watch preview; never changes the public serving pointer.
     RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED: z.enum(["1"]).optional(),
+    RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: z.enum(["1"]).optional(),
     // Isolated, opt-in recommendation storage benchmark settings. The script
     // validates its own safety guards even when CI skips application validation.
     RECOMMENDATION_STORAGE_BENCHMARK: z.enum(["1"]).optional(),
@@ -1123,6 +1124,9 @@ export const env = createEnv({
       "packed",
     RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED,
+    ),
+    RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_PRECOMPUTED_TEST_ENABLED,
     ),
     RECOMMENDATION_STORAGE_BENCHMARK: emptyToUndefined(
       process.env.RECOMMENDATION_STORAGE_BENCHMARK,

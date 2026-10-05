@@ -26,6 +26,7 @@ import {
   readRecommendationProfileCookie,
 } from "@/lib/recommendation-session"
 import { WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
+import { clearRecommendationExperimentBrowser } from "@/lib/recommendation-experiment-browser"
 import {
   RECOMMENDATION_CONSENT_CONTRACT,
   attachRecommendationConsent,
@@ -239,6 +240,15 @@ export async function POST(request: Request) {
       currentConsent.kind === "invalid"
     ) {
       clearRecommendationConsent(response)
+    }
+    if (
+      parsed.data.action === "grant" ||
+      parsed.data.action === "withdraw" ||
+      parsed.data.action === "delete" ||
+      parsed.data.action === "reset" ||
+      profile.consentCookieDisposition === "clear"
+    ) {
+      clearRecommendationExperimentBrowser(response)
     }
     return response
   } catch (error) {

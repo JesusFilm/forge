@@ -60,6 +60,50 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     completeRecommendationConsentBootstrap()
   })
 
+  it("keeps the legacy delivery body compatible while sending a stable visit header", async () => {
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, _init?: RequestInit) =>
+        String(input).endsWith("/api/recommendations")
+          ? jsonResponse({
+              delivery: {
+                ...delivery,
+                result: "empty",
+                requestId: null,
+                items: [],
+              },
+            })
+          : jsonResponse({ receipts: [] }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+    const deliveryCall = fetchMock.mock.calls.find(([input]) =>
+      String(input).endsWith("/api/recommendations"),
+    )
+    expect(deliveryCall).toBeDefined()
+    const init = deliveryCall?.[1] as RequestInit
+    expect(JSON.parse(String(init.body))).toEqual({
+      seedMediaId: "seed-1",
+      locale: "en",
+      audioLanguageSlug: "english",
+    })
+    expect(
+      (init.headers as Record<string, string>)[
+        "x-forge-recommendation-visit-id"
+      ],
+    ).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+  })
+
   it.each([-301, 0, 601])(
     "characterizes render evidence from a client clock offset by %s seconds without terminal retry amplification",
     async (clientOffsetSeconds) => {

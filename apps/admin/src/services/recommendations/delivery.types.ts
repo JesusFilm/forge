@@ -194,6 +194,9 @@ export type DeliveryInput = {
   consentReceiptDigest?: string | null
   profileTokenDigest?: string | null
   eligibleHuman?: boolean
+  /** Private precomputed A/B owns assignment but keeps the live control route. */
+  suppressExperimentEnrollment?: boolean
+  deadlineAt?: number
   trafficCategory?: string | null
   clientDeliveryContract?: string | null
 }

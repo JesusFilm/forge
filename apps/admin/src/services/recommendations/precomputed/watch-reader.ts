@@ -233,7 +233,12 @@ export async function readPrecomputedWatchChoices(
     | "recommendationPrecomputedSource"
     | "video"
   >,
-  input: { seedMediaId: string; locale: string; audioLanguageSlug: string },
+  input: {
+    seedMediaId: string
+    locale: string
+    audioLanguageSlug: string
+    generationId?: string
+  },
 ) {
   if (!(await verifyPrecomputedSourceEligibility(prisma, input)))
     return { state: "source_unavailable" as const, generationId: null }
@@ -243,7 +248,10 @@ export async function readPrecomputedWatchChoices(
   ).presentationLocale
   const generation = await prisma.recommendationPrecomputedGeneration.findFirst(
     {
-      where: { status: "complete" },
+      where: {
+        status: "complete",
+        ...(input.generationId ? { id: input.generationId } : {}),
+      },
       orderBy: [{ completedAt: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       select: {
         id: true,

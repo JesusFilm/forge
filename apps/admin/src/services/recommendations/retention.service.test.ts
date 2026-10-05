@@ -87,6 +87,16 @@ function buildPrisma() {
       deleteMany: vi.fn(async () => ({ count: requestIds.length })),
       findFirst: vi.fn(async (): Promise<{ expiresAt: Date } | null> => null),
     },
+    recommendationPrecomputedVisit: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async () => null),
+    },
+    recommendationPrecomputedExperiment: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async () => null),
+    },
     watchSurfaceExposure: {
       findMany: vi.fn(async (): Promise<Array<{ id: string }>> => []),
       deleteMany: vi.fn(async () => ({ count: 0 })),

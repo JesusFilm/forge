@@ -40,6 +40,9 @@ const INTENDED_PUBLIC_RESOLVERS = [
   // feat-590 / #2570. Public-shaped for the Web consumer; the resolver and
   // service require its bearer and the default-off private preview flag.
   "precomputedWatchPreviewDelivery",
+  // feat-590 / #2571. Private A/B test; Web bearer and default-off flag
+  // guard the resolver body before any visit can be admitted.
+  "privatePrecomputedWatchVisitDelivery",
   "recordSemanticRecommendationEvidence",
   // feat-373. Public-shaped mutation; service body admits the Web bearer only.
   "recordWatchSurfaceExposure",

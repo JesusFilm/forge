@@ -29,7 +29,10 @@ export async function deliverPrecomputedWatchFallback(
   ) => Promise<SemanticRecommendationDelivery>,
 ): Promise<SemanticRecommendationDelivery> {
   assertWebRecommendationCaller(input.caller)
-  if (env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED !== "1")
+  if (
+    env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED !== "1" &&
+    env.RECOMMENDATION_PRECOMPUTED_TEST_ENABLED !== "1"
+  )
     throw new RecommendationAuthenticationError()
 
   let sourceEligible: boolean

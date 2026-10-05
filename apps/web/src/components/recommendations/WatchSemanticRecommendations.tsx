@@ -514,6 +514,7 @@ export function WatchSemanticRecommendations({
     rendered: new Set<string>(),
     impressed: new Set<string>(),
   })
+  const visitIdentity = useRef<{ key: string; id: string } | null>(null)
 
   useEffect(() => {
     mountedRef.current = true
@@ -551,6 +552,11 @@ export function WatchSemanticRecommendations({
 
   useEffect(() => {
     let active = true
+    const visitKey = `${seedMediaId}\0${seedMediaSlug ?? ""}\0${locale}\0${audioLanguageSlug}`
+    if (visitIdentity.current?.key !== visitKey) {
+      visitIdentity.current = { key: visitKey, id: crypto.randomUUID() }
+    }
+    const visitId = visitIdentity.current.id
     const activationController = new AbortController()
     let recoveredDeferredResponse = false
     let controller: AbortController | null = null
@@ -617,6 +623,7 @@ export function WatchSemanticRecommendations({
                         RECOMMENDATION_DELIVERY_CLIENT_VERSION,
                       "x-forge-recommendation-delivery-contract":
                         COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
+                      "x-forge-recommendation-visit-id": visitId,
                     },
                     body: JSON.stringify({
                       seedMediaId,

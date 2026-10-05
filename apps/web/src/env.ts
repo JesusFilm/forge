@@ -185,6 +185,7 @@ export const env = createEnv({
     WATCH_PRECOMPUTED_RECOMMENDATIONS_PREVIEW_ENABLED: z
       .enum(["true"])
       .optional(),
+    WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED: z.enum(["true"]).optional(),
     // Optional Cloudflare cache-tag purge credentials. The dynamic collection
     // route emits shared edge-cache headers only when both are configured, so
     // a long-lived edge object can always be purged after content publication.
@@ -383,6 +384,8 @@ export const env = createEnv({
       process.env.WATCH_RECOMMENDATION_TESTER_SECRET,
     WATCH_PRECOMPUTED_RECOMMENDATIONS_PREVIEW_ENABLED:
       process.env.WATCH_PRECOMPUTED_RECOMMENDATIONS_PREVIEW_ENABLED,
+    WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED:
+      process.env.WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED,
     CLOUDFLARE_ZONE_ID: emptyToUndefined(process.env.CLOUDFLARE_ZONE_ID),
     CLOUDFLARE_CACHE_PURGE_TOKEN: emptyToUndefined(
       process.env.CLOUDFLARE_CACHE_PURGE_TOKEN,

@@ -278,6 +278,7 @@ describe("POST /watch/api/recommendations/profile", () => {
     expect(setCookie).toContain("HttpOnly")
     expect(setCookie).toContain("Secure")
     expect(setCookie).toContain("forge_recommendation_profile=;")
+    expect(setCookie).toContain("forge_recommendation_experiment_browser=;")
     const variables = mutate.mock.calls[0]?.[0]?.variables
     expect(variables).toMatchObject({
       consentContractVersion: "recommendation-consent-v1",

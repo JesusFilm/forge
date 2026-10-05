@@ -270,3 +270,53 @@ test("late source responses cannot replace the current source's saved cards", as
   await page.waitForTimeout(100)
   await expect(page.getByRole("link", { name: /Old target 0/ })).toHaveCount(0)
 })
+
+test("Watch retry keeps one visit header and a new source starts another", async ({
+  page,
+}, testInfo) => {
+  const requests: Array<{
+    source: string
+    visitId: string | undefined
+    hasVisitInBody: boolean
+  }> = []
+  await page.route("**/watch/api/recommendations**", async (route) => {
+    const request = route.request()
+    if (new URL(request.url()).pathname !== "/watch/api/recommendations") {
+      await route.fulfill({ json: { receipts: [] } })
+      return
+    }
+    const body = request.postDataJSON() as Record<string, unknown>
+    requests.push({
+      source: String(body.seedMediaId),
+      visitId: request.headers()["x-forge-recommendation-visit-id"],
+      hasVisitInBody: "visitId" in body,
+    })
+    if (requests.length === 1) {
+      await route.fulfill({ status: 503, body: "retry fixture" })
+    } else {
+      await route.fulfill({
+        json: {
+          delivery: delivery([card(0)]),
+          deliveryDisposition: "measured",
+        },
+      })
+    }
+  })
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1|localhost)/, (route) =>
+    route.abort(),
+  )
+  await page.route("**/_next/image**", (route) => route.abort())
+  await page.goto(fixturePath)
+  await expect(page.getByRole("link", { name: /Saved target 0/ })).toBeVisible()
+  expect(requests).toHaveLength(2)
+  expect(requests[0]?.visitId).toMatch(/^[0-9a-f-]{36}$/)
+  expect(requests[1]?.visitId).toBe(requests[0]?.visitId)
+  await page.getByTestId("switch-seed").click()
+  await expect.poll(() => requests.length).toBe(3)
+  expect(requests[2]?.visitId).not.toBe(requests[0]?.visitId)
+  expect(requests.every((request) => !request.hasVisitInBody)).toBe(true)
+  await writeFile(
+    testInfo.outputPath("watch-visit-headers.json"),
+    JSON.stringify({ fixture: true, requests }, null, 2),
+  )
+})

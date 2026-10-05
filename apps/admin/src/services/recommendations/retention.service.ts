@@ -16,6 +16,7 @@ import { purgeExpiredCowatchRefreshMetadata } from "./cowatch/refresh-retention"
 import { purgeExpiredCompositionEvidence } from "./composition/service"
 import { purgeExpiredOwnerReleases } from "./promotion/owner-authority"
 import { purgeExpiredCowatchTrialAuthorities } from "./cowatch/trial-authority.service"
+import { purgeExpiredPrecomputedVisitRoots } from "./precomputed/visit-retention"
 import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { lockRetentionRoots } from "./retention-locks"
 
@@ -283,6 +284,14 @@ export async function purgeExpiredRecommendationRequests(
       }),
     )
     const requestIds = roots.map((root) => root.id)
+    // Private Watch test visits are independent roots: empty deliveries have
+    // no recommendation_request to carry them through ordinary request purge.
+    const precomputedPurge = await phase(async (tx) => {
+      const result = await purgeExpiredPrecomputedVisitRoots(tx, now, batchSize)
+      rowCounts.expiredPrecomputedVisits = result.visitsDeleted
+      rowCounts.expiredPrecomputedExperiments = result.experimentsDeleted
+      return result
+    })
     await phase(async (tx) => {
       const removed = await purgeExpiredCompositionEvidence(tx, now)
       rowCounts.expiredCompositionObservations = removed.observations
@@ -942,6 +951,8 @@ export async function purgeExpiredRecommendationRequests(
     )
     const [
       oldestExpiredRoot,
+      oldestExpiredPrecomputedVisit,
+      oldestExpiredPrecomputedExperiment,
       oldestExpiredWatchExposure,
       oldestExpiredAction,
       oldestExpiredDecision,
@@ -967,6 +978,16 @@ export async function purgeExpiredRecommendationRequests(
       Promise.all([
         tx.recommendationRequest.findFirst({
           where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPrecomputedVisit.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPrecomputedExperiment.findFirst({
+          where: { expiresAt: { lte: now }, visits: { none: {} } },
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
           select: { expiresAt: true },
         }),
@@ -1082,6 +1103,8 @@ export async function purgeExpiredRecommendationRequests(
     )
     const oldestExpiredAt = earliestDate([
       oldestExpiredRoot?.expiresAt,
+      oldestExpiredPrecomputedVisit?.expiresAt,
+      oldestExpiredPrecomputedExperiment?.expiresAt,
       oldestExpiredWatchExposure?.expiresAt,
       oldestExpiredAction?.expiresAt,
       oldestExpiredDecision?.expiresAt,
@@ -1121,6 +1144,8 @@ export async function purgeExpiredRecommendationRequests(
       oldestExpiredProfileInterest != null ||
       oldestExpiredProfileProjectionGeneration != null ||
       requestIds.length === batchSize ||
+      precomputedPurge.visitPageFull ||
+      precomputedPurge.experimentPageFull ||
       expiredWatchExposures.length === batchSize ||
       directActionIds.length === batchSize ||
       standaloneEpisodeIds.length === standaloneEpisodePageSize ||
