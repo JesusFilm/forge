@@ -1,0 +1,93 @@
+import { createOpenAI } from "@ai-sdk/openai"
+import { generateText, Output } from "ai"
+import { z } from "zod"
+
+import { env } from "../../config/env"
+
+export const PRECOMPUTED_MODEL_ID = "gpt-6-astra"
+
+export class AstraAccessError extends Error {
+  constructor() {
+    super("Astra project or model access is unavailable")
+  }
+}
+
+export function isAstraAccessFailure(error: unknown): boolean {
+  if (error instanceof AstraAccessError) return true
+  if (typeof error !== "object" || error === null) return false
+  const candidate = error as {
+    statusCode?: unknown
+    status?: unknown
+    code?: unknown
+    name?: unknown
+  }
+  const status = candidate.statusCode ?? candidate.status
+  return (
+    status === 401 ||
+    status === 403 ||
+    status === 404 ||
+    candidate.code === "model_not_found" ||
+    candidate.code === "model_not_available" ||
+    candidate.name === "NoSuchModelError"
+  )
+}
+
+export type ModelUsage = {
+  inputTokens?: number
+  outputTokens?: number
+  cachedInputTokens?: number
+}
+
+export type StructuredModel = {
+  generate<T extends z.ZodType>(input: {
+    schema: T
+    system: string
+    prompt: string
+    maxOutputTokens: number
+  }): Promise<{ output: z.output<T>; usage: ModelUsage }>
+}
+
+/** The application model is pinned to OpenAI Responses, with no fallback. */
+export function createAstraModel(
+  apiKey: string | undefined = env.OPENAI_API_KEY,
+): StructuredModel {
+  if (!apiKey) {
+    throw new AstraAccessError()
+  }
+  const openai = createOpenAI({ apiKey })
+  return {
+    async generate<T extends z.ZodType>({
+      schema,
+      system,
+      prompt,
+      maxOutputTokens,
+    }: {
+      schema: T
+      system: string
+      prompt: string
+      maxOutputTokens: number
+    }) {
+      const result = await generateText({
+        model: openai.responses(PRECOMPUTED_MODEL_ID),
+        system,
+        prompt,
+        output: Output.object({ schema }),
+        maxOutputTokens,
+        // One recorded call means exactly one provider attempt. Any future
+        // retry must have a distinct call ID and usage record.
+        maxRetries: 0,
+        abortSignal: AbortSignal.timeout(120_000),
+      })
+      return {
+        // The caller validates after capturing usage, so a returned but
+        // malformed object still contributes its reported tokens.
+        output: result.output as z.output<T>,
+        usage: {
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
+          cachedInputTokens: result.usage.inputTokenDetails?.cacheReadTokens,
+        },
+      }
+    },
+  }
+}

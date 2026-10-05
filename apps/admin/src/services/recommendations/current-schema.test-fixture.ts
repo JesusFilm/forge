@@ -48,8 +48,8 @@ export const recommendationRuntimeMigrationSql = readdirSync(migrationRoot)
       /^\d{4}_/.test(name) &&
       Number(name.slice(0, 4)) >= 52 &&
       // This legacy request/trace fixture has no catalog video table. The
-      // precomputed slice tests 0128 with the full Admin migration chain.
-      name !== "0128_recommendation_precomputed_preview" &&
+      // precomputed slice tests its migrations with the full Admin chain.
+      !name.includes("recommendation_precomputed") &&
       (name.includes("recommendation") ||
         name === "0057_semantic_control_readiness"),
   )

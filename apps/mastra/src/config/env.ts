@@ -197,6 +197,9 @@ const envSchema = z.object({
     .enum(["local", "preview", "staging", "production"])
     .default("local"),
   ADMIN_EXPERIENCE_INGEST_URL: z.string().url().optional(),
+  ADMIN_RECOMMENDATION_CATALOG_URL: z.string().url().optional(),
+  ADMIN_RECOMMENDATION_INGEST_URL: z.string().url().optional(),
+  ADMIN_MASTRA_RECOMMENDATION_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_SEARCH_EVAL_API_KEY: z.string().min(1).optional(),
@@ -866,6 +869,15 @@ export const env = envSchema.parse({
   STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
   ADMIN_EXPERIENCE_INGEST_URL: emptyToUndefined(
     process.env.ADMIN_EXPERIENCE_INGEST_URL,
+  ),
+  ADMIN_RECOMMENDATION_CATALOG_URL: emptyToUndefined(
+    process.env.ADMIN_RECOMMENDATION_CATALOG_URL,
+  ),
+  ADMIN_RECOMMENDATION_INGEST_URL: emptyToUndefined(
+    process.env.ADMIN_RECOMMENDATION_INGEST_URL,
+  ),
+  ADMIN_MASTRA_RECOMMENDATION_API_KEY: emptyToUndefined(
+    process.env.ADMIN_MASTRA_RECOMMENDATION_API_KEY,
   ),
   ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: emptyToUndefined(
     process.env.ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY,

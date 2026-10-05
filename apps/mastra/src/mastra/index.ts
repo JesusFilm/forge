@@ -176,6 +176,10 @@ import { seoExperimentEvaluationWorkflow } from "./workflows/seo-experiment-eval
 import { seoTicketDispatchWorkflow } from "./workflows/seo-ticket-dispatch"
 import { watchRouteAlertsWorkflow } from "./workflows/watch-route-alerts"
 import {
+  handlePrecomputedSourceRouteRequest,
+  precomputedSourceGenerationWorkflow,
+} from "./workflows/precomputed-source-generation"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -310,6 +314,7 @@ export const mastra = new Mastra({
     "auto-enrich": buildAutoEnrichAgent(),
   },
   workflows: {
+    precomputedSourceGenerationWorkflow,
     transcriptEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
     evalQueryGenerationWorkflow,
@@ -428,6 +433,20 @@ export const mastra = new Mastra({
       },
     ],
     apiRoutes: [
+      registerApiRoute("/forge-precomputed-source-generation", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handlePrecomputedSourceRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            request: c.req.raw,
+          })
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
       registerApiRoute("/forge-shorts-calendar", {
         method: "POST",
         handler: async (c) => {

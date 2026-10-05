@@ -85,6 +85,21 @@ export function PrecomputedComparisonView({
                 ? "This source Video is not in the selected generation."
                 : "Generation not found."}
         </p>
+        {comparison.state === "failed" && comparison.failureCode ? (
+          <p className="px-4 pb-4 text-[13px] text-[var(--color-text-secondary)]">
+            Source failure: {comparison.failureCode}.{" "}
+            {comparison.usage?.unknownUsageCallCount
+              ? `${comparison.usage.unknownUsageCallCount} model calls have unreported usage.`
+              : ""}
+          </p>
+        ) : null}
+        {comparison.state === "failed" &&
+        comparison.inputSnapshotMode === "preflight_failed" ? (
+          <p className="px-4 pb-4 text-[13px] text-[var(--color-text-secondary)]">
+            Input discovery failed before a complete observed-input digest was
+            available.
+          </p>
+        ) : null}
       </PageSection>
     )
   }
@@ -102,6 +117,21 @@ export function PrecomputedComparisonView({
             {comparison.generation.promptVersion}
           </p>
           <p>Input cutoff {comparison.generation.inputCutoff.toISOString()}</p>
+          <p>
+            Input {comparison.generation.inputMode.replaceAll("_", " ")} ·{" "}
+            {comparison.generation.inputSnapshotMode === "observed_fenced"
+              ? "Observed current rows checked against cutoff; overwritten or deleted historical versions cannot be reconstructed."
+              : "Fixture input"}
+          </p>
+          <p>
+            {comparison.usage.callCount} model calls ·{" "}
+            {comparison.usage.inputTokens} input tokens ·{" "}
+            {comparison.usage.outputTokens} output tokens ·{" "}
+            {comparison.usage.cachedInputTokens} cached input tokens
+            {comparison.usage.unknownUsageCallCount > 0
+              ? ` · ${comparison.usage.unknownUsageCallCount} calls with unreported usage`
+              : ""}
+          </p>
           <p>
             {comparison.allAcceptedCount} accepted choices stored; up to six
             shown after current audio-language checks.

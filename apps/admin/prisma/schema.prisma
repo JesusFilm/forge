@@ -6722,11 +6722,19 @@ model RecommendationPrecomputedGeneration {
   sourceSetDigest String @map("source_set_digest")
   inputCutoff DateTime @map("input_cutoff")
   expectedSourceCount Int @map("expected_source_count")
+  /// Content-only builds do not claim to include historical GA warehouse inputs.
+  inputMode String @default("fixture") @map("input_mode")
+  /// observed_fenced means current rows were checked against the cutoff;
+  /// preflight_failed means that input discovery failed before a full digest.
+  /// Overwritten/deleted historic content cannot be reconstructed.
+  inputSnapshotMode String @default("fixture") @map("input_snapshot_mode")
   status String @default("incomplete")
   createdAt DateTime @default(now()) @map("created_at")
   completedAt DateTime? @map("completed_at")
   failedAt DateTime? @map("failed_at")
+  failureCode String? @map("failure_code")
   sources RecommendationPrecomputedSource[]
+  modelCalls RecommendationPrecomputedModelCall[]
 
   @@index([createdAt(sort: Desc)], map: "recommendation_precomputed_generation_created_at_idx")
   @@map("recommendation_precomputed_generation")
@@ -6742,7 +6750,34 @@ model RecommendationPrecomputedSource {
   payload Json @db.JsonB
   submissionDigest String @map("submission_digest")
   acceptedCount Int @map("accepted_count")
+  status String @default("complete")
+  failureCode String? @map("failure_code")
 
   @@id([generationId, sourceVideoId])
   @@map("recommendation_precomputed_source")
+}
+
+/// One compact provider-call record; prompts, transcript text, and credentials
+/// are intentionally excluded. Nullable usage means the provider did not
+/// report it, not that the call cost zero tokens.
+model RecommendationPrecomputedModelCall {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  callId String @map("call_id")
+  sourceVideoId String @map("source_video_id")
+  stage String
+  status String
+  modelId String @map("model_id")
+  inputDigest String @map("input_digest")
+  outputDigest String? @map("output_digest")
+  inputTokens Int? @map("input_tokens")
+  outputTokens Int? @map("output_tokens")
+  cachedInputTokens Int? @map("cached_input_tokens")
+  errorCode String? @map("error_code")
+  startedAt DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  @@id([generationId, callId])
+  @@index([generationId, sourceVideoId], map: "recommendation_precomputed_model_call_source_idx")
+  @@map("recommendation_precomputed_model_call")
 }

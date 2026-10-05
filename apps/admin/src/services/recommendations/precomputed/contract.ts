@@ -11,6 +11,10 @@ import { RECOMMENDATION_CONTRACTS } from "../contracts"
 import type { CuratedDeliveryDiagnostics } from "../delivery-diagnostics"
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
+import {
+  assertPrecomputedObservedVersion,
+  PrecomputedCatalogError,
+} from "./catalog"
 
 const id = z.string().trim().min(1).max(191)
 const englishText = z.string().trim().min(12).max(600)
@@ -18,6 +22,15 @@ const passage = z.object({
   chunkId: id,
   excerpt: z.string().trim().min(8).max(240),
 })
+const failureCode = z.enum([
+  "provider_invalid_output",
+  "provider_unavailable",
+  "provider_access_unavailable",
+  "input_stale",
+  "catalog_unavailable",
+  "contract_rejected",
+  "internal_failure",
+])
 const choice = z.object({
   targetVideoId: id,
   kind: z.enum(["direct", "alternative"]),
@@ -57,6 +70,10 @@ const submission = z.discriminatedUnion("action", [
     sourceSetDigest: z.string().regex(/^[a-f0-9]{64}$/),
     inputCutoff: z.string().datetime(),
     expectedSourceCount: z.number().int().nonnegative(),
+    inputMode: z.enum(["fixture", "content_only"]).default("fixture"),
+    inputSnapshotMode: z
+      .enum(["fixture", "observed_fenced", "preflight_failed"])
+      .optional(),
   }),
   z.object({
     action: z.literal("source"),
@@ -65,7 +82,41 @@ const submission = z.discriminatedUnion("action", [
     choices: z.array(choice),
   }),
   z.object({ action: z.literal("complete"), generationId: id }),
-  z.object({ action: z.literal("fail"), generationId: id }),
+  z.object({
+    action: z.literal("model_call"),
+    generationId: id,
+    sourceVideoId: id,
+    callId: id,
+    stage: z.enum([
+      "source_summary",
+      "catalog_discovery",
+      "candidate_judgment",
+    ]),
+    status: z.enum(["succeeded", "failed"]),
+    modelId: z.string().trim().min(1).max(100),
+    inputDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    outputDigest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+    inputTokens: z.number().int().nonnegative().optional(),
+    outputTokens: z.number().int().nonnegative().optional(),
+    cachedInputTokens: z.number().int().nonnegative().optional(),
+    errorCode: failureCode.optional(),
+    startedAt: z.string().datetime(),
+    finishedAt: z.string().datetime(),
+  }),
+  z.object({
+    action: z.literal("status"),
+    generationId: id,
+    sourceVideoId: id.optional(),
+  }),
+  z.object({
+    action: z.literal("fail"),
+    generationId: id,
+    sourceVideoId: id.optional(),
+    failureCode: failureCode.optional(),
+  }),
 ])
 
 type Choice = z.infer<typeof choice>
@@ -89,6 +140,9 @@ export type PrecomputedComparison =
       experimental: []
       semanticBaseline: []
       coverageGap: null
+      failureCode?: string | null
+      inputSnapshotMode?: string
+      usage?: ModelUsage
     }
   | {
       state: "ready"
@@ -97,8 +151,11 @@ export type PrecomputedComparison =
         modelId: string
         promptVersion: string
         inputCutoff: Date
+        inputMode: string
+        inputSnapshotMode: string
         acceptedCount: number
       }
+      usage: ModelUsage
       experimental: Array<
         SavedChoice & {
           videoSlug: string
@@ -127,10 +184,48 @@ export type PrecomputedComparison =
 
 export class PrecomputedRecommendationError extends Error {
   constructor(
-    readonly code: "invalid" | "conflict" | "not_found" | "unauthorized",
+    readonly code:
+      | "invalid"
+      | "conflict"
+      | "not_found"
+      | "unauthorized"
+      | "stale_cutoff",
     message: string,
   ) {
     super(message)
+  }
+}
+
+type ModelUsage = {
+  callCount: number
+  unknownUsageCallCount: number
+  inputTokens: number
+  outputTokens: number
+  cachedInputTokens: number
+}
+
+async function modelUsage(
+  prisma: PrismaClient | Prisma.TransactionClient,
+  generationId: string,
+): Promise<ModelUsage> {
+  const calls = await prisma.recommendationPrecomputedModelCall.findMany({
+    where: { generationId },
+    select: { inputTokens: true, outputTokens: true, cachedInputTokens: true },
+  })
+  return {
+    callCount: calls.length,
+    unknownUsageCallCount: calls.filter(
+      (call) => call.inputTokens === null || call.outputTokens === null,
+    ).length,
+    inputTokens: calls.reduce((sum, call) => sum + (call.inputTokens ?? 0), 0),
+    outputTokens: calls.reduce(
+      (sum, call) => sum + (call.outputTokens ?? 0),
+      0,
+    ),
+    cachedInputTokens: calls.reduce(
+      (sum, call) => sum + (call.cachedInputTokens ?? 0),
+      0,
+    ),
   }
 }
 
@@ -165,9 +260,13 @@ async function lockGeneration(
       status: string
       expected_source_count: number
       source_set_digest: string
+      input_mode: string
+      input_snapshot_mode: string
+      input_cutoff: Date
     }>
   >`
-    SELECT id, status, expected_source_count, source_set_digest
+    SELECT id, status, expected_source_count, source_set_digest,
+           input_mode, input_snapshot_mode, input_cutoff
     FROM recommendation_precomputed_generation
     WHERE id = ${generationId}
     FOR UPDATE
@@ -192,9 +291,9 @@ async function validateChoices(
       id: true,
       coreId: true,
       locales: {
-        where: { locale: "en", status: "PUBLISHED", deletedAt: null },
-        select: { title: true },
-        take: 1,
+        where: { status: "PUBLISHED", deletedAt: null },
+        orderBy: { locale: "asc" },
+        select: { locale: true, title: true },
       },
     },
   })
@@ -209,6 +308,9 @@ async function validateChoices(
   const seenTargets = new Set<string>()
   const seenRanks = new Set<string>()
   const kept = [source]
+  const titleForIdentity = (video: (typeof videos)[number]) =>
+    video.locales.find((locale) => locale.locale === "en" && locale.title)
+      ?.title ?? video.locales.find((locale) => locale.title)?.title
   for (const item of choices) {
     const target = byId.get(item.targetVideoId)!
     if (seenTargets.has(target.id) || target.id === source.id) {
@@ -225,8 +327,8 @@ async function validateChoices(
     for (const prior of kept) {
       if (
         videoIdentityDuplicateReason(
-          { videoCoreId: target.coreId, videoTitle: target.locales[0]?.title },
-          { videoCoreId: prior.coreId, videoTitle: prior.locales[0]?.title },
+          { videoCoreId: target.coreId, videoTitle: titleForIdentity(target) },
+          { videoCoreId: prior.coreId, videoTitle: titleForIdentity(prior) },
         )
       )
         throw new PrecomputedRecommendationError(
@@ -338,6 +440,18 @@ export async function submitPrecomputedRecommendation(
   const input = parsed.data
   if (input.action === "start") {
     const cutoff = new Date(input.inputCutoff)
+    const snapshotMode =
+      input.inputSnapshotMode ??
+      (input.inputMode === "content_only" ? "observed_fenced" : "fixture")
+    if (
+      input.inputMode === "content_only" &&
+      snapshotMode !== "observed_fenced" &&
+      snapshotMode !== "preflight_failed"
+    )
+      throw new PrecomputedRecommendationError(
+        "invalid",
+        "Invalid cutoff provenance",
+      )
     const inserted =
       await prisma.recommendationPrecomputedGeneration.createMany({
         data: [
@@ -349,6 +463,8 @@ export async function submitPrecomputedRecommendation(
             sourceSetDigest: input.sourceSetDigest,
             inputCutoff: cutoff,
             expectedSourceCount: input.expectedSourceCount,
+            inputMode: input.inputMode,
+            inputSnapshotMode: snapshotMode,
           },
         ],
         skipDuplicates: true,
@@ -363,7 +479,9 @@ export async function submitPrecomputedRecommendation(
       existing.inputDigest !== input.inputDigest ||
       existing.sourceSetDigest !== input.sourceSetDigest ||
       existing.inputCutoff.getTime() !== cutoff.getTime() ||
-      existing.expectedSourceCount !== input.expectedSourceCount
+      existing.expectedSourceCount !== input.expectedSourceCount ||
+      existing.inputMode !== input.inputMode ||
+      existing.inputSnapshotMode !== snapshotMode
     )
       throw new PrecomputedRecommendationError(
         "conflict",
@@ -375,8 +493,121 @@ export async function submitPrecomputedRecommendation(
       replay: inserted.count === 0,
     }
   }
+  if (input.action === "status") {
+    const generation =
+      await prisma.recommendationPrecomputedGeneration.findUnique({
+        where: { id: input.generationId },
+      })
+    if (!generation)
+      throw new PrecomputedRecommendationError(
+        "not_found",
+        "Generation not found",
+      )
+    const source = input.sourceVideoId
+      ? await prisma.recommendationPrecomputedSource.findUnique({
+          where: {
+            generationId_sourceVideoId: {
+              generationId: input.generationId,
+              sourceVideoId: input.sourceVideoId,
+            },
+          },
+        })
+      : null
+    return {
+      generationId: generation.id,
+      state: generation.status,
+      generationFailureCode: generation.failureCode,
+      modelId: generation.modelId,
+      promptVersion: generation.promptVersion,
+      inputDigest: generation.inputDigest,
+      sourceSetDigest: generation.sourceSetDigest,
+      inputCutoff: generation.inputCutoff.toISOString(),
+      expectedSourceCount: generation.expectedSourceCount,
+      inputMode: generation.inputMode,
+      inputSnapshotMode: generation.inputSnapshotMode,
+      source: source
+        ? {
+            status: source.status,
+            acceptedCount: source.acceptedCount,
+            failureCode: source.failureCode,
+          }
+        : null,
+      usage: await modelUsage(prisma, generation.id),
+    }
+  }
   return prisma.$transaction(async (tx) => {
     const generation = await lockGeneration(tx, input.generationId)
+    if (input.action === "model_call") {
+      if (
+        (input.status === "succeeded" &&
+          (!input.outputDigest || input.errorCode)) ||
+        (input.status === "failed" &&
+          (input.outputDigest || !input.errorCode)) ||
+        new Date(input.finishedAt) < new Date(input.startedAt)
+      )
+        throw new PrecomputedRecommendationError(
+          "invalid",
+          "Invalid model call outcome",
+        )
+      const row = {
+        generationId: input.generationId,
+        callId: input.callId,
+        sourceVideoId: input.sourceVideoId,
+        stage: input.stage,
+        status: input.status,
+        modelId: input.modelId,
+        inputDigest: input.inputDigest,
+        outputDigest: input.outputDigest ?? null,
+        inputTokens: input.inputTokens ?? null,
+        outputTokens: input.outputTokens ?? null,
+        cachedInputTokens: input.cachedInputTokens ?? null,
+        errorCode: input.errorCode ?? null,
+        startedAt: new Date(input.startedAt),
+        finishedAt: new Date(input.finishedAt),
+      }
+      const existing = await tx.recommendationPrecomputedModelCall.findUnique({
+        where: {
+          generationId_callId: {
+            generationId: input.generationId,
+            callId: input.callId,
+          },
+        },
+      })
+      if (existing) {
+        if (
+          digest({
+            ...existing,
+            startedAt: existing.startedAt.toISOString(),
+            finishedAt: existing.finishedAt.toISOString(),
+          }) !==
+          digest({
+            ...row,
+            startedAt: row.startedAt.toISOString(),
+            finishedAt: row.finishedAt.toISOString(),
+          })
+        )
+          throw new PrecomputedRecommendationError(
+            "conflict",
+            "Model call retry differs",
+          )
+        return {
+          generationId: input.generationId,
+          state: generation.status,
+          replay: true,
+        }
+      }
+      if (generation.status !== "incomplete")
+        throw new PrecomputedRecommendationError(
+          "conflict",
+          "Generation is closed",
+        )
+      await tx.recommendationPrecomputedModelCall.create({ data: row })
+      return {
+        generationId: input.generationId,
+        state: generation.status,
+        replay: false,
+      }
+    }
     if (input.action === "source") {
       const submissionDigest = digest(input.choices)
       const existing = await tx.recommendationPrecomputedSource.findUnique({
@@ -388,7 +619,10 @@ export async function submitPrecomputedRecommendation(
         },
       })
       if (existing) {
-        if (existing.submissionDigest !== submissionDigest)
+        if (
+          existing.status !== "complete" ||
+          existing.submissionDigest !== submissionDigest
+        )
           throw new PrecomputedRecommendationError(
             "conflict",
             "Source retry has different choices",
@@ -404,6 +638,31 @@ export async function submitPrecomputedRecommendation(
           "conflict",
           "Generation is closed",
         )
+      if (
+        generation.input_mode === "content_only" &&
+        generation.input_snapshot_mode === "observed_fenced"
+      ) {
+        try {
+          await assertPrecomputedObservedVersion(
+            tx,
+            [
+              input.sourceVideoId,
+              ...input.choices.map((item) => item.targetVideoId),
+            ],
+            generation.input_cutoff,
+          )
+        } catch (error) {
+          if (
+            error instanceof PrecomputedCatalogError &&
+            error.code === "stale_cutoff"
+          )
+            throw new PrecomputedRecommendationError(
+              "stale_cutoff",
+              "Observed input changed after cutoff",
+            )
+          throw error
+        }
+      }
       const payload = await validateChoices(
         tx,
         input.sourceVideoId,
@@ -425,11 +684,48 @@ export async function submitPrecomputedRecommendation(
       }
     }
     if (input.action === "fail") {
+      if (input.sourceVideoId && !input.failureCode)
+        throw new PrecomputedRecommendationError(
+          "invalid",
+          "Incomplete failure detail",
+        )
       if (generation.status === "complete")
         throw new PrecomputedRecommendationError(
           "conflict",
           "Complete generation cannot fail",
         )
+      if (input.sourceVideoId && input.failureCode) {
+        const existing = await tx.recommendationPrecomputedSource.findUnique({
+          where: {
+            generationId_sourceVideoId: {
+              generationId: input.generationId,
+              sourceVideoId: input.sourceVideoId,
+            },
+          },
+        })
+        if (
+          existing &&
+          (existing.status !== "failed" ||
+            existing.failureCode !== input.failureCode)
+        )
+          throw new PrecomputedRecommendationError(
+            "conflict",
+            "Source outcome differs",
+          )
+        if (!existing) {
+          await tx.recommendationPrecomputedSource.create({
+            data: {
+              generationId: input.generationId,
+              sourceVideoId: input.sourceVideoId,
+              payload: [],
+              submissionDigest: digest([]),
+              acceptedCount: 0,
+              status: "failed",
+              failureCode: input.failureCode,
+            },
+          })
+        }
+      }
       if (generation.status === "failed")
         return {
           generationId: input.generationId,
@@ -438,7 +734,11 @@ export async function submitPrecomputedRecommendation(
         }
       await tx.recommendationPrecomputedGeneration.update({
         where: { id: input.generationId },
-        data: { status: "failed", failedAt: new Date() },
+        data: {
+          status: "failed",
+          failedAt: new Date(),
+          failureCode: input.failureCode,
+        },
       })
       return {
         generationId: input.generationId,
@@ -459,10 +759,11 @@ export async function submitPrecomputedRecommendation(
       )
     const sourceRows = await tx.recommendationPrecomputedSource.findMany({
       where: { generationId: input.generationId },
-      select: { sourceVideoId: true },
+      select: { sourceVideoId: true, status: true },
     })
     if (
       sourceRows.length !== generation.expected_source_count ||
+      sourceRows.some((row) => row.status !== "complete") ||
       digestSourceSet(sourceRows.map((row) => row.sourceVideoId)) !==
         generation.source_set_digest
     )
@@ -503,13 +804,32 @@ export async function loadPrecomputedRecommendationComparison(
       semanticBaseline: [],
       coverageGap: null,
     }
-  if (generation.status !== "complete")
+  if (generation.status !== "complete") {
+    const failedSource =
+      generation.status === "failed"
+        ? await prisma.recommendationPrecomputedSource.findUnique({
+            where: {
+              generationId_sourceVideoId: {
+                generationId: input.generationId,
+                sourceVideoId: input.sourceVideoId,
+              },
+            },
+            select: { failureCode: true },
+          })
+        : null
     return {
       state: generation.status === "failed" ? "failed" : "incomplete",
       experimental: [],
       semanticBaseline: [],
       coverageGap: null,
+      failureCode: failedSource?.failureCode ?? generation.failureCode,
+      inputSnapshotMode: generation.inputSnapshotMode,
+      usage:
+        generation.status === "failed"
+          ? await modelUsage(prisma, generation.id)
+          : undefined,
     }
+  }
   const source = await prisma.recommendationPrecomputedSource.findUnique({
     where: {
       generationId_sourceVideoId: {
@@ -518,7 +838,7 @@ export async function loadPrecomputedRecommendationComparison(
       },
     },
   })
-  if (!source)
+  if (!source || source.status !== "complete")
     return {
       state: "not_in_generation" as const,
       experimental: [],
@@ -534,9 +854,9 @@ export async function loadPrecomputedRecommendationComparison(
       deletedAt: true,
       restrictViewPlatforms: true,
       locales: {
-        where: { locale: "en", status: "PUBLISHED", deletedAt: null },
-        select: { title: true },
-        take: 1,
+        where: { status: "PUBLISHED", deletedAt: null },
+        orderBy: { locale: "asc" },
+        select: { locale: true, title: true },
       },
       dubs: {
         where: {
@@ -567,12 +887,15 @@ export async function loadPrecomputedRecommendationComparison(
   const gaps: Array<{ targetVideoId: string; reason: string }> = []
   const accepted = ordered.flatMap((item) => {
     const video = byId.get(item.targetVideoId)
+    const presentation =
+      video?.locales.find((locale) => locale.locale === "en" && locale.title) ??
+      video?.locales.find((locale) => locale.title)
     const playbackId = video?.dubs.find((dub) => dub.muxVideo?.playbackId)
       ?.muxVideo?.playbackId
     const reason =
       !video || video.deletedAt || video.restrictViewPlatforms.includes("watch")
         ? "watch_unavailable"
-        : !video.locales[0]?.title
+        : !presentation?.title
           ? "presentation_unavailable"
           : !playbackId
             ? "audio_unavailable"
@@ -586,7 +909,7 @@ export async function loadPrecomputedRecommendationComparison(
       {
         ...item,
         videoSlug: video!.slug,
-        videoTitle: video!.locales[0].title!,
+        videoTitle: presentation!.title!,
         playbackId: playbackId!,
         imageUrl:
           image?.mobileCinematicHigh ||
@@ -667,8 +990,11 @@ export async function loadPrecomputedRecommendationComparison(
       modelId: generation.modelId,
       promptVersion: generation.promptVersion,
       inputCutoff: generation.inputCutoff,
+      inputMode: generation.inputMode,
+      inputSnapshotMode: generation.inputSnapshotMode,
       acceptedCount: source.acceptedCount,
     },
+    usage: await modelUsage(prisma, generation.id),
     experimental: accepted.slice(0, 6),
     allAcceptedCount: source.acceptedCount,
     coverageGap:

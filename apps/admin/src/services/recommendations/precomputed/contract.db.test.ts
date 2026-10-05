@@ -180,6 +180,139 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
+    it("records content-only provenance and each model call once across retries", async () => {
+      const generation = `astra-usage-${suffix}`
+      createdGenerationIds.push(generation)
+      await submitPrecomputedRecommendation(prisma, {
+        action: "start",
+        generationId: generation,
+        modelId: "gpt-6-astra",
+        promptVersion: "source-v1",
+        inputMode: "content_only",
+        inputDigest: "a".repeat(64),
+        sourceSetDigest,
+        inputCutoff: new Date(Date.now() + 5_000).toISOString(),
+        expectedSourceCount: 1,
+      })
+      const modelCall = {
+        action: "model_call" as const,
+        generationId: generation,
+        sourceVideoId,
+        callId: `call-${suffix}`,
+        stage: "catalog_discovery",
+        status: "succeeded",
+        modelId: "gpt-6-astra",
+        inputDigest: "b".repeat(64),
+        outputDigest: "c".repeat(64),
+        inputTokens: 120,
+        outputTokens: 30,
+        cachedInputTokens: 20,
+        startedAt: "2026-10-05T00:00:01.000Z",
+        finishedAt: "2026-10-05T00:00:02.000Z",
+      }
+      expect(
+        (await submitPrecomputedRecommendation(prisma, modelCall)).replay,
+      ).toBe(false)
+      expect(
+        (await submitPrecomputedRecommendation(prisma, modelCall)).replay,
+      ).toBe(true)
+      await expect(
+        submitPrecomputedRecommendation(prisma, {
+          ...modelCall,
+          outputDigest: "d".repeat(64),
+        }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      await submitPrecomputedRecommendation(prisma, {
+        action: "source",
+        generationId: generation,
+        sourceVideoId,
+        choices: [],
+      })
+      await submitPrecomputedRecommendation(prisma, {
+        action: "complete",
+        generationId: generation,
+      })
+      expect(
+        await submitPrecomputedRecommendation(prisma, {
+          action: "status",
+          generationId: generation,
+          sourceVideoId,
+        }),
+      ).toMatchObject({
+        state: "complete",
+        inputMode: "content_only",
+        source: { status: "complete", acceptedCount: 0 },
+        usage: {
+          callCount: 1,
+          inputTokens: 120,
+          outputTokens: 30,
+          cachedInputTokens: 20,
+        },
+      })
+      const comparison = await loadPrecomputedRecommendationComparison(prisma, {
+        generationId: generation,
+        sourceVideoId,
+        audioLanguageSlug,
+      })
+      expect(comparison).toMatchObject({
+        state: "ready",
+        generation: { inputMode: "content_only" },
+        usage: { callCount: 1, inputTokens: 120, outputTokens: 30 },
+      })
+    })
+
+    it("records a failed source and prevents it from completing the generation", async () => {
+      const generation = `astra-failed-${suffix}`
+      createdGenerationIds.push(generation)
+      await submitPrecomputedRecommendation(prisma, {
+        action: "start",
+        generationId: generation,
+        modelId: "gpt-6-astra",
+        promptVersion: "source-v1",
+        inputMode: "content_only",
+        inputDigest: "e".repeat(64),
+        sourceSetDigest,
+        inputCutoff: "2026-10-05T00:00:00.000Z",
+        expectedSourceCount: 1,
+      })
+      await submitPrecomputedRecommendation(prisma, {
+        action: "model_call",
+        generationId: generation,
+        sourceVideoId,
+        callId: `failed-call-${suffix}`,
+        stage: "candidate_judgment",
+        status: "failed",
+        modelId: "gpt-6-astra",
+        inputDigest: "f".repeat(64),
+        errorCode: "provider_invalid_output",
+        startedAt: "2026-10-05T00:00:01.000Z",
+        finishedAt: "2026-10-05T00:00:02.000Z",
+      })
+      await submitPrecomputedRecommendation(prisma, {
+        action: "fail",
+        generationId: generation,
+        sourceVideoId,
+        failureCode: "provider_invalid_output",
+      })
+      expect(
+        await submitPrecomputedRecommendation(prisma, {
+          action: "status",
+          generationId: generation,
+          sourceVideoId,
+        }),
+      ).toMatchObject({
+        state: "failed",
+        source: { status: "failed", failureCode: "provider_invalid_output" },
+        usage: { callCount: 1, unknownUsageCallCount: 1 },
+      })
+      await expect(
+        submitPrecomputedRecommendation(prisma, {
+          action: "complete",
+          generationId: generation,
+        }),
+      ).rejects.toMatchObject({ code: "conflict" })
+    })
+
     it("completes a mixed-case source cohort using JavaScript ID ordering", async () => {
       const generation = `mixed-order-${suffix}`
       const sourceIds = ["video-a", "Video-B", "video_1", "video-2"].map(

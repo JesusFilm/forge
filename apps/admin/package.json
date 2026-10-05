@@ -17,6 +17,7 @@
     "lint": "NODE_OPTIONS=\"$NODE_OPTIONS --max-old-space-size=8192\" eslint .",
     "typecheck": "NODE_OPTIONS=\"$NODE_OPTIONS --max-old-space-size=8192\" tsc --noEmit",
     "test": "vitest run",
+    "test:precomputed-integration": "vitest run --config vitest.precomputed-integration.config.ts",
     "test:watch": "vitest",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",

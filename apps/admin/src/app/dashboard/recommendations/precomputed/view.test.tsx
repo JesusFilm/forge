@@ -16,11 +16,20 @@ describe("private recommendation comparison", () => {
           allAcceptedCount: 0,
           coverageGap: "no_connections",
           gaps: [],
+          usage: {
+            callCount: 0,
+            unknownUsageCallCount: 0,
+            inputTokens: 0,
+            outputTokens: 0,
+            cachedInputTokens: 0,
+          },
           generation: {
             id: "fixture-one",
             modelId: "fixture",
             promptVersion: "v1",
             inputCutoff: new Date("2026-10-05T00:00:00Z"),
+            inputMode: "fixture",
+            inputSnapshotMode: "fixture",
             acceptedCount: 0,
           },
         }}
@@ -41,7 +50,16 @@ describe("private recommendation comparison", () => {
             modelId: "fixture",
             promptVersion: "v1",
             inputCutoff: new Date("2026-10-05T00:00:00Z"),
+            inputMode: "content_only",
+            inputSnapshotMode: "observed_fenced",
             acceptedCount: 3,
+          },
+          usage: {
+            callCount: 2,
+            unknownUsageCallCount: 1,
+            inputTokens: 50,
+            outputTokens: 20,
+            cachedInputTokens: 0,
           },
           allAcceptedCount: 3,
           coverageGap: null,
@@ -123,6 +141,8 @@ describe("private recommendation comparison", () => {
     expect(html).toContain("Metadata only")
     expect(html).toContain("missing-audio")
     expect(html).toContain("3 accepted choices stored")
+    expect(html).toContain("Observed current rows checked against cutoff")
+    expect(html).toContain("1 calls with unreported usage")
   })
 
   it("does not display a failed generation as ready", () => {
@@ -133,10 +153,20 @@ describe("private recommendation comparison", () => {
           experimental: [],
           semanticBaseline: [],
           coverageGap: null,
+          failureCode: "provider_invalid_output",
+          usage: {
+            callCount: 1,
+            unknownUsageCallCount: 1,
+            inputTokens: 0,
+            outputTokens: 0,
+            cachedInputTokens: 0,
+          },
         }}
       />,
     )
     expect(html).toContain("Generation failed")
+    expect(html).toContain("provider_invalid_output")
+    expect(html).toContain("unreported usage")
     expect(html).not.toContain("Experimental saved choices")
   })
 })
