@@ -109,10 +109,17 @@ throughput. Actual Admin HTTP/worker deployment receipts belong on #2556.
 The October 5 ordinary cycle on descendant `904647329` then recorded four
 transaction-expiry failures amid 3,498 successes through 19:40 UTC. Its 19:41
 audit found all 21 overdue types clear and 23,093,526,528 bytes free, but it
-does not qualify. The storage owner is investigating phase admission and
-finalization within the shared deadline before any further evidenced repair;
-the exact production budget-consuming SQL remains unproved. Recovery and local
-mitigation evidence do not replace the two later ordinary
+does not qualify. PR #2580 adds a minimum remaining-time admission guard after
+an owned PostgreSQL fixture reproduced an avoidable late-phase timeout. A
+pre-work yield preserves exact committed counters as `SKIPPED` / `budget_yield`,
+leaves backlog unknown, does not advance the full-completion watermark and
+requires bounded continuation. Real failures remain failures. Four native
+PostgreSQL 18 tests passed, including two yields with slow triggers retained
+before deferred work completed. Required CI, merge and actual Admin role
+deployment verification remain pending; the exact production budget-consuming
+SQL remains unproved. Repeated yields do not prove eventual completion under
+sustained arrivals, so oldest-age and success-watermark checks remain necessary.
+Recovery and local mitigation evidence do not replace the two later ordinary
 loaded daily cycles. Existing daily monitoring sends
 new proof to the coordinating owner, who completes the scoped evidence PR,
 review/merge, final merged-main inventory and index update. Do not mark the plan

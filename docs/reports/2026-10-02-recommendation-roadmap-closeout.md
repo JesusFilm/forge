@@ -332,13 +332,33 @@ reclamation is claimed. Saved aggregate receipts are under
 `outputs/heartbeats/20261005T1937-daily/` in the storage evidence directory.
 
 The repeated failures mean the page-five mitigation has not established a clean
-cycle. The storage owner is tracing phase admission and finalization against the
-shared deadline with bounded reads and isolated real-dependency tests. Actual
-timeouts remain failures; no further cap reduction, deadline relaxation or
-production intervention is assumed to be a fix without evidence.
+cycle. [PR #2580](https://github.com/JesusFilm/forge/pull/2580) addresses an
+avoidable late-phase admission path reproduced on an owned PostgreSQL fixture:
+the old code started a 500 ms deletion with only 287 ms remaining, then failed
+after preserving earlier committed work. The exact production statement that
+consumed the budget remains unproved.
+
+The proposed repair requires more than 750 ms before admitting a nonterminal
+phase, checked before connection acquisition and after the advisory lock. A
+pre-work yield records durable `SKIPPED` / `budget_yield`, exact committed
+counters, unknown backlog and explicit bounded continuation. It does not
+advance the successful-completion watermark. Real transaction, oldest-scan and
+terminal-write failures remain failures, including failed fallback ledger
+persistence. The five-second deadline, 29-day expiry, deletion order, page caps
+and scheduling bounds remain unchanged. The threshold does not guarantee that
+an admitted phase will finish or that repeated yields cannot delay later work.
+
+Four owned PostgreSQL 18 tests passed, including real timeout accounting and
+two yields under retained slow triggers before the deferred contribution
+completed. Focused service, scheduler and workflow tests cover bounded
+continuation and truthful counters and errors. These are local proofs; #2580
+is pending required CI, merge and actual Admin HTTP/worker deployment
+verification. A yield-only sequence cannot qualify as a clean loaded cycle.
 
 There are **zero qualifying cycles** through the failed October 5 cycle. Both
 Admin roles must run `66eccae12` or a verified descendant containing the repairs.
+After #2580 merges, verify its own merge revision or a descendant in both roles
+before attributing later observations to the admission guard.
 Natural catch-up demonstrated request-root deletion, declining overdue backlog
 and restoration of the serving-health criteria; recovery cannot qualify the
 already failed cycle. Two later ordinary loaded, failure-free daily cycles at the normal
