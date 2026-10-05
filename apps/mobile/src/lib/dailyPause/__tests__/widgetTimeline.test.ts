@@ -25,10 +25,7 @@ import {
   serializePauseDay,
   type PauseDayRecord,
 } from "../progress"
-import {
-  getPauseSettingsStore,
-  resetPauseSettingsStoreForTests,
-} from "../settings"
+import { resetPauseSettingsStoreForTests } from "../settings"
 import {
   DailyPauseWidgetTimeline,
   buildDailyPauseWidgetTimeline,
@@ -347,8 +344,8 @@ describe("DailyPauseWidgetTimeline", () => {
   })
 
   // The owner (2026-10-06): a widget added from the Home Screen shows today's
-  // question whatever the Customize switch says; the switch only shows how.
-  it("shows today's question whether the widget switch is on or off", async () => {
+  // question on a first launch; no Customize setting turns it off.
+  it("shows today's question on a first launch", async () => {
     jest.useFakeTimers({ now: MONDAY_9AM })
     const timelines: Timeline[] = []
     const widget = {
@@ -370,19 +367,8 @@ describe("DailyPauseWidgetTimeline", () => {
     })
     mounted.add(renderer)
     await settle()
-    // R47: the switch is off on a first launch.
-    expect(getPauseSettingsStore().getSnapshot().widgetOn).toBe(false)
     expect(timelines.length).toBeGreaterThan(0)
     expect(timelines.at(-1)).toHaveLength(14)
     expect(timelines.at(-1)![0]!.props).toEqual(todayQuestion)
-
-    for (const widgetOn of [true, false]) {
-      await act(async () => {
-        getPauseSettingsStore().update({ widgetOn })
-      })
-      await settle()
-      expect(timelines.at(-1)).toHaveLength(14)
-      expect(timelines.at(-1)![0]!.props).toEqual(todayQuestion)
-    }
   })
 })

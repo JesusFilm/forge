@@ -39,15 +39,14 @@ export type PauseSettings = {
   /** The Notifications switch. */
   reminderOn: boolean
   reminderTime: ReminderTime
-  widgetOn: boolean
 }
 
-/** R30, R32, R47: 3 min, Notifications off at 7:00 AM, and the widget off. */
+/** R30, R32, R47: 3 min, and Notifications off at 7:00 AM. A record saved with
+ *  the retired widget switch reads the same, without it (the owner, 2026-10-06). */
 export const DEFAULT_PAUSE_SETTINGS: Readonly<PauseSettings> = Object.freeze({
   meditationLength: 3,
   reminderOn: false,
   reminderTime: Object.freeze({ hour: 7, minute: 0 }),
-  widgetOn: false,
 })
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -101,8 +100,6 @@ export function parseStoredPauseSettings(
     reminderTime: isReminderTime(data.reminderTime)
       ? { hour: data.reminderTime.hour, minute: data.reminderTime.minute }
       : defaults.reminderTime,
-    widgetOn:
-      typeof data.widgetOn === "boolean" ? data.widgetOn : defaults.widgetOn,
   }
 }
 

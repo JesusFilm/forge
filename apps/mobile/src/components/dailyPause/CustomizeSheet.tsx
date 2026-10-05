@@ -1,6 +1,7 @@
 // The Customize sheet (R27-R37, R43, R47; KTD17, KTD18). Each control writes
-// the settings record at once. The reminder lifecycle reads that record, so it
-// reschedules by itself; the widget switch only writes `widgetOn` (U14 reads it).
+// the settings record at once, and the reminder lifecycle reschedules from it.
+// The widget row only shows how to add the widget; it changes no setting.
+import Ionicons from "@expo/vector-icons/Ionicons"
 import DateTimePicker, {
   DateTimePickerAndroid,
 } from "@react-native-community/datetimepicker"
@@ -48,8 +49,7 @@ const CUSTOMIZE_COPY = {
   reminderTimeHint: "Changes the time of the daily reminder",
   denied: (place: string) => `Notifications are off in ${place}.`,
   openSettings: "Open Settings",
-  widget: "Home screen widget",
-  widgetSubtitle: "Today's question on your home screen",
+  howToRow: "How to add the widget",
   howToLead: "To add the widget:",
   howToSteps: [
     "1. Touch and hold an empty area of your Home Screen.",
@@ -106,6 +106,7 @@ export function CustomizeSheet({ onDone }: CustomizeSheetProps) {
   const store = getPauseSettingsStore()
   const [request, setRequest] = useState<ReminderRequest>("idle")
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [howToOpen, setHowToOpen] = useState(false)
 
   const isIos = Platform.OS === "ios"
   const time = formatReminderTime(settings.reminderTime)
@@ -274,20 +275,31 @@ export function CustomizeSheet({ onDone }: CustomizeSheetProps) {
             />
           )}
 
+          {/* R37, R43: only iOS shows the row; this build has no Android
+              widget. The owner (2026-10-06) made it a plain row. */}
           {isIos && (
-            <View style={styles.row}>
-              <View style={styles.copy}>
-                <Text style={rowTitle}>{CUSTOMIZE_COPY.widget}</Text>
-                <Text style={subtitle}>{CUSTOMIZE_COPY.widgetSubtitle}</Text>
-              </View>
-              <PauseSwitch
-                label={CUSTOMIZE_COPY.widget}
-                value={settings.widgetOn}
-                onValueChange={(widgetOn) => store.update({ widgetOn })}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={CUSTOMIZE_COPY.howToRow}
+              accessibilityState={{ expanded: howToOpen }}
+              onPress={() => setHowToOpen((open) => !open)}
+              style={({ pressed }) => [
+                styles.row,
+                styles.howToRow,
+                pressed && feedback.pressed,
+              ]}
+            >
+              <Text style={[rowTitle, styles.copy]}>
+                {CUSTOMIZE_COPY.howToRow}
+              </Text>
+              <Ionicons
+                name={howToOpen ? "chevron-up" : "chevron-down"}
+                size={18}
+                color={pauseColors.muted}
               />
-            </View>
+            </Pressable>
           )}
-          {isIos && settings.widgetOn && (
+          {isIos && howToOpen && (
             <View style={styles.howTo}>
               <Text style={[font("sansSemiBold"), styles.howToLead]}>
                 {CUSTOMIZE_COPY.howToLead}
@@ -426,6 +438,7 @@ const styles = StyleSheet.create({
   link: {
     color: pauseColors.accent,
   },
+  howToRow: { minHeight: MIN_TARGET },
   howTo: {
     gap: pauseSpacing.rowCopyGap,
   },

@@ -34,13 +34,12 @@ async function settle() {
   for (let i = 0; i < 8; i += 1) await Promise.resolve()
 }
 
-/** The four settings, without the store's status. */
+/** The settings, without the store's status. */
 function settingsOf(snapshot: PauseSettingsSnapshot) {
   return {
     meditationLength: snapshot.meditationLength,
     reminderOn: snapshot.reminderOn,
     reminderTime: snapshot.reminderTime,
-    widgetOn: snapshot.widgetOn,
   }
 }
 
@@ -48,7 +47,6 @@ const FIRST_LAUNCH = {
   meditationLength: 3,
   reminderOn: false,
   reminderTime: { hour: 7, minute: 0 },
-  widgetOn: false,
 }
 
 describe("the pause timers (R30)", () => {
@@ -62,7 +60,7 @@ describe("the pause timers (R30)", () => {
 })
 
 describe("the settings record (KTD12)", () => {
-  it("reads 3 min, Notifications off at 7:00 AM, and the widget off on first launch", async () => {
+  it("reads 3 min and Notifications off at 7:00 AM on first launch", async () => {
     const store = createPauseSettingsStore(makeStorage())
     await store.hydrate()
     expect(store.getSnapshot().status).toBe("ready")
@@ -81,7 +79,6 @@ describe("the settings record (KTD12)", () => {
     expect(heard[0]!.meditationLength).toBe(5)
 
     store.update({ reminderOn: true, reminderTime: { hour: 6, minute: 30 } })
-    store.update({ widgetOn: true })
     await settle()
 
     const next = createPauseSettingsStore(storage)
@@ -90,7 +87,25 @@ describe("the settings record (KTD12)", () => {
       meditationLength: 5,
       reminderOn: true,
       reminderTime: { hour: 6, minute: 30 },
+    })
+  })
+
+  // The owner (2026-10-06) retired the widget switch. A saved record still
+  // holds it, and the other settings must read as before.
+  it("reads a record saved with the retired widget switch, without it", async () => {
+    const raw = JSON.stringify({
+      version: 1,
+      meditationLength: 5,
+      reminderOn: true,
+      reminderTime: { hour: 6, minute: 30 },
       widgetOn: true,
+    })
+    const store = createPauseSettingsStore(makeStorage(raw))
+    await store.hydrate()
+    expect(settingsOf(store.getSnapshot())).toEqual({
+      meditationLength: 5,
+      reminderOn: true,
+      reminderTime: { hour: 6, minute: 30 },
     })
   })
 

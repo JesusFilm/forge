@@ -157,11 +157,10 @@ describe("CustomizeSheet", () => {
     expect(stored?.meditationLength).toBe(5)
   })
 
-  it("starts with both switches off and no reminder time (R47)", async () => {
+  it("starts with Notifications off and no reminder time (R47)", async () => {
     const renderer = await render()
 
     expect(stateOf(renderer, "Notifications").checked).toBe(false)
-    expect(stateOf(renderer, "Home screen widget").checked).toBe(false)
     expect(hasText(renderer, "7:00 AM")).toBe(false)
   })
 
@@ -276,20 +275,24 @@ describe("CustomizeSheet", () => {
     )
   })
 
-  it("shows the widget how-to while the widget switch is on, and hides it when off (R37)", async () => {
+  // The owner (2026-10-06): the widget always shows today's question, so its
+  // row is a plain "How to add the widget" button, not a switch.
+  it("opens and closes the widget how-to from a plain row on iOS (R37)", async () => {
     setPlatform("ios")
     const renderer = await render()
+    const row = () => host(renderer, "How to add the widget")
+    expect(row().props.accessibilityRole).toBe("button")
+    expect(row().props.accessibilityState).toEqual({ expanded: false })
     expect(hasText(renderer, "Add Widget")).toBe(false)
 
-    await tap(renderer, "Home screen widget")
+    await tap(renderer, "How to add the widget")
 
-    expect(settings().widgetOn).toBe(true)
-    expect(stateOf(renderer, "Home screen widget").checked).toBe(true)
+    expect(row().props.accessibilityState).toEqual({ expanded: true })
     expect(hasText(renderer, "Add Widget")).toBe(true)
 
-    await tap(renderer, "Home screen widget")
+    await tap(renderer, "How to add the widget")
 
-    expect(settings().widgetOn).toBe(false)
+    expect(row().props.accessibilityState).toEqual({ expanded: false })
     expect(hasText(renderer, "Add Widget")).toBe(false)
   })
 
@@ -297,8 +300,8 @@ describe("CustomizeSheet", () => {
     setPlatform("android")
     const renderer = await render()
 
-    expect(control(renderer, "Home screen widget")).toBeUndefined()
-    expect(hasText(renderer, "Home screen widget")).toBe(false)
+    expect(control(renderer, "How to add the widget")).toBeUndefined()
+    expect(hasText(renderer, "How to add the widget")).toBe(false)
     expect(control(renderer, "Notifications")).toBeDefined()
   })
 
@@ -320,7 +323,7 @@ describe("CustomizeSheet", () => {
       "3 minutes",
       "5 minutes",
       "Done",
-      "Home screen widget",
+      "How to add the widget",
       "Notifications",
       "Reminder time, 7:00 AM",
     ])
@@ -334,7 +337,7 @@ describe("CustomizeSheet", () => {
       "3 minutes",
       "5 minutes",
       "Done",
-      "Home screen widget",
+      "How to add the widget",
       "Notifications",
       "Notifications are off in iOS Settings. Open Settings",
     ])
