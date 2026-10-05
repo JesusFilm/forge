@@ -7,6 +7,7 @@ import type { ProducedDevotionalAudio } from "../../services/devotional/devotion
 import type { GeneratedDevotional } from "../../services/devotional/generate-devotional"
 import { videoFirstDevotionalWorkflow } from "./video-first-devotional"
 import { VideoFirstDevotionalWorkflowInputSchema } from "./video-first-devotional-schema"
+import { DevotionalLlmError } from "../../services/devotional/llm"
 
 const mocks = vi.hoisted(() => ({
   reserve: vi.fn(),
@@ -56,10 +57,43 @@ vi.mock("../../services/devotional/workspace/provenance", () => ({
   writeAttemptJsonArtifact: vi.fn(async () => "/runs/test/artifact.json"),
 }))
 
+vi.mock("../../config/env", async (importActual) => ({
+  ...(await importActual()),
+  // `env` is parsed once at module load, so setting process.env in a hook cannot
+  // move it. Overriding the getter is what lets one suite cover both modes.
+  isDevotionalQualityGateEnforced: () => qualityEnforced,
+}))
+
 vi.mock("../../services/devotional/safety-gate", async (importActual) => ({
   ...(await importActual()),
   evaluateSafety: async () => SAFETY,
 }))
+
+// The quality gate's three critics build their own LLMs from authored model
+// config, so without this the suite would attempt real provider calls and the
+// gate would fail closed on every run — blocking before the approval suspension
+// these tests are about. Mutable so one case can flip it to a blocking verdict.
+vi.mock(
+  "../../services/devotional/devotional-quality-gate",
+  async (importActual) => ({
+    ...(await importActual()),
+    reviewDevotionalText: async (args: { abortSignal?: AbortSignal }) => {
+      // Cancel WHILE the gate is running, which is the real shape: the clip is
+      // already reserved by then, so the release path is reachable. Cancelling
+      // before the run starts aborts ahead of the reservation and proves nothing
+      // about it.
+      if (cancelDuringGate) {
+        cancelDuringGate()
+        throw new DevotionalLlmError("transport", "request cancelled by caller")
+      }
+      if (args.abortSignal?.aborted) {
+        throw new DevotionalLlmError("transport", "request cancelled by caller")
+      }
+      if (qualityThrows) throw qualityThrows
+      return { blocking: qualityBlocking }
+    },
+  }),
+)
 
 vi.mock("../../services/devotional/workspace/attempt-data", () => ({
   loadDevotionalAttemptAuthoredData: async () => ({
@@ -188,6 +222,18 @@ const SAFETY = {
   reasons: [],
 }
 
+/** Quality-gate verdict for the run under test. Empty = clean. */
+let qualityBlocking: string[] = []
+/** Set to simulate the gate itself failing (provider outage past its retries). */
+let qualityThrows: Error | undefined
+/** Set by the cancellation case: aborts the run from inside the gate call, so
+ *  the cancellation lands after the clip is reserved. */
+let cancelDuringGate: (() => void) | undefined
+/** Enforcement mode for the run under test. Production defaults to report-only;
+ *  these cases default to enforced so the blocking paths are exercised, and the
+ *  report-only cases set it back explicitly. */
+let qualityEnforced = true
+
 const PORTRAIT = {
   assetId: "devo_run_1",
   artifactType: "devotional-output-portrait-v1" as const,
@@ -282,6 +328,10 @@ async function startAndResume(approved: boolean, runId: string) {
 
 describe("video-first devotional workflow", () => {
   beforeEach(() => {
+    qualityBlocking = []
+    qualityThrows = undefined
+    cancelDuringGate = undefined
+    qualityEnforced = true
     vi.clearAllMocks()
     mocks.reserve.mockResolvedValue({
       chapter: CHAPTER,
@@ -332,6 +382,182 @@ describe("video-first devotional workflow", () => {
       status: "success",
       result: { status: "rejected", clipRecorded: false },
     })
+    expect(mocks.publish).not.toHaveBeenCalled()
+    expect(mocks.record).not.toHaveBeenCalled()
+    expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
+  })
+
+  // The quality gate sits with the safety gate between composed text and money:
+  // ElevenLabs narration and the Worker render are both downstream. This case is
+  // the one that would have caught the gate shipping unwired — it fails if the
+  // reviewDevotionalText call is removed from contentStep, or if produceStep
+  // stops consulting its verdict.
+  it("does not render or narrate when the quality gate blocks", async () => {
+    qualityBlocking = ["coherence: the reflection never touches the verse"]
+    registeredWorkflow ??= registerWorkflow()
+    const runId = "workflow-quality-blocked"
+    const run = await registeredWorkflow.createRun({ runId })
+    await run.startAsync({ inputData: workflowInput(runId) })
+
+    // Wait for a TERMINAL state. Without this the assertions below pass whether
+    // or not the gate is consulted, because the paid steps simply have not run
+    // yet when startAsync resolves — the failure mode this test exists to catch
+    // would sail through. Verified by removing the produceStep quality check:
+    // that must turn this case red.
+    let state = await registeredWorkflow.getWorkflowRunById(runId)
+    for (
+      let attempt = 0;
+      attempt < 100 &&
+      state?.status !== "success" &&
+      state?.status !== "failed" &&
+      state?.status !== "suspended";
+      attempt++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      state = await registeredWorkflow.getWorkflowRunById(runId)
+    }
+
+    // No approval suspension: there is nothing to approve when nothing rendered.
+    expect(state?.status).not.toBe("suspended")
+    expect(mocks.render).not.toHaveBeenCalled()
+    expect(mocks.publish).not.toHaveBeenCalled()
+    // Not burned: a blocked devotional must not consume the clip.
+    expect(mocks.record).not.toHaveBeenCalled()
+
+    // The approver is told which gate stopped it. This note used to say "safety
+    // blocked" unconditionally, so a quality block arrived attributed to the
+    // wrong gate.
+    expect(state).toMatchObject({
+      result: { notes: "skipped: quality blocked" },
+    })
+
+    // WHY it was blocked has to survive to the result. Safety reads "pass" on a
+    // quality block, so without `blockedBy` this run reported publish_failed /
+    // rendered_assets_missing — a quality problem dressed as a render bug, which
+    // is the wrong thing to hand an approver. The reasons ride along too.
+    expect(state).toMatchObject({
+      status: "success",
+      result: {
+        status: "blocked",
+        blockedBy: "quality",
+        quality: {
+          blocking: ["coherence: the reflection never touches the verse"],
+        },
+      },
+    })
+    // NOTE deliberately not asserted: whether the reservation is RELEASED here.
+    // It is not, on this path — the blocked run ends holding the clip. That is
+    // the pre-existing safety-block behaviour too (produceStep returns
+    // readyForRender:false without releasing), so it is not introduced here, and
+    // pinning it either way would encode a decision nobody has made. Recorded as
+    // a review finding instead.
+  })
+
+  // Vlad's rollout condition: the critics ship observing, not enforcing. A
+  // finding must be recorded either way, and only enforcement may stop the paid
+  // work — otherwise a provider outage costs a day's devotional before anyone
+  // knows the false-positive rate.
+  describe("report-only mode", () => {
+    it("records the finding and still renders", async () => {
+      qualityEnforced = false
+      qualityBlocking = ["coherence: the reflection never touches the verse"]
+      const result = await startAndResume(true, "workflow-report-only")
+
+      // The paid work went ahead...
+      expect(mocks.render).toHaveBeenCalled()
+      // ...and the verdict is on the record with the mode it ran under, so the
+      // finding is countable later without guessing whether it was acted on.
+      expect(result).toMatchObject({
+        status: "success",
+        result: {
+          status: "published",
+          quality: {
+            enforced: false,
+            blocking: ["coherence: the reflection never touches the verse"],
+          },
+        },
+      })
+      // Narrowed rather than optional-chained: the union includes a failed shape
+      // with no `result` at all, and `?.` on that would quietly assert nothing.
+      expect(result.status).toBe("success")
+      if (result.status !== "success") throw new Error("expected success")
+      expect(result.result.blockedBy).toBeUndefined()
+    })
+
+    it("still renders when the gate itself fails, so an outage costs nothing", async () => {
+      // The gate throwing is the provider-outage shape: past its own retries,
+      // every critic gone. Under enforcement that is a block by design; in
+      // report-only it must not be, which is the whole reason for the mode.
+      qualityEnforced = false
+      qualityThrows = new Error("openrouter unavailable")
+      const result = await startAndResume(true, "workflow-report-only-outage")
+      expect(mocks.render).toHaveBeenCalled()
+      expect(result).toMatchObject({
+        status: "success",
+        result: { status: "published" },
+      })
+    })
+  })
+
+  it("blocks when the gate itself fails under enforcement", async () => {
+    // Same outage, enforcement on: fail closed. "We could not check" must never
+    // read as "it passed", so the paid work does not start.
+    qualityThrows = new Error("openrouter unavailable")
+    registeredWorkflow ??= registerWorkflow()
+    const runId = "workflow-enforced-outage"
+    const run = await registeredWorkflow.createRun({ runId })
+    await run.startAsync({ inputData: workflowInput(runId) })
+    let state = await registeredWorkflow.getWorkflowRunById(runId)
+    for (
+      let attempt = 0;
+      attempt < 100 &&
+      state?.status !== "success" &&
+      state?.status !== "failed" &&
+      state?.status !== "suspended";
+      attempt++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      state = await registeredWorkflow.getWorkflowRunById(runId)
+    }
+    expect(mocks.render).not.toHaveBeenCalled()
+    expect(state?.status).not.toBe("suspended")
+  })
+
+  it("stops the run and releases the clip when the caller cancels", async () => {
+    // A cancelled run used to keep going: the client reports an abort as a
+    // transport error, each critic degraded that to "skipped", and the wrapper
+    // turned it into a blocking verdict — which in report-only mode does not
+    // block. So the paid steps ran anyway, which is the opposite of what
+    // threading the signal was for.
+    qualityEnforced = false
+    registeredWorkflow ??= registerWorkflow()
+    const runId = "workflow-cancelled"
+    const run = await registeredWorkflow.createRun({ runId })
+    // Mastra cancels through the run's own controller — `startAsync` takes no
+    // abortSignal, which a probe of the run API confirmed. Fired from inside the
+    // gate so the clip is already reserved when it lands.
+    cancelDuringGate = () => run.abortController.abort()
+    await run
+      .startAsync({ inputData: workflowInput(runId) })
+      .catch(() => undefined)
+
+    let state = await registeredWorkflow.getWorkflowRunById(runId)
+    for (
+      let attempt = 0;
+      attempt < 100 &&
+      state?.status !== "success" &&
+      state?.status !== "failed" &&
+      state?.status !== "suspended";
+      attempt++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      state = await registeredWorkflow.getWorkflowRunById(runId)
+    }
+
+    // No paid work, and the clip goes back to the pool rather than being spent
+    // on a run nobody asked to finish.
+    expect(state?.status).not.toBe("success")
+    expect(mocks.render).not.toHaveBeenCalled()
     expect(mocks.publish).not.toHaveBeenCalled()
     expect(mocks.record).not.toHaveBeenCalled()
     expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
