@@ -60,6 +60,7 @@ Each already contains its own Watch, Reflect, and Pray sections, burned-in step 
 - **Meditation length sets the pause timers.** (session-settled: user-directed — chosen over changing how much video plays and over a cosmetic setting.) Governs R30, R31.
 - **The reminder time is editable.** (session-settled: user-directed — chosen over a fixed 7:00 AM.) Governs R34.
 - **The widget is iOS only, and its switch explains how to add the widget.** (session-settled: user-directed — chosen over iOS plus Android, and over a how-to row with no switch or a cosmetic switch: iOS does not let an app place a widget on the Home Screen.) Governs R37, R38, R43.
+  - **Superseded 2026-10-06 (owner):** the widget always shows today's question, whatever the switch says. The switch only shows the how-to (R37).
 - **Share sends the complete devotional video, never a new edit.** (session-settled: user-directed — chosen over a message with a link and over a graphic card: the video already holds the whole devotional.) Governs R20.
 - **A quiet "done" state for the day.** (session-settled: user-directed — chosen over a missed-day nudge and over no done state.) Governs R7, R8, R9.
 - **The flow ends with the close button only.** (session-settled: user-directed — chosen over a Done link under Share and over an automatic return to Home after sharing.) Governs R22.
@@ -126,6 +127,7 @@ Each already contains its own Watch, Reflect, and Pray sections, burned-in step 
 - R36. A denied permission leaves the switch off, with a line that points to iOS Settings.
 - R37. On iOS, turning the widget switch on shows a short how-to for adding the Daily Bible Pause widget from the Home Screen.
 - R38. The iOS widget shows today's question while the switch is on, and a quiet "Turned off" state while it is off.
+  - **Superseded 2026-10-06 (owner):** the widget always shows today's question, whatever the switch says. The switch only shows the how-to (R37).
 - R47. On first launch, the Notifications switch and the widget switch are off.
 
 **Content and video**
@@ -184,6 +186,7 @@ flowchart TB
 - AE5. **Covers R14.** Given a video part is playing, when the user taps the video, then it pauses, and a second tap resumes it from the same frame.
 - AE6. **Covers R36.** Given notification permission was denied, when the user turns Notifications on, then the switch returns to off and the row says that notifications are off in iOS Settings.
 - AE7. **Covers R38.** Given the widget is on the Home Screen and the switch is off, then the widget shows the "Turned off" state, and turning the switch on brings back today's question.
+  - **Superseded 2026-10-06 (owner):** the widget always shows today's question, whatever the switch says. The switch only shows the how-to (R37). AE7 now reads: the widget shows today's question with the switch on or off.
 - AE8. **Covers R20, R42.** Given the phone is in airplane mode, when the user taps "Share this video", then the share sheet offers the complete devotional video.
 
 ### Success Criteria
@@ -314,6 +317,7 @@ flowchart TB
 - KTD14. **The widget uses `expo-widgets` with `@expo/ui`, decided by the U2 spike.** The app writes a timeline to the App Group with these entries:
   - with the switch on, one entry per local day for 14 days, holding that day's question and done flag
   - with the switch off, one "Turned off" entry
+  - **Superseded 2026-10-06 (owner):** the widget always shows today's question, whatever the switch says. The switch only shows the how-to (R37). The timeline is always the 14 day entries.
 
   It rewrites the timeline on foreground, on Share, and on a switch change. A tap uses `widgetURL` with the app scheme, and `app/+native-intent.tsx` turns that URL into a curtain request. It returns `/` only on a cold launch. On a warm link it returns null, so expo-router does not navigate and a run on top stays where it is (KTD5). The widget uses the system serif, because the extension cannot use the app's fonts. Fallback: `@bacons/apple-targets` from its SDK 57 branch. A bake-off is not used, because only one candidate has an SDK 57 release. Governs R1, R9, R37, R38.
 

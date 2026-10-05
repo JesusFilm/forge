@@ -1,6 +1,6 @@
 // The widget timeline (U14, KTD14, R9, R38). The writer runs over a fake widget
-// that keeps every timeline, and over the REAL settings and day-record stores,
-// so a switch change and a Share reach it the real way.
+// that keeps every timeline, and over the REAL day-record store, so a Share
+// reaches it the real way.
 
 // The day-change case mounts the app's own stores, which load AsyncStorage.
 jest.mock("@react-native-async-storage/async-storage", () =>
@@ -19,17 +19,15 @@ import {
 } from "../../../test-utils/rnTestRenderer"
 import { DEVOTIONALS } from "../devotionals"
 import {
+  PAUSE_DAY_STORAGE_KEY,
   createPauseProgressStore,
   resetPauseProgressStoreForTests,
+  serializePauseDay,
   type PauseDayRecord,
 } from "../progress"
 import {
-  PAUSE_SETTINGS_STORAGE_KEY,
-  createPauseSettingsStore,
   getPauseSettingsStore,
   resetPauseSettingsStoreForTests,
-  serializePauseSettings,
-  DEFAULT_PAUSE_SETTINGS,
 } from "../settings"
 import {
   DailyPauseWidgetTimeline,
@@ -98,19 +96,11 @@ function questionOn(index: number): string {
 
 function questionProps(question: string, done: boolean) {
   return {
-    state: "question",
     label: "DAILY BIBLE PAUSE",
     question,
     done,
     url: WIDGET_URL,
   }
-}
-
-const TURNED_OFF = {
-  state: "off",
-  label: "DAILY BIBLE PAUSE",
-  message: "Turned off",
-  url: WIDGET_URL,
 }
 
 function memoryStorage(seed: Record<string, string> = {}) {
@@ -130,21 +120,19 @@ function idle(): Promise<void> {
 
 function harness({
   now = MONDAY_9AM,
-  settingsSeed = {},
-}: { now?: number; settingsSeed?: Record<string, string> } = {}) {
+  progressSeed = {},
+}: { now?: number; progressSeed?: Record<string, string> } = {}) {
   const timelines: Timeline[] = []
   const widget = {
     updateTimeline: (entries: Timeline) => {
       timelines.push(entries)
     },
   }
-  const settings = createPauseSettingsStore(memoryStorage(settingsSeed))
-  const progress = createPauseProgressStore(memoryStorage())
+  const progress = createPauseProgressStore(memoryStorage(progressSeed))
   const appState = new Set<(state: string) => void>()
   let clock = now
   const writer = createDailyPauseWidgetWriter({
     widget,
-    settings,
     progress,
     subscribeToAppState: (listener) => {
       appState.add(listener)
@@ -157,7 +145,6 @@ function harness({
   return {
     timelines,
     latest: () => timelines.at(-1)!,
-    settings,
     progress,
     writer,
     setNow: (next: number) => {
@@ -171,7 +158,7 @@ function harness({
 
 describe("buildDailyPauseWidgetTimeline", () => {
   it("holds 14 entries at local midnights, each naming that day's question (AE3)", () => {
-    const entries = buildDailyPauseWidgetTimeline(MONDAY_9AM, true, NO_DAY)
+    const entries = buildDailyPauseWidgetTimeline(MONDAY_9AM, NO_DAY)
 
     expect(entries.map((entry) => localKey(entry.date))).toEqual(
       dayKeys("2026-10-05", 14),
@@ -198,11 +185,7 @@ describe("buildDailyPauseWidgetTimeline", () => {
         noon.getDate() - 3,
         9,
       )
-      const entries = buildDailyPauseWidgetTimeline(
-        from.getTime(),
-        true,
-        NO_DAY,
-      )
+      const entries = buildDailyPauseWidgetTimeline(from.getTime(), NO_DAY)
       expect(entries.map((entry) => localKey(entry.date))).toEqual(
         dayKeys(localKey(from), 14),
       )
@@ -210,23 +193,9 @@ describe("buildDailyPauseWidgetTimeline", () => {
     },
   )
 
-  it("holds one Turned off entry while the switch is off (AE7)", () => {
-    const entries = buildDailyPauseWidgetTimeline(MONDAY_9AM, false, {
-      dayKey: "2026-10-05",
-      step: "share",
-      done: true,
-      bellRead: true,
-    })
-
-    expect(entries).toHaveLength(1)
-    expect(localKey(entries[0]!.date)).toBe("2026-10-05")
-    expect(isLocalMidnight(entries[0]!.date)).toBe(true)
-    expect(entries[0]!.props).toEqual(TURNED_OFF)
-  })
-
   it("shows no check on Tuesday for Monday's done devotional (AE3)", () => {
     const tuesday = new Date(2026, 9, 6, 7, 0).getTime()
-    const entries = buildDailyPauseWidgetTimeline(tuesday, true, {
+    const entries = buildDailyPauseWidgetTimeline(tuesday, {
       dayKey: "2026-10-05",
       step: "share",
       done: true,
@@ -245,7 +214,6 @@ describe("buildDailyPauseWidgetTimeline", () => {
 describe("the widget timeline writer", () => {
   it("puts the check on today's entry after Share (R9)", async () => {
     const h = harness()
-    h.settings.update({ widgetOn: true })
     h.writer.attach()
     await idle()
     expect(h.latest()[0]!.props).toEqual(
@@ -263,32 +231,15 @@ describe("the widget timeline writer", () => {
     ).toEqual([true, ...Array.from({ length: 13 }, () => false)])
   })
 
-  it("brings back today's question when the switch turns on again (AE7)", async () => {
-    const h = harness()
-    h.settings.update({ widgetOn: true })
-    h.writer.attach()
-    await idle()
-
-    h.settings.update({ widgetOn: false })
-    await idle()
-    expect(h.latest().map((entry) => entry.props)).toEqual([TURNED_OFF])
-
-    h.settings.update({ widgetOn: true })
-    await idle()
-    expect(h.latest()).toHaveLength(14)
-    expect(localKey(h.latest()[0]!.date)).toBe("2026-10-05")
-    expect(h.latest()[0]!.props).toEqual(
-      questionProps(DEVOTIONALS.pharisee.question, false),
-    )
-  })
-
-  it("waits for the saved switch, so it never writes Turned off over an on switch", async () => {
+  it("waits for the saved day record, so today's check never drops", async () => {
     const h = harness({
-      settingsSeed: {
-        [PAUSE_SETTINGS_STORAGE_KEY]: serializePauseSettings({
-          ...DEFAULT_PAUSE_SETTINGS,
-          widgetOn: true,
-        }),
+      progressSeed: {
+        [PAUSE_DAY_STORAGE_KEY]: serializePauseDay({
+          dayKey: "2026-10-05",
+          step: "share",
+          done: true,
+          bellRead: true,
+        })!,
       },
     })
 
@@ -296,12 +247,15 @@ describe("the widget timeline writer", () => {
     await idle()
 
     expect(h.timelines.length).toBeGreaterThan(0)
-    expect(h.timelines.every((timeline) => timeline.length === 14)).toBe(true)
+    expect(
+      h.timelines.every(
+        (timeline) => timeline.length === 14 && timeline[0]!.props.done,
+      ),
+    ).toBe(true)
   })
 
   it("rewrites from the new day when the app returns to the foreground, and only then", async () => {
     const h = harness()
-    h.settings.update({ widgetOn: true })
     h.writer.attach()
     await idle()
     h.setNow(new Date(2026, 9, 6, 8, 0).getTime())
@@ -358,7 +312,6 @@ describe("DailyPauseWidgetTimeline", () => {
 
   it("writes the timeline again after local midnight, from the new day", async () => {
     jest.useFakeTimers({ now: new Date(2026, 9, 5, 23, 59, 30) })
-    getPauseSettingsStore().update({ widgetOn: true })
     const timelines: Timeline[] = []
     const widget = {
       updateTimeline: (entries: Timeline) => {
@@ -391,5 +344,45 @@ describe("DailyPauseWidgetTimeline", () => {
     expect(timelines.at(-1)![0]!.props).toEqual(
       questionProps(DEVOTIONALS.lamp.question, false),
     )
+  })
+
+  // The owner (2026-10-06): a widget added from the Home Screen shows today's
+  // question whatever the Customize switch says; the switch only shows how.
+  it("shows today's question whether the widget switch is on or off", async () => {
+    jest.useFakeTimers({ now: MONDAY_9AM })
+    const timelines: Timeline[] = []
+    const widget = {
+      updateTimeline: (entries: Timeline) => {
+        timelines.push(entries)
+      },
+    }
+    const todayQuestion = questionProps(DEVOTIONALS.pharisee.question, false)
+
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(
+        createElement(
+          StrictMode,
+          null,
+          createElement(DailyPauseWidgetTimeline, { widget }),
+        ),
+      )
+    })
+    mounted.add(renderer)
+    await settle()
+    // R47: the switch is off on a first launch.
+    expect(getPauseSettingsStore().getSnapshot().widgetOn).toBe(false)
+    expect(timelines.length).toBeGreaterThan(0)
+    expect(timelines.at(-1)).toHaveLength(14)
+    expect(timelines.at(-1)![0]!.props).toEqual(todayQuestion)
+
+    for (const widgetOn of [true, false]) {
+      await act(async () => {
+        getPauseSettingsStore().update({ widgetOn })
+      })
+      await settle()
+      expect(timelines.at(-1)).toHaveLength(14)
+      expect(timelines.at(-1)![0]!.props).toEqual(todayQuestion)
+    }
   })
 })

@@ -12,7 +12,7 @@ import { createWidget, type WidgetEnvironment } from "expo-widgets"
 
 import type { DailyPauseWidgetProps } from "../lib/dailyPause/widgetTimeline"
 
-/** KTD14, KTD18, R9, R38. The extension runs this from a string, so the body
+/** KTD14, KTD18, R9. The extension runs this from a string, so the body
  *  copies the Pass 2 colors of `theme.ts` and cannot read module scope. Each
  *  part checks its own prop, because the system placeholder passes none. */
 const DailyPauseWidgetLayout = (
@@ -23,7 +23,6 @@ const DailyPauseWidgetLayout = (
   const background = "#0c0b0a"
   const ink = "#f4efe6"
   const accent = "#f2c46b"
-  const muted = "#b7a99a"
   const questionSize = environment.widgetFamily === "systemMedium" ? 21 : 17
   const root = [containerBackground(background, "widget")]
   if (props.url) root.push(widgetURL(props.url))
@@ -43,7 +42,7 @@ const DailyPauseWidgetLayout = (
           </Text>
         ) : null}
         <Spacer minLength={8} />
-        {props.state === "question" ? (
+        {props.question ? (
           <HStack alignment="firstTextBaseline" spacing={6}>
             {props.done ? (
               <Image
@@ -63,17 +62,6 @@ const DailyPauseWidgetLayout = (
               {props.question}
             </Text>
           </HStack>
-        ) : null}
-        {props.state === "off" ? (
-          <Text
-            modifiers={[
-              font({ design: "serif", size: 15 }),
-              foregroundStyle(muted),
-              lineLimit(1),
-            ]}
-          >
-            {props.message}
-          </Text>
         ) : null}
       </VStack>
       <Spacer minLength={0} />
