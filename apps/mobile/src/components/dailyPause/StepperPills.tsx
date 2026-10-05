@@ -1,7 +1,7 @@
-// The WATCH, REFLECT, and PRAY stepper (R11) as a path from a top node to a
-// bottom node (the owner, 2026-10-06). Each screen plays one arrival step: a
-// line draws to the next pill, which lights up. Reduce Motion shows the end.
-import { useEffect, useRef, useState } from "react"
+// The WATCH, REFLECT, and PRAY stepper (R11) as a path down from a top node
+// (the owner, 2026-10-06). Each screen plays one arrival step: a line draws to
+// the next pill, which lights up. Reduce Motion shows the end.
+import { useEffect, useState } from "react"
 import { Animated, Easing, StyleSheet, Text, View } from "react-native"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
@@ -13,8 +13,6 @@ import {
 } from "../../lib/dailyPause/theme"
 
 export type StepperStage = "watch" | "reflect" | "pray"
-/** The step the path arrives at. "end" plays on the Pray screen after Amen. */
-export type StepperArrival = StepperStage | "end"
 
 type PillLook = "active" | "done" | "upcoming"
 
@@ -24,8 +22,6 @@ const STAGES: readonly { stage: StepperStage; label: string; name: string }[] =
     { stage: "reflect", label: "REFLECT", name: "Reflect" },
     { stage: "pray", label: "PRAY", name: "Pray" },
   ]
-
-const ARRIVALS: readonly StepperArrival[] = ["watch", "reflect", "pray", "end"]
 
 /** VoiceOver cannot see the fill, so the label says the state. */
 const STATE_WORDS: Readonly<Record<PillLook, string>> = {
@@ -39,10 +35,6 @@ const LEAD_MS = 250
 const NODE_MS = 250
 const LINE_MS = 400
 const LIGHT_MS = 250
-/** The end step holds the lit bottom node before the run moves on. */
-const END_HOLD_MS = 400
-/** The end step's length: the line, the node, and the hold. */
-export const STEPPER_END_MS = LINE_MS + NODE_MS + END_HOLD_MS
 
 const NODE_SIZE = 18
 const LINE_WIDTH = 3
@@ -61,16 +53,7 @@ type Plan = {
 }
 
 /** Where each phase sits in one step, in ms from its start. */
-function planFor(arrival: StepperArrival): Plan {
-  if (arrival === "end") {
-    const node = { from: LINE_MS, to: LINE_MS + NODE_MS }
-    return {
-      totalMs: STEPPER_END_MS,
-      line: { from: 0, to: LINE_MS },
-      node,
-      light: node,
-    }
-  }
+function planFor(arrival: StepperStage): Plan {
   const nodeMs = arrival === "watch" ? NODE_MS : 0
   const lineFrom = LEAD_MS + nodeMs
   const lightFrom = lineFrom + LINE_MS
@@ -109,17 +92,16 @@ function inverse(level: Level): Level {
 }
 
 type StepperPillsProps = {
-  arrival: StepperArrival
+  /** The step the path arrives at. */
+  arrival: StepperStage
   font: (face: PauseFace) => PauseFontStyle
-  /** The end step only: called once, when its step has played. */
-  onArrived?: () => void
 }
 
-export function StepperPills({ arrival, font, onArrived }: StepperPillsProps) {
+export function StepperPills({ arrival, font }: StepperPillsProps) {
   const reduceMotion = useReduceMotion()
   const [progress] = useState(() => new Animated.Value(0))
   const plan = planFor(arrival)
-  const index = ARRIVALS.indexOf(arrival)
+  const index = STAGES.findIndex(({ stage }) => stage === arrival)
 
   useEffect(() => {
     if (reduceMotion) return
@@ -133,29 +115,13 @@ export function StepperPills({ arrival, font, onArrived }: StepperPillsProps) {
     return () => animation.stop()
   }, [progress, reduceMotion, plan.totalMs])
 
-  // A native completion callback is unreliable on this app, so the end step
-  // reports from its own clock, as the curtain does.
-  const onArrivedRef = useRef(onArrived)
-  useEffect(() => {
-    onArrivedRef.current = onArrived
-  })
-  useEffect(() => {
-    if (arrival !== "end") return
-    const timer = setTimeout(
-      () => onArrivedRef.current?.(),
-      reduceMotion ? 0 : plan.totalMs,
-    )
-    return () => clearTimeout(timer)
-  }, [arrival, reduceMotion, plan.totalMs])
-
   // Under Reduce Motion every phase has played: plain values, no animation.
   const step = (phase: Phase): Level =>
     reduceMotion ? 1 : phaseLevel(progress, phase, plan.totalMs)
   const light = step(plan.light)
   const lineLevel = (line: number): Level =>
     line < index ? 1 : line === index ? step(plan.line) : 0
-  const topNode: Level = arrival === "watch" && plan.node ? step(plan.node) : 1
-  const bottomNode: Level = arrival === "end" && plan.node ? step(plan.node) : 0
+  const topNode: Level = plan.node ? step(plan.node) : 1
 
   /** The level of each look of one pill, from 0 (hidden) to 1 (shown). */
   function looks(pill: number): Record<PillLook, Level> {
@@ -212,22 +178,21 @@ export function StepperPills({ arrival, font, onArrived }: StepperPillsProps) {
                 </Animated.View>
               ))}
             </View>
-            <Line
-              testID={`stepper-line-${pill + 1}`}
-              length={
-                pill === STAGES.length - 1 ? NODE_LINE_LENGTH : PILL_LINE_LENGTH
-              }
-              level={lineLevel(pill + 1)}
-            />
+            {pill < STAGES.length - 1 ? (
+              <Line
+                testID={`stepper-line-${pill + 1}`}
+                length={PILL_LINE_LENGTH}
+                level={lineLevel(pill + 1)}
+              />
+            ) : null}
           </View>
         )
       })}
-      <Node testID="stepper-node-bottom" lit={bottomNode} />
     </View>
   )
 }
 
-/** The top or bottom node: an outline ring, and a disc that fades in over it.
+/** The top node: an outline ring, and a disc that fades in over it.
  *  The disc has the ring's own outer edge, so a lit node shows no seam. */
 function Node({ testID, lit }: { testID: string; lit: Level }) {
   return (

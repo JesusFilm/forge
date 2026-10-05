@@ -1,7 +1,7 @@
-// The WATCH, REFLECT, and PRAY stepper (R11) as a path from a top node to a
-// bottom node (the owner, 2026-10-06). Each screen plays one arrival step. Jest
-// cannot move a native animation, so these tests pin the start of each step,
-// its end under Reduce Motion, and the end step's own clock.
+// The WATCH, REFLECT, and PRAY stepper (R11) as a path down from a top node
+// (the owner, 2026-10-06). Each screen plays one arrival step. Jest cannot move
+// a native animation, so these tests pin the start of each step and its end
+// under Reduce Motion.
 import { act } from "react"
 import { AccessibilityInfo, StyleSheet, type ViewStyle } from "react-native"
 
@@ -13,11 +13,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
-import {
-  STEPPER_END_MS,
-  StepperPills,
-  type StepperArrival,
-} from "../StepperPills"
+import { StepperPills, type StepperStage } from "../StepperPills"
 
 const font = (face: PauseFace) => ({ fontFamily: face })
 
@@ -37,10 +33,10 @@ afterEach(async () => {
   jest.useRealTimers()
 })
 
-async function render(arrival: StepperArrival, onArrived?: () => void) {
+async function render(arrival: StepperStage) {
   await act(async () => {
     renderer = TestRenderer.create(
-      <StepperPills arrival={arrival} font={font} onArrived={onArrived} />,
+      <StepperPills arrival={arrival} font={font} />,
     )
   })
   await act(async () => {})
@@ -98,50 +94,57 @@ function labels(): string[] {
 const STAGES = ["watch", "reflect", "pray"]
 
 describe("the end state of each arrival step (Reduce Motion)", () => {
-  it.each<[StepperArrival, string[], string[], number[], [number, number]]>([
+  it.each<[StepperStage, string[], string[], number[]]>([
     [
       "watch",
       ["Watch, current step", "Reflect, upcoming", "Pray, upcoming"],
       ["active", "upcoming", "upcoming"],
-      [1, 0, 0, 0],
-      [1, 0],
+      [1, 0, 0],
     ],
     [
       "reflect",
       ["Watch, done", "Reflect, current step", "Pray, upcoming"],
       ["done", "active", "upcoming"],
-      [1, 1, 0, 0],
-      [1, 0],
+      [1, 1, 0],
     ],
     [
       "pray",
       ["Watch, done", "Reflect, done", "Pray, current step"],
       ["done", "done", "active"],
-      [1, 1, 1, 0],
-      [1, 0],
-    ],
-    [
-      "end",
-      ["Watch, done", "Reflect, done", "Pray, done"],
-      ["done", "done", "done"],
-      [1, 1, 1, 1],
-      [1, 1],
+      [1, 1, 1],
     ],
   ])(
-    "after the %s step, shows the pills, the lines, and the nodes lit up to it",
-    async (arrival, spoken, looks, lines, [top, bottom]) => {
+    "after the %s step, shows the pills, the lines, and the top node lit up to it",
+    async (arrival, spoken, looks, lines) => {
       await reduceMotion()
       await render(arrival)
 
       expect(labels()).toEqual(spoken)
       expect(STAGES.map(look)).toEqual(looks)
-      expect([0, 1, 2, 3].map((i) => scaleY(`stepper-line-${i}`))).toEqual(
-        lines,
-      )
-      expect(opacity("stepper-node-top-fill")).toBe(top)
-      expect(opacity("stepper-node-bottom-fill")).toBe(bottom)
+      expect([0, 1, 2].map((i) => scaleY(`stepper-line-${i}`))).toEqual(lines)
+      expect(opacity("stepper-node-top-fill")).toBe(1)
     },
   )
+
+  // The owner (2026-10-06) found the bottom node strange, floating below PRAY.
+  it("ends the path at PRAY, with no line below it and no bottom node", async () => {
+    await reduceMotion()
+    await render("pray")
+    const ids = renderer!.root
+      .findAll(
+        (node) =>
+          typeof node.type === "string" &&
+          typeof node.props.testID === "string" &&
+          /^stepper-(node|line)-[a-z0-9]+$/.test(node.props.testID),
+      )
+      .map((node) => node.props.testID as string)
+    expect(ids).toEqual([
+      "stepper-node-top",
+      "stepper-line-0",
+      "stepper-line-1",
+      "stepper-line-2",
+    ])
+  })
 
   it("gives each look its Figma fill", async () => {
     await reduceMotion()
@@ -162,19 +165,18 @@ describe("the end state of each arrival step (Reduce Motion)", () => {
   // lit disc now has the outline's own outer edge, so no inner edge is left.
   it("draws a lit node as one disc over the outline, edge to edge", async () => {
     await reduceMotion()
-    await render("end")
-    for (const node of ["stepper-node-top", "stepper-node-bottom"]) {
-      expect(style(node).borderWidth ?? 0).toBe(0)
-      expect(style(`${node}-fill`)).toMatchObject({
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        borderRadius: Number(style(node).width) / 2,
-        backgroundColor: pauseColors.ink,
-      })
-    }
+    await render("watch")
+    const node = "stepper-node-top"
+    expect(style(node).borderWidth ?? 0).toBe(0)
+    expect(style(`${node}-fill`)).toMatchObject({
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      borderRadius: Number(style(node).width) / 2,
+      backgroundColor: pauseColors.ink,
+    })
   })
 
   it("hides the nodes and the lines from VoiceOver", async () => {
@@ -203,53 +205,5 @@ describe("the start of each arrival step (motion on)", () => {
     expect(scaleY("stepper-line-0")).toBe(1)
     expect(scaleY("stepper-line-1")).toBe(0)
     expect(STAGES.map(look)).toEqual(["active", "upcoming", "upcoming"])
-  })
-
-  it("starts the end step from PRAY lit and an unlit bottom node", async () => {
-    await render("end")
-    expect(scaleY("stepper-line-3")).toBe(0)
-    expect(opacity("stepper-node-bottom-fill")).toBe(0)
-    expect(STAGES.map(look)).toEqual(["done", "done", "active"])
-  })
-})
-
-describe("the end step's clock", () => {
-  it("reports the end once, when the step has played", async () => {
-    const onArrived = jest.fn()
-    await render("end", onArrived)
-
-    await act(async () => {
-      jest.advanceTimersByTime(STEPPER_END_MS - 1)
-    })
-    expect(onArrived).not.toHaveBeenCalled()
-
-    await act(async () => {
-      jest.advanceTimersByTime(1)
-    })
-    expect(onArrived).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      jest.advanceTimersByTime(STEPPER_END_MS)
-    })
-    expect(onArrived).toHaveBeenCalledTimes(1)
-  })
-
-  it("reports the end at once under Reduce Motion", async () => {
-    await reduceMotion()
-    const onArrived = jest.fn()
-    await render("end", onArrived)
-    await act(async () => {
-      jest.advanceTimersByTime(0)
-    })
-    expect(onArrived).toHaveBeenCalledTimes(1)
-  })
-
-  it("never reports an end for the other steps", async () => {
-    const onArrived = jest.fn()
-    await render("pray", onArrived)
-    await act(async () => {
-      jest.advanceTimersByTime(STEPPER_END_MS * 2)
-    })
-    expect(onArrived).not.toHaveBeenCalled()
   })
 })
