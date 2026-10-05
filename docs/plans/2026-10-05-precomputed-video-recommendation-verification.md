@@ -682,8 +682,23 @@ paths; other site pages cannot contribute to recommendation history.
 Sol worker A completed the independent Watch-scope and source-quality
 contract/display slice from `9e0cd06c2`, preserving legacy-read compatibility.
 No new production export, warehouse write, deployment, public experiment,
-promotion, or refresh schedule has occurred. Local Google ADC authorization is
-prepared and awaiting the user's consent action.
+promotion, or refresh schedule has occurred. The user subsequently completed
+remote Google ADC authorization using their Mac browser and Linux terminal.
+The remote credential file is owner-only (`600`), credential refresh succeeds,
+and BigQuery table metadata reads return HTTP 200. Direct GA report access
+then returned HTTP 403 `ACCESS_TOKEN_SCOPE_INSUFFICIENT`: the command omitted
+the separate `analytics.readonly` scope. The user then attempted the added scope
+and received Google's "This app is blocked" page. SDK 587.0.0 explicitly lists
+that scope as being blocked for the default ADC OAuth client. The existing
+owner-only Cloud ADC file is still present. A supported project-owned OAuth
+client or properly configured service identity was required at that stage;
+Tatai subsequently supplied the service account verified below. No default-client
+retry or policy bypass was performed.
+Current GA browser reports were verified with exact Watch path and hostname
+filters: September 8–October 5 contains 283,064 page views and 1,014
+`videostarts`, among 32 event types. These counts establish current report data,
+not a qualified ingestion, human baseline, or transitions. See the updated
+discovery record; old warehouse-copy coverage must not be generalized to GA.
 
 ### #2568 qualification boundary verification
 
@@ -766,3 +781,26 @@ exported collision logic found no newly introduced collisions in the projected
 roadmap inventory after applying this branch's staged changes to main `10461fdd8`.
 The advisory remains enabled; no workflow or application change was made to
 resolve it.
+
+### #2568 service-account authentication and current report discovery
+
+Tatai's service account in `jesusfilm-org-1738781064783` successfully impersonates
+from the existing remote Cloud ADC login using `analytics.readonly`. The standard
+GA Data request, metadata request and GA Admin property request all returned
+HTTP 200. An unnecessary explicit quota-project header initially returned
+`USER_PROJECT_DENIED`; omitting that override resolved the probe without new
+permissions. No key download, token persistence, ADC replacement, property
+configuration change, IAM mutation or API enablement was performed by the agent.
+
+Exact Watch hostname/path filters returned current events and 200 complete
+monthly/event aggregate rows from property creation through October 3, 2026.
+The report contains 4,006,892 starts beginning September 2022; old warehouse-copy
+cutoffs therefore do not describe the property's report history. Recent media-ID
+coverage is incomplete, path mapping remains a lead, and event volume/semantics
+show a discontinuity around July–August 2026. Ordered transitions remain
+unverified. See the discovery record for counts, boundaries and evidence files.
+
+This resolves the Analytics API authentication blocker only. No application
+code changed, historical reader was completed, live model build was run, or
+public experiment was activated. #2568 source/adapter acceptance and #2569's
+dependency remain incomplete.

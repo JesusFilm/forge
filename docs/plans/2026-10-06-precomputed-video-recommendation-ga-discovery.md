@@ -1,7 +1,8 @@
 # Historical GA source qualification
 
 Observed October 6, 2026 (Pacific/Auckland), through the authenticated Google
-Analytics and Google Cloud browser interfaces. This is discovery evidence for
+Analytics and Google Cloud browser interfaces and the BigQuery, GA Data, and GA
+Admin APIs. This is discovery evidence for
 [#2568](https://github.com/JesusFilm/forge/issues/2568), not a completed ingestion
 adapter or proof of live recommendation quality.
 
@@ -38,10 +39,139 @@ filtering remains unknown and separate from live A/B eligibility.
   Do not present an empty Explorer tree as proof of missing permissions.
 - Browser authorization is not local/server API authentication. Google Cloud
   SDK 587.0.0 was downloaded from Google and checksum-verified in task-owned
-  temporary storage, without changing shell profiles. The standard local ADC
-  sign-in is awaiting the user's account/consent action; it requests Cloud API
+  temporary storage, without changing shell profiles. The user completed the
+  remote-machine ADC flow using their Mac browser and the remote Linux terminal.
+  Credentials exist on the remote machine with owner-only mode `600`; token
+  refresh and BigQuery table metadata reads succeeded. This grants Cloud API
   access under existing account permissions, not a read-only OAuth grant. No
-  service account, IAM change, or API enablement was introduced.
+  service account, IAM change, or API enablement was introduced by the agent. The command
+  omitted `analytics.readonly`: a direct GA Data API Watch-report request returned
+  HTTP 403 `ACCESS_TOKEN_SCOPE_INSUFFICIENT`. This is an OAuth-scope gap, not proof
+  of missing GA property access or absent data.
+  Adding that scope with the default ADC OAuth client then produced Google's
+  "This app is blocked" screen. SDK 587.0.0 explicitly lists
+  `analytics.readonly` among scopes being blocked for its default client; Google's
+  ADC troubleshooting guide documents this failure and directs non-Cloud scopes
+  to a project-owned OAuth client or service-account impersonation. The previous
+  Cloud ADC file remains present with mode `600`. Do not retry the same default
+  client or infer a Workspace-admin policy from the generic error alone.
+  A custom-client remote flow also requires `--no-browser`, not
+  `--no-launch-browser`, according to the installed SDK's validation. No custom
+  client, service identity, policy exception, or permission change was made by
+  the agent.
+  The existing account also cannot open Google Auth Platform's Clients page in
+  `jfp-data-warehouse`: the console lists missing `iam.serviceAccounts.list` and
+  `oauthconfig.verification.get`. This proves that page is inaccessible, not
+  that every OAuth creation permission was independently tested. No access
+  request was submitted. A project with authorized OAuth configuration access
+  or help from the existing project's administrator is needed for that route.
+
+## Service-account API access verified
+
+Tatai supplied project `jesusfilm-org-1738781064783` and service account
+`watch-ga4-readonly@jesusfilm-org-1738781064783.iam.gserviceaccount.com` for
+property `320198532`. The existing remote Cloud ADC identity successfully
+impersonated that account for a ten-minute `analytics.readonly` access token.
+Tokens remained in memory; no key was downloaded, no token was printed or saved,
+and the existing ADC file was not replaced. Google Auth's Python impersonated
+credentials also refreshed and read metadata successfully.
+
+The initial Analytics request explicitly set this project's quota header and
+returned `USER_PROJECT_DENIED` for `serviceusage.services.use`. The standard
+service-account request without that optional override returned HTTP 200;
+additional IAM grants were unnecessary for the verified reads. No APIs, IAM
+policies, GA property access, or scheduled jobs were changed by the agent.
+
+Verified reads:
+
+- GA Data `runReport`, exact `hostName` allowlist and `pagePath` full regex
+  `^/watch(/.*)?$`, both case-sensitive. September 8–October 5 returned all 32
+  event rows, including 283,569 page views and 1,016 `videostarts` at that read.
+- GA Data property metadata, including registered custom dimensions. The older
+  `customEvent:mediacomponentid` is registered; `customEvent:video_id` is not.
+- GA Admin property metadata: created June 21, 2022, timezone
+  `America/New_York`, Analytics 360, correct account and property IDs.
+- Watch-only monthly/event report from creation through October 3, 2026:
+  all 200 rows returned with a 300-row limit. The response charged 26 reporting
+  quota tokens; this is API usage, not a warehouse bytes or monetary-cost figure.
+
+| Event            | First observed month | Last observed month | Events    |
+| ---------------- | -------------------- | ------------------- | --------- |
+| `page_view`      | July 2022            | October 2026        | 6,154,161 |
+| `videostarts`    | September 2022       | October 2026        | 4,006,892 |
+| `videoplay`      | September 2022       | October 2026        | 3,885,439 |
+| `videocomplete`  | September 2022       | July 2026           | 408,619   |
+| `video_progress` | July 2026            | October 2026        | 592       |
+
+This proves historical reporting aggregates are available, not complete raw
+event history or unchanged event semantics. Starts fell from 92,154 in July 2026
+to 2,159 in August and 1,380 in September; page views did not fall proportionally.
+That discontinuity must remain visible during measurement qualification.
+
+A separate recent-window event/media-ID report returned all 55 rows. Of 1,017
+starts, 297 had a nonempty/non-placeholder media ID and 720 did not. The count
+differs from the earlier 1,016; the separate requests and dimension breakdowns
+have not been reconciled into a frozen snapshot. A path/media-ID start report
+returned 100 of 541 rows as a discovery sample, explicitly incomplete. Paths
+include legacy `.html` video/language routes. Neither those paths nor familiar
+media IDs have yet been mapped to canonical Admin Videos in this adapter.
+
+Metadata contains an event timestamp custom dimension but no registered session
+ID or proven source/target aggregate. No viewer IDs, user-level event sequences,
+or custom identity dimension values were requested. Standard report totals and
+referrers do not establish the required consecutive-video-start transitions.
+Authentication is resolved; mapping, sequence provenance and adapter acceptance
+remain open. API access does not silently relax the existing transition guard.
+
+Task-local evidence is under `/tmp/forge-feat-590-orchestration/`:
+`ga-service-account-probe-default-quota.json`, `ga-sa-metadata.json`,
+`ga-sa-property.json`, `ga-sa-watch-monthly-coverage.json`,
+`ga-sa-video-id-coverage.json`, and `ga-sa-watch-start-paths.json`.
+The task-local `ga_api_read.py` uses existing ADC plus impersonation and only
+metadata or aggregate report operations; it is a discovery helper, not the
+production historical reader.
+
+## Current GA reporting data
+
+The GA dashboard contains current data. The age of the warehouse copies below
+must not be generalized to the property's reports. On October 6, the standard
+Events report for September 8–October 5, 2026 was temporarily filtered by:
+
+- Page path and screen class matches regex `^/watch(/.*)?$`.
+- Hostname matches regex `^(www\.)?jesusfilm\.org$`.
+
+The report displayed all 32 event types and said it used 100% of available data.
+Selected event counts were:
+
+| Event                |   Count |
+| -------------------- | ------: |
+| `page_view`          | 283,064 |
+| `session_start`      | 253,336 |
+| `videostarts`        |   1,014 |
+| `videoplay`          |     865 |
+| `video_progress`     |     282 |
+| `a_media_progress10` |     243 |
+| `a_media_progress25` |     141 |
+| `a_media_progress50` |      75 |
+| `a_media_progress75` |      30 |
+| `a_media_progress90` |      13 |
+
+These are browser-observed aggregate counts, not ingested model evidence,
+unique human plays, or sequence/transition proof. `videocomplete` was absent
+from the 32-row filtered report; that absence must not be interpreted as proven
+zero completions. The unfiltered all-site report had 27,258 `videostarts`, which
+must not be used as Watch starts. Only temporary report filters were applied;
+no property configuration or saved shared report was changed.
+
+Sol's repository trace confirms the current Watch player still emits
+`videostarts` on first play per video/dub identity, while `videoplay` is
+repeatable. Start payloads use `video_id` and `video_dub_id`, and v1 player calls
+do not explicitly supply a page URL. The observed start/play counts and URL
+coverage therefore need source-level qualification rather than assuming every
+event follows today's repository implementation. Direct GA report ingestion
+needs the Analytics read-only OAuth scope and verified dimension/mapping
+coverage; it does not require access to the BigQuery copies merely to read
+aggregate reports. Ordered video transitions remain a separate unmet need.
 
 ## Verified readable copies
 
@@ -167,11 +297,25 @@ unqualified candidate.
 Find a verified current event source with usable sequence identity, or a
 qualified pre-aggregated transition source. Verify source lineage, canonical
 Video mapping, event definitions, complete historical range, timestamp/session
-and tie-order semantics, and query usage. Set up local/server read authentication
-through a normal Google authorization flow without putting keys in chat.
+and tie-order semantics, and query usage. BigQuery ADC authentication is now
+verified on the remote machine. Direct GA report access is now verified through
+Tatai's service account with `analytics.readonly`; the earlier default ADC
+client failure is resolved by supported impersonation.
+No keys or authorization codes belong in chat.
 
-The user has been asked for the current event table/view link or its data owner's
-help. Independent Watch-scope and provenance improvements can proceed with
-explicit fixtures. #2568 remains incomplete, #2569 remains held, and public
+Manual snapshots and browser automation were discussed but neither has been
+implemented, and the historical-transition requirement has not changed.
+Successful API authentication enables source inspection; it does not by itself
+establish ordered transitions, full history, or canonical video mapping.
+
+The user clarified that the existing GA dashboard is the available source, and
+current Watch reporting data was verified there. The API dataset listing for
+`cru-ga4-prod-1` exposes no datasets to this account, and a metadata GET for the
+conventional candidate `analytics_320198532` returns denied-or-nonexistent; neither
+establishes the project's actual dataset inventory. A staging coverage query
+was dry-run only: its 21,461,098,825-byte estimate exceeded the existing
+20,000,000,000-byte cap, so it was not executed. Independent Watch-scope and
+provenance improvements can proceed with explicit fixtures. #2568 remains
+incomplete, #2569 remains held, and public
 activation, deployment, new exports and recurring refresh remain outside this
 discovery work.

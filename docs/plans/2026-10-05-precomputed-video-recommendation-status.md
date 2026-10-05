@@ -140,9 +140,39 @@ See the [GA discovery record](2026-10-06-precomputed-video-recommendation-ga-dis
 The user explicitly restricted historical evidence to verified JesusFilm.org
 hosts and exact `/watch` or `/watch/` descendants. Query strings/fragments do not
 change scope; unrelated hosts, `/watching`, and other pages are excluded. The
-current event source or a verified aggregate transition source, canonical Video
-mapping, and local/server API authentication remain unresolved. Browser login
-does not establish API authentication. No new export/link or warehouse write is
+current event source or a verified aggregate transition source and canonical
+Video mapping remain unresolved. Remote ADC is now saved with owner-only
+permissions and BigQuery API metadata reads succeed. Current GA reports also
+contain Watch data: the exact host/path-filtered September 8–October 5 report
+shows 283,064 page views and 1,014 `videostarts`. Older warehouse-copy dates do
+not describe the live GA reporting range. The direct GA Data API probe failed
+with insufficient OAuth scopes because the sign-in command omitted
+`analytics.readonly`. Adding it to the default ADC client was subsequently
+blocked by Google. The installed SDK lists that scope as being blocked for its
+default client; a supported project-owned OAuth client or appropriately
+configured service identity was required. The existing Cloud credentials remain
+present. No policy bypass was attempted.
+Tatai subsequently supplied project `jesusfilm-org-1738781064783` and service
+account `watch-ga4-readonly@jesusfilm-org-1738781064783.iam.gserviceaccount.com`.
+Remote impersonation with `analytics.readonly` now succeeds using the existing
+Cloud ADC login, and GA Data/Admin API reads return HTTP 200. No downloaded key,
+new user login, or agent-created IAM change was needed. The standard API request
+works without a quota-project override; explicitly overriding the quota project
+returned `USER_PROJECT_DENIED`, so no additional role was requested for that
+unnecessary override. API authentication is resolved.
+
+The Watch-filtered report from property creation (June 21, 2022) through October
+3, 2026 returned all 200 monthly/event aggregate rows, including 4,006,892
+`videostarts` across September 2022–October 2026. This is report coverage, not
+verified complete raw-event history. Recent video-ID coverage is incomplete:
+720 of 1,017 starts in a separate September 8–October 5 observation have an empty
+or unset `mediacomponentid`. Page paths provide a mapping lead, but canonical
+mapping and ordered transitions remain unverified. Recent-window counts changed
+between requests; they are not a frozen input snapshot. CSV snapshots and browser
+automation remain unimplemented alternatives, with no change to the approved
+requirements. #2568 is now blocked on source qualification and adapter acceptance,
+rather than Analytics authentication.
+No new export/link or warehouse write is
 authorized. #2568 live acceptance and #2569 remain blocked; its independent
 qualification boundary is verified. A real source reader must still implement
 and prove URL filtering and transition ordering; validating declarations does
