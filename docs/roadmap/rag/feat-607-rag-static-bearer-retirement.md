@@ -60,3 +60,7 @@ The merged registered-only build is healthy, registered consumers and portal
 remain working with attributed usage, the old static token is denied, and the
 Railway variable and old copies are removed with a redacted operator receipt.
 Keep this ticket in progress until those live outcomes are recorded.
+
+Implementation PR: [#2582](https://github.com/JesusFilm/forge/pull/2582).
+The PR removes the code path and records the operator sequence; it does not
+itself remove a Railway setting or establish the live completion gate.
