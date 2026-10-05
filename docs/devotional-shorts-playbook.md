@@ -189,7 +189,18 @@ breath 0.08 s; `teaserPauseCuts`), the CTA lands 0.3 s after the voice stops
 and holds 3.4 s, and the narration plays at 0.7 (about 3 dB under the long
 form; manifest `voiceVolume`). "DAILY BIBLE PAUSE" (Inter 500 11 tracked 2.2,
 80%) settles under the mark once the lockup has shrunk (3.1 to 3.7 s), over a
-soft dark ellipse; the mark and the name come back, settled, over the CTA. Full spec:
+soft dark ellipse; the mark and the name come back, settled, over the CTA. Under
+the CTA the film is silent: its sound hushes over 0.4 s as the CTA arrives
+and the bed rises to twice its level to carry the close, leaving only in the
+last 0.9 s (manifest `ctaMusicAtSec`; owner, 2026-10-05: the scene's voices
+under the CTA distracted).
+
+Crop: the face detector (OpenCV venv, `DEVO_FACE_PYTHON`) is often missing,
+and then every shot is centre-cropped, losing faces placed off-centre (Martha:
+Mary at the right edge). Always check a contact sheet of every shot and pass
+`--intro-focus` (one value per shot, then one for the scene). Values move the
+crop, not the face: raise one to bring a face that sits at the right edge
+inward; check again after each change, since moving shots drift. Full spec:
 `docs/handoffs/2026-10-02-vertical-intro-design.md`. About 20 s.
 
 ### 6.2 film-verse

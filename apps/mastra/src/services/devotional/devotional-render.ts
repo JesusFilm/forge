@@ -1874,6 +1874,8 @@ async function renderInStage(
   let montageStarts: number[] | null = null
   /** Length of the spoken hook as staged (after any pause tightening). */
   let hookSpokenSec = 0
+  /** Silent-CTA teaser: when the written call to action appears. */
+  let teaserCtaAtSec: number | null = null
   // `watch` is the same machinery as `hook` — a spoken opening in front of the
   // scene — drawn as the step's own screen instead of a title.
   const spokenOpening =
@@ -2028,6 +2030,7 @@ async function renderInStage(
           seg.audio = { ...seg.audio, bytes, words }
           montageStarts = montageLineStarts(hookLines, words)
           const ctaAt = montageStarts?.[montageStarts.length - 1] ?? voiceEnd
+          teaserCtaAtSec = ctaAt
           hookLeadSec = Math.min(cap, ctaAt + 0.1)
           // The film card runs to the CTA plus TEASER_CTA_HOLD_SEC after the
           // "voice"; a silent line needs longer to be read.
@@ -2860,6 +2863,14 @@ async function renderInStage(
     manifest.cards = [film]
     // The voice sat loud over the film and the bed (owner, 2026-10-05).
     manifest.voiceVolume = TEASER_VOICE_VOLUME
+    // Under the written CTA the scene's voices distracted: the film goes
+    // quiet and the bed carries the close (owner, 2026-10-05).
+    if (teaserCtaAtSec != null) {
+      manifest.ctaMusicAtSec = teaserCtaAtSec
+      log(
+        `teaser CTA at ${teaserCtaAtSec.toFixed(2)}s of ${Number(film.durationSec).toFixed(2)}s: film hushed, music up`,
+      )
+    }
   } else if (options.introTeaser) {
     manifest.cards = manifest.cards.filter((c) => c.kind === "quote-intro")
     if (manifest.cards.length === 0) {

@@ -545,6 +545,9 @@ async function main() {
       ...(manifest.voiceVolume != null
         ? { voiceVolume: manifest.voiceVolume }
         : {}),
+      ...(manifest.ctaMusicAtSec != null
+        ? { ctaMusicAtSec: manifest.ctaMusicAtSec }
+        : {}),
       ...(manifest.shortForm ? { shortForm: true } : {}),
       ...(manifest.shortFact ? { shortFact: manifest.shortFact } : {}),
       ...(manifest.shortCards ? { shortCards: manifest.shortCards } : {}),

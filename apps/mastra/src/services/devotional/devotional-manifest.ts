@@ -32,6 +32,8 @@ export type DevotionalManifest = {
   musicFile?: string
   /** Narration level (default 1); the 9:16 intro teaser sets it lower. */
   voiceVolume?: number
+  /** Teaser: the film hushes and the bed rises from here (seconds). */
+  ctaMusicAtSec?: number
   /** One continuous background clip shared by every non-video card (each card
    *  windows into it via trimBefore for a seamless walk). Set by the renderer. */
   bgFile?: string

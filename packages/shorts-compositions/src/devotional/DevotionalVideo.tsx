@@ -27,6 +27,9 @@ import { VerseCalloutOverlay } from "./VerseCalloutOverlay"
 import { quoteIntroTimeline } from "./quote-timing"
 import { QuoteIntro } from "./QuoteIntro"
 import { CalmCallToAction, KineticCaption } from "./KineticCaption"
+
+/** Teaser CTA: how far the music bed rises over the call to action. */
+const CTA_MUSIC_SWELL = 2
 import { ScrollingScripture } from "./ScrollingScripture"
 import { StampLine } from "./StampLine"
 import { StepProgressLine } from "./StepProgressLine"
@@ -6070,9 +6073,23 @@ function Background({
         props.bgAudio
           ? (f) => {
               const fade = Math.round(0.5 * fps)
+              // Teaser CTA: the film goes quiet under the call to action.
+              const hush =
+                props.ctaMusicAtSec != null
+                  ? interpolate(
+                      f,
+                      [
+                        Math.round((props.ctaMusicAtSec - 0.4) * fps),
+                        Math.round(props.ctaMusicAtSec * fps),
+                      ],
+                      [1, 0],
+                      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                    )
+                  : 1
               return (
                 (props.videoAudioLevel ?? 0.3) *
                 0.5 *
+                hush *
                 interpolate(
                   f,
                   [0, fade, durationInFrames - fade, durationInFrames],
@@ -6245,11 +6262,26 @@ function Background({
                   { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
                 )
               : 1
+          // Teaser CTA: the film goes quiet and the bed takes over (owner,
+          // 2026-10-05: the scene's voices under the call to action
+          // distracted). The teaser is one card, so `f` is the piece's frame.
+          const ctaAt =
+            props.ctaMusicAtSec != null
+              ? Math.round(props.ctaMusicAtSec * fps)
+              : null
+          const ctaHush =
+            ctaAt != null
+              ? interpolate(f, [ctaAt - Math.round(0.4 * fps), ctaAt], [1, 0], {
+                  extrapolateLeft: "clamp",
+                  extrapolateRight: "clamp",
+                })
+              : 1
           return (
             clipAudioLevel *
             Math.sqrt(rise) *
             (slow ? fall * fall : fall) *
-            duck
+            duck *
+            ctaHush
           )
         }}
         style={
@@ -7568,12 +7600,18 @@ export function DevotionalVideo(props: DevotionalInputProps) {
             // The bed waits for "LET'S WATCH", where the piece proper begins
             // (owner: start the music after the questions).
             if (quoteIntroMusicAt != null && f < quoteIntroMusicAt) return 0
+            const ctaAt =
+              props.ctaMusicAtSec != null
+                ? Math.round(props.ctaMusicAtSec * fps)
+                : null
             const base = interpolate(
               f,
               [
                 0,
                 Math.round(0.4 * fps),
-                durationInFrames - Math.round(2.5 * fps),
+                // Teaser CTA: the bed carries the close, so it leaves late.
+                durationInFrames -
+                  Math.round((ctaAt != null ? 0.9 : 2.5) * fps),
                 durationInFrames,
               ],
               [
@@ -7584,7 +7622,21 @@ export function DevotionalVideo(props: DevotionalInputProps) {
               ],
               { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
             )
-            if (videoWindows.length === 0) return base
+            // Teaser CTA: the bed comes up to carry the call to action.
+            const swell =
+              ctaAt != null
+                ? interpolate(
+                    f,
+                    [
+                      ctaAt - Math.round(0.4 * fps),
+                      ctaAt + Math.round(0.6 * fps),
+                    ],
+                    [1, CTA_MUSIC_SWELL],
+                    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                  )
+                : 1
+            if (videoWindows.length === 0 || (ctaAt != null && f >= ctaAt))
+              return Math.min(1, base * swell)
             // 1 everywhere except 0 across EACH video card (short edge fades).
             // Take the lowest duck across all windows so overlapping fades
             // never let the bed swell back up between adjacent acts.
