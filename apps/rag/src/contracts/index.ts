@@ -9,3 +9,5 @@ export type {
   RankedResult,
   RetrievalPolicy,
 } from "@forge/rag-contracts"
+
+export * from "./search-failure.js"
