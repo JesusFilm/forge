@@ -32,8 +32,13 @@ const BAR_CLOSE_AT = 0.85
 const LOGO_LEAD_MS = 500
 const LOGO_START_MS = BAR_CLOSE_AT * PAUSE_FADE_IN_MS - LOGO_LEAD_MS
 const LOGO_START_AT = LOGO_START_MS / PAUSE_FADE_IN_MS
-/** The pen ends this long after the curtain mounts. */
-export const PAUSE_LOGO_DRAWN_MS = LOGO_START_MS + LOGO_DURATION_MS
+/** The drawn logo holds this long before the run may take over, so the
+ *  handover does not feel rushed (the owner, 2026-10-06). */
+const LOGO_HOLD_MS = 500
+/** The stage reports the logo drawn this long after the curtain mounts: the
+ *  pen's end plus the hold. */
+export const PAUSE_LOGO_DRAWN_MS =
+  LOGO_START_MS + LOGO_DURATION_MS + LOGO_HOLD_MS
 const BAR_SAMPLES = 24
 const barEase = Easing.bezier(0.42, 0, 0.58, 1)
 

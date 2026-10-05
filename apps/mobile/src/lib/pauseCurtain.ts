@@ -10,7 +10,7 @@ export type PausePhase =
   | "idle"
   /** The curtain closes and the logo draws. */
   | "closing"
-  /** The logo pen finished, so the bridge may push the run. */
+  /** The logo is drawn and has held, so the bridge may push the run. */
   | "drawn"
   /** The curtain lifts, onto the run or back to the previous screen. */
   | "lifting"
@@ -32,7 +32,7 @@ export function requestPause(): void {
   setPhase("closing")
 }
 
-/** The stage calls this from its own clock when the logo pen ends. */
+/** The stage calls this from its own clock when the drawn logo's hold ends. */
 export function reportLogoDrawn(): void {
   if (phase === "closing") setPhase("drawn")
 }

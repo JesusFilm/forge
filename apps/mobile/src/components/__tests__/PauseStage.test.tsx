@@ -162,10 +162,12 @@ describe("PauseStage", () => {
 
   // The pen's native callback is unreliable on this app, and the timing mock
   // never calls it, so only the stage's own clock can report the end.
-  it("reports the logo drawn from its own clock when the pen ends", async () => {
+  // The owner (2026-10-06): the drawn logo holds for half a second before the
+  // run takes over, so the handover does not feel rushed.
+  it("reports the logo drawn from its own clock half a second after the pen ends", async () => {
     const renderer = await render()
     await pause()
-    expect(PAUSE_LOGO_DRAWN_MS).toBe(1200 + LOGO_DURATION_MS)
+    expect(PAUSE_LOGO_DRAWN_MS).toBe(1200 + LOGO_DURATION_MS + 500)
     await advance(PAUSE_LOGO_DRAWN_MS - 1)
     expect(getPausePhase()).toBe("closing")
     await advance(1)
