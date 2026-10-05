@@ -99,4 +99,4 @@ The PR follows the normal PR-to-main deployment path. Document current deploymen
 
 ## Completion
 
-Implemented and verified in the isolated feat-589 branch. See `docs/reports/2026-10-01-recommendation-delivery/implementation-verification.md` for timings, commands, browser evidence and rollout limits. Focused regressions and independent review confirm that the existing bounded composer already satisfies the owner-approved semantic partial-row policy; curated fallback remains empty-only. Stale unrelated PostgreSQL test fixtures discovered during the broader run are tracked by feat-590.
+Implemented and verified in the isolated feat-589 branch. See `docs/reports/2026-10-01-recommendation-delivery/implementation-verification.md` for timings, commands, browser evidence and rollout limits. Focused regressions and independent review confirm that the existing bounded composer already satisfies the owner-approved semantic partial-row policy; curated fallback remains empty-only. Stale unrelated PostgreSQL test fixtures discovered during the broader run are tracked by feat-607.

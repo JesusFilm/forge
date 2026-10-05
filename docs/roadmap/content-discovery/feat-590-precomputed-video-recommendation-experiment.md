@@ -75,11 +75,15 @@ runner-list verification is not applicable.
 Do not repeat the shared-understanding confirmation. The duration remains a
 provisional scheduling placeholder, not an implementation estimate.
 
-The user requested a future orchestrator that creates GPT-6 Sol chats using Matt
+The user authorized an orchestrator that creates GPT-6 Sol chats using Matt
 Pocock's implement workflow. Compound Engineering skills are explicitly excluded,
 including indirect invocation. This overrides the repository's default workflow
 for this effort while preserving other standards. Astra remains the product's
-generation model. The kickoff prompt is prepared; worker execution has not begun.
+generation model. Execution has started on current main through draft
+[PR #2578](https://github.com/JesusFilm/forge/pull/2578); #2566 is assigned to a
+separate GPT-6 Sol chat. The execution ledger is
+`docs/plans/2026-10-05-precomputed-video-recommendation-status.md`. No ticket is
+integrated yet, and public serving remains unchanged.
 
 Confirmed target: a separable catalog-wide recommendation experiment with an
 initial historical-data build, persisted recommendation results, and later

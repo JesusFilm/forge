@@ -32,7 +32,7 @@ hidden in a successor ticket.
    the existing storage owner and measured receipts, including PRs 2534/2537.
    Preserve independent loaded-retention and capacity verification.
 3. Repair database test fixtures and add CI coverage: content-discovery
-   feat-590 and platform feat-591. Own only the named native test fixtures and
+   feat-607 and platform feat-591. Own only the named native test fixtures and
    necessary CI wiring; preserve expiry and owner-authority semantics.
 4. Finish Watch measurement and navigation authority: content-discovery
    feat-373 and feat-564. Audit runtime and existing deployed evidence first;
