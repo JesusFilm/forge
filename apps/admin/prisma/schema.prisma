@@ -2690,6 +2690,7 @@ model Video {
   parents        VideoRelation[]      @relation("VideoParents")
   children       VideoRelation[]      @relation("VideoChildren")
   watchProgress  WatchProgress[]
+  precomputedRecommendationSources RecommendationPrecomputedSource[]
 
   @@index([primaryLanguageId])
   @@index([originId])
@@ -6710,4 +6711,38 @@ model RecommendationCowatchRefreshAttempt {
   @@index([grantId, startedAt(sort: Desc)], map: "recommendation_cowatch_refresh_attempt_grant_idx")
   @@index([publishedAt(sort: Desc)], map: "recommendation_cowatch_refresh_attempt_publication_idx")
   @@map("recommendation_cowatch_refresh_attempt")
+}
+
+/// Private, versioned model build. Completion does not select a public strategy.
+model RecommendationPrecomputedGeneration {
+  id String @id
+  modelId String @map("model_id")
+  promptVersion String @map("prompt_version")
+  inputDigest String @map("input_digest")
+  sourceSetDigest String @map("source_set_digest")
+  inputCutoff DateTime @map("input_cutoff")
+  expectedSourceCount Int @map("expected_source_count")
+  status String @default("incomplete")
+  createdAt DateTime @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+  failedAt DateTime? @map("failed_at")
+  sources RecommendationPrecomputedSource[]
+
+  @@index([createdAt(sort: Desc)], map: "recommendation_precomputed_generation_created_at_idx")
+  @@map("recommendation_precomputed_generation")
+}
+
+/// One compact choice set per source Video per generation. Reasons and evidence
+/// are stored here once, never copied onto visit or served-item rows.
+model RecommendationPrecomputedSource {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  sourceVideoId String @map("source_video_id")
+  sourceVideo Video @relation(fields: [sourceVideoId], references: [id], onDelete: Restrict)
+  payload Json @db.JsonB
+  submissionDigest String @map("submission_digest")
+  acceptedCount Int @map("accepted_count")
+
+  @@id([generationId, sourceVideoId])
+  @@map("recommendation_precomputed_source")
 }

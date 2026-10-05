@@ -55,3 +55,12 @@ export function isValidMastraExperienceIngestBearer(
     env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
   )
 }
+
+export function isValidMastraRecommendationIngestBearer(
+  authHeader: string | null,
+): boolean {
+  return isValidMastraIngestBearer(
+    authHeader,
+    env.MASTRA_RECOMMENDATION_INGEST_API_KEYS,
+  )
+}
