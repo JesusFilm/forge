@@ -5,7 +5,10 @@ import { requireSession } from "@/auth/session"
 import { DashboardPageHeader, PageSection } from "@/components/admin-ui"
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
-import { loadPrivatePrecomputedVisitDiagnostics } from "@/services/recommendations/precomputed/visit-admission"
+import {
+  listPrivatePrecomputedExperiments,
+  loadPrivatePrecomputedVisitDiagnostics,
+} from "@/services/recommendations/precomputed/visit-admission"
 import { createPrivatePrecomputedTest } from "./actions"
 import { PrivateVisitDiagnosticsView } from "./view"
 
@@ -22,19 +25,7 @@ export default async function PrecomputedVisitDiagnosticsPage({
     typeof params.experiment === "string" && params.experiment.length <= 191
       ? params.experiment.trim()
       : ""
-  const experiments = await prisma.recommendationPrecomputedExperiment.findMany(
-    {
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: {
-        id: true,
-        generationId: true,
-        state: true,
-        startsAt: true,
-        endsAt: true,
-      },
-    },
-  )
+  const experiments = await listPrivatePrecomputedExperiments(prisma, principal)
   const id = requested || experiments[0]?.id
   const report = id
     ? await loadPrivatePrecomputedVisitDiagnostics(prisma, {

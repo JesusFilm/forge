@@ -634,6 +634,25 @@ export type PrivateVisitDiagnostics =
       }
     }
 
+export async function listPrivatePrecomputedExperiments(
+  prisma: PrismaClient,
+  reviewer: Principal | null,
+) {
+  if (!hasPermission(reviewer, "read:recommendation-aggregates"))
+    throw new ForbiddenError()
+  return prisma.recommendationPrecomputedExperiment.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      generationId: true,
+      state: true,
+      startsAt: true,
+      endsAt: true,
+    },
+  })
+}
+
 /** These are observed private admissions, never certified public human visits. */
 export async function loadPrivatePrecomputedVisitDiagnostics(
   prisma: PrismaClient,

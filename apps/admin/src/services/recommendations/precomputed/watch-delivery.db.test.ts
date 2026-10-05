@@ -15,6 +15,7 @@ import type { SemanticRecommendationDelivery } from "../delivery.types"
 import {
   admitPrivatePrecomputedVisit,
   configurePrivatePrecomputedExperiment,
+  listPrivatePrecomputedExperiments,
   loadPrivatePrecomputedVisitDiagnostics,
   recordPrivatePrecomputedVisitDelivery,
 } from "./visit-admission"
@@ -430,6 +431,15 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
       privateExperimentId = experiment.id
       privateGenerationId = generationId
+      expect(
+        await listPrivatePrecomputedExperiments(prisma, {
+          id: "fixture-admin",
+          role: "ADMIN",
+        }),
+      ).toEqual([expect.objectContaining({ id: experiment.id, generationId })])
+      await expect(
+        listPrivatePrecomputedExperiments(prisma, null),
+      ).rejects.toThrow()
       const browserDigest = "c".repeat(64)
       const first = await admitPrivatePrecomputedVisit(prisma, {
         visitId: randomUUID(),
