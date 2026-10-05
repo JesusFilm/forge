@@ -8,18 +8,19 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (October 2, 2026)
+## Status (October 5, 2026)
 
-- **Total tickets:** 42
-- **Complete:** 31
-- **In progress:** 0
-- **Not started:** 11
+- **Total tickets:** 44
+- **Complete:** 32
+- **In progress:** 2
+- **Not started:** 10
 - **Blocked:** 0
 
 ## Feature Index
 
 | Forge ID                                                          | Historical issue                                              | Feature                                                            | Status      | Forge PR                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [feat-605](feat-605-rag-safe-search-diagnostics.md)               | —                                                             | Classify intermittent RAG search failures safely                   | in-progress | —                                                                                                                                                                                                                                                                                                                                        |
 | [feat-600](feat-600-seeker-rag-config-names.md)                   | —                                                             | Name Seeker RAG configuration after its consumer                   | complete    | [#2549](https://github.com/JesusFilm/forge/pull/2549)                                                                                                                                                                                                                                                                                    |
 | [feat-593](feat-593-seeker-consumer-credentials.md)               | —                                                             | Migrate Seeker to registered RAG consumer credentials              | complete    | [#2535](https://github.com/JesusFilm/forge/pull/2535)                                                                                                                                                                                                                                                                                    |
 | [feat-423](feat-423-rag-scaffold-and-roadmap.md)                  | [#156](https://github.com/JesusFilm/jesusfilm-rag/issues/156) | Scaffold RAG space and durable roadmap                             | complete    | [#2033](https://github.com/JesusFilm/forge/pull/2033)                                                                                                                                                                                                                                                                                    |
