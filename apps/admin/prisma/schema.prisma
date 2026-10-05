@@ -3794,6 +3794,8 @@ model RecommendationRequest {
   promotionSlateFence     RecommendationPromotionSlateFence?
   personalizationDecision RecommendationPersonalizationDecision?
   precomputedVisitLink    RecommendationPrecomputedVisitRequest?
+  /// Survives the link cascade until this bounded request itself expires.
+  privatePrecomputedVisitId String? @map("private_precomputed_visit_id") @db.Uuid
 
   @@index([expiresAt, id], map: "recommendation_request_expiry_idx")
   @@index([createdAt, id], map: "recommendation_request_created_idx")
@@ -6768,6 +6770,11 @@ model RecommendationPrecomputedExperiment {
   createdAt DateTime @default(now()) @map("created_at")
   expiresAt DateTime @map("expires_at")
   visits RecommendationPrecomputedVisit[]
+  ctrPolicy RecommendationPrecomputedCtrPolicy?
+  ctrArchivedVisits RecommendationPrecomputedCtrArchivedVisit[]
+  ctrClusters RecommendationPrecomputedCtrCluster[]
+  ctrTotals RecommendationPrecomputedCtrTotals[]
+  ctrReports RecommendationPrecomputedCtrReport[]
 
   @@index([state, startsAt, endsAt], map: "recommendation_precomputed_experiment_window_idx")
   @@index([expiresAt], map: "recommendation_precomputed_experiment_expiry_idx")
@@ -6816,6 +6823,88 @@ model RecommendationPrecomputedVisitRequest {
   @@index([visitId, createdAt], map: "recommendation_precomputed_visit_request_visit_idx")
   @@index([expiresAt], map: "recommendation_precomputed_visit_request_expiry_idx")
   @@map("recommendation_precomputed_visit_request")
+}
+
+/// Immutable fixture/prelaunch settings; no public activation authority.
+model RecommendationPrecomputedCtrPolicy {
+  experimentId String @id @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  version String @db.VarChar(64)
+  method String @db.VarChar(64)
+  settings Json @db.JsonB
+  lateEventCutoffHours Int @map("late_event_cutoff_hours")
+  settingsDigest String @map("settings_digest") @db.Char(64)
+  authority String @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("recommendation_precomputed_ctr_policy")
+}
+
+/// UUID-only replay marker after a raw visit transfers to compact counters.
+model RecommendationPrecomputedCtrArchivedVisit {
+  visitId String @id @map("visit_id") @db.Uuid
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+
+  @@index([experimentId], map: "recommendation_precomputed_ctr_archived_visit_experiment_idx")
+  @@map("recommendation_precomputed_ctr_archived_visit")
+}
+
+/// Per-browser counters retain the cluster-delta method after raw expiry.
+model RecommendationPrecomputedCtrCluster {
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  browserUnitDigest String @map("browser_unit_digest") @db.Char(64)
+  arm RecommendationExperimentArm
+  eligibleVisits BigInt @default(0) @map("eligible_visits")
+  clickedVisits BigInt @default(0) @map("clicked_visits")
+
+  @@id([experimentId, browserUnitDigest])
+  @@map("recommendation_precomputed_ctr_cluster")
+}
+
+/// Archived diagnostic counts, separate from the cluster uncertainty rows.
+model RecommendationPrecomputedCtrTotals {
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  arm String @db.VarChar(16)
+  eligibleVisits BigInt @default(0) @map("eligible_visits")
+  clickedVisits BigInt @default(0) @map("clicked_visits")
+  acceptedSelections BigInt @default(0) @map("accepted_selections")
+  qualifiedImpressions BigInt @default(0) @map("qualified_impressions")
+  matchedSelections BigInt @default(0) @map("matched_selections")
+  servedVisits BigInt @default(0) @map("served_visits")
+  emptyVisits BigInt @default(0) @map("empty_visits")
+  unavailableVisits BigInt @default(0) @map("unavailable_visits")
+  notAttemptedVisits BigInt @default(0) @map("not_attempted_visits")
+  actualFallbackVisits BigInt @default(0) @map("actual_fallback_visits")
+  privateRecoveryAttemptVisits BigInt @default(0) @map("private_recovery_attempt_visits")
+  unlinkedDeliveredVisits BigInt @default(0) @map("unlinked_delivered_visits")
+  excludedAutomation BigInt @default(0) @map("excluded_automation")
+  excludedPreview BigInt @default(0) @map("excluded_preview")
+  excludedUnknown BigInt @default(0) @map("excluded_unknown")
+  excludedOutsideCohort BigInt @default(0) @map("excluded_outside_cohort")
+  excludedOther BigInt @default(0) @map("excluded_other")
+  unversionedArchivedVisits BigInt @default(0) @map("unversioned_archived_visits")
+
+  @@id([experimentId, arm])
+  @@map("recommendation_precomputed_ctr_totals")
+}
+
+/// A reviewed revision is append-only until the parent config expires.
+model RecommendationPrecomputedCtrReport {
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  revision Int
+  policyDigest String @map("policy_digest") @db.Char(64)
+  evidenceDigest String @map("evidence_digest") @db.Char(64)
+  asOf DateTime @map("as_of")
+  isFinal Boolean @map("is_final")
+  result Json @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([experimentId, revision])
+  @@map("recommendation_precomputed_ctr_report")
 }
 
 /// One compact choice set per source Video per generation. Reasons and evidence

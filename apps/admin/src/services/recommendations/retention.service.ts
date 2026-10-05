@@ -287,7 +287,12 @@ export async function purgeExpiredRecommendationRequests(
     // Private Watch test visits are independent roots: empty deliveries have
     // no recommendation_request to carry them through ordinary request purge.
     const precomputedPurge = await phase(async (tx) => {
-      const result = await purgeExpiredPrecomputedVisitRoots(tx, now, batchSize)
+      const result = await purgeExpiredPrecomputedVisitRoots(
+        tx,
+        now,
+        batchSize,
+        requestIds,
+      )
       rowCounts.expiredPrecomputedVisits = result.visitsDeleted
       rowCounts.expiredPrecomputedExperiments = result.experimentsDeleted
       return result
@@ -404,6 +409,14 @@ export async function purgeExpiredRecommendationRequests(
         })
         const currentIds = current.map(({ id }) => id)
         if (currentIds.length === 0) return
+        const unarchivedLinks =
+          await tx.recommendationPrecomputedVisitRequest.count({
+            where: { requestId: { in: currentIds } },
+          })
+        if (unarchivedLinks > 0)
+          throw new RecommendationConflictError(
+            "Expired request still has unarchived private visit evidence",
+          )
         const children = await countRequestChildren(tx, currentIds)
         await tx.recommendationContentAction.deleteMany({
           where: { requestId: { in: currentIds }, expiresAt: { lte: now } },

@@ -10,7 +10,12 @@ import {
   loadPrivatePrecomputedVisitDiagnostics,
 } from "@/services/recommendations/precomputed/visit-admission"
 import { loadPrivatePrecomputedClickDiagnostics } from "@/services/recommendations/precomputed/visit-clicks"
+import {
+  loadPrivatePrecomputedCtrIndex,
+  loadPrivatePrecomputedCtrReport,
+} from "@/services/recommendations/precomputed/ctr-report"
 import { createPrivatePrecomputedTest } from "./actions"
+import { PrivateCtrReportView } from "./ctr-view"
 import { PrivateVisitDiagnosticsView } from "./view"
 
 export default async function PrecomputedVisitDiagnosticsPage({
@@ -40,6 +45,38 @@ export default async function PrecomputedVisitDiagnosticsPage({
         reviewer: principal,
       })
     : null
+  const requestedRevision =
+    typeof params.revision === "string" && /^[1-9]\d?$/.test(params.revision)
+      ? Number(params.revision)
+      : undefined
+  const evaluationMessage =
+    params.evaluation === "provisional_revision_capacity_exhausted"
+      ? "the 32 provisional revisions are full; the final fixed-horizon slot remains reserved"
+      : params.evaluation === "predeclared_policy_missing"
+        ? "a policy must be declared before visits"
+        : params.evaluation === "policy_integrity_failed"
+          ? "the stored policy did not pass its integrity check"
+          : params.evaluation === "unsupported_policy"
+            ? "the stored policy method is unsupported"
+            : params.evaluation === "experiment_not_found"
+              ? "the experiment was not found"
+              : params.evaluation ===
+                  "precomputed_ctr_policy_must_precede_visits"
+                ? "this test already has visits; create a fresh private test and declare a policy before its first visit"
+                : null
+  const [ctrIndex, ctrRead] = id
+    ? await Promise.all([
+        loadPrivatePrecomputedCtrIndex(prisma, {
+          experimentId: id,
+          reviewer: principal,
+        }),
+        loadPrivatePrecomputedCtrReport(prisma, {
+          experimentId: id,
+          revision: requestedRevision,
+          reviewer: principal,
+        }),
+      ])
+    : ([null, null] as const)
 
   return (
     <div className="flex flex-col gap-6">
@@ -137,6 +174,23 @@ export default async function PrecomputedVisitDiagnosticsPage({
         </div>
       </PageSection>
       <PrivateVisitDiagnosticsView report={report} clicks={clicks} />
+      {id && ctrRead ? (
+        <PrivateCtrReportView
+          experimentId={id}
+          policyDeclared={ctrIndex?.policyDeclared ?? false}
+          canDeclarePolicy={ctrIndex?.canDeclarePolicy ?? false}
+          declarationUnavailableReason={
+            ctrIndex?.declarationUnavailableReason ?? null
+          }
+          canOperate={hasPermission(
+            principal,
+            "operate:recommendation-experiments",
+          )}
+          read={ctrRead}
+          revisions={ctrIndex?.revisions ?? []}
+          evaluationMessage={evaluationMessage}
+        />
+      ) : null}
     </div>
   )
 }

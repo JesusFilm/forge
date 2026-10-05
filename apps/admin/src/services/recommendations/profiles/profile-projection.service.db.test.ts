@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import {
   recommendationPrecomputedMigrationSql,
-  recommendationRuntimeMigrationSql,
+  recommendationRuntimeBaseMigrationSql,
 } from "../current-schema.test-fixture"
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
@@ -41,7 +41,7 @@ import {
 } from "./profile-lineage"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const recommendationMigrations = recommendationRuntimeMigrationSql
+const recommendationMigrations = recommendationRuntimeBaseMigrationSql
 
 const webCaller = {
   id: "forge-web",

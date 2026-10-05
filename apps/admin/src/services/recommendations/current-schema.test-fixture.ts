@@ -33,6 +33,17 @@ export const currentAdminMigrationSql = readdirSync(migrationRoot)
   .sort()
   .map(scopedMigrationSql)
 
+// The runtime fixture has no catalog Video authority, so it cannot apply the
+// rest of 0134's precomputed FKs. Its ordinary request reads still use today's
+// Prisma scalar selection. Take that one column DDL from the real migration.
+const privateRequestMarkerDdl = scopedMigrationSql(
+  "0134_precomputed_ctr_evaluation",
+).match(
+  /^ALTER TABLE recommendation_request ADD COLUMN private_precomputed_visit_id uuid;$/m,
+)?.[0]
+if (!privateRequestMarkerDdl)
+  throw new Error("Missing current private request marker migration")
+
 /**
  * Runtime-backed tests need the complete current recommendation schema, even
  * when their own feature predates a column selected by today's Prisma client.
@@ -42,7 +53,7 @@ export const currentAdminMigrationSql = readdirSync(migrationRoot)
  * qualifier through the fixture's search_path so its lock, run update and
  * truncation execute against the isolated schema instead of public.
  */
-export const recommendationRuntimeMigrationSql = readdirSync(migrationRoot)
+export const recommendationRuntimeBaseMigrationSql = readdirSync(migrationRoot)
   .filter(
     (name) =>
       /^\d{4}_/.test(name) &&
@@ -56,11 +67,16 @@ export const recommendationRuntimeMigrationSql = readdirSync(migrationRoot)
   .sort()
   .map(scopedMigrationSql)
 
+export const recommendationRuntimeMigrationSql = [
+  ...recommendationRuntimeBaseMigrationSql,
+  privateRequestMarkerDdl,
+]
+
 /** Apply after a runtime fixture has its catalog video authority available.
  * The precomputed migration chain references video, so it cannot be part of
  * the catalog-free runtime chain above. Retention tests must install these
  * real roots before calling the current purge. */
 export const recommendationPrecomputedMigrationSql = readdirSync(migrationRoot)
-  .filter((name) => /^01(28|29|30|31|32|33)_/.test(name))
+  .filter((name) => /^01(28|29|30|31|32|33|34)_/.test(name))
   .sort()
   .map(scopedMigrationSql)

@@ -196,7 +196,7 @@ export class RecommendationEpisodeService {
     if (input.tabDigest != null && !/^[a-f0-9]{64}$/.test(input.tabDigest)) {
       throw new RecommendationInputError("Recommendation tab digest is invalid")
     }
-    const now = this.deps.now?.() ?? new Date()
+    let now = this.deps.now?.() ?? new Date()
     const item = await this.deps.prisma.recommendationServedItem.findUnique({
       where: { id: input.itemId },
       select: {
@@ -212,7 +212,7 @@ export class RecommendationEpisodeService {
             sessionDigest: true,
             surfaceVersion: true,
             manifestId: true,
-            precomputedVisitLink: { select: { requestId: true } },
+            privatePrecomputedVisitId: true,
             experimentAssignment: {
               include: { experiment: true, profile: true },
             },
@@ -323,17 +323,19 @@ export class RecommendationEpisodeService {
           "Recommendation selection binding is invalid",
         )
       }
-      if (
-        item.request.precomputedVisitLink &&
-        !(await matchesPrivateVisitBrowser(tx, {
+      if (item.request.privatePrecomputedVisitId) {
+        const privateReceiptAt = await matchesPrivateVisitBrowser(tx, {
           requestId: item.requestId,
+          expectedVisitId: item.request.privatePrecomputedVisitId,
           browserDigest: input.browserDigest,
-          now,
-        }))
-      )
-        throw new RecommendationBindingError(
-          "Recommendation private browser binding is invalid",
-        )
+          clock: this.deps.now ?? (() => new Date()),
+        })
+        if (!privateReceiptAt)
+          throw new RecommendationBindingError(
+            "Recommendation private browser binding is invalid",
+          )
+        now = privateReceiptAt
+      }
       await lockRecommendationItemEvidence(tx, item.id)
       const impression = await tx.recommendationImpression.findUnique({
         where: { itemId: item.id },

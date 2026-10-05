@@ -840,6 +840,163 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
     }, 30_000)
 
+    it("archives a clicked linked visit before deleting its expired request when an older empty visit fills the page", async () => {
+      const now = new Date()
+      const generationId = await createFixtureGeneration(db, now)
+      const experimentId = `retention-ctr-${randomUUID()}`
+      const emptyId = randomUUID()
+      const clickedId = randomUUID()
+      const requestId = `retention-ctr-request-${randomUUID()}`
+      const selectionAt = new Date(now.getTime() - 28 * day)
+      const emptyExpiry = new Date(now.getTime() - 3 * day)
+      const clickedExpiry = new Date(now.getTime() - 2 * day)
+      const requestExpiry = new Date(now.getTime() - day)
+      try {
+        await db.recommendationPrecomputedExperiment.create({
+          data: {
+            id: experimentId,
+            generationId,
+            controlManifestId: "semantic-transcript-pgvector-v1",
+            challengerManifestId: "precomputed-watch-preview-v1",
+            controlManifestDigest: "c".repeat(64),
+            controlRoutingDigest: "d".repeat(64),
+            sourceSetDigest: "b".repeat(64),
+            assignmentPolicyVersion: "fixture-v1",
+            eligibilityPolicyVersion: "fixture-v1",
+            deliveryPolicyVersion: "fixture-v1",
+            configurationDigest: "e".repeat(64),
+            state: "closed",
+            startsAt: new Date(now.getTime() - 31 * day),
+            endsAt: new Date(now.getTime() + day),
+            expiresAt: new Date(now.getTime() + 366 * day),
+          },
+        })
+        await db.recommendationPrecomputedVisit.createMany({
+          data: [
+            {
+              id: emptyId,
+              experimentId,
+              sourceVideoId: "fixture-video",
+              locale: "en",
+              audioLanguageSlug: "english",
+              eligibility: "excluded",
+              qualification: "unknown_signal",
+              exclusionReason: "traffic_unqualified",
+              createdAt: new Date(now.getTime() - 30 * day),
+              expiresAt: emptyExpiry,
+            },
+            {
+              id: clickedId,
+              experimentId,
+              sourceVideoId: "fixture-video",
+              locale: "en",
+              audioLanguageSlug: "english",
+              eligibility: "eligible",
+              qualification: "unverified_browser",
+              browserUnitDigest: "f".repeat(64),
+              arm: "CONTROL",
+              createdAt: new Date(now.getTime() - 29 * day),
+              expiresAt: clickedExpiry,
+            },
+          ],
+        })
+        await db.$transaction(async (tx) => {
+          await tx.recommendationRequest.create({
+            data: {
+              id: requestId,
+              contractVersion: "semantic-recommendation-v1",
+              surfaceVersion: "watch-below-player-v1",
+              manifestId: "semantic-transcript-pgvector-v1",
+              strategyVersion: "semantic-transcript-pgvector-v1",
+              classifierVersion: "legacy-position-v0",
+              sessionDigest: "1".repeat(64),
+              locale: "en",
+              seedMediaId: "fixture-video",
+              expectedItemCount: 1,
+              state: "ISSUED",
+              result: "SERVED",
+              deliveryJti: randomUUID(),
+              signingKid: "fixture",
+              createdAt: selectionAt,
+              issuedAt: selectionAt,
+              expiresAt: requestExpiry,
+            },
+          })
+          const item = await tx.recommendationServedItem.create({
+            data: {
+              requestId,
+              position: 0,
+              targetMediaId: "fixture-target",
+              canonicalHref: "/watch/fixture-target.html",
+              candidateGenerator: "semantic",
+              candidateProvenance: {},
+              expiresAt: requestExpiry,
+            },
+          })
+          await tx.recommendationPrecomputedVisitRequest.create({
+            data: {
+              requestId,
+              visitId: clickedId,
+              createdAt: selectionAt,
+              expiresAt: clickedExpiry,
+            },
+          })
+          await tx.recommendationSelection.create({
+            data: {
+              requestId,
+              itemId: item.id,
+              capabilityJti: randomUUID(),
+              eventId: randomUUID(),
+              payloadDigest: "2".repeat(64),
+              claimNonceDigest: "3".repeat(64),
+              handoffExpiresAt: requestExpiry,
+              occurredAt: selectionAt,
+              receivedAt: selectionAt,
+              expiresAt: requestExpiry,
+            },
+          })
+        })
+        const result = await purgeExpiredRecommendationRequests(db, now, 1)
+        expect(result.status).toBe("succeeded")
+        expect(
+          await db.recommendationRequest.findUnique({
+            where: { id: requestId },
+          }),
+        ).toBeNull()
+        expect(
+          await db.recommendationPrecomputedVisit.findUnique({
+            where: { id: clickedId },
+          }),
+        ).toBeNull()
+        expect(
+          await db.recommendationPrecomputedVisit.findUnique({
+            where: { id: emptyId },
+          }),
+        ).not.toBeNull()
+        expect(
+          await db.recommendationPrecomputedCtrCluster.findUnique({
+            where: {
+              experimentId_browserUnitDigest: {
+                experimentId,
+                browserUnitDigest: "f".repeat(64),
+              },
+            },
+          }),
+        ).toMatchObject({ eligibleVisits: 1n, clickedVisits: 1n })
+      } finally {
+        await db.recommendationRequest.deleteMany({ where: { id: requestId } })
+        await db.recommendationPrecomputedVisit.deleteMany({
+          where: { experimentId },
+        })
+        await db.recommendationPrecomputedExperiment.deleteMany({
+          where: { id: experimentId },
+        })
+        await db.recommendationPrecomputedGeneration.delete({
+          where: { id: generationId },
+        })
+      }
+    }, 30_000)
+
     it("reports the remaining expired precomputed visit after a capped successful cleanup", async () => {
       const now = new Date()
       const olderExpiry = new Date(now.getTime() - 3 * day)

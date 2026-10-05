@@ -92,6 +92,7 @@ function buildPrisma() {
       deleteMany: vi.fn(async () => ({ count: 0 })),
       findFirst: vi.fn(async () => null),
     },
+    recommendationPrecomputedVisitRequest: { count: count() },
     recommendationPrecomputedExperiment: {
       findMany: vi.fn(async () => []),
       deleteMany: vi.fn(async () => ({ count: 0 })),

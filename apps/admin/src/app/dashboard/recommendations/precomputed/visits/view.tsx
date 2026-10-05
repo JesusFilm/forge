@@ -18,7 +18,7 @@ export function PrivateVisitDiagnosticsView({
     )
   return (
     <>
-      <PageSection title="Frozen assignment" meta="PRIVATE / OBSERVED">
+      <PageSection title="Frozen assignment" meta="PRIVATE / RAW LIFECYCLE">
         <div className="space-y-2 p-4 text-[13px]">
           <StatusPill tone="warning">
             {report.status.replaceAll("_", " ")}
@@ -54,6 +54,11 @@ export function PrivateVisitDiagnosticsView({
               the full test.
             </p>
           ) : null}
+          <p>
+            This diagnostic reads retained raw visits and can diverge from the
+            durable CTR report after ordinary 29-day expiry. Use the versioned
+            CTR report for the full fixed cohort.
+          </p>
         </div>
       </PageSection>
       <PageSection

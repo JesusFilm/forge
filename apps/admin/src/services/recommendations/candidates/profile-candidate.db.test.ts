@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import {
   recommendationPrecomputedMigrationSql,
-  recommendationRuntimeMigrationSql,
+  recommendationRuntimeBaseMigrationSql,
 } from "../current-schema.test-fixture"
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
@@ -36,7 +36,7 @@ import {
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
 const USE_DETERMINISTIC_FIXTURE =
   env.RECOMMENDATION_PROFILE_DB_FIXTURE === "deterministic"
-const migrations = recommendationRuntimeMigrationSql
+const migrations = recommendationRuntimeBaseMigrationSql
 
 function deterministicVector(first: number, second: number): string {
   return `[${[first, second, ...Array<number>(1534).fill(0)].join(",")}]`

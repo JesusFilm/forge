@@ -17,6 +17,7 @@ import { RECOMMENDATION_SERVING_CONTROL_ID } from "../manifest.service"
 import { verifyPrecomputedSourceEligibility } from "./watch-reader"
 import { PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID } from "./watch-delivery"
 import { precomputedBrowserUnitDigest } from "./visit-identity"
+import { lockPrecomputedCtrEvidence } from "./ctr-fence"
 
 export const PRECOMPUTED_VISIT_ASSIGNMENT_POLICY = "browser-sha256-50-v1"
 export const PRECOMPUTED_VISIT_ELIGIBILITY_POLICY =
@@ -285,6 +286,16 @@ export async function admitPrivatePrecomputedVisit(
             "frozen_configuration_unavailable",
           )
 
+        await lockPrecomputedCtrEvidence(tx, experiment.id, "shared")
+        if (
+          experiment.endsAt <= (input.now ?? new Date()) ||
+          (await tx.recommendationPrecomputedCtrReport.findFirst({
+            where: { experimentId: experiment.id, isFinal: true },
+            select: { revision: true },
+          }))
+        )
+          return result(input, "unavailable", "test_configuration_unavailable")
+
         let qualification: Exclude<
           PrivateVisitAdmission["qualification"],
           null
@@ -423,13 +434,45 @@ export async function recordPrivatePrecomputedVisitDelivery(
       prisma,
       deadlineAt,
       async (tx) => {
-        const now = new Date()
-        const visit = await tx.recommendationPrecomputedVisit.findUnique({
+        let visit = await tx.recommendationPrecomputedVisit.findUnique({
           where: { id: input.visitId },
-          include: { experiment: { select: { id: true } } },
+          include: {
+            experiment: {
+              select: {
+                id: true,
+                endsAt: true,
+                ctrPolicy: { select: { lateEventCutoffHours: true } },
+              },
+            },
+          },
+        })
+        if (!visit) return "unavailable"
+        await lockPrecomputedCtrEvidence(tx, visit.experimentId, "shared")
+        const now = new Date()
+        visit = await tx.recommendationPrecomputedVisit.findUnique({
+          where: { id: input.visitId },
+          include: {
+            experiment: {
+              select: {
+                id: true,
+                endsAt: true,
+                ctrPolicy: { select: { lateEventCutoffHours: true } },
+              },
+            },
+          },
         })
         if (
           !visit ||
+          (visit.experiment.ctrPolicy &&
+            now >=
+              new Date(
+                visit.experiment.endsAt.getTime() +
+                  visit.experiment.ctrPolicy.lateEventCutoffHours * 3_600_000,
+              )) ||
+          (await tx.recommendationPrecomputedCtrReport.findFirst({
+            where: { experimentId: visit.experimentId, isFinal: true },
+            select: { revision: true },
+          })) ||
           visit.eligibility !== "eligible" ||
           visit.expiresAt <= now ||
           (await readControlRouting(tx))?.routingDigest !==

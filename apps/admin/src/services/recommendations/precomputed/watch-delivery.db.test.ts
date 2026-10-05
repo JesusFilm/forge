@@ -19,6 +19,11 @@ import {
   loadPrivatePrecomputedVisitDiagnostics,
   recordPrivatePrecomputedVisitDelivery,
 } from "./visit-admission"
+import { precomputedBrowserUnitDigest } from "./visit-identity"
+import {
+  declareFixturePrecomputedCtrPolicy,
+  evaluatePrivatePrecomputedCtr,
+} from "./ctr-report"
 
 const caller = {
   id: null,
@@ -1105,6 +1110,110 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           where: { id: expiredId },
         }),
       ).toBeNull()
+    })
+
+    it("does not change delivery evidence after the fixed late-event cutoff when final evaluation is delayed", async () => {
+      const current =
+        await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
+          where: { id: privateExperimentId },
+        })
+      const clock = new Date()
+      const endsAt = new Date(clock.getTime() - 48 * 3_600_000)
+      const experimentId = `late-delivery-${suffix}`
+      const browserDigest = "6".repeat(64)
+      const visitId = randomUUID()
+      await prisma.recommendationPrecomputedExperiment.update({
+        where: { id: current.id },
+        data: { state: "closed" },
+      })
+      try {
+        await prisma.recommendationPrecomputedExperiment.create({
+          data: {
+            id: experimentId,
+            generationId: current.generationId,
+            controlManifestId: current.controlManifestId,
+            challengerManifestId: current.challengerManifestId,
+            controlManifestDigest: current.controlManifestDigest,
+            controlRoutingDigest: current.controlRoutingDigest,
+            sourceSetDigest: current.sourceSetDigest,
+            assignmentPolicyVersion: current.assignmentPolicyVersion,
+            eligibilityPolicyVersion: current.eligibilityPolicyVersion,
+            deliveryPolicyVersion: current.deliveryPolicyVersion,
+            configurationDigest: current.configurationDigest,
+            state: "private_test",
+            startsAt: new Date(endsAt.getTime() - 48 * 3_600_000),
+            endsAt,
+            expiresAt: new Date(clock.getTime() + 365 * 86_400_000),
+          },
+        })
+        await declareFixturePrecomputedCtrPolicy(prisma, {
+          experimentId,
+          operator: { id: "fixture-operator", role: "ADMIN" },
+          settings: {
+            baselineHumanVisitCtr: 0.2,
+            minimumDetectableAbsoluteUplift: 0.05,
+            minimumPracticalAbsoluteUplift: 0.05,
+            plannedPower: 0.8,
+            minimumEligibleVisitsPerArm: 1,
+            minimumIndependentBrowsersPerArm: 3,
+            minimumDurationHours: 24,
+            lateEventCutoffHours: 24,
+            maximumActualFallbackRate: 0.2,
+            maximumUnlinkedDeliveryRate: 0,
+          },
+        })
+      } finally {
+        await prisma.recommendationPrecomputedExperiment.updateMany({
+          where: { id: experimentId },
+          data: { state: "closed" },
+        })
+      }
+      await prisma.recommendationPrecomputedVisit.create({
+        data: {
+          id: visitId,
+          experimentId,
+          browserUnitDigest: precomputedBrowserUnitDigest(
+            experimentId,
+            browserDigest,
+          ),
+          sourceVideoId,
+          locale: "en",
+          audioLanguageSlug: "english",
+          eligibility: "eligible",
+          qualification: "unverified_browser",
+          arm: "CHALLENGER",
+          createdAt: new Date(endsAt.getTime() - 3_600_000),
+          expiresAt: new Date(endsAt.getTime() - 3_600_000 + 29 * 86_400_000),
+        },
+      })
+      expect(
+        await recordPrivatePrecomputedVisitDelivery(prisma, {
+          visitId,
+          browserDigest,
+          result: "fallback",
+          actualStrategy: "semantic",
+          requestId: null,
+          fallbackReason: "private_recovery",
+          caller,
+        }),
+      ).toBe("unavailable")
+      expect(
+        await prisma.recommendationPrecomputedVisit.findUniqueOrThrow({
+          where: { id: visitId },
+          select: { deliveryResult: true, fallbackReason: true },
+        }),
+      ).toMatchObject({ deliveryResult: "not_attempted", fallbackReason: null })
+      const evaluated = await evaluatePrivatePrecomputedCtr(prisma, {
+        experimentId,
+        operator: { id: "fixture-operator", role: "ADMIN" },
+      })
+      expect(evaluated).toMatchObject({
+        status: "available",
+        report: {
+          isFinal: true,
+          byArm: { challenger: { eligibleVisits: 1, actualFallbackVisits: 0 } },
+        },
+      })
     })
 
     it("rejects a frozen private configuration with the old receipt-gated policy", async () => {
