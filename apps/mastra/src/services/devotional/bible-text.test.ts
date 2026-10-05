@@ -42,7 +42,7 @@ describe("parseReference", () => {
     expect(parseReference("John 11:25")?.osis).toBe("John")
   })
   it("returns null for an unknown book or malformed ref", () => {
-    expect(parseReference("Genesis 1:1")).toBeNull() // not in Gospels+Acts map
+    expect(parseReference("Hezekiah 1:1")).toBeNull() // no such book
     expect(parseReference("nonsense")).toBeNull()
   })
 })
@@ -95,5 +95,19 @@ describe("loadBible / getVerseText", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "bible-"))
     expect(() => loadBible(BSB, dir)).toThrow(BibleCorpusMissingError)
     expect(() => loadBible(BSB, dir)).toThrow(/ingest-bsb-bible/)
+  })
+})
+
+describe("the whole Bible (BSB, 2026-10-05)", () => {
+  it("parses Old Testament and multi-word book names", () => {
+    expect(parseReference("Psalm 27:4")).toEqual({
+      osis: "Ps",
+      chapter: 27,
+      startVerse: 4,
+      endVerse: 4,
+    })
+    expect(parseReference("Song of Solomon 2:1-2")?.osis).toBe("Song")
+    expect(parseReference("1 John 4:8")?.osis).toBe("1John")
+    expect(parseReference("Psalms 46:10")?.osis).toBe("Ps")
   })
 })
