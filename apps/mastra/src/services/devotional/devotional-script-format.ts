@@ -61,7 +61,11 @@ const mmss = (sec: number) =>
 
 export function formatDevotionalScript(input: {
   devo: GeneratedDevotional
-  source: VideoSource
+  /** Only the clip's identity and window are printed, so a JESUS-film
+   *  chapter (not a registered `VideoSource`) can be passed too. */
+  source: Pick<VideoSource, "title" | "mediaComponentId" | "window">
+  /** The film's name on the sheet (default "LUMO"). */
+  filmName?: string
   /** The film's subtitles, cue by cue: the narration as spoken, which is
    *  not the BSB (LUMO reads the NIV). */
   subtitles: string[]
@@ -94,12 +98,13 @@ export function formatDevotionalScript(input: {
           : "REFLECTION"
   const marks = paragraphs.filter((p) => p.mark)
   const winEnd = s.window.startSec + s.window.lengthSec
+  const film = input.filmName ?? "LUMO"
   return [
     `${s.title.toUpperCase()}  |  Daily Bible Pause  |  clip-first`,
     `${d.passage.reference}  |  Scripture: ${d.scripture.translation === "BSB" ? "Berean Standard Bible" : d.scripture.translation}`,
     `Reflection adapted from ${input.classicCredit}, with the notes credited below`,
     "",
-    `Film: LUMO, Arclight id ${s.mediaComponentId}. The scene runs ${mmss(s.window.startSec)} - ${mmss(winEnd)}.`,
+    `Film: ${film}, Arclight id ${s.mediaComponentId}. The scene runs ${mmss(s.window.startSec)} - ${mmss(winEnd)}.`,
     `Title: ${d.title}`,
     "",
     ...section(1, "OPENING"),
@@ -113,7 +118,7 @@ export function formatDevotionalScript(input: {
     "",
     ...section(
       2,
-      `VIDEO CLIP  (LUMO ${mmss(s.window.startSec)} - ${mmss(winEnd)}, film sound, subtitles carry the text)`,
+      `VIDEO CLIP  (${film} ${mmss(s.window.startSec)} - ${mmss(winEnd)}, film sound, subtitles carry the text)`,
     ),
     `SUBTITLES  (${d.passage.reference}, as the film's narrator reads it: ${input.filmTranslation ?? "NIV"})`,
     "",

@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 /**
- * The storyteller path (owner, 2026-09-29) on a LUMO source: researcher →
+ * The storyteller path (owner, 2026-09-29) on a LUMO source or a JESUS-film
+ * chapter (`--chapter=32`, from 2026-10-05): researcher →
  * code-checked facts → one strong writer → code rules + fact check with one
  * revision. Writes the cached devotional (so render-one-devotional.ts takes it
  * from there), the owner's script sheet and a notes file. Nothing is
@@ -8,6 +9,7 @@
  *
  *   pnpm --filter @forge/mastra exec tsx --env-file=.env.local \
  *     src/scripts/compose-storyteller.ts --source=lumo-luke-15
+ *     src/scripts/compose-storyteller.ts --chapter=32
  */
 import { existsSync } from "node:fs"
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises"
@@ -22,18 +24,38 @@ import {
   cacheDirFor,
   saveCachedDevo,
 } from "../services/devotional/devotional-cache"
+import {
+  DEVOTIONAL_VOICES,
+  type DevotionalVoiceName,
+} from "../services/devotional/elevenlabs-voiceover"
 import { EN_LOCALE } from "../services/devotional/devotional-locale"
 import { modelFor } from "../services/devotional/devotional-models"
 import {
   formatDevotionalScript,
   readSubtitles,
 } from "../services/devotional/devotional-script-format"
+import { JESUS_FILM_CHAPTERS } from "../services/devotional/jesus-film-catalog"
+import { passageForChapter } from "../services/devotional/jesus-film-passages"
+import {
+  DEVOTIONAL_BIBLE,
+  getVerseText,
+} from "../services/devotional/bible-text"
 import { createDevotionalLlm } from "../services/devotional/llm"
-import { selectScriptureForPassage } from "../services/devotional/passage-scripture"
+import {
+  balanceQuotes,
+  selectScriptureForPassage,
+} from "../services/devotional/passage-scripture"
 import { loadReferenceCorpora } from "../services/devotional/reference-corpus"
 import { loadReflectionCorpora } from "../services/devotional/reflection-corpus"
 import { repoRoot } from "../services/devotional/repo-root"
-import { videoSource } from "../services/devotional/video-sources"
+import {
+  arclightMediaInfo,
+  parseSubtitles,
+} from "../services/devotional/subtitle-align"
+import {
+  type VideoSource,
+  videoSource,
+} from "../services/devotional/video-sources"
 
 const arg = (name: string, fallback?: string) =>
   process.argv
@@ -95,6 +117,92 @@ const STORIES: Record<
     ],
     out: "Martha",
   },
+  "jesus-32": {
+    // Luke puts the blind man straight after the Twelve fail to understand
+    // the third passion prediction ("the meaning was hidden from them"): the
+    // disciples who see do not understand; the blind man does.
+    setting: { reference: "Luke 18:31-34", osis: ["Luke.18", 31, 34] },
+    terms: [
+      "Bartimaeus",
+      "Jericho",
+      "Blind",
+      "Blindness",
+      "Nazareth",
+      "Mercy",
+      "Faith",
+      "Highway",
+      "Cloak",
+    ],
+    out: "Bartimaeus",
+  },
+}
+
+/** What the script needs from the clip, whichever film it comes from. */
+type StorySource = Pick<
+  VideoSource,
+  "index" | "mediaComponentId" | "title" | "passage" | "window"
+> & {
+  filmName: string
+  /** The translation the film's own dialogue follows. */
+  filmTranslation: string
+  subtitles: () => Promise<string[]>
+}
+
+/**
+ * A JESUS-film chapter as a StorySource: the passage and window from
+ * jesus-film-passages.ts, the subtitles from the chapter's own Arclight
+ * English track, cut to that window. The JESUS film's English is based on
+ * the Good News Translation (the film's end card).
+ */
+function jesusChapter(index: number): StorySource | undefined {
+  const passage = passageForChapter(index)
+  const chapter = JESUS_FILM_CHAPTERS[index - 1]
+  if (!passage || !chapter) return undefined
+  const window = {
+    startSec: passage.clipStartSec ?? 0,
+    lengthSec: passage.clipLengthSec ?? 60,
+  }
+  return {
+    index,
+    mediaComponentId: chapter.id,
+    title: chapter.title,
+    passage: { reference: passage.reference, osisRef: passage.osisRef },
+    window,
+    filmName: "JESUS film",
+    filmTranslation: "dialogue based on the Good News Translation",
+    subtitles: async () => {
+      const { subtitleUrl } = await arclightMediaInfo(chapter.id)
+      if (!subtitleUrl) return []
+      const r = await fetch(subtitleUrl)
+      if (!r.ok) throw new Error(`subtitles ${chapter.id}: HTTP ${r.status}`)
+      const end = window.startSec + window.lengthSec
+      return parseSubtitles(await r.text())
+        .filter((c) => c.start >= window.startSec && c.start < end)
+        .map((c) => c.text.replace(/\s{2,}/g, " "))
+    },
+  }
+}
+
+function lumoSource(key: string): StorySource | undefined {
+  const src = videoSource(key)
+  if (!src) return undefined
+  return {
+    ...src,
+    filmName: "LUMO",
+    filmTranslation: "NIV",
+    subtitles: () => readSubtitles(src),
+  }
+}
+
+function voiceArg(
+  i: number,
+  fallback: DevotionalVoiceName,
+): DevotionalVoiceName {
+  const v = arg("voices")?.split(",")[i]
+  if (!v) return fallback
+  if (!(v in DEVOTIONAL_VOICES))
+    throw new Error(`unknown voice in --voices: ${v}`)
+  return v as DevotionalVoiceName
 }
 
 async function nextFree(p: string): Promise<string> {
@@ -107,12 +215,13 @@ async function nextFree(p: string): Promise<string> {
 }
 
 async function main() {
-  const key = arg("source") ?? ""
-  const src = videoSource(key)
+  const chapterArg = arg("chapter")
+  const key = chapterArg ? `jesus-${chapterArg}` : (arg("source") ?? "")
+  const src = chapterArg ? jesusChapter(Number(chapterArg)) : lumoSource(key)
   const story = STORIES[key]
   if (!src || !story)
     throw new Error(
-      `--source= must be one of ${Object.keys(STORIES).join(", ")}`,
+      `--source= or --chapter= must be one of ${Object.keys(STORIES).join(", ")}`,
     )
   const seq = Number(arg("seq", "0"))
   const log = (m: string) => console.log(m)
@@ -163,8 +272,22 @@ async function main() {
         scripture: Awaited<ReturnType<typeof selectScriptureForPassage>>
       })
     : undefined
+  // `--verse=Psalm 27:4`: close on a verse from ELSEWHERE in the Bible
+  // (owner's test from Bartimaeus on, 2026-10-05). The owner picks it from
+  // checked candidates; the text is the exact BSB, never the model's.
+  const verseRef = arg("verse")
+  const elsewhere = verseRef ? getVerseText(verseRef) : undefined
+  if (verseRef && !elsewhere) throw new Error(`no BSB text for ${verseRef}`)
   const scripture =
     pinned?.scripture ??
+    (elsewhere
+      ? {
+          reference: verseRef!,
+          text: balanceQuotes(elsewhere),
+          translation: DEVOTIONAL_BIBLE.abbreviation,
+          needsCanonicalSource: false,
+        }
+      : undefined) ??
     (await selectScriptureForPassage({
       reference: src.passage.reference,
       llm: llm(modelFor("scripture")),
@@ -193,7 +316,14 @@ async function main() {
         bsb.verses[`${chapterKey}.${v1 + i}`]!,
       ]),
     ),
-    voices: { main: "female-d", depth: "male-e" },
+    // main reads the reflection, the takeaway and the closing verse; depth
+    // the opening, the history/language notes, the question and the prayer.
+    // Voices alternate per devotional (owner, 2026-10-01): `--voices=male-e,female-d`
+    // swaps them.
+    voices: {
+      main: voiceArg(0, "female-d"),
+      depth: voiceArg(1, "male-e"),
+    },
     llms: {
       research: llm(MODELS.research),
       audit: llm(MODELS.audit),
@@ -253,7 +383,9 @@ async function main() {
     formatDevotionalScript({
       devo: result.devotional,
       source: src,
-      subtitles: await readSubtitles(src),
+      filmName: src.filmName,
+      filmTranslation: src.filmTranslation,
+      subtitles: await src.subtitles(),
       classicCredit: "J. C. Ryle (Expository Thoughts on Luke, 1858)",
       reflectLeadIn: EN_LOCALE.connectors.steps.reflectAfterClip(),
       prayLeadIn: EN_LOCALE.connectors.steps.pray(),

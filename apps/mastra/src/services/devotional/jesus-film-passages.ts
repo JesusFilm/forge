@@ -281,6 +281,20 @@ export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
     grainFilter: "sepia(1) saturate(2.2) brightness(0.55) hue-rotate(-4deg)",
   }, // Good Samaritan. Opens on the man robbed and left half dead (25.0s) → priest and Levite walk by → the Samaritan stops → ends after "whatever else you spend on him" (~77s, was cut mid-sentence). (whisper-verified)
   {
+    index: 32,
+    osisRef: "Luke.18.35-Luke.18.43",
+    reference: "Luke 18:35-43",
+    mood: "hope",
+    themes: ["mercy", "faith", "sight", "persistence", "prayer"],
+    // Subtitle-verified (Arclight EN track, 2026-10-05): no dialogue until
+    // "Hey, what's happening?" at 27.3s; the crowd's "Praise the Lord!" ends
+    // 96.5s, then the end card. Seeded wide
+    // (owner rule): from 18s the crowd is already coming up the road and
+    // Bartimaeus is on screen before he speaks.
+    clipStartSec: 18,
+    clipLengthSec: 79,
+  }, // Healing of Bartimaeus. The crowd passes → "Jesus of Nazareth is passing by" → "Son of David, have mercy on me!" → "What do you want me to do for you?" → "Then see" → the crowd's praise (~96s). (subtitle-verified)
+  {
     index: 33,
     osisRef: "Luke.19.1-Luke.19.10",
     reference: "Luke 19:1-10",
