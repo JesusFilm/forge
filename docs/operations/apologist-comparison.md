@@ -56,12 +56,18 @@ Deploy only through the normal PR-to-main flow, initially with comparison off.
 Supply verified configuration through the normal secret/configuration process.
 Verify a controlled two-turn conversation, cancellation, per-answer prompt
 provenance, and Forge-only replay before enabling for the selected roster.
-Production enablement remains outstanding: install the approved settings and exact
-host pins in Forge production, configure the selected tester roster, and perform
-the deployed smoke and disablement checks through the normal rollout process.
-The operator confirmations and local browser checks do not replace these deployed
-checks. No further Core model-parity or prompt-ownership attestation is required
-for this accepted configuration.
+Production enablement was confirmed by the operator on 2026-10-05. Deployed
+browser checks confirmed a shared question and follow-up completed on both sides,
+production prompt metadata without fallback, Stop cancellation, Forge-only replay
+after refresh, and denial for a signed-in user outside the comparison allowlist.
+Disabling the switch rejected new requests from an already-open comparison and
+closed it with an access-changed notice; refreshing removed the entry button.
+The operator re-enabled the switch and confirmed comparison worked again.
+These operator-reported results close the production checks in U6; see
+[feat-601's resolution](../roadmap/ai-chat/feat-601-apologist-chat-comparison.md#resolution).
+No further Core model-parity or prompt-ownership attestation is required for
+this accepted configuration. Removal before public release remains outstanding
+under feat-602.
 
 ## Behavior and bounds
 

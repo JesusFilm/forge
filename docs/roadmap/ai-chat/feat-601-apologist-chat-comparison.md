@@ -3,7 +3,7 @@ id: "feat-601"
 title: "Temporary Apologist comparison in Forge Chat"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-24"
 duration: 3
 depends_on: []
@@ -15,18 +15,25 @@ tags:
   - apologist
 ---
 
-## Resolution — implementation complete; enablement pending
+## Resolution
 
-**Code PR:** [#2548](https://github.com/JesusFilm/forge/pull/2548) (`feat(chat): add temporary Apologist answer comparison`).
+**Shipped:** 2026-10-02 via [PR #2548](https://github.com/JesusFilm/forge/pull/2548) (`feat(chat): add temporary Apologist answer comparison`). Production enablement and verification were confirmed by the operator on 2026-10-05.
 
-Implementation and local browser/performance verification are complete. The
-comparison remains disabled by default; production configuration, selected-tester
-enablement, and deployed smoke/disablement checks remain outstanding under U6.
-A brief PR browser-testing note is sufficient, without committed one-off
-verification artifacts.
-[Operations](../../operations/apologist-comparison.md) defines enablement and rollback;
-[feat-602](feat-602-remove-apologist-comparison.md) tracks removal before public release.
-Keep this ticket in progress until external enablement evidence is handled.
+**What landed.** A temporary, separately allowlisted comparison sends a shared question to Forge and Apologist, with independent responses and fixed provider headings. Forge history persists; Apologist history is temporary. The comparison is disabled by default in code and is now enabled in production for the configured internal testers.
+
+**Production verification (operator-confirmed).** The operator confirmed these checks in the deployed browser; this closeout records their results rather than a new agent-run verification:
+
+- A shared question and follow-up reached terminal answers on both sides.
+- Apologist response metadata identified the production prompt, without a fallback notice.
+- Refresh restored only the Forge/Seeker conversation and discarded the Apologist transcript.
+- Stop cancelled an in-progress answer.
+- A signed-in user outside the comparison allowlist could not access the comparison.
+- Setting `APOLOGIST_COMPARE_ENABLED=false` rejected a new request from an already-open comparison, closed the comparison, and displayed the access-changed notice. Refresh removed the comparison entry button.
+- Re-enabling the switch restored working comparison access.
+
+Implementation and local browser/performance verification were completed before merge. Production enablement checks under U6 are now complete. No credentials or one-off verification artifacts are recorded here.
+
+**Follow-ups.** [Operations](../../operations/apologist-comparison.md) defines configuration and rollback. [feat-602](feat-602-remove-apologist-comparison.md) remains open for removal before public release; its implementation dependency is satisfied, but the removal trigger is unchanged. Core's model update remains separately tracked in NES-1895 below.
 
 ### Accepted model difference
 
@@ -37,6 +44,8 @@ The operator confirmed the same gateway URL/key and the intended prompt project
 and version. Whether Core's model ID remains supported is tracked by [NES-1895](https://linear.app/jesus-film-project/issue/NES-1895/update-production-apologist-model-id-before-the-christmas-campaign), not a blocker for this temporary comparison.
 
 ## Problem
+
+The following brief records the pre-implementation requirements; production enablement is complete as recorded in the resolution above.
 
 Internal testers need to ask Forge's Seeker agent and Core's Apologist integration the same questions for informal testing and demonstrations.
 The comparison is temporary and must be removable before public release.
