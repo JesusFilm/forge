@@ -36,6 +36,11 @@
         "dependencies": {
           "@babel/types": "^7.29.0"
         }
+      },
+      "expo-widgets": {
+        "dependencies": {
+          "expo-modules-autolinking": "~57.0.13"
+        }
       }
     },
     "overrides": {
