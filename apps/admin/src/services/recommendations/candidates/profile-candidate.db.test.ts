@@ -2,7 +2,10 @@ import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
-import { recommendationRuntimeMigrationSql } from "../current-schema.test-fixture"
+import {
+  recommendationPrecomputedMigrationSql,
+  recommendationRuntimeMigrationSql,
+} from "../current-schema.test-fixture"
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
   ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
@@ -351,7 +354,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           projectionMediaId,
           seedMediaId,
         })
+        for (const migration of recommendationPrecomputedMigrationSql)
+          await admin.query(migration)
       } else {
+        // The real precomputed source FK must resolve against the catalog
+        // table before the read-only snapshot views shadow its name.
+        for (const migration of recommendationPrecomputedMigrationSql)
+          await admin.query(migration)
         const snapshot = await admin.query<{ video_id: string }>(`
           SELECT transcript.video_id
           FROM public.video_transcript transcript
