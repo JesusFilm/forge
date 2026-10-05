@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { adminSemanticRecommendationDeliveryOperation } from "@forge/admin-graphql/operations"
+import {
+  adminSemanticRecommendationDeliveryOperation,
+  adminSemanticRecommendationDeliveryQuery,
+} from "@forge/admin-graphql/operations"
 import {
   RECOMMENDATION_MUTATION_CLIENT_LIMIT,
   resetRecommendationMutationAdmissionForTests,
@@ -265,6 +268,9 @@ describe("POST /watch/api/recommendations", () => {
         query: adminSemanticRecommendationDeliveryOperation,
         fetchPolicy: "no-cache",
       }),
+    )
+    expect(adminSemanticRecommendationDeliveryQuery).not.toContain(
+      "privatePreviewFallback",
     )
     expect(variables).toMatchObject({
       seedMediaId: "seed-1",

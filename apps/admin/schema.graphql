@@ -2331,6 +2331,7 @@ type Query {
   """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
   myWatchProgress: [WatchProgressEntry!]
+  precomputedWatchPreviewDelivery(audioLanguageSlug: String!, locale: String!, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
   """
   Transcript-backed cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
   """
@@ -2339,7 +2340,7 @@ type Query {
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
-  semanticRecommendationDelivery(audioLanguageSlug: String!, clientDeliveryContract: String, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String): SemanticRecommendationDelivery!
+  semanticRecommendationDelivery(audioLanguageSlug: String!, clientDeliveryContract: String, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, privatePreviewFallback: Boolean, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String): SemanticRecommendationDelivery!
   shortsApprovals(cursor: ID, limit: Int, projectId: ID!): [ShortsApproval!]
   shortsAsset(reference: JSON!): ShortsAssetVersion
   shortsAssets(input: JSON): [ShortsAssetVersion!]
@@ -2601,6 +2602,7 @@ type SemanticRecommendationDelivery {
   composedCount: Int
   contractVersion: String!
   expiresAt: String
+  generationId: String
   items: [SemanticRecommendationDeliveryItem!]!
   personalization: RecommendationPersonalizationDelivery
   reason: String

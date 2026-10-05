@@ -26,6 +26,10 @@ export {
   adminSelectSemanticRecommendationOperation,
   adminSemanticRecommendationDeliveryOperation,
   adminSemanticRecommendationDeliveryQuery,
+  adminPrivateSemanticRecommendationFallbackOperation,
+  adminPrivateSemanticRecommendationFallbackQuery,
+  adminPrecomputedWatchPreviewDeliveryOperation,
+  adminPrecomputedWatchPreviewDeliveryQuery,
   adminTransitionRecommendationProfileMutation,
   adminTransitionRecommendationProfileOperation,
 } from "./recommendations"

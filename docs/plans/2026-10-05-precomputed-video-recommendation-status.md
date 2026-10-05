@@ -37,8 +37,8 @@ are open, labelled `ready-for-agent`, and have no comments at kickoff.
 | #2567 | #2566        | Integrated-and-verified      | Same Sol chat / `codex/feat-590-2567`                          | `c89db0e4e`; evidence below   |
 | #2568 | #2567        | Implementing; access pending | Same Sol chat / `codex/feat-590-2568`                          | Starting at `c89db0e4e`       |
 | #2569 | #2568        | Waiting for prerequisites    | Unassigned                                                     | None                          |
-| #2570 | #2566        | Implementing                 | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | Starting at `9a984c544`       |
-| #2571 | #2570        | Waiting for prerequisites    | Unassigned                                                     | None                          |
+| #2570 | #2566        | Integrated-and-verified      | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | Included here; evidence below |
+| #2571 | #2570        | Ready to dispatch            | Same Sol chat / `codex/feat-590-2571`                          | After integration commit      |
 | #2572 | #2571        | Waiting for prerequisites    | Unassigned                                                     | None                          |
 | #2573 | #2572        | Waiting for prerequisites    | Unassigned                                                     | None                          |
 | #2574 | #2569, #2573 | Waiting for prerequisites    | Unassigned                                                     | None                          |
@@ -190,23 +190,45 @@ property's BigQuery link and provide non-secret project/property IDs. That
 answer is pending. Fixture work can proceed; live-dependent acceptance remains
 unverified until access and source discovery succeed.
 
-### #2570 implementation review checkpoint
+### #2570 integrated acceptance
 
-#2570 has native delivery and browser checks for saved choices and private
-fallback. Review fixes distinguish absent source data from a valid empty set,
-keep reasoning out of per-visit snapshots, enforce service authorization, and
-classify both returned and thrown authorization failures without fallback.
-Preview and incumbent share the existing 3.5-second upstream budget; Admin
-reads now use its bounded transaction helper. Browser tests await actual empty
-responses and navigate with an old request in flight. Private incumbent recovery
-now repeats source publication/Watch/exact-audio authorization in Admin, even
-after preview transport failure. Its separate private typed operation preserves
-the existing public query document for Web-first rolling-deploy compatibility.
-Its demo shell timing is local fixture evidence, not real playback or production
-performance proof. Final commit and combined schema verification remain pending.
-After committing its baseline, this worker will incorporate #2567 and add a
-separate reader guard/native regression requiring complete source status under
-`0129`, then report only its own #2570 commits for serial integration.
+Worker commits `8a24e92dcaeecab2b896e86be853f0152f75d137` and
+`e3ea04a4df2dec630a4a18a23eda25d4137cab12` were applied serially for this
+integration commit. The worker's validation-only copy of #2567 (`f66c63dad`)
+was not applied again. The integration commit uses a Conventional Commits title
+because the baseline worker title did not satisfy the repository's CI rule.
+
+- Saved delivery distinguishes absent/failed sources from valid empty results,
+  checks current locale/publication/Watch/exact-audio availability, and retains
+  all stored choices for filtering to the six-card display. Both generation
+  and source must be complete under the combined `0129` + `0130` schema.
+- Standards review fixed service authorization, unbounded DB reads, copied
+  reasoning in snapshots, and typed-operation compatibility. The public query
+  document remains unchanged; private fallback uses its separate operation.
+- Spec review fixed authorization bypass after preview transport failure,
+  total-budget fallback, and browser assertions that could pass before requests
+  ran. Private recovery rechecks source eligibility in Admin before incumbent
+  execution. Web shares its existing 3.5-second upstream deadline.
+- Worker: 896 Admin recommendation tests, 498 Web recommendation tests,
+  45 targeted route tests, six resolver tests, native delivery/producer cases,
+  and four Chromium browser cases passed. Combined-schema native delivery
+  passed six tests plus three reader tests. Admin/Web/admin-graphql typechecks,
+  scoped lint/format, generated contracts, and normal commit hooks passed.
+- Independent integration: migration `0130` on PostgreSQL 18, 36 Admin tests
+  (two default-off cases separately rerun), seven native build-to-review tests,
+  78 Web route/component tests, six default-off resolver tests, generated
+  SDL/consumer drift check, and Admin/Web/admin-graphql typechecks passed.
+  Logs use `2570-integration-` under `/tmp/forge-feat-590-orchestration/`.
+- Browser evidence uses the existing synthetic player-shell fixture, not real
+  playback or production performance. One-card local cold response/FCP/API
+  start were about 2795/2984/3554ms; six-card warm values 174/360/1007ms.
+  The exact artifact remains in the worker's `apps/web/test-results/` tree;
+  its report is `/home/nisal/.codex/worktrees/feat-590-2570/validation-2570.md`.
+
+Both private serving flags and the migration-seeded manifest are disabled by
+default. No public experiment or learning enrollment was activated. #2571 can
+be dispatched from the verified combined integration commit after commit hooks
+finish. Current-head CI is pending publication.
 
 An isolated PostgreSQL 18 integration database is running in
 `forge_feat590_integration_db` on loopback port `32810`. It is reserved for

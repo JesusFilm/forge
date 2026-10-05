@@ -80,6 +80,138 @@ export const adminSemanticRecommendationDeliveryOperation = adminGraphql(
   adminSemanticRecommendationDeliveryQuery,
 )
 
+// This private recovery document may require the new Admin schema. Keep the
+// ordinary delivery document above compatible with older Admin deployments.
+export const adminPrivateSemanticRecommendationFallbackQuery = `
+  query PrivateSemanticRecommendationFallback(
+    $seedMediaId: ID!
+    $locale: String!
+    $audioLanguageSlug: String!
+    $sessionDigest: String!
+  ) {
+    semanticRecommendationDelivery(
+      seedMediaId: $seedMediaId
+      locale: $locale
+      audioLanguageSlug: $audioLanguageSlug
+      sessionDigest: $sessionDigest
+      privatePreviewFallback: true
+    ) {
+      contractVersion
+      surfaceVersion
+      strategyVersion
+      classifierVersion
+      requestId
+      result
+      reason
+      expiresAt
+      requestedCount
+      composedCount
+      shortfallReason
+      personalization {
+        contractVersion
+        lane
+        executionMode
+        effectiveManifestId
+        profileState
+        projectionVersion
+        projectionGeneration
+        interestCount
+        sessionIntentPresent
+        reason
+      }
+      items {
+        id
+        position
+        targetMediaId
+        canonicalHref
+        candidateGenerator
+        contributors {
+          generator
+          generatorVersion
+          rank
+        }
+        capability
+        videoSlug
+        videoTitle
+        imageUrl
+        sceneIndex
+        description
+        startSeconds
+        endSeconds
+        durationSeconds
+        similarity
+        themes
+        demographics
+        spiritualContext
+        playbackId
+      }
+    }
+  }
+` as const
+
+export const adminPrivateSemanticRecommendationFallbackOperation = adminGraphql(
+  adminPrivateSemanticRecommendationFallbackQuery,
+)
+
+export const adminPrecomputedWatchPreviewDeliveryQuery = `
+  query PrecomputedWatchPreviewDelivery(
+    $seedMediaId: ID!
+    $locale: String!
+    $audioLanguageSlug: String!
+    $sessionDigest: String!
+  ) {
+    precomputedWatchPreviewDelivery(
+      seedMediaId: $seedMediaId
+      locale: $locale
+      audioLanguageSlug: $audioLanguageSlug
+      sessionDigest: $sessionDigest
+    ) {
+      contractVersion
+      surfaceVersion
+      strategyVersion
+      classifierVersion
+      generationId
+      requestId
+      result
+      reason
+      expiresAt
+      requestedCount
+      composedCount
+      shortfallReason
+      items {
+        id
+        position
+        targetMediaId
+        canonicalHref
+        candidateGenerator
+        contributors {
+          generator
+          generatorVersion
+          rank
+        }
+        capability
+        videoSlug
+        videoTitle
+        imageUrl
+        sceneIndex
+        description
+        startSeconds
+        endSeconds
+        durationSeconds
+        similarity
+        themes
+        demographics
+        spiritualContext
+        playbackId
+      }
+    }
+  }
+` as const
+
+export const adminPrecomputedWatchPreviewDeliveryOperation = adminGraphql(
+  adminPrecomputedWatchPreviewDeliveryQuery,
+)
+
 export const adminRecordSemanticRecommendationEvidenceMutation = `
   mutation RecordSemanticRecommendationEvidence(
     $contractVersion: String!

@@ -86,6 +86,7 @@ type SemanticRecommendationItem = SceneRecommendation & {
     | "multi-interest-profile"
     | "directional-cowatch"
     | "curated"
+    | "precomputed"
   contributors: Array<{
     generator: string
     generatorVersion: string
@@ -202,7 +203,8 @@ function parseItem(value: unknown): SemanticRecommendationItem | null {
     (item.candidateGenerator !== "semantic" &&
       item.candidateGenerator !== "multi-interest-profile" &&
       item.candidateGenerator !== "directional-cowatch" &&
-      item.candidateGenerator !== "curated") ||
+      item.candidateGenerator !== "curated" &&
+      item.candidateGenerator !== "precomputed") ||
     !nonEmptyString(item.capability) ||
     !nonEmptyString(item.videoSlug, 191) ||
     !nonEmptyString(item.videoTitle, 512) ||

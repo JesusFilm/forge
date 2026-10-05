@@ -10,6 +10,11 @@ import {
 import { assertWebRecommendationCaller } from "@/services/recommendations/caller"
 import { resolveRecommendationOperation } from "@/graphql/recommendation-errors"
 import type { RecommendationCandidateContributor } from "@/services/recommendations/contracts"
+import { env } from "@/config/env"
+import { createRuntimeRecommendationTokenService } from "@/services/recommendations/runtime-token"
+import { deliverPrecomputedWatchPreview } from "@/services/recommendations/precomputed/watch-delivery"
+import { RecommendationAuthenticationError } from "@/services/recommendations/errors"
+import { deliverPrecomputedWatchFallback } from "@/services/recommendations/precomputed/watch-fallback"
 
 const ContributorRef = builder.objectRef<RecommendationCandidateContributor>(
   "RecommendationCandidateContributor",
@@ -91,6 +96,7 @@ DeliveryRef.implement({
     contractVersion: t.exposeString("contractVersion", { nullable: false }),
     surfaceVersion: t.exposeString("surfaceVersion", { nullable: false }),
     strategyVersion: t.exposeString("strategyVersion", { nullable: false }),
+    generationId: t.exposeString("generationId", { nullable: true }),
     classifierVersion: t.exposeString("classifierVersion", {
       nullable: false,
     }),
@@ -115,6 +121,34 @@ DeliveryRef.implement({
 })
 
 builder.queryFields((t) => ({
+  precomputedWatchPreviewDelivery: t.field({
+    type: DeliveryRef,
+    nullable: false,
+    authScopes: { public: true },
+    args: {
+      seedMediaId: t.arg.id({ required: true }),
+      locale: t.arg.string({ required: true }),
+      audioLanguageSlug: t.arg.string({ required: true }),
+      sessionDigest: t.arg.string({ required: true }),
+    },
+    resolve: async (_root, args, ctx) =>
+      resolveRecommendationOperation(async () => {
+        assertWebRecommendationCaller(ctx.user)
+        if (env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED !== "1")
+          throw new RecommendationAuthenticationError()
+        return deliverPrecomputedWatchPreview(
+          prisma,
+          {
+            seedMediaId: String(args.seedMediaId),
+            locale: args.locale,
+            audioLanguageSlug: args.audioLanguageSlug,
+            sessionDigest: args.sessionDigest,
+            caller: ctx.user,
+          },
+          createRuntimeRecommendationTokenService(prisma),
+        )
+      }),
+  }),
   semanticRecommendationDelivery: t.field({
     type: DeliveryRef,
     nullable: false,
@@ -129,10 +163,26 @@ builder.queryFields((t) => ({
       eligibleHuman: t.arg.boolean({ required: false }),
       trafficCategory: t.arg.string({ required: false }),
       clientDeliveryContract: t.arg.string({ required: false }),
+      privatePreviewFallback: t.arg.boolean({ required: false }),
     },
     resolve: async (_root, args, ctx) => {
       return resolveRecommendationOperation(async () => {
         assertWebRecommendationCaller(ctx.user)
+        if (args.privatePreviewFallback) {
+          return deliverPrecomputedWatchFallback(
+            prisma,
+            {
+              caller: ctx.user,
+              seedMediaId: String(args.seedMediaId),
+              locale: args.locale,
+              audioLanguageSlug: args.audioLanguageSlug,
+              sessionDigest: args.sessionDigest,
+              trafficCategory: args.trafficCategory,
+            },
+            (input) =>
+              createRecommendationDeliveryService(prisma).deliver(input),
+          )
+        }
         return createRecommendationDeliveryService(prisma).deliver({
           caller: ctx.user,
           seedMediaId: String(args.seedMediaId),

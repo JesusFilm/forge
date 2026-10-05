@@ -38,6 +38,7 @@ export type SemanticRecommendationDeliveryItem = SceneRecommendation & {
     | "multi-interest-profile"
     | "directional-cowatch"
     | "curated"
+    | "precomputed"
   contributors: RecommendationCandidateContributor[]
   capability: string
 }
@@ -45,7 +46,8 @@ export type SemanticRecommendationDeliveryItem = SceneRecommendation & {
 export type SemanticRecommendationDelivery = {
   contractVersion: typeof RECOMMENDATION_CONTRACTS.delivery
   surfaceVersion: typeof RECOMMENDATION_CONTRACTS.surface
-  strategyVersion: typeof RECOMMENDATION_CONTRACTS.strategy
+  strategyVersion: string
+  generationId?: string | null
   classifierVersion: typeof RECOMMENDATION_CONTRACTS.outcome
   requestId: string | null
   result: "served" | "fallback" | "empty" | "unavailable"

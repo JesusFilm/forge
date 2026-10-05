@@ -1,4 +1,6 @@
 import { observeRecommendationDelivery } from "@/lib/recommendation-delivery-observability"
+import { NextRequest } from "next/server"
+import { env } from "@/env"
 import {
   classifyRecommendationTraffic,
   recommendationTrafficExcluded,
@@ -6,7 +8,16 @@ import {
 } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 import { tryAsContentSlug, WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
-import { getSemanticRecommendationDelivery } from "@/lib/recommendations"
+import {
+  getSemanticRecommendationDelivery,
+  getPrivateSemanticRecommendationFallback,
+  getPrecomputedWatchPreviewDelivery,
+  RecommendationPreviewAuthorizationError,
+} from "@/lib/recommendations"
+import {
+  readRecommendationTesterCookie,
+  RECOMMENDATION_TESTER_COOKIE,
+} from "@/lib/recommendation-tester-token"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
   RECOMMENDATION_DELIVERY_CLIENT_VERSION,
@@ -36,6 +47,8 @@ import { resolvePosterUrl } from "@/lib/url"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
+const DELIVERY_TOTAL_UPSTREAM_BUDGET_MS = 3_500
+const PREVIEW_UPSTREAM_BUDGET_MS = 1_600
 
 const DeliveryInput = z
   .object({
@@ -94,25 +107,97 @@ export async function POST(request: Request) {
       audioLanguageSlug: parsed.data.audioLanguageSlug,
     }
     let upstreamAcknowledged = true
-    const semanticDelivery = await getSemanticRecommendationDelivery({
-      ...semanticInput,
-      sessionDigest: session?.digest ?? "0".repeat(64),
-      consentReceiptDigest,
-      profileTokenDigest:
-        consentReceiptDigest != null && profile?.kind === "valid"
-          ? profile.digest
-          : null,
-      eligibleHuman: !excluded,
-      clientDeliveryContract:
-        request.headers.get("x-forge-recommendation-delivery-contract") ===
-        COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
-          ? COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
-          : null,
-      trafficCategory,
-    }).catch(() => {
-      upstreamAcknowledged = false
-      return unavailableSemanticDelivery()
-    })
+    const upstreamDeadlineAt = Date.now() + DELIVERY_TOTAL_UPSTREAM_BUDGET_MS
+    const previewCookie = new NextRequest(request.url, {
+      headers: request.headers,
+    }).cookies.get(RECOMMENDATION_TESTER_COOKIE)?.value
+    const previewTester =
+      env.WATCH_PRECOMPUTED_RECOMMENDATIONS_PREVIEW_ENABLED === "true" &&
+      !excluded &&
+      (await readRecommendationTesterCookie(previewCookie, {
+        secret: env.WATCH_RECOMMENDATION_TESTER_SECRET,
+        origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
+      }))
+    let previewDelivery: Awaited<
+      ReturnType<typeof getPrecomputedWatchPreviewDelivery>
+    > | null = null
+    let previewFailureReason: string | null = null
+    let previewDenied = false
+    if (previewTester) {
+      try {
+        previewDelivery = await getPrecomputedWatchPreviewDelivery(
+          {
+            ...semanticInput,
+            sessionDigest: session!.digest,
+          },
+          Math.max(
+            1,
+            Math.min(
+              PREVIEW_UPSTREAM_BUDGET_MS,
+              upstreamDeadlineAt - Date.now(),
+            ),
+          ),
+        )
+        if (previewDelivery.result === "unavailable")
+          previewFailureReason =
+            previewDelivery.reason || "precomputed_unavailable"
+      } catch (error) {
+        previewDenied = error instanceof RecommendationPreviewAuthorizationError
+        previewFailureReason = previewDenied
+          ? "preview_authorization_denied"
+          : "precomputed_upstream_unavailable"
+        upstreamAcknowledged = false
+      }
+    }
+    const sourceDenied =
+      previewDelivery?.reason === "source_unavailable" ||
+      previewDelivery?.reason === "source_eligibility_unavailable"
+    const mayUseIncumbent =
+      !previewTester ||
+      (!previewDenied &&
+        !sourceDenied &&
+        previewDelivery?.result === "unavailable") ||
+      (!previewDenied && !sourceDenied && !previewDelivery)
+    const incumbentAttempted =
+      mayUseIncumbent && Date.now() < upstreamDeadlineAt
+    if (mayUseIncumbent && !incumbentAttempted) upstreamAcknowledged = false
+    const semanticDelivery = incumbentAttempted
+      ? await (
+          previewTester
+            ? getPrivateSemanticRecommendationFallback(
+                {
+                  ...semanticInput,
+                  sessionDigest: session!.digest,
+                },
+                Math.max(1, upstreamDeadlineAt - Date.now()),
+              )
+            : getSemanticRecommendationDelivery(
+                {
+                  ...semanticInput,
+                  sessionDigest: session?.digest ?? "0".repeat(64),
+                  consentReceiptDigest,
+                  profileTokenDigest:
+                    consentReceiptDigest != null && profile?.kind === "valid"
+                      ? profile.digest
+                      : null,
+                  eligibleHuman: !excluded,
+                  clientDeliveryContract:
+                    request.headers.get(
+                      "x-forge-recommendation-delivery-contract",
+                    ) === COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
+                      ? COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
+                      : null,
+                  trafficCategory,
+                },
+                Math.max(1, upstreamDeadlineAt - Date.now()),
+              )
+        ).catch(() => {
+          upstreamAcknowledged = false
+          return unavailableSemanticDelivery()
+        })
+      : previewDelivery
+        ? { ...previewDelivery, personalization: null }
+        : { ...unavailableSemanticDelivery(), reason: previewFailureReason }
     // Admin owns exact-audio and published-presentation eligibility. Legacy
     // scene and collection APIs cannot attest those facts, so their cards
     // must not replace an empty or unavailable delivery.
@@ -122,6 +207,29 @@ export async function POST(request: Request) {
         : semanticDelivery
     const delivery = {
       ...admittedDelivery,
+      ...(previewTester
+        ? {
+            previewAttribution: {
+              assignedStrategy: "precomputed-watch-preview-v1",
+              actualStrategy: incumbentAttempted
+                ? admittedDelivery.result === "unavailable"
+                  ? null
+                  : admittedDelivery.strategyVersion
+                : admittedDelivery.result === "unavailable"
+                  ? null
+                  : "precomputed-watch-preview-v1",
+              generationId: previewDelivery?.generationId ?? null,
+              reason: mayUseIncumbent
+                ? admittedDelivery.reason === "source_unavailable" ||
+                  admittedDelivery.reason === "source_eligibility_unavailable"
+                  ? admittedDelivery.reason
+                  : previewFailureReason
+                : admittedDelivery.reason,
+              assignedReason: previewFailureReason,
+              actualReason: admittedDelivery.reason,
+            },
+          }
+        : {}),
       ...(excluded ? { requestId: null, expiresAt: null } : {}),
       // Older open tabs strictly validate execution modes. Preserve their
       // cards and attribution without mislabeling the new mode as topic fit.

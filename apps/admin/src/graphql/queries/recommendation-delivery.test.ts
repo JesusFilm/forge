@@ -38,6 +38,52 @@ beforeEach(() => {
 })
 
 describe("semanticRecommendationDelivery resolver", () => {
+  it.skipIf(process.env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED === "1")(
+    "keeps the separate private saved-result query disabled by default",
+    async () => {
+      const preview = schema.getQueryType()!.getFields()
+        .precomputedWatchPreviewDelivery!.resolve!
+      await expect(
+        preview(
+          null,
+          args,
+          {
+            user: {
+              role: "CONSUMER_BEARER",
+              id: null,
+              fleet: false,
+              rateLimitBucketKey: "web-key",
+            },
+          },
+          {} as never,
+        ),
+      ).rejects.toThrow("Web consumer authentication required")
+      expect(deliverMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it.skipIf(process.env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED === "1")(
+    "refuses private incumbent recovery when the Admin preview flag is off",
+    async () => {
+      await expect(
+        resolver()(
+          null,
+          { ...args, privatePreviewFallback: true },
+          {
+            user: {
+              role: "CONSUMER_BEARER",
+              id: null,
+              fleet: false,
+              rateLimitBucketKey: "web-key",
+            },
+          },
+          {} as never,
+        ),
+      ).rejects.toThrow("Web consumer authentication required")
+      expect(deliverMock).not.toHaveBeenCalled()
+    },
+  )
+
   it("exposes an additive nullable video runtime on delivery items", () => {
     const item = schema.getType("SemanticRecommendationDeliveryItem") as {
       getFields(): Record<string, { type: { toString(): string } }>
