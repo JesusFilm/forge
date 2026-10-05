@@ -31,18 +31,18 @@ All issues, comments, readiness labels, native parents, blockers, and reverse
 blocking relationships were fetched and verified on 2026-10-05. All ten issues
 are open, labelled `ready-for-agent`, and have no comments at kickoff.
 
-| Issue | Blockers     | State                        | Worker / branch                                                | Integrated commits / evidence |
-| ----- | ------------ | ---------------------------- | -------------------------------------------------------------- | ----------------------------- |
-| #2566 | None         | Integrated-and-verified      | `01a109e1-47c8-7043-bfd4-a85592cfafc5` / `codex/feat-590-2566` | `9a984c544`; evidence below   |
-| #2567 | #2566        | Integrated-and-verified      | Same Sol chat / `codex/feat-590-2567`                          | `c89db0e4e`; evidence below   |
-| #2568 | #2567        | Implementing; access pending | Same Sol chat / `codex/feat-590-2568`                          | Starting at `c89db0e4e`       |
-| #2569 | #2568        | Waiting for prerequisites    | Unassigned                                                     | None                          |
-| #2570 | #2566        | Integrated-and-verified      | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | `0a93244a3`; evidence below   |
-| #2571 | #2570        | Implementing                 | Same Sol chat / `codex/feat-590-2571`                          | Starting at `0a93244a3`       |
-| #2572 | #2571        | Waiting for prerequisites    | Unassigned                                                     | None                          |
-| #2573 | #2572        | Waiting for prerequisites    | Unassigned                                                     | None                          |
-| #2574 | #2569, #2573 | Waiting for prerequisites    | Unassigned                                                     | None                          |
-| #2575 | #2574        | Waiting for prerequisites    | Unassigned                                                     | None                          |
+| Issue | Blockers     | State                            | Worker / branch                                                | Integrated commits / evidence       |
+| ----- | ------------ | -------------------------------- | -------------------------------------------------------------- | ----------------------------------- |
+| #2566 | None         | Integrated-and-verified          | `01a109e1-47c8-7043-bfd4-a85592cfafc5` / `codex/feat-590-2566` | `9a984c544`; evidence below         |
+| #2567 | #2566        | Integrated-and-verified          | Same Sol chat / `codex/feat-590-2567`                          | `c89db0e4e`; evidence below         |
+| #2568 | #2567        | Fixture integrated; live blocked | Same Sol chat / `codex/feat-590-2568`                          | `b1703cd8c`; partial evidence below |
+| #2569 | #2568        | Waiting for prerequisites        | Unassigned                                                     | None                                |
+| #2570 | #2566        | Integrated-and-verified          | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | `0a93244a3`; evidence below         |
+| #2571 | #2570        | Implementing                     | Same Sol chat / `codex/feat-590-2571`                          | Starting at `0a93244a3`             |
+| #2572 | #2571        | Waiting for prerequisites        | Unassigned                                                     | None                                |
+| #2573 | #2572        | Waiting for prerequisites        | Unassigned                                                     | None                                |
+| #2574 | #2569, #2573 | Waiting for prerequisites        | Unassigned                                                     | None                                |
+| #2575 | #2574        | Waiting for prerequisites        | Unassigned                                                     | None                                |
 
 Advance dependencies only on **integrated-and-verified** acceptance evidence.
 Implemented, integrated, merged, and live are separate states. GitHub issues
@@ -190,6 +190,53 @@ property's BigQuery link and provide non-secret project/property IDs. That
 answer is pending. Fixture work can proceed; live-dependent acceptance remains
 unverified until access and source discovery succeed.
 
+### #2568 partial fixture implementation
+
+Worker commit `696f1439d491b9c9c77ce5ba1afe72323c19609c` is integrated as
+`b1703cd8ce58f761d99bae9688bd59a1a5bd9a04`. Its separate catalog CI repair
+was already integrated and was not applied again.
+
+- The source producer can require historical input, request bounded aggregates
+  through model-selected candidate query plans, and save compact qualified
+  coverage/provenance in Admin. A missing warehouse reader returns unavailable;
+  fixtures cannot satisfy a default live historical build.
+- Page counts, continuation job identity, query scope, canonical mapping, and
+  result shape are validated. Query-level bytes are deduplicated across pages.
+  Unknown mappings and bot/measurement overlap qualifications remain visible.
+  Ambiguous source aliases fail until their warehouse mapping is verified.
+- Worker: 8,954 full Admin and 3,218 full Mastra tests passed; 14 native build
+  cases, four Admin view tests, two workflow tests, both typechecks, Prisma
+  validation, scoped lint, and normal hooks passed. Full-suite DB-gated skips
+  are not claimed as native evidence. Report and logs are under
+  `/tmp/forge-feat590-2568-validation/`.
+- Standards review found no hard violations. Spec review accepts the fixture
+  boundary but leaves production source discovery and the real adapter incomplete.
+- Independent integration: migration `0131` on PostgreSQL 18, 33 Admin tests,
+  14 native producer tests, 58 route/resolver inventory checks, and three Mastra
+  tests and both Admin/Mastra typechecks passed. Logs use the
+  `2568-integration-` prefix.
+- Browser follow-up `1339edbe5de9e1f5e3023c265e3d43137bcb6e34` is integrated
+  as `acbe43fc7`. It wraps the three long provenance hashes. All historical,
+  content-only, and failed states passed at 1440px and 390px; the full hashes
+  remain inside the narrow cards. The orchestrator inspected the screenshots
+  and independently reran all four view tests plus formatting after integration.
+  Alternating warm content/history runs had median navigation times of 556/500ms,
+  with the same 24 local resources, 18 scripts, and 6,300 transferred resource
+  bytes. These are small local development fixtures, not production benchmarks.
+  Final and no-screenshot runs reported no console/page/request errors; an earlier
+  caret-style hydration warning was reproduced as a screenshot-tool artifact.
+  Report, setup details, and screenshots are in
+  `/tmp/forge-feat590-2568-validation/browser-report.md` and its directory.
+- The browser worker removed its temporary seed script, local session cookie,
+  isolated preview database, and automatic Next guide block, stopped its dev
+  server, and preserved the clean branch. It is held for live GA access.
+
+The user has not yet answered the GA access handoff. The authorized warehouse
+location/service identity, provider/schema/history, bot semantics, and canonical
+Video mapping must be verified before implementing the real aggregate adapter
+and recording the qualified live smoke. #2568 is **not** integrated-and-verified
+for dependency advancement; #2569 remains queued. No export or live-data claim.
+
 ### #2570 integrated acceptance
 
 Worker commits `8a24e92dcaeecab2b896e86be853f0152f75d137` and
@@ -248,7 +295,10 @@ is integrated as `0667d0c10`. It supplies and restores its own authentication
 environment before importing the real route, and asserts rejected requests make
 no database transaction. Normal worker hooks passed. Independent combined
 verification with both ingest-key and private-preview environment variables unset
-passed all 58 route, resolver, and inventory checks. A new full CI run is required.
+passed all 58 route, resolver, and inventory checks. The repaired published head
+`a7f48c55c9dfca26f3bf90980f59cdaa198f2fce` passed all 43 applicable CI checks,
+including the full Admin suite and CI gate, with three non-applicable checks
+skipped. This green result applies only to that head, not pending worker changes.
 
 An isolated PostgreSQL 18 integration database is running in
 `forge_feat590_integration_db` on loopback port `32810`. It is reserved for
