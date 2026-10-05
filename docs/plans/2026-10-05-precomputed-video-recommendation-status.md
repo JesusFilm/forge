@@ -37,8 +37,8 @@ are open, labelled `ready-for-agent`, and have no comments at kickoff.
 | #2567 | #2566        | Integrated-and-verified      | Same Sol chat / `codex/feat-590-2567`                          | `c89db0e4e`; evidence below   |
 | #2568 | #2567        | Implementing; access pending | Same Sol chat / `codex/feat-590-2568`                          | Starting at `c89db0e4e`       |
 | #2569 | #2568        | Waiting for prerequisites    | Unassigned                                                     | None                          |
-| #2570 | #2566        | Integrated-and-verified      | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | Included here; evidence below |
-| #2571 | #2570        | Ready to dispatch            | Same Sol chat / `codex/feat-590-2571`                          | After integration commit      |
+| #2570 | #2566        | Integrated-and-verified      | `01a10a28-aa8e-7080-b3d1-c59293f8f4dd` / `codex/feat-590-2570` | `0a93244a3`; evidence below   |
+| #2571 | #2570        | Implementing                 | Same Sol chat / `codex/feat-590-2571`                          | Starting at `0a93244a3`       |
 | #2572 | #2571        | Waiting for prerequisites    | Unassigned                                                     | None                          |
 | #2573 | #2572        | Waiting for prerequisites    | Unassigned                                                     | None                          |
 | #2574 | #2569, #2573 | Waiting for prerequisites    | Unassigned                                                     | None                          |
@@ -179,7 +179,7 @@ and native build-to-Admin-review harness outside the app contexts.
   Final ingest repeats the observed-version fence. SDK retries are disabled.
 - No live Astra call, warehouse history, actual cost, or production capacity
   claim. Current-row cutoff fences cannot reconstruct overwritten/deleted
-  historical content. CI on this new head is pending publication.
+  historical content. Combined-head CI findings at `0a93244a3` are recorded below.
 
 The same clean Sol chat was explicitly dispatched with `model: "gpt-6-sol"`
 for #2568 on `codex/feat-590-2568`, captured base `c89db0e4e`. It owns analytics
@@ -193,9 +193,9 @@ unverified until access and source discovery succeed.
 ### #2570 integrated acceptance
 
 Worker commits `8a24e92dcaeecab2b896e86be853f0152f75d137` and
-`e3ea04a4df2dec630a4a18a23eda25d4137cab12` were applied serially for this
-integration commit. The worker's validation-only copy of #2567 (`f66c63dad`)
-was not applied again. The integration commit uses a Conventional Commits title
+`e3ea04a4df2dec630a4a18a23eda25d4137cab12` were applied serially as integration
+commit `0a93244a39f9ff841abdc6fc7c878b109a9762b2`. The worker's validation-only
+copy of #2567 (`f66c63dad`) was not applied again. The integration commit uses a Conventional Commits title
 because the baseline worker title did not satisfy the repository's CI rule.
 
 - Saved delivery distinguishes absent/failed sources from valid empty results,
@@ -226,9 +226,29 @@ because the baseline worker title did not satisfy the repository's CI rule.
   its report is `/home/nisal/.codex/worktrees/feat-590-2570/validation-2570.md`.
 
 Both private serving flags and the migration-seeded manifest are disabled by
-default. No public experiment or learning enrollment was activated. #2571 can
-be dispatched from the verified combined integration commit after commit hooks
-finish. Current-head CI is pending publication.
+default. No public experiment or learning enrollment was activated. After normal
+commit hooks passed, #2571 was dispatched to the same Sol chat from the verified
+combined integration commit `0a93244a3`. The single draft PR has been updated and
+pushed at that head. Its full Admin CI suite found two test integration gaps:
+the private catalog route test relied on an externally supplied ingest key, and
+the new preview resolver was absent from the exhaustive resolver manifest.
+Both were returned to their owning Sol chats for isolated fixes. All builds,
+other app suites, lint, schema checks, formatting, and CodeQL passed at that head;
+the Admin suite and dependent CI gate require a new CI run after the repairs below.
+
+The resolver repair's final worker commit is `ea429c618f2319c837ea08416a7eaff4be525608`;
+its identical patch is integrated as `1c890d0fa` (picked from preliminary
+`676534488` before the worker amended after installing the missing Husky launcher).
+The final worker commit ran normal pre-commit and commit-message hooks. Independent
+integration verification passed all 49 resolver inventory tests and seven delivery
+resolver tests with the private flag unset. Authorization implementation is unchanged.
+
+The catalog test isolation repair `e55a5114e0f8f58855cd6c7b44b301210225a423`
+is integrated as `0667d0c10`. It supplies and restores its own authentication
+environment before importing the real route, and asserts rejected requests make
+no database transaction. Normal worker hooks passed. Independent combined
+verification with both ingest-key and private-preview environment variables unset
+passed all 58 route, resolver, and inventory checks. A new full CI run is required.
 
 An isolated PostgreSQL 18 integration database is running in
 `forge_feat590_integration_db` on loopback port `32810`. It is reserved for
