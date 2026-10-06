@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   createGaWatchHistoryReader,
   inspectGaWatchCoverage,
+  readGaWatchReferrerAggregatePage,
   readGaWatchStartAggregatePage,
 } from "./ga-watch-history"
 import { readHistoricalDefinition } from "./historical-analytics"
@@ -16,6 +17,26 @@ const identified = [["2022", "8"]] as const
 const starts = [
   ["/watch/film-one", "media-1", "4"],
   ["/watch/film-two", "(not set)", "3"],
+] as const
+const referrerStarts = [
+  [
+    "https://www.jesusfilm.org/watch/jesus.html/english.html?campaign=1#part",
+    "/watch/jesus.html/the-beginning/english.html",
+    "1_jf6101-0-0",
+    "12",
+  ],
+  [
+    "https://jesusfilm.org/watch",
+    "/watch/jesus.html/english.html",
+    "1_jf-0-0",
+    "9",
+  ],
+  [
+    "https://jesusfilm.org/watch/jesus.html/english.html",
+    "/watch/jesus.html/english.html",
+    "1_jf-0-0",
+    "7",
+  ],
 ] as const
 
 function report(
@@ -73,7 +94,9 @@ function provider(
         ? monthly
         : dimensions[0] === "year"
           ? identified
-          : starts
+          : dimensions[0] === "pageReferrer"
+            ? referrerStarts
+            : starts
       const offset = Number(body.offset)
       const limit = Number(body.limit)
       const response = report(
@@ -266,7 +289,7 @@ describe("GA Watch history coverage preflight", () => {
     ).rejects.toMatchObject({ code: "analytics_incomplete" })
   })
 
-  it("prevents history-backed generation after a real GA coverage preflight", async () => {
+  it("rejects history when the separately queried usable interval remains truncated", async () => {
     const fake = provider({ truncated: true })
     const reader = createGaWatchHistoryReader({
       propertyId: "320198532",
@@ -280,7 +303,8 @@ describe("GA Watch history coverage preflight", () => {
     await expect(
       readHistoricalDefinition(reader, "2022-11-01T00:00:00.000Z"),
     ).rejects.toMatchObject({ code: "analytics_incomplete" })
-    expect(fake.requests).toHaveLength(2)
+    expect(fake.requests.length).toBeGreaterThan(2)
+    expect(JSON.stringify(fake.requests)).toContain("2022-08-06")
   })
 
   it("labels source limits on a content aggregate page", async () => {
@@ -321,7 +345,7 @@ describe("GA Watch history coverage preflight", () => {
       const assertion = expect(pending).rejects.toMatchObject({
         code: "analytics_unavailable",
       })
-      await vi.advanceTimersByTimeAsync(15_000)
+      await vi.advanceTimersByTimeAsync(45_000)
       await assertion
       expect(fetchImpl).not.toHaveBeenCalled()
     } finally {
@@ -349,5 +373,74 @@ describe("GA Watch history coverage preflight", () => {
     await expect(
       readGaWatchStartAggregatePage({ ...source, offset: 0, limit: 1 }),
     ).rejects.toMatchObject({ code: "analytics_incomplete" })
+  })
+
+  it("reads bounded referrer aggregates as navigation candidates and removes URL query data", async () => {
+    const fake = provider()
+    const page = await readGaWatchReferrerAggregatePage({
+      propertyId: "320198532",
+      serviceAccountEmail:
+        "watch-ga4-readonly@jesusfilm-org-1738781064783.iam.gserviceaccount.com",
+      rangeStart: "2022-08-06",
+      rangeEnd: "2026-10-03",
+      offset: 0,
+      limit: 3,
+      tokenProvider: async () => ({ ok: true, accessToken: "test-token" }),
+      fetchImpl: fake.fetchImpl,
+    })
+    expect(page).toMatchObject({
+      provider: "ga_data_api",
+      rowCount: 3,
+      nextOffset: null,
+      rows: [
+        {
+          sourcePath: "/watch/jesus.html/english.html",
+          targetPath: "/watch/jesus.html/the-beginning/english.html",
+          mediaComponentId: "1_jf6101-0-0",
+          starts: 12,
+          status: "candidate",
+        },
+        { starts: 9, status: "homepage" },
+        { starts: 7, status: "self" },
+      ],
+      pageCoverage: { candidateEvents: 12, homepageEvents: 9, selfEvents: 7 },
+      outsideReportEvents: "unknown",
+      orderedTransitions: "unavailable",
+    })
+    expect(fake.requests).toHaveLength(1)
+    expect(JSON.stringify(fake.requests[0])).toContain("pageReferrer")
+    expect(JSON.stringify(fake.requests[0])).toContain("^/watch(/.*)?$")
+    expect(fake.requests[0]).toMatchObject({
+      dateRanges: [{ startDate: "2022-08-06", endDate: "2026-10-03" }],
+      dimensions: [
+        { name: "pageReferrer" },
+        { name: "pagePath" },
+        { name: "customEvent:mediacomponentid" },
+      ],
+    })
+  })
+
+  it("can bound a navigation query to vetted source Watch paths", async () => {
+    const fake = provider()
+    await readGaWatchReferrerAggregatePage({
+      propertyId: "320198532",
+      serviceAccountEmail:
+        "watch-ga4-readonly@jesusfilm-org-1738781064783.iam.gserviceaccount.com",
+      rangeStart: "2022-08-06",
+      rangeEnd: "2026-10-03",
+      offset: 0,
+      limit: 3,
+      sourcePathnames: ["/watch/jesus.html/english.html"],
+      targetPathnames: ["/watch/jesus.html/the-beginning/english.html"],
+      tokenProvider: async () => ({ ok: true, accessToken: "test-token" }),
+      fetchImpl: fake.fetchImpl,
+    })
+    expect(JSON.stringify(fake.requests[0])).toContain(
+      "jesus\\\\.html/english\\\\.html",
+    )
+    expect(JSON.stringify(fake.requests[0])).not.toContain("campaign=1")
+    expect(JSON.stringify(fake.requests[0])).toContain(
+      '"values":["/watch/jesus.html/the-beginning/english.html"]',
+    )
   })
 })

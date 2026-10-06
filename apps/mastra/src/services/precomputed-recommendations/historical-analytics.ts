@@ -90,7 +90,7 @@ const qualification = z
     ]),
   })
   .strict()
-const definitionSchema = z
+const legacyDefinitionSchema = z
   .object({
     provider: z.enum(["bigquery", "fixture"]),
     queryId: z.string().regex(/^[a-zA-Z0-9_.:-]{1,100}$/),
@@ -104,6 +104,94 @@ const definitionSchema = z
     qualification,
   })
   .strict()
+const gaQualification = z
+  .object({
+    evidenceKind: z.literal("referrer_navigation_v1"),
+    sourceResource: z.literal("properties/320198532"),
+    sourceAvailability: z
+      .object({
+        coverage: z.literal("partial_source_history"),
+        requestedStart: z.iso.date(),
+        requestedEnd: z.iso.date(),
+        truncationType: z.literal("DATA_TRUNCATION_TYPE_PROPERTY"),
+        truncationDate: z.iso.date(),
+        unavailablePrefixStart: z.iso.date(),
+        unavailablePrefixEnd: z.iso.date(),
+        usableStart: z.iso.date(),
+        usableEnd: z.iso.date(),
+        observedFirstMonth: z
+          .string()
+          .regex(/^\d{6}$/u)
+          .nullable(),
+        observedLastMonth: z
+          .string()
+          .regex(/^\d{6}$/u)
+          .nullable(),
+      })
+      .strict(),
+    watchScope: z
+      .object({
+        version: z.literal(HISTORICAL_WATCH_SCOPE_VERSION),
+        hosts: z.tuple([
+          z.literal("jesusfilm.org"),
+          z.literal("www.jesusfilm.org"),
+        ]),
+        pathRule: z.literal("watch-route-and-children"),
+        eventName: z.literal("videostarts"),
+        includedEvents: count,
+        totalEvents: z.null(),
+        missingUrlEvents: z.null(),
+        malformedUrlEvents: z.null(),
+        excludedHostEvents: z.null(),
+        excludedPathEvents: z.null(),
+      })
+      .strict(),
+    mediaComponentIdCoverage: z
+      .object({
+        sourceDimension: z.literal("customEvent:mediacomponentid"),
+        inScopeEvents: count,
+        withMediaComponentIdEvents: count,
+        canonicalVideoMappedEvents: z.null(),
+      })
+      .strict(),
+    engagement: signalQuality.extend({
+      definitionVersion: z.literal("watch-videostarts-v1"),
+      exposures: z.literal("unavailable"),
+    }),
+    transitions: z
+      .object({
+        status: z.literal("unavailable"),
+        reason: z.literal("missing_session_identity"),
+      })
+      .strict(),
+    navigation: signalQuality.extend({
+      status: z.literal("available"),
+      definitionVersion: z.literal("watch-referrer-v1"),
+      basis: z.literal("same_event_page_referrer_to_page_path"),
+      interpretation: z.literal("navigation_not_playback_sequence"),
+    }),
+    mapping: z
+      .object({
+        basis: z.literal("current_catalog_cutoff_fenced"),
+        historicalOwnership: z.literal("unverified"),
+      })
+      .strict(),
+  })
+  .strict()
+const gaDefinitionSchema = z
+  .object({
+    provider: z.literal("ga_data_api"),
+    queryId: z.literal("watch-referrer-navigation-v1"),
+    rangeStart: z.iso.date(),
+    rangeEnd: z.iso.date(),
+    identity: z.literal("current_catalog_watch_path"),
+    botFiltering: z.literal("unknown"),
+    measurement: z.literal("observed_events"),
+    overlap: z.literal("unknown"),
+    qualification: gaQualification,
+  })
+  .strict()
+const definitionSchema = z.union([legacyDefinitionSchema, gaDefinitionSchema])
 const engagement = z
   .object({
     videoKey: key,
@@ -122,6 +210,7 @@ const transition = z
 const MAX_PAGE_ROWS = 100
 
 export type HistoricalAnalyticsReader = {
+  evidenceKind?: "referrer_navigation_v1"
   /**
    * Server-side aggregate definitions only. A future warehouse reader must
    * establish Watch URL scope and ordered-transition provenance from event
@@ -150,6 +239,29 @@ export type HistoricalAnalyticsReader = {
     /** Query-level usage repeated on continuation pages, never a page delta. */
     bytesProcessed: number | null
   }>
+  readNavigationSnapshot?(input: {
+    definition: z.output<typeof gaDefinitionSchema>
+    catalog: readonly (CatalogIdentity & {
+      watchRouteIdentity?: {
+        basis: "current_catalog_cutoff_fenced"
+        parentSlugs: string[]
+        playableAudioLanguageSlugs: string[]
+        truncated: boolean
+      }
+    })[]
+    routeCatalog: readonly (CatalogIdentity & {
+      watchRouteIdentity?: {
+        basis: "current_catalog_cutoff_fenced"
+        parentSlugs: string[]
+        playableAudioLanguageSlugs: string[]
+        truncated: boolean
+      }
+    })[]
+    sourceVideoId: string
+    selectedVideoIds: readonly string[]
+    includeSourceEngagement: boolean
+    cutoff: string
+  }): Promise<HistoricalSnapshot>
 }
 
 export class HistoricalAnalyticsError extends Error {
@@ -165,21 +277,46 @@ type CatalogIdentity = {
 }
 export type HistoricalDefinition = z.output<typeof definitionSchema>
 
-type Signal = z.output<typeof engagement>
+type LegacySignal = z.output<typeof engagement>
+type Signal =
+  | LegacySignal
+  | {
+      videoKey: string
+      views: number
+      engagedViews: null
+      exposures: null
+    }
 type Transition = z.output<typeof transition>
 
 export type HistoricalProvenance = {
-  provider: "bigquery" | "fixture"
+  provider: "bigquery" | "fixture" | "ga_data_api"
   status: "complete"
   queryId: string
   rangeStart: string
   rangeEnd: string
   cutoff: string
-  identity: "canonical_id" | "core_id" | "slug" | "verified_alias"
+  identity:
+    | "canonical_id"
+    | "core_id"
+    | "slug"
+    | "verified_alias"
+    | "current_catalog_watch_path"
   botFiltering: "unknown" | "verified_excluded"
   measurement: "observed_events" | "qualified_engagement"
   overlap: "unknown" | "verified_disjoint"
-  qualification: z.output<typeof qualification>
+  qualification:
+    | z.output<typeof qualification>
+    | z.output<typeof gaQualification>
+  navigationCoverage?: {
+    candidateEvents: number
+    qualifiedEvents: number
+    homeEvents: number
+    selfEvents: number
+    crossHostEvents: number
+    malformedEvents: number
+    unmappedEvents: number
+    ambiguousEvents: number
+  }
   rowCount: number
   catalogCandidates: number
   inspectedCandidates: number
@@ -213,9 +350,11 @@ export type HistoricalSnapshot = {
   > & {
     engagement: string
     transitions: string
+    navigation?: string
   }
   signal(videoId: string): Signal | null
   transition(sourceVideoId: string, targetVideoId: string): number | null
+  navigation?(sourceVideoId: string, targetVideoId: string): number | null
 }
 export type HistoricalProvenancePart = Pick<
   HistoricalSnapshot,
@@ -236,9 +375,42 @@ export async function readHistoricalDefinition(
   if (
     definition.rangeStart > definition.rangeEnd ||
     definition.rangeEnd > cutoff.slice(0, 10) ||
-    (definition.identity === "verified_alias" && !definition.aliases)
+    (definition.provider !== "ga_data_api" &&
+      definition.identity === "verified_alias" &&
+      !definition.aliases)
   )
     throw new HistoricalAnalyticsError("analytics_unavailable")
+  if (definition.provider === "ga_data_api") {
+    const availability = definition.qualification.sourceAvailability
+    const nextDay = new Date(`${availability.truncationDate}T00:00:00.000Z`)
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+    const observedFirstMonth = availability.observedFirstMonth
+    const observedLastMonth = availability.observedLastMonth
+    if (
+      definition.rangeStart !== availability.usableStart ||
+      definition.rangeEnd !== availability.usableEnd ||
+      availability.requestedStart > availability.truncationDate ||
+      availability.truncationDate !== availability.unavailablePrefixEnd ||
+      availability.unavailablePrefixStart !== availability.requestedStart ||
+      availability.usableStart !== nextDay.toISOString().slice(0, 10) ||
+      availability.usableEnd !== availability.requestedEnd ||
+      (observedFirstMonth === null) !== (observedLastMonth === null) ||
+      (observedFirstMonth !== null &&
+        observedLastMonth !== null &&
+        (observedFirstMonth > observedLastMonth ||
+          observedFirstMonth <
+            availability.usableStart.replaceAll("-", "").slice(0, 6) ||
+          observedLastMonth >
+            availability.usableEnd.replaceAll("-", "").slice(0, 6))) ||
+      definition.qualification.mediaComponentIdCoverage
+        .withMediaComponentIdEvents >
+        definition.qualification.watchScope.includedEvents ||
+      definition.qualification.mediaComponentIdCoverage.inScopeEvents !==
+        definition.qualification.watchScope.includedEvents
+    )
+      throw new HistoricalAnalyticsError("analytics_incomplete")
+    return definition
+  }
   const quality = definition.qualification
   if (
     quality.observedStart > definition.rangeStart ||
@@ -304,8 +476,27 @@ export function mergeHistoricalProvenance(
     }
   }
   const unknownUsage = [...usage.values()].some((bytes) => bytes === null)
+  const navigationCoverage =
+    first.provider === "ga_data_api"
+      ? (Object.fromEntries(
+          Object.keys(first.navigationCoverage ?? {}).map((key) => [
+            key,
+            parts.reduce(
+              (sum, part) =>
+                sum +
+                (part.navigationCoverage?.[
+                  key as keyof NonNullable<
+                    HistoricalProvenance["navigationCoverage"]
+                  >
+                ] ?? 0),
+              0,
+            ),
+          ]),
+        ) as HistoricalProvenance["navigationCoverage"])
+      : undefined
   return {
     ...first,
+    ...(navigationCoverage ? { navigationCoverage } : {}),
     rowCount: parts.reduce((sum, part) => sum + part.rowCount, 0),
     catalogCandidates: parts.reduce(
       (sum, part) => sum + part.catalogCandidates,
@@ -349,12 +540,22 @@ export async function readHistoricalSnapshot(input: {
   reader: HistoricalAnalyticsReader
   definition: HistoricalDefinition
   catalog: readonly CatalogIdentity[]
+  routeCatalog?: readonly CatalogIdentity[]
   sourceVideoId: string
   selectedVideoIds: readonly string[]
   includeSourceEngagement: boolean
   cutoff: string
 }): Promise<HistoricalSnapshot> {
   const definition = input.definition
+  if (definition.provider === "ga_data_api") {
+    if (!input.reader.readNavigationSnapshot)
+      throw new HistoricalAnalyticsError("analytics_unavailable")
+    return input.reader.readNavigationSnapshot({
+      ...input,
+      definition,
+      routeCatalog: input.routeCatalog ?? input.catalog,
+    })
+  }
   const selected = new Set(input.selectedVideoIds)
   const source = input.catalog.find((video) => video.id === input.sourceVideoId)
   if (
@@ -426,7 +627,7 @@ export async function readHistoricalSnapshot(input: {
   if (videoKeys.length > 100 || targetKeys.length > 100)
     throw new HistoricalAnalyticsError("analytics_incomplete")
 
-  const engagementByVideo = new Map<string, Signal>()
+  const engagementByVideo = new Map<string, LegacySignal>()
   const transitionsByPair = new Map<string, number>()
   const resultHash = createHash("sha256")
   const unmappedHash = createHash("sha256")
@@ -497,7 +698,7 @@ export async function readHistoricalSnapshot(input: {
         throw new HistoricalAnalyticsError("analytics_incomplete")
       queryUsage.set(page.queryExecutionId, page.bytesProcessed)
       for (const raw of page.rows) {
-        let row: Signal | Transition
+        let row: LegacySignal | Transition
         try {
           row = (kind === "engagement" ? engagement : transition).parse(raw)
         } catch {
@@ -505,7 +706,7 @@ export async function readHistoricalSnapshot(input: {
         }
         rowCount++
         if (kind === "engagement") {
-          const signal = row as Signal
+          const signal = row as LegacySignal
           if (signal.engagedViews > signal.views)
             throw new HistoricalAnalyticsError("analytics_incomplete")
           const canonical = identities.get(signal.videoKey)
