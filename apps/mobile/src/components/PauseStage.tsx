@@ -39,6 +39,8 @@ const LOGO_HOLD_MS = 500
  *  pen's end plus the hold. */
 export const PAUSE_LOGO_DRAWN_MS =
   LOGO_START_MS + LOGO_DURATION_MS + LOGO_HOLD_MS
+/** The JS clock ends a lift this long after its native run should end. */
+export const LIFT_END_MARGIN_MS = 100
 const BAR_SAMPLES = 24
 const barEase = Easing.bezier(0.42, 0, 0.58, 1)
 
@@ -93,8 +95,13 @@ export function PauseStage({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (phase !== "lifting") return
     const at = pauseProgressAt(runRef.current, performance.now())
+    const duration = Math.max(300, at * PAUSE_FADE_OUT_MS)
     setStatusBarHidden(false, "fade")
-    runTo(0, Math.max(300, at * PAUSE_FADE_OUT_MS), endPause)
+    runTo(0, duration, endPause)
+    // A native end callback is unreliable here, and a lost one would leave an
+    // invisible curtain that takes every touch, so a JS clock ends it too.
+    const ended = setTimeout(endPause, duration + LIFT_END_MARGIN_MS)
+    return () => clearTimeout(ended)
   }, [phase, runTo])
 
   useEffect(() => {

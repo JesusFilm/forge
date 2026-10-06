@@ -11,12 +11,14 @@ import {
 import {
   endPause,
   getPausePhase,
+  subscribePause,
   liftPause,
   requestPause,
 } from "../../lib/pauseCurtain"
 import { LOGO_DURATION_MS } from "../DailyBiblePauseLogo"
 import {
   PAUSE_FADE_IN_MS,
+  LIFT_END_MARGIN_MS,
   PAUSE_FADE_OUT_MS,
   PAUSE_LOGO_DRAWN_MS,
   PauseStage,
@@ -180,8 +182,12 @@ describe("PauseStage", () => {
     await pause()
     await advance(1000)
     await press(pressableByLabel(renderer, CURTAIN_LABEL))
+    const phases: string[] = []
+    const stop = subscribePause(() => phases.push(getPausePhase()))
     await advance(PAUSE_LOGO_DRAWN_MS)
-    expect(getPausePhase()).toBe("lifting")
+    stop()
+    // The lift ends on its own clock; the logo is never reported drawn.
+    expect(phases).toEqual(["idle"])
     await unmount(renderer)
   })
 
@@ -209,6 +215,24 @@ describe("PauseStage", () => {
     // The curtain stays up while it lifts.
     expect(curtainCount(renderer)).toBe(1)
     await act(async () => lift().finish())
+    expect(curtainCount(renderer)).toBe(0)
+    await unmount(renderer)
+  })
+
+  // Review: a lost native end callback left the phase at "lifting", with an
+  // invisible full-screen curtain that took every touch until a force-quit.
+  it("takes the curtain down on its own clock when the lift never calls back", async () => {
+    const renderer = await render()
+    await pause()
+    await advance(PAUSE_FADE_IN_MS)
+    await press(pressableByLabel(renderer, CURTAIN_LABEL))
+    expect(curtainCount(renderer)).toBe(1)
+
+    await advance(lift().duration)
+    expect(getPausePhase()).toBe("lifting")
+    await advance(LIFT_END_MARGIN_MS)
+
+    expect(getPausePhase()).toBe("idle")
     expect(curtainCount(renderer)).toBe(0)
     await unmount(renderer)
   })
