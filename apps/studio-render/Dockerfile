@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Repo-root context. Credential-free execution only: no Admin/Manager/provider
 # credentials, source acquisition, catalog writes or publication run here.
-ARG NODE_IMAGE=node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752
+ARG NODE_IMAGE=node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392
 FROM ${NODE_IMAGE} AS runtime-base
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates libcap2 libseccomp2 libnss3 libdbus-1-3 libatk1.0-0 \
