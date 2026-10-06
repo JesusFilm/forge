@@ -385,6 +385,7 @@ export async function getPrecomputedWatchPublicVisitDelivery(
     !visit ||
     visit.visitId !== variables.visitId ||
     (visit.disposition !== "inactive" &&
+      visit.disposition !== "baseline" &&
       visit.disposition !== "ab" &&
       visit.disposition !== "promoted")
   )

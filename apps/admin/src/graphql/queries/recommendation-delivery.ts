@@ -189,6 +189,7 @@ builder.queryFields((t) => ({
       sessionDigest: t.arg.string({ required: true }),
       trafficCategory: t.arg.string({ required: true }),
       clientDeliveryContract: t.arg.string(),
+      humanVerificationReceipt: t.arg.string(),
     },
     resolve: async (_root, args, ctx) =>
       resolveRecommendationOperation(() =>
@@ -202,6 +203,7 @@ builder.queryFields((t) => ({
           audioLanguageSlug: args.audioLanguageSlug,
           sessionDigest: args.sessionDigest,
           clientDeliveryContract: args.clientDeliveryContract ?? null,
+          humanVerificationReceipt: args.humanVerificationReceipt ?? null,
           trafficCategory:
             args.trafficCategory === "declared_crawler" ||
             args.trafficCategory === "speculative_prefetch" ||
