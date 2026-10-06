@@ -568,6 +568,13 @@ jobs:
           pg_dump --version | grep -F 'PostgreSQL) 18.'
           pg_restore --version | grep -F 'PostgreSQL) 18.'
           psql --version | grep -F 'PostgreSQL) 18.'
+      # languageId.test.js runs language-id.py's accepted-code rule through uv.
+      - name: Setup uv for the mobile language-ID test
+        if: matrix.service == '@forge/mobile'
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.11.11"
+          enable-cache: false
       - name: Test package
         run: pnpm --filter "${{ matrix.service }}" run --if-present test
       # Lines in the job summary, never a failure: the jest suites enforce.

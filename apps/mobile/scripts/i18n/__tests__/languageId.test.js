@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* global describe, expect, it, require */
 // accepted_codes in language-id.py, run by real Python through uv. The command
-// suite fakes uv, so this suite is the one that runs the verdict rules. It
-// skips where uv is not installed; the model itself is never loaded.
+// suite fakes uv, so only this suite runs the verdict rules. CI installs uv;
+// a local run without uv skips the suite. The model never loads.
 const childProcess = require("child_process")
+const fs = require("fs")
 const path = require("path")
 const checks = require("../lib/catalogChecks")
 const GLOTLID = require("./fixtures/glotlid-languages.json")
@@ -11,6 +12,9 @@ const GLOTLID = require("./fixtures/glotlid-languages.json")
 const SCRIPT = path.join(__dirname, "../language-id.py")
 const KNOWN = new Set(GLOTLID.languages)
 const HAS_UV = childProcess.spawnSync("uv", ["--version"]).status === 0
+if (!HAS_UV && process.env.CI) {
+  throw new Error("uv is missing in CI; ci.yml installs it for this suite")
+}
 
 const PROBE = `
 import importlib.util, json, sys
@@ -54,6 +58,13 @@ function acceptedCodes(tags, shipped) {
 
 const WEB_TAGS = checks.catalogTagsIn(checks.REAL_PATHS.webMessagesDir)
 
+describe("the GlotLID label fixture", () => {
+  it("comes from the model revision that language-id.py pins", () => {
+    const source = fs.readFileSync(SCRIPT, "utf8")
+    const [, revision] = source.match(/^MODEL_REVISION = "([0-9a-f]{40})"$/m)
+    expect(GLOTLID.model).toBe(`cis-lmu/glotlid model.bin@${revision}`)
+  })
+})
 ;(HAS_UV ? describe : describe.skip)("accepted_codes (language-id.py)", () => {
   it("accepts a macrolanguage member, unless that member ships alone", () => {
     const codes = acceptedCodes(
@@ -79,8 +90,8 @@ const WEB_TAGS = checks.catalogTagsIn(checks.REAL_PATHS.webMessagesDir)
     const unchecked = WEB_TAGS.filter(
       (tag) => !codes[tag].some((code) => KNOWN.has(code)),
     )
-    // GlotLID (pinned revision) has no label for these, so the report gives
-    // them an info finding. A new name here means accepted_codes lost one.
+    // GlotLID has no label for these. A new name means accepted_codes lost a
+    // language, or web added a catalog GlotLID cannot label: check which.
     expect(unchecked).toEqual([
       "bjt",
       "chp",

@@ -2680,7 +2680,16 @@ their own. A run on 2026-10-06 found that web's `iu` reads as Greenlandic, that
   (`bjt`, `chp`, `den`, `mdh`, `mey-Latn`, `mfv`, `na`, `quv`, `sav`, `xin`),
   so they get an info finding only. `scripts/i18n/__tests__/languageId.test.js`
   runs the real accepted-code rule against the model's label list (a fixture)
-  and pins that list. Regenerate the fixture when `MODEL_REVISION` changes.
+  and pins that list. CI installs `uv` for it, and the suite fails in CI
+  without `uv`. When `MODEL_REVISION` changes, regenerate the fixture in
+  `apps/mobile`. A jest check fails until the fixture names the pinned
+  revision.
+
+  ```bash
+  uv run --quiet scripts/i18n/language-id.py --labels \
+    > scripts/i18n/__tests__/fixtures/glotlid-languages.json
+  ```
+
 - **Kept names.** `KEPT_NAMES` lists the names that a translation keeps as
   written, such as Jesus Film Project, BibleProject, and AirPlay. When
   `en.json` gets a new product name, add it there. If you do not, the script

@@ -9,8 +9,8 @@
 # exclude-newer = "2026-10-06T00:00:00Z"
 # ///
 """Language ID for evaluate-translations.mjs: a JSON request file in, a JSON
-answer on stdout. GlotLID (Apache-2.0) is pinned to one revision, and the first
-run downloads 1.7 GB. Run it with `uv run`, so the repo gets no Python package."""
+answer on stdout (`--labels` prints the test fixture instead). GlotLID is pinned
+to one revision; the first run downloads 1.7 GB. Run it with `uv run`."""
 
 import json
 import os
@@ -25,6 +25,11 @@ MODEL_REPO = "cis-lmu/glotlid"
 MODEL_FILE = "model.bin"
 MODEL_REVISION = "85cd6716494360367b75f642b5bc78667605d0b4"
 TOP_LABELS = 3
+FIXTURE_NOTE = (
+    "The language part of every GlotLID label, for languageId.test.js. In"
+    " apps/mobile, regenerate it with `uv run --quiet scripts/i18n/language-id.py"
+    " --labels > scripts/i18n/__tests__/fixtures/glotlid-languages.json`."
+)
 # GlotLID labels Tagalog `fil`, where ISO 639-3 gives `tgl`.
 LABEL_ALIASES = {"tgl": {"fil"}}
 
@@ -73,19 +78,37 @@ def one_line(text):
     return " ".join(text.split())
 
 
-def main():
-    with open(sys.argv[1], encoding="utf-8") as request_file:
-        request = json.load(request_file)
+def load_model():
     # The model packages load here, so the helpers above import without them.
     import fasttext
     from huggingface_hub import hf_hub_download
 
-    shipped_codes = shipped_codes_of(request.get("shipped", []))
     model = fasttext.load_model(
         hf_hub_download(MODEL_REPO, MODEL_FILE, revision=MODEL_REVISION)
     )
     every_label, _ = model.predict("a", k=-1)
-    known = {label_language(label) for label in every_label}
+    return model, {label_language(label) for label in every_label}
+
+
+def print_labels():
+    _, known = load_model()
+    fixture = {
+        "model": f"{MODEL_REPO} {MODEL_FILE}@{MODEL_REVISION}",
+        "note": FIXTURE_NOTE,
+        "languages": sorted(known),
+    }
+    json.dump(fixture, sys.stdout, indent=2, ensure_ascii=False)
+    sys.stdout.write("\n")
+
+
+def main():
+    if sys.argv[1] == "--labels":
+        print_labels()
+        return
+    with open(sys.argv[1], encoding="utf-8") as request_file:
+        request = json.load(request_file)
+    shipped_codes = shipped_codes_of(request.get("shipped", []))
+    model, known = load_model()
 
     answer = {"model": f"{MODEL_REPO}@{MODEL_REVISION[:8]}", "locales": {}}
     for locale, texts in request["locales"].items():

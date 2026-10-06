@@ -1,6 +1,6 @@
 {
   "model": "cis-lmu/glotlid model.bin@85cd6716494360367b75f642b5bc78667605d0b4",
-  "note": "The language part of every GlotLID label, for the accepted_codes test. Regenerate when MODEL_REVISION changes.",
+  "note": "The language part of every GlotLID label, for languageId.test.js. In apps/mobile, regenerate it with `uv run --quiet scripts/i18n/language-id.py --labels > scripts/i18n/__tests__/fixtures/glotlid-languages.json`.",
   "languages": [
     "aai",
     "aak",
