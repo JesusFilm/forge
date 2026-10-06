@@ -303,6 +303,12 @@ export async function startPrecomputedPublicExperiment(
       throw new PrecomputedPublicControlError("stale_control")
     if (pointer.mode !== "incumbent")
       throw new PrecomputedPublicControlError("incompatible_target")
+    if (
+      await tx.recommendationPrecomputedBaselineRun.count({
+        where: { enabled: true },
+      })
+    )
+      throw new PrecomputedPublicControlError("incompatible_target")
     const [experiment] = await tx.$queryRaw<Array<{ generation_id: string }>>`
       SELECT generation_id FROM recommendation_precomputed_experiment
       WHERE id = ${input.experimentId} FOR SHARE`

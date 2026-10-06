@@ -24,6 +24,8 @@ function readiness(fixture: boolean): Readiness {
       retainedExperimentId: null,
       pendingManualReview: null,
     },
+    baseline: null,
+    baselineReport: null,
     incumbentRouting: {
       manifestId: "incumbent-manifest",
       routingDigest: "a".repeat(64),

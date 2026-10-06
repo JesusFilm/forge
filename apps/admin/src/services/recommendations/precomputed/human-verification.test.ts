@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest"
+import { createHmac } from "node:crypto"
+import { describe, expect, it, vi } from "vitest"
 import { verifyWatchHumanReceipt } from "./human-verification"
 
 const secret = "0123456789abcdef0123456789abcdef"
@@ -39,6 +40,18 @@ const config = {
 describe("Web-bound Watch human verification receipt", () => {
   it("accepts the jointly specified Web/Admin HMAC test vector", () => {
     expect(verifyWatchHumanReceipt(input, config)).toBe(true)
+    expect(
+      verifyWatchHumanReceipt(
+        { ...input, now: new Date(1_791_316_770_000) },
+        config,
+      ),
+    ).toBe(true)
+    expect(
+      verifyWatchHumanReceipt(
+        { ...input, now: new Date(1_791_316_769_000) },
+        config,
+      ),
+    ).toBe(false)
   })
 
   it("rejects a different visit, browser, source, Web fleet, hostname, or time", () => {
@@ -81,5 +94,39 @@ describe("Web-bound Watch human verification receipt", () => {
         config,
       ),
     ).toBe(false)
+  })
+
+  it("never accepts the official test-key fixture hostname as live proof", () => {
+    const payload = JSON.parse(
+      Buffer.from(payloadB64, "base64url").toString("utf8"),
+    )
+    payload.hostname = "turnstile-test-fixture.local"
+    const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url")
+    const signature = createHmac("sha256", secret)
+      .update(`forge-watch-human-v1.${encoded}`, "ascii")
+      .digest("base64url")
+    const fixture = { ...input, receipt: `v1.${encoded}.${signature}` }
+    const allowed = {
+      ...config,
+      allowedHostnames: "turnstile-test-fixture.local",
+    }
+    expect(verifyWatchHumanReceipt(fixture, allowed)).toBe(false)
+    expect(
+      verifyWatchHumanReceipt(fixture, {
+        ...allowed,
+        allowFixtureHostname: true,
+      }),
+    ).toBe(true)
+    vi.stubEnv("NODE_ENV", "production")
+    try {
+      expect(
+        verifyWatchHumanReceipt(fixture, {
+          ...allowed,
+          allowFixtureHostname: true,
+        }),
+      ).toBe(false)
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 })
