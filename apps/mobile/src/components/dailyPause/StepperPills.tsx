@@ -1,6 +1,7 @@
 // The WATCH, REFLECT, and PRAY stepper (R11) as a path down from a top node
 // (the owner, 2026-10-06). Each screen plays one arrival step: a line draws to
 // the next pill, which lights up. Reduce Motion shows the end.
+import { memo } from "react"
 import { Animated, Easing, StyleSheet, Text, View } from "react-native"
 
 import type { PauseFont } from "../../lib/dailyPause/fonts"
@@ -9,6 +10,7 @@ import {
   pauseRadii,
   pauseSpacing,
 } from "../../lib/dailyPause/theme"
+import { sampledCurve } from "./sampledCurve"
 import { usePauseClock } from "./usePauseClock"
 
 export type StepperStage = "watch" | "reflect" | "pray"
@@ -77,8 +79,7 @@ export function stepperArrivalMs(arrival: StepperStage): number {
 
 type Level = number | Animated.AnimatedInterpolation<number>
 
-/** Points on an ease-out curve. The native driver rejects an `easing` key in
- *  an interpolation, so the curve rides in the ranges instead. */
+/** Five points are enough for a step this short. */
 const EASE_POINTS = [0, 0.25, 0.5, 0.75, 1]
 const easeOut = Easing.out(Easing.cubic)
 
@@ -87,11 +88,12 @@ function phaseLevel(
   phase: Phase,
   totalMs: number,
 ): Level {
-  const span = phase.to - phase.from
-  return progress.interpolate({
-    inputRange: EASE_POINTS.map((t) => (phase.from + t * span) / totalMs),
-    outputRange: EASE_POINTS.map((t) => easeOut(t)),
-    extrapolate: "clamp",
+  return sampledCurve(progress, {
+    fromMs: phase.from,
+    spanMs: phase.to - phase.from,
+    totalMs,
+    curve: easeOut,
+    points: EASE_POINTS,
   })
 }
 
@@ -107,7 +109,12 @@ type StepperPillsProps = {
   font: PauseFont
 }
 
-export function StepperPills({ arrival, font }: StepperPillsProps) {
+/** The Reflect and Pray screens render each second for their timers; the
+ *  stepper's props do not change then, so it does not render again. */
+export const StepperPills = memo(function StepperPills({
+  arrival,
+  font,
+}: StepperPillsProps) {
   const plan = planFor(arrival)
   const { progress } = usePauseClock(plan.totalMs)
   const index = STAGES.findIndex(({ stage }) => stage === arrival)
@@ -186,7 +193,7 @@ export function StepperPills({ arrival, font }: StepperPillsProps) {
       })}
     </View>
   )
-}
+})
 
 /** The top node: an outline ring, and a disc that fades in over it.
  *  The disc has the ring's own outer edge, so a lit node shows no seam. */

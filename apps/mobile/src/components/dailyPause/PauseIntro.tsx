@@ -19,6 +19,7 @@ import {
   type StepperStage,
 } from "./StepperPills"
 import { pauseColors } from "../../lib/dailyPause/theme"
+import { sampledCurve } from "./sampledCurve"
 import { usePauseClock } from "./usePauseClock"
 import { pauseBodyPadding } from "./PauseFrame"
 
@@ -43,26 +44,8 @@ function introTimes(arrival: IntroArrival) {
  *  the screen opens. Reflect and Pray have the same arrival step. */
 export const PAUSE_INTRO_MS = introTimes("reflect").contentFrom
 
-/** Points on each curve. The native driver rejects an `easing` key in an
- *  interpolation, so the curve rides in the ranges instead. */
-const CURVE_POINTS = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]
 const easeInOut = Easing.inOut(Easing.cubic)
 const easeOut = Easing.out(Easing.cubic)
-
-function curve(
-  progress: Animated.Value,
-  fromMs: number,
-  spanMs: number,
-  totalMs: number,
-  output: (eased: number) => number,
-  easing: (t: number) => number,
-) {
-  return progress.interpolate({
-    inputRange: CURVE_POINTS.map((t) => (fromMs + t * spanMs) / totalMs),
-    outputRange: CURVE_POINTS.map((t) => output(easing(t))),
-    extrapolate: "clamp",
-  })
-}
 
 export type PauseIntro = {
   /** True once the content shows. The pause timer runs from then. */
@@ -103,24 +86,20 @@ export function usePauseIntro(arrival: IntroArrival): PauseIntro {
       ? centered
       : Math.min(centered, Math.max(0, scrollHeight - STEPPER_HEIGHT))
 
-  const contentLevel = curve(
-    progress,
-    contentFrom,
-    CONTENT_MS,
+  const contentLevel = sampledCurve(progress, {
+    fromMs: contentFrom,
+    spanMs: CONTENT_MS,
     totalMs,
-    (eased) => eased,
-    easeOut,
-  )
+    curve: easeOut,
+  })
   return {
     shown: reduceMotion || timerDue,
-    stepperShift: curve(
-      progress,
-      moveFrom,
-      MOVE_MS,
+    stepperShift: sampledCurve(progress, {
+      fromMs: moveFrom,
+      spanMs: MOVE_MS,
       totalMs,
-      (eased) => shiftFrom * (1 - eased),
-      easeInOut,
-    ),
+      curve: (t) => shiftFrom * (1 - easeInOut(t)),
+    }),
     contentLevel,
     contentRise: contentLevel.interpolate({
       inputRange: [0, 1],
@@ -167,8 +146,7 @@ export function IntroContent({ intro, style, children }: IntroContentProps) {
   return (
     <Animated.View
       testID="pause-intro-content"
-      accessibilityElementsHidden={!intro.shown}
-      importantForAccessibility={intro.shown ? "auto" : "no-hide-descendants"}
+      {...hiddenUntilShown(intro.shown)}
       style={[
         style,
         {
@@ -182,14 +160,23 @@ export function IntroContent({ intro, style, children }: IntroContentProps) {
   )
 }
 
+/** VoiceOver skips content until it shows. */
+function hiddenUntilShown(shown: boolean) {
+  return {
+    accessibilityElementsHidden: !shown,
+    importantForAccessibility: shown
+      ? ("auto" as const)
+      : ("no-hide-descendants" as const),
+  }
+}
+
 /** IntroContent for Liquid Glass, which draws nothing under a fading
  *  ancestor. A cover in the ground's color fades off the content instead. */
 export function IntroCovered({ intro, style, children }: IntroContentProps) {
   return (
     <Animated.View
       testID="pause-intro-covered"
-      accessibilityElementsHidden={!intro.shown}
-      importantForAccessibility={intro.shown ? "auto" : "no-hide-descendants"}
+      {...hiddenUntilShown(intro.shown)}
       style={[style, { transform: [{ translateY: intro.contentRise }] }]}
     >
       {children}
