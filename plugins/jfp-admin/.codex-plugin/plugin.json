@@ -1,7 +1,7 @@
 {
   "name": "jfp-admin",
-  "version": "0.1.0",
-  "description": "AI-assisted Jesus Film Admin workflows for locale creation.",
+  "version": "0.2.0",
+  "description": "AI-assisted Jesus Film Admin workflows for Experience locales and push campaign drafts.",
   "author": {
     "name": "Jesus Film Project",
     "url": "https://www.jesusfilm.org"
@@ -13,14 +13,15 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "JFP Admin",
-    "shortDescription": "Create translated Experience locale drafts.",
-    "longDescription": "JFP Admin adds Codex skills for working with Jesus Film Admin through the JFP Admin MCP. The first workflow is Bulk Locale Factory for creating, validating, reviewing, and optionally publishing translated Experience locales.",
+    "shortDescription": "Create Experience locale drafts and push campaign drafts.",
+    "longDescription": "JFP Admin adds Codex skills for working with Jesus Film Admin through the JFP Admin MCP. Bulk Locale Factory creates, validates, reviews, and optionally publishes translated Experience locales. Push Campaign Drafts writes a draft push campaign in the languages you choose, and a person tests and publishes it in the dashboard.",
     "developerName": "Jesus Film Project",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "defaultPrompt": [
       "Create translated Experience locale drafts",
-      "Review missing Experience locales"
+      "Review missing Experience locales",
+      "Draft a push campaign in several languages"
     ],
     "websiteURL": "https://www.jesusfilm.org/",
     "privacyPolicyURL": "https://www.jesusfilm.org/privacy-policy/",
