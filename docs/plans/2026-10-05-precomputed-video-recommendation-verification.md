@@ -872,3 +872,93 @@ change or generated GraphQL artifact edit was required for this merge.
 Logs are `2568-ga-reader-integration-*.log` and `2568-ga-retention-*.log` under
 the task-local orchestration directory. The merge review is
 `2568-main-merge-review.md` there.
+
+### OpenRouter and navigation continuation
+
+The user requested OpenRouter instead of a separate OpenAI credential. Exact
+`openai/gpt-6-astra` was present in OpenRouter's live model inventory, and the
+existing Mastra paid credential worked. Integration `b7926faf5` uses the
+Responses endpoint, strict structured output, required parameter support,
+disabled provider fallback, no adapter retries, and the existing per-call
+deadline. The saved model identity remains `gpt-6-astra`. Three real-SDK tests
+with a fake HTTP boundary, Mastra typecheck, lint, formatting, normal hooks,
+and independent sequential Standards/Spec review passed.
+
+A live request completed in 3.7 seconds with valid JSON, 41 input and 12 output
+tokens, and a reported cost of $0.00101. Evidence is
+`/tmp/forge-feat-590-orchestration/openrouter-astra-live-smoke.json`; no credential
+was written to the artifact. This proves provider access, not recommendation
+quality or full catalog cost. [CI run 37399481208](https://github.com/JesusFilm/forge/actions/runs/37399481208)
+passed with 37 successful jobs, three skipped jobs, and no failures.
+
+Admin navigation source `6a709410c` is integrated as `58b2aaa18`. It adds bounded
+current route identities, parent/language cutoff checks, a strict distinct
+`ga_data_api` contract, and navigation/partial-history labels. Legacy ordered
+history retains its contract. No migration or GraphQL change was needed. The
+worker full Admin suite passed 8,999 tests across 570 files; focused native
+catalog/ingest/review and view tests passed 23 cases; the prior producer integration
+passed all 15 cases. Typecheck, focused lint/format, sequential Standards/Spec
+review and normal worker/integration hooks passed.
+
+Root's synthetic Next preview passed CUA desktop (1440) and mobile (390)
+inspection. Document and scroll widths matched (1425/1425 and 375/375), long
+hashes and source terms wrapped inside their containers, and browser error logs
+were empty. Ten alternating warm HTTP samples measured median response times
+142.18 ms without history and 159.92 ms with the navigation panel, with
+62,591/69,317 HTML bytes and the same 19 assets. The artifact is
+`/tmp/forge-feat-590-orchestration/2568-navigation-loading.json`. These are local
+development HTTP/layout measurements, not FCP, authenticated database latency,
+or production capacity. The temporary route, browser tab, dev process, and
+Next-generated guide block were removed afterward.
+
+The development root filesystem filled during the first preview compilation.
+Only this task's disposable Next caches were removed, recovering about 667 MB;
+the preview cache then used the separate temporary filesystem. No source,
+database, production data, or prior evidence was removed.
+
+Root also added a native integration regression for the actual GA reader through
+Admin catalog, source generation, persistence and review, with synthetic GA HTTP
+and controlled model output. It was red on the prior reader as expected.
+Independent review strengthened it with distinct slugs versus canonical IDs and
+assertions on exact GA property, method, host, Watch path and event filters.
+An early combined run against the worker's current Mastra files and integrated
+Admin passed. The temporary test configuration was removed. Final verification
+against the committed integration passed all 16 native source-build cases and
+23 focused Admin catalog, contract and view cases, plus both application
+typechecks and focused lint/format. This controlled regression is not live evidence.
+
+The bounded live navigation smoke subsequently completed all 4,329 snapshot
+rows: 468 referrer rows over five pages and 3,861 engagement rows over 39 pages.
+For The Beginning (`cmp76ycuv02n0ny01faav3nae`) to Birth of Jesus
+(`cmp76yn4x02owny01ta34f78o`), current-route mapping qualified 3,948 associated
+destination starts, left 27 unmapped, and mapped 123,894 destination starts.
+Engaged views and exposures remain null. The usable interval is August 6, 2022
+through October 3, 2026; the requested June 21–August 5, 2022 prefix remains
+unavailable. Counts matched preflight and every completed request returned 200.
+The local catalog fixture was derived from read-only current Admin rows, including
+2,265/2,272 known source/target language slugs; three null-slug rows were excluded.
+This is operator qualification of one pair, not a production Admin catalog build
+or proof of historical URL ownership. The minimized artifact is
+`/tmp/forge-feat-590-orchestration/ga-navigation-smoke-result.json`.
+
+Saved query counts cover the qualified snapshot: two logical queries and 44
+pages. The smoke made 53 GA report requests including seven source-qualification
+reports and two smoke-only size previews. Admin now explicitly labels the
+snapshot scope. #2569 must include source qualification and actual retry overhead
+in whole-build usage accounting; the snapshot counts cannot stand in for total
+requests or billing. GA processed bytes and monetary cost remain unavailable.
+
+A second live OpenRouter call used those real aggregates and the two videos'
+published public metadata. Astra recommended the pair, accurately cited the
+3,948 navigation-associated starts, and explicitly qualified metadata-only
+content evidence, missing historical prefix, unknown exposure/bot filtering,
+and unavailable ordered playback. It used 865 input and 198 output tokens in
+7.76 seconds, costing $0.01855. The artifact is
+`/tmp/forge-feat-590-orchestration/astra-watch-navigation-live-smoke.json`.
+This is a live one-pair judgment, not a full catalog run or production activation.
+
+The final root combined verification script exited successfully. Worker full
+suites passed 3,250 Mastra and 8,999 Admin cases; both workers completed separate
+Standards and Spec reviews with no unresolved findings. Root independently
+reviewed the connected regression and provider boundary. #2568 is now integrated
+and verified under the approved navigation revision; #2569 may begin.

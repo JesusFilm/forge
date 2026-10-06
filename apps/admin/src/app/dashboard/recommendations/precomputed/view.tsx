@@ -295,8 +295,11 @@ export function PrecomputedComparisonView({
                 {comparison.history.mappedRows}/{comparison.history.rowCount}{" "}
                 aggregate rows mapped; {comparison.history.unmappedRows} unknown
                 mappings; {comparison.history.pageCount} pages across{" "}
-                {comparison.history.queryExecutionCount} query jobs. Bot
-                filtering {comparison.history.botFiltering}; native overlap{" "}
+                {comparison.history.queryExecutionCount}{" "}
+                {comparison.history.provider === "ga_data_api"
+                  ? "snapshot queries. Source qualification requests are excluded from these counts."
+                  : "query jobs."}{" "}
+                Bot filtering {comparison.history.botFiltering}; native overlap{" "}
                 {comparison.history.overlap}.
               </p>
               <p>

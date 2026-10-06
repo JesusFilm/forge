@@ -20,6 +20,7 @@ import {
   type SourceIngest,
 } from "../../apps/mastra/src/services/precomputed-recommendations/source-generation"
 import type { StructuredModel } from "../../apps/mastra/src/services/precomputed-recommendations/astra-provider"
+import { createGaWatchHistoryReader } from "../../apps/mastra/src/services/precomputed-recommendations/ga-watch-history"
 
 const bearer = "Bearer preview-test-key"
 const reviewer = { id: "preview-operator", role: "ADMIN" } as const
@@ -68,6 +69,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     const sourceId = `a-source-${suffix}`
     const targetId = `b-target-${suffix}`
     const metadataId = `c-metadata-${suffix}`
+    const sourceSlug = `watch-source-${suffix}`
+    const targetSlug = `watch-target-${suffix}`
+    const metadataSlug = `watch-metadata-${suffix}`
     const excerpt = "Una historia de esperanza para todos"
     const targetChunkId = `chunk-target-${suffix}`
     let prisma: PrismaClient
@@ -98,7 +102,11 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
       for (const [index, id] of [sourceId, targetId, metadataId].entries()) {
         await prisma.video.create({
-          data: { id, coreId: `core-${id}`, slug: id },
+          data: {
+            id,
+            coreId: `core-${id}`,
+            slug: [sourceSlug, targetSlug, metadataSlug][index]!,
+          },
         })
         await prisma.videoLocale.create({
           data: {
@@ -378,6 +386,257 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       ).toMatchObject({
         state: "complete",
         source: { status: "complete", acceptedCount: 2 },
+      })
+    })
+
+    it("carries mapped GA navigation into model decisions and saved Admin review without claiming ordered playback", async () => {
+      const generationId = `ga-navigation-${suffix}`
+      const controlled = model()
+      const prompts: Array<{
+        task: string
+        untrustedCatalogData: Record<string, unknown>
+      }> = []
+      const history = createGaWatchHistoryReader({
+        propertyId: "320198532",
+        serviceAccountEmail:
+          "watch-ga4-readonly@jesusfilm-org-1738781064783.iam.gserviceaccount.com",
+        rangeStart: "2022-06-21",
+        rangeEnd: "2026-10-03",
+        tokenProvider: async () => ({ ok: true, accessToken: "fixture-token" }),
+        fetchImpl: async (url, init) => {
+          expect(String(url)).toBe(
+            "https://analyticsdata.googleapis.com/v1beta/properties/320198532:runReport",
+          )
+          expect(init?.method).toBe("POST")
+          const body = JSON.parse(String(init?.body)) as {
+            dimensions: { name: string }[]
+            dateRanges: { startDate: string }[]
+            dimensionFilter: {
+              andGroup: {
+                expressions: {
+                  filter?: {
+                    fieldName: string
+                    stringFilter?: { value: string }
+                  }
+                }[]
+              }
+            }
+            offset: string
+            limit: string
+          }
+          const dimensions = body.dimensions.map((item) => item.name)
+          const filters = body.dimensionFilter.andGroup.expressions
+          expect(filters).toEqual(
+            expect.arrayContaining([
+              {
+                filter: {
+                  fieldName: "hostName",
+                  inListFilter: {
+                    values: ["jesusfilm.org", "www.jesusfilm.org"],
+                    caseSensitive: true,
+                  },
+                },
+              },
+              {
+                filter: {
+                  fieldName: "pagePath",
+                  stringFilter: {
+                    matchType: "FULL_REGEXP",
+                    value: "^/watch(/.*)?$",
+                    caseSensitive: true,
+                  },
+                },
+              },
+            ]),
+          )
+          if (dimensions[0] !== "yearMonth") {
+            expect(filters).toContainEqual({
+              filter: {
+                fieldName: "eventName",
+                stringFilter: {
+                  matchType: "EXACT",
+                  value: "videostarts",
+                  caseSensitive: true,
+                },
+              },
+            })
+          }
+          let rows: string[][]
+          if (dimensions[0] === "yearMonth")
+            rows = [["202209", "videostarts", "200"]]
+          else if (dimensions[0] === "year") rows = [["2022", "200"]]
+          else if (dimensions[0] === "pageReferrer")
+            rows = [
+              [
+                `https://www.jesusfilm.org/watch/${sourceSlug}.html/english.html`,
+                `/watch/${targetSlug}.html/english.html`,
+                "legacy-target",
+                "7",
+              ],
+              [
+                `https://www.jesusfilm.org/watch/${sourceSlug}.html/unknown-language.html`,
+                `/watch/${targetSlug}.html/english.html`,
+                "legacy-target",
+                "3",
+              ],
+            ]
+          else
+            rows = [
+              [
+                `/watch/${sourceSlug}.html/english.html`,
+                "legacy-source",
+                "100",
+              ],
+              [`/watch/${targetSlug}.html/english.html`, "legacy-target", "80"],
+              [
+                `/watch/${metadataSlug}.html/english.html`,
+                "legacy-metadata",
+                "20",
+              ],
+            ]
+          for (const { filter } of body.dimensionFilter.andGroup.expressions) {
+            if (!filter?.stringFilter) continue
+            const index = dimensions.indexOf(filter.fieldName)
+            if (index >= 0) {
+              const pattern = new RegExp(filter.stringFilter.value)
+              rows = rows.filter((row) => pattern.test(row[index]!))
+            }
+          }
+          const offset = Number(body.offset)
+          const limit = Number(body.limit)
+          return new Response(
+            JSON.stringify({
+              dimensionHeaders: dimensions.map((name) => ({ name })),
+              metricHeaders: [{ name: "eventCount" }],
+              rowCount: rows.length,
+              rows: rows.slice(offset, offset + limit).map((row) => ({
+                dimensionValues: row.slice(0, -1).map((value) => ({ value })),
+                metricValues: [{ value: row.at(-1) }],
+              })),
+              metadata: {
+                timeZone: "America/New_York",
+                ...(body.dateRanges[0]!.startDate === "2022-06-21"
+                  ? {
+                      dataTruncationReasons: [
+                        {
+                          dataTruncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
+                          dataTruncationDate: "2022-08-05",
+                        },
+                      ],
+                    }
+                  : {}),
+              },
+            }),
+            { status: 200 },
+          )
+        },
+      })
+      const observingModel: StructuredModel = {
+        async generate(input) {
+          expect(input.prompt).not.toContain("watchRouteIdentity")
+          expect(input.prompt).not.toContain("fixture-token")
+          const prompt = JSON.parse(input.prompt)
+          prompts.push(prompt)
+          const result = await controlled.generate(input)
+          if (
+            prompt.task === "candidate_judgment" &&
+            prompt.untrustedCatalogData.historicalNavigation === 7
+          ) {
+            return {
+              ...result,
+              output: input.schema.parse({
+                connections: [
+                  {
+                    kind: "direct",
+                    relationship: "useful_next_watch",
+                    strength: 95,
+                    reasonEnglish:
+                      "Transcript support and seven observed referrer-associated starts support this next watch.",
+                    evidence: {
+                      basis: "transcript",
+                      passages: [{ chunkId: targetChunkId, excerpt }],
+                    },
+                  },
+                ],
+              }),
+            }
+          }
+          return result
+        },
+      }
+      const result = await runPrecomputedSource(
+        {
+          generationId,
+          sourceVideoId: sourceId,
+          inputCutoff: cutoff,
+          historyRequired: true,
+        },
+        { catalog, ingest, model: observingModel, history },
+      )
+      expect(result).toMatchObject({ state: "complete", acceptedCount: 2 })
+      expect(prompts).toContainEqual(
+        expect.objectContaining({
+          task: "candidate_judgment",
+          untrustedCatalogData: expect.objectContaining({
+            candidate: expect.objectContaining({ id: targetId }),
+            historicalNavigation: 7,
+            historicalSourceSignal: {
+              videoKey: sourceId,
+              views: 100,
+              engagedViews: null,
+              exposures: null,
+            },
+            historicalCandidateSignal: {
+              videoKey: targetId,
+              views: 80,
+              engagedViews: null,
+              exposures: null,
+            },
+          }),
+        }),
+      )
+      const comparison = await loadPrecomputedRecommendationComparison(prisma, {
+        generationId,
+        sourceVideoId: sourceId,
+        audioLanguageSlug: "english",
+        reviewer,
+      })
+      expect(comparison).toMatchObject({
+        state: "ready",
+        generation: {
+          inputMode: "historical_analytics",
+          promptVersion: "astra-source-history-navigation-v1",
+        },
+        history: {
+          provider: "ga_data_api",
+          rangeStart: "2022-08-06",
+          rangeEnd: "2026-10-03",
+          qualification: {
+            sourceAvailability: {
+              coverage: "partial_source_history",
+              unavailablePrefixStart: "2022-06-21",
+              unavailablePrefixEnd: "2022-08-05",
+            },
+            transitions: {
+              status: "unavailable",
+              reason: "missing_session_identity",
+            },
+            navigation: { interpretation: "navigation_not_playback_sequence" },
+            mapping: { historicalOwnership: "unverified" },
+          },
+          navigationCoverage: {
+            candidateEvents: 10,
+            qualifiedEvents: 7,
+            unmappedEvents: 3,
+          },
+        },
+        experimental: expect.arrayContaining([
+          expect.objectContaining({
+            targetVideoId: targetId,
+            reasonEnglish:
+              "Transcript support and seven observed referrer-associated starts support this next watch.",
+          }),
+        ]),
       })
     })
 
