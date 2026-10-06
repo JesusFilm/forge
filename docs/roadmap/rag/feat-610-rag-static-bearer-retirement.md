@@ -3,7 +3,7 @@ id: "feat-610"
 title: "Retire Forge RAG static Railway bearer tokens"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-06"
 duration: 1
 depends_on: ["feat-529", "feat-593"]
@@ -64,3 +64,25 @@ Keep this ticket in progress until those live outcomes are recorded.
 Implementation PR: [#2582](https://github.com/JesusFilm/forge/pull/2582).
 The PR removes the code path and records the operator sequence; it does not
 itself remove a Railway setting or establish the live completion gate.
+
+## Resolution — 2026-10-06
+
+Implemented in [Forge PR #2582](https://github.com/JesusFilm/forge/pull/2582).
+Jaco confirms that the old shared-bearer mechanism is fully retired and accepts
+this ticket as complete. This owner acceptance closes the operational cutoff;
+the code PR alone did not claim it.
+
+The production `@forge/rag` deployment `4edd787e-1c22-4a47-b806-dfbfc5a5a575`
+runs merge commit `8ebd6500cccb7356a295232e7cc7a91ab99d558c` with Railway
+status `SUCCESS`. The six portal settings and both consumer database URL names
+are present; `SERVE_BEARER_TOKENS` is absent. The portal session grant succeeded,
+the server started, `/v1/health` and `/portal` returned 200, and unauthenticated
+`/portal/identity` and `/v1/search` returned 401. These checks used no secret
+values or corpus content.
+
+Jaco previously reported working registered consumers with separately increasing
+usage counts and now confirms the retirement is done. A post-cutover authenticated
+request for each consumer, a request using an old static token, and inspection of
+old caller-side secret stores were not independently performed in this closeout.
+The completion claim for those outcomes rests on owner acceptance, not on those
+HTTP checks.
