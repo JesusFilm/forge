@@ -181,6 +181,25 @@ describe("POST /watch/api/recommendations/select", () => {
     expect(mutate.mock.calls[0]?.[0]?.variables.browserDigest).toBeNull()
   })
 
+  it("binds a public experiment selection to its signed browser after rollback", async () => {
+    const browser = createRecommendationExperimentBrowser(
+      "test-private-secret-strong-enough-1234567890",
+    )!
+    const response = await POST(
+      request(
+        JSON.stringify(body),
+        `; ${RECOMMENDATION_EXPERIMENT_BROWSER_COOKIE}=${browser.value}`,
+      ),
+    )
+    expect(response.status).toBe(200)
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mutation: adminSelectPrivatePrecomputedRecommendationOperation,
+        variables: expect.objectContaining({ browserDigest: browser.digest }),
+      }),
+    )
+  })
+
   it("accepts an exact replay but refuses null handoffs and non-canonical Admin targets", async () => {
     mutate.mockResolvedValueOnce({
       data: {

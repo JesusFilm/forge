@@ -301,6 +301,96 @@ export const adminPrivatePrecomputedWatchVisitDeliveryOperation = adminGraphql(
   adminPrivatePrecomputedWatchVisitDeliveryQuery,
 )
 
+export const adminPrecomputedWatchPublicVisitDeliveryQuery = `
+  query PrecomputedWatchPublicVisitDelivery(
+    $visitId: ID!
+    $browserDigest: String!
+    $consentReceiptDigest: String
+    $profileTokenDigest: String
+    $seedMediaId: ID!
+    $locale: String!
+    $audioLanguageSlug: String!
+    $sessionDigest: String!
+    $trafficCategory: String!
+    $clientDeliveryContract: String
+  ) {
+    precomputedWatchPublicVisitDelivery(
+      visitId: $visitId
+      browserDigest: $browserDigest
+      consentReceiptDigest: $consentReceiptDigest
+      profileTokenDigest: $profileTokenDigest
+      seedMediaId: $seedMediaId
+      locale: $locale
+      audioLanguageSlug: $audioLanguageSlug
+      sessionDigest: $sessionDigest
+      trafficCategory: $trafficCategory
+      clientDeliveryContract: $clientDeliveryContract
+    ) {
+      disposition
+      status
+      visitId
+      experimentId
+      generationId
+      arm
+      reason
+      qualification
+      measurementStatus
+      delivery {
+        contractVersion
+        surfaceVersion
+        strategyVersion
+        classifierVersion
+        generationId
+        requestId
+        result
+        reason
+        expiresAt
+        requestedCount
+        composedCount
+        shortfallReason
+        personalization {
+          contractVersion
+          lane
+          executionMode
+          effectiveManifestId
+          profileState
+          projectionVersion
+          projectionGeneration
+          interestCount
+          sessionIntentPresent
+          reason
+        }
+        items {
+          id
+          position
+          targetMediaId
+          canonicalHref
+          candidateGenerator
+          contributors { generator generatorVersion rank }
+          capability
+          videoSlug
+          videoTitle
+          imageUrl
+          sceneIndex
+          description
+          startSeconds
+          endSeconds
+          durationSeconds
+          similarity
+          themes
+          demographics
+          spiritualContext
+          playbackId
+        }
+      }
+    }
+  }
+` as const
+
+export const adminPrecomputedWatchPublicVisitDeliveryOperation = adminGraphql(
+  adminPrecomputedWatchPublicVisitDeliveryQuery,
+)
+
 export const adminRecordSemanticRecommendationEvidenceMutation = `
   mutation RecordSemanticRecommendationEvidence(
     $contractVersion: String!

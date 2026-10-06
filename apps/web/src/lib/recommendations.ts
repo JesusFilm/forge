@@ -17,6 +17,7 @@ import {
   adminPrivateSemanticRecommendationFallbackOperation,
   adminPrecomputedWatchPreviewDeliveryOperation,
   adminPrivatePrecomputedWatchVisitDeliveryOperation,
+  adminPrecomputedWatchPublicVisitDeliveryOperation,
   adminTransitionRecommendationProfileOperation,
 } from "@forge/admin-graphql/operations"
 import client from "@/lib/admin-client"
@@ -364,6 +365,31 @@ export async function getPrivatePrecomputedWatchVisitDelivery(
   if (result.error || !result.data?.privatePrecomputedWatchVisitDelivery)
     throw new RecommendationRuntimeError("delivery_unavailable")
   return result.data.privatePrecomputedWatchVisitDelivery
+}
+
+export async function getPrecomputedWatchPublicVisitDelivery(
+  variables: AdminVariablesOf<
+    typeof adminPrecomputedWatchPublicVisitDeliveryOperation
+  >,
+  timeoutMs = DELIVERY_UPSTREAM_TIMEOUT_MS,
+) {
+  const result = await client.query({
+    query: adminPrecomputedWatchPublicVisitDeliveryOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(timeoutMs),
+  })
+  const visit = result.data?.precomputedWatchPublicVisitDelivery
+  if (
+    result.error ||
+    !visit ||
+    visit.visitId !== variables.visitId ||
+    (visit.disposition !== "inactive" &&
+      visit.disposition !== "ab" &&
+      visit.disposition !== "promoted")
+  )
+    throw new RecommendationRuntimeError("delivery_unavailable")
+  return visit
 }
 
 function isPreviewAuthorizationDenial(error: unknown): boolean {

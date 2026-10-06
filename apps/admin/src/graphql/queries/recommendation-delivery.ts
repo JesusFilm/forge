@@ -16,6 +16,7 @@ import { deliverPrecomputedWatchPreview } from "@/services/recommendations/preco
 import { RecommendationAuthenticationError } from "@/services/recommendations/errors"
 import { deliverPrecomputedWatchFallback } from "@/services/recommendations/precomputed/watch-fallback"
 import { deliverPrivatePrecomputedWatchVisit } from "@/services/recommendations/precomputed/private-watch-test"
+import { deliverPrecomputedPublicWatchVisit } from "@/services/recommendations/precomputed/public-watch"
 
 const ContributorRef = builder.objectRef<RecommendationCandidateContributor>(
   "RecommendationCandidateContributor",
@@ -145,7 +146,73 @@ PrivateVisitDeliveryRef.implement({
   }),
 })
 
+type PublicVisitDelivery = Awaited<
+  ReturnType<typeof deliverPrecomputedPublicWatchVisit>
+>
+const PublicVisitDeliveryRef = builder.objectRef<PublicVisitDelivery>(
+  "PrecomputedWatchPublicVisitDelivery",
+)
+PublicVisitDeliveryRef.implement({
+  fields: (t) => ({
+    disposition: t.exposeString("disposition", { nullable: false }),
+    status: t.exposeString("status", { nullable: false }),
+    visitId: t.exposeID("visitId", { nullable: false }),
+    experimentId: t.exposeString("experimentId", { nullable: true }),
+    generationId: t.exposeString("generationId", { nullable: true }),
+    arm: t.exposeString("arm", { nullable: true }),
+    reason: t.exposeString("reason", { nullable: true }),
+    qualification: t.exposeString("qualification", { nullable: true }),
+    measurementStatus: t.exposeString("measurementStatus", {
+      nullable: false,
+    }),
+    delivery: t.field({
+      type: DeliveryRef,
+      nullable: true,
+      resolve: (result) => result.delivery,
+    }),
+  }),
+})
+
 builder.queryFields((t) => ({
+  precomputedWatchPublicVisitDelivery: t.field({
+    type: PublicVisitDeliveryRef,
+    nullable: false,
+    authScopes: { public: true },
+    args: {
+      visitId: t.arg.id({ required: true }),
+      browserDigest: t.arg.string({ required: true }),
+      consentReceiptDigest: t.arg.string(),
+      profileTokenDigest: t.arg.string(),
+      seedMediaId: t.arg.id({ required: true }),
+      locale: t.arg.string({ required: true }),
+      audioLanguageSlug: t.arg.string({ required: true }),
+      sessionDigest: t.arg.string({ required: true }),
+      trafficCategory: t.arg.string({ required: true }),
+      clientDeliveryContract: t.arg.string(),
+    },
+    resolve: async (_root, args, ctx) =>
+      resolveRecommendationOperation(() =>
+        deliverPrecomputedPublicWatchVisit(prisma, {
+          visitId: String(args.visitId),
+          browserDigest: args.browserDigest,
+          consentReceiptDigest: args.consentReceiptDigest ?? null,
+          profileTokenDigest: args.profileTokenDigest ?? null,
+          seedMediaId: String(args.seedMediaId),
+          locale: args.locale,
+          audioLanguageSlug: args.audioLanguageSlug,
+          sessionDigest: args.sessionDigest,
+          clientDeliveryContract: args.clientDeliveryContract ?? null,
+          trafficCategory:
+            args.trafficCategory === "declared_crawler" ||
+            args.trafficCategory === "speculative_prefetch" ||
+            args.trafficCategory === "speculative_prerender" ||
+            args.trafficCategory === "ordinary_browser"
+              ? args.trafficCategory
+              : "unknown",
+          caller: ctx.user,
+        }),
+      ),
+  }),
   privatePrecomputedWatchVisitDelivery: t.field({
     type: PrivateVisitDeliveryRef,
     nullable: false,

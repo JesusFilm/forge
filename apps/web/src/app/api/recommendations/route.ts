@@ -13,6 +13,7 @@ import {
   getPrivateSemanticRecommendationFallback,
   getPrecomputedWatchPreviewDelivery,
   getPrivatePrecomputedWatchVisitDelivery,
+  getPrecomputedWatchPublicVisitDelivery,
   RecommendationPreviewAuthorizationError,
 } from "@/lib/recommendations"
 import {
@@ -138,6 +139,24 @@ export async function POST(request: Request) {
       z.string().uuid().safeParse(privateVisitHeader).success
         ? privateVisitHeader
         : null
+    const visitInput = privateVisitId
+      ? {
+          visitId: privateVisitId,
+          consentReceiptDigest,
+          profileTokenDigest:
+            consentReceiptDigest != null && profile?.kind === "valid"
+              ? profile.digest
+              : null,
+          ...semanticInput,
+          sessionDigest: session?.digest ?? "0".repeat(64),
+          trafficCategory,
+          clientDeliveryContract:
+            request.headers.get("x-forge-recommendation-delivery-contract") ===
+            COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
+              ? COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
+              : null,
+        }
+      : null
     const privateTesterCookie = new NextRequest(request.url, {
       headers: request.headers,
     }).cookies.get(RECOMMENDATION_EXPERIMENT_TESTER_COOKIE)?.value
@@ -161,26 +180,41 @@ export async function POST(request: Request) {
     let privateVisit: Awaited<
       ReturnType<typeof getPrivatePrecomputedWatchVisitDelivery>
     > | null = null
-    if (privateTester && privateBrowser && privateVisitId) {
+    if (privateTester && privateBrowser && visitInput) {
       try {
         privateVisit = await getPrivatePrecomputedWatchVisitDelivery(
           {
-            visitId: privateVisitId,
+            ...visitInput,
             browserDigest: privateBrowser.digest,
-            consentReceiptDigest,
-            profileTokenDigest:
-              consentReceiptDigest != null && profile?.kind === "valid"
-                ? profile.digest
-                : null,
-            ...semanticInput,
-            sessionDigest: session?.digest ?? "0".repeat(64),
-            trafficCategory,
-            clientDeliveryContract:
-              request.headers.get(
-                "x-forge-recommendation-delivery-contract",
-              ) === COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
-                ? COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
-                : null,
+          },
+          Math.max(1, upstreamDeadlineAt - Date.now()),
+        )
+      } catch {
+        upstreamAcknowledged = false
+      }
+    }
+    const publicBrowser =
+      !previewCredential &&
+      !privateTester &&
+      trafficCategory === "ordinary_browser" &&
+      privateVisitId
+        ? (readRecommendationExperimentBrowser(
+            request,
+            env.WATCH_RECOMMENDATION_TESTER_SECRET,
+          ) ??
+          createRecommendationExperimentBrowser(
+            env.WATCH_RECOMMENDATION_TESTER_SECRET ?? "",
+          ))
+        : null
+    let publicVisit: Awaited<
+      ReturnType<typeof getPrecomputedWatchPublicVisitDelivery>
+    > | null = null
+    if (publicBrowser && visitInput) {
+      try {
+        publicVisit = await getPrecomputedWatchPublicVisitDelivery(
+          {
+            ...visitInput,
+            browserDigest: publicBrowser.digest,
           },
           Math.max(1, upstreamDeadlineAt - Date.now()),
         )
@@ -223,8 +257,11 @@ export async function POST(request: Request) {
       previewDelivery?.reason === "source_unavailable" ||
       previewDelivery?.reason === "source_eligibility_unavailable"
     const privateEligible = privateVisit?.status === "eligible"
+    const publicEligible = publicVisit?.status === "eligible"
     const mayUseIncumbent =
       !privateEligible &&
+      !publicEligible &&
+      !publicVisit?.delivery &&
       (!previewTester ||
         (!previewDenied &&
           !sourceDenied &&
@@ -233,6 +270,11 @@ export async function POST(request: Request) {
     const incumbentAttempted =
       mayUseIncumbent && Date.now() < upstreamDeadlineAt
     if (mayUseIncumbent && !incumbentAttempted) upstreamAcknowledged = false
+    const visitDelivery = privateEligible
+      ? (privateVisit!.delivery ?? unavailableSemanticDelivery())
+      : publicEligible
+        ? (publicVisit!.delivery ?? unavailableSemanticDelivery())
+        : (publicVisit?.delivery ?? null)
     const semanticDelivery = incumbentAttempted
       ? await (
           previewCredential || privateTester
@@ -267,11 +309,10 @@ export async function POST(request: Request) {
           upstreamAcknowledged = false
           return unavailableSemanticDelivery()
         })
-      : privateEligible
-        ? (privateVisit!.delivery ?? unavailableSemanticDelivery())
-        : previewDelivery
+      : (visitDelivery ??
+        (previewDelivery
           ? { ...previewDelivery, personalization: null }
-          : { ...unavailableSemanticDelivery(), reason: previewFailureReason }
+          : { ...unavailableSemanticDelivery(), reason: previewFailureReason }))
     // Admin owns exact-audio and published-presentation eligibility. Legacy
     // scene and collection APIs cannot attest those facts, so their cards
     // must not replace an empty or unavailable delivery.
@@ -318,6 +359,20 @@ export async function POST(request: Request) {
             },
           }
         : {}),
+      ...(publicVisit && publicVisit.disposition !== "inactive"
+        ? {
+            experimentAttribution: {
+              visitId: publicVisit.visitId,
+              experimentId: publicVisit.experimentId,
+              generationId: publicVisit.generationId,
+              assignedArm: publicVisit.arm,
+              status: publicVisit.status,
+              measurementStatus: publicVisit.measurementStatus,
+              reason: publicVisit.reason,
+              qualification: publicVisit.qualification,
+            },
+          }
+        : {}),
       ...(excluded ? { requestId: null, expiresAt: null } : {}),
       // Older open tabs strictly validate execution modes. Preserve their
       // cards and attribution without mislabeling the new mode as topic fit.
@@ -360,18 +415,50 @@ export async function POST(request: Request) {
     ) {
       attachRecommendationExperimentBrowser(response, privateBrowser)
     }
+    if (
+      publicBrowser &&
+      publicVisit?.disposition === "ab" &&
+      publicVisit.status === "eligible"
+    ) {
+      // Reissue the same signed identity so an existing cookie cannot expire
+      // before the frozen experiment finishes and change its assignment.
+      attachRecommendationExperimentBrowser(response, publicBrowser)
+    }
+    let experimentAdmission:
+      | "missing_visit_id"
+      | "browser_identity_unavailable"
+      | "visit_identity_conflict"
+      | "public_delivery_unavailable"
+      | undefined
+    if (publicVisit?.reason === "visit_identity_conflict") {
+      experimentAdmission = "visit_identity_conflict"
+    } else if (publicVisit?.reason === "visit_persistence_unavailable") {
+      experimentAdmission = "public_delivery_unavailable"
+    } else if (
+      !previewCredential &&
+      !privateTester &&
+      trafficCategory === "ordinary_browser"
+    ) {
+      if (!privateVisitId) experimentAdmission = "missing_visit_id"
+      else if (!publicBrowser)
+        experimentAdmission = "browser_identity_unavailable"
+      else if (!publicVisit) experimentAdmission = "public_delivery_unavailable"
+    }
     observeRecommendationDelivery({
       endpoint: "seeded",
       trafficCategory,
+      experimentAdmission,
       persistenceDisposition: !upstreamAcknowledged
         ? "not_observed"
         : excluded
           ? semanticDelivery.requestId
             ? "unexpected_commit"
             : "avoided"
-          : semanticDelivery.requestId
+          : publicVisit?.measurementStatus === "recorded"
             ? "committed"
-            : "not_committed",
+            : semanticDelivery.requestId
+              ? "committed"
+              : "not_committed",
       httpStatus: response.status,
       delivery,
       upstreamResult: semanticDelivery.result,

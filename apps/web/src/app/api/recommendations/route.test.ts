@@ -281,6 +281,46 @@ describe("POST /watch/api/recommendations", () => {
     expect(variables.sessionDigest).toMatch(/^[a-f0-9]{64}$/)
   })
 
+  it("reports legacy browser requests missing a stable navigation visit ID", async () => {
+    const response = await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "seed-1",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+        { "user-agent": "Mozilla/5.0" },
+      ),
+    )
+    expect(response.status).toBe(200)
+    expect(query).toHaveBeenCalledOnce()
+    expect(deliveryLogs()).toEqual([
+      "event=recommendation.delivery endpoint=seeded experimentAdmission=missing_visit_id httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+    ])
+  })
+
+  it("reports missing signed browser configuration without enrolling a visit", async () => {
+    const response = await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "seed-1",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+        {
+          "user-agent": "Mozilla/5.0",
+          "x-forge-recommendation-visit-id":
+            "22222222-2222-4222-8222-222222222222",
+        },
+      ),
+    )
+    expect(response.status).toBe(200)
+    expect(query).toHaveBeenCalledOnce()
+    expect(deliveryLogs()).toEqual([
+      "event=recommendation.delivery endpoint=seeded experimentAdmission=browser_identity_unavailable httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+    ])
+  })
+
   it("preserves an editorial thumbnail on a served delivery", async () => {
     const imageUrl = "https://images.example/editorial.jpg"
     query.mockResolvedValueOnce({

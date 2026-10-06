@@ -82,18 +82,19 @@ export async function POST(request: Request) {
         secret: env.WATCH_RECOMMENDATION_TESTER_SECRET,
         origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
       }))
-    const privateBrowser = privateTester
-      ? readRecommendationExperimentBrowser(
-          request,
-          env.WATCH_RECOMMENDATION_TESTER_SECRET,
-        )
-      : null
-    const selection = privateTester
-      ? await selectPrivatePrecomputedRecommendation({
-          ...selectionInput,
-          browserDigest: privateBrowser?.digest ?? null,
-        })
-      : await selectSemanticRecommendation(selectionInput)
+    // A card issued before rollback still belongs to its persisted visit.
+    // Bind by the signed browser cookie rather than the current serving mode.
+    const experimentBrowser = readRecommendationExperimentBrowser(
+      request,
+      env.WATCH_RECOMMENDATION_TESTER_SECRET,
+    )
+    const selection =
+      privateTester || experimentBrowser
+        ? await selectPrivatePrecomputedRecommendation({
+            ...selectionInput,
+            browserDigest: experimentBrowser?.digest ?? null,
+          })
+        : await selectSemanticRecommendation(selectionInput)
     if (
       (selection.status !== "accepted" && selection.status !== "replay") ||
       !selection.claimNonce

@@ -34,6 +34,8 @@ export {
   adminPrecomputedWatchPreviewDeliveryQuery,
   adminPrivatePrecomputedWatchVisitDeliveryOperation,
   adminPrivatePrecomputedWatchVisitDeliveryQuery,
+  adminPrecomputedWatchPublicVisitDeliveryOperation,
+  adminPrecomputedWatchPublicVisitDeliveryQuery,
   adminTransitionRecommendationProfileMutation,
   adminTransitionRecommendationProfileOperation,
 } from "./recommendations"

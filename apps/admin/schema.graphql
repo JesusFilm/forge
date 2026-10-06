@@ -2216,6 +2216,19 @@ type Passage {
   versionTitle: String
 }
 
+type PrecomputedWatchPublicVisitDelivery {
+  arm: String
+  delivery: SemanticRecommendationDelivery
+  disposition: String!
+  experimentId: String
+  generationId: String
+  measurementStatus: String!
+  qualification: String
+  reason: String
+  status: String!
+  visitId: ID!
+}
+
 type PrivatePrecomputedWatchVisitDelivery {
   arm: String
   delivery: SemanticRecommendationDelivery
@@ -2344,6 +2357,7 @@ type Query {
   mediaFolders: [MediaFolder!]
   myWatchProgress: [WatchProgressEntry!]
   precomputedWatchPreviewDelivery(audioLanguageSlug: String!, locale: String!, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
+  precomputedWatchPublicVisitDelivery(audioLanguageSlug: String!, browserDigest: String!, clientDeliveryContract: String, consentReceiptDigest: String, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String!, visitId: ID!): PrecomputedWatchPublicVisitDelivery!
   privatePrecomputedWatchVisitDelivery(audioLanguageSlug: String!, browserDigest: String!, clientDeliveryContract: String, consentReceiptDigest: String, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String!, visitId: ID!): PrivatePrecomputedWatchVisitDelivery!
   """
   Transcript-backed cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
