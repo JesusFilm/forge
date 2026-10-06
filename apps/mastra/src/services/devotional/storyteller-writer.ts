@@ -158,6 +158,10 @@ export const OPENING_RULES = [
   "     person, that lets the viewer see themselves in the story, often a",
   "     question ('What cry have you been hushing?'). Recognition, never",
   "     shame, and not the word 'watch': 'Let's watch.' follows it.",
+  "The four lines are either separate cut-outs or ONE short story; when they",
+  "  tell a story, carry its key word through every line and bring in no new",
+  "  noun at the end (the beggar CRIES OUT, Jesus answers the CRY, 'What cry",
+  "  are you hushing?', not a new 'request'). Owner, 2026-10-06.",
   "Do not reuse the reflection's wording: the viewer hears both.",
   "Never give the takeaway or the answer to the gap away.",
 ]
