@@ -167,6 +167,10 @@ instruction can promote the experiment. Preserve the incumbent for rollback.
 
 - Use the application API model identifier `gpt-6-astra` for the first build;
   verify project access before a live run. Do not silently substitute a model.
+  On 2026-10-06 the user requested OpenRouter. Route the same model as
+  `openai/gpt-6-astra` through OpenRouter's Responses API using the existing
+  paid-key preference. Require structured-output support, disable automatic
+  provider fallback and SDK retries, and retain explicit usage accounting.
 - Treat Video as content identity, distinct from Dub and Video Edition. Use
   canonical source/target identity and existing eligibility rules.
 - Establish a declared catalog/input cutoff. Read transcripts in available

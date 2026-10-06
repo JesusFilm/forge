@@ -2,7 +2,7 @@ import { createOpenAI } from "@ai-sdk/openai"
 import { generateText, Output } from "ai"
 import { z } from "zod"
 
-import { env } from "../../config/env"
+import { getOpenRouterApiKey } from "../../config/env"
 
 export const PRECOMPUTED_MODEL_ID = "gpt-6-astra"
 
@@ -47,14 +47,27 @@ export type StructuredModel = {
   }): Promise<{ output: z.output<T>; usage: ModelUsage }>
 }
 
-/** The application model is pinned to OpenAI Responses, with no fallback. */
+/** Exact Astra model through OpenRouter Responses; no model/provider fallback. */
 export function createAstraModel(
-  apiKey: string | undefined = env.OPENAI_API_KEY,
+  apiKey: string | undefined = getOpenRouterApiKey(),
 ): StructuredModel {
   if (!apiKey) {
     throw new AstraAccessError()
   }
-  const openai = createOpenAI({ apiKey })
+  const openrouter = createOpenAI({
+    apiKey,
+    baseURL: "https://openrouter.ai/api/v1",
+    name: "openrouter",
+    fetch: (url, init) =>
+      fetch(url, {
+        ...init,
+        redirect: "error",
+        body: JSON.stringify({
+          ...JSON.parse(String(init?.body)),
+          provider: { require_parameters: true, allow_fallbacks: false },
+        }),
+      }),
+  })
   return {
     async generate<T extends z.ZodType>({
       schema,
@@ -68,12 +81,12 @@ export function createAstraModel(
       maxOutputTokens: number
     }) {
       const result = await generateText({
-        model: openai.responses(PRECOMPUTED_MODEL_ID),
+        model: openrouter.responses(`openai/${PRECOMPUTED_MODEL_ID}`),
         system,
         prompt,
         output: Output.object({ schema }),
         maxOutputTokens,
-        // One recorded call means exactly one provider attempt. Any future
+        // One recorded call means one adapter HTTP request. Any future
         // retry must have a distinct call ID and usage record.
         maxRetries: 0,
         abortSignal: AbortSignal.timeout(120_000),

@@ -25,6 +25,13 @@ This is the bounded source-generation path; full catalog coordination comes in
 a later ticket. Content-only fixture runs are explicitly identified and are not
 reported as the required historical-analytics first build.
 
+The user requested OpenRouter on 2026-10-06. Use the exact
+`openai/gpt-6-astra` route through OpenRouter Responses with the existing
+`OPENROUTER_API_PAID_KEY` / `OPENROUTER_API_KEY` preference; a separate direct
+OpenAI key is not required. Require structured-output support and disable
+automatic provider fallback and SDK retries. Keep the application model stamp
+`gpt-6-astra` and explicit usage accounting.
+
 ## Acceptance criteria
 
 - [ ] The configured application model is gpt-6-astra. Missing project access is reported explicitly; there is no silent model substitution.

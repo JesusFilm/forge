@@ -20,7 +20,8 @@ describes the private reporting contract and limits.
 - Latest source commit: `b0892f4e42e67199de7f9617471140be82775381` for the
   #2568 GA reader continuation. All ten source files match independent review
   hashes. Earlier qualification source: `c9b9d6fd6fc283dc810769a1f8baca03113b4a1d`.
-  Earlier #2573 sources are `acbb33fe4` and `302dffe31`.
+  Earlier #2573 sources are `acbb33fe4` and `302dffe31`. Scope revision
+  `ed7c55a14` records the approved referrer input and is published.
 - The PR records the current published integration SHA and [CI checks](https://github.com/JesusFilm/forge/pull/2578/checks).
   Published head `a23bdb342` passed [forge-ci run 37396138013](https://github.com/JesusFilm/forge/actions/runs/37396138013), with all 40 jobs completed and no failures.
 - The original dirty `/home/nisal/forge` checkout is preserved.
@@ -33,18 +34,18 @@ describes the private reporting contract and limits.
 All issues remain open until merge. Dependencies advance on verified acceptance,
 not issue closure. Implemented, integrated, merged, and live are distinct.
 
-| Issue | Immediate blockers | State                                       | Integrated work                                          |
-| ----- | ------------------ | ------------------------------------------- | -------------------------------------------------------- |
-| #2566 | None               | Integrated-and-verified                     | `9a984c544`; saved Admin comparison                      |
-| #2567 | #2566              | Integrated-and-verified                     | `c89db0e4e`; bounded Astra producer; no live model smoke |
-| #2568 | #2567              | Referrer ingestion in progress              | `b1703cd8c`, `acbe43fc7`, `c9b9d6fd6`, `b0892f4e4`       |
-| #2569 | #2568              | Waiting for prerequisites                   | Unassigned                                               |
-| #2570 | #2566              | Integrated-and-verified                     | `0a93244a3`; private Watch serving                       |
-| #2571 | #2570              | Integrated-and-verified                     | `267a65281`, `b69592b6c`, corrections in `a7f36d778`     |
-| #2572 | #2571              | Integrated-and-verified                     | Core `a7f36d778`, UI `af8eba415`                         |
-| #2573 | #2572              | Private reporting verified; live incomplete | Sources `acbb33fe4`, `302dffe31`; migration `0134`       |
-| #2574 | #2569, #2573       | Waiting for prerequisites                   | Unassigned                                               |
-| #2575 | #2574              | Waiting for prerequisites                   | Unassigned                                               |
+| Issue | Immediate blockers | State                                       | Integrated work                                                  |
+| ----- | ------------------ | ------------------------------------------- | ---------------------------------------------------------------- |
+| #2566 | None               | Integrated-and-verified                     | `9a984c544`; saved Admin comparison                              |
+| #2567 | #2566              | Integrated-and-verified                     | `c89db0e4e`; bounded producer; OpenRouter transport smoke passed |
+| #2568 | #2567              | Referrer ingestion in progress              | `b1703cd8c`, `acbe43fc7`, `c9b9d6fd6`, `b0892f4e4`               |
+| #2569 | #2568              | Waiting for prerequisites                   | Unassigned                                                       |
+| #2570 | #2566              | Integrated-and-verified                     | `0a93244a3`; private Watch serving                               |
+| #2571 | #2570              | Integrated-and-verified                     | `267a65281`, `b69592b6c`, corrections in `a7f36d778`             |
+| #2572 | #2571              | Integrated-and-verified                     | Core `a7f36d778`, UI `af8eba415`                                 |
+| #2573 | #2572              | Private reporting verified; live incomplete | Sources `acbb33fe4`, `302dffe31`; migration `0134`               |
+| #2574 | #2569, #2573       | Waiting for prerequisites                   | Unassigned                                                       |
+| #2575 | #2574              | Waiting for prerequisites                   | Unassigned                                                       |
 
 ## Ownership and continuation
 
@@ -209,3 +210,20 @@ Public experimental serving stays default-off and the incumbent remains availabl
 Do not merge, deploy, start public A/B traffic, promote a winner, or enable refresh
 scheduling without the separate required authority. Preserve useful worktrees and
 the owned PostgreSQL 18 integration database on loopback port `32810`.
+
+## OpenRouter continuation
+
+The user requested OpenRouter instead of provisioning a direct OpenAI key.
+The existing Railway Mastra service has a configured OpenRouter credential, and
+the live provider catalog includes the exact `openai/gpt-6-astra` model with
+structured-output support. The orchestrator owns the narrow provider adapter
+and transport tests; the Sol chats retain their GA/Admin ownership.
+
+The actual adapter passed a live structured-output smoke on 2026-10-06:
+41 input tokens, 12 output tokens, and $0.00101 reported cost. The response
+identified `openai/gpt-6-astra`. No credential was printed or saved. Evidence:
+`/tmp/forge-feat-590-orchestration/openrouter-astra-live-smoke.json`.
+This verifies model access and transport, not recommendation quality, catalog
+cost, or a completed GA-backed generation. The adapter retains validated
+structured output, the same application model stamp, and explicit token usage;
+it disables provider fallback and SDK retries. Development chats remain Sol.
