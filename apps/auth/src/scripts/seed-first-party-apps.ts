@@ -363,8 +363,8 @@ function isExistingDynamicAdminMcpClientMissingOfflineAccess(client: {
 }
 
 // Better Auth 1.7.1 writes public: null and requirePKCE: null on a dynamic
-// registration, so neither may be filtered on true. Rows registered after the
-// push scopes joined the public-DCR union already hold them.
+// registration, so neither may be filtered on true. The NOT clause skips a row
+// that holds both push scopes, so a later boot does not read it again.
 async function addPushScopesToExistingDynamicClients() {
   const candidates = await prisma.oauthClient.findMany({
     where: {
@@ -373,6 +373,7 @@ async function addPushScopesToExistingDynamicClients() {
       disabled: false,
       OR: [{ public: true }, { public: null }],
       scopes: { has: EXPERIENCE_READ_SCOPE },
+      NOT: { scopes: { hasEvery: [...PUSH_CAMPAIGN_SCOPES] } },
       tokenEndpointAuthMethod: "none",
     },
     select: {

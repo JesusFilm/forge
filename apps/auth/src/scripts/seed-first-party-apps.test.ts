@@ -1106,6 +1106,7 @@ describe("seedFirstPartyApps", () => {
           disabled: false,
           OR: [{ public: true }, { public: null }],
           scopes: { has: "experience:read" },
+          NOT: { scopes: { hasEvery: PUSH_CAMPAIGN_SCOPES } },
           tokenEndpointAuthMethod: "none",
         },
         select: {
