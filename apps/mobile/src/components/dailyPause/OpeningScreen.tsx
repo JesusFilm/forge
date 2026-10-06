@@ -18,12 +18,8 @@ import {
 } from "../../lib/dailyPause/progress"
 import type { MeditationLength } from "../../lib/dailyPause/settings"
 import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
-import {
-  PauseBody,
-  PauseButton,
-  PauseMasthead,
-  type PauseFont,
-} from "./WatchScreen"
+import type { PauseFont } from "../../lib/dailyPause/fonts"
+import { PauseBody, PauseButton, PauseMasthead } from "./PauseFrame"
 
 const QUESTION_SIZE = 48
 const QUESTION_LEADING = 44

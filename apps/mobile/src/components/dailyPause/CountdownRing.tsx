@@ -7,7 +7,7 @@ import { Animated, Easing, StyleSheet, Text, View } from "react-native"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { spokenTimeLeft, type Countdown } from "../../lib/dailyPause/countdown"
 import { pauseColors, pauseSizes } from "../../lib/dailyPause/theme"
-import type { PauseFont } from "./WatchScreen"
+import type { PauseFont } from "../../lib/dailyPause/fonts"
 
 const SIZE = pauseSizes.prayRingWidth
 const RADIUS = SIZE / 2

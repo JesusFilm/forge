@@ -29,7 +29,8 @@ import {
 } from "./PauseIntro"
 import { Pulse } from "./Pulse"
 import { StepperPills } from "./StepperPills"
-import { PauseBody, PauseButton, type PauseFont } from "./WatchScreen"
+import type { PauseFont } from "../../lib/dailyPause/fonts"
+import { HeldPauseButton, PauseBody, PauseButton } from "./PauseFrame"
 
 const QUOTE_SIZE = 48
 const QUOTE_LEADING = 36
@@ -38,42 +39,6 @@ const BODY_LINE_RATIO = 1.371
 
 /** The button reads this at 0:00. The timer before it keeps its width. */
 const CONTINUE = "Continue"
-
-/** A tap before the pause ends does nothing (R16). */
-function ignoreTap() {}
-
-type HeldPauseButtonProps = {
-  label: string
-  spokenLabel: string
-  font: PauseFont
-  widthLabel?: string
-}
-
-/** The frame's button while a pause timer runs. It looks the same, takes no
- *  tap, and VoiceOver reads it as a dimmed button with `spokenLabel`. */
-export function HeldPauseButton({
-  label,
-  spokenLabel,
-  font,
-  widthLabel,
-}: HeldPauseButtonProps) {
-  return (
-    <View
-      accessible
-      accessibilityRole="button"
-      accessibilityLabel={spokenLabel}
-      accessibilityState={{ disabled: true }}
-      pointerEvents="none"
-    >
-      <PauseButton
-        label={label}
-        onPress={ignoreTap}
-        font={font}
-        widthLabel={widthLabel}
-      />
-    </View>
-  )
-}
 
 type ReflectScreenProps = {
   /** The run's pinned devotional. */

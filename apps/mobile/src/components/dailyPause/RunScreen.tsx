@@ -137,6 +137,7 @@ export function RunScreen() {
   }
 
   const part = loaded && state.pin != null ? partForStep(state.step) : null
+  const topRow = isVideoPart(state.step) ? "letterbox" : "screen"
 
   return (
     <View style={styles.screen}>
@@ -153,16 +154,9 @@ export function RunScreen() {
         />
       ) : null}
       {content}
-      <CloseButton
-        onPress={close}
-        placement={isVideoPart(state.step) ? "letterbox" : "screen"}
-      />
+      <CloseButton onPress={close} placement={topRow} />
       {__DEV__ && loaded && TIMED_STEPS.has(state.step) ? (
-        <DevSkipButton
-          onPress={run.advance}
-          placement={isVideoPart(state.step) ? "letterbox" : "screen"}
-          font={font}
-        />
+        <DevSkipButton onPress={run.advance} placement={topRow} font={font} />
       ) : null}
     </View>
   )

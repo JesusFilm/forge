@@ -2,43 +2,21 @@
 // On a screen it sits in the safe area. On a video part it sits in the top
 // letterbox, clear of the captions burned into the video (R24).
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { Pressable, StyleSheet, useWindowDimensions } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { Pressable, StyleSheet } from "react-native"
 
 import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
+import { useTopRowTop, type TopRowPlacement } from "./useTopRowTop"
 
 const TARGET_SIZE = 44
 const GLYPH_SIZE = 24
 
-/** The devotional videos are 1080 x 1920. */
-const VIDEO_ASPECT = 1080 / 1920
-
-/** Where a contain-fit devotional video sits in a window of this size. */
-export function devotionalVideoFrame(
-  width: number,
-  height: number,
-): { top: number; height: number } {
-  const videoHeight = Math.min(height, width / VIDEO_ASPECT)
-  return { top: (height - videoHeight) / 2, height: videoHeight }
-}
-
 type CloseButtonProps = {
   onPress: () => void
-  placement: "screen" | "letterbox"
+  placement: TopRowPlacement
 }
 
 export function CloseButton({ onPress, placement }: CloseButtonProps) {
-  const insets = useSafeAreaInsets()
-  const window = useWindowDimensions()
-  // The target's bottom edge meets the video's top edge, so the glyph never
-  // covers the picture, even where the letterbox is shorter than the inset.
-  const top =
-    placement === "screen"
-      ? insets.top
-      : Math.max(
-          0,
-          devotionalVideoFrame(window.width, window.height).top - TARGET_SIZE,
-        )
+  const top = useTopRowTop(placement, TARGET_SIZE)
 
   return (
     <Pressable

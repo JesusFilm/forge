@@ -25,7 +25,8 @@ import { OpeningScreen } from "../OpeningScreen"
 import { PAUSE_INTRO_MS } from "../PauseIntro"
 import { PrayScreen } from "../PrayScreen"
 import { ReflectScreen } from "../ReflectScreen"
-import { PauseButton, WatchScreen } from "../WatchScreen"
+import { PauseButton } from "../PauseFrame"
+import { WatchScreen } from "../WatchScreen"
 
 // The factory owns its state so a case can turn Liquid Glass off.
 jest.mock("expo-glass-effect", () => {

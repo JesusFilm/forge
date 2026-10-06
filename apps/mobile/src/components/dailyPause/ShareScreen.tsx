@@ -9,7 +9,8 @@ import { getPauseProgressStore } from "../../lib/dailyPause/progress"
 import { shareDevotionalVideo } from "../../lib/dailyPause/shareVideo"
 import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
 import type { Today } from "../../lib/dailyPause/today"
-import { PauseBody, PauseButton, type PauseFont } from "./WatchScreen"
+import type { PauseFont } from "../../lib/dailyPause/fonts"
+import { PauseBody, PauseButton } from "./PauseFrame"
 
 const PROMPT =
   "Before we close, take a moment to consider a couple friends that you could share this truth with."

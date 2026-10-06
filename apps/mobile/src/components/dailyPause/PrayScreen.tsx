@@ -22,9 +22,9 @@ import {
   usePauseIntro,
 } from "./PauseIntro"
 import { Pulse } from "./Pulse"
-import { HeldPauseButton } from "./ReflectScreen"
 import { StepperPills } from "./StepperPills"
-import { PauseBody, PauseButton, type PauseFont } from "./WatchScreen"
+import type { PauseFont } from "../../lib/dailyPause/fonts"
+import { HeldPauseButton, PauseBody, PauseButton } from "./PauseFrame"
 
 type PrayScreenProps = {
   /** The run's pinned devotional. */

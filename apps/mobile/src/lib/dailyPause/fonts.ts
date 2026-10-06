@@ -120,9 +120,12 @@ function styleFor(face: PauseFace, state: LoadState): PauseFontStyle {
  * Loads the Pass 2 faces. `ready` turns true when the load ends, also on a
  * failure: then `font()` gives a system face, so text never renders blank.
  */
+/** Reads a face's style. Every Pause screen takes one as its `font`. */
+export type PauseFont = (face: PauseFace) => PauseFontStyle
+
 export function usePauseFonts(): {
   ready: boolean
-  font: (face: PauseFace) => PauseFontStyle
+  font: PauseFont
 } {
   // A screen that mounts after the load starts ready, so it never swaps faces.
   const [state, setState] = useState<LoadState>(() =>

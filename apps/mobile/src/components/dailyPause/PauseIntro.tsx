@@ -20,7 +20,7 @@ import {
 } from "./StepperPills"
 import { pauseColors } from "../../lib/dailyPause/theme"
 import { usePauseClock } from "./usePauseClock"
-import { pauseBodyPadding } from "./WatchScreen"
+import { pauseBodyPadding } from "./PauseFrame"
 
 /** The lit pill holds at the center before the stepper moves, in ms. */
 const HOLD_MS = 300

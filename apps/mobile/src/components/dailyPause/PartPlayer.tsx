@@ -41,9 +41,10 @@ import {
   pauseSizes,
   pauseSpacing,
 } from "../../lib/dailyPause/theme"
-import { devotionalVideoFrame } from "./CloseButton"
+import { devotionalVideoFrame } from "../../lib/dailyPause/videoFrame"
 import { PartProgressBar } from "./PartProgressBar"
-import { PauseButton, type PauseFont } from "./WatchScreen"
+import type { PauseFont } from "../../lib/dailyPause/fonts"
+import { PauseButton } from "./PauseFrame"
 
 const CUE_HEIGHT = 44
 const CUE_GLYPH_SIZE = 14

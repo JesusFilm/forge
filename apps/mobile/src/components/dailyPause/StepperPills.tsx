@@ -3,7 +3,7 @@
 // the next pill, which lights up. Reduce Motion shows the end.
 import { Animated, Easing, StyleSheet, Text, View } from "react-native"
 
-import type { PauseFace, PauseFontStyle } from "../../lib/dailyPause/fonts"
+import type { PauseFont } from "../../lib/dailyPause/fonts"
 import {
   pauseColors,
   pauseRadii,
@@ -104,7 +104,7 @@ function inverse(level: Level): Level {
 type StepperPillsProps = {
   /** The step the path arrives at. */
   arrival: StepperStage
-  font: (face: PauseFace) => PauseFontStyle
+  font: PauseFont
 }
 
 export function StepperPills({ arrival, font }: StepperPillsProps) {

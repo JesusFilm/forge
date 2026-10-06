@@ -29,7 +29,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
-import { devotionalVideoFrame } from "../CloseButton"
+import { devotionalVideoFrame } from "../../../lib/dailyPause/videoFrame"
 import { PartPlayer } from "../PartPlayer"
 
 /* eslint-disable @typescript-eslint/no-require-imports */

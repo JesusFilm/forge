@@ -2,12 +2,11 @@
 // time: the three video parts and the Reflect and Pray countdowns. The run
 // screen renders it only under __DEV__, so a release bundle drops it.
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { Pressable, StyleSheet, Text, useWindowDimensions } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { Pressable, StyleSheet, Text } from "react-native"
 
+import type { PauseFont } from "../../lib/dailyPause/fonts"
 import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
-import { devotionalVideoFrame } from "./CloseButton"
-import type { PauseFont } from "./WatchScreen"
+import { useTopRowTop, type TopRowPlacement } from "./useTopRowTop"
 
 const TARGET_HEIGHT = 44
 const GLYPH_SIZE = 16
@@ -15,7 +14,7 @@ const SIDE_PADDING = 10
 
 type DevSkipButtonProps = {
   onPress: () => void
-  placement: "screen" | "letterbox"
+  placement: TopRowPlacement
   font: PauseFont
 }
 
@@ -24,16 +23,8 @@ export function DevSkipButton({
   placement,
   font,
 }: DevSkipButtonProps) {
-  const insets = useSafeAreaInsets()
-  const window = useWindowDimensions()
   // The same row as the close, so it never covers the picture.
-  const top =
-    placement === "screen"
-      ? insets.top
-      : Math.max(
-          0,
-          devotionalVideoFrame(window.width, window.height).top - TARGET_HEIGHT,
-        )
+  const top = useTopRowTop(placement, TARGET_HEIGHT)
 
   return (
     <Pressable
