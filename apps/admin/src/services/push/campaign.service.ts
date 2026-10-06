@@ -19,6 +19,7 @@ import {
 import {
   isPushCampaignEditable,
   PUSH_EDITABLE_STATUSES,
+  refuseLostWrite,
   writePushCampaignContent,
   type PushCampaignContentWriteResult,
 } from "./campaign-content.service"
@@ -33,9 +34,7 @@ import {
   PushFrozenError,
   PushInputError,
   PushInvalidTransitionError,
-  PushNotFoundError,
   PushNotTestedError,
-  PushStaleContentVersionError,
 } from "./errors"
 import { markPushCampaignReservedMissed } from "./recovery"
 
@@ -149,26 +148,7 @@ export async function pinPushTestContentVersion(
     data: { lastTestContentVersion: input.expectedContentVersion },
   })
   if (count === 1) return
-  const current = await prisma.pushCampaign.findUnique({
-    where: { id: input.campaignId },
-    select: {
-      status: true,
-      contentVersion: true,
-      lastActorId: true,
-      updatedAt: true,
-    },
-  })
-  if (current === null) {
-    throw new PushNotFoundError("That campaign does not exist")
-  }
-  if (!isPushCampaignEditable(current.status)) {
-    throw new PushFrozenError(current.status)
-  }
-  throw new PushStaleContentVersionError({
-    currentContentVersion: current.contentVersion,
-    lastActorId: current.lastActorId,
-    updatedAt: current.updatedAt,
-  })
+  await refuseLostWrite(prisma, input.campaignId)
 }
 
 /**

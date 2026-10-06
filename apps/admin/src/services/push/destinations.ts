@@ -17,8 +17,16 @@ import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
 
 export const PUSH_SERIES_LABELS = [VideoLabel.SERIES, VideoLabel.COLLECTION]
 
+/** The destination kinds that a `Video` row holds. */
+export type PushVideoDestinationKind = Exclude<
+  PushDestinationKind,
+  "EXPERIENCE"
+>
+
 /** KTD9 — the kind a video's label gives it; the split the predicates use. */
-export function pushVideoKindOfLabel(label: VideoLabel): "VIDEO" | "SERIES" {
+export function pushVideoKindOfLabel(
+  label: VideoLabel,
+): PushVideoDestinationKind {
   return (PUSH_SERIES_LABELS as readonly VideoLabel[]).includes(label)
     ? "SERIES"
     : "VIDEO"
@@ -26,7 +34,7 @@ export function pushVideoKindOfLabel(label: VideoLabel): "VIDEO" | "SERIES" {
 
 /** A live video row of one kind, published or not. SERIES means the series labels. */
 export function pushVideoKindWhere(
-  kind: "VIDEO" | "SERIES",
+  kind: PushVideoDestinationKind,
 ): Prisma.VideoWhereInput {
   return {
     deletedAt: null,
@@ -45,7 +53,7 @@ function pushVideoPublishedLocaleWhere(): Prisma.VideoWhereInput {
 
 /** A video or series the Watch apps show: live, published, not restricted. */
 export function pushVideoDestinationWhere(
-  kind: "VIDEO" | "SERIES",
+  kind: PushVideoDestinationKind,
 ): Prisma.VideoWhereInput {
   return {
     ...pushVideoKindWhere(kind),
@@ -64,6 +72,36 @@ export function pushExperienceDestinationWhere(): Prisma.ExperienceLocaleWhereIn
     ...pushExperiencePublishedLocaleWhere(),
     experience: { archivedAt: null },
   }
+}
+
+/** The picker's and the agent's text match on a video: slug or any locale title. */
+export function pushVideoSearchWhere(q: string): Prisma.VideoWhereInput {
+  return q
+    ? {
+        OR: [
+          { slug: { contains: q, mode: "insensitive" } },
+          {
+            locales: {
+              some: { title: { contains: q, mode: "insensitive" } },
+            },
+          },
+        ],
+      }
+    : {}
+}
+
+/** The picker's and the agent's text match on an experience locale. */
+export function pushExperienceSearchWhere(
+  q: string,
+): Prisma.ExperienceLocaleWhereInput {
+  return q
+    ? {
+        OR: [
+          { slug: { contains: q, mode: "insensitive" } },
+          { title: { contains: q, mode: "insensitive" } },
+        ],
+      }
+    : {}
 }
 
 /** True while the destination still resolves as something a tap can open. */

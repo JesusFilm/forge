@@ -54,6 +54,7 @@ type CampaignRow = {
   contentVersion: number
   lastActorId: string | null
   updatedAt: Date
+  copies: { languageSlug: string; title: string; body: string }[]
 }
 
 /** Stands in for Prisma's column reference, so a test can name it in a `WHERE`. */
@@ -80,6 +81,8 @@ function buildClient(
           contentVersion: 5,
           lastActorId: ACTOR,
           updatedAt: new Date("2026-10-06T09:00:00.000Z"),
+          // A pin refusal reads the content select, which always has copies.
+          copies: [],
           ...campaign,
         }
   const client = {

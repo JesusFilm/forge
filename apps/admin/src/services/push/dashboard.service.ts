@@ -18,9 +18,12 @@ import {
   type WorkflowWorkerStatusRow,
 } from "@/services/workflow-worker-heartbeat.service"
 
+import { pushCampaignAiMarkerOf } from "./campaign-content.service"
 import {
   pushExperienceDestinationWhere,
+  pushExperienceSearchWhere,
   pushVideoDestinationWhere,
+  pushVideoSearchWhere,
 } from "./destinations"
 import { PUSH_ENGLISH_LANGUAGE_SLUG } from "./language-resolution"
 
@@ -187,13 +190,14 @@ export async function readPushCampaignDetail(
   })
   if (row === null) return null
 
+  const marker = pushCampaignAiMarkerOf(row)
   let aiMarker: PushCampaignAiMarkerDetail | null = null
-  if (row.aiLastActorId && row.aiLastWrittenAt) {
-    const names = await readPushActorNames(prisma, [row.aiLastActorId])
+  if (marker) {
+    const names = await readPushActorNames(prisma, [marker.actorId])
     aiMarker = {
-      actorId: row.aiLastActorId,
-      actorName: names.get(row.aiLastActorId) ?? row.aiLastActorId,
-      writtenAt: row.aiLastWrittenAt,
+      actorId: marker.actorId,
+      actorName: names.get(marker.actorId) ?? marker.actorId,
+      writtenAt: marker.writtenAt,
     }
   }
 
@@ -388,14 +392,7 @@ export async function searchPushDestinations(
     const rows = await prisma.experienceLocale.findMany({
       where: {
         ...pushExperienceDestinationWhere(),
-        ...(query
-          ? {
-              OR: [
-                { slug: { contains: query, mode: "insensitive" } },
-                { title: { contains: query, mode: "insensitive" } },
-              ],
-            }
-          : {}),
+        ...pushExperienceSearchWhere(query),
       },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take,
@@ -414,18 +411,7 @@ export async function searchPushDestinations(
       // Published and not watch-restricted: a draft picked here would open the
       // not-found screen on every phone the campaign reaches.
       ...pushVideoDestinationWhere(input.kind),
-      ...(query
-        ? {
-            OR: [
-              { slug: { contains: query, mode: "insensitive" } },
-              {
-                locales: {
-                  some: { title: { contains: query, mode: "insensitive" } },
-                },
-              },
-            ],
-          }
-        : {}),
+      ...pushVideoSearchWhere(query),
     },
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     take,

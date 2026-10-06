@@ -65,11 +65,13 @@ export async function readPushTestRunState(
   }
 }
 
-/**
- * KTD17 — a test cannot be cancelled, so the refusal names when it ends. The
- * minute rounds up, so the named time is never before the window ends.
- */
+/** `HH:MM` UTC. The minute rounds up, so the time is never before `at`. */
+export function formatPushReceiptsClock(at: Date): string {
+  const minute = new Date(Math.ceil(at.getTime() / 60_000) * 60_000)
+  return minute.toISOString().slice(11, 16)
+}
+
+/** KTD17 — a test cannot be cancelled, so the refusal names when it ends. */
 export function formatPushTestRunRefusal(receiptsUntil: Date): string {
-  const minute = new Date(Math.ceil(receiptsUntil.getTime() / 60_000) * 60_000)
-  return `The last test is still collecting receipts until about ${minute.toISOString().slice(11, 16)} UTC. Send a new test after that.`
+  return `The last test is still collecting receipts until about ${formatPushReceiptsClock(receiptsUntil)} UTC. Send a new test after that.`
 }

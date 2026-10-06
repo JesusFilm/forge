@@ -11,10 +11,10 @@
  * `campaign.service.ts` imports from here, never the reverse.
  */
 import {
+  PushAudienceScope,
   PushCampaignStatus,
   type Prisma,
   type PrismaClient,
-  type PushAudienceScope,
   type PushDestinationKind,
 } from "@prisma/client"
 
@@ -173,7 +173,7 @@ type ContentRow = Prisma.PushCampaignGetPayload<{
 }>
 
 const EMPTY_AUDIENCE: PushCampaignAudience = {
-  scope: "EVERYWHERE",
+  scope: PushAudienceScope.EVERYWHERE,
   countries: [],
   languageFilter: [],
 }
@@ -197,26 +197,48 @@ function bySlug(
   return left.languageSlug < right.languageSlug ? -1 : 1
 }
 
+/** A stored destination needs both columns; one alone is no destination. */
+export function pushCampaignDestinationOf(row: {
+  destinationKind: PushDestinationKind | null
+  destinationSlug: string | null
+}): PushCampaignDestination | null {
+  return row.destinationKind && row.destinationSlug
+    ? { kind: row.destinationKind, slug: row.destinationSlug }
+    : null
+}
+
+/** KTD6 — the marker needs both columns, which only an MCP write sets. */
+export function pushCampaignAiMarkerOf(row: {
+  aiLastActorId: string | null
+  aiLastWrittenAt: Date | null
+}): PushCampaignAiMarker | null {
+  return row.aiLastActorId && row.aiLastWrittenAt
+    ? { actorId: row.aiLastActorId, writtenAt: row.aiLastWrittenAt }
+    : null
+}
+
+export function pushCampaignAudienceOf(row: {
+  audienceScope: PushAudienceScope
+  countries: readonly string[]
+  languageFilter: readonly string[]
+}): PushCampaignAudience {
+  return {
+    scope: row.audienceScope,
+    countries: row.countries,
+    languageFilter: row.languageFilter,
+  }
+}
+
 function toState(row: ContentRow): PushCampaignContentState {
   return {
     campaignId: row.id,
     status: row.status,
     contentVersion: row.contentVersion,
     copies: [...row.copies].sort(bySlug),
-    destination:
-      row.destinationKind && row.destinationSlug
-        ? { kind: row.destinationKind, slug: row.destinationSlug }
-        : null,
-    audience: {
-      scope: row.audienceScope,
-      countries: row.countries,
-      languageFilter: row.languageFilter,
-    },
+    destination: pushCampaignDestinationOf(row),
+    audience: pushCampaignAudienceOf(row),
     lastActorId: row.lastActorId,
-    aiMarker:
-      row.aiLastActorId && row.aiLastWrittenAt
-        ? { actorId: row.aiLastActorId, writtenAt: row.aiLastWrittenAt }
-        : null,
+    aiMarker: pushCampaignAiMarkerOf(row),
     updatedAt: row.updatedAt,
   }
 }
@@ -427,7 +449,7 @@ async function readContent(
 }
 
 /** The conditional update moved no row; the current row names the reason. */
-async function refuseLostWrite(
+export async function refuseLostWrite(
   prisma: Pick<PrismaClient, "pushCampaign">,
   campaignId: string,
 ): Promise<never> {

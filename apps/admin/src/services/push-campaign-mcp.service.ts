@@ -11,8 +11,10 @@ import { env } from "@/config/env"
 import { ForbiddenError } from "@/services/errors"
 import {
   countPushAgentAudience,
+  isPushSendingEnabled,
   listPushAgentCampaigns,
   PUSH_AGENT_CAMPAIGN_LIST_MAX_LIMIT,
+  readCampaignDestination,
   readPushAgentCampaign,
   searchPushAgentDestinations,
   searchPushAgentLanguages,
@@ -23,7 +25,6 @@ import {
   writePushCampaignContent,
   type PushCampaignAiMarker,
   type PushCampaignContentWriteResult,
-  type PushCampaignDestination,
 } from "@/services/push/campaign-content.service"
 import {
   PUSH_MAX_COPY_ROWS,
@@ -34,7 +35,6 @@ import {
   PushDestinationKindSchema,
   PushLanguageSlugSchema,
 } from "@/services/push/contracts"
-import { readPushDestinationStates } from "@/services/push/destinations"
 import {
   PushFrozenError,
   PushInputError,
@@ -46,6 +46,7 @@ import {
   type PushInputIssue,
 } from "@/services/push/errors"
 import {
+  formatPushReceiptsClock,
   readPushTestRunState,
   type PushTestRunState,
 } from "@/services/push/test-run-state"
@@ -238,16 +239,6 @@ function markerOf(marker: PushCampaignAiMarker | null) {
     : null
 }
 
-function sendingEnabled(): boolean {
-  return env.PUSH_CAMPAIGNS_ENABLED === "true"
-}
-
-/** The minute rounds up, so the named time is never before the window ends. */
-function clockTime(at: Date): string {
-  const minute = new Date(Math.ceil(at.getTime() / 60_000) * 60_000)
-  return minute.toISOString().slice(11, 16)
-}
-
 function warningsFor(input: {
   destination: PushAgentCampaignDestination | null
   languages: readonly string[]
@@ -297,7 +288,7 @@ function warningsFor(input: {
       })
     }
   }
-  if (!sendingEnabled()) {
+  if (!isPushSendingEnabled()) {
     warnings.push({
       code: "sending_disabled",
       message:
@@ -335,7 +326,7 @@ function nextStepsFor(input: {
   }
   steps.push(
     input.test.running
-      ? `Wait until about ${clockTime(input.test.receiptsUntil)} UTC, then send a new test.`
+      ? `Wait until about ${formatPushReceiptsClock(input.test.receiptsUntil)} UTC, then send a new test.`
       : "Send a test to a test device.",
     "Then schedule the campaign, or send it now.",
   )
@@ -493,7 +484,7 @@ export class PushCampaignMcpService {
   private async writeResult(result: PushCampaignContentWriteResult) {
     const { after } = result
     const [destination, test] = await Promise.all([
-      this.destinationState(after.destination),
+      readCampaignDestination(this.prisma, after.destination),
       readPushTestRunState(this.prisma, after.campaignId),
     ])
     const editorUrl = editorUrlFor(after.campaignId)
@@ -525,25 +516,6 @@ export class PushCampaignMcpService {
         test,
       }),
       aiMarker: markerOf(after.aiMarker),
-    }
-  }
-
-  private async destinationState(
-    destination: PushCampaignDestination | null,
-  ): Promise<PushAgentCampaignDestination | null> {
-    if (destination === null) return null
-    const states = await readPushDestinationStates(
-      this.prisma,
-      destination.kind,
-      [destination.slug],
-    )
-    const state = states.get(destination.slug)
-    return {
-      kind: destination.kind,
-      slug: destination.slug,
-      exists: state !== undefined,
-      published: state?.published ?? false,
-      reason: state?.reason ?? null,
     }
   }
 }

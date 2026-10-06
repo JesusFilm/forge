@@ -26,17 +26,23 @@ import {
 } from "./audience.service"
 import {
   isPushCampaignEditable,
+  pushCampaignAiMarkerOf,
+  pushCampaignAudienceOf,
+  pushCampaignDestinationOf,
   type PushCampaignAiMarker,
   type PushCampaignAudience,
   type PushCampaignCopy,
   type PushCampaignDestination,
 } from "./campaign-content.service"
 import {
+  pushExperienceSearchWhere,
   pushVideoKindOfLabel,
   pushVideoKindWhere,
+  pushVideoSearchWhere,
   readPushDestinationStates,
   type PushDestinationState,
   type PushDestinationUnpublishedReason,
+  type PushVideoDestinationKind,
 } from "./destinations"
 import { PushInputError } from "./errors"
 import { PUSH_ENGLISH_LANGUAGE_SLUG } from "./language-resolution"
@@ -175,6 +181,11 @@ export type PushAgentCampaign = Readonly<{
   updatedAt: Date
 }>
 
+/** Read at each call, not at module load, so a result shows the current flag. */
+export function isPushSendingEnabled(): boolean {
+  return env.PUSH_CAMPAIGNS_ENABLED === "true"
+}
+
 /** KTD8 — the known-language rule the content write also applies. */
 const KNOWN_LANGUAGE = {
   deletedAt: null,
@@ -277,7 +288,7 @@ function trimmed(value: string | null | undefined): string | null {
 
 async function findVideoDestinations(
   prisma: PrismaClient,
-  kinds: ReadonlyArray<"VIDEO" | "SERIES">,
+  kinds: ReadonlyArray<PushVideoDestinationKind>,
   q: string,
 ): Promise<FoundPage> {
   if (kinds.length === 0) return { found: [], more: false }
@@ -287,18 +298,7 @@ async function findVideoDestinations(
         // The kind predicates carry `deletedAt: null`, so a deleted video is
         // never found.
         { OR: kinds.map(pushVideoKindWhere) },
-        q
-          ? {
-              OR: [
-                { slug: { contains: q, mode: "insensitive" } },
-                {
-                  locales: {
-                    some: { title: { contains: q, mode: "insensitive" } },
-                  },
-                },
-              ],
-            }
-          : {},
+        pushVideoSearchWhere(q),
       ],
     },
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
@@ -327,14 +327,7 @@ async function findExperienceDestinations(
   q: string,
 ): Promise<FoundPage> {
   const rows = await prisma.experienceLocale.findMany({
-    where: q
-      ? {
-          OR: [
-            { slug: { contains: q, mode: "insensitive" } },
-            { title: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : {},
+    where: pushExperienceSearchWhere(q),
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     take: PUSH_AGENT_DESTINATION_SEARCH_LIMIT + 1,
     select: { slug: true, title: true, locale: true, updatedAt: true },
@@ -505,24 +498,6 @@ export async function countPushAgentAudience(
   }
 }
 
-function aiMarkerOf(row: {
-  aiLastActorId: string | null
-  aiLastWrittenAt: Date | null
-}): PushCampaignAiMarker | null {
-  return row.aiLastActorId && row.aiLastWrittenAt
-    ? { actorId: row.aiLastActorId, writtenAt: row.aiLastWrittenAt }
-    : null
-}
-
-function destinationOf(row: {
-  destinationKind: PushDestinationKind | null
-  destinationSlug: string | null
-}): PushCampaignDestination | null {
-  return row.destinationKind && row.destinationSlug
-    ? { kind: row.destinationKind, slug: row.destinationSlug }
-    : null
-}
-
 function listLimit(limit: number | undefined): number {
   const value = limit ?? PUSH_AGENT_CAMPAIGN_LIST_LIMIT
   if (
@@ -588,8 +563,8 @@ export async function listPushAgentCampaigns(
       revision: row.contentVersion,
       englishTitle: row.copies[0]?.title ?? null,
       languageCount: row._count.copies,
-      destination: destinationOf(row),
-      aiMarker: aiMarkerOf(row),
+      destination: pushCampaignDestinationOf(row),
+      aiMarker: pushCampaignAiMarkerOf(row),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     })),
@@ -597,7 +572,7 @@ export async function listPushAgentCampaigns(
   }
 }
 
-async function readCampaignDestination(
+export async function readCampaignDestination(
   prisma: PrismaClient,
   destination: PushCampaignDestination | null,
 ): Promise<PushAgentCampaignDestination | null> {
@@ -651,7 +626,7 @@ export async function readPushAgentCampaign(
   if (row === null) return null
 
   const [destination, test] = await Promise.all([
-    readCampaignDestination(prisma, destinationOf(row)),
+    readCampaignDestination(prisma, pushCampaignDestinationOf(row)),
     readPushTestRunState(prisma, row.id),
   ])
   const asked = query.languages ? new Set(query.languages) : null
@@ -661,19 +636,15 @@ export async function readPushAgentCampaign(
     status: row.status,
     revision: row.contentVersion,
     editable,
-    sendingEnabled: env.PUSH_CAMPAIGNS_ENABLED === "true",
+    sendingEnabled: isPushSendingEnabled(),
     languages: row.copies.map((copy) => copy.languageSlug),
     copies: asked
       ? row.copies.filter((copy) => asked.has(copy.languageSlug))
       : row.copies,
     destination,
-    audience: {
-      scope: row.audienceScope,
-      countries: row.countries,
-      languageFilter: row.languageFilter,
-    },
+    audience: pushCampaignAudienceOf(row),
     test,
-    aiMarker: aiMarkerOf(row),
+    aiMarker: pushCampaignAiMarkerOf(row),
     schedule: editable
       ? null
       : {
