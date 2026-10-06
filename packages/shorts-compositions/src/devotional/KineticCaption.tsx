@@ -23,12 +23,23 @@ const SERIF = `'${TEASER_FONT_FAMILIES.literata}', Georgia, serif`
 const SANS = `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-serif`
 
 const FUNCTION = new Set(
-  "a an the and or but of to in on at by for with from his her their its it is was were he she they we you i my your our all this that".split(
-    " ",
-  ),
+  [
+    "a an the and or but of to in on at by for with from his her their its it is was were he she they we you i my your our all this that",
+    // Russian (Bartimaeus RU, 2026-10-06): prepositions, conjunctions and
+    // pronouns that must not end a run on their own.
+    "а и в во на у с со к ко о об от до из за по для не ни но что как это он она они мы ты вы его её их мне тебе себе",
+  ]
+    .join(" ")
+    .split(" "),
 )
 
-const clean = (w: string) => w.toLowerCase().replace(/[^a-z']/g, "")
+// Letters of ANY script: `[^a-z]` emptied every Cyrillic word, so no hero or
+// accent was ever found and the Russian opening fell apart.
+const clean = (w: string) =>
+  w
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[^\p{L}']/gu, "")
 
 type Token = { word: string; role: "hero" | "accent" | "plain"; at: number }
 
