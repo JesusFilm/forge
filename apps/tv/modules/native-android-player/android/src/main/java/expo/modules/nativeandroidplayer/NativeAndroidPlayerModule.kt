@@ -108,6 +108,7 @@ class NativeAndroidPlayerModule : Module() {
         "onEnded",
         "onPlayNext",
         "onPlaybackPosition",
+        "onPlaybackState",
         "onError",
         "onAudioChange",
         "onSubtitleChange",
@@ -122,6 +123,7 @@ class NativeAndroidPlayerModule : Module() {
       Prop("sourceUrl") { view: NativeAndroidPlayerView, value: String? ->
         view.sourceUrl = value
       }
+      Prop("sourceGeneration") { view: NativeAndroidPlayerView, value: Int? -> view.sourceGeneration = value ?: 0 }
       Prop("storyboardUrl") { view: NativeAndroidPlayerView, value: String? -> view.storyboardUrl = value }
       Prop("title") { view: NativeAndroidPlayerView, value: String? ->
         view.videoTitle = value

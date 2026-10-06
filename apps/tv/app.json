@@ -54,6 +54,7 @@
         }
       ],
       "./plugins/withTVInfoPlistFixes",
+      "./plugins/withTVPodDeploymentTarget",
       "./plugins/withAssistantSearchIntent",
       "./plugins/withTVHardwareFeatures",
       "./plugins/withAndroidStartupLoading",

@@ -40,6 +40,10 @@ if (Platform.OS === "android") {
 }
 
 type NativeAndroidPlayerProps = {
+  sourceGeneration?: number
+  onPlaybackState?: (
+    snapshot: import("../lib/recommendations/playbackRecorder").PlaybackObservation,
+  ) => void
   streamingUrl: string
   videoId?: string | null
   title?: string
@@ -64,6 +68,8 @@ function formatClock(seconds: number): string {
 }
 
 export function NativeAndroidPlayer({
+  sourceGeneration = 0,
+  onPlaybackState,
   streamingUrl,
   videoId,
   title,
@@ -412,6 +418,8 @@ export function NativeAndroidPlayer({
         meaningfulStateRef.current = result.state
         if (result.record) onMeaningfulPlaybackRef.current?.(normalized)
       }}
+      sourceGeneration={sourceGeneration}
+      onPlaybackState={(event) => onPlaybackState?.(event.nativeEvent)}
       onError={(event) => {
         qoe.onError(event.nativeEvent.message)
         reportDatadogError(new Error(event.nativeEvent.message), {

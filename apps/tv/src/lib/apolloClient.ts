@@ -47,9 +47,10 @@ function mergeContextHeaders(
 export function createRequestChain(): ApolloLink {
   // Two disjoint allowlists, one selection point (`headersForOperation`):
   //
-  //   FLEET token + x-viewer-id ride ONLY on the Search op — admin buckets a
+  //   FLEET token + x-viewer-id ride on the Search op — admin buckets a
   //     fleet key per device (consumer:<key>:v:<viewer_id>), and on other public
   //     ops the bearer would pool the whole fleet into one bucket.
+  //   Recommendation lifecycle uses the FLEET bearer without x-viewer-id.
   //   USER access token rides ONLY on watch-event writes.
   //
   // The user token arrives through operation CONTEXT rather than being read

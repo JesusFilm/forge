@@ -149,6 +149,9 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   let onEnded = EventDispatcher()
   let onPlayNext = EventDispatcher()
   let onPlaybackPosition = EventDispatcher()
+  let onPlaybackState = EventDispatcher()
+  var sourceGeneration = 0
+  private var observationTimer: Timer?
   let onError = EventDispatcher()
   let onAudioChange = EventDispatcher()
   let onSubtitleChange = EventDispatcher()
@@ -369,9 +372,13 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
     ) { [weak self] time in
       self?.handleTimeUpdate(time.seconds)
     }
+    observationTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+      self?.emitPlaybackState()
+    }
   }
 
   deinit {
+    observationTimer?.invalidate()
     if let periodicObserver { player.removeTimeObserver(periodicObserver) }
     if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
     if let timeJumpObserver { NotificationCenter.default.removeObserver(timeJumpObserver) }
@@ -914,6 +921,25 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
     subtitleLabel.isHidden = cue == nil
   }
 
+  private func emitPlaybackState() {
+    guard window != nil, sourceUrl == loadedSourceUrl else { return }
+    let position = player.currentTime().seconds
+    guard position.isFinite else { return }
+    let state: String
+    if playbackFailureHandled { state = "error" }
+    else if endHandled { state = "ended" }
+    else if sourceSeekPending || player.timeControlStatus == .waitingToPlayAtSpecifiedRate { state = "buffering" }
+    else if player.timeControlStatus == .playing { state = "playing" }
+    else { state = "paused" }
+    onPlaybackState([
+      "sourceGeneration": sourceGeneration,
+      "state": state,
+      "positionSeconds": max(0, position),
+      "durationSeconds": currentDuration > 0 ? currentDuration as Any : NSNull(),
+      "seeking": sourceSeekPending
+    ])
+  }
+
   public func playerViewControllerWillBeginDismissalTransition(
     _ playerViewController: AVPlayerViewController
   ) {
@@ -995,6 +1021,7 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   private func handleEnded() {
     guard !endHandled else { return }
     endHandled = true
+    emitPlaybackState()
     guard let slug = upNextSlug, !slug.isEmpty else {
       if playerController.presentingViewController != nil {
         programmaticDismissal = true

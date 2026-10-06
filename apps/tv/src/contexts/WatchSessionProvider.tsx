@@ -24,6 +24,14 @@ import { getApolloClient } from "../lib/apolloClient"
 import { useCarriedLanguageSlug } from "./SeriesLanguageContext"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 import {
+  takePlaybackEntry,
+  type PlaybackEntry,
+} from "../lib/recommendations/playbackEntry"
+import {
+  takeRecommendationSelection,
+  type Attribution,
+} from "../lib/recommendations/client"
+import {
   resolveDefaultSubtitleSlug,
   resolveDefaultVariantIndex,
   selectActiveVariant,
@@ -46,6 +54,8 @@ export {
 // ── Context ────────────────────────────────────────────────────────────────
 
 type WatchSessionContextValue = {
+  recommendationAttribution: Attribution | undefined
+  playbackEntry: PlaybackEntry | undefined
   video: WatchVideoRecord | null
   setVideo: (video: WatchVideoRecord | null) => void
   activeVariantIndex: number
@@ -104,7 +114,13 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     hydrated: preferencesHydrated,
   } = useWatchPreferences()
 
-  const [video, setVideo] = useState<WatchVideoRecord | null>(null)
+  const [video, setVideoState] = useState<WatchVideoRecord | null>(null)
+  const [recommendationAttribution, setRecommendationAttribution] = useState<
+    Attribution | undefined
+  >()
+  const [playbackEntry, setPlaybackEntry] = useState<
+    PlaybackEntry | undefined
+  >()
   const [activeVariantIndex, setActiveVariantIndexState] = useState(0)
   // Subtitles on/off: LOCAL state (no persisted store on TV v1). Off by default.
   const [subtitleEnabled, setSubtitleEnabledState] = useState(false)
@@ -127,6 +143,18 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // and with it the context memo). Read only inside the event handler.
   const videoRef = useRef<WatchVideoRecord | null>(null)
   videoRef.current = video
+  const setVideo = useCallback((next: WatchVideoRecord | null) => {
+    if (next?.documentId !== videoRef.current?.documentId) {
+      userChoseVariantRef.current = false
+      resolvedVariantForRef.current = null
+      setPlaybackEntry(next?.slug ? takePlaybackEntry(next.slug) : undefined)
+      setRecommendationAttribution(
+        next?.slug ? takeRecommendationSelection(next.slug) : undefined,
+      )
+    }
+    videoRef.current = next
+    setVideoState(next)
+  }, [])
 
   // Exposed setters mark explicit user intent so the resolution effects below
   // (which call the raw state setters) never trip these guards. The audio setter
@@ -151,7 +179,14 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     setActiveSubtitleSlugState(slug)
   }, [])
 
-  const activeVariant = selectActiveVariant(video, activeVariantIndex)
+  const selectedVariant = selectActiveVariant(video, activeVariantIndex)
+  const requestedAudio = recommendationAttribution?.audioLanguageSlug
+  const activeVariant =
+    requestedAudio && !userChoseVariantRef.current
+      ? (video?.variants.find(
+          (variant) => variant.languageSlug === requestedAudio,
+        ) ?? null)
+      : selectedVariant
 
   // Lazily-fetched per-dub media keyed by dub id so an opened language stays
   // warm across switches/re-entry. requestedRef dedupes in-flight + completed
@@ -306,6 +341,8 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   const value = useMemo<WatchSessionContextValue>(
     () => ({
       video,
+      recommendationAttribution,
+      playbackEntry,
       setVideo,
       activeVariantIndex,
       setActiveVariantIndex,
@@ -322,6 +359,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     }),
     [
       video,
+      recommendationAttribution,
+      playbackEntry,
+      setVideo,
       activeVariantIndex,
       setActiveVariantIndex,
       subtitleEnabled,

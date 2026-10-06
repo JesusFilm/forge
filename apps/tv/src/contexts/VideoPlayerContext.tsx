@@ -10,6 +10,8 @@ import type { ReactNode } from "react"
 
 import type { WatchEventIdentity } from "../lib/watchEvents/watchEvents"
 import { createUpNextChainLatch } from "./upNextChain"
+import type { Attribution } from "../lib/recommendations/client"
+import type { PlaybackEntry } from "../lib/recommendations/playbackEntry"
 
 /** What autoplays when the current video ends: the parent's next child.
  *  Threaded from the details screen (which owns the record) so the overlay
@@ -35,6 +37,8 @@ type VideoPlayerState = {
   /** Up Next autoplay target for this playback, or null (nothing follows). */
   currentUpNext: UpNextTarget | null
   isVisible: boolean
+  recommendationAttribution?: Attribution
+  playbackEntry?: PlaybackEntry
 }
 
 type VideoPlayerContextValue = {
@@ -45,6 +49,8 @@ type VideoPlayerContextValue = {
     identity?: WatchEventIdentity,
     startAtSeconds?: number,
     upNext?: UpNextTarget | null,
+    recommendationAttribution?: Attribution,
+    playbackEntry?: PlaybackEntry,
   ) => void
   dismissVideo: () => void
   /** Flag that the coming dismissVideo is an Up Next hop, not a viewer exit.
@@ -106,6 +112,8 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
       identity?: WatchEventIdentity,
       startAtSeconds?: number,
       upNext?: UpNextTarget | null,
+      recommendationAttribution?: Attribution,
+      playbackEntry?: PlaybackEntry,
     ) => {
       // The next playback starting means any pending hop has landed.
       upNextChainRef.current.clear()
@@ -118,6 +126,8 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
           startAtSeconds != null && startAtSeconds > 0 ? startAtSeconds : null,
         currentUpNext: upNext ?? null,
         isVisible: true,
+        recommendationAttribution,
+        playbackEntry,
       })
     },
     [],

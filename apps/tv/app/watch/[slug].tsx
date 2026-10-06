@@ -99,7 +99,13 @@ export default function WatchVideoScreen() {
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const router = useRouter()
 
-  const { video, setVideo, activeVariant } = useWatchSession()
+  const {
+    video,
+    setVideo,
+    activeVariant,
+    recommendationAttribution,
+    playbackEntry,
+  } = useWatchSession()
   const { hydrated: preferencesReady } = useWatchPreferences()
   const {
     state: playerState,
@@ -236,12 +242,23 @@ export default function WatchVideoScreen() {
               posterUrl: video.upNext.posterUrl,
             }
           : null,
+        recommendationAttribution,
+        playbackEntry,
       )
     })()
     return () => {
       cancelled = true
     }
-  }, [autoplayPhase, activeVariant, video, playVideo, loading, error])
+  }, [
+    autoplayPhase,
+    activeVariant,
+    video,
+    playVideo,
+    loading,
+    error,
+    recommendationAttribution,
+    playbackEntry,
+  ])
 
   // Player closed on an autoplay pass-through → pop straight back to Home.
   // Unless the close IS an Up Next hop: the overlay host marks the chain

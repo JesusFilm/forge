@@ -116,6 +116,14 @@ restart to take effect.
 
 ## Test builds & distribution
 
+- Personalized Home recommendations use `EXPO_PUBLIC_TV_RECOMMENDATIONS_ENABLED=true`
+  in beta EAS profiles. Explicit `false` restores the legacy seeded rail. Native
+  recommendation calls require TV's own fleet bearer and SecureStore installation
+  tokens, never a sign-in token or `x-viewer-id`. Follow
+  `docs/operations/user-recommendations.md` and keep capabilities out of URLs/logs.
+  See `docs/tv-personalized-recommendations-validation-2026-10-02.md` for pending
+  simulator/emulator and beta release gates.
+
 Profile is temporarily hidden on both Apple TV and Android TV by
 `src/lib/auth/profileFlagState.ts` (feat-596), including development builds and
 builds with the old `EXPO_PUBLIC_TV_PROFILE_ENABLED` flag. The sign-in code is

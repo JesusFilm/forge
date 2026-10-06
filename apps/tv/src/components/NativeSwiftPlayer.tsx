@@ -35,6 +35,10 @@ if (Platform.OS === "ios") {
 }
 
 type NativeSwiftPlayerProps = {
+  sourceGeneration?: number
+  onPlaybackState?: (
+    snapshot: import("../lib/recommendations/playbackRecorder").PlaybackObservation,
+  ) => void
   streamingUrl: string
   playerVariant: "native-a" | "native-b"
   title?: string
@@ -56,6 +60,8 @@ function formatClock(totalSeconds: number): string {
 }
 
 export function NativeSwiftPlayer({
+  sourceGeneration = 0,
+  onPlaybackState,
   streamingUrl,
   playerVariant,
   title,
@@ -238,6 +244,8 @@ export function NativeSwiftPlayer({
       upNextSlug={upNextTarget?.slug}
       upNextTitle={upNextTarget?.title ?? undefined}
       onDismiss={onDismiss}
+      sourceGeneration={sourceGeneration}
+      onPlaybackState={(event) => onPlaybackState?.(event.nativeEvent)}
       onEnded={onDismiss}
       onPlayNext={(event) => onPlayNext?.(event.nativeEvent.slug)}
       onAudioChange={(event) => {

@@ -2,7 +2,7 @@
 // a start action + the launch-only auto-start toggle, both persisted on device.
 
 import { useFocusEffect, useRouter } from "expo-router"
-import { useCallback, useMemo, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Animated,
   Platform,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   View,
+  ScrollView,
 } from "react-native"
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -21,6 +22,11 @@ import { createFocusMemory, type FocusMemory } from "../home/focusMemory"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
+import {
+  recommendationsEnabled,
+  readPersonalizationChoice,
+  changePersonalization,
+} from "../../lib/recommendations/client"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -28,6 +34,40 @@ const ICON_SIZE = Math.round(scale(26))
 
 export function SettingsScreen() {
   const router = useRouter()
+  const [personalized, setPersonalized] = useState(true)
+  const [recommendationsReady, setRecommendationsReady] = useState(false)
+  const [recommendationsBusy, setRecommendationsBusy] = useState(false)
+  const [recommendationsError, setRecommendationsError] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void readPersonalizationChoice()
+      .then((choice) => {
+        if (!cancelled) {
+          setPersonalized(choice !== false)
+          setRecommendationsReady(true)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setRecommendationsError(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const updateRecommendations = async (
+    action: "grant" | "withdraw" | "reset",
+  ) => {
+    if (recommendationsBusy) return
+    setRecommendationsBusy(true)
+    setRecommendationsError(false)
+    try {
+      setPersonalized(await changePersonalization(action))
+    } catch {
+      setRecommendationsError(true)
+    } finally {
+      setRecommendationsBusy(false)
+    }
+  }
   const { prefs, hydrated, setAutoStart } = useShowcasePrefs()
   const {
     androidPlayerVariant,
@@ -75,8 +115,39 @@ export function SettingsScreen() {
   }, [prefs.autoStart, setAutoStart])
 
   return (
-    <View style={styles.screen}>
+    <ScrollView contentContainerStyle={styles.screen}>
       <Text style={styles.title}>Settings</Text>
+      {recommendationsEnabled() ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Recommendations</Text>
+          <SettingsRow
+            testID="settings-personalized-recommendations"
+            icon="sparkles-outline"
+            label="Personalized recommendations"
+            checked={personalized}
+            disabled={!recommendationsReady || recommendationsBusy}
+            onPress={() => {
+              void updateRecommendations(personalized ? "withdraw" : "grant")
+            }}
+            onFocusNode={captureFocusedNode}
+          />
+          <SettingsRow
+            testID="settings-reset-recommendations"
+            icon="refresh-outline"
+            label="Reset recommendations"
+            disabled={!recommendationsReady || recommendationsBusy}
+            onPress={() => {
+              void updateRecommendations("reset")
+            }}
+            onFocusNode={captureFocusedNode}
+          />
+          {recommendationsError ? (
+            <Text style={styles.sectionNote}>
+              Could not update recommendations. Please try again.
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <Text style={styles.sectionHeading}>Showcase Mode</Text>
@@ -179,7 +250,7 @@ export function SettingsScreen() {
           />
         </View>
       ) : null}
-    </View>
+    </ScrollView>
   )
 }
 
@@ -298,10 +369,11 @@ function SettingsRow({
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: WATCH_THEME.below,
     paddingHorizontal: scale(80),
     paddingTop: scale(78),
+    paddingBottom: scale(80),
   },
   title: {
     fontFamily: "System",
