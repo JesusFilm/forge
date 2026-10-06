@@ -30,6 +30,10 @@ import {
   readRecommendationSession,
 } from "@/lib/recommendation-session"
 import { RECOMMENDATION_EVIDENCE_CONTRACT } from "@/lib/recommendation-contracts"
+import {
+  recordWatchPublicObservation,
+  watchPublicObservationHour,
+} from "@/lib/recommendation-public-observation"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -48,6 +52,11 @@ const SelectionInput = z
   .strict()
 
 export async function POST(request: Request) {
+  const observationHour = watchPublicObservationHour()
+  const observationAttempt =
+    (env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET?.length ?? 0) >= 32
+      ? recordWatchPublicObservation("click_attempt", observationHour)
+      : Promise.resolve(false)
   try {
     assertRecommendationHumanAdmission(request)
     const raw = await readStrictRecommendationJson(request, {
@@ -112,6 +121,8 @@ export async function POST(request: Request) {
       throw new RecommendationRouteError(502, "invalid_admin_response")
     }
     observeEvidenceResponse(request, "select", 200, undefined, [selection])
+    if (await observationAttempt)
+      await recordWatchPublicObservation("click_ack", observationHour)
     return recommendationJson({
       claimNonce: selection.claimNonce,
       canonicalHref: selection.canonicalHref,
@@ -119,6 +130,8 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     const response = recommendationError(error)
+    if (await observationAttempt)
+      await recordWatchPublicObservation("click_unavailable", observationHour)
     observeEvidenceResponse(request, "select", response.status, error)
     return response
   }

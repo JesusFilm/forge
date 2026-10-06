@@ -313,6 +313,7 @@ export const adminPrecomputedWatchPublicVisitDeliveryQuery = `
     $sessionDigest: String!
     $trafficCategory: String!
     $clientDeliveryContract: String
+    $humanVerificationReceipt: String
   ) {
     precomputedWatchPublicVisitDelivery(
       visitId: $visitId
@@ -325,6 +326,7 @@ export const adminPrecomputedWatchPublicVisitDeliveryQuery = `
       sessionDigest: $sessionDigest
       trafficCategory: $trafficCategory
       clientDeliveryContract: $clientDeliveryContract
+      humanVerificationReceipt: $humanVerificationReceipt
     ) {
       disposition
       status

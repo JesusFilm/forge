@@ -265,6 +265,30 @@ describe("public precomputed Watch control", () => {
     expect(query).toHaveBeenCalledOnce()
   })
 
+  it.each(["unavailable", "conflict"])(
+    "does not serve an unrecorded experimental delivery after %s measurement",
+    async (measurementStatus) => {
+      query
+        .mockResolvedValueOnce({
+          data: {
+            precomputedWatchPublicVisitDelivery: publicVisit("ab", {
+              measurementStatus,
+              delivery,
+            }),
+          },
+        })
+        .mockResolvedValueOnce({
+          data: { semanticRecommendationDelivery: incumbent },
+        })
+      const response = await POST(request())
+      expect((await response.json()).delivery).toMatchObject({
+        strategyVersion: "semantic-transcript-pgvector-v1",
+        experimentAttribution: { measurementStatus },
+      })
+      expect(query).toHaveBeenCalledTimes(2)
+    },
+  )
+
   it("uses the incumbent when the public operation is unavailable", async () => {
     query
       .mockRejectedValueOnce(new Error("Admin public delivery unavailable"))

@@ -28,6 +28,25 @@ import {
   readRecommendationExperimentBrowser,
 } from "@/lib/recommendation-experiment-browser"
 import {
+  attachWatchHumanBrowserGrant,
+  createWatchHumanBrowserGrant,
+  createWatchHumanVerificationReceipt,
+  readWatchHumanBrowserGrant,
+} from "@/lib/recommendation-human-proof"
+import {
+  isLoopbackWatchHost,
+  isWatchTurnstileTestCredential,
+  verifyWatchRecommendationTurnstile,
+  WATCH_RECOMMENDATION_TURNSTILE_FIXTURE_HOSTNAME,
+  WATCH_RECOMMENDATION_TURNSTILE_TEST_SECRET_KEY,
+  WATCH_RECOMMENDATION_TURNSTILE_TEST_SITE_KEY,
+} from "@/lib/recommendation-turnstile"
+import {
+  recordWatchPublicObservation,
+  watchPublicObservationHour,
+  type WatchPublicObservation,
+} from "@/lib/recommendation-public-observation"
+import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
   RECOMMENDATION_DELIVERY_CLIENT_VERSION,
   COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
@@ -69,6 +88,7 @@ const DeliveryInput = z
       .optional(),
     locale: z.string().regex(/^[A-Za-z0-9-]{1,32}$/),
     audioLanguageSlug: z.string().regex(/^[a-z0-9-]{1,64}$/),
+    turnstileToken: z.string().min(1).max(2_048).optional(),
   })
   .strict()
 
@@ -94,6 +114,12 @@ export async function POST(request: Request) {
   const trafficCategory = classifyRecommendationTraffic(request)
   const excluded = recommendationTrafficExcluded(trafficCategory)
   const deliveryDisposition = recommendationDeliveryDisposition(trafficCategory)
+  const observationHour = watchPublicObservationHour()
+  const liveObservationEnabled =
+    (env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET?.length ?? 0) >= 32
+  const attemptObserved = liveObservationEnabled
+    ? await recordWatchPublicObservation("delivery_attempt", observationHour)
+    : null
   try {
     const raw = await readStrictRecommendationJson(request, {
       expectedOrigin: WATCH_CANONICAL_ORIGIN,
@@ -206,6 +232,109 @@ export async function POST(request: Request) {
             env.WATCH_RECOMMENDATION_TESTER_SECRET ?? "",
           ))
         : null
+    const proofSecret = env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET
+    const allowedTurnstileHostnames = (
+      env.WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES ?? ""
+    )
+      .split(",")
+      .map((hostname) => hostname.trim())
+      .filter(Boolean)
+    const turnstileSiteKey =
+      env.NEXT_PUBLIC_WATCH_RECOMMENDATION_TURNSTILE_SITE_KEY
+    const turnstileSecret = env.WATCH_RECOMMENDATION_TURNSTILE_SECRET_KEY
+    const testCredentials = isWatchTurnstileTestCredential(
+      turnstileSiteKey,
+      turnstileSecret,
+    )
+    const localFixtureConfigured =
+      env.WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED === "1" &&
+      process.env.NODE_ENV !== "production" &&
+      isLoopbackWatchHost(new URL(request.url).hostname) &&
+      turnstileSiteKey === WATCH_RECOMMENDATION_TURNSTILE_TEST_SITE_KEY &&
+      turnstileSecret === WATCH_RECOMMENDATION_TURNSTILE_TEST_SECRET_KEY &&
+      allowedTurnstileHostnames.includes(
+        WATCH_RECOMMENDATION_TURNSTILE_FIXTURE_HOSTNAME,
+      )
+    const proofConfigured =
+      !!proofSecret &&
+      proofSecret.length >= 32 &&
+      !!turnstileSecret &&
+      !!turnstileSiteKey &&
+      allowedTurnstileHostnames.length > 0 &&
+      (!testCredentials || localFixtureConfigured) &&
+      attemptObserved === true
+    let verifiedBrowserGrant: {
+      hostname: string
+      issuedAt: number
+      expiresAt: number
+    } | null =
+      publicBrowser && proofConfigured
+        ? readWatchHumanBrowserGrant(
+            request,
+            publicBrowser.digest,
+            proofSecret,
+            allowedTurnstileHostnames,
+          )
+        : null
+    let newBrowserGrantValue: string | null = null
+    let turnstileStatus:
+      | "not_requested"
+      | "verified"
+      | "fixture_verified"
+      | "rejected"
+      | "unavailable" = "not_requested"
+    if (
+      publicBrowser &&
+      proofConfigured &&
+      !verifiedBrowserGrant &&
+      parsed.data.turnstileToken
+    ) {
+      const verification = await verifyWatchRecommendationTurnstile(
+        parsed.data.turnstileToken,
+        {
+          secret: turnstileSecret,
+          hostnames: allowedTurnstileHostnames,
+          siteKey: turnstileSiteKey,
+          allowLocalFixture: localFixtureConfigured,
+          requestHostname: new URL(request.url).hostname,
+        },
+      )
+      turnstileStatus = verification.status
+      if (
+        (verification.status === "verified" ||
+          verification.status === "fixture_verified") &&
+        proofSecret
+      ) {
+        const nowSeconds = Math.floor(Date.now() / 1_000)
+        newBrowserGrantValue = createWatchHumanBrowserGrant(
+          publicBrowser.digest,
+          verification.hostname,
+          proofSecret,
+          nowSeconds,
+        )
+        if (newBrowserGrantValue) {
+          verifiedBrowserGrant = {
+            hostname: verification.hostname,
+            issuedAt: nowSeconds,
+            expiresAt: nowSeconds + 300,
+          }
+        }
+      }
+    }
+    const humanVerificationReceipt =
+      publicBrowser && privateVisitId && verifiedBrowserGrant && proofSecret
+        ? createWatchHumanVerificationReceipt(
+            {
+              visitId: privateVisitId,
+              browserDigest: publicBrowser.digest,
+              seedMediaId: parsed.data.seedMediaId,
+              locale: parsed.data.locale,
+              audioLanguageSlug: parsed.data.audioLanguageSlug,
+            },
+            verifiedBrowserGrant,
+            proofSecret,
+          )
+        : null
     let publicVisit: Awaited<
       ReturnType<typeof getPrecomputedWatchPublicVisitDelivery>
     > | null = null
@@ -215,6 +344,7 @@ export async function POST(request: Request) {
           {
             ...visitInput,
             browserDigest: publicBrowser.digest,
+            humanVerificationReceipt,
           },
           Math.max(1, upstreamDeadlineAt - Date.now()),
         )
@@ -257,11 +387,20 @@ export async function POST(request: Request) {
       previewDelivery?.reason === "source_unavailable" ||
       previewDelivery?.reason === "source_eligibility_unavailable"
     const privateEligible = privateVisit?.status === "eligible"
-    const publicEligible = publicVisit?.status === "eligible"
+    const publicEligible =
+      publicVisit?.status === "eligible" &&
+      publicVisit.measurementStatus === "recorded"
+    const publicDelivery =
+      publicVisit?.disposition === "inactive" ||
+      publicVisit?.disposition === "promoted" ||
+      publicVisit?.reason === "visit_identity_conflict" ||
+      publicEligible
+        ? (publicVisit?.delivery ?? null)
+        : null
     const mayUseIncumbent =
       !privateEligible &&
       !publicEligible &&
-      !publicVisit?.delivery &&
+      !publicDelivery &&
       (!previewTester ||
         (!previewDenied &&
           !sourceDenied &&
@@ -273,8 +412,8 @@ export async function POST(request: Request) {
     const visitDelivery = privateEligible
       ? (privateVisit!.delivery ?? unavailableSemanticDelivery())
       : publicEligible
-        ? (publicVisit!.delivery ?? unavailableSemanticDelivery())
-        : (publicVisit?.delivery ?? null)
+        ? (publicDelivery ?? unavailableSemanticDelivery())
+        : publicDelivery
     const semanticDelivery = incumbentAttempted
       ? await (
           previewCredential || privateTester
@@ -395,7 +534,21 @@ export async function POST(request: Request) {
         ),
       })),
     }
-    const serialized = JSON.stringify({ delivery, deliveryDisposition })
+    const verificationRequired =
+      publicVisit?.reason === "verification_required" &&
+      !verifiedBrowserGrant &&
+      proofConfigured
+    const serialized = JSON.stringify({
+      delivery,
+      deliveryDisposition,
+      ...(verificationRequired
+        ? {
+            verificationRequired: true,
+            verificationSiteKey:
+              env.NEXT_PUBLIC_WATCH_RECOMMENDATION_TURNSTILE_SITE_KEY,
+          }
+        : {}),
+    })
     if (
       new TextEncoder().encode(serialized).byteLength >
       RECOMMENDATION_DELIVERY_RESPONSE_BYTES
@@ -417,23 +570,31 @@ export async function POST(request: Request) {
     }
     if (
       publicBrowser &&
-      publicVisit?.disposition === "ab" &&
-      publicVisit.status === "eligible"
+      (((publicVisit?.disposition === "ab" ||
+        publicVisit?.disposition === "baseline") &&
+        (publicVisit.status === "eligible" || verificationRequired)) ||
+        newBrowserGrantValue)
     ) {
       // Reissue the same signed identity so an existing cookie cannot expire
       // before the frozen experiment finishes and change its assignment.
       attachRecommendationExperimentBrowser(response, publicBrowser)
+    }
+    if (newBrowserGrantValue) {
+      attachWatchHumanBrowserGrant(response, newBrowserGrantValue)
     }
     let experimentAdmission:
       | "missing_visit_id"
       | "browser_identity_unavailable"
       | "visit_identity_conflict"
       | "public_delivery_unavailable"
+      | "verification_required"
       | undefined
     if (publicVisit?.reason === "visit_identity_conflict") {
       experimentAdmission = "visit_identity_conflict"
     } else if (publicVisit?.reason === "visit_persistence_unavailable") {
       experimentAdmission = "public_delivery_unavailable"
+    } else if (publicVisit?.reason === "verification_required") {
+      experimentAdmission = "verification_required"
     } else if (
       !previewCredential &&
       !privateTester &&
@@ -444,10 +605,54 @@ export async function POST(request: Request) {
         experimentAdmission = "browser_identity_unavailable"
       else if (!publicVisit) experimentAdmission = "public_delivery_unavailable"
     }
+    let outcomeObserved = false
+    if (attemptObserved) {
+      let terminal: WatchPublicObservation
+      if (excluded) terminal = "delivery_excluded"
+      else if (trafficCategory !== "ordinary_browser")
+        terminal = "delivery_unknown"
+      else if (previewCredential || privateTester) terminal = "delivery_private"
+      else if (!privateVisitId || !publicBrowser)
+        terminal = "delivery_missing_identity"
+      else if (turnstileStatus === "rejected")
+        terminal = "delivery_verification_rejected"
+      else if (turnstileStatus === "unavailable")
+        terminal = "delivery_verification_unavailable"
+      else if (publicVisit?.reason === "verification_required")
+        terminal = "delivery_verification_required"
+      else if (publicVisit?.disposition === "inactive")
+        terminal = "delivery_inactive"
+      else if (
+        publicVisit?.status === "eligible" &&
+        publicVisit.measurementStatus === "recorded"
+      )
+        terminal = "delivery_qualified"
+      else if (
+        !publicVisit ||
+        publicVisit.status === "unavailable" ||
+        publicVisit.measurementStatus === "unavailable"
+      )
+        terminal = "delivery_unavailable"
+      else terminal = "delivery_rejected"
+      outcomeObserved = await recordWatchPublicObservation(
+        terminal,
+        observationHour,
+      )
+    }
     observeRecommendationDelivery({
       endpoint: "seeded",
       trafficCategory,
       experimentAdmission,
+      experimentObservation:
+        attemptObserved === null
+          ? undefined
+          : !attemptObserved
+            ? "unavailable"
+            : outcomeObserved
+              ? "committed"
+              : "partial",
+      turnstileStatus:
+        turnstileStatus === "not_requested" ? undefined : turnstileStatus,
       persistenceDisposition: !upstreamAcknowledged
         ? "not_observed"
         : excluded
@@ -466,9 +671,20 @@ export async function POST(request: Request) {
     return response
   } catch (error) {
     const response = recommendationError(error)
+    const outcomeObserved = attemptObserved
+      ? await recordWatchPublicObservation("delivery_rejected", observationHour)
+      : false
     observeRecommendationDelivery({
       endpoint: "seeded",
       trafficCategory,
+      experimentObservation:
+        attemptObserved === null
+          ? undefined
+          : !attemptObserved
+            ? "unavailable"
+            : outcomeObserved
+              ? "committed"
+              : "partial",
       persistenceDisposition: "not_observed",
       httpStatus: response.status,
       error,
