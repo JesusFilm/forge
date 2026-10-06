@@ -190,7 +190,7 @@ it("shows Continue at 0:00 and moves on only at the tap (R17, AE1)", async () =>
   advance(45_000)
   expect(hasText(root, "Continue")).toBe(true)
   expect(findHeld(root)).toBeUndefined()
-  // The owner (2026-10-06): Continue pulses once a second to ask for a tap.
+  // The owner (2026-10-06): Continue pulses every two seconds to ask for a tap.
   expect(pulses(root)).toHaveLength(1)
   for (let node = pressableHost(root)?.parent; ; node = node.parent) {
     if (!node) throw new Error("Continue is not inside the pulse")

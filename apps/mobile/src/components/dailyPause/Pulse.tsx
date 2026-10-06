@@ -1,14 +1,15 @@
-// A pulse that asks for a tap (the owner, 2026-10-06): once a second, the
-// child grows a little and settles. Reduce Motion keeps it still.
+// A pulse that asks for a tap (the owner, 2026-10-06): once every two
+// seconds, the child grows a little and settles. Reduce Motion keeps it still.
 import { useEffect, useState, type ReactNode } from "react"
 import { Animated, Easing, StyleSheet, View } from "react-native"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 
-export const PULSE_CYCLE_MS = 1000
+export const PULSE_CYCLE_MS = 2000
 export const PULSE_SCALE = 1.06
-/** The pulse takes this part of each cycle, and the rest holds still. */
-const PULSE_SPAN = 0.6
+/** The swell's length. The rest of each cycle holds still. */
+export const PULSE_SWELL_MS = 600
+const PULSE_SPAN = PULSE_SWELL_MS / PULSE_CYCLE_MS
 const CURVE_POINTS = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]
 
 /** The scale at each point of the cycle: one smooth swell, then rest. A

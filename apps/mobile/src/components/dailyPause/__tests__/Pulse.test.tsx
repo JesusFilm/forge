@@ -11,7 +11,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
-import { PULSE_CYCLE_MS, PULSE_SCALE, Pulse } from "../Pulse"
+import { PULSE_CYCLE_MS, PULSE_SCALE, PULSE_SWELL_MS, Pulse } from "../Pulse"
 import { WatchScreen } from "../WatchScreen"
 
 declare const __dirname: string
@@ -95,7 +95,7 @@ function scaleOf(node: RenderedNode): number {
   return Number(transform.find((one) => "scale" in one)?.scale ?? 1)
 }
 
-it("loops one native timing of one second, with no sequence", async () => {
+it("loops one native timing of two seconds, with no sequence", async () => {
   await render(
     <Pulse>
       <Text>Tap</Text>
@@ -132,11 +132,14 @@ it("swells to its peak and settles once a cycle", async () => {
     act(() => timingValue!.setValue(t))
     return scaleOf(pulses(root)[0]!)
   }
-  expect(at(0.3)).toBeCloseTo(PULSE_SCALE)
-  expect(at(0.15)).toBeGreaterThan(1)
-  expect(at(0.15)).toBeLessThan(PULSE_SCALE)
-  expect(at(0.6)).toBeCloseTo(1)
-  expect(at(0.8)).toBe(1)
+  // The owner (2026-10-06): one 0.6 s swell every two seconds.
+  expect(PULSE_CYCLE_MS).toBe(2000)
+  expect(PULSE_SWELL_MS).toBe(600)
+  expect(at(0.15)).toBeCloseTo(PULSE_SCALE)
+  expect(at(0.075)).toBeGreaterThan(1)
+  expect(at(0.075)).toBeLessThan(PULSE_SCALE)
+  expect(at(0.3)).toBeCloseTo(1)
+  expect(at(0.6)).toBe(1)
   expect(at(1)).toBe(1)
 })
 
