@@ -237,7 +237,7 @@ Inferred plan-time bets the origin left open; flag during review if any should f
 > For current Forge RAG access, use a registered consumer credential created and
 > managed through the portal, with its one-time value saved in the caller's
 > secret manager. Do not add or remove entries in the Railway
-> `SERVE_BEARER_TOKENS` map; [feat-609](../roadmap/rag/feat-609-rag-static-bearer-retirement.md)
+> `SERVE_BEARER_TOKENS` map; [feat-610](../roadmap/rag/feat-610-rag-static-bearer-retirement.md)
 > owns its retirement.
 
 - **Token issuance is ops, outside this repo:** an entry in the RAG's `SERVE_BEARER_TOKENS` with all-sources (`*`) scope — a source-scoped token silently empties results outside its scope. Blocking for AE2/R11 live verification only; unconfigured behavior (AE1) is fully defined and testable now. The origin deferred token lifecycle to planning: name the accountable owner of the seeker entry in `SERVE_BEARER_TOKENS` at issuance time, and record the rotation/revocation path — rotation is a `JESUSFILM_RAG_API_KEY` env-var update in Railway followed by the AE4 wrong-token retest; revocation is removing the registry entry, after which the tool degrades to `unavailable`. All-sources (`*`) scope is accepted because the corpus is a single public-content source today and source-scoped tokens need reissuance per new source; if a sensitive source is later indexed, reissue with explicit source keys.

@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-16"
 duration: 7
 depends_on: ["feat-528", "feat-530"]
-blocks: ["feat-609"]
+blocks: ["feat-610"]
 tags: ["rag", "auth", "observability"]
 ---
 
@@ -44,7 +44,7 @@ configuration and capacity in that later authorized scope, without secrets.
 
 **Superseded October 6, 2026:** The owner reports the seven-day period and team
 notice are complete and authorized the announced cutoff. The remaining Forge
-static-token removal is tracked in [feat-609](feat-609-rag-static-bearer-retirement.md);
+static-token removal is tracked in [feat-610](feat-610-rag-static-bearer-retirement.md);
 new consumers use portal-issued credentials. See the owner update below.
 
 ## Constraints
@@ -111,5 +111,5 @@ was announced as the old bearer-token decommission date. Active consumers have
 reported working retrieval directly to Jaco and their distinct portal request
 counts have increased. This update records owner attestation; it does not claim
 that this documentation PR re-ran the original scripted +3/+2 proof or changed
-production settings. [Feat-609](feat-609-rag-static-bearer-retirement.md) owns
+production settings. [Feat-610](feat-610-rag-static-bearer-retirement.md) owns
 the still-required Forge static-token code and Railway variable cutoff.

@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-10-02"
 duration: 4
 depends_on: []
-blocks: ["feat-609"]
+blocks: ["feat-610"]
 tags:
   - "rag"
   - "seeker"

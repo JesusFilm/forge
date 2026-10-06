@@ -122,7 +122,7 @@ RAG's design tenet.
   admitted owner creates a registered consumer in the portal and saves its
   one-time credential in the caller's secret manager. Rotate or revoke that
   credential through the portal; the Railway `SERVE_BEARER_TOKENS` map is being
-  retired under [feat-609](../rag/feat-609-rag-static-bearer-retirement.md).
+  retired under [feat-610](../rag/feat-610-rag-static-bearer-retirement.md).
 
 - Token issuance (an entry in the RAG service's `SERVE_BEARER_TOKENS`) is an
   ops step outside this repo — code must merge cleanly before it exists.

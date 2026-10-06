@@ -80,7 +80,7 @@ display, verifier-only storage and atomic rotation are unchanged.
 
   **Superseded October 6, 2026:** The guide now directs operators to registered
   consumer credentials created through the portal. The compatibility statement
-  above records the plan-time state; [feat-609](../roadmap/rag/feat-609-rag-static-bearer-retirement.md)
+  above records the plan-time state; [feat-610](../roadmap/rag/feat-610-rag-static-bearer-retirement.md)
   tracks retirement of the Railway token map.
 
 - Dogfood must use the actual `forge-rag-retrieve` ops task through the RAG HTTP
@@ -376,7 +376,7 @@ old metadata remain inert for audit/rolling rollback compatibility.
 
 > **Superseded October 6, 2026:** The owner reports the seven-day registration
 > period and team notice are complete and authorized the announced cutoff.
-> [Feat-609](../roadmap/rag/feat-609-rag-static-bearer-retirement.md) owns the
+> [Feat-610](../roadmap/rag/feat-610-rag-static-bearer-retirement.md) owns the
 > Forge static-token code and Railway variable retirement. New consumers use
 > portal-issued credentials; the original sequence below remains as planning
 > history.
