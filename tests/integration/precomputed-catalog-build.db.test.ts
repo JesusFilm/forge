@@ -1,9 +1,11 @@
+import { WorkflowsPG } from "@mastra/pg"
 import { PrismaClient } from "@prisma/client"
-import { Client } from "pg"
+import { Client, Pool } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
 import { env } from "../../apps/admin/src/config/env"
 import { currentAdminMigrationSql } from "../../apps/admin/src/services/recommendations/current-schema.test-fixture"
+import { purgeExpiredPrecomputedGenerations } from "../../apps/admin/src/services/recommendations/precomputed/generation-retention"
 import { readPrecomputedCatalog } from "../../apps/admin/src/services/recommendations/precomputed/catalog"
 import { loadPrecomputedRecommendationComparison } from "../../apps/admin/src/services/recommendations/precomputed/contract"
 import {
@@ -12,6 +14,7 @@ import {
 } from "../../apps/admin/src/services/recommendations/precomputed/durable-build"
 // Repository-owned native seam; neither application imports the other.
 import { runPrecomputedCatalog } from "../../apps/mastra/src/services/precomputed-recommendations/catalog-generation"
+import { prunePrecomputedAbandonedRuntimeSnapshots } from "../../apps/mastra/src/mastra/precomputed-runtime-retention"
 import type { StructuredModel } from "../../apps/mastra/src/services/precomputed-recommendations/astra-provider"
 import type {
   SourceCatalog,
@@ -278,6 +281,20 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         `Interrupted at ${String(lastAction)}: ${interruption instanceof Error ? interruption.message : "no error"}`,
       ).toBe(true)
       expect(paidRequests).toEqual([{ task: "catalog_discovery", sourceId }])
+      const retentionStatus = () =>
+        first.ingest({
+          action: "retention_status",
+          protocolVersion: 2,
+          generationId,
+        })
+      expect(await retentionStatus()).toMatchObject({
+        generationId,
+        generationProtocolVersion: 2,
+        inputCutoff: cutoff,
+        inputDigest: generationInputDigest,
+        inputMode: "content_only",
+        sourceWorkResumable: true,
+      })
       const privateReview = () =>
         loadPrecomputedRecommendationComparison(prisma, {
           sourceVideoId: sourceId,
@@ -341,6 +358,14 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         runPrecomputedCatalog(input, { ...dependencies(), model }),
       ).resolves.toMatchObject({ state: "replayed" })
       expect(paidRequests).toHaveLength(3)
+      expect(await retentionStatus()).toMatchObject({
+        generationId,
+        generationProtocolVersion: 2,
+        inputCutoff: cutoff,
+        inputDigest: generationInputDigest,
+        inputMode: "content_only",
+        sourceWorkResumable: false,
+      })
     })
 
     it("refreshes existing sources for a newly eligible target while preserving the prior generation", async () => {
@@ -647,6 +672,180 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           },
         },
       })
+    })
+    it("retains the latest completed builds while removing superseded producer artifacts", async () => {
+      const generations = [
+        `catalog-retired-${suffix}`,
+        `catalog-rollback-${suffix}`,
+        `catalog-current-${suffix}`,
+      ]
+      const completedAt = Date.now() + 60_000
+      for (const [index, generationId] of generations.entries()) {
+        await expect(
+          runPrecomputedCatalog(
+            {
+              generationId,
+              inputCutoff: cutoff,
+              historyRequired: false,
+              capacity: await fixtureCapacity(),
+            },
+            { ...dependencies(), model: controlledModel(targetId, []) },
+          ),
+        ).resolves.toMatchObject({ state: "complete", completedSourceCount: 2 })
+        // Arrange deterministic retention age/order for real producer output.
+        // Model receipts and saved choices are never fabricated or rewritten.
+        await prisma.recommendationPrecomputedGeneration.update({
+          where: { id: generationId },
+          data: { completedAt: new Date(completedAt + index * 1_000) },
+        })
+      }
+      const review = (generationId: string) =>
+        loadPrecomputedRecommendationComparison(prisma, {
+          generationId,
+          sourceVideoId: sourceId,
+          audioLanguageSlug: "english",
+          reviewer,
+        })
+      const retainedBefore = await Promise.all(generations.slice(1).map(review))
+      expect(await review(generations[0]!)).toMatchObject({
+        state: "ready",
+        allAcceptedCount: 1,
+      })
+      const retentionNow = new Date(completedAt + 365 * 24 * 60 * 60 * 1_000)
+      // Each pass is bounded; existing independent test generations may also
+      // be expired. Assert the public result, not a fixture-specific row order.
+      for (let pass = 0; pass < 20; pass += 1) {
+        await prisma.$transaction((tx) =>
+          purgeExpiredPrecomputedGenerations(tx, retentionNow, 1),
+        )
+        if ((await review(generations[0]!)).state === "not_found") break
+      }
+      expect(await review(generations[0]!)).toMatchObject({
+        state: "not_found",
+        experimental: [],
+      })
+      // Runtime cleanup still gets authoritative identity after the large
+      // generation graph is gone; a missing row is not guessed to be safe.
+      expect(
+        await dependencies().ingest({
+          action: "retention_status",
+          protocolVersion: 2,
+          generationId: generations[0],
+        }),
+      ).toMatchObject({
+        generationId: generations[0],
+        generationProtocolVersion: 2,
+        inputCutoff: cutoff,
+        inputDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+        inputMode: "content_only",
+        sourceWorkResumable: false,
+      })
+      for (const [index, generationId] of generations.slice(1).entries()) {
+        const retained = await review(generationId)
+        expect(retained).toEqual(retainedBefore[index])
+        expect(retained).toMatchObject({
+          state: "ready",
+          allAcceptedCount: 1,
+          experimental: [expect.objectContaining({ targetVideoId: targetId })],
+        })
+        expect(
+          await loadDurablePrecomputedBuildReport(prisma, {
+            generationId,
+            sourceVideoId: sourceId,
+            reviewer,
+          }),
+        ).toMatchObject({
+          usage: {
+            modelCallCount: 3,
+            modelKnownCostUsd: 0.04,
+            modelUnknownCostCount: 0,
+          },
+        })
+      }
+      // Native runtime rows model a crash-left workflow record. This is a
+      // storage/identity seam, not measurement of a live Mastra workflow run.
+      const runtimePool = new Pool({
+        connectionString: env.DATABASE_URL,
+        max: 2,
+      })
+      const workflows = new WorkflowsPG({
+        pool: runtimePool,
+        schemaName: schema,
+      })
+      try {
+        await workflows.init()
+        const runIds = [
+          `retired-${suffix}`,
+          `mismatch-${suffix}`,
+          `unknown-${suffix}`,
+        ]
+        for (const [index, runId] of runIds.entries()) {
+          const context: Parameters<
+            WorkflowsPG["persistWorkflowSnapshot"]
+          >[0]["snapshot"]["context"] = {}
+          context.input = {
+            generationId: index === 2 ? `unknown-${suffix}` : generations[0],
+            inputCutoff: index === 1 ? "2026-10-04T00:00:00.000Z" : cutoff,
+            historyRequired: false,
+          }
+          await workflows.persistWorkflowSnapshot({
+            workflowName: "precomputed-catalog-generation",
+            runId,
+            snapshot: {
+              runId,
+              status: "running",
+              value: {},
+              context,
+              serializedStepGraph: [],
+              activePaths: [],
+              activeStepsPath: {},
+              suspendedPaths: {},
+              resumeLabels: {},
+              waitingPaths: {},
+              timestamp: completedAt,
+            },
+            createdAt: new Date(completedAt),
+            updatedAt: new Date(completedAt),
+          })
+        }
+        const prune = () =>
+          prunePrecomputedAbandonedRuntimeSnapshots({
+            pool: runtimePool,
+            schema,
+            now: retentionNow,
+            readProof: ({ generationId }) =>
+              dependencies().ingest({
+                action: "retention_status",
+                protocolVersion: 2,
+                generationId,
+              }),
+          })
+        expect(await prune()).toMatchObject({
+          examinedRuns: 3,
+          deletedRuns: 1,
+          unresolvedRuns: 2,
+        })
+        expect(
+          await workflows.getWorkflowRunById({ runId: runIds[0]! }),
+        ).toBeNull()
+        for (const runId of runIds.slice(1))
+          expect(await workflows.getWorkflowRunById({ runId })).not.toBeNull()
+        expect(await prune()).toMatchObject({
+          examinedRuns: 2,
+          deletedRuns: 0,
+          unresolvedRuns: 2,
+        })
+      } finally {
+        await runtimePool.end()
+      }
+
+      // A repeated cleanup must preserve both retained review/cost reports.
+      await prisma.$transaction((tx) =>
+        purgeExpiredPrecomputedGenerations(tx, retentionNow, 1),
+      )
+      expect(await Promise.all(generations.slice(1).map(review))).toEqual(
+        retainedBefore,
+      )
     })
   },
 )

@@ -17,7 +17,7 @@ describes the private reporting contract and limits.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
 - Branch: `codex/precomputed-video-recommendations`.
 - Checkout: `/home/nisal/.codex/worktrees/precomputed-video-recommendations/forge`.
-- Latest verified integration: `285bb46eb2c507dac5ff5506bbbe57be0ce68c8d` (catalog producer `1298713cc`, Admin `04200cd9f`, current-main merge `3c2d5b57b`, native integration tests `285bb46eb`).
+- Latest locally verified application integration: `f18768c3952dc2dba5489d8bb36884a86ec04193` (#2574 Mastra `af835cdd0`, Admin `f18768c39`, current-main merge `ae9bc5363`). The following orchestration commit adds connected evidence. Current-main baseline is `1daa80373`; storage CI is pending publication.
   #2568 GA ingestion is `084fe3eae`, Admin validation is `58b2aaa18`,
   and the OpenRouter adapter is `b7926faf5`.
 - Catalog integration `285bb46eb` passed [forge-ci run 37411231982](https://github.com/JesusFilm/forge/actions/runs/37411231982): 37 successful jobs, three skipped and no failures.
@@ -33,22 +33,22 @@ describes the private reporting contract and limits.
 All issues remain open until merge. Dependencies advance on verified acceptance,
 not issue closure. Implemented, integrated, merged, and live are distinct.
 
-| Issue | Immediate blockers | State                                       | Integrated work                                                               |
-| ----- | ------------------ | ------------------------------------------- | ----------------------------------------------------------------------------- |
-| #2566 | None               | Integrated-and-verified                     | `9a984c544`; saved Admin comparison                                           |
-| #2567 | #2566              | Integrated-and-verified                     | `c89db0e4e`; bounded producer; OpenRouter transport smoke passed              |
-| #2568 | #2567              | Integrated-and-verified                     | `084fe3eae`, `58b2aaa18`; real GA pair and Astra judgment passed              |
-| #2569 | #2568              | Integrated-and-verified                     | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed |
-| #2570 | #2566              | Integrated-and-verified                     | `0a93244a3`; private Watch serving                                            |
-| #2571 | #2570              | Integrated-and-verified                     | `267a65281`, `b69592b6c`, corrections in `a7f36d778`                          |
-| #2572 | #2571              | Integrated-and-verified                     | Core `a7f36d778`, UI `af8eba415`                                              |
-| #2573 | #2572              | Private reporting verified; live incomplete | Sources `acbb33fe4`, `302dffe31`; migration `0134`                            |
-| #2574 | #2569, #2573       | In progress in two Sol chats                | Live capacity acceptance remains separate                                     |
-| #2575 | #2574              | Waiting for prerequisites                   | Unassigned                                                                    |
+| Issue | Immediate blockers | State                                         | Integrated work                                                               |
+| ----- | ------------------ | --------------------------------------------- | ----------------------------------------------------------------------------- |
+| #2566 | None               | Integrated-and-verified                       | `9a984c544`; saved Admin comparison                                           |
+| #2567 | #2566              | Integrated-and-verified                       | `c89db0e4e`; bounded producer; OpenRouter transport smoke passed              |
+| #2568 | #2567              | Integrated-and-verified                       | `084fe3eae`, `58b2aaa18`; real GA pair and Astra judgment passed              |
+| #2569 | #2568              | Integrated-and-verified                       | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed |
+| #2570 | #2566              | Integrated-and-verified                       | `0a93244a3`; private Watch serving                                            |
+| #2571 | #2570              | Integrated-and-verified                       | `267a65281`, `b69592b6c`, corrections in `a7f36d778`                          |
+| #2572 | #2571              | Integrated-and-verified                       | Core `a7f36d778`, UI `af8eba415`                                              |
+| #2573 | #2572              | Private reporting verified; live incomplete   | Sources `acbb33fe4`, `302dffe31`; migration `0134`                            |
+| #2574 | #2569, #2573       | Code integrated-and-verified; live incomplete | `af835cdd0`, `f18768c39`; native retention and measured fixture load passed   |
+| #2575 | #2574              | Ready for implementation                      | Code prerequisites verified; next dispatch reuses the two Sol chats           |
 
 ## Ownership and continuation
 
-Both workers start #2574 from verified integration
+Both workers completed #2574 from verified integration
 `285bb46eb2c507dac5ff5506bbbe57be0ce68c8d`, also their fixed review base.
 
 Worker A, `01a109e1-47c8-7043-bfd4-a85592cfafc5`, titled
@@ -64,7 +64,7 @@ cleanup and `docs/operations/precomputed-storage-capacity.md`.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
 branch: `codex/feat-590-2574-admin`.
 
-They coordinate the minimal runtime report contract before semantic edits.
+Their runtime retirement-proof contract is integrated. Next assignments will split #2575 between Web delivery consumption (A) and Admin controls/readiness (B), starting at the next recorded verified integration commit.
 Previous branches and integrated work remain saved.
 The orchestrator owns cross-app integration tests, live operator verification,
 shared docs/roadmap, integration and the single PR. No production write/deploy,
@@ -209,7 +209,7 @@ warehouse write is authorized.
 agreed numeric stopping settings, trusted bot qualification, and tracking-loss
 evidence are absent. Production cookie forwarding, actual catalog cost, and
 measured capacity/headroom also remain prerequisites where required. Fixtures
-cannot satisfy these criteria. #2574 implementation is underway after its code prerequisites passed; #2575 still waits on #2574.
+cannot satisfy these criteria. #2574 code and local loaded cleanup are verified; actual production capacity approval remains incomplete. #2575 is ready for implementation.
 
 Public experimental serving stays default-off and the incumbent remains available.
 Do not merge, deploy, start public A/B traffic, promote a winner, or enable refresh
@@ -283,3 +283,28 @@ production latency or capacity. The temporary preview route was removed.
 The current OpenRouter adapter also captured the exact $0.00101 provider charge
 on a fresh live Astra smoke. Full catalog execution, deployed GA credentials,
 measured build/retention capacity, and public experiment readiness remain pending.
+
+## Storage integration verification
+
+#2574 passed 21 connected build-through-Admin cases, 63 focused Admin native/view
+cases, 13 Mastra runtime/workflow cases and seven dedicated ordinary-retention
+cases. The official migration chain through `0136`, both package typechecks and
+the root seam typecheck passed. Worker full suites passed 3,267 Mastra cases and
+8,999 Admin cases; focused native checks cover the subsequent pin-race fix.
+Sequential Standards then Spec review found no unresolved defect in this slice.
+
+The isolated loaded fixture reclaimed 6,715 expired request roots and 34,395
+served items in 68 successful bounded runs, preserving 6,715 archived visit
+receipts. Allocated relation bytes did not shrink. This is measured local
+throughput, not a production capacity budget. The actual controlled source
+workflow also verified compact native runtime persistence. Full qualifications
+and machine receipts are in the storage runbooks and detailed verification record.
+
+Desktop/mobile report layout passed, including a 191-character generation ID
+and independent table scrolling. Five alternating warm HTTP samples per mode
+measured median 123.090ms for the empty comparison view and 196.456ms for the
+storage view, 62,428 versus 82,582 HTML bytes, with the same 19 assets. The added
+report has a measurable local development render cost; this is not a before/after
+comparison of the same page or production latency proof. Protected route access
+without authentication still redirects to login. Temporary preview files and
+server were removed. Public serving remains off.

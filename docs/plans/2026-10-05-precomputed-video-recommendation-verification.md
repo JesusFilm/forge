@@ -1203,3 +1203,91 @@ Current main `1daa80373` allocated feat-611 to the Google Maven lookup fix.
 The completed recommendation-fixture record therefore moves to the next free
 global ID, feat-612, preserving its implementation, evidence and references.
 The platform ticket and the approved feat-590 experiment keep their identities.
+
+## Bounded storage integration
+
+Mastra source `93d1d572fe04edeb48410114e668cb64bc4d1e23` integrated as
+`af835cdd0`. It bounds terminal workflow snapshots and traces, uses Admin's
+matching retirement proof for abandoned runtime records, and preserves
+unresolved/active identities. Its actual controlled startAsync workflow smoke
+uses the real source service; it does not exercise the GA-history branch.
+Final full Mastra suite: 286 files, 3,267 tests passed, 38 expected skips.
+Typecheck, lint and normal commit hooks passed.
+
+Root review found a generation-pin race: a pre-transaction complete read could
+be invalidated by a concurrent retirement before experiment insertion. The
+Admin fix share-locks and rechecks the generation during creation, and cleanup
+rechecks pins after acquiring its exclusive generation lock. The native test
+uses a separate autocommit observer and pg_blocking_pids to establish that the
+operation is waiting on the exact lock holder before retirement commits. It
+rejects the late pin and preserves an existing pinned generation. The focused
+three-file Admin suite passed 31 cases, and the strengthened concurrency case
+passed separately. Full Admin suite before final narrow review fixes passed
+570 files / 8,999 tests, with 799 expected skips and one todo.
+
+The operator report renders traffic assumptions, unqualified retained-volume
+projection, current generation/build/rollback inventory and reservations,
+write/query measurement gaps, native relation parts and selected-generation
+row-value estimates. The shared-cluster cumulative WAL counter is not a
+feature-specific write measurement. Zero raw rows leaves per-live-row bytes
+unknown. Fixtures and historical baseline snapshots cannot authorize a live
+capacity budget.
+
+Admin source `4aea9fa813b3b9250c1c295223559eb417071a55` is represented by
+integration `f18768c39`. Its initially cherry-picked predecessor `7a6bf16bb`
+was amended through normal hooks after an improper hook bypass on the original
+commit. Root required and verified the repair: both source trees are exactly
+`a9470692b1ea7f6b5beb594c0920147ffadb416f`; `git diff` between them is empty.
+No hook bypass is permitted for subsequent work.
+
+Root's normal integration modules/configuration passed all 21 connected
+build-through-review cases, 63 Admin native/view cases, 13 Mastra runtime/workflow
+cases, both application typechecks and the additional cross-app seam typecheck.
+The fifth catalog case builds three actual controlled generations, reclaims the
+superseded generation in bounded passes, and preserves both latest generations'
+choices and exact three-call/$0.04 reports. Native crash-left WorkflowsPG rows
+consume the actual Admin retirement proof: one matching identity is removed,
+unknown and mismatched identities remain, and replay changes nothing. These
+seeded runtime rows are not the separate actual lifecycle measurement above.
+
+A new owned PostgreSQL database accepted the full official migration chain
+through `0136`. All seven dedicated standalone-retention regressions passed,
+including timeout/rollback and raw-to-archive cases; that temporary database was
+dropped afterward. Logs: `2574-integrated-build-to-review.log`,
+`2574-integrated-seam-typecheck.log`, `2574-integrated-admin-native.log`,
+`2574-integrated-mastra-native.log`, `2574-integrated-admin-typecheck.log`,
+`2574-integrated-mastra-typecheck.log`, `2574-retention-migrate.log`, and
+`2574-retention-native.log` under `/tmp/forge-feat-590-orchestration`.
+
+The committed local benchmark receipt records 6,715 request roots, 34,395 items,
+mixed packed/inline snapshots and 672 synthetic selections. Ordinary bounded
+cleanup completed all 68 runs in 37.437 seconds, maximum 659ms per run, with zero
+failures/yields. All raw roots/visits were removed and 6,715 archive receipts
+remained. Relation allocation increased from maintenance writes; deletion did
+not shrink physical files. The second 1,031-source synthetic generation added
+2,531,328 bytes across watched relations, with repeated-text compression caveats.
+These local measurements cannot establish production capacity or human traffic.
+
+Browser QA exercised the actual storage view using a temporary synthetic local
+route at desktop 1440×1000 and mobile 390×844. Document client/scroll widths
+matched (1425/1425 desktop; 375/375 mobile initially), the long generation ID
+wrapped, and the table scrolled independently to scrollLeft 477. No browser
+console errors occurred. The actual protected route returned 307 to login.
+Ten alternating warm HTTP samples measured medians 123.090ms empty-comparison
+view / 196.456ms storage view, HTML 62,428/82,582 bytes, same 19 assets. This
+records the added report's local development render cost, not zero regression,
+FCP, production latency or authenticated database-query cost. The existing
+comparison page only adds a link; no Watch rendering path changes in this slice.
+Receipt: `2574-storage-loading.json`. The preview server, route, cache symlink,
+preview-generated types and Next-added guide block were removed; browser
+viewport reset and tab closed.
+
+Root Standards then Spec review from `285bb46eb` covered the integrated storage
+contracts, locking/fences, retention phases, report qualifications, connected
+tests and worker reviews. The confirmed pin race is fixed and the final native
+checks cover it. No unresolved confirmed defect remains. Live admission still
+requires a fresh measured capacity budget, deployed GA credentials and a first
+actual catalog run; #2573's human/bot/loss/policy qualifications remain absent.
+#2574 code is integrated-and-verified, unlocking #2575 implementation only.
+No production write, deployment, public activation, promotion or refresh schedule
+was performed.

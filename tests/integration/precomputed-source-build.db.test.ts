@@ -20,6 +20,7 @@ import {
   type SourceIngest,
 } from "../../apps/mastra/src/services/precomputed-recommendations/source-generation"
 import type { StructuredModel } from "../../apps/mastra/src/services/precomputed-recommendations/astra-provider"
+import type { HistoricalAnalyticsReader } from "../../apps/mastra/src/services/precomputed-recommendations/historical-analytics"
 import { gaWatchHistoryFixture } from "./fixtures/ga-watch-history"
 
 const bearer = "Bearer preview-test-key"
@@ -59,7 +60,9 @@ const qualifiedWatchFixture = {
     botBasis: "unverified",
     overlapIdentity: "unknown",
   },
-} as const
+} satisfies Awaited<
+  ReturnType<HistoricalAnalyticsReader["describe"]>
+>["qualification"]
 
 describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
   "controlled Astra output through native Admin persistence",

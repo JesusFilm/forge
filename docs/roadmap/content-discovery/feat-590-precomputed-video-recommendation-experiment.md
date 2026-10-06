@@ -87,9 +87,12 @@ has passed live read-only checks. The user approved referrer links plus engageme
 as navigation evidence for the first build on October 6. Ingestion and current
 catalog mapping are integrated and verified, including a live GA pair read and
 Astra judgment through OpenRouter. #2569 resumable builds are integrated and
-verified (20 connected native cases, 37 focused Admin cases); #2574 is ready
-for implementation and #2575 remains behind it. Full catalog execution and
-live readiness are still pending. The execution ledger is
+verified. #2574 storage and loaded cleanup code is now integrated and verified:
+21 connected native cases, 63 focused Admin cases, 13 Mastra cases and seven
+ordinary-retention cases passed, with migrations through `0136`. The 6,715-root
+loaded fixture passed without equating reclaimed rows to recovered filesystem
+space. #2575 manual controls is ready for implementation. Full catalog execution
+and live readiness are still pending. The execution ledger is
 `docs/plans/2026-10-05-precomputed-video-recommendation-status.md`. Public
 experimental serving remains default-off.
 

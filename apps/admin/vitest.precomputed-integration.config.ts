@@ -6,6 +6,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
+      "@mastra/pg": resolve(__dirname, "../mastra/node_modules/@mastra/pg"),
       "@prisma/client": resolve(__dirname, "node_modules/@prisma/client"),
       pg: resolve(__dirname, "node_modules/pg"),
       vitest: resolve(__dirname, "node_modules/vitest"),
