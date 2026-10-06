@@ -8,7 +8,8 @@ start_date: "2026-09-21"
 duration: 14
 depends_on:
   - "feat-519"
-blocks: []
+blocks:
+  - "feat-612"
 tags:
   - "mobile"
   - "platform"
