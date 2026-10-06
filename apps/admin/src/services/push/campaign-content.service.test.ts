@@ -38,6 +38,7 @@ import {
   PushFrozenError,
   PushInputError,
   PushNotFoundError,
+  PushStaleContentVersionError,
   PushTooManyCopyRowsError,
   PushUnknownDestinationError,
   PushUnknownLanguageError,
@@ -430,6 +431,25 @@ describe("writePushCampaignContent as an MCP patch", () => {
     expect(store.client.$transaction).not.toHaveBeenCalled()
   })
 
+  it("refuses a change at a version above the stored one as stale, and writes nothing (R34)", async () => {
+    const store = fakeStore({})
+
+    const write = patch(store, { copies: [{ ...FRENCH }] }, 4)
+
+    await expect(write).rejects.toBeInstanceOf(PushStaleContentVersionError)
+    await expect(write).rejects.toMatchObject({
+      currentContentVersion: 3,
+      lastActorId: EDITOR,
+    })
+    expect(store.client.$transaction).not.toHaveBeenCalled()
+    expect(store.client.pushCampaign.updateMany).not.toHaveBeenCalled()
+    expect(store.stored()?.contentVersion).toBe(3)
+    expect(store.copyRows().map((copy) => copy.languageSlug)).toEqual([
+      "english",
+      "spanish",
+    ])
+  })
+
   it("ignores a removal of a row that is not there", async () => {
     const store = fakeStore({})
 
@@ -622,6 +642,64 @@ describe("writePushCampaignContent as a dashboard save", () => {
     expect(store.stored()).toMatchObject({
       status: "TESTED",
       contentVersion: 3,
+    })
+  })
+
+  describe("an audience resent in another order (R36)", () => {
+    const STORED_AUDIENCE = {
+      audienceScope: "COUNTRIES" as const,
+      countries: ["MX", "BR"],
+      languageFilter: ["english", "spanish"],
+    }
+
+    function testedStore() {
+      return fakeStore({ campaign: { status: "TESTED", ...STORED_AUDIENCE } })
+    }
+
+    function reordered() {
+      return {
+        scope: "COUNTRIES" as const,
+        countries: ["BR", "MX"],
+        languageFilter: ["spanish", "english"],
+      }
+    }
+
+    it("is a no-op that keeps the campaign TESTED at its version", async () => {
+      const store = testedStore()
+
+      const result = await save(store, {
+        copies: [ENGLISH, SPANISH],
+        destination: { kind: "VIDEO", slug: "jesus" },
+        audience: reordered(),
+      })
+
+      expect(result.written).toBe(false)
+      expect(result.changed.audience).toBeNull()
+      expect(store.client.pushCampaign.updateMany).not.toHaveBeenCalled()
+      expect(store.stored()).toMatchObject({
+        status: "TESTED",
+        contentVersion: 3,
+        ...STORED_AUDIENCE,
+      })
+    })
+
+    it("keeps the stored order when a copy row changes in the same save", async () => {
+      const store = testedStore()
+
+      const result = await save(store, {
+        copies: [ENGLISH, { ...SPANISH, body: "Mira hoy" }],
+        destination: { kind: "VIDEO", slug: "jesus" },
+        audience: reordered(),
+      })
+
+      expect(result.written).toBe(true)
+      expect(result.changed.audience).toBeNull()
+      expect(result.changed.languages.updated).toEqual(["spanish"])
+      expect(store.stored()).toMatchObject({
+        status: "DRAFT",
+        contentVersion: 4,
+        ...STORED_AUDIENCE,
+      })
     })
   })
 

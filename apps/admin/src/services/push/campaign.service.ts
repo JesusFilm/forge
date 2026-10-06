@@ -107,10 +107,8 @@ export async function createPushCampaignDraft(
 }
 
 /**
- * R6 to R8 and R11 — the dashboard's save of the campaign's words,
- * destination, and audience, through the shared content write (KTD4).
- *
- * It binds the dashboard source, so a hand save never sets the AI marker.
+ * R6 to R8 and R11 — the dashboard save, through the shared content write (KTD4). It
+ * binds the dashboard source, so a hand save never sets the AI marker.
  */
 export async function updatePushCampaign(
   prisma: PrismaClient,
@@ -152,12 +150,9 @@ export async function pinPushTestContentVersion(
 }
 
 /**
- * R10 and R35 — a test send reached at least one phone, so the campaign may
- * now be scheduled or sent. The per-device outcome lives on the test delivery
- * rows.
- *
- * KTD5 — only for the copy the test sent: the `WHERE` needs the content
- * version to still equal the test's pin, and a missing pin moves no row.
+ * R10 and R35 — a test reached a phone, so the campaign may be scheduled or sent. KTD5 —
+ * the `WHERE` needs the content version to equal the test's pin, and a missing pin moves
+ * no row. The per-device outcome lives on the test delivery rows.
  */
 export async function recordPushTestSend(
   prisma: PrismaClient,

@@ -1,23 +1,15 @@
 /**
- * Real-Postgres proof of the shared content write (KTD4, KTD7, KTD8, KTD9).
- *
- * Mocked Prisma proves the branch shape. Only Postgres proves the conditional
- * update's `WHERE`, the per-row upsert key, and the language and destination
- * lookups.
- *
- * The PrismaClients are built in `beforeAll`, never in the describe body:
- * `describe.skipIf` still runs the body to collect the tests.
- *
- * The test sends call the real dispatch with `start()` mocked, so no
- * workflow runs; the finish step's own service function records the result.
- *
- * Run with:
- *   PUSH_DB_TEST=1 DATABASE_URL=postgresql://forge@localhost:5432/forge_admin_push_test \
- *     pnpm --filter @forge/admin exec vitest run src/services/push/campaign-content.db.test.ts
+ * Real-Postgres proof of the content write's `WHERE` and row writes (KTD4, KTD7-KTD9) and
+ * the test pin. Clients are built in `beforeAll`, because `describe.skipIf` still runs the
+ * body; test sends mock `start()`, so no workflow runs. Run with PUSH_DB_TEST=1.
  */
 import { randomUUID } from "node:crypto"
 
-import { PrismaClient, type PushCampaignStatus } from "@prisma/client"
+import {
+  PrismaClient,
+  type Prisma,
+  type PushCampaignStatus,
+} from "@prisma/client"
 import {
   afterAll,
   beforeAll,
@@ -336,6 +328,64 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
       expect(row.copies[0].title).toBe(
         winner === 0 ? "Writer one" : "Writer two",
       )
+    })
+
+    it("refuses a writer whose version belongs to a write after its read, and keeps that write (R34)", async () => {
+      await seedCampaign({ countries: ["MX"] })
+      // The concurrent save lands right after the writer's first read, at a
+      // fixed point, so the race needs no timing guess.
+      let saved = false
+      const campaigns = new Proxy(prisma.pushCampaign, {
+        get(target, key) {
+          if (key !== "findUnique") return Reflect.get(target, key)
+          return async (args: Prisma.PushCampaignFindUniqueArgs) => {
+            const row = await target.findUnique(args)
+            if (!saved) {
+              saved = true
+              await writePushCampaignContent(prisma, {
+                source: "dashboard",
+                campaignId: CAMPAIGN,
+                actorId: EDITOR,
+                expectedContentVersion: 4,
+                update: {
+                  audience: { scope: "COUNTRIES", countries: ["MX", "BR"] },
+                },
+              })
+            }
+            return row
+          }
+        },
+      })
+      const raced = new Proxy(prisma, {
+        get(target, key) {
+          if (key === "pushCampaign") return campaigns
+          const value: unknown = Reflect.get(target, key)
+          return typeof value === "function" ? value.bind(target) : value
+        },
+      })
+
+      const write = writePushCampaignContent(raced, {
+        source: "mcp",
+        campaignId: CAMPAIGN,
+        actorId: AGENT_EDITOR,
+        expectedContentVersion: 5,
+        patch: { copies: [FRENCH_COPY] },
+      })
+
+      await expect(write).rejects.toBeInstanceOf(PushStaleContentVersionError)
+      await expect(write).rejects.toMatchObject({
+        currentContentVersion: 5,
+        lastActorId: EDITOR,
+      })
+      const row = await readCampaign()
+      expect(row.contentVersion).toBe(5)
+      expect(row.countries).toEqual(["MX", "BR"])
+      expect(row.lastActorId).toBe(EDITOR)
+      expect(row.aiLastActorId).toBeNull()
+      expect(row.copies.map((copy) => copy.languageSlug)).toEqual([
+        PUSH_ENGLISH_LANGUAGE_SLUG,
+        SPANISH,
+      ])
     })
 
     it("saves nothing when a create names a language admin does not know (AE3)", async () => {

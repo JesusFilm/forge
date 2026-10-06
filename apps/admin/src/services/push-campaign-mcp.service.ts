@@ -1,7 +1,7 @@
 // KTD1, KTD11, KTD14 — the push.* tools act as the signed-in person, return an
 // envelope for each expected failure (a thrown error reaches the agent with no
 // field), and never send: no import of dispatch.ts, campaign.service.ts, or workflows.
-import { PushCampaignStatus, type PrismaClient } from "@prisma/client"
+import { Prisma, PushCampaignStatus, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 
 import { isAdminMcpRole } from "@/auth/admin-mcp-oauth"
@@ -176,8 +176,31 @@ function notFound() {
   )
 }
 
-/** KTD11 — maps an expected push failure to its envelope; rethrows the rest. */
-function failureOf(error: unknown) {
+type PushWriteCall = Readonly<{
+  tool: "push.campaign.create" | "push.campaign.update"
+  campaignId: string | null
+  actorId: string
+}>
+
+/** Token characters only, so a value from a caller cannot forge a log field. */
+function logToken(value: string): string {
+  return value.replace(/[^A-Za-z0-9_.:-]/g, "_").slice(0, 64) || "none"
+}
+
+// A Zod or Prisma message can hold copy text, so the line carries only the
+// error's name and its Prisma code. The route answers with no detail.
+function logWriteError(error: unknown, call: PushWriteCall): void {
+  const name = error instanceof Error ? error.name : typeof error
+  const code =
+    error instanceof Prisma.PrismaClientKnownRequestError ? error.code : "none"
+  const campaign = call.campaignId === null ? "none" : logToken(call.campaignId)
+  console.error(
+    `[push-mcp] event=write_error tool=${call.tool} campaign=${campaign} actor=${call.actorId} name=${logToken(name)} code=${logToken(code)}`,
+  )
+}
+
+/** KTD11 — maps an expected push failure to its envelope; logs and rethrows the rest. */
+function failureOf(error: unknown, call: PushWriteCall) {
   if (error instanceof PushInputError) {
     return invalidInput(
       error.issues.length > 0
@@ -223,6 +246,7 @@ function failureOf(error: unknown) {
       { rowCount: error.rowCount, limit: error.limit },
     )
   }
+  logWriteError(error, call)
   throw error
 }
 
@@ -433,7 +457,11 @@ export class PushCampaignMcpService {
         content: parsed.data,
       })
     } catch (error) {
-      return failureOf(error)
+      return failureOf(error, {
+        tool: "push.campaign.create",
+        campaignId: null,
+        actorId,
+      })
     }
     logWrite("campaign_created", result, actorId)
     return this.writeResult(result)
@@ -462,7 +490,11 @@ export class PushCampaignMcpService {
         patch: patch.data,
       })
     } catch (error) {
-      return failureOf(error)
+      return failureOf(error, {
+        tool: "push.campaign.update",
+        campaignId: target.data.campaignId,
+        actorId,
+      })
     }
     if (result.written) logWrite("campaign_written", result, actorId)
     return this.writeResult(result)

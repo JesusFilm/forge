@@ -1,9 +1,7 @@
 /**
- * R7 — what counts as a destination a tap can open.
- *
- * The picker and the schedule and send-now transitions share these predicates,
+ * R7 — the picker and the schedule and send-now checks share these predicates,
  * so a draft or watch-restricted video can neither be chosen nor sent to. The
- * not-found screen on the phone is for content unpublished after the send.
+ * phone's not-found screen is for content unpublished after the send.
  */
 import {
   LocaleStatus,
@@ -184,10 +182,9 @@ async function experienceSlugs(
 }
 
 /**
- * KTD9 and KTD13 — the published state of each slug of one kind. `published`
- * reads the same predicate as `isPushDestinationPublished`, and each reason is
- * the predicate without its last piece, so the flag and the reason cannot
- * disagree. A slug with no live row of the kind is left out of the map.
+ * KTD9, KTD13 — the flag reads the predicate of `isPushDestinationPublished`,
+ * and each reason is that predicate without its last piece, so the two cannot
+ * disagree. A slug with no live row of the kind is not in the map.
  */
 export async function readPushDestinationStates(
   prisma: PrismaClient,

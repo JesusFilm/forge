@@ -1,15 +1,13 @@
 /**
- * Real-Postgres proof of the agent reads (KTD8, KTD9, KTD10, KTD18).
- *
- * Mocked Prisma proves the branch shape. Only Postgres proves the name search
- * in the JSON column, the published parity of each destination, and the
- * per-language counts beside the dashboard's own count.
- *
- * Run with:
- *   PUSH_DB_TEST=1 DATABASE_URL=postgresql://forge@localhost:5432/forge_admin_push_test \
- *     pnpm --filter @forge/admin exec vitest run src/services/push/agent-reads.db.test.ts
+ * Real-Postgres proof of the agent reads (KTD8-KTD10): the name search, the published
+ * parity of each destination, and the per-language counts beside the dashboard count.
+ * Run with PUSH_DB_TEST=1 and DATABASE_URL set to a migrated test database.
  */
-import { PrismaClient, type PushDestinationKind } from "@prisma/client"
+import {
+  PrismaClient,
+  type PushCampaignStatus,
+  type PushDestinationKind,
+} from "@prisma/client"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 
 import { env } from "@/config/env"
@@ -518,6 +516,52 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
             row.campaignId.startsWith(PREFIX),
           ),
         ).toEqual([])
+      })
+
+      it("returns only the asked statuses, and every status when none is asked (R8)", async () => {
+        const title = "Pushreads Status filter"
+        const campaign = (id: string, status: PushCampaignStatus) =>
+          prisma.pushCampaign.create({
+            data: {
+              id: `${PREFIX}${id}`,
+              status,
+              // A row past DRAFT needs a destination (push_campaign_destination_check).
+              ...(status === "DRAFT"
+                ? {}
+                : {
+                    destinationKind: "VIDEO",
+                    destinationSlug: `${PREFIX}film`,
+                  }),
+              copies: {
+                create: { languageSlug: "english", title, body: "Watch" },
+              },
+            },
+          })
+        await campaign("status_draft", "DRAFT")
+        await campaign("status_tested", "TESTED")
+        await campaign("status_sent", "SENT")
+
+        const listed = async (statuses?: PushCampaignStatus[]) => {
+          const result = await listPushAgentCampaigns(prisma, {
+            q: title,
+            limit: 50,
+            ...(statuses ? { statuses } : {}),
+          })
+          return result.campaigns
+            .filter((row) => row.campaignId.startsWith(PREFIX))
+            .map((row) => ({ id: row.campaignId, status: row.status }))
+            .sort((left, right) => (left.id < right.id ? -1 : 1))
+        }
+
+        await expect(listed(["DRAFT", "TESTED"])).resolves.toEqual([
+          { id: `${PREFIX}status_draft`, status: "DRAFT" },
+          { id: `${PREFIX}status_tested`, status: "TESTED" },
+        ])
+        await expect(listed()).resolves.toEqual([
+          { id: `${PREFIX}status_draft`, status: "DRAFT" },
+          { id: `${PREFIX}status_sent`, status: "SENT" },
+          { id: `${PREFIX}status_tested`, status: "TESTED" },
+        ])
       })
     })
   },

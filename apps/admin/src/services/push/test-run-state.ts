@@ -1,10 +1,7 @@
 /**
- * KTD17 and F2 — whether a campaign's test send is still collecting receipts,
- * and until about when.
- *
- * KTD14 — this module is on the agent path, so it never sends. It reads the
- * campaign and its ledger row with Prisma and imports nothing from the send
- * path: `dispatch.ts` imports from here, never the reverse.
+ * KTD17 and F2 — whether a test send still collects receipts, and until when.
+ * KTD14 — it is on the agent path, so it never sends: it imports nothing from
+ * the send path, and `dispatch.ts` imports from here, never the reverse.
  */
 import {
   WorkflowRunStatus,

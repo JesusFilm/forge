@@ -1,14 +1,9 @@
 "use client"
 
 /**
- * R6 to R8 — the campaign's words, destination, and audience in one form.
- *
- * Every cap is checked here before submit, because the service refuses the
- * whole save for one long row and the editor should not have to guess which.
- *
- * KTD15 — the fields are keyed on the content version, so a newer stored
- * version loads again and a stale refusal keeps the typed text. The save
- * state lives above the key, so its message survives that reload.
+ * R6 to R8 — one form. Each cap is checked before submit, because the service refuses
+ * the whole save for one long row. KTD15 — the fields are keyed on the content version,
+ * and the save state lives above the key, so its message survives the remount.
  */
 import { Plus, Trash2 } from "lucide-react"
 import {

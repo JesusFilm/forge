@@ -1,14 +1,7 @@
 /**
- * KTD4 — the one path that writes a campaign's copy, destination, and
- * audience: the MCP create, the MCP update, and the dashboard save.
- *
- * A write that really changes the content is one conditional update whose
- * `WHERE` carries the id, an editable status, and the content version the
- * caller read. A count of 0 is the refusal; the read after it only names the
- * refusal. A call that changes nothing writes nothing (R36, KTD7).
- *
- * KTD14 — this module never sends. It imports nothing from the send path, and
- * `campaign.service.ts` imports from here, never the reverse.
+ * KTD4 — the one content writer for the MCP and the dashboard. KTD14 — it never
+ * sends: it imports nothing from the send path, and `campaign.service.ts`
+ * imports from here, never the reverse.
  */
 import {
   PushAudienceScope,
@@ -470,12 +463,9 @@ function campaignNotFound(): PushNotFoundError {
 }
 
 /**
- * R3, R10, R11, R17, R33, R34, R36 — writes the content of an existing
- * campaign as one person, through the dashboard or the MCP.
- *
- * The status check comes before any comparison, so a frozen campaign is
- * refused even when the call would change nothing. A real change moves the
- * campaign to DRAFT and raises its version by one.
+ * R3, R10, R11, R17, R33, R34, R36 — the status check runs first, so a frozen
+ * campaign is refused even when the call changes nothing. A real change is one
+ * conditional update that moves the campaign to DRAFT and raises its version.
  */
 export async function writePushCampaignContent(
   prisma: PrismaClient,
@@ -513,6 +503,12 @@ export async function writePushCampaignContent(
       statusChange: null,
       destinationPublished: null,
     }
+  }
+
+  // The diff is built from `before`. A version other than the one read could
+  // match a later write in the update below, and this diff would overwrite it.
+  if (before.contentVersion !== input.expectedContentVersion) {
+    await refuseLostWrite(prisma, input.campaignId)
   }
 
   await refuseUnknownLanguages(

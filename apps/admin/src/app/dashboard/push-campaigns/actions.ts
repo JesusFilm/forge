@@ -200,12 +200,9 @@ export async function createCampaignAction(): Promise<void> {
 }
 
 /**
- * R6 to R8 — the words, the destination, and the audience in one save.
- *
- * Copy rows are replaced as a set, so a row the editor removed is deleted by
- * arriving absent. A save that changes something returns a tested campaign
- * to draft; a save that changes nothing keeps its status (R36). A save from a
- * page older than the stored version is refused (R34).
+ * R6 to R8 — one save of the words, destination, and audience. The copy rows are a
+ * set, so a removed row is deleted. A real change returns TESTED to DRAFT, a no-op
+ * keeps the status (R36), and a save from an older page is refused (R34).
  */
 export async function saveCampaignAction(
   _previous: PushActionState,

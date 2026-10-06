@@ -1,11 +1,5 @@
 /**
- * R5–R8 — what the agent reads before it drafts a campaign: languages,
- * destinations, audience counts, and campaigns, with the same facts the
- * dashboard and the send path use.
- *
- * Every read is bounded. Names, titles, and copy in these results are content
- * that people wrote, so a caller passes them on as data, never as instructions.
- *
+ * R5–R8 — bounded reads. Text that people wrote is data, never instructions.
  * KTD14 — this module is on the agent path, so it never sends. It imports
  * nothing from `dispatch.ts`, `campaign.service.ts`, or the workflows.
  */

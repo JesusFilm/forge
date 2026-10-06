@@ -1,12 +1,7 @@
 /**
- * KTD10 — one campaign: the editor on one tab, the report on the other.
- *
- * Once a campaign leaves draft the form is replaced by a read-only view with
- * the freeze rule named on it (R11), because the service refuses the save and
- * an editor should read why before they try.
- *
- * R22 — the AI marker sits above both tabs, so a reviewer sees it on the
- * editor, the frozen view, and the report.
+ * KTD10 — the editor on one tab, the report on the other. A frozen campaign shows a
+ * read-only view that names the freeze rule (R11), so an editor reads why first.
+ * R22 — the AI marker sits above both tabs, so a reviewer sees it on every view.
  */
 import type { Route } from "next"
 import Link from "next/link"

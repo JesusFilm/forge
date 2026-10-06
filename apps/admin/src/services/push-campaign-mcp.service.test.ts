@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
@@ -441,6 +441,69 @@ describe("expected failures become envelopes (KTD11)", () => {
     await expect(
       service().updateCampaign({ input: update, user: EDITOR }),
     ).rejects.toThrow("db down")
+  })
+})
+
+describe("an unexpected write fault leaves one log line (KTD20)", () => {
+  // Each message holds copy text, as a Zod or Prisma message can.
+  const COPY_IN_MESSAGE = `Value too long: ${SPANISH.title} ${SPANISH.body}`
+
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+  })
+
+  function errorLines(): string[] {
+    return vi
+      .mocked(console.error)
+      .mock.calls.map((call) => String(call[0]))
+      .filter((line) => line.includes("event=write_error"))
+  }
+
+  it("logs the update's name and no message, and still throws the fault", async () => {
+    const fault = new Error(COPY_IN_MESSAGE)
+    mocks.writePushCampaignContent.mockRejectedValue(fault)
+
+    await expect(
+      service().updateCampaign({
+        input: { campaignId: "c1", expectedRevision: 3, copies: [SPANISH] },
+        user: EDITOR,
+      }),
+    ).rejects.toBe(fault)
+
+    expect(errorLines()).toEqual([
+      "[push-mcp] event=write_error tool=push.campaign.update campaign=c1 actor=editor_1 name=Error code=none",
+    ])
+    expect(errorLines()[0]).not.toContain(SPANISH.title)
+  })
+
+  it("logs the create's Prisma code and no message, and still throws the fault", async () => {
+    const fault = new Prisma.PrismaClientKnownRequestError(COPY_IN_MESSAGE, {
+      code: "P2034",
+      clientVersion: "test",
+    })
+    mocks.createPushCampaignContent.mockRejectedValue(fault)
+
+    await expect(
+      service().createCampaign({ input: { copies: [ENGLISH] }, user: EDITOR }),
+    ).rejects.toBe(fault)
+
+    expect(errorLines()).toEqual([
+      "[push-mcp] event=write_error tool=push.campaign.create campaign=none actor=editor_1 name=PrismaClientKnownRequestError code=P2034",
+    ])
+    expect(errorLines()[0]).not.toContain(SPANISH.title)
+  })
+
+  it("logs nothing for a failure that becomes an envelope", async () => {
+    mocks.writePushCampaignContent.mockRejectedValue(
+      new PushNotFoundError("That campaign does not exist"),
+    )
+
+    await service().updateCampaign({
+      input: { campaignId: "c1", expectedRevision: 3, copies: [SPANISH] },
+      user: EDITOR,
+    })
+
+    expect(errorLines()).toEqual([])
   })
 })
 
