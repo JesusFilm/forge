@@ -22,6 +22,8 @@ const WATCH_REFERRER_REGEX =
   "^https?://(www\\.)?jesusfilm\\.org/watch(/[^?#]*)?([?#].*)?$"
 const REPORT_PAGE_SIZE = 1_000
 const SNAPSHOT_PAGE_SIZE = 500
+const COVERAGE_REPORT_TIMEOUT_MS = 50_000
+const DETAILED_REPORT_TIMEOUT_MS = 120_000
 const MAX_REPORT_PAGES = 25
 const EVENT_NAMES = [
   "page_view",
@@ -383,7 +385,10 @@ async function requestReportPage(input: {
       offset: String(input.offset),
       returnPropertyQuota: true,
     },
-    timeoutMs: 50_000,
+    timeoutMs:
+      input.kind === "monthly" || input.kind === "identified"
+        ? COVERAGE_REPORT_TIMEOUT_MS
+        : DETAILED_REPORT_TIMEOUT_MS,
     maxResponseBytes: 2_097_152,
     maxAttempts: 2,
     fetchImpl: input.fetchImpl,
