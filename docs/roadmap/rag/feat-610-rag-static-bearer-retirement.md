@@ -68,6 +68,7 @@ itself remove a Railway setting or establish the live completion gate.
 ## Resolution — 2026-10-06
 
 Implemented in [Forge PR #2582](https://github.com/JesusFilm/forge/pull/2582).
+Closeout recorded in [Forge PR #2586](https://github.com/JesusFilm/forge/pull/2586).
 Jaco confirms that the old shared-bearer mechanism is fully retired and accepts
 this ticket as complete. This owner acceptance closes the operational cutoff;
 the code PR alone did not claim it.
