@@ -12,6 +12,21 @@ look is ours (custom component blocks, not the editor's plain text). The
 local Remotion pipeline (`cut-devotional-shorts.ts`) stays the source of
 truth for planning; Studio is the review-and-fix surface.
 
+## Read first
+
+- `docs/devotional-shorts-playbook.md`: every approved rule per short
+  (intro, film-verse, history, language, reflection), layouts with Figma
+  nodes, animation timings, safe zones, music, captions, and the
+  "Revisions 2026-10-05" section (safe-area captions, typed film question,
+  sub-only film close, history redesign with the closing question alone,
+  captions naming the full devotional in their first two lines).
+- Memory index (`MEMORY.md`): `devotional-shorts-cutdown`,
+  `shorts-studio-devotional-look-components`, `shorts-studio-lumo-goal`,
+  `feedback-simple-caption-files`.
+- Finished sets: `~/Desktop/Social Media/Martha/shorts/` and
+  `~/Desktop/Social Media/Prodigal/shorts/` (each with `shorts.md`,
+  captions and `archive/`).
+
 ## Why a new session
 
 The Studio team shipped (2026-10-06): LUMO in search (no subtitles), a video
