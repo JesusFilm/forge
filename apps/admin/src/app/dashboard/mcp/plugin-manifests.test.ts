@@ -101,9 +101,9 @@ describe("jfp-admin plugin manifests", () => {
 
   // KTD19 — a client that caches a plugin by version sees a new skill only
   // after the version changes.
-  it("carries version 0.2.0 on both platforms", () => {
+  it("carries version 0.2.1 on both platforms", () => {
     for (const path of manifests) {
-      expect(readJson(path).version, path).toBe("0.2.0")
+      expect(readJson(path).version, path).toBe("0.2.1")
     }
   })
 
@@ -163,6 +163,19 @@ describe("jfp-admin skills", () => {
     )
 
     expect([...named].sort()).toEqual([...registered].sort())
+  })
+
+  // An author answers better when each message asks one thing.
+  it("asks the author one question at a time", () => {
+    const skill = readText(pushSkillPath)
+
+    for (const rule of [
+      "Ask the author one question at a time.",
+      "Wait for the answer before you ask the next question.",
+      "Do not ask a question that the author already answered.",
+    ]) {
+      expect(skill).toContain(rule)
+    }
   })
 
   it("states the push skill rules that keep a person in charge of each send", () => {
