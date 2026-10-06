@@ -119,61 +119,70 @@ export async function configurePrivatePrecomputedExperiment(
     input.endsAt <= input.startsAt
   )
     throw new PrecomputedExperimentConfigurationError("invalid_configuration")
-  const [generation, routing, challenger] = await Promise.all([
-    prisma.recommendationPrecomputedGeneration.findUnique({
-      where: { id: input.generationId },
-      select: { id: true, status: true, sourceSetDigest: true },
-    }),
+  const [routing, challenger] = await Promise.all([
     readControlRouting(prisma),
     prisma.recommendationStrategyManifest.findUnique({
       where: { id: PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID },
     }),
   ])
-  if (
-    generation?.status !== "complete" ||
-    !routing ||
-    !challenger ||
-    challenger.enabled ||
-    !HEX_DIGEST.test(generation.sourceSetDigest)
-  )
+  if (!routing || !challenger || challenger.enabled)
     throw new PrecomputedExperimentConfigurationError(
       "dependencies_unavailable",
     )
   const control = routing.manifest
   const controlManifestDigest = routing.manifestDigest
-  const configurationDigest = digest([
-    input.id,
-    generation.id,
-    generation.sourceSetDigest,
-    control.id,
-    controlManifestDigest,
-    routing.routingDigest,
-    challenger.id,
-    PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
-    PRECOMPUTED_VISIT_ELIGIBILITY_POLICY,
-    PRECOMPUTED_VISIT_DELIVERY_POLICY,
-    input.startsAt.toISOString(),
-    input.endsAt.toISOString(),
-  ])
-  return prisma.recommendationPrecomputedExperiment.create({
-    data: {
-      id: input.id,
-      generationId: generation.id,
-      controlManifestId: control.id,
-      challengerManifestId: challenger.id,
-      controlManifestDigest,
-      controlRoutingDigest: routing.routingDigest,
-      sourceSetDigest: generation.sourceSetDigest,
-      assignmentPolicyVersion: PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
-      eligibilityPolicyVersion: PRECOMPUTED_VISIT_ELIGIBILITY_POLICY,
-      deliveryPolicyVersion: PRECOMPUTED_VISIT_DELIVERY_POLICY,
-      configurationDigest,
-      state: "private_test",
-      startsAt: input.startsAt,
-      endsAt: input.endsAt,
-      expiresAt: new Date(input.endsAt.getTime() + CONFIG_RETENTION_MS),
+  return prisma.$transaction(
+    async (tx) => {
+      // Share-lock the same generation row that retirement updates. A pin
+      // cannot be created from a stale complete-generation observation.
+      const [current] = await tx.$queryRaw<
+        Array<{ id: string; status: string; source_set_digest: string }>
+      >`SELECT id, status, source_set_digest
+      FROM recommendation_precomputed_generation
+      WHERE id = ${input.generationId} FOR SHARE`
+      if (
+        current?.status !== "complete" ||
+        !HEX_DIGEST.test(current.source_set_digest)
+      )
+        throw new PrecomputedExperimentConfigurationError(
+          "dependencies_unavailable",
+        )
+      const configurationDigest = digest([
+        input.id,
+        current.id,
+        current.source_set_digest,
+        control.id,
+        controlManifestDigest,
+        routing.routingDigest,
+        challenger.id,
+        PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
+        PRECOMPUTED_VISIT_ELIGIBILITY_POLICY,
+        PRECOMPUTED_VISIT_DELIVERY_POLICY,
+        input.startsAt.toISOString(),
+        input.endsAt.toISOString(),
+      ])
+      return tx.recommendationPrecomputedExperiment.create({
+        data: {
+          id: input.id,
+          generationId: current.id,
+          controlManifestId: control.id,
+          challengerManifestId: challenger.id,
+          controlManifestDigest,
+          controlRoutingDigest: routing.routingDigest,
+          sourceSetDigest: current.source_set_digest,
+          assignmentPolicyVersion: PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
+          eligibilityPolicyVersion: PRECOMPUTED_VISIT_ELIGIBILITY_POLICY,
+          deliveryPolicyVersion: PRECOMPUTED_VISIT_DELIVERY_POLICY,
+          configurationDigest,
+          state: "private_test",
+          startsAt: input.startsAt,
+          endsAt: input.endsAt,
+          expiresAt: new Date(input.endsAt.getTime() + CONFIG_RETENTION_MS),
+        },
+      })
     },
-  })
+    { timeout: 10_000 },
+  )
 }
 
 export class PrecomputedExperimentConfigurationError extends Error {

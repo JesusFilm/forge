@@ -76,6 +76,12 @@ export default async function PrecomputedRecommendationsPage({
       >
         Private A/B visit diagnostics
       </Link>
+      <Link
+        href="/dashboard/recommendations/precomputed/storage"
+        className="text-[13px] underline underline-offset-4"
+      >
+        Storage and retention capacity
+      </Link>
       <PageSection title="Choose a source and generation" meta="READ ONLY">
         <form
           action="/dashboard/recommendations/precomputed"

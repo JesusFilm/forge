@@ -10,6 +10,7 @@ import { servedSnapshotValue } from "../served-item-payload"
 import { deliverPrecomputedWatchFallback } from "./watch-fallback"
 import { deliverPrivatePrecomputedWatchVisit } from "./private-watch-test"
 import { purgeExpiredPrecomputedVisitRoots } from "./visit-retention"
+import { purgeExpiredPrecomputedGenerations } from "./generation-retention"
 import { RECOMMENDATION_CONTRACTS } from "../contracts"
 import type { SemanticRecommendationDelivery } from "../delivery.types"
 import {
@@ -395,6 +396,113 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
       expect(incumbent).not.toHaveBeenCalled()
     })
+
+    it("rejects a private pin after retirement wins the row lock and protects a pinned old generation", async () => {
+      await prisma.recommendationServingControl.update({
+        where: { id: "recommendation-serving-control" },
+        data: { enabled: true },
+      })
+      const retiringId = await makeGeneration([])
+      const observer = new Client({ connectionString: env.DATABASE_URL })
+      await observer.connect()
+      await admin.query("BEGIN")
+      let transactionOpen = true
+      try {
+        const locked = await admin.query(
+          "SELECT id FROM recommendation_precomputed_generation WHERE id = $1 FOR UPDATE",
+          [retiringId],
+        )
+        expect(locked.rowCount).toBe(1)
+        const lockHolder = await admin.query<{ pid: number }>(
+          "SELECT pg_backend_pid() AS pid",
+        )
+        const holderPid = lockHolder.rows[0].pid
+        const pending = configurePrivatePrecomputedExperiment(prisma, {
+          id: `retiring-pin-${suffix}`,
+          generationId: retiringId,
+          startsAt: new Date(Date.now() - 60_000),
+          endsAt: new Date(Date.now() + 86_400_000),
+          operator: { id: "fixture-admin", role: "ADMIN" },
+        })
+        const outcome = pending.then(
+          (value) => ({ ok: true as const, value }),
+          (error: unknown) => ({ ok: false as const, error }),
+        )
+        let blocked = false
+        for (let attempt = 0; attempt < 200 && !blocked; attempt++) {
+          const waiting = await observer.query<{ blocked: boolean }>(
+            `SELECT EXISTS (
+              SELECT 1 FROM pg_stat_activity
+              WHERE $1 = ANY(pg_blocking_pids(pid))
+            ) AS blocked`,
+            [holderPid],
+          )
+          blocked = waiting.rows[0].blocked
+          if (!blocked) await new Promise((resolve) => setTimeout(resolve, 20))
+        }
+        expect(blocked).toBe(true)
+        await admin.query(
+          "UPDATE recommendation_precomputed_generation SET status = 'retiring', retiring_at = now() WHERE id = $1",
+          [retiringId],
+        )
+        await admin.query("COMMIT")
+        transactionOpen = false
+        const settled = await outcome
+        if (settled.ok)
+          await prisma.recommendationPrecomputedExperiment.delete({
+            where: { id: settled.value.id },
+          })
+        expect(settled.ok).toBe(false)
+        if (!settled.ok)
+          expect(settled.error).toMatchObject({
+            code: "dependencies_unavailable",
+          })
+        expect(
+          await prisma.recommendationPrecomputedExperiment.count({
+            where: { generationId: retiringId },
+          }),
+        ).toBe(0)
+      } finally {
+        if (transactionOpen) await admin.query("ROLLBACK")
+        await observer.end()
+      }
+      expect(
+        await prisma.$transaction((tx) =>
+          purgeExpiredPrecomputedGenerations(tx, new Date(), 1),
+        ),
+      ).toMatchObject({ generationsDeleted: 1 })
+
+      const pinnedId = await makeGeneration([])
+      await prisma.recommendationPrecomputedGeneration.update({
+        where: { id: pinnedId },
+        data: { completedAt: new Date(Date.now() - 120 * 86_400_000) },
+      })
+      const pin = await configurePrivatePrecomputedExperiment(prisma, {
+        id: `protected-pin-${suffix}`,
+        generationId: pinnedId,
+        startsAt: new Date(Date.now() - 60_000),
+        endsAt: new Date(Date.now() + 86_400_000),
+        operator: { id: "fixture-admin", role: "ADMIN" },
+      })
+      await prisma.recommendationPrecomputedExperiment.update({
+        where: { id: pin.id },
+        data: { state: "closed" },
+      })
+      await makeGeneration([])
+      await makeGeneration([])
+      const result = await prisma.$transaction((tx) =>
+        purgeExpiredPrecomputedGenerations(tx, new Date(), 1),
+      )
+      expect(result.generationsDeleted).toBe(0)
+      expect(
+        await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
+          where: { id: pinnedId },
+        }),
+      ).toMatchObject({ status: "complete" })
+      await prisma.recommendationPrecomputedExperiment.delete({
+        where: { id: pin.id },
+      })
+    }, 30_000)
 
     it("admits one independent visit before any delivery and keeps the browser arm across sessions", async () => {
       await prisma.videoLocale.update({

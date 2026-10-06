@@ -431,7 +431,12 @@ type SavedChoice = Omit<Choice, "evidence"> & {
 
 export type PrecomputedComparison =
   | {
-      state: "not_found" | "not_in_generation" | "incomplete" | "failed"
+      state:
+        | "not_found"
+        | "not_in_generation"
+        | "incomplete"
+        | "failed"
+        | "retiring"
       experimental: []
       semanticBaseline: []
       coverageGap: null
@@ -746,26 +751,26 @@ export async function submitPrecomputedRecommendation(
     )
   const input = parsed.data
   if (input.action === "start") {
-    const cutoff = new Date(input.inputCutoff)
-    const snapshotMode =
-      input.inputSnapshotMode ??
-      (input.inputMode === "fixture" ? "fixture" : "observed_fenced")
-    if (
-      input.inputMode !== "fixture" &&
-      snapshotMode !== "observed_fenced" &&
-      snapshotMode !== "preflight_failed"
-    )
-      throw new PrecomputedRecommendationError(
-        "invalid",
-        "Invalid cutoff provenance",
+    return prisma.$transaction(async (tx) => {
+      const cutoff = new Date(input.inputCutoff)
+      const snapshotMode =
+        input.inputSnapshotMode ??
+        (input.inputMode === "fixture" ? "fixture" : "observed_fenced")
+      if (
+        input.inputMode !== "fixture" &&
+        snapshotMode !== "observed_fenced" &&
+        snapshotMode !== "preflight_failed"
       )
-    if (input.inputMode === "fixture" && snapshotMode !== "fixture")
-      throw new PrecomputedRecommendationError(
-        "invalid",
-        "Invalid historical provenance",
-      )
-    const inserted =
-      await prisma.recommendationPrecomputedGeneration.createMany({
+        throw new PrecomputedRecommendationError(
+          "invalid",
+          "Invalid cutoff provenance",
+        )
+      if (input.inputMode === "fixture" && snapshotMode !== "fixture")
+        throw new PrecomputedRecommendationError(
+          "invalid",
+          "Invalid historical provenance",
+        )
+      const inserted = await tx.recommendationPrecomputedGeneration.createMany({
         data: [
           {
             id: input.generationId,
@@ -782,30 +787,40 @@ export async function submitPrecomputedRecommendation(
         ],
         skipDuplicates: true,
       })
-    const existing =
-      await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
-        where: { id: input.generationId },
-      })
-    if (
-      existing.protocolVersion !== 1 ||
-      existing.modelId !== input.modelId ||
-      existing.promptVersion !== input.promptVersion ||
-      existing.inputDigest !== input.inputDigest ||
-      existing.sourceSetDigest !== input.sourceSetDigest ||
-      existing.inputCutoff.getTime() !== cutoff.getTime() ||
-      existing.expectedSourceCount !== input.expectedSourceCount ||
-      existing.inputMode !== input.inputMode ||
-      existing.inputSnapshotMode !== snapshotMode
-    )
-      throw new PrecomputedRecommendationError(
-        "conflict",
-        "Generation identity has different input",
+      const retired =
+        await tx.recommendationPrecomputedGenerationRetentionProof.findUnique({
+          where: { generationId: input.generationId },
+        })
+      if (retired)
+        throw new PrecomputedRecommendationError(
+          "conflict",
+          "Generation ID was retired",
+        )
+      const existing =
+        await tx.recommendationPrecomputedGeneration.findUniqueOrThrow({
+          where: { id: input.generationId },
+        })
+      if (
+        existing.protocolVersion !== 1 ||
+        existing.modelId !== input.modelId ||
+        existing.promptVersion !== input.promptVersion ||
+        existing.inputDigest !== input.inputDigest ||
+        existing.sourceSetDigest !== input.sourceSetDigest ||
+        existing.inputCutoff.getTime() !== cutoff.getTime() ||
+        existing.expectedSourceCount !== input.expectedSourceCount ||
+        existing.inputMode !== input.inputMode ||
+        existing.inputSnapshotMode !== snapshotMode
       )
-    return {
-      generationId: existing.id,
-      state: existing.status,
-      replay: inserted.count === 0,
-    }
+        throw new PrecomputedRecommendationError(
+          "conflict",
+          "Generation identity has different input",
+        )
+      return {
+        generationId: existing.id,
+        state: existing.status,
+        replay: inserted.count === 0,
+      }
+    })
   }
   if (input.action === "status") {
     const generation =
@@ -822,6 +837,13 @@ export async function submitPrecomputedRecommendation(
         "conflict",
         "Generation uses the durable build protocol",
       )
+    if (generation.status === "retiring")
+      return {
+        generationId: generation.id,
+        state: "retiring",
+        replay: undefined,
+        detailsUnavailable: true,
+      }
     const source = input.sourceVideoId
       ? await prisma.recommendationPrecomputedSource.findUnique({
           where: {
@@ -835,6 +857,7 @@ export async function submitPrecomputedRecommendation(
     return {
       generationId: generation.id,
       state: generation.status,
+      replay: undefined,
       generationFailureCode: generation.failureCode,
       modelId: generation.modelId,
       promptVersion: generation.promptVersion,
@@ -1200,6 +1223,13 @@ export async function loadPrecomputedRecommendationComparison(
   if (!generation)
     return {
       state: "not_found" as const,
+      experimental: [],
+      semanticBaseline: [],
+      coverageGap: null,
+    }
+  if (generation.status === "retiring")
+    return {
+      state: "retiring",
       experimental: [],
       semanticBaseline: [],
       coverageGap: null,

@@ -202,6 +202,11 @@ const actionSchema = z.discriminatedUnion("action", [
     finishedAt: z.string().datetime(),
   }),
   base.extend({ action: z.literal("status"), sourceVideoId: id.optional() }),
+  z.object({
+    action: z.literal("retention_status"),
+    protocolVersion: z.literal(2),
+    generationId: id,
+  }),
   base.extend({ action: z.literal("complete") }),
 ])
 
@@ -453,8 +458,8 @@ export async function submitDurablePrecomputedRecommendation(
   if (!parsed.success) invalid("Invalid durable build payload")
   const input: Action = parsed.data
   if (input.action === "start") {
-    const inserted =
-      await prisma.recommendationPrecomputedGeneration.createMany({
+    return prisma.$transaction(async (tx) => {
+      const inserted = await tx.recommendationPrecomputedGeneration.createMany({
         data: [
           {
             id: input.generationId,
@@ -471,33 +476,90 @@ export async function submitDurablePrecomputedRecommendation(
         ],
         skipDuplicates: true,
       })
-    const existing =
-      await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
-        where: { id: input.generationId },
-      })
-    if (
-      existing.protocolVersion !== 2 ||
-      existing.modelId !== input.modelId ||
-      existing.promptVersion !== input.promptVersion ||
-      existing.inputDigest !== input.inputDigest ||
-      existing.sourceSetDigest !== input.sourceSetDigest ||
-      existing.inputCutoff.getTime() !== date(input.inputCutoff).getTime() ||
-      existing.expectedSourceCount !== input.expectedSourceCount ||
-      existing.inputMode !== input.inputMode ||
-      existing.inputSnapshotMode !== "observed_fenced"
-    )
-      conflict("Generation identity has different input")
-    return {
-      generationId: existing.id,
-      state: existing.status,
-      replay: inserted.count === 0,
-    }
+      // Read the bounded retirement proof after
+      // the unique-key insert: a concurrent retirement blocks that insert until
+      // its proof and deletion commit, so the receipt cannot be reused.
+      const retired =
+        await tx.recommendationPrecomputedGenerationRetentionProof.findUnique({
+          where: { generationId: input.generationId },
+        })
+      if (retired) conflict("Generation ID was retired")
+      const existing =
+        await tx.recommendationPrecomputedGeneration.findUniqueOrThrow({
+          where: { id: input.generationId },
+        })
+      if (
+        existing.protocolVersion !== 2 ||
+        existing.modelId !== input.modelId ||
+        existing.promptVersion !== input.promptVersion ||
+        existing.inputDigest !== input.inputDigest ||
+        existing.sourceSetDigest !== input.sourceSetDigest ||
+        existing.inputCutoff.getTime() !== date(input.inputCutoff).getTime() ||
+        existing.expectedSourceCount !== input.expectedSourceCount ||
+        existing.inputMode !== input.inputMode ||
+        existing.inputSnapshotMode !== "observed_fenced"
+      )
+        conflict("Generation identity has different input")
+      return {
+        generationId: existing.id,
+        state: existing.status,
+        replay: inserted.count === 0,
+      }
+    })
   }
   if (input.action === "capacity_probe") {
     return prisma.$transaction(async (tx) => {
       await checkedGeneration(tx, input)
       return probe(tx)
     })
+  }
+  if (input.action === "retention_status") {
+    const generation =
+      await prisma.recommendationPrecomputedGeneration.findUnique({
+        where: { id: input.generationId },
+        select: {
+          id: true,
+          protocolVersion: true,
+          inputCutoff: true,
+          inputDigest: true,
+          inputMode: true,
+          status: true,
+        },
+      })
+    if (generation)
+      return {
+        generationId: generation.id,
+        protocolVersion: 2,
+        generationProtocolVersion: generation.protocolVersion,
+        inputCutoff: generation.inputCutoff.toISOString(),
+        inputDigest: generation.inputDigest,
+        inputMode: generation.inputMode,
+        state: generation.status,
+        sourceWorkResumable: ["incomplete", "capacity_blocked"].includes(
+          generation.status,
+        ),
+      }
+    const proof =
+      await prisma.recommendationPrecomputedGenerationRetentionProof.findUnique(
+        {
+          where: { generationId: input.generationId },
+        },
+      )
+    if (!proof || proof.expiresAt <= new Date())
+      throw new PrecomputedRecommendationError(
+        "not_found",
+        "Generation not found",
+      )
+    return {
+      generationId: proof.generationId,
+      protocolVersion: 2,
+      generationProtocolVersion: proof.generationProtocolVersion,
+      inputCutoff: proof.inputCutoff.toISOString(),
+      inputDigest: proof.inputDigest,
+      inputMode: proof.inputMode,
+      state: proof.state,
+      sourceWorkResumable: false,
+    }
   }
   if (input.action === "status") {
     const generation =
@@ -514,6 +576,19 @@ export async function submitDurablePrecomputedRecommendation(
       generation.inputDigest !== input.generationInputDigest
     )
       conflict("Generation input digest differs")
+    const identity = {
+      generationId: generation.id,
+      protocolVersion: 2,
+      inputDigest: generation.inputDigest,
+      inputCutoff: generation.inputCutoff.toISOString(),
+      sourceWorkResumable: ["incomplete", "capacity_blocked"].includes(
+        generation.status,
+      ),
+    }
+    // A retiring generation drains children in bounded pages. Do not expose
+    // those partial rows as a complete source/usage report during reclamation.
+    if (generation.status === "retiring")
+      return { ...identity, state: "retiring", detailsUnavailable: true }
     const [counts, source, usageReport, accepted, budget, finalSource] =
       await Promise.all([
         prisma.recommendationPrecomputedBuildSource.groupBy({
@@ -554,7 +629,7 @@ export async function submitDurablePrecomputedRecommendation(
     const count = (state: string) =>
       counts.find((row) => row.state === state)?._count ?? 0
     return {
-      generationId: generation.id,
+      ...identity,
       state: generation.status,
       failureCode: generation.failureCode,
       expectedSourceCount: generation.expectedSourceCount,
@@ -661,7 +736,12 @@ export async function loadDurablePrecomputedBuildReport(
     await prisma.recommendationPrecomputedGeneration.findUnique({
       where: { id: input.generationId },
     })
-  if (!generation || generation.protocolVersion !== 2) return null
+  if (
+    !generation ||
+    generation.protocolVersion !== 2 ||
+    generation.status === "retiring"
+  )
+    return null
   const [
     counts,
     failures,
@@ -914,7 +994,10 @@ async function saveChoice(
 
 async function mutate(
   tx: Tx,
-  input: Exclude<Action, { action: "start" | "capacity_probe" | "status" }>,
+  input: Exclude<
+    Action,
+    { action: "start" | "capacity_probe" | "status" | "retention_status" }
+  >,
 ): Promise<Record<string, unknown>> {
   const exclusive =
     [

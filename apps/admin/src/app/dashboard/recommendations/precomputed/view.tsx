@@ -176,11 +176,13 @@ export function PrecomputedComparisonView({
         <p className="p-4 text-[13px] text-[var(--color-text-secondary)]">
           {comparison.state === "incomplete"
             ? "Generation is incomplete and cannot be previewed as ready."
-            : comparison.state === "failed"
-              ? "Generation failed; previous complete builds remain available."
-              : comparison.state === "not_in_generation"
-                ? "This source Video is not in the selected generation."
-                : "Generation not found."}
+            : comparison.state === "retiring"
+              ? "Generation is being reclaimed and is unavailable for review or delivery. Its partial cleanup rows are not a recommendation set."
+              : comparison.state === "failed"
+                ? "Generation failed; previous complete builds remain available."
+                : comparison.state === "not_in_generation"
+                  ? "This source Video is not in the selected generation."
+                  : "Generation not found."}
         </p>
         {comparison.state === "failed" && comparison.failureCode ? (
           <p className="px-4 pb-4 text-[13px] text-[var(--color-text-secondary)]">

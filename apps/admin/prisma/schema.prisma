@@ -6749,6 +6749,11 @@ model RecommendationPrecomputedGeneration {
   completedAt DateTime? @map("completed_at")
   failedAt DateTime? @map("failed_at")
   failureCode String? @map("failure_code")
+  /// An operator-required rollback target survives terminal-generation cleanup.
+  /// The two newest complete generations are protected independently of this pin.
+  rollbackRetentionHold Boolean @default(false) @map("rollback_retention_hold")
+  /// Retiring is a non-servable, bounded child-drain state; terminal timestamps remain.
+  retiringAt DateTime? @map("retiring_at")
   sources RecommendationPrecomputedSource[]
   modelCalls RecommendationPrecomputedModelCall[]
   buildSources RecommendationPrecomputedBuildSource[]
@@ -6758,6 +6763,22 @@ model RecommendationPrecomputedGeneration {
 
   @@index([createdAt(sort: Desc)], map: "recommendation_precomputed_generation_created_at_idx")
   @@map("recommendation_precomputed_generation")
+}
+
+/// Bounded identity proof for Mastra runtime cleanup after the generation and
+/// its larger child graph have been reclaimed. No FK deliberately extends it.
+model RecommendationPrecomputedGenerationRetentionProof {
+  generationId String @id @map("generation_id")
+  generationProtocolVersion Int @map("generation_protocol_version")
+  inputCutoff DateTime @map("input_cutoff")
+  inputDigest String @map("input_digest") @db.Char(64)
+  inputMode String @map("input_mode")
+  state String
+  recordedAt DateTime @map("recorded_at")
+  expiresAt DateTime @map("expires_at")
+
+  @@index([expiresAt, generationId], map: "precomputed_retention_proof_expiry_idx")
+  @@map("recommendation_precomputed_generation_retention_proof")
 }
 
 /// Frozen configuration for a private Watch test; no public pointer references it.

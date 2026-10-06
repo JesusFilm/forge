@@ -17,6 +17,7 @@ import { purgeExpiredCompositionEvidence } from "./composition/service"
 import { purgeExpiredOwnerReleases } from "./promotion/owner-authority"
 import { purgeExpiredCowatchTrialAuthorities } from "./cowatch/trial-authority.service"
 import { purgeExpiredPrecomputedVisitRoots } from "./precomputed/visit-retention"
+import { purgeExpiredPrecomputedGenerations } from "./precomputed/generation-retention"
 import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { lockRetentionRoots } from "./retention-locks"
 
@@ -310,6 +311,24 @@ export async function purgeExpiredRecommendationRequests(
       )
       rowCounts.expiredPrecomputedVisits = result.visitsDeleted
       rowCounts.expiredPrecomputedExperiments = result.experimentsDeleted
+      return result
+    })
+    // One generation at a time; a large terminal graph enters the non-servable
+    // retiring state and drains bounded child pages on subsequent passes.
+    const precomputedGenerationPurge = await phase(async (tx) => {
+      const result = await purgeExpiredPrecomputedGenerations(tx, now, 1)
+      rowCounts.expiredPrecomputedGenerations = result.generationsDeleted
+      rowCounts.abandonedPrecomputedGenerations = result.generationsAbandoned
+      rowCounts.retiringPrecomputedGenerations = result.generationsRetiring
+      rowCounts.precomputedGenerationFinalSources = result.finalSourcesDeleted
+      rowCounts.precomputedGenerationBuildSources = result.buildSourcesDeleted
+      rowCounts.precomputedGenerationChoices =
+        result.provisionalChoicesDeleted + result.provisionalChoicesPruned
+      rowCounts.precomputedGenerationModelCalls = result.modelCallsDeleted
+      rowCounts.precomputedGenerationHistoryCalls = result.historyCallsDeleted
+      rowCounts.precomputedGenerationCheckpointsCleared =
+        result.checkpointsCleared
+      rowCounts.precomputedGenerationProofsExpired = result.proofsDeleted
       return result
     })
     await phase(async (tx) => {
@@ -1174,6 +1193,7 @@ export async function purgeExpiredRecommendationRequests(
       requestIds.length === batchSize ||
       precomputedPurge.visitPageFull ||
       precomputedPurge.experimentPageFull ||
+      precomputedGenerationPurge.pageFull ||
       expiredWatchExposures.length === batchSize ||
       directActionIds.length === batchSize ||
       standaloneEpisodeIds.length === standaloneEpisodePageSize ||
