@@ -18,6 +18,11 @@ import {
   type HistoricalAnalyticsFailureCode,
   type HistoricalProvenancePart,
 } from "./historical-analytics"
+import { createGaWatchHistoryReader } from "./ga-watch-history"
+import {
+  GA_WATCH_PROPERTY,
+  gaWatchClosedRangeEnd,
+} from "./ga-watch-history-range"
 
 const videoId = z.string().trim().min(1).max(191)
 export const SourceGenerationInputSchema = z
@@ -312,16 +317,29 @@ async function postAdmin(
   return envelope.result
 }
 
-export function createAdminSourceDependencies(): {
+export function createAdminSourceDependencies(inputCutoff?: string): {
   catalog: SourceCatalog
   ingest: SourceIngest
+  history?: HistoricalAnalyticsReader
 } {
   const key = env.ADMIN_MASTRA_RECOMMENDATION_API_KEY
   const catalogUrl = env.ADMIN_RECOMMENDATION_CATALOG_URL
   const ingestUrl = env.ADMIN_RECOMMENDATION_INGEST_URL
   if (!key || !catalogUrl || !ingestUrl)
     throw new SourceGenerationError("catalog_unavailable")
+  const propertyId = env.PRECOMPUTED_GA4_PROPERTY_ID
+  const serviceAccountEmail = env.PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL
+  const history =
+    inputCutoff && propertyId === GA_WATCH_PROPERTY.id && serviceAccountEmail
+      ? createGaWatchHistoryReader({
+          propertyId,
+          serviceAccountEmail,
+          rangeStart: GA_WATCH_PROPERTY.createdDate,
+          rangeEnd: gaWatchClosedRangeEnd(inputCutoff),
+        })
+      : undefined
   return {
+    ...(history ? { history } : {}),
     catalog: {
       async video(input) {
         const result = z
@@ -432,9 +450,10 @@ export async function runPrecomputedSource(
   const defaults =
     provided?.catalog && provided?.ingest
       ? null
-      : createAdminSourceDependencies()
+      : createAdminSourceDependencies(input.inputCutoff)
   const catalog = provided?.catalog ?? defaults!.catalog
   const ingest = provided?.ingest ?? defaults!.ingest
+  const history = provided?.history ?? defaults?.history
   let started = false
   let sourceWritten = false
   try {
@@ -494,10 +513,10 @@ export async function runPrecomputedSource(
     for await (const page of pages(catalog, input.inputCutoff)) {
       observed.update(JSON.stringify(page))
     }
-    if (input.historyRequired && !provided?.history)
+    if (input.historyRequired && !history)
       throw new HistoricalAnalyticsError("analytics_unavailable")
     const historyDefinition = input.historyRequired
-      ? await readHistoricalDefinition(provided!.history!, input.inputCutoff)
+      ? await readHistoricalDefinition(history!, input.inputCutoff)
       : null
     if (historyDefinition) observed.update(JSON.stringify(historyDefinition))
     const inputDigest = observed.digest("hex")
@@ -624,7 +643,7 @@ export async function runPrecomputedSource(
     const historyParts: HistoricalProvenancePart[] = []
     const sourceHistorical = historyDefinition
       ? await readHistoricalSnapshot({
-          reader: provided!.history!,
+          reader: history!,
           definition: historyDefinition,
           catalog: [source],
           sourceVideoId: source.id,
@@ -699,7 +718,7 @@ export async function runPrecomputedSource(
         : null
       const historical = plan
         ? await readHistoricalSnapshot({
-            reader: provided!.history!,
+            reader: history!,
             definition: historyDefinition!,
             catalog: [
               source,

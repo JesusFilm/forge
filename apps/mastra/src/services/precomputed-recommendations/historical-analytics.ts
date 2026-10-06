@@ -229,7 +229,8 @@ export async function readHistoricalDefinition(
   let definition: HistoricalDefinition
   try {
     definition = definitionSchema.parse(await reader.describe())
-  } catch {
+  } catch (error) {
+    if (error instanceof HistoricalAnalyticsError) throw error
     throw new HistoricalAnalyticsError("analytics_unavailable")
   }
   if (

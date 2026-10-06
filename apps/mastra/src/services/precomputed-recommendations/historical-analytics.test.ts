@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  HistoricalAnalyticsError,
   readHistoricalDefinition,
   type HistoricalAnalyticsReader,
 } from "./historical-analytics"
@@ -64,6 +65,22 @@ function reader(definition: unknown): HistoricalAnalyticsReader {
 }
 
 describe("bounded historical source qualification", () => {
+  it("preserves a source preflight failure instead of disguising it as missing access", async () => {
+    await expect(
+      readHistoricalDefinition(
+        {
+          describe: async () => {
+            throw new HistoricalAnalyticsError("analytics_incomplete")
+          },
+          readPage: async () => {
+            throw new Error("must not query")
+          },
+        },
+        cutoff,
+      ),
+    ).rejects.toMatchObject({ code: "analytics_incomplete" })
+  })
+
   it("accepts a fully covered, event-weighted Watch source", async () => {
     await expect(
       readHistoricalDefinition(reader(qualified), cutoff),
