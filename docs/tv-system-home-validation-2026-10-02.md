@@ -1,0 +1,51 @@
+# TV system Home rotation: implementation and validation
+
+Branch: `codex/tv-system-home-five-concepts`. Roadmap `feat-603` remains in progress until runtime and release gates complete.
+
+## Implemented
+
+- Apple Top Shelf supports spotlight, real Continue Watching, collections, short videos and topic journeys through native carousel/sectioned interfaces.
+- The anonymous recommendation API is the primary discovery source, preserving returned order. Only public media metadata reaches the bounded App Group snapshot; capabilities and identity tokens remain in-app SecureStore/memory.
+- Stable persisted daily shuffle visits eligible modes before repeating; provider reads the saved choice without randomizing during OS callbacks. Unsupported modes are omitted. Resume uses existing local history and resolves current position inside Watch.
+- Personalization reset/withdraw clears shared snapshots and fences stale deliveries. Audio changes remove prior-language snapshots before attempting the new context.
+- App and extension entitlements, EAS extension metadata and snapshot bridge survive managed prebuild. Existing player layouts are unchanged.
+- Topic cards use actual published Home collections because the proposed standalone hope/forgiveness/who-is-jesus Experience slugs returned null. `/top-shelf-topic/[id]` opens the current collection using existing Home cards/focus styles.
+- Android Engage SDK 1.1.0 uses a private foreground publishing service. Four discovery themes use recommendations, with a stable daily shuffle; real Continue Watching remains separate and requires the local adult-sharing choice.
+- Production Google discovery stays blocked until approved Google access and account identity are available. Verification and production manifests remain separate; no installation UUID is presented as a production account.
+
+## Completed checks
+
+- October 5: 152 TV suites / 2,047 tests passed, including source selection, privacy fencing, native-intent recovery, preferred-dub autoplay timing, Google film metadata and repeated external playback links.
+- TypeScript and whole-TV lint passed.
+- Apple extension Swift typecheck and standalone signed Release simulator build passed.
+- Full signed Debug Apple TV app build passed with the embedded extension and native bridge. Latest build log: `/Users/up/Library/Developer/XcodeBuildMCP/workspaces/forge-dev-container-fdf8d06a3dc8/logs/build_sim_2026-10-02T04-55-05-470Z_pid97062_6a6ef283.log`.
+- Installed the build on the isolated `Watch Recommendations QA 4K` simulator. This branch serves Metro on port 8098. Recommendations worktree remains preserved; its warm DerivedData was reused to avoid allocating another full native build cache.
+- Actual App Group writes confirmed: collection mode with six recommendations on October 2, and spotlight mode with three English recommendations on October 5. System Home displayed and focused Chosen Witness during October 2 QA; selecting it from a closed development build exposed the cold-link bug.
+- October 5: warm More Info and Play passed for Chosen Witness. Cold More Info now opens Chosen Witness after development-server selection. Cold Play enters Native A and resumes saved progress; Back returns to Home. The native-intent hook recovers the pending URL from React Native launch options when Expo Linking supplies only a root URL.
+- Cold autoplay waits for the preferred playable dub to become active. The initial session render may temporarily use another dub; this is no longer treated as permanent unavailability.
+- October 5: managed iOS prebuild and signed Debug build/install/run passed with the topic-link marker fix. Build log: `/Users/up/Library/Developer/XcodeBuildMCP/workspaces/forge-dev-container-fdf8d06a3dc8/logs/build_run_sim_2026-10-05T01-23-07-126Z_pid91506_33c9b44f.log`.
+- Android managed prebuild and `./gradlew :google-tv-home:compileDebugKotlin` passed. Global Gradle 9.7 was incompatible with the project's Kotlin; use its generated Gradle 8.14.3 wrapper. Native compile log: `/tmp/watch-home-rotation-android-wrapper.log`.
+- October 5: Android `:app:assembleDebug` passed with ARM32 and ARM64 React Native binaries. Installed a separate `org.jesusfilm.tv.homesdkqa` / Watch Home QA Debug copy on the USB-connected Android 14 Chromecast. The installed Play beta (`org.jesusfilm.tv`, version code 10) and its data were preserved; a Debug update would fail because the certificates differ.
+- Chromecast remote navigation Home → Settings → Google TV Home passed. The native SDK returned verification-service availability. A discovery recommendation and separate real-progress Continue Watching entity were accepted, and Google's verifier reported zero entity and cluster errors. Clicking the JESUS recommendation entered playback.
+- The first verifier publication exposed missing genre and availability even though the SDK task succeeded. Added the existing broad catalogue category `Faith & Scripture` and free-playback availability; rebuilt, installed and verified zero metadata errors. Do not infer validation success from `publishRecommendationClusters` task success alone.
+- Continue Watching exposed the real saved JESUS position of 91 seconds. Selecting it opened Native Android playback at 1:40 after loading/interaction, consistent with resuming 1:31 rather than starting over. English North American Indigenous → English retained the paused 4:18 playhead, English subtitles rendered, and both separate language menus accepted typed search. Explore opened and remote Back returned through the player to the prior Settings page without a black screen.
+- Feedback's native player entry point opened and returned focus to Play/Pause. Verified feedback remained unavailable in this separately signed/package-named QA copy; the server requires the approved Play package/certificate. No verification policy was weakened and no Linear report was sent. The exact server response was not captured, so this is not proof that the approved Play build's submission succeeds.
+- Revocation passed: Turn off and remove cleared the continuation, Remove preview cleared discovery, and the verifier reported `No clusters published`. QA sharing was restored to off; existing beta history and settings were not changed.
+- Screenshots are saved outside source in `/Users/up/Downloads/Watch TV QA 2026-10-05/`; no live QR capability or Google account profile capture is included.
+- Bundled ARM32/ARM64 Android Release QA built and installed with the same isolated package, local Debug signing certificate and verification-only Engage environment. It is not a Play-uploadable release. Normal Home launch worked without Metro; cold JESUS autoplay resumed the exact saved 4:18 position with preferred English audio. Build log: `/tmp/watch-home-release-qa-20261005.log`.
+- Release QA exposed a hot-link defect: reopening an already mounted paused JESUS through its `autoplay=1` link kept autoplay consumed and could show a black paused surface. The route now rearms every validated same-video external Play request, not just Apple-marked Top Shelf links. Rebuilt/installed and retested: hot playback resumed 5:19, focused Play/Pause and visibly advanced. Invalid/different/ambiguous links are ignored; player layouts and Google publisher URL contracts did not change. Retest build log: `/tmp/watch-home-release-qa-replay-20261005.log`.
+- Rechecked the shared handler on Apple TV 4K simulator: Chosen Witness More Info opened Details, Play entered Native A at saved progress, and More Info during playback returned to Details. Screenshot evidence is saved with the Chromecast captures. Fullscreen system Top Shelf selection still needs the simulator's manual swipe gesture; automated direction/drag attempts did not enter that OS carousel.
+- An Android development-client linking warning occurred after an injected warm route during launcher onboarding. It did not recur in the tested normal remote-driven Settings flow after completing/dismissing the development menu, or in the bundled Release QA cold/hot tests. No separate production NavigationContainer fix is claimed for that development warning.
+
+## Remaining gates
+
+- Repeat system Home selection with the updated binary, including cold/warm topic links. All-five-mode visual coverage remains pending.
+- Apple simulator cold/warm topic routes and Native A saved-progress playback passed on October 5. Actual updated system Home button selection and all-five-mode visual coverage remain pending; physical Apple TV is excluded by the user's current instruction.
+- Complete page-load timing comparison with the baseline. Snapshot requests are deferred four seconds and do not block Home rendering; first-process Metro bundling took 2,606 ms, which is not a page-load regression measurement.
+- Android verifier metadata acceptance and isolated bundled Release QA cold/hot navigation passed. Real Google TV launcher availability/display and approved-package/certificate feedback submission remain pending. No production Android Home placement is claimed; no emulator was recreated.
+- Signed release app credentials/App Group provisioning and store processing remain release gates. No TestFlight, Play or production deployment occurred.
+- Full recommendation playback-learning verification from the separate recommendations worktree is still pending; this task reuses its API/identity client and does not claim that those earlier playback gates are complete.
+
+## Recovery and rollback
+
+Source changes are isolated from main and other worktrees. Explicit `EXPO_PUBLIC_TV_RECOMMENDATIONS_ENABLED=false` retains editorial discovery fallback while snapshot eligibility and language checks remain effective. Google production publication cannot be enabled by this flag alone. Roll out through normal PR review and beta testing before main/store activation.

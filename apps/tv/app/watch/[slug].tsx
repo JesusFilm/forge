@@ -16,6 +16,7 @@ import {
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
+import * as Linking from "expo-linking"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/videoQueries"
 import { normalizeVideo } from "../../src/lib/normalizeVideo"
@@ -24,6 +25,8 @@ import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { getResumePosition } from "../../src/lib/watchEvents/continueWatching"
+import { topShelfAutoplayDecision } from "../../src/lib/topShelf/playback"
+import { watchPlaybackLinkIntent } from "../../src/lib/watchPlaybackLink"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
 import { TVFocusGuideView } from "../../src/components/TVFocusGuideView"
@@ -91,20 +94,26 @@ export default function WatchVideoScreen() {
     slug,
     seed: seedParam,
     autoplay: autoplayParam,
+    topShelf: topShelfParam,
   } = useLocalSearchParams<{
     slug: string
     seed?: string
     autoplay?: string
+    topShelf?: string
   }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const router = useRouter()
 
   const { video, setVideo, activeVariant } = useWatchSession()
-  const { hydrated: preferencesReady } = useWatchPreferences()
+  const {
+    hydrated: preferencesReady,
+    audioLanguageSlug: preferredAudioLanguage,
+  } = useWatchPreferences()
   const {
     state: playerState,
     decoderClaimed,
     playVideo,
+    dismissVideo,
     consumeUpNextChain,
   } = useVideoPlayerContext()
 
@@ -198,9 +207,45 @@ export default function WatchVideoScreen() {
     "pending" | "playing" | "off"
   >(autoplayParam === "1" ? "pending" : "off")
   const autoplayConsumedRef = useRef(false)
+  useEffect(() => {
+    if (topShelfParam === "1") {
+      autoplayConsumedRef.current = false
+      setAutoplayPhase(autoplayParam === "1" ? "pending" : "off")
+      dismissVideo()
+    }
+  }, [decodedSlug, topShelfParam, autoplayParam, dismissVideo])
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = Linking.addEventListener("url", ({ url }) => {
+        const intent = watchPlaybackLinkIntent(url, decodedSlug)
+        if (intent == null) return
+        autoplayConsumedRef.current = false
+        setAutoplayPhase(intent === "play" ? "pending" : "off")
+        dismissVideo()
+      })
+      return () => subscription.remove()
+    }, [decodedSlug, dismissVideo]),
+  )
 
   useEffect(() => {
     if (autoplayPhase !== "pending" || autoplayConsumedRef.current) return
+    if (topShelfParam === "1" && (!preferencesReady || loading)) return
+    if (topShelfParam === "1" && video && video.slug !== decodedSlug) return
+    if (topShelfParam === "1" && video) {
+      const decision = topShelfAutoplayDecision({
+        requestedSlug: decodedSlug,
+        videoSlug: video.slug ?? null,
+        preferredLanguage: preferredAudioLanguage,
+        activeLanguage: activeVariant?.languageSlug ?? null,
+        playableLanguages: video.variants
+          .filter((variant) => validateStreamingUrl(variant.hls))
+          .map((variant) => variant.languageSlug),
+      })
+      if (decision !== "ready") {
+        if (decision === "unavailable") setAutoplayPhase("off")
+        return
+      }
+    }
     const hls = activeVariant?.hls
     const videoId = video?.documentId
     if (!hls || !videoId || !validateStreamingUrl(hls)) {
@@ -212,7 +257,6 @@ export default function WatchVideoScreen() {
       if (!loading && (error != null || video != null)) setAutoplayPhase("off")
       return
     }
-
     let cancelled = false
     void (async () => {
       const position = await getResumePosition(videoId)
@@ -241,7 +285,18 @@ export default function WatchVideoScreen() {
     return () => {
       cancelled = true
     }
-  }, [autoplayPhase, activeVariant, video, playVideo, loading, error])
+  }, [
+    autoplayPhase,
+    activeVariant,
+    video,
+    playVideo,
+    loading,
+    error,
+    topShelfParam,
+    decodedSlug,
+    preferredAudioLanguage,
+    preferencesReady,
+  ])
 
   // Player closed on an autoplay pass-through → pop straight back to Home.
   // Unless the close IS an Up Next hop: the overlay host marks the chain
