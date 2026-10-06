@@ -3229,7 +3229,7 @@ is `docs/roadmap/platform/feat-524-localized-push-campaigns.md`.
 ### Agent drafts and the content version (feat-613)
 
 The JFP Admin MCP also writes campaign drafts (see "Admin MCP" above).
-Migration `0137_push_campaign_agent_drafts` adds `content_version`,
+Migration `0138_push_campaign_agent_drafts` adds `content_version`,
 `last_test_content_version`, `ai_last_actor_id`, and `ai_last_written_at` to
 `push_campaign`.
 
