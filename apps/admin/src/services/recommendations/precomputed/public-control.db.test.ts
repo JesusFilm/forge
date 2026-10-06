@@ -1,18 +1,22 @@
 import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import {
   loadPrecomputedPublicControl,
   preparePrecomputedPublicExperiment,
+  releaseRetainedPrecomputedPublicExperiment,
   rollbackPrecomputedPublicExperiment,
   startPrecomputedPublicExperiment,
 } from "./public-control"
 import { readControlRouting } from "./visit-admission"
 import { purgeExpiredPrecomputedVisitRoots } from "./visit-retention"
 import { deliverPrecomputedPublicWatchVisit } from "./public-watch"
+import * as incumbentService from "../delivery.service"
+import { chooseExperimentArm } from "../experiment/assignment"
+import { precomputedBrowserUnitDigest } from "./visit-identity"
 
 describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
   "manual precomputed public control on PostgreSQL",
@@ -249,6 +253,117 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       ).rejects.toMatchObject({ code: "stale_control" })
     })
 
+    it("keeps a technical incumbent recovery in the original challenger arm with a bound request", async () => {
+      const experiment =
+        await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
+          where: { id: experimentId },
+        })
+      const routing = await readControlRouting(prisma)
+      expect(routing).not.toBeNull()
+      let browserDigest = ""
+      for (let index = 0; index < 100; index += 1) {
+        const candidate = index.toString(16).padStart(64, "0")
+        if (
+          chooseExperimentArm({
+            unitDigest: precomputedBrowserUnitDigest(experimentId, candidate),
+            configurationDigest: experiment.configurationDigest,
+            challengerProbability: 0.5,
+          }) === "CHALLENGER"
+        ) {
+          browserDigest = candidate
+          break
+        }
+      }
+      expect(browserDigest).not.toBe("")
+      await prisma.recommendationPrecomputedSource.update({
+        where: {
+          generationId_sourceVideoId: { generationId, sourceVideoId },
+        },
+        data: { status: "failed", failureCode: "technical_fixture_failure" },
+      })
+      const requestId = randomUUID()
+      const recovered = vi.spyOn(
+        incumbentService,
+        "createRecommendationDeliveryService",
+      )
+      recovered.mockReturnValue({
+        deliver: async () => {
+          await prisma.recommendationRequest.create({
+            data: {
+              id: requestId,
+              contractVersion: "semantic-recommendation-delivery-v1",
+              surfaceVersion: "watch-below-player-v1",
+              manifestId: routing!.manifest.id,
+              strategyVersion: routing!.manifest.strategyVersion,
+              classifierVersion: "legacy-position-v0",
+              sessionDigest: "f".repeat(64),
+              seedMediaId: sourceVideoId,
+              locale: "en",
+              expectedItemCount: 0,
+              state: "ISSUED",
+              result: "SERVED",
+              deliveryJti: randomUUID(),
+              signingKid: "public-native-test",
+              issuedAt: new Date(),
+              expiresAt: new Date(Date.now() + 29 * 86_400_000),
+            },
+          })
+          return {
+            contractVersion: "semantic-recommendation-delivery-v1",
+            surfaceVersion: "watch-below-player-v1",
+            strategyVersion: routing!.manifest.strategyVersion,
+            classifierVersion: "legacy-position-v0",
+            requestId,
+            result: "served",
+            reason: null,
+            expiresAt: new Date(Date.now() + 60_000).toISOString(),
+            items: [],
+          }
+        },
+      } as unknown as ReturnType<
+        typeof incumbentService.createRecommendationDeliveryService
+      >)
+      try {
+        const input = { ...visitInput(), browserDigest }
+        const result = await deliverPrecomputedPublicWatchVisit(
+          prisma,
+          input,
+          tokenService,
+        )
+        expect(result).toMatchObject({
+          disposition: "ab",
+          status: "eligible",
+          arm: "challenger",
+          measurementStatus: "recorded",
+          delivery: { result: "served", requestId },
+        })
+        expect(
+          await prisma.recommendationPrecomputedVisit.findUniqueOrThrow({
+            where: { id: input.visitId },
+          }),
+        ).toMatchObject({
+          arm: "CHALLENGER",
+          deliveryResult: "served",
+          actualStrategy: routing!.manifest.strategyVersion,
+          deliveryRequestId: requestId,
+          fallbackReason: "source_incomplete",
+        })
+        expect(
+          await prisma.recommendationPrecomputedVisitRequest.findUnique({
+            where: { requestId },
+          }),
+        ).toMatchObject({ visitId: input.visitId })
+      } finally {
+        recovered.mockRestore()
+        await prisma.recommendationPrecomputedSource.update({
+          where: {
+            generationId_sourceVideoId: { generationId, sourceVideoId },
+          },
+          data: { status: "complete", failureCode: null },
+        })
+      }
+    })
+
     it("does not admit a denominator after final evaluation wins the evidence fence", async () => {
       const input = visitInput()
       const policy =
@@ -371,6 +486,59 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           where: { strategyVersion: "precomputed-watch-preview-v1" },
         }),
       ).toBe(0)
+    })
+
+    it("releases a rollback pin only after the review horizon and permits bounded cleanup", async () => {
+      const restored = await rollbackPrecomputedPublicExperiment(prisma, {
+        expectedControlVersion: 4,
+        expectedExperimentId: experimentId,
+        expectedGenerationId: generationId,
+        expectedReportRevision: 1,
+        expectedReportEvidenceDigest: "a".repeat(64),
+        reasonCode: "retirement_review",
+        operator,
+      })
+      expect(restored).toMatchObject({
+        mode: "incumbent",
+        version: 5,
+        retainedExperimentId: experimentId,
+      })
+      await expect(
+        releaseRetainedPrecomputedPublicExperiment(prisma, {
+          expectedControlVersion: 5,
+          expectedExperimentId: experimentId,
+          reasonCode: "retention_horizon_complete",
+          operator,
+        }),
+      ).rejects.toMatchObject({ code: "incompatible_target" })
+      const released = await releaseRetainedPrecomputedPublicExperiment(
+        prisma,
+        {
+          expectedControlVersion: 5,
+          expectedExperimentId: experimentId,
+          reasonCode: "retention_horizon_complete",
+          operator,
+          now: new Date(Date.now() + 400 * 86_400_000),
+        },
+      )
+      expect(released).toMatchObject({
+        mode: "incumbent",
+        version: 6,
+        retainedExperimentId: null,
+      })
+      const cleaned = await prisma.$transaction((tx) =>
+        purgeExpiredPrecomputedVisitRoots(
+          tx,
+          new Date(Date.now() + 401 * 86_400_000),
+          100,
+        ),
+      )
+      expect(cleaned).toMatchObject({ experimentsDeleted: 1 })
+      expect(
+        await prisma.recommendationPrecomputedExperiment.findUnique({
+          where: { id: experimentId },
+        }),
+      ).toBeNull()
     })
   },
 )

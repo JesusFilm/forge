@@ -1,4 +1,5 @@
 import Link from "next/link"
+import type { Route } from "next"
 import { redirect } from "next/navigation"
 import { hasPermission } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
@@ -81,6 +82,12 @@ export default async function PrecomputedRecommendationsPage({
         className="text-[13px] underline underline-offset-4"
       >
         Storage and retention capacity
+      </Link>
+      <Link
+        href={"/dashboard/recommendations/precomputed/public" as Route}
+        className="text-[13px] underline underline-offset-4"
+      >
+        Manual A/B serving control and live readiness
       </Link>
       <PageSection title="Choose a source and generation" meta="READ ONLY">
         <form

@@ -581,3 +581,76 @@ export async function rollbackPrecomputedPublicExperiment(
     return loadPrecomputedPublicControl(tx)
   })
 }
+
+/** Once the configured one-year review horizon has passed, explicitly remove
+ * the rollback pin so ordinary bounded retention may retire the cohort and
+ * generation. This never changes the incumbent selection. */
+export async function releaseRetainedPrecomputedPublicExperiment(
+  prisma: PrismaClient,
+  input: {
+    expectedControlVersion: number
+    expectedExperimentId: string
+    reasonCode: string
+    operator: Principal | null
+    now?: Date
+  },
+): Promise<PrecomputedPublicControl> {
+  if (!hasPermission(input.operator, "rollback:recommendations"))
+    throw new ForbiddenError()
+  if (
+    !input.operator?.id ||
+    !Number.isSafeInteger(input.expectedControlVersion) ||
+    input.expectedControlVersion < 1 ||
+    !ID.test(input.expectedExperimentId) ||
+    !/^[a-z][a-z0-9_]{0,63}$/.test(input.reasonCode)
+  )
+    throw new PrecomputedPublicControlError("invalid_input")
+  const now = input.now ?? new Date()
+  return prisma.$transaction(async (tx) => {
+    const [locked] = await tx.$queryRaw<Array<{ version: number }>>`
+      SELECT version FROM recommendation_precomputed_public_control
+      WHERE id = ${PRECOMPUTED_PUBLIC_CONTROL_ID} FOR UPDATE`
+    if (!locked || locked.version !== input.expectedControlVersion)
+      throw new PrecomputedPublicControlError("stale_control")
+    const pointer =
+      await tx.recommendationPrecomputedPublicControl.findUniqueOrThrow({
+        where: { id: PRECOMPUTED_PUBLIC_CONTROL_ID },
+        include: { retainedExperiment: true },
+      })
+    const retained = pointer.retainedExperiment
+    if (
+      pointer.mode !== "incumbent" ||
+      !retained ||
+      retained.id !== input.expectedExperimentId ||
+      now < retained.expiresAt
+    )
+      throw new PrecomputedPublicControlError("incompatible_target")
+    const updated = await tx.recommendationPrecomputedPublicControl.updateMany({
+      where: {
+        id: PRECOMPUTED_PUBLIC_CONTROL_ID,
+        version: input.expectedControlVersion,
+        mode: "incumbent",
+        retainedExperimentId: retained.id,
+      },
+      data: {
+        version: { increment: 1 },
+        retainedExperimentId: null,
+      },
+    })
+    if (updated.count !== 1)
+      throw new PrecomputedPublicControlError("stale_control")
+    await tx.recommendationPrecomputedPublicControlEvent.create({
+      data: {
+        id: randomUUID(),
+        controlVersion: input.expectedControlVersion + 1,
+        action: "release_retained",
+        actorId: input.operator!.id!,
+        reasonCode: input.reasonCode,
+        experimentId: retained.id,
+        generationId: retained.generationId,
+        expiresAt: new Date(now.getTime() + EXPERIMENT_RETENTION_MS),
+      },
+    })
+    return loadPrecomputedPublicControl(tx)
+  })
+}
