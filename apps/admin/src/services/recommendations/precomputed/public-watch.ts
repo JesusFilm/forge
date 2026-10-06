@@ -1,5 +1,6 @@
 import { RecommendationExperimentArm, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
+import { env } from "@/config/env"
 import { createRecommendationDeliveryService } from "@/services/recommendations/delivery.service"
 import {
   runRecommendationDeliveryTransaction,
@@ -24,7 +25,9 @@ import {
   loadPrecomputedPublicControl,
   PRECOMPUTED_PUBLIC_CONTROL_ID,
   PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY,
+  PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY,
 } from "./public-control"
+import { verifyWatchHumanReceipt } from "./human-verification"
 import {
   PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
   PRECOMPUTED_VISIT_DELIVERY_POLICY,
@@ -56,6 +59,7 @@ export type PrecomputedPublicWatchVisitInput = {
     | "speculative_prerender"
     | "ordinary_browser"
     | "unknown"
+  humanVerificationReceipt?: string | null
   caller: Principal | null
   now?: Date
 }
@@ -134,7 +138,7 @@ async function admitPublicVisit(
       async (tx) => {
         await tx.$queryRaw`SELECT id FROM recommendation_precomputed_public_control
           WHERE id = ${PRECOMPUTED_PUBLIC_CONTROL_ID} FOR SHARE`
-        const control = await loadPrecomputedPublicControl(tx)
+        const control = await loadPrecomputedPublicControl(tx, now)
         if (control.mode === "incumbent") return inactive(input, null)
         const base = {
           ...inactive(input, null),
@@ -144,12 +148,19 @@ async function admitPublicVisit(
         } as Admission
         if (control.authority === "isolated_fixture")
           await assertIsolatedPrecomputedControlFixture(tx)
-        else
+        else if (control.authority !== "live_verified")
           return {
             ...base,
             status: "unavailable",
             reason: "live_qualification_unavailable",
           }
+        const live = control.authority === "live_verified"
+        const eligibilityPolicy = live
+          ? PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
+          : PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY
+        const qualification = live
+          ? "turnstile_verified_browser"
+          : "fixture_human"
         const experiment =
           await tx.recommendationPrecomputedExperiment.findUnique({
             where: { id: control.experimentId! },
@@ -167,8 +178,7 @@ async function admitPublicVisit(
           experiment.configurationDigest !== control.configurationDigest ||
           experiment.assignmentPolicyVersion !==
             PRECOMPUTED_VISIT_ASSIGNMENT_POLICY ||
-          experiment.eligibilityPolicyVersion !==
-            PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY ||
+          experiment.eligibilityPolicyVersion !== eligibilityPolicy ||
           experiment.deliveryPolicyVersion !==
             PRECOMPUTED_VISIT_DELIVERY_POLICY ||
           recommendationManifestDigest(experiment.controlManifest) !==
@@ -221,6 +231,46 @@ async function admitPublicVisit(
           }
         if (!(await verifyPrecomputedSourceEligibility(tx, input)))
           return { ...base, status: "excluded", reason: "source_unavailable" }
+        if (live) {
+          if (!input.humanVerificationReceipt)
+            return {
+              ...base,
+              status: "unavailable",
+              reason: "verification_required",
+            }
+          if (
+            !env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET ||
+            !env.WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES
+          )
+            return {
+              ...base,
+              status: "unavailable",
+              reason: "live_qualification_unavailable",
+            }
+          if (
+            !verifyWatchHumanReceipt(
+              {
+                receipt: input.humanVerificationReceipt,
+                visitId: input.visitId,
+                browserDigest: input.browserDigest,
+                seedMediaId: input.seedMediaId,
+                locale: input.locale,
+                audioLanguageSlug: input.audioLanguageSlug,
+                caller: input.caller,
+                now,
+              },
+              {
+                secret: env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET,
+                allowedHostnames: env.WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES,
+              },
+            )
+          )
+            return {
+              ...base,
+              status: "unavailable",
+              reason: "verification_required",
+            }
+        }
         const browserUnitDigest = precomputedBrowserUnitDigest(
           experiment.id,
           input.browserDigest!,
@@ -241,7 +291,7 @@ async function admitPublicVisit(
               locale: input.locale,
               audioLanguageSlug: input.audioLanguageSlug,
               eligibility: "eligible",
-              qualification: "fixture_human",
+              qualification,
               exclusionReason: null,
               arm,
               deliveryResult: "not_attempted",
@@ -263,7 +313,8 @@ async function admitPublicVisit(
           visit.locale !== input.locale ||
           visit.audioLanguageSlug !== input.audioLanguageSlug ||
           visit.arm !== arm ||
-          visit.eligibility !== "eligible"
+          visit.eligibility !== "eligible" ||
+          visit.qualification !== qualification
         )
           return {
             ...base,
@@ -304,6 +355,8 @@ export async function deliverPrecomputedPublicWatchVisit(
   const deadlineAt = Date.now() + 3_000
   const deliveryDeadlineAt = deadlineAt - 250
   const admission = await admitPublicVisit(prisma, input, deliveryDeadlineAt)
+  if (admission.reason === "verification_required")
+    return { ...admission, measurementStatus: "not_applicable", delivery: null }
   const deliverControl = () =>
     createRecommendationDeliveryService(prisma).deliver({
       caller: input.caller,

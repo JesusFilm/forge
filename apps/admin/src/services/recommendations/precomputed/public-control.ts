@@ -17,10 +17,13 @@ import {
   type PrecomputedCtrReport,
 } from "./ctr-report"
 import { validateCtrPolicySettings, type CtrPolicySettings } from "./ctr-policy"
+import { oneUtcCalendarMonthAfter } from "./cohort-window"
 
 export const PRECOMPUTED_PUBLIC_CONTROL_ID = "precomputed-watch-public-control"
 export const PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY =
   "public-watch-verified-human-v1"
+export const PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY =
+  "public-watch-turnstile-verified-browser-v1"
 const EXPERIMENT_RETENTION_MS = 365 * 86_400_000
 const BROWSER_COOKIE_LIFETIME_MS = 180 * 86_400_000
 const HEX_DIGEST = /^[a-f0-9]{64}$/
@@ -85,6 +88,11 @@ export type PrecomputedPublicControl = {
   reportRevision: number | null
   reportEvidenceDigest: string | null
   retainedExperimentId: string | null
+  pendingManualReview: {
+    experimentId: string
+    generationId: string
+    endsAt: string
+  } | null
 }
 
 /** Builds, CTR reads, and model workers cannot change this pointer. A missing
@@ -92,13 +100,23 @@ export type PrecomputedPublicControl = {
  * so an operator can diagnose a stale control instead of accepting it. */
 export async function loadPrecomputedPublicControl(
   prisma: PrismaClient | Prisma.TransactionClient,
+  now: Date = new Date(),
 ): Promise<PrecomputedPublicControl> {
   const row = await prisma.recommendationPrecomputedPublicControl.findUnique({
     where: { id: PRECOMPUTED_PUBLIC_CONTROL_ID },
     include: { activeExperiment: { include: { generation: true } } },
   })
   const experiment = row?.activeExperiment
+  const pendingManualReview =
+    row?.mode === "ab" && experiment && now >= experiment.endsAt
+      ? {
+          experimentId: experiment.id,
+          generationId: experiment.generationId,
+          endsAt: experiment.endsAt.toISOString(),
+        }
+      : null
   const active =
+    !pendingManualReview &&
     experiment?.state === "public_ready" &&
     experiment.generation.status === "complete" &&
     experiment.generation.sourceSetDigest === experiment.sourceSetDigest &&
@@ -130,6 +148,7 @@ export async function loadPrecomputedPublicControl(
     reportEvidenceDigest:
       mode === "promoted" ? row!.reportEvidenceDigest : null,
     retainedExperimentId: row?.retainedExperimentId ?? null,
+    pendingManualReview,
   }
 }
 
@@ -159,7 +178,8 @@ export async function preparePrecomputedPublicExperiment(
     !HEX_DIGEST.test(input.expectedSourceSetDigest) ||
     !Number.isFinite(input.startsAt.getTime()) ||
     !Number.isFinite(input.endsAt.getTime()) ||
-    input.endsAt <= input.startsAt ||
+    input.endsAt.getTime() !==
+      oneUtcCalendarMonthAfter(input.startsAt).getTime() ||
     input.endsAt.getTime() - input.startsAt.getTime() >=
       BROWSER_COOKIE_LIFETIME_MS
   )
@@ -362,7 +382,7 @@ export async function startPrecomputedPublicExperiment(
         expiresAt: new Date(now.getTime() + EXPERIMENT_RETENTION_MS),
       },
     })
-    return loadPrecomputedPublicControl(tx)
+    return loadPrecomputedPublicControl(tx, now)
   })
 }
 
