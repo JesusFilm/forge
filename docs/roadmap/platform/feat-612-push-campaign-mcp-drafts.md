@@ -3,7 +3,7 @@ id: "feat-612"
 title: "Agents draft push campaigns through the admin MCP, and a person publishes"
 owner: "urim"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-06"
 duration: 7
 depends_on:
