@@ -237,7 +237,16 @@ describe("catalog generation boundary", () => {
       ...connection(passage),
       evidence: { basis: "metadata", fields: ["keywords"] },
     }
-    const run = async (firstConnection: unknown, secondConnection: unknown) => {
+    const run = async (
+      firstConnection: unknown,
+      secondConnection: unknown,
+      priorRepair?: {
+        candidateId: string
+        afterChunkId: null
+        attempts: number
+        feedback: { reason: "transcript_excerpt_not_verbatim"; chunkId: string }
+      },
+    ) => {
       const sourceCatalog = catalog(["source", "target"])
       sourceCatalog.chunks = async () => ({
         chunks: [
@@ -295,6 +304,7 @@ describe("catalog generation boundary", () => {
                     cursor: { catalogIndex: 0, candidateIndex: 0 },
                     sourceSummaryEnglish: "Source summary",
                     candidateIds: ["target"],
+                    ...(priorRepair ? { repair: priorRepair } : {}),
                   },
                 }
               : { sourceState: "complete_empty", leaseToken: null }
@@ -407,12 +417,51 @@ describe("catalog generation boundary", () => {
     expect(exhaustedReceipts.map((receipt) => receipt.costUsd)).toEqual([
       0.01, 0.01,
     ])
-    expect(exhaustedReceipts[0]?.checkpoint).toEqual(
-      exhaustedReceipts[1]?.checkpoint,
-    )
+    expect(
+      exhaustedReceipts.map((receipt) => receipt.checkpoint),
+    ).toMatchObject([
+      {
+        stage: "candidate",
+        cursor: { catalogIndex: 0, candidateIndex: 0 },
+        repair: { candidateId: "target", attempts: 1 },
+      },
+      {
+        stage: "candidate",
+        cursor: { catalogIndex: 0, candidateIndex: 0 },
+        repair: { candidateId: "target", attempts: 2 },
+      },
+    ])
     expect(exhaustedReceipts.some((receipt) => "choice" in receipt)).toBe(false)
     expect(
       exhausted.writes.filter((call) => call.action === "fail"),
+    ).toMatchObject([{ failureCode: "provider_invalid_output" }])
+
+    const repair = {
+      candidateId: "target",
+      afterChunkId: null,
+      attempts: 1,
+      feedback: {
+        reason: "transcript_excerpt_not_verbatim" as const,
+        chunkId: "chunk-1",
+      },
+    }
+    const resumed = await run(connection(passage), connection(passage), repair)
+    expect(resumed.result.state).toBe("complete")
+    expect(resumed.generate).toHaveBeenCalledOnce()
+    expect(resumed.generate.mock.calls[0]?.[0].prompt).toContain(
+      '"reason":"transcript_excerpt_not_verbatim","chunkId":"chunk-1"',
+    )
+    const atLimit = await run(connection(passage), connection(passage), {
+      ...repair,
+      attempts: 2,
+    })
+    expect(atLimit.result.state).toBe("failed")
+    expect(atLimit.generate).not.toHaveBeenCalled()
+    expect(
+      atLimit.writes.filter((call) => call.action === "model_call"),
+    ).toEqual([])
+    expect(
+      atLimit.writes.filter((call) => call.action === "fail"),
     ).toMatchObject([{ failureCode: "provider_invalid_output" }])
   })
 })

@@ -315,6 +315,88 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
+    it("resumes a charged invalid candidate from its bounded repair checkpoint", async () => {
+      const build = await setupBuild("repair-resume")
+      const first = await submit({
+        action: "claim",
+        ...build,
+        sourceVideoId,
+        claimId: "repair-first",
+      })
+      const repair = {
+        candidateId: "target",
+        afterChunkId: null,
+        attempts: 1,
+        feedback: {
+          reason: "transcript_excerpt_not_verbatim",
+          chunkId: "chunk-1",
+        },
+      }
+      const checkpoint = {
+        stage: "candidate",
+        cursor: { catalogIndex: 0, candidateIndex: 0 },
+        candidateIds: ["target"],
+        repair,
+      }
+      const call = {
+        ...build,
+        sourceVideoId,
+        leaseToken: first.leaseToken,
+        callId: `repair-call-${suffix}`,
+        stage: "candidate_judgment",
+        modelId: "gpt-6-astra",
+        inputDigest: "b".repeat(64),
+        startedAt: new Date(Date.now() - 1_000).toISOString(),
+      }
+      await submit({ action: "model_call_start", ...call })
+      expect(
+        await submit({
+          action: "model_call",
+          ...call,
+          status: "failed",
+          errorCode: "provider_invalid_output",
+          inputTokens: 100,
+          outputTokens: 20,
+          costUsd: 0.01,
+          finishedAt: new Date().toISOString(),
+          expectedRevision: 0,
+          checkpointId: `repair-checkpoint-${suffix}`,
+          checkpoint,
+        }),
+      ).toMatchObject({
+        receiptStored: true,
+        checkpointApplied: true,
+        checkpointRevision: 1,
+      })
+      await prisma.recommendationPrecomputedBuildSource.update({
+        where: {
+          generationId_sourceVideoId: {
+            generationId: build.generationId,
+            sourceVideoId,
+          },
+        },
+        data: { leaseExpiresAt: new Date(Date.now() - 1_000) },
+      })
+      const resumed = await submit({
+        action: "claim",
+        ...build,
+        sourceVideoId,
+        claimId: "repair-second",
+      })
+      expect(resumed).toMatchObject({
+        sourceState: "claimed",
+        attemptNumber: 2,
+        checkpointRevision: 1,
+        checkpoint,
+      })
+      expect(
+        (await submit({ action: "status", ...build })).usage,
+      ).toMatchObject({
+        modelCallCount: 1,
+        modelKnownCostUsd: 0.01,
+      })
+    })
+
     it("serializes conflicting terminal callbacks for one paid call", async () => {
       const build = await setupBuild("receipt-race")
       const claim = await submit({
