@@ -1,0 +1,260 @@
+{
+  "schemaVersion": "2",
+  "bgStartOffsetSec": 40.766666666666666,
+  "musicFile": "music.mp3",
+  "bgFile": "bg.mp4",
+  "introHoldSec": 0,
+  "outroHoldSec": 3.8,
+  "bgPlaybackRate": 1,
+  "bgDurationSec": 269.67424100000034,
+  "cards": [
+    {
+      "kind": "reflection-focus",
+      "sectionLabel": "",
+      "text": "Feeding pigs.",
+      "tailSec": 0.35,
+      "audioFile": "16-reflection-15.mp3",
+      "durationSec": 1.068118,
+      "words": [
+        {
+          "word": "Feeding",
+          "startSec": 0,
+          "endSec": 0.372
+        },
+        {
+          "word": "pigs.",
+          "startSec": 0.441,
+          "endSec": 1.068
+        }
+      ]
+    },
+    {
+      "kind": "reflection-focus",
+      "sectionLabel": "",
+      "text": "For a Jewish listener, swine were regarded as the most unclean and the most abhorred of all animals.",
+      "tailSec": 0.35,
+      "audioFile": "17-reflection-16.mp3",
+      "durationSec": 5.526349,
+      "words": [
+        {
+          "word": "For",
+          "startSec": 0,
+          "endSec": 0.186
+        },
+        {
+          "word": "a",
+          "startSec": 0.232,
+          "endSec": 0.255
+        },
+        {
+          "word": "Jewish",
+          "startSec": 0.313,
+          "endSec": 0.58
+        },
+        {
+          "word": "listener,",
+          "startSec": 0.639,
+          "endSec": 1.045
+        },
+        {
+          "word": "swine",
+          "startSec": 1.149,
+          "endSec": 1.486
+        },
+        {
+          "word": "were",
+          "startSec": 1.509,
+          "endSec": 1.637
+        },
+        {
+          "word": "regarded",
+          "startSec": 1.683,
+          "endSec": 2.09
+        },
+        {
+          "word": "as",
+          "startSec": 2.159,
+          "endSec": 2.252
+        },
+        {
+          "word": "the",
+          "startSec": 2.31,
+          "endSec": 2.38
+        },
+        {
+          "word": "most",
+          "startSec": 2.438,
+          "endSec": 2.659
+        },
+        {
+          "word": "unclean",
+          "startSec": 2.717,
+          "endSec": 3.146
+        },
+        {
+          "word": "and",
+          "startSec": 3.216,
+          "endSec": 3.332
+        },
+        {
+          "word": "the",
+          "startSec": 3.379,
+          "endSec": 3.448
+        },
+        {
+          "word": "most",
+          "startSec": 3.495,
+          "endSec": 3.692
+        },
+        {
+          "word": "abhorred",
+          "startSec": 3.738,
+          "endSec": 4.238
+        },
+        {
+          "word": "of",
+          "startSec": 4.319,
+          "endSec": 4.423
+        },
+        {
+          "word": "all",
+          "startSec": 4.528,
+          "endSec": 4.714
+        },
+        {
+          "word": "animals.",
+          "startSec": 4.772,
+          "endSec": 5.526
+        }
+      ]
+    },
+    {
+      "kind": "reflection-focus",
+      "sectionLabel": "",
+      "text": "This boy had fallen about as far from his father's house as a son could fall.",
+      "audioFile": "18-reflection-17.mp3",
+      "durationSec": 3.808073,
+      "words": [
+        {
+          "word": "This",
+          "startSec": 0,
+          "endSec": 0.221
+        },
+        {
+          "word": "boy",
+          "startSec": 0.279,
+          "endSec": 0.453
+        },
+        {
+          "word": "had",
+          "startSec": 0.488,
+          "endSec": 0.58
+        },
+        {
+          "word": "fallen",
+          "startSec": 0.615,
+          "endSec": 0.882
+        },
+        {
+          "word": "about",
+          "startSec": 0.917,
+          "endSec": 1.184
+        },
+        {
+          "word": "as",
+          "startSec": 1.231,
+          "endSec": 1.312
+        },
+        {
+          "word": "far",
+          "startSec": 1.37,
+          "endSec": 1.567
+        },
+        {
+          "word": "from",
+          "startSec": 1.625,
+          "endSec": 1.765
+        },
+        {
+          "word": "his",
+          "startSec": 1.811,
+          "endSec": 1.904
+        },
+        {
+          "word": "father's",
+          "startSec": 1.95,
+          "endSec": 2.264
+        },
+        {
+          "word": "house",
+          "startSec": 2.287,
+          "endSec": 2.519
+        },
+        {
+          "word": "as",
+          "startSec": 2.554,
+          "endSec": 2.647
+        },
+        {
+          "word": "a",
+          "startSec": 2.705,
+          "endSec": 2.74
+        },
+        {
+          "word": "son",
+          "startSec": 2.798,
+          "endSec": 2.972
+        },
+        {
+          "word": "could",
+          "startSec": 3.03,
+          "endSec": 3.17
+        },
+        {
+          "word": "fall.",
+          "startSec": 3.216,
+          "endSec": 3.808
+        }
+      ]
+    }
+  ],
+  "shortFact": {
+    "layout": "history",
+    "label": "Historical context",
+    "source": "Easton's & Smith's Bible Dictionaries",
+    "emblem": "book",
+    "closeCard": "And this is the son who got the party.",
+    "lines": [
+      {
+        "from": 0,
+        "to": 1,
+        "hero": "Feeding",
+        "accents": ["pigs"]
+      },
+      {
+        "from": 2,
+        "to": 12,
+        "hero": "listener",
+        "accents": ["regarded"]
+      },
+      {
+        "from": 13,
+        "to": 19,
+        "hero": "abhorred",
+        "accents": ["animals"]
+      },
+      {
+        "from": 20,
+        "to": 26,
+        "hero": "fallen",
+        "accents": ["about"]
+      },
+      {
+        "from": 27,
+        "to": 35,
+        "hero": "father's",
+        "accents": ["house"]
+      }
+    ]
+  }
+}

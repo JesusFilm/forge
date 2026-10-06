@@ -1,5 +1,6 @@
 import { quoteIntroTimeline } from "@forge/shorts-compositions/devotional-timing"
 
+import type { BackgroundPlan } from "./background-timeline"
 import type { GeneratedDevotional, SourceMark } from "./generate-devotional"
 import { splitReflection } from "./reflection-split"
 
@@ -39,6 +40,8 @@ export type DevotionalManifest = {
   bgFile?: string
   bgDurationSec?: number
   bgPlaybackRate?: number
+  /** The film pieces bg.mp4 was joined from; see background-timeline.ts. */
+  bgPlan?: BackgroundPlan
   /** Silent beat on the FIRST card before narration starts (s). Set by the
    *  renderer so its background budget can't drift from the composition's
    *  own default. */

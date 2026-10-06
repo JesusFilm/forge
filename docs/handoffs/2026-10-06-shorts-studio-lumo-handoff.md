@@ -103,3 +103,51 @@ read `~/.claude/skills/shorts-creator/SKILL.md` and
 - `shorts_instructions` still answered "Studio agent unavailable" on
   2026-10-06 (not needed for this workflow).
 - Renders take ~5 min; poll `renderStatus` no faster than `pollAfterMs`.
+
+## Status, 2026-10-06 (second session)
+
+Done:
+
+- Schemas refreshed: `shorts_capture` takes `trackId: null`, video items take
+  `focus`, `set-source-focus` exists.
+- **Pilot applied**: `prodigal-history-devotional-look-20261005` revision 3
+  plays LUMO (`LUMO - Luke 15:11-16:31`, snapshot
+  `a1772cc3-20f0-4a92-ae04-a4f493638853`, captured 37–56 s, no subtitles).
+  Five shots, one continuous take at 1× from film 38.29 s to 54.02 s
+  (the pigs scene; "the most abhorred of all animals" lands on the pigs),
+  scale 1, focus x 0.3 / 0.3 / 0.35 / 0.5 / 0.5. Captions, credit, narration
+  and music untouched. Revision 2 (paper-cut film) stays in history.
+- **Film seconds**: the Prodigal backdrop was measured by frame matching
+  against the Arclight 270p file (same Mux playback id as Studio's LUMO):
+  film = 0.85 × backdrop + 3.67 s over the history stretch. The renderer now
+  records the plan itself (`manifest.bgPlan`, `background-timeline.ts`), so
+  packs rendered from now on need no measuring.
+- **Exporter**: `cut-devotional-shorts --only=history --studio=<dir>` writes
+  `studio-plan.json` (shots in film ms, lines with word times, Smart Crop
+  focus as object-position), `narration.mp3`, `music.mp3`;
+  `build-studio-document.ts` turns the plan + uploaded refs into a document.
+  Timing is pinned by a test to revision 2's approved frames. Older packs
+  (Martha, Prodigal) need `bgPlan`: re-run `--pack-only`, or add a measured
+  plan to a copy of the pack as done for the Prodigal test run.
+
+## Blocker: Studio cannot render footage captured without subtitles
+
+Reproduced in project `lumo-render-probe-20261006` (a 2 s, one-clip test
+project; safe to delete):
+
+| revision | source                                  | subtitle                         | render                           |
+| -------- | --------------------------------------- | -------------------------------- | -------------------------------- |
+| 1        | LUMO Luke 15, 43–45 s                   | `null`                           | FAILED "Render execution failed" |
+| 2        | The Prodigal (paper-cut), 122.4–124.4 s | English track                    | SUCCEEDED                        |
+| 3        | The Prodigal (paper-cut), same range    | `null` (`trackId: null` capture) | FAILED "Render execution failed" |
+
+Same film, same range, only the subtitle differs, so it is not LUMO and not
+`focus`. The pilot project's revision 3 fails the same way (two attempts).
+Admin's side of #2581 handles `subtitle: null` (capture, preview,
+`resolveStudioDocumentSources`); the manager/worker render path was not
+touched by #2581 and is the likely place. The LUMO HLS has none of the tags
+the broker rejects. The MCP diagnostic carries no detail; manager render
+logs will name the throw. Owner of #2581: Tataihono.
+
+Once fixed: re-request a render of the pilot (revision 3), inspect, hand the
+review link to the owner.

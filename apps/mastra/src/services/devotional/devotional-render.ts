@@ -84,6 +84,7 @@ import { type ChapterPassage, passageForChapter } from "./jesus-film-passages"
 import { voiceNameForId } from "./elevenlabs-voiceover"
 import { videoSourceForIndex } from "./video-sources"
 import { matchCue, planBrollAnchors, planBrollSegments } from "./broll-plan"
+import { type BackgroundPlan, seamDissolveSec } from "./background-timeline"
 import type { DevotionalLlm } from "./llm"
 import { DEFAULT_FILTER } from "./voice-rotation"
 
@@ -1200,9 +1201,7 @@ async function concatWithSeamXfade(
   speed: number,
   dissolveSec: number,
 ): Promise<void> {
-  // A dissolve cannot be longer than the shorter side of the seam it joins.
-  const shortest = Math.min(...segments.map((s) => s.lengthSec))
-  const d = Math.max(0.2, Math.min(dissolveSec, shortest / 2))
+  const d = seamDissolveSec(segments, dissolveSec)
   const args = ["-y"]
   for (const seg of segments) {
     args.push(
@@ -3145,6 +3144,13 @@ async function renderInStage(
   // a second time and leave the same hole this loop was added to close.
   manifest.bgPlaybackRate = 1
   manifest.bgDurationSec = bgTimelineSec
+  // What bg.mp4 is made of, so a short cut from it can be rebuilt on the film
+  // itself (Shorts Studio plays the catalog film, not our backdrop).
+  manifest.bgPlan = {
+    speed: bgRate,
+    dissolveSec: seamDissolveSec(bgSegments, bgSeamSec),
+    segments: bgSegments,
+  } satisfies BackgroundPlan
   // Non-video cards read the shared top-level bgFile — clear any per-card bg so
   // they all window into the ONE continuous clip.
   for (const card of manifest.cards) {

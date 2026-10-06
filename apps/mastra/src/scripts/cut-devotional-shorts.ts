@@ -6,6 +6,8 @@
  *     [--only=language,history] [--stills] \
  *     [--film-turn=139.1-172.6] [--reflection=0-1] [--no-model]
  *     [--film-open="Is this worth celebrating?"] [--film-close="..."]
+ *     [--studio=<dir>]   (history only: a Shorts Studio plan + audio to
+ *                         upload instead of a render; see studio-export.ts)
  *
  * The turn of the film scene is chosen by a model (one small OpenRouter call,
  * needs `--env-file=.env.local`) unless `--film-turn` names it or
@@ -68,6 +70,8 @@ import {
   type ShortKind,
   type ShortPlan,
 } from "../services/devotional/shorts-cutdown"
+import { planHistoryShort } from "../services/devotional/studio-export"
+import type { FocusPoint } from "../services/devotional/clip-focus"
 import {
   collectManifestFiles,
   type SourcePackRender,
@@ -99,6 +103,90 @@ function run(cmd: string, args: string[]): Promise<string> {
         : reject(new Error(`${cmd} exit ${code}: ${out.slice(-500)}`)),
     )
   })
+}
+
+/**
+ * Write a staged short's Shorts Studio export into `out`: studio-plan.json
+ * (shots in film seconds, caption lines, Smart Crop focus), narration.mp3
+ * (each card's take placed where the composition plays it) and music.mp3
+ * (the staged bed, already cut to its start).
+ */
+async function exportStudioShort(
+  stage: string,
+  out: string,
+  m: Manifest,
+  musicVolume: number,
+) {
+  const draft = planHistoryShort({ manifest: m })
+  const durationSec = draft.durationInFrames / 30
+  let focusPath: FocusPoint[] | undefined
+  if (!process.argv.includes("--no-smart-crop")) {
+    // Smart Crop over the stretch of backdrop the short shows, so the path
+    // is on the short's own clock.
+    const slice = path.join(stage, "studio-bg.mp4")
+    await run("ffmpeg", [
+      "-y",
+      "-v",
+      "error",
+      "-ss",
+      String(m.bgStartOffsetSec ?? 0),
+      "-i",
+      path.join(stage, String(m.bgFile ?? "bg.mp4")),
+      "-t",
+      String(durationSec * Number(m.bgPlaybackRate ?? 1)),
+      "-an",
+      slice,
+    ])
+    focusPath =
+      (await smartCropClipPath({
+        clipFile: slice,
+        log: (msg) => console.log(`  ${msg}`),
+      })) ?? undefined
+  }
+  const plan = planHistoryShort({ manifest: m, focusPath })
+  await writeFile(
+    path.join(out, "studio-plan.json"),
+    JSON.stringify({ ...plan, musicVolume }, null, 2) + "\n",
+  )
+  const inputs = plan.narration.flatMap((n) => [
+    "-i",
+    path.join(stage, n.audioFile),
+  ])
+  const delays = plan.narration.map((n, i) => {
+    const ms = Math.round((n.startFrame / 30) * 1000)
+    return `[${i}:a]adelay=${ms}|${ms}[a${i}]`
+  })
+  const mix =
+    plan.narration.map((_, i) => `[a${i}]`).join("") +
+    `amix=inputs=${plan.narration.length}:normalize=0,` +
+    `apad=whole_dur=${durationSec.toFixed(3)}[out]`
+  await run("ffmpeg", [
+    "-y",
+    "-v",
+    "error",
+    ...inputs,
+    "-filter_complex",
+    [...delays, mix].join(";"),
+    "-map",
+    "[out]",
+    "-t",
+    durationSec.toFixed(3),
+    "-c:a",
+    "libmp3lame",
+    "-b:a",
+    "192k",
+    path.join(out, "narration.mp3"),
+  ])
+  if (m.musicFile)
+    await run("cp", [
+      "-L",
+      path.join(stage, m.musicFile),
+      path.join(out, "music.mp3"),
+    ])
+  for (const s of plan.shots)
+    console.log(
+      `  ${s.id}: film ${(s.filmStartMs / 1000).toFixed(2)}–${(s.filmEndMs / 1000).toFixed(2)}s, focus ${s.focusX}`,
+    )
 }
 
 /** Cut the film window out of the pack's clip, frame-accurate. */
@@ -659,6 +747,17 @@ async function main() {
         await mkdir(keep, { recursive: true })
         await run("cp", ["-RL", `${stage}/.`, keep])
         console.log(`  staged → ${keep}`)
+        continue
+      }
+      // --studio=<dir>: the short as a Shorts Studio plan (film seconds,
+      // caption lines, focus) plus the two audio files to upload. The
+      // agent uploads them and builds the document with
+      // build-studio-document.ts.
+      if (arg("studio")) {
+        const out = path.join(arg("studio")!, short.kind)
+        await mkdir(out, { recursive: true })
+        await exportStudioShort(stage, out, m, render.musicVolume)
+        console.log(`  studio → ${out}`)
         continue
       }
       const target = stills
