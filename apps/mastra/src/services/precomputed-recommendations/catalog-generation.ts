@@ -87,7 +87,10 @@ type Checkpoint = {
   sourceSummaryEnglish?: string
   candidateIds?: string[]
   analyticsCandidateIds?: string[]
-  bestJudgment?: Judgment & { targetVideoId: string }
+  bestJudgment?: Omit<Judgment, "addedViewingValueEnglish"> & {
+    targetVideoId: string
+    addedViewingValueEnglish?: string
+  }
   historySummary?: HistorySummary
 }
 type Dependencies = {
@@ -126,6 +129,12 @@ const stateSchema = z.object({
 })
 const bestJudgmentSchema = judgmentSchema.shape.connections.element.extend({
   targetVideoId: id,
+  // Checkpoints and Admin ingest retain the old absent-field contract. The
+  // provider's strict schema uses null for the same missing explanation.
+  addedViewingValueEnglish:
+    judgmentSchema.shape.connections.element.shape.addedViewingValueEnglish
+      .unwrap()
+      .optional(),
 })
 const checkpointSchema: z.ZodType<Checkpoint> = z.object({
   stage: z.enum(["summary", "plan", "discovery", "candidate", "done"]),
@@ -647,7 +656,12 @@ async function processSource(
       return found &&
         (!checkpoint.bestJudgment ||
           found.strength > checkpoint.bestJudgment.strength)
-        ? { ...found, targetVideoId: candidate.id }
+        ? {
+            ...found,
+            targetVideoId: candidate.id,
+            addedViewingValueEnglish:
+              found.addedViewingValueEnglish ?? undefined,
+          }
         : checkpoint.bestJudgment
     }
     await call(
@@ -680,7 +694,8 @@ async function processSource(
                   strength: best.strength,
                   relationship: best.relationship,
                   reasonEnglish: best.reasonEnglish,
-                  addedViewingValueEnglish: best.addedViewingValueEnglish,
+                  addedViewingValueEnglish:
+                    best.addedViewingValueEnglish ?? undefined,
                   evidence: best.evidence,
                 }
               : undefined
