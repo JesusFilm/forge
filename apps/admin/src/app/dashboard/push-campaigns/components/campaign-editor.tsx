@@ -5,9 +5,19 @@
  *
  * Every cap is checked here before submit, because the service refuses the
  * whole save for one long row and the editor should not have to guess which.
+ *
+ * KTD15 — the fields are keyed on the content version, so a newer stored
+ * version loads again and a stale refusal keeps the typed text. The save
+ * state lives above the key, so its message survives that reload.
  */
 import { Plus, Trash2 } from "lucide-react"
-import { useActionState, useMemo, useState } from "react"
+import {
+  startTransition,
+  useActionState,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react"
 
 import { PrimaryButton, SecondaryButton, cx } from "@/components/admin-ui"
 import {
@@ -22,9 +32,13 @@ import { PUSH_ENGLISH_LANGUAGE_SLUG } from "@/services/push/language-resolution"
 
 import { saveCampaignAction } from "../actions"
 import { ActionFeedback } from "./action-feedback"
-import { PUSH_ACTION_IDLE } from "./action-state"
+import { PUSH_ACTION_IDLE, pushActionStateForPage } from "./action-state"
 import { normalizePushCountryInput, pushCopyFieldError } from "./campaign-view"
 import { DestinationPicker, type DestinationValue } from "./destination-picker"
+import {
+  LoadLatestVersion,
+  type PushReviewMessages,
+} from "./load-latest-version"
 
 type CopyRow = { languageSlug: string; title: string; body: string }
 
@@ -52,19 +66,61 @@ function FieldError({ message }: { message: string | null }) {
   )
 }
 
+type EditorProps = {
+  campaign: PushCampaignDetail
+  languageOptions: readonly PushLanguageOption[]
+  destinationTitle: string | null
+}
+
 export function CampaignEditor({
   campaign,
   languageOptions,
   destinationTitle,
-}: {
-  campaign: PushCampaignDetail
-  languageOptions: readonly PushLanguageOption[]
-  destinationTitle: string | null
-}) {
+  messages,
+}: EditorProps & { messages: PushReviewMessages }) {
   const [state, formAction, pending] = useActionState(
     saveCampaignAction,
     PUSH_ACTION_IDLE,
   )
+  const feedback = pushActionStateForPage(state, campaign.contentVersion)
+
+  // React resets a form after its own action, and the reset puts a controlled
+  // checkbox or radio back to its first state. This dispatch skips that reset.
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    startTransition(() => formAction(data))
+  }
+
+  return (
+    <form action={formAction} onSubmit={submit} className="grid gap-6 p-4">
+      <input type="hidden" name="campaignId" value={campaign.id} />
+      <input
+        type="hidden"
+        name="contentVersion"
+        value={campaign.contentVersion}
+      />
+      <CampaignFields
+        key={campaign.contentVersion}
+        campaign={campaign}
+        languageOptions={languageOptions}
+        destinationTitle={destinationTitle}
+        pending={pending}
+      />
+      <ActionFeedback state={feedback} />
+      {feedback.status === "stale" ? (
+        <LoadLatestVersion messages={messages} />
+      ) : null}
+    </form>
+  )
+}
+
+function CampaignFields({
+  campaign,
+  languageOptions,
+  destinationTitle,
+  pending,
+}: EditorProps & { pending: boolean }) {
   const [copies, setCopies] = useState<CopyRow[]>(() => initialCopies(campaign))
   const [addLanguage, setAddLanguage] = useState("")
   const [destination, setDestination] = useState<DestinationValue | null>(
@@ -88,6 +144,12 @@ export function CampaignEditor({
   const labelBySlug = useMemo(
     () => new Map(languageOptions.map((option) => [option.slug, option.label])),
     [languageOptions],
+  )
+  // R37 — a stored filter slug the picker cannot list still posts back, so a
+  // hand save never widens the audience by dropping it.
+  const unlistedFilter = useMemo(
+    () => campaign.languageFilter.filter((slug) => !labelBySlug.has(slug)),
+    [campaign.languageFilter, labelBySlug],
   )
 
   const rowErrors = copies.map((row) => ({
@@ -143,14 +205,7 @@ export function CampaignEditor({
   }
 
   return (
-    <form action={formAction} className="grid gap-6 p-4">
-      <input type="hidden" name="campaignId" value={campaign.id} />
-      <input
-        type="hidden"
-        name="contentVersion"
-        value={campaign.contentVersion}
-      />
-
+    <>
       <fieldset className="grid gap-3">
         <legend className="text-[13px] font-semibold">
           Copy, one row per language
@@ -371,7 +426,10 @@ export function CampaignEditor({
             receives.
           </p>
           <div className="mt-2 grid max-h-48 gap-1 overflow-y-auto">
-            {languageOptions.map((option) => (
+            {[
+              ...unlistedFilter.map((slug) => ({ slug, label: slug })),
+              ...languageOptions,
+            ].map((option) => (
               <label
                 key={option.slug}
                 className="flex items-center gap-2 text-[12px]"
@@ -391,8 +449,6 @@ export function CampaignEditor({
         </details>
       </fieldset>
 
-      <ActionFeedback state={state} />
-
       <div className="flex flex-wrap items-center gap-3">
         <PrimaryButton type="submit" disabled={pending || blocked}>
           {pending ? "Saving..." : "Save campaign"}
@@ -406,6 +462,6 @@ export function CampaignEditor({
           </span>
         ) : null}
       </div>
-    </form>
+    </>
   )
 }

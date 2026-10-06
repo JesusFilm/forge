@@ -4,6 +4,9 @@
  * Once a campaign leaves draft the form is replaced by a read-only view with
  * the freeze rule named on it (R11), because the service refuses the save and
  * an editor should read why before they try.
+ *
+ * R22 — the AI marker sits above both tabs, so a reviewer sees it on the
+ * editor, the frozen view, and the report.
  */
 import type { Route } from "next"
 import Link from "next/link"
@@ -38,6 +41,7 @@ import { CampaignActions } from "../components/campaign-actions"
 import { CampaignEditor } from "../components/campaign-editor"
 import { CampaignReport } from "../components/campaign-report"
 import {
+  formatPushActorMessage,
   formatPushAudience,
   formatPushDestination,
   formatPushSchedule,
@@ -124,6 +128,13 @@ export default async function PushCampaignPage({
   const frozen = isPushCampaignFrozen(campaign.status)
   const workerCopy =
     worker.kind === "stale" ? page.workerStale : page.workerUnknown
+  const aiMarker = campaign.aiMarker
+    ? `${formatPushActorMessage(
+        page.review.aiMarker,
+        campaign.aiMarker.actorName,
+        campaign.aiMarker.writtenAt,
+      )} ${page.review.aiMarkerPrompt}`
+    : null
 
   const tabs: ReadonlyArray<{ key: string; label: string; href: Route }> = [
     {
@@ -155,6 +166,12 @@ export default async function PushCampaignPage({
           </div>
         }
       />
+
+      {aiMarker ? (
+        <InlineNotice tone="warning" testId="push-ai-marker">
+          {aiMarker}
+        </InlineNotice>
+      ) : null}
 
       <nav aria-label="Campaign views" className="flex flex-wrap gap-2">
         {tabs.map((entry) => (
@@ -259,6 +276,7 @@ export default async function PushCampaignPage({
                 campaign={campaign}
                 languageOptions={languageOptions}
                 destinationTitle={destinationTitle}
+                messages={page.review}
               />
             </PageSection>
           )}
@@ -267,6 +285,8 @@ export default async function PushCampaignPage({
             <CampaignActions
               campaignId={campaign.id}
               contentVersion={campaign.contentVersion}
+              lastTestContentVersion={campaign.lastTestContentVersion}
+              messages={page.review}
               tested={isPushCampaignTested(campaign.status)}
               frozen={frozen}
               cancellable={isPushCampaignCancellable(campaign.status)}

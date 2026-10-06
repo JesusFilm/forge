@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { adminMessages } from "@/i18n/messages"
 import {
   PushCampaignsDisabledError,
   PushDuplicateTestDeviceError,
@@ -20,7 +21,14 @@ const createPushCampaignDraft = vi.fn()
 const updatePushCampaign = vi.fn()
 const countPushAudience = vi.fn()
 const readPushCampaignDetail = vi.fn()
+const readPushActorNames = vi.fn()
 const searchPushDestinations = vi.fn()
+
+/** The user table behind the name lookup; an id it lacks reads as itself. */
+const PEOPLE: Record<string, string> = {
+  user_2: "Bob Editor",
+  user_ai: "Alice Reviewer",
+}
 
 const schedulePushCampaignRun = vi.fn()
 const sendPushCampaignNowRun = vi.fn()
@@ -44,6 +52,10 @@ vi.mock("@/auth/session", () => ({
 
 vi.mock("@/db/client", () => ({ prisma: {} }))
 
+vi.mock("@/i18n/server", () => ({
+  getAdminMessages: vi.fn(async () => adminMessages.en),
+}))
+
 vi.mock("@/services/push/campaign.service", () => ({
   createPushCampaignDraft: (...args: unknown[]) =>
     createPushCampaignDraft(...args),
@@ -58,6 +70,7 @@ vi.mock("@/services/push/audience.service", () => ({
 vi.mock("@/services/push/dashboard.service", () => ({
   readPushCampaignDetail: (...args: unknown[]) =>
     readPushCampaignDetail(...args),
+  readPushActorNames: (...args: unknown[]) => readPushActorNames(...args),
   searchPushDestinations: (...args: unknown[]) =>
     searchPushDestinations(...args),
 }))
@@ -112,8 +125,32 @@ function detail(overrides: Record<string, unknown> = {}) {
     audienceScope: "COUNTRIES",
     countries: ["SA", "FR"],
     languageFilter: [],
+    aiMarker: null,
     ...overrides,
   }
+}
+
+const SAVE_FORM = {
+  campaignId: CAMPAIGN,
+  contentVersion: "3",
+  copyLanguage: ["english"],
+  copyTitle: ["An announcement"],
+  copyBody: ["Watch tonight"],
+}
+
+/** Bob saved version 5 at 10:05, after the page loaded version 3. */
+function staleError(lastActorId: string | null = "user_2") {
+  return new PushStaleContentVersionError({
+    currentContentVersion: 5,
+    lastActorId,
+    updatedAt: new Date("2026-10-06T10:05:00Z"),
+  })
+}
+
+const AGENT_MARKER = {
+  actorId: "user_ai",
+  actorName: "Alice Reviewer",
+  writtenAt: new Date("2026-10-06T09:30:00Z"),
 }
 
 describe("push campaign server actions", () => {
@@ -122,9 +159,16 @@ describe("push campaign server actions", () => {
     requireSession.mockResolvedValue(ACTOR)
     countPushAudience.mockResolvedValue({ audience: 1234, unreachable: 7 })
     readPushCampaignDetail.mockResolvedValue(detail())
+    readPushActorNames.mockImplementation(
+      async (_prisma: unknown, ids: readonly (string | null)[]) =>
+        new Map(
+          ids.flatMap((id) => (id ? [[id, PEOPLE[id] ?? id] as const] : [])),
+        ),
+    )
     updatePushCampaign.mockResolvedValue({
       campaignId: CAMPAIGN,
       written: true,
+      after: { contentVersion: 4 },
       statusChange: null,
     })
     schedulePushCampaignRun.mockResolvedValue({ campaignId: CAMPAIGN })
@@ -307,37 +351,62 @@ describe("push campaign server actions", () => {
       },
     )
 
-    it("refuses a save from a page that loaded before a later change, and keeps the page as it is (R34)", async () => {
-      updatePushCampaign.mockRejectedValue(
-        new PushStaleContentVersionError({
-          currentContentVersion: 5,
-          lastActorId: "user_2",
-          updatedAt: new Date("2026-10-06T10:05:00Z"),
-        }),
-      )
+    it("refuses a stale save with the current version and the last change's person and time, and keeps the page (AE10)", async () => {
+      updatePushCampaign.mockRejectedValue(staleError())
 
-      const result = await saveCampaignAction(
-        PUSH_ACTION_IDLE,
-        form({
-          campaignId: CAMPAIGN,
-          contentVersion: "3",
-          copyLanguage: ["english"],
-          copyTitle: ["An announcement"],
-          copyBody: ["Watch tonight"],
-        }),
-      )
+      const result = await saveCampaignAction(PUSH_ACTION_IDLE, form(SAVE_FORM))
 
-      expect(result.status).toBe("error")
-      expect(result.status === "error" && result.reason).toContain(
-        "2026-10-06T10:05:00.000Z",
-      )
+      expect(result).toEqual({
+        status: "stale",
+        contentVersion: 5,
+        reason:
+          "This campaign changed after you loaded it. The last change was by Bob Editor at 2026-10-06 10:05 UTC. Load the latest version, then try again.",
+      })
       expect(revalidatePath).not.toHaveBeenCalled()
+    })
+
+    it("names the later hand editor, then the agent write in a separate sentence", async () => {
+      readPushCampaignDetail.mockResolvedValue(
+        detail({ aiMarker: AGENT_MARKER }),
+      )
+      updatePushCampaign.mockRejectedValue(staleError())
+
+      const result = await saveCampaignAction(PUSH_ACTION_IDLE, form(SAVE_FORM))
+
+      expect(result.status === "stale" && result.reason).toBe(
+        "This campaign changed after you loaded it. The last change was by Bob Editor at 2026-10-06 10:05 UTC. An AI agent changed this campaign for Alice Reviewer at 2026-10-06 09:30 UTC. Load the latest version, then try again.",
+      )
+    })
+
+    it("says an unknown person made the change when the row names no actor", async () => {
+      updatePushCampaign.mockRejectedValue(staleError(null))
+
+      const result = await saveCampaignAction(PUSH_ACTION_IDLE, form(SAVE_FORM))
+
+      expect(result.status === "stale" && result.reason).toContain(
+        "The last change was by an unknown person at 2026-10-06 10:05 UTC.",
+      )
+    })
+
+    it("returns the new version with a save that changed something (KTD15)", async () => {
+      updatePushCampaign.mockResolvedValue({
+        campaignId: CAMPAIGN,
+        written: true,
+        after: { contentVersion: 4 },
+        statusChange: { from: "TESTED", to: "DRAFT" },
+      })
+
+      const result = await saveCampaignAction(PUSH_ACTION_IDLE, form(SAVE_FORM))
+
+      expect(result).toMatchObject({ status: "ok", contentVersion: 4 })
+      expect(revalidatePath).toHaveBeenCalled()
     })
 
     it("does not call a save that changed nothing a draft again (R36)", async () => {
       updatePushCampaign.mockResolvedValue({
         campaignId: CAMPAIGN,
         written: false,
+        after: { contentVersion: 3 },
         statusChange: null,
       })
 
@@ -392,24 +461,20 @@ describe("push campaign server actions", () => {
       },
     )
 
-    it("refuses a test send from a page that loaded before a later change, and names it (R34)", async () => {
-      sendPushCampaignTestRun.mockRejectedValue(
-        new PushStaleContentVersionError({
-          currentContentVersion: 5,
-          lastActorId: "user_2",
-          updatedAt: new Date("2026-10-06T10:05:00Z"),
-        }),
-      )
+    it("refuses a stale test send with the current version and names the newer change (R34)", async () => {
+      sendPushCampaignTestRun.mockRejectedValue(staleError())
 
       const result = await sendTestAction(
         PUSH_ACTION_IDLE,
         form({ campaignId: CAMPAIGN, contentVersion: "3" }),
       )
 
-      expect(result.status).toBe("error")
-      expect(result.status === "error" && result.reason).toContain(
-        "2026-10-06T10:05:00.000Z",
-      )
+      expect(result).toEqual({
+        status: "stale",
+        contentVersion: 5,
+        reason:
+          "This campaign changed after you loaded it. The last change was by Bob Editor at 2026-10-06 10:05 UTC. Load the latest version, then try again.",
+      })
       expect(revalidatePath).not.toHaveBeenCalled()
     })
 

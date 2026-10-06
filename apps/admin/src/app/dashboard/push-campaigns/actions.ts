@@ -12,12 +12,14 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import { prisma } from "@/db/client"
+import { getAdminMessages } from "@/i18n/server"
 import { countPushAudience } from "@/services/push/audience.service"
 import {
   createPushCampaignDraft,
   updatePushCampaign,
 } from "@/services/push/campaign.service"
 import {
+  readPushActorNames,
   readPushCampaignDetail,
   searchPushDestinations,
   type PushDestinationOption,
@@ -28,7 +30,10 @@ import {
   sendPushCampaignNowRun,
   sendPushCampaignTestRun,
 } from "@/services/push/dispatch"
-import { PushServiceError } from "@/services/push/errors"
+import {
+  PushServiceError,
+  PushStaleContentVersionError,
+} from "@/services/push/errors"
 import {
   addPushTestDevice,
   removePushTestDevice,
@@ -40,13 +45,16 @@ import {
   pushCampaignPath,
   type PushActionState,
 } from "./components/action-state"
+import { formatPushActorMessage } from "./components/campaign-view"
 import { requirePushPrincipal } from "./access"
 
 const DESTINATION_KINDS = ["VIDEO", "SERIES", "EXPERIENCE"] as const
 type PushDestinationKindInput = (typeof DESTINATION_KINDS)[number]
 
-function ok(message: string): PushActionState {
-  return { status: "ok", message }
+function ok(message: string, contentVersion?: number): PushActionState {
+  return contentVersion === undefined
+    ? { status: "ok", message }
+    : { status: "ok", message, contentVersion }
 }
 
 function refuse(reason: string): PushActionState {
@@ -67,6 +75,54 @@ async function requirePushActor(): Promise<string> {
 function toRefusal(error: unknown): PushActionState {
   if (error instanceof PushServiceError) return refuse(error.message)
   throw error
+}
+
+/**
+ * R34 and KTD15 — names the newer change: who made the last change and when,
+ * then the agent write when there is one. It returns a state, not a throw,
+ * because a production server action hides a thrown error's message.
+ */
+async function toStaleRefusal(
+  campaignId: string,
+  error: PushStaleContentVersionError,
+): Promise<PushActionState> {
+  const [messages, current, names] = await Promise.all([
+    getAdminMessages(),
+    readPushCampaignDetail(prisma, campaignId),
+    readPushActorNames(prisma, [error.lastActorId]),
+  ])
+  const review = messages.pages.pushCampaigns.review
+  const lastActor =
+    (error.lastActorId && names.get(error.lastActorId)) || review.unknownPerson
+  const marker = current?.aiMarker
+  const sentences = [
+    formatPushActorMessage(review.staleChange, lastActor, error.updatedAt),
+    ...(marker
+      ? [
+          formatPushActorMessage(
+            review.aiMarker,
+            marker.actorName,
+            marker.writtenAt,
+          ),
+        ]
+      : []),
+    review.staleNextStep,
+  ]
+  return {
+    status: "stale",
+    reason: sentences.join(" "),
+    contentVersion: error.currentContentVersion,
+  }
+}
+
+async function toWriteRefusal(
+  campaignId: string,
+  error: unknown,
+): Promise<PushActionState> {
+  if (error instanceof PushStaleContentVersionError) {
+    return toStaleRefusal(campaignId, error)
+  }
+  return toRefusal(error)
 }
 
 function text(formData: FormData, name: string): string {
@@ -171,6 +227,7 @@ export async function saveCampaignAction(
   const byCountry = text(formData, "audienceScope") === "COUNTRIES"
 
   let written: boolean
+  let contentVersion: number
   try {
     const result = await updatePushCampaign(prisma, {
       campaignId,
@@ -189,8 +246,9 @@ export async function saveCampaignAction(
       },
     })
     written = result.written
+    contentVersion = result.after.contentVersion
   } catch (error) {
-    return toRefusal(error)
+    return toWriteRefusal(campaignId, error)
   }
 
   revalidateCampaign(campaignId)
@@ -198,6 +256,7 @@ export async function saveCampaignAction(
     written
       ? "Saved. This campaign is a draft again, so test it before you send it."
       : "Nothing changed, so the campaign keeps its status.",
+    contentVersion,
   )
 }
 
@@ -224,7 +283,7 @@ export async function sendTestAction(
       expectedContentVersion,
     })
   } catch (error) {
-    return toRefusal(error)
+    return toWriteRefusal(campaignId, error)
   }
 
   revalidateCampaign(campaignId)
