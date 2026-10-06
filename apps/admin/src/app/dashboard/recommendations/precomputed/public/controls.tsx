@@ -140,8 +140,45 @@ export function PublicPrecomputedControls({
                   {readiness.baselineReport.isFinal
                     ? "Final DB evidence."
                     : "Provisional DB evidence."}{" "}
-                  Web request health:{" "}
-                  {readiness.baselineReport.webRequestHealth}.
+                  Evidence basis: {readiness.baselineReport.evidenceBasis}. An
+                  isolated fixture cannot satisfy live launch readiness.
+                </p>
+              ) : null}
+              <p>
+                Web request health:{" "}
+                {readiness.baselineWebMeasurement === null
+                  ? "No completed baseline hours yet"
+                  : readiness.baselineWebMeasurement.status === "unavailable"
+                    ? readiness.baselineWebMeasurement.reason
+                    : `${readiness.baselineWebMeasurement.status}; ${readiness.baselineWebMeasurement.coveredHours}/${readiness.baselineWebMeasurement.requestedHours} hours observed; ${readiness.baselineWebMeasurement.missingHours.length} missing hours; ${readiness.baselineWebMeasurement.imbalancedHours.length} counter imbalances; ${readiness.baselineWebMeasurement.counters.delivery_qualified} qualified Web request attempts`}
+                . These are request attempts, not distinct visits or clicks.
+                {!readiness.baselineFullHourWindow
+                  ? " The full baseline window has not ended on a completed UTC-hour boundary."
+                  : ""}
+                {readiness.baselineRequestToVisitGap
+                  ? " Qualified Web requests are fewer than durable eligible visits; inspect tracking loss."
+                  : ""}
+              </p>
+              {readiness.baselineWebMeasurement &&
+              readiness.baselineWebMeasurement.status !== "unavailable" ? (
+                <p>
+                  Web request diagnostics: excluded{" "}
+                  {readiness.baselineWebMeasurement.counters.delivery_excluded},
+                  unknown{" "}
+                  {readiness.baselineWebMeasurement.counters.delivery_unknown},
+                  missing browser identity{" "}
+                  {
+                    readiness.baselineWebMeasurement.counters
+                      .delivery_missing_identity
+                  }
+                  , verification unavailable{" "}
+                  {
+                    readiness.baselineWebMeasurement.counters
+                      .delivery_verification_unavailable
+                  }
+                  , click attempts/acknowledgements{" "}
+                  {readiness.baselineWebMeasurement.counters.click_attempt}/
+                  {readiness.baselineWebMeasurement.counters.click_ack}.
                 </p>
               ) : null}
               {canOperate &&
