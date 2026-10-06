@@ -22,6 +22,7 @@ function readiness(fixture: boolean): Readiness {
       reportRevision: null,
       reportEvidenceDigest: null,
       retainedExperimentId: null,
+      pendingManualReview: null,
     },
     incumbentRouting: {
       manifestId: "incumbent-manifest",
@@ -73,6 +74,22 @@ describe("precomputed public operator controls", () => {
     expect(html).toContain("Prepare an isolated rehearsal")
     expect(html).toContain("Fixture stopping policy JSON")
     expect(html).not.toContain("Start live A/B")
+  })
+
+  it("shows the stopped cohort and manual rollback after its month ends", () => {
+    const data = readiness(true)
+    data.control.version = 2
+    data.control.pendingManualReview = {
+      experimentId: "experiment-1",
+      generationId: "generation-1",
+      endsAt: "2026-11-06T00:00:00.000Z",
+    }
+    const html = renderToStaticMarkup(
+      <PublicPrecomputedControls readiness={data} canOperate canRollback />,
+    )
+    expect(html).toContain("awaits manual evaluation and a decision")
+    expect(html).toContain("Restore incumbent now")
+    expect(html).not.toContain("Start fixture A/B")
   })
 
   it("shows primary counts but offers promotion only for a final fixture result", () => {
