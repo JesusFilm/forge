@@ -41,6 +41,9 @@ const QUOTE_LEADING = 36
 /** Source Serif 4's own line height: (ascender 1036 + descender 335) / 1000. */
 const BODY_LINE_RATIO = 1.371
 
+/** The button reads this at 0:00. The timer before it keeps its width. */
+const CONTINUE = "Continue"
+
 /** A tap before the pause ends does nothing (R16). */
 function ignoreTap() {}
 
@@ -49,6 +52,7 @@ type HeldPauseButtonProps = {
   spokenLabel: string
   font: PauseFont
   variant?: PauseButtonVariant
+  widthLabel?: string
 }
 
 /** The frame's button while a pause timer runs. It looks the same, takes no
@@ -58,6 +62,7 @@ export function HeldPauseButton({
   spokenLabel,
   font,
   variant,
+  widthLabel,
 }: HeldPauseButtonProps) {
   return (
     <View
@@ -72,6 +77,7 @@ export function HeldPauseButton({
         onPress={ignoreTap}
         font={font}
         variant={variant}
+        widthLabel={widthLabel}
       />
     </View>
   )
@@ -138,18 +144,20 @@ export function ReflectScreen({
         {countdown.done ? (
           <Pulse>
             <PauseButton
-              label="Continue"
+              label={CONTINUE}
               onPress={onContinue}
               font={font}
               variant="glass"
+              widthLabel={CONTINUE}
             />
           </Pulse>
         ) : (
           <HeldPauseButton
             label={formatClock(countdown.secondsLeft)}
-            spokenLabel={`Continue, ${spokenTimeLeft(countdown.secondsLeft)}`}
+            spokenLabel={`${CONTINUE}, ${spokenTimeLeft(countdown.secondsLeft)}`}
             font={font}
             variant="glass"
+            widthLabel={CONTINUE}
           />
         )}
       </IntroCovered>

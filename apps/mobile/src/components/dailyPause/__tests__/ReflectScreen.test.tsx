@@ -1,7 +1,12 @@
 // The Reflect screen (U10, R11, R16, R17, R18, R26, R30). The timer counts
 // down in the button, which ignores taps until 0:00 and then reads Continue.
 import { StrictMode, act } from "react"
-import { AppState, type AppStateStatus } from "react-native"
+import {
+  AppState,
+  StyleSheet,
+  type AppStateStatus,
+  type TextStyle,
+} from "react-native"
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
 import type { PauseFace } from "../../../lib/dailyPause/fonts"
@@ -150,9 +155,43 @@ it.each<[MeditationLength, string]>([
   async (length, clock) => {
     const root = await render(length)
     expect(hasText(root, clock)).toBe(true)
-    expect(hasText(root, "Continue")).toBe(false)
+    expect(pressableHost(root)).toBeUndefined()
   },
 )
+
+// The owner (2026-10-06): the button keeps one width from the first count to
+// Continue. Jest has no layout, so this pins the parts that hold the width.
+it("holds the button at the width of Continue for every count and for Continue", async () => {
+  const root = await render(3)
+  const holders = () =>
+    root.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "pause-button-width",
+    )
+  const expectHeld = () => {
+    const [holder] = holders()
+    expect(holders()).toHaveLength(1)
+    expect(holder!.props.children).toBe("Continue")
+    expect(holder!.props.accessibilityElementsHidden).toBe(true)
+    expect(StyleSheet.flatten(holder!.props.style as TextStyle)).toMatchObject({
+      height: 0,
+      opacity: 0,
+    })
+  }
+  expectHeld()
+  const [clock] = root.root.findAll(
+    (node) => typeof node.type === "string" && node.props.children === "0:45",
+  )
+  expect(
+    StyleSheet.flatten(clock!.props.style as TextStyle).fontVariant,
+  ).toEqual(["tabular-nums"])
+
+  advance(PAUSE_INTRO_MS)
+  advance(45_000)
+  expect(pressableHost(root)).toBeDefined()
+  expectHeld()
+})
 
 it("counts down in the button and VoiceOver reads the time left", async () => {
   const root = await render(3)

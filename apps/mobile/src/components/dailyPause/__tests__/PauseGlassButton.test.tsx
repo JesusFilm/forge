@@ -90,6 +90,7 @@ function textIn(root: TestInstance, glass: RenderedNode): string {
     (node) =>
       typeof node.type === "string" &&
       typeof node.props.children === "string" &&
+      node.props.testID !== "pause-button-width" &&
       isInside(node, glass),
   )
   return texts.map((node) => node.props.children as string).join("")
