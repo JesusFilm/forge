@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { readFileSync } from "node:fs"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -13,6 +14,22 @@ import {
 } from "./retention.service"
 
 const day = 86_400_000
+const originalProjectionGuard = readFileSync(
+  new URL(
+    "../../../prisma/migrations/0064_recommendation_governance_review_guards/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+).match(
+  /CREATE OR REPLACE FUNCTION "prevent_recommendation_profile_projection_child_update"\(\)[\s\S]*?\$\$;/,
+)?.[0]
+const projectionEligibilityRepair = readFileSync(
+  new URL(
+    "../../../prisma/migrations/0129_recommendation_projection_eligibility_retention_unlink/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+)
 
 describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
   "standalone episode retention on PostgreSQL",
@@ -1027,6 +1044,270 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await db.$executeRawUnsafe(
           `DROP FUNCTION IF EXISTS owned_retention_late_contribution()`,
         )
+      }
+    }, 30_000)
+
+    it("keeps a published contribution when the full expired-request purge clears its eligibility source", async () => {
+      if (!originalProjectionGuard)
+        throw new Error("Original projection guard was not found")
+      const now = new Date()
+      const createdAt = new Date(now.getTime() - 31 * day)
+      const expiredAt = new Date(now.getTime() - 2 * day)
+      const retainedUntil = new Date(now.getTime() + day)
+      const generationUntil = new Date(now.getTime() + 2 * day)
+      const requestId = randomUUID()
+      const itemId = randomUUID()
+      const selectionId = randomUUID()
+      const episodeId = randomUUID()
+      const outcomeId = randomUUID()
+      const generationId = randomUUID()
+      const contributionId = randomUUID()
+      const manifestId = randomUUID()
+      const sourceDigest = compositionDigest(contributionId)
+      const sessionDigest = compositionDigest(requestId)
+      const decisionDigest = compositionDigest(outcomeId)
+
+      expect(
+        await db.recommendationRequest.count({
+          where: { expiresAt: { lte: now } },
+        }),
+      ).toBe(0)
+      await db.recommendationStrategyManifest.create({
+        data: {
+          id: manifestId,
+          strategyVersion: manifestId,
+          contractVersion: "semantic-recommendation-v1",
+          surfaceVersion: "watch-below-player-v1",
+          generator: "semantic",
+          maxItems: 1,
+        },
+      })
+      await db.$transaction(async (tx) => {
+        await tx.recommendationRequest.create({
+          data: {
+            id: requestId,
+            contractVersion: "semantic-recommendation-v1",
+            surfaceVersion: "watch-below-player-v1",
+            manifestId,
+            strategyVersion: manifestId,
+            classifierVersion: "active-watch-proxy-v1",
+            sessionDigest,
+            locale: "en",
+            seedMediaId: "fixture-seed",
+            expectedItemCount: 1,
+            state: "ISSUED",
+            result: "SERVED",
+            deliveryJti: randomUUID(),
+            signingKid: "fixture",
+            issuedAt: createdAt,
+            createdAt,
+            expiresAt: expiredAt,
+          },
+        })
+        await tx.recommendationServedItem.create({
+          data: {
+            id: itemId,
+            requestId,
+            position: 0,
+            targetMediaId: "fixture-media",
+            canonicalHref: "/watch/fixture.html",
+            candidateGenerator: "semantic",
+            candidateProvenance: {},
+            presentation: {},
+            createdAt,
+            expiresAt: expiredAt,
+          },
+        })
+        await tx.recommendationSelection.create({
+          data: {
+            id: selectionId,
+            requestId,
+            itemId,
+            capabilityJti: randomUUID(),
+            eventId: randomUUID(),
+            payloadDigest: compositionDigest(`${requestId}-selection`),
+            claimNonceDigest: compositionDigest(`${requestId}-claim`),
+            handoffExpiresAt: expiredAt,
+            occurredAt: createdAt,
+            receivedAt: createdAt,
+            expiresAt: expiredAt,
+          },
+        })
+      })
+      await db.recommendationPlaybackEpisode.create({
+        data: {
+          id: episodeId,
+          requestId,
+          itemId,
+          selectionId,
+          mediaId: "fixture-media",
+          sessionDigest,
+          state: "FINALIZED",
+          activeUntil: new Date(createdAt.getTime() + day),
+          hardUntil: new Date(createdAt.getTime() + 2 * day),
+          createdAt,
+          expiresAt: expiredAt,
+        },
+      })
+      await db.recommendationOutcomeRevision.create({
+        data: {
+          id: outcomeId,
+          requestId,
+          itemId,
+          episodeId,
+          classifierVersion: "active-watch-proxy-v1",
+          factWatermark: 0,
+          inputDigest: decisionDigest,
+          revision: 1,
+          qualifiedView: true,
+          viewQualityWeight: 1,
+          viewQualityWeightReason: "active_fraction_of_duration",
+          activePlaybackMilliseconds: 30_000,
+          durationSeconds: 30,
+          durationCohort: "short",
+          activeCoverage: "complete",
+          generation: 1,
+          createdAt,
+          expiresAt: expiredAt,
+        },
+      })
+      const decision = await db.recommendationEligibilityDecision.create({
+        data: {
+          sourceType: "PLAYBACK_OUTCOME",
+          sourceKey: episodeId,
+          outcomeId,
+          policyVersion: RECOMMENDATION_INTEGRITY_POLICY_VERSION,
+          revision: 4,
+          actorClass: "HUMAN_SIGNED_IN",
+          state: "ELIGIBLE",
+          eligibleScopes: ["aggregate", "profile"],
+          contributionWeight: 0.5,
+          contributionOrdinal: 1,
+          distinctSupport: 10,
+          identityConcentration: 0.1,
+          inputDigest: compositionDigest(`${outcomeId}-eligible`),
+          expiresAt: expiredAt,
+        },
+      })
+      await db.recommendationProfileProjectionGeneration.create({
+        data: {
+          id: generationId,
+          manifestId,
+          scope: "SESSION",
+          sessionDigest: compositionDigest(generationId),
+          generation: 1,
+          state: "PUBLISHED",
+          projectionVersion: "fixture",
+          clusteringVersion: "fixture",
+          eligibilityPolicyVersion: RECOMMENDATION_INTEGRITY_POLICY_VERSION,
+          outcomeClassifierVersion: "active-watch-proxy-v1",
+          inputWindowStart: createdAt,
+          inputWindowEnd: now,
+          inputDigest: compositionDigest(`input-${generationId}`),
+          retentionDays: 1,
+          publishedAt: now,
+          createdAt: now,
+          expiresAt: generationUntil,
+        },
+      })
+      const original =
+        await db.recommendationProfileProjectionContribution.create({
+          data: {
+            id: contributionId,
+            generationId,
+            kind: "QUALIFIED_OUTCOME",
+            sourceIdDigest: sourceDigest,
+            sourceOutcomeId: outcomeId,
+            sourceEligibilityDecisionId: decision.id,
+            sourceEligibilityRevision: 4,
+            targetMediaId: "fixture-media",
+            weight: 0.5,
+            eligibilityPolicyVersion: RECOMMENDATION_INTEGRITY_POLICY_VERSION,
+            outcomeClassifierVersion: "active-watch-proxy-v1",
+            privacyGeneration: 1,
+            occurredAt: createdAt,
+            createdAt: now,
+            expiresAt: retainedUntil,
+          },
+        })
+
+      const successBefore = (await readRecommendationRetentionHealth(db, now))
+        .latestSuccessAt
+      await db.$executeRawUnsafe(originalProjectionGuard)
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(db, now, 1),
+        ).rejects.toThrow(/published profile projection children are immutable/)
+        const failed = await db.recommendationRetentionRun.findFirstOrThrow({
+          orderBy: { startedAt: "desc" },
+        })
+        expect(failed).toMatchObject({
+          status: "FAILED",
+          rootsDeleted: 0,
+          oldestExpiredAtAfter: null,
+        })
+        expect(failed.rowCounts).not.toHaveProperty("requests")
+        expect(
+          await db.recommendationRequest.count({ where: { id: requestId } }),
+        ).toBe(1)
+        expect(
+          await db.recommendationOutcomeRevision.count({
+            where: { id: outcomeId },
+          }),
+        ).toBe(1)
+        expect(
+          await db.recommendationProfileProjectionContribution.findUniqueOrThrow(
+            {
+              where: { id: contributionId },
+            },
+          ),
+        ).toEqual(original)
+        expect(
+          (await readRecommendationRetentionHealth(db, now)).latestSuccessAt,
+        ).toEqual(successBefore)
+
+        await db.$executeRawUnsafe(projectionEligibilityRepair)
+        const completed = await purgeExpiredRecommendationRequests(db, now, 1)
+        expect(completed).toMatchObject({
+          status: "succeeded",
+          rootsDeleted: 1,
+          rowCounts: {
+            requests: 1,
+            items: 1,
+            outcomes: 1,
+            eligibilityDecisions: 1,
+          },
+        })
+        expect(
+          await db.recommendationRetentionRun.findUniqueOrThrow({
+            where: { id: completed.runId },
+          }),
+        ).toMatchObject({ status: "SUCCEEDED", rootsDeleted: 1 })
+        expect(
+          await db.recommendationRequest.count({ where: { id: requestId } }),
+        ).toBe(0)
+        expect(
+          await db.recommendationEligibilityDecision.count({
+            where: { id: decision.id },
+          }),
+        ).toBe(0)
+        expect(
+          await db.recommendationProfileProjectionContribution.findUniqueOrThrow(
+            {
+              where: { id: contributionId },
+            },
+          ),
+        ).toEqual({
+          ...original,
+          sourceOutcomeId: null,
+          sourceEligibilityDecisionId: null,
+          sourceEligibilityRevision: null,
+        })
+        expect(
+          (await readRecommendationRetentionHealth(db, now)).latestSuccessAt,
+        ).not.toEqual(successBefore)
+      } finally {
+        await db.$executeRawUnsafe(projectionEligibilityRepair)
       }
     }, 30_000)
   },
