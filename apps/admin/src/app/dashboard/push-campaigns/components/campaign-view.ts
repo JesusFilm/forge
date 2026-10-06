@@ -55,6 +55,17 @@ export function formatPushUtcDate(value: Date | null): string {
     .slice(11, 16)} UTC`
 }
 
+/** Fills a message that names a person and a time, such as the AI marker. */
+export function formatPushActorMessage(
+  template: string,
+  person: string,
+  at: Date,
+): string {
+  return template
+    .replace("{person}", person)
+    .replace("{time}", formatPushUtcDate(at))
+}
+
 export function formatPushSendDate(value: Date | null): string {
   return value ? value.toISOString().slice(0, 10) : ""
 }

@@ -1748,6 +1748,12 @@ The record a device creates with admin when notification permission is granted: 
 
 The delivery of one Announcement Campaign across time zones: each device receives it at the campaign's local hour in its own zone, so a single send spreads over about a day and the report is complete only after the last zone. The wave enforces one announcement per device per local day; when two campaigns collide, the earlier scheduled one wins. "Send now everywhere" is the explicit exception that ignores the local hour.
 
+### AI Marker
+
+The campaign-level record that an AI agent created or changed an Announcement Campaign through the JFP Admin MCP. It names the person the agent acted for and the time of the most recent agent write. A later hand edit does not remove it, so it means "an agent changed this campaign", not "an agent wrote all of it". It says nothing about translation quality: the reviewer checks every language.
+
+_Avoid:_ AI-generated campaign (it suggests that the agent wrote all of it).
+
 ## Product feedback
 
 ### Feedback Submission

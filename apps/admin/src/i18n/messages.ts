@@ -989,6 +989,20 @@ export const adminMessages = {
           untestedNotice:
             "Send this campaign to a test device before you schedule it or send it now.",
         },
+        review: {
+          aiMarker: "An AI agent changed this campaign for {person} at {time}.",
+          aiMarkerPrompt: "Check every language before you test.",
+          staleTestResults:
+            "These results are for an earlier version. Send a new test.",
+          staleChange:
+            "This campaign changed after you loaded it. The last change was by {person} at {time}.",
+          staleNextStep: "Load the latest version, then try again.",
+          unknownPerson: "an unknown person",
+          loadLatest: "Load the latest version",
+          loadLatestTitle: "Load the latest version?",
+          loadLatestConsequence:
+            "The page shows the saved campaign again. The text that you typed here and did not save is lost.",
+        },
         report: {
           title: "Campaign report",
           notStartedTitle: "This campaign has not started sending",

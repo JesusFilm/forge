@@ -1,7 +1,7 @@
 {
   "name": "jfp-admin",
-  "version": "0.1.0",
-  "description": "AI-assisted Jesus Film Admin workflows for locale creation.",
+  "version": "0.2.0",
+  "description": "AI-assisted Jesus Film Admin workflows for Experience locales and push campaign drafts.",
   "author": {
     "name": "Jesus Film Project",
     "url": "https://www.jesusfilm.org"

@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { PUSH_ENGLISH_LANGUAGE_SLUG } from "./language-resolution"
-import { PushInputError } from "./errors"
+import { PushInputError, type PushInputIssue } from "./errors"
 
 /** KTD5 — copy is capped per language before a campaign can be saved. */
 export const PUSH_COPY_TITLE_MAX_CHARS = 50
@@ -10,6 +10,8 @@ export const PUSH_COPY_BODY_MAX_CHARS = 120
 export const PUSH_MAX_AUDIENCE_COUNTRIES = 300
 export const PUSH_MAX_LANGUAGE_FILTER = 300
 export const PUSH_MAX_COPY_ROWS = 300
+/** KTD12 — one MCP call carries at most this many copy rows. */
+export const PUSH_MAX_COPY_ROWS_PER_CALL = 40
 export const PUSH_TEST_DEVICE_LABEL_MAX_CHARS = 120
 export const PUSH_DEFAULT_LOCAL_HOUR = 9
 
@@ -46,20 +48,25 @@ export const PushCampaignCopyInputSchema = z
   .strict()
 export type PushCampaignCopyInput = z.infer<typeof PushCampaignCopyInputSchema>
 
+export const PUSH_ENGLISH_REQUIRED_MESSAGE = "English copy is required"
+
+function hasOneRowPerLanguage(rows: readonly PushCampaignCopyInput[]): boolean {
+  return unique(rows.map((row) => row.languageSlug)).length === rows.length
+}
+
+function hasEnglishRow(rows: readonly PushCampaignCopyInput[]): boolean {
+  return rows.some((row) => row.languageSlug === PUSH_ENGLISH_LANGUAGE_SLUG)
+}
+
+const ONE_ROW_PER_LANGUAGE = { message: "Each language takes one copy row" }
+
+/** The dashboard's whole copy set: it replaces every stored row. */
 export const PushCampaignCopySetSchema = z
   .array(PushCampaignCopyInputSchema)
   .min(1)
   .max(PUSH_MAX_COPY_ROWS)
-  .refine(
-    (rows) =>
-      unique(rows.map((row) => row.languageSlug)).length === rows.length,
-    { message: "Each language takes one copy row" },
-  )
-  .refine(
-    (rows) =>
-      rows.some((row) => row.languageSlug === PUSH_ENGLISH_LANGUAGE_SLUG),
-    { message: "English copy is required" },
-  )
+  .refine(hasOneRowPerLanguage, ONE_ROW_PER_LANGUAGE)
+  .refine(hasEnglishRow, { message: PUSH_ENGLISH_REQUIRED_MESSAGE })
 
 export const PushDestinationKindSchema = z.enum([
   "VIDEO",
@@ -88,19 +95,23 @@ export const PushDestinationInputSchema = z
   .strict()
 export type PushDestinationInput = z.infer<typeof PushDestinationInputSchema>
 
+export const PushAudienceScopeSchema = z.enum(["EVERYWHERE", "COUNTRIES"])
+
+const PushAudienceCountriesSchema = z
+  .array(PushCountryCodeSchema)
+  .max(PUSH_MAX_AUDIENCE_COUNTRIES)
+  .transform(unique)
+
+const PushLanguageFilterSchema = z
+  .array(PushLanguageSlugSchema)
+  .max(PUSH_MAX_LANGUAGE_FILTER)
+  .transform(unique)
+
 export const PushAudienceInputSchema = z
   .object({
-    scope: z.enum(["EVERYWHERE", "COUNTRIES"]),
-    countries: z
-      .array(PushCountryCodeSchema)
-      .max(PUSH_MAX_AUDIENCE_COUNTRIES)
-      .default([])
-      .transform(unique),
-    languageFilter: z
-      .array(PushLanguageSlugSchema)
-      .max(PUSH_MAX_LANGUAGE_FILTER)
-      .default([])
-      .transform(unique),
+    scope: PushAudienceScopeSchema,
+    countries: PushAudienceCountriesSchema.default([]),
+    languageFilter: PushLanguageFilterSchema.default([]),
   })
   .strict()
   .refine(
@@ -108,7 +119,10 @@ export const PushAudienceInputSchema = z
       audience.scope === "COUNTRIES"
         ? audience.countries.length > 0
         : audience.countries.length === 0,
-    { message: "Name at least one country, or choose everywhere" },
+    {
+      message: "Name at least one country, or choose everywhere",
+      path: ["countries"],
+    },
   )
 /** What a caller passes: the array defaults are applied by the parse. */
 export type PushAudienceInput = z.input<typeof PushAudienceInputSchema>
@@ -145,6 +159,77 @@ export const PushCampaignUpdateInputSchema = z
   .strict()
 export type PushCampaignUpdateInput = z.input<
   typeof PushCampaignUpdateInputSchema
+>
+
+/**
+ * R9 and R15 — the agent's create. English is required, the rest is optional,
+ * and the schedule is never part of a draft, so `.strict()` refuses it.
+ */
+export const PushCampaignCreateInputSchema = z
+  .object({
+    copies: z
+      .array(PushCampaignCopyInputSchema)
+      .min(1)
+      .max(PUSH_MAX_COPY_ROWS_PER_CALL)
+      .refine(hasOneRowPerLanguage, ONE_ROW_PER_LANGUAGE)
+      .refine(hasEnglishRow, { message: PUSH_ENGLISH_REQUIRED_MESSAGE }),
+    destination: PushDestinationInputSchema.optional(),
+    audience: PushAudienceInputSchema.optional(),
+  })
+  .strict()
+export type PushCampaignCreateInput = z.input<
+  typeof PushCampaignCreateInputSchema
+>
+
+/** R33 — each audience part changes only when the call names it. */
+export const PushAudiencePatchSchema = z
+  .object({
+    scope: PushAudienceScopeSchema.optional(),
+    countries: PushAudienceCountriesSchema.optional(),
+    languageFilter: PushLanguageFilterSchema.optional(),
+  })
+  .strict()
+
+/**
+ * KTD7 — the agent's edit is a patch. `copies` writes rows by language,
+ * `removeLanguages` removes rows, and nothing here has a default, so a part
+ * the call does not name keeps its stored value.
+ */
+export const PushCampaignPatchInputSchema = z
+  .object({
+    copies: z
+      .array(PushCampaignCopyInputSchema)
+      .max(PUSH_MAX_COPY_ROWS_PER_CALL)
+      .refine(hasOneRowPerLanguage, ONE_ROW_PER_LANGUAGE)
+      .optional(),
+    removeLanguages: z
+      .array(PushLanguageSlugSchema)
+      .max(PUSH_MAX_COPY_ROWS)
+      .optional(),
+    destination: PushDestinationInputSchema.optional(),
+    audience: PushAudiencePatchSchema.optional(),
+  })
+  .strict()
+  .superRefine((patch, context) => {
+    const written = new Set(patch.copies?.map((copy) => copy.languageSlug))
+    patch.removeLanguages?.forEach((slug, index) => {
+      if (slug === PUSH_ENGLISH_LANGUAGE_SLUG) {
+        context.addIssue({
+          code: "custom",
+          path: ["removeLanguages", index],
+          message: "English copy is required, so it cannot be removed",
+        })
+      } else if (written.has(slug)) {
+        context.addIssue({
+          code: "custom",
+          path: ["removeLanguages", index],
+          message: "A call cannot both write and remove one language",
+        })
+      }
+    })
+  })
+export type PushCampaignPatchInput = z.input<
+  typeof PushCampaignPatchInputSchema
 >
 
 // Expo's own shape: a bracketed token, or the legacy bare device UUID that
@@ -268,6 +353,17 @@ export const PushViewerHandleSchema = z
   .strict()
 export type PushViewerHandle = z.infer<typeof PushViewerHandleSchema>
 
+/** R14 — each zod issue as a dotted path and its message, never its value. */
+export function pushInputIssues(
+  error: z.ZodError,
+  prefix?: string,
+): PushInputIssue[] {
+  return error.issues.map((issue) => ({
+    path: [prefix, ...issue.path.map(String)].filter(Boolean).join("."),
+    message: issue.message,
+  }))
+}
+
 /**
  * Parses one input against its contract and turns a zod failure into the
  * typed input error. The message carries the issue messages only, never the
@@ -280,6 +376,7 @@ export function parsePushInput<T>(schema: z.ZodType<T>, value: unknown): T {
     if (error instanceof z.ZodError) {
       throw new PushInputError(
         error.issues.map((issue) => issue.message).join("; "),
+        pushInputIssues(error),
       )
     }
     throw error
