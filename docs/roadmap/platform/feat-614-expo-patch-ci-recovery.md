@@ -1,5 +1,5 @@
 ---
-id: "feat-613"
+id: "feat-614"
 title: "Align Expo patch versions to restore CI"
 owner: "nisal"
 priority: "P1"
@@ -54,5 +54,7 @@ tree; clean CI performs the Expo verification.
   verification are complete; the PR remains unmerged and no binary was
   published.
 
-The ticket is feat-613 because the recommendation integration branch already
-reserved feat-612 for its historical fixture-ticket identity reconciliation.
+The ticket is feat-614: the recommendation integration branch reserved feat-612,
+and current main independently introduced feat-613 for Push Campaign MCP drafts.
+The latter collision was caught by the roadmap advisory on the docs-only follow-up;
+all application checks and the CI gate still passed.
