@@ -445,3 +445,27 @@ channel."` with no `--film-close`.
   question fades and rises over 0.6 s. Revised the same day: the question
   stands ALONE, the credit fades out with the captions and the "Watch the
   Full Devotional" line is not shown.
+
+## Revisions 2026-10-06 (Bartimaeus, owner)
+
+- Music: when the story has several beds (Bartimaeus: three in
+  `work/music-tense/`), every short gets its own: `--music-language=<file>`,
+  `--music-reflection=<file>` (any `--music-<kind>`). Intro keeps the long
+  form's bed; film-verse has the film's sound only. Bartimaeus: intro duduk
+  pulse, language oud drone, reflection strings rising.
+- Reflection credit: the portrait floats (a 3.4 s bob of 4 units and a 5.1 s
+  sway of 1.4 deg, the shadow breathing with it), and the whole credit
+  dissolves over 1.4 s, gone by 10 s at the latest or earlier, just before a
+  sentence first reaches a fourth line (`creditGoneBy`, about 21 characters a
+  line), so text never runs into it.
+- Language grain: a fine monochrome noise tile (220 units) over the picture,
+  under the text, overlay at 0.45, jumping every other frame: present, never
+  loud (the language short already has a lot on screen).
+- A devotional with ONE insight has no history short (never invent one).
+- A closing verse from elsewhere in the Bible: film-verse reads up to the
+  scene verse the devotional calls out (Luke 18:42), matched by a word only
+  that caption holds when the film's wording differs (JESUS film).
+- JESUS-film devotionals: the intro renders from the chapter and asks the
+  cache for the v4 takes when the devotional was read with `--voice-v4`.
+- A fact note always carries its uncredited same-role continuation (the
+  language short must reach its point: "It is the word for salvation").

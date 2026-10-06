@@ -593,7 +593,10 @@ async function main() {
       const m = buildShortManifest(manifest, short)
       if (m.musicFile) {
         // Each short opens on its own part of the bed, looping from there.
-        const src = path.join(from, m.musicFile)
+        // `--music-<kind>=<file>` gives a short its own bed when the story
+        // has several (owner, 2026-10-06: the same music on every short).
+        const own = arg(`music-${short.kind}`)
+        const src = own ?? path.join(from, m.musicFile)
         const bedSec = Number(
           (
             await run("ffprobe", [

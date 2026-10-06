@@ -52,6 +52,40 @@ const SAFE_COLUMN = 640
 /** Reflection text top, Figma px: the design's 614 raised 54 so text plus
  *  credit end above the bottom ~30% that Reels / Facebook cover. */
 const REFLECTION_TOP = 560
+/** Film grain over the language short's picture: present, never loud. */
+const LANGUAGE_GRAIN_OPACITY = 0.45
+const SHORT_GRAIN_URL =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>\")"
+/** The reflection short's credit has dissolved by this second at the
+ *  latest (owner, 2026-10-06: "after about ten seconds"). */
+const REFLECTION_CREDIT_OUT_SEC = 10
+/** Inter 61 over the 640 column: about this many characters a line. */
+const REFLECTION_CHARS_PER_LINE = 21
+
+/**
+ * When the reflection short's credit must be gone: by 10s, or earlier, just
+ * before a sentence first reaches a fourth line, which would run into it
+ * (Bartimaeus at 8s). Estimated from the word timings and characters per line.
+ */
+export function creditGoneBy(
+  words: ReadonlyArray<{ word: string; startSec: number; card: number }>,
+): number {
+  let card = -1
+  let chars = 0
+  for (const w of words) {
+    if (w.card !== card) {
+      card = w.card
+      chars = 0
+    }
+    chars += w.word.length + (chars ? 1 : 0)
+    if (chars > REFLECTION_CHARS_PER_LINE * 3)
+      return Math.min(
+        REFLECTION_CREDIT_OUT_SEC,
+        Math.max(1.6, w.startSec - 0.15),
+      )
+  }
+  return REFLECTION_CREDIT_OUT_SEC
+}
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 const EASE_OUT = Easing.bezier(0.2, 0.7, 0.2, 1)
 
@@ -148,6 +182,22 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           background: `radial-gradient(${f(490.7)}px ${f(413.8)}px at 50% 50%, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 100%)`,
         }}
       />
+      {language ? (
+        // A quiet film grain on the picture only, under the text (owner,
+        // 2026-10-06: the language short wanted grain, but it already has a
+        // lot on screen, so it must not draw the eye). Fine, low, and moving:
+        // the tile jumps every other frame like real grain.
+        <AbsoluteFill
+          style={{
+            backgroundImage: SHORT_GRAIN_URL,
+            backgroundSize: `${f(220)}px ${f(220)}px`,
+            backgroundPosition: `${(((Math.floor(frame / 2) * 73) % 220) * width) / 900}px ${(((Math.floor(frame / 2) * 131) % 220) * width) / 900}px`,
+            mixBlendMode: "overlay",
+            opacity: LANGUAGE_GRAIN_OPACITY,
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
       {props.musicFile ? (
         // The devotional's bed under the voice (owner, 2026-10-02): in at
         // once (a quick 0.25s ease, no slow swell), out with the picture.
@@ -810,6 +860,16 @@ function ReflectionLayout({
     ...clamp,
     easing: EASE_OUT,
   })
+  // The credit leaves before the text can grow into it (owner, 2026-10-06:
+  // on Bartimaeus a long sentence reached it at 9s): a slow dissolve.
+  const outBy = creditGoneBy(words)
+  const creditOut = interpolate(t, [outBy - 1.4, outBy], [1, 0], {
+    ...clamp,
+    easing: Easing.bezier(0.42, 0, 0.58, 1),
+  })
+  // The portrait floats: a slow bob and the faintest sway, never still.
+  const floatY = Math.sin((t * 2 * Math.PI) / 3.4) * f(4)
+  const floatR = Math.sin((t * 2 * Math.PI) / 5.1) * 1.4
   return (
     <>
       <FullDevotionalLabel f={f} t={t} text="From the Full Devotional:" />
@@ -840,7 +900,7 @@ function ReflectionLayout({
             flexDirection: "column",
             alignItems: "center",
             gap: f(30),
-            opacity: head,
+            opacity: head * creditOut,
           }}
         >
           <Divider f={f} grow={head} />
@@ -899,6 +959,8 @@ function ReflectionLayout({
                   borderRadius: "50%",
                   objectFit: "cover",
                   opacity: 0.85,
+                  transform: `translateY(${floatY.toFixed(2)}px) rotate(${floatR.toFixed(2)}deg)`,
+                  boxShadow: `0 ${(f(6) - floatY * 0.5).toFixed(2)}px ${f(16)}px rgba(0,0,0,0.35)`,
                 }}
               />
             ) : null}
