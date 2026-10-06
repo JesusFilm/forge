@@ -23,6 +23,7 @@ export type RunAction =
   | { type: "startOver"; today: Today }
   | { type: "resume"; today: Today; step: PauseStep }
   | { type: "advance" }
+  | { type: "reset" }
 
 export const RUN_START: RunState = Object.freeze({
   step: "opening",
@@ -48,6 +49,8 @@ export function runReducer(state: RunState, action: RunAction): RunState {
       const next = PAUSE_STEPS[PAUSE_STEPS.indexOf(state.step) + 1] as RunStep
       return { step: next, pin: state.pin }
     }
+    case "reset":
+      return RUN_START
   }
 }
 
@@ -58,6 +61,8 @@ export type DailyPauseRun = {
   /** The Watch screen again; its write replaces the saved step. */
   startOver(today: Today): void
   advance(): void
+  /** The Opening again, with no pinned day. */
+  reset(): void
 }
 
 export function useDailyPauseRun(
@@ -79,6 +84,7 @@ export function useDailyPauseRun(
       resume: (today, step) => dispatch({ type: "resume", today, step }),
       startOver: (today) => dispatch({ type: "startOver", today }),
       advance: () => dispatch({ type: "advance" }),
+      reset: () => dispatch({ type: "reset" }),
     }),
     [state],
   )

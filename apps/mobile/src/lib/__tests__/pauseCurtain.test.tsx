@@ -11,6 +11,7 @@ import {
   liftPause,
   reportLogoDrawn,
   requestPause,
+  getEntryRequestsOnTop,
   setPauseRunOnTop,
   usePausePhase,
   type PausePhase,
@@ -73,10 +74,12 @@ describe("the curtain store", () => {
     expect(getPausePhase()).toBe("lifting")
   })
 
-  it("ignores a request while the run is on top", () => {
+  it("ignores a request while the run is on top, and counts it for the run", () => {
     setPauseRunOnTop(true)
+    const before = getEntryRequestsOnTop()
     requestPause()
     expect(getPausePhase()).toBe("idle")
+    expect(getEntryRequestsOnTop()).toBe(before + 1)
     setPauseRunOnTop(false)
     requestPause()
     expect(getPausePhase()).toBe("closing")

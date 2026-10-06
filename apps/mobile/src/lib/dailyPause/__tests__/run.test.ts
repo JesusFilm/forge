@@ -102,6 +102,11 @@ describe("runReducer (R10)", () => {
       { step: "watchScreen", pin: MONDAY },
     )
   })
+
+  it("goes back to the Opening and drops the pinned day on a reset", () => {
+    const reflecting: RunState = { step: "reflectScreen", pin: MONDAY }
+    expect(runReducer(reflecting, { type: "reset" })).toBe(RUN_START)
+  })
 })
 
 describe("useDailyPauseRun with the day record (KTD11)", () => {

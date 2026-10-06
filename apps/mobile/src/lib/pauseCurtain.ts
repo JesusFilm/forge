@@ -17,6 +17,8 @@ export type PausePhase =
 
 let phase: PausePhase = "idle"
 let runOnTop = false
+/** Entry requests while the run is on top. The run decides what they mean. */
+let entryRequestsOnTop = 0
 const listeners = new Set<() => void>()
 
 function setPhase(next: PausePhase): void {
@@ -26,9 +28,15 @@ function setPhase(next: PausePhase): void {
 }
 
 /** R1: every entry point opens today's devotional through this call. A request
- *  while the curtain is up, or while the run is on top, does nothing. */
+ *  while the curtain is up does nothing. While the run is on top, the request
+ *  goes to the run, which goes back to today if it is pinned to an older day. */
 export function requestPause(): void {
-  if (phase !== "idle" || runOnTop) return
+  if (phase !== "idle") return
+  if (runOnTop) {
+    entryRequestsOnTop += 1
+    listeners.forEach((listener) => listener())
+    return
+  }
   setPhase("closing")
 }
 
@@ -67,4 +75,16 @@ export function subscribePause(listener: () => void): () => void {
 
 export function usePausePhase(): PausePhase {
   return useSyncExternalStore(subscribePause, getPausePhase, getPausePhase)
+}
+
+export function getEntryRequestsOnTop(): number {
+  return entryRequestsOnTop
+}
+
+export function useEntryRequestsOnTop(): number {
+  return useSyncExternalStore(
+    subscribePause,
+    getEntryRequestsOnTop,
+    getEntryRequestsOnTop,
+  )
 }

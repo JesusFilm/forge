@@ -37,6 +37,11 @@ import {
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 import { PAUSE_INTRO_MS } from "../PauseIntro"
+import {
+  endPause,
+  requestPause,
+  setPauseRunOnTop,
+} from "../../../lib/pauseCurtain"
 import { RunScreen } from "../RunScreen"
 
 // The stores read the module's `default`, so the mock must carry one.
@@ -563,5 +568,45 @@ describe("the developer Skip", () => {
     } finally {
       globals.__DEV__ = true
     }
+  })
+})
+
+// Review #8: a run left open overnight ignored today's reminder and widget,
+// so the viewer finished yesterday's devotional and today stayed undone.
+describe("an entry point while the run is on top", () => {
+  afterEach(() => {
+    setPauseRunOnTop(false)
+    act(() => endPause())
+  })
+
+  async function reachReflect() {
+    await open()
+    await tap("Begin Devotional")
+    for (const step of ["film", "teaching", "reflectScreen"] as const) {
+      await next()
+      expect(savedDay().step).toBe(step)
+    }
+  }
+
+  it("goes back to the Opening with today's devotional when the run is from an earlier day", async () => {
+    await reachReflect()
+    setPauseRunOnTop(true)
+    // Tuesday morning, a Lamp day.
+    jest.setSystemTime(new Date(2026, 9, 6, 7, 0))
+    await act(async () => requestPause())
+    await act(async () => {})
+
+    expect(buttons()).toContain("Begin Devotional")
+    expect(hasText(renderer!, DEVOTIONALS.lamp.question)).toBe(true)
+  })
+
+  it("keeps today's run where it is", async () => {
+    await reachReflect()
+    setPauseRunOnTop(true)
+    await act(async () => requestPause())
+    await act(async () => {})
+
+    expect(hasText(renderer!, DEVOTIONALS.pharisee.verseLabel)).toBe(true)
+    expect(buttons()).not.toContain("Begin Devotional")
   })
 })

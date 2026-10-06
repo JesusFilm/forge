@@ -3,7 +3,7 @@
 // screen awake on every step except Share (KTD10, R25).
 import { useIsFocused, useRouter } from "expo-router"
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
-import { useEffect, type ReactNode } from "react"
+import { useEffect, useRef, type ReactNode } from "react"
 import { StyleSheet, View } from "react-native"
 
 import type { DevotionalPart } from "../../lib/dailyPause/devotionals"
@@ -12,7 +12,8 @@ import { usePauseDay, type PauseStep } from "../../lib/dailyPause/progress"
 import { isVideoPart, useDailyPauseRun } from "../../lib/dailyPause/run"
 import { usePauseSettings } from "../../lib/dailyPause/settings"
 import { pauseColors } from "../../lib/dailyPause/theme"
-import { useToday } from "../../lib/dailyPause/today"
+import { localDay, useToday } from "../../lib/dailyPause/today"
+import { useEntryRequestsOnTop } from "../../lib/pauseCurtain"
 import { CloseButton } from "./CloseButton"
 import { useCloseDailyPause } from "./DailyPauseHost"
 import { DevSkipButton } from "./DevSkipButton"
@@ -60,6 +61,18 @@ export function RunScreen() {
   const { ready: fontsReady, font } = usePauseFonts()
   const run = useDailyPauseRun()
   const { state } = run
+
+  // An entry point names today. A run pinned to an earlier day, such as one
+  // left open overnight, goes back to the Opening and today's devotional.
+  const entryRequests = useEntryRequestsOnTop()
+  const seenEntryRequests = useRef(entryRequests)
+  useEffect(() => {
+    if (entryRequests === seenEntryRequests.current) return
+    seenEntryRequests.current = entryRequests
+    if (state.pin != null && state.pin.dayKey !== localDay(new Date())) {
+      run.reset()
+    }
+  }, [entryRequests, state.pin, run])
 
   // A screen above the run, such as a watch page, takes the screen's wake.
   const focused = useIsFocused()
