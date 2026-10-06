@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { handlePrecomputedCatalogRouteRequest } from "./precomputed-catalog-generation"
+import {
+  handlePrecomputedCatalogRouteRequest,
+  precomputedCatalogGenerationWorkflow,
+} from "./precomputed-catalog-generation"
 
 const body = {
   generationId: "catalog-2026-10-06",
@@ -63,5 +66,35 @@ describe("private catalog build entrypoint", () => {
       body: { runId: "run-one", generationId: body.generationId },
     })
     expect(launch).toHaveBeenCalledExactlyOnceWith(body)
+  })
+
+  it("stamps private catalog trace identity independently of snapshots", async () => {
+    const startAsync = vi.fn().mockResolvedValue({ runId: "run-one" })
+    const createRun = vi
+      .spyOn(precomputedCatalogGenerationWorkflow, "createRun")
+      .mockResolvedValue({ startAsync } as never)
+    try {
+      expect(
+        await handlePrecomputedCatalogRouteRequest({
+          authHeader: "Bearer secret",
+          serviceKeys: ["secret"],
+          request: request(body),
+        }),
+      ).toMatchObject({ status: 202 })
+      expect(startAsync).toHaveBeenCalledWith({
+        inputData: body,
+        tracingOptions: {
+          hideInput: true,
+          hideOutput: true,
+          metadata: {
+            precomputedGenerationId: body.generationId,
+            precomputedInputCutoff: body.inputCutoff,
+            precomputedHistoryRequired: true,
+          },
+        },
+      })
+    } finally {
+      createRun.mockRestore()
+    }
   })
 })

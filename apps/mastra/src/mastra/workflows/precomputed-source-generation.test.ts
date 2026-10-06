@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { isAstraAccessFailure } from "../../services/precomputed-recommendations/astra-provider"
-import { handlePrecomputedSourceRouteRequest } from "./precomputed-source-generation"
+import {
+  handlePrecomputedSourceRouteRequest,
+  precomputedSourceGenerationWorkflow,
+} from "./precomputed-source-generation"
 
 function request(body: unknown) {
   return new Request(
@@ -77,5 +80,35 @@ describe("private Astra source route", () => {
     expect(isAstraAccessFailure({ statusCode: 404 })).toBe(true)
     expect(isAstraAccessFailure({ code: "model_not_found" })).toBe(true)
     expect(isAstraAccessFailure({ statusCode: 429 })).toBe(false)
+  })
+
+  it("stamps private root-trace identity without retaining trace input or output", async () => {
+    const startAsync = vi.fn().mockResolvedValue({ runId: "run-one" })
+    const createRun = vi
+      .spyOn(precomputedSourceGenerationWorkflow, "createRun")
+      .mockResolvedValue({ startAsync } as never)
+    try {
+      expect(
+        await handlePrecomputedSourceRouteRequest({
+          authHeader: "Bearer secret",
+          serviceKeys: ["secret"],
+          request: request(body),
+        }),
+      ).toMatchObject({ status: 202 })
+      expect(startAsync).toHaveBeenCalledWith({
+        inputData: { ...body, historyRequired: false },
+        tracingOptions: {
+          hideInput: true,
+          hideOutput: true,
+          metadata: {
+            precomputedGenerationId: body.generationId,
+            precomputedInputCutoff: body.inputCutoff,
+            precomputedHistoryRequired: false,
+          },
+        },
+      })
+    } finally {
+      createRun.mockRestore()
+    }
   })
 })

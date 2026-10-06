@@ -16,6 +16,7 @@ import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability"
 import { registerApiRoute } from "@mastra/core/server"
 import { InMemoryStore, MastraCompositeStore } from "@mastra/core/storage"
 import { DuckDBStore } from "@mastra/duckdb"
+import { startPrecomputedRuntimeRetention } from "./precomputed-runtime-retention-schedule"
 import { MastraEditor } from "@mastra/editor"
 import { PinoLogger } from "@mastra/loggers"
 import {
@@ -1113,6 +1114,8 @@ if (env.NODE_ENV === "production") {
   // retention (kill-switch completeness follows data lifetime). Same
   // single-instance assumption as above.
   startLangfuseTraceRetention()
+  if (env.MASTRA_STORAGE_BACKEND !== "memory")
+    startPrecomputedRuntimeRetention(observabilityStore.observability)
 }
 
 let calendarRuntime: ReturnType<typeof createCalendarRuntime> | undefined

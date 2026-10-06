@@ -111,7 +111,18 @@ export async function handlePrecomputedSourceRouteRequest(input: {
         const run = await precomputedSourceGenerationWorkflow.createRun({
           runId,
         })
-        await run.startAsync({ inputData: data })
+        await run.startAsync({
+          inputData: data,
+          tracingOptions: {
+            hideInput: true,
+            hideOutput: true,
+            metadata: {
+              precomputedGenerationId: data.generationId,
+              precomputedInputCutoff: data.inputCutoff,
+              precomputedHistoryRequired: data.historyRequired,
+            },
+          },
+        })
         return runId
       })
     const runId = await launch(parsed.data)

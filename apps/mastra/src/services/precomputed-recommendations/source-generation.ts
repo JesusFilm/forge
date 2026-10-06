@@ -335,6 +335,20 @@ async function postAdmin(
   return envelope.result
 }
 
+/** Read-only, authenticated Admin retirement proof for Mastra run cleanup. */
+export async function readAdminPrecomputedRetentionProof(input: {
+  generationId: string
+}): Promise<unknown> {
+  const key = env.ADMIN_MASTRA_RECOMMENDATION_API_KEY
+  const ingestUrl = env.ADMIN_RECOMMENDATION_INGEST_URL
+  if (!key || !ingestUrl) throw new SourceGenerationError("catalog_unavailable")
+  return postAdmin(ingestUrl, key, {
+    action: "retention_status",
+    protocolVersion: 2,
+    generationId: input.generationId,
+  })
+}
+
 export function createAdminSourceDependencies(inputCutoff?: string): {
   catalog: SourceCatalog
   ingest: SourceIngest
