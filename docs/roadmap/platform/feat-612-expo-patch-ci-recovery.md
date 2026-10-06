@@ -1,0 +1,50 @@
+---
+id: "feat-612"
+title: "Align Expo patch versions to restore CI"
+owner: "nisal"
+priority: "P1"
+status: "in-progress"
+start_date: "2026-10-07"
+duration: 1
+depends_on: []
+blocks: []
+tags: [mobile, infrastructure]
+---
+
+## Problem
+
+PR #2578 wakes the Mobile compatibility check through the generated Admin
+GraphQL client. Expo's current SDK 57 recommendations have advanced beyond
+main's installed patch set. CI run 37528606961 fails before Expo Doctor runs.
+
+## Scope
+
+Apply the exact versions reported by Expo's online compatibility check for the seven reported packages: expo,
+expo-asset, expo-constants, expo-linking, expo-notifications, expo-router, and
+expo-updates. Update `apps/mobile/package.json` and `pnpm-lock.yaml`, keeping
+React, React Native, the SDK line, application code, and CI gates unchanged.
+Review required transitive patch changes. This is a separate maintenance PR
+from the recommendation implementation; no EAS release or production merge is
+authorized here.
+
+## Verification
+
+Require the online Expo compatibility check and pinned isolated Expo Doctor,
+Mobile tests, types, lint and build, plus the PR checks. Record the actual
+results before completion. Do not bypass the checks or mark an upstream
+failure as passing.
+
+The local isolated worktree has no Expo installation. The package manager
+regenerates the lockfile without installing into another task’s dependency
+tree; clean CI performs the Expo verification.
+
+## Current evidence
+
+- `pnpm install --lockfile-only --frozen-lockfile` passes after regeneration.
+- All changed package identities are Expo packages; the only other importer
+  change is `apps/auth` re-resolving its existing optional Expo peer graph.
+  React and React Native versions are unchanged.
+- Standards review: scoped manifest/lockfile changes, normal hooks, CI gates
+  unchanged. No finding.
+- Spec review: all seven reported package floors aligned; clean Expo and
+  Mobile validation remains pending in CI. No completion claim yet.
