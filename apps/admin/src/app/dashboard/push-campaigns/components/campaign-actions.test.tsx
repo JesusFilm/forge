@@ -38,6 +38,7 @@ type Props = Parameters<typeof CampaignActions>[0]
 function props(overrides: Partial<Props> = {}): Props {
   return {
     campaignId: "c1",
+    contentVersion: 4,
     tested: true,
     frozen: false,
     cancellable: false,
@@ -159,6 +160,17 @@ describe("CampaignActions gating", () => {
 })
 
 describe("CampaignActions test-send outcome", () => {
+  it("posts the version the page loaded with the test send (KTD5)", () => {
+    render(props({ contentVersion: 7 }))
+    const field = container
+      .querySelector('[data-testid="push-send-test"]')
+      ?.closest("form")
+      ?.querySelector<HTMLInputElement>(
+        'input[type="hidden"][name="contentVersion"]',
+      )
+    expect(field?.value).toBe("7")
+  })
+
   it("says no test send has run, which is not the same as a failed one", () => {
     render(props({ tested: false }))
     expect(

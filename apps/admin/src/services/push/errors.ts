@@ -175,13 +175,16 @@ export class PushCampaignsDisabledError extends PushServiceError {
   }
 }
 
-/** KTD2 — one bounded run per campaign, so a second dispatch is refused. */
+/**
+ * KTD2 — one bounded run per campaign, so a second dispatch is refused. A test
+ * in flight replaces the message with its receipt window (KTD17).
+ */
 export class PushRunAlreadyActiveError extends PushServiceError {
-  constructor(readonly workflowRunLogId: string) {
-    super(
-      "run_already_active",
-      "This campaign already has a run in flight; cancel it before you start another",
-    )
+  constructor(
+    readonly workflowRunLogId: string,
+    message = "This campaign already has a run in flight; cancel it before you start another",
+  ) {
+    super("run_already_active", message)
     this.name = "PushRunAlreadyActiveError"
   }
 }

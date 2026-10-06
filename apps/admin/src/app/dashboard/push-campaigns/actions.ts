@@ -201,7 +201,10 @@ export async function saveCampaignAction(
   )
 }
 
-/** R10 — the test send that has to precede every real send. */
+/**
+ * R10 — the test send that has to precede every real send. It carries the
+ * version the page loaded, so a test from a stale page is refused (KTD5).
+ */
 export async function sendTestAction(
   _previous: PushActionState,
   formData: FormData,
@@ -209,9 +212,17 @@ export async function sendTestAction(
   const actorId = await requirePushActor()
   const campaignId = text(formData, "campaignId")
   if (!campaignId) return refuse("This form carries no campaign")
+  const expectedContentVersion = readContentVersion(formData)
+  if (expectedContentVersion === null) {
+    return refuse("This form carries no campaign version. Reload the page.")
+  }
 
   try {
-    await sendPushCampaignTestRun({ campaignId, actorId })
+    await sendPushCampaignTestRun({
+      campaignId,
+      actorId,
+      expectedContentVersion,
+    })
   } catch (error) {
     return toRefusal(error)
   }

@@ -44,6 +44,7 @@ function outcomeTone(
 
 export function CampaignActions({
   campaignId,
+  contentVersion,
   tested,
   frozen,
   cancellable,
@@ -57,6 +58,7 @@ export function CampaignActions({
   testOutcome,
 }: {
   campaignId: string
+  contentVersion: number
   tested: boolean
   frozen: boolean
   cancellable: boolean
@@ -142,6 +144,7 @@ export function CampaignActions({
           </p>
           <form action={testFormAction}>
             <input type="hidden" name="campaignId" value={campaignId} />
+            <input type="hidden" name="contentVersion" value={contentVersion} />
             <SecondaryButton
               type="submit"
               data-testid="push-send-test"

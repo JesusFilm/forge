@@ -33,7 +33,9 @@ import {
   PushFrozenError,
   PushInputError,
   PushInvalidTransitionError,
+  PushNotFoundError,
   PushNotTestedError,
+  PushStaleContentVersionError,
 } from "./errors"
 import { markPushCampaignReservedMissed } from "./recovery"
 
@@ -130,8 +132,52 @@ export async function updatePushCampaign(
 }
 
 /**
- * R10 — a test send reached at least one phone, so the campaign may now be
- * scheduled or sent. The per-device outcome lives on the test delivery rows.
+ * KTD5 — pins a test send to the version the reviewer's page showed. The
+ * update that writes the pin also checks that version, so a page that loaded
+ * before a later change moves no row (R34).
+ */
+export async function pinPushTestContentVersion(
+  prisma: PrismaClient,
+  input: { campaignId: string; expectedContentVersion: number },
+): Promise<void> {
+  const { count } = await prisma.pushCampaign.updateMany({
+    where: {
+      id: input.campaignId,
+      status: { in: [...PUSH_EDITABLE_STATUSES] },
+      contentVersion: input.expectedContentVersion,
+    },
+    data: { lastTestContentVersion: input.expectedContentVersion },
+  })
+  if (count === 1) return
+  const current = await prisma.pushCampaign.findUnique({
+    where: { id: input.campaignId },
+    select: {
+      status: true,
+      contentVersion: true,
+      lastActorId: true,
+      updatedAt: true,
+    },
+  })
+  if (current === null) {
+    throw new PushNotFoundError("That campaign does not exist")
+  }
+  if (!isPushCampaignEditable(current.status)) {
+    throw new PushFrozenError(current.status)
+  }
+  throw new PushStaleContentVersionError({
+    currentContentVersion: current.contentVersion,
+    lastActorId: current.lastActorId,
+    updatedAt: current.updatedAt,
+  })
+}
+
+/**
+ * R10 and R35 — a test send reached at least one phone, so the campaign may
+ * now be scheduled or sent. The per-device outcome lives on the test delivery
+ * rows.
+ *
+ * KTD5 — only for the copy the test sent: the `WHERE` needs the content
+ * version to still equal the test's pin, and a missing pin moves no row.
  */
 export async function recordPushTestSend(
   prisma: PrismaClient,
@@ -142,6 +188,10 @@ export async function recordPushTestSend(
     where: {
       id: input.campaignId,
       status: { in: [...PUSH_EDITABLE_STATUSES] },
+      lastTestContentVersion: { not: null },
+      contentVersion: {
+        equals: prisma.pushCampaign.fields.lastTestContentVersion,
+      },
     },
     data: {
       status: PushCampaignStatus.TESTED,

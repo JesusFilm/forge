@@ -13,11 +13,13 @@ import {
   PushInputError,
   PushInvalidTransitionError,
   PushNotTestedError,
+  PushStaleContentVersionError,
 } from "./errors"
 import {
   cancelPushCampaign,
   confirmPushSendNow,
   createPushCampaignDraft,
+  pinPushTestContentVersion,
   readPushTestSendOutcome,
   recordPushTestSend,
   schedulePushCampaign,
@@ -49,7 +51,13 @@ type CampaignRow = {
   status: PushCampaignStatus
   destinationKind: "VIDEO" | "SERIES" | "EXPERIENCE" | null
   destinationSlug: string | null
+  contentVersion: number
+  lastActorId: string | null
+  updatedAt: Date
 }
+
+/** Stands in for Prisma's column reference, so a test can name it in a `WHERE`. */
+const LAST_TEST_CONTENT_VERSION_FIELD = { name: "lastTestContentVersion" }
 
 function buildClient(
   campaign: Partial<CampaignRow> | null = { status: "TESTED" },
@@ -69,6 +77,9 @@ function buildClient(
           status: "TESTED",
           destinationKind: "SERIES",
           destinationSlug: "jesus",
+          contentVersion: 5,
+          lastActorId: ACTOR,
+          updatedAt: new Date("2026-10-06T09:00:00.000Z"),
           ...campaign,
         }
   const client = {
@@ -81,6 +92,7 @@ function buildClient(
       updateMany: vi.fn(async (_args: PrismaCallArgs) => ({
         count: options.moved ?? 1,
       })),
+      fields: { lastTestContentVersion: LAST_TEST_CONTENT_VERSION_FIELD },
     },
     pushCampaignCopy: {
       deleteMany: vi.fn(async (_args: PrismaCallArgs) => ({ count: 0 })),
@@ -156,12 +168,62 @@ describe("push campaign test send", () => {
     expect(update.where).toEqual({
       id: CAMPAIGN,
       status: { in: ["DRAFT", "TESTED"] },
+      lastTestContentVersion: { not: null },
+      contentVersion: { equals: LAST_TEST_CONTENT_VERSION_FIELD },
     })
     expect(update.data).toMatchObject({
       status: "TESTED",
       testSentAt: now,
       lastActorId: ACTOR,
     })
+  })
+
+  it("pins the test to the page's version in the update that checks it (KTD5)", async () => {
+    const client = buildClient({ status: "DRAFT" })
+
+    await pinPushTestContentVersion(client as never, {
+      campaignId: CAMPAIGN,
+      expectedContentVersion: 5,
+    })
+
+    const [update] = client.pushCampaign.updateMany.mock.calls[0]
+    expect(update.where).toEqual({
+      id: CAMPAIGN,
+      status: { in: ["DRAFT", "TESTED"] },
+      contentVersion: 5,
+    })
+    expect(update.data).toEqual({ lastTestContentVersion: 5 })
+  })
+
+  it("refuses a pin from a stale page and names the newer version (R34)", async () => {
+    const updatedAt = new Date("2026-10-06T10:05:00.000Z")
+    const client = buildClient(
+      { status: "DRAFT", contentVersion: 6, lastActorId: "agent_1", updatedAt },
+      { moved: 0 },
+    )
+
+    const pin = pinPushTestContentVersion(client as never, {
+      campaignId: CAMPAIGN,
+      expectedContentVersion: 5,
+    })
+
+    await expect(pin).rejects.toBeInstanceOf(PushStaleContentVersionError)
+    await expect(pin).rejects.toMatchObject({
+      currentContentVersion: 6,
+      lastActorId: "agent_1",
+      updatedAt,
+    })
+  })
+
+  it("names the freeze when a pin finds the campaign already sending", async () => {
+    const client = buildClient({ status: "SENDING" }, { moved: 0 })
+
+    await expect(
+      pinPushTestContentVersion(client as never, {
+        campaignId: CAMPAIGN,
+        expectedContentVersion: 5,
+      }),
+    ).rejects.toBeInstanceOf(PushFrozenError)
   })
 
   it("refuses to record a test send once sending started", async () => {

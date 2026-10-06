@@ -358,16 +358,59 @@ describe("push campaign server actions", () => {
   })
 
   describe("sendTestAction", () => {
-    it("starts the test run and records the actor (R10)", async () => {
+    it("starts the test run with the page's version and records the actor (R10, KTD5)", async () => {
       const result = await sendTestAction(
         PUSH_ACTION_IDLE,
-        form({ campaignId: CAMPAIGN }),
+        form({ campaignId: CAMPAIGN, contentVersion: "3" }),
       )
       expect(sendPushCampaignTestRun).toHaveBeenCalledWith({
         campaignId: CAMPAIGN,
         actorId: "user_1",
+        expectedContentVersion: 3,
       })
       expect(result.status).toBe("ok")
+    })
+
+    it.each([
+      ["no", undefined],
+      ["an empty", ""],
+      ["a fractional", "2.5"],
+      ["a negative", "-1"],
+      ["a non-numeric", "three"],
+    ])(
+      "refuses a test send with %s version before it reaches the service (R34)",
+      async (_label, version) => {
+        const result = await sendTestAction(
+          PUSH_ACTION_IDLE,
+          form({
+            campaignId: CAMPAIGN,
+            ...(version === undefined ? {} : { contentVersion: version }),
+          }),
+        )
+        expect(result.status).toBe("error")
+        expect(sendPushCampaignTestRun).not.toHaveBeenCalled()
+      },
+    )
+
+    it("refuses a test send from a page that loaded before a later change, and names it (R34)", async () => {
+      sendPushCampaignTestRun.mockRejectedValue(
+        new PushStaleContentVersionError({
+          currentContentVersion: 5,
+          lastActorId: "user_2",
+          updatedAt: new Date("2026-10-06T10:05:00Z"),
+        }),
+      )
+
+      const result = await sendTestAction(
+        PUSH_ACTION_IDLE,
+        form({ campaignId: CAMPAIGN, contentVersion: "3" }),
+      )
+
+      expect(result.status).toBe("error")
+      expect(result.status === "error" && result.reason).toContain(
+        "2026-10-06T10:05:00.000Z",
+      )
+      expect(revalidatePath).not.toHaveBeenCalled()
     })
 
     it("surfaces the kill-switch reason when the push flag is off (KTD12)", async () => {
@@ -376,7 +419,7 @@ describe("push campaign server actions", () => {
       )
       const result = await sendTestAction(
         PUSH_ACTION_IDLE,
-        form({ campaignId: CAMPAIGN }),
+        form({ campaignId: CAMPAIGN, contentVersion: "3" }),
       )
       expect(result).toEqual({
         status: "error",

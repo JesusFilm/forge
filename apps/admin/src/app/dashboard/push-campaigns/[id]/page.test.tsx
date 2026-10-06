@@ -223,6 +223,7 @@ describe("push campaign editor page", () => {
       cancellable: false,
       audience: 1234,
       unreachable: 7,
+      contentVersion: 4,
     })
   })
 

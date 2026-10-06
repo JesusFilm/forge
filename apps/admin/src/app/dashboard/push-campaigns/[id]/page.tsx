@@ -266,6 +266,7 @@ export default async function PushCampaignPage({
           <PageSection title="Send" meta="TEST / SCHEDULE / SEND NOW / CANCEL">
             <CampaignActions
               campaignId={campaign.id}
+              contentVersion={campaign.contentVersion}
               tested={isPushCampaignTested(campaign.status)}
               frozen={frozen}
               cancellable={isPushCampaignCancellable(campaign.status)}

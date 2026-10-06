@@ -8,12 +8,25 @@
  * The PrismaClients are built in `beforeAll`, never in the describe body:
  * `describe.skipIf` still runs the body to collect the tests.
  *
+ * The test sends call the real dispatch with `start()` mocked, so no
+ * workflow runs; the finish step's own service function records the result.
+ *
  * Run with:
  *   PUSH_DB_TEST=1 DATABASE_URL=postgresql://forge@localhost:5432/forge_admin_push_test \
  *     pnpm --filter @forge/admin exec vitest run src/services/push/campaign-content.db.test.ts
  */
+import { randomUUID } from "node:crypto"
+
 import { PrismaClient, type PushCampaignStatus } from "@prisma/client"
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 
 import { env } from "@/config/env"
 
@@ -21,12 +34,17 @@ import {
   createPushCampaignContent,
   writePushCampaignContent,
 } from "./campaign-content.service"
+import { finishPushCampaignRun, sendPushCampaignTestRun } from "./dispatch"
 import {
+  PushRunAlreadyActiveError,
   PushStaleContentVersionError,
   PushUnknownDestinationError,
   PushUnknownLanguageError,
 } from "./errors"
 import { PUSH_ENGLISH_LANGUAGE_SLUG } from "./language-resolution"
+
+const { start } = vi.hoisted(() => ({ start: vi.fn() }))
+vi.mock("workflow/api", () => ({ start }))
 
 const databaseUrl = process.env.DATABASE_URL
 const PREFIX = "push_content_db_"
@@ -59,6 +77,9 @@ const FRENCH_COPY = {
 type CopySeed = { languageSlug: string; title: string; body: string }
 
 async function clean(prisma: PrismaClient): Promise<void> {
+  await prisma.workflowRun.deleteMany({
+    where: { subjectId: { startsWith: PREFIX } },
+  })
   await prisma.pushCampaign.deleteMany({
     where: {
       OR: [
@@ -499,6 +520,139 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
       expect(row.lastActorId).toBe(EDITOR)
       expect(row.aiLastActorId).toBe(AGENT_EDITOR)
       expect(row.aiLastWrittenAt).toEqual(marked.aiLastWrittenAt)
+    })
+
+    describe("a test send pinned to its version (KTD5)", () => {
+      const ACCEPTED_ONE = {
+        accepted: 1,
+        failed: 0,
+        invalid: 0,
+        suppressed: 0,
+        unreachable: 0,
+        missed: 0,
+        indeterminate: 0,
+        handedOff: 1,
+      }
+
+      beforeEach(() => {
+        start.mockReset()
+        start.mockImplementation(async () => ({
+          runId: `${PREFIX}${randomUUID()}`,
+        }))
+        vi.spyOn(console, "info").mockImplementation(() => {})
+      })
+
+      function sendTest(expectedContentVersion: number) {
+        return sendPushCampaignTestRun(
+          { campaignId: CAMPAIGN, actorId: EDITOR, expectedContentVersion },
+          { prisma, campaignsEnabled: true },
+        )
+      }
+
+      // The function the workflow's finish step calls, with a test that
+      // reached one phone.
+      function finishTest(ledgerRunId: string) {
+        return finishPushCampaignRun(
+          {
+            campaignId: CAMPAIGN,
+            ledgerRunId,
+            kind: "TEST",
+            outcome: "sent",
+            counts: ACCEPTED_ONE,
+          },
+          { prisma },
+        )
+      }
+
+      function agentFix(expectedContentVersion: number) {
+        return writePushCampaignContent(prisma, {
+          source: "mcp",
+          campaignId: CAMPAIGN,
+          actorId: AGENT_EDITOR,
+          expectedContentVersion,
+          patch: { copies: [{ ...ENGLISH_COPY, title: "A fix" }] },
+        })
+      }
+
+      it("keeps the campaign DRAFT when the content changed after the test started (AE11)", async () => {
+        await seedCampaign({ contentVersion: 5 })
+        const run = await sendTest(5)
+        await agentFix(5)
+
+        await finishTest(run.workflowRunLogId)
+
+        const row = await readCampaign()
+        expect(row.status).toBe("DRAFT")
+        expect(row.contentVersion).toBe(6)
+        expect(row.lastTestContentVersion).toBe(5)
+        expect(row.testSentAt).toBeNull()
+      })
+
+      it("records TESTED when the content did not change after the test started", async () => {
+        await seedCampaign({ contentVersion: 5 })
+        const run = await sendTest(5)
+
+        await finishTest(run.workflowRunLogId)
+
+        const row = await readCampaign()
+        expect(row.status).toBe("TESTED")
+        expect(row.lastTestContentVersion).toBe(5)
+        expect(row.testSentAt).not.toBeNull()
+      })
+
+      it("keeps the campaign DRAFT when the test carries no pin", async () => {
+        await seedCampaign({ contentVersion: 5 })
+
+        await finishTest(`${PREFIX}unpinned_ledger`)
+
+        const row = await readCampaign()
+        expect(row.lastTestContentVersion).toBeNull()
+        expect(row.status).toBe("DRAFT")
+      })
+
+      it("refuses a test send from a page older than the stored version, and starts no run (R34)", async () => {
+        await seedCampaign({ contentVersion: 6 })
+
+        const send = sendTest(5)
+
+        await expect(send).rejects.toBeInstanceOf(PushStaleContentVersionError)
+        await expect(send).rejects.toMatchObject({ currentContentVersion: 6 })
+        expect(start).not.toHaveBeenCalled()
+        await expect(
+          prisma.workflowRun.count({ where: { subjectId: CAMPAIGN } }),
+        ).resolves.toBe(0)
+        expect((await readCampaign()).lastTestContentVersion).toBeNull()
+      })
+
+      it("refuses a second test while the first collects receipts, and the first still does not count (KTD17)", async () => {
+        await seedCampaign({ contentVersion: 5 })
+        const first = await sendTest(5)
+        // What the run's first step writes when it starts.
+        await prisma.workflowRun.update({
+          where: { id: first.workflowRunLogId },
+          data: {
+            status: "RUNNING",
+            startedAt: new Date("2026-10-06T09:00:30.000Z"),
+          },
+        })
+        await agentFix(5)
+
+        const second = sendTest(6)
+
+        await expect(second).rejects.toBeInstanceOf(PushRunAlreadyActiveError)
+        await expect(second).rejects.toMatchObject({
+          message:
+            "The last test is still collecting receipts until about 09:16 UTC. Send a new test after that.",
+        })
+        expect(start).toHaveBeenCalledOnce()
+        expect((await readCampaign()).lastTestContentVersion).toBe(5)
+
+        await finishTest(first.workflowRunLogId)
+
+        const row = await readCampaign()
+        expect(row.status).toBe("DRAFT")
+        expect(row.contentVersion).toBe(6)
+      })
     })
   },
 )
