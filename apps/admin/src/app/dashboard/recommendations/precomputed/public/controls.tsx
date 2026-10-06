@@ -4,6 +4,7 @@ import { useState } from "react"
 import { PageSection, StatusPill } from "@/components/admin-ui"
 import type { PrecomputedCtrReport } from "@/services/recommendations/precomputed/ctr-report"
 import type { loadPrecomputedPublicReadiness } from "@/services/recommendations/precomputed/public-readiness"
+import { oneUtcCalendarMonthAfter } from "@/services/recommendations/precomputed/cohort-window"
 
 type Readiness = Awaited<ReturnType<typeof loadPrecomputedPublicReadiness>>
 
@@ -49,9 +50,9 @@ export function PublicPrecomputedControls({
   const [startsAt, setStartsAt] = useState(
     new Date(Date.now() - 60_000).toISOString(),
   )
-  const [endsAt, setEndsAt] = useState(
-    new Date(Date.now() + 14 * 86_400_000).toISOString(),
-  )
+  const endsAt = Number.isFinite(new Date(startsAt).getTime())
+    ? oneUtcCalendarMonthAfter(new Date(startsAt)).toISOString()
+    : "Invalid start time"
   const [policyJson, setPolicyJson] = useState(
     JSON.stringify(policyTemplate, null, 2),
   )
@@ -59,6 +60,9 @@ export function PublicPrecomputedControls({
     (item) => item.id === generationId,
   )
   const control = readiness.control
+  const pendingManualReview = control.pendingManualReview
+  const selectedExperimentId =
+    control.experimentId ?? pendingManualReview?.experimentId
   const fixture = readiness.fixtureRehearsalEnvironment
   const retained = readiness.experiments.find(
     (item) => item.id === control.retainedExperimentId,
@@ -115,6 +119,14 @@ export function PublicPrecomputedControls({
             {control.reportRevision ?? "—"} · evidence digest{" "}
             {control.reportEvidenceDigest ?? "—"}
           </p>
+          {pendingManualReview ? (
+            <p role="status" className="break-all">
+              A/B serving stopped at {pendingManualReview.endsAt}. Incumbent
+              recommendations are serving while experiment{" "}
+              {pendingManualReview.experimentId} awaits manual evaluation and a
+              decision. No winner is activated automatically.
+            </p>
+          ) : null}
           {control.retainedExperimentId ? (
             <div className="space-y-2">
               <p className="break-all">
@@ -142,7 +154,8 @@ export function PublicPrecomputedControls({
             </div>
           ) : null}
           {message ? <p role="alert">{message.replaceAll("_", " ")}</p> : null}
-          {canRollback && control.mode !== "incumbent" ? (
+          {canRollback &&
+          (control.mode !== "incumbent" || pendingManualReview) ? (
             <button
               type="button"
               disabled={busy}
@@ -150,8 +163,9 @@ export function PublicPrecomputedControls({
                 void post({
                   action: "rollback",
                   expectedControlVersion: control.version,
-                  expectedExperimentId: control.experimentId,
-                  expectedGenerationId: control.generationId,
+                  expectedExperimentId: selectedExperimentId,
+                  expectedGenerationId:
+                    control.generationId ?? pendingManualReview?.generationId,
                   expectedReportRevision: control.reportRevision,
                   expectedReportEvidenceDigest: control.reportEvidenceDigest,
                   reasonCode: "operator_rollback",
@@ -184,7 +198,7 @@ export function PublicPrecomputedControls({
                 {readiness.experiments.map((item) => {
                   const report = item.latestReport
                   const result = reportView(report?.result)
-                  const selected = control.experimentId === item.id
+                  const selected = selectedExperimentId === item.id
                   const winner =
                     report?.isFinal &&
                     result?.evidenceBasis === "isolated_fixture" &&
@@ -256,6 +270,7 @@ export function PublicPrecomputedControls({
                         {fixture &&
                         canOperate &&
                         control.mode === "incumbent" &&
+                        !pendingManualReview &&
                         !report ? (
                           <button
                             type="button"
@@ -278,7 +293,7 @@ export function PublicPrecomputedControls({
                         {fixture &&
                         canOperate &&
                         selected &&
-                        control.mode === "ab" ? (
+                        (control.mode === "ab" || pendingManualReview) ? (
                           <button
                             type="button"
                             disabled={busy}
@@ -296,7 +311,7 @@ export function PublicPrecomputedControls({
                         {fixture &&
                         canOperate &&
                         selected &&
-                        control.mode === "ab" &&
+                        (control.mode === "ab" || pendingManualReview) &&
                         winner ? (
                           <button
                             type="button"
@@ -383,10 +398,10 @@ export function PublicPrecomputedControls({
               />
             </label>
             <label>
-              Ends at (ISO with offset)
+              Ends at (one UTC calendar month later)
               <input
                 value={endsAt}
-                onChange={(event) => setEndsAt(event.target.value)}
+                readOnly
                 className="mt-1 block w-full border border-[var(--color-hairline)] bg-transparent p-2"
               />
             </label>

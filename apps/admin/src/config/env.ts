@@ -562,6 +562,8 @@ export const env = createEnv({
     // Private saved-result Watch preview; never changes the public serving pointer.
     RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED: z.enum(["1"]).optional(),
     RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: z.enum(["1"]).optional(),
+    WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: z.string().min(32).optional(),
+    WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: z.string().min(1).optional(),
     // Isolated, opt-in recommendation storage benchmark settings. The script
     // validates its own safety guards even when CI skips application validation.
     RECOMMENDATION_STORAGE_BENCHMARK: z.enum(["1"]).optional(),
@@ -1127,6 +1129,12 @@ export const env = createEnv({
     ),
     RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_PRECOMPUTED_TEST_ENABLED,
+    ),
+    WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET,
+    ),
+    WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES,
     ),
     RECOMMENDATION_STORAGE_BENCHMARK: emptyToUndefined(
       process.env.RECOMMENDATION_STORAGE_BENCHMARK,

@@ -17,6 +17,16 @@ import { deliverPrecomputedPublicWatchVisit } from "./public-watch"
 import * as incumbentService from "../delivery.service"
 import { chooseExperimentArm } from "../experiment/assignment"
 import { precomputedBrowserUnitDigest } from "./visit-identity"
+import { oneUtcCalendarMonthAfter } from "./cohort-window"
+import { recommendationManifestDigest } from "../promotion/manifest"
+import {
+  PRECOMPUTED_CTR_METHOD,
+  precomputedCtrPolicyDigest,
+} from "./ctr-report"
+import {
+  PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
+  PRECOMPUTED_VISIT_DELIVERY_POLICY,
+} from "./visit-admission"
 
 describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
   "manual precomputed public control on PostgreSQL",
@@ -163,15 +173,43 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
+    it("requires exactly one UTC calendar month, clamping a short target month", async () => {
+      const routing = await readControlRouting(prisma)
+      expect(routing).not.toBeNull()
+      const startsAt = new Date("2027-01-31T13:45:30.123Z")
+      const prepare = (endsAt: Date) =>
+        preparePrecomputedPublicExperiment(prisma, {
+          id: `calendar-month-${randomUUID()}`,
+          generationId,
+          startsAt,
+          endsAt,
+          expectedControlRoutingDigest: routing!.routingDigest,
+          expectedSourceSetDigest: "b".repeat(64),
+          policySettings,
+          authority: "isolated_fixture",
+          operator,
+        })
+      await expect(
+        prepare(new Date("2027-02-27T13:45:30.123Z")),
+      ).rejects.toMatchObject({ code: "invalid_input" })
+      const prepared = await prepare(new Date("2027-02-28T13:45:30.123Z"))
+      expect(prepared.endsAt.toISOString()).toBe("2027-02-28T13:45:30.123Z")
+      await prisma.recommendationPrecomputedExperiment.update({
+        where: { id: prepared.id },
+        data: { state: "closed" },
+      })
+    })
+
     it("freezes a prepared cohort and policy without selecting public traffic", async () => {
       const routing = await readControlRouting(prisma)
       expect(routing).not.toBeNull()
       const now = Date.now()
+      const startsAt = new Date(now - 60_000)
       const prepared = await preparePrecomputedPublicExperiment(prisma, {
         id: experimentId,
         generationId,
-        startsAt: new Date(now - 60_000),
-        endsAt: new Date(now + 7 * 86_400_000),
+        startsAt,
+        endsAt: oneUtcCalendarMonthAfter(startsAt),
         expectedControlRoutingDigest: routing!.routingDigest,
         expectedSourceSetDigest: "b".repeat(64),
         policySettings,
@@ -251,6 +289,47 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           operator,
         }),
       ).rejects.toMatchObject({ code: "stale_control" })
+    })
+
+    it("returns incumbent serving at the month cutoff and leaves the cohort pending manual review", async () => {
+      const experiment =
+        await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
+          where: { id: experimentId },
+        })
+      const beforeCutoff = new Date(experiment.endsAt.getTime() - 1)
+      expect(
+        await loadPrecomputedPublicControl(prisma, beforeCutoff),
+      ).toMatchObject({ mode: "ab", pendingManualReview: null })
+      expect(
+        await loadPrecomputedPublicControl(prisma, experiment.endsAt),
+      ).toMatchObject({
+        mode: "incumbent",
+        pendingManualReview: {
+          experimentId,
+          generationId,
+          endsAt: experiment.endsAt.toISOString(),
+        },
+      })
+      const input = { ...visitInput(), now: experiment.endsAt }
+      const routing = await readControlRouting(prisma)
+      expect(routing).not.toBeNull()
+      const result = await deliverPrecomputedPublicWatchVisit(
+        prisma,
+        input,
+        tokenService,
+      )
+      expect(result).toMatchObject({
+        disposition: "inactive",
+        status: "not_applicable",
+        experimentId: null,
+        arm: null,
+        delivery: { strategyVersion: routing!.manifest.strategyVersion },
+      })
+      expect(
+        await prisma.recommendationPrecomputedVisit.count({
+          where: { id: input.visitId },
+        }),
+      ).toBe(0)
     })
 
     it("keeps a technical incumbent recovery in the original challenger arm with a bound request", async () => {
@@ -539,6 +618,74 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           where: { id: experimentId },
         }),
       ).toBeNull()
+    })
+
+    it("requires a verified Web receipt before admitting an active live A/B visit", async () => {
+      const routing = await readControlRouting(prisma)
+      expect(routing).not.toBeNull()
+      const liveExperimentId = `live-proof-${randomUUID()}`
+      const startsAt = new Date(Date.now() - 60_000)
+      const endsAt = oneUtcCalendarMonthAfter(startsAt)
+      await prisma.recommendationPrecomputedExperiment.create({
+        data: {
+          id: liveExperimentId,
+          generationId,
+          controlManifestId: routing!.manifest.id,
+          challengerManifestId: "precomputed-watch-preview-v1",
+          controlManifestDigest: recommendationManifestDigest(
+            routing!.manifest,
+          ),
+          controlRoutingDigest: routing!.routingDigest,
+          sourceSetDigest: "b".repeat(64),
+          assignmentPolicyVersion: PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
+          eligibilityPolicyVersion:
+            "public-watch-turnstile-verified-browser-v1",
+          deliveryPolicyVersion: PRECOMPUTED_VISIT_DELIVERY_POLICY,
+          configurationDigest: "d".repeat(64),
+          state: "public_ready",
+          startsAt,
+          endsAt,
+          expiresAt: new Date(endsAt.getTime() + 365 * 86_400_000),
+        },
+      })
+      await prisma.recommendationPrecomputedCtrPolicy.create({
+        data: {
+          experimentId: liveExperimentId,
+          version: PRECOMPUTED_CTR_METHOD,
+          method: PRECOMPUTED_CTR_METHOD,
+          settings: policySettings,
+          lateEventCutoffHours: policySettings.lateEventCutoffHours,
+          settingsDigest: precomputedCtrPolicyDigest(policySettings),
+          authority: "prelaunch_agreed",
+        },
+      })
+      await prisma.recommendationPrecomputedPublicControl.update({
+        where: { id: "precomputed-watch-public-control" },
+        data: {
+          version: { increment: 1 },
+          mode: "ab",
+          activeExperimentId: liveExperimentId,
+          authority: "live_verified",
+        },
+      })
+      const input = visitInput()
+      const result = await deliverPrecomputedPublicWatchVisit(
+        prisma,
+        input,
+        tokenService,
+      )
+      expect(result).toMatchObject({
+        disposition: "ab",
+        status: "unavailable",
+        visitId: input.visitId,
+        reason: "verification_required",
+        delivery: null,
+      })
+      expect(
+        await prisma.recommendationPrecomputedVisit.count({
+          where: { id: input.visitId },
+        }),
+      ).toBe(0)
     })
   },
 )
