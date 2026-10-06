@@ -10,6 +10,7 @@ import {
   type CtrTotals,
 } from "./ctr-evidence"
 import { lockPrecomputedCtrEvidence } from "./ctr-fence"
+import { PRECOMPUTED_VISIT_ELIGIBILITY_POLICY } from "./visit-admission"
 import {
   evaluatePrecomputedCtr,
   validateCtrPolicySettings,
@@ -348,10 +349,12 @@ async function evaluatePrecomputedCtrReport(
 ): Promise<PrecomputedCtrRead> {
   if (!hasPermission(input.operator, "operate:recommendation-experiments"))
     throw new ForbiddenError()
-  if (input.evidenceBasis === "isolated_fixture")
-    await (
-      await import("./public-control")
-    ).assertIsolatedPrecomputedControlFixture(prisma)
+  let publicEligibilityPolicy: string | null = null
+  if (input.evidenceBasis === "isolated_fixture") {
+    const control = await import("./public-control")
+    await control.assertIsolatedPrecomputedControlFixture(prisma)
+    publicEligibilityPolicy = control.PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY
+  }
   return prisma.$transaction(
     async (tx) => {
       await lockPrecomputedCtrEvidence(tx, input.experimentId, "exclusive")
@@ -368,7 +371,8 @@ async function evaluatePrecomputedCtrReport(
         } as const
       if (
         input.evidenceBasis === "isolated_fixture" &&
-        experiment.state !== "public_ready"
+        (experiment.state !== "public_ready" ||
+          experiment.eligibilityPolicyVersion !== publicEligibilityPolicy)
       )
         return {
           status: "unavailable",
@@ -376,7 +380,11 @@ async function evaluatePrecomputedCtrReport(
         } as const
       if (
         input.evidenceBasis === "private_unverified" &&
-        experiment.state !== "private_test"
+        (!["private_test", "closed"].includes(experiment.state) ||
+          ![
+            "private-watch-visit-unverified-bot-v1",
+            PRECOMPUTED_VISIT_ELIGIBILITY_POLICY,
+          ].includes(experiment.eligibilityPolicyVersion))
       )
         return {
           status: "unavailable",

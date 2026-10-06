@@ -574,6 +574,116 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       ).toEqual(final)
     })
 
+    it("finalizes a closed private cohort but never classifies a closed public cohort as private", async () => {
+      const frozen =
+        await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
+          where: { id: experimentId },
+          include: { ctrPolicy: true },
+        })
+      const cohort = {
+        generationId: frozen.generationId,
+        controlManifestId: frozen.controlManifestId,
+        challengerManifestId: frozen.challengerManifestId,
+        controlManifestDigest: frozen.controlManifestDigest,
+        controlRoutingDigest: frozen.controlRoutingDigest,
+        sourceSetDigest: frozen.sourceSetDigest,
+        assignmentPolicyVersion: frozen.assignmentPolicyVersion,
+        deliveryPolicyVersion: frozen.deliveryPolicyVersion,
+        configurationDigest: frozen.configurationDigest,
+        startsAt: new Date(now.getTime() - days(4)),
+        endsAt: new Date(now.getTime() - days(2)),
+        expiresAt: new Date(now.getTime() + days(363)),
+      }
+      await prisma.recommendationPrecomputedExperiment.update({
+        where: { id: experimentId },
+        data: { state: "closed" },
+      })
+      const privateId = `closed-private-${randomUUID()}`
+      await prisma.recommendationPrecomputedExperiment.create({
+        data: {
+          ...cohort,
+          id: privateId,
+          eligibilityPolicyVersion: frozen.eligibilityPolicyVersion,
+          state: "private_test",
+        },
+      })
+      await declareFixturePrecomputedCtrPolicy(prisma, {
+        experimentId: privateId,
+        operator,
+        settings: frozen.ctrPolicy!.settings as Parameters<
+          typeof declareFixturePrecomputedCtrPolicy
+        >[1]["settings"],
+      })
+      await prisma.recommendationPrecomputedVisit.create({
+        data: {
+          id: randomUUID(),
+          experimentId: privateId,
+          browserUnitDigest: "a".repeat(64),
+          sourceVideoId: "source-video",
+          locale: "en",
+          audioLanguageSlug: "english",
+          eligibility: "eligible",
+          qualification: "unverified_browser",
+          arm: RecommendationExperimentArm.CONTROL,
+          createdAt: new Date(now.getTime() - days(3)),
+          expiresAt: new Date(now.getTime() + days(26)),
+        },
+      })
+      await prisma.recommendationPrecomputedExperiment.update({
+        where: { id: privateId },
+        data: { state: "closed" },
+      })
+      expect(
+        await evaluatePrivatePrecomputedCtr(prisma, {
+          experimentId: privateId,
+          operator,
+          now,
+        }),
+      ).toMatchObject({
+        status: "available",
+        report: {
+          isFinal: true,
+          evidenceBasis: "private_unverified",
+          byArm: { control: { eligibleVisits: 1 } },
+        },
+      })
+
+      const publicId = `closed-public-${randomUUID()}`
+      await prisma.recommendationPrecomputedExperiment.create({
+        data: {
+          ...cohort,
+          id: publicId,
+          eligibilityPolicyVersion: "public-watch-verified-human-v1",
+          state: "public_ready",
+        },
+      })
+      await prisma.recommendationPrecomputedCtrPolicy.create({
+        data: {
+          experimentId: publicId,
+          version: frozen.ctrPolicy!.version,
+          method: frozen.ctrPolicy!.method,
+          settings: frozen.ctrPolicy!.settings!,
+          lateEventCutoffHours: frozen.ctrPolicy!.lateEventCutoffHours,
+          settingsDigest: frozen.ctrPolicy!.settingsDigest,
+          authority: "fixture_only",
+        },
+      })
+      await prisma.recommendationPrecomputedExperiment.update({
+        where: { id: publicId },
+        data: { state: "closed" },
+      })
+      expect(
+        await evaluatePrivatePrecomputedCtr(prisma, {
+          experimentId: publicId,
+          operator,
+          now,
+        }),
+      ).toEqual({
+        status: "unavailable",
+        reason: "private_experiment_unavailable",
+      })
+    })
+
     it("offers policy declaration only for an open test before its first visit", async () => {
       const prior =
         await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
