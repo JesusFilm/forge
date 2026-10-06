@@ -14,6 +14,7 @@ import {
   feedbackStepHeading,
   feedbackTagText,
   formatFeedbackPosition,
+  visibleFeedbackKinds,
   type FeedbackFlowAction,
   type FeedbackFlowState,
 } from "../feedbackFlow"
@@ -32,6 +33,7 @@ const FEEDBACK_KIND_LABEL = {
   BROKEN: t("kindBroken"),
   IDEA: t("kindIdea"),
   OTHER: t("kindOther"),
+  TRANSLATION: t("kindTranslation"),
 }
 const FEEDBACK_PICK_KIND_HEADING = t("pickKindHeading")
 const FEEDBACK_COMPOSE_HEADING = t("composeHeading")
@@ -106,9 +108,15 @@ describe("step transitions (R5, KTD11)", () => {
   it("labels every kind the schema allows (R4)", () => {
     expect(FEEDBACK_KINDS.map((kind) => FEEDBACK_KIND_LABEL[kind])).toEqual([
       "Something's broken",
+      "A translation is wrong",
       "I have an idea",
       "Something else",
     ])
+  })
+
+  it("offers the translation kind only when the app is not in English", () => {
+    expect(visibleFeedbackKinds("en")).toEqual(["BROKEN", "IDEA", "OTHER"])
+    expect(visibleFeedbackKinds("zh-Hans")).toEqual(FEEDBACK_KINDS)
   })
 })
 
@@ -383,6 +391,17 @@ describe("the device-details disclosure (R9, AE4)", () => {
     const rows = feedbackDisclosureRows(t, "IOS", details)
     expect(feedbackDisclosureHint(t, rows)).toBe(
       "This sends Platform, App version, App build, OS version, Device model.",
+    )
+  })
+
+  it("lists the app language after the platform when a report carries one", () => {
+    const rows = feedbackDisclosureRows(t, "IOS", details, "zh-Hans")
+    expect(rows.slice(0, 2)).toEqual([
+      { label: "Platform", value: "iOS" },
+      { label: "App language", value: "zh-Hans" },
+    ])
+    expect(feedbackDisclosureHint(t, rows)).toBe(
+      "This sends Platform, App language, App version, App build, OS version, Device model.",
     )
   })
 })
