@@ -11,7 +11,7 @@ type HistoricalQualification = NonNullable<
   >["qualification"]
 >
 
-function HistoricalQualificationDetails({
+export function HistoricalQualificationDetails({
   quality,
 }: {
   quality: HistoricalQualification

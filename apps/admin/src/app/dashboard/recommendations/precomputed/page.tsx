@@ -8,7 +8,9 @@ import {
   loadPrecomputedRecommendationComparison,
   loadPrecomputedReviewSelection,
 } from "@/services/recommendations/precomputed/contract"
+import { loadDurablePrecomputedBuildReport } from "@/services/recommendations/precomputed/durable-build"
 import { PrecomputedComparisonView } from "./view"
+import { DurableBuildReportView } from "./build-report-view"
 
 function bounded(value: string | string[] | undefined, max: number): string {
   return typeof value === "string" && value.length <= max ? value.trim() : ""
@@ -45,6 +47,13 @@ export default async function PrecomputedRecommendationsPage({
           reviewer: principal,
         })
       : null
+  const buildReport = generationId
+    ? await loadDurablePrecomputedBuildReport(prisma, {
+        generationId,
+        sourceVideoId: source?.id,
+        reviewer: principal,
+      })
+    : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -118,6 +127,7 @@ export default async function PrecomputedRecommendationsPage({
           </button>
         </form>
       </PageSection>
+      {buildReport ? <DurableBuildReportView report={buildReport} /> : null}
       {!sourceQuery ? (
         <PageSection title="Awaiting source Video" meta="PRIVATE">
           <p className="p-4 text-[13px] text-[var(--color-text-secondary)]">

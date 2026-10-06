@@ -2691,6 +2691,7 @@ model Video {
   children       VideoRelation[]      @relation("VideoChildren")
   watchProgress  WatchProgress[]
   precomputedRecommendationSources RecommendationPrecomputedSource[]
+  precomputedBuildSources RecommendationPrecomputedBuildSource[]
 
   @@index([primaryLanguageId])
   @@index([originId])
@@ -6727,6 +6728,14 @@ model RecommendationPrecomputedGeneration {
   sourceSetDigest String @map("source_set_digest")
   inputCutoff DateTime @map("input_cutoff")
   expectedSourceCount Int @map("expected_source_count")
+  protocolVersion Int @default(1) @map("protocol_version")
+  manifestCommittedAt DateTime? @map("manifest_committed_at")
+  /// Physical free-space is externally attested against the PostgreSQL cluster;
+  /// Admin cross-checks the cluster and database size, never its own filesystem.
+  capacityPreflight Json? @map("capacity_preflight") @db.JsonB
+  historicalQualification Json? @map("historical_qualification") @db.JsonB
+  historicalQualificationDigest String? @map("historical_qualification_digest") @db.Char(64)
+  cancelledAt DateTime? @map("cancelled_at")
   /// Content-only builds do not claim to include historical GA warehouse inputs.
   inputMode String @default("fixture") @map("input_mode")
   /// observed_fenced means current rows were checked against the cutoff;
@@ -6742,6 +6751,9 @@ model RecommendationPrecomputedGeneration {
   failureCode String? @map("failure_code")
   sources RecommendationPrecomputedSource[]
   modelCalls RecommendationPrecomputedModelCall[]
+  buildSources RecommendationPrecomputedBuildSource[]
+  historyCalls RecommendationPrecomputedHistoryCall[]
+  buildBudget RecommendationPrecomputedBuildBudget?
   privateExperiments RecommendationPrecomputedExperiment[]
 
   @@index([createdAt(sort: Desc)], map: "recommendation_precomputed_generation_created_at_idx")
@@ -6940,11 +6952,88 @@ model RecommendationPrecomputedModelCall {
   inputTokens Int? @map("input_tokens")
   outputTokens Int? @map("output_tokens")
   cachedInputTokens Int? @map("cached_input_tokens")
+  costUsd Decimal? @map("cost_usd") @db.Decimal(18, 9)
+  reservationLeaseToken String? @map("reservation_lease_token") @db.Uuid
+  receiptDigest String? @map("receipt_digest") @db.Char(64)
+  receiptCheckpointApplied Boolean? @map("receipt_checkpoint_applied")
+  receiptAppliedRevision Int? @map("receipt_applied_revision")
   errorCode String? @map("error_code")
   startedAt DateTime @map("started_at")
-  finishedAt DateTime @map("finished_at")
+  finishedAt DateTime? @map("finished_at")
 
   @@id([generationId, callId])
   @@index([generationId, sourceVideoId], map: "recommendation_precomputed_model_call_source_idx")
   @@map("recommendation_precomputed_model_call")
+}
+
+/// Source membership and progress are independent of the final immutable
+/// choice set. Leases fence stale producers without storing transcript text.
+model RecommendationPrecomputedBuildSource {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  sourceVideoId String @map("source_video_id")
+  sourceVideo Video @relation(fields: [sourceVideoId], references: [id], onDelete: Restrict)
+  state String @default("pending")
+  claimId String? @map("claim_id")
+  leaseToken String? @map("lease_token") @db.Uuid
+  leaseExpiresAt DateTime? @map("lease_expires_at")
+  attemptNumber Int @default(0) @map("attempt_number")
+  checkpoint Json @default("{}") @db.JsonB
+  historicalProvenance Json? @map("historical_provenance") @db.JsonB
+  checkpointRevision Int @default(0) @map("checkpoint_revision")
+  checkpointId String? @map("checkpoint_id")
+  checkpointDigest String? @map("checkpoint_digest")
+  failureCode String? @map("failure_code")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  completedAt DateTime? @map("completed_at")
+  choices RecommendationPrecomputedBuildChoice[]
+
+  @@id([generationId, sourceVideoId])
+  @@index([generationId, state], map: "recommendation_precomputed_build_source_state_idx")
+  @@map("recommendation_precomputed_build_source")
+}
+
+/// Provisional, bounded one-target decisions; only a finalized source is read
+/// by private comparison/Watch. Exact-target retries cannot create duplicates.
+model RecommendationPrecomputedBuildChoice {
+  generationId String @map("generation_id")
+  sourceVideoId String @map("source_video_id")
+  source RecommendationPrecomputedBuildSource @relation(fields: [generationId, sourceVideoId], references: [generationId, sourceVideoId], onDelete: Cascade)
+  targetVideoId String @map("target_video_id")
+  payload Json @db.JsonB
+  submissionDigest String @map("submission_digest") @db.Char(64)
+
+  @@id([generationId, sourceVideoId, targetVideoId])
+  @@map("recommendation_precomputed_build_choice")
+}
+
+/// One reservation per actual GA request, including qualification and retry
+/// requests. Pending means incurred bytes/charges could not be established.
+model RecommendationPrecomputedHistoryCall {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  callId String @map("call_id")
+  sourceVideoId String? @map("source_video_id")
+  stage String
+  status String @default("pending")
+  requestDigest String @map("request_digest") @db.Char(64)
+  bytesProcessed BigInt? @map("bytes_processed")
+  costUsd Decimal? @map("cost_usd") @db.Decimal(18, 9)
+  receiptDigest String? @map("receipt_digest") @db.Char(64)
+  errorCode String? @map("error_code")
+  startedAt DateTime @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+
+  @@id([generationId, callId])
+  @@map("recommendation_precomputed_history_call")
+}
+
+/// A conservative byte admission counter since the latest physical capacity
+/// attestation. This is not a substitute for measured database/volume size.
+model RecommendationPrecomputedBuildBudget {
+  generationId String @id @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  consumedBytes BigInt @default(0) @map("consumed_bytes")
+
+  @@map("recommendation_precomputed_build_budget")
 }

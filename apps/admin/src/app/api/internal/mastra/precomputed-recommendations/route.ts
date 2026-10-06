@@ -4,6 +4,7 @@ import {
   PrecomputedRecommendationError,
   submitPrecomputedRecommendation,
 } from "@/services/recommendations/precomputed/contract"
+import { submitDurablePrecomputedRecommendation } from "@/services/recommendations/precomputed/durable-build"
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024
 
@@ -64,12 +65,25 @@ export async function POST(request: Request): Promise<Response> {
   const body = await readJson(request)
   if (body instanceof Response) return body
   try {
+    const payload =
+      body && typeof body === "object"
+        ? (body as Record<string, unknown>)
+        : null
+    const isDurable =
+      payload?.protocolVersion === 2 ||
+      typeof payload?.generationInputDigest === "string"
     return Response.json({
-      result: await submitPrecomputedRecommendation(
-        prisma,
-        body,
-        request.headers.get("authorization"),
-      ),
+      result: isDurable
+        ? await submitDurablePrecomputedRecommendation(
+            prisma,
+            body,
+            request.headers.get("authorization"),
+          )
+        : await submitPrecomputedRecommendation(
+            prisma,
+            body,
+            request.headers.get("authorization"),
+          ),
     })
   } catch (cause) {
     if (cause instanceof PrecomputedRecommendationError) {

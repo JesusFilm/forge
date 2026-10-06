@@ -131,7 +131,7 @@ const legacyHistoricalProvenance = historicalCommon
     qualification: historicalQualification.optional(),
   })
   .strict()
-const gaHistoricalQualification = z
+export const gaHistoricalQualification = z
   .object({
     evidenceKind: z.literal("referrer_navigation_v1"),
     sourceResource: z.literal("properties/320198532"),
@@ -312,7 +312,7 @@ function qualifiedHistoryIsConsistent(
         quality.transitions.overlapIdentity !== "unknown"))
   )
 }
-const choice = z.object({
+export const precomputedChoiceSchema = z.object({
   targetVideoId: id,
   kind: z.enum(["direct", "alternative"]),
   rank: z.number().int().positive(),
@@ -341,6 +341,7 @@ const choice = z.object({
     }),
   ]),
 })
+const choice = precomputedChoiceSchema
 const submission = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("start"),
@@ -485,7 +486,9 @@ export class PrecomputedRecommendationError extends Error {
       | "conflict"
       | "not_found"
       | "unauthorized"
-      | "stale_cutoff",
+      | "stale_cutoff"
+      | "capacity_attestation_expired"
+      | "capacity_budget_exceeded",
     message: string,
   ) {
     super(message)
@@ -560,10 +563,12 @@ async function lockGeneration(
       input_snapshot_mode: string
       input_cutoff: Date
       historical_provenance: unknown
+      protocol_version: number
     }>
   >`
     SELECT id, status, expected_source_count, source_set_digest,
-           input_mode, input_snapshot_mode, input_cutoff, historical_provenance
+           input_mode, input_snapshot_mode, input_cutoff, historical_provenance,
+           protocol_version
     FROM recommendation_precomputed_generation
     WHERE id = ${generationId}
     FOR UPDATE
@@ -573,10 +578,15 @@ async function lockGeneration(
       "not_found",
       "Generation not found",
     )
+  if (rows[0].protocol_version !== 1)
+    throw new PrecomputedRecommendationError(
+      "conflict",
+      "Generation uses the durable build protocol",
+    )
   return rows[0]
 }
 
-async function validateChoices(
+export async function validatePrecomputedChoices(
   tx: Prisma.TransactionClient,
   sourceVideoId: string,
   choices: Choice[],
@@ -777,6 +787,7 @@ export async function submitPrecomputedRecommendation(
         where: { id: input.generationId },
       })
     if (
+      existing.protocolVersion !== 1 ||
       existing.modelId !== input.modelId ||
       existing.promptVersion !== input.promptVersion ||
       existing.inputDigest !== input.inputDigest ||
@@ -805,6 +816,11 @@ export async function submitPrecomputedRecommendation(
       throw new PrecomputedRecommendationError(
         "not_found",
         "Generation not found",
+      )
+    if (generation.protocolVersion !== 1)
+      throw new PrecomputedRecommendationError(
+        "conflict",
+        "Generation uses the durable build protocol",
       )
     const source = input.sourceVideoId
       ? await prisma.recommendationPrecomputedSource.findUnique({
@@ -932,11 +948,23 @@ export async function submitPrecomputedRecommendation(
         },
       })
       if (existing) {
+        const legacyExisting = Object.fromEntries(
+          Object.entries(existing).filter(
+            ([key]) =>
+              ![
+                "costUsd",
+                "reservationLeaseToken",
+                "receiptDigest",
+                "receiptCheckpointApplied",
+                "receiptAppliedRevision",
+              ].includes(key),
+          ),
+        )
         if (
           digest({
-            ...existing,
+            ...legacyExisting,
             startedAt: existing.startedAt.toISOString(),
-            finishedAt: existing.finishedAt.toISOString(),
+            finishedAt: existing.finishedAt?.toISOString() ?? null,
           }) !==
           digest({
             ...row,
@@ -1021,7 +1049,7 @@ export async function submitPrecomputedRecommendation(
           throw error
         }
       }
-      const payload = await validateChoices(
+      const payload = await validatePrecomputedChoices(
         tx,
         input.sourceVideoId,
         input.choices,
