@@ -17,8 +17,6 @@ export const pauseColors = {
   raised: "#2a2824",
   /** The Customize sheet. */
   sheet: "#171614",
-  /** The sheet's drag handle: ink at 20%. */
-  handle: "rgba(244,239,230,0.2)",
   /** The Pray ring's seconds numeral, one step off ink in the frame. */
   ringNumeral: "#f4ede4",
   /** The switch-off knob and the played part of the video progress bar. */
@@ -34,7 +32,6 @@ export const pauseRadii = {
   /** A meditation time segment. */
   segment: 22,
   switchTrack: 16,
-  handle: 2,
 } as const
 
 export const pauseSpacing = {
@@ -43,7 +40,6 @@ export const pauseSpacing = {
   screenSide: 28,
   /** The gap between every item of a screen body column. */
   screenGap: 16,
-  stepperGap: 10,
   pillPaddingX: 20,
   pillPaddingY: 12,
   /** Between a done pill's check mark and its label. */
@@ -59,9 +55,6 @@ export const pauseSpacing = {
   /** The Share screen's fixed top spacer and its spacer above the button. */
   shareTop: 264,
   shareButtonGap: 17,
-  /** The Customize screen's dimmed header: top inset and line gap. */
-  customizeHeaderTop: 48,
-  customizeHeaderGap: 8,
   sheetPaddingX: 20,
   sheetPaddingTop: 14,
   sheetPaddingBottom: 24,
@@ -74,7 +67,6 @@ export const pauseSpacing = {
 } as const
 
 export const pauseSizes = {
-  handleWidth: 40,
   handleHeight: 4,
   switchWidth: 52,
   switchHeight: 32,
@@ -83,9 +75,6 @@ export const pauseSizes = {
   /** The Pray ring box spans the column; the ring itself is drawn 114 x 109. */
   prayRingBoxHeight: 121,
   prayRingWidth: 114,
-  prayRingHeight: 109,
   prayRingStroke: 5,
   progressBarHeight: 3,
-  /** The Customize header's opacity while the sheet is up. */
-  customizeHeaderOpacity: 0.45,
 } as const

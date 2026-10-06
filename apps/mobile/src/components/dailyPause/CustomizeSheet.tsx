@@ -276,7 +276,7 @@ export function CustomizeSheet({ onDone }: CustomizeSheetProps) {
           )}
 
           {/* R37, R43: only iOS shows the row; this build has no Android
-              widget. The owner (2026-10-06) made it a plain row. */}
+              widget. */}
           {isIos && (
             <Pressable
               accessibilityRole="button"

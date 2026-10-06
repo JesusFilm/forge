@@ -10,8 +10,7 @@ import { BackHandler } from "react-native"
 import { useRouter, useSegments } from "expo-router"
 
 import { useExperienceSelection } from "../../contexts/ExperienceSelectionProvider"
-import { getPauseProgressStore } from "../../lib/dailyPause/progress"
-import { localDay } from "../../lib/dailyPause/today"
+import { markTodaysDevotionalRead } from "../../lib/announcements"
 import { stepTakeover } from "../../lib/explore/takeover"
 import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
 import { routePattern } from "../../lib/miniPlayer/suppression"
@@ -74,7 +73,7 @@ export function DailyPauseHost(): null {
     if (getPausePhase() !== "drawn") return
     liftPause()
     takeOverPlayer()
-    getPauseProgressStore().markBellRead(localDay(new Date()))
+    markTodaysDevotionalRead()
     router.push(RUN_HREF)
   }, [router])
 

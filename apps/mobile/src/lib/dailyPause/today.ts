@@ -15,6 +15,18 @@ export function localDay(now: Date): string {
   return `${now.getFullYear()}-${month}-${day}`
 }
 
+/** Whole calendar days from `day`, at a wall-clock time. Added milliseconds
+ *  would move the hour across a daylight-saving change. */
+export function onDay(day: Date, offset: number, hour = 0, minute = 0): Date {
+  return new Date(
+    day.getFullYear(),
+    day.getMonth(),
+    day.getDate() + offset,
+    hour,
+    minute,
+  )
+}
+
 /** A local day that shows Pharisee. The two devotionals alternate from it. */
 const ANCHOR_DAY = "2026-10-05"
 
@@ -46,11 +58,7 @@ function notify() {
 function armMidnightTimer() {
   if (midnightTimer != null) clearTimeout(midnightTimer)
   const now = new Date()
-  const midnight = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate() + 1,
-  )
+  const midnight = onDay(now, 1)
   midnightTimer = setTimeout(() => {
     // An early fire finds the same day and arms again for the true midnight.
     armMidnightTimer()

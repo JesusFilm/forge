@@ -9,6 +9,7 @@ import {
   type ReminderScheduleInput,
 } from "../lapseReminders/notificationsAdapter"
 import { withTimeout } from "../withTimeout"
+import { attachPassTriggers, createPassRunner } from "./passRunner"
 import {
   DAILY_PAUSE_REMINDER_CHANNEL_ID,
   buildDailyPauseReminderPayload,
@@ -19,7 +20,7 @@ import {
   type PauseSettingsStore,
   type ReminderTime,
 } from "./settings"
-import { devotionalForDay, localDay } from "./today"
+import { devotionalForDay, localDay, onDay } from "./today"
 
 /** R32: one request per local day, for this many days. */
 export const DAILY_PAUSE_REMINDER_DAYS = 14
@@ -53,18 +54,6 @@ export type DailyPauseReminderPort = {
 
 export function dailyPauseReminderIdentifier(dayKey: string): string {
   return `${DAILY_PAUSE_REMINDER_IDENTIFIER_PREFIX}${dayKey}`
-}
-
-/** Whole calendar days from `day`, at a wall-clock time. Added milliseconds
- *  would move the hour across a daylight-saving change. */
-function onDay(day: Date, offset: number, hour: number, minute: number): Date {
-  return new Date(
-    day.getFullYear(),
-    day.getMonth(),
-    day.getDate() + offset,
-    hour,
-    minute,
-  )
 }
 
 function calendarDate(date: Date): ReminderCalendarDate {
@@ -152,37 +141,28 @@ export function createDailyPauseReminderLifecycle(
     }
   }
 
-  let chain: Promise<unknown> = Promise.resolve()
-  /** The pass that has not started yet. It reads the settings when it starts,
-   *  so a request before then joins it instead of queueing another pass. */
-  let waiting: Promise<void> | null = null
-
-  /** One pass at a time. A failed pass, a failed permission read included,
-   *  cancels nothing more, and the next pass runs as usual. */
-  function runPass(): Promise<void> {
-    if (waiting) return waiting
-    const step = () => {
-      waiting = null
-      return runOnce()
-    }
-    const next = chain.then(step, step).catch(() => undefined)
-    waiting = next
-    chain = next
-    return next
-  }
+  // A failed pass, a failed permission read included, cancels nothing more.
+  const runPass = createPassRunner(runOnce)
 
   function attach(): () => void {
-    const unsubscribeAppState = deps.subscribeToAppState((state) => {
-      if (state === "active") void runPass()
-    })
-    const unsubscribeSettings = deps.settings.subscribe(() => {
-      void runPass()
-    })
-    void runPass()
-    return () => {
-      unsubscribeAppState()
-      unsubscribeSettings()
+    // Only the switch and the time change the reminders, so a new Meditation
+    // length asks for no pass.
+    const reminderInputs = () => {
+      const { reminderOn, reminderTime } = deps.settings.getSnapshot()
+      return `${reminderOn}-${reminderTime.hour}:${reminderTime.minute}`
     }
+    let lastInputs = reminderInputs()
+    return attachPassTriggers({
+      runPass,
+      subscribeToAppState: deps.subscribeToAppState,
+      subscribeToStore: (listener) =>
+        deps.settings.subscribe(() => {
+          const inputs = reminderInputs()
+          if (inputs === lastInputs) return
+          lastInputs = inputs
+          listener()
+        }),
+    })
   }
 
   return { runPass, attach }

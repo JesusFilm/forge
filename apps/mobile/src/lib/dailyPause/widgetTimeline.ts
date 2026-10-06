@@ -1,6 +1,6 @@
 // The iOS widget's timeline (U14, KTD14): 14 local days from the day clock
-// (KTD11). The Customize switch never changes it (the owner, 2026-10-06). The
-// writer rewrites it on foreground, on a day-record change, and at a new day.
+// (KTD11). The writer rewrites it on foreground, on a day-record change, and at
+// a new day, and it skips a timeline the widget already has.
 import { useEffect } from "react"
 import { AppState } from "react-native"
 import type { WidgetTimelineEntry } from "expo-widgets"
@@ -11,7 +11,8 @@ import {
   type PauseDayRecord,
   type PauseProgressStore,
 } from "./progress"
-import { devotionalForDay, localDay, useToday } from "./today"
+import { attachPassTriggers, createPassRunner } from "./passRunner"
+import { devotionalForDay, localDay, onDay, useToday } from "./today"
 
 /** The widget's `widgetURL`. `app/+native-intent.tsx` turns it into a curtain
  *  request. */
@@ -39,12 +40,6 @@ export type DailyPauseWidgetPort = {
   updateTimeline: (entries: DailyPauseWidgetTimelineEntry[]) => void
 }
 
-/** Whole calendar days from `day`. Added milliseconds would move the entry off
- *  midnight across a daylight-saving change. */
-function midnightAfter(day: Date, offset: number): Date {
-  return new Date(day.getFullYear(), day.getMonth(), day.getDate() + offset)
-}
-
 /** R38, R9: the 14 days from today with each day's question and done flag.
  *  Each entry starts at its local midnight. */
 export function buildDailyPauseWidgetTimeline(
@@ -53,7 +48,7 @@ export function buildDailyPauseWidgetTimeline(
 ): DailyPauseWidgetTimelineEntry[] {
   const now = new Date(nowMs)
   return Array.from({ length: DAILY_PAUSE_WIDGET_DAYS }, (_, index) => {
-    const date = midnightAfter(now, index)
+    const date = onDay(now, index)
     const dayKey = localDay(date)
     return {
       date,
@@ -82,29 +77,33 @@ export type DailyPauseWidgetWriter = {
 export function createDailyPauseWidgetWriter(
   deps: DailyPauseWidgetWriterDeps,
 ): DailyPauseWidgetWriter {
-  /** The read, the build, and the write are one synchronous step after the
-   *  waits, so the last pass to finish writes the latest state. */
-  async function runPass(): Promise<void> {
+  /** The timeline the widget has, so a pass with no change writes nothing. */
+  let written: string | null = null
+
+  async function runOnce(): Promise<void> {
     // The empty record reads as not done, so a pass before the read would
     // drop today's check for a moment.
     await deps.progress.hydrate()
-    deps.widget.updateTimeline(
-      buildDailyPauseWidgetTimeline(deps.now(), deps.progress.getSnapshot()),
+    const entries = buildDailyPauseWidgetTimeline(
+      deps.now(),
+      deps.progress.getSnapshot(),
     )
+    const key = JSON.stringify(
+      entries.map((entry) => [entry.date.getTime(), entry.props]),
+    )
+    if (key === written) return
+    deps.widget.updateTimeline(entries)
+    written = key
   }
 
+  const runPass = createPassRunner(runOnce)
+
   function attach(): () => void {
-    const unsubscribeAppState = deps.subscribeToAppState((state) => {
-      if (state === "active") void runPass()
+    return attachPassTriggers({
+      runPass,
+      subscribeToAppState: deps.subscribeToAppState,
+      subscribeToStore: deps.progress.subscribe,
     })
-    const unsubscribeProgress = deps.progress.subscribe(() => {
-      void runPass()
-    })
-    void runPass()
-    return () => {
-      unsubscribeAppState()
-      unsubscribeProgress()
-    }
   }
 
   return { runPass, attach }

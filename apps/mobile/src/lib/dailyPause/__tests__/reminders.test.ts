@@ -332,6 +332,18 @@ describe("the reminder lifecycle", () => {
     }
   })
 
+  it("runs no pass for a setting the reminders do not read", async () => {
+    const h = harness()
+    h.settings.update({ reminderOn: true })
+    h.lifecycle.attach()
+    await idle()
+    h.adapter.getPermission.mockClear()
+
+    h.settings.update({ meditationLength: 5 })
+    await idle()
+    expect(h.adapter.getPermission).not.toHaveBeenCalled()
+  })
+
   it("runs one more pass for a change that arrives while a pass runs", async () => {
     const h = harness({ now: new Date(2026, 9, 5, 5, 0).getTime() })
     h.settings.update({ reminderOn: true })

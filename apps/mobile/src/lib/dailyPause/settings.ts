@@ -41,8 +41,7 @@ export type PauseSettings = {
   reminderTime: ReminderTime
 }
 
-/** R30, R32, R47: 3 min, and Notifications off at 7:00 AM. A record saved with
- *  the retired widget switch reads the same, without it (the owner, 2026-10-06). */
+/** R30, R32, R47: 3 min, and Notifications off at 7:00 AM. */
 export const DEFAULT_PAUSE_SETTINGS: Readonly<PauseSettings> = Object.freeze({
   meditationLength: 3,
   reminderOn: false,

@@ -87,16 +87,17 @@ export function LapseReminderProvider({ children }: { children: ReactNode }) {
           write: (videoSlug, videoTitle) => record.write(videoSlug, videoTitle),
         })
       : () => {}
+    const subscribeToAppState = (listener: (state: string) => void) => {
+      const subscription = AppState.addEventListener("change", listener)
+      return () => subscription.remove()
+    }
     const lifecycle = createLapseReminderLifecycle({
       adapter: notifications,
       enabled: LAPSE_REMINDERS_ENABLED,
       getRecord: () => record.getRecord(),
       hydrateRecord: () => record.hydrate(),
       subscribeToRecordClear: (listener) => record.subscribeToClear(listener),
-      subscribeToAppState: (listener) => {
-        const subscription = AppState.addEventListener("change", listener)
-        return () => subscription.remove()
-      },
+      subscribeToAppState,
       now: () => Date.now(),
       // U7/KTD9: registration acts on the permission this pass already read, so
       // it never performs a second read.
@@ -108,10 +109,7 @@ export function LapseReminderProvider({ children }: { children: ReactNode }) {
     const detachDailyPause = createDailyPauseReminderLifecycle({
       adapter: lapseReminderNotifications,
       settings: getPauseSettingsStore(),
-      subscribeToAppState: (listener) => {
-        const subscription = AppState.addEventListener("change", listener)
-        return () => subscription.remove()
-      },
+      subscribeToAppState,
       now: () => Date.now(),
       platform: Platform.OS,
     }).attach()

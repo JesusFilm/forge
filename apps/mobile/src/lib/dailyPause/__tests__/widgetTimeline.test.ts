@@ -272,6 +272,28 @@ describe("the widget timeline writer", () => {
   })
 })
 
+// Simplification review: each day-record change (eight per run, plus the bell)
+// rewrote the same 14 entries and reloaded the widget.
+describe("a pass with nothing new", () => {
+  it("writes nothing when the timeline is the one the widget has", async () => {
+    const h = harness()
+    h.writer.attach()
+    await idle()
+    const writes = h.timelines.length
+
+    h.progress.markBellRead("2026-10-05")
+    await idle()
+    h.emitAppState("active")
+    await idle()
+    expect(h.timelines).toHaveLength(writes)
+
+    h.progress.markDone("2026-10-05")
+    await idle()
+    expect(h.timelines).toHaveLength(writes + 1)
+    expect(h.latest()[0]!.props.done).toBe(true)
+  })
+})
+
 describe("DailyPauseWidgetTimeline", () => {
   let handlers: ((state: AppStateStatus) => void)[] = []
   const mounted = new Set<TestInstance>()
