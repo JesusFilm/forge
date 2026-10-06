@@ -3,7 +3,7 @@ import { createHash } from "node:crypto"
 import { describe, expect, it, vi } from "vitest"
 
 import { runPrecomputedCatalog } from "./catalog-generation"
-import type { SourceCatalog } from "./source-generation"
+import { judgmentSchema, type SourceCatalog } from "./source-generation"
 
 const input = {
   generationId: "generation-one",
@@ -55,6 +55,23 @@ function catalog(ids: string[]): SourceCatalog {
 }
 
 describe("catalog generation boundary", () => {
+  it("does not offer a metadata evidence field absent from catalog Videos", () => {
+    expect(
+      judgmentSchema.safeParse({
+        connections: [
+          {
+            kind: "direct",
+            relationship: "shared story",
+            reasonEnglish: "Both videos cover the same biblical account.",
+            addedViewingValueEnglish: null,
+            evidence: { basis: "metadata", fields: ["themes"] },
+            strength: 70,
+          },
+        ],
+      }).success,
+    ).toBe(false)
+  })
+
   it("rejects malformed Admin state before any model spend", async () => {
     const generate = vi.fn()
     const ingest = vi.fn().mockResolvedValue({ state: "unknown" })
@@ -201,5 +218,201 @@ describe("catalog generation boundary", () => {
 
     await run(false)
     await run(true)
+  })
+
+  it("repairs bad evidence once and fails truthfully when repair is exhausted", async () => {
+    const passage = "A sufficiently long transcript passage."
+    const connection = (excerpt: string) => ({
+      kind: "direct",
+      relationship: "shared story",
+      reasonEnglish: "Both videos cover the same biblical account.",
+      addedViewingValueEnglish: null,
+      evidence: {
+        basis: "transcript",
+        passages: [{ chunkId: "chunk-1", excerpt }],
+      },
+      strength: 70,
+    })
+    const metadataConnection = {
+      ...connection(passage),
+      evidence: { basis: "metadata", fields: ["keywords"] },
+    }
+    const run = async (firstConnection: unknown, secondConnection: unknown) => {
+      const sourceCatalog = catalog(["source", "target"])
+      sourceCatalog.chunks = async () => ({
+        chunks: [
+          {
+            id: "chunk-1",
+            language: "en",
+            transcriptId: "transcript-1",
+            chunkIndex: 0,
+            text: passage,
+          },
+        ],
+        nextCursor: null,
+      })
+      const generate = vi
+        .fn()
+        .mockResolvedValueOnce({
+          output: { connections: [firstConnection] },
+          usage: { inputTokens: 1, outputTokens: 2, costUsd: 0.01 },
+        })
+        .mockResolvedValueOnce({
+          output: { connections: [secondConnection] },
+          usage: { inputTokens: 1, outputTokens: 2, costUsd: 0.01 },
+        })
+      const writes: Array<Record<string, unknown>> = []
+      const warnings: string[] = []
+      const warn = vi
+        .spyOn(console, "warn")
+        .mockImplementation((message: unknown) => {
+          warnings.push(String(message))
+        })
+      let revision = 0
+      const ingest = vi.fn(async (raw: unknown) => {
+        const call = raw as Record<string, unknown>
+        writes.push(call)
+        switch (call.action) {
+          case "start":
+          case "capacity":
+            return { state: "incomplete" }
+          case "manifest":
+            return { state: "incomplete", pendingSourceCount: 2 }
+          case "capacity_probe":
+            return {
+              observedDbBytes: 1,
+              clusterSystemId: "1",
+              availableBytes: null,
+            }
+          case "claim":
+            return call.sourceVideoId === "source"
+              ? {
+                  sourceState: "claimed",
+                  leaseToken: "550e8400-e29b-41d4-a716-446655440000",
+                  checkpointRevision: 0,
+                  checkpoint: {
+                    stage: "candidate",
+                    cursor: { catalogIndex: 0, candidateIndex: 0 },
+                    sourceSummaryEnglish: "Source summary",
+                    candidateIds: ["target"],
+                  },
+                }
+              : { sourceState: "complete_empty", leaseToken: null }
+          case "heartbeat":
+            return { sourceState: "claimed" }
+          case "model_call_start":
+            return { state: "pending", callId: call.callId }
+          case "model_call":
+            return {
+              receiptStored: true,
+              checkpointApplied: true,
+              staleLease: false,
+              checkpointRevision: ++revision,
+            }
+          case "checkpoint":
+            return { checkpointRevision: ++revision }
+          case "source":
+            return { sourceState: "complete_edges" }
+          case "fail":
+            return { sourceState: "failed" }
+          case "complete":
+            return { state: "complete" }
+          default:
+            throw new Error(`Unexpected ingest action: ${String(call.action)}`)
+        }
+      })
+
+      try {
+        const result = await runPrecomputedCatalog(input, {
+          catalog: sourceCatalog,
+          ingest,
+          model: { generate },
+        })
+        return { result, generate, writes, warnings }
+      } finally {
+        warn.mockRestore()
+      }
+    }
+
+    const repaired = await run(
+      connection("A passage absent from the chunk."),
+      connection(passage),
+    )
+    expect(repaired.result.state).toBe("complete")
+    expect(repaired.generate).toHaveBeenCalledTimes(2)
+    expect(repaired.generate.mock.calls[1]?.[0].prompt).toContain(
+      '"reason":"transcript_excerpt_not_verbatim","chunkId":"chunk-1"',
+    )
+    expect(repaired.warnings).toHaveLength(1)
+    expect(repaired.warnings[0]).not.toContain(
+      "A passage absent from the chunk.",
+    )
+    const receipts = repaired.writes.filter(
+      (call) => call.action === "model_call",
+    )
+    expect(receipts).toHaveLength(2)
+    expect(receipts[0]).toMatchObject({
+      status: "failed",
+      errorCode: "provider_invalid_output",
+      costUsd: 0.01,
+    })
+    expect(receipts[0]).not.toHaveProperty("choice")
+    expect(receipts[1]).toMatchObject({
+      status: "succeeded",
+      choice: { evidence: connection(passage).evidence },
+    })
+    expect(
+      repaired.writes.filter((call) => call.action === "fail"),
+    ).toHaveLength(0)
+
+    const metadataRepaired = await run(metadataConnection, connection(passage))
+    expect(metadataRepaired.result.state).toBe("complete")
+    expect(metadataRepaired.generate.mock.calls[1]?.[0].prompt).toContain(
+      '"reason":"metadata_field_unavailable","field":"keywords"',
+    )
+    expect(
+      metadataRepaired.writes.filter((call) => call.action === "model_call")[0],
+    ).not.toHaveProperty("choice")
+
+    const missingChunk = await run(
+      {
+        ...connection(passage),
+        evidence: {
+          basis: "transcript",
+          passages: [{ chunkId: "missing-chunk", excerpt: passage }],
+        },
+      },
+      connection(passage),
+    )
+    expect(missingChunk.result.state).toBe("complete")
+    expect(missingChunk.generate.mock.calls[1]?.[0].prompt).toContain(
+      '"reason":"transcript_chunk_unavailable","chunkId":"missing-chunk"',
+    )
+
+    const exhausted = await run(
+      connection("A passage absent from the chunk."),
+      connection("Still not present in the chunk."),
+    )
+    expect(exhausted.result.state).toBe("failed")
+    expect(exhausted.generate).toHaveBeenCalledTimes(2)
+    expect(exhausted.warnings).toHaveLength(2)
+    const exhaustedReceipts = exhausted.writes.filter(
+      (call) => call.action === "model_call",
+    )
+    expect(exhaustedReceipts).toHaveLength(2)
+    expect(exhaustedReceipts.map((receipt) => receipt.status)).toEqual([
+      "failed",
+      "failed",
+    ])
+    expect(exhaustedReceipts.map((receipt) => receipt.costUsd)).toEqual([
+      0.01, 0.01,
+    ])
+    expect(exhaustedReceipts[0]?.checkpoint).toEqual(
+      exhaustedReceipts[1]?.checkpoint,
+    )
+    expect(exhaustedReceipts.some((receipt) => "choice" in receipt)).toBe(false)
+    expect(
+      exhausted.writes.filter((call) => call.action === "fail"),
+    ).toMatchObject([{ failureCode: "provider_invalid_output" }])
   })
 })
