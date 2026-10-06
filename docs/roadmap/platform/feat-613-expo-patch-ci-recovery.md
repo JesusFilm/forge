@@ -1,9 +1,9 @@
 ---
-id: "feat-612"
+id: "feat-613"
 title: "Align Expo patch versions to restore CI"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-07"
 duration: 1
 depends_on: []
@@ -46,5 +46,13 @@ tree; clean CI performs the Expo verification.
   React and React Native versions are unchanged.
 - Standards review: scoped manifest/lockfile changes, normal hooks, CI gates
   unchanged. No finding.
-- Spec review: all seven reported package floors aligned; clean Expo and
-  Mobile validation remains pending in CI. No completion claim yet.
+- Spec review: all seven reported package floors aligned. Commit `3b2063d60`
+  passed all 26 applicable CI checks, including the online Expo compatibility
+  check and Doctor, Mobile tests/lint/build, and the affected Auth and TV
+  checks; six checks were correctly skipped. The CI gate passed.
+- PR: https://github.com/JesusFilm/forge/pull/2599. Implementation and
+  verification are complete; the PR remains unmerged and no binary was
+  published.
+
+The ticket is feat-613 because the recommendation integration branch already
+reserved feat-612 for its historical fixture-ticket identity reconciliation.
