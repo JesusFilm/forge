@@ -363,12 +363,18 @@ async function cutIntroTeaser(input: {
   const film = input.manifest.cards.find((c) => c.kind === "video")
   const source =
     d.clip?.index != null ? videoSourceForIndex(d.clip.index) : undefined
+  // A JESUS film devotional has no registered source: its chapter is enough.
+  const clipId = (d.clip as { id?: string } | undefined)?.id
+  const jesusChapter =
+    !source && d.clip?.index != null && /^1_jf/.test(clipId ?? "")
+      ? d.clip.index
+      : undefined
   const lines = openingLinesOf(d, film)
   const shotsArg = arg("intro-shots")?.split(",").map(Number)
   const shots = shotsArg ?? input.render.intro?.shots
-  if (!source || !lines.length || !shots?.length) {
+  if ((!source && jesusChapter == null) || !lines.length || !shots?.length) {
     console.log(
-      `skip intro: ${!source ? "unknown film source" : !lines.length ? "no opening lines" : "no intro shots (pass --intro-shots)"}`,
+      `skip intro: ${!source && jesusChapter == null ? "unknown film source" : !lines.length ? "no opening lines" : "no intro shots (pass --intro-shots)"}`,
     )
     return null
   }
@@ -386,7 +392,7 @@ async function cutIntroTeaser(input: {
   const tmp = await mkdtemp(path.join(tmpdir(), "devo-intro-"))
   try {
     const args = introTeaserArgs({
-      sourceKey: source.key,
+      ...(source ? { sourceKey: source.key } : { chapter: jesusChapter! }),
       sequence: d.sequence ?? 0,
       lines,
       shots,
@@ -402,6 +408,11 @@ async function cutIntroTeaser(input: {
         : {}),
       ...(process.argv.includes("--intro-voiced-cta")
         ? { voicedCta: true }
+        : {}),
+      // A devotional read on v4 carries its voice directions (Bartimaeus on).
+      ...(process.argv.includes("--intro-voice-v4") ||
+      (d as { voiceDirections?: unknown }).voiceDirections != null
+        ? { continuousVoice: true }
         : {}),
     })
     console.log(`\n▶ intro → render-one-devotional.ts --teaser-intro`)
@@ -444,7 +455,17 @@ async function cutIntroTeaser(input: {
       `## ${path.basename(target)}\n\n` +
       `- Kind: intro. The long form's opening in 9:16, ending on the calm call to action.\n` +
       `- Length ${q.durationSec.toFixed(1)} s, loudness ${q.lufs?.toFixed(1)} LUFS.\n\n` +
-      `> ${[...lines, "Watch the full devotional on our YouTube channel."].join(" ")}\n`
+      // What is actually heard: the long form's own opening (its hookText,
+      // minus the hand-off), not the devotional's draft opening lines.
+      `> ${[
+        ...(typeof film?.hookText === "string"
+          ? film.hookText
+              .split(/\n\s*\n/)
+              .map((l) => l.trim())
+              .filter((l) => l && !/^let's watch\.?$/i.test(l))
+          : lines),
+        "Watch the full devotional on our YouTube channel.",
+      ].join(" ")}\n`
     )
   } finally {
     await rm(tmp, { recursive: true, force: true }).catch(() => {})
@@ -547,8 +568,22 @@ async function main() {
   await mkdir(outDir, { recursive: true })
   const report: string[] = []
   if (only.includes("intro")) {
-    const done = await cutIntroTeaser({ from, outDir, manifest, devo, render })
-    if (done) report.push(done)
+    // A failed teaser must not cost the other shorts (Bartimaeus,
+    // 2026-10-06: a cache miss stopped the whole run).
+    try {
+      const done = await cutIntroTeaser({
+        from,
+        outDir,
+        manifest,
+        devo,
+        render,
+      })
+      if (done) report.push(done)
+    } catch (e) {
+      console.log(
+        `⚠️ intro failed, continuing with the other shorts: ${e instanceof Error ? e.message : String(e)}`,
+      )
+    }
   }
   for (const short of shorts) {
     const stage = await mkdtemp(

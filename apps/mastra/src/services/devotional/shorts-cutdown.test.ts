@@ -22,6 +22,8 @@ import {
   mapCardsToParagraphs,
   planCutdown,
   verseWindow,
+  verseWindowByRareWords,
+  sameChapter,
   musicStartSec,
   type DevotionalText,
   type Manifest,
@@ -548,5 +550,35 @@ describe("musicStartSec", () => {
   })
   it("starts at the full stretch when the short is longer than it", () => {
     expect(musicStartSec(bed, 2 / 3, 60)).toBe(16)
+  })
+})
+
+describe("a closing verse from elsewhere (Bartimaeus)", () => {
+  const subs = [
+    { startSec: 39.6, endSec: 41.4, text: "Jesus!" },
+    { startSec: 42.8, endSec: 47.2, text: "Son of David, have mercy on me!" },
+    {
+      startSec: 52.9,
+      endSec: 54.5,
+      text: "What do you want Me to do for you?",
+    },
+    { startSec: 54.6, endSec: 57.0, text: "I want to see again." },
+    { startSec: 62.1, endSec: 63.2, text: "Then see." },
+    { startSec: 64.3, endSec: 66.0, text: "Your faith has made you well." },
+    { startSec: 66.3, endSec: 68.4, text: "I can see!" },
+  ] as never
+
+  it("tells a scene verse from one elsewhere in the Bible", () => {
+    expect(sameChapter("Luke 18:42", "Luke 18:35-43")).toBe(true)
+    expect(sameChapter("Psalm 145:18-19", "Luke 18:35-43")).toBe(false)
+  })
+
+  it("finds the cue by a word only it holds when the film's wording differs", () => {
+    const verse =
+      "“Receive your sight!” Jesus replied. “Your faith has healed you.”"
+    expect(verseWindow(subs, verse)).toBeNull()
+    const w = verseWindowByRareWords(subs, verse)!
+    expect(w.toSec).toBeCloseTo(66.5, 5)
+    expect(w.fromSec).toBeLessThan(43)
   })
 })

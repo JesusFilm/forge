@@ -350,6 +350,50 @@ export function verseWindow(
   return { fromSec: Math.max(0, subtitles[first].startSec - 0.5), toSec }
 }
 
+/**
+ * Last resort for a film whose wording differs from ours (JESUS film:
+ * "Your faith has made you well" for the BSB's "has healed you"): the cue
+ * holding the most of the verse's words that occur in no other cue. One such
+ * word is enough ("faith"); the window then runs back like `verseWindow`.
+ */
+export function verseWindowByRareWords(
+  subtitles: Subtitle[],
+  verse: string,
+  targetSec = 30,
+): { fromSec: number; toSec: number } | null {
+  // Only what is spoken: "Jesus replied" outside the quotes is narration.
+  const quoted = [...verse.matchAll(/[“"]([^”"]+)[”"]/g)].map((m) => m[1])
+  const v = words(quoted.length ? quoted.join(" ") : verse)
+  const cueWords = subtitles.map((s) => words(s.text))
+  const count = new Map<string, number>()
+  for (const ws of cueWords)
+    for (const w of ws) count.set(w, (count.get(w) ?? 0) + 1)
+  let best = -1
+  let bestScore = 0
+  cueWords.forEach((ws, i) => {
+    const score = [...ws].filter((w) => v.has(w) && count.get(w) === 1).length
+    if (score > bestScore) {
+      best = i
+      bestScore = score
+    }
+  })
+  if (best < 0) return null
+  const toSec = subtitles[best].endSec + 0.5
+  let first = best
+  while (first > 0 && toSec - subtitles[first - 1].startSec <= targetSec)
+    first--
+  return { fromSec: Math.max(0, subtitles[first].startSec - 0.5), toSec }
+}
+
+/** "Luke 18:35-43" and "Luke 18:42" share a book and chapter; "Psalm 145:18"
+ *  does not (a closing verse from elsewhere in the Bible). */
+export function sameChapter(a: string, b: string): boolean {
+  const key = (c: string) =>
+    /^(.+?)\s+(\d+):/.exec(c.trim())?.slice(1).join(" ").toLowerCase()
+  const ka = key(a)
+  return !!ka && ka === key(b)
+}
+
 export function planCutdown(
   manifest: Manifest,
   devo: DevotionalText,
@@ -402,12 +446,37 @@ export function planCutdown(
         reason: "needs a chosen window (--film-turn=<from>-<to>)",
       })
     }
+    // The verse the film short reads up to: the scripture card's, unless it
+    // comes from elsewhere in the Bible (the closing-verse test, Bartimaeus
+    // 2026-10-06: Psalm 145), then the scene verse the devotional calls out.
+    const passage = typeof film.passageRef === "string" ? film.passageRef : ""
+    const calloutCard = cards.find((c) => c.verseCallout)?.verseCallout as
+      | { text?: string; reference?: string }
+      | undefined
+    const quotes = [
+      ...(scripture?.citation &&
+      (!passage || sameChapter(String(scripture.citation), passage))
+        ? [
+            {
+              citation: String(scripture.citation),
+              verse: String(scripture.verse ?? ""),
+            },
+          ]
+        : []),
+      ...(calloutCard?.reference && calloutCard.text
+        ? [{ citation: calloutCard.reference, verse: calloutCard.text }]
+        : []),
+    ]
+    const subsAll = film.subtitles ?? []
+    const findWindow = (q: { citation: string; verse: string }) =>
+      (subsAll.length ? verseWindowByAddress(subsAll, q.citation) : null) ??
+      (subsAll.length && q.verse ? verseWindow(subsAll, q.verse) : null)
     const w =
-      (scripture?.citation && film.subtitles
-        ? verseWindowByAddress(film.subtitles, scripture.citation)
-        : null) ??
-      (scripture?.verse && film.subtitles
-        ? verseWindow(film.subtitles, scripture.verse)
+      quotes.map(findWindow).find((x) => x != null) ??
+      (subsAll.length && quotes.length
+        ? (quotes
+            .map((q) => verseWindowByRareWords(subsAll, q.verse))
+            .find((x) => x != null) ?? null)
         : null)
     if (w) {
       const cards = overrides.filmVerseCards
@@ -544,7 +613,19 @@ export function planCutdown(
         !(paragraphs[p].role === role && !paragraphs[p].mark),
       minSec,
     )
-    let c = runCards(run.from, run.to)
+    // An uncredited paragraph of the same role right after the run is the
+    // note's own continuation: it always comes along, long enough or not
+    // (Bartimaeus 2026-10-06: the word note stopped before "It is the word
+    // for salvation", its point).
+    let to = run.to
+    while (
+      to + 1 < paragraphs.length &&
+      paragraphs[to + 1].role === role &&
+      !paragraphs[to + 1].mark &&
+      sum(runCards(run.from, to + 1).map((i) => secs[i])) <= SHORT_MAX_SEC
+    )
+      to++
+    let c = runCards(run.from, to)
     if (kind === "history" && overrides.historyHook !== false) {
       // Start on the hook: the first sentence of four words or fewer among
       // the paragraph's first three, dropping the lead-in before it.
@@ -1371,7 +1452,10 @@ export async function chooseKineticRoles(
 export const INTRO_CTA = "Watch the full devotional on our YouTube channel."
 
 export type IntroTeaserInput = {
-  sourceKey: string
+  /** A registered film source (LUMO …); without one, `chapter` names a
+   *  JESUS film chapter (Bartimaeus, 2026-10-06). */
+  sourceKey?: string
+  chapter?: number
   sequence: number
   /** The opening's spoken lines, without the long form's "Let's watch.". */
   lines: string[]
@@ -1387,6 +1471,9 @@ export type IntroTeaserInput = {
   hookText?: string
   /** Narrate the CTA as the last line (needs that take cached or a key). */
   voicedCta?: boolean
+  /** The long form was read on Eleven v4 in continuous runs (`--voice-v4`):
+   *  the teaser must ask the cache for the same takes. */
+  continuousVoice?: boolean
 }
 
 /**
@@ -1408,7 +1495,9 @@ export function introTeaserArgs(input: IntroTeaserInput): string[] {
     .map((k) => `${k.line}=${k.hero}/${k.accents.join(",")}/${k.side}`)
     .join(";")
   return [
-    `--source=${input.sourceKey}`,
+    input.sourceKey
+      ? `--source=${input.sourceKey}`
+      : `--chapter=${input.chapter ?? 19}`,
     `--seq=${input.sequence}`,
     "--aspect=portrait",
     "--structure=clip-first",
@@ -1425,6 +1514,7 @@ export function introTeaserArgs(input: IntroTeaserInput): string[] {
     "--text-font=serif",
     "--word-timings",
     "--approve",
+    ...(input.continuousVoice ? ["--voice-v4"] : []),
     ...(input.musicFile ? [`--music-file=${input.musicFile}`] : []),
     `--out=${input.outDir}`,
   ]
