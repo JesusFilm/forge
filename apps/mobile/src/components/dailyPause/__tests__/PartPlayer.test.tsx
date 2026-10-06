@@ -163,13 +163,14 @@ afterEach(async () => {
   jest.restoreAllMocks()
 })
 
-function element(part: DevotionalPart, active: boolean) {
+function element(part: DevotionalPart, active: boolean, focused = true) {
   return (
     <StrictMode>
       <PartPlayer
         devotional={DEVOTIONALS.pharisee}
         part={part}
         active={active}
+        focused={focused}
         font={font}
         onEnded={onEnded}
       />
@@ -185,9 +186,9 @@ async function mount(part: DevotionalPart, active = true) {
   await act(async () => {})
 }
 
-async function rerender(part: DevotionalPart, active = true) {
+async function rerender(part: DevotionalPart, active = true, focused = true) {
   await act(async () => {
-    renderer!.update(element(part, active))
+    renderer!.update(element(part, active, focused))
   })
 }
 
@@ -412,6 +413,30 @@ describe("the end of a part (KTD8)", () => {
     await tick(62.3)
     await frames(1)
     expect(covered()).toBe(false)
+  })
+})
+
+// Review #6: a screen pushed above the run, such as a watch page from a push
+// tap, left the part playing under it, so two soundtracks played at once.
+describe("a screen above the run", () => {
+  it("holds the part like an interruption, and only a tap resumes it", async () => {
+    await mount("film")
+    await playPast("film")
+    await tick(30)
+    expect(player.playing).toBe(true)
+
+    await rerender("film", true, false)
+    expect(player.playing).toBe(false)
+    // The part does not move on while the screen above it is open.
+    await frames(600)
+    expect(onEnded).not.toHaveBeenCalled()
+
+    await rerender("film", true, true)
+    expect(player.playing).toBe(false)
+    expect(cueShown()).toBe(true)
+    await tap("Resume video")
+    expect(player.playing).toBe(true)
+    expect(position).toBe(30)
   })
 })
 

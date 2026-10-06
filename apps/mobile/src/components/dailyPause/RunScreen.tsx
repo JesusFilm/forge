@@ -1,7 +1,7 @@
 // The one run screen of the pause route (KTD4). It shows the Opening, then one
 // component per R10 step, with the one close above every step. It keeps the
 // screen awake on every step except Share (KTD10, R25).
-import { useRouter } from "expo-router"
+import { useIsFocused, useRouter } from "expo-router"
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
 import { useEffect, type ReactNode } from "react"
 import { StyleSheet, View } from "react-native"
@@ -61,7 +61,9 @@ export function RunScreen() {
   const run = useDailyPauseRun()
   const { state } = run
 
-  const holdAwake = state.step !== "share"
+  // A screen above the run, such as a watch page, takes the screen's wake.
+  const focused = useIsFocused()
+  const holdAwake = focused && state.step !== "share"
   useEffect(() => {
     if (!holdAwake) return
     activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(ignore)
@@ -132,6 +134,7 @@ export function RunScreen() {
           devotional={state.pin.devotional}
           part={part}
           active={isVideoPart(state.step)}
+          focused={focused}
           font={font}
           onEnded={run.advance}
         />

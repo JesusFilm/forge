@@ -110,9 +110,12 @@ const mockRouter = {
   navigate: jest.fn(),
   dismissTo: jest.fn(),
 }
+/** False while another screen covers the run. */
+let mockFocused = true
 jest.mock("expo-router", () => ({
   useRouter: () => mockRouter,
   useSegments: () => ["pause"],
+  useIsFocused: () => mockFocused,
 }))
 jest.mock("../../../contexts/ExperienceSelectionProvider", () => ({
   useExperienceSelection: () => ({ isReady: true, currentSlug: "jesus-film" }),
@@ -158,6 +161,7 @@ beforeEach(async () => {
   video.__reset()
   mockDownloadAsync.mockClear()
   mockAwakeTags.clear()
+  mockFocused = true
   Object.values(mockRouter).forEach((fn) => fn.mockReset())
 })
 
@@ -384,6 +388,34 @@ it("keeps the screen awake from the Opening through Pray, under StrictMode with 
   await next()
   expect(hasText(renderer!, "Share this video")).toBe(true)
   expect(mockAwakeTags.size).toBe(0)
+})
+
+// Review #6: a screen pushed above the run kept the phone awake under it.
+it("lets the screen sleep while another screen covers the run", async () => {
+  await open()
+  await tap("Begin Devotional")
+  await tap("Continue")
+  expect(mockAwakeTags.size).toBe(1)
+
+  mockFocused = false
+  await act(async () => {
+    renderer!.update(
+      <StrictMode>
+        <RunScreen />
+      </StrictMode>,
+    )
+  })
+  expect(mockAwakeTags.size).toBe(0)
+
+  mockFocused = true
+  await act(async () => {
+    renderer!.update(
+      <StrictMode>
+        <RunScreen />
+      </StrictMode>,
+    )
+  })
+  expect(mockAwakeTags.size).toBe(1)
 })
 
 it("lets the screen sleep after the close", async () => {

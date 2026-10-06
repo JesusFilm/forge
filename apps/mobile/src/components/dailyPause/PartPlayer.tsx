@@ -54,6 +54,8 @@ type PartPlayerProps = {
   part: DevotionalPart
   /** False between parts: the part waits at its start, paused and covered. */
   active: boolean
+  /** False while another screen covers the run: the part holds until a tap. */
+  focused: boolean
   font: PauseFont
   /** Called once, when the part reaches its stop. */
   onEnded: () => void
@@ -63,6 +65,7 @@ export function PartPlayer({
   devotional,
   part,
   active,
+  focused,
   font,
   onEnded,
 }: PartPlayerProps) {
@@ -88,6 +91,7 @@ export function PartPlayer({
       uri={video.uri}
       range={devotional.parts[part]}
       active={active}
+      focused={focused}
       font={font}
       onEnded={onEnded}
       onRetry={retry}
@@ -142,6 +146,7 @@ type PartVideoProps = {
   uri: string
   range: PartRange
   active: boolean
+  focused: boolean
   font: PauseFont
   onEnded: () => void
   onRetry: () => void
@@ -151,6 +156,7 @@ function PartVideo({
   uri,
   range,
   active,
+  focused,
   font,
   onEnded,
   onRetry,
@@ -167,6 +173,7 @@ function PartVideo({
   const onEndedRef = useRef(onEnded)
   onEndedRef.current = onEnded
   const toggleRef = useRef<(() => void) | null>(null)
+  const holdRef = useRef<(() => void) | null>(null)
 
   const { startSec, endSec } = range
   const key = `${startSec}-${endSec}-${active}`
@@ -329,6 +336,18 @@ function PartVideo({
       }
     }
 
+    // A screen above the run is an interruption the player cannot see, so the
+    // part holds as for a background, and only the viewer's tap resumes it.
+    holdRef.current = () => {
+      if (disposed || !active || held) return
+      if (stage !== "waiting" && stage !== "showing") return
+      wantsPlay = false
+      held = true
+      stopFrames()
+      publish()
+      pause()
+    }
+
     // A seek flushes the frames that the player has queued, and the screen can
     // show the last of them, 0.17 s past the stop. So the seek waits two
     // frames after this commit, when the cover is on screen.
@@ -347,6 +366,7 @@ function PartVideo({
       stopFrames()
       for (const subscription of subscriptions) subscription.remove()
       toggleRef.current = null
+      holdRef.current = null
       // A part can end before its stop (the developer Skip), so its sound
       // must end here too. The next part unmutes when it plays.
       try {
@@ -357,6 +377,10 @@ function PartVideo({
       pause()
     }
   }, [player, startSec, endSec, active, key, progress])
+
+  useEffect(() => {
+    if (!focused) holdRef.current?.()
+  }, [focused, key])
 
   const { stage, held } = current
   const covered = !active || stage !== "showing"
