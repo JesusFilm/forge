@@ -96,26 +96,17 @@ export function LanguagePickerModal({
   const t = useTranslations("LanguagePickerModal")
   const router = useRouter()
 
-  // Per row, deriveLanguageDisplay decides whether Strapi's `name` is a
-  // formatted-up English (use it verbatim, e.g. "A-Hmao", "Achi, Rabinal")
-  // or the native form (slug-derived English as primary, name as subtitle,
-  // e.g. "Adygey" / "Адыгэбзэ", "French" / "Français"). Sort by the primary
-  // so the list stays A→Z by English form.
+  // Admin's English name is the primary label verbatim; the slug is only a
+  // fallback when the name is missing. Sort A→Z by that English name.
   const options = useMemo(
     () =>
       variants
         .filter(isPlayableLanguageVariant)
-        .map((v) => {
-          const display = deriveLanguageDisplay(
-            v.language.slug,
-            v.language.name,
-          )
-          return {
-            ...display,
-            nativeName: display.nativeName ?? v.language.nativeName ?? null,
-            bcp47: v.language.bcp47 ?? null,
-          }
-        })
+        .map((v) => ({
+          ...deriveLanguageDisplay(v.language.slug, v.language.name),
+          nativeName: v.language.nativeName ?? null,
+          bcp47: v.language.bcp47 ?? null,
+        }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [variants],
   )
@@ -251,13 +242,14 @@ export function LanguagePickerModal({
       ),
     [allSubtitleOptions, currentLanguageSlug],
   )
-  const currentLanguageDisplay = useMemo(
-    () => deriveLanguageDisplay(currentLanguageSlug, null),
-    [currentLanguageSlug],
-  )
   const currentLanguageOption = useMemo(
     () => options.find((option) => option.slug === currentLanguageSlug) ?? null,
     [currentLanguageSlug, options],
+  )
+  const currentLanguageDisplay = useMemo(
+    () =>
+      currentLanguageOption ?? deriveLanguageDisplay(currentLanguageSlug, null),
+    [currentLanguageOption, currentLanguageSlug],
   )
   const currentLanguageUnavailableSubtitleOption =
     useMemo<LanguageComboboxOption | null>(() => {
@@ -268,10 +260,7 @@ export function LanguagePickerModal({
       return {
         slug: currentLanguageSlug,
         name: currentLanguageDisplay.name,
-        nativeName:
-          currentLanguageOption?.nativeName ??
-          currentLanguageDisplay.nativeName ??
-          null,
+        nativeName: currentLanguageOption?.nativeName ?? null,
         bcp47: currentLanguageOption?.bcp47 ?? null,
         disabled: true,
         chipLabel: t("notAvailable"),
@@ -279,7 +268,6 @@ export function LanguagePickerModal({
     }, [
       allSubtitleOptions.length,
       currentLanguageDisplay.name,
-      currentLanguageDisplay.nativeName,
       currentLanguageOption,
       currentLanguageSlug,
       sameLanguageSubtitleOptions.length,

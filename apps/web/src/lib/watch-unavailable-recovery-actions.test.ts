@@ -73,7 +73,7 @@ describe("resolveWatchUnavailableRecovery", () => {
         published: true,
         language: {
           slug: "spanish-castilian",
-          name: "Español",
+          name: "Spanish, Castilian",
           nativeName: "Español",
           bcp47: "es",
         },
@@ -84,7 +84,7 @@ describe("resolveWatchUnavailableRecovery", () => {
         published: true,
         language: {
           slug: "mandarin-china",
-          name: "普通话",
+          name: "Mandarin, China",
           nativeName: "普通话",
           bcp47: "zh",
         },
@@ -95,7 +95,7 @@ describe("resolveWatchUnavailableRecovery", () => {
         published: true,
         language: {
           slug: "russian",
-          name: "Русский",
+          name: "Russian",
           nativeName: "Русский",
           bcp47: "ru",
         },
@@ -128,7 +128,7 @@ describe("resolveWatchUnavailableRecovery", () => {
         },
         {
           slug: "spanish-castilian",
-          name: "Spanish Castilian",
+          name: "Spanish, Castilian",
           nativeName: "Español",
           bcp47: "es",
           href: "/good-friday-live.html/spanish-castilian.html",
