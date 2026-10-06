@@ -1859,12 +1859,13 @@ function montagePush(
   // The FIRST shot breathes: it opens a little close, eases back, then eases
   // in again, the way podcast openings move (owner, 2026-10-06, after a Lenny's
   // Podcast intro: "first pulling the video away a little, then bringing it
-  // closer"). Kept gentle: 1.08 → 1.0 at 45% of the shot → 1.06.
+  // closer"). 1.16 → 1.0 at 45% of the shot → 1.12: at 8% it vanished under
+  // the film's own camera move (owner could not see it, 2026-10-06).
   if (k === 0) {
     const turn = 0.45
     return p < turn
-      ? 1.08 - 0.08 * ease(p / turn)
-      : 1 + 0.06 * ease((p - turn) / (1 - turn))
+      ? 1.16 - 0.16 * ease(p / turn)
+      : 1 + 0.12 * ease((p - turn) / (1 - turn))
   }
   return 1 + 0.045 * ease(p)
 }

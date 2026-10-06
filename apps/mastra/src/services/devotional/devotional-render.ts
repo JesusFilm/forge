@@ -1738,6 +1738,9 @@ export type RenderOptions = {
    *  the recorded take (no re-narration). A line that starts lower-case (a
    *  continuation, "but the workers themselves") keeps a longer beat,
    *  HOOK_CONTINUATION_GAP_SEC. Unset: the take's own pauses. */
+  /** One voice per opening line (two-voice opening): the take arrives with
+   *  its pauses set, so `hookGapSec` does not re-time it. */
+  hookVoices?: readonly string[]
   hookGapSec?: number
   /** `montage`, vertical: horizontal focus (0..1) per shot, plus one for the
    *  scene after the last cut. */
@@ -1940,7 +1943,13 @@ async function renderInStage(
         `⚠️  intro=hook but no "hook" segment was produced — the film will simply open unheard`,
       )
     } else {
-      if (options.hookGapSec != null && seg.audio.words?.length) {
+      // A two-voice opening is joined with its pauses already set; cutting
+      // them again clipped the next line's first word (2026-10-06).
+      if (
+        options.hookGapSec != null &&
+        !options.hookVoices?.length &&
+        seg.audio.words?.length
+      ) {
         const tightened = await tightenLinePauses(
           stage,
           seg.audio.bytes,

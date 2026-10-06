@@ -617,7 +617,11 @@ export function segmentTakes(
   const out = new Map<string, string>()
   for (const run of continuousRuns(segs, devoVoice, prepare)) {
     const two = run.segments[0]?.id === "hook" && hookVoices?.length
-    const take = runTake(two ? { ...run, voice: hookVoices.join("+") } : run)
+    const take = runTake(
+      two
+        ? { ...run, voice: `${hookVoices.join("+")}|${HOOK_DELIVERY_VERSION}` }
+        : run,
+    )
     for (const s of run.segments) out.set(s.id, take)
   }
   return out
@@ -804,6 +808,10 @@ export type ProduceDevotionalAudioDeps = {
 const TTS_MAX_RETRIES = 3
 const TTS_BACKOFF_MS = 1_500
 
+/** Bumped whenever the two-voice opening's delivery or cutting changes, so a
+ *  take read the old way is not replayed (settings are not in the text). */
+const HOOK_DELIVERY_VERSION = "h4"
+
 /** The opening read line by line in alternating voices, levelled and joined
  *  with word times; undefined when any line fails (the caller falls back). */
 async function twoVoiceHookAudio(
@@ -812,11 +820,18 @@ async function twoVoiceHookAudio(
   voiceover: typeof generateElevenVoiceover,
   normalize: (bytes: Uint8Array) => Promise<Uint8Array>,
   join: (chunks: Uint8Array[], gapsAfter: number[]) => Promise<Uint8Array>,
+  slice: (
+    bytes: Uint8Array,
+    fromSec: number,
+    toSec: number,
+  ) => Promise<Uint8Array>,
 ): Promise<VoiceoverAudio | undefined> {
   // The run text is already flattened; the hook's lines end in . ! or ?
   const lines = seg.text.match(/[^.!?…]+[.!?…]+['’"”»]*/g)?.map((l) => l.trim())
   if (!lines?.length) return undefined
   const audios: VoiceoverAudio[] = []
+  /** Each line's real length after the cut, for the word offsets below. */
+  const lengths: number[] = []
   for (const [i, line] of lines.entries()) {
     const voice = voices[i] ?? voices[voices.length - 1]!
     // The first line is the hook itself: read with energy (owner,
@@ -832,7 +847,7 @@ async function twoVoiceHookAudio(
         // male voice "not sound like himself"; this is the step back.
         voiceSettings: first
           ? { ...base, stability: 0.42, style: 0.5, speed: 1.1 }
-          : { ...base, stability: 0.45, style: 0.45, speed: 1.1 },
+          : { ...base, stability: 0.4, style: 0.55, speed: 1.12 },
         model: CONTINUOUS_MODEL,
         withTimestamps: true,
         timeoutMs: 120_000,
@@ -843,18 +858,50 @@ async function twoVoiceHookAudio(
       r = await speak()
     }
     if (!r.ok) return undefined
-    audios.push({ ...r.audio, bytes: await normalize(r.audio.bytes) })
+    // Cut each line to its own words: a take ends on a breath or a stray
+    // sound, and the montage's pause re-timing then cut INTO it, heard as a
+    // stammer before the next line and a jumpy shot cut (owner, 2026-10-06).
+    const w = r.audio.words ?? []
+    if (!w.length) return undefined
+    const from = Math.max(0, w[0]!.startSec - 0.08)
+    const to = w[w.length - 1]!.endSec + 0.15
+    const bytes = await slice(await normalize(r.audio.bytes), from, to)
+    audios.push({
+      ...r.audio,
+      bytes,
+      words: w.map((x) => ({
+        word: x.word,
+        startSec: x.startSec - from,
+        endSec: x.endSec - from,
+      })),
+    })
+    lengths.push(to - from)
   }
-  const gaps = lines.map((_, i) => (i < lines.length - 1 ? 0.3 : 0))
-  const words = mergeUnitWords(audios, gaps)
+  // The pauses are final here: the render does not re-time a two-voice
+  // opening (its pause cutting clipped the next line's first word, heard as
+  // a stammer, 2026-10-06). A short beat between lines, a longer one before
+  // the last ("Let's watch"), as the single-voice opening has.
+  const gapAfter = (i: number) =>
+    i >= audios.length - 1 ? 0 : i === audios.length - 2 ? 0.9 : 0.2
+  const words: NonNullable<VoiceoverAudio["words"]> = []
+  let offset = 0
+  for (const [i, a] of audios.entries()) {
+    for (const x of a.words ?? [])
+      words.push({
+        word: x.word,
+        startSec: x.startSec + offset,
+        endSec: x.endSec + offset,
+      })
+    offset += lengths[i]! + gapAfter(i)
+  }
   return {
     ...audios[0]!,
     bytes: await join(
       audios.map((a) => a.bytes),
-      gaps,
+      audios.map((_, i) => gapAfter(i)),
     ),
     characterCount: audios.reduce((n, a) => n + a.characterCount, 0),
-    ...(words ? { words } : {}),
+    words,
   }
 }
 
@@ -938,6 +985,7 @@ export async function produceDevotionalAudio(
           voiceover,
           deps.normalize!,
           deps.joinVarGaps!,
+          deps.slice!,
         )
         if (hook) fromRun.set("hook", hook)
         continue
