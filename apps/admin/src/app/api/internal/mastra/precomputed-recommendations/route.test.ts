@@ -1,8 +1,19 @@
 import { PrismaClient } from "@prisma/client"
 import { createHash } from "node:crypto"
-import { afterAll, describe, expect, it } from "vitest"
+import { Client } from "pg"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import { currentAdminMigrationSql } from "@/services/recommendations/current-schema.test-fixture"
 import { POST } from "./route"
+
+let fixturePrisma: PrismaClient
+// Substitute only the connection: the route and services still use native
+// PostgreSQL with the current migrations in this test's isolated schema.
+vi.mock("@/db/client", () => ({
+  get prisma() {
+    return fixturePrisma
+  },
+}))
 
 describe("private precomputed recommendation producer", () => {
   it("denies writes without its dedicated bearer", async () => {
@@ -26,13 +37,29 @@ describe("private precomputed recommendation producer", () => {
 describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
   "authenticated producer on PostgreSQL",
   () => {
-    const prisma = new PrismaClient()
+    let admin: Client
+    const schema = `precomputed_route_${Date.now()}_${Math.random().toString(36).slice(2)}`
     const generationId = `route-fixture-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    afterAll(async () => {
-      await prisma.recommendationPrecomputedGeneration.deleteMany({
-        where: { id: generationId },
+    beforeAll(async () => {
+      admin = new Client({ connectionString: env.DATABASE_URL })
+      await admin.connect()
+      await admin.query(`CREATE SCHEMA "${schema}"`)
+      await admin.query(`SET search_path TO "${schema}", public`)
+      for (const migration of currentAdminMigrationSql)
+        await admin.query(migration)
+      const url = new URL(env.DATABASE_URL)
+      url.searchParams.set("schema", schema)
+      fixturePrisma = new PrismaClient({
+        datasources: { db: { url: url.toString() } },
       })
-      await prisma.$disconnect()
+    }, 120_000)
+
+    afterAll(async () => {
+      await fixturePrisma?.$disconnect()
+      if (admin) {
+        await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+        await admin.end()
+      }
     })
 
     function post(body: unknown) {

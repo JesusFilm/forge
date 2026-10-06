@@ -33,6 +33,13 @@ other active build reservations, and blocks new paid/write work if the
 attestation expires or capacity is insufficient. It cannot independently
 measure PGDATA free bytes from SQL. Do not invent an available-byte value.
 
+If another build receives or refreshes its capacity allowance after your
+measurement, admission rejects that older sample. Obtain a new PGDATA and
+database observation before retrying. Reservations for builds that finish or
+become blocked after the sample remain accounted for until a later observation
+includes their writes. The displayed write estimate resets per accepted
+observation; it is not cumulative generation allocation.
+
 Write the request to a private JSON file without credentials:
 
 ```json

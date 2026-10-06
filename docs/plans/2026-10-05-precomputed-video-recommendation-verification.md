@@ -962,3 +962,185 @@ suites passed 3,250 Mastra and 8,999 Admin cases; both workers completed separat
 Standards and Spec reviews with no unresolved findings. Root independently
 reviewed the connected regression and provider boundary. #2568 is now integrated
 and verified under the approved navigation revision; #2569 may begin.
+
+## Catalog build workload and storage baseline — October 6
+
+The read-only current catalog aggregate at 02:11:35Z found 1,031 eligible Videos,
+859 with transcripts and 858 with English transcripts. Across languages the
+164,639 transcript records declare 280,046 chunks, with 80,248 for one Video.
+This is a current aggregate, not a cutoff snapshot or completed catalog run.
+Receipt: `/tmp/forge-feat-590-orchestration/catalog-build-dimensions.json`.
+
+At 02:15:35Z, bounded aggregate/catalog queries measured Admin PostgreSQL 18.6
+at 25,768,457,919 database bytes and 117,440,512 WAL bytes. It has 71 existing
+recommendation tables and no precomputed tables, consistent with the feature
+remaining undeployed. At 02:16:17Z a read-only SSH `df -B1` against actual PGDATA
+measured 48,891,670,528 total bytes, 25,963,548,672 used and 22,911,344,640 available.
+The SQL and filesystem-side cluster identifiers matched. The Railway platform
+listing reported 27,292.884992 MB current size against 50,000 MB configured;
+this platform accounting is distinct from the direct filesystem measurement.
+The first SSH probe found `pg_controldata` absent from PATH; resolving the
+installed PostgreSQL binary completed the binding check without any mutation.
+
+These are physical baseline snapshots, not build capacity approval, growth rate,
+loaded-retention proof or a full-build footprint. Measured new storage and
+protected operational headroom are still required. No production data or
+configuration was changed. Receipts: `catalog-build-storage-baseline.json` and
+`catalog-build-filesystem-baseline.txt` in `/tmp/forge-feat-590-orchestration`.
+
+Published navigation integration `ffd1feb21` passed forge-ci run `37403077030`: 37 successful jobs, three skipped jobs, no failures.
+
+## Catalog continuation: connected checks in progress
+
+The new root-owned native catalog tracer first failed on the integration branch
+because the new modules did not exist there. An early run through temporary
+aliases to the two worker drafts then found a real initial-checkpoint mismatch:
+Admin exposed its stored empty object while Mastra required null or a valid
+checkpoint. Admin now exposes null for an absent checkpoint; strict producer
+validation remains. The connected test passed after the correction.
+
+The test commits a paid model result and checkpoint, loses the transport reply,
+then simulates lease expiry and reconstructs the producer dependencies. Private
+review stays incomplete until both fixture sources finish. Resume reports one
+accepted edge, one explicit empty result, three model calls, 400 input/80 output
+tokens and exactly $0.04 in controlled charges; replay adds no calls. A second
+connected test passed with a newly eligible third target, showing an existing
+source changes its choice while the prior generation remains readable unchanged.
+These are candidate-code native results, not final committed integration or live
+model spending. Final verification remains required after worker integration.
+
+The producer raised bounded GA snapshot pages from 100 to 500 rows without
+removing the response cap or complete-page checks. Root verified one real page
+through the actual reader on October 6 at 02:47:32–02:47:52Z, restricted to
+approved hosts/Watch paths and current Birth of Jesus routes over the usable
+August 6, 2022–October 3, 2026 interval. It returned HTTP 200, exactly 500 rows,
+a continuation offset of 500 and 132,489 response bytes, with no report
+limitations. Only one report request was allowed; no raw rows were saved, no
+model was called and no data was written. This verifies one page, not a fresh
+complete snapshot, canonical mapping, full-build timing or production readiness.
+Receipt: `/tmp/forge-feat-590-orchestration/ga-500-row-read.json`.
+
+All four connected candidate cases now pass. The third simulates a charged
+transient provider failure, then resumes the same source and reports four
+distinct call IDs, 450 input/80 output tokens and $0.05 including the failed
+attempt. The fourth uses the actual default GA reader with synthetic external
+HTTP/token transport through the catalog coordinator into Admin review. It
+preserves the missing historical prefix, unavailable ordered playback, unknown
+historical URL ownership, seven qualified and three unmapped navigation events.
+Every observed fixture HTTP attempt, including source qualification, matches a
+durable receipt; all GA charges remain explicitly unknown, with none pending.
+Fixture catalog timestamps are fixed so the property-local closed date is stable.
+Receipt: `2569-catalog-four-cases-candidate-green.log` in the orchestration artifact
+directory. This remains candidate evidence pending final integration.
+
+Root's legacy route fixture now uses its own native current-migration schema
+rather than relying on an older shared public database. Its two route cases and
+focused lint pass. Independent root review also identified an old-protocol
+mutation path around the new durable lease/capacity fences; the Admin worker
+added service-level protocol isolation and is verifying the regression before
+integration.
+
+A disposable PostgreSQL 18 fixture for upcoming loaded-capacity verification is
+ready as `forge_feat590_capacity_db`, loopback port 32816, database
+`forge_capacity`. PGDATA uses an 8 GiB tmpfs and 256 MiB shared memory, preserving
+the host's scarce root disk. It is empty test infrastructure, not a workload
+measurement or production capacity proof. Serialize larger loads and monitor
+available memory; stopping the container discards this fixture data.
+
+A read-only Mastra service filesystem observation at 03:05:14Z measured
+48,891,670,528 total bytes, 1,020,944,384 used and 47,853,948,928 available on
+`/data`; `du` reported 1,018,822,656 allocated bytes under `/data/mastra`. This
+is the existing runtime/observability volume baseline, not new build growth or
+a budget. It does not include Mastra's separate PostgreSQL store. Receipt:
+`/tmp/forge-feat-590-orchestration/mastra-runtime-filesystem-baseline.txt`.
+
+Producer source `c64e22eac767254ede1c747585b1bd4778b7399f` is integrated as
+`1298713cc`. Its full Mastra suite passed 3,257 cases and its sequential Standards
+and Spec reviews have no remaining producer findings. Root's post-extraction
+legacy source-through-Admin regression passed all 16 cases. The refresh tracer
+now constructs its own prior generation so it can also run independently.
+
+One bounded live call through the integrated cost adapter at 03:11:02–03:11:05Z
+used exactly `openai/gpt-6-astra` via OpenRouter with fallback disabled. The
+adapter returned 41 input/12 output tokens, zero cached input tokens and
+$0.00101, exactly matching the provider's usage receipt. Only one outbound
+request was permitted and no production data was written. Receipt:
+`/tmp/forge-feat-590-orchestration/openrouter-astra-cost-adapter-live-smoke.json`.
+This proves real cost capture for a small structured response, not catalog cost.
+
+Mastra's configured internal database host was matched to the Railway service
+currently named `@forge/mastra-gateway/db`
+(`86876e13-7d60-4da1-81f3-980aff9ef999`). A read-only SQL
+snapshot at 03:16:41Z measured 5,125,412,543 database bytes, 83,886,080 WAL bytes,
+and 89 tables, of which 87 have Mastra-prefixed names. Direct PGDATA `df` at
+03:17:49Z measured 48,891,670,528 total bytes, 5,236,723,712 used and
+43,638,169,600 available. This is a separate existing runtime-store baseline;
+none of the undeployed catalog workflow's incremental footprint is measured.
+Receipts: `mastra-database-service-binding.json`,
+`mastra-database-storage-baseline.json` and
+`mastra-database-filesystem-baseline.txt` in the orchestration artifact directory.
+
+A bounded read-only current-traffic aggregate at 03:28:07Z counted 38,565
+recorded recommendation requests over the preceding seven days; it did not
+reach its 200,001-row cap. The saved daily/surface/purpose/state aggregates
+contain no request or viewer IDs. These are persisted recommendation requests,
+not eligible Watch visits or verified human traffic, and are only an input to
+a future loaded-fixture scenario. Bot qualification remains unverified. Receipt:
+`/tmp/forge-feat-590-orchestration/recorded-request-traffic-baseline.json`.
+
+The producer peer review confirmed a capacity-admission race: a competing build
+can become terminal or blocked after an operator's free-space sample, removing
+a reservation before that sample accounts for its writes. Admin is retaining
+those projections for older samples and subtracting observed database growth.
+A second confirmed case spans multiple successful capacity refreshes, where one
+maximum projection cannot represent all intervening physical/WAL growth. The
+chosen conservative correction rejects a sample predating another build's
+latest successful capacity admission. Native interleavings and a final narrow
+review remain required before #2569 is marked verified.
+
+The final narrow capacity review found no remaining issue after the
+server-recorded `lastPassedAt` fence was added. Admin's focused native durable
+suite passed all 12 cases, including terminal-after-sample, blocked-after-write,
+and two successful admission epochs against an old sample. A fresh sample can
+proceed. Admin full-suite/typecheck/commit and final integrated verification are
+still pending; the feature is not live.
+
+## Final catalog integration verification
+
+Admin source `b6db0a4a5b1725a3f46e4ce5773c0e7f6a8c9693` integrated as
+`04200cd9f`, after producer `1298713cc` and current-main merge `3c2d5b57b`
+(main `e36a29954bda8dc60f2b8d21a12548ae9b2b0241`). Final native checks use the
+normal integration configuration and committed application modules, without
+worker aliases: all 20 build-through-review cases and all 37 focused Admin
+catalog/durable/contract/route/view cases passed. Both package typechecks,
+touched-test ESLint and Prettier passed. The official migration chain through
+`0135` applied successfully to the fresh local PostgreSQL database. Logs:
+`2569-integrated-build-to-review.log`, `2569-integrated-admin-native.log`,
+`2569-integrated-admin-typecheck.log`, `2569-integrated-mastra-typecheck.log`,
+`2569-integrated-root-lint.log`, `2569-integrated-root-format.log`, and
+`2569-fresh-migration-chain.log` under `/tmp/forge-feat-590-orchestration`.
+The new cross-app native suite is locally executed; no new CI workflow job is
+claimed. Full worker suites passed 3,257 Mastra and 8,999 Admin cases.
+
+Root sequential Standards and Spec review used the #2569 base `ffd1feb21` and
+reviewed the test additions, runbook, and integrated contracts alongside the
+workers' final reviews. No confirmed finding remains. Tests substitute external
+GA/model boundaries only; native persistence, transactions, and Admin review
+remain real. The refresh case builds its own baseline and does not depend on
+the interruption case. Capacity values in these fixtures are synthetic, never
+production admission evidence.
+
+The report rendered in the in-app browser at desktop 1440 and mobile 390
+widths with no page-wide overflow or console errors. The long selected source
+ID and 64-character digest wrapped within the mobile panel. Ten alternating
+warm HTTP samples (five per mode after warmup) measured medians 142.34ms
+baseline / 147.28ms with the report, and 62,426 / 76,420 HTML bytes, with the
+same 19 assets. Receipt: `2569-catalog-loading.json`. This measures synthetic
+local Next development rendering, not FCP, authenticated database cost, or
+production latency. Preview fixture, temporary generated types and Next-added
+agent-guide block were removed, server stopped, viewport reset, and tab closed.
+
+#2569 code is integrated-and-verified. The actual first catalog run and measured
+capacity acceptance remain future operator work; no production build, serving
+activation, promotion or schedule occurred. #2574 can now implement its
+storage/readiness controls against both verified prerequisite code paths.

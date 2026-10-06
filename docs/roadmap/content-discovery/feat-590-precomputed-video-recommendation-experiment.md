@@ -86,8 +86,10 @@ source-qualification boundary is verified, and the programmatic GA report reader
 has passed live read-only checks. The user approved referrer links plus engagement
 as navigation evidence for the first build on October 6. Ingestion and current
 catalog mapping are integrated and verified, including a live GA pair read and
-Astra judgment through OpenRouter. #2569 is ready for implementation; #2574 and
-#2575 remain behind their prerequisites. The execution ledger is
+Astra judgment through OpenRouter. #2569 resumable builds are integrated and
+verified (20 connected native cases, 37 focused Admin cases); #2574 is ready
+for implementation and #2575 remains behind it. Full catalog execution and
+live readiness are still pending. The execution ledger is
 `docs/plans/2026-10-05-precomputed-video-recommendation-status.md`. Public
 experimental serving remains default-off.
 
