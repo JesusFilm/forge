@@ -101,7 +101,7 @@ its captured `0128` baseline while `0129` is pending.
 Current main already contained a completed fixture-maintenance ticket named
 `feat-590`. To preserve the explicitly requested experiment identity and pass
 the new-ID collision guard, that completed record was renumbered to the next
-unused ID, now `feat-611`, with its existing plan/report/index references updated.
+unused ID, now `feat-612`, with its existing plan/report/index references updated.
 Its completed implementation and evidence are unchanged. No experiment IDs or
 GitHub issue identities changed.
 
@@ -856,7 +856,7 @@ test. The resolution preserves all three precomputed retention regressions and
 main's separate yield/continuation test. Static review confirmed the automatic
 runtime merge retains archive transaction fences and counters alongside the
 new budget admission guard. Main also allocated feat-609 to HNSW-recall work;
-only the completed fixture ticket and its references moved again, to feat-611.
+only the completed fixture ticket and its references moved again, to feat-611 (subsequently feat-612).
 Main's feat-609 HNSW and feat-610 RAG work are unchanged. The collision guard's
 three tests and its actual merged-tree inventory check passed.
 
@@ -1144,3 +1144,62 @@ agent-guide block were removed, server stopped, viewport reset, and tab closed.
 capacity acceptance remain future operator work; no production build, serving
 activation, promotion or schedule occurred. #2574 can now implement its
 storage/readiness controls against both verified prerequisite code paths.
+
+The additional repository-owned seam typecheck found those files were outside
+the package `include` patterns. Resolving the same explicit package aliases as
+Vitest exposed a fixture-only readonly tuple mismatch, corrected with `satisfies`
+against the historical-reader qualification contract. The cross-app check then
+passed with no application changes. Its reproducible configuration is
+`apps/admin/tsconfig.precomputed-integration.json`; run
+`pnpm --filter @forge/admin exec tsc --noEmit -p tsconfig.precomputed-integration.json`.
+This is additional local validation, not a new automatic CI job.
+
+Catalog integration `285bb46eb2c507dac5ff5506bbbe57be0ce68c8d` passed
+[forge-ci run 37411231982](https://github.com/JesusFilm/forge/actions/runs/37411231982):
+37 successful jobs, three skipped and no failures. #2574 began from that
+verified integration in the existing two Sol chats. Root's next connected
+retention case is expected-red while the new retention module is being built;
+it does not alter the published catalog behavior.
+
+## Storage continuation: candidate seam
+
+The root producer→generation-retention→Admin-review case first failed because
+`generation-retention.ts` was absent. Against worker B's first native slice and
+updated generated client through temporary aliases, it passed: three real
+controlled catalog builds, superseded generation removed in bounded passes,
+latest-two recommendation choices and exact three-call/$0.04 reports preserved
+after cleanup/replay. No paid provider or production database was used.
+Receipt: `2574-catalog-retention-candidate.log`. This is draft candidate evidence,
+not final integration, loaded throughput proof, or live readiness. Abandoned
+build handling and bounded descendant draining are still being implemented.
+
+The expanded native candidate passed both targeted cases after the retirement
+proof contract was added. A real interrupted→completed build reports matching
+generation/cutoff/digest/input-mode identity and resumability true→false. After
+Admin reclaims a generation, its compact proof is consumed by Mastra's actual
+`prunePrecomputedAbandonedRuntimeSnapshots` against native WorkflowsPG rows.
+The matching retired row is removed; unknown identity and mismatched cutoff
+remain; replay is idempotent and retained Admin choices/cost totals are unchanged.
+Receipt: `2574-catalog-runtime-proof-candidate.log` (two passed, three intentionally
+skipped). The runtime rows are seeded crash fixtures, not a measurement of
+actual workflow emission; the Mastra worker owns that separate lifecycle smoke.
+Both workers are still developing the slice, so this is not final acceptance.
+
+Worker A's actual controlled **source** workflow lifecycle emitted one native
+PostgreSQL snapshot with `pg_column_size(snapshot)=1,283` bytes and a serialized
+`getTrace` JSON payload of 2,147 bytes. The isolated shared DuckDB file occupied
+12,288 allocated bytes after shutdown. Receipt: `/tmp/forge-2574-real-workflow7.log`.
+The strengthened lifecycle calls real `runPrecomputedSource` with controlled
+catalog, transcript chunk, model output and Admin ingest. Transcript/model
+sentinels were absent from the persisted runtime artifacts; GA history is off
+in this particular smoke and is not covered by its no-leak claim. The root trace
+contained its run ID and compact immutable proof metadata. These are controlled
+source-workflow values, not per-trace physical allocation, whole-catalog cost,
+or a production storage forecast. Legacy RUNNING traces without identity remain
+counted unresolved, never assumed safe to delete. Final worker review/integration
+validation remains outstanding.
+
+Current main `1daa80373` allocated feat-611 to the Google Maven lookup fix.
+The completed recommendation-fixture record therefore moves to the next free
+global ID, feat-612, preserving its implementation, evidence and references.
+The platform ticket and the approved feat-590 experiment keep their identities.

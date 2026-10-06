@@ -1,5 +1,5 @@
 ---
-id: "feat-611"
+id: "feat-612"
 title: "Refresh stale recommendation integration test fixtures"
 owner: "nisal"
 priority: "P2"
@@ -14,9 +14,9 @@ tags: [admin, recommendations, testing]
 ## Problem
 
 Renumbered from feat-590 to preserve the approved precomputed recommendation
-experiment. Earlier assignments of feat-607 and feat-609 were superseded by
-feat-611 on October 6, 2026 as concurrent main changes allocated those IDs to
-media-generation and HNSW-recall work. The completed fixture work and its
+experiment. Earlier assignments of feat-607, feat-609 and feat-611 were superseded by
+feat-612 on October 6, 2026 as concurrent main changes allocated those IDs to
+media-generation, HNSW-recall and Google Maven work. The completed fixture work and its
 acceptance evidence are unchanged.
 
 The feat-589 broader PostgreSQL check exposed two pre-existing fixture failures on main `374897333`. They are separate from the delivery repair; neither failing fixture or runtime path was changed there. Do not weaken production expiry or owner authority to make fixtures pass.

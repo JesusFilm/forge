@@ -17,9 +17,10 @@ describes the private reporting contract and limits.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
 - Branch: `codex/precomputed-video-recommendations`.
 - Checkout: `/home/nisal/.codex/worktrees/precomputed-video-recommendations/forge`.
-- Latest verified application integration: `04200cd9f` (catalog producer `1298713cc`, Admin `04200cd9f`, current-main merge `3c2d5b57b`).
+- Latest verified integration: `285bb46eb2c507dac5ff5506bbbe57be0ce68c8d` (catalog producer `1298713cc`, Admin `04200cd9f`, current-main merge `3c2d5b57b`, native integration tests `285bb46eb`).
   #2568 GA ingestion is `084fe3eae`, Admin validation is `58b2aaa18`,
   and the OpenRouter adapter is `b7926faf5`.
+- Catalog integration `285bb46eb` passed [forge-ci run 37411231982](https://github.com/JesusFilm/forge/actions/runs/37411231982): 37 successful jobs, three skipped and no failures.
 - The PR records the current published integration SHA and [CI checks](https://github.com/JesusFilm/forge/pull/2578/checks).
   The published navigation integration `ffd1feb21` passed [forge-ci run 37403077030](https://github.com/JesusFilm/forge/actions/runs/37403077030), with 37 successful jobs, three skipped jobs and no failures.
 - The original dirty `/home/nisal/forge` checkout is preserved.
@@ -32,41 +33,39 @@ describes the private reporting contract and limits.
 All issues remain open until merge. Dependencies advance on verified acceptance,
 not issue closure. Implemented, integrated, merged, and live are distinct.
 
-| Issue | Immediate blockers | State                                          | Integrated work                                                               |
-| ----- | ------------------ | ---------------------------------------------- | ----------------------------------------------------------------------------- |
-| #2566 | None               | Integrated-and-verified                        | `9a984c544`; saved Admin comparison                                           |
-| #2567 | #2566              | Integrated-and-verified                        | `c89db0e4e`; bounded producer; OpenRouter transport smoke passed              |
-| #2568 | #2567              | Integrated-and-verified                        | `084fe3eae`, `58b2aaa18`; real GA pair and Astra judgment passed              |
-| #2569 | #2568              | Integrated-and-verified                        | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed |
-| #2570 | #2566              | Integrated-and-verified                        | `0a93244a3`; private Watch serving                                            |
-| #2571 | #2570              | Integrated-and-verified                        | `267a65281`, `b69592b6c`, corrections in `a7f36d778`                          |
-| #2572 | #2571              | Integrated-and-verified                        | Core `a7f36d778`, UI `af8eba415`                                              |
-| #2573 | #2572              | Private reporting verified; live incomplete    | Sources `acbb33fe4`, `302dffe31`; migration `0134`                            |
-| #2574 | #2569, #2573       | Prerequisite code verified; ready for dispatch | Live capacity acceptance remains separate                                     |
-| #2575 | #2574              | Waiting for prerequisites                      | Unassigned                                                                    |
+| Issue | Immediate blockers | State                                       | Integrated work                                                               |
+| ----- | ------------------ | ------------------------------------------- | ----------------------------------------------------------------------------- |
+| #2566 | None               | Integrated-and-verified                     | `9a984c544`; saved Admin comparison                                           |
+| #2567 | #2566              | Integrated-and-verified                     | `c89db0e4e`; bounded producer; OpenRouter transport smoke passed              |
+| #2568 | #2567              | Integrated-and-verified                     | `084fe3eae`, `58b2aaa18`; real GA pair and Astra judgment passed              |
+| #2569 | #2568              | Integrated-and-verified                     | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed |
+| #2570 | #2566              | Integrated-and-verified                     | `0a93244a3`; private Watch serving                                            |
+| #2571 | #2570              | Integrated-and-verified                     | `267a65281`, `b69592b6c`, corrections in `a7f36d778`                          |
+| #2572 | #2571              | Integrated-and-verified                     | Core `a7f36d778`, UI `af8eba415`                                              |
+| #2573 | #2572              | Private reporting verified; live incomplete | Sources `acbb33fe4`, `302dffe31`; migration `0134`                            |
+| #2574 | #2569, #2573       | In progress in two Sol chats                | Live capacity acceptance remains separate                                     |
+| #2575 | #2574              | Waiting for prerequisites                   | Unassigned                                                                    |
 
 ## Ownership and continuation
 
-Both workers completed #2569 from verified integration
-`ffd1feb21fb7bdd0ef4a110c5c944b88b83654d4`, also their fixed review base.
+Both workers start #2574 from verified integration
+`285bb46eb2c507dac5ff5506bbbe57be0ce68c8d`, also their fixed review base.
 
 Worker A, `01a109e1-47c8-7043-bfd4-a85592cfafc5`, titled
-`#2569 Build resumable catalog generations`, owns Mastra catalog orchestration,
-source checkpoints, GA request usage, provider costs, authenticated refresh and
-`docs/operations/precomputed-catalog-build.md`. Checkout:
-`/home/nisal/.codex/worktrees/feat-590-2566/forge`;
-branch: `codex/feat-590-2569`.
+`#2574 Bound Mastra workflow storage`, owns Mastra-only runtime checkpoint and
+observability lifecycle/measurement and a separate runtime evidence note.
+Checkout: `/home/nisal/.codex/worktrees/feat-590-2566/forge`;
+branch: `codex/feat-590-2574`.
 
 Worker B, `01a10a28-aa8e-7080-b3d1-c59293f8f4dd`, titled
-`#2569 Persist catalog progress and cost reports`, owns Admin durable state,
-attempt fencing, capacity preflight, progress/cost reporting, required migrations
-and native persistence/UI checks. Checkout:
-`/home/nisal/.codex/worktrees/feat-590-2570/forge`;
-branch: `codex/feat-590-2569-admin`.
+`#2574 Bound Admin storage and prove cleanup`, owns Admin generation retention,
+protected references, storage/capacity reporting, migrations, native loaded
+cleanup and `docs/operations/precomputed-storage-capacity.md`.
+Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
+branch: `codex/feat-590-2574-admin`.
 
-Their final source commits are `c64e22eac767254ede1c747585b1bd4778b7399f` and
-`b6db0a4a5b1725a3f46e4ce5773c0e7f6a8c9693`. Both are integrated and workers
-are idle pending #2574 assignment. Previous branches remain saved.
+They coordinate the minimal runtime report contract before semantic edits.
+Previous branches and integrated work remain saved.
 The orchestrator owns cross-app integration tests, live operator verification,
 shared docs/roadmap, integration and the single PR. No production write/deploy,
 public activation, promotion or schedule is authorized. At most two implementation
@@ -140,7 +139,7 @@ succeeded while explicitly retaining source truncation and unknown mappings.
 After merging current main `8ebd6500c`, both application typechecks, 15 native
 generation-to-Admin cases, 23 Mastra cases, 68 retention unit/workflow cases and
 seven fresh PostgreSQL retention cases passed. The additive test conflict kept
-both implementations' cases. The completed fixture ticket now uses feat-611;
+both implementations' cases. The completed fixture ticket now uses feat-612;
 main's new feat-609 HNSW work is preserved. No history-backed model build or
 public experiment activation is implied by these checks.
 
@@ -210,7 +209,7 @@ warehouse write is authorized.
 agreed numeric stopping settings, trusted bot qualification, and tracking-loss
 evidence are absent. Production cookie forwarding, actual catalog cost, and
 measured capacity/headroom also remain prerequisites where required. Fixtures
-cannot satisfy these criteria. #2574 is ready for implementation after its code prerequisites passed; #2575 still waits on #2574.
+cannot satisfy these criteria. #2574 implementation is underway after its code prerequisites passed; #2575 still waits on #2574.
 
 Public experimental serving stays default-off and the incumbent remains available.
 Do not merge, deploy, start public A/B traffic, promote a winner, or enable refresh
