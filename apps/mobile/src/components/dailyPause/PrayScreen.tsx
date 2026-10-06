@@ -15,7 +15,12 @@ import {
   pauseSpacing,
 } from "../../lib/dailyPause/theme"
 import { CountdownRing } from "./CountdownRing"
-import { IntroContent, IntroStepper, usePauseIntro } from "./PauseIntro"
+import {
+  IntroContent,
+  IntroCovered,
+  IntroStepper,
+  usePauseIntro,
+} from "./PauseIntro"
 import { HeldPauseButton } from "./ReflectScreen"
 import { StepperPills } from "./StepperPills"
 import { PauseBody, PauseButton, type PauseFont } from "./WatchScreen"
@@ -64,13 +69,13 @@ export function PrayScreen({
         </IntroContent>
         <View style={styles.buttonGap} />
       </ScrollView>
-      <IntroContent intro={intro} style={styles.buttonRow}>
+      <IntroCovered intro={intro} style={styles.buttonRow}>
         {countdown.done ? (
           <PauseButton label="Amen" onPress={onContinue} font={font} />
         ) : (
           <HeldPauseButton label="Amen" spokenLabel="Amen" font={font} />
         )}
-      </IntroContent>
+      </IntroCovered>
     </PauseBody>
   )
 }

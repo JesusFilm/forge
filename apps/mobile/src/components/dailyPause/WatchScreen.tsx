@@ -1,8 +1,13 @@
 // The Figma "Transition · Watch" screen (R10, R11), and the parts of the Pass 2
 // frame that every run screen shares: the body column, the masthead, and the
 // primary pill button.
+import {
+  GlassView,
+  isGlassEffectAPIAvailable,
+  isLiquidGlassAvailable,
+} from "expo-glass-effect"
 import type { ReactNode } from "react"
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import {
   useSafeAreaInsets,
   type EdgeInsets,
@@ -69,12 +74,25 @@ export function PauseMasthead({
   )
 }
 
+export type PauseButtonVariant = "primary" | "outline" | "glass"
+
 type PauseButtonProps = {
   label: string
   onPress: () => void
   font: PauseFont
-  /** The outline is the frame's upcoming pill, for a second choice. */
-  variant?: "primary" | "outline"
+  /** The outline is the frame's upcoming pill, for a second choice. The glass
+   *  is iOS 26 Liquid Glass (the owner, 2026-10-06), else the primary pill. */
+  variant?: PauseButtonVariant
+}
+
+/** iOS 26 Liquid Glass. isGlassEffectAPIAvailable guards iOS 26 betas that
+ *  crash without it. */
+function liquidGlass(): boolean {
+  return (
+    Platform.OS === "ios" &&
+    isLiquidGlassAvailable() &&
+    isGlassEffectAPIAvailable()
+  )
 }
 
 /** The frame's primary pill button. */
@@ -84,6 +102,34 @@ export function PauseButton({
   font,
   variant = "primary",
 }: PauseButtonProps) {
+  if (variant === "glass" && liquidGlass()) {
+    // No ancestor may fade this button: GlassView draws nothing there.
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+      >
+        <GlassView
+          testID="pause-glass-button"
+          style={styles.glassButton}
+          glassEffectStyle="regular"
+          colorScheme="dark"
+          isInteractive
+        >
+          <Text
+            style={[
+              styles.buttonLabel,
+              styles.glassLabel,
+              font("sansSemiBold"),
+            ]}
+          >
+            {label}
+          </Text>
+        </GlassView>
+      </Pressable>
+    )
+  }
   const outline = variant === "outline"
   return (
     <Pressable
@@ -127,7 +173,12 @@ export function WatchScreen({
       <StepperPills arrival="watch" font={font} />
       <View style={styles.spacer} />
       <Pulse>
-        <PauseButton label="Continue" onPress={onContinue} font={font} />
+        <PauseButton
+          label="Continue"
+          onPress={onContinue}
+          font={font}
+          variant="glass"
+        />
       </Pulse>
     </PauseBody>
   )
@@ -171,6 +222,16 @@ const styles = StyleSheet.create({
     backgroundColor: pauseColors.background,
   },
   pressed: { opacity: PRESSED_OPACITY },
+  glassButton: {
+    maxWidth: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: pauseSpacing.buttonPaddingX,
+    paddingVertical: pauseSpacing.buttonPaddingY,
+    borderRadius: pauseRadii.button,
+    overflow: "hidden",
+  },
+  glassLabel: { color: pauseColors.ink },
   buttonLabel: {
     color: pauseColors.background,
     fontSize: 18,

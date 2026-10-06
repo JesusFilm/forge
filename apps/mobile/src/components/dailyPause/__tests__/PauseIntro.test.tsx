@@ -140,23 +140,32 @@ function stepperShift(root: TestInstance): number {
   return translateY(stepper!)
 }
 
-/** The verse or prayer group, and the button below the scroll view. */
-function contents(root: TestInstance): RenderedNode[] {
+/** The verse or prayer group. */
+function content(root: TestInstance): RenderedNode {
   const found = hosts(root, "pause-intro-content")
-  expect(found).toHaveLength(2)
-  return found
+  expect(found).toHaveLength(1)
+  return found[0]!
+}
+
+/** The button below the scroll view. It may be Liquid Glass, so a cover
+ *  fades off it and its own opacity never moves. */
+function buttonRow(root: TestInstance): { row: RenderedNode; cover: number } {
+  const [row] = hosts(root, "pause-intro-covered")
+  const [cover] = hosts(root, "pause-intro-cover")
+  return { row: row!, cover: Number(style(cover!).opacity) }
 }
 
 describe.each(SCREENS)("the $name screen", (screen) => {
   it("starts the stepper at the center of the screen, with the content hidden", async () => {
     const root = await render(screen)
     expect(stepperShift(root)).toBe(CENTERED_SHIFT)
-    for (const content of contents(root)) {
-      expect(style(content).opacity).toBe(0)
-      expect(content.props.accessibilityElementsHidden).toBe(true)
-      expect(content.props.importantForAccessibility).toBe(
-        "no-hide-descendants",
-      )
+    const { row, cover } = buttonRow(root)
+    expect(style(content(root)).opacity).toBe(0)
+    expect(cover).toBe(1)
+    expect(style(row).opacity).toBeUndefined()
+    for (const hidden of [content(root), row]) {
+      expect(hidden.props.accessibilityElementsHidden).toBe(true)
+      expect(hidden.props.importantForAccessibility).toBe("no-hide-descendants")
     }
   })
 
@@ -181,11 +190,12 @@ describe.each(SCREENS)("the $name screen", (screen) => {
     const root = await render(screen)
     advance(PAUSE_INTRO_MS - 1)
     expect(screen.timer(root)).toBe(screen.full)
-    expect(contents(root)[0]!.props.accessibilityElementsHidden).toBe(true)
+    expect(content(root).props.accessibilityElementsHidden).toBe(true)
     advance(1)
     advance(999)
     expect(screen.timer(root)).toBe(screen.full)
-    expect(contents(root)[0]!.props.accessibilityElementsHidden).toBe(false)
+    expect(content(root).props.accessibilityElementsHidden).toBe(false)
+    expect(buttonRow(root).row.props.accessibilityElementsHidden).toBe(false)
     advance(1)
     expect(screen.timer(root)).toBe(screen.oneDown)
   })
@@ -194,9 +204,10 @@ describe.each(SCREENS)("the $name screen", (screen) => {
     mockReduceMotion = true
     const root = await render(screen)
     expect(stepperShift(root)).toBe(0)
-    for (const content of contents(root)) {
-      expect(style(content).opacity).toBe(1)
-      expect(content.props.accessibilityElementsHidden).toBe(false)
+    expect(style(content(root)).opacity).toBe(1)
+    expect(buttonRow(root).cover).toBe(0)
+    for (const shown of [content(root), buttonRow(root).row]) {
+      expect(shown.props.accessibilityElementsHidden).toBe(false)
     }
     advance(1000)
     expect(screen.timer(root)).toBe(screen.oneDown)

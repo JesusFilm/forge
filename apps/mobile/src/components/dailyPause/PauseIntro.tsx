@@ -18,6 +18,7 @@ import {
   stepperArrivalMs,
   type StepperStage,
 } from "./StepperPills"
+import { pauseColors } from "../../lib/dailyPause/theme"
 import { usePauseClock } from "./usePauseClock"
 import { pauseBodyPadding } from "./WatchScreen"
 
@@ -69,6 +70,8 @@ export type PauseIntro = {
   stepperShift: Animated.AnimatedInterpolation<number>
   contentLevel: Animated.AnimatedInterpolation<number>
   contentRise: Animated.AnimatedInterpolation<number>
+  /** The cover over glass content: 1 hides it, 0 shows it. */
+  coverLevel: Animated.AnimatedInterpolation<number>
   /** The screen's scroll view, which clips the stepper. */
   onScrollLayout: (event: LayoutChangeEvent) => void
 }
@@ -123,6 +126,10 @@ export function usePauseIntro(arrival: IntroArrival): PauseIntro {
       inputRange: [0, 1],
       outputRange: [CONTENT_RISE, 0],
     }),
+    coverLevel: contentLevel.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1, 0],
+    }),
     onScrollLayout: (event) => setScrollHeight(event.nativeEvent.layout.height),
   }
 }
@@ -148,17 +155,15 @@ export function IntroStepper({
   )
 }
 
-/** Content that shows after the stepper is in place. VoiceOver skips it
- *  until then. */
-export function IntroContent({
-  intro,
-  style,
-  children,
-}: {
+type IntroContentProps = {
   intro: PauseIntro
   style?: StyleProp<ViewStyle>
   children: ReactNode
-}) {
+}
+
+/** Content that shows after the stepper is in place. VoiceOver skips it
+ *  until then. */
+export function IntroContent({ intro, style, children }: IntroContentProps) {
   return (
     <Animated.View
       testID="pause-intro-content"
@@ -177,6 +182,30 @@ export function IntroContent({
   )
 }
 
+/** IntroContent for Liquid Glass, which draws nothing under a fading
+ *  ancestor. A cover in the ground's color fades off the content instead. */
+export function IntroCovered({ intro, style, children }: IntroContentProps) {
+  return (
+    <Animated.View
+      testID="pause-intro-covered"
+      accessibilityElementsHidden={!intro.shown}
+      importantForAccessibility={intro.shown ? "auto" : "no-hide-descendants"}
+      style={[style, { transform: [{ translateY: intro.contentRise }] }]}
+    >
+      {children}
+      <Animated.View
+        testID="pause-intro-cover"
+        pointerEvents="none"
+        style={[styles.cover, { opacity: intro.coverLevel }]}
+      />
+    </Animated.View>
+  )
+}
+
 const styles = StyleSheet.create({
   stepper: { alignSelf: "stretch" },
+  cover: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: pauseColors.background,
+  },
 })

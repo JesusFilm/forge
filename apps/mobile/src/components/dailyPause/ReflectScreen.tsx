@@ -21,10 +21,20 @@ import {
   type MeditationLength,
 } from "../../lib/dailyPause/settings"
 import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
-import { IntroContent, IntroStepper, usePauseIntro } from "./PauseIntro"
+import {
+  IntroContent,
+  IntroCovered,
+  IntroStepper,
+  usePauseIntro,
+} from "./PauseIntro"
 import { Pulse } from "./Pulse"
 import { StepperPills } from "./StepperPills"
-import { PauseBody, PauseButton, type PauseFont } from "./WatchScreen"
+import {
+  PauseBody,
+  PauseButton,
+  type PauseButtonVariant,
+  type PauseFont,
+} from "./WatchScreen"
 
 const QUOTE_SIZE = 48
 const QUOTE_LEADING = 36
@@ -38,6 +48,7 @@ type HeldPauseButtonProps = {
   label: string
   spokenLabel: string
   font: PauseFont
+  variant?: PauseButtonVariant
 }
 
 /** The frame's button while a pause timer runs. It looks the same, takes no
@@ -46,6 +57,7 @@ export function HeldPauseButton({
   label,
   spokenLabel,
   font,
+  variant,
 }: HeldPauseButtonProps) {
   return (
     <View
@@ -55,7 +67,12 @@ export function HeldPauseButton({
       accessibilityState={{ disabled: true }}
       pointerEvents="none"
     >
-      <PauseButton label={label} onPress={ignoreTap} font={font} />
+      <PauseButton
+        label={label}
+        onPress={ignoreTap}
+        font={font}
+        variant={variant}
+      />
     </View>
   )
 }
@@ -117,19 +134,25 @@ export function ReflectScreen({
           </Text>
         </IntroContent>
       </ScrollView>
-      <IntroContent intro={intro} style={styles.buttonRow}>
+      <IntroCovered intro={intro} style={styles.buttonRow}>
         {countdown.done ? (
           <Pulse>
-            <PauseButton label="Continue" onPress={onContinue} font={font} />
+            <PauseButton
+              label="Continue"
+              onPress={onContinue}
+              font={font}
+              variant="glass"
+            />
           </Pulse>
         ) : (
           <HeldPauseButton
             label={formatClock(countdown.secondsLeft)}
             spokenLabel={`Continue, ${spokenTimeLeft(countdown.secondsLeft)}`}
             font={font}
+            variant="glass"
           />
         )}
-      </IntroContent>
+      </IntroCovered>
     </PauseBody>
   )
 }
