@@ -583,7 +583,10 @@ async function levelVoices(
   const voices = [...new Set(staged.map((s) => s.voiceId))]
   if (voices.length < 2) return
   const TARGET_LUFS = -20
-  const MAX_GAIN_DB = 8
+  // 16, not 8: the Russian reflection voice (Kate) comes out of ElevenLabs
+  // near -35 LUFS, ~12 dB under the male voice (2026-10-06); an 8 dB cap left
+  // her audibly quieter at every hand-over. The limiter still guards peaks.
+  const MAX_GAIN_DB = 16
   for (const v of voices) {
     const files = staged.filter((s) => s.voiceId === v)
     const levels = (

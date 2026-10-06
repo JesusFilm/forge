@@ -55,6 +55,12 @@ export const DEVOTIONAL_VOICES = {
   // Latin American narrator. Owner's pick for the Spanish reflection voice
   // (2026-09-30), beside El Faraon for the notes.
   "spanish-female": "1u9q7vX1Lcx74yAcFPt7",
+  // "Kate - Calm, Natural and Versatile" from the voice library: Russian
+  // female narrator, warm and clear. Owner's pick from six samples for the
+  // Russian reflection voice (2026-10-06), beside JFvoice_Rus on Eleven v4.
+  // She is generated ~12 dB quieter than the male voice; the render's
+  // per-voice levelling brings her up.
+  "russian-female": "7G0NvIkWRnU0Dqjgz13p",
 } as const
 
 export type DevotionalVoiceName = keyof typeof DEVOTIONAL_VOICES
