@@ -60,6 +60,24 @@ describe("bounded public Watch observation", () => {
     ])
   })
 
+  it("keeps a click-only hour present after its delivery hour has ended", async () => {
+    const redis = {
+      eval: vi.fn(async () => [["click_attempt", "2", "click_ack", "1"], []]),
+    }
+    expect(
+      await readWatchPublicObservationHours(
+        ["2026100620", "2026100621"],
+        redis,
+      ),
+    ).toEqual([
+      {
+        hour: "2026100620",
+        counters: { click_attempt: 2, click_ack: 1 },
+      },
+      { hour: "2026100621", counters: null },
+    ])
+  })
+
   it("fails closed on corrupted or unavailable aggregate reads", async () => {
     const hours = ["2026100620"]
     expect(

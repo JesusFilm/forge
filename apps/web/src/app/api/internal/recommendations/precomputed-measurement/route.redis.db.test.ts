@@ -21,15 +21,19 @@ describe.skipIf(!run)("native Watch-to-measurement Redis seam", () => {
   const end = new Date(start.getTime() + 2 * 3_600_000)
   const observedHour = watchPublicObservationHour(start)
   const redisKey = `recommendation:public-watch-observation:v1:${observedHour}`
+  const clickOnlyHour = watchPublicObservationHour(
+    new Date(start.getTime() + 3_600_000),
+  )
+  const clickOnlyKey = `recommendation:public-watch-observation:v1:${clickOnlyHour}`
   let cleanup: ReturnType<typeof createClient>
 
   beforeAll(async () => {
     cleanup = createClient({ url: process.env.REDIS_URL })
     await cleanup.connect()
-    await cleanup.del(redisKey)
+    await cleanup.del([redisKey, clickOnlyKey])
   })
   afterAll(async () => {
-    await cleanup.del(redisKey)
+    await cleanup.del([redisKey, clickOnlyKey])
     await cleanup.quit()
     await closeWatchPublicObservationRedisForTests()
   })
@@ -65,5 +69,34 @@ describe.skipIf(!run)("native Watch-to-measurement Redis seam", () => {
       delivery_qualified: 1,
     })
     expect(body.hours[1].counters).toBeNull()
+  })
+
+  it("counts a real click-only Redis hour as observed", async () => {
+    expect(
+      await recordWatchPublicObservation("click_attempt", clickOnlyHour),
+    ).toBe(true)
+    expect(await recordWatchPublicObservation("click_ack", clickOnlyHour)).toBe(
+      true,
+    )
+    expect(await cleanup.hGetAll(clickOnlyKey)).toEqual({
+      click_attempt: "1",
+      click_ack: "1",
+    })
+    const url = new URL(
+      "http://localhost:3000/watch/api/internal/recommendations/precomputed-measurement",
+    )
+    url.searchParams.set("startHour", start.toISOString())
+    url.searchParams.set("endHourExclusive", end.toISOString())
+    const response = await GET(
+      new Request(url, { headers: { authorization: `Bearer ${key}` } }),
+    )
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.coveredHours).toBe(2)
+    expect(body.missingHours).toEqual([])
+    expect(body.hours[1].counters).toEqual({
+      click_attempt: 1,
+      click_ack: 1,
+    })
   })
 })

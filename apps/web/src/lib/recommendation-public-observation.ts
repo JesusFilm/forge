@@ -204,7 +204,7 @@ export async function readWatchPublicObservationHours(
       }
       return {
         hour: hours[index]!,
-        counters: counters.delivery_attempt ? counters : null,
+        counters: pairs.length > 0 ? counters : null,
       }
     })
   } catch {
