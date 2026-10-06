@@ -13,6 +13,7 @@ import {
   CONTENT_SYSTEM,
   HISTORY_SYSTEM,
   assertEvidence,
+  evidenceValidationFeedback,
   createAdminSourceDependencies,
   digest,
   analyticsQueryPlanSchema,
@@ -22,6 +23,7 @@ import {
   pages,
   summarySchema,
   type Judgment,
+  type EvidenceValidationFeedback,
   type SourceCatalog,
   type SourceIngest,
   type Video,
@@ -41,6 +43,7 @@ import {
 import { env } from "../../config/env"
 
 const id = z.string().trim().min(1).max(191)
+const MAX_CANDIDATE_JUDGMENT_ATTEMPTS = 2
 export const CatalogGenerationInputSchema = z
   .object({
     generationId: id,
@@ -219,10 +222,17 @@ type CatalogBuildFailureCode =
   | "internal_failure"
 
 class CatalogBuildError extends Error {
-  constructor(readonly code: CatalogBuildFailureCode) {
+  constructor(
+    readonly code: CatalogBuildFailureCode,
+    readonly feedback?: CandidateValidationFeedback,
+  ) {
     super(code)
   }
 }
+
+type CandidateValidationFeedback =
+  | EvidenceValidationFeedback
+  | { reason: "schema_invalid" | "provider_output_invalid" }
 
 function parsed<T extends z.ZodType>(schema: T, value: unknown): z.output<T> {
   const checked = schema.safeParse(value)
@@ -372,6 +382,7 @@ async function processSource(
     let output: z.output<T> | undefined
     let usage: ModelUsage = {}
     let failureCode: CatalogBuildFailureCode | undefined
+    let validationFeedback: CandidateValidationFeedback | undefined
     try {
       const response = await model.generate({
         schema,
@@ -384,6 +395,14 @@ async function processSource(
       validate?.(output)
     } catch (error) {
       usage = { ...usageFromError(error), ...usage }
+      validationFeedback =
+        evidenceValidationFeedback(error) ??
+        (error instanceof z.ZodError
+          ? { reason: "schema_invalid" }
+          : error instanceof Error &&
+              error.message === "provider_invalid_output"
+            ? { reason: "provider_output_invalid" }
+            : undefined)
       failureCode =
         error instanceof z.ZodError ||
         (error instanceof Error && error.message === "provider_invalid_output")
@@ -435,7 +454,8 @@ async function processSource(
       throw new CatalogBuildError("stale_source_claim")
     revision = receipt.checkpointRevision
     checkpoint = nextCheckpoint
-    if (failureCode) throw new CatalogBuildError(failureCode)
+    if (failureCode)
+      throw new CatalogBuildError(failureCode, validationFeedback)
   }
 
   let sourceHistory: HistoricalSnapshot | undefined
@@ -664,48 +684,81 @@ async function processSource(
           }
         : checkpoint.bestJudgment
     }
-    await call(
-      "candidate_judgment",
-      judgmentSchema,
-      {
-        source: modelVideo(source),
-        sourceSummaryEnglish: checkpoint.sourceSummaryEnglish,
-        candidate: modelVideo(candidate),
-        chunks: chunks.chunks,
-        historicalDefinitions: pageHistory?.definitionsForModel,
-        historicalSourceSignal: sourceHistory?.signal(source.id),
-        historicalCandidateSignal: pageHistory?.signal(candidate.id),
-        historicalNavigation:
-          pageHistory?.navigation?.(source.id, candidate.id) ?? null,
-        instruction:
-          chunks.chunks.length === 0
-            ? "Return zero or one connection. Only metadata evidence is available; do not invent transcript support."
-            : "Return zero or one connection. If transcript evidence is cited, use exact passages and chunk IDs from this batch. For parent/chapter links, explain added viewing value.",
-      },
-      2_048,
-      (output) => nextCandidate(bestOf(output)),
-      last
-        ? (output) => {
-            const best = bestOf(output)
-            return best
-              ? {
-                  targetVideoId: candidate.id,
-                  kind: best.kind,
-                  strength: best.strength,
-                  relationship: best.relationship,
-                  reasonEnglish: best.reasonEnglish,
-                  addedViewingValueEnglish:
-                    best.addedViewingValueEnglish ?? undefined,
-                  evidence: best.evidence,
-                }
-              : undefined
+    let retryFeedback: CandidateValidationFeedback | undefined
+    for (
+      let attempt = 0;
+      attempt < MAX_CANDIDATE_JUDGMENT_ATTEMPTS;
+      attempt += 1
+    ) {
+      try {
+        await call(
+          "candidate_judgment",
+          judgmentSchema,
+          {
+            source: modelVideo(source),
+            sourceSummaryEnglish: checkpoint.sourceSummaryEnglish,
+            candidate: modelVideo(candidate),
+            chunks: chunks.chunks,
+            historicalDefinitions: pageHistory?.definitionsForModel,
+            historicalSourceSignal: sourceHistory?.signal(source.id),
+            historicalCandidateSignal: pageHistory?.signal(candidate.id),
+            historicalNavigation:
+              pageHistory?.navigation?.(source.id, candidate.id) ?? null,
+            ...(retryFeedback ? { validationFeedback: retryFeedback } : {}),
+            instruction:
+              attempt === 1
+                ? "Retry with verified evidence only. Metadata fields must be present on this candidate. A transcript excerpt must be an exact substring of its cited chunk. If you cannot support a connection, return an empty connections array."
+                : chunks.chunks.length === 0
+                  ? "Return zero or one connection. Only metadata evidence is available; do not invent transcript support."
+                  : "Return zero or one connection. If transcript evidence is cited, use exact passages and chunk IDs from this batch. For parent/chapter links, explain added viewing value.",
+          },
+          2_048,
+          (output) => nextCandidate(bestOf(output)),
+          last
+            ? (output) => {
+                const best = bestOf(output)
+                return best
+                  ? {
+                      targetVideoId: candidate.id,
+                      kind: best.kind,
+                      strength: best.strength,
+                      relationship: best.relationship,
+                      reasonEnglish: best.reasonEnglish,
+                      addedViewingValueEnglish:
+                        best.addedViewingValueEnglish ?? undefined,
+                      evidence: best.evidence,
+                    }
+                  : undefined
+              }
+            : undefined,
+          (output) =>
+            output.connections.forEach((connection) =>
+              assertEvidence(connection, chunks.chunks, candidate),
+            ),
+        )
+        break
+      } catch (error) {
+        if (
+          error instanceof CatalogBuildError &&
+          error.code === "provider_invalid_output"
+        ) {
+          retryFeedback = error.feedback ?? {
+            reason: "provider_output_invalid",
           }
-        : undefined,
-      (output) =>
-        output.connections.forEach((connection) =>
-          assertEvidence(connection, chunks.chunks, candidate),
-        ),
-    )
+          console.warn(
+            JSON.stringify({
+              event: "precomputed_candidate_evidence_rejected",
+              sourceVideoId: source.id,
+              candidateVideoId: candidate.id,
+              attempt: attempt + 1,
+              feedback: retryFeedback,
+            }),
+          )
+          if (attempt + 1 < MAX_CANDIDATE_JUDGMENT_ATTEMPTS) continue
+        }
+        throw error
+      }
+    }
   }
   if (historyDefinition?.provider === "ga_data_api") {
     if (!checkpoint.historySummary || !qualificationDigest)
@@ -853,8 +906,8 @@ export async function runPrecomputedCatalog(
       generationId: input.generationId,
       modelId: PRECOMPUTED_MODEL_ID,
       promptVersion: input.historyRequired
-        ? "astra-catalog-history-navigation-v2"
-        : "astra-catalog-v2",
+        ? "astra-catalog-history-navigation-v3"
+        : "astra-catalog-v3",
       inputMode,
       inputSnapshotMode: "observed_fenced",
       inputDigest: generationInputDigest,

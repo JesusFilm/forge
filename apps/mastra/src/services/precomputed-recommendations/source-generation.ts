@@ -155,15 +155,7 @@ const evidenceSchema = z.union([
   z.object({
     basis: z.literal("metadata"),
     fields: z
-      .array(
-        z.enum([
-          "title",
-          "description",
-          "keywords",
-          "themes",
-          "bibleCitations",
-        ]),
-      )
+      .array(z.enum(["title", "description", "keywords", "bibleCitations"]))
       .min(1)
       .max(5),
   }),
@@ -199,6 +191,23 @@ class SourceGenerationError extends Error {
   constructor(readonly code: SafeFailureCode) {
     super(code)
   }
+}
+
+export type EvidenceValidationFeedback =
+  | { reason: "metadata_field_unavailable"; field: string }
+  | { reason: "transcript_chunk_unavailable"; chunkId: string }
+  | { reason: "transcript_excerpt_not_verbatim"; chunkId: string }
+
+class EvidenceValidationError extends SourceGenerationError {
+  constructor(readonly feedback: EvidenceValidationFeedback) {
+    super("provider_invalid_output")
+  }
+}
+
+export function evidenceValidationFeedback(
+  error: unknown,
+): EvidenceValidationFeedback | null {
+  return error instanceof EvidenceValidationError ? error.feedback : null
 }
 
 class MissingGenerationError extends Error {}
@@ -249,18 +258,29 @@ function assertEvidence(
       description: Boolean(candidate.description),
       keywords: candidate.keywords.length > 0,
       bibleCitations: candidate.bibleCitations.length > 0,
-      themes: false,
     }
-    if (judgment.evidence.fields.some((field) => !available[field]))
-      throw new SourceGenerationError("provider_invalid_output")
+    for (const field of judgment.evidence.fields) {
+      if (!available[field])
+        throw new EvidenceValidationError({
+          reason: "metadata_field_unavailable",
+          field,
+        })
+    }
     return
   }
   const byId = new Map(chunks.map((chunk) => [chunk.id, chunk]))
   for (const passage of judgment.evidence.passages) {
     const chunk = byId.get(passage.chunkId)
-    if (!chunk || !chunk.text.includes(passage.excerpt)) {
-      throw new SourceGenerationError("provider_invalid_output")
-    }
+    if (!chunk)
+      throw new EvidenceValidationError({
+        reason: "transcript_chunk_unavailable",
+        chunkId: passage.chunkId,
+      })
+    if (!chunk.text.includes(passage.excerpt))
+      throw new EvidenceValidationError({
+        reason: "transcript_excerpt_not_verbatim",
+        chunkId: passage.chunkId,
+      })
   }
 }
 
