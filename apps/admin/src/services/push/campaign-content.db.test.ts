@@ -108,18 +108,17 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
 
     beforeEach(async () => {
       await clean(prisma)
-      const english = await prisma.language.findUnique({
+      // Suites in parallel share English, so it is one atomic upsert under an
+      // id that no suite's clean deletes (route.push.db.test.ts does the same).
+      await prisma.language.upsert({
         where: { slug: PUSH_ENGLISH_LANGUAGE_SLUG },
+        create: {
+          id: "push_db_shared_lang_english",
+          coreId: "push_db_shared_core_english",
+          slug: PUSH_ENGLISH_LANGUAGE_SLUG,
+        },
+        update: {},
       })
-      if (english == null) {
-        await prisma.language.create({
-          data: {
-            id: `${PREFIX}lang_english`,
-            coreId: `${PREFIX}core_english`,
-            slug: PUSH_ENGLISH_LANGUAGE_SLUG,
-          },
-        })
-      }
       await prisma.language.createMany({
         data: [
           { slug: SPANISH, deletedAt: null },

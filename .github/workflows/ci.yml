@@ -173,7 +173,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           WATCH_SEARCH_DB_TEST: "1"
         run: pnpm --filter @forge/admin test -- src/services/typesense-watch-search-candidate-trigger-migration.db.test.ts src/services/search-watchability.db.test.ts
-      - name: Exercise push campaign content writes and agent reads against PostgreSQL
+      - name: Exercise push campaign content writes, agent reads, and MCP tools against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           PUSH_DB_TEST: "1"
@@ -181,6 +181,7 @@ jobs:
           pnpm --filter @forge/admin test --
           src/services/push/campaign-content.db.test.ts
           src/services/push/agent-reads.db.test.ts
+          src/app/mcp/route.push.db.test.ts
           --no-file-parallelism
       - name: Exercise recommendation tracer migration against PostgreSQL
         env:
