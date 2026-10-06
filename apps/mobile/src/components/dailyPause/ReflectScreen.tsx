@@ -22,6 +22,7 @@ import {
 } from "../../lib/dailyPause/settings"
 import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
 import { IntroContent, IntroStepper, usePauseIntro } from "./PauseIntro"
+import { Pulse } from "./Pulse"
 import { StepperPills } from "./StepperPills"
 import { PauseBody, PauseButton, type PauseFont } from "./WatchScreen"
 
@@ -118,7 +119,9 @@ export function ReflectScreen({
       </ScrollView>
       <IntroContent intro={intro} style={styles.buttonRow}>
         {countdown.done ? (
-          <PauseButton label="Continue" onPress={onContinue} font={font} />
+          <Pulse>
+            <PauseButton label="Continue" onPress={onContinue} font={font} />
+          </Pulse>
         ) : (
           <HeldPauseButton
             label={formatClock(countdown.secondsLeft)}

@@ -89,6 +89,21 @@ function pressables(root: TestInstance): RenderedNode[] {
   return root.root.findAll((node) => typeof node.props.onPress === "function")
 }
 
+function pressableHost(root: TestInstance): RenderedNode | undefined {
+  return root.root.findAll(
+    (node) =>
+      typeof node.type === "string" &&
+      node.props.accessibilityLabel === "Continue",
+  )[0]
+}
+
+function pulses(root: TestInstance): RenderedNode[] {
+  return root.root.findAll(
+    (node) =>
+      typeof node.type === "string" && node.props.testID === "pause-pulse",
+  )
+}
+
 /** The disabled host button that VoiceOver reads while the timer runs. */
 function findHeld(root: TestInstance): RenderedNode | undefined {
   return root.root.findAll(
@@ -171,9 +186,16 @@ it("lets no control skip the countdown before zero (R16)", async () => {
 it("shows Continue at 0:00 and moves on only at the tap (R17, AE1)", async () => {
   const root = await render(3)
   advance(PAUSE_INTRO_MS)
+  expect(pulses(root)).toHaveLength(0)
   advance(45_000)
   expect(hasText(root, "Continue")).toBe(true)
   expect(findHeld(root)).toBeUndefined()
+  // The owner (2026-10-06): Continue pulses once a second to ask for a tap.
+  expect(pulses(root)).toHaveLength(1)
+  for (let node = pressableHost(root)?.parent; ; node = node.parent) {
+    if (!node) throw new Error("Continue is not inside the pulse")
+    if (node.props.testID === "pause-pulse") break
+  }
   advance(60_000)
   expect(onContinue).not.toHaveBeenCalled()
   await press(pressableByLabel(root, "Continue"))

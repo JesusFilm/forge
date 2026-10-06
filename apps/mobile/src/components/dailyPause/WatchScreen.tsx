@@ -15,6 +15,7 @@ import {
   pauseRadii,
   pauseSpacing,
 } from "../../lib/dailyPause/theme"
+import { Pulse } from "./Pulse"
 import { StepperPills } from "./StepperPills"
 
 export type PauseFont = (face: PauseFace) => PauseFontStyle
@@ -125,7 +126,9 @@ export function WatchScreen({
       <View style={styles.spacer} />
       <StepperPills arrival="watch" font={font} />
       <View style={styles.spacer} />
-      <PauseButton label="Continue" onPress={onContinue} font={font} />
+      <Pulse>
+        <PauseButton label="Continue" onPress={onContinue} font={font} />
+      </Pulse>
     </PauseBody>
   )
 }
