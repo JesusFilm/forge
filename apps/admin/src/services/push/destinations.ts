@@ -17,8 +17,17 @@ import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
 
 export const PUSH_SERIES_LABELS = [VideoLabel.SERIES, VideoLabel.COLLECTION]
 
+/** KTD9 — the kind a video's label gives it; the split the predicates use. */
+export function pushVideoKindOfLabel(label: VideoLabel): "VIDEO" | "SERIES" {
+  return (PUSH_SERIES_LABELS as readonly VideoLabel[]).includes(label)
+    ? "SERIES"
+    : "VIDEO"
+}
+
 /** A live video row of one kind, published or not. SERIES means the series labels. */
-function pushVideoKindWhere(kind: "VIDEO" | "SERIES"): Prisma.VideoWhereInput {
+export function pushVideoKindWhere(
+  kind: "VIDEO" | "SERIES",
+): Prisma.VideoWhereInput {
   return {
     deletedAt: null,
     label:
@@ -28,20 +37,33 @@ function pushVideoKindWhere(kind: "VIDEO" | "SERIES"): Prisma.VideoWhereInput {
   }
 }
 
+function pushVideoPublishedLocaleWhere(): Prisma.VideoWhereInput {
+  return {
+    locales: { some: { status: LocaleStatus.PUBLISHED, deletedAt: null } },
+  }
+}
+
 /** A video or series the Watch apps show: live, published, not restricted. */
 export function pushVideoDestinationWhere(
   kind: "VIDEO" | "SERIES",
 ): Prisma.VideoWhereInput {
   return {
     ...pushVideoKindWhere(kind),
-    locales: { some: { status: LocaleStatus.PUBLISHED, deletedAt: null } },
+    ...pushVideoPublishedLocaleWhere(),
     ...notRestrictedFromWatchWhere(),
   }
 }
 
+function pushExperiencePublishedLocaleWhere(): Prisma.ExperienceLocaleWhereInput {
+  return { status: LocaleStatus.PUBLISHED }
+}
+
 /** An experience locale the Watch apps show: published and not archived. */
 export function pushExperienceDestinationWhere(): Prisma.ExperienceLocaleWhereInput {
-  return { status: LocaleStatus.PUBLISHED, experience: { archivedAt: null } }
+  return {
+    ...pushExperiencePublishedLocaleWhere(),
+    experience: { archivedAt: null },
+  }
 }
 
 /** True while the destination still resolves as something a tap can open. */
@@ -83,4 +105,93 @@ export async function readPushDestinationKinds(
   if (series > 0) kinds.push("SERIES")
   if (experiences > 0) kinds.push("EXPERIENCE")
   return kinds
+}
+
+/** KTD9 — the first piece of the published check that a live row fails. */
+export type PushDestinationUnpublishedReason =
+  | "no_published_locale"
+  | "watch_restricted"
+  | "archived"
+
+export type PushDestinationState =
+  | Readonly<{ published: true; reason: null }>
+  | Readonly<{ published: false; reason: PushDestinationUnpublishedReason }>
+
+const PUBLISHED_STATE: PushDestinationState = { published: true, reason: null }
+
+function unpublishedState(
+  reason: PushDestinationUnpublishedReason,
+): PushDestinationState {
+  return { published: false, reason }
+}
+
+async function videoSlugs(
+  prisma: PrismaClient,
+  where: Prisma.VideoWhereInput,
+): Promise<Set<string>> {
+  const rows = await prisma.video.findMany({ where, select: { slug: true } })
+  return new Set(rows.map((row) => row.slug))
+}
+
+async function experienceSlugs(
+  prisma: PrismaClient,
+  where: Prisma.ExperienceLocaleWhereInput,
+): Promise<Set<string>> {
+  const rows = await prisma.experienceLocale.findMany({
+    where,
+    select: { slug: true },
+    distinct: ["slug"],
+  })
+  return new Set(rows.map((row) => row.slug))
+}
+
+/**
+ * KTD9 and KTD13 — the published state of each slug of one kind. `published`
+ * reads the same predicate as `isPushDestinationPublished`, and each reason is
+ * the predicate without its last piece, so the flag and the reason cannot
+ * disagree. A slug with no live row of the kind is left out of the map.
+ */
+export async function readPushDestinationStates(
+  prisma: PrismaClient,
+  kind: PushDestinationKind,
+  slugs: readonly string[],
+): Promise<Map<string, PushDestinationState>> {
+  const states = new Map<string, PushDestinationState>()
+  if (slugs.length === 0) return states
+  const slug = { in: [...new Set(slugs)] }
+
+  const [live, published, publishedLocale] =
+    kind === "EXPERIENCE"
+      ? await Promise.all([
+          experienceSlugs(prisma, { slug }),
+          experienceSlugs(prisma, {
+            ...pushExperienceDestinationWhere(),
+            slug,
+          }),
+          experienceSlugs(prisma, {
+            ...pushExperiencePublishedLocaleWhere(),
+            slug,
+          }),
+        ])
+      : await Promise.all([
+          videoSlugs(prisma, { ...pushVideoKindWhere(kind), slug }),
+          videoSlugs(prisma, { ...pushVideoDestinationWhere(kind), slug }),
+          videoSlugs(prisma, {
+            ...pushVideoKindWhere(kind),
+            ...pushVideoPublishedLocaleWhere(),
+            slug,
+          }),
+        ])
+  // A published locale that still fails the check fails on the last piece:
+  // the watch restriction for a video, the archive for an experience.
+  const lastPieceReason: PushDestinationUnpublishedReason =
+    kind === "EXPERIENCE" ? "archived" : "watch_restricted"
+
+  for (const value of live) {
+    if (published.has(value)) states.set(value, PUBLISHED_STATE)
+    else if (publishedLocale.has(value)) {
+      states.set(value, unpublishedState(lastPieceReason))
+    } else states.set(value, unpublishedState("no_published_locale"))
+  }
+  return states
 }
