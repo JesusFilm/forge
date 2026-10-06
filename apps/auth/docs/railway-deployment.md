@@ -117,10 +117,16 @@ seeded, confidential, remote, disabled, PKCE-disabled, web, or incomplete-grant
 clients. It does not create AppGrants or consents and does not rewrite
 authorization codes, access tokens, or refresh tokens. The older
 `offline_access` append remains a separate, narrower migration for clients
-carrying the established legacy Admin MCP scope markers.
+carrying the established legacy Admin MCP scope markers. A third migration
+(feat-612) adds `push:campaign:read` and `push:campaign:draft` to every
+unseeded, enabled, public dynamic client that uses token authentication `none`,
+PKCE that is not disabled, and holds `experience:read`. Better Auth 1.7.1
+stores `public` as null on a dynamic registration, so the migration accepts
+`public` true or null.
 
 Startup reports counts only: eligible clients, repaired clients, links added,
-and legacy clients updated for offline access. Do not add client IDs, redirect
+legacy clients updated for offline access, and dynamic clients updated for push
+campaign scopes. Do not add client IDs, redirect
 URIs, user identifiers, authorization codes, tokens, or secrets to this output.
 Before deployment, record equally redacted counts for public resource rows,
 links grouped by public resource, eligible loopback clients, and eligible

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   ADMIN_MCP_DEFAULT_SCOPES,
   CHANGELOG_DEFAULT_SCOPES,
+  FIRST_PARTY_OAUTH_CLIENT_IDS,
   STUDIO_MCP_APP_SEED,
   STUDIO_MCP_RESOURCE_SCOPES,
   STUDIO_CHATGPT_CLIENT_ID,
@@ -126,6 +127,67 @@ function eligibleLoopbackClient(
   }
 }
 
+const PUSH_CAMPAIGN_SCOPES = ["push:campaign:read", "push:campaign:draft"]
+// Literal on purpose: Better Auth 1.7.1 wrote this whole public-DCR union onto
+// every dynamic client that registered before the push scopes joined it.
+const PRE_PUSH_PUBLIC_DCR_SCOPE_UNION = [
+  "openid",
+  "profile:read",
+  "email:read",
+  "offline_access",
+  "membership:read",
+  "experience:read",
+  "experience:locale:create",
+  "experience:locale:update",
+  "experience:locale:validate",
+  "media:read",
+  "video:read",
+  "bible:read",
+  "experience:publish",
+  "experience:create",
+  "experience:generate",
+  "changelog:read",
+  "changelog:submit",
+  "changelog:admin",
+  "shorts:read",
+  "shorts:edit",
+  "shorts:render",
+  "shorts:chat",
+  "shorts:narration",
+  "shorts:instructions:read",
+]
+// The Admin MCP default list that Better Auth 1.6.2 clients registered with.
+const LEGACY_ADMIN_MCP_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+  "membership:read",
+  "experience:read",
+  "experience:locale:create",
+  "experience:locale:update",
+  "experience:locale:validate",
+  "media:read",
+  "video:read",
+  "bible:read",
+  "experience:publish",
+]
+
+type OAuthClientRow = ReturnType<typeof eligibleLoopbackClient>
+
+// A stand-in oauth_client table: later seed steps read earlier writes. It
+// ignores `where`, so the push query's real filter is pinned in its own test.
+function useOAuthClientTable(rows: OAuthClientRow[]) {
+  findManyOAuthClients.mockImplementation(async () =>
+    rows.map((row) => ({ ...row, scopes: [...row.scopes] })),
+  )
+  updateOAuthClient.mockImplementation(async ({ where, data }) => {
+    const row = rows.find(({ clientId }) => clientId === where.clientId)
+    if (row) Object.assign(row, data)
+    return row
+  })
+  return rows
+}
+
 describe("seedFirstPartyApps", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -133,6 +195,7 @@ describe("seedFirstPartyApps", () => {
       id: `app_${where.key}`,
     }))
     findManyOAuthClients.mockResolvedValue([])
+    updateOAuthClient.mockResolvedValue(undefined)
     findManyOAuthResources.mockResolvedValue(PUBLIC_RESOURCE_ROWS)
     finalizeBetterAuth17Schema.mockResolvedValue(undefined)
   })
@@ -148,18 +211,24 @@ describe("seedFirstPartyApps", () => {
       environments: 36,
       oauthClients: 40,
       // Includes separate Shorts render and narration consent scopes.
-      scopes: 31,
+      scopes: 33,
       resourceRepair: {
         createdLinks: 0,
         eligibleClients: 0,
         offlineAccessUpdatedClients: 0,
+        pushScopesUpdatedClients: 0,
         repairedClients: 0,
       },
     })
 
     expect(finalizeBetterAuth17Schema).toHaveBeenCalledOnce()
 
-    for (const key of ["shorts:render", "shorts:narration"]) {
+    for (const key of [
+      "shorts:render",
+      "shorts:narration",
+      "push:campaign:read",
+      "push:campaign:draft",
+    ]) {
       expect(upsertScope).toHaveBeenCalledWith(
         expect.objectContaining({ where: { key } }),
       )
@@ -362,6 +431,8 @@ describe("seedFirstPartyApps", () => {
             "experience:publish",
             "experience:create",
             "experience:generate",
+            "push:campaign:read",
+            "push:campaign:draft",
           ],
           redirectUris: [],
           public: true,
@@ -763,6 +834,7 @@ describe("seedFirstPartyApps", () => {
       createdLinks: PUBLIC_RESOURCE_ROWS.length,
       eligibleClients: 1,
       offlineAccessUpdatedClients: 0,
+      pushScopesUpdatedClients: 0,
       repairedClients: 1,
     })
     expect(upsertOAuthClientResource).toHaveBeenCalledWith({
@@ -825,6 +897,7 @@ describe("seedFirstPartyApps", () => {
       createdLinks: PUBLIC_RESOURCE_ROWS.length,
       eligibleClients: 1,
       offlineAccessUpdatedClients: 0,
+      pushScopesUpdatedClients: 0,
       repairedClients: 1,
     })
     expect(transaction).toHaveBeenCalledOnce()
@@ -859,12 +932,14 @@ describe("seedFirstPartyApps", () => {
       createdLinks: PUBLIC_RESOURCE_ROWS.length - 1,
       eligibleClients: 1,
       offlineAccessUpdatedClients: 0,
+      pushScopesUpdatedClients: 0,
       repairedClients: 1,
     })
     expect(second.resourceRepair).toEqual({
       createdLinks: 0,
       eligibleClients: 1,
       offlineAccessUpdatedClients: 0,
+      pushScopesUpdatedClients: 0,
       repairedClients: 0,
     })
     expect(transaction).toHaveBeenCalledOnce()
@@ -992,5 +1067,213 @@ describe("seedFirstPartyApps", () => {
         }),
       }),
     )
+  })
+
+  describe("push campaign scope migration", () => {
+    it("adds both push scopes to a Better Auth 1.7.1 dynamic registration row", async () => {
+      const [row] = useOAuthClientTable([
+        eligibleLoopbackClient({
+          clientId: "dcr_better_auth_171",
+          public: null,
+          requirePKCE: null,
+          scopes: [...PRE_PUSH_PUBLIC_DCR_SCOPE_UNION],
+        }),
+      ])
+
+      const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+      const result = await seedFirstPartyApps()
+
+      expect(row?.scopes).toEqual([
+        ...PRE_PUSH_PUBLIC_DCR_SCOPE_UNION,
+        ...PUSH_CAMPAIGN_SCOPES,
+      ])
+      expect(result.resourceRepair).toMatchObject({
+        offlineAccessUpdatedClients: 0,
+        pushScopesUpdatedClients: 1,
+      })
+    })
+
+    it("queries public true or null clients and leaves the PKCE check to code", async () => {
+      // A `public: true` or `requirePKCE: true` filter here would match no
+      // Better Auth 1.7.1 row in a real database, and the fake table cannot see it.
+      const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+      await seedFirstPartyApps()
+
+      expect(findManyOAuthClients).toHaveBeenCalledWith({
+        where: {
+          clientId: { notIn: FIRST_PARTY_OAUTH_CLIENT_IDS },
+          clientSecret: null,
+          disabled: false,
+          OR: [{ public: true }, { public: null }],
+          scopes: { has: "experience:read" },
+          tokenEndpointAuthMethod: "none",
+        },
+        select: {
+          clientId: true,
+          clientSecret: true,
+          disabled: true,
+          public: true,
+          requirePKCE: true,
+          scopes: true,
+          tokenEndpointAuthMethod: true,
+        },
+      })
+    })
+
+    it("adds both push scopes to a legacy Better Auth 1.6.2 row and keeps the offline_access repair", async () => {
+      const [row] = useOAuthClientTable([
+        eligibleLoopbackClient({
+          clientId: "dcr_better_auth_162",
+          public: true,
+          requirePKCE: true,
+          scopes: [...LEGACY_ADMIN_MCP_SCOPES],
+        }),
+      ])
+
+      const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+      const result = await seedFirstPartyApps()
+
+      expect(row?.scopes).toEqual([
+        ...LEGACY_ADMIN_MCP_SCOPES,
+        "offline_access",
+        ...PUSH_CAMPAIGN_SCOPES,
+      ])
+      expect(result.resourceRepair).toMatchObject({
+        offlineAccessUpdatedClients: 1,
+        pushScopesUpdatedClients: 1,
+      })
+    })
+
+    it("does not change confidential, first-party, disabled, PKCE-off, or non-Experience clients", async () => {
+      const scopes = [...PRE_PUSH_PUBLIC_DCR_SCOPE_UNION]
+      const rows = useOAuthClientTable([
+        eligibleLoopbackClient({
+          clientId: "eligible",
+          public: null,
+          requirePKCE: null,
+          scopes,
+        }),
+        eligibleLoopbackClient({ clientId: "jfp_admin_mcp_codex", scopes }),
+        eligibleLoopbackClient({
+          clientId: "with_secret",
+          clientSecret: "hashed-secret",
+          scopes,
+        }),
+        eligibleLoopbackClient({
+          clientId: "secret_basic",
+          tokenEndpointAuthMethod: "client_secret_basic",
+          scopes,
+        }),
+        eligibleLoopbackClient({
+          clientId: "not_public",
+          public: false,
+          scopes,
+        }),
+        eligibleLoopbackClient({
+          clientId: "pkce_off",
+          requirePKCE: false,
+          scopes,
+        }),
+        eligibleLoopbackClient({
+          clientId: "disabled",
+          disabled: true,
+          scopes,
+        }),
+        eligibleLoopbackClient({
+          clientId: "changelog_only",
+          scopes: [...CHANGELOG_DEFAULT_SCOPES],
+        }),
+      ])
+      const before = structuredClone(rows)
+
+      const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+      const result = await seedFirstPartyApps()
+
+      expect(result.resourceRepair.pushScopesUpdatedClients).toBe(1)
+      expect(updateOAuthClient).toHaveBeenCalledOnce()
+      expect(updateOAuthClient).toHaveBeenCalledWith({
+        where: { clientId: "eligible" },
+        data: { scopes: [...scopes, ...PUSH_CAMPAIGN_SCOPES] },
+      })
+      expect(rows.slice(1)).toEqual(before.slice(1))
+    })
+
+    it("skips push query rows with an unexpected shape without throwing", async () => {
+      const posture = eligibleLoopbackClient({
+        scopes: [...PRE_PUSH_PUBLIC_DCR_SCOPE_UNION],
+      })
+      const rows: unknown[] = [
+        {},
+        { ...posture, clientId: "scopes_null", scopes: null },
+        { ...posture, clientId: "scopes_string", scopes: "experience:read" },
+        {
+          ...posture,
+          clientId: "scopes_null_entry",
+          scopes: ["experience:read", null],
+        },
+        { ...posture, clientId: "well_formed" },
+      ]
+      findManyOAuthClients.mockImplementation(async ({ where }) =>
+        where.scopes?.has === "experience:read" ? rows : [],
+      )
+
+      const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+      const result = await seedFirstPartyApps()
+
+      expect(result.resourceRepair.pushScopesUpdatedClients).toBe(1)
+      expect(updateOAuthClient).toHaveBeenCalledOnce()
+      expect(updateOAuthClient).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { clientId: "well_formed" } }),
+      )
+    })
+
+    it("prints the push scope count in the summary line without client ids", async () => {
+      useOAuthClientTable([
+        eligibleLoopbackClient({
+          clientId: "dcr_summary_probe",
+          public: null,
+          requirePKCE: null,
+          scopes: [...PRE_PUSH_PUBLIC_DCR_SCOPE_UNION],
+        }),
+      ])
+
+      const { formatSeedSummary, seedFirstPartyApps } =
+        await import("./seed-first-party-apps")
+      const summary = formatSeedSummary(await seedFirstPartyApps())
+
+      expect(summary).toContain(
+        "1 dynamic clients updated for push campaign scopes",
+      )
+      expect(summary).not.toContain("dcr_summary_probe")
+    })
+
+    it("changes nothing on a second run", async () => {
+      const rows = useOAuthClientTable([
+        eligibleLoopbackClient({
+          clientId: "dcr_better_auth_171",
+          public: null,
+          requirePKCE: null,
+          scopes: [...PRE_PUSH_PUBLIC_DCR_SCOPE_UNION],
+        }),
+        eligibleLoopbackClient({
+          clientId: "dcr_better_auth_162",
+          scopes: [...LEGACY_ADMIN_MCP_SCOPES],
+        }),
+      ])
+
+      const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+      const first = await seedFirstPartyApps()
+      const afterFirst = structuredClone(rows)
+      updateOAuthClient.mockClear()
+      const second = await seedFirstPartyApps()
+
+      expect(first.resourceRepair.pushScopesUpdatedClients).toBe(2)
+      expect(second.resourceRepair).toMatchObject({
+        offlineAccessUpdatedClients: 0,
+        pushScopesUpdatedClients: 0,
+      })
+      expect(updateOAuthClient).not.toHaveBeenCalled()
+      expect(rows).toEqual(afterFirst)
+    })
   })
 })

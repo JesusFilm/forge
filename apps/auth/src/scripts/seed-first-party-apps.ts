@@ -29,15 +29,19 @@ const MANAGER_BACKEND_SCOPE = "admin:manager-backend"
 const BROWSER_GRANT_TYPES = ["authorization_code", "refresh_token"]
 const TV_DEVICE_CLIENT_ID_SET = new Set<string>(TV_DEVICE_CLIENT_IDS)
 const OFFLINE_ACCESS_SCOPE = "offline_access" satisfies AuthScopeKey
-// Markers identify PRE-EXISTING dynamically-registered Admin MCP clients so
-// later-added default scopes can be appended. They must exclude every scope
-// added AFTER those clients were registered — offline_access itself and the
-// feat-320 experience-level pair — because a legacy client cannot carry them
-// (the pair reaches clients via re-authentication, not this migration).
+const EXPERIENCE_READ_SCOPE = "experience:read" satisfies AuthScopeKey
+const PUSH_CAMPAIGN_SCOPES = [
+  "push:campaign:read",
+  "push:campaign:draft",
+] as const satisfies readonly AuthScopeKey[]
+// Default scopes added after legacy dynamic Admin MCP clients registered. A
+// legacy client cannot hold them, so none is a marker. Seed steps below add
+// offline_access and the push pair; the feat-320 pair has no migration.
 const POST_REGISTRATION_SCOPES: readonly AuthScopeKey[] = [
   OFFLINE_ACCESS_SCOPE,
   "experience:create",
   "experience:generate",
+  ...PUSH_CAMPAIGN_SCOPES,
 ]
 const ADMIN_MCP_DYNAMIC_SCOPE_MARKERS = ADMIN_MCP_DEFAULT_SCOPES.filter(
   (scope) => !POST_REGISTRATION_SCOPES.includes(scope),
@@ -69,6 +73,7 @@ export async function seedFirstPartyApps() {
   )
   const offlineAccessUpdatedClients =
     await migrateExistingDynamicAdminMcpClients()
+  const pushScopesUpdatedClients = await addPushScopesToExistingDynamicClients()
 
   return {
     apps: FIRST_PARTY_APP_SEEDS.length,
@@ -89,8 +94,16 @@ export async function seedFirstPartyApps() {
     resourceRepair: {
       ...resourceRepair,
       offlineAccessUpdatedClients,
+      pushScopesUpdatedClients,
     },
   }
+}
+
+export function formatSeedSummary(
+  result: Awaited<ReturnType<typeof seedFirstPartyApps>>,
+) {
+  const repair = result.resourceRepair
+  return `Seeded ${result.apps} first-party apps, ${result.environments} environments, ${result.oauthClients} OAuth clients, and ${result.scopes} scopes. Public MCP repair: ${repair.eligibleClients} eligible clients, ${repair.repairedClients} repaired clients, ${repair.createdLinks} links added, ${repair.offlineAccessUpdatedClients} legacy clients updated for offline access, ${repair.pushScopesUpdatedClients} dynamic clients updated for push campaign scopes.`
 }
 
 function getPublicResourcePolicies() {
@@ -349,6 +362,73 @@ function isExistingDynamicAdminMcpClientMissingOfflineAccess(client: {
   )
 }
 
+// Better Auth 1.7.1 writes public: null and requirePKCE: null on a dynamic
+// registration, so neither may be filtered on true. Rows registered after the
+// push scopes joined the public-DCR union already hold them.
+async function addPushScopesToExistingDynamicClients() {
+  const candidates = await prisma.oauthClient.findMany({
+    where: {
+      clientId: { notIn: FIRST_PARTY_OAUTH_CLIENT_IDS },
+      clientSecret: null,
+      disabled: false,
+      OR: [{ public: true }, { public: null }],
+      scopes: { has: EXPERIENCE_READ_SCOPE },
+      tokenEndpointAuthMethod: "none",
+    },
+    select: {
+      clientId: true,
+      clientSecret: true,
+      disabled: true,
+      public: true,
+      requirePKCE: true,
+      scopes: true,
+      tokenEndpointAuthMethod: true,
+    },
+  })
+
+  let updatedClients = 0
+  for (const client of candidates) {
+    const missingScopes = missingPushScopes(client)
+    if (missingScopes.length === 0) continue
+
+    await prisma.oauthClient.update({
+      where: { clientId: client.clientId },
+      data: { scopes: [...client.scopes, ...missingScopes] },
+    })
+    updatedClients += 1
+  }
+  return updatedClients
+}
+
+// The seed runs before the server listens at every boot, so a row with an
+// unexpected shape gets no scopes and cannot stop the boot.
+function missingPushScopes(client: {
+  clientId: unknown
+  clientSecret: unknown
+  disabled: unknown
+  public: unknown
+  requirePKCE: unknown
+  scopes: unknown
+  tokenEndpointAuthMethod: unknown
+}) {
+  const { scopes } = client
+  if (
+    typeof client.clientId !== "string" ||
+    isFirstPartyOAuthClientId(client.clientId) ||
+    client.tokenEndpointAuthMethod !== "none" ||
+    client.clientSecret !== null ||
+    client.disabled !== false ||
+    (client.public !== true && client.public !== null) ||
+    client.requirePKCE === false ||
+    !Array.isArray(scopes) ||
+    !scopes.every((scope) => typeof scope === "string") ||
+    !scopes.includes(EXPERIENCE_READ_SCOPE)
+  ) {
+    return []
+  }
+  return PUSH_CAMPAIGN_SCOPES.filter((scope) => !scopes.includes(scope))
+}
+
 function isCodexLoopbackMcpCallback(redirectUri: string) {
   try {
     const url = new URL(redirectUri)
@@ -569,9 +649,7 @@ function toEnvironmentKind(kind: string) {
 if (process.argv[1]?.endsWith("seed-first-party-apps.ts")) {
   seedFirstPartyApps()
     .then((result) => {
-      console.log(
-        `Seeded ${result.apps} first-party apps, ${result.environments} environments, ${result.oauthClients} OAuth clients, and ${result.scopes} scopes. Public MCP repair: ${result.resourceRepair.eligibleClients} eligible clients, ${result.resourceRepair.repairedClients} repaired clients, ${result.resourceRepair.createdLinks} links added, ${result.resourceRepair.offlineAccessUpdatedClients} legacy clients updated for offline access.`,
-      )
+      console.log(formatSeedSummary(result))
     })
     .finally(async () => {
       await prisma.$disconnect()
